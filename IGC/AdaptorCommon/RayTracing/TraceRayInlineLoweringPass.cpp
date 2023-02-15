@@ -291,7 +291,7 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
              Value* rootNodePtrPlusFlags = builder.CreateOr(
                  builder.CreateShl(
                      builder.CreateZExt(RQOPlusTraceRayFlags, builder.getInt64Ty()),
-                     builder.getInt64((uint32_t)MemRay::Bits::rootNodePtr)),
+                     builder.getInt64((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr)),
                  rootNodePtr,
                  VALUE_NAME("rootNodePtrAndRayFlags"));
              builder.setNodePtrAndFlags(ShadowMemStackPointer, rootNodePtrPlusFlags);
@@ -309,7 +309,7 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
                  builder.getInt64(0),
                  builder.CreateShl(
                      builder.CreateZExt(trace->getMask(), builder.getInt64Ty()),
-                     builder.getInt64((uint32_t)MemRay::Bits::instLeafPtr)),
+                     builder.getInt64((uint32_t)MemRay::RT::Xe::Bits::instLeafPtr)),
                  VALUE_NAME("maskPlusIntLeafPtr"));
              builder.setInstLeafPtrAndRayMask(ShadowMemStackPointer, maskPlusInstLeafPtr);
          }
@@ -381,14 +381,14 @@ void TraceRayInlineLoweringPass::emitSingleRQMemRayWrite(RTBuilder& builder, Val
     Value* bvhPlusFlagsShMem = builder.getNodePtrAndFlags(ShadowMemStackPointer);
     Value* maskPlusInstLeafPtr = builder.getInstLeafPtrAndRayMask(ShadowMemStackPointer);
 
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].topOfNodePtrAndFlags) == 96, "topOfNodePtrAndFlags layout changed?");
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].topOfInstanceLeafPtr) == 120, "topOfInstanceLeafPtr layout changed?");
+    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].rt.xe.topOfNodePtrAndFlags) == 96, "topOfNodePtrAndFlags layout changed?");
+    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].rt.xe.topOfInstanceLeafPtr) == 120, "topOfInstanceLeafPtr layout changed?");
 
     Value* rayFlagPtrHWMem = builder.getNodePtrAndFlagsPtr(HWStackPointer);
     Value* rayFlagPtrShMem = builder.getNodePtrAndFlagsPtr(ShadowMemStackPointer);
     DenseMap<uint32_t, Value*> vals;
     vals[0] = bvhPlusFlagsShMem;
-    uint32_t offsetMask = offsetof(MemRay, topOfInstanceLeafPtr) - offsetof(MemRay, topOfNodePtrAndFlags);
+    uint32_t offsetMask = offsetof(MemRay::RT::Xe, topOfInstanceLeafPtr) - offsetof(MemRay::RT::Xe, topOfNodePtrAndFlags);
     vals[offsetMask] = maskPlusInstLeafPtr;
     builder.WriteBlockData(rayFlagPtrHWMem, (singleRQProceed ? nullptr : rayFlagPtrShMem), 32, vals, VALUE_NAME("RTStack.MemRay_TOP.2nd32B"));
 }
@@ -409,8 +409,8 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
 
     //HWstack->committedHit = SMstack->committedHit  //first 16 Bytes only
     //assume below and then we can RMW 16bytes as one block
-    static_assert(offsetof(HWRayData2, committedHit.hitInfoDWord) == 12, "hitInfoDWord layout changed?");
-    constexpr uint32_t rtStackCommittedHitOffset = offsetof(HWRayData2, committedHit.hitInfoDWord);
+    static_assert(offsetof(HWRayData2, committedHit.rt.xe.hitInfoDWord) == 12, "hitInfoDWord layout changed?");
+    constexpr uint32_t rtStackCommittedHitOffset = offsetof(HWRayData2, committedHit.rt.xe.hitInfoDWord);
     Value* committedHitInfo = builder.getHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit, VALUE_NAME("HitInfo"));
     vals.clear();
     vals[rtStackCommittedHitOffset] = committedHitInfo;
@@ -425,11 +425,11 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
     // we set the bit and HW will set it to 0 if there is more to do.
     potentialHitInfo = builder.CreateOr(
         potentialHitInfo,
-        builder.getInt32(BIT((uint32_t)MemHit::Offset::done)));
+        builder.getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::done)));
 
     vals.clear();
-    vals[offsetof(MemHit, t)] = builder.getPotentialHitT(ShadowMemStackPointer);
-    vals[offsetof(MemHit, hitInfoDWord)] = potentialHitInfo;
+    vals[offsetof(MemHit::RT::Xe, t)] = builder.getPotentialHitT(ShadowMemStackPointer);
+    vals[offsetof(MemHit::RT::Xe, hitInfoDWord)] = potentialHitInfo;
     Value* rtStackPotentialHitPtrHwMem = builder.getPotentialHitPtr(HWStackPointer);
     Value* rtStackPotentialHitPtrShMem = builder.getPotentialHitPtr(ShadowMemStackPointer);
     builder.WriteBlockData(rtStackPotentialHitPtrHwMem, (singleRQProceed ? nullptr : rtStackPotentialHitPtrShMem), 16, vals, VALUE_NAME("RTStack.PotentialHit.1st16B"));
@@ -722,10 +722,10 @@ void TraceRayInlineLoweringPass::LowerCommittedStatus(Function& F)
         Value* committedHitInfo = builder.getHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit, VALUE_NAME("HitInfoDW"));
         Value* leafType = builder.CreateAnd(
             committedHitInfo,
-            builder.getInt32(BIT((uint32_t)MemHit::Offset::leafType)));
+            builder.getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::leafType)));
         leafType = builder.CreateLShr(
             leafType,
-            builder.getInt32((uint32_t)MemHit::Offset::leafType), VALUE_NAME("LeafTypeLSB"));
+            builder.getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType), VALUE_NAME("LeafTypeLSB"));
         // We can safely do this +1 as long as the above two static assertions
         // hold.
         leafType = builder.CreateAdd(leafType, builder.getInt32(1), VALUE_NAME("CommittedStatus"));
@@ -768,7 +768,7 @@ void TraceRayInlineLoweringPass::LowerCandidateType(Function& F)
         Value* potentialHitInfo = builder.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("potentialHitInfo"));
 
         Value* leafType = builder.CreateLShr(
-            potentialHitInfo, builder.getInt32((uint32_t)MemHit::Offset::leafType), VALUE_NAME("LeafType"));
+            potentialHitInfo, builder.getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType), VALUE_NAME("LeafType"));
 
         //we are interested in only the LSB of leafType
         leafType = builder.CreateAnd(

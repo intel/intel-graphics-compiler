@@ -58,6 +58,32 @@ static Type* _struct_RTStackFormat__MemHit(Module &M)
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
+      _union_RTStackFormat__MemHit__RT(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_RTStackFormat__MemHit__RT(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.RTStackFormat::MemHit::RT";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__MemHit__RT__Xe(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__MemHit__RT__Xe(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::MemHit::RT::Xe";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
       Type::getFloatTy(M.getContext()),
       Type::getFloatTy(M.getContext()),
       Type::getFloatTy(M.getContext()),
@@ -121,6 +147,32 @@ static Type* _struct_RTStackFormat__MemRay(Module &M)
       }(),
       Type::getFloatTy(M.getContext()),
       Type::getFloatTy(M.getContext()),
+      _union_RTStackFormat__MemRay__RT(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_RTStackFormat__MemRay__RT(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.RTStackFormat::MemRay::RT";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__MemRay__RT__Xe(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__MemRay__RT__Xe(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::MemRay::RT::Xe";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
       _union_anon_4(M),
       _union_anon_6(M),
       _union_anon_8(M),
@@ -466,29 +518,55 @@ static Type* _struct_RTStackFormat__InstanceLeaf__Part0(Module &M)
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
+      _union_RTStackFormat__InstanceLeaf__Part0__RT(M),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_RTStackFormat__InstanceLeaf__Part0__RT(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.RTStackFormat::InstanceLeaf::Part0::RT";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__InstanceLeaf__Part0__RT__Xe(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__InstanceLeaf__Part0__RT__Xe(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::InstanceLeaf::Part0::RT::Xe";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
       _union_anon_21(M),
       IntegerType::get(M.getContext(), 64),
-      [&] {
-        auto *EltTy =
-          Type::getFloatTy(M.getContext());
-        return ArrayType::get(EltTy, 3);
-      }(),
-      [&] {
-        auto *EltTy =
-          Type::getFloatTy(M.getContext());
-        return ArrayType::get(EltTy, 3);
-      }(),
-      [&] {
-        auto *EltTy =
-          Type::getFloatTy(M.getContext());
-        return ArrayType::get(EltTy, 3);
-      }(),
-      [&] {
-        auto *EltTy =
-          Type::getFloatTy(M.getContext());
-        return ArrayType::get(EltTy, 3);
-      }(),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
@@ -549,7 +627,7 @@ static Type* _struct_RTStackFormat__QuadLeaf(Module &M)
     Type* Tys[] = {
       _struct_RTStackFormat__PrimLeafDesc(M),
       IntegerType::get(M.getContext(), 32),
-      _union_anon_25(M),
+      _union_RTStackFormat__QuadLeaf__RT(M),
       [&] {
         auto *EltTy =
           Type::getFloatTy(M.getContext());
@@ -583,6 +661,32 @@ static Type* _struct_RTStackFormat__PrimLeafDesc(Module &M)
       return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
+      _union_RTStackFormat__PrimLeafDesc__RT(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_RTStackFormat__PrimLeafDesc__RT(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.RTStackFormat::PrimLeafDesc::RT";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__PrimLeafDesc__RT__Xe(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__PrimLeafDesc__RT__Xe(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::PrimLeafDesc::RT::Xe";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
       _union_anon_23(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
@@ -595,6 +699,32 @@ static Type* _union_anon_23(Module &M)
     StringRef StructName = "union.anon.23";
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_RTStackFormat__QuadLeaf__RT(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.RTStackFormat::QuadLeaf::RT";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__QuadLeaf__RT__Xe(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__QuadLeaf__RT__Xe(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::QuadLeaf::RT::Xe";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _union_anon_25(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
@@ -1168,6 +1298,8 @@ Value* _gepof_CommittedHitT(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
+    this->getInt32(0),
+    this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
@@ -1175,6 +1307,8 @@ Value* _gepof_CommittedHitT(Value* p, const Twine &Name = "")
 Value* _gepof_CommittedHitT2(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
@@ -1190,6 +1324,8 @@ Value* _gepof_PotentialHitT(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
     this->getInt32(0),
+    this->getInt32(0),
+    this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
@@ -1197,6 +1333,8 @@ Value* _gepof_PotentialHitT(Value* p, const Twine &Name = "")
 Value* _gepof_CommittedHitU(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
@@ -1211,6 +1349,8 @@ Value* _gepof_PotentialHitU(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(1),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(1),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1219,6 +1359,8 @@ Value* _gepof_PotentialHitU(Value* p, const Twine &Name = "")
 Value* _gepof_CommittedHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
@@ -1234,6 +1376,8 @@ Value* _gepof_PotentialHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(1),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(5),
     this->getInt32(0),
   };
@@ -1243,6 +1387,8 @@ Value* _gepof_PotentialHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
 Value* _gepof_CommittedHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
@@ -1258,6 +1404,8 @@ Value* _gepof_PotentialHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(1),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(4),
     this->getInt32(0),
   };
@@ -1267,6 +1415,8 @@ Value* _gepof_PotentialHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
 Value* _gepof_CommittedHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
@@ -1282,6 +1432,8 @@ Value* _gepof_PotentialHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(1),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(3),
     this->getInt32(0),
   };
@@ -1291,6 +1443,8 @@ Value* _gepof_PotentialHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
 Value* _gepof_CommittedHitFrontFaceDword(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(0),
@@ -1306,6 +1460,8 @@ Value* _gepof_PotentialHitFrontFaceDword(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(1),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(3),
     this->getInt32(0),
   };
@@ -1321,6 +1477,8 @@ Value* _gepof_topOfNodePtrAndFlags(Value* p, Value* idx1, const Twine &Name = ""
     idx1,
     this->getInt32(4),
     this->getInt32(0),
+    this->getInt32(0),
+    this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
@@ -1332,7 +1490,9 @@ Value* _gepof_hitGroupShaderRecordInfo(Value* p, Value* idx1, const Twine &Name 
     this->getInt32(0),
     this->getInt32(2),
     idx1,
-    this->getInt32(5),
+    this->getInt32(4),
+    this->getInt32(0),
+    this->getInt32(1),
     this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1345,7 +1505,9 @@ Value* _gepof_missShaderRecordInfo(Value* p, Value* idx1, const Twine &Name = ""
     this->getInt32(0),
     this->getInt32(2),
     idx1,
-    this->getInt32(6),
+    this->getInt32(4),
+    this->getInt32(0),
+    this->getInt32(2),
     this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1358,7 +1520,9 @@ Value* _gepof_topOfInstanceLeafPtr(Value* p, Value* idx1, const Twine &Name = ""
     this->getInt32(0),
     this->getInt32(2),
     idx1,
-    this->getInt32(7),
+    this->getInt32(4),
+    this->getInt32(0),
+    this->getInt32(3),
     this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1458,7 +1622,7 @@ Value* _gepof_InstanceLeaf_world2obj_vx(Value* p, Value* idx1, const Twine &Name
   Value* Indices[] = {
     this->getInt32(0),
     this->getInt32(0),
-    this->getInt32(3),
+    this->getInt32(1),
     idx1,
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1469,7 +1633,7 @@ Value* _gepof_InstanceLeaf_world2obj_vy(Value* p, Value* idx1, const Twine &Name
   Value* Indices[] = {
     this->getInt32(0),
     this->getInt32(0),
-    this->getInt32(4),
+    this->getInt32(2),
     idx1,
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1480,7 +1644,7 @@ Value* _gepof_InstanceLeaf_world2obj_vz(Value* p, Value* idx1, const Twine &Name
   Value* Indices[] = {
     this->getInt32(0),
     this->getInt32(0),
-    this->getInt32(5),
+    this->getInt32(3),
     idx1,
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1491,7 +1655,7 @@ Value* _gepof_InstanceLeaf_obj2world_p(Value* p, Value* idx1, const Twine &Name 
   Value* Indices[] = {
     this->getInt32(0),
     this->getInt32(0),
-    this->getInt32(6),
+    this->getInt32(4),
     idx1,
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
@@ -1546,6 +1710,8 @@ Value* _gepof_InstanceLeaf_instContToHitGroupIndex(Value* p, const Twine &Name =
   Value* Indices[] = {
     this->getInt32(0),
     this->getInt32(0),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(1),
     this->getInt32(0),
   };
@@ -1568,6 +1734,8 @@ Value* _gepof_QuadLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
     this->getInt32(0),
+    this->getInt32(0),
+    this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
@@ -1588,6 +1756,8 @@ Value* _gepof_ProceduralLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
     this->getInt32(1),
+    this->getInt32(0),
+    this->getInt32(0),
     this->getInt32(0),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);

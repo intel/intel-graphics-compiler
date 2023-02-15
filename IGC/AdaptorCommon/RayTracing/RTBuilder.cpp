@@ -140,7 +140,7 @@ Value* RTBuilder::getIsFrontFace(
     Value* Val = this->getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("frontFaceDword"));
     Val = this->CreateAnd(
         Val,
-        this->getInt32(1U << (uint32_t)MemHit::Offset::frontFace),
+        this->getInt32(1U << (uint32_t)MemHit::RT::Xe::Offset::frontFace),
         VALUE_NAME("isolate_front_face_bit"));
     return this->CreateICmpNE(
         Val,
@@ -431,17 +431,17 @@ std::pair<BasicBlock*, PHINode*> RTBuilder::validateInstanceLeafPtr(RTBuilder::S
     {
         valid = CreateAnd(
             hitInfo,
-            getInt32(BIT((uint32_t)MemHit::Offset::valid)));
+            getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::valid)));
         valid = CreateICmpNE(valid, this->getInt32(0), VALUE_NAME("valid"));
     }
     else
     {
         Value* leafType = this->CreateLShr(
-            hitInfo, this->getInt32((uint32_t)MemHit::Offset::leafType));
+            hitInfo, this->getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType));
 
         leafType = this->CreateAnd(
             leafType,
-            this->getInt32(BITMASK((uint32_t)MemHit::Bits::leafType)),
+            this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::leafType)),
             VALUE_NAME("leafType"));
 
         valid = this->CreateICmpNE(leafType, this->getInt32(NODE_TYPE_INVALID), VALUE_NAME("validLeafType"));
@@ -555,7 +555,7 @@ void RTBuilder::setPotentialDoneBit(RTBuilder::StackPointerVal* StackPointer)
 {
     Value* doneDW = this->getPotentialHitInfo(StackPointer, VALUE_NAME("DoneDW"));
     Value* newHitInfo = this->CreateOr(
-        doneDW, this->getInt32(BIT((uint32_t)MemHit::Offset::done)));
+        doneDW, this->getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::done)));
     this->setHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit, newHitInfo, VALUE_NAME("DoneDW"));
 }
 
@@ -653,8 +653,8 @@ Value* RTBuilder::getRayFlagsPtr(RTBuilder::SyncStackPointerVal* perLaneStackPtr
         Ptr,
         PointerType::get(
             this->getInt16Ty(), Ptr->getType()->getPointerAddressSpace()));
-    static_assert((uint32_t)MemRay::Bits::rootNodePtr == 48, "Changed?");
-    static_assert((uint32_t)MemRay::Bits::rayFlags == 16, "Changed?");
+    static_assert((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr == 48, "Changed?");
+    static_assert((uint32_t)MemRay::RT::Xe::Bits::rayFlags == 16, "Changed?");
     Value* Indices[] = { this->getInt32(3) };
     return this->CreateInBoundsGEP(Ptr, Indices, VALUE_NAME("&rayFlags"));
 }
@@ -842,7 +842,7 @@ PHINode* RTBuilder::getPrimitiveIndex(
     Value* loadValue = this->getHitTopOfPrimLeafPtr(perLaneStackPtr, ShaderTy);
     //Get lower 42 Bits.
     loadValue = this->CreateAnd(loadValue,
-        this->getInt64(QWBITMASK((uint32_t)MemHit::Bits::primLeafPtr)),
+        this->getInt64(QWBITMASK((uint32_t)MemHit::RT::Xe::Bits::primLeafPtr)),
         VALUE_NAME("42-bit PrimLeafPtr"));
     Value* fullPrimLeafPtr = this->CreateMul(loadValue, this->getInt64(LeafSize),
         VALUE_NAME("fullPrimLeafPtr"));
@@ -889,7 +889,7 @@ PHINode* RTBuilder::getPrimitiveIndex(
         Value* primIndex0 = this->CreateLoad(primIndex0Ptr, VALUE_NAME("primIndex0"));
 
         Value* primLeafIndexDelta = this->CreateAnd(primLeafIndexTop,
-            this->getInt32(BITMASK((uint32_t)MemHit::Bits::primIndexDelta)),
+            this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::primIndexDelta)),
             VALUE_NAME("primLeafIndexDelta"));
         quadPrimIndex = this->CreateAdd(primLeafIndexDelta, primIndex0, VALUE_NAME("primIndex"));
         this->CreateBr(endBlock);
@@ -900,9 +900,9 @@ PHINode* RTBuilder::getPrimitiveIndex(
     {
         this->SetInsertPoint(prodeduralLeafBB);
         Value* primLeafIndex = this->CreateLShr(primLeafIndexTop,
-            this->getInt32((uint32_t)MemHit::Offset::primLeafIndex));
+            this->getInt32((uint32_t)MemHit::RT::Xe::Offset::primLeafIndex));
         primLeafIndex = this->CreateAnd(primLeafIndex,
-            this->getInt32(BITMASK((uint32_t)MemHit::Bits::primLeafIndex)),
+            this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::primLeafIndex)),
             VALUE_NAME("primLeafIndex"));
 
         Value* procPrimLeafPtr = this->CreateIntToPtr(
@@ -951,7 +951,7 @@ std::pair<Value*, BasicBlock*> RTBuilder::getGeometryIndex(
 
     // Extract 42 lower bits to get primitive leaf node offset
     loadValue = this->CreateAnd(loadValue,
-        this->getInt64(QWBITMASK((uint32_t)MemHit::Bits::primLeafPtr)),
+        this->getInt64(QWBITMASK((uint32_t)MemHit::RT::Xe::Bits::primLeafPtr)),
         VALUE_NAME("42-bit PrimLeafPtr"));
     // Multiply by size of primitive leaf node
     Value* fullPrimLeafPtr = this->CreateMul(loadValue, this->getInt64(LeafSize),
@@ -1022,7 +1022,7 @@ std::pair<Value*, BasicBlock*> RTBuilder::getGeometryIndex(
 
     // Extract 29 lower bits to get geometry index
     Value* info = this->CreateAnd(phi,
-        this->getInt32(BITMASK((uint32_t)PrimLeafDesc::Bits::geomIndex)),
+        this->getInt32(BITMASK((uint32_t)PrimLeafDesc::RT::Xe::Bits::geomIndex)),
         VALUE_NAME("geomIndex"));
 
     return std::make_pair(info, endBlock);
@@ -1051,14 +1051,14 @@ Value* RTBuilder::getWorldToObj(
 
 Value* RTBuilder::getCommittedHitPtr(RTBuilder::StackPointerVal* perLaneStackPtr)
 {
-    static_assert(offsetof(MemHit, t) == 0);
+    static_assert(offsetof(MemHit::RT::Xe, t) == 0);
     return this->_gepof_CommittedHitT(perLaneStackPtr,
         VALUE_NAME("&CommittedHit"));
 }
 
 Value* RTBuilder::getPotentialHitPtr(RTBuilder::StackPointerVal* perLaneStackPtr)
 {
-    static_assert(offsetof(MemHit, t) == 0);
+    static_assert(offsetof(MemHit::RT::Xe, t) == 0);
     return this->_gepof_PotentialHitT(perLaneStackPtr,
         VALUE_NAME("&PotentialHit"));
 }
@@ -1314,7 +1314,7 @@ Value* RTBuilder::getInstanceLeafPtr(Value* instLeafTopPtr)
     Value* loadValue = this->CreateLoad(instLeafTopPtr);
 
     loadValue = this->CreateAnd(loadValue,
-        this->getInt64(QWBITMASK((uint32_t)MemHit::Bits::instLeafPtr)),
+        this->getInt64(QWBITMASK((uint32_t)MemHit::RT::Xe::Bits::instLeafPtr)),
         VALUE_NAME("42-bit InstanceLeafPtr"));
     Value* ptrValue = this->CreateMul(loadValue, this->getInt64(LeafSize),
         VALUE_NAME("fullInstanceLeafPtr"));
@@ -1484,7 +1484,7 @@ Value* RTBuilder::getRootNodePtr(Value* BVHPtr)
             this->getInt64Ty(),
             VALUE_NAME("&BVH"));
         Value* OffsetPtr = this->CreateAdd(Cast, this->getInt64(*Offset));
-        constexpr uint64_t Mask = QWBITMASK((uint32_t)MemRay::Bits::rootNodePtr);
+        constexpr uint64_t Mask = QWBITMASK((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr);
         OffsetPtr = this->CreateAnd(
             OffsetPtr,
             this->getInt64(Mask),
@@ -1517,7 +1517,7 @@ Value* RTBuilder::getRootNodePtr(Value* BVHPtr)
         Value* bvhPtr = this->CreatePtrToInt(BVHPtr, this->getInt64Ty());
         Value* rootNodePtr = this->CreateAdd(
             bvhPtr, this->CreateZExt(rootNodeOffset, this->getInt64Ty()));
-        constexpr uint64_t Mask = QWBITMASK((uint32_t)MemRay::Bits::rootNodePtr);
+        constexpr uint64_t Mask = QWBITMASK((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr);
         rootNodePtr = this->CreateAnd(
             rootNodePtr,
             this->getInt64(Mask),
@@ -1725,7 +1725,7 @@ Value* RTBuilder::isDoneBitSet(Value* HitInfoVal)
 {
     Value* rayQueryDone = this->CreateAnd(
         HitInfoVal,
-        this->getInt32(BIT((uint32_t)MemHit::Offset::done)));
+        this->getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::done)));
 
     return this->CreateICmpNE(
         rayQueryDone,
@@ -1741,8 +1741,8 @@ Value* RTBuilder::isDoneBitNotSet(Value* HitInfoVal)
 Value* RTBuilder::getMemHitBvhLevel(Value* MemHitInfoVal)
 {
     auto *ShiftVal = this->CreateLShr(
-        MemHitInfoVal, (uint32_t)MemHit::Offset::bvhLevel);
-    constexpr uint32_t Mask = BITMASK((uint32_t)MemHit::Bits::bvhLevel);
+        MemHitInfoVal, (uint32_t)MemHit::RT::Xe::Offset::bvhLevel);
+    constexpr uint32_t Mask = BITMASK((uint32_t)MemHit::RT::Xe::Bits::bvhLevel);
     auto* Level = this->CreateAnd(ShiftVal, Mask, VALUE_NAME("bvhLevel"));
     return Level;
 }
@@ -1758,7 +1758,7 @@ Value* RTBuilder::getHitValid(RTBuilder::StackPointerVal* StackPointer, IGC::Cal
     Value* validDW = this->getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("ValidDW"));
     Value* isValidBit = CreateAnd(
         validDW,
-        getInt32(BIT((uint32_t)MemHit::Offset::valid)));
+        getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::valid)));
     return CreateICmpNE(
         isValidBit, getInt32(0), VALUE_NAME("valid"));
 }
@@ -1769,7 +1769,7 @@ void RTBuilder::setHitValid(StackPointerVal* StackPointer, IGC::CallableShaderTy
     Value* ValidDW = getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("valid"));
     ValidDW = CreateOr(
         ValidDW,
-        getInt32(1U << (uint32_t)MemHit::Offset::valid));
+        getInt32(1U << (uint32_t)MemHit::RT::Xe::Offset::valid));
     setHitInfoDWord(StackPointer, ShaderTy, ValidDW, VALUE_NAME("valid"));
 }
 
@@ -1816,7 +1816,7 @@ Value* RTBuilder::getHitBaryCentricPtr(
         IGC_ASSERT(llvm::isa<llvm::GetElementPtrInst>(Ptr));
         if (auto* GEP = dyn_cast<llvm::GetElementPtrInst>(Ptr))
         {
-            static_assert(offsetof(MemHit, v) - offsetof(MemHit, u) == sizeof(float));
+            static_assert(offsetof(MemHit::RT::Xe, v) - offsetof(MemHit::RT::Xe, u) == sizeof(float));
             llvm::Value* idx_dim0 = GEP->getOperand(GEP->getNumOperands() - 1);
             llvm::Value* idx_dim1 = this->CreateAdd(idx_dim0, this->getInt32(1));
             GEP->setOperand(GEP->getNumOperands() - 1, idx_dim1);
@@ -1829,7 +1829,8 @@ Value* RTBuilder::getHitBaryCentricPtr(
 Value* RTBuilder::getHitBaryCentric(
     RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim)
 {
-    return this->CreateLoad(getHitBaryCentricPtr(StackPointer, ShaderTy, dim), (dim ? VALUE_NAME("MemHit.v") : VALUE_NAME("MemHit.u")));
+    return this->CreateLoad(getHitBaryCentricPtr(StackPointer, ShaderTy, dim),
+        dim ? VALUE_NAME("MemHit.v") : VALUE_NAME("MemHit.u"));
 }
 
 Value* RTBuilder::setHitBaryCentric(
@@ -1847,7 +1848,7 @@ Value* RTBuilder::getInstContToHitGroupIndex(RTBuilder::StackPointerVal* perLane
 
     Value* value = this->CreateLoad(Ptr, VALUE_NAME("InstanceLeaf...instContToHitGroupIndex"));
     //Only lower 24bits for the Dword read are valid for Index
-    return this->CreateAnd(value, this->getInt32(BITMASK((uint32_t)InstanceLeaf::Part0::Bits::instContToHitGrpIndex)));
+    return this->CreateAnd(value, this->getInt32(BITMASK((uint32_t)InstanceLeaf::Part0::RT::Xe::Bits::instContToHitGrpIndex)));
 }
 
 
@@ -1856,11 +1857,11 @@ Value* RTBuilder::getLeafType(
 {
     Value* Val = this->getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("leafTypeDW"));
     Val = this->CreateLShr(
-        Val, this->getInt32((uint32_t)MemHit::Offset::leafType));
+        Val, this->getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType));
 
     Val = this->CreateAnd(
         Val,
-        this->getInt32(BITMASK((uint32_t)MemHit::Bits::leafType)),
+        this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::leafType)),
         VALUE_NAME("leafType"));
 
     return Val;

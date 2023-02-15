@@ -174,95 +174,87 @@ static_assert(sizeof(KSP) == 8, "changed?");
 
 
 struct MemHit {
-    float    t;                    // hit distance of current hit (or initial traversal distance)
-    float    u, v;                 // barycentric hit coordinates
-
-    enum class Bits : uint8_t
+    union RT
     {
-        primIndexDelta  = 16,
-        valid           = 1,
-        leafType        = 3,
-        primLeafIndex   = 4,
-        bvhLevel        = 3,
-        frontFace       = 1,
-        done            = 1,
-        pad0            = 3,
+        struct Xe // 32B
+        {
+            float    t;                    // hit distance of current hit (or initial traversal distance)
+            float    u, v;                 // barycentric hit coordinates
 
-        primLeafPtr     = 42,
-        hitGroupRecPtr0 = 22,
+            enum class Bits : uint8_t
+            {
+                primIndexDelta = 16,
+                valid = 1,
+                leafType = 3,
+                primLeafIndex = 4,
+                bvhLevel = 3,
+                frontFace = 1,
+                done = 1,
+                pad0 = 3,
 
-        instLeafPtr     = 42,
-        hitGroupRecPtr1 = 22,
-    };
+                primLeafPtr = 42,
+                hitGroupRecPtr0 = 22,
 
-    // This is the offset within the bitfield
-    enum class Offset : uint8_t
-    {
-        // Add as needed
-        valid         = 16,
-        leafType      = 17,
-        primLeafIndex = 20,
-        bvhLevel      = 24,
-        frontFace     = 27,
-        done          = 28,
-    };
+                instLeafPtr = 42,
+                hitGroupRecPtr1 = 22,
+            };
 
-    using T = uint32_t;
+            // This is the offset within the bitfield
+            enum class Offset : uint8_t
+            {
+                // Add as needed
+                valid = 16,
+                leafType = 17,
+                primLeafIndex = 20,
+                bvhLevel = 24,
+                frontFace = 27,
+                done = 28,
+            };
 
-    union
-    {
-        uint32_t topOfPrimIndexDelta;
-        uint32_t frontFaceDword;
-        uint32_t hitInfoDWord;
+            using T = uint32_t;
 
-        struct {
-            uint32_t primIndexDelta : (T)Bits::primIndexDelta; // prim index delta for compressed meshlets and quads
-            uint32_t valid          : (T)Bits::valid;          // set if there is a hit
-            uint32_t leafType       : (T)Bits::leafType;       // type of node primLeafPtr is pointing to
-            uint32_t primLeafIndex  : (T)Bits::primLeafIndex;  // index of the hit primitive inside the leaf
-            uint32_t bvhLevel       : (T)Bits::bvhLevel;       // the instancing level at which the hit occured
-            uint32_t frontFace      : (T)Bits::frontFace;      // whether we hit the front-facing side of a triangle (also used to pass opaque flag when calling intersection shaders)
-            uint32_t done           : (T)Bits::done;           // used in sync mode to indicate that traversal is done (HW will only set this to 0)
-            uint32_t pad0           : (T)Bits::pad0;           // unused bits (explicit padding)
-        };
-    };
+            union
+            {
+                uint32_t topOfPrimIndexDelta;
+                uint32_t frontFaceDword;
+                uint32_t hitInfoDWord;
 
-    union
-    {
-        uint64_t topOfPrimLeafPtr;
+                struct {
+                    uint32_t primIndexDelta : (T)Bits::primIndexDelta; // prim index delta for compressed meshlets and quads
+                    uint32_t valid          : (T)Bits::valid;          // set if there is a hit
+                    uint32_t leafType       : (T)Bits::leafType;       // type of node primLeafPtr is pointing to
+                    uint32_t primLeafIndex  : (T)Bits::primLeafIndex;  // index of the hit primitive inside the leaf
+                    uint32_t bvhLevel       : (T)Bits::bvhLevel;       // the instancing level at which the hit occured
+                    uint32_t frontFace      : (T)Bits::frontFace;      // whether we hit the front-facing side of a triangle (also used to pass opaque flag when calling intersection shaders)
+                    uint32_t done           : (T)Bits::done;           // used in sync mode to indicate that traversal is done (HW will only set this to 0)
+                    uint32_t pad0           : (T)Bits::pad0;           // unused bits (explicit padding)
+                };
+            };
 
-        struct {
-            uint64_t primLeafPtr     : (T)Bits::primLeafPtr;     // pointer to BVH leaf node (multiple of 64 bytes)
-            uint64_t hitGroupRecPtr0 : (T)Bits::hitGroupRecPtr0; // LSB of hit group record of the hit triangle (multiple of 16 bytes)
-        };
-    };
+            union
+            {
+                uint64_t topOfPrimLeafPtr;
 
-    union
-    {
-        uint64_t topOfInstLeafPtr;
+                struct {
+                    uint64_t primLeafPtr     : (T)Bits::primLeafPtr;     // pointer to BVH leaf node (multiple of 64 bytes)
+                    uint64_t hitGroupRecPtr0 : (T)Bits::hitGroupRecPtr0; // LSB of hit group record of the hit triangle (multiple of 16 bytes)
+                };
+            };
 
-        struct {
-            uint64_t instLeafPtr     : (T)Bits::instLeafPtr;     // pointer to BVH instance leaf node (in multiple of 64 bytes)
-            uint64_t hitGroupRecPtr1 : (T)Bits::hitGroupRecPtr1; // MSB of hit group record of the hit triangle (multiple of 16 bytes)
-        };
-    };
+            union
+            {
+                uint64_t topOfInstLeafPtr;
 
-    static_assert((uint32_t)Bits::primLeafPtr == (uint32_t)Bits::instLeafPtr,
-        "Size changed?");
-};
+                struct {
+                    uint64_t instLeafPtr     : (T)Bits::instLeafPtr;     // pointer to BVH instance leaf node (in multiple of 64 bytes)
+                    uint64_t hitGroupRecPtr1 : (T)Bits::hitGroupRecPtr1; // MSB of hit group record of the hit triangle (multiple of 16 bytes)
+                };
+            };
 
-struct StackEntry
-{
-    enum class Bits : uint8_t
-    {
-        offset    = 31,
-        lastChild = 1,
-    };
-
-    using T = uint32_t;
-
-    uint32_t offset    : (T)Bits::offset;    // in multiples of 64B. max 2^29 prims i.e. max 2^30 nodes. one extra bit
-    uint32_t lastChild : (T)Bits::lastChild;
+            static_assert((uint32_t)Bits::primLeafPtr == (uint32_t)Bits::instLeafPtr,
+                "Size changed?");
+        } xe;
+    } rt;
 };
 
 
@@ -279,10 +271,10 @@ enum NodeType : uint8_t
     NODE_TYPE_INVALID = 0x7       // indicates invalid node
 };
 
-static constexpr const uint32_t NUM_CHILDREN = 6;
-
 struct InternalNode
 {
+    static constexpr const uint32_t NUM_CHILDREN = 6;
+
     Vec3f lower;          // world space origin of quantization grid
     int32_t childOffset;  // offset to all children in 64B multiples
 
@@ -317,33 +309,10 @@ enum GeometryFlags : uint32_t
 
 struct PrimLeafDesc
 {
-    enum Type : uint32_t
-    {
-        TYPE_NONE = 0,
-
-        /* For a node type of NODE_TYPE_MESHLET, the referenced leaf may
-         * still be a QuadLeaf or a Meshlet. We need this as we produce
-         * two quads instead of one meshlet when meshlet compression does
-         * not work well. */
-
-        TYPE_QUAD = 0,
-        TYPE_MESHLET = 1,
-
-        /* For a node type of NODE_TYPE_PROCEDURAL we support enabling
-         * and disabling the opaque/non_opaque culling. */
-
-        TYPE_OPACITY_CULLING_ENABLED = 0,
-        TYPE_OPACITY_CULLING_DISABLED = 1
-    };
-
     enum class Bits : uint8_t
     {
         shaderIndex = 24,
-        geomMask    = 8,
-
-        geomIndex   = 29,
-        type        = 1,
-        geomFlags   = 2,
+        geomMask = 8,
     };
 
     using T = uint32_t;
@@ -351,19 +320,53 @@ struct PrimLeafDesc
     uint32_t shaderIndex : (T)Bits::shaderIndex; // shader index used for shader record calculations
     uint32_t geomMask    : (T)Bits::geomMask;    // geometry mask used for ray masking
 
-    union
+    union RT
     {
-        uint32_t topOfGeomIndex;
+        struct Xe
+        {
+            enum Type : uint32_t
+            {
+                TYPE_NONE = 0,
 
-        struct {
-            uint32_t geomIndex : (T)Bits::geomIndex; // the geometry index specifies the n'th geometry of the scene
-            /* Type */
-            uint32_t type      : (T)Bits::type;      // distinguish between QuadLeaves and Meshlets or enable/disable culling for procedurals and instances
-            /* GeometryFlags */
-            uint32_t geomFlags : (T)Bits::geomFlags; // geometry flags of this geometry
-        };
-    };
+                /* For a node type of NODE_TYPE_MESHLET, the referenced leaf may
+                 * still be a QuadLeaf or a Meshlet. We need this as we produce
+                 * two quads instead of one meshlet when meshlet compression does
+                 * not work well. */
+
+                 TYPE_QUAD = 0,
+                 TYPE_MESHLET = 1,
+
+                 /* For a node type of NODE_TYPE_PROCEDURAL we support enabling
+                  * and disabling the opaque/non_opaque culling. */
+
+                  TYPE_OPACITY_CULLING_ENABLED = 0,
+                  TYPE_OPACITY_CULLING_DISABLED = 1
+            };
+
+            enum class Bits : uint8_t
+            {
+                geomIndex = 29,
+                type = 1,
+                geomFlags = 2,
+            };
+
+            union
+            {
+                uint32_t topOfGeomIndex;
+
+                struct {
+                    uint32_t geomIndex : (T)Bits::geomIndex; // the geometry index specifies the n'th geometry of the scene
+                    /* Type */
+                    uint32_t type      : (T)Bits::type;      // distinguish between QuadLeaves and Meshlets or enable/disable culling for procedurals and instances
+                    /* GeometryFlags */
+                    uint32_t geomFlags : (T)Bits::geomFlags; // geometry flags of this geometry
+                };
+            };
+        } xe;
+    } rt;
 };
+
+static_assert(sizeof(PrimLeafDesc) == 8, "PrimLeafDesc must be 8 bytes large");
 
 struct ProceduralLeaf
 {
@@ -393,30 +396,36 @@ struct QuadLeaf
 
     uint32_t primIndex0;    // primitive index of first triangle (has to be at same offset as for CompressedMeshlet!)
 
-    enum class Bits : uint8_t
+    union RT
     {
-        primIndex1Delta = 16,
-        j0              = 2,
-        j1              = 2,
-        j2              = 2,
-        last            = 1,
-        pad             = 9,
-    };
+        struct Xe
+        {
+            enum class Bits : uint8_t
+            {
+                primIndex1Delta = 16,
+                j0              = 2,
+                j1              = 2,
+                j2              = 2,
+                last            = 1,
+                pad             = 9,
+            };
 
-    using T = uint32_t;
+            using T = uint32_t;
 
-    union {
-        uint32_t topOfPriIndex1Delta;
+            union {
+                uint32_t topOfPriIndex1Delta;
 
-        struct {
-            uint32_t primIndex1Delta : (T)Bits::primIndex1Delta;  // delta encoded primitive index of second triangle
-            uint32_t j0              : (T)Bits::j0;               // specifies first vertex of second triangle
-            uint32_t j1              : (T)Bits::j1;               // specified second vertex of second triangle
-            uint32_t j2              : (T)Bits::j2;               // specified third vertex of second triangle
-            uint32_t last            : (T)Bits::last;             // true if the second triangle is the last triangle in a leaf list
-            uint32_t pad             : (T)Bits::pad;              // unused bits
-        };
-    };
+                struct {
+                    uint32_t primIndex1Delta : (T)Bits::primIndex1Delta;  // delta encoded primitive index of second triangle
+                    uint32_t j0              : (T)Bits::j0;               // specifies first vertex of second triangle
+                    uint32_t j1              : (T)Bits::j1;               // specified second vertex of second triangle
+                    uint32_t j2              : (T)Bits::j2;               // specified third vertex of second triangle
+                    uint32_t last            : (T)Bits::last;             // true if the second triangle is the last triangle in a leaf list
+                    uint32_t pad             : (T)Bits::pad;              // unused bits
+                };
+            };
+        } xe;
+    } rt;
 
     Vec3f v0;  // first vertex of first triangle
     Vec3f v1;  // second vertex of first triangle
@@ -477,48 +486,50 @@ struct InstanceLeaf
     /* first 64 bytes accessed during traversal by hardware */
     struct Part0
     {
-    public:
-        enum class Bits : uint8_t
+        union RT
         {
-            shaderIndex = 24,
-            geomMask = 8,
+            using T = uint32_t;
+            struct Xe
+            {
+                enum class Bits : uint8_t
+                {
+                    shaderIndex           = 24,
+                    geomMask              = 8,
+                    instContToHitGrpIndex = 24,
+                    pad0                  = 5,
+                    type                  = 1,
+                    geomFlags             = 2,
+                    startNodePtr          = 48,
+                    instFlags             = 8,
+                    reserved1             = 1,
+                    reserved2             = 7,
+                };
 
-            instContToHitGrpIndex = 24,
-            pad0 = 5,
-            type = 1,
-            geomFlags = 2,
+                uint32_t shaderIndex : (T)Bits::shaderIndex;  // shader index used to calculate instancing shader in case of software instancing
+                uint32_t geomMask    : (T)Bits::geomMask;     // geometry mask used for ray masking
 
-            startNodePtr = 48,
-            instFlags = 8,
-            reserved1 = 1,
-            reserved2 = 7,
-        };
+                union {
+                    uint32_t instContToHitGroupIndex;
 
-        using T = uint32_t;
+                    struct {
+                        uint32_t instanceContributionToHitGroupIndex : (T)Bits::instContToHitGrpIndex;  // TODO: add description
+                        uint32_t pad0                                : (T)Bits::pad0;                   // explicit padding bits
+                        /* PrimLeafDesc::Type */
+                        uint32_t type                                : (T)Bits::type;                   // enables/disables opaque culling
+                        /* GeometryFlags */
+                        uint32_t geomFlags                           : (T)Bits::geomFlags;              // geometry flags are not used for instances
+                    };
+                };
 
-        uint32_t shaderIndex : (T)Bits::shaderIndex;  // shader index used to calculate instancing shader in case of software instancing
-        uint32_t geomMask    : (T)Bits::geomMask;     // geometry mask used for ray masking
+                uint64_t startNodePtr : (T)Bits::startNodePtr;  // start node where to continue traversal of the instanced object
+                uint64_t instFlags    : (T)Bits::instFlags;     // flags for the instance (see InstanceFlags)
 
-        union {
-            uint32_t instContToHitGroupIndex;
-
-            struct {
-                uint32_t instanceContributionToHitGroupIndex : (T)Bits::instContToHitGrpIndex;  // TODO: add description
-                uint32_t pad0                                : (T)Bits::pad0;                   // explicit padding bits
-                /* PrimLeafDesc::Type */
-                uint32_t type                                : (T)Bits::type;                   // enables/disables opaque culling
-                /* GeometryFlags */
-                uint32_t geomFlags                           : (T)Bits::geomFlags;              // geometry flags are not used for instances
-            };
-        };
-
-        uint64_t startNodePtr : (T)Bits::startNodePtr;  // start node where to continue traversal of the instanced object
-        uint64_t instFlags    : (T)Bits::instFlags;     // flags for the instance (see InstanceFlags)
-
-        // DG2
-        //uint64_t pad1         : 8;                    // unused bits (explicit padding)
-        uint64_t reserved1 : (T)Bits::reserved1;  // 0 for less than or equal, 1 for greater
-        uint64_t reserved2: (T)Bits::reserved2; // to be compared with ray.ComparisonValue
+                // DG2
+                //uint64_t pad1         : 8;                    // unused bits (explicit padding)
+                uint64_t reserved1 : (T)Bits::reserved1; // 0 for less than or equal, 1 for greater
+                uint64_t reserved2 : (T)Bits::reserved2; // to be compared with ray.ComparisonValue
+            } xe;
+        } rt;
 
 
         // Note that the hardware swaps the translation components of the
@@ -627,6 +638,20 @@ struct NodeInfo
  * Or both can be used at once for type punning, to set the value of the full variable, and then get a particular sub-section of that value as a bit field.
  * We maybe having code which accesses the fields in the first definition, and also code somewhere else in the project which accesses the fields in the second definition.
  */
+struct StackEntry
+{
+    enum class Bits : uint8_t
+    {
+        offset    = 31,
+        lastChild = 1,
+    };
+
+    using T = uint32_t;
+
+    uint32_t offset    : (T)Bits::offset;    // in multiples of 64B. max 2^29 prims i.e. max 2^30 nodes. one extra bit
+    uint32_t lastChild : (T)Bits::lastChild;
+};
+
 struct MemTravStack
 {
     union {
@@ -701,88 +726,95 @@ struct MemRay
     float tnear;       // the start of the ray
     float tfar;        // the end of the ray
 
-    enum class Bits : uint8_t
+    union RT
     {
-        rootNodePtr = 48,
-        rayFlags    = 16,
+        using T = uint32_t;
+        struct Xe
+        {
+            enum class Bits : uint8_t
+            {
+                rootNodePtr = 48,
+                rayFlags    = 16,
 
-        rayFlagsCopy = rayFlags,
+                rayFlagsCopy = rayFlags,
 
-        hitGroupSRBasePtr = 48,
-        hitGroupSRStride  = 16,
+                hitGroupSRBasePtr = 48,
+                hitGroupSRStride  = 16,
 
-        missSRPtr             = 48,
-        pad                   = 1,
-        shaderIndexMultiplier = 8,
+                missSRPtr             = 48,
+                pad                   = 1,
+                shaderIndexMultiplier = 8,
 
-        instLeafPtr = 48,
-        rayMask     = 8,
+                instLeafPtr = 48,
+                rayMask     = 8,
 
-        ComparisonValue = 7,
-    };
+                ComparisonValue = 7,
+                pad2            = 8,
+            };
 
-    using T = uint32_t;
+            // This is the offset within the bitfield
+            enum class Offset : uint8_t
+            {
+                // Add as needed
+                ComparisonValue = (T)Bits::missSRPtr + (T)Bits::pad,
+                shaderIndexMultiplier = (T)Offset::ComparisonValue + (T)Bits::ComparisonValue,
+                rayFlagsCopy = 0,
+                rayMask = (uint32_t)Bits::instLeafPtr,
+            };
 
-    // This is the offset within the bitfield
-    enum class Offset : uint8_t
-    {
-        // Add as needed
-        ComparisonValue = (T)Bits::missSRPtr + (T)Bits::pad,
-        shaderIndexMultiplier = (T)Offset::ComparisonValue + (T)Bits::ComparisonValue,
-        rayFlagsCopy = 0,
-        rayMask = (uint32_t)Bits::instLeafPtr,
-    };
+            // 32 B
+            union {
+                uint64_t topOfNodePtrAndFlags;
 
-    // 32 B
-    union {
-        uint64_t topOfNodePtrAndFlags;
+                struct {
+                    uint64_t rootNodePtr : (T)Bits::rootNodePtr; // root node to start traversal at
+                    uint64_t rayFlags    : (T)Bits::rayFlags;    // ray flags (see RayFlags structure)
+                };
+            };
 
-        struct {
-            uint64_t rootNodePtr : (T)Bits::rootNodePtr; // root node to start traversal at
-            uint64_t rayFlags    : (T)Bits::rayFlags;    // ray flags (see RayFlags structure)
-        };
-    };
+            union {
+                uint64_t hitGroupShaderRecordInfo;
 
-    union {
-        uint64_t hitGroupShaderRecordInfo;
+                struct {
+                    uint64_t hitGroupSRBasePtr : (T)Bits::hitGroupSRBasePtr; // base of hit group shader record array (16-bytes alignment)
+                    uint64_t hitGroupSRStride  : (T)Bits::hitGroupSRStride;  // stride of hit group shader record array (16-bytes alignment)
+                };
+            };
 
-        struct {
-            uint64_t hitGroupSRBasePtr : (T)Bits::hitGroupSRBasePtr; // base of hit group shader record array (16-bytes alignment)
-            uint64_t hitGroupSRStride  : (T)Bits::hitGroupSRStride;  // stride of hit group shader record array (16-bytes alignment)
-        };
-    };
+            union {
+                uint64_t missShaderRecordInfo;
 
-    union {
-        uint64_t missShaderRecordInfo;
+                struct {
+                    uint64_t missSRPtr             : (T)Bits::missSRPtr;             // pointer to miss shader record to invoke on a miss (8-bytes alignment)
 
-        struct {
-            uint64_t missSRPtr             : (T)Bits::missSRPtr;             // pointer to miss shader record to invoke on a miss (8-bytes alignment)
-
-            // DG2
-            //uint64_t pad                 : 8;                              // explicit padding bits
-            uint64_t pad                   : (T)Bits::pad;                   // explicit padding bits
-            uint64_t ComparisonValue       : (T)Bits::ComparisonValue;       // to be compared with Instance.ComparisonValue
+                    // DG2
+                    //uint64_t pad                 : 8;                              // explicit padding bits
+                    uint64_t pad                   : (T)Bits::pad;                   // explicit padding bits
+                    uint64_t ComparisonValue       : (T)Bits::ComparisonValue;       // to be compared with Instance.ComparisonValue
 
 
-            uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
-        };
-    };
+                    uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
+                };
+            };
 
-    union {
-        uint64_t topOfInstanceLeafPtr;
+            union {
+                uint64_t topOfInstanceLeafPtr;
 
-        struct {
-            // the 'instLeafPtr' is not actually used by HW in the TOP_LEVEL_BVH.
-            // We insert the user set rayflags here (i.e., the flags set without
-            // the pipeline flags from the RTPSO). Other IHVs thought pipeline
-            // flags would not modify the results of RayFlags(). So we will read
-            // that value from here and write the flags|pipline in the rayFlags
-            // above as usual. DXR spec will be modified to this behavior.
+                struct {
+                    // the 'instLeafPtr' is not actually used by HW in the TOP_LEVEL_BVH.
+                    // We insert the user set rayflags here (i.e., the flags set without
+                    // the pipeline flags from the RTPSO). Other IHVs thought pipeline
+                    // flags would not modify the results of RayFlags(). So we will read
+                    // that value from here and write the flags|pipline in the rayFlags
+                    // above as usual. DXR spec will be modified to this behavior.
 
-            uint64_t instLeafPtr : (T)Bits::instLeafPtr;  // the pointer to instance leaf in case we traverse an instance (64-bytes alignment)
-            uint64_t rayMask     : (T)Bits::rayMask;      // ray mask used for ray masking
-        };
-    };
+                    uint64_t instLeafPtr : (T)Bits::instLeafPtr;  // the pointer to instance leaf in case we traverse an instance (64-bytes alignment)
+                    uint64_t rayMask     : (T)Bits::rayMask;      // ray mask used for ray masking
+                    uint64_t pad2        : (T)Bits::pad2;
+                };
+            };
+        } xe;
+    } rt;
 };
 
 static_assert(sizeof(MemHit) == 32,       "MemHit has to be 32 bytes large");
