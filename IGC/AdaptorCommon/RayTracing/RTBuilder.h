@@ -13,6 +13,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
 #include "visa_igc_common_header.h"
+#include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Module.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 
 namespace llvm
