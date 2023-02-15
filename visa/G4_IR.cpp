@@ -4950,6 +4950,22 @@ void G4_Declare::emit(std::ostream &output) const {
   output << "\n";
 }
 
+// For an aliased variable, return its root variable name plus the offset suffix
+// if it's non-zero. Type is not included as it is already printed by the
+// operand and thus doesn't seem to offer more readability.
+// This is intended to be called for internal IR dump only and thus we are not
+// concerned with the overhead of creating the string on-the-fly.
+std::string G4_Declare::getNonAliasedName() const {
+  if (!getAliasDeclare())
+    return name;
+  uint32_t offset = 0;
+  auto rootDcl = getRootDeclare(offset);
+  std::string rootName(rootDcl->getName());
+  if (offset != 0)
+    rootName += "_" + std::to_string(offset);
+  return rootName;
+}
+
 void G4_Predicate::emit(std::ostream &output) {
   output << "(";
   emit_body(output);
@@ -5374,8 +5390,9 @@ G4_RegVar *G4_RegVarTmp::getAbsBaseRegVar() {
 
 void G4_RegVar::emit(std::ostream &output) {
 
-  output << decl->getName();
-  if (reg.phyReg != NULL) {
+  // Always print the root declare to make the IR dump more readable.
+  output << decl->getNonAliasedName();
+  if (reg.phyReg) {
     output << "(";
     reg.phyReg->emit(output);
     output << '.' << reg.subRegOff << ':'

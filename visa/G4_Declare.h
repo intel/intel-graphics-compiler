@@ -236,6 +236,7 @@ public:
   }
 
   const char *getName() const { return name; }
+  std::string getNonAliasedName() const;
   G4_RegFileKind getRegFile() const { return regFile; }
 
   // returns number of elements per row

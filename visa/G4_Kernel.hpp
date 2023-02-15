@@ -540,8 +540,6 @@ public:
       return (getNumRegTotal() - 1) - ThreadHeaderGRF;
   }
 
-  void renameAliasDeclares();
-
   bool hasIndirectCall() const { return m_hasIndirectCall; }
   void setHasIndirectCall() { m_hasIndirectCall = true; }
 

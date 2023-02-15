@@ -637,7 +637,6 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
     getKernel()->getOptions()->setOptionInternally(vISA_EnableScalarJmp, false);
   }
 
-  pKernel->renameAliasDeclares();
   //
   // The funcInfoHashTable maintains a map between the id of the function's INIT
   // block to its FuncInfo definition.

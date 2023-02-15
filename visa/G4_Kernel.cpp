@@ -778,31 +778,6 @@ unsigned G4_Kernel::getNumCalleeSaveRegs() const {
 }
 
 //
-// rename non-root declares to their root decl name to make
-// it easier to read IR dump
-//
-void G4_Kernel::renameAliasDeclares() {
-#if defined(_DEBUG) || !defined(DLL_MODE)
-  for (auto dcl : Declares) {
-    if (dcl->getAliasDeclare()) {
-      uint32_t offset = 0;
-      G4_Declare *rootDcl = dcl->getRootDeclare(offset);
-      std::string newName(rootDcl->getName());
-      if (rootDcl->getElemType() != dcl->getElemType()) {
-        newName += "_";
-        newName += TypeSymbol(dcl->getElemType());
-      }
-      if (offset != 0) {
-        newName += "_" + std::to_string(offset);
-      }
-      dcl->setName(
-          fg.builder->getNameString(64, "%s", newName.c_str()));
-    }
-  }
-#endif
-}
-
-//
 // perform relocation for every entry in the allocation table
 //
 void G4_Kernel::doRelocation(void *binary, uint32_t binarySize) {
