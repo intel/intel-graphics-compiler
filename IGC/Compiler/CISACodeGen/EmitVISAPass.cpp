@@ -13032,9 +13032,13 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                 F->hasFnAttribute("KMPLOCK") ||
                 m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
                 return false;
+            llvm::Value* pllbuffer = pInst->getOperand(0);
+            CVariable* pDstBuffer = GetSymbol(pllbuffer);
+
             llvm::Value* pllDstAddr = pInst->getOperand(1);
             CVariable* pDstAddr = GetSymbol(pllDstAddr);
-            if (pDstAddr->IsUniform())
+
+            if (pDstAddr->IsUniform() && pDstBuffer->IsUniform())
             {
                 AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(3))->getZExtValue());
 
@@ -13063,19 +13067,22 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
         {
             if (IGC_IS_FLAG_DISABLED(EnableScalarTypedAtomics))
                 return false;
+            
+            llvm::Value* pllbuffer = pInst->getOperand(0);
+            llvm::Value* pllU      = pInst->getOperand(1);
+            llvm::Value* pllV      = pInst->getOperand(2);
+            llvm::Value* pllR      = pInst->getOperand(3);
 
-            llvm::Value* pllU = pInst->getOperand(1);
-            llvm::Value* pllV = pInst->getOperand(2);
-            llvm::Value* pllR = pInst->getOperand(3);
-
-            CVariable* pU = GetSymbol(pllU);
-            CVariable* pV = GetSymbol(pllV);
-            CVariable* pR = GetSymbol(pllR);
+            CVariable* pDstBuffer = GetSymbol(pllbuffer);
+            CVariable* pU         = GetSymbol(pllU);
+            CVariable* pV         = GetSymbol(pllV);
+            CVariable* pR         = GetSymbol(pllR);
 
             // mostly care for pU nonzero, rest undef; but other's are good as well
-            if ((pU->IsUniform() || pU->IsUndef())
-                && (pV->IsUniform() || pV->IsUndef())
-                && (pR->IsUniform() || pR->IsUndef()))
+            if (pDstBuffer->IsUniform() &&
+                (pU->IsUniform() || pU->IsUndef()) &&
+                (pV->IsUniform() || pV->IsUndef()) &&
+                (pR->IsUniform() || pR->IsUndef()))
             {
                 AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(5))->getZExtValue());
 
