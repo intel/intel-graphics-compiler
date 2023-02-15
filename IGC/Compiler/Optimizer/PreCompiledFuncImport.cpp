@@ -187,12 +187,6 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
 //              --> z = sitofp i32 x to double
 //         2:   y = zext i32 x to i64; z = uitofp i64 y to double
 //              --> z = uitofp i32 x to double
-//         3:   y = fptoui double x to i64;  z = trunc i64 y to i32
-//              --> z = fptoui double to i32
-//              Note that this is just a "WA", which isn't correct in general
-//              (It works for OCL so far).
-//         Once we have convertion functions b/w double and i64, the "3" shall
-//         be removed.
 bool PreCompiledFuncImport::preProcessDouble()
 {
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -205,23 +199,7 @@ bool PreCompiledFuncImport::preProcessDouble()
              i != e; ++i)
         {
             Instruction* Inst = &*i;
-            if (TruncInst * TI = dyn_cast<TruncInst>(Inst))
-            {
-                Value* oprd = TI->getOperand(0);
-                Type* dstTy = TI->getType();
-                uint32_t dstBits = dstTy->getIntegerBitWidth();
-                uint32_t srcBits = oprd->getType()->getIntegerBitWidth();
-                Instruction* fptoui = dyn_cast<FPToUIInst>(oprd);
-                if (fptoui && srcBits == 64 && dstBits <= 32 &&
-                    fptoui->getOperand(0)->getType()->isDoubleTy())
-                {
-                    Instruction* newinst = CastInst::Create(
-                        Instruction::FPToUI, fptoui->getOperand(0), dstTy, "", TI);
-                    TI->replaceAllUsesWith(newinst);
-                    toBeDeleted.push_back(TI);
-                }
-            }
-            else if (UIToFPInst * UFI = dyn_cast<UIToFPInst>(Inst))
+            if (UIToFPInst * UFI = dyn_cast<UIToFPInst>(Inst))
             {
                 Value* oprd = UFI->getOperand(0);
                 Type* dstTy = UFI->getType();
