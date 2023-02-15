@@ -225,7 +225,7 @@ public:
     const G4_Declare *rootDcl = this;
     offset = 0;
     while (rootDcl->getAliasDeclare() != NULL) {
-      offset += AliasOffset;
+      offset += rootDcl->getAliasOffset();
       rootDcl = rootDcl->getAliasDeclare();
     }
     return rootDcl;
