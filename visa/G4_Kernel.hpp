@@ -158,6 +158,8 @@ public:
     }
   }
 
+  unsigned findModeByRegPressure(unsigned maxRP, unsigned largestInputReg);
+
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
   unsigned getMinGRF() const { return configs[0].numGRF; }
   unsigned getMaxGRF() const {
@@ -454,7 +456,8 @@ public:
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }
 
-  void updateKernelByNumThreads(int nThreads);
+  void updateKernelToLargeGRF();
+  void updateKernelByRegPressure(unsigned regPressure);
 
   void evalAddrExp();
 
@@ -595,7 +598,6 @@ public:
 
   bool isLocalSheduleable() const { return isLocalSchedulable; }
   void setLocalSheduleable(bool value) { isLocalSchedulable = value; }
-  unsigned getRegisterNumWithThreads(unsigned overrideNumThreads);
   unsigned getLargestInputRegister();
 
   // Use the wrapper in G4_INST* instead of calling these directly.

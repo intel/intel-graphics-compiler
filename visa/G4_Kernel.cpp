@@ -654,15 +654,34 @@ void G4_Kernel::calculateSimdSize() {
 }
 
 //
-// Updates kernel's related structures based on number of threads.
+// Updates kernel's related structures to large GRF
 //
-void G4_Kernel::updateKernelByNumThreads(int nThreads) {
-  if (numThreads == nThreads)
+void G4_Kernel::updateKernelToLargeGRF() {
+  if (numRegTotal == grfMode.getMaxGRF())
     return;
 
-  numThreads = nThreads;
+  numRegTotal = grfMode.getMaxGRF();
 
   // Scale number of GRFs, Acc, SWSB tokens.
+  setKernelParameters();
+
+  // Update physical register pool
+  fg.builder->rebuildPhyRegPool(getNumRegTotal());
+}
+
+//
+// Updates kernel's related structures based on register pressure
+//
+void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
+  unsigned newGRF =
+      grfMode.findModeByRegPressure(regPressure, getLargestInputRegister());
+
+  if (newGRF == numRegTotal)
+    return;
+
+  numRegTotal = newGRF;
+
+  // Scale number of threads, Acc, SWSB tokens.
   setKernelParameters();
 
   // Update physical register pool
@@ -836,40 +855,6 @@ VarSplitPass *G4_Kernel::getVarSplitPass() {
   return varSplitPass;
 }
 
-unsigned G4_Kernel::getRegisterNumWithThreads(unsigned overrideNumThreads) {
-  unsigned numRegTotal = 128;
-
-  switch (overrideNumThreads) {
-  case 4:
-    numRegTotal = 256;
-    break;
-  case 5:
-    numRegTotal = 192;
-    break;
-  case 6:
-    numRegTotal = 160;
-    break;
-  case 7:
-    numRegTotal = 144;
-    break;
-  case 8:
-    numRegTotal = 128;
-    break;
-  case 9:
-    numRegTotal = 112;
-    break;
-  case 10:
-    numRegTotal = 96;
-    break;
-  case 12:
-    numRegTotal = 80;
-    break;
-  default:
-    numRegTotal = 128;
-  }
-  return numRegTotal;
-}
-
 unsigned G4_Kernel::getLargestInputRegister() {
   const unsigned inputCount = fg.builder->getInputCount();
   unsigned regNum = 0;
@@ -908,9 +893,9 @@ void G4_Kernel::setKernelParameters() {
     grfMode.setModeByNumGRFs(overrideGRFNum);
   } else if (regSharingHeuristics) {
     // GRFMode is set to default mode when kernel is created
-    // During compilation GRFMode may change by updating numThreads
-    if (numThreads > 0)
-      grfMode.setModeByNumThreads(numThreads);
+    // During compilation GRFMode may change by updating numRegTotal
+    if (numRegTotal > 0)
+      grfMode.setModeByNumGRFs(numRegTotal);
     overrideGRFNum = 0;
   }
 
@@ -1912,4 +1897,23 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
     defaultMode = 0;
   }
   currentMode = defaultMode;
+}
+
+unsigned GRFMode::findModeByRegPressure(unsigned maxRP, unsigned largestInputReg) {
+  unsigned size = configs.size();
+  unsigned i = 0, newGRF = 0;
+  // find appropiate GRF based on reg pressure
+  for (; i < size; i++) {
+    if (maxRP <= configs[i].numGRF && largestInputReg <= configs[i].numGRF) {
+      newGRF = configs[i].numGRF;
+      break;
+    }
+  }
+
+  // if not found, pressure is too high
+  // set largest grf mode
+  if (i == size)
+    newGRF = getMaxGRF();
+
+  return newGRF;
 }

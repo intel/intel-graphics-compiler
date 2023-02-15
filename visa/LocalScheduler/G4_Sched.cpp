@@ -642,7 +642,6 @@ bool preRA_RegSharing::run() {
       kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleCtrl);
   SchedConfig config(SchedCtrl);
 
-  GRFMode GrfMode(kernel.getPlatform(), kernel.getOptions());
   RegisterPressure rp(kernel, rpe);
 
   std::unordered_map<G4_BB *, unsigned int> rpBB;
@@ -672,7 +671,7 @@ bool preRA_RegSharing::run() {
                                            kernel.getOptions()->getuInt32Option(
                                                vISA_ReservedGRFNum)))) {
     // Update number of threads, GRF, Acc and SWSB
-    kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
+    kernel.updateKernelToLargeGRF();
   }
 
   // skip extreme test cases that scheduling does not good
@@ -722,7 +721,6 @@ bool preRA_RegSharing::run() {
   }
   return changed;
 }
-
 
 bool BB_Scheduler::verifyScheduling() {
   std::set<G4_INST *> Insts;
