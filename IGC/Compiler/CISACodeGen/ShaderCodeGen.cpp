@@ -277,8 +277,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
             mpm.add(createBreakCriticalEdgesPass());
             mpm.add(createAnnotateUniformAllocasPass());
 
-            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
-                ctx.m_retryManager.AllowPromotePrivateMemory())
+            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem))
             {
                 mpm.add(createPromotePrivateArrayToReg());
                 mpm.add(createCFGSimplificationPass());
@@ -430,7 +429,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         mpm.add(createBarrierNoopPass());
 
-        if (ctx.m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
+        if (IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(llvm::createLICMPass());
         }
@@ -556,8 +555,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createBreakCriticalEdgesPass());
             mpm.add(createAnnotateUniformAllocasPass());
 
-            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
-                ctx.m_retryManager.AllowPromotePrivateMemory())
+            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem))
             {
                 mpm.add(createPromotePrivateArrayToReg());
                 mpm.add(createCFGSimplificationPass());
@@ -795,8 +793,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         {
             mpm.add(createSinkingPass());
         }
-        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel &&
-            IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(createLICMPass());
             if (ctx.type == ShaderType::OPENCL_SHADER ||
@@ -808,7 +805,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(createAggressiveDCEPass());
         // As DPC++ FE apply LICM we cannot reduce register pressure just
         // by turning off LICM at IGC in some cases so apply sinking address arithmetic
-        if ((IGC_IS_FLAG_ENABLED(ForceAddressArithSinking) || ctx.m_retryManager.AllowAddressArithmeticSinking()) &&
+        if (IGC_IS_FLAG_ENABLED(ForceAddressArithSinking) &&
             ctx.type == ShaderType::OPENCL_SHADER)
         {
             mpm.add(new AddressArithmeticSinking());
@@ -869,7 +866,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // coalesce scalar loads into loads of larger quantity.
     // This require and preserves uniform analysis we should keep
     // other passes using uniformness together to avoid re-running it several times
-    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) && ctx.m_retryManager.AllowConstantCoalescing() && !ctx.getModuleMetaData()->compOpt.DisableConstantCoalescing)
+    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) && !ctx.getModuleMetaData()->compOpt.DisableConstantCoalescing)
     {
         mpm.add(createBreakCriticalEdgesPass());
         mpm.add(new ConstantCoalescing());
@@ -1112,6 +1109,13 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.run(*pContext->getModule());
         }
     }
+    // Insert per-func optimization metadata
+    {
+        IGCPassManager mpm(pContext, "InsertFuncOptsMetadata");
+        mpm.add(new CodeGenContextWrapper(pContext));
+        mpm.add(createInsertFuncOptsMetadataPass());
+        mpm.run(*pContext->getModule());
+    }
     if (NoOpt)
     {
         return;
@@ -1288,7 +1292,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(llvm::createLCSSAPass());
                 mpm.add(llvm::createLoopSimplifyPass());
 
-                if (pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
+                if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
                     int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
@@ -1349,7 +1353,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 // LoopUnroll and LICM.
                 mpm.add(createBarrierNoopPass());
 
-                if (pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
+                if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
                     mpm.add(llvm::createLICMPass());
                 }
@@ -1615,8 +1619,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(createMergeMemFromBranchOptPass());
 
-        if (IGC_IS_FLAG_DISABLED(DisableLoadSinking) &&
-            pContext->m_retryManager.AllowLoadSinking())
+        if (IGC_IS_FLAG_DISABLED(DisableLoadSinking))
         {
             mpm.add(createSinkLoadOptPass());
         }

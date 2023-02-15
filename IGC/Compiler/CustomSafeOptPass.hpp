@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/ConstantFolder.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Compiler/CodeGenPublic.h"
 
 namespace llvm
 {
@@ -261,5 +262,5 @@ namespace IGC
     llvm::FunctionPass* createMergeMemFromBranchOptPass();
     llvm::FunctionPass* createSinkLoadOptPass();
     llvm::FunctionPass* createInsertBranchOptPass();
-
+    llvm::FunctionPass* createInsertFuncOptsMetadataPass();
 } // namespace IGC

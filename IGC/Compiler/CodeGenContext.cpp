@@ -48,6 +48,7 @@ namespace IGC
     {
         firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
         stateId = firstStateId;
+        prevStateId = 500;
         IGC_ASSERT(stateId < RetryTableSize);
     }
 
@@ -58,79 +59,104 @@ namespace IGC
             return false;
         }
         IGC_ASSERT(stateId < RetryTableSize);
+        prevStateId = stateId;
         stateId = RetryTable[stateId].nextState;
         return (stateId < RetryTableSize);
     }
 
-    bool RetryManager::AllowLICM() const
+    unsigned RetryManager::GetPerFuncRetryStateId(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowLICM;
+        if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2 &&
+            F != nullptr &&
+            prevStateId < RetryTableSize &&
+            !PerFuncRetrySet.empty())
+        {
+            std::string FName = StripCloneName(F->getName().str());
+            return (PerFuncRetrySet.count(FName) != 0) ? stateId : prevStateId;
+        }
+        return stateId;
     }
 
-    bool RetryManager::AllowAddressArithmeticSinking() const
+    bool RetryManager::AllowLICM(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowAddressArithmeticSinking;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowLICM;
     }
 
-    bool RetryManager::AllowPromotePrivateMemory() const
+    bool RetryManager::AllowAddressArithmeticSinking(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowPromotePrivateMemory;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowAddressArithmeticSinking;
     }
 
-    bool RetryManager::AllowPreRAScheduler() const
+    bool RetryManager::AllowPromotePrivateMemory(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowPreRAScheduler;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowPromotePrivateMemory;
     }
 
-    bool RetryManager::AllowVISAPreRAScheduler() const
+    bool RetryManager::AllowPreRAScheduler(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowVISAPreRAScheduler;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowPreRAScheduler;
     }
 
-    bool RetryManager::AllowCodeSinking() const
+    bool RetryManager::AllowVISAPreRAScheduler(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowCodeSinking;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowVISAPreRAScheduler;
     }
 
-    bool RetryManager::AllowSimd32Slicing() const
+    bool RetryManager::AllowCodeSinking(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowSimd32Slicing;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowCodeSinking;
     }
 
-    bool RetryManager::AllowLargeURBWrite() const
+    bool RetryManager::AllowSimd32Slicing(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowLargeURBWrite;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowSimd32Slicing;
     }
 
-    bool RetryManager::AllowConstantCoalescing() const
+    bool RetryManager::AllowLargeURBWrite(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowConstantCoalescing;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowLargeURBWrite;
     }
 
-    bool RetryManager::AllowLargeGRF() const
+    bool RetryManager::AllowConstantCoalescing(Function* F) const
     {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowLargeGRF;
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowConstantCoalescing;
+    }
+
+    bool RetryManager::AllowLargeGRF(Function* F) const
+    {
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowLargeGRF;
+    }
+
+    bool RetryManager::AllowLoadSinking(Function* F) const
+    {
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowLoadSinking;
     }
 
     void RetryManager::SetFirstStateId(int id)
     {
         firstStateId = id;
-    }
-
-    bool RetryManager::AllowLoadSinking() const
-    {
-        IGC_ASSERT(stateId < RetryTableSize);
-        return RetryTable[stateId].allowLoadSinking;
     }
 
     bool RetryManager::IsFirstTry() const

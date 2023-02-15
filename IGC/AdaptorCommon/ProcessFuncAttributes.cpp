@@ -791,7 +791,6 @@ namespace {
             return "ProcessBuiltinMetaData";
         }
     private:
-
         void updateBuiltinFunctionMetaData(llvm::Function*);
 
         MetaDataUtils *m_pMdUtil;
@@ -872,7 +871,6 @@ void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc
     }
     m_pMdUtil->setFunctionsInfoItem(pFunc, fHandle);
 }
-
 
 //
 // InsertDummyKernelForSymbolTable

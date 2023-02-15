@@ -55,6 +55,9 @@ bool ConstantCoalescing::runOnFunction(Function& func)
     m_TT = &getAnalysis<TranslationTable>();
 
     m_ctx = pCtxWrapper->getCodeGenContext();
+    if (isOptDisabledForFunction(m_ctx->getModuleMetaData(), getPassName(), &func))
+        return false;
+
     IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&func) != pMdUtils->end_FunctionsInfo())
     {

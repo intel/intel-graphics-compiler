@@ -68,6 +68,20 @@ namespace llvm
 #define MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE 32
 static const unsigned int g_c_Max_PS_attributes = 32;
 
+namespace IGCOpts
+{
+    // Pass level optimizations
+    static const std::string LowerGEPForPrivMemPassName = "IGC-LowerGEPForPrivMem";
+    static const std::string AddressArithmeticSinkingPassName = "IGC-AddressArithmeticSinking";
+    static const std::string PreRASchedulerPassName = "IGC-PreRAScheduler";
+    static const std::string MergeURBWritePassName = "IGC-MergeURBWrites";
+    static const std::string ConstantCoalescingPassName = "IGC-ConstantCoalescing";
+    static const std::string SinkLoadOptPassName = "IGC-SinkLoadOpt";
+
+    // Non-pass optimizations
+    static const std::string AllowSimd32Slicing = "IGC-AllowSimd32Slicing";
+}
+
 namespace IGC
 {
     class CodeGenContext;
@@ -710,21 +724,22 @@ namespace IGC
         ~RetryManager();
 
         bool AdvanceState();
-        bool AllowLICM() const;
-        bool AllowPromotePrivateMemory() const;
-        bool AllowPreRAScheduler() const;
-        bool AllowVISAPreRAScheduler() const;
-        bool AllowCodeSinking() const;
-        bool AllowAddressArithmeticSinking() const;
-        bool AllowSimd32Slicing() const;
-        bool AllowLargeURBWrite() const;
-        bool AllowConstantCoalescing() const;
-        bool AllowLargeGRF() const;
-        bool AllowLoadSinking() const;
+        bool AllowLICM(llvm::Function* F = nullptr) const;
+        bool AllowPromotePrivateMemory(llvm::Function* F = nullptr) const;
+        bool AllowPreRAScheduler(llvm::Function* F = nullptr) const;
+        bool AllowVISAPreRAScheduler(llvm::Function* F = nullptr) const;
+        bool AllowCodeSinking(llvm::Function* F = nullptr) const;
+        bool AllowAddressArithmeticSinking(llvm::Function* F = nullptr) const;
+        bool AllowSimd32Slicing(llvm::Function* F = nullptr) const;
+        bool AllowLargeURBWrite(llvm::Function* F = nullptr) const;
+        bool AllowConstantCoalescing(llvm::Function* F = nullptr) const;
+        bool AllowLargeGRF(llvm::Function* F = nullptr) const;
+        bool AllowLoadSinking(llvm::Function* F = nullptr) const;
         void SetFirstStateId(int id);
         bool IsFirstTry() const;
         bool IsLastTry() const;
         unsigned GetRetryId() const;
+        unsigned GetPerFuncRetryStateId(llvm::Function* F) const;
 
         void Enable();
         void Disable();
@@ -752,6 +767,8 @@ namespace IGC
         CShaderProgram* GetPrevious(CShaderProgram* pCurrent, bool ReleaseUPtr = false);
         // Collect compilation of the current kernel
         void Collect(CShaderProgram::UPtr pCurrent);
+        // Set of functions within a function group that should be retried
+        std::set<std::string> PerFuncRetrySet;
 
         void ClearSpillParams();
         // save entry for given SIMD mode, to avoid recompile for next retry.
@@ -765,6 +782,7 @@ namespace IGC
 
     private:
         unsigned stateId;
+        unsigned prevStateId;
         // For debugging purposes, it can be useful to start on a particular
         // ID rather than id 0.
         unsigned firstStateId;

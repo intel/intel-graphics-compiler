@@ -76,6 +76,11 @@ namespace IGC
             std::vector<BufChunk*>& dircb_owloads);
 
         virtual bool runOnFunction(llvm::Function& func) override;
+
+        virtual StringRef getPassName() const override {
+            return IGCOpts::ConstantCoalescingPassName;
+        }
+
     private:
         enum ExtensionKind {
             EK_NotExtended,
