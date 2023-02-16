@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CodeGenContextWrapper.hpp"
 
+#include <utility>
+
 namespace IGC
 {
     enum {
@@ -48,6 +50,14 @@ namespace IGC
         bool isNoLocalToGenericOptionEnabled() const {
             return noLocalToGenericOptionEnabled;
         }
+
+        GASInfo& operator= (GASInfo&& rhs) {
+            noLocalToGenericOptionEnabled = rhs.noLocalToGenericOptionEnabled;
+            allocatePrivateAsGlobalBuffer = rhs.allocatePrivateAsGlobalBuffer;
+            FunctionMap = std::move(rhs.FunctionMap);
+            return *this;
+        }
+
     private:
         using FunctionMapTy = llvm::DenseMap<const llvm::Function*, unsigned>;
         FunctionMapTy FunctionMap;
@@ -56,16 +66,16 @@ namespace IGC
         bool noLocalToGenericOptionEnabled = false;
         bool allocatePrivateAsGlobalBuffer = false;
 
-        friend class CastToGASWrapperPass;
+        friend class CastToGASAnalysis;
     };
 
-    class CastToGASWrapperPass : public llvm::ModulePass {
+    class CastToGASAnalysis : public llvm::ModulePass {
     public:
         static char ID;
 
-        CastToGASWrapperPass() : llvm::ModulePass(ID) {}
+        CastToGASAnalysis() : llvm::ModulePass(ID) {}
 
-        ~CastToGASWrapperPass() = default;
+        ~CastToGASAnalysis() = default;
 
         virtual llvm::StringRef getPassName() const override
         {
@@ -98,5 +108,52 @@ namespace IGC
             llvm::CallGraph& CG,
             llvm::SmallPtrSetImpl<const llvm::Function*>& funcs,
             bool& disruptAnalysis) const;
+    };
+
+    // EmitPass's analysis passes are either function passes or immutable
+    // passes for performance reason. To pass the CastToGASAnalysis's
+    // info to EmitPass, the following immutable pass is used for holding
+    // info and CastToGASInfoWrapper is used to create this immutable pass.
+    // Note that no more CastToGASAnalysis after CastToGASInfoWrapper, as
+    // CastToGASInfoWrapper invalides CastToGASAnalysis by taking its 'GI'.
+    // Any pass after CastToGASInfoWrapper should use CastToGASInfo immutable
+    // pass to access the info.
+    class CastToGASInfo : public llvm::ImmutablePass {
+    public:
+        static char ID;
+        GASInfo GI;
+    public:
+        CastToGASInfo();
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "Cast To GAS info for EmitPass";
+        }
+
+        const GASInfo& getGASInfo() const { return GI; }
+        void setGASInfo(GASInfo& aGI) {
+            GI.~GASInfo();
+            GI = std::move(aGI);
+        }
+    };
+
+    class CastToGASInfoWrapper : public llvm::ModulePass {
+    public:
+        static char ID;
+
+        CastToGASInfoWrapper();
+
+        bool runOnModule(llvm::Module& M) override;
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "Cast To GAS Info Generation for EmitPass";
+        }
+
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
+            AU.setPreservesAll();
+            AU.addRequired<CastToGASAnalysis>();
+            AU.addRequired<CastToGASInfo>();
+        }
     };
 }

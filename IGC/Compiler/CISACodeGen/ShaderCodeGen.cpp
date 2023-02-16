@@ -193,6 +193,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     bool isOptDisabled = ctx.getModuleMetaData()->compOpt.OptDisable;
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
     initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
+    initializeCastToGASInfoPass(*PassRegistry::getPassRegistry());
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_START));
 
@@ -286,6 +287,16 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(createPromoteMemoryToRegisterPass());
         // Resolving private memory allocas
         mpm.add(CreatePrivateMemoryResolution());
+    }
+
+    // Expected to be the last ModulePass before EmitPass at this point.
+    // (Shall be after GenXCodeGenModulePass.)
+    //
+    // It uses CastToGASAnalysis and invalidates it by taking its result away.
+    // This means that after this point, no CastToGASAnalysis will be used,
+    // and the info should be accessed via CastToGASInfo immutable pass.
+    if (ctx.type == ShaderType::OPENCL_SHADER) {
+        mpm.add(new CastToGASInfoWrapper());
     }
 
     // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them

@@ -1273,7 +1273,7 @@ namespace IGC
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
-            AU.addRequired<CastToGASWrapperPass>();
+            AU.addRequired<CastToGASAnalysis>();
         }
 
         virtual StringRef getPassName() const override
@@ -1296,13 +1296,13 @@ char StaticGASResolution::ID = 0;
 namespace IGC
 {
     IGC_INITIALIZE_PASS_BEGIN(StaticGASResolution, SGR_PASS_FLAG, SGR_PASS_DESC, SGR_PASS_CFG_ONLY, SGR_PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASAnalysis)
     IGC_INITIALIZE_PASS_END(StaticGASResolution, SGR_PASS_FLAG, SGR_PASS_DESC, SGR_PASS_CFG_ONLY, SGR_PASS_ANALYSIS)
 }
 
 bool StaticGASResolution::runOnFunction(llvm::Function& F)
 {
-    m_GI = &getAnalysis<CastToGASWrapperPass>().getGASInfo();
+    m_GI = &getAnalysis<CastToGASAnalysis>().getGASInfo();
     // Change GAS inst, such as ld/st, etc to global ld/st, etc.
     if (m_GI->canGenericPointToPrivate(F) || m_GI->canGenericPointToLocal(F))
         return false;

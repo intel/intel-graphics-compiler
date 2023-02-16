@@ -133,7 +133,7 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
     initializeLiveVariablesPass(*PassRegistry::getPassRegistry());
-    initializeCastToGASWrapperPassPass(*PassRegistry::getPassRegistry());
+    initializeCastToGASAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
 EmitPass::~EmitPass()
@@ -542,7 +542,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
     m_moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
+    const GASInfo& GI = getAnalysis<CastToGASInfo>().getGASInfo();
     m_canGenericPointToPrivate = !GI.isPrivateAllocatedInGlobalMemory() && GI.canGenericPointToPrivate(F);
     m_canGenericPointToLocal = !GI.isNoLocalToGenericOptionEnabled() && GI.canGenericPointToLocal(F);
 

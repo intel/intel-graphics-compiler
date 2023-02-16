@@ -61,7 +61,7 @@ public:
         AU.addRequired<Simd32ProfitabilityAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<VariableReuseAnalysis>();
-        AU.addRequired<CastToGASWrapperPass>();
+        AU.addRequired<CastToGASInfo>();
         AU.setPreservesAll();
     }
 

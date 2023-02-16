@@ -49,7 +49,7 @@ namespace {
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<CastToGASWrapperPass>();
+            AU.addRequired<CastToGASAnalysis>();
         }
 
         virtual bool runOnFunction(Function& F) override;
@@ -79,7 +79,7 @@ namespace {
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(GenericAddressDynamicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASAnalysis)
 IGC_INITIALIZE_PASS_END(GenericAddressDynamicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char GenericAddressDynamicResolution::ID = 0;
@@ -90,7 +90,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_numAdditionalControlFlows = 0;
 
-    GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
+    GASInfo& GI = getAnalysis<CastToGASAnalysis>().getGASInfo();
     m_needPrivateBranches = !GI.isPrivateAllocatedInGlobalMemory() && GI.canGenericPointToPrivate(F);
     m_needLocalBranches = !GI.isNoLocalToGenericOptionEnabled() && GI.canGenericPointToLocal(F);
 

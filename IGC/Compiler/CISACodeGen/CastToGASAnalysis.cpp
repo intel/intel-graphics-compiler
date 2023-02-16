@@ -24,17 +24,21 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char CastToGASWrapperPass::ID = 0;
+char CastToGASAnalysis::ID = 0;
 
 #define PASS_FLAG "generic-pointer-analysis"
 #define PASS_DESCRIPTION "Analyze generic pointer usage"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(CastToGASWrapperPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(CastToGASAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-IGC_INITIALIZE_PASS_END(CastToGASWrapperPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CastToGASAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
 
-void CastToGASWrapperPass::getAllFuncsAccessibleFromKernel(const Function* F, CallGraph& CG, SmallPtrSetImpl<const Function*>& funcs, bool& disruptAnalysis) const
+void CastToGASAnalysis::getAllFuncsAccessibleFromKernel(const Function* F, CallGraph& CG, SmallPtrSetImpl<const Function*>& funcs, bool& disruptAnalysis) const
 {
     IGC_ASSERT(F->getCallingConv() == CallingConv::SPIR_KERNEL);
 
@@ -77,7 +81,7 @@ void CastToGASWrapperPass::getAllFuncsAccessibleFromKernel(const Function* F, Ca
     }
 }
 
-unsigned CastToGASWrapperPass::hasCastsToGeneric(const Function* F)
+unsigned CastToGASAnalysis::hasCastsToGeneric(const Function* F)
 {
     if (castInfoCache.count(F))
         return castInfoCache[F];
@@ -105,7 +109,7 @@ unsigned CastToGASWrapperPass::hasCastsToGeneric(const Function* F)
     return castInfo;
 }
 
-void CastToGASWrapperPass::setInfoForGroup(
+void CastToGASAnalysis::setInfoForGroup(
     llvm::SmallPtrSetImpl<const llvm::Function*>& functionsGroup,
     unsigned castInfo)
 {
@@ -126,7 +130,7 @@ void CastToGASWrapperPass::setInfoForGroup(
     }
 }
 
-bool CastToGASWrapperPass::runOnModule(Module& M)
+bool CastToGASAnalysis::runOnModule(Module& M)
 {
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     GI.noLocalToGenericOptionEnabled = m_ctx->noLocalToGenericOptionEnabled();
@@ -165,5 +169,53 @@ bool CastToGASWrapperPass::runOnModule(Module& M)
         setInfoForGroup(functions, info);
     }
 
+    return false;
+}
+
+char CastToGASInfo::ID = 0;
+
+#define PASS_FLAG "gas-info"
+#define PASS_DESCRIPTION "GAS Analysis info for EmitPass"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS true
+IGC_INITIALIZE_PASS_BEGIN(CastToGASInfo, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CastToGASInfo, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+CastToGASInfo::CastToGASInfo()
+    : ImmutablePass(ID)
+{
+    initializeCastToGASInfoPass(*PassRegistry::getPassRegistry());
+}
+
+char CastToGASInfoWrapper::ID = 0;
+
+#define PASS_FLAG "gas-info-gen"
+#define PASS_DESCRIPTION "GAS Analysis info generation for EmitPass"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS true
+IGC_INITIALIZE_PASS_BEGIN(CastToGASInfoWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+INITIALIZE_PASS_DEPENDENCY(CastToGASAnalysis)
+INITIALIZE_PASS_DEPENDENCY(CastToGASInfo)
+IGC_INITIALIZE_PASS_END(CastToGASInfoWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+CastToGASInfoWrapper::CastToGASInfoWrapper()
+    : ModulePass(ID)
+{
+    initializeCastToGASInfoWrapperPass(*PassRegistry::getPassRegistry());
+}
+
+bool CastToGASInfoWrapper::runOnModule(Module& M)
+{
+    CastToGASAnalysis& CTGA = getAnalysis<CastToGASAnalysis>();
+    CastToGASInfo& CTGI = getAnalysis<CastToGASInfo>();
+    CTGI.setGASInfo(CTGA.getGASInfo());
     return false;
 }
