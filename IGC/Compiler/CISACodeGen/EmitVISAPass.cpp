@@ -15010,10 +15010,12 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     uint32_t srcEltBytes = GetPrimitiveTypeSizeInRegister(srcEltTy);
     bool srcUniform = src->IsUniform();
     bool dstUniform = m_destination->IsUniform();
+
     if (srcUniform && dstUniform &&
-        (dstNElts == 2 || dstNElts == 4 || dstNElts == 8) &&
+        (dstNElts == 2 || dstNElts == 4 || dstNElts == 8 ||  dstNElts == 16 || dstNElts == 32 ) &&
+         dstNElts <= width && (dstEltBytes * dstNElts) <= 2 * m_currShader->getGRFSize() &&
         m_destination != src &&
-        destMask.getEM() == ((1U << dstNElts) - 1)/* Full mask */ &&
+        destMask.getEM() == ((1ULL << dstNElts) - 1)/* Full mask */ &&
         /* If alignment of source is safe to be aliased to the dst type. */
         src->GetAlign() >= CEncoder::GetCISADataTypeAlignment(m_destination->GetType()) &&
         /* Exclude bitcast from/to 16-bit */
@@ -15024,7 +15026,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         src = m_currShader->BitCast(src, dst->GetType());
         m_encoder->SetNoMask();
         m_encoder->SetUniformSIMDSize(lanesToSIMDMode(dstNElts));
-        m_encoder->SetSrcRegion(0, dstNElts, dstNElts, 1);
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->Copy(dst, src);
         m_encoder->Push();
         return;
