@@ -1,0 +1,32 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2022 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: system-windows
+; RUN: igc_opt -igc-promote-bools -S %s -o %t.ll
+; RUN: FileCheck %s --input-file=%t.ll
+
+define spir_func void @icmps_constanst() {
+  %1 = icmp eq i1 false, true
+  ret void
+}
+
+; CHECK-LABEL:  define spir_func void @icmps_constanst()
+; CHECK-NEXT:   %1 = icmp eq i8 0, 1
+
+
+define spir_func void @icmps() {
+  %1 = alloca i1, align 1
+  %2 = load i1, i1* %1
+  %3 = icmp eq i1 false, %2
+  ret void
+}
+
+; CHECK-LABEL:  define spir_func void @icmps()
+; CHECK-NEXT:   %1 = alloca i8, align 1
+; CHECK-NEXT:   %2 = load i8, i8* %1
+; CHECK-NEXT:   %3 = icmp eq i8 0, %2
