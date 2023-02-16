@@ -66,11 +66,7 @@ void RTBuilder::setInvariantLoad(LoadInst* LI)
 
 Value* RTBuilder::getRtMemBasePtr(void)
 {
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_rtMemBasePtr(BasePtr, VALUE_NAME("&rtMemBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("rtMemBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
+    return _get_rtMemBasePtr_Xe();
 }
 
 
@@ -79,21 +75,13 @@ Value* RTBuilder::getMaxBVHLevels(void)
     if (!DisableRTGlobalsKnownValues)
         return this->getInt32(MAX_BVH_LEVELS);
 
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_maxBVHLevels(BasePtr, VALUE_NAME("&maxBVHLevels"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("maxBVHLevels"));
-    setInvariantLoad(Val);
-    return Val;
+    return _get_maxBVHLevels_Xe();
 }
 
 
 Value* RTBuilder::getStatelessScratchPtr(void)
 {
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_statelessScratchPtr(BasePtr, VALUE_NAME("&statelessScratchPtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("statelessScratchPtr"));
-    setInvariantLoad(Val);
-    return Val;
+    return _get_statelessScratchPtr_Xe();
 }
 
 
