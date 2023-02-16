@@ -36,13 +36,8 @@ public:
     AddressArithmeticSinking(unsigned SinkingDepth = 4);
     virtual bool runOnFunction(llvm::Function& F) override;
 
-    virtual llvm::StringRef getPassName() const override {
-        return IGCOpts::AddressArithmeticSinkingPassName;
-    }
-
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
         AU.setPreservesCFG();
-        AU.addRequired<IGC::CodeGenContextWrapper>();
         AU.addRequired<llvm::DominatorTreeWrapperPass>();
         AU.addPreserved<llvm::DominatorTreeWrapperPass>();
     }

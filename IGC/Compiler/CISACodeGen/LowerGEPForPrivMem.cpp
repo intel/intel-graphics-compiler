@@ -42,9 +42,9 @@ namespace IGC {
 
         ~LowerGEPForPrivMem() {}
 
-        virtual StringRef getPassName() const override
+        virtual llvm::StringRef getPassName() const override
         {
-            return IGCOpts::LowerGEPForPrivMemPassName;
+            return "LowerGEPForPrivMem";
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
@@ -151,9 +151,6 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
     IGC_ASSERT(nullptr != pCtxWrapper);
     m_ctx = pCtxWrapper->getCodeGenContext();
     m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-
-    if (isOptDisabledForFunction(m_ctx->getModuleMetaData(), getPassName(), &F))
-        return false;
 
     pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     IGC_ASSERT(nullptr != pMdUtils);

@@ -916,7 +916,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     unsigned int lineNo = 0;
     bool disableSlicing =
         IGC_IS_FLAG_ENABLED(DisableSIMD32Slicing) ||
-        isOptDisabledForFunction(m_currShader->GetContext()->getModuleMetaData(), IGCOpts::AllowSimd32Slicing, &F) ||
+        !m_currShader->GetContext()->m_retryManager.AllowSimd32Slicing() ||
         m_currShader->GetContext()->getModuleMetaData()->compOpt.OptDisable ||
         m_currShader->GetShaderType() != ShaderType::COMPUTE_SHADER ||
         m_currShader->GetContext()->getModuleMetaData()->csInfo.disableSimd32Slicing ||
@@ -1192,7 +1192,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         if (!skipPrologue)
         {
-            m_encoder->Compile(compileWithSymbolTable, m_FGA);
+            m_encoder->Compile(compileWithSymbolTable);
         }
         m_pCtx->m_prevShader = m_currShader;
     }

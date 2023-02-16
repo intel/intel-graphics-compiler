@@ -113,7 +113,6 @@ Function* GenXCodeGenModule::cloneFunc(Function* F)
     ValueToValueMapTy VMap;
 
     Function* ClonedFunc = CloneFunction(F, VMap);
-    ClonedFunc->setName(F->getName().str() + "_GenXClone");
     //if the function is not added as part of clone, add it
     if (!F->getParent()->getFunction(ClonedFunc->getName()))
         F->getParent()->getFunctionList().push_back(ClonedFunc);

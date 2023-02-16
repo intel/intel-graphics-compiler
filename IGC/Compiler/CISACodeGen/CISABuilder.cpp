@@ -5974,7 +5974,7 @@ namespace IGC
         return pMainKernel;
     }
 
-    void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis*& pFGA)
+    void CEncoder::Compile(bool hasSymbolTable)
     {
         IGC_ASSERT(nullptr != m_program);
         CodeGenContext* const context = m_program->GetContext();
@@ -6129,7 +6129,7 @@ namespace IGC
         m_program->m_loopNestedStallCycle = jitInfo->stats.loopNestedStallCycle;
         m_program->m_loopNestedCycle = jitInfo->stats.loopNestedCycle;
 
-        SetKernelRetryState(context, jitInfo, pFGA);
+        checkForNoRetry(jitInfo);
 
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
@@ -6322,6 +6322,82 @@ namespace IGC
         }
     }
 
+    void CEncoder::checkForNoRetry(const vISA::FINALIZER_INFO *jitInfo)
+    {
+        bool isStackCallProgram = m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
+        bool noRetry = jitInfo->avoidRetry;
+        CodeGenContext *context = m_program->GetContext();
+
+        if (jitInfo->isSpill && noRetry)
+        {
+            context->m_retryManager.Disable();
+            context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+        }
+        else if (isStackCallProgram && !context->HasFuncExpensiveLoop(m_program->entry))
+        {
+            // Get the spill threshold
+            float threshold = 0.0f;
+            if (context->type == ShaderType::OPENCL_SHADER)
+            {
+                auto oclCtx = static_cast<OpenCLProgramContext*>(context);
+                threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
+            }
+            // Check all functions for spills, if there are any large spills, retry for entire program
+            bool noRetryForStack = true;
+            if (m_program->m_spillCost > threshold)
+            {
+                // First check the kernel
+                noRetryForStack = false;
+            }
+            for (auto& func : stackFuncMap)
+            {
+                vISA::FINALIZER_INFO* f_jitInfo = nullptr;
+                func.second->GetJitInfo(f_jitInfo);
+                float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted;
+                if (spillCost > threshold || context->HasFuncExpensiveLoop(func.first))
+                {
+                    // Check each stackcall function
+                    noRetryForStack = false;
+                }
+            }
+            if (noRetryForStack)
+            {
+                context->m_retryManager.Disable();
+                context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+            }
+        }
+
+        if (jitInfo->isSpill &&
+            (noRetry || context->m_retryManager.IsLastTry()) &&
+            !isStackCallProgram)
+        {
+            // report a spill warning to build log only if we:
+            //   - spilled
+            //   - are not retrying (IsLastTry() wasn't considered above
+            //     in prev. code for some odd reason; keeping consistent)
+            //   - not using stack calls or the dummy function pointer program
+            std::stringstream ss;
+            ss << "kernel ";
+            const auto name = m_program->entry->getName();
+            if (!name.empty()) {
+                ss << name.str() << " ";
+            } else {
+                ss << "?";
+            }
+
+            ss << " compiled SIMD" <<
+              (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
+                m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
+            ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
+            if (jitInfo->isSpill) {
+                auto spilledRegs = std::max<unsigned>(1,
+                    (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
+                ss << " and spilled around " << spilledRegs;
+            }
+            context->EmitWarning(ss.str().c_str());
+        }
+    }
+
     void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKernel& pMainKernel)
     {
         CodeGenContext *context = m_program->GetContext();
@@ -6402,158 +6478,6 @@ namespace IGC
                 visaFunc->GetGTPinBuffer(buffer, size);
                 pOutput->m_FuncGTPinInfoList.push_back({funcName, buffer, size});
             }
-        }
-    }
-
-    void CEncoder::SetKernelRetryState(CodeGenContext* context, vISA::FINALIZER_INFO* jitInfo, GenXFunctionGroupAnalysis*& pFGA)
-    {
-        bool isStackCallProgram = m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
-        bool noRetry = jitInfo->avoidRetry;
-
-        if ((jitInfo->isSpill && noRetry) ||
-            (isStackCallProgram && IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 0))
-        {
-            context->m_retryManager.Disable();
-            context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
-        }
-        else if (!isStackCallProgram)
-        {
-            auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
-            int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
-            bool noRetry = ((subGrpSize > 0 || jitInfo->stats.spillMemUsed < 1000) &&
-                context->m_instrTypes.mayHaveIndirectOperands) &&
-                !context->HasFuncExpensiveLoop(m_program->entry);
-
-            if (context->type == ShaderType::OPENCL_SHADER)
-            {
-                auto oclCtx = static_cast<OpenCLProgramContext*>(context);
-                if (jitInfo->stats.spillMemUsed > 0 && oclCtx->m_InternalOptions.NoSpill)
-                {
-                    noRetry = false;
-                }
-                else
-                {
-                    float threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
-                    if (m_program->m_spillCost > threshold)
-                    {
-                        noRetry = false;
-                    }
-                }
-            }
-            if (noRetry)
-            {
-                context->m_retryManager.Disable();
-                context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
-            }
-        }
-        else if (isStackCallProgram)
-        {
-            float threshold = 0.0f;
-            bool noRetryForStack = true;
-            std::stringstream ss;
-            ss << "KERNEL: " << m_program->entry->getName().str() << endl;
-            if (m_program->m_spillCost > threshold || context->HasFuncExpensiveLoop(m_program->entry))
-            {
-                // First check the kernel
-                noRetryForStack = false;
-                context->m_retryManager.PerFuncRetrySet.insert(m_program->entry->getName().str());
-                ss << "  HasFuncExpensiveLoop = " << context->HasFuncExpensiveLoop(m_program->entry) << std::endl;
-                ss << "  numGRFSpill = " << jitInfo->stats.numGRFSpillFillWeighted << std::endl;
-                ss << "  TotalInsts = " << jitInfo->stats.numAsmCountUnweighted << std::endl;
-            }
-            for (auto& func : stackFuncMap)
-            {
-                vISA::FINALIZER_INFO* f_jitInfo = nullptr;
-                func.second->GetJitInfo(f_jitInfo);
-                //float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted;
-                if (f_jitInfo->stats.numGRFSpillFillWeighted > 0 || context->HasFuncExpensiveLoop(func.first))
-                {
-                    // Check each stackcall function
-                    noRetryForStack = false;
-                    string FName = StripCloneName(func.first->getName().str());
-                    context->m_retryManager.PerFuncRetrySet.insert(FName);
-                    ss << "  STACK_FUNC Retry: " << FName << std::endl;
-                    ss << "    HasFuncExpensiveLoop = " << context->HasFuncExpensiveLoop(func.first) << std::endl;
-                    ss << "    numGRFSpill = " << f_jitInfo->stats.numGRFSpillFillWeighted << std::endl;
-                    ss << "    TotalInsts = " << f_jitInfo->stats.numAsmCountUnweighted << std::endl;
-                }
-            }
-
-            // The spill count reported by vISA includes spills in callee subroutines.
-            // If we are doing per-func retry, we need to conservatively retry all subroutines
-            // called by the spilled function as well.
-            // Check each subroutine in the function group, and set the per-func retry state if
-            // the caller requires retry.
-            if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2 &&
-                pFGA != nullptr &&
-                !context->m_retryManager.PerFuncRetrySet.empty())
-            {
-                if (auto FG = pFGA->getGroupForHead(m_program->entry))
-                {
-                    for (auto F : *FG)
-                    {
-                        if (F->hasFnAttribute("visaStackCall") || isEntryFunc(context->getMetaDataUtils(), F))
-                            continue;
-
-                        Function* SGH = pFGA->getSubGroupMap(F);
-                        string FName = StripCloneName(F->getName().str());
-                        string SGHName = StripCloneName(SGH->getName().str());
-                        if (context->m_retryManager.PerFuncRetrySet.count(SGHName) != 0)
-                        {
-                            noRetryForStack = false;
-                            context->m_retryManager.PerFuncRetrySet.insert(FName);
-                            ss << "  SUBROUTINE Retry: " << FName << std::endl;
-                        }
-                    }
-                }
-            }
-
-            if (noRetryForStack)
-            {
-                context->m_retryManager.Disable();
-                context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
-            }
-            else if (!context->m_retryManager.IsLastTry())
-            {
-                if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 1)
-                    ss << "AllowStackCallRetry=1 (All functions in this kernel group will be retried with 2nd try states)" << endl << endl;
-                else if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2)
-                    ss << "AllowStackCallRetry=2 (Only the spilled functions will be retried with 2nd try states)" << endl << endl;
-                if (IGC_IS_FLAG_ENABLED(PrintStackFuncSpillInfo))
-                    std::cout << ss.str();
-            }
-        }
-
-        if (jitInfo->isSpill &&
-            (noRetry || context->m_retryManager.IsLastTry()) &&
-            !isStackCallProgram)
-        {
-            // report a spill warning to build log only if we:
-            //   - spilled
-            //   - are not retrying (IsLastTry() wasn't considered above
-            //     in prev. code for some odd reason; keeping consistent)
-            //   - not using stack calls or the dummy function pointer program
-            std::stringstream ss;
-            ss << "kernel ";
-            const auto name = m_program->entry->getName();
-            if (!name.empty()) {
-                ss << name.str() << " ";
-            }
-            else {
-                ss << "?";
-            }
-
-            ss << " compiled SIMD" <<
-                (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
-                    m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
-            ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
-            if (jitInfo->isSpill) {
-                auto spilledRegs = std::max<unsigned>(1,
-                    (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
-                ss << " and spilled around " << spilledRegs;
-            }
-
-            context->EmitWarning(ss.str().c_str());
         }
     }
 
