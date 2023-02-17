@@ -2377,6 +2377,11 @@ void Interference::computeInterference() {
     std::cout << "\t--max RP: " << rpe.getMaxRP() << "\n";
   }
 
+  if ((builder.getOption(vISA_RATrace) ||
+       builder.getOption(vISA_DumpPerfStatsVerbose)) &&
+      builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
+    getNormIntfNum();
+  }
   // Augment interference graph to accomodate non-default masks
   aug.augmentIntfGraph();
 
@@ -2387,6 +2392,42 @@ void Interference::computeInterference() {
   if (kernel.fg.getHasStackCalls()) {
     applyPartitionBias();
   }
+}
+
+void Interference::getNormIntfNum() {
+  unsigned numVars = liveAnalysis->getNumSelectedVar();
+  uint32_t numEdges = 0;
+
+  if (useDenseMatrix()) {
+    // Iterate over intf graph matrix
+    for (unsigned row = 0; row < numVars; row++) {
+      unsigned rowOffset = row * rowSize;
+      unsigned colStart = (row + 1) / BITS_DWORD;
+      for (unsigned j = colStart; j < rowSize; j++) {
+        unsigned intfBlk = getInterferenceBlk(rowOffset + j);
+        if (intfBlk == 0) {
+          continue;
+        }
+        for (unsigned k = 0; k < BITS_DWORD; k++) {
+          if (!(intfBlk & (1 << k))) {
+            continue;
+          }
+          unsigned v2 = (j * BITS_DWORD) + k;
+          if (v2 != row) {
+            numEdges++;
+          }
+        }
+      }
+    }
+  } else {
+    for (uint32_t v1 = 0; v1 < maxId; ++v1) {
+      auto &&intfSet = sparseMatrix[v1];
+      numEdges += intfSet.size();
+    }
+  }
+
+  builder.getJitInfo()->statsVerbose.normIntfNum = numEdges;
+  std::cout << "\t--normal edge #: " << numEdges << "\n";
 }
 
 #define SPARSE_INTF_VEC_SIZE 64
@@ -2431,10 +2472,12 @@ void Interference::generateSparseIntfGraph() {
     }
   }
 
-  if (builder.getOption(vISA_RATrace)) {
+  if (builder.getOption(vISA_RATrace) ||
+      builder.getOption(vISA_DumpPerfStatsVerbose)) {
     uint32_t numNeighbor = 0;
     uint32_t maxNeighbor = 0;
     uint32_t maxIndex = 0;
+    uint32_t numEdges = 0;
     for (int i = 0, numVar = (int)sparseIntf.size(); i < numVar; ++i) {
       if (lrs[i]->getPhyReg() == nullptr) {
         auto intf = sparseIntf[i];
@@ -2444,14 +2487,24 @@ void Interference::generateSparseIntfGraph() {
           maxIndex = i;
         }
       }
+      numEdges += (uint32_t)sparseIntf[i].size();
     }
     float avgNeighbor = ((float)numNeighbor) / sparseIntf.size();
+    if (builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
+      builder.getJitInfo()->statsVerbose.avgNeighbors = avgNeighbor;
+      builder.getJitInfo()->statsVerbose.maxNeighbors = maxNeighbor;
+      builder.getJitInfo()->statsVerbose.augIntfNum =
+          (numEdges / 2) - builder.getJitInfo()->statsVerbose.normIntfNum;
+    }
     std::cout << "\t--avg # neighbors: " << std::setprecision(6) << avgNeighbor
               << "\n";
     std::cout << "\t--max # neighbors: " << maxNeighbor << " ("
               << lrs[maxIndex]->getDcl()->getName() << ")\n";
+    if (builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
+      std::cout << "\t--aug edge #: "
+                << builder.getJitInfo()->statsVerbose.augIntfNum << "\n";
+    }
   }
-
   stopTimer(TimerID::INTERFERENCE);
 }
 
@@ -9634,8 +9687,10 @@ int GlobalRA::coloringRegAlloc() {
   bool reserveSpillReg = false;
   VarSplit splitPass(*this);
   DynPerfModel perfModel(kernel);
+  FINALIZER_INFO *jitInfo = builder.getJitInfo();
 
   while (iterationNo < maxRAIterations) {
+    jitInfo->statsVerbose.RAIterNum++;
     if (builder.getOption(vISA_DynPerfModel)) {
       perfModel.NumRAIters++;
     }
@@ -9720,7 +9775,13 @@ int GlobalRA::coloringRegAlloc() {
     if (builder.getOption(vISA_dumpLiveness)) {
       liveAnalysis.dump();
     }
-
+    if ((builder.getOption(vISA_DumpPerfStatsVerbose) || builder.getOption(vISA_RATrace)) &&
+        jitInfo->statsVerbose.RAIterNum == 1) {
+      jitInfo->statsVerbose.varNum = liveAnalysis.getNumSelectedVar();
+      jitInfo->statsVerbose.globalVarNum = liveAnalysis.getNumSelectedGlobalVar();
+      std::cout << "\t--# global variable: "
+                << jitInfo->statsVerbose.globalVarNum << "\n";
+    }
 #ifdef DEBUG_VERBOSE_ON
     emitFGWithLiveness(liveAnalysis);
 #endif
@@ -9738,6 +9799,10 @@ int GlobalRA::coloringRegAlloc() {
       RPE rpe(*this, &liveAnalysis);
       if (!fastCompile) {
         rpe.run();
+        if (builder.getOption(vISA_DumpPerfStatsVerbose) &&
+            builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
+          builder.getJitInfo()->statsVerbose.maxRP = rpe.getMaxRP();
+        }
       }
       GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false,
                           forceSpill);

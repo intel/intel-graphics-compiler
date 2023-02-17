@@ -515,6 +515,7 @@ public:
   }
 
   void computeInterference();
+  void getNormIntfNum();
   void applyPartitionBias();
   bool interfereBetween(unsigned v1, unsigned v2) const;
   const std::vector<unsigned> &getSparseIntfForVar(unsigned id) const {

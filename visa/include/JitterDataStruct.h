@@ -119,6 +119,22 @@ struct PERF_STATS_VERBOSE {
   // The number of $x.src, after read token dependence
   uint32_t AfterReadTokenDepCount = 0;
 
+  //Graph coloring profiling info for first iteration
+  uint32_t RAIterNum = 0;
+  //Variable #
+  uint32_t varNum = 0;
+  //Global variable #
+  uint32_t globalVarNum = 0;
+  //Max register pressure
+  uint32_t maxRP = 0;
+  //Max neighbors #
+  uint32_t maxNeighbors = 0;
+  //Average neighbors #
+  float avgNeighbors = 0;
+  //Normal interference edge #
+  uint32_t normIntfNum = 0;
+  //Augmentation interference edge #
+  uint32_t augIntfNum = 0;
 public:
   llvm::json::Value toJSON();
 };

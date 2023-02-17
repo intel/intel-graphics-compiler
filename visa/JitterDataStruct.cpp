@@ -28,21 +28,32 @@ llvm::json::Value PERF_STATS::toJSON() {
 }
 
 llvm::json::Value PERF_STATS_VERBOSE::toJSON() {
-  return llvm::json::Object{
-    {"BCNum", BCNum},
-    {"numRMWs", numRMWs},
-    {"numALUInst", numALUInst},
-    {"numALUOnlyDst", numALUOnlyDst},
-    {"numALUOnlySrc", numALUOnlySrc},
-    {"accSubDef", accSubDef},
-    {"accSubUse", accSubUse},
-    {"accSubCandidateDef", accSubCandidateDef},
-    {"accSubCandidateUse", accSubCandidateUse},
-    {"syncInstCount", syncInstCount},
-    {"tokenReuseCount", tokenReuseCount},
-    {"singlePipeAtOneDistNum", singlePipeAtOneDistNum},
-    {"allAtOneDistNum", allAtOneDistNum},
-    {"AfterWriteTokenDepCount", AfterWriteTokenDepCount},
-    {"AfterReadTokenDepCount", AfterReadTokenDepCount},
+  llvm::json::Object jsonObject = llvm::json::Object{
+      {"BCNum", BCNum},
+      {"numRMWs", numRMWs},
+      {"numALUInst", numALUInst},
+      {"numALUOnlyDst", numALUOnlyDst},
+      {"numALUOnlySrc", numALUOnlySrc},
+      {"accSubDef", accSubDef},
+      {"accSubUse", accSubUse},
+      {"accSubCandidateDef", accSubCandidateDef},
+      {"accSubCandidateUse", accSubCandidateUse},
+      {"syncInstCount", syncInstCount},
+      {"tokenReuseCount", tokenReuseCount},
+      {"singlePipeAtOneDistNum", singlePipeAtOneDistNum},
+      {"allAtOneDistNum", allAtOneDistNum},
+      {"AfterWriteTokenDepCount", AfterWriteTokenDepCount},
   };
+  if (RAIterNum) {
+    jsonObject.insert({"RAIterNum", RAIterNum});
+    jsonObject.insert({"varNum", varNum});
+    jsonObject.insert({"globalVarNum", globalVarNum});
+    jsonObject.insert({"maxRP", maxRP});
+    jsonObject.insert({"maxNeighbors", maxNeighbors});
+    jsonObject.insert({"avgNeighbors", avgNeighbors});
+    jsonObject.insert({"normIntfNum", normIntfNum});
+    jsonObject.insert({"augIntfNum", augIntfNum});
+  }
+
+  return jsonObject;
 }
