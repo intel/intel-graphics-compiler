@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "MergeScalars.hpp"
 
+#include <algorithm>
 #include <vector>
 
 using namespace vISA;
@@ -433,6 +434,16 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
     // moves to compensate for the lack of 64-bit regions later
     return false;
   }
+
+  // When there's a platform-specific alignment requirement for the 3-src inst,
+  // be conservative and skip merging the current inst if
+  //   1. the current inst is a 3-src inst, or
+  //   2. any source operand is defined by a 3-src inst
+  if (builder.has3SrcDstAlignRequirement() && (inst->getNumSrc() == 3 ||
+          std::any_of(inst->def_begin(), inst->def_end(),
+                      [](const USE_DEF_NODE &node) {
+                        return node.first->getNumSrc() == 3; })))
+    return false;
 
   G4_VarBase *dstBase = inst->getDst()->getBase();
   G4_Declare *dstDcl =

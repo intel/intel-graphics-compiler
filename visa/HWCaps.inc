@@ -538,7 +538,9 @@ bool supportsSampler() const {
 
 bool has2xDP() const { return getPlatform() >= Xe_PVCXT; }
 
-int get3SrcDstAlign() const { return getPlatform() >= Xe_XeHPSDV ? 2 : 8; }
+bool has3SrcDstAlignRequirement() const { return getPlatform() < Xe_XeHPSDV; }
+
+int get3SrcDstAlign() const { return has3SrcDstAlignRequirement() ? 8 : 2; }
 
 bool supportCallaRegSrc() const {
   if (getPlatform() >= Xe_DG2)
