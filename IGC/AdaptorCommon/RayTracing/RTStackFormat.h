@@ -748,7 +748,7 @@ struct MemRay
                 instLeafPtr = 48,
                 rayMask     = 8,
 
-                ComparisonValue = 7,
+                reserved2       = 7,
                 pad2            = 8,
             };
 
@@ -756,8 +756,8 @@ struct MemRay
             enum class Offset : uint8_t
             {
                 // Add as needed
-                ComparisonValue = (T)Bits::missSRPtr + (T)Bits::pad,
-                shaderIndexMultiplier = (T)Offset::ComparisonValue + (T)Bits::ComparisonValue,
+                reserved2 = (T)Bits::missSRPtr + (T)Bits::pad,
+                shaderIndexMultiplier = (T)Offset::reserved2 + (T)Bits::reserved2,
                 rayFlagsCopy = 0,
                 rayMask = (uint32_t)Bits::instLeafPtr,
             };
@@ -790,7 +790,7 @@ struct MemRay
                     // DG2
                     //uint64_t pad                 : 8;                              // explicit padding bits
                     uint64_t pad                   : (T)Bits::pad;                   // explicit padding bits
-                    uint64_t ComparisonValue       : (T)Bits::ComparisonValue;       // to be compared with Instance.ComparisonValue
+                    uint64_t reserved2             : (T)Bits::reserved2;
 
 
                     uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
@@ -820,9 +820,6 @@ struct MemRay
 static_assert(sizeof(MemHit) == 32,       "MemHit has to be 32 bytes large");
 static_assert(sizeof(MemRay) == 64,       "MemRay has to be 64 bytes large");
 static_assert(sizeof(MemTravStack) == 32, "MemTravStack has to be 32 bytes large");
-
-//org, dir, tnear and tfar
-constexpr uint32_t RayInfoSize = 8;
 
 
 // On DG2, writes will not go to the L1$ unless they are 16-byte aligned

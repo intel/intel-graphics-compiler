@@ -1436,13 +1436,6 @@ Value* RTBuilder::getGlobalDSSID()
 }
 
 
-void RTBuilder::setRayInfo(
-    RTBuilder::StackPointerVal* StackPointer, Value* V, uint32_t Idx, uint32_t BvhLevel)
-{
-    auto* Ptr = this->getRayInfoPtr(StackPointer, Idx, BvhLevel);
-    this->CreateStore(V, Ptr);
-}
-
 Value* RTBuilder::getRootNodePtr(Value* BVHPtr)
 {
     if (IGC_IS_FLAG_ENABLED(ForceNullBVH))
@@ -1581,13 +1574,6 @@ Value* RTBuilder::getNodePtrAndFlags(
     return this->CreateLoad(this->getNodePtrAndFlagsPtr(StackPointer, BvhLevel));
 }
 
-void RTBuilder::setNodePtrAndFlags(
-    RTBuilder::StackPointerVal* StackPointer, Value* V, uint32_t BvhLevel)
-{
-    this->CreateStore(V, this->getNodePtrAndFlagsPtr(StackPointer, BvhLevel));
-}
-
-
 Value* RTBuilder::getInstLeafPtrAndRayMask(
     RTBuilder::StackPointerVal* StackPointer, uint32_t BvhLevel)
 {
@@ -1595,15 +1581,6 @@ Value* RTBuilder::getInstLeafPtrAndRayMask(
         StackPointer, this->getInt32(BvhLevel),
         VALUE_NAME("&MemRay::topOfInstanceLeafPtr"));
     return this->CreateLoad(Ptr);
-}
-
-void RTBuilder::setInstLeafPtrAndRayMask(
-    RTBuilder::StackPointerVal* StackPointer, Value* V, uint32_t BvhLevel)
-{
-    auto* Ptr = this->_gepof_topOfInstanceLeafPtr(
-        StackPointer, this->getInt32(BvhLevel),
-        VALUE_NAME("&MemRay::topOfInstanceLeafPtr"));
-    this->CreateStore(V, Ptr);
 }
 
 void RTBuilder::setCommittedHitT(
@@ -1632,7 +1609,6 @@ void RTBuilder::setPotentialHitT(RTBuilder::StackPointerVal* StackPointer, Value
 
     this->CreateStore(V, Ptr);
 }
-
 
 void RTBuilder::setCommittedHitTopPrimLeafPtr(RTBuilder::StackPointerVal* StackPointer, Value *V)
 {
@@ -2214,6 +2190,16 @@ Instruction* RTBuilder::getEntryFirstInsertionPt(
     return CurIP;
 }
 
+Type* RTBuilder::getInt64PtrTy(unsigned int AddrSpace) const
+{
+    return Type::getInt64PtrTy(this->Context, AddrSpace);
+}
+
+Type* RTBuilder::getInt32PtrTy(unsigned int AddrSpace) const
+{
+    return Type::getInt32PtrTy(this->Context, AddrSpace);
+}
+
 
 SpillValueIntrinsic* RTBuilder::getSpillValue(Value* Val, uint64_t Offset)
 {
@@ -2256,3 +2242,20 @@ void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
     this->DisableRTGlobalsKnownValues = Disable;
 }
 
+
+void RTBuilder::createTraceRayInlinePrologue(
+    Value* StackPtr,
+    Value* RayInfo,
+    Value* RootNodePtr,
+    Value* RayFlags,
+    Value* InstanceInclusionMask,
+    Value* TMax)
+{
+    _createTraceRayInlinePrologue_Xe(
+        StackPtr,
+        RayInfo,
+        RootNodePtr,
+        RayFlags,
+        InstanceInclusionMask,
+        TMax);
+}

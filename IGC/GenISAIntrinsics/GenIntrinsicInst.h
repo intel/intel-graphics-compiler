@@ -967,8 +967,9 @@ public:
         return getOperand(6);
     }
     Value* getMissShaderIndex() const { return getOperand(7); }
+    static constexpr uint32_t getNumRayInfoFields() { return 8; }
     Value* getRayInfo(uint32_t Idx) const {
-        IGC_ASSERT_MESSAGE(Idx < 8, "Index out of range!");
+        IGC_ASSERT_MESSAGE(Idx < getNumRayInfoFields(), "Index out of range!");
         return getOperand(8 + Idx);
     }
     // Get the 0 - X, 1 - Y, or 2 - Z component of the ray origin
@@ -1372,8 +1373,9 @@ public:
     Value* getFlag() const { return getOperand(2); }
     Value* getMask() const { return getOperand(3); }
 
+    static constexpr uint32_t getNumRayInfoFields() { return 8; }
     Value* getRayInfo(uint32_t Idx) const {
-        IGC_ASSERT_MESSAGE(Idx < 8, "Index out of range!");
+        IGC_ASSERT_MESSAGE(Idx < getNumRayInfoFields(), "Index out of range!");
         return getOperand(4 + Idx);
     }
     // Get the 0 - X, 1 - Y, or 2 - Z component of the ray origin

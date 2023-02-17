@@ -272,63 +272,24 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
 
          auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, QueryObjIndex);
 
-         // Store Ray info.  Will be vectorized later on.
-         for (unsigned int i = 0; i < RTStackFormat::RayInfoSize; i++)
          {
-             builder.setRayInfo(ShadowMemStackPointer, trace->getRayInfo(i), i);
+            Value* Vec = UndefValue::get(
+                IGCLLVM::FixedVectorType::get(
+                    builder.getFloatTy(), trace->getNumRayInfoFields()));
+            for (unsigned int i = 0; i < trace->getNumRayInfoFields(); i++)
+                Vec = builder.CreateInsertElement(Vec, trace->getRayInfo(i), i);
+
+            builder.createTraceRayInlinePrologue(
+                ShadowMemStackPointer,
+                Vec,
+                builder.getRootNodePtr(trace->getBVH()),
+                trace->getFlag(),
+                trace->getMask(),
+                trace->getTMax());
          }
 
-         //stack->ray[0].topOfNodePtrAndFlags = bvh.rootNodePtr | trace.rayflags
-         // rootNodeptr + rayflags
-         {
-             Value* rootNodePtr = builder.getRootNodePtr(trace->getBVH());
-             // uint64_t rootNodePtr : 48;  // root node to start traversal at
-             // uint64_t rayFlags    : 16;  // ray flags (see RayFlag structure)
-             //Copy RayFlags - they need to be "OR" with the ones stored which came in query allocation
-             Value* RQOPlusTraceRayFlags = builder.CreateOr(
-                 trace->getFlag(),
-                 builder.CreateZExt(builder.getRayFlags(ShadowMemStackPointer), trace->getFlag()->getType()));
-             Value* rootNodePtrPlusFlags = builder.CreateOr(
-                 builder.CreateShl(
-                     builder.CreateZExt(RQOPlusTraceRayFlags, builder.getInt64Ty()),
-                     builder.getInt64((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr)),
-                 rootNodePtr,
-                 VALUE_NAME("rootNodePtrAndRayFlags"));
-             builder.setNodePtrAndFlags(ShadowMemStackPointer, rootNodePtrPlusFlags);
-         }
-
-
-         //stack->ray[0].topOfInstanceLeafPtr = 0|trace.mask
-         //RayMask
-         // the pointer to instance leaf in case we traverse an
-         // instance (64-bytes alignment)
-         // uint64_t instLeafPtr : 48;
-         // uint64_t rayMask : 8; // ray mask used for ray masking
-         {
-             Value* maskPlusInstLeafPtr = builder.CreateOr(
-                 builder.getInt64(0),
-                 builder.CreateShl(
-                     builder.CreateZExt(trace->getMask(), builder.getInt64Ty()),
-                     builder.getInt64((uint32_t)MemRay::RT::Xe::Bits::instLeafPtr)),
-                 VALUE_NAME("maskPlusIntLeafPtr"));
-             builder.setInstLeafPtrAndRayMask(ShadowMemStackPointer, maskPlusInstLeafPtr);
-         }
-
-         //set initial hit distance to Tmax to handle CommittedRayT before Proceed
-         //stack->committedHit.t = THit;
-         builder.setCommittedHitT(ShadowMemStackPointer, trace->getTMax());
-
-         //FIXME: Is this necessary? we don't do it for async TraceRay
-         //Reset MemHit Information for current RayQuery Object
-         //stack->committedHit.topOfPrimIndexDelta = 0
-         builder.setHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit, builder.getInt32(0));
-
-         //Need to set potentialHit.done to false
-         //stack->potentialHit.topOfPrimIndexDelta = 0
-         builder.setHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::AnyHit, builder.getInt32(0));
-
-         //Set TraceRayControl to Initial
-         //RayQueryObject->stateInfo.traceRayCtrl = TRACE_RAY_INITIAL
+         // Set TraceRayControl to Initial
+         // RayQueryObject->stateInfo.traceRayCtrl = TRACE_RAY_INITIAL
          builder.setSyncTraceRayControl(
              getShMemRTCtrl(builder, QueryObjIndex),
              TraceRayMessage::TraceRayCtrl::TRACE_RAY_INITIAL);
@@ -377,7 +338,6 @@ void TraceRayInlineLoweringPass::emitSingleRQMemRayWrite(RTBuilder& builder, Val
     //HWstack->ray[0].2nd32Byte = SMstack->ray[0].2nd32Byte  //second 32 Bytes only
     //Set BVH, Flags, Mask and InstLeafPtr with RMW
     //Copy BVH Plus Flags
-    //TODO: Do we need the Pipeline Flags?
     Value* bvhPlusFlagsShMem = builder.getNodePtrAndFlags(ShadowMemStackPointer);
     Value* maskPlusInstLeafPtr = builder.getInstLeafPtrAndRayMask(ShadowMemStackPointer);
 

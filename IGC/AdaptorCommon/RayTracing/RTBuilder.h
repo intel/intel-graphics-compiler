@@ -314,22 +314,18 @@ public:
     static void setInvariantLoad(LoadInst* LI);
     CallInst* CreateLSCFence(LSC_SFID SFID, LSC_SCOPE Scope, LSC_FENCE_OP FenceOp);
 
+    // Utilities
+    Type* getInt64PtrTy(unsigned int AddrSpace = 0U) const;
+    Type* getInt32PtrTy(unsigned int AddrSpace = 0U) const;
 
     Value* getRootNodePtr(Value* BVHPtr);
-    void setRayInfo(StackPointerVal* StackPointer, Value* V, uint32_t Idx, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
     Value* getNodePtrAndFlagsPtr(StackPointerVal* StackPointer, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
     //MemRay::topOfNodePtrAndFlags
     Value* getNodePtrAndFlags(StackPointerVal* StackPointer, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
-    void setNodePtrAndFlags(StackPointerVal* StackPointer, Value* V, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
-
 
     //MemRay::topOfInstanceLeafPtr
     Value* getInstLeafPtrAndRayMask(
         StackPointerVal* StackPointer,
-        uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
-    void setInstLeafPtrAndRayMask(
-        StackPointerVal* StackPointer,
-        Value* V,
         uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
     void setCommittedHitT(
         StackPointerVal* StackPointer,
@@ -460,6 +456,13 @@ public:
     static Type* getBVHPtrTy(Module &M);
 
 
+    void createTraceRayInlinePrologue(
+        Value* StackPtr,
+        Value* RayInfo,
+        Value* RootNodePtr,
+        Value* RayFlags,
+        Value* InstanceInclusionMask,
+        Value* TMax);
 };
 
 } // namespace llvm

@@ -1541,3 +1541,34 @@ Value* _gepof_ProceduralLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
+void _createTraceRayInlinePrologue_Xe(Value* _StackPtr, Value* _RayInfo, Value* _RootNodePtr, Value* _RayFlags, Value* _InstanceInclusionMask, Value* _TMax)
+{
+  auto* _arrayidx = CreateInBoundsGEP(_StackPtr, { getInt64(0), getInt32(0), getInt32(2), getInt64(0) }, VALUE_NAME("arrayidx"));
+  auto* V_0 = CreateBitCast(_arrayidx, PointerType::get(IGCLLVM::FixedVectorType::get(getFloatTy(), 8), _StackPtr->getType()->getPointerAddressSpace()));
+  CreateStore(_RayInfo, V_0);
+  auto* _xe = CreateInBoundsGEP(_StackPtr, { getInt64(0), getInt32(0), getInt32(2), getInt64(0), getInt32(4), getInt32(0) }, VALUE_NAME("xe"));
+  auto* _topOfNodePtrAndFlags = CreateInBoundsGEP(_xe, { getInt64(0), getInt32(0), getInt32(0) }, VALUE_NAME("topOfNodePtrAndFlags"));
+  auto* V_1 = CreateBitCast(_xe, PointerType::get(getInt16Ty(), _StackPtr->getType()->getPointerAddressSpace()));
+  auto* _arrayidx4 = CreateInBoundsGEP(V_1, { getInt64(3) }, VALUE_NAME("arrayidx4"));
+  auto* V_2 = CreateLoad(_arrayidx4);
+  auto* _conv = CreateZExt(V_2, getInt32Ty(), VALUE_NAME("conv"));
+  auto* _or = CreateOr(_conv, _RayFlags, VALUE_NAME("or"));
+  auto* _and = CreateAnd(_or, getInt32(1023), VALUE_NAME("and"));
+  auto* _conv5 = CreateZExt(_and, getInt64Ty(), VALUE_NAME("conv5"));
+  auto* _shl = CreateShl(_conv5, getInt64(48), VALUE_NAME("shl"));
+  auto* _or6 = CreateOr(_shl, _RootNodePtr, VALUE_NAME("or6"));
+  CreateStore(_or6, _topOfNodePtrAndFlags);
+  auto* V_3 = CreateInBoundsGEP(_StackPtr, { getInt64(0), getInt32(0), getInt32(2), getInt64(0), getInt32(4), getInt32(0), getInt32(3), getInt32(0) });
+  auto* V_4 = CreateAnd(_InstanceInclusionMask, getInt32(255));
+  auto* _bf_value = CreateZExt(V_4, getInt64Ty(), VALUE_NAME("bf.value"));
+  auto* _bf_shl = CreateShl(_bf_value, getInt64(48), VALUE_NAME("bf.shl"));
+  CreateStore(_bf_shl, V_3);
+  auto* _t = CreateInBoundsGEP(_StackPtr, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0) }, VALUE_NAME("t"));
+  CreateStore(_TMax, _t);
+  auto* V_5 = CreateInBoundsGEP(_StackPtr, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  CreateStore(getInt32(0), V_5);
+  auto* V_6 = CreateInBoundsGEP(_StackPtr, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  CreateStore(getInt32(0), V_6);
+  return;
+}
+
