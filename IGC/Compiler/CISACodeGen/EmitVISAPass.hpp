@@ -27,6 +27,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <functional>
 
+#include <type_traits>
+
 namespace llvm
 {
     class GenIntrinsicInst;
@@ -40,6 +42,14 @@ struct PSSignature;
 
 class EmitPass : public llvm::FunctionPass
 {
+    template <typename P>
+    void addRequired(llvm::AnalysisUsage& AU) const
+    {
+       static_assert(std::is_base_of_v<llvm::FunctionPass, P> ||
+                     std::is_base_of_v<llvm::ImmutablePass, P> );
+       AU.addRequired<P>();
+    }
+
 public:
     EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature = nullptr);
 
@@ -50,19 +60,20 @@ public:
     //        those analysis passes to be invoked twice, which increases compiling time.
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.addRequired<WIAnalysis>();
-        AU.addRequired<LiveVarsAnalysis>();
-        AU.addRequired<CodeGenPatternMatch>();
-        AU.addRequired<DeSSA>();
-        AU.addRequired<BlockCoalescing>();
-        AU.addRequired<CoalescingEngine>();
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<Simd32ProfitabilityAnalysis>();
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<VariableReuseAnalysis>();
-        AU.addRequired<CastToGASInfo>();
         AU.setPreservesAll();
+
+        addRequired<llvm::DominatorTreeWrapperPass>(AU);
+        addRequired<WIAnalysis>(AU);
+        addRequired<LiveVarsAnalysis>(AU);
+        addRequired<CodeGenPatternMatch>(AU);
+        addRequired<DeSSA>(AU);
+        addRequired<BlockCoalescing>(AU);
+        addRequired<CoalescingEngine>(AU);
+        addRequired<MetaDataUtilsWrapper>(AU);
+        addRequired<Simd32ProfitabilityAnalysis>(AU);
+        addRequired<CodeGenContextWrapper>(AU);
+        addRequired<VariableReuseAnalysis>(AU);
+        addRequired<CastToGASInfo>(AU);
     }
 
     virtual bool runOnFunction(llvm::Function& F) override;
