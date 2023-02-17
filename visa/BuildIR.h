@@ -319,7 +319,7 @@ private:
   // pre-defined declare that binds to A0.2:ud
   G4_Declare *builtinA0Dot2 = nullptr; // used for splitsend's ext msg
                                        // descriptor
-  // pre-defind declare that binds to HWTid (R0.5:ud)
+  // pre-defined declare that binds to HWTid (R0.5:ud)
   G4_Declare *builtinHWTID = nullptr;
   // pre-defined bindless surface index (252, 1 UD)
   G4_Declare *builtinT252 = nullptr;

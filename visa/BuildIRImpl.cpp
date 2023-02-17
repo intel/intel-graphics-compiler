@@ -667,7 +667,6 @@ void IR_Builder::createBuiltinDecls() {
   builtinHWTID = createDeclare("hw_tid", G4_GRF, 1, 1, Type_UD);
   builtinHWTID->setBuiltin();
 
-
   builtinT252 = createDeclare(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name,
                               G4_GRF, 1, 1, Type_UD);
   builtinT252->setBuiltin();
