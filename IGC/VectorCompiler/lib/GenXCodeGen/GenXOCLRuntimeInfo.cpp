@@ -413,12 +413,12 @@ struct ModuleDataT {
   ModuleDataT(const Module &M);
 };
 
-template <vISA::GenSymType SymbolClass, typename InputIter, typename OutputIter>
+template <vISA::GenSymType SymbolClass, vISA::ZESymBinding BindingClass, typename InputIter, typename OutputIter>
 void constructSymbols(InputIter First, InputIter Last, OutputIter Out) {
   std::transform(First, Last, Out, [](const auto &Section) -> vISA::ZESymEntry {
     return {SymbolClass, static_cast<uint32_t>(Section.Info.Offset),
             static_cast<uint32_t>(Section.Info.getSize()),
-            Section.Key->getName().str()};
+            Section.Key->getName().str(), BindingClass};
   });
 }
 
@@ -433,11 +433,11 @@ static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
     auto &KernelSection = GenBinary.front();
     Symbols.emplace_back(vISA::GenSymType::S_KERNEL, KernelSection.Info.Offset,
                          KernelSection.Info.getSize(),
-                         KernelSection.Key->getName().str());
+                         KernelSection.Key->getName().str(), vISA::ZESymBinding::S_LOCAL);
   }
 
   // Skipping first section if binary has a kernel.
-  constructSymbols<vISA::GenSymType::S_FUNC>(
+  constructSymbols<vISA::GenSymType::S_FUNC, vISA::ZESymBinding::S_GLOBAL>(
       HasKernel ? std::next(GenBinary.begin()) : GenBinary.begin(),
       GenBinary.end(), std::back_inserter(Symbols));
 
@@ -636,7 +636,7 @@ ModuleDataT::ModuleDataT(const Module &M) {
     } else {
       // External global variables
       auto Name = GV.getName().str();
-      ExternalGlobals.emplace_back(vISA::S_UNDEF, 0, 0, Name.c_str());
+      ExternalGlobals.emplace_back(vISA::S_UNDEF, 0, 0, Name.c_str(), vISA::ZESymBinding::S_GLOBAL);
     }
   }
 }
@@ -645,13 +645,13 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
   ModuleDataT ModuleData{M};
   GenXOCLRuntimeInfo::ModuleInfoT ModuleInfo;
 
-  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST>(
+  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST, vISA::ZESymBinding::S_GLOBAL>(
       ModuleData.Constant.Data.begin(), ModuleData.Constant.Data.end(),
       std::back_inserter(ModuleInfo.Constant.Symbols));
-  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR>(
+  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR, vISA::ZESymBinding::S_GLOBAL>(
       ModuleData.Global.Data.begin(), ModuleData.Global.Data.end(),
       std::back_inserter(ModuleInfo.Global.Symbols));
-  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST>(
+  constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST, vISA::ZESymBinding::S_GLOBAL>(
       ModuleData.ConstString.Data.begin(), ModuleData.ConstString.Data.end(),
       std::back_inserter(ModuleInfo.ConstString.Symbols));
 
@@ -856,7 +856,7 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
       constructFunctionSymbols(TextSection.Data, /*HasKernel*/ false);
   for (auto &&Decl : DeclsRange)
     Info.Func.Symbols.emplace_back(vISA::GenSymType::S_UNDEF, 0, 0,
-                                   Decl.getName().str());
+                                   Decl.getName().str(), vISA::ZESymBinding::S_GLOBAL);
   Info.Func.Data.Buffer = TextSection.Data.emitConsolidatedData();
 
   return CompiledKernel{std::move(Info), vISA::FINALIZER_INFO{}, /*GtpinInfo*/ {},

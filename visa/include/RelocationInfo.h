@@ -38,6 +38,14 @@ enum GenSymType {
   S_KERNEL = 6            // The symbol is associated with a kernel function
 };
 
+// ZESymBinding - Specify the symbol's binding
+// These values should match with binding values specified in ELF documentation.
+// Every time a new binding is added here, a static_assert should be implemented in zebin_builder.cpp
+enum class ZESymBinding : uint8_t {
+  S_LOCAL = 0,   // These symbols are not visible outside the object file containing their definition
+  S_GLOBAL = 1,  // These symbols are visible to all object files being combined
+};
+
 /// GenSymEntry - An symbol table entry
 typedef struct {
   uint32_t s_type;   // The symbol's type
@@ -91,15 +99,16 @@ typedef struct {
 /// symbol name with no length limitation
 /// FIXME: s_type should be standard ELF symbol type instead of GenSymType
 struct ZESymEntry {
-  GenSymType s_type;  // The symbol's type
-  uint32_t s_offset;  // The binary offset of this symbol. This field is ignored
-                      // if s_type is S_UNDEF
-  uint32_t s_size;    // The size in bytes of the function binary
-  std::string s_name; // The symbol's name
+  GenSymType s_type;        // The symbol's type
+  uint32_t s_offset;        // The binary offset of this symbol. This field is ignored
+                            // if s_type is S_UNDEF
+  uint32_t s_size;          // The size in bytes of the function binary
+  std::string s_name;       // The symbol's name
+  ZESymBinding s_binding;   // The symbol's binding. Determines the linkage visibility and behavior
 
   ZESymEntry() = default;
-  ZESymEntry(GenSymType type, uint32_t offset, uint32_t size, std::string name)
-      : s_type(type), s_offset(offset), s_size(size), s_name(name) {}
+  ZESymEntry(GenSymType type, uint32_t offset, uint32_t size, std::string name, ZESymBinding binding)
+      : s_type(type), s_offset(offset), s_size(size), s_name(name), s_binding(binding) {}
 };
 
 /// ZERelocEntry - A relocation entry that will later be transformed to ZE
