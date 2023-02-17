@@ -3429,32 +3429,15 @@ namespace IGC
         pShader->FillKernel(simdMode);
         SProgramOutput* pOutput = pShader->ProgramOutput();
 
-        //  Need a better heuristic for NoRetry
-        FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-        int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
-        bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
-            ctx->m_instrTypes.mayHaveIndirectOperands) &&
-            !ctx->m_FuncHasExpensiveLoops[pFunc];
-
-        bool optDisable = false;
-        if (ctx->getModuleMetaData()->compOpt.OptDisable)
-        {
-            optDisable = true;
-        }
-
-        // if we hit the case of noRetry heuristics and have no spill flag present
-        // we should try to recompile
-        if (ctx->m_InternalOptions.NoSpill)
-        {
-            noRetry = false;
-        }
+        CShader* program = pKernel.get()->GetShader(simdMode);
 
         bool isWorstThanPrv = false;
         // Look for previous generated shaders
-        // ignoring case for multi-simd compilation
+        // ignoring case for multi-simd compilation, or if kernel has stackcalls
         if (!((ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
             && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) &&
-            pKernel.get() != nullptr)
+            pKernel.get() != nullptr &&
+            !(program->HasStackCalls() || program->IsIntelSymbolTableVoidProgram()))
         {
             isWorstThanPrv =
                 !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get());
@@ -3466,8 +3449,7 @@ namespace IGC
         }
         else if (
             pOutput->m_scratchSpaceUsedBySpills == 0 ||
-            noRetry ||
-            optDisable ||
+            ctx->getModuleMetaData()->compOpt.OptDisable ||
             ctx->m_retryManager.IsLastTry() ||
             (!ctx->m_retryManager.kernelSkip.empty() &&
              ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())))

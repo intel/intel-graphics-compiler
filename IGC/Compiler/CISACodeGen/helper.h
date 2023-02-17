@@ -246,6 +246,31 @@ namespace IGC
                 IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == FLAG_FCALL_FORCE_INLINE);
     }
 
+    // Strips the clone postfix added by GenXCodeGenModule in the function name
+    inline std::string StripCloneName(std::string name)
+    {
+        auto found = name.rfind("_GenXClone");
+        if (found != std::string::npos)
+        {
+            return name.substr(0, found);
+        }
+        return name;
+    }
+
+    inline bool isOptDisabledForFunction(ModuleMetaData* modMD, llvm::StringRef optStr, llvm::Function* F)
+    {
+        // Search function metadata to check if pass needs to be disabled
+        auto funcIt = modMD->FuncMD.find(F);
+        if (funcIt != modMD->FuncMD.end())
+        {
+            if (funcIt->second.m_OptsToDisable.count(optStr.str()) != 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// Return true if F is an entry function of a kernel or a shader.
     ///    A entry function must have an entry in FunctionInfoMetaData
     ///       with type KernelFunction;
