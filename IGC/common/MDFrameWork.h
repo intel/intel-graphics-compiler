@@ -337,6 +337,9 @@ namespace IGC
         std::vector<std::string> m_OpenCLArgTypeQualifiers;
         std::vector<std::string> m_OpenCLArgNames;
         std::set<int32_t> m_OpenCLArgScalarAsPointers;
+
+        // List of optimizations to disable at a per-function level
+        std::set<std::string> m_OptsToDisable;
     };
 
     // isCloned member is added to mark whether a function is clone

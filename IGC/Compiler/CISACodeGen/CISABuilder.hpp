@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/helper.h"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "visa_wa.h"
 #include "inc/common/sku_wa.h"
 
@@ -133,7 +134,7 @@ namespace IGC
         void DeclareInput(CVariable* var, uint offset, uint instance);
         void MarkAsOutput(CVariable* var);
         void MarkAsPayloadLiveOut(CVariable* var);
-        void Compile(bool hasSymbolTable = false);
+        void Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis*& pFGA);
         std::string GetShaderName();
         int GetThreadCount(SIMDMode simdMode);
 
@@ -701,7 +702,7 @@ namespace IGC
             const std::string kernelName);
 
         // setup m_retryManager according to jitinfo and other factors
-        void checkForNoRetry(const vISA::FINALIZER_INFO *jitInfo);
+        void SetKernelRetryState(CodeGenContext* context, vISA::FINALIZER_INFO* jitInfo, GenXFunctionGroupAnalysis*& pFGA);
 
         /// create symbol tables and GlobalHostAccessTable according to if it's zebin
         /// or patch-token formats

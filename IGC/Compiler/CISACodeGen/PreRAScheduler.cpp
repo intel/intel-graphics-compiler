@@ -43,6 +43,10 @@ namespace IGC {
 
         bool runOnFunction(Function& F) override;
 
+        virtual StringRef getPassName() const override {
+            return IGCOpts::PreRASchedulerPassName;
+        }
+
         LivenessAnalysis* m_pLVA;
         DominatorTree* m_pDT;
         RegisterEstimator* m_pRPE;
@@ -903,6 +907,9 @@ void PreRAScheduler::dumpPriorityQueueContents()
 
 bool PreRAScheduler::runOnFunction(Function& F) {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (isOptDisabledForFunction(ctx->getModuleMetaData(), getPassName(), &F))
+        return false;
+
     m_pLVA = &getAnalysis<LivenessAnalysis>();
     m_pDT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     m_pRPE = &getAnalysis<RegisterEstimator>();
