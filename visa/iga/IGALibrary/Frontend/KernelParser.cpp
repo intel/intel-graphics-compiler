@@ -3918,6 +3918,12 @@ bool KernelParser::ParseLdStInst() {
   //
   const auto sfidSym = GetTokenAsString(Next(2));
   vma.sfid = FromSyntax<SFID>(sfidSym);
+  if (vma.sfid == SFID::INVALID) {
+    // better error if we they forget the sfid: e.g. load.d32... instead of load.ugm
+    // otherwise sendOpSupportsSyntax() will say the op "isn't supported"
+    // the user thinks "BS that "load" isn't supported
+    FailS(NextLoc(2), "invalid SFID");
+  }
   if (!sendOpSupportsSyntax(platform(), vma.op, vma.sfid)) {
     FailS(NextLoc(), "op not yet supported for ld/st parse");
   }
