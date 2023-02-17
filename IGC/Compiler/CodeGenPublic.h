@@ -962,8 +962,7 @@ namespace IGC
         // is at a constant offset from the start of the BVH. This allows
         // us to skip loading the offset at BVH::rootNodeOffset.
         std::optional<size_t> BVHFixedOffset;
-        // Immediate constant buffer promotion is enabled for all optimization except for Direct storage case
-        bool m_disableICBPromotion = false;
+
     private:
         //For storing error message
         std::stringstream oclErrorMessage;
