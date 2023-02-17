@@ -507,6 +507,12 @@ namespace IGC
         pNew->setDebugLoc(pOrigin->getDebugLoc());
     }
 
+    inline bool isDbgIntrinsic(const llvm::Instruction* I) {
+        if (auto *GXI = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
+            return GXI->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_CatchAllDebugLine;
+        return llvm::isa<llvm::DbgInfoIntrinsic>(I);
+    }
+
     llvm::ConstantInt* getConstantSInt(llvm::IRBuilder<>& Builder, const int bitSize, int64_t val);
     llvm::ConstantInt* getConstantUInt(llvm::IRBuilder<>& Builder, const int bitSize, uint64_t val);
     llvm::Value* CreateMulhS64(llvm::IRBuilder<>& B, llvm::Value* const u, llvm::Value* const v);

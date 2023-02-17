@@ -24,6 +24,7 @@ define void @test_logicaland(i32 %a, i32 %b, i32* %c) {
 entry:
   %0 = add i32 %a, %a
   %cmp1 = icmp ne i32 %a, %b
+  call void @llvm.genx.GenISA.CatchAllDebugLine()
   %1 = add i32 %0, %b
   %2 = add i32 %1, %b
   %3 = add i32 %2, %a
@@ -61,4 +62,5 @@ entry:
   ret void
 }
 
+declare void @llvm.genx.GenISA.CatchAllDebugLine()
 !igc.functions = !{}

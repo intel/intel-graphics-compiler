@@ -185,12 +185,7 @@ namespace IGC {
 
     static unsigned numInsts(const Function& F)
     {
-        unsigned num = 0;
-        for (auto& BB : F)
-        {
-            num += BB.getInstList().size();
-        }
-        return num;
+        return std::count_if(llvm::inst_begin(F), llvm::inst_end(F), [](const auto& I){ return !isDbgIntrinsic(&I); });
     }
 
     //diagnosis code: __declspec(thread) int sinkCounter = 0;
