@@ -1859,15 +1859,35 @@ As a result, we reduce 2x necessary work
     }
 
     // llvm.fma.f64
-    if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fma)
+    if (resTy->isDoubleTy() && II &&
+        (II->getIntrinsicID() == Intrinsic::fma ||
+         GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtn ||
+         GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtp ||
+         GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtz))
     {
         Function* newFunc = getOrCreateFunction(FUNCTION_DP_FMA);
         Function* CurrFunc = I.getParent()->getParent();
+
+        // Recognize which rounding mode is used, by default is round to nearest
+        unsigned roundingMode = EmuRoundingMode::ROUND_TO_NEAREST_EVEN;
+        if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtn)
+        {
+            roundingMode = EmuRoundingMode::ROUND_TO_NEGATIVE;
+        }
+        else if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtp)
+        {
+            roundingMode = EmuRoundingMode::ROUND_TO_POSITIVE;
+        }
+        else if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtz)
+        {
+            roundingMode = EmuRoundingMode::ROUND_TO_ZERO;
+        }
+
         Value* args[7];
         args[0] = I.getOperand(0);
         args[1] = I.getOperand(1);
         args[2] = I.getOperand(2);
-        args[3] = ConstantInt::get(intTy, m_roundingMode); // rounding mode
+        args[3] = ConstantInt::get(intTy, roundingMode); // rounding mode
         args[4] = ConstantInt::get(intTy, m_flushToZero); // flush to zero
         args[5] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
         args[6] = createFlagValue(CurrFunc);  // FP Flag, ignored

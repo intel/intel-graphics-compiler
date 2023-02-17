@@ -121,6 +121,15 @@ namespace IGC
             NUM_TYPES
         };
 
+        enum EmuRoundingMode
+        {
+            ROUND_TO_NEAREST_EVEN,
+            ROUND_TO_NEGATIVE,
+            ROUND_TO_POSITIVE,
+            ROUND_TO_ZERO,
+            ROUND_TO_ANY
+        };
+
         // Pass identification, replacement for typeid
         static char ID;
 
