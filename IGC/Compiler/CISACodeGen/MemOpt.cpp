@@ -285,7 +285,7 @@ namespace {
                 for (auto rit = AccessIntrs.rbegin(),
                     rie = AccessIntrs.rend(); rit != rie; ++rit)
                 {
-                    if (IGCLLVM::getAlign(*std::get<0>(*rit)) >= 4)
+                    if (IGCLLVM::getAlignmentValue(std::get<0>(*rit)) >= 4)
                         return false;
                 }
 
