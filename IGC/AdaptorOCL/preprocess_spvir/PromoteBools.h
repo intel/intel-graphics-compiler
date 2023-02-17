@@ -66,7 +66,6 @@ namespace IGC
 
         // Promoting values
         llvm::DenseMap<llvm::Value*, llvm::Value*> promotedValuesCache;
-        llvm::DenseSet<llvm::Value*> doNotRemove;
         std::queue<llvm::Value*> promotionQueue;
         bool wasPromoted(llvm::Value* value);
 
