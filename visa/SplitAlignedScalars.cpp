@@ -16,6 +16,11 @@ bool SplitAlignedScalars::canReplaceDst(G4_INST *inst) {
   if (inst->useAcc())
     return false;
 
+  // dst must be 64 bit aligned for ternary instructions on certain platforms
+  if (inst->getBuilder().kernel.getPlatform() < Xe_XeHPSDV &&
+      inst->getNumSrc() == 3)
+    return false;
+
   // whitelist of supported instructions
   if (inst->isMov() || inst->isMath() || inst->isArithmetic() ||
       inst->isLogic() || inst->isCompare() || inst->isPseudoKill()) {
