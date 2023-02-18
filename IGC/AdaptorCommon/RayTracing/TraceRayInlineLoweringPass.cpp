@@ -173,9 +173,12 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(Function& F)
         return;
 
     ModuleMetaData* modMD = m_CGCtx->getModuleMetaData();
-    IGC::FunctionMetaData* funcMd = &modMD->FuncMD[&F];
-    funcMd->functionType = FunctionTypeMD::KernelFunction;
-    funcMd->hasSyncRTCalls = true;
+    if (modMD->FuncMD.find(&F) == modMD->FuncMD.end()) {
+        IGC::FunctionMetaData funcMd;
+        funcMd.functionType = FunctionTypeMD::KernelFunction;
+        modMD->FuncMD.insert(std::make_pair(&F, funcMd));
+    }
+    modMD->FuncMD[&F].hasSyncRTCalls = true;
 
     RTBuilder builder(&*F.getEntryBlock().begin(), *m_CGCtx);
     //let's use a very conservative way to shrink SharedMem size for now:

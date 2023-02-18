@@ -520,7 +520,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, const IGCMD::MetaDataU
     if (!isEntryFunc(pMdUtils, &F))
         return;
 
-    FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+    FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
     for (const auto& Arg : F.args())
     {
         PointerType* PTy = dyn_cast<PointerType>(Arg.getType());
@@ -567,7 +567,7 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDat
     if (!isEntryFunc(pMdUtils, &F))
         return;
 
-    FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+    FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
     for (const auto& Arg : F.args())
     {
         PointerType* PTy = dyn_cast<PointerType>(Arg.getType());
