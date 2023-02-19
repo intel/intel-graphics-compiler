@@ -180,6 +180,7 @@ struct SPatchExecutionEnvironment :
     uint32_t    LargestCompiledSIMDSize;
     uint32_t    CompiledSubGroupsNumber;
     uint32_t    HasBarriers;
+    uint32_t    HasSample;
     uint32_t    DisableMidThreadPreemption;
     uint32_t    CompiledSIMD8;
     uint32_t    CompiledSIMD16;
@@ -209,7 +210,7 @@ struct SPatchExecutionEnvironment :
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (132 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert(sizeof(SPatchExecutionEnvironment) == (136 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString

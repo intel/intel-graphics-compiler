@@ -268,6 +268,11 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
         case GenXIntrinsic::genx_sbarrier:
           NumBarriers = 1;
           break;
+        case GenXIntrinsic::genx_3d_sample:
+        case GenXIntrinsic::genx_sample:
+        case GenXIntrinsic::genx_sample_unorm:
+          UsesSample = true;
+          break;
         case GenXIntrinsic::genx_dpas:
         case GenXIntrinsic::genx_dpas2:
         case GenXIntrinsic::genx_dpasw:

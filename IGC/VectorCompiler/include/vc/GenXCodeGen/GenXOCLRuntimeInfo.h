@@ -175,6 +175,7 @@ public:
     bool UsesGroupId = false;
     bool UsesDPAS = false;
     int NumBarriers = 0;
+    bool UsesSample = false;
     bool UsesReadWriteImages = false;
     bool SupportsDebugging = false;
     unsigned SLMSize = 0;
@@ -240,6 +241,7 @@ public:
     unsigned getNumThreads() const { return 0; }
 
     int getNumBarriers() const { return NumBarriers; }
+    bool usesSample() const { return UsesSample; }
     bool usesReadWriteImages() const { return UsesReadWriteImages; }
     bool requireDisableEUFusion() const { return DisableEUFusion; }
 

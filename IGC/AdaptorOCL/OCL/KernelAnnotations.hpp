@@ -308,6 +308,7 @@ struct ExecutionEnvironment
     bool   HasDeviceEnqueue                           = false;
     // for PVC+ targets this field preserves the number of barriers
     uint32_t HasBarriers                              = 0;
+    bool   HasSample                                  = false;
     bool   IsSingleProgramFlow                        = false;
     //DWORD  PerSIMDLanePrivateMemorySize               = 0;
     bool   HasFixedWorkGroupSize                      = false;

@@ -866,6 +866,9 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tHasBarriers = %d\n",
                     pPatchItem->HasBarriers);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tHasSample = %d\n",
+                    pPatchItem->HasSample);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tDisableMidThreadPreemption = %s\n",
                     pPatchItem->DisableMidThreadPreemption ?

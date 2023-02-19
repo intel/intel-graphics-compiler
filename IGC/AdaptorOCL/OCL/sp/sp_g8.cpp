@@ -2070,6 +2070,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
 
         patch.HasBarriers                       = iOpenCL::EncodeNumBarriers(annotations.m_executionEnvironment.HasBarriers);
+        patch.HasSample                         = annotations.m_executionEnvironment.HasSample;
         patch.DisableMidThreadPreemption        = annotations.m_executionEnvironment.DisableMidThreadPreemption;
 
         patch.UsesStatelessSpillFill = (annotations.m_executionEnvironment.PerThreadScratchSpace > 0);

@@ -530,6 +530,8 @@ public:
     void SetHasDPAS() { m_HasDPAS = true; }
     bool GetHasEval() const { return m_HasEval; }
     void SetHasEval() { m_HasEval = true; }
+    bool GetHasSample() const { return m_HasSample; }
+    void SetHasSample() { m_HasSample = true; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
     void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
     uint32_t GetStatelessWritesCount() const { return m_StatelessWritesCount; }
@@ -741,6 +743,7 @@ protected:
     bool m_isIntelSymbolTableVoidProgram = false;
     // Shader has LSC store messages with non-default L1 cache control
     bool m_HasLscStoresWithNonDefaultL1CacheControls = false;
+    bool m_HasSample = false;
 };
 
 struct SInstContext

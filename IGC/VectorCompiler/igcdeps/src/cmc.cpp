@@ -712,6 +712,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   // HasBarriers isn't bool and preserves number of barriers for PVC+ targets
   // dispite misleading naming.
   ExecEnv.HasBarriers = BackendInfo.getNumBarriers();
+  ExecEnv.HasSample = BackendInfo.usesSample();
   ExecEnv.HasDPAS = BackendInfo.usesDPAS();
   ExecEnv.numThreads = BackendInfo.getNumThreads();
   ExecEnv.HasReadWriteImages = BackendInfo.usesReadWriteImages();

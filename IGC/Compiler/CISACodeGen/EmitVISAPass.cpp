@@ -6961,6 +6961,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 {
     EOPCODE opCode = GetOpCode(inst);
 
+    m_currShader->SetHasSample();
     ResourceDescriptor resource = GetSampleResourceHelper(inst);
 
 
