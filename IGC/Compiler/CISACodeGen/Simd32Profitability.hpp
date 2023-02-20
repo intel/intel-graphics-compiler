@@ -72,8 +72,6 @@ namespace IGC
         bool isSelectBasedOnGlobalIdX(llvm::Value*);
 
         bool checkPSSimd32Profitable();
-
-        void print(llvm::raw_ostream& OS) const;
     };
 
 } // namespace IGC
