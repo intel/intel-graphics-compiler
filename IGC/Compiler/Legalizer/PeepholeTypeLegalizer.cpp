@@ -408,25 +408,40 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
             {
                 if (auto val = dyn_cast<ConstantInt>(Src2))
                 {
-                    int64_t offset = val->getSExtValue();
-                    IGC_ASSERT(offset >= 0 && offset < (int64_t)Src1width);
-                    IGC_ASSERT(quotient == 2);
-                    if (offset < promoteToInt)
+                    int64_t ShiftAmt = val->getSExtValue();
+                    IGC_ASSERT(ShiftAmt >= 0 && ShiftAmt < (int64_t)Src1width);
+                    uint64_t EltIdx = ShiftAmt / promoteToInt + Idx;
+                    uint64_t NewShiftAmt = ShiftAmt % promoteToInt;
+
+                    if (NewShiftAmt == 0)
                     {
-                        NewInst = m_builder->CreateLShr(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx), offset);
-                        if (Idx == 0)
-                        {
-                            Value* shrVal = NewInst;
-                            Value* shlVal = m_builder->CreateShl(m_builder->CreateExtractElement(NewLargeSrc1VecForm, 1), promoteToInt - offset);
-                            NewInst = m_builder->CreateOr(shrVal, shlVal);
-                        }
+                        // Simple case: we can just extract parts
+                        NewInst = m_builder->CreateExtractElement(NewLargeSrc1VecForm, EltIdx);
                     }
                     else
                     {
-                        if (Idx == 0)
-                            NewInst = m_builder->CreateLShr(m_builder->CreateExtractElement(NewLargeSrc1VecForm, 1), offset - promoteToInt);
-                        else
-                            NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
+                        auto getElt = [&](Value* Vec, uint64_t i) -> Value* {
+                            // if EltIdx is OOB of vector, return 0
+                            if (i < cast<IGCLLVM::FixedVectorType>(Vec->getType())->getNumElements())
+                                return m_builder->CreateExtractElement(Vec, i);
+                            else
+                                return ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
+
+                        };
+                        auto lshr = [&](Value* Op0, uint64_t ShiftAmt) -> Value* {
+                            if (auto* C = dyn_cast<Constant>(Op0); C && C->isNullValue())
+                                return C;
+                            return m_builder->CreateLShr(Op0, ShiftAmt);
+                        };
+                        auto shl = [&](Value* Op0, uint64_t ShiftAmt) -> Value* {
+                            if (auto* C = dyn_cast<Constant>(Op0); C && C->isNullValue())
+                                return C;
+                            return m_builder->CreateShl(Op0, ShiftAmt);
+                        };
+                        // V[Idx] = (V[EltIdx] >> NewShiftAmt) | (V[EltIdx + 1] << (promoteToInt - NewShiftAmt))
+                        NewInst = m_builder->CreateOr(
+                            lshr(getElt(NewLargeSrc1VecForm, EltIdx), NewShiftAmt),
+                            shl(getElt(NewLargeSrc1VecForm, EltIdx + 1), promoteToInt - NewShiftAmt));
                     }
                 }
                 else
