@@ -281,6 +281,7 @@ def : Proc<"Gen9LP", [
 
 def : Proc<"Gen11", [
   FeatureHWTIDFromPredef,
+  FeatureHasMadSimd32,
   FeatureHasMediaWalker,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
@@ -299,6 +300,7 @@ def : Proc<"Gen11", [
 def : Proc<"XeLP", [
   FeatureFusedEU,
   FeatureHWTIDFromPredef,
+  FeatureHasMadSimd32,
   FeatureHasMediaWalker,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
@@ -318,6 +320,7 @@ def : Proc<"XeHP", [
   FeatureFusedEU,
   FeatureHasAdd3,
   FeatureHasBfn,
+  FeatureHasMadSimd32,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureIEEEDivSqrt,
@@ -336,6 +339,7 @@ def : Proc<"XeHPG", [
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
+  FeatureHasMadSimd32,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureIndirectByteGRFCrossing,
@@ -355,6 +359,7 @@ def : Proc<"XeLPG", [
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
+  FeatureHasMadSimd32,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureIndirectByteGRFCrossing,
@@ -373,6 +378,7 @@ def : Proc<"XeHPC", [
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
+  FeatureHasMadSimd32,
   FeatureHasNamedBarriers,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
