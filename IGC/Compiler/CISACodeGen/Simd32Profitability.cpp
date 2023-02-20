@@ -559,7 +559,14 @@ bool Simd32ProfitabilityAnalysis::runOnFunction(Function& F)
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         m_isSimd32Profitable = checkPSSimd32Profitable();
     }
+    print(IGC::Debug::ods());
     return false;
+}
+
+void Simd32ProfitabilityAnalysis::print(llvm::raw_ostream& OS) const
+{
+    OS << "\nisSimd16Profitable: " << m_isSimd16Profitable;
+    OS << "\nisSimd32Profitable: " << m_isSimd32Profitable << "\n\n";
 }
 
 static bool isPayloadHeader(Value* V) {
@@ -698,6 +705,15 @@ bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value* V) {
     auto Op1 = PN->getIncomingValue(1);
     if (!WI->isUniform(Op1))
         return false;
+
+    /* NOTE: isSelectBasedOnGlobalIdX is only called for non-uniform 'V'.
+     * However, 'V' must be a PHINode (or a sequence of left shifts by constant
+     * value which eventually boils down to a PHINode) with 2 uniform incoming
+     * values to move on from this point in the code.
+     *
+     * So it looks like following part of this function can't be reached.
+     */
+    llvm_unreachable("Reached seemingly dead code");
 
     auto BB0 = PN->getIncomingBlock(0);
     auto BB1 = PN->getIncomingBlock(1);
