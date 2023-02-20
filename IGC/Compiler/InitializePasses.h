@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -56,6 +56,11 @@ void initializeExtensionFuncsResolutionPass(llvm::PassRegistry&);
 void initializeErrorCheckPass(llvm::PassRegistry&);
 void initializePoisonFP64KernelsPass(llvm::PassRegistry&);
 void initializeReduceOptPassPass(llvm::PassRegistry&);
+void initializeGASResolvingPass(llvm::PassRegistry&);
+void initializeGASRetValuePropagatorPass(llvm::PassRegistry&);
+void initializeStaticGASResolutionPass(llvm::PassRegistry&);
+void initializeLowerGPCallArgPass(llvm::PassRegistry&);
+void initializeGenericAddressAnalysisPass(llvm::PassRegistry&);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
 void initializeGenFDIVEmulationPass(llvm::PassRegistry&);
 void initializeGenIRLoweringPass(llvm::PassRegistry&);

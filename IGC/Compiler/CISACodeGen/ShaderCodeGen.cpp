@@ -37,7 +37,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PreRAScheduler.hpp"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
-#include "Compiler/CISACodeGen/ResolveGAS.h"
+#include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
 #include "Compiler/CISACodeGen/SimplifyConstant.h"

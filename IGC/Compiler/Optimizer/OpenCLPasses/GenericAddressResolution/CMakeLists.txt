@@ -11,6 +11,11 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__SRC__GenericAddressResolution
     "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressDynamicResolution.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GASResolving.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GASRetValuePropagator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/StaticGASResolution.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LowerGPCallArg.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GASPropagator.cpp"
   )
 set(IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution
     ${IGC_BUILD__SRC__GenericAddressResolution}
@@ -20,6 +25,11 @@ set(IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution
 
 set(IGC_BUILD__HDR__GenericAddressResolution
     "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressDynamicResolution.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GASResolving.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GASRetValuePropagator.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/StaticGASResolution.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LowerGPCallArg.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GASPropagator.h"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution
     ${IGC_BUILD__HDR__GenericAddressResolution}
