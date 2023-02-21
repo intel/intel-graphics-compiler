@@ -201,6 +201,10 @@ private:
   /// True if subtarget supports media walker
   bool HasMediaWalker = false;
 
+  /// True if subtarget supports large GRF mode
+  bool HasLargeGRF = false;
+
+
   /// Max supported SLM size (in kbytes)
   int MaxSLMSize = 64;
 
@@ -375,6 +379,8 @@ public:
   bool hasSLMOWord() const { return HasSLMOWord; }
 
   bool hasMadSimd32() const { return HasMadSimd32; }
+
+  bool hasLargeGRF() const { return HasLargeGRF; }
 
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.

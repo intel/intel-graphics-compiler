@@ -214,6 +214,10 @@ def FeatureHasMediaWalker : SubtargetFeature<"feature_has_media_walker",
                                              "HasMediaWalker", "true",
                                              "Target supports media walker interface">;
 
+def FeatureHasLargeGRF : SubtargetFeature<"feature_has_large_grf",
+                                          "HasLargeGRF", "true",
+                                          "Target supports large GRF mode">;
+
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
 //===----------------------------------------------------------------------===//
@@ -320,6 +324,7 @@ def : Proc<"XeHP", [
   FeatureFusedEU,
   FeatureHasAdd3,
   FeatureHasBfn,
+  FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
@@ -339,6 +344,7 @@ def : Proc<"XeHPG", [
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
+  FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
@@ -359,6 +365,7 @@ def : Proc<"XeLPG", [
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
+  FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasOWordSLM,
   FeatureHasPackedFloat,
@@ -378,6 +385,7 @@ def : Proc<"XeHPC", [
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
+  FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasNamedBarriers,
   FeatureHasOWordSLM,
