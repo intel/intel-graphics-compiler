@@ -240,12 +240,12 @@ public:
     // Note: 'traceRayCtrl' should be already by 8 bits to its location
     // in the payload before passing as an argument to this function.
     // getTraceRayPayload() just ORs together the bvh, ctrl, and stack id.
-    Value* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
+    TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
 
     void createReadSyncTraceRay(Value* val);
 
-    Value* createSyncTraceRay(Value* bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
-    Value* createSyncTraceRay(uint8_t bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
+    TraceRaySyncIntrinsic* createSyncTraceRay(Value* bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
+    TraceRaySyncIntrinsic* createSyncTraceRay(uint8_t bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
 
 
     void WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, const DenseMap<uint32_t, Value*>& vals, const Twine& dstName = "", const Twine& srcName = "");

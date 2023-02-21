@@ -273,7 +273,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer()
 // Note: 'traceRayCtrl' should be already by 8 bits to its location
 // in the payload before passing as an argument to this function.
 // getTraceRayPayload() just ORs together the bvh, ctrl, and stack id.
-Value* RTBuilder::createTraceRay(
+TraceRayIntrinsic* RTBuilder::createTraceRay(
     Value* bvhLevel,
     Value* traceRayCtrl,
     bool isRayQuery,
@@ -299,7 +299,7 @@ Value* RTBuilder::createTraceRay(
 
     Value* Args[] = { GlobalPointer, bitField };
 
-    auto* TraceRay = this->CreateCall(traceFn, Args);
+    auto* TraceRay = cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
     return TraceRay;
 }
 
@@ -312,20 +312,20 @@ void RTBuilder::createReadSyncTraceRay(Value* val)
     this->CreateCall(readFunc, val);
 }
 
-Value* RTBuilder::createSyncTraceRay(
+TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
     Value* bvhLevel,
     Value* traceRayCtrl,
     const Twine& PayloadName)
 {
-    return createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName);
+    return cast<TraceRaySyncIntrinsic>(createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName));
 }
 
-Value* RTBuilder::createSyncTraceRay(
+TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
     uint8_t bvhLevel,
     Value* traceRayCtrl,
     const Twine& PayloadName)
 {
-    return createTraceRay(this->getInt32(bvhLevel), this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName);
+    return cast<TraceRaySyncIntrinsic>(createTraceRay(this->getInt32(bvhLevel), this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName));
 }
 
 
