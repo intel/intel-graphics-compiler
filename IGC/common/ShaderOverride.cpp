@@ -295,7 +295,7 @@ void overrideShaderIGA(PLATFORM const & platform, void *& genxbin, int & binSize
     }
 
 
-    vISA::freeBlock(genxbin);
+    freeBlock(genxbin);
     //when we releaseContext memory returned is freed
     genxbin = malloc(overrideBinarySize);
     if(genxbin)
@@ -319,7 +319,7 @@ void overrideShaderBinary(void *& genxbin, int & binSize, std::string const &bin
     loadBin = loadBinFile(binFileName, loadBinSize);
     if(loadBin != nullptr)
     {
-        vISA::freeBlock(genxbin);
+        freeBlock(genxbin);
         genxbin = loadBin;
         binSize = loadBinSize;
         binOverride = true;

@@ -5110,7 +5110,7 @@ namespace IGC
         builderOpt = VISA_BUILDER_BOTH;
 #endif
 
-        V(vISA::CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
+        V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
             &m_vISAWaTable));
 
         if (IsCodePatchCandidate())
@@ -5853,9 +5853,9 @@ namespace IGC
         // Create a new builder for parsing the visaasm
         CodeGenContext *const context = m_program->GetContext();
         TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-        V(vISA::CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER,
-                                  VISA_BUILDER_BOTH, VISAPlatform, params.size(),
-                                  params.data(), &m_vISAWaTable));
+        V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH,
+                            VISAPlatform, params.size(), params.data(),
+                            &m_vISAWaTable));
         // Use the same build options as before, except that we enable vISA
         // verifier to catch potential errors in user inline assembly
         SetBuilderOptions(vAsmTextBuilder);
@@ -6226,7 +6226,7 @@ namespace IGC
         }
         else
         {
-            vISA::freeBlock(genxbin);
+            freeBlock(genxbin);
         }
 
         void* dbgInfo = nullptr;
@@ -6264,7 +6264,7 @@ namespace IGC
 
             memcpy_s(dbgInfo, dbgSize, genxdbgInfo, dbgSize);
 
-            vISA::freeBlock(genxdbgInfo);
+            freeBlock(genxdbgInfo);
         }
 
         pOutput->m_programBin = kernel;
@@ -6567,10 +6567,10 @@ namespace IGC
     {
         if (vAsmTextBuilder != nullptr)
         {
-            V(vISA::DestroyVISABuilder(vAsmTextBuilder));
+            V(::DestroyVISABuilder(vAsmTextBuilder));
             vAsmTextBuilder = nullptr;
         }
-        V(vISA::DestroyVISABuilder(vbuilder));
+        V(::DestroyVISABuilder(vbuilder));
         vbuilder = nullptr;
     }
 

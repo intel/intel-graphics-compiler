@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Option.h"
 #include "PlatformInfo.h"
 #include "Timer.h"
+#include "VISADefines.h"
 #include "VISAKernel.h"
 #include "visa_igc_common_header.h"
 
@@ -201,6 +202,13 @@ int main(int argc, const char *argv[]) {
   return err;
 }
 #endif
+
+DLL_EXPORT void freeBlock(void *ptr) {
+  if (ptr != NULL) {
+    free(ptr);
+  }
+}
+
 
 #ifndef DLL_MODE
 

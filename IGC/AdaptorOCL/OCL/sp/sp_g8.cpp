@@ -2212,7 +2212,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 retValue.Success = false;
                 return retValue;
             }
-            vISA::freeBlock(buffer);
+            freeBlock(buffer);
         }
     }
 

@@ -11,9 +11,7 @@ SPDX-License-Identifier: MIT
 #include "inc/common/sku_wa.h"
 #include "visa_igc_common_header.h"
 
-
-namespace vISA {
-VISA_BUILDER_API int
+extern "C" VISA_BUILDER_API int
 CreateVISABuilder(VISABuilder *&builder, vISABuilderMode mode,
                   VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform,
                   int numArgs, const char *flags[], const WA_TABLE *pWaTable) {
@@ -27,15 +25,10 @@ CreateVISABuilder(VISABuilder *&builder, vISABuilderMode mode,
   return status;
 }
 
-VISA_BUILDER_API int DestroyVISABuilder(VISABuilder *&builder) {
+extern "C" VISA_BUILDER_API int DestroyVISABuilder(VISABuilder *&builder) {
   CISA_IR_Builder *cisa_builder = static_cast<CISA_IR_Builder *>(builder);
   if (!cisa_builder)
     return VISA_FAILURE;
   int status = CISA_IR_Builder::DestroyBuilder(cisa_builder);
   return status;
-}
-
-void freeBlock(void *ptr) {
-  free(ptr);
-}
 }

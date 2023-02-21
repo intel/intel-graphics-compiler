@@ -693,7 +693,7 @@ public:
       IGC_ASSERT(GenDbgInfoDataSize == 0);
       return;
     }
-    vISA::freeBlock(GenDbgInfoDataPtr);
+    freeBlock(GenDbgInfoDataPtr);
     GenDbgInfoDataPtr = nullptr;
     GenDbgInfoDataSize = 0;
   }

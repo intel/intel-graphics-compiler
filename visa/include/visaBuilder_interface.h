@@ -13,19 +13,17 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 #include "visa_wa.h"
 
-namespace vISA {
 // Entry point to the vISA finalizer. Once a vISA builder is created, one can
 // create kernels, add variables and append instructions, and compile it to
 // native ISA.
-int CreateVISABuilder(VISABuilder *&builder, vISABuilderMode mode,
-                      VISA_BUILDER_OPTION builderOption,
-                      TARGET_PLATFORM platform, int numArgs,
-                      const char *flags[], const WA_TABLE *pWaTable);
+extern "C" int CreateVISABuilder(VISABuilder *&builder, vISABuilderMode mode,
+                                 VISA_BUILDER_OPTION builderOption,
+                                 TARGET_PLATFORM platform, int numArgs,
+                                 const char *flags[], const WA_TABLE *pWaTable);
 // Destroy the vISA builder and release any internal resources used by it. Note
 // that it does not free compilation output such as the kernel binary and debug
 // info, as they may have longer life time than the builder itself.
-int DestroyVISABuilder(VISABuilder *&builder);
+extern "C" int DestroyVISABuilder(VISABuilder *&builder);
 
 // Interface to free the kernel ISA and debug info binary.
-void freeBlock(void *ptr);
-} // namespace vISA
+extern "C" void freeBlock(void *ptr);
