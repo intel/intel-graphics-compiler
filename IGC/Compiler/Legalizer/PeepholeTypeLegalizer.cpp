@@ -413,21 +413,21 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
                     uint64_t EltIdx = ShiftAmt / promoteToInt + Idx;
                     uint64_t NewShiftAmt = ShiftAmt % promoteToInt;
 
+                    auto getElt = [&](Value* Vec, uint64_t i) -> Value* {
+                        // if EltIdx is OOB of vector, return 0
+                        if (i < cast<IGCLLVM::FixedVectorType>(Vec->getType())->getNumElements())
+                            return m_builder->CreateExtractElement(Vec, i);
+                        else
+                            return ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
+                    };
+
                     if (NewShiftAmt == 0)
                     {
                         // Simple case: we can just extract parts
-                        NewInst = m_builder->CreateExtractElement(NewLargeSrc1VecForm, EltIdx);
+                        NewInst = getElt(NewLargeSrc1VecForm, EltIdx);
                     }
                     else
                     {
-                        auto getElt = [&](Value* Vec, uint64_t i) -> Value* {
-                            // if EltIdx is OOB of vector, return 0
-                            if (i < cast<IGCLLVM::FixedVectorType>(Vec->getType())->getNumElements())
-                                return m_builder->CreateExtractElement(Vec, i);
-                            else
-                                return ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
-
-                        };
                         auto lshr = [&](Value* Op0, uint64_t ShiftAmt) -> Value* {
                             if (auto* C = dyn_cast<Constant>(Op0); C && C->isNullValue())
                                 return C;
