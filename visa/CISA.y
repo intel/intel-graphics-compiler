@@ -213,7 +213,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
         //  strided: regs[0] = base; regs[1] = strided
         //  block2d: regs = {surfBase,surfWidth,surfHeight,surfPitch,surfX,surfY}
         //
-        // for TYPED: {U, V, R, LOD}
+        // for TYPED: {U, V, R, sample index/LOD}
         // for TYPED block2d: regs = {BlockStartX, BlockStartY}
         VISA_opnd               *regs[6];
         LSC_ADDR                 addr;
@@ -568,6 +568,10 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <lsc_addr_operand>       LscUntypedStridedAddrOperand
 %type <lsc_addr_operand>       LscUntypedBlock2dAddrOperand
 %type <lsc_addr_operand>       LscTypedAddrOperand
+%type <lsc_addr_operand>       LscTypedOneAddrOperand
+%type <lsc_addr_operand>       LscTypedTwoAddrOperand
+%type <lsc_addr_operand>       LscTypedThreeAddrOperand
+%type <lsc_addr_operand>       LscTypedFourAddrOperand
 %token <lsc_addr_size>         LSC_ADDR_SIZE_TK
 %type <lsc_addr_type>          LscRegAddrModelKind
 %type <intval>                 LscAddrImmOffsetOpt
@@ -1729,7 +1733,6 @@ LscUntypedAtomic:
             CISAlineno);
     }
 
-//
 // EXAMPLES:
 // SS using only U:
 //     lsc_load_quad.tgm   V60:u32.x     ss(T6)[V52]:a32
@@ -1737,7 +1740,6 @@ LscUntypedAtomic:
 //     lsc_load_quad.tgm   V60:u32.xyzw  bss(V10)[V52,V53]:a32
 // BSS using U, V, R, and LOD:
 //     lsc_load_quad.tgm   V60:u32.xz    bss(V10)[V52,V53,V54,V55]:a32
-//
 LscTypedLoad:
 //  1          2                  3                     4             5
     Predicate  LSC_LOAD_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
@@ -1764,7 +1766,7 @@ LscTypedLoad:
             $7.regs[0],  // src0_u
             $7.regs[1],  // src0_v
             $7.regs[2],  // src0_r
-            $7.regs[3],  // src0_lod
+            $7.regs[3],  // feature (for example, LOD)
             nullptr,     // src1 data
             nullptr,     // src2 data
             CISAlineno);
@@ -1804,7 +1806,7 @@ LscTypedStore:
             $6.regs[0],  // src0_u
             $6.regs[1],  // src0_v
             $6.regs[2],  // src0_r
-            $6.regs[3],  // src0_lod
+            $6.regs[3],  // feature (for example, LOD)
             $7.reg,      // src1 data
             nullptr,     // src2 data
             CISAlineno);
@@ -1942,8 +1944,7 @@ LscUntypedBlock2dAddrOperand:
         $$ = {nullptr,{$3,$5,$7,$9,$11,$13},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
     }
 
-LscTypedAddrOperand:
-//
+LscTypedOneAddrOperand:
 // just U
 //  1               2
     LscRegAddrModel LBRACK
@@ -1954,10 +1955,11 @@ LscTypedAddrOperand:
     {
         $$ = {$1.surface,{$3},{$1.type,1,0,$5}};
     }
+LscTypedTwoAddrOperand:
 //
 // U, V
 //  1               2
-  | LscRegAddrModel LBRACK
+   LscRegAddrModel LBRACK
 //  3                    4     5
     LscPayloadNonNullReg COMMA LscPayloadNonNullReg
 //    6             7
@@ -1965,10 +1967,10 @@ LscTypedAddrOperand:
     {
         $$ = {$1.surface,{$3,$5},{$1.type,1,0,$7}};
     }
-//
-// U, V, R
+LscTypedThreeAddrOperand:
+// U, V, R/feature
 //  1               2
-  | LscRegAddrModel LBRACK
+   LscRegAddrModel LBRACK
 //  3                    4     5                    6     7
     LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
 //    8             9
@@ -1976,17 +1978,24 @@ LscTypedAddrOperand:
     {
         $$ = {$1.surface,{$3,$5,$7},{$1.type,1,0,$9}};
     }
-//
-// U, V, R, LOD
+
+LscTypedFourAddrOperand:
+// U, V, R, feature
 //  1               2
-  | LscRegAddrModel LBRACK
-//  3                    4     5                    6     7                    8     9
-    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
-//    10            11
-      RBRACK LSC_ADDR_SIZE_TK
+   LscRegAddrModel LBRACK
+//  3                    4     5                    6     7
+    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
+//    8             9           10     11
+    COMMA LscPayloadNonNullReg RBRACK LSC_ADDR_SIZE_TK
     {
         $$ = {$1.surface,{$3,$5,$7,$9},{$1.type,1,0,$11}};
     }
+
+LscTypedAddrOperand:
+  LscTypedOneAddrOperand
+  | LscTypedTwoAddrOperand
+  | LscTypedThreeAddrOperand
+  | LscTypedFourAddrOperand
 
 // Enables stuff like
 // [VADDR + 4*0x100 - 32]

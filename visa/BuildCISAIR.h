@@ -607,8 +607,8 @@ public:
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR_TYPE addrModel,
       LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_opnd *surface,
-      VISA_opnd *dst_data, VISA_opnd *src0_Us, VISA_opnd *src0_Vs,
-      VISA_opnd *src0_Rs, VISA_opnd *src0_LODs, VISA_opnd *src1_data,
+      VISA_opnd *dst_data, VISA_opnd *coord0s, VISA_opnd *coord1s,
+      VISA_opnd *coord2s, VISA_opnd *features, VISA_opnd *src1_data,
       VISA_opnd *src2_data, int lineNum);
   bool CISA_create_lsc_fence(LSC_SFID lscSfid, LSC_FENCE_OP fence,
                              LSC_SCOPE scope, int lineNum);

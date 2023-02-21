@@ -558,8 +558,8 @@ int IR_Builder::translateLscTypedInst(
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
     G4_Operand *surface,      // surface/bti
     G4_DstRegRegion *dstData, // dst on load/atomic
-    G4_SrcRegRegion *src0AddrUs, G4_SrcRegRegion *src0AddrVs,
-    G4_SrcRegRegion *src0AddrRs, G4_SrcRegRegion *src0AddrLODs,
+    G4_SrcRegRegion *coord0s, G4_SrcRegRegion *coord1s,
+    G4_SrcRegRegion *coord2s, G4_SrcRegRegion *features,
     G4_SrcRegRegion *src1Data, // store data/extra atomic operands
     G4_SrcRegRegion *src2Data  // icas/fcas only
 ) {
@@ -613,10 +613,10 @@ int IR_Builder::translateLscTypedInst(
         std::max<int>(1, addrSizeBits * (int)execSize / 8 / BYTES_PER_GRF);
     checkPayloadSize(which, decl, regsPerAddrChannel);
   };
-  checkAddrPayloadSize("src0AddrUs", src0AddrUs);
-  checkAddrPayloadSize("src0AddrVs", src0AddrVs);
-  checkAddrPayloadSize("src0AddrRs", src0AddrRs);
-  checkAddrPayloadSize("src0AddrLODs", src0AddrLODs);
+
+  checkAddrPayloadSize("src0AddrUs", coord0s);
+  checkAddrPayloadSize("src0AddrVs", coord1s);
+  checkAddrPayloadSize("src0AddrRs", coord2s);
 
   if (opInfo.op == LSC_READ_STATE_INFO) {
     // like fences, send requires *something* (at least one reg) to be
@@ -629,10 +629,10 @@ int IR_Builder::translateLscTypedInst(
     srcAddrRegs[1] = 0;
     srcAddrs[0] = src0Dummy;
   } else {
-    PayloadSource srcAddrPayloads[4]{}; // U, V, R, LOD
+    PayloadSource srcAddrPayloads[4]{}; // U, V, R, feature
     unsigned numSrcAddrPayloads = 0;
-    buildTypedSurfaceAddressPayload(src0AddrUs, src0AddrVs, src0AddrRs,
-                                    src0AddrLODs, execSize, instOpt,
+    buildTypedSurfaceAddressPayload(coord0s, coord1s, coord2s,
+                                    features, execSize, instOpt,
                                     srcAddrPayloads, numSrcAddrPayloads);
     preparePayload(
         srcAddrs, srcAddrRegs, execSize,

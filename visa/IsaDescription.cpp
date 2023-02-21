@@ -3242,7 +3242,6 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_UNTYPED_OP(LSC_STORE_STRIDED, "lsc_store_strided"),
       LSC_UNTYPED_OP(LSC_STORE_QUAD, "lsc_store_quad"),
       LSC_UNTYPED_BLOCK2D_OP(LSC_STORE_BLOCK2D, "lsc_store_block2d"),
-      //
       LSC_UNTYPED_OP(LSC_ATOMIC_IINC, "lsc_atomic_iinc"),
       LSC_UNTYPED_OP(LSC_ATOMIC_IDEC, "lsc_atomic_idec"),
       LSC_UNTYPED_OP(LSC_ATOMIC_LOAD, "lsc_atomic_load"),
@@ -3268,6 +3267,15 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_UNTYPED_OP(LSC_CCS_UPDATE, "lsc_ccs_update"),
       LSC_OP_INVALID, // lsc_read_state_info only for typed
       LSC_OP_INVALID, // fence handled separately
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
 };
 
 static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
@@ -3304,7 +3312,17 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
       LSC_TYPED_OP(LSC_CCS_UPDATE, "lsc_ccs_update"),
       LSC_TYPED_OP(LSC_READ_STATE_INFO, "lsc_read_state_info"),
       LSC_OP_INVALID, // fence handled separately
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
+      LSC_OP_INVALID,
 };
+
 LscOpInfo LscOpInfoGet(LSC_OP op) {
   LscOpInfo opInfo{};
   if (!LscOpInfoFind(op, opInfo)) {

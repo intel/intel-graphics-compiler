@@ -7895,8 +7895,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
-    VISA_RawOpnd *dstData, VISA_RawOpnd *src0AddrUs, VISA_RawOpnd *src0AddrVs,
-    VISA_RawOpnd *src0AddrRs, VISA_RawOpnd *src0AddrLODs,
+    VISA_RawOpnd *dstData, VISA_RawOpnd *coord0s, VISA_RawOpnd *coord1s,
+    VISA_RawOpnd *coord2s, VISA_RawOpnd *features,
     VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
@@ -7904,31 +7904,32 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
 
   int status = VISA_SUCCESS;
 
+
   LSC_CHECK_NULL_VECTOR_OPERAND(surface);
   LSC_CHECK_NULL_DST(dstData);
-  LSC_CHECK_NULL_SRC(src0AddrUs);
-  LSC_CHECK_NULL_SRC(src0AddrVs);
-  LSC_CHECK_NULL_SRC(src0AddrRs);
-  LSC_CHECK_NULL_SRC(src0AddrLODs);
+  LSC_CHECK_NULL_SRC(coord0s);
+  LSC_CHECK_NULL_SRC(coord1s);
+  LSC_CHECK_NULL_SRC(coord2s);
+  LSC_CHECK_NULL_SRC(features);
   LSC_CHECK_NULL_SRC(src1Data);
   LSC_CHECK_NULL_SRC(src2Data);
 
   if (IS_GEN_BOTH_PATH) {
     CreateGenRawDstOperand(dstData);
-    CreateGenRawSrcOperand(src0AddrUs);
-    CreateGenRawSrcOperand(src0AddrVs);
-    CreateGenRawSrcOperand(src0AddrRs);
-    CreateGenRawSrcOperand(src0AddrLODs);
+    CreateGenRawSrcOperand(coord0s);
+    CreateGenRawSrcOperand(coord1s);
+    CreateGenRawSrcOperand(coord2s);
+    CreateGenRawSrcOperand(features);
     CreateGenRawSrcOperand(src1Data);
     CreateGenRawSrcOperand(src2Data);
 
     status = m_builder->translateLscTypedInst(
         subOpcode, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
         emask, cacheOpts, addrType, addrSize, dataShape, surface->g4opnd,
-        dstData->g4opnd->asDstRegRegion(), src0AddrUs->g4opnd->asSrcRegRegion(),
-        src0AddrVs->g4opnd->asSrcRegRegion(),
-        src0AddrRs->g4opnd->asSrcRegRegion(),
-        src0AddrLODs->g4opnd->asSrcRegRegion(),
+        dstData->g4opnd->asDstRegRegion(), coord0s->g4opnd->asSrcRegRegion(),
+        coord1s->g4opnd->asSrcRegRegion(),
+        coord2s->g4opnd->asSrcRegRegion(),
+        features->g4opnd->asSrcRegRegion(),
         src1Data->g4opnd->asSrcRegRegion(), src2Data->g4opnd->asSrcRegRegion());
   }
 
@@ -7952,10 +7953,10 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     //
     ADD_OPND(numOpnds, opnds, surface);
     ADD_OPND(numOpnds, opnds, dstData);
-    ADD_OPND(numOpnds, opnds, src0AddrUs);
-    ADD_OPND(numOpnds, opnds, src0AddrVs);
-    ADD_OPND(numOpnds, opnds, src0AddrRs);
-    ADD_OPND(numOpnds, opnds, src0AddrLODs);
+    ADD_OPND(numOpnds, opnds, coord0s);
+    ADD_OPND(numOpnds, opnds, coord1s);
+    ADD_OPND(numOpnds, opnds, coord2s);
+    ADD_OPND(numOpnds, opnds, features);
     ADD_OPND(numOpnds, opnds, src1Data);
     ADD_OPND(numOpnds, opnds, src2Data);
 

@@ -255,7 +255,10 @@ struct LscOpInfo {
   bool isOther() const { return kind == OpKind::OTHER; }
 
   // other queries
-  bool hasChMask() const { return op == LSC_LOAD_QUAD || op == LSC_STORE_QUAD; }
+  bool hasChMask() const {
+      return (op == LSC_LOAD_QUAD || op == LSC_STORE_QUAD
+             );
+  }
   bool isStrided() const {
     return op == LSC_LOAD_STRIDED || op == LSC_STORE_STRIDED;
   }

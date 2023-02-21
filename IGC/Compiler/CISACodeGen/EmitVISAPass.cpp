@@ -13067,7 +13067,7 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
         {
             if (IGC_IS_FLAG_DISABLED(EnableScalarTypedAtomics))
                 return false;
-            
+
             llvm::Value* pllbuffer = pInst->getOperand(0);
             llvm::Value* pllU      = pInst->getOperand(1);
             llvm::Value* pllV      = pInst->getOperand(2);
