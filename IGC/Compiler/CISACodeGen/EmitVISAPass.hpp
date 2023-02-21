@@ -39,6 +39,7 @@ namespace IGC
 // Forward declaration
 class IDebugEmitter;
 struct PSSignature;
+void initializeEmitPassPass(llvm::PassRegistry &);
 
 class EmitPass : public llvm::FunctionPass
 {
@@ -51,6 +52,7 @@ class EmitPass : public llvm::FunctionPass
     }
 
 public:
+    EmitPass();
     EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature = nullptr);
 
     virtual ~EmitPass();

@@ -814,6 +814,9 @@ static void setImpliedIGCKeys()
 
     IGC_SET_IMPLIED_REGKEY(ForceRTRetry, 1, RetryManagerFirstStateId, 1);
 
+    IGC_SET_IMPLIED_REGKEY(DumpVISAASMToConsole, 1, EnableVISASlowpath, true);
+    IGC_SET_IMPLIED_REGKEY(DumpVISAASMToConsole, 1, EnableVISADumpCommonISA, true);
+
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, ShaderDumpEnable, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISASlowpath, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISADumpCommonISA, true);

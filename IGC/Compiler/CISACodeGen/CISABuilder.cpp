@@ -4339,7 +4339,10 @@ namespace IGC
             SaveOption(vISA_GenerateISAASM, true);
             m_enableVISAdump = true;
         }
-
+        if (IGC_IS_FLAG_ENABLED(DumpVISAASMToConsole))
+        {
+            SaveOption(vISA_ISAASMToConsole, true);
+        }
         if (IGC_IS_FLAG_ENABLED(AddExtraIntfInfo))
         {
             SaveOption(vISA_AddExtraIntfInfo, true);
@@ -6171,6 +6174,10 @@ namespace IGC
                 pOutput->m_VISAAsm.push_back({ fun.first->getName().str(), fun.second->getVISAAsm()});
             }
         }
+
+        // Early return if dumping visaasm to console.
+        if (IGC_IS_FLAG_ENABLED(DumpVISAASMToConsole))
+            return;
 
         if (emitVisaOnly)
         {

@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
@@ -106,8 +107,66 @@ namespace IGC
         void trackVisaId(const Instruction* I, uint32_t vid) { m_rootToVISAId[I] = vid; }
         void trackBlockId(const BasicBlock* BB, uint32_t bbid) { m_blockId[BB] = bbid; }
     };
+
+// FIXME: This is a WA used for opt to test EmitPass only. Maybe consider to
+// move KernelShaderMap to CodeGenContext.
+static CShaderProgram::KernelShaderMap KernelShaderMap;
+
+static cl::opt<SIMDMode>
+SimdMode("simd-mode",
+         cl::desc("Simd mode used for visa codegen"),
+         cl::values(clEnumValN(SIMDMode::UNKNOWN, "unknown", "unknown simd mode"),
+                    clEnumValN(SIMDMode::SIMD1,   "1",       "simd 1"),
+                    clEnumValN(SIMDMode::SIMD2,   "2",       "simd 2"),
+                    clEnumValN(SIMDMode::SIMD4,   "4",       "simd 4"),
+                    clEnumValN(SIMDMode::SIMD8,   "8",       "simd 8"),
+                    clEnumValN(SIMDMode::SIMD16,  "16",      "simd 16"),
+                    clEnumValN(SIMDMode::SIMD32,  "32",      "simd 32")),
+         cl::init(SIMDMode::SIMD32),
+         cl::Hidden);
+
+static cl::opt<bool>
+AbortOnSpill("abort-on-spill",
+             cl::desc("Abort on spill"),
+             cl::init(false),
+             cl::Hidden);
+
+static cl::opt<ShaderDispatchMode>
+DispatchMode("dispatc-mode",
+             cl::desc("Shader dispatch mode"),
+             cl::values(clEnumValN(ShaderDispatchMode::NOT_APPLICABLE, "na",          "dispatch mode not applicable"),
+                        clEnumValN(ShaderDispatchMode::SINGLE_PATCH,   "single",      "single-dispatch mode"),
+                        clEnumValN(ShaderDispatchMode::DUAL_PATCH,     "dual",        "dual-dispatch mode"),
+                        clEnumValN(ShaderDispatchMode::EIGHT_PATCH,    "eight",       "eight-dispatch mode"),
+                        clEnumValN(ShaderDispatchMode::DUAL_SIMD8,     "dual-simd8",  "dual-simd8-dispatch mode")),
+             cl::init(ShaderDispatchMode::NOT_APPLICABLE),
+             cl::Hidden);
+
+#define PASS_FLAG "igc-emit-visa"
+#define PASS_DESC "vISA finalizer invocation"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(EmitPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
+IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
+IGC_INITIALIZE_PASS_DEPENDENCY(BlockCoalescing)
+IGC_INITIALIZE_PASS_DEPENDENCY(CoalescingEngine)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(Simd32ProfitabilityAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(VariableReuseAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASInfo)
+IGC_INITIALIZE_PASS_END(EmitPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 }
 
+// Note that the default ctor is intended to be used for opt testing only.
+EmitPass::EmitPass() : EmitPass(KernelShaderMap, SimdMode, AbortOnSpill, DispatchMode) {
+    // Call LoadRegistryKeys to set up the implied regkeys for testing purpose.
+    LoadRegistryKeys();
+}
 
 EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature)
     : FunctionPass(ID),
@@ -122,18 +181,7 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
     m_pSignature(pSignature),
     m_isDuplicate(false)
 {
-    //Before calling getAnalysisUsage() for EmitPass, the passes that it depends on need to be initialized
-    initializeDominatorTreeWrapperPassPass(*PassRegistry::getPassRegistry());
-    initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
-    initializeCodeGenPatternMatchPass(*PassRegistry::getPassRegistry());
-    initializeDeSSAPass(*PassRegistry::getPassRegistry());
-    initializeBlockCoalescingPass(*PassRegistry::getPassRegistry());
-    initializeCoalescingEnginePass(*PassRegistry::getPassRegistry());
-    initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
-    initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
-    initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
-    initializeLiveVariablesPass(*PassRegistry::getPassRegistry());
-    initializeCastToGASAnalysisPass(*PassRegistry::getPassRegistry());
+    initializeEmitPassPass(*PassRegistry::getPassRegistry());
 }
 
 EmitPass::~EmitPass()

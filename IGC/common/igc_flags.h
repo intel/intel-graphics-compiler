@@ -38,6 +38,7 @@ DECLARE_IGC_REGKEY(bool, DisableIfCvt,                  false, "Disable ifcvt", 
 DECLARE_IGC_REGKEY(bool, EnableVISANoBXMLEncoder,       false, "Enable VISA No-BXML encoder", false)
 DECLARE_IGC_REGKEY(bool, EnableIGAEncoder,              false, "Enable VISA IGA encoder", false)
 DECLARE_IGC_REGKEY(bool, EnableVISADumpCommonISA,       false, "Enable VISA Dump Common ISA", true)
+DECLARE_IGC_REGKEY(bool, DumpVISAASMToConsole,          false, "Dump VISAASM to console and do early exit", true)
 DECLARE_IGC_REGKEY(bool, EnableVISABinary,              false, "Enable VISA Binary", true)
 DECLARE_IGC_REGKEY(bool, EnableVISAOutput,              false, "Enable VISA GenISA output", true)
 DECLARE_IGC_REGKEY(bool, EnableVISASlowpath,            false, "Enable VISA Slowpath. Needed to dump .visaasm", true)
