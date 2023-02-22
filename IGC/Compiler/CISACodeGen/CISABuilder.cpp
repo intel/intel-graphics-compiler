@@ -6433,20 +6433,18 @@ namespace IGC
 
             if (context->type == ShaderType::OPENCL_SHADER)
             {
+                // Check for threshold needed to retry
                 auto oclCtx = static_cast<OpenCLProgramContext*>(context);
+                float threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
+                noRetry = noRetry || (m_program->m_spillCost <= threshold);
+
                 if (jitInfo->stats.spillMemUsed > 0 && oclCtx->m_InternalOptions.NoSpill)
                 {
+                    // NoSpill flag is set, must retry if spilled
                     noRetry = false;
                 }
-                else
-                {
-                    float threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
-                    if (m_program->m_spillCost > threshold)
-                    {
-                        noRetry = false;
-                    }
-                }
             }
+
             if (noRetry)
             {
                 context->m_retryManager.Disable();
