@@ -17192,14 +17192,6 @@ void EmitPass::emitLSCVectorStore_uniform(
         CVariable* new_stVar = prepareDataForUniform(stVar, requiredVSize, dataAlign);
 
         ResourceLoop(Resource, [&](CVariable* /*flag*/) {
-            // no need for discard predicate if we are writing to scratch - this is our
-            // internal memory, shader output remain the same, but we avoid problems
-            // when, for example, texture coordinates are spilled
-            if (Resource.m_surfaceType != ESURFACE_SCRATCH)
-            {
-                setPredicateForDiscard();
-            }
-
             m_encoder->SetNoMask();
             emitLSCStore(cacheOpts, new_stVar, new_eoff, dSize * 8, 1, 0, &Resource,
                 UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
@@ -17221,14 +17213,6 @@ void EmitPass::emitLSCVectorStore_uniform(
     eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
 
     ResourceLoop(Resource, [&](CVariable* /*flag*/) {
-        // no need for discard predicate if we are writing to scratch - this is our
-        // internal memory, shader output remain the same, but we avoid problems
-        // when, for example, texture coordinates are spilled
-        if (Resource.m_surfaceType != ESURFACE_SCRATCH)
-        {
-            setPredicateForDiscard();
-        }
-
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         emitLSCStore(cacheOpts, stVar, eOffset, dSize * 8, vSize, 0, &Resource,
