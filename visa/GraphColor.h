@@ -1381,13 +1381,6 @@ public:
     auto &&iter = bbLocalRAMap.find(bb);
     return iter != bbLocalRAMap.end() ? iter->second : nullptr;
   }
-
-public:
-  // Store new variables created when inserting scalar imm
-  // spill/fill code. Such variables are not infinite spill
-  // cost. So if the variable spills again, we shouldn't
-  // get in an infinite loop by retrying same spill/fill.
-  std::unordered_set<G4_Declare*> scalarSpills;
 };
 
 inline G4_Declare *Interference::getGRFDclForHRA(int GRFNum) const {
