@@ -1859,9 +1859,35 @@ As a result, we reduce 2x necessary work
     }
 
     // llvm.fma.f64
-    if (resTy->isDoubleTy() && II &&
-        (II->getIntrinsicID() == Intrinsic::fma ||
-         GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtn ||
+    if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fma)
+    {
+        Function* newFunc = getOrCreateFunction(FUNCTION_DP_FMA);
+        Function* CurrFunc = I.getParent()->getParent();
+        Value* args[7];
+        args[0] = I.getOperand(0);
+        args[1] = I.getOperand(1);
+        args[2] = I.getOperand(2);
+        args[3] = ConstantInt::get(intTy, m_roundingMode); // rounding mode
+        args[4] = ConstantInt::get(intTy, m_flushToZero); // flush to zero
+        args[5] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
+        args[6] = createFlagValue(CurrFunc);  // FP Flag, ignored
+
+        CallInst* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+        addCallInst(newVal);
+        newVal->setDebugLoc(I.getDebugLoc());
+
+        I.replaceAllUsesWith(newVal);
+        I.eraseFromParent();
+        m_pCtx->metrics.StatEndEmuFunc(newVal);
+        m_changed = true;
+        return;
+    }
+
+    // llvm.fma.rtn.f64
+    // llvm.fma.rtp.f64
+    // llvm.fma.rtz.f64
+    if (resTy->isDoubleTy() && GII &&
+        (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtn ||
          GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtp ||
          GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtz))
     {
