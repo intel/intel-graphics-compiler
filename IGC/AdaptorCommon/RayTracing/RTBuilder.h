@@ -456,6 +456,8 @@ public:
     static Type* getBVHPtrTy(Module &M);
 
 
+    void createPotentialHit2CommittedHit(Value* StackPtr);
+
     void createTraceRayInlinePrologue(
         Value* StackPtr,
         Value* RayInfo,

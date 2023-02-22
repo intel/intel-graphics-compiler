@@ -2243,6 +2243,11 @@ void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
 }
 
 
+void RTBuilder::createPotentialHit2CommittedHit(Value* StackPtr)
+{
+    _createPotentialHit2CommittedHit_Xe(StackPtr);
+}
+
 void RTBuilder::createTraceRayInlinePrologue(
     Value* StackPtr,
     Value* RayInfo,
