@@ -3159,6 +3159,12 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
 bool SpillManagerGRF::immFill(G4_SrcRegRegion *filledRegion,
                               INST_LIST::iterator filledInstIter, G4_BB *bb,
                               G4_Declare *spillDcl) {
+  if (gra.scalarSpills.find(spillDcl) != gra.scalarSpills.end()) {
+    // Don't rematerialize spillDcl if it's a spilled dcl from
+    // earlier RA iteration.
+    return false;
+  }
+
   G4_INST *inst = *filledInstIter;
   auto sisIt = scalarImmSpill.find(spillDcl);
   if (sisIt != scalarImmSpill.end()) {
@@ -3178,6 +3184,11 @@ bool SpillManagerGRF::immFill(G4_SrcRegRegion *filledRegion,
           InstOpt_WriteEnable, false);
       bb->insertBefore(filledInstIter, movInst);
       nearbyFill = std::make_tuple(bb, movInst, inst->getLexicalId());
+      // tempDcl is fill dcl that rematerializes scalar immediate.
+      // If tempDcl.spills in later RA iteration we shouln't
+      // try to rematerialize the value. Instead we should
+      // insert regular spill/fill code for it.
+      gra.scalarSpills.insert(tempDcl);
       vASSERT(!filledRegion->isIndirect());
     }
     auto newSrc = builder_->createSrc(
