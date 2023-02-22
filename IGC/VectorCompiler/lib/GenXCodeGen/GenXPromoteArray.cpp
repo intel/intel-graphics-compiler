@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -112,21 +112,23 @@ public:
   void handlePHINode(PHINode *pPhi, GenericVectorIndex pScalarizedIdx,
                      BasicBlock *pIncomingBB);
   virtual void handleLoadInst(llvm::LoadInst *pLoad,
-                     llvm::Value *pScalarizedIdx) = 0;
+                              llvm::Value *pScalarizedIdx) = 0;
   virtual void handleStoreInst(llvm::StoreInst *pStore,
                                GenericVectorIndex pScalarizedIdx) = 0;
   virtual void handlePrivateGather(llvm::IntrinsicInst *pInst,
-                     llvm::Value *pScalarizedIdx) = 0;
+                                   llvm::Value *pScalarizedIdx) = 0;
   virtual void handlePrivateScatter(llvm::IntrinsicInst *pInst,
-                     llvm::Value *pScalarizedIdx) = 0;
+                                    llvm::Value *pScalarizedIdx) = 0;
   virtual void handleSVMGather(llvm::IntrinsicInst *pInst,
-                     llvm::Value *pScalarizedIdx) = 0;
+                               llvm::Value *pScalarizedIdx) = 0;
   virtual void handleSVMScatter(llvm::IntrinsicInst *pInst,
-                     llvm::Value *pScalarizedIdx) = 0;
+                                llvm::Value *pScalarizedIdx) = 0;
   virtual void handleLLVMGather(llvm::IntrinsicInst *pInst,
-                     llvm::Value *pScalarizedIdx) = 0;
+                                llvm::Value *pScalarizedIdx) = 0;
   virtual void handleLLVMScatter(llvm::IntrinsicInst *pInst,
-                     llvm::Value *pScalarizedIdx) = 0;
+                                 llvm::Value *pScalarizedIdx) = 0;
+  virtual void handleLifetimeStart(IntrinsicInst *II, Value *ScalarizedIdx) = 0;
+  virtual void handleLifetimeEnd(IntrinsicInst *II, Value *ScalarizedIdx) = 0;
   void EraseDeadCode();
 
 private:
@@ -139,10 +141,9 @@ protected:
 };
 
 /// @brief  TransformPrivMem pass is used for lowering the allocas identified
-/// while visiting the alloca instructions
-///         and then inserting insert/extract elements instead of load stores.
-///         This allows us to store the data in registers instead of propagating
-///         it to scratch space.
+/// while visiting the alloca instructions and then inserting insert/extract
+/// elements instead of load stores. This allows us to store the data in
+/// registers instead of propagating it to scratch space.
 class TransformPrivMem : public llvm::FunctionPass,
                          public llvm::InstVisitor<TransformPrivMem> {
 public:
@@ -224,6 +225,8 @@ public:
   void handleSVMScatter(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
   void handleLLVMGather(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
   void handleLLVMScatter(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
+  void handleLifetimeStart(IntrinsicInst *II, Value *ScalarizedIdx) override;
+  void handleLifetimeEnd(IntrinsicInst *II, Value *ScalarizedIdx) override;
 
   AllocaInst *pVecAlloca;
 
@@ -727,9 +730,10 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
       handlePHINode(pPhi, Idx, Inst.getParent());
     } else if (IntrinsicInst *IntrInst = dyn_cast<IntrinsicInst>(User)) {
       auto IID = vc::getAnyIntrinsicID(IntrInst);
-      if (IID == llvm::Intrinsic::lifetime_start ||
-          IID == llvm::Intrinsic::lifetime_end)
-        IntrInst->eraseFromParent();
+      if (IID == llvm::Intrinsic::lifetime_start)
+        handleLifetimeStart(IntrInst, Idx.Index);
+      else if (IID == llvm::Intrinsic::lifetime_end)
+        handleLifetimeEnd(IntrInst, Idx.Index);
       else if (IID == GenXIntrinsic::genx_gather_private)
         handlePrivateGather(IntrInst, Idx.Index);
       else if (IID == GenXIntrinsic::genx_scatter_private)
@@ -1366,6 +1370,43 @@ void TransposeHelperPromote::handleSVMScatter(IntrinsicInst *pInst,
                                   pInst, pInst->getDebugLoc());
   IRB.CreateStore(NewInst, pVecAlloca);
   pInst->eraseFromParent();
+}
+
+void TransposeHelperPromote::handleLifetimeStart(IntrinsicInst *II,
+                                                 Value *ScalarizedIdx) {
+  auto IID = vc::getAnyIntrinsicID(II);
+  IGC_ASSERT_EXIT(IID == Intrinsic::lifetime_start);
+
+  IRBuilder<> IRB(II);
+  IGC_ASSERT_EXIT(ScalarizedIdx == IRB.getInt32(0));
+
+  auto *Ty = pVecAlloca->getAllocatedType();
+  auto *SizeC = IRB.getInt64(m_pDL->getTypeSizeInBits(Ty) / ByteBits);
+
+  IRB.CreateLifetimeStart(pVecAlloca, SizeC);
+
+  // The promotion pass generates load instruction even if the alloca memory is
+  // not initialized. So mem2reg transformation emits unnecessary PHI-nodes.
+  // Adding undef store avoids such PHIs.
+  IRB.CreateStore(UndefValue::get(Ty), pVecAlloca);
+
+  II->eraseFromParent();
+}
+
+void TransposeHelperPromote::handleLifetimeEnd(IntrinsicInst *II,
+                                               Value *ScalarizedIdx) {
+  auto IID = vc::getAnyIntrinsicID(II);
+  IGC_ASSERT_EXIT(IID == Intrinsic::lifetime_end);
+
+  IRBuilder<> IRB(II);
+  IGC_ASSERT_EXIT(ScalarizedIdx == IRB.getInt32(0));
+
+  auto *Ty = pVecAlloca->getAllocatedType();
+  auto *SizeC = IRB.getInt64(m_pDL->getTypeSizeInBits(Ty) / ByteBits);
+
+  IRB.CreateLifetimeEnd(pVecAlloca, SizeC);
+
+  II->eraseFromParent();
 }
 
 } // namespace
