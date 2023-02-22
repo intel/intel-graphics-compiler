@@ -114,123 +114,99 @@ public:
 // Layout used to pass global data to the shaders
 struct RayDispatchGlobalData
 {
-    template<class TAPIAdaptor>
-    void populate(const TAPIAdaptor& umd)
-    {
-        rtMemBasePtr = umd.GetRayStackBufferAddress();
-        pRtMemBasePtr = rtMemBasePtr;
-
-        callStackHandlerPtr = umd.GetCallStackHandlerPtr();
-
-        stackSizePerRay = umd.GetStackSizePerRay();
-        pStackSizePerRay = stackSizePerRay;
-
-        numDSSRTStacks = umd.GetNumDSSRTStacks();
-        pNumDSSRTStacks = numDSSRTStacks;
-
-        maxBVHLevels = umd.GetMaxBVHLevels();
-
-        hitGroupBasePtr = umd.GetHitGroupTable();
-        pHitGroupBasePtr = hitGroupBasePtr;
-
-        missShaderBasePtr = umd.GetMissShaderTable();
-        pMissShaderBasePtr = missShaderBasePtr;
-
-        callableShaderBasePtr = umd.GetCallableShaderTable();
-        pCallableShaderBasePtr = callableShaderBasePtr;
-
-        hitGroupStride = umd.GetHitGroupStride();
-        pHitGroupStride = hitGroupStride;
-
-        missShaderStride = umd.GetMissStride();
-        pMissShaderStride = missShaderStride;
-
-        callableShaderStride = umd.GetCallableStride();
-        pCallableShaderStride = callableShaderStride;
-
-        dispatchRaysDimensions[0] = umd.GetDispatchWidth();
-        dispatchRaysDimensions[1] = umd.GetDispatchHeight();
-        dispatchRaysDimensions[2] = umd.GetDispatchDepth();
-
-        bindlessHeapBasePtr = umd.GetBindlessHeapBasePtr();
-        printfBufferBasePtr = umd.GetPrintfBufferBasePtr();
-        swStackSizePerRay   = umd.GetSWStackSizePerRay();
-
-        ProfilingBufferGpuVa = umd.GetProfilingBufferGpuVa();
-
-        statelessScratchPtr = umd.GetStatelessScratchPtr();
-
-        baseSSHOffset = umd.GetBaseSSHOffset();
-    }
-
-    using T = uint32_t;
-
-    enum class Bits : uint8_t
-    {
-        stackSizePerRay = 8,
-        numDSSRTStacks = 12,
-    };
-
-    // Cached by HW (32 bytes)
-    uint64_t rtMemBasePtr;          // base address of the allocated stack memory
-    uint64_t callStackHandlerPtr;   // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
-
     // Stack size is encoded in # of 64 byte chunks.
     // e.g., 0x0 = 64 bytes, 0x1 = 128 bytes, etc.
     static constexpr uint32_t StackChunkSize = 64;
 
-    union
+    struct RayDispatchGlobalDataCommon
     {
-        uint32_t stackSizePerRay;       // maximal stack size of a ray
+        // For anything that appears above this line that we want to duplicate below
+        // for a more packed layout, we prefix it with a 'p' to denote that it is a
+        // 'private' copy of the value.  The strategy here is to order the fields
+        // from top to bottom in order from least frequently used to most.
+        uint64_t printfBufferBasePtr;       // base pointer of printf buffer
+        uint64_t ProfilingBufferGpuVa;      // GTPin buffer to collect profiling data
+        uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
+        uint64_t pCallableShaderBasePtr;    // base pointer of callable shader record array (8-bytes alignment)
+        uint32_t pCallableShaderStride;     // stride of callable shader records (8-bytes alignment)
+        uint32_t paddingBits3;              // 32-bits of padding
+        uint64_t bindlessHeapBasePtr;       // base pointer of bindless heap
+        uint64_t pHitGroupBasePtr;          // base pointer of hit group shader record array (16-bytes alignment)
+        uint64_t pMissShaderBasePtr;        // base pointer of miss shader record array (8-bytes alignment)
+        uint32_t pHitGroupStride;           // stride of hit group shader records (16-bytes alignment)
+        uint32_t pMissShaderStride;         // stride of miss shader records (8-bytes alignment)
+        uint64_t pRtMemBasePtr;             // base address of the allocated stack memory
+        uint32_t baseSSHOffset;             // (index/bindless offset) of first memory region for stateful indirect accesses
+        uint32_t pStackSizePerRay;          // maximal stack size of a ray
+        uint32_t swStackSizePerRay;         // size in bytes per ray of the SWStack
+        uint32_t pNumDSSRTStacks;           // number of stacks per DSS
+        uint32_t dispatchRaysDimensions[3]; // dispatch dimensions of the thread grid
+        uint32_t paddingBits4;
 
-        struct {
-            uint32_t MBZ1       : 32 - (T)Bits::stackSizePerRay;
-            uint32_t sizePerRay : (T)Bits::stackSizePerRay;
-        };
+        template<class TAPIAdaptor>
+        void populate(const TAPIAdaptor& umd)
+        {
+            printfBufferBasePtr       = umd.GetPrintfBufferBasePtr();
+            ProfilingBufferGpuVa      = umd.GetProfilingBufferGpuVa();
+            statelessScratchPtr       = umd.GetStatelessScratchPtr();
+            pCallableShaderBasePtr    = umd.GetCallableShaderTable();
+            pCallableShaderStride     = umd.GetCallableStride();
+            bindlessHeapBasePtr       = umd.GetBindlessHeapBasePtr();
+            pHitGroupBasePtr          = umd.GetHitGroupTable();
+            pMissShaderBasePtr        = umd.GetMissShaderTable();
+            pHitGroupStride           = umd.GetHitGroupStride();
+            pMissShaderStride         = umd.GetMissStride();
+            pRtMemBasePtr             = umd.GetRayStackBufferAddress();
+            baseSSHOffset             = umd.GetBaseSSHOffset();
+            pStackSizePerRay          = umd.GetStackSizePerRay();
+            swStackSizePerRay         = umd.GetSWStackSizePerRay();
+            pNumDSSRTStacks           = umd.GetNumDSSRTStacks();
+            dispatchRaysDimensions[0] = umd.GetDispatchWidth();
+            dispatchRaysDimensions[1] = umd.GetDispatchHeight();
+            dispatchRaysDimensions[2] = umd.GetDispatchDepth();
+        }
     };
-    union
+
+    union RT
     {
-        uint32_t numDSSRTStacks;        // number of stacks per DSS
+        struct Xe
+        {
+            template<class TAPIAdaptor>
+            void populate(const TAPIAdaptor& umd)
+            {
+                rtMemBasePtr        = umd.GetRayStackBufferAddress();
+                callStackHandlerPtr = umd.GetCallStackHandlerPtr();
+                stackSizePerRay     = umd.GetStackSizePerRay();
+                numDSSRTStacks      = umd.GetNumDSSRTStacks();
+                maxBVHLevels        = umd.GetMaxBVHLevels();
 
-        struct {
-            uint32_t MBZ2        : 32 - (T)Bits::numDSSRTStacks;
-            uint32_t numRTStacks : (T)Bits::numDSSRTStacks;
-        };
-    };
-    uint32_t maxBVHLevels;          // the maximal number of supported instancing levels
-    uint32_t paddingBits;           // 32-bits of padding
+                common.populate(umd);
+            }
 
-    // Not cached by HW
-    uint64_t hitGroupBasePtr;       // base pointer of hit group shader record array (16-bytes alignment)
-    uint64_t missShaderBasePtr;     // base pointer of miss shader record array (8-bytes alignment)
-    uint64_t callableShaderBasePtr; // base pointer of callable shader record array (8-bytes alignment)
-    uint32_t hitGroupStride;        // stride of hit group shader records (16-bytes alignment)
-    uint32_t missShaderStride;      // stride of miss shader records (8-bytes alignment)
-    uint32_t callableShaderStride;  // stride of callable shader records (8-bytes alignment)
-    // HW doesn't read anything below this point.
-    // For anything that appears above this line that we want to duplicate below
-    // for a more packed layout, we prefix it with a 'p' to denote that it is a
-    // 'private' copy of the value.  The strategy here is to order the fields
-    // from top to bottom in order from least frequently used to most.
-    uint32_t paddingBits2;              // 32-bits of padding
-    uint64_t printfBufferBasePtr;       // base pointer of printf buffer
-    uint64_t ProfilingBufferGpuVa;      // GTPin buffer to collect profiling data
-    uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
-    uint64_t pCallableShaderBasePtr;    // base pointer of callable shader record array (8-bytes alignment)
-    uint32_t pCallableShaderStride;     // stride of callable shader records (8-bytes alignment)
-    uint32_t paddingBits3;              // 32-bits of padding
-    uint64_t bindlessHeapBasePtr;       // base pointer of bindless heap
-    uint64_t pHitGroupBasePtr;          // base pointer of hit group shader record array (16-bytes alignment)
-    uint64_t pMissShaderBasePtr;        // base pointer of miss shader record array (8-bytes alignment)
-    uint32_t pHitGroupStride;           // stride of hit group shader records (16-bytes alignment)
-    uint32_t pMissShaderStride;         // stride of miss shader records (8-bytes alignment)
-    uint64_t pRtMemBasePtr;             // base address of the allocated stack memory
-    uint32_t baseSSHOffset;             // (index/bindless offset) of first memory region for stateful indirect accesses
-    uint32_t pStackSizePerRay;          // maximal stack size of a ray
-    uint32_t swStackSizePerRay;         // size in bytes per ray of the SWStack
-    uint32_t pNumDSSRTStacks;           // number of stacks per DSS
-    uint32_t dispatchRaysDimensions[3]; // dispatch dimensions of the thread grid
-    uint32_t paddingBits4;
+            // Cached by HW (32 bytes)
+            uint64_t rtMemBasePtr;          // base address of the allocated stack memory
+            uint64_t callStackHandlerPtr;   // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
+            union {
+                uint32_t stackSizePerRay;       // maximal stack size of a ray
+                uint32_t sizePerRay : 8;
+                uint32_t MBZ1       : 24;
+            };
+            union {
+                uint32_t numDSSRTStacks;        // number of stacks per DSS
+                uint32_t numRTStacks : 12;
+                uint32_t MBZ2        : 20;
+            };
+            union {
+                uint32_t maxBVHLevels;          // the maximal number of supported instancing levels
+                uint32_t bvhLevels : 3;
+                uint32_t MBZ3      : 29;
+            };
+            uint32_t paddingBits[1+8];          // padding
+
+            // HW doesn't read anything below this point.
+            RayDispatchGlobalDataCommon common;
+        } xe;
+    } rt;
 };
 
 // The actual pointer will probably be aligned to a greater value than this,
@@ -242,7 +218,8 @@ constexpr uint32_t RTGlobalsAlign = 256;
 constexpr uint32_t RTStackAlign = 128;
 static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
-static_assert(sizeof(RayDispatchGlobalData) == 184, "unexpected size?");
+static_assert(sizeof(RayDispatchGlobalData) == 176, "unexpected size?");
+static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
 #if !defined(__clang__) || (__clang_major__ >= 10)
 static_assert(std::is_standard_layout<RayDispatchGlobalData>::value, "no?");
 #endif

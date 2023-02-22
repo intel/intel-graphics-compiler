@@ -509,8 +509,8 @@ Instruction* ResolveOCLRaytracingBuiltins::loadFromOffset(Value* basePtr, const 
 
 #define RT_DISPATCH_GETTER_DEF(FieldName) \
 Instruction* ResolveOCLRaytracingBuiltins::FieldName##Getter(Value* rtDispatchGlobalsValue) {  \
-  constexpr size_t offset = offsetof(RayDispatchGlobalData, FieldName);                        \
-  constexpr size_t typeSize = sizeof(((RayDispatchGlobalData*)0)->FieldName);                  \
+  constexpr size_t offset = offsetof(RayDispatchGlobalData::RT::Xe, FieldName);                \
+  constexpr size_t typeSize = sizeof(((RayDispatchGlobalData::RT::Xe*)0)->FieldName);          \
   return loadFromOffset(rtDispatchGlobalsValue, offset, typeSize, #FieldName);                 \
 }
 

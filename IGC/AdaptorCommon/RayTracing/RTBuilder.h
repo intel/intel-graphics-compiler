@@ -226,9 +226,9 @@ public:
         const Twine &JoinBBName = "");
 
     Value* getRtMemBasePtr(void);
-
     Value* getMaxBVHLevels(void);
     Value* getStatelessScratchPtr(void);
+
     Value* getLeafType(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
     Value* getIsFrontFace(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
 

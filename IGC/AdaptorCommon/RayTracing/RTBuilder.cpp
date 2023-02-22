@@ -81,7 +81,7 @@ Value* RTBuilder::getMaxBVHLevels(void)
 
 Value* RTBuilder::getStatelessScratchPtr(void)
 {
-    return _get_statelessScratchPtr_Xe();
+    return _get_statelessScratchPtr();
 }
 
 
