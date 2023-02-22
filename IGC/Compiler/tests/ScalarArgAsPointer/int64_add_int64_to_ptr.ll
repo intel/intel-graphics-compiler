@@ -16,8 +16,8 @@
 ;
 ; Two scalar kernel args are combined into pointer to global memory, match both.
 ;
-; CHECK: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 0}
-; CHECK: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 1}
+; CHECK: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 0}
+; CHECK: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 1}
 
 define spir_kernel void @test(i64 %a, i64 %b) #0 {
 entry:

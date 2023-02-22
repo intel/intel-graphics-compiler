@@ -27,14 +27,14 @@
 ;
 ; Note: IR below already shows decomposed struct.
 ;
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 0}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 1}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 2}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 3}
-; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 4}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 5}
-; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 6}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 7}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 0}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 1}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 2}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 3}
+; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 4}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 5}
+; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 6}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 7}
 
 %class.anon = type <{ %struct.MyArg, i32, [4 x i8] }>
 %struct.MyArg = type { float, [2 x %struct.anon], float }

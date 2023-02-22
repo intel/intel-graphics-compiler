@@ -295,7 +295,7 @@ MDNode* CreateNode(const std::set<Key> &FuncMD, Module* module, StringRef name)
     int i = 0;
     for ( auto it = FuncMD.begin(); it != FuncMD.end(); ++it)
     {
-        nodes.push_back(CreateNode(*it, module, name.str() + "Set[" + std::to_string(i) + "]"));
+        nodes.push_back(CreateNode(*it, module, name.str() + "Set[" + std::to_string(i++) + "]"));
     }
     MDNode* node = MDNode::get(module->getContext(), nodes);
     return node;

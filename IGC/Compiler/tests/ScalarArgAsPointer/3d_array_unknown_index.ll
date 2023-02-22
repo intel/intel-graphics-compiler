@@ -15,15 +15,15 @@
 ;
 ; 3 explicit kernel arguments + 6 implicit kernel arguments (decomposed array):
 ;
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 0}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 1}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 2}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 3}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 4}
-; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 5}
-; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 6}
-; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 7}
-; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet[0]", i32 8}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 0}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 1}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 2}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 3}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 4}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 5}
+; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 6}
+; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 7}
+; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 8}
 
 %struct.MyArg = type { [1 x [2 x [3 x i32 addrspace(4)*]]] }
 

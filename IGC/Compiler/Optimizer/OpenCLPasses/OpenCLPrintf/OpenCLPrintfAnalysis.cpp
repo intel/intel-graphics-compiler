@@ -41,7 +41,7 @@ OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID)
 //TODO: move to a common place
 const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 const StringRef OpenCLPrintfAnalysis::ONEAPI_PRINTF_FUNCTION_NAME =
-    "int cl::sycl::ext::oneapi::experimental::printf";
+    "ext::oneapi::experimental::printf";
 
 bool OpenCLPrintfAnalysis::isOpenCLPrintf(const llvm::Function *F)
 {
@@ -51,7 +51,7 @@ bool OpenCLPrintfAnalysis::isOpenCLPrintf(const llvm::Function *F)
 bool OpenCLPrintfAnalysis::isOneAPIPrintf(const llvm::Function *F)
 {
     std::string demangledName = llvm::demangle(F->getName().str());
-    return demangledName.find(ONEAPI_PRINTF_FUNCTION_NAME.data()) == 0;
+    return demangledName.find(ONEAPI_PRINTF_FUNCTION_NAME.data()) != std::string::npos;
 }
 
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
