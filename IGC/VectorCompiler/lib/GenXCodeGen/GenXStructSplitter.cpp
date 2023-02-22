@@ -470,6 +470,7 @@ private:
   TypeToInstrMap generateNewAllocas(AllocaInst &OldInst);
   AllocaInst *generateAlloca(AllocaInst &AI,
                              const DependencyGraph::SElement &TyElem);
+  void createLifetime(Instruction *OldI, AllocaInst *NewAI);
   Instruction *generateNewGEPs(GetElementPtrInst &GEPI, Type &DestSTy,
                                const DependencyGraph::SElementsOfType &IdxPath,
                                const TypeToInstrMap &NewInstr,
@@ -1146,13 +1147,15 @@ Substituter::generateAlloca(AllocaInst &AI,
   IRBuilder<> IRB{&AI};
 
   Type *NewTy = TyElem.getTy();
-  AllocaInst &NewAI = *IRB.CreateAlloca(
+  AllocaInst *NewAI = IRB.CreateAlloca(
       NewTy, 0, AI.getName() + "." + getTypePrefix(*getBaseTy(NewTy)));
-  NewAI.setAlignment(IGCLLVM::getAlign(AI));
+  NewAI->setAlignment(IGCLLVM::getAlign(AI));
+
+  createLifetime(&AI, NewAI);
 
   DbgDeclareInst *DbgDeclare = getDbgDeclare(AI);
   if (!DbgDeclare)
-    return &NewAI;
+    return NewAI;
 
   // *NewTy can be:
   // - base type, non-split struct (also base type).
@@ -1164,9 +1167,38 @@ Substituter::generateAlloca(AllocaInst &AI,
     StructType &STy = *TyElem.getStructTy();
     llvm::copy(STy.elements(), std::back_inserter(TypesToGenerateDI));
   }
-  updateDbgInfo(TypesToGenerateDI, AI, NewAI, *DbgDeclare);
+  updateDbgInfo(TypesToGenerateDI, AI, *NewAI, *DbgDeclare);
 
-  return &NewAI;
+  return NewAI;
+}
+
+//
+// Deduces lifetime.start and lifetime.end instructions for old alloca and
+// generates them for new one
+//
+void Substituter::createLifetime(Instruction *OldI, AllocaInst *NewAI) {
+  for (auto *User : OldI->users()) {
+    if (auto *CastI = dyn_cast<BitCastInst>(User)) {
+      createLifetime(CastI, NewAI);
+    } else if (auto *II = dyn_cast<IntrinsicInst>(User)) {
+      auto MaybeSize = NewAI->getAllocationSizeInBits(DL);
+      IGC_ASSERT_EXIT(MaybeSize.hasValue());
+
+      IRBuilder<> Builder(II);
+      auto *SizeC = Builder.getInt64(MaybeSize.getValue() / genx::ByteBits);
+
+      switch (II->getIntrinsicID()) {
+      case Intrinsic::lifetime_start:
+        Builder.CreateLifetimeStart(NewAI, SizeC);
+        break;
+      case Intrinsic::lifetime_end:
+        Builder.CreateLifetimeEnd(NewAI, SizeC);
+        break;
+      default:
+        break;
+      }
+    }
+  }
 }
 
 //
