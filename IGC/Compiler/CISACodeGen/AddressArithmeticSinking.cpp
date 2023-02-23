@@ -52,7 +52,8 @@ FunctionPass(ID), m_SinkingDepth(SinkingDepth)
 bool AddressArithmeticSinking::runOnFunction(Function& F)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (isOptDisabledForFunction(ctx->getModuleMetaData(), getPassName(), &F))
+    if (IGC_IS_FLAG_DISABLED(ForceAddressArithSinking) &&
+        isOptDisabledForFunction(ctx->getModuleMetaData(), getPassName(), &F))
         return false;
 
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();

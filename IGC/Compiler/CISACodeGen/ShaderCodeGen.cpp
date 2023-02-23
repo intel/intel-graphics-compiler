@@ -816,8 +816,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(createAggressiveDCEPass());
         // As DPC++ FE apply LICM we cannot reduce register pressure just
         // by turning off LICM at IGC in some cases so apply sinking address arithmetic
-        if (IGC_IS_FLAG_ENABLED(ForceAddressArithSinking) &&
-            ctx.type == ShaderType::OPENCL_SHADER)
+        if (ctx.type == ShaderType::OPENCL_SHADER)
         {
             mpm.add(new AddressArithmeticSinking());
         }
