@@ -107,9 +107,9 @@ bool VerificationPass::runOnModule(Module& M)
 
         if (false == success)
         {
-            IGC_ASSERT_MESSAGE(0, "IGC IR Verification failed");
             printf("\nIGC IR verification failed:\n\n");
             errs() << m_messagesToDump.str();
+            IGC_ASSERT_MESSAGE(0, "IGC IR Verification failed");
         }
     }
 
