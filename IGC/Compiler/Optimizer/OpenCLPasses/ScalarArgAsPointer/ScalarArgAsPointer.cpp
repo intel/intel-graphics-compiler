@@ -117,7 +117,7 @@ const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(l
 {
     // Skip already visited instruction
     if (m_visitedInst.count(inst))
-        return &(*m_visitedInst[inst]);
+        return m_visitedInst[inst].get();
 
     // Mark as visited
     m_visitedInst.try_emplace(inst, nullptr);
@@ -166,7 +166,7 @@ const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(l
     }
 
     m_visitedInst[inst] = std::move(result);
-    return &(*m_visitedInst[inst]);
+    return m_visitedInst[inst].get();
 }
 
 void ScalarArgAsPointerAnalysis::analyzeStoredArg(llvm::StoreInst& SI)
