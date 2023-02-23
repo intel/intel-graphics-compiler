@@ -2174,6 +2174,7 @@ int IR_Builder::translateByteScatterInst(
 #define SEND_GT_MSG_TYPE_BIT 14
 
 ///
+/// Descriptors for OWord Block read/write
 /// Bits 31-29: Reserved
 /// Bits 28-25: Message Length: Total 256bit registers expected to be sent.
 /// Bits 24-20: Response Length: Total 256bit registers expected in response.
@@ -2181,8 +2182,10 @@ int IR_Builder::translateByteScatterInst(
 /// Bits 18-14: Message Type: 10100: A64 Block Read, 10101: A64 Block Write
 /// Bit  13:    Ignore
 /// Bits 12-11: Message sub-type (00 for OWord Block Read/Write, 01 for
-/// Unaligned OWord Block Read/Write) Bits 10-8:  Block Size, 000 for 1 OWord,
-/// 001 for 2 OWords, 010 for 4 OWords, 100 for 8 OWords. Bits 7-0:   Binding
+/// Unaligned OWord Block Read/Write)
+/// Bits 10-8:  Block Size, 000 for 1 OWord,
+/// 001 for 2 OWords, 010 for 4 OWords, 100 for 8 OWords.
+/// Bits 7-0:   Binding
 /// Table Index: Set to 0xFF for stateless memory space used bu A64 SVM Data
 /// Port.
 int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,

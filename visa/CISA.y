@@ -303,6 +303,8 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token SRCMOD_NOT           // (~)
 %token BFN_OP
 %token DPAS_OP
+%token SVM_ALIGNED        // .aligned
+%token SVM_UNALIGNED      // .unaligned
 %token <opcode> NBARRIER_SIGNAL
 %token <opcode> NBARRIER_WAIT
 %token <type>   ITYPE
@@ -1467,12 +1469,26 @@ OwordInstruction: OWORD_OP OwordModifier ExecSize Var VecSrcOperand_G_I_IMM RawO
     }
 
 SvmInstruction:
-    //     2        3                     4
-    SVM_OP ExecSize VecSrcOperand_G_I_IMM RawOperand
+    //1           2       3       4                       5
+    SVM_OP SVM_ALIGNED ExecSize VecSrcOperand_G_I_IMM RawOperand
     {
-        bool aligned = false;
-        pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1, $2.exec_size, aligned,
-            $3.cisa_gen_opnd, $4, CISAlineno);
+        pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1,
+$3.exec_size, true, $4.cisa_gen_opnd, $5, CISAlineno);
+    }
+    |
+    //1           2       3       4                       5
+    SVM_OP SVM_UNALIGNED ExecSize VecSrcOperand_G_I_IMM RawOperand
+    {
+        pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1,
+$3.exec_size, false, $4.cisa_gen_opnd, $5, CISAlineno);
+    }
+    |
+    // default svm block ld/st -- unaligned by default
+    //1           2       3       4
+    SVM_OP  ExecSize VecSrcOperand_G_I_IMM RawOperand
+    {
+        pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1,
+$2.exec_size, false, $3.cisa_gen_opnd, $4, CISAlineno);
     }
     //     1          2         3     4     5     6        7          8        9
     | Predicate SVM_SCATTER_OP DOT DEC_LIT DOT DEC_LIT ExecSize RawOperand RawOperand

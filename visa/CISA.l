@@ -1149,7 +1149,12 @@ arg    {return LSC_AM_ARG;}
         CISAlval.lsc_sfid = LSC_TGM;
         return LSC_SFID_TYPED_TOKEN;
     }
-
+".aligned" {
+        return SVM_ALIGNED;
+    }
+".unaligned" {
+        return SVM_UNALIGNED;
+    }
 
 
 
