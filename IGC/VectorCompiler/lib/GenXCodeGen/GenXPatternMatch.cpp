@@ -3241,7 +3241,7 @@ bool mergeApply(CallInst *CI) {
   if (!Select)
     return false;
 
-  auto *Pred = dyn_cast<Instruction>(CI->getOperand(0));
+  auto *Pred = CI->getOperand(0);
   // Select and lsc-load must have same predicates
   // TODO: Check opposite predicate, and add
   // select-true varant
