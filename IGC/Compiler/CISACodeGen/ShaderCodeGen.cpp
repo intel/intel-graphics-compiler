@@ -778,14 +778,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // Last instruction combining pass needs to be before Legalization pass, as it can produce illegal instructions.
         mpm.add(new RemoveCodeAssumptions());
         mpm.add(createIGCInstructionCombiningPass());
-    }
 
-    if (!isOptDisabled)
-    {
         // Optimize lower-level IR
         if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
         {
-            mpm.add(createIGCInstructionCombiningPass());
             if (ctx.type == ShaderType::OPENCL_SHADER &&
                 static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.KernelDebugEnable)
             {
