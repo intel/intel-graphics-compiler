@@ -5475,17 +5475,21 @@ bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
 }
 
 bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
-  auto PtrV = CallOp->getArgOperand(0);
-  auto MaskV = CallOp->getArgOperand(2);
-  auto OldV = CallOp->getArgOperand(3);
-  auto DTy = CallOp->getType();
-  IGC_ASSERT(PtrV->getType()->isVectorTy());
+  IRBuilder<> Builder(CallOp);
+  auto *PtrV = CallOp->getArgOperand(0);
+  auto *MaskV = CallOp->getArgOperand(2);
+  auto *OldV = CallOp->getArgOperand(3);
+  auto *DTy = CallOp->getType();
   IGC_ASSERT(DTy->isVectorTy());
-  auto PtrETy = cast<VectorType>(PtrV->getType())->getElementType();
+  IGC_ASSERT(PtrV->getType()->isVectorTy());
+  auto *PtrVTy = cast<VectorType>(PtrV->getType());
+  auto *PtrETy = PtrVTy->getElementType();
   IGC_ASSERT(PtrETy->isPointerTy());
   auto AS = cast<PointerType>(PtrETy)->getAddressSpace();
   IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expect masked gather from SLM");
-  auto EltTy = cast<VectorType>(DTy)->getElementType();
+  PtrVTy = cast<VectorType>(DL->getIntPtrType(PtrVTy));
+  PtrV = Builder.CreatePtrToInt(PtrV, PtrVTy);
+  auto *EltTy = cast<VectorType>(DTy)->getElementType();
   auto NumElts = cast<IGCLLVM::FixedVectorType>(DTy)->getNumElements();
   auto EltBytes = EltTy->getPrimitiveSizeInBits() / 8;
   int EltsPerLane = 1;
@@ -5498,8 +5502,7 @@ bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
   auto CIntTy = Type::getInt32Ty(EltTy->getContext());
   int nb = (EltBytes == 2) ? 1 : 0; // 0/1/2/3 means 1/2/4/8 blks
   auto NumBlksC = ConstantInt::get(CIntTy, nb);
-  Value* RepI = nullptr;
-  IRBuilder<> Builder(CallOp);
+  Value *RepI = nullptr;
   // need write-region for old-data in byte or short type
   if (EltBytes < 4) {
     if (isa<UndefValue>(OldV))
@@ -5534,17 +5537,21 @@ bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
 }
 
 bool GenXLowering::lowerLLVMMaskedScatter(CallInst *CallOp) {
-  auto DataV = CallOp->getArgOperand(0);
-  auto PtrV = CallOp->getArgOperand(1);
-  auto MaskV = CallOp->getArgOperand(3);
-  auto DTy = DataV->getType();
+  IRBuilder<> Builder(CallOp);
+  auto *DataV = CallOp->getArgOperand(0);
+  auto *PtrV = CallOp->getArgOperand(1);
+  auto *MaskV = CallOp->getArgOperand(3);
+  auto *DTy = DataV->getType();
   IGC_ASSERT(PtrV->getType()->isVectorTy());
   IGC_ASSERT(DTy->isVectorTy());
-  auto PtrETy = cast<VectorType>(PtrV->getType())->getElementType();
+  auto *PtrVTy = cast<VectorType>(PtrV->getType());
+  auto *PtrETy = PtrVTy->getElementType();
   IGC_ASSERT(PtrETy->isPointerTy());
   auto AS = cast<PointerType>(PtrETy)->getAddressSpace();
   IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expect masked scatter to SLM");
-  auto EltTy = cast<VectorType>(DTy)->getElementType();
+  PtrVTy = cast<VectorType>(DL->getIntPtrType(PtrVTy));
+  PtrV = Builder.CreatePtrToInt(PtrV, PtrVTy);
+  auto *EltTy = cast<VectorType>(DTy)->getElementType();
   auto NumElts = cast<IGCLLVM::FixedVectorType>(DTy)->getNumElements();
   auto EltBytes = EltTy->getPrimitiveSizeInBits() / 8;
   int EltsPerLane = 1;
@@ -5558,7 +5565,6 @@ bool GenXLowering::lowerLLVMMaskedScatter(CallInst *CallOp) {
   int nb = (EltBytes == 2) ? 1 : 0; // 0/1/2/3 means 1/2/4/8 blks
   auto NumBlksC = ConstantInt::get(CIntTy, nb);
   // need write-region for old-data in byte or short type
-  IRBuilder<> Builder(CallOp);
   if (EltBytes < 4) {
     // zext to i32 type
     auto VInt32 = IGCLLVM::FixedVectorType::get(CIntTy, NumElts);
