@@ -811,6 +811,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             {
                 mpm.add(new RegPressureLoopControl());
             }
+            mpm.add(llvm::createEarlyCSEPass());
         }
         mpm.add(createAggressiveDCEPass());
         // As DPC++ FE apply LICM we cannot reduce register pressure just
