@@ -7570,3 +7570,13 @@ void G4_INST::inheritSWSBFrom(const G4_INST *inst) {
   SWSBTokenType type = inst->getTokenType();
   setTokenType(type);
 }
+
+bool G4_INST::isBarrierWAIntrinsic() const {
+  return isIntrinsic() &&
+         asIntrinsicInst()->getIntrinsicId() == Intrinsic::BarrierWA;
+}
+
+bool G4_INST::isNamedBarrierWAIntrinsic() const {
+  return isIntrinsic() &&
+         asIntrinsicInst()->getIntrinsicId() == Intrinsic::NamedBarrierWA;
+}

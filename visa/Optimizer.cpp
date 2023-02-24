@@ -7139,6 +7139,15 @@ void Optimizer::HWWorkaround() {
           }
         }
       }
+
+      if (builder.needBarrierWA() && inst->isBarrierWAIntrinsic()) {
+        applyBarrierWA(ii, bb);
+      }
+
+      if (builder.needBarrierWA() && inst->isNamedBarrierWAIntrinsic()) {
+        applyNamedBarrierWA(ii, bb);
+      }
+
       ii++;
     }
   }
@@ -13429,4 +13438,152 @@ void Optimizer::prepareDPASFuseRSWA() {
       I->asDpasInst()->setMayNeedWA(true);
     }
   }
+}
+
+// Expand Intrinsic::BarrierWA instruction
+void Optimizer::applyBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
+  G4_INST *inst = *it;
+
+  if (!inst->isBarrierWAIntrinsic())
+    return;
+
+  // The dst of Intrinsic::BarrierWA instruction has 1 DW for saving existing
+  // flag so WA can use it in the loop
+  auto dst = inst->getDst();
+
+  G4_RegVar *WAFlagVar = builder.createTempFlag(2, "WAFlagUD")->getRegVar();
+  WAFlagVar->setPhyReg(builder.phyregpool.getF0Reg(), 0);
+
+  // save f0.0:ud to dst.0:ud, then f0.0 can be used in the loop
+  //   (W) mov(1) dst.0:ud f0.0:ud
+  G4_DstRegRegion *dstMovForSave = builder.createDst(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), 1, Type_UD);
+  G4_SrcRegRegion *srcMovForSave =
+      builder.createSrc(WAFlagVar, 0, 0, builder.getRegionScalar(), Type_UD);
+  auto saveInst = builder.createMov(g4::SIMD1, dstMovForSave, srcMovForSave,
+                                    InstOpt_WriteEnable, false);
+  bb->insertBefore(it, saveInst);
+
+  // create label
+  G4_Label *label = builder.createLocalBlockLabel("barrier_WA_loop");
+  auto labelInst = builder.createLabelInst(label, false);
+  bb->insertBefore(it, labelInst);
+
+  // (W) cmp(1) (ne)f0.0 null:ud n0.0:ud 0x1:ud
+  G4_DstRegRegion *nullDst = builder.createNullDst(Type_UD);
+  G4_SrcRegRegion *src0Cmp = builder.createSrc(
+      builder.phyregpool.getN0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
+  G4_CondMod *condMod = builder.createCondMod(Mod_ne, WAFlagVar, 0);
+  auto cmpInst = builder.createInternalInst(
+      nullptr, G4_cmp, condMod, g4::NOSAT, g4::SIMD1, nullDst, src0Cmp,
+      builder.createImm(0x1, Type_UD), InstOpt_WriteEnable);
+  bb->insertBefore(it, cmpInst);
+
+  // (W&f0.0) while(1) loop
+  G4_Predicate *pred = builder.createPredicate(PredState_Plus, WAFlagVar, 0);
+  auto whileInst = builder.createInternalCFInst(
+      pred, G4_while, g4::SIMD1, label, label, InstOpt_WriteEnable);
+  bb->insertBefore(it, whileInst);
+
+  // restore f0.0:ud from dst.0:ud
+  //   mov(1) f0.0:ud dst.0:ud
+  G4_DstRegRegion *dstMovForRestore = builder.createDst(WAFlagVar, Type_UD);
+  G4_SrcRegRegion *srcMovForRestore =
+      builder.createSrc(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(),
+                        builder.getRegionScalar(), Type_UD);
+  auto restoreInst =
+      builder.createMov(g4::SIMD1, dstMovForRestore, srcMovForRestore,
+                        InstOpt_WriteEnable, false);
+  *it = restoreInst;
+}
+
+// Expand Intrinsic::NamedBarrierWA instruction
+void Optimizer::applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
+  G4_INST *inst = *it;
+
+  if (!inst->isNamedBarrierWAIntrinsic())
+    return;
+
+  // The dst of Intrinsic::NamedBarrierWA instruction has 3 DWs:
+  //     dst.0:ud is for legalizing the barrier id which could be :b datatype
+  //     or immediate.
+  //     dst.1:ud is for generating the mask.
+  //     dst.2:ud is for saving existing flag so WA can use it in the loop
+  // The src0 of Intrinsic::NamedBarrierWA instruction is the barrier id.
+
+  auto dst = inst->getDst();
+  auto src = inst->getSrc(0);
+
+  G4_RegVar *WAFlagVar = builder.createTempFlag(2, "WAFlagUD")->getRegVar();
+  WAFlagVar->setPhyReg(builder.phyregpool.getF0Reg(), 0);
+
+  // save f0.0:ud to dst.2:ud, then f0.0 can be used in the loop
+  //   (W) mov(1) dst.2:ud f0.0:ud
+  G4_DstRegRegion *dstMovForSave = builder.createDst(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff() + 2, 1, Type_UD);
+  G4_SrcRegRegion *srcMovForSave =
+      builder.createSrc(WAFlagVar, 0, 0, builder.getRegionScalar(), Type_UD);
+  auto saveInst = builder.createMov(g4::SIMD1, dstMovForSave, srcMovForSave,
+                                    InstOpt_WriteEnable, false);
+  bb->insertBefore(it, saveInst);
+
+  // (W) mov dst.1<1>:ud 0x1:ud
+  G4_DstRegRegion *dstMov = builder.createDst(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff() + 1, 1, Type_UD);
+  auto movInst =
+      builder.createMov(g4::SIMD1, dstMov, builder.createImm(0x1, Type_UD),
+                        InstOpt_WriteEnable, false);
+  bb->insertBefore(it, movInst);
+
+  // (W) mov dst.0<1>:ud src(barrierId):ud
+  G4_DstRegRegion *dstMov2 = builder.createDst(dst->getBase(), dst->getRegOff(),
+                                               dst->getSubRegOff(), 1, Type_UD);
+  auto movInst2 =
+      builder.createMov(g4::SIMD1, dstMov2, src, InstOpt_WriteEnable, false);
+  bb->insertBefore(it, movInst2);
+
+  // (W) shl(1) dst.1:ud dst.1:ud dst.0:ud
+  G4_SrcRegRegion *src0Shl = builder.createSrc(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff() + 1,
+      builder.getRegionScalar(), Type_UD);
+  G4_SrcRegRegion *src1Shl =
+      builder.createSrc(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(),
+                        builder.getRegionScalar(), Type_UD);
+  auto shlInst =
+      builder.createBinOp(G4_shl, g4::SIMD1, builder.duplicateOperand(dstMov),
+                          src0Shl, src1Shl, InstOpt_WriteEnable, false);
+  bb->insertBefore(it, shlInst);
+
+  // create label
+  G4_Label *label = builder.createLocalBlockLabel("barrier_WA_loop");
+  auto labelInst = builder.createLabelInst(label, false);
+  bb->insertBefore(it, labelInst);
+
+  // (W) cmp(1) (ne)f0.0 null:ud n0.0:ud dst1.1:ud
+  G4_DstRegRegion *nullDst = builder.createNullDst(Type_UD);
+  G4_SrcRegRegion *src0Cmp = builder.createSrc(
+      builder.phyregpool.getN0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
+  G4_SrcRegRegion *src1Cmp = builder.duplicateOperand(src0Shl);
+  G4_CondMod *condMod = builder.createCondMod(Mod_ne, WAFlagVar, 0);
+  auto cmpInst = builder.createInternalInst(nullptr, G4_cmp, condMod, g4::NOSAT,
+                                            g4::SIMD1, nullDst, src0Cmp,
+                                            src1Cmp, InstOpt_WriteEnable);
+  bb->insertBefore(it, cmpInst);
+
+  // (W&f0.0) while(1) loop
+  G4_Predicate *pred = builder.createPredicate(PredState_Plus, WAFlagVar, 0);
+  auto whileInst = builder.createInternalCFInst(
+      pred, G4_while, g4::SIMD1, label, label, InstOpt_WriteEnable);
+  bb->insertBefore(it, whileInst);
+
+  // restore f0.0:ud from dst.2:ud
+  //   mov(1) f0.0:ud dst.2:ud
+  G4_DstRegRegion *dstMovForRestore = builder.createDst(WAFlagVar, Type_UD);
+  G4_SrcRegRegion *srcMovForRestore = builder.createSrc(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff() + 2,
+      builder.getRegionScalar(), Type_UD);
+  auto restoreInst =
+      builder.createMov(g4::SIMD1, dstMovForRestore, srcMovForRestore,
+                        InstOpt_WriteEnable, false);
+  *it = restoreInst;
 }

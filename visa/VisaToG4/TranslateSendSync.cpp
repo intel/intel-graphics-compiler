@@ -321,6 +321,35 @@ int IR_Builder::translateVISANamedBarrierWait(G4_Predicate *pred,
               InstOpt_WriteEnable, true);
     barSrc = createSrcRegRegion(flagDecl, getRegionScalar());
   }
+
+  // Barrier WA:Compiler must check the arrival of notification in n0.0 register
+  // first before inserting the sync.bar instruction. The following instruction
+  // sequence must be inserted before a sync.bar instruction:
+  // r10.0 has the 5bit named barrier id, which is also copied into f1.0:uw
+  // generate a mask in r10.1 with bit[barrier id] set to use it against n0.0
+  //     mov(1) r10.1:ud 0x1:ud
+  //     (W) shl(1) r10.1:ud r10.1:ud r10.0:ud
+  //     loop:
+  //     cmp(1)(ne) f0.0 null:ud n0.0:ud r10.1:ud
+  //     (f0.0) while (1) loop
+  //     (W) sync.bar f1.0:uw
+  // Here insert Intrinsic::NamedBarrierWA before wait which will be expanded
+  // to above instructions sequence in HWWorkaround.
+  // This WA need to reserve 3 DWs:
+  //   The first one for getting the barrierId
+  //   The second one for generating the mask
+  //   The third one for saving existing flag so that WA can use it in the loop
+  if (needBarrierWA()) {
+    G4_Declare *WAVarReserved = createTempVar(3, Type_UD, Even_Word, "WATemp");
+
+    G4_DstRegRegion *dstIntrinsicInst =
+        createDst(WAVarReserved->getRegVar(), 0, 0, 1, Type_UD);
+
+    createIntrinsicInst(nullptr, Intrinsic::NamedBarrierWA, g4::SIMD1,
+                        dstIntrinsicInst, duplicateOperand(barrierId), nullptr,
+                        nullptr, InstOpt_WriteEnable, true);
+  }
+
   // wait barrierId
   createInst(pred, G4_wait, nullptr, g4::NOSAT, g4::SIMD1, nullptr, barSrc,
              nullptr, InstOpt_WriteEnable, true);
@@ -507,6 +536,30 @@ void IR_Builder::generateBarrierWait(G4_Predicate *prd) {
       waitSrc = createNullSrc(Type_UD);
     }
   }
+
+  // Barrrier WA: Compiler must check the arrival of notification in n0.0
+  // register first before inserting the sync.bar instruction. The following
+  // instructions sequence must be inserted before a sync.bar instruction.
+  // Legacy barrier case:
+  //    loop:
+  //    cmp (1) (ne)f0.0 null:ud n0.0:ud 0x1:ud
+  //    (f0.0) while(1) loop
+  //    (W) sync.bar 0x0:uw
+  // Here insert Intrinsic::BarrierWA before wait which will be expanded
+  // to above instructions sequence in HWWorkaround.
+  // This WA needs to reserve 1 DW for saving existing flag so that WA can
+  // use it in the loop
+  if (needBarrierWA()) {
+    G4_Declare *WAVarReserved = createTempVar(1, Type_UD, Even_Word, "WATemp");
+
+    G4_DstRegRegion *dstIntrinsicInst =
+        createDst(WAVarReserved->getRegVar(), 0, 0, 1, Type_UD);
+
+    createIntrinsicInst(nullptr, Intrinsic::BarrierWA, g4::SIMD1,
+                        dstIntrinsicInst, nullptr, nullptr,
+                        nullptr, InstOpt_WriteEnable, true);
+  }
+
   createInst(prd, G4_wait, nullptr, g4::NOSAT, g4::SIMD1, nullptr, waitSrc,
              nullptr, InstOpt_WriteEnable, true);
 }

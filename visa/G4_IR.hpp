@@ -288,6 +288,8 @@ public:
   G4_DstRegRegion *getDst() const { return dst; }
   bool supportsNullDst() const;
 
+  bool isBarrierWAIntrinsic() const;
+  bool isNamedBarrierWAIntrinsic() const;
   bool isPseudoKill() const;
   bool isLifeTimeEnd() const;
   bool isSpillIntrinsic() const;
@@ -1245,6 +1247,8 @@ enum class Intrinsic {
   CalleeRestore,
   FlagSpill,
   PseudoAddrMov,
+  NamedBarrierWA,
+  BarrierWA,
   NumIntrinsics
 };
 
@@ -1254,6 +1258,7 @@ enum class Phase {
   HWConformity,
   RA,
   Scheduler,
+  SWSB,
   BinaryEncoding
 };
 
@@ -1332,6 +1337,18 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
      1,
      8,
      Phase::Optimizer,
+     {0, 0, 0, false, false}},
+    {Intrinsic::NamedBarrierWA,
+     "namedBarrierWA",
+     1,
+     1,
+     Phase::SWSB,
+     {0, 0, 0, false, false}},
+    {Intrinsic::BarrierWA,
+     "barrierWA",
+     1,
+     0,
+     Phase::SWSB,
      {0, 0, 0, false, false}},
 };
 

@@ -251,6 +251,8 @@ private:
   void expandMadwPostSchedule();
   void fixReadSuppressioninFPU0();
   void prepareDPASFuseRSWA();
+  void applyBarrierWA(INST_LIST_ITER it, G4_BB *bb);
+  void applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb);
 
   typedef std::vector<vISA::G4_INST *> InstListType;
   // create instruction sequence to calculate call offset from ip

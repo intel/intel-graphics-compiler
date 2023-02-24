@@ -554,6 +554,11 @@ DEF_VISA_OPTION(vISA_LSCFenceWA, ET_BOOL, "-LSCFenceWA", UNUSED, false)
 DEF_VISA_OPTION(vISA_RestrictSrc1ByteSwizzle, ET_BOOL,
                 "-restrictSrc1ByteSwizzle",
                 "Enable the WA to restrict src1 byte swizzle case", false)
+DEF_VISA_OPTION(vISA_enableBarrierWA, ET_BOOL,
+                "-enableBarrierWA",
+                "enable barrier WA which inserts instructions to check the "
+                "arrival of the notification in n0.0 brfore sync.bar",
+                false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,
