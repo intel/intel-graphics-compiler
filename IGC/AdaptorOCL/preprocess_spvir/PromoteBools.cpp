@@ -442,11 +442,18 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     if (newValue != value)
     {
         promotedValuesCache[value] = newValue;
-        for (const auto& user : value->users())
+        if (value->getType() == newValue->getType())
         {
-            if (!wasPromoted(user))
+            value->replaceAllUsesWith(newValue);
+        }
+        else
+        {
+            for (const auto& user : value->users())
             {
-                promotionQueue.push(user);
+                if (!wasPromoted(user))
+                {
+                    promotionQueue.push(user);
+                }
             }
         }
     }
