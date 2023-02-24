@@ -26,12 +26,12 @@ SPDX-License-Identifier: MIT
 #ifndef GENXSUBTARGET_H
 #define GENXSUBTARGET_H
 
+#include "visa_igc_common_header.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/Pass.h"
-#include "llvm/CodeGen/TargetSubtargetInfo.h"
-#include "visa_igc_common_header.h"
 #include <string>
 
 #define GET_SUBTARGETINFO_HEADER
@@ -156,6 +156,9 @@ private:
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
+  /// True if subtarget supports constant offset for LSC message address
+  bool HasLSCOffset = false;
+
   /// True if subtarget supports half SIMD LSC messages
   bool HasHalfSIMDLSC = false;
 
@@ -203,7 +206,6 @@ private:
 
   /// True if subtarget supports large GRF mode
   bool HasLargeGRF = false;
-
 
   /// Max supported SLM size (in kbytes)
   int MaxSLMSize = 64;
@@ -269,6 +271,10 @@ public:
 
   int getNumElementsInAddrReg() const { return GRFByteSize / 4; }
 
+  bool hasLSCMessages() const { return HasLSCMessages; }
+
+  bool hasLSCOffset() const { return HasLSCOffset; }
+
   bool translateLegacyMessages() const {
     return (HasLSCMessages && TranslateLegacyMessages);
   }
@@ -277,7 +283,8 @@ public:
 
   bool partialI64Emulation() const { return PartialI64Emulation; }
 
-  /// * hasPackedFloat - true if packed float immediate vector operands are supported
+  /// * hasPackedFloat - true if packed float immediate vector operands are
+  /// supported
   bool hasPackedFloat() const { return HasPackedFloat; }
 
   /// * emulateLongLong - true if i64 emulation is requested

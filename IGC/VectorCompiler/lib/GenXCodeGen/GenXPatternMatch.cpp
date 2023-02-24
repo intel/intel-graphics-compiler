@@ -538,6 +538,10 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
     return;
   }
 
+  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
+                                 .getTM<GenXTargetMachine>()
+                                 .getGenXSubtarget();
+
   switch (unsigned ID = GenXIntrinsic::getGenXIntrinsicID(&I)) {
   default:
     break;
@@ -593,7 +597,8 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_lsc_xatomic_stateless:
   case GenXIntrinsic::genx_lsc_xatomic_bindless:
   case GenXIntrinsic::genx_lsc_xatomic_bti:
-    Changed |= foldLscAddrCalculation(&I);
+    if (ST->hasLSCOffset())
+      Changed |= foldLscAddrCalculation(&I);
   case GenXIntrinsic::genx_dword_atomic_fadd:
   case GenXIntrinsic::genx_dword_atomic_fsub:
   case GenXIntrinsic::genx_dword_atomic_add:
@@ -1021,37 +1026,37 @@ applyLscAddrFolding(Value *Offsets, APInt& Scale, APInt& Offset) {
   auto NewOffset(Offset);
   bool Overflow = false;
   switch (BinOp->getOpcode()) {
-    case Instruction::Add:
-    case Instruction::Sub:
-      if (!EnableLscAddrFoldOffset)
-        return false;
-      if (Imm.getMinSignedBits() > Offset.getBitWidth())
-        return false;
-      Imm = Imm.sextOrTrunc(Offset.getBitWidth())
-                .smul_ov(Scale.zext(Offset.getBitWidth()), Overflow);
-      if (Overflow)
-        return false;
-      if (BinOp->getOpcode() == Instruction::Add)
-        NewOffset = Offset.sadd_ov(Imm, Overflow);
-      else if (BinOp->getOpcode() == Instruction::Sub)
-        NewOffset = Offset.ssub_ov(Imm, Overflow);
-      break;
-    case Instruction::Mul:
-      if (!EnableLscAddrFoldScale)
-        return false;
-      if (!Imm.isIntN(Scale.getBitWidth()))
-        return false;
-      if (Imm.getBitWidth() > Scale.getBitWidth())
-        Imm = Imm.trunc(Scale.getBitWidth());
-      NewScale = Scale.umul_ov(Imm, Overflow);
-      break;
-    case Instruction::Shl:
-      if (!EnableLscAddrFoldScale)
-        return false;
-      NewScale = Scale.ushl_ov(Imm, Overflow);
-      break;
-    default:
+  case Instruction::Add:
+  case Instruction::Sub:
+    if (!EnableLscAddrFoldOffset)
       return false;
+    if (Imm.getMinSignedBits() > Offset.getBitWidth())
+      return false;
+    Imm = Imm.sextOrTrunc(Offset.getBitWidth())
+              .smul_ov(Scale.zext(Offset.getBitWidth()), Overflow);
+    if (Overflow)
+      return false;
+    if (BinOp->getOpcode() == Instruction::Add)
+      NewOffset = Offset.sadd_ov(Imm, Overflow);
+    else if (BinOp->getOpcode() == Instruction::Sub)
+      NewOffset = Offset.ssub_ov(Imm, Overflow);
+    break;
+  case Instruction::Mul:
+    if (!EnableLscAddrFoldScale)
+      return false;
+    if (!Imm.isIntN(Scale.getBitWidth()))
+      return false;
+    if (Imm.getBitWidth() > Scale.getBitWidth())
+      Imm = Imm.trunc(Scale.getBitWidth());
+    NewScale = Scale.umul_ov(Imm, Overflow);
+    break;
+  case Instruction::Shl:
+    if (!EnableLscAddrFoldScale)
+      return false;
+    NewScale = Scale.ushl_ov(Imm, Overflow);
+    break;
+  default:
+    return false;
   }
 
   if (Overflow)

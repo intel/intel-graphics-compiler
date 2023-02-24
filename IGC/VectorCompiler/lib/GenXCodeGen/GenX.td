@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -145,9 +145,13 @@ def FeatureBfMixedModeWidth16 : SubtargetFeature<"feature_bf_mixed16",
                                                  "BF mixed mode operations extended width">;
 
 def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
-                                     "HasLSCMessages",
-                                     "true",
+                                     "HasLSCMessages", "true",
                                      "Target supports LSC messages">;
+
+def FeatureHasLSCOffset : SubtargetFeature<"feature_has_lsc_offset",
+                                           "HasLSCOffset", "true",
+                                           "Target supports constant offset for LSC messages",
+                                           [FeatureHasLSC]>;
 
 def FeatureHasAdd3 : SubtargetFeature<"feature_has_add3",
                                       "HasAdd3", "true",
