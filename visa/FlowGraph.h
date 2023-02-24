@@ -64,6 +64,12 @@ public:
     callees.clear();
   }
 
+  void clear() {
+    BBSet.clear();
+    BBList.clear();
+    callees.clear();
+  }
+
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   bool doIPA() const { return callCount > 1; }

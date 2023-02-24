@@ -6799,6 +6799,7 @@ void Optimizer::preRA_HWWorkaround() {
     applyFusedCallWA();
     // Reset pre- and post-Id after FusedCallWA, which may add new
     // basic blocks.
+    kernel.fg.reassignBlockIDs();
     kernel.fg.findBackEdges();
   }
 

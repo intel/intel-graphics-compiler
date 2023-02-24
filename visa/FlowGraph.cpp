@@ -3737,6 +3737,10 @@ void FlowGraph::addSIMDEdges() {
 void FlowGraph::DFSTraverse(G4_BB *startBB, unsigned &preId, unsigned &postId,
                             FuncInfo *fn) {
   vISA_ASSERT(fn, "Invalid func info");
+
+  // clear fields that will be reset by this function.
+  fn->clear();
+
   std::stack<G4_BB *> traversalStack;
   traversalStack.push(startBB);
 
