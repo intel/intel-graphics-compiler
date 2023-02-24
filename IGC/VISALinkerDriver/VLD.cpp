@@ -266,6 +266,26 @@ std::vector<const char *> GetDirectCallFunctions(
   return OutVec;
 }
 
+// Helper function to create a SPVTranslationPair with given TranslateInputArgs
+// as base and binary SPV program. The caller needs to be the owner of the
+// program and options, as TranslateInputArgs structure keeps a pointer to them.
+llvm::Expected<IGC::VLD::SPVTranslationPair>
+MakeSPVTranslationPair(const TC::STB_TranslateInputArgs *pInputArgs,
+                       const IGC::VLD::ProgramStreamType &program,
+                       const std::string &options) {
+
+  TC::STB_TranslateInputArgs NewArgs = *pInputArgs;
+  NewArgs.pInput = (char*)(program.data());
+  NewArgs.InputSize = program.size() * sizeof(*program.begin());
+  NewArgs.pOptions = options.data();
+  NewArgs.OptionsSize = options.size();
+  auto VLDMetadata = IGC::VLD::GetVLDMetadata(NewArgs.pInput, NewArgs.InputSize);
+  if (!VLDMetadata) {
+    return VLDMetadata.takeError();
+  }
+  return IGC::VLD::SPVTranslationPair(*VLDMetadata, NewArgs);
+}
+
 } // namespace
 
 namespace IGC {
@@ -357,29 +377,20 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
       DumpSPIRVFile((const char*)esimdProg.data(), esimdProg.size() * sizeof(uint32_t), inputShHash, ".esimd_split.spv");
   }
 
-  STB_TranslateInputArgs newArgsSPMD = *pInputArgs;
-  newArgsSPMD.pInput = reinterpret_cast<char *>(spmdProg.data());
-  newArgsSPMD.InputSize = spmdProg.size() * sizeof(*spmdProg.begin());
-
-  STB_TranslateInputArgs newArgsESIMD = *pInputArgs;
-  newArgsESIMD.pInput = reinterpret_cast<char *>(esimdProg.data());
-  newArgsESIMD.InputSize = esimdProg.size() * sizeof(*esimdProg.begin());
-  newArgsESIMD.pOptions = esimdOptions.data();
-  newArgsESIMD.OptionsSize = esimdOptions.size();
-
-
-  auto ESIMDMetadata = GetVLDMetadata(newArgsESIMD.pInput, newArgsESIMD.InputSize);
-  if (!ESIMDMetadata) {
-    errorMessage = ERROR_VLD + llvm::toString(ESIMDMetadata.takeError());
+  auto SpmdTPOrErr = MakeSPVTranslationPair(pInputArgs, spmdProg, newOptions);
+  auto EsimdTPOrErr = MakeSPVTranslationPair(pInputArgs, esimdProg, esimdOptions);
+  if (!SpmdTPOrErr) {
+    errorMessage = ERROR_VLD + llvm::toString(SpmdTPOrErr.takeError());
+    return false;
   }
-  auto SPMDMetadata = GetVLDMetadata(newArgsSPMD.pInput, newArgsSPMD.InputSize);
-  if (!SPMDMetadata) {
-    errorMessage = ERROR_VLD + llvm::toString(SPMDMetadata.takeError());
+  if (!EsimdTPOrErr) {
+    errorMessage = ERROR_VLD + llvm::toString(EsimdTPOrErr.takeError());
+    return false;
   }
 
   std::array<SPVTranslationPair, 2> SpvArr{
-    std::make_pair(ESIMDMetadata.get(), newArgsESIMD),
-    std::make_pair(SPMDMetadata.get(), newArgsSPMD)
+    *EsimdTPOrErr,
+    *SpmdTPOrErr
   };
 
   return TranslateBuildSPMDAndESIMD(
@@ -399,14 +410,59 @@ bool TranslateBuildSPMDAndESIMD(
   std::vector<const char*> VisaCStrings;
   uint32_t SimdSize = 0;
 
-  auto DirectCallFunctions = GetDirectCallFunctions(InputModules);
+  std::vector<SPVTranslationPair> SplitInputModules;
+  std::vector<ProgramStreamType> OwnerSplitBinaries;
+
+  auto SetVLDErrorMessage = [&errorMessage](llvm::Error Err) {
+    errorMessage = ERROR_VLD + llvm::toString(std::move(Err));
+  };
+
+  // Split any SPMD+ESIMD modules.
+  for (auto &InputModule : InputModules) {
+    if (InputModule.first.SpirvType ==
+        VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD) {
+      auto SPMPAndESIMDOrErr = VLD::SplitSPMDAndESIMD(
+        InputModule.second.pInput, InputModule.second.InputSize);
+      if (!SPMPAndESIMDOrErr) {
+        SetVLDErrorMessage(SPMPAndESIMDOrErr.takeError());
+        return false;
+      }
+      OwnerSplitBinaries.push_back(std::move(SPMPAndESIMDOrErr.get().first));
+
+      std::string newOptions{InputModule.second.pOptions ? InputModule.second.pOptions : ""};
+      std::string esimdOptions{ newOptions };
+      esimdOptions += " -vc-codegen";
+
+      OwnerStrings.push_back(std::move(newOptions));
+
+      auto SpmdTPOrErr = MakeSPVTranslationPair(&InputModule.second, OwnerSplitBinaries.back(), OwnerStrings.back());
+      if (!SpmdTPOrErr) {
+        SetVLDErrorMessage(SpmdTPOrErr.takeError());
+      }
+
+      OwnerSplitBinaries.push_back(std::move(SPMPAndESIMDOrErr.get().second));
+      OwnerStrings.push_back(std::move(esimdOptions));
+      auto EsimdTPOrErr = MakeSPVTranslationPair(&InputModule.second, OwnerSplitBinaries.back(), OwnerStrings.back());
+      if (!EsimdTPOrErr) {
+        SetVLDErrorMessage(EsimdTPOrErr.takeError());
+      }
+
+      SplitInputModules.push_back(*EsimdTPOrErr);
+      SplitInputModules.push_back(*SpmdTPOrErr);
+
+    } else {
+      SplitInputModules.push_back(InputModule);
+    }
+  }
+
+  auto DirectCallFunctions = GetDirectCallFunctions(SplitInputModules);
 
   // Module with entry points should be compiled as the last one.
   // We currently support the use-case, where only one of the SPIR-V modules contain entry points.
-  auto NewInputModulesOrErr = MoveEntryPointModuleToTheEnd(InputModules, SimdSize);
+  auto NewInputModulesOrErr = MoveEntryPointModuleToTheEnd(SplitInputModules, SimdSize);
   if (!NewInputModulesOrErr)
   {
-    errorMessage = ERROR_VLD + llvm::toString(NewInputModulesOrErr.takeError());
+    SetVLDErrorMessage(NewInputModulesOrErr.takeError());
     return false;
   }
 
@@ -426,6 +482,8 @@ bool TranslateBuildSPMDAndESIMD(
     STB_TranslateInputArgs NewInputArgs = InputArgs;
     std::string NewInternalOptions{
         InputArgs.pInternalOptions ? InputArgs.pInternalOptions : ""};
+    std::string NewOptions{InputArgs.pOptions ? InputArgs.pOptions : ""};
+    std::string NewEsimdOptions{ NewOptions };
 
     switch (InputArgsPair.first.SpirvType) {
     case VLD::SPIRVTypeEnum::SPIRV_SPMD:
@@ -442,7 +500,9 @@ bool TranslateBuildSPMDAndESIMD(
       }
       break;
     case VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD:
-      break;
+      IGC_ASSERT("SPMD+ESIMD module assumed to be split before this code.");
+      errorMessage = "VisaLinkerDriver logic error!";
+      return false;
     default:
       errorMessage = "Unsupported SPIR-V flavour detected!";
       return false;
@@ -467,15 +527,16 @@ bool TranslateBuildSPMDAndESIMD(
                                    inputDataFormatTemp, IGCPlatform,
                                    profilingTimerResolution, inputShHash);
     } else if (InputArgsPair.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_ESIMD) {
+      NewEsimdOptions += " -vc-codegen";
+      NewInputArgs.pOptions = NewEsimdOptions.data();
+      NewInputArgs.OptionsSize = NewEsimdOptions.size();
       success =
           TranslateBuildVC(&NewInputArgs, &NewOutputArgs, inputDataFormatTemp,
                            IGCPlatform, profilingTimerResolution, inputShHash);
     } else {
-      IGC_ASSERT(InputArgsPair.first.SpirvType ==
-                 VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD);
-      success = TranslateBuildSPMDAndESIMD(
-          &NewInputArgs, &NewOutputArgs, inputDataFormatTemp, IGCPlatform,
-          profilingTimerResolution, inputShHash, errorMessage);
+      IGC_ASSERT("SPMD+ESIMD module assumed to be split before this code.");
+      errorMessage = "VisaLinkerDriver logic error!";
+      return false;
     }
 
     if (!success) {
@@ -500,8 +561,7 @@ bool TranslateBuildSPMDAndESIMD(
     auto HasZeInfoSectionOrErr =
         ZeBinaryContainsSection(ZeBinary, zebin::SHT_ZEBIN_ZEINFO);
     if (!HasZeInfoSectionOrErr) {
-      errorMessage =
-          ERROR_VLD + llvm::toString(HasZeInfoSectionOrErr.takeError());
+      SetVLDErrorMessage(HasZeInfoSectionOrErr.takeError());
       return false;
     }
     if (!*HasZeInfoSectionOrErr) {
@@ -510,7 +570,7 @@ bool TranslateBuildSPMDAndESIMD(
 
     auto ZeInfoOrErr = GetZeInfoFromZeBinary(ZeBinary);
     if (!ZeInfoOrErr) {
-      errorMessage = ERROR_VLD + llvm::toString(ZeInfoOrErr.takeError());
+      SetVLDErrorMessage(ZeInfoOrErr.takeError());
       return false;
     }
 
@@ -519,7 +579,7 @@ bool TranslateBuildSPMDAndESIMD(
 
       auto SimdSizeOrErr = GetSIMDSizeFromZeInfo(*ZeInfoOrErr);
       if (!SimdSizeOrErr) {
-        errorMessage = ERROR_VLD + llvm::toString(SimdSizeOrErr.takeError());
+        SetVLDErrorMessage(SimdSizeOrErr.takeError());
         return false;
       }
       if (SimdSize != 0 && SimdSize != *SimdSizeOrErr) {
@@ -540,7 +600,7 @@ bool TranslateBuildSPMDAndESIMD(
     auto VISAAsm = GetVISAAsmFromZEBinary(ZeBinary);
 
     if (!VISAAsm) {
-      errorMessage = ERROR_VLD + llvm::toString(VISAAsm.takeError());
+      SetVLDErrorMessage(VISAAsm.takeError());
       return false;
     }
 
