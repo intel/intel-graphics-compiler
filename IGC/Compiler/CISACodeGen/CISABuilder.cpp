@@ -6061,7 +6061,8 @@ namespace IGC
         // always set properly, even if a barrier is used as a part of Inline vISA code only.
         if (jitInfo->numBarriers != 0)
         {
-            if (context->getModuleMetaData()->NBarrierCnt > 0)
+            if (context->getModuleMetaData()->NBarrierCnt > 0 ||
+                additionalVISAAsmToLink)
             {
                 m_program->SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers));
             }
