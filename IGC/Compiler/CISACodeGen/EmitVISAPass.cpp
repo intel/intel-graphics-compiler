@@ -14845,16 +14845,39 @@ void EmitPass::emitf32tof16_rtz(llvm::GenIntrinsicInst* inst)
     CVariable imm0_hf(0, ISA_TYPE_HF);
     CVariable* dst_hf = m_currShader->BitCast(m_destination, ISA_TYPE_HF);
 
+    // The upper 16bit is required to be set to zero based on:
+    //   microsoft.github.io/DirectX-Specs/d3d/archive/
+    //   D3D11_3_FunctionalSpec.htm#22.13.2%20f32tof16
+    // If the lower is used only, we can safely skip setting upper 16bit.
+    bool setUpper16b = true;
+    if (inst->hasOneUse() && inst->user_back()->hasOneUse()) {
+        //  %16 = call fast float @llvm.genx.GenISA.f32tof16.rtz(float %14)
+        //  %17 = bitcast float% 16 to <2xhalf>
+        //  %18 = extractelement <2xhalf> %17, i32 0
+        Value* U = inst->user_back();
+        BitCastInst* BCI = dyn_cast<BitCastInst>(U);
+        ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(U->user_back());
+        ConstantInt* Ix =
+            (EEI ? dyn_cast<ConstantInt>(EEI->getIndexOperand()) : nullptr);
+        if (BCI && EEI && Ix && BCI->getType()->isVectorTy() &&
+            BCI->getType()->getScalarType()->isHalfTy() &&
+            BCI == EEI->getVectorOperand() && Ix->isZero()) {
+            setUpper16b = false;
+        }
+    }
+
     SetRoundingMode_FP(ERoundingMode::ROUND_TO_ZERO);
 
     m_encoder->SetDstRegion(2);
     m_encoder->Cast(dst_hf, src);
     m_encoder->Push();
 
-    m_encoder->SetDstRegion(2);
-    m_encoder->SetDstSubReg(1);
-    m_encoder->Copy(dst_hf, &imm0_hf);
-    m_encoder->Push();
+    if (setUpper16b) {
+        m_encoder->SetDstRegion(2);
+        m_encoder->SetDstSubReg(1);
+        m_encoder->Copy(dst_hf, &imm0_hf);
+        m_encoder->Push();
+    }
 
     ResetRoundingMode(inst);
 }
