@@ -166,14 +166,6 @@ public:
     return configs[configs.size() - 1].numGRF;
   }
   unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
-  unsigned getLargerGRF() const {
-    return currentMode + 1 < configs.size() ? configs[currentMode + 1].numGRF
-                                            : configs[currentMode].numGRF;
-  }
-  unsigned getSmallerGRF() const {
-    return (signed)currentMode - 1 >= 0 ? configs[currentMode - 1].numGRF
-                                        : configs[currentMode].numGRF;
-  }
 
   unsigned getNumThreads() const { return configs[currentMode].numThreads; }
   unsigned getMinNumThreads() const {
@@ -464,8 +456,7 @@ public:
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }
 
-  bool updateKernelToLargerGRF();
-  bool updateKernelToSmallerGRF();
+  void updateKernelToLargeGRF();
   void updateKernelByRegPressure(unsigned regPressure);
 
   void evalAddrExp();

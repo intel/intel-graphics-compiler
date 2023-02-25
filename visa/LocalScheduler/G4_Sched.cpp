@@ -671,7 +671,7 @@ bool preRA_RegSharing::run() {
                                            kernel.getOptions()->getuInt32Option(
                                                vISA_ReservedGRFNum)))) {
     // Update number of threads, GRF, Acc and SWSB
-    kernel.updateKernelToLargerGRF();
+    kernel.updateKernelToLargeGRF();
   }
 
   // skip extreme test cases that scheduling does not good

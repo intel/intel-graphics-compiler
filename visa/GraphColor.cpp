@@ -2053,7 +2053,6 @@ bool GlobalRA::isReRAPass() {
   return reRAPass;
 }
 
-
 void Interference::buildInterferenceForDst(
     G4_BB *bb, SparseBitSet &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, G4_DstRegRegion *dst) {

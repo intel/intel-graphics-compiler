@@ -660,7 +660,6 @@ public:
   GlobalRA &getGRA() { return gra; }
   G4_SrcRegRegion *getScratchSurface() const;
   unsigned int getNumVars() const { return numVar; }
-  float getSpillRatio() const { return (float) spilledLRs.size() / numVar; }
   void markFailSafeIter(bool f) { failSafeIter = f; }
 };
 

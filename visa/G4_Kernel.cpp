@@ -499,6 +499,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
               "CISA version not supported by this JIT-compiler");
 
   name = NULL;
+  numThreads = 0;
   hasAddrTaken = false;
   kernelDbgInfo = nullptr;
   if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
@@ -655,31 +656,17 @@ void G4_Kernel::calculateSimdSize() {
 //
 // Updates kernel's related structures to large GRF
 //
-bool G4_Kernel::updateKernelToLargerGRF() {
+void G4_Kernel::updateKernelToLargeGRF() {
   if (numRegTotal == grfMode.getMaxGRF())
-    return false;
+    return;
 
-  numRegTotal = grfMode.getLargerGRF();
-
-  // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters();
-  fg.builder->rebuildPhyRegPool(getNumRegTotal());
-  return true;
-}
-
-//
-// Updates kernel's related structures to smaller GRF
-//
-bool G4_Kernel::updateKernelToSmallerGRF() {
-  if (numRegTotal == grfMode.getMinGRF())
-    return false;
-
-  numRegTotal = grfMode.getSmallerGRF();
+  numRegTotal = grfMode.getMaxGRF();
 
   // Scale number of GRFs, Acc, SWSB tokens.
   setKernelParameters();
+
+  // Update physical register pool
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
-  return true;
 }
 
 //
@@ -904,7 +891,7 @@ void G4_Kernel::setKernelParameters() {
     overrideGRFNum = 0;
   } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
     grfMode.setModeByNumGRFs(overrideGRFNum);
-  } else {
+  } else if (regSharingHeuristics) {
     // GRFMode is set to default mode when kernel is created
     // During compilation GRFMode may change by updating numRegTotal
     if (numRegTotal > 0)
