@@ -485,7 +485,11 @@ G4_Kernel *CISA_IR_Builder::GetCallerKernel(G4_INST *inst) {
 
 G4_Kernel *CISA_IR_Builder::GetCalleeKernel(G4_INST *fcall) {
   vASSERT(fcall->opcode() == G4_pseudo_fcall);
-  std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+  auto asLabel = fcall->getSrc(0)->asLabel();
+  if (!asLabel) {
+    return nullptr;
+  }
+  std::string funcName = asLabel->getLabel();
   auto iter = functionsNameMap.find(funcName);
   vISA_ASSERT(iter != functionsNameMap.end(),
          "can't find function with given name");
@@ -582,9 +586,11 @@ void CISA_IR_Builder::CollectCallSites(
       G4_INST *fcall = *it;
       vASSERT(fcall->opcode() == G4_pseudo_fcall);
       // When callee is a invoke_simd target
-      if (GetCalleeKernel(fcall)->getBoolKernelAttr(
-              Attributes::ATTR_LTOInvokeOptTarget)) {
-        sgInvokeList.push_back(it);
+      if (auto CalleeKernel = GetCalleeKernel(fcall)) {
+        if (CalleeKernel->getBoolKernelAttr(
+          Attributes::ATTR_LTOInvokeOptTarget)) {
+          sgInvokeList.push_back(it);
+        }
       }
     }
   }
