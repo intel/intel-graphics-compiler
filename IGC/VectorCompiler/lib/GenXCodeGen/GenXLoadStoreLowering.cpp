@@ -96,14 +96,7 @@ class GenXLoadStoreLowering : public FunctionPass,
   const GenXSubtarget *ST = nullptr;
 
 private:
-  Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
-                             Instruction *InsertBefore) const;
-  Value *NormalizeFuncPtrVec(Value *V, Instruction *InsPoint) const;
   IGCLLVM::FixedVectorType *getLoadVType(const LoadInst &LdI) const;
-  Value *vectorizeValueOperandIfNeeded(StoreInst &StI,
-                                       IRBuilder<> &Builder) const;
-  Instruction *extractFirstElement(Instruction &ProperGather, Type &LdTy,
-                                   IRBuilder<> &Builder) const;
   Instruction *createLegacySVMAtomicInst(Value &PointerOp,
                                          ArrayRef<Value *> Args,
                                          GenXIntrinsic::ID IID,
@@ -134,21 +127,24 @@ private:
   template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
   Instruction *createIntrinsic(MemoryInstT &I) const;
 
-  Instruction *createSVMLoadStore(Instruction &I, Value *Ptr,
-                                  Value *Data = nullptr) const;
-  Instruction *createSVMBlockLoadImpl(IRBuilder<> &Builder, Module *M,
-                                      GenXIntrinsic::ID IID,
-                                      IGCLLVM::FixedVectorType *Ty,
-                                      Value *Addr) const;
-  Instruction *createSVMBlockStoreImpl(IRBuilder<> &Builder, Module *M,
-                                       Value *Addr, Value *Data) const;
-  Instruction *createSVMGatherLoadImpl(IRBuilder<> &Builder, Module *M,
-                                       unsigned ESize,
-                                       IGCLLVM::FixedVectorType *Ty,
-                                       Value *Pred, Value *Addr) const;
-  Instruction *createSVMScatterStoreImpl(IRBuilder<> &Builder, Module *M,
-                                         unsigned ESize, Value *Pred,
-                                         Value *VAddr, Value *Data) const;
+  Instruction *createLegacyLoadStore(Instruction &I, unsigned BTI, Value *Ptr,
+                                     Value *Data = nullptr) const;
+  Instruction *createLegacyBlockLoadImpl(IRBuilder<> &Builder, Module *M,
+                                         GenXIntrinsic::ID IID, unsigned BTI,
+                                         IGCLLVM::FixedVectorType *Ty,
+                                         Value *Addr) const;
+  Instruction *createLegacyBlockStoreImpl(IRBuilder<> &Builder, Module *M,
+                                          unsigned BTI, Value *Addr,
+                                          Value *Data) const;
+  Instruction *createLegacyGatherLoadImpl(IRBuilder<> &Builder, Module *M,
+                                          unsigned BTI, unsigned ESize,
+                                          IGCLLVM::FixedVectorType *Ty,
+                                          Value *Pred, Value *Base,
+                                          Value *Offset) const;
+  Instruction *createLegacyScatterStoreImpl(IRBuilder<> &Builder, Module *M,
+                                            unsigned BTI, unsigned ESize,
+                                            Value *Pred, Value *Base,
+                                            Value *Offset, Value *Data) const;
 
   Instruction *createLSCLoadStore(Instruction &I, GenXIntrinsic::ID IID,
                                   Value *BTI, Value *Addr,
@@ -162,11 +158,6 @@ private:
                                   GenXIntrinsic::ID IID, unsigned ESize,
                                   Value *BTI, Value *Pred, Value *Addr,
                                   Value *Data) const;
-
-  Instruction *createGatherScaled(LoadInst &OrigLoad,
-                                  visa::ReservedSurfaceIndex Surface) const;
-  Instruction *createScatterScaled(StoreInst &OrigStore,
-                                   visa::ReservedSurfaceIndex Surface) const;
 
   Instruction *createLegacySVMAtomicLoad(LoadInst &LdI) const;
   Instruction *createLegacySVMAtomicStore(StoreInst &StI) const;
@@ -189,11 +180,11 @@ private:
   static LSC_DATA_ELEMS getLSCElementsPerAddress(unsigned N);
 
 public:
-  void visitStoreInst(StoreInst &StI) const;
-  void visitLoadInst(LoadInst &LdI) const;
-  void visitAtomicRMWInst(AtomicRMWInst &Inst) const;
   void visitAtomicCmpXchgInst(AtomicCmpXchgInst &Inst) const;
+  void visitAtomicRMWInst(AtomicRMWInst &Inst) const;
   void visitIntrinsicInst(IntrinsicInst &Intrinsic) const;
+  void visitLoadInst(LoadInst &LdI) const;
+  void visitStoreInst(StoreInst &StI) const;
 
 public:
   static char ID;
@@ -202,13 +193,6 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
 };
-
-// Creates ptrtoint instruction that truncates pointer to i32
-// Instructions are inserted via the provided \p Builder.
-Value *createPtrToInt32(Value &V, IRBuilder<> &IRB) {
-  auto *IntPtrTy = IRB.getInt32Ty();
-  return IRB.CreatePtrToInt(&V, IntPtrTy, V.getName() + ".p2i32");
-}
 
 } // end namespace
 
@@ -250,15 +234,55 @@ bool GenXLoadStoreLowering::runOnFunction(Function &F) {
   // BEConf.getStatelessPrivateMemSize() will be required
 
   // see visitXXInst members for main logic:
-  //   * visitStoreInst
-  //   * visitLoadInst
-  //   * visitAtomicRMWInst
   //   * visitAtomicCmpXchgInst
-  //   * visitAllocaInst
+  //   * visitAtomicRMWInst
   //   * visitIntrinsicInst
+  //   * visitLoadInst
+  //   * visitStoreInst
   visit(F);
 
   return true;
+}
+
+void GenXLoadStoreLowering::visitAtomicCmpXchgInst(
+    AtomicCmpXchgInst &Inst) const {
+  LLVM_DEBUG(dbgs() << "Replacing cmpxchg inst " << Inst << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(Inst);
+  Inst.replaceAllUsesWith(Replacement);
+  Inst.eraseFromParent();
+}
+
+void GenXLoadStoreLowering::visitAtomicRMWInst(AtomicRMWInst &Inst) const {
+  LLVM_DEBUG(dbgs() << "Replacing binary atomic inst " << Inst << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(Inst);
+  Inst.replaceAllUsesWith(Replacement);
+  Inst.eraseFromParent();
+}
+
+void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
+  unsigned ID = vc::getAnyIntrinsicID(&Intrinsic);
+  switch (ID) {
+  case Intrinsic::lifetime_start:
+  case Intrinsic::lifetime_end:
+    Intrinsic.eraseFromParent();
+    break;
+  }
+}
+
+void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
+  LLVM_DEBUG(dbgs() << "Replacing load " << LdI << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(LdI);
+  LLVM_DEBUG(dbgs() << "Proper gather to replace uses: " << *Replacement
+                    << "\n");
+  LdI.replaceAllUsesWith(Replacement);
+  LdI.eraseFromParent();
+}
+
+void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
+  LLVM_DEBUG(dbgs() << "Replacing store " << StI << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(StI);
+  LLVM_DEBUG(dbgs() << *Replacement << "\n");
+  StI.eraseFromParent();
 }
 
 unsigned
@@ -554,6 +578,15 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
 
   auto *Ty = IsLoad ? I.getType() : Data->getType();
   auto *VTy = &vc::getVectorType(*Ty);
+
+  if (Ty->isPtrOrPtrVectorTy()) {
+    auto *IntPtrTy = DL_->getIntPtrType(Ty);
+    VTy = &vc::getVectorType(*IntPtrTy);
+
+    if (!IsLoad)
+      Data = Builder.CreateIntToPtr(Data, IntPtrTy);
+  }
+
   auto *ETy = VTy->getElementType();
 
   auto VSize = DL_->getTypeSizeInBits(VTy) / ByteBits;
@@ -650,97 +683,13 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
     }
   }
 
-  if (IsLoad)
+  if (IsLoad) {
+    if (Ty->isPtrOrPtrVectorTy())
+      Result = Builder.CreateIntToPtr(Result, &vc::getVectorType(*Ty));
     Result = Builder.CreateBitCast(Result, Ty);
+  }
+
   return cast<Instruction>(Result);
-}
-
-Value *
-GenXLoadStoreLowering::ZExtOrTruncIfNeeded(Value *From, Type *ToTy,
-                                           Instruction *InsertBefore) const {
-  IRBuilder<> Builder(InsertBefore);
-  Type *FromTy = From->getType();
-  if (FromTy == ToTy)
-    return From;
-
-  unsigned FromTySz = DL_->getTypeSizeInBits(FromTy);
-  unsigned ToTySz = DL_->getTypeSizeInBits(ToTy);
-  Value *Res = From;
-  if (auto *FromVTy = dyn_cast<IGCLLVM::FixedVectorType>(FromTy);
-      FromVTy && FromVTy->getNumElements() == 1) {
-    auto *TmpRes =
-        Builder.CreateBitOrPointerCast(Res, FromVTy->getElementType(), "");
-    Res = TmpRes;
-  }
-  if (auto *ToVTy = dyn_cast<IGCLLVM::FixedVectorType>(ToTy))
-    Res = Builder.CreateVectorSplat(ToVTy->getNumElements(), Res,
-                                    Res->getName() + ".splat");
-  if (FromTySz < ToTySz)
-    Res = Builder.CreateZExtOrBitCast(Res, ToTy, "");
-  else if (FromTySz > ToTySz)
-    Res = Builder.CreateTruncOrBitCast(Res, ToTy, "");
-  return Res;
-}
-
-// \p TySz must be in bytes.
-static Value *FormEltsOffsetVector(unsigned NumElts, unsigned TySz,
-                                   IRBuilder<> &Builder) {
-  Value *EltsOffset = UndefValue::get(
-      IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), NumElts));
-  for (unsigned CurElt = 0; CurElt < NumElts; ++CurElt) {
-    Value *Idx = Builder.getInt32(CurElt);
-    Value *EltOffset = Builder.getInt32(CurElt * TySz);
-    EltsOffset = Builder.CreateInsertElement(EltsOffset, EltOffset, Idx);
-  }
-
-  return EltsOffset;
-}
-
-static Value *FormEltsOffsetVectorForSVM(Value *BaseOffset, Value *Offsets,
-                                         IRBuilder<> &Builder) {
-  IGC_ASSERT(BaseOffset->getType()->isIntegerTy(64));
-  IGC_ASSERT(Offsets->getType()->isVectorTy());
-
-  Type *I64Ty = Builder.getInt64Ty();
-  unsigned NumElts =
-      cast<IGCLLVM::FixedVectorType>(Offsets->getType())->getNumElements();
-  Value *BaseOffsets = Builder.CreateVectorSplat(NumElts, BaseOffset);
-  if (!Offsets->getType()->getScalarType()->isIntegerTy(64))
-    Offsets = Builder.CreateZExtOrBitCast(
-        Offsets, IGCLLVM::FixedVectorType::get(I64Ty, NumElts));
-  return Builder.CreateAdd(BaseOffsets, Offsets);
-}
-
-// Wipe all internal ConstantExprs out of V if it's a ConstantVector of function
-// pointers
-Value *GenXLoadStoreLowering::NormalizeFuncPtrVec(Value *V,
-                                                  Instruction *InsPoint) const {
-  V = vc::breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint,
-                              vc::LegalizationStage::NotLegalized);
-  auto *Inst = dyn_cast<InsertElementInst>(V);
-  if (!Inst)
-    return V;
-  std::vector<ExtractElementInst *> Worklist;
-  for (; Inst; Inst = dyn_cast<InsertElementInst>(Inst->getOperand(0))) {
-    if (auto *EEInst = dyn_cast<ExtractElementInst>(Inst->getOperand(1)))
-      if (auto *Idx = dyn_cast<Constant>(EEInst->getIndexOperand());
-          Idx && Idx->isZeroValue())
-        Worklist.push_back(EEInst);
-  }
-
-  std::vector<Constant *> NewVector;
-  std::transform(
-      Worklist.rbegin(), Worklist.rend(), std::back_inserter(NewVector),
-      [this](ExtractElementInst *I) {
-        IGC_ASSERT(I->getType()->getScalarType()->isIntegerTy(genx::ByteBits));
-        auto *F = cast<Function>(getFunctionPointerFunc(I->getVectorOperand()));
-        return ConstantExpr::getPtrToInt(
-            F, IntegerType::getInt64Ty(I->getContext()));
-      });
-  auto *NewCV = ConstantVector::get(NewVector);
-  IGC_ASSERT(DL_->getTypeSizeInBits(V->getType()) ==
-             DL_->getTypeSizeInBits(NewCV->getType()));
-  return NewCV;
 }
 
 // we need vector type that emulates what real load type
@@ -757,144 +706,170 @@ GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
   return cast<IGCLLVM::FixedVectorType>(LdTy);
 }
 
-Instruction *GenXLoadStoreLowering::extractFirstElement(
-    Instruction &ProperGather, Type &LdTy, IRBuilder<> &Builder) const {
-  auto *GatheredTy = cast<IGCLLVM::FixedVectorType>(ProperGather.getType());
-  Builder.ClearInsertionPoint();
-  Instruction *LdVal = nullptr;
-  if (GatheredTy->getNumElements() == 1)
-    LdVal = cast<Instruction>(
-        Builder.CreateExtractElement(&ProperGather, static_cast<uint64_t>(0ul),
-                                     ProperGather.getName() + ".tpm.loadres"));
-  else
-    LdVal = cast<Instruction>(Builder.CreateBitOrPointerCast(
-        &ProperGather, &LdTy, ProperGather.getName() + ".tpm.loadres"));
-  LdVal->setDebugLoc(ProperGather.getDebugLoc());
-  LdVal->insertAfter(&ProperGather);
-  return LdVal;
-}
-
-void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
-  LLVM_DEBUG(dbgs() << "Replacing load " << LdI << " ===>\n");
-  auto *Replacement = createMemoryInstReplacement(LdI);
-  LLVM_DEBUG(dbgs() << "Proper gather to replace uses: " << *Replacement
-                    << "\n");
-  LdI.replaceAllUsesWith(Replacement);
-  LdI.eraseFromParent();
-}
-
-void GenXLoadStoreLowering::visitAtomicRMWInst(AtomicRMWInst &Inst) const {
-  LLVM_DEBUG(dbgs() << "Replacing binary atomic inst " << Inst << " ===>\n");
-  auto *Replacement = createMemoryInstReplacement(Inst);
-  Inst.replaceAllUsesWith(Replacement);
-  Inst.eraseFromParent();
-}
-
-void GenXLoadStoreLowering::visitAtomicCmpXchgInst(
-    AtomicCmpXchgInst &Inst) const {
-  LLVM_DEBUG(dbgs() << "Replacing cmpxchg inst " << Inst << " ===>\n");
-  auto *Replacement = createMemoryInstReplacement(Inst);
-  Inst.replaceAllUsesWith(Replacement);
-  Inst.eraseFromParent();
-}
-
-Instruction *GenXLoadStoreLowering::createSVMBlockLoadImpl(
-    IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID,
+Instruction *GenXLoadStoreLowering::createLegacyBlockLoadImpl(
+    IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID, unsigned BTI,
     IGCLLVM::FixedVectorType *Ty, Value *Addr) const {
-  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_svm_block_ld ||
-                  IID == GenXIntrinsic::genx_svm_block_ld_unaligned);
   IGC_ASSERT_EXIT(Ty);
   IGC_ASSERT_EXIT(Addr);
 
-  auto *Func = GenXIntrinsic::getGenXDeclaration(M, IID, {Ty, Addr->getType()});
-  auto *Load = Builder.CreateCall(Func, {Addr});
+  Function *Func = nullptr;
+  SmallVector<Value *, 3> Args;
 
+  if (BTI > visa::RSI_Stateless) {
+    IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_svm_block_ld ||
+                    IID == GenXIntrinsic::genx_svm_block_ld_unaligned);
+    Func = GenXIntrinsic::getGenXDeclaration(M, IID, {Ty, Addr->getType()});
+  } else {
+    IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_oword_ld ||
+                    IID == GenXIntrinsic::genx_oword_ld_unaligned);
+    Func = GenXIntrinsic::getGenXDeclaration(M, IID, {Ty});
+    Args.push_back(Builder.getInt32(0));   // is_modified flag
+    Args.push_back(Builder.getInt32(BTI)); // buffer index
+  }
+
+  Args.push_back(Addr);
+
+  auto *Load = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "Created: " << *Load << "\n");
   return Load;
 }
 
-Instruction *GenXLoadStoreLowering::createSVMGatherLoadImpl(
-    IRBuilder<> &Builder, Module *M, unsigned ESize,
-    IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *Addr) const {
+Instruction *GenXLoadStoreLowering::createLegacyGatherLoadImpl(
+    IRBuilder<> &Builder, Module *M, unsigned BTI, unsigned ESize,
+    IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *Base,
+    Value *Offset) const {
   IGC_ASSERT_EXIT(Ty);
   IGC_ASSERT_EXIT(Pred);
-  IGC_ASSERT_EXIT(Addr);
+  IGC_ASSERT_EXIT(Base);
+  IGC_ASSERT_EXIT(Offset);
 
-  constexpr auto IID = GenXIntrinsic::genx_svm_gather;
-  auto BlocksNumLog2 = ESize == WordBytes ? 1 : 0;
+  GenXIntrinsic::ID IID = GenXIntrinsic::not_genx_intrinsic;
 
   auto NElements = Ty->getNumElements();
+  auto *AddrTy = cast<IGCLLVM::FixedVectorType>(Offset->getType());
   auto *RetVTy = Ty;
-  if (ESize < DWordBytes)
-    RetVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
-                                           NElements * DWordBytes);
 
-  SmallVector<Value *, 4> Args = {
-      Pred,
-      Builder.getInt32(BlocksNumLog2),
-      Addr,
-      UndefValue::get(RetVTy),
-  };
+  SmallVector<Value *, 7> Args = {Pred};
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  if (IsBTI) {
+    IID = GenXIntrinsic::genx_gather_scaled;
+    Args.push_back(Builder.getInt32(
+        genx::log2(ESize))); // Log2(NumBlocks), each block is 1 byte
+    Args.push_back(Builder.getInt16(0)); // scale
+    Args.push_back(Builder.getInt32(BTI));
+    Args.push_back(Base);
+    Args.push_back(Offset);
+  } else {
+    IID = GenXIntrinsic::genx_svm_gather;
+
+    if (ESize < DWordBytes)
+      RetVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
+                                             NElements * DWordBytes);
+
+    // Log2(NumBlocks), block can be 1, 4 or 8 bytes
+    Args.push_back(Builder.getInt32(ESize == WordBytes ? 1 : 0));
+
+    // Global offset is not supported, so emitting add instruction
+    auto *BaseSplat = Builder.CreateVectorSplat(AddrTy->getNumElements(), Base);
+    auto *Addr = Builder.CreateAdd(BaseSplat, Offset);
+    Args.push_back(Addr);
+  }
+
+  Args.push_back(UndefValue::get(RetVTy));
 
   auto *Func = GenXIntrinsic::getGenXDeclaration(
-      M, IID, {RetVTy, Pred->getType(), Addr->getType()});
+      M, IID, {RetVTy, Pred->getType(), AddrTy});
   auto *Load = Builder.CreateCall(Func, Args);
 
   LLVM_DEBUG(dbgs() << "Created: " << *Load << "\n");
   return cast<Instruction>(Builder.CreateBitCast(Load, Ty));
 }
 
-Instruction *
-GenXLoadStoreLowering::createSVMBlockStoreImpl(IRBuilder<> &Builder, Module *M,
-                                               Value *Addr, Value *Data) const {
-  constexpr auto IID = GenXIntrinsic::genx_svm_block_st;
-
-  auto *Func = GenXIntrinsic::getGenXDeclaration(
-      M, IID, {Addr->getType(), Data->getType()});
-  auto *Store = Builder.CreateCall(Func, {Addr, Data});
-
-  LLVM_DEBUG(dbgs() << "Created: " << *Store << "\n");
-  return Store;
-}
-
-Instruction *GenXLoadStoreLowering::createSVMScatterStoreImpl(
-    IRBuilder<> &Builder, Module *M, unsigned ESize, Value *Pred, Value *Addr,
+Instruction *GenXLoadStoreLowering::createLegacyBlockStoreImpl(
+    IRBuilder<> &Builder, Module *M, unsigned BTI, Value *Addr,
     Value *Data) const {
-  IGC_ASSERT_EXIT(Pred);
-  IGC_ASSERT_EXIT(Addr);
-  IGC_ASSERT_EXIT(Data);
+  Function *Func = nullptr;
+  auto *DataTy = Data->getType();
 
-  constexpr auto IID = GenXIntrinsic::genx_svm_scatter;
-  auto BlocksNumLog2 = ESize == WordBytes ? 1 : 0;
+  SmallVector<Value *, 3> Args;
 
-  auto *Ty = cast<IGCLLVM::FixedVectorType>(Data->getType());
-  auto NElements = Ty->getNumElements();
-  auto *StoreVTy = Ty;
-  auto *StoreData = Data;
-  if (ESize < DWordBytes) {
-    StoreVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
-                                             NElements * DWordBytes);
-    StoreData = Builder.CreateBitCast(Data, StoreVTy);
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  if (IsBTI) {
+    Func = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_oword_st,
+                                             {DataTy});
+    Args.push_back(Builder.getInt32(BTI));
+  } else {
+    Func = GenXIntrinsic::getGenXDeclaration(
+        M, GenXIntrinsic::genx_svm_block_st, {Addr->getType(), DataTy});
   }
 
-  SmallVector<Value *, 4> Args = {
-      Pred,
-      Builder.getInt32(BlocksNumLog2),
-      Addr,
-      StoreData,
-  };
+  Args.push_back(Addr);
+  Args.push_back(Data);
 
-  auto *Func = GenXIntrinsic::getGenXDeclaration(
-      M, IID, {Pred->getType(), Addr->getType(), StoreVTy});
   auto *Store = Builder.CreateCall(Func, Args);
 
   LLVM_DEBUG(dbgs() << "Created: " << *Store << "\n");
   return Store;
 }
 
-Instruction *GenXLoadStoreLowering::createSVMLoadStore(Instruction &I,
-                                                       Value *Ptr,
-                                                       Value *Data) const {
+Instruction *GenXLoadStoreLowering::createLegacyScatterStoreImpl(
+    IRBuilder<> &Builder, Module *M, unsigned BTI, unsigned ESize, Value *Pred,
+    Value *Base, Value *Offset, Value *Data) const {
+  IGC_ASSERT_EXIT(Pred);
+  IGC_ASSERT_EXIT(Base);
+  IGC_ASSERT_EXIT(Offset);
+  IGC_ASSERT_EXIT(Data);
+
+  GenXIntrinsic::ID IID = GenXIntrinsic::not_genx_intrinsic;
+
+  auto *AddrTy = cast<IGCLLVM::FixedVectorType>(Offset->getType());
+  auto *StoreVTy = cast<IGCLLVM::FixedVectorType>(Data->getType());
+  auto NElements = StoreVTy->getNumElements();
+
+  SmallVector<Value *, 7> Args = {Pred};
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  if (IsBTI) {
+    IID = GenXIntrinsic::genx_scatter_scaled;
+    Args.push_back(Builder.getInt32(
+        genx::log2(ESize))); // Log2(NumBlocks), each block is 1 byte
+    Args.push_back(Builder.getInt16(0)); // scale
+    Args.push_back(Builder.getInt32(BTI));
+    Args.push_back(Base);
+    Args.push_back(Offset);
+  } else {
+    IID = GenXIntrinsic::genx_svm_scatter;
+
+    if (ESize < DWordBytes) {
+      StoreVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
+                                               NElements * DWordBytes);
+      Data = Builder.CreateBitCast(Data, StoreVTy);
+    }
+
+    // Log2(NumBlocks), block can be 1, 4 or 8 bytes
+    Args.push_back(Builder.getInt32(ESize == WordBytes ? 1 : 0));
+
+    // Global offset is not supported, so emitting add instruction
+    auto *BaseSplat = Builder.CreateVectorSplat(AddrTy->getNumElements(), Base);
+    auto *Addr = Builder.CreateAdd(BaseSplat, Offset);
+    Args.push_back(Addr);
+  }
+
+  Args.push_back(Data);
+
+  auto *Func = GenXIntrinsic::getGenXDeclaration(
+      M, IID, {Pred->getType(), AddrTy, StoreVTy});
+  auto *Store = Builder.CreateCall(Func, Args);
+
+  LLVM_DEBUG(dbgs() << "Created: " << *Store << "\n");
+  return Store;
+}
+
+Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
+                                                          unsigned BTI,
+                                                          Value *Ptr,
+                                                          Value *Data) const {
   LLVM_DEBUG(dbgs() << "Lowering: " << I << "\n");
   IGC_ASSERT(isa<LoadInst>(I) || (isa<StoreInst>(I) && Data));
 
@@ -904,6 +879,15 @@ Instruction *GenXLoadStoreLowering::createSVMLoadStore(Instruction &I,
 
   auto *Ty = IsLoad ? I.getType() : Data->getType();
   auto *VTy = &vc::getVectorType(*Ty);
+
+  if (Ty->isPtrOrPtrVectorTy()) {
+    auto *IntPtrTy = DL_->getIntPtrType(Ty);
+    VTy = &vc::getVectorType(*IntPtrTy);
+
+    if (!IsLoad)
+      Data = Builder.CreatePtrToInt(Data, IntPtrTy);
+  }
+
   auto *ETy = VTy->getElementType();
 
   auto VSize = DL_->getTypeSizeInBits(VTy) / ByteBits;
@@ -918,13 +902,26 @@ Instruction *GenXLoadStoreLowering::createSVMLoadStore(Instruction &I,
   if (!IsLoad)
     Data = Builder.CreateBitCast(Data, VTy);
 
-  Value *Addr = Builder.CreatePtrToInt(Ptr, Builder.getInt64Ty());
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  auto *AddrTy = IsBTI ? Builder.getInt32Ty() : Builder.getInt64Ty();
+
+  Value *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
   Value *Result = UndefValue::get(VTy);
 
+  // Some target platforms do not support SLM oword block messages
+  bool IsBlockAllowed = BTI == visa::RSI_Slm ? ST->hasSLMOWord() : true;
+
+  bool IsOWordAligned = Align >= OWordBytes;
+  bool IsDWordAligned = Align >= DWordBytes;
+
   // Try to generate OWord block load/store
-  if (Align >= OWordBytes || (IsLoad && Align >= DWordBytes)) {
-    auto IID = Align >= OWordBytes ? GenXIntrinsic::genx_svm_block_ld
-                                   : GenXIntrinsic::genx_svm_block_ld_unaligned;
+  if (IsBlockAllowed && (IsOWordAligned || (IsLoad && IsDWordAligned))) {
+    auto LoadIID = IsOWordAligned
+                       ? (IsBTI ? GenXIntrinsic::genx_oword_ld
+                                : GenXIntrinsic::genx_svm_block_ld)
+                       : (IsBTI ? GenXIntrinsic::genx_oword_ld_unaligned
+                                : GenXIntrinsic::genx_svm_block_ld_unaligned);
+
     for (auto OWords : {8, 4, 2, 1}) {
       auto BlockBytes = OWords * OWordBytes;
       if (BlockBytes > Rest)
@@ -936,18 +933,20 @@ Instruction *GenXLoadStoreLowering::createSVMLoadStore(Instruction &I,
       for (; Rest >= BlockBytes; Rest -= BlockBytes) {
         auto Offset = VSize - Rest;
         auto *BlockAddr =
-            Offset == 0 ? Addr
-                        : Builder.CreateAdd(Addr, Builder.getInt64(Offset));
+            Offset == 0
+                ? Addr
+                : Builder.CreateAdd(Addr, ConstantInt::get(AddrTy, Offset));
 
         if (IsLoad) {
-          auto *Load =
-              createSVMBlockLoadImpl(Builder, M, IID, BlockVTy, BlockAddr);
+          auto *Load = createLegacyBlockLoadImpl(Builder, M, LoadIID, BTI,
+                                                 BlockVTy, BlockAddr);
           Result =
               createInsertDataIntoVectorImpl(Builder, M, Result, Load, Offset);
         } else {
           auto *BlockData = createExtractDataFromVectorImpl(
               Builder, M, BlockVTy, Data, Offset);
-          Result = createSVMBlockStoreImpl(Builder, M, BlockAddr, BlockData);
+          Result =
+              createLegacyBlockStoreImpl(Builder, M, BTI, BlockAddr, BlockData);
         }
       }
     }
@@ -957,309 +956,57 @@ Instruction *GenXLoadStoreLowering::createSVMLoadStore(Instruction &I,
   if (Rest != 0) {
     IGC_ASSERT(Rest % ESize == 0);
     auto RestNElements = Rest / ESize;
-    auto Offset = VSize - Rest;
 
-    SmallVector<Constant *, 16> Offsets;
-    Offsets.reserve(RestNElements);
-    std::generate_n(std::back_inserter(Offsets), RestNElements,
-                    [AddrTy = Addr->getType(), Offset, ESize]() mutable {
-                      auto *C = ConstantInt::get(AddrTy, Offset);
-                      Offset += ESize;
-                      return C;
-                    });
-    auto *COffsets = ConstantVector::get(Offsets);
-    auto *VAddr = Builder.CreateVectorSplat(RestNElements, Addr);
-    if (Offset != 0 || RestNElements > 1)
-      VAddr = Builder.CreateAdd(VAddr, COffsets);
+    bool SplitQWords = IsBTI && ESize == QWordBytes;
+    unsigned SizeFactor = SplitQWords ? 2 : 1;
 
     auto *RestVTy = IGCLLVM::FixedVectorType::get(ETy, RestNElements);
-    auto *Pred = IGCLLVM::ConstantFixedVector::getSplat(RestNElements,
-                                                        Builder.getTrue());
+    auto *MessageVTy = RestVTy;
+
+    if (ESize < DWordBytes || SplitQWords)
+      MessageVTy = IGCLLVM::FixedVectorType::get(Builder.getIntNTy(DWordBits),
+                                                 RestNElements * SizeFactor);
+
+    unsigned Offset = VSize - Rest;
+
+    SmallVector<Constant *, 16> Offsets;
+    Offsets.reserve(RestNElements * SizeFactor);
+    std::generate_n(
+        std::back_inserter(Offsets), RestNElements * SizeFactor,
+        [AddrTy = Addr->getType(), Offset, ESize, SizeFactor]() mutable {
+          auto *C = ConstantInt::get(AddrTy, Offset);
+          Offset += ESize / SizeFactor;
+          return C;
+        });
+
+    auto *COffsets = ConstantVector::get(Offsets);
+    auto *Pred = IGCLLVM::ConstantFixedVector::getSplat(
+        RestNElements * SizeFactor, Builder.getTrue());
 
     if (IsLoad) {
-      auto *GatherVTy = ESize >= DWordBytes
-                            ? RestVTy
-                            : IGCLLVM::FixedVectorType::get(
-                                  Builder.getIntNTy(DWordBits), RestNElements);
       auto *Load =
-          createSVMGatherLoadImpl(Builder, M, ESize, GatherVTy, Pred, VAddr);
-      auto *Trunc = createTruncateImpl(Builder, RestVTy, Load);
-      Result =
-          createInsertDataIntoVectorImpl(Builder, M, Result, Trunc, Offset);
+          createLegacyGatherLoadImpl(Builder, M, BTI, ESize / SizeFactor,
+                                     MessageVTy, Pred, Addr, COffsets);
+      auto *Cast = SplitQWords ? Builder.CreateBitCast(Load, RestVTy)
+                               : createTruncateImpl(Builder, RestVTy, Load);
+      Result = createInsertDataIntoVectorImpl(Builder, M, Result, Cast, Offset);
     } else {
       auto *Source =
           createExtractDataFromVectorImpl(Builder, M, RestVTy, Data, Offset);
       auto *Extend = createExtendImpl(Builder, Source);
-      Result =
-          createSVMScatterStoreImpl(Builder, M, ESize, Pred, VAddr, Extend);
+      auto *Cast = Builder.CreateBitCast(Extend, MessageVTy);
+      Result = createLegacyScatterStoreImpl(Builder, M, BTI, ESize / SizeFactor,
+                                            Pred, Addr, COffsets, Cast);
     }
   }
 
-  if (IsLoad)
+  if (IsLoad) {
+    if (Ty->isPtrOrPtrVectorTy())
+      Result = Builder.CreateIntToPtr(Result, &vc::getVectorType(*Ty));
     Result = Builder.CreateBitCast(Result, Ty);
+  }
+
   return cast<Instruction>(Result);
-}
-
-// A kind of a transformation that should be applied to memory instruction
-// value operand to match its lower representation restrictions (vc-intrinsic
-// restrictions) or to memory instruction return value.
-// All transformations do not include possible cast to a degenerate vector type
-// or from degenerate vector type (most of memory vc-intrinsics do not support
-// scalar data operands, so scalar operands should be casted to degenerate
-// vectors).
-enum class DataTransformation {
-  // No modifications to data is required.
-  NoModification,
-  // Data should be zero extended to match a vc-intrinsic operand, or data from
-  // a vc-intrinsic should be truncated to match the original instruction.
-  // For example:
-  // store i16 %a becomes zext i16 %a to i32 -> scatter.scaled
-  // load i16 becomes gather.scaled -> trunc to i16
-  ZextOrTrunc,
-  // Data should be bitcasted to an integer or a vector of integers type.
-  IntBitCast,
-};
-
-// Defines how data must be transformed to match scaled memory intrinsics:
-//    1) how store value operand must be transformed to be passed to
-//       scatter.scaled intrinsic;
-//    2) how gather.scaled return value must be trasformed to match the original
-//       load return type.
-// Arguments:
-//    \p OrigTy - data type of the original memory instruction;
-//    \p C - LLVM context to create new types;
-//    \p DL - data layout.
-// Returns:
-//    1) intrinsic value operand (for store) or return value (for load) type;
-//    2) data element type size (may not match 1st return value vector element
-//       type in case of zext/trunc or some other cases, may not match the
-//       original type size);
-//    3) the kind of transformation that should be applied to the data value.
-static std::tuple<IGCLLVM::FixedVectorType *, vc::TypeSizeWrapper,
-                  DataTransformation>
-transformTypeForScaledIntrinsic(Type &OrigTy, LLVMContext &C,
-                                const DataLayout &DL) {
-  auto *OrigVecTy = &vc::getVectorType(OrigTy);
-  auto *OrigElemTy = OrigVecTy->getElementType();
-  unsigned OrigElemCount = OrigVecTy->getNumElements();
-  auto OrigElemSize = vc::getTypeSize(OrigElemTy, &DL);
-  auto *Int32Ty = IntegerType::get(C, 32);
-  IGC_ASSERT_MESSAGE(OrigElemSize >= vc::ByteSize,
-                     "bool stores aren't supported");
-
-  // Already legal type.
-  if (OrigElemTy->isIntegerTy(vc::DWordBits) || OrigElemTy->isFloatTy())
-    return {OrigVecTy, OrigElemSize, DataTransformation::NoModification};
-
-  if (OrigElemSize < vc::DWordSize) {
-    // SCATTER_SCALED will ignore upper bits. GATHER_SCALED will set upper bits
-    // with undef values.
-    return {IGCLLVM::FixedVectorType::get(Int32Ty, OrigElemCount), OrigElemSize,
-            DataTransformation::ZextOrTrunc};
-  }
-
-  // For data that is bigger than DWord or DWord sized but not of a legal type
-  // cast it to vector of i32.
-  IGC_ASSERT_MESSAGE(OrigElemSize.inBits() * OrigElemCount % vc::DWordBits == 0,
-                     "the data must be representable as <N x i32>");
-  unsigned NewElemCount = OrigElemSize.inBits() * OrigElemCount / vc::DWordBits;
-  auto *NewTy = IGCLLVM::FixedVectorType::get(Int32Ty, NewElemCount);
-  return {NewTy, vc::DWordSize, DataTransformation::IntBitCast};
-}
-
-// Obtains the value that was requested to be loaded by the original memory
-// instruction from the \p Gather return value (\p OrigLoadTy type and \p Gather
-// type may not match).
-// Arguments:
-//    \p Gather - gather.scaled intrinsic;
-//    \p OrigLoadTy - the type of the original load instruction;
-//    \p Action - how \p Gather should be changed to match \p OrigLoadTy type,
-//                must be obtained via transformTypeForScaledIntrinsic;
-//    \p IRB - IR builder that will be used to construct the code;
-//    \p DL - data layout.
-// Returns a replacement for the original load instruction. The returned value
-// type is equal to \p OrigLoadTy.
-static Instruction *restoreLoadValueFromGatherScaled(Instruction &Gather,
-                                                     Type &OrigLoadTy,
-                                                     DataTransformation Action,
-                                                     IRBuilder<> &IRB,
-                                                     const DataLayout &DL) {
-  Value *Result = nullptr;
-  switch (Action) {
-  case DataTransformation::NoModification:
-    // May need to fix degenerate vector type.
-    // Note: no cast is created when types match.
-    Result = IRB.CreateBitCast(&Gather, &OrigLoadTy, Gather.getName() + ".bc");
-    break;
-  case DataTransformation::ZextOrTrunc: {
-    auto *TruncTy = &vc::getVectorType(OrigLoadTy);
-    if (auto *ETy = TruncTy->getElementType(); ETy->isFloatingPointTy()) {
-      auto BitWidth = DL.getTypeSizeInBits(ETy);
-      auto NElements = TruncTy->getNumElements();
-      TruncTy =
-          IGCLLVM::FixedVectorType::get(IRB.getIntNTy(BitWidth), NElements);
-    }
-    auto *Trunc =
-        IRB.CreateTrunc(&Gather, TruncTy, Gather.getName() + ".trunc");
-
-    // May need to fix degenerate vector type.
-    // Note: no cast is created when types match.
-    Result = IRB.CreateBitCast(Trunc, &OrigLoadTy, Gather.getName() + ".bc");
-    break;
-  }
-  case DataTransformation::IntBitCast:
-    Result = vc::castFromIntOrFloat(Gather, OrigLoadTy, IRB, DL);
-    break;
-  default:
-    IGC_ASSERT_MESSAGE(0, "unexpected transformation kind");
-  }
-  return cast<Instruction>(Result);
-}
-
-// Creates a gather.scaled intrinsic replacement for the provided \p OrigLoad
-// load instruction. Returns the replacement. The returned value may not be a
-// gather.scaled intrinsic, e.g. when replacement is a chain
-// svm.gather -> bitcast, in this case bitcast is returned.
-// Arguments:
-//    \p OrigLoad - original load to be replaced;
-//    \p Surface - predefined surface that should be used in the generated
-//                 gather.scaled intrinsic, only SLM and Stateless surfaces are
-//                 supported/expected, which surface to use should be defined
-//                 by outer code depending on \p OrigLoad properties.
-Instruction *GenXLoadStoreLowering::createGatherScaled(
-    LoadInst &OrigLoad, visa::ReservedSurfaceIndex Surface) const {
-  IGC_ASSERT_MESSAGE(Surface == visa::RSI_Stateless || Surface == visa::RSI_Slm,
-                     "only Stateless and SLM predefined surfaces are expected");
-  IRBuilder<> IRB{&OrigLoad};
-  auto [GatherTy, DataSize, Action] = transformTypeForScaledIntrinsic(
-      *OrigLoad.getType(), IRB.getContext(), *DL_);
-  int NumBlocks = DataSize.inBytes();
-  IGC_ASSERT_MESSAGE(NumBlocks == 1 || NumBlocks == 2 || NumBlocks == 4,
-                     "number of blocks can only be 1, 2 or 4");
-  Constant *Predicate = IGCLLVM::ConstantFixedVector::getSplat(
-      GatherTy->getNumElements(), IRB.getTrue());
-  Value *GlobalOffset = createPtrToInt32(*OrigLoad.getPointerOperand(), IRB);
-  Value *ElementOffsets =
-      FormEltsOffsetVector(GatherTy->getNumElements(), NumBlocks, IRB);
-
-  Value *Args[] = {IRB.getInt32(Log2_32(NumBlocks)),
-                   IRB.getInt16(0),
-                   IRB.getInt32(Surface),
-                   GlobalOffset,
-                   ElementOffsets,
-                   Predicate};
-  Function *Decl = vc::getGenXDeclarationForIdFromArgs(
-      GatherTy, Args, GenXIntrinsic::genx_gather_masked_scaled2,
-      *OrigLoad.getModule());
-  auto *Gather = IRB.CreateCall(Decl, Args, OrigLoad.getName() + ".gather");
-  auto *LoadReplacement = restoreLoadValueFromGatherScaled(
-      *Gather, *OrigLoad.getType(), Action, IRB, *DL_);
-  return LoadReplacement;
-}
-
-Value *GenXLoadStoreLowering::vectorizeValueOperandIfNeeded(
-    StoreInst &StI, IRBuilder<> &Builder) const {
-  Value *ValueOp = StI.getValueOperand();
-  Type *ValueOpTy = ValueOp->getType();
-  if (ValueOpTy->isIntOrPtrTy() || ValueOpTy->isFloatingPointTy())
-    ValueOp = Builder.CreateVectorSplat(1, ValueOp);
-  ValueOpTy = ValueOp->getType();
-
-  if (!ValueOpTy->isVectorTy()) {
-    vc::fatal(StI.getContext(), "LDS", "Unsupported type inside replaceStore",
-              ValueOpTy);
-  }
-
-  return ValueOp;
-}
-
-void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
-  LLVM_DEBUG(dbgs() << "Replacing store " << StI << " ===>\n");
-  auto *Replacement = createMemoryInstReplacement(StI);
-  LLVM_DEBUG(dbgs() << *Replacement << "\n");
-  StI.eraseFromParent();
-}
-
-// Modifies store value operand \p OrigData to match scatter.scaled
-// restrictions.
-// Returns data operand and element/block size for scatter.scaled intrinsic.
-static std::pair<Value *, vc::TypeSizeWrapper>
-normalizeDataVecForScatterScaled(Value &OrigData, IRBuilder<> &Builder,
-                                 const DataLayout &DL) {
-  auto [NewDataTy, DataSize, Action] = transformTypeForScaledIntrinsic(
-      *OrigData.getType(), Builder.getContext(), DL);
-  auto *OrigVecTy = &vc::getVectorType(*OrigData.getType());
-
-  Value *NewData;
-  switch (Action) {
-  case DataTransformation::NoModification:
-    NewData =
-        Builder.CreateBitCast(&OrigData, OrigVecTy, OrigData.getName() + ".bc");
-    break;
-  case DataTransformation::ZextOrTrunc: {
-    auto *CastTy = OrigVecTy;
-    if (auto *ETy = OrigVecTy->getElementType(); ETy->isFloatingPointTy()) {
-      auto BitWidth = DL.getTypeSizeInBits(ETy);
-      auto NElements = OrigVecTy->getNumElements();
-      CastTy =
-          IGCLLVM::FixedVectorType::get(Builder.getIntNTy(BitWidth), NElements);
-    }
-    auto *OrigVecData =
-        Builder.CreateBitCast(&OrigData, CastTy, OrigData.getName() + ".bc");
-    NewData = Builder.CreateZExt(OrigVecData, NewDataTy,
-                                 OrigData.getName() + ".zext");
-    break;
-  }
-  case DataTransformation::IntBitCast:
-    NewData = vc::castToIntOrFloat(OrigData, *NewDataTy, Builder, DL);
-    break;
-  default:
-    IGC_ASSERT_MESSAGE(0, "unexpected transformation kind");
-  }
-  return {NewData, DataSize};
-}
-
-// Creates a scatter.scaled intrinsic replacement for the provided \p OrigStore
-// store instruction. Returns the created scatter.scaled intrinsic. May insert
-// some additional instructions besides the scatter.scaled
-// Arguments:
-//    \p OrigStore - original store to be replaced;
-//    \p Surface - predefined surface that should be used in the generated
-//                 gather.scaled intrinsic, only SLM and Stateless surfaces are
-//                 supported/expected, which surface to use should be defined
-//                 by outer code depending on \p OrigLoad properties.
-Instruction *GenXLoadStoreLowering::createScatterScaled(
-    StoreInst &OrigStore, visa::ReservedSurfaceIndex Surface) const {
-  IGC_ASSERT_MESSAGE(Surface == visa::RSI_Stateless || Surface == visa::RSI_Slm,
-                     "only Stateless and SLM predefined surfaces are expected");
-  IRBuilder<> Builder{&OrigStore};
-  auto [ValueOp, DataSize] = normalizeDataVecForScatterScaled(
-      *OrigStore.getValueOperand(), Builder, *DL_);
-  // For genx.scatter.scaled number of blocks is really the data element size.
-  int NumBlocks = DataSize.inBytes();
-  IGC_ASSERT_MESSAGE(NumBlocks == 1 || NumBlocks == 2 || NumBlocks == 4,
-                     "number of blocks can only be 1, 2 or 4");
-
-  auto *ValueOpTy = cast<IGCLLVM::FixedVectorType>(ValueOp->getType());
-  Constant *Predicate = IGCLLVM::ConstantFixedVector::getSplat(
-      ValueOpTy->getNumElements(), Builder.getTrue());
-
-  Value *GlobalOffset =
-      createPtrToInt32(*OrigStore.getPointerOperand(), Builder);
-  Value *ElementOffsets =
-      FormEltsOffsetVector(ValueOpTy->getNumElements(), NumBlocks, Builder);
-
-  Value *Args[] = {Predicate,
-                   Builder.getInt32(Log2_32(NumBlocks)),
-                   Builder.getInt16(0),
-                   Builder.getInt32(Surface),
-                   GlobalOffset,
-                   ElementOffsets,
-                   ValueOp};
-  Function *Decl = vc::getGenXDeclarationForIdFromArgs(
-      Builder.getVoidTy(), Args, GenXIntrinsic::genx_scatter_scaled,
-      *OrigStore.getModule());
-  return Builder.CreateCall(Decl, Args);
 }
 
 static std::pair<unsigned, AtomicOrdering>
@@ -1521,16 +1268,6 @@ Instruction *GenXLoadStoreLowering::createLegacySVMAtomicCmpXchg(
   return cast<Instruction>(Res);
 }
 
-void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
-  unsigned ID = vc::getAnyIntrinsicID(&Intrinsic);
-  switch (ID) {
-  case Intrinsic::lifetime_start:
-  case Intrinsic::lifetime_end:
-    Intrinsic.eraseFromParent();
-    break;
-  }
-}
-
 template <typename MemoryInstT>
 Instruction *
 GenXLoadStoreLowering::createMemoryInstReplacement(MemoryInstT &I) const {
@@ -1578,7 +1315,7 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::NonAtomic, LoadInst>(
     LoadInst &I) const {
-  return createSVMLoadStore(I, I.getPointerOperand());
+  return createLegacyLoadStore(I, -1, I.getPointerOperand());
 }
 
 template <>
@@ -1586,7 +1323,8 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::NonAtomic, StoreInst>(
     StoreInst &I) const {
-  return createSVMLoadStore(I, I.getPointerOperand(), I.getValueOperand());
+  return createLegacyLoadStore(I, -1, I.getPointerOperand(),
+                               I.getValueOperand());
 }
 
 template <>
@@ -1594,7 +1332,7 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
                                        Atomicity::NonAtomic, LoadInst>(
     LoadInst &I) const {
-  return createGatherScaled(I, visa::RSI_Stateless);
+  return createLegacyLoadStore(I, visa::RSI_Stateless, I.getPointerOperand());
 }
 
 template <>
@@ -1602,7 +1340,8 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
                                        Atomicity::NonAtomic, StoreInst>(
     StoreInst &I) const {
-  return createScatterScaled(I, visa::RSI_Stateless);
+  return createLegacyLoadStore(I, visa::RSI_Stateless, I.getPointerOperand(),
+                               I.getValueOperand());
 }
 
 template <>
@@ -1642,7 +1381,7 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
                                        Atomicity::NonAtomic, LoadInst>(
     LoadInst &I) const {
-  return createGatherScaled(I, visa::RSI_Slm);
+  return createLegacyLoadStore(I, visa::RSI_Slm, I.getPointerOperand());
 }
 
 template <>
@@ -1650,7 +1389,8 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
                                        Atomicity::NonAtomic, StoreInst>(
     StoreInst &I) const {
-  return createScatterScaled(I, visa::RSI_Slm);
+  return createLegacyLoadStore(I, visa::RSI_Slm, I.getPointerOperand(),
+                               I.getValueOperand());
 }
 
 template <>
