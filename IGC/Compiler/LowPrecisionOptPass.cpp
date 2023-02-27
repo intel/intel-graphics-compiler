@@ -205,9 +205,15 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
             }
         }
     }
-    else if (eltTy == m_builder->getInt32Ty())
+    else if (eltTy == m_builder->getInt32Ty() &&
+        IGC_IS_FLAG_ENABLED(DownConvertI32Sampler))
     {
-        // check if we can lower the sampler return to 16-bit
+        // This optimization is disabled by default and can only be enabled for
+        // resources with 16bit integer format or if it is known that the upper
+        // 16bits of data is always 0.
+        // i32 to i16 conversion in sampler is a clamp operation and not
+        // a truncation operation, e.g. for 0x10000u input data the 16bit
+        // result returned by sampler is 0xFFFFu (R32_UINT format).
         newDstType = m_builder->getInt16Ty();
         for (auto use = I.user_begin(); use != I.user_end(); ++use)
         {

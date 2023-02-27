@@ -637,7 +637,11 @@ DECLARE_IGC_REGKEY(bool, ForceSWCoalescingOfAtomicCounter, false, "Force softwar
 DECLARE_IGC_REGKEY(bool, ForceMixMode, false, "force enable mix mode even on platforms that do not support it", false)
 DECLARE_IGC_REGKEY(bool, DisableFDIV, false, "Disable fdiv support", false)
 DECLARE_IGC_REGKEY(bool, EmulateFDIV, false, "Emulate fdiv instructions", false)
-DECLARE_IGC_REGKEY(bool, UpConvertF16Sampler, true, "up-convert fp16 sampler mesasge to return fp32", false)
+DECLARE_IGC_REGKEY(bool, UpConvertF16Sampler, true, "up-convert fp16 sampler message to return fp32", false)
+DECLARE_IGC_REGKEY(bool, DownConvertI32Sampler, false,
+    "Convert i32 sampler messages to return i16.\
+    This optimization can only be enabled for resources with 16bit integer format\
+    or if it is known that the upper 16bits of data is always 0.", false)
 DECLARE_IGC_REGKEY(bool, FuseTypedWrite, false, "Enable fusing of simd8 typed write", false)
 DECLARE_IGC_REGKEY(bool, DisableUndefAlphaOutputAsRed, false, "Disable output red for undefined alpha output", false)
 DECLARE_IGC_REGKEY(bool, EnableHalfPromotion, true, "Enable pass that replaces instructions using halfs with corresponding float counterparts for pre-SKL", false)
