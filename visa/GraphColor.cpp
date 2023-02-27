@@ -63,6 +63,15 @@ Interference::Interference(const LivenessAnalysis *l, LiveRange **const &lr,
   denseMatrixLimit = builder.getuint32Option(vISA_DenseMatrixLimit);
 }
 
+criticalCmpForEndInterval::criticalCmpForEndInterval(GlobalRA &g) : gra(g) {}
+bool criticalCmpForEndInterval::operator()(G4_Declare *A, G4_Declare *B) const {
+  return gra.getEndInterval(A)->getLexicalId() >
+         gra.getEndInterval(B)->getLexicalId();
+}
+AugmentPriorityQueue::AugmentPriorityQueue(criticalCmpForEndInterval cmp)
+    : std::priority_queue<G4_Declare *, std::vector<G4_Declare *>,
+                          criticalCmpForEndInterval>(cmp) {}
+
 inline bool Interference::varSplitCheckBeforeIntf(unsigned v1,
                                                   unsigned v2) const {
   const LiveRange *l1 = lrs[v1];
@@ -4053,23 +4062,25 @@ bool Augmentation::isCompatible(const G4_Declare *testDcl,
 
 void Augmentation::expireIntervals(unsigned startIdx) {
   // Expire elements from both lists
-  while (defaultMask.size() > 0) {
-    if (gra.getEndInterval(defaultMask.front())->getLexicalId() <= startIdx) {
+  while (defaultMaskQueue.size() > 0) {
+    if (gra.getEndInterval(defaultMaskQueue.top())->getLexicalId() <=
+        startIdx) {
       VISA_DEBUG_VERBOSE(std::cout << "Expiring "
-                                   << defaultMask.front()->getName() << "\n");
-      defaultMask.pop_front();
+                                   << defaultMaskQueue.top()->getName()
+                                   << "\n");
+      defaultMaskQueue.pop();
     } else {
       break;
     }
   }
 
-  while (nonDefaultMask.size() > 0) {
-    if (gra.getEndInterval(nonDefaultMask.front())->getLexicalId() <=
+  while (nonDefaultMaskQueue.size() > 0) {
+    if (gra.getEndInterval(nonDefaultMaskQueue.top())->getLexicalId() <=
         startIdx) {
       VISA_DEBUG_VERBOSE(std::cout << "Expiring "
-                                   << nonDefaultMask.front()->getName()
+                                   << nonDefaultMaskQueue.top()->getName()
                                    << "\n");
-      nonDefaultMask.pop_front();
+      nonDefaultMaskQueue.pop();
     } else {
       break;
     }
@@ -4141,11 +4152,11 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask,
 // active lists.
 //
 void Augmentation::addSIMDIntfDclForCallSite(MaskDeclares *maskDeclares) {
-  for (auto defaultDcl : defaultMask) {
+  for (auto defaultDcl : defaultMaskQueue) {
     maskDeclares->first.set(defaultDcl->getRegVar()->getId(), true);
   }
 
-  for (auto nonDefaultDcl : nonDefaultMask) {
+  for (auto nonDefaultDcl : nonDefaultMaskQueue) {
     maskDeclares->second.set(nonDefaultDcl->getRegVar()->getId(), true);
   }
 }
@@ -4172,7 +4183,7 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare *newDcl) {
 void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall) {
   auto newDclAugMask = gra.getAugmentationMask(newDcl);
 
-  for (auto defaultDcl : defaultMask) {
+  for (auto defaultDcl : defaultMaskQueue) {
     if (gra.getAugmentationMask(defaultDcl) != newDclAugMask) {
       handleSIMDIntf(defaultDcl, newDcl, isCall);
     } else {
@@ -4212,7 +4223,8 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall) {
   }
 
   // Mark interference among non-default mask variables
-  for (auto nonDefaultDcl : nonDefaultMask) {
+  for (auto nonDefaultDcl : nonDefaultMaskQueue) {
+
     auto isAugNeeded = [&]() {
       if (newDclAugMask != AugmentationMasks::NonDefault)
         return true;
@@ -4355,27 +4367,6 @@ void Augmentation::buildSIMDIntfAllOld(G4_Declare *newDcl) {
   }
 }
 
-void Augmentation::updateActiveList(G4_Declare *newDcl,
-                                    std::list<G4_Declare *> *dclMaskList) {
-  bool done = false;
-
-  for (auto defaultIt = dclMaskList->begin(); defaultIt != dclMaskList->end();
-       defaultIt++) {
-    G4_Declare *defaultDcl = (*defaultIt);
-
-    if (gra.getEndInterval(defaultDcl)->getLexicalId() >=
-        gra.getEndInterval(newDcl)->getLexicalId()) {
-      dclMaskList->insert(defaultIt, newDcl);
-      done = true;
-      break;
-    }
-  }
-
-  if (done == false) {
-    dclMaskList->push_back(newDcl);
-  }
-}
-
 //
 // Perform linear scan and mark interference between conflicting dcls with
 // incompatible masks.
@@ -4396,11 +4387,11 @@ void Augmentation::buildInterferenceIncompatibleMask() {
 
     // Add newDcl to correct list
     if (gra.getHasNonDefaultMaskDef(newDcl) || newDcl->getAddressed() == true) {
-      updateActiveList(newDcl, &nonDefaultMask);
+      nonDefaultMaskQueue.push(newDcl);
       VISA_DEBUG_VERBOSE(std::cout << "Adding " << newDcl->getName()
                                    << " to non-default list\n");
     } else {
-      updateActiveList(newDcl, &defaultMask);
+      defaultMaskQueue.push(newDcl);
       VISA_DEBUG_VERBOSE(std::cout << "Adding " << newDcl->getName()
                                    << " to default list\n");
     }

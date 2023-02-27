@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <limits>
 #include <list>
 #include <map>
+#include <queue>
 #include <memory>
 #include <unordered_set>
 #include <vector>
@@ -273,6 +274,20 @@ typedef std::map<vISA::G4_Declare *,
                  std::pair<vISA::G4_INST *, unsigned>>::iterator
     CALL_DECL_MAP_ITER;
 
+namespace vISA {
+struct criticalCmpForEndInterval {
+  GlobalRA &gra;
+  criticalCmpForEndInterval(GlobalRA &g);
+  bool operator()(G4_Declare *A, G4_Declare *B) const;
+};
+struct AugmentPriorityQueue
+    : std::priority_queue<G4_Declare *, std::vector<G4_Declare *>,
+                          criticalCmpForEndInterval> {
+  AugmentPriorityQueue(criticalCmpForEndInterval cmp);
+  auto begin() const { return c.begin(); }
+  auto end() const { return c.end(); }
+};
+} // namespace vISA
 //
 // A bit array records all interference information.
 // (2D matrix is flatten to 1D array)
@@ -294,8 +309,8 @@ private:
   CALL_DECL_MAP callDclMap;
   std::unordered_map<FuncInfo *, PhyRegSummary> localSummaryOfCallee;
   std::vector<G4_Declare *> sortedIntervals;
-  std::list<G4_Declare *> defaultMask;
-  std::list<G4_Declare *> nonDefaultMask;
+  AugmentPriorityQueue defaultMaskQueue{criticalCmpForEndInterval(gra)};
+  AugmentPriorityQueue nonDefaultMaskQueue{criticalCmpForEndInterval(gra)};
   std::unordered_map<FuncInfo *, MaskDeclares> callsiteDeclares;
   std::unordered_map<G4_Declare *, MaskDeclares> retDeclares;
 
@@ -347,8 +362,6 @@ private:
   void buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall);
   void buildSIMDIntfAll(G4_Declare *newDcl);
   void buildSIMDIntfAllOld(G4_Declare *newDcl);
-  void updateActiveList(G4_Declare *newDcl,
-                        std::list<G4_Declare *> *dclMaskList);
   void handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl, bool isCall);
   bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
 
