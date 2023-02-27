@@ -402,6 +402,9 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
 
         if (targetAS == ADDRESS_SPACE_GLOBAL || targetAS == ADDRESS_SPACE_PRIVATE)
         {
+            // Force distinguishing private and global pointers if a kernel uses explicit casts.
+            // For more details please refer to section "Generic Address Space Explicit Casts" in
+            // documentation directory under igc/generic-pointers/generic-pointers.md
             auto ClContext = static_cast<OpenCLProgramContext*>(m_ctx);
             ClContext->setDistinguishBetweenPrivateAndGlobalPtr(true);
         }

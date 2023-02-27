@@ -8760,6 +8760,8 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
 
             // The initial address could be in a canonical form, that means bit 47 is replicated
             // to the upper bits. To set a tag, bits [61:63] must get zeroed before setting a tag with OR operation.
+            // For more details please refer to section "Generic Pointer Tagging" in
+            // documentation directory under igc/generic-pointers/generic-pointers.md
             m_encoder->And(srcHigh, srcHigh, m_currShader->ImmToVariable(0x1fffffff, ISA_TYPE_UD));
             m_encoder->Or(srcHigh, srcHigh, m_currShader->ImmToVariable(tag << 29, ISA_TYPE_UD));
             m_encoder->Push();
@@ -8785,6 +8787,8 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
             m_destination->IsUniform(), CName::NONE);
         // The initial address could be in a canonical form, that means bit 47 is replicated
         // to the upper bits. To set a tag, bits [61:63] must get zeroed before setting a tag with OR operation.
+        // For more details please refer to section "Generic Pointer Tagging" in
+        // documentation directory under igc/generic-pointers/generic-pointers.md
         m_encoder->And(pTempVar, srcV, m_currShader->ImmToVariable(0x1fffffffffffffff, ISA_TYPE_UQ));
         m_encoder->Or(pTempVar, srcV, m_currShader->ImmToVariable(static_cast<uint64_t>(tag) << 61, ISA_TYPE_UQ));
         m_encoder->Cast(m_destination, pTempVar);
@@ -8863,6 +8867,9 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
     else if (sourceAddrSpace == ADDRESS_SPACE_GENERIC &&
             (destAddrSpace == ADDRESS_SPACE_PRIVATE ||
              destAddrSpace == ADDRESS_SPACE_LOCAL ||
+             // Clear a tag for addrspacecast from generic to global if explicit casts are used in a kernel.
+             // For more details please refer to section "Generic Address Space Explicit Casts" in
+             // documentation directory under igc/generic-pointers/generic-pointers.md
              (destAddrSpace == ADDRESS_SPACE_GLOBAL && m_pCtx->mustDistinguishBetweenPrivateAndGlobalPtr())))
     {
         // Address space cast is in the form of generic -> {private, local, global}
@@ -8923,7 +8930,9 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                 m_encoder->Copy(srcHigh, srcAlias);
                 m_encoder->Push();
 
-                // Clear tag in the high part and restore address canonical form
+                // Clear tag in the high part and restore address canonical form.
+                // For more details please refer to section "Clearing A Generic Pointer Tag" in
+                // documentation directory under igc/generic-pointers/generic-pointers.md
                 m_encoder->Shl(tempVar, srcHigh, m_currShader->ImmToVariable(4, ISA_TYPE_D));
                 m_encoder->IShr(srcHigh, tempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
                 m_encoder->Push();
@@ -8947,7 +8956,9 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
                 numLanes(m_currShader->m_SIMDSize),
                 ISA_TYPE_Q, m_currShader->getGRFAlignment(),
                 m_destination->IsUniform(), CName::NONE);
-            // Clear tag in the high part and restore address canonical form
+            // Clear tag in the high part and restore address canonical form.
+            // For more details please refer to section "Clearing A Generic Pointer Tag" in
+            // documentation directory under igc/generic-pointers/generic-pointers.md
             m_encoder->Shl(pTempVar, srcV, m_currShader->ImmToVariable(4, ISA_TYPE_D));
             m_encoder->IShr(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
             m_encoder->Cast(m_destination, pTempVar);
