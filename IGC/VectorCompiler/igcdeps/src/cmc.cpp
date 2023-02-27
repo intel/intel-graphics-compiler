@@ -662,17 +662,15 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       Kernel.createPrintfBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),
                                              Arg.getSizeInBytes(), ArgOffset);
       break;
-    case ArgKind::PrivateBase:
-      if (Info.getStatelessPrivMemSize() != 0) {
-        auto PrivMemSize = Info.getStatelessPrivMemSize();
-        Kernel.createPrivateBaseAnnotation(Arg.getIndex(), Arg.getSizeInBytes(),
-                                           ArgOffset, Arg.getBTI(), PrivMemSize,
-                                           checkStateful(Arg.getBTI()));
-        Kernel.m_kernelInfo.m_executionEnvironment
-            .PerThreadPrivateOnStatelessSize = PrivMemSize;
-        Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-      }
-      break;
+    case ArgKind::PrivateBase: {
+      auto PrivMemSize = Info.getStatelessPrivMemSize();
+      Kernel.createPrivateBaseAnnotation(Arg.getIndex(), Arg.getSizeInBytes(),
+                                         ArgOffset, Arg.getBTI(), PrivMemSize,
+                                         checkStateful(Arg.getBTI()));
+      Kernel.m_kernelInfo.m_executionEnvironment
+          .PerThreadPrivateOnStatelessSize = PrivMemSize;
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
+    } break;
     case ArgKind::ByValSVM:
       // Do nothing because it has already been linearized and implicit args
       // will be set instead of it.
