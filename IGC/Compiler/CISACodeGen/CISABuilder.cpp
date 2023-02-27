@@ -4341,6 +4341,7 @@ namespace IGC
         }
         if (IGC_IS_FLAG_ENABLED(DumpVISAASMToConsole))
         {
+            SaveOption(vISA_GenerateISAASM, true);
             SaveOption(vISA_ISAASMToConsole, true);
         }
         if (IGC_IS_FLAG_ENABLED(AddExtraIntfInfo))
@@ -5138,7 +5139,6 @@ namespace IGC
         }
         else
         {
-            kernelName = "kernel";
             asmName = "kernel.asm";
         }
 
