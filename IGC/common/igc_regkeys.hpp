@@ -242,3 +242,15 @@ bool IsEnabled(const T& value)
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) {}
 #endif
+
+namespace IGC
+{
+enum class TriboolFlag : int
+{
+#define TRIBOOL_OPTION(Name, Val) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+    TRIBOOL_OPTIONS
+#undef TRIBOOL_OPTION
+#undef TRIBOOL_OPTIONS
+};
+} // namespace IGC

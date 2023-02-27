@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -71,3 +71,10 @@ SPDX-License-Identifier: MIT
             FP_BINOP_INSTRUCTION(FDiv,       0x8)  \
             FP_BINOP_INSTRUCTION(FRem,       0x10)
 #endif // FP_BINOP_INSTRUCTION
+
+#ifdef TRIBOOL_OPTION
+#define TRIBOOL_OPTIONS         \
+    TRIBOOL_OPTION(Default, -1) \
+    TRIBOOL_OPTION(Disabled, 0) \
+    TRIBOOL_OPTION(Enabled,  1)
+#endif // TRIBOOL_OPTION
