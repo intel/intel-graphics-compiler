@@ -85,7 +85,7 @@ namespace IGC
         ///             (2) uses pointer kernel argument
         /// @param    I instruction to trace back.
         /// @returns  Set of matching kernel arguments.
-        const ArgSet* findArgs(llvm::Instruction* I);
+        const std::shared_ptr<ArgSet> findArgs(llvm::Instruction* I);
 
         /// @brief  Checks if instruction stores kernel argument, and if true, traces back to
         ///         alloca instruction (with offset). This is required for decomposed structs
@@ -112,7 +112,9 @@ namespace IGC
         ArgSet m_matchingArgs;
 
         /// @brief Cached results for visited instructions.
-        llvm::DenseMap<llvm::Instruction*, std::unique_ptr<ArgSet>> m_visitedInst;
+        // TODO: Should memory footprint be deemed acceptable,
+        //       switch to holding the argument sets by value.
+        llvm::DenseMap<llvm::Instruction*, std::shared_ptr<ArgSet>> m_visitedInst;
 
         /// @brief Mapping of basePtr + offset to kernel argument.
         llvm::DenseMap<std::pair<llvm::AllocaInst*, uint64_t>, llvm::Argument*> m_allocas;

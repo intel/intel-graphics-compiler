@@ -109,15 +109,16 @@ void ScalarArgAsPointerAnalysis::analyzePointer(llvm::Value* V)
     if (!inst)
         return;
 
-    if (const ArgSet* args = findArgs(inst))
+    if (auto args = findArgs(inst))
         m_matchingArgs.insert(args->begin(), args->end());
 }
 
-const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
+const std::shared_ptr<ScalarArgAsPointerAnalysis::ArgSet>
+ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
 {
     // Skip already visited instruction
     if (m_visitedInst.count(inst))
-        return m_visitedInst[inst].get();
+        return m_visitedInst[inst];
 
     // Mark as visited
     m_visitedInst.try_emplace(inst, nullptr);
@@ -126,7 +127,7 @@ const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(l
     if (isa<CallInst>(inst) && !isa<GenIntrinsicInst>(inst))
         return nullptr;
 
-    auto result = std::make_unique<ScalarArgAsPointerAnalysis::ArgSet>();
+    auto result = std::make_shared<ScalarArgAsPointerAnalysis::ArgSet>();
 
     if (LoadInst* LI = dyn_cast<LoadInst>(inst))
     {
@@ -155,7 +156,7 @@ const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(l
             }
             else if (Instruction* opInst = dyn_cast<Instruction>(op))
             {
-                auto* args = findArgs(opInst);
+                auto args = findArgs(opInst);
 
                 if (!args)
                     return nullptr; // propagate fail
@@ -165,8 +166,8 @@ const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(l
         }
     }
 
-    m_visitedInst[inst] = std::move(result);
-    return m_visitedInst[inst].get();
+    m_visitedInst[inst] = result;
+    return result;
 }
 
 void ScalarArgAsPointerAnalysis::analyzeStoredArg(llvm::StoreInst& SI)
