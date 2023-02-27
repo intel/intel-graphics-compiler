@@ -399,6 +399,7 @@ namespace IGC
         const SOpenCLKernelInfo& getKernelInfo() const { return m_kernelInfo; }
 
         static bool IsValidShader(COpenCLKernel* shader);
+        static bool IsVisaCompiledSuccessfullyForShader(COpenCLKernel* shader);
 
     public:
         SOpenCLProgramInfo* m_programInfo;

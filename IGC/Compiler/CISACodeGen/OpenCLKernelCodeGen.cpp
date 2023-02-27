@@ -3411,6 +3411,11 @@ namespace IGC
         return pShader && (pShader->ProgramOutput()->m_programSize > 0);
     }
 
+    bool COpenCLKernel::IsVisaCompiledSuccessfullyForShader(COpenCLKernel* pShader)
+    {
+        return pShader && pShader->GetEncoder().IsVisaCompiledSuccessfully();
+    }
+
     enum class RetryType
     {
         NO_Retry,
@@ -3707,6 +3712,15 @@ namespace IGC
                 if (COpenCLKernel::IsValidShader(simd8Shader))
                     GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
             }
+            else if (ctx->m_InternalOptions.EmitVisaOnly)
+            {
+                if (COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd32Shader))
+                    GatherDataForDriver(ctx, simd32Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD32);
+                else if (COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd16Shader))
+                    GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
+                else if (COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd8Shader))
+                    GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
+            }
             else
             {
                 //Gather the kernel binary only for 1 SIMD mode of the kernel
@@ -3755,6 +3769,16 @@ namespace IGC
     {
         if (!CompileSIMDSizeInCommon(simdMode))
             return false;
+
+        // Skip compiling the simd size if -emit-visa-only and there's already
+        // one visa compiled for any other simd size.
+        if (m_Context->m_InternalOptions.EmitVisaOnly) {
+            for (auto mode : { SIMDMode::SIMD8, SIMDMode::SIMD16, SIMDMode::SIMD32 }) {
+                COpenCLKernel* shader = static_cast<COpenCLKernel*>(m_parent->GetShader(mode));
+                if (COpenCLKernel::IsVisaCompiledSuccessfullyForShader(shader))
+                    return false;
+            }
+        }
 
         {
             // If stack calls are present, disable simd32 in order to do wa in visa

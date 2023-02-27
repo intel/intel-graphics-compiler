@@ -10,6 +10,15 @@ SPDX-License-Identifier: MIT
 #define _VISA_IGC_COMMON_HEADER_H_
 
 typedef enum {
+  VISA_SUCCESS = 0,
+  VISA_FAILURE = -1,
+  // User has requested vISA to early exit after a pass via the -stopafter
+  // option.
+  VISA_EARLY_EXIT = -2,
+  VISA_SPILL = -3,
+} vISAStatus;
+
+typedef enum {
   vISA_DEFAULT,    // default mode: input is in-memory IR or vISA binary
   vISA_ASM_WRITER, // mode for inline asm: input is in-memory IR + inline vISA
                    // assembly, output is vISA text

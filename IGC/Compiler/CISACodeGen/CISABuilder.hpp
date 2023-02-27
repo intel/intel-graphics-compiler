@@ -505,6 +505,7 @@ namespace IGC
 
         std::string GetUniqueInlineAsmLabel();
 
+        bool IsVisaCompiledSuccessfully() const { return m_vIsaCompileStatus == VISA_SUCCESS; }
     private:
         // helper functions
         VISA_VectorOpnd* GetSourceOperand(CVariable* var, const SModifier& mod);
@@ -695,7 +696,6 @@ namespace IGC
         /// Return the VISAKernel built from overrided visa or inline asm. Return nullptr if
         /// failed to create VISAKernel
         VISAKernel* shaderOverrideVISASecondPassOrInlineAsm(
-            int &vIsaCompile, std::stringstream& visaStream,
             bool visaAsmOverride, bool hasSymbolTable, bool emitVisaOnly,
             const std::vector<const char *> *additionalVISAAsmToLink,
             const std::vector<std::string> &visaOverrideFiles,
@@ -786,6 +786,7 @@ namespace IGC
         VISA_SamplerVar* samplervar;
 
         CShader* m_program;
+        int m_vIsaCompileStatus = VISA_FAILURE;
 
         // Keep a map between a function and its per-function attributes needed for function pointer support
         struct FuncAttrib

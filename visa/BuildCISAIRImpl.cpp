@@ -1479,6 +1479,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
 
 }
 
+// TODO: Remove the ostream parameter used to emit visa binary.
 // default size of the kernel mem manager in bytes
 int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
                              bool emit_visa_only) {
@@ -1544,9 +1545,12 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       status = m_cisaBinary->dumpToFile(name);
   }
 
-  if (os && emit_visa_only) {
-    return m_cisaBinary->dumpToStream(os);
-  }
+  if (os)
+    status = m_cisaBinary->dumpToStream(os);
+
+  // Early return if emit_visa_only is true.
+  if (emit_visa_only)
+    return status;
 
   if (m_options.getuInt32Option(vISA_Linker) & (1U << Linker_Subroutine)) {
     std::map<std::string, G4_Kernel *> functionsNameMap;

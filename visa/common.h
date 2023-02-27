@@ -62,12 +62,6 @@ typedef uint16_t WORD;
 #define IS_RELEASE_DLL
 #endif
 
-#define VISA_SUCCESS 0
-#define VISA_FAILURE (-1)
-// User has requested vISA to early exit after a pass via the -stopafter option.
-#define VISA_EARLY_EXIT (-2)
-#define VISA_SPILL (-3)
-
 #define COUT_ERROR std::cout
 
 #if defined(_DEBUG) && !defined(DLL_MODE)

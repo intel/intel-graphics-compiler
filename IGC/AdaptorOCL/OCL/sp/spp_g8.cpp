@@ -470,7 +470,6 @@ bool CGen8OpenCLProgram::GetZEBinary(
     // JSON file is created if IGC_ElfTempDumpEnable is enabled.
     std::list<string> elfVecNames;      // List of parameters for the linker, contains in/out ELF file names and params
     std::vector<const char*> elfVecPtrs;        // Vector of pointers to the elfVecNames vector elements
-    SIMDMode simdMode = SIMDMode::SIMD8;  // Currently processed kernel's SIMD
 
     const unsigned int maxElfFileNameLength = 512;
     std::string elfLinkerLogName = "lldLinkLogName"; // First parameter for the linker, just a log name or a program name if this linker would be external.
@@ -509,22 +508,28 @@ bool CGen8OpenCLProgram::GetZEBinary(
                 IGC_ASSERT_MESSAGE(false, "Missing ELF linking support for multiple SIMD modes");
             }
         }
+        else if (m_Context.m_InternalOptions.EmitVisaOnly)
+        {
+            if (IGC::COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd32Shader))
+                kernelVec.push_back(simd32Shader);
+            else if (IGC::COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd16Shader))
+                kernelVec.push_back(simd16Shader);
+            else if (IGC::COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd8Shader))
+                kernelVec.push_back(simd8Shader);
+        }
         else
         {
             if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
             {
                 kernelVec.push_back(simd32Shader);
-                simdMode = SIMDMode::SIMD32;
             }
             else if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
             {
                 kernelVec.push_back(simd16Shader);
-                simdMode = SIMDMode::SIMD16;
             }
             else if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
             {
                 kernelVec.push_back(simd8Shader);
-                simdMode = SIMDMode::SIMD8;
             }
         }
 

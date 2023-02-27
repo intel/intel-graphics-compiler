@@ -5839,7 +5839,6 @@ namespace IGC
     }
 
     VISAKernel* CEncoder::shaderOverrideVISASecondPassOrInlineAsm(
-        int &vIsaCompile, std::stringstream& visaStream,
         bool visaAsmOverride, bool hasSymbolTable, bool emitVisaOnly,
         const std::vector<const char *> *additionalVISAAsmToLink,
         const std::vector<std::string> &visaOverrideFiles,
@@ -5973,8 +5972,8 @@ namespace IGC
                                         asmName.c_str());
         }
         VISAKernel *pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
-        vIsaCompile = vAsmTextBuilder->Compile(
-            m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", &visaStream,
+        m_vIsaCompileStatus = vAsmTextBuilder->Compile(
+            m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", nullptr,
             emitVisaOnly);
 
         return pMainKernel;
@@ -5987,7 +5986,6 @@ namespace IGC
         SProgramOutput* const pOutput = m_program->ProgramOutput();
         const std::vector<const char*>* additionalVISAAsmToLink = nullptr;
         bool emitVisaOnly = false;
-        std::stringstream visaStream; // used in case we want to emit only vISA.
 
         if(context->type == ShaderType::OPENCL_SHADER) {
             auto cl_context = static_cast<OpenCLProgramContext*>(context);
@@ -6010,7 +6008,6 @@ namespace IGC
             MEM_SNAPSHOT(IGC::SMS_AFTER_CISACreateDestroy_SIMD32);
         }
 
-        int vIsaCompile = 0;
         VISAKernel* pMainKernel = nullptr;
 
         // ShaderOverride for .visaasm files
@@ -6027,7 +6024,6 @@ namespace IGC
         if (m_hasInlineAsm || visaAsmOverride || additionalVISAAsmToLink)
         {
             pMainKernel = shaderOverrideVISASecondPassOrInlineAsm(
-              vIsaCompile, visaStream,
               visaAsmOverride, hasSymbolTable, emitVisaOnly,
               additionalVISAAsmToLink, visaOverrideFiles, kernelName);
             // return immediately if there is error during parsing visaasm
@@ -6038,8 +6034,8 @@ namespace IGC
         else
         {
             pMainKernel = vMainKernel;
-            vIsaCompile = vbuilder->Compile(
-                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", &visaStream, emitVisaOnly);
+            m_vIsaCompileStatus = vbuilder->Compile(
+                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", nullptr, emitVisaOnly);
         }
 
         COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
@@ -6087,15 +6083,11 @@ namespace IGC
 
         m_program->m_asmInstrCount = jitInfo->stats.numAsmCountUnweighted;
 
-        if (vIsaCompile == -1)
+        if (m_vIsaCompileStatus == VISA_FAILURE)
         {
             IGC_ASSERT_MESSAGE(0, "CM failure in vbuilder->Compile()");
         }
-        else if (vIsaCompile == -2)
-        {
-            IGC_ASSERT_MESSAGE(0, "CM user error in vbuilder->Compile()");
-        }
-        else if (vIsaCompile == -3) // CM early terminates on spill
+        else if (m_vIsaCompileStatus == VISA_SPILL) // CM early terminates on spill
         {
 #if (GET_SHADER_STATS)
             if (m_program->m_dispatchSize == SIMDMode::SIMD8)
@@ -6179,19 +6171,10 @@ namespace IGC
             }
         }
 
-        // Early return if dumping visaasm to console.
-        if (IGC_IS_FLAG_ENABLED(DumpVISAASMToConsole))
+        // Early return if dumping visaasm to console or -emit-visa-only is
+        // specified.
+        if (emitVisaOnly || IGC_IS_FLAG_ENABLED(DumpVISAASMToConsole))
             return;
-
-        if (emitVisaOnly)
-        {
-            std::string emittedVisa = visaStream.str();
-            auto buf = IGC::aligned_malloc(emittedVisa.size(), 16);
-            memcpy_s(buf, emittedVisa.size(), emittedVisa.data(), emittedVisa.size());
-            pOutput->m_programBin = buf;
-            pOutput->m_programSize = emittedVisa.size();
-            return;
-        }
 
         V(pMainKernel->GetGenxBinary(genxbin, binSize));
         if (IGC_IS_FLAG_ENABLED(ShaderOverride))
