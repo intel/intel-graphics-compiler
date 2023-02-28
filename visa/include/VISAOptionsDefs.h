@@ -586,8 +586,6 @@ DEF_VISA_OPTION(vISA_AddKernelID, ET_BOOL, "-addKernelID", UNUSED, false)
 DEF_VISA_OPTION(vISA_zeroSomeARF, ET_BOOL, "-zeroSomeARF",
                 "Zero address reg, acc, etc. on entry to kernel.", false)
 DEF_VISA_OPTION(vISA_dumpPayload, ET_BOOL, "-dumpPayload", UNUSED, false)
-DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32,
-                "-scratchAllocForStackInKB", UNUSED, 128)
 
 DEF_VISA_OPTION(vISA_dumpToCurrentDir, ET_BOOL, "-dumpToCurrentDir", UNUSED,
                 false)

@@ -10169,53 +10169,29 @@ int GlobalRA::coloringRegAlloc() {
 
   // update jit metadata information for spill
   if (auto jitInfo = builder.getJitInfo()) {
-    jitInfo->isSpill = spillMemUsed > 0;
+    // jitInfo->spillMemUsed is the entire visa stack size. Consider the
+    // caller/callee save size if having caller/callee save
+    // globalScratchOffset in unit of byte, others in Oword
+    //
+    //                               vISA stack
+    //  globalScratchOffset     -> ---------------------
+    //  FIXME: should be 0-based   |  spill            |
+    //                             |                   |
+    //  calleeSaveAreaOffset    -> ---------------------
+    //                             |  callee save      |
+    //  callerSaveAreaOffset    -> ---------------------
+    //                             |  caller save      |
+    //  paramOverflowAreaOffset -> ---------------------
+
     jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
+    jitInfo->isSpill = spillMemUsed > 0 || jitInfo->hasStackcalls;
 
-    if (jitInfo->hasStackcalls && builder.getIsKernel()) {
-      // jitInfo->spillMemUsed is the entire visa stack size. Consider the
-      // caller/callee save size if having caller/callee save
-      // globalScratchOffset in unit of byte, others in Oword
-      //
-      //                               vISA stack
-      //  globalScratchOffset     -> ---------------------
-      //  FIXME: should be 0-based   |  spill            |
-      //                             |                   |
-      //  calleeSaveAreaOffset    -> ---------------------
-      //                             |  callee save      |
-      //  callerSaveAreaOffset    -> ---------------------
-      //                             |  caller save      |
-      //  paramOverflowAreaOffset -> ---------------------
-
-      // Since it is difficult to predict amount of space needed to store stack,
-      // we reserve 128k. Reserving max PTSS is ideal, but it can lead to OOM on
-      // machines with large number of threads.
-      unsigned int scratchAllocForStackInKB =
-          kernel.getOptions()->getuInt32Option(vISA_ScratchAllocForStackInKB);
-
-      if (!kernel.getOptions()->isOptionSetByUser(
-              vISA_ScratchAllocForStackInKB) &&
-          builder.getPlatform() == Xe_PVCXT) {
-        scratchAllocForStackInKB = 64;
-      }
-
-      unsigned int scratchAllocation = 1024 * scratchAllocForStackInKB;
-      jitInfo->stats.spillMemUsed = scratchAllocation;
-      jitInfo->isSpill = true;
-
-      // reserve spillMemUsed #bytes at upper end
-      kernel.getGTPinData()->setScratchNextFree(
-          scratchAllocation - kernel.getGTPinData()->getNumBytesScratchUse());
-    } else {
-      // stack call functions shouldnt report any scratch usage as it is
-      // kernel's responsibility to account for stack usage of entire call
-      // tree.
-      if (!kernel.fg.getIsStackCallFunc()) {
-        jitInfo->stats.spillMemUsed = spillMemUsed;
-        kernel.getGTPinData()->setScratchNextFree(spillMemUsed +
-                                                  globalScratchOffset);
-      }
-    }
+    // Each function reports its required stack size.
+    // We will summarize the final stack size of entire vISA module into
+    // the main functions (ref: CISA_IR_Builder::summarizeFunctionInfo)
+    jitInfo->stats.spillMemUsed = spillMemUsed;
+    kernel.getGTPinData()->setScratchNextFree(spillMemUsed +
+                                              globalScratchOffset);
     jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
   }
 

@@ -980,6 +980,7 @@ namespace IGC
         IGC::ModuleMetaData* modMD = nullptr;
 
         virtual void setFlagsPerCtx();
+
     public:
         CodeGenContext(
             ShaderType          _type,      ///< shader type
