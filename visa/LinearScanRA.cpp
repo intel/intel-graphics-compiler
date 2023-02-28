@@ -990,11 +990,11 @@ int LinearScanRA::linearScanRA() {
       undoLinearScanRAAssignments();
     }
 
-    if (builder.getOption(vISA_RATrace)) {
+    RA_TRACE({
       std::cout << "\titeration: " << iterator << "\n";
       std::cout << "\t\tnextSpillOffset: " << nextSpillOffset << "\n";
       std::cout << "\t\tGRFSpillFillCount: " << GRFSpillFillCount << "\n";
-    }
+    });
 
     kernel.dumpToFile("after.Spill_GRF." + std::to_string(iterator));
 
@@ -1021,9 +1021,7 @@ int LinearScanRA::linearScanRA() {
 }
 
 int LinearScanRA::doLinearScanRA() {
-  if (builder.getOption(vISA_RATrace)) {
-    std::cout << "--Global linear Scan RA--\n";
-  }
+  RA_TRACE(std::cout << "--Global linear Scan RA--\n");
   // Initial pregs which will be used in the preRAAnalysis
   PhyRegsLocalRA phyRegs(builder, kernel.getNumRegTotal());
   pregs = &phyRegs;

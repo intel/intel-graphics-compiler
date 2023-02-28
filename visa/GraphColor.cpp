@@ -2380,11 +2380,11 @@ void Interference::computeInterference() {
     }
   }
 
-  if (builder.getOption(vISA_RATrace)) {
+  RA_TRACE({
     RPE rpe(gra, liveAnalysis);
     rpe.run();
     std::cout << "\t--max RP: " << rpe.getMaxRP() << "\n";
-  }
+  });
 
   if ((builder.getOption(vISA_RATrace) ||
        builder.getOption(vISA_DumpPerfStatsVerbose)) &&
@@ -2395,6 +2395,7 @@ void Interference::computeInterference() {
   aug.augmentIntfGraph();
 
   generateSparseIntfGraph();
+  countNeighbors();
 
   // apply callee save bias after augmentation as interference graph is
   // up-to-date.
@@ -2480,31 +2481,36 @@ void Interference::generateSparseIntfGraph() {
       }
     }
   }
+  stopTimer(TimerID::INTERFERENCE);
+}
 
-  if (builder.getOption(vISA_RATrace) ||
-      builder.getOption(vISA_DumpPerfStatsVerbose)) {
-    uint32_t numNeighbor = 0;
-    uint32_t maxNeighbor = 0;
-    uint32_t maxIndex = 0;
-    uint32_t numEdges = 0;
-    for (int i = 0, numVar = (int)sparseIntf.size(); i < numVar; ++i) {
-      if (lrs[i]->getPhyReg() == nullptr) {
-        auto intf = sparseIntf[i];
-        numNeighbor += (uint32_t)intf.size();
-        maxNeighbor = std::max(maxNeighbor, (uint32_t)intf.size());
-        if (maxNeighbor == (uint32_t)intf.size()) {
-          maxIndex = i;
-        }
-      }
-      numEdges += (uint32_t)sparseIntf[i].size();
+void Interference::countNeighbors() {
+  if (!builder.getOption(vISA_RATrace) &&
+      !builder.getOption(vISA_DumpPerfStatsVerbose))
+    return;
+
+  uint32_t numNeighbor = 0;
+  uint32_t maxNeighbor = 0;
+  uint32_t maxIndex = 0;
+  uint32_t numEdges = 0;
+  for (int i = 0, numVar = (int)sparseIntf.size(); i < numVar; ++i) {
+    if (lrs[i]->getPhyReg() == nullptr) {
+      auto &intf = sparseIntf[i];
+      numNeighbor += (uint32_t)intf.size();
+      maxNeighbor = std::max(maxNeighbor, numNeighbor);
+      if (maxNeighbor == numNeighbor)
+        maxIndex = i;
     }
-    float avgNeighbor = ((float)numNeighbor) / sparseIntf.size();
-    if (builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
-      builder.getJitInfo()->statsVerbose.avgNeighbors = avgNeighbor;
-      builder.getJitInfo()->statsVerbose.maxNeighbors = maxNeighbor;
-      builder.getJitInfo()->statsVerbose.augIntfNum =
-          (numEdges / 2) - builder.getJitInfo()->statsVerbose.normIntfNum;
-    }
+    numEdges += (uint32_t)sparseIntf[i].size();
+  }
+  float avgNeighbor = ((float)numNeighbor) / sparseIntf.size();
+  if (builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
+    builder.getJitInfo()->statsVerbose.avgNeighbors = avgNeighbor;
+    builder.getJitInfo()->statsVerbose.maxNeighbors = maxNeighbor;
+    builder.getJitInfo()->statsVerbose.augIntfNum =
+        (numEdges / 2) - builder.getJitInfo()->statsVerbose.normIntfNum;
+  }
+  RA_TRACE({
     std::cout << "\t--avg # neighbors: " << std::setprecision(6) << avgNeighbor
               << "\n";
     std::cout << "\t--max # neighbors: " << maxNeighbor << " ("
@@ -2513,8 +2519,7 @@ void Interference::generateSparseIntfGraph() {
       std::cout << "\t--aug edge #: "
                 << builder.getJitInfo()->statsVerbose.augIntfNum << "\n";
     }
-  }
-  stopTimer(TimerID::INTERFERENCE);
+  });
 }
 
 // This function can be invoked before local RA or after augmentation.
@@ -5390,10 +5395,10 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
       !(gra.getIterNo() == 0 &&
         (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.80f);
 
-  if (builder.getOption(vISA_RATrace)) {
+  RA_TRACE({
     if (useNewSpillCost)
       std::cout << "\t--using new spill cost function\n";
-  }
+  });
 
   if (useNewSpillCost && liveAnalysis.livenessClass(G4_GRF)) {
     // gather all instructions with indirect operands
@@ -5873,12 +5878,10 @@ void PhyRegUsage::updateRegUsage(LiveRange *lr) {
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
                               bool doBankConflict, bool highInternalConflict,
                               bool honorHints) {
-  if (builder.getOption(vISA_RATrace)) {
-    std::cout << "\t--"
-              << (colorHeuristicGRF == ROUND_ROBIN ? "round-robin"
-                                                   : "first-fit")
-              << (doBankConflict ? " BCR" : "") << " graph coloring\n";
-  }
+  RA_TRACE(std::cout << "\t--"
+                     << (colorHeuristicGRF == ROUND_ROBIN ? "round-robin"
+                                                          : "first-fit")
+                     << (doBankConflict ? " BCR" : "") << " graph coloring\n");
 
   unsigned bank1_end = 0;
   unsigned bank2_end = totalGRFRegCount - 1;
@@ -6672,10 +6675,8 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
                           const RPE *rpe) {
   bool useSplitLLRHeuristic = false;
 
-  if (builder.getOption(vISA_RATrace)) {
-    std::cout << "\t--# variables: " << liveAnalysis.getNumSelectedVar()
-              << "\n";
-  }
+  RA_TRACE(std::cout << "\t--# variables: " << liveAnalysis.getNumSelectedVar()
+                     << "\n");
 
   unsigned reserveSpillSize = 0;
   if (reserveSpillReg) {
@@ -9166,9 +9167,7 @@ void GlobalRA::addrRegAlloc() {
   unsigned iterationNo = 0;
 
   while (iterationNo < maxRAIterations) {
-    if (builder.getOption(vISA_RATrace)) {
-      std::cout << "--address RA iteration " << iterationNo << "\n";
-    }
+    RA_TRACE(std::cout << "--address RA iteration " << iterationNo << "\n");
     //
     // choose reg vars whose reg file kind is ARF
     //
@@ -9232,9 +9231,7 @@ void GlobalRA::flagRegAlloc() {
   bool spillingFlag = false;
 
   while (iterationNo < maxRAIterations) {
-    if (builder.getOption(vISA_RATrace)) {
-      std::cout << "--flag RA iteration " << iterationNo << "\n";
-    }
+    RA_TRACE(std::cout << "--flag RA iteration " << iterationNo << "\n");
 
     //
     // choose reg vars whose reg file kind is FLAG
@@ -9395,9 +9392,7 @@ void GlobalRA::removeSplitDecl() {
 //        they should be moved to some common code
 bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
                         LocalRA &lra) {
-  if (builder.getOption(vISA_RATrace)) {
-    std::cout << "--hybrid RA--\n";
-  }
+  RA_TRACE(std::cout << "--hybrid RA--\n");
   uint32_t numOrigDcl = (uint32_t)kernel.Declares.size();
   insertPhyRegDecls();
 
@@ -9412,10 +9407,8 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
         rpe.getMaxRP() >= kernel.getNumRegTotal() - 16;
     if (spillLikely) {
-      if (builder.getOption(vISA_RATrace)) {
-        std::cout << "\t--skip hybrid RA due to high pressure: "
-                  << rpe.getMaxRP() << "\n";
-      }
+      RA_TRACE(std::cout << "\t--skip hybrid RA due to high pressure: "
+                         << rpe.getMaxRP() << "\n");
       kernel.Declares.resize(numOrigDcl);
       lra.undoLocalRAAssignments(false);
       return false;
@@ -9582,10 +9575,8 @@ int GlobalRA::coloringRegAlloc() {
         if (canDoHRA(kernel)) {
           success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
         } else {
-          if (builder.getOption(vISA_RATrace)) {
-            std::cout << "\t--skip HRA due to var split. undo LRA results."
-                      << "\n";
-          }
+          RA_TRACE(std::cout
+                   << "\t--skip HRA due to var split. undo LRA results\n");
           lra.undoLocalRAAssignments(false);
         }
       }
@@ -9685,11 +9676,8 @@ int GlobalRA::coloringRegAlloc() {
     if (builder.getOption(vISA_DynPerfModel)) {
       perfModel.NumRAIters++;
     }
-
-    if (builder.getOption(vISA_RATrace)) {
-      std::cout << "--GRF RA iteration " << iterationNo << "--"
-                << kernel.getName() << "\n";
-    }
+    RA_TRACE(std::cout << "--GRF RA iteration " << iterationNo << "--"
+                       << kernel.getName() << "\n");
     setIterNo(iterationNo);
 
     if (!builder.getOption(vISA_HybridRAWithSpill)) {
@@ -9713,9 +9701,7 @@ int GlobalRA::coloringRegAlloc() {
 
     // Do variable splitting in each iteration
     if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {
-      if (builder.getOption(vISA_RATrace)) {
-        std::cout << "\t--split local send--\n";
-      }
+      RA_TRACE(std::cout << "\t--split local send--\n");
       for (auto bb : kernel.fg) {
         if (bb->isSendInBB()) {
           splitPass.localSplit(builder, bb);
@@ -9746,9 +9732,7 @@ int GlobalRA::coloringRegAlloc() {
         !hasStackCall &&
         ((iterationNo == maxRAIterations - 1) ||
          (allowAddrTaken && iterationNo == failSafeRAIteration))) {
-      if (builder.getOption(vISA_RATrace)) {
-        std::cout << "\t--enable failSafe RA\n";
-      }
+      RA_TRACE(std::cout << "\t--enable failSafe RA\n");
       reserveSpillReg = true;
 
       if (builder.hasScratchSurface() && !hasStackCall) {
@@ -9766,12 +9750,14 @@ int GlobalRA::coloringRegAlloc() {
     if (builder.getOption(vISA_dumpLiveness)) {
       liveAnalysis.dump();
     }
-    if ((builder.getOption(vISA_DumpPerfStatsVerbose) || builder.getOption(vISA_RATrace)) &&
-        jitInfo->statsVerbose.RAIterNum == 1) {
-      jitInfo->statsVerbose.varNum = liveAnalysis.getNumSelectedVar();
-      jitInfo->statsVerbose.globalVarNum = liveAnalysis.getNumSelectedGlobalVar();
-      std::cout << "\t--# global variable: "
-                << jitInfo->statsVerbose.globalVarNum << "\n";
+    if (jitInfo->statsVerbose.RAIterNum == 1) {
+      if (builder.getOption(vISA_DumpPerfStatsVerbose)) {
+        jitInfo->statsVerbose.varNum = liveAnalysis.getNumSelectedVar();
+        jitInfo->statsVerbose.globalVarNum =
+            liveAnalysis.getNumSelectedGlobalVar();
+      }
+      RA_TRACE(std::cout << "\t--# global variable: "
+                         << jitInfo->statsVerbose.globalVarNum << "\n");
     }
 #ifdef DEBUG_VERBOSE_ON
     emitFGWithLiveness(liveAnalysis);
@@ -9827,9 +9813,7 @@ int GlobalRA::coloringRegAlloc() {
         bool globalSplitChange = false;
 
         if (!rematDone && rematOn) {
-          if (builder.getOption(vISA_RATrace)) {
-            std::cout << "\t--rematerialize\n";
-          }
+          RA_TRACE(std::cout << "\t--rematerialize\n");
           Rematerialization remat(kernel, liveAnalysis, coloring, rpe, *this);
           remat.run();
           rematDone = true;
@@ -9867,9 +9851,7 @@ int GlobalRA::coloringRegAlloc() {
             !splitPass.didGlobalSplit && // Do only one time.
             splitPass.canDoGlobalSplit(builder, kernel,
                                        sendAssociatedGRFSpillFillCount)) {
-          if (builder.getOption(vISA_RATrace)) {
-            std::cout << "\t--global send split\n";
-          }
+          RA_TRACE(std::cout << "\t--global send split\n");
           splitPass.globalSplit(builder, kernel);
           splitPass.didGlobalSplit = true;
           globalSplitChange = true;
@@ -9886,9 +9868,7 @@ int GlobalRA::coloringRegAlloc() {
 
         if (!kernel.getOption(vISA_Debug) && iterationNo == 0 && !fastCompile &&
             kernel.getOption(vISA_DoSplitOnSpill)) {
-          if (builder.getOption(vISA_RATrace)) {
-            std::cout << "\t--var split around loop\n";
-          }
+          RA_TRACE(std::cout << "\t--var split around loop\n");
           LoopVarSplit loopSplit(kernel, &coloring, &liveAnalysis);
           kernel.fg.getLoops().computePreheaders();
           loopSplit.run();
@@ -9930,9 +9910,7 @@ int GlobalRA::coloringRegAlloc() {
             coloring.markFailSafeIter(true);
             // No reserved GRFs
             setNumReservedGRFsFailSafe(0);
-            if (builder.getOption(vISA_RATrace)) {
-              std::cout << "\t--enabling new fail safe RA\n";
-            }
+            RA_TRACE(std::cout << "\t--enabling new fail safe RA\n");
           }
         }
 
@@ -10030,7 +10008,7 @@ int GlobalRA::coloringRegAlloc() {
           kernel.fg.builder->getOldA0Dot2Temp();
         }
 
-        if (builder.getOption(vISA_RATrace)) {
+        RA_TRACE({
           auto &&spills = coloring.getSpilledLiveRanges();
           std::cout << "\t--# variables spilled: " << spills.size() << "\n";
           if (spills.size() < 100) {
@@ -10041,7 +10019,7 @@ int GlobalRA::coloringRegAlloc() {
             std::cout << "\n";
           }
           std::cout << "\t--current spill size: " << nextSpillOffset << "\n";
-        }
+        });
 
         if (!success) {
           iterationNo = maxRAIterations;
@@ -10067,9 +10045,7 @@ int GlobalRA::coloringRegAlloc() {
             (!useScratchMsgForSpill && !hasStackCall);
 
         if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends()) {
-          if (builder.getOption(vISA_RATrace)) {
-            std::cout << "\t--spill/fill cleanup\n";
-          }
+          RA_TRACE(std::cout << "\t--spill/fill cleanup\n");
           CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGRF,
                                iterationNo, rpe, *this);
           c.run();

@@ -26,6 +26,10 @@ using namespace vISA;
 
 #define GRAPH_COLOR
 
+#if defined (_DEBUG) || !defined(DLL_MODE)
+bool vISA::RATraceFlag = false;
+#endif
+
 bool LivenessAnalysis::isLocalVar(G4_Declare *decl) const {
   if ((decl->isInput() == true &&
        !(fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
@@ -2977,9 +2981,14 @@ static void replaceSSO(G4_Kernel &kernel) {
   }
 }
 
+// Entry point for all RA flavors.
 int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
   kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset =
       kernel.fg.frameSizeInOWord = 0;
+
+#if defined(_DEBUG) || !defined(DLL_MODE)
+  vISA::RATraceFlag = builder.getOption(vISA_RATrace);
+#endif
 
   // This must be done before Points-to analysis as it may modify CFG and add
   // new BB!

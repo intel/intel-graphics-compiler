@@ -273,9 +273,7 @@ void LocalRA::preLocalRAAnalysis() {
 }
 
 void LocalRA::trivialAssignRA(bool &needGlobalRA, bool threeSourceCandidate) {
-  if (builder.getOption(vISA_RATrace)) {
-    std::cout << "\t--trivial RA\n";
-  }
+  RA_TRACE(std::cout << "\t--trivial RA\n");
 
   needGlobalRA = assignUniqueRegisters(threeSourceCandidate,
                                        builder.lowHighBundle(), false);
@@ -376,9 +374,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
 }
 
 bool LocalRA::localRA() {
-  if (builder.getOption(vISA_RATrace)) {
-    std::cout << "--local RA--\n";
-  }
+  RA_TRACE(std::cout << "--local RA--\n");
 
   bool doRoundRobin = builder.getOption(vISA_LocalRARoundRobin);
 
@@ -425,9 +421,8 @@ bool LocalRA::localRA() {
   // or
   // RR --> FF --> Hybrid
   if (doRoundRobin) {
-    if (builder.getOption(vISA_RATrace)) {
-      std::cout << "\t--round-robin " << (doBCR ? "BCR " : "") << "RA\n";
-    }
+    RA_TRACE(std::cout << "\t--round-robin " << (doBCR ? "BCR " : "")
+                       << "RA\n");
     needGlobalRA = localRAPass(true, false);
     if (needGlobalRA == true) {
       doRoundRobin = false;
@@ -436,19 +431,12 @@ bool LocalRA::localRA() {
 
   if (!doRoundRobin) {
     if (kernel.getOption(vISA_forceBCR) && doBCR) {
-      if (builder.getOption(vISA_RATrace)) {
-        std::cout << "\t--first-fit "
-                  << "BCR "
-                  << "RA\n";
-      }
+      RA_TRACE(std::cout << "\t--first-fit BCR RA\n");
       needGlobalRA = localRAPass(false, doSplitLLR);
     }
 
     if (needGlobalRA) {
-      if (builder.getOption(vISA_RATrace)) {
-        std::cout << "\t--first-fit "
-                  << "RA\n";
-      }
+      RA_TRACE(std::cout << "\t--first-fit RA\n");
       globalLRSize = 0;
       if (builder.getOption(vISA_HybridRAWithSpill)) {
         countLiveIntervals();

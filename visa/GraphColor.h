@@ -495,6 +495,7 @@ class Interference {
   void markInterferenceToAvoidDstSrcOverlap(G4_BB *bb, G4_INST *inst);
 
   void generateSparseIntfGraph();
+  void countNeighbors();
 
 public:
   Interference(const LivenessAnalysis *l, LiveRange **const &lr, unsigned n,

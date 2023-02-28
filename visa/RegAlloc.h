@@ -14,6 +14,23 @@ SPDX-License-Identifier: MIT
 #include "PhyRegUsage.h"
 
 namespace vISA {
+
+#if defined(_DEBUG) || !defined(DLL_MODE)
+// Flag to control whether RA trace is on. This should be set to
+// builder.getOption(vISA_RATrace) at RA entry.
+extern bool RATraceFlag;
+// Debug macro to dump register allocator traces
+#define RA_TRACE(X)                                                            \
+  do {                                                                         \
+    if (::RATraceFlag) {                                                       \
+      X;                                                                       \
+    }                                                                          \
+  }                                                                            \
+  while (false)
+#else
+#define RA_TRACE(X)
+#endif
+
 class PointsToAnalysis;
 
 struct VarRange {
