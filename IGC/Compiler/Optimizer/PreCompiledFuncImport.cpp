@@ -123,24 +123,28 @@ const char* PreCompiledFuncImport::m_Int32EmuFunctionNames[NUM_INT32_EMU_FUNCTIO
 // The entry order must match to FunctionIDs enum!
 const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_IDS] =
 {
-    { "__igcbuiltin_dp_add",        LIBMOD_DP_ADD_SUB },
-    { "__igcbuiltin_dp_sub",        LIBMOD_DP_ADD_SUB },
-    { "__igcbuiltin_dp_fma",        LIBMOD_DP_FMA_MUL },
-    { "__igcbuiltin_dp_mul",        LIBMOD_DP_FMA_MUL },
-    { "__igcbuiltin_dp_div",        LIBMOD_DP_DIV },
-    { "__igcbuiltin_dp_cmp",        LIBMOD_DP_CMP },
-    { "__igcbuiltin_dp_to_int32",   LIBMOD_DP_CONV_I32 },
-    { "__igcbuiltin_dp_to_uint32",  LIBMOD_DP_CONV_I32 },
-    { "__igcbuiltin_int32_to_dp",   LIBMOD_DP_CONV_I32 },
-    { "__igcbuiltin_uint32_to_dp",  LIBMOD_DP_CONV_I32 },
-    { "__igcbuiltin_dp_to_sp",      LIBMOD_DP_CONV_SP },
-    { "__igcbuiltin_sp_to_dp",      LIBMOD_DP_CONV_SP },
-    { "__igcbuiltin_dp_sqrt",       LIBMOD_DP_SQRT },
-    { "__igcbuiltin_sp_div",        LIBMOD_SP_DIV },
-    { "__igcbuiltin_dp_to_int64",   LIBMOD_DP_CONV_I64 },
-    { "__igcbuiltin_dp_to_uint64",  LIBMOD_DP_CONV_I64 },
-    { "__igcbuiltin_int64_to_dp",   LIBMOD_DP_CONV_I64 },
-    { "__igcbuiltin_uint64_to_dp",  LIBMOD_DP_CONV_I64 }
+    { "__igcbuiltin_dp_add",              LIBMOD_DP_ADD_SUB },
+    { "__igcbuiltin_dp_sub",              LIBMOD_DP_ADD_SUB },
+    { "__igcbuiltin_dp_fma",              LIBMOD_DP_FMA_MUL },
+    { "__igcbuiltin_dp_mul",              LIBMOD_DP_FMA_MUL },
+    { "__igcbuiltin_dp_div",              LIBMOD_DP_DIV },
+    { "__igcbuiltin_dp_div_nomadm_ieee",  LIBMOD_DP_DIV_NOMADM },
+    { "__igcbuiltin_dp_div_nomadm_fast",  LIBMOD_DP_DIV_NOMADM },
+    { "__igcbuiltin_dp_cmp",              LIBMOD_DP_CMP },
+    { "__igcbuiltin_dp_to_int32",         LIBMOD_DP_CONV_I32 },
+    { "__igcbuiltin_dp_to_uint32",        LIBMOD_DP_CONV_I32 },
+    { "__igcbuiltin_int32_to_dp",         LIBMOD_DP_CONV_I32 },
+    { "__igcbuiltin_uint32_to_dp",        LIBMOD_DP_CONV_I32 },
+    { "__igcbuiltin_dp_to_sp",            LIBMOD_DP_CONV_SP },
+    { "__igcbuiltin_sp_to_dp",            LIBMOD_DP_CONV_SP },
+    { "__igcbuiltin_dp_sqrt",             LIBMOD_DP_SQRT },
+    { "__igcbuiltin_dp_sqrt_nomadm_ieee", LIBMOD_DP_SQRT_NOMADM },
+    { "__igcbuiltin_dp_sqrt_nomadm_fast", LIBMOD_DP_SQRT_NOMADM },
+    { "__igcbuiltin_sp_div",              LIBMOD_SP_DIV },
+    { "__igcbuiltin_dp_to_int64",         LIBMOD_DP_CONV_I64 },
+    { "__igcbuiltin_dp_to_uint64",        LIBMOD_DP_CONV_I64 },
+    { "__igcbuiltin_int64_to_dp",         LIBMOD_DP_CONV_I64 },
+    { "__igcbuiltin_uint64_to_dp",        LIBMOD_DP_CONV_I64 }
 };
 
 // The entry order must match to LibraryModules enum!
@@ -154,10 +158,12 @@ const LibraryModuleInfo PreCompiledFuncImport::m_libModInfos[NUM_LIBMODS] =
     /* LIBMOD_INT_ADD_SUB */   { igcbuiltin_emu_dp_add_sub, sizeof(igcbuiltin_emu_dp_add_sub) },
     /* LIBMOD_DP_FMA_MUL  */   { igcbuiltin_emu_dp_fma_mul, sizeof(igcbuiltin_emu_dp_fma_mul) },
     /* LIBMOD_DP_DIV      */   { igcbuiltin_emu_dp_div, sizeof(igcbuiltin_emu_dp_div) },
+    /* LIBMOD_DP_DIV_NOMADM */ { igcbuiltin_emu_dp_div_nomadm, sizeof(igcbuiltin_emu_dp_div_nomadm) },
     /* LIBMOD_DP_CMP      */   { igcbuiltin_emu_dp_cmp, sizeof(igcbuiltin_emu_dp_cmp) },
     /* LIBMOD_DP_CONV_I32 */   { igcbuiltin_emu_dp_conv_i32, sizeof(igcbuiltin_emu_dp_conv_i32) },
     /* LIBMOD_DP_CONV_SP  */   { igcbuiltin_emu_dp_conv_sp, sizeof(igcbuiltin_emu_dp_conv_sp) },
     /* LIBMOD_DP_SQRT     */   { igcbuiltin_emu_dp_sqrt, sizeof(igcbuiltin_emu_dp_sqrt) },
+    /* LIBMOD_DP_SQRT_NOMADM */{ igcbuiltin_emu_dp_sqrt_nomadm, sizeof(igcbuiltin_emu_dp_sqrt_nomadm) },
     /* LIBMOD_SP_DIV      */   { igcbuiltin_emu_sp_div, sizeof(igcbuiltin_emu_sp_div) },
     /* LIBMOD_DP_CONV_I64 */   { igcbuiltin_emu_dp_conv_i64, sizeof(igcbuiltin_emu_dp_conv_i64) },
 };
@@ -362,10 +368,11 @@ bool PreCompiledFuncImport::preProcessDouble()
 inline bool isPrecompiledEmulationFunction(Function* func)
 {
     return func->getName().contains("precompiled_s32divrem") ||
-    func->getName().contains("precompiled_u32divrem") ||
+        func->getName().contains("precompiled_u32divrem") ||
         func->getName().contains("precompiled_s32divrem_sp") ||
         func->getName().contains("precompiled_u32divrem_sp") ||
-    func->getName().contains("__igcbuiltin_sp_div");
+        func->getName().contains("__igcbuiltin_sp_div") ||
+        func->getName().contains("__igcbuiltin_dp_div_nomadm_ieee");
 }
 
 void PreCompiledFuncImport::removeLLVMModuleFlag(Module* M)
@@ -835,7 +842,8 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
     else if (isDPDivSqrtEmu() && I.getOperand(0)->getType()->isDoubleTy() &&
         I.getOpcode() == Instruction::FDiv)
     {
-        processFPBinaryOperator(I, FUNCTION_DP_DIV);
+        // Partial hardware DP support available, can use faster implementation.
+        processFPBinaryOperator(I, I.getFastMathFlags().isFast() ? FUNCTION_DP_DIV_NOMADM_FAST : FUNCTION_DP_DIV_NOMADM_IEEE);
     }
 }
 
@@ -1193,16 +1201,20 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
     else
     {
         Function* newFunc = getOrCreateFunction(FID);
-        Value* args[6];
 
-        Type* intTy = Type::getInt32Ty(m_pModule->getContext());
-        Function* CurrFunc = I.getParent()->getParent();
-        args[0] = I.getOperand(0);
-        args[1] = I.getOperand(1);
-        args[2] = ConstantInt::get(intTy, m_roundingMode);  // rounding mode
-        args[3] = ConstantInt::get(intTy, m_flushToZero);  // flush to zero
-        args[4] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
-        args[5] = createFlagValue(CurrFunc);   // FP flag, ignored
+        SmallVector<Value*, 6> args;
+        args.push_back(I.getOperand(0));
+        args.push_back(I.getOperand(1));
+
+        if (FID != FUNCTION_DP_DIV_NOMADM_IEEE && FID != FUNCTION_DP_DIV_NOMADM_FAST)
+        {
+            Type* intTy = Type::getInt32Ty(m_pModule->getContext());
+            Function* CurrFunc = I.getParent()->getParent();
+            args.push_back(ConstantInt::get(intTy, m_roundingMode));  // rounding mode
+            args.push_back(ConstantInt::get(intTy, m_flushToZero));  // flush to zero
+            args.push_back(ConstantInt::get(intTy, m_flushDenorm));  // flush denorm
+            args.push_back(createFlagValue(CurrFunc));   // FP flag, ignored
+        }
 
         CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
         addCallInst(funcCall);
@@ -1289,6 +1301,14 @@ Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
         retTy = dpTy;
         break;
 
+    case FUNCTION_DP_DIV_NOMADM_IEEE:
+    case FUNCTION_DP_DIV_NOMADM_FAST:
+        // double dp_div_nomadm(double xin, double yin)
+        argTypes.push_back(dpTy);
+        argTypes.push_back(dpTy);
+        retTy = dpTy;
+        break;
+
     case FUNCTION_DP_CMP:
         // int dp_cmp (double xin, double yin, int daz)
         argTypes.push_back(dpTy);
@@ -1370,6 +1390,13 @@ Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
         argTypes.push_back(intTy);
         argTypes.push_back(intPtrTy);
 
+        retTy = dpTy;
+        break;
+
+    case FUNCTION_DP_SQRT_NOMADM_IEEE:
+    case FUNCTION_DP_SQRT_NOMADM_FAST:
+        // double dp_sqrt_nomadm(double xin)
+        argTypes.push_back(dpTy);
         retTy = dpTy;
         break;
 
@@ -1836,16 +1863,28 @@ As a result, we reduce 2x necessary work
     if (resTy->isDoubleTy() &&
         (II && II->getIntrinsicID() == Intrinsic::sqrt))
     {
-        Function* newFunc = getOrCreateFunction(FUNCTION_DP_SQRT);
-        Function* CurrFunc = I.getParent()->getParent();
-        Value* args[5];
-        args[0] = I.getOperand(0);
-        args[1] = ConstantInt::get(intTy, m_roundingMode); // rounding mode
-        args[2] = ConstantInt::get(intTy, m_flushToZero); // flush to zero
-        args[3] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
-        args[4] = createFlagValue(CurrFunc);  // FP Flag, ignored
+        FunctionIDs sqrtType = FUNCTION_DP_SQRT;
+        if (!isDPEmu() && isDPDivSqrtEmu())
+        {
+            // Partial hardware DP support available, can use faster implementation.
+            sqrtType = I.getFastMathFlags().approxFunc() ? FUNCTION_DP_SQRT_NOMADM_FAST : FUNCTION_DP_SQRT_NOMADM_IEEE;
+        }
+
+        Function* newFunc = getOrCreateFunction(sqrtType);
+        SmallVector<Value*, 5> args;
+        args.push_back(I.getOperand(0));
+
+        if (sqrtType == FUNCTION_DP_SQRT)
+        {
+            Function* CurrFunc = I.getParent()->getParent();
+            args.push_back(ConstantInt::get(intTy, m_roundingMode)); // rounding mode
+            args.push_back(ConstantInt::get(intTy, m_flushToZero)); // flush to zero
+            args.push_back(ConstantInt::get(intTy, m_flushDenorm)); // flush denorm
+            args.push_back(createFlagValue(CurrFunc));  // FP Flag, ignored
+        }
 
         CallInst* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+
         addCallInst(newVal);
         newVal->setDebugLoc(I.getDebugLoc());
 

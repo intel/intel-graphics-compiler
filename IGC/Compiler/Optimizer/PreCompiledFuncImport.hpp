@@ -55,10 +55,12 @@ namespace IGC
             LIBMOD_DP_ADD_SUB,       // dp_add & dp_sub
             LIBMOD_DP_FMA_MUL,       // dp_mul & dp_fma
             LIBMOD_DP_DIV,           // dp_div
+            LIBMOD_DP_DIV_NOMADM,    // dp_div_nomadm_ieee & dp_div_nomadm_fast
             LIBMOD_DP_CMP,           // dp_cmp
             LIBMOD_DP_CONV_I32,      // dp_to_[u]int32 & [u]int32_to_dp
             LIBMOD_DP_CONV_SP,       // dp_to_sp & sp_to_dp
             LIBMOD_DP_SQRT,          // dp_sqrt
+            LIBMOD_DP_SQRT_NOMADM,   // dp_sqrt_nomadm_ieee & dp_sqrt_nomadm_fast
             LIBMOD_SP_DIV,           // sp_div
             LIBMOD_DP_CONV_I64,      // dp_to_[u]int64 & [u]int64_to_dp
 
@@ -75,6 +77,8 @@ namespace IGC
             FUNCTION_DP_FMA,
             FUNCTION_DP_MUL,
             FUNCTION_DP_DIV,
+            FUNCTION_DP_DIV_NOMADM_IEEE,
+            FUNCTION_DP_DIV_NOMADM_FAST,
             FUNCTION_DP_CMP,
             FUNCTION_DP_TO_I32,
             FUNCTION_DP_TO_UI32,
@@ -83,6 +87,8 @@ namespace IGC
             FUNCTION_DP_TO_SP,
             FUNCTION_SP_TO_DP,
             FUNCTION_DP_SQRT,
+            FUNCTION_DP_SQRT_NOMADM_IEEE,
+            FUNCTION_DP_SQRT_NOMADM_FAST,
             FUNCTION_SP_DIV,
             FUNCTION_DP_TO_I64,
             FUNCTION_DP_TO_UI64,
