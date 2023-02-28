@@ -1206,6 +1206,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
 
   // if variable fits within 1 or 2 GRFs and uses Default32Bit augmentation mask
   // then make the copy use M0 mask instead of using WriteEnable.
+  // TODO: Copy should use same EM as original variable.
   unsigned int instOption = InstOpt_WriteEnable;
   if (isDefault32bMask) {
     if (bytesRemaining % kernel.numEltPerGRF<Type_UD>() == 0 &&
@@ -1226,8 +1227,19 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
       // copy 2 GRFs at a time if byte size permits
       unsigned int rowsCopied = 1;
       if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2) {
-        execSize = G4_ExecSize(kernel.numEltPerGRF<Type_UD>() * 2);
-        rowsCopied = 2;
+        if (instOption == InstOpt_WriteEnable ||
+            kernel.getSimdSize() >= execSize * 2) {
+          // When instruction uses default EM, max # of rows to be
+          // written per mov instruction is restricted by kernel's
+          // simd size. For eg, assume a variable with 2 rows
+          // belongs to Default32Bit augmentation bucket. It means
+          // each row is defined using Default32Bit EM. So on 32-byte
+          // GRF platform under SIMD8, we should emit 2 movs, each
+          // writing 1 row and both movs must use default EM. Emitting
+          // single SIMD16 mov with default EM is illegal is this case.
+          execSize = G4_ExecSize(kernel.numEltPerGRF<Type_UD>() * 2);
+          rowsCopied = 2;
+        }
       }
 
       auto dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), (short)i, 0,
@@ -1403,6 +1415,9 @@ G4_Declare *LoopVarSplit::getNewDcl(G4_Declare *dcl1, G4_Declare *dcl2,
 std::vector<Loop *> LoopVarSplit::getLoopsToSplitAround(G4_Declare *dcl) {
   // return a list of Loop* around which variable dcl should be split
   std::vector<Loop *> loopsToSplitAround;
+
+  if (dcl->getAddressed())
+    return loopsToSplitAround;
 
   // first make list of all loops where dcl is ever referenced
   auto uses = references.getUses(dcl);
