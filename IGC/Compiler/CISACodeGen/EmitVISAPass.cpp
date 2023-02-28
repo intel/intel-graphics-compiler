@@ -964,6 +964,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     unsigned int lineNo = 0;
     bool disableSlicing =
         IGC_IS_FLAG_ENABLED(DisableSIMD32Slicing) ||
+        isOptDisabledForModule(m_currShader->GetContext()->getModuleMetaData(), IGCOpts::AllowSimd32Slicing) ||
         isOptDisabledForFunction(m_currShader->GetContext()->getModuleMetaData(), IGCOpts::AllowSimd32Slicing, &F) ||
         m_currShader->GetContext()->getModuleMetaData()->compOpt.OptDisable ||
         m_currShader->GetShaderType() != ShaderType::COMPUTE_SHADER ||

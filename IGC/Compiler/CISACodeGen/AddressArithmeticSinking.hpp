@@ -37,7 +37,7 @@ public:
     virtual bool runOnFunction(llvm::Function& F) override;
 
     virtual llvm::StringRef getPassName() const override {
-        return IGCOpts::AddressArithmeticSinkingPassName;
+        return IGCOpts::AddressArithmeticSinkingPass;
     }
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {

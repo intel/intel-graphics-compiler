@@ -339,7 +339,7 @@ namespace IGC
         std::set<int32_t> m_OpenCLArgScalarAsPointers;
 
         // List of optimizations to disable at a per-function level
-        std::set<std::string> m_OptsToDisable;
+        std::set<std::string> m_OptsToDisablePerFunc;
     };
 
     // isCloned member is added to mark whether a function is clone
@@ -683,6 +683,9 @@ namespace IGC
         unsigned int privateMemoryPerWI = 0;
 
         std::map<llvm::Function*, unsigned int> PrivateMemoryPerFG;
+
+        // List of optimizations to disable at a module level
+        std::set<std::string> m_OptsToDisable;
 
         SPIRVCapabilities capabilities;
 
