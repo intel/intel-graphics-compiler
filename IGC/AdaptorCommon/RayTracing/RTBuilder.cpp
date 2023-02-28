@@ -89,7 +89,7 @@ Value* RTBuilder::getStatelessScratchPtr(void)
 //to avoid confusion, let's use one single method to represent all 3 union fields
 //caller could provide Name to explicitly specify which DW it's meant to use
 //Note: This kind of design might cause a little issue that we cannot assert invalid ShaderTy for a specific field,
-//  say, if frontFace is to be retrieved,, ShaderTy must be CSH/AnyHit.
+//  say, if frontFace is to be retrieved,, ShaderTy must be CHS/AnyHit.
 Value* RTBuilder::getHitInfoDWordPtr(
     RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, const Twine& Name)
 {
@@ -125,14 +125,9 @@ void RTBuilder::setHitInfoDWord(
 Value* RTBuilder::getIsFrontFace(
     RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
 {
-    Value* Val = this->getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("frontFaceDword"));
-    Val = this->CreateAnd(
-        Val,
-        this->getInt32(1U << (uint32_t)MemHit::RT::Xe::Offset::frontFace),
-        VALUE_NAME("isolate_front_face_bit"));
-    return this->CreateICmpNE(
-        Val,
-        this->getInt32(0),
+    return _getIsFrontFace_Xe(
+        StackPointer,
+        getInt1(ShaderTy == ClosestHit),
         VALUE_NAME("is_front_face"));
 }
 
@@ -383,10 +378,26 @@ void RTBuilder::WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, cons
     CreateAlignedStore(Vec, blockDstPtr, IGCLLVM::Align(size));
 }
 
+BasicBlock* RTBuilder::getUnsetPhiBlock(PHINode* PN)
+{
+    SmallPtrSet<BasicBlock*, 4> BBs;
+
+    for (auto* BB : PN->blocks())
+        BBs.insert(BB);
+
+    for (auto* BB : predecessors(PN->getParent()))
+    {
+        if (BBs.count(BB) == 0)
+            return BB;
+    }
+
+    return nullptr;
+}
+
 //If MemHit is invalid (below if case), workload might still try to access data with InstanceLeafPtr which is not set
 //and is a dangling pointer. Even though this workload behavior is against API spec, but we should not "crash".
 //To avoid this crash, we check if the data request is invalid here, if it's invalid, we return an invalid data (uint32: 0xFFFFFFFF, float: INF)
-// if (forCommitted && committedHit::valid != 1) ||
+// if (forCommitted && committedHit::valid == 0) ||
 //     (!forCommitted && potentialHit::leafType == NODE_TYPE_INVALID))
 //    value = UINT_MAX/0
 // else
@@ -408,31 +419,20 @@ void RTBuilder::WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, cons
 //return value:
 //  BasicBlock* is validLeafBB to let caller insert logic to this BB
 //  PHINode*    is %97 above to let caller add another incoming node for phi
-std::pair<BasicBlock*, PHINode*> RTBuilder::validateInstanceLeafPtr(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted)
+std::pair<BasicBlock*, PHINode*> RTBuilder::validateInstanceLeafPtr(
+    RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted)
 {
-    Value* hitInfo = this->getHitInfoDWord(perLaneStackPtr,
-        (forCommitted ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit),
-        VALUE_NAME("ValidDW"));
-
     Value* valid = nullptr;
     if (forCommitted)
     {
-        valid = CreateAnd(
-            hitInfo,
-            getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::valid)));
-        valid = CreateICmpNE(valid, this->getInt32(0), VALUE_NAME("valid"));
+        valid = getHitValid(perLaneStackPtr, forCommitted);
     }
     else
     {
-        Value* leafType = this->CreateLShr(
-            hitInfo, this->getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType));
-
-        leafType = this->CreateAnd(
-            leafType,
-            this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::leafType)),
-            VALUE_NAME("leafType"));
-
-        valid = this->CreateICmpNE(leafType, this->getInt32(NODE_TYPE_INVALID), VALUE_NAME("validLeafType"));
+        valid = this->CreateICmpNE(
+            getLeafType(perLaneStackPtr, forCommitted),
+            this->getInt32(NODE_TYPE_INVALID),
+            VALUE_NAME("validLeafType"));
     }
 
     auto& C = I->getContext();
@@ -452,13 +452,9 @@ std::pair<BasicBlock*, PHINode*> RTBuilder::validateInstanceLeafPtr(RTBuilder::S
     this->SetInsertPoint(invalidLeafBB);
     Value* invalidVal = nullptr;
     if (I->getType()->isIntegerTy(32))
-    {
         invalidVal = this->getInt32(IGC_GET_FLAG_VALUE(RTInValidDefaultIndex));
-    }
     else if (I->getType()->isFloatTy())
-    {
         invalidVal = ConstantFP::getInfinity(this->getFloatTy());
-    }
     else
     {
         IGC_ASSERT_MESSAGE(0, "Unsupported datatype.");
@@ -627,56 +623,35 @@ Value* RTBuilder::getRayInfoPtr(
 
 Value* RTBuilder::getRayTMin(RTBuilder::StackPointerVal* perLaneStackPtr)
 {
-    Value* Ptr = this->_gepof_MemRay_tnear(
-        perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH),
-        VALUE_NAME("&MemRay::tnear"));
-    return this->CreateLoad(Ptr, VALUE_NAME("rayTMin"));
-}
-
-Value* RTBuilder::getRayFlagsPtr(RTBuilder::SyncStackPointerVal* perLaneStackPtr)
-{
-    auto* Ptr = this->_gepof_topOfNodePtrAndFlags(
-        perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH));
-    Ptr = this->CreateBitCast(
-        Ptr,
-        PointerType::get(
-            this->getInt16Ty(), Ptr->getType()->getPointerAddressSpace()));
-    static_assert((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr == 48, "Changed?");
-    static_assert((uint32_t)MemRay::RT::Xe::Bits::rayFlags == 16, "Changed?");
-    Value* Indices[] = { this->getInt32(3) };
-    return this->CreateInBoundsGEP(Ptr, Indices, VALUE_NAME("&rayFlags"));
+    return _getRayTMin(perLaneStackPtr, VALUE_NAME("rayTMin"));
 }
 
 // returns an i16 value containing the current rayflags. Sync only.
 Value* RTBuilder::getRayFlags(RTBuilder::SyncStackPointerVal* perLaneStackPtr)
 {
-    return this->CreateLoad(getRayFlagsPtr(perLaneStackPtr), VALUE_NAME("rayflags"));
+    return _getRayFlagsSync_Xe(perLaneStackPtr, VALUE_NAME("rayflags"));
 }
 
 void RTBuilder::setRayFlags(RTBuilder::SyncStackPointerVal* perLaneStackPtr, Value* V)
 {
-    this->CreateStore(V, this->getRayFlagsPtr(perLaneStackPtr));
+    _setRayFlagsSync_Xe(perLaneStackPtr, V);
 }
 
 
 Value* RTBuilder::getWorldRayOrig(RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim)
 {
-    Value* Ptr = this->_gepof_MemRay_org(
-        perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH), this->getInt32(dim),
-        VALUE_NAME("&MemRay::org[" + Twine(dim) + "]"));
-    Value* info = this->CreateLoad(Ptr,
+    return _getWorldRayOrig(
+        perLaneStackPtr,
+        getInt32(dim),
         VALUE_NAME("WorldRayOrig[" + Twine(dim) + "]"));
-    return info;
 }
 
 Value* RTBuilder::getWorldRayDir(RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim)
 {
-    Value* Ptr = this->_gepof_MemRay_dir(
-        perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH), this->getInt32(dim),
-        VALUE_NAME("&MemRay::dir[" + Twine(dim) + "]"));
-    Value* info = this->CreateLoad(Ptr,
+    return _getWorldRayDir(
+        perLaneStackPtr,
+        getInt32(dim),
         VALUE_NAME("WorldRayDir[" + Twine(dim) + "]"));
-    return info;
 }
 
 Value* RTBuilder::getObjRayOrig(
@@ -692,10 +667,10 @@ Value* RTBuilder::getObjRayOrig(
     }
     else
     {
-        Value* Ptr = this->_gepof_MemRay_org(
-            perLaneStackPtr, this->getInt32(BOTTOM_LEVEL_BVH), this->getInt32(dim),
-            VALUE_NAME("&MemRay::org[" + Twine(dim) + "]"));
-        info = this->CreateLoad(Ptr,
+        info = _getMemRayOrg(
+            perLaneStackPtr,
+            getInt32(BOTTOM_LEVEL_BVH),
+            getInt32(dim),
             VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
     }
     return info;
@@ -714,11 +689,11 @@ Value* RTBuilder::getObjRayDir(
     }
     else
     {
-        Value* Ptr = this->_gepof_MemRay_dir(
-            perLaneStackPtr, this->getInt32(BOTTOM_LEVEL_BVH), this->getInt32(dim),
-            VALUE_NAME("&MemRay::dir[" + Twine(dim) + "]"));
-        info = this->CreateLoad(Ptr,
-            VALUE_NAME("ObjRayDir[" + Twine(dim) + "]"));
+        info = _getMemRayDir(
+            perLaneStackPtr,
+            getInt32(BOTTOM_LEVEL_BVH),
+            getInt32(dim),
+            VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
     }
     return info;
 }
@@ -726,294 +701,135 @@ Value* RTBuilder::getObjRayDir(
 Value* RTBuilder::getRayTCurrent(
     RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy)
 {
-    Value* Ptr = nullptr;
-    if (ShaderTy == CallableShaderTypeMD::AnyHit ||
-        ShaderTy == CallableShaderTypeMD::Intersection)
-    {
-        Ptr = this->_gepof_PotentialHitT(perLaneStackPtr,
-            VALUE_NAME("&potentialHit.t"));
-    }
-    else if (ShaderTy == CallableShaderTypeMD::ClosestHit)
-    {
-        Ptr = this->_gepof_CommittedHitT(perLaneStackPtr,
-            VALUE_NAME("&committedHit.t"));
-    }
-    else if (ShaderTy == CallableShaderTypeMD::Miss)
-    {
-        Ptr = _gepof_MemRay_tfar(perLaneStackPtr,
-            this->getInt32(0),
-            VALUE_NAME("&MemRay::tfar"));
-    }
-    else
-    {
-        IGC_ASSERT_MESSAGE(0, "RayTCurrent() not supported in this shader!");
-    }
-
-    Value* info = this->CreateLoad(Ptr);
-    return info;
+    return _getRayTCurrent_Xe(
+        perLaneStackPtr, getInt32(ShaderTy), VALUE_NAME("rayTCurrent"));
 }
 
-Value* RTBuilder::getInstance(
-    RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t infoKind, IGC::CallableShaderTypeMD ShaderTy,
+Value* RTBuilder::getInstanceIndex(
+    RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy,
     Instruction* I, bool checkInstanceLeafPtr)
 {
     if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
-        std::pair<BasicBlock*, PHINode*> pair = validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
-        this->SetInsertPoint(&*pair.first->rbegin());
-        Value* validVal = getInstance(perLaneStackPtr, infoKind, ShaderTy);
+        auto [ValidBB, PN] =
+            validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
+        this->SetInsertPoint(ValidBB->getTerminator());
+        Value* validVal = getInstanceIndex(perLaneStackPtr, ShaderTy);
+        PN->addIncoming(validVal, getUnsetPhiBlock(PN));
         this->SetInsertPoint(I);
-        pair.second->addIncoming(validVal, pair.first);
-        return pair.second;
+        return PN;
     }
     else
     {
-        return getInstance(perLaneStackPtr, infoKind, ShaderTy);
+        return getInstanceIndex(perLaneStackPtr, ShaderTy);
     }
 }
 
-Value* RTBuilder::getInstance(
-    RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t infoKind, IGC::CallableShaderTypeMD ShaderTy)
+Value* RTBuilder::getInstanceIndex(
+    RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy)
 {
-    Value* instLeafTopPtr = nullptr;
+    return _getInstanceIndex_Xe(
+        perLaneStackPtr, getInt32(ShaderTy), VALUE_NAME("InstanceIndex"));
+}
 
-    if (ShaderTy == CallableShaderTypeMD::ClosestHit)
+Value* RTBuilder::getInstanceID(
+    RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy,
+    Instruction* I, bool checkInstanceLeafPtr)
+{
+    if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
-        instLeafTopPtr = this->_gepof_CommittedHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&committedHit.topOfInstLeafPtr"));
+        auto [ValidBB, PN] =
+            validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
+        this->SetInsertPoint(ValidBB->getTerminator());
+        Value* validVal = getInstanceID(perLaneStackPtr, ShaderTy);
+        PN->addIncoming(validVal, getUnsetPhiBlock(PN));
+        this->SetInsertPoint(I);
+        return PN;
     }
     else
     {
-        instLeafTopPtr = this->_gepof_PotentialHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&potentialHit.topOfInstLeafPtr"));
+        return getInstanceID(perLaneStackPtr, ShaderTy);
     }
-
-    //Read Instance Leaf Ptr
-    Value* Ptr = this->getInstanceLeafPtr(instLeafTopPtr);
-
-    Value* InfoPtr = (infoKind == INSTANCE_ID) ?
-        this->_gepof_InstanceLeaf_instanceID(Ptr,
-            VALUE_NAME("&InstanceLeaf...instanceID")) :
-        this->_gepof_InstanceLeaf_instanceIndex(Ptr,
-            VALUE_NAME("&InstanceLeaf...instanceIndex"));
-
-    Value* info = this->CreateLoad(InfoPtr,
-        VALUE_NAME((infoKind == INSTANCE_ID) ? "instanceID" : "instanceIndex"));
-    return info;
 }
 
-Value* RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr)
+Value* RTBuilder::getInstanceID(
+    RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy)
+{
+    return _getInstanceID_Xe(
+        perLaneStackPtr, getInt32(ShaderTy), VALUE_NAME("InstanceID"));
+}
+
+Value* RTBuilder::getPrimitiveIndex(
+    RTBuilder::StackPointerVal* perLaneStackPtr,
+    Instruction* I,
+    Value* leafType,
+    IGC::CallableShaderTypeMD ShaderTy,
+    bool checkInstanceLeafPtr)
 {
     uint32_t mask = (ShaderTy == CallableShaderTypeMD::ClosestHit ? 1 : 2);
     bool bMask = (IGC_GET_FLAG_VALUE(ForceRTCheckInstanceLeafPtrMask) & mask);
     if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr) && bMask)
     {
-        std::pair<BasicBlock*, PHINode*> pair = validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
-        this->SetInsertPoint(&*pair.first->rbegin());
-        PHINode* validPrimIndex = getPrimitiveIndex(perLaneStackPtr, &*pair.first->rbegin(), infoKind, ShaderTy);
+        auto [ValidBB, PN] =
+            validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
+        this->SetInsertPoint(ValidBB->getTerminator());
+        auto* validPrimIndex = getPrimitiveIndex(perLaneStackPtr, leafType, ShaderTy == ClosestHit);
+        PN->addIncoming(validPrimIndex, getUnsetPhiBlock(PN));
         this->SetInsertPoint(I);
-        pair.second->addIncoming(validPrimIndex, validPrimIndex->getParent());
-        return pair.second;
+        return PN;
     }
     else
     {
-        return getPrimitiveIndex(perLaneStackPtr, I, infoKind, ShaderTy);
+        return getPrimitiveIndex(perLaneStackPtr, leafType, ShaderTy == ClosestHit);
     }
 }
 
 PHINode* RTBuilder::getPrimitiveIndex(
-    RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy)
+    RTBuilder::StackPointerVal* perLaneStackPtr, Value* leafType, bool Committed)
 {
-    //Read Primitive Leaf Ptr
-    Value* loadValue = this->getHitTopOfPrimLeafPtr(perLaneStackPtr, ShaderTy);
-    //Get lower 42 Bits.
-    loadValue = this->CreateAnd(loadValue,
-        this->getInt64(QWBITMASK((uint32_t)MemHit::RT::Xe::Bits::primLeafPtr)),
-        VALUE_NAME("42-bit PrimLeafPtr"));
-    Value* fullPrimLeafPtr = this->CreateMul(loadValue, this->getInt64(LeafSize),
-        VALUE_NAME("fullPrimLeafPtr"));
-    fullPrimLeafPtr = canonizePointer(fullPrimLeafPtr);
-
-    auto& C = I->getContext();
-    auto* CSBlock = I->getParent();
-    auto* endBlock = CSBlock->splitBasicBlock(I, VALUE_NAME("primitiveIndexEndBlock"));
-    Function* F = this->GetInsertBlock()->getParent();
-
-    BasicBlock* quadMeshLeafBB = BasicBlock::Create(C, VALUE_NAME("QuadMeshLeafBB"), F, endBlock);
-    BasicBlock* prodeduralLeafBB = BasicBlock::Create(C, VALUE_NAME("ProduralLeafBB"), F, endBlock);
-    CSBlock->getTerminator()->eraseFromParent();
-    this->SetInsertPoint(CSBlock);
-
-    Value* primLeafIndexTop = this->getHitInfoDWord(perLaneStackPtr, ShaderTy, VALUE_NAME("topOfPrimIndexDelta"));
-
-    // We are interested in only the LSB of leafType
-    // because we only check if type is procedural.
-
-    static_assert(
-        ((NODE_TYPE_PROCEDURAL & 1) == 1) &&
-        ((NODE_TYPE_QUAD & 1) == 0) &&
-        ((NODE_TYPE_MESHLET & 1) == 0),
-        "optimized CommittedStatus broken");
-
-    // At this point valid bit is expected to be right-shifted to the
-    // 0th bit.
-    Value* leafType = this->CreateAnd(infoKind, this->getInt32(1));
-    Value* leafTyCmp = this->CreateICmpEQ(leafType, this->getInt32(NODE_TYPE_PROCEDURAL & 1));
-
-    this->CreateCondBr(leafTyCmp, prodeduralLeafBB, quadMeshLeafBB);
-    auto& M = *this->GetInsertBlock()->getModule();
-
-    //QuadLeaf: leafTyCmp == false
-    Value* quadPrimIndex = nullptr;
-    {
-        this->SetInsertPoint(quadMeshLeafBB);
-        Value* quadPrimLeafPtr = this->CreateIntToPtr(
-            fullPrimLeafPtr, this->getQuadLeafPtrTy(M),
-            VALUE_NAME("QuadLeafPtr"));
-        Value* primIndex0Ptr = this->_gepof_QuadLeaf_primIndex0(
-            quadPrimLeafPtr, VALUE_NAME("&QuadLeaf::primIndex0"));
-        Value* primIndex0 = this->CreateLoad(primIndex0Ptr, VALUE_NAME("primIndex0"));
-
-        Value* primLeafIndexDelta = this->CreateAnd(primLeafIndexTop,
-            this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::primIndexDelta)),
-            VALUE_NAME("primLeafIndexDelta"));
-        quadPrimIndex = this->CreateAdd(primLeafIndexDelta, primIndex0, VALUE_NAME("primIndex"));
-        this->CreateBr(endBlock);
-    }
-
-    //ProdecuralLeaf: leafTyCmp == true
-    Value* proceduralPrimIndex = nullptr;
-    {
-        this->SetInsertPoint(prodeduralLeafBB);
-        Value* primLeafIndex = this->CreateLShr(primLeafIndexTop,
-            this->getInt32((uint32_t)MemHit::RT::Xe::Offset::primLeafIndex));
-        primLeafIndex = this->CreateAnd(primLeafIndex,
-            this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::primLeafIndex)),
-            VALUE_NAME("primLeafIndex"));
-
-        Value* procPrimLeafPtr = this->CreateIntToPtr(
-            fullPrimLeafPtr, this->getProceduralLeafPtrTy(M),
-            VALUE_NAME("ProceduralLeafPtr"));
-        Value* primIndexPtr = this->_gepof_ProceduralLeaf__primIndex(
-            procPrimLeafPtr, primLeafIndex,
-            VALUE_NAME("&ProceduralLeaf._primIndex[i]"));
-        proceduralPrimIndex = this->CreateLoad(primIndexPtr, VALUE_NAME("primIndex"));
-        this->CreateBr(endBlock);
-    }
-
-    //END block
-    this->SetInsertPoint(I);
-    PHINode* phi = this->CreatePHI(quadPrimIndex->getType(), 2);
-    phi->addIncoming(quadPrimIndex, quadMeshLeafBB);
-    phi->addIncoming(proceduralPrimIndex, prodeduralLeafBB);
-
-    return phi;
+    return _getPrimitiveIndex_Xe(
+        perLaneStackPtr,
+        leafType,
+        getInt1(Committed),
+        VALUE_NAME("primitiveIndex"));
 }
 
 Value* RTBuilder::getGeometryIndex(
-    RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr)
+    RTBuilder::StackPointerVal* perLaneStackPtr,
+    Instruction* I,
+    Value* leafType,
+    IGC::CallableShaderTypeMD ShaderTy,
+    bool checkInstanceLeafPtr)
 {
     uint32_t mask = (ShaderTy == CallableShaderTypeMD::ClosestHit ? 1 : 2);
     bool bMask = (IGC_GET_FLAG_VALUE(ForceRTCheckInstanceLeafPtrMask) & mask);
     if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr) && bMask)
     {
-        std::pair<BasicBlock*, PHINode*> pair = validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
-        this->SetInsertPoint(&*pair.first->rbegin());
-        std::pair<Value*, BasicBlock*> validGeomIndexPair = getGeometryIndex(perLaneStackPtr, &*pair.first->rbegin(), infoKind, ShaderTy);
+        auto [ValidBB, PN] =
+            validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
+        this->SetInsertPoint(ValidBB->getTerminator());
+        Value* validGeomIndex = getGeometryIndex(perLaneStackPtr, &*BB->rbegin(), leafType, ShaderTy);
+        PN->addIncoming(validGeomIndex, getUnsetPhiBlock(PN));
         this->SetInsertPoint(I);
-        pair.second->addIncoming(validGeomIndexPair.first, validGeomIndexPair.second);
-        return pair.second;
+        return PN;
     }
     else
     {
-        return getGeometryIndex(perLaneStackPtr, I, infoKind, ShaderTy).first;
+        return getGeometryIndex(perLaneStackPtr, I, leafType, ShaderTy);
     }
 }
 
-std::pair<Value*, BasicBlock*> RTBuilder::getGeometryIndex(
-    RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy)
+Value* RTBuilder::getGeometryIndex(
+    RTBuilder::StackPointerVal* perLaneStackPtr,
+    Instruction* I,
+    Value* leafType,
+    IGC::CallableShaderTypeMD ShaderTy)
 {
-    Value* loadValue = this->getHitTopOfPrimLeafPtr(perLaneStackPtr, ShaderTy);
-
-    // Extract 42 lower bits to get primitive leaf node offset
-    loadValue = this->CreateAnd(loadValue,
-        this->getInt64(QWBITMASK((uint32_t)MemHit::RT::Xe::Bits::primLeafPtr)),
-        VALUE_NAME("42-bit PrimLeafPtr"));
-    // Multiply by size of primitive leaf node
-    Value* fullPrimLeafPtr = this->CreateMul(loadValue, this->getInt64(LeafSize),
-        VALUE_NAME("fullPrimLeafPtr"));
-
-    fullPrimLeafPtr = canonizePointer(fullPrimLeafPtr);
-
-    auto& C = I->getContext();
-    auto* CSBlock = I->getParent();
-    auto* endBlock = CSBlock->splitBasicBlock(I, VALUE_NAME("geometryIndexEndBlock"));
-    Function* F = this->GetInsertBlock()->getParent();
-
-    BasicBlock* quadMeshLeafBB = BasicBlock::Create(C, VALUE_NAME("QuadMeshLeafBB"), F, endBlock);
-    BasicBlock* prodeduralLeafBB = BasicBlock::Create(C, VALUE_NAME("ProduralLeafBB"), F, endBlock);
-    CSBlock->getTerminator()->eraseFromParent();
-    this->SetInsertPoint(CSBlock);
-
-    // We are interested in only the LSB of leafType
-    // because we only check if type is procedural.
-
-    static_assert(
-        ((NODE_TYPE_PROCEDURAL & 1) == 1) &&
-        ((NODE_TYPE_QUAD & 1) == 0) &&
-        ((NODE_TYPE_MESHLET & 1) == 0),
-        "optimized CommittedStatus broken");
-
-    // At this point valid bit is expected to be right-shifted to the
-    // 0th bit.
-    Value* leafType = this->CreateAnd(infoKind, this->getInt32(1));
-    Value* leafTyCmp = this->CreateICmpEQ(leafType, this->getInt32(NODE_TYPE_PROCEDURAL & 1));
-
-    this->CreateCondBr(leafTyCmp, prodeduralLeafBB, quadMeshLeafBB);
-    auto& M = *this->GetInsertBlock()->getModule();
-
-    //QuadLeaf: leafTyCmp == false
-    Value* quadGeometryIndex = nullptr;
-    {
-        this->SetInsertPoint(quadMeshLeafBB);
-        Value* quadPrimLeafPtr = this->CreateIntToPtr(
-            fullPrimLeafPtr, this->getQuadLeafPtrTy(M),
-            VALUE_NAME("QuadLeafPtr"));
-
-        Value* quadGeometryIndexPtr = this->_gepof_QuadLeaf_topOfGeomIndex(
-            quadPrimLeafPtr, VALUE_NAME("&QuadLeaf...topOfGeomIndex"));
-        quadGeometryIndex = this->CreateLoad(quadGeometryIndexPtr, VALUE_NAME("topOfGeomIndex"));
-        this->CreateBr(endBlock);
-    }
-
-    //ProdecuralLeaf: leafTyCmp == true
-    Value* proceduralGeometryIndex = nullptr;
-    {
-        this->SetInsertPoint(prodeduralLeafBB);
-        Value* procPrimLeafPtr = this->CreateIntToPtr(
-            fullPrimLeafPtr, this->getProceduralLeafPtrTy(M),
-            VALUE_NAME("ProceduralLeafPtr"));
-
-        Value* proceduralGeometryIndexPtr = this->_gepof_ProceduralLeaf_topOfGeomIndex(
-            procPrimLeafPtr, VALUE_NAME("&ProceduralLeaf...topOfGeomIndex"));
-        proceduralGeometryIndex = this->CreateLoad(proceduralGeometryIndexPtr, VALUE_NAME("topOfGeomIndex"));
-        this->CreateBr(endBlock);
-    }
-
-    //END block
-    this->SetInsertPoint(I);
-    PHINode* phi = this->CreatePHI(quadGeometryIndex->getType(), 2);
-    phi->addIncoming(quadGeometryIndex, quadMeshLeafBB);
-    phi->addIncoming(proceduralGeometryIndex, prodeduralLeafBB);
-
-    // Extract 29 lower bits to get geometry index
-    Value* info = this->CreateAnd(phi,
-        this->getInt32(BITMASK((uint32_t)PrimLeafDesc::RT::Xe::Bits::geomIndex)),
-        VALUE_NAME("geomIndex"));
-
-    return std::make_pair(info, endBlock);
+    return _getGeometryIndex_Xe(
+        perLaneStackPtr,
+        leafType,
+        getInt1(ShaderTy == ClosestHit),
+        VALUE_NAME("geometryIndex"));
 }
 
 
@@ -1164,12 +980,13 @@ Value* RTBuilder::getObjWorldAndWorldObj(
 {
     if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
-        std::pair<BasicBlock*, PHINode*> pair = validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
-        this->SetInsertPoint(&*pair.first->rbegin());
+        auto [ValidBB, PN] =
+            validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
+        this->SetInsertPoint(ValidBB->getTerminator());
         Value* validVal = getObjWorldAndWorldObj(perLaneStackPtr, infoKind, dim, ShaderTy);
+        PN->addIncoming(validVal, getUnsetPhiBlock(PN));
         this->SetInsertPoint(I);
-        pair.second->addIncoming(validVal, pair.first);
-        return pair.second;
+        return PN;
     }
     else
     {
@@ -1183,30 +1000,12 @@ Value* RTBuilder::getObjWorldAndWorldObj(
     uint32_t dim,
     IGC::CallableShaderTypeMD ShaderTy)
 {
-    Value* instanceLeafOffsetPtr = nullptr;
-
-    if (ShaderTy == CallableShaderTypeMD::ClosestHit)
-    {
-        instanceLeafOffsetPtr = this->_gepof_CommittedHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&committedHit.topOfInstLeafPtr"));
-    }
-    else if (ShaderTy == CallableShaderTypeMD::AnyHit ||
-        ShaderTy == CallableShaderTypeMD::Intersection)
-    {
-        instanceLeafOffsetPtr = this->_gepof_PotentialHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&potentialHit.topOfInstLeafPtr"));
-    }
-
-    //Read Instance Leaf Ptr
-    Value* ptrValue = this->getInstanceLeafPtr(instanceLeafOffsetPtr);
-
-    Value* componentPtr = this->getMatrixPtr(ptrValue, infoKind, dim);
-
-    Value* info = this->CreateLoad(
-        componentPtr, VALUE_NAME("matrix[" + Twine(dim) + "]"));
-    return info;
+    return _getObjWorldAndWorldObj_Xe(
+        perLaneStackPtr,
+        getInt32(dim),
+        getInt1(infoKind == IGC::OBJECT_TO_WORLD),
+        getInt32(ShaderTy),
+        VALUE_NAME("matrix[" + Twine(dim) + "]"));
 }
 
 Value* RTBuilder::TransformWorldToObject(
@@ -1219,12 +1018,13 @@ Value* RTBuilder::TransformWorldToObject(
 {
     if (checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr))
     {
-        std::pair<BasicBlock*, PHINode*> pair = validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
-        this->SetInsertPoint(&*pair.first->rbegin());
+        auto [ValidBB, PN] =
+            validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
+        this->SetInsertPoint(ValidBB->getTerminator());
         Value* validVal = TransformWorldToObject(perLaneStackPtr, dim, isOrigin, ShaderTy);
+        PN->addIncoming(validVal, getUnsetPhiBlock(PN));
         this->SetInsertPoint(I);
-        pair.second->addIncoming(validVal, pair.first);
-        return pair.second;
+        return PN;
     }
     else
     {
@@ -1240,59 +1040,8 @@ Value* RTBuilder::TransformWorldToObject(
 {
     IGC_ASSERT_MESSAGE((dim < 3), "dim out of bounds!");
 
-    Value* instLeafTopPtr;
-    {
-        instLeafTopPtr = this->_gepof_CommittedHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&committedHit.topOfInstLeafPtr"));
-    }
-
-    //Read Instance Leaf Ptr
-    Value* ptrValue = this->getInstanceLeafPtr(instLeafTopPtr);
-    Value* worldRayPtr = nullptr;
-    Value* acc = nullptr;
-    if (isOrigin)
-    {
-        //Get pointer to the World Ray Origin x,y,z
-        worldRayPtr = this->_gepof_MemRay_org(
-            perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH), this->getInt32(0),
-            VALUE_NAME("&MemRay::org[0]"));
-
-        Value* transCompPtr = this->_gepof_InstanceLeaf_world2obj_p(
-            ptrValue, this->getInt32(dim),
-            VALUE_NAME("&InstanceLeaf...world2obj_p[" + Twine(dim) + "]"));
-        //ray Origin Handling - Origin is a point, and points are affected by translation component of matrix
-        acc = this->CreateLoad(transCompPtr, VALUE_NAME("transComp"));
-    }
-    else
-    {
-        worldRayPtr = this->_gepof_MemRay_dir(
-            perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH), this->getInt32(0),
-            VALUE_NAME("MemRay::dir[0]"));
-        //Ray Direction handling - Direction is a Vector, and vectors are not affected by
-        //translation component of matrix. Set accumulator to zero to start
-        acc = ConstantFP::get(this->getFloatTy(), 0.0);
-    }
-
-    uint32_t AddrSpace = perLaneStackPtr->getType()->getPointerAddressSpace();
-    worldRayPtr = this->CreateBitCast(
-        worldRayPtr,
-        PointerType::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 3), AddrSpace));
-    Value* rayInfo = this->CreateLoad(worldRayPtr, VALUE_NAME("rayInfo"));
-
-    //Do the math. Dot 4
-    for (unsigned int i = 0; i < 3; i++)
-    {
-        Value* Ptr = this->getMatrixPtr(ptrValue, WORLD_TO_OBJECT, i * 3 + dim);
-        Value* currentComp = this->CreateLoad(Ptr, VALUE_NAME("matrixComp"));
-
-        Value* worldRayComp = this->CreateExtractElement(rayInfo, this->getInt32(i));
-        Value* compMul = this->CreateFMul(currentComp, worldRayComp);
-
-        acc = this->CreateFAdd(acc, compMul, VALUE_NAME("WorldToObject"));
-    }
-
-    return acc;
+    return _TransformWorldToObject_Xe(
+        perLaneStackPtr, getInt32(dim), getInt1(isOrigin), getInt32(ShaderTy));
 }
 
 Value* RTBuilder::getInstanceLeafPtr(Value* instLeafTopPtr)
@@ -1717,14 +1466,9 @@ Value* RTBuilder::getPotentialHitInfo(RTBuilder::StackPointerVal* StackPointer, 
     return this->getHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit, Name);
 }
 
-Value* RTBuilder::getHitValid(RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
+Value* RTBuilder::getHitValid(RTBuilder::StackPointerVal* StackPointer, bool CommittedHit)
 {
-    Value* validDW = this->getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("ValidDW"));
-    Value* isValidBit = CreateAnd(
-        validDW,
-        getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::valid)));
-    return CreateICmpNE(
-        isValidBit, getInt32(0), VALUE_NAME("valid"));
+    return _isValid_Xe(StackPointer, getInt1(CommittedHit), VALUE_NAME("valid"));
 }
 
 //MemHit.valid = true;
@@ -1817,18 +1561,10 @@ Value* RTBuilder::getInstContToHitGroupIndex(RTBuilder::StackPointerVal* perLane
 
 
 Value* RTBuilder::getLeafType(
-    StackPointerVal* StackPointer, CallableShaderTypeMD ShaderTy)
+    StackPointerVal* StackPointer, bool CommittedHit)
 {
-    Value* Val = this->getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("leafTypeDW"));
-    Val = this->CreateLShr(
-        Val, this->getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType));
-
-    Val = this->CreateAnd(
-        Val,
-        this->getInt32(BITMASK((uint32_t)MemHit::RT::Xe::Bits::leafType)),
-        VALUE_NAME("leafType"));
-
-    return Val;
+    return _createLeafType_Xe(
+        StackPointer, getInt1(CommittedHit), VALUE_NAME("leafType"));
 }
 
 

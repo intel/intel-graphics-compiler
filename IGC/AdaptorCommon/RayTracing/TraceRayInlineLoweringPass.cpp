@@ -462,7 +462,7 @@ TraceRayInlineLoweringPass::emitSyncStackToShadowMemory(
     Value* isValidBit = nullptr;
 
     {
-        isValidBit = builder.getHitValid(HWStackPointer, CallableShaderTypeMD::ClosestHit);
+        isValidBit = builder.getHitValid(HWStackPointer, true);
     }
 
     //Read done bit for return value
@@ -662,7 +662,7 @@ void TraceRayInlineLoweringPass::LowerCommittedStatus(Function& F)
         CSBlock->getTerminator()->eraseFromParent();
         builder.SetInsertPoint(CSBlock);
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, CS->getQueryObjIndex());
-        Value* isValid = builder.getHitValid(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit);
+        Value* isValid = builder.getHitValid(ShadowMemStackPointer, true);
         builder.CreateCondBr(isValid, validTruBB, endBlock);
 
         //Valid bit is set(true)
@@ -841,7 +841,7 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
                 infoKind == COMMITTED_GEOMETRY_INDEX ?
                 CallableShaderTypeMD::ClosestHit :
                 CallableShaderTypeMD::AnyHit;
-            Value* leafType = builder.getLeafType(ShadowMemStackPointer, ShaderTy);
+            Value* leafType = builder.getLeafType(ShadowMemStackPointer, ShaderTy == CallableShaderTypeMD::ClosestHit);
             Value* geoIndex = builder.getGeometryIndex(ShadowMemStackPointer, I, leafType, ShaderTy, !specialPattern);
             IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
             I->replaceAllUsesWith(geoIndex);
@@ -860,7 +860,9 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
                 (infoKind == COMMITTED_INSTANCE_ID || infoKind == CANDIDATE_INSTANCE_ID) ?
                 INSTANCE_ID :
                 INSTANCE_INDEX;
-            Value* inst = builder.getInstance(ShadowMemStackPointer, infoType, ShaderTy, I, true);
+            Value* inst = (infoType == INSTANCE_ID) ?
+                builder.getInstanceID(ShadowMemStackPointer, ShaderTy, I, true) :
+                builder.getInstanceIndex(ShadowMemStackPointer, ShaderTy, I, true);
             I->replaceAllUsesWith(inst);
             break;
         }
@@ -871,7 +873,7 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
                 infoKind == COMMITTED_PRIMITIVE_INDEX ?
                 CallableShaderTypeMD::ClosestHit :
                 CallableShaderTypeMD::AnyHit;
-            Value* leafType = builder.getLeafType(ShadowMemStackPointer, ShaderTy);
+            Value* leafType = builder.getLeafType(ShadowMemStackPointer, ShaderTy == CallableShaderTypeMD::ClosestHit);
             Value* primIndex = builder.getPrimitiveIndex(ShadowMemStackPointer, I, leafType, ShaderTy, true);
             IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid primIndex type!");
             I->replaceAllUsesWith(primIndex);

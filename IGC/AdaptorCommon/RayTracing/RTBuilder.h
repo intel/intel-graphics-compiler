@@ -228,8 +228,7 @@ public:
     Value* getRtMemBasePtr(void);
     Value* getMaxBVHLevels(void);
     Value* getStatelessScratchPtr(void);
-
-    Value* getLeafType(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
+    Value* getLeafType(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getIsFrontFace(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
 
     Value* CreateSyncStackPtrIntrinsic(Value* Addr, Type* PtrTy, bool AddDecoration);
@@ -250,7 +249,9 @@ public:
 
     void WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, const DenseMap<uint32_t, Value*>& vals, const Twine& dstName = "", const Twine& srcName = "");
 
-    std::pair<BasicBlock*, PHINode*> validateInstanceLeafPtr(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted);
+    std::pair<BasicBlock*, PHINode*>
+        validateInstanceLeafPtr(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted);
+    static BasicBlock* getUnsetPhiBlock(PHINode* PN);
     std::pair<Value*, Value*> createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name = "");
 
     void FillRayQueryShadowMemory(Value* shMem, Value* src, uint64_t size, unsigned align);
@@ -262,7 +263,6 @@ public:
     uint32_t getNumSyncStackSlots();
 
     Value* getRayTMin(StackPointerVal* perLaneStackPtr);
-    Value* getRayFlagsPtr(SyncStackPointerVal* perLaneStackPtr);
     Value* getRayFlags(SyncStackPointerVal* perLaneStackPtr);
     void   setRayFlags(SyncStackPointerVal* perLaneStackPtr, Value* V);
     Value* getRayInfoPtr(StackPointerVal* StackPointer, uint32_t Idx, uint32_t BvhLevel);
@@ -280,15 +280,19 @@ public:
     Value* getRayTCurrent(
         StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
 
-    Value* getInstance(
-        StackPointerVal* perLaneStackPtr, uint32_t infoKind, IGC::CallableShaderTypeMD ShaderTy,
+    Value* getInstanceIndex(
+        StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy,
+        Instruction* I, bool checkInstanceLeafPtr);
+
+    Value* getInstanceID(
+        StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy,
         Instruction* I, bool checkInstanceLeafPtr);
 
     Value* getPrimitiveIndex(
-        StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr);
+        StackPointerVal* perLaneStackPtr, Instruction* I, Value* leafType, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr);
 
     Value* getGeometryIndex(
-        StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr);
+        StackPointerVal* perLaneStackPtr, Instruction* I, Value* leafType, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr);
 
 
     Value* getObjToWorld(
@@ -339,7 +343,7 @@ public:
     void   setCommittedHitTopPrimLeafPtr(StackPointerVal* StackPointer, Value* V);
     Value* getPotentialHitTopInstLeafPtr(StackPointerVal* StackPointer);
     void   setCommittedHitTopInstLeafPtr(StackPointerVal* StackPointer, Value* V);
-    Value* getHitValid(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
+    Value* getHitValid(StackPointerVal* StackPointer, bool CommittedHit);
     void   setHitValid(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
     Value* getPotentialHitInfo(RTBuilder::StackPointerVal* StackPointer, const Twine& Name = "PotentialHitInfo");
     Value* getSyncTraceRayControl(Value* ptrCtrl);
@@ -391,12 +395,14 @@ private:
     SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode);
     Value* getHitUPtr(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
     Value* getHitBaryCentricPtr(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim);
-    std::pair<Value*, BasicBlock*> getGeometryIndex(
-        StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy);
+    Value* getGeometryIndex(
+        StackPointerVal* perLaneStackPtr, Instruction* I, Value* leafType, IGC::CallableShaderTypeMD ShaderTy);
     PHINode* getPrimitiveIndex(
-        StackPointerVal* perLaneStackPtr, Instruction* I, Value* infoKind, IGC::CallableShaderTypeMD ShaderTy);
-    Value* getInstance(
-        StackPointerVal* perLaneStackPtr, uint32_t infoKind, IGC::CallableShaderTypeMD ShaderTy);
+        StackPointerVal* perLaneStackPtr, Value* leafType, bool Committed);
+    Value* getInstanceIndex(
+        StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
+    Value* getInstanceID(
+        StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
     Value* TransformWorldToObject(
         StackPointerVal* StackPointerVal,
         unsigned int dim,
