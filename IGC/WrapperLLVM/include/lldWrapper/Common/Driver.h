@@ -20,7 +20,9 @@ namespace IGCLLD {
         inline bool link(llvm::ArrayRef<const char *> Args, bool CanExitEarly,
                          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS) {
 #if LLVM_VERSION_MAJOR >= 14
-            return lld::elf::link(Args, stdoutOS, stderrOS, CanExitEarly, false);
+            bool r = lld::elf::link(Args, stdoutOS, stderrOS, CanExitEarly, false);
+            lld::CommonLinkerContext::destroy();
+            return r;
 #elif LLVM_VERSION_MAJOR >= 10
             return lld::elf::link(Args, CanExitEarly, stdoutOS, stderrOS);
 #else
