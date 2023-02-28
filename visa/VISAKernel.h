@@ -1166,7 +1166,8 @@ public:
   unsigned char m_minor_version;
 
   void compilePostOptimize();
-  void *encodeAndEmit(unsigned int &binarySize);
+  void *encodeAndEmit(unsigned int &binarySize,
+                      vISA::PERF_STATS_VERBOSE *m_kernelPerfStats);
 
   void setInputSize(uint8_t size);
   void setReturnSize(unsigned int size);
@@ -1193,11 +1194,10 @@ public:
   void setFCComposableKernel(bool value) { mIsFCComposableKernel = value; }
 
   void setLocalSheduleable(bool value);
-
-  // Accumulate the input perf stats into this function's stats
-  void addFuncPerfStats(const vISA::PERF_STATS_VERBOSE & input);
-
-  void emitPerfStats(std::ostream &os);
+  void addFuncPerfStats(vISA::PERF_STATS_VERBOSE *m_kernelPerfStats,
+                        vISA::FINALIZER_INFO *jitInfo);
+  void emitPerfStats(vISA::PERF_STATS_VERBOSE *m_kernelPerfStats,
+                     std::ostream &os);
 
   unsigned int getGenVarCount() const {
     return (uint32_t)m_var_info_list.size();

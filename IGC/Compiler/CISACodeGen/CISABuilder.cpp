@@ -5684,8 +5684,7 @@ namespace IGC
         V(pMainKernel->GetRelocations(relocations));
     }
 
-    void CEncoder::CreateFuncAttributeTable(VISAKernel *pMainKernel,
-                                            GenXFunctionGroupAnalysis *pFga) {
+    void CEncoder::CreateFuncAttributeTable(VISAKernel* pMainKernel) {
         SProgramOutput *pOutput = m_program->ProgramOutput();
         void *&buffer = pOutput->m_funcAttributeTable;
         unsigned &bufferSize = pOutput->m_funcAttributeTableSize;
@@ -5722,8 +5721,7 @@ namespace IGC
             }
             vISA::FINALIZER_INFO* jitInfo;
             visaFunc->GetJitInfo(jitInfo);
-            entry.f_spillMemPerThread =
-                getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga);
+            entry.f_spillMemPerThread = jitInfo->stats.spillMemUsed;
 
             uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
             // Set per-function barrier count from vISA information.
@@ -6284,12 +6282,11 @@ namespace IGC
         createRelocationTables(*pMainKernel);
         if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching) ||
             context->enableZEBinary())
-            CreateFuncAttributeTable(pMainKernel, pFGA);
+            CreateFuncAttributeTable(pMainKernel);
 
         if (jitInfo->isSpill == true)
         {
-            pOutput->m_scratchSpaceUsedBySpills =
-                getSpillMemSizeWithFG(*m_program->entry, jitInfo->stats.spillMemUsed, pFGA);
+            pOutput->m_scratchSpaceUsedBySpills = jitInfo->stats.spillMemUsed;
             pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
         }
 
@@ -6303,30 +6300,6 @@ namespace IGC
 
         pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
         pOutput->m_numThreads = jitInfo->stats.numThreads;
-    }
-
-    uint32_t CEncoder::getSpillMemSizeWithFG(const llvm::Function &curFunc,
-        uint32_t curSize, GenXFunctionGroupAnalysis *fga)
-    {
-        if (!fga)
-            return curSize;
-
-        // Return the precise stack size for non-group-head function, and the
-        // estimated conservative value for group head.
-        const FunctionGroup *fg = fga->getGroupForHead(&curFunc);
-        if(!fg)
-            return curSize;
-        // Since it is difficult to predict amount of space needed to store stack,
-        // we reserve a magic large size. Reserving max PTSS is ideal, but it can
-        // lead to OOM on machines with large number of threads.
-        if (fg->hasIndirectCall() || fg->hasRecursion()) {
-            auto visaplt = GetVISAPlatform(&(m_program->GetContext()->platform));
-            if(visaplt == TARGET_PLATFORM::Xe_PVCXT)
-                return 64 * 1024;
-            return 128 * 1024;
-        }
-
-        return curSize;
     }
 
     void CEncoder::createRelocationTables(VISAKernel &pMainKernel)
