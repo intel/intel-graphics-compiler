@@ -632,7 +632,7 @@ bool supportsAutoGRFSelection() const
 
 float adjustedSpillThreshold() const
 {
-    return isProductChildOf(IGFX_DG2) ? 9.0f : 12.0f;
+    return isProductChildOf(IGFX_DG2) ? 7.0f : 12.0f;
 }
 
 bool hasLSC() const
