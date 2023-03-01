@@ -294,7 +294,7 @@ DECLARE_IGC_REGKEY(bool, CheckCSSLMLimit,               true,  "Check SLM limit 
 DECLARE_IGC_REGKEY(DWORD, RouteByLodHint,               0,     "An integer offset addon to route the resource to HDC on DG2", false)
 DECLARE_IGC_REGKEY(bool, EnableTrivialEmulateSinCos,    false, "Enable Emulation for Sine and Cosine instructions", false)
 DECLARE_IGC_REGKEY(DWORD, ld2dmsInstsClubbingThreshold, 3,     "Do not club more than these ld2dms insts into the new BB during MCSOpt", false)
-DECLARE_IGC_REGKEY(DWORD, ForcePerThreadPrivateMemorySize, 0,  "Useful for ensuring a certain amount of private memory when doing a shader override.", false)
+DECLARE_IGC_REGKEY(DWORD, ForcePerThreadPrivateMemorySize, 0,  "Useful for ensuring a certain amount of private memory when doing a shader override.", true)
 DECLARE_IGC_REGKEY(DWORD, RetryManagerFirstStateId,     0,     "For debugging purposes, it can be useful to start on a particular id rather than id 0.", false)
 DECLARE_IGC_REGKEY(bool, DisableSendSrcDstOverlapWA,    false, "Disable Send Source/destination overlap WA which is enabled for GEN10/GEN11 and whenever Wddm2Svm is set in WATable", false)
 DECLARE_IGC_REGKEY(debugString, DisablePassToggles,     0,     "Disable each IGC pass by setting the bit. HEXADECIMAL ONLY!. Ex: C0 is to disable pass 6 and pass 7.", false)
