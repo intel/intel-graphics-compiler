@@ -841,6 +841,7 @@ GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElem
         getElementPtr
     );
     newGetElementPtr->setDebugLoc(getElementPtr->getDebugLoc());
+    newGetElementPtr->setIsInBounds(getElementPtr->isInBounds());
     return newGetElementPtr;
 }
 
