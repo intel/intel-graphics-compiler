@@ -89,6 +89,8 @@ enum class HWAddrSpace : char {
   SLM, // Shared local memory.
 };
 
+constexpr const char AlignMDName[] = "VCAlignment";
+
 // load and store lowering pass
 class GenXLoadStoreLowering : public FunctionPass,
                               public InstVisitor<GenXLoadStoreLowering> {
@@ -120,7 +122,11 @@ private:
   template <Atomicity A, typename MemoryInstT>
   Instruction *switchMessage(MemoryInstT &I) const;
   template <MessageKind MK, Atomicity A, typename MemoryInstT>
+  Instruction *switchAddrSpace(MemoryInstT &I, PointerType *PtrTy) const;
+  template <MessageKind MK, Atomicity A, typename MemoryInstT>
   Instruction *switchAddrSpace(MemoryInstT &I) const;
+  template <MessageKind MK, Atomicity A>
+  Instruction *switchAddrSpace(IntrinsicInst &I) const;
 
   // Creates a replacement for \p I instruction. The template parameters
   // describe the provided instruction and how it should be lowered.
@@ -129,6 +135,12 @@ private:
 
   Instruction *createLegacyLoadStore(Instruction &I, unsigned BTI, Value *Ptr,
                                      Value *Data = nullptr) const;
+  Instruction *createLegacyGatherScatter(IntrinsicInst &I, unsigned BTI) const;
+  Value *createLegacyGatherScatterQWordImpl(IRBuilder<> &Builder, Module *M,
+                                            unsigned BTI, bool IsLoad,
+                                            Value *Pred, Value *Addr,
+                                            Value *Source,
+                                            ConstantInt *Align) const;
   Instruction *createLegacyBlockLoadImpl(IRBuilder<> &Builder, Module *M,
                                          GenXIntrinsic::ID IID, unsigned BTI,
                                          IGCLLVM::FixedVectorType *Ty,
@@ -136,28 +148,34 @@ private:
   Instruction *createLegacyBlockStoreImpl(IRBuilder<> &Builder, Module *M,
                                           unsigned BTI, Value *Addr,
                                           Value *Data) const;
-  Instruction *createLegacyGatherLoadImpl(IRBuilder<> &Builder, Module *M,
-                                          unsigned BTI, unsigned ESize,
-                                          IGCLLVM::FixedVectorType *Ty,
-                                          Value *Pred, Value *Base,
-                                          Value *Offset) const;
+  Instruction *createLegacyGatherLoadImpl(
+      IRBuilder<> &Builder, Module *M, unsigned BTI, unsigned ESize,
+      IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *Base, Value *Offset,
+      Value *Source = nullptr, ConstantInt *Align = nullptr) const;
   Instruction *createLegacyScatterStoreImpl(IRBuilder<> &Builder, Module *M,
                                             unsigned BTI, unsigned ESize,
                                             Value *Pred, Value *Base,
-                                            Value *Offset, Value *Data) const;
+                                            Value *Offset, Value *Data,
+                                            ConstantInt *Align = nullptr) const;
 
   Instruction *createLSCLoadStore(Instruction &I, GenXIntrinsic::ID IID,
                                   Value *BTI, Value *Addr,
                                   Value *Data = nullptr) const;
+  Instruction *createLSCGatherScatter(IntrinsicInst &I,
+                                      GenXIntrinsic::ID LoadIID,
+                                      GenXIntrinsic::ID StoreIID, Value *BTI,
+                                      Type *AddrTy) const;
   Instruction *createLSCLoadImpl(IRBuilder<> &Builder, Module *M,
                                  GenXIntrinsic::ID IID, unsigned ESize,
                                  IGCLLVM::FixedVectorType *Ty, Value *Pred,
                                  Value *BTI, Value *Addr,
-                                 Value *Source = nullptr) const;
+                                 Value *Source = nullptr,
+                                 ConstantInt *Align = nullptr) const;
   Instruction *createLSCStoreImpl(IRBuilder<> &Builder, Module *M,
                                   GenXIntrinsic::ID IID, unsigned ESize,
                                   Value *BTI, Value *Pred, Value *Addr,
-                                  Value *Data) const;
+                                  Value *Data,
+                                  ConstantInt *Align = nullptr) const;
 
   Instruction *createLegacySVMAtomicLoad(LoadInst &LdI) const;
   Instruction *createLegacySVMAtomicStore(StoreInst &StI) const;
@@ -259,12 +277,21 @@ void GenXLoadStoreLowering::visitAtomicRMWInst(AtomicRMWInst &Inst) const {
   Inst.eraseFromParent();
 }
 
-void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
-  unsigned ID = vc::getAnyIntrinsicID(&Intrinsic);
+void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Inst) const {
+  unsigned ID = vc::getAnyIntrinsicID(&Inst);
   switch (ID) {
+  case Intrinsic::masked_gather:
+  case Intrinsic::masked_scatter: {
+    LLVM_DEBUG(dbgs() << "Replacing intrinsic " << Inst << " ===>\n");
+    auto *Replacement = createMemoryInstReplacement(Inst);
+    Inst.replaceAllUsesWith(Replacement);
+  }
+    LLVM_FALLTHROUGH;
   case Intrinsic::lifetime_start:
   case Intrinsic::lifetime_end:
-    Intrinsic.eraseFromParent();
+    Inst.eraseFromParent();
+    break;
+  default:
     break;
   }
 }
@@ -284,6 +311,31 @@ void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
   LLVM_DEBUG(dbgs() << *Replacement << "\n");
   StI.eraseFromParent();
 }
+
+namespace {
+struct GatherScatterOperands {
+  bool IsLoad;
+  Value *Mask;
+  Value *Addr;
+  Value *Data;
+  ConstantInt *Align;
+};
+
+GatherScatterOperands getGatherScatterOperands(IntrinsicInst &I) {
+  unsigned ID = vc::getAnyIntrinsicID(&I);
+  switch (ID) {
+  default:
+    IGC_ASSERT_MESSAGE(0, "unsupported intrinsic");
+    return {false, nullptr, nullptr, nullptr, nullptr};
+  case Intrinsic::masked_gather:
+    return {true, I.getArgOperand(2), I.getArgOperand(0), I.getArgOperand(3),
+            cast<ConstantInt>(I.getArgOperand(1))};
+  case Intrinsic::masked_scatter:
+    return {false, I.getArgOperand(3), I.getArgOperand(1), I.getArgOperand(0),
+            cast<ConstantInt>(I.getArgOperand(2))};
+  }
+}
+} // namespace
 
 unsigned
 GenXLoadStoreLowering::getLSCBlockElementSizeBits(unsigned DataSizeBytes,
@@ -464,7 +516,7 @@ Value *GenXLoadStoreLowering::createTruncateImpl(IRBuilder<> &Builder,
 Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
     IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID, unsigned ESize,
     IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *BTI, Value *Addr,
-    Value *Source) const {
+    Value *Source, ConstantInt *Align) const {
   IGC_ASSERT_EXIT(
       IID == GenXIntrinsic::genx_lsc_load_stateless ||
       IID == GenXIntrinsic::genx_lsc_load_slm ||
@@ -511,13 +563,20 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
       M, IID, {Ty, Pred->getType(), Addr->getType()});
   auto *Load = Builder.CreateCall(Func, Args);
 
+  if (Align) {
+    auto &Ctx = Load->getContext();
+    auto *MD = ConstantAsMetadata::get(Align);
+    Load->setMetadata(AlignMDName, MDNode::get(Ctx, MD));
+  }
+
   LLVM_DEBUG(dbgs() << "Created: " << *Load << "\n");
   return Load;
 }
 
 Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
     IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID, unsigned ESize,
-    Value *Pred, Value *BTI, Value *Addr, Value *Data) const {
+    Value *Pred, Value *BTI, Value *Addr, Value *Data,
+    ConstantInt *Align) const {
   IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_lsc_store_stateless ||
                   IID == GenXIntrinsic::genx_lsc_store_bti ||
                   IID == GenXIntrinsic::genx_lsc_store_slm);
@@ -559,6 +618,12 @@ Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
       M, IID, {Pred->getType(), Addr->getType(), Ty});
   auto *Store = Builder.CreateCall(Func, Args);
 
+  if (Align) {
+    auto &Ctx = Store->getContext();
+    auto *MD = ConstantAsMetadata::get(Align);
+    Store->setMetadata(AlignMDName, MDNode::get(Ctx, MD));
+  }
+
   LLVM_DEBUG(dbgs() << "Created: " << *Store << "\n");
   return Store;
 }
@@ -584,7 +649,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
     VTy = &vc::getVectorType(*IntPtrTy);
 
     if (!IsLoad)
-      Data = Builder.CreateIntToPtr(Data, IntPtrTy);
+      Data = Builder.CreatePtrToInt(Data, IntPtrTy);
   }
 
   auto *ETy = VTy->getElementType();
@@ -692,6 +757,43 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
   return cast<Instruction>(Result);
 }
 
+Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
+    IntrinsicInst &I, GenXIntrinsic::ID LoadIID, GenXIntrinsic::ID StoreIID,
+    Value *BTI, Type *AddrTy) const {
+  auto [IsLoad, Mask, Ptr, Data, Align] = getGatherScatterOperands(I);
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *Ty = Data->getType();
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+  if (VTy->isPtrOrPtrVectorTy()) {
+    auto *IntPtrTy = DL_->getIntPtrType(VTy);
+    VTy = &vc::getVectorType(*IntPtrTy);
+    Data = Builder.CreatePtrToInt(Data, IntPtrTy);
+  }
+
+  auto *ETy = VTy->getElementType();
+  auto ESize = DL_->getTypeSizeInBits(ETy);
+
+  auto *Extend = createExtendImpl(Builder, Data);
+  auto *ExtendTy = cast<IGCLLVM::FixedVectorType>(Extend->getType());
+
+  auto *Addr = Builder.CreatePtrToInt(
+      Ptr, IGCLLVM::FixedVectorType::get(AddrTy, VTy->getNumElements()));
+
+  if (IsLoad) {
+    auto *Load = createLSCLoadImpl(Builder, M, LoadIID, ESize, ExtendTy, Mask,
+                                   BTI, Addr, Extend, Align);
+    auto *Res = createTruncateImpl(Builder, VTy, Load);
+    if (Ty->isPtrOrPtrVectorTy())
+      Res = Builder.CreateIntToPtr(Res, Ty);
+    return cast<Instruction>(Res);
+  }
+
+  return createLSCStoreImpl(Builder, M, StoreIID, ESize, Mask, BTI, Addr,
+                            Extend, Align);
+}
+
 // we need vector type that emulates what real load type
 // will be for gather/scatter
 IGCLLVM::FixedVectorType *
@@ -736,8 +838,8 @@ Instruction *GenXLoadStoreLowering::createLegacyBlockLoadImpl(
 
 Instruction *GenXLoadStoreLowering::createLegacyGatherLoadImpl(
     IRBuilder<> &Builder, Module *M, unsigned BTI, unsigned ESize,
-    IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *Base,
-    Value *Offset) const {
+    IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *Base, Value *Offset,
+    Value *Source, ConstantInt *Align) const {
   IGC_ASSERT_EXIT(Ty);
   IGC_ASSERT_EXIT(Pred);
   IGC_ASSERT_EXIT(Base);
@@ -771,19 +873,155 @@ Instruction *GenXLoadStoreLowering::createLegacyGatherLoadImpl(
     Args.push_back(Builder.getInt32(ESize == WordBytes ? 1 : 0));
 
     // Global offset is not supported, so emitting add instruction
-    auto *BaseSplat = Builder.CreateVectorSplat(AddrTy->getNumElements(), Base);
-    auto *Addr = Builder.CreateAdd(BaseSplat, Offset);
+    auto *Addr = Offset;
+    auto *BaseConst = dyn_cast<ConstantInt>(Base);
+    if (!BaseConst || !BaseConst->isNullValue()) {
+      auto *BaseSplat =
+          Builder.CreateVectorSplat(AddrTy->getNumElements(), Base);
+      Addr = Builder.CreateAdd(BaseSplat, Offset);
+    }
+
     Args.push_back(Addr);
   }
 
-  Args.push_back(UndefValue::get(RetVTy));
+  Args.push_back(Source ? Builder.CreateBitCast(Source, RetVTy)
+                        : UndefValue::get(RetVTy));
 
   auto *Func = GenXIntrinsic::getGenXDeclaration(
       M, IID, {RetVTy, Pred->getType(), AddrTy});
   auto *Load = Builder.CreateCall(Func, Args);
 
+  if (Align) {
+    auto &Ctx = Load->getContext();
+    auto *MD = ConstantAsMetadata::get(Align);
+    Load->setMetadata(AlignMDName, MDNode::get(Ctx, MD));
+  }
+
   LLVM_DEBUG(dbgs() << "Created: " << *Load << "\n");
   return cast<Instruction>(Builder.CreateBitCast(Load, Ty));
+}
+
+Value *GenXLoadStoreLowering::createLegacyGatherScatterQWordImpl(
+    IRBuilder<> &Builder, Module *M, unsigned BTI, bool IsLoad, Value *Pred,
+    Value *Addr, Value *Source, ConstantInt *Align) const {
+  IGC_ASSERT(M);
+  IGC_ASSERT(Pred);
+  IGC_ASSERT(Addr);
+  IGC_ASSERT(Source);
+  IGC_ASSERT(Align);
+  IGC_ASSERT(BTI <= visa::RSI_Stateless);
+
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(Source->getType());
+  unsigned NElements = VTy->getNumElements();
+
+  auto *CastVTy =
+      IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), NElements * 2);
+  auto *Cast = Builder.CreateBitCast(Source, CastVTy);
+
+  // gather4/scatter4 address values must be dword-aligned
+  unsigned Alignment = Align->getValue().getZExtValue();
+  if (Alignment < DWordBytes) {
+    auto *ExtractVTy =
+        IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), NElements);
+    auto *RdRgnFunc = GenXIntrinsic::getAnyDeclaration(
+        M, GenXIntrinsic::genx_rdregioni,
+        {ExtractVTy, CastVTy, Builder.getInt16Ty()});
+
+    SmallVector<Value *, 6> Args = {
+        Cast,
+        Builder.getInt32(2),                  // vstride
+        Builder.getInt32(1),                  // width
+        Builder.getInt32(0),                  // stride
+        Builder.getInt16(0),                  // offset
+        UndefValue::get(Builder.getInt32Ty()) // parent width, ignored
+    };
+    auto *Low = Builder.CreateCall(RdRgnFunc, Args);
+    Args[4] = Builder.getInt16(DWordBytes); // offset for high qword parts
+    auto *High = Builder.CreateCall(RdRgnFunc, Args);
+
+    if (IsLoad) {
+      auto *LoadLow = createLegacyGatherLoadImpl(
+          Builder, M, BTI, DWordBytes, ExtractVTy, Pred, Builder.getInt32(0),
+          Addr, Low, Align);
+      auto *LoadHigh = createLegacyGatherLoadImpl(
+          Builder, M, BTI, DWordBytes, ExtractVTy, Pred,
+          Builder.getInt32(DWordBytes), Addr, High, Align);
+
+      auto *WrRgnFunc = GenXIntrinsic::getAnyDeclaration(
+          M, GenXIntrinsic::genx_wrregioni,
+          {CastVTy, ExtractVTy, Builder.getInt16Ty(), Builder.getInt1Ty()});
+      SmallVector<Value *, 8> Args = {
+          UndefValue::get(CastVTy), // vector to insert to
+          LoadLow,
+          Builder.getInt32(2),                   // vstride
+          Builder.getInt32(1),                   // width
+          Builder.getInt32(0),                   // stride
+          Builder.getInt16(0),                   // offset for low qword parts
+          UndefValue::get(Builder.getInt32Ty()), // parent width, ignored
+          Builder.getTrue(),
+      };
+      auto *InsertLow = Builder.CreateCall(WrRgnFunc, Args);
+      Args[0] = InsertLow;
+      Args[1] = LoadHigh;
+      Args[5] = Builder.getInt16(DWordBytes); // offset for high qword parts
+      auto *InsertHigh = Builder.CreateCall(WrRgnFunc, Args);
+      return Builder.CreateBitCast(InsertHigh, VTy);
+    }
+
+    createLegacyScatterStoreImpl(Builder, M, BTI, DWordBytes, Pred,
+                                 Builder.getInt32(0), Addr, Low, Align);
+    return createLegacyScatterStoreImpl(Builder, M, BTI, DWordBytes, Pred,
+                                        Builder.getInt32(DWordBytes), Addr,
+                                        High, Align);
+  }
+
+  auto *RdRgnFunc = GenXIntrinsic::getAnyDeclaration(
+      M, GenXIntrinsic::genx_rdregioni,
+      {CastVTy, CastVTy, Builder.getInt16Ty()});
+  auto *MemFunc = IsLoad ? GenXIntrinsic::getAnyDeclaration(
+                               M, GenXIntrinsic::genx_gather4_scaled,
+                               {CastVTy, Pred->getType(), Addr->getType()})
+                         : GenXIntrinsic::getAnyDeclaration(
+                               M, GenXIntrinsic::genx_scatter4_scaled,
+                               {Pred->getType(), Addr->getType(), CastVTy});
+
+  SmallVector<Value *, 6> ConvArgs = {
+      Cast,
+      Builder.getInt32(1),                  // vstride
+      Builder.getInt32(NElements),          // width
+      Builder.getInt32(2),                  // stride
+      Builder.getInt16(0),                  // offset
+      UndefValue::get(Builder.getInt32Ty()) // parent width, ignored
+  };
+  auto *Convert = Builder.CreateCall(RdRgnFunc, ConvArgs);
+
+  SmallVector<Value *, 7> MemArgs = {
+      Pred,                     // mask
+      Builder.getInt32(0b1100), // channel mask: RG
+      Builder.getInt16(0),      // scale
+      Builder.getInt32(BTI),    // surface index
+      Builder.getInt32(0),      // global offset
+      Addr,
+      Convert,
+  };
+  auto *MemOp = Builder.CreateCall(MemFunc, MemArgs);
+  auto *MD = ConstantAsMetadata::get(Align);
+  MemOp->setMetadata(AlignMDName, MDNode::get(MemOp->getContext(), MD));
+
+  LLVM_DEBUG(dbgs() << "Created: " << *MemOp << "\n");
+  if (!IsLoad)
+    return MemOp;
+
+  SmallVector<Value *, 6> BackConvArgs = {
+      MemOp,
+      Builder.getInt32(1),                  // vstride
+      Builder.getInt32(2),                  // width
+      Builder.getInt32(NElements),          // stride
+      Builder.getInt16(0),                  // offset
+      UndefValue::get(Builder.getInt32Ty()) // parent width, ignored
+  };
+  auto *BackConv = Builder.CreateCall(RdRgnFunc, BackConvArgs);
+  return Builder.CreateBitCast(BackConv, VTy);
 }
 
 Instruction *GenXLoadStoreLowering::createLegacyBlockStoreImpl(
@@ -815,7 +1053,7 @@ Instruction *GenXLoadStoreLowering::createLegacyBlockStoreImpl(
 
 Instruction *GenXLoadStoreLowering::createLegacyScatterStoreImpl(
     IRBuilder<> &Builder, Module *M, unsigned BTI, unsigned ESize, Value *Pred,
-    Value *Base, Value *Offset, Value *Data) const {
+    Value *Base, Value *Offset, Value *Data, ConstantInt *Align) const {
   IGC_ASSERT_EXIT(Pred);
   IGC_ASSERT_EXIT(Base);
   IGC_ASSERT_EXIT(Offset);
@@ -851,8 +1089,14 @@ Instruction *GenXLoadStoreLowering::createLegacyScatterStoreImpl(
     Args.push_back(Builder.getInt32(ESize == WordBytes ? 1 : 0));
 
     // Global offset is not supported, so emitting add instruction
-    auto *BaseSplat = Builder.CreateVectorSplat(AddrTy->getNumElements(), Base);
-    auto *Addr = Builder.CreateAdd(BaseSplat, Offset);
+    auto *Addr = Offset;
+    auto *BaseConst = dyn_cast<ConstantInt>(Base);
+    if (!BaseConst || !BaseConst->isNullValue()) {
+      auto *BaseSplat =
+          Builder.CreateVectorSplat(AddrTy->getNumElements(), Base);
+      Addr = Builder.CreateAdd(BaseSplat, Offset);
+    }
+
     Args.push_back(Addr);
   }
 
@@ -861,6 +1105,12 @@ Instruction *GenXLoadStoreLowering::createLegacyScatterStoreImpl(
   auto *Func = GenXIntrinsic::getGenXDeclaration(
       M, IID, {Pred->getType(), AddrTy, StoreVTy});
   auto *Store = Builder.CreateCall(Func, Args);
+
+  if (Align) {
+    auto &Ctx = Store->getContext();
+    auto *MD = ConstantAsMetadata::get(Align);
+    Store->setMetadata(AlignMDName, MDNode::get(Ctx, MD));
+  }
 
   LLVM_DEBUG(dbgs() << "Created: " << *Store << "\n");
   return Store;
@@ -1007,6 +1257,58 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
   }
 
   return cast<Instruction>(Result);
+}
+
+Instruction *
+GenXLoadStoreLowering::createLegacyGatherScatter(IntrinsicInst &I,
+                                                 unsigned BTI) const {
+  auto [IsLoad, Mask, Ptr, Data, Align] = getGatherScatterOperands(I);
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *Ty = IsLoad ? I.getType() : Data->getType();
+  auto *VTy = &vc::getVectorType(*Ty);
+
+  if (Ty->isPtrOrPtrVectorTy()) {
+    auto *IntPtrTy = DL_->getIntPtrType(Ty);
+    VTy = &vc::getVectorType(*IntPtrTy);
+    Data = Builder.CreatePtrToInt(Data, IntPtrTy);
+  }
+
+  auto *ETy = VTy->getElementType();
+  auto ESize = DL_->getTypeSizeInBits(ETy);
+
+  auto *Extend = createExtendImpl(Builder, Data);
+  auto *ExtendTy = cast<IGCLLVM::FixedVectorType>(Extend->getType());
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  bool SplitQWords = IsBTI && ESize == QWordBits;
+
+  auto *AddrTy = IsBTI ? Builder.getInt32Ty() : Builder.getInt64Ty();
+  auto *Addr = Builder.CreatePtrToInt(
+      Ptr, IGCLLVM::FixedVectorType::get(AddrTy, VTy->getNumElements()));
+  auto *Base = ConstantInt::get(AddrTy, 0);
+
+  if (SplitQWords) {
+    auto *Res = createLegacyGatherScatterQWordImpl(Builder, M, BTI, IsLoad,
+                                                   Mask, Addr, Data, Align);
+    if (IsLoad && Ty->isPtrOrPtrVectorTy())
+      Res = Builder.CreateIntToPtr(Res, Ty);
+    return cast<Instruction>(Res);
+  }
+
+  if (IsLoad) {
+    auto *Load =
+        createLegacyGatherLoadImpl(Builder, M, BTI, ESize / ByteBits, ExtendTy,
+                                   Mask, Base, Addr, Extend, Align);
+    auto *Res = createTruncateImpl(Builder, VTy, Load);
+    if (Ty->isPtrOrPtrVectorTy())
+      Res = Builder.CreateIntToPtr(Res, Ty);
+    return cast<Instruction>(Res);
+  }
+
+  return createLegacyScatterStoreImpl(Builder, M, BTI, ESize / ByteBits, Mask,
+                                      Base, Addr, Extend, Align);
 }
 
 static std::pair<unsigned, AtomicOrdering>
@@ -1291,8 +1593,8 @@ Instruction *GenXLoadStoreLowering::switchMessage(MemoryInstT &I) const {
 }
 
 template <MessageKind MK, Atomicity A, typename MemoryInstT>
-Instruction *GenXLoadStoreLowering::switchAddrSpace(MemoryInstT &I) const {
-  auto *PtrTy = cast<PointerType>(I.getPointerOperand()->getType());
+Instruction *GenXLoadStoreLowering::switchAddrSpace(MemoryInstT &I,
+                                                    PointerType *PtrTy) const {
   auto AS = PtrTy->getAddressSpace();
   if (AS == vc::AddrSpace::Local)
     return createIntrinsic<HWAddrSpace::SLM, MK, A>(I);
@@ -1302,6 +1604,34 @@ Instruction *GenXLoadStoreLowering::switchAddrSpace(MemoryInstT &I) const {
     return createIntrinsic<HWAddrSpace::A32, MK, A>(I);
   IGC_ASSERT_MESSAGE(PtrSize == 64, "only 32 and 64 bit pointers are expected");
   return createIntrinsic<HWAddrSpace::A64, MK, A>(I);
+}
+
+template <MessageKind MK, Atomicity A, typename MemoryInstT>
+Instruction *GenXLoadStoreLowering::switchAddrSpace(MemoryInstT &I) const {
+  auto *PtrTy = cast<PointerType>(I.getPointerOperand()->getType());
+  return switchAddrSpace<MK, A>(I, PtrTy);
+}
+
+template <MessageKind MK, Atomicity A>
+Instruction *GenXLoadStoreLowering::switchAddrSpace(IntrinsicInst &I) const {
+  unsigned ID = vc::getAnyIntrinsicID(&I);
+  unsigned PointerOperandNum = 0;
+  switch (ID) {
+  default:
+    IGC_ASSERT_MESSAGE(0, "unsupported intrinsic");
+    return &I;
+  case Intrinsic::masked_gather:
+    PointerOperandNum = 0;
+    break;
+  case Intrinsic::masked_scatter:
+    PointerOperandNum = 1;
+    break;
+  }
+
+  auto *Ptr = I.getArgOperand(PointerOperandNum);
+  auto *PtrVTy = cast<IGCLLVM::FixedVectorType>(Ptr->getType());
+  auto *PtrTy = cast<PointerType>(PtrVTy->getElementType());
+  return switchAddrSpace<MK, A>(I, PtrTy);
 }
 
 template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
@@ -1395,6 +1725,30 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
 
 template <>
 Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  return createLegacyGatherScatter(I, -1);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  return createLegacyGatherScatter(I, visa::RSI_Stateless);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  return createLegacyGatherScatter(I, visa::RSI_Slm);
+}
+
+template <>
+Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
                                        Atomicity::NonAtomic, LoadInst>(
     LoadInst &I) const {
@@ -1468,4 +1822,41 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
       I, GenXIntrinsic::genx_lsc_store_slm, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy),
       I.getValueOperand());
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
+                                       Atomicity::NonAtomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt64Ty();
+  return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_stateless,
+                                GenXIntrinsic::genx_lsc_store_stateless, BTI,
+                                AddrTy);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
+                                       Atomicity::NonAtomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(visa::RSI_Stateless);
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_bti,
+                                GenXIntrinsic::genx_lsc_store_bti, BTI, AddrTy);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
+                                       Atomicity::NonAtomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_slm,
+                                GenXIntrinsic::genx_lsc_store_slm, BTI, AddrTy);
 }
