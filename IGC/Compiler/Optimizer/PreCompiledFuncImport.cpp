@@ -318,7 +318,9 @@ bool PreCompiledFuncImport::preProcessDouble()
 #if LLVM_VERSION_MAJOR >= 10
             else if (Inst->getOpcode() == Instruction::FNeg)
             {
-                if (Inst->getType()->isDoubleTy())
+                // check if Inst is double instruction or vector of double instructions
+                if (Inst->getType()->isDoubleTy() ||
+                    (Inst->getType()->isVectorTy() && IGCLLVM::getNonOpaquePtrEltTy(Inst->getType())->isDoubleTy()))
                 {
                     IGCLLVM::IRBuilder<> builder(Inst);
                     Value* fsub = nullptr;
