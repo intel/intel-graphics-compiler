@@ -1,0 +1,23 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2020-2023 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+#    Description                  : disabling instcombine-code-sinking by default
+diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+index 71c763de4..438ff9fb2 100644
+--- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+@@ -136,7 +136,7 @@ static constexpr unsigned InstCombineDefaultInfiniteLoopThreshold = 1000;
+
+ static cl::opt<bool>
+ EnableCodeSinking("instcombine-code-sinking", cl::desc("Enable code sinking"),
+-                                              cl::init(true));
++                                              cl::init(false));
+
+ static cl::opt<unsigned> MaxSinkNumUsers(
+     "instcombine-max-sink-users", cl::init(32),
+
