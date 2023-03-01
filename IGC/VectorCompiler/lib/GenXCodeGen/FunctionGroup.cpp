@@ -51,6 +51,10 @@ static cl::opt<bool> PrintFunctionsUsers(
     "fga-print-functions-users", cl::init(true), cl::Hidden,
     cl::desc("FunctionGroupAnalysis::print emits users of functions"));
 
+static cl::opt<bool> PrintFunctionGroupInfo("print-function-group-info",
+    cl::init(false), cl::Hidden,
+    cl::desc("Print additional info after FunctionGroupAnalysis pass done"));
+
 bool FunctionGroup::verify() const {
   // TODO: ideally, we'd like to access call-graph here. However,
   // we do not maintain it here.
@@ -474,6 +478,8 @@ void FunctionGroupAnalysis::buildGroups() {
   }
 
   IGC_ASSERT(verify());
+  if (PrintFunctionGroupInfo)
+    print(outs(), M);
 }
 
 void FunctionGroupAnalysis::print(raw_ostream &OS, const Module *) const {

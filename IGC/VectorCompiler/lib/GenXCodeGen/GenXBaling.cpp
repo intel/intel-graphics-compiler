@@ -75,6 +75,9 @@ static cl::opt<bool>
 DisableMemOrderCheck("dbgonly-disable-mem-order-check", cl::init(false),
                      cl::Hidden, cl::desc("Disable checking of memory ordering"));
 
+static cl::opt<bool> PrintBaling("print-baling-info", cl::init(false), cl::Hidden,
+                              cl::desc("Print additional info after GenXBaling pass done"));
+
 //----------------------------------------------------------------------
 // Administrivia for GenXFuncBaling pass
 //
@@ -187,6 +190,8 @@ bool GenXBaling::processFunction(Function *F)
     doClones();
     Changed = true;
   }
+  if (PrintBaling)
+    GenXBaling::print(outs());
   return Changed;
 }
 
