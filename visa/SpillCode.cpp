@@ -452,28 +452,6 @@ bool SpillManager::checkDefUseDomRel(G4_Operand *dst, G4_BB *defBB) {
   return true;
 }
 
-bool SpillManager::isDominatingDef(G4_Operand *opnd, G4_BB *bb) {
-  // return true if this opnd is dominates all other defs
-  auto dcl = opnd->getTopDcl();
-
-  auto defs = refs.getDefs(dcl);
-
-  for (auto &def : *defs) {
-    auto otherDefBB = std::get<1>(def);
-
-    if (!bb->dominates(otherDefBB))
-      return false;
-
-    if (bb == otherDefBB) {
-      auto otherDefInst = std::get<0>(def);
-      if (opnd->getInst()->getLexicalId() > otherDefInst->getLexicalId())
-        return false;
-    }
-  }
-
-  return true;
-}
-
 // update RMW information for flag operands
 void SpillManager::updateRMWNeeded() {
   if (!gra.kernel.getOption(vISA_SkipRedundantFillInRMW))
@@ -489,8 +467,8 @@ void SpillManager::updateRMWNeeded() {
     // || (Check1 && Check2 && Check3)
     bool RMW_Needed = true;
 
-    if ((isUniqueDef || isDominatingDef(spilledRegion, bb)) &&
-        kernel.fg.isReducible() && checkDefUseDomRel(spilledRegion, bb)) {
+    if (isUniqueDef && kernel.fg.isReducible() &&
+        checkDefUseDomRel(spilledRegion, bb)) {
       RMW_Needed = false;
     }
 
