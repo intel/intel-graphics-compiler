@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -2204,37 +2203,6 @@ namespace IGC
             IGC_IS_FLAG_DISABLED(DisableDSDualPatch);
     }
 
-    void InsertOptsMetadata(CodeGenContext* pCtx, llvm::Function* F)
-    {
-        std::set<std::string>* OptDisableSet;
-        if (F != nullptr)
-        {
-            // Insert for function metadata
-            auto funcMD = &pCtx->getModuleMetaData()->FuncMD[F];  // Okay to insert funcMD if not present
-            OptDisableSet = &(funcMD->m_OptsToDisablePerFunc);
-        }
-        else
-        {
-            // Insert for module metadata
-            OptDisableSet = &(pCtx->getModuleMetaData()->m_OptsToDisable);
-        }
-
-        // Disable opt passes using the retry manager states
-        if (!pCtx->m_retryManager.AllowPromotePrivateMemory(F))
-            OptDisableSet->insert(IGCOpts::LowerGEPForPrivMemPass);
-        if (!pCtx->m_retryManager.AllowAddressArithmeticSinking(F))
-            OptDisableSet->insert(IGCOpts::AddressArithmeticSinkingPass);
-        if (!pCtx->m_retryManager.AllowPreRAScheduler(F))
-            OptDisableSet->insert(IGCOpts::PreRASchedulerPass);
-        if (!pCtx->m_retryManager.AllowLargeURBWrite(F))
-            OptDisableSet->insert(IGCOpts::MergeURBWritePass);
-        if (!pCtx->m_retryManager.AllowConstantCoalescing(F))
-            OptDisableSet->insert(IGCOpts::ConstantCoalescingPass);
-        if (!pCtx->m_retryManager.AllowLoadSinking(F))
-            OptDisableSet->insert(IGCOpts::SinkLoadOptPass);
-        if (!pCtx->m_retryManager.AllowSimd32Slicing(F))
-            OptDisableSet->insert(IGCOpts::AllowSimd32Slicing);
-    }
 
     Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM, IGC::ModuleMetaData* pModMD)
     {

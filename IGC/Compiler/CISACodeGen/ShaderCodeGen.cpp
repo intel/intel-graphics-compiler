@@ -278,8 +278,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
             mpm.add(createBreakCriticalEdgesPass());
             mpm.add(createAnnotateUniformAllocasPass());
 
-            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
-                !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::LowerGEPForPrivMemPass))
+            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem))
             {
                 mpm.add(createPromotePrivateArrayToReg());
                 mpm.add(createCFGSimplificationPass());
@@ -567,8 +566,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createBreakCriticalEdgesPass());
             mpm.add(createAnnotateUniformAllocasPass());
 
-            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
-                !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::LowerGEPForPrivMemPass))
+            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem))
             {
                 mpm.add(createPromotePrivateArrayToReg());
                 mpm.add(createCFGSimplificationPass());
@@ -814,8 +812,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(createAggressiveDCEPass());
         // As DPC++ FE apply LICM we cannot reduce register pressure just
         // by turning off LICM at IGC in some cases so apply sinking address arithmetic
-        if ((IGC_IS_FLAG_ENABLED(ForceAddressArithSinking) || !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::AddressArithmeticSinkingPass)) &&
-            ctx.type == ShaderType::OPENCL_SHADER)
+        if (ctx.type == ShaderType::OPENCL_SHADER)
         {
             mpm.add(new AddressArithmeticSinking());
         }
@@ -875,9 +872,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // coalesce scalar loads into loads of larger quantity.
     // This require and preserves uniform analysis we should keep
     // other passes using uniformness together to avoid re-running it several times
-    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) &&
-        !ctx.getModuleMetaData()->compOpt.DisableConstantCoalescing &&
-        !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::ConstantCoalescingPass))
+    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) && !ctx.getModuleMetaData()->compOpt.DisableConstantCoalescing)
     {
         mpm.add(createBreakCriticalEdgesPass());
         mpm.add(new ConstantCoalescing());
@@ -1120,24 +1115,13 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.run(*pContext->getModule());
         }
     }
-
-    if (!pContext->m_hasStackCalls)
+    // Insert per-func optimization metadata
     {
-        // Insert module-level optimizations to be disabled
-        IGC::InsertOptsMetadata(pContext);
+        IGCPassManager mpm(pContext, "InsertFuncOptsMetadata");
+        mpm.add(new CodeGenContextWrapper(pContext));
+        mpm.add(createInsertFuncOptsMetadataPass());
+        mpm.run(*pContext->getModule());
     }
-    else
-    {
-        // Insert per-func optimization metadata when stackcalls are enabled
-        for (auto& F : *pContext->getModule())
-        {
-            if (!F.empty())
-            {
-                IGC::InsertOptsMetadata(pContext, &F);
-            }
-        }
-    }
-
     if (NoOpt)
     {
         return;
@@ -1642,8 +1626,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(createMergeMemFromBranchOptPass());
 
-        if (IGC_IS_FLAG_DISABLED(DisableLoadSinking) &&
-            !isOptDisabledForModule(pContext->getModuleMetaData(), IGCOpts::SinkLoadOptPass))
+        if (IGC_IS_FLAG_DISABLED(DisableLoadSinking))
         {
             mpm.add(createSinkLoadOptPass());
         }

@@ -78,7 +78,7 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& func) override;
 
         virtual StringRef getPassName() const override {
-            return IGCOpts::ConstantCoalescingPass;
+            return IGCOpts::ConstantCoalescingPassName;
         }
 
     private:

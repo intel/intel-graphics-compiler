@@ -257,30 +257,19 @@ namespace IGC
         return name;
     }
 
-    inline bool isOptDisabledForModule(ModuleMetaData* modMD, llvm::StringRef optStr)
-    {
-        if (modMD->m_OptsToDisable.count(optStr.str()) != 0)
-        {
-            return true;
-        }
-        return false;
-    }
-
     inline bool isOptDisabledForFunction(ModuleMetaData* modMD, llvm::StringRef optStr, llvm::Function* F)
     {
         // Search function metadata to check if pass needs to be disabled
         auto funcIt = modMD->FuncMD.find(F);
         if (funcIt != modMD->FuncMD.end())
         {
-            if (funcIt->second.m_OptsToDisablePerFunc.count(optStr.str()) != 0)
+            if (funcIt->second.m_OptsToDisable.count(optStr.str()) != 0)
             {
                 return true;
             }
         }
         return false;
     }
-
-    void InsertOptsMetadata(CodeGenContext* pCtx, llvm::Function* F = nullptr);
 
     /// Return true if F is an entry function of a kernel or a shader.
     ///    A entry function must have an entry in FunctionInfoMetaData
