@@ -3151,6 +3151,13 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 {
     /*
     from
+        %2 = select i1 %0, i1 %1, i1 false
+    to
+        %2 = and i1 %0, %1
+
+               or
+
+    from
         %res_s42 = icmp eq i32 %src1_s41, 0
         %src1_s81 = select i1 %res_s42, i32 15, i32 0
     to
@@ -3178,42 +3185,50 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
     ConstantInt* Cint = dyn_cast<ConstantInt>(I.getOperand(2));
     if (Cint && Cint->isZero())
     {
-        llvm::Instruction* cmpInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
-        if (cmpInst &&
-            cmpInst->getOpcode() == Instruction::ICmp &&
-            I.getOperand(1) != cmpInst->getOperand(0))
+        if (I.getType()->isIntegerTy(1))
         {
-            // disable the cases for csel or where we can optimize the instructions to such as add.ge.* later in vISA
-            ConstantInt* C = dyn_cast<ConstantInt>(cmpInst->getOperand(1));
-            if (C && C->isZero())
+            Value* newValueAnd = builder.CreateAnd(I.getOperand(0), I.getOperand(1));
+            I.replaceAllUsesWith(newValueAnd);
+        }
+        else
+        {
+            llvm::Instruction* cmpInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
+            if (cmpInst &&
+                cmpInst->getOpcode() == Instruction::ICmp &&
+                I.getOperand(1) != cmpInst->getOperand(0))
             {
-                skipOpt = true;
-            }
-
-            if (!skipOpt)
-            {
-                // temporary disable the case where cmp is used in multiple sel, and not all of them have src2=0
-                // we should remove this if we can allow both flag and grf dst for the cmp to be used.
-                for (auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI != E; ++selI)
+                // disable the cases for csel or where we can optimize the instructions to such as add.ge.* later in vISA
+                ConstantInt* C = dyn_cast<ConstantInt>(cmpInst->getOperand(1));
+                if (C && C->isZero())
                 {
-                    if (llvm::SelectInst * selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
+                    skipOpt = true;
+                }
+
+                if (!skipOpt)
+                {
+                    // temporary disable the case where cmp is used in multiple sel, and not all of them have src2=0
+                    // we should remove this if we can allow both flag and grf dst for the cmp to be used.
+                    for (auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI != E; ++selI)
                     {
-                        ConstantInt* C = dyn_cast<ConstantInt>(selInst->getOperand(2));
-                        if (!(C && C->isZero()))
+                        if (llvm::SelectInst * selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
                         {
-                            skipOpt = true;
-                            break;
+                            ConstantInt* C = dyn_cast<ConstantInt>(selInst->getOperand(2));
+                            if (!(C && C->isZero()))
+                            {
+                                skipOpt = true;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            if (!skipOpt)
-            {
-                llvm::IRBuilder<> builder(&I);
-                Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), I.getType());
-                Value* newValueAnd = builder.CreateAnd(I.getOperand(1), newValueSext);
-                I.replaceAllUsesWith(newValueAnd);
+                if (!skipOpt)
+                {
+                    llvm::IRBuilder<> builder(&I);
+                    Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), I.getType());
+                    Value* newValueAnd = builder.CreateAnd(I.getOperand(1), newValueSext);
+                    I.replaceAllUsesWith(newValueAnd);
+                }
             }
         }
     }
@@ -3404,7 +3419,6 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
         }
 
     }
-
 }
 
 void GenSpecificPattern::visitCastInst(CastInst& I)
