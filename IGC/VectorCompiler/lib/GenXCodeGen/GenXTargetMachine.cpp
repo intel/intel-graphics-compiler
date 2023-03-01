@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -122,7 +122,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXReduceIntSizePass(registry);
   initializeGenXRegionCollapsingPass(registry);
   initializeGenXRematerializationWrapperPass(registry);
-  initializeGenXThreadPrivateMemoryPass(registry);
   initializeGenXTidyControlFlowPass(registry);
   initializeGenXUnbalingWrapperPass(registry);
   initializeGenXVisaRegAllocWrapperPass(registry);
@@ -397,20 +396,12 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// of aggregates.
   vc::addPass(PM, createGenXAggregatePseudoLoweringPass());
 
-  /// .. include:: GenXGEPLowering.cpp
-  /// GenXGEPLowering must be run before GenXThreadPrivateMemory and cannot be
-  /// run earlier as GenXAggregatePseudoLowering may create GEPs.
-  /// TODO: We run GenXGEPLowering twice: before GenXThreadPrivateMemory and
-  /// before GenXLowering. It seems that after GenXThreadPrivateMemory removal
-  /// we can remove this run of GenXGEPLowering.
-  vc::addPass(PM, createGenXGEPLoweringPass());
   //  .. include:: GenXGASCastAnalyzer.cpp
   vc::addPass(PM, createGenXGASCastWrapperPass());
   //  .. include:: GenXGASDynamicResolution.cpp
   vc::addPass(PM, createGenXGASDynamicResolutionPass());
   /// .. include:: GenXLoadStoreLowering.cpp
   vc::addPass(PM, createGenXLoadStoreLoweringPass());
-  vc::addPass(PM, createGenXThreadPrivateMemoryPass());
 
   /// InstructionCombining
   /// --------------------
@@ -450,7 +441,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXPromotePredicate.cpp
   vc::addPass(PM, createGenXPromotePredicatePass());
 
-  // Run GEP lowering again to remove possible GEPs after instcombine.
+  /// .. include:: GenXGEPLowering.cpp
   vc::addPass(PM, createGenXGEPLoweringPass());
   /// .. include:: GenXLowering.cpp
   vc::addPass(PM, createGenXLoweringPass());

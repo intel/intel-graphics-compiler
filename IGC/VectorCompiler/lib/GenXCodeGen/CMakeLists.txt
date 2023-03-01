@@ -28,18 +28,23 @@ set(CODEGEN_SOURCES
   GenXAnalysisDumper.cpp
   GenXArgIndirection.cpp
   GenXBaling.cpp
-  GenXCategory.cpp
   GenXCFSimplification.cpp
+  GenXCategory.cpp
   GenXCisaBuilder.cpp
-  GenXConstants.cpp
   GenXCoalescing.cpp
+  GenXConstants.cpp
   GenXDeadVectorRemoval.cpp
   GenXDebugInfo.cpp
+  GenXDebugLegalization.cpp
   GenXDepressurizer.cpp
+  GenXEmulate.cpp
   GenXExtractVectorizer.cpp
-  GenXGotoJoin.cpp
+  GenXFixInvalidFuncName.cpp
+  GenXGASCastAnalyzer.cpp
+  GenXGASDynamicResolution.cpp
   GenXGEPLowering.cpp
   GenXGlobalValueLowering.cpp
+  GenXGotoJoin.cpp
   GenXIMadPostLegalization.cpp
   GenXInitBiFConstants.cpp
   GenXInlineAsmLowering.cpp
@@ -48,47 +53,41 @@ set(CODEGEN_SOURCES
   GenXLiveRanges.cpp
   GenXLiveness.cpp
   GenXLoadStoreLowering.cpp
-  GenXLowering.cpp
   GenXLowerAggrCopies.cpp
   GenXLowerJmpTableSwitch.cpp
-  GenXEmulate.cpp
+  GenXLowering.cpp
   GenXModule.cpp
   GenXNumbering.cpp
-  GenXVectorCombiner.cpp
   GenXOCLInfoExtractor.cpp
   GenXOCLRuntimeInfo.cpp
   GenXPatternMatch.cpp
   GenXPostLegalization.cpp
-  GenXPrinter.cpp
-  GenXPressureTracker.cpp
   GenXPredRegionLowering.cpp
-  GenXSimdCFRegion.cpp
+  GenXPressureTracker.cpp
+  GenXPrinter.cpp
   GenXPrologEpilogInsertion.cpp
   GenXPromoteArray.cpp
-  GenXPromoteStatefulToBindless.cpp
-  GenXThreadPrivateMemory.cpp
   GenXPromotePredicate.cpp
+  GenXPromoteStatefulToBindless.cpp
   GenXRawSendRipper.cpp
   GenXReduceIntSize.cpp
-  GenXRegionUtils.cpp
   GenXRegionCollapsing.cpp
+  GenXRegionUtils.cpp
   GenXRematerialization.cpp
   GenXSimdCFConformance.cpp
+  GenXSimdCFRegion.cpp
   GenXStackUsage.cpp
+  GenXStructSplitter.cpp
   GenXSubtarget.cpp
   GenXTargetMachine.cpp
   GenXTidyControlFlow.cpp
   GenXUnbaling.cpp
   GenXUtil.cpp
+  GenXVectorCombiner.cpp
   GenXVectorDecomposer.cpp
-  GenXVisaRegAlloc.cpp
   GenXVisa.cpp
+  GenXVisaRegAlloc.cpp
   OCLRuntimeInfoPrinter.cpp
-  GenXStructSplitter.cpp
-  GenXDebugLegalization.cpp
-  GenXFixInvalidFuncName.cpp
-  GenXGASCastAnalyzer.cpp
-  GenXGASDynamicResolution.cpp
 )
 
 add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})

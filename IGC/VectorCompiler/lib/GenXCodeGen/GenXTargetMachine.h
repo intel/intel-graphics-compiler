@@ -241,7 +241,6 @@ void initializeGenXRawSendRipperPass(PassRegistry &);
 void initializeGenXReduceIntSizePass(PassRegistry &);
 void initializeGenXRegionCollapsingPass(PassRegistry &);
 void initializeGenXRematerializationWrapperPass(PassRegistry &);
-void initializeGenXThreadPrivateMemoryPass(PassRegistry &);
 void initializeGenXTidyControlFlowPass(PassRegistry &);
 void initializeGenXUnbalingWrapperPass(PassRegistry &);
 void initializeGenXVisaRegAllocWrapperPass(PassRegistry &);
