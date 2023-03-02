@@ -1220,6 +1220,9 @@ void CISA_IR_Builder::LinkTimeOptimization(
           rets[calleeLabel].push_back(inst);
         }
       }
+
+      // Merge callee's barrier info into caller
+      caller->fg.builder->usedBarries() |= callee->fg.builder->usedBarries();
     }
 
     callee->fg.builder->~IR_Builder();
