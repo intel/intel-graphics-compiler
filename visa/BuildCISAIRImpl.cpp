@@ -10,7 +10,11 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_framework.h"
 #include "Common_ISA_util.h"
 #include "visa_igc_common_header.h"
+#ifdef DLL_MODE
+#include "RT_Jitter_Interface.h"
+#else
 #include "JitterDataStruct.h"
+#endif
 #include "BinaryCISAEmission.h"
 #include "BinaryEncoding.h"
 #include "IsaDisassembly.h"

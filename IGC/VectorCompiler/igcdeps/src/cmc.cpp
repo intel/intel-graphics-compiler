@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
 #include "LegacyInfoGeneration.h"
+#include "RT_Jitter_Interface.h"
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
 #include "inc/common/igfxfmid.h"

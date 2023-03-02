@@ -39,6 +39,11 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
               Options &opt);
 #endif
 
+#define JIT_SUCCESS 0
+#define JIT_INVALID_INPUT 1
+#define JIT_CISA_ERROR 3
+#define JIT_INVALID_PLATFORM 5
+
 #ifndef DLL_MODE
 int parseBinary(std::string fileName, int argc, const char *argv[],
                 Options &opt) {
@@ -94,6 +99,122 @@ int parseBinary(std::string fileName, int argc, const char *argv[],
   return result;
 }
 #endif
+
+#define COMMON_ISA_MAX_KERNEL_NAME_LEN 255
+
+int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
+                         unsigned int kernelIsaSize, void *&genBinary,
+                         unsigned int &genBinarySize, const char *platformStr,
+                         int majorVersion, int minorVersion, int numArgs,
+                         const char *args[], char *errorMsg,
+                         vISA::FINALIZER_INFO *jitInfo, void *gtpin_init) {
+  // This function becomes the new entry point even for JITCompile clients.
+  if (kernelName == NULL || kernelIsa == NULL ||
+      std::string_view(kernelName).size() > COMMON_ISA_MAX_KERNEL_NAME_LEN) {
+    return JIT_INVALID_INPUT;
+  }
+  // This must be done before processing the options,
+  // as some options depend on the platform
+  TARGET_PLATFORM platform =
+      vISA::PlatformInfo::getVisaPlatformFromStr(platformStr);
+  if (platform == GENX_NONE) {
+    return JIT_INVALID_PLATFORM;
+  }
+
+  genBinary = NULL;
+  genBinarySize = 0;
+
+  char *isafilebuf = (char *)kernelIsa;
+  CISA_IR_Builder *cisa_builder = NULL;
+
+  // HW mode: default: GEN path; if dump/verify/debug: Both path
+  VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
+#if defined(_DEBUG)
+  builderOption = VISA_BUILDER_BOTH;
+#endif
+
+  CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption,
+                                 platform, numArgs, args);
+  cisa_builder->setGtpinInit(gtpin_init);
+
+  if (!cisa_builder) {
+    return JIT_CISA_ERROR;
+  }
+
+  std::vector<VISAKernel *> kernels;
+  bool passed = readIsaBinaryNG(isafilebuf, cisa_builder, kernels, kernelName,
+                                majorVersion, minorVersion);
+
+  if (!passed) {
+    return JIT_CISA_ERROR;
+  }
+
+  cisa_builder->Compile("");
+
+  VISAKernel *kernel = kernels[0];
+  vISA::FINALIZER_INFO *tempJitInfo = NULL;
+  void *genxBinary = NULL;
+  int size = 0;
+  kernel->GetJitInfo(tempJitInfo);
+  kernel->GetGenxDebugInfo(tempJitInfo->genDebugInfo,
+                           tempJitInfo->genDebugInfoSize);
+
+  if (gtpin_init) {
+    // Return free GRF info
+    kernel->GetGTPinBuffer(tempJitInfo->freeGRFInfo,
+                           tempJitInfo->freeGRFInfoSize);
+  }
+
+  if (jitInfo != NULL && tempJitInfo != NULL)
+    memcpy_s(jitInfo, sizeof(vISA::FINALIZER_INFO), tempJitInfo,
+             sizeof(vISA::FINALIZER_INFO));
+
+  if (!(0 == kernel->GetGenxBinary(genxBinary, size) && genxBinary != NULL)) {
+    return JIT_INVALID_INPUT;
+  }
+  genBinary = genxBinary;
+  genBinarySize = size;
+
+  CISA_IR_Builder::DestroyBuilder(cisa_builder);
+  return JIT_SUCCESS;
+}
+
+/**
+ * This is the main entry point for CM.
+ */
+DLL_EXPORT int JITCompile(const char *kernelName, const void *kernelIsa,
+                          unsigned int kernelIsaSize, void *&genBinary,
+                          unsigned int &genBinarySize, const char *platform,
+                          int majorVersion, int minorVersion, int numArgs,
+                          const char *args[], char *errorMsg,
+                          vISA::FINALIZER_INFO *jitInfo) {
+  // JITCompile will invoke the other JITCompile API that supports relocation.
+  // Via this path, relocs will be NULL. This way we can share a single
+  // implementation of JITCompile.
+
+  return JITCompileAllOptions(
+      kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize, platform,
+      majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, nullptr);
+}
+
+DLL_EXPORT int JITCompile_v2(const char *kernelName, const void *kernelIsa,
+                             unsigned int kernelIsaSize, void *&genBinary,
+                             unsigned int &genBinarySize, const char *platform,
+                             int majorVersion, int minorVersion, int numArgs,
+                             const char *args[], char *errorMsg,
+                             vISA::FINALIZER_INFO *jitInfo, void *gtpin_init) {
+  // JITCompile will invoke the other JITCompile API that supports relocation.
+  // Via this path, relocs will be NULL. This way we can share a single
+  // implementation of JITCompile.
+  return JITCompileAllOptions(
+      kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize, platform,
+      majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, gtpin_init);
+}
+
+DLL_EXPORT void getJITVersion(unsigned int &majorV, unsigned int &minorV) {
+  majorV = COMMON_ISA_MAJOR_VER;
+  minorV = COMMON_ISA_MINOR_VER;
+}
 
 #ifndef DLL_MODE
 

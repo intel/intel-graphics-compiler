@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "G4_Kernel.hpp"
 #include "InstSplit.h"
 #include "PreDefinedVars.h"
+#include "RT_Jitter_Interface.h"
 #include "inc/common/sku_wa.h"
 #include "visa_igc_common_header.h"
 #include "visa_wa.h"
