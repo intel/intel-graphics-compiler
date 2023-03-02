@@ -323,6 +323,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createLowerExpectIntrinsicPass());
   vc::addPass(PM, createCFGSimplificationPass());
   vc::addPass(PM, createInstructionCombiningPass());
+  vc::addPass(PM, createCFGSimplificationPass());
 
   vc::addPass(PM, createGlobalDCEPass());
   vc::addPass(PM, createGenXDebugLegalizationPass());
