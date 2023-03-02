@@ -3478,8 +3478,9 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
       unsigned int numrows = lr->getDcl()->getNumRows();
       G4_Declare *temp = getOrCreateAddrSpillFillDcl(var, lr->getDcl(), kernel);
 
-      if (failSafeSpill_ && temp->getRegVar()->getPhyReg() == NULL) {
-        if (!kernel->getOption(vISA_NewFailSafeRA)) {
+      if (failSafeSpill_) {
+        if (!kernel->getOption(vISA_NewFailSafeRA) &&
+            !temp->getRegVar()->getPhyReg()) {
           temp->getRegVar()->setPhyReg(
               builder_->phyregpool.getGreg(spillRegOffset_), 0);
           spillRegOffset_ += numrows;
@@ -3492,10 +3493,14 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
             --context.prev;
           context.next = next_inst_it;
           context.setAddrDcl(var->getDeclare());
-          // choose GRFs to assign to new range
-          temp->getRegVar()->setPhyReg(
-              builder_->phyregpool.getGreg(context.getFreeGRFIndir(numrows)),
-              0);
+          if (!temp->getRegVar()->getPhyReg()) {
+            // choose GRFs to assign to new range
+            temp->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(context.getFreeGRFIndir(numrows)),
+                0);
+          }
+          context.markClobbered(
+              temp->getRegVar()->getPhyReg()->asGreg()->getRegNum(), numrows);
           context.resetAddrDcl();
         }
       }
@@ -6038,7 +6043,7 @@ void BoundedRA::markGRFs(unsigned int reg, unsigned int num) {
     if (reservedGRFStart != NOT_FOUND && reg >= reservedGRFStart &&
         reg < (reservedGRFStart + gra.getNumReservedGRFs()))
       continue;
-    clobberedGRFs[curInst].push_back(r);
+    clobberedGRFs[curInst].insert(r);
   }
 }
 

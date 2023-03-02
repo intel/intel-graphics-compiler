@@ -174,6 +174,14 @@ public:
         setInst(inst, bb);
   }
 
+  void markClobbered(unsigned int reg, unsigned int numRegs) {
+    // Mark registers as being clobbered in current inst
+    auto &entry = clobberedGRFs[curInst];
+    for (unsigned int busyReg = reg; busyReg != (reg + numRegs); ++busyReg) {
+      entry.insert(busyReg);
+    }
+  }
+
   BoundedRA(GlobalRA &ra, LiveRange **l);
 
 private:
@@ -183,8 +191,7 @@ private:
   static const unsigned int bitsetSz = 256;
   // Map each inst -> list of busy GRFs
   std::unordered_map<const G4_INST *, std::bitset<bitsetSz>> busyGRF;
-  std::unordered_map<const G4_INST *, std::vector<unsigned short>>
-      clobberedGRFs;
+  std::unordered_map<const G4_INST *, std::set<unsigned short>> clobberedGRFs;
   std::unordered_map<G4_Declare *, std::list<const G4_INST *>> busyIndir;
 
   const G4_INST *curInst = nullptr;
