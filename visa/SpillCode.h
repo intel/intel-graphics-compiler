@@ -75,6 +75,8 @@ class SpillManager {
 
   bool checkDefUseDomRel(G4_Operand *dst, G4_BB *defBB);
 
+  bool isDominatingDef(G4_Operand *opnd, G4_BB *bb);
+
 public:
   SpillManager(GlobalRA &g, const LIVERANGE_LIST &splrs,
                uint32_t startTempDclId)
