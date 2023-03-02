@@ -920,62 +920,62 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _i64_i64, _Rlong)(ulong U
     return (UnsignedValue >= LONG_MAX) ? LONG_MAX : SPIRV_BUILTIN(SConvert, _i64_i64, _Rlong)((long)UnsignedValue);
 }
 
-short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _f32, _Rshort)(float Value)
+short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _f32, )(float Value)
 {
   return __builtin_IB_ftobf_1(Value);
 }
 
-short2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v2f32, _Rshort2)(float2 Value)
+short2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v2f32, )(float2 Value)
 {
   return __builtin_IB_ftobf_2(Value);
 }
 
-short3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v3f32, _Rshort3)(float3 Value)
+short3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v3f32, )(float3 Value)
 {
   return __builtin_IB_ftobf_3(Value);
 }
 
-short4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v4f32, _Rshort4)(float4 Value)
+short4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v4f32, )(float4 Value)
 {
   return __builtin_IB_ftobf_4(Value);
 }
 
-short8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v8f32, _Rshort8)(float8 Value)
+short8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v8f32, )(float8 Value)
 {
   return __builtin_IB_ftobf_8(Value);
 }
 
-short16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v16f32, _Rshort16)(float16 Value)
+short16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToBF16INTEL, _v16f32, )(float16 Value)
 {
   return __builtin_IB_ftobf_16(Value);
 }
 
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _i16, _Rfloat)(short Value)
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _i16, )(short Value)
 {
   return __builtin_IB_bftof_1(Value);
 }
 
-float2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v2i16, _Rfloat2)(short2 Value)
+float2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v2i16, )(short2 Value)
 {
   return __builtin_IB_bftof_2(Value);
 }
 
-float3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v3i16, _Rfloat3)(short3 Value)
+float3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v3i16, )(short3 Value)
 {
   return __builtin_IB_bftof_3(Value);
 }
 
-float4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v4i16, _Rfloat4)(short4 Value)
+float4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v4i16, )(short4 Value)
 {
   return __builtin_IB_bftof_4(Value);
 }
 
-float8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v8i16, _Rfloat8)(short8 Value)
+float8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v8i16, )(short8 Value)
 {
   return __builtin_IB_bftof_8(Value);
 }
 
-float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v16i16, _Rfloat16)(short16 Value)
+float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v16i16, )(short16 Value)
 {
   return __builtin_IB_bftof_16(Value);
 }
