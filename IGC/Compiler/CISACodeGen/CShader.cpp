@@ -277,40 +277,6 @@ void CShader::EOTGateway(CVariable* payload)
 
 void CShader::AddEpilogue(llvm::ReturnInst* ret)
 {
-    if (IGC_IS_FLAG_ENABLED(deadLoopForFloatException))
-    {
-        // (W) mov (8|M0) t sr0.1<0;1,0>:ud
-        CVariable* t = GetNewVariable(
-            numLanes(m_SIMDSize),
-            ISA_TYPE_UW, EALIGN_WORD, "tmp_sr0_1");
-        encoder.SetNoMask();
-        encoder.SetSrcSubReg(0, 1);
-        CVariable* SR0 = GetNewVariable(4, ISA_TYPE_UW, EALIGN_WORD, true, CName::NONE);
-        encoder.GetVISAPredefinedVar(SR0, PREDEFINED_SR0);
-        encoder.Copy(t, SR0);
-        encoder.Push();
-
-        // (W) and (8|M0) t t 0x3F:uw
-        encoder.SetNoMask();
-        encoder.And(t, t, ImmToVariable(0x3F, ISA_TYPE_UW)); // sr0.1 bit 0~5 for float exception
-        encoder.Push();
-
-        // (W) cmp.ne (8|M0) f0.0  t:uw  0:uw
-        CVariable* lsPred = GetNewVariable(
-            numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_BYTE, "pred_sr0");
-        encoder.SetNoMask();
-        encoder.Cmp(EPREDICATE_NE, lsPred, t, ImmToVariable(0, ISA_TYPE_UW));
-        encoder.Push();
-
-        // create loop label
-        uint label = encoder.GetNewLabelID("sr0_1_loop");
-        encoder.Label(label);
-        encoder.Push();
-
-        //(W&f0.0) jmpi     label
-        encoder.Jump(lsPred, label);
-        encoder.Push();
-    }
     encoder.EOT();
     encoder.Push();
 }

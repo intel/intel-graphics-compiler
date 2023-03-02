@@ -288,6 +288,7 @@ public:
   G4_DstRegRegion *getDst() const { return dst; }
   bool supportsNullDst() const;
 
+  bool isIEEEExceptionTrap() const;
   bool isBarrierWAIntrinsic() const;
   bool isNamedBarrierWAIntrinsic() const;
   bool isPseudoKill() const;
@@ -1249,6 +1250,7 @@ enum class Intrinsic {
   PseudoAddrMov,
   NamedBarrierWA,
   BarrierWA,
+  IEEEExceptionTrap,
   NumIntrinsics
 };
 
@@ -1346,6 +1348,12 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
      {0, 0, 0, false, false}},
     {Intrinsic::BarrierWA,
      "barrierWA",
+     1,
+     0,
+     Phase::SWSB,
+     {0, 0, 0, false, false}},
+    {Intrinsic::IEEEExceptionTrap,
+     "ieee_exception_trap",
      1,
      0,
      Phase::SWSB,

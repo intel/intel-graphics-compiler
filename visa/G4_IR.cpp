@@ -7580,3 +7580,8 @@ bool G4_INST::isNamedBarrierWAIntrinsic() const {
   return isIntrinsic() &&
          asIntrinsicInst()->getIntrinsicId() == Intrinsic::NamedBarrierWA;
 }
+
+bool G4_INST::isIEEEExceptionTrap() const {
+  return isIntrinsic() &&
+         asIntrinsicInst()->getIntrinsicId() == Intrinsic::IEEEExceptionTrap;
+}

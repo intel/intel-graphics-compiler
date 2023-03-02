@@ -4965,6 +4965,9 @@ namespace IGC
         if (context->getModuleMetaData()->csInfo.disableSplitOnSpill) {
           SaveOption(vISA_DoSplitOnSpill, false);
         }
+        if (IGC_IS_FLAG_ENABLED(deadLoopForFloatException)) {
+          SaveOption(vISA_AddIEEEExceptionTrap, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

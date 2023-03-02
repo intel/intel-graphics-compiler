@@ -253,6 +253,8 @@ private:
   void prepareDPASFuseRSWA();
   void applyBarrierWA(INST_LIST_ITER it, G4_BB *bb);
   void applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb);
+  void insertIEEEExceptionTrap();
+  void expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb);
 
   typedef std::vector<vISA::G4_INST *> InstListType;
   // create instruction sequence to calculate call offset from ip
@@ -404,7 +406,9 @@ private:
 
   // indicates whether RA has failed
   bool RAFail;
-  // Name of the pass that we should stop after, from the -stopafter flag.
+  // Name of the pass that we should stop before/after, from the
+  // -stopbefore/-stopafter flag.
+  std::string StopBeforePass;
   std::string StopAfterPass;
   // Whether we have hit the stop-after pass.
   bool EarlyExited = false;
@@ -427,8 +431,10 @@ public:
       : builder(b), kernel(k), fg(f), mem(m), RAFail(false) {
     numBankConflicts = 0;
 #ifndef DLL_MODE
-    auto PassName = k.getOptions()->getOptionCstr(vISA_StopAfterPass);
-    if (PassName) {
+    if (auto PassName = k.getOptions()->getOptionCstr(vISA_StopBeforePass)) {
+      StopBeforePass = std::string(PassName);
+    }
+    if (auto PassName = k.getOptions()->getOptionCstr(vISA_StopAfterPass)) {
       StopAfterPass = std::string(PassName);
     }
 #endif // DLL_MODE

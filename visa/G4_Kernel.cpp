@@ -979,7 +979,7 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
     dumpG4Internal(baseName);
 }
 
-void G4_Kernel::dumpStopafter() {
+void G4_Kernel::dumpToConsole() {
   dumpG4InternalTo(std::cout);
 }
 

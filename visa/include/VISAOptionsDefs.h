@@ -71,6 +71,10 @@ DEF_VISA_OPTION(vISA_DumpGenOffset, ET_BOOL, "-dumpgenoffset", UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg, ET_CSTR, "-forceAssignRhysicalReg",
                 UNUSED, NULL)
 DEF_VISA_OPTION(
+    vISA_StopBeforePass, ET_CSTR, "-stopbefore",
+    "For visa LIT test. It dumps g4 to stdout before the given pass"
+    "and stops all the remaining passes.", NULL)
+DEF_VISA_OPTION(
     vISA_StopAfterPass, ET_CSTR, "-stopafter",
     "For visa LIT test. It dumps g4 to stdout after the given pass"
     "and stops all the remaining passes.", NULL)
@@ -558,6 +562,10 @@ DEF_VISA_OPTION(vISA_enableBarrierWA, ET_BOOL,
                 "-enableBarrierWA",
                 "enable barrier WA which inserts instructions to check the "
                 "arrival of the notification in n0.0 brfore sync.bar",
+                false)
+DEF_VISA_OPTION(vISA_AddIEEEExceptionTrap, ET_BOOL, "-addIEEEExTrap",
+                "Add IEEE exception trap which inserts an infinite loop "
+                "before EOT to catch any IEEE exception",
                 false)
 
 //=== HW debugging options ===

@@ -1334,6 +1334,15 @@ void Optimizer::runPass(PassIndex Index) {
     return;
 
   std::string Name = PI.Name;
+
+#ifndef DLL_MODE
+  if (StopBeforePass == Name) {
+    EarlyExited = true;
+    kernel.dumpToConsole();
+    return;
+  }
+#endif // DLL_MODE
+
   setCurrentDebugPass(PI.Name);
 
   if (PI.Timer != TimerID::NUM_TIMERS)
@@ -1354,7 +1363,7 @@ void Optimizer::runPass(PassIndex Index) {
   // executed.
   if (StopAfterPass == Name || EarlyExited) {
     EarlyExited = true;
-    kernel.dumpStopafter();
+    kernel.dumpToConsole();
   }
 #endif // DLL_MODE
 
@@ -1862,7 +1871,7 @@ int Optimizer::optimization() {
 #ifndef DLL_MODE
   if (StopAfterPass == "CFGConstruction") {
     EarlyExited = true;
-    kernel.dumpStopafter();
+    kernel.dumpToConsole();
   }
 #endif // DLL_MODE
 
@@ -6806,6 +6815,8 @@ void Optimizer::preRA_HWWorkaround() {
   insertFenceAtEntry();
 
   cloneSampleInst();
+
+  insertIEEEExceptionTrap();
 }
 
 //
@@ -7147,6 +7158,9 @@ void Optimizer::HWWorkaround() {
       if (builder.needBarrierWA() && inst->isNamedBarrierWAIntrinsic()) {
         applyNamedBarrierWA(ii, bb);
       }
+
+      if (inst->isIEEEExceptionTrap())
+        expandIEEEExceptionTrap(ii, bb);
 
       ii++;
     }
@@ -13586,4 +13600,93 @@ void Optimizer::applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
       builder.createMov(g4::SIMD1, dstMovForRestore, srcMovForRestore,
                         InstOpt_WriteEnable, false);
   *it = restoreInst;
+}
+
+// Insert IEEEExceptionTrap before EOT.
+void Optimizer::insertIEEEExceptionTrap() {
+  if (!fg.builder->getOption(vISA_AddIEEEExceptionTrap))
+    return;
+
+  for (auto bb : fg) {
+    for (auto it = bb->begin(), ie = bb->end(); it != ie; ++it) {
+      G4_INST *inst = *it;
+      if (!inst->isEOT())
+        continue;
+      // Reserve 2 UD: one for sr0.1, the other for flag
+      G4_Declare *tmp =
+          builder.createTempVar(2, Type_UD, Even_Word, "ExTrapTemp");
+      G4_INST* trap =
+          builder.createIntrinsicInst(nullptr, Intrinsic::IEEEExceptionTrap,
+              g4::SIMD1, builder.createDst(tmp->getRegVar(), 0, 0, 1, Type_UD),
+              nullptr, nullptr, nullptr, InstOpt_WriteEnable, true);
+      bb->insertBefore(it, trap);
+    }
+  }
+}
+
+// Expand IEEEExceptionTrap intrinsic as an infinite loop to catch any IEEE
+// exception. Note that the IEEE exception trap enable bit should be set
+// separately in CR initialization.
+// TODO: Check if we can expand the trap into other inst like sync.host or
+// illegal instruction to support this debug feature.
+void Optimizer::expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb) {
+  G4_INST *inst = *it;
+  vASSERT(inst->isIEEEExceptionTrap());
+
+  auto dst = inst->getDst();
+  // Get IEEE exception bits of state register where bits 5:0 of sr0.1:ud are
+  // for IEEE exception.
+  //   (W) mov (1) dst.0:ud sr0.1<0;1,0>:ud
+  G4_DstRegRegion *tmpSR0Dot1Dst = builder.createDst(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), 1, Type_UD);
+  G4_SrcRegRegion *SR0Dot1 = builder.createSrc(
+      builder.phyregpool.getSr0Reg(), 0, 1, builder.getRegionScalar(), Type_UD);
+  auto saveInst = builder.createMov(g4::SIMD1, tmpSR0Dot1Dst, SR0Dot1,
+                                    InstOpt_WriteEnable, false);
+  bb->insertBefore(it, saveInst);
+
+  // Save f0.0:ud to dst.1:ud, then f0.0 can be used in the loop
+  //   (W) mov(1) dst.1:ud f0.0:ud
+  G4_RegVar *flagVar = builder.createTempFlag(1, "ex_trap_flag")->getRegVar();
+  flagVar->setPhyReg(builder.phyregpool.getF0Reg(), 0);
+  G4_DstRegRegion *tmpFlagDst = builder.createDst(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff() + 1, 1, Type_UD);
+  G4_SrcRegRegion *flagSrc =
+      builder.createSrc(flagVar, 0, 0, builder.getRegionScalar(), Type_UD);
+  auto saveFlag = builder.createMov(g4::SIMD1, tmpFlagDst, flagSrc,
+                                    InstOpt_WriteEnable, false);
+  bb->insertBefore(it, saveFlag);
+
+  // Check if any IEEE exception bit is set and update flag register.
+  //   (W) and (1)  (ne)f0.0  tmpSR0Dot1  tmpSR0Dot1  0x3f:uw
+  G4_SrcRegRegion *tmpSR0Dot1Src = builder.createSrc(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff(),
+      builder.getRegionStride1(), Type_UD);
+  auto andInst = builder.createInternalInst(
+      nullptr, G4_and, builder.createCondMod(Mod_ne, flagVar, 0), g4::NOSAT,
+      g4::SIMD1, builder.duplicateOperand(tmpSR0Dot1Dst), tmpSR0Dot1Src,
+      builder.createImm(0x3f, Type_UW), InstOpt_WriteEnable);
+  bb->insertBefore(it, andInst);
+
+  // Create label
+  G4_Label *label = builder.createLocalBlockLabel("ex_trap_loop");
+  auto labelInst = builder.createLabelInst(label, false);
+  bb->insertBefore(it, labelInst);
+
+  // Create a trap as infinite loop if flag register is set.
+  //   (W&f0.0) while (1)  ex_trap_loop
+  auto whileInst = builder.createInternalCFInst(
+      builder.createPredicate(PredState_Plus, flagVar, 0), G4_while, g4::SIMD1,
+      label, label, InstOpt_WriteEnable);
+  bb->insertBefore(it, whileInst);
+
+  // Restore flag register.
+  //   (W) mov(1) f0.0:ud dst.1:ud
+  G4_DstRegRegion *flagDst = builder.createDst(flagVar, Type_UD);
+  G4_SrcRegRegion *tmpFlagSrc = builder.createSrc(
+      dst->getBase(), dst->getRegOff(), dst->getSubRegOff() + 1,
+      builder.getRegionScalar(), Type_UD);
+  auto restoreFlag = builder.createMov(g4::SIMD1, flagDst, tmpFlagSrc,
+      InstOpt_WriteEnable, false);
+  *it = restoreFlag;
 }
