@@ -60,12 +60,12 @@ private:
     Value* m_ShMemRTCtrls = nullptr;
     CodeGenContext* m_CGCtx = nullptr;
     bool singleRQMemRayStore = false;
-    //iif there is only one Proceed and it's not in a loop, then, we only need to prepare data for Proceed() once
+    //if there is only one Proceed and it's not in a loop, then, we only need to prepare data for Proceed() once
     //where it's for initialization
     //FIXME: hack code, fix this hack in stage 2.
     bool singleRQProceed = true;
 
-    void LowerAllocateRayQuery(Function& F);
+    void LowerAllocateRayQuery(Function& F, unsigned numProceeds);
     void LowerTraceRayInline(Function& F);
     void LowerTraceRaySyncProceedIntrinsic(Function& F);
     void LowerSyncStackToShadowMemory(Function& F);
@@ -102,13 +102,10 @@ private:
         RayQueryInstrisicBase *P);
 
     void emitSingleRQMemRayWrite(RTBuilder& builder, Value* queryObjIndex);
-    void analyzeSingleRQMemRayWrite(Function& F);
+    bool analyzeSingleRQMemRayWrite(const Function& F) const;
+    std::pair<bool, unsigned> analyzeSingleRQProceed(const Function& F) const;
 
-    Value* emitProceedMainBody(
-        RTBuilder& builder, Value* queryObjIndex, BasicBlock* EndBlock);
-
-    std::pair<Value*, BasicBlock*> emitSyncStackToShadowMemory(
-        RTBuilder& builder, RayQuerySyncStackToShadowMemory* SS2SM, BasicBlock* EndBlock);
+    Value* emitProceedMainBody(RTBuilder& builder, Value* queryObjIndex);
 
     bool forceShortCurcuitingOR_CommittedGeomIdx(RTBuilder& builder, Instruction* I);
 };
@@ -127,16 +124,17 @@ IGC_INITIALIZE_PASS_END(TraceRayInlineLoweringPass, PASS_FLAG, PASS_DESCRIPTION,
 
 bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
 {
-    singleRQMemRayStore = false;
-    singleRQProceed = true;
-
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-    if (m_CGCtx->platform.supportRayTracing() == false)
+    if (!m_CGCtx->platform.supportRayTracing())
         return false;
 
-    LowerAllocateRayQuery(F);
+    singleRQMemRayStore = analyzeSingleRQMemRayWrite(F);
+    unsigned numProceeds;
+    std::tie(singleRQProceed, numProceeds) = analyzeSingleRQProceed(F);
+
+    LowerAllocateRayQuery(F, numProceeds);
     LowerTraceRayInline(F);
     LowerTraceRaySyncProceedIntrinsic(F);
     LowerSyncStackToShadowMemory(F);
@@ -151,22 +149,14 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
     return true;
 }
 
-void TraceRayInlineLoweringPass::LowerAllocateRayQuery(Function& F)
+void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
+    Function& F, unsigned numProceeds)
 {
-    int cntProceeds = 0;
     vector<AllocateRayQueryIntrinsic*> AllocateRayQueries;
     for (auto& I : instructions(F))
     {
         if (auto* ARQ = dyn_cast<AllocateRayQueryIntrinsic>(&I))
             AllocateRayQueries.push_back(ARQ);
-        else if (isa<TraceRaySyncProceedIntrinsic>(&I)) {
-            TraceRaySyncProceedIntrinsic* PI = cast<TraceRaySyncProceedIntrinsic>(&I);
-            AllocateRayQueryIntrinsic* RQO = dyn_cast<AllocateRayQueryIntrinsic>(PI->getQueryObjIndex());
-            ++cntProceeds;
-            singleRQProceed = singleRQProceed &&
-                (cntProceeds == 1) &&
-                (nullptr == LI->getLoopFor(I.getParent()) || (RQO && RQO->getParent() == I.getParent()));
-        }
     }
 
     if (AllocateRayQueries.empty())
@@ -187,12 +177,12 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(Function& F)
     //later, we might improve this w/ a more general way.
     //this way might cover quite some RQOs cases, though
     bool bShrinkSMStack = (AllocateRayQueries.size() > numLanes(m_CGCtx->platform.getMaxRayQuerySIMDSize())
-        && cntProceeds == 1);
-    std::pair<Value*, Value*> RQOpairs = builder.createAllocaRayQueryObjects(AllocateRayQueries.size(), bShrinkSMStack, VALUE_NAME("&ShadowMemory.RayQueryObjects"));
-    m_ShMemRTStacks = RQOpairs.first;
-    m_ShMemRTCtrls = RQOpairs.second;
-    unsigned int currentQueryIndex = 0;
+        && numProceeds == 1);
 
+    std::tie(m_ShMemRTStacks, m_ShMemRTCtrls) =
+        builder.createAllocaRayQueryObjects(AllocateRayQueries.size(), bShrinkSMStack, VALUE_NAME("&ShadowMemory.RayQueryObjects"));
+
+    unsigned int currentQueryIndex = 0;
     for (auto* ARQ : AllocateRayQueries)
     {
         builder.SetInsertPoint(ARQ);
@@ -208,71 +198,93 @@ void TraceRayInlineLoweringPass::LowerAllocateRayQuery(Function& F)
     }
 }
 
+std::pair<bool, unsigned>
+TraceRayInlineLoweringPass::analyzeSingleRQProceed(const Function& F) const
+{
+    unsigned cntProceeds = 0;
+    bool Result = true;
+    for (auto& I : instructions(F))
+    {
+        if (auto *PI = dyn_cast<TraceRaySyncProceedIntrinsic>(&I)) {
+            auto* RQO = dyn_cast<AllocateRayQueryIntrinsic>(PI->getQueryObjIndex());
+            ++cntProceeds;
+            Result &=
+                (cntProceeds == 1) &&
+                (!LI->getLoopFor(PI->getParent()) ||
+                 (RQO && RQO->getParent() == PI->getParent()));
+        }
+    }
+
+    return { Result, cntProceeds };
+}
+
 //FIXME: temp solution, will use alias based general solution to replace this.
 //this temp solution is more like a prototype/experiment to confirm if this way will improve performance enough
 //which means we DO need a general solution eventually
 
 //if
 //  there's only one TraceRayInline() &&
-//  at least one Proceed() &&
+//  zero or more Proceed() &&
 //  TRI is not in loop &&
 //  both intrinsics are for the same RQO
 //then
 //  we only need to write MemRay[TOP_LEVEL_BVH] data once.
-void TraceRayInlineLoweringPass::analyzeSingleRQMemRayWrite(Function& F)
+bool TraceRayInlineLoweringPass::analyzeSingleRQMemRayWrite(const Function& F) const
 {
-    if (!IGC_IS_FLAG_ENABLED(EnableSingleRQMemRayStore)){
-        return;
-    }
-    singleRQMemRayStore = true;
-    Value* RQO = nullptr;
-    TraceRayInlineHLIntrinsic* TRI = nullptr;
-    for (auto& I : instructions(F)){
-        Value* curRQO = nullptr;
-        if (auto* tri = dyn_cast<TraceRayInlineHLIntrinsic>(&I)) {
-            if (TRI){
+    if (IGC_IS_FLAG_DISABLED(EnableSingleRQMemRayStore))
+        return false;
+
+    const Value* RQO = nullptr;
+    const TraceRayInlineHLIntrinsic* TRI = nullptr;
+    for (auto& I : instructions(F))
+    {
+        const Value* curRQO = nullptr;
+        if (auto* tri = dyn_cast<TraceRayInlineHLIntrinsic>(&I))
+        {
+            if (TRI)
+            {
                 //we only work on single TRI case
-                singleRQMemRayStore = false;
-                break;
-            }else{
+                return false;
+            }
+            else
+            {
                 TRI = tri;
                 curRQO = TRI->getQueryObjIndex();
             }
         }
-        else if (auto* P = dyn_cast <TraceRaySyncProceedIntrinsic>(&I)) {
+        else if (auto* P = dyn_cast<TraceRaySyncProceedIntrinsic>(&I))
+        {
             curRQO = P->getQueryObjIndex();
         }
+
         //make sure all RQOs are the same one (will replace logic w/ AA later)
-        if (RQO && curRQO && (RQO != curRQO)) {
-            singleRQMemRayStore = false;
-            break;
-        }else if (!RQO && curRQO){
+        if (RQO && curRQO && (RQO != curRQO))
+            return false;
+        else if (!RQO && curRQO)
             RQO = curRQO;
-        }
     }
+
     //exclude case where TRI is in loop
-    singleRQMemRayStore = singleRQMemRayStore && RQO && TRI && (nullptr == LI->getLoopFor(TRI->getParent()));
+    return RQO && TRI && !LI->getLoopFor(TRI->getParent());
 }
 
 void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
 {
-     analyzeSingleRQMemRayWrite(F);
-     vector<TraceRayInlineHLIntrinsic*> traceCalls;
-     for (auto& I : instructions(F))
-     {
-         if (auto * TRI = dyn_cast<TraceRayInlineHLIntrinsic>(&I))
-             traceCalls.push_back(TRI);
-     }
+    vector<TraceRayInlineHLIntrinsic*> traceCalls;
+    for (auto& I : instructions(F))
+    {
+        if (auto* TRI = dyn_cast<TraceRayInlineHLIntrinsic>(&I))
+            traceCalls.push_back(TRI);
+    }
 
-     for (auto* trace : traceCalls)
-     {
-         RTBuilder builder(&*F.getEntryBlock().begin(), *m_CGCtx);
-         builder.SetInsertPoint(trace);
-         Value* QueryObjIndex = trace->getQueryObjIndex();
+    for (auto* trace : traceCalls)
+    {
+        RTBuilder builder(&*F.getEntryBlock().begin(), *m_CGCtx);
+        builder.SetInsertPoint(trace);
+        Value* QueryObjIndex = trace->getQueryObjIndex();
 
-         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, QueryObjIndex);
-
-         {
+        auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, QueryObjIndex);
+        {
             Value* Vec = UndefValue::get(
                 IGCLLVM::FixedVectorType::get(
                     builder.getFloatTy(), trace->getNumRayInfoFields()));
@@ -286,24 +298,24 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
                 trace->getFlag(),
                 trace->getMask(),
                 trace->getTMax());
-         }
+        }
 
-         // Set TraceRayControl to Initial
-         // RayQueryObject->stateInfo.traceRayCtrl = TRACE_RAY_INITIAL
-         builder.setSyncTraceRayControl(
-             getShMemRTCtrl(builder, QueryObjIndex),
-             TraceRayMessage::TraceRayCtrl::TRACE_RAY_INITIAL);
+        // Set TraceRayControl to Initial
+        // RayQueryObject->stateInfo.traceRayCtrl = TRACE_RAY_INITIAL
+        builder.setSyncTraceRayControl(
+            getShMemRTCtrl(builder, QueryObjIndex),
+            TraceRayMessage::TraceRayCtrl::TRACE_RAY_INITIAL);
 
-         if (singleRQMemRayStore)
-         {
-             emitSingleRQMemRayWrite(builder, QueryObjIndex);
-         }
-     }
+        if (singleRQMemRayStore)
+        {
+            emitSingleRQMemRayWrite(builder, QueryObjIndex);
+        }
+    }
 
-     for (auto* trace : traceCalls)
-     {
-         trace->eraseFromParent();
-     }
+    for (auto* trace : traceCalls)
+    {
+        trace->eraseFromParent();
+    }
 }
 
 std::pair<BasicBlock*, BasicBlock*>
@@ -312,8 +324,7 @@ TraceRayInlineLoweringPass::branchOnPotentialHitDone(
     RayQueryInstrisicBase* P)
 {
     auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(IRB, P->getQueryObjIndex());
-    Value* doneDW = IRB.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
-    Value* NotDone = IRB.isDoneBitNotSet(doneDW);
+    Value* NotDone = IRB.isDoneBitNotSet(ShadowMemStackPointer, false);
 
     return IRB.createTriangleFlow(
         NotDone, P, VALUE_NAME("ProceedBB"), VALUE_NAME("ProceedEndBlock"));
@@ -322,44 +333,14 @@ TraceRayInlineLoweringPass::branchOnPotentialHitDone(
 void TraceRayInlineLoweringPass::emitSingleRQMemRayWrite(RTBuilder& builder, Value* queryObjIndex)
 {
     auto* const HWStackPointer = builder.getSyncStackPointer();
-
     auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, queryObjIndex);
 
-    //HWstack->ray[0] = SMstack->ray[0]  //first 32 Bytes only
-    // First, let's fill up the data in the MemRay struct
-    //Copy Ray Info - origin, direction, and range [Tmin, Tmax]
-    // Offset to the ray info
-    builder.CreateMemCpy(
-        builder.getRayInfoPtr(HWStackPointer, 0, TOP_LEVEL_BVH),
-        builder.getRayInfoPtr(ShadowMemStackPointer, 0, TOP_LEVEL_BVH),
-        32,
-        32);
-
-    //HWstack->ray[0].2nd32Byte = SMstack->ray[0].2nd32Byte  //second 32 Bytes only
-    //Set BVH, Flags, Mask and InstLeafPtr with RMW
-    //Copy BVH Plus Flags
-    Value* bvhPlusFlagsShMem = builder.getNodePtrAndFlags(ShadowMemStackPointer);
-    Value* maskPlusInstLeafPtr = builder.getInstLeafPtrAndRayMask(ShadowMemStackPointer);
-
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].rt.xe.topOfNodePtrAndFlags) == 96, "topOfNodePtrAndFlags layout changed?");
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].rt.xe.topOfInstanceLeafPtr) == 120, "topOfInstanceLeafPtr layout changed?");
-
-    Value* rayFlagPtrHWMem = builder.getNodePtrAndFlagsPtr(HWStackPointer);
-    Value* rayFlagPtrShMem = builder.getNodePtrAndFlagsPtr(ShadowMemStackPointer);
-    DenseMap<uint32_t, Value*> vals;
-    vals[0] = bvhPlusFlagsShMem;
-    uint32_t offsetMask = offsetof(MemRay::RT::Xe, topOfInstanceLeafPtr) - offsetof(MemRay::RT::Xe, topOfNodePtrAndFlags);
-    vals[offsetMask] = maskPlusInstLeafPtr;
-    builder.WriteBlockData(rayFlagPtrHWMem, (singleRQProceed ? nullptr : rayFlagPtrShMem), 32, vals, VALUE_NAME("RTStack.MemRay_TOP.2nd32B"));
+    builder.emitSingleRQMemRayWrite(HWStackPointer, ShadowMemStackPointer, singleRQProceed);
 }
 
 Value* TraceRayInlineLoweringPass::emitProceedMainBody(
-    RTBuilder& builder, Value* queryObjIndex, BasicBlock* EndBlock)
+    RTBuilder& builder, Value* queryObjIndex)
 {
-    auto* const HWStackPointer = builder.getSyncStackPointer();
-
-    auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, queryObjIndex);
-
     if (!singleRQMemRayStore)
     {
         emitSingleRQMemRayWrite(builder, queryObjIndex);
@@ -367,132 +348,24 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
 
     DenseMap<uint32_t, Value*> vals;
 
-    //HWstack->committedHit = SMstack->committedHit  //first 16 Bytes only
-    //assume below and then we can RMW 16bytes as one block
-    static_assert(offsetof(HWRayData2, committedHit.rt.xe.hitInfoDWord) == 12, "hitInfoDWord layout changed?");
-    constexpr uint32_t rtStackCommittedHitOffset = offsetof(HWRayData2, committedHit.rt.xe.hitInfoDWord);
-    Value* committedHitInfo = builder.getHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit, VALUE_NAME("HitInfo"));
-    vals.clear();
-    vals[rtStackCommittedHitOffset] = committedHitInfo;
-    builder.WriteBlockData(HWStackPointer, (singleRQProceed ? nullptr : ShadowMemStackPointer), 16, vals, VALUE_NAME("RTStack.CommittedHit.1st16B"));
+    auto* const HWStackPointer = builder.getSyncStackPointer();
+    auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, queryObjIndex);
 
-    //HWstack->potentialHit = SMstack->potentialHit  //first 16 Bytes only
-    //Set potentialHit.done with RMW
-    //Copy Potential Hit to RTSTack from Current Query Object before traceRay
-    Value* potentialHitInfo = builder.getHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::AnyHit, VALUE_NAME("HitInfo"));
-
-    // HW will only reset the done bit to 0.  Prior to the sync trace ray,
-    // we set the bit and HW will set it to 0 if there is more to do.
-    potentialHitInfo = builder.CreateOr(
-        potentialHitInfo,
-        builder.getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::done)));
-
-    vals.clear();
-    vals[offsetof(MemHit::RT::Xe, t)] = builder.getPotentialHitT(ShadowMemStackPointer);
-    vals[offsetof(MemHit::RT::Xe, hitInfoDWord)] = potentialHitInfo;
-    Value* rtStackPotentialHitPtrHwMem = builder.getPotentialHitPtr(HWStackPointer);
-    Value* rtStackPotentialHitPtrShMem = builder.getPotentialHitPtr(ShadowMemStackPointer);
-    builder.WriteBlockData(rtStackPotentialHitPtrHwMem, (singleRQProceed ? nullptr : rtStackPotentialHitPtrShMem), 16, vals, VALUE_NAME("RTStack.PotentialHit.1st16B"));
+    builder.copyMemHitInProceed(HWStackPointer, ShadowMemStackPointer, singleRQProceed);
 
     //get ray Current ray control for object
     Value* ShdowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
     Value* traceRayCtrl = builder.getSyncTraceRayControl(ShdowMemRTCtrlPtr);
 
-    //if(DG2.A0){
-    //  fence.tgm.none.local
-    //  send.rta_sync
-    //  return
-    //  fence.ugm.evict.gpu
-    //  }
-    //else{
-    //  fence.ugm.none.local
-    //  send.rta_sync
-    //  return
-    //}
-
-    if (m_CGCtx->platform.RTFenceWAforBkModeEnabled())
-        builder.CreateLSCFence(LSC_TGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
-    else
-        builder.CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
+    builder.CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
 
     //TraceRay
     Value* retSyncRT = builder.createSyncTraceRay(
-        builder.getMemHitBvhLevel(potentialHitInfo),
+        builder.getBvhLevel(ShadowMemStackPointer, false),
         traceRayCtrl,
         VALUE_NAME("trace_ray_query"));
 
-    builder.CreateBr(EndBlock);
-
     return retSyncRT;
-}
-
-std::pair<Value*, BasicBlock*>
-TraceRayInlineLoweringPass::emitSyncStackToShadowMemory(
-    RTBuilder& builder, RayQuerySyncStackToShadowMemory* SS2SM, BasicBlock* EndBlock)
-{
-    Value* queryObjIndex = SS2SM->getQueryObjIndex();
-
-    auto* const HWStackPointer = builder.getSyncStackPointer();
-
-    auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, queryObjIndex);
-
-    builder.createReadSyncTraceRay(SS2SM->getProceedReturnVal());
-
-    if (m_CGCtx->platform.RTFenceWAforBkModeEnabled())
-    {
-        builder.CreateLSCFence(LSC_UGM, LSC_SCOPE_GPU, LSC_FENCE_OP_EVICT);
-    }
-
-    Value* ShdowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
-    builder.setSyncTraceRayControl(ShdowMemRTCtrlPtr, TraceRayMessage::TraceRayCtrl::TRACE_RAY_CONTINUE);
-
-    //SMstack->potentialHit = HWstack->potentialHit  //whole 32 Bytes
-    //fill PotentialHit from HWMemory to ShadowMemory
-
-    auto* HWPotHitPtr = builder.getPotentialHitPtr(HWStackPointer);
-    auto* SMPotHitPtr = builder.getPotentialHitPtr(ShadowMemStackPointer);
-    builder.FillRayQueryShadowMemory(SMPotHitPtr, HWPotHitPtr, sizeof(MemHit), 4);
-
-    //SMstack->ray[BOTTOM_LEVEL_BVH] = HWstack->ray[BOTTOM_LEVEL_BVH]  //first 24 Bytes only
-    //fill ray[BOTTOM_LEVEL_BVH]'s Ray Origin and Direction from HWMemory to ShadowMemory
-    auto* HWMemRayPtr_bot = builder.getMemRayPtr(HWStackPointer, false);
-    auto* SMMemRayPtr_bot = builder.getMemRayPtr(ShadowMemStackPointer, false);
-    builder.FillRayQueryShadowMemory(SMMemRayPtr_bot, HWMemRayPtr_bot, sizeof(float) * 6, 4);
-
-    Value* isValidBit = nullptr;
-
-    {
-        isValidBit = builder.getHitValid(HWStackPointer, true);
-    }
-
-    //Read done bit for return value
-    Value* doneDW = builder.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
-    Value* NotDone = builder.isDoneBitNotSet(doneDW);
-
-    //Need To store Hit Info for current RayQuery Object
-    //CommittedHit
-
-    BasicBlock* WriteCommittedHitBB = BasicBlock::Create(
-        EndBlock->getContext(),
-        VALUE_NAME("WriteCommittedHitBB"),
-        EndBlock->getParent(),
-        EndBlock);
-
-    builder.CreateCondBr(isValidBit, WriteCommittedHitBB, EndBlock);
-
-    builder.SetInsertPoint(WriteCommittedHitBB);
-
-    //SMstack->CommittedHit = HWstack->CommittedHit  //whole 32 Bytes
-    //fill HWMemory.CommittedHit with ShadowMemory.CommittedHit
-
-    auto* HWCommittedHitPtr = builder.getCommittedHitPtr(HWStackPointer);
-    auto* SMCommittedHitPtr = builder.getCommittedHitPtr(ShadowMemStackPointer);
-    builder.FillRayQueryShadowMemory(SMCommittedHitPtr, HWCommittedHitPtr, sizeof(MemHit), 4);
-
-
-    builder.CreateBr(EndBlock);
-
-    return std::make_pair(NotDone, WriteCommittedHitBB);
 }
 
 //Proceed Flow below is falling into 2 different intrinsics:
@@ -540,15 +413,15 @@ void TraceRayInlineLoweringPass::LowerTraceRaySyncProceedIntrinsic(Function& F)
         auto* StartBB = P->getParent();
 
         builder.SetInsertPoint(P);
-        auto [ProceedBB, endBlock] = branchOnPotentialHitDone(builder, P);
+        auto [ProceedBB, _] = branchOnPotentialHitDone(builder, P);
 
-        builder.SetInsertPoint(ProceedBB);
-        Value* retProceed = emitProceedMainBody(
-            builder, P->getQueryObjIndex(), endBlock);
+        auto* InsertPt = ProceedBB->getTerminator();
+        builder.SetInsertPoint(InsertPt);
+        Value* retProceed = emitProceedMainBody(builder, P->getQueryObjIndex());
 
         builder.SetInsertPoint(P);
         auto* phi = builder.CreatePHI(P->getType(), 2);
-        phi->addIncoming(builder.CreateZExtOrTrunc(retProceed, phi->getType()), ProceedBB);
+        phi->addIncoming(builder.CreateZExtOrTrunc(retProceed, phi->getType()), InsertPt->getParent());
         phi->addIncoming(builder.CreateZExtOrTrunc(builder.getFalse(), phi->getType()), StartBB);
         P->replaceAllUsesWith(phi);
     }
@@ -576,21 +449,20 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function& F)
 
     for (auto* SS2SM : SS2SMs)
     {
-        auto* StartBB = SS2SM->getParent();
-
         builder.SetInsertPoint(SS2SM);
-        auto [SS2SMBB, endBlock] = branchOnPotentialHitDone(builder, SS2SM);
 
-        builder.SetInsertPoint(SS2SMBB);
-        auto [NotDone, WriteCommittedHitBB] = emitSyncStackToShadowMemory(
-            builder, SS2SM, endBlock);
+        Value* queryObjIndex = SS2SM->getQueryObjIndex();
+        auto* const HWStackPointer = builder.getSyncStackPointer();
+        auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, queryObjIndex);
+        Value* ShadowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
 
-        builder.SetInsertPoint(SS2SM);
-        auto* phi = builder.CreatePHI(SS2SM->getType(), 3);
-        phi->addIncoming(NotDone, SS2SMBB);
-        phi->addIncoming(NotDone, WriteCommittedHitBB);
-        phi->addIncoming(builder.getFalse(), StartBB);
-        SS2SM->replaceAllUsesWith(phi);
+        auto* Proceed = builder.syncStackToShadowMemory(
+            HWStackPointer,
+            ShadowMemStackPointer,
+            SS2SM->getProceedReturnVal(),
+            ShadowMemRTCtrlPtr);
+
+        SS2SM->replaceAllUsesWith(Proceed);
     }
 
     for (auto SS2SM : SS2SMs)
@@ -618,7 +490,7 @@ void TraceRayInlineLoweringPass::LowerAbort(Function& F)
     {
         builder.SetInsertPoint(abort);
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, abort->getQueryObjIndex());
-        builder.CreateAbort(ShadowMemStackPointer);
+        builder.setDoneBit(ShadowMemStackPointer, false);
     }
 
     for (auto abort : aborts)
@@ -644,60 +516,11 @@ void TraceRayInlineLoweringPass::LowerCommittedStatus(Function& F)
 
     for (auto CS : CSes)
     {
-        // Generate code as:
-        //
-        // CommittedStatus()
-        // ===>
-        // obj.committedHit.valid ?
-        //     (COMMITTED_STATUS)(1 + uint32_t(obj.committedHit.leafType & 1)) :
-        //     COMMITTED_NOTHING;
         builder.SetInsertPoint(CS);
 
-        // TODO: don't split the block here.  Just use a select.
-        auto& C = CS->getContext();
-        auto* CSBlock = CS->getParent();
-        auto* endBlock = CSBlock->splitBasicBlock(CS, VALUE_NAME("CommittedStatusEndBlock"));
-
-        BasicBlock* validTruBB = BasicBlock::Create(C, VALUE_NAME("ValidTrueBB"), &F, endBlock);
-        CSBlock->getTerminator()->eraseFromParent();
-        builder.SetInsertPoint(CSBlock);
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, CS->getQueryObjIndex());
-        Value* isValid = builder.getHitValid(ShadowMemStackPointer, true);
-        builder.CreateCondBr(isValid, validTruBB, endBlock);
-
-        //Valid bit is set(true)
-        builder.SetInsertPoint(validTruBB);
-        // we are interested in only the LSB of leafType
-        static_assert(
-            ((NODE_TYPE_PROCEDURAL & 1) == 1) &&
-            ((NODE_TYPE_QUAD       & 1) == 0) &&
-            ((NODE_TYPE_MESHLET    & 1) == 0),
-            "optimized CommittedStatus broken");
-        static_assert(
-            (COMMITTED_NOTHING                  == 0) &&
-            (COMMITTED_TRIANGLE_HIT             == 1) &&
-            (COMMITTED_PROCEDURAL_PRIMITIVE_HIT == 2),
-            "enum changed?");
-
-        Value* committedHitInfo = builder.getHitInfoDWord(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit, VALUE_NAME("HitInfoDW"));
-        Value* leafType = builder.CreateAnd(
-            committedHitInfo,
-            builder.getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::leafType)));
-        leafType = builder.CreateLShr(
-            leafType,
-            builder.getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType), VALUE_NAME("LeafTypeLSB"));
-        // We can safely do this +1 as long as the above two static assertions
-        // hold.
-        leafType = builder.CreateAdd(leafType, builder.getInt32(1), VALUE_NAME("CommittedStatus"));
-        builder.CreateBr(endBlock);
-
-        //merge
-        builder.SetInsertPoint(CS);
-
-        PHINode* phi = builder.CreatePHI(CS->getType(), 2);
-        phi->addIncoming(leafType, validTruBB);
-        phi->addIncoming(builder.getInt32(COMMITTED_NOTHING), CSBlock);
-        CS->replaceAllUsesWith(phi);
+        auto *Status = builder.getCommittedStatus(ShadowMemStackPointer);
+        CS->replaceAllUsesWith(Status);
     }
 
     for (auto CS : CSes)
@@ -725,18 +548,9 @@ void TraceRayInlineLoweringPass::LowerCandidateType(Function& F)
     {
         builder.SetInsertPoint(CT);
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, CT->getQueryObjIndex());
-        Value* potentialHitInfo = builder.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("potentialHitInfo"));
+        auto* CandidateType = builder.getCandidateType(ShadowMemStackPointer);
 
-        Value* leafType = builder.CreateLShr(
-            potentialHitInfo, builder.getInt32((uint32_t)MemHit::RT::Xe::Offset::leafType), VALUE_NAME("LeafType"));
-
-        //we are interested in only the LSB of leafType
-        leafType = builder.CreateAnd(
-            leafType,
-            builder.getInt32(1),
-            VALUE_NAME("CandidateType"));
-
-        CT->replaceAllUsesWith(leafType);
+        CT->replaceAllUsesWith(CandidateType);
     }
 
     for (auto CT : CTs)
@@ -832,11 +646,6 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
                 specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(builder, I);
             }
 
-            //note that there might be a "faster" way here like what legacy code did,
-            //because offsetof(QuadLeaf, leafDesc.topOfGeomIndex) == offsetof(ProceduralLeaf, leafDesc.topOfGeomIndex)
-            //&& sizeof(QuadLeaf) == sizeof(ProceduralLeaf),
-            //theoretically, we can ignore infoKind here and assume it's QuadLeaf, it should work.
-            //but that's a little risky. We would rather to lose some performance here to distinguish ProceduralLeaf & QuadLeaf.
             IGC::CallableShaderTypeMD ShaderTy =
                 infoKind == COMMITTED_GEOMETRY_INDEX ?
                 CallableShaderTypeMD::ClosestHit :
@@ -951,7 +760,8 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
                 infoKind == COMMITTED_INST_CONTRIBUTION_TO_HITGROUP_INDEX ?
                 CallableShaderTypeMD::ClosestHit :
                 CallableShaderTypeMD::AnyHit;
-            Value* info = builder.getInstContToHitGroupIndex(ShadowMemStackPointer, ShaderTy);
+            Value* info = builder.getInstanceContributionToHitGroupIndex(
+                ShadowMemStackPointer, ShaderTy);
             I->replaceAllUsesWith(info);
             break;
         }
@@ -987,7 +797,7 @@ void TraceRayInlineLoweringPass::LowerCommitNonOpaqueTriangleHit(Function& F)
         builder.SetInsertPoint(CH);
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, CH->getQueryObjIndex());
 
-        builder.MemCpyPotentialHit2CommitHit(ShadowMemStackPointer);
+        builder.createPotentialHit2CommittedHit(ShadowMemStackPointer);
         builder.setSyncTraceRayControl(getShMemRTCtrl(builder, CH->getQueryObjIndex()), TraceRayMessage::TraceRayCtrl::TRACE_RAY_COMMIT);
     }
 
@@ -1111,49 +921,11 @@ void TraceRayInlineLoweringPass::LowerCommitProceduralPrimitiveHit(Function& F)
     {
         builder.SetInsertPoint(CH);
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, CH->getQueryObjIndex());
+        builder.commitProceduralPrimitiveHit(ShadowMemStackPointer, CH->getTHit());
 
-        //queryObj.committedHit.t = tHit;
-        builder.setCommittedHitT(ShadowMemStackPointer, CH->getTHit());
-
-        //queryObj.potentialHit.t = tHit;
-        builder.setPotentialHitT(ShadowMemStackPointer, CH->getTHit());
-
-        Value* zero = ConstantFP::get(builder.getFloatTy(), 0.0f);
-        //queryObj.committedHit.u = 0.0f;
-        builder.setHitBaryCentric(ShadowMemStackPointer, zero, CallableShaderTypeMD::ClosestHit, 0);
-
-        //queryObj.committedHit.v = 0.0f;
-        builder.setHitBaryCentric(ShadowMemStackPointer, zero, CallableShaderTypeMD::ClosestHit, 1);
-
-        //queryObj.committedHit.valid = true;
-        //queryObj.committedHit.primIndexDelta = 0;
-        //queryObj.committedHit.leafType = obj.potentialHit.leafType;
-        //queryObj.committedHit.primLeafIndex = 0;
-        //queryObj.committedHit.bvhLevel = 1;
-        //queryObj.committedHit.frontFace = 0;
-        //queryObj.committedHit.done = 0;
-        //queryObj.committedHit.pad0 = 0;
-
-        //|000| | 0 | |   0   |   | 001 |   |    0000    |   | 000 | |  1  | |0000 0000 0000 0000|
-        // pad  done   frontFace  bvhLevel   primLeafIndex      |     valid     primIndexDelta
-        //                                                      |
-        //                                                      |> LeafType is set to PotentialLeafType
-        //Value without the LeafType - 0x01010000
-        //stack->potentialHit.valid = true
-        builder.setHitValid(ShadowMemStackPointer, CallableShaderTypeMD::AnyHit);
-        //stack->committedHit.valid = true
-        builder.setHitValid(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit);
-
-        //queryObj.committedHit.setPrimLeafPtr(obj.potentialHit.getPrimLeafPtr());
-        Value* potentialPrimLeafPtr = builder.getHitTopOfPrimLeafPtr(ShadowMemStackPointer, CallableShaderTypeMD::AnyHit);
-        builder.setCommittedHitTopPrimLeafPtr(ShadowMemStackPointer, potentialPrimLeafPtr);
-
-        //queryObj.committedHit.setInstLeafPtr(obj.potentialHit.getInstLeafPtr());
-        //Value* potentialInstLeadPtr = builder.LoadPotentialInstLeafPtr(m_rayQueryArray, CH->getQueryObjIndex());
-        Value* potentialInstLeadPtr = builder.getPotentialHitTopInstLeafPtr(ShadowMemStackPointer);
-        builder.setCommittedHitTopInstLeafPtr(ShadowMemStackPointer, potentialInstLeadPtr);
-
-        builder.setSyncTraceRayControl(getShMemRTCtrl(builder, CH->getQueryObjIndex()), TraceRayMessage::TraceRayCtrl::TRACE_RAY_COMMIT);
+        builder.setSyncTraceRayControl(
+            getShMemRTCtrl(builder, CH->getQueryObjIndex()),
+            TraceRayMessage::TraceRayCtrl::TRACE_RAY_COMMIT);
     }
 
     for (auto CH : CommitHits)
@@ -1208,7 +980,7 @@ bool RTGlobalsPointerLoweringPass::runOnFunction(Function& F)
 {
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    if (m_CGCtx->platform.supportRayTracing() == false)
+    if (!m_CGCtx->platform.supportRayTracing())
         return false;
 
     vector<GenIntrinsicInst*> globalBuffPtrs;

@@ -49,8 +49,10 @@ RTBuilder::createTriangleFlow(
 
     auto* F = InsertPoint->getFunction();
     auto* TrueBB = BasicBlock::Create(C, TrueBBName, F, JoinBB);
-    StartBB->getTerminator()->eraseFromParent();
+    this->SetInsertPoint(TrueBB);
+    this->CreateBr(JoinBB);
 
+    StartBB->getTerminator()->eraseFromParent();
     this->SetInsertPoint(StartBB);
     this->CreateCondBr(Cond, TrueBB, JoinBB);
 
@@ -378,7 +380,7 @@ void RTBuilder::WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, cons
     CreateAlignedStore(Vec, blockDstPtr, IGCLLVM::Align(size));
 }
 
-BasicBlock* RTBuilder::getUnsetPhiBlock(PHINode* PN)
+static BasicBlock* getUnsetPhiBlock(PHINode* PN)
 {
     SmallPtrSet<BasicBlock*, 4> BBs;
 
@@ -490,10 +492,10 @@ std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int si
     //we alloca SMStack instead of RTStack to reduce the size. Also, here, we simply cast SMStack pointer to RTStack which is risky
     //and it's safe now if we only shrink the last variable of RTStack (MemTravStack).
     //But don't shrink data in the middle of RTStack which will lead to holes.
-    auto* RTStackPtrTy = bShrinkSMStack ? _gettype_SMStack2(M) : _gettype_RTStack2(M);
+    auto* RTStackTy = bShrinkSMStack ? _gettype_SMStack2(M) : _gettype_RTStack2(M);
 
     Value* rtStacks = this->CreateAlloca(
-        ArrayType::get(RTStackPtrTy, size),
+        ArrayType::get(RTStackTy, size),
         nullptr,
         Name);
 
@@ -535,17 +537,9 @@ void RTBuilder::MemCpyPotentialHit2CommitHit(RTBuilder::StackPointerVal* StackPo
         this->getInt64(sizeof(MemHit)));
 }
 
-void RTBuilder::setPotentialDoneBit(RTBuilder::StackPointerVal* StackPointer)
+void RTBuilder::setDoneBit(RTBuilder::StackPointerVal* StackPointer, bool Committed)
 {
-    Value* doneDW = this->getPotentialHitInfo(StackPointer, VALUE_NAME("DoneDW"));
-    Value* newHitInfo = this->CreateOr(
-        doneDW, this->getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::done)));
-    this->setHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit, newHitInfo, VALUE_NAME("DoneDW"));
-}
-
-void RTBuilder::CreateAbort(RTBuilder::StackPointerVal* StackPointer)
-{
-    setPotentialDoneBit(StackPointer);
+    _setDoneBit_Xe(StackPointer, getInt1(Committed));
 }
 
 
@@ -832,6 +826,15 @@ Value* RTBuilder::getGeometryIndex(
         VALUE_NAME("geometryIndex"));
 }
 
+Value* RTBuilder::getInstanceContributionToHitGroupIndex(
+    RTBuilder::StackPointerVal* perLaneStackPtr,
+    IGC::CallableShaderTypeMD ShaderTy)
+{
+    return _getInstanceContributionToHitGroupIndex_Xe(
+        perLaneStackPtr,
+        getInt32(ShaderTy),
+        VALUE_NAME("InstanceContributionToHitGroupIndex"));
+}
 
 Value* RTBuilder::getObjToWorld(
     RTBuilder::StackPointerVal* perLaneStackPtr,
@@ -1446,9 +1449,10 @@ Value* RTBuilder::isDoneBitSet(Value* HitInfoVal)
         VALUE_NAME("is_done"));
 }
 
-Value* RTBuilder::isDoneBitNotSet(Value* HitInfoVal)
+Value* RTBuilder::isDoneBitNotSet(StackPointerVal* StackPointer, bool Committed)
 {
-    return this->CreateNot(this->isDoneBitSet(HitInfoVal), VALUE_NAME("!done"));
+    return _isDoneBitNotSet_Xe(
+        StackPointer, getInt1(Committed), VALUE_NAME("!done"));
 }
 
 Value* RTBuilder::getMemHitBvhLevel(Value* MemHitInfoVal)
@@ -1458,6 +1462,11 @@ Value* RTBuilder::getMemHitBvhLevel(Value* MemHitInfoVal)
     constexpr uint32_t Mask = BITMASK((uint32_t)MemHit::RT::Xe::Bits::bvhLevel);
     auto* Level = this->CreateAnd(ShiftVal, Mask, VALUE_NAME("bvhLevel"));
     return Level;
+}
+
+Value* RTBuilder::getBvhLevel(StackPointerVal* StackPointer, bool Committed)
+{
+    return _getBvhLevel_Xe(StackPointer, getInt1(Committed));
 }
 
 
@@ -1979,13 +1988,13 @@ void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
 }
 
 
-void RTBuilder::createPotentialHit2CommittedHit(Value* StackPtr)
+void RTBuilder::createPotentialHit2CommittedHit(StackPointerVal* StackPtr)
 {
     _createPotentialHit2CommittedHit_Xe(StackPtr);
 }
 
 void RTBuilder::createTraceRayInlinePrologue(
-    Value* StackPtr,
+    StackPointerVal* StackPtr,
     Value* RayInfo,
     Value* RootNodePtr,
     Value* RayFlags,
@@ -1999,4 +2008,46 @@ void RTBuilder::createTraceRayInlinePrologue(
         RayFlags,
         InstanceInclusionMask,
         TMax);
+}
+
+void RTBuilder::emitSingleRQMemRayWrite(
+    SyncStackPointerVal* HWStackPtr,
+    SyncStackPointerVal* SMStackPtr,
+    bool singleRQProceed)
+{
+    _emitSingleRQMemRayWrite_Xe(HWStackPtr, SMStackPtr, getInt1(singleRQProceed));
+}
+
+void RTBuilder::copyMemHitInProceed(
+    SyncStackPointerVal* HWStackPtr,
+    SyncStackPointerVal* SMStackPtr,
+    bool singleRQProceed)
+{
+    _copyMemHitInProceed_Xe(HWStackPtr, SMStackPtr, getInt1(singleRQProceed));
+}
+
+Value* RTBuilder::syncStackToShadowMemory(
+    SyncStackPointerVal* HWStackPtr,
+    SyncStackPointerVal* SMStackPtr,
+    Value* ProceedReturnVal,
+    Value* ShadowMemRTCtrlPtr)
+{
+    return _syncStackToShadowMemory_Xe(
+        HWStackPtr, SMStackPtr, ProceedReturnVal, ShadowMemRTCtrlPtr);
+}
+
+Value* RTBuilder::getCommittedStatus(SyncStackPointerVal* SMStackPtr)
+{
+    return _getCommittedStatus_Xe(SMStackPtr);
+}
+
+Value* RTBuilder::getCandidateType(SyncStackPointerVal* SMStackPtr)
+{
+    return _getCandidateType_Xe(SMStackPtr, VALUE_NAME("CandidateType"));
+}
+
+void RTBuilder::commitProceduralPrimitiveHit(
+    SyncStackPointerVal* SMStackPtr, Value* THit)
+{
+    _commitProceduralPrimitiveHit_Xe(SMStackPtr, THit);
 }

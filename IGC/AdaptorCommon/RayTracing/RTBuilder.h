@@ -251,13 +251,11 @@ public:
 
     std::pair<BasicBlock*, PHINode*>
         validateInstanceLeafPtr(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted);
-    static BasicBlock* getUnsetPhiBlock(PHINode* PN);
     std::pair<Value*, Value*> createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name = "");
 
     void FillRayQueryShadowMemory(Value* shMem, Value* src, uint64_t size, unsigned align);
     void MemCpyPotentialHit2CommitHit(RTBuilder::StackPointerVal* StackPointer);
-    void setPotentialDoneBit(StackPointerVal* StackPointer);
-    void CreateAbort(StackPointerVal* StackPointer);
+    void setDoneBit(StackPointerVal* StackPointer, bool Committed);
     Value* alignVal(Value* V, uint64_t Align);
     uint32_t getSyncStackSize();
     uint32_t getNumSyncStackSlots();
@@ -294,6 +292,7 @@ public:
     Value* getGeometryIndex(
         StackPointerVal* perLaneStackPtr, Instruction* I, Value* leafType, IGC::CallableShaderTypeMD ShaderTy, bool checkInstanceLeafPtr);
 
+    Value* getInstanceContributionToHitGroupIndex(RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
 
     Value* getObjToWorld(
         StackPointerVal* perLaneStackPtr,
@@ -334,9 +333,10 @@ public:
     void setCommittedHitT(
         StackPointerVal* StackPointer,
         Value* V);
-    Value* isDoneBitNotSet(Value* HitInfoVal);
+    Value* isDoneBitNotSet(StackPointerVal* StackPointer, bool Committed);
     Value* isDoneBitSet(Value* HitInfoVal);
     Value* getMemHitBvhLevel(Value* MemHitInfoVal);
+    Value* getBvhLevel(StackPointerVal* StackPointer, bool Committed);
     //MemHit::t
     Value* getPotentialHitT(StackPointerVal* StackPointer);
     void   setPotentialHitT(StackPointerVal* StackPointer, Value *V);
@@ -462,15 +462,36 @@ public:
     static Type* getBVHPtrTy(Module &M);
 
 
-    void createPotentialHit2CommittedHit(Value* StackPtr);
+    void createPotentialHit2CommittedHit(StackPointerVal* StackPtr);
 
     void createTraceRayInlinePrologue(
-        Value* StackPtr,
+        StackPointerVal* StackPtr,
         Value* RayInfo,
         Value* RootNodePtr,
         Value* RayFlags,
         Value* InstanceInclusionMask,
         Value* TMax);
+
+    void emitSingleRQMemRayWrite(
+        SyncStackPointerVal* HWStackPtr,
+        SyncStackPointerVal* SMStackPtr,
+        bool singleRQProceed);
+
+    void copyMemHitInProceed(
+        SyncStackPointerVal* HWStackPtr,
+        SyncStackPointerVal* SMStackPtr,
+        bool singleRQProceed);
+
+    Value* syncStackToShadowMemory(
+        SyncStackPointerVal* HWStackPtr,
+        SyncStackPointerVal* SMStackPtr,
+        Value* ProceedReturnVal,
+        Value* ShadowMemRTCtrlPtr);
+
+    Value* getCommittedStatus(SyncStackPointerVal* SMStackPtr);
+    Value* getCandidateType(SyncStackPointerVal* SMStackPtr);
+
+    void commitProceduralPrimitiveHit(SyncStackPointerVal* SMStackPtr, Value* THit);
 };
 
 } // namespace llvm
