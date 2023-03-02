@@ -55,6 +55,7 @@ namespace IGC
 
         llvm::Value* convertI1ToI8(llvm::Value* argument, llvm::Instruction* insertBefore);
         llvm::Value* convertI8ToI1(llvm::Value* argument, llvm::Instruction* insertBefore);
+        llvm::Value* castTo(llvm::Value* value, llvm::Type* desiredType, llvm::Instruction* insertBefore);
         void cleanUp(llvm::Module& module);
 
         // Checking if type needs promotion

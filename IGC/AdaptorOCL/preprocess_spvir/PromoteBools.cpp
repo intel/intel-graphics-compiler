@@ -140,6 +140,26 @@ Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
     return trunc;
 }
 
+Value* PromoteBools::castTo(Value* value, Type* desiredType, Instruction* insertBefore)
+{
+    if (value->getType() == desiredType)
+    {
+        return value;
+    }
+
+    if (value->getType()->isIntegerTy(8) && desiredType->isIntegerTy(1))
+    {
+        return convertI8ToI1(value, insertBefore);
+    }
+    else if (value->getType()->isIntegerTy(1) && desiredType->isIntegerTy(8))
+    {
+        return convertI1ToI8(value, insertBefore);
+    }
+
+    IRBuilder<> builder(insertBefore);
+    return builder.CreateBitCast(value, desiredType);
+}
+
 void PromoteBools::cleanUp(Module& module)
 {
     auto erase = [](auto v) {
@@ -518,25 +538,25 @@ Function* PromoteBools::promoteFunction(Function* function)
                 }
             }
 
-            auto trunc = convertI8ToI1(newArg, newFunction->getEntryBlock().getFirstNonPHI());
+            auto cast = castTo(newArg, arg.getType(), newFunction->getEntryBlock().getFirstNonPHI());
             for (auto& instruction : userInstructions)
             {
-                instruction->replaceUsesOfWith(newArg, trunc);
+                instruction->replaceUsesOfWith(newArg, cast);
             }
         }
 
         // Fix ret statements
-        if (function->getReturnType()->isIntegerTy(1))
+        if (function->getReturnType() != newFunction->getReturnType())
         {
             for (auto& basicBlock : *newFunction)
             {
                 auto terminator = basicBlock.getTerminator();
                 if (auto ret = dyn_cast<ReturnInst>(terminator))
                 {
-                    auto zext = convertI1ToI8(ret->getReturnValue(), ret);
+                    auto cast = castTo(ret->getReturnValue(), newFunction->getReturnType(), ret);
                     IRBuilder<> builder(ret);
-                    auto newRet = builder.CreateRet(zext);
-                    if (auto inst = dyn_cast<Instruction>(zext))
+                    auto newRet = builder.CreateRet(cast);
+                    if (auto inst = dyn_cast<Instruction>(cast))
                     {
                         newRet->setDebugLoc(inst->getDebugLoc());
                     }
