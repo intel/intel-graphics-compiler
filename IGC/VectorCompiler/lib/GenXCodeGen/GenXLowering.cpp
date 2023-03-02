@@ -255,8 +255,6 @@ private:
   bool lowerMul64(Instruction *Inst);
   bool lowerLzd(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
-  bool lowerLLVMMaskedLoad(CallInst *CI);
-  bool lowerLLVMMaskedStore(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
@@ -3338,10 +3336,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerLzd(Inst);
     case GenXIntrinsic::genx_slm_init:
       return lowerSlmInit(CI);
-    case Intrinsic::masked_load:
-      return lowerLLVMMaskedLoad(CI);
-    case Intrinsic::masked_store:
-      return lowerLLVMMaskedStore(CI);
     case Intrinsic::trap:
       return lowerTrap(CI);
     case Intrinsic::ctpop:
@@ -5402,66 +5396,6 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
   Inst->replaceAllUsesWith(Result);
   Result->takeName(Inst);
   ToErase.push_back(Inst);
-  return true;
-}
-
-#define SYCL_SLM_AS  3
-bool GenXLowering::lowerLLVMMaskedLoad(CallInst* CallOp) {
-  auto PtrV = CallOp->getArgOperand(0);
-  IGC_ASSERT(PtrV->getType()->isPointerTy());
-  auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
-  IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expect masked load from SLM");
-  auto DTy = CallOp->getType();
-  // convert to unaligned-block-load then select
-  std::string IntrName =
-      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) +
-      "svm.block.ld.unaligned";
-  auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
-  Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
-      CallOp->getModule(), ID, { DTy, PtrV->getType() });
-  auto VecDT = CallInst::Create(NewFDecl, { PtrV },
-      "svm.block.ld.unaligned", CallOp);
-  VecDT->setDebugLoc(CallOp->getDebugLoc());
-  IRBuilder<> Builder(CallOp);
-  auto RepI = Builder.CreateSelect(CallOp->getArgOperand(2), VecDT,
-      CallOp->getArgOperand(3), CallOp->getName());
-  CallOp->replaceAllUsesWith(RepI);
-  ToErase.push_back(CallOp);
-  return true;
-}
-
-bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
-  auto PtrV = CallOp->getArgOperand(1);
-  IGC_ASSERT(PtrV->getType()->isPointerTy());
-  auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
-  IGC_ASSERT_MESSAGE(AS != SYCL_SLM_AS, "do not expected masked store to SLM");
-  auto DTV = CallOp->getArgOperand(0);
-  auto DL = CallOp->getDebugLoc();
-  // convert to unaligned-block-load then select
-  // then block-store
-  std::string IntrName =
-      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) +
-      "svm.block.ld.unaligned";
-  auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
-  Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
-      CallOp->getModule(), ID, { DTV->getType(), PtrV->getType() });
-  auto VecDT = CallInst::Create(NewFDecl, { PtrV },
-      "svm.block.ld.unaligned", CallOp);
-  VecDT->setDebugLoc(DL);
-  IRBuilder<> Builder(CallOp);
-  auto SelI = Builder.CreateSelect(CallOp->getArgOperand(3), DTV, VecDT);
-
-  IntrName = std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) +
-       "svm.block.st";
-  ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
-  NewFDecl = GenXIntrinsic::getGenXDeclaration(
-      CallOp->getModule(), ID, { PtrV->getType(), DTV->getType() });
-  auto NewInst = CallInst::Create(
-      NewFDecl, { PtrV, SelI },
-      NewFDecl->getReturnType()->isVoidTy() ? "" : "svm.block.st",
-      CallOp);
-  NewInst->setDebugLoc(DL);
-  ToErase.push_back(CallOp);
   return true;
 }
 
