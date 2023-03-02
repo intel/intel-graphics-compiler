@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -832,6 +832,14 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
   Value *OldValue = WrRegion->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   if (GenXIntrinsic::isReadWritePredefReg(OldValue))
     return;
+
+  // Check if InputBytes is multiple of new element byte size
+  // Offset alignment is checked by CMRegion::changeElementType()
+  unsigned ElBytes = vc::getTypeSize(BCInputElementType, DL).inBytes();
+  unsigned InputBytes = vc::getTypeSize(OldValue->getType(), DL).inBytes();
+  if ((InputBytes % ElBytes) != 0) {
+    return;
+  }
 
   // Get the region params for the replacement wrregion, checking if that
   // fails.
