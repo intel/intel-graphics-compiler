@@ -619,7 +619,8 @@ CatchAllLineNumber::~CatchAllLineNumber()
 bool CatchAllLineNumber::runOnFunction(llvm::Function& F)
 {
     // Insert placeholder intrinsic instruction in each kernel/stack call function.
-    if (!F.getSubprogram() || F.isDeclaration())
+    if (!F.getSubprogram() || F.isDeclaration() ||
+      IGC_IS_FLAG_ENABLED(NoCatchAllDebugLine))
         return false;
 
     if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL &&
