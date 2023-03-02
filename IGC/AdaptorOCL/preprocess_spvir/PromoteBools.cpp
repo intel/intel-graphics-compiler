@@ -394,6 +394,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteStore(store);
     }
+    else if (auto inttoptr = dyn_cast<IntToPtrInst>(value))
+    {
+        newValue = promoteIntToPtr(inttoptr);
+    }
     else if (auto instruction = dyn_cast<Instruction>(value))
     {
         for (auto& operand : instruction->operands())
@@ -964,4 +968,21 @@ StoreInst* PromoteBools::promoteStore(StoreInst* store)
     newStore->setAlignment(IGCLLVM::getAlign(*store));
     newStore->setDebugLoc(store->getDebugLoc());
     return newStore;
+}
+
+IntToPtrInst* PromoteBools::promoteIntToPtr(IntToPtrInst* inttoptr)
+{
+    if (!inttoptr || (!wasPromotedAnyOf(inttoptr->operands()) && !typeNeedsPromotion(inttoptr->getDestTy())))
+    {
+        return inttoptr;
+    }
+
+    auto newIntToPtr = new IntToPtrInst(
+        getOrCreatePromotedValue(inttoptr->getOperand(0)),
+        getOrCreatePromotedType(inttoptr->getDestTy()),
+        "",
+        inttoptr
+    );
+    newIntToPtr->setDebugLoc(inttoptr->getDebugLoc());
+    return newIntToPtr;
 }

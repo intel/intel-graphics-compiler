@@ -92,6 +92,7 @@ namespace IGC
         llvm::LoadInst* promoteLoad(llvm::LoadInst* load);
         llvm::PHINode* promotePHI(llvm::PHINode* phi);
         llvm::StoreInst* promoteStore(llvm::StoreInst* store);
+        llvm::IntToPtrInst* promoteIntToPtr(llvm::IntToPtrInst* inttoptr);
 
         // Promoting values - helping vars
         llvm::DenseSet<llvm::PHINode*> visitedPHINodes;
