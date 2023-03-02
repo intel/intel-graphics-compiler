@@ -4209,6 +4209,7 @@ void vISAVerifier::verifyInstructionSrnd(const CISA_INST *inst) {
   REPORT_INSTRUCTION(
       options, src0Type == src1Type,
       "Src0 and src1 should have the same type for this instruction");
+
   REPORT_INSTRUCTION(options,
                      (dstType == ISA_TYPE_UB && src0Type == ISA_TYPE_HF) ||
                          (dstType == ISA_TYPE_HF && src0Type == ISA_TYPE_F),

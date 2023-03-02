@@ -899,6 +899,7 @@ bool G4_INST::isLongPipeInstructionXe() const {
   return false;
 }
 
+
 bool G4_INST::isIntegerPipeInstructionXe() const {
   if (isJEUPipeInstructionXe()) {
     return true;
@@ -907,6 +908,7 @@ bool G4_INST::isIntegerPipeInstructionXe() const {
   if (!distanceHonourInstruction()) {
     return false;
   }
+
 
   if (isLongPipeInstructionXe()) {
     return false;
@@ -953,6 +955,7 @@ bool G4_INST::isFloatPipeInstructionXe() const {
   if (!distanceHonourInstruction()) {
     return false;
   }
+
 
 
   if (isLongPipeInstructionXe()) {

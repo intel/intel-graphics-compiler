@@ -713,8 +713,8 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
         FixedVectorType* VTy = dyn_cast<FixedVectorType>(Ty);
         Type* ETy = VTy ? VTy->getElementType() : Ty;
         Type* Opnd0Ty = CI.getArgOperand(0)->getType();
-        Type* Opnd1Ty = CI.getArgOperand(1)->getType();
-        FixedVectorType* VOpnd0Ty = dyn_cast<FixedVectorType>(Opnd0Ty);
+        Type *Opnd1Ty = CI.getArgOperand(1)->getType();
+        FixedVectorType *VOpnd0Ty = dyn_cast<FixedVectorType>(Opnd0Ty);
         Type* EOpnd0Ty = VOpnd0Ty ? VOpnd0Ty->getElementType() : Opnd0Ty;
         uint32_t n = VTy ? (uint32_t)VTy->getNumElements() : 1;
         uint32_t n0 = VOpnd0Ty ? (uint32_t)VOpnd0Ty->getNumElements() : 1;

@@ -711,7 +711,6 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_SRC_GEN | OPND_IMM, ISA_TYPE_F | ISA_TYPE_HF, 0},
         },
     },
-
     /// 31
     {
         ALL,

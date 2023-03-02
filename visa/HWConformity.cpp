@@ -1127,7 +1127,8 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb) {
     if (numSrc > 1) {
       G4_Operand *src0 = inst->getSrc(0);
       G4_Operand *src1 = inst->getSrc(1);
-      if (src0 != nullptr && src1 != nullptr && IS_BTYPE(src1->getType())) {
+      if (src0 != nullptr && src1 != nullptr &&
+          (IS_BTYPE(src1->getType()))) {
         if (!IS_BTYPE(src0->getType()) && inst->canSwapSource()) {
           inst->swapSrc(0, 1);
         } else {
@@ -8552,7 +8553,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
         // for mix mode the source must be packed, otherwise srcStride shoudl be
         // == sizeof(exec type)
         if (!builder.tryToAlignOperand(src, alignment) ||
-            (isMixModeSrc ? !isMixModePackedSrc : srcStride != execTyWidth)) {
+             (isMixModeSrc ? !isMixModePackedSrc : srcStride != execTyWidth)) {
           {
             int stride =
                 (int)(isMixModeSrc ? 1 : execTyWidth / src->getTypeSize());
@@ -8594,12 +8595,12 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
            inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef,
            "FP8<->HF move does not support source modifier");
 
-    if (!builder.tryToAlignOperand(
-            inst->getSrc(0),
-            builder.numEltPerGRF<Type_UB>()) || // case 3 for src
-        (IS_BTYPE(inst->getSrc(0)->getType()) &&
-         !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(
-             inst->getExecSize()))) // case 2 for src
+    if ((!builder.tryToAlignOperand(
+             inst->getSrc(0),
+             builder.numEltPerGRF<Type_UB>())) || // case 3 for src
+         (IS_BTYPE(inst->getSrc(0)->getType()) &&
+          !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(
+              inst->getExecSize()))) // case 2 for src
     {
       inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb,
                                    builder.getGRFAlign()),
@@ -8618,9 +8619,10 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
     }
 
     if ((IS_BTYPE(inst->getDst()->getType()) &&
-         inst->getDst()->getHorzStride() != 1) || // case 2 for dst
-        !builder.tryToAlignOperand(
-            inst->getDst(), builder.numEltPerGRF<Type_UB>())) // case 3 for dst
+          inst->getDst()->getHorzStride() != 1) || // case 2 for dst
+         !builder.tryToAlignOperand(
+             inst->getDst(),
+             builder.numEltPerGRF<Type_UB>())) // case 3 for dst
     {
       replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
       G4_INST *newMovInst = *(std::next(i));
@@ -9208,7 +9210,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   const uint16_t GRFByteSize = builder.numEltPerGRF<Type_UB>();
   bool isHF2BF8 = (dst->getType() == Type_UB);
   if (!builder.tryToAlignOperand(dst, GRFByteSize) || // case 2
-      (isHF2BF8 && dst->getHorzStride() != 1))        // case 3
+      (isHF2BF8 && dst->getHorzStride() != 1 )) // case 3
   {
     G4_Declare *dcl =
         builder.createTempVar(execsize, dst->getType(), builder.getGRFAlign());
@@ -9244,7 +9246,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   G4_SrcRegRegion* src1R =
     opnd1->isSrcRegRegion() ? opnd1->asSrcRegRegion() : nullptr;
   if (src1R &&
-      (!builder.tryToAlignOperand(opnd1, GRFByteSize) ||           // case 2
+      ((!builder.tryToAlignOperand(opnd1, GRFByteSize)) ||         // case 2
        (isHF2BF8 && !src1R->getRegion()->isContiguous(execsize)))) // case 3
   {
     G4_Operand *newSrc1 =
@@ -9254,6 +9256,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
     newMovInst->setNoMask(true);
     changed = true;
   }
+
 
   dst = inst->getDst();
   if (isHF2BF8 && inst->getExecSize() == g4::SIMD1) { // case 4
