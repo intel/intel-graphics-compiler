@@ -31,10 +31,4 @@ void InitEhlHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
 
 
-    SI_WA_ENABLE(
-        Wa_1805992985,
-        "No Link provided",
-        "No Link provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
 }

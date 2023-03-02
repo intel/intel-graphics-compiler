@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,26 +11,30 @@ SPDX-License-Identifier: MIT
 
 
 #include "wa_def.h"
+#include "ilkf_rev_id.h"
 
-#define LKF_REV_ID_A0   SI_REV_ID(0,0)
+#define LKF_PCH_REV_ID_B0_B1 SI_REV_ID(16,16)
 
 
 void InitLkfSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
 
     int iStepId_Ilkf = (int)pWaParam->usRevId;
+    int iPchStepId_Ilkf = (int)pWaParam->usRevId_PCH;
 
 
     SI_WA_ENABLE(
         WaReturnZeroforRTReadOutsidePrimitive,
-        "No Link provided",
+        "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_UNTIL(iStepId_Ilkf, LKF_REV_ID_A0));
+        SI_WA_UNTIL(iStepId_Ilkf, LKF_GT_REV_ID_A0 ));
+
+
 }
 
 #ifdef __KCH
-void InitLkfHASWaTable( PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam )
+void InitLkfHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
 
 }

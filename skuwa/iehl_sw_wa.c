@@ -29,6 +29,8 @@ void InitEhlSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_UNTIL(iStepId_EHL, EHL_REV_ID_A0));
+
+
 }
 
 #ifdef __KCH

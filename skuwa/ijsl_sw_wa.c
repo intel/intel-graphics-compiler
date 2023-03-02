@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,9 +11,7 @@ SPDX-License-Identifier: MIT
 
 
 #include "wa_def.h"
-
-#define JSL_REV_ID_A0   SI_REV_ID(0,0)
-#define JSL_REV_ID_B0   SI_REV_ID(1,1)
+#include "ijsl_rev_id.h"
 
 
 void InitJslSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
@@ -25,14 +23,16 @@ void InitJslSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
     SI_WA_ENABLE(
         WaReturnZeroforRTReadOutsidePrimitive,
-        "No Link provided",
+        "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_UNTIL(iStepId_JSL, JSL_REV_ID_A0));
+        SI_WA_UNTIL(iStepId_JSL, JSL_GT_REV_ID_A0 ));
+
+
 }
 
 #ifdef __KCH
-void InitJslHASWaTable( PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam )
+void InitJslHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
 
 }

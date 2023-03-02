@@ -147,7 +147,7 @@ typedef struct _WaInitParam
     PCH_PRODUCT_FAMILY  ePCHProductFamily;
     const GT_SYSTEM_INFO   *pGtSysInfo;
     unsigned char    bWinDoD;
-    // Rev IDs for each IP blocks.
+
     unsigned short  usDisplayRevID;
     unsigned short  usRenderRevID;
     unsigned short  usMediaRevID;

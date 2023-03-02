@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2016-2021 Intel Corporation
+Copyright (C) 2016-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,14 +23,17 @@ void InitRklSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
-        "No HWSightingLink provided",
+        "No Link Provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
+
+
 }
 
 #ifdef __KCH
 void InitRklHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
+
 
 }
 #endif
