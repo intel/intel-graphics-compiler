@@ -3151,6 +3151,13 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 {
     /*
     from
+        %res = select i1 %cond, i1 true, i1 %cmp
+    to
+        %res = or i1 %cond, %cmp
+
+               or
+
+    from
         %2 = select i1 %0, i1 %1, i1 false
     to
         %2 = and i1 %0, %1
@@ -3181,6 +3188,16 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 
     llvm::IRBuilder<> builder(&I);
     bool skipOpt = false;
+
+    ConstantInt* C1 = dyn_cast<ConstantInt>(I.getOperand(1));
+    if (C1 && C1->isOne())
+    {
+        if (I.getType()->isIntegerTy(1))
+        {
+            Value* newValueOr = builder.CreateOr(I.getOperand(0), I.getOperand(2));
+            I.replaceAllUsesWith(newValueOr);
+        }
+    }
 
     ConstantInt* Cint = dyn_cast<ConstantInt>(I.getOperand(2));
     if (Cint && Cint->isZero())

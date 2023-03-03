@@ -81,7 +81,33 @@ define spir_kernel void @test_select4(i64 %src1, i64 %src2) {
   ret void
 }
 
+define spir_kernel void @test_select5(i64 %src1, i64 %src2, i1 %srcb) {
+; CHECK-LABEL: @test_select5(
+; CHECK:    [[TMP1:%[A-z0-9]*]] = icmp slt i64 [[SRC1:%[A-z0-9]*]], [[SRC2:%[A-z0-9]*]]
+; CHECK:    [[TMP2:%[A-z0-9]*]] = and i1 [[TMP1]], %srcb
+; CHECK:    call void @use.i1(i1 [[TMP2]])
+; CHECK:    ret void
+;
+  %1 = icmp slt i64 %src1, %src2
+  %2 = select i1 %1, i1 %srcb, i1 false
+  call void @use.i1(i1 %2)
+  ret void
+}
 
+define spir_kernel void @test_select6(i64 %src1, i64 %src2, i1 %srcb) {
+; CHECK-LABEL: @test_select6(
+; CHECK:    [[TMP1:%[A-z0-9]*]] = icmp slt i64 [[SRC1:%[A-z0-9]*]], [[SRC2:%[A-z0-9]*]]
+; CHECK:    [[TMP2:%[A-z0-9]*]] = or i1 [[TMP1]], %srcb
+; CHECK:    call void @use.i1(i1 [[TMP2]])
+; CHECK:    ret void
+;
+  %1 = icmp slt i64 %src1, %src2
+  %2 = select i1 %1, i1 true, i1 %srcb
+  call void @use.i1(i1 %2)
+  ret void
+}
+
+declare void @use.i1(i1)
 declare void @use.i32(i32)
 declare void @use.i64(i64)
 declare void @use.f32(float)
