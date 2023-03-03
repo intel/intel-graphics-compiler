@@ -7258,7 +7258,23 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                     node->getLastInstruction()->isDpas() &&
                     curLiveNode->getLastInstruction()->isDpas()) {
                   if (node->getDPASID() > curLiveNode->getDPASID()) {
-                    if ((node->getDPASID() + curFootprint->offset -
+                    if (node->getBBID() != curLiveNode->getBBID()) {
+                      unsigned frontDist =
+                          node->getDPASID() + curFootprint->offset - // late
+                          BBVector[node->getBBID()]->first_DPASID;
+                      unsigned endDist =  //front
+                          BBVector[curLiveNode->getBBID()]->last_DPASID -
+                          (curLiveNode->getDPASID() + internalOffset);
+                      if ((int)(frontDist + endDist) < tokenAfterDPASCycle) {
+                        send_use_kills.killOperand(bn_it);
+                        sb_bb->createAddGRFEdge(curLiveNode, node, dep,
+                                                DEP_EXPLICT);
+                        curLiveNode->setInstKilled(true); // Instruction level
+                                                          // kill
+                        instKill = true;
+                        continue;
+                      }
+                    } else if ((node->getDPASID() + curFootprint->offset -
                              (curLiveNode->getDPASID() + internalOffset) <
                          tokenAfterDPASCycle)) {
                       send_use_kills.killOperand(bn_it);
