@@ -281,33 +281,6 @@ static Type* _struct_RTStackFormat__NodeInfo(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_RTStackFormat__RayQueryObject(Module &M)
-{
-  return
-  [&] {
-    StringRef StructName = "struct.RTStackFormat::RayQueryObject";
-    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
-      return Ty;
-    Type* Tys[] = {
-      _struct_RTStackFormat__RTStack(M),
-      _struct_RTStackFormat__RayQueryStateInfo(M),
-    };
-    return StructType::create(M.getContext(), Tys, StructName, false);
-  }();
-}
-static Type* _struct_RTStackFormat__RayQueryStateInfo(Module &M)
-{
-  return
-  [&] {
-    StringRef StructName = "struct.RTStackFormat::RayQueryStateInfo";
-    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
-      return Ty;
-    Type* Tys[] = {
-      IntegerType::get(M.getContext(), 8),
-    };
-    return StructType::create(M.getContext(), Tys, StructName, false);
-  }();
-}
 static Type* _struct_RTStackFormat__SMStack(Module &M)
 {
   return
@@ -962,12 +935,6 @@ static Type* _gettype_HWRayData2(Module &M)
   _struct_RTStackFormat__HWRayData(M);
 }
 
-static Type* _gettype_RayQueryObject2(Module &M)
-{
-  return
-  _struct_RTStackFormat__RayQueryObject(M);
-}
-
 static Type* _gettype_SMStack2(Module &M)
 {
   return
@@ -1055,537 +1022,131 @@ auto* _get_statelessScratchPtr(const Twine& _ReturnName = "")
   return V_2;
 }
 
-Value* _gepof_BVH_rootNodeOffset(Value* p, const Twine &Name = "")
+auto* _gepof_StackOffset_v1(Value* arg_0, const Twine& _ReturnName = "")
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_1 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0) }, _ReturnName);
+  return V_1;
 }
 
-Value* _gepof_dispRaysIndex_v2(Value* p, Value* idx1, const Twine &Name = "")
+auto* _gepof_StackOffset_v2(Value* arg_0, const Twine& _ReturnName = "")
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_1 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0) }, _ReturnName);
+  return V_1;
 }
 
-Value* _gepof_StackOffset_v2(Value* p, const Twine &Name = "")
+void __anchor_SMStack2(Value* arg_0, Value* arg_1)
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_2 = CreateBitCast(arg_0, PointerType::get(getInt8Ty(), 0));
+  auto* V_3 = CreateBitCast(arg_1, PointerType::get(getInt8Ty(), 0));
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), 0), PointerType::get(getInt8Ty(), 0), getInt64Ty() }, { V_2, V_3, getInt64(192), getFalse() }, nullptr);
+  return;
 }
 
-Value* _gepof_CompressedDispatchRayIndices_v1(Value* p, const Twine &Name = "")
+auto* _getDispatchRaysIndex_HotZone_v1(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(1), getInt32(0) });
+  auto* V_3 = CreateLoad(V_2);
+  auto* V_4 = CreateAnd(V_3, getInt16(31));
+  auto* V_5 = CreateZExt(V_4, getInt32Ty());
+  auto* V_6 = CreateLShr(V_3, getInt16(5));
+  auto* V_7 = CreateAnd(V_6, getInt16(31));
+  auto* V_8 = CreateZExt(V_7, getInt32Ty());
+  auto* V_9 = CreateLShr(V_3, getInt16(10));
+  auto* V_10 = CreateAnd(V_9, getInt16(31));
+  auto* V_11 = CreateZExt(V_10, getInt32Ty());
+  auto* V_12 = CreateICmpEQ(arg_1, getInt32(0));
+  auto* V_13 = CreateSelect(V_12, getInt32(0), V_5);
+  auto* V_14 = CreateICmpUGT(arg_1, getInt32(1));
+  auto* V_15 = CreateSelect(V_14, V_8, getInt32(0));
+  auto* V_16 = CreateAdd(V_15, V_13);
+  auto* V_17 = CreateSelect(V_12, V_5, getInt32(0));
+  auto* V_18 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_19 = CreateSelect(V_18, V_8, V_17);
+  auto* V_20 = CreateICmpEQ(arg_1, getInt32(2));
+  auto* V_21 = CreateSelect(V_20, V_11, V_19);
+  auto* V_22 = CreateShl(getInt32(4294967295), V_21);
+  auto* V_23 = CreateXor(V_22, getInt32(4294967295));
+  auto* V_24 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
+  auto* V_25 = CreateLoad(V_24);
+  auto* V_26 = CreateLShr(V_25, V_16);
+  auto* V_27 = CreateAnd(V_26, V_23, _ReturnName);
+  return V_27;
 }
 
-Value* _gepof_StackOffset_v1(Value* p, const Twine &Name = "")
+auto* _getDispatchRaysIndex_HotZone_v2(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_2 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), V_2 });
+  auto* V_4 = CreateLoad(V_3, _ReturnName);
+  return V_4;
 }
 
-Value* _gepof_BudgeBits_v1(Value* p, const Twine &Name = "")
+void _setDispatchRaysIndex_HotZone_v1(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3)
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_4 = ctlz(arg_1);
+  auto* V_5 = CreateSub(getInt32(32), V_4);
+  auto* V_6 = ctlz(arg_2);
+  auto* V_7 = CreateSub(getInt32(32), V_6);
+  auto* V_8 = CreateShl(arg_2, V_5);
+  auto* V_9 = CreateOr(V_8, arg_1);
+  auto* V_10 = CreateShl(V_7, getInt32(5));
+  auto* V_11 = CreateOr(V_5, V_10);
+  auto* V_12 = CreateAdd(V_7, V_5);
+  auto* V_13 = ctlz(arg_3);
+  auto* V_14 = CreateShl(arg_3, V_12);
+  auto* V_15 = CreateOr(V_14, V_9);
+  auto* V_16 = CreateShl(V_13, getInt32(10));
+  auto* V_17 = CreateSub(getInt32(32768), V_16);
+  auto* V_18 = CreateOr(V_11, V_17);
+  auto* V_19 = CreateTrunc(V_18, getInt16Ty());
+  auto* V_20 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(1), getInt32(0) });
+  CreateStore(V_19, V_20);
+  auto* V_21 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
+  CreateStore(V_15, V_21);
+  return;
 }
 
-Value* _gepof_CommittedHitT(Value* p, const Twine &Name = "")
+void _setDispatchRaysIndex_HotZone_v2(Value* arg_0, Value* arg_1, Value* arg_2)
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* V_3 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), V_3 });
+  CreateStore(arg_2, V_4);
+  return;
 }
 
-Value* _gepof_CommittedHitT2(Value* p, const Twine &Name = "")
+auto* _getBVHPtr_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
 {
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_PotentialHitT(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_CommittedHitU(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_PotentialHitU(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_CommittedHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(5),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_PotentialHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(5),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_CommittedHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(4),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_PotentialHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(4),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_CommittedHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(3),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_PotentialHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(3),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_CommittedHitFrontFaceDword(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(3),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_PotentialHitFrontFaceDword(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(3),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_topOfNodePtrAndFlags(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(4),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_hitGroupShaderRecordInfo(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(4),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_missShaderRecordInfo(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(4),
-    this->getInt32(0),
-    this->getInt32(2),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_topOfInstanceLeafPtr(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(4),
-    this->getInt32(0),
-    this->getInt32(3),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_MemRay_org(Value* p, Value* idx1, Value* idx2, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(0),
-    idx2,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_MemRay_dir(Value* p, Value* idx1, Value* idx2, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(1),
-    idx2,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_MemRay_tnear(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(2),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_MemRay_tfar(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-    this->getInt32(3),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_RQO_rtStack(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_RQO_TRCtrl(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_instanceID(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(1),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_instanceIndex(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(2),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_world2obj_vx(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_world2obj_vy(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_world2obj_vz(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(3),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_obj2world_p(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(4),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_obj2world_vx(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(3),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_obj2world_vy(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(4),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_obj2world_vz(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(5),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_world2obj_p(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(6),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_InstanceLeaf_instContToHitGroupIndex(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_QuadLeaf_primIndex0(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(1),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_QuadLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_ProceduralLeaf__primIndex(Value* p, Value* idx1, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(2),
-    idx1,
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
-}
-
-Value* _gepof_ProceduralLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
-{
-  Value* Indices[] = {
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(1),
-    this->getInt32(0),
-    this->getInt32(0),
-    this->getInt32(0),
-  };
-  return this->CreateInBoundsGEP(p, Indices, Name);
+  auto* BB_3 = GetInsertBlock();
+  auto* _CurIP = &*GetInsertPoint();
+  auto *_JoinBB = BB_3->splitBasicBlock(_CurIP, VALUE_NAME("_getBVHPtr_Xe.join"));
+  BB_3->getTerminator()->eraseFromParent();
+  auto* BB_4 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getBVHPtr_Xe."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getBVHPtr_Xe."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getBVHPtr_Xe."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_7 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getBVHPtr_Xe."), _JoinBB->getParent(), _JoinBB);
+  SetInsertPoint(BB_3);
+  auto* V_8 = CreateICmpEQ(arg_0, getInt64(0));
+  CreateCondBr(arg_2, BB_4, BB_5);
+  SetInsertPoint(BB_4);
+  auto* V_9 = CreateAdd(arg_1, arg_0);
+  auto* V_10 = CreateSelect(V_8, getInt64(0), V_9);
+  CreateBr(BB_7);
+  SetInsertPoint(BB_7);
+  auto* V_11 = CreatePHI(getInt64Ty(), 3, _ReturnName);
+  CreateBr(_JoinBB);
+  SetInsertPoint(BB_5);
+  CreateCondBr(V_8, BB_7, BB_6);
+  SetInsertPoint(BB_6);
+  auto* V_12 = CreateIntToPtr(arg_0, PointerType::get(_struct_RTStackFormat__BVH(*Ctx.getModule()), 2));
+  auto* V_13 = CreateInBoundsGEP(V_12, { getInt64(0), getInt32(0) });
+  auto* V_14 = CreateLoad(V_13);
+  auto* V_15 = CreateAdd(V_14, arg_0);
+  CreateBr(BB_7);
+  V_11->addIncoming(V_10, BB_4);
+  V_11->addIncoming(V_15, BB_6);
+  V_11->addIncoming(getInt64(0), BB_5);
+  SetInsertPoint(_CurIP);
+  return V_11;
 }
 
 auto* _getWorldRayOrig(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
@@ -1627,6 +1188,15 @@ auto* _getRayTMin(Value* arg_0, const Twine& _ReturnName = "")
   auto* V_1 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(2), getInt64(0), getInt32(2) });
   auto* V_2 = CreateLoad(V_1, _ReturnName);
   return V_2;
+}
+
+auto* _getRayInfo_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateZExt(arg_2, getInt64Ty());
+  auto* V_4 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_5 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(2), V_3, getInt32(0), V_4 });
+  auto* V_6 = CreateLoad(V_5, _ReturnName);
+  return V_6;
 }
 
 auto* _getRayFlagsSync_Xe(Value* arg_0, const Twine& _ReturnName = "")
@@ -1730,6 +1300,43 @@ void _setDoneBit_Xe(Value* arg_0, Value* arg_1)
   auto* V_6 = CreateLoad(V_4);
   auto* V_7 = CreateOr(V_6, getInt32(268435456));
   CreateStore(V_7, V_5);
+  return;
+}
+
+void _setHitValid_Xe(Value* arg_0, Value* arg_1)
+{
+  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  auto* V_4 = CreateSelect(arg_1, V_3, V_2);
+  auto* V_5 = CreateSelect(arg_1, V_3, V_2);
+  auto* V_6 = CreateLoad(V_4);
+  auto* V_7 = CreateOr(V_6, getInt32(65536));
+  CreateStore(V_7, V_5);
+  return;
+}
+
+auto* _getHitBaryCentric_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0) });
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0) });
+  auto* V_5 = CreateSelect(arg_2, V_3, V_4);
+  auto* V_6 = CreateICmpEQ(arg_1, getInt32(0));
+  auto* V_7 = CreateInBoundsGEP(V_5, { getInt64(0), getInt32(1) });
+  auto* V_8 = CreateInBoundsGEP(V_5, { getInt64(0), getInt32(2) });
+  auto* V_9 = CreateSelect(V_6, V_7, V_8);
+  auto* V_10 = CreateLoad(V_9, _ReturnName);
+  return V_10;
+}
+
+void _writeBaryCentricToStorage_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
+{
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(1) });
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(1) });
+  auto* V_5 = CreateSelect(arg_2, V_3, V_4);
+  auto* V_6 = CreateBitCast(V_5, PointerType::get(getInt64Ty(), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_7 = CreateBitCast(arg_1, PointerType::get(getInt64Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_8 = CreateLoad(V_6);
+  CreateStore(V_8, V_7);
   return;
 }
 
@@ -1839,6 +1446,24 @@ auto* _getRayTCurrent_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = 
   auto* V_8 = CreateSelect(V_6, V_7, V_5);
   auto* V_9 = CreateLoad(V_8, _ReturnName);
   return V_9;
+}
+
+auto* _getHitT_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(0) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(V_4, _ReturnName);
+  return V_5;
+}
+
+void _setHitT_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
+{
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(0) });
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0) });
+  auto* V_5 = CreateSelect(arg_2, V_4, V_3);
+  CreateStore(arg_1, V_5);
+  return;
 }
 
 auto* _getInstanceIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
@@ -1991,19 +1616,20 @@ void _createTraceRayInlinePrologue_Xe(Value* arg_0, Value* arg_1, Value* arg_2, 
   auto* V_15 = CreateAnd(V_14, getInt32(1023));
   auto* V_16 = CreateZExt(V_15, getInt64Ty());
   auto* V_17 = CreateShl(V_16, getInt64(48));
-  auto* V_18 = CreateOr(V_17, arg_2);
-  CreateStore(V_18, V_9);
-  auto* V_19 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(2), getInt64(0), getInt32(4), getInt32(0), getInt32(3), getInt32(0) });
-  auto* V_20 = CreateAnd(arg_4, getInt32(255));
-  auto* V_21 = CreateZExt(V_20, getInt64Ty());
-  auto* V_22 = CreateShl(V_21, getInt64(48));
-  CreateStore(V_22, V_19);
-  auto* V_23 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0) });
-  CreateStore(arg_5, V_23);
-  auto* V_24 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
-  CreateStore(getInt32(0), V_24);
-  auto* V_25 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  auto* V_18 = CreateAnd(arg_2, getInt64(281474976710655));
+  auto* V_19 = CreateOr(V_17, V_18);
+  CreateStore(V_19, V_9);
+  auto* V_20 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(2), getInt64(0), getInt32(4), getInt32(0), getInt32(3), getInt32(0) });
+  auto* V_21 = CreateAnd(arg_4, getInt32(255));
+  auto* V_22 = CreateZExt(V_21, getInt64Ty());
+  auto* V_23 = CreateShl(V_22, getInt64(48));
+  CreateStore(V_23, V_20);
+  auto* V_24 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0) });
+  CreateStore(arg_5, V_24);
+  auto* V_25 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
   CreateStore(getInt32(0), V_25);
+  auto* V_26 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  CreateStore(getInt32(0), V_26);
   return;
 }
 

@@ -87,43 +87,6 @@ Value* RTBuilder::getStatelessScratchPtr(void)
 }
 
 
-//get MemHit.topOfPrimIndexDelta/frontFaceDword/hitInfoDWord
-//to avoid confusion, let's use one single method to represent all 3 union fields
-//caller could provide Name to explicitly specify which DW it's meant to use
-//Note: This kind of design might cause a little issue that we cannot assert invalid ShaderTy for a specific field,
-//  say, if frontFace is to be retrieved,, ShaderTy must be CHS/AnyHit.
-Value* RTBuilder::getHitInfoDWordPtr(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, const Twine& Name)
-{
-    Value* Ptr = nullptr;
-    if (ShaderTy == CallableShaderTypeMD::ClosestHit)
-    {
-        Ptr = this->_gepof_CommittedHitTopOfPrimIndexDelta(
-            StackPointer,
-            VALUE_NAME("&committedHit." + Name));
-    }
-    else
-    {
-        Ptr = this->_gepof_PotentialHitTopOfPrimIndexDelta(
-            StackPointer,
-            VALUE_NAME("&potentialHit." + Name));
-    }
-
-    return Ptr;
-}
-
-Value* RTBuilder::getHitInfoDWord(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, const Twine& Name)
-{
-    return this->CreateLoad(this->getHitInfoDWordPtr(StackPointer, ShaderTy, Name), Name);
-}
-
-void RTBuilder::setHitInfoDWord(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, Value* V, const Twine& Name)
-{
-    this->CreateStore(V, this->getHitInfoDWordPtr(StackPointer, ShaderTy, Name));
-}
-
 Value* RTBuilder::getIsFrontFace(
     RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
 {
@@ -326,60 +289,6 @@ TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
 }
 
 
-//FIXME: this is a temp solution and eventually, we want to have a general solution to coalesce this kind of store
-//this method write a block of data (== size bytes) specified by vals into dstPtr.
-//  If srcPtr is nullptr, all other data except vals are 0.
-//  Else, all other data except vals are from srcPtr.
-//size: mem size in bytes
-//vals: key is byte offset of value. Only support DWORDs and i64 now.
-void RTBuilder::WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, const DenseMap<uint32_t, Value*>& vals, const Twine& dstName, const Twine& srcName)
-{
-    //simply use DWORDs for now
-    uint32_t nEles = size / 4;
-    auto* VectorTy = IGCLLVM::FixedVectorType::get(getInt32Ty(), nEles);
-    Value* blockDstPtr = CreateBitOrPointerCast(dstPtr, VectorTy->getPointerTo(dstPtr->getType()->getPointerAddressSpace()), dstName + ".BlockDataPtr");
-    Value* blockSrc = nullptr;
-    if (srcPtr)
-    {
-        Value* blockSrcPtr = CreateBitOrPointerCast(srcPtr, VectorTy->getPointerTo(srcPtr->getType()->getPointerAddressSpace()), srcName + ".BlockDataPtr");
-        blockSrc = CreateAlignedLoad(blockSrcPtr, IGCLLVM::Align(size), srcName + ".BlockData");
-    }
-
-    Value* Vec = UndefValue::get(VectorTy);
-    for (uint32_t i = 0; i < nEles; i++) {
-        auto it = vals.find(i*4);
-        if (it != vals.end())
-        {
-            Value* val = it->second;
-            if (val->getType()->isIntegerTy(64))
-            {
-                Value* i32vec = CreateBitCast(val, IGCLLVM::FixedVectorType::get(getInt32Ty(), 2));
-                Vec = CreateInsertElement(Vec, CreateExtractElement(i32vec, (uint64_t)0), i);
-                i++;
-                Vec = CreateInsertElement(Vec, CreateExtractElement(i32vec, (uint64_t)1), i);
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(val->getType()->getScalarSizeInBits() == 32, "Not supported datatype!");
-                Vec = CreateInsertElement(Vec, CreateBitCast(val, this->getInt32Ty()), i);
-            }
-        }
-        else
-        {
-            if (blockSrc)
-            {
-                Vec = CreateInsertElement(Vec, CreateExtractElement(blockSrc, i), i);
-            }
-            else
-            {
-                Vec = CreateInsertElement(Vec, ConstantInt::get(this->getInt32Ty(), 0), i);
-            }
-        }
-    }
-
-    CreateAlignedStore(Vec, blockDstPtr, IGCLLVM::Align(size));
-}
-
 static BasicBlock* getUnsetPhiBlock(PHINode* PN)
 {
     SmallPtrSet<BasicBlock*, 4> BBs;
@@ -513,30 +422,6 @@ std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int si
     return std::make_pair(rtStacks, rtCtrls);
 }
 
-
-void RTBuilder::FillRayQueryShadowMemory(Value* shMem, Value* src, uint64_t size, unsigned align)
-{
-    this->CreateMemCpy(
-        this->CreatePointerCast(shMem, PointerType::get(this->getInt32Ty(), ADDRESS_SPACE_PRIVATE)),
-        src,
-        size,
-        align);
-}
-
-
-void RTBuilder::MemCpyPotentialHit2CommitHit(RTBuilder::StackPointerVal* StackPointer)
-{
-    Value* committedHit = this->_gepof_CommittedHitT(StackPointer, VALUE_NAME("&committedHit"));
-    Value* potentialHit = this->_gepof_PotentialHitT(StackPointer, VALUE_NAME("&potentialHit"));
-
-    this->CreateMemCpy(
-        committedHit,
-        4,
-        potentialHit,
-        4,
-        this->getInt64(sizeof(MemHit)));
-}
-
 void RTBuilder::setDoneBit(RTBuilder::StackPointerVal* StackPointer, bool Committed)
 {
     _setDoneBit_Xe(StackPointer, getInt1(Committed));
@@ -570,50 +455,15 @@ Value* RTBuilder::alignVal(Value* V, uint64_t Align)
     return Aligned;
 }
 
-Value* RTBuilder::getRayInfoPtr(
-    StackPointerVal* StackPointer, uint32_t Idx, uint32_t BvhLevel)
+Value* RTBuilder::getRayInfo(StackPointerVal* perLaneStackPtr, uint32_t Idx, uint32_t BvhLevel)
 {
-    IGC_ASSERT_MESSAGE((Idx < 8), "out of bounds!");
-
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].dir) ==
-                  offsetof(HWRayData2, ray[TOP_LEVEL_BVH].org) + sizeof(Vec3f),
-        "layout change?");
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].tnear) ==
-                  offsetof(HWRayData2, ray[TOP_LEVEL_BVH].dir) + sizeof(Vec3f),
-        "layout change?");
-    static_assert(offsetof(HWRayData2, ray[TOP_LEVEL_BVH].tfar) ==
-                  offsetof(HWRayData2, ray[TOP_LEVEL_BVH].tnear) + sizeof(float),
-        "layout change?");
-
-    Value* Ptr = nullptr;
-    if (Idx < 3)
-    {
-        Ptr = _gepof_MemRay_org(StackPointer,
-            this->getInt32(BvhLevel), this->getInt32(Idx),
-            VALUE_NAME("&MemRay::org[" + Twine(Idx) + "]"));
-    }
-    else if (Idx < 6)
-    {
-        Ptr = _gepof_MemRay_dir(StackPointer,
-            this->getInt32(BvhLevel), this->getInt32(Idx - 3),
-            VALUE_NAME("&MemRay::dir[" + Twine(Idx - 3) + "]"));
-    }
-    else if (Idx == 6)
-    {
-        Ptr = _gepof_MemRay_tnear(StackPointer,
-            this->getInt32(BvhLevel),
-            VALUE_NAME("&MemRay::tnear"));
-    }
-    else if (Idx == 7)
-    {
-        Ptr = _gepof_MemRay_tfar(StackPointer,
-            this->getInt32(BvhLevel),
-            VALUE_NAME("&MemRay::tfar"));
-    }
-
-    return Ptr;
+    IGC_ASSERT_MESSAGE(Idx < 8, "out-of-bounds!");
+    return _getRayInfo_Xe(
+        perLaneStackPtr,
+        getInt32(Idx),
+        getInt32(BvhLevel),
+        VALUE_NAME("RayInfo." + Twine(Idx)));
 }
-
 
 Value* RTBuilder::getRayTMin(RTBuilder::StackPointerVal* perLaneStackPtr)
 {
@@ -856,123 +706,6 @@ Value* RTBuilder::getWorldToObj(
     return getObjWorldAndWorldObj(perLaneStackPtr, IGC::WORLD_TO_OBJECT, dim, ShaderTy, I, checkInstanceLeafPtr);
 }
 
-Value* RTBuilder::getCommittedHitPtr(RTBuilder::StackPointerVal* perLaneStackPtr)
-{
-    static_assert(offsetof(MemHit::RT::Xe, t) == 0);
-    return this->_gepof_CommittedHitT(perLaneStackPtr,
-        VALUE_NAME("&CommittedHit"));
-}
-
-Value* RTBuilder::getPotentialHitPtr(RTBuilder::StackPointerVal* perLaneStackPtr)
-{
-    static_assert(offsetof(MemHit::RT::Xe, t) == 0);
-    return this->_gepof_PotentialHitT(perLaneStackPtr,
-        VALUE_NAME("&PotentialHit"));
-}
-
-Value* RTBuilder::getMemRayPtr(RTBuilder::StackPointerVal* perLaneStackPtr, bool isTopLevel)
-{
-    static_assert(offsetof(MemRay, org) == 0);
-    return this->_gepof_MemRay_org(
-        perLaneStackPtr, this->getInt32(isTopLevel ? TOP_LEVEL_BVH : BOTTOM_LEVEL_BVH), this->getInt32(0),
-        VALUE_NAME("&MemRay"));
-}
-
-Value* RTBuilder::getMatrixPtr(
-    Value* InstanceLeafPtr,
-    uint32_t infoKind,
-    uint32_t dim)
-{
-    IGC_ASSERT_MESSAGE((dim < 12), "dim out of bounds!");
-
-    static_assert(
-        offsetof(InstanceLeaf, part1.obj2world_vy) ==
-        offsetof(InstanceLeaf, part1.obj2world_vx) + sizeof(Vec3f),
-        "layout change?");
-    static_assert(
-        offsetof(InstanceLeaf, part1.obj2world_vz) ==
-        offsetof(InstanceLeaf, part1.obj2world_vy) + sizeof(Vec3f),
-        "layout change?");
-    static_assert(
-        offsetof(InstanceLeaf, part1.world2obj_p) ==
-        offsetof(InstanceLeaf, part1.obj2world_vz) + sizeof(Vec3f),
-        "layout change?");
-
-    static_assert(
-        offsetof(InstanceLeaf, part0.world2obj_vy) ==
-        offsetof(InstanceLeaf, part0.world2obj_vx) + sizeof(Vec3f),
-        "layout change?");
-    static_assert(
-        offsetof(InstanceLeaf, part0.world2obj_vz) ==
-        offsetof(InstanceLeaf, part0.world2obj_vy) + sizeof(Vec3f),
-        "layout change?");
-    static_assert(
-        offsetof(InstanceLeaf, part0.obj2world_p) ==
-        offsetof(InstanceLeaf, part0.world2obj_vz) + sizeof(Vec3f),
-        "layout change?");
-
-    IGC_ASSERT_MESSAGE((infoKind == OBJECT_TO_WORLD || infoKind == WORLD_TO_OBJECT), "wrong kind!");
-
-    //3x3 matrix is represented in the bvh as a 3 float3 vectors, each representing a row.
-    Value* componentPtr = nullptr;
-    if (infoKind == OBJECT_TO_WORLD)
-    {
-        if (dim < 3)
-        {
-            componentPtr = this->_gepof_InstanceLeaf_obj2world_vx(
-                InstanceLeafPtr, this->getInt32(dim),
-                VALUE_NAME("&InstanceLeaf...obj2world_vx[" + Twine(dim) + "]"));
-        }
-        else if (dim < 6)
-        {
-            componentPtr = this->_gepof_InstanceLeaf_obj2world_vy(
-                InstanceLeafPtr, this->getInt32(dim - 3),
-                VALUE_NAME("&InstanceLeaf...obj2world_vy[" + Twine(dim - 3) + "]"));
-        }
-        else if (dim < 9)
-        {
-            componentPtr = this->_gepof_InstanceLeaf_obj2world_vz(
-                InstanceLeafPtr, this->getInt32(dim - 6),
-                VALUE_NAME("&InstanceLeaf...obj2world_vz[" + Twine(dim - 6) + "]"));
-        }
-        else
-        {
-            componentPtr = this->_gepof_InstanceLeaf_obj2world_p(
-                InstanceLeafPtr, this->getInt32(dim - 9),
-                VALUE_NAME("&InstanceLeaf...obj2world_p[" + Twine(dim - 9) + "]"));
-        }
-    }
-    else
-    {
-        if (dim < 3)
-        {
-            componentPtr = this->_gepof_InstanceLeaf_world2obj_vx(
-                InstanceLeafPtr, this->getInt32(dim),
-                VALUE_NAME("&InstanceLeaf...world2obj_vx[" + Twine(dim) + "]"));
-        }
-        else if (dim < 6)
-        {
-            componentPtr = this->_gepof_InstanceLeaf_world2obj_vy(
-                InstanceLeafPtr, this->getInt32(dim - 3),
-                VALUE_NAME("&InstanceLeaf...world2obj_vy[" + Twine(dim - 3) + "]"));
-        }
-        else if (dim < 9)
-        {
-            componentPtr = this->_gepof_InstanceLeaf_world2obj_vz(
-                InstanceLeafPtr, this->getInt32(dim - 6),
-                VALUE_NAME("&InstanceLeaf...world2obj_vz[" + Twine(dim - 6) + "]"));
-        }
-        else
-        {
-            componentPtr = this->_gepof_InstanceLeaf_world2obj_p(
-                InstanceLeafPtr, this->getInt32(dim - 9),
-                VALUE_NAME("&InstanceLeaf...world2obj_p[" + Twine(dim - 9) + "]"));
-        }
-    }
-
-    return componentPtr;
-}
-
 Value* RTBuilder::getObjWorldAndWorldObj(
     RTBuilder::StackPointerVal* perLaneStackPtr,
     uint32_t infoKind,
@@ -1045,24 +778,6 @@ Value* RTBuilder::TransformWorldToObject(
 
     return _TransformWorldToObject_Xe(
         perLaneStackPtr, getInt32(dim), getInt1(isOrigin), getInt32(ShaderTy));
-}
-
-Value* RTBuilder::getInstanceLeafPtr(Value* instLeafTopPtr)
-{
-    auto& M = *this->GetInsertBlock()->getModule();
-    //Read Instance Leaf Ptr
-    Value* loadValue = this->CreateLoad(instLeafTopPtr);
-
-    loadValue = this->CreateAnd(loadValue,
-        this->getInt64(QWBITMASK((uint32_t)MemHit::RT::Xe::Bits::instLeafPtr)),
-        VALUE_NAME("42-bit InstanceLeafPtr"));
-    Value* ptrValue = this->CreateMul(loadValue, this->getInt64(LeafSize),
-        VALUE_NAME("fullInstanceLeafPtr"));
-    ptrValue = canonizePointer(ptrValue);
-    ptrValue = this->CreateIntToPtr(ptrValue, this->getInstanceLeafPtrTy(M),
-        VALUE_NAME("InstanceLeafPtr"));
-
-    return ptrValue;
 }
 
 
@@ -1196,257 +911,32 @@ Value* RTBuilder::getRootNodePtr(Value* BVHPtr)
         return this->getInt64(0);
     }
 
-    if (auto Offset = Ctx.BVHFixedOffset)
-    {
-        // If the BVH has provided us a fixed offset, instead of doing the below
-        // loading of the offset we can just do:
-        //
-        // char* bvh_root = (bvh) ? bvh + fixed_offset : 0;
-        Value* Cond = nullptr;
-        if (IGC_IS_FLAG_ENABLED(DisableNullBVHCheck))
-        {
-            Cond = this->getInt1(true);
-        }
-        else
-        {
-            Cond = this->CreateICmpNE(
-                BVHPtr, Constant::getNullValue(BVHPtr->getType()));
-        }
-        Value* Cast = this->CreatePointerCast(
-            BVHPtr,
-            this->getInt64Ty(),
-            VALUE_NAME("&BVH"));
-        Value* OffsetPtr = this->CreateAdd(Cast, this->getInt64(*Offset));
-        constexpr uint64_t Mask = QWBITMASK((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr);
-        OffsetPtr = this->CreateAnd(
-            OffsetPtr,
-            this->getInt64(Mask),
-            VALUE_NAME("OffsetPtr"));
-        return this->CreateSelect(
-            Cond, OffsetPtr, this->getInt64(0), VALUE_NAME("rootNodePtr"));
-    }
-
-    auto* M = this->GetInsertBlock()->getModule();
-    Value* bitcast = this->CreatePointerCast(
+    Value* BVHI = this->CreatePointerCast(
         BVHPtr,
-        getBVHPtrTy(*M),
+        this->getInt64Ty(),
         VALUE_NAME("&BVH"));
 
-    auto* OffsetPtr = this->_gepof_BVH_rootNodeOffset(
-        bitcast,
-        VALUE_NAME("&rootNodeOffset"));
-    static_assert(sizeof(BVH::rootNodeOffset) == 8, "offset size changed?");
-    // TODO: offset is 64-bit but we only read the lower 32-bit?
-    OffsetPtr = this->CreateBitCast(
-        OffsetPtr,
-        PointerType::get(
-            this->getInt32Ty(), OffsetPtr->getType()->getPointerAddressSpace()),
-        VALUE_NAME("&rootNodeOffset_lower"));
-
-    auto fetchRootNodePtr = [&]()
-    {
-        Value* rootNodeOffset = this->CreateLoad(
-            OffsetPtr, VALUE_NAME("rootNodeOffset"));
-        Value* bvhPtr = this->CreatePtrToInt(BVHPtr, this->getInt64Ty());
-        Value* rootNodePtr = this->CreateAdd(
-            bvhPtr, this->CreateZExt(rootNodeOffset, this->getInt64Ty()));
-        constexpr uint64_t Mask = QWBITMASK((uint32_t)MemRay::RT::Xe::Bits::rootNodePtr);
-        rootNodePtr = this->CreateAnd(
-            rootNodePtr,
-            this->getInt64(Mask),
-            VALUE_NAME("rootNodePtr"));
-
-        return rootNodePtr;
-    };
-
-    if (IGC_IS_FLAG_ENABLED(DisableNullBVHCheck))
-    {
-        return fetchRootNodePtr();
-    }
-
-    // The DXR spec says:
-    // "Specifying a NULL acceleration structure forces a miss."
-    //
-    // Previously, we unconditionally loaded the offset to the bvh out of the
-    // acceleration structure and added it to the base to get the rootNodePtr.
-    // We can't do this because the pointer may be null from the application.
-    // We will do the below check instead:
-    //
-    // char* bvh_root = (bvh) ? bvh + bvh->root_node_offset : 0;
-    //
-    // Note: We'd like to remove this check in the future. The BVH layout may
-    // be reorganized such that the root node will be located in a fixed
-    // position so we can avoid the load of the offset.
-    auto* CurIP = &*this->GetInsertPoint();
-    auto* CurBB = this->GetInsertBlock();
-
-    auto* JoinBB = CurBB->splitBasicBlock(
-        CurIP,
-        VALUE_NAME("LoadBVHOffsetJoin"));
-    auto* LoadBVHOffsetBB = BasicBlock::Create(
-        M->getContext(),
-        VALUE_NAME("LoadBVHOffset"),
-        CurBB->getParent(),
-        JoinBB);
-    CurBB->getTerminator()->eraseFromParent();
-
-    this->SetInsertPoint(CurBB);
-    auto* Cond = this->CreateICmpNE(
-        OffsetPtr, Constant::getNullValue(OffsetPtr->getType()));
-    this->CreateCondBr(Cond, LoadBVHOffsetBB, JoinBB);
-
-    this->SetInsertPoint(LoadBVHOffsetBB);
-    Value* rootNodePtr = fetchRootNodePtr();
-    this->CreateBr(JoinBB);
-
-    this->SetInsertPoint(&*JoinBB->begin());
-    auto* Ptr = this->CreatePHI(
-        rootNodePtr->getType(), 2, VALUE_NAME("rootNodePtr"));
-    Ptr->addIncoming(rootNodePtr, LoadBVHOffsetBB);
-    Ptr->addIncoming(this->getInt64(0), CurBB);
-
-    // reset the IP
-    this->SetInsertPoint(CurIP);
-    return Ptr;
+    return _getBVHPtr_Xe(
+        BVHI,
+        getInt64(Ctx.BVHFixedOffset.has_value() ? *Ctx.BVHFixedOffset : 0),
+        getInt1(Ctx.BVHFixedOffset.has_value()),
+        VALUE_NAME("rootNodePtr"));
 }
 
-Value* RTBuilder::getNodePtrAndFlagsPtr(
+void RTBuilder::setHitT(
     StackPointerVal* StackPointer,
-    uint32_t BvhLevel)
+    Value* V,
+    bool Committed)
 {
-    return _gepof_topOfNodePtrAndFlags(
-        StackPointer, this->getInt32(BvhLevel),
-        VALUE_NAME("&MemRay::topOfNodePtrAndFlags"));
+    _setHitT_Xe(StackPointer, V, getInt1(Committed));
 }
 
-Value* RTBuilder::getNodePtrAndFlags(
+Value* RTBuilder::getHitT(
     StackPointerVal* StackPointer,
-    uint32_t BvhLevel)
+    bool Committed)
 {
-    return this->CreateLoad(this->getNodePtrAndFlagsPtr(StackPointer, BvhLevel));
-}
-
-Value* RTBuilder::getInstLeafPtrAndRayMask(
-    RTBuilder::StackPointerVal* StackPointer, uint32_t BvhLevel)
-{
-    auto* Ptr = this->_gepof_topOfInstanceLeafPtr(
-        StackPointer, this->getInt32(BvhLevel),
-        VALUE_NAME("&MemRay::topOfInstanceLeafPtr"));
-    return this->CreateLoad(Ptr);
-}
-
-void RTBuilder::setCommittedHitT(
-    RTBuilder::StackPointerVal* StackPointer, Value* V)
-{
-    auto* Ptr = this->_gepof_CommittedHitT(StackPointer,
-        VALUE_NAME("&committedHit.t"));
-
-    this->CreateStore(V, Ptr);
-}
-
-Value* RTBuilder::getPotentialHitT(RTBuilder::StackPointerVal* StackPointer)
-{
-    auto* Ptr = this->_gepof_PotentialHitT(StackPointer);
-
-    Value* RayTFar = this->CreateLoad(
-        Ptr,
-        VALUE_NAME("potentialHit.t"));
-    return RayTFar;
-}
-
-void RTBuilder::setPotentialHitT(RTBuilder::StackPointerVal* StackPointer, Value* V)
-{
-    auto* Ptr = this->_gepof_PotentialHitT(StackPointer,
-        VALUE_NAME("&potentialHit.t"));
-
-    this->CreateStore(V, Ptr);
-}
-
-void RTBuilder::setCommittedHitTopPrimLeafPtr(RTBuilder::StackPointerVal* StackPointer, Value *V)
-{
-    auto* Ptr = this->_gepof_CommittedHitTopOfPrimLeafPtr(StackPointer,
-        VALUE_NAME("&committedHit.topOfPrimLeafPtr"));
-    this->CreateStore(V, Ptr);
-}
-
-Value* RTBuilder::getPotentialHitTopInstLeafPtr(RTBuilder::StackPointerVal* StackPointer)
-{
-    auto* Ptr = this->_gepof_PotentialHitTopOfInstLeafPtr(StackPointer,
-        VALUE_NAME("&potentialHit.topOfInstLeafPtr"));
-
-    // upper 22 bits contains hitGroupRecPtr1
-    Value *PotentialInstVal = this->CreateLoad(
-        Ptr,
-        VALUE_NAME("potential_inst_leaf"));
-
-    return PotentialInstVal;
-}
-
-void RTBuilder::setCommittedHitTopInstLeafPtr(RTBuilder::StackPointerVal* StackPointer, Value* V)
-{
-    auto* Ptr = this->_gepof_CommittedHitTopOfInstLeafPtr(StackPointer,
-        VALUE_NAME("&committedHit.topOfInstLeafPtr"));
-    this->CreateStore(V, Ptr);
-}
-
-Value* RTBuilder::getHitTopOfPrimLeafPtr(
-    StackPointerVal* perLaneStackPtr,
-    IGC::CallableShaderTypeMD ShaderTy)
-{
-    Value* topOfPrimLeafPtr = nullptr;
-    if (ShaderTy == CallableShaderTypeMD::ClosestHit)
-    {
-        topOfPrimLeafPtr = this->_gepof_CommittedHitTopOfPrimLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&committedHit.topOfPrimLeafPtr"));
-    }
-    else
-    {
-        topOfPrimLeafPtr = this->_gepof_PotentialHitTopOfPrimLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&potentialHit.topOfPrimLeafPtr"));
-    }
-
-    Value* loadValue = this->CreateLoad(topOfPrimLeafPtr);
-    return loadValue;
-}
-
-//Note: this is NOT to return MemHit::topOfInstLeafPtr (the whole QW)
-//instead, it's to return BVH::instLeaf[i]
-Value* RTBuilder::getHitInstanceLeafPtr(
-    StackPointerVal* perLaneStackPtr,
-    IGC::CallableShaderTypeMD ShaderTy)
-{
-    Value* topOfInstanceLeafPtr = nullptr;
-
-    if (ShaderTy == CallableShaderTypeMD::ClosestHit)
-    {
-        topOfInstanceLeafPtr = this->_gepof_CommittedHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&committedHit.topOfInstLeafPtr"));
-    }
-    else
-    {
-        topOfInstanceLeafPtr = this->_gepof_PotentialHitTopOfInstLeafPtr(
-            perLaneStackPtr,
-            VALUE_NAME("&potentialHit.topOfInstLeafPtr"));
-    }
-
-    //Read Instance Leaf Ptr
-    Value* ptrValue = this->getInstanceLeafPtr(topOfInstanceLeafPtr);
-    return ptrValue;
-}
-
-Value* RTBuilder::isDoneBitSet(Value* HitInfoVal)
-{
-    Value* rayQueryDone = this->CreateAnd(
-        HitInfoVal,
-        this->getInt32(BIT((uint32_t)MemHit::RT::Xe::Offset::done)));
-
-    return this->CreateICmpNE(
-        rayQueryDone,
-        this->getInt32(0),
-        VALUE_NAME("is_done"));
+    return _getHitT_Xe(StackPointer, getInt1(Committed),
+        VALUE_NAME(Committed ? "committedHit.t" : "potentialHit.t"));
 }
 
 Value* RTBuilder::isDoneBitNotSet(StackPointerVal* StackPointer, bool Committed)
@@ -1455,24 +945,9 @@ Value* RTBuilder::isDoneBitNotSet(StackPointerVal* StackPointer, bool Committed)
         StackPointer, getInt1(Committed), VALUE_NAME("!done"));
 }
 
-Value* RTBuilder::getMemHitBvhLevel(Value* MemHitInfoVal)
-{
-    auto *ShiftVal = this->CreateLShr(
-        MemHitInfoVal, (uint32_t)MemHit::RT::Xe::Offset::bvhLevel);
-    constexpr uint32_t Mask = BITMASK((uint32_t)MemHit::RT::Xe::Bits::bvhLevel);
-    auto* Level = this->CreateAnd(ShiftVal, Mask, VALUE_NAME("bvhLevel"));
-    return Level;
-}
-
 Value* RTBuilder::getBvhLevel(StackPointerVal* StackPointer, bool Committed)
 {
     return _getBvhLevel_Xe(StackPointer, getInt1(Committed));
-}
-
-
-Value* RTBuilder::getPotentialHitInfo(RTBuilder::StackPointerVal* StackPointer, const Twine& Name)
-{
-    return this->getHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit, Name);
 }
 
 Value* RTBuilder::getHitValid(RTBuilder::StackPointerVal* StackPointer, bool CommittedHit)
@@ -1481,13 +956,9 @@ Value* RTBuilder::getHitValid(RTBuilder::StackPointerVal* StackPointer, bool Com
 }
 
 //MemHit.valid = true;
-void RTBuilder::setHitValid(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
+void RTBuilder::setHitValid(StackPointerVal* StackPointer, bool CommittedHit)
 {
-    Value* ValidDW = getHitInfoDWord(StackPointer, ShaderTy, VALUE_NAME("valid"));
-    ValidDW = CreateOr(
-        ValidDW,
-        getInt32(1U << (uint32_t)MemHit::RT::Xe::Offset::valid));
-    setHitInfoDWord(StackPointer, ShaderTy, ValidDW, VALUE_NAME("valid"));
+    _setHitValid_Xe(StackPointer, getInt1(CommittedHit));
 }
 
 Value* RTBuilder::getSyncTraceRayControl(Value* ptrCtrl)
@@ -1501,71 +972,15 @@ void RTBuilder::setSyncTraceRayControl(Value* ptrCtrl, unsigned ctrl)
     this->CreateStore(llvm::ConstantInt::get(eleType, ctrl), ptrCtrl);
 }
 
-Value* RTBuilder::getHitUPtr(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
-{
-    Value* Ptr = nullptr;
-    if (ShaderTy == CallableShaderTypeMD::ClosestHit)
-    {
-        Ptr = this->_gepof_CommittedHitU(StackPointer,
-            VALUE_NAME("&committedHit.u"));
-    }
-    else if (ShaderTy == CallableShaderTypeMD::AnyHit)
-    {
-        Ptr = this->_gepof_PotentialHitU(StackPointer,
-            VALUE_NAME("&potentialHit.u"));
-    }
-    else
-    {
-        IGC_ASSERT_MESSAGE(0, "Intersection attributes only apply to ClosestHit and AnyHit shaders");
-    }
-
-    return Ptr;
-}
-
-Value* RTBuilder::getHitBaryCentricPtr(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim)
-{
-    auto* Ptr = this->getHitUPtr(StackPointer, ShaderTy);
-    IGC_ASSERT_MESSAGE(dim == 0 || dim == 1, "Only U V are supported.");
-    if (dim == 1)
-    {
-        IGC_ASSERT(llvm::isa<llvm::GetElementPtrInst>(Ptr));
-        if (auto* GEP = dyn_cast<llvm::GetElementPtrInst>(Ptr))
-        {
-            static_assert(offsetof(MemHit::RT::Xe, v) - offsetof(MemHit::RT::Xe, u) == sizeof(float));
-            llvm::Value* idx_dim0 = GEP->getOperand(GEP->getNumOperands() - 1);
-            llvm::Value* idx_dim1 = this->CreateAdd(idx_dim0, this->getInt32(1));
-            GEP->setOperand(GEP->getNumOperands() - 1, idx_dim1);
-        }
-    }
-
-    return Ptr;
-}
-
 Value* RTBuilder::getHitBaryCentric(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim)
+    RTBuilder::StackPointerVal* StackPointer, uint32_t idx, bool CommittedHit)
 {
-    return this->CreateLoad(getHitBaryCentricPtr(StackPointer, ShaderTy, dim),
-        dim ? VALUE_NAME("MemHit.v") : VALUE_NAME("MemHit.u"));
-}
-
-Value* RTBuilder::setHitBaryCentric(
-    RTBuilder::StackPointerVal* StackPointer, Value* V, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim)
-{
-    return this->CreateStore(V, getHitBaryCentricPtr(StackPointer, ShaderTy, dim));
-}
-
-Value* RTBuilder::getInstContToHitGroupIndex(RTBuilder::StackPointerVal* perLaneStackPtr,
-    IGC::CallableShaderTypeMD ShaderTy)
-{
-    auto* instLeafPtr = this->getHitInstanceLeafPtr(perLaneStackPtr, ShaderTy);
-    auto* Ptr = this->_gepof_InstanceLeaf_instContToHitGroupIndex(instLeafPtr,
-        VALUE_NAME("&InstanceLeaf...instContToHitGroupIndex"));
-
-    Value* value = this->CreateLoad(Ptr, VALUE_NAME("InstanceLeaf...instContToHitGroupIndex"));
-    //Only lower 24bits for the Dword read are valid for Index
-    return this->CreateAnd(value, this->getInt32(BITMASK((uint32_t)InstanceLeaf::Part0::RT::Xe::Bits::instContToHitGrpIndex)));
+    IGC_ASSERT_MESSAGE(idx == 0 || idx == 1, "Only U V are supported.");
+    return _getHitBaryCentric_Xe(
+        StackPointer,
+        getInt32(idx),
+        getInt1(CommittedHit),
+        VALUE_NAME(idx ? "MemHit.v" : "MemHit.u"));
 }
 
 
@@ -1987,6 +1402,13 @@ void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
     this->DisableRTGlobalsKnownValues = Disable;
 }
 
+
+CallInst* RTBuilder::ctlz(Value* V)
+{
+    auto* Ctlz = Intrinsic::getDeclaration(
+        GetInsertBlock()->getModule(), Intrinsic::ctlz, V->getType());
+    return CreateCall2(Ctlz, V, getFalse(), VALUE_NAME("lzd"));
+}
 
 void RTBuilder::createPotentialHit2CommittedHit(StackPointerVal* StackPtr)
 {

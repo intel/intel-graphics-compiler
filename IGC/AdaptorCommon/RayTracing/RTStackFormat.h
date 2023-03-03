@@ -1077,32 +1077,6 @@ struct TraceRayMessage
     static_assert(sizeof(Payload) == 4, "Payload must be 4 bytes");
 };
 
-// Extra rayquery information which are not part of RTStack
-struct RayQueryStateInfo
-{
-    TraceRayMessage::TraceRayCtrl traceRayCtrl;
-    //add more here if needed
-};
-
-// ShadowMemory: memory allocated by SW to spill/fill RTStackFormat::RayQueryObject
-// ShadowMemory holds an array of RayQueryObject
-// Implementation wise, ShadowMemory is used blindly by RayTracing FrontEnd no matter how many RayQueryObjects there are.
-// And we rely on later optimization to boil away unnecessary ShadowMemory accesses.
-// Theoretically (if optimization works perfectly well), there should be NO ShadowMemory access in GEN kernel
-// unless there are multiple RayQuery objects whose liveness overlap with each other.
-// NOTE: Not all information in RayQueryObject should be spill/fill, for example, those ShaderRecord information is only for async traceray.
-// And we might want to avoid spill/fill the whole RayQueryObject. On the other hand, we want to reuse existing data structure like RTStack
-// instead of recreating wheels. So, temporarily, we might still spill/fill the whole RayQueryObject.
-template <uint32_t MaxBVHLevels>
-struct RayQueryObject
-{
-    RTStack<MaxBVHLevels> rtStack;
-    RayQueryStateInfo   stateInfo;
-};
-
-using RayQueryObject2 = RayQueryObject<MAX_BVH_LEVELS>;
-//static_assert(std::is_standard_layout_v<RayQueryObject2>);
-
 // TraceRayInline enums
 
 enum COMMITTED_STATUS : uint32_t

@@ -247,14 +247,10 @@ public:
     TraceRaySyncIntrinsic* createSyncTraceRay(uint8_t bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
 
 
-    void WriteBlockData(Value* dstPtr, Value* srcPtr, uint32_t size, const DenseMap<uint32_t, Value*>& vals, const Twine& dstName = "", const Twine& srcName = "");
-
     std::pair<BasicBlock*, PHINode*>
         validateInstanceLeafPtr(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted);
     std::pair<Value*, Value*> createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name = "");
 
-    void FillRayQueryShadowMemory(Value* shMem, Value* src, uint64_t size, unsigned align);
-    void MemCpyPotentialHit2CommitHit(RTBuilder::StackPointerVal* StackPointer);
     void setDoneBit(StackPointerVal* StackPointer, bool Committed);
     Value* alignVal(Value* V, uint64_t Align);
     uint32_t getSyncStackSize();
@@ -263,7 +259,8 @@ public:
     Value* getRayTMin(StackPointerVal* perLaneStackPtr);
     Value* getRayFlags(SyncStackPointerVal* perLaneStackPtr);
     void   setRayFlags(SyncStackPointerVal* perLaneStackPtr, Value* V);
-    Value* getRayInfoPtr(StackPointerVal* StackPointer, uint32_t Idx, uint32_t BvhLevel);
+    Value* getRayInfo(
+        StackPointerVal* perLaneStackPtr, uint32_t Idx, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
 
     Value* getWorldRayOrig(StackPointerVal* perLaneStackPtr, uint32_t dim);
     Value* getWorldRayDir(StackPointerVal* perLaneStackPtr, uint32_t dim);
@@ -308,11 +305,6 @@ public:
         Instruction* I = nullptr,
         bool checkInstanceLeafPtr = false);
 
-    //ptr to MemHit::t
-    Value* getCommittedHitPtr(StackPointerVal* perLaneStackPtr);
-    Value* getPotentialHitPtr(StackPointerVal* perLaneStackPtr);
-    Value* getMemRayPtr(StackPointerVal* perLaneStackPtr, bool isTopLevel = true);
-
 
     static void setInvariantLoad(LoadInst* LI);
     CallInst* CreateLSCFence(LSC_SFID SFID, LSC_SCOPE Scope, LSC_FENCE_OP FenceOp);
@@ -322,42 +314,22 @@ public:
     Type* getInt32PtrTy(unsigned int AddrSpace = 0U) const;
 
     Value* getRootNodePtr(Value* BVHPtr);
-    Value* getNodePtrAndFlagsPtr(StackPointerVal* StackPointer, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
-    //MemRay::topOfNodePtrAndFlags
-    Value* getNodePtrAndFlags(StackPointerVal* StackPointer, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
 
-    //MemRay::topOfInstanceLeafPtr
-    Value* getInstLeafPtrAndRayMask(
-        StackPointerVal* StackPointer,
-        uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
-    void setCommittedHitT(
-        StackPointerVal* StackPointer,
-        Value* V);
     Value* isDoneBitNotSet(StackPointerVal* StackPointer, bool Committed);
-    Value* isDoneBitSet(Value* HitInfoVal);
-    Value* getMemHitBvhLevel(Value* MemHitInfoVal);
     Value* getBvhLevel(StackPointerVal* StackPointer, bool Committed);
     //MemHit::t
-    Value* getPotentialHitT(StackPointerVal* StackPointer);
-    void   setPotentialHitT(StackPointerVal* StackPointer, Value *V);
-    void   setCommittedHitTopPrimLeafPtr(StackPointerVal* StackPointer, Value* V);
-    Value* getPotentialHitTopInstLeafPtr(StackPointerVal* StackPointer);
-    void   setCommittedHitTopInstLeafPtr(StackPointerVal* StackPointer, Value* V);
+    void setHitT(
+        StackPointerVal* StackPointer,
+        Value* V,
+        bool Committed);
+    Value* getHitT(
+        StackPointerVal* StackPointer,
+        bool Committed);
     Value* getHitValid(StackPointerVal* StackPointer, bool CommittedHit);
-    void   setHitValid(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
-    Value* getPotentialHitInfo(RTBuilder::StackPointerVal* StackPointer, const Twine& Name = "PotentialHitInfo");
+    void   setHitValid(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getSyncTraceRayControl(Value* ptrCtrl);
     void   setSyncTraceRayControl(Value* ptrCtrl, unsigned ctrl);
-    Value* getHitBaryCentric(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim);
-    Value* setHitBaryCentric(StackPointerVal* StackPointer, Value* V, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim);
-    Value* getInstContToHitGroupIndex(RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
-    //MemHit::topOfPrimIndexDelta/frontFaceDword/hitInfoDWord
-    Value* getHitInfoDWordPtr(RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, const Twine& Name);
-    Value* getHitInfoDWord(RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, const Twine& Name = "HitInfo");
-    void   setHitInfoDWord(RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, Value* V, const Twine& Name = "HitInfo");
-    //MemHit::topOfPrimLeafPtr
-    Value* getHitTopOfPrimLeafPtr(StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
-    Value* getHitInstanceLeafPtr(StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
+    Value* getHitBaryCentric(StackPointerVal* StackPointer, uint32_t idx, bool CommittedHit);
 
 
     Value* getGlobalBufferPtr();
@@ -393,8 +365,6 @@ private:
     Value* getSyncRTStackSize();
     Value* getRTStackSize(uint32_t Align);
     SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode);
-    Value* getHitUPtr(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
-    Value* getHitBaryCentricPtr(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy, uint32_t dim);
     Value* getGeometryIndex(
         StackPointerVal* perLaneStackPtr, Instruction* I, Value* leafType, IGC::CallableShaderTypeMD ShaderTy);
     PHINode* getPrimitiveIndex(
@@ -417,11 +387,6 @@ private:
         bool isOrigin,
         IGC::CallableShaderTypeMD ShaderTy);
 
-    Value* getMatrixPtr(
-        Value* InstanceLeafPtr,
-        uint32_t infoKind,
-        uint32_t dim);
-
     Value* getObjWorldAndWorldObj(
         StackPointerVal* perLaneStackPtr,
         uint32_t infoKind,
@@ -443,8 +408,6 @@ private:
 
     Value* getGlobalDSSID();
 
-    Value* getInstanceLeafPtr(Value* instLeafTopPtr);
-
     void setReturnAlignment(CallInst* CI, uint32_t AlignVal);
     void setDereferenceable(CallInst* CI, uint32_t Size);
 
@@ -461,6 +424,8 @@ public:
     static Type* getProceduralLeafPtrTy(Module &M);
     static Type* getBVHPtrTy(Module &M);
 
+
+    CallInst* ctlz(Value* V);
 
     void createPotentialHit2CommittedHit(StackPointerVal* StackPtr);
 

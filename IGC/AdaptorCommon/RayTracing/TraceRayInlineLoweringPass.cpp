@@ -691,15 +691,15 @@ void TraceRayInlineLoweringPass::LowerRayInfo(Function& F)
         }
         case COMMITTED_BARYCENTRICS:
         {
-            uint32_t dim = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
-            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, CallableShaderTypeMD::ClosestHit, dim);
+            uint32_t idx = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
+            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, idx, true);
             I->replaceAllUsesWith(bary);
             break;
         }
         case CANDIDATE_BARYCENTRICS:
         {
-            uint32_t dim = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
-            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, CallableShaderTypeMD::AnyHit, dim);
+            uint32_t idx = (uint32_t)cast<ConstantInt>(I->getDim())->getZExtValue();
+            Value* bary = builder.getHitBaryCentric(ShadowMemStackPointer, idx, false);
             I->replaceAllUsesWith(bary);
             break;
         }
