@@ -1376,7 +1376,10 @@ void FormatOpts::addApiOpts(uint32_t fmtOpts, uint32_t pcOff) {
   syntaxBfnSymbolicFunctions =
       (fmtOpts & IGA_FORMATTING_OPT_PRINT_BFNEXPRS) != 0;
   printAnsi = (fmtOpts & IGA_FORMATTING_OPT_PRINT_ANSI) != 0;
-  printJson = (fmtOpts & IGA_FORMATTING_OPT_PRINT_JSON) != 0;
+  const auto jsonOpts =
+    IGA_FORMATTING_OPT_PRINT_JSON | IGA_FORMATTING_OPT_PRINT_JSON_V1;
+  printJson = (fmtOpts & jsonOpts) != 0;
+  printJsonVersion = (fmtOpts & IGA_FORMATTING_OPT_PRINT_JSON_V1) ? 1 : 2;
   basePCOffset = pcOff;
 }
 
@@ -1402,7 +1405,10 @@ void FormatKernel(ErrorHandler &e, std::ostream &o, const FormatOpts &opts,
 void FormatInstruction(ErrorHandler &e, std::ostream &o, const FormatOpts &opts,
                        const Instruction &i, const void *bits) {
   if (opts.printJson) {
-    FormatInstructionJSON(o, opts, i, bits);
+    if (opts.printJsonVersion == 1)
+      FormatInstructionJSON1(o, opts, i, bits);
+    else
+      FormatInstructionJSON2(o, opts, i, bits);
   } else {
     Formatter f(e, o, opts);
     f.formatInstruction(i, (const uint8_t *)bits);

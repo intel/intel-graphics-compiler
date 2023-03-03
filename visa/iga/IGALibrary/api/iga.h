@@ -423,6 +423,8 @@ static_assert(sizeof(iga_disassemble_options_t) == 6 * 4,
 #define IGA_FORMATTING_OPT_PRINT_JSON 0x00000200u
 /* emit instruction definitions from a simple dataflow analysis */
 #define IGA_FORMATTING_OPT_PRINT_DEFS 0x00000400u
+/* emit JSON old V1 version */
+#define IGA_FORMATTING_OPT_PRINT_JSON_V1 0x00000800u
 
 /* just the default formatting opts */
 #define IGA_FORMATTING_OPTS_DEFAULT (0u)

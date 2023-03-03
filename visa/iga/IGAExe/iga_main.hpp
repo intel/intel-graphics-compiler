@@ -64,6 +64,7 @@ struct Opts {
   bool printDeps = false;          // -Xprint-deps
   bool printHexFloats = false;     // -Xprint-hex-floats
   bool printJson = false;          // -Xprint-json
+  bool printJsonV1 = false;        // -Xprint-jsonV1
   bool printBfnExprs = true;       // -Xprint-bfnexprs
   bool printLdSt = false;          // -Xprint-ldst
   bool printInstructionPc = false; // -Xprint-pc
@@ -255,7 +256,7 @@ static inline uint32_t makeFormattingOpts(const Opts &opts) {
                    iga::IsTty(std::cout));
   setOptBit(fmtOpts, IGA_FORMATTING_OPT_PRINT_ANSI, useColor);
   setOptBit(fmtOpts, IGA_FORMATTING_OPT_PRINT_JSON, opts.printJson);
-
+  setOptBit(fmtOpts, IGA_FORMATTING_OPT_PRINT_JSON_V1, opts.printJsonV1);
   return fmtOpts;
 }
 

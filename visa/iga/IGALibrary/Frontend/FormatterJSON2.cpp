@@ -11,10 +11,11 @@ SPDX-License-Identifier: MIT
 #include "IRToString.hpp"
 
 #include <unordered_map>
+#include <set>
 
 using namespace iga;
 
-class JSONFormatterV1 : public BasicFormatter {
+class JSONFormatterV2 : public BasicFormatter {
 protected:
   const Model &model;
   const FormatOpts &opts;
@@ -23,13 +24,12 @@ protected:
 
   // map instruction ID to all def/use pairs
   using DUMap = std::unordered_map<int, std::vector<const Dep *>>;
-  DUMap depDefs;
-  DUMap depUses;
+  DUMap depDefs, depUses;
 
   const RegSet EMPTY_SET;
 
 public:
-  JSONFormatterV1(std::ostream &o, const FormatOpts &os, const void *bs)
+  JSONFormatterV2(std::ostream &o, const FormatOpts &os, const void *bs)
       : BasicFormatter(false, o), opts(os), model(os.model),
         bits((const uint8_t *)bs), EMPTY_SET(os.model) {
     o << std::boolalpha;
@@ -107,21 +107,43 @@ public:
   }
 
   void emitKernel(const Kernel &k) {
+    precomputeBlockGraph(k);
+
     emit("{\n");
-    emit("  \"version\":\"1.0\",");
-    emit("  \"platform\":\"", model.names[0].str(), "\",");
-    emit("  \"insts\":[\n");
+    emit("  \"version\":\"2.0\",\n");
+    emit("  \"platform\":\"", model.names[0].str(), "\",\n");
+    emit("  \"elems\":[\n");
     currIndent += 2;
 
     for (const Block *b : k.getBlockList()) {
       emitIndent();
       emit("{\"kind\":\"L\"");
-      emit(",\"value\":\"");
+      emit(", \"id\":", b->getID());
+      if (opts.printInstPc) {
+        emit(", \"pc\":", b->getPC());
+      }
+      emit(", \"symbol\":\"");
       emitLabel(b->getPC());
       emit("\"");
-      if (opts.printInstPc) {
-        emit(",\"pc\":", b->getPC());
-      }
+
+      auto emitSet = [&](const char *which, const std::set<int> &ids) {
+        if (ids.empty()) {
+          return;
+        }
+        emit(", ", which, ":[");
+        bool first = true;
+        for (int id : ids) {
+          if (first)
+            first = false;
+          else
+            emit(",");
+          emit(id);
+        }
+        emit("]");
+      }; // emitSet
+      emitSet("\"preds\"", preds[b]);
+      emitSet("\"succs\"", succs[b]);
+
       emit("}");
       if (b != k.getBlockList().back() || !b->getInstList().empty())
         emit(",");
@@ -139,6 +161,65 @@ public:
     currIndent -= 2;
     emit("}\n");
     emit("\n");
+  }
+
+  std::unordered_map<const Block *,std::set<int>> preds, succs;
+
+  void precomputeBlockGraph(const Kernel &k) {
+    succs.clear();
+    preds.clear();
+
+    const auto &bl = k.getBlockList();
+    auto itr = bl.begin();
+
+    auto addEdge =
+      [&](const Block *p, const Block *s) {
+        preds[s].insert(p->getID());
+        succs[p].insert(s->getID());
+      }; // addEdge
+
+    while (itr != bl.end()) {
+      const Block *b = *itr++;
+      auto addBranchTarget =
+        [&](const Operand &op) {
+          if (op.getKind() != Operand::Kind::LABEL) {
+            return;
+          }
+          const Block *bt = op.getTargetBlock();
+          if (bt) {
+            addEdge(b, bt);
+          }
+        }; // addBranchTarget
+
+      const auto &bInsts = b->getInstList();
+      if (bInsts.empty()) {
+        // empty block: fallthrough
+        if (itr != bl.end()) {
+          addEdge(b, *itr);
+        }
+      } else {
+        // non-empty block: look at last instruction
+        const Instruction &li = *bInsts.back();
+        if (!li.isBranching()) {
+          // non-branching: fallthrough (unless EOT which kills program)
+          bool unpredicatedEot =
+            !li.hasInstOpt(InstOpt::EOT) && !li.hasPredication();
+          if (itr != bl.end() && !unpredicatedEot) {
+            addEdge(b, *itr);
+          }
+        } else {
+          // edges to all operands
+          for (unsigned i = 0; i < li.getSourceCount(); i++) {
+            addBranchTarget(li.getSource(i));
+          }
+          // fallthrough only if not unpredicated jmpi
+          if (!li.is(Op::JMPI) || li.hasPredication()) {
+            if (itr != bl.end())
+              addEdge(b, *itr);
+          }
+        }
+      }
+    } // while
   }
 
   std::vector<std::string> comments;
@@ -166,8 +247,6 @@ public:
     if (platform() >= Platform::XE) {
       emitRegDist(i.getSWSB());
       emitSbid(i.getSWSB());
-    } else {
-      emit(", \"regDist\":null, \"sbid\":null");
     }
     emitInstOpts(i);
 
@@ -199,11 +278,8 @@ public:
       emit("}");
     }
 
-    emit(", \"comment\":");
-    if (comments.empty()) {
-      emit("null");
-    } else {
-      emit("\"");
+    if (!comments.empty()) {
+      emit(", \"comment\":\"");
       for (size_t i = 0; i < comments.size(); i++) {
         if (i > 0)
           emit("; ");
@@ -221,8 +297,6 @@ public:
       subfunc = ToSyntax(i.getSubfunction().math);
       break;
     case Op::SEND:
-      subfunc = ToSyntax(i.getSubfunction().send);
-      break;
     case Op::SENDC:
       subfunc = ToSyntax(i.getSubfunction().send);
       break;
@@ -233,9 +307,7 @@ public:
       if (opts.syntaxBfnSymbolicFunctions) {
         // decode binary function names to symbolic
         // bfn.(s0&s1|~s2)
-        subfunc += "(";
-        subfunc += i.getBfnFc().c_str();
-        subfunc += ")";
+        subfunc += format("(", i.getBfnFc().c_str(), ")");
       } else {
         // use a raw value
         // emit<uint32_t>(i.getBfnFc().value);
@@ -252,82 +324,80 @@ public:
 
     emitPredOpSubfuncExecInfoFlagReg(i, i.getOpSpec().mnemonic.str(), subfunc);
     // implicit accumulator def/uses
-    emit(", \"other\":");
     if (opts.liveAnalysis) {
-      emit("{");
-      RegSet accIn(model);
+      RegSet accIn {model};
       accIn.addSourceImplicit(i);
-      emitDepInputs(i, accIn);
-      // RegSet accOu(model);
-      // accOu.addDestinationImplicitAccumulator(i);
-      // emit(", "); emitDepOutputs(i, accOu);
-      emit("}");
-    } else {
-      emit("null");
+      RegSet accOu {model};
+      accOu.addDestinationImplicit(i);
+      if (!accIn.empty() || !accOu.empty()) {
+        emit(", \"implicit\":{");
+        bool emittedInputs = emitDepInputs(i, accIn, false);
+        emitDepOutputs(i, accOu, emittedInputs);
+        emit("}");
+      }
     }
 
-    emit(",\n");
-
     withIndent([&] {
-      emitIndent();
-      emit("\"dst\":");
-      emitDst(i);
       emit(",\n");
+      emitDstCommaNewline(i);
       emitIndent();
-      emit("\"srcs\":[\n");
-      withIndent([&] {
-        for (unsigned srcIx = 0; srcIx < i.getSourceCount(); srcIx++) {
-          emitIndent();
-          emitSrc(i, srcIx);
-          if (srcIx != i.getSourceCount() - 1)
-            emit(",\n");
-        }
-        // if it's a send, create fake extra send parameters
-        if (i.getOpSpec().isAnySendFormat()) {
-          auto emitDesc = [&](SendDesc sd) {
-            emit(",\n");
+      if (i.getSourceCount() > 0) {
+        emit("\"srcs\":[\n");
+        withIndent([&] {
+          for (unsigned srcIx = 0; srcIx < i.getSourceCount(); srcIx++) {
             emitIndent();
-            emit("{");
-            RegSet rs(model);
-            if (sd.type == SendDesc::Kind::REG32A) {
-              emitKindField(Operand::Kind::DIRECT);
-              emit(", \"reg\":");
-              emitReg(RegName::ARF_A, sd.reg);
-              rs.setSrcRegion(RegName::ARF_A, sd.reg, Region::SRC010, 1, 4);
-            } else {
-              emitKindField(Operand::Kind::IMMEDIATE);
-              emit(", \"value\":\"");
-              emitHex(sd.imm);
-              emit("\"");
-            }
-            emit(", \"rgn\":null");
-            emit(", \"type\":null");
-            emit(", ");
-            emitDepInputs(i, rs);
-            emit("}");
-          };
-          emitDesc(i.getExtMsgDescriptor());
-          emitDesc(i.getMsgDescriptor());
-        }
-      });
-      emit("\n");
-      emitIndent();
-      emit("]");
+            emitSrc(i, srcIx);
+            if (srcIx != i.getSourceCount() - 1)
+              emit(",\n");
+          }
+          // if it's a send, create fake extra send parameters
+          bool hasSendDescs = i.getOpSpec().isAnySendFormat();
+          if (hasSendDescs) {
+            auto emitDesc = [&](SendDesc sd) {
+              emit(",\n");
+              emitIndent();
+              emit("{");
+              if (sd.type == SendDesc::Kind::REG32A) {
+                RegSet rs {model};
+                emitKindField(Operand::Kind::DIRECT);
+                emit(", \"reg\":"); emitRegValue(RegName::ARF_A, sd.reg);
+                rs.setSrcRegion(RegName::ARF_A, sd.reg, Region::SRC110, 2, 16);
+                emitDepInputs(i, rs);
+              } else {
+                emitKindField(Operand::Kind::IMMEDIATE);
+                emit(", \"value\":\"0x", hex(sd.imm), "\"");
+              }
+              emit("}");
+            };
+            emitDesc(i.getExtMsgDescriptor());
+            emitDesc(i.getMsgDescriptor());
+          }
+        });
+        emit("\n");
+        emitIndent();
+        emit("]");
+      } else {
+        emit("\"srcs\":[]"); // so we print *something* (for next comma)
+      }
     });
-  }
+  } // emitNormalInst
 
   /////////////////////////////////////////////////////////////////////////
   bool emitLdStInst(const Instruction &i) {
     const auto desc = i.getMsgDescriptor();
     if (desc.isReg()) {
       // given a register descriptor, we've no hope of decoding the op
-      // TODO: once we have dataflow values maybe we can...
+      // fallback to the regular canonical send path
       return false;
     }
     const auto exDesc = i.getExtMsgDescriptor();
     const auto sfid = i.getSendFc();
-    const auto di = tryDecode(platform(), sfid, i.getExecSize(),
-                              exDesc, desc, nullptr);
+    DecodeResult di;
+    bool defaultDecode = i.getOpSpec().isAnySendFormat();
+    if (defaultDecode) {
+      di = tryDecode(platform(), sfid, i.getExecSize(),
+                                exDesc, desc, nullptr);
+    }
     if (!di) {
       // if message decode failed fallback to the canonical send syntax
       return false;
@@ -347,12 +417,8 @@ public:
         emit("\"dst\":{");
         emitSendDataRegDst(i, dst.getDirRegName(), dst.getDirRegRef().regNum,
                            i.getDstLength());
-        emit("}");
-
-      } else {
-        emit("\"dst\":null");
+        emit("},\n");
       }
-      emit(",\n");
 
       /////////////////////////////////////////////
       // sources
@@ -361,17 +427,9 @@ public:
       withIndent([&] {
         // everyone has src0 as an address
         emitIndent();
-        emit("{\"kind\":\"AD\"");
-        //
-        emit(", \"surf\":");
-        emitAddrSurfInfo(i, di.info);
-        //
-        emit(", \"scale\":1");
-        emit(", \"addr\":");
-        emitSendPayloadSrc(i, 0);
-
-        emit(", \"offset\":");
-        emit(di.info.immediateOffset);
+        emit("{\"kind\":\"AD\", ");
+        emitSendSrc0AddressFields(i);
+        emitSendSrc0AddrSurfFields(i, di.info);
         emit("},\n");
 
         //////////////////////////////////////
@@ -398,119 +456,106 @@ public:
     emitPred(i);
 
     emit(", \"op\":\"", mnemonic, "\"");
-    if (subop.empty()) {
-      emit(", \"subop\":null");
-    } else {
+    if (!subop.empty()) {
       auto sf = subop[0] == '.' ? subop.substr(1) : subop;
       emit(", \"subop\":\"", sf, "\"");
     }
 
-    emitExecInfo(i);
+    emit(", \"es\":", ToSyntax(i.getExecSize()));
+    if (i.getChannelOffset() != ChannelOffset::M0)
+      emit(", \"eo\":", 4 * (int)(i.getChannelOffset()));
 
     if (i.hasFlagModifier()) {
       emit(", \"fm\":{\"cond\":\"", ToSyntax(i.getFlagModifier()), "\"");
-      // emit(", ");
-      // RegSet rs(model);
-      // rs.addFlagModifierOutputs(i);
-      // emitDepOutputs(i, rs);
+      RegSet rs {model};
+      rs.addFlagModifierOutputs(i);
+      emitDepOutputs(i, rs);
       emit("}");
-    } else {
-      emit(", \"fm\":null");
     }
 
     emitFlagReg(i);
   }
 
-  void emitExecInfo(const Instruction &i) {
-    emit(", \"es\":", ToSyntax(i.getExecSize()));
-    emit(", \"eo\":", 4 * (int)(i.getChannelOffset()));
-  }
 
   // pred:{func:[null|""|".any"|".all"|...],inv:[true|false]"",wren:[true|false]}
   void emitPred(const Instruction &i) {
     Predication p = i.getPredication();
-    emit(", \"pred\":");
     if (i.hasPredication()) {
+      emit(", \"pred\":");
       emit("{");
-      emit("\"inv\":", p.inverse);
-      emit(", \"func\":\"", ToSyntax(p.function), "\"");
-      emit(", ");
-      RegSet rs(model);
+      if (p.inverse) {
+        emit("\"inv\":true, ");
+      }
+      emit("\"func\":\"", ToSyntax(p.function), "\"");
+      RegSet rs {model};
       rs.addPredicationInputs(i);
       emitDepInputs(i, rs);
       emit("}");
-      // TODO: handle SEL
-    } else {
-      emit("null");
     }
     //
-    emit(", \"wren\":", i.getMaskCtrl() == MaskCtrl::NOMASK);
+    if (i.getMaskCtrl() == MaskCtrl::NOMASK) {
+      emit(", \"wren\":true");
+    }
   }
 
   // {flag:{reg:...}}
   void emitFlagReg(const Instruction &i) {
-    emit(", \"freg\":");
     if (i.hasPredication() || (i.hasFlagModifier() && !i.is(Op::SEL))) {
-      emitReg(RegName::ARF_F, i.getFlagReg());
-    } else {
-      emit("null");
+      emit(", \"freg\":");
+      emitRegValue(RegName::ARF_F, i.getFlagReg());
     }
   }
 
-  // dst:{kind=..., REST, sat:T|F, defs:..., uses:...}
-  //  REST: if kind == R (direct)
-  //     reg:IR.Regs.r13 or Regs.r(r13,4)
-  //     rgn:IR.Rgns.DST1
-  //     type:IR.Types.D
-  void emitDst(const Instruction &i) {
+  // dst:{kind=..., REST, sat:T|F, uses:...}
+  void emitDstCommaNewline(const Instruction &i) {
     const OpSpec &os = i.getOpSpec();
     if (os.isAnySendFormat()) {
-      emitSendDst(i);
+      emitIndent();
+      emit("\"dst\":");
+      emitSendDstValue(i);
+      emit(",\n");
       return;
     }
     const Operand &dst = i.getDestination();
     if (!i.getOpSpec().supportsDestination()) {
-      emit("null");
       return;
     }
-
+    emitIndent();
+    emit("\"dst\":");
     emit("{");
     emitKindField(dst.getKind());
     switch (dst.getKind()) {
     case Operand::Kind::DIRECT:
       emit(", \"reg\":");
-      emitReg(dst.getDirRegName(), dst.getDirRegRef());
+      emitRegValue(dst.getDirRegName(), dst.getDirRegRef());
       break;
     case Operand::Kind::MACRO:
       emit(", \"reg\":");
-      emitReg(dst.getDirRegName(), dst.getDirRegRef());
+      emitRegValue(dst.getDirRegName(), dst.getDirRegRef());
       emit(", ");
       emitMathMacroExtField(dst.getMathMacroExt());
       break;
     case Operand::Kind::INDIRECT:
       emit(", \"areg\":");
-      emitReg(RegName::ARF_A, dst.getIndAddrReg());
+      emitRegValue(RegName::ARF_A, dst.getIndAddrReg());
       emit(", \"aoff\":", dst.getIndImmAddr());
       break;
     default:
       break;
     }
-    emit(", \"sat\":", dst.getDstModifier() == DstModifier::SAT);
-    emit(", \"rgn\":");
-    if (os.hasImplicitDstRegion(i.isMacro())) {
-      emit("null");
-    } else {
-      emitRgn(i, dst.getRegion(), true);
+    if (dst.getDstModifier() == DstModifier::SAT) {
+      emit(", \"sat\":true");
     }
-    emit(", \"type\":");
-    emitType(dst.getType());
+    if (!os.hasImplicitDstRegion(i.isMacro())) {
+      emitRgnField(i, dst.getRegion(), true);
+    }
+    emitTypeField(dst.getType());
 
-    // def/uses
-    emit(",");
-    RegSet rs(model);
-    rs.addDestinationInputs(i);
-    emitDepInputs(i, rs);
-    emit("}");
+    // uses
+    RegSet rs {model};
+    rs.addDestinationOutputs(i);
+    emitDepOutputs(i, rs);
+    emit("},\n");
   }
 
   void emitMathMacroExtField(MathMacroExt mme) {
@@ -531,24 +576,23 @@ public:
     case Operand::Kind::DIRECT:
       emitSrcModifierField(src.getSrcModifier());
       emit(", \"reg\":");
-      emitReg(src.getDirRegName(), src.getDirRegRef());
-      emit(", \"rgn\":");
+      emitRegValue(src.getDirRegName(), src.getDirRegRef());
       emitSrcRgn(i, srcIx);
       break;
     case Operand::Kind::MACRO:
       emitSrcModifierField(src.getSrcModifier());
       emit(", \"reg\":");
-      emitReg(src.getDirRegName(), src.getDirRegRef());
+      emitRegValue(src.getDirRegName(), src.getDirRegRef());
       emit(", ");
       emitMathMacroExtField(src.getMathMacroExt());
-      emit(", \"rgn\":");
       emitSrcRgn(i, srcIx);
       break;
     case Operand::Kind::INDIRECT:
       emitSrcModifierField(src.getSrcModifier());
       emit(", \"areg\":");
-      emitReg(RegName::ARF_A, src.getIndAddrReg());
+      emitRegValue(RegName::ARF_A, src.getIndAddrReg());
       emit(", \"aoff\":", src.getIndImmAddr());
+      emitSrcRgn(i, srcIx);
       break;
     case Operand::Kind::IMMEDIATE: {
       emit(", \"value\":\"");
@@ -635,23 +679,20 @@ public:
       break;
     }
 
-    emit(", \"type\":");
-    if (os.hasImplicitSrcType(srcIx, immOrLbl)) {
-      emit("null");
-    } else {
-      emitType(src.getType());
+    if (!os.hasImplicitSrcType(srcIx, immOrLbl)) {
+      emitTypeField(src.getType());
     }
 
     // even immediate fields will have this; it'll just be empty
-    emit(", ");
-    RegSet rs(model);
+    RegSet rs {model};
     rs.addSourceOperandInput(i, srcIx);
-    emitDepInputs(i, rs);
+    if (!rs.empty())
+      emitDepInputs(i, rs);
 
     emit("}");
   }
 
-  void emitSendDst(const Instruction &i) {
+  void emitSendDstValue(const Instruction &i) {
     const Operand &dst = i.getDestination();
     emit("{");
     if (i.getDstLength() >= 0) {
@@ -661,12 +702,14 @@ public:
     } else {
       emit("\"kind\":\"RD\"");
       emit(", \"reg\":");
-      emitReg(dst.getDirRegName(), dst.getDirRegRef());
+      emitRegValue(dst.getDirRegName(), dst.getDirRegRef());
     }
     emit("}");
   }
 
   void emitSrcModifierField(SrcModifier sm) {
+    if (sm == SrcModifier::NONE)
+      return;
     emit(", \"mods\":", sm == SrcModifier::NEG       ? "\"n\""
                         : sm == SrcModifier::ABS     ? "\"a\""
                         : sm == SrcModifier::NEG_ABS ? "\"na\""
@@ -698,106 +741,119 @@ public:
 
   void emitSrcRgn(const Instruction &i, int srcIx) {
     const Operand &src = i.getSource(srcIx);
-    if (i.getOpSpec().hasImplicitSrcRegion(srcIx, i.getExecSize(),
+    if (!i.getOpSpec().hasImplicitSrcRegion(srcIx, i.getExecSize(),
                                            i.isMacro())) {
-      emit("null");
-    } else {
-      emitRgn(i, src.getRegion(), false);
+      emitRgnField(i, src.getRegion(), false);
     }
   }
 
   void emitSendSrc(const Instruction &i, int srcIx) {
     const Operand &src = i.getSource(srcIx);
-
     if (srcIx == 0 && i.getSrc0Length() >= 0) {
       emit("{");
+      emit("\"kind\":\"AD\", ");
+      emitSendSrc0AddressFields(i);
       const auto di = tryDecode(i, nullptr);
-      emit("\"kind\":\"AD\"");
-      emit(", \"surf\":");
       if (di) {
         comments.push_back(di.info.description);
-        emitAddrSurfInfo(i, di.info);
-      } else {
-        emit("null");
-      }
-      emit(", \"scale\":1");
-      emit(", \"addr\":");
-      emitSendPayloadSrc(i, 0);
-      if (di) {
-        // e.g. legacy scratch
-        emit(", \"offset\":", di.info.immediateOffset);
-      } else {
-        // shouldn't be a reg, but we emit something
-        emit(", \"offset\":0");
+        emitSendSrc0AddrSurfFields(i, di.info);
       }
       emit("}");
     } else if (srcIx == 1 && i.getSrc1Length() >= 0) {
       emitSendPayloadSrc(i, 1, "DA");
     } else {
       // old send operand (treat as raw direct register access)
+      // this is because we lack a known payload length
+      // so the user is on their own
+      emit("{");
       emit("\"kind\":\"RD\"");
       emit(", \"reg\":");
-      emitReg(src.getDirRegName(), src.getDirRegRef());
-      emit(", \"rgn\":null");
-      emit(", \"type\":null");
+      emitRegValue(src.getDirRegName(), src.getDirRegRef());
       // the best we can do is guess it's 1 without decoding the message
-      RegSet rs(model);
+      RegSet rs {model};
       rs.addSourceOperandInput(i, srcIx);
       emitSendPayloadDeps(i, rs, src.getDirRegName(), src.getDirRegRef().regNum,
                           1, true);
+      emit("}");
     }
   }
 
-  void emitAddrSurfInfo(const Instruction &i, const MessageInfo &mi) {
-    emit("{\"type\":");
+  void emitSendSrc0AddressFields(const Instruction &i) {
+    emit("\"areg\":");
+    const auto &src0 = i.getSource(0);
+    if (src0.getKind() == Operand::Kind::DIRECT) {
+      emitRegValue(src0.getDirRegName(), src0.getDirRegRef().regNum);
+    } else {
+      emit("\"???\"");
+    }
+    emit(", \"alen\":", i.getSrc0Length());
+    // payload dependencies
+    RegSet rs {model};
+    rs.addSourceOperandInput(i, 0);
+    emitDepInputs("adefs", i, rs);
+  }
+
+  void emitSendSrc0AddrSurfFields(const Instruction &i, const MessageInfo &mi) {
+    if (mi.immediateOffsetBlock2dX || mi.immediateOffsetBlock2dY) {
+      emit(", \"aoff\":[",
+        mi.immediateOffsetBlock2dX, ",", mi.immediateOffsetBlock2dY, "]");
+    } else if (mi.immediateOffset) {
+      emit(", \"aoff\":", mi.immediateOffset);
+    }
+
+    emit(", \"stype\":");
+
+    auto emitStateful = [&] (const char *addrType) {
+      emit(addrType);
+      if (mi.surfaceId.isReg()) {
+        emit(", \"soff\":");
+        RegSet surfOffDeps {model};
+        surfOffDeps.setSrcRegion(RegName::ARF_A, mi.surfaceId.reg,
+                                 Region::SRC110, 2, 16);
+        emitRegValue(RegName::ARF_A, mi.surfaceId.reg);
+        emitDepInputs("sdefs", i, surfOffDeps);
+      } else {
+        emit(", \"soff\":");
+        emitDecimal(mi.surfaceId.imm);
+      }
+    };
+
+
     switch (mi.addrType) {
     case AddrType::INVALID:
       emit("\"invalid\"");
       break;
-    case AddrType::FLAT:
-      emit("\"flat\"");
-      break;
     case AddrType::BTI:
-      emit("\"bti\"");
+      emitStateful("\"bti\"");
       break;
     case AddrType::BSS:
-      emit("\"bss\"");
+      emitStateful("\"bss\"");
       break;
     case AddrType::SS:
-      emit("\"ss\"");
+      emitStateful("\"ss\"");
       break;
+    case AddrType::FLAT: {
+      emit("\"flat\"");
+      break;
+    }
     default:
       emitIrError("invalid surface type");
     }
-
-    emit(", \"offset\":");
-    RegSet surfOffDeps(model);
-    if (mi.surfaceId.isReg()) {
-      surfOffDeps.setSrcRegion(RegName::ARF_A, mi.surfaceId.reg, Region::SRC010,
-                               1, 4);
-      emitReg(RegName::ARF_A, mi.surfaceId.reg);
-    } else {
-      emitDecimal(mi.surfaceId.imm);
-    }
-    emit(", ");
-    emitDepInputs(i, surfOffDeps);
-    emit("}"); // end of surf:{...}
   }
 
   void emitSendPayloadSrc(const Instruction &i, int srcIx,
                           const char *kind = nullptr) {
     const Operand &src = i.getSource(srcIx);
     RegName regName = src.getDirRegName();
-    int regStart = src.getDirRegRef().regNum;
     int regCount = srcIx == 0 ? i.getSrc0Length() : i.getSrc1Length();
     emit("{");
     if (kind) {
       emit("\"kind\":\"", kind, "\", ");
     }
     emit("\"reg\":");
-    emitReg(regName, regStart);
+    emitRegValue(regName, src.getDirRegRef().regNum);
     emit(", \"len\":", regCount);
-    RegSet rs(model);
+    RegSet rs {model};
     rs.addSourceOperandInput(i, srcIx);
     emitSendPayloadDeps(i, rs, regName, regCount, regCount, true);
     emit("}");
@@ -812,21 +868,17 @@ public:
 
   void emitSendPayloadFields(RegName reg, int regNum, int numRegs) {
     emit(", \"reg\":");
-    emitReg(reg, regNum);
+    emitRegValue(reg, regNum);
     emit(", \"len\":", numRegs);
   }
   void emitSendPayloadDeps(const Instruction &i, const RegSet &regStats,
                            RegName reg, int regNum, int numRegs, bool isRead) {
     if (isRead) {
-      emit(", ");
       emitDepInputs(i, regStats);
-    } else {
-      // emit(", ");
-      // emitDepOutputs(i, rs);
     }
   }
 
-  void emitRgn(const Instruction &i, Region r, bool dst = false) {
+  void emitRgnField(const Instruction &i, Region r, bool dst = false) {
     if (!dst) {
       // fix ternary regions
       if (r.getVt() == Region::Vert::VT_INVALID &&
@@ -860,77 +912,35 @@ public:
         }
       }
     }
-    emitRgn(r, dst);
-  } // emitRgn
+    emitRgnField(r, dst);
+  } // emitRgnField(Instruction)
 
-  void emitRgn(Region r, bool dst = false) {
+  void emitRgnField(Region r, bool dst = false) {
+    if (r == Region::INVALID)
+      return;
+    emit(", \"rgn\":");
     if (dst) {
-#if IGA_SHORTHAND_JSON
-      emit("IR.Rgns.");
-      switch (r.getHz()) {
-      case Region::Horz::HZ_1:
-        emit("d1");
-        break;
-      case Region::Horz::HZ_2:
-        emit("d2");
-        break;
-      case Region::Horz::HZ_4:
-        emit("d4");
-        break;
-      default:
-        emit("IR.Error(\"invalid dst region\")");
-      }
-#else
-      emit("{\"Hz\":", int(r.getHz()), "}");
-#endif
+      emit("{\"h\":", int(r.getHz()), "}");
     } else {
-#if IGA_SHORTHAND_JSON
-      emit("IR.Rgns.");
-      if (r == Region::SRC010) {
-        emit("s0_1_0");
-      } else if (r == Region::SRC110) {
-        emit("s1_1_0");
-      } else if (r == Region::SRC210) {
-        emit("s2_1_0");
-      } else if (r == Region::SRC410) {
-        emit("s4_1_0");
-      } else if (r.getVt() == Region::Vert::VT_VxH) {
-        // <w,h> region for indrect access
-        // let the JS library sort it out
-        emit("sVxH(", int(r.getWi()), ",", int(r.getHz()), ")");
-      } else {
-        emit("sVWH(", int(r.getVt()), ",", int(r.getWi()), ",", int(r.getHz()),
-             ")");
-      }
-#else
       emit("{");
-      if (r.getVt() == Region::Vert::VT_VxH) {
-        emit("\"Vt\":null");
-      } else {
-        emit("\"Vt\":", int(r.getVt()));
+      if (r.getVt() != Region::Vert::VT_VxH) {
+        emit("\"v\":", int(r.getVt()),",");
       }
-      emit(",\"Wi\":", int(r.getWi()), ",\"Hz\":", int(r.getHz()));
+      emit("\"w\":", int(r.getWi()), ",\"h\":", int(r.getHz()));
       emit("}");
-#endif
     }
-  }
+  } // emitRgnField(Region)
 
-  void emitType(Type t) {
+  void emitTypeField(Type t) {
     if (t == Type::INVALID) {
-      emit("null");
       return;
     }
-#if IGA_SHORTHAND_JSON
-    emit("IR.Types.");    // e.g. IR.Types.UQ
-    auto s = ToSyntax(t); // ":uq"
-    for (size_t i = 1; i < s.size(); i++)
-      emit((char)toupper(s[i]));
-#else
-    emit("\"", ToSyntax(t).substr(1), "\""); // Type::UQ => "uq"
-#endif
+    emit(", \"type\":\"", ToSyntax(t).substr(1), "\""); // Type::UQ => "uq"
   }
 
   void emitRegDist(const SWSB &di) {
+    if (di.distType == SWSB::DistType::NO_DIST)
+      return;
     emit(", \"regDist\":");
     auto emitPipeDist = [&](const char *pfx) {
       emit("\"", pfx, "@", (int)di.minDist, "\"");
@@ -955,15 +965,19 @@ public:
       emitPipeDist("M");
       break;
     default:
-      emit("null");
+      emit("\"?\"");
       break;
     }
   }
 
   void emitSbid(const SWSB &di) {
-    emit(", \"sbid\":");
-    auto emitSwsbEvent = [&](const char *sfx) {
-      emit("\"$", (int)di.sbid, sfx, "\"");
+    if (di.tokenType == SWSB::TokenType::NOTOKEN)
+      return;
+
+    emit(", \"sbid\":{");
+    auto emitSwsbEvent = [&](const char *function) {
+      emit("\"id\":", (int)di.sbid);
+      emit(", \"func\":\"", function, "\"");
     };
     switch (di.tokenType) {
     case SWSB::TokenType::DST:
@@ -976,9 +990,10 @@ public:
       emitSwsbEvent("");
       break;
     default:
-      emit("null");
+      emit("\"?\"");
       break;
     }
+    emit("}");
   }
 
   void emitInstOpts(const Instruction &i) {
@@ -991,13 +1006,13 @@ public:
     };
 
     InstOptSet ios = i.getInstOpts();
-    emit(", \"opts\":[");
     bool first = true;
+    std::stringstream ss;
     auto emitSeparator = [&]() {
       if (first)
         first = false;
       else
-        emit(",");
+        ss << ",";
     };
     for (size_t i = 0;
          i < sizeof(ALL_INST_OPTS) / sizeof(ALL_INST_OPTS[0]) && !ios.empty();
@@ -1005,7 +1020,7 @@ public:
       if (ios.contains(ALL_INST_OPTS[i])) {
         emitSeparator();
         ios.remove(ALL_INST_OPTS[i]);
-        emit("\"", ToSyntax(ALL_INST_OPTS[i]), "\"");
+        ss << "\"" << ToSyntax(ALL_INST_OPTS[i]) << "\"";
       }
     }
 
@@ -1017,114 +1032,115 @@ public:
       IGA_ASSERT(!di.hasDist() && !di.hasToken(), "malformed SWSB IR");
       if (di.spToken == SWSB::SpecialToken::NOACCSBSET) {
         emitSeparator();
-        emit("NoAccSBSet");
+        ss << "NoAccSBSet";
       }
     }
-    emit("]");
+    auto s = ss.str();
+    if (!s.empty())
+      emit(", \"opts\":[", s ,"]");
   }
 
-  void emitReg(RegName rn, RegRef rr) {
-#if IGA_SHORTHAND_JSON
-    bool hasShortName = rn == RegName::GRF_R || rn == RegName::ARF_A ||
-                        rn == RegName::ARF_ACC || rn == RegName::ARF_NULL;
-    if (rr.subRegNum == 0 && hasShortName) {
-      // IR.Regs.r13 is a direct reference
-      const RegInfo *ri = model.lookupRegInfoByRegName(rn);
-      if (ri == nullptr) {
-        emitIrError("unsupported RegName");
-      } else if (ri->hasRegNum()) {
-        emit("IR.Regs.", ToSyntax(rn), rr.regNum);
-      } else if (rn == RegName::ARF_NULL) {
-        emit("IR.Regs.null_0"); // since "null" is a keyword
-      } else {
-        emit("IR.Regs.", ToSyntax(rn));
-      }
-    } else if (rn == RegName::ARF_F) {
-      emit("IR.Regs.f", rr.regNum, "_", rr.subRegNum);
-    } else {
-      // IR.Regs.reg("r",13,4) creates a new object to r13.4
-      emit("IR.Regs.reg(\"", ToSyntax(rn), "\",", rr.regNum, ",", rr.subRegNum,
-           ")");
+  void emitRegValue(RegName rn, RegRef rr) {
+    emit("{""\"rn\":\"", ToSyntax(rn), "\"");
+    if (rr.regNum) {
+      emit(",\"r\":", rr.regNum);
     }
-#else
-    // use full JSON syntax (no shortcuts)
-    emit("{"
-         "\"rn\":\"",
-         ToSyntax(rn),
-         "\","
-         "\"r\":",
-         rr.regNum, ",", "\"sr\":", rr.subRegNum, "}");
-#endif
+    if (rr.subRegNum) {
+      emit(",\"sr\":", rr.subRegNum);
+    }
+    emit("}");
   }
-  void emitReg(RegName rn, int regNum, int sr = 0) {
-    emitReg(rn, RegRef((int16_t)regNum, (int16_t)sr));
+  void emitRegValue(RegName rn, int regNum, int sr = 0) {
+    emitRegValue(rn, RegRef((int16_t)regNum, (int16_t)sr));
   }
 
-  /*
   /////////////////////////////////////////////////////////////////////////
   // call this for operands that are instruction outputs
-  void emitDepOutputs(const Instruction &i, const RegSet &rs) {
-      // 'i' is writing 'rs' emit all pairs where this is the
-      // def and report them as uess
-      emit("\"uses\":[");
-      if (opts.liveAnalysis) {
-          emit("]");
-          return;
-      }
-      // the users of 'rs' are all those that use this set
-      bool first = true;
-      for (const Dep *d : depDefs[i.getID()]) {
-          if (d->use != nullptr && rs.intersects(d->values)) {
-              if (first)
-                  first = false;
-              else
-                  emit(",");
-              emit(d->use->getID());
-          }
-      }
-      emit("]");
-  }
-  */
-
-  // call this for operands that are instruction inputs
-  void emitDepInputs(const Instruction &i, const RegSet &rs) {
+  bool emitDepOutputs(
+    const Instruction &i, const RegSet &rs, bool preComm = true)
+  {
     // 'i' is writing 'rs' emit all pairs where this is the
     // def and report them as uess
-    emit("\"defs\":[");
     if (opts.liveAnalysis == nullptr) {
-      emit("]");
-      return;
+      return false;
     }
-    // the users of 'rs' are all those that use this set
-    bool first = true;
-    auto c = depUses[i.getID()];
-    for (const Dep *d : c) {
-      if (d->def != nullptr && rs.intersects(d->values)) {
-        if (first)
-          first = false;
-        else
-          emit(",");
-        emit(d->def->getID());
+    const auto &ds = depDefs[i.getID()];
+    if (ds.empty())
+      return false;
+
+    std::set<int> ids; // make unique and in ascending order
+    for (const Dep *d : ds) {
+      if (d->use != nullptr && rs.intersects(d->values)) {
+        ids.insert(d->use->getID());
       }
     }
-    emit("]");
+
+    return emitSetIfNonEmpty("uses", ids, preComm);
   }
-}; // JSONFormatterV1
+
+  // call this for operands that are instruction inputs
+  bool emitDepInputs(
+    const Instruction &i, const RegSet &rs, bool preComm = true)
+  {
+    return emitDepInputs("defs", i, rs, preComm);
+  }
+  bool emitDepInputs(const char *which,
+    const Instruction &i, const RegSet &rs, bool preComm = true)
+  {
+    // 'i' is writing 'rs' emit all pairs where this is the
+    // def and report them as uess
+    if (opts.liveAnalysis == nullptr) {
+      return false;
+    }
+    // the users of 'rs' are all those that use this set
+    if (rs.empty())
+      return false;
+    const auto &c = depUses[i.getID()];
+    if (c.empty())
+      return false;
+
+    std::set<int> ids; // make unique and in ascending order
+    for (const Dep *d : c) {
+      if (d->def != nullptr && rs.intersects(d->values)) {
+        ids.insert(d->def->getID());
+      }
+    }
+
+    return emitSetIfNonEmpty(which, ids, preComm);
+  }
+
+  bool emitSetIfNonEmpty(
+    const char *which, const std::set<int> &ids, bool preComm)
+  {
+    if (ids.empty()) // no intersection with this set
+      return false;
+    if (preComm)
+      emit(", ");
+    emit("\"", which, "\":[");
+    bool first = true;
+    for (auto id : ids) {
+      if (first)
+        first = false;
+      else
+        emit(",");
+      emit(id);
+    }
+    emit("]");
+    return true;
+  }
+}; // JSONFormatterV2
 
 namespace iga {
 void FormatJSON2(std::ostream &o, const FormatOpts &opts, const Kernel &k,
                      const void *bits);
-}
+} // iga::
 
-void iga::FormatJSON(std::ostream &o, const FormatOpts &opts, const Kernel &k,
+void iga::FormatJSON2(std::ostream &o, const FormatOpts &opts, const Kernel &k,
                      const void *bits) {
-  if (opts.printJsonVersion > 1)
-    iga::FormatJSON2(o, opts, k, bits);
-  else
-    JSONFormatterV1(o, opts, bits).emitKernel(k);
+  JSONFormatterV2(o, opts, bits).emitKernel(k);
 }
 
-void iga::FormatInstructionJSON1(std::ostream &o, const FormatOpts &opts,
+void iga::FormatInstructionJSON2(std::ostream &o, const FormatOpts &opts,
                                 const Instruction &i, const void *bits) {
-  JSONFormatterV1(o, opts, bits).emitInst(i);
+  JSONFormatterV2(o, opts, bits).emitInst(i);
 }

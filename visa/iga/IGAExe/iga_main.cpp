@@ -391,8 +391,11 @@ extern "C" int iga_main(int argc, const char **argv) {
                   "For each instruction print the tracked registers that the "
                   "instruction modifies.",
                   opts::OptAttrs::ALLOW_UNSET, baseOpts.printDeps);
+  xGrp.defineFlag("print-jsonV1", nullptr, "prints output in JSON format",
+                  "Emits a JSON format with the assembly (c.f. IGAJSONv1.md)",
+                  opts::OptAttrs::ALLOW_UNSET, baseOpts.printJsonV1);
   xGrp.defineFlag("print-json", nullptr, "prints output in JSON format",
-                  "Emits a JSON format with the assembly (c.f. JSONFormat.md)",
+                  "Emits a JSON format with the assembly (c.f. IGAJSONv2.md)",
                   opts::OptAttrs::ALLOW_UNSET, baseOpts.printJson);
   xGrp.defineFlag("print-ldst", nullptr,
                   "enables load/store pseudo instructions where possible",
@@ -446,7 +449,11 @@ extern "C" int iga_main(int argc, const char **argv) {
                            " (use -p=...)");
     }
     return os;
-  };
+  }; // optsForFile
+
+  if (baseOpts.printJson && baseOpts.printJsonV1) {
+    fatalExitWithMessage("-Xprint-json mutually exclusive with -Xprint-jsonV1");
+  }
 
   // one of the files has an error
   bool hasError = false;

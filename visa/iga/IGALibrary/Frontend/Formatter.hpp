@@ -46,6 +46,7 @@ struct FormatOpts {
   bool printLdSt = false;
   bool printAnsi = false;
   bool printJson = false;
+  int printJsonVersion = 1;
   DepAnalysis *liveAnalysis = nullptr;
   uint32_t basePCOffset = 0;
 

@@ -1,7 +1,9 @@
 # IGA JSON
 
-IGA's `-Xprint-json` emits kernel output in a `.json` format for consumption
+IGA's `-Xprint-jsonV1` emits kernel output in a `.json` format for consumption
 via various tools.
+
+**WARNING** This format is being deprecated and will soon be removed.  See IGAJSONv2 (now `-Xprint-json`) for the newer format.
 
 **WARNING** Parsing JSON is not supported at the moment.
 
