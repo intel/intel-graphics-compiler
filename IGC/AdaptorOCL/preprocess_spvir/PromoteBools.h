@@ -86,6 +86,7 @@ namespace IGC
         llvm::AddrSpaceCastInst* promoteAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
         llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
         llvm::CallInst* promoteCall(llvm::CallInst* call);
+        llvm::CallInst* promoteIndirectCall(llvm::CallInst* call);
         llvm::ExtractValueInst* promoteExtractValue(llvm::ExtractValueInst* extractValue);
         llvm::GetElementPtrInst* promoteGetElementPtr(llvm::GetElementPtrInst* getElementPtr);
         llvm::ICmpInst* promoteICmp(llvm::ICmpInst* icmp);

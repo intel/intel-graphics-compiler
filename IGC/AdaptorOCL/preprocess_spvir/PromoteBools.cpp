@@ -732,11 +732,46 @@ Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
     return newBitcast;
 }
 
+CallInst* PromoteBools::promoteIndirectCall(CallInst* call)
+{
+    IGC_ASSERT(call->isIndirectCall());
+    auto operand = call->getCalledOperand();
+    auto functionType = call->getFunctionType();
+
+    if (!wasPromotedAnyOf(call->args()) && !typeNeedsPromotion(functionType))
+    {
+        return call;
+    }
+
+    SmallVector<Value*, 8> newCallArguments;
+    for (auto& arg : call->args())
+    {
+        newCallArguments.push_back(convertI1ToI8(getOrCreatePromotedValue(arg), call));
+    }
+
+    auto newCall = CallInst::Create(
+        llvm::cast<llvm::FunctionType>(getOrCreatePromotedType(functionType)),
+        getOrCreatePromotedValue(operand),
+        newCallArguments,
+        "",
+        call
+    );
+    newCall->setCallingConv(call->getCallingConv());
+    newCall->setAttributes(call->getAttributes());
+    newCall->setDebugLoc(call->getDebugLoc());
+    return newCall;
+}
+
 CallInst* PromoteBools::promoteCall(CallInst* call)
 {
     if (!call)
     {
         return nullptr;
+    }
+
+    if (call->isIndirectCall())
+    {
+        return promoteIndirectCall(call);
     }
 
     auto function = call->getCalledFunction();
