@@ -37,7 +37,6 @@ std::string iga::ToSymbol(Platform x) {
   }
 }
 
-
 std::string iga::ToSyntax(MathFC sf) {
   switch (sf) {
   case MathFC::COS:

@@ -116,7 +116,7 @@ extern const GED_DATA_TYPE* DataTypeTable38[4];
 extern const GED_DEBUG_CTRL* DebugCtrlTable0[2];
 extern const GED_DEP_CTRL* DepCtrlTable0[4];
 extern const GED_DP_ADDR_SIZE* DpAddrSizeTable0[4];
-extern const GED_DP_ADDR_TYPE* DpAddrTypeTable0[4];
+extern const GED_DP_ADDR_SURFACE_TYPE* DpAddrSurfaceTypeTable0[4];
 extern const GED_DP_DATA_SIZE* DpDataSizeTable0[8];
 extern const GED_DP_FENCE_SCOPE* DpFenceScopeTable0[8];
 extern const GED_DP_FENCE_SCOPE* DpFenceScopeTable1[8];

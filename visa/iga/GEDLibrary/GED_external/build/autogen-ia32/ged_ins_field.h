@@ -1560,7 +1560,7 @@ typedef enum
      *
      * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
      */
-    GED_PSEUDO_FIELD_DPAddrType,
+    GED_PSEUDO_FIELD_DPAddrSurfaceType,
 
     /*!
      * This field specifies the size of the vector in a DP message

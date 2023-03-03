@@ -26671,7 +26671,7 @@ const ged_ins_field_entry_t PositionInterpreterTable8[45] =
     { GED_PSEUDO_FIELD_MessageTypeDP_DCRO,            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable185 }, // 34
     { GED_PSEUDO_FIELD_ExMessageLength,               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 35
     { GED_PSEUDO_FIELD_DPOpcode,                      GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     6, /* {   0,   5,   0,   0,       0x3f } */ {      0x500, (void*)(g_uintptr_t)      0x3f }, RestrictionTable176 }, // 36
-    { GED_PSEUDO_FIELD_DPAddrType,                    GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     2, /* {  29,  30,   0,  29, 0x60000000 } */ { 0x1d001e1d, (void*)(g_uintptr_t)0x60000000 }, RestrictionTable177 }, // 37
+    { GED_PSEUDO_FIELD_DPAddrSurfaceType,             GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     2, /* {  29,  30,   0,  29, 0x60000000 } */ { 0x1d001e1d, (void*)(g_uintptr_t)0x60000000 }, RestrictionTable177 }, // 37
     { GED_PSEUDO_FIELD_DPVectSize,                    GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     3, /* {  12,  14,   0,  12,     0x7000 } */ {  0xc000e0c, (void*)(g_uintptr_t)    0x7000 }, RestrictionTable178 }, // 38
     { GED_PSEUDO_FIELD_DPFlushType,                   GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     3, /* {  12,  14,   0,  12,     0x7000 } */ {  0xc000e0c, (void*)(g_uintptr_t)    0x7000 }, RestrictionTable179 }, // 39
     { GED_PSEUDO_FIELD_DPTranspose,                   GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  15,  15,   0,  15,     0x8000 } */ {  0xf000f0f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable180 }, // 40
@@ -26719,7 +26719,7 @@ const ged_ins_field_entry_t PositionInterpreterTable9[45] =
     { GED_PSEUDO_FIELD_MessageTypeDP_DCRO,            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable185 }, // 34
     { GED_PSEUDO_FIELD_ExMessageLength,               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 35
     { GED_PSEUDO_FIELD_DPOpcode,                      GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     6, /* {   0,   5,   0,   0,       0x3f } */ {      0x500, (void*)(g_uintptr_t)      0x3f }, RestrictionTable202 }, // 36
-    { GED_PSEUDO_FIELD_DPAddrType,                    GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     2, /* {  29,  30,   0,  29, 0x60000000 } */ { 0x1d001e1d, (void*)(g_uintptr_t)0x60000000 }, RestrictionTable177 }, // 37
+    { GED_PSEUDO_FIELD_DPAddrSurfaceType,             GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     2, /* {  29,  30,   0,  29, 0x60000000 } */ { 0x1d001e1d, (void*)(g_uintptr_t)0x60000000 }, RestrictionTable177 }, // 37
     { GED_PSEUDO_FIELD_DPVectSize,                    GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     3, /* {  12,  14,   0,  12,     0x7000 } */ {  0xc000e0c, (void*)(g_uintptr_t)    0x7000 }, RestrictionTable178 }, // 38
     { GED_PSEUDO_FIELD_DPFlushType,                   GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     3, /* {  12,  14,   0,  12,     0x7000 } */ {  0xc000e0c, (void*)(g_uintptr_t)    0x7000 }, RestrictionTable203 }, // 39
     { GED_PSEUDO_FIELD_DPTranspose,                   GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  15,  15,   0,  15,     0x8000 } */ {  0xf000f0f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable180 }, // 40

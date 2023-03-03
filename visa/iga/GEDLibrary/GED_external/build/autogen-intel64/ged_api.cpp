@@ -2112,16 +2112,16 @@ GED_RETURN_VALUE GED_SetDPOpcode(uint32_t* msgDesc, const GED_MODEL modelId, con
 {
     return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPOpcode, modelId, opcode);
 }
-GED_DP_ADDR_TYPE GED_GetDPAddrType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+GED_DP_ADDR_SURFACE_TYPE GED_GetDPAddrSurfaceType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPAddrType, modelId, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_ADDR_TYPE)value : GED_DP_ADDR_TYPE_INVALID;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPAddrSurfaceType, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP_ADDR_SURFACE_TYPE)value : GED_DP_ADDR_SURFACE_TYPE_INVALID;
 }
-GED_RETURN_VALUE GED_SetDPAddrType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_TYPE AddrType)
+GED_RETURN_VALUE GED_SetDPAddrSurfaceType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SURFACE_TYPE AddrType)
 {
-    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrType, modelId, AddrType);
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrSurfaceType, modelId, AddrType);
 }
 GED_DP_VECT_SIZE GED_GetDPVectSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
 {
@@ -2327,13 +2327,13 @@ const char* GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue)
 }
 #endif // GED_DP_ADDR_SIZE_HIDDEN
 
-#ifndef GED_DP_ADDR_TYPE_HIDDEN
-const char* GED_GetDpAddrTypeString(GED_DP_ADDR_TYPE DpAddrTypeValue)
+#ifndef GED_DP_ADDR_SURFACE_TYPE_HIDDEN
+const char* GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeValue)
 {
-    return DpAddrTypeEnumeration[DpAddrTypeValue];
+    return DpAddrSurfaceTypeEnumeration[DpAddrSurfaceTypeValue];
 
 }
-#endif // GED_DP_ADDR_TYPE_HIDDEN
+#endif // GED_DP_ADDR_SURFACE_TYPE_HIDDEN
 
 #ifndef GED_DP_DATA_SIZE_HIDDEN
 const char* GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpDataSizeValue)

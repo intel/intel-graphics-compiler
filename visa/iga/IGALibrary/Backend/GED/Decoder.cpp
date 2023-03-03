@@ -881,10 +881,7 @@ void Decoder::decodeTernarySourceAlign16(Instruction *inst) {
 }
 
 static bool ternaryDstOmitsHzStride(const OpSpec &os) {
-  if (os.isDpasFormat())
-    return true;
-
-  return false;
+  return os.isDpasFormat();
 }
 
 void Decoder::decodeTernaryDestinationAlign1(Instruction *inst) {

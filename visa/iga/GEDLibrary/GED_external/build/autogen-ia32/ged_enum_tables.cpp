@@ -1440,17 +1440,17 @@ const GED_DP_ADDR_SIZE* DpAddrSizeTable0[4] =
     &DpAddrSizeVar1, // 2
     &DpAddrSizeVar2 // 3
 }; // DpAddrSizeTable0[]
-static GED_DP_ADDR_TYPE DpAddrTypeVar0 = (GED_DP_ADDR_TYPE)0;
-static GED_DP_ADDR_TYPE DpAddrTypeVar1 = (GED_DP_ADDR_TYPE)1;
-static GED_DP_ADDR_TYPE DpAddrTypeVar2 = (GED_DP_ADDR_TYPE)2;
-static GED_DP_ADDR_TYPE DpAddrTypeVar3 = (GED_DP_ADDR_TYPE)3;
-const GED_DP_ADDR_TYPE* DpAddrTypeTable0[4] =
+static GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeVar0 = (GED_DP_ADDR_SURFACE_TYPE)0;
+static GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeVar1 = (GED_DP_ADDR_SURFACE_TYPE)1;
+static GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeVar2 = (GED_DP_ADDR_SURFACE_TYPE)2;
+static GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeVar3 = (GED_DP_ADDR_SURFACE_TYPE)3;
+const GED_DP_ADDR_SURFACE_TYPE* DpAddrSurfaceTypeTable0[4] =
 {
-    &DpAddrTypeVar0, // 0
-    &DpAddrTypeVar1, // 1
-    &DpAddrTypeVar2, // 2
-    &DpAddrTypeVar3 // 3
-}; // DpAddrTypeTable0[]
+    &DpAddrSurfaceTypeVar0, // 0
+    &DpAddrSurfaceTypeVar1, // 1
+    &DpAddrSurfaceTypeVar2, // 2
+    &DpAddrSurfaceTypeVar3 // 3
+}; // DpAddrSurfaceTypeTable0[]
 static GED_DP_DATA_SIZE DpDataSizeVar0 = (GED_DP_DATA_SIZE)0;
 static GED_DP_DATA_SIZE DpDataSizeVar1 = (GED_DP_DATA_SIZE)1;
 static GED_DP_DATA_SIZE DpDataSizeVar2 = (GED_DP_DATA_SIZE)2;

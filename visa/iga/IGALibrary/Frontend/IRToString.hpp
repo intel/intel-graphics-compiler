@@ -797,7 +797,6 @@ template <> SFID FromSyntax<SFID>(std::string str);
 std::string ToSyntax(SyncFC sfc);
 template <> SyncFC FromSyntax<SyncFC>(std::string str);
 
-
 std::string ToSyntax(DpasFC sfc);
 template <> DpasFC FromSyntax<DpasFC>(std::string str);
 

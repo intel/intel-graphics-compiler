@@ -386,8 +386,8 @@ EXPORTS
   GED_SetExMessageLength
   GED_GetDPOpcode
   GED_SetDPOpcode
-  GED_GetDPAddrType
-  GED_SetDPAddrType
+  GED_GetDPAddrSurfaceType
+  GED_SetDPAddrSurfaceType
   GED_GetDPVectSize
   GED_SetDPVectSize
   GED_GetDPFlushType
@@ -418,7 +418,7 @@ EXPORTS
   GED_GetDebugCtrlString
   GED_GetDepCtrlString
   GED_GetDpAddrSizeString
-  GED_GetDpAddrTypeString
+  GED_GetDpAddrSurfaceTypeString
   GED_GetDpDataSizeString
   GED_GetDpFenceScopeString
   GED_GetDpFlushTypeString

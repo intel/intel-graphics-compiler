@@ -215,16 +215,16 @@ const char* DpAddrSizeEnumeration[4] =
 }; // DpAddrSizeEnumeration[]
 #endif // GED_DP_ADDR_SIZE_HIDDEN
 
-#ifndef GED_DP_ADDR_TYPE_HIDDEN
-const char* DpAddrTypeEnumeration[5] =
+#ifndef GED_DP_ADDR_SURFACE_TYPE_HIDDEN
+const char* DpAddrSurfaceTypeEnumeration[5] =
 {
     "FLAT", // 0
     "BSS", // 1
     "SS", // 2
     "BTI", // 3
     NULL // 4
-}; // DpAddrTypeEnumeration[]
-#endif // GED_DP_ADDR_TYPE_HIDDEN
+}; // DpAddrSurfaceTypeEnumeration[]
+#endif // GED_DP_ADDR_SURFACE_TYPE_HIDDEN
 
 #ifndef GED_DP_DATA_SIZE_HIDDEN
 const char* DpDataSizeEnumeration[8] =

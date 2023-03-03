@@ -4884,22 +4884,23 @@ extern GED_DP_OPCODE GED_CALLCONV GED_GetDPOpcode(const uint32_t msgDesc, const 
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPOpcode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_OPCODE opcode);
 
 /*!
- * Get the value of the DPAddrType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
- * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpAddrTypeString. See @ref
- * GED_PSEUDO_FIELD_DPAddrType for the field's description.
+ * Get the value of the DPAddrSurfaceType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
+ * returns an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpAddrSurfaceTypeString. See @ref
+ * GED_PSEUDO_FIELD_DPAddrSurfaceType for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
  * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
- * @return      DPAddrType's enumeration if the field is valid, GED_DP_ADDR_TYPE_INVALID otherwise.
+ * @return      DPAddrSurfaceType's enumeration if the field is valid, GED_DP_ADDR_SURFACE_TYPE_INVALID otherwise.
  */
-extern GED_DP_ADDR_TYPE GED_CALLCONV GED_GetDPAddrType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+extern GED_DP_ADDR_SURFACE_TYPE GED_CALLCONV GED_GetDPAddrSurfaceType(const uint32_t msgDesc, const GED_MODEL modelId,
+                                                                      GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the DPAddrType field in the given message descriptor. The latter can then be set to its appropriate field (@ref
- * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPAddrType for the field's description.
+ * Set the value of the DPAddrSurfaceType field in the given message descriptor. The latter can then be set to its appropriate field
+ * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_DPAddrSurfaceType for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
  * @param[in]       modelId    The GED model by which to interpret.
@@ -4907,7 +4908,8 @@ extern GED_DP_ADDR_TYPE GED_CALLCONV GED_GetDPAddrType(const uint32_t msgDesc, c
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_TYPE AddrType);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrSurfaceType(uint32_t* msgDesc, const GED_MODEL modelId, const
+                                                              GED_DP_ADDR_SURFACE_TYPE AddrType);
 
 /*!
  * Get the value of the DPVectSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -5258,14 +5260,14 @@ extern const char* GED_CALLCONV GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue);
 extern const char* GED_CALLCONV GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue);
 
 /*!
- * Get the string representation for the given GED_DP_ADDR_TYPE enumerator. The function returns a NULL pointer for
- * GED_DP_ADDR_TYPE_INVALID.
+ * Get the string representation for the given GED_DP_ADDR_SURFACE_TYPE enumerator. The function returns a NULL pointer for
+ * GED_DP_ADDR_SURFACE_TYPE_INVALID.
  *
- * @param[in]       DpAddrTypeValue    The given GED_DP_ADDR_TYPE enumerator.
+ * @param[in]       DpAddrSurfaceTypeValue The given GED_DP_ADDR_SURFACE_TYPE enumerator.
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV GED_GetDpAddrTypeString(GED_DP_ADDR_TYPE DpAddrTypeValue);
+extern const char* GED_CALLCONV GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeValue);
 
 /*!
  * Get the string representation for the given GED_DP_DATA_SIZE enumerator. The function returns a NULL pointer for

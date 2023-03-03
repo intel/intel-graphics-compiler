@@ -29,7 +29,6 @@ enum class BranchCtrl {
 // used for instructions that lack a subfunction
 enum class InvalidFC { INVALID = -1 };
 
-
 // Math function control (selector)
 enum class MathFC {
   INVALID = -1,
@@ -49,9 +48,7 @@ enum class MathFC {
   RSQTM,
 };
 // static const MathFC ALL_MathFCs[] ... need C++17
-static const std::array<MathFC,
-                        14
-                        >
+static const std::array<MathFC,14>
     ALL_MathFCs{
         MathFC::INV,  MathFC::LOG,  MathFC::EXP,  MathFC::SQT,   MathFC::RSQT,
         MathFC::SIN,  MathFC::COS,  MathFC::FDIV, MathFC::POW,   MathFC::IDIV,
@@ -112,7 +109,7 @@ static const std::array<SyncFC,
                         6
                         >
     ALL_SyncFCs{
-        SyncFC::NOP,   SyncFC::ALLRD, SyncFC::ALLWR,
+        SyncFC::NOP, SyncFC::ALLRD, SyncFC::ALLWR,
         SyncFC::FENCE, // XeHPC
         SyncFC::BAR,   SyncFC::HOST,
     };

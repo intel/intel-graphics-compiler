@@ -369,7 +369,7 @@ const char* fieldNameByPseudoField[45] =
     "MessageTypeDP_DCRO", // 34
     "ExMessageLength", // 35
     "DPOpcode", // 36
-    "DPAddrType", // 37
+    "DPAddrSurfaceType", // 37
     "DPVectSize", // 38
     "DPFlushType", // 39
     "DPTranspose", // 40

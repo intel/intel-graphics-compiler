@@ -31,7 +31,7 @@ extern const char* DataTypeEnumeration[20];
 extern const char* DebugCtrlEnumeration[3];
 extern const char* DepCtrlEnumeration[5];
 extern const char* DpAddrSizeEnumeration[4];
-extern const char* DpAddrTypeEnumeration[5];
+extern const char* DpAddrSurfaceTypeEnumeration[5];
 extern const char* DpDataSizeEnumeration[8];
 extern const char* DpFenceScopeEnumeration[8];
 extern const char* DpFlushTypeEnumeration[7];

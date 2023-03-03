@@ -21,8 +21,7 @@ uint32_t GEDInterpreter::InterpretPositionInternal(uint32_t value, /* GED_PSEUDO
                                                    GED_RETURN_VALUE& ret)
 {
     const ModelData& modelData = ModelsArray[modelId];
-    GEDASSERT(interpId < modelData.numberOfPseudoFields);
-    if (NULL == modelData.pseudoFields)
+    if ((NULL == modelData.pseudoFields) || (interpId >= modelData.numberOfPseudoFields))
     {
         ret = GED_RETURN_VALUE_INVALID_INTERPRETER;
         return value;
