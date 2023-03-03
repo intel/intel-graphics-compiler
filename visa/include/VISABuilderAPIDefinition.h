@@ -503,7 +503,14 @@ public:
       LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
       VISA_RawOpnd *dst, VISA_RawOpnd *coord0s, VISA_RawOpnd *coord1s,
       VISA_RawOpnd *coord2s, VISA_RawOpnd *features, VISA_RawOpnd *src1, VISA_RawOpnd *src2) = 0;
-
+  VISA_BUILDER_API virtual int AppendVISALscTypedInst(
+      LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
+      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
+      LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+      int surfaceIndex, VISA_RawOpnd *dst, VISA_RawOpnd *coord0s,
+      int coord0Offset, VISA_RawOpnd *coord1s, int coord1Offset,
+      VISA_RawOpnd *coord2s, int coord2Offset, VISA_RawOpnd *features,
+      VISA_RawOpnd *src1, VISA_RawOpnd *src2) = 0;
   ///////////////////////////////////////////////////////////////////////////
   // LSC fences
   //

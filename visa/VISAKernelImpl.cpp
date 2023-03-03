@@ -7552,7 +7552,8 @@ static const int LSC_ZERO = 0;
 #define LSC_CHECK_NULL_DST(X) LSC_CHECK_NULL_OPND(X, true)
 #define LSC_CHECK_NULL_SRC(X) LSC_CHECK_NULL_OPND(X, false)
 
-VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
+VISA_BUILDER_API int VISAKernelImpl::
+AppendVISALscUntypedInst(
         LSC_OP subOpcode, LSC_SFID lscSfid, VISA_PredOpnd *pred,
         VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
         LSC_ADDR addr, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd* surface,
@@ -7892,12 +7893,27 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedAtomic(
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
-    LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
+LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
     VISA_RawOpnd *dstData, VISA_RawOpnd *coord0s, VISA_RawOpnd *coord1s,
     VISA_RawOpnd *coord2s, VISA_RawOpnd *features,
     VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
+
+  return AppendVISALscTypedInst(subOpcode, pred, execSize, emask, cacheOpts, addrType,
+    addrSize, dataShape, surface, 0, dstData, coord0s, 0, coord1s, 0, coord2s,
+    0, features, src1Data, src2Data);
+
+}
+VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
+    LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
+    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
+    int surfaceIndex, VISA_RawOpnd *dstData, VISA_RawOpnd *coord0s,
+    int coord0Offset, VISA_RawOpnd *coord1s, int coord1Offset,
+    VISA_RawOpnd *coord2s, int coord2Offset, VISA_RawOpnd *features,
+    VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
+
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   AppendVISAInstCommon();
@@ -7974,7 +7990,6 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
 
   return status;
 }
-
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscFence(LSC_SFID lscSfid,
                                                         LSC_FENCE_OP fenceOp,
