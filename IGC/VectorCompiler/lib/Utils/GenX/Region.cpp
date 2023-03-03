@@ -824,16 +824,22 @@ bool CMRegion::changeElementType(Type *NewElementType, const DataLayout *DL) {
   IGC_ASSERT(ElementBytes);
   IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0, "Impossible offset (in bytes) for data type");
 
-  unsigned NewElementBytes = vc::getTypeSize(NewElementType, DL).inBytes();
-
   if (Indirect || Mask)
     return false;
+
+  unsigned NewElementBytes = vc::getTypeSize(NewElementType, DL).inBytes();
 
   if (NewElementBytes == ElementBytes) {
     // No change in element size
     ElementTy = NewElementType;
     return true;
   }
+
+  // Check if the new element size is compatible with the current offset or the
+  // total region size
+  if (Offset % NewElementBytes ||
+      (NumElements * ElementBytes) % NewElementBytes)
+    return false;
 
   unsigned Ratio = NewElementBytes / ElementBytes;
   if (Ratio >= 1) {
