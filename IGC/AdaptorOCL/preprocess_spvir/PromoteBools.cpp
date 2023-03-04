@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
@@ -398,6 +399,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteICmp(icmp);
     }
+    else if (auto inlineAsm = dyn_cast<InlineAsm>(value))
+    {
+        newValue = promoteInlineAsm(inlineAsm);
+    }
     else if (auto insertValue = dyn_cast<InsertValueInst>(value))
     {
         newValue = promoteInsertValue(insertValue);
@@ -732,9 +737,9 @@ Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
     return newBitcast;
 }
 
-CallInst* PromoteBools::promoteIndirectCall(CallInst* call)
+CallInst* PromoteBools::promoteIndirectCallOrInlineAsm(CallInst* call)
 {
-    IGC_ASSERT(call->isIndirectCall());
+    IGC_ASSERT(call->isIndirectCall() || call->isInlineAsm());
     auto operand = call->getCalledOperand();
     auto functionType = call->getFunctionType();
 
@@ -769,9 +774,9 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
         return nullptr;
     }
 
-    if (call->isIndirectCall())
+    if (call->isIndirectCall() || call->isInlineAsm())
     {
-        return promoteIndirectCall(call);
+        return promoteIndirectCallOrInlineAsm(call);
     }
 
     auto function = call->getCalledFunction();
@@ -907,6 +912,23 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
     );
     newICmp->setDebugLoc(icmp->getDebugLoc());
     return newICmp;
+}
+
+InlineAsm* PromoteBools::promoteInlineAsm(InlineAsm* inlineAsm)
+{
+    if (!inlineAsm || !typeNeedsPromotion(inlineAsm->getFunctionType()))
+    {
+        return inlineAsm;
+    }
+
+    return InlineAsm::get(
+        dyn_cast<FunctionType>(getOrCreatePromotedType(inlineAsm->getFunctionType())),
+        inlineAsm->getAsmString(),
+        inlineAsm->getConstraintString(),
+        inlineAsm->hasSideEffects(),
+        inlineAsm->isAlignStack(),
+        inlineAsm->getDialect()
+    );
 }
 
 InsertValueInst* PromoteBools::promoteInsertValue(InsertValueInst* insertValue)
