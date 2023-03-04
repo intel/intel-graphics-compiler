@@ -713,7 +713,7 @@ bool preRA_RegSharing::run() {
     BB_Scheduler S(kernel, ddd, rp, config, LT);
 
     changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
-    changed |= S.scheduleBlockForLatency(MaxPressure, changed, KernelPressure);
+      changed |= S.scheduleBlockForLatency(MaxPressure, changed, 0);
   }
   if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
     rp.rpe->run();
@@ -764,7 +764,7 @@ public:
   preNode *getCurrTupleLead() const { return TheCurrTupleLead; }
   void setCurrTupleLead(preNode *N) {
     vASSERT(N->getInst()->getExecSize() == g4::SIMD8 ||
-           N->getInst()->getExecSize() == g4::SIMD16);
+            N->getInst()->getExecSize() == g4::SIMD16);
     TheCurrTupleLead = N->getTupleLead();
     TheCurrTupleParts = N->getTupleParts();
   }
@@ -809,7 +809,7 @@ public:
     // Clustering nodes have been added.
     if (N->isClustered && !N->isClusterLead) {
       vASSERT(std::find(Clusterings.begin(), Clusterings.end(), N) !=
-             Clusterings.end());
+              Clusterings.end());
     } else {
       Q.push_back(N);
     }
@@ -2781,7 +2781,7 @@ void SethiUllmanACCQueue::init(G4_Kernel *kernel) {
     Numbers[j] = calculateSethiUllmanNumberForACC(Nodes[j], kernel);
   }
 
- VISA_DEBUG_VERBOSE({
+  VISA_DEBUG_VERBOSE({
     std::cerr << "\n\n";
     for (auto I = Nodes.rbegin(); I != Nodes.rend(); ++I) {
       std::cerr << "SU[" << Numbers[(*I)->getID()] << "] "
