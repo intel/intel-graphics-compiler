@@ -53,13 +53,13 @@ SPDX-License-Identifier: MIT
 
 #define GEN_DEFINITION_BFE( FUNC, OP, SPV_TYPE, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2 )                                 \
 INLINE SPV_TYPE OVERLOADABLE FUNC( TYPE1 base, TYPE2 offset, TYPE2 count ) {                                           \
-    return __builtin_spirv_##OP##_##ABBR_TYPE1##_##ABBR_TYPE2##_##ABBR_TYPE2                                           \
+    return SPIRV_BUILTIN(OP, _##ABBR_TYPE1##_##ABBR_TYPE2##_##ABBR_TYPE2, )                                            \
     ( as_##SPV_TYPE( base ), offset, count);                                                                           \
 }
 
 #define GEN_VECTOR_DEFINITION_BFE( FUNC, OP, SPV_TYPE, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2, VEC_SIZE)                 \
 INLINE SPV_TYPE##VEC_SIZE OVERLOADABLE FUNC( TYPE1##VEC_SIZE base, TYPE2 offset, TYPE2 count ) {                       \
-    return __builtin_spirv_##OP##_v##VEC_SIZE##ABBR_TYPE1##_##ABBR_TYPE2##_##ABBR_TYPE2                                \
+    return SPIRV_BUILTIN(OP, _v##VEC_SIZE##ABBR_TYPE1##_##ABBR_TYPE2##_##ABBR_TYPE2, )                                 \
     ( as_##SPV_TYPE##VEC_SIZE( base ), offset, count);                                                                 \
 }
 
@@ -94,45 +94,45 @@ INLINE SPV_TYPE##VEC_SIZE OVERLOADABLE FUNC( TYPE1##VEC_SIZE base, TYPE2 offset,
 
 // ---- BFREV ----
 
-#define GEN_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE )                                                       \
+#define GEN_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE )                                                  \
 INLINE TYPE OVERLOADABLE FUNC( TYPE base ) {                                                                           \
-    return as_##TYPE( __builtin_spirv_##OP##_##ABBR_TYPE( as_##UTYPE( base ) ) );                                      \
+    return as_##TYPE( SPIRV_BUILTIN(OP, _##ABBR_TYPE, )( as_##SPIRV_TYPE( base ) ) );                                  \
 }
 
-#define GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE, VEC_SIZE )                                      \
+#define GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE, VEC_SIZE )                                 \
 INLINE TYPE##VEC_SIZE OVERLOADABLE FUNC( TYPE##VEC_SIZE base ) {                                                       \
-    return as_##TYPE##VEC_SIZE( __builtin_spirv_##OP##_v##VEC_SIZE##ABBR_TYPE( as_##UTYPE##VEC_SIZE ( base ) ) );      \
+    return as_##TYPE##VEC_SIZE( SPIRV_BUILTIN(OP, _v##VEC_SIZE##ABBR_TYPE, )( as_##SPIRV_TYPE##VEC_SIZE ( base ) ) );  \
 }
 
-#define GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, TYPE, UTYPE, ABBR_TYPE )                                           \
-    GEN_DEFINITION_BFREV       ( FUNC, OP, TYPE, UTYPE, ABBR_TYPE )                                                    \
-    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE, 2)                                                  \
-    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE, 3)                                                  \
-    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE, 4)                                                  \
-    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE, 8)                                                  \
-    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, UTYPE, ABBR_TYPE, 16)
+#define GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE )  \
+    GEN_DEFINITION_BFREV       ( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE )           \
+    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE, 2)         \
+    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE, 3)         \
+    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE, 4)         \
+    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE, 8)         \
+    GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, TYPE, SPIRV_TYPE, ABBR_TYPE, 16)
 
-#define GEN_DEFINITIONS_BFREV( FUNC, OP )                                                                              \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, uchar,  uchar,  i8  )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, ushort, ushort, i16 )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, uint,   uint,   i32 )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, ulong,  ulong,  i64 )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, char,   uchar,  i8  )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, short,  ushort, i16 )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, int,    uint,   i32 )                                                  \
-    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, long,   ulong,  i64 )
+#define GEN_DEFINITIONS_BFREV( FUNC, OP )                               \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, uchar,  char,  i8  )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, ushort, short, i16 )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, uint,   int,   i32 )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, ulong,  long,  i64 )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, char,   char,  i8  )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, short,  short, i16 )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, int,    int,   i32 )    \
+    GEN_DEFINITIONS_BFREV_ALL_WIDTHS( FUNC, OP, long,   long,  i64 )
 
 // Generate all
 
 GEN_DEFINITIONS_BFI( bitfield_insert, BitFieldInsert )
-GEN_DEFINITIONS_SBFE( bitfield_extract_signed, OpBitFieldSExtract )
-GEN_DEFINITIONS_UBFE( bitfield_extract_unsigned, OpBitFieldUExtract )
-GEN_DEFINITIONS_BFREV( bit_reverse, OpBitReverse )
+GEN_DEFINITIONS_SBFE( bitfield_extract_signed, BitFieldSExtract )
+GEN_DEFINITIONS_UBFE( bitfield_extract_unsigned, BitFieldUExtract )
+GEN_DEFINITIONS_BFREV( bit_reverse, BitReverse )
 
 GEN_DEFINITIONS_BFI( intel_bfi, BitFieldInsert )
-GEN_DEFINITIONS_SBFE( intel_sbfe, OpBitFieldSExtract )
-GEN_DEFINITIONS_UBFE( intel_ubfe, OpBitFieldUExtract )
-GEN_DEFINITIONS_BFREV( intel_bfrev, OpBitReverse )
+GEN_DEFINITIONS_SBFE( intel_sbfe, BitFieldSExtract )
+GEN_DEFINITIONS_UBFE( intel_ubfe, BitFieldUExtract )
+GEN_DEFINITIONS_BFREV( intel_bfrev, BitReverse )
 
 #endif // cl_khr_extended_bit_ops
 
