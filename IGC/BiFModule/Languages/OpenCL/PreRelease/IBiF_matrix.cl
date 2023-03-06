@@ -87,9 +87,6 @@ INLINE int __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_1x32_i8_v8i8_
 
 /* PackedA load i16 SG16 */
 INLINE short8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x16_i16_v8i8_pi32_i32(char *mem, int stride) {
-    if (stride == 32)
-      return VEC_TO_VEC8(short,intel_sub_group_block_read_us8((__global uint *)mem));
-
     short8 result;
     stride = stride / 2; // short to int
     SUB_GROUP_LOADS_8(intel_sub_group_block_read_us, (__global uint *)mem, stride, result)
