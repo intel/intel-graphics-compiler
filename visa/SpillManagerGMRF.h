@@ -53,11 +53,11 @@ public:
   // Upper threshold of # variables spilled in current iteration
   // to convert current regular (ie, non-fail safe) RA iteration
   // in to fail-safe RA iteration.
-  static const unsigned int MaxSpillNumVars = 5;
+  static const unsigned int MaxSpillNumVars = 3;
 
   // Lower threshold # variables to convert current regular RA
   // iteration in to fail safe RA iteration.
-  static const unsigned int LargeProgramSize = 2000;
+  static const unsigned int LargeProgramSize = 20000;
 
   static unsigned int getNumPhyVarSlots(G4_Kernel &kernel) {
     return kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>();
