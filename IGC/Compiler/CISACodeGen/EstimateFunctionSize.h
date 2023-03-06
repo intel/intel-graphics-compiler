@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/StringRef.h>
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/Support/ScaledNumber.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <cstddef>
 #include "Probe/Assertion.h"
@@ -76,10 +78,12 @@ namespace IGC {
         uint32_t updateExpandedUnitSize(llvm::Function* F, bool ignoreStackCallBoundary);
         uint32_t bottomUpHeuristic(llvm::Function* F, uint32_t& stackCall_cnt);
         void partitionKernel();
+        void runStaticAnalysis();
         void reduceCompilationUnitSize();
         void trimCompilationUnit(llvm::SmallVector<void*, 64> &unitHeads, uint32_t threshold, bool ignoreStackCallBoundary);
         uint32_t getMaxUnitSize();
         void getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64> &functions_to_trim, bool ignoreStackCallBoundary, uint32_t& func_cnt);
+        void updateStaticFuncFreq();
 
         /// \brief The module being analyzed.
         llvm::Module* M;
@@ -116,6 +120,7 @@ namespace IGC {
         //Functions that are assigned stackcalls
         llvm::SmallVector<void*, 64> stackCallFuncs;
         llvm::SmallVector<void*, 64> addressTakenFuncs;
+        llvm::ScaledNumber<uint64_t> threshold_func_freq;
     };
 
     llvm::ModulePass* createEstimateFunctionSizePass();

@@ -616,7 +616,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     {
                         if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
                         {
-                            std::cout << "Trimmed function " << F->getName().str() << std::endl;
+                            dbgs() << "Trimmed function " << F->getName().str() << "\n";
                         }
 
                         if (IGC_IS_FLAG_ENABLED(AddNoInlineToTrimmedFunctions))
