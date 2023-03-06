@@ -2297,6 +2297,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
                                             SPIRAddressSpace::SPIRAS_Global));
   }
   case OpTypeJointMatrixINTEL:
+  case OpTypeJointMatrixINTEL_OLD:
   {
     SPIRVTypeJointMatrixINTEL *MT = static_cast<SPIRVTypeJointMatrixINTEL *>(T);
     std::string typeName = "intel.joint_matrix_" + MT->getMangledName() + "_t";
@@ -3174,6 +3175,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     }
     break;
     case OpTypeJointMatrixINTEL:
+    case OpTypeJointMatrixINTEL_OLD:
     {
       IGC_ASSERT(CV.size() == 1);
 
@@ -3663,7 +3665,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpVectorExtractDynamic: {
     auto CE = static_cast<SPIRVVectorExtractDynamic *>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    if (CE->getVector()->getType()->getOpCode() == OpTypeJointMatrixINTEL)
+    Op VectorTypeOpCode = CE->getVector()->getType()->getOpCode();
+    if (VectorTypeOpCode == OpTypeJointMatrixINTEL || VectorTypeOpCode == OpTypeJointMatrixINTEL_OLD)
     {
         Value *matrix = transValue(CE->getVector(), F, BB);
         Value *index = transValue(CE->getIndex(), F, BB);
@@ -3719,7 +3722,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpVectorInsertDynamic: {
     auto CI = static_cast<SPIRVVectorInsertDynamic *>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    if (CI->getVector()->getType()->getOpCode() == OpTypeJointMatrixINTEL)
+    Op VectorTypeOpCode = CI->getVector()->getType()->getOpCode();
+    if (VectorTypeOpCode == OpTypeJointMatrixINTEL || VectorTypeOpCode == OpTypeJointMatrixINTEL_OLD)
     {
         Value *matrix = transValue(CI->getVector(), F, BB);
         Value *component = transValue(CI->getComponent(), F, BB);
@@ -3982,7 +3986,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpJointMatrixLoadINTEL: {
     SPIRVJointMatrixLoadINTEL *ML = static_cast<SPIRVJointMatrixLoadINTEL *>(BV);
     std::vector<SPIRVValue *> BArgs = ML->getOperands();
-    enum SPVIdx { Pointer, Stride, Layout, Scope, MemOp };
+    enum SPVIdx { Pointer, Stride, Layout, MemOp };
 
     SPIRVTypeJointMatrixINTEL *MatTy = static_cast<SPIRVTypeJointMatrixINTEL *>(ML->getType());
     const unsigned loadLayout = (unsigned)BM->get<SPIRVConstant>(BArgs[Layout]->getId())->getZExtIntValue();
@@ -4028,7 +4032,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpJointMatrixStoreINTEL: {
     SPIRVJointMatrixStoreINTEL *MS = static_cast<SPIRVJointMatrixStoreINTEL *>(BV);
     std::vector<SPIRVValue *> BArgs = MS->getOperands();
-    enum SPVIdx { Pointer, Object, Stride, Layout, Scope, MemOp };
+    enum SPVIdx { Pointer, Object, Stride, Layout, MemOp };
 
     SPIRVTypeJointMatrixINTEL *MatTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[Object]->getType());
     const unsigned storeLayout = (unsigned)BM->get<SPIRVConstant>(BArgs[Layout]->getId())->getZExtIntValue();
@@ -4079,7 +4083,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     SPIRVInstruction *MI = static_cast<SPIRVInstruction *>(BV);
     std::vector<SPIRVValue *> BArgs = MI->getOperands();
 
-    enum SPVIdx { A, B, C, Scope };
+    enum SPVIdx { A, B, C };
     auto *MatATy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[A]->getType());
     auto *MatBTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[B]->getType());
     auto *MatCTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BArgs[C]->getType());

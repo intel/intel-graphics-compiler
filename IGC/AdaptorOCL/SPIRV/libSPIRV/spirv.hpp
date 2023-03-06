@@ -627,6 +627,10 @@ enum Capability {
     CapabilityJointMatrixINTEL = 6118,
     CapabilityHWThreadQueryINTEL = 6134,
     CapabilityGlobalVariableDecorationsINTEL = 6146,
+    JointMatrixTF32ComponentTypeINTEL = 6436,
+    JointMatrixBF16ComponentTypeINTEL = 6437,
+    JointMatrixPackedInt2ComponentTypeINTEL = 6438,
+    JointMatrixPackedInt4ComponentTypeINTEL = 6439,
 };
 
 enum PackedVectorFormat {
@@ -635,6 +639,7 @@ enum PackedVectorFormat {
 };
 
 enum Op {
+    OpTypeJointMatrixINTEL_OLD = 6119, // Replaced by 6184
 #define _SPIRV_OP(x, num) Op##x = num,
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP

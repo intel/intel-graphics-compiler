@@ -679,18 +679,25 @@ protected:
 
 class SPIRVTypeJointMatrixINTEL : public SPIRVType {
 public:
-    const static Op OC = OpTypeJointMatrixINTEL;
     const static SPIRVWord FixedWC = 3;
     // Complete constructor
-    SPIRVTypeJointMatrixINTEL(SPIRVModule *M, SPIRVId TheId, SPIRVType *ElemType,
-                              std::vector<SPIRVId> Args)
+    SPIRVTypeJointMatrixINTEL(Op OC, SPIRVModule *M, SPIRVId TheId,
+                              SPIRVType *ElemType, std::vector<SPIRVId> Args)
         : SPIRVType(M, FixedWC, OC, TheId), ElemType(ElemType), Args(Args) {
+        bool ValidOpcode = OC == OpTypeJointMatrixINTEL || OC == OpTypeJointMatrixINTEL_OLD;
+        IGC_ASSERT_EXIT_MESSAGE(ValidOpcode, "Invalid opcode for TypeJointMatrixINTEL");
         validate();
     }
 
-    // Incomplete constructor
+    // Incomplete constructors
     SPIRVTypeJointMatrixINTEL()
+        : SPIRVType(OpTypeJointMatrixINTEL), ElemType(0), Args({0, 0, 0, 0}) {
+    }
+    // Remove once OpTypeJointMatrixINTEL_OLD is removed
+    SPIRVTypeJointMatrixINTEL(Op OC)
         : SPIRVType(OC), ElemType(0), Args({0, 0, 0, 0}) {
+        bool ValidOpcode = OC == OpTypeJointMatrixINTEL || OC == OpTypeJointMatrixINTEL_OLD;
+        IGC_ASSERT_EXIT_MESSAGE(ValidOpcode, "Invalid opcode for TypeJointMatrixINTEL");
     }
 
     CapVec getRequiredCapability() const override {
@@ -704,14 +711,17 @@ public:
 
     SPIRVType *getElemType() const { return ElemType; }
 
-    unsigned getLayout() const;
-    unsigned getUse() const;
     unsigned getRows() const;
     unsigned getColumns() const;
+    unsigned getLayout() const;
     unsigned getScope() const;
+    unsigned getUse() const;
+    unsigned getComponentTypeInterpretation() const;
 
     std::string getMangledName() const;
+    bool isLayoutParameterPresent() const;
     bool isUseParameterPresent() const;
+    bool isComponentTypeInterpretationParameterPresent() const;
 
     enum {
         LayoutColumnMajor = 0,
@@ -729,6 +739,15 @@ public:
         UseMAX
     };
 
+    enum {
+        CTINone = 0,
+        CTITF32 = 1,
+        CTIBfloat16 = 2,
+        CTIPackedInt2 = 3,
+        CTIPackedInt4 = 4,
+        CTIMAX
+    };
+
 protected:
     _SPIRV_DEF_DEC3_OVERRIDE(Id, ElemType, Args)
     void validate() const override {
@@ -738,6 +757,7 @@ protected:
         IGC_ASSERT_EXIT_MESSAGE(getColumns() <= 64, "Unsupported columns size.");
         IGC_ASSERT_EXIT_MESSAGE(getLayout() < LayoutMAX, "Unsupported layout.");
         IGC_ASSERT_EXIT_MESSAGE(getUse() < UseMAX, "Unsupported use parameter.");
+        IGC_ASSERT_EXIT_MESSAGE(getComponentTypeInterpretation() < CTIMAX, "Unsupported component type interpretation parameter." );
     }
 
 private:

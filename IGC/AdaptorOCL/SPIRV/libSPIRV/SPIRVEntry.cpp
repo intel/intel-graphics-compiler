@@ -64,6 +64,8 @@ SPIRVEntry::create(Op OpCode) {
 #define _SPIRV_OP(x,...) case Op##x: return igc_spv::create<SPIRV##x>();
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP
+  case OpTypeJointMatrixINTEL_OLD: // Remove once OpTypeJointMatrixINTEL_OLD is removed
+    return new SPIRVTypeJointMatrixINTEL(OpTypeJointMatrixINTEL_OLD);
   default:
     break;
   }
