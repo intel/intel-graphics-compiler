@@ -166,7 +166,6 @@ static inline GED_OPCODE lowerOpcode(Op opcode) {
   case Op::MADM:
     op = GED_OPCODE_madm;
     break;
-       //
   case Op::MATH:
     op = GED_OPCODE_math;
     break;

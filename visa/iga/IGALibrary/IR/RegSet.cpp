@@ -542,7 +542,7 @@ bool RegSet::addExplicitDestinationOutputs(const Instruction &i) {
   Region rgn = op.getRegion();
   switch (op.getKind()) {
   case Operand::Kind::DIRECT:
-    // send target (a GRF, not null reg)
+    // includes send target (a GRF, not null reg)
     if (i.getOpSpec().isAnySendFormat() &&
         op.getDirRegName() == RegName::GRF_R) {
       addSendOperand(i, -1);

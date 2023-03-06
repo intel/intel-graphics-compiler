@@ -306,6 +306,10 @@ void Encoder::encodeInstruction(Instruction &inst) {
   m_opcode = inst.getOp();
   const auto gedPlat = lowerPlatform(platform());
   const auto gedOp = lowerOpcode(m_opcode);
+  if (gedOp == GED_OPCODE_INVALID) {
+    fatalAtT(inst.getLoc(), "OpSpec failed to map to a valid GED opcode");
+    return;
+  }
   GED_RETURN_VALUE status = GED_InitEmptyIns(gedPlat, &m_gedInst, gedOp);
   if (status != GED_RETURN_VALUE_SUCCESS) {
     fatalAtT(inst.getLoc(), "GED failed to create instruction template");
