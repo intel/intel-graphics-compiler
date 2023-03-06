@@ -630,11 +630,6 @@ bool supportsAutoGRFSelection() const
     return isProductChildOf(IGFX_PVC) || m_platformInfo.eProductFamily == IGFX_XE_HP_SDV || (m_platformInfo.eProductFamily == IGFX_DG2 && IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection));
 }
 
-float adjustedSpillThreshold() const
-{
-    return isProductChildOf(IGFX_DG2) ? 9.0f : 12.0f;
-}
-
 bool hasLSC() const
 {
     return IGC_IS_FLAG_DISABLED(ForceNoLSC) && !WaEnableLSCBackupMode() && isProductChildOf(IGFX_DG2);
