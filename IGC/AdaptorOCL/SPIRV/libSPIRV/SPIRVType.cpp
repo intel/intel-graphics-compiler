@@ -353,16 +353,6 @@ void SPIRVTypeForwardPointer::decode(std::istream& I) {
   Decoder >> PointerId >> SC;
 }
 
-unsigned SPIRVTypeJointMatrixINTEL::getLayout() const {
-  return (unsigned)get<SPIRVConstant>(Args[2])->getZExtIntValue();
-}
-
-unsigned SPIRVTypeJointMatrixINTEL::getUse() const {
-  if (isUseParameterPresent())
-      return (unsigned)get<SPIRVConstant>(Args[4])->getZExtIntValue();
-  return 0;
-}
-
 unsigned SPIRVTypeJointMatrixINTEL::getRows() const {
   return (unsigned)get<SPIRVConstant>(Args[0])->getZExtIntValue();
 }
@@ -371,12 +361,42 @@ unsigned SPIRVTypeJointMatrixINTEL::getColumns() const {
   return (unsigned)get<SPIRVConstant>(Args[1])->getZExtIntValue();
 }
 
+unsigned SPIRVTypeJointMatrixINTEL::getLayout() const {
+  if (isLayoutParameterPresent())
+    return (unsigned)get<SPIRVConstant>(Args[2])->getZExtIntValue();
+  return 0;
+}
+
 unsigned SPIRVTypeJointMatrixINTEL::getScope() const {
-  return (unsigned)get<SPIRVConstant>(Args[3])->getZExtIntValue();
+  return getOpCode() == OpTypeJointMatrixINTEL
+             ? (unsigned)get<SPIRVConstant>(Args[2])->getZExtIntValue()
+             : (unsigned)get<SPIRVConstant>(Args[3])->getZExtIntValue();
+}
+
+unsigned SPIRVTypeJointMatrixINTEL::getUse() const {
+  if (isUseParameterPresent())
+    return getOpCode() == OpTypeJointMatrixINTEL
+               ? (unsigned)get<SPIRVConstant>(Args[3])->getZExtIntValue()
+               : (unsigned)get<SPIRVConstant>(Args[4])->getZExtIntValue();
+  return 0;
+}
+
+unsigned SPIRVTypeJointMatrixINTEL::getComponentTypeInterpretation() const {
+  if (isComponentTypeInterpretationParameterPresent())
+    return (unsigned)get<SPIRVConstant>(Args[4])->getZExtIntValue();
+  return 0;
+}
+
+bool SPIRVTypeJointMatrixINTEL::isLayoutParameterPresent() const {
+  return getOpCode() == OpTypeJointMatrixINTEL_OLD;
 }
 
 bool SPIRVTypeJointMatrixINTEL::isUseParameterPresent() const {
-  return Args.size() > 4;
+  return getOpCode() == OpTypeJointMatrixINTEL || Args.size() > 4;
+}
+
+bool SPIRVTypeJointMatrixINTEL::isComponentTypeInterpretationParameterPresent() const {
+  return getOpCode() == OpTypeJointMatrixINTEL && Args.size() > 4;
 }
 
 std::string SPIRVTypeJointMatrixINTEL::getMangledName() const {
@@ -413,9 +433,9 @@ std::string SPIRVTypeJointMatrixINTEL::getMangledName() const {
     name += "_";
 
     if (ElemType->isTypeFloat()) {
-        name += "f";
+      name += "f";
     } else {
-        name += "i";
+      name += "i";
     }
     name += std::to_string(ElemType->getBitWidth());
     return std::move(name);

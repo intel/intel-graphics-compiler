@@ -1500,7 +1500,8 @@ protected:
     if (getValue(VectorId)->isForward())
       return;
     IGC_ASSERT(getValueType(VectorId)->isTypeVector()
-        || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL);
+        || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL
+        || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL_OLD);
   }
   SPIRVId VectorId;
   SPIRVId IndexId;
@@ -1523,7 +1524,8 @@ protected:
     if (getValue(VectorId)->isForward())
       return;
     IGC_ASSERT(getValueType(VectorId)->isTypeVector()
-        || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL);
+          || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL
+          || getValue(VectorId)->getType()->getOpCode() == OpTypeJointMatrixINTEL_OLD);
   }
   SPIRVId VectorId;
   SPIRVId IndexId;
@@ -2335,10 +2337,10 @@ class SPIRVJointMatrixINTELInst: public SPIRVInstTemplateBase {
 
 _SPIRV_OP(JointMatrixLoad, true, 6, true)
 _SPIRV_OP(JointMatrixStore, false, 5, true)
-_SPIRV_OP(JointMatrixMad, true, 7)
-_SPIRV_OP(JointMatrixSUMad, true, 7)
-_SPIRV_OP(JointMatrixUSMad, true, 7)
-_SPIRV_OP(JointMatrixUUMad, true, 7)
+_SPIRV_OP(JointMatrixMad, true, 6)
+_SPIRV_OP(JointMatrixSUMad, true, 6)
+_SPIRV_OP(JointMatrixUSMad, true, 6)
+_SPIRV_OP(JointMatrixUUMad, true, 6)
 _SPIRV_OP(JointMatrixWorkItemLength, true, 4)
 #undef _SPIRV_OP
 }

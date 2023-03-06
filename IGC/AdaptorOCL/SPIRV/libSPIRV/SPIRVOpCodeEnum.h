@@ -516,7 +516,8 @@ _SPIRV_OP(TypeTokenINTEL, 6113)
 _SPIRV_OP(ConvertFToBF16INTEL, 6116)
 _SPIRV_OP(ConvertBF16ToFINTEL, 6117)
 // SPV_INTEL_matrix
-_SPIRV_OP(TypeJointMatrixINTEL, 6119)
+//_SPIRV_OP(TypeJointMatrixINTEL_OLD, 6119) Replaced by 6184
+_SPIRV_OP(TypeJointMatrixINTEL, 6184)
 _SPIRV_OP(JointMatrixLoadINTEL, 6120)
 _SPIRV_OP(JointMatrixStoreINTEL, 6121)
 _SPIRV_OP(JointMatrixMadINTEL, 6122)
