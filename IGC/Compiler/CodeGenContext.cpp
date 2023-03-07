@@ -81,7 +81,10 @@ namespace IGC
     {
         unsigned id = GetPerFuncRetryStateId(F);
         IGC_ASSERT(id < RetryTableSize);
-        return RetryTable[id].allowLICM;
+        // Since we currently can't enable/disable LICM per-function, enabling LICM
+        // when retrying for stackcalls seems to give better performance. So always
+        // enable when recompiling with stackcalls.
+        return RetryTable[id].allowLICM || !PerFuncRetrySet.empty();
     }
 
     bool RetryManager::AllowAddressArithmeticSinking(Function* F) const
