@@ -65,3 +65,4 @@ else:
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-LEGACY'))
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
+
