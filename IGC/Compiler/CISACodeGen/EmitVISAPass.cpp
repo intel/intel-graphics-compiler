@@ -2421,7 +2421,9 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
         src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
         dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-        m_encoder->UAddC(dst, src0, src1);
+        CVariable* dstCarryBorrow = m_currShader->GetNewAlias(dst, dst->GetType(),
+            dst->GetSize() / 2, dst->GetNumberElement() / 2);
+        m_encoder->UAddC(dst, dstCarryBorrow, src0, src1);
     }
     break;
     case llvm_usubb:
@@ -2429,7 +2431,9 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
         src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
         dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-        m_encoder->USubB(dst, src0, src1);
+        CVariable* dstCarryBorrow = m_currShader->GetNewAlias(dst, dst->GetType(),
+            dst->GetSize() / 2, dst->GetNumberElement() / 2);
+        m_encoder->USubB(dst, dstCarryBorrow, src0, src1);
     }
     break;
     case llvm_bfrev:

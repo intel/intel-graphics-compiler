@@ -373,8 +373,8 @@ namespace IGC
         inline void IShr(CVariable* dst, CVariable* src0, CVariable* src1);
         inline void Min(CVariable* dst, CVariable* src0, CVariable* src1);
         inline void Max(CVariable* dst, CVariable* src0, CVariable* src1);
-        inline void UAddC(CVariable* dst, CVariable* src0, CVariable* src1);
-        inline void USubB(CVariable* dst, CVariable* src0, CVariable* src1);
+        inline void UAddC(CVariable* dst, CVariable* dstCarryBorrow, CVariable* src0, CVariable* src1);
+        inline void USubB(CVariable* dst, CVariable* dstCarryBorrow, CVariable* src0, CVariable* src1);
         inline void IEEESqrt(CVariable* dst, CVariable* src0);
         inline void IEEEDivide(CVariable* dst, CVariable* src0, CVariable* src1);
         void AddPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1 = nullptr);
@@ -553,7 +553,9 @@ namespace IGC
             CVariable* src0 = nullptr,
             CVariable* src1 = nullptr,
             CVariable* src2 = nullptr);
-        void CarryBorrowArith(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1);
+        // dst may be special `null` CVariable, if only carry/borrow bits matter
+        void CarryBorrowArith(ISA_Opcode opcode, CVariable* dst, CVariable* dstCarryBorrow,
+            CVariable* src0, CVariable* src1);
         void ScatterGather(
             ISA_Opcode opcode,
             CVariable* srcdst,
@@ -1026,14 +1028,14 @@ namespace IGC
         MinMax(CISA_DM_FMAX, dst, src0, src1);
     }
 
-    inline void CEncoder::UAddC(CVariable* dst, CVariable* src0, CVariable* src1)
+    inline void CEncoder::UAddC(CVariable* dst, CVariable* dstCarryBorrow, CVariable* src0, CVariable* src1)
     {
-        CarryBorrowArith(ISA_ADDC, dst, src0, src1);
+        CarryBorrowArith(ISA_ADDC, dst, dstCarryBorrow, src0, src1);
     }
 
-    inline void CEncoder::USubB(CVariable* dst, CVariable* src0, CVariable* src1)
+    inline void CEncoder::USubB(CVariable* dst, CVariable* dstCarryBorrow, CVariable* src0, CVariable* src1)
     {
-        CarryBorrowArith(ISA_SUBB, dst, src0, src1);
+        CarryBorrowArith(ISA_SUBB, dst, dstCarryBorrow, src0, src1);
     }
 
     inline void CEncoder::LoadMS(EOPCODE subOpcode, uint writeMask, CVariable* offset,

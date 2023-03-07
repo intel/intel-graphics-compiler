@@ -2091,35 +2091,30 @@ namespace IGC
         }
     }
 
-    void CEncoder::CarryBorrowArith(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1)
+    void CEncoder::CarryBorrowArith(ISA_Opcode opcode, CVariable* dst, CVariable* dstCarryBorrow,
+        CVariable* src0, CVariable* src1)
     {
         VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
         VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
         VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
+        VISA_VectorOpnd* carryBorrowOpnd = GetDestinationOperand(dstCarryBorrow, m_encoderState.m_dstOperand);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        SModifier carryOperand = m_encoderState.m_dstOperand;
         VISA_Exec_Size execSize = GetAluExecSize(dst);
 
         switch (execSize)
         {
         case EXEC_SIZE_1:
-            carryOperand.subReg += 1;
-            break;
         case EXEC_SIZE_8:
-            carryOperand.subVar += 1;
-            break;
         case EXEC_SIZE_16:
-            carryOperand.subVar += (getGRFSize() == 64) ? 1 : 2;
             break;
         case EXEC_SIZE_32:
             IGC_ASSERT(getGRFSize() == 64);
-            carryOperand.subVar += 2;
             break;
         default:
             IGC_ASSERT_MESSAGE(0, "Unknown execution size on carry-borrow-arith!");
             break;
         }
-        VISA_VectorOpnd* carryBorrowOpnd = GetDestinationOperand(dst, carryOperand);
+
         IGC_ASSERT_MESSAGE(m_encoderState.m_dstOperand.mod == EMOD_NONE, "addc/subb doesn't support saturate");
 
         V(vKernel->AppendVISATwoDstArithmeticInst(
