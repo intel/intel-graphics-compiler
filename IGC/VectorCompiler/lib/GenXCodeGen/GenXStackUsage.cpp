@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -146,6 +146,9 @@ void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
   auto AllocaSize = llvm::divideCeil(*AI.getAllocationSizeInBits(m_DL),
                                      genx::ByteBits);
   auto AllocaAlign = std::max(IGCLLVM::getAlignmentValue(&AI), visa::BytesPerSVMPtr);
+  if (AllocaAlign == 0)
+    AllocaAlign = m_DL.getPrefTypeAlignment(AI.getAllocatedType());
+  AllocaAlign = std::max(AllocaAlign, visa::BytesPerSVMPtr);
 
   CurFuncState.m_UsedSz = llvm::alignTo(CurFuncState.m_UsedSz, AllocaAlign);
   CurFuncState.m_UsedSz += AllocaSize;

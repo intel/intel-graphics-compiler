@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -243,6 +243,8 @@ class GenXPrologEpilogInsertion
   createBinOpPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
                        Instruction::BinaryOps Opc, unsigned long long Val,
                        bool Copy = false, bool UpdateReg = true) const;
+
+  alignment_t getAllocaAlignment(AllocaInst *AI) const;
 
 public:
   static char ID;
@@ -631,7 +633,8 @@ GenXPrologEpilogInsertion::generateStackCallProlog(Function &F,
 void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &AI) {
   IGC_ASSERT(!AI.isUsedWithInAlloca());
   const BasicBlock *Parent = AI.getParent();
-  IGC_ASSERT_MESSAGE(Parent == &Parent->getParent()->front(), "Allocas outside of entry block are not supported");
+  IGC_ASSERT_MESSAGE(Parent == &Parent->getParent()->front(),
+                     "Allocas outside of entry block are not supported");
   Allocas.push_back(&AI);
   if (!isa<ConstantInt>(AI.getArraySize())) {
     HasVLA = true;
@@ -650,14 +653,13 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
   IRBuilder<> IRB(Allocas.front());
 
   // Sort to have allocas alignment in decreasing order.
-  std::sort(Allocas.begin(), Allocas.end(),
-            [](AllocaInst *LHS, AllocaInst *RHS) {
-              return IGCLLVM::getAlignmentValue(LHS) >
-                  IGCLLVM::getAlignmentValue(RHS);
-            });
+  std::stable_sort(Allocas.begin(), Allocas.end(),
+                   [this](AllocaInst *LHS, AllocaInst *RHS) {
+                     return getAllocaAlignment(LHS) > getAllocaAlignment(RHS);
+                   });
 
   // SP is oword bytes aligned at this point.
-  unsigned long long LargestAlignment = IGCLLVM::getAlignmentValue(Allocas.front());
+  unsigned long long LargestAlignment = getAllocaAlignment(Allocas.front());
   if (LargestAlignment > OWordBytes) {
     createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                          Instruction::Add, LargestAlignment - 1, false);
@@ -667,12 +669,11 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
 
   std::vector<unsigned> NextAlignment;
   std::transform(std::next(Allocas.begin()), Allocas.end(),
-                 std::back_inserter(NextAlignment), [](AllocaInst *AI) {
+                 std::back_inserter(NextAlignment), [this](AllocaInst *AI) {
                    // visa::BytesPerSVMPtr is a minimal possible alignment that
                    // suits all data types.
-                   return std::max(
-                       IGCLLVM::getAlignmentValue(AI),
-                       visa::BytesPerSVMPtr);
+                   return std::max(getAllocaAlignment(AI),
+                                   visa::BytesPerSVMPtr);
                  });
   // After all private memory allocations SP must be oword aligned so as to keep
   // SP alignment statically known.
@@ -1169,5 +1170,13 @@ Instruction *GenXPrologEpilogInsertion::buildWritePredefReg(
       {Input->getType(), Wrr->getType()});
   auto *RegWrite = IRB.CreateCall(RegWriteIntr, {IRB.getInt32(RegID), Wrr});
   return RegWrite;
+}
+
+alignment_t
+GenXPrologEpilogInsertion::getAllocaAlignment(AllocaInst *AI) const {
+  auto Align = IGCLLVM::getAlignmentValue(AI);
+  if (Align == 0)
+    Align = DL->getPrefTypeAlignment(AI->getAllocatedType());
+  return Align;
 }
 } // namespace
