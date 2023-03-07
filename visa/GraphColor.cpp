@@ -54,7 +54,6 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
 #define NOMASK_BYTE 0x80
 
-
 Interference::Interference(const LivenessAnalysis *l, LiveRange **const &lr,
                            unsigned n, unsigned ns, unsigned nm, GlobalRA &g)
     : gra(g), kernel(g.kernel), lrs(lr), builder(*g.kernel.fg.builder),
@@ -3597,6 +3596,7 @@ void Augmentation::buildLiveIntervals() {
             kernel.fg.builder->getNameString(32, "SCALL_%d", funcCnt++);
         G4_Declare *scallDcl =
             kernel.fg.builder->createDeclare(name, G4_GRF, 1, 1, Type_UD);
+        gra.addVarToRA(scallDcl);
 
         updateStartInterval(scallDcl, inst);
         updateEndInterval(scallDcl, inst);
@@ -8091,6 +8091,7 @@ void GlobalRA::addCallerSavePseudoCode() {
             kernel.numEltPerGRF<Type_UD>() * retSize, Type_UD,
             IR_Builder::ArgRet_Stackcall::Ret, 0);
         retDcl->setName(name);
+        addVarToRA(retDcl);
         fcallRetMap.emplace(pseudoVCADcl, retDcl);
       }
 
@@ -9740,9 +9741,12 @@ int GlobalRA::coloringRegAlloc() {
         // Since this is fail safe RA iteration, we ensure the 2 special
         // variables are created before coloring so spill code can use
         // them, if needed.
-        (void)kernel.fg.builder->getOldA0Dot2Temp();
-        if (builder.supportsLSC())
-          (void)kernel.fg.builder->getSpillFillHeader();
+        auto a0Dot2Temp = kernel.fg.builder->getOldA0Dot2Temp();
+        addVarToRA(a0Dot2Temp);
+        if (builder.supportsLSC()) {
+          auto spillFillHdr = kernel.fg.builder->getSpillFillHeader();
+          addVarToRA(spillFillHdr);
+        }
       }
     }
 
@@ -11323,6 +11327,7 @@ void GlobalRA::insertPhyRegDecls() {
       G4_Greg *phyReg = builder.phyregpool.getGreg(i);
       phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
       GRFDclsForHRA[i] = phyRegDcl;
+      addVarToRA(phyRegDcl);
       numGRFsUsed++;
     }
   }

@@ -839,8 +839,10 @@ private:
   }
 
   const RAVarInfo &getVar(const G4_Declare *dcl) const {
+    // It's assumed that dcl has already been added to vars vector. To add newly
+    // created RA variables to the vector pre-RA, addVarToRA() can be used.
     auto dclid = dcl->getDeclId();
-    return dclid >= vars.size() ? defaultValues : vars[dclid];
+    return vars[dclid];
   }
 
   // temp variable storing the FP dcl's old value
@@ -1001,6 +1003,10 @@ public:
   bool isUndefinedDcl(const G4_Declare *dcl) const {
     return std::find(UndeclaredVars.begin(), UndeclaredVars.end(), dcl) !=
            UndeclaredVars.end();
+  }
+
+  RAVarInfo& addVarToRA(const G4_Declare *dcl) {
+    return allocVar(dcl);
   }
 
   unsigned getSplitVarNum(const G4_Declare *dcl) const {
