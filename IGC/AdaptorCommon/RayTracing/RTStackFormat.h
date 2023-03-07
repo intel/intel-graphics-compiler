@@ -121,13 +121,13 @@ constexpr static uint32_t MEM_STACK_SIZE = 4;
 
 // DXR uses two BVH levels: a top-level acceleration structure and a
 // bottom-level acceleration structure.
-constexpr static uint8_t TOP_LEVEL_BVH = 0;
+constexpr static uint8_t TOP_LEVEL_BVH    = 0;
 constexpr static uint8_t BOTTOM_LEVEL_BVH = 1;
 
 // Auxiliary types to make update of the structs easier.
-using uint3 = uint32_t[3];
-using uint4 = uint32_t[4];
-using Vec3f = float[3];
+using uint3  = uint32_t[3];
+using uint4  = uint32_t[4];
+using Vec3f  = float[3];
 using float4 = float[4];
 
 static_assert(sizeof(uint3) == 12, "size mismatch");
@@ -172,438 +172,6 @@ public:
 
 static_assert(sizeof(KSP) == 8, "changed?");
 
-
-struct MemHit {
-    union RT
-    {
-        struct Xe // 32B
-        {
-            float    t;                    // hit distance of current hit (or initial traversal distance)
-            float    u, v;                 // barycentric hit coordinates
-
-            enum class Bits : uint8_t
-            {
-                primIndexDelta = 16,
-                valid = 1,
-                leafType = 3,
-                primLeafIndex = 4,
-                bvhLevel = 3,
-                frontFace = 1,
-                done = 1,
-                pad0 = 3,
-
-                primLeafPtr = 42,
-                hitGroupRecPtr0 = 22,
-
-                instLeafPtr = 42,
-                hitGroupRecPtr1 = 22,
-            };
-
-            // This is the offset within the bitfield
-            enum class Offset : uint8_t
-            {
-                // Add as needed
-                valid = 16,
-                leafType = 17,
-                primLeafIndex = 20,
-                bvhLevel = 24,
-                frontFace = 27,
-                done = 28,
-            };
-
-            using T = uint32_t;
-
-            union
-            {
-                uint32_t topOfPrimIndexDelta;
-                uint32_t frontFaceDword;
-                uint32_t hitInfoDWord;
-
-                struct {
-                    uint32_t primIndexDelta : (T)Bits::primIndexDelta; // prim index delta for compressed meshlets and quads
-                    uint32_t valid          : (T)Bits::valid;          // set if there is a hit
-                    uint32_t leafType       : (T)Bits::leafType;       // type of node primLeafPtr is pointing to
-                    uint32_t primLeafIndex  : (T)Bits::primLeafIndex;  // index of the hit primitive inside the leaf
-                    uint32_t bvhLevel       : (T)Bits::bvhLevel;       // the instancing level at which the hit occured
-                    uint32_t frontFace      : (T)Bits::frontFace;      // whether we hit the front-facing side of a triangle (also used to pass opaque flag when calling intersection shaders)
-                    uint32_t done           : (T)Bits::done;           // used in sync mode to indicate that traversal is done (HW will only set this to 0)
-                    uint32_t pad0           : (T)Bits::pad0;           // unused bits (explicit padding)
-                };
-            };
-
-            union
-            {
-                uint64_t topOfPrimLeafPtr;
-
-                struct {
-                    uint64_t primLeafPtr     : (T)Bits::primLeafPtr;     // pointer to BVH leaf node (multiple of 64 bytes)
-                    uint64_t hitGroupRecPtr0 : (T)Bits::hitGroupRecPtr0; // LSB of hit group record of the hit triangle (multiple of 16 bytes)
-                };
-            };
-
-            union
-            {
-                uint64_t topOfInstLeafPtr;
-
-                struct {
-                    uint64_t instLeafPtr     : (T)Bits::instLeafPtr;     // pointer to BVH instance leaf node (in multiple of 64 bytes)
-                    uint64_t hitGroupRecPtr1 : (T)Bits::hitGroupRecPtr1; // MSB of hit group record of the hit triangle (multiple of 16 bytes)
-                };
-            };
-
-            static_assert((uint32_t)Bits::primLeafPtr == (uint32_t)Bits::instLeafPtr,
-                "Size changed?");
-        } xe;
-    } rt;
-};
-
-
-/////////////// BVH structures ///////////////
-
-enum NodeType : uint8_t
-{
-    NODE_TYPE_MIXED = 0x0,        // identifies a mixed internal node where each child can have a different type
-    NODE_TYPE_INTERNAL = 0x0,     // internal BVH node with 6 children
-    NODE_TYPE_INSTANCE = 0x1,     // instance leaf
-    NODE_TYPE_PROCEDURAL = 0x3,   // procedural leaf
-    NODE_TYPE_QUAD = 0x4,         // quad leaf
-    NODE_TYPE_MESHLET = 0x6,      // meshlet leaf
-    NODE_TYPE_INVALID = 0x7       // indicates invalid node
-};
-
-struct InternalNode
-{
-    static constexpr const uint32_t NUM_CHILDREN = 6;
-
-    Vec3f lower;          // world space origin of quantization grid
-    int32_t childOffset;  // offset to all children in 64B multiples
-
-    NodeType nodeType;    // the type of the node
-    uint8_t pad;          // unused byte
-
-    int8_t exp_x;         // 2^exp_x is the size of the grid in x dimension
-    int8_t exp_y;         // 2^exp_y is the size of the grid in y dimension
-    int8_t exp_z;         // 2^exp_z is the size of the grid in z dimension
-    uint8_t nodeMask;     // mask used for ray filtering
-
-    struct ChildData
-    {
-        uint8_t blockIncr : 2;  // size of child in 64 byte blocks
-        uint8_t startPrim : 4;  // start primitive in fat leaf mode or child type in mixed mode
-        uint8_t pad       : 2;  // unused bits
-    } childData[NUM_CHILDREN];
-
-    uint8_t lower_x[NUM_CHILDREN];  // the quantized lower bounds in x-dimension
-    uint8_t upper_x[NUM_CHILDREN];  // the quantized upper bounds in x-dimension
-    uint8_t lower_y[NUM_CHILDREN];  // the quantized lower bounds in y-dimension
-    uint8_t upper_y[NUM_CHILDREN];  // the quantized upper bounds in y-dimension
-    uint8_t lower_z[NUM_CHILDREN];  // the quantized lower bounds in z-dimension
-    uint8_t upper_z[NUM_CHILDREN];  // the quantized upper bounds in z-dimension
-};
-
-enum GeometryFlags : uint32_t
-{
-    NONE = 0x0,
-    RTX_OPAQUE = 0x1
-};
-
-struct PrimLeafDesc
-{
-    enum class Bits : uint8_t
-    {
-        shaderIndex = 24,
-        geomMask = 8,
-    };
-
-    using T = uint32_t;
-
-    uint32_t shaderIndex : (T)Bits::shaderIndex; // shader index used for shader record calculations
-    uint32_t geomMask    : (T)Bits::geomMask;    // geometry mask used for ray masking
-
-    union RT
-    {
-        struct Xe
-        {
-            enum Type : uint32_t
-            {
-                TYPE_NONE = 0,
-
-                /* For a node type of NODE_TYPE_MESHLET, the referenced leaf may
-                 * still be a QuadLeaf or a Meshlet. We need this as we produce
-                 * two quads instead of one meshlet when meshlet compression does
-                 * not work well. */
-
-                 TYPE_QUAD = 0,
-                 TYPE_MESHLET = 1,
-
-                 /* For a node type of NODE_TYPE_PROCEDURAL we support enabling
-                  * and disabling the opaque/non_opaque culling. */
-
-                  TYPE_OPACITY_CULLING_ENABLED = 0,
-                  TYPE_OPACITY_CULLING_DISABLED = 1
-            };
-
-            enum class Bits : uint8_t
-            {
-                geomIndex = 29,
-                type = 1,
-                geomFlags = 2,
-            };
-
-            union
-            {
-                uint32_t topOfGeomIndex;
-
-                struct {
-                    uint32_t geomIndex : (T)Bits::geomIndex; // the geometry index specifies the n'th geometry of the scene
-                    /* Type */
-                    uint32_t type      : (T)Bits::type;      // distinguish between QuadLeaves and Meshlets or enable/disable culling for procedurals and instances
-                    /* GeometryFlags */
-                    uint32_t geomFlags : (T)Bits::geomFlags; // geometry flags of this geometry
-                };
-            };
-        } xe;
-    } rt;
-};
-
-static_assert(sizeof(PrimLeafDesc) == 8, "PrimLeafDesc must be 8 bytes large");
-
-struct ProceduralLeaf
-{
-    static const uint32_t N = 13;
-
-    enum class Bits : uint8_t
-    {
-        numPrimitives = 4,
-        pad           = 32 - numPrimitives - N,
-        last          = N,
-    };
-
-    using T = uint32_t;
-
-    PrimLeafDesc leafDesc;                            // leaf header identifying the geometry
-    uint32_t numPrimitives : (T)Bits::numPrimitives;  // number of stored primitives
-    uint32_t pad           : (T)Bits::pad;            // explicit padding bits
-    uint32_t last          : (T)Bits::last;           // bit vector with a last bit per primitive
-    uint32_t _primIndex[N];                           // primitive indices of all primitives stored inside the leaf
-};
-
-static_assert(sizeof(ProceduralLeaf) == 64, "ProceduralLeaf must be 64 bytes large");
-
-struct QuadLeaf
-{
-    PrimLeafDesc leafDesc;  // the leaf header
-
-    uint32_t primIndex0;    // primitive index of first triangle (has to be at same offset as for CompressedMeshlet!)
-
-    union RT
-    {
-        struct Xe
-        {
-            enum class Bits : uint8_t
-            {
-                primIndex1Delta = 16,
-                j0              = 2,
-                j1              = 2,
-                j2              = 2,
-                last            = 1,
-                pad             = 9,
-            };
-
-            using T = uint32_t;
-
-            union {
-                uint32_t topOfPriIndex1Delta;
-
-                struct {
-                    uint32_t primIndex1Delta : (T)Bits::primIndex1Delta;  // delta encoded primitive index of second triangle
-                    uint32_t j0              : (T)Bits::j0;               // specifies first vertex of second triangle
-                    uint32_t j1              : (T)Bits::j1;               // specified second vertex of second triangle
-                    uint32_t j2              : (T)Bits::j2;               // specified third vertex of second triangle
-                    uint32_t last            : (T)Bits::last;             // true if the second triangle is the last triangle in a leaf list
-                    uint32_t pad             : (T)Bits::pad;              // unused bits
-                };
-            };
-        } xe;
-    } rt;
-
-    Vec3f v0;  // first vertex of first triangle
-    Vec3f v1;  // second vertex of first triangle
-    Vec3f v2;  // third vertex of first triangle
-    Vec3f v3;  // additional vertex only used for second triangle
-};
-
-static_assert(sizeof(QuadLeaf) == 64, "QuadLeaf must be 64 bytes large");
-
-static_assert(sizeof(QuadLeaf) == sizeof(ProceduralLeaf),
-    "Leaves must be same size");
-
-constexpr uint32_t LeafSize = sizeof(QuadLeaf);
-
-/*
-  The CompressedMeshlet structure stores triangles compressed
-  losslessly. Between 1 to 16 triangles can get stored that index
-  into a vertex array with up to 16 vertices.
-
-  The structure contains a header, a list of delta compressed
-  indices (allocated front to back), and a list of compressed
-  vertices (allocated back to front).
-
- */
-struct CompressedMeshlet
-{
-    PrimLeafDesc leafDesc;
-    uint32_t first_triangle_primID;      // has to be at same offset as for QuadLeaf!
-
-    uint32_t num_triangles         : 4;  // number of stored triangles (0 -> 1 triangle, 1 -> 2 triangles, etc..)
-    uint32_t num_position_bits_x   : 4;  // number of bit pairs for x coordinate (0 -> 2 bits, 1 -> 4 bits, etc.)
-    uint32_t num_position_bits_y   : 4;  // number of bit pairs for y coordinate (0 -> 2 bits, 1 -> 4 bits, etc.)
-    uint32_t num_position_bits_z   : 4;  // number of bit pairs for z coordinate (0 -> 2 bits, 1 -> 4 bits, etc.)
-    uint32_t num_primID_delta_bits : 4;  // number of bits for primIndex delta encoding (0 -> 1 bit, 1 -> 2 bits, etc.)
-    uint32_t first_triangle_islast : 1;  // last bit for first triangle
-    uint32_t pad                   : 8;  // explicit padding bits
-
-    /* in this array triangles are stored front to back and vertex
-     * positions back to front. */
-    char data[100];
-
-    Vec3f first_position;
-};
-
-static_assert(sizeof(CompressedMeshlet) == 128, "CompressedMeshlet has to be 128 bytes large");
-
-enum class InstanceFlags : uint8_t
-{
-    NONE = 0x0,
-    TRIANGLE_CULL_DISABLE = 0x1,
-    TRIANGLE_FRONT_COUNTERCLOCKWISE = 0x2,
-    FORCE_OPAQUE = 0x4,
-    FORCE_NON_OPAQUE = 0x8
-};
-
-struct InstanceLeaf
-{
-    /* first 64 bytes accessed during traversal by hardware */
-    struct Part0
-    {
-        union RT
-        {
-            using T = uint32_t;
-            struct Xe
-            {
-                enum class Bits : uint8_t
-                {
-                    shaderIndex           = 24,
-                    geomMask              = 8,
-                    instContToHitGrpIndex = 24,
-                    pad0                  = 5,
-                    type                  = 1,
-                    geomFlags             = 2,
-                    startNodePtr          = 48,
-                    instFlags             = 8,
-                    reserved1             = 1,
-                    reserved2             = 7,
-                };
-
-                uint32_t shaderIndex : (T)Bits::shaderIndex;  // shader index used to calculate instancing shader in case of software instancing
-                uint32_t geomMask    : (T)Bits::geomMask;     // geometry mask used for ray masking
-
-                union {
-                    uint32_t instContToHitGroupIndex;
-
-                    struct {
-                        uint32_t instanceContributionToHitGroupIndex : (T)Bits::instContToHitGrpIndex;  // TODO: add description
-                        uint32_t pad0                                : (T)Bits::pad0;                   // explicit padding bits
-                        /* PrimLeafDesc::Type */
-                        uint32_t type                                : (T)Bits::type;                   // enables/disables opaque culling
-                        /* GeometryFlags */
-                        uint32_t geomFlags                           : (T)Bits::geomFlags;              // geometry flags are not used for instances
-                    };
-                };
-
-                uint64_t startNodePtr : (T)Bits::startNodePtr;  // start node where to continue traversal of the instanced object
-                uint64_t instFlags    : (T)Bits::instFlags;     // flags for the instance (see InstanceFlags)
-
-                // DG2
-                //uint64_t pad1         : 8;                    // unused bits (explicit padding)
-                uint64_t reserved1 : (T)Bits::reserved1; // 0 for less than or equal, 1 for greater
-                uint64_t reserved2 : (T)Bits::reserved2; // to be compared with ray.ComparisonValue
-            } xe;
-        } rt;
-
-
-        // Note that the hardware swaps the translation components of the
-        // world2obj and obj2world matrices, and uses column-major instead of row-major.
-
-        // DXR and Vulkan specify transform matrices in row-major order.
-        // A 3x4 row-major matrix from the API maps to HWInstanceLeaf layout as shown:
-        //     | vx[0] vy[0] vz[0] p[0] |
-        // M = | vx[1] vy[1] vz[1] p[1] |
-        //     | vx[2] vy[2] vz[2] p[2] |
-
-        Vec3f world2obj_vx;   // 1st col of Worl2Obj transform
-        Vec3f world2obj_vy;   // 2nd col of Worl2Obj transform
-        Vec3f world2obj_vz;   // 3rd col of Worl2Obj transform
-        Vec3f obj2world_p;    // translation of Obj2World transform (on purpose in first 64 bytes)
-    } part0;
-
-    /* second 64 bytes accessed during shading */
-    struct Part1
-    {
-        uint64_t bvhPtr : 48;   // pointer to BVH where start node belongs too
-        uint64_t pad    : 16;   // unused bits (explicit padding)
-
-        uint32_t instanceID;    // user defined value per DXR spec
-        uint32_t instanceIndex; // geometry index of the instance (n'th geometry in scene)
-
-        Vec3f obj2world_vx;     // 1st col of Obj2World transform
-        Vec3f obj2world_vy;     // 2nd col of Obj2World transform
-        Vec3f obj2world_vz;     // 3rd col of Obj2World transform
-        Vec3f world2obj_p;      // translation of World2Obj transform
-    } part1;
-};
-
-static_assert(sizeof(InstanceLeaf) == 128, "InstanceLeaf must be 128 bytes large");
-
-struct alignas(256) BVH
-{
-    uint64_t rootNodeOffset;        // root node offset
-
-    Vec3f   bounds_min;             // bounds of the BVH
-    Vec3f   bounds_max;
-
-    uint32_t nodeDataStart;         // first 64 byte block of node data
-    uint32_t nodeDataCur;           // next free 64 byte block for node allocations
-    uint32_t leafDataStart;         // first 64 byte block of leaf data
-    uint32_t leafDataCur;           // next free 64 byte block for leaf allocations
-    uint32_t proceduralDataStart;   // first 64 byte block for procedural leaf data
-    uint32_t proceduralDataCur;     // next free 64 byte block for procedural leaf allocations
-    uint32_t backPointerDataStart;  // first 64 byte block for back pointers
-    uint32_t backPointerDataEnd;    // end of back pointer array
-
-    // miscellaneous header information
-    // ...
-
-    // node data
-
-    // These are really variable length arrays in memory but are here for
-    // documentation purposes.
-    InternalNode   innerNode[1];
-    QuadLeaf       geomLeaf[1];
-    ProceduralLeaf proceduralLeaf[1];
-    InstanceLeaf   instLeaf[1];
-    uint32_t       backPointers[1];
-
-    // array size = 256 - (sizeOfStructMembers % 256)
-    // sizeOfStructMembers = 8          //uint64_t rootNodeOffset
-    //                     + 2*12       // Vec3f   bounds_min; Vec3f   bounds_max;
-    //                     + 9 * 4      // 9 * uint32_t
-    //                     + 64         // InternalNode
-    //                     + 64         // QuadLeaf
-    //                     + 64         // ProceduralLeaf
-    //                     + 128        // InstanceLeaf
-    char __Padding[124];
-};
 
 struct NodeInfo
 {
@@ -679,6 +247,498 @@ struct MemTravStack
     };
 };
 
+struct Xe;
+
+template <typename GenT> struct MemHit;
+template <typename GenT> struct MemRay;
+template <typename GenT> struct PrimLeafDesc;
+template <typename GenT> struct QuadLeaf;
+template <typename GenT> struct InstanceLeaf;
+
+template <>
+struct MemHit<Xe>
+{
+    float    t;                    // hit distance of current hit (or initial traversal distance)
+    float    u, v;                 // barycentric hit coordinates
+
+    enum class Bits : uint8_t
+    {
+        primIndexDelta  = 16,
+        valid           = 1,
+        leafType        = 3,
+        primLeafIndex   = 4,
+        bvhLevel        = 3,
+        frontFace       = 1,
+        done            = 1,
+        pad0            = 3,
+
+        primLeafPtr     = 42,
+        hitGroupRecPtr0 = 22,
+
+        instLeafPtr     = 42,
+        hitGroupRecPtr1 = 22,
+    };
+
+    // This is the offset within the bitfield
+    enum class Offset : uint8_t
+    {
+        // Add as needed
+        done = 28,
+    };
+
+    using T = uint32_t;
+
+    uint32_t primIndexDelta : (T)Bits::primIndexDelta; // prim index delta for compressed meshlets and quads
+    uint32_t valid          : (T)Bits::valid;          // set if there is a hit
+    uint32_t leafType       : (T)Bits::leafType;       // type of node primLeafPtr is pointing to
+    uint32_t primLeafIndex  : (T)Bits::primLeafIndex;  // index of the hit primitive inside the leaf
+    uint32_t bvhLevel       : (T)Bits::bvhLevel;       // the instancing level at which the hit occured
+    uint32_t frontFace      : (T)Bits::frontFace;      // whether we hit the front-facing side of a triangle (also used to pass opaque flag when calling intersection shaders)
+    uint32_t done           : (T)Bits::done;           // used in sync mode to indicate that traversal is done (HW will only set this to 0)
+    uint32_t pad0           : (T)Bits::pad0;           // unused bits (explicit padding)
+
+    uint64_t primLeafPtr     : (T)Bits::primLeafPtr;     // pointer to BVH leaf node (multiple of 64 bytes)
+    uint64_t hitGroupRecPtr0 : (T)Bits::hitGroupRecPtr0; // LSB of hit group record of the hit triangle (multiple of 16 bytes)
+
+    uint64_t instLeafPtr     : (T)Bits::instLeafPtr;     // pointer to BVH instance leaf node (in multiple of 64 bytes)
+    uint64_t hitGroupRecPtr1 : (T)Bits::hitGroupRecPtr1; // MSB of hit group record of the hit triangle (multiple of 16 bytes)
+
+    static_assert((uint32_t)Bits::primLeafPtr == (uint32_t)Bits::instLeafPtr,
+        "Size changed?");
+};
+static_assert(sizeof(MemHit<Xe>) == 32, "MemHit has to be 32 bytes large");
+
+template <>
+struct MemRay<Xe>
+{
+    // 32 B
+    Vec3f org;         // the origin of the ray
+    Vec3f dir;         // the direction of the ray
+    float tnear;       // the start of the ray
+    float tfar;        // the end of the ray
+
+    using T = uint32_t;
+    enum class Bits : uint8_t
+    {
+        rootNodePtr           = 48,
+        rayFlags              = 16,
+
+        hitGroupSRBasePtr     = 48,
+        hitGroupSRStride      = 16,
+
+        missSRPtr             = 48,
+        pad                   = 1,
+        shaderIndexMultiplier = 8,
+
+        instLeafPtr           = 48,
+        rayMask               = 8,
+
+        reserved2             = 7,
+        pad2                  = 8,
+    };
+
+    // 32 B
+    union {
+        struct {
+            uint16_t uw0;
+            uint16_t uw1;
+            uint16_t uw2;
+            uint16_t rayFlags;
+        } alias;
+
+        struct {
+            uint64_t rootNodePtr : (T)Bits::rootNodePtr; // root node to start traversal at
+            uint64_t rayFlags    : (T)Bits::rayFlags;    // ray flags (see RayFlags structure)
+        };
+    };
+
+    uint64_t hitGroupSRBasePtr : (T)Bits::hitGroupSRBasePtr; // base of hit group shader record array (16-bytes alignment)
+    uint64_t hitGroupSRStride  : (T)Bits::hitGroupSRStride;  // stride of hit group shader record array (16-bytes alignment)
+
+    uint64_t missSRPtr             : (T)Bits::missSRPtr;             // pointer to miss shader record to invoke on a miss (8-bytes alignment)
+    // DG2
+    //uint64_t pad                 : 8;                              // explicit padding bits
+    uint64_t pad                   : (T)Bits::pad;                   // explicit padding bits
+    uint64_t reserved2             : (T)Bits::reserved2;
+    uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
+
+    union {
+        struct {
+            uint16_t rayFlagsCopy;
+            uint16_t uw1;
+            uint16_t uw2;
+            uint16_t uw3;
+        } alias2;
+
+        struct {
+            // the 'instLeafPtr' is not actually used by HW in the TOP_LEVEL_BVH.
+            // We insert the user set rayflags here (i.e., the flags set without
+            // the pipeline flags from the RTPSO). Other IHVs thought pipeline
+            // flags would not modify the results of RayFlags(). So we will read
+            // that value from here and write the flags|pipline in the rayFlags
+            // above as usual. DXR spec will be modified to this behavior.
+            uint64_t rayFlagsCopy : (T)Bits::instLeafPtr;
+            uint64_t pad          : 16;
+        } alias3;
+
+        struct {
+            uint64_t instLeafPtr : (T)Bits::instLeafPtr;  // the pointer to instance leaf in case we traverse an instance (64-bytes alignment)
+            uint64_t rayMask     : (T)Bits::rayMask;      // ray mask used for ray masking
+            uint64_t pad2        : (T)Bits::pad2;
+        };
+    };
+};
+static_assert(sizeof(MemRay<Xe>) == 64, "MemRay has to be 64 bytes large");
+
+template <>
+struct PrimLeafDesc<Xe>
+{
+    enum Type : uint32_t
+    {
+        TYPE_NONE = 0,
+
+        /* For a node type of NODE_TYPE_MESHLET, the referenced leaf may
+         * still be a QuadLeaf or a Meshlet. We need this as we produce
+         * two quads instead of one meshlet when meshlet compression does
+         * not work well. */
+
+         TYPE_QUAD    = 0,
+         TYPE_MESHLET = 1,
+
+         /* For a node type of NODE_TYPE_PROCEDURAL we support enabling
+          * and disabling the opaque/non_opaque culling. */
+
+          TYPE_OPACITY_CULLING_ENABLED  = 0,
+          TYPE_OPACITY_CULLING_DISABLED = 1
+    };
+
+    enum class Bits : uint8_t
+    {
+        shaderIndex = 24,
+        geomMask    = 8,
+        geomIndex   = 29,
+        type        = 1,
+        geomFlags   = 2,
+    };
+
+    using T = uint32_t;
+
+    uint32_t shaderIndex : (T)Bits::shaderIndex; // shader index used for shader record calculations
+    uint32_t geomMask    : (T)Bits::geomMask;    // geometry mask used for ray masking
+
+    uint32_t geomIndex : (T)Bits::geomIndex; // the geometry index specifies the n'th geometry of the scene
+    uint32_t type      : (T)Bits::type;      // distinguish between QuadLeaves and Meshlets or enable/disable culling for procedurals and instances
+    uint32_t geomFlags : (T)Bits::geomFlags; // geometry flags of this geometry
+};
+static_assert(sizeof(PrimLeafDesc<Xe>) == 8, "PrimLeafDesc must be 8 bytes large");
+
+template <>
+struct QuadLeaf<Xe>
+{
+    PrimLeafDesc<Xe> leafDesc;  // the leaf header
+
+    uint32_t primIndex0;    // primitive index of first triangle (has to be at same offset as for CompressedMeshlet!)
+
+    enum class Bits : uint8_t
+    {
+        primIndex1Delta = 16,
+        j0              = 2,
+        j1              = 2,
+        j2              = 2,
+        last            = 1,
+        pad             = 9,
+    };
+
+    using T = uint32_t;
+
+    uint32_t primIndex1Delta : (T)Bits::primIndex1Delta;  // delta encoded primitive index of second triangle
+    uint32_t j0              : (T)Bits::j0;               // specifies first vertex of second triangle
+    uint32_t j1              : (T)Bits::j1;               // specified second vertex of second triangle
+    uint32_t j2              : (T)Bits::j2;               // specified third vertex of second triangle
+    uint32_t last            : (T)Bits::last;             // true if the second triangle is the last triangle in a leaf list
+    uint32_t pad             : (T)Bits::pad;              // unused bits
+
+    Vec3f v0;  // first vertex of first triangle
+    Vec3f v1;  // second vertex of first triangle
+    Vec3f v2;  // third vertex of first triangle
+    Vec3f v3;  // additional vertex only used for second triangle
+};
+static_assert(sizeof(QuadLeaf<Xe>) == 64, "QuadLeaf must be 64 bytes large");
+
+template <>
+struct InstanceLeaf<Xe>
+{
+    /* first 64 bytes accessed during traversal by hardware */
+    struct Part0
+    {
+        using T = uint32_t;
+        enum class Bits : uint8_t
+        {
+            shaderIndex           = 24,
+            geomMask              = 8,
+            instContToHitGrpIndex = 24,
+            pad0                  = 5,
+            type                  = 1,
+            geomFlags             = 2,
+            startNodePtr          = 48,
+            instFlags             = 8,
+            reserved1             = 1,
+            reserved2             = 7,
+        };
+
+        uint32_t shaderIndex : (T)Bits::shaderIndex;  // shader index used to calculate instancing shader in case of software instancing
+        uint32_t geomMask    : (T)Bits::geomMask;     // geometry mask used for ray masking
+
+        uint32_t instanceContributionToHitGroupIndex : (T)Bits::instContToHitGrpIndex;  // TODO: add description
+        uint32_t pad0                                : (T)Bits::pad0;                   // explicit padding bits
+        /* PrimLeafDesc */
+        uint32_t type                                : (T)Bits::type;                   // enables/disables opaque culling
+        uint32_t geomFlags                           : (T)Bits::geomFlags;              // geometry flags are not used for instances
+
+        uint64_t startNodePtr : (T)Bits::startNodePtr;  // start node where to continue traversal of the instanced object
+        uint64_t instFlags    : (T)Bits::instFlags;     // flags for the instance (see InstanceFlags)
+
+        uint64_t reserved1       : (T)Bits::reserved1; // 0 for less than or equal, 1 for greater
+        uint64_t reserved2       : (T)Bits::reserved2; // to be compared with ray.ComparisonValue
+
+
+        // Note that the hardware swaps the translation components of the
+        // world2obj and obj2world matrices, and uses column-major instead of row-major.
+
+        // DXR and Vulkan specify transform matrices in row-major order.
+        // A 3x4 row-major matrix from the API maps to HWInstanceLeaf layout as shown:
+        //     | vx[0] vy[0] vz[0] p[0] |
+        // M = | vx[1] vy[1] vz[1] p[1] |
+        //     | vx[2] vy[2] vz[2] p[2] |
+
+        Vec3f world2obj_vx;   // 1st col of Worl2Obj transform
+        Vec3f world2obj_vy;   // 2nd col of Worl2Obj transform
+        Vec3f world2obj_vz;   // 3rd col of Worl2Obj transform
+        Vec3f obj2world_p;    // translation of Obj2World transform (on purpose in first 64 bytes)
+    } part0;
+
+    /* second 64 bytes accessed during shading */
+    struct Part1
+    {
+        uint64_t bvhPtr : 48;   // pointer to BVH where start node belongs too
+        uint64_t pad    : 16;   // unused bits (explicit padding)
+
+        uint32_t instanceID;    // user defined value per DXR spec
+        uint32_t instanceIndex; // geometry index of the instance (n'th geometry in scene)
+
+        Vec3f obj2world_vx;     // 1st col of Obj2World transform
+        Vec3f obj2world_vy;     // 2nd col of Obj2World transform
+        Vec3f obj2world_vz;     // 3rd col of Obj2World transform
+        Vec3f world2obj_p;      // translation of World2Obj transform
+    } part1;
+};
+
+
+// HW stack
+template <typename GenT, uint32_t MaxBVHLevels>
+struct RTStack
+{
+    MemHit<GenT> committedHit;    // stores committed hit
+    MemHit<GenT> potentialHit;    // stores potential hit that is passed to any hit shader
+
+    MemRay<GenT> ray[MaxBVHLevels];       // stores a ray for each instancing level
+    MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
+};
+
+// This is the ShadowMemory that we maintain if we DONOT need spill/fill it to/from HW RTStack.
+// We keep this data structure as small as possible to reduce the size.
+template <typename GenT, uint32_t MaxBVHLevels>
+struct SMStack
+{
+    MemHit<GenT> committedHit;    // stores committed hit
+    MemHit<GenT> potentialHit;    // stores potential hit that is passed to any hit shader
+
+    MemRay<GenT> ray[MaxBVHLevels];       // stores a ray for each instancing level
+    //MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
+};
+
+// For now, we're just defaulting to using an RTStack assuming
+// MAX_BVH_LEVELS == 2.
+template <typename GenT>
+using RTStack2 = RTStack<GenT, MAX_BVH_LEVELS>;
+template <typename GenT>
+using SMStack2 = SMStack<GenT, MAX_BVH_LEVELS>;
+
+#if !defined(__clang__) || (__clang_major__ >= 10)
+static_assert(std::is_standard_layout_v<RTStack2<Xe>>);
+static_assert(std::is_standard_layout_v<SMStack2<Xe>>);
+#endif
+
+// Makes sure that important fields are at their proper offset from the start
+// of the structure. Update this if the structure changes.  This is just for
+// documentation purposes.
+static_assert(offsetof(RTStack2<Xe>, committedHit) == 0,   "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe>, potentialHit) == 32,  "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe>, ray)          == 64,  "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe>, travStack)    == 192, "unexpected offset!");
+
+
+/////////////// BVH structures ///////////////
+
+enum NodeType : uint8_t
+{
+    NODE_TYPE_MIXED = 0x0,        // identifies a mixed internal node where each child can have a different type
+    NODE_TYPE_INTERNAL = 0x0,     // internal BVH node with 6 children
+    NODE_TYPE_INSTANCE = 0x1,     // instance leaf
+    NODE_TYPE_PROCEDURAL = 0x3,   // procedural leaf
+    NODE_TYPE_QUAD = 0x4,         // quad leaf
+    NODE_TYPE_MESHLET = 0x6,      // meshlet leaf
+    NODE_TYPE_INVALID = 0x7       // indicates invalid node
+};
+
+struct InternalNode
+{
+    static constexpr const uint32_t NUM_CHILDREN = 6;
+
+    Vec3f lower;          // world space origin of quantization grid
+    int32_t childOffset;  // offset to all children in 64B multiples
+
+    NodeType nodeType;    // the type of the node
+    uint8_t pad;          // unused byte
+
+    int8_t exp_x;         // 2^exp_x is the size of the grid in x dimension
+    int8_t exp_y;         // 2^exp_y is the size of the grid in y dimension
+    int8_t exp_z;         // 2^exp_z is the size of the grid in z dimension
+    uint8_t nodeMask;     // mask used for ray filtering
+
+    struct ChildData
+    {
+        uint8_t blockIncr : 2;  // size of child in 64 byte blocks
+        uint8_t startPrim : 4;  // start primitive in fat leaf mode or child type in mixed mode
+        uint8_t pad       : 2;  // unused bits
+    } childData[NUM_CHILDREN];
+
+    uint8_t lower_x[NUM_CHILDREN];  // the quantized lower bounds in x-dimension
+    uint8_t upper_x[NUM_CHILDREN];  // the quantized upper bounds in x-dimension
+    uint8_t lower_y[NUM_CHILDREN];  // the quantized lower bounds in y-dimension
+    uint8_t upper_y[NUM_CHILDREN];  // the quantized upper bounds in y-dimension
+    uint8_t lower_z[NUM_CHILDREN];  // the quantized lower bounds in z-dimension
+    uint8_t upper_z[NUM_CHILDREN];  // the quantized upper bounds in z-dimension
+};
+
+enum class GeometryFlags : uint32_t
+{
+    NONE       = 0x0,
+    RTX_OPAQUE = 0x1
+};
+
+template <typename GenT>
+struct ProceduralLeaf
+{
+    static const uint32_t N = 13;
+
+    enum class Bits : uint8_t
+    {
+        numPrimitives = 4,
+        pad           = 32 - numPrimitives - N,
+        last          = N,
+    };
+
+    using T = uint32_t;
+
+    PrimLeafDesc<GenT> leafDesc;             // leaf header identifying the geometry
+    uint32_t numPrimitives : (T)Bits::numPrimitives;  // number of stored primitives
+    uint32_t pad           : (T)Bits::pad;            // explicit padding bits
+    uint32_t last          : (T)Bits::last;           // bit vector with a last bit per primitive
+    uint32_t _primIndex[N];                           // primitive indices of all primitives stored inside the leaf
+};
+
+static_assert(sizeof(ProceduralLeaf<Xe>) == 64, "ProceduralLeaf must be 64 bytes large");
+
+static_assert(sizeof(QuadLeaf<Xe>) == sizeof(ProceduralLeaf<Xe>),
+    "Leaves must be same size");
+
+constexpr uint32_t LeafSize = sizeof(QuadLeaf<Xe>);
+
+/*
+  The CompressedMeshlet structure stores triangles compressed
+  losslessly. Between 1 to 16 triangles can get stored that index
+  into a vertex array with up to 16 vertices.
+
+  The structure contains a header, a list of delta compressed
+  indices (allocated front to back), and a list of compressed
+  vertices (allocated back to front).
+
+ */
+template <typename GenT>
+struct CompressedMeshlet
+{
+    PrimLeafDesc<GenT> leafDesc;
+    uint32_t first_triangle_primID;      // has to be at same offset as for QuadLeaf!
+
+    uint32_t num_triangles         : 4;  // number of stored triangles (0 -> 1 triangle, 1 -> 2 triangles, etc..)
+    uint32_t num_position_bits_x   : 4;  // number of bit pairs for x coordinate (0 -> 2 bits, 1 -> 4 bits, etc.)
+    uint32_t num_position_bits_y   : 4;  // number of bit pairs for y coordinate (0 -> 2 bits, 1 -> 4 bits, etc.)
+    uint32_t num_position_bits_z   : 4;  // number of bit pairs for z coordinate (0 -> 2 bits, 1 -> 4 bits, etc.)
+    uint32_t num_primID_delta_bits : 4;  // number of bits for primIndex delta encoding (0 -> 1 bit, 1 -> 2 bits, etc.)
+    uint32_t first_triangle_islast : 1;  // last bit for first triangle
+    uint32_t pad                   : 8;  // explicit padding bits
+
+    /* in this array triangles are stored front to back and vertex
+     * positions back to front. */
+    char data[100];
+
+    Vec3f first_position;
+};
+
+static_assert(sizeof(CompressedMeshlet<Xe>) == 128,
+    "CompressedMeshlet has to be 128 bytes large");
+
+enum class InstanceFlags : uint8_t
+{
+    NONE = 0x0,
+    TRIANGLE_CULL_DISABLE = 0x1,
+    TRIANGLE_FRONT_COUNTERCLOCKWISE = 0x2,
+    FORCE_OPAQUE = 0x4,
+    FORCE_NON_OPAQUE = 0x8
+};
+
+template <typename GenT>
+struct alignas(256) BVH
+{
+    uint64_t rootNodeOffset;        // root node offset
+
+    Vec3f   bounds_min;             // bounds of the BVH
+    Vec3f   bounds_max;
+
+    uint32_t nodeDataStart;         // first 64 byte block of node data
+    uint32_t nodeDataCur;           // next free 64 byte block for node allocations
+    uint32_t leafDataStart;         // first 64 byte block of leaf data
+    uint32_t leafDataCur;           // next free 64 byte block for leaf allocations
+    uint32_t proceduralDataStart;   // first 64 byte block for procedural leaf data
+    uint32_t proceduralDataCur;     // next free 64 byte block for procedural leaf allocations
+    uint32_t backPointerDataStart;  // first 64 byte block for back pointers
+    uint32_t backPointerDataEnd;    // end of back pointer array
+
+    // miscellaneous header information
+    // ...
+
+    // node data
+
+    // These are really variable length arrays in memory but are here for
+    // documentation purposes.
+    InternalNode         innerNode[1];
+    QuadLeaf<GenT>       geomLeaf[1];
+    ProceduralLeaf<GenT> proceduralLeaf[1];
+    InstanceLeaf<GenT>   instLeaf[1];
+    uint32_t             backPointers[1];
+
+    // array size = 256 - (sizeOfStructMembers % 256)
+    // sizeOfStructMembers = 8          //uint64_t rootNodeOffset
+    //                     + 2*12       // Vec3f   bounds_min; Vec3f   bounds_max;
+    //                     + 9 * 4      // 9 * uint32_t
+    //                     + 64         // InternalNode
+    //                     + 64         // QuadLeaf
+    //                     + 64         // ProceduralLeaf
+    //                     + 128        // InstanceLeaf
+    char __Padding[124];
+};
+
 constexpr uint32_t getRayFlagMask(uint32_t Val)
 {
     return (Val << 1) - 1;
@@ -718,107 +778,6 @@ enum class RayFlags : uint16_t
 // "Only defined ray flags are propagated by the system, e.g. visible to the RayFlags() shader intrinsic."
 constexpr uint32_t RayFlagsMask = getRayFlagMask((uint32_t)RayFlags::SKIP_PROCEDURAL_PRIMITIVES);
 
-struct MemRay
-{
-    // 32 B
-    Vec3f org;         // the origin of the ray
-    Vec3f dir;         // the direction of the ray
-    float tnear;       // the start of the ray
-    float tfar;        // the end of the ray
-
-    union RT
-    {
-        using T = uint32_t;
-        struct Xe
-        {
-            enum class Bits : uint8_t
-            {
-                rootNodePtr = 48,
-                rayFlags    = 16,
-
-                rayFlagsCopy = rayFlags,
-
-                hitGroupSRBasePtr = 48,
-                hitGroupSRStride  = 16,
-
-                missSRPtr             = 48,
-                pad                   = 1,
-                shaderIndexMultiplier = 8,
-
-                instLeafPtr = 48,
-                rayMask     = 8,
-
-                reserved2       = 7,
-                pad2            = 8,
-            };
-
-            // This is the offset within the bitfield
-            enum class Offset : uint8_t
-            {
-                // Add as needed
-                reserved2 = (T)Bits::missSRPtr + (T)Bits::pad,
-                shaderIndexMultiplier = (T)Offset::reserved2 + (T)Bits::reserved2,
-                rayFlagsCopy = 0,
-                rayMask = (uint32_t)Bits::instLeafPtr,
-            };
-
-            // 32 B
-            union {
-                uint64_t topOfNodePtrAndFlags;
-
-                struct {
-                    uint64_t rootNodePtr : (T)Bits::rootNodePtr; // root node to start traversal at
-                    uint64_t rayFlags    : (T)Bits::rayFlags;    // ray flags (see RayFlags structure)
-                };
-            };
-
-            union {
-                uint64_t hitGroupShaderRecordInfo;
-
-                struct {
-                    uint64_t hitGroupSRBasePtr : (T)Bits::hitGroupSRBasePtr; // base of hit group shader record array (16-bytes alignment)
-                    uint64_t hitGroupSRStride  : (T)Bits::hitGroupSRStride;  // stride of hit group shader record array (16-bytes alignment)
-                };
-            };
-
-            union {
-                uint64_t missShaderRecordInfo;
-
-                struct {
-                    uint64_t missSRPtr             : (T)Bits::missSRPtr;             // pointer to miss shader record to invoke on a miss (8-bytes alignment)
-
-                    // DG2
-                    //uint64_t pad                 : 8;                              // explicit padding bits
-                    uint64_t pad                   : (T)Bits::pad;                   // explicit padding bits
-                    uint64_t reserved2             : (T)Bits::reserved2;
-
-
-                    uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
-                };
-            };
-
-            union {
-                uint64_t topOfInstanceLeafPtr;
-
-                struct {
-                    // the 'instLeafPtr' is not actually used by HW in the TOP_LEVEL_BVH.
-                    // We insert the user set rayflags here (i.e., the flags set without
-                    // the pipeline flags from the RTPSO). Other IHVs thought pipeline
-                    // flags would not modify the results of RayFlags(). So we will read
-                    // that value from here and write the flags|pipline in the rayFlags
-                    // above as usual. DXR spec will be modified to this behavior.
-
-                    uint64_t instLeafPtr : (T)Bits::instLeafPtr;  // the pointer to instance leaf in case we traverse an instance (64-bytes alignment)
-                    uint64_t rayMask     : (T)Bits::rayMask;      // ray mask used for ray masking
-                    uint64_t pad2        : (T)Bits::pad2;
-                };
-            };
-        } xe;
-    } rt;
-};
-
-static_assert(sizeof(MemHit) == 32,       "MemHit has to be 32 bytes large");
-static_assert(sizeof(MemRay) == 64,       "MemRay has to be 64 bytes large");
 static_assert(sizeof(MemTravStack) == 32, "MemTravStack has to be 32 bytes large");
 
 
@@ -899,82 +858,19 @@ struct alignas(LSC_WRITE_GRANULARITY) SWHotZone_v2
 constexpr uint32_t StackFrameAlign = 16;
 static_assert(IGC::RTStackAlign % LSC_WRITE_GRANULARITY == 0, "not aligned to write granularity?");
 
-// This is the portion of the RTStack that we read and write from to
-// communicate with the RTUnit.
-template <uint32_t MaxBVHLevels>
-struct HWRayData
-{
-    MemHit committedHit;    // stores committed hit
-    MemHit potentialHit;    // stores potential hit that is passed to any hit shader
-
-    MemRay       ray[MaxBVHLevels];       // stores a ray for each instancing level
-    MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
-};
-
-// This is the ShadowMemory that we maintain if we DONOT need spill/fill it to/from HW RTStack.
-// We keep this data structure as small as possible to reduce the size.
-template <uint32_t MaxBVHLevels>
-struct SMRayData
-{
-    MemHit committedHit;    // stores committed hit
-    MemHit potentialHit;    // stores potential hit that is passed to any hit shader
-
-    MemRay       ray[MaxBVHLevels];       // stores a ray for each instancing level
-    //MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
-};
-
-// This is the raytracing software stack.  Every allocated stack will have
-// this header at the very beginning.  The stack convention described at the
-// top of this file will reside right after this data (i.e., we offset past
-// this header to get to the compiler managed stack).
-template <uint32_t MaxBVHLevels>
-struct RTStack
-{
-    // HW accessible region
-    HWRayData<MaxBVHLevels> hwRayData;
-};
-
-// This is the ShadowMemory's RTStack.
-template <uint32_t MaxBVHLevels>
-struct SMStack
-{
-    // SM accessible region
-    SMRayData<MaxBVHLevels> smRayData;
-};
-
-// For now, we're just defaulting to using an RTStack assuming
-// MAX_BVH_LEVELS == 2.
-using RTStack2   = RTStack<MAX_BVH_LEVELS>;
-using HWRayData2 = HWRayData<MAX_BVH_LEVELS>;
-using SMStack2   = SMStack<MAX_BVH_LEVELS>;
-using SMRayData2 = SMRayData<MAX_BVH_LEVELS>;
-
-#if !defined(__clang__) || (__clang_major__ >= 10)
-static_assert(std::is_standard_layout_v<RTStack2>);
-static_assert(std::is_standard_layout_v<SMStack2>);
-#endif
-
-// Makes sure that important fields are at their proper offset from the starty of the structure.
-// Update this if the structure changes.  This is just for documentation purposes.
-static_assert(offsetof(HWRayData2, committedHit) == 0,  "unexpected offset!");
-static_assert(offsetof(HWRayData2, potentialHit) == 32, "unexpected offset!");
-static_assert(offsetof(HWRayData2, ray) == 64,          "unexpected offset!");
-static_assert(offsetof(HWRayData2, travStack) == 192,   "unexpected offset!");
-static_assert(offsetof(RTStack2, hwRayData) == 0,       "unexpected offset!");
-
 // This is the structure of memory that will be allocated by the UMD:
-template <typename HotZoneTy, typename HWRayDataTy, typename RTStackTy, typename SWStackTy,
+template <typename HotZoneTy, typename SyncStackTy, typename AsyncStackTy, typename SWStackTy,
           uint64_t DSS_COUNT, uint64_t NumDSSRTStacks, uint64_t SIMD_LANES_PER_DSS>
 struct RTMemory
 {
     // Packed SW hot-zones
     alignas(IGC::RTStackAlign) HotZoneTy HotZones[DSS_COUNT * NumDSSRTStacks];
 
-    // HWRayData for synchronous ray tracing
-    alignas(IGC::RTStackAlign) HWRayDataTy SyncStacks[DSS_COUNT * SIMD_LANES_PER_DSS];
+    // sync stacks for synchronous ray tracing
+    alignas(IGC::RTStackAlign) SyncStackTy SyncStacks[DSS_COUNT * SIMD_LANES_PER_DSS];
 
     // RTMemBasePointer points here <----
-    alignas(IGC::RTStackAlign) RTStackTy AsyncStacks[DSS_COUNT * NumDSSRTStacks];
+    alignas(IGC::RTStackAlign) AsyncStackTy AsyncStacks[DSS_COUNT * NumDSSRTStacks];
 
     // Align to L3 sector size, or LSC sector size if stack is LSC-cached
     alignas(IGC::RTStackAlign) SWStackTy SWStacks[DSS_COUNT * NumDSSRTStacks];
@@ -997,7 +893,9 @@ constexpr uint64_t calcRTMemoryAllocSize(
            IGC::Align(SWStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign);
 }
 
-constexpr uint32_t getSyncStackSize(){ return sizeof(HWRayData2); }
+constexpr uint32_t getSyncStackSize() {
+    return sizeof(RTStack2<Xe>);
+}
 
 // As per this:
 // The rtMemBasePtr points to the top of the async stacks.  After having computed
@@ -1029,16 +927,16 @@ constexpr uint64_t calcRTMemoryOffsets(
 // unit tests:
 static_assert(
     calcRTMemoryAllocSize(
-        sizeof(SWHotZone_v1), sizeof(HWRayData2), sizeof(HWRayData2), 128,
+        sizeof(SWHotZone_v1), sizeof(RTStack2<Xe>), sizeof(RTStack2<Xe>), 128,
         32, 2048, 16 * 8 * 16) ==
-    sizeof(RTMemory<SWHotZone_v1, HWRayData2, HWRayData2, uint8_t[128],
+    sizeof(RTMemory<SWHotZone_v1, RTStack2<Xe>, RTStack2<Xe>, uint8_t[128],
         32, 2048, 16 * 8 * 16>), "mismatch?");
 
 static_assert(
     calcRTMemoryAllocSize(
-        8, sizeof(HWRayData2), sizeof(HWRayData2), 136,
+        8, sizeof(RTStack2<Xe>), sizeof(RTStack2<Xe>), 136,
         32, 2048, 16 * 8 * 16) ==
-    sizeof(RTMemory<uint8_t[8], HWRayData2, HWRayData2, uint8_t[136],
+    sizeof(RTMemory<uint8_t[8], RTStack2<Xe>, RTStack2<Xe>, uint8_t[136],
         32, 2048, 16 * 8 * 16>), "mismatch?");
 
 struct TraceRayMessage

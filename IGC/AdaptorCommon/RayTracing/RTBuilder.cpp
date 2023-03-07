@@ -113,7 +113,7 @@ Value* RTBuilder::CreateSyncStackPtrIntrinsic(
         this->setReturnAlignment(StackPtr, RTStackAlign);
         if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
         {
-            this->setDereferenceable(StackPtr, sizeof(RTStack2));
+            this->setDereferenceable(StackPtr, sizeof(RTStack2<Xe>));
         }
     }
 
@@ -141,14 +141,14 @@ Value* RTBuilder::getGlobalSyncStackID()
 
 Value* RTBuilder::getRTStackSize(uint32_t Align)
 {
-    static_assert(sizeof(RTStack2) == 256, "Might need to update this!");
+    static_assert(sizeof(RTStack2<Xe>) == 256, "Might need to update this!");
     // syncStackSize = sizeof(HitInfo)*2 + (sizeof(Ray) + sizeof(TravStack))*RTDispatchGlobals.maxBVHLevels
     Value* stackSize = this->CreateMul(
-        this->getInt32(sizeof(RTStackFormat::MemRay) + sizeof(RTStackFormat::MemTravStack)),
+        this->getInt32(sizeof(MemRay<Xe>) + sizeof(MemTravStack)),
         this->getMaxBVHLevels());
 
     stackSize = this->CreateAdd(
-        stackSize, this->getInt32(sizeof(RTStackFormat::MemHit) * 2),
+        stackSize, this->getInt32(sizeof(MemHit<Xe>) * 2),
         VALUE_NAME("RTStackSize"));
 
     stackSize = this->alignVal(stackSize, Align);
@@ -1134,12 +1134,7 @@ enum class RaytracingType
     RTStack2Stateless     = 0,
     RTStack2Stateful      = 1,
     RayDispatchGlobalData = 2,
-    InstanceLeaf          = 3,
-    QuadLeaf              = 4,
-    ProceduralLeaf        = 5,
-    BVH                   = 6,
-    HWRayData2            = 7,
-    SWHotZone             = 8,
+    SWHotZone             = 3,
     NUM_TYPES
 };
 
@@ -1250,70 +1245,6 @@ Type* RTBuilder::getRayDispatchGlobalDataPtrTy(Module &M)
     return lazyGetRTType(M, RaytracingType::RayDispatchGlobalData, addTy);
 }
 
-
-Type* RTBuilder::getInstanceLeafPtrTy(Module &M)
-{
-    auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        auto* Ty = _gettype_InstanceLeaf(M);
-        return setRTTypeMD(
-            M,
-            Idx,
-            TypesMD,
-            Ty,
-            sizeof(InstanceLeaf),
-            ADDRESS_SPACE_GLOBAL);
-    };
-
-    return lazyGetRTType(M, RaytracingType::InstanceLeaf, addTy);
-}
-
-Type* RTBuilder::getQuadLeafPtrTy(Module &M)
-{
-    auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        auto* Ty = _gettype_QuadLeaf(M);
-        return setRTTypeMD(
-            M,
-            Idx,
-            TypesMD,
-            Ty,
-            sizeof(QuadLeaf),
-            ADDRESS_SPACE_GLOBAL);
-    };
-
-    return lazyGetRTType(M, RaytracingType::QuadLeaf, addTy);
-}
-
-Type* RTBuilder::getProceduralLeafPtrTy(Module &M)
-{
-    auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        auto* Ty = _gettype_ProceduralLeaf(M);
-        return setRTTypeMD(
-            M,
-            Idx,
-            TypesMD,
-            Ty,
-            sizeof(ProceduralLeaf),
-            ADDRESS_SPACE_GLOBAL);
-    };
-
-    return lazyGetRTType(M, RaytracingType::ProceduralLeaf, addTy);
-}
-
-Type* RTBuilder::getBVHPtrTy(Module &M)
-{
-    auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        auto* Ty = _gettype_BVH(M);
-        return setRTTypeMD(
-            M,
-            Idx,
-            TypesMD,
-            Ty,
-            sizeof(BVH),
-            ADDRESS_SPACE_CONSTANT);
-    };
-
-    return lazyGetRTType(M, RaytracingType::BVH, addTy);
-}
 
 // Find the Insert point which is placed
 // after all Allocas and after all the Instructions

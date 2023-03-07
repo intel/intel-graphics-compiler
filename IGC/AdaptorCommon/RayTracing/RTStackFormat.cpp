@@ -24,14 +24,14 @@ uint32_t getRTStackHeaderSize(uint32_t MaxBVHLevels)
     static constexpr std::array<uint32_t, 9> Sizes =
     {
         0,
-        sizeof(RTStack<1>),
-        sizeof(RTStack<2>),
-        sizeof(RTStack<3>),
-        sizeof(RTStack<4>),
-        sizeof(RTStack<5>),
-        sizeof(RTStack<6>),
-        sizeof(RTStack<7>),
-        sizeof(RTStack<8>),
+        sizeof(RTStack<Xe, 1>),
+        sizeof(RTStack<Xe, 2>),
+        sizeof(RTStack<Xe, 3>),
+        sizeof(RTStack<Xe, 4>),
+        sizeof(RTStack<Xe, 5>),
+        sizeof(RTStack<Xe, 6>),
+        sizeof(RTStack<Xe, 7>),
+        sizeof(RTStack<Xe, 8>),
     };
 
     // stack size per ray is in encoded in 64 byte chunks.  Align up so the UMD

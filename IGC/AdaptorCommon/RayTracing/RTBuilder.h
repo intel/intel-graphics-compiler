@@ -419,10 +419,6 @@ public:
 public:
     static Type* getRTStack2PtrTy(const IGC::CodeGenContext& Ctx, RTMemoryAccessMode Mode, bool async = true);
     Type* getRayDispatchGlobalDataPtrTy(Module &M);
-    static Type* getInstanceLeafPtrTy(Module &M);
-    static Type* getQuadLeafPtrTy(Module &M);
-    static Type* getProceduralLeafPtrTy(Module &M);
-    static Type* getBVHPtrTy(Module &M);
 
 
     CallInst* ctlz(Value* V);
