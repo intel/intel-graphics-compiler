@@ -1058,7 +1058,7 @@ bool ReadSpecConstantsFromSPIRV(
 void overrideOCLProgramBinary(
     OpenCLProgramContext& Ctx,
     char*& binaryOutput,
-    int& binarySize)
+    size_t& binarySize)
 {
     auto name = DumpName(IGC::Debug::GetShaderOutputName())
         .Hash(Ctx.hash)
@@ -1074,7 +1074,7 @@ void overrideOCLProgramBinary(
     appendToShaderOverrideLogFile(Path, "OVERRIDDEN: ");
 
     f.seekg(0, f.end);
-    int newBinarySize = (int)f.tellg();
+    size_t newBinarySize = (size_t)f.tellg();
     f.seekg(0, f.beg);
 
     char* newBinaryOutput = new char[newBinarySize];
@@ -1553,7 +1553,7 @@ bool TranslateBuildSPMD(
 
     // FIXME: zebin currently only support program output itself, will add debug info
     // into it
-    int binarySize = 0;
+    size_t binarySize = 0;
     char* binaryOutput = nullptr;
 
     oclContext.metrics.FinalizeStats();
