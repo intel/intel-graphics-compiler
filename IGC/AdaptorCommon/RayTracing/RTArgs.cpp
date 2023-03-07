@@ -32,7 +32,6 @@ void ArgQuery::init(CallableShaderTypeMD FuncType, const FunctionMetaData& FMD)
     switch (FuncType)
     {
     case RayGen:
-    case Intersection:
     case CallStackHandler:
         break;
     case Miss:
@@ -56,6 +55,8 @@ void ArgQuery::init(CallableShaderTypeMD FuncType, const FunctionMetaData& FMD)
             TraceRayPayloadIdx = Idx++;
         if (FMD.rtInfo.hasHitAttributes)
             HitAttributeIdx    = Idx++;
+        break;
+    case Intersection:
         break;
     default:
         IGC_ASSERT_MESSAGE(0, "unknown func type!");
