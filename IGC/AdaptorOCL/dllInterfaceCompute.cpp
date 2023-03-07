@@ -974,6 +974,42 @@ bool ParseInput(
     return true;
 }
 
+void RebuildGlobalAnnotations(IGC::OpenCLProgramContext& oclContext, Module* pKernelModule)
+{
+    auto globalAnnotations = pKernelModule->getGlobalVariable("llvm.global.annotations");
+    if (!globalAnnotations) return;
+
+    auto requiresRecompilation = [&oclContext](Function* F) {
+        return oclContext.m_retryManager.kernelSet.find(F->getName().str()) != oclContext.m_retryManager.kernelSet.end();
+    };
+
+    std::vector<Constant*> newGlobalAnnotations;
+    auto annotations_array = dyn_cast<ConstantArray>(globalAnnotations->getOperand(0));
+    for (const auto& op : annotations_array->operands())
+    {
+        auto annotation_struct = dyn_cast<ConstantStruct>(op.get());
+        auto annotated_function = dyn_cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
+
+        if (requiresRecompilation(annotated_function))
+        {
+            newGlobalAnnotations.push_back(annotation_struct);
+        }
+    }
+
+    // Remove old "llvm.global.annotations" that refers to kernels not requiring recompilation
+    globalAnnotations->eraseFromParent();
+
+    // Create new "llvm.global.annotations" that refers only to kernels that need to be recompiled
+    Constant* Array =
+        ConstantArray::get(ArrayType::get(newGlobalAnnotations[0]->getType(),
+            newGlobalAnnotations.size()),
+            newGlobalAnnotations);
+    auto* GV = new GlobalVariable(*pKernelModule, Array->getType(), /*IsConstant*/ false,
+        GlobalValue::AppendingLinkage, Array,
+        "llvm.global.annotations");
+    GV->setSection("llvm.metadata");
+}
+
 #if defined(IGC_SPIRV_ENABLED)
 bool ReadSpecConstantsFromSPIRV(
     std::istream& IS,
@@ -1483,6 +1519,9 @@ bool TranslateBuildSPMD(
                     return false;
                 }
                 oclContext.setModule(pKernelModule);
+
+                // Remove annotations for kernels that do not require recompilation
+                RebuildGlobalAnnotations(oclContext, pKernelModule);
 
                 for (auto it = pKernelModule->getFunctionList().begin(), ie = pKernelModule->getFunctionList().end(); it != ie;)
                 {

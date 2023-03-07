@@ -69,6 +69,11 @@ bool TranslateBuildVC(
   float profilingTimerResolution,
   const ShaderHash& inputShHash);
 
+void RebuildGlobalAnnotations(
+  IGC::OpenCLProgramContext& oclContext,
+  llvm::Module* pKernelModule
+);
+
 bool ReadSpecConstantsFromSPIRV(
     std::istream &IS,
     std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo);
