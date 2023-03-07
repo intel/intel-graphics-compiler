@@ -19,6 +19,8 @@ using namespace vISA;
 // #define _DEBUG
 // #define cout cerr
 
+#define NUM_PREGS_FOR_UNIQUE_ASSIGN 50
+
 #define SPLIT_REF_CNT_THRESHOLD 3
 #define SPLIT_USE_CNT_THRESHOLD 2
 #define SPLIT_USE_DISTANCE_THRESHOLD 100
@@ -1622,14 +1624,11 @@ bool LocalRA::countLiveIntervals() {
     }
   }
 
-  // consider half of registers for unique assignment
-  int numPregsForUniqueAssign = kernel.getNumRegTotal() / 2;
-
-  if (globalRows <= numPregsForUniqueAssign) {
+  if (globalRows <= NUM_PREGS_FOR_UNIQUE_ASSIGN) {
     globalLRSize = globalRows;
   } else {
-    if (localRows < (numRegLRA - numPregsForUniqueAssign)) {
-      globalLRSize = numPregsForUniqueAssign;
+    if (localRows < (numRegLRA - NUM_PREGS_FOR_UNIQUE_ASSIGN)) {
+      globalLRSize = NUM_PREGS_FOR_UNIQUE_ASSIGN;
     } else {
       return false;
     }
