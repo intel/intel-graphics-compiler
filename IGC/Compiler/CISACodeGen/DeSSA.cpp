@@ -921,6 +921,87 @@ DeSSA::SplitInterferencesForBasicBlock(
                 isolateReg(NewParent);
             }
         }
+        // fix situation in which uniform-phi is inside a divergent-join.
+        // The following is an example of 3-way join by nested-if
+        //
+        //   %22 = phi i32 [ 13, blk19], [%16, blk0], [ 13, blk17]
+        //   %23 = phi i32 [%16, blk19], [  0, blk0], [%16, blk17]
+        // blk0 is from the uniform-if
+        // blk17 is from the divergent-if
+        // blk19 is from the divergent-if
+        //
+        //  if we coalesce %16 and %22 with the same register V5
+        //  then we still need to insert the following move in on divergent
+        //  edges
+        //  blk-17:
+        //     mov(W) v5, 13
+        //  blk-19:
+        //     mov(W) v5, 13
+        //
+        //  however, %16 and %23 are not coalesced. so we add the other two moves
+        //  blk-17:
+        //     mov(W) v6, v5
+        //     mov(W) v5, 13  NOTE: this move changs v5, subsequently wrong v6
+        //  blk-19:
+        //     mov(W) v6, v5
+        //     mov(W) v5, 13
+        //  Due to divergent CF, both blk-17 and blk-19 are executed, causes problem
+
+        // so we know MBB-target, i.e. the phi-block is a divergent-join
+        if (WIA->insideDivergentCF(MBB->getTerminator())) {
+            llvm::DenseMap<int, PHINode*> UniformColors;
+            for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end();
+                 BBI != BBE; ++BBI) {
+                PHINode *PHI = dyn_cast<PHINode>(BBI);
+                if (!PHI)
+                    break;
+                if (!WIA->isUniform(PHI))
+                    continue;
+                auto RootC = getRootColor(PHI);
+                if (!RootC)
+                    continue;
+                // so this is uniform phi and not-isolated
+                unsigned PredIndex;
+                for (PredIndex = 0; PredIndex < PHI->getNumOperands();
+                     ++PredIndex) {
+                    auto PBB = PHI->getIncomingBlock(PredIndex);
+                    if (WIA->insideDivergentCF(PBB->getTerminator())) {
+                        Value *PredValue = PHI->getOperand(PredIndex);
+                        // check if we will need to add a phi-copy from PBB
+                        if (isa<Constant>(PredValue) || isIsolated(PredValue)) {
+                            if (UniformColors.find(RootC) == UniformColors.end())
+                                UniformColors[RootC] = PHI;
+                            else
+                                IGC_ASSERT(UniformColors[RootC] == PHI);
+                        }
+                    }
+                }
+            }
+            // After we find all the uniform-congruents that may have problem,
+            // Check if those colors are also used by the sources of other PHIs
+            // in this block, isolate those sources
+            for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end();
+                 BBI != BBE; ++BBI) {
+                PHINode *PHI = dyn_cast<PHINode>(BBI);
+                if (!PHI)
+                    break;
+                unsigned PredIndex;
+                for (PredIndex = 0; PredIndex < PHI->getNumOperands();
+                     ++PredIndex) {
+                    auto PBB = PHI->getIncomingBlock(PredIndex);
+                    if (WIA->insideDivergentCF(PBB->getTerminator())) {
+                        Value *PredValue = PHI->getOperand(PredIndex);
+                        if (isa<Constant>(PredValue) || isIsolated(PredValue))
+                            continue;
+                        auto RootC = getRootColor(PredValue);
+                        if (UniformColors.find(RootC) != UniformColors.end()) {
+                            if (PHI != UniformColors[RootC])
+                                isolateReg(PredValue);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
