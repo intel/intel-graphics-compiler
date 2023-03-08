@@ -50,6 +50,21 @@ bool DebugInfoPass::doFinalization(llvm::Module& M)
 
 bool DebugInfoPass::runOnModule(llvm::Module& M)
 {
+    // This loop is just a workaround till we add support for DIArgList metadata.
+    // If we implement DIArgList support, it should be deleted.
+#if LLVM_VERSION_MAJOR > 12
+    for (auto &F : M) {
+      for (auto &BB : F) {
+        for (auto &I : BB) {
+          if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
+            if (dbgInst->getNumVariableLocationOps() > 1) {
+              dbgInst->setUndef();
+            }
+          }
+        }
+      }
+    }
+#endif
     std::vector<CShader*> units;
 
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
