@@ -712,6 +712,8 @@ private:
   // spills
   void immMovSpillAnalysis();
 
+  // Return true if spillDcl is a re-spill of a rematerialized imm
+  bool isScalarImmRespill(G4_Declare *spillDcl) const;
   bool immFill(G4_SrcRegRegion *filledRegion,
                INST_LIST::iterator filledInstIter, G4_BB *bb,
                G4_Declare *spillDcl);
