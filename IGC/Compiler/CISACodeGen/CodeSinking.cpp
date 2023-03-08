@@ -268,7 +268,13 @@ namespace IGC {
 
         if (everMadeChange || changed)
         {
-            IGC_ASSERT(false == verifyFunction(F, &dbgs()));
+            // the verifier currently rejects allocas with non-default
+            // address space (which is legal). Raytracing does this, so we skip
+            // verification here.
+            if (CTX->type != ShaderType::RAYTRACING_SHADER)
+            {
+                IGC_ASSERT(false == verifyFunction(F, &dbgs()));
+            }
         }
 
         return everMadeChange || changed;
