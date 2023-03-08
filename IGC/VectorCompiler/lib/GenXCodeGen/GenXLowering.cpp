@@ -3963,35 +3963,16 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
   //        \  |
   //         BB4
   //
-  auto BB1 = SI->getParent();
-  auto BB_ReturnedBySpitBlock = SplitBlock(BB1, SI, DT);
-  auto BB_ReturnedBySplitEdge = SplitEdge(BB1, BB_ReturnedBySpitBlock, DT);
+  auto *BB1 = SI->getParent();
 
-  BasicBlock *BB2;
-  BasicBlock *BB4;
-  // Make sure that BB2 is predecessor of BB4
-  if (BB_ReturnedBySpitBlock->getSinglePredecessor() == BB_ReturnedBySplitEdge)
-  {
-    BB2 = BB_ReturnedBySplitEdge;
-    BB4 = BB_ReturnedBySpitBlock;
-  }
-  else
-  {
-    BB4 = BB_ReturnedBySplitEdge;
-    BB2 = BB_ReturnedBySpitBlock;
-  }
+  auto *TermThen =
+      SplitBlockAndInsertIfThen(SI->getCondition(), SI, false, nullptr, DT);
+  (cast<BranchInst>(BB1->getTerminator()))->swapSuccessors();
+  auto *BB2 = TermThen->getParent();
+  auto *BB4 = BB2->getSingleSuccessor();
   BB2->setName("select.false");
   BB4->setName("select.true");
 
-  auto OldTerm = BB1->getTerminator();
-  auto NewInst = BranchInst::Create(BB4, BB2, SI->getCondition(), OldTerm);
-  NewInst->setDebugLoc(SI->getDebugLoc());
-  OldTerm->eraseFromParent();
-  // Since additional edge is added between BB1 and BB4 instead of through BB2
-  // only. BB4 is not immediately dominated by BB2 anymore. Instead, BB4 is
-  // dominated by BB1 immediately.
-  if (DT)
-    DT->changeImmediateDominator(BB4, BB1);
   // Replace 'select' with 'phi'
   auto Phi = PHINode::Create(SI->getType(), /*NumReservedValues=*/2, "",
                              &BB4->front());
