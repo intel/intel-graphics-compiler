@@ -688,8 +688,7 @@ static std::string printInstructionSVM(const print_format_provider_t *header,
   case SVM_BLOCK_LD: {
     sstr << "block_" << (subOpcode == SVM_BLOCK_ST ? "st" : "ld");
     uint8_t properties = getPrimitiveOperand<uint8_t>(inst, i++);
-    if (properties & 8)
-      sstr << ".unaligned";
+    sstr << (properties & 0x80 ? ".unaligned" : ".aligned");
     VISA_Oword_Num numOwords = (VISA_Oword_Num)(properties & 0x7);
     sstr << " (" << Get_VISA_Oword_Num(numOwords) << ")";
     break;

@@ -1473,14 +1473,14 @@ SvmInstruction:
     SVM_OP SVM_ALIGNED ExecSize VecSrcOperand_G_I_IMM RawOperand
     {
         pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1,
-$3.exec_size, true, $4.cisa_gen_opnd, $5, CISAlineno);
+$3.exec_size, false, $4.cisa_gen_opnd, $5, CISAlineno);
     }
     |
     //1           2       3       4                       5
     SVM_OP SVM_UNALIGNED ExecSize VecSrcOperand_G_I_IMM RawOperand
     {
         pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1,
-$3.exec_size, false, $4.cisa_gen_opnd, $5, CISAlineno);
+$3.exec_size, true, $4.cisa_gen_opnd, $5, CISAlineno);
     }
     |
     // default svm block ld/st -- unaligned by default
@@ -1488,7 +1488,7 @@ $3.exec_size, false, $4.cisa_gen_opnd, $5, CISAlineno);
     SVM_OP  ExecSize VecSrcOperand_G_I_IMM RawOperand
     {
         pBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1,
-$2.exec_size, false, $3.cisa_gen_opnd, $4, CISAlineno);
+$2.exec_size, true, $3.cisa_gen_opnd, $4, CISAlineno);
     }
     //     1          2         3     4     5     6        7          8        9
     | Predicate SVM_SCATTER_OP DOT DEC_LIT DOT DEC_LIT ExecSize RawOperand RawOperand
