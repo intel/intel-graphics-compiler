@@ -36,11 +36,13 @@ private:
   const unsigned int cSpillWindowThreshold128GRF = 120;
   const unsigned int cHighRegPressureForCleanup = 100;
   const unsigned int cHighRegPressureForWindow = 70;
+  const unsigned int cInputSizeLimit = 70;
 
   unsigned int fillWindowSizeThreshold = 0;
   unsigned int spillWindowSizeThreshold = 0;
   unsigned int highRegPressureForCleanup = 0;
   unsigned int highRegPressureForWindow = 0;
+  unsigned int totalInputSize = 0;
 
   // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
   // This data structure is used to replaced old spill/fill operands
@@ -109,6 +111,12 @@ public:
     spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
     highRegPressureForCleanup = scale(cHighRegPressureForCleanup);
     highRegPressureForWindow = scale(cHighRegPressureForWindow);
+
+    auto &inputs = k.fg.builder->m_inputVect;
+    for (const input_info_t *input_info : inputs) {
+      totalInputSize += input_info->size;
+    }
+    totalInputSize = totalInputSize / k.numEltPerGRF<Type_UB>();
   }
 
   void run();
