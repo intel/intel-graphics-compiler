@@ -2834,9 +2834,6 @@ void SWSB::quickTokenAllocation() {
 
   // Linear scan
   for (SBNode *node : SBSendNodes) {
-    if (node->getLastInstruction()->isEOT()) {
-      continue;
-    }
 
     vASSERT(node->getLastInstruction()->getSetToken() ==
            (unsigned short)UNKNOWN_TOKEN);
