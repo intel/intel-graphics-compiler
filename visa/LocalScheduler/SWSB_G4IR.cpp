@@ -5843,7 +5843,7 @@ bool G4_BB_SB::hasInternalDependence(SBNode *nodeFirst, SBNode *nodeNext) {
   return false;
 }
 
-bool G4_BB_SB::is2xDPBlockCandidate(G4_INST *inst, bool accDST) {
+bool G4_BB_SB::is2xFPBlockCandidate(G4_INST *inst, bool accDST) {
   if (inst->opcode() != G4_mad) {
     return false;
   }
@@ -5852,7 +5852,7 @@ bool G4_BB_SB::is2xDPBlockCandidate(G4_INST *inst, bool accDST) {
     return false;
   }
 
-  if (inst->getExecSize() != g4::SIMD16) {
+  if (inst->getExecSize() != g4::SIMD16 && inst->getExecSize() != g4::SIMD32) {
     return false;
   }
 
@@ -5868,11 +5868,13 @@ bool G4_BB_SB::is2xDPBlockCandidate(G4_INST *inst, bool accDST) {
        {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2}) {
     G4_Operand *opnd = inst->getOperand(opndNum);
 
-    if (opnd->getType() != G4_Type::Type_DF) {
+    if (!(inst->getExecSize() == g4::SIMD16 &&
+          opnd->getType() == G4_Type::Type_DF) &&
+        !(inst->getExecSize() == g4::SIMD32 &&
+          opnd->getType() == G4_Type::Type_F)) {
       return false;
     }
   }
-
   return true;
 }
 
@@ -6029,13 +6031,13 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
     // Support for the mad block in DPAS pipeline
     if (builder.has2xDP() && builder.getOption(vISA_ScheduleFor2xSP) &&
-        is2xDPBlockCandidate(curInst, true)) {
+        is2xFPBlockCandidate(curInst, true)) {
       unsigned depDistance = curInst->getDst()->getLinearizedEnd() -
                              curInst->getDst()->getLinearizedStart() + 1;
       std::list<G4_INST *>::iterator iNextInst = iInst;
       iNextInst++;
       G4_INST *nInst = *iNextInst;
-      while (is2xDPBlockCandidate(nInst, false)) {
+      while (is2xFPBlockCandidate(nInst, false)) {
         SBNode nextNode(nodeID, ALUID, bb->getId(), nInst);
         getGRFFootPrint(&nextNode, p);
 
