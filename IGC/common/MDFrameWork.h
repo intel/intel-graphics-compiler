@@ -58,7 +58,7 @@ namespace IGC
         DefaultIndirectIdx = 0,
     };
 
-#include "RaytracingShaderTypes.h"
+#include "RaytracingShaderTypes.h" // ^MDFramework^: .
 
     enum ResourceTypeEnum
     {
