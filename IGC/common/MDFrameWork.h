@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "AdaptorCommon/RayTracing/RayTracingMemoryStyleEnum.h" // ^MDFramework^: ../AdaptorCommon/RayTracing
+
 namespace llvm
 {
     class Module;
@@ -247,6 +249,8 @@ namespace IGC
         std::optional<uint32_t> RTSyncStackSurfaceStateOffset;
 
         bool doSyncDispatchRays = false;
+
+        RTMemoryStyle MemStyle = RTMemoryStyle::Xe;
     };
 
     // Info specific to each raytracing shader

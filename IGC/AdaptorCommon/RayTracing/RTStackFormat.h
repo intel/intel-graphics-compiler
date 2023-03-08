@@ -247,7 +247,9 @@ struct MemTravStack
     };
 };
 
-struct Xe;
+#define STYLE(X) struct X;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
 
 template <typename GenT> struct MemHit;
 template <typename GenT> struct MemRay;

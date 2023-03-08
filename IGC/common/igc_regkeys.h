@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #define EARLY_OUT_PS_PATTERN(Name, Val) #Name "=" #Val ","
 #define FP_BINOP_INSTRUCTION(Name, Val) #Name "=" #Val ","
 #define TRIBOOL_OPTION(Name, Val) #Name "=" #Val ","
+#define RTMEMORY_STYLE_OPTION(Name, Val) #Name "=" #Val ","
 
 #include "igc_regkeys_enums_defs.h"
 
@@ -48,6 +49,9 @@ SPDX-License-Identifier: MIT
 
 #undef TRIBOOL_OPTION
 #undef TRIBOOL_OPTIONS
+
+#undef RTMEMORY_STYLE_OPTION
+#undef RTMEMORY_STYLE_OPTIONS
 
 #undef DECLARE_IGC_GROUP
 #undef DECLARE_IGC_REGKEY_ENUM
