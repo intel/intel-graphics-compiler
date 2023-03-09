@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -81,14 +81,6 @@ namespace llvm
            TTI::TargetCostKind CostKind);
 #endif
 
-#if LLVM_VERSION_MAJOR <= 10
-       unsigned getIntrinsicCost(Intrinsic::ID IID, Type* RetTy, ArrayRef<const Value*> Arguments, const User* U);
-       unsigned getIntrinsicCost(Intrinsic::ID IID, Type* RetTy, ArrayRef<Type*> ParamTys, const User* U);
-#elif LLVM_VERSION_MAJOR <= 12
-       int getIntrinsicInstrCost(const IntrinsicCostAttributes& ICA, TTI::TargetCostKind CostKind);
-#else
-       llvm::InstructionCost getIntrinsicInstrCost(const IntrinsicCostAttributes& ICA, TTI::TargetCostKind CostKind);
-#endif
     };
 
 }

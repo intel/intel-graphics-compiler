@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -522,42 +522,6 @@ namespace llvm {
         }
         return BaseT::isProfitableToHoist(I);
     }
-
-#if LLVM_VERSION_MAJOR <= 10
-    unsigned GenIntrinsicsTTIImpl::getIntrinsicCost(Intrinsic::ID IID, Type* RetTy, ArrayRef<const Value*> Arguments, const User* U)
-    {
-        SmallVector<Type*, 8> ParamTys;
-        ParamTys.reserve(Arguments.size());
-        for (auto A : Arguments)
-            ParamTys.push_back(A->getType());
-        return getIntrinsicCost(IID, RetTy, ParamTys, U);
-    }
-
-    unsigned GenIntrinsicsTTIImpl::getIntrinsicCost(Intrinsic::ID IID, Type* RetTy, ArrayRef<Type*> ParamTys, const User* U)
-    {
-        switch (IID) {
-        case Intrinsic::sqrt:
-            return 2 * TargetTransformInfo::TCC_Expensive;
-        default:
-            return BaseT::getIntrinsicCost(IID, RetTy, ParamTys, U);
-        }
-    }
-#else
-
-#if LLVM_VERSION_MAJOR <= 12
-    int GenIntrinsicsTTIImpl::getIntrinsicInstrCost(const IntrinsicCostAttributes& ICA, TTI::TargetCostKind CostKind)
-#else
-    llvm::InstructionCost GenIntrinsicsTTIImpl::getIntrinsicInstrCost(const IntrinsicCostAttributes& ICA, TTI::TargetCostKind CostKind)
-#endif
-    {
-        switch (ICA.getID()) {
-        case Intrinsic::sqrt:
-            return 2 * TargetTransformInfo::TCC_Expensive;
-        default:
-            return BaseT::getIntrinsicInstrCost(ICA, CostKind);
-        }
-    }
-#endif
 
 #if LLVM_VERSION_MAJOR <= 10
     unsigned GenIntrinsicsTTIImpl::getCallCost(const Function* F, ArrayRef<const Value*> Arguments

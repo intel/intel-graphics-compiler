@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1126,21 +1126,6 @@ static void WriteSpecConstantsDump(
                    hash, "_specconst.txt");
 }
 
-void addCommandLineOption(const llvm::StringRef& option)
-{
-    // Add command line option only if not already present on the list.
-    auto optionsMap = llvm::cl::getRegisteredOptions();
-    auto existingOption = optionsMap.find(option.ltrim('-').rsplit('=').first);
-    if (existingOption != optionsMap.end())
-    {
-        if (existingOption->getValue()->getNumOccurrences() == 0)
-        {
-            const char* const args[] = { "igc", option.data() };
-            llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
-        }
-    }
-}
-
 bool TranslateBuildSPMD(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
@@ -1158,11 +1143,17 @@ bool TranslateBuildSPMD(
         // This is a workaround for a performance issue caused by code sinking
         // that is being done in LLVM's instcombine pass.
         // This code will be removed once sinking is removed from instcombine.
-        addCommandLineOption("-instcombine-code-sinking=0");
-        // Disable speculate-one-expensive-inst used by LLVM's SimplifyCFG pass.
-        // When enabled, it replaces if-statement with single instruction with
-        // unconditional execution, even if instruction has high estimated cost.
-        addCommandLineOption("-speculate-one-expensive-inst=0");
+        auto optionsMap = llvm::cl::getRegisteredOptions();
+        llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
+        auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
+        if (instCombineSinkingSwitch != optionsMap.end())
+        {
+            if (instCombineSinkingSwitch->getValue()->getNumOccurrences() == 0)
+            {
+                const char* const args[] = { "igc", instCombineFlag.data() };
+                llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
+            }
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(QualityMetricsEnable))

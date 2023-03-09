@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -384,12 +384,16 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         IGC_SET_FLAG_VALUE(allowLICM, false);
     }
 
-    DummyPass* dummypass = new DummyPass();
-    TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function& F) {
-        GenIntrinsicsTTIImpl GTTI(&ctx, dummypass);
-        return TargetTransformInfo(GTTI);
-        });
-    mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
+    if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
+        IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
+    {
+        DummyPass* dummypass = new DummyPass();
+        TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function& F) {
+            GenIntrinsicsTTIImpl GTTI(&ctx, dummypass);
+            return TargetTransformInfo(GTTI);
+            });
+        mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
+    }
 
     // Disable all target library functions.
     // right now we don't support any standard function in the code gen
