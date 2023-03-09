@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -41,6 +41,7 @@ See LICENSE.TXT for details.
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/CFG.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -264,6 +265,12 @@ namespace IGC {
         //F.viewCFG();
         // } end of diagnosis if
         // diagnosis code: sinkCounter++;
+
+        if (everMadeChange || changed)
+        {
+            IGC_ASSERT(false == verifyFunction(F, &dbgs()));
+        }
+
         return everMadeChange || changed;
     }
 
@@ -995,20 +1002,57 @@ namespace IGC {
                         insertPos = last->getNextNode();
                     }
                 }
-
                 if (apply)
                 {
                     auto compareFunc = [](const InstPair& a, const InstPair& b) {
                         return (a.first == b.first) ? false : isInstPrecede(a.first, b.first);
                     };
                     std::sort(instMap.begin(), instMap.end(), compareFunc);
-
                     for (auto& insts : instMap)
                     {
                         Instruction* I = insts.first;
                         Instruction* ni = I->clone();
-                        ni->insertBefore(insertPos);
-                        ni->setName(ni->getName() + ".hoist");
+
+                        // It is possible that the `insertPos` is in the same
+                        // block as a "replaced" instruction (the second
+                        // instruction in an InstPair) and that the "replaced"
+                        // instruction has users that are before the
+                        // `insertPos`. In such cases the`insertPos` must be
+                        // moved before all such users.
+                        IGC_ASSERT(std::all_of(insts.first->user_begin(), insts.first->user_end(),
+                            [this, insertPos](User* user)
+                            {
+                                Instruction* userInst = dyn_cast<Instruction>(user);
+                                return userInst == nullptr ||
+                                    DT->dominates(insertPos, userInst);
+                            }));
+                        IGC_ASSERT(std::all_of(insts.second->user_begin(), insts.second->user_end(),
+                            [this, insertPos](User* user)
+                            {
+                                Instruction* userInst = dyn_cast<Instruction>(user);
+                                return userInst == nullptr ||
+                                    DT->dominates(insertPos->getParent(), userInst->getParent());
+                            }));
+                        Instruction* insertBefore = insertPos;
+                        if (insts.second->getParent() == insertBefore->getParent() &&
+                            isInstPrecede(insts.second, insertBefore))
+                        {
+                            for (User* user : insts.second->users())
+                            {
+                                Instruction* userInst = dyn_cast<Instruction>(user);
+                                if (!userInst ||
+                                    userInst->getParent() != insertBefore->getParent())
+                                {
+                                    continue;
+                                }
+                                if (isInstPrecede(userInst, insertBefore))
+                                {
+                                    insertBefore = userInst;
+                                }
+                            }
+                        }
+                        ni->insertBefore(insertBefore);
+                        ni->setName(VALUE_NAME(ni->getName() + ".hoist"));
 
                         if (phi->getIncomingValue(0) == I)
                         {
@@ -1017,6 +1061,14 @@ namespace IGC {
                         }
                         I->replaceAllUsesWith(ni);
                         insts.second->replaceAllUsesWith(ni);
+                        // Note that instructions are removed in the second loop
+                        // below to not invalidate the `insertPos` that may also
+                        // be in the `instMap`
+                    }
+                    for (auto& insts : instMap)
+                    {
+                        insts.first->eraseFromParent();
+                        insts.second->eraseFromParent();
                     }
                     changed = true;
                 }
