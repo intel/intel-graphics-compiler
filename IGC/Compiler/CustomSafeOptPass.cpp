@@ -6515,7 +6515,7 @@ bool SinkLoadOpt::sinkLoadInstruction(Function& F)
             GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(BI);
             if (CI &&
                 (CI->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
-                    CI->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed))
+                 CI->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed))
             {
                 uint32_t Addrspace = CI->getArgOperand(0)->getType()->getPointerAddressSpace();
                 BufferType BufTy = GetBufferType(Addrspace);
@@ -6536,25 +6536,30 @@ bool SinkLoadOpt::sinkLoadInstruction(Function& F)
                         // if all the use are extractelement, and they are all in the same BB.
                         // move the load and extractelement into the beginning of this BB.
                         std::vector<ExtractElementInst*> ee;
+                        std::vector<Instruction*> eeUser;
                         bool stop = 0;
-                        BasicBlock* useBlock = nullptr;
+                        BasicBlock* useBlock = CI->getParent();
                         for (auto* iter : CI->users())
                         {
-                            ExtractElementInst* eeTemp = dyn_cast<ExtractElementInst>(iter);
-                            if (eeTemp && eeTemp->hasOneUse())
+                            if (ExtractElementInst* eeTemp = dyn_cast<ExtractElementInst>(iter))
                             {
-                                Instruction* useInst = dyn_cast<Instruction>(*(eeTemp->user_begin()));
-                                if (useInst && useInst->getParent() != CI->getParent()
-                                    && (!useBlock || useInst->getParent() == useBlock)
-                                    && !isa<PHINode>(useInst))
+                                for (auto* eeUseIter : eeTemp->users())
+                                {
+                                    Instruction* eeUseInst = dyn_cast<Instruction>(eeUseIter);
+                                    if (!eeUseInst || eeUseInst->getParent() != useBlock || isa<PHINode>(eeUseIter))
+                                    {
+                                        stop = 1;
+                                        break;
+                                    }
+                                    eeUser.push_back(eeUseInst);
+                                }
+                                if (!stop)
                                 {
                                     ee.push_back(eeTemp);
-                                    useBlock = useInst->getParent();
                                 }
                             }
                             else
                             {
-                                // do not do the optimization
                                 stop = 1;
                                 break;
                             }
@@ -6562,11 +6567,33 @@ bool SinkLoadOpt::sinkLoadInstruction(Function& F)
                         if (stop || ee.size() == 0)
                             continue;
 
+                        // find the first used to move the load/ee down
+                        Instruction* currentInst = CI->getNextNode();
+                        Instruction* insertLocation = nullptr;
+                        while (currentInst && !currentInst->isTerminator() && currentInst->getParent() == useBlock)
+                        {
+                            for (unsigned int i = 0; i < eeUser.size(); i++)
+                            {
+                                if (currentInst == eeUser[i])
+                                {
+                                    insertLocation = currentInst;
+                                    break;
+                                }
+                            }
+                            if (insertLocation)
+                                break;
+                            currentInst = currentInst->getNextNode();
+                        }
+
+                        if (!insertLocation)
+                            continue;
+
+                        // store the instructions to be moved
                         for (unsigned int i = 0; i < ee.size(); i++)
                         {
-                            moveInst.push_back(std::pair(cast<Instruction>(ee[i]), &*useBlock->getFirstInsertionPt()));
+                            moveInst.push_back(std::pair(cast<Instruction>(ee[i]), insertLocation));
                         }
-                        moveInst.push_back(std::pair(cast<Instruction>(CI), &*useBlock->getFirstInsertionPt()));
+                        moveInst.push_back(std::pair(cast<Instruction>(CI), insertLocation));
                     }
                 }
             }
