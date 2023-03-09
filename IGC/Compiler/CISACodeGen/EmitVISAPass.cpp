@@ -3895,6 +3895,10 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier& modifier)
 
 void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool noMask) const
 {
+
+    IGC_ASSERT(dst->IsUniform() || dst->GetNumberElement() >= numLanes(simdMode));
+    simdMode = dst->IsUniform() ? SIMDMode::SIMD1 : simdMode;
+
     auto EncoderInit = [this, simdMode, noMask]()->void
     {
         m_encoder->SetSimdSize(simdMode);
@@ -3902,6 +3906,11 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
         {
             m_encoder->SetNoMask();
         }
+    };
+
+    auto UpdateVariableName = [this](const CName& name)->CName
+    {
+        return CName(name, m_encoder->IsSecondHalf() ? "SecondHalf" : "");
     };
 
     // Mul64 does not write to m_destination!
@@ -3919,10 +3928,10 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
 
     // Figure out what the hi and what the lo part of each source is.
     // For non-uniforms, this requires an unpack.
-    CVariable* srcLo[2], * srcHi[2];
+    CVariable* srcLo[2] = {};
+    CVariable* srcHi[2] = {};
     for (int i = 0; i < 2; ++i)
     {
-        CVariable* srcAsUD;
         if (src[i]->IsUniform())
         {
             if (src[i]->IsImmediate())
@@ -3932,22 +3941,22 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
             }
             else
             {
-                srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
+                CVariable* srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
                 srcLo[i] = m_currShader->GetNewAlias(srcAsUD, ISA_TYPE_UD, 0, 1);
                 srcHi[i] = m_currShader->GetNewAlias(srcAsUD, hiType, SIZE_DWORD, 1);
             }
         }
         else
         {
-            srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
+            IGC_ASSERT(src[i]->GetNumberElement() >= numLanes(simdMode));
+
+            CVariable* srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
             //TODO: Would it be better for these two to be consecutive?
-            srcLo[i] = m_currShader->GetNewVariable(
-                src[i]->GetNumberElement(),
-                ISA_TYPE_UD, EALIGN_GRF, false,
-                CName(src[i]->getName(), i == 0 ? "Lo0" : "Lo1"));
-            srcHi[i] = m_currShader->GetNewVariable(src[i]->GetNumberElement(),
-                hiType, EALIGN_GRF, false,
-                CName(src[i]->getName(), i == 0 ? "Hi0" : "Hi1"));
+            srcLo[i] = m_currShader->GetNewVariable(numLanes(simdMode), ISA_TYPE_UD, EALIGN_GRF, false,
+                UpdateVariableName(CName(src[i]->getName(), i == 0 ? "Lo0" : "Lo1")));
+            srcHi[i] = m_currShader->GetNewVariable(numLanes(simdMode), hiType, EALIGN_GRF, false,
+                UpdateVariableName(CName(src[i]->getName(), i == 0 ? "Hi0" : "Hi1")));
+
             EncoderInit();
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->Copy(srcLo[i], srcAsUD);
@@ -3958,7 +3967,6 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->Copy(srcHi[i], srcAsUD);
             m_encoder->Push();
-
         }
     }
 
@@ -3966,17 +3974,12 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     TODO("Do not generate intermediate multiplies by constant 0 or 1.");
     TODO("Do smarter pattern matching to look for non-constant zexted/sexted sources.");
 
-    CVariable* dstLo, * dstHi, * dstHiTemp;
-
-    dstLo = m_currShader->GetNewVariable(dst->GetNumberElement(),
-        ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "int64Lo"));
-    dstHi = m_currShader->GetNewVariable(dst->GetNumberElement(),
-        hiType, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "int64Hi"));
-    dstHiTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
-        hiType, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "int64HiTmp"));
+    CVariable* dstLo = m_currShader->GetNewVariable(numLanes(simdMode), ISA_TYPE_UD, m_destination->GetAlign(),
+        dst->IsUniform(), UpdateVariableName(CName(m_destination->getName(), "int64Lo")));
+    CVariable* dstHi = m_currShader->GetNewVariable(numLanes(simdMode), hiType, m_destination->GetAlign(),
+        dst->IsUniform(), UpdateVariableName(CName(m_destination->getName(), "int64Hi")));
+    CVariable* dstHiTemp = m_currShader->GetNewVariable(numLanes(simdMode), hiType, m_destination->GetAlign(),
+        dst->IsUniform(), UpdateVariableName(CName(m_destination->getName(), "int64HiTmp")));
 
 
     //
@@ -3995,22 +3998,24 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     // dstLow = E
     // dstHigh = F + G + carry
 
-    // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
+    // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh
+    // to get better performance.
     if (m_currShader->m_Platform->noNativeDwordMulSupport())
     {
         // (Cr, E) = A * B
-        EncoderInit();
         // dst size should be GRF-aligned and doubled as it has both low and high results.
         // We must make the dst element number is numDWPerGRF aligned. For example, if the madw is SIMD1,
         // the dst has only 1 DW as low result in 1 GRF and only 1 DW as high result in another GRF. We should
         // set the dst as (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
-        auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
-        auto numElements = iSTD::Align(dst->GetNumberElement(), numDWPerGRF);
-        CVariable* dstTmp = m_currShader->GetNewVariable(
-            numElements * 2, ISA_TYPE_UD, EALIGN_GRF, dst->IsUniform(),
-            CName(m_destination->getName(), "int64Tmp"));
+        const auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
+        const auto numElements = iSTD::Align(numLanes(simdMode), numDWPerGRF);
+        CVariable* dstTmp = m_currShader->GetNewVariable(numElements * 2, ISA_TYPE_UD, EALIGN_GRF, dst->IsUniform(),
+            UpdateVariableName(CName(m_destination->getName(), "int64Tmp")));
         CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+
+        EncoderInit();
         m_encoder->Madw(dstTmp, srcLo[0], srcLo[1], zero);
+        m_encoder->Push();
 
         // copy low of A*B to dstLo
         EncoderInit();
@@ -4020,7 +4025,8 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
 
         // copy high of A*B to dstHi
         EncoderInit();
-        uint regOffset = (uint)std::ceil((float)(numElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+        uint regOffset = (uint)std::ceil((float)(
+            numElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
         m_encoder->SetSrcSubVar(0, regOffset);
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->Copy(dstHi, dstTmp);
@@ -4071,7 +4077,6 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     m_encoder->SetDstSubReg(1);
     m_encoder->Copy(dstAsUD, dstHi);
     m_encoder->Push();
-
 }
 
 void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
@@ -12050,7 +12055,6 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     IGC_ASSERT_MESSAGE(iSTD::BitCount(clusterSize) == 1, "Cluster size must be a power of two.");
     IGC_ASSERT_MESSAGE(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8, "Unsupported 64-bit type.");
 
-    IGC_ASSERT_MESSAGE(!isInt64Type || !m_currShader->m_Platform->hasNoFullI64Support(), "Int64 emulation is not supported.");
     IGC_ASSERT_MESSAGE(!isFP64Type || !m_currShader->m_Platform->hasNoFP64Inst(), "FP64 emulation is not supported.");
     // Src might be uniform, as its value will be broadcasted during src preparation.
     // Dst uniformness depends on actual support in WIAnalysis, so far implemented for 32-clusters only.
