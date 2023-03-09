@@ -412,58 +412,12 @@ void SWSBAnalyzer::setDistanceDependency(DepSet *dep, SWSB &swsb, bool isWAW,
       break;
     }
 
-    // the instruction already has dependency to others
     if (swsb.minDist) {
+      // the instruction already has dependency to others. Take the
+      // min distance and set distType to ALL if they are not the same
       newDistance = std::min(swsb.minDist, newDistance);
-      // if the type is REG_DIST_ALL or is the same with the new pipe
-      // type, then remains it. Otherwise update the swsb type
-      if ((swsb.distType != newDepPipe) &&
-          (swsb.distType != SWSB::DistType::REG_DIST_ALL)) {
-        // get the pipe_type from opnd type
-        auto op_pipe_type = [](Type op_type) {
-          if (TypeIs64b(op_type))
-            return SWSB::DistType::REG_DIST_LONG;
-          if (TypeIsFloating(op_type))
-            return SWSB::DistType::REG_DIST_FLOAT;
-          return SWSB::DistType::REG_DIST_INT;
-        };
-        // check if the given pipe type is the same with one of the
-        // src type
-        auto haveTypeInSrc = [&](SWSB::DistType swsb_type) {
-          // HW restriction (WA): Cannot use @1 on XeHPC-XT, must
-          // explicitly set pipe type A@1 or L@1, ... Always return
-          // false so that we won't use @1 Note that if there isn't
-          // this restriction, we should also update op_pipe_type for
-          // FourDistPipeReduction mode that non-float-64-bit type
-          // should be in INT pipe
-          if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction) {
-            return false;
-          }
-          for (size_t i = 0; i < currInst.getSourceCount(); ++i) {
-            if (op_pipe_type(currInst.getSource(i).getType()) == swsb_type)
-              return true;
-          }
-          return false;
-        };
-        if ((swsb.distType == SWSB::DistType::REG_DIST_MATH) ||
-            (newDepPipe == SWSB::DistType::REG_DIST_MATH)) {
-          // either current of prev dep is MATH, it's not possible to
-          // combine them to REG_DIST
-          swsb.distType = SWSB::DistType::REG_DIST_ALL;
-        } else if ((swsb.distType != SWSB::DistType::REG_DIST)) {
-          // check if both previous and current dep pipe can be
-          // satisfied by currInst src type
-          if (haveTypeInSrc(swsb.distType) && haveTypeInSrc(newDepPipe))
-            swsb.distType = SWSB::DistType::REG_DIST;
-          else
-            swsb.distType = SWSB::DistType::REG_DIST_ALL;
-        } else {
-          // if previous one is REG_DIST, set the type to REG_DIST_ALL
-          // if current one cannot be satisfied by src type
-          if (!haveTypeInSrc(newDepPipe))
-            swsb.distType = SWSB::DistType::REG_DIST_ALL;
-        }
-      }
+      if (swsb.distType != newDepPipe)
+        swsb.distType = SWSB::DistType::REG_DIST_ALL;
     } else {
       swsb.distType = newDepPipe;
     }
