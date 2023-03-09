@@ -3887,6 +3887,21 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
           int minAlignment = src->getTypeSize() * 2;
           return builder.tryToAlignOperand(src, minAlignment);
         }
+      } else if (src->asSrcRegRegion()->getRegAccess() == Direct &&
+                 src->crossGRF(builder)) {
+        // Make sure only VertStride is used to cross GRF register boundaries
+        int width = 2;
+        int vStride = stride * 2;
+        int elementSize = src->getTypeSize();
+        int startOffset = src->getLeftBound() % builder.kernel.numEltPerGRF<Type_UB>();
+        for (int row = 0; row < execSize / width; row++) {
+          int rowOffset = (startOffset + row * vStride * elementSize) %
+                          builder.numEltPerGRF<Type_UB>();
+          if (rowOffset + (width - 1) * stride * elementSize >=
+              (int)builder.kernel.numEltPerGRF<Type_UB>()) {
+            return false;
+          }
+        }
       }
       return true;
     };
