@@ -50,7 +50,8 @@ public:
   bool runOnFunction(Function &F) override;
 
 private:
-  bool extractAddressClass(Function& F);
+  void extractAddressClass(Function& F);
+  void removeDIArgList(Function& F);
   bool Modified;
 };
 
@@ -74,7 +75,7 @@ void GenXDebugLegalization::getAnalysisUsage(AnalysisUsage &AU) const
 // Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
 // this instruction's last operand (metadata of DIExpression).
 // Pattern: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
-bool GenXDebugLegalization::extractAddressClass(Function& F)
+void GenXDebugLegalization::extractAddressClass(Function& F)
 {
   DIBuilder di(*F.getParent());
 
@@ -107,7 +108,24 @@ bool GenXDebugLegalization::extractAddressClass(Function& F)
       }
     }
   }
-  return Modified;
+}
+
+// LLVM 12+ may generate DIArgList construct which is not (yet) supported.
+// In order to prevent crashes, remove such metadata.
+void GenXDebugLegalization::removeDIArgList(Function& F)
+{
+#if LLVM_VERSION_MAJOR > 12
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
+        if (dbgInst->getNumVariableLocationOps() > 1) {
+          dbgInst->setUndef();
+          Modified = true;
+        }
+      }
+    }
+  }
+#endif
 }
 
 /***********************************************************************
@@ -118,6 +136,7 @@ bool GenXDebugLegalization::runOnFunction(Function &F)
 {
   Modified = false;
   extractAddressClass(F);
+  removeDIArgList(F);
   return Modified;
 }
 

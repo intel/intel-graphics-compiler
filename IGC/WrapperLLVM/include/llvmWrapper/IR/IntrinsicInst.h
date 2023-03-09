@@ -24,7 +24,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR <= 12
         return DbgInst->getVariableLocation();
 #else
-        IGC_ASSERT_MESSAGE(DbgInst->getNumVariableLocationOps() == 1,
+        IGC_ASSERT_MESSAGE(((DbgInst->getNumVariableLocationOps() == 1) || DbgInst->isUndef()),
                            "unsupported number of location ops");
         return DbgInst->getVariableLocationOp(0);
 #endif
