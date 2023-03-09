@@ -18,7 +18,7 @@ if sys.version_info[0] >= 3:
     reduce = functools.reduce
 
 
-OverloadedTypes = ["any","anyint","anyfloat","anyptr","anyvector"]
+OverloadedTypes = ["any","anyint","anyfloat","anyptr","anyvector", "anystruct"]
 VectorTypes = ["2","4","8","16"]
 DestSizes = ["","","21","22","23","24"]
 
@@ -56,6 +56,7 @@ any_map = \
     "anyfloat":2,
     "anyvector":3,
     "anyptr":4,
+    "anystruct":5,
 }
 
 attribute_map = {
