@@ -3521,6 +3521,38 @@ namespace IGC
         }
     }
 
+    static void verifyOOBScratch(OpenCLProgramContext *ctx,
+                                 COpenCLKernel *simd8Shader,
+                                 COpenCLKernel *simd16Shader,
+                                 COpenCLKernel *simd32Shader) {
+        auto verify = [ctx](CShader *shader) {
+            unsigned int totalScratchUse =
+                shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
+            if (shader->ProgramOutput()->m_UseScratchSpacePrivateMemory)
+              totalScratchUse +=
+                  shader->ProgramOutput()->m_scratchSpaceUsedByShader;
+            if (totalScratchUse >
+                shader->ProgramOutput()->m_scratchSpaceSizeLimit) {
+              std::string errorMsg =
+                  "total scratch space exceeds HW "
+                  "supported limit for kernel " +
+                  shader->entry->getName().str() + ": " +
+                  std::to_string(totalScratchUse) + " bytes (max permitted PTSS " +
+                  std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) +
+                  " bytes)";
+
+              ctx->EmitError(errorMsg.c_str(), nullptr);
+            }
+        };
+
+        if (simd8Shader)
+          verify(simd8Shader);
+        else if (simd16Shader)
+          verify(simd16Shader);
+        else if (simd32Shader)
+          verify(simd32Shader);
+    }
+
     static void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& shaders)
     {
         COMPILER_TIME_START(ctx, TIME_CodeGen);
@@ -3630,7 +3662,7 @@ namespace IGC
         DumpLLVMIR(ctx, "codegen");
     }
 
-    void CodeGen(OpenCLProgramContext* ctx)
+    void CodeGen(OpenCLProgramContext *ctx)
     {
 #ifndef DX_ONLY_IGC
 #ifndef VK_ONLY_IGC
@@ -3734,6 +3766,9 @@ namespace IGC
                     GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
                 else if (COpenCLKernel::IsValidShader(simd8Shader))
                     GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
+                else
+                  // Verify if compilation failed due to OOB scratch
+                  verifyOOBScratch(ctx, simd8Shader, simd16Shader, simd32Shader);
             }
         }
 

@@ -3080,7 +3080,13 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
     jitInfo->numBytesScratchGtpin =
         kernel.getGTPinData()->getNumBytesScratchUse();
     // verify that spill memory used is within platform's acceptable limit
-    if (jitInfo->stats.spillMemUsed > builder.getMaxPTSS()) {
+    unsigned int totalScratchUsed =
+        jitInfo->stats.spillMemUsed +
+        kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+    if (totalScratchUsed > builder.getMaxPTSS()) {
+      builder.criticalMsgStream()
+          << "Total scratch size used by shader exceeds platform capability: "
+          << totalScratchUsed << "\n";
       vISA_ASSERT(false, "spill size exceeds platform capability");
       return VISA_SPILL;
     }

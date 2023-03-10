@@ -6102,6 +6102,10 @@ namespace IGC
             }
 #endif
             context->SetSIMDInfo(SIMD_SKIP_SPILL, m_program->m_dispatchSize, m_program->m_ShaderDispatchMode);
+            // Set spill size despite VISA terminates with VISA_SPILL error code.
+            // This member is checked later for OOB scratch.
+            m_program->ProgramOutput()->m_scratchSpaceUsedBySpills =
+                jitInfo->stats.spillMemUsed;
             return;
         }
 
