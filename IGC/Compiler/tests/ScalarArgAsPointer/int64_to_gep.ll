@@ -11,20 +11,19 @@
 ; OpenCL kernel:
 ;
 ;   kernel void test(long a, long b) {
-;     *((global int*) (a + b)) = 39;
+;     *((global int*) a + b) = 39;
 ;   }
 ;
-; When two scalar kernel args are combined into pointer to global memory and it
-; is unknown which is pointer and which is offset, match both arguments.
+; For GEP instruction, follow only first argument (pointer).
 ;
-; CHECK: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 0}
-; CHECK: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 1}
+; CHECK:     !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 0}
+; CHECK-NOT: !{!"m_OpenCLArgScalarAsPointersSet{{[[][0-9][]]}}", i32 1}
 
 define spir_kernel void @test(i64 %a, i64 %b) #0 {
 entry:
-  %add = add nsw i64 %a, %b
-  %0 = inttoptr i64 %add to i32 addrspace(1)*
-  store i32 39, i32 addrspace(1)* %0, align 4
+  %0 = inttoptr i64 %a to i32 addrspace(1)*
+  %add.ptr = getelementptr inbounds i32, i32 addrspace(1)* %0, i64 %b
+  store i32 39, i32 addrspace(1)* %add.ptr, align 4
   ret void
 }
 

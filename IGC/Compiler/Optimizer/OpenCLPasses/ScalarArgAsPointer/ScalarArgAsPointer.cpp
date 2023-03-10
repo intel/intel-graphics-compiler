@@ -137,14 +137,16 @@ ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
     else
     {
         // For any other type of instruction trace back operands.
-        for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
+        unsigned int numOperands = isa<GetElementPtrInst>(inst) ? 1 : inst->getNumOperands();
+
+        for (unsigned int i = 0; i < numOperands; ++i)
         {
             Value* op = inst->getOperand(i);
 
             if (Argument* arg = dyn_cast<Argument>(op))
             {
                 // Consider only integer arguments
-                if (arg->getType()->isIntegerTy())
+                if (arg->getType()->getScalarType()->isIntegerTy())
                 {
                     result->insert(arg);
                 }
