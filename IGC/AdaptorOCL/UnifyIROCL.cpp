@@ -374,14 +374,6 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
     mpm.add(new PreBIImportAnalysis());
-
-    {
-        FastMathFlags Mask;
-        Mask.setFast();
-        Mask.setNoSignedZeros(false);
-        mpm.add(new SetFastMathFlags(Mask, true));
-    }
-
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
@@ -400,6 +392,10 @@ static void CommonOCLBasedPasses(
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
+        FastMathFlags Mask;
+        Mask.setFast();
+        Mask.setNoSignedZeros(false);
+        mpm.add(new SetFastMathFlags(Mask, true));
 
         // Report undef references after setting func attribs for import linking
         mpm.add(new UndefinedReferencesPass());
