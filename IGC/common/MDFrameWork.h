@@ -276,6 +276,10 @@ namespace IGC
         // Align(
         //     Align(sizeof(RayDispatchGlobalData), 8) + GlobalRootSigSize, 32)
         uint32_t NOSSize = 0;
+        // some RT shaders might want to use auxiliary RT global instances that
+        // are placed after root signature. To calculate their offset,
+        // we need to know the root signature size
+        uint32_t globalRootSignatureSize = 0;
         // A given raytracing shader will have some amount of stack allocated
         // for its arguments, allocas, and spilled values.  We collect
         // information about those entries here for debugging purposes to

@@ -243,20 +243,39 @@ constexpr Type Align(const Type value, const size_t alignment)
 // Maximum size of a block read that we will do from RayDispatchGlobalData.
 static constexpr uint32_t MAX_BLOCK_SIZE = 256;
 
-inline uint32_t GlobalsAllocationSize(uint32_t GlobalRootSigSize, uint32_t numOfRTGlobalDataStructs, uint32_t *pGlobalRootSigOffset = nullptr, uint32_t *pRTGlobalsPointerIncrementSize = nullptr)
+struct RTGlobalsAllocationData
 {
+    // Globals layout should look like this:
+    // RayDispatchGlobalData #0 <- main
+    // global root signature
+    // RayDispatchGlobalData #1 <- auxiliary
+    // ...
+    // RayDispatchGlobalData #n
+    uint32_t totalSize;
+    uint32_t rootSigOffset;
+    uint32_t auxRTGlobalsStartOffset;
+    uint32_t auxRTGlobalsIncrementSize;
+};
+
+inline RTGlobalsAllocationData GlobalsAllocationSize(uint32_t GlobalRootSigSize, uint32_t numOfAuxRTGlobals = 0)
+{
+    RTGlobalsAllocationData data = {0, 0, 0, 0};
     constexpr uint32_t RTGlobalsPointerIncrementSize = uint32_t(Align(sizeof(RayDispatchGlobalData), RTGlobalsAlign));
-    uint32_t GlobalRootSigOffset = (numOfRTGlobalDataStructs - 1) * RTGlobalsPointerIncrementSize + uint32_t(Align(sizeof(RayDispatchGlobalData), sizeof(uint64_t)));
-
-    if (pGlobalRootSigOffset)
-        *pGlobalRootSigOffset = GlobalRootSigOffset;
-
-    if (pRTGlobalsPointerIncrementSize)
-        *pRTGlobalsPointerIncrementSize = RTGlobalsPointerIncrementSize;
+    constexpr uint32_t GlobalRootSigOffset = uint32_t(Align(sizeof(RayDispatchGlobalData), sizeof(uint64_t)));
 
     uint32_t TotalSize = GlobalRootSigOffset + GlobalRootSigSize + MAX_BLOCK_SIZE;
 
-    return Align(TotalSize, 64);
+    data.rootSigOffset = GlobalRootSigOffset;
+    data.totalSize = Align(TotalSize, 64);
+
+    if (numOfAuxRTGlobals)
+    {
+        data.auxRTGlobalsStartOffset = Align(data.totalSize, RTGlobalsAlign);
+        data.auxRTGlobalsIncrementSize = RTGlobalsPointerIncrementSize;
+        data.totalSize = Align(data.auxRTGlobalsStartOffset + numOfAuxRTGlobals * data.auxRTGlobalsIncrementSize, 64);
+    }
+
+    return data;
 }
 
 enum class RT_TILE_LAYOUT { _1D, _2D };
