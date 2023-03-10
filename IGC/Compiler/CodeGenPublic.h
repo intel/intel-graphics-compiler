@@ -71,12 +71,12 @@ static const unsigned int g_c_Max_PS_attributes = 32;
 namespace IGCOpts
 {
     // Pass level optimizations
-    static const std::string LowerGEPForPrivMemPassName = "IGC-LowerGEPForPrivMem";
-    static const std::string AddressArithmeticSinkingPassName = "IGC-AddressArithmeticSinking";
-    static const std::string PreRASchedulerPassName = "IGC-PreRAScheduler";
-    static const std::string MergeURBWritePassName = "IGC-MergeURBWrites";
-    static const std::string ConstantCoalescingPassName = "IGC-ConstantCoalescing";
-    static const std::string SinkLoadOptPassName = "IGC-SinkLoadOpt";
+    static const std::string LowerGEPForPrivMemPass = "IGC-LowerGEPForPrivMem";
+    static const std::string AddressArithmeticSinkingPass = "IGC-AddressArithmeticSinking";
+    static const std::string PreRASchedulerPass = "IGC-PreRAScheduler";
+    static const std::string MergeURBWritePass = "IGC-MergeURBWrites";
+    static const std::string ConstantCoalescingPass = "IGC-ConstantCoalescing";
+    static const std::string SinkLoadOptPass = "IGC-SinkLoadOpt";
 
     // Non-pass optimizations
     static const std::string AllowSimd32Slicing = "IGC-AllowSimd32Slicing";

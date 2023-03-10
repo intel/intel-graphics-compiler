@@ -262,5 +262,4 @@ namespace IGC
     llvm::FunctionPass* createMergeMemFromBranchOptPass();
     llvm::FunctionPass* createSinkLoadOptPass();
     llvm::FunctionPass* createInsertBranchOptPass();
-    llvm::FunctionPass* createInsertFuncOptsMetadataPass();
 } // namespace IGC

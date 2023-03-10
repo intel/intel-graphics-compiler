@@ -6468,7 +6468,7 @@ namespace {
 
         virtual StringRef getPassName() const override
         {
-            return IGCOpts::SinkLoadOptPassName;
+            return IGCOpts::SinkLoadOptPass;
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
@@ -7246,76 +7246,4 @@ bool InsertBranchOpt::runOnFunction(Function& F)
     typedWriteZeroStoreCheck(F);
 
     return false;
-}
-
-
-namespace
-{
-    class InsertFuncOptsMetadata : public FunctionPass
-    {
-    public:
-        static char ID;
-        InsertFuncOptsMetadata();
-
-        StringRef getPassName() const override { return "InsertFuncOptsMetadata"; }
-        bool runOnFunction(Function& F) override;
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
-    private:
-    };
-}
-
-#undef PASS_FLAG
-#undef PASS_DESCRIPTION
-#undef PASS_CFG_ONLY
-#undef PASS_ANALYSIS
-#define PASS_FLAG "InsertFuncOptsMetadata"
-#define PASS_DESCRIPTION "inserts metadata to disable optimizations per function"
-#define PASS_CFG_ONLY false
-#define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(InsertFuncOptsMetadata, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(InsertFuncOptsMetadata, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-
-char InsertFuncOptsMetadata::ID = 0;
-FunctionPass* IGC::createInsertFuncOptsMetadataPass()
-{
-    return new InsertFuncOptsMetadata();
-}
-
-InsertFuncOptsMetadata::InsertFuncOptsMetadata() : FunctionPass(ID)
-{
-    initializeInsertFuncOptsMetadataPass(*PassRegistry::getPassRegistry());
-}
-
-bool InsertFuncOptsMetadata::runOnFunction(Function& F)
-{
-    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    auto modMD = pCtx->getModuleMetaData();
-
-    if (F.isDeclaration()) return false;
-
-    FunctionMetaData* funcMD = &modMD->FuncMD[&F];  // Okay to insert funcMD if not present
-    auto OptDisableSet = &(funcMD->m_OptsToDisable);
-
-    // Disable opt passes at a per-function level using the retry manager states
-    if (!pCtx->m_retryManager.AllowPromotePrivateMemory(&F))
-        OptDisableSet->insert(IGCOpts::LowerGEPForPrivMemPassName);
-    if (!pCtx->m_retryManager.AllowAddressArithmeticSinking(&F))
-        OptDisableSet->insert(IGCOpts::AddressArithmeticSinkingPassName);
-    if (!pCtx->m_retryManager.AllowPreRAScheduler(&F))
-        OptDisableSet->insert(IGCOpts::PreRASchedulerPassName);
-    if (!pCtx->m_retryManager.AllowLargeURBWrite(&F))
-        OptDisableSet->insert(IGCOpts::MergeURBWritePassName);
-    if (!pCtx->m_retryManager.AllowConstantCoalescing(&F))
-        OptDisableSet->insert(IGCOpts::ConstantCoalescingPassName);
-    if (!pCtx->m_retryManager.AllowLoadSinking(&F))
-        OptDisableSet->insert(IGCOpts::SinkLoadOptPassName);
-    if (!pCtx->m_retryManager.AllowSimd32Slicing(&F))
-        OptDisableSet->insert(IGCOpts::AllowSimd32Slicing);
-
-    return true;
 }

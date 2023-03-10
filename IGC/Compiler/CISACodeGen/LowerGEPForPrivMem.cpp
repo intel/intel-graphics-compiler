@@ -44,7 +44,7 @@ namespace IGC {
 
         virtual StringRef getPassName() const override
         {
-            return IGCOpts::LowerGEPForPrivMemPassName;
+            return IGCOpts::LowerGEPForPrivMemPass;
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
