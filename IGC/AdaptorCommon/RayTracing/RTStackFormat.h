@@ -121,8 +121,8 @@ constexpr static uint32_t MEM_STACK_SIZE = 4;
 
 // DXR uses two BVH levels: a top-level acceleration structure and a
 // bottom-level acceleration structure.
-constexpr static uint8_t TOP_LEVEL_BVH    = 0;
-constexpr static uint8_t BOTTOM_LEVEL_BVH = 1;
+constexpr static uint32_t TOP_LEVEL_BVH    = 0;
+constexpr static uint32_t BOTTOM_LEVEL_BVH = 1;
 
 // Auxiliary types to make update of the structs easier.
 using uint3  = uint32_t[3];
@@ -896,6 +896,9 @@ constexpr uint64_t calcRTMemoryAllocSize(
 }
 
 constexpr uint32_t getSyncStackSize() {
+#define STYLE(X) static_assert(sizeof(RTStack2<Xe>) == sizeof(RTStack2<X>));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
     return sizeof(RTStack2<Xe>);
 }
 

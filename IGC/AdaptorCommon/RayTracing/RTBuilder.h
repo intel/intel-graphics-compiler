@@ -228,6 +228,7 @@ public:
     Value* getRtMemBasePtr(void);
     Value* getMaxBVHLevels(void);
     Value* getStatelessScratchPtr(void);
+
     Value* getLeafType(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getIsFrontFace(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
 
@@ -244,7 +245,7 @@ public:
     void createReadSyncTraceRay(Value* val);
 
     TraceRaySyncIntrinsic* createSyncTraceRay(Value* bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
-    TraceRaySyncIntrinsic* createSyncTraceRay(uint8_t bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
+    TraceRaySyncIntrinsic* createSyncTraceRay(uint32_t bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
 
 
     std::pair<BasicBlock*, PHINode*>
@@ -263,6 +264,8 @@ public:
         StackPointerVal* perLaneStackPtr, uint32_t Idx, uint32_t BvhLevel = RTStackFormat::TOP_LEVEL_BVH);
 
     Value* getWorldRayOrig(StackPointerVal* perLaneStackPtr, uint32_t dim);
+    Value* getMemRayOrig(StackPointerVal* perLaneStackPtr, uint32_t dim, uint32_t BvhLevel, const Twine &Name = "");
+    Value* getMemRayDir(StackPointerVal* perLaneStackPtr, uint32_t dim, uint32_t BvhLevel, const Twine &Name = "");
     Value* getWorldRayDir(StackPointerVal* perLaneStackPtr, uint32_t dim);
     Value* getObjRayOrig(
         StackPointerVal* perLaneStackPtr, uint32_t dim, IGC::CallableShaderTypeMD ShaderTy,
@@ -312,6 +315,8 @@ public:
     // Utilities
     Type* getInt64PtrTy(unsigned int AddrSpace = 0U) const;
     Type* getInt32PtrTy(unsigned int AddrSpace = 0U) const;
+
+    IGC::RTMemoryStyle getMemoryStyle() const;
 
     Value* getRootNodePtr(Value* BVHPtr);
 
@@ -363,6 +368,7 @@ private:
     Value* canonizePointer(Value* Ptr);
     Value* getGlobalSyncStackID();
     Value* getSyncRTStackSize();
+    uint32_t getRTStack2Size() const;
     Value* getRTStackSize(uint32_t Align);
     SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode);
     Value* getGeometryIndex(
@@ -417,7 +423,9 @@ private:
 public:
 #include "AutoGenRTStackAccessPublicOS.h"
 public:
-    static Type* getRTStack2PtrTy(const IGC::CodeGenContext& Ctx, RTMemoryAccessMode Mode, bool async = true);
+    Type* getSMStack2Ty() const;
+    Type* getRTStack2Ty() const;
+    Type* getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
     Type* getRayDispatchGlobalDataPtrTy(Module &M);
 
 

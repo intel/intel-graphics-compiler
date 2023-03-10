@@ -34,6 +34,21 @@ using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
 
+namespace {
+    class VAdapt
+    {
+        Value* VA = nullptr;
+    public:
+        explicit VAdapt(nullptr_t) = delete;
+        explicit VAdapt(Value* V)                      : VA(V) {}
+        explicit VAdapt(IRBuilder<>& IRB, uint32_t V)  : VA(IRB.getInt32(V)) {}
+        explicit VAdapt(IRBuilder<>& IRB, uint64_t V)  : VA(IRB.getInt64(V)) {}
+        explicit VAdapt(IRBuilder<>& IRB, bool V)      : VA(IRB.getInt1(V)) {}
+        explicit VAdapt(IRBuilder<>& IRB, IGC::CallableShaderTypeMD V) : VA(IRB.getInt32(V)) {}
+        operator Value*() const { return VA; }
+    };
+};
+
 std::pair<BasicBlock*, BasicBlock*>
 RTBuilder::createTriangleFlow(
     Value* Cond,
@@ -68,7 +83,13 @@ void RTBuilder::setInvariantLoad(LoadInst* LI)
 
 Value* RTBuilder::getRtMemBasePtr(void)
 {
-    return _get_rtMemBasePtr_Xe();
+#define STYLE(X)                                                 \
+    static_assert(                                               \
+        offsetof(RayDispatchGlobalData::RT::Xe, rtMemBasePtr) == \
+        offsetof(RayDispatchGlobalData::RT::X,  rtMemBasePtr));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    return _get_rtMemBasePtr_Xe(VALUE_NAME("rtMemBasePtr"));
 }
 
 
@@ -77,23 +98,37 @@ Value* RTBuilder::getMaxBVHLevels(void)
     if (!DisableRTGlobalsKnownValues)
         return this->getInt32(MAX_BVH_LEVELS);
 
-    return _get_maxBVHLevels_Xe();
+    switch (getMemoryStyle())
+    {
+    case RTMemoryStyle::Xe:
+        return _get_maxBVHLevels_Xe(VALUE_NAME("maxBVHLevels"));
+    }
+    IGC_ASSERT(0);
+    return {};
 }
-
 
 Value* RTBuilder::getStatelessScratchPtr(void)
 {
-    return _get_statelessScratchPtr();
+    return _get_statelessScratchPtr(VALUE_NAME("statelessScratchPtr"));
 }
 
 
 Value* RTBuilder::getIsFrontFace(
     RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getIsFrontFace_Xe(
-        StackPointer,
-        getInt1(ShaderTy == ClosestHit),
-        VALUE_NAME("is_front_face"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                     \
+    case RTMemoryStyle::X:                           \
+        return _getIsFrontFace_##X(                  \
+            StackPointer,                            \
+            VAdapt{ *this, ShaderTy == ClosestHit }, \
+            VALUE_NAME("is_front_face"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 
@@ -113,7 +148,7 @@ Value* RTBuilder::CreateSyncStackPtrIntrinsic(
         this->setReturnAlignment(StackPtr, RTStackAlign);
         if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
         {
-            this->setDereferenceable(StackPtr, sizeof(RTStack2<Xe>));
+            this->setDereferenceable(StackPtr, getRTStack2Size());
         }
     }
 
@@ -139,9 +174,23 @@ Value* RTBuilder::getGlobalSyncStackID()
     return val;
 }
 
+uint32_t RTBuilder::getRTStack2Size() const
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X) case RTMemoryStyle::X: return sizeof(RTStack2<RTStackFormat::X>);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return 0;
+}
+
 Value* RTBuilder::getRTStackSize(uint32_t Align)
 {
-    static_assert(sizeof(RTStack2<Xe>) == 256, "Might need to update this!");
+#define STYLE(X) static_assert(sizeof(RTStack2<Xe>) == sizeof(RTStack2<RTStackFormat::X>));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
     // syncStackSize = sizeof(HitInfo)*2 + (sizeof(Ray) + sizeof(TravStack))*RTDispatchGlobals.maxBVHLevels
     Value* stackSize = this->CreateMul(
         this->getInt32(sizeof(MemRay<Xe>) + sizeof(MemTravStack)),
@@ -187,18 +236,18 @@ Value* RTBuilder::getSyncStackOffset(bool rtMemBasePtr)
 
 RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode)
 {
-    auto* PtrTy = _gettype_RTStack2(*this->Ctx.getModule());
+    auto* PointeeTy = getRTStack2Ty();
     if (Mode == RTBuilder::STATEFUL)
     {
         uint32_t AddrSpace = getRTSyncStackStatefulAddrSpace(*Ctx.getModuleMetaData());
-        Value* perLaneStackPointer = this->CreateIntToPtr(syncStackOffset, PointerType::get(PtrTy, AddrSpace));
+        Value* perLaneStackPointer = this->CreateIntToPtr(syncStackOffset, PointerType::get(PointeeTy, AddrSpace));
         return static_cast<RTBuilder::SyncStackPointerVal*>(perLaneStackPointer);
     }
     else
     {
         Value* memBasePtr = nullptr;
         {
-            memBasePtr = this->getRtMemBasePtr();;
+            memBasePtr = this->getRtMemBasePtr();
         }
         IGC_ASSERT(memBasePtr != nullptr);
 
@@ -207,7 +256,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackO
             stackBase,
             this->CreateZExt(syncStackOffset, stackBase->getType()),
             VALUE_NAME("HWMem.perLaneSyncStackPointer"));
-        perLaneStackPointer = this->CreateIntToPtr(perLaneStackPointer, PointerType::get(PtrTy, ADDRESS_SPACE_GLOBAL));
+        perLaneStackPointer = this->CreateIntToPtr(perLaneStackPointer, PointerType::get(PointeeTy, ADDRESS_SPACE_GLOBAL));
         return static_cast<RTBuilder::SyncStackPointerVal*>(perLaneStackPointer);
     }
 }
@@ -221,7 +270,7 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer()
     // requests for the sync stack pointer in early phases of compilation
     // will return a marker intrinsic that can be analyzed later by cache ctrl pass.
     // "marker" here means this intrinsic will be lowered to almost nothing eventually.
-    auto* PtrTy = this->getRTStack2PtrTy(Ctx, Mode, false);
+    auto* PtrTy = this->getRTStack2PtrTy(Mode, false);
 
     Value* stackOffset = this->getSyncStackOffset(RTBuilder::STATELESS == Mode);
     stackOffset = this->getSyncStackPointer(stackOffset, Mode);
@@ -281,7 +330,7 @@ TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
 }
 
 TraceRaySyncIntrinsic* RTBuilder::createSyncTraceRay(
-    uint8_t bvhLevel,
+    uint32_t bvhLevel,
     Value* traceRayCtrl,
     const Twine& PayloadName)
 {
@@ -396,12 +445,11 @@ std::pair<BasicBlock*, PHINode*> RTBuilder::validateInstanceLeafPtr(
 //
 std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name)
 {
-    auto& M = *this->GetInsertBlock()->getModule();
     //FIXME: Temp solution: to shrink ShadowMemory, if ShrinkShadowMemoryIfNoSpillfill is true (we know no spillfill), then,
     //we alloca SMStack instead of RTStack to reduce the size. Also, here, we simply cast SMStack pointer to RTStack which is risky
     //and it's safe now if we only shrink the last variable of RTStack (MemTravStack).
     //But don't shrink data in the middle of RTStack which will lead to holes.
-    auto* RTStackTy = bShrinkSMStack ? _gettype_SMStack2(M) : _gettype_RTStack2(M);
+    auto* RTStackTy = bShrinkSMStack ? getSMStack2Ty() : getRTStack2Ty();
 
     Value* rtStacks = this->CreateAlloca(
         ArrayType::get(RTStackTy, size),
@@ -424,7 +472,17 @@ std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int si
 
 void RTBuilder::setDoneBit(RTBuilder::StackPointerVal* StackPointer, bool Committed)
 {
-    _setDoneBit_Xe(StackPointer, getInt1(Committed));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                          \
+    case RTMemoryStyle::X:                \
+        _setDoneBit_##X(                  \
+            StackPointer,                 \
+            VAdapt{ *this, Committed });  \
+        break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
 }
 
 
@@ -458,44 +516,139 @@ Value* RTBuilder::alignVal(Value* V, uint64_t Align)
 Value* RTBuilder::getRayInfo(StackPointerVal* perLaneStackPtr, uint32_t Idx, uint32_t BvhLevel)
 {
     IGC_ASSERT_MESSAGE(Idx < 8, "out-of-bounds!");
-    return _getRayInfo_Xe(
-        perLaneStackPtr,
-        getInt32(Idx),
-        getInt32(BvhLevel),
-        VALUE_NAME("RayInfo." + Twine(Idx)));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                       \
+    case RTMemoryStyle::X:             \
+        return _getRayInfo_##X(        \
+            perLaneStackPtr,           \
+            VAdapt{ *this, Idx },      \
+            VAdapt{ *this, BvhLevel }, \
+            VALUE_NAME("RayInfo." + Twine(Idx)));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getRayTMin(RTBuilder::StackPointerVal* perLaneStackPtr)
 {
-    return _getRayTMin(perLaneStackPtr, VALUE_NAME("rayTMin"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                     \
+    case RTMemoryStyle::X:           \
+        return _getRayTMin_##X(      \
+            perLaneStackPtr,         \
+            VALUE_NAME("rayTMin"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 // returns an i16 value containing the current rayflags. Sync only.
 Value* RTBuilder::getRayFlags(RTBuilder::SyncStackPointerVal* perLaneStackPtr)
 {
-    return _getRayFlagsSync_Xe(perLaneStackPtr, VALUE_NAME("rayflags"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                          \
+    case RTMemoryStyle::X:                \
+        return _getRayFlagsSync_##X(      \
+            perLaneStackPtr,              \
+            VALUE_NAME("rayflags"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 void RTBuilder::setRayFlags(RTBuilder::SyncStackPointerVal* perLaneStackPtr, Value* V)
 {
-    _setRayFlagsSync_Xe(perLaneStackPtr, V);
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                          \
+    case RTMemoryStyle::X:                \
+        _setRayFlagsSync_##X(             \
+            perLaneStackPtr,              \
+            V);                           \
+        break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
 }
 
 
 Value* RTBuilder::getWorldRayOrig(RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim)
 {
-    return _getWorldRayOrig(
-        perLaneStackPtr,
-        getInt32(dim),
-        VALUE_NAME("WorldRayOrig[" + Twine(dim) + "]"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                     \
+    case RTMemoryStyle::X:           \
+        return _getWorldRayOrig_##X( \
+            perLaneStackPtr,         \
+            VAdapt{ *this, dim },    \
+            VALUE_NAME("WorldRayOrig[" + Twine(dim) + "]"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
+}
+
+Value* RTBuilder::getMemRayOrig(StackPointerVal* perLaneStackPtr, uint32_t dim, uint32_t BvhLevel, const Twine& Name)
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                       \
+    case RTMemoryStyle::X:             \
+        return _getMemRayOrig_##X(     \
+            perLaneStackPtr,           \
+            VAdapt{ *this, dim },      \
+            VAdapt{ *this, BvhLevel }, \
+            Name);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
+}
+
+Value* RTBuilder::getMemRayDir(StackPointerVal* perLaneStackPtr, uint32_t dim, uint32_t BvhLevel, const Twine& Name)
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                       \
+    case RTMemoryStyle::X:             \
+        return _getMemRayDir_##X(      \
+            perLaneStackPtr,           \
+            VAdapt{ *this, dim },      \
+            VAdapt{ *this, BvhLevel }, \
+            Name);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getWorldRayDir(RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim)
 {
-    return _getWorldRayDir(
-        perLaneStackPtr,
-        getInt32(dim),
-        VALUE_NAME("WorldRayDir[" + Twine(dim) + "]"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                       \
+    case RTMemoryStyle::X:             \
+        return _getWorldRayDir_##X(    \
+            perLaneStackPtr,           \
+            VAdapt{ *this, dim },      \
+            VALUE_NAME("WorldRayDir[" + Twine(dim) + "]"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getObjRayOrig(
@@ -511,10 +664,10 @@ Value* RTBuilder::getObjRayOrig(
     }
     else
     {
-        info = _getMemRayOrg(
+        info = getMemRayOrig(
             perLaneStackPtr,
-            getInt32(BOTTOM_LEVEL_BVH),
-            getInt32(dim),
+            dim,
+            BOTTOM_LEVEL_BVH,
             VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
     }
     return info;
@@ -533,11 +686,11 @@ Value* RTBuilder::getObjRayDir(
     }
     else
     {
-        info = _getMemRayDir(
+        info = getMemRayDir(
             perLaneStackPtr,
-            getInt32(BOTTOM_LEVEL_BVH),
-            getInt32(dim),
-            VALUE_NAME("ObjRayOrig[" + Twine(dim) + "]"));
+            dim,
+            BOTTOM_LEVEL_BVH,
+            VALUE_NAME("ObjRayDir[" + Twine(dim) + "]"));
     }
     return info;
 }
@@ -545,8 +698,19 @@ Value* RTBuilder::getObjRayDir(
 Value* RTBuilder::getRayTCurrent(
     RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getRayTCurrent_Xe(
-        perLaneStackPtr, getInt32(ShaderTy), VALUE_NAME("rayTCurrent"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                     \
+    case RTMemoryStyle::X:                           \
+        return _getRayTCurrent_##X(                  \
+            perLaneStackPtr,                         \
+            VAdapt{ *this, ShaderTy },               \
+            VALUE_NAME("rayTCurrent"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getInstanceIndex(
@@ -572,8 +736,19 @@ Value* RTBuilder::getInstanceIndex(
 Value* RTBuilder::getInstanceIndex(
     RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getInstanceIndex_Xe(
-        perLaneStackPtr, getInt32(ShaderTy), VALUE_NAME("InstanceIndex"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                     \
+    case RTMemoryStyle::X:                           \
+        return _getInstanceIndex_##X(                \
+            perLaneStackPtr,                         \
+            VAdapt{ *this, ShaderTy },               \
+            VALUE_NAME("InstanceIndex"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getInstanceID(
@@ -599,8 +774,19 @@ Value* RTBuilder::getInstanceID(
 Value* RTBuilder::getInstanceID(
     RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getInstanceID_Xe(
-        perLaneStackPtr, getInt32(ShaderTy), VALUE_NAME("InstanceID"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                     \
+    case RTMemoryStyle::X:                           \
+        return _getInstanceID_##X(                   \
+            perLaneStackPtr,                         \
+            VAdapt{ *this, ShaderTy },               \
+            VALUE_NAME("InstanceID"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getPrimitiveIndex(
@@ -631,11 +817,20 @@ Value* RTBuilder::getPrimitiveIndex(
 PHINode* RTBuilder::getPrimitiveIndex(
     RTBuilder::StackPointerVal* perLaneStackPtr, Value* leafType, bool Committed)
 {
-    return _getPrimitiveIndex_Xe(
-        perLaneStackPtr,
-        leafType,
-        getInt1(Committed),
-        VALUE_NAME("primitiveIndex"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                        \
+    case RTMemoryStyle::X:              \
+        return _getPrimitiveIndex_##X(  \
+            perLaneStackPtr,            \
+            leafType,                   \
+            VAdapt{ *this, Committed }, \
+            VALUE_NAME("primitiveIndex"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getGeometryIndex(
@@ -669,21 +864,39 @@ Value* RTBuilder::getGeometryIndex(
     Value* leafType,
     IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getGeometryIndex_Xe(
-        perLaneStackPtr,
-        leafType,
-        getInt1(ShaderTy == ClosestHit),
-        VALUE_NAME("geometryIndex"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                     \
+    case RTMemoryStyle::X:                           \
+        return _getGeometryIndex_##X(                \
+            perLaneStackPtr,                         \
+            leafType,                                \
+            VAdapt{ *this, ShaderTy == ClosestHit }, \
+            VALUE_NAME("geometryIndex"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getInstanceContributionToHitGroupIndex(
     RTBuilder::StackPointerVal* perLaneStackPtr,
     IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getInstanceContributionToHitGroupIndex_Xe(
-        perLaneStackPtr,
-        getInt32(ShaderTy),
-        VALUE_NAME("InstanceContributionToHitGroupIndex"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                            \
+    case RTMemoryStyle::X:                                  \
+        return _getInstanceContributionToHitGroupIndex_##X( \
+            perLaneStackPtr,                                \
+            VAdapt{ *this, ShaderTy },                      \
+            VALUE_NAME("InstanceContributionToHitGroupIndex"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getObjToWorld(
@@ -736,12 +949,21 @@ Value* RTBuilder::getObjWorldAndWorldObj(
     uint32_t dim,
     IGC::CallableShaderTypeMD ShaderTy)
 {
-    return _getObjWorldAndWorldObj_Xe(
-        perLaneStackPtr,
-        getInt32(dim),
-        getInt1(infoKind == IGC::OBJECT_TO_WORLD),
-        getInt32(ShaderTy),
-        VALUE_NAME("matrix[" + Twine(dim) + "]"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                               \
+    case RTMemoryStyle::X:                                     \
+        return _getObjWorldAndWorldObj_##X(                    \
+            perLaneStackPtr,                                   \
+            VAdapt{ *this, dim },                              \
+            VAdapt{ *this, infoKind == IGC::OBJECT_TO_WORLD }, \
+            VAdapt{ *this, ShaderTy },                         \
+            VALUE_NAME("matrix[" + Twine(dim) + "]"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::TransformWorldToObject(
@@ -776,8 +998,20 @@ Value* RTBuilder::TransformWorldToObject(
 {
     IGC_ASSERT_MESSAGE((dim < 3), "dim out of bounds!");
 
-    return _TransformWorldToObject_Xe(
-        perLaneStackPtr, getInt32(dim), getInt1(isOrigin), getInt32(ShaderTy));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                            \
+    case RTMemoryStyle::X:                  \
+        return _TransformWorldToObject_##X( \
+            perLaneStackPtr,                \
+            VAdapt{ *this, dim },           \
+            VAdapt{ *this, isOrigin },      \
+            VAdapt{ *this, ShaderTy });
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 
@@ -916,10 +1150,10 @@ Value* RTBuilder::getRootNodePtr(Value* BVHPtr)
         this->getInt64Ty(),
         VALUE_NAME("&BVH"));
 
-    return _getBVHPtr_Xe(
+    return _getBVHPtr(
         BVHI,
-        getInt64(Ctx.BVHFixedOffset.has_value() ? *Ctx.BVHFixedOffset : 0),
-        getInt1(Ctx.BVHFixedOffset.has_value()),
+        VAdapt{ *this, Ctx.BVHFixedOffset.has_value() ? *Ctx.BVHFixedOffset : 0 },
+        VAdapt{ *this, Ctx.BVHFixedOffset.has_value() },
         VALUE_NAME("rootNodePtr"));
 }
 
@@ -928,37 +1162,102 @@ void RTBuilder::setHitT(
     Value* V,
     bool Committed)
 {
-    _setHitT_Xe(StackPointer, V, getInt1(Committed));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                          \
+    case RTMemoryStyle::X:                \
+        _setHitT_##X(                     \
+            StackPointer,                 \
+            V,                            \
+            VAdapt{ *this, Committed });  \
+        break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
 }
 
 Value* RTBuilder::getHitT(
     StackPointerVal* StackPointer,
     bool Committed)
 {
-    return _getHitT_Xe(StackPointer, getInt1(Committed),
-        VALUE_NAME(Committed ? "committedHit.t" : "potentialHit.t"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                          \
+    case RTMemoryStyle::X:                \
+        return _getHitT_##X(              \
+            StackPointer,                 \
+            VAdapt{ *this, Committed },   \
+            VALUE_NAME(Committed ? "committedHit.t" : "potentialHit.t"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::isDoneBitNotSet(StackPointerVal* StackPointer, bool Committed)
 {
-    return _isDoneBitNotSet_Xe(
-        StackPointer, getInt1(Committed), VALUE_NAME("!done"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                          \
+    case RTMemoryStyle::X:                \
+        return _isDoneBitNotSet_##X(      \
+            StackPointer,                 \
+            VAdapt{ *this, Committed },   \
+            VALUE_NAME("!done"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getBvhLevel(StackPointerVal* StackPointer, bool Committed)
 {
-    return _getBvhLevel_Xe(StackPointer, getInt1(Committed));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                      \
+    case RTMemoryStyle::X:            \
+        return _getBvhLevel_##X(      \
+            StackPointer,             \
+            VAdapt{ *this, Committed });
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getHitValid(RTBuilder::StackPointerVal* StackPointer, bool CommittedHit)
 {
-    return _isValid_Xe(StackPointer, getInt1(CommittedHit), VALUE_NAME("valid"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                            \
+    case RTMemoryStyle::X:                  \
+        return _isValid_##X(                \
+            StackPointer,                   \
+            VAdapt{ *this, CommittedHit },  \
+            VALUE_NAME("valid"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
-//MemHit.valid = true;
 void RTBuilder::setHitValid(StackPointerVal* StackPointer, bool CommittedHit)
 {
-    _setHitValid_Xe(StackPointer, getInt1(CommittedHit));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                            \
+    case RTMemoryStyle::X:                  \
+        _setHitValid_##X(                   \
+            StackPointer,                   \
+            VAdapt{ *this, CommittedHit }); \
+        break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
 }
 
 Value* RTBuilder::getSyncTraceRayControl(Value* ptrCtrl)
@@ -976,19 +1275,39 @@ Value* RTBuilder::getHitBaryCentric(
     RTBuilder::StackPointerVal* StackPointer, uint32_t idx, bool CommittedHit)
 {
     IGC_ASSERT_MESSAGE(idx == 0 || idx == 1, "Only U V are supported.");
-    return _getHitBaryCentric_Xe(
-        StackPointer,
-        getInt32(idx),
-        getInt1(CommittedHit),
-        VALUE_NAME(idx ? "MemHit.v" : "MemHit.u"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                            \
+    case RTMemoryStyle::X:                  \
+        return _getHitBaryCentric_##X(      \
+            StackPointer,                   \
+            VAdapt{ *this, idx },           \
+            VAdapt{ *this, CommittedHit },  \
+            VALUE_NAME(idx ? "MemHit.v" : "MemHit.u"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 
 Value* RTBuilder::getLeafType(
     StackPointerVal* StackPointer, bool CommittedHit)
 {
-    return _createLeafType_Xe(
-        StackPointer, getInt1(CommittedHit), VALUE_NAME("leafType"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                            \
+    case RTMemoryStyle::X:                  \
+        return _createLeafType_##X(         \
+            StackPointer,                   \
+            VAdapt{ *this, CommittedHit },  \
+            VALUE_NAME("leafType"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
 }
 
 
@@ -1024,9 +1343,15 @@ Value* RTBuilder::canonizePointer(Value* Ptr)
     // that we create.  Anything coming from the UMD should already be
     // canonized.
 
-    constexpr uint32_t VA_MSB = 47;
+    uint32_t VA_MSB = 0;
+    switch (getMemoryStyle())
+    {
+    case RTMemoryStyle::Xe:
+        VA_MSB = 48 - 1;
+        break;
+    }
     constexpr uint32_t MSB = 63;
-    constexpr uint32_t ShiftAmt = MSB - VA_MSB;
+    uint32_t ShiftAmt = MSB - VA_MSB;
     auto *P2I = this->CreateBitOrPointerCast(Ptr, this->getInt64Ty());
     auto* Canonized = this->CreateShl(P2I, ShiftAmt);
     Canonized = this->CreateAShr(Canonized, ShiftAmt);
@@ -1190,8 +1515,32 @@ static Type* lazyGetRTType(
     return C->getValue()->getType();
 }
 
+Type* RTBuilder::getSMStack2Ty() const
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X) case RTMemoryStyle::X: return _gettype_SMStack2_##X(*Ctx.getModule());
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
+}
+
+Type* RTBuilder::getRTStack2Ty() const
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X) case RTMemoryStyle::X: return _gettype_RTStack2_##X(*Ctx.getModule());
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
+}
+
 Type* RTBuilder::getRTStack2PtrTy(
-    const CodeGenContext &Ctx, RTBuilder::RTMemoryAccessMode Mode, bool async)
+    RTBuilder::RTMemoryAccessMode Mode, bool async) const
 {
     IGC_ASSERT_MESSAGE((Mode == RTBuilder::STATELESS || Mode == RTBuilder::STATEFUL), "unknown?");
 
@@ -1209,12 +1558,11 @@ Type* RTBuilder::getRTStack2PtrTy(
         }
         IGC_ASSERT(AddrSpace != ADDRESS_SPACE_NUM_ADDRESSES);
 
-        auto* Ty = _gettype_RTStack2(*Ctx.getModule());
         return setRTTypeMD(
             *Ctx.getModule(),
             Idx,
             TypesMD,
-            Ty,
+            getRTStack2Ty(),
             RTStackFormat::getRTStackHeaderSize(MAX_BVH_LEVELS),
             AddrSpace);
     };
@@ -1291,6 +1639,11 @@ Type* RTBuilder::getInt32PtrTy(unsigned int AddrSpace) const
     return Type::getInt32PtrTy(this->Context, AddrSpace);
 }
 
+IGC::RTMemoryStyle RTBuilder::getMemoryStyle() const
+{
+    return Ctx.getModuleMetaData()->rtInfo.MemStyle;
+}
+
 
 SpillValueIntrinsic* RTBuilder::getSpillValue(Value* Val, uint64_t Offset)
 {
@@ -1343,7 +1696,15 @@ CallInst* RTBuilder::ctlz(Value* V)
 
 void RTBuilder::createPotentialHit2CommittedHit(StackPointerVal* StackPtr)
 {
-    _createPotentialHit2CommittedHit_Xe(StackPtr);
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                        \
+    case RTMemoryStyle::X:                              \
+        _createPotentialHit2CommittedHit_##X(StackPtr); \
+        break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
 }
 
 void RTBuilder::createTraceRayInlinePrologue(
@@ -1354,13 +1715,18 @@ void RTBuilder::createTraceRayInlinePrologue(
     Value* InstanceInclusionMask,
     Value* TMax)
 {
-    _createTraceRayInlinePrologue_Xe(
-        StackPtr,
-        RayInfo,
-        RootNodePtr,
-        RayFlags,
-        InstanceInclusionMask,
-        TMax);
+    switch (getMemoryStyle())
+    {
+    case RTMemoryStyle::Xe:
+        _createTraceRayInlinePrologue_Xe(
+            StackPtr,
+            RayInfo,
+            RootNodePtr,
+            RayFlags,
+            InstanceInclusionMask,
+            TMax);
+        break;
+    }
 }
 
 void RTBuilder::emitSingleRQMemRayWrite(
@@ -1368,7 +1734,15 @@ void RTBuilder::emitSingleRQMemRayWrite(
     SyncStackPointerVal* SMStackPtr,
     bool singleRQProceed)
 {
-    _emitSingleRQMemRayWrite_Xe(HWStackPtr, SMStackPtr, getInt1(singleRQProceed));
+    switch (getMemoryStyle())
+    {
+    case RTMemoryStyle::Xe:
+        _emitSingleRQMemRayWrite_Xe(
+            HWStackPtr,
+            SMStackPtr,
+            VAdapt{ *this, singleRQProceed });
+        break;
+    }
 }
 
 void RTBuilder::copyMemHitInProceed(
@@ -1376,7 +1750,15 @@ void RTBuilder::copyMemHitInProceed(
     SyncStackPointerVal* SMStackPtr,
     bool singleRQProceed)
 {
-    _copyMemHitInProceed_Xe(HWStackPtr, SMStackPtr, getInt1(singleRQProceed));
+    switch (getMemoryStyle())
+    {
+    case RTMemoryStyle::Xe:
+        _copyMemHitInProceed_Xe(
+            HWStackPtr,
+            SMStackPtr,
+            VAdapt{ *this, singleRQProceed });
+        break;
+    }
 }
 
 Value* RTBuilder::syncStackToShadowMemory(
@@ -1385,22 +1767,63 @@ Value* RTBuilder::syncStackToShadowMemory(
     Value* ProceedReturnVal,
     Value* ShadowMemRTCtrlPtr)
 {
-    return _syncStackToShadowMemory_Xe(
-        HWStackPtr, SMStackPtr, ProceedReturnVal, ShadowMemRTCtrlPtr);
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                             \
+    case RTMemoryStyle::X:                   \
+        return _syncStackToShadowMemory_##X( \
+            HWStackPtr,                      \
+            SMStackPtr,                      \
+            ProceedReturnVal,                \
+            ShadowMemRTCtrlPtr);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getCommittedStatus(SyncStackPointerVal* SMStackPtr)
 {
-    return _getCommittedStatus_Xe(SMStackPtr);
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                             \
+    case RTMemoryStyle::X:                   \
+        return _getCommittedStatus_##X(SMStackPtr);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+
+    IGC_ASSERT(0);
+    return {};
 }
 
 Value* RTBuilder::getCandidateType(SyncStackPointerVal* SMStackPtr)
 {
-    return _getCandidateType_Xe(SMStackPtr, VALUE_NAME("CandidateType"));
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                             \
+    case RTMemoryStyle::X:                   \
+        return _getCandidateType_##X(SMStackPtr, VALUE_NAME("CandidateType"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+
+    IGC_ASSERT(0);
+    return {};
 }
 
 void RTBuilder::commitProceduralPrimitiveHit(
     SyncStackPointerVal* SMStackPtr, Value* THit)
 {
-    _commitProceduralPrimitiveHit_Xe(SMStackPtr, THit);
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                             \
+    case RTMemoryStyle::X:                                   \
+        _commitProceduralPrimitiveHit_##X(SMStackPtr, THit); \
+        break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
 }
