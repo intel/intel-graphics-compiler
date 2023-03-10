@@ -33,7 +33,7 @@ void assert_and_exit_generic(bool check);
 // vISA_ASSERT_INPUT -- use this assert when outside interface (IGC) provides
 // incorrect data to vISA
 // TODO: have different exit codes based on the visa assert flavor?
-#if defined (_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
+#if defined(_DEBUG) || (!defined(DLL_MODE) && defined(_INTERNAL)) || !defined(NDEBUG)
 #define vASSERT(x) \
   visa_assert_top(x, "error, assertion failed", "")
 #define vISA_ASSERT(x, custommsg, ...) \
@@ -43,7 +43,7 @@ void assert_and_exit_generic(bool check);
 #define vISA_ASSERT_INPUT(x, custommsg, ...) \
   visa_assert_top(x, "input error, assertion failed", custommsg, ##__VA_ARGS__)
 
-#else // (_DEBUG) || !(DLL_MODE) || !(NDEBUG)
+#else // (_DEBUG) || (!(DLL_MODE) && (_INTERNAL)) || !(NDEBUG)
 #define vASSERT(x) ((void)(0))
 #define vISA_ASSERT(x, custommsg, ...) ((void)(0))
 #define vISA_ASSERT_UNREACHABLE(custommsg, ...) ((void)(0))
