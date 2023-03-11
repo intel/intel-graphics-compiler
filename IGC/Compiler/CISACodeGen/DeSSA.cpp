@@ -949,7 +949,6 @@ DeSSA::SplitInterferencesForBasicBlock(
 
         // so we know MBB-target, i.e. the phi-block is a divergent-join
         if (WIA->insideDivergentCF(MBB->getTerminator())) {
-            llvm::DenseMap<int, PHINode*> UniformColors;
             for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end();
                  BBI != BBE; ++BBI) {
                 PHINode *PHI = dyn_cast<PHINode>(BBI);
@@ -969,34 +968,8 @@ DeSSA::SplitInterferencesForBasicBlock(
                         Value *PredValue = PHI->getOperand(PredIndex);
                         // check if we will need to add a phi-copy from PBB
                         if (isa<Constant>(PredValue) || isIsolated(PredValue)) {
-                            if (UniformColors.find(RootC) == UniformColors.end())
-                                UniformColors[RootC] = PHI;
-                            else
-                                IGC_ASSERT(UniformColors[RootC] == PHI);
-                        }
-                    }
-                }
-            }
-            // After we find all the uniform-congruents that may have problem,
-            // Check if those colors are also used by the sources of other PHIs
-            // in this block, isolate those sources
-            for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end();
-                 BBI != BBE; ++BBI) {
-                PHINode *PHI = dyn_cast<PHINode>(BBI);
-                if (!PHI)
-                    break;
-                unsigned PredIndex;
-                for (PredIndex = 0; PredIndex < PHI->getNumOperands();
-                     ++PredIndex) {
-                    auto PBB = PHI->getIncomingBlock(PredIndex);
-                    if (WIA->insideDivergentCF(PBB->getTerminator())) {
-                        Value *PredValue = PHI->getOperand(PredIndex);
-                        if (isa<Constant>(PredValue) || isIsolated(PredValue))
-                            continue;
-                        auto RootC = getRootColor(PredValue);
-                        if (UniformColors.find(RootC) != UniformColors.end()) {
-                            if (PHI != UniformColors[RootC])
-                                isolateReg(PredValue);
+                            isolateReg(PHI);
+                            break;
                         }
                     }
                 }
