@@ -64,13 +64,7 @@ class G4_BB {
   //
   // if the current BB ends with a CALL subroutine, then the calleeInfo points
   // to the FuncInfo node corresponding to the called function.
-  // else if the block is an INIT/EXIT block of a function, then the funcInfo
-  // points to the FuncInfo node of its function.
-  //
-  union {
-    FuncInfo *calleeInfo;
-    FuncInfo *funcInfo;
-  };
+  FuncInfo *calleeInfo;
 
   //
   // the block classification
@@ -236,8 +230,6 @@ public:
 
   FuncInfo *getCalleeInfo() const { return calleeInfo; }
   void setCalleeInfo(FuncInfo *callee) { calleeInfo = callee; }
-  FuncInfo *getFuncInfo() const { return funcInfo; }
-  void setFuncInfo(FuncInfo *func) { funcInfo = func; }
 
   int getBBType() const { return BBType; }
   void setBBType(int type) { BBType |= type; }

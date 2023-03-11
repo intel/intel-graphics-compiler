@@ -12598,7 +12598,9 @@ void Optimizer::applyFusedCallWA() {
         if (tBI != tBBs.end()) {
           // This is FuncInfo for the current func (including kernel entry func)
           // Make sure new BBs are in the FuncInfo's BBList.
-          std::list<G4_BB *> toBeInserted;
+          // TODO: Does the order of BB in FuncInfo actually matter? If not we
+          // can get rid of getBBList and just call addBB.
+          std::vector<G4_BB *> toBeInserted;
           toBeInserted.push_back(aB0);
           toBeInserted.push_back(aB1);
           toBeInserted.push_back(aS0);
@@ -12607,9 +12609,6 @@ void Optimizer::applyFusedCallWA() {
             toBeInserted.push_back(aEndB_or_null);
           }
           tBBs.insert(tBI, toBeInserted.begin(), toBeInserted.end());
-
-          // inc call count as a call is duplicated
-          pFInfo->incrementCallCount();
           break;
         }
       }

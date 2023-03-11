@@ -33,46 +33,39 @@ class PhyRegSummary;
 class VarSplitPass;
 
 //
-// FuncInfo - Function CFG information
-//    This class maintains a CFG summary of the function (its INIT block, EXIT
-//    block and number of call sites). The functions's INIT block will contain a
-//    pointer to its related FuncInfo object. The FuncInfo definition is used
-//    for inter-procedural liveness analysis (IPA).
+// FuncInfo - Subroutine CFG information
+//    This class maintains a CFG summary of the subroutine (its INIT block, EXIT
+//    block and number of call sites). It is used by the other passes such as RA
+//    and dominators that require call graph information.
 class FuncInfo {
 private:
-  unsigned id;        // the function id
-  G4_BB *initBB;      // the init node
-  G4_BB *exitBB;      // the exit node
-  unsigned callCount; // the number of call sites
+  unsigned id;   // the subroutine id
+  G4_BB *initBB; // the init node
+  G4_BB *exitBB; // the exit node
 
-  std::vector<G4_BB *> BBList;   // the list of BBs
-  std::unordered_set<G4_BB *> BBSet; // for fast lookup
-  std::list<FuncInfo *> callees; // the list of callees
-  unsigned scopeID;              // the function scope ID
+  std::vector<G4_BB *> BBList;
+  std::vector<FuncInfo *> callees;
+  unsigned scopeID; // the subroutine scope ID
 
+  // TODO: These should be moved to DFSTraverse pass, they do not belong in
+  // this class.
   bool visited;
   unsigned preID;
   unsigned postID;
 
 public:
   FuncInfo(unsigned p_id, G4_BB *p_initBB, G4_BB *p_exitBB)
-      : id(p_id), initBB(p_initBB), exitBB(p_exitBB), callCount(1), scopeID(0),
+      : id(p_id), initBB(p_initBB), exitBB(p_exitBB), scopeID(0),
         visited(false), preID(0), postID(0) {}
 
-  ~FuncInfo() {
-    BBList.clear();
-    callees.clear();
-  }
+  ~FuncInfo() = default;
 
   void clear() {
-    BBSet.clear();
     BBList.clear();
     callees.clear();
   }
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
-  bool doIPA() const { return callCount > 1; }
 
   unsigned getId() const { return id; }
   void setId(unsigned val) { id = val; }
@@ -80,30 +73,11 @@ public:
   G4_BB *getInitBB() const { return initBB; }
   G4_BB *getExitBB() const { return exitBB; }
 
-  void incrementCallCount() { ++callCount; }
-
   void updateInitBB(G4_BB *p_initBB) { initBB = p_initBB; }
   void updateExitBB(G4_BB *p_exitBB) { exitBB = p_exitBB; }
 
   void addCallee(FuncInfo *fn) { callees.push_back(fn); }
-  std::list<FuncInfo *> &getCallees() { return callees; }
-
-  bool contains(G4_BB *bb) {
-    if (BBSet.size() != BBList.size()) {
-      BBSet.clear();
-      std::for_each(BBList.begin(), BBList.end(),
-                    [&](G4_BB *curBB) { BBSet.insert(curBB); });
-    }
-#ifdef _DEBUG
-    // verify both containers are in sync
-    for (auto subBB : BBList) {
-      vISA_ASSERT(BBSet.count(subBB) == 1, "out of sync containers");
-    }
-#endif
-
-    vISA_ASSERT(BBSet.size() == BBList.size(), "size mismatch");
-    return BBSet.count(bb) > 0;
-  }
+  std::vector<FuncInfo *> &getCallees() { return callees; }
 
   void addBB(G4_BB *bb) { BBList.push_back(bb); }
   std::vector<G4_BB *> &getBBList() { return BBList; }
@@ -119,6 +93,8 @@ public:
 
   unsigned getPostID() const { return postID; }
   void setPostID(unsigned id) { postID = id; }
+
+  void markVarScope(FlowGraph &FG);
 
   void dump() const;
 }; // FuncInfo
@@ -537,7 +513,6 @@ public:
   void topologicalSortCallGraph();
   void findDominators(std::map<FuncInfo *, std::set<FuncInfo *>> &domMap);
   unsigned resolveVarScope(G4_Declare *dcl, FuncInfo *func);
-  void markVarScope(std::vector<G4_BB *> &BBList, FuncInfo *func);
   void markScope();
 
   void addSIMDEdges();
