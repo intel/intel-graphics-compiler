@@ -2649,13 +2649,15 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
                 if (!eltSrc->IsUndef())
                 {
                     Type* ty = sTy->getElementType(i);
+                    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+                    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
                     uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
                     // eltDst's ty = eltSrc's ty
                     CVariable* eltDst = m_currShader->GetNewAlias(
                         DstV,
                         eltSrc->GetType(),
                         byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-                        eltSrc->GetNumberElement() * (DstV->IsUniform() ? 1 : nLanes));
+                        v_nelts * (DstV->IsUniform() ? 1 : nLanes));
                     emitCopyAll(eltDst, eltSrc, ty);
                 }
             }
@@ -2683,16 +2685,18 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
                 Type* ty;
                 uint32_t byteOffset;
                 getFieldByteOffsetAndType(sTy, II, byteOffset, ty);
+                auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+                uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
                 CVariable* eltDst = m_currShader->GetNewAlias(
                     DstV,
                     m_currShader->GetType(ty),
                     byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-                    EltV->GetNumberElement() * (DstV->IsUniform() ? 1 : nLanes));
+                    v_nelts * (DstV->IsUniform() ? 1 : nLanes));
                 CVariable* eltSrc = m_currShader->GetNewAlias(
                     SrcV,
                     m_currShader->GetType(ty),
                     byteOffset * (SrcV->IsUniform() ? 1 : nLanes),
-                    EltV->GetNumberElement() * (SrcV->IsUniform() ? 1 : nLanes));
+                    v_nelts * (SrcV->IsUniform() ? 1 : nLanes));
                 emitCopyAll(eltDst, eltSrc, ty);
             }
         }
@@ -2701,11 +2705,13 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     Type* ty;
     uint32_t byteOffset;
     getFieldByteOffsetAndType(sTy, inst->getIndices(), byteOffset, ty);
+    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
     CVariable* eltDst = m_currShader->GetNewAlias(
         DstV,
         EltV->GetType(),
         byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-        EltV->GetNumberElement() * (DstV->IsUniform() ? 1 : nLanes));
+        v_nelts * (DstV->IsUniform() ? 1 : nLanes));
     emitCopyAll(eltDst, EltV, src1->getType());
 }
 
@@ -2737,15 +2743,18 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
     IGC_ASSERT(!(m_destination->IsUniform() && !srcUniform));
     const unsigned nLanes =
         (srcUniform ? 1 : numLanes(m_currShader->m_dispatchSize));
+    Type* ty = sTy->getStructElementType(idx);
+    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
     unsigned elementOffset = (unsigned)SL->getElementOffset(idx);
     CVariable* EltV = m_currShader->GetNewAlias(
         SrcV,
         m_destination->GetType(),
         elementOffset * nLanes,
-        m_destination->GetNumberElement() * nLanes);
+        v_nelts * nLanes);
 
     // Copy from struct to dest
-    emitCopyAll(m_destination, EltV, sTy->getStructElementType(idx));
+    emitCopyAll(m_destination, EltV, ty);
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
