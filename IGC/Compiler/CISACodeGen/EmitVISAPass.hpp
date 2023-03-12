@@ -277,7 +277,11 @@ public:
         bool isA64,
         int bitSize);
 
+    /// wave/subgroup support
     /// reduction and prefix/postfix facilities
+    static bool ScanReduceIs64BitType(VISA_Type type);
+    static bool ScanReduceIsInt64Mul(e_opcode op, VISA_Type type);
+    bool ScanReduceIsInt64EmulationNeeded(e_opcode op, VISA_Type type);
     CVariable* ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
         CVariable* src, CVariable* dst, CVariable* flag = nullptr);
     CVariable* ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src);
