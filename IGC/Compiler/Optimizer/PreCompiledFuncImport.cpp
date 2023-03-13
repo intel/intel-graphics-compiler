@@ -193,6 +193,22 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
 //              --> z = sitofp i32 x to double
 //         2:   y = zext i32 x to i64; z = uitofp i64 y to double
 //              --> z = uitofp i32 x to double
+//   3. Convert extract instruction with double type to extract instruction with i64 type.
+//      Without this conversion, vISA creates mov with i64 type - for platforms that don't support i64
+//      we got an error, so we need to handle it before vISA step. If we don't perform math operations,
+//      we can change double -> i64. This relates to only extract instruction.
+//      This converts from:
+//              %0 = load <2 x double>, <2 x double> addrspace(1)* %x, align 16
+//              %1 = getelementptr inbounds double, double addrspace(1)* %y, i64 %z
+//              %2 = extractelement <2 x double> %0, i32 %idx
+//              store double %2, double addrspace(1)* %1, align 8
+//      to:
+//              %0 = load <2 x double>, <2 x double> addrspace(1)* %x, align 16
+//              %1 = bitcast <2 x double> %0 to <2 x i64>
+//              %2 = extractelement <2 x i64> %1, i32 %idx
+//              %3 = bitcast double addrspace(1)* %y to i64 addrspace(1)*
+//              %4 = getelementptr inbounds i64, i64 addrspace(1)* %3, i64 %z
+//              store i64 %2, i64 addrspace(1)* %4, align 8
 bool PreCompiledFuncImport::preProcessDouble()
 {
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -319,6 +335,41 @@ bool PreCompiledFuncImport::preProcessDouble()
 
                     CallI->replaceAllUsesWith(res);
                     toBeDeleted.push_back(CallI);
+                }
+            }
+            else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
+            {
+                Value* oprd0 = SI->getOperand(0);
+                Value* oprd1 = SI->getOperand(1);
+                Type* oprd0Ty = oprd0->getType();
+                IRBuilder<> builder(Inst);
+
+                // Recognize if the operand is an extract instruction with double type
+                ExtractElementInst* EII = dyn_cast<ExtractElementInst>(oprd0);
+                if (EII && oprd0Ty->isDoubleTy())
+                {
+                    // Change vector of doubles to i64 vector and remove old extract instruction
+                    uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(EII->getVectorOperandType())->getNumElements();
+                    Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
+
+                    Value* newBitCast = builder.CreateBitCast(EII->getVectorOperand(), newVecType);
+                    Value* newExtractInst = builder.CreateExtractElement(newBitCast, EII->getIndexOperand());
+                    SI->replaceUsesOfWith(EII, newExtractInst);
+                    toBeDeleted.push_back(EII);
+
+                    // Change addrspace from double to i64 and remove old addrspace
+                    if (GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(oprd1))
+                    {
+                        Type* i64Type = Type::getInt64Ty(m_pModule->getContext());
+                        Type* i64PtrType = Type::getInt64PtrTy(m_pModule->getContext());
+                        SmallVector<llvm::Value*, 2> Idx(GEP->idx_begin(), GEP->idx_end());
+
+                        PointerType* newPtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(i64PtrType), GEP->getAddressSpace());
+                        Value* newPtr = builder.CreatePointerCast(GEP->getPointerOperand(), newPtrTy, "");
+                        Value* newGep = builder.CreateInBoundsGEP(i64Type, newPtr, Idx, "");
+                        SI->replaceUsesOfWith(GEP, newGep);
+                        toBeDeleted.push_back(GEP);
+                    }
                 }
             }
 #if LLVM_VERSION_MAJOR >= 10
