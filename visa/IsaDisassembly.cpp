@@ -3044,6 +3044,9 @@ private:
           const raw_opnd &ro = getRawOperand(inst, currOpIx + 2 + i);
           auto reg =
               printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
+          // TODO: for null operands, printVariableDeclName with
+          // NOT_A_STATE_OPND will return %null and not V0
+          // Should this be changed to return V0 for null operands?
           if (reg == "V0")
             break;
           if (i > 0)

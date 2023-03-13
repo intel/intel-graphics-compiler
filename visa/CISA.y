@@ -1971,6 +1971,16 @@ LscTypedOneAddrOperand:
     {
         $$ = {$1.surface,{$3},{$1.type,1,0,$5}};
     }
+    |
+//  1                   2
+    LscRegAddrModel LBRACK
+// 3                        4   5           6       7           8       9
+    LscPayloadNonNullReg COMMA BUILTIN_NULL COMMA BUILTIN_NULL COMMA BUILTIN_NULL
+// 10       11
+    RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3},{$1.type,1,0,$11}};
+    }
 LscTypedTwoAddrOperand:
 //
 // U, V
@@ -1983,6 +1993,16 @@ LscTypedTwoAddrOperand:
     {
         $$ = {$1.surface,{$3,$5},{$1.type,1,0,$7}};
     }
+    |
+//  1                   2
+    LscRegAddrModel LBRACK
+// 3                        4   5           6       7           8       9
+    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA BUILTIN_NULL COMMA BUILTIN_NULL
+// 10       11
+    RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3,$5},{$1.type,1,0,$11}};
+    }
 LscTypedThreeAddrOperand:
 // U, V, R/feature
 //  1               2
@@ -1994,7 +2014,16 @@ LscTypedThreeAddrOperand:
     {
         $$ = {$1.surface,{$3,$5,$7},{$1.type,1,0,$9}};
     }
-
+    |
+//  1                   2
+    LscRegAddrModel LBRACK
+// 3                        4   5                       6       7               8       9
+    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA BUILTIN_NULL
+// 10       11
+    RBRACK LSC_ADDR_SIZE_TK
+    {
+        $$ = {$1.surface,{$3,$5,$7},{$1.type,1,0,$11}};
+    }
 LscTypedFourAddrOperand:
 // U, V, R, feature
 //  1               2
