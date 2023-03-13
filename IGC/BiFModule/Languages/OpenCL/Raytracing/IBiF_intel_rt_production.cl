@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,38 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "IBiF_intel_rt_struct_defs.cl"
 
-
-void* intel_get_rt_stack(rtglobals_t rt_dispatch_globals)
-{
-    return __builtin_IB_intel_get_rt_stack(rt_dispatch_globals);
-}
-
-void* intel_get_thread_btd_stack(rtglobals_t rt_dispatch_globals)
-{
-    return __builtin_IB_intel_get_thread_btd_stack(rt_dispatch_globals);
-}
-
-void* intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals)
-{
-    return __builtin_IB_intel_get_global_btd_stack(rt_dispatch_globals);
-}
-
-rtfence_t intel_dispatch_trace_ray_query(
-    rtglobals_t rt_dispatch_globals, uint bvh_level, uint traceRayCtrl)
-{
-    return __builtin_IB_intel_dispatch_trace_ray_query(
-        rt_dispatch_globals, bvh_level, traceRayCtrl);
-}
-
-void intel_rt_sync(rtfence_t fence)
-{
-    return __builtin_IB_intel_rt_sync(fence);
-}
-
-global void* intel_get_implicit_dispatch_globals()
-{
-    return __builtin_IB_intel_get_implicit_dispatch_globals();
-}
+#if defined(cl_intel_rt_production)
 
 intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
 {
@@ -52,9 +21,9 @@ intel_ray_query_t intel_ray_query_init(
     global HWAccel* hwaccel   = to_global((HWAccel*)accel);
     unsigned int    bvh_level = 0;
 
-    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t)intel_get_implicit_dispatch_globals();
+    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t)__builtin_IB_intel_get_implicit_dispatch_globals();
     global RTStack* rtStack =
-        to_global((RTStack*)intel_get_rt_stack((rtglobals_t)dispatchGlobalsPtr));
+        to_global((RTStack*)__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
 
     /* init ray */
     rtStack->ray[bvh_level].org[0] = ray.origin.x;
@@ -197,7 +166,7 @@ void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
 
     uint bvh_level = __builtin_IB_intel_query_bvh_level(rayquery);
 
-    rtfence_t fence = intel_dispatch_trace_ray_query(
+    rtfence_t fence = __builtin_IB_intel_dispatch_trace_ray_query(
         dispatchGlobalsPtr, bvh_level, ctrl);
 
     __builtin_IB_intel_update_ray_query(
@@ -213,7 +182,7 @@ void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
 void intel_ray_query_sync(intel_ray_query_t rayquery)
 {
     rtfence_t fence = __builtin_IB_intel_query_rt_fence(rayquery);
-    intel_rt_sync(fence);
+    __builtin_IB_intel_rt_sync(fence);
 
     global RTStack* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
 
@@ -445,3 +414,5 @@ bool intel_has_committed_hit(intel_ray_query_t rayquery)
 {
     return MemHit_getValid(get_query_hit(rayquery, intel_hit_type_committed_hit));
 }
+
+#endif // defined(cl_intel_rt_production)
