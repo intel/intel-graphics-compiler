@@ -227,7 +227,12 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[], const bool forbidden[],
   if (found) {
     vISA_ASSERT(idx < maxRegs && idx + numRegNeeded <= maxRegs, ERROR_UNKNOWN);
 
-    if (colorHeuristic == ROUND_ROBIN) {
+    if (colorHeuristic == ROUND_ROBIN || builder.getOption(vISA_GCRRInFF)) {
+      // Set start postion of next variable according to round robin algrithm in
+      // case the next variable needs use round robin algorithm. For
+      // vISA_GCRRInFF, if the next variable uses first fit algorithm,
+      // assignColors will re-assign 0 to the variable before this function is
+      // executed.
       startPos = (idx + numRegNeeded) % maxRegs;
     }
   }
@@ -718,12 +723,15 @@ PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
                            G4_SubReg_Align subAlign, unsigned nwords) {
   int startReg = 0, endReg = totalGRFNum;
   PhyReg phyReg = {-1, -1};
+  if (builder.getOption(vISA_GCRRInFF)) {
+    startReg = AS.startGRFReg;
+  }
+
   if (calleeSaveBias) {
     startReg = builder.kernel.calleeSaveStart();
   } else if (callerSaveBias) {
     endReg = builder.kernel.calleeSaveStart();
   }
-
   int step = align == BankAlign::Even ? 2 : 1;
 
   auto findSubGRFAlloc = [step, forbidden, this, subAlign,
@@ -767,7 +775,17 @@ PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
   }
 
   // Find sub-GRF allocation throughout GRF file
-  phyReg = findSubGRFAlloc(0, totalGRFNum);
+  if (builder.getOption(vISA_GCRRInFF)) {
+    phyReg = findSubGRFAlloc(startReg, totalGRFNum);
+    if (phyReg.subreg == -1) {
+      phyReg = findSubGRFAlloc(0, AS.startGRFReg);
+    }
+    if (phyReg.subreg != -1) {
+      AS.startGRFReg = (phyReg.reg + 1) % totalGRFNum;
+    }
+  } else {
+    phyReg = findSubGRFAlloc(0, totalGRFNum);
+  }
 
   return phyReg;
 }

@@ -99,6 +99,7 @@ class LiveRange final {
   bool *forbidden = nullptr;
   int numForbidden = -1;
   bool spilled = false;
+  bool isUnconstrained = false;
 
   GlobalRA &gra;
   unsigned numRegNeeded;
@@ -138,6 +139,9 @@ public:
 
   void setDegree(unsigned d) { degree = d; }
   unsigned getDegree() const { return degree; }
+
+  void setUnconstrained(bool d) { isUnconstrained = d; }
+  bool getIsUnconstrained() const { return isUnconstrained; }
 
   unsigned getNumRegNeeded() const { return numRegNeeded; }
 
