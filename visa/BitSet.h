@@ -445,7 +445,7 @@ public:
   }
 
   class SparseBitSetIterator {
-    const SparseBitSet *Set;
+    SparseBitSet *Set;
     std::map<unsigned, FixedBitSet<SegmentBitSize>>::const_iterator MI;
     std::map<unsigned, FixedBitSet<SegmentBitSize>>::const_iterator ME;
     BITSET_ARRAY_TYPE CachedWord;
@@ -474,24 +474,29 @@ public:
 
   public:
     SparseBitSetIterator() = default;
-    SparseBitSetIterator(const SparseBitSet *B, bool End = false) : Set(B) {
+    SparseBitSetIterator(SparseBitSet *B, bool End = false) : Set(B) {
       ME = Set->Segments.end();
       MI = End ? ME : Set->Segments.begin();
       if (!End && !isAtEnd()) {
-        Bit = NUM_BITS_PER_ELT;
-        Elt = 0;
-        for (; Elt < SegmentEltSize; ++Elt) {
-          CachedWord = MI->second.getElt(Elt);
-          if (CachedWord) {
-            int NextBit = advanceToNextBit(-1);
-            vISA_ASSERT(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
-                         "Non-zero word has no bit set or out of range bit!");
-            Bit = NextBit;
+        while (MI != ME) {
+          Bit = NUM_BITS_PER_ELT;
+          Elt = 0;
+          for (; Elt < SegmentEltSize; ++Elt) {
+            CachedWord = MI->second.getElt(Elt);
+            if (CachedWord) {
+              int NextBit = advanceToNextBit(-1);
+              vISA_ASSERT(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
+                          "Non-zero word has no bit set or out of range bit!");
+              Bit = NextBit;
+              break;
+            }
+          }
+          if (Bit == NUM_BITS_PER_ELT) { // empty segment
+            MI = Set->Segments.erase(MI);
+          } else {
             break;
           }
         }
-        vISA_ASSERT(Bit < NUM_BITS_PER_ELT,
-                     "Bit position is beyond the word!");
       }
     }
 
@@ -521,9 +526,10 @@ public:
         return *this;
       }
       // Advance to the next element and/or segment.
-      Bit = NUM_BITS_PER_ELT;
       ++Elt;
       do {
+        bool startFromZero = (Elt == 0);
+        Bit = NUM_BITS_PER_ELT;
         for (; Elt < SegmentEltSize; ++Elt) {
           CachedWord = MI->second.getElt(Elt);
           if (CachedWord) {
@@ -534,9 +540,13 @@ public:
             return *this;
           }
         }
-        Elt = 0;
         // Advance to the next segment.
-        ++MI;
+        if (startFromZero && Bit == NUM_BITS_PER_ELT) {
+          MI = Set->Segments.erase(MI);
+        } else {
+          ++MI;
+        }
+        Elt = 0;
       } while (!isAtEnd());
       return *this;
     }
@@ -550,8 +560,8 @@ public:
 
   using iterator = SparseBitSetIterator;
 
-  iterator begin() const { return iterator(this); }
-  iterator end() const { return iterator(this, true); }
+  iterator begin() { return iterator(this); }
+  iterator end() { return iterator(this, true); }
 
   bool isSet(unsigned Bit) const {
     if (Bit >= MaxBits)
