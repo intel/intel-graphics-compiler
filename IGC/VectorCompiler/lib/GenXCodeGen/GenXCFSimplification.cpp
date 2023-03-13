@@ -169,9 +169,12 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
       return nullptr; // condition not "any" or "all"
   }
   Cond = cast<Instruction>(Cond)->getOperand(0);
-  LLVM_DEBUG(dbgs() << "branched over simd cf block: " << BB->getName() << " with Cond " << Cond->getName()
-      << (Inverted ? " (inverted)" : "") << "\n"
-      << "(source line of branch is " << PredBr->getDebugLoc().getLine() << "\n");
+  LLVM_DEBUG(dbgs() << "branched over simd cf block: " << BB->getName()
+                    << " with Cond " << Cond->getName()
+                    << (Inverted ? " (inverted)" : "") << "\n";
+             if (PredBr->getDebugLoc()) dbgs()
+             << "(source line of branch is " << PredBr->getDebugLoc().getLine()
+             << "\n");
   // Check that each phi node in the successor has incomings related as
   // follows: the incoming from BB must be a chain of selects or predicated
   // wrregions where the ultimate original input is the other incoming, and

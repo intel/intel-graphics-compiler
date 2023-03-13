@@ -1803,6 +1803,11 @@ void GenXSimdCFConformance::ensureConformance()
         IID != GenXIntrinsic::genx_simdcf_unmask &&
         IID != GenXIntrinsic::genx_simdcf_remask)
       EMValsStack.insert(*i);
+    if (auto *Inst = dyn_cast<Instruction>(i->getValue())) {
+      auto FuncName = Inst->getFunction()->getName();
+      LLVM_DEBUG(dbgs() << "Entry EMVals " << FuncName << " - ";
+                 i->getValue()->dump());
+    }
   }
   for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
     auto IID = GenXIntrinsic::getGenXIntrinsicID(i->getValue());
