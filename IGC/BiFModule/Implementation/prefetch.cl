@@ -14,34 +14,74 @@ extern __constant int __ForceL1Prefetch;
 // Mapping from OpenCL prefetch to LSC prefetch. Uniform immediate offset can
 // be used to save on base pointer arithmetics, but offset can't be variable.
 #define LSC_PREFETCH(type, p, num_elements)                                            \
-    /* Warning: out of bound L1 prefetch will generate page fault */                   \
+    /* Warning: out of bound L1 prefetch will generate page fault. When L1 prefetch is \
+       enabled, round down to not overfetch. Limit prefetch size to 32 bytes per work  \
+       item (max size for single load message in SIMD16). */                           \
     enum LSC_LDCC cacheOpt = __ForceL1Prefetch ? LSC_LDCC_L1C_L3C : LSC_LDCC_L1UC_L3C; \
-    if (num_elements == 1)                                                             \
+    int size = sizeof(type) * num_elements;                                            \
+    if (__ForceL1Prefetch)                                                             \
     {                                                                                  \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
-    }                                                                                  \
-    else if (num_elements == 2)                                                        \
-    {                                                                                  \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
-        __builtin_IB_lsc_prefetch_global_##type(p, 1, cacheOpt);                       \
-    }                                                                                  \
-    else if (num_elements == 3)                                                        \
-    {                                                                                  \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
-        __builtin_IB_lsc_prefetch_global_##type(p, 1, cacheOpt);                       \
-        __builtin_IB_lsc_prefetch_global_##type(p, 2, cacheOpt);                       \
-    }                                                                                  \
-    else if (num_elements == 4)                                                        \
-    {                                                                                  \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
-        __builtin_IB_lsc_prefetch_global_##type(p, 1, cacheOpt);                       \
-        __builtin_IB_lsc_prefetch_global_##type(p, 2, cacheOpt);                       \
-        __builtin_IB_lsc_prefetch_global_##type(p, 3, cacheOpt);                       \
+        /* overfetch unsafe, round down */                                             \
+        if (size >= 32)                                                                \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint8(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size >= 16)                                                           \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint4(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size >= 12)                                                           \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint3(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size >= 8)                                                            \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint2(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size >= 4)                                                            \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint(p, 0, cacheOpt);                     \
+        }                                                                              \
+        else if (size >= 2)                                                            \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_ushort(p, 0, cacheOpt);                   \
+        }                                                                              \
+        else if (size >= 1)                                                            \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uchar(p, 0, cacheOpt);                    \
+        }                                                                              \
     }                                                                                  \
     else                                                                               \
     {                                                                                  \
-        for (int i = 0; i < num_elements; ++i)                                         \
-            __builtin_IB_lsc_prefetch_global_##type(p + i, 0, cacheOpt);               \
+        /* overfetch safe, round up */                                                 \
+        if (size > 16)                                                                 \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint8(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size > 12)                                                            \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint4(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size > 8)                                                             \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint3(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size > 4)                                                             \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint2(p, 0, cacheOpt);                    \
+        }                                                                              \
+        else if (size > 2)                                                             \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uint(p, 0, cacheOpt);                     \
+        }                                                                              \
+        else if (size > 1)                                                             \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_ushort(p, 0, cacheOpt);                   \
+        }                                                                              \
+        else if (size == 1)                                                            \
+        {                                                                              \
+            __builtin_IB_lsc_prefetch_global_uchar(p, 0, cacheOpt);                    \
+        }                                                                              \
     }                                                                                  \
 
 //Prefetch function
