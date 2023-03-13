@@ -735,7 +735,7 @@ bool preRA_RegSharing::run() {
     BB_Scheduler S(kernel, ddd, rp, config, LT);
 
     changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
-    changed |= S.scheduleBlockForLatency(MaxPressure, changed, KernelPressure);
+    changed |= S.scheduleBlockForLatency(MaxPressure, changed, 0);
   }
   if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
     rp.rpe->run();
