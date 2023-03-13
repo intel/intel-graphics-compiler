@@ -482,6 +482,14 @@ bool MemOpt::runOnFunction(Function& F) {
         unsigned Distance = 0;
         for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI, ++Distance) {
             Instruction* I = &(*BI);
+
+            // Make sure we don't count debug info intrinsincs
+            // This is required to keep debug and non-debug optimizations identical
+            if (isDbgIntrinsic(I)) {
+                Distance--;
+                continue;
+            }
+
             // Skip irrelevant instructions.
             if (shouldSkip(I))
                 continue;
