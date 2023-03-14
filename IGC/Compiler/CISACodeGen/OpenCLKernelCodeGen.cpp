@@ -432,6 +432,10 @@ namespace IGC
                 Pos = valEnd;
                 continue;
             }
+            else if (suffix.equals("-enable-auto-large-GRF-mode"))
+            {
+                IntelEnableAutoLargeGRF = true;
+            }
             // -cl-disable-recompilation
             else if (suffix.equals("-disable-recompilation"))
             {

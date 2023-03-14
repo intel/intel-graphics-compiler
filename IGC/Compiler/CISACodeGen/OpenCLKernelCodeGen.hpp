@@ -107,6 +107,9 @@ namespace IGC
             uint32_t expGRFSize = 0;
             std::vector<std::string> LargeGRFKernels;
             std::vector<std::string> RegularGRFKernels;
+            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
+            bool IntelEnableAutoLargeGRF = false;
+
             // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
             // IntelForceInt32DivRemEmu wins if both are set and can be applied.
             bool IntelForceInt32DivRemEmu = false;
@@ -206,18 +209,6 @@ namespace IGC
                     // atoi(..) ignores leading white spaces and characters after the actual number
                     requiredEUThreadCount = atoi(op + strlen("-intel-reqd-eu-thread-count="));
                 }
-                if (strstr(options, "-intel-enable-auto-large-GRF-mode"))
-                {
-                    IntelEnableAutoLargeGRF = true;
-                }
-                if (strstr(options, "-disable-zebin"))
-                {
-                    EnableZEBinary = false;
-                }
-                if (strstr(options, "-enable-zebin"))
-                {
-                    EnableZEBinary = true;
-                }
             }
 
             bool CorrectlyRoundedSqrt;
@@ -228,9 +219,6 @@ namespace IGC
             bool IntelRequiredEUThreadCount = false;
             bool EmitErrorsForLibCompilation = false;
             uint32_t requiredEUThreadCount = 0;
-            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
-            bool IntelEnableAutoLargeGRF = false;
-            std::optional<bool> EnableZEBinary;
         };
 
         // output: shader information
@@ -319,8 +307,6 @@ namespace IGC
             // corresponding user scenarios get discovered.
             else if (!supportsZEBin(platform))
                 m_enableZEBinary = false;
-            else if (m_Options.EnableZEBinary)
-                m_enableZEBinary = *m_Options.EnableZEBinary;
             else if (m_InternalOptions.EnableZEBinary)
                 m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
             else
