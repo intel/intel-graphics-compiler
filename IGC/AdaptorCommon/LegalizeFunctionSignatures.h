@@ -40,6 +40,7 @@ public:
     void FixFunctionBody(llvm::Module& M);
     void FixFunctionUsers(llvm::Module& M);
     void FixCallInstruction(llvm::Module& M, llvm::CallInst* callInst);
+    void FixNoReturn(llvm::Module& M);
 
     virtual llvm::StringRef getPassName() const
     {
