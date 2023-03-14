@@ -106,7 +106,7 @@ public:
         return NOT_FOUND;
       }
 
-      if (i == lastReg + 1) {
+      if (i == lastReg) {
         // Wrap around
         i = 0;
         sizeFound = 0;
@@ -114,6 +114,13 @@ public:
         scannedOnce = true;
         continue;
       }
+
+      if (!isFreeGRF(i) || (isIndirect && !isFreeIndir(i))) {
+        sizeFound = 0;
+        start = i + 1;
+        continue;
+      }
+      ++sizeFound;
 
       if (sizeFound == num) {
         markGRFs(start, num);
@@ -123,12 +130,6 @@ public:
         }
         return start;
       }
-      if (!isFreeGRF(i) || (isIndirect && !isFreeIndir(i))) {
-        sizeFound = 0;
-        start = i + 1;
-        continue;
-      }
-      ++sizeFound;
     }
     return NOT_FOUND;
   }
