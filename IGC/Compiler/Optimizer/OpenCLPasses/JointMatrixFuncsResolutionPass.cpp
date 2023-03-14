@@ -244,7 +244,7 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
 
     /* New version of the JointMatrix specification uses single value to
      * represent PackedA and PackedB layouts, named simply; 'Packed'. The value
-     * of 'Paccked' is equal to the value of legacy 'PackedA'. If we meet
+     * of 'Packed' is equal to the value of legacy 'PackedA'. If we meet
      * load/store that tries to load/store packedA data into B matrix, we can
      * assume that the intended layout was PackedB (load of A into B would be illegal).
      * This should be removed when we stop to support the legacy version of the spec. */
@@ -269,7 +269,8 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
 
     /* On PVC due to SIMD16 different SIMD lane contribution is used for matrix A.
      * Therefore different load function is required. */
-    if (m_Ctx->platform.hasExecSize16DPAS() && matrixLayout == LayoutPackedA) {
+    if (m_Ctx->platform.hasExecSize16DPAS()
+          && (matrixLayout == LayoutPackedA || matrixLayout == LayoutRowMajor)) {
         name += "SG16_";
     }
 
@@ -366,6 +367,8 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
         if (m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
+        if (desc.rows == 1)
+            return baseType;
         return IGCLLVM::FixedVectorType::get(baseType, desc.rows);
     } else if (desc.layout == LayoutPackedB) {
         Type *baseType = Type::getInt32Ty(ctx);
@@ -375,6 +378,8 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
         if (desc.isFloating) {
             baseType = Type::getFloatTy(ctx);
         }
+        if (desc.rows == 1)
+            return baseType;
         return IGCLLVM::FixedVectorType::get(baseType, desc.rows);
     }
 
@@ -387,20 +392,33 @@ static uint64_t constIntValue(const Value *v) {
 }
 
 static Type *getIntegerEquivalent(Type *matTy) {
-    /* Already an integer type: */
-    if (matTy->isFPOrFPVectorTy() == false) {
-        return matTy;
-    }
-
     if (IGCLLVM::FixedVectorType *VT = dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
         unsigned elements = (unsigned) VT->getNumElements();
         unsigned size = VT->getElementType()->getScalarSizeInBits();
         Type *elementType = Type::getIntNTy(matTy->getContext(), size);
+        if (elements >= 5 && elements < 8) {
+            elements = 8;
+        }
         return IGCLLVM::FixedVectorType::get(elementType, elements);
     } else {
         unsigned size = matTy->getScalarSizeInBits();
         return Type::getIntNTy(matTy->getContext(), size);
     }
+}
+
+template <class BuilderT>
+static Instruction *shrinkCastVector
+        (BuilderT *builder, IGCLLVM::FixedVectorType *rawMatTy, Instruction *instr) {
+
+    Value *slice = UndefValue::get(rawMatTy);
+    for (unsigned i = 0; i < rawMatTy->getNumElements(); i++) {
+        Value *value = builder->CreateExtractElement(instr, i);
+        if (value->getType() != rawMatTy->getElementType()) {
+          value = builder->CreateBitCast(value, rawMatTy->getElementType());
+        }
+        slice = builder->CreateInsertElement(slice, value, i);
+    }
+    return dyn_cast<Instruction>(slice);
 }
 
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
@@ -424,13 +442,37 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     InstsToErase.insert(CI);
 
-    Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "matrix", CI);
+    IRBuilder builder(CI);
+    Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args, "matrix");
     newCall->setDebugLoc(CI->getDebugLoc());
     if (retTy != matTy) {
-        newCall = BitCastInst::Create(Instruction::BitCast, newCall, matTy,"matrix.load.cast", CI);
+        IGCLLVM::FixedVectorType *rawMatTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
+        IGCLLVM::FixedVectorType *rawRetTy = dyn_cast<IGCLLVM::FixedVectorType>(retTy);
+        if (rawMatTy != nullptr && rawMatTy->getNumElements() < rawRetTy->getNumElements()) {
+            newCall = shrinkCastVector(&builder, rawMatTy, newCall);
+        } else {
+            Value *bitcast = builder.CreateBitCast(newCall, matTy, "matrix.load.cast");
+            newCall = dyn_cast<Instruction>(bitcast);
+        }
         newCall->setDebugLoc(CI->getDebugLoc());
     }
     return newCall;
+}
+
+template <class BuilderT>
+static Instruction *
+expandVector(BuilderT *builder, IGCLLVM::FixedVectorType *rawArgTy,
+             IGCLLVM::FixedVectorType *rawMatTy, Value *origVal) {
+
+  Value *slice = UndefValue::get(rawMatTy);
+  for (unsigned i = 0; i < rawArgTy->getNumElements(); i++) {
+    Value *value = builder->CreateExtractElement(origVal, i);
+    if (value->getType() != rawMatTy->getElementType()) {
+      value = builder->CreateBitCast(value, rawMatTy->getElementType());
+    }
+    slice = builder->CreateInsertElement(slice, value, i);
+  }
+  return dyn_cast<Instruction>(slice);
 }
 
 Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
@@ -447,10 +489,22 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     matTy = getIntegerEquivalent(matTy);
 
     Module *M = CI->getParent()->getModule();
+    IRBuilder builder(CI);
 
     Value *matVal = Resolve(matrixVal);
     if (matVal->getType() != matTy) {
-        matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy, "matrix.store.cast", CI);
+      IGCLLVM::FixedVectorType *rawMatTy =
+          dyn_cast<IGCLLVM::FixedVectorType>(matTy);
+      IGCLLVM::FixedVectorType *rawArgTy =
+          dyn_cast<IGCLLVM::FixedVectorType>(matVal->getType());
+
+      if (rawMatTy != nullptr &&
+          rawArgTy->getNumElements() < rawMatTy->getNumElements()) {
+        matVal = expandVector(&builder, rawArgTy, rawMatTy, matVal);
+      } else {
+        matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy,
+                                     "matrix.store.cast", CI);
+      }
     }
 
     ValidateLoadStore(false, storeLayout, &desc, CI);
@@ -756,7 +810,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     }
 
     // We need the bitcast, especially for half, as the function call that is
-    // being replaces has a half return type and the vectorElementType is i16
+    // being replaced has a half return type and the vectorElementType is i16
     element = builder.CreateBitCast(element, CI->getType());
 
     CI->replaceAllUsesWith(element);

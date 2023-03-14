@@ -1056,6 +1056,8 @@ void BIImport::InitializeBIFlags(Module& M)
     makeVarExternal("__SubDeviceID");
     initializeVarWithValue("__MaxHWThreadIDPerSubDevice", pCtx->platform.GetGTSystemInfo().ThreadCount);
 
+
+    initializeVarWithValue("__JointMatrixLoadStoreOpt", IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt));
 }
 
 extern "C" llvm::ModulePass* createBuiltInImportPass(
