@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,7 +22,7 @@ namespace IGC {
         Module* m_module = nullptr;
         IGCMD::MetaDataUtils* m_mdUtils = nullptr;
         CodeGenContext* m_ctx = nullptr;
-        GASPropagator* m_Propagator;
+        GASPropagator* m_Propagator = nullptr;
 
     public:
         static char ID;
