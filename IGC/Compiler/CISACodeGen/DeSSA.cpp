@@ -963,15 +963,16 @@ DeSSA::SplitInterferencesForBasicBlock(
                 unsigned PredIndex;
                 for (PredIndex = 0; PredIndex < PHI->getNumOperands();
                      ++PredIndex) {
-                    auto PBB = PHI->getIncomingBlock(PredIndex);
-                    if (WIA->insideDivergentCF(PBB->getTerminator())) {
-                        Value *PredValue = PHI->getOperand(PredIndex);
-                        // check if we will need to add a phi-copy from PBB
-                        if (isa<Constant>(PredValue) || isIsolated(PredValue)) {
-                            isolateReg(PHI);
-                            break;
-                        }
-                    }
+                    if (PHI->getIncomingBlock(PredIndex) == MBB)
+                        break;
+                }
+                IGC_ASSERT(PredIndex < PHI->getNumOperands());
+                Value *PredValue = PHI->getOperand(PredIndex);
+                // check if we will need to add a phi-copy from MBB
+                if (isa<Constant>(PredValue) || isIsolated(PredValue)) {
+                    // adding a phi-copy interferes with current live-out
+                    if (CurrentDominatingParent[RootC])
+                        isolateReg(PHI);
                 }
             }
         }
