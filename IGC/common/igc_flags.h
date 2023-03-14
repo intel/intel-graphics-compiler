@@ -691,6 +691,7 @@ DECLARE_IGC_REGKEY(bool, EnableLocalIdCalculationInShader, false,
     "Enables calcualtion of local thread IDs in shader. Valid only in compute"\
     "shaders on XeHP+. IDs are calculated only if HW generated IDs cannot be"\
     "used.", true)
+DECLARE_IGC_REGKEY(int, JointMatrixLoadStoreOpt, 2, "Selects scalar (0) or vector (1) or vector optimized (2) implementation of Joint Matrix Load/Store built-ins", true)
 DECLARE_IGC_REGKEY(bool, EnableVector8LoadStore, false, "Enable Vectorizer to generate 8x32i and 4x64i loads and stores", true)
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, true,  "Force-enable output in ZE binary format. Leave unset for compiler to choose based on current platform's support for ZE binary", true)
 DECLARE_IGC_REGKEY(bool, ExcludeIRFromZEBinary, false, "Exclude IR sections from ZE binary", true)
