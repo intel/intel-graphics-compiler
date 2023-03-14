@@ -11611,27 +11611,7 @@ CVariable* EmitPass::BroadcastAndTruncPointer(CVariable* pVar)
 }
 
 
-bool EmitPass::ScanReduceIs64BitType(VISA_Type type)
-{
-    return type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
-}
-
-bool EmitPass::ScanReduceIsInt64Mul(e_opcode op, VISA_Type type)
-{
-    return ScanReduceIs64BitType(type) && CEncoder::IsIntegerType(type) && op == EOPCODE_MUL;
-}
-
-// True if int64 emulation is required for subgroup/wave; it includes int64 mul case.
-bool EmitPass::ScanReduceIsInt64EmulationNeeded(e_opcode op, VISA_Type type)
-{
-    const bool isInt64Type = ScanReduceIs64BitType(type) && CEncoder::IsIntegerType(type);
-    const bool isAndHasInt64Add = op == EOPCODE_ADD && m_currShader->m_Platform->hasInt64Add();
-    return ScanReduceIsInt64Mul(op, type) ||
-        (isInt64Type && m_currShader->m_Platform->hasNoFullI64Support() && !isAndHasInt64Add);
-}
-
-
-// Copy identity value to dst with NoMask, then src to dst with mask. Notes:
+// Copy identity value to dst with no mask, then src to dst with mask. Notes:
 // * dst may be nullptr - it will be created then
 // * actual second half setting is preserved
 CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
@@ -11639,19 +11619,23 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
 {
     if (!dst)
     {
-        const CName name = CName(CName(CName(src->getName().empty() ? "reduceSrc" : "reduceSrc_"),
-            src->getName().getCString()), secondHalf ? "SecondHalf" : "");
-        dst = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), type, EALIGN_GRF, false, name);
+        dst = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            type,
+            EALIGN_GRF,
+            false,
+            src->getName());
     }
     else
     {
         IGC_ASSERT(0 < dst->GetElemSize());
-        IGC_ASSERT(numLanes(m_currShader->m_SIMDSize) == dst->GetNumberElement());
+        IGC_ASSERT(numLanes(m_currShader->m_SIMDSize) == (dst->GetSize() / dst->GetElemSize()));
         IGC_ASSERT(dst->GetType() == type);
         IGC_ASSERT(dst->GetAlign() == EALIGN_GRF);
         IGC_ASSERT(!dst->IsUniform());
     }
-    IGC_ASSERT(src->IsUniform() || dst->GetNumberElement() <= src->GetNumberElement());
+
+    IGC_ASSERT(nullptr != m_encoder);
 
     const bool savedSecondHalf = m_encoder->IsSecondHalf();
     m_encoder->SetSecondHalf(secondHalf);
@@ -11682,75 +11666,59 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
 // Reduction all reduce helper: dst_lane{k} = src_lane{simd + k} OP src_lane{k}, k = 0..(simd-1)
 CVariable* EmitPass::ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src)
 {
-    const bool is64bitType = ScanReduceIs64BitType(type);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
+    const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const auto alignment = is64bitType ? IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
+    CVariable* previousTemp = src;
     CVariable* temp = m_currShader->GetNewVariable(
         numLanes(simd),
         type,
         alignment,
         false,
-        CName("reduceDst_SIMD", std::to_string(numLanes(simd)).c_str()));
+        CName::NONE);
 
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-    const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
-
-    if (!int64EmulationNeeded)
+    if (isInt64Mul)
+    {
+        m_encoder->SetSimdSize(simd);
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcSubReg(0, numLanes(simd));
+        m_encoder->Copy(temp, previousTemp);
+        m_encoder->Push();
+        CVariable* pMulSrc[2] = { previousTemp, temp };
+        Mul64(temp, pMulSrc, simd, true /*noMask*/);
+    }
+    else
     {
         m_encoder->SetNoMask();
         m_encoder->SetSimdSize(simd);
         m_encoder->SetSrcSubReg(1, numLanes(simd));
-        m_encoder->GenericAlu(op, temp, src, src);
+        m_encoder->GenericAlu(op, temp, previousTemp, previousTemp);
         m_encoder->Push();
     }
-    else
-    {
-        if (isInt64Mul)
-        {
-            m_encoder->SetSimdSize(simd);
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcSubReg(0, numLanes(simd));
-            m_encoder->Copy(temp, src);
-            m_encoder->Push();
-            CVariable* pMulSrc[2] = { src, temp };
-            Mul64(temp, pMulSrc, simd, true /*noMask*/);
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Unsupported");
-        }
-    }
-
     return temp;
 }
 
 // Reduction all expand helper: dst_lane{0..(simd-1)} = src_lane{0} OP src_lane{1}
 void EmitPass::ReductionExpandHelper(e_opcode op, VISA_Type type, CVariable* src, CVariable* dst)
 {
-    const bool is64bitType = ScanReduceIs64BitType(type);
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-    const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
 
-    if (!int64EmulationNeeded)
+    if (isInt64Mul)
+    {
+        CVariable* tmpMulSrc[2] = {};
+        tmpMulSrc[0] = m_currShader->GetNewAlias(src, type, 0, 1, true);
+        tmpMulSrc[1] = m_currShader->GetNewAlias(src, type, sizeof(QWORD), 1, true);
+        Mul64(dst, tmpMulSrc, m_currShader->m_SIMDSize, false /*noMask*/);
+    }
+    else
     {
         m_encoder->SetSrcSubReg(1, 1);
         m_encoder->SetSrcRegion(0, 0, 1, 0);
         m_encoder->SetSrcRegion(1, 0, 1, 0);
         m_encoder->GenericAlu(op, dst, src, src);
         m_encoder->Push();
-    }
-    else
-    {
-        if (isInt64Mul)
-        {
-            CVariable* tmpMulSrc[2] = {};
-            tmpMulSrc[0] = m_currShader->GetNewAlias(src, type, 0, 1, true);
-            tmpMulSrc[1] = m_currShader->GetNewAlias(src, type, sizeof(QWORD), 1, true);
-            Mul64(dst, tmpMulSrc, m_currShader->m_SIMDSize, false /* noMask */);
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Unsupported");
-        }
     }
 }
 
@@ -11764,15 +11732,17 @@ void EmitPass::ReductionExpandHelper(e_opcode op, VISA_Type type, CVariable* src
 void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src, uint16_t numLanes,
     VISA_Type type, uint numInst, bool secondHalf)
 {
-    IGC_ASSERT(numInst > 0);
-
-    const bool is64bitType = ScanReduceIs64BitType(type);
+    const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const auto alignment = is64bitType ? IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
 
-    const CName name = CName(CName(CName(src->getName().empty() ? "rearrangeSrc" : "rearrangeSrc_"),
-        src->getName().getCString()), secondHalf ? "SecondHalf" : "");
-    pSrc[0] = m_currShader->GetNewVariable(numLanes, type, alignment, false, name);
+    pSrc[0] = m_currShader->GetNewVariable(
+        numLanes,
+        type,
+        alignment,
+        false, CName::NONE);
     pSrc[1] = m_currShader->GetNewVariable(pSrc[0]);
+    IGC_ASSERT(pSrc[0]);
+    IGC_ASSERT(pSrc[1]);
 
     CVariable* srcTmp = src;
     CVariable* pSrcTmp[2] = { pSrc[0], pSrc[1] };
@@ -11793,6 +11763,7 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
 
         for (uint j = 0; j < 2; ++j)
         {
+            IGC_ASSERT(numInst);
             m_encoder->SetSimdSize(lanesToSIMDMode(numLanes / numInst));
             m_encoder->SetNoMask();
             m_encoder->SetMask(mask);
@@ -11816,12 +11787,12 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
 CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, bool secondHalf,
     CVariable* src, CVariable* dst)
 {
-    const bool is64bitType = ScanReduceIs64BitType(type);
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
+    const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
     const uint numInst = is64bitType && simd == (getGRFSize() > 32 ? SIMDMode::SIMD16 : SIMDMode::SIMD8) ? 2 : 1;
 
-    IGC_ASSERT(simd == SIMDMode::SIMD2 || simd == SIMDMode::SIMD4 || simd == SIMDMode::SIMD8 ||
-        (simd == SIMDMode::SIMD16 && getGRFSize() > 32));
+    IGC_ASSERT(simd == SIMDMode::SIMD2 || simd == SIMDMode::SIMD4 || simd == SIMDMode::SIMD8 || (simd == SIMDMode::SIMD16 && getGRFSize() > 32));
 
     // The op is performed on pairs of adjacent src data elements.
     // In certain cases it is mandatory or might be beneficial for performance reasons
@@ -11837,11 +11808,8 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
     //    are not supported on Src0 and Src1 except for broadcast of a scalar.
     const bool isIntegerDwordMultiply = (op == EOPCODE_MUL) && (type == ISA_TYPE_D || type == ISA_TYPE_UD);
     const bool isFloatOrHalfFloat = type == ISA_TYPE_F || type == ISA_TYPE_HF;
-    const bool isInt64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
-
     isRearrangementRequired |= m_currShader->m_Platform->doScalar64bScan() &&
         (is64bitType || isIntegerDwordMultiply || isFloatOrHalfFloat);
-    isRearrangementRequired |= isInt64EmulationNeeded;
 
     if (isRearrangementRequired)
     {
@@ -11851,23 +11819,16 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
 
         // Perform reduction with op
         m_encoder->SetSecondHalf(secondHalf);
-        if (!isInt64EmulationNeeded)
+        if (isInt64Mul)
+        {
+            Mul64(dst, pSrc, simd, true /*noMask*/);
+        }
+        else
         {
             m_encoder->SetSimdSize(simd);
             m_encoder->SetNoMask();
             m_encoder->GenericAlu(op, dst, pSrc[0], pSrc[1]);
             m_encoder->Push();
-        }
-        else
-        {
-            if (isInt64Mul)
-            {
-                Mul64(dst, pSrc, simd, true /* noMask */);
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(0, "Unsupported");
-            }
         }
         m_encoder->SetSecondHalf(false);
     }
@@ -11907,8 +11868,9 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
 void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDMode simd, const uint clusterSize,
     bool secondHalf, CVariable* src, CVariable* dst)
 {
-    const bool is64bitType = ScanReduceIs64BitType(type);
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
+    const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
     const uint numInst = is64bitType && simd == (getGRFSize() > 32 ? SIMDMode::SIMD32 : SIMDMode::SIMD16) ? 2 : 1;
     IGC_ASSERT(clusterSize == 2 || clusterSize == 4 || clusterSize == 8 || clusterSize == 16);
     IGC_ASSERT_MESSAGE(clusterSize * CEncoder::GetCISADataTypeSize(type) <= int_cast<uint>(2 * getGRFSize()),
@@ -11918,40 +11880,32 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
     bool isRearrangementRequired = isInt64Mul;
     const bool isIntegerDwordMultiply = (op == EOPCODE_MUL) && (type == ISA_TYPE_D || type == ISA_TYPE_UD);
     const bool isFloatOrHalfFloat = type == ISA_TYPE_F || type == ISA_TYPE_HF;
-    const bool isInt64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
     isRearrangementRequired |= m_currShader->m_Platform->doScalar64bScan() &&
         (is64bitType || isIntegerDwordMultiply || isFloatOrHalfFloat);
-    isRearrangementRequired |= isInt64EmulationNeeded;
-
     if (isRearrangementRequired)
     {
-        const SIMDMode tmpSimd = lanesToSIMDMode(numLanes(simd) / clusterSize);
         // Rearrange src
         CVariable* pSrc[2] = {};
         // For src the 2 grf boundary may be crossed for 2-clusters only in SIMD16 for 64-bit types.
         const uint srcNumInst = clusterSize == 2 ? numInst : 1;
-        ReductionClusteredSrcHelper(pSrc, src, numLanes(tmpSimd), type, srcNumInst, secondHalf);
+        IGC_ASSERT(clusterSize);
+        ReductionClusteredSrcHelper(pSrc, src, numLanes(simd) / clusterSize, type, srcNumInst, secondHalf);
 
         // Perform reduction with op
         CVariable* tempDst = m_currShader->GetNewVariable(dst);
         m_encoder->SetSecondHalf(secondHalf);
-        if (!isInt64EmulationNeeded)
+        IGC_ASSERT(clusterSize);
+        const SIMDMode tmpSimd = lanesToSIMDMode(numLanes(simd) / clusterSize);
+        if (isInt64Mul)
+        {
+            Mul64(tempDst, pSrc, tmpSimd, true /*noMask*/);
+        }
+        else
         {
             m_encoder->SetSimdSize(tmpSimd);
             m_encoder->SetNoMask();
             m_encoder->GenericAlu(op, tempDst, pSrc[0], pSrc[1]);
             m_encoder->Push();
-        }
-        else
-        {
-            if (isInt64Mul)
-            {
-                Mul64(tempDst, pSrc, tmpSimd, true /* noMask */);
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(0, "Unsupported");
-            }
         }
         m_encoder->SetSecondHalf(false);
 
@@ -12002,7 +11956,8 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
                     broadcastSrc = m_currShader->GetNewAlias(broadcastSrc, tmpType, 0, 0);
                     broadcastDst = m_currShader->GetNewAlias(broadcastDst, tmpType, 0, 0);
                 }
-                else if (use32BitMov)
+                else
+                if (use32BitMov)
                 {
                     broadcastSrc = m_currShader->GetNewAlias(broadcastSrc, VISA_Type::ISA_TYPE_UD, 0, 0);
                     broadcastDst = m_currShader->GetNewAlias(broadcastDst, VISA_Type::ISA_TYPE_UD, 0, 0);
@@ -12043,8 +11998,10 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
 void EmitPass::emitReductionAll(
     e_opcode op, uint64_t identityValue, VISA_Type type, bool negate, CVariable* src, CVariable* dst)
 {
-    CVariable* srcH1 = ScanReducePrepareSrc(type, identityValue, negate, false /* secondHalf */,
-        src, nullptr /* dst */);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
+
+    CVariable* srcH1 = ScanReducePrepareSrc(type, identityValue, negate, false /*secondHalf*/, src, nullptr /*dst*/);
     CVariable* temp = srcH1;
     if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
     {
@@ -12054,38 +12011,25 @@ void EmitPass::emitReductionAll(
         }
         else
         {
-            const SIMDMode simd = SIMDMode::SIMD16;
-
-            CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /* secondHalf */,
-                src, nullptr /* dst */);
+            CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /*secondHalf*/, src, nullptr /*dst*/);
 
             temp = m_currShader->GetNewVariable(
-                numLanes(simd),
+                numLanes(SIMDMode::SIMD16),
                 type,
                 EALIGN_GRF,
                 false,
-                CName("reduceDstSecondHalf"));
-
-            const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-            const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
-            if (!int64EmulationNeeded)
+                CName::NONE);
+            if (isInt64Mul)
             {
-                m_encoder->SetNoMask();
-                m_encoder->SetSimdSize(simd);
-                m_encoder->GenericAlu(op, temp, srcH1, srcH2);
-                m_encoder->Push();
+                CVariable* tmpMulSrc[2] = { srcH1, srcH2 };
+                Mul64(temp, tmpMulSrc, SIMDMode::SIMD16, true /*noMask*/);
             }
             else
             {
-                if (isInt64Mul)
-                {
-                    CVariable* tmpMulSrc[2] = { srcH1, srcH2 };
-                    Mul64(temp, tmpMulSrc, simd, true /* noMask */);
-                }
-                else
-                {
-                    IGC_ASSERT_MESSAGE(0, "Unsupported");
-                }
+                m_encoder->SetNoMask();
+                m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                m_encoder->GenericAlu(op, temp, srcH1, srcH2);
+                m_encoder->Push();
             }
         }
     }
@@ -12105,7 +12049,8 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     const bool isInt64Type = type == ISA_TYPE_Q || type == ISA_TYPE_UQ;
     const bool isFP64Type = type == ISA_TYPE_DF;
     const bool is64bitType = isInt64Type || isFP64Type;
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
 
     IGC_ASSERT_MESSAGE(iSTD::BitCount(clusterSize) == 1, "Cluster size must be a power of two.");
     IGC_ASSERT_MESSAGE(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8, "Unsupported 64-bit type.");
@@ -12242,11 +12187,9 @@ void EmitPass::emitPreOrPostFixOp(
     CVariable* pSrc, CVariable* pSrcsArr[2], CVariable* Flag,
     bool isPrefix, bool isQuad)
 {
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-    const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) && CEncoder::GetCISADataTypeSize(type) == 8);
 
-    if ((m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad) ||
-        (int64EmulationNeeded && !isInt64Mul /* Int64Mul may or may not be scalar op depending on preceding condition */))
+    if (m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad)
     {
         emitPreOrPostFixOpScalar(
             op, identityValue, type, negateSrc,
@@ -12370,7 +12313,7 @@ void EmitPass::emitPreOrPostFixOp(
                 m_encoder->Copy(pMulSrc[1], pSrc1);
                 m_encoder->Push();
                 // create emulation code
-                Mul64(pMulDst, pMulSrc, simdSize, true /* noMask */);
+                Mul64(pMulDst, pMulSrc, simdSize, true /*noMask*/);
                 // copy destination with regioning
                 m_encoder->SetSimdSize(simdSize);
                 m_encoder->SetNoMask();
@@ -12631,8 +12574,8 @@ void EmitPass::emitPreOrPostFixOpScalar(
     CVariable* Flag,
     bool isPrefix)
 {
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-    const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
 
     bool isSimd32 = m_currShader->m_numberInstance == 2;
     int counter = isSimd32 ? 2 : 1;
@@ -12648,7 +12591,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
             type,
             EALIGN_GRF,
             false,
-            "scalarResult");
+            CName::NONE);
 
         m_encoder->SetSecondHalf(i == 1);
 
@@ -12682,22 +12625,34 @@ void EmitPass::emitPreOrPostFixOpScalar(
         }
         m_encoder->Push();
 
-        const SIMDMode simd = SIMDMode::SIMD1;
-        CVariable* tmpDst = (isInt64Mul || int64EmulationNeeded) ?
+        CVariable* tmpDst = isInt64Mul ?
             m_currShader->GetNewVariable(
-                numLanes(simd),
+                1,
                 type,
                 EALIGN_GRF,
                 true,
-                CName(result[0]->getName(), "Tmp")) : nullptr;
+                result[0]->getName()) : nullptr;
 
         for (int dstIdx = 1; dstIdx < numLanes(m_currShader->m_SIMDSize); ++dstIdx, ++srcIdx)
         {
             // do the scan one by one
             // (W) op (1) result[dstIdx] srcCopy[srcIdx] result[dstIdx-1]
-            if (!int64EmulationNeeded)
+            if (isInt64Mul)
             {
-                m_encoder->SetSimdSize(simd);
+                CVariable* pMulSrc[2] = {
+                    m_currShader->GetNewAlias(pSrcCopy[i], type, srcIdx * sizeof(QWORD), 1, true),
+                    m_currShader->GetNewAlias(result[i], type, (dstIdx - 1) * sizeof(QWORD), 1, true) };
+                Mul64(tmpDst, pMulSrc, SIMDMode::SIMD1, true /*noMask*/);
+                // (W) mov (1) result[dstIdx] tmpDst
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                m_encoder->SetNoMask();
+                m_encoder->SetDstSubReg(dstIdx);
+                m_encoder->Copy(result[i], tmpDst);
+                m_encoder->Push();
+            }
+            else
+            {
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
                 m_encoder->SetNoMask();
                 m_encoder->SetSrcSubReg(0, srcIdx);
                 m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -12707,27 +12662,6 @@ void EmitPass::emitPreOrPostFixOpScalar(
                 m_encoder->GenericAlu(op, result[i], pSrcCopy[i], result[i]);
                 m_encoder->Push();
             }
-            else
-            {
-                if (isInt64Mul)
-                {
-                    CVariable* pSrc[2] = {
-                        m_currShader->GetNewAlias(pSrcCopy[i], type, srcIdx * sizeof(QWORD), 1, true),
-                        m_currShader->GetNewAlias(result[i], type, (dstIdx - 1) * sizeof(QWORD), 1, true) };
-                    Mul64(tmpDst, pSrc, simd, true /* noMask */);
-                }
-                else
-                {
-                    IGC_ASSERT_MESSAGE(0, "Unsupported");
-                }
-
-                // (W) mov (1) result[dstIdx] tmpDst
-                m_encoder->SetSimdSize(simd);
-                m_encoder->SetNoMask();
-                m_encoder->SetDstSubReg(dstIdx);
-                m_encoder->Copy(result[i], tmpDst);
-                m_encoder->Push();
-            }
         }
 
         m_encoder->SetSecondHalf(false);
@@ -12735,31 +12669,24 @@ void EmitPass::emitPreOrPostFixOpScalar(
 
     if (isSimd32)
     {
-        const SIMDMode simd = SIMDMode::SIMD16;
-
         m_encoder->SetSecondHalf(true);
 
         // For SIMD32 we need to write the last element of the prev element to the next 16 elements.
-        if (!int64EmulationNeeded)
+        if (isInt64Mul)
         {
-            m_encoder->SetSimdSize(simd);
+            CVariable* pMulSrc[2] = {
+                 m_currShader->GetNewAlias(result[0], type, 15 * sizeof(QWORD), 1, true),
+                 result[1] };
+            Mul64(result[1], pMulSrc, SIMDMode::SIMD16, true /*noMask*/);
+        }
+        else
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
             m_encoder->SetNoMask();
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             m_encoder->SetSrcSubReg(0, 15);
             m_encoder->GenericAlu(op, result[1], result[0], result[1]);
             m_encoder->Push();
-        }
-        else
-        {
-            if (isInt64Mul)
-            {
-                CVariable* pSrc[2] = { m_currShader->GetNewAlias(result[0], type, 15 * sizeof(QWORD), 1, true), result[1] };
-                Mul64(result[1], pSrc, simd, true /* noMask */);
-            }
-            else
-            {
-                IGC_ASSERT_MESSAGE(0, "Unsupported");
-            }
         }
 
         m_encoder->SetSecondHalf(false);
