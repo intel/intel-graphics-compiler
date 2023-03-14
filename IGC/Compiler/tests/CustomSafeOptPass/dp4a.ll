@@ -38,7 +38,7 @@ define void @test_dp4(i8 %a, i8 %b, i8 %c, i8 %d, i8 %e, i8 %f, i8 %g, i8 %h, i3
 ; CHECK:    [[TMP23:%.*]] = insertelement <4 x i8> [[TMP21]], i8 [[H]], i64 3
 ; CHECK:    [[TMP24:%.*]] = bitcast <4 x i8> [[TMP22]] to i32
 ; CHECK:    [[TMP25:%.*]] = bitcast <4 x i8> [[TMP23]] to i32
-; CHECK:    [[TMP26:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP24]], i32 [[TMP25]])
+; CHECK:    [[TMP26:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP24]], i32 [[TMP25]], i1 false)
 ; CHECK:    [[TMP27:%.*]] = add nsw i32 [[ACC:%.*]], [[TMP26]]
 ; CHECK:    call void @use.i32(i32 [[TMP27]])
 ;
