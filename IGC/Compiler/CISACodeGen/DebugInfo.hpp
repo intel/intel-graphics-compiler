@@ -32,12 +32,13 @@ namespace IGC
     class DebugInfoPass : public llvm::ModulePass
     {
     public:
+        DebugInfoPass();
         DebugInfoPass(CShaderProgram::KernelShaderMap&);
         virtual llvm::StringRef getPassName() const  override { return "DebugInfoPass"; }
         virtual ~DebugInfoPass();
+        static char ID;
 
     private:
-        static char ID;
         CShaderProgram::KernelShaderMap& kernels;
         CShader* m_currShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;

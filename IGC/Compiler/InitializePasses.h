@@ -229,6 +229,7 @@ void initializeUndefinedReferencesPassPass(llvm::PassRegistry&);
 void initializeUnreachableHandlingPass(llvm::PassRegistry&);
 void initializeBreakdownIntrinsicPassPass(llvm::PassRegistry&);
 void initializeCatchAllLineNumberPass(llvm::PassRegistry&);
+void initializeDebugInfoPassPass(llvm::PassRegistry&);
 void initializePromoteConstantStructsPass(llvm::PassRegistry&);
 void initializeLowerInvokeSIMDPass(llvm::PassRegistry&);
 void initializeImplicitGIDRestoringPass(llvm::PassRegistry&);

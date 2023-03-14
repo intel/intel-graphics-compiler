@@ -27,6 +27,27 @@ using namespace CLElfLib;
 char DebugInfoPass::ID = 0;
 char CatchAllLineNumber::ID = 0;
 
+
+
+// Register pass to igc-opt
+#define PASS_FLAG1 "igc-debug-finalize"
+#define PASS_DESCRIPTION1 "DebugInfo pass, llvmIR part(WAs)"
+#define PASS_CFG_ONLY1 false
+#define PASS_ANALYSIS1 false
+
+IGC_INITIALIZE_PASS_BEGIN(DebugInfoPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+IGC_INITIALIZE_PASS_END(DebugInfoPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+
+// Used for opt testing, could be removed if KernelShaderMap is moved to ctx.
+static CShaderProgram::KernelShaderMap KernelShaderMap;
+
+// Default ctor used for igc-opt testing
+DebugInfoPass::DebugInfoPass() :
+    ModulePass(ID),
+    kernels(KernelShaderMap)
+{ }
+
+
 DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap& k) :
     ModulePass(ID),
     kernels(k)
@@ -65,6 +86,10 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
       }
     }
 #endif
+    // Early out
+    if (kernels.empty())
+       return false;
+
     std::vector<CShader*> units;
 
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
