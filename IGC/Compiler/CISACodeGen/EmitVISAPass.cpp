@@ -7558,8 +7558,7 @@ void EmitPass::emitAluNoModifier(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
 {
-    const GenISAIntrinsic::ID intrinsicID = inst->getIntrinsicID();
-    switch (intrinsicID)
+    switch (inst->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_OUTPUT:
         emitOutput(inst);
@@ -8004,16 +8003,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dp4a_uu:
     case GenISAIntrinsic::GenISA_dp4a_su:
     case GenISAIntrinsic::GenISA_dp4a_us:
-    {
-        ConstantInt* constIsSaturated = cast<ConstantInt>(inst->getOperand(3));
-        IGC_ASSERT_MESSAGE(constIsSaturated, "dp4a 3rd argument isSaturated must be a constant");
-        DstModifier modifier;
-        modifier.sat = constIsSaturated->getValue().getBoolValue();
-
-        bool isAccSigned = intrinsicID != GenISAIntrinsic::GenISA_dp4a_uu;
-        emitDP4A(inst, nullptr, modifier, isAccSigned);
+        emitDP4A(inst);
         break;
-    }
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
         break;
