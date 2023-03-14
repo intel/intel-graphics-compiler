@@ -410,6 +410,11 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
             arg->getArgType() == KernelArg::ArgType::IMPLICIT_SYNC_BUFFER)
             return false;
 
+        // RT_GLOBAL_BUFFER is supported only in stateless mode by the runtime.
+        if (arg->getArgType() == KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER) {
+            return false;
+        }
+
         argNumber = arg->getAssociatedArgNo();
         bool gepProducesPositivePointer = true;
 
