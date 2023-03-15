@@ -884,12 +884,17 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
   removeUnreachableBlocks(funcInfoHashTable);
 
   pKernel->dumpToFile("after.RemoveUnreachableBlocks");
-  // FIXME: this copy seems redundant, unordered_set already guarantees O(N)
-  // traversal where N is number of elements in set. Do we have reason to
-  // believe unordered_set traversal is slower than vector?
-  for (auto it = funcInfoHashTable.begin(), end = funcInfoHashTable.end();
+
+  //
+  // build the table of function info nodes
+  //
+
+  for (FuncInfoHashTable::iterator it = funcInfoHashTable.begin(),
+                                   end = funcInfoHashTable.end();
        it != end; ++it) {
     FuncInfo *funcInfo = (*it).second;
+    funcInfo->getInitBB()->setFuncInfo(funcInfo);
+    funcInfo->getExitBB()->setFuncInfo(funcInfo);
     funcInfoTable.push_back(funcInfo);
   }
 
@@ -1232,6 +1237,8 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
             funcInfoHashTable.find(subBB->getId());
 
         if (calleeInfoLoc != funcInfoHashTable.end()) {
+          (*calleeInfoLoc).second->incrementCallCount();
+          bb->setCalleeInfo((*calleeInfoLoc).second);
           doIPA = true;
         } else {
           unsigned funcId = (unsigned)funcInfoHashTable.size();
@@ -4124,15 +4131,16 @@ unsigned FlowGraph::resolveVarScope(G4_Declare *dcl, FuncInfo *func) {
 //
 // Visit all operands referenced in a function and update the varaible scope
 //
-void FuncInfo::markVarScope(FlowGraph &FG) {
+void FlowGraph::markVarScope(std::vector<G4_BB *> &BBList, FuncInfo *func) {
   for (auto bb : BBList) {
     for (auto it = bb->begin(), end = bb->end(); it != end; it++) {
       G4_INST *inst = (*it);
+
       G4_DstRegRegion *dst = inst->getDst();
 
       if (dst && !dst->isAreg() && dst->getBase()) {
         G4_Declare *dcl = GetTopDclFromRegRegion(dst);
-        unsigned scopeID = FG.resolveVarScope(dcl, this);
+        unsigned scopeID = resolveVarScope(dcl, func);
         dcl->updateScopeID(scopeID);
       }
 
@@ -4142,12 +4150,12 @@ void FuncInfo::markVarScope(FlowGraph &FG) {
         if (src && !src->isAreg()) {
           if (src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()) {
             G4_Declare *dcl = GetTopDclFromRegRegion(src);
-            unsigned scopeID = FG.resolveVarScope(dcl, this);
+            unsigned scopeID = resolveVarScope(dcl, func);
             dcl->updateScopeID(scopeID);
           } else if (src->isAddrExp() && src->asAddrExp()->getRegVar()) {
             G4_Declare *dcl =
                 src->asAddrExp()->getRegVar()->getDeclare()->getRootDeclare();
-            unsigned scopeID = FG.resolveVarScope(dcl, this);
+            unsigned scopeID = resolveVarScope(dcl, func);
             dcl->updateScopeID(scopeID);
           }
         }
@@ -4184,7 +4192,7 @@ void FlowGraph::markScope() {
   }
 
   for (auto func : sortedFuncTable) {
-    func->markVarScope(*this);
+    markVarScope(func->getBBList(), func);
   }
 }
 
