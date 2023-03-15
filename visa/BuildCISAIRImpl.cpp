@@ -651,15 +651,15 @@ void CISA_IR_Builder::LinkTimeOptimization(
     G4_Declare *replacedRetDcl = nullptr;
 
     for (auto &it : sgInvokeList) {
-      bool inlining = (options & (1U << Linker_Inline));
-      bool removeArgRet = (options & (1U << Linker_RemoveArgRet));
-      bool removeStackArg = (options & (1U << Linker_RemoveStackArg));
-      bool removeStackFrame = (options & (1U << Linker_RemoveStackFrame));
       G4_INST *fcall = *it;
       vASSERT(fcall->opcode() == G4_pseudo_fcall);
-
       G4_Kernel *caller = GetCallerKernel(fcall);
       G4_Kernel *callee = GetCalleeKernel(fcall);
+      bool inlining = (options & (1U << Linker_Inline));
+      bool removeArgRet = (options & (1U << Linker_RemoveArgRet));
+      bool removeStackArg = (options & (1U << Linker_RemoveStackArg)) && caller->fg.builder->hasInt64Add();
+      bool removeStackFrame = (options & (1U << Linker_RemoveStackFrame));
+
       G4_INST *calleeLabel = *callee->fg.builder->instList.begin();
       vISA_ASSERT(calleeLabel->isLabel() == true, "Entry inst is not a label");
 
