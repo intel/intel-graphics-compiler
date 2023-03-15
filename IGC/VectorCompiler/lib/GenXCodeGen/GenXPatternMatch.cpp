@@ -1447,6 +1447,25 @@ bool MadMatcher::matchIntegerMad() {
 
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
+  /* Multiply-add operation on 32-bit d-word argument with SAT cannot
+     be replacd with mad instruction */
+  auto *Ty = AInst->getType();
+  if (Ty->isIntOrIntVectorTy(32)) {
+    for (auto &U : AInst->uses()) {
+      auto *User = dyn_cast<CallInst>(U.getUser());
+      if (!User) {
+        continue;
+      }
+      auto IID = GenXIntrinsic::getAnyIntrinsicID(User);
+      if (IID == GenXIntrinsic::genx_sstrunc_sat
+          || IID == GenXIntrinsic::genx_ustrunc_sat
+          || IID == GenXIntrinsic::genx_sutrunc_sat
+          || IID == GenXIntrinsic::genx_uutrunc_sat) {
+        return false;
+      }
+    }
+  }
+
   if (auto BI = dyn_cast<MulLikeOperator>(Ops[0])) {
     // Case X * Y +/- Z
     Srcs[2] = Ops[1];
