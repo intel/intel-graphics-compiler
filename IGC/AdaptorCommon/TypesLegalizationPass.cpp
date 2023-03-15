@@ -332,8 +332,16 @@ void TypesLegalizationPass::ResolveStoreInst(
       ResolveValue( storeInst,storeInst->getOperand( 0 ),indices );
     if (val) {
         IGCLLVM::IRBuilder<> builder(storeInst);
+        bool isPackedStruct = false;
+
+        if (StructType* st = dyn_cast<StructType>(storeInst->getValueOperand()->getType()))
+            isPackedStruct = st->isPacked();
+
         Value* pGEP = CreateGEP(builder, storeInst->getOperand(1), indices);
-        builder.CreateStore(val, pGEP);
+        if (isPackedStruct)
+            builder.CreateAlignedStore(val, pGEP, IGCLLVM::getAlign(1));
+        else
+            builder.CreateStore(val, pGEP);
     }
   }
 }
