@@ -582,7 +582,7 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
         return globalVariable;
     }
 
-    return new GlobalVariable(
+    auto newGlobalVariable = new GlobalVariable(
         *globalVariable->getParent(),
         getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(globalVariable->getType())),
         globalVariable->isConstant(),
@@ -592,6 +592,15 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
         nullptr,
         GlobalValue::ThreadLocalMode::NotThreadLocal,
         globalVariable->getType()->getPointerAddressSpace());
+
+    // Clone metadatas
+    SmallVector<std::pair<unsigned, MDNode*>, 8> metadatas;
+    globalVariable->getAllMetadata(metadatas);
+    for (const auto& metadata : metadatas)
+    {
+        newGlobalVariable->addMetadata(metadata.first, *metadata.second);
+    }
+    return newGlobalVariable;
 }
 
 Constant* PromoteBools::promoteConstant(Constant* constant)
