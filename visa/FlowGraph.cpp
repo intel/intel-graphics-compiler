@@ -1592,6 +1592,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
   //   1. If CALL_BB isn't dead, don't remove RETURN_BB;
   //   2. If INIT_BB isn't dead, don't remove EXIT_BB.
   //   3. For BB with EOT, don't remove it.
+  //   4. Don't remove pseudo_fret ever as the function may be extern.
   // (Note that in BB list (BBs), CALL_BB appears before RETURN_BB and INIT_BB
   //  appears before EXIT_BB. The algo works under this assumpion.)
   BB_LIST_ITER it = BBs.begin();
@@ -1615,6 +1616,12 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
       // EOT should be in entry function, we keep it for now.
       if (bb->size() > 0 && bb->back()->isEOT()) {
         ++it;
+        continue;
+      }
+
+      // preserve pseudo_fret BB
+      if (bb->isEndWithFRet()) {
+          ++it;
         continue;
       }
 
