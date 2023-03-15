@@ -489,6 +489,7 @@ public:
       VISA_opnd *exMsgDesc, unsigned char ffid, unsigned char src0Size,
       unsigned char src1Size, unsigned char dstSize, VISA_opnd *Desc,
       VISA_opnd *src0, VISA_opnd *src1, VISA_opnd *dst, int lineNum);
+
   bool CISA_create_fence_instruction(ISA_Opcode opcode, unsigned char mode,
                                      int lineNum);
   bool CISA_create_wait_instruction(VISA_opnd *mask, int lineNum);

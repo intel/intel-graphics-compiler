@@ -3456,6 +3456,7 @@ bool CISA_IR_Builder::CISA_create_raw_sends_instruction(
 
   return true;
 }
+
 /*
 Should be only called from CISA 2.4+
 */

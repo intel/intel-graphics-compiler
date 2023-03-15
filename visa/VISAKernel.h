@@ -215,7 +215,7 @@ public:
 
   void setGenxDebugInfoBuffer(char *buffer, unsigned long size);
   VISA_opnd *CreateOtherOpndHelper(int num_pred_desc_operands, int num_operands,
-                                   VISA_INST_Desc *inst_desc,
+                                   const VISA_INST_Desc *inst_desc,
                                    unsigned int value,
                                    bool hasSubOpcode = false,
                                    uint8_t subOpcode = 0);

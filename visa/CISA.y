@@ -31,7 +31,7 @@ void CISAerror(CISA_IR_Builder* builder, char const* msg);
 int yylex(CISA_IR_Builder *pBuilder);
 extern int CISAlineno;
 
-
+static bool streq(const char *sym0, const char *sym1);
 static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &value);
 static VISA_Align AlignBytesToVisaAlignment(int bytes);
 static int DataTypeSizeOf(VISA_Type type);
@@ -290,12 +290,16 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token CPS                   // .cps
 %token NON_UNIFORM_SAMPLER  // .divS
 %token PIXEL_NULL_MASK      // .pixel_null_mask
-%token RAW_SENDC_STRING     // raw_sendc
-%token RAW_SENDSC_EOT_STRING // raw_sendsc_eot
-%token RAW_SENDSC_STRING    // raw_sendsc
-%token RAW_SENDS_EOT_STRING // raw_sends_eot
-%token RAW_SENDS_STRING     // raw_sends
+
 %token RAW_SEND_STRING      // raw_send
+%token RAW_SENDC_STRING     // raw_sendc
+
+%token RAW_SENDS_STRING     // raw_sends
+%token RAW_SENDS_EOT_STRING // raw_sends_eot
+%token RAW_SENDSC_STRING    // raw_sendsc
+%token RAW_SENDSC_EOT_STRING // raw_sendsc_eot
+
+
 %token SAT                  // .sat
 %token SRCMOD_ABS           // (abs)
 %token SRCMOD_NEG           // (-)
@@ -2260,6 +2264,7 @@ RawSendsInstruction:
             $8.cisa_gen_opnd, $9, $10, $11, CISAlineno);
     }
 
+
 NullaryInstruction:
     CACHE_FLUSH_OP
     {
@@ -2836,6 +2841,8 @@ IntExpRel:
     | IntExpNRA GEQ    IntExpNRA {$$ = $1 >= $3;}
     | IntExpNRA
 
+// IntExpNRA - "integer expression no right angle"
+//
 // In all cases where RANGLE follows an int expression we must start
 // expression parsing at a higher precedence than relational operators
 //
@@ -2928,6 +2935,11 @@ DataTypeIntOrVector:
 void CISAerror(CISA_IR_Builder* pBuilder, char const *s)
 {
     pBuilder->RecordParseError(CISAlineno, s);
+}
+
+static bool streq(const char *sym0, const char *sym1)
+{
+  return strcmp(sym0, sym1) == 0;
 }
 
 static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &value)

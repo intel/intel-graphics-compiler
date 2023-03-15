@@ -167,7 +167,9 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_RESERVED_8F, ISA_Inst_Reserved, "reserved8f", 0, 0},
     {ISA_RESERVED_90, ISA_Inst_Reserved, "reserved90", 0, 0},
     {ISA_MADW, ISA_Inst_Arith, "madw", 3, 1},
-    {ISA_ADD3O, ISA_Inst_Arith, "add3.o", 3, 1}};
+    {ISA_ADD3O, ISA_Inst_Arith, "add3.o", 3, 1},
+    {ISA_RESERVED_93, ISA_Inst_Reserved, "reserved93", 0, 0},
+};
 
 VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
     /// 0
@@ -2679,6 +2681,16 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_VECTOR_SRC_G_I_IMM,
              ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0},
         },
+    },
+    /// 147 (0x93)
+    {
+        ALL,
+        ISA_RESERVED_93,
+        ISA_Inst_Reserved,
+        "reserved_93",
+        0,
+        0,
+        {},
     },
 };
 

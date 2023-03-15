@@ -61,7 +61,7 @@ static void ADD_OPND(int &num_operands, VISA_opnd **opnd, VISA_opnd *topnd) {
   }
 }
 
-static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands,
+static int CHECK_NUM_OPNDS(const VISA_INST_Desc *instDesc, int numOperands,
                            int predOpnds) {
 
   if ((instDesc->opnd_num - predOpnds) != numOperands) {
@@ -72,7 +72,7 @@ static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands,
   return VISA_SUCCESS;
 }
 static void GET_NUM_PRED_DESC_OPNDS(int &predOpnd,
-                                    VISA_INST_Desc *inst_desc_temp) {
+                                    const VISA_INST_Desc *inst_desc_temp) {
   predOpnd = 0;
   for (int i = 0; i < inst_desc_temp->opnd_num; i++) {
     if (inst_desc_temp->opnd_desc[i].opnd_type == OPND_EXECSIZE ||
@@ -2144,7 +2144,6 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd,
   }
 
   if (IS_VISA_BOTH_PATH) {
-
     cisa_opnd->opnd_type = CISA_OPND_VECTOR;
     cisa_opnd->tag =
         OPERAND_GENERAL; //<--- I think this is redundant at this point.
@@ -4759,11 +4758,12 @@ int VISAKernelImpl::AppendVISAMiscRawSend(
 }
 
 int VISAKernelImpl::AppendVISAMiscRawSends(
-    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    unsigned char modifiers, unsigned ffid, VISA_VectorOpnd *exMsgDesc,
-    unsigned char src0Size, unsigned char src1Size, unsigned char dstSize,
-    VISA_VectorOpnd *desc, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-    VISA_RawOpnd *dst, bool hasEOT) {
+  VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+  unsigned char modifiers, unsigned ffid, VISA_VectorOpnd *exMsgDesc,
+  unsigned char src0Size, unsigned char src1Size, unsigned char dstSize,
+  VISA_VectorOpnd *desc, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
+  VISA_RawOpnd *dst, bool hasEOT)
+{
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   AppendVISAInstCommon();
@@ -8671,7 +8671,7 @@ VISA_opnd *VISAKernelImpl::CreateOtherOpnd(unsigned int value,
 
 // FIXME: this needs major rework
 VISA_opnd *VISAKernelImpl::CreateOtherOpndHelper(
-    int num_pred_desc_operands, int num_operands, VISA_INST_Desc *inst_desc,
+    int num_pred_desc_operands, int num_operands, const VISA_INST_Desc *inst_desc,
     unsigned int value, bool hasSubOpcode, uint8_t subOpcode) {
   VISA_Type dataType = ISA_TYPE_NUM;
   VISA_opnd *temp = getOpndFromPool();
@@ -8717,6 +8717,7 @@ G4_Operand *VISAKernelImpl::CommonISABuildPreDefinedSrc(
   G4_Operand *tmpsrc = NULL;
   PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index);
   switch (internalIndex) {
+  case PreDefinedVarsInternal::VAR_NULL:
   case PreDefinedVarsInternal::X:
   case PreDefinedVarsInternal::Y:
   case PreDefinedVarsInternal::LOCAL_ID_X:

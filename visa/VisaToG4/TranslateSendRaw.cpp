@@ -129,12 +129,14 @@ int IR_Builder::translateVISARawSendsInst(
                       msgDescOpnd, inst_opt, sendMsgDesc, temp_exdesc_src,
                       true);
   if (getOption(vISA_renderTargetWriteSendReloc) &&
-      dstOpnd->isNullReg() &&
-      SFID::DP_RC == intToSFID(ffid, getPlatform())) {
-      std::string symbolName{ "RTW_SEND" };
-      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
-          GenRelocType::R_SEND);
+    dstOpnd->isNullReg() &&
+    SFID::DP_RC == intToSFID(ffid, getPlatform()))
+  {
+    std::string symbolName{ "RTW_SEND" };
+    RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
+        GenRelocType::R_SEND);
   }
 
   return VISA_SUCCESS;
 }
+

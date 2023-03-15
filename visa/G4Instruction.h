@@ -165,10 +165,12 @@ HANDLE_INST(pseudo_sada2, 3, 1, InstTypeVector, GENX_BDW, ATTR_NONE)
 // InstTypeMisc
 //
 HANDLE_INST(wait, 1, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
+
 HANDLE_INST(send, 2, 1, InstTypeMisc, GENX_BDW, ATTR_NONE)
 HANDLE_INST(sendc, 2, 1, InstTypeMisc, GENX_BDW, ATTR_NONE)
 HANDLE_INST(sends, 4, 1, InstTypeMisc, GENX_SKL, ATTR_NONE)
 HANDLE_INST(sendsc, 4, 1, InstTypeMisc, GENX_SKL, ATTR_NONE)
+
 HANDLE_INST(nop, 0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
 
 HANDLE_INST(sync_nop, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
