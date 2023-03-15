@@ -119,7 +119,7 @@ SPDX-License-Identifier: MIT
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
-#include "preprocess_spvir/PromoteBools.cpp"
+#include "preprocess_spvir/PromoteBools.h"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
