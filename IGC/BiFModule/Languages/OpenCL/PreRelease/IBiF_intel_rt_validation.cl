@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 #if defined(cl_intel_pvc_rt_validation)
 
+#include "IBiF_intel_rt_utils.h"
+
 void* intel_get_rt_stack(rtglobals_t rt_dispatch_globals)
 {
     return __builtin_IB_intel_get_rt_stack(rt_dispatch_globals);
@@ -37,7 +39,7 @@ void intel_rt_sync(rtfence_t fence)
 
 global void* intel_get_implicit_dispatch_globals()
 {
-    return __builtin_IB_intel_get_implicit_dispatch_globals();
+    return __getImplicitDispatchGlobals();
 }
 
 #endif // defined(cl_intel_pvc_rt_validation)

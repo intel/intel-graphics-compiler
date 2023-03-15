@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IBiF_intel_rt_struct_defs.cl"
+#include "IBiF_intel_rt_struct_defs.h"
+#include "IBiF_intel_rt_utils.h"
 
 #if defined(cl_intel_rt_production)
 
@@ -21,7 +22,7 @@ intel_ray_query_t intel_ray_query_init(
     global HWAccel* hwaccel   = to_global((HWAccel*)accel);
     unsigned int    bvh_level = 0;
 
-    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t)__builtin_IB_intel_get_implicit_dispatch_globals();
+    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t) __getImplicitDispatchGlobals();
     global RTStack* rtStack =
         to_global((RTStack*)__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
 
