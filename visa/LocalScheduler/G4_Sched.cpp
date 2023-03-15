@@ -546,7 +546,7 @@ static unsigned getLatencyHidingThreshold(G4_Kernel &kernel, unsigned NumGrfs) {
   if (RPThreshold == 0) {
     RPThreshold = 104;
   }
-  return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 48u) / 80u);
+  return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 32u) / 96u);
 }
 
 preRA_Scheduler::preRA_Scheduler(G4_Kernel &k, RPE *rpe)
