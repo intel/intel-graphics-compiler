@@ -30,10 +30,10 @@ SPDX-License-Identifier: MIT
 //
 // Explanation of code in original resource : https://www.fluentcpp.com/2019/08/30/how-to-disable-a-warning-in-cpp/
 #if defined(__clang__)
-    #define DO_PRAGMA(X) _Pragma(#X)                                                     // internal utility
-    #define DISABLE_WARNING_PUSH         DO_PRAGMA(GCC diagnostic push)
-    #define DISABLE_WARNING_POP          DO_PRAGMA(GCC diagnostic pop)
-    #define DISABLE_WARNING(warningName) DO_PRAGMA(GCC diagnostic ignored #warningName)  // internal utility
+    #define DO_PRAGMA_DIAG(X) _Pragma(#X)                                                     // internal utility
+    #define DISABLE_WARNING_PUSH         DO_PRAGMA_DIAG(GCC diagnostic push)
+    #define DISABLE_WARNING_POP          DO_PRAGMA_DIAG(GCC diagnostic pop)
+    #define DISABLE_WARNING(warningName) DO_PRAGMA_DIAG(GCC diagnostic ignored #warningName)  // internal utility
     // Add warnings that you want to disable here:
     #define DISABLE_WARNING_ANONYMOUS_STRUCT_UNION   \
         DISABLE_WARNING(-Wgnu-anonymous-struct)  // anonymous structs are a GNU extension
@@ -41,9 +41,9 @@ SPDX-License-Identifier: MIT
     #define DISABLE_WARNING_ANON_TYPES_IN_ANON_UNION \
         DISABLE_WARNING(-Wnested-anon-types)     // anonymous types declared in an anonymous union are an extension
 #elif defined(__GNUC__)
-    #define DO_PRAGMA(X) _Pragma(#X)                                                     // internal utility
-    #define DISABLE_WARNING_PUSH         DO_PRAGMA(GCC diagnostic push)
-    #define DISABLE_WARNING_POP          DO_PRAGMA(GCC diagnostic pop)
+    #define DO_PRAGMA_DIAG(X) _Pragma(#X)                                                     // internal utility
+    #define DISABLE_WARNING_PUSH         DO_PRAGMA_DIAG(GCC diagnostic push)
+    #define DISABLE_WARNING_POP          DO_PRAGMA_DIAG(GCC diagnostic pop)
     // Treats only this header file as a system header, AKA disables all warnings in this header file only.
     // The effect does not extend into any file that includes this header file.
     #pragma GCC system_header

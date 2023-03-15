@@ -48,6 +48,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "CodeGenPublicEnums.h"
 #include "AdaptorOCL/TranslationBlock.h"
+#include "AdaptorCommon/RayTracing/API/BVHInfo.h"
 #include "common/MDFrameWork.h"
 #include <unordered_set>
 #include "Probe/Assertion.h"
@@ -958,10 +959,7 @@ namespace IGC
         bool HasFuncExpensiveLoop(llvm::Function* pFunc);
 
         // Raytracing (any shader type)
-        // If provided, the BVH has been constructed such that the root node
-        // is at a constant offset from the start of the BVH. This allows
-        // us to skip loading the offset at BVH::rootNodeOffset.
-        std::optional<size_t> BVHFixedOffset;
+        BVHInfo bvhInfo;
         // Immediate constant buffer promotion is enabled for all optimization except for Direct storage case
         bool m_disableICBPromotion = false;
     private:

@@ -1152,8 +1152,8 @@ Value* RTBuilder::getRootNodePtr(Value* BVHPtr)
 
     return _getBVHPtr(
         BVHI,
-        VAdapt{ *this, Ctx.BVHFixedOffset.has_value() ? *Ctx.BVHFixedOffset : 0 },
-        VAdapt{ *this, Ctx.BVHFixedOffset.has_value() },
+        getInt64(Ctx.bvhInfo.hasFixedOffset ? Ctx.bvhInfo.offset : 0),
+        getInt1(Ctx.bvhInfo.hasFixedOffset),
         VALUE_NAME("rootNodePtr"));
 }
 

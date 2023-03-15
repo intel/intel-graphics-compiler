@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "IGC/AdaptorCommon/RayTracing/RTBuilder.h"
 #include "IGC/AdaptorCommon/RayTracing/RTStackFormat.h"
-#include "IGC/AdaptorCommon/RayTracing/RayTracingRayDispatchGlobalData.h"
+#include "IGC/AdaptorCommon/RayTracing/API/RayDispatchGlobalData.h"
 
 using namespace llvm;
 using namespace IGC;

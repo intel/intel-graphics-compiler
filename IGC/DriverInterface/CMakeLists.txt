@@ -125,9 +125,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/MemRegionAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingMemoryStyle.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingMemoryStyleEnum.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingPasses.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingRayDispatchGlobalData.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTArgs.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTStackFormat.h"
@@ -136,9 +134,15 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.h"
     )
 
-  set(IGC_BUILD__HDR__RAYTRACING_ADT
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/ADT/Array.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/ADT/Optional.h"
+  set(IGC_BUILD__HDR__RAYTRACING__API
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/API.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/BVHInfo.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/MemoryStyleEnum.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/RayDispatchGlobalData.h"
+    )
+  set(IGC_BUILD__HDR__RAYTRACING_API__ADT
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/Array.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/API/ADT/Optional.h"
     )
 
 list(APPEND IGC_BUILD__SRC__DriverInterface
@@ -195,10 +199,16 @@ set(IGC_BUILD__HDR__IGC_DriverInterface__igc_dll
       ${IGC_BUILD__HDR__RAYTRACING}
   )
   igc_sg_register(
-    IGC__RayTracing__ADT
-    "DriverInterface\\RayTracing\\ADT"
+    IGC__RayTracing__API
+    "DriverInterface\\RayTracing\\API"
     FILES
-      ${IGC_BUILD__HDR__RAYTRACING_ADT}
+      ${IGC_BUILD__HDR__RAYTRACING__API}
+  )
+  igc_sg_register(
+    IGC__RayTracing__API__ADT
+    "DriverInterface\\RayTracing\\API\\ADT"
+    FILES
+      ${IGC_BUILD__HDR__RAYTRACING_API__ADT}
   )
 
 igc_regex_escape(_reSrcDir "${CMAKE_CURRENT_SOURCE_DIR}")

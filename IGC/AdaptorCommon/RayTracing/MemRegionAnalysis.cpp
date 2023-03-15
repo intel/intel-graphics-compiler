@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include "MemRegionAnalysis.h"
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
-#include "RayTracingRayDispatchGlobalData.h"
+#include "API/RayDispatchGlobalData.h"
 #include "llvmWrapper/IR/Value.h"
 
 using namespace llvm;

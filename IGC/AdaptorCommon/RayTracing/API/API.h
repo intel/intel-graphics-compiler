@@ -6,6 +6,13 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// This should be in sync with MemoryStyleEnum.h!
-STYLE(Xe)
+#pragma once
 
+#include "common/EmUtils.h"
+
+#include "ADT/Array.h"
+#include "ADT/Optional.h"
+
+#include "BVHInfo.h"
+#include "MemoryStyleEnum.h"
+#include "RayDispatchGlobalData.h"
