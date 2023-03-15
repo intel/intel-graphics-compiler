@@ -228,7 +228,7 @@ public:
     Value* getRtMemBasePtr(void);
     Value* getMaxBVHLevels(void);
     Value* getStatelessScratchPtr(void);
-
+    Value* getPrimLeafIndex(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getLeafType(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getIsFrontFace(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
 
