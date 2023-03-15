@@ -401,7 +401,11 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload(G4_Declare *payload,
     // for half float each source occupies 1 GRF regardless of execution size
     regOff++;
   } else {
-    regOff += execSize / getNativeExecSize();
+    // for cases where we are compiling a 3D shader in a SIMD mode lower than the
+    // native SIMD mode (for example, compiling a shader in SIMD8 on a platform
+    // where native SIMD mode is SIMD16), we must increment regOff by
+    // atleast 1. Hence, using std::max.
+    regOff += std::max(1, execSize/getNativeExecSize());
   }
 }
 
