@@ -80,8 +80,6 @@ bool LegalizeFunctionSignatures::runOnModule(Module& M)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    // Add an unreachable return for functions without the return instruction
-    FixNoReturn(M);
     // Creates a new function declaration with modified signature
     FixFunctionSignatures(M);
     // Transforms all callers of the old function to the new function
@@ -665,36 +663,5 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         }
         // Remove the old call
         callInst->eraseFromParent();
-    }
-}
-
-void LegalizeFunctionSignatures::FixNoReturn(Module& M)
-{
-    for (auto& FI : M)
-    {
-        if (!FI.empty())
-        {
-            // Search each BB for the ReturnInst
-            BasicBlock* lastBB = nullptr;
-            bool hasRetInst = false;
-            for (auto& BB : FI)
-            {
-                if (isa<ReturnInst>(BB.getTerminator()))
-                {
-                    hasRetInst = true;
-                    break;
-                }
-                lastBB = &BB;
-            }
-            // Insert an unreachable ReturnInst in the last BB
-            if (!hasRetInst)
-            {
-                IGCLLVM::IRBuilder<> builder(lastBB);
-                ReturnInst* dummyRet = FI.getReturnType()->isVoidTy() ?
-                    builder.CreateRetVoid() :
-                    builder.CreateRet(UndefValue::get(FI.getReturnType()));
-                dummyRet->moveAfter(lastBB->getTerminator());
-            }
-        }
     }
 }
