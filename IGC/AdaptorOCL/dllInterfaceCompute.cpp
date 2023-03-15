@@ -1272,13 +1272,13 @@ bool TranslateBuildSPMD(
         oclContext.gtpin_init = pInputArgs->GTPinInput;
     }
 
+    oclContext.hash = inputShHash;
     oclContext.setModule(pKernelModule);
     if (oclContext.isSPIRV())
     {
         deserialize(*oclContext.getModuleMetaData(), pKernelModule);
     }
 
-    oclContext.hash = inputShHash;
     oclContext.annotater = nullptr;
 
     // Set default denorm.
@@ -1662,6 +1662,9 @@ bool TranslateBuild(
 {
     ShaderHash inputShHash = ShaderHashOCL(reinterpret_cast<const UINT*>(pInputArgs->pInput),
                                            pInputArgs->InputSize / 4);
+
+    // set g_CurrentShaderHash in igc_regkeys.cpp
+    SetCurrentDebugHash(inputShHash);
 
     // on wrong spec constants, vc::translateBuild may fail
     // so lets dump those early

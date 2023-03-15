@@ -961,6 +961,11 @@ bool CheckHashRange(SRegKeyVariableMetaData& varname)
 {
     if (varname.hashes.empty())
         return true;
+    if (!g_CurrentShaderHash.is_set())
+    {
+        std::string msg = "Warning: hash not calculated yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) + ") returned default value";
+        appendToOptionsLogFile(msg);
+    }
 
     for (auto &it : varname.hashes)
     {

@@ -26,6 +26,8 @@ public:
     QWORD getPsoHash() const { return psoHash; }
     QWORD getPerShaderPsoHash() const { return perShaderPsoHash; }
 
+    bool is_set() { return ((asmHash | nosHash | psoHash | perShaderPsoHash | rtlHash | dcHash | ltoHash | stateHash) != 0); }
+
     QWORD asmHash;
     QWORD nosHash;
     QWORD psoHash;
