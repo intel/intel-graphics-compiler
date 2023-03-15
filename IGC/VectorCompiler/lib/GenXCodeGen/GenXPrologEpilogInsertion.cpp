@@ -246,6 +246,8 @@ class GenXPrologEpilogInsertion
 
   alignment_t getAllocaAlignment(AllocaInst *AI) const;
 
+  Value *getThreadID(Module *M, IRBuilder<> &IRB) const;
+
 public:
   static char ID;
   explicit GenXPrologEpilogInsertion();
@@ -456,16 +458,29 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   return isStackPrimitivesUsed();
 }
 
+Value *GenXPrologEpilogInsertion::getThreadID(Module *M,
+                                              IRBuilder<> &IRB) const {
+  Function *Func = GenXIntrinsic::getGenXDeclaration(
+      M, llvm::GenXIntrinsic::genx_get_hwid, {});
+  auto *TID = IRB.CreateCall(Func);
+
+  unsigned NumThreads = ST->getNumThreadsPerEU();
+  if (ST->getsHWTIDFromPredef() || isPowerOf2_32(NumThreads))
+    return TID;
+
+  unsigned NumThreadsCeil = PowerOf2Ceil(NumThreads);
+  auto *LocalTID = IRB.CreateAnd(TID, IRB.getInt32(NumThreadsCeil - 1));
+  auto *EuID = IRB.CreateLShr(TID, Log2_32(NumThreadsCeil));
+  auto *Mul = IRB.CreateMul(EuID, IRB.getInt32(NumThreads));
+  return IRB.CreateAdd(Mul, LocalTID);
+}
+
 // FE_SP = PrivateBase + HWTID * PrivMemPerThread
 // FE_FP = FE_SP
 void GenXPrologEpilogInsertion::initializeStack(Function &F) {
   IGC_ASSERT(vc::isKernel(&F));
   LLVM_DEBUG(dbgs() << "Initialize stack for kenrel " << F.getName() << "\n");
   IRBuilder<> IRB(&*F.getEntryBlock().getFirstInsertionPt());
-
-  Function *HWID = GenXIntrinsic::getGenXDeclaration(
-      F.getParent(), llvm::GenXIntrinsic::genx_get_hwid, {});
-  auto *HWIDCall = IRB.CreateCall(HWID);
 
   int StackAmount =
       vc::getStackAmount(&F, BEConf->getStatelessPrivateMemSize());
@@ -476,9 +491,18 @@ void GenXPrologEpilogInsertion::initializeStack(Function &F) {
 
   StackUsed |= true;
 
-  auto *ThreadOffset = IRB.getInt32(StackAmount);
-  auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
-  auto *MulCasted = IRB.CreateZExt(Mul, IRB.getInt64Ty());
+  Value *TID = getThreadID(F.getParent(), IRB);
+  Value *StackAmountPerThread = IRB.getInt32(StackAmount);
+
+  if ((uint64_t)ST->getMaxThreadsNumPerSubDevice() * StackAmount >
+      std::numeric_limits<uint32_t>::max()) {
+    TID = IRB.CreateZExt(TID, IRB.getInt64Ty());
+    StackAmountPerThread =
+        IRB.CreateZExt(StackAmountPerThread, IRB.getInt64Ty());
+  }
+
+  auto *Mul = IRB.CreateMul(TID, StackAmountPerThread);
+  auto *MulCasted = IRB.CreateZExtOrBitCast(Mul, IRB.getInt64Ty());
 
   auto &PrivBase =
       vc::getImplicitArg(F, vc::KernelMetadata::IMP_OCL_PRIVATE_BASE);
@@ -670,13 +694,13 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
   std::vector<unsigned> NextAlignment;
   std::transform(std::next(Allocas.begin()), Allocas.end(),
                  std::back_inserter(NextAlignment), [this](AllocaInst *AI) {
-                   // visa::BytesPerSVMPtr is a minimal possible alignment that
-                   // suits all data types.
+                   // visa::BytesPerSVMPtr is a minimal possible alignment
+                   // that suits all data types.
                    return std::max(getAllocaAlignment(AI),
                                    visa::BytesPerSVMPtr);
                  });
-  // After all private memory allocations SP must be oword aligned so as to keep
-  // SP alignment statically known.
+  // After all private memory allocations SP must be oword aligned so as to
+  // keep SP alignment statically known.
   NextAlignment.push_back(OWordBytes);
 
   unsigned TotalSize = 0;
@@ -746,12 +770,12 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
       (IsIndirectCall || vc::requiresStackCall(I.getCalledFunction()));
 
   // We have a subroutine or stack call that won't be correctly analyzed. The
-  // analysis is supposed to answer a question of whether ARG, RET registers are
-  // used. Until this analysis is implemented, let's assume that the call can
-  // overwrite ARG and RET. This allows generating always correct code.
-  // FIXME: Generated code may be non-optimal since it will always lead to ARG,
-  // REG copy generation in the presence of any calls. The described analysis
-  // should be added.
+  // analysis is supposed to answer a question of whether ARG, RET registers
+  // are used. Until this analysis is implemented, let's assume that the call
+  // can overwrite ARG and RET. This allows generating always correct code.
+  // FIXME: Generated code may be non-optimal since it will always lead to
+  // ARG, REG copy generation in the presence of any calls. The described
+  // analysis should be added.
   ArgRegUsed = true;
   RetRegUsed = true;
 
@@ -838,12 +862,13 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst &CI) {
 std::pair<Value *, Value *> GenXPrologEpilogInsertion::createBinOpPredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Instruction::BinaryOps Opc,
     unsigned long long Val, bool Copy, bool UpdateReg) const {
-  return createBinOpPredefReg(RegID, IRB, Opc, IRB.getInt64(Val), Copy, UpdateReg);
+  return createBinOpPredefReg(RegID, IRB, Opc, IRB.getInt64(Val), Copy,
+                              UpdateReg);
 }
 
 std::pair<Value *, Value *> GenXPrologEpilogInsertion::createBinOpPredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Instruction::BinaryOps Opc,
-    Value* Val, bool Copy, bool UpdateReg) const {
+    Value *Val, bool Copy, bool UpdateReg) const {
   Value *RegRead = buildReadPredefReg(RegID, IRB, IRB.getInt64Ty(), Copy, true);
   Value *NewValue = IRB.CreateBinOp(Opc, RegRead, Val);
   if (UpdateReg)
@@ -894,7 +919,8 @@ Value *GenXPrologEpilogInsertion::pop(Type &ArgTy, IRBuilder<> &IRB,
 // It does not allocate memory
 Value *GenXPrologEpilogInsertion::getNextSP(Type &Ty, IRBuilder<> &IRB,
                                             Value &SP) const {
-  // FIXME: type size calculations and padding should be moved to some analysis.
+  // FIXME: type size calculations and padding should be moved to some
+  // analysis.
   unsigned Size = vc::getTypeSize(&Ty, DL).inBytes();
   Size += calcPadding(Size, OWordBytes);
   return IRB.CreateAdd(&SP, IRB.getInt64(Size));
@@ -1049,10 +1075,10 @@ void GenXPrologEpilogInsertion::passNonAggrInReg(Value &Op,
   //    call void @f(i32 %arg1, i32 %arg2)
   //
   // 1. Read current ARG as original arg will only partially override its
-  // content. The scalar type or the read.predef is chosen to be the same as the
-  // original arg has (i32 for %arg2). This simplify the future steps.
-  //    %17 = call <256 x i32> @llvm.genx.read.predef.reg.v256i32.v256i32(i32 8,
-  //    <256 x i32> undef)
+  // content. The scalar type or the read.predef is chosen to be the same as
+  // the original arg has (i32 for %arg2). This simplify the future steps.
+  //    %17 = call <256 x i32> @llvm.genx.read.predef.reg.v256i32.v256i32(i32
+  //    8, <256 x i32> undef)
   //
   // 2. Copy arg to the correct place in the read ARG (Example: copy i32 %arg2
   // with offset = 32, because of alignment requirements).
@@ -1104,8 +1130,8 @@ void GenXPrologEpilogInsertion::passAggrInReg(Value &Op, unsigned OffsetInReg,
 Instruction *GenXPrologEpilogInsertion::buildReadPredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Type *Ty, bool BuildTempVal,
     bool AllowScalar, unsigned Offset, unsigned Width) const {
-  return buildReadPredefReg(RegID, IRB, Ty, UndefValue::get(Ty),
-                            BuildTempVal, AllowScalar, Offset, Width);
+  return buildReadPredefReg(RegID, IRB, Ty, UndefValue::get(Ty), BuildTempVal,
+                            AllowScalar, Offset, Width);
 }
 
 Instruction *GenXPrologEpilogInsertion::buildReadPredefReg(
@@ -1145,9 +1171,9 @@ Instruction *GenXPrologEpilogInsertion::buildReadPredefRegNoRegion(
   Function *RegReadIntr = GenXIntrinsic::getGenXDeclaration(
       IRB.GetInsertPoint()->getModule(),
       llvm::GenXIntrinsic::genx_read_predef_reg,
-      {(isa<VectorType>(Ty) ? Ty : IGCLLVM::FixedVectorType::get(Ty, 1)), Dep->getType()});
-  auto *RegRead =
-      IRB.CreateCall(RegReadIntr, {IRB.getInt32(RegID), Dep});
+      {(isa<VectorType>(Ty) ? Ty : IGCLLVM::FixedVectorType::get(Ty, 1)),
+       Dep->getType()});
+  auto *RegRead = IRB.CreateCall(RegReadIntr, {IRB.getInt32(RegID), Dep});
   return RegRead;
 }
 

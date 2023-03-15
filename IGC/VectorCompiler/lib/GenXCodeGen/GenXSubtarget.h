@@ -96,6 +96,8 @@ private:
   // Maximum width of LSC messages.
   unsigned LSCMaxWidth = 16;
 
+  unsigned NumThreadsPerEU = 0;
+
   // True if legacy data-port messages are disabled
   bool TranslateLegacyMessages = false;
 
@@ -224,6 +226,8 @@ public:
 
   // GRF size in bytes.
   unsigned getGRFByteSize() const { return GRFByteSize; }
+
+  unsigned getNumThreadsPerEU() const { return NumThreadsPerEU; }
 
   // LSC instructions can operate either in full SIMD mode or
   // in half SIMD mode. This defines how many registers are

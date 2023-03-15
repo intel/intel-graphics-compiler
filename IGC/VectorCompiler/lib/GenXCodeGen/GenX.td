@@ -221,6 +221,12 @@ def FeatureHasMediaWalker : SubtargetFeature<"feature_has_media_walker",
 def FeatureHasLargeGRF : SubtargetFeature<"feature_has_large_grf",
                                           "HasLargeGRF", "true",
                                           "Target supports large GRF mode">;
+def FeatureHas7ThreadsPerEU : SubtargetFeature<"feature_7threads_per_eu",
+                                                "NumThreadsPerEU", "7",
+                                                "Target has 7 threads per EU">;
+def FeatureHas8ThreadsPerEU : SubtargetFeature<"feature_8threads_per_eu",
+                                                "NumThreadsPerEU", "8",
+                                                "Target has 8 threads per EU">;
 
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
@@ -234,6 +240,7 @@ def : Proc<"generic", []>;
 def : Proc<"Gen8", [
   FeatureFP64,
   FeatureHWTIDFromPredef,
+  FeatureHas7ThreadsPerEU,
   FeatureHasMediaWalker,
   FeatureHasPackedFloat,
   FeatureHasSad2,
@@ -250,6 +257,7 @@ def : Proc<"Gen8", [
 def : Proc<"Gen9", [
   FeatureFP64,
   FeatureHWTIDFromPredef,
+  FeatureHas7ThreadsPerEU,
   FeatureHasMediaWalker,
   FeatureHasPackedFloat,
   FeatureHasSad2,
@@ -270,6 +278,7 @@ def : Proc<"Gen9", [
 def : Proc<"Gen9LP", [
   FeatureFP64,
   FeatureHWTIDFromPredef,
+  FeatureHas7ThreadsPerEU,
   FeatureHasMediaWalker,
   FeatureHasPackedFloat,
   FeatureHasSad2,
@@ -289,6 +298,7 @@ def : Proc<"Gen9LP", [
 
 def : Proc<"Gen11", [
   FeatureHWTIDFromPredef,
+  FeatureHas7ThreadsPerEU,
   FeatureHasMadSimd32,
   FeatureHasMediaWalker,
   FeatureHasOWordSLM,
@@ -308,6 +318,7 @@ def : Proc<"Gen11", [
 def : Proc<"XeLP", [
   FeatureFusedEU,
   FeatureHWTIDFromPredef,
+  FeatureHas7ThreadsPerEU,
   FeatureHasMadSimd32,
   FeatureHasMediaWalker,
   FeatureHasOWordSLM,
@@ -326,6 +337,7 @@ def : Proc<"XeLP", [
 def : Proc<"XeHP", [
   FeatureFP64,
   FeatureFusedEU,
+  FeatureHas8ThreadsPerEU,
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLargeGRF,
@@ -345,6 +357,7 @@ def : Proc<"XeHP", [
 
 def : Proc<"XeHPG", [
   FeatureFusedEU,
+  FeatureHas8ThreadsPerEU,
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
@@ -366,6 +379,7 @@ def : Proc<"XeLPG", [
   FeatureFDivFSqrt64Emulation,
   FeatureFP64,
   FeatureFusedEU,
+  FeatureHas8ThreadsPerEU,
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
@@ -386,6 +400,7 @@ def : Proc<"XeHPC", [
   FeatureBfMixedModeWidth16,
   FeatureFP64,
   FeatureGRFByteSize64,
+  FeatureHas8ThreadsPerEU,
   FeatureHasAdd3,
   FeatureHasBfn,
   FeatureHasLSC,
