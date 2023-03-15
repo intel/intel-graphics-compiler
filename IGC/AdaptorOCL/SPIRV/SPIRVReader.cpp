@@ -2886,6 +2886,13 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
       BB->getInstList().push_back(Cast);
       return Cast;
     }
+    // Insert Cast instruction into BB if pInst is placeholder
+    if (isa<LoadInst>(pInst) && isa<GlobalVariable>(dyn_cast<LoadInst>(pInst)->getPointerOperand()) &&
+        dyn_cast<GlobalVariable>(dyn_cast<LoadInst>(pInst)->getPointerOperand())->getName().startswith(kPlaceholderPrefix))
+    {
+        BB->getInstList().push_back(Cast);
+        return Cast;
+    }
 
     insertCastAfter(pInst, Cast);
     return Cast;
