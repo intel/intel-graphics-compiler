@@ -1249,6 +1249,8 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     MDNode* mdLoadInv = nullptr;
     bool allInvariantLoads = true;
 
+    MDNode* nonTempMD = LeadingLoad->getMetadata("nontemporal");
+
     for (auto& I : LoadsToMerge) {
         Type* Ty = std::get<0>(I)->getType();
         Type* ScalarTy = Ty->getScalarType();
@@ -1259,6 +1261,8 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         {
             allInvariantLoads = false;
         }
+
+        nonTempMD = MDNode::concatenate(std::get<0>(I)->getMetadata("nontemporal"), nonTempMD);
 
         Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
 
@@ -1292,6 +1296,12 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (allInvariantLoads)
     {
         NewLoad->setMetadata(LLVMContext::MD_invariant_load, mdLoadInv);
+    }
+
+    // Transfer !nontemporal metadata to the new load
+    if (nonTempMD)
+    {
+        NewLoad->setMetadata("nontemporal", nonTempMD);
     }
 
     // Replace the list to be optimized with the new load.
@@ -1542,6 +1552,8 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     Type* NewStoreType = IGCLLVM::FixedVectorType::get(LeadingStoreScalarType, NumElts);
     Value* NewStoreVal = UndefValue::get(NewStoreType);
 
+    MDNode* NonTempMD = TailingStore->getMetadata("nontemporal");
+
     // Pack the store value from their original store values. For original vector
     // store values, extracting and inserting is necessary to avoid tracking uses
     // of each element in the original vector store value.
@@ -1551,6 +1563,8 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         Type* Ty = Val->getType();
         Type* ScalarTy = Ty->getScalarType();
         IGC_ASSERT(hasSameSize(ScalarTy, LeadingStoreScalarType));
+
+        NonTempMD = MDNode::concatenate(std::get<0>(I)->getMetadata("nontemporal"), NonTempMD);
 
         if (Ty->isVectorTy()) {
             for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements(); i != e; ++i) {
@@ -1601,6 +1615,10 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         Builder.CreateAlignedStore(NewStoreVal, NewPointer,
             IGCLLVM::getAlign(*FirstStore));
     NewStore->setDebugLoc(TailingStore->getDebugLoc());
+
+    // Transfer !nontemporal metadata to the new store
+    if (NonTempMD)
+        NewStore->setMetadata("nontemporal", NonTempMD);
 
     // Replace the list to be optimized with the new store.
     Instruction* NewOne = NewStore;
