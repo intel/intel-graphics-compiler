@@ -9803,6 +9803,9 @@ int GlobalRA::coloringRegAlloc() {
             builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
           builder.getJitInfo()->statsVerbose.maxRP = rpe.getMaxRP();
         }
+        if (builder.getOption(vISA_DumpPerfStats)) {
+          builder.getJitInfo()->stats.maxGRFPressure = rpe.getMaxRP();
+        }
       }
       GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false,
                           forceSpill);
