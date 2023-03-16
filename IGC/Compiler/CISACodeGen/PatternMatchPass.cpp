@@ -1488,21 +1488,24 @@ namespace IGC
             }
         };
 
-        if (I.getType()->isIntegerTy(64) && I.getOperand(0)->getType()->isVectorTy() &&
-            cast<VectorType>(I.getOperand(0)->getType())->getElementType()->isIntegerTy(32))
-        {
-            if (auto IEI = dyn_cast<InsertElementInst>(I.getOperand(0)))
-            {
+        if (m_Platform.hasPartialInt64Support() &&
+            I.getType()->isIntegerTy(64) &&
+            I.getOperand(0)->getType()->isVectorTy() &&
+            cast<VectorType>(I.getOperand(0)->getType())->getElementType()->isIntegerTy(32)) {
+            if (auto IEI = dyn_cast<InsertElementInst>(I.getOperand(0))) {
                 auto vec = dyn_cast<ConstantVector>(IEI->getOperand(0));
-                bool isCandidate = vec && vec->getNumOperands() == 2 && IsZero(vec->getOperand(0)) &&
-                    isa<UndefValue>(vec->getOperand(1));
+                bool isCandidate = vec && vec->getNumOperands() == 2 &&
+                                   IsZero(vec->getOperand(0)) &&
+                                   isa<UndefValue>(vec->getOperand(1));
                 auto index = dyn_cast<ConstantInt>(IEI->getOperand(2));
                 isCandidate &= index && index->getZExtValue() == 1;
-                if (isCandidate)
-                {
-                    Shl32Pattern* Pat = new (m_allocator) Shl32Pattern();
-                    Pat->sources[0] = GetSource(IEI->getOperand(1), false, false, IsSourceOfSample(&I));
-                    Pat->sources[1] = GetSource(ConstantInt::get(Type::getInt32Ty(I.getContext()), 32), false, false, IsSourceOfSample(&I));
+                if (isCandidate) {
+                    Shl32Pattern *Pat = new (m_allocator) Shl32Pattern();
+                    Pat->sources[0] = GetSource(IEI->getOperand(1), false,
+                                                false, IsSourceOfSample(&I));
+                    Pat->sources[1] = GetSource(
+                        ConstantInt::get(Type::getInt32Ty(I.getContext()), 32),
+                        false, false, IsSourceOfSample(&I));
                     AddPattern(Pat);
                     return;
                 }

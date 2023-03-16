@@ -1932,6 +1932,16 @@ void vISAVerifier::verifyInstructionLogic(const CISA_INST *inst) {
                        "operands should all be BOOL "
                        "(ie if one operand is BOOL they all have to be BOOL).");
 
+    if (i == 0 && ((opcode == ISA_SHL &&
+                    (opnd_type == ISA_TYPE_Q || opnd_type == ISA_TYPE_UQ)) ||
+                   (opcode == ISA_SHR && opnd_type == ISA_TYPE_UQ))) {
+      REPORT_INSTRUCTION(
+          options,
+          irBuilder->getPlatform() <= Xe_XeHPSDV ||
+              irBuilder->getPlatform() >= Xe_PVC,
+          "*Q destination data type is not supported for this platform");
+    }
+
     if (opcode == ISA_ROR || opcode == ISA_ROL) {
       switch (opnd_type) {
       case ISA_TYPE_B:
