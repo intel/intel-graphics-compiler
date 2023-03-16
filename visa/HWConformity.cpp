@@ -7360,6 +7360,9 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB *bb) {
 
 void HWConformity::fixImm64(INST_LIST_ITER i, G4_BB *bb) {
   G4_INST *inst = *i;
+  if (inst->isSplitSend()) {
+    return;
+  }
   for (int j = 0, n_srcs = inst->getNumSrc(); j < n_srcs; j++) {
     G4_Operand *src = inst->getSrc(j);
     if (!src || !(src->isImm()) || src->getTypeSize() != 8) {
