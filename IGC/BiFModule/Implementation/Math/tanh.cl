@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "../../Headers/spirv.h"
 #include "../include/exp_for_hyper.cl"
 #include "../IMF/FP32/tanh_s_la_noLUT.cl"
-#include "../IMF/FP32/tanh_s_ep_noLUT.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/tanh_d_la.cl"
@@ -23,10 +22,6 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f32, )( float x )
     if( __intel_relaxed_isnan(x) )
     {
         result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
-    }
-    else if(__FastRelaxedMath)
-    {
-        result = __ocl_svml_tanhf_ep_noLUT(x);
     }
     else if(__UseHighAccuracyMath)
     {

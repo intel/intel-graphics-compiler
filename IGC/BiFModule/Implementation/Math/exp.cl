@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/exp_d_la.cl"
     #include "../IMF/FP64/exp_d_la_noLUT.cl"
-    #include "../IMF/FP64/exp_d_ep_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
 float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
@@ -64,8 +63,6 @@ INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f64, )( double x )
     double result;
     if (__UseHighAccuracyMath) {
         result = __ocl_svml_exp_noLUT(x);
-    } else if (__FastRelaxedMath) {
-        result = __ocl_svml_exp_ep_noLUT(x);
     } else {
         result = __ocl_svml_exp(x);
     }

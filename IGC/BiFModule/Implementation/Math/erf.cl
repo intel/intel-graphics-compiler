@@ -10,12 +10,10 @@ SPDX-License-Identifier: MIT
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/erf_s_la.cl"
 #include "../IMF/FP32/erf_s_la_noLUT.cl"
-#include "../IMF/FP32/erf_s_ep_noLUT.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/erf_d_la.cl"
     #include "../IMF/FP64/erf_d_la_noLUT.cl"
-    #include "../IMF/FP64/erf_d_ep_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(erf, _f32, )( float x )
@@ -23,8 +21,6 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(erf, _f32, )( float x )
     float result;
     if (__UseHighAccuracyMath) {
         result = __ocl_svml_erff_noLUT(x);
-    } else if (__FastRelaxedMath) {
-        result = __ocl_svml_erff_ep_noLUT(x);
     } else {
         result = __ocl_svml_erff(x);
     }
@@ -40,8 +36,6 @@ INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(erf, _f64, )( double x )
     double result;
     if (__UseHighAccuracyMath) {
         result = __ocl_svml_erf_noLUT(x);
-    } else if (__FastRelaxedMath) {
-        result = __ocl_svml_erf_ep_noLUT(x);
     } else {
         result = __ocl_svml_erf(x);
     }
