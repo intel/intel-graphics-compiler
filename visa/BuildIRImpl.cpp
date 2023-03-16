@@ -2630,10 +2630,13 @@ void IR_Builder::createMovSendSrcInst(G4_Declare *dcl, short regoff,
     non_ud_scalar = true;
   }
 
-  src_regoff = src_opnd->asSrcRegRegion()->getRegOff();
-  src_subregoff = src_opnd->asSrcRegRegion()->getSubRegOff();
-  src_subregoff =
-      src_subregoff * src_opnd->getTypeSize() / dst_dcl->getElemSize();
+  if (!src_opnd->isImm()) {
+    // for operands that are not immediate values, get the appropriate register offsets
+    src_regoff = src_opnd->asSrcRegRegion()->getRegOff();
+    src_subregoff = src_opnd->asSrcRegRegion()->getSubRegOff();
+    src_subregoff =
+        src_subregoff * src_opnd->getTypeSize() / dst_dcl->getElemSize();
+  }
 
   auto getMaxEsize = [](uint32_t opt) {
     unsigned maskOption = (opt & InstOpt_QuarterMasks);

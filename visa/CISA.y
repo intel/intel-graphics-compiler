@@ -1291,6 +1291,10 @@ SampleUnormInstruction: SAMPLE_UNORM_OP SAMPLER_CHANNEL CHANNEL_OUTPUT Var Var V
     }
 
 SampleInstruction:
+    // todo: should SIMD width specification be an integer (for example 8, 16,
+    // 32) or execution mask style (for example (M1, 32))?
+    // Currently, SIMDMode is an integer and hence, sampler instructions accept
+    // the following: sample.rgba (8); does not accept sample.rgba (M1, 8)
     // 1            2            3      4   5      6          7          8          9
     SAMPLE_OP SAMPLER_CHANNEL SIMDMode Var Var RawOperand RawOperand RawOperand RawOperand
     {
