@@ -4402,6 +4402,9 @@ namespace IGC
         {
             SaveOption(vISA_UseSends, false);
         }
+        if (IGC_IS_FLAG_ENABLED(DisablePrefetchToL1Cache)) {
+            SaveOption(vISA_DisablePrefetchToL1Cache, true);
+        }
         if (m_program->m_DriverInfo->AllowUnsafeHalf())
         {
             SaveOption(vISA_enableUnsafeCP_DF, true);
