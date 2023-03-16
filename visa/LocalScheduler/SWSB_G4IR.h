@@ -1113,8 +1113,8 @@ public:
     indexes.longIndex = 0;
     indexes.DPASIndex = 0;
     indexes.mathIndex = 0;
-    LatencyTable LT(k.fg.builder);
-    tokenAfterDPASCycle = LT.getDPAS8x8Latency();
+    tokenAfterDPASCycle =
+        LatencyTable::createLatencyTable(*k.fg.builder)->getDPASLatency(8);
   }
   ~SWSB() {}
   void SWSBGenerator();

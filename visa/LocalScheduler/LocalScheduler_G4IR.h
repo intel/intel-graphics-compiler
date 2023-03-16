@@ -239,7 +239,7 @@ class DDD {
   bool useMTLatencies;
   bool isThreeSouceBlock;
   bool is_2XFP_Block;
-  const LatencyTable LT;
+  const LatencyTable &LT;
 
   int GRF_BUCKET;
   int ACC_BUCKET;

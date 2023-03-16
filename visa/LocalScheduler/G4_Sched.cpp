@@ -564,7 +564,7 @@ bool preRA_Scheduler::run() {
   unsigned Threshold = getRPReductionThreshold(kernel);
   unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
 
-  LatencyTable LT(kernel.fg.builder);
+  auto LT = LatencyTable::createLatencyTable(*kernel.fg.builder);
   SchedConfig config(SchedCtrl);
   RegisterPressure rp(kernel, rpe);
   // skip extreme test cases that scheduling does not good
@@ -601,7 +601,7 @@ bool preRA_Scheduler::run() {
 
     SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
     preDDD ddd(kernel, bb);
-    BB_Scheduler S(kernel, ddd, rp, config, LT);
+    BB_Scheduler S(kernel, ddd, rp, config, *LT);
 
     Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
     Changed |= S.scheduleBlockForLatency(MaxPressure, Changed, 0);
@@ -679,7 +679,7 @@ bool preRA_RegSharing::run() {
   //   return false;
 
   unsigned Threshold = getRPReductionThreshold(kernel);
-  LatencyTable LT(kernel.fg.builder);
+  auto LT = LatencyTable::createLatencyTable(*kernel.fg.builder);
 
   for (auto bb : kernel.fg) {
     if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
@@ -710,7 +710,7 @@ bool preRA_RegSharing::run() {
 
     SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
     preDDD ddd(kernel, bb);
-    BB_Scheduler S(kernel, ddd, rp, config, LT);
+    BB_Scheduler S(kernel, ddd, rp, config, *LT);
 
     changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
       changed |= S.scheduleBlockForLatency(MaxPressure, changed, 0);

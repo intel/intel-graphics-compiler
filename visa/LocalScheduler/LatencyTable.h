@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 #define __LATENCY_TABLE_H
 
 #include "../BuildIR.h"
+#include <limits>
+#include <memory>
 
 namespace vISA {
 
@@ -17,14 +19,15 @@ enum LegacyLatencies : uint16_t {
   //
   //  General instruction latencies
   //
-  // To be comptabile with send cycles, don't normalized them to 1
+  // To be compatible with send cycles, don't normalized them to 1
   UNCOMPR_LATENCY = 2, // Latency of an uncompressed instruction
   COMPR_LATENCY = 4,   // Latency of a compressed instruction
   ACC_BUBBLE = 4,      // Accumulator back-to-back stall
   IVB_PIPELINE_LENGTH = 14,
   EDGE_LATENCY_MATH = 22,
   EDGE_LATENCY_MATH_TYPE2 = 30,
-  EDGE_LATENCY_SEND_WAR = 36
+  EDGE_LATENCY_SEND_WAR = 36,
+  UNKNOWN_LATENCY = std::numeric_limits<uint16_t>::max(),
 };
 
 //
@@ -48,7 +51,7 @@ static const uint16_t LegacyFFLatency[] = {
     200  // 14: unknown, SFID_NUM
 };
 
-enum LatenciesXe : uint16_t {
+enum class XELatencyInfo : uint16_t {
   //
   // General instruction latencies
   //
@@ -83,25 +86,32 @@ enum LatenciesXe : uint16_t {
   LSC_TYPED_L1 = 75,      // LSC typed L1 cache hit
   LSC_TYPED_L3 = 200,     // LSC typed L3 cache hit
   LSC_TYPED_FENCE = 60,   // LSC typed fence
+  UNKNOWN = std::numeric_limits<uint16_t>::max(),
+
+  //
+  // Occupancy latencies
+  //
+  OC_MATH = 4,
+  OC_OTHERS = 1,
 };
 
 class LatencyTable {
 public:
-  explicit LatencyTable(const IR_Builder *builder) : m_builder(builder) {}
+  explicit LatencyTable(const IR_Builder &builder) : m_builder(builder) {}
+
+  virtual ~LatencyTable() = default;
+
+  static std::unique_ptr<LatencyTable> createLatencyTable(
+      const IR_Builder &builder);
+
   // Functions to get latencies/occupancy based on platforms
-  uint16_t getOccupancy(G4_INST *Inst) const;
-  uint16_t getLatency(G4_INST *Inst) const;
-  uint16_t getDPAS8x8Latency() const;
+  virtual uint16_t getLatency(const G4_INST *Inst) const = 0;
+  virtual uint16_t getOccupancy(const G4_INST *Inst) const = 0;
+  // Implement different platform overrides for DPAS
+  virtual uint16_t getDPASLatency(uint8_t repeatCount) const = 0;
 
-private:
-  uint16_t getLatencyLegacy(G4_INST *Inst) const;
-  uint16_t getOccupancyLegacy(G4_INST *Inst) const;
-
-  uint16_t getLatencyG12(const G4_INST *Inst) const;
-
-  uint16_t getOccupancyG12(G4_INST *Inst) const;
-
-  const IR_Builder *m_builder;
+protected:
+  const IR_Builder &m_builder;
 };
 
 } // namespace vISA

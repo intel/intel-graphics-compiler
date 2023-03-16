@@ -35,7 +35,7 @@ void LocalScheduler::localScheduling() {
   int i = 0;
 
   const Options *m_options = fg.builder->getOptions();
-  LatencyTable LT(fg.builder);
+  auto LT = LatencyTable::createLatencyTable(*fg.builder);
 
   PointsToAnalysis p(fg.getKernel()->Declares, fg.size());
   p.doPointsToAnalysis(fg);
@@ -57,7 +57,7 @@ void LocalScheduler::localScheduling() {
       unsigned int sequentialCycles = 0;
       for (INST_LIST_ITER inst_it = (*ib)->begin(), bbEnd = (*ib)->end();
            inst_it != bbEnd; inst_it++) {
-        sequentialCycles += LT.getOccupancy((*inst_it));
+        sequentialCycles += LT->getOccupancy((*inst_it));
       }
       bbInfo[i].id = (*ib)->getId();
       bbInfo[i].staticCycle = sequentialCycles;
@@ -84,7 +84,7 @@ void LocalScheduler::localScheduling() {
           G4_BB *tempBB = fg.createNewBB(false);
           sections.push_back(tempBB);
           tempBB->splice(tempBB->begin(), (*ib), (*ib)->begin(), inst_it);
-          G4_BB_Schedule schedule(fg.getKernel(), tempBB, LT, p);
+          G4_BB_Schedule schedule(fg.getKernel(), tempBB, *LT, p);
           sequentialCycles += schedule.sequentialCycle;
           sendStallCycles += schedule.sendStallCycle;
           count = 0;
@@ -106,7 +106,7 @@ void LocalScheduler::localScheduling() {
       bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
       totalCycles += sequentialCycles;
     } else {
-      G4_BB_Schedule schedule(fg.getKernel(), *ib, LT, p);
+      G4_BB_Schedule schedule(fg.getKernel(), *ib, *LT, p);
       bbInfo[i].id = (*ib)->getId();
       bbInfo[i].staticCycle = schedule.sequentialCycle;
       bbInfo[i].sendStallCycle = schedule.sendStallCycle;
