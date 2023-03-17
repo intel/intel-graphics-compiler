@@ -69,8 +69,6 @@ namespace IGC
         unsigned estimateLoopCount_CASE1(llvm::Loop* L);
         unsigned estimateLoopCount_CASE2(llvm::Loop* L);
 
-        bool isSelectBasedOnGlobalIdX(llvm::Value*);
-
         bool checkPSSimd32Profitable();
 
         void print(llvm::raw_ostream& OS) const;
