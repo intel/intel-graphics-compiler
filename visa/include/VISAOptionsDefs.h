@@ -443,6 +443,7 @@ DEF_VISA_OPTION(vISA_NumGenBinariesWillBePatched, ET_INT32,
                 "-numGenBinariesWillBePatched",
                 "USAGE: missing number of gen binaries that will be patched.\n",
                 0)
+DEF_VISA_OPTION(vISA_noLdStAsmSyntax, ET_BOOL, "-noLdStAsmSyntax", UNUSED, false)
 DEF_VISA_OPTION(vISA_ExtraIntfFile, ET_CSTR, "-extraIntfFile",
                 "USAGE: File Name with extra interference info.\n", NULL)
 DEF_VISA_OPTION(vISA_AddExtraIntfInfo, ET_BOOL, NULLSTR, UNUSED, false)

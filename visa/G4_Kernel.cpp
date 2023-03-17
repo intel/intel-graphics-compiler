@@ -1734,10 +1734,11 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
       }
 
       uint32_t fmtOpts = IGA_FORMATTING_OPTS_DEFAULT |
-                         IGA_FORMATTING_OPT_PRINT_LDST |
                          IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
       if (getOption(vISA_PrintHexFloatInAsm))
         fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
+      if (!getOption(vISA_noLdStAsmSyntax))
+        fmtOpts |= IGA_FORMATTING_OPT_PRINT_LDST;
 
       auto formatToInstToStream = [&](int32_t pc, std::ostream &os) {
         // multiple calls to getInstSyntax since we may have to
