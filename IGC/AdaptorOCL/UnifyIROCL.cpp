@@ -120,6 +120,7 @@ SPDX-License-Identifier: MIT
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
 #include "preprocess_spvir/PromoteBools.h"
+#include "preprocess_spvir/HandleSpirvDecorationMetadata.h"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
@@ -320,6 +321,7 @@ static void CommonOCLBasedPasses(
     mpmSPIR.add(new SPIRMetaDataTranslation());
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new ConvertUserSemanticDecoratorOnFunctions());
+    mpmSPIR.add(new HandleSpirvDecorationMetadata());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.run(*pContext->getModule());
 
