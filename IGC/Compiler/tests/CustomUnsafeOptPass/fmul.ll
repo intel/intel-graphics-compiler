@@ -12,7 +12,7 @@
 ; 0 * x = 0
 define float @test1(float %x) #0 {
 entry:
-  %0 = fmul fast float 0.000000e+00, %x
+  %0 = fmul float 0.000000e+00, %x
   ret float %0
 }
 
@@ -23,7 +23,7 @@ entry:
 ; 1 * x = x
 define float @test2(float %x) #0 {
 entry:
-  %0 = fmul fast float 1.000000e+00, %x
+  %0 = fmul float 1.000000e+00, %x
   ret float %0
 }
 
@@ -34,7 +34,7 @@ entry:
 ; x * 1 = x
 define float @test3(float %x) #0 {
 entry:
-  %0 = fmul fast float %x, 1.000000e+00
+  %0 = fmul float %x, 1.000000e+00
   ret float %0
 }
 
@@ -45,23 +45,29 @@ entry:
 ; -1 * x = -x
 define float @test4(float %x) #0 {
 entry:
-  %0 = fmul fast float -1.000000e+00, %x
+  %0 = fmul float -1.000000e+00, %x
   ret float %0
 }
 
 ; CHECK-LABEL: define float @test4
 ; CHECK-NOT: fmul
-; CHECK: %0 = fsub fast float 0.000000e+00, %x
+; CHECK: %0 = fsub float 0.000000e+00, %x
 ; CHECK: ret float %0
 
 ; x * -1 = -x
 define float @test5(float %x) #0 {
 entry:
-  %0 = fmul fast float %x, -1.000000e+00
+  %0 = fmul float %x, -1.000000e+00
   ret float %0
 }
 
 ; CHECK-LABEL: define float @test5
 ; CHECK-NOT: fmul
-; CHECK: %0 = fsub fast float 0.000000e+00, %x
+; CHECK: %0 = fsub float 0.000000e+00, %x
 ; CHECK: ret float %0
+
+!IGCMetadata = !{!0}
+
+!0 = !{!"ModuleMD", !1}
+!1 = !{!"compOpt", !2}
+!2 = !{!"FastRelaxedMath", i1 true}

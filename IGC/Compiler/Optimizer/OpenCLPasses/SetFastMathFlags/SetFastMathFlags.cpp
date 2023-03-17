@@ -108,14 +108,6 @@ bool SetFastMathFlags::setFlags(Function& F, FastMathFlags fmfs)
     {
         return false;
     }
-
-    StringRef fName = F.getName();
-    if (fName.equals("__ocl_svml_cos") ||
-        fName.equals("__ocl_svml_sin"))
-    {
-        return false;
-    }
-
     bool changed = false;
     for (inst_iterator i = inst_begin(&F), e = inst_end(&F); i != e; ++i)
     {
