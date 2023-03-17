@@ -20494,9 +20494,7 @@ LSC_CACHE_OPTS EmitPass::getDefaultRaytracingCachePolicy(bool isLoad) const
 
 void EmitPass::emitAsyncStackID(llvm::GenIntrinsicInst *I)
 {
-    CVariable* stack = m_currShader->GetStackID();
-    m_encoder->Copy(m_destination, stack);
-    m_encoder->Push();
+    IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
 
 void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
@@ -20618,33 +20616,17 @@ void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
 
 void EmitPass::emitGlobalBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    CVariable* globalBuffer = m_currShader->GetGlobalBufferPtr();
-    m_encoder->Copy(m_destination, globalBuffer);
-    m_encoder->Push();
+    IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
 
 void EmitPass::emitLocalBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    CVariable* globalBuffer = m_currShader->GetLocalBufferPtr();
-    m_encoder->Copy(m_destination, globalBuffer);
-    m_encoder->Push();
+    IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
 
 void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst* I)
 {
-    uint32_t inlinedDataOffset = static_cast<unsigned int>(cast<ConstantInt>(I->getOperand(0))->getZExtValue());
-    CVariable* inlinedDataPtrValue = m_currShader->GetInlinedDataPtr();
-
-    // Right now, we only inline global and local pointers.
-    IGC_ASSERT_MESSAGE(inlinedDataOffset < 2, "new parameter?");
-
-    CVariable* alias = m_currShader->GetNewAlias(
-        inlinedDataPtrValue,
-        inlinedDataPtrValue->GetType(),
-        inlinedDataOffset * sizeof(uint64_t),
-        2 - inlinedDataOffset);
-    m_encoder->Copy(m_destination, alias);
-    m_encoder->Push();
+    IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
 
 void EmitPass::emitTileXOffset(TileXIntrinsic* I)

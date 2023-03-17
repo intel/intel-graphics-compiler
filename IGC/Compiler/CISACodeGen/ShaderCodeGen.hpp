@@ -122,12 +122,7 @@ public:
         return nullptr;
     }
 
-    virtual CVariable* GetGlobalBufferPtr() { IGC_ASSERT(0); return nullptr; }
-    virtual CVariable* GetLocalBufferPtr() { IGC_ASSERT(0); return nullptr; }
-    virtual CVariable* GetStackID() { IGC_ASSERT(0); return nullptr; }
-    virtual CVariable* GetInlinedDataPtr() { IGC_ASSERT(0); return nullptr; }
     // if true, HW will pass one GRF NOS of inlinedata to payload, (compute only right now)
-
     virtual bool passNOSInlineData() { return false; }
     virtual bool loadThreadPayload() { return false; }
     virtual unsigned getAnnotatedNumThreads() { return 0; }
