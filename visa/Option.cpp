@@ -283,6 +283,15 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setBool(vISA_InsertHashMovs, true);
   }
 
+  if (m_vISAOptions.isArgSetByUser(vISA_DumpPerfStatsVerbose)) {
+    m_vISAOptions.setBool(vISA_DumpPerfStats, true);
+  }
+
+  if (m_vISAOptions.isArgSetByUser(vISA_DumpPerfStats) ||
+      m_vISAOptions.isArgSetByUser(vISA_DumpPerfStatsVerbose)) {
+    m_vISAOptions.setBool(vISA_PrintRegUsage, true);
+  }
+
   if (m_vISAOptions.isArgSetByUser(vISA_Platform)) {
     const char *platformStr = m_vISAOptions.getCstr(vISA_Platform);
     if (platformStr == nullptr) {
