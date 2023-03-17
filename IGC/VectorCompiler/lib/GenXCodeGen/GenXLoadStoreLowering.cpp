@@ -11,17 +11,11 @@ SPDX-License-Identifier: MIT
 /// ---------------------------
 ///
 /// The pass:
-/// * replaces all LLVM loads and stores, using correct namespace.
-/// * replaces allocas for historical reasons.
+/// * replaces all LLVM loads and stores, using correct namespace,
+/// * replaces all @llvm.masked.gather and @llvm.masked.scatter intrinsics,
+/// * replaces all atomic instructions,
 /// * removes lifetime builtins as we are not sure how to process those.
 ///
-/// Rules of replacement are really simple:
-/// addrspace(1) load goes to svm.gather
-/// addrspace(1) store goes to svm.scatter
-///
-/// Other loads and stores behave like addrspace(1) but in future more complex
-/// processing will be added (like scatter.scaled for addrspace(0), etc)
-//
 //===----------------------------------------------------------------------===//
 
 #include "GenXSubtarget.h"
@@ -96,13 +90,7 @@ class GenXLoadStoreLowering : public FunctionPass,
                               public InstVisitor<GenXLoadStoreLowering> {
   const DataLayout *DL_ = nullptr;
   const GenXSubtarget *ST = nullptr;
-
-private:
-  IGCLLVM::FixedVectorType *getLoadVType(const LoadInst &LdI) const;
-  Instruction *createLegacySVMAtomicInst(Value &PointerOp,
-                                         ArrayRef<Value *> Args,
-                                         GenXIntrinsic::ID IID,
-                                         IRBuilder<> &Builder, Module &M) const;
+  SmallVector<StringRef, 8> SyncScopeNames;
 
 private:
   // Creates replacement (series of instructions) for the provided memory
@@ -177,10 +165,35 @@ private:
                                   Value *Data,
                                   ConstantInt *Align = nullptr) const;
 
-  Instruction *createLegacySVMAtomicLoad(LoadInst &LdI) const;
-  Instruction *createLegacySVMAtomicStore(StoreInst &StI) const;
-  Instruction *createLegacySVMAtomicBinOp(AtomicRMWInst &I) const;
-  Instruction *createLegacySVMAtomicCmpXchg(AtomicCmpXchgInst &CmpXchgI) const;
+  Instruction *createLSCAtomicLoad(LoadInst &I, GenXIntrinsic::ID IID,
+                                   Type *AddrTy, Value *BTI) const;
+  Instruction *createLSCAtomicStore(StoreInst &I, GenXIntrinsic::ID IID,
+                                    Type *AddrTy, Value *BTI) const;
+  Instruction *createLSCAtomicRMW(AtomicRMWInst &I, GenXIntrinsic::ID IID,
+                                  Type *AddrTy, Value *BTI) const;
+  Instruction *createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
+                                      GenXIntrinsic::ID IID, Type *AddrTy,
+                                      Value *BTI) const;
+
+  Instruction *createLSCAtomicImpl(Instruction &I, GenXIntrinsic::ID IID,
+                                   LSC_OP AtomicOp, Value *BTI, Value *Addr,
+                                   Value *Src0, Value *Src1) const;
+  void createLSCAtomicFenceImpl(Instruction &AtomicI, IRBuilder<> &Builder,
+                                bool IsPostFence) const;
+
+  Instruction *createLegacyAtomicLoad(LoadInst &I, unsigned BTI) const;
+  Instruction *createLegacyAtomicStore(StoreInst &I, unsigned BTI) const;
+  Instruction *createLegacyAtomicRMW(AtomicRMWInst &I, unsigned BTI) const;
+  Instruction *createLegacyAtomicCmpXchg(AtomicCmpXchgInst &I,
+                                         unsigned BTI) const;
+  Instruction *createLegacyAtomicImpl(Instruction &I, GenXIntrinsic::ID IID,
+                                      Value *BTI, Value *Addr, Value *Src0,
+                                      Value *Src1) const;
+  void createLegacyAtomicFenceImpl(Instruction &I, IRBuilder<> &Builder,
+                                   bool IsPostFence) const;
+
+  std::pair<unsigned, AtomicOrdering>
+  getAddressSpaceAndOrderingOfAtomic(const Instruction &AtomicI) const;
 
   Value *createExtractDataFromVectorImpl(IRBuilder<> &Builder, Module *M,
                                          IGCLLVM::FixedVectorType *Ty,
@@ -192,10 +205,13 @@ private:
   Value *createTruncateImpl(IRBuilder<> &Builder, IGCLLVM::FixedVectorType *Ty,
                             Value *Data) const;
 
+  LSC_SCOPE getLSCFenceScope(Instruction *I) const;
   static unsigned getLSCBlockElementSizeBits(unsigned DataSizeBytes,
                                              unsigned Align);
   static LSC_DATA_SIZE getLSCElementSize(unsigned Bits);
   static LSC_DATA_ELEMS getLSCElementsPerAddress(unsigned N);
+
+  static Value *makeVector(IRBuilder<> &Builder, Value *Val);
 
 public:
   void visitAtomicCmpXchgInst(AtomicCmpXchgInst &Inst) const;
@@ -247,6 +263,7 @@ bool GenXLoadStoreLowering::runOnFunction(Function &F) {
   ST = &getAnalysis<TargetPassConfig>()
                  .getTM<GenXTargetMachine>()
                  .getGenXSubtarget();
+  M.getContext().getSyncScopeNames(SyncScopeNames);
   IGC_ASSERT(ST);
   // auto &BEConf = getAnalysis<GenXBackendConfig>();
   // BEConf.getStatelessPrivateMemSize() will be required
@@ -511,6 +528,15 @@ Value *GenXLoadStoreLowering::createTruncateImpl(IRBuilder<> &Builder,
 
   auto *Trunc = Builder.CreateTrunc(Data, TruncVTy);
   return Builder.CreateBitCast(Trunc, Ty);
+}
+
+Value *GenXLoadStoreLowering::makeVector(IRBuilder<> &Builder, Value *Val) {
+  auto *Ty = Val->getType();
+  if (isa<IGCLLVM::FixedVectorType>(Ty))
+    return Val;
+
+  auto *VTy = IGCLLVM::FixedVectorType::get(Ty, 1);
+  return Builder.CreateBitCast(Val, VTy);
 }
 
 Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
@@ -794,18 +820,520 @@ Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
                             Extend, Align);
 }
 
-// we need vector type that emulates what real load type
-// will be for gather/scatter
-IGCLLVM::FixedVectorType *
-GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
-  Type *LdTy = LdI.getType();
-  if (LdTy->isIntOrPtrTy() || LdTy->isFloatingPointTy())
-    LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
+std::pair<unsigned, AtomicOrdering>
+GenXLoadStoreLowering::getAddressSpaceAndOrderingOfAtomic(
+    const Instruction &AtomicI) const {
+  IGC_ASSERT(AtomicI.isAtomic());
+  if (auto *ARMW = dyn_cast<AtomicRMWInst>(&AtomicI))
+    return {ARMW->getPointerAddressSpace(), ARMW->getOrdering()};
+  if (auto *CmpXchg = dyn_cast<AtomicCmpXchgInst>(&AtomicI))
+    return {CmpXchg->getPointerAddressSpace(), CmpXchg->getSuccessOrdering()};
+  if (auto *LI = dyn_cast<LoadInst>(&AtomicI)) {
+    IGC_ASSERT(LI->isAtomic());
+    unsigned AS = cast<PointerType>(LI->getPointerOperand()->getType())
+                      ->getAddressSpace();
+    return {AS, LI->getOrdering()};
+  }
+  if (auto *SI = dyn_cast<StoreInst>(&AtomicI)) {
+    IGC_ASSERT(SI->isAtomic());
+    unsigned AS = cast<PointerType>(SI->getPointerOperand()->getType())
+                      ->getAddressSpace();
+    return {AS, SI->getOrdering()};
+  }
+  IGC_ASSERT_MESSAGE(false, "Unimplemented atomic inst");
+  return {0, AtomicOrdering::Monotonic};
+}
 
-  if (!LdTy->isVectorTy())
-    vc::fatal(LdI.getContext(), "LDS", "Unsupported type inside replaceLoad",
-              LdTy);
-  return cast<IGCLLVM::FixedVectorType>(LdTy);
+LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
+  SyncScope::ID ScopeID = SyncScope::SingleThread;
+  if (auto *LI = dyn_cast<LoadInst>(I))
+    ScopeID = LI->getSyncScopeID();
+  else if (auto *SI = dyn_cast<StoreInst>(I))
+    ScopeID = SI->getSyncScopeID();
+  else if (auto *AI = dyn_cast<AtomicRMWInst>(I))
+    ScopeID = AI->getSyncScopeID();
+  else if (auto *AI = dyn_cast<AtomicCmpXchgInst>(I))
+    ScopeID = AI->getSyncScopeID();
+  else if (auto *FI = dyn_cast<FenceInst>(I))
+    ScopeID = FI->getSyncScopeID();
+
+  switch (ScopeID) {
+  case SyncScope::SingleThread:
+    return LSC_SCOPE_GROUP;
+  case SyncScope::System:
+    return LSC_SCOPE_SYSACQ;
+  }
+
+  return StringSwitch<LSC_SCOPE>(SyncScopeNames[ScopeID])
+      .Case("subgroup", LSC_SCOPE_GROUP)
+      .Case("workgroup", LSC_SCOPE_LOCAL)
+      .Case("device", ST->hasMultiTile() ? LSC_SCOPE_GPU : LSC_SCOPE_TILE)
+      .Case("all_devices", LSC_SCOPE_GPUS)
+      .Default(LSC_SCOPE_GROUP);
+}
+
+void GenXLoadStoreLowering::createLSCAtomicFenceImpl(Instruction &AtomicI,
+                                                     IRBuilder<> &Builder,
+                                                     bool IsPostFence) const {
+  IGC_ASSERT_EXIT(AtomicI.isAtomic());
+
+  auto [AS, Ordering] = getAddressSpaceAndOrderingOfAtomic(AtomicI);
+
+  bool IsGlobal = AS != vc::AddrSpace::Local;
+  bool EmitFence = IsGlobal || !ST->hasLocalMemFenceSupress();
+  if (!EmitFence)
+    return;
+
+  EmitFence = Ordering == AtomicOrdering::SequentiallyConsistent ||
+              Ordering == AtomicOrdering::AcquireRelease ||
+              Ordering == (IsPostFence ? AtomicOrdering::Acquire
+                                       : AtomicOrdering::Release);
+  if (!EmitFence)
+    return;
+
+  auto SubFuncID = IsGlobal ? LSC_UGM : LSC_SLM;
+  auto FenceOp = LSC_FENCE_OP_NONE;
+  auto Scope = getLSCFenceScope(&AtomicI);
+
+  auto *M = AtomicI.getModule();
+
+  auto *Func = GenXIntrinsic::getAnyDeclaration(
+      M, GenXIntrinsic::genx_lsc_fence, {Builder.getInt1Ty()});
+  auto *Fence = Builder.CreateCall(
+      Func, {Builder.getTrue(), Builder.getInt8(SubFuncID),
+             Builder.getInt8(FenceOp), Builder.getInt8(Scope)});
+  LLVM_DEBUG(dbgs() << "Created: " << *Fence << "\n");
+}
+
+Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
+    Instruction &I, GenXIntrinsic::ID IID, LSC_OP AtomicOp, Value *BTI,
+    Value *Addr, Value *Src0, Value *Src1) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_lsc_xatomic_stateless ||
+                  IID == GenXIntrinsic::genx_lsc_xatomic_slm ||
+                  IID == GenXIntrinsic::genx_lsc_xatomic_bti);
+  IRBuilder<> Builder(&I);
+  auto *M = I.getModule();
+
+  Addr = makeVector(Builder, Addr);
+  auto *Pred = makeVector(Builder, Builder.getTrue());
+
+  auto *DataTy = Src0->getType();
+  auto *AddrTy = Addr->getType();
+  auto *PredTy = Pred->getType();
+
+  auto ElementSize = getLSCElementSize(DataTy->getScalarSizeInBits());
+  IGC_ASSERT_EXIT(ElementSize == LSC_DATA_SIZE_16c32b ||
+                  ElementSize == LSC_DATA_SIZE_32b ||
+                  ElementSize == LSC_DATA_SIZE_64b);
+
+  if (ElementSize == LSC_DATA_SIZE_16c32b) {
+    Src0 = Builder.CreateBitCast(Src0, Builder.getInt16Ty());
+    Src0 = Builder.CreateZExt(Src0, Builder.getInt32Ty());
+    Src1 = Builder.CreateBitCast(Src1, Builder.getInt16Ty());
+    Src1 = Builder.CreateZExt(Src1, Builder.getInt32Ty());
+  }
+
+  Src0 = makeVector(Builder, Src0);
+  Src1 = makeVector(Builder, Src1);
+  auto *DataVTy = cast<IGCLLVM::FixedVectorType>(Src0->getType());
+
+  auto *Func =
+      GenXIntrinsic::getAnyDeclaration(M, IID, {DataVTy, PredTy, AddrTy});
+
+  SmallVector<Value *, 15> Args = {
+      Pred,
+      Builder.getInt8(AtomicOp),    // Atomic operation
+      Builder.getInt8(0),           // L1 hint
+      Builder.getInt8(0),           // L3 hint
+      Builder.getInt16(1),          // Address scale
+      Builder.getInt32(0),          // Immediate offset
+      Builder.getInt8(ElementSize), // Data size
+      Builder.getInt8(LSC_DATA_ELEMS_1),
+      Builder.getInt8(LSC_DATA_ORDER_NONTRANSPOSE),
+      Builder.getInt8(0), // Channel mask, ignored
+      Addr,
+      Src0,
+      Src1,
+      BTI,
+      UndefValue::get(DataVTy), // Old value to merge
+  };
+
+  createLSCAtomicFenceImpl(I, Builder, false);
+  auto *Inst = Builder.CreateCall(Func, Args);
+  LLVM_DEBUG(dbgs() << "Created: " << *Inst << "\n");
+  createLSCAtomicFenceImpl(I, Builder, true);
+
+  auto *Scalar = Builder.CreateBitCast(Inst, DataVTy->getElementType());
+  if (ElementSize != LSC_DATA_SIZE_16c32b || I.getType()->isVoidTy())
+    return cast<Instruction>(Scalar);
+
+  auto *Trunc = Builder.CreateTrunc(Scalar, Builder.getInt16Ty());
+  auto *Cast = Builder.CreateBitCast(Trunc, DataTy);
+  return cast<Instruction>(Cast);
+}
+
+Instruction *GenXLoadStoreLowering::createLSCAtomicLoad(LoadInst &I,
+                                                        GenXIntrinsic::ID IID,
+                                                        Type *AddrTy,
+                                                        Value *BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *DataTy = I.getType();
+  auto *Undef = UndefValue::get(DataTy);
+
+  return createLSCAtomicImpl(I, IID, LSC_ATOMIC_LOAD, BTI, Addr, Undef, Undef);
+}
+
+Instruction *GenXLoadStoreLowering::createLSCAtomicStore(StoreInst &I,
+                                                         GenXIntrinsic::ID IID,
+                                                         Type *AddrTy,
+                                                         Value *BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *Src = I.getValueOperand();
+  auto *DataTy = Src->getType();
+  auto *Undef = UndefValue::get(DataTy);
+
+  return createLSCAtomicImpl(I, IID, LSC_ATOMIC_STORE, BTI, Addr, Src, Undef);
+}
+
+Instruction *GenXLoadStoreLowering::createLSCAtomicRMW(AtomicRMWInst &I,
+                                                       GenXIntrinsic::ID IID,
+                                                       Type *AddrTy,
+                                                       Value *BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *Src = I.getValOperand();
+  auto *DataTy = Src->getType();
+  auto *Undef = UndefValue::get(DataTy);
+
+  LSC_OP AtomicOp = LSC_ATOMIC_STORE;
+  switch (I.getOperation()) {
+  case AtomicRMWInst::BinOp::Xchg:
+    AtomicOp = LSC_ATOMIC_STORE;
+    break;
+  case AtomicRMWInst::BinOp::Add: {
+    AtomicOp = LSC_ATOMIC_IADD;
+    auto *C = dyn_cast<ConstantInt>(Src);
+    if (C && C->getSExtValue() == 1) {
+      AtomicOp = LSC_ATOMIC_IINC;
+      Src = Undef;
+    }
+    break;
+  }
+  case AtomicRMWInst::BinOp::Sub: {
+    AtomicOp = LSC_ATOMIC_ISUB;
+    auto *C = dyn_cast<ConstantInt>(Src);
+    if (C && C->getSExtValue() == 1) {
+      AtomicOp = LSC_ATOMIC_IDEC;
+      Src = Undef;
+    }
+    break;
+  }
+  case AtomicRMWInst::BinOp::And:
+    AtomicOp = LSC_ATOMIC_AND;
+    break;
+  case AtomicRMWInst::BinOp::Or:
+    AtomicOp = LSC_ATOMIC_OR;
+    break;
+  case AtomicRMWInst::BinOp::Xor:
+    AtomicOp = LSC_ATOMIC_XOR;
+    break;
+  case AtomicRMWInst::BinOp::Max:
+    AtomicOp = LSC_ATOMIC_SMAX;
+    break;
+  case AtomicRMWInst::BinOp::Min:
+    AtomicOp = LSC_ATOMIC_SMIN;
+    break;
+  case AtomicRMWInst::BinOp::UMax:
+    AtomicOp = LSC_ATOMIC_UMAX;
+    break;
+  case AtomicRMWInst::BinOp::UMin:
+    AtomicOp = LSC_ATOMIC_UMIN;
+    break;
+  case AtomicRMWInst::BinOp::FAdd:
+    AtomicOp = LSC_ATOMIC_FADD;
+    break;
+  case AtomicRMWInst::BinOp::FSub:
+    AtomicOp = LSC_ATOMIC_FSUB;
+    break;
+#if IGC_LLVM_VERSION_MAJOR >= 15
+  case AtomicRMWInst::BinOp::FMax:
+    AtomicOp = LSC_ATOMIC_FMAX;
+    break;
+  case AtomicRMWInst::BinOp::FMin:
+    AtomicOp = LSC_ATOMIC_FMIN;
+    break;
+#endif // IGC_LLVM_VERSION_MAJOR >= 15
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported atomic operation");
+    break;
+  }
+
+  return createLSCAtomicImpl(I, IID, AtomicOp, BTI, Addr, Src, Undef);
+}
+
+Instruction *
+GenXLoadStoreLowering::createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
+                                              GenXIntrinsic::ID IID,
+                                              Type *AddrTy, Value *BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *CmpVal = I.getCompareOperand();
+  auto *NewVal = I.getNewValOperand();
+
+  auto *RetTy = I.getType();
+  Value *Res = UndefValue::get(RetTy);
+
+  auto *Atomic =
+      createLSCAtomicImpl(I, IID, LSC_ATOMIC_ICAS, BTI, Addr, CmpVal, NewVal);
+  auto *Cmp = Builder.CreateICmpEQ(Atomic, CmpVal);
+
+  Res = Builder.CreateInsertValue(Res, Atomic, 0);
+  Res = Builder.CreateInsertValue(Res, Cmp, 1);
+  return cast<Instruction>(Res);
+}
+
+void GenXLoadStoreLowering::createLegacyAtomicFenceImpl(
+    Instruction &AtomicI, IRBuilder<> &Builder, bool IsPostFence) const {
+  IGC_ASSERT_EXIT(AtomicI.isAtomic());
+
+  auto [AS, Ordering] = getAddressSpaceAndOrderingOfAtomic(AtomicI);
+
+  bool IsGlobal = AS != vc::AddrSpace::Local;
+  bool EmitFence = IsGlobal || !ST->hasLocalMemFenceSupress();
+  if (!EmitFence)
+    return;
+
+  EmitFence = Ordering == AtomicOrdering::SequentiallyConsistent ||
+              Ordering == AtomicOrdering::AcquireRelease ||
+              Ordering == (IsPostFence ? AtomicOrdering::Acquire
+                                       : AtomicOrdering::Release);
+  if (!EmitFence)
+    return;
+
+  uint8_t FenceOp = 1;
+  if (!IsGlobal)
+    FenceOp |= 1 << 5;
+
+  auto *M = AtomicI.getModule();
+  auto *Func = GenXIntrinsic::getAnyDeclaration(M, GenXIntrinsic::genx_fence);
+  auto *Fence = Builder.CreateCall(Func, {Builder.getInt8(FenceOp)});
+  LLVM_DEBUG(dbgs() << "Created: " << *Fence << "\n");
+}
+
+Instruction *GenXLoadStoreLowering::createLegacyAtomicImpl(
+    Instruction &I, GenXIntrinsic::ID IID, Value *BTI, Value *Addr, Value *Src0,
+    Value *Src1) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  auto *M = I.getModule();
+
+  auto *OrigDataTy = Src0->getType();
+
+  Src0 = makeVector(Builder, Src0);
+  Src1 = makeVector(Builder, Src1);
+  Addr = makeVector(Builder, Addr);
+  auto *Pred = makeVector(Builder, Builder.getTrue());
+
+  auto *DataTy = Src0->getType();
+  auto *AddrTy = Addr->getType();
+  auto *PredTy = Pred->getType();
+
+  auto ElementSize = DataTy->getScalarSizeInBits();
+  IGC_ASSERT_EXIT(ElementSize == DWordBits ||
+                  (!BTI && ElementSize == QWordBits));
+
+  Function *AtomicFunc =
+      GenXIntrinsic::getAnyDeclaration(M, IID, {DataTy, PredTy, AddrTy});
+
+  SmallVector<Value *, 5> Args = {Pred};
+  if (BTI)
+    Args.push_back(BTI);
+  Args.push_back(Addr);
+  if (!isa<UndefValue>(Src0))
+    Args.push_back(Src0);
+  if (!isa<UndefValue>(Src1))
+    Args.push_back(Src1);
+  Args.push_back(UndefValue::get(DataTy));
+
+  createLegacyAtomicFenceImpl(I, Builder, false);
+  auto *Inst = Builder.CreateCall(AtomicFunc, Args);
+  LLVM_DEBUG(dbgs() << "Created: " << *Inst << "\n");
+  createLegacyAtomicFenceImpl(I, Builder, true);
+
+  auto *Scalar = Builder.CreateBitCast(Inst, OrigDataTy);
+  return cast<Instruction>(Scalar);
+}
+
+Instruction *GenXLoadStoreLowering::createLegacyAtomicLoad(LoadInst &I,
+                                                           unsigned BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  auto *AddrTy = IsBTI ? Builder.getInt32Ty() : Builder.getInt64Ty();
+  Value *BTIV = IsBTI ? Builder.getInt32(BTI) : nullptr;
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *DataTy = I.getType();
+  auto *Src = Constant::getNullValue(DataTy);
+
+  auto IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_or
+                   : GenXIntrinsic::genx_svm_atomic_or;
+  return createLegacyAtomicImpl(I, IID, BTIV, Addr, Src,
+                                UndefValue::get(Src->getType()));
+}
+
+Instruction *
+GenXLoadStoreLowering::createLegacyAtomicStore(StoreInst &I,
+                                               unsigned BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  auto *AddrTy = IsBTI ? Builder.getInt32Ty() : Builder.getInt64Ty();
+  Value *BTIV = IsBTI ? Builder.getInt32(BTI) : nullptr;
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *Src = I.getValueOperand();
+
+  auto IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_xchg
+                   : GenXIntrinsic::genx_svm_atomic_xchg;
+  return createLegacyAtomicImpl(I, IID, BTIV, Addr, Src,
+                                UndefValue::get(Src->getType()));
+}
+
+Instruction *GenXLoadStoreLowering::createLegacyAtomicRMW(AtomicRMWInst &I,
+                                                          unsigned BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  auto *AddrTy = IsBTI ? Builder.getInt32Ty() : Builder.getInt64Ty();
+  Value *BTIV = IsBTI ? Builder.getInt32(BTI) : nullptr;
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *Src = I.getValOperand();
+  auto *DataTy = Src->getType();
+  auto *Undef = UndefValue::get(DataTy);
+
+  auto IID = GenXIntrinsic::not_any_intrinsic;
+
+  switch (I.getOperation()) {
+  case AtomicRMWInst::BinOp::Xchg:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_xchg
+                : GenXIntrinsic::genx_svm_atomic_xchg;
+    break;
+  case AtomicRMWInst::BinOp::Add: {
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_add
+                : GenXIntrinsic::genx_svm_atomic_add;
+    auto *C = dyn_cast<ConstantInt>(Src);
+    if (C && C->getSExtValue() == 1) {
+      IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_inc
+                  : GenXIntrinsic::genx_svm_atomic_inc;
+      Src = Undef;
+    }
+    break;
+  }
+  case AtomicRMWInst::BinOp::Sub: {
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_sub
+                : GenXIntrinsic::genx_svm_atomic_sub;
+    auto *C = dyn_cast<ConstantInt>(Src);
+    if (C && C->getSExtValue() == 1) {
+      IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_dec
+                  : GenXIntrinsic::genx_svm_atomic_dec;
+      Src = Undef;
+    }
+    break;
+  }
+  case AtomicRMWInst::BinOp::And:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_and
+                : GenXIntrinsic::genx_svm_atomic_and;
+    break;
+  case AtomicRMWInst::BinOp::Or:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_or
+                : GenXIntrinsic::genx_svm_atomic_or;
+    break;
+  case AtomicRMWInst::BinOp::Xor:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_xor
+                : GenXIntrinsic::genx_svm_atomic_xor;
+    break;
+  case AtomicRMWInst::BinOp::Max:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_imax
+                : GenXIntrinsic::genx_svm_atomic_imax;
+    break;
+  case AtomicRMWInst::BinOp::Min:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_imin
+                : GenXIntrinsic::genx_svm_atomic_imin;
+    break;
+  case AtomicRMWInst::BinOp::UMax:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_max
+                : GenXIntrinsic::genx_svm_atomic_max;
+    break;
+  case AtomicRMWInst::BinOp::UMin:
+    IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_min
+                : GenXIntrinsic::genx_svm_atomic_min;
+    break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported atomic operation");
+    break;
+  }
+
+  return createLegacyAtomicImpl(I, IID, BTIV, Addr, Src, Undef);
+}
+
+Instruction *
+GenXLoadStoreLowering::createLegacyAtomicCmpXchg(AtomicCmpXchgInst &I,
+                                                 unsigned BTI) const {
+  IGC_ASSERT_EXIT(I.isAtomic());
+  IRBuilder<> Builder(&I);
+
+  bool IsBTI = BTI <= visa::RSI_Stateless;
+  auto *AddrTy = IsBTI ? Builder.getInt32Ty() : Builder.getInt64Ty();
+  Value *BTIV = IsBTI ? Builder.getInt32(BTI) : nullptr;
+
+  auto *Ptr = I.getPointerOperand();
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *CmpVal = I.getCompareOperand();
+  auto *NewVal = I.getNewValOperand();
+
+  auto *RetTy = I.getType();
+  Value *Res = UndefValue::get(RetTy);
+
+  auto IID = IsBTI ? GenXIntrinsic::genx_dword_atomic_cmpxchg
+                   : GenXIntrinsic::genx_svm_atomic_cmpxchg;
+  auto *Atomic = createLegacyAtomicImpl(I, IID, BTIV, Addr, NewVal, CmpVal);
+  auto *Cmp = Builder.CreateICmpEQ(Atomic, CmpVal);
+
+  Res = Builder.CreateInsertValue(Res, Atomic, 0);
+  Res = Builder.CreateInsertValue(Res, Cmp, 1);
+  return cast<Instruction>(Res);
 }
 
 Instruction *GenXLoadStoreLowering::createLegacyBlockLoadImpl(
@@ -1311,265 +1839,6 @@ GenXLoadStoreLowering::createLegacyGatherScatter(IntrinsicInst &I,
                                       Base, Addr, Extend, Align);
 }
 
-static std::pair<unsigned, AtomicOrdering>
-getAddressSpaceAndOrderingOfAtomic(const Instruction &AtomicI) {
-  IGC_ASSERT(AtomicI.isAtomic());
-  if (auto *ARMW = dyn_cast<AtomicRMWInst>(&AtomicI))
-    return {ARMW->getPointerAddressSpace(), ARMW->getOrdering()};
-  if (auto *CmpXchg = dyn_cast<AtomicCmpXchgInst>(&AtomicI))
-    return {CmpXchg->getPointerAddressSpace(), CmpXchg->getSuccessOrdering()};
-  if (auto *LI = dyn_cast<LoadInst>(&AtomicI)) {
-    IGC_ASSERT(LI->isAtomic());
-    unsigned AS = cast<PointerType>(LI->getPointerOperand()->getType())
-                      ->getAddressSpace();
-    return {AS, LI->getOrdering()};
-  }
-  if (auto *SI = dyn_cast<StoreInst>(&AtomicI)) {
-    IGC_ASSERT(SI->isAtomic());
-    unsigned AS = cast<PointerType>(SI->getPointerOperand()->getType())
-                      ->getAddressSpace();
-    return {AS, SI->getOrdering()};
-  }
-  IGC_ASSERT_MESSAGE(false, "Unimplemented atomic inst");
-  return {0, AtomicOrdering::Monotonic};
-}
-
-static void emitFencesForAtomic(Instruction &NewAtomicI,
-                                Instruction &OriginalAtomicI,
-                                const GenXSubtarget &ST) {
-  auto [AS, Ordering] = getAddressSpaceAndOrderingOfAtomic(OriginalAtomicI);
-
-  bool IsGlobal = (AS == vc::AddrSpace::Global);
-  IGC_ASSERT_MESSAGE(IsGlobal, "Global address space for atomic expected");
-  bool EmitFence = IsGlobal || !ST.hasLocalMemFenceSupress();
-
-  bool PreOpNeedsFence = (Ordering == AtomicOrdering::Release) ||
-                         (Ordering == AtomicOrdering::AcquireRelease) ||
-                         (Ordering == AtomicOrdering::SequentiallyConsistent);
-
-  bool PostOpNeedsFence = (Ordering == AtomicOrdering::Acquire) ||
-                          (Ordering == AtomicOrdering::AcquireRelease) ||
-                          (Ordering == AtomicOrdering::SequentiallyConsistent);
-
-  // Create fence message.
-  unsigned char FenceFlags = ((!IsGlobal) << 5) | (!EmitFence << 7) | 1;
-
-  auto *FenceDecl = GenXIntrinsic::getGenXDeclaration(
-      NewAtomicI.getModule(), GenXIntrinsic::genx_fence);
-
-  if (PreOpNeedsFence) {
-    IRBuilder<> Builder{&NewAtomicI};
-    Builder.CreateCall(FenceDecl, Builder.getInt8(FenceFlags));
-  }
-  if (PostOpNeedsFence) {
-    IRBuilder<> Builder{NewAtomicI.getNextNode()};
-    Builder.CreateCall(FenceDecl, Builder.getInt8(FenceFlags));
-  }
-}
-
-Instruction *GenXLoadStoreLowering::createLegacySVMAtomicInst(
-    Value &PointerOp, ArrayRef<Value *> Args, GenXIntrinsic::ID IID,
-    IRBuilder<> &Builder, Module &M) const {
-  IGC_ASSERT_MESSAGE(Args.size(), "Expecting non-empty argument list");
-  IGC_ASSERT_MESSAGE(llvm::all_of(Args,
-                                  [Args](Value *Arg) {
-                                    return Args[0]->getType() == Arg->getType();
-                                  }),
-                     "Expected equal types");
-  IGC_ASSERT_MESSAGE(!Args[0]->getType()->isVectorTy(),
-                     "Not expecting vector types");
-
-  Value *Offset = vc::createNopPtrToInt(PointerOp, Builder, *DL_);
-  Offset =
-      Builder.CreateBitCast(Offset, &vc::getVectorType(*Offset->getType()));
-
-  // True predicate always. One-element vector.
-  Value *Pred = IGCLLVM::ConstantFixedVector::getSplat(1, Builder.getTrue());
-
-  SmallVector<Value *, 8> InstrinsicArgs{Pred, Offset};
-  // Convert arguments to get one-element vectors.
-  llvm::transform(
-      Args, std::back_inserter(InstrinsicArgs), [&Builder](Value *Arg) {
-        return Builder.CreateBitCast(Arg, &vc::getVectorType(*Arg->getType()));
-      });
-
-  Type *InstTy = InstrinsicArgs.back()->getType();
-
-  // Old value of the data read.
-  InstrinsicArgs.push_back(UndefValue::get(InstTy));
-
-  Function *F =
-      vc::getGenXDeclarationForIdFromArgs(InstTy, InstrinsicArgs, IID, M);
-  return Builder.CreateCall(F, InstrinsicArgs);
-}
-
-Instruction *
-GenXLoadStoreLowering::createLegacySVMAtomicLoad(LoadInst &LdI) const {
-  IGC_ASSERT_MESSAGE(!LdI.getType()->isPtrOrPtrVectorTy(),
-                     "Not exepecting pointer types");
-  IGC_ASSERT(LdI.isAtomic());
-  IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
-  IGC_ASSERT(LdTy->getNumElements() == 1);
-  IGC_ASSERT_MESSAGE(!LdTy->getElementType()->isFloatingPointTy(),
-                     "Not expecting floating point");
-  auto ValueEltSz = vc::getTypeSize(LdTy, DL_);
-  IGC_ASSERT_MESSAGE(ValueEltSz.inBytes() == 4 || ValueEltSz.inBytes() == 8,
-                     "Expected 32/64-bit atomic");
-
-  Value *PointerOp = LdI.getPointerOperand();
-  IGC_ASSERT_MESSAGE(
-      cast<PointerType>(PointerOp->getType())->getAddressSpace() ==
-          vc::AddrSpace::Global,
-      "Global address space expected");
-
-  IRBuilder<> Builder{&LdI};
-  // Generate atomic or with zero value for legacy load.
-  Instruction *ResCall = createLegacySVMAtomicInst(
-      *PointerOp, {Constant::getNullValue(LdI.getType())},
-      GenXIntrinsic::genx_svm_atomic_or, Builder, *LdI.getModule());
-  emitFencesForAtomic(*ResCall, LdI, *ST);
-
-  return vc::fixDegenerateVector(*ResCall, Builder);
-}
-
-Instruction *
-GenXLoadStoreLowering::createLegacySVMAtomicStore(StoreInst &StI) const {
-  IGC_ASSERT(StI.isAtomic());
-  IRBuilder<> Builder{&StI};
-
-  Value *PointerOp = StI.getPointerOperand();
-  Value *ValueOp = StI.getValueOperand();
-  IGC_ASSERT_MESSAGE(!ValueOp->getType()->isPtrOrPtrVectorTy(),
-                     "Not exepecting pointer types");
-  IGC_ASSERT_MESSAGE(
-      cast<PointerType>(PointerOp->getType())->getAddressSpace() ==
-          vc::AddrSpace::Global,
-      "Global address space expected");
-
-  auto ValueEltSz = vc::getTypeSize(ValueOp->getType(), DL_);
-  IGC_ASSERT_MESSAGE(ValueEltSz.inBytes() == 4 || ValueEltSz.inBytes() == 8,
-                     "Expected 32/64-bit atomic");
-
-  // Cast to integer for floating point types.
-  if (ValueOp->getType()->getScalarType()->isFloatingPointTy()) {
-    auto *IntValTy = Builder.getIntNTy(ValueEltSz.inBits());
-    ValueOp = vc::castToIntOrFloat(*ValueOp, *IntValTy, Builder, *DL_);
-  }
-
-  Instruction *ResCall = createLegacySVMAtomicInst(
-      *PointerOp, {ValueOp}, GenXIntrinsic::genx_svm_atomic_xchg, Builder,
-      *StI.getModule());
-
-  emitFencesForAtomic(*ResCall, StI, *ST);
-
-  return ResCall;
-}
-
-static GenXIntrinsic::ID
-getLegacyGenXIIDForAtomicRMWInst(AtomicRMWInst::BinOp Op, unsigned AS) {
-  IGC_ASSERT_MESSAGE(AS == vc::AddrSpace::Global,
-                     "Global address space for atomic expected");
-  (void)AS;
-  switch (Op) {
-  default:
-    IGC_ASSERT_MESSAGE(false, "unimplemented binary atomic op");
-  case AtomicRMWInst::Min:
-    return GenXIntrinsic::genx_svm_atomic_imin;
-  case AtomicRMWInst::Max:
-    return GenXIntrinsic::genx_svm_atomic_imax;
-  case AtomicRMWInst::UMin:
-    return GenXIntrinsic::genx_svm_atomic_min;
-  case AtomicRMWInst::UMax:
-    return GenXIntrinsic::genx_svm_atomic_max;
-  case AtomicRMWInst::Xchg:
-    return GenXIntrinsic::genx_svm_atomic_xchg;
-  case AtomicRMWInst::Add:
-    return GenXIntrinsic::genx_svm_atomic_add;
-  case AtomicRMWInst::Sub:
-    return GenXIntrinsic::genx_svm_atomic_sub;
-  case AtomicRMWInst::Or:
-    return GenXIntrinsic::genx_svm_atomic_or;
-  case AtomicRMWInst::Xor:
-    return GenXIntrinsic::genx_svm_atomic_xor;
-  case AtomicRMWInst::And:
-    return GenXIntrinsic::genx_svm_atomic_and;
-  }
-}
-
-static bool intrinsicNeedsIntegerOperands(GenXIntrinsic::ID IID) {
-  return IID != GenXIntrinsic::genx_svm_atomic_fmin &&
-         IID != GenXIntrinsic::genx_svm_atomic_fmax &&
-         IID != GenXIntrinsic::genx_svm_atomic_fcmpwr;
-}
-
-Instruction *
-GenXLoadStoreLowering::createLegacySVMAtomicBinOp(AtomicRMWInst &Inst) const {
-  IGC_ASSERT_MESSAGE(!Inst.getType()->isPtrOrPtrVectorTy(),
-                     "Not exepecting pointer types");
-  IRBuilder<> Builder{&Inst};
-  Value *PointerOp = Inst.getPointerOperand();
-  Value *ValueOp = Inst.getValOperand();
-
-  IGC_ASSERT_MESSAGE(Inst.getPointerAddressSpace() == vc::AddrSpace::Global,
-                     "Global address space expected");
-
-  auto ValueEltSz = vc::getTypeSize(ValueOp->getType()->getScalarType(), DL_);
-  IGC_ASSERT_MESSAGE(ValueEltSz.inBytes() == 4 || ValueEltSz.inBytes() == 8,
-                     "Expected 32/64-bit atomic");
-
-  auto IID = getLegacyGenXIIDForAtomicRMWInst(Inst.getOperation(),
-                                              Inst.getPointerAddressSpace());
-
-  bool NeedConversionToInteger =
-      ValueOp->getType()->getScalarType()->isFloatingPointTy() &&
-      intrinsicNeedsIntegerOperands(IID);
-
-  if (NeedConversionToInteger)
-    ValueOp = vc::castToIntOrFloat(
-        *ValueOp, *Builder.getIntNTy(ValueEltSz.inBits()), Builder, *DL_);
-
-  Instruction *ResCall = createLegacySVMAtomicInst(*PointerOp, {ValueOp}, IID,
-                                                   Builder, *Inst.getModule());
-
-  emitFencesForAtomic(*ResCall, Inst, *ST);
-
-  return cast<Instruction>(
-      vc::castFromIntOrFloat(*ResCall, *Inst.getType(), Builder, *DL_));
-}
-
-Instruction *GenXLoadStoreLowering::createLegacySVMAtomicCmpXchg(
-    AtomicCmpXchgInst &CmpXchgI) const {
-  IRBuilder<> Builder{&CmpXchgI};
-  Value *PointerOp = CmpXchgI.getPointerOperand();
-  Value *CmpOp = CmpXchgI.getCompareOperand();
-  Value *NewOp = CmpXchgI.getNewValOperand();
-  IGC_ASSERT_MESSAGE(!CmpOp->getType()->isPtrOrPtrVectorTy(),
-                     "Not exepecting pointer types");
-
-  IGC_ASSERT_MESSAGE(CmpXchgI.getPointerAddressSpace() == vc::AddrSpace::Global,
-                     "Global address space expected");
-
-  auto ValueEltSz = vc::getTypeSize(CmpOp->getType()->getScalarType(), DL_);
-  IGC_ASSERT_MESSAGE(ValueEltSz.inBytes() == 4 || ValueEltSz.inBytes() == 8,
-                     "Expected 32/64-bit atomic");
-
-  Instruction *ResCall = createLegacySVMAtomicInst(
-      *PointerOp, {CmpOp, NewOp}, GenXIntrinsic::genx_svm_atomic_cmpxchg,
-      Builder, *CmpXchgI.getModule());
-
-  emitFencesForAtomic(*ResCall, CmpXchgI, *ST);
-
-  Value *ScalarRes = vc::fixDegenerateVector(*ResCall, Builder);
-
-  // Restore original result structure and return it. Second cmpxchg return
-  // operand is true if loaded value equals to cmp.
-  auto *Res = Builder.CreateInsertValue(UndefValue::get(CmpXchgI.getType()),
-                                        ScalarRes, 0);
-  auto *CmpRes = Builder.CreateICmpEQ(ScalarRes, CmpXchgI.getCompareOperand());
-  Res = Builder.CreateInsertValue(Res, CmpRes, 1);
-  return cast<Instruction>(Res);
-}
-
 template <typename MemoryInstT>
 Instruction *
 GenXLoadStoreLowering::createMemoryInstReplacement(MemoryInstT &I) const {
@@ -1587,7 +1856,7 @@ Instruction *GenXLoadStoreLowering::switchAtomicity(MemoryInstT &I) const {
 
 template <Atomicity A, typename MemoryInstT>
 Instruction *GenXLoadStoreLowering::switchMessage(MemoryInstT &I) const {
-  if (ST->hasLSCMessages() && !I.isAtomic())
+  if (ST->hasLSCMessages())
     return switchAddrSpace<MessageKind::LSC, A>(I);
   return switchAddrSpace<MessageKind::Legacy, A>(I);
 }
@@ -1650,19 +1919,27 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
 
 template <>
 Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, LoadInst>(
+    LoadInst &I) const {
+  return createLegacyLoadStore(I, visa::RSI_Stateless, I.getPointerOperand());
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, LoadInst>(
+    LoadInst &I) const {
+  return createLegacyLoadStore(I, visa::RSI_Slm, I.getPointerOperand());
+}
+
+template <>
+Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::NonAtomic, StoreInst>(
     StoreInst &I) const {
   return createLegacyLoadStore(I, -1, I.getPointerOperand(),
                                I.getValueOperand());
-}
-
-template <>
-Instruction *
-GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
-                                       Atomicity::NonAtomic, LoadInst>(
-    LoadInst &I) const {
-  return createLegacyLoadStore(I, visa::RSI_Stateless, I.getPointerOperand());
 }
 
 template <>
@@ -1676,10 +1953,35 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
 
 template <>
 Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
+                                       Atomicity::NonAtomic, StoreInst>(
+    StoreInst &I) const {
+  return createLegacyLoadStore(I, visa::RSI_Slm, I.getPointerOperand(),
+                               I.getValueOperand());
+}
+
+template <>
+Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::Atomic, LoadInst>(
     LoadInst &I) const {
-  return createLegacySVMAtomicLoad(I);
+  return createLegacyAtomicLoad(I, -1);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
+                                       Atomicity::Atomic, LoadInst>(
+    LoadInst &I) const {
+  return createLegacyAtomicLoad(I, visa::RSI_Stateless);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
+                                       Atomicity::Atomic, LoadInst>(
+    LoadInst &I) const {
+  return createLegacyAtomicLoad(I, visa::RSI_Slm);
 }
 
 template <>
@@ -1687,7 +1989,23 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::Atomic, StoreInst>(
     StoreInst &I) const {
-  return createLegacySVMAtomicStore(I);
+  return createLegacyAtomicStore(I, -1);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
+                                       Atomicity::Atomic, StoreInst>(
+    StoreInst &I) const {
+  return createLegacyAtomicStore(I, visa::RSI_Stateless);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
+                                       Atomicity::Atomic, StoreInst>(
+    StoreInst &I) const {
+  return createLegacyAtomicStore(I, visa::RSI_Slm);
 }
 
 template <>
@@ -1695,7 +2013,23 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::Atomic, AtomicRMWInst>(
     AtomicRMWInst &I) const {
-  return createLegacySVMAtomicBinOp(I);
+  return createLegacyAtomicRMW(I, -1);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
+                                       Atomicity::Atomic, AtomicRMWInst>(
+    AtomicRMWInst &I) const {
+  return createLegacyAtomicRMW(I, visa::RSI_Stateless);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
+                                       Atomicity::Atomic, AtomicRMWInst>(
+    AtomicRMWInst &I) const {
+  return createLegacyAtomicRMW(I, visa::RSI_Slm);
 }
 
 template <>
@@ -1703,24 +2037,22 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::Atomic, AtomicCmpXchgInst>(
     AtomicCmpXchgInst &I) const {
-  return createLegacySVMAtomicCmpXchg(I);
+  return createLegacyAtomicCmpXchg(I, -1);
 }
 
 template <>
 Instruction *
-GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
-                                       Atomicity::NonAtomic, LoadInst>(
-    LoadInst &I) const {
-  return createLegacyLoadStore(I, visa::RSI_Slm, I.getPointerOperand());
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::Legacy,
+                                       Atomicity::Atomic, AtomicCmpXchgInst>(
+    AtomicCmpXchgInst &I) const {
+  return createLegacyAtomicCmpXchg(I, visa::RSI_Stateless);
 }
-
 template <>
 Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
-                                       Atomicity::NonAtomic, StoreInst>(
-    StoreInst &I) const {
-  return createLegacyLoadStore(I, visa::RSI_Slm, I.getPointerOperand(),
-                               I.getValueOperand());
+                                       Atomicity::Atomic, AtomicCmpXchgInst>(
+    AtomicCmpXchgInst &I) const {
+  return createLegacyAtomicCmpXchg(I, visa::RSI_Slm);
 }
 
 template <>
@@ -1859,4 +2191,148 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
   auto *AddrTy = Builder.getInt32Ty();
   return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_slm,
                                 GenXIntrinsic::genx_lsc_store_slm, BTI, AddrTy);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
+                                       Atomicity::Atomic, LoadInst>(
+    LoadInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt64Ty();
+  return createLSCAtomicLoad(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                             AddrTy, BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
+                                       Atomicity::Atomic, LoadInst>(
+    LoadInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(visa::RSI_Stateless);
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicLoad(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
+                             BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
+                                       Atomicity::Atomic, LoadInst>(
+    LoadInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicLoad(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                             BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
+                                       Atomicity::Atomic, StoreInst>(
+    StoreInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt64Ty();
+  return createLSCAtomicStore(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                              AddrTy, BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
+                                       Atomicity::Atomic, StoreInst>(
+    StoreInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(visa::RSI_Stateless);
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicStore(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
+                              BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
+                                       Atomicity::Atomic, StoreInst>(
+    StoreInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicStore(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                              BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
+                                       Atomicity::Atomic, AtomicRMWInst>(
+    AtomicRMWInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt64Ty();
+  return createLSCAtomicRMW(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                            AddrTy, BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
+                                       Atomicity::Atomic, AtomicRMWInst>(
+    AtomicRMWInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(visa::RSI_Stateless);
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicRMW(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
+                            BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
+                                       Atomicity::Atomic, AtomicRMWInst>(
+    AtomicRMWInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicRMW(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                            BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
+                                       Atomicity::Atomic, AtomicCmpXchgInst>(
+    AtomicCmpXchgInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt64Ty();
+  return createLSCAtomicCmpXchg(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                                AddrTy, BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
+                                       Atomicity::Atomic, AtomicCmpXchgInst>(
+    AtomicCmpXchgInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(visa::RSI_Stateless);
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicCmpXchg(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
+                                BTI);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
+                                       Atomicity::Atomic, AtomicCmpXchgInst>(
+    AtomicCmpXchgInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *BTI = Builder.getInt32(0); // ignored
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicCmpXchg(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                                BTI);
 }
