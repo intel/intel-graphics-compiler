@@ -1213,6 +1213,9 @@ CMImpParam::processKernelParameters(Function *F,
   KM.updateArgKindsMD(std::move(ArgKinds));
   KM.updateLinearizationMD(std::move(LinearizedArgs));
 
+  F->mutateType(NF->getType());
+  F->replaceAllUsesWith(NF);
+
   // Now that the old function is dead, delete it. If there is a dangling
   // reference to the CallGraphNode, just leave the dead function around
   NF_CGN->stealCalledFunctionsFrom(CG[F]);

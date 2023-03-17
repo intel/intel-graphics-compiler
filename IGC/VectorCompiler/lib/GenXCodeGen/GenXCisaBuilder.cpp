@@ -6296,6 +6296,27 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
   }
 }
 
+static void dumpGlobalAnnotations(Module &M) {
+  auto *GV = M.getGlobalVariable("llvm.global.annotations");
+  if (!GV)
+    return;
+  auto *Array = dyn_cast<ConstantArray>(GV->getOperand(0));
+  for (const auto &Op : Array->operands()) {
+    auto *Struct = dyn_cast<ConstantStruct>(Op.get());
+    auto *Func = dyn_cast<Function>(Struct->getOperand(0)->getOperand(0));
+    if (!Func)
+      continue;
+    auto FuncName = Func->getName();
+    assert(!FuncName.empty() && "Annotated function must have a name");
+    auto *GlobalStr =
+        dyn_cast<GlobalVariable>(Struct->getOperand(1)->getOperand(0));
+    auto *Str = dyn_cast<ConstantDataArray>(GlobalStr->getInitializer());
+    auto FuncAnnotation = Str->getAsString();
+    errs() << "Warning: Annotation \"" << FuncAnnotation << "\" for function "
+           << FuncName << " is ignored\n";
+  }
+}
+
 namespace {
 
 class GenXFinalizer : public ModulePass {
@@ -6337,6 +6358,8 @@ public:
       dbgs() << CisaBuilder->GetCriticalMsg();
 
     Out << ss.str();
+
+    dumpGlobalAnnotations(M);
 
     // Collect some useful statistics
     for (auto *FG: FGA) {
