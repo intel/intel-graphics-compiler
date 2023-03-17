@@ -1087,10 +1087,6 @@ Output:
 \*****************************************************************************/
 void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
 {
-#if defined(_INTERNAL)
-    if (IGC_IS_FLAG_DISABLED(EnableDebugging))
-        return;
-#endif
     // only load the debug flags once before compiling to avoid any multi-threading issue
     static std::mutex loadFlags;
     static volatile bool flagsSet = false;

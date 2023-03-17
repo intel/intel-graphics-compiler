@@ -1144,15 +1144,15 @@ void OptimizeIR(CodeGenContext* const pContext)
     }
 
     IGCPassManager mpm(pContext, "OPT");
-#if defined(_INTERNAL)
-    if (IGC_IS_FLAG_ENABLED(EnableDebugging))
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+    // do verifyModule for debug/release_internal only.
+    if (false == pContext->m_hasLegacyDebugInfo)
+    {
+        IGC_ASSERT(nullptr != pContext->getModule());
+        IGC_ASSERT(false == llvm::verifyModule(*pContext->getModule(), &dbgs()));
+    }
 #endif
-        // do verifyModule for debug/release_internal only.
-        if (false == pContext->m_hasLegacyDebugInfo)
-        {
-            IGC_ASSERT(nullptr != pContext->getModule());
-            IGC_ASSERT(false == llvm::verifyModule(*pContext->getModule(), &dbgs()));
-        }
 
     COMPILER_TIME_START(pContext, TIME_OptimizationPasses);
     // scope to force destructors before mem usage sampling
