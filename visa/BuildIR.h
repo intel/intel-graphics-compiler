@@ -543,12 +543,26 @@ public:
     return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::FE_FP);
   }
 
+  G4_Declare *getImplArgBufPtr() const {
+    return preDefVars.getPreDefinedVar(
+        PreDefinedVarsInternal::IMPL_ARG_BUF_PTR);
+  }
+
+  G4_Declare *getLocalIdBufPtr() const {
+    return preDefVars.getPreDefinedVar(
+        PreDefinedVarsInternal::LOCAL_ID_BUF_PTR);
+  }
+
   bool isPreDefArg(G4_Declare *dcl) const { return dcl == getStackCallArg(); }
 
   bool isPreDefRet(G4_Declare *dcl) const { return dcl == getStackCallRet(); }
 
   bool isPreDefFEStackVar(G4_Declare *dcl) const {
     return dcl == getFE_SP() || dcl == getFE_FP();
+  }
+
+  bool isPreDefSpillHeader(G4_Declare *dcl) const {
+    return dcl == getImplArgBufPtr() || dcl == getLocalIdBufPtr();
   }
 
   // this refers to vISA's internal stack for spill and caller/callee-save

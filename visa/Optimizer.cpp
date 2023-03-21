@@ -7274,6 +7274,10 @@ void Optimizer::countGRFUsage() {
   int count = 0;
   std::vector<bool> GRFUse(maxGRFNum, false);
   for (auto dcl : kernel.Declares) {
+    if (!fg.getHasStackCalls() &&
+        (builder.isPreDefFEStackVar(dcl) || builder.isPreDefSpillHeader(dcl))) {
+      continue;
+    }
     if (dcl->getRegVar()->isGreg()) {
       int GRFStart = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
       int numRows = dcl->getNumRows();
