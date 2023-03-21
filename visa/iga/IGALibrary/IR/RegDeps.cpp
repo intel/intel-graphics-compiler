@@ -1218,13 +1218,17 @@ void DepSet::setOutputsDstDep() {
   auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 
   // A trick to correct the call dst footprint that its dst type is implicit dw
-  // but it acutally writes to continuous two dw for each lane. Double the type
-  // size so that we will get the correct footprint in DepSet::setDstRegion
+  // but it actually writes to continuous two dw. This causes the issue
+  // for SIMD1 case. Double the exec_size to workaround the case. For other simd
+  // width, it's ok since we already conservative assume the dst footprint by
+  // times of exec_size, which is not neccessary for call/calla that their dst
+  // is scalar 2 dw.
   if (m_instruction->getOp() == Op::CALL ||
       m_instruction->getOp() == Op::CALLA) {
     assert(tType == Type::D && op.getKind() == Operand::Kind::DIRECT &&
            op.getDirRegName() == RegName::GRF_R);
-    typeSizeBits = typeSizeBits * 2;
+    if (execSize == 1)
+      execSize = 2;
   }
 
   // Instructions having implicit write to acc
