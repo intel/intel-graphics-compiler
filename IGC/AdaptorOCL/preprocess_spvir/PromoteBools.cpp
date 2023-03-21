@@ -683,6 +683,18 @@ Constant* PromoteBools::promoteConstant(Constant* constant)
         auto newType = getOrCreatePromotedType(constantStruct->getType());
         return ConstantStruct::get(dyn_cast<StructType>(newType), values);
     }
+    else if (auto constantExpr = dyn_cast<ConstantExpr>(constant))
+    {
+        if (constantExpr->isCast() && isa<GlobalValue>(constantExpr->getOperand(0)))
+        {
+            return ConstantExpr::getCast(
+                constantExpr->getOpcode(),
+                dyn_cast<Constant>(getOrCreatePromotedValue(constantExpr->getOperand(0))),
+                constantExpr->getType()
+            );
+        }
+        return constantExpr;
+    }
 
     return constant;
 }
