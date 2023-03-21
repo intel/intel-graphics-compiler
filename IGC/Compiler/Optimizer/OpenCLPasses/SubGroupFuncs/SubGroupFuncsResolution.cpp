@@ -194,7 +194,8 @@ const std::array<std::pair<std::string, WaveOps>, 13> SubGroupFuncsResolution::m
 };
 
 
-const llvm::StringRef SubGroupFuncsResolution::SUBGROUP_BLOCK_READ = "__builtin_IB_subgroup_block_read_flat";
+const llvm::StringRef SubGroupFuncsResolution::SUBGROUP_BLOCK_READ  = "__builtin_IB_subgroup_block_read_flat";
+const llvm::StringRef SubGroupFuncsResolution::SUBGROUP_BLOCK_WRITE = "__builtin_IB_subgroup_block_write_flat";
 
 SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass(ID)
 {
@@ -927,7 +928,11 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     }
     else if (funcName.consume_front(SubGroupFuncsResolution::SUBGROUP_BLOCK_READ))
     {
-        subGroup2DBlockRead(CI, funcName);
+        subGroup2DBlockOperation(CI, funcName, true);
+    }
+    else if (funcName.consume_front(SubGroupFuncsResolution::SUBGROUP_BLOCK_WRITE))
+    {
+        subGroup2DBlockOperation(CI, funcName, false);
     }
     else
     {
@@ -937,7 +942,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     m_changed = true;
 }
 
-void SubGroupFuncsResolution::subGroup2DBlockRead(llvm::CallInst& CI, llvm::StringRef funcName)
+void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead)
 {
     IGC::IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(CI.getParent()->getParent());
@@ -998,11 +1003,15 @@ void SubGroupFuncsResolution::subGroup2DBlockRead(llvm::CallInst& CI, llvm::Stri
         }
         else
         {
-            IGC_ASSERT_MESSAGE(0, "Unrecognized m element in __builtin_IB_subgroup_block_read_flat.");
+            IGC_ASSERT_MESSAGE(0, "Unrecognized m element in __builtin_IB_subgroup_block_read/write_flat.");
             return;
         }
 
-        if (funcName.consume_front("k16"))
+        if (funcName.consume_front("k8"))
+        {
+            tileWidth = 8;
+        }
+        else if (funcName.consume_front("k16"))
         {
             tileWidth = 16;
         }
@@ -1012,11 +1021,18 @@ void SubGroupFuncsResolution::subGroup2DBlockRead(llvm::CallInst& CI, llvm::Stri
         }
         else
         {
-            IGC_ASSERT_MESSAGE(0, "Unrecognized k element in __builtin_IB_subgroup_block_read_flat.");
+            IGC_ASSERT_MESSAGE(0, "Unrecognized k element in __builtin_IB_subgroup_block_read/write_flat.");
             return;
         }
 
-        IGC_ASSERT_MESSAGE(funcName.consume_front("v2"), "Unrecognized v element in __builtin_IB_subgroup_block_read_flat.");
+        if (funcName.consume_front("v1"))
+        {
+            numBlocksV = 1;
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(funcName.consume_front("v2"), "Unrecognized v element in __builtin_IB_subgroup_block_read/write_flat.");
+        }
     }
     else if (isTranspose && !isVnniTransform)
     {
@@ -1112,17 +1128,24 @@ void SubGroupFuncsResolution::subGroup2DBlockRead(llvm::CallInst& CI, llvm::Stri
     args.push_back(isTransposeConstant);
     args.push_back(isVnniTransformConstant);
 
+    Function* BlockFunc = nullptr;
+    if (isRead) {
+        BlockFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_LSC2DBlockRead,
+            CI.getCalledFunction()->getReturnType());
+    } else {
+        args.push_back(CI.getArgOperand(5));
+        BlockFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_LSC2DBlockWrite,
+            CI.getCalledFunction()->getReturnType());
+    }
 
-    Function* Block2DReadFunc = GenISAIntrinsic::getDeclaration(
-        CI.getCalledFunction()->getParent(),
-        GenISAIntrinsic::GenISA_LSC2DBlockRead,
-        CI.getCalledFunction()->getReturnType());
+    auto* BlockOp = cast<GenIntrinsicInst>(CallInst::Create(BlockFunc, args, "", &CI));
+    BlockOp->setDebugLoc(CI.getDebugLoc());
 
-    auto* BlockRead = cast<GenIntrinsicInst>(
-        CallInst::Create(Block2DReadFunc, args, "", &CI));
-    BlockRead->setDebugLoc(CI.getDebugLoc());
-
-    CI.replaceAllUsesWith(BlockRead);
+    CI.replaceAllUsesWith(BlockOp);
     CI.eraseFromParent();
 }
 

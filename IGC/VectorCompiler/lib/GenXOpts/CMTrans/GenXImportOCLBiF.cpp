@@ -453,7 +453,7 @@ static void InitializeBIFlags(Module &M) {
   // FIXME: target specific, but subtarget cannot be reached in middle-end.
   initializeVarWithValue("__HasInt64SLMAtomicCAS", 0);
 
-  initializeVarWithValue("__JointMatrixLoadStoreOpt", 2);
+  initializeVarWithValue("__JointMatrixLoadStoreOpt", 3);
 }
 
 static bool isOCLBuiltinDecl(const Function &F) {

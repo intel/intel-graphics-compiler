@@ -8082,6 +8082,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_LSCAtomicFP32:
     case GenISAIntrinsic::GenISA_LSCAtomicInts:
     case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+    case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
         emitLSCIntrinsic(inst);
         break;
     case GenISAIntrinsic::GenISA_dummyInst:
@@ -20220,8 +20221,10 @@ void EmitPass::emitLSCStore(
         resource, addr_size, data_order, immOffset, cacheOpts);
 }
 
-void EmitPass::emitLSC2DBlockRead(llvm::GenIntrinsicInst* inst)
+void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
 {
+    const bool isRead = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead;
+
     CVariable* pFlatImageBaseoffset = GetSymbol(inst->getOperand(0));
     CVariable* pFlatImageWidth = GetSymbol(inst->getOperand(1));
     CVariable* pFlatImageHeight = GetSymbol(inst->getOperand(2));
@@ -20253,8 +20256,13 @@ void EmitPass::emitLSC2DBlockRead(llvm::GenIntrinsicInst* inst)
             CName::NONE);
     }
 
+    if (isRead == false)
+    {
+        destination = GetSymbol(inst->getOperand(12));
+    }
+
     m_encoder->LSC_2DBlockMessage(
-        LSC_LOAD_BLOCK2D,
+        isRead ? LSC_LOAD_BLOCK2D : LSC_STORE_BLOCK2D,
         nullptr,
         destination,
         nullptr, //pImgBTI - not needed for read
@@ -20272,7 +20280,7 @@ void EmitPass::emitLSC2DBlockRead(llvm::GenIntrinsicInst* inst)
         pFlatImagePitch);
     m_encoder->Push();
 
-    if (destination != m_destination)
+    if (isRead && destination != m_destination)
     {
         // m1 v2 block read
         m_encoder->Copy(m_destination, destination);
@@ -20426,7 +20434,8 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
         emitLSCFence(GII);
         break;
     case GenISAIntrinsic::GenISA_LSC2DBlockRead:
-        emitLSC2DBlockRead(GII);
+    case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
+        emitLSC2DBlockOperation(GII);
         break;
     default:
         if (isLSCAtomic(iid)) { ////// GenISA_LSCAtomic*
