@@ -1900,7 +1900,9 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
   // Check for previously found value
   auto It = EMProducers.find(User);
   if (It != EMProducers.end()) {
-    LLVM_DEBUG(dbgs() << "Using previously found value:\n" << *It->second << "\n");
+    LLVM_DEBUG(if (It->second) dbgs() << "Using previously found value:\n"
+                                      << *It->second << "\n";
+               else dbgs() << "Using previously found empty-value!\n";);
     return It->second;
   }
 
@@ -2270,7 +2272,7 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
   ExtractValueInst *ExtractScalar = nullptr;
   for (auto ui = CI->use_begin(), ue = CI->use_end(); ui != ue; ++ui)
     if (auto EV = dyn_cast<ExtractValueInst>(ui->getUser()))
-      if (!isa<VectorType>(EV->getType())) {
+      if (!isa<VectorType>(EV->getType()) && EV->hasNUsesOrMore(1)) {
         if (ExtractScalar) {
           LLVM_DEBUG(dbgs() << "goto/join has more than one extract of its !any result\n");
           return false;
