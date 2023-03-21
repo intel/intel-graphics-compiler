@@ -12432,15 +12432,23 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
 // The above logic can be simplified to the following formula:
 //    lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2)
 //
+// Note: Edge weight between 2 nodes is asymmetric and depends on ordering
+// of nodes. Swapping lr1, lr2 and invoking edgeWeightGRF() may return
+// different result. So using the correct order of lr1, lr2 during edge
+// weight computation and later during simplification is necessary for
+// correctness.
+//
 unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
   bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-  bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
   unsigned lr1_nreg = lr1->getNumRegNeeded();
   unsigned lr2_nreg = lr2->getNumRegNeeded();
 
   if (!lr1EvenAlign) {
     return lr1_nreg + lr2_nreg - 1;
-  } else if (!lr2EvenAlign) {
+  }
+
+  bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
+  if (!lr2EvenAlign) {
     unsigned sum = lr1_nreg + lr2_nreg;
     return sum + 1 - ((sum) % 2);
   } else if (lr2EvenAlign) {

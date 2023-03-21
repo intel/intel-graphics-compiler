@@ -868,7 +868,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
 
   pKernel->dumpToFile("after.RemoveRedundantLabels");
 
-  handleExit(subroutineStartBB.size() > 1 ? subroutineStartBB[1] : nullptr);
+  handleExit();
 
   handleReturn(labelMap, funcInfoHashTable);
   mergeReturn(funcInfoHashTable);
@@ -1046,7 +1046,7 @@ void FlowGraph::handleWait() {
 // for case 2 and 3 an exit block will be inserted, and it will consist of a EOT
 // send plus a join if it's targeted by another goto instruction
 //
-void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
+void FlowGraph::handleExit() {
 
   // blocks that end with non-uniform or conditional return
   std::vector<G4_BB *> exitBlocks;
@@ -1055,11 +1055,6 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
     G4_BB *bb = *iter;
     if (bb->size() == 0) {
       continue;
-    }
-
-    if (bb == firstSubroutineBB) {
-      // we've reached the first subroutine's entry BB,
-      break;
     }
 
     G4_INST *lastInst = bb->back();

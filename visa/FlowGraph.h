@@ -413,7 +413,7 @@ public:
   void handleReturn(Label_BB_Map &map, FuncInfoHashTable &funcInfoTable);
   void linkReturnAddr(G4_BB *bb, G4_BB *returnAddr);
 
-  void handleExit(G4_BB *lastKernelBB);
+  void handleExit();
   void handleWait();
 
   void preprocess(INST_LIST &instlist);
