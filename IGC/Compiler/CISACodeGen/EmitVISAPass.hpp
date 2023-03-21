@@ -513,7 +513,7 @@ public:
     void emitLscIntrinsicStore(llvm::GenIntrinsicInst* GII);
 
     void emitLSCFence(llvm::GenIntrinsicInst* inst);
-    void emitLSC2DBlockRead(llvm::GenIntrinsicInst* inst);
+    void emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst);
     void emitLSCAtomic(llvm::GenIntrinsicInst* inst);
     void emitLSCIntrinsic(llvm::GenIntrinsicInst* GII);
     void emitLSCLoad(
