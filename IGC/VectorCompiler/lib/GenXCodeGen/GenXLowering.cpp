@@ -220,7 +220,7 @@ private:
   bool lowerAllAny(CallInst *CI);
   bool lowerRdRegion(Instruction *Inst);
   bool lowerWrRegion(Instruction *Inst);
-  bool lowerRdPredRegion(Instruction *Inst);
+  bool lowerRdPredRegion(CallInst *Inst);
   bool lowerWrPredRegion(Instruction *Inst);
   bool lowerInsertElement(Instruction *Inst);
   bool lowerExtractElement(Instruction *Inst);
@@ -3282,7 +3282,7 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_wrregionf:
       return lowerWrRegion(Inst);
     case GenXIntrinsic::genx_rdpredregion:
-      return lowerRdPredRegion(Inst);
+      return lowerRdPredRegion(CI);
     case GenXIntrinsic::genx_wrpredregion:
       return lowerWrPredRegion(Inst);
     case GenXIntrinsic::not_any_intrinsic:
@@ -3523,74 +3523,76 @@ bool GenXLowering::lowerWrRegion(Instruction *Inst) {
  * it further here. If a use is in rdpredregion, we need to combine the two
  * rdpredregions into one.
  */
-bool GenXLowering::lowerRdPredRegion(Instruction *Inst) {
-  SmallVector<CallInst *, 4> RdPredRegionUsers;
-  bool Ok = true;
-  for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue; ++ui) {
-    auto User = cast<Instruction>(ui->getUser());
+bool GenXLowering::lowerRdPredRegion(CallInst *Inst) {
+  auto UserIt = llvm::find_if(Inst->users(), [](auto *User) {
     if (isa<SelectInst>(User))
-      continue;
+      return false;
+
     unsigned IID = vc::getAnyIntrinsicID(User);
-    if (GenXIntrinsic::isWrRegion(IID))
-      continue;
-    if (IID == GenXIntrinsic::genx_wrpredpredregion)
-      continue;
-    if (IID == GenXIntrinsic::genx_rdpredregion) {
-      RdPredRegionUsers.push_back(cast<CallInst>(User));
-      continue;
-    }
-    if (IID == GenXIntrinsic::not_any_intrinsic) {
-      Ok = false;
-      break;
-    }
-    if (cast<CallInst>(User)->doesNotAccessMemory()) {
-      Ok = false;
-      break;
-    }
-  }
-  unsigned Start = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
-  unsigned Size =
-      cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
-  if (Ok) {
+    if (GenXIntrinsic::isWrRegion(IID) ||
+        IID == GenXIntrinsic::genx_rdpredregion ||
+        IID == GenXIntrinsic::genx_wrpredpredregion)
+      return false;
+
+    auto *CI = dyn_cast<CallInst>(User);
+    return !CI || CI->doesNotAccessMemory();
+  });
+
+  bool IsValid = UserIt == Inst->user_end();
+
+  auto *SrcV = Inst->getArgOperand(0);
+  auto *StartV = cast<ConstantInt>(Inst->getArgOperand(1));
+  auto *SrcTy = cast<IGCLLVM::FixedVectorType>(SrcV->getType());
+  auto *ResTy = cast<IGCLLVM::FixedVectorType>(Inst->getType());
+
+  unsigned Start = StartV->getZExtValue();
+  unsigned Size = ResTy->getNumElements();
+  unsigned SrcSize = SrcTy->getNumElements();
+
+  IsValid &= SrcSize <= DWordBits;
+
+  if (IsValid) {
     // All uses in select/wrregion/rdpredregion/non-ALU intrinsic, so we can
     // keep the rdpredregion.  Check for uses in another rdpredregion; we need
     // to combine those.
-    for (auto ui = RdPredRegionUsers.begin(), ue = RdPredRegionUsers.end();
-         ui != ue; ++ui) {
-      auto User = *ui;
+    for (auto *User : Inst->users()) {
+      auto *UInst = dyn_cast<Instruction>(User);
+      if (!UInst ||
+          vc::getAnyIntrinsicID(UInst) != GenXIntrinsic::genx_rdpredregion)
+        continue;
+
       unsigned UserStart =
-          cast<ConstantInt>(User->getOperand(1))->getZExtValue();
+          cast<ConstantInt>(UInst->getOperand(1))->getZExtValue();
       unsigned UserSize =
-          cast<IGCLLVM::FixedVectorType>(User->getType())->getNumElements();
-      auto Combined =
+          cast<IGCLLVM::FixedVectorType>(UInst->getType())->getNumElements();
+      auto *Combined =
           Region::createRdPredRegion(Inst->getOperand(0), Start + UserStart,
-                                     UserSize, "", User, User->getDebugLoc());
-      Combined->takeName(User);
+                                     UserSize, "", UInst, UInst->getDebugLoc());
+      Combined->takeName(UInst);
       User->replaceAllUsesWith(Combined);
-      ToErase.push_back(User);
+      ToErase.push_back(UInst);
     }
     return false;
   }
+
   // Need to lower it further.
-  const DebugLoc &DL = Inst->getDebugLoc();
+  auto *In = Inst->getOperand(0);
+  auto *InTy = cast<IGCLLVM::FixedVectorType>(In->getType());
+  IRBuilder<> Builder(Inst);
+
   // Convert input to vector of short.
-  auto In = Inst->getOperand(0);
-  Type *I16Ty = Type::getInt16Ty(Inst->getContext());
-  Type *InI16Ty = IGCLLVM::FixedVectorType::get(
-      I16Ty, cast<IGCLLVM::FixedVectorType>(In->getType())->getNumElements());
-  auto InI16 = CastInst::Create(Instruction::ZExt, In, InI16Ty,
-                                Inst->getName() + ".lower1", Inst);
-  InI16->setDebugLoc(DL);
+  auto *I16Ty = Builder.getInt16Ty();
+  auto *InI16Ty = IGCLLVM::FixedVectorType::get(I16Ty, InTy->getNumElements());
+  auto InI16 = Builder.CreateZExt(In, InI16Ty);
+
   // Use rdregion to extract the region.
   Region R(InI16);
   R.getSubregion(Start, Size);
-  auto Rd = R.createRdRegion(InI16, Inst->getName() + ".lower3", Inst, DL);
+  auto *Rd = R.createRdRegion(InI16, "", Inst, Inst->getDebugLoc());
+
   // Convert back to predicate.
-  auto Res = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, Rd,
-                             Constant::getNullValue(Rd->getType()),
-                             Inst->getName() + ".lower4", Inst);
-  Res->setDebugLoc(DL);
-  // Replace uses and erase.
+  auto *Res = Builder.CreateICmpNE(Rd, Constant::getNullValue(Rd->getType()));
+
   Inst->replaceAllUsesWith(Res);
   ToErase.push_back(Inst);
   return true;
