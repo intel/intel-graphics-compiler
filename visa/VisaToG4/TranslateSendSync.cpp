@@ -330,7 +330,7 @@ int IR_Builder::translateVISANamedBarrierWait(G4_Predicate *pred,
   //     mov(1) r10.1:ud 0x1:ud
   //     (W) shl(1) r10.1:ud r10.1:ud r10.0:ud
   //     loop:
-  //     cmp(1)(ne) f0.0 null:ud n0.0:ud r10.1:ud
+  //     and(1)(eq) f0.0 null:ud n0.0:ud r10.1:ud
   //     (f0.0) while (1) loop
   //     (W) sync.bar f1.0:uw
   // Here insert Intrinsic::NamedBarrierWA before wait which will be expanded
@@ -542,7 +542,7 @@ void IR_Builder::generateBarrierWait(G4_Predicate *prd) {
   // instructions sequence must be inserted before a sync.bar instruction.
   // Legacy barrier case:
   //    loop:
-  //    cmp (1) (ne)f0.0 null:ud n0.0:ud 0x1:ud
+  //    and (1) (eq)f0.0 null:ud n0.0:ud 0x1:ud
   //    (f0.0) while(1) loop
   //    (W) sync.bar 0x0:uw
   // Here insert Intrinsic::BarrierWA before wait which will be expanded

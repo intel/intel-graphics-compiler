@@ -13483,15 +13483,15 @@ void Optimizer::applyBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
   auto labelInst = builder.createLabelInst(label, false);
   bb->insertBefore(it, labelInst);
 
-  // (W) cmp(1) (ne)f0.0 null:ud n0.0:ud 0x1:ud
+  // (W) and(1) (eq)f0.0 null:ud n0.0:ud 0x1:ud
   G4_DstRegRegion *nullDst = builder.createNullDst(Type_UD);
-  G4_SrcRegRegion *src0Cmp = builder.createSrc(
+  G4_SrcRegRegion *src0And = builder.createSrc(
       builder.phyregpool.getN0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
-  G4_CondMod *condMod = builder.createCondMod(Mod_ne, WAFlagVar, 0);
-  auto cmpInst = builder.createInternalInst(
-      nullptr, G4_cmp, condMod, g4::NOSAT, g4::SIMD1, nullDst, src0Cmp,
+  G4_CondMod *condMod = builder.createCondMod(Mod_e, WAFlagVar, 0);
+  auto andInst = builder.createInternalInst(
+      nullptr, G4_and, condMod, g4::NOSAT, g4::SIMD1, nullDst, src0And,
       builder.createImm(0x1, Type_UD), InstOpt_WriteEnable);
-  bb->insertBefore(it, cmpInst);
+  bb->insertBefore(it, andInst);
 
   // (W&f0.0) while(1) loop
   G4_Predicate *pred = builder.createPredicate(PredState_Plus, WAFlagVar, 0);
@@ -13573,16 +13573,16 @@ void Optimizer::applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
   auto labelInst = builder.createLabelInst(label, false);
   bb->insertBefore(it, labelInst);
 
-  // (W) cmp(1) (ne)f0.0 null:ud n0.0:ud dst1.1:ud
+  // (W) and(1) (eq)f0.0 null:ud n0.0:ud dst1.1:ud
   G4_DstRegRegion *nullDst = builder.createNullDst(Type_UD);
-  G4_SrcRegRegion *src0Cmp = builder.createSrc(
+  G4_SrcRegRegion *src0And = builder.createSrc(
       builder.phyregpool.getN0Reg(), 0, 0, builder.getRegionScalar(), Type_UD);
-  G4_SrcRegRegion *src1Cmp = builder.duplicateOperand(src0Shl);
-  G4_CondMod *condMod = builder.createCondMod(Mod_ne, WAFlagVar, 0);
-  auto cmpInst = builder.createInternalInst(nullptr, G4_cmp, condMod, g4::NOSAT,
-                                            g4::SIMD1, nullDst, src0Cmp,
-                                            src1Cmp, InstOpt_WriteEnable);
-  bb->insertBefore(it, cmpInst);
+  G4_SrcRegRegion *src1And = builder.duplicateOperand(src0Shl);
+  G4_CondMod *condMod = builder.createCondMod(Mod_e, WAFlagVar, 0);
+  auto andInst = builder.createInternalInst(nullptr, G4_and, condMod, g4::NOSAT,
+                                            g4::SIMD1, nullDst, src0And,
+                                            src1And, InstOpt_WriteEnable);
+  bb->insertBefore(it, andInst);
 
   // (W&f0.0) while(1) loop
   G4_Predicate *pred = builder.createPredicate(PredState_Plus, WAFlagVar, 0);
