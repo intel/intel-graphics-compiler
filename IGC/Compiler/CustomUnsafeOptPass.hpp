@@ -74,7 +74,6 @@ namespace IGC
         bool visitFCmpInstFCmpSelOp(llvm::FCmpInst& FC);
         bool visitFMulFCmpOp(llvm::FCmpInst& FC);
         bool visitExchangeCB(llvm::BinaryOperator& I);
-        void matchMixOperation(llvm::BinaryOperator& I);
 
         bool m_isChanged;
         bool m_disableReorderingOpt;
