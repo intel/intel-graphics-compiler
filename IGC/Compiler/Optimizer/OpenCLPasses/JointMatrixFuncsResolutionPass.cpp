@@ -83,6 +83,8 @@ enum {
     LayoutColumnMajor,
     LayoutPackedA,
     LayoutPackedB,
+
+    LayoutMax
 };
 
 enum {
@@ -147,15 +149,17 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
 }
 
 enum ParamsCheckResult : unsigned {
-    ALL_VALID      = 0,
-    INVALID_ROWS   = 1 << 0,
-    INVALID_COLS   = 1 << 1,
-    INVALID_ELEM   = 1 << 2,
-    INVALID_LAYOUT = 1 << 3,
+    ALL_VALID        = 0,
+    INVALID_ROWS     = 1 << 0,
+    INVALID_COLS     = 1 << 1,
+    INVALID_ELEM     = 1 << 2,
+    INVALID_LAYOUT   = 1 << 3,
+    INVALID_PLATFORM = 1 << 4,
 };
 
 static ParamsCheckResult checkSupportedParams
-        (const JointMatrixTypeDescription *desc, unsigned operationLayout, const SupportedParams &params) {
+        (const JointMatrixTypeDescription *desc, unsigned operationLayout,
+         const SupportedParams &params, const IGC::CPlatform *platform) {
     unsigned result = ALL_VALID;
     if (params.maxRows != -1 && (int)desc->rows > params.maxRows) {
         result |= INVALID_ROWS;
@@ -171,6 +175,9 @@ static ParamsCheckResult checkSupportedParams
     }
     if (((1 << operationLayout) & params.layouts) == 0) {
         result |= INVALID_LAYOUT;
+    }
+    if (!platform->supportDpasInstruction()) {
+        result |= INVALID_PLATFORM;
     }
     return static_cast<ParamsCheckResult>(result);
 }
@@ -188,7 +195,7 @@ static const char *nameLayout(unsigned layout) {
 bool JointMatrixFuncsResolutionPass::ValidateLoadStore
         (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx) {
     SupportedParams params = getSupportedParams(desc, m_Ctx->platform.hasExecSize16DPAS());
-    ParamsCheckResult result = checkSupportedParams(desc, operationLayout, params);
+    ParamsCheckResult result = checkSupportedParams(desc, operationLayout, params, &m_Ctx->platform);
     if (result != ALL_VALID) {
         std::string msg = "Unsupported JointMatrix operation: ";
         msg += isLoad ? "load " : "store ";
@@ -200,15 +207,44 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore
             + "> with " + nameLayout(operationLayout);
         if (result & INVALID_ROWS) {
             msg += "\n -> unsupported number of rows: " + std::to_string(desc->rows);
+            msg += "\n    supported values: ";
+            if (params.maxRows != -1) {
+                msg += "lower or equal " + std::to_string(params.maxRows);
+            } else if (params.rows != -1) {
+                msg += std::to_string(params.rows);
+            }
         }
         if (result & INVALID_COLS) {
             msg += "\n -> unsupported number of columns: " + std::to_string(desc->columns);
+            msg += "\n    supported values: ";
+            if (params.columns != -1) {
+                msg += std::to_string(params.columns);
+            }
         }
         if (result & INVALID_ELEM) {
             msg += "\n -> unsupported matrix element size: " + std::to_string(desc->bitWidth) + " bits";
+            msg += "\n    supported values: ";
+            /* check powers of two from 3 to 5, i.e. 8 to 32 */
+            for (unsigned i = 3; i <= 5; i++) {
+                unsigned bitWidth = 1 << i;
+                if (bitWidth & params.bitWidth) {
+                    if (i > 3) msg += ", ";
+                    msg += std::to_string(bitWidth);
+                }
+            }
         }
         if (result & INVALID_LAYOUT) {
             msg += "\n -> unsupported operation layout";
+            msg += "\n    supported values: ";
+            for (unsigned i = 0; i < LayoutMax; i++) {
+                if ((1 << i) & params.layouts) {
+                    if (i > 0) msg += ", ";
+                    msg += nameLayout(i);
+                }
+            }
+        }
+        if (result & INVALID_PLATFORM) {
+            msg += "\n -> targeted GPU device does not support SYCL joint matrix API";
         }
         m_Ctx->EmitError(msg.c_str(), ctx);
     }
