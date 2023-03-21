@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -707,9 +707,9 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
           continue; // Ignore use in phi node that we started at.
         // For a phi node, determine the use's position relative to the current
         // position as if it is at the end of the incoming block.
-        int Position = getReachability(
-            Phi->getIncomingBlock(*ui)->getTerminator(),
-            dyn_cast<Instruction>(TwoAddrOperand));
+        int Position =
+            getReachability(Phi->getIncomingBlock(*ui)->getTerminator(),
+                            dyn_cast<Instruction>(Root));
         LLVM_DEBUG(dbgs() << "phi use in " << User->getName() << " is "
             << (Position == BEFORE ? "before" : (Position == AFTER ? "after"
                 : (Position == REACHES ? "reaches" : (Position == NOTREACHES
@@ -729,8 +729,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
       }
       // Determine the use's position relative to the current position. We use
       // the bale head's position.
-      int Position =
-          getReachability(UserHead, dyn_cast<Instruction>(TwoAddrOperand));
+      int Position = getReachability(UserHead, dyn_cast<Instruction>(Root));
       LLVM_DEBUG(dbgs() << "use in " << User->getName() << " is "
           << (Position == BEFORE ? "before" : (Position == AFTER ? "after"
               : (Position == REACHES ? "reaches" : (Position == NOTREACHES
