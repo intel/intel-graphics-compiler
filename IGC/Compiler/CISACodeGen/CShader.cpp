@@ -1113,9 +1113,9 @@ CVariable* CShader::GetNewVariable(
     return var;
 }
 
-CVariable* CShader::GetNewVariable(const CVariable* from)
+CVariable* CShader::GetNewVariable(const CVariable* from, const CName& name)
 {
-    CVariable* var = new (Allocator) CVariable(*from);
+    CVariable* var = new (Allocator) CVariable(*from, name);
     encoder.CreateVISAVar(var);
     return var;
 }

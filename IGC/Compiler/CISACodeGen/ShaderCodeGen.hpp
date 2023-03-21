@@ -183,7 +183,7 @@ public:
         UniformArgWrap uniform,
         uint16_t numberInstance,
         const CName &name);
-    CVariable* GetNewVariable(const CVariable* from);
+    CVariable* GetNewVariable(const CVariable* from, const CName& name = CName());
     CVariable* GetNewAddressVariable(
         uint16_t nbElement,
         VISA_Type type,

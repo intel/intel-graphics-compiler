@@ -185,7 +185,7 @@ namespace IGC {
             const CName &name);
 
         // Copy Ctor
-        CVariable(const CVariable& V) :
+        CVariable(const CVariable& V, const CName& name = CName()) :
             m_immediateValue(V.m_immediateValue),
             m_alias(nullptr),
             m_nbElement(V.m_nbElement),
@@ -200,7 +200,7 @@ namespace IGC {
             m_uniformVector(V.m_uniformVector),
             m_undef(V.m_undef),
             m_isUnpacked(V.m_isUnpacked),
-            m_llvmName(V.m_llvmName)
+            m_llvmName(name.empty() ? V.m_llvmName : name)
         {
         }
 

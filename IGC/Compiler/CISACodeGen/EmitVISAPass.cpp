@@ -2792,7 +2792,8 @@ void EmitPass::EmitSubPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     m_encoder->Push();
 }
 
-void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
+void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod)
+{
     Value* L = nullptr, * H = nullptr;
     std::tie(L, H) = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
@@ -2822,6 +2823,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
         return;
     }
 
+    IGC_ASSERT(Hi != nullptr);
+
     // Algorithm:
     //    AB   - L0, L1
     //    CD   - H0, H1
@@ -2834,10 +2837,10 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     // dstLow = E
     // dstHigh = F + G + carry
 
-    CVariable* dstHiTmp = m_currShader->GetNewVariable(
-        Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(), Hi->getName());
+    CVariable* dstLoTmp = nullptr;
+    CVariable* dstHiTmp = m_currShader->GetNewVariable(Hi, CName(Hi->getName(), "int64Hi"));
 
-    if (Lo == nullptr && Hi != nullptr)
+    if (Lo == nullptr)
     {
         // Cr = carry(A * B)
         m_encoder->MulH(dstHiTmp, L0, L1);
@@ -2845,6 +2848,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     }
     else
     {
+        dstLoTmp = m_currShader->GetNewVariable(Lo, CName(Lo->getName(), "int64Lo"));
+
         // For those platforms natively not support DW-DW multiply, use vISA madw instruction instead of mul/mulh to get better performance.
         if (m_currShader->m_Platform->noNativeDwordMulSupport())
         {
@@ -2855,28 +2860,27 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
             // set the dst as (numDWPerGRF * 2) element but not 2 DW elements. This is required by madw.
             auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
             auto numElements = iSTD::Align(Lo->GetNumberElement(), numDWPerGRF);
-            CVariable* DstTmp = m_currShader->GetNewVariable(
-                numElements * 2, ISA_TYPE_UD, EALIGN_GRF, Lo->IsUniform(),
+            CVariable* dstTmp = m_currShader->GetNewVariable(numElements * 2, ISA_TYPE_UD, EALIGN_GRF, Lo->IsUniform(),
                 CName(Lo->getName(), "int64Tmp"));
             CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
-            m_encoder->Madw(DstTmp, L0, L1, zero);
+            m_encoder->Madw(dstTmp, L0, L1, zero);
 
             // dstLow = E
             m_encoder->SetSrcRegion(0, 1, 1, 0);
-            m_encoder->Copy(Lo, DstTmp);
+            m_encoder->Copy(dstLoTmp, dstTmp);
             m_encoder->Push();
 
             // dstHigh = Cr
             uint regOffset = (uint)std::ceil((float)(numElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
             m_encoder->SetSrcSubVar(0, regOffset);
             m_encoder->SetSrcRegion(0, 1, 1, 0);
-            m_encoder->Copy(dstHiTmp, DstTmp);
+            m_encoder->Copy(dstHiTmp, dstTmp);
             m_encoder->Push();
         }
         else
         {
             // E = A * B
-            m_encoder->Mul(Lo, L0, L1);
+            m_encoder->Mul(dstLoTmp, L0, L1);
             m_encoder->Push();
 
             // Cr = carry(A * B)
@@ -2886,9 +2890,7 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     }
 
     // F = A * D
-    CVariable* T0 = m_currShader->GetNewVariable(
-        Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(),
-        CName(Hi->getName(), "int64HiTmp"));
+    CVariable* T0 = m_currShader->GetNewVariable(Hi, CName(Hi->getName(), "int64HiLH"));
     m_encoder->Mul(T0, L0, H1);
     m_encoder->Push();
 
@@ -2899,6 +2901,14 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     // G = B * C
     m_encoder->Mul(T0, L1, H0);
     m_encoder->Push();
+
+    if (Lo != nullptr)
+    {
+        IGC_ASSERT(dstLoTmp);
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->Copy(Lo, dstLoTmp);
+        m_encoder->Push();
+    }
 
     // dstHigh = Cr + F + G
     m_encoder->Add(Hi, dstHiTmp, T0);
@@ -12246,7 +12256,7 @@ void EmitPass::emitPreOrPostFixOp(
     const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
 
     if ((m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad) ||
-        (int64EmulationNeeded && !isInt64Mul /* Int64Mul may or may not be scalar op depending on preceding condition */))
+        int64EmulationNeeded)
     {
         emitPreOrPostFixOpScalar(
             op, identityValue, type, negateSrc,
