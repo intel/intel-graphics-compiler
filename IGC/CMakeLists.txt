@@ -1322,7 +1322,7 @@ endif()
 include("${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm/llvm_deps.cmake")
 include(igc_llvm)
 
-# ==================================== LLD package ====================================================
+# ==================================== LLD package =====================================================
 
 message(STATUS "[lld] option = ${IGC_OPTION__LLVM_LLD}")
 if(IGC_OPTION__LLVM_LLD)
