@@ -967,18 +967,15 @@ int LinearScanRA::linearScanRA() {
           // caller/callee save size if having caller/callee save
           // globalScratchOffset in unit of byte, others in Oword
           //
-          // FIXME: globalScratchOffset must be 0 when having stack call, or
-          // there is a problem at stack setup
-          // (see GlobalRA::addGenxMainStackSetupCode)
-          //
           //                               vISA stack
           //  globalScratchOffset     -> ---------------------
-          //                             |  spill            |
+          //  FIXME: should be 0-based   |  spill            |
+          //                             |                   |
           //  calleeSaveAreaOffset    -> ---------------------
           //                             |  callee save      |
           //  callerSaveAreaOffset    -> ---------------------
           //                             |  caller save      |
-          //  frameSizeInOWord        -> ---------------------
+          //  paramOverflowAreaOffset -> ---------------------
           jitInfo->stats.spillMemUsed = builder.kernel.fg.frameSizeInOWord * 16;
 
           // reserve spillMemUsed #bytes before 8kb boundary

@@ -641,33 +641,12 @@ private:
   std::map<std::string, VISAKernelImpl *> m_nameToKernel;
 
   std::map<std::string, vISA::G4_Kernel *> functionsNameMap;
+  vISA::G4_Kernel *GetCallerKernel(vISA::G4_INST *);
+  vISA::G4_Kernel *GetCalleeKernel(vISA::G4_INST *);
 
   // Set of functions that should be called directly (vs. indirect calls).
   // Used in ESIMD+SPMD interop scenarios.
   std::unordered_set<std::string> m_directCallFunctions;
-
-  const WA_TABLE *m_pWaTable;
-  bool needsToFreeWATable = false;
-
-  void *gtpin_init = nullptr;
-
-  // important messages that we should relay to the user
-  // (things like if RA is spilling, etc.)
-  std::stringstream criticalMsg;
-
-private:
-  // Summarize sub-functions' FINALIZER_INFO and propagate them into main
-  // functions'. This functions handles perf stats, barrier count and
-  // spill/stack size estimation. After Stitch_Compiled_Units the
-  // "mainFunction" is merged with subFunctions and becomes a single
-  // binary, which should also contains the functions' info of subFunctions.
-  typedef std::list<VISAKernelImpl *> VISAKernelImplListTy;
-  void summarizeFunctionInfo(
-      VISAKernelImplListTy &mainFunctions,
-      VISAKernelImplListTy &subFunctions);
-
-  vISA::G4_Kernel *GetCallerKernel(vISA::G4_INST *);
-  vISA::G4_Kernel *GetCalleeKernel(vISA::G4_INST *);
 
   // To collect call related info for LinkTimeOptimization
   void CollectCallSites(
@@ -716,6 +695,15 @@ private:
       uint32_t options);
 
   void emitFCPatchFile();
+
+  const WA_TABLE *m_pWaTable;
+  bool needsToFreeWATable = false;
+
+  void *gtpin_init = nullptr;
+
+  // important messages that we should relay to the user
+  // (things like if RA is spilling, etc.)
+  std::stringstream criticalMsg;
 };
 
 #endif
