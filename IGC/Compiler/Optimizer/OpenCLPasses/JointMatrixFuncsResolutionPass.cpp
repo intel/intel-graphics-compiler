@@ -268,9 +268,9 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
     }
 
     /* On PVC due to SIMD16 different SIMD lane contribution is used for matrix A.
-     * Therefore different load function is required. */
-    if (m_Ctx->platform.hasExecSize16DPAS()
-          && (matrixLayout == LayoutPackedA || matrixLayout == LayoutRowMajor)) {
+     * Additionally we use block 2d operations on PVC, so it's easier to
+     * implement SG16 loads and stores as separate builtins. */
+    if (m_Ctx->platform.hasExecSize16DPAS()) {
         name += "SG16_";
     }
 
