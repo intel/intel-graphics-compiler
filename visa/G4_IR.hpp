@@ -1338,7 +1338,7 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
      "pseudo_addr_mov",
      1,
      8,
-     Phase::Optimizer,
+     Phase::BinaryEncoding,
      {0, 0, 0, false, false}},
     {Intrinsic::NamedBarrierWA,
      "namedBarrierWA",
