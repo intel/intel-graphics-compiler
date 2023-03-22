@@ -4110,7 +4110,15 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     FunctionType *builtinTy = FunctionType::get(RetTy, ArgTys, false);
 
     auto BI = static_cast<SPIRVInstruction *>(BV);
-    std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, ""));
+
+    // Create suffix to distinguish different MAD signatures in the form of MxNxK_RetType_AType
+    std::string madSuffix = "_" + std::to_string(sizeM) + "x" +
+                            std::to_string(sizeN) + "x" +
+                            std::to_string(sizeK) + "_" +
+                            ResMatTy->getMangledElemType() + "_" +
+                            MatATy->getMangledElemType();
+
+    std::string builtinName(getSPIRVBuiltinName(BV->getOpCode(), BI, ArgTys, madSuffix));
     Function *Func = cast<Function>(M->getOrInsertFunction(builtinName, builtinTy));
 
     std::vector<Value *> Args = {

@@ -718,6 +718,7 @@ public:
     unsigned getUse() const;
     unsigned getComponentTypeInterpretation() const;
 
+    std::string getMangledElemType() const;
     std::string getMangledName() const;
     bool isLayoutParameterPresent() const;
     bool isUseParameterPresent() const;
