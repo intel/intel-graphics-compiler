@@ -1133,25 +1133,15 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         delete llvmtoVISADump;
     }
 
-    if (m_FGA && IGC_IS_FLAG_ENABLED(ForceSubReturn))
+    if (m_FGA && !m_FGA->useStackCall(&F))
     {
         BasicBlock* exitBB = &*(F.getBasicBlockList().rbegin());
-        if (!isa_and_nonnull<ReturnInst>(exitBB->getTerminator()))
+        if (IGC_IS_FLAG_ENABLED(ForceSubReturn) &&
+            !isa_and_nonnull<ReturnInst>(exitBB->getTerminator()))
         {
-            if (!m_FGA->useStackCall(&F))
-            {
-                // No return, generate dummy return for each subroutine to meet visa requirement.
-                m_encoder->SubroutineRet(nullptr, &F);
-                m_encoder->Push();
-            }
-            else if (m_FGA->useStackCall(&F))
-            {
-                // For stackcalls, we need to restore stack state before terminating
-                m_currShader->RestoreStackState();
-                m_encoder->SetStackFunctionRetSize(0);
-                m_encoder->StackRet(nullptr);
-                m_encoder->Push();
-            }
+            // No return, generate dummy return for each subroutine to meet visa requirement.
+            m_encoder->SubroutineRet(nullptr, &F);
+            m_encoder->Push();
         }
     }
 
