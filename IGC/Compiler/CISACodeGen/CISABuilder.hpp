@@ -626,7 +626,8 @@ namespace IGC
         void CreateRelocationTable(VISAKernel* pMainKernel, SProgramOutput::RelocListTy& relocations);
 
         // CreateFuncAttributeTable
-        void CreateFuncAttributeTable(VISAKernel* pMainKernel);
+        void CreateFuncAttributeTable(VISAKernel *pMainKernel,
+                                      GenXFunctionGroupAnalysis *pFga);
 
         // CreateGlobalHostAccessTable
         typedef std::vector<vISA::HostAccessEntry> HostAccessList;
@@ -713,6 +714,20 @@ namespace IGC
 
         /// create relocation according to if it's zebin or patch-token formats
         void createRelocationTables(VISAKernel &pMainKernel);
+
+        /// Estimate vISA stack size according to FunctionGroup information.
+        /// Conservatively increase the stack size when having recursive or indirect
+        /// calls if the given function is a Function Group Head. Function group
+        /// heads are kernels/entry functions those their stack size will be used to
+        /// reported back to the Runtime, so we set a conservative value. For other
+        /// non-head functions, we set the precise stack usage of the function.
+        ///
+        /// For group head functions, when having the stack call, the spillSize
+        /// returned by vISA is the sum of required stack size of all potential
+        /// callee and without considering recursive or indirect calls.
+        uint32_t getSpillMemSizeWithFG(const llvm::Function& curFunc,
+                                       uint32_t curSize,
+                                       GenXFunctionGroupAnalysis *fga);
 
     protected:
         // encoder states

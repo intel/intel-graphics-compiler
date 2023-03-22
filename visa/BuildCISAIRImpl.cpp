@@ -1810,13 +1810,6 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       }
     }
 
-    // Set usesBarrier property for each kernel and function appropriately.
-    {
-      std::set<VISAKernelImpl *> visited;
-      for (VISAKernelImpl *f : m_kernelsAndFunctions)
-        retrieveBarrierInfoFromCallee(f, visited);
-    }
-
     // reset debug info offset of functionsToStitch
     for (auto func : subFunctions) {
       if (m_options.getOption(vISA_GenerateDebugInfo)) {
@@ -1824,6 +1817,11 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
         resetGenOffsets(*func->getKernel());
       }
     }
+
+    // before stitching, propagate sub-functions' info into main functions
+    // This function is better called before stitching to avoid redundant
+    // search of BB for barrier counts after stitching.
+    summarizeFunctionInfo(mainFunctions, subFunctions);
 
     bool hasPayloadPrologue =
         m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Payload_Prologue;
@@ -1854,16 +1852,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
         }
       }
 
-      // Accumulate the performance data
-      vISA::PERF_STATS_VERBOSE perfStatus;
-      func->addFuncPerfStats(
-          &perfStatus, func->getKernel()->fg.builder->getJitInfo());
-      for (auto &&iter : subFunctionsNameMap) {
-        G4_Kernel *callee = iter.second;
-        func->addFuncPerfStats(&perfStatus, callee->fg.builder->getJitInfo());
-      }
-
-      void *genxBuffer = func->encodeAndEmit(genxBufferSize, &perfStatus);
+      void *genxBuffer = func->encodeAndEmit(genxBufferSize);
       func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
       if (m_options.getOption(vISA_GenerateDebugInfo)) {
         func->computeAndEmitDebugInfo(subFunctions);
@@ -1937,6 +1926,50 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
   }
 
   return status;
+}
+
+void CISA_IR_Builder::summarizeFunctionInfo(
+    VISAKernelImplListTy &mainFunctions,
+    VISAKernelImplListTy &subFunction) {
+
+  // Set usesBarrier property for each kernel and function appropriately.
+  // resursively propagate barrier information from callees to their caller.
+  // This helps to report the correct barrier setting for direct/internal call.
+  // For indirect call, the information is reported separately per function
+  // and relying on runtime to analyze it.
+  {
+    std::set<VISAKernelImpl *> visited;
+    for (VISAKernelImpl *f : m_kernelsAndFunctions)
+      retrieveBarrierInfoFromCallee(f, visited);
+  }
+
+  // helper functions for visa stack size setting
+  auto getStackSize = [](const VISAKernelImpl &k) {
+    return k.getKernel()->fg.builder->getJitInfo()->stats.spillMemUsed;
+  };
+  auto setStackSizeAndClamp = [](const VISAKernelImpl &k, uint32_t size) {
+    auto maxPTSS = k.getKernel()->fg.builder->getMaxPTSS();
+    size = size > maxPTSS ? maxPTSS : size;
+    k.getKernel()->fg.builder->getJitInfo()->stats.spillMemUsed = size;
+  };
+
+  for (auto mfunc : mainFunctions) {
+    uint32_t totalStackSize = getStackSize(*mfunc);
+    for (auto sfunc: subFunction) {
+      // propagate subFunctions' perf stats into mainFunctions'
+      mfunc->addFuncPerfStats(
+          sfunc->getKernel()->fg.builder->getJitInfo()->statsVerbose);
+
+      // Accumulate all subFunctions' spill size and set it to the main
+      // function. vISA doesn't have the call graph so conservatively
+      // estimate the required size.
+      totalStackSize += getStackSize(*sfunc);
+    }
+
+    // The estimated size might be larger than what is actually needed.
+    // Clamp to max scratch size if the estimated size exceeds it.
+    setStackSizeAndClamp(*mfunc, totalStackSize);
+  }
 }
 
 int CISA_IR_Builder::verifyVISAIR() {
