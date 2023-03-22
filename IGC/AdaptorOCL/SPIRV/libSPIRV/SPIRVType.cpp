@@ -399,6 +399,19 @@ bool SPIRVTypeJointMatrixINTEL::isComponentTypeInterpretationParameterPresent() 
   return getOpCode() == OpTypeJointMatrixINTEL && Args.size() > 4;
 }
 
+std::string SPIRVTypeJointMatrixINTEL::getMangledElemType() const
+{
+  std::string type;
+
+  if (ElemType->isTypeFloat())
+      type += "f";
+  else
+      type += "i";
+  type += std::to_string(ElemType->getBitWidth());
+
+  return std::move(type);
+}
+
 std::string SPIRVTypeJointMatrixINTEL::getMangledName() const {
     std::string name;
     if (isUseParameterPresent()) {
@@ -432,12 +445,7 @@ std::string SPIRVTypeJointMatrixINTEL::getMangledName() const {
     name += std::to_string(getColumns());
     name += "_";
 
-    if (ElemType->isTypeFloat()) {
-      name += "f";
-    } else {
-      name += "i";
-    }
-    name += std::to_string(ElemType->getBitWidth());
+    name += getMangledElemType();
     return std::move(name);
 }
 }
