@@ -353,7 +353,7 @@ bool hasBankCollision() const {
     return true;
   }
   return (getPlatformGeneration() <= PlatformGen::GEN11) ||
-         getOption(vISA_forceBCR) ||
+         (getPlatform() >= Xe_PVC) || getOption(vISA_forceBCR) ||
          (getOption(vISA_enableBCR) && !hasEarlyGRFRead());
 }
 
