@@ -39,7 +39,7 @@ namespace {
     {
         Value* VA = nullptr;
     public:
-        explicit VAdapt(nullptr_t) = delete;
+        explicit VAdapt(std::nullptr_t) = delete;
         explicit VAdapt(Value* V)                      : VA(V) {}
         explicit VAdapt(IRBuilder<>& IRB, uint32_t V)  : VA(IRB.getInt32(V)) {}
         explicit VAdapt(IRBuilder<>& IRB, uint64_t V)  : VA(IRB.getInt64(V)) {}
