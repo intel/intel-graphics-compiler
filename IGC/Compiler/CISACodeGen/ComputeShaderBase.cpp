@@ -139,7 +139,7 @@ namespace IGC
             }
             //disable tileY if walkorder cannot be changed
             m_ThreadIDLayout = ThreadIDLayout::X;
-            overrideCsKeys(is_pow2_x, is_pow2_y, is_pow2_z);
+            overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z);
             return;
         }
 
@@ -168,12 +168,6 @@ namespace IGC
             }
         }
 
-        if ((IGC_IS_FLAG_ENABLED(ForceTileY) || MMD->csInfo.forceTileYWalk) &&
-            m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID()) {
-            m_ThreadIDLayout = ThreadIDLayout::TileY;
-            m_walkOrder = WO_YXZ;
-        }
-
         auto order = selectBestWalkOrder(
             m_ThreadIDLayout, is_pow2_x, is_pow2_y, is_pow2_z);
 
@@ -186,7 +180,7 @@ namespace IGC
             m_ThreadIDLayout = ThreadIDLayout::X;
             m_walkOrder = WO_XYZ;
         }
-        overrideCsKeys(is_pow2_x, is_pow2_y, is_pow2_z);
+        overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z);
     }
 
     Optional<CComputeShaderBase::WALK_ORDER>
@@ -294,9 +288,17 @@ namespace IGC
     }
 
     void
-    CComputeShaderBase::overrideCsKeys(
+    CComputeShaderBase::overrideWalkOrderKeys(
         bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
     {
+        if ((IGC_IS_FLAG_ENABLED(ForceTileY) || GetContext()->getModuleMetaData()->csInfo.forceTileYWalk) &&
+            m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
+        {
+            m_ThreadIDLayout = ThreadIDLayout::TileY;
+            m_walkOrder = WO_YXZ;
+            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+        }
+
         if (IGC_IS_FLAG_ENABLED(OverrideCsWalkOrderEnable))
         {
             m_walkOrder = (WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);

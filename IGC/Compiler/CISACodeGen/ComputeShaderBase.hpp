@@ -67,7 +67,7 @@ namespace IGC
         static bool enableHWGenerateLID(
             WALK_ORDER walk_order,
             bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
-        void overrideCsKeys(
+        void overrideWalkOrderKeys(
             bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
         static WALK_ORDER getWalkOrder(uint order0, uint order1);
     };
