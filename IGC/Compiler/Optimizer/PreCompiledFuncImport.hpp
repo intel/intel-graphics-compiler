@@ -198,6 +198,7 @@ namespace IGC
         ImplicitArgs* getImplicitArgs(llvm::Function* F);
 
         bool preProcessDouble();
+        void handleInstrTypeChange(llvm::Instruction* oldInst, llvm::Value* newVal);
         void eraseFunction(llvm::Module* M, llvm::Function* F) {
             M->getFunctionList().remove(F);
             delete F;

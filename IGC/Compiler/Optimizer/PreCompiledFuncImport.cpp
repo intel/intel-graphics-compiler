@@ -181,12 +181,73 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
     }
 }
 
+void PreCompiledFuncImport::handleInstrTypeChange(Instruction* oldInst, Value* newVal)
+{
+    IGC_ASSERT(oldInst->getType()->getScalarType()->isDoubleTy());
+
+    SmallVector<Instruction*, 8> usesOfInst;
+
+    // Mark all uses of oldInst that may be converted from double to i64
+    for (auto U : oldInst->users())
+    {
+        if (Instruction* I = dyn_cast<Instruction>(U))
+            usesOfInst.push_back(I);
+    }
+
+    // Go through the all uses of instruction
+    for (auto I : usesOfInst)
+    {
+        IRBuilder<> builder(I);
+        // If the use of instruction is StoreInst, we need to also convert pointer type from double to i64
+        if (StoreInst* SI = dyn_cast<StoreInst>(I))
+        {
+            if (SI->getValueOperand()->getType()->isDoubleTy())
+            {
+                PointerType* newPtrTy = PointerType::get(builder.getInt64Ty(), SI->getPointerAddressSpace());
+                Value* newPtr = builder.CreatePointerCast(SI->getPointerOperand(), newPtrTy, "");
+                I->replaceUsesOfWith(SI->getPointerOperand(), newPtr);
+            }
+            else
+            {
+                uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(SI->getValueOperand()->getType())->getNumElements();
+                Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
+                PointerType* newVecPtrTy = newVecType->getPointerTo(SI->getPointerAddressSpace());
+                Value* newPtr = builder.CreatePointerCast(SI->getPointerOperand(), newVecPtrTy, "");
+                I->replaceUsesOfWith(SI->getPointerOperand(), newPtr);
+            }
+            I->replaceUsesOfWith(oldInst, newVal);
+        }
+        // For any other instruction we should add additional bitcast from i64 to double
+        // because we don't know which of the uses of the instruction has math operations. For math operations (e.g. add, div etc.)
+        // we have emulated code, and cannot convert double->i64. For any other (no math operations) we recognize it
+        // in preProcessDouble() function. All extra bitcast instruction are deleted by InstructionCombining pass.
+        else
+        {
+            if (newVal->getType()->isIntegerTy(64))
+            {
+                Value* newBitCast = builder.CreateBitCast(newVal, builder.getDoubleTy());
+                I->replaceUsesOfWith(oldInst, newBitCast);
+            }
+            else
+            {
+                uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(newVal->getType())->getNumElements();
+                Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getDoubleTy(), numVecElements);
+                Value* newBitCast = builder.CreateBitCast(newVal, newVecType);
+                I->replaceUsesOfWith(oldInst, newBitCast);
+            }
+        }
+    }
+}
+
 // This function scans instructions before emulation. It converts double-related
 // operations (intrinsics, instructions) into ones that can be emulated. It has:
 //   1. Intrinsics
-//      Replaced some intrinsics of double operands with a known sequence that can be emulated.
-//      For example, max() does not have its corresponding emulation function. And it is replaced
-//      here with cmp and select. And,
+//         1: Replaced some intrinsics of double operands with a known sequence that can be emulated.
+//            For example, max() does not have its corresponding emulation function. And it is replaced
+//            here with cmp and select.
+//         2: Replaced some double intrinsics to i64 intrinsics.
+//            We can do it when we don't perform math operations
+//            Example: GenISA.WaveShuffleIndex.f64 -> GenISA.WaveShuffleIndex.i64
 //   2. instructions
 //      Convert something like
 //         1:   y = sext i32 x to i64; z = sitofp i64 y to double
@@ -205,11 +266,11 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
 //              store double %2, double addrspace(1)* %1, align 8
 //            to:
 //              %0 = load <2 x double>, <2 x double> addrspace(1)* %x, align 16
-//              %1 = bitcast <2 x double> %0 to <2 x i64>
-//              %2 = extractelement <2 x i64> %1, i32 %idx
-//              %3 = bitcast double addrspace(1)* %y to i64 addrspace(1)*
-//              %4 = getelementptr inbounds i64, i64 addrspace(1)* %3, i64 %z
-//              store i64 %2, i64 addrspace(1)* %4, align 8
+//              %1 = getelementptr inbounds double, double addrspace(1)* %y, i64 %z
+//              %2 = bitcast <2 x double> %0 to <2 x i64>
+//              %3 = extractelement <2 x i64> %2, i32 %idx
+//              %4 = bitcast double addrspace(1)* %1 to i64 addrspace(1)*
+//              store i64 %3, i64 addrspace(1)* %4, align 8
 //         2: insert element instruction with double type to insert element instruction with i64 type.
 //            This converts from:
 //              %0 = getelementptr inbounds double, double addrspace(1)* %x, i64 %y
@@ -226,9 +287,8 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
 //              %4 = bitcast <2 x double> %3 to <2 x i64>
 //              %5 = bitcast double %1 to i64
 //              %6 = insertelement <2 x i64> %4, i64 %5, i32 %idx
-//              %7 = bitcast <2 x double> addrspace(1)* %z to <2 x i64> addrspace(1)*
-//              %8 = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %7, i64 %y
-//              store <2 x i64> %6, <2 x i64> addrspace(1)* %8, align 16
+//              %7 = bitcast <2 x double> addrspace(1)* %2 to <2 x i64> addrspace(1)*
+//              store <2 x i64> %6, <2 x i64> addrspace(1)* %7, align 16
 bool PreCompiledFuncImport::preProcessDouble()
 {
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -356,74 +416,51 @@ bool PreCompiledFuncImport::preProcessDouble()
                     CallI->replaceAllUsesWith(res);
                     toBeDeleted.push_back(CallI);
                 }
+                else if (resTy->isDoubleTy() &&
+                    GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
+                {
+                    IRBuilder<> builder(Inst);
+                    Value* newBitCast = builder.CreateBitCast(CallI->getOperand(0), builder.getInt64Ty());
+                    Function* newFunc = GenISAIntrinsic::getDeclaration(GII->getModule(), GenISAIntrinsic::GenISA_WaveShuffleIndex, builder.getInt64Ty());
+                    Value* Args[] = { newBitCast, GII->getOperand(1), GII->getOperand(2) };
+                    Value* newI64Intrinsic = builder.CreateCall(newFunc, Args);
+
+                    handleInstrTypeChange(CallI, newI64Intrinsic);
+                    toBeDeleted.push_back(CallI);
+                }
             }
-            else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
+            else if (ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(Inst))
             {
-                Value* oprd0 = SI->getOperand(0);
-                Value* oprd1 = SI->getOperand(1);
-                Type* oprd0Ty = oprd0->getType();
-                Type* i64Type = Type::getInt64Ty(m_pModule->getContext());
+                if (!EEI->getType()->isDoubleTy())
+                {
+                    continue;
+                }
+
                 IRBuilder<> builder(Inst);
+                uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(EEI->getVectorOperandType())->getNumElements();
+                Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
+                Value* newBitCast = builder.CreateBitCast(EEI->getVectorOperand(), newVecType);
+                Value* newExtractInst = builder.CreateExtractElement(newBitCast, EEI->getIndexOperand());
 
-                // Recognize if the operand is an extractelement instruction with double type
-                if (ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(oprd0))
+                handleInstrTypeChange(EEI, newExtractInst);
+                toBeDeleted.push_back(EEI);
+            }
+            else if (InsertElementInst* IEI = dyn_cast<InsertElementInst>(Inst))
+            {
+                if (!IEI->getType()->getScalarType()->isDoubleTy())
                 {
-                    if (!oprd0Ty->isDoubleTy())
-                    {
-                        continue;
-                    }
-
-                    // Change vector of doubles to i64 vector and remove old extract instruction
-                    uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(EEI->getVectorOperandType())->getNumElements();
-                    Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
-
-                    Value* newBitCast = builder.CreateBitCast(EEI->getVectorOperand(), newVecType);
-                    Value* newExtractInst = builder.CreateExtractElement(newBitCast, EEI->getIndexOperand());
-                    SI->replaceUsesOfWith(EEI, newExtractInst);
-                    toBeDeleted.push_back(EEI);
-
-                    // Change addrspace from double to i64 and remove old addrspace
-                    if (GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(oprd1))
-                    {
-                        Type* i64PtrType = Type::getInt64PtrTy(m_pModule->getContext());
-                        SmallVector<llvm::Value*, 2> Idx(GEP->idx_begin(), GEP->idx_end());
-
-                        PointerType* newPtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(i64PtrType), GEP->getAddressSpace());
-                        Value* newPtr = builder.CreatePointerCast(GEP->getPointerOperand(), newPtrTy, "");
-                        Value* newGep = builder.CreateInBoundsGEP(i64Type, newPtr, Idx, "");
-                        SI->replaceUsesOfWith(GEP, newGep);
-                        toBeDeleted.push_back(GEP);
-                    }
+                    continue;
                 }
-                // Recognize if the operand is an insertelement instruction with double type
-                else if (InsertElementInst* IEI = dyn_cast<InsertElementInst>(oprd0))
-                {
-                    if (!oprd0Ty->getScalarType()->isDoubleTy())
-                    {
-                        continue;
-                    }
 
-                    // Change vector of doubles to i64 vector and remove old insert instruction
-                    uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(IEI->getOperand(0)->getType())->getNumElements();
-                    Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
+                IRBuilder<> builder(Inst);
+                uint32_t numVecElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(IEI->getOperand(0)->getType())->getNumElements();
+                Type* newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
+                Value* newVectorBitCast = builder.CreateBitCast(IEI->getOperand(0), newVecType);
+                Value* newScalarBitCast = builder.CreateBitCast(IEI->getOperand(1), builder.getInt64Ty());
+                Value* newInsertInst = builder.CreateInsertElement(newVectorBitCast, newScalarBitCast, IEI->getOperand(2), "");
 
-                    Value* newVectorBitCast = builder.CreateBitCast(IEI->getOperand(0), newVecType);
-                    Value* newScalarBitCast = builder.CreateBitCast(IEI->getOperand(1), i64Type);
-                    Value* newInsertInst = builder.CreateInsertElement(newVectorBitCast, newScalarBitCast, IEI->getOperand(2), "");
-                    SI->replaceUsesOfWith(IEI, newInsertInst);
-                    toBeDeleted.push_back(IEI);
-
-                    // Change addrspace from vector of doubles to vector of i64
-                    if (GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(oprd1))
-                    {
-                        SmallVector<llvm::Value*, 2> Idx(GEP->idx_begin(), GEP->idx_end());
-
-                        PointerType* newVecPtrTy = newVecType->getPointerTo(GEP->getAddressSpace());
-                        Value* newPtr = builder.CreatePointerCast(GEP->getPointerOperand(), newVecPtrTy, "");
-                        Value* newGep = builder.CreateInBoundsGEP(newVecType, newPtr, Idx, "");
-                        SI->replaceUsesOfWith(GEP, newGep);
-                    }
-                }
+                handleInstrTypeChange(IEI, newInsertInst);
+                toBeDeleted.push_back(IEI);
             }
 #if LLVM_VERSION_MAJOR >= 10
             else if (Inst->getOpcode() == Instruction::FNeg)
