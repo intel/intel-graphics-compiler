@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
@@ -30,72 +31,29 @@ using namespace GenISAIntrinsic;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
 IGC_INITIALIZE_PASS_BEGIN(CheckInstrTypes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(CheckInstrTypes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+static cl::opt<bool> enableInstrTypesPrint(
+    "enable-instrtypes-print", cl::init(false), cl::Hidden,
+    cl::desc("Enable CheckInstrTypes pass debug print: output structure modified by the pass to debug ostream"));
+
+static cl::opt<bool> afterOptsFlag(
+    "after-opts-flag", cl::init(false), cl::Hidden,
+    cl::desc("Set AfterOpts flag value for default constructor (debug purpuses)"));
+
+static cl::opt<bool> metricsFlag(
+    "metrics-flag", cl::init(false), cl::Hidden,
+    cl::desc("Set metrics flag value for default constructor (debug purpuses)"));
 
 char CheckInstrTypes::ID = 0;
 
-CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMetric* metrics) : FunctionPass(ID), g_InstrTypes(instrList)
-{
-    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
-    initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
+CheckInstrTypes::CheckInstrTypes() : FunctionPass(ID), g_AfterOpts(afterOptsFlag), g_metrics(metricsFlag) {}
 
-    g_metrics = metrics;
-    instrList->CorrelatedValuePropagationEnable = false;
-    instrList->hasMultipleBB = false;
-    instrList->hasCmp = false;
-    instrList->hasSwitch = false;
-    instrList->hasPhi = false;
-    instrList->hasLoadStore = false;
-    instrList->hasIndirectCall = false;
-    instrList->hasInlineAsm = false;
-    instrList->hasInlineAsmPointerAccess = false;
-    instrList->hasIndirectBranch = false;
-    instrList->hasFunctionAddressTaken = false;
-    instrList->hasSel = false;
-    instrList->hasPointer = false;
-    instrList->hasGenericAddressSpacePointers = false;
-    instrList->hasLocalLoadStore = false;
-    instrList->hasGlobalLoad = false;
-    instrList->hasGlobalStore = false;
-    instrList->hasStorageBufferLoad = false;
-    instrList->hasStorageBufferStore = false;
-    instrList->hasSubroutines = false;
-    instrList->hasPrimitiveAlloca = false;
-    instrList->hasNonPrimitiveAlloca = false;
-    instrList->hasReadOnlyArray = false;
-    instrList->hasBuiltin = false;
-    instrList->hasFRem = false;
-    instrList->psHasSideEffect = false;
-    instrList->hasDebugInfo = false;
-    instrList->hasAtomics = false;
-    instrList->hasDiscard = false;
-    instrList->hasTypedRead = false;
-    instrList->hasTypedwrite = false;
-    instrList->mayHaveIndirectOperands = false;
-    instrList->mayHaveIndirectResources = false;
-    instrList->hasUniformAssumptions = false;
-    instrList->numCall = 0;
-    instrList->numBarrier = 0;
-    instrList->numTypedReadWrite = 0;
-    instrList->numLoadStore = 0;
-    instrList->numAtomics = 0;
-    instrList->numWaveIntrinsics = 0;
-    instrList->numAllInsts = 0;
-    instrList->numPsInputs = 0;
-    instrList->numSample = 0;
-    instrList->numBB = 0;
-    instrList->numLoopInsts = 0;
-    instrList->numOfLoop = 0;
-    instrList->numInsts = 0;
-    instrList->numAllocaInsts = 0;
-    instrList->numGlobalInsts = 0;
-    instrList->numLocalInsts = 0;
-    instrList->sampleCmpToDiscardOptimizationPossible = false;
-    instrList->sampleCmpToDiscardOptimizationSlot = 0;
-    instrList->hasPullBary = false;
-    instrList->hasDynamicGenericLoadStore = false;  /* may use hasGenericAddressSpacePointers instead */
-    instrList->hasUnmaskedRegion = false;
-    instrList->hasRuntimeValueVector = false;
+CheckInstrTypes::CheckInstrTypes(bool afterOpts, bool metrics) : FunctionPass(ID), g_AfterOpts(afterOpts), g_metrics(metrics)
+{
+    initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)
@@ -119,9 +77,17 @@ void CheckInstrTypes::SetLoopFlags(Function& F)
 
 bool CheckInstrTypes::runOnFunction(Function& F)
 {
+    CodeGenContext* context = nullptr;
+    context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    if (g_AfterOpts)
+        g_InstrTypes = &context->m_instrTypesAfterOpts;
+    else
+        g_InstrTypes = &context->m_instrTypes;
+
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    if (g_metrics != nullptr)
-        g_metrics->CollectLoops(LI);
+    if (g_metrics)
+        context->metrics.CollectLoops(LI);
 
     // check if module has debug info
     g_InstrTypes->hasDebugInfo = F.getParent()->getNamedMetadata("llvm.dbg.cu") != nullptr;
@@ -134,7 +100,71 @@ bool CheckInstrTypes::runOnFunction(Function& F)
 
     visit(F);
     SetLoopFlags(F);
+
+    if (enableInstrTypesPrint)
+        print(IGC::Debug::ods());
+
     return false;
+}
+
+void CheckInstrTypes::print(llvm::raw_ostream& OS) const
+{
+    OS << "\nCorrelatedValuePropagationEnable: " << g_InstrTypes->CorrelatedValuePropagationEnable;
+    OS << "\nhasMultipleBB: " << g_InstrTypes->hasMultipleBB;
+    OS << "\nhasCmp: " << g_InstrTypes->hasCmp;
+    OS << "\nhasSwitch: " << g_InstrTypes->hasSwitch;
+    OS << "\nhasPhi: " << g_InstrTypes->hasPhi;
+    OS << "\nhasLoadStore: " << g_InstrTypes->hasLoadStore;
+    OS << "\nhasIndirectCall: " << g_InstrTypes->hasIndirectCall;
+    OS << "\nhasInlineAsm: " << g_InstrTypes->hasInlineAsm;
+    OS << "\nhasInlineAsmPointerAccess: " << g_InstrTypes->hasInlineAsmPointerAccess;
+    OS << "\nhasIndirectBranch: " << g_InstrTypes->hasIndirectBranch;
+    OS << "\nhasFunctionAddressTaken: " << g_InstrTypes->hasFunctionAddressTaken;
+    OS << "\nhasSel: " << g_InstrTypes->hasSel;
+    OS << "\nhasPointer: " << g_InstrTypes->hasPointer;
+    OS << "\nhasLocalLoadStore: " << g_InstrTypes->hasLocalLoadStore;
+    OS << "\nhasGlobalLoad: " << g_InstrTypes->hasGlobalLoad;
+    OS << "\nhasGlobalStore: " << g_InstrTypes->hasGlobalStore;
+    OS << "\nhasStorageBufferLoad: " << g_InstrTypes->hasStorageBufferLoad;
+    OS << "\nhasStorageBufferStore: " << g_InstrTypes->hasStorageBufferStore;
+    OS << "\nhasSubroutines: " << g_InstrTypes->hasSubroutines;
+    OS << "\nhasPrimitiveAlloca: " << g_InstrTypes->hasPrimitiveAlloca;
+    OS << "\nhasNonPrimitiveAlloca: " << g_InstrTypes->hasNonPrimitiveAlloca;
+    OS << "\nhasReadOnlyArray: " << g_InstrTypes->hasReadOnlyArray;
+    OS << "\nhasBuiltin: " << g_InstrTypes->hasBuiltin;
+    OS << "\nhasFRem: " << g_InstrTypes->hasFRem;
+    OS << "\npsHasSideEffect: " << g_InstrTypes->psHasSideEffect;
+    OS << "\nhasGenericAddressSpacePointers: " << g_InstrTypes->hasGenericAddressSpacePointers;
+    OS << "\nhasDebugInfo: " << g_InstrTypes->hasDebugInfo;
+    OS << "\nhasAtomics: " << g_InstrTypes->hasAtomics;
+    OS << "\nhasDiscard: " << g_InstrTypes->hasDiscard;
+    OS << "\nhasTypedRead: " << g_InstrTypes->hasTypedRead;
+    OS << "\nhasTypedwrite: " << g_InstrTypes->hasTypedwrite;
+    OS << "\nmayHaveIndirectOperands: " << g_InstrTypes->mayHaveIndirectOperands;
+    OS << "\nmayHaveIndirectResources: " << g_InstrTypes->mayHaveIndirectResources;
+    OS << "\nhasUniformAssumptions: " << g_InstrTypes->hasUniformAssumptions;
+    OS << "\nhasPullBary: " << g_InstrTypes->hasPullBary;
+    OS << "\nsampleCmpToDiscardOptimizationPossible: " << g_InstrTypes->sampleCmpToDiscardOptimizationPossible;
+    OS << "\nhasRuntimeValueVector: " << g_InstrTypes->hasRuntimeValueVector;
+    OS << "\nhasDynamicGenericLoadStore: " << g_InstrTypes->hasDynamicGenericLoadStore;
+    OS << "\nhasUnmaskedRegion: " << g_InstrTypes->hasUnmaskedRegion;
+    OS << "\nnumCall: " << g_InstrTypes->numCall;
+    OS << "\nnumBarrier: " << g_InstrTypes->numBarrier;
+    OS << "\nnumLoadStore: " << g_InstrTypes->numLoadStore;
+    OS << "\nnumWaveIntrinsics: " << g_InstrTypes->numWaveIntrinsics;
+    OS << "\nnumAtomics: " << g_InstrTypes->numAtomics;
+    OS << "\nnumTypedReadWrite: " << g_InstrTypes->numTypedReadWrite;
+    OS << "\nnumAllInsts: " << g_InstrTypes->numAllInsts;
+    OS << "\nsampleCmpToDiscardOptimizationSlot: " << g_InstrTypes->sampleCmpToDiscardOptimizationSlot;
+    OS << "\nnumSample: " << g_InstrTypes->numSample;
+    OS << "\nnumBB: " << g_InstrTypes->numBB;
+    OS << "\nnumLoopInsts: " << g_InstrTypes->numLoopInsts;
+    OS << "\nnumOfLoop: " << g_InstrTypes->numOfLoop;
+    OS << "\nnumInsts: " << g_InstrTypes->numInsts;
+    OS << "\nnumAllocaInsts: " << g_InstrTypes->numAllocaInsts;
+    OS << "\nnumPsInputs: " << g_InstrTypes->numPsInputs;
+    OS << "\nnumGlobalInsts: " << g_InstrTypes->numGlobalInsts;
+    OS << "\nnumLocalInsts: " << g_InstrTypes->numLocalInsts << "\n\n";
 }
 
 void CheckInstrTypes::checkGlobalLocal(llvm::Instruction& I)
@@ -558,6 +588,10 @@ void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst& I)
 IGC_INITIALIZE_PASS_BEGIN(InstrStatistic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(InstrStatistic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
+static cl::opt<bool> enableInstrStatPrint(
+    "enable-instrstat-print", cl::init(false), cl::Hidden,
+    cl::desc("Enable InstrStatistic pass debug print: output statistic gathered by the pass to debug ostream"));
+
 char InstrStatistic::ID = 0;
 
 InstrStatistic::InstrStatistic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold) :
@@ -601,11 +635,20 @@ bool InstrStatistic::runOnFunction(Function& F)
         }
     }
 
+    if (enableInstrStatPrint)
+        print(IGC::Debug::ods());
+
     return changed;
 }
 
-void InstrStatistic::visitInstruction(llvm::Instruction& I)
+void InstrStatistic::print(llvm::raw_ostream& OS) const
 {
+    if (m_stage == InstrStatStage::END)
+    {
+        OS << "\nBEGIN: " << m_ctx->instrStat[m_type][InstrStatStage::BEGIN];
+        OS << "\nEND: " << m_ctx->instrStat[m_type][InstrStatStage::END];
+        OS << "\nEXCEED_THRESHOLD: " << m_ctx->instrStat[m_type][InstrStatStage::EXCEED_THRESHOLD] << "\n\n";
+    }
 }
 
 void InstrStatistic::visitLoadInst(LoadInst& I)
