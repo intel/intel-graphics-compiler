@@ -1576,7 +1576,7 @@ void resetGenOffsets(G4_Kernel &kernel) {
 void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
                      const LivenessAnalysis &liveAnalysis,
                      const LiveRangeVec& lrs,
-                     SparseBitSet &live, DebugInfoState *state,
+                     llvm_SBitVector &live, DebugInfoState *state,
                      bool closeAllOpenIntervals) {
   if (closeAllOpenIntervals && !state->getPrevInst())
     return;
@@ -1586,13 +1586,11 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
   // Update live-intervals only when bits change in bit-vector.
   // state parameter contains previous instruction and bit-vector.
   for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar();
-       i += NUM_BITS_PER_ELT) {
-    auto elt = live.getElt(i / NUM_BITS_PER_ELT);
-    auto prevElt = state->getPrevBitset()
-                       ? state->getPrevBitset()->getElt(i / NUM_BITS_PER_ELT)
-                       : 0;
+       i++) {
+    bool eltI = live.test(i);
+    bool prevEltI = state->getPrevBitset() ? state->getPrevBitset()->test(i) : false;
 
-    if (elt != prevElt) {
+    if (eltI && !prevEltI) {
       // Some variables have changed state in bit-vector, so update their states
       // accordingly.
       //
@@ -1600,65 +1598,47 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
       // at current inst, If elt is reset and prevElt is set, it means the
       // variable was killed at current inst
       //
-      for (unsigned int j = 0; j < NUM_BITS_PER_ELT; j++) {
-        unsigned char eltJ = (elt >> j) & 0x1;
-        unsigned char prevEltJ = (prevElt >> j) & 0x1;
+      if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX) {
+        // This check guarantees that for an open
+        // interval, at least the same CISA offset
+        // can be used to close it. If there is no
+        // instruction with valid CISA offset
+        // between open/close IR instruction, then
+        // the interval will not be recorded.
+        G4_Declare *dcl = lrs[i]->getVar()->getDeclare();
+        auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
 
-        if (eltJ == 1 && prevEltJ == 0) {
-          if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX) {
-            // This check guarantees that for an open
-            // interval, at least the same CISA offset
-            // can be used to close it. If there is no
-            // instruction with valid CISA offset
-            // between open/close IR instruction, then
-            // the interval will not be recorded.
-            auto idx = (i + j);
-            G4_Declare *dcl = lrs[idx]->getVar()->getDeclare();
-            auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
+        lr->setStateOpen(inst->getVISAId());
+      }
+    } else if (!eltI && prevEltI) {
+      G4_Declare *dcl = lrs[i]->getVar()->getDeclare();
 
-            lr->setStateOpen(inst->getVISAId());
-          }
-        } else if (eltJ == 0 && prevEltJ == 1) {
-          auto idx = (i + j);
-          G4_Declare *dcl = lrs[idx]->getVar()->getDeclare();
+      auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
 
-          auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
-
-          if (lr->getState() ==
-              LiveIntervalInfo::DebugLiveIntervalState::Open) {
-            auto closeAt = state->getPrevInst()->getVISAId();
-            while (closeAt >= 1 && krnlDbgInfo->isMissingVISAId(closeAt - 1)) {
-              closeAt--;
-            }
-            lr->setStateClosed(closeAt);
-          }
+      if (lr->getState() == LiveIntervalInfo::DebugLiveIntervalState::Open) {
+        auto closeAt = state->getPrevInst()->getVISAId();
+        while (closeAt >= 1 && krnlDbgInfo->isMissingVISAId(closeAt - 1)) {
+          closeAt--;
         }
+        lr->setStateClosed(closeAt);
       }
     }
 
-    if (closeAllOpenIntervals) {
-      for (unsigned int j = 0; j < NUM_BITS_PER_ELT; j++) {
-        unsigned char eltJ = (elt >> j) & 0x1;
+    if (closeAllOpenIntervals && eltI) {
+      G4_Declare *dcl = lrs[i]->getVar()->getDeclare();
+      auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
 
-        if (eltJ) {
-          auto idx = (i + j);
-          G4_Declare *dcl = lrs[idx]->getVar()->getDeclare();
-          auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
+      if (lr->getState() == LiveIntervalInfo::DebugLiveIntervalState::Open) {
+        uint32_t lastCISAOff = (inst->getVISAId() != UNMAPPABLE_VISA_INDEX)
+                                   ? inst->getVISAId()
+                                   : state->getPrevInst()->getVISAId();
 
-          if (lr->getState() ==
-              LiveIntervalInfo::DebugLiveIntervalState::Open) {
-            uint32_t lastCISAOff = (inst->getVISAId() != UNMAPPABLE_VISA_INDEX)
-                                       ? inst->getVISAId()
-                                       : state->getPrevInst()->getVISAId();
-
-            while (lastCISAOff >= 1 &&
-                   krnlDbgInfo->isMissingVISAId(lastCISAOff - 1)) {
-              lastCISAOff--;
-            }
-
-            lr->setStateClosed(lastCISAOff);
-          }
+        while (lastCISAOff >= 1 &&
+               krnlDbgInfo->isMissingVISAId(lastCISAOff - 1)) {
+          lastCISAOff--;
         }
+
+        lr->setStateClosed(lastCISAOff);
       }
     }
   }

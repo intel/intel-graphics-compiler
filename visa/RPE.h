@@ -45,7 +45,7 @@ private:
   double regPressure = 0;
   uint32_t maxRP = 0;
   const Options *options;
-  SparseBitSet live;
+  llvm_SBitVector live;
   const std::vector<G4_RegVar *> &vars;
   // Variables part of spilledVars set dont contribute to
   // program register pressure. This is useful to model
@@ -54,8 +54,8 @@ private:
   std::unordered_set<const G4_Declare *> spilledVars;
 
   void regPressureBBExit(G4_BB *);
-  void updateRegisterPressure(unsigned int, unsigned int, unsigned int);
-  void updateLiveness(SparseBitSet &, uint32_t, bool);
+  void updateRegisterPressure(bool change, bool clean, unsigned int);
+  void updateLiveness(llvm_SBitVector &, uint32_t, bool);
 
   bool isSpilled(const G4_Declare *dcl) const {
     auto it = spilledVars.find(dcl);

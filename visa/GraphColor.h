@@ -303,7 +303,7 @@ namespace vISA {
 class Augmentation {
 private:
   // pair of default mask, non-default mask
-  using MaskDeclares = std::pair<SparseBitSet, SparseBitSet>;
+  using MaskDeclares = std::pair<llvm_SBitVector, llvm_SBitVector>;
   G4_Kernel &kernel;
   Interference &intf;
   GlobalRA &gra;
@@ -412,12 +412,16 @@ class Interference {
   // like dense matrix, interference is not symmetric (that is, if v1 and v2
   // interfere and v1 < v2, we insert (v1, v2) but not (v2, v1)) for better
   // cache behavior
-  std::vector<std::unordered_set<uint32_t>> sparseMatrix;
+  std::vector<llvm_SBitVector> sparseMatrix;
 
   unsigned int denseMatrixLimit = 0;
 
-  static void updateLiveness(SparseBitSet &live, uint32_t id, bool val) {
-    live.set(id, val);
+  static void updateLiveness(llvm_SBitVector &live, uint32_t id, bool val) {
+    if (val) {
+      live.set(id);
+    } else {
+      live.reset(id);
+    }
   }
 
   G4_Declare *getGRFDclForHRA(int GRFNum) const;
@@ -439,11 +443,21 @@ class Interference {
       unsigned col = v2 / BITS_DWORD;
       matrix[v1 * rowSize + col] |= 1 << (v2 % BITS_DWORD);
     } else {
-      sparseMatrix[v1].emplace(v2);
+      sparseMatrix[v1].set(v2);
     }
   }
 
-  inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
+inline void safeClearInterference(unsigned v1, unsigned v2) {
+    // Assume v1 < v2
+    if (useDenseMatrix()) {
+      unsigned col = v2 / BITS_DWORD;
+      matrix[v1 * rowSize + col] &= ~(1 << (v2 % BITS_DWORD));
+    } else {
+      sparseMatrix[v1].reset(v2);
+    }
+  }
+
+inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
                                           unsigned block) {
     if (useDenseMatrix()) {
 #ifdef _DEBUG
@@ -458,7 +472,7 @@ class Interference {
       for (int i = 0; i < BITS_DWORD; ++i) {
         if (block & (1 << i)) {
           uint32_t v2 = col * BITS_DWORD + i;
-          intfSet.emplace(v2);
+          intfSet.set(v2);
         }
       }
     }
@@ -469,23 +483,22 @@ class Interference {
     return matrix[idx];
   }
 
-  void addCalleeSaveBias(const SparseBitSet &live);
+  void addCalleeSaveBias(const llvm_SBitVector &live);
 
-  void buildInterferenceAtBBExit(const G4_BB *bb, SparseBitSet &live);
-  void buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live);
-  void buildInterferenceForDst(G4_BB *bb, SparseBitSet &live, G4_INST *inst,
+  void buildInterferenceAtBBExit(const G4_BB *bb, llvm_SBitVector &live);
+  void buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live);
+  void buildInterferenceForDst(G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
                                std::list<G4_INST *>::reverse_iterator i,
                                G4_DstRegRegion *dst);
-  void buildInterferenceForFcall(G4_BB *bb, SparseBitSet &live, G4_INST *inst,
+  void buildInterferenceForFcall(G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
                                  std::list<G4_INST *>::reverse_iterator i,
                                  const G4_VarBase *regVar);
 
   inline void filterSplitDclares(unsigned startIdx, unsigned endIdx, unsigned n,
                                  unsigned col, unsigned &elt, bool is_split);
-
-  void buildInterferenceWithLive(const SparseBitSet &live, unsigned i);
+  void buildInterferenceWithLive(const llvm_SBitVector &live, unsigned i);
   void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
-                                   SparseBitSet &live, bool setLive,
+                                   llvm_SBitVector &live, bool setLive,
                                    bool setIntf);
   void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
 

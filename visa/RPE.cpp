@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 
 namespace vISA {
 RPE::RPE(const GlobalRA &g, const LivenessAnalysis *l, DECLARE_LIST *spills)
-    : gra(g), liveAnalysis(l), live(l->getNumSelectedVar()), vars(l->vars),
+    : gra(g), liveAnalysis(l), live(), vars(l->vars),
       fg(g.kernel.fg) {
   options = g.kernel.getOptions();
   if (spills) {
@@ -144,16 +144,26 @@ void RPE::regPressureBBExit(G4_BB *bb) {
   regPressure += (double)numScalarBytes / gra.builder.getGRFSize();
 }
 
-void RPE::updateLiveness(SparseBitSet &live, uint32_t id, bool val) {
-  auto oldVal = live.getElt(id / NUM_BITS_PER_ELT);
-  live.set(id, val);
-  auto newVal = live.getElt(id / NUM_BITS_PER_ELT);
-  updateRegisterPressure(oldVal, newVal, id);
+void RPE::updateLiveness(llvm_SBitVector &live, uint32_t id, bool val) {
+  bool change = false;
+  bool clean = false;
+  if (val) { //true
+    if (!live.test(id)) { //used to be false
+      change = true;
+      live.set(id);
+    }
+  } else {
+    if (live.test(id)) { //
+      change = true;
+      clean = true;
+      live.reset(id);
+    }
+  }
+  updateRegisterPressure(change, clean, id);
 }
 
-void RPE::updateRegisterPressure(unsigned int before, unsigned int after,
+void RPE::updateRegisterPressure(bool change, bool clean,
                                  unsigned int id) {
-  auto change = before ^ after;
   if (change) {
     auto dcl = vars[id]->getDeclare();
     if (isSpilled(dcl))
@@ -175,7 +185,7 @@ void RPE::updateRegisterPressure(unsigned int before, unsigned int after,
     double delta = dclSize < gra.builder.getGRFSize()
                        ? dclSize / (double)gra.builder.getGRFSize()
                        : (double)dcl->getNumRows();
-    if (before & change) {
+    if (clean) {
       if (regPressure < delta) {
         regPressure = 0;
       } else {
