@@ -20258,7 +20258,7 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
 
     if (isRead == false)
     {
-        destination = GetSymbol(inst->getOperand(12));
+        destination = BroadcastIfUniform(GetSymbol(inst->getOperand(12)));
     }
 
     m_encoder->LSC_2DBlockMessage(
