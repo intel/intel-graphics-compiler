@@ -697,7 +697,7 @@ bool hasScalarRegister() const {
 }
 
 unsigned int getMaxPTSS() const {
-  if (getPlatform() >= GENX_TGLLP) {
+  if (hasScratchSurface()) {
     // Max PTSS supported is 256kb
     return 256 * 1024;
   }
