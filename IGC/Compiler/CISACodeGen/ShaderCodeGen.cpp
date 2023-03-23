@@ -314,7 +314,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     mpm.add(createFixInvalidFuncNamePass());
 
     // collect stats after all the optimization. This info can be dumped to the cos file
-    mpm.add(new CheckInstrTypes(true, false));
+    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypesAfterOpts), nullptr));
 
     //
     // Generally, passes that change IR should be prior to this place!
@@ -339,8 +339,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     unsigned int numInsts = ctx.m_instrTypes.numInsts;
     bool hasUnmaskedRegion = ctx.m_instrTypes.hasUnmaskedRegion;
     IGCPassManager mpm(&ctx, "UpdateOptPre");
-    mpm.add(new CodeGenContextWrapper(&ctx));
-    mpm.add(new CheckInstrTypes(false, false));
+    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes), nullptr));
     mpm.run(*ctx.getModule());
     ctx.m_instrTypes.numBB = numBB;
     ctx.m_instrTypes.numSample = numSample;
@@ -1039,8 +1038,7 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
     }
 
     IGCPassManager mpm(pContext, "OPTPre");
-    mpm.add(new CodeGenContextWrapper(pContext));
-    mpm.add(new CheckInstrTypes(false , true));
+    mpm.add(new CheckInstrTypes(&(pContext->m_instrTypes), &pContext->metrics));
 
     if (pContext->isPOSH())
     {
