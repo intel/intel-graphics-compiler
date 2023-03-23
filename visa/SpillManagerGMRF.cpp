@@ -121,7 +121,7 @@ void SpillManagerGRF::initializeRangeCount(unsigned size) {
 
 SpillManagerGRF::SpillManagerGRF(
     GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
-    const LivenessAnalysis *lvInfo, LiveRange **lrInfo,
+    const LivenessAnalysis *lvInfo, const LiveRangeVec& lrInfo,
     const Interference *intf, const LR_LIST *spilledLRs, unsigned iterationNo,
     bool failSafeSpill, unsigned spillRegSize, unsigned indrSpillRegSize,
     bool enableSpillSpaceCompression, bool useScratchMsg,
@@ -194,14 +194,15 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
                                  const LivenessAnalysis *lvInfo,
                                  LSLR_LIST *spilledLSLRs,
                                  bool enableSpillSpaceCompression,
-                                 bool useScratchMsg, bool avoidDstSrcOverlap)
+                                 bool useScratchMsg, bool avoidDstSrcOverlap,
+                                 const LiveRangeVec &emptyLRs)
     : gra(g), builder_(g.kernel.fg.builder), varIdCount_(varIdCount),
       latestImplicitVarIdCount_(0), lvInfo_(lvInfo),
       spilledLSLRs_(spilledLSLRs), nextSpillOffset_(spillAreaOffset),
       doSpillSpaceCompression(enableSpillSpaceCompression),
       failSafeSpill_(false), useScratchMsg_(useScratchMsg),
       avoidDstSrcOverlap_(avoidDstSrcOverlap), refs(g.kernel),
-      context(g, nullptr) {
+      context(g, emptyLRs), lrInfo_(emptyLRs) {
   const unsigned size = sizeof(unsigned) * varIdCount;
   initializeRangeCount(size);
   spillAreaOffset_ = spillAreaOffset;
@@ -5901,7 +5902,7 @@ std::vector<G4_BB *> vISA::SpillAnalysis::GetIntervalBBs(
   return BBs;
 }
 
-BoundedRA::BoundedRA(GlobalRA &ra, LiveRange **l)
+BoundedRA::BoundedRA(GlobalRA &ra, const LiveRangeVec &l)
     : gra(ra), kernel(ra.kernel), lrs(l) {}
 
 void vISA::BoundedRA::markBusyGRFs() {

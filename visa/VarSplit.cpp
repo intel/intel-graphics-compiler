@@ -639,8 +639,9 @@ unsigned int VarSplitPass::getSiblingNum(G4_Declare *d) {
   return siblingNum;
 }
 
-unsigned int VarSplitPass::getIdealAllocation(G4_Declare *dcl,
-                                              LiveRange **lrs) {
+unsigned int
+VarSplitPass::getIdealAllocation(G4_Declare *dcl,
+                                 const LiveRangeVec &lrs) {
   // This function is invoked when assigning GRFs to parent.
   unsigned int idealGRF = 0;
   if (isSplitDcl(dcl)) {
@@ -693,7 +694,8 @@ bool VarSplitPass::isChildDclUnused(G4_Declare *dcl) {
   return true;
 }
 
-void VarSplitPass::writeHints(G4_Declare *dcl, LiveRange **lrs) {
+void VarSplitPass::writeHints(G4_Declare *dcl,
+                              const LiveRangeVec &lrs) {
   bool isParent = isSplitDcl(dcl);
   bool isChild = isPartialDcl(dcl);
 
@@ -790,7 +792,8 @@ void VarSplitPass::undo(G4_Declare *parentDcl) {
   splitChildren.erase(parentDcl);
 }
 
-bool VarSplitPass::reallocParent(G4_Declare *child, LiveRange **lrs) {
+bool VarSplitPass::reallocParent(G4_Declare *child,
+                                 const LiveRangeVec &lrs) {
   // Given a child, lookup all siblings. If all children
   // are assigned consecutive GRFs but parent isnt then
   // return true.

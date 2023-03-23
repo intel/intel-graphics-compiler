@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include <list>
 #include <utility>
+#include <vector>
 
 // Forward declarations
 namespace vISA {
@@ -38,6 +39,7 @@ class GlobalRA;
 class GraphColor;
 } // namespace vISA
 struct RegionDesc;
+using LiveRangeVec = std::vector<vISA::LiveRange*>;
 // Class definitions
 namespace vISA {
 
@@ -183,12 +185,12 @@ public:
     }
   }
 
-  BoundedRA(GlobalRA &ra, LiveRange **l);
+  BoundedRA(GlobalRA &ra, const LiveRangeVec &l);
 
 private:
   GlobalRA &gra;
   G4_Kernel &kernel;
-  LiveRange **lrs = nullptr;
+  const LiveRangeVec &lrs;
   static const unsigned int bitsetSz = 256;
   // Map each inst -> list of busy GRFs
   std::unordered_map<const G4_INST *, std::bitset<bitsetSz>> busyGRF;
@@ -248,7 +250,7 @@ public:
   // Methods
 
   SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
-                  const LivenessAnalysis *lvInfo, LiveRange **lrInfo,
+                  const LivenessAnalysis *lvInfo, const LiveRangeVec& lrInfo,
                   const Interference *intf, const LR_LIST *spilledLRs,
                   unsigned iterationNo, bool useSpillReg, unsigned spillRegSize,
                   unsigned indrSpillRegSize, bool enableSpillSpaceCompression,
@@ -257,7 +259,8 @@ public:
   SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
                   const LivenessAnalysis *lvInfo, LSLR_LIST *spilledLSLRs,
                   bool enableSpillSpaceCompression, bool useScratchMsg,
-                  bool avoidDstSrcOverlap);
+                  bool avoidDstSrcOverlap,
+                  const LiveRangeVec &emptyLRs);
 
   ~SpillManagerGRF() {}
 
@@ -652,7 +655,7 @@ private:
   unsigned varIdCount_;
   unsigned latestImplicitVarIdCount_;
   const LivenessAnalysis *lvInfo_;
-  LiveRange **lrInfo_;
+  const LiveRangeVec &lrInfo_;
   const LR_LIST *spilledLRs_;
   LSLR_LIST *spilledLSLRs_;
   std::vector<unsigned> spillRangeCount_;

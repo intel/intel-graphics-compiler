@@ -20,7 +20,10 @@ enum ColorHeuristic { FIRST_FIT, ROUND_ROBIN };
 namespace vISA {
 class LiveRange;
 class GlobalRA;
+} // namespace vISA
 
+using LiveRangeVec = std::vector<vISA::LiveRange*>;
+namespace vISA {
 // Allocation state shared by all PhyRegUsage objects (and their associated live
 // range). This needs to be shared because the previous live range's allocation
 // may affect the current live range's allocation (e.g., if we are doing
@@ -46,11 +49,12 @@ class PhyRegAllocationState {
   bool doBankConflict;
   // FIXME: Why do we need both totalGRF and maxGRFCanBeUsed?
   unsigned int totalGRF;
-  LiveRange **lrs;
+  const LiveRangeVec& lrs;
 
 public:
   PhyRegAllocationState() = delete;
-  PhyRegAllocationState(GlobalRA &g, LiveRange *l[], G4_RegFileKind r,
+  PhyRegAllocationState(GlobalRA &g, const LiveRangeVec& l,
+                        G4_RegFileKind r,
                         unsigned int m, unsigned int bank1_s,
                         unsigned int bank1_e, unsigned int bank2_s,
                         unsigned int bank2_e, bool doBC);
@@ -115,7 +119,7 @@ public:
 //
 class PhyRegUsage {
   GlobalRA &gra;
-  LiveRange **lrs;
+  const LiveRangeVec& lrs;
   unsigned maxGRFCanBeUsed;
   ColorHeuristic colorHeuristic; // perform register assignment in
                                  // first-fit/round-robin for GRFs

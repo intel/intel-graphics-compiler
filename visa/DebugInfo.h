@@ -17,9 +17,11 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace vISA {
 class G4_Declare;
+class LiveRange;
 }
 class CISA_IR_Builder;
 class VISAKernelImpl;
@@ -65,7 +67,7 @@ void addCallFrameInfo(VISAKernelImpl *kernel);
 // For ranges colored during graph coloring
 void updateDebugInfo(vISA::G4_Kernel &kernel, vISA::G4_INST *inst,
                      const vISA::LivenessAnalysis &liveAnalysis,
-                     vISA::LiveRange *lrs[], SparseBitSet &live,
+                     const LiveRangeVec& lrs, SparseBitSet &live,
                      vISA::DebugInfoState *state, bool closeAllOpenIntervals);
 // For ranges allocated by local RA
 void updateDebugInfo(vISA::G4_Kernel &kernel,

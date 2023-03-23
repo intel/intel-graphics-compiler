@@ -168,11 +168,12 @@ public:
   bool isSplitDcl(G4_Declare *);
   bool isPartialDcl(G4_Declare *);
   unsigned int getSiblingNum(G4_Declare *);
-  unsigned int getIdealAllocation(G4_Declare *, LiveRange **);
+  unsigned int getIdealAllocation(G4_Declare *,
+                                  const LiveRangeVec &);
   bool isChildDclUnused(G4_Declare *);
-  void writeHints(G4_Declare *, LiveRange **);
+  void writeHints(G4_Declare *, const LiveRangeVec &);
   void undo(G4_Declare *);
-  bool reallocParent(G4_Declare *, LiveRange **);
+  bool reallocParent(G4_Declare *, const LiveRangeVec &);
   bool isParentChildRelation(G4_Declare *, G4_Declare *);
   bool isSplitVarLocal(G4_Declare *);
   bool splitOccured() { return IRchanged; }

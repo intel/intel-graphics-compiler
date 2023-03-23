@@ -1204,12 +1204,10 @@ void LiveRange::dump() const {
   }
 }
 
-PhyRegAllocationState::PhyRegAllocationState(GlobalRA &g, LiveRange *l[],
-                                             G4_RegFileKind r, unsigned int m,
-                                             unsigned int bank1_s,
-                                             unsigned int bank1_e,
-                                             unsigned int bank2_s,
-                                             unsigned int bank2_e, bool doBC)
+PhyRegAllocationState::PhyRegAllocationState(
+    GlobalRA &g, const LiveRangeVec& l, G4_RegFileKind r,
+    unsigned int m, unsigned int bank1_s, unsigned int bank1_e,
+    unsigned int bank2_s, unsigned int bank2_e, bool doBC)
     : gra(g), lrs(l), rFile(r), maxGRFCanBeUsed(m), startGRFReg(0),
       startARFReg(0), startFlagReg(0), bank1_start(bank1_s), bank1_end(bank1_e),
       bank2_start(bank2_s), bank2_end(bank2_e), doBankConflict(doBC) {

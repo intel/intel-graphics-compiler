@@ -926,7 +926,7 @@ int LinearScanRA::linearScanRA() {
       SpillManagerGRF spillGRF(gra, nextSpillOffset, l.getNumSelectedVar(), &l,
                                &spillLRs, enableSpillSpaceCompression,
                                useScratchMsgForSpill,
-                               builder.avoidDstSrcOverlap());
+                               builder.avoidDstSrcOverlap(), {});
 
       spillGRF.spillLiveRanges(&kernel);
       nextSpillOffset = spillGRF.getNextOffset();

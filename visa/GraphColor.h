@@ -262,8 +262,9 @@ private:
   void allocForbiddenVector(vISA::Mem_Manager &mem);
 }; // class LiveRange
 } // namespace vISA
-typedef std::list<vISA::LiveRange *> LIVERANGE_LIST;
-typedef std::list<vISA::LiveRange *>::iterator LIVERANGE_LIST_ITER;
+using LIVERANGE_LIST = std::list<vISA::LiveRange *>;
+using LIVERANGE_LIST_ITER = LIVERANGE_LIST::iterator;
+using LiveRangeVec = std::vector<vISA::LiveRange*>;
 
 // A mapping from the pseudo decl created for caller save/restore, to the ret
 // val This is used in augmentIntfGraph to prune interference edges for fcall
@@ -271,7 +272,6 @@ typedef std::list<vISA::LiveRange *>::iterator LIVERANGE_LIST_ITER;
 typedef std::map<vISA::G4_Declare *, vISA::G4_Declare *> FCALL_RET_MAP;
 typedef std::map<vISA::G4_Declare *, vISA::G4_Declare *>::iterator
     FCALL_RET_MAP_ITER;
-
 typedef std::map<vISA::G4_Declare *, std::pair<vISA::G4_INST *, unsigned>>
     CALL_DECL_MAP;
 typedef std::map<vISA::G4_Declare *,
@@ -308,7 +308,7 @@ private:
   Interference &intf;
   GlobalRA &gra;
   const LivenessAnalysis &liveAnalysis;
-  LiveRange **const &lrs;
+  const LiveRangeVec& lrs;
   FCALL_RET_MAP &fcallRetMap;
   CALL_DECL_MAP callDclMap;
   std::unordered_map<FuncInfo *, PhyRegSummary> localSummaryOfCallee;
@@ -374,7 +374,7 @@ private:
 
 public:
   Augmentation(G4_Kernel &k, Interference &i, const LivenessAnalysis &l,
-               LiveRange **const &ranges, GlobalRA &g);
+               const LiveRangeVec& ranges, GlobalRA &g);
   ~Augmentation();
 
   void augmentIntfGraph();
@@ -395,7 +395,7 @@ class Interference {
 
   GlobalRA &gra;
   G4_Kernel &kernel;
-  LiveRange **const &lrs;
+  const LiveRangeVec& lrs;
   IR_Builder &builder;
   const unsigned maxId;
   const unsigned rowSize;
@@ -502,7 +502,7 @@ class Interference {
   void countNeighbors();
 
 public:
-  Interference(const LivenessAnalysis *l, LiveRange **const &lr, unsigned n,
+  Interference(const LivenessAnalysis *l, const LiveRangeVec& lr, unsigned n,
                unsigned ns, unsigned nm, GlobalRA &g);
 
   ~Interference() {
@@ -571,8 +571,7 @@ class RegChartDump {
 
 public:
   void recordLiveIntervals(const std::vector<G4_Declare *> &dcls);
-  void dumpRegChart(std::ostream &, LiveRange **lrs = nullptr,
-                    unsigned numLRs = 0);
+  void dumpRegChart(std::ostream &, const LiveRangeVec &lrs, unsigned numLRs);
 
   RegChartDump(const GlobalRA &g) : gra(g) {}
 };
@@ -588,7 +587,7 @@ class GraphColor {
   Interference intf;
   PhyRegPool &regPool;
   IR_Builder &builder;
-  LiveRange **lrs = nullptr;
+  LiveRangeVec lrs;
   bool isHybrid;
   LIVERANGE_LIST spilledLRs;
   bool forceSpill;
@@ -605,7 +604,7 @@ class GraphColor {
   G4_Kernel &kernel;
   LivenessAnalysis &liveAnalysis;
 
-  std::vector<LiveRange *> colorOrder;
+  LiveRangeVec colorOrder;
   LIVERANGE_LIST unconstrainedWorklist;
   LIVERANGE_LIST constrainedWorklist;
   unsigned numColor = 0;
@@ -650,7 +649,7 @@ public:
   bool requireSpillCode() const { return !spilledLRs.empty(); }
   const Interference *getIntf() const { return &intf; }
   void createLiveRanges(unsigned reserveSpillSize = 0);
-  LiveRange **getLiveRanges() const { return lrs; }
+  const LiveRangeVec& getLiveRanges() const { return lrs; }
   const LIVERANGE_LIST &getSpilledLiveRanges() const { return spilledLRs; }
   void confirmRegisterAssignments();
   void resetTemporaryRegisterAssignments();
@@ -704,7 +703,7 @@ private:
       const G4_Declare *,
       std::tuple<LiveRange *, AugmentationMasks, G4_INST *, G4_INST *>>
       masks;
-  LiveRange *const *lrs = nullptr;
+  LiveRangeVec lrs;
   unsigned numVars = 0;
   const Interference *intf = nullptr;
   std::unordered_map<G4_Declare *, LiveRange *> DclLRMap;
@@ -737,7 +736,6 @@ public:
     sortedLiveRanges.clear();
     masks.clear();
     kernel = nullptr;
-    lrs = nullptr;
     gra = nullptr;
     numVars = 0;
     intf = nullptr;
@@ -745,7 +743,7 @@ public:
     bbLabels.clear();
     BBLexId.clear();
   }
-  void loadAugData(std::vector<G4_Declare *> &s, LiveRange *const *l,
+  void loadAugData(std::vector<G4_Declare *> &s, const LiveRangeVec& l,
                    unsigned n, const Interference *i, GlobalRA &g);
   void dump(const char *dclName);
   bool isClobbered(LiveRange *lr, std::string &msg);

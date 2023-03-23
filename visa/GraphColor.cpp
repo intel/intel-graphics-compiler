@@ -54,7 +54,8 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
 #define NOMASK_BYTE 0x80
 
-Interference::Interference(const LivenessAnalysis *l, LiveRange **const &lr,
+Interference::Interference(const LivenessAnalysis *l,
+                           const LiveRangeVec& lr,
                            unsigned n, unsigned ns, unsigned nm, GlobalRA &g)
     : gra(g), kernel(g.kernel), lrs(lr), builder(*g.kernel.fg.builder),
       maxId(n), splitStartId(ns), splitNum(nm), liveAnalysis(l),
@@ -1248,7 +1249,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
   // Emit out interference graph of each spill candidate
   // and if a spill candidate is a local range, emit its
   // start and end line number in file.
-  LiveRange **lrs = coloring.getLiveRanges();
+  const auto& lrs = coloring.getLiveRanges();
 
   for (const vISA::LiveRange *slr : coloring.getSpilledLiveRanges()) {
     if (slr->getRegKind() == G4_GRF) {
@@ -2630,8 +2631,8 @@ void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
 }
 
 Augmentation::Augmentation(G4_Kernel &k, Interference &i,
-                           const LivenessAnalysis &l, LiveRange **const &ranges,
-                           GlobalRA &g)
+                           const LivenessAnalysis &l,
+                           const LiveRangeVec &ranges, GlobalRA &g)
     : kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges),
       fcallRetMap(g.fcallRetMap) {}
 
@@ -5259,7 +5260,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
 // lrs[i] gives the live range whose id is i
 //
 void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
-  lrs = (LiveRange **)GCMem.alloc(sizeof(LiveRange *) * numVar);
+  lrs.resize(numVar);
   bool hasStackCall = builder.kernel.fg.getHasStackCalls() ||
                       builder.kernel.fg.getIsStackCallFunc();
   // Modification For Alias Dcl
@@ -5382,7 +5383,7 @@ void GraphColor::computeDegreeForARF() {
 }
 
 void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
-  std::vector<LiveRange *> addressSensitiveVars;
+  LiveRangeVec addressSensitiveVars;
   float maxNormalCost = 0.0f;
   VarReferences directRefs(kernel, true, false);
   std::unordered_map<G4_Declare *, std::list<std::pair<G4_INST *, G4_BB *>>>
@@ -5762,7 +5763,7 @@ void GraphColor::determineColorOrdering() {
   //
   // create an array for sorting live ranges
   //
-  std::vector<LiveRange *> sorted;
+  LiveRangeVec sorted;
   sorted.reserve(numUnassignedVar);
   unsigned j = 0;
   for (unsigned i = 0; i < numVar; i++) {
@@ -9569,7 +9570,7 @@ int GlobalRA::coloringRegAlloc() {
           live.computeLiveness();
           GraphColor coloring(live, kernel.getNumRegTotal(), false, false);
           coloring.createLiveRanges(0);
-          LiveRange **lrs = coloring.getLiveRanges();
+          const auto& lrs = coloring.getLiveRanges();
           Interference intf(&live, lrs, live.getNumSelectedVar(),
                             live.getNumSplitStartID(), live.getNumSplitVar(),
                             *this);
@@ -10108,7 +10109,7 @@ int GlobalRA::coloringRegAlloc() {
           computePhyReg();
           // invoke before expanding spill/fill since
           // it modifies IR
-          regChart->dumpRegChart(std::cerr);
+          regChart->dumpRegChart(std::cerr, {}, 0);
         }
 
         if (builder.getOption(vISA_DynPerfModel)) {
@@ -11991,8 +11992,9 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
 }
 
 void VerifyAugmentation::loadAugData(std::vector<G4_Declare *> &s,
-                                     LiveRange *const *l, unsigned n,
-                                     const Interference *i, GlobalRA &g) {
+                                     const LiveRangeVec &l,
+                                     unsigned n, const Interference *i,
+                                     GlobalRA &g) {
   reset();
   sortedLiveRanges = s;
   gra = &g;
@@ -12583,7 +12585,7 @@ void GlobalRA::fixSrc0IndirFcall() {
   }
 }
 
-bool dump(const char *s, LiveRange **lrs, unsigned size) {
+bool dump(const char *s, const LiveRangeVec &lrs, unsigned size) {
   // Utility function to dump lr from name.
   // Returns true if lr name found.
   std::string name = s;
@@ -12642,7 +12644,7 @@ void LiveRange::setAllocHint(unsigned h) {
 // This can be invoked either post RA where phy regs are assigned to dcls,
 // or after assignColors with lrs and numLRs passed which makes this function
 // use temp allocations from lrs. Doesnt handle sub-routines yet.
-void RegChartDump::dumpRegChart(std::ostream &os, LiveRange **lrs,
+void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec& lrs,
                                 unsigned numLRs) {
   constexpr unsigned N = 128;
   std::unordered_map<G4_INST *, std::bitset<N>> busyGRFPerInst;
