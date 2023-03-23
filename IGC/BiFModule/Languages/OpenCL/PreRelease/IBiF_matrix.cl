@@ -152,7 +152,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
     int pitch = width; /* JointMatrices are expected to be contigunous in memory, without padding at the end of a row */ \
     int height = M - 1; /* row count */ \
-    long x = (offset - baseoffset) / (sizeof (element_type)); /* in elements */ \
+    long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
     OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_RW_NAME(read, contrib_bitwidth, M, K)(long, int, int, int, int2); \
     OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_RW_NAME(read, contrib_bitwidth, M, K)(baseoffset, width, height, pitch, coords); \
@@ -164,7 +164,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
     int pitch = width; /* JointMatrices are expected to be contigunous in memory, without padding at the end of a row */ \
     int height = M - 1; /* row count */ \
-    long x = (offset - baseoffset) / (sizeof (element_type)); /* in elements */ \
+    long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
     void DEFINE_BLOCK2D_RW_NAME(write, contrib_bitwidth, M, K)(long, int, int, int, int2, OUT_VEC##M(u##contrib_type)); \
     OUT_VEC##M(u##contrib_type) val = VEC_TO_VEC##M(u##contrib_type, vec); \
@@ -304,7 +304,7 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
 #define DEFINE_STORE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt) \
   INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape) (char *mem, OUT_VEC##M(contrib_type) vec, int stride) { \
-      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) && order == ROW_MAJOR) { \
+      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) && order == ROW_MAJOR && elem_bitwidth > 8) { \
           IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, vec) \
       } \
       if (__JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL && stride == stride_opt \
@@ -330,22 +330,19 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
   }
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
-DEFINE_STORE(PackedA_RowMajor, , char, 8, int, 32, 8, 32, 8x32, ROW_MAJOR, , 32, false)
-
-// TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
-DEFINE_STORE(PackedA_RowMajor, , short, 16, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, false)
-
-// TODO: investigate why intel_sub_group_block_write_us causes an assertion and enable blocked non-continuous optimization
-DEFINE_STORE(PackedA_RowMajor, _SG16, char, 8, short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 32, false)
-
-// TODO: investigate why intel_sub_group_block_write_us causes an assertion and enable blocked non-continuous optimization
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 8, 32, 8x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 8, 16, 8x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 32, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 16, false)
 
-DEFINE_STORE(PackedB_PackedB, , short, 16, int, 32, 8, 16, 16x8, ROW_MAJOR, , 16, true)
-DEFINE_STORE(PackedB_PackedB, , short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, true)
+DEFINE_STORE(PackedB_PackedB,      , short, 16, int, 32, 8, 16, 16x8,  ROW_MAJOR, , 16, true)
+DEFINE_STORE(PackedB_PackedB,      , short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, true)
+DEFINE_STORE(PackedB_PackedB, _SG16, short, 16, int, 32, 8, 16, 16x8,  ROW_MAJOR, , 16, true)
+DEFINE_STORE(PackedB_PackedB, _SG16, short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, true)
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
-DEFINE_STORE(PackedB_PackedB, , char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false)
+DEFINE_STORE(PackedB_PackedB,      , char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false)
+DEFINE_STORE(PackedB_PackedB, _SG16, char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false)
 
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, true)
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 8, true)
@@ -356,7 +353,7 @@ DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 8
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 8, true)
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 8, true)
 
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, true)
+DEFINE_STORE(Accumulator_RowMajor,      , int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, true)
 
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 16, true)
@@ -367,4 +364,5 @@ DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJ
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 16, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 16, true)
 
-DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , -1, false)
+DEFINE_STORE(Accumulator_ColumnMajor,      , int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , -1, false)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , -1, false)
