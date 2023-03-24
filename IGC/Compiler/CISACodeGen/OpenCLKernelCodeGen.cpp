@@ -2901,9 +2901,7 @@ namespace IGC
         }
 
         // Disable EU Fusion.
-        if (IGC_IS_FLAG_ENABLED(DisableEuFusion) ||
-            m_Context->m_InternalOptions.DisableEUFusion ||
-            m_Context->getModuleMetaData()->compOpt.DisableEUFusion)
+        if (IGC_IS_FLAG_ENABLED(DisableEuFusion) || m_Context->m_InternalOptions.DisableEUFusion)
         {
             m_kernelInfo.m_executionEnvironment.RequireDisableEUFusion = true;
         }

@@ -60,7 +60,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
 #include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
-#include "Compiler/CISACodeGen/DpasScan.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
@@ -321,8 +320,6 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     //
     // Generally, passes that change IR should be prior to this place!
     //
-
-    mpm.add(new DpasScan());
 
     // let CleanPHINode be right before Layout
     mpm.add(createCleanPHINodePass());

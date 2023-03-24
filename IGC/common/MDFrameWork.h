@@ -431,7 +431,6 @@ namespace IGC
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
         bool NewSpillCostFunction                       = false;
-        bool DisableEUFusion                            = false;
     };
 
     enum class ThreadIDLayout
