@@ -1352,6 +1352,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_getStageInGridOrigin ||
         GII_id == GenISAIntrinsic::GenISA_getStageInGridSize ||
         GII_id == GenISAIntrinsic::GenISA_getSyncBuffer ||
+        GII_id == GenISAIntrinsic::GenISA_getRtGlobalBufferPtr ||
         GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr ||
         GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr  ||
         GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue)
@@ -1393,6 +1394,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         case GenISAIntrinsic::GenISA_getStageInGridOrigin:
         case GenISAIntrinsic::GenISA_getStageInGridSize:
         case GenISAIntrinsic::GenISA_getSyncBuffer:
+        case GenISAIntrinsic::GenISA_getRtGlobalBufferPtr:
             return ImplicitArgs::getArgDep(GII_id);
         }
 

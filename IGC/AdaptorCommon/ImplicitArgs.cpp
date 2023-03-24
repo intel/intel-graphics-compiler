@@ -90,7 +90,7 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
     ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, false, GenISAIntrinsic::GenISA_getSyncBuffer),
 
     // raytracing
-    ImplicitArg(ImplicitArg::RT_GLOBAL_BUFFER_POINTER, "globalPointer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_GRF, false),
+    ImplicitArg(ImplicitArg::RT_GLOBAL_BUFFER_POINTER, "globalPointer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getRtGlobalBufferPtr),
     ImplicitArg(ImplicitArg::RT_LOCAL_BUFFER_POINTER, "localPointer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, false),
     ImplicitArg(ImplicitArg::RT_INLINED_DATA, "inlinedData", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 2, ImplicitArg::ALIGN_GRF, false),
     ImplicitArg(ImplicitArg::RT_STACK_ID, "stackID", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false),

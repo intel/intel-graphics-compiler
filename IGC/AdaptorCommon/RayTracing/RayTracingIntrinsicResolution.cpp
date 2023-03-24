@@ -49,11 +49,12 @@ public:
 
     static char ID;
 private:
-    Argument* getImplicitArg(Function *F, ImplicitArg::ArgType argType);
+    Value* getImplicitArg(Function *F, ImplicitArg::ArgType argType);
 private:
     ImplicitArgs m_implicitArgs;
     bool Changed;
     CodeGenContext* m_CGCtx = nullptr;
+    IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
 };
 
 #define PASS_FLAG "raytracing-intrinsic-resolution"
@@ -64,10 +65,10 @@ IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicResolution, PASS_FLAG, PASS_DESCRIP
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(RayTracingIntrinsicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-Argument* RayTracingIntrinsicResolution::getImplicitArg(
+Value* RayTracingIntrinsicResolution::getImplicitArg(
     Function *F, ImplicitArg::ArgType argType)
 {
-    return m_implicitArgs.getImplicitArg(*F, argType);
+    return m_implicitArgs.getImplicitArgValue(*F, argType, m_pMdUtils);
 }
 
 RayTracingIntrinsicResolution::RayTracingIntrinsicResolution() : FunctionPass(ID) {
@@ -121,16 +122,16 @@ void RayTracingIntrinsicResolution::visitCallInst(CallInst &CI)
 
 bool RayTracingIntrinsicResolution::runOnFunction(Function &F)
 {
-    auto *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
+    if (m_pMdUtils->findFunctionsInfoItem(&F) == m_pMdUtils->end_FunctionsInfo())
         return false;
 
     Changed = false;
     m_implicitArgs = ImplicitArgs(
         F,
-        pMdUtils);
+        m_pMdUtils);
     visit(F);
 
     return Changed;

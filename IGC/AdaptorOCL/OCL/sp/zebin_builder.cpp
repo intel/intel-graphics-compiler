@@ -564,6 +564,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     }
     env.eu_thread_count = annotations.m_executionEnvironment.numThreads;
     env.has_sample = annotations.m_executionEnvironment.HasSample;
+    env.has_rtcalls = annotations.m_executionEnvironment.HasRTCalls;
 }
 
 void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo& annotations,
@@ -576,6 +577,7 @@ void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo& annotations,
     env.grf_count = annotations.m_executionEnvironment.NumGRFRequired;
     env.simd_size = annotations.m_executionEnvironment.CompiledSIMDSize;
     env.barrier_count = zeFuncAttr.f_BarrierCount;
+    env.has_rtcalls = zeFuncAttr.f_hasRTCalls;
 }
 
 void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
