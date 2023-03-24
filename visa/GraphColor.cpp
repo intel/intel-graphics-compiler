@@ -1195,7 +1195,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis &liveAnalysis) const {
           continue;
 
         if (dcl->getRegVar()->isRegAllocPartaker()) {
-          if (liveAnalysis.use_gen[bb->getId()].test(
+          if (liveAnalysis.use_gen[bb->getId()].isSet(
                   dcl->getRegVar()->getId())) {
             std::cout << dcl->getName() << ", ";
           }
@@ -1208,7 +1208,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis &liveAnalysis) const {
           continue;
 
         if (dcl->getRegVar()->isRegAllocPartaker()) {
-          if (liveAnalysis.use_kill[bb->getId()].test(
+          if (liveAnalysis.use_kill[bb->getId()].isSet(
                   dcl->getRegVar()->getId())) {
             std::cout << dcl->getName() << ", ";
           }
@@ -1491,9 +1491,8 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const {
     unsigned col = v2 / BITS_DWORD;
     return matrix[v1 * rowSize + col] & (1 << (v2 % BITS_DWORD));
   } else {
-    auto &set1 = sparseMatrix[v1];
-    auto &set2 = sparseMatrix[v2];
-    return set1.test(v2) || set2.test(v1);
+    auto &&set = sparseMatrix[v1];
+    return set.find(v2) != set.end();
   }
 }
 
@@ -1504,7 +1503,7 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const {
 // hence is not a candidate for being marked with an infinite spill cost.
 //
 void Interference::buildInterferenceAtBBExit(const G4_BB *bb,
-                                             llvm_SBitVector &live) {
+                                             SparseBitSet &live) {
 
   // live must be empty at this point
   live = liveAnalysis->use_out[bb->getId()];
@@ -1552,59 +1551,89 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
 // partial declare does not interference with hybrid declares added by local RA,
 // the reason is simple, these declares are assigned register already.
 //
-void Interference::buildInterferenceWithLive(const llvm_SBitVector &live,
+void Interference::buildInterferenceWithLive(const SparseBitSet &live,
                                              unsigned i) {
-  // set interference between variable with index "i" and variable set in "live".
-  // j is the valid bit index in the live.
-  for (unsigned j : live) {
-    if (!varSplitCheckBeforeIntf(i, j)) {
-      if (j < i) {
-        safeSetInterference(j, i);
-      } else if (j > i) {
-        safeSetInterference(i, j);
-      }
-    }
-  }
   const LiveRange *lr = lrs[i];
   bool is_partial = lr->getIsPartialDcl();
   bool is_splitted = lr->getIsSplittedDcl();
   unsigned n = 0;
-  unsigned start_idx = 0; // The variable index of the first child declare, the
-                          // child variables' indexes are contigious.
-  unsigned end_idx = 0;   // The variable index of the last child declare
+
+  // For none partial varaible, interference with all varaibles
+  unsigned numDwords = maxId / BITS_DWORD;
+  unsigned numBits = maxId % BITS_DWORD;
+
+  if (numBits) {
+    numDwords++;
+  }
+
+  unsigned start_idx = 0;
+  unsigned end_idx = 0;
   if (is_splitted) // if current is splitted dcl, don't interference with all
                    // its child nodes.
   {
     start_idx = lr->getDcl()->getSplitVarStartID();
     end_idx = start_idx + gra.getSplitVarNum(lr->getDcl());
   }
+
   if (is_partial) // if current is partial dcl, don't interference with all
                   // other partial dcls, and it's parent dcl.
   {
-    // n is the variable ID of the splitted(parent) declare
     n = gra.getSplittedDeclare(lr->getDcl())->getRegVar()->getId();
     start_idx = splitStartId;
     end_idx = splitStartId + splitNum;
   }
 
-  if (is_partial) { // Don't interference with parent
-    if (i < n) {
-      safeClearInterference(i, n);
-    } else {
-      safeClearInterference(n, i);
+  unsigned colEnd = i / BITS_DWORD;
+
+  // Set column bits in intf graph
+  for (unsigned k = 0; k < colEnd; k++) {
+    unsigned elt = live.getElt(k);
+
+    if (elt != 0) {
+      if (is_partial || is_splitted) {
+        filterSplitDclares(start_idx, end_idx, n, k, elt, is_partial);
+      }
+
+      for (unsigned j = 0; j < BITS_DWORD; j++) {
+        if (elt & (1 << j)) {
+          unsigned curPos = j + (k * BITS_DWORD);
+          safeSetInterference(curPos, i);
+        }
+      }
     }
   }
-  for (unsigned j = start_idx; j < end_idx; j++) { //Don't inteference with the child
-    if (j < i) {
-      safeClearInterference(j, i);
-    } else {
-      safeClearInterference(i, j);
+
+  // Set dword at transition point from column to row
+  unsigned elt = live.getElt(colEnd);
+  // checkAndSetIntf guarantee partial and splitted cases
+  if (elt != 0) {
+    for (unsigned j = 0; j < BITS_DWORD; j++) {
+      if (elt & (1 << j)) {
+        unsigned curPos = j + (colEnd * BITS_DWORD);
+        if (!varSplitCheckBeforeIntf(i, curPos)) {
+          checkAndSetIntf(i, curPos);
+        }
+      }
+    }
+  }
+
+  colEnd++;
+  // Set row intf graph
+  for (unsigned k = colEnd; k < numDwords; k++) {
+    unsigned elt = live.getElt(k);
+
+    if (is_partial || is_splitted) {
+      filterSplitDclares(start_idx, end_idx, n, k, elt, is_partial);
+    }
+
+    if (elt != 0) {
+      setBlockInterferencesOneWay(i, k, elt);
     }
   }
 }
 
 void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
-                                               llvm_SBitVector &live, bool setLive,
+                                               SparseBitSet &live, bool setLive,
                                                bool setIntf) {
 
   const G4_Declare *dcl = lrs[lr_id]->getDcl();
@@ -1619,7 +1648,7 @@ void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
         buildInterferenceWithLive(live, subID);
       }
       if (setLive) {
-        live.set(subID);
+        live.set(subID, true);
       }
     }
   }
@@ -1653,9 +1682,9 @@ void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2) {
 // always save/restore before/after call and are better assigned to the
 // caller-save space.
 //
-void Interference::addCalleeSaveBias(const llvm_SBitVector &live) {
+void Interference::addCalleeSaveBias(const SparseBitSet &live) {
   for (unsigned i = 0; i < maxId; i++) {
-    if (live.test(i)) {
+    if (live.isSet(i)) {
       lrs[i]->setCallerSaveBias(false);
       lrs[i]->setCalleeSaveBias(true);
     }
@@ -2003,7 +2032,7 @@ uint32_t GlobalRA::getRefCount(int loopNestLevel) {
 
 // handle return value interference for fcall
 void Interference::buildInterferenceForFcall(
-    G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
+    G4_BB *bb, SparseBitSet &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, const G4_VarBase *regVar) {
   vISA_ASSERT(inst->opcode() == G4_pseudo_fcall, "expect fcall inst");
   unsigned refCount = GlobalRA::getRefCount(
@@ -2026,7 +2055,7 @@ bool GlobalRA::isReRAPass() {
 
 
 void Interference::buildInterferenceForDst(
-    G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
+    G4_BB *bb, SparseBitSet &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, G4_DstRegRegion *dst) {
   unsigned refCount = GlobalRA::getRefCount(
       kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
@@ -2067,7 +2096,7 @@ void Interference::buildInterferenceForDst(
              i < lrs[id]->getDcl()->getSplitVarStartID() +
                      gra.getSplitVarNum(lrs[id]->getDcl());
              i++) {
-          live.reset(i); // kill all childs, there may be not used childs
+          live.set(i, false); // kill all childs, there may be not used childs
                               // generated due to splitting, killed also.
         }
       }
@@ -2093,7 +2122,7 @@ void Interference::buildInterferenceForDst(
   }
 }
 
-void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
+void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
   DebugInfoState state;
   unsigned refCount = GlobalRA::getRefCount(
       kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
@@ -2243,7 +2272,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
     if (dst) {
       if (dst->getBase()->isRegAllocPartaker() &&
           dst->getRegAccess() != Direct) {
-        live.set(dst->getBase()->asRegVar()->getId());
+        live.set(dst->getBase()->asRegVar()->getId(), true);
       }
     }
 
@@ -2283,7 +2312,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
       if (flagReg->asRegVar()->isRegAllocPartaker()) {
         lrs[id]->setRefCount(lrs[id]->getRefCount() +
                              refCount); // update reference count
-        live.set(id);
+        live.set(id, true);
       }
     }
 
@@ -2321,7 +2350,7 @@ void Interference::computeInterference() {
   //
   // create bool vector, live, to track live ranges that are currently live
   //
-  llvm_SBitVector live;
+  SparseBitSet live(maxId);
 
   buildInterferenceAmongLiveOuts();
 
@@ -2367,7 +2396,6 @@ void Interference::computeInterference() {
   aug.augmentIntfGraph();
 
   generateSparseIntfGraph();
-
   countNeighbors();
 
   // apply callee save bias after augmentation as interference graph is
@@ -2375,7 +2403,6 @@ void Interference::computeInterference() {
   if (kernel.fg.getHasStackCalls()) {
     applyPartitionBias();
   }
-  stopTimer(TimerID::INTERFERENCE);
 }
 
 void Interference::getNormIntfNum() {
@@ -2405,8 +2432,8 @@ void Interference::getNormIntfNum() {
     }
   } else {
     for (uint32_t v1 = 0; v1 < maxId; ++v1) {
-      auto &intfSet = sparseMatrix[v1];
-      numEdges += intfSet.count();
+      auto &&intfSet = sparseMatrix[v1];
+      numEdges += intfSet.size();
     }
   }
 
@@ -2448,13 +2475,14 @@ void Interference::generateSparseIntfGraph() {
     }
   } else {
     for (uint32_t v1 = 0; v1 < maxId; ++v1) {
-      auto &intfSet = sparseMatrix[v1];
+      auto &&intfSet = sparseMatrix[v1];
       for (uint32_t v2 : intfSet) {
         sparseIntf[v1].emplace_back(v2);
         sparseIntf[v2].emplace_back(v1);
       }
     }
   }
+  stopTimer(TimerID::INTERFERENCE);
 }
 
 void Interference::countNeighbors() {
@@ -4132,11 +4160,11 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask,
 //
 void Augmentation::addSIMDIntfDclForCallSite(MaskDeclares *maskDeclares) {
   for (auto defaultDcl : defaultMaskQueue) {
-    maskDeclares->first.set(defaultDcl->getRegVar()->getId());
+    maskDeclares->first.set(defaultDcl->getRegVar()->getId(), true);
   }
 
   for (auto nonDefaultDcl : nonDefaultMaskQueue) {
-    maskDeclares->second.set(nonDefaultDcl->getRegVar()->getId());
+    maskDeclares->second.set(nonDefaultDcl->getRegVar()->getId(), true);
   }
 }
 
@@ -4145,6 +4173,8 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare *newDcl) {
   MaskDeclares *mask = nullptr;
   if (dclIt == retDeclares.end()) {
     MaskDeclares newMask;
+    newMask.first.resize(liveAnalysis.getNumSelectedGlobalVar());
+    newMask.second.resize(liveAnalysis.getNumSelectedGlobalVar());
     retDeclares[newDcl] = std::move(newMask);
     mask = &retDeclares[newDcl];
   } else {
@@ -4334,7 +4364,7 @@ void Augmentation::buildSIMDIntfAllOld(G4_Declare *newDcl) {
     for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++) {
       auto maydef = liveAnalysis.subroutineMaydef.find(func);
       if (maydef != liveAnalysis.subroutineMaydef.end() &&
-          maydef->second.test(i)) {
+          maydef->second.isSet(i)) {
         varDcl = lrs[i]->getDcl();
         buildSIMDIntfDcl(varDcl, true);
       }
@@ -4452,7 +4482,7 @@ void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
   for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++) {
     auto maydef = liveAnalysis.subroutineMaydef.find(func);
     if (maydef != liveAnalysis.subroutineMaydef.end() &&
-        maydef->second.test(i)) {
+        maydef->second.isSet(i)) {
       G4_Declare *varDcl = lrs[i]->getDcl();
       buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[func]);
     }
@@ -4652,6 +4682,12 @@ void Augmentation::augmentIntfGraph() {
     }
   }
 
+  for (auto func : kernel.fg.funcInfoTable) {
+    auto &item = callsiteDeclares[func];
+    item.first.resize(liveAnalysis.getNumSelectedGlobalVar());
+    item.second.resize(liveAnalysis.getNumSelectedGlobalVar());
+  }
+
   if (kernel.getOption(vISA_LocalRA)) {
     buildSummaryForCallees();
   }
@@ -4731,7 +4767,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
   }
 
   BitSet cur(kernel.getNumRegTotal(), true);
-  llvm_SBitVector live;
+  SparseBitSet live(maxId);
   std::vector<int> curUpdate;
 
   buildInterferenceAtBBExit(bb, live);
@@ -4816,7 +4852,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
         // In bottom-up order if the live-range has not started then
         // a use was not seen for this def. But we need to ensure this
         // variable interferes with all other live vars.
-        bool isPointRange = !live.test(dst->getBase()->asRegVar()->getId());
+        bool isPointRange = !live.isSet(dst->getBase()->asRegVar()->getId());
 
         if (isPointRange) {
           // Mark interference with all busy physical registers
@@ -4886,7 +4922,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
             VISA_DEBUG_VERBOSE(std::cout << "Setting r" << j << ".0 busy\n");
           }
         } else if (src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
-          if (live.test(
+          if (live.isSet(
                   src->asSrcRegRegion()->getBase()->asRegVar()->getId()) ==
               false)
             update = true;
@@ -4902,7 +4938,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
                   src->asSrcRegRegion(), bb);
           for (auto pt : pointsToSet) {
             if (pt.var->isRegAllocPartaker()) {
-              if (live.test(pt.var->getId()) == false)
+              if (live.isSet(pt.var->getId()) == false)
                 update = true;
 
               updateLiveness(live, pt.var->getId(), true);
@@ -4947,7 +4983,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
       if (!assigned) {
         bool isLiveIn = liveAnalysis->isLiveAtEntry(bb, i);
         bool isLiveOut = liveAnalysis->isLiveAtExit(bb, i);
-        bool isKilled = liveAnalysis->use_kill[bb->getId()].test(i);
+        bool isKilled = liveAnalysis->use_kill[bb->getId()].isSet(i);
         if (isLiveIn || isLiveOut || isKilled) {
           // Make it to interfere with all physical registers used in the BB
           for (uint32_t j = 0, numReg = kernel.getNumRegTotal(); j < numReg;
@@ -8252,7 +8288,7 @@ void GlobalRA::reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
     }
 
     unsigned id = referencedDcl->getRegVar()->getId();
-    if (liveAnalysis.def_in[bb->getId()].test(id) == false &&
+    if (liveAnalysis.def_in[bb->getId()].isSet(id) == false &&
         defs.find(referencedDcl) == defs.end()) {
       // Def not found for use so report it
       VISA_DEBUG_VERBOSE({
