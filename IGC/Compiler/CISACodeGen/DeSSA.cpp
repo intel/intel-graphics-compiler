@@ -1182,18 +1182,23 @@ void DeSSA::getAllValuesInCongruentClass(
 void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
 {
     // Find a chain of insertvalue, and return the last one.
-    auto getInsValChain = [](InsertValueInst* aIVI,
+    auto getInsValChain = [this](InsertValueInst* aIVI,
         SmallVector<Value*, 8>& IVIs)
     {
         InsertValueInst* Inst = aIVI;
+        WIAnalysis::WIDependancy Dep = WIA->whichDepend(Inst);
         while (Inst && Inst->hasOneUse())
         {
             IVIs.push_back(Inst);
             Inst = dyn_cast<InsertValueInst>(Inst->user_back());
+            if (Inst && Dep != WIA->whichDepend(Inst)) {
+                // Don't group values with differnt dependency.
+                Inst = nullptr;
+            }
         }
         if (Inst)
         {
-            // last one
+            // last one with multiple uses
             IVIs.push_back(Inst);
         }
         return Inst;
