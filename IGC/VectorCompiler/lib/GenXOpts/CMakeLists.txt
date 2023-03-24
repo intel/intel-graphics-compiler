@@ -16,6 +16,7 @@ set(OPT_SOURCES
   CMTrans/GenXPrintfLegalization.cpp
   CMTrans/GenXPrintfResolution.cpp
   CMTrans/GenXImportOCLBiF.cpp
+  CMTrans/GenXTranslateIntrinsics.cpp
   CMTrans/GenXTranslateSPIRVBuiltins.cpp
   CMTrans/GenXTrampolineInsertion.cpp
   CMTrans/GenXCloneIndirectFunctions.cpp

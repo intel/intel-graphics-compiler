@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1733,9 +1733,13 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
   if (!VT)
     return 1;
   unsigned Width = VT->getNumElements() - StartIdx;
-  if (auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
-      IID == GenXIntrinsic::genx_bf_cvt)
+  switch (vc::InternalIntrinsic::getInternalIntrinsicID(Inst)) {
+  default:
+    break;
+  case vc::InternalIntrinsic::cast_from_bf16:
+  case vc::InternalIntrinsic::cast_to_bf16:
     return determineBfMixedWidth(Width);
+  }
   unsigned BytesPerElement = VT->getElementType()->getPrimitiveSizeInBits() / 8;
   // Check whether the operand element size is bigger than the result operand
   // size. Normally we just check operand 0. This won't work on a select, and
@@ -2303,10 +2307,8 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   // Must be a splittable intrinsic.
   CallInst *CI = dyn_cast<CallInst>(BInst.Inst);
   IGC_ASSERT(CI);
-  auto CalledF = CI->getCalledFunction();
-  IGC_ASSERT(CalledF);
-  unsigned IntrinID = vc::getAnyIntrinsicID(CalledF);
-  IGC_ASSERT(GenXIntrinsic::isAnyNonTrivialIntrinsic(IntrinID));
+  unsigned IntrinID = vc::getAnyIntrinsicID(CI);
+  IGC_ASSERT(vc::isAnyNonTrivialIntrinsic(IntrinID));
   if (IntrinID == GenXIntrinsic::genx_constanti ||
       IntrinID == GenXIntrinsic::genx_constantf) {
     // This is the constant loading intrinsic.
@@ -2326,30 +2328,28 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
         cast<VectorType>(BInst.Inst->getType())->getElementType(),
         Width * WidthAdjust)); // RetTy
   }
-  for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(CI); i != e; ++i) {
-    Use *U = &CI->getOperandUse(i);
+  for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(CI); I != E; ++I) {
+    Use *U = &CI->getOperandUse(I);
     if (U == Fixed4) {
-      Args.push_back(CI->getArgOperand(i));
+      Args.push_back(CI->getArgOperand(I));
     } else if (U == TwiceWidth) {
       // TWICEWIDTH: operand is twice the width of other operand and result
-      Args.push_back(getSplitOperand(BInst.Inst, i, StartIdx * 2, Width * 2,
+      Args.push_back(getSplitOperand(BInst.Inst, I, StartIdx * 2, Width * 2,
                                      InsertBefore, DL));
     } else if (GenXIntrinsic::isLSC(CI)) {
-      unsigned Height = isLSCSOAOperand(CI, i) ?
-          GenXIntrinsic::getLSCNumVectorElements(CI) : 1;
-      Args.push_back(
-          getSplitSOAOperand(BInst.Inst, i,
-                             StartIdx, Width, Height,
-                             InsertBefore, DL));
+      unsigned Height = isLSCSOAOperand(CI, I)
+                            ? GenXIntrinsic::getLSCNumVectorElements(CI)
+                            : 1;
+      Args.push_back(getSplitSOAOperand(BInst.Inst, I, StartIdx, Width, Height,
+                                        InsertBefore, DL));
     } else
       Args.push_back(
-          getSplitOperand(BInst.Inst, i, StartIdx, Width, InsertBefore, DL));
-    if (GenXIntrinsic::isOverloadedArg((GenXIntrinsic::ID)IntrinID, i))
-      OverloadedTypes.push_back(Args[i]->getType());
+          getSplitOperand(BInst.Inst, I, StartIdx, Width, InsertBefore, DL));
+    if (vc::isOverloadedArg(IntrinID, I))
+      OverloadedTypes.push_back(Args[I]->getType());
   }
   Module *M = InsertBefore->getModule();
-  Function *Decl =
-      GenXIntrinsic::getAnyDeclaration(M, IntrinID, OverloadedTypes);
+  Function *Decl = vc::getAnyDeclaration(M, IntrinID, OverloadedTypes);
   auto Name = isLSCWithoutReturn(BInst.Inst) ? "" : ".split" + Twine(StartIdx);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);

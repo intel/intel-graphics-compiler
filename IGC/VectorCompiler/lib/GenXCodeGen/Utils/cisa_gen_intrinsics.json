@@ -2,7 +2,7 @@
   "copyright": [
     "============================ begin_copyright_notice ============================",
     "",
-    "Copyright (C) 2019-2022 Intel Corporation",
+    "Copyright (C) 2019-2023 Intel Corporation",
     "",
     "SPDX-License-Identifier: MIT",
     "",
@@ -10,6 +10,35 @@
   ],
   "DESCRIPTION": "See cisa_gen_intrinsics.py for description of this document",
   "INTRINSICS": {
+    // Standard LLVM intrinsics
+    "fma": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "MODIFIER_ARITH", 3 ]
+    },
+    // Internal vc intrinsics
+    "vc::InternalIntrinsic::cast_from_bf16": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "DIRECTONLY", 0 ],
+      "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
+    },
+    "vc::InternalIntrinsic::cast_to_bf16": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "DIRECTONLY", 0 ],
+      "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
+    },
+    // vc-intrinsics
     "genx_fptosi_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
@@ -852,16 +881,6 @@
       "src": [ "RAW", 4 ],
       "src1": [ "NULLRAW" ],
       "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
-    },
-    "fma": {
-      "opc": "ISA_MAD",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "MODIFIER_ARITH", 3 ]
     },
     "genx_ssmad": {
       "opc": "ISA_MAD",
@@ -2457,14 +2476,6 @@
     "genx_sbarrier": {
       "opc": "ISA_SBARRIER",
       "signal_flag": [ "BYTE", 1 ]
-    },
-    "genx_bf_cvt": {
-      "opc": "ISA_MOV",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", "DIRECTONLY", 0 ],
-      "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
     },
     "genx_tf32_cvt": {
       "opc": "ISA_FCVT",

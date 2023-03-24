@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,6 +25,10 @@ bool isOverloadedRet(unsigned ID);
 //  in intrinsic overloaded
 // Note: input of LLVM intrinsic not expected
 bool isOverloadedArg(unsigned ID, unsigned ArgumentNum);
+
+/// isAnyNonTrivialIntrinsic(id) - Is Internal, GenX or LLVM intrinsic, which is
+/// not equal to not_any_intrinsic
+bool isAnyNonTrivialIntrinsic(unsigned ID);
 
 // getAnyDeclaration - create a LLVM Function declaration
 // for an intrinsic, and return it.

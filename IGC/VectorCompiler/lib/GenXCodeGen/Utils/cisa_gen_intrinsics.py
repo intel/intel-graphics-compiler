@@ -2,7 +2,7 @@
 
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2019-2021 Intel Corporation
+# Copyright (C) 2019-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -132,9 +132,11 @@ def generate(dscr_filename, out_path):
         return bool(isinstance(opc_gen, str) or isalt)
 
     def getIntrinsicName(name):
-        if name == "fma":
-            return 'Intrinsic::{}'.format(name)
-        return 'GenXIntrinsic::{}'.format(name)
+        if name.startswith('genx_'):
+            return f'GenXIntrinsic::{name}'
+        if name.startswith('vc::InternalIntrinsic'):
+            return name
+        return f'Intrinsic::{name}'
 
     def getIntrinsicInfoStr(name, intr):
         intr = list(filter(lambda arg: arg[0] not in special_keys, intr.items()))

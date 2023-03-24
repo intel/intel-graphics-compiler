@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -109,4 +109,34 @@ Imported_Intrinsics = \
                                "arguments": ["ptr_generic"],
                                "attributes": "NoMem",
                              },
+
+### --------------
+### ALU intrinsics
+### --------------
+
+## ``llvm.vc.internal.cast.to.bf16`` : convert float into bfloat16
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, f32 scalar or vector (overloaded)
+##
+## * Return value: i16 scalar or vector (overloaded)
+##
+## This intrinsic represents float -> bfloat16 conversion operation
+    "cast_to_bf16" : { "result": "anyint",
+                       "arguments": ["anyfloat"],
+                       "attributes": "NoMem",
+                     },
+## ``llvm.vc.internal.cast.from.bf16`` : convert bfloat16 into float
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: bfloat16 input data, i16 scalar or vector (overloaded)
+##
+## * Return value: f32 scalar or vector (overloaded)
+##
+## This intrinsic represents float -> bfloat16 conversion operation
+    "cast_from_bf16" : { "result": "anyfloat",
+                         "arguments": ["anyint"],
+                         "attributes": "NoMem",
+                       },
+
 }

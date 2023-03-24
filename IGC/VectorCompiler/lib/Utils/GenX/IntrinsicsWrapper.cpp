@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -44,13 +44,17 @@ unsigned vc::getAnyIntrinsicID(const llvm::Value *V) {
   return getAnyIntrinsicID(Callee);
 }
 
+bool vc::isAnyNonTrivialIntrinsic(unsigned ID) {
+  return InternalIntrinsic::isInternalNonTrivialIntrinsic(ID) ||
+         GenXIntrinsic::isAnyNonTrivialIntrinsic(ID);
+}
+
 bool vc::isOverloadedRet(unsigned ID) {
   if (GenXIntrinsic::isGenXNonTrivialIntrinsic(ID))
     return GenXIntrinsic::isOverloadedRet(ID);
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(ID))
     return vc::InternalIntrinsic::isOverloadedRet(ID);
-  IGC_ASSERT_MESSAGE(false, "Not expected intrinsic ID");
-  return true;
+  return Intrinsic::isOverloaded(static_cast<Intrinsic::ID>(ID));
 }
 
 bool vc::isOverloadedArg(unsigned ID, unsigned ArgumentNum) {
@@ -58,8 +62,7 @@ bool vc::isOverloadedArg(unsigned ID, unsigned ArgumentNum) {
     return GenXIntrinsic::isOverloadedArg(ID, ArgumentNum);
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(ID))
     return vc::InternalIntrinsic::isOverloadedArg(ID, ArgumentNum);
-  IGC_ASSERT_MESSAGE(false, "Not expected intrinsic ID");
-  return true;
+  return Intrinsic::isOverloaded(static_cast<Intrinsic::ID>(ID));
 }
 
 Function *vc::getAnyDeclaration(Module *M, unsigned ID, ArrayRef<Type *> Tys) {

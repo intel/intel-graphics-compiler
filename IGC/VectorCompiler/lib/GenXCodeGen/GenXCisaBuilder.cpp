@@ -1699,10 +1699,8 @@ VISA_VectorOpnd *
 GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      Signedness *SignedRes, unsigned *Offset) {
-  bool IsBF = false;
-  if (auto IID = GenXIntrinsic::getGenXIntrinsicID(Dest);
-      IID == GenXIntrinsic::genx_bf_cvt)
-    IsBF = true;
+  auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(Dest);
+  bool IsBF = IID == vc::InternalIntrinsic::cast_to_bf16;
 
   LLVM_DEBUG(dbgs() << "createDest for value: "
                     << (IsBF ? " brain " : " non-brain ") << *Dest
@@ -1811,11 +1809,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSourceOperand(
     Instruction *Inst, Signedness Signed, unsigned OperandNum,
     genx::BaleInfo BI, unsigned Mod, Signedness *SignedRes, unsigned MaxWidth) {
   Value *V = Inst->getOperand(OperandNum);
-  bool IsBF = false;
-
-  if (auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
-      IID == GenXIntrinsic::genx_bf_cvt)
-    IsBF = true;
+  auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(Inst);
+  bool IsBF = IID == vc::InternalIntrinsic::cast_from_bf16;
 
   return createSource(V, Signed, BI.isOperandBaled(OperandNum), Mod, SignedRes,
                       MaxWidth, nullptr, IsBF);

@@ -832,41 +832,47 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
     ElementTy = VT->getElementType();
     NumElements = VT->getNumElements();
   }
-  if (IntegerType *IT = dyn_cast<IntegerType>(ElementTy)) {
-    BytesPerElement = IT->getBitWidth() / 8;
-    if (Signed == UNSIGNED) {
-      switch (BytesPerElement) {
-        case 1: VisaType = ISA_TYPE_UB; break;
-        case 2: VisaType = ISA_TYPE_UW; break;
-        case 4: VisaType = ISA_TYPE_UD; break;
-        default: VisaType = ISA_TYPE_UQ; break;
-      }
-    } else {
-      switch (BytesPerElement) {
-        case 1: VisaType = ISA_TYPE_B; break;
-        case 2: VisaType = ISA_TYPE_W; break;
-        case 4: VisaType = ISA_TYPE_D; break;
-        default: VisaType = ISA_TYPE_Q; break;
-      }
+
+  BytesPerElement = DL.getTypeSizeInBits(ElementTy) / ByteBits;
+
+  if (IsBF) {
+    IGC_ASSERT(BytesPerElement == WordBytes);
+    VisaType = ISA_TYPE_BF;
+  } else if (ElementTy->isIntegerTy()) {
+    switch (BytesPerElement) {
+    case 1:
+      VisaType = Signed == UNSIGNED ? ISA_TYPE_UB : ISA_TYPE_B;
+      break;
+    case 2:
+      VisaType = Signed == UNSIGNED ? ISA_TYPE_UW : ISA_TYPE_W;
+      break;
+    case 4:
+      VisaType = Signed == UNSIGNED ? ISA_TYPE_UD : ISA_TYPE_D;
+      break;
+    default:
+      VisaType = Signed == UNSIGNED ? ISA_TYPE_UQ : ISA_TYPE_Q;
+      break;
     }
   } else if (ElementTy->isHalfTy()) {
-    VisaType = IsBF ? ISA_TYPE_BF : ISA_TYPE_HF;
-    BytesPerElement = 2;
+    IGC_ASSERT(BytesPerElement == WordBytes);
+    VisaType = ISA_TYPE_HF;
   } else if (ElementTy->isFloatTy()) {
+    IGC_ASSERT(BytesPerElement == DWordBytes);
     VisaType = ISA_TYPE_F;
-    BytesPerElement = 4;
-  } else if (auto PT = dyn_cast<PointerType>(ElementTy)) {
-    BytesPerElement = DL.getPointerTypeSize(PT);
-    if (BytesPerElement == 4 || IGCLLVM::getNonOpaquePtrEltTy(PT)->isFunctionTy())
+  } else if (ElementTy->isDoubleTy()) {
+    IGC_ASSERT(BytesPerElement == QWordBytes);
+    VisaType = ISA_TYPE_DF;
+  } else if (auto *PtrTy = dyn_cast<PointerType>(ElementTy)) {
+    BytesPerElement = DL.getPointerTypeSize(PtrTy);
+    if (BytesPerElement == DWordBytes ||
+        IGCLLVM::getNonOpaquePtrEltTy(PtrTy)->isFunctionTy())
       VisaType = ISA_TYPE_UD;
-    else if (BytesPerElement == 8)
+    else if (BytesPerElement == QWordBytes)
       VisaType = ISA_TYPE_UQ;
     else
       report_fatal_error("unsupported pointer type size");
   } else {
-    IGC_ASSERT(ElementTy->isDoubleTy());
-    VisaType = ISA_TYPE_DF;
-    BytesPerElement = 8;
+    IGC_ASSERT_MESSAGE(0, "Unsupported vector element type");
   }
   if (NumElements > 16384 || NumElements * BytesPerElement > 16384 * 8)
     report_fatal_error("Variable too big");

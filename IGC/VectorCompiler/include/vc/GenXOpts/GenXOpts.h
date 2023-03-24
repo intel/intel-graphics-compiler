@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -81,6 +81,9 @@ void initializeGenXTrampolineInsertionPass(PassRegistry &);
 
 ModulePass *createGenXLinkageCorruptorPass();
 void initializeGenXLinkageCorruptorPass(PassRegistry &);
+
+FunctionPass *createGenXTranslateIntrinsicsPass();
+void initializeGenXTranslateIntrinsicsPass(PassRegistry &);
 
 } // End llvm namespace
 
