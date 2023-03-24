@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/General/BiF.h"
 
 #include "Probe/Assertion.h"
@@ -51,8 +52,13 @@ private:
   Value *visitCallInst(CallInst &CI);
   Value *visitInstruction(Instruction &) { return nullptr; }
 
+  CallInst *emitIntrinsic(IRBuilder<> &Builder, unsigned IID,
+                          ArrayRef<Type *> Types, ArrayRef<Value *> Args);
   CallInst *emitIntrinsic(IRBuilder<> &Builder, unsigned IID, Type *Ty,
-                          ArrayRef<Value *> Args);
+                          ArrayRef<Value *> Args) {
+    SmallVector<Type *, 1> Types = {Ty};
+    return emitIntrinsic(Builder, IID, Types, Args);
+  }
 
   Value *emitMathIntrinsic(IRBuilder<> &Builder, unsigned IID, Type *Ty,
                            ArrayRef<Value *> Args, bool AFN = false);
@@ -73,17 +79,10 @@ Value *SPIRVExpander::tryReplace(Instruction *I) {
 }
 
 CallInst *SPIRVExpander::emitIntrinsic(IRBuilder<> &Builder, unsigned IID,
-                                       Type *Ty, ArrayRef<Value *> Args) {
+                                       ArrayRef<Type *> Types,
+                                       ArrayRef<Value *> Args) {
   IGC_ASSERT_EXIT(M);
-  Function *IntrFunc = nullptr;
-
-  if (vc::InternalIntrinsic::isInternalIntrinsic(IID))
-    IntrFunc = vc::InternalIntrinsic::getInternalDeclaration(
-        M, static_cast<vc::InternalIntrinsic::ID>(IID), {Ty});
-  else
-    IntrFunc =
-        Intrinsic::getDeclaration(M, static_cast<Intrinsic::ID>(IID), {Ty});
-
+  Function *IntrFunc = vc::getAnyDeclaration(M, IID, Types);
   return Builder.CreateCall(IntrFunc, Args);
 }
 
@@ -118,6 +117,20 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
   if (CalleeName.contains("__spirv_GenericCastToPtrExplicit"))
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_to_ptr_explicit,
                          Ty, {CI.getArgOperand(0)});
+
+  // SPV_INTEL_bfloat16_conversion extension.
+  if (CalleeName.contains("__spirv_ConvertFToBF16INTEL")) {
+    auto *Arg = CI.getArgOperand(0);
+    auto *ArgTy = Arg->getType();
+    return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_to_bf16,
+                         {Ty, ArgTy}, {Arg});
+  }
+  if (CalleeName.contains("__spirv_ConvertBF16ToFINTEL")) {
+    auto *Arg = CI.getArgOperand(0);
+    auto *ArgTy = Arg->getType();
+    return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_from_bf16,
+                         {Ty, ArgTy}, {Arg});
+  }
 
   // Math builtins.
   if (!CalleeName.contains("__spirv_ocl_native_") &&
