@@ -49,6 +49,7 @@ namespace IGC
         VISIT_FUNCTION_IMPL(GetElementPtrInst)
         VISIT_FUNCTION_IMPL(LoadInst)
         VISIT_FUNCTION_IMPL(StoreInst)
+        VISIT_FUNCTION_IMPL(ICmpInst)
 
     private:
         bool changed;
