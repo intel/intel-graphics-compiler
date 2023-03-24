@@ -48,6 +48,7 @@ void initializeDetectCSWalkOrderPass(llvm::PassRegistry&);
 void initializeDeviceEnqueueFuncsAnalysisPass(llvm::PassRegistry&);
 void initializeDeviceEnqueueFuncsResolutionPass(llvm::PassRegistry&);
 void initializeDisableLoopUnrollOnRetryPass(llvm::PassRegistry&);
+void initializeDpasScanPass(llvm::PassRegistry&);
 void initializeDynamicTextureFoldingPass(llvm::PassRegistry&);
 void initializeEarlyOutPatternsPass(llvm::PassRegistry&);
 void initializeExtensionArgAnalysisPass(llvm::PassRegistry&);
