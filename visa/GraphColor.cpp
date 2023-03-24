@@ -10009,13 +10009,19 @@ int GlobalRA::coloringRegAlloc() {
           spillAnalysis->Do(&liveAnalysis, &coloring, &spillGRF);
         }
 
-        vISA_ASSERT(std::all_of(coloring.getSpilledLiveRanges().begin(),
-                                coloring.getSpilledLiveRanges().end(),
-                                [](const LiveRange *spilledLR) {
-                                  return spilledLR->getSpillCost() !=
-                                         MAXSPILLCOST;
-                                }),
-                    "Spilled inf spill cost range");
+        vISA_ASSERT(
+            std::all_of(coloring.getSpilledLiveRanges().begin(),
+                        coloring.getSpilledLiveRanges().end(),
+                        [&](const LiveRange *spilledLR) {
+                          // EOT spills even of infinite cost are specially
+                          // handled in spill insertion when using old fail safe
+                          // RA. So don't assert for such spills.
+                          if (isEOTSpill(builder, spilledLR, reserveSpillReg) &&
+                              !builder.getOption(vISA_NewFailSafeRA))
+                            return true;
+                          return spilledLR->getSpillCost() != MAXSPILLCOST;
+                        }),
+            "Spilled inf spill cost range");
 
         bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
         nextSpillOffset = spillGRF.getNextOffset();

@@ -4122,6 +4122,15 @@ void SpillManagerGRF::immMovSpillAnalysis() {
   }
 }
 
+bool vISA::isEOTSpill(const IR_Builder &builder, const LiveRange *lr,
+                bool isFailSafeIter) {
+  bool needsEOTGRF = lr->getEOTSrc() && builder.hasEOTGRFBinding();
+  if (isFailSafeIter && needsEOTGRF &&
+      (lr->getVar()->isRegVarTransient() || lr->getVar()->isRegVarTmp()))
+    return true;
+  return false;
+}
+
 // Insert spill/fill code for all registers that have not been assigned
 // physical registers in the current iteration of the graph coloring
 // allocator.
@@ -4136,9 +4145,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
     // Ignore request to spill/fill the spill/fill ranges
     // as it does not help the allocator.
     if (shouldSpillRegister(lr->getVar()) == false) {
-      bool needsEOTGRF = lr->getEOTSrc() && builder_->hasEOTGRFBinding();
-      if (failSafeSpill_ && needsEOTGRF &&
-          (lr->getVar()->isRegVarTransient() || lr->getVar()->isRegVarTmp())) {
+      if (isEOTSpill(*builder_, lr, failSafeSpill_)) {
         if (!builder_->getOption(vISA_NewFailSafeRA)) {
           lr->getVar()->setPhyReg(
               builder_->phyregpool.getGreg(
