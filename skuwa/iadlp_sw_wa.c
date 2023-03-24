@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "wa_def.h"
 #include "iadlp_rev_id.h"
 
+#define ADLP_PCH_A0_REV_ID 0
+
 
 void InitAdlpSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
@@ -23,17 +25,14 @@ void InitAdlpSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INI
 
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
-        "No Link Provided",
+        "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-
-
 }
 
 #ifdef __KCH
 void InitAdlpHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-
 
 }
 #endif

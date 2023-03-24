@@ -86,13 +86,13 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_BDW,
         WaNoA32ByteScatteredStatelessMessages,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
 
 
-    if (pSkuTable->FtrGT3)
+    if( pSkuTable->FtrGT3 )
     {
 
     }
@@ -101,7 +101,7 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_BDW,
         WaThreadSwitchAfterCall,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
@@ -119,24 +119,10 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_BDW,
         WaDisableIndirectDataForIndirectDispatch,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         platformForIndirectDispatch);
-
-
-    WA_ENABLE(
-        ulStepId_BDW,
-        WaLimitSizeOfSDEPolyFifo,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SIWA_UNTIL_BDW_A1);
-
-    if (pWaTable->WaLimitSizeOfSDEPolyFifo)
-    {
-
-    }
 
 
     if (pSkuTable->FtrGT3)
@@ -146,7 +132,7 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     }
 
 
-    if (pSkuTable->FtrGpGpuMidThreadLevelPreempt)
+    if( pSkuTable->FtrGpGpuMidThreadLevelPreempt )
     {
 
     }
@@ -155,21 +141,16 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_BDW,
         WaForceMinMaxGSThreadCount,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
 
 
-    if (pSkuTable->FtrGT3 || pSkuTable->FtrGT4) {
-
-    }
-
-
     WA_ENABLE(
         ulStepId_BDW,
         WaClearArfDependenciesBeforeEot,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
@@ -181,25 +162,16 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     }
 
 
-    if (pSkuTable->FtrIoMmuPageFaulting)
+    if( pSkuTable->FtrIoMmuPageFaulting )
     {
         WA_ENABLE(
             ulStepId_BDW,
             WADisableWriteCommitForPageFault,
-            "No Link Provided",
+            "No Link Provided" ,
             "No HWSightingLink provided",
             PLATFORM_ALL,
-            SIWA_FOREVER);
+            SIWA_FOREVER );
     }
-
-
-    WA_ENABLE_NO_PLATFORM_CHECK(
-        ulStepId_BDW,
-        WaPruneModeWithIncorrectHsyncOffset,
-        "No HWBugLink provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SIWA_FOREVER);
 
 
 }
@@ -210,7 +182,6 @@ void InitBdwHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSK
     unsigned int ulStepId_BDW;
 
     ulStepId_BDW = (1 << pWaParam->usRevId);
-
 
 }
 #endif
