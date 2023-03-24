@@ -15,9 +15,9 @@ SPDX-License-Identifier: MIT
 /// The pass:
 ///   1. The pass attached tag to an every local pointer for the
 /// local->generic conversions.
-///   2. Resolves loads/stores/masked.gather/masked.scatter/atomics from generic
-/// memory to loads/store/masked.gather/masked.scatter/atomics to a local/global
-/// memory using this tag.
+///   2. Resolves loads/stores/masked.gather/masked.scatter from generic memory
+/// to loads/store/masked.gather/masked.scatter to a local/global memory
+/// using this tag.
 ///   3. For loads/stores/masked.gather/masked.scatter which pointer can be
 /// resolved only into a pointer to a global memory cast generic ptrs to global
 /// ones.
@@ -68,19 +68,15 @@ public:
   }
   bool runOnFunction(Function &F) override;
 public:
-  void visitLoadInst(LoadInst &LdI) const;
-  void visitStoreInst(StoreInst &StI) const;
-  void visitAtomicCmpXchgInst(AtomicCmpXchgInst &) const;
-  void visitAtomicRMWInst(AtomicRMWInst &I) const;
   void visitAddrSpaceCastInst(AddrSpaceCastInst &CI) const;
   // visitCallInst is overridden since visitIntrinsicInst will not be
   // invoked for vc internal intrinsics.
   void visitCallInst(CallInst &CI) const;
   void visitIntrinsicInst(IntrinsicInst &Intrinsic) const;
-
+  void visitLoadInst(LoadInst &LdI) const;
+  void visitStoreInst(StoreInst &StI) const;
 private:
   void resolveOnLoadStore(Instruction &I, Value *PtrOp) const;
-  void resolveGenericPointer(Instruction &I, unsigned PtrOpNum) const;
   Value *lowerGenericCastToPtr(IntrinsicInst &Intrinsic) const;
 
   // Check if generic points to local/private.
@@ -173,24 +169,6 @@ static Value *writeHigh32BitsOfPtr(IGCLLVM::IRBuilder<> &IRB, Value *PtrOp,
   return IRB.CreateIntToPtr(TaggedIntVec, PtrOp->getType());
 }
 
-static Instruction *cloneInstWithNewAS(Instruction &I,
-                                       IGCLLVM::IRBuilder<> &IRB,
-                                       unsigned NewAS, unsigned PtrOpNum) {
-  auto *PtrOp = I.getOperand(PtrOpNum);
-  auto *NewPtrOp = createASCast(IRB, PtrOp, NewAS);
-  auto *NewInst = I.clone();
-  NewInst->setOperand(PtrOpNum, NewPtrOp);
-
-  if (I.hasName()) {
-    const auto &Name = I.getName();
-    if (NewAS == vc::AddrSpace::Local)
-      NewInst->setName(Name + ".local");
-    else
-      NewInst->setName(Name + ".global");
-  }
-  return NewInst;
-}
-
 static void createScatterWithNewAS(IntrinsicInst &OldScatter,
                                    IGCLLVM::IRBuilder<> &IRB, unsigned NewAS,
                                    Value *UpdateMask = nullptr) {
@@ -243,7 +221,7 @@ FunctionPass *llvm::createGenXGASDynamicResolutionPass() {
 }
 
 bool GenXGASDynamicResolution::runOnFunction(Function &F) {
-  const auto &M = *F.getParent();
+  auto &M = *F.getParent();
   // Cannot resolve 32bit pointers.
   if (M.getDataLayout().getPointerSizeInBits(vc::AddrSpace::Generic) != 64)
     return false;
@@ -276,20 +254,36 @@ bool GenXGASDynamicResolution::runOnFunction(Function &F) {
 }
 
 void GenXGASDynamicResolution::visitLoadInst(LoadInst &LdI) const {
-  resolveGenericPointer(LdI, 0);
+  auto PtrOp = LdI.getPointerOperand();
+  auto AS = vc::getAddrSpace(PtrOp->getType());
+  if(AS != vc::AddrSpace::Generic)
+    return;
+
+  if (!CanLocalBeGeneric) {
+    IGCLLVM::IRBuilder<> Builder{&LdI};
+    auto GlobalPtrOp = createASCast(Builder, PtrOp, vc::AddrSpace::Global);
+    auto NewInst = Builder.CreateAlignedLoad(GlobalPtrOp, IGCLLVM::getAlign(LdI),
+                                      LdI.isVolatile(), "globalOrPrivateLoad");
+    LdI.replaceAllUsesWith(NewInst);
+    LdI.eraseFromParent();
+  } else
+    resolveOnLoadStore(LdI, PtrOp);
 }
 
 void GenXGASDynamicResolution::visitStoreInst(StoreInst &StI) const {
-  resolveGenericPointer(StI, 1);
-}
+  auto PtrOp = StI.getPointerOperand();
+  auto AS = vc::getAddrSpace(PtrOp->getType());
+  if(AS != vc::AddrSpace::Generic)
+    return;
 
-void GenXGASDynamicResolution::visitAtomicCmpXchgInst(
-    AtomicCmpXchgInst &I) const {
-  resolveGenericPointer(I, 0);
-}
-
-void GenXGASDynamicResolution::visitAtomicRMWInst(AtomicRMWInst &I) const {
-  resolveGenericPointer(I, 0);
+  if (!CanLocalBeGeneric) {
+    IGCLLVM::IRBuilder<> Builder{&StI};
+    auto GlobalPtrOp = createASCast(Builder, PtrOp, vc::AddrSpace::Global);
+    Builder.CreateAlignedStore(StI.getValueOperand(), GlobalPtrOp,
+                               IGCLLVM::getAlign(StI), StI.isVolatile());
+    StI.eraseFromParent();
+  } else
+    resolveOnLoadStore(StI, PtrOp);
 }
 
 void GenXGASDynamicResolution::visitCallInst(CallInst &CI) const {
@@ -336,7 +330,7 @@ void GenXGASDynamicResolution::visitIntrinsicInst(IntrinsicInst &I) const {
       auto LocalMask = isLocal(Builder, PtrOp, I.getModule());
       auto GlobalMask = Builder.CreateNot(LocalMask);
       if (IntrinsicID == Intrinsic::masked_gather) {
-        const auto &Name = I.getName();
+        auto Name = I.getName();
         auto LocalGather = createGatherWithNewAS(
             I, Builder, vc::AddrSpace::Local, Name + ".local", LocalMask);
         auto GlobalGather = createGatherWithNewAS(
@@ -384,55 +378,49 @@ void GenXGASDynamicResolution::visitAddrSpaceCastInst(
   CI.eraseFromParent();
 }
 
-void GenXGASDynamicResolution::resolveGenericPointer(Instruction &I,
-                                                     unsigned PtrOpNum) const {
-  auto *PtrOp = I.getOperand(PtrOpNum);
-  auto AS = vc::getAddrSpace(PtrOp->getType());
-  if (AS != vc::AddrSpace::Generic)
-    return;
-
+// Resolve GAS in load/store by dynamic information(tag) which is attached to
+// the pointer.
+void GenXGASDynamicResolution::resolveOnLoadStore(Instruction &I,
+                                                  Value *PtrOp) const {
   IGCLLVM::IRBuilder<> Builder{&I};
-  if (!CanLocalBeGeneric) {
-    auto *NewInst =
-        cloneInstWithNewAS(I, Builder, vc::AddrSpace::Global, PtrOpNum);
-    NewInst->insertBefore(&I);
-    I.replaceAllUsesWith(NewInst);
-    I.eraseFromParent();
-    return;
-  }
-
-  auto *CurrentBB = I.getParent();
-  auto *ConvergeBB = CurrentBB->splitBasicBlock(&I);
-  Instruction *LocalInstRes = nullptr;
-  Instruction *GlobalInstRes = nullptr;
-
-  auto createBlock = [&](const Twine &BlockName, unsigned AS,
-                         Instruction *&Result) {
-    BasicBlock *BB = BasicBlock::Create(I.getContext(), BlockName,
-                                        ConvergeBB->getParent(), ConvergeBB);
+  auto CurrentBlock = I.getParent();
+  auto ConvergeBlock = CurrentBlock->splitBasicBlock(&I);
+  Value *LocalLoad = nullptr;
+  Value *GlobalLoad = nullptr;
+  auto createBlock = [&](const Twine &BlockName, const Twine &LoadName, int AS,
+                         Value *&Load) {
+    BasicBlock *BB = BasicBlock::Create(
+        I.getContext(), BlockName, ConvergeBlock->getParent(), ConvergeBlock);
     Builder.SetInsertPoint(BB);
-    Result = cloneInstWithNewAS(I, Builder, AS, PtrOpNum);
-    Builder.Insert(Result, Result->getName());
-    Builder.CreateBr(ConvergeBB);
+    auto NewPtrOp = createASCast(Builder, PtrOp, AS);
+    if (LoadInst *LI = dyn_cast<LoadInst>(&I))
+      Load = Builder.CreateAlignedLoad(NewPtrOp, IGCLLVM::getAlign(*LI),
+                                       LI->isVolatile(), LoadName);
+    else if (StoreInst *SI = dyn_cast<StoreInst>(&I))
+      Builder.CreateAlignedStore(I.getOperand(0), NewPtrOp,
+                                 IGCLLVM::getAlign(*SI), SI->isVolatile());
+    Builder.CreateBr(ConvergeBlock);
     return BB;
   };
-  BasicBlock *LocalBB =
-      createBlock("LocalBlock", vc::AddrSpace::Local, LocalInstRes);
-  BasicBlock *GlobalBB =
-      createBlock("GlobalBlock", vc::AddrSpace::Global, GlobalInstRes);
-  Builder.SetInsertPoint(CurrentBB->getTerminator());
+  // Local Branch.
+  BasicBlock *LocalBlock =
+      createBlock("LocalBlock", "localLoad", vc::AddrSpace::Local, LocalLoad);
+  // Global Branch.
+  BasicBlock *GlobalBlock = createBlock("GlobalBlock", "globalLoad",
+                                        vc::AddrSpace::Global, GlobalLoad);
+  Builder.SetInsertPoint(CurrentBlock->getTerminator());
 
   // Branch to global/local block based on tag.
-  auto *IsLocalTag = isLocal(Builder, PtrOp, I.getModule());
-  Builder.CreateCondBr(IsLocalTag, LocalBB, GlobalBB);
-  CurrentBB->getTerminator()->eraseFromParent();
+  auto IsLocalTag = isLocal(Builder, PtrOp, I.getModule());
+  Builder.CreateCondBr(IsLocalTag, LocalBlock, GlobalBlock);
+  CurrentBlock->getTerminator()->eraseFromParent();
 
-  // Update instruction users with phi if needed. E.g. for loads.
-  if (!I.user_empty()) {
-    IGCLLVM::IRBuilder<> PhiBuilder(&(*ConvergeBB->begin()));
+  // Update load uses.
+  if (isa<LoadInst>(&I)) {
+    IGCLLVM::IRBuilder<> PhiBuilder(&(*ConvergeBlock->begin()));
     PHINode *PHI = PhiBuilder.CreatePHI(I.getType(), 2, I.getName());
-    PHI->addIncoming(LocalInstRes, LocalBB);
-    PHI->addIncoming(GlobalInstRes, GlobalBB);
+    PHI->addIncoming(LocalLoad, LocalBlock);
+    PHI->addIncoming(GlobalLoad, GlobalBlock);
     PHI->takeName(&I);
     I.replaceAllUsesWith(PHI);
   }
