@@ -5686,6 +5686,7 @@ namespace IGC
     }
 
     void CEncoder::CreateFuncAttributeTable(VISAKernel* pMainKernel) {
+        ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
         SProgramOutput *pOutput = m_program->ProgramOutput();
         void *&buffer = pOutput->m_funcAttributeTable;
         unsigned &bufferSize = pOutput->m_funcAttributeTableSize;
@@ -5727,8 +5728,9 @@ namespace IGC
             uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
             // Set per-function barrier count from vISA information.
             uint32_t barrierCnt = jitInfo->numBarriers;
+            uint8_t hasRTCalls = (uint8_t)modMD->FuncMD[F].hasSyncRTCalls;
             attrs.emplace_back(entry.f_isKernel, isExternal, barrierCnt, entry.f_privateMemPerThread,
-                entry.f_spillMemPerThread, F->getName().str());
+                entry.f_spillMemPerThread, F->getName().str(), hasRTCalls);
             attribTable.push_back(entry);
         }
 

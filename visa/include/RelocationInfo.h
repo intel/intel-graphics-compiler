@@ -56,7 +56,7 @@ enum GenRelocType {
   R_PER_THREAD_PAYLOAD_OFFSET_32 =
       4,              // 32-bit field of payload offset of per-thread data
   R_GLOBAL_IMM_32 = 5, // 32-bit global immediate
-  R_SEND = 6 // send instruction offset, used for BTI patching 
+  R_SEND = 6 // send instruction offset, used for BTI patching
 };
 
 /// GenRelocEntry - An relocation table entry
@@ -127,14 +127,15 @@ struct ZEFuncAttribEntry {
   uint32_t f_spillMemPerThread;   // Spill mem used (in bytes) in scratch space
                                   // for this function
   std::string f_name;             // The function's name
+  uint8_t f_hasRTCalls;
 
   ZEFuncAttribEntry(uint8_t isKernel, uint8_t isExternal, uint32_t barrierCount,
                     uint32_t privateMemPerThread, uint32_t spillMemPerThread,
-                    std::string funcName)
+                    std::string funcName, uint8_t hasRTCalls)
       : f_isKernel(isKernel), f_isExternal(isExternal),
         f_BarrierCount(barrierCount),
         f_privateMemPerThread(privateMemPerThread),
-        f_spillMemPerThread(spillMemPerThread), f_name(funcName) {}
+        f_spillMemPerThread(spillMemPerThread), f_name(funcName), f_hasRTCalls(hasRTCalls) {}
 };
 
 /// ZEHostAccessEntry - A host access entry that will later be transformed to ZE

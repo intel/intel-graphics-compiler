@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -81,6 +81,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("work_group_walk_order_dimensions", info.work_group_walk_order_dimensions);
     io.mapRequired("eu_thread_count", info.eu_thread_count);
     io.mapOptional("has_sample", info.has_sample, false);
+    io.mapOptional("has_rtcalls", info.has_rtcalls, false);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {
