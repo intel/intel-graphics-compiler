@@ -204,6 +204,12 @@ namespace IGC
         /// @param the insert-element instruction
         void updateInsertElements(const llvm::InsertElementInst* inst);
 
+        /// @brief update the WI-dep for a insertValue chain to add affected
+        ///        instructions to m_pChangedNew. This is to make sure if
+        ///        one in the chain is RANDOM, all are RANDOM.
+        /// @param the insert-element instruction
+        void updateInsertValues(const llvm::InsertValueInst* Inst);
+
         /// @check phi divergence at a join-blk due to a divergent branch
         void updatePHIDepAtJoin(llvm::BasicBlock* blk, BranchInfo* brInfo);
 

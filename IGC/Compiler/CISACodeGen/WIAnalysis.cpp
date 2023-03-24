@@ -1087,6 +1087,10 @@ void WIAnalysisRunner::updateDepMap(const Instruction* inst, WIAnalysis::WIDepen
         {
             updateInsertElements((const InsertElementInst*)inst);
         }
+        else if (const InsertValueInst* IVI = dyn_cast<const InsertValueInst>(inst))
+        {
+            updateInsertValues(IVI);
+        }
     }
 }
 
@@ -1108,6 +1112,39 @@ void WIAnalysisRunner::updateInsertElements(const InsertElementInst* inst)
         m_depMap.SetAttribute(curInst, WIAnalysis::RANDOM);
         Value::user_iterator it = curInst->user_begin();
         Value::user_iterator e = curInst->user_end();
+        for (; it != e; ++it)
+        {
+            m_pChangedNew->push_back(*it);
+        }
+    }
+}
+
+/// If one of an insertvalue chain is random, turn all into random
+///   The change of insertvalue is like the following:
+///       st0 = insertvalue %INIT, %e0, 0
+///       st1 = insertvalue %st0,  %e1, 1
+///       st2 = insertvalue %st1,  %e2, 2
+///       st3 = insertvalue %st2,  %e3, 3
+///    here, {st0, st1, st2, st3} is one insertvalue chain, in which st0, st1
+///    and st2 are all single use, st3 is either not a single use or used
+///    in a non-insertvalue instruction.
+void WIAnalysisRunner::updateInsertValues(const InsertValueInst* Inst)
+{
+    /// find the first one in the sequence
+    const InsertValueInst* pI = Inst;
+    const InsertValueInst* aI = dyn_cast<const InsertValueInst>(pI->getOperand(0));
+    while (aI && aI->hasOneUse())
+    {
+        if (hasDependency(aI) && getDependency(aI) == WIAnalysis::RANDOM)
+            return;
+        pI = aI;
+        aI = dyn_cast<const InsertValueInst>(aI->getOperand(0));
+    }
+    if (pI != Inst)
+    {
+        m_depMap.SetAttribute(pI, WIAnalysis::RANDOM);
+        auto it = pI->user_begin();
+        auto e = pI->user_end();
         for (; it != e; ++it)
         {
             m_pChangedNew->push_back(*it);
