@@ -1609,3 +1609,19 @@ void *vISA::allocCodeBlock(size_t sz) {
   // function to perform allocation.
   return malloc(sz);
 }
+
+G4_Type getUnsignedType(unsigned short numByte) {
+  switch (numByte) {
+  case 1:
+    return Type_UB;
+  case 2:
+    return Type_UW;
+  case 4:
+    return Type_UD;
+  case 8:
+    return Type_UQ;
+  default:
+    vISA_ASSERT_UNREACHABLE("illegal type width");
+    return Type_UD;
+  }
+}

@@ -963,6 +963,13 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb) {
   src1 = inst->getSrc(1);
   src2 = inst->getSrc(2);
 
+  // lzd only supports UD datatype
+  if (inst->opcode() == G4_lzd && src0 && src0->isImm() &&
+      src0->getType() != Type_UD) {
+    uint32_t immVal = (uint32_t)src0->asImm()->getImm();
+    inst->setSrc(builder.createImm(immVal, Type_UD), 0);
+  }
+
   // check for non-mad 3src inst
 
   if (inst->opcode() == G4_madw) {
@@ -1601,57 +1608,75 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB *bb) {
 bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB *bb) {
 
   // rotate requires src0 and dst to have the same datatype precision
-  // It also does not support *B/*Q types, but that should be enforced at the
-  // vISA level returns true if new instruction is inserted
+  // It also does not support *B and *Q(for pre-pvc) types, but that should be
+  // enforced at the vISA level returns true if new instruction is inserted
   bool changed = false;
   G4_INST *inst = *i;
   if (inst->opcode() != G4_rol && inst->opcode() != G4_ror) {
     return false;
   }
+
   G4_DstRegRegion *dst = inst->getDst();
-  G4_SrcRegRegion *src = inst->getSrc(0)->asSrcRegRegion();
+  G4_SrcRegRegion *src0 = inst->getSrc(0)->asSrcRegRegion();
+  auto src1 = inst->getSrc(1);
+  auto dstTy = dst->getType();
+  auto src0Ty = src0->getType();
+  auto src1Ty = src1->getType();
 
-  vISA_ASSERT(IS_WTYPE(dst->getType()) || IS_DTYPE(dst->getType()) ||
-                   IS_QTYPE(dst->getType()),
-               "dst type must be *W or *D or *Q");
-  vISA_ASSERT(IS_WTYPE(src->getType()) || IS_DTYPE(src->getType()) ||
-                   IS_QTYPE(src->getType()),
-               "src type must be *W or *D or *Q");
+  vISA_ASSERT(IS_WTYPE(dstTy) || IS_DTYPE(dstTy) ||
+                  (IS_QTYPE(dstTy) && builder.getPlatform() >= Xe_PVC),
+              "dst type must be *W or *D or *Q(for PVC+)");
+  vISA_ASSERT(IS_WTYPE(src0Ty) || IS_DTYPE(src0Ty) ||
+                  (IS_QTYPE(src0Ty) && builder.getPlatform() >= Xe_PVC),
+              "src0 type must be *W or *D or *Q(for PVC+)");
+  vISA_ASSERT(IS_WTYPE(src1Ty) || IS_DTYPE(src1Ty) ||
+                  (IS_QTYPE(src1Ty) && builder.getPlatform() >= Xe_PVC),
+              "src1 type must be *W or *D or *Q(for PVC+)");
 
-  if (dst->getTypeSize() != src->getTypeSize()) {
+  if (dst->getTypeSize() != src0->getTypeSize()) {
     // Expect rotate has the same size for its src0 and its dst.
     // But visa could change the src0 to a different type
     // Use the larger of src0 and dst as rotation type and keep exec type same.
-    if (dst->getTypeSize() > src->getTypeSize()) {
+    if (dst->getTypeSize() > src0->getTypeSize()) {
       // use dst type as rotation type
       G4_Operand *newSrc = insertMovBefore(i, 0, dst->getType(), bb);
       inst->setSrc(newSrc, 0);
       vASSERT(newSrc->isSrcRegRegion());
-      src = newSrc->asSrcRegRegion();
+      src0 = newSrc->asSrcRegRegion();
     } else {
       // use src type as rotation type. (note: can this happen ?)
-      G4_DstRegRegion *newDst = insertMovAfter(i, dst, src->getType(), bb);
+      G4_DstRegRegion *newDst = insertMovAfter(i, dst, src0->getType(), bb);
       inst->setDest(newDst);
       dst = newDst;
     }
     // let it fall-thru
   }
 
-  if (dst->getType() == Type_W) {
-    dst->setType(builder, Type_UW);
-  } else if (dst->getType() == Type_D) {
-    dst->setType(builder, Type_UD);
-  } else if (builder.getPlatform() >= Xe_PVC && dst->getType() == Type_Q) {
-    dst->setType(builder, Type_UQ);
+  // dst must be UW/UD/UQ
+  dstTy = dst->getType();
+  if (IS_SIGNED_INT(dstTy))
+    dst->setType(builder, getUnsignedType(TypeSize(dstTy)));
+
+  // src0 must be UW/UD/UQ
+  src0Ty = src0->getType();
+  if (IS_SIGNED_INT(src0Ty))
+    src0->setType(builder, getUnsignedType(TypeSize(src0Ty)));
+
+  // src1 can only be UW/UD/UQ
+  if (IS_SIGNED_INT(src1Ty)) {
+    auto newSrc1Ty = getUnsignedType(TypeSize(src1Ty));
+    if (src1->isImm()) {
+      uint32_t immVal = (uint32_t)src1->asImm()->getImm();
+      // Can not encode imm64, so truncate to UD as rotate will takes the lower
+      // rotation count (5bits for UD).
+      inst->setSrc(
+          builder.createImm(immVal, newSrc1Ty == Type_UQ ? Type_UD : newSrc1Ty),
+          1);
+    } else {
+      src1->asSrcRegRegion()->setType(builder, newSrc1Ty);
+    }
   }
 
-  if (src->getType() == Type_W) {
-    src->setType(builder, Type_UW);
-  } else if (src->getType() == Type_D) {
-    src->setType(builder, Type_UD);
-  } else if (builder.getPlatform() >= Xe_PVC && src->getType() == Type_Q) {
-    src->setType(builder, Type_UQ);
-  }
   return changed;
 }
 
@@ -8497,22 +8522,6 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
     fixUnalignedRegions(std::next(it), bb);
   }
 
-  auto getUnsignedType = [](int numByte) {
-    switch (numByte) {
-    case 1:
-      return Type_UB;
-    case 2:
-      return Type_UW;
-    case 4:
-      return Type_UD;
-    case 8:
-      return Type_UQ;
-    default:
-      vISA_ASSERT_UNREACHABLE("illegal type width");
-      return Type_UD;
-    }
-  };
-
   // generate a move where each element is aligned to execTyWidth
   // e.g.,
   // mov (8) V1<1>:q V2<1;1,0>:ud
@@ -8531,7 +8540,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
     bool movNeedsFix = false;
     auto src = inst->getSrc(srcPos)->asSrcRegRegion();
     auto srcTy = src->getType();
-    auto tmpTy = getUnsignedType((int)TypeSize(srcTy));
+    auto tmpTy = getUnsignedType(TypeSize(srcTy));
     auto movSrcTy = tmpTy;
     auto newSrcTy = srcTy;
     if (stride == 8 ||
