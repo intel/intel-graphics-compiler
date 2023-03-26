@@ -102,15 +102,14 @@ public:
                      GlobalRA &gr)
       : kernel(k), liveness(l), graphColor(g), gra(gr), spill(s),
         iterNo(iterationNo), rpe(r) {
-    unsigned int numGRFs = k.getNumRegTotal();
-    auto scale = [=](unsigned threshold) -> unsigned {
-      float ratio = 1.0f - (128.0f - threshold) / 128.0f;
-      return static_cast<unsigned>(numGRFs * ratio);
-    };
-    fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
-    spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
-    highRegPressureForCleanup = scale(cHighRegPressureForCleanup);
-    highRegPressureForWindow = scale(cHighRegPressureForWindow);
+    fillWindowSizeThreshold =
+        kernel.getScaledGRFSize(cFillWindowThreshold128GRF);
+    spillWindowSizeThreshold =
+        kernel.getScaledGRFSize(cSpillWindowThreshold128GRF);
+    highRegPressureForCleanup =
+        kernel.getScaledGRFSize(cHighRegPressureForCleanup);
+    highRegPressureForWindow =
+        kernel.getScaledGRFSize(cHighRegPressureForWindow);
 
     auto &inputs = k.fg.builder->m_inputVect;
     for (const input_info_t *input_info : inputs) {

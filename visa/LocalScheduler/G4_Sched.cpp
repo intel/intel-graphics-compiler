@@ -522,22 +522,15 @@ static bool isSlicedSIMD32(G4_Kernel &kernel) {
 }
 
 static unsigned getRPReductionThreshold(G4_Kernel &kernel) {
-  unsigned NumGrfs = kernel.getNumRegTotal();
   unsigned RPThreshold =
       kernel.getOptions()->getuInt32Option(vISA_preRA_MinRegThreshold);
   if (RPThreshold == 0) {
     // For SIMD32 prior to PVC, use a higher threshold for rp reduction,
     // as it may not be beneficial.
-    RPThreshold = isSlicedSIMD32(kernel) ? PRESSURE_REDUCTION_THRESHOLD_SIMD32
-                                         : PRESSURE_REDUCTION_THRESHOLD;
+    RPThreshold = isSlicedSIMD32(kernel) ? kernel.getScaledGRFSize(PRESSURE_REDUCTION_THRESHOLD_SIMD32)
+                                         : kernel.getScaledGRFSize(PRESSURE_REDUCTION_THRESHOLD);
   }
-  return unsigned(RPThreshold * NumGrfs / 128);
-}
-
-// Register pressure threshold to move to a larger GRF mode
-static unsigned getRPThresholdHigh(unsigned NumGrfs) {
-  // For all other kernels, use the default threshold.
-  return unsigned(PRESSURE_HIGH_THRESHOLD * NumGrfs / 128);
+  return RPThreshold;
 }
 
 static unsigned getLatencyHidingThreshold(G4_Kernel &kernel, unsigned NumGrfs) {
@@ -667,9 +660,9 @@ bool preRA_RegSharing::run() {
   // If maximum register pressure is higher than default GRF mode,
   // assign the smallest number of threads to this kernel.
   if (!kernel.getOptions()->getuInt32Option(vISA_HWThreadNumberPerEU) &&
-      (KernelPressure > getRPThresholdHigh(kernel.getNumRegTotal() -
-                                           kernel.getOptions()->getuInt32Option(
-                                               vISA_ReservedGRFNum)))) {
+      (KernelPressure >
+       kernel.getScaledGRFSize(PRESSURE_HIGH_THRESHOLD) -
+           kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))) {
     // Update number of threads, GRF, Acc and SWSB
     kernel.updateKernelToLargerGRF();
   }

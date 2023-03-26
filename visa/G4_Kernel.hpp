@@ -460,6 +460,13 @@ public:
   void setNumRegTotal(unsigned num) { numRegTotal = num; }
   unsigned getNumRegTotal() const { return numRegTotal; }
 
+  // Scales GRF size based on 128GRF to current kernel's GRF mode
+  // e.g. if value=50, for GRF=128 it returns 50, for GRF=256 it returns 100
+  int getScaledGRFSize(int value) const {
+    float ratio = 1.0f - (128.0f - value) / 128.0f;
+    return static_cast<int>(numRegTotal * ratio);
+  }
+
 
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }

@@ -1624,11 +1624,13 @@ bool LocalRA::countLiveIntervals() {
     }
   }
 
-  if (globalRows <= NUM_PREGS_FOR_UNIQUE_ASSIGN) {
+  int scaledUniqueAssign = kernel.getScaledGRFSize(NUM_PREGS_FOR_UNIQUE_ASSIGN);
+
+  if (globalRows <= scaledUniqueAssign) {
     globalLRSize = globalRows;
   } else {
-    if (localRows < (numRegLRA - NUM_PREGS_FOR_UNIQUE_ASSIGN)) {
-      globalLRSize = NUM_PREGS_FOR_UNIQUE_ASSIGN;
+    if (localRows < (numRegLRA - scaledUniqueAssign)) {
+      globalLRSize = scaledUniqueAssign;
     } else {
       return false;
     }
