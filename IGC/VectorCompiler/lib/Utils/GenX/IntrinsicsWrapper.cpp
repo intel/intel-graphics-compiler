@@ -54,7 +54,7 @@ bool vc::isOverloadedRet(unsigned ID) {
     return GenXIntrinsic::isOverloadedRet(ID);
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(ID))
     return vc::InternalIntrinsic::isOverloadedRet(ID);
-  return Intrinsic::isOverloaded(static_cast<Intrinsic::ID>(ID));
+  return false;
 }
 
 bool vc::isOverloadedArg(unsigned ID, unsigned ArgumentNum) {
@@ -62,7 +62,7 @@ bool vc::isOverloadedArg(unsigned ID, unsigned ArgumentNum) {
     return GenXIntrinsic::isOverloadedArg(ID, ArgumentNum);
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(ID))
     return vc::InternalIntrinsic::isOverloadedArg(ID, ArgumentNum);
-  return Intrinsic::isOverloaded(static_cast<Intrinsic::ID>(ID));
+  return false;
 }
 
 Function *vc::getAnyDeclaration(Module *M, unsigned ID, ArrayRef<Type *> Tys) {
