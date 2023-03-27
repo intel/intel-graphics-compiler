@@ -465,7 +465,8 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
         GetElementPtrInst *BaseWithMinDiff = nullptr;
         for (/*EMPTY*/; EI != EE; ++EI) {
             // Skip if the result types do not match.
-            if (EI->GEP->getType() != GEP->getType())
+            if (EI->GEP->getType() != GEP->getType() ||
+                E->getType() != EI->Idx->getType())
                 continue;
             auto *Diff = SE->getMinusSCEV(E, EI->Idx);
             if (Diff->getExpressionSize() < 4 &&
