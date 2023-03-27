@@ -544,7 +544,7 @@ DECLARE_IGC_REGKEY(bool, EnableLTO,                     true,  "Enable link time
 DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug information for LTO", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.", true)
 DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables FunctionControl for a list of line-separated function names in 'FunctionDebug.txt' in the IGC output dir." \
-    "When set by this flag, the functions in the FunctionDebug list will override the default FunctionControl mode.", false)
+    "When set by this flag, the functions in the FunctionDebug list will override the default FunctionControl mode.", true)
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
 DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true, "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, true, "If enabled, stack calls that uses implicit args will be force inlined.", true)
@@ -681,7 +681,7 @@ DECLARE_IGC_REGKEY(bool, DisableFastRAWA, true, "Disable Fast RA for hanging iss
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
 DECLARE_IGC_REGKEY(DWORD, AllowStackCallRetry, 2, "Enable/Disable retry when stack function spill. 0 - Don't allow, 1 - Allow retry on kernel group, 2 - Allow retry per function", false)
-DECLARE_IGC_REGKEY(bool, PrintStackFuncSpillInfo, false, "Print stack functions spill and retry info", true)
+DECLARE_IGC_REGKEY(bool, PrintStackCallDebugInfo, false, "Print all debug info to command line related to stack call debugging", true)
 DECLARE_IGC_REGKEY(DWORD, StripDebugInfo, 0,
     "Strip debug info from llvm IR lowered from input to IGC ."\
     "Possible values: 0 - dont strip, 1 - strip all, 2 - strip non-line info",

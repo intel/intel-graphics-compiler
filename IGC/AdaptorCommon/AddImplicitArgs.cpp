@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISADebugEmitter.hpp"
 #include <map>
 #include <utility>
+#include <iostream>
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -539,7 +540,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
                 for (unsigned i = 0; i < IT.getPathLength(); i++)
                 {
                     Function* pFuncOnPath = IT.getPath(i)->getFunction();
-                    if (pFuncOnPath)
+                    if (pFuncOnPath && !isEntryFunc(m_pMdUtils, pFuncOnPath))
                     {
                         if (pFuncOnPath->hasFnAttribute("hasRecursion"))
                         {
@@ -552,6 +553,10 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
             }
         }
     }
+
+    if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+        std::cout << std::endl << "Force Inlined Functions via ForceInlineStackCallWithImplArg:" << std::endl;
+
     for (auto pF : PrunedFuncs)
     {
         // We can only remove the "visaStackCall" attribute if the function isn't called indirectly,
@@ -577,6 +582,10 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
         pF->removeFnAttr("visaStackCall");
         pF->removeFnAttr(llvm::Attribute::NoInline);
         pF->addFnAttr(llvm::Attribute::AlwaysInline);
+
+        if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+            std::cout << pF->getName().str() << std::endl;
+
         changed = true;
     }
     return changed;

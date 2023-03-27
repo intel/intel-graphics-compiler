@@ -6475,6 +6475,7 @@ namespace IGC
             float threshold = 0.0f;
             bool noRetryForStack = true;
             std::stringstream ss;
+            ss << endl << "Stack Function Spill Info:" << endl;
             ss << "KERNEL: " << m_program->entry->getName().str() << endl;
             if (m_program->m_spillCost > threshold || context->HasFuncExpensiveLoop(m_program->entry))
             {
@@ -6543,8 +6544,8 @@ namespace IGC
                     ss << "AllowStackCallRetry=1 (All functions in this kernel group will be retried with 2nd try states)" << endl << endl;
                 else if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2)
                     ss << "AllowStackCallRetry=2 (Only the spilled functions will be retried with 2nd try states)" << endl << endl;
-                if (IGC_IS_FLAG_ENABLED(PrintStackFuncSpillInfo))
-                    std::cout << ss.str();
+                if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+                    std::cout << ss.str() << endl;
             }
         }
 

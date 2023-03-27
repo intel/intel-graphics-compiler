@@ -690,6 +690,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         else
         {
             std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
+            if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+                std::cout << std::endl << "Functions with SelectiveFunctionControl=" << SelectFCtrl<< " read from " << IGC::Debug::GetFunctionDebugFile() << endl;
+
             if (inputFile.is_open())
             {
                 std::string line;
@@ -723,6 +726,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                             F->setLinkage(GlobalValue::ExternalLinkage);
                             SetNoInline(F);
                         }
+                        if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+                            std::cout << line << endl;
                     }
                 }
                 inputFile.close();

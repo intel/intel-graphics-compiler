@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISADebugEmitter.hpp"
 #include <numeric>
 #include <utility>
+#include <iostream>
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -173,12 +174,19 @@ void GenXCodeGenModule::processFunction(Function& F)
         !F.hasFnAttribute(llvm::Attribute::Builtin) &&
         m_FunctionCloningThreshold > 0 &&
         CallerFGs.size() > m_FunctionCloningThreshold &&
-        !hasUnsupportedCallsInFuncWithStackCalls(&F))
+        !hasUnsupportedCallsInFuncWithStackCalls(&F) &&
+        // Don't override the FunctionControl flags used for debugging
+        IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
+        IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == FLAG_FCALL_DEFAULT)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
         if (IFG)
         {
+            if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+            {
+                std::cout << "Don't Clone: " << F.getName().str() << std::endl;
+            }
             F.addFnAttr("referenced-indirectly");
             pCtx->m_enableFunctionPointer = true;
             FGA->addToFunctionGroup(&F, IFG, &F);
@@ -248,7 +256,9 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
     IGC_ASSERT(CallerFGs.size() >= 1);
 
     // To prevent cloning if it exceeds the threshold, make every function in the SCC an indirect call
-    if (m_FunctionCloningThreshold > 0 && CallerFGs.size() > m_FunctionCloningThreshold)
+    // TODO: No test cases for SCC, disable FunctionCloningThreshold for now
+    if (false &&
+        m_FunctionCloningThreshold > 0 && CallerFGs.size() > m_FunctionCloningThreshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto Mod = (*SCCNodes).front()->getFunction()->getParent();
