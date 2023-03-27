@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/ADT/Sequence.h>
+#include <llvm/ADT/STLExtras.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
@@ -443,18 +445,20 @@ static Type *getIntegerEquivalent(Type *matTy) {
 }
 
 template <class BuilderT>
-static Instruction *shrinkCastVector
-        (BuilderT *builder, IGCLLVM::FixedVectorType *rawMatTy, Instruction *instr) {
+static Instruction *shrinkExpandCastVector(BuilderT *builder,
+                                           IGCLLVM::FixedVectorType *rawMatTy, Value *origVal)
+{
+    SmallVector<IGCLLVM::ShuffleVectorMaskType, 8> mask;
+    llvm::copy(llvm::seq<IGCLLVM::ShuffleVectorMaskType>(
+                   0,
+                   (IGCLLVM::ShuffleVectorMaskType)rawMatTy->getNumElements()),
+               std::back_inserter(mask));
 
-    Value *slice = UndefValue::get(rawMatTy);
-    for (unsigned i = 0; i < rawMatTy->getNumElements(); i++) {
-        Value *value = builder->CreateExtractElement(instr, i);
-        if (value->getType() != rawMatTy->getElementType()) {
-          value = builder->CreateBitCast(value, rawMatTy->getElementType());
-        }
-        slice = builder->CreateInsertElement(slice, value, i);
-    }
-    return dyn_cast<Instruction>(slice);
+    Value *newMat = builder->CreateShuffleVector(origVal,
+                                                 UndefValue::get(origVal->getType()),
+                                                 mask, origVal->getName() + ".shuffle");
+    newMat = builder->CreateBitCast(newMat, rawMatTy, newMat->getName() + ".cast");
+    return cast<Instruction>(newMat);
 }
 
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
@@ -485,7 +489,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
         IGCLLVM::FixedVectorType *rawMatTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
         IGCLLVM::FixedVectorType *rawRetTy = dyn_cast<IGCLLVM::FixedVectorType>(retTy);
         if (rawMatTy != nullptr && rawMatTy->getNumElements() < rawRetTy->getNumElements()) {
-            newCall = shrinkCastVector(&builder, rawMatTy, newCall);
+            newCall = shrinkExpandCastVector(&builder, rawMatTy, newCall);
         } else {
             Value *bitcast = builder.CreateBitCast(newCall, matTy, "matrix.load.cast");
             newCall = dyn_cast<Instruction>(bitcast);
@@ -493,22 +497,6 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
         newCall->setDebugLoc(CI->getDebugLoc());
     }
     return newCall;
-}
-
-template <class BuilderT>
-static Instruction *
-expandVector(BuilderT *builder, IGCLLVM::FixedVectorType *rawArgTy,
-             IGCLLVM::FixedVectorType *rawMatTy, Value *origVal) {
-
-  Value *slice = UndefValue::get(rawMatTy);
-  for (unsigned i = 0; i < rawArgTy->getNumElements(); i++) {
-    Value *value = builder->CreateExtractElement(origVal, i);
-    if (value->getType() != rawMatTy->getElementType()) {
-      value = builder->CreateBitCast(value, rawMatTy->getElementType());
-    }
-    slice = builder->CreateInsertElement(slice, value, i);
-  }
-  return dyn_cast<Instruction>(slice);
 }
 
 Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
@@ -536,7 +524,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
 
       if (rawMatTy != nullptr &&
           rawArgTy->getNumElements() < rawMatTy->getNumElements()) {
-        matVal = expandVector(&builder, rawArgTy, rawMatTy, matVal);
+        matVal = shrinkExpandCastVector(&builder, rawMatTy, matVal);
       } else {
         matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy,
                                      "matrix.store.cast", CI);

@@ -21,9 +21,11 @@ namespace IGCLLVM
  #if LLVM_VERSION_MAJOR <= 10
      using FixedVectorType = llvm::VectorType;
      const uint32_t VectorTyID = llvm::Type::VectorTyID;
+     using ShuffleVectorMaskType = uint32_t;
  #else
      using FixedVectorType = llvm::FixedVectorType;
      const uint32_t VectorTyID = llvm::Type::FixedVectorTyID;
+     using ShuffleVectorMaskType = int;
  #endif
 
     inline uint32_t GetVectorTypeBitWidth(llvm::Type* pType)
