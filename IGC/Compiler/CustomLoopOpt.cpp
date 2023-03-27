@@ -665,7 +665,6 @@ void CustomLoopVersioning::addPhiNodes(
     }
 }
 
-
 // This pass is mostly forked from LoopSimplification pass
 class LoopCanonicalization : public llvm::FunctionPass
 {
@@ -901,6 +900,7 @@ bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree* DT, LoopInfo* 
             changed = true;
         }
     }
+
     return changed;
 }
 
@@ -1155,5 +1155,130 @@ namespace IGC
     LoopPass* createLoopHoistConstant()
     {
         return new LoopHoistConstant();
+    }
+}
+
+class DisableLICMForSpecificLoops : public llvm::LoopPass
+{
+public:
+    static char ID;
+
+    DisableLICMForSpecificLoops();
+
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+    {
+        AU.addPreservedID(LCSSAID);
+    }
+
+    bool runOnLoop(Loop* L, LPPassManager& LPM);
+    bool LoopHasLoadFromLocalAddressSpace(const Loop& L);
+    bool LoopDependsOnSIMDLaneId(const Loop& L);
+    bool AddLICMDisableMedatadaToSpecificLoop(Loop& L);
+
+    llvm::StringRef getPassName() const
+    {
+        return "IGC disable LICM for specific loops";
+    }
+};
+#undef PASS_FLAG
+#undef PASS_DESC
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG     "igc-disable-licm-for-specific-loops"
+#define PASS_DESC     "IGC disable LICM for specific loops"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(DisableLICMForSpecificLoops, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(DisableLICMForSpecificLoops, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+
+char DisableLICMForSpecificLoops::ID = 0;
+
+DisableLICMForSpecificLoops::DisableLICMForSpecificLoops() : LoopPass(ID)
+{
+    initializeDisableLICMForSpecificLoopsPass(*PassRegistry::getPassRegistry());
+}
+
+bool DisableLICMForSpecificLoops::runOnLoop(Loop* L, LPPassManager& LPM)
+{
+    bool Changed = false;
+
+    if (!L->getHeader() || !L->getLoopLatch())
+        return false;
+
+    // Disable LICM optimization by adding llvm.licm.disable when Loop depends on
+    // SIMD Lane Id and operates on local memory
+    if (LoopHasLoadFromLocalAddressSpace(*L)
+        && LoopDependsOnSIMDLaneId(*L))
+    {
+        Changed |= AddLICMDisableMedatadaToSpecificLoop(*L);
+    }
+
+    return Changed;
+}
+
+bool DisableLICMForSpecificLoops::LoopHasLoadFromLocalAddressSpace(const Loop& L)
+{
+    for (BasicBlock* BB : L.blocks())
+    {
+        for (Instruction& I : *BB)
+        {
+            if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+                if (LI->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) return true;
+        }
+    }
+    return false;
+}
+
+bool DisableLICMForSpecificLoops::LoopDependsOnSIMDLaneId(const Loop& L)
+{
+    auto ComeFromSIMDLaneID = [](Value* I)
+    {
+        Value* stripZExt = I;
+        if (auto* zext = dyn_cast<ZExtInst>(I))
+            stripZExt = zext->getOperand(0);
+        if (auto* intrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(stripZExt))
+            return intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_simdLaneId;
+
+        return false;
+    };
+
+    if (BasicBlock* LoopHeader = L.getHeader())
+    {
+        for (Instruction& I : *LoopHeader)
+        {
+            if (CmpInst* cmp = dyn_cast<CmpInst>(&I))
+            {
+                if (ComeFromSIMDLaneID(cmp->getOperand(0)) || ComeFromSIMDLaneID(cmp->getOperand(1)))
+                    return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool DisableLICMForSpecificLoops::AddLICMDisableMedatadaToSpecificLoop(Loop& L)
+{
+    LLVMContext& context = L.getHeader()->getContext();
+
+    MDNode* selfRef{};
+    MDNode* licm_disable = MDNode::get(context, MDString::get(context, "llvm.licm.disable"));
+    selfRef = MDNode::get(context, ArrayRef<Metadata*>({ selfRef, licm_disable }));
+    selfRef->replaceOperandWith(0, selfRef);
+
+    if (BasicBlock* LoopLatch = L.getLoopLatch())
+    {
+        LoopLatch->getTerminator()->setMetadata(LLVMContext::MD_loop, selfRef);
+        return true;
+    }
+    return false;
+}
+
+namespace IGC
+{
+    LoopPass* createDisableLICMForSpecificLoops()
+    {
+        return new DisableLICMForSpecificLoops();
     }
 }

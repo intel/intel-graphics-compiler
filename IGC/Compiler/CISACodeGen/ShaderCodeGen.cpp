@@ -427,6 +427,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     if (ctx.m_threadCombiningOptDone)
     {
         mpm.add(createLoopCanonicalization());
+        mpm.add(createDisableLICMForSpecificLoops());
         mpm.add(llvm::createLoopDeletionPass());
         mpm.add(llvm::createBreakCriticalEdgesPass());
         mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
