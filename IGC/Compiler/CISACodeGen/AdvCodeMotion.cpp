@@ -836,6 +836,8 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
         Instruction *I = &*BI++;
         if (isa<PHINode>(I))
             break;
+        if (isa<DbgInfoIntrinsic>(I))
+            continue;
         Instruction *Leader = ECs.getLeaderValue(I);
         auto MapIt = Leaders.find(Leader);
         if (MapIt == Leaders.end())
