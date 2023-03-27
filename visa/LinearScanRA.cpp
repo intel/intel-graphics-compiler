@@ -893,7 +893,6 @@ int LinearScanRA::linearScanRA() {
         !underSpillThreshold(GRFSpillFillCount, instNum)) {
       // update jit metadata information
       if (auto jitInfo = builder.getJitInfo()) {
-        jitInfo->isSpill = true;
         jitInfo->stats.spillMemUsed = 0;
         jitInfo->stats.numAsmCountUnweighted = instNum;
         jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
@@ -959,7 +958,7 @@ int LinearScanRA::linearScanRA() {
 
       // update jit metadata information for spill
       if (auto jitInfo = builder.getJitInfo()) {
-        jitInfo->isSpill = nextSpillOffset > 0;
+
         jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
 
         if (builder.kernel.fg.frameSizeInOWord != 0) {

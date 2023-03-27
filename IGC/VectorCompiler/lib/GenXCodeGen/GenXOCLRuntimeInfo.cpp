@@ -775,7 +775,6 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
     vISA::FINALIZER_INFO *FuncJitInfo = nullptr;
     CISA_CALL(VF->GetJitInfo(FuncJitInfo));
     IGC_ASSERT_MESSAGE(FuncJitInfo, "Func jit info is not set by finalizer");
-    JitInfo->isSpill |= FuncJitInfo->isSpill;
     JitInfo->hasStackcalls |= FuncJitInfo->hasStackcalls;
     JitInfo->stats.spillMemUsed += FuncJitInfo->stats.spillMemUsed;
   }

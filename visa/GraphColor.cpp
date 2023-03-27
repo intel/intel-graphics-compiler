@@ -9971,7 +9971,6 @@ int GlobalRA::coloringRegAlloc() {
         if (builder.getOption(vISA_AbortOnSpill) && !isUnderThreshold) {
           // update jit metadata information
           if (auto jitInfo = builder.getJitInfo()) {
-            jitInfo->isSpill = true;
             jitInfo->stats.spillMemUsed = 0;
             jitInfo->stats.numAsmCountUnweighted = instNum;
             jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
@@ -10221,7 +10220,6 @@ int GlobalRA::coloringRegAlloc() {
     //  frameSizeInOWord        -> ---------------------
 
     jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
-    jitInfo->isSpill = spillMemUsed > 0 || jitInfo->hasStackcalls;
 
     // Each function reports its required stack size.
     // We will summarize the final stack size of entire vISA module into
