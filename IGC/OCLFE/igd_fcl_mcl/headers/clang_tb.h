@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -174,6 +174,7 @@ namespace FCL {
   bool GetFCLShaderDumpPidDisable();
   bool GetFCLDumpToCurrentDir();
   bool GetFCLDumpToCustomDir();
+  bool GetFCLEnableKernelNamesBasedHash();
 } // namespace FCL
 
 // convenient macro to check FCL flags

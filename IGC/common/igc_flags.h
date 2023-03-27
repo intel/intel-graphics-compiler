@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -336,6 +336,7 @@ DECLARE_IGC_REGKEY(bool, PrintHexFloatInShaderDumpAsm,  true, "print floats in h
 DECLARE_IGC_REGKEY(debugString, PrintAfter,             0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR after the given pass is done (mimic llvm print-after)", true)
 DECLARE_IGC_REGKEY(debugString, PrintBefore,            0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR before the given pass is done (mimic llvm print-before)", true)
 DECLARE_IGC_REGKEY(bool, DumpUseShorterName,            true,  "If set, use an internal shader name(_entry_id) in dump file name", true)
+DECLARE_IGC_REGKEY(bool, EnableKernelNamesBasedHash,    false, "If set, use kernels' names to calculate the hash", false)
 DECLARE_IGC_REGKEY(bool, InterleaveSourceShader,        true, "Interleave the source shader in asm dump", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpPidDisable,          false, "disabled adding PID to the name of shader dump directory", true)
 DECLARE_IGC_REGKEY(bool, DumpToCurrentDir,              false, "dump shaders to the current directory", true)

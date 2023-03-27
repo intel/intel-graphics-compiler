@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -84,6 +84,7 @@ namespace FCL
     int32_t FCLDumpToCurrDir = 0;
     int32_t FCLDumpToCustomDir = 0;
     int32_t FCLShDumpPidDis = 0;
+    int32_t FCLEnableKernelNamesBasedHash = 0;
     int32_t FCLEnvKeysRead = 0;
     std::string RegKeysFlagsFromOptions = "";
 
@@ -194,7 +195,7 @@ namespace FCL
             FCLDumpToCurrDir    = getFCLIGCBinaryKey("DumpToCurrentDir") || (RegKeysFlagsFromOptions.find("DumpToCurrentDir=1") != std::string::npos);
             FCLDumpToCustomDir  = getFCLIGCBinaryKey("DumpToCustomDir") || (RegKeysFlagsFromOptions.find("DumpToCustomDir=") != std::string::npos);
             FCLShDumpPidDis        = getFCLIGCBinaryKey("ShaderDumpPidDisable") || (RegKeysFlagsFromOptions.find("ShaderDumpPidDisable=1") != std::string::npos);
-
+            FCLEnableKernelNamesBasedHash = getFCLIGCBinaryKey("EnableKernelNamesBasedHash") || (RegKeysFlagsFromOptions.find("EnableKernelNamesBasedHash=1") != std::string::npos);
             FCLEnvKeysRead = 1;
         }
     }
@@ -221,6 +222,12 @@ namespace FCL
     {
         FCLReadKeysFromEnv();
         return FCLDumpToCustomDir;
+    }
+
+    bool GetFCLEnableKernelNamesBasedHash()
+    {
+        FCLReadKeysFromEnv();
+        return FCLEnableKernelNamesBasedHash;
     }
 
     OutputFolderName  GetBaseIGCOutputFolder()
@@ -1803,6 +1810,16 @@ namespace TC
                 stringstream ss;
                 const char* pBuffer = pInputArgs->pInput;
                 UINT  bufferSize = pInputArgs->InputSize;
+
+                if (FCL_IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash))
+                    // The spirv parser cannot be used here - we would have to include it in the Makefile
+                    // which is simply not worth it. Without it there's no good and reliable way to get
+                    // the kernel names for the hash generation, so the warning is to be emitted instead.
+                {
+                    std::string errorString = pOutputArgs->pErrorString;
+                    errorString.append("warning: EnableKernelNamesBasedHash flag doesn't affect .cl dump's hash\n");
+                    SetErrorString(errorString.c_str(), pOutputArgs);
+                }
 
                 // Create hash based on cclang binary output (currently llvm binary; later also spirv).
                 // Hash computed in fcl needs to be same as the one computed in igc.

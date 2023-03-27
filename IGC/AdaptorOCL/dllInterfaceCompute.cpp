@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <stdexcept>
 #include <fstream>
 #include <mutex>
+#include <numeric>
 
 #include "AdaptorCommon/customApi.hpp"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
@@ -1660,8 +1661,30 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
-    ShaderHash inputShHash = ShaderHashOCL(reinterpret_cast<const UINT*>(pInputArgs->pInput),
-                                           pInputArgs->InputSize / 4);
+    ShaderHash inputShHash;
+    if (IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash))
+        // Create the hash based on kernel names.
+        // This takes the names and concatenates them into a string
+        // which is then used to calculate the hash
+    {
+        llvm::Expected<VLD::SPVMetadata> parsedInput = VLD::SpvSplitter().Parse(pInputArgs->pInput, pInputArgs->InputSize);
+        std::vector<std::string> &entryPoints = parsedInput->EntryPointNames;
+
+        std::string entryPointsString = std::accumulate(entryPoints.begin(), entryPoints.end(), std::string(""));
+
+        // 3 is the highest possible remainder of division by 4. Resizing the string by +3 ensures
+        // that all characters in the string are contained in the memory read by ShaderHashOCL().
+        // This is just easier to do than resizing the string to a length that's divisible by 4.
+        size_t entryPointsStringSize = entryPointsString.length() + 3;
+        entryPointsString.resize(entryPointsStringSize);
+
+        inputShHash = ShaderHashOCL(reinterpret_cast<const UINT*>(&entryPointsString[0]),
+                                               entryPointsStringSize / 4);
+    }
+    else
+        inputShHash = ShaderHashOCL(reinterpret_cast<const UINT*>(pInputArgs->pInput),
+                                               pInputArgs->InputSize / 4);
+
 
     // set g_CurrentShaderHash in igc_regkeys.cpp
     SetCurrentDebugHash(inputShHash);

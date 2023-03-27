@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -55,6 +55,8 @@ public:
   const std::vector<std::string>& GetExportedFunctions() const;
 
   const std::vector<std::string>& GetImportedFunctions() const;
+
+  const std::vector<std::string>& GetEntryPointNames() const;
 
   SPVMetadata GetVLDMetadata() const;
 
@@ -124,6 +126,7 @@ private:
   std::unordered_map<uint32_t, uint32_t> entry_point_to_subgroup_size_map_;
   std::vector<std::string> exported_functions_;
   std::vector<std::string> imported_functions_;
+  std::vector<std::string> entry_point_names_;
 
   bool is_inside_spmd_function_ = false;
   bool is_inside_esimd_function_ = false;

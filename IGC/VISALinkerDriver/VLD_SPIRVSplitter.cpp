@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -171,6 +171,7 @@ SPVMetadata SpvSplitter::GetVLDMetadata() const {
   Metadata.ForcedSubgroupSize = GetForcedSubgroupSize();
   Metadata.ExportedFunctions = GetExportedFunctions();
   Metadata.ImportedFunctions = GetImportedFunctions();
+  Metadata.EntryPointNames = GetEntryPointNames();
   return Metadata;
 }
 
@@ -191,6 +192,10 @@ const std::vector<std::string>& SpvSplitter::GetImportedFunctions() const {
   return imported_functions_;
 }
 
+const std::vector<std::string>& SpvSplitter::GetEntryPointNames() const {
+  return entry_point_names_;
+}
+
 void SpvSplitter::Reset() {
   spmd_program_.clear();
   esimd_program_.clear();
@@ -201,6 +206,7 @@ void SpvSplitter::Reset() {
   entry_point_to_subgroup_size_map_.clear();
   exported_functions_.clear();
   imported_functions_.clear();
+  entry_point_names_.clear();
 
   is_inside_spmd_function_ = false;
   is_inside_esimd_function_ = false;
@@ -418,6 +424,8 @@ spv_result_t SpvSplitter::HandleEntryPoint(
   uint32_t id =
       parsed_instruction->words[parsed_instruction->operands[1].offset];
   entry_points_.insert(id);
+  auto funcName = spvDecodeLiteralStringOperand(*parsed_instruction, 2);
+  entry_point_names_.push_back(funcName);
   AddInstToProgram(parsed_instruction, spmd_program_);
   AddInstToProgram(parsed_instruction, esimd_program_);
 
