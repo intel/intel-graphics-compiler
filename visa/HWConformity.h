@@ -175,7 +175,6 @@ class HWConformity {
 
   bool isFloatOr64b(G4_INST *inst);
   uint16_t getSrcStride(G4_SrcRegRegion *src);
-  void change64bStride2CopyToUD(INST_LIST_ITER it, G4_BB *bb);
   bool fixBFMove(INST_LIST_ITER i, G4_BB *bb);
   void fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb);
   bool fixFcvt(INST_LIST_ITER i, G4_BB *bb);

@@ -2965,8 +2965,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
 
   if (src0->isSrcRegRegion()) {
     auto src0RR = src0->asSrcRegRegion();
-    vISA_ASSERT(IS_INT(src0RR->getType()) && IS_INT(dst->getType()),
-                 "expecting int types on src, dst");
     vISA_ASSERT(src0RR->getModifier() == Mod_src_undef,
                  "cannot handle saturation");
 
@@ -8099,46 +8097,6 @@ uint16_t HWConformity::getSrcStride(G4_SrcRegRegion *src) {
   return srcStride;
 };
 
-void HWConformity::change64bStride2CopyToUD(INST_LIST_ITER it, G4_BB *bb) {
-  G4_INST *inst = *it;
-  G4_Operand *src = inst->getSrc(0);
-  vISA_ASSERT(src != nullptr && src->isSrcRegRegion(),
-               "source must be a SrcRegRegion");
-  G4_SrcRegRegion *origSrc = src->asSrcRegRegion();
-  G4_Type execType = inst->getDst()->getType();
-  uint16_t stride = inst->getDst()->getHorzStride();
-  short dstRegOff = inst->getDst()->getRegOff();
-  short dstSubRegOff = inst->getDst()->getSubRegOff();
-
-  vISA_ASSERT(execType == Type_Q || execType == Type_DF,
-         "Only 64b data type support");
-  execType = Type_UD;
-  dstSubRegOff *= 2;
-
-  G4_DstRegRegion *newDst =
-      builder.createDst(inst->getDst()->getBase(), dstRegOff, dstSubRegOff + 1,
-                        stride * 2, execType);
-  G4_SrcRegRegion *newSrc = builder.createSrcRegRegion(
-      origSrc->getModifier(), Direct, origSrc->getBase(), origSrc->getRegOff(),
-      origSrc->getSubRegOff() * 2 + 1, builder.createRegionDesc(2, 1, 0),
-      Type_UD);
-  inst->setSrc(newSrc, 0);
-  inst->setDest(newDst);
-
-  G4_DstRegRegion *newDst1 = builder.createDst(
-      inst->getDst()->getBase(), dstRegOff, dstSubRegOff, stride * 2, execType);
-  G4_SrcRegRegion *newSrc1 = builder.createSrcRegRegion(
-      origSrc->getModifier(), Direct, origSrc->getBase(), origSrc->getRegOff(),
-      origSrc->getSubRegOff() * 2, builder.createRegionDesc(2, 1, 0), Type_UD);
-
-  G4_INST *movInst = builder.createMov(inst->getExecSize(), newDst1, newSrc1,
-                                       inst->getOption(), false);
-
-  INST_LIST_ITER iter = it;
-  iter++;
-  bb->insertBefore(it, movInst);
-}
-
 // on XeHP_SDV we have to make sure each source element is alignd to each dst
 // element for all float/64b inst (packed HF is ok in mixed mode inst) For all
 // violating instructions, we align each operand to the execution type for float
@@ -8230,15 +8188,25 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
           // for packed 64b copy moves that are not under divergent CF, we can
           // change its type to UD
           change64bCopyToUD(inst, srcStride / inst->getSrc(0)->getTypeSize());
-        } else if (isNoMaskInst && inst->getDst()->getHorzStride() == 2 &&
-                   execTyWidth == 8 &&
-                   src0RR->getRegion()->isContiguous(inst->getExecSize())) {
-          change64bStride2CopyToUD(it, bb);
-        } else if (execTyWidth == 8 && IS_TYPE_INT(dstTy) &&
-                   IS_TYPE_INT(src0RR->getType()) && srcStride != 0 &&
-                   !src0RR->isIndirect()) {
-          // we can split 64b moves with single source stride into 2UD moves
-          // ToDo: check if this subsumes the previous else if
+        } else if (srcStride != 0 &&
+                   !(src0RR->isIndirect() && dst->isIndirect())) {
+          // If both dst and src0 are indirect, do not split 64b moves into 2 UD
+          // moves as it may cause "infinite spill" assertion in RA for the case
+          // that indirect pointing variable's size is too large:
+          // .decl V0699 v_type=G type=q num_elts=512 align=wordx32
+          // .decl V0700 v_type=G type=q num_elts=512 align=wordx32
+          // addr_add (M1_NM, 1) A2(0)<1> &V0699 V0705(0,0)<0;1,0>
+          // addr_add (M1_NM, 1) A3(0)<1> &V0700 V0706(0,0)<0;1,0>
+          // mov (M1, 16) r[A3(0),0]<1>:q r[A2(0),0]<1;1,0>:q
+          // =>
+          // mov (M1, 16) r[A3(0),0]<2>:ud r[A2(0),0]<2;1,0>:ud
+          // mov (M1, 16) r[A3(0),4]<2>:ud r[A2(0),4]<2;1,0>:ud
+          // If the kernel is spilled, above code will have live range overlap
+          // between r[A3(0,0), 0] and r[A2(0,0), 0]. V0699 and V0700 are both
+          // 64 GRFs size, the live overlap will make them both spilled. Since
+          // the size of them are so large, it will cause infinite spill.
+
+          // we can split 64b moves with single source stride into 2 UD moves
           emulate64bMov(it, bb);
         } else {
           // a move we don't know how to handle without inserting more moves
@@ -8512,10 +8480,9 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
       // the move may need more fixing
       fixUnalignedRegions(std::next(it), bb);
     }
-  } else if (dst->getRegAccess() == IndirGRF && dst->getType() == Type_F) {
+  } else if (dst->getRegAccess() == IndirGRF) {
     // Since we can't know if an indirect dst is aligned or not,
     // The proper fix is to insert a move then change its type to int.
-    // FIXME: not sure how to handle fp64 yet
     inst->setDest(
         insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign()));
     // the move may need more fixing
