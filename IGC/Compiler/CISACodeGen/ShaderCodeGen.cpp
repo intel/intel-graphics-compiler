@@ -1122,20 +1122,12 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
     }
 
-    if (!pContext->m_hasStackCalls)
+    // Insert per-func optimization metadata
+    for (auto& F : *pContext->getModule())
     {
-        // Insert module-level optimizations to be disabled
-        IGC::InsertOptsMetadata(pContext);
-    }
-    else
-    {
-        // Insert per-func optimization metadata when stackcalls are enabled
-        for (auto& F : *pContext->getModule())
+        if (!F.empty())
         {
-            if (!F.empty())
-            {
-                IGC::InsertOptsMetadata(pContext, &F);
-            }
+            IGC::InsertOptsMetadata(pContext, &F);
         }
     }
 
