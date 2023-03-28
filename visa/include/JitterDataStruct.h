@@ -171,7 +171,8 @@ struct FINALIZER_INFO {
   uint32_t freeGRFInfoSize = 0;
   unsigned char numBytesScratchGtpin = 0;
 
-  // Used by VC for setting execution environment in output
+  // Used by compiler output (zebin) for setting up "implicit_arg_buffer".
+  // When set to true, runtime will allocate space for implicit_arg_buffer
   bool hasStackcalls = false;
 
   // load-thread-payload prologs offset required by runtime
