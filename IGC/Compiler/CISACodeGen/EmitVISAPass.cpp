@@ -12959,6 +12959,10 @@ void EmitPass::emitScalarAtomics(
             m_encoder->Push();
         }
     }
+    else if ((op == EOPCODE_AND || op == EOPCODE_OR) && pSrc->IsUniform())
+    {
+        pFinalAtomicSrcVal = ReAlignUniformVariable(pSrc, EALIGN_GRF);
+    }
     else
     {
         // general case
