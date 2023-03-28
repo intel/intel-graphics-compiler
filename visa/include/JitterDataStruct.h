@@ -144,6 +144,8 @@ public:
 
 struct FINALIZER_INFO {
   // ----- Required by IGC/VC/Runtime ----- //
+  // Used by IGC for spill cost calculation
+  bool isSpill = false;
 
   // Debug info is callee allocated and populated only if switch is passed
   // to JIT to emit debug info.
