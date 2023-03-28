@@ -261,6 +261,7 @@ DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowingToScalar, false, "Enable na
 DECLARE_IGC_REGKEY(bool, EnableOptReportLoadNarrowing, false, "Generate opt report for narrowing of vector loads.", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
+DECLARE_IGC_REGKEY(bool, EnableDebugging,                           false, " Enable shader debugging for release internal", false)
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
 DECLARE_IGC_REGKEY(bool, EnableHashMovsAtPrologue,      false, "Rather than after EOT, insert hash code movs at shader entry", false)
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Add hash code to the binary", false)

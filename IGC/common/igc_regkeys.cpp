@@ -1107,10 +1107,15 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError, registryKeyPath);
         }
 #endif
-        //DumpIGCRegistryKeyDefinitions();
-        LoadDebugFlagsFromFile();
-        LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
-        LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
+#if defined(_INTERNAL)
+        if (IGC_IS_FLAG_DISABLED(EnableDebugging))
+#endif
+        {
+            //DumpIGCRegistryKeyDefinitions();
+            LoadDebugFlagsFromFile();
+            LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
+            LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
+        }
 
         if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
         {
