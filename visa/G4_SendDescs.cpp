@@ -484,61 +484,6 @@ uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
   return 0;
 }
 
-// Addr size type
-std::string vISA::ToSymbol(AddrSizeType a) {
-  switch (a) {
-  case AddrSizeType::FLAT_A64_A32:
-    return "flat_a64_a32";
-  case AddrSizeType::FLAT_A64_A64:
-    return "flat_a64_a64";
-  case AddrSizeType::STATEFUL_A32:
-    return "stateful_a32";
-  case AddrSizeType::FLAT_A32_A32:
-    return "flat_a32_a32";
-  case AddrSizeType::GLOBAL_A32_A32:
-    return "global_a32_a32";
-  case AddrSizeType::LOCAL_A32_A32:
-    return "local_a32_a32";
-  default:
-    return "?";
-  }
-}
-
-AddrSizeType vISA::ConvertLSCAddrSizeType(LSC_ADDR_SIZE size,
-                                          LSC_ADDR_TYPE type) {
-  switch (type) {
-  case LSC_ADDR_TYPE_FLAT:
-    if (size == LSC_ADDR_SIZE_32b)
-      return AddrSizeType::FLAT_A64_A32;
-    else if (size == LSC_ADDR_SIZE_64b)
-      return AddrSizeType::FLAT_A64_A64;
-    vISA_ASSERT_UNREACHABLE("incorrect address size for flat/stateless");
-    break;
-  case LSC_ADDR_TYPE_BSS:
-  case LSC_ADDR_TYPE_SS:
-    return AddrSizeType::STATEFUL_A32;
-  default:
-    return AddrSizeType::INVALID;
-  }
-  return AddrSizeType::INVALID;
-}
-
-uint32_t vISA::GetAddrSizeTypeEncoding(AddrSizeType a) {
-  switch (a) {
-  case AddrSizeType::FLAT_A32_A32:
-  case AddrSizeType::GLOBAL_A32_A32:
-  case AddrSizeType::FLAT_A64_A32:
-    return 0;
-  case AddrSizeType::LOCAL_A32_A32:
-  case AddrSizeType::FLAT_A64_A64:
-    return 1;
-  case AddrSizeType::STATEFUL_A32:
-    return 2;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid address size type");
-  }
-  return 0;
-}
 
 // caching
 std::string vISA::ToSymbol(Caching c) {

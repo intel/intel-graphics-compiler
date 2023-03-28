@@ -3777,7 +3777,7 @@ struct LscInstVerifier {
       break;
     case LSC_ADDR_SIZE_64b:
       if (sfid == LSC_TGM || sfid == LSC_SLM)
-        error(".tgm not allowed on :a64 (LSC_ADDR_SIZE_64b)");
+        error(".tgm not allowed with :a64 (LSC_ADDR_SIZE_64b)");
       if (subOp == LSC_LOAD_BLOCK2D || subOp == LSC_STORE_BLOCK2D)
         error("block2d does not allow 64b address types");
       break;

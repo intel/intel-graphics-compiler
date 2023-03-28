@@ -943,14 +943,16 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return VTYPE;
     }
 
-:a(64|32|16) {
+:a(64|32|32s|32u|16) {
         TRACE("** LSC_ADDR_SIZE_TK");
+
         if (yytext[2]  == '6')
-            CISAlval.lsc_addr_size = LSC_ADDR_SIZE_64b;
-        else if (yytext[2]  == '3')
-            CISAlval.lsc_addr_size = LSC_ADDR_SIZE_32b;
+          CISAlval.lsc_addr_size = LSC_ADDR_SIZE_64b;
+        else if (yytext[2]  == '3') {
+          CISAlval.lsc_addr_size = LSC_ADDR_SIZE_32b;
+        }
         else
-            CISAlval.lsc_addr_size = LSC_ADDR_SIZE_16b;
+          CISAlval.lsc_addr_size = LSC_ADDR_SIZE_16b;
         return LSC_ADDR_SIZE_TK;
     }
 

@@ -158,20 +158,6 @@ enum DataChMask { INVALID = 0, X = 1 << 0, Y = 1 << 1, Z = 1 << 2, W = 1 << 3 };
 
 size_t GetNumVecElemsQuad(int chMask);
 
-// address size type
-enum class AddrSizeType {
-  INVALID = 0,
-  FLAT_A64_A32,
-  FLAT_A64_A64,
-  STATEFUL_A32,
-  FLAT_A32_A32,
-  GLOBAL_A32_A32,
-  LOCAL_A32_A32,
-};
-
-std::string ToSymbol(AddrSizeType a);
-AddrSizeType ConvertLSCAddrSizeType(LSC_ADDR_SIZE size, LSC_ADDR_TYPE type);
-uint32_t GetAddrSizeTypeEncoding(AddrSizeType a);
 
 // Cache controls
 // only certain combinations are legal

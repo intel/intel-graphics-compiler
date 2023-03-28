@@ -710,10 +710,13 @@ static const unsigned LSC_BLOCK2D_ADDR_PARAMS = 6;
 
 enum LSC_ADDR_SIZE {
   LSC_ADDR_SIZE_INVALID,
-  LSC_ADDR_SIZE_16b, // [ADDR]:a16
-  LSC_ADDR_SIZE_32b, // [ADDR]:a32
-  LSC_ADDR_SIZE_64b, // [ADDR]:a64
+  LSC_ADDR_SIZE_16b,  // [ADDR]:a16
+  LSC_ADDR_SIZE_32b,  // [ADDR]:a32
+  LSC_ADDR_SIZE_64b,  // [ADDR]:a64
 };
+static_assert(LSC_ADDR_SIZE_64b == 3,
+              "vISA binary encoding depends on enum ordinal value");
+
 enum LSC_ADDR_TYPE {
   LSC_ADDR_TYPE_INVALID,
   LSC_ADDR_TYPE_FLAT, // aka "stateless"
