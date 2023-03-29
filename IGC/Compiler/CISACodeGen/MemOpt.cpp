@@ -118,6 +118,9 @@ namespace {
         bool removeRedBlockRead(GenIntrinsicInst* LeadingLoad, MemRefListTy::iterator MI,
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt, unsigned& SimdSize);
 
+        Optional<unsigned> chainedSelectAndPhis(Instruction* Inst, unsigned depth,
+            llvm::DenseMap<Instruction*, unsigned> &depthTracking);
+
         void removeVectorBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
             Value* SgId, llvm::IRBuilder<>& Builder, unsigned& sg_size);
         void removeScalarBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
@@ -923,6 +926,46 @@ Value* MemOpt::getShuffle(Value* ShflId,
     return shuffle;
 }
 
+
+// The following function "chainedSelectAndPhis" is designed to avoid going into SCEV in special circumstances
+// when the shader has a large set of chained phi nodes and selects. One of the downsides of SCEV is it is a
+// recursive approach and can cause a stack overflow when tracing back instructions.
+Optional<unsigned> MemOpt::chainedSelectAndPhis(Instruction* Inst , unsigned depth,
+    llvm::DenseMap<Instruction*, unsigned> &depthTracking)
+{
+    //Max depth set to 300
+    if (depth >= 300)
+    {
+        return None;
+    }
+
+    if (auto I = depthTracking.find(Inst); I != depthTracking.end())
+    {
+        if ((depth + I->second) >= 300)
+            return None;
+
+        return I->second;
+    }
+
+    unsigned MaxRemDepth = 0;
+    for (auto& operand : Inst->operands())
+    {
+        if (auto* op_inst = dyn_cast<Instruction>(operand))
+        {
+            if (isa<PHINode>(op_inst) || isa<SelectInst>(op_inst))
+            {
+                Optional<unsigned> RemDepth = chainedSelectAndPhis(op_inst, depth + 1, depthTracking);
+                if (!RemDepth)
+                    return None;
+                MaxRemDepth = std::max(MaxRemDepth, *RemDepth + 1);
+            }
+        }
+    }
+
+    depthTracking[Inst] = MaxRemDepth;
+    return MaxRemDepth;
+}
+
 bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     MemRefListTy::iterator aMI, MemRefListTy& MemRefs,
     TrivialMemRefListTy& ToOpt)
@@ -978,48 +1021,14 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (NumElts > profitVec[0])
         return false;
 
-    // The following function "chainedSelectAndPhis" is designed to avoid going into SCEV in special circumstances
-    // when the shader has a large set of chained phi nodes and selects. One of the downsides of SCEV is it is a
-    // recursive approach and can cause a stack overflow when tracing back instructions.
-    bool chainTooLarge = false;
-    unsigned depth = 0;
-    // Reducing the recursion tree via a map
-    llvm::DenseMap<Instruction*, unsigned> depthTracking;
-    std::function<unsigned(Instruction*, unsigned)> chainedSelectAndPhis = [&](Instruction* Inst, unsigned depth)
+    if (auto* Ptr = dyn_cast<Instruction>(LeadingLoad->getPointerOperand()))
     {
-        if (depthTracking.count(Inst) > 0)
+        llvm::DenseMap<Instruction*, unsigned> depthTracking;
+        if (!chainedSelectAndPhis(Ptr, 0, depthTracking))
         {
-            depth += depthTracking.find(Inst)->second;
-            return depth;
+            return false;
         }
-        for (auto& operand : Inst->operands())
-        {
-            if (chainTooLarge)
-                return depth;
-            if (auto op_inst = dyn_cast<Instruction>(operand))
-            {
-                if (depth >= 300) //I have hit 300 chained Phi/Select instructions time to bail
-                {
-                    chainTooLarge = true;
-                    return depth;
-                }
-                else if (isa<PHINode>(op_inst) || isa<SelectInst>(op_inst))
-                {
-                    depth = chainedSelectAndPhis(op_inst, depth+1);
-                }
-            }
-        }
-        depthTracking.insert({ Inst,depth });
-        return depth;
-    };
-
-    if (isa<Instruction>(LeadingLoad->getPointerOperand()))
-    {
-        depth = chainedSelectAndPhis(cast<Instruction>(LeadingLoad->getPointerOperand()), 0);
     }
-
-    if (chainTooLarge && depth == 0)
-        return false;
 
     const SCEV* LeadingPtr = SE->getSCEV(LeadingLoad->getPointerOperand());
     if (isa<SCEVCouldNotCompute>(LeadingPtr))
