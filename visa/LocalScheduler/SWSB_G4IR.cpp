@@ -6801,11 +6801,10 @@ G4_INST *G4_BB_SB::createADummyDpasRSWAInst(LiveGRFBuckets *LB, SBNode *curNode,
   };
 
   G4_DstRegRegion *newDst = builder.duplicateOperand(curInst->getDst());
-  G4_Operand *newSrc[3];
+  G4_SrcRegRegion *newSrc[3];
   // Use null as src0 of the dummy inst to prevent a potential bank/bundle
   // conflict from happening when src0 and src1 are same.
   newSrc[0] = builder.createNullSrc(curInst->getSrc(0)->getType());
-  newSrc[2] = builder.duplicateOperand(curInst->getSrc(2));
 
   unsigned dstLB = curInst->getDst()->getLinearizedStart();
   unsigned dstRB = curInst->getDst()->getLinearizedEnd();
@@ -6849,6 +6848,9 @@ G4_INST *G4_BB_SB::createADummyDpasRSWAInst(LiveGRFBuckets *LB, SBNode *curNode,
       src1->getBase()->asRegVar()->getDeclare()->getTotalElems(),
       src1->getType(), newSrc1LB, src1->getSubRegOff());
   newSrc[1] = builder.createSrcRegRegion(tempDcl, src1->getRegion());
+  auto src2 = curInst->getSrc(2)->asSrcRegRegion();
+  newSrc[2] = builder.createSrcRegRegion(tempDcl, src2->getRegion());
+  newSrc[2]->setType(builder, src2->getType());
   G4_INST *dummyInst = builder.createInternalDpasInst(
       curInst->opcode(), curInst->getExecSize(), newDst, newSrc[0], newSrc[1],
       newSrc[2], nullptr, curInst->getOption(), curInst->getSrc2Precision(),
