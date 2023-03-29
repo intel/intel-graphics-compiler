@@ -130,6 +130,7 @@ SPDX-License-Identifier: MIT
 // NOTE: transformation is much harded in details than it is decribed above.
 // Main problem is to make this pass and SimdCFConformace be compatible.
 
+#include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/Types.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
@@ -148,11 +149,9 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 static cl::opt<bool>
-    EnableSimdCFTransform("enable-simdcf-transform", cl::init(true), cl::Hidden,
+    EnableSimdCFTransform("enable-simdcf-transform", cl::init(false),
+                          cl::Hidden,
                           cl::desc("Enable simd cf transformation."));
-static cl::opt<bool>
-    EnableSimdCFAnalisis("enable-simdcf-analysis", cl::init(true), cl::Hidden,
-                         cl::desc("Enable analysis for find simdcf regions."));
 namespace llvm::genx {
 // Need declarations of this functions here because of declaration conflict
 // beetween genx::Region from GenXUtils.h and llvm::Region
@@ -203,6 +202,8 @@ public:
     return 1;
   }
 
+  // Conformance-pass expect true edge to join-block - that's why here swap
+  // successors
   bool needSwap() { return getIdThen() == 0; }
 
   auto *getIfSimdCondition() const {
@@ -264,6 +265,10 @@ public:
   // SindCFIfRegion is considered verified if each of conditions above are true.
   bool verify() const override { return true; }
 
+  // Conformance-pass expect true edge to join-block - that's why here swap
+  // successors
+  bool needSwap() { return getIdExit() != 0; }
+
   SimdCFLoopRegion(BasicBlock *Entry, Loop *L, BasicBlock *Exit, RegionInfo *RI,
                    DominatorTree *DT, SimdCFRegion *Parent = nullptr)
       : SimdCFRegion(Entry, Exit, RI, DT, Parent), SimdLoop(L) {
@@ -294,6 +299,8 @@ class GenXPredToSimdCF final : public FunctionPass {
   BasicBlock *OldCondBB = nullptr;
   bool NeedSwap = false;
 
+  PostDominatorTree *PDT = nullptr;
+
 public:
   using SimdCFRegionPtr = std::unique_ptr<SimdCFRegion>;
   using SimdCFRegionsT = std::vector<SimdCFRegionPtr>;
@@ -314,6 +321,7 @@ public:
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<RegionInfoPass>();
+    AU.addRequired<GenXBackendConfig>();
   }
 
 private:
@@ -460,12 +468,13 @@ private:
     auto *ElseCondCall = cast<CallInst>(ElseCond);
     if (!IfCondCall || !ElseCondCall)
       return false;
-    auto *IfMask = cast<Instruction>(IfCondCall->getArgOperand(0));
-    LLVM_DEBUG(dbgs() << "IfMask: "; IfMask->dump());
-    auto *ElseMask = cast<Instruction>(ElseCondCall->getArgOperand(0));
-    LLVM_DEBUG(dbgs() << "ElseMask: "; ElseMask->dump());
+    // TODO: Support const (not casted to Instruction)
+    auto *IfMask = dyn_cast<Instruction>(IfCondCall->getArgOperand(0));
+    auto *ElseMask = dyn_cast<Instruction>(ElseCondCall->getArgOperand(0));
     if (!IfMask || !ElseMask)
       return false;
+    LLVM_DEBUG(dbgs() << "IfMask: "; IfMask->dump());
+    LLVM_DEBUG(dbgs() << "ElseMask: "; ElseMask->dump());
 
     if (isIfCondReduceOr && isElseCondReduceOr) {
       if (!genx::isPredicate(IfMask) || !genx::isPredNot(ElseMask))
@@ -735,6 +744,12 @@ private:
       BasicBlock *Exit = getIfExitFromElseBranch(*ElseBranch);
       if (!Exit)
         return nullptr;
+
+      // IfThen* post dominate Exit && Entry post dominate Exit
+      if (!PDT || !PDT->dominates(Exit, IfThenEnd) ||
+          !PDT->dominates(Exit, Entry) || !PDT->dominates(Exit, IfElseEnd))
+        return nullptr;
+
       if (!(analizeInsts(IfThenRegion.get(), Cond) ||
             analizeInsts(IfElseRegion.get(), Cond))) {
         LLVM_DEBUG(dbgs() << "Filed to find predicated instructions for";
@@ -752,6 +767,11 @@ private:
 
     BasicBlock *Exit = getIfExitFromIfBranch(*Branch);
     if (!Exit)
+      return nullptr;
+
+    // IfThenEnd post dominate exit && Entry post dominate exit
+    if (!PDT || !PDT->dominates(Exit, Entry) ||
+        !PDT->dominates(Exit, IfThenEnd))
       return nullptr;
 
     // Check there is any predicated(select) instructions
@@ -984,7 +1004,7 @@ void GenXPredToSimdCF::insertIfGotoJoin(SimdCFIfRegion &R) {
                                        IfThenExit->getNextNode());
   auto ThenId = R.getIdThen();
   Br->setSuccessor(1 - ThenId, JoinBlock);
-  if (R.needSwap())
+  if (NeedSwap)
     Br->swapSuccessors();
 
   auto *IfThenExitBr = IfThenExit->getTerminator();
@@ -1018,6 +1038,7 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion &R) {
   // Will be removed:
   OldCond = R.getSimdCondition();
   JP = R.getLoopHead();
+  NeedSwap = R.needSwap();
 
   generateGoto(Br);
 
@@ -1032,6 +1053,8 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion &R) {
 
   IGC_ASSERT(isa<BranchInst>(Br));
   Br->setSuccessor(R.getIdExit(), JoinBlock);
+  if (NeedSwap)
+    Br->swapSuccessors();
 
   // Additional fix for else-branch
   JoinBlocks[&R] = JoinBlock;
@@ -1045,19 +1068,69 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion &R) {
 
 void GenXPredToSimdCF::removeMask(SimdCFIfRegion &R) {
   auto *Mask = R.getMask();
+  while (isa<CastInst>(Mask))
+    Mask = cast<Instruction>(Mask)->getOperand(0);
+
   LLVM_DEBUG(dbgs() << "Trying to remove selects with mask: "; Mask->dump());
-  for (BasicBlock *BB : R.getIfThenRegion()->blocks()) {
-    for (auto &I : *BB) {
-      if (isa<SelectInst>(I)) {
-        auto *Select = cast<SelectInst>(&I);
-        LLVM_DEBUG(dbgs() << "Find select: "; Select->dump());
-        if (Mask == Select->getCondition()) {
-          LLVM_DEBUG(dbgs() << "Removing select: "; Select->dump());
-          Select->replaceAllUsesWith(Select->getTrueValue());
+  auto *ThenReg = R.getIfThenRegion();
+  auto *ElseReg = R.getIfElseRegion();
+  if (NeedSwap) {
+    ElseReg = ThenReg;
+    ThenReg = R.getIfElseRegion();
+  }
+  if (ThenReg)
+    for (BasicBlock *BB : ThenReg->blocks()) {
+      for (auto &I : *BB) {
+        if (isa<SelectInst>(I)) {
+          auto *Select = cast<SelectInst>(&I);
+          LLVM_DEBUG(dbgs() << "Find select: "; Select->dump());
+          if (Mask == Select->getCondition()) {
+            LLVM_DEBUG(dbgs() << "Removing select: "; Select->dump());
+            // TODO: Really need replace to RM-mask
+            // Select->replaceAllUsesWith(Select->getTrueValue());
+          }
         }
       }
     }
-  }
+
+  // Replace Mask for EM's
+  if (ElseReg)
+    for (BasicBlock *BB : ElseReg->blocks()) {
+      for (auto &I : *BB) {
+        if (isa<SelectInst>(I)) {
+          auto *Select = cast<SelectInst>(&I);
+
+          LLVM_DEBUG(dbgs() << "Find select: "; Select->dump());
+          auto *Cond = Select->getCondition();
+          auto *CondTy = Cond->getType();
+          while (isa<CastInst>(Cond))
+            Cond = cast<Instruction>(Cond)->getOperand(0);
+
+          if (Mask == Cond) {
+            IRBuilder<> Builder(Select);
+            Value *EM = getEM(Select->getFunction());
+            Value *NewEM =
+                Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()),
+                                   EM, false /*isVolatile*/, EM->getName());
+            if (CondTy != NewEM->getType()) {
+              auto *PredRgnTy =
+                  cast<IGCLLVM::FixedVectorType>(NewEM->getType());
+              auto *PredTy = cast<IGCLLVM::FixedVectorType>(CondTy);
+              auto *M = Select->getModule();
+              auto *OffsetTy = Builder.getInt16Ty();
+              auto *RdPredRgnFunc = GenXIntrinsic::getAnyDeclaration(
+                  M, GenXIntrinsic::genx_rdpredregion,
+                  {PredTy, PredRgnTy, OffsetTy});
+
+              Value *Args[] = {NewEM, Builder.getInt32(0)};
+
+              NewEM = Builder.CreateCall(RdPredRgnFunc, Args);
+            }
+            Select->setCondition(NewEM);
+          }
+        }
+      }
+    }
 }
 
 // Check that two instruction has equal incoming value and return it
@@ -1237,7 +1310,7 @@ void GenXPredToSimdCF::fixPHIs(SimdCFLoopRegion &R) {
 }
 
 bool GenXPredToSimdCF::transform(SimdCFIfRegion &R) {
-  LLVM_DEBUG(dbgs() << "Insert if goto\n");
+  LLVM_DEBUG(dbgs() << "IfRegion: Insert if goto\n");
   insertIfGotoJoin(R);
 
   OldCondBB = OldCond->getParent();
@@ -1250,28 +1323,26 @@ bool GenXPredToSimdCF::transform(SimdCFIfRegion &R) {
   if (OldCond->use_empty())
     OldCond->eraseFromParent();
 
-  LLVM_DEBUG(dbgs() << "Fixing PHIs\n");
+  LLVM_DEBUG(dbgs() << "IfRegion: Fixing PHIs\n");
   fixPHIs(R);
 
-  LLVM_DEBUG(dbgs() << "Removing mask\n");
+  LLVM_DEBUG(dbgs() << "IfRegion: Removing mask\n");
   removeMask(R);
 
   return true;
 }
 
 bool GenXPredToSimdCF::transform(SimdCFLoopRegion &R) {
-  LLVM_DEBUG(dbgs() << "Insert if goto\n");
+  LLVM_DEBUG(dbgs() << "LoopRegion: Insert if goto\n");
   insertLoopGotoJoin(R);
 
-  LLVM_DEBUG(dbgs() << "Fixing PHIs\n");
+  LLVM_DEBUG(dbgs() << "LoopRegion: Fixing PHIs\n");
   fixPHIs(R);
 
   return true;
 }
 
 bool GenXPredToSimdCF::transform(SimdCFRegion &R) {
-  if (!EnableSimdCFTransform)
-    return false;
 
   Mask = R.getMask();
   auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
@@ -1290,12 +1361,15 @@ bool GenXPredToSimdCF::transform(SimdCFRegion &R) {
 }
 
 bool GenXPredToSimdCF::runOnFunction(Function &F) {
+  const auto &BackendConfig = getAnalysis<GenXBackendConfig>();
+
+  if (!EnableSimdCFTransform && !BackendConfig.isBiFEmulationCompilation())
+    return false;
 
   auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+  PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   bool Changed = false;
-  if (!EnableSimdCFAnalisis)
-    return Changed;
+
   LLVM_DEBUG(dbgs() << "Run GenXPredToSimdCF on function " << F.getName()
                     << '\n');
 
@@ -1328,6 +1402,7 @@ bool GenXPredToSimdCF::runOnFunction(Function &F) {
              << "For function " << F.getName() << "\n";);
 
   IGC_ASSERT(DT->verify());
+  PDT = nullptr;
 
   return Changed;
 }
@@ -1345,6 +1420,7 @@ INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(RegionInfoPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXPredToSimdCF, DEBUG_TYPE, DEBUG_TYPE, false, false)
 
 namespace llvm {

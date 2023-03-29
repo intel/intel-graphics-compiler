@@ -423,10 +423,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// This pass is needed to support uinified Simd CF interface.
   /// vc::addPass(PM, createCFGSimplificationPass());
   /// .. include:: GenXPredToSimdCF.cpp
-  if (BackendConfig.isBiFEmulationCompilation()) {
-    vc::addPass(PM, createGenXPredToSimdCFPass());
-    vc::addPass(PM, createPromoteMemoryToRegisterPass());
-  }
+  /// Now pass enable by-default only for BiF compilation
+  vc::addPass(PM, createGenXPredToSimdCFPass());
+  vc::addPass(PM, createPromoteMemoryToRegisterPass());
 
   /// BreakCriticalEdges
   /// ------------------
