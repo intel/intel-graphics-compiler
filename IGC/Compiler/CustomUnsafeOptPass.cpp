@@ -90,12 +90,6 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
         return true;
     }
 
-    // then checking compiler options in metadata
-    if (ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
-    {
-        return true;
-    }
-
     if (IGC_IS_FLAG_ENABLED(EnableFastMath))
     {
         return true;
@@ -1213,7 +1207,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
             // otherwise replace mul src0 with the negate
             if (!replaced)
             {
-                fmulInst->setOperand(0, BinaryOperator::CreateFSub(ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", fmulInst));
+                fmulInst->setOperand(0, copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", fmulInst), &I));
 
                 // DIExpression in debug variable instructions must be extended with additional DWARF opcode:
                 // DW_OP_neg
@@ -1489,7 +1483,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator& I)
         {
             if (faddInst->getOperand(i) == I.getOperand(1))
             {
-                Value* div = BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst);
+                Value* div = copyIRFlags(BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst), &I);
                 const DebugLoc& DL = faddInst->getDebugLoc();
                 if (Instruction* divInst = dyn_cast<Instruction>(div))
                     divInst->setDebugLoc(DL);
@@ -1905,7 +1899,14 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
         }
         else if (I.getOpcode() == Instruction::Xor)
         {
-            m_isChanged = visitBinaryOperatorXor(I);
+            m_isChanged |= visitBinaryOperatorXor(I);
+        }
+    }
+    else if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
+    {
+        if (I.getOpcode() == Instruction::Xor)
+        {
+            m_isChanged |= visitBinaryOperatorXor(I);
         }
     }
 }
