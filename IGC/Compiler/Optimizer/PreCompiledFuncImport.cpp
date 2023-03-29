@@ -223,6 +223,7 @@ void PreCompiledFuncImport::handleInstrTypeChange(Instruction* oldInst, Value* n
         // in preProcessDouble() function. All extra bitcast instruction are deleted by InstructionCombining pass.
         else
         {
+            builder.SetInsertPoint(oldInst);
             if (newVal->getType()->isIntegerTy(64))
             {
                 Value* newBitCast = builder.CreateBitCast(newVal, builder.getDoubleTy());
