@@ -219,10 +219,11 @@ DLL_EXPORT void getJITVersion(unsigned int &majorV, unsigned int &minorV) {
 #ifndef DLL_MODE
 
 int main(int argc, const char *argv[]) {
-  std::cout << argv[0];
+  // Dump to cerr to avoid polluting cout as cout might be used for lit test.
+  std::cerr << argv[0];
   for (int i = 1; i < argc; i++)
-    std::cout << " " << argv[i];
-  std::cout << "\n";
+    std::cerr << " " << argv[i];
+  std::cerr << "\n";
 
 #if 0
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
