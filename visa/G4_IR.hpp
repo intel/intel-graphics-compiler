@@ -1270,105 +1270,33 @@ struct IntrinsicInfo {
   int numDst;
   int numSrc;
   Phase loweredBy; // intrinsic must be lowered before entering this phase
-  struct {
-    int numTmpGRF;  // number of tmp GRFs needed for this intrinsic
-    int numTmpAddr; // number of tmp addresses needed (in unit of uw)
-    int numTmpFlag; // number of tmp flags needed (in unit of 16-bit)
-    bool useR0;
-    bool useA0;
-  } temps;
 };
 
 static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
-    //  id                      name            numDst  numSrc  loweredBy temp
-    {Intrinsic::Wait, "wait", 0, 0, Phase::Optimizer, {0, 0, 0, false, false}},
-    {Intrinsic::Use, "use", 0, 1, Phase::Scheduler, {0, 0, 0, false, false}},
-    {Intrinsic::MemFence,
-     "mem_fence",
-     0,
-     0,
-     Phase::BinaryEncoding,
-     {0, 0, 0, false, false}},
-    {Intrinsic::PseudoKill,
-     "pseudo_kill",
-     1,
-     1,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::PseudoUse,
-     "pseudo_use",
-     0,
-     1,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::Spill, "spill", 1, 2, Phase::RA, {0, 0, 0, false, false}},
-    {Intrinsic::Fill, "fill", 1, 1, Phase::RA, {0, 0, 0, false, false}},
-    {Intrinsic::Split, "split", 1, 1, Phase::RA, {0, 0, 0, false, false}},
-    {Intrinsic::CallerSave,
-     "caller_save",
-     1,
-     0,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::CallerRestore,
-     "caller_restore",
-     0,
-     1,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::CalleeSave,
-     "callee_save",
-     1,
-     0,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::CalleeRestore,
-     "callee_restore",
-     0,
-     1,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::FlagSpill,
-     "flagSpill",
-     0,
-     1,
-     Phase::RA,
-     {0, 0, 0, false, false}},
-    {Intrinsic::PseudoAddrMov,
-     "pseudo_addr_mov",
-     1,
-     8,
-     Phase::BinaryEncoding,
-     {0, 0, 0, false, false}},
-    {Intrinsic::NamedBarrierWA,
-     "namedBarrierWA",
-     1,
-     1,
-     Phase::SWSB,
-     {0, 0, 0, false, false}},
-    {Intrinsic::BarrierWA,
-     "barrierWA",
-     1,
-     0,
-     Phase::SWSB,
-     {0, 0, 0, false, false}},
-    {Intrinsic::IEEEExceptionTrap,
-     "ieee_exception_trap",
-     1,
-     0,
-     Phase::SWSB,
-     {0, 0, 0, false, false}},
+    //  id  name   numDst   numSrc  loweredBy
+    {Intrinsic::Wait, "wait", 0, 0, Phase::Optimizer},
+    {Intrinsic::Use, "use", 0, 1, Phase::Scheduler},
+    {Intrinsic::MemFence, "mem_fence", 0, 0, Phase::BinaryEncoding},
+    {Intrinsic::PseudoKill, "pseudo_kill", 1, 1, Phase::RA},
+    {Intrinsic::PseudoUse, "pseudo_use", 0, 1, Phase::RA},
+    {Intrinsic::Spill, "spill", 1, 2, Phase::RA},
+    {Intrinsic::Fill, "fill", 1, 1, Phase::RA},
+    {Intrinsic::Split, "split", 1, 1, Phase::RA},
+    {Intrinsic::CallerSave, "caller_save", 1, 0, Phase::RA},
+    {Intrinsic::CallerRestore, "caller_restore", 0, 1, Phase::RA},
+    {Intrinsic::CalleeSave, "callee_save", 1, 0, Phase::RA},
+    {Intrinsic::CalleeRestore, "callee_restore", 0, 1, Phase::RA},
+    {Intrinsic::FlagSpill, "flagSpill", 0, 1, Phase::RA},
+    {Intrinsic::PseudoAddrMov, "pseudo_addr_mov", 1, 8, Phase::BinaryEncoding},
+    {Intrinsic::NamedBarrierWA, "namedBarrierWA", 1, 1, Phase::SWSB},
+    {Intrinsic::BarrierWA, "barrierWA", 1, 0, Phase::SWSB},
+    {Intrinsic::IEEEExceptionTrap, "ieee_exception_trap", 1, 0, Phase::SWSB},
 };
 
 namespace vISA {
 class G4_InstIntrinsic : public G4_INST {
   const Intrinsic intrinsicId;
   std::array<G4_Operand *, G4_MAX_INTRINSIC_SRCS> srcs;
-
-  // these should be set by RA if intrinsic requires tmp GRF/addr/flag
-  int tmpGRFStart;
-  int tmpAddrStart;
-  int tmpFlagStart;
 
 public:
   G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
@@ -1377,8 +1305,7 @@ public:
                    G4_InstOpts opt)
       : G4_INST(builder, prd, G4_intrinsic, nullptr, g4::NOSAT, execSize, d, s0,
                 s1, s2, opt),
-        intrinsicId(intrinId), tmpGRFStart(-1), tmpAddrStart(-1),
-        tmpFlagStart(-1) {}
+        intrinsicId(intrinId) {}
 
   G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
                    Intrinsic intrinId, G4_ExecSize execSize, G4_DstRegRegion *d,
@@ -1401,13 +1328,6 @@ public:
   Phase getLoweredByPhase() const {
     return G4_Intrinsics[(int)intrinsicId].loweredBy;
   }
-
-  int getTmpGRFStart() const { return tmpGRFStart; }
-  void setTmpGRFStart(int startGRF) { tmpGRFStart = startGRF; }
-  int getTmpAddrStart() const { return tmpAddrStart; }
-  void setTmpAddrStart(int startAddr) { tmpAddrStart = startAddr; }
-  int getTmpFlagStart() const { return tmpFlagStart; }
-  void setTmpFlagStart(int startFlag) { tmpFlagStart = startFlag; }
 };
 // place for holding all physical register operands
 //

@@ -7207,8 +7207,7 @@ G4_InstIntrinsic::G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
                                    G4_Operand *s7, G4_InstOpts opt)
     : G4_INST(builder, prd, G4_intrinsic, nullptr, g4::NOSAT, execSize, d,
               nullptr, nullptr, nullptr, opt),
-      intrinsicId(intrinId), tmpGRFStart(-1), tmpAddrStart(-1),
-      tmpFlagStart(-1) {
+      intrinsicId(intrinId) {
   srcs[0] = s0;
   srcs[1] = s1;
   srcs[2] = s2;
