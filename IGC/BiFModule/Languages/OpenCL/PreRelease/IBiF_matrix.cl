@@ -343,6 +343,7 @@ DEFINE_STORE(PackedB_PackedB, _SG16, short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
 DEFINE_STORE(PackedB_PackedB,      , char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false)
 DEFINE_STORE(PackedB_PackedB, _SG16, char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false)
+DEFINE_STORE(PackedB_PackedB, _SG16, char, 8, int, 32, 8, 32, 32x16, ROW_MAJOR, , 32, true)
 
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, true)
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 8, true)
