@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,8 +22,8 @@ SPDX-License-Identifier: MIT
 /// coalesces the result of the copy into the result of the phi node or
 /// two address op).
 ///
-/// There are three different kinds of coalescing. Copy coalescing is done
-/// first, then the other two are done together.
+/// There are three different kinds of coalescing. Copy coalescing is done first,
+/// then the other two are done together.
 ///
 /// 1. Copy coalescing.
 ///
@@ -182,10 +182,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/Value.h"
 
 #include "llvm/ADT/Statistic.h"
-#include "llvm/Analysis/CFG.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -296,7 +294,6 @@ namespace {
     DominatorTreeGroupWrapperPass *DTWrapper = nullptr;
     LoopInfoGroupWrapperPass *LIWrapper = nullptr;
 
-    std::map<SimpleValue, llvm::SetVector<SimpleValue>> NoCoalescingBetween;
     std::vector<Candidate> CopyCandidates;
     std::vector<Candidate> NormalCandidates;
     std::vector<CallInst*> Callables;
@@ -494,7 +491,6 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   Callables.clear();
   CallToRetVal.clear();
   ToCopy.clear();
-  NoCoalescingBetween.clear();
   CopyCoalesced.clear();
   return true;
 }
@@ -879,21 +875,6 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
  */
 void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
 {
-  auto checkGvCoalescingCanceled = [&](SimpleValue Inst1, SimpleValue Inst2) {
-    const auto &Match1 = NoCoalescingBetween.find(Inst1);
-    if (Match1 != NoCoalescingBetween.end()) {
-      const auto &Match2 = llvm::find(Match1->second, Inst2);
-      if (Match2 != Match1->second.end()) {
-        LLVM_DEBUG(
-            dbgs() << "Hit global volatile load coalescing blacklist between ";
-            Inst1.print(dbgs()); dbgs() << " and "; Inst2.print(dbgs());
-            dbgs() << "\n";);
-        return true;
-      }
-    }
-    return false;
-  };
-
   SimpleValue Dest = Cand.Dest;
   SimpleValue Source;
   if (!Cand.UseInDest) {
@@ -907,9 +888,6 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
     Source = SimpleValue(Liveness->getUnifiedRet(Callee), Cand.SourceIndex);
   } else
     Source = SimpleValue(*Cand.UseInDest, Cand.SourceIndex);
-  if (checkGvCoalescingCanceled(Source, Dest) ||
-      checkGvCoalescingCanceled(Dest, Source))
-    return;
   LLVM_DEBUG(dbgs() << "Trying coalesce from ";
       Source.printName(dbgs());
       dbgs() << " to ";
@@ -1709,186 +1687,40 @@ void GenXCoalescing::coalesceCallables() {
 }
 
 void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
-
-  // This creates legalized load copy using Liveness->insertCopy(...)
-  auto createLoadCopyForStoreInterferenceCase = [&](Instruction *Load,
-                                                    Instruction *StoreOrCall) {
-    // Emit performance-related remark as most likely authors of a
-    // compiled program wanted to take advantage of
-    // global volatile loads coalescing whenever we have to inject a copy.
-    // In some cases code resulting in this requirement is a consequence
-    // of optimizations and is not expected by the user, so we need to inform.
-    vc::diagnose(Load->getContext(), "GenXCoalescing",
-                 "creating copy due to store interference", DS_Warning,
-                 vc::WarningName::Generic, Load);
-
-    auto *LoadCopyLR = Liveness->getLiveRange(Load);
-    auto *LoadCopy =
-        Liveness->insertCopy(Load, LoadCopyLR, Load->getNextNode(),
-                             Load->getName() + ".copy_no_coalesce", 0, ST);
-    IGCLLVM::replaceUsesWithIf(Load, LoadCopy, [&](Use &Use_) {
-      const auto *User = Use_.getUser();
-      if (const auto *UserInst = dyn_cast<Instruction>(User))
-        return LoadCopy != UserInst &&
-               llvm::isPotentiallyReachable(StoreOrCall, UserInst);
-      return true;
-    });
-    LoadCopy->setDebugLoc(Load->getDebugLoc());
-
-    Liveness->removeValue(Load);
-    auto *NewLoadLR = Liveness->getOrCreateLiveRange(Load);
-    NewLoadLR->setCategory(LoadCopyLR->getCategory());
-    NewLoadLR->setLogAlignment(LoadCopyLR->getLogAlignment());
-
-    return LoadCopy;
-  };
-
   for (auto &GV : FG->getModule()->globals()) {
     if (!GV.hasAttribute(genx::FunctionMD::GenXVolatile))
       continue;
-
-    LiveRange *GvLiveRange = Liveness->getLiveRangeOrNull(&GV);
-    if (!GvLiveRange)
+    LiveRange *LR1 = Liveness->getLiveRangeOrNull(&GV);
+    if (!LR1)
       continue;
 
-    SetVector<Instruction *> LoadsInFg;
-    // Put here all the global value store Insts and function calls that may
-    // call the store (1). Later cancel coalescing for corresponding global
-    // value copies if their uses are potentially reachable from (1).
-    std::map<Function *, SetVector<Instruction *>> StoreAndStoreCallers;
-
-    std::function<void(Function *)> handleStoreInCallChain = [&](auto *Func) {
-      for (const auto &FuncUser : Func->users()) {
-        if (isa<CallBase>(FuncUser)) {
-          auto *Call = cast<Instruction>(FuncUser);
-          auto *curFunction = Call->getFunction();
-          if (llvm::find(*FG, curFunction) == FG->end())
-            continue;
-          StoreAndStoreCallers[curFunction].insert(Call);
-          handleStoreInCallChain(curFunction);
-        }
+    // Collect all loads.
+    SetVector<Instruction *> LoadsInGroup;
+    for (auto UI : GV.users()) {
+      if (auto LI = dyn_cast<LoadInst>(UI)) {
+        IGC_ASSERT(LI->getPointerOperand() == &GV);
+        auto Fn = LI->getFunction();
+        // Check this load is inside the group.
+        if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
+          LoadsInGroup.insert(LI);
       }
-    };
-
-    for (const auto &User : GV.users()) {
-      auto *GvUserInst = cast<Instruction>(User);
-      if (llvm::find(*FG, GvUserInst->getFunction()) == FG->end())
+      // Global variable is used in a constexpr.
+      if (&GV != vc::getUnderlyingGlobalVariable(UI))
         continue;
-
-      if (isa<LoadInst>(GvUserInst)) {
-        LoadsInFg.insert(GvUserInst);
-      } else if (isa<StoreInst>(GvUserInst)) {
-
-        auto *storeFunc = GvUserInst->getFunction();
-        StoreAndStoreCallers[storeFunc].insert(GvUserInst);
-        handleStoreInCallChain(storeFunc);
-
-        LLVM_DEBUG(for (const auto &Inst
-                        : StoreAndStoreCallers[storeFunc]) {
-          dbgs() << "Shall not do related global value coalescing for "
-                    "values which users are "
-                    "potentially reachable from ";
-          Inst->print(dbgs());
-          dbgs() << "\n";
-        });
-      }
-
-      if (&GV != vc::getUnderlyingGlobalVariable(
-                     GvUserInst)) // Global variable is used in a constexpr.
-        continue;
-
-      // For loads preceded by bitcasts.
-      for (const auto &User : GvUserInst->users())
-        if (auto *Load = dyn_cast<LoadInst>(User)) {
-          if (llvm::find(*FG, Load->getFunction()) != FG->end())
-            LoadsInFg.insert(Load);
+      for (auto U : UI->users())
+        if (auto LI = dyn_cast<LoadInst>(U)) {
+          auto Fn = LI->getFunction();
+          // Check this load is inside the group.
+          if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
+            LoadsInGroup.insert(LI);
         }
     }
 
-    auto recordNoCoalescingCandidate =
-        [&](Instruction *Load, Instruction *StoreOrCall,
-            Instruction *Predecessor1, Instruction *Predecessor2,
-            Instruction *UserInst) -> void {
-      if (llvm::find(NoCoalescingBetween[Predecessor1], Predecessor2) !=
-          NoCoalescingBetween[Predecessor1].end())
-        return;
-
-      LLVM_DEBUG(
-          dbgs() << "<prevent-coalescing>{\nPrevent potential "
-                    "coalescing:\n Corresponding global "
-                    "volatile load: {";
-          Load->print(dbgs()); dbgs() << "}\n user predecessor at depth:2: {";
-          Predecessor2->print(dbgs());
-          if (!UserInst) dbgs() << "(created load copy)";
-          dbgs()
-          << "}\n shall not be coalesced with user predecessor at depth:1: {";
-          Predecessor1->print(dbgs());
-          dbgs() << "}\n due to interfering store: {";
-          StoreOrCall->print(dbgs()); dbgs() << "}";
-          if (UserInst) {
-            dbgs() << "Usage after store: {";
-            UserInst->print(dbgs());
-            dbgs() << "}";
-          }
-
-          dbgs()
-          << "\n}</prevent-coalescing>\n";);
-
-      NoCoalescingBetween[Predecessor1].insert(Predecessor2);
-    };
-
-    struct LoadCopyData {
-      llvm::Instruction *Load, *StoreOrCall;
-      bool operator<(const LoadCopyData &b) const {
-        return Load < b.Load && StoreOrCall < b.StoreOrCall;
-      }
-    };
-    std::set<LoadCopyData> LoadsToCopy;
-    std::function<void(llvm::Instruction *, llvm::Instruction *,
-                       llvm::Instruction *)>
-        handleLoadStoreInterference = [&](auto *Load,
-                                          auto *UseChainPredecessor1,
-                                          auto *UseChainPredecessor2) -> void {
-      for (const auto &User_ : UseChainPredecessor1->users()) {
-        // TODO: Need to check if the user is of a potentially "coalescible"
-        // instruction type and skip it if not.
-        bool predecessorShallNotBeCoalesced = false;
-        auto *UserInst = dyn_cast<Instruction>(User_);
-        if (!UserInst || isa<StoreInst>(UserInst))
-          continue;
-        for (const auto &StoreOrCall :
-             StoreAndStoreCallers[UserInst->getFunction()]) {
-          if (llvm::isPotentiallyReachable(StoreOrCall, UserInst) &&
-              llvm::isPotentiallyReachable(UseChainPredecessor1, StoreOrCall)) {
-            predecessorShallNotBeCoalesced = true;
-            if (Load == UseChainPredecessor1)
-              LoadsToCopy.insert({Load, StoreOrCall});
-            else
-              recordNoCoalescingCandidate(Load, StoreOrCall,
-                                          UseChainPredecessor1,
-                                          UseChainPredecessor2, UserInst);
-            break;
-          }
-        }
-        if (predecessorShallNotBeCoalesced)
-          break;
-        handleLoadStoreInterference(Load, UserInst, UseChainPredecessor1);
-      }
-    };
-
-    //----------------------------
-    for (const auto &Load : LoadsInFg)
-      handleLoadStoreInterference(Load, Load, Load);
-
-    for (const auto &CopyData : LoadsToCopy)
-      recordNoCoalescingCandidate(CopyData.Load, CopyData.StoreOrCall,
-                                  createLoadCopyForStoreInterferenceCase(
-                                      CopyData.Load, CopyData.StoreOrCall),
-                                  CopyData.Load, nullptr);
-
-    for (const auto &Load : LoadsInFg)
-      GvLiveRange =
-          Liveness->coalesce(GvLiveRange, Liveness->getLiveRange(Load), false);
+    // Do coalescing.
+    for (auto LI : LoadsInGroup) {
+      LiveRange *LR2 = Liveness->getLiveRange(LI);
+      LR1 = Liveness->coalesce(LR1, LR2, false);
+    }
   }
 }
 
