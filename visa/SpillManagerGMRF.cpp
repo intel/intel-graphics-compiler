@@ -5529,7 +5529,9 @@ void GlobalRA::markSlot1HwordSpillFill(G4_BB *bb) {
 
   bool isSet = false;
   G4_INST *prevSetInst = nullptr;
-  G4_Declare* builtinR0 = builder.getBuiltinR0()->getRootDeclare();
+  G4_Declare *builtinR0 = builder.getBuiltinR0()->getRootDeclare();
+  unsigned builtinR0RegNum =
+      builtinR0->getRegVar()->getPhyReg()->asGreg()->getRegNum();
 
   for (auto instIt = bb->begin(); instIt != bb->end(); ++instIt) {
     G4_INST *inst = (*instIt);
@@ -5543,6 +5545,34 @@ void GlobalRA::markSlot1HwordSpillFill(G4_BB *bb) {
           isSet = true;
         }
         prevSetInst = inst;
+
+        // Special case of builtin r0 being overwritten by the fill instruction.
+        // In this case the register shouldn't be reset from slot1 after the
+        // fill because the physical register got reused and builtin r0 is no
+        // longer alive.
+        // Example IR illustrating the problem:
+        //   //.declare FL (r0.0)
+        //   (W) intrinsic.fill.1 (8)  FL(0,0)<1>:ud r0.0<1;1,0>:ud
+        //                             Scratch[0x32]
+        //       mov (8)               M2(0,0)<1>:f FL(0,0)<1;1,0>:f
+        //       mov (8)               M2(1,0)<1>:f FL(0,0)<1;1,0>:f
+        //       mov (8)               M2(2,0)<1>:f FL(0,0)<1;1,0>:f
+        //       mov (8)               M2(3,0)<1>:f FL(0,0)<1;1,0>:f
+        //       sendsc (8)            null:ud M2(0,0) null 0x25:ud
+        //                             0x8031400:ud {EOT} // render target write
+        G4_VarBase *dstVarBase = fillInst->getDst()->getBase();
+
+        vASSERT(dstVarBase);
+        G4_VarBase *dstPhyReg = dstVarBase->asRegVar()->getPhyReg();
+
+        vASSERT(dstPhyReg);
+        unsigned dstRegNum = dstPhyReg->asGreg()->getRegNum();
+
+        if (dstRegNum <= builtinR0RegNum &&
+            builtinR0RegNum < dstRegNum + fillInst->getNumRows()) {
+          isSet = false;
+          prevSetInst = nullptr;
+        }
       }
     } else if (inst->isSpillIntrinsic()) {
       G4_SpillIntrinsic *spillInst = inst->asSpillIntrinsic();
