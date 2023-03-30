@@ -25,6 +25,17 @@ entry:
 ; CHECK-LABEL: @test_transformation_simple
 ; CHECK: call i32 @llvm.genx.GenISA.simdShuffleXor{{.*}}(i32 %x, i32 1)
 
+; Change the call in simple case, zext first
+define void @test_transformation_simple2(i32 %x) nounwind {
+entry:
+  %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
+  %simdLaneId = zext i16 %simdLaneId16 to i32
+  %xor = xor i32 %simdLaneId, 2
+  %simdShuffle.2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor, i32 0)
+  ret void
+}
+; CHECK-LABEL: @test_transformation_simple2
+; CHECK: call i32 @llvm.genx.GenISA.simdShuffleXor{{.*}}(i32 %x, i32 2)
 
 ; Change the call in double case too
 define void @test_transformation_double(double %x) nounwind {

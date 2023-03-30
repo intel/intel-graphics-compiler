@@ -297,10 +297,17 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 
     /*
     Pattern match
-    %simdLaneId = call i16 @llvm.genx.GenISA.simdLaneId()
-    %xor = xor i16 %simdLaneId, 1
+    %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
+    %xor = xor i16 %simdLaneId16, 1
     %xor.i = zext i16 %xor to i32
     %simdShuffle = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor.i, i32 0)
+
+    or
+
+    %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
+    %simdLaneId = zext i16 %simdLaneId16 to i32
+    %xor = xor i32 %simdLaneId, 2
+    %simdShuffle.2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor, i32 0)
     */
 
     ConstantInt* enableHelperLanes = dyn_cast<ConstantInt>(I->getOperand(2));
@@ -309,7 +316,9 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
     }
 
     if (match(I->getOperand(1),
-              m_ZExt(m_c_Xor(m_Value(simdLaneId), m_ConstantInt(xorValueConstant)))))
+              m_ZExt(m_c_Xor(m_Value(simdLaneId), m_ConstantInt(xorValueConstant)))) ||
+        match(I->getOperand(1),
+              m_c_Xor(m_ZExt(m_Value(simdLaneId)), m_ConstantInt(xorValueConstant))))
     {
         if (CallInst* CI = dyn_cast<CallInst>(simdLaneId))
         {
