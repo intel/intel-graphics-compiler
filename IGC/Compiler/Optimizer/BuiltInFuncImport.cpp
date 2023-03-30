@@ -535,6 +535,57 @@ void BIImport::fixSPIRFunctionsReturnType(Module& M)
         F->eraseFromParent();
 }
 
+// Older Clang versions generate invalid bitcast instructions for explicit
+// C-style casts with specified address space. For example:
+//   %0 = bitcast i8 addrspace(1)* %mem to i32 addrspace(4)*
+// Bitcasts with address space change are illegal. In the case above, the
+// bitcast must be replaced with bitcast + addrspacecast.
+void BIImport::fixInvalidBitcasts(llvm::Module &M)
+{
+    for (auto &F : M)
+    {
+        if (!F.getName().startswith("__builtin"))
+            continue;
+
+        // Collect invalid bitcasts with address space change.
+        std::vector<BitCastInst *> Worklist;
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
+        {
+            BitCastInst *BitCastI = dyn_cast<BitCastInst>(&*I);
+            if (!BitCastI || !BitCastI->getType()->isPointerTy() ||
+                BitCastI->getSrcTy()->getPointerAddressSpace() ==
+                    BitCastI->getType()->getPointerAddressSpace())
+                continue;
+
+            Worklist.push_back(BitCastI);
+        }
+
+        // Replace the invalid bitcast with bitcast + addrspacecast.
+        for (BitCastInst *BitCastI : Worklist)
+        {
+            PointerType *SrcPtrType =
+                dyn_cast<PointerType>(BitCastI->getSrcTy());
+            PointerType *DstPtrType =
+                dyn_cast<PointerType>(BitCastI->getType());
+
+            // New bitcast
+            PointerType *FinalBitCastType =
+                PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(DstPtrType),
+                                 SrcPtrType->getAddressSpace());
+            BitCastInst *NewBitCastI = new BitCastInst(
+                BitCastI->getOperand(0), FinalBitCastType, "bcast", BitCastI);
+
+            // New addrspacecast
+            AddrSpaceCastInst *NewAddrSpaceCastI = new AddrSpaceCastInst(
+                NewBitCastI, DstPtrType, "ascast", BitCastI);
+
+            // Replace all uses of the old invalid bitcast.
+            BitCastI->replaceAllUsesWith(NewAddrSpaceCastI);
+            BitCastI->eraseFromParent();
+        }
+    }
+}
+
 bool BIImport::runOnModule(Module& M)
 {
     if (m_GenericModule == nullptr)
@@ -670,6 +721,7 @@ bool BIImport::runOnModule(Module& M)
 
     InitializeBIFlags(M);
     removeFunctionBitcasts(M);
+    fixInvalidBitcasts(M);
 
     std::vector<Instruction*> InstToRemove;
 
