@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Assertions.h"
 #include "DebugInfo.h"
+
+#include "Assertions.h"
 #include "BitSet.h"
 #include "BuildIR.h"
 #include "Common_ISA_framework.h"
@@ -16,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "VISAKernel.h"
 
 #include <map>
+#include <unordered_map>
 
 using namespace vISA;
 
@@ -1333,7 +1335,7 @@ void emitDataCallFrameInfo(VISAKernelImpl *visaKernel, T &t) {
 // referenced by it. In case stack call functions dont
 // exist in input, it only has a kernel.
 template <class T>
-void emitData(std::list<VISAKernelImpl *> &compilationUnits, T t) {
+void emitData(CISA_IR_Builder::KernelListTy &compilationUnits, T t) {
   const unsigned int magic = DEBUG_MAGIC_NUMBER;
   const unsigned int numKernels = (uint32_t)compilationUnits.size();
   // Magic
@@ -1465,10 +1467,10 @@ void emitData(std::list<VISAKernelImpl *> &compilationUnits, T t) {
 }
 
 void emitDebugInfoToMem(VISAKernelImpl *kernel,
-                        std::list<VISAKernelImpl *> &functions, void *&info,
+                        CISA_IR_Builder::KernelListTy &functions, void *&info,
                         unsigned &size) {
   std::vector<unsigned char> vec;
-  std::list<VISAKernelImpl *> compilationUnits;
+  CISA_IR_Builder::KernelListTy compilationUnits;
   compilationUnits.push_back(kernel);
   auto funcItEnd = functions.end();
   for (auto funcIt = functions.begin(); funcIt != funcItEnd; funcIt++) {
@@ -1521,9 +1523,9 @@ void KernelDebugInfo::updateRelocOffset() {
 }
 
 void emitDebugInfo(VISAKernelImpl *kernel,
-                   std::list<VISAKernelImpl *> &functions,
+                   CISA_IR_Builder::KernelListTy &functions,
                    std::string debugFileNameStr) {
-  std::list<VISAKernelImpl *> compilationUnits;
+  CISA_IR_Builder::KernelListTy compilationUnits;
   compilationUnits.push_back(kernel);
   auto funcItEnd = functions.end();
   for (auto funcIt = functions.begin(); funcIt != funcItEnd; funcIt++) {

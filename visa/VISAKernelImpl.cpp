@@ -8992,19 +8992,38 @@ const char *VISAKernelImpl::getFunctionName() const {
   return m_kernel->getName();
 }
 
+static const VISAKernelImpl *getFmtKernelForISADump(
+    const VISAKernelImpl *kernel,
+    const CISA_IR_Builder &cisaBuilder) {
+  // Assuming there's no too many payload kernels. Use the logic in
+  // CisaBinary::isaDump to select the kernel for format provider.
+  if (!kernel->getIsPayload())
+    return kernel;
+
+  vASSERT(cisaBuilder.kernel_begin() != cisaBuilder.kernel_end());
+  VISAKernelImpl *fmtKernel = *cisaBuilder.kernel_begin();
+  for (auto it = cisaBuilder.kernel_begin();
+         it != cisaBuilder.kernel_end(); ++it) {
+    if (*it == kernel)
+      break;
+    if ((*it)->getIsKernel())
+      fmtKernel = *it;
+  }
+  return fmtKernel;
+}
+
 std::string VISAKernelImpl::getVISAAsm() const {
   // Return an empty string if the builder option is GEN only.
   if (IS_GEN_PATH)
     return std::string();
 
-  const VISAKernelImpl *fmtKernel =
-      m_CISABuilder->m_cisaBinary->getFmtKernelForISADump(
-          this, m_CISABuilder->getKernels());
+  const VISAKernelImpl *fmtKernel = getFmtKernelForISADump(
+          this, *m_CISABuilder);
   return m_CISABuilder->m_cisaBinary->isaDump(this, fmtKernel);
 }
 
-void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy &functions) {
-  std::list<VISAKernelImpl *> compilationUnitsForDebugInfo;
+void VISAKernelImpl::computeAndEmitDebugInfo(KernelListTy &functions) {
+  KernelListTy compilationUnitsForDebugInfo;
   compilationUnitsForDebugInfo.push_back(this);
   auto funcEndIt = functions.end();
   for (auto funcIt = functions.begin(); funcIt != funcEndIt; funcIt++) {

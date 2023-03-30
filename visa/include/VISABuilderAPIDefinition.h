@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include "VISAOptions.h"
 #include "visa_igc_common_header.h"
 
+#include <unordered_set>
+
 #define VISA_BUILDER_API
 
 // Forward declares of vISA variable and operand types.

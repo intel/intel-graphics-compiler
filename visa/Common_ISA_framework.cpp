@@ -443,25 +443,6 @@ void CisaBinary::patchFunction(int index, unsigned genxBufferSize) {
   this->genxBinariesSize += genxBufferSize;
 }
 
-const VISAKernelImpl *CisaBinary::getFmtKernelForISADump(
-    const VISAKernelImpl *kernel,
-    const std::list<VISAKernelImpl *> &kernels) const {
-  // Assuming there's no too many payload kernels. Use the logic in
-  // CisaBinary::isaDump to select the kernel for format provider.
-  if (!kernel->getIsPayload())
-    return kernel;
-
-  vASSERT(!kernels.empty());
-  VISAKernelImpl *fmtKernel = kernels.front();
-  for (VISAKernelImpl *k : kernels) {
-    if (k == kernel)
-      break;
-    if (k->getIsKernel())
-      fmtKernel = k;
-  }
-  return fmtKernel;
-}
-
 std::string CisaBinary::isaDump(const VISAKernelImpl *kernel,
                                 const VISAKernelImpl *fmtKernel) const {
   std::stringstream sstr;
@@ -483,8 +464,7 @@ std::string CisaBinary::isaDump(const VISAKernelImpl *kernel,
   return sstr.str();
 }
 
-int CisaBinary::isaDump(const std::list<VISAKernelImpl *> &kernels,
-                        const Options *options) const {
+int CisaBinary::isaDump(const Options *options) const {
 #ifdef IS_RELEASE_DLL
   return VISA_SUCCESS;
 #else
@@ -493,9 +473,11 @@ int CisaBinary::isaDump(const std::list<VISAKernelImpl *> &kernels,
 
   const bool isaasmToConsole = options->getOption(vISA_ISAASMToConsole);
 
-  VISAKernelImpl *mainKernel = kernels.front();
-  for (VISAKernelImpl *kTemp : kernels) {
+  VISAKernelImpl *mainKernel = *parent->kernel_begin();
+  for (auto kTempIt = parent->kernel_begin();
+         kTempIt != parent->kernel_end(); ++kTempIt) {
     std::stringstream asmName;
+    VISAKernelImpl *kTemp = *kTempIt;
     if (kTemp->getIsKernel()) {
       mainKernel = kTemp;
       asmName << kTemp->getOutputAsmPath();

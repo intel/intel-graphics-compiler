@@ -1183,11 +1183,6 @@ public:
             mBuildOption == VISA_BUILDER_BOTH);
   }
 
-  // This member holds symbolic index of function when invoked via
-  // API path. Builder client can use this id when invoking this
-  // stack call function. For a kernel instance, this is not useful.
-  const unsigned int m_functionId;
-
   unsigned getvIsaInstCount() const override { return m_vISAInstCount; };
 
   bool isFCCallableKernel() const { return mIsFCCallableKernel; }
@@ -1266,8 +1261,8 @@ public:
     return m_CISABuilder->getBuilderMode() == vISA_ASM_WRITER;
   }
 
-  typedef std::list<VISAKernelImpl *> VISAKernelImplListTy;
-  void computeAndEmitDebugInfo(VISAKernelImplListTy &functions);
+  typedef CISA_IR_Builder::KernelListTy KernelListTy;
+  void computeAndEmitDebugInfo(KernelListTy &functions);
 
 private:
   int InitializeKernel(const char *kernel_name);
@@ -1311,6 +1306,12 @@ private:
       GenPrecision src1Precision, uint8_t Depth, uint8_t Count);
 
   void createBindlessSampler();
+
+private:
+  // This member holds symbolic index of function when invoked via
+  // API path. Builder client can use this id when invoking this
+  // stack call function. For a kernel instance, this is not useful.
+  const unsigned int m_functionId;
 
   kernel_format_t m_cisa_kernel;
 

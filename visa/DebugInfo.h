@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #ifndef DEBUG_INFO_H
 #define DEBUG_INFO_H
+#include "BuildCISAIR.h"
 #include "Common_BinaryEncoding.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
@@ -33,10 +34,10 @@ class DebugInfoState;
 
 int decodeAndDumpDebugInfo(char *filename, TARGET_PLATFORM platform);
 void emitDebugInfo(VISAKernelImpl *kernel,
-                   std::list<VISAKernelImpl *> &functions,
+                   CISA_IR_Builder::KernelListTy &functions,
                    std::string filename);
 void emitDebugInfoToMem(VISAKernelImpl *kernel,
-                        std::list<VISAKernelImpl *> &functions, void *&info,
+                        CISA_IR_Builder::KernelListTy &functions, void *&info,
                         unsigned &size);
 
 struct IDX_VDbgCisaByte2Gen {

@@ -137,13 +137,9 @@ public:
 
   void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
 
-  const VISAKernelImpl *
-  getFmtKernelForISADump(const VISAKernelImpl *kernel,
-                         const std::list<VISAKernelImpl *> &kernels) const;
   std::string isaDump(const VISAKernelImpl *kernel,
                       const VISAKernelImpl *fmtKernel) const;
-  int isaDump(const std::list<VISAKernelImpl *> &,
-              const Options *options) const;
+  int isaDump(const Options *options) const;
 
   unsigned long getKernelVisaBinarySize(int i) {
     return m_header.kernels[i].size;

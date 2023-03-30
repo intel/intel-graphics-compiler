@@ -48,15 +48,9 @@ using namespace vISA;
 CISA_IR_Builder::~CISA_IR_Builder() {
   m_cisaBinary->~CisaBinary();
 
-  std::list<VISAKernelImpl *>::iterator iter_start =
-      m_kernelsAndFunctions.begin();
-  std::list<VISAKernelImpl *>::iterator iter_end = m_kernelsAndFunctions.end();
-
-  while (iter_start != iter_end) {
-    VISAKernelImpl *kernel = *iter_start;
-    iter_start++;
+  for (auto k : m_kernelsAndFunctions) {
     // don't call delete since vISAKernelImpl is allocated in memory pool
-    kernel->~VISAKernelImpl();
+    k->~VISAKernelImpl();
   }
 
   if (needsToFreeWATable) {
@@ -554,7 +548,7 @@ void CISA_IR_Builder::CheckHazardFeatures(
 }
 
 void CISA_IR_Builder::CollectCallSites(
-    std::list<VISAKernelImpl *> &functions,
+    KernelListTy &functions,
     std::unordered_map<G4_Kernel *, std::list<std::list<G4_INST *>::iterator>>
         &callSites,
     std::list<std::list<vISA::G4_INST *>::iterator> &sgInvokeList) {
@@ -591,22 +585,17 @@ void CISA_IR_Builder::CollectCallSites(
 }
 
 void CISA_IR_Builder::RemoveOptimizingFunction(
-    std::list<VISAKernelImpl *> &functions,
     const std::list<std::list<vISA::G4_INST *>::iterator> &sgInvokeList) {
   std::set<G4_Kernel *> removeList;
   for (auto &it : sgInvokeList) {
     G4_INST *fcall = *it;
     removeList.insert(GetCalleeKernel(fcall));
   }
-  std::list<VISAKernelImpl *>::iterator i = functions.begin();
-  while (i != functions.end()) {
-    auto func = *i;
-    if (!removeList.count(func->getKernel())) {
-      ++i;
-    } else {
-      functions.erase(i++);
-    }
-  }
+
+  llvm::erase_if(m_kernelsAndFunctions, [&](VISAKernelImpl *k) {
+    return removeList.count(k->getKernel());
+  });
+
 }
 
 void CISA_IR_Builder::ProcessSgInvokeList(
@@ -1519,7 +1508,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     }
 
     if (m_options.getOption(vISA_GenerateISAASM)) {
-      status = m_cisaBinary->isaDump(m_kernelsAndFunctions, &m_options);
+      status = m_cisaBinary->isaDump(&m_options);
       if (status != VISA_SUCCESS) {
         // Treat VISA_EARLY_EXIT as VISA_SUCCESS.
         return status == VISA_EARLY_EXIT ? VISA_SUCCESS : status;
@@ -1568,7 +1557,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
       ResetHasStackCall(sgInvokeList, callSites);
 
-      RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
+      RemoveOptimizingFunction(sgInvokeList);
 
       std::unordered_map<G4_Kernel *,
                          std::list<std::list<vISA::G4_INST *>::iterator>>
@@ -1627,9 +1616,9 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     uint32_t localScheduleEndKernelId =
         m_options.getuInt32Option(vISA_LocalScheduleingEndKernel);
     VISAKernelImpl *mainKernel = nullptr;
-    std::list<VISAKernelImpl *>::iterator iter = m_kernelsAndFunctions.begin();
-    std::list<VISAKernelImpl *>::iterator end = m_kernelsAndFunctions.end();
-    for (int i = 0; iter != end; iter++, i++) {
+    KernelListTy::iterator iter = kernel_begin();
+    KernelListTy::iterator iend = kernel_end();
+    for (int i = 0; iter != iend; iter++, i++) {
       VISAKernelImpl *kernel = (*iter);
       if ((uint32_t)i < localScheduleStartKernelId ||
           (uint32_t)i > localScheduleEndKernelId) {
@@ -1721,7 +1710,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
           func->setType(VISA_BUILD_TYPE::KERNEL);
         }
       }
-      m_kernelsAndFunctions.pop_front();
+      m_kernelsAndFunctions.erase(m_kernelsAndFunctions.begin());
       if (isInPatchingMode) {
         m_kernelsAndFunctions.push_back(m_prevKernel);
       } else {
@@ -1778,9 +1767,9 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
     // mainFunctions: functions or kernels those will be stitched by others
     // These functions/kernels will be the unit of compilePostOptimize
-    VISAKernelImpl::VISAKernelImplListTy mainFunctions;
+    KernelListTy mainFunctions;
     // subFunctions: functions those will stitch to others
-    VISAKernelImpl::VISAKernelImplListTy subFunctions;
+    KernelListTy subFunctions;
     std::map<std::string, G4_Kernel *> subFunctionsNameMap;
     // For functions those will be stitch to others, create table to map their
     // name to G4_Kernel
@@ -1929,8 +1918,8 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 }
 
 void CISA_IR_Builder::summarizeFunctionInfo(
-    VISAKernelImplListTy &mainFunctions,
-    VISAKernelImplListTy &subFunction) {
+    KernelListTy &mainFunctions,
+    KernelListTy &subFunction) {
 
   // Set usesBarrier property for each kernel and function appropriately.
   // resursively propagate barrier information from callees to their caller.
