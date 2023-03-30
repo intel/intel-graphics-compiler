@@ -8034,10 +8034,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_fma_rtn:
         emitFMArtn(inst);
         break;
-    case GenISAIntrinsic::GenISA_setRoundingModeFP:
-    case GenISAIntrinsic::GenISA_resetRoundingMode:
-        SetRoundingMode_FP(GetRoundingMode_FP(inst));
-        break;
     case GenISAIntrinsic::GenISA_CatchAllDebugLine:
         emitDebugPlaceholder(inst);
         break;
@@ -14706,12 +14702,6 @@ ERoundingMode EmitPass::GetRoundingMode_FP(Instruction* inst)
             RM = (ERoundingMode)rmVal->getZExtValue();
             break;
         }
-        case GenISAIntrinsic::GenISA_setRoundingModeFP:
-        {
-            ConstantInt* rmVal = cast<ConstantInt>(GII->getArgOperand(0));
-            RM = (ERoundingMode)rmVal->getZExtValue();
-            break;
-        }
         default:
             break;
         }
@@ -14877,8 +14867,6 @@ bool EmitPass::setRMExplicitly(Instruction* inst)
         case GenISAIntrinsic::GenISA_ftobf:
         case GenISAIntrinsic::GenISA_2fto2bf:
         case GenISAIntrinsic::GenISA_hftobf8:
-        case GenISAIntrinsic::GenISA_setRoundingModeFP:
-        case GenISAIntrinsic::GenISA_resetRoundingMode:
             return true;
         default:
             break;

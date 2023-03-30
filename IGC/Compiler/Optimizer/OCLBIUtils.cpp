@@ -1360,10 +1360,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_fma_rtp_f64"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtp);
     m_CommandMap["__builtin_IB_fma_rtn_f64"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtn);
 
-    // Rounding mode built-ins
-    m_CommandMap["__builtin_IB_set_rounding_mode_fp"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_setRoundingModeFP, false);
-    m_CommandMap["__builtin_IB_reset_rounding_mode"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_resetRoundingMode, false);
-
     //Sync built-ins
     m_CommandMap["__builtin_IB_thread_group_barrier"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier, false);
     m_CommandMap["__builtin_IB_thread_group_barrier_signal"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier_signal, false);

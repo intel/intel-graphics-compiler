@@ -1060,16 +1060,6 @@ Imported_Intrinsics = \
     [("anyfloat",                      "input")],
     "NoMem"]],
 ####################################################################################################
-"GenISA_setRoundingModeFP": ["switches the FPU rounding mode",
-    [("void",                          ""),
-    [("int",                           "Rounding mode (ERoundingMode)")],
-    "None"]],
-####################################################################################################
-"GenISA_resetRoundingMode": ["resets the FPU rounding mode",
-    [("void",                          ""),
-    [],
-    "None"]],
-####################################################################################################
 "GenISA_gather4Cptr": ["",
     [("anyvector",                     "result"),
     [("anyfloat",                      "coordinates ref"),
