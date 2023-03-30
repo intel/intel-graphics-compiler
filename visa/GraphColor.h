@@ -315,7 +315,9 @@ private:
   std::vector<G4_Declare *> sortedIntervals;
   AugmentPriorityQueue defaultMaskQueue{criticalCmpForEndInterval(gra)};
   AugmentPriorityQueue nonDefaultMaskQueue{criticalCmpForEndInterval(gra)};
-  std::unordered_map<FuncInfo *, MaskDeclares> callsiteDeclares;
+  // overlapDclsWithFunc holds default and non-default range live across
+  // all call sites of func.
+  std::unordered_map<FuncInfo *, MaskDeclares> overlapDclsWithFunc;
   std::unordered_map<G4_Declare *, MaskDeclares> retDeclares;
 
   bool updateDstMaskForGather(G4_INST *inst, std::vector<unsigned char> &mask);
@@ -365,11 +367,11 @@ private:
   void expireIntervals(unsigned startIdx);
   void buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall);
   void buildSIMDIntfAll(G4_Declare *newDcl);
-  void buildSIMDIntfAllOld(G4_Declare *newDcl);
   void handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl, bool isCall);
   bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
 
-  void addSIMDIntfDclForCallSite(MaskDeclares *maskDeclares);
+  void addSIMDIntfDclForCallSite(G4_BB* callBB);
+
   void addSIMDIntfForRetDclares(G4_Declare *newDcl);
 
 public:

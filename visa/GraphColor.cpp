@@ -3602,8 +3602,7 @@ void Augmentation::buildLiveIntervals() {
         updateStartInterval(scallDcl, inst);
         updateEndInterval(scallDcl, inst);
 
-        FuncInfo *callee = curBB->getCalleeInfo();
-        std::pair<G4_INST *, FuncInfo *> callInfo(inst, callee);
+        std::pair<G4_INST *, G4_BB*> callInfo(inst, curBB);
         callDclMap.emplace(scallDcl, callInfo);
 
         continue;
@@ -4154,17 +4153,34 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask,
   return false;
 }
 
-//
-// Mark interference between newDcl and other incompatible dcls in current
-// active lists.
-//
-void Augmentation::addSIMDIntfDclForCallSite(MaskDeclares *maskDeclares) {
+// This method is invoked when building SIMD intf and current variable
+// is the artificial variable created to model call. Live-intervals in
+// default set and non-default set are ones that overlap with call site
+// at end of callBB. The idea here is to mark every such active interval
+// with mask associated with func. Later, we'll mark interference with
+// each live-interval bit set here and maydef of func.
+void Augmentation::addSIMDIntfDclForCallSite(G4_BB* callBB) {
+  FuncInfo *func = callBB->getCalleeInfo();
+  auto isLiveThroughFunc = [&](unsigned int id) {
+    if (liveAnalysis.isLiveAtExit(callBB, id)) {
+      auto retBB = func->getExitBB();
+      if (liveAnalysis.isLiveAtExit(retBB, id))
+        return true;
+    }
+    return false;
+  };
+
+  auto& overlapDeclares = overlapDclsWithFunc[func];
   for (auto defaultDcl : defaultMaskQueue) {
-    maskDeclares->first.set(defaultDcl->getRegVar()->getId(), true);
+    auto id = defaultDcl->getRegVar()->getId();
+    if (!isLiveThroughFunc(id))
+      overlapDeclares.first.set(id, true);
   }
 
   for (auto nonDefaultDcl : nonDefaultMaskQueue) {
-    maskDeclares->second.set(nonDefaultDcl->getRegVar()->getId(), true);
+    auto id = nonDefaultDcl->getRegVar()->getId();
+    if (!isLiveThroughFunc(id))
+      overlapDeclares.second.set(id, true);
   }
 }
 
@@ -4180,7 +4196,14 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare *newDcl) {
   } else {
     mask = &dclIt->second;
   }
-  addSIMDIntfDclForCallSite(mask);
+
+  for (auto defaultDcl : defaultMaskQueue) {
+    mask->first.set(defaultDcl->getRegVar()->getId(), true);
+  }
+
+  for (auto nonDefaultDcl : nonDefaultMaskQueue) {
+    mask->second.set(nonDefaultDcl->getRegVar()->getId(), true);
+  }
 }
 
 //
@@ -4337,41 +4360,13 @@ void Augmentation::buildSIMDIntfAll(G4_Declare *newDcl) {
       addSIMDIntfForRetDclares(varDcl);
     }
 
-    auto &func = callDclMapIt->second.second;
-    addSIMDIntfDclForCallSite(&callsiteDeclares[func]);
-
+    auto *callBB = callDclMapIt->second.second;
+    addSIMDIntfDclForCallSite(callBB);
     return;
   }
 
   buildSIMDIntfDcl(newDcl, false);
   return;
-}
-
-void Augmentation::buildSIMDIntfAllOld(G4_Declare *newDcl) {
-  auto callDclMapIt = callDclMap.find(newDcl);
-  if (callDclMapIt != callDclMap.end()) {
-
-    G4_Declare *varDcl = NULL;
-
-    if (liveAnalysis.livenessClass(G4_GRF)) // For return value
-    {
-      G4_INST *callInst = callDclMapIt->second.first;
-      varDcl = callInst->getDst()->getBase()->asRegVar()->getDeclare();
-      buildSIMDIntfDcl(varDcl, false);
-    }
-
-    auto &func = callDclMapIt->second.second;
-    for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++) {
-      auto maydef = liveAnalysis.subroutineMaydef.find(func);
-      if (maydef != liveAnalysis.subroutineMaydef.end() &&
-          maydef->second.isSet(i)) {
-        varDcl = lrs[i]->getDcl();
-        buildSIMDIntfDcl(varDcl, true);
-      }
-    }
-  } else {
-    buildSIMDIntfDcl(newDcl, false);
-  }
 }
 
 //
@@ -4386,11 +4381,7 @@ void Augmentation::buildInterferenceIncompatibleMask() {
     unsigned startIdx = gra.getStartInterval(newDcl)->getLexicalId();
     VISA_DEBUG_VERBOSE(std::cout << "New idx " << startIdx << "\n");
     expireIntervals(startIdx);
-    if (!kernel.fg.builder->getOption(vISA_UseOldSubRoutineAugIntf)) {
-      buildSIMDIntfAll(newDcl);
-    } else {
-      buildSIMDIntfAllOld(newDcl);
-    }
+    buildSIMDIntfAll(newDcl);
 
     // Add newDcl to correct list
     if (gra.getHasNonDefaultMaskDef(newDcl) || newDcl->getAddressed() == true) {
@@ -4404,12 +4395,10 @@ void Augmentation::buildInterferenceIncompatibleMask() {
     }
   }
 
-  if (!kernel.fg.builder->getOption(vISA_UseOldSubRoutineAugIntf)) {
-    for (auto func : kernel.fg.funcInfoTable) {
-      buildInteferenceForCallsite(func);
-    }
-    buildInteferenceForRetDeclares();
+  for (auto func : kernel.fg.funcInfoTable) {
+    buildInteferenceForCallsite(func);
   }
+  buildInteferenceForRetDeclares();
 }
 
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
@@ -4479,12 +4468,13 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
 }
 
 void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
-  for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++) {
-    auto maydef = liveAnalysis.subroutineMaydef.find(func);
-    if (maydef != liveAnalysis.subroutineMaydef.end() &&
-        maydef->second.isSet(i)) {
-      G4_Declare *varDcl = lrs[i]->getDcl();
-      buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[func]);
+  auto maydefConst = liveAnalysis.subroutineMaydef.find(func);
+  if (maydefConst != liveAnalysis.subroutineMaydef.end()) {
+    auto *maydef = const_cast<SparseBitSet *>(&maydefConst->second);
+    for (auto bit : *maydef) {
+      G4_Declare *varDcl = lrs[bit]->getDcl();
+      buildInteferenceForCallSiteOrRetDeclare(varDcl,
+                                              &overlapDclsWithFunc[func]);
     }
   }
   if (kernel.getOption(vISA_LocalRA)) {
@@ -4492,7 +4482,7 @@ void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
       if (localSummaryOfCallee[func].isGRFBusy(j)) {
         G4_Declare *varDcl = gra.getGRFDclForHRA(j);
         buildInteferenceForCallSiteOrRetDeclare(varDcl,
-                                                &callsiteDeclares[func]);
+                                                &overlapDclsWithFunc[func]);
       }
     }
   }
@@ -4683,7 +4673,7 @@ void Augmentation::augmentIntfGraph() {
   }
 
   for (auto func : kernel.fg.funcInfoTable) {
-    auto &item = callsiteDeclares[func];
+    auto &item = overlapDclsWithFunc[func];
     item.first.resize(liveAnalysis.getNumSelectedGlobalVar());
     item.second.resize(liveAnalysis.getNumSelectedGlobalVar());
   }

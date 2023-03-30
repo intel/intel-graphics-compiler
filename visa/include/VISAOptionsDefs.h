@@ -410,8 +410,6 @@ DEF_VISA_OPTION(vISA_SplitMov64, ET_INT32, "-SplitMov64",
                 "USAGE: -SplitMov64 (0|1|2)\n", 0)
 DEF_VISA_OPTION(vISA_PredicatedFdivSqrt, ET_INT32, "-predicatedfdivsqrt",
                 "USAGE: -predicatedfdivsqrt 0(if)|1(predicated)|2(auto)", 2)
-DEF_VISA_OPTION(vISA_UseOldSubRoutineAugIntf, ET_BOOL,
-                "-useOldSubRoutineAugIntf", UNUSED, false)
 DEF_VISA_OPTION(vISA_FastCompileRA, ET_BOOL, "-fastCompileRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_HybridRAWithSpill, ET_BOOL, "-hybridRAWithSpill", UNUSED,
                 false)

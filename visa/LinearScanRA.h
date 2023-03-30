@@ -354,11 +354,9 @@ typedef struct _ACTIVE_GRFS {
   std::vector<LSInputLiveRange *> activeInput;
 } ACTIVE_GRFS;
 
-typedef std::map<vISA::G4_Declare *, std::pair<vISA::G4_INST *, FuncInfo *>>
-    CALL_DECL_MAP;
 typedef std::map<vISA::G4_Declare *,
-                 std::pair<vISA::G4_INST *, FuncInfo *>>::iterator
-    CALL_DECL_MAP_ITER;
+                 std::pair<vISA::G4_INST *, G4_BB *>>
+    CALL_DECL_MAP;
 
 class globalLinearScan {
 private:

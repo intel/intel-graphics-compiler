@@ -4566,10 +4566,6 @@ namespace IGC
         {
             SaveOption(vISA_AvoidUsingR0R1, true);
         }
-        if (IGC_IS_FLAG_ENABLED(UseOldSubRoutineAugIntf))
-        {
-            SaveOption(vISA_UseOldSubRoutineAugIntf, true);
-        }
         if (IGC_IS_FLAG_ENABLED(FastCompileRA)
             && (!hasStackCall || IGC_IS_FLAG_ENABLED(PartitionWithFastHybridRA)))
         {
