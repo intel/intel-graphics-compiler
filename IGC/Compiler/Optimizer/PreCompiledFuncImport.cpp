@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Builtins/LibraryIntU32DivRemEmu.hpp"
 #include "Compiler/Builtins/LibraryIntS32DivRemEmuSP.hpp"
 #include "Compiler/Builtins/LibraryIntU32DivRemEmuSP.hpp"
+#include "Compiler/Builtins/LibraryInt64DivRemEmu.hpp"
 #include "Compiler/Builtins/LibraryDPEmu.hpp"
 #include "Compiler/Builtins/LibraryMiscEmu.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -72,7 +73,7 @@ PreCompiledFuncImport::PreCompiledFuncImport(
     }
 }
 
-const char* PreCompiledFuncImport::m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
+const char* PreCompiledFuncImport::m_Int64DivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
 {
     // udiv
     {
@@ -112,6 +113,86 @@ const char* PreCompiledFuncImport::m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
     }
 };
 
+const char* PreCompiledFuncImport::m_Int64SpDivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
+{
+    // udiv
+    {
+        "__igcbuiltin_u64_udiv_sp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    },
+    // urem
+    {
+        "__igcbuiltin_u64_urem_sp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    },
+    // sdiv
+    {
+        "__igcbuiltin_s64_sdiv_sp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    },
+    // srem
+    {
+        "__igcbuiltin_s64_srem_sp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    }
+};
+
+const char* PreCompiledFuncImport::m_Int64DpDivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
+{
+    // udiv
+    {
+        "__igcbuiltin_u64_udiv_dp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    },
+    // urem
+    {
+        "__igcbuiltin_u64_urem_dp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    },
+    // sdiv
+    {
+        "__igcbuiltin_s64_sdiv_dp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    },
+    // srem
+    {
+        "__igcbuiltin_s64_srem_dp",
+        "",
+        "",
+        "",
+        "",
+        ""
+    }
+};
+
 const char* PreCompiledFuncImport::m_Int32EmuFunctionNames[NUM_INT32_EMU_FUNCTIONS] =
 {
     "precompiled_u32divrem",
@@ -144,7 +225,7 @@ const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_ID
     { "__igcbuiltin_dp_to_int64",         LIBMOD_DP_CONV_I64 },
     { "__igcbuiltin_dp_to_uint64",        LIBMOD_DP_CONV_I64 },
     { "__igcbuiltin_int64_to_dp",         LIBMOD_DP_CONV_I64 },
-    { "__igcbuiltin_uint64_to_dp",        LIBMOD_DP_CONV_I64 }
+    { "__igcbuiltin_uint64_to_dp",        LIBMOD_DP_CONV_I64 },
 };
 
 // The entry order must match to LibraryModules enum!
@@ -166,6 +247,8 @@ const LibraryModuleInfo PreCompiledFuncImport::m_libModInfos[NUM_LIBMODS] =
     /* LIBMOD_DP_SQRT_NOMADM */{ igcbuiltin_emu_dp_sqrt_nomadm, sizeof(igcbuiltin_emu_dp_sqrt_nomadm) },
     /* LIBMOD_SP_DIV      */   { igcbuiltin_emu_sp_div, sizeof(igcbuiltin_emu_sp_div) },
     /* LIBMOD_DP_CONV_I64 */   { igcbuiltin_emu_dp_conv_i64, sizeof(igcbuiltin_emu_dp_conv_i64) },
+    /* LIBMOD_INT64_DIV_REM_SP */ { igcbuiltin_emu_i64_divrem_sp, sizeof(igcbuiltin_emu_i64_divrem_sp) },
+    /* LIBMOD_INT64_DIV_REM_DP */ { igcbuiltin_emu_i64_divrem_dp, sizeof(igcbuiltin_emu_i64_divrem_dp) },
 };
 
 void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
@@ -1178,7 +1261,9 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
         return;
     }
 
-    StringRef funcName = m_sFunctionNames[function][elementIndex];
+    const char* funcName = nullptr;
+    LibraryModules module;
+    getInt64DivideEmuType(function, elementIndex, funcName, module);
 
     Function* func = m_pModule->getFunction(funcName);
 
@@ -1215,9 +1300,45 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
     inst.replaceAllUsesWith(funcCall);
     inst.eraseFromParent();
 
-    m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
+    m_libModuleToBeImported[module] = true;
     m_changed = true;
     m_pCtx->metrics.StatEndEmuFunc(funcCall);
+}
+
+// Select correct module and function for int64 div/rem emulation.
+void PreCompiledFuncImport::getInt64DivideEmuType(EmulatedFunctions function, unsigned int elementIndex, const char*& functionName, LibraryModules& module)
+{
+    // overwrite options
+    switch (IGC_GET_FLAG_VALUE(ForceI64DivRemEmu))
+    {
+    case 1:
+        functionName = m_Int64DivRemFunctionNames[function][elementIndex];
+        module = LIBMOD_INT_DIV_REM;
+        return;
+    case 2:
+        functionName = m_Int64SpDivRemFunctionNames[function][elementIndex];
+        module = LIBMOD_INT64_DIV_REM_SP;
+        return;
+    case 3:
+        functionName = m_Int64DpDivRemFunctionNames[function][elementIndex];
+        module = LIBMOD_INT64_DIV_REM_DP;
+        return;
+    default:
+        break;
+    }
+
+    // look only for native DP support (ignore emulated DP)
+    if (m_pCtx->platform.hasNoFP64Inst() || isDPEmu() || isDPDivSqrtEmu())
+    {
+        // no full DP support, use SP
+        functionName = m_Int64SpDivRemFunctionNames[function][elementIndex];
+        module = LIBMOD_INT64_DIV_REM_SP;
+        return;
+    }
+
+    // DP supported
+    functionName = m_Int64DpDivRemFunctionNames[function][elementIndex];
+    module = LIBMOD_INT64_DIV_REM_DP;
 }
 
 void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)

@@ -63,6 +63,8 @@ namespace IGC
             LIBMOD_DP_SQRT_NOMADM,   // dp_sqrt_nomadm_ieee & dp_sqrt_nomadm_fast
             LIBMOD_SP_DIV,           // sp_div
             LIBMOD_DP_CONV_I64,      // dp_to_[u]int64 & [u]int64_to_dp
+            LIBMOD_INT64_DIV_REM_SP, // [u|s][div|rem], for 64 bit integers using fp32
+            LIBMOD_INT64_DIV_REM_DP, // [u|s][div|rem], for 64 bit integers using fp64
 
             // This must be the last entry
             NUM_LIBMODS
@@ -173,6 +175,7 @@ namespace IGC
 
     private:
         void processDivide(llvm::BinaryOperator& inst, EmulatedFunctions function);
+        void getInt64DivideEmuType(EmulatedFunctions function, unsigned int elementIndex, const char*& functionName, LibraryModules& module);
         llvm::BinaryOperator* upcastTo32Bit(llvm::BinaryOperator* I);
         void processInt32Divide(llvm::BinaryOperator& inst, Int32EmulatedFunctions function);
 
@@ -218,7 +221,9 @@ namespace IGC
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
 
-        const static char* m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
+        const static char* m_Int64DivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
+        const static char* m_Int64SpDivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
+        const static char* m_Int64DpDivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
         const static char* m_Int32EmuFunctionNames[NUM_INT32_EMU_FUNCTIONS];
 
         /// @brief  Kind of emulations. Its bits are defined by EmuKind.
