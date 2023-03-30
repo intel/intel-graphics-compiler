@@ -25,6 +25,7 @@ namespace IGC
         bool allowLICM;
         bool allowCodeSinking;
         bool allowAddressArithmeticSinking;
+        bool allowCloneAddressArithmetic;
         bool allowSimd32Slicing;
         bool allowPromotePrivateMemory;
         bool allowPreRAScheduler;
@@ -37,9 +38,9 @@ namespace IGC
     };
 
     static const RetryState RetryTable[] = {
-        // licm  codSk AdrSk  Slice  PrivM  PreRA  VISAP  URBWr  Coals  GRF    loadSk
-        { true,  true, false, false, true,  true,  true,  true,  true,  false, false, 1 },
-        { false, true, true,  true,  false, false, false, false, false, true,  true, 500 }
+        // licm  codSk AdrSk  clAdr  Slice  PrivM  PreRA  VISAP  URBWr  Coals  GRF    loadSk
+        { true,  true, false, false, false, true,  true,  true,  true,  true,  false, false, 1 },
+        { false, true, true,  true,  true,  false, false, false, false, false, true,  true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -85,6 +86,13 @@ namespace IGC
         // when retrying for stackcalls seems to give better performance. So always
         // enable when recompiling with stackcalls.
         return RetryTable[id].allowLICM || !PerFuncRetrySet.empty();
+    }
+
+    bool RetryManager::AllowCloneAddressArithmetic(Function* F) const
+    {
+        unsigned id = GetPerFuncRetryStateId(F);
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].allowCloneAddressArithmetic;
     }
 
     bool RetryManager::AllowAddressArithmeticSinking(Function* F) const

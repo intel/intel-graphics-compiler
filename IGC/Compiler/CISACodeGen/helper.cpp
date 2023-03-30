@@ -2224,6 +2224,8 @@ namespace IGC
         // Disable opt passes using the retry manager states
         if (!pCtx->m_retryManager.AllowPromotePrivateMemory(F))
             OptDisableSet->insert(IGCOpts::LowerGEPForPrivMemPass);
+        if (!pCtx->m_retryManager.AllowCloneAddressArithmetic(F))
+            OptDisableSet->insert(IGCOpts::CloneAddressArithmeticPass);
         if (!pCtx->m_retryManager.AllowAddressArithmeticSinking(F))
             OptDisableSet->insert(IGCOpts::AddressArithmeticSinkingPass);
         if (!pCtx->m_retryManager.AllowPreRAScheduler(F))

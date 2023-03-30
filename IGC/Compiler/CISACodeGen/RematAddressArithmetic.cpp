@@ -46,7 +46,176 @@ private:
     bool rematerialize(Instruction* I, SmallVectorImpl<Value*>& Chain);
 };
 
+class CloneAddressArithmetic : public FunctionPass {
+
+public:
+    static char ID;
+
+    CloneAddressArithmetic() : FunctionPass(ID)
+    {
+        initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
+    }
+
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
+        AU.setPreservesCFG();
+    }
+
+    bool runOnFunction(Function&) override;
+
+private:
+    bool greedyRemat(Function &F);
+};
+
+
+
+
 } // end namespace
+
+
+FunctionPass* IGC::createCloneAddressArithmeticPass() {
+    return new CloneAddressArithmetic();
+}
+
+char CloneAddressArithmetic::ID = 0;
+
+#define PASS_FLAG_2     "igc-clone-address-arithmetic"
+#define PASS_DESC_2     "Clone Address Arithmetic"
+#define PASS_CFG_ONLY_2 false
+#define PASS_ANALYSIS_2 false
+namespace IGC {
+IGC_INITIALIZE_PASS_BEGIN(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
+IGC_INITIALIZE_PASS_END(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
+}
+
+void rematWholeChain(llvm::IntToPtrInst *I) {
+
+  llvm::SmallVector<llvm::Instruction *, 4> RematVector;
+  std::queue<llvm::Instruction *> BFSQ;
+  BFSQ.push((Instruction *)I);
+
+  const unsigned NumOfUsesLimit = IGC_GET_FLAG_VALUE(RematUsesThreshold);
+
+  // we are traversing ssa-chain for address arithmetic
+  while (!BFSQ.empty()) {
+
+    llvm::Instruction *CurrI = BFSQ.front();
+    BFSQ.pop();
+
+    for (unsigned int i = 0; i < CurrI->getNumOperands(); ++i) {
+
+      Instruction *Op = llvm::dyn_cast<Instruction>(CurrI->getOperand(i));
+      if( Op != NULL) {
+
+        bool NotPHI = !llvm::isa<llvm::PHINode>(Op);
+        bool NotConstant = !llvm::isa<llvm::Constant>(Op);
+        bool SameBB = Op->getParent() == I->getParent();
+
+        // if operand has more uses than specified, we do not rematerialize it.
+        // helps with situation like this:
+        //
+        // (we don't want to add this to every rematerialized chain of instructions)
+        // someCommonValue = add base, 10000
+        //
+        // mul r0, someCommonValue
+        // load r0
+        // ...
+        // mul r2 someCommonValue
+        // load r2
+        bool NotTooManyUses = Op->getNumUses() < NumOfUsesLimit;
+
+        if (SameBB && NotConstant && NotPHI && NotTooManyUses) {
+
+          BFSQ.push(Op);
+          RematVector.push_back(Op);
+        }
+      }
+    }
+  }
+
+  std::unordered_map<Instruction *, Instruction *> OldToNew;
+  std::reverse(RematVector.begin(), RematVector.end());
+
+  for (auto el : RematVector) {
+
+    auto Clone = el->clone();
+    OldToNew[el] = Clone;
+    for (unsigned int i = 0; i < Clone->getNumOperands(); ++i) {
+
+      auto OldOp = llvm::dyn_cast<Instruction>(Clone->getOperand(i));
+
+      if (OldToNew.count(OldOp)) {
+        Clone->setOperand(i, OldToNew[OldOp]);
+      }
+    }
+
+    Clone->setName("remat");
+    Clone->insertBefore(I);
+  }
+
+  auto OldOp = dyn_cast<Instruction>(I->getOperand(0));
+  if (OldToNew.count(OldOp)) I->setOperand(0, OldToNew[OldOp]);
+
+  OldToNew.clear();
+  RematVector.clear();
+}
+
+bool CloneAddressArithmetic::greedyRemat(Function &F) {
+
+  bool Result = false;
+  llvm::SmallVector<llvm::IntToPtrInst *, 4> ToProcess;
+
+  // go through block, collect all inttoptr instructions to do
+  // remat on them
+  for (BasicBlock &BB : F) {
+    // if block has less than required amount of LLVM IR instructions, skip it
+    const unsigned Limit = IGC_GET_FLAG_VALUE(RematBlockSize);
+    if (BB.getInstList().size() < Limit) continue;
+
+    for (auto &I : BB) {
+
+      auto *CastedIntToPtrInst = llvm::dyn_cast<IntToPtrInst>(&I);
+      if (CastedIntToPtrInst) ToProcess.push_back(CastedIntToPtrInst);
+    }
+  }
+
+  for (auto el : ToProcess) {
+
+    Value *V = el;
+    llvm::SmallVector<llvm::Use*, 4> VectorOfUses;
+    // collect all uses of particular intoptr inst
+    for (auto &use : V->uses()) {
+      VectorOfUses.push_back(&use);
+    }
+
+    for (auto use : VectorOfUses) {
+
+      // take use of inttoptr instruction, clone instruction,
+      // insert clone right before the use, swap use to clone, remat
+      auto User = use->getUser();
+      auto UserInst = llvm::dyn_cast<Instruction>(User);
+
+      if(UserInst) {
+        auto Clone = el->clone();
+        Clone->setName("cloned_" + el->getName());
+        Clone->insertBefore(UserInst);
+        *use = Clone;
+        rematWholeChain((llvm::IntToPtrInst *)Clone);
+        Result = true;
+      }
+    }
+  }
+
+  return Result;
+}
+
+bool CloneAddressArithmetic::runOnFunction(Function& F)
+{
+    bool Modified = false;
+    Modified |= greedyRemat(F);
+    return Modified;
+}
+
 
 FunctionPass* IGC::createRematAddressArithmeticPass() {
     return new RematAddressArithmetic();
