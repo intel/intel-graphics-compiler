@@ -162,6 +162,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
 #include "Compiler/SamplerPerfOptPass.hpp"
 #include "Compiler/CISACodeGen/HalfPromotion.h"
+#include "Compiler/CISACodeGen/CapLoopIterationsPass.h"
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/PartialEmuI64OpsPass.h"
@@ -834,6 +835,12 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(new HalfPromotion());
         mpm.add(createGVNPass());
         mpm.add(createDeadCodeEliminationPass());
+    }
+
+    if (IGC_IS_FLAG_ENABLED(ForceNoInfiniteLoops))
+    {
+        mpm.add(createLoopSimplifyPass());
+        mpm.add(new CapLoopIterations(UINT_MAX));
     }
 
     // Run address remat after GVN as it may hoist address calculations and

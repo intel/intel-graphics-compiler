@@ -657,6 +657,7 @@ DECLARE_IGC_REGKEY(bool, FuseTypedWrite, false, "Enable fusing of simd8 typed wr
 DECLARE_IGC_REGKEY(bool, DisableUndefAlphaOutputAsRed, false, "Disable output red for undefined alpha output", false)
 DECLARE_IGC_REGKEY(bool, EnableHalfPromotion, true, "Enable pass that replaces instructions using halfs with corresponding float counterparts for pre-SKL", false)
 DECLARE_IGC_REGKEY(bool, ForceHalfPromotion, false, "Force enable pass that replaces instructions using halfs with corresponding float counterparts", false)
+DECLARE_IGC_REGKEY(bool, ForceNoInfiniteLoops, false, "Limit # of loop iterations to UINT_MAX in while/for loops. Can be used to detect infinite loops in shaders", false)
 DECLARE_IGC_REGKEY(bool, DisbleLocalFences, false, "On CNL+ we need to emit local fences. Setting this to true removes those. It may be functionaly not correct.", false)
 DECLARE_IGC_REGKEY(bool, FastSpill, false, "fast spill code gen. This may produce worse equality code for the spilling shader", false)
 DECLARE_IGC_REGKEY(bool, EnableGSURBEntryPadding, true,  "Enable padding of GS URB Entry by adding extra portions of Control Data Header.", false)
