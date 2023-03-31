@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "Compiler/CodeGenContextWrapper.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
@@ -28,12 +29,12 @@ namespace IGC
 
     public:
         static char ID;
-        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr), g_metrics(nullptr), LI(nullptr)
-        {
-        };
-        CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMetric* metrics);
+
+        CheckInstrTypes();
+        CheckInstrTypes(bool afterOpts, bool metrics);
 
         virtual bool runOnFunction(llvm::Function& F) override;
+        bool doFinalization(llvm::Module&) override;
 
         void checkGlobalLocal(llvm::Instruction& I);
 
@@ -44,6 +45,7 @@ namespace IGC
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
+            AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.setPreservesAll();
         }
@@ -65,9 +67,10 @@ namespace IGC
         void SetLoopFlags(llvm::Function& F);
 
     private:
-        IGC::SInstrTypes* g_InstrTypes;
-        IGCMetrics::IGCMetric* g_metrics;
+        IGC::SInstrTypes g_InstrTypes = {};
+        bool g_AfterOpts, g_metrics;
 
+        void print(llvm::raw_ostream& OS) const;
     };
 
     class InstrStatistic : public llvm::FunctionPass, public llvm::InstVisitor<InstrStatistic>
@@ -87,7 +90,6 @@ namespace IGC
             return "InstrStatistic";
         }
 
-        void visitInstruction(llvm::Instruction& I);
         void visitLoadInst(llvm::LoadInst& I);
         void visitStoreInst(llvm::StoreInst& I);
 
@@ -106,6 +108,8 @@ namespace IGC
 
         bool parseLoops();
         bool parseLoop(llvm::Loop* loop);
+
+        void print(llvm::raw_ostream& OS) const;
     };
 
 } // namespace IGC
