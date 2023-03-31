@@ -182,7 +182,8 @@ HANDLE_INST(sync_fence, 1, 0, InstTypeMisc, Xe_PVC, ATTR_NONE)
 // Following are pseudo instructions
 //
 HANDLE_NAME_INST(label, "", 0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
-HANDLE_INST(intrinsic, 1, 3, InstTypeMisc, GENX_BDW, ATTR_NONE)
+// Intrinsic attributes should be defined in the IntrinsicInfo table.
+HANDLE_INST(intrinsic, 0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
 
 //
 // InstTypePseudoLogic

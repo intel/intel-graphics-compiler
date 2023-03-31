@@ -1286,7 +1286,7 @@ struct IntrinsicInfo {
   Phase loweredBy; // intrinsic must be lowered before entering this phase
 };
 
-static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
+static constexpr IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
     //  id  name   numDst   numSrc  loweredBy
     {Intrinsic::Wait, "wait", 0, 0, Phase::Optimizer},
     {Intrinsic::Use, "use", 0, 1, Phase::Scheduler},
@@ -1336,12 +1336,15 @@ public:
 
   int getNumDst() const { return G4_Intrinsics[(int)intrinsicId].numDst; }
   int getNumSrc() const { return G4_Intrinsics[(int)intrinsicId].numSrc; }
+  unsigned getDstByteSize() const;
 
   Intrinsic getIntrinsicId() const { return intrinsicId; }
   const char *getName() const { return G4_Intrinsics[(int)intrinsicId].name; }
   Phase getLoweredByPhase() const {
     return G4_Intrinsics[(int)intrinsicId].loweredBy;
   }
+
+  void computeRightBound(G4_Operand *opnd) override;
 };
 // place for holding all physical register operands
 //
@@ -1555,7 +1558,7 @@ public:
 
   bool isOffsetValid() const { return offset != InvalidOffset; }
 
-  void computeRightBound(G4_Operand *opnd);
+  void computeRightBound(G4_Operand *opnd) override;
 
 private:
   G4_Declare *fp = nullptr;
@@ -1598,7 +1601,7 @@ public:
 
   bool isOffsetValid() { return offset != InvalidOffset; }
 
-  void computeRightBound(G4_Operand *opnd);
+  void computeRightBound(G4_Operand *opnd) override;
 
 private:
   G4_Declare *fp = nullptr;

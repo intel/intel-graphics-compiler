@@ -349,6 +349,11 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
     return;
   }
 
+  // Skip verifying operands of an intrinsic as it usually does not follow
+  // region rules.
+  if (inst->isIntrinsic())
+    return;
+
   // FIXME: If isImm() condition is removed then some assertions are hit.
   // This means somewhere in Jitter operand sharing is happening for
   // immediate type operands. This should be fixed.
@@ -465,20 +470,8 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       newRgn.computeLeftBound(*kernel.fg.builder);
       newRgn.computeRightBound(execSize);
 
-      if (inst->isPseudoUse()) {
-        G4_Declare *topdcl = newRgn.getBase()->asRegVar()->getDeclare();
-
-        while (topdcl->getAliasDeclare() != NULL) {
-          topdcl = topdcl->getAliasDeclare();
-        }
-
-        newRgn.setLeftBound(0);
-        newRgn.setRightBound(topdcl->getByteSize() - 1);
-      }
-
       if ((opnd->getRightBound() - opnd->getLeftBound()) >
-              (2u * kernel.numEltPerGRF<Type_UB>()) &&
-          (inst->isPseudoUse() == false)) {
+              (2u * kernel.numEltPerGRF<Type_UB>())) {
         if (!(inst->opcode() == G4_pln && inst->getSrc(1) == opnd)) {
           DEBUG_VERBOSE(
               "Difference between left/right bound is greater than 2 GRF for "
@@ -558,20 +551,9 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       newRgn.computeLeftBound(*kernel.fg.builder);
       newRgn.computeRightBound(execSize);
 
-      if (inst->isPseudoKill()) {
-        G4_Declare *topdcl = newRgn.getBase()->asRegVar()->getDeclare();
-
-        while (topdcl->getAliasDeclare() != NULL) {
-          topdcl = topdcl->getAliasDeclare();
-        }
-
-        newRgn.setLeftBound(0);
-        newRgn.setRightBound(topdcl->getByteSize() - 1);
-      }
-
       if ((opnd->getRightBound() - opnd->getLeftBound()) >
               (2u * kernel.numEltPerGRF<Type_UB>()) &&
-          (inst->isPseudoKill() == false) && (inst->opcode() != G4_madw)) {
+          (inst->opcode() != G4_madw)) {
         DEBUG_VERBOSE(
             "Difference between left/right bound is greater than 2 GRF for dst "
             "region. Single non-send opnd cannot span 2 GRFs. lb = "

@@ -13479,6 +13479,8 @@ void Optimizer::applyBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
       builder.createSrc(WAFlagVar, 0, 0, builder.getRegionScalar(), Type_UD);
   auto saveInst = builder.createMov(g4::SIMD1, dstMovForSave, srcMovForSave,
                                     InstOpt_WriteEnable, false);
+  vASSERT(dstMovForSave->getLinearizedStart() >= dst->getLinearizedStart() &&
+          dstMovForSave->getLinearizedEnd() <= dst->getLinearizedEnd());
   bb->insertBefore(it, saveInst);
 
   // create label
@@ -13542,6 +13544,8 @@ void Optimizer::applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
       builder.createSrc(WAFlagVar, 0, 0, builder.getRegionScalar(), Type_UD);
   auto saveInst = builder.createMov(g4::SIMD1, dstMovForSave, srcMovForSave,
                                     InstOpt_WriteEnable, false);
+  vASSERT(dstMovForSave->getLinearizedStart() >= dst->getLinearizedStart() &&
+          dstMovForSave->getLinearizedEnd() <= dst->getLinearizedEnd());
   bb->insertBefore(it, saveInst);
 
   // (W) mov dst.1<1>:ud 0x1:ud
@@ -13550,6 +13554,8 @@ void Optimizer::applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
   auto movInst =
       builder.createMov(g4::SIMD1, dstMov, builder.createImm(0x1, Type_UD),
                         InstOpt_WriteEnable, false);
+  vASSERT(dstMov->getLinearizedStart() >= dst->getLinearizedStart() &&
+          dstMov->getLinearizedEnd() <= dst->getLinearizedEnd());
   bb->insertBefore(it, movInst);
 
   // (W) mov dst.0<1>:ud src(barrierId):ud
@@ -13557,6 +13563,8 @@ void Optimizer::applyNamedBarrierWA(INST_LIST_ITER it, G4_BB *bb) {
                                                dst->getSubRegOff(), 1, Type_UD);
   auto movInst2 =
       builder.createMov(g4::SIMD1, dstMov2, src, InstOpt_WriteEnable, false);
+  vASSERT(dstMov2->getLinearizedStart() >= dst->getLinearizedStart() &&
+          dstMov2->getLinearizedEnd() <= dst->getLinearizedEnd());
   bb->insertBefore(it, movInst2);
 
   // (W) shl(1) dst.1:ud dst.1:ud dst.0:ud
@@ -13621,7 +13629,7 @@ void Optimizer::insertIEEEExceptionTrap() {
       G4_INST* trap =
           builder.createIntrinsicInst(nullptr, Intrinsic::IEEEExceptionTrap,
               g4::SIMD1, builder.createDst(tmp->getRegVar(), 0, 0, 1, Type_UD),
-              nullptr, nullptr, nullptr, InstOpt_WriteEnable, true);
+              nullptr, nullptr, nullptr, InstOpt_WriteEnable, false);
       bb->insertBefore(it, trap);
     }
   }
@@ -13646,6 +13654,8 @@ void Optimizer::expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb) {
       builder.phyregpool.getSr0Reg(), 0, 1, builder.getRegionScalar(), Type_UD);
   auto saveInst = builder.createMov(g4::SIMD1, tmpSR0Dot1Dst, SR0Dot1,
                                     InstOpt_WriteEnable, false);
+  vASSERT(tmpSR0Dot1Dst->getLinearizedStart() >= dst->getLinearizedStart() &&
+          tmpSR0Dot1Dst->getLinearizedEnd() <= dst->getLinearizedEnd());
   bb->insertBefore(it, saveInst);
 
   // Save f0.0:ud to dst.1:ud, then f0.0 can be used in the loop
@@ -13658,6 +13668,8 @@ void Optimizer::expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb) {
       builder.createSrc(flagVar, 0, 0, builder.getRegionScalar(), Type_UD);
   auto saveFlag = builder.createMov(g4::SIMD1, tmpFlagDst, flagSrc,
                                     InstOpt_WriteEnable, false);
+  vASSERT(tmpFlagDst->getLinearizedStart() >= dst->getLinearizedStart() &&
+          tmpFlagDst->getLinearizedEnd() <= dst->getLinearizedEnd());
   bb->insertBefore(it, saveFlag);
 
   // Check if any IEEE exception bit is set and update flag register.

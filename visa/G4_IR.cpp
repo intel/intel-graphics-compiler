@@ -7379,6 +7379,43 @@ G4_INST *G4_InstIntrinsic::cloneInst(const IR_Builder *b) {
       prd, getIntrinsicId(), getExecSize(), dst, src0, src1, src2, option);
 }
 
+unsigned G4_InstIntrinsic::getDstByteSize() const {
+  vASSERT(G4_Intrinsics[(int)intrinsicId].numDst == 1 && getDst());
+  switch (intrinsicId) {
+    case Intrinsic::NamedBarrierWA:
+    case Intrinsic::BarrierWA:
+    case Intrinsic::IEEEExceptionTrap:
+      vASSERT(getDst()->getTopDcl());
+      return getDst()->getTopDcl()->getByteSize();
+    default:
+      vISA_ASSERT(false, "Unhandled intrinsic type");
+      return 0;
+  }
+}
+
+void G4_InstIntrinsic::computeRightBound(G4_Operand *opnd) {
+  if (!opnd || opnd->isImm() || opnd->isNullReg())
+    return;
+
+  associateOpndWithInst(opnd, this);
+
+  switch (intrinsicId) {
+    case Intrinsic::NamedBarrierWA:
+    case Intrinsic::BarrierWA:
+    case Intrinsic::IEEEExceptionTrap:
+      if (opnd == getDst())
+        opnd->setRightBound(opnd->left_bound + getDstByteSize() - 1);
+      break;
+    default:
+      break;
+  }
+  // Use the default implementation if the intrinsic does not specify how to
+  // handle its bound for the operand. The derived class may also provide an
+  // override of this function.
+  if (!opnd->isRightBoundSet())
+    G4_INST::computeRightBound(opnd);
+}
+
 static void computeSpillFillOperandBound(G4_Operand *opnd, unsigned int LB,
                                          int numReg,
                                          const IR_Builder &builder) {

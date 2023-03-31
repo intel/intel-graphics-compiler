@@ -132,6 +132,7 @@ class G4_Operand {
   // field (mainly for bound?)
   friend class G4_INST;
   friend class G4_InstSend;
+  friend class G4_InstIntrinsic;
   friend class G4_FillIntrinsic;
   friend class G4_SpillIntrinsic;
   friend class G4_PseudoMovInstrinsic;
