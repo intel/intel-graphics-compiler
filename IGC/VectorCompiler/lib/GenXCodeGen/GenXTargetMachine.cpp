@@ -322,7 +322,11 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createSROAPass());
   vc::addPass(PM, createEarlyCSEPass());
   vc::addPass(PM, createLowerExpectIntrinsicPass());
+#if LLVM_VERSION_MAJOR >= 12
+  vc::addPass(PM, createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
+#else
   vc::addPass(PM, createCFGSimplificationPass());
+#endif
   vc::addPass(PM, createInstructionCombiningPass());
   vc::addPass(PM, createCFGSimplificationPass());
 
@@ -644,7 +648,11 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createPromoteMemoryToRegisterPass());
     PM.add(createInferAddressSpacesPass());
     PM.add(createEarlyCSEPass(true));
+#if LLVM_VERSION_MAJOR >= 12
+    PM.add(createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
+#else
     PM.add(createCFGSimplificationPass());
+#endif
     PM.add(createInstructionCombiningPass());
     PM.add(createDeadCodeEliminationPass());
     PM.add(createSROAPass());
