@@ -622,8 +622,11 @@ Dump::Dump( DumpName const& dumpName, DumpType type )
     {
         if (IGC_IS_FLAG_ENABLED(PrintToConsole))
         {
+            bool dumpFlag = GetDebugFlag(DebugFlag::DUMP_TO_OUTS);
+            SetDebugFlag(DebugFlag::DUMP_TO_OUTS, true);
             m_pStream->SetUnbuffered();
             m_pStream.reset(new TeeOutputStream(&ods(), false, m_pStream.release(), true));
+            SetDebugFlag(DebugFlag::DUMP_TO_OUTS, dumpFlag);
         }
 
         std::stringstream ss;
