@@ -139,4 +139,17 @@ Imported_Intrinsics = \
                          "attributes": "NoMem",
                        },
 
+### --------------------
+### Thread ID intrinsics
+### --------------------
+
+## ``llvm.vc.internal.logical.thread.id`` : logical global thread ID
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * Return value: i32 logical global thread ID within a gpu tile
+##
+    "logical_thread_id" : { "result": "int",
+                            "arguments": [],
+                            "attributes": "NoMem", },
+
 }

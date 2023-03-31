@@ -395,83 +395,22 @@ public:
   // predefined variable instead of sr0, returns *true* for such ones.
   bool getsHWTIDFromPredef() const { return GetsHWTIDFromPredef; }
 
-  uint32_t getMaxThreadsNumPerSubDevice() const {
-    switch (TargetId) {
-    default:
-      break;
-    case XeHP:
-    case XeHPG:
-    case XeLPG:
-      return 1 << 12;
-    case XeHPC:
-      return 1 << 12;
-    }
-    return 0;
-  }
+  uint32_t getMaxThreadsNumPerSubDevice() const;
+  ArrayRef<std::pair<int, int>> getThreadIdReservedBits() const;
 
-  ArrayRef<std::pair<int, int>> getThreadIdReservedBits() const {
-    // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
-    switch (TargetId) {
-    case GenXSubtarget::XeHP:
-    case GenXSubtarget::XeHPG:
-    case GenXSubtarget::XeLPG: {
-      // [13:11] Slice ID.
-      // [10:9] Dual - SubSlice ID
-      // [8] SubSlice ID.
-      // [7] : EUID[2]
-      // [6] : Reserved
-      // [5:4] EUID[1:0]
-      // [3] : Reserved MBZ
-      // [2:0] : TID
-      static const std::pair<int, int> Bits[] = {{6, 1}, {3, 1}};
-      return Bits;
-    }
-    case GenXSubtarget::XeHPC: {
-      // [14:12] Slice ID.
-      // [11:9] SubSlice ID
-      // [8] : EUID[2]
-      // [7:6] : Reserved
-      // [5:4] EUID[1:0]
-      // [3] : Reserved MBZ
-      // [2:0] : TID
-      static const std::pair<int, int> Bits[] = {{6, 2}, {3, 1}};
-      return Bits;
-    }
-    default:
-      // All other platforms have pre-defined Thread ID register
-      return {};
-    }
-  }
+  /// bit fields for SliceID and SubsliceID (from lsb to msb).
+  ArrayRef<std::pair<int, int>> getSubsliceIdBits() const;
+
+  /// bit fields for EU ID (from lsb to msb).
+  ArrayRef<std::pair<int, int>> getEUIdBits() const;
+
+  /// bit fields for ThreadID (from lsb to msb).
+  ArrayRef<std::pair<int, int>> getThreadIdBits() const;
 
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }
 
-  TARGET_PLATFORM getVisaPlatform() const {
-    switch (TargetId) {
-    case Gen8:
-      return TARGET_PLATFORM::GENX_BDW;
-    case Gen9:
-      return TARGET_PLATFORM::GENX_SKL;
-    case Gen9LP:
-      return TARGET_PLATFORM::GENX_BXT;
-    case Gen11:
-      return TARGET_PLATFORM::GENX_ICLLP;
-    case XeLP:
-      return TARGET_PLATFORM::GENX_TGLLP;
-    case XeHP:
-      return TARGET_PLATFORM::Xe_XeHPSDV;
-    case XeHPG:
-      return TARGET_PLATFORM::Xe_DG2;
-    case XeLPG:
-      return TARGET_PLATFORM::Xe_MTL;
-    case XeHPC:
-      if (!partialI64Emulation())
-        return TARGET_PLATFORM::Xe_PVC;
-      return TARGET_PLATFORM::Xe_PVCXT;
-    default:
-      return TARGET_PLATFORM::GENX_NONE;
-    }
-  }
+  TARGET_PLATFORM getVisaPlatform() const;
 
   /// * stackSurface - return a surface that should be used for stack.
   PreDefined_Surface stackSurface() const { return StackSurf; }

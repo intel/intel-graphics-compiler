@@ -144,6 +144,34 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
       vc::RegCategory::General, PreDefined_Vars::PREDEFINED_SR0,
       IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_CR0,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_CE0,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_DBG,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_COLOR,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_IMPL_ARG_BUF_PTR,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_LOCAL_ID_BUF_PTR,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_MSG0,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
 
   // Reserve the reserved registers.
   vc::accessContainer(CurrentRegId, vc::RegCategory::General) =

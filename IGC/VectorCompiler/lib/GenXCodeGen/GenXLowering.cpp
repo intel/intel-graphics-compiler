@@ -263,7 +263,8 @@ private:
   bool lowerSlmInit(CallInst *CI);
   bool lowerStackSave(CallInst *CI);
   bool lowerStackRestore(CallInst *CI);
-  bool lowerThreadID(CallInst *CI);
+  bool lowerHardwareThreadID(CallInst *CI);
+  bool lowerLogicalThreadID(CallInst *CI);
 
   Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
   bool lowerByteSwap(CallInst *CI);
@@ -3412,7 +3413,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::stackrestore:
       return lowerStackRestore(CI);
     case GenXIntrinsic::genx_get_hwid:
-      return lowerThreadID(CI);
+      return lowerHardwareThreadID(CI);
+    case vc::InternalIntrinsic::logical_thread_id:
+      return lowerLogicalThreadID(CI);
     }
     return false;
   }
@@ -5718,15 +5721,14 @@ bool GenXLowering::lowerStackRestore(CallInst *CI) {
   return true;
 }
 
-bool GenXLowering::lowerThreadID(CallInst *CI) {
+bool GenXLowering::lowerHardwareThreadID(CallInst *CI) {
   IRBuilder<> IRB{CI};
 
   auto *Ty = CI->getType();
   auto *ReadPredefFunc = GenXIntrinsic::getGenXDeclaration(
       CI->getModule(), GenXIntrinsic::genx_read_predef_reg, {Ty, Ty});
 
-  auto RegID = ST->getsHWTIDFromPredef() ? PreDefined_Vars::PREDEFINED_HW_TID
-                                         : PreDefined_Vars::PREDEFINED_SR0;
+  auto RegID = ST->getsHWTIDFromPredef() ? PREDEFINED_HW_TID : PREDEFINED_SR0;
   Value *Res = IRB.CreateCall(ReadPredefFunc,
                               {IRB.getInt32(RegID), UndefValue::get(Ty)});
 
@@ -5744,6 +5746,72 @@ bool GenXLowering::lowerThreadID(CallInst *CI) {
 
     auto *MaskC = ConstantInt::get(Ty, ST->getMaxThreadsNumPerSubDevice() - 1);
     Res = IRB.CreateAnd(Res, MaskC);
+  }
+
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
+  return true;
+}
+
+static Value *extractBitfields(IRBuilder<> &IRB, Value *To, Value *From,
+                               ArrayRef<std::pair<int, int>> Fields,
+                               int &InsertTo) {
+  auto *Ty = From->getType();
+  for (auto [Offset, Width] : Fields) {
+    auto Mask = ((1 << Width) - 1) << Offset;
+    auto Shift = Offset - InsertTo;
+
+    auto *ExtractV = IRB.CreateAnd(From, ConstantInt::get(Ty, Mask));
+    Value *ShiftV;
+    if (Shift == 0)
+      ShiftV = ExtractV;
+    else if (Shift > 0)
+      ShiftV = IRB.CreateLShr(ExtractV, ConstantInt::get(Ty, Shift));
+    else
+      ShiftV = IRB.CreateShl(ExtractV, ConstantInt::get(Ty, -Shift));
+
+    To = To ? IRB.CreateOr(To, ShiftV) : ShiftV;
+    InsertTo += Width;
+  }
+  return To;
+}
+
+bool GenXLowering::lowerLogicalThreadID(CallInst *CI) {
+  unsigned NumThreads = ST->getNumThreadsPerEU();
+  if (ST->getsHWTIDFromPredef() ||
+      (isPowerOf2_32(NumThreads) && !ST->hasPreemption()))
+    return lowerHardwareThreadID(CI);
+
+  IRBuilder<> IRB{CI};
+
+  auto *Ty = CI->getType();
+  auto *ReadPredefFunc = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_read_predef_reg, {Ty, Ty});
+
+  int InsertTo = 0;
+  auto *SR0 = IRB.CreateCall(
+      ReadPredefFunc, {IRB.getInt32(PREDEFINED_SR0), UndefValue::get(Ty)});
+  Value *Res = nullptr;
+  auto *TID = extractBitfields(IRB, Res, SR0, ST->getThreadIdBits(), InsertTo);
+
+  if (isPowerOf2_32(NumThreads))
+    Res = TID;
+  else
+    InsertTo = 0;
+
+  Res = extractBitfields(IRB, Res, SR0, ST->getEUIdBits(), InsertTo);
+
+  auto *SubsliceReg =
+      ST->hasPreemption()
+          ? IRB.CreateCall(ReadPredefFunc,
+                           {IRB.getInt32(PREDEFINED_MSG0), UndefValue::get(Ty)})
+          : SR0;
+  Res = extractBitfields(IRB, Res, SubsliceReg, ST->getSubsliceIdBits(),
+                         InsertTo);
+
+  if (!isPowerOf2_32(NumThreads)) {
+    auto *Mul = IRB.CreateMul(Res, ConstantInt::get(Ty, NumThreads));
+    Res = IRB.CreateAdd(Mul, TID);
   }
 
   CI->replaceAllUsesWith(Res);

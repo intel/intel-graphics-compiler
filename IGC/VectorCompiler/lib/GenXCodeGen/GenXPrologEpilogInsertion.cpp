@@ -460,19 +460,10 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
 
 Value *GenXPrologEpilogInsertion::getThreadID(Module *M,
                                               IRBuilder<> &IRB) const {
-  Function *Func = GenXIntrinsic::getGenXDeclaration(
-      M, llvm::GenXIntrinsic::genx_get_hwid, {});
+  Function *Func = vc::InternalIntrinsic::getInternalDeclaration(
+      M, vc::InternalIntrinsic::logical_thread_id, {});
   auto *TID = IRB.CreateCall(Func);
-
-  unsigned NumThreads = ST->getNumThreadsPerEU();
-  if (ST->getsHWTIDFromPredef() || isPowerOf2_32(NumThreads))
-    return TID;
-
-  unsigned NumThreadsCeil = PowerOf2Ceil(NumThreads);
-  auto *LocalTID = IRB.CreateAnd(TID, IRB.getInt32(NumThreadsCeil - 1));
-  auto *EuID = IRB.CreateLShr(TID, Log2_32(NumThreadsCeil));
-  auto *Mul = IRB.CreateMul(EuID, IRB.getInt32(NumThreads));
-  return IRB.CreateAdd(Mul, LocalTID);
+  return TID;
 }
 
 // FE_SP = PrivateBase + HWTID * PrivMemPerThread
