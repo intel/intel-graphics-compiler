@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -4267,6 +4267,11 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size) {
             (totalBytes + builder.getGRFSize() - 1) &
             (~(builder.getGRFSize() - 1)); // GRF-aligned
         totalBytes = totalBytesDstLow * 2;
+        if (builder.getGRFSize() > 32) {
+          bitVec[1] = bitVec[0];
+        } else {
+          bitVec[0] |= bitVec[0] << 32;
+        }
       }
 
       right_bound = left_bound + totalBytes - 1;

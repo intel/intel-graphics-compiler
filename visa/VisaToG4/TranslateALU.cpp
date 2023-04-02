@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -69,6 +69,11 @@ int IR_Builder::translateVISAArithmeticInst(
       vISA_ASSERT_INPUT(predOpnd != nullptr, "predicate operand couldn't be nullptr");
       condMod = createCondMod(Mod_o, predOpnd->getBase(), 0);
       predOpnd = nullptr;
+    }
+
+    if (opcode == ISA_MADW) {
+      vISA_ASSERT_INPUT(exsize <= 16,
+                        "Unsupported execution size for madw");
     }
 
     // do not check type of sources, float and integer are supported

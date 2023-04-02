@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9409,8 +9409,8 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
   auto execSize = madwInst->getExecSize();
   vISA_ASSERT(madwInst->opcode() == G4_madw, "expect madw instruction");
 
-  vISA_ASSERT(builder.getPlatform() >= Xe_PVC || execSize != g4::SIMD32,
-               "SIMD32 is not supported on this platform for madw");
+  vISA_ASSERT(execSize != g4::SIMD32,
+              "SIMD32 is not supported on this platform for madw");
 
   auto dst = madwInst->getDst();
   vISA_ASSERT(IS_DTYPE(dst->getType()), "dst only supports DW type");
@@ -9457,9 +9457,16 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     lowMovSrcDcl->setAliasDeclare(newDstDcl, 0);
     G4_SrcRegRegion *lowMovSrc =
         builder.createSrcRegRegion(lowMovSrcDcl, builder.getRegionStride1());
-    auto dstLow =
-        builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(),
-                          dst->getHorzStride(), dst->getType());
+    G4_DstRegRegion *dstLow = nullptr;
+    if (dst->isIndirect()) {
+      dstLow = builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(),
+                                         dst->getHorzStride(), dst->getType(),
+                                         dst->getAddrImm());
+    } else {
+      dstLow = builder.createDst(dst->getBase(), dst->getRegOff(),
+                                 dst->getSubRegOff(), dst->getHorzStride(),
+                                 dst->getType());
+    }
     G4_INST *lowMovInst = builder.createMov(execSize, dstLow, lowMovSrc,
                                             madwInst->getMaskOption(), false);
     lowMovInst->setPredicate(madwInst->getPredicate());
@@ -9475,9 +9482,16 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
                                  dstLowGRFNum * builder.getGRFSize());
     G4_SrcRegRegion *hiMovSrc =
         builder.createSrcRegRegion(hiMovSrcDcl, builder.getRegionStride1());
-    auto dstHi = builder.createDst(
-        dst->getBase(), dst->getRegOff() + dstLowGRFNum, dst->getSubRegOff(),
-        dst->getHorzStride(), dst->getType());
+    G4_DstRegRegion *dstHi = nullptr;
+    if (dst->isIndirect()) {
+      dstHi = builder.createIndirectDst(
+          dst->getBase(), dst->getSubRegOff(), dst->getHorzStride(),
+          dst->getType(), dst->getAddrImm() + builder.numEltPerGRF<Type_UB>());
+    } else {
+      dstHi = builder.createDst(dst->getBase(), dst->getRegOff() + dstLowGRFNum,
+                                dst->getSubRegOff(), dst->getHorzStride(),
+                                dst->getType());
+    }
     G4_INST *hiMovInst = builder.createMov(execSize, dstHi, hiMovSrc,
                                            madwInst->getMaskOption(), false);
     hiMovInst->setPredicate(madwInst->getPredicate());
@@ -9504,6 +9518,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
       if (src0->isSrcRegRegion() &&
           src0->asSrcRegRegion()->getRegAccess() == IndirGRF) {
         madwInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
+        src0 = madwInst->getSrc(0);
       }
     }
     retIter = std::next(it);
@@ -9587,6 +9602,8 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
           G4_addc, execSize, dstLo32, accSrcOpnd,
           builder.duplicateOperand(src2), origOptions, false);
       addcInst->setPredicate(origPredicate);
+      addcInst->setImplAccDst(builder.duplicateOperand(accDstOpnd));
+      addcInst->setOptionOn(InstOpt_AccWrCtrl);
       endIter = bb->insertAfter(endIter, addcInst);
 
       // 4, create a add inst
