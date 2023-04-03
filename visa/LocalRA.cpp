@@ -1329,7 +1329,7 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
       int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) /
                       kernel.numEltPerGRF<Type_UB>();
       G4_DstRegRegion *dstRgn = dst;
-      dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() -
+      dstOpndNumRows = dstRgn->getSubRegOff() * dstRgn->getTypeSize() + dstRgn->getLinearizedEnd() -
                            dstRgn->getLinearizedStart() + 1 >
                        kernel.numEltPerGRF<Type_UB>();
 
@@ -1339,7 +1339,7 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
         G4_Declare *srcDcl = src->getBase()->asRegVar()->getDeclare();
         int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) /
                         kernel.numEltPerGRF<Type_UB>();
-        bool srcOpndNumRows = srcRgn->getSubRegOff() +
+        bool srcOpndNumRows = srcRgn->getSubRegOff() * dstRgn->getTypeSize() +
                                   srcRgn->getLinearizedEnd() -
                                   srcRgn->getLinearizedStart() + 1 >
                               kernel.numEltPerGRF<Type_UB>();

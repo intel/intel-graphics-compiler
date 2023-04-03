@@ -5389,12 +5389,12 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
   G4_Declare *dstDcl = dst->getTopDcl();
   if (dstDcl) {
     G4_DstRegRegion *dstRgn = dst;
-    int dstOpndNumRows =
-        ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) /
-         kernel.numEltPerGRF<Type_UB>()) +
-        1;
+    bool dstOpndNumRows =
+        (dstRgn->getSubRegOff() * dstRgn->getTypeSize() +
+        (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) + 1) >
+         kernel.numEltPerGRF<Type_UB>();
     int dstLeft = dstRgn->getLinearizedStart();
-    int dstRight = dstOpndNumRows > 1
+    int dstRight = dstOpndNumRows
                        ? ((dstLeft / kernel.numEltPerGRF<Type_UB>() + 1) *
                               kernel.numEltPerGRF<Type_UB>() -
                           1)
@@ -5415,21 +5415,21 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
           if (rel != Rel_disjoint && rel != Rel_undef) // Overlap
           {
             G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
-            int srcOpndNumRows =
-                ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) /
-                 kernel.numEltPerGRF<Type_UB>()) +
-                1;
+            bool srcOpndNumRows =
+                (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+                (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) + 1) >
+                kernel.numEltPerGRF<Type_UB>();
             int srcLeft = srcRgn->getLinearizedStart();
             int srcRight = srcRgn->getLinearizedEnd();
 
-            if (!srcRgn->isScalar() && srcOpndNumRows > 1) {
+            if (!srcRgn->isScalar() && srcOpndNumRows) {
               srcLeft = (srcRgn->getLinearizedStart() /
                              kernel.numEltPerGRF<Type_UB>() +
                          1) *
                         kernel.numEltPerGRF<Type_UB>();
             }
 
-            if (dstOpndNumRows > 1 || srcOpndNumRows > 1) {
+            if (dstOpndNumRows || srcOpndNumRows) {
               if (!(srcLeft > dstRight || dstLeft > srcRight)) {
                 inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
               }

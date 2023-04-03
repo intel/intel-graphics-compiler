@@ -1865,7 +1865,9 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
     if (dst->getBase()->isRegAllocPartaker()) {
       isDstRegAllocPartaker = true;
       dstId = ((G4_RegVar *)dst->getBase())->getId();
-      dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 >
+      dstOpndNumRows = dst->getSubRegOff() * dst->getTypeSize() +
+                           dst->getLinearizedEnd() - dst->getLinearizedStart() +
+                           1 >
                        kernel.numEltPerGRF<Type_UB>();
     } else if (kernel.getOption(vISA_LocalRA)) {
       LocalLiveRange *localLR = NULL;
@@ -1882,7 +1884,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
         isDstLocallyAssigned = true;
         dstPreg = preg->asGreg()->getRegNum();
         dstNumRows = localLR->getTopDcl()->getNumRows();
-        dstOpndNumRows =
+        dstOpndNumRows = dst->getSubRegOff() * dst->getTypeSize() +
             dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 >
             kernel.numEltPerGRF<Type_UB>();
         isDstEvenAlign = (dstPreg % 2 == 0);
@@ -1904,7 +1906,9 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
             int srcOffset =
                 src->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
             bool srcOpndNumRows =
-                srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 >
+                srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+                                      srcRgn->getLinearizedEnd() -
+                                      srcRgn->getLinearizedStart() + 1 >
                 kernel.numEltPerGRF<Type_UB>();
 
             int srcReg = 0;

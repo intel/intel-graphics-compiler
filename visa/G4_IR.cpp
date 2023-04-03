@@ -2723,15 +2723,12 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
 }
 
 bool G4_INST::detectComprInst() const {
-  enum class ComprInstStates : unsigned char { U, T, F };
-
   G4_Type execType = getExecType();
-  ComprInstStates comprInst = ComprInstStates::U;
 
   // Compressed instructions must have a minimum execution size of
   // at least 8.
   if (execSize < g4::SIMD8) {
-    comprInst = ComprInstStates::F;
+    return false;
   }
 
   // Compressed instructions must have a minimum execution size of
@@ -2740,9 +2737,7 @@ bool G4_INST::detectComprInst() const {
            dst->getType() != Type_UNDEF) {
     if ((unsigned)execSize * dst->getTypeSize() * dst->getHorzStride() >
         getBuilder().numEltPerGRF<Type_UB>()) {
-      comprInst = ComprInstStates::T;
-    } else {
-      comprInst = ComprInstStates::F;
+      return true;
     }
   }
 
@@ -2751,14 +2746,41 @@ bool G4_INST::detectComprInst() const {
   // moves which always have destinations).
   else if ((unsigned)execSize * TypeSize(execType) >
            getBuilder().numEltPerGRF<Type_UB>()) {
-    comprInst = ComprInstStates::T;
+    return true;
   }
 
+  // Cross GRF boundary check for dst and src operands
+  // NOTE: The function cannot handle indirect
   else {
-    comprInst = ComprInstStates::F;
+    G4_DstRegRegion *dst = getDst();
+    if (dst && dst->getRegAccess() == Direct && dst->isDstRegRegion() &&
+        dst->getBase()->isRegVar() &&
+        (dst->getTopDcl()->getRegFile() == G4_GRF)) {
+      if (dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
+              dst->getLinearizedStart() + 1 >
+          getBuilder().numEltPerGRF<Type_UB>()) {
+        return true;
+      }
+    }
+
+    for (unsigned j = 0, numSrc = getNumSrc(); j < numSrc; j++) {
+      G4_Operand *src = getSrc(j);
+      if (src != NULL && src->isSrcRegRegion() &&
+          src->asSrcRegRegion()->getRegAccess() == Direct &&
+          src->asSrcRegRegion()->getBase()->isRegVar() &&
+          (src->getTopDcl()->getRegFile() == G4_GRF ||
+           src->getTopDcl()->getRegFile() == G4_INPUT)) {
+        G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+        if (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+                srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 >
+            getBuilder().numEltPerGRF<Type_UB>()) {
+          return true;
+        }
+      }
+    }
   }
 
-  return (comprInst == ComprInstStates::T);
+  return false;
 }
 
 /*
