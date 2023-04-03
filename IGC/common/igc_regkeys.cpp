@@ -1108,7 +1108,7 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
         }
 #endif
 #if defined(_INTERNAL)
-        if (IGC_IS_FLAG_DISABLED(EnableDebugging))
+        if (IGC_IS_FLAG_ENABLED(EnableDebugging))
 #endif
         {
             //DumpIGCRegistryKeyDefinitions();
