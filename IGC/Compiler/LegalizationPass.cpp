@@ -1311,10 +1311,6 @@ void Legalization::visitStoreInst(StoreInst& I)
         m_builder->SetInsertPoint(&I);
 
         unsigned srcWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
-        // Store with element size 64bit/32bit/16bit/8bit are always good.
-        // (Note that VectorPreProcess/VectorProcess will legalize them.)
-        if (srcWidth == 64 || srcWidth == 32 || srcWidth == 16 || srcWidth == 8)
-            return;
         if (m_DL->isLegalInteger(srcWidth)) // nothing to legalize
             return;
 
