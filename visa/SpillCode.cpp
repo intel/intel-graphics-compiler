@@ -115,7 +115,6 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   return sp;
 }
 
-
 //
 // generate a reg to reg mov inst for addr/flag spill
 // mov  dst(dRegOff,dSubRegOff)<1>  src(sRegOff,sSubRegOff)<nRegs;nRegs,1>
@@ -301,29 +300,29 @@ void SpillManager::replaceSpilledSrc(
     G4_Declare *spDcl = srcDcl->getSpilledDeclare();
     if (ss->getRegAccess() == Direct) {
       G4_SrcRegRegion *s;
-        if (inst->isSplitSend() && i == 3) {
-          G4_Declare *tmpDcl = createNewTempAddrDeclare(spDcl, 1);
-          tmpDcl->setSubRegAlign(Four_Word);
-          gra.setSubRegAlign(tmpDcl, Four_Word);
-          // (W) mov (1) tmpDcl<1>:ud spDcl<0;1,0>:ud
-          auto movSrc =
-              builder.createSrcRegRegion(spDcl, builder.getRegionScalar());
-          auto movDst = builder.createDstRegRegion(tmpDcl, 1);
-          G4_INST *movInst = builder.createMov(g4::SIMD1, movDst, movSrc,
+      if (inst->isSplitSend() && i == 3) {
+        G4_Declare *tmpDcl = createNewTempAddrDeclare(spDcl, 1);
+        tmpDcl->setSubRegAlign(Four_Word);
+        gra.setSubRegAlign(tmpDcl, Four_Word);
+        // (W) mov (1) tmpDcl<1>:ud spDcl<0;1,0>:ud
+        auto movSrc =
+            builder.createSrcRegRegion(spDcl, builder.getRegionScalar());
+        auto movDst = builder.createDstRegRegion(tmpDcl, 1);
+        G4_INST *movInst = builder.createMov(g4::SIMD1, movDst, movSrc,
                                                InstOpt_WriteEnable, false);
-          bb->insertBefore(it, movInst);
+        bb->insertBefore(it, movInst);
 
-          if (gra.EUFusionNoMaskWANeeded()) {
-            gra.addEUFusionNoMaskWAInst(bb, movInst);
-          }
-
-          s = builder.createSrc(tmpDcl->getRegVar(), 0, 0, ss->getRegion(),
-                                spDcl->getElemType());
-          inst->setSrc(s, i);
-        } else {
-          s = builder.createSrcWithNewBase(
-              ss, spDcl->getRegVar()); // using spDcl as new base
+        if (gra.EUFusionNoMaskWANeeded()) {
+          gra.addEUFusionNoMaskWAInst(bb, movInst);
         }
+
+        s = builder.createSrc(tmpDcl->getRegVar(), 0, 0, ss->getRegion(),
+                                spDcl->getElemType());
+        inst->setSrc(s, i);
+      } else {
+        s = builder.createSrcWithNewBase(
+            ss, spDcl->getRegVar()); // using spDcl as new base
+      }
       inst->setSrc(s, i);
     } else if (ss->getRegAccess() == IndirGRF) {
       // add (2)  V124_f(0,0)<1>:f  r[V100_uw(0,0),0]<4;2,2>:f 1

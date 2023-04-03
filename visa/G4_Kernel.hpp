@@ -467,7 +467,6 @@ public:
     return static_cast<int>(numRegTotal * ratio);
   }
 
-
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }
 
