@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,8 +22,8 @@ SPDX-License-Identifier: MIT
 /// coalesces the result of the copy into the result of the phi node or
 /// two address op).
 ///
-/// There are three different kinds of coalescing. Copy coalescing is done first,
-/// then the other two are done together.
+/// There are three different kinds of coalescing. Copy coalescing is done
+/// first, then the other two are done together.
 ///
 /// 1. Copy coalescing.
 ///
@@ -182,8 +182,10 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Value.h"
 
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/CFG.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -294,6 +296,7 @@ namespace {
     DominatorTreeGroupWrapperPass *DTWrapper = nullptr;
     LoopInfoGroupWrapperPass *LIWrapper = nullptr;
 
+    std::map<SimpleValue, std::set<SimpleValue>> NoCoalescingBetween;
     std::vector<Candidate> CopyCandidates;
     std::vector<Candidate> NormalCandidates;
     std::vector<CallInst*> Callables;
@@ -378,6 +381,9 @@ namespace {
     void processKernelArgs(FunctionGroup *FG);
     void coalesceOutputArgs(FunctionGroup *FG);
     void coalesceCallables();
+    void dontCoalesce(Instruction *Load, Instruction *StoreOrCall,
+                      Instruction *LoadUserPredecessor, Instruction *UserInst,
+                      bool copyCreated = false);
     void coalesceGlobalLoads(FunctionGroup *FG);
     Instruction *insertCopy(SimpleValue Input, LiveRange *LR,
                             Instruction *InsertBefore, StringRef Name,
@@ -491,6 +497,7 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   Callables.clear();
   CallToRetVal.clear();
   ToCopy.clear();
+  NoCoalescingBetween.clear();
   CopyCoalesced.clear();
   return true;
 }
@@ -875,6 +882,21 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
  */
 void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
 {
+  auto checkGvCoalescingCanceled = [&](SimpleValue Inst1, SimpleValue Inst2) {
+    const auto &Match1 = NoCoalescingBetween.find(Inst1);
+    if (Match1 != NoCoalescingBetween.end()) {
+      const auto &Match2 = llvm::find(Match1->second, Inst2);
+      if (Match2 != Match1->second.end()) {
+        LLVM_DEBUG(
+            dbgs() << "Hit global volatile load coalescing blacklist between ";
+            Inst1.print(dbgs()); dbgs() << " and "; Inst2.print(dbgs());
+            dbgs() << "\n";);
+        return true;
+      }
+    }
+    return false;
+  };
+
   SimpleValue Dest = Cand.Dest;
   SimpleValue Source;
   if (!Cand.UseInDest) {
@@ -888,6 +910,9 @@ void GenXCoalescing::processCandidate(const Candidate &Cand, bool IsCopy)
     Source = SimpleValue(Liveness->getUnifiedRet(Callee), Cand.SourceIndex);
   } else
     Source = SimpleValue(*Cand.UseInDest, Cand.SourceIndex);
+  if (checkGvCoalescingCanceled(Source, Dest) ||
+      checkGvCoalescingCanceled(Dest, Source))
+    return;
   LLVM_DEBUG(dbgs() << "Trying coalesce from ";
       Source.printName(dbgs());
       dbgs() << " to ";
@@ -1686,41 +1711,179 @@ void GenXCoalescing::coalesceCallables() {
   }
 }
 
+void GenXCoalescing::dontCoalesce(Instruction *Load, Instruction *StoreOrCall,
+                                  Instruction *LoadUserPredecessor,
+                                  Instruction *UserInst, bool copyCreated) {
+  if (llvm::find(NoCoalescingBetween[Load], LoadUserPredecessor) !=
+      NoCoalescingBetween[Load].end())
+    return;
+
+  LLVM_DEBUG(dbgs() << "<prevent-coalescing>{\nPrevent potential "
+                       "coalescing:\n Global "
+                       "volatile load: ";
+             Load->print(dbgs());
+             if (copyCreated) dbgs() << " (created load copy)";
+             dbgs() << "\n shall not be coalesced with ";
+             LoadUserPredecessor->print(dbgs());
+             dbgs() << "\n due to intervening store: ";
+             StoreOrCall->print(dbgs()); dbgs() << ""; if (UserInst) {
+               dbgs() << "\n Usage after store: ";
+               UserInst->print(dbgs());
+             } dbgs() << "\n}</prevent-coalescing>\n";);
+
+  NoCoalescingBetween[Load].insert(LoadUserPredecessor);
+};
+
 void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
+
+  auto makeLICopy = [&](Instruction *Load/*,
+                        Instruction *StoreOrCall*/) -> Instruction * {
+    // Emit performance-related remark as most likely authors of a
+    // compiled program wanted to take advantage of
+    // global volatile loads coalescing whenever we have to inject a copy.
+    // In some cases code resulting in this requirement is a consequence
+    // of optimizations and is not expected by the user, so we need to inform.
+    vc::diagnose(Load->getContext(), "GenXCoalescing",
+                 "creating copy due to store interference", DS_Warning,
+                 vc::WarningName::Generic, Load);
+    auto *LoadCopyLR = Liveness->getLiveRange(Load);
+    auto *LoadCopy =
+        Liveness->insertCopy(Load, LoadCopyLR, Load->getNextNode(),
+                             Load->getName() + ".copy_no_coalesce", 0, ST);
+    IGCLLVM::replaceUsesWithIf(Load, LoadCopy, [&](Use &Use_) {
+      if (const auto *UserInst = dyn_cast<Instruction>(Use_.getUser())) {
+        return LoadCopy != UserInst &&
+                getDomTree(LoadCopy->getFunction())->dominates(LoadCopy, UserInst);
+                // TODO: only users affected by StoreOrCall
+      }
+      return false;
+    });
+
+    LoadCopy->setDebugLoc(Load->getDebugLoc());
+
+    Liveness->removeValue(Load);
+    auto *NewLoadLR = Liveness->getOrCreateLiveRange(Load);
+    NewLoadLR->setCategory(LoadCopyLR->getCategory());
+    NewLoadLR->setLogAlignment(LoadCopyLR->getLogAlignment());
+
+    return LoadCopy;
+  };
+
   for (auto &GV : FG->getModule()->globals()) {
     if (!GV.hasAttribute(genx::FunctionMD::GenXVolatile))
       continue;
-    LiveRange *LR1 = Liveness->getLiveRangeOrNull(&GV);
-    if (!LR1)
+
+    LiveRange *GvLiveRange = Liveness->getLiveRangeOrNull(&GV);
+    if (!GvLiveRange)
       continue;
 
-    // Collect all loads.
-    SetVector<Instruction *> LoadsInGroup;
-    for (auto UI : GV.users()) {
-      if (auto LI = dyn_cast<LoadInst>(UI)) {
-        IGC_ASSERT(LI->getPointerOperand() == &GV);
-        auto Fn = LI->getFunction();
-        // Check this load is inside the group.
-        if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
-          LoadsInGroup.insert(LI);
-      }
-      // Global variable is used in a constexpr.
-      if (&GV != vc::getUnderlyingGlobalVariable(UI))
-        continue;
-      for (auto U : UI->users())
-        if (auto LI = dyn_cast<LoadInst>(U)) {
-          auto Fn = LI->getFunction();
-          // Check this load is inside the group.
-          if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
-            LoadsInGroup.insert(LI);
+    struct LoadCopyData {
+      llvm::Instruction *LI_, *SI_, *UI;
+      bool operator<(const LoadCopyData &b) const { return LI_ < b.LI_; }
+    };
+    std::set<LoadCopyData> LIToCopy{};
+    llvm::SetVector<Instruction *> LIInFg{};
+    std::map<Function *, llvm::SetVector<Instruction *>> SI_InFg{};
+    using FuncsSeenT = llvm::SetVector<Function *>;
+
+    auto recordSICallers = [&](Function *Func, FuncsSeenT *FuncsSeen,
+                               auto &&recordSICallers) -> void {
+      if (llvm::find(*FuncsSeen, Func) != FuncsSeen->end())
+        return;
+      FuncsSeen->insert(Func);
+      for (const auto &FuncUser : Func->users()) {
+        if (isa<CallBase>(FuncUser)) {
+          auto *Call = cast<Instruction>(FuncUser);
+          auto *curFunction = Call->getFunction();
+          if (llvm::find(*FG, curFunction) == FG->end())
+            continue;
+          SI_InFg[curFunction].insert(Call);
+          recordSICallers(curFunction, FuncsSeen, recordSICallers);
         }
+      }
+    };
+
+    for (const auto &User : GV.users()) {
+      auto *GvUserInst = cast<Instruction>(User);
+      if (llvm::find(*FG, GvUserInst->getFunction()) == FG->end())
+        continue;
+
+      if (isa<LoadInst>(GvUserInst)) {
+        LIInFg.insert(GvUserInst);
+      } else if (isa<StoreInst>(GvUserInst)) {
+        auto *SIFunc = GvUserInst->getFunction();
+        SI_InFg[SIFunc].insert(GvUserInst);
+        FuncsSeenT FuncsSeen;
+        recordSICallers(SIFunc, &FuncsSeen, recordSICallers);
+      }
+
+      if (&GV != vc::getUnderlyingGlobalVariable(
+                     GvUserInst)) // Global variable is used in a constexpr.
+        continue;
+
+      // For loads preceded by bitcasts.
+      for (const auto &User : GvUserInst->users()) {
+        if (auto *Load = dyn_cast<LoadInst>(User)) {
+          if (llvm::find(*FG, Load->getFunction()) != FG->end())
+            LIInFg.insert(Load);
+        }
+      }
     }
 
-    // Do coalescing.
-    for (auto LI : LoadsInGroup) {
-      LiveRange *LR2 = Liveness->getLiveRange(LI);
-      LR1 = Liveness->coalesce(LR1, LR2, false);
-    }
+    //----------------------------------------------------------
+    // Check that Store potentially clobbers Load's Use.
+    //----------------------------------------------------------
+    // G = global value, L = load(G), S = store(G), U = use(L)
+    // S clobbers L if there's a path from S to U not through
+    // L: { S -> U } != { S -> L -> U }
+    //----------------------------------------------------------
+    // TODO: Trigger this check while processing coalescing candidates to
+    // support effective clobbering detection down the Load's def-use tree.
+    // Can detect potential clobbering here in the whole def-use tree,
+    // but it's not effective: only need to look at nodes being actually
+    // coalesced with the Load.
+    auto chkSIClobbersLI = [&](Instruction *LI) {
+      auto *DT = getDomTree(LI->getFunction());
+      for (const auto &SI : SI_InFg[LI->getFunction()]) {
+        for (auto *UI_ : LI->users()) {
+          auto *UI = dyn_cast<Instruction>(UI_);
+          if (!UI)
+            continue;
+
+          // { S -> U } != { S -> L -> U }
+          bool SIClobbersLI = false;
+          if (UI->getParent() == SI->getParent() &&
+              UI->getParent() == LI->getParent())
+            SIClobbersLI = DT->dominates(SI, UI) &&
+                           DT->dominates(LI, SI); // TODO: comesBefore
+          else {
+            if (LI->getParent() != UI->getParent()) {
+              SmallPtrSet<BasicBlock *, 1> NotThroughLI{LI->getParent()};
+              SIClobbersLI =
+                  llvm::isPotentiallyReachable(SI, UI, &NotThroughLI);
+            }
+          }
+
+          if (SIClobbersLI) {
+            LIToCopy.insert({LI, SI, UI});
+            return;
+          }
+        }
+      }
+    };
+
+    //----------------------------
+    for (const auto &LI : LIInFg)
+      chkSIClobbersLI(LI);
+
+    for (const auto &CopyData : LIToCopy)
+      dontCoalesce(CopyData.LI_, CopyData.SI_,
+                   makeLICopy(CopyData.LI_ /*, CopyData.SI_*/), CopyData.UI,
+                   true);
+
+    for (const auto &LI : LIInFg)
+      GvLiveRange =
+          Liveness->coalesce(GvLiveRange, Liveness->getLiveRange(LI), false);
   }
 }
 
