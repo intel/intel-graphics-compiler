@@ -8180,6 +8180,7 @@ void GlobalRA::addStoreRestoreToReturn() {
   auto SRDecl =
       builder.createHardwiredDeclare(4, Type_UD, builder.kernel.getFPSPGRF(),
                                      IR_Builder::SubRegs_Stackcall::Ret_IP);
+  addVarToRA(SRDecl);
   SRDecl->setName(builder.getNameString(24, "SR_BEStack"));
   G4_DstRegRegion *FPdst =
       builder.createDst(SRDecl->getRegVar(), 0, 0, 1, Type_UD);
