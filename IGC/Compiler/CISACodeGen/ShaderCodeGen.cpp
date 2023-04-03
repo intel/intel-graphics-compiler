@@ -427,7 +427,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     if (ctx.m_threadCombiningOptDone)
     {
         mpm.add(createLoopCanonicalization());
-        mpm.add(createDisableLICMForSpecificLoops());
         mpm.add(llvm::createLoopDeletionPass());
         mpm.add(llvm::createBreakCriticalEdgesPass());
         mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
@@ -444,6 +443,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         if (IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
+            mpm.add(createDisableLICMForSpecificLoops());
             mpm.add(llvm::createLICMPass());
         }
         mpm.add(llvm::createLoopSimplifyPass());
@@ -805,6 +805,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         }
         if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
+            mpm.add(createDisableLICMForSpecificLoops());
             mpm.add(createLICMPass());
             if (ctx.type == ShaderType::OPENCL_SHADER ||
                 ctx.type == ShaderType::COMPUTE_SHADER)
@@ -1311,6 +1312,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
+                    mpm.add(createDisableLICMForSpecificLoops());
                     int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
                     mpm.add(llvm::createLICMPass());
@@ -1372,6 +1374,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
+                    mpm.add(createDisableLICMForSpecificLoops());
                     mpm.add(llvm::createLICMPass());
                 }
 
