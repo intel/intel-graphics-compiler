@@ -112,23 +112,17 @@ namespace IGC
 
     /// \brief Entry point.
     bool CoalescingEngine::runOnFunction(Function& MF) {
-        if (IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing))
-        {
-            return false;
-        }
-
         MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         m_ModuleMetadata = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         m_CodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        if (!isEntryFunc(pMdUtils, &MF))
-        {
+        m_Platform = m_CodeGenContext->platform;
+        m_PayloadMapping = PayloadMapping(m_CodeGenContext);
+        if (IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing)) {
             return false;
         }
-
-        auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        m_Platform = pCtx->platform;
-        m_PayloadMapping = PayloadMapping(pCtx);
-
+        if (!isEntryFunc(pMdUtils, &MF)) {
+            return false;
+        }
         DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         WIA = &getAnalysis<WIAnalysis>();
         CG = &getAnalysis<CodeGenPatternMatch>();
