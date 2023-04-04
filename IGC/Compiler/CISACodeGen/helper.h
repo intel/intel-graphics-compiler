@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/AssumptionCache.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Analysis/MemorySSAUpdater.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Function.h>
@@ -23,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/ADT/SmallSet.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -34,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "common/MDFrameWork.h"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
+#include <functional>
 
 typedef unsigned int uint;
 
@@ -580,4 +584,22 @@ namespace IGC
         bool Do = true;
         Fn F;
     };
+
+    // Mimic LLVM functions:
+    //   RecursivelyDeleteTriviallyDeadInstructions()
+    // The difference is that the input here are dead instructions and
+    // are not necessarily trivially dead. For example, store instruction.
+    void RecursivelyDeleteDeadInstructions(
+        llvm::Instruction* I,
+        const llvm::TargetLibraryInfo* TLI = nullptr,
+        llvm::MemorySSAUpdater* MSSAU = nullptr,
+        std::function<void(llvm::Value*)> AboutToDeleteCallback =
+            std::function<void(llvm::Value*)>());
+
+    void RecursivelyDeleteDeadInstructions(
+        const llvm::SmallVectorImpl<llvm::Instruction*>& DeadInsts,
+        const llvm::TargetLibraryInfo* TLI = nullptr,
+        llvm::MemorySSAUpdater* MSSAU = nullptr,
+        std::function<void(llvm::Value*)> AboutToDeleteCallback =
+            std::function<void(llvm::Value*)>());
 } // namespace IGC

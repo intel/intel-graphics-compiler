@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/KnownBits.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "llvm/Analysis/ValueTracking.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -2927,4 +2928,67 @@ bool PDT_dominates(llvm::PostDominatorTree& PTD,
     return &*I == I2;
 }
 
+// Mimic LLVM functions:
+//   RecursivelyDeleteTriviallyDeadInstructions()
+// The difference is that the input here are dead instructions and
+// are not necessarily trivially dead. For example, store instruction.
+void RecursivelyDeleteDeadInstructions(
+    Instruction * I, const TargetLibraryInfo * TLI, MemorySSAUpdater * MSSAU,
+    std::function<void(Value*)> AboutToDeleteCallback) {
+    SmallVector<Instruction*, 16> DeadInsts;
+    DeadInsts.push_back(I);
+    RecursivelyDeleteDeadInstructions(DeadInsts, TLI, MSSAU,
+        AboutToDeleteCallback);
+}
+
+
+void RecursivelyDeleteDeadInstructions(
+    const SmallVectorImpl<Instruction*>&DeadInsts,
+    const TargetLibraryInfo * TLI,
+    MemorySSAUpdater * MSSAU,
+    std::function<void(Value*)> AboutToDeleteCallback) {
+#if LLVM_VERSION_MAJOR < 11
+    SmallVector<Instruction*, 16> trivialDeadInsts;
+#else
+    SmallVector<WeakTrackingVH, 16> trivialDeadInsts;
+#endif
+    for (auto II : DeadInsts) {
+        Instruction& I = *II;
+        IGC_ASSERT(I.use_empty() && "Instructions with uses are not dead.");
+
+        // Don't lose the debug info while deleting the instructions.
+        salvageDebugInfo(I);
+
+        // Null out all of the instruction's operands to see if any operand becomes
+        // dead as we go.
+        for (Use& OpU : I.operands()) {
+            Value* OpV = OpU.get();
+            OpU.set(nullptr);
+
+            if (!OpV->use_empty())
+                continue;
+
+            // If the operand is an instruction that became dead as we nulled
+            // out the operand, and if it is 'trivially' dead, invoking llvm
+            // function to delete it.
+            if (Instruction* OpI = dyn_cast<Instruction>(OpV))
+                if (llvm::isInstructionTriviallyDead(OpI, TLI))
+                    trivialDeadInsts.push_back(OpI);
+        }
+        if (MSSAU)
+            MSSAU->removeMemoryAccess(&I);
+
+        I.eraseFromParent();
+    }
+
+    if (!trivialDeadInsts.empty()) {
+#if LLVM_VERSION_MAJOR < 13
+        RecursivelyDeleteTriviallyDeadInstructions(
+            trivialDeadInsts, TLI, MSSAU);
+#else
+        RecursivelyDeleteTriviallyDeadInstructions(
+            trivialDeadInsts, TLI, MSSAU, AboutToDeleteCallback);
+#endif
+    }
+}
 } // namespace IGC
