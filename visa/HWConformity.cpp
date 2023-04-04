@@ -5627,7 +5627,8 @@ void HWConformity::conformBB(G4_BB *bb) {
       continue;
     }
 
-    if (inst->isFCall() && builder.supportCallaRegSrc())
+    if (inst->isFCall() && builder.supportCallaRegSrc() &&
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_1608127078))
       fixCalla(i, bb);
 
     if ((inst->mayExceedTwoGRF() && !inst->isSend()) || opcode == G4_nop ||
