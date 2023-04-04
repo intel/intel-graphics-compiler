@@ -443,7 +443,7 @@ G4_Type getMixModeType() const {
 uint32_t getNumFlagRegisters(void) { return getPlatform() >= Xe_PVC ? 8 : 4; }
 
 uint32_t getNumScalarRegisters(void) {
-  if (hasScalarRegister()) {
+  if (enableSendIndirect()) {
     return 1;
   }
   return 0;
@@ -692,7 +692,7 @@ bool hasQ2FInIntegerPipe() const {
   return false;
 }
 
-bool hasScalarRegister() const {
+bool enableSendIndirect() const {
   return false;
 }
 
