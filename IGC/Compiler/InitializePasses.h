@@ -93,7 +93,7 @@ void initializeCleanImplicitIdsPass(llvm::PassRegistry&);
 void initializeInlineLocalsResolutionPass(llvm::PassRegistry&);
 void initializeInlineUnmaskedFunctionsPassPass(llvm::PassRegistry&);
 void initializeInsertBranchOptPass(llvm::PassRegistry&);
-void initializeHFpackingOptPass(llvm::PassRegistry&);
+void initializeHFOptPass(llvm::PassRegistry&);
 void initializeLayoutPass(llvm::PassRegistry&);
 void initializeLdShrinkPass(llvm::PassRegistry&);
 void initializeLegalizationPass(llvm::PassRegistry&);
