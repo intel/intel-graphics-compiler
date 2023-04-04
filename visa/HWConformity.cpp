@@ -5354,6 +5354,24 @@ void HWConformity::fixSelCsel(INST_LIST_ITER it, G4_BB *bb) {
       condMod->setBase(nullptr);
     }
   }
+
+  // When opcode is "sel" and the destination is "word" datatype with execution
+  // datatype as "dword" (i.e. at least one of the source operand is a dword),
+  // compiler must not produce instructions with destination in the odd dword
+  // location in the GRF e.g. word locations 2, 3, 6, 7, 10, 11, 14, 15, .. etc.
+  // A move instruction with a temporary register may be used as shown below:
+  // (~f0.1.any) sel (8|M8) (sat)r12.2<2>:uw -r8.23<1;2,0>:w (abs)r6.8<0;1,0>:d
+  // =>
+  // (~f0.1.any) sel (8|M8) (sat)r10.0<2>:uw -r8.23<1;2,0>:w (abs)r6.8<0;1,0>:d
+  // (~f0.1.any) mov (8|M8) r12.2<2>:uw r10.0<2>:uw
+  // TODO: repalce hasSelWDstDwExecTypeAlignIssue with wa_id
+  if (builder.hasSelWDstDwExecTypeAlignIssue() && inst->opcode() == G4_sel) {
+    bool isWDstAndDwExecType =
+        IS_WTYPE(inst->getDst()->getType()) && IS_DTYPE(inst->getExecType());
+    // The WA requires dst to be 8 bytes aligned
+    if (isWDstAndDwExecType && !builder.tryToAlignOperand(inst->getDst(), 8))
+      replaceDst(it, inst->getDst()->getType(), builder.getGRFAlign());
+  }
 }
 
 void HWConformity::avoidDstSrcOverlap(PointsToAnalysis &p) {

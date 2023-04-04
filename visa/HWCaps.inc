@@ -742,4 +742,8 @@ bool needBarrierWA() const {
       getPlatform() == Xe_MTL));
 }
 
+bool hasSelWDstDwExecTypeAlignIssue() const {
+  return getPlatform() == Xe_PVCXT;
+}
+
 // end HW capabilities
