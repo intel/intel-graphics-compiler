@@ -172,6 +172,17 @@ void PromoteBools::cleanUp(Module& module)
 
     for (auto& it : promotedValuesCache)
     {
+        // Workaround. If there's a ConstantExpr cast of a function/globalVariable
+        // and the function/globalVariable has been promoted (so the cast has beed promoted too)
+        // and the function/globalVariable is processed in this loop before the cast
+        // then the unpromoted cast will be broken during processing the function/globalVariable
+        // by replaceAllUsesWith in erase function. When the loop reaches the cast
+        // it.first is broken and crash will occur.
+        if (isa<ConstantExpr>(it.second))
+        {
+            continue;
+        }
+
         if (auto function = dyn_cast<Function>(it.first))
         {
             swapNames(function, it.second);
