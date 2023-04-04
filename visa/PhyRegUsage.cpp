@@ -144,11 +144,11 @@ unsigned short PhyRegUsage::getOccupiedBundle(const G4_Declare *dcl) const {
 
     offset = conflict.offset;
     const G4_RegVar *regVar = conflict.dcl->getRegVar();
-    if (regVar->isPhyRegAssigned()) {
+    if (regVar->isPhyRegAssigned() && regVar->isGreg()) {
       reg = regVar->getPhyReg()->asGreg()->getRegNum();
-    } else {
+    } else if (regVar->getId() < lrs.size()) {
       LiveRange *lr = lrs[regVar->getId()];
-      if (lr && lr->getPhyReg()) {
+      if (lr && lr->getPhyReg() && lr->getPhyReg()->isGreg()) {
         reg = lr->getPhyReg()->asGreg()->getRegNum();
       }
     }

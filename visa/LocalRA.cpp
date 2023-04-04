@@ -600,6 +600,8 @@ inline static unsigned short getOccupiedBundle(IR_Builder &builder,
 
   for (const BundleConflict &conflict : gra.getBundleConflicts(dcl)) {
     LocalLiveRange *lr = gra.getLocalLR(conflict.dcl);
+    if (lr == nullptr)
+      continue;
     int subregnum;
     G4_VarBase *preg = lr->getPhyReg(subregnum);
     if (preg == NULL) {

@@ -115,6 +115,7 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   return sp;
 }
 
+
 //
 // generate a reg to reg mov inst for addr/flag spill
 // mov  dst(dRegOff,dSubRegOff)<1>  src(sRegOff,sSubRegOff)<nRegs;nRegs,1>
@@ -309,7 +310,7 @@ void SpillManager::replaceSpilledSrc(
             builder.createSrcRegRegion(spDcl, builder.getRegionScalar());
         auto movDst = builder.createDstRegRegion(tmpDcl, 1);
         G4_INST *movInst = builder.createMov(g4::SIMD1, movDst, movSrc,
-                                               InstOpt_WriteEnable, false);
+                                             InstOpt_WriteEnable, false);
         bb->insertBefore(it, movInst);
 
         if (gra.EUFusionNoMaskWANeeded()) {
@@ -317,7 +318,7 @@ void SpillManager::replaceSpilledSrc(
         }
 
         s = builder.createSrc(tmpDcl->getRegVar(), 0, 0, ss->getRegion(),
-                                spDcl->getElemType());
+                              spDcl->getElemType());
         inst->setSrc(s, i);
       } else {
         s = builder.createSrcWithNewBase(

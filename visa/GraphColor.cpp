@@ -2188,7 +2188,6 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
         }
       }
     }
-
     if (inst->isSplitSend() && !inst->getSrc(1)->isNullReg()) {
       G4_SrcRegRegion *src0 = inst->getSrc(0)->asSrcRegRegion();
       G4_SrcRegRegion *src1 = inst->getSrc(1)->asSrcRegRegion();
@@ -2250,7 +2249,6 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
               lrs[id]->markForbidden(0, kernel.getNumRegTotal() - 16);
             }
           }
-
           if (inst->isReturn()) {
             lrs[id]->setRetIp();
           }

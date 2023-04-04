@@ -1885,6 +1885,7 @@ unsigned G4_Kernel::getComputeFFIDGP1NextOff() const {
   return getBinOffsetOfBB(next);
 }
 
+
 // GRF modes supported by HW
 GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   switch (platform) {

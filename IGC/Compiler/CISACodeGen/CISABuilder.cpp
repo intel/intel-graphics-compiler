@@ -4953,8 +4953,6 @@ namespace IGC
             SaveOption(vISA_CoalesceScalarMoves, true);
         }
 
-
-
         if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) ||
             context->getCompilerOption().NewSpillCostFunction)
         {
