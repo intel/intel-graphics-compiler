@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Config/llvm-config.h"
-#include "llvm/IR/Value.h"
+#include "llvmWrapper/IR/User.h"
 
 namespace IGCLLVM
 {
@@ -55,6 +55,24 @@ namespace IGCLLVM
         return Ptr->getPointerDereferenceableBytes(DL, CanBeNull, CanBeFreed);
 #else
         return Ptr->getPointerDereferenceableBytes(DL, CanBeNull);
+#endif
+    }
+
+    inline llvm::User *getUniqueUndroppableUser(llvm::Value* V) {
+#if LLVM_VERSION_MAJOR >= 14
+        return V->getUniqueUndroppableUser();
+#else // For earlier versions, simply copy LLVM 14's implementation
+        llvm::User* Result = nullptr;
+        for (auto* U : V->users())
+        {
+            if (IGCLLVM::isDroppable(U))
+            {
+                if (Result && Result != U)
+                    return nullptr;
+                Result = U;
+            }
+        }
+        return Result;
 #endif
     }
 }

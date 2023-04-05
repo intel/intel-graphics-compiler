@@ -49,6 +49,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Operator.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/PatternMatch.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Type.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/User.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Value.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Option/OptTable.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Alignment.h"

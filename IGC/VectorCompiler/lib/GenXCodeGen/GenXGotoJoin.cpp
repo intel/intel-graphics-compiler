@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvmWrapper/IR/Value.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -73,9 +74,17 @@ CallInst *GotoJoin::findJoin(CallInst *Goto)
     for (auto ui = RM->use_begin(), ue = RM->use_end();
         !Join && ui != ue; ++ui) {
       auto User = cast<Instruction>(ui->getUser());
-      if (isa<PHINode>(User))
+      if (isa<PHINode>(User)) {
         RMVals.insert(User);
-      else switch (GenXIntrinsic::getGenXIntrinsicID(User)) {
+        continue;
+      }
+      if (auto *PotentialCopiedPhi = IGCLLVM::getUniqueUndroppableUser(User)) {
+        if (auto *CopiedPhi = dyn_cast<PHINode>(PotentialCopiedPhi)) {
+          RMVals.insert(CopiedPhi);
+          continue;
+        }
+      }
+      switch (GenXIntrinsic::getGenXIntrinsicID(User)) {
         case GenXIntrinsic::genx_simdcf_join:
           // We have found the join the RM is for.
           Join = cast<CallInst>(User);
