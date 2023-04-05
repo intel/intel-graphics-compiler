@@ -152,7 +152,8 @@ private:
     uint8_t getSymbolElfType(const vISA::ZESymEntry& sym);
 
     /// addSymbol - a helper function to add a symbol which is defined in targetSect
-    void addSymbol(const vISA::ZESymEntry& sym, zebin::ZEELFObjectBuilder::SectionID targetSect);
+    void addSymbol(const vISA::ZESymEntry& sym, uint8_t binding,
+        zebin::ZEELFObjectBuilder::SectionID targetSect);
 
     /// add relocations of this kernel corresponding to binary added by
     /// addKernelBinary.

@@ -5450,7 +5450,7 @@ namespace IGC
         unsigned offset, unsigned size, SProgramOutput::ZEBinFuncSymbolTable& symbols)
     {
         // kernel symbols are local symbols
-        symbols.local.emplace_back(type, offset, size, kernelName, vISA::ZESymBinding::S_LOCAL);
+        symbols.local.emplace_back(type, offset, size, kernelName);
     }
 
     void CEncoder::CreateSymbolTable(ValueToSymbolList& symbolTableList)
@@ -5620,32 +5620,17 @@ namespace IGC
 
             if (Function* F = dyn_cast<Function>(symbolValue))
             {
-                funcSyms.function.emplace_back(
-                    (vISA::GenSymType)symbolEntry.s_type,
-                    symbolEntry.s_offset,
-                    symbolEntry.s_size,
-                    F->getName().str(),
-                    vISA::ZESymBinding::S_GLOBAL);
+                funcSyms.function.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, F->getName().str());
             }
             else if (GlobalVariable* G = dyn_cast<GlobalVariable>(symbolValue))
             {
                 // const sampler
                 if (symbolEntry.s_type == vISA::GenSymType::S_CONST_SAMPLER) {
-                    funcSyms.sampler.emplace_back(
-                        (vISA::GenSymType)symbolEntry.s_type,
-                        symbolEntry.s_offset,
-                        symbolEntry.s_size,
-                        G->getName().str(),
-                        vISA::ZESymBinding::S_GLOBAL);
+                    funcSyms.sampler.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                 }
                 // global variables, including external variables (S_UNDEF)
                 else if (symbolEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR || symbolEntry.s_type == vISA::GenSymType::S_UNDEF) {
-                    programSyms.global.emplace_back(
-                        (vISA::GenSymType)symbolEntry.s_type,
-                        symbolEntry.s_offset,
-                        symbolEntry.s_size,
-                        G->getName().str(),
-                        vISA::ZESymBinding::S_GLOBAL);
+                    programSyms.global.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                 }
                 // global constants and string literals
                 else {
@@ -5654,22 +5639,10 @@ namespace IGC
                         ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(G->getInitializer());
                         IGC_ASSERT(cds && (cds->isCString() || cds->isString()));
                         (void) cds;
-                        programSyms.globalStringConst.emplace_back(
-                            (vISA::GenSymType)symbolEntry.s_type,
-                            symbolEntry.s_offset,
-                            symbolEntry.s_size,
-                            G->getName().str(),
-                            vISA::ZESymBinding::S_GLOBAL);
+                        programSyms.globalStringConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                     }
                     else
-                    {
-                        programSyms.globalConst.emplace_back(
-                            (vISA::GenSymType)symbolEntry.s_type,
-                            symbolEntry.s_offset,
-                            symbolEntry.s_size,
-                            G->getName().str(),
-                            G->hasInternalLinkage() ? vISA::ZESymBinding::S_LOCAL : vISA::ZESymBinding::S_GLOBAL);
-                    }
+                        programSyms.globalConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                 }
             }
             else

@@ -24,9 +24,6 @@ using namespace zebin;
 using namespace CLElfLib;   // ElfReader related typedefs
 using namespace llvm;
 
-static_assert(static_cast<uint8_t>(vISA::ZESymBinding::S_LOCAL) == ELF::STB_LOCAL);
-static_assert(static_cast<uint8_t>(vISA::ZESymBinding::S_GLOBAL) == ELF::STB_GLOBAL);
-
 ZEBinaryBuilder::ZEBinaryBuilder(
     const PLATFORM plat, bool is64BitPointer, const IGC::SOpenCLProgramInfo& programInfo,
     const uint8_t* spvData, uint32_t spvSize,
@@ -391,11 +388,12 @@ uint8_t ZEBinaryBuilder::getSymbolElfType(const vISA::ZESymEntry& sym)
     return llvm::ELF::STT_NOTYPE;
 }
 
-void ZEBinaryBuilder::addSymbol(const vISA::ZESymEntry& sym, ZEELFObjectBuilder::SectionID targetSect)
+void ZEBinaryBuilder::addSymbol(const vISA::ZESymEntry& sym, uint8_t binding,
+    ZEELFObjectBuilder::SectionID targetSect)
 {
     if (sym.s_type == vISA::GenSymType::S_UNDEF)
         targetSect = -1;
-    mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size, static_cast<uint8_t>(sym.s_binding),
+    mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size, binding,
         getSymbolElfType(sym), targetSect);
 }
 
@@ -413,17 +411,17 @@ void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo& annotatio
     // add symbols defined in global constant section
     IGC_ASSERT(symbols.globalConst.empty() || mGlobalConstSectID != -1);
     for (auto sym : symbols.globalConst)
-        addSymbol(sym, mGlobalConstSectID);
+        addSymbol(sym, llvm::ELF::STB_GLOBAL, mGlobalConstSectID);
 
     // add symbols defined in global string constant section
     IGC_ASSERT(symbols.globalStringConst.empty() || mConstStringSectID != -1);
     for (auto sym : symbols.globalStringConst)
-        addSymbol(sym, mConstStringSectID);
+        addSymbol(sym, llvm::ELF::STB_GLOBAL, mConstStringSectID);
 
     // add symbols defined in global section, mGlobalSectID may be unallocated
     // at this point if symbols are undef
     for (auto sym : symbols.global)
-        addSymbol(sym, mGlobalSectID);
+        addSymbol(sym, llvm::ELF::STB_GLOBAL, mGlobalSectID);
 }
 
 void ZEBinaryBuilder::addKernelSymbols(
@@ -446,12 +444,12 @@ void ZEBinaryBuilder::addKernelSymbols(
     // add local symbols of this kernel binary
     for (auto sym : symbols.local) {
         IGC_ASSERT(sym.s_type != vISA::GenSymType::S_UNDEF);
-        addSymbol(sym, kernelSectId);
+        addSymbol(sym, llvm::ELF::STB_LOCAL, kernelSectId);
     }
 
     // add function symbols defined in kernel text
     for (auto sym : symbols.function)
-        addSymbol(sym, kernelSectId);
+        addSymbol(sym, llvm::ELF::STB_GLOBAL, kernelSectId);
 
     // we do not support sampler symbols now
     IGC_ASSERT(symbols.sampler.empty());
@@ -825,8 +823,7 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
                                     (vISA::GenSymType)symtabEntry.st_info,
                                     (uint32_t)symtabEntry.st_value,
                                     (uint32_t)symtabEntry.st_size,
-                                    symName,
-                                    vISA::ZESymBinding::S_LOCAL);  // Symbol's name
+                                    symName);  // Symbol's name
 
                                 // Avoid symbol duplications - check whether a current symbol has been previously added.
                                 bool isSymbolAdded = false;
@@ -845,12 +842,7 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
                                     // A current symbol has not been previously added so do it now.
                                     // Note: All symbols in ELF are local.
                                     mBuilder.addSymbol(
-                                        zeSym.s_name,
-                                        zeSym.s_offset,
-                                        zeSym.s_size,
-                                        static_cast<uint8_t>(zeSym.s_binding),
-                                        getSymbolElfType(zeSym),
-                                        nonRelaSectionID);
+                                        zeSym.s_name, zeSym.s_offset, zeSym.s_size, ELF::STB_LOCAL, getSymbolElfType(zeSym), nonRelaSectionID);
                                     zeBinSymbols.push_back(zeSym.s_name);
                                 }
 
