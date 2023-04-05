@@ -19,7 +19,7 @@
 define void @store_odd(i8* %c, i8* %a, i8* %b) {
 ; CHECK-LABEL: @store_odd(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[MATRIX:%.*]] = call <8 x i32> @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_7x16_i32_v8i8_pi32_i32(i8* [[C:%.*]], i32 16)
+; CHECK-NEXT:    [[MATRIX:%.*]] = call <8 x i32> @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_7x16_i32_generic_v8i8_pi32_i32(i8* [[C:%.*]], i32 16)
 ; CHECK-NEXT:    [[MATRIX_SHUFFLE:%.*]] = shufflevector <8 x i32> [[MATRIX]], <8 x i32> undef, <7 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6>
 ; CHECK-NEXT:    [[MATRIX_SHUFFLE_CAST:%.*]] = bitcast <7 x i32> [[MATRIX_SHUFFLE]] to <7 x float>
 ; CHECK:       for.cond.i:
@@ -27,7 +27,7 @@ define void @store_odd(i8* %c, i8* %a, i8* %b) {
 ; CHECK:       exit:
 ; CHECK-NEXT:    [[MATRIX_PHI_NODE_SHUFFLE:%.*]] = shufflevector <7 x float> [[MATRIX_PHI_NODE]], <7 x float> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
 ; CHECK-NEXT:    [[MATRIX_PHI_NODE_SHUFFLE_CAST:%.*]] = bitcast <8 x float> [[MATRIX_PHI_NODE_SHUFFLE]] to <8 x i32>
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_7x16_i32_pi64_v8i8(i8* [[C]], <8 x i32> [[MATRIX_PHI_NODE_SHUFFLE_CAST]], i32 16)
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_7x16_i32_generic_pi64_v8i8(i8* [[C]], <8 x i32> [[MATRIX_PHI_NODE_SHUFFLE_CAST]], i32 16)
 entry:
   %matrix.c.load = call %intel.joint_matrix_acc_7x16_f32_t addrspace(1)* @__builtin_spirv_OpJointMatrixLoadINTELacc_7x16_f32_p4i8_i32_i32(i8* %c, i32 16, i32 0)
   br label %for.cond.i

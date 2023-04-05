@@ -17,8 +17,20 @@ SPDX-License-Identifier: MIT
 extern __constant int __JointMatrixLoadStoreOpt;
 
 // Matrix order
-#define ROW_MAJOR 0
-#define COL_MAJOR 1
+#define _ROW_MAJOR 0
+#define _COL_MAJOR 1
+
+// Address space
+#define AS_GENERIC 0
+#define AS_LOCAL   1
+#define AS_GLOBAL  2
+
+#define ATTRIBUTE_AS_GENERIC __global /* the branch using this will be dead,
+                                         however we still need a valid address
+                                         space specifier to make a call to
+                                         block read/write BI. */
+#define ATTRIBUTE_AS_LOCAL   __local
+#define ATTRIBUTE_AS_GLOBAL  __global
 
 #define IND_ROW_MAJOR(slid, stride, i) (slid + (i * stride))
 #define IND_COL_MAJOR(slid, stride, i) (i + (slid * stride))
@@ -88,8 +100,14 @@ extern __constant int __JointMatrixLoadStoreOpt;
 // sg is empty for XMX8 and _SG16 for PVC
 // elem_bitwidth is 8, 16 or 32
 // shape is shape of the matrix, like 8x16
-#define MANGLE_LOAD_NAME(layout, sg, elem_bitwidth, shape) \
-  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_v8i8_pi32_i32
+#define MANGLE_LOAD_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_generic_v8i8_pi32_i32
+
+#define MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_local_v8i8_pi32_i32
+
+#define MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_global_v8i8_pi32_i32
 
 #define SUB_GROUP_LOADS_8(readop, ptr, stride, type) \
     (type##8)(readop((ptr) + 0 * (stride)), readop((ptr) + 1 * (stride)), \
@@ -184,19 +202,25 @@ extern __constant int __JointMatrixLoadStoreOpt;
 // order is ROW_MAJOR or COL_MAJOR
 // us is empty for int contrib type and _us for short contrib type.
 // stride_opt should be either equal to C or 2*C in case of matrix B, since matrix B is vnni'ed
-#define DEFINE_LOAD(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt) \
-  INLINE OUT_VEC##M(contrib_type) MANGLE_LOAD_NAME(layout, sg, elem_bitwidth, shape) (char *mem, int stride) { \
-      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) && order == ROW_MAJOR) { \
+#define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
+  INLINE OUT_VEC##M(contrib_type) MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, int stride) { \
+      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+          && order == _ROW_MAJOR && address_space == AS_GLOBAL \
+          ) { \
           IMPLEMENT_BLOCK2D_LOAD##sg(element_type, contrib_type, contrib_bitwidth, M, K) \
       } \
       if (__JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL \
-          && stride == stride_opt && (M == 2 || M == 4 || M == 8) && order == ROW_MAJOR) { \
-          return VEC_TO_VEC##M(contrib_type, DEFINE_BLOCK_RW_NAME##M(read, us)((__global u##contrib_type *) mem)); \
+          && stride == stride_opt && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
+          && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
+          ) { \
+          return VEC_TO_VEC##M(contrib_type, DEFINE_BLOCK_RW_NAME##M(read, us)((ATTRIBUTE_##address_space u##contrib_type *) mem)); \
       } \
-      if (__JointMatrixLoadStoreOpt >= VECTOR_IMPL && order == ROW_MAJOR) { \
+      if (__JointMatrixLoadStoreOpt >= VECTOR_IMPL && order == _ROW_MAJOR \
+          && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
+          ) { \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
           stride = stride / pack_factor; \
-          return SUB_GROUP_LOADS_##M(intel_sub_group_block_read##us, (__global u##contrib_type *)mem, stride, contrib_type) \
+          return SUB_GROUP_LOADS_##M(intel_sub_group_block_read##us, (ATTRIBUTE_##address_space u##contrib_type *)mem, stride, contrib_type) \
       } \
       contrib_type *ptr = (contrib_type *)mem; \
       int slid = get_sub_group_local_id(); \
@@ -204,9 +228,14 @@ extern __constant int __JointMatrixLoadStoreOpt;
       stride = stride / pack_factor; \
       contrib_type wi_contrib[M]; \
       for (int i = 0; i < M; i++) \
-          wi_contrib[i] = ptr[IND_##order(slid, stride, i)]; \
+          wi_contrib[i] = ptr[IND##order(slid, stride, i)]; \
       return ARR_TO_VEC##M(contrib_type, wi_contrib); \
   }
+
+#define DEFINE_LOAD(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt) \
+  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GENERIC) \
+  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_LOCAL) \
+  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GLOBAL)
 
 /* PackedA load i16 */
 DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16)
@@ -289,8 +318,12 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
 
 // --------- STORE built-ins --------------------------------------
 
-#define MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape) \
-  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_pi64_v8i8
+#define MANGLE_STORE_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_generic_pi64_v8i8
+#define MANGLE_STORE_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_local__pi64_v8i8
+#define MANGLE_STORE_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_global_pi64_v8i8
 
 #define VEC_IND8(var, ind) var[ind]
 #define VEC_IND7(var, ind) var[ind]
@@ -302,19 +335,25 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
 #define VEC_IND1(var, ind) var
 
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
-#define DEFINE_STORE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt) \
-  INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape) (char *mem, OUT_VEC##M(contrib_type) vec, int stride) { \
-      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) && order == ROW_MAJOR && elem_bitwidth > 8) { \
+#define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt, address_space) \
+  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, OUT_VEC##M(contrib_type) vec, int stride) { \
+      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+          && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
+          ) { \
           IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, vec) \
       } \
       if (__JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL && stride == stride_opt \
-          && (M == 2 || M == 4 || M == 8) && order == ROW_MAJOR) { \
-          DEFINE_BLOCK_RW_NAME##M(write, us)((__global u##contrib_type *)mem, VEC_TO_VEC_STORE##M( u##contrib_type , vec)); \
+          && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
+          && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
+          ) { \
+          DEFINE_BLOCK_RW_NAME##M(write, us)((ATTRIBUTE_##address_space u##contrib_type *)mem, VEC_TO_VEC_STORE##M( u##contrib_type , vec)); \
           return; \
       } \
       if ((__JointMatrixLoadStoreOpt >= VECTOR_IMPL) \
-          && order == ROW_MAJOR && block_opt == true) { \
-          __global u##contrib_type *ptr = (__global u##contrib_type *)mem; \
+          && order == _ROW_MAJOR && block_opt == true \
+          && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
+          ) { \
+          ATTRIBUTE_##address_space u##contrib_type *ptr = (ATTRIBUTE_##address_space u##contrib_type *)mem; \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
           stride = stride / pack_factor; \
           for (int i = 0; i < M; i++) \
@@ -326,8 +365,13 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
       int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
       stride = stride / pack_factor; \
       for (int i = 0; i < M; i++) \
-          ptr[ IND_##order(slid, stride, i) ] = VEC_IND##M(vec, i); \
+          ptr[ IND##order(slid, stride, i) ] = VEC_IND##M(vec, i); \
   }
+
+#define DEFINE_STORE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt) \
+  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_GENERIC) \
+  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_LOCAL) \
+  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_GLOBAL)
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
 DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 8, 32, 8x32, ROW_MAJOR,    , 32, false)

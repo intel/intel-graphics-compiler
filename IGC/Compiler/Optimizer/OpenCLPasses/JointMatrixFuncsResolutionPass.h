@@ -61,7 +61,7 @@ namespace IGC
         void InsertPlaceholder(llvm::Value *v);
 
         std::string GetLoadStoreMatrixFuncName
-            (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc);
+            (bool isLoad, unsigned operationLayout, unsigned address_space, const JointMatrixTypeDescription *desc);
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
 

@@ -254,7 +254,7 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore
 }
 
 std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
-        (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc)
+        (bool isLoad, unsigned operationLayout, unsigned address_space, const JointMatrixTypeDescription *desc)
 {
     /* Treat row major matrices with types not supported by accumulators as
      * PackedA matrices. Both are in row major format. */
@@ -325,6 +325,14 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         name += "i32_";
     } else {
         IGC_ASSERT_MESSAGE(false, "Unexpected matrix element size.");
+    }
+
+    if (address_space == ADDRESS_SPACE_GLOBAL) {
+        name += "global_";
+    } else if (address_space == ADDRESS_SPACE_LOCAL) {
+        name += "local_";
+    } else {
+        name += "generic_";
     }
 
     if (isLoad) {
@@ -474,9 +482,10 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     Type *retTy = getIntegerEquivalent(matTy);
 
     Module *M = CI->getParent()->getModule();
+    unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
     ValidateLoadStore(true, loadLayout, &desc, CI);
-    std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, &desc);
+    std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, address_space, &desc);
     FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType() }, false);
     std::vector<Value *> Args = { ptrVal, strideVal };
 
@@ -531,8 +540,10 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
       }
     }
 
+    unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
+
     ValidateLoadStore(false, storeLayout, &desc, CI);
-    std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, &desc);
+    std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, address_space, &desc);
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
             { ptrVal->getType(), matTy, strideVal->getType() }, false);
