@@ -680,8 +680,7 @@ bool hasWriteCombine() const {
 }
 
 bool hasA0WARHWissue() {
-  return (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_DG2 ||
-          getPlatform() == Xe_MTL || getPlatform() == Xe_PVC);
+  return getPlatform() >= Xe_XeHPSDV;
 }
 
 bool hasFtoPackedHFMove() const { return getPlatform() >= Xe_DG2; }
