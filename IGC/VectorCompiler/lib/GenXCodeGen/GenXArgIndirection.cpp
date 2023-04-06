@@ -1162,6 +1162,7 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
                                    *ST, R,
                                    /*Idx*/ 0,
                                    /*Allow2D=*/false,
+                                   /*UseRealIdx=*/true,
                                    /*InputNumElements=*/UINT_MAX, Align)) {
             LLVM_DEBUG(dbgs() << "wrregion cannot be indirected: " << R << "\n");
             return false;
@@ -1183,11 +1184,13 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
                                    *ST, R,
                                    /*Idx*/ 0,
                                    /*Allow2D=*/true,
+                                   /*UseRealIdx=*/true,
                                    /*InputNumElements=*/UINT_MAX, Align)) {
             LLVM_DEBUG(dbgs() << "rdregion cannot be indirected: " << R << "\n";
                        dbgs() << getLegalRegionSizeForTarget(
                                      *ST, R, /*Idx*/ 0,
                                      /*Allow2D=*/true,
+                                     /*UseRealIdx=*/true,
                                      /*InputNumElements=*/UINT_MAX, Align)
                               << "\n");
             return false;

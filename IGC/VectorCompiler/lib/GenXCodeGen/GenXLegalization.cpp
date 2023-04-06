@@ -1372,12 +1372,24 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         Unbale = true;
       }
       // Get the max legal size for the wrregion.
-      ThisWidth = std::min(ThisWidth, getLegalRegionSizeForTarget(
-                                          *ST, R, StartIdx, false /*Allow2D*/,
-                                          cast<IGCLLVM::FixedVectorType>(
-                                              i->Inst->getOperand(0)->getType())
-                                              ->getNumElements(),
-                                          &(Baling->AlignInfo)));
+      ThisWidth = std::min(
+          ThisWidth,
+          getLegalRegionSizeForTarget(
+              *ST, R, StartIdx, false /*Allow2D*/, true /*UseRealIdx*/,
+              cast<IGCLLVM::FixedVectorType>(i->Inst->getOperand(0)->getType())
+                  ->getNumElements(),
+              &(Baling->AlignInfo)));
+      if (B.size() == 1)
+        // If wrregion is the single instruction is this bale we have to also
+        // check source region
+        ThisWidth = std::min(
+            ThisWidth,
+            getLegalRegionSizeForTarget(*ST, R, StartIdx, false /*Allow2D*/,
+                                        false /*UseRealIdx*/,
+                                        cast<IGCLLVM::FixedVectorType>(
+                                            i->Inst->getOperand(0)->getType())
+                                            ->getNumElements(),
+                                        &(Baling->AlignInfo)));
       if (!Unbale && R.Mask && PredMinWidth > ThisWidth) {
         // The min predicate size (from this wrregion) is bigger than the
         // legal size for this wrregion. We have to rewrite the wrregion as:
@@ -1444,7 +1456,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       if (Fixed4 && i->Inst == *Fixed4)
         ModifiedStartIdx = 0;
       ThisWidth = getLegalRegionSizeForTarget(
-          *ST, R, ModifiedStartIdx, true /*Allow2D*/,
+          *ST, R, ModifiedStartIdx, true /*Allow2D*/, true /*UseRealIdx*/,
           cast<IGCLLVM::FixedVectorType>(i->Inst->getOperand(0)->getType())
               ->getNumElements(),
           &(Baling->AlignInfo));
@@ -1668,8 +1680,8 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         if (!VT->getElementType()->isIntegerTy(1)) {
           Region R(Head->Inst);
           auto ThisWidth = getLegalRegionSizeForTarget(
-              *ST, R, StartIdx, false /*no 2d for dst*/, VecSize,
-              &(Baling->AlignInfo));
+              *ST, R, StartIdx, false /*no 2d for dst*/, true /*UseRealIdx*/,
+              VecSize, &(Baling->AlignInfo));
           if (ThisWidth < Width) {
             Width = ThisWidth;
           }
@@ -2186,7 +2198,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     bool ConvertToMulti =
         R.Indirect && Width != 1 &&
         getLegalRegionSizeForTarget(
-            *ST, R, StartIdx, true /*Allow2D*/,
+            *ST, R, StartIdx, true /*Allow2D*/, true /*UseRealIdx*/,
             cast<IGCLLVM::FixedVectorType>(BInst.Inst->getOperand(0)->getType())
                 ->getNumElements(),
             &(Baling->AlignInfo)) == 1;

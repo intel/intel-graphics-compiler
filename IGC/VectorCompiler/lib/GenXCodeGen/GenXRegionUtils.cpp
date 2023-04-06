@@ -301,7 +301,7 @@ Region genx::makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
  */
 unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
                                            const Region &R, unsigned Idx,
-                                           bool Allow2D,
+                                           bool Allow2D, bool UseRealIdx,
                                            unsigned InputNumElements,
                                            AlignmentInfo *AI) {
   Alignment Align;
@@ -310,8 +310,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
     if (AI)
       Align = AI->get(R.Indirect);
   }
-  return getLegalRegionSizeForTarget(ST, R, Idx, Allow2D, InputNumElements,
-                                     Align);
+  return getLegalRegionSizeForTarget(ST, R, Idx, Allow2D, UseRealIdx,
+                                     InputNumElements, Align);
 }
 
 /***********************************************************************
@@ -333,7 +333,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
  */
 unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
                                            const Region &R, unsigned Idx,
-                                           bool Allow2D,
+                                           bool Allow2D, bool UseRealIdx,
                                            unsigned InputNumElements,
                                            Alignment Align) {
   // Determine the max valid width.
@@ -380,7 +380,9 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
       // crossing rules.
       unsigned ElementsPerGRF = GRFByteSize / R.ElementBytes;
       unsigned ElementsToBoundary = 1;
-      unsigned RealIdx = Idx / R.Width * R.VStride + Idx % R.Width * R.Stride;
+      unsigned RealIdx =
+          UseRealIdx ? Idx / R.Width * R.VStride + Idx % R.Width * R.Stride
+                     : Idx;
       if (!R.Indirect) {
         unsigned OffsetElements = R.getOffsetInElements();
         // For a direct operand, just use the constant offset of the

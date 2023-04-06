@@ -1282,8 +1282,9 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
 
   Region R(InputVal);
   IGC_ASSERT(ST);
-  unsigned MaxNum = getLegalRegionSizeForTarget(
-      *ST, R, /* StartIdx */ 0, /* Allow2D */ false, R.NumElements);
+  unsigned MaxNum =
+      getLegalRegionSizeForTarget(*ST, R, /* StartIdx */ 0, /* Allow2D */ false,
+                                  /*UseRealIdx*/ true, R.NumElements);
   // Adjust size to Exec size
   MaxNum = std::min(MaxNum, TotalEMSize);
   if (exactLog2(R.NumElements) >= 0 && R.NumElements <= MaxNum) {

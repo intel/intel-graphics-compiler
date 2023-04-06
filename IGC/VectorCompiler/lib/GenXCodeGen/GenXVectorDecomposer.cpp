@@ -967,7 +967,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
       vc::Region R = makeRegionFromBaleInfo(CI, BaleInfo());
       IGC_ASSERT(ST);
       unsigned LegalSize = getLegalRegionSizeForTarget(
-          *ST, R, 0 /*idx*/, true /*Allow2D*/,
+          *ST, R, 0 /*idx*/, true /*Allow2D*/, true /*UseRealIdx*/,
           cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType())
               ->getNumElements());
       if (LegalSize < 32)

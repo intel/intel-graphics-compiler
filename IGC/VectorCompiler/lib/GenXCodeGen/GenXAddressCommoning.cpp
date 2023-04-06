@@ -950,7 +950,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
             ->getNumElements();
     IGC_ASSERT(ST);
     Num = getLegalRegionSizeForTarget(*ST, R, 0, true /*Allow2D*/,
-                                      InputNumElements);
+                                      true /*UseRealIdx*/, InputNumElements);
     if (Num == 1)
       continue;
     // Even after legalizing the region, we can still vectorize to more than

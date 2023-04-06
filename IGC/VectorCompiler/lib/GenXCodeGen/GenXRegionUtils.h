@@ -85,11 +85,11 @@ Region makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
 // getLegalSize : get the max legal size of a region
 unsigned getLegalRegionSizeForTarget(const GenXSubtarget &ST, const Region &R,
                                      unsigned Idx, bool Allow2D,
-                                     unsigned InputNumElements,
+                                     bool UseRealIdx, unsigned InputNumElements,
                                      AlignmentInfo *AI = nullptr);
 unsigned getLegalRegionSizeForTarget(const GenXSubtarget &ST, const Region &R,
                                      unsigned Idx, bool Allow2D,
-                                     unsigned InputNumElements,
+                                     bool UseRealIdx, unsigned InputNumElements,
                                      Alignment Align);
 
 // RdWrRegionSequence : a sequence of rdregion-wrregion pairs probably
