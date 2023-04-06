@@ -189,13 +189,12 @@ namespace IGC
         bool buildLiveIntervals(bool RemoveLR = false);
 
         /// \brief Return the register pressure for the whole function.
-        unsigned getMaxRegisterPressure() const;
+        unsigned getMaxRegisterPressure();
 
         /// \brief Return the register pressure for a basic block.
         unsigned getMaxRegisterPressure(llvm::BasicBlock* BB) const;
 
-        void printRegisterPressureInfo(bool Detailed = false,
-            const char* msg = "") const;
+        void printRegisterPressureInfo(bool Detailed = false, const char* msg = "");
 
         bool isAvailable() const { return m_available; }
 

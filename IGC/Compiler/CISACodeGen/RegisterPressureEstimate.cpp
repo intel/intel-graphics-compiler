@@ -583,23 +583,21 @@ namespace IGC
         return 0;
     }
 
-    unsigned RegisterPressureEstimate::getMaxRegisterPressure() const
+    unsigned RegisterPressureEstimate::getMaxRegisterPressure()
     {
+        unsigned maxNumberOfInstructions = getMaxAssignedNumberForFunction();
+        buildRPMapPerInstruction();
         unsigned MaxPressure = 0;
-        for (auto BI = m_pFunc->begin(), BE = m_pFunc->end(); BI != BE; ++BI)
-        {
-            for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II)
-            {
-                Instruction* Inst = &(*II);
-                MaxPressure = std::max(MaxPressure, getRegisterPressure(Inst));
-            }
+        for (unsigned number = 0; number < maxNumberOfInstructions; number++) {
+            MaxPressure = std::max(m_pRegisterPressureByInstruction[number], MaxPressure);
         }
-
-        return MaxPressure;
+        return iSTD::Round(MaxPressure, SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
     }
 
     unsigned RegisterPressureEstimate::getMaxRegisterPressure(BasicBlock* BB) const
     {
+        // FIXME: if the BB is huge, it can be more efficient to call
+        // buildRPMapPerInstruction, then query the map
         unsigned RP = 0;
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
@@ -609,17 +607,18 @@ namespace IGC
         return RP;
     }
 
-    void RegisterPressureEstimate::printRegisterPressureInfo
-    (bool Detailed,
-        const char* msg) const
+    void RegisterPressureEstimate::printRegisterPressureInfo(bool Detailed, const char* msg)
     {
         unsigned MaxRP = getMaxRegisterPressure();
         if (Detailed)
         {
             for (inst_iterator I = inst_begin(m_pFunc), E = inst_end(m_pFunc); I != E; ++I)
             {
-                Instruction* Inst = &*I;
-                ods() << "[RP = " << getRegisterPressure(Inst) << "]";
+                Instruction *Inst = &*I;
+                auto Number = getAssignedNumberForInst(Inst);
+                ods() << "[RP = "
+                      << getRegisterPressureForInstructionFromRPMap(Number)
+                      << "]";
                 Inst->print(ods());
                 ods() << "\n";
             }
