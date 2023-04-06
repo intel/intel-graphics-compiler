@@ -15,6 +15,16 @@
 
 include(Functions.cmake)
 
+# TODO: Move this to a common file?
+# Get the latest commit hash
+execute_process(
+    COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+add_definitions(-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\")
+
 #none of the values about 32/64 are being propogated down
 #and BuildSetup.cmake is not part of IGC enviroment
 #so setting it manually

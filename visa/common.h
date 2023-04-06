@@ -14,6 +14,10 @@ SPDX-License-Identifier: MIT
 
 #include "visa_igc_common_header.h"
 
+#ifndef GIT_COMMIT_HASH
+#define GIT_COMMIT_HASH "?"
+#endif
+
 #ifndef _WIN32
 #include "common/secure_string.h"
 #include <errno.h>
