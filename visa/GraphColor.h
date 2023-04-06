@@ -1051,8 +1051,11 @@ public:
 
   LSLiveRange *getSafeLSLR(const G4_Declare *dcl) const {
     auto dclid = dcl->getDeclId();
-    vASSERT(dclid < vars.size());
-    return vars[dclid].LSLR;
+    if (dclid < vars.size()) {
+      return vars[dclid].LSLR;
+    } else {
+      return nullptr;
+    }
   }
 
   LSLiveRange *getLSLR(const G4_Declare *dcl) const { return getVar(dcl).LSLR; }
@@ -1329,6 +1332,9 @@ public:
       if (dcl->getAliasDeclare())
         continue;
 
+      if (dcl->getDeclId() >= vars.size()) {
+        allocVar(dcl);
+      }
       if (!hasAlignSetup(dcl)) {
         // Var may be temp created in RA
         setSubRegAlign(dcl, dcl->getSubRegAlign());

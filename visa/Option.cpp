@@ -333,6 +333,10 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setUint32(vISA_SWSBTokenBarrier, 0);
   }
 
+  if (m_vISAOptions.isArgSetByUser(vISA_ForceSpills)) {
+    m_vISAOptions.setBool(vISA_LinearScan, false);
+  }
+
   if (m_vISAOptions.getBool(vISA_dumpVISAOptionsAll)) {
     dump();
   }

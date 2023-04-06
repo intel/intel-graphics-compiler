@@ -1409,7 +1409,7 @@ void Optimizer::initOptimizations() {
   INITIALIZE_PASS(regAlloc, vISA_EnableAlways, TimerID::TOTAL_RA);
   INITIALIZE_PASS(removeLifetimeOps, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(postRA_HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
-  INITIALIZE_PASS(removeRedundMov, vISA_EnableAlways, TimerID::MISC_OPTS);
+  INITIALIZE_PASS(removeRedundMov, vISA_removeRedundMov, TimerID::MISC_OPTS);
   INITIALIZE_PASS(removeEmptyBlocks, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(insertFallThroughJump, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(reassignBlockIDs, vISA_EnableAlways, TimerID::MISC_OPTS);
