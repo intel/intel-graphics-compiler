@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -588,7 +588,7 @@ namespace IGC
     struct InlineProgramScopeBuffer
     {
         int alignment = 0;
-        unsigned allocSize = 0;
+        size_t allocSize = 0;
         std::vector<unsigned char> Buffer;
     };
 

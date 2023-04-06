@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -226,7 +226,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     for (auto globalVar : zeroInitializedGlobals)
     {
         unsigned AS = cast<PointerType>(globalVar->getType())->getAddressSpace();
-        unsigned &offset = (AS == ADDRESS_SPACE_GLOBAL) ? m_pModuleMd->inlineGlobalBuffers.back().allocSize : m_pModuleMd->inlineConstantBuffers[0].allocSize;
+        size_t &offset = (AS == ADDRESS_SPACE_GLOBAL) ? m_pModuleMd->inlineGlobalBuffers.back().allocSize : m_pModuleMd->inlineConstantBuffers[0].allocSize;
 #if LLVM_VERSION_MAJOR < 11
         offset = iSTD::Align(offset, m_DL->getPreferredAlignment(globalVar));
 #else

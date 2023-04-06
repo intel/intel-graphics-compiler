@@ -41,7 +41,7 @@ entry:
 ; CHECK-DAG: !{!"inlineConstantBuffers", [[INLINE_CONSTANTBUFFERS_VEC0:![0-9]*]], [[INLINE_CONSTANTBUFFERS_VEC1:![0-9]*]]}
 ; CHECK-DAG: [[INLINE_CONSTANTBUFFERS_VEC0]] = !{!"inlineConstantBuffersVec[0]", [[ALIGNMENT:![0-9]*]], [[VEC0_ALLOCSIZE:![0-9]*]], [[VEC0_BUFFER:![0-9]*]]}
 ; CHECK-DAG: [[ALIGNMENT]] = !{!"alignment", i32 0}
-; CHECK-DAG: [[VEC0_ALLOCSIZE]] = !{!"allocSize", i32 8}
+; CHECK-DAG: [[VEC0_ALLOCSIZE]] = !{!"allocSize", i{{32|64}} 8}
 ; CHECK-DAG: [[VEC0_BUFFER]] = !{!"Buffer", [[VEC0_BUFFER0:![0-9]*]], [[VEC0_BUFFER1:![0-9]*]], [[VEC0_BUFFER2:![0-9]*]], [[VEC0_BUFFER3:![0-9]*]], [[VEC0_BUFFER4:![0-9]*]], [[VEC0_BUFFER5:![0-9]*]], [[VEC0_BUFFER6:![0-9]*]], [[VEC0_BUFFER7:![0-9]*]]}
 ; CHECK-DAG: [[VEC0_BUFFER0]] = !{!"BufferVec[0]", i8 0}
 ; CHECK-DAG: [[VEC0_BUFFER1]] = !{!"BufferVec[1]", i8 0}
@@ -52,11 +52,11 @@ entry:
 ; CHECK-DAG: [[VEC0_BUFFER6]] = !{!"BufferVec[6]", i8 0}
 ; CHECK-DAG: [[VEC0_BUFFER7]] = !{!"BufferVec[7]", i8 0}
 ; CHECK-DAG: [[INLINE_CONSTANTBUFFERS_VEC1]] = !{!"inlineConstantBuffersVec[1]", [[ALIGNMENT]], [[VEC1_ALLOCSIZE:![0-9]*]], [[VEC1_BUFFER:![0-9]*]]}
-; CHECK-DAG: [[VEC1_ALLOCSIZE]] = !{!"allocSize", i32 0}
+; CHECK-DAG: [[VEC1_ALLOCSIZE]] = !{!"allocSize", i{{32|64}} 0}
 ; CHECK-DAG: [[VEC1_BUFFER]] = !{!"Buffer"}
 ; CHECK-DAG: !{!"inlineGlobalBuffers", [[INLINE_GLOBALBUFFERS_VEC0:![0-9]*]]}
 ; CHECK-DAG: [[INLINE_GLOBALBUFFERS_VEC0]] = !{!"inlineGlobalBuffersVec[0]", [[ALIGNMENT]], [[GVEC0_ALLOCSIZE:![0-9]*]], [[GVEC0_BUFFER:![0-9]*]]}
-; CHECK-DAG: [[GVEC0_ALLOCSIZE]] = !{!"allocSize", i32 12}
+; CHECK-DAG: [[GVEC0_ALLOCSIZE]] = !{!"allocSize", i{{32|64}} 12}
 ; CHECK-DAG: [[GVEC0_BUFFER]] = !{!"Buffer", [[VEC0_BUFFER0]], [[VEC0_BUFFER1]], [[VEC0_BUFFER2]], [[VEC0_BUFFER3]], [[GVEC0_BUFFER4:![0-9]*]], [[VEC0_BUFFER5]], [[VEC0_BUFFER6]], [[VEC0_BUFFER7]]}
 ; CHECK-DAG: [[GVEC0_BUFFER4]] = !{!"BufferVec[4]", i8 0}
 ; CHECK-DAG: !{!"GlobalBufferAddressRelocInfo", [[GLOBAL_BUFFER_ADDRESS_RELOC_INFO_VEC0:![0-9]*]]}

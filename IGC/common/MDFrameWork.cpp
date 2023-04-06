@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -177,7 +177,7 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
 {
     std::vector<Metadata*> nodes;
     nodes.push_back(MDString::get(module->getContext(), name));
-    int i = 0;
+    size_t i = 0;
     for (auto it = vec.begin(); it != vec.end(); ++it)
     {
         nodes.push_back(CreateNode(*(it), module, name.str() + "Vec[" + std::to_string(i++) + "]"));

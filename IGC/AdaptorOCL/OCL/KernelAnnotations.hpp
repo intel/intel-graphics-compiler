@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -234,14 +234,14 @@ struct InitConstantAnnotation
 {
     std::vector<unsigned char> InlineData;
     int Alignment;
-    unsigned AllocSize;
+    size_t AllocSize;
 };
 
 struct InitGlobalAnnotation
 {
     std::vector<unsigned char> InlineData;
     int Alignment;
-    unsigned AllocSize;
+    size_t AllocSize;
 };
 
 struct ConstantPointerAnnotation
