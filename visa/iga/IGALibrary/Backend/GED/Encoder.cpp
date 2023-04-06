@@ -895,7 +895,7 @@ void Encoder::encodeSendDescsPreXe(const Instruction &i) {
     GED_ENCODE(ExDescAddrSubRegNum, 2 * exDesc.reg.subRegNum);
   } else {
     GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
-    GED_ENCODE(ExMsgDesc, exDesc.imm);
+    GED_ENCODE(ExMsgDescImm, exDesc.imm);
   }
 
   SendDesc desc = i.getMsgDescriptor();
@@ -947,7 +947,7 @@ void Encoder::encodeSendDescsXe(const Instruction &i) {
     GED_ENCODE(ExDescAddrSubRegNum, 2 * exDesc.reg.subRegNum);
   } else {
     GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
-    GED_ENCODE(ExMsgDesc, exDesc.imm);
+    GED_ENCODE(ExMsgDescImm, exDesc.imm);
   }
 
   SendDesc desc = i.getMsgDescriptor();
@@ -984,7 +984,7 @@ void Encoder::encodeSendDescsXeHP(const Instruction &i) {
       exDesc.imm |= 1 << 11;
     }
     GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
-    GED_ENCODE(ExMsgDesc, exDesc.imm);
+    GED_ENCODE(ExMsgDescImm, exDesc.imm);
   }
 
   SendDesc desc = i.getMsgDescriptor();
@@ -1019,7 +1019,7 @@ void Encoder::encodeSendDescsXeHPG(const Instruction &i) {
       exDesc.imm |= 1 << 11;
     }
     GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
-    GED_ENCODE(ExMsgDesc, exDesc.imm);
+    GED_ENCODE(ExMsgDescImm, exDesc.imm);
     GED_ENCODE(Src1Length, (uint32_t)i.getSrc1Length());
   }
 

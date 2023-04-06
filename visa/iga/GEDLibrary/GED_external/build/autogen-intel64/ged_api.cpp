@@ -920,15 +920,15 @@ GED_RETURN_VALUE GED_SetMsgDesc(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDesc, value);
 }
-uint32_t GED_GetExMsgDesc(ged_ins_t* ins, GED_RETURN_VALUE* result)
+uint32_t GED_GetExMsgDescImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ExMsgDesc, *result);
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ExMsgDescImm, *result);
 }
-GED_RETURN_VALUE GED_SetExMsgDesc(ged_ins_t* ins, const uint32_t value)
+GED_RETURN_VALUE GED_SetExMsgDescImm(ged_ins_t* ins, const uint32_t value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ExMsgDesc, value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ExMsgDescImm, value);
 }
 GED_EOT GED_GetEOT(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {

@@ -1149,8 +1149,8 @@ const ged_ins_field_entry_t DecodingTable139[2] =
 }; // DecodingTable139[]
 const ged_ins_field_entry_t DecodingTable140[2] =
 {
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 4, FragmentsTable22 }, RestrictionTable110 }, // 0
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 4, FragmentsTable22 }, RestrictionTable110 }, // 0
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
 }; // DecodingTable140[]
 const ged_ins_field_entry_t DecodingTable141[2] =
 {
@@ -2403,8 +2403,8 @@ const ged_ins_field_entry_t DecodingTable327[2] =
 }; // DecodingTable327[]
 const ged_ins_field_entry_t DecodingTable328[2] =
 {
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 5, FragmentsTable34 }, RestrictionTable152 }, // 0
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 5, FragmentsTable34 }, RestrictionTable152 }, // 0
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
 }; // DecodingTable328[]
 const ged_ins_field_entry_t DecodingTable329[2] =
 {
@@ -6532,8 +6532,8 @@ const ged_ins_field_entry_t DecodingTable408[16] =
 }; // DecodingTable408[]
 const ged_ins_field_entry_t DecodingTable409[2] =
 {
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 4, FragmentsTable43 }, RestrictionTable174 }, // 0
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 4, FragmentsTable43 }, RestrictionTable174 }, // 0
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
 }; // DecodingTable409[]
 const ged_ins_field_entry_t DecodingTable410[2] =
 {
@@ -10697,7 +10697,7 @@ const ged_ins_field_entry_t DecodingTable535[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     16, { GED_INS_FIELD_Src0RegFile,                       DecodingTable86 }, NULL }, // 78
@@ -10828,7 +10828,7 @@ const ged_ins_field_entry_t DecodingTable536[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     16, { GED_INS_FIELD_Src0RegFile,                       DecodingTable86 }, NULL }, // 78
@@ -10959,7 +10959,7 @@ const ged_ins_field_entry_t DecodingTable537[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -11090,7 +11090,7 @@ const ged_ins_field_entry_t DecodingTable538[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -11221,7 +11221,7 @@ const ged_ins_field_entry_t DecodingTable539[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    16, /* {  96, 111,   3,   0,     0xffff } */ {    0x36f60, (void*)(g_uintptr_t)    0xffff }, NULL }, // 78
@@ -11352,7 +11352,7 @@ const ged_ins_field_entry_t DecodingTable540[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    16, /* {  96, 111,   3,   0,     0xffff } */ {    0x36f60, (void*)(g_uintptr_t)    0xffff }, NULL }, // 78
@@ -11483,7 +11483,7 @@ const ged_ins_field_entry_t DecodingTable541[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -11614,7 +11614,7 @@ const ged_ins_field_entry_t DecodingTable542[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  24,  27,   0,  24,  0xf000000 } */ { 0x18001b18, (void*)(g_uintptr_t) 0xf000000 }, RestrictionTable47 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -11745,7 +11745,7 @@ const ged_ins_field_entry_t DecodingTable543[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  24,  27,   0,  24,  0xf000000 } */ { 0x18001b18, (void*)(g_uintptr_t) 0xf000000 }, RestrictionTable47 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -11876,7 +11876,7 @@ const ged_ins_field_entry_t DecodingTable544[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12007,7 +12007,7 @@ const ged_ins_field_entry_t DecodingTable545[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12138,7 +12138,7 @@ const ged_ins_field_entry_t DecodingTable546[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12269,7 +12269,7 @@ const ged_ins_field_entry_t DecodingTable547[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,      3, { GED_INS_FIELD_DescRegFile,                       DecodingTable69 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NEXT_TABLE,      4, { GED_INS_FIELD_DescRegFile,                       DecodingTable70 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     29, { GED_INS_FIELD_DescRegFile,                       DecodingTable71 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12400,7 +12400,7 @@ const ged_ins_field_entry_t DecodingTable548[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12531,7 +12531,7 @@ const ged_ins_field_entry_t DecodingTable549[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12662,7 +12662,7 @@ const ged_ins_field_entry_t DecodingTable550[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12793,7 +12793,7 @@ const ged_ins_field_entry_t DecodingTable551[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -12924,7 +12924,7 @@ const ged_ins_field_entry_t DecodingTable552[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -13055,7 +13055,7 @@ const ged_ins_field_entry_t DecodingTable553[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -13186,7 +13186,7 @@ const ged_ins_field_entry_t DecodingTable554[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -13317,7 +13317,7 @@ const ged_ins_field_entry_t DecodingTable555[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    16, /* {  96, 111,   3,   0,     0xffff } */ {    0x36f60, (void*)(g_uintptr_t)    0xffff }, NULL }, // 78
@@ -13448,7 +13448,7 @@ const ged_ins_field_entry_t DecodingTable556[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    16, /* {  96, 111,   3,   0,     0xffff } */ {    0x36f60, (void*)(g_uintptr_t)    0xffff }, NULL }, // 78
@@ -13579,7 +13579,7 @@ const ged_ins_field_entry_t DecodingTable557[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -13710,7 +13710,7 @@ const ged_ins_field_entry_t DecodingTable558[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     29, { GED_INS_FIELD_DescRegFile,                       DecodingTable71 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -13841,7 +13841,7 @@ const ged_ins_field_entry_t DecodingTable559[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -13972,7 +13972,7 @@ const ged_ins_field_entry_t DecodingTable560[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -14103,7 +14103,7 @@ const ged_ins_field_entry_t DecodingTable561[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -14234,7 +14234,7 @@ const ged_ins_field_entry_t DecodingTable562[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -14365,7 +14365,7 @@ const ged_ins_field_entry_t DecodingTable563[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -14496,7 +14496,7 @@ const ged_ins_field_entry_t DecodingTable564[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -14627,7 +14627,7 @@ const ged_ins_field_entry_t DecodingTable565[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -14758,7 +14758,7 @@ const ged_ins_field_entry_t DecodingTable566[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -14889,7 +14889,7 @@ const ged_ins_field_entry_t DecodingTable567[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  24,  27,   0,  24,  0xf000000 } */ { 0x18001b18, (void*)(g_uintptr_t) 0xf000000 }, RestrictionTable92 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15020,7 +15020,7 @@ const ged_ins_field_entry_t DecodingTable568[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  24,  27,   0,  24,  0xf000000 } */ { 0x18001b18, (void*)(g_uintptr_t) 0xf000000 }, RestrictionTable92 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15151,7 +15151,7 @@ const ged_ins_field_entry_t DecodingTable569[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15282,7 +15282,7 @@ const ged_ins_field_entry_t DecodingTable570[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     29, { GED_INS_FIELD_DescRegFile,                       DecodingTable71 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15413,7 +15413,7 @@ const ged_ins_field_entry_t DecodingTable571[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15544,7 +15544,7 @@ const ged_ins_field_entry_t DecodingTable572[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15675,7 +15675,7 @@ const ged_ins_field_entry_t DecodingTable573[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15806,7 +15806,7 @@ const ged_ins_field_entry_t DecodingTable574[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -15937,7 +15937,7 @@ const ged_ins_field_entry_t DecodingTable575[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -16068,7 +16068,7 @@ const ged_ins_field_entry_t DecodingTable576[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     31, { GED_INS_FIELD_DescRegFile,                       DecodingTable132 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,      6, { 2, FragmentsTable6 }, RestrictionTable43 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -16199,7 +16199,7 @@ const ged_ins_field_entry_t DecodingTable577[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -16330,7 +16330,7 @@ const ged_ins_field_entry_t DecodingTable578[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -16461,7 +16461,7 @@ const ged_ins_field_entry_t DecodingTable579[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     31, { GED_INS_FIELD_DescRegFile,                       DecodingTable132 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 6, FragmentsTable19 }, RestrictionTable107 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 6, FragmentsTable19 }, RestrictionTable107 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -16592,7 +16592,7 @@ const ged_ins_field_entry_t DecodingTable580[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     31, { GED_INS_FIELD_DescRegFile,                       DecodingTable139 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable140 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable140 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -16723,7 +16723,7 @@ const ged_ins_field_entry_t DecodingTable581[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -16854,7 +16854,7 @@ const ged_ins_field_entry_t DecodingTable582[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -16985,7 +16985,7 @@ const ged_ins_field_entry_t DecodingTable583[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -17116,7 +17116,7 @@ const ged_ins_field_entry_t DecodingTable584[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -17247,7 +17247,7 @@ const ged_ins_field_entry_t DecodingTable585[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -17378,7 +17378,7 @@ const ged_ins_field_entry_t DecodingTable586[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -17509,7 +17509,7 @@ const ged_ins_field_entry_t DecodingTable587[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -17640,7 +17640,7 @@ const ged_ins_field_entry_t DecodingTable588[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  24,  27,   0,  24,  0xf000000 } */ { 0x18001b18, (void*)(g_uintptr_t) 0xf000000 }, RestrictionTable92 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -17771,7 +17771,7 @@ const ged_ins_field_entry_t DecodingTable589[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -17902,7 +17902,7 @@ const ged_ins_field_entry_t DecodingTable590[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18033,7 +18033,7 @@ const ged_ins_field_entry_t DecodingTable591[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     31, { GED_INS_FIELD_DescRegFile,                       DecodingTable132 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 6, FragmentsTable19 }, RestrictionTable107 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 6, FragmentsTable19 }, RestrictionTable107 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18164,7 +18164,7 @@ const ged_ins_field_entry_t DecodingTable592[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    31, /* {  96, 126,   3,   0, 0x7fffffff } */ {    0x37e60, (void*)(g_uintptr_t)0x7fffffff }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable140 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable140 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18295,7 +18295,7 @@ const ged_ins_field_entry_t DecodingTable593[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18426,7 +18426,7 @@ const ged_ins_field_entry_t DecodingTable594[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18557,7 +18557,7 @@ const ged_ins_field_entry_t DecodingTable595[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18688,7 +18688,7 @@ const ged_ins_field_entry_t DecodingTable596[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -18819,7 +18819,7 @@ const ged_ins_field_entry_t DecodingTable597[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -18950,7 +18950,7 @@ const ged_ins_field_entry_t DecodingTable598[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -19081,7 +19081,7 @@ const ged_ins_field_entry_t DecodingTable599[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -19212,7 +19212,7 @@ const ged_ins_field_entry_t DecodingTable600[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src1RegFile,                       DecodingTable89 }, NULL }, // 78
@@ -19343,7 +19343,7 @@ const ged_ins_field_entry_t DecodingTable601[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -19474,7 +19474,7 @@ const ged_ins_field_entry_t DecodingTable602[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -19605,7 +19605,7 @@ const ged_ins_field_entry_t DecodingTable603[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    32, /* {  96, 127,   3,   0, 0xffffffff } */ {    0x37f60, (void*)(g_uintptr_t)0xffffffff }, NULL }, // 78
@@ -19736,7 +19736,7 @@ const ged_ins_field_entry_t DecodingTable604[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  24,  27,   0,  24,  0xf000000 } */ { 0x18001b18, (void*)(g_uintptr_t) 0xf000000 }, RestrictionTable92 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -19867,7 +19867,7 @@ const ged_ins_field_entry_t DecodingTable605[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -19998,7 +19998,7 @@ const ged_ins_field_entry_t DecodingTable606[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20129,7 +20129,7 @@ const ged_ins_field_entry_t DecodingTable607[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     31, { GED_INS_FIELD_DescRegFile,                       DecodingTable132 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 6, FragmentsTable19 }, RestrictionTable107 }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 6, FragmentsTable19 }, RestrictionTable107 }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20260,7 +20260,7 @@ const ged_ins_field_entry_t DecodingTable608[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_CONSECUTIVE,    31, /* {  96, 126,   3,   0, 0x7fffffff } */ {    0x37e60, (void*)(g_uintptr_t)0x7fffffff }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable140 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable140 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* { 127, 127,   3,  31, 0x80000000 } */ { 0x1f037f7f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20391,7 +20391,7 @@ const ged_ins_field_entry_t DecodingTable609[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20522,7 +20522,7 @@ const ged_ins_field_entry_t DecodingTable610[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20653,7 +20653,7 @@ const ged_ins_field_entry_t DecodingTable611[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20784,7 +20784,7 @@ const ged_ins_field_entry_t DecodingTable612[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -20915,7 +20915,7 @@ const ged_ins_field_entry_t DecodingTable613[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable356 }, NULL }, // 78
@@ -21046,7 +21046,7 @@ const ged_ins_field_entry_t DecodingTable614[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21177,7 +21177,7 @@ const ged_ins_field_entry_t DecodingTable615[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable153 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21308,7 +21308,7 @@ const ged_ins_field_entry_t DecodingTable616[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21439,7 +21439,7 @@ const ged_ins_field_entry_t DecodingTable617[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21570,7 +21570,7 @@ const ged_ins_field_entry_t DecodingTable618[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21701,7 +21701,7 @@ const ged_ins_field_entry_t DecodingTable619[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_DescRegFile,                       DecodingTable327 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable328 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable328 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  34,  34,   1,   2,        0x4 } */ {  0x2012222, (void*)(g_uintptr_t)       0x4 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21832,7 +21832,7 @@ const ged_ins_field_entry_t DecodingTable620[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -21963,7 +21963,7 @@ const ged_ins_field_entry_t DecodingTable621[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -22094,7 +22094,7 @@ const ged_ins_field_entry_t DecodingTable622[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -22225,7 +22225,7 @@ const ged_ins_field_entry_t DecodingTable623[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -22356,7 +22356,7 @@ const ged_ins_field_entry_t DecodingTable624[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -22487,7 +22487,7 @@ const ged_ins_field_entry_t DecodingTable625[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable356 }, NULL }, // 78
@@ -22618,7 +22618,7 @@ const ged_ins_field_entry_t DecodingTable626[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable153 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -22749,7 +22749,7 @@ const ged_ins_field_entry_t DecodingTable627[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -22880,7 +22880,7 @@ const ged_ins_field_entry_t DecodingTable628[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_DescRegFile,                       DecodingTable327 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable328 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable328 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  34,  34,   1,   2,        0x4 } */ {  0x2012222, (void*)(g_uintptr_t)       0x4 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23011,7 +23011,7 @@ const ged_ins_field_entry_t DecodingTable629[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23142,7 +23142,7 @@ const ged_ins_field_entry_t DecodingTable630[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23273,7 +23273,7 @@ const ged_ins_field_entry_t DecodingTable631[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23404,7 +23404,7 @@ const ged_ins_field_entry_t DecodingTable632[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0RegFile,                       DecodingTable356 }, NULL }, // 78
@@ -23535,7 +23535,7 @@ const ged_ins_field_entry_t DecodingTable633[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable175 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23666,7 +23666,7 @@ const ged_ins_field_entry_t DecodingTable634[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_DescRegFile,                       DecodingTable327 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable409 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable409 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  34,  34,   1,   2,        0x4 } */ {  0x2012222, (void*)(g_uintptr_t)       0x4 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23797,7 +23797,7 @@ const ged_ins_field_entry_t DecodingTable635[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -23928,7 +23928,7 @@ const ged_ins_field_entry_t DecodingTable636[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -24059,7 +24059,7 @@ const ged_ins_field_entry_t DecodingTable637[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -24190,7 +24190,7 @@ const ged_ins_field_entry_t DecodingTable638[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -24321,7 +24321,7 @@ const ged_ins_field_entry_t DecodingTable639[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0IsImm,                         DecodingTable519 }, NULL }, // 78
@@ -24452,7 +24452,7 @@ const ged_ins_field_entry_t DecodingTable640[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0IsImm,                         DecodingTable519 }, NULL }, // 78
@@ -24583,7 +24583,7 @@ const ged_ins_field_entry_t DecodingTable641[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -24714,7 +24714,7 @@ const ged_ins_field_entry_t DecodingTable642[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -24845,7 +24845,7 @@ const ged_ins_field_entry_t DecodingTable643[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -24976,7 +24976,7 @@ const ged_ins_field_entry_t DecodingTable644[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable175 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25107,7 +25107,7 @@ const ged_ins_field_entry_t DecodingTable645[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25238,7 +25238,7 @@ const ged_ins_field_entry_t DecodingTable646[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_DescRegFile,                       DecodingTable327 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable409 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_ExDescRegFile,                     DecodingTable409 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  34,  34,   1,   2,        0x4 } */ {  0x2012222, (void*)(g_uintptr_t)       0x4 }, RestrictionTable44 }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25369,7 +25369,7 @@ const ged_ins_field_entry_t DecodingTable647[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25500,7 +25500,7 @@ const ged_ins_field_entry_t DecodingTable648[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25631,7 +25631,7 @@ const ged_ins_field_entry_t DecodingTable649[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25762,7 +25762,7 @@ const ged_ins_field_entry_t DecodingTable650[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -25893,7 +25893,7 @@ const ged_ins_field_entry_t DecodingTable651[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0IsImm,                         DecodingTable519 }, NULL }, // 78
@@ -26024,7 +26024,7 @@ const ged_ins_field_entry_t DecodingTable652[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NEXT_TABLE,     32, { GED_INS_FIELD_Src0IsImm,                         DecodingTable519 }, NULL }, // 78
@@ -26155,7 +26155,7 @@ const ged_ins_field_entry_t DecodingTable653[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
@@ -26286,7 +26286,7 @@ const ged_ins_field_entry_t DecodingTable654[128] =
     { GED_INS_FIELD_DescWidth,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 72
     { GED_INS_FIELD_DescVertStride,                    GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
+    { GED_INS_FIELD_ExMsgDescImm,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 76
     { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable175 }, // 77
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78

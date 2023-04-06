@@ -27,7 +27,7 @@ constructPartialGEDSendInstruction(ged_ins_t *ins, GED_MODEL gedP,
   }
 
   if (status == GED_RETURN_VALUE_SUCCESS) {
-    status = GED_SetExMsgDesc(ins, exMsgDesc);
+    status = GED_SetExMsgDescImm(ins, exMsgDesc);
   }
 
   if (status == GED_RETURN_VALUE_SUCCESS) {

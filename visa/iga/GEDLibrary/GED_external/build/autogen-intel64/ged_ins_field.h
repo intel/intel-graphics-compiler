@@ -758,7 +758,7 @@ typedef enum
      *
      * @par     Models:     all
      */
-    GED_INS_FIELD_ExMsgDesc,
+    GED_INS_FIELD_ExMsgDescImm,
 
     /*!
      * End of Thread. This field controls the termination of the thread. For a send instruction, if this field is set, EU will

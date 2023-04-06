@@ -172,8 +172,8 @@ EXPORTS
   GED_SetDescVertStride
   GED_GetMsgDesc
   GED_SetMsgDesc
-  GED_GetExMsgDesc
-  GED_SetExMsgDesc
+  GED_GetExMsgDescImm
+  GED_SetExMsgDescImm
   GED_GetEOT
   GED_SetEOT
   GED_GetMathFC

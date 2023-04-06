@@ -274,8 +274,8 @@ const char* DpOpcodeEnumeration[28] =
     "LOAD_CMASK", // 1
     "STORE", // 2
     "STORE_CMASK", // 3
-    "ATOMIC_INC", // 4
-    "ATOMIC_DEC", // 5
+    "ATOMIC_INCREMENT", // 4
+    "ATOMIC_DECREMENT", // 5
     "ATOMIC_LOAD", // 6
     "ATOMIC_STORE", // 7
     "ATOMIC_ADD", // 8
@@ -284,19 +284,19 @@ const char* DpOpcodeEnumeration[28] =
     "ATOMIC_MAX", // 11
     "ATOMIC_UMIN", // 12
     "ATOMIC_UMAX", // 13
-    "ATOMIC_CMPXCHG", // 14
-    "ATOMIC_FADD", // 15
-    "ATOMIC_FSUB", // 16
-    "ATOMIC_FMIN", // 17
-    "ATOMIC_FMAX", // 18
-    "ATOMIC_FCMPXCHG", // 19
+    "ATOMIC_COMPARE_EXCHANGE", // 14
+    "ATOMIC_FLOAT_ADD", // 15
+    "ATOMIC_FLOAT_SUB", // 16
+    "ATOMIC_FLOAT_MIN", // 17
+    "ATOMIC_FLOAT_MAX", // 18
+    "ATOMIC_FLOAT_COMPARE_EXCHANGE", // 19
     "ATOMIC_AND", // 20
     "ATOMIC_OR", // 21
     "ATOMIC_XOR", // 22
     "STORE_UNCOMPRESSED", // 23
     "FENCE", // 24
-    "LOAD_BLOCK2D", // 25
-    "STORE_BLOCK2D", // 26
+    "LOAD_2D_BLOCK", // 25
+    "STORE_2D_BLOCK", // 26
     NULL // 27
 }; // DpOpcodeEnumeration[]
 #endif // GED_DP_OPCODE_HIDDEN

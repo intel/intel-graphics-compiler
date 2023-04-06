@@ -1024,7 +1024,7 @@ SendDesc Decoder::decodeSendExDesc() {
   SendDesc exDesc;
   if (exDescRegFile == GED_REG_FILE_IMM) {
     exDesc.type = SendDesc::Kind::IMM;
-    GED_DECODE_RAW_TO(ExMsgDesc, exDesc.imm);
+    GED_DECODE_RAW_TO(ExMsgDescImm, exDesc.imm);
   } else {
     // For sends GED interprets SelReg32ExDesc and returns default values
     GED_DECODE_RAW(uint32_t, subRegNum, ExDescAddrSubRegNum);

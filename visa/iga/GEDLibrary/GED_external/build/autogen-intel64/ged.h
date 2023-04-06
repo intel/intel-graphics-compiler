@@ -2085,7 +2085,7 @@ extern uint32_t GED_CALLCONV GED_GetMsgDesc(ged_ins_t* ins, GED_RETURN_VALUE* re
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDesc(ged_ins_t* ins, const uint32_t value);
 
 /*!
- * Get the value of the ExMsgDesc field in the given instruction. See @ref GED_INS_FIELD_ExMsgDesc for the field's description.
+ * Get the value of the ExMsgDescImm field in the given instruction. See @ref GED_INS_FIELD_ExMsgDescImm for the field's description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
  * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
@@ -2096,17 +2096,17 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDesc(ged_ins_t* ins, const uint32
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV GED_GetExMsgDesc(ged_ins_t* ins, GED_RETURN_VALUE* result);
+extern uint32_t GED_CALLCONV GED_GetExMsgDescImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the ExMsgDesc field in the given instruction. See @ref GED_INS_FIELD_ExMsgDesc for the field's description.
+ * Set the value of the ExMsgDescImm field in the given instruction. See @ref GED_INS_FIELD_ExMsgDescImm for the field's description.
  *
  * @param[in,out]   ins    Pointer to the instruction object for encoding.
  * @param[in]       value  The value to encode.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMsgDesc(ged_ins_t* ins, const uint32_t value);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMsgDescImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the EOT field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -4833,8 +4833,8 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc
                                                                messageType);
 
 /*!
- * Get the value of the ExMessageLength field from the given extended message descriptor (as obtained by @ref GED_GetExMsgDesc). See
- * @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
+ * Get the value of the ExMessageLength field from the given extended message descriptor (as obtained by @ref GED_GetExMsgDescImm).
+ * See @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
  *
  * @param[in]       exMsgDesc  The extended message descriptor.
  * @param[in]       modelId    The GED model by which to interpret.
@@ -4847,7 +4847,7 @@ extern uint32_t GED_CALLCONV GED_GetExMessageLength(const uint32_t exMsgDesc, co
 
 /*!
  * Set the value of the ExMessageLength field in the given extended message descriptor. The latter can then be set to its appropriate
- * field (@ref GED_SetExMsgDesc). See @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
+ * field (@ref GED_SetExMsgDescImm). See @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
  *
  * @param[in,out]   exMsgDesc  The extended message descriptor.
  * @param[in]       modelId    The GED model by which to interpret.

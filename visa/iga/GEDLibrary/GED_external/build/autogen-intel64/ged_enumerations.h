@@ -213,33 +213,33 @@ typedef enum
 } GED_DP_FLUSH_TYPE;
 typedef enum
 {
-    GED_DP_OPCODE_LOAD,               ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_LOAD_CMASK,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE_CMASK,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_INC,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_DEC,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_LOAD,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_STORE,       ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_ADD,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_SUB,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_MIN,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_MAX,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_UMIN,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_UMAX,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_CMPXCHG,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FADD,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FSUB,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FMIN,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FMAX,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FCMPXCHG,    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_AND,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_OR,          ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_XOR,         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE_UNCOMPRESSED, ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_FENCE,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_LOAD_BLOCK2D,       ///< XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE_BLOCK2D,      ///< XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_LOAD,                          ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_LOAD_CMASK,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_STORE,                         ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_STORE_CMASK,                   ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_INCREMENT,              ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_DECREMENT,              ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_LOAD,                   ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_STORE,                  ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_ADD,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_SUB,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_MIN,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_MAX,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_UMIN,                   ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_UMAX,                   ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_COMPARE_EXCHANGE,       ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_FLOAT_ADD,              ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_FLOAT_SUB,              ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_FLOAT_MIN,              ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_FLOAT_MAX,              ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_FLOAT_COMPARE_EXCHANGE, ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_AND,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_OR,                     ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_ATOMIC_XOR,                    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_STORE_UNCOMPRESSED,            ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_FENCE,                         ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_LOAD_2D_BLOCK,                 ///< XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_STORE_2D_BLOCK,                ///< XE.HPC.A, XE.HPC
     GED_DP_OPCODE_INVALID
 } GED_DP_OPCODE;
 typedef enum

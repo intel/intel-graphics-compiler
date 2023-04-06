@@ -225,7 +225,7 @@ const char* fieldNameByField[128] =
     "DescWidth", // 72
     "DescVertStride", // 73
     "MsgDesc", // 74
-    "ExMsgDesc", // 75
+    "ExMsgDescImm", // 75
     "EOT", // 76
     "MathFC", // 77
     "JIP", // 78
