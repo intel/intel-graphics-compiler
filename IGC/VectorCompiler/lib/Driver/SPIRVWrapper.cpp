@@ -14,10 +14,10 @@ SPDX-License-Identifier: MIT
 #include "SPIRVWrapper.h"
 
 #include "vc/Support/Status.h"
-
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/Verifier.h"
-
+#include <llvm/IR/IRBuilder.h>
 #include "LLVMSPIRVLib.h"
 
 #include "Probe/Assertion.h"
@@ -34,6 +34,68 @@ using SpirvReadVerifyType = int(
     void (*OutSaver)(const char *pOut, size_t OutSize, void *OutUserData),
     void *OutUserData, void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
     void *ErrUserData);
+
+void PrepareModuleStructs(Module &M) {
+  // Delete return type structs from function definitions
+  SmallVector<Instruction *, 16> ToRemoveExtract;
+  SmallVector<Instruction *, 4> ToRemoveGotoJoin;
+  SmallVector<Function *, 4> ToRemoveFunc;
+
+  for (auto &F : M.functions()) {
+    if (!F.isIntrinsic())
+      continue;
+    auto IID = vc::getAnyIntrinsicID(&F);
+    // Now expected only goto/join's
+    if (IID != GenXIntrinsic::genx_simdcf_goto &&
+        IID != GenXIntrinsic::genx_simdcf_join)
+      continue;
+    auto *ST = cast<StructType>(F.getReturnType());
+    if (!ST->isLiteral() || ST->isPacked()) {
+      ToRemoveFunc.push_back(&F);
+      // Replace return type with literal non-packed struct.
+      auto *FT = F.getFunctionType();
+      auto *NewST = StructType::get(ST->getContext(), ST->elements());
+      auto *NewFT = FunctionType::get(NewST, FT->params(), FT->isVarArg());
+      /// We expect *.goto.*.* name, not *.goto.*.*.[123...]
+      std::string Name = F.getName().str();
+      F.setName(F.getName() + ".old");
+      auto *NewFn = Function::Create(NewFT, F.getLinkage(), F.getAddressSpace(),
+                                     Name, F.getParent());
+      for (auto &U : F.uses()) {
+        auto *Call = cast<CallInst>(U.getUser());
+        // Replace current instructions operands and uses
+        llvm::IRBuilder<> IRB(Call);
+        ToRemoveGotoJoin.push_back(Call);
+        // 1. Get operands from call
+        // 2. Generate new `calls` with operands
+        SmallVector<Value *, 8> Args(Call->args());
+        CallInst *NewCall = IRB.CreateCall(NewFn, Args, Call->getName());
+        if (Call->isConvergent())
+          NewCall->setConvergent();
+        // Check all uses of call is extract
+        // 3. Generate `extracts` for each exist extract
+        for (auto &UC : Call->uses()) {
+          auto *Extract = cast<ExtractValueInst>(UC.getUser());
+          llvm::IRBuilder<> Builder(Extract);
+          SmallVector<unsigned, 8> Idxs(Extract->indices());
+          auto *NewExtract =
+              Builder.CreateExtractValue(NewCall, Idxs, Extract->getName());
+          // 4. Replace uses for extracts
+          Extract->replaceAllUsesWith(NewExtract);
+          ToRemoveExtract.push_back(Extract);
+        }
+      }
+    }
+  }
+  // 5. Remove extracts and calls
+  for (auto *Vals : ToRemoveExtract)
+    Vals->eraseFromParent();
+  for (auto *Vals : ToRemoveGotoJoin)
+    Vals->eraseFromParent();
+  for (auto *Func: ToRemoveFunc)
+    Func->eraseFromParent();
+
+}
 
 int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
                     const uint64_t *SpecConstVals, unsigned SpecConstSz,
@@ -65,6 +127,7 @@ int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
       ErrSaver(OSS.str().c_str(), ErrUserData);
       return -1;
     }
+    PrepareModuleStructs(*SpirM);
     Status = llvm::verifyModule(*SpirM);
     if (Status) {
       ErrSaver("spirv_read_verify: verify Module failed", ErrUserData);
