@@ -385,6 +385,7 @@ DECLARE_IGC_REGKEY(DWORD, MetricsDumpEnable,            0,     "Dump IGC Metrics
 DECLARE_IGC_REGKEY(bool, PrintDebugSettings,            false, "Prints all non-default debug settings", false)
 DECLARE_IGC_REGKEY(bool, UseMTInLLD,                    false, "Use multi-threading when linking multiple elf files", true)
 DECLARE_IGC_REGKEY(bool, NoCatchAllDebugLine,           false, "Don't emit special placeholder instruction to map VISA orphan instructions", false)
+DECLARE_IGC_REGKEY(bool, EnableTestSplitI64,            false, "Test legalization that split i64 store unnecessarily, to be deleted once test is done", true)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode", true)
