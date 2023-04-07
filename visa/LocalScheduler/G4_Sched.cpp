@@ -1235,9 +1235,7 @@ public:
 
   // Add a new node to queue.
   void push(preNode *N) override {
-    if (N->getInst() && N->getInst()->isPseudoKill())
-      pseudoKills.push_back(N);
-    else if (config.SkipHoldList)
+    if (config.SkipHoldList)
       ReadyList.push(N);
     else
       HoldList.push(N);
@@ -1245,19 +1243,13 @@ public:
 
   // Schedule the top node.
   preNode *pop() override {
-    // Pop all pseudo-kills if any.
-    if (!pseudoKills.empty()) {
-      preNode *N = pseudoKills.back();
-      pseudoKills.pop_back();
-      return N;
-    }
     vASSERT(!ReadyList.empty());
     preNode *N = ReadyList.top();
     ReadyList.pop();
     return N;
   }
 
-  bool empty() const { return pseudoKills.empty() && ReadyList.empty(); }
+  bool empty() const { return ReadyList.empty(); }
 
   // move instruction from HoldList to ReadyList,
   // also update current-cycle and current-group
@@ -1314,8 +1306,7 @@ private:
 
   bool compareHold(preNode *N1, preNode *N2);
 
-  // The ready pseudo kills.
-  std::vector<preNode *> pseudoKills;
+  bool comparePseudoKill(preNode *N1, preNode *N2) const;
 };
 
 } // namespace
@@ -1701,7 +1692,7 @@ unsigned LatencyQueue::calculatePriority(preNode *N) {
 bool LatencyQueue::compareReady(preNode *N1, preNode *N2) {
   vASSERT(N1->getID() != N2->getID());
   vASSERT(N1->getInst() && N2->getInst());
-  vASSERT(!N1->getInst()->isPseudoKill() && !N2->getInst()->isPseudoKill());
+
   auto isSendNoReturn = [](G4_INST *Inst) {
     if (Inst->isSend() &&
         (Inst->getDst() == nullptr || Inst->getDst()->isNullReg()))
@@ -1711,6 +1702,8 @@ bool LatencyQueue::compareReady(preNode *N1, preNode *N2) {
 
   G4_INST *Inst1 = N1->getInst();
   G4_INST *Inst2 = N2->getInst();
+  if (Inst1->isPseudoKill() || Inst2->isPseudoKill())
+    return comparePseudoKill(N1, N2);
 
   // Group ID has higher priority, smaller ID means higher priority.
   unsigned GID1 = GroupInfo[N1->getInst()];
@@ -1749,9 +1742,10 @@ bool LatencyQueue::compareReady(preNode *N1, preNode *N2) {
 bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
   vASSERT(N1->getID() != N2->getID());
   vASSERT(N1->getInst() && N2->getInst());
-  vASSERT(!N1->getInst()->isPseudoKill() && !N2->getInst()->isPseudoKill());
   G4_INST *Inst1 = N1->getInst();
   G4_INST *Inst2 = N2->getInst();
+  if (Inst1->isPseudoKill() || Inst2->isPseudoKill())
+    return comparePseudoKill(N1, N2);
 
   // Group ID has higher priority, smaller ID means higher priority.
   unsigned GID1 = GroupInfo[Inst1];
@@ -1772,6 +1766,20 @@ bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
   // Otherwise, break tie on ID.
   // Larger ID means higher priority.
   return N2->getID() > N1->getID();
+}
+
+bool LatencyQueue::comparePseudoKill(preNode *N1, preNode *N2) const {
+  vASSERT(N1->getID() != N2->getID());
+  vASSERT(N1->getInst() && N2->getInst());
+  vASSERT(N1->getInst()->isPseudoKill() || N2->getInst()->isPseudoKill());
+  // Break tie when both are pseudo_kill and larger ID means higher priority.
+  if (N1->getInst()->isPseudoKill() && N2->getInst()->isPseudoKill())
+    return N2->getID() > N1->getID();
+  // Make pseudo_kill higher priority.
+  if (N2->getInst()->isPseudoKill())
+    return true;
+  else
+    return false;
 }
 
 // Find the edge with smallest ID.
