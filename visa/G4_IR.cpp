@@ -3012,6 +3012,33 @@ static void emitExecSize(std::ostream &output, const G4_INST &inst) {
   }
 }
 
+static const char *SFIDToString(vISA::SFID sfid)
+{
+  switch (sfid) {
+  case SFID::NULL_SFID: return ".null";
+  case SFID::SAMPLER:   return ".smpl";
+  case SFID::GATEWAY:   return ".gtwy";
+  case SFID::DP_DC2:    return ".dc2";
+  case SFID::DP_RC:     return ".rc";
+  case SFID::URB:       return ".urb";
+  case SFID::SPAWNER:   return ".ts";
+  case SFID::VME:       return ".vme";
+  case SFID::DP_CC:     return ".dcro";
+  case SFID::DP_DC0:    return ".dc0";
+  case SFID::DP_PI:     return ".pi";
+  case SFID::DP_DC1:    return ".dc1";
+  case SFID::CRE:       return ".cre";
+  case SFID::BTD:       return ".btd";
+  case SFID::RTHW:      return ".rta";
+  case SFID::TGM:       return ".tgm";
+  case SFID::SLM:       return ".slm";
+  case SFID::UGM:       return ".ugm";
+  case SFID::UGML:      return ".ugml";
+  default: break;
+  }
+  return ".???";
+}
+
 // the syntax column width of beinning instruction info
 //  (P1.0) and (16)     ...
 //         nop
@@ -3045,6 +3072,9 @@ static void emitInstructionStartColumn(std::ostream &output, G4_INST &inst) {
   } else if (inst.isMath() &&
              inst.asMathInst()->getMathCtrl() != MATH_RESERVED) {
     oupPfx << "." << MathOpNames[inst.asMathInst()->getMathCtrl()];
+  } else if (inst.isSend()) {
+    G4_SendDesc *sdesc = inst.asSendInst()->getMsgDesc();
+    oupPfx << SFIDToString(sdesc->getSFID());
   }
 
   oupPfx << ' ';
