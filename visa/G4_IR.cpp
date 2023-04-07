@@ -3957,10 +3957,6 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
             // ArfSubRegNum is in unit of declOpSize
             // transform ArfSubRegNum to unit of thisOpSize
             if (thisOpSize != declOpSize) {
-              if (!opnd->getInst()->isPseudoKill()) {
-                // vISA_ASSERT((ArfSubRegNum * declOpSize) % thisOpSize == 0,
-                //             ERROR_DATA_RANGE("ARF sub-register number"));
-              }
               ArfSubRegNum = (ArfSubRegNum * declOpSize) / thisOpSize;
             }
 

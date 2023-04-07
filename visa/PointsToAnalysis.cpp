@@ -402,10 +402,9 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             // We don't support using "r[a0.0]" as address expression.
             // For instructions like following, it's not point-to propagation
             // for simdShuffle and add64_i_i_i_i.
-            // (W) mov (1) simdShuffle(0,0)<1>:d  r[A0(0,0), 0]<0;1,0>:d
-            //     pseudo_mad (16)      add64_i_i_i_i(0,0)<1>:d  0x6:w
-            //     simdShuffle(0,0)<0;0>:d  rem_i_i_i_i(0,0)<1;0>:d shl (16)
-            //     add64_i_i_i_i(0,0)<1>:d add64_i_i_i_i(0,0)<1;1,0>:d  0x2:w
+            // (W) mov        (1) simdShuffle(0,0)<1>:d  r[A0(0,0), 0]<0;1,0>:d
+            //     pseudo_mad (16) add64_i_i_i_i(0,0)<1>:d  0x6:w  simdShuffle(0,0)<0;0>:d  rem_i_i_i_i(0,0)<1;0>:d
+            //     shl        (16) add64_i_i_i_i(0,0)<1>:d add64_i_i_i_i(0,0)<1;1,0>:d  0x2:w
             if (srcPtr != nullptr && srcPtr->isRegVar() && ptr != srcPtr &&
                 !src->isIndirect()) {
               std::vector<G4_RegVar *>::iterator addrDst =
