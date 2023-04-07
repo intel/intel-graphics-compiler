@@ -927,31 +927,32 @@ printInstructionControlFlow(const print_format_provider_t *header,
     label_id = getPrimitiveOperand<uint16_t>(inst, i++);
 
     sstr << "\n";
+    std::string labelName(
+        header->getString(header->getLabel(label_id)->name_index));
     switch (opcode) {
     case ISA_SUBROUTINE: {
       std::stringstream uniqueSuffixSstr;
       uniqueSuffixSstr << '_' << label_id;
       std::string uniqueSuffixStr = uniqueSuffixSstr.str();
-
-      std::string labelName(
-          header->getString(header->getLabel(label_id)->name_index));
-
       auto replacedName = replaceInvalidCharToUnderline(labelName);
-
-      sstr << ".function ";
-      encodeStringLiteral(sstr, (replacedName + uniqueSuffixStr).c_str());
-      // add a comment to specify the original name if the name change
-      if (replacedName != labelName) {
-        sstr << " /// Original Name: ";
-        encodeStringLiteral(sstr, (labelName + uniqueSuffixStr).c_str());
+      bool printOrigName = replacedName != labelName;
+      // Avoid repeatedly appending the unique suffix.
+      if (!strEndsWith(replacedName, uniqueSuffixStr)) {
+        replacedName += uniqueSuffixStr;
       }
-      sstr << "\n\n"
-           << replaceInvalidCharToUnderline(labelName) << uniqueSuffixStr;
+
+      sstr << "\n.function ";
+      encodeStringLiteral(sstr, replacedName.c_str());
+      // add a comment to specify the original name if the name change
+      if (printOrigName) {
+        sstr << " /// Original Name: ";
+        encodeStringLiteral(sstr, labelName.c_str());
+      }
+      sstr << "\n" << replacedName;
       break;
     }
     case ISA_LABEL: {
-      sstr << replaceInvalidCharToUnderline(
-          header->getString(header->getLabel(label_id)->name_index));
+      sstr << replaceInvalidCharToUnderline(labelName);
       break;
     }
     default:

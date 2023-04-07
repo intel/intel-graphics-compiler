@@ -450,16 +450,25 @@ std::string CisaBinary::isaDump(const VISAKernelImpl *kernel,
 
   sstr << fmt.printKernelHeader(m_header);
 
-  std::list<CisaFramework::CisaInst *>::const_iterator inst_iter =
-      kernel->getInstructionListBegin();
-  std::list<CisaFramework::CisaInst *>::const_iterator inst_iter_end =
-      kernel->getInstructionListEnd();
+  auto inst_iter = kernel->getInstructionListBegin();
+  auto inst_iter_end = kernel->getInstructionListEnd();
   for (; inst_iter != inst_iter_end; inst_iter++) {
     CisaFramework::CisaInst *cisa_inst = *inst_iter;
     const CISA_INST *inst = cisa_inst->getCISAInst();
     sstr << printInstruction(m_header, &fmt, inst, kernel->getOptions())
          << "\n";
   }
+
+#ifdef DLL_MODE
+  // Print the options used to compile this vISA object to assist debugging.
+  if (kernel->getCISABuilder()->getBuilderOption() == VISA_BUILDER_BOTH) {
+    sstr
+        << "\n//Platform: "
+        << kernel->getCISABuilder()->getPlatformInfo()->getGenxPlatformString();
+    sstr << "\n//Build option: \"" << kernel->getOptions()->getFullArgString()
+         << "\"";
+  }
+#endif
 
   return sstr.str();
 }
