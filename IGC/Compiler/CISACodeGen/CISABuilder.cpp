@@ -6069,7 +6069,7 @@ namespace IGC
             }
         }
 
-        if (jitInfo->isSpill)
+        if (jitInfo->stats.numGRFSpillFillWeighted)
         {
             context->m_retryManager.SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
             m_program->m_spillSize = jitInfo->stats.numGRFSpillFillWeighted;
@@ -6136,7 +6136,7 @@ namespace IGC
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT, jitInfo->stats.numAsmCountUnweighted);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL8, (int)jitInfo->isSpill);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL8, jitInfo->stats.numGRFSpillFillWeighted ? 1 : 0);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE8, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE8, (int)m_program->m_loopNestedStallCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD8, jitInfo->stats.numGRFTotal);
@@ -6145,7 +6145,7 @@ namespace IGC
         else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD16, jitInfo->stats.numAsmCountUnweighted);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL16, (int)jitInfo->isSpill);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL16, jitInfo->stats.numGRFSpillFillWeighted ? 1 : 0);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE16, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE16, (int)m_program->m_loopNestedStallCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD16, jitInfo->stats.numGRFTotal);
@@ -6154,7 +6154,7 @@ namespace IGC
         else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD32, jitInfo->stats.numAsmCountUnweighted);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL32, (int)jitInfo->isSpill);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL32, jitInfo->stats.numGRFSpillFillWeighted ? 1 : 0);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE32, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE32, (int)m_program->m_loopNestedStallCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD32, jitInfo->stats.numGRFTotal);
@@ -6432,7 +6432,10 @@ namespace IGC
         bool isStackCallProgram = m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
         bool noRetry = jitInfo->avoidRetry;
 
-        if ((jitInfo->isSpill && noRetry) ||
+        // either having spillFill instructions or has vISA stack size is considered isSpill
+        bool isSpill = jitInfo->stats.numGRFSpillFillWeighted || jitInfo->stats.spillMemUsed;
+
+        if ((isSpill && noRetry) ||
             (isStackCallProgram && IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 0))
         {
             context->m_retryManager.Disable();
@@ -6545,7 +6548,7 @@ namespace IGC
             }
         }
 
-        if (jitInfo->isSpill &&
+        if ((jitInfo->stats.spillMemUsed || jitInfo->stats.numGRFSpillFillWeighted) &&
             (noRetry || context->m_retryManager.IsLastTry()) &&
             !isStackCallProgram)
         {
@@ -6568,11 +6571,9 @@ namespace IGC
                 (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
                     m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
             ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
-            if (jitInfo->isSpill) {
-                auto spilledRegs = std::max<unsigned>(1,
-                    (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
-                ss << " and spilled around " << spilledRegs;
-            }
+            auto spilledRegs = std::max<unsigned>(1,
+                (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
+            ss << " and spilled around " << spilledRegs;
 
             context->EmitWarning(ss.str().c_str());
         }

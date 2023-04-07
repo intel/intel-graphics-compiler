@@ -702,7 +702,7 @@ static uint32_t getConservativeVISAStackSize(const PLATFORM& platform) {
     return platform.eProductFamily == IGFX_PVC &&
            platform.usRevId >= REVISION_B;
   };
-  // PVC-XT needs a samller default size to avoid stack OOM
+  // PVC-XT needs a smaller default size to avoid stack OOM
   // Ref: IGC::CEncoder::getSpillMemSizeWithFG
   if (isPVCXT(platform))
     return 64 * 1024;
@@ -734,14 +734,13 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.RequireDisableEUFusion = BackendInfo.requireDisableEUFusion();
 
   // Allocate spill-fill buffer
-  if (JitterInfo.isSpill) {
-    if (JitterInfo.hasStackcalls) {
-      ExecEnv.PerThreadScratchSpace +=
-          getConservativeVISAStackSize(Kernel.m_platform);
-    } else {
-      ExecEnv.PerThreadScratchSpace += JitterInfo.stats.spillMemUsed;
-    }
+  if (JitterInfo.hasStackcalls) {
+    ExecEnv.PerThreadScratchSpace +=
+        getConservativeVISAStackSize(Kernel.m_platform);
+  } else {
+    ExecEnv.PerThreadScratchSpace += JitterInfo.stats.spillMemUsed;
   }
+
   if (!JitterInfo.hasStackcalls && BackendInfo.getTPMSize() != 0)
     // CM stack calls and thread-private memory use the same value to control
     // scratch space. Consequently, if we have stack calls, there is no need

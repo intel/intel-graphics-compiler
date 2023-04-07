@@ -144,8 +144,9 @@ public:
 
 struct FINALIZER_INFO {
   // ----- Required by IGC/VC/Runtime ----- //
-  // Used by IGC for spill cost calculation
-  bool isSpill = false;
+  // isSpill is deprecated. Retain the field for backward compatibility.
+  // Do not use it in any case.
+  bool DO_NOT_USE_isSpill = false;
 
   // Debug info is callee allocated and populated only if switch is passed
   // to JIT to emit debug info.
