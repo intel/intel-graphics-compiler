@@ -1421,6 +1421,16 @@ namespace IGC {
                     MetadataAsValue* MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
                     cast<CallInst>(inst)->setArgOperand(0, MAV);
                 }
+            } else if (auto* DDI = dyn_cast<DbgDeclareInst>(inst)) {
+                if (DDI->getAddress() != nullptr) {
+                    if (auto *def = dyn_cast<Instruction>(DDI->getAddress())) {
+                        if (!DT->dominates(def, inst)) {
+                            inst->moveAfter(def);
+                        }
+                    }
+                } else {
+                    inst->eraseFromParent();
+                }
             }
         } while (!processedBegin);
     }
