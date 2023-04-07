@@ -1216,11 +1216,11 @@ bool enableSetDefaultTileYWalk() const
     if (IGC_IS_FLAG_ENABLED(EnableTileYForExperiments))
         return true;
 
-    // enable it on DG2 G10 & G12
-    bool isDG2G10G12Config =
-        GFX_IS_DG2_G10_CONFIG(m_platformInfo.usDeviceID) ||
-        GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID);
-    return (supportHWGenerateTID() && isDG2G10G12Config);
+    // disable it on DG2 G11
+    if (GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID))
+        return false;
+
+    return (supportHWGenerateTID());
 }
 
 // max block size for legacy OWord block messages
