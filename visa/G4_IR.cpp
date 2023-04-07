@@ -6280,6 +6280,19 @@ void G4_Operand::dump() const {
 #endif
 }
 
+bool G4_Operand::isPhysicallyAllocatedRegVar(bool includeAccRegSel) const {
+  if (includeAccRegSel &&
+      accRegSel != G4_AccRegSel::ACC_UNDEFINED &&
+      accRegSel != G4_AccRegSel::NOACC)
+    return true;
+  if (base) {
+    if (base->isRegVar())
+      return base->asRegVar()->isPhyRegAssigned();
+    return true; // Greg or Areg
+  }
+  return false;
+}
+
 std::ostream &operator<<(std::ostream &os, G4_Operand &opnd) {
   opnd.emit(os);
   return os;

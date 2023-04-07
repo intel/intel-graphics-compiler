@@ -2007,16 +2007,6 @@ void preDDD::buildGraph() {
   reset();
 }
 
-static bool isPhyicallyAllocatedRegVar(G4_Operand *opnd) {
-  vASSERT(opnd);
-  G4_AccRegSel Acc = opnd->getAccRegSel();
-  if (Acc != G4_AccRegSel::ACC_UNDEFINED && Acc != G4_AccRegSel::NOACC)
-    return true;
-  if (opnd->getBase() && opnd->getBase()->isRegVar())
-    return opnd->getBase()->asRegVar()->getPhyReg() != nullptr;
-  return false;
-}
-
 void preDDD::addNodeToGraph(preNode *N) {
   NewLiveOps.clear();
   DepType Dep = N->getBarrier();
@@ -2036,10 +2026,11 @@ void preDDD::addNodeToGraph(preNode *N) {
     Gen4_Operand_Number OpNum = std::get<1>(Item);
     G4_Operand *Opnd = N->getInst()->getOperand(OpNum);
     vASSERT(Opnd != nullptr);
-    G4_Declare *Dcl = Opnd->getTopDcl();
-    LiveNodes[Dcl].emplace_back(N, OpNum);
+    vASSERT(Opnd->getTopDcl() || Opnd->isPhysicallyAllocatedRegVar());
+    if (G4_Declare *Dcl = Opnd->getTopDcl())
+      LiveNodes[Dcl].emplace_back(N, OpNum);
 
-    if (isPhyicallyAllocatedRegVar(Opnd))
+    if (Opnd->isPhysicallyAllocatedRegVar())
       LivePhysicalNodes.emplace_back(N, OpNum);
   }
 
@@ -2199,30 +2190,32 @@ void preDDD::processReadWrite(preNode *curNode) {
     G4_Operand *opnd = Inst->getOperand(OpNum);
     if (opnd == nullptr || opnd->getBase() == nullptr || opnd->isNullReg())
       continue;
-    G4_Declare *Dcl = opnd->getTopDcl();
-    auto &Nodes = LiveNodes[Dcl];
-    // Iterate all live nodes associated to the same declaration.
-    for (auto Iter = Nodes.begin(); Iter != Nodes.end(); /*empty*/) {
-      LiveNode &liveNode = *Iter;
-      DepType Dep = getDep(opnd, liveNode);
-      if (Dep == DepType::NODEP) {
-        ++Iter;
-      } else {
-        auto DepRel = getDepAndRel(opnd, liveNode, Dep);
-        if (DepRel.first != DepType::NODEP) {
-          addEdge(curNode, liveNode.N, Dep);
-          // Check if this kills current live node. If yes, remove it.
-          bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
-                      DepRel.second == G4_CmpRelation::Rel_gt;
-          Iter = kill_if(pred, Nodes, Iter);
-        } else
+    vASSERT(opnd->getTopDcl() || opnd->isPhysicallyAllocatedRegVar());
+    if (G4_Declare *Dcl = opnd->getTopDcl()) {
+      auto &Nodes = LiveNodes[Dcl];
+      // Iterate all live nodes associated to the same declaration.
+      for (auto Iter = Nodes.begin(); Iter != Nodes.end(); /*empty*/) {
+        LiveNode &liveNode = *Iter;
+        DepType Dep = getDep(opnd, liveNode);
+        if (Dep == DepType::NODEP) {
           ++Iter;
+        } else {
+          auto DepRel = getDepAndRel(opnd, liveNode, Dep);
+          if (DepRel.first != DepType::NODEP) {
+            addEdge(curNode, liveNode.N, Dep);
+            // Check if this kills current live node. If yes, remove it.
+            bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
+                        DepRel.second == G4_CmpRelation::Rel_gt;
+            Iter = kill_if(pred, Nodes, Iter);
+          } else
+            ++Iter;
+        }
       }
     }
 
     // If this is a physically allocated regvar, then check dependency on the
     // physically allocated live nodes. This should be a cold path.
-    if (isPhyicallyAllocatedRegVar(opnd)) {
+    if (opnd->isPhysicallyAllocatedRegVar()) {
       for (auto Iter = LivePhysicalNodes.begin();
            Iter != LivePhysicalNodes.end();
            /*empty*/) {
@@ -2255,26 +2248,28 @@ void preDDD::processReadWrite(preNode *curNode) {
     if (opnd == nullptr || opnd->getBase() == nullptr || opnd->isNullReg())
       continue;
 
-    G4_Declare *Dcl = opnd->getTopDcl();
-    auto &Nodes = LiveNodes[Dcl];
-    // Iterate all live nodes associated to the same declaration.
-    for (auto &liveNode : Nodes) {
-      // Skip read live nodes.
-      if (liveNode.isRead())
-        continue;
+    vASSERT(opnd->getTopDcl() || opnd->isPhysicallyAllocatedRegVar());
+    if (G4_Declare *Dcl = opnd->getTopDcl()) {
+      auto &Nodes = LiveNodes[Dcl];
+      // Iterate all live nodes associated to the same declaration.
+      for (auto &liveNode : Nodes) {
+        // Skip read live nodes.
+        if (liveNode.isRead())
+          continue;
 
-      DepType Dep = getDep(opnd, liveNode);
-      if (Dep == DepType::NODEP)
-        continue;
-      std::pair<DepType, G4_CmpRelation> DepRel =
-          getDepAndRel(opnd, liveNode, Dep);
-      if (DepRel.first != DepType::NODEP)
-        addEdge(curNode, liveNode.N, DepRel.first);
+        DepType Dep = getDep(opnd, liveNode);
+        if (Dep == DepType::NODEP)
+          continue;
+        std::pair<DepType, G4_CmpRelation> DepRel =
+            getDepAndRel(opnd, liveNode, Dep);
+        if (DepRel.first != DepType::NODEP)
+          addEdge(curNode, liveNode.N, DepRel.first);
+      }
     }
 
     // If this is a physically allocated regvar, then check dependency on the
     // physically allocated live nodes. This should be a cold path.
-    if (isPhyicallyAllocatedRegVar(opnd)) {
+    if (opnd->isPhysicallyAllocatedRegVar()) {
       for (auto &liveNode : LivePhysicalNodes) {
         // Skip read live nodes.
         if (liveNode.isRead())

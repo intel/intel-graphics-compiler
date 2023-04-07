@@ -370,6 +370,7 @@ public:
   void setAccRegSel(G4_AccRegSel value) { accRegSel = value; }
   G4_AccRegSel getAccRegSel() const { return accRegSel; }
   bool isAccRegValid() const { return accRegSel != ACC_UNDEFINED; }
+  bool isPhysicallyAllocatedRegVar(bool includeAccRegSel = true) const;
 
   unsigned getLinearizedStart();
   unsigned getLinearizedEnd();
