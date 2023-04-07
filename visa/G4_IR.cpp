@@ -5977,7 +5977,7 @@ uint64_t G4_Operand::getBitVecH(const IR_Builder &builder) {
     // computeRightBound also computes bitVec
     inst->computeRightBound(this);
   }
-  if (builder.getGRFSize() == 32) {
+  if (builder.getGRFSize() == 32 && inst->opcode() != G4_pln) {
     vISA_ASSERT(bitVec[1] == 0, "upper bits should be 0");
   }
   return bitVec[1];
@@ -6103,6 +6103,8 @@ void G4_INST::computeRightBound(G4_Operand *opnd) {
       opnd->computeRightBound(execSize > g4::SIMD8 ? execSize : execSize * 2);
       if (execSize > g4::SIMD8) {
         opnd->setRightBound(opnd->right_bound * 2 - opnd->getLeftBound() + 1);
+        // SIMD16 plane src1 has 4 GRFs. Set bitVec for the higher 2 GRFs.
+        opnd->bitVec[1] = opnd->bitVec[0];
       }
 
       done = true;

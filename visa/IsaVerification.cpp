@@ -485,6 +485,10 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
   if (ISA_Inst_Data_Port == ISA_Inst_Table[opcode].type)
     return;
 
+  // Region parameters for plane are ignored
+  if (opcode == ISA_PLANE)
+    return;
+
   vISA_ASSERT(inst->opnd_array[i]->opnd_type == CISA_OPND_VECTOR,
               "Should only be verifying region on a vector operand");
   const vector_opnd &vect = getVectorOperand(inst, i);

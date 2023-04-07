@@ -106,6 +106,12 @@ int IR_Builder::translateVISAArithmeticInst(
                     dstOpnd->getType());
 
       createMov(exsize, carryBorrow, accSrcOpnd, instOpt, true);
+    } else if (opcode == ISA_PLANE) {
+      const RegionDesc *rd = createRegionDesc(0, 4, 1);
+      auto src0 = inst->getSrc(0);
+      vISA_ASSERT(src0->isSrcRegRegion(),
+                  " Src0 of plane inst is not regregion.");
+      src0->asSrcRegRegion()->setRegion(*this, rd);
     }
   }
 

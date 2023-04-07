@@ -7380,7 +7380,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB *bb) {
 
       bb->insertBefore(it, newInst);
 
-      rd = builder.getRegionScalar();
+      rd = builder.createRegionDesc(0, 4, 1);
       G4_SrcRegRegion *newSrcRgn =
           builder.createSrc(tmpDcl->getRegVar(), 0, 0, rd, Type_F);
 
