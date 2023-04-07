@@ -672,19 +672,19 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                         // Uses inline asm call
                         FG->m_hasInlineAsm = true;
                     }
-                    else if (calledF && calledF->hasFnAttribute("referenced-indirectly"))
-                    {
-                        // This is the case where the callee has the "referenced-indirectly" attribute, but we still
-                        // see the callgraph. The callee may not belong to the same FG as the caller, but it still
-                        // counts as a stackcall.
-                        FG->m_hasStackCall = true;
-                    }
                     else if (!calledF || (calledF->isDeclaration() && calledF->hasFnAttribute("referenced-indirectly")))
                     {
                         // This is the true indirect call case, where either the callee's address is taken, or it belongs
                         // to an external module. We do not know the callgraph in this case, so set the indirectcall flag.
                         FG->m_hasStackCall = true;
                         FG->m_hasIndirectCall = true;
+                    }
+                    else if (calledF && calledF->hasFnAttribute("referenced-indirectly"))
+                    {
+                        // This is the case where the callee has the "referenced-indirectly" attribute, but we still
+                        // see the callgraph. The callee may not belong to the same FG as the caller, but it still
+                        // counts as a stackcall.
+                        FG->m_hasStackCall = true;
                     }
                     else if (calledF && calledF->isDeclaration() && calledF->hasFnAttribute("invoke_simd_target"))
                     {
