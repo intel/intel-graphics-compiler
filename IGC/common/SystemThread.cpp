@@ -488,7 +488,7 @@ struct XeHPGDebugSurfaceLayout
 
 static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
 {
-    {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
+    {"tssarea", 0, {2, 1, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
     {
         // regHeader
         0,                               // num_slices
