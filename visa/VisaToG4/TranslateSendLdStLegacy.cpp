@@ -2195,28 +2195,6 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   unsigned numOword = Get_VISA_Oword_Num(size);
-  // This is a WA for fused EU where
-  // execution size greater than SIMD size will cause problems
-  // 14019074860: the if-condition needs to be replaced when WA Id is available
-  if (getPlatform() == Xe_DG2) {
-    LSC_DATA_SHAPE dataShape{};
-    dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
-    dataShape.size = LSC_DATA_SIZE_32b;
-    dataShape.elems = lscGetElementNum(numOword * 16 / 4);
-    return translateLscUntypedInst(
-        LSC_LOAD, LSC_UGM, nullptr,
-        EXEC_SIZE_1,
-        vISA_EMASK_M1_NM,
-        {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT},
-        {LSC_ADDR_TYPE_FLAT, 1, 0, LSC_ADDR_SIZE_64b},
-        dataShape,
-        nullptr,
-        dst->asDstRegRegion(), address->asSrcRegRegion(),
-        nullptr,
-        nullptr,
-        nullptr);
-  }
-
   G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
   if (noInt64()) {
     G4_SrcRegRegion *region = address->asSrcRegRegion();
