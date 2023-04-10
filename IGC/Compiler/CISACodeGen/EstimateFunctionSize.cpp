@@ -754,7 +754,8 @@ void EstimateFunctionSize::analyze() {
         updateExpandedUnitSize(kernelEntry->F, true);
         kernelEntry->updateUnitSize();
         if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-            dbgs() << "The size of the unit head (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->UnitSize <<"\n";
+            dbgs() << "Unit size (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->UnitSize <<"\n";
+            dbgs() << "Expanded unit size (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->ExpandedSize << "\n";
         }
     }
 
@@ -767,7 +768,7 @@ void EstimateFunctionSize::analyze() {
             stackCallFuncs.push_back(Node);
             Node->updateUnitSize();
             if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                dbgs() << "The size of the unit head (stack call)" << Node->F->getName().str() << ": " << Node->UnitSize << "\n";
+                dbgs() << "Unit size (stack call)" << Node->F->getName().str() << ": " << Node->UnitSize << "\n";
             }
         }
         else if (Node->isAddrTakenFunc())
@@ -775,7 +776,7 @@ void EstimateFunctionSize::analyze() {
             addressTakenFuncs.push_back(Node);
             Node->updateUnitSize();
             if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                dbgs() << "The size of the unit head (address taken) " << Node->F->getName().str() << ": " << Node->UnitSize << "\n";
+                dbgs() << "Unit size (address taken) " << Node->F->getName().str() << ": " << Node->UnitSize << "\n";
             }
         }
     }
@@ -814,6 +815,10 @@ void EstimateFunctionSize::checkSubroutine() {
     {
         uint32_t subroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
         uint32_t expandedMaxSize = getMaxExpandedSize();
+
+        if (AL != AL_Module) // at the second call of EstimationFucntionSize, halve the threshold
+            subroutineThreshold = subroutineThreshold >> 1;
+
         if (expandedMaxSize <= subroutineThreshold )
         {
             if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
@@ -822,13 +827,8 @@ void EstimateFunctionSize::checkSubroutine() {
             if(!HasRecursion)
                 EnableSubroutine = false;
         }
-        else if (AL == AL_Module &&
-            expandedMaxSize > subroutineThreshold &&
-            IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
+        else if (AL == AL_Module && IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute)) //kernel trimming and partitioning only kick in at the first EstimationFunctionSize
         {
-            uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
-            uint32_t maxUnitSize = getMaxUnitSize();
-
             if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
                 dbgs() << "Need to reduce the kernel size. (The max expanded kernel size is large) " << expandedMaxSize << " > " << subroutineThreshold << "\n";
             }
@@ -836,17 +836,25 @@ void EstimateFunctionSize::checkSubroutine() {
             if (IGC_IS_FLAG_ENABLED(StaticProfilingForPartitioning) ||
                 IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming)) // Either a normal or long-tail distribution is enabled
                 runStaticAnalysis();
+
             // If the max unit size exceeds threshold, do partitioning
-            if (IGC_IS_FLAG_ENABLED(PartitionUnit) && maxUnitSize > unitThreshold)
+            if (IGC_IS_FLAG_ENABLED(PartitionUnit))
             {
-                if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
+                uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
+                uint32_t maxUnitSize = getMaxUnitSize();
+                if (maxUnitSize > unitThreshold)
                 {
-                    dbgs() << "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold << "\n";
+                    if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
+                        dbgs() << "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold << "\n";
+                    partitionKernel();
                 }
-                partitionKernel();
+                else
+                {
+                    if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
+                        dbgs() << "Max unit size " << maxUnitSize << " is smaller than the threshold (No partitioning needed) " << unitThreshold << "\n";
+                }
             }
 
-            // If max threshold is exceeded, do analysis on kernel or unit trimming
             if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize))
             {
                 reduceKernelSize();
@@ -1211,7 +1219,7 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
         {
             if ((PrintTrimUnit & 0x1) != 0)
             {
-                dbgs() << "Kernel / Unit" << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize << " <= " << threshold << "\n";
+                dbgs() << "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize << " <= " << threshold << "\n";
             }
         }
     }

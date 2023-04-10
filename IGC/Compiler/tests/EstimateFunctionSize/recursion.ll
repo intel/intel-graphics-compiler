@@ -11,7 +11,7 @@
 ; EstimateFunctionSize
 ; ------------------------------------------------
 
-; CHECK: The size of the unit head (kernel entry) test_estimate: 16
+; CHECK: Unit size (kernel entry) test_estimate: 16
 ; CHECK: Function count= 2
 ; CHECK: Kernel count= 1
 ; CHECK: Manual stack call count= 0
