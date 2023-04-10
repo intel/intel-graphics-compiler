@@ -305,7 +305,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                     }
                   } else {
                     // case 3: mov A0 0
-                    // Initial of address register, igore the point to analysis
+                    // Initial of address register, ignore the point-to analysis
                     // FIXME: currently, vISA don't expect mov imm value to the
                     // address register. So, 0 is treated as initialization. If
                     // support mov A0 imm in future, 0 may be R0.

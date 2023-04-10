@@ -9375,8 +9375,7 @@ void GlobalRA::assignRegForAliasDcl() {
           CurrentRegVar->setPhyReg(
               AliasRegVar->getPhyReg(),
               tempoffset / CurrentRegVar->getDeclare()->getElemSize());
-        }
-        else {
+        } else {
           vISA_ASSERT(false, ERROR_REGALLOC);
         }
       } else {

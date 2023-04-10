@@ -5091,6 +5091,12 @@ void G4_Predicate::emit_body(std::ostream &output) {
     case PRED_ALLV:
       output << "allv";
       break;
+    case PRED_ANY_WHOLE:
+      output << "any";
+      break;
+    case PRED_ALL_WHOLE:
+      output << "all";
+      break;
     default:
       // do nothing
       break;
@@ -7252,6 +7258,7 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
 
   return newInst;
 }
+
 
 G4_InstIntrinsic::G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
                                    Intrinsic intrinId, G4_ExecSize execSize,

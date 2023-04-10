@@ -449,6 +449,7 @@ uint32_t getNumScalarRegisters(void) {
   return 0;
 }
 
+
 bool encodeAccWrEn() const { return getPlatform() < Xe_PVC; }
 
 SFID getEOTSFID() const {
