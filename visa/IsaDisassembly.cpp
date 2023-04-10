@@ -923,35 +923,39 @@ printInstructionControlFlow(const print_format_provider_t *header,
     return str;
   };
 
+  auto getUniqueSuffixStr = [](uint32_t labelID) {
+    std::stringstream uniqueSuffixSstr;
+    uniqueSuffixSstr << '_' << labelID;
+    return uniqueSuffixSstr.str();
+  };
+
   if (ISA_SUBROUTINE == opcode || ISA_LABEL == opcode) {
     label_id = getPrimitiveOperand<uint16_t>(inst, i++);
 
     sstr << "\n";
+    std::string labelName(
+        header->getString(header->getLabel(label_id)->name_index));
     switch (opcode) {
     case ISA_SUBROUTINE: {
-      std::stringstream uniqueSuffixSstr;
-      uniqueSuffixSstr << '_' << label_id;
-      std::string uniqueSuffixStr = uniqueSuffixSstr.str();
-
-      std::string labelName(
-          header->getString(header->getLabel(label_id)->name_index));
-
+      std::string uniqueSuffixStr = getUniqueSuffixStr(label_id);
       auto replacedName = replaceInvalidCharToUnderline(labelName);
+      bool printOrigName = replacedName != labelName;
+      // Avoid repeatedly appending the unique suffix.
+      if (!strEndsWith(replacedName, uniqueSuffixStr))
+        replacedName += uniqueSuffixStr;
 
-      sstr << ".function ";
-      encodeStringLiteral(sstr, (replacedName + uniqueSuffixStr).c_str());
+      sstr << "\n.function ";
+      encodeStringLiteral(sstr, replacedName.c_str());
       // add a comment to specify the original name if the name change
-      if (replacedName != labelName) {
+      if (printOrigName) {
         sstr << " /// Original Name: ";
-        encodeStringLiteral(sstr, (labelName + uniqueSuffixStr).c_str());
+        encodeStringLiteral(sstr, labelName.c_str());
       }
-      sstr << "\n\n"
-           << replaceInvalidCharToUnderline(labelName) << uniqueSuffixStr;
+      sstr << "\n" << replacedName;
       break;
     }
     case ISA_LABEL: {
-      sstr << replaceInvalidCharToUnderline(
-          header->getString(header->getLabel(label_id)->name_index));
+      sstr << replaceInvalidCharToUnderline(labelName);
       break;
     }
     default:
@@ -966,11 +970,14 @@ printInstructionControlFlow(const print_format_provider_t *header,
     const label_info_t *lblinfo = header->getLabel(label_id);
     const char *instName =
         (lblinfo->kind == LABEL_FC ? "fccall" : ISA_Inst_Table[opcode].str);
+    auto replacedName =
+        replaceInvalidCharToUnderline(header->getString(lblinfo->name_index));
+    std::string uniqueSuffixStr = getUniqueSuffixStr(label_id);
     sstr << printPredicate(opcode, inst->pred) << instName << " "
-         << printExecutionSize(opcode, inst->execsize) << " "
-         << replaceInvalidCharToUnderline(
-                header->getString(lblinfo->name_index))
-         << "_" << label_id;
+         << printExecutionSize(opcode, inst->execsize) << " " << replacedName;
+    // Avoid repeatedly appending the unique suffix.
+    if (!strEndsWith(replacedName, uniqueSuffixStr))
+      sstr << uniqueSuffixStr;
   } else {
     sstr << printPredicate(inst->opcode, inst->pred)
          << ISA_Inst_Table[opcode].str << " "
@@ -991,8 +998,8 @@ printInstructionControlFlow(const print_format_provider_t *header,
         sstr << " "
              << replaceInvalidCharToUnderline(
                     header->getString(header->getLabel(label_id)->name_index));
-        if (header->getLabel(label_id)->kind == LABEL_SUBROUTINE)
-          sstr << "_" << label_id;
+        vISA_ASSERT(header->getLabel(label_id)->kind != LABEL_SUBROUTINE,
+                    "JMP/GOTO are not allowed to have subroutine label target");
       }
 
       if (opcode == ISA_FCALL) {
