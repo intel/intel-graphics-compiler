@@ -136,7 +136,9 @@ inline bool isLegalStructType(const Module& M, Type* ty, unsigned structSize)
     IGC_ASSERT(ty->isStructTy());
     const DataLayout& DL = M.getDataLayout();
     StructType* sTy = dyn_cast<StructType>(ty);
-    if (sTy && DL.getStructLayout(sTy)->getSizeInBits() <= structSize)
+    // packed struct could have mis-aligned insertValue/extractValue. Skip it.
+    if (sTy && DL.getStructLayout(sTy)->getSizeInBits() <= structSize &&
+        !sTy->isPacked())
     {
         for (const auto* EltTy : sTy->elements())
         {
