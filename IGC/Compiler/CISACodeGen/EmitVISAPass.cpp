@@ -4351,6 +4351,10 @@ void EmitPass::CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSourc
     {
         cmpDst = m_currShader->BitCast(cmpDst, bfnSrc1->GetType());
     }
+
+    SetSourceModifiers(1, bfnSources[1]);
+    SetSourceModifiers(2, bfnSources[2]);
+    m_encoder->SetDstModifier(modifier);
     m_encoder->Bfn(booleanFuncCtrl, m_destination, cmpDst, bfnSrc1, bfnSrc2);
     m_encoder->Push();
 }
