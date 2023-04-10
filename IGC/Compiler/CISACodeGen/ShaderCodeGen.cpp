@@ -1580,7 +1580,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createGenOptLegalizer());
             mpm.add(createInsertBranchOptPass());
         }
-
         // If we have ICBs, need to emit clamp code so OOB access doesn't occur
         if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size() && IGC_IS_FLAG_ENABLED(DisableImmConstantOpt))
         {
