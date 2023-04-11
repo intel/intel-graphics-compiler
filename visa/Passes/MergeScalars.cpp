@@ -397,6 +397,22 @@ static bool checkContiguous(unsigned offset1, unsigned offset2, G4_Type type,
   return false;
 }
 
+// check if operand span is within 2 GRFs
+// if operand span is less than equal to 2 GRFs, return true
+// else return false
+static bool checkOperandGRFSpan(unsigned short typeSize,
+                                const IR_Builder &builder,
+                                int bundleIndex) {
+  // bundleIndex is the index of the instruction appended to
+  // the bundle of instructions to be merged if all checks have passed
+  // in this function, we check the following: the number of GRFs occupied by
+  // the operands from instruction 0 to bundleIndex are within 2 GRFs
+  // size of the bundle = bundleIndex+1
+  size_t accumSizeBytes = (bundleIndex+1) * typeSize;
+  if (accumSizeBytes > 2 * builder.numEltPerGRF<Type_UB>()) return false;
+  return true;
+}
+
 // check if this instruction is eligbile to be merged into a vector instruction
 // the conditions are:
 // -- arithmetic, logic, mov, math, or pseudo_mad instructions
@@ -596,7 +612,10 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst, const IR_Builder &builder) {
     }
   }
 
-  return true;
+  // check whether dst operand is within 2 GRFs
+  // note that we can send the type size of current dst as we check earlier
+  // whether the operand types in the bundle are the same
+  return checkOperandGRFSpan(dst->getTypeSize(), builder, size);
 }
 
 //
@@ -779,7 +798,11 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
     }
   }
 
-  return true;
+  // check if src operand is within 2 GRFs
+  // note that we can send the type size of current src as we check earlier
+  // whether the source operand types of previous and current instruction are
+  // the same
+  return checkOperandGRFSpan(src->getTypeSize(), builder, size);
 }
 
 //
