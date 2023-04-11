@@ -6,11 +6,10 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "HWConformity.h"
-
 #include "Assertions.h"
 #include "DebugInfo.h"
 #include "G4_Verifier.hpp"
+#include "HWConformity.h"
 #include "Optimizer.h"
 #include "PointsToAnalysis.h"
 #include "visa_wa.h"
