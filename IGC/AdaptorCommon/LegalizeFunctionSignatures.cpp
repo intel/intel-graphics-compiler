@@ -145,10 +145,6 @@ inline bool isLegalStructType(const Module& M, Type* ty, unsigned structSize)
             // Check if all elements are primitive types
             if (!EltTy->isSingleValueType() || EltTy->isVectorTy())
                 return false;
-            // Avoid int64 and fp64 because of unimplemented InstExpander::visitInsertValue
-            // and InstExpander::visitExtractValue in the Emu64Ops pass.
-            if (EltTy->isIntegerTy(64) || EltTy->isDoubleTy())
-                return false;
         }
         return true;
     }

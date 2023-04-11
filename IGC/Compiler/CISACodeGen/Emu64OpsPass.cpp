@@ -2136,18 +2136,43 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
 }
 
 bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
-    // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
-    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&EVI), "TODO: NOT IMPLEMENTED YET!");
-    return false;
+    IGC_ASSERT(EVI.getNumIndices() == 1);
+    if (!Emu->isInt64(&EVI))
+        return false;
+
+    auto* EVICopy = EVI.clone();
+    EVICopy->insertBefore(&EVI);
+    IRB->SetInsertPoint(&EVI);
+    Value* OutputLo = nullptr, * OutputHi = nullptr;
+    Value* V = IRB->CreateBitCast(EVICopy, Emu->getV2Int32Ty());
+    OutputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
+    OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+    Emu->setExpandedValues(EVICopy, OutputLo, OutputHi);
+    EVI.replaceAllUsesWith(EVICopy);
+    return true;
 }
 
 bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
-    // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
-    IGC_ASSERT(1 < IVI.getNumOperands());
-    IGC_ASSERT_MESSAGE(false == Emu->isInt64(IVI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
-    return false;
+    IGC_ASSERT(IVI.getNumIndices() == 1);
+    if (!Emu->isInt64(IVI.getOperand(1)))
+        return false;
+
+    auto* IVICopy = IVI.clone();
+    IVICopy->insertBefore(&IVI);
+    IRB->SetInsertPoint(IVICopy);
+    Value* In64 = IVI.getOperand(1);
+    Value* InputLo = nullptr, * InputHi = nullptr;
+    std::tie(InputLo, InputHi) = Emu->getExpandedValues(In64);
+    Type* V2I32Ty = Emu->getV2Int32Ty();
+    Value* NewVal = UndefValue::get(V2I32Ty);
+    NewVal = IRB->CreateInsertElement(NewVal, InputLo, IRB->getInt32(0));
+    NewVal = IRB->CreateInsertElement(NewVal, InputHi, IRB->getInt32(1));
+    NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
+    IVICopy->setOperand(1, NewVal);
+    IVI.replaceAllUsesWith(IVICopy);
+    return true;
 }
 
 bool InstExpander::visitLandingPad(LandingPadInst& LPI) {
