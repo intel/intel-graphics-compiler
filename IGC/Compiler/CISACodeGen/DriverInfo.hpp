@@ -211,6 +211,9 @@ namespace IGC
             return 4000;
         }
 
+        /// Fill in shader temp count using RPE
+        virtual bool EnableTempCountEstimation() const { return true; }
+
         // ----------------------------------------------------------------------
         // Below are workaround for bugs in front end or IGC will be removed once
         // the bugs are fixed
