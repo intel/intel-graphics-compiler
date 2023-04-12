@@ -71,6 +71,16 @@ namespace IGCLLVM
         return SVI->getShuffleMaskForBitcode();
 #endif
     }
+
+    inline bool isFreezeInst(llvm::Instruction* I)
+    {
+#if LLVM_VERSION_MAJOR < 10
+        (void)I;
+        return false;
+#else
+        return llvm::isa<llvm::FreezeInst>(I);
+#endif
+    }
 }
 
 #endif

@@ -14,6 +14,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddImplicitArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/dllInterfaceCompute.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/FreezeIntDiv.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ImplicitArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ProcessFuncAttributes.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/TypesLegalizationPass.cpp"

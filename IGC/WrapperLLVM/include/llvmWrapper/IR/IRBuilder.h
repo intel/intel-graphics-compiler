@@ -296,6 +296,15 @@ namespace IGCLLVM
         }
 #endif
 
+        inline llvm::Value* CreateFreeze(llvm::Value* V, const llvm::Twine& Name = "")
+        {
+#if LLVM_VERSION_MAJOR < 10
+            return V;
+#else
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateFreeze(V, Name);
+#endif
+        }
+
         inline llvm::Value* CreateConstInBoundsGEP2_64(
             llvm::Value* Ptr,
             uint64_t Idx0,

@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "AdaptorCommon/AddImplicitArgs.hpp"
+#include "AdaptorCommon/FreezeIntDiv.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "AdaptorCommon/LegalizeFunctionSignatures.h"
 #include "AdaptorCommon/TypesLegalizationPass.hpp"
@@ -564,6 +565,10 @@ static void CommonOCLBasedPasses(
             mpm.add(createSimplifyConstantPass());
             mpm.add(createPromoteConstantPass());
         }
+        // For LLVM 14+, make sure to freeze potential UB-causing instructions
+        // before running InstructionCombining that would propagate resulting
+        // poison/undef values.
+        mpm.add(createFreezeIntDivPass());
         mpm.add(createIGCInstructionCombiningPass());
 
         // Instcombine can create constant expressions, which are not handled by the program scope constant resolution pass

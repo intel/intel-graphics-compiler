@@ -773,7 +773,8 @@ bool InstExpander::expand(Instruction* I) {
 }
 
 bool InstExpander::visitInstruction(Instruction& I) {
-    IGC_ASSERT_MESSAGE(0, "UNKNOWN INSTRUCTION is BEING EXPANDED!");
+    bool isKnown = IGCLLVM::isFreezeInst(&I);
+    IGC_ASSERT_MESSAGE(isKnown, "UNKNOWN INSTRUCTION is BEING EXPANDED!");
     return false;
 }
 
