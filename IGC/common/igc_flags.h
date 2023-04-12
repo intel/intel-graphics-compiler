@@ -172,7 +172,7 @@ DECLARE_IGC_REGKEY(bool, DisableSynchronizationObjectCoalescingPass, false, "Dis
 DECLARE_IGC_REGKEY(DWORD, SynchronizationObjectCoalescingConfig, 0, "Modify the default behavior of SynchronizationObjectCoalescing value is a bitmask bit0 – remove fences in read barrier write scenario", true)
 DECLARE_IGC_REGKEY(DWORD,SetLoopUnrollThreshold,        0,     "Set the loop unroll threshold. Value 0 will use the default threshold.", false)
 DECLARE_IGC_REGKEY(DWORD,SetLoopUnrollThresholdForHighRegPressure,        0,     "Set the loop unroll threshold for shaders with high reg pressure. Value 0 will use the default threshold.", false)
-DECLARE_IGC_REGKEY(DWORD,SetRegisterPressureThresholdForLoopUnroll,       64,     "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
+DECLARE_IGC_REGKEY(DWORD,SetRegisterPressureThresholdForLoopUnroll,       96,    "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
 DECLARE_IGC_REGKEY(DWORD,SetBranchSwapThreshold,        400,   "Set the branch swaping threshold.", false)
 DECLARE_IGC_REGKEY(debugString, LLVMCommandLine,        0,     "applies LLVM command line", false)
 DECLARE_IGC_REGKEY(debugString, SelectiveHashOptions,   0,     "applies options to hash ragne via string", false)
