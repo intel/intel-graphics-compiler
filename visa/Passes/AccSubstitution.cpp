@@ -695,20 +695,17 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
 bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
   G4_DstRegRegion *dst = inst->getDst();
   bool useAcc1 = (accNum & 0x1) != 0;
+  auto myAcc = useAcc1 ? AREG_ACC1 : AREG_ACC0;
   accNum &= ~0x1;
 
   if (!builder.relaxedACCRestrictions()) {
-    auto myAcc = useAcc1 ? AREG_ACC1 : AREG_ACC0;
     // check that dst and src do not have different accumulator
     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
-      if (inst->getSrc(i)->isAccReg()) {
-        auto base = inst->getSrc(i)->asSrcRegRegion()->getBase();
-        if (base->isPhyAreg()) {
-          if (base->asAreg()->getArchRegType() != myAcc) {
-            return false;
-          }
-        }
-      }
+      if (!inst->getSrc(i)->isAccReg())
+        continue;
+      auto base = inst->getSrc(i)->asSrcRegRegion()->getBase();
+      if (base->isPhyAreg() && base->asAreg()->getArchRegType() != myAcc)
+        return false;
     }
   }
 
@@ -759,6 +756,12 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
         // don't allow src0 acc for mad), and the mad's src1 is also an acc
         // candidate.
         return false;
+      }
+      if (useInst->isAccDstInst()) {
+        // Also check that dst and src in use cannot have different acc.
+        auto base = useInst->getDst()->asDstRegRegion()->getBase();
+        if (base->isPhyAreg() && base->asAreg()->getArchRegType() != myAcc)
+          return false;
       }
     }
   }
