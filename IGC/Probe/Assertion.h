@@ -31,8 +31,7 @@ bool CheckIsZero(const T& value)
     { \
         if (CheckIsZero(x)) \
         { \
-            assert(0); \
-            std::exit(EXIT_FAILURE); \
+            throw std::runtime_error("internal compiler error"); \
         } \
     } while(0)
 
@@ -41,8 +40,7 @@ bool CheckIsZero(const T& value)
 #define IGC_ASSERT_UNREACHABLE() \
     do \
     { \
-        assert(0); \
-        std::exit(EXIT_FAILURE); \
+        throw std::runtime_error("internal compiler error"); \
     } while (0)
 
 
