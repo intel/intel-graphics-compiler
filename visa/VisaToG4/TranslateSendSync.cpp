@@ -142,7 +142,6 @@ G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
     desc |= getOption(vISA_LSCBackupMode) << 18;
   }
 
-  (void)lscEncodeAddrSize(LSC_ADDR_SIZE_32b, desc, status);
   G4_SendDescRaw *msgDesc = createSendMsgDesc(sfid, desc, exDesc, src1Len,
                                               SendAccess::READ_WRITE, nullptr);
   G4_InstSend *fenceInst =
