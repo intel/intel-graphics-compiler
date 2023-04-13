@@ -159,7 +159,6 @@ void initializeRayTracingIntrinsicLoweringPassPass(llvm::PassRegistry&);
 void initializePromoteToScratchPassPass(llvm::PassRegistry&);
 void initializePrepareLoadsStoresPassPass(llvm::PassRegistry&);
 void initializeRayTracingPredicatedStackIDReleasePassPass(llvm::PassRegistry&);
-void initializeRTSpillShrinkPassPass(llvm::PassRegistry&);
 void initializeEarlyRematPassPass(llvm::PassRegistry&);
 void initializeLateRematPassPass(llvm::PassRegistry&);
 void initializeRayInfoCSEPassPass(llvm::PassRegistry&);

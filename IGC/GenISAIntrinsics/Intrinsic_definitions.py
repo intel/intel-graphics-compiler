@@ -2753,11 +2753,6 @@ Imported_Intrinsics = \
      ("int",                           "Dimension used for certain types")],
     "None"]],
 ####################################################################################################
-"GenISA_rt_spill_anchor": ["Raytracing: Marker for spilled values",
-    [("anyint",                         "return the input"),
-    [(0,                                "input value")],
-    "NoMem"]],
-####################################################################################################
 "GenISA_rt_swstack_offset": ["Raytracing: Marker for SWStack offset computation",
     [("anyint",                         "return the input"),
     [(0,                                "input value")],

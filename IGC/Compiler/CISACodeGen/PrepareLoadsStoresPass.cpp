@@ -107,6 +107,7 @@ bool PrepareLoadsStoresPass::runOnFunction(Function &F)
     auto& DL = F.getParent()->getDataLayout();
 
     IRBuilder<> IRB(F.getContext());
+    bool StripVolatile = false;
 
     for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */)
     {
@@ -130,6 +131,9 @@ bool PrepareLoadsStoresPass::runOnFunction(Function &F)
         }
         else if (auto * SI = dyn_cast<StoreInst>(I))
         {
+            if (StripVolatile && (*SWStackAddrSpace == SI->getPointerAddressSpace()))
+                SI->setVolatile(false);
+
             auto* PtrTy = SI->getPointerOperandType();
             if (!shouldSplit(PtrTy->getPointerAddressSpace()))
                 continue;
