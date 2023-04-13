@@ -503,6 +503,8 @@ DEF_VISA_OPTION(vISA_skipFenceCommit, ET_BOOL, "-skipFenceCommit", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_removeFence, ET_BOOL, "-removeFence",
                 "Remove fence if no write in a kernel", false)
+DEF_VISA_OPTION(vISA_skipGitHash, ET_BOOL, "-noGitHash",
+                "Do not emit git hash in .asm", false)
 
 
 //=== HW Workarounds ===

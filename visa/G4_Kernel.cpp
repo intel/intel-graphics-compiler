@@ -1303,7 +1303,8 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
      << "//.instCount " << asmInstCount;
   static const char *const RATypeString[]{RA_TYPE(STRINGIFY)};
   os << "\n//.RA type\t" << RATypeString[RAType];
-  os << "\n//.git-hash " << GIT_COMMIT_HASH;
+  if (!m_options->getOption(vISA_skipGitHash))
+    os << "\n//.git-hash " << GIT_COMMIT_HASH;
 
   if (auto jitInfo = fg.builder->getJitInfo()) {
     if (jitInfo->stats.numGRFUsed != 0) {
