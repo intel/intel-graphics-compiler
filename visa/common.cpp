@@ -111,19 +111,7 @@ const char *const *PlatformInfo::getGenxPlatformStrings(TARGET_PLATFORM p) {
   }
 }
 
-// The encoding of gen platform defined in vISA spec:
-// 3 BDW
-// 4 CHV
-// 5 SKL
-// 6 BXT
-// 7 CNL
-// 8 ICL
-// 10 ICLLP
-// 12 TGLLP
-// 11 XeHP_SDV
-// 13 DG2
-// 14 PVC
-// 15 PVC_XT
+// The encoding of gen platform defined in vISA spec
 // Note that encoding is not linearized.
 int PlatformInfo::getGenxPlatformEncoding(TARGET_PLATFORM platform) {
   if (const auto *pi = LookupPlatformInfo(platform)) {
