@@ -1147,6 +1147,8 @@ static void alwaysInlineForNoOpt(CodeGenContext* pContext, bool NoOpt)
 }
 
 
+#define GFX_ONLY_PASS if(pContext->type != ShaderType::OPENCL_SHADER)
+
 void OptimizeIR(CodeGenContext* const pContext)
 {
     IGC_ASSERT(nullptr != pContext);
@@ -1239,7 +1241,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(createIPConstantPropagationPass());
 #endif
         }
-
         if (IGC_IS_FLAG_ENABLED(MSAA16BitPayloadEnable) &&
             pContext->platform.support16bitMSAAPayload())
         {
@@ -1253,7 +1254,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(createSamplerPerfOptPass());
 
 
-        if ((!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) && pContext->getModuleMetaData()->inlineDynTextures.size() > 0) ||
+        if ((!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) &&
+                pContext->getModuleMetaData()->inlineDynTextures.size() > 0) ||
             (!IGC_IS_FLAG_ENABLED(DisableDynamicResInfoFolding)))
         {
             mpm.add(new DynamicTextureFolding());
@@ -1481,11 +1483,9 @@ void OptimizeIR(CodeGenContext* const pContext)
                 {
                     mpm.add(createClampICBOOBAccess());
                 }
-
-                mpm.add(createIGCIndirectICBPropagaionPass());
+                GFX_ONLY_PASS { mpm.add(createIGCIndirectICBPropagaionPass()); }
             }
-
-            mpm.add(new GenUpdateCB());
+            GFX_ONLY_PASS { mpm.add(new GenUpdateCB()); }
 
             if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
@@ -1542,10 +1542,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());
-
-
             // need to be before code sinking
-            mpm.add(createInsertBranchOptPass());
+            GFX_ONLY_PASS { mpm.add(createInsertBranchOptPass()); }
 
             mpm.add(new CustomSafeOptPass());
             if (!pContext->m_DriverInfo.WADisableCustomPass())
@@ -1596,15 +1594,15 @@ void OptimizeIR(CodeGenContext* const pContext)
             }
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
-                // If we have ICBs, need to emit clamp code so OOB access doesn't occur
+                // If we have ICBs, need to emit clamp code so OOB access
+                // doesn't occur
                 if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size())
                 {
                     mpm.add(createClampICBOOBAccess());
                 }
 
-                mpm.add(createIGCIndirectICBPropagaionPass());
+                GFX_ONLY_PASS { mpm.add(createIGCIndirectICBPropagaionPass()); }
             }
-
             //single basic block
             if (!pContext->m_DriverInfo.WADisableCustomPass())
             {
@@ -1613,10 +1611,11 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new CustomUnsafeOptPass());
             }
             mpm.add(createGenOptLegalizer());
-            mpm.add(createInsertBranchOptPass());
+            GFX_ONLY_PASS { mpm.add(createInsertBranchOptPass()); }
         }
         // If we have ICBs, need to emit clamp code so OOB access doesn't occur
-        if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size() && IGC_IS_FLAG_ENABLED(DisableImmConstantOpt))
+        if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size() &&
+            IGC_IS_FLAG_ENABLED(DisableImmConstantOpt))
         {
             mpm.add(createClampICBOOBAccess());
         }
@@ -1677,8 +1676,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             // more efficient sequences of multiplies, shifts, and adds
             mpm.add(createIntDivConstantReductionPass());
         }
-
-        mpm.add(createMergeMemFromBranchOptPass());
+        GFX_ONLY_PASS { mpm.add(createMergeMemFromBranchOptPass()); }
 
         if (IGC_IS_FLAG_DISABLED(DisableLoadSinking) &&
             !isOptDisabledForModule(pContext->getModuleMetaData(), IGCOpts::SinkLoadOptPass))
@@ -1687,11 +1685,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createConstantMergePass());
-
-        mpm.add(CreateMCSOptimization());
-
-
-        mpm.add(CreateGatingSimilarSamples());
+        GFX_ONLY_PASS { mpm.add(CreateMCSOptimization()); }
+        GFX_ONLY_PASS { mpm.add(CreateGatingSimilarSamples()); }
 
         if (!IGC::ForceAlwaysInline(pContext))
         {
