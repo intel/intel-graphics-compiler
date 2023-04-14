@@ -14,8 +14,8 @@
 ; 1 / (1 / x) = x
 define float @test1(float %x) #0 {
 entry:
-  %0 = fdiv fast float 1.000000e+00, %x
-  %1 = fdiv fast float 1.000000e+00, %0
+  %0 = fdiv float 1.000000e+00, %x
+  %1 = fdiv float 1.000000e+00, %0
   ret float %1
 }
 
@@ -26,12 +26,18 @@ entry:
 ; 4 / (1 / x) = 4 * x
 define float @test2(float %x) #0 {
 entry:
-  %0 = fdiv fast float 1.000000e+00, %x
-  %1 = fdiv fast float 4.000000e+00, %0
+  %0 = fdiv float 1.000000e+00, %x
+  %1 = fdiv float 4.000000e+00, %0
   ret float %1
 }
 
 ; CHECK-LABEL: define float @test2
 ; CHECK-NOT: fdiv
-; CHECK: %0 = fmul fast float 4.000000e+00, %x
+; CHECK: %0 = fmul float 4.000000e+00, %x
 ; CHECK: ret float %0
+
+!IGCMetadata = !{!0}
+
+!0 = !{!"ModuleMD", !1}
+!1 = !{!"compOpt", !2}
+!2 = !{!"FastRelaxedMath", i1 true}
