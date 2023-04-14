@@ -74,7 +74,8 @@ bool LivenessAnalysis::setGlobalVarIDs(bool verifyRA,
        * declare and splitted declare */
       if (livenessCandidate(decl, verifyRA) &&
           decl->getAliasDeclare() == NULL) {
-        decl->getRegVar()->setId(numGlobalVarId++);
+        globalVars.set(numVarId);
+        decl->getRegVar()->setId(numVarId++);
         if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
           numUnassignedVarId++;
         if (decl->getRegVar()->isPhyRegAssigned() == false) {
@@ -91,7 +92,6 @@ bool LivenessAnalysis::setGlobalVarIDs(bool verifyRA,
 
 bool LivenessAnalysis::setLocalVarIDs(bool verifyRA,
                                       bool areAllPhyRegAssigned) {
-  numVarId = numGlobalVarId;
   bool phyRegAssigned = areAllPhyRegAssigned;
 
   for (G4_Declare *decl : gra.kernel.Declares) {
@@ -156,6 +156,7 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
         }
       }
 
+      globalVars.set(numVarId);
       // participate liveness analysis
       decl->getRegVar()->setId(numVarId++);
 
@@ -182,8 +183,6 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
       decl->getRegVar()->setId(UNDEFINED_VAL);
     }
   }
-
-  numGlobalVarId = numVarId;
 
   return phyRegAssigned;
 }

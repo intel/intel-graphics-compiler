@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "LinearScanRA.h"
 #include "LocalRA.h"
 #include "PhyRegUsage.h"
+#include "llvm/ADT/SparseBitVector.h"
 
 namespace vISA {
 
@@ -50,7 +51,6 @@ struct VarRangeListPackage {
 
 class LivenessAnalysis {
   unsigned numVarId = 0;           // the var count
-  unsigned numGlobalVarId = 0;     // the global var count
   unsigned numSplitVar = 0;        // the split var count
   unsigned numSplitStartID = 0;    // the split var count
   unsigned numUnassignedVarId = 0; // the unassigned var count
@@ -106,6 +106,9 @@ public:
   std::vector<SparseBitSet> indr_use;
   std::unordered_map<FuncInfo *, SparseBitSet> subroutineMaydef;
 
+  // Hold variables known to be globals
+  llvm::SparseBitVector<> globalVars;
+
   bool isLocalVar(G4_Declare *decl) const;
   bool setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
   bool setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
@@ -130,7 +133,7 @@ public:
     return (selectedRF & regKind) != 0;
   }
   unsigned getNumSelectedVar() const { return numVarId; }
-  unsigned getNumSelectedGlobalVar() const { return numGlobalVarId; }
+  unsigned getNumSelectedGlobalVar() const { return globalVars.count(); }
   unsigned getNumSplitVar() const { return numSplitVar; }
   unsigned getNumSplitStartID() const { return numSplitStartID; }
   unsigned getNumUnassignedVar() const { return numUnassignedVarId; }

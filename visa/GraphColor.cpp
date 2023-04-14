@@ -1734,7 +1734,9 @@ void Interference::buildInterferenceAmongLiveIns() {
   //
   const G4_BB *entryBB = kernel.fg.getEntryBB();
 
-  for (unsigned i = 0; i < liveAnalysis->getNumSelectedGlobalVar(); i++) {
+  for (auto it = liveAnalysis->globalVars.begin();
+       it != liveAnalysis->globalVars.end(); ++it) {
+    auto i = (*it);
     if (liveAnalysis->isLiveAtEntry(entryBB, i)) {
       // Mark reference can not gaurantee all the varaibles are local, update
       // here
@@ -1743,8 +1745,9 @@ void Interference::buildInterferenceAmongLiveIns() {
         lrs[i]->setIsSplittedDcl(false);
       }
 
-      for (unsigned j = i + 1; j < liveAnalysis->getNumSelectedGlobalVar();
-           j++) {
+      auto nextIt = it;
+      for (auto nit = ++nextIt; nit != liveAnalysis->globalVars.end(); ++nit) {
+        auto j = (*nit);
         if (liveAnalysis->isLiveAtEntry(entryBB, j)) {
           if (lrs[i]->getDcl()->getRegFile() == G4_INPUT &&
               lrs[i]->getVar()->getPhyReg() != NULL &&
@@ -2334,7 +2337,7 @@ void Interference::applyPartitionBias() {
   // code around fcall. Save/restore may still be needed in case this is a
   // stack call function (vs kernel), but a single save/restore sequence can
   // free the callee save register throughout the function.
-  for (unsigned int i = 0; i != liveAnalysis->getNumSelectedGlobalVar(); i++) {
+  for (auto i : liveAnalysis->globalVars) {
     if (kernel.fg.isPseudoVCADcl(lrs[i]->getDcl())) {
       const auto &intfs = sparseIntf[i];
       for (const auto edge : intfs) {
@@ -3578,7 +3581,7 @@ void Augmentation::buildLiveIntervals() {
 
   // Live-in variables have their start interval start with
   // first instruction of entry BB
-  for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++) {
+  for (auto i : liveAnalysis.globalVars) {
     if (liveAnalysis.isLiveAtEntry(entryBB, i)) {
       const G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
 
@@ -3722,7 +3725,7 @@ void Augmentation::buildLiveIntervals() {
   // ToDo: this seems very slow when # variable is large, should look for sparse
   // implementation
   auto extendVarLiveness = [this](G4_BB *bb, G4_INST *inst) {
-    for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++) {
+    for (auto i : liveAnalysis.globalVars) {
       if (liveAnalysis.isLiveAtEntry(bb, i) == true &&
           !kernel.fg.isPseudoDcl(lrs[i]->getDcl())) {
         // Extend ith live-interval
@@ -3797,7 +3800,8 @@ void Augmentation::buildLiveIntervals() {
 
       G4_BB *startBB = backEdge.second;
       G4_BB *EndBB = backEdge.first;
-      for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++) {
+
+      for (auto i : liveAnalysis.globalVars) {
         if (liveAnalysis.isLiveAtEntry(startBB, i) == true &&
             liveAnalysis.isLiveAtExit(EndBB, i) == true) {
           const G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
@@ -4411,9 +4415,9 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
 
   for (auto LI = mask->first.begin(), LE = mask->first.end(); LI != LE; ++LI) {
     unsigned i = *LI;
-    // Bail out if non-global variable is iterated.
-    if (i >= liveAnalysis.getNumSelectedGlobalVar())
-      break;
+    // Process only global vars
+    if (!liveAnalysis.globalVars.test(i))
+      continue;
     {
       G4_Declare *defaultDcl = lrs[i]->getDcl();
       if (gra.getAugmentationMask(defaultDcl) != newDclAugMask) {
@@ -4459,9 +4463,9 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
   for (auto LI = mask->second.begin(), LE = mask->second.end(); LI != LE;
        ++LI) {
     unsigned i = *LI;
-    // Bail out if non-global variable is iterated.
-    if (i >= liveAnalysis.getNumSelectedGlobalVar())
-      break;
+    // Process only global vars
+    if (!liveAnalysis.globalVars.test(i))
+      continue;
     // Mark interference among non-default mask variables
     {
       G4_Declare *nonDefaultDcl = lrs[i]->getDcl();
