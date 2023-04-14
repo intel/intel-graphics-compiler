@@ -790,9 +790,11 @@ bool supportRayTracing() const
     return isProductChildOf(IGFX_DG2);
 }
 
-bool isValidNumThreads(uint32_t numThreadsPerEU) const
+bool isValidNumThreads(int32_t numThreadsPerEU) const
 {
-    return numThreadsPerEU == 4 || numThreadsPerEU == 8;
+    return numThreadsPerEU == 0 // "auto" mode - use compiler heuristic
+        || numThreadsPerEU == 4
+        || numThreadsPerEU == 8;
 }
 
 bool supports3DAndCubeSampleD() const

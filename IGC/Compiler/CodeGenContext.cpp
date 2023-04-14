@@ -722,9 +722,9 @@ namespace IGC
         m_tempCount = 0;
     }
 
-    uint32_t CodeGenContext::getNumThreadsPerEU() const
+    int32_t CodeGenContext::getNumThreadsPerEU() const
     {
-        return 0;
+        return -1;
     }
 
     uint32_t CodeGenContext::getExpGRFSize() const

@@ -102,7 +102,7 @@ namespace IGC
             bool Intel128GRFPerThread = false;
             bool Intel256GRFPerThread = false;
             bool IntelNumThreadPerEU = false;
-            uint32_t numThreadsPerEU = 0;
+            int32_t numThreadsPerEU = -1;
             bool IntelExpGRFSize = false;
             uint32_t expGRFSize = 0;
             std::vector<std::string> LargeGRFKernels;
@@ -319,7 +319,7 @@ namespace IGC
         void setAsSPIRV();
         float getProfilingTimerResolution();
         uint32_t getNumGRFPerThread(bool returnDefault = true) override;
-        uint32_t getNumThreadsPerEU() const override;
+        int32_t getNumThreadsPerEU() const override;
         uint32_t getExpGRFSize() const override;
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;
@@ -362,7 +362,7 @@ namespace IGC
 
         bool IsRegularGRFRequested() override;
         bool IsLargeGRFRequested() override;
-        unsigned getAnnotatedNumThreads() override;
+        int getAnnotatedNumThreads() override;
         void FillKernel(SIMDMode simdMode);
 
         // Recomputes the binding table layout according to the present kernel args
@@ -465,7 +465,7 @@ namespace IGC
         bool m_disableMidThreadPreemption;
         bool m_largeGRFRequested;
         bool m_regularGRFRequested;
-        unsigned m_annotatedNumThreads;
+        int m_annotatedNumThreads;
 
         // Maps GlobalVariables representing local address-space pointers
         // to their offsets in SLM.

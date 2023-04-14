@@ -794,7 +794,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 hasAdditionalVisaAsmToLink = true;
             }
         }
-        int numThreadsPerEU = 0;
+        int numThreadsPerEU = -1;
         if (F.hasFnAttribute("num-thread-per-eu"))
         {
             numThreadsPerEU = std::stoi(

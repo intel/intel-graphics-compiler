@@ -710,5 +710,5 @@ namespace IGC
     bool isCallStackHandler(const IGC::FunctionMetaData &funcMD);
 
     // User annotations query functions
-    unsigned extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD);
+    int extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD);
 }

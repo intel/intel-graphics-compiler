@@ -514,17 +514,24 @@ bool IGC::isCallStackHandler(const IGC::FunctionMetaData &funcMD)
     return funcMD.rtInfo.callableShaderType == IGC::CallStackHandler;
 }
 
-unsigned IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD)
+int IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD)
 {
-    unsigned numThreadsPerEU = 0;
-    for (std::string annotation : funcMD.UserAnnotations)
+    static constexpr const char* searchedString = "num-thread-per-eu";
+    static constexpr auto searchedStringLength = std::char_traits<char>::length(searchedString);
+
+    for (const auto& annotation : funcMD.UserAnnotations)
     {
-        if (const char* op = strstr(annotation.c_str(), "num-thread-per-eu"))
+        auto index = annotation.find(searchedString);
+        if (index != std::string::npos)
         {
-            numThreadsPerEU = atoi(op + strlen("num-thread-per-eu"));
-            break;
+            std::string value = annotation.substr(index + searchedStringLength);
+
+            // Remove whitespaces - if they are present
+            value.erase(std::remove_if(value.begin(), value.end(), ::isspace), value.end());
+
+            return value == "auto" ? 0 : std::stoi(value);
         }
     }
 
-    return numThreadsPerEU;
+    return -1;
 }

@@ -63,7 +63,7 @@ namespace IGC
         return m_ProfilingTimerResolution;
     }
 
-    uint32_t OpenCLProgramContext::getNumThreadsPerEU() const
+    int32_t OpenCLProgramContext::getNumThreadsPerEU() const
     {
         if (m_Options.IntelRequiredEUThreadCount)
         {
@@ -74,7 +74,7 @@ namespace IGC
             return m_InternalOptions.numThreadsPerEU;
         }
 
-        return 0;
+        return -1;
     }
 
     uint32_t OpenCLProgramContext::getExpGRFSize() const {
@@ -391,7 +391,11 @@ namespace IGC
                 size_t valStart = opts.find_first_not_of(' ', ePos + 1);
                 size_t valEnd = opts.find_first_of(' ', valStart);
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
-                if (valStr.getAsInteger(10, numThreadsPerEU))
+                if (valStr.equals("auto"))
+                {
+                    numThreadsPerEU = 0;
+                }
+                else if (valStr.getAsInteger(10, numThreadsPerEU))
                 {
                     IGC_ASSERT(0);
                 }
@@ -700,13 +704,13 @@ namespace IGC
 
         m_regularGRFRequested = false;
         m_largeGRFRequested = false;
-        m_annotatedNumThreads = 0;
+        m_annotatedNumThreads = -1;
         if (m_Platform->supportsStaticRegSharing())
         {
             // Obtain number of threads from user annotations if it is set
             auto& FuncInfo = m_Context->getModuleMetaData()->FuncMD[pFunc];
-            unsigned numThreads = extractAnnotatedNumThreads(FuncInfo);
-            if (numThreads > 0 && m_Platform->isValidNumThreads(numThreads))
+            int numThreads = extractAnnotatedNumThreads(FuncInfo);
+            if (numThreads >= 0 && m_Platform->isValidNumThreads(numThreads))
             {
                 m_annotatedNumThreads = numThreads;
             }
@@ -4040,7 +4044,7 @@ namespace IGC
         return SIMDStatus::SIMD_PASS;
     }
 
-    unsigned COpenCLKernel::getAnnotatedNumThreads() {
+    int COpenCLKernel::getAnnotatedNumThreads() {
         return m_annotatedNumThreads;
     }
 

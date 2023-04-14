@@ -4460,13 +4460,26 @@ namespace IGC
                 else if (m_program->getAnnotatedNumThreads() > 0)
                 {
                     // Number of threads per EU is set per kernel function (by user annotation)
-                    SaveOption(vISA_HWThreadNumberPerEU, m_program->getAnnotatedNumThreads());
+                    SaveOption(vISA_HWThreadNumberPerEU, unsigned(m_program->getAnnotatedNumThreads()));
+                }
+                else if (m_program->getAnnotatedNumThreads() == 0)
+                {
+                    // "Auto" mode per kernel function (by user annotation) - use compiler heuristics to determin number of threads per EU
+                    SaveOption(vISA_TotalGRFNum, unsigned(0));
+                    SaveOption(vISA_RegSharingHeuristics, true);
                 }
                 else if (ClContext->getNumThreadsPerEU() > 0)
                 {
                     // Number of threads per EU is set per module (by compiler option)
-                    SaveOption(vISA_HWThreadNumberPerEU, ClContext->getNumThreadsPerEU());
-                } else if (ClContext->getExpGRFSize() > 0) {
+                    SaveOption(vISA_HWThreadNumberPerEU, unsigned(ClContext->getNumThreadsPerEU()));
+                }
+                else if (ClContext->getNumThreadsPerEU() == 0)
+                {
+                    // "Auto" mode per module (by compiler option) - use compiler heuristics to determin number of threads per EU
+                    SaveOption(vISA_TotalGRFNum, unsigned(0));
+                    SaveOption(vISA_RegSharingHeuristics, true);
+                }
+                else if (ClContext->getExpGRFSize() > 0) {
                     // Explicit GRF size set per module (by compiler option)
                     SaveOption(vISA_TotalGRFNum, ClContext->getExpGRFSize());
                 }
@@ -5064,7 +5077,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, uint numThreadsPerEU, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -5120,7 +5133,12 @@ namespace IGC
         if (numThreadsPerEU > 0)
         {
             // Number of threads per EU is set per kernel (by function MD)
-            SaveOption(vISA_HWThreadNumberPerEU, numThreadsPerEU);
+            SaveOption(vISA_HWThreadNumberPerEU, unsigned(numThreadsPerEU));
+        }
+        else if (numThreadsPerEU == 0)
+        {
+            // "Auto" mode per kernel function - use compiler heuristics to determin number of threads per EU
+            SaveOption(vISA_RegSharingHeuristics, true);
         }
 
         // Pass all build options to builder

@@ -61,7 +61,7 @@ static void convertAnnotationsToAttributes(llvm::Function* function, const std::
                     ::isspace),
                 numThreadPerEU.end());
 
-            function->addFnAttr("num-thread-per-eu", numThreadPerEU);
+            function->addFnAttr("num-thread-per-eu", numThreadPerEU == "auto" ? "0" : numThreadPerEU);
         }
     }
 }
