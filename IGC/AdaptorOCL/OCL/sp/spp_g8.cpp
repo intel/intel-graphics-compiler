@@ -669,7 +669,17 @@ bool CGen8OpenCLProgram::GetZEBinary(
                 llvm::raw_string_ostream linkOut(linkOutStr);
 
                 constexpr bool canExitEarly = false;
-                if (IGCLLD::elf::link(elfArrRef, canExitEarly, linkOut, linkErr))
+                bool linked = false;
+                {
+                    // LLD is not assured to be thread-safe.
+                    // Mutex can be removed as soon as thread-safety is implemented in future versions of LLVM.
+                    static std::mutex linkerMtx;
+                    std::lock_guard<std::mutex> lck(linkerMtx);
+                    linked =
+                        IGCLLD::elf::link(elfArrRef, canExitEarly, linkOut, linkErr);
+                }
+
+                if(linked)
                 {
                     // Multiple ELF files linked.
                     // Copy the data from the linked file to a memory, what will be a source location
