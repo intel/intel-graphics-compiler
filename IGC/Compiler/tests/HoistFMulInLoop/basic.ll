@@ -36,14 +36,14 @@ define void @test_loop(float* %a, float* %b, float %c) {
 ; CHECK:  [[FOR_BODY]]:
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = phi float [ [[TMP7:%[A-z0-9]*]], %[[FOR_BODY]] ], [ 0.000000e+00, [[ENTRY:%[A-z0-9]*]] ]
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = phi float [ [[TMP5:%[A-z0-9]*]], %[[FOR_BODY]] ], [ [[TMP1]], [[ENTRY]] ]
-; CHECK:    [[TMP5]] = fmul fast float [[TMP4]], [[TMP4]]
-; CHECK:    [[TMP6:%[A-z0-9]*]] = fmul fast float [[TMP5]], [[TMP0]]
-; CHECK:    [[TMP7]] = fadd fast float [[TMP5]], [[TMP3]]
+; CHECK:    [[TMP5]] = fmul float [[TMP4]], [[TMP4]]
+; CHECK:    [[TMP6:%[A-z0-9]*]] = fmul float [[TMP5]], [[TMP0]]
+; CHECK:    [[TMP7]] = fadd float [[TMP5]], [[TMP3]]
 ; CHECK:    [[TMP8:%[A-z0-9]*]] = fcmp oeq float [[TMP5]], 1.000000e+00
 ; CHECK:    br i1 [[TMP8]], label %[[FOR_BODY]], label %[[FOR_END:[A-z0-9.]*]]
 ; CHECK:  [[FOR_END]]:
-; CHECK:    [[HOIST:%[A-z0-9]*]] = fmul fast float [[TMP7]], [[TMP0]]
-; CHECK:    [[HOIST1:%[A-z0-9]*]] = fadd fast float [[HOIST]], [[TMP0]]
+; CHECK:    [[HOIST:%[A-z0-9]*]] = fmul float [[TMP7]], [[TMP0]]
+; CHECK:    [[HOIST1:%[A-z0-9]*]] = fadd float [[HOIST]], [[TMP0]]
 ; CHECK:    [[TMP9:%[A-z0-9]*]] = fadd float [[HOIST1]], 1.300000e+01
 ; CHECK:    br label %[[END]]
 ; CHECK:  [[END]]:
@@ -60,9 +60,9 @@ entry:
 for.body:
   %3 = phi float [ %7, %for.body ], [ %0, %entry ]
   %4 = phi float [ %5, %for.body ], [ %1, %entry ]
-  %5 = fmul fast float %4, %4
-  %6 = fmul fast float %5, %0
-  %7 = fadd fast float %6, %3
+  %5 = fmul float %4, %4
+  %6 = fmul float %5, %0
+  %7 = fadd float %6, %3
   %8 = fcmp oeq float %5, 1.000000e+00
   br i1 %8, label %for.body, label %for.end
 
