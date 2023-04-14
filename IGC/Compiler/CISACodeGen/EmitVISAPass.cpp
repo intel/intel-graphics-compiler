@@ -2604,13 +2604,148 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
     m_encoder->Push();
 }
 
+// This function generates copy:
+//
+//       Dst[Dst_off] = Src[Src_off] with type 'Ty'
+//
+//   If either S or D are not naturally aligned on 'Ty', need to use several
+//   smaller & aligned copies (worse case is to use byte-aligned copy).
+//
+// Unaligned copy exists for insertValue and extractValue on uniform
+// packed struct. And this function is used to copy a member field of
+// the struct variable.
+void EmitPass::emitMayUnalignedVectorCopy(
+    CVariable* Dst, uint32_t Dst_off,
+    CVariable* Src, uint32_t Src_off, Type* Ty)
+{
+    IGC_ASSERT(Ty->isSingleValueType());
+
+    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
+
+    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
+    Type* eltTy = Ty->getScalarType();
+    uint32_t eltBytes = (uint32_t)m_DL->getTypeAllocSize(eltTy);
+    bool D_uniform = Dst->IsUniform();
+    const bool S_uniform = Src->IsUniform();
+
+    uint32_t currAlign = (uint32_t)MinAlign(eltBytes, Dst_off);
+    currAlign = (uint32_t)MinAlign(currAlign, Src_off);
+    if (currAlign >= eltBytes) {
+        // aligned copy
+        VISA_Type visaTy = m_currShader->GetType(Ty);
+        CVariable* D = m_currShader->GetNewAlias(
+            Dst, visaTy, Dst_off, v_nelts * (D_uniform ? 1 : nLanes));
+        CVariable* S;
+        if (Src->IsImmediate()) {
+            IGC_ASSERT(v_nelts == 1 && Src_off == 0);
+            S = Src;
+        }
+        else {
+            S = m_currShader->GetNewAlias(
+                Src, visaTy, Src_off, v_nelts * (S_uniform ? 1 : nLanes));
+        }
+
+        emitCopyAll(D, S, Ty);
+        return;
+    }
+
+    // To be unaligned, at least one of D and S is uniform.
+    //   As (D_uniform && !S_uniform) is not supported, S must be uniform.
+    //   Keep this in mind when reading the code below.
+    IGC_ASSERT(S_uniform);
+
+    // Unaligned copy:
+    //   Assuming %a and %b are the same and are assigned to r10,
+    //   and %s is assigned to r20.
+    //     %a = insertValue <{i8, i16}> %b,  i16 %s, 1
+    //
+    //  1. Assuming both operands are uniform. "copy %s into %a" is unaligned
+    //     and has to be done as below:
+    //     mov (1)  r10.1<1>:b r20.0<0;1,0>:b
+    //     mov (1)  r10.2<1>:b r20.1<0;1,0>:b
+    //
+    //  2. Assuming %a is non-uniform and %b is uniform. The code is as below:
+    //     mov (16) r10.1<2>:b r20.0<0;1,0>:b
+    //     mov (16) r10.2<2>:b r20.1<0;1,0>:b
+    //
+    //     The 'stride' could be 2, 4, or 8. If stride is 8, need to move to
+    //     a uniform temp and then aligned copy to %a to avoid stride=8.
+    CVariable* origDst = Dst;
+    if (!D_uniform && eltBytes == 8 && (Src_off & 1) == 1) {
+        CVariable* tVar = m_currShader->GetNewVariable(
+            v_nelts, Src->GetType(), EALIGN_QWORD, true, Src->getName());
+        Dst = tVar;
+        D_uniform = true;
+    }
+    for (uint32_t i = 0; i < v_nelts; ++i) {
+        uint32_t off = 0;
+        uint32_t doff = Dst_off + i * eltBytes * (D_uniform ? 1 : nLanes);
+        uint32_t soff = Src_off + i * eltBytes;
+
+        uint64_t imm = 0;
+        if (Src->IsImmediate()) {
+            //  It's better set soff to doff than 0.
+            soff = doff;
+            imm = Src->GetImmediateValue();
+        }
+
+        while (off < eltBytes) {
+            // Find alignment that is less than the remaining bytes to be copied.
+            // This alignment must be aligned for both Dst and Src. The max align
+            // starts with element size (tyBytes) and decreases.
+            uint32_t remainingBytes = eltBytes - off;
+            uint32_t maxAlign = (uint32_t)PowerOf2Floor(remainingBytes);
+            uint32_t currAlign = (uint32_t)MinAlign(maxAlign, doff);
+            currAlign = (uint32_t)MinAlign(currAlign, soff);
+
+            Type* thisTy = IntegerType::get(Ty->getContext(), currAlign * 8);
+            VISA_Type visaTy = m_currShader->GetType(thisTy);
+
+            uint32_t stride = eltBytes / currAlign;
+            IGC_ASSERT((eltBytes % currAlign) == 0);
+            IGC_ASSERT_MESSAGE((D_uniform || stride <= 4),
+                "Stride > 4 unsupported!");
+
+            CVariable* S;
+            if (Src->IsImmediate()) {
+                // Get immediate at offset = off, with size = currAlign
+                uint64_t thisImm =
+                    ((imm >> (off * 8)) & maskTrailingOnes<uint32_t>(currAlign * 8));
+                Constant* Cint = ConstantInt::get(thisTy, thisImm);
+                S = m_currShader->GetScalarConstant(Cint);
+            } else {
+                S = m_currShader->GetNewAlias(Src, visaTy, soff, 1);
+            }
+            // #elts isn't critical as it extends to the end of Dst anyway for
+            // alias, but still make sense to get the correct #elts.
+            CVariable* D = m_currShader->GetNewAlias(
+                Dst, visaTy, doff, (D_uniform ? 1 : 1 + (nLanes-1) * stride));
+
+            m_encoder->SetDstRegion(D_uniform ? 1 : stride);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->Copy(D, S);
+            m_encoder->Push();
+
+            off += currAlign;
+            doff += currAlign;
+            soff += currAlign;
+        }
+    }
+
+    // If a temp is used, need to copy temp to the original Dst
+    if (origDst != Dst) {
+        emitVectorCopy(origDst, Dst, v_nelts);
+    }
+}
+
 void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
 {
     StructType* sTy = dyn_cast<StructType>(inst->getType());
     IGC_ASSERT_MESSAGE(sTy != nullptr,
         "ICE: invertvalue - only struct type is supported!");
 
-    auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
+    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
 
     Value* src0 = inst->getOperand(0);
     Value* src1 = inst->getOperand(1);
@@ -2621,12 +2756,12 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     IGC_ASSERT_MESSAGE((!EltV->IsUniform() && DstV->IsUniform()) == false,
         "Can't insert vector value into a scalar struct!");
 
-    auto getFieldByteOffsetAndType = [&DL](StructType* const StTy,
+    auto getFieldByteOffsetAndType = [this](StructType* const StTy,
         const ArrayRef<unsigned>& Indices, uint32_t& ByteOffset, Type*& Ty)
     {
         IGC_ASSERT_MESSAGE(Indices.size() == 1,
             "ICE: nested struct not supported!");
-        const StructLayout* aSL = DL.getStructLayout(StTy);
+        const StructLayout* aSL = m_DL->getStructLayout(StTy);
         uint32_t ix = Indices.front();
         ByteOffset = (uint32_t)aSL->getElementOffset(ix);
         Ty = StTy->getElementType(ix);
@@ -2655,7 +2790,20 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
         }
     };
 
-    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
+    auto verifyMayUnAlign = [this](CVariable* CVar, uint32_t ByteOffsets,
+        StructType* STy, Type* MemberTy) {
+#if defined(_DEBUG)
+        if (MemberTy->isSingleValueType()) {
+            Type* eTy = MemberTy->getScalarType();
+            uint32_t eltBytes = (uint32_t)m_DL->getTypeAllocSize(eTy);
+            uint32_t align = (uint32_t)MinAlign(eltBytes, ByteOffsets);
+            IGC_ASSERT_MESSAGE(align >= eltBytes ||
+                CVar->IsUniform() && STy->isPacked(),
+                "Unaligned copy can happen only for uniform packed struct!");
+        }
+#endif
+    };
+
     // Constants:
     //  1.  %8 = insval undef, float %2, 0
     //  2.  %8 = insval { i32 16, i32 undef, i32 undef, i32 undef }, i32 %2, 1
@@ -2663,25 +2811,23 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     {
         if (!isa<UndefValue>(CSt))
         {
-            const StructLayout* SL = DL.getStructLayout(sTy);
+            const StructLayout* SL = m_DL->getStructLayout(sTy);
             // copy all valid const elements
             for (uint32_t i = 0; i < (uint32_t)sTy->getNumElements(); i++)
             {
-                CVariable* eltSrc = GetSymbol(CSt->getAggregateElement(i));
-                if (!eltSrc->IsUndef())
-                {
-                    Type* ty = sTy->getElementType(i);
-                    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
-                    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
-                    uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
-                    // eltDst's ty = eltSrc's ty
-                    CVariable* eltDst = m_currShader->GetNewAlias(
-                        DstV,
-                        eltSrc->GetType(),
-                        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-                        v_nelts * (DstV->IsUniform() ? 1 : nLanes));
-                    emitCopyAll(eltDst, eltSrc, ty);
-                }
+                Constant* eCst = CSt->getAggregateElement(i);
+                if (isa<UndefValue>(eCst))
+                    continue;
+
+                CVariable* eltSrc = GetSymbol(eCst);
+                Type* ty = sTy->getElementType(i);
+                uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
+                uint32_t cvar_off =
+                    byteOffset * (DstV->IsUniform() ? 1 : nLanes);
+
+                emitMayUnalignedVectorCopy(DstV, cvar_off, eltSrc, 0, ty);
+
+                verifyMayUnAlign(DstV, cvar_off, sTy, ty);
             }
         }
     }
@@ -2704,22 +2850,26 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
             getFieldsToBeCopied(src0, toBeCopied);
             for (auto II : toBeCopied)
             {
+                // skip one that will be written by this inst
+                auto theIdx = inst->getIndices();
+                if (theIdx.equals(II)) {
+                    continue;
+                }
+
                 Type* ty;
                 uint32_t byteOffset;
                 getFieldByteOffsetAndType(sTy, II, byteOffset, ty);
-                auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
-                uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
-                CVariable* eltDst = m_currShader->GetNewAlias(
-                    DstV,
-                    m_currShader->GetType(ty),
-                    byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-                    v_nelts * (DstV->IsUniform() ? 1 : nLanes));
-                CVariable* eltSrc = m_currShader->GetNewAlias(
-                    SrcV,
-                    m_currShader->GetType(ty),
-                    byteOffset * (SrcV->IsUniform() ? 1 : nLanes),
-                    v_nelts * (SrcV->IsUniform() ? 1 : nLanes));
-                emitCopyAll(eltDst, eltSrc, ty);
+
+                uint32_t d_off =
+                    byteOffset * (DstV->IsUniform() ? 1 : nLanes);
+                uint32_t s_off =
+                    byteOffset * (SrcV->IsUniform() ? 1 : nLanes);
+
+                emitMayUnalignedVectorCopy(DstV, d_off, SrcV, s_off, ty);
+
+                verifyMayUnAlign(DstV, d_off, sTy, ty);
+                verifyMayUnAlign(SrcV, s_off, sTy, ty);
+
             }
         }
     }
@@ -2727,18 +2877,29 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     Type* ty;
     uint32_t byteOffset;
     getFieldByteOffsetAndType(sTy, inst->getIndices(), byteOffset, ty);
-    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
-    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
-    CVariable* eltDst = m_currShader->GetNewAlias(
-        DstV,
-        EltV->GetType(),
-        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-        v_nelts * (DstV->IsUniform() ? 1 : nLanes));
-    emitCopyAll(eltDst, EltV, src1->getType());
+    uint32_t d_off =
+        byteOffset * (DstV->IsUniform() ? 1 : nLanes);
+    emitMayUnalignedVectorCopy(DstV, d_off, EltV, 0, ty);
+
+    verifyMayUnAlign(DstV, d_off, sTy, ty);
 }
 
 void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
 {
+    auto verifyMayUnAlign = [this](CVariable* CVar, uint32_t ByteOffsets,
+        StructType* STy, Type* MemberTy) {
+#if defined(_DEBUG)
+        if (MemberTy->isSingleValueType()) {
+            Type* eTy = MemberTy->getScalarType();
+            uint32_t eltBytes = (uint32_t)m_DL->getTypeAllocSize(eTy);
+            uint32_t align = (uint32_t)MinAlign(eltBytes, ByteOffsets);
+            IGC_ASSERT_MESSAGE(align >= eltBytes ||
+                CVar->IsUniform() && STy->isPacked(),
+                "Unaligned copy can happen only for uniform packed struct!");
+        }
+#endif
+    };
+
     Value* src0 = EI->getOperand(0);
     IGC_ASSERT(src0->getType()->isStructTy());
     unsigned idx = *EI->idx_begin();
@@ -2766,17 +2927,12 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
     const unsigned nLanes =
         (srcUniform ? 1 : numLanes(m_currShader->m_dispatchSize));
     Type* ty = sTy->getStructElementType(idx);
-    auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(ty);
-    uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
-    unsigned elementOffset = (unsigned)SL->getElementOffset(idx);
-    CVariable* EltV = m_currShader->GetNewAlias(
-        SrcV,
-        m_destination->GetType(),
-        elementOffset * nLanes,
-        v_nelts * nLanes);
+    uint32_t elementOffset = (uint32_t)SL->getElementOffset(idx);
 
-    // Copy from struct to dest
-    emitCopyAll(m_destination, EltV, ty);
+    uint32_t cvar_off = elementOffset * nLanes;
+    emitMayUnalignedVectorCopy(m_destination, 0, SrcV, cvar_off, ty);
+
+    verifyMayUnAlign(m_destination, cvar_off, sTy, ty);
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
@@ -18027,12 +18183,8 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
             {
                 numElements = (unsigned)elementVectorType->getNumElements();
             }
-
-            VISA_Type visaTy = m_currShader->GetType(elementType);
-
-            CVariable* srcElement = m_currShader->GetNewAlias(Src, visaTy, elementOffset * srcLanes, numElements * srcLanes, Src->IsUniform());
-            CVariable* dstElement = m_currShader->GetNewAlias(Dst, visaTy, elementOffset * dstLanes, numElements * dstLanes, Dst->IsUniform());
-            emitCopyAll(dstElement, srcElement, elementType);
+            emitMayUnalignedVectorCopy(Dst, elementOffset * dstLanes,
+                Src, elementOffset * srcLanes, elementType);
         }
     }
     else

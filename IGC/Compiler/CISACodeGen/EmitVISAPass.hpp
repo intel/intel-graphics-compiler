@@ -923,6 +923,8 @@ private:
         ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
         uint32_t NumElts, uint32_t EltBytes, alignment_t Align);
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1, bool EvictL1) const;
+    void emitMayUnalignedVectorCopy(
+        CVariable* D, uint32_t D_off, CVariable* S, uint32_t S_off, llvm::Type* Ty);
     bool m_isDuplicate;
     CVariable* m_tmpDest = nullptr;
     std::set<CoalescingEngine::CCTuple*> lifetimeStartAdded;
