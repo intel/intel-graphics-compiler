@@ -9,13 +9,16 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 // turn on/off GET_TIME_STATS and GET_SHADER_STATS for the reports.
-
 #define GET_TIME_STATS 1
 
-#if defined( _INTERNAL ) || defined( _DEBUG )
+#if defined( _DEBUG )
     #define GET_SHADER_STATS 1
     #define PRINT_PER_SHADER_STATS 1
     #define GET_MEM_STATS 1
+#elif defined( _INTERNAL )
+    #define GET_SHADER_STATS 1
+    #define PRINT_PER_SHADER_STATS 1
+    #define GET_MEM_STATS 0
 #endif
 
 #include "common/Types.hpp"
