@@ -132,6 +132,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
+            AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.addRequired<WIAnalysis>();
             AU.addRequired<LiveVarsAnalysis>();
@@ -176,12 +177,12 @@ namespace IGC
         void ForceIsolate(llvm::Value* val) { m_forceIsolates.insert(val); }
         bool IsForceIsolated(llvm::Value* val) { return (m_forceIsolates.count(val) > 0) ? true : false; }
 
-        SSource GetSource(llvm::Value* v, bool modifier, bool regioning);
-        SSource GetSource(llvm::Value* value, e_modifier mod, bool regioning);
+        SSource GetSource(llvm::Value* v, bool modifier, bool regioning, bool isSampleDerivative);
+        SSource GetSource(llvm::Value* value, e_modifier mod, bool regioning, bool isSampleDerivative);
         bool GetRegionModifier(SSource& mod, llvm::Value*& source, bool regioning);
         bool BitcastSearch(SSource& mod, llvm::Value*& source, bool broadcast);
 
-        void MarkAsSource(llvm::Value* v);
+        void MarkAsSource(llvm::Value* v, bool isSampleDerivative);
 
         bool MatchFMA(llvm::IntrinsicInst& I);
         bool MatchFrc(llvm::BinaryOperator& I);
@@ -257,9 +258,11 @@ namespace IGC
         void SetPatternRoot(llvm::Instruction& inst);
         void CreateBasicBlocks(llvm::Function* pLLVMFunc);
         uint GetBlockId(llvm::BasicBlock* bb);
-        void HandleSubspanUse(llvm::Value* v);
+        void HandleSubspanUse(llvm::Value* v, bool isSampleSource);
         void HandleSampleDerivative(llvm::GenIntrinsicInst& I);
         bool IsSubspanUse(llvm::Value* v);
+        bool IsSourceOfSample(llvm::Value* v);
+        bool IsSourceOfSampleUnderCF(llvm::Value* v);
         bool HasUseOutsideLoop(llvm::Value* v);
         bool NeedVMask();
 
@@ -289,6 +292,8 @@ namespace IGC
         llvm::DenseSet<llvm::Instruction*>       m_usedInstructions;
         bool                  m_rootIsSubspanUse;
         llvm::DenseSet<llvm::Value*>             m_subSpanUse;
+        llvm::DenseSet<llvm::Value*>             m_sampleSource;
+        llvm::DenseSet<llvm::Value*>             m_sampleUnderCFsource;
         llvm::SmallPtrSet<llvm::Value*, 8>       m_forceIsolates;
         std::map<llvm::BasicBlock*, SBasicBlock*> m_blockMap;
         SBasicBlock* m_blocks;
@@ -315,6 +320,7 @@ namespace IGC
     private:
         CodeGenContext* m_ctx; // Caching codegen context, valid only within runOnFunction().
         llvm::DominatorTree* DT;
+        llvm::PostDominatorTree* PDT;
         llvm::LoopInfo* LI;
         const llvm::DataLayout* m_DL;
         WIAnalysis* m_WI;
