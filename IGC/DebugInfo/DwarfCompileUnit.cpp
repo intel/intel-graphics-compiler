@@ -1760,6 +1760,13 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
   // Add source line info if available and TyDesc is not a forward declaration.
   if (!DTy->isForwardDecl())
     addSourceLine(&Buffer, DTy);
+
+  // As per SPIRV spec, storage class value 4 corresponds to WG.
+  // We lower this value verbatim in SPIRV translator.
+  // So if dwarf address space = 4, mark it as SLM.
+  if (operator==(DTy->getDWARFAddressSpace(), 4u)) {
+    addUInt(&Buffer, dwarf::DW_AT_address_class, None, 1);
+  }
 }
 
 /// Return true if the type is appropriately scoped to be contained inside
