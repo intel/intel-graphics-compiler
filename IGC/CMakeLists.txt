@@ -2012,11 +2012,6 @@ elseif (WIN32)
     install(TARGETS ${IGC_BUILD__PROJ__igc_dll} RUNTIME
             DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
 
-    install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
-            DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-    install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
-            DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
-
 
   endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
