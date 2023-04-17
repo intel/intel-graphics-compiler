@@ -751,6 +751,7 @@ bool MadLoopSlice::runOnFunction(Function &F) {
 }
 
 bool MadLoopSlice::sliceLoop(Loop *L) const {
+    auto* CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // So far, we only handle single block loop body.
     if (L->getNumBlocks() != 1)
         return false;
@@ -821,7 +822,8 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
         for (auto MI = ECs.member_begin(I), ME = ECs.member_end(); MI != ME;
              ++MI) {
             // Skip the slicing if there is non-MAD instructions.
-            if (!isa<PHINode>(*MI) && !IsDMAD(*MI) && !IsIMAD(*MI))
+            if (!isa<PHINode>(*MI) && !IsDMAD(*MI) &&
+                !(CGC->platform.isProductChildOf(IGFX_PVC) && IsIMAD(*MI)))
                 return false;
         }
         Leaders.insert(std::make_pair(Leader, nullptr));
