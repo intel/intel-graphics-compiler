@@ -520,19 +520,20 @@ public:
       OpDebugPtrType ptrType(inst);
 
       auto pointeeType = createType(BM->get<SPIRVExtInst>(ptrType.getBaseType()));
+      auto storageClass = ptrType.getStorageClass();
       auto flags = ptrType.getFlags();
 
       if (flags & SPIRVDebug::Flag::FlagIsLValueReference)
-          return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
+          return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits(), 0, storageClass));
       else if (flags & SPIRVDebug::Flag::FlagIsRValueReference)
-          return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_rvalue_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
+          return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_rvalue_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits(), 0, storageClass));
       else if (flags & SPIRVDebug::Flag::FlagIsObjectPointer)
       {
-          auto objType = Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits());
+          auto objType = Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits(), 0, storageClass);
           return addMDNode(inst, Builder.createObjectPointerType(objType));
       }
       else
-          return addMDNode(inst, Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits()));
+          return addMDNode(inst, Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits(),0,storageClass));
   }
 
   DIType* createTypeQualifier(SPIRVExtInst* inst)
