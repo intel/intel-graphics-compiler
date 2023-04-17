@@ -53,6 +53,7 @@ namespace IGC
         llvm::Value *ResolveWILength(llvm::CallInst *CI);
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
+        llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *Resolve(llvm::Value *value);
 
@@ -60,8 +61,12 @@ namespace IGC
         void CacheResolvedValue(llvm::Value *oldValue, llvm::Value *newValue);
         void InsertPlaceholder(llvm::Value *v);
 
-        std::string GetLoadStoreMatrixFuncName
-            (bool isLoad, unsigned operationLayout, unsigned address_space, const JointMatrixTypeDescription *desc);
+        std::string GetMatrixFuncName(bool isGetCoord, bool isLoad,
+                                      unsigned operationLayout,
+                                      unsigned address_space,
+                                      const JointMatrixTypeDescription *desc,
+                                      std::string prefix);
+
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
 

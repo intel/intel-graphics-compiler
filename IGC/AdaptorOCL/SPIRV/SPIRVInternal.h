@@ -478,6 +478,7 @@ _SPIRV_OP(OpJointMatrixSUMadINTEL)
 _SPIRV_OP(OpJointMatrixUSMadINTEL)
 _SPIRV_OP(OpJointMatrixUUMadINTEL)
 _SPIRV_OP(OpJointMatrixWorkItemLengthINTEL)
+_SPIRV_OP(OpJointMatrixGetElementCoordINTEL)
 // Intel media_block_io builtins
 _SPIRV_OP(OpSubgroupImageMediaBlockReadINTEL)
 _SPIRV_OP(OpSubgroupImageMediaBlockWriteINTEL)

@@ -2342,6 +2342,7 @@ _SPIRV_OP(JointMatrixSUMad, true, 6)
 _SPIRV_OP(JointMatrixUSMad, true, 6)
 _SPIRV_OP(JointMatrixUUMad, true, 6)
 _SPIRV_OP(JointMatrixWorkItemLength, true, 4)
+_SPIRV_OP(JointMatrixGetElementCoord, true, 5)
 #undef _SPIRV_OP
 }
 #endif // SPIRVINSTRUCTION_HPP_

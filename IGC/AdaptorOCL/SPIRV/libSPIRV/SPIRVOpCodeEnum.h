@@ -525,6 +525,7 @@ _SPIRV_OP(JointMatrixSUMadINTEL, 6128)
 _SPIRV_OP(JointMatrixUSMadINTEL, 6129)
 _SPIRV_OP(JointMatrixUUMadINTEL, 6130)
 _SPIRV_OP(JointMatrixWorkItemLengthINTEL, 6410)
+_SPIRV_OP(JointMatrixGetElementCoordINTEL, 6440)
 // SPV_INTEL_arithmetic_fence
 _SPIRV_OP(ArithmeticFenceINTEL, 6145)
 // SPV_KHR_uniform_group_instructions

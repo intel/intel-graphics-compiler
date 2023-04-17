@@ -79,6 +79,8 @@ static const char *JointMatrixFillPrefx  = "__builtin_spirv_OpCompositeConstruct
 static const char *JointMatrixWorkItemLengthPrefx = "__builtin_spirv_OpJointMatrixWorkItemLengthINTEL";
 static const char *JointMatrixSliceInsert  = "__builtin_spirv_OpVectorInsertDynamicJointMatrixINTEL";
 static const char *JointMatrixSliceExtract = "__builtin_spirv_OpVectorExtractDynamicJointMatrixINTEL";
+static const char *JointMatrixGetCoordPrefx =
+    "__builtin_spirv_OpJointMatrixGetElementCoordINTEL";
 
 enum {
     LayoutRowMajor,
@@ -253,18 +255,20 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore
     return result == ALL_VALID;
 }
 
-std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
-        (bool isLoad, unsigned operationLayout, unsigned address_space, const JointMatrixTypeDescription *desc)
-{
+std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
+    bool isGetCoord, bool isLoad, unsigned operationLayout,
+    unsigned address_space, const JointMatrixTypeDescription *desc,
+    std::string prefix) {
     /* Treat row major matrices with types not supported by accumulators as
      * PackedA matrices. Both are in row major format. */
     unsigned matrixLayout = desc->layout;
-    if (isLoad && matrixLayout == LayoutRowMajor && desc->bitWidth <= 16) {
+    if (!isGetCoord && isLoad && matrixLayout == LayoutRowMajor &&
+        desc->bitWidth <= 16) {
         matrixLayout = LayoutPackedA;
     }
 
-    std::string name
-      = isLoad ? "__builtin_spriv_OpJointMatrixLoadINTEL_" : "__builtin_spriv_OpJointMatrixStoreINTEL_";
+    std::string name = prefix;
+
     switch (matrixLayout) {
       case LayoutPackedA:
         name += "PackedA_";
@@ -280,29 +284,34 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
     }
 
-    /* New version of the JointMatrix specification uses single value to
-     * represent PackedA and PackedB layouts, named simply; 'Packed'. The value
-     * of 'Packed' is equal to the value of legacy 'PackedA'. If we meet
-     * load/store that tries to load/store packedA data into B matrix, we can
-     * assume that the intended layout was PackedB (load of A into B would be illegal).
-     * This should be removed when we stop to support the legacy version of the spec. */
-    if (matrixLayout == LayoutPackedB && operationLayout == LayoutPackedA) {
-        operationLayout = LayoutPackedB;
-    }
+    if (!isGetCoord) {
+        /* New version of the JointMatrix specification uses single value to
+         * represent PackedA and PackedB layouts, named simply; 'Packed'. The
+         * value of 'Packed' is equal to the value of legacy 'PackedA'. If we
+         * meet load/store that tries to load/store packedA data into B matrix,
+         * we can assume that the intended layout was PackedB (load of A into B
+         * would be illegal). This should be removed when we stop to support the
+         * legacy version of the spec. */
 
-    switch (operationLayout) {
-      case LayoutRowMajor:
-        name += "RowMajor_";
-        break;
-      case LayoutColumnMajor:
-        name += "ColumnMajor_";
-        break;
-      case LayoutPackedB:
-        IGC_ASSERT_MESSAGE(matrixLayout == operationLayout, "Unexpected load/store layout.");
-        name += "PackedB_";
-        break;
-      default:
-        IGC_ASSERT_MESSAGE(false, "Unexpected load/store layout.");
+        if (matrixLayout == LayoutPackedB && operationLayout == LayoutPackedA) {
+            operationLayout = LayoutPackedB;
+        }
+
+        switch (operationLayout) {
+        case LayoutRowMajor:
+            name += "RowMajor_";
+            break;
+        case LayoutColumnMajor:
+            name += "ColumnMajor_";
+            break;
+        case LayoutPackedB:
+            IGC_ASSERT_MESSAGE(matrixLayout == operationLayout,
+                               "Unexpected load/store layout.");
+            name += "PackedB_";
+            break;
+        default:
+            IGC_ASSERT_MESSAGE(false, "Unexpected load/store layout.");
+        }
     }
 
     /* On PVC due to SIMD16 different SIMD lane contribution is used for matrix A.
@@ -318,21 +327,26 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
     name += "_";
 
     if (desc->bitWidth == 8) {
-        name += "i8_";
+        name += "i8";
     } else if (desc->bitWidth == 16) {
-        name += "i16_";
+        name += "i16";
     } else if (desc->bitWidth == 32) {
-        name += "i32_";
+        name += "i32";
     } else {
         IGC_ASSERT_MESSAGE(false, "Unexpected matrix element size.");
     }
 
+    // We are done creating the mangling for get_coord here()
+    if (isGetCoord)
+        return name;
+
+    // Continue mangling for load and store
     if (address_space == ADDRESS_SPACE_GLOBAL) {
-        name += "global_";
+        name += "_global_";
     } else if (address_space == ADDRESS_SPACE_LOCAL) {
-        name += "local_";
+        name += "_local_";
     } else {
-        name += "generic_";
+        name += "_generic_";
     }
 
     if (isLoad) {
@@ -485,7 +499,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
     ValidateLoadStore(true, loadLayout, &desc, CI);
-    std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, address_space, &desc);
+    std::string funcName =
+        GetMatrixFuncName(false, true, loadLayout, address_space, &desc,
+                          "__builtin_spriv_OpJointMatrixLoadINTEL_");
     FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType() }, false);
     std::vector<Value *> Args = { ptrVal, strideVal };
 
@@ -543,7 +559,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
     ValidateLoadStore(false, storeLayout, &desc, CI);
-    std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, address_space, &desc);
+    std::string funcName =
+        GetMatrixFuncName(false, false, storeLayout, address_space, &desc,
+                          "__builtin_spriv_OpJointMatrixStoreINTEL_");
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
             { ptrVal->getType(), matTy, strideVal->getType() }, false);
@@ -750,6 +768,38 @@ Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
     return lenght;
 }
 
+Instruction *JointMatrixFuncsResolutionPass::ResolveGetCoord(CallInst *CI) {
+    Value *jointMatArg = CI->getArgOperand(0);
+    Value *elemIdx = CI->getArgOperand(1);
+    JointMatrixTypeDescription desc;
+    ResolveType(jointMatArg->getType(), &desc);
+
+    std::string funcName = GetMatrixFuncName(
+        true, false, -1 /*placeholder*/, -1 /*placeholder*/, &desc,
+        "__builtin_spirv_OpJointMatrixGetCoordINTEL_"); // GetCoordMatrixFuncName(&desc);
+
+    IRBuilder builder(CI);
+
+    // Argument type should be a i32??
+    Type *argType = Type::getIntNTy(builder.getContext(), 32);
+    elemIdx = builder.CreateTruncOrBitCast(elemIdx, argType);
+
+    FunctionType *funcType = FunctionType::get(
+        CI->getCalledFunction()->getReturnType(), {argType}, false);
+    std::vector<Value *> Args = {elemIdx};
+
+    Module *M = CI->getParent()->getModule();
+
+    Instruction *newCall = builder.CreateCall(
+        M->getOrInsertFunction(funcName, funcType), Args, "get_coord");
+    newCall->setDebugLoc(CI->getDebugLoc());
+
+    CI->replaceAllUsesWith(newCall);
+    InstsToErase.insert(CI);
+
+    return newCall;
+}
+
 template <class BuilderT>
 static Value *createSliceExtract
       (BuilderT *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc, Type *matTy) {
@@ -918,6 +968,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
     } else if (funcName.startswith(JointMatrixSliceExtract)) {
         InsertPlaceholder(CI);
         NewValue = ResolveSliceExtract(CI);
+    } else if (funcName.startswith(JointMatrixGetCoordPrefx)) {
+        InsertPlaceholder(CI);
+        NewValue = ResolveGetCoord(CI);
     }
 
     CacheResolvedValue(CI, NewValue);
