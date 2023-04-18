@@ -298,7 +298,8 @@ namespace IGC
         void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
         void LSC_TypedReadWrite(
             LSC_OP subOp, ResourceDescriptor* resource,
-            CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD,
+            CVariable* pU, CVariable* pV, CVariable* pR,
+            CVariable* pLOD,
             CVariable* pSrcDst,
             unsigned elemSize, unsigned numElems,
             LSC_ADDR_SIZE addr_size, int chMask,
