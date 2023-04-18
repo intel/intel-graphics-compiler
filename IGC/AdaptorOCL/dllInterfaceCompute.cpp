@@ -828,6 +828,17 @@ bool ProcessElfInput(
                 {
                     if (hasVISALinking)
                     {
+                        if (!Context.enableZEBinary()) {
+                            SetErrorMessage(
+                                "vISA linking can be used only with ZeBinary "
+                                "compiler output format. It seems that it is "
+                                "currently disabled for your platform. You can "
+                                "experiment with EnableZEBinary environmental "
+                                "flag to turn it on.",
+                                OutputArgs);
+                            return false;
+                        }
+
                         ShaderHash hash = ShaderHashOCL(
                             reinterpret_cast<const UINT*>(InputArgs.pInput),
                             InputArgs.InputSize / 4);
