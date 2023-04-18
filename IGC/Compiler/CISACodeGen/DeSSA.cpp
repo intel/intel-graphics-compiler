@@ -1461,6 +1461,32 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
                 }
             }
         }
+        else if (isa<CallInst>(I)) {
+          if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I))
+          {
+            if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_bitcastfromstruct &&
+              !isa<Constant>(GII->getOperand(0)))
+            {
+              // special cast just for load/store.
+              Value* D = GII;
+              Value* S = GII->getOperand(0);
+
+              // D must be int or int vector type; S must be struct type.
+              IGC_ASSERT(D->getType()->getScalarType()->isIntegerTy());
+              IGC_ASSERT(S->getType()->isStructTy());
+
+              AddAlias(S);
+              Value* aliasee = AliasMap[S];
+              AliasMap[D] = aliasee;
+
+              // D will be deleted due to aliasing
+              NoopAliasMap[D] = 1;
+
+              // union liveness info
+              LV->mergeUseFrom(aliasee, D);
+            }
+          }
+        }
     }
 }
 

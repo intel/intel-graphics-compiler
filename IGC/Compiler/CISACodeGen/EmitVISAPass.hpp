@@ -146,6 +146,7 @@ public:
     void emitReturn(llvm::ReturnInst* inst);
     void EmitInsertValueToStruct(llvm::InsertValueInst* II);
     void EmitExtractValueFromStruct(llvm::ExtractValueInst* EI);
+    void EmitInsertValueToLayoutStruct(llvm::InsertValueInst* II);
 
     /// stack-call code-gen functions
     void emitStackCall(llvm::CallInst* inst);
@@ -347,6 +348,7 @@ public:
     void emitInsert(llvm::Instruction* inst);
     void emitExtract(llvm::Instruction* inst);
     void emitBitCast(llvm::BitCastInst* btCst);
+    void emitBitcastfromstruct(llvm::GenIntrinsicInst* BCFromStruct);
     void emitPtrToInt(llvm::PtrToIntInst* p2iCst);
     void emitIntToPtr(llvm::IntToPtrInst* i2pCst);
     void emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);

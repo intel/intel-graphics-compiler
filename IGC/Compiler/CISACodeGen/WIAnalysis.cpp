@@ -1392,7 +1392,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_getRtGlobalBufferPtr ||
         GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr ||
         GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr  ||
-        GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue)
+        GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue ||
+        GII_id == GenISAIntrinsic::GenISA_bitcastfromstruct)
     {
         switch (GII_id)
         {

@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/Analysis/MemoryLocation.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/AliasAnalysis.h>
+#include "llvm/Analysis/AliasSetTracker.h"
+#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/ValueTracking.h>
@@ -31,9 +33,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/InitializePasses.h"
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Probe/Assertion.h"
 
@@ -404,7 +408,7 @@ namespace {
     };
 }
 
-FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad, bool AllowVector8LoadStore) {
+FunctionPass* IGC::createMemOptPass(bool AllowNegativeSymPtrsForLoad, bool AllowVector8LoadStore) {
     return new MemOpt(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore);
 }
 
@@ -2219,4 +2223,1504 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
     } while (--MaxLookup);
 
     return true;
+}
+
+namespace {
+    enum class AddressModel {
+        BTS, A32, SLM, A64
+    };
+
+    struct LdStInfo {
+        // Load (or load intrinsic) for loadCombine().
+        // store (or store intrinsic) for storeCombine.
+        Instruction* Inst;
+        // Byte offset of 'Inst'->getPointerOperand() relative to
+        // that of the leading load/store inst.
+        int64_t      ByteOffset;
+
+        LdStInfo(Instruction* aI, int64_t aBO) : Inst(aI), ByteOffset(aBO) {}
+        Type* getLdStType() const;
+        uint32_t getAlignment() const;
+        AddressModel getAddressModel(CodeGenContext* Ctx) const;
+    };
+
+    typedef SmallVector<LdStInfo, 8> InstAndOffsetPairs;
+
+    // A bundle: a group of consecutive loads or a group of consecutive stores.
+    // Each bundle maps to a single GEN load or store.
+    struct BundleInfo {
+        InstAndOffsetPairs LoadStores;
+        int bundle_eltBytes;    // 1, 4, 8
+        int bundle_numElts;
+        // Valid for bundle_eltBytes = 1. It indicates whether D64 or
+        // D32(including D8U32 and D16U32) is used as data size.
+        bool useD64;
+    };
+
+    typedef SmallVector<uint32_t, 8> BundleSize_t;
+
+    // BundleConfig:
+    //    To tell what vector size is legit. It may need GEN platform as input.
+    class BundleConfig {
+    public:
+        BundleConfig(int ByteAlign, bool Uniform,
+            const AddressModel AddrModel, CodeGenContext* Ctx) {
+            if (Ctx->platform.LSCEnabled()) {
+                if (ByteAlign >= 8) {
+                    m_currVecSizeVar =
+                        Uniform ? &m_d64VecSizes_u : &m_d64VecSizes;
+                    m_eltSizeInBytes = 8;
+                }
+                else if (ByteAlign == 4) {
+                    m_currVecSizeVar =
+                        Uniform ? &m_d32VecSizes_u : &m_d32VecSizes;
+                    m_eltSizeInBytes = 4;
+                }
+                else {
+                    m_currVecSizeVar =
+                        Uniform ? &m_d8VecSizes_u : &m_d8VecSizes;
+                    m_eltSizeInBytes = 1;
+                }
+            }
+            else {
+                if (Uniform) {
+                    // Limit to simd8 (reasonable?), scattered read/write
+                    if (ByteAlign >= 4) {
+                        m_vecSizeVar = { 2, 4, 8 };
+                        m_eltSizeInBytes = (ByteAlign >= 8 ? 8 : 4);
+                    }
+                    else {
+                        m_vecSizeVar = { 2, 4, 8, 16, 32 };
+                        m_eltSizeInBytes = 1;
+                    }
+                }
+                else {
+                    if (ByteAlign >= 8 && AddrModel == AddressModel::A64) {
+                        m_vecSizeVar = { 2, 4 };  // QW scattered read/write
+                        m_eltSizeInBytes = 8;
+                    }
+                    else if (ByteAlign < 4) {
+                        m_vecSizeVar = { 2, 4 };  // Byte scattered read/write
+                        m_eltSizeInBytes = 1;
+                    }
+                    else {
+                        m_vecSizeVar = { 2, 3, 4 };  // untyped read/write
+                        m_eltSizeInBytes = 4;
+                    }
+                }
+                m_currVecSizeVar = &m_vecSizeVar;
+            }
+            m_currIndex = 0;
+        }
+
+        uint32_t getAndUpdateVecSizeInBytes(uint32_t Bytes) {
+            const BundleSize_t& Var = *m_currVecSizeVar;
+            int sz = (int)Var.size();
+            int i;
+            uint32_t total = 0;
+            for (i = m_currIndex; i < sz; ++i) {
+                uint32_t vecsize = Var[i];
+                total = vecsize * m_eltSizeInBytes;
+                if (total >= Bytes) {
+                    break;
+                }
+            }
+
+            if (i >= sz) {
+                m_currIndex = 0;
+                return 0;
+            }
+            // update index
+            m_currIndex = i;
+            return total;
+        }
+
+        uint32_t getMaxVecSizeInBytes() const {
+            const BundleSize_t& Var = *m_currVecSizeVar;
+            return Var.back() * m_eltSizeInBytes;
+        }
+
+        uint32_t getCurrVecSize() const {
+            const BundleSize_t& Var = *m_currVecSizeVar;
+            IGC_ASSERT(0 <= m_currIndex && (int)Var.size() > m_currIndex);
+            return Var[m_currIndex];
+        }
+
+        //
+        // Legal vector sizes for load/store
+        //
+        // 64bit aligned, 64bit element (D64)
+        static const BundleSize_t m_d64VecSizes;
+        // 32bit aligned, 32bit element (D32)
+        static const BundleSize_t m_d32VecSizes;
+        // 8bit aligned, 8bit element (D16U32, D32, D64)
+        static const BundleSize_t m_d8VecSizes;
+
+        //
+        // uniform
+        //
+        // 64bit aligned, 64bit element (D64)
+        static const BundleSize_t m_d64VecSizes_u;
+        // 32bit aligned, 32bit element (D32)
+        static const BundleSize_t m_d32VecSizes_u;
+        //  8bit aligned, 8bit element (D16U32, D32, D64)
+        static const BundleSize_t m_d8VecSizes_u;
+
+    private:
+        // Special vecSize, used for pre-LSC platform.
+        BundleSize_t        m_vecSizeVar;
+
+        const BundleSize_t* m_currVecSizeVar;
+        uint32_t            m_eltSizeInBytes;
+        int                 m_currIndex;
+    };
+
+    //
+    // Load and Store combine pass:
+    //   combines consecutive loads/stores into a single load/store.
+    // It is based on a simple integer symbolic evaluation.
+    //    1. It can combine loads/stores of different element size; and
+    //    2. It does clean up to remove dead code after combining, thus
+    //       no need to run DCE after this.
+    class LdStCombine : public FunctionPass
+    {
+        const DataLayout* m_DL;
+        AliasAnalysis* m_AA;
+        WIAnalysis* m_WI;
+        CodeGenContext* m_CGC;
+        Function* m_F;
+
+    public:
+        static char ID;
+
+        LdStCombine()
+            : FunctionPass(ID)
+            , m_DL(nullptr), m_AA(nullptr), m_WI(nullptr), m_CGC(nullptr)
+            , m_F(nullptr)
+        {
+            initializeLdStCombinePass(*PassRegistry::getPassRegistry());
+        }
+
+        bool runOnFunction(Function& F) override;
+
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.addRequired<CodeGenContextWrapper>();
+
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<AAResultsWrapperPass>();
+            AU.addRequired<TargetLibraryInfoWrapperPass>();
+            AU.addRequired<WIAnalysis>();
+        }
+
+        StringRef getPassName() const override { return "LdStCombine"; }
+
+        void releaseMemory() override { clear(); }
+
+    private:
+        SymbolicEvaluation m_symEval;
+        bool m_hasLoadCombined;
+        bool m_hasStoreCombined;
+
+        // All insts that have been combined and can be deleted.
+        SmallVector<Instruction*, 16> m_combinedInsts;
+
+        //
+        // Temporary reused for each BB.
+        //
+        // Inst order within a BB.
+        DenseMap<const Instruction*, int> m_instOrder;
+
+        // a bundle : a group of loads or a group of store.
+        // Each bundle will be combined into a single load or single store.
+        std::list<BundleInfo> m_bundles;
+
+        DenseMap<const Instruction*, int> m_visited;
+
+        void init(BasicBlock* BB) {
+            m_visited.clear();
+            m_instOrder.clear();
+        }
+        void setInstOrder(BasicBlock* BB);
+        void setVisited(Instruction* I) { m_visited[I] = 1; }
+        bool isVisited(const Instruction* I) const {
+            return m_visited.count(I) > 0;
+        }
+
+        // store combining top function
+        void combineStores(Function& F);
+
+        void createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores);
+
+        // Actually combining stores.
+        void createCombinedStores(Function& F);
+
+        // If V is vector, get all its elements (may generate extractElement
+        //   insts; if V is not vector, just V itself.
+        void getOrCreateElements(Value* V,
+            SmallVector<Value*, 16>& EltV, Instruction* InsertBefore);
+
+        void mergeConstElements(
+            SmallVector<Value*, 4>& EltVals,  uint32_t MaxMergeBytes);
+
+        // GatherCopy: copy vals to Dst
+        //   It's a packed copy, thus size of vals = size of DstTy.
+        Value* gatherCopy(Type* DstTy,
+          int NElts,
+          SmallVector<Value*, 16>& Vals,
+          Instruction* InsertBefore);
+
+        // Helper functions
+        bool hasAlias(AliasSetTracker& AST, MemoryLocation& MemLoc);
+
+        // Symbolic difference of two address values
+        // return value:
+        //   true  if A1 - A0 = constant in bytes, and return that constant as BO.
+        //   false if A1 - A0 != constant. BO will be undefined.
+        // BO: byte offset
+        bool getDiffIfConstant(Value* A0, Value* A1, int64_t& ConstBO);
+
+        // If I0 and I1 are load/store insts, compare their address operands and return
+        // the constant difference if it is; return false otherwise.
+        bool getAddressDiffIfConstant(Instruction* I0, Instruction* I1, int64_t& ConstBO);
+
+        void eraseDeadInsts();
+
+        void clear()
+        {
+            m_symEval.clear();
+            m_hasLoadCombined = false;
+            m_hasStoreCombined = false;
+            m_visited.clear();
+            m_instOrder.clear();
+            m_bundles.clear();
+        }
+    };
+}
+
+const BundleSize_t BundleConfig::m_d64VecSizes = { 2,3,4};
+const BundleSize_t BundleConfig::m_d32VecSizes = { 2,3,4,8 };
+const BundleSize_t BundleConfig::m_d8VecSizes = { 2,4,8 };
+const BundleSize_t BundleConfig::m_d64VecSizes_u = { 2,3,4,8,16,32,64 };
+const BundleSize_t BundleConfig::m_d32VecSizes_u = { 2,3,4,8,16,32,64 };
+const BundleSize_t BundleConfig::m_d8VecSizes_u = { 2,4,8,16,32 };
+
+FunctionPass* IGC::createLdStCombinePass() {
+    return new LdStCombine();
+}
+
+#undef PASS_FLAG
+#undef PASS_DESC
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG     "igc-ldstcombine"
+#define PASS_DESC     "IGC load/store combine"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(LdStCombine, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_END(LdStCombine, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char LdStCombine::ID = 0;
+
+Type* LdStInfo::getLdStType() const
+{
+    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
+    {
+        return LI->getType();
+    }
+    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
+    {
+        return SI->getValueOperand()->getType();
+    }
+    IGC_ASSERT(false);
+    return nullptr;
+}
+
+uint32_t LdStInfo::getAlignment() const
+{
+    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
+    {
+        return (uint32_t)IGCLLVM::getAlignmentValue(LI);
+    }
+    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
+    {
+        return (uint32_t)IGCLLVM::getAlignmentValue(SI);
+    }
+    IGC_ASSERT(false);
+    return 1;
+}
+
+AddressModel LdStInfo::getAddressModel(CodeGenContext* Ctx) const
+{
+    Value* Ptr = nullptr;
+    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
+    {
+        Ptr = LI->getPointerOperand();
+    }
+    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst)) {
+        Ptr = SI->getPointerOperand();
+    }
+    else {
+        IGC_ASSERT_MESSAGE(false, "Not support yet");
+    }
+
+    PointerType* PTy = dyn_cast<PointerType>(Ptr->getType());
+    IGC_ASSERT(PTy);
+    const uint32_t AS = PTy->getPointerAddressSpace();
+    uint bufferIndex = 0;
+    bool directIndexing = false;
+
+    BufferType BTy = DecodeAS4GFXResource(AS, directIndexing, bufferIndex);
+
+    AddressModel addrModel;
+    if (BTy == SLM) {
+        addrModel = AddressModel::SLM;
+    }
+    else if (BTy == ESURFACE_STATELESS) {
+        const bool isA32 = !IGC::isA64Ptr(PTy, Ctx);
+        addrModel = (isA32 ? AddressModel::A32 : AddressModel::A64);
+    }
+    else {
+        addrModel = AddressModel::BTS;
+    }
+    return addrModel;
+}
+
+bool LdStCombine::hasAlias(AliasSetTracker& AST, MemoryLocation& MemLoc)
+{
+    for (auto& AS : AST)
+    {
+        AliasResult aresult = AS.aliasesPointer(MemLoc.Ptr, MemLoc.Size, MemLoc.AATags, AST.getAliasAnalysis());
+        if (aresult != AliasResult::NoAlias) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LdStCombine::setInstOrder(BasicBlock* BB)
+{
+    // Lazy initialization. Skip if it's been initialized.
+    if (m_instOrder.size() > 0)
+        return;
+
+    int i = -1;
+    for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+    {
+        Instruction* I = &*II;
+        m_instOrder[I] = (++i);
+    }
+}
+
+bool LdStCombine::getDiffIfConstant(Value* A0, Value* A1, int64_t& constBO)
+{
+    // Using a simple integer symbolic expression (polynomial) as SCEV
+    // does not work well for this.
+    SymExpr* S0 = m_symEval.getSymExpr(A0);
+    SymExpr* S1 = m_symEval.getSymExpr(A1);
+    return m_symEval.isOffByConstant(S0, S1, constBO);
+}
+
+bool LdStCombine::getAddressDiffIfConstant(Instruction* I0, Instruction* I1, int64_t& BO)
+{
+    if (isa<LoadInst>(I0) && isa<LoadInst>(I1))
+    {
+        LoadInst* LI0 = static_cast<LoadInst*>(I0);
+        LoadInst* LI1 = static_cast<LoadInst*>(I1);
+        return getDiffIfConstant(LI0->getPointerOperand(), LI1->getPointerOperand(), BO);
+    }
+    if (isa<StoreInst>(I0) && isa<StoreInst>(I1))
+    {
+        StoreInst* SI0 = static_cast<StoreInst*>(I0);
+        StoreInst* SI1 = static_cast<StoreInst*>(I1);
+        return getDiffIfConstant(SI0->getPointerOperand(), SI1->getPointerOperand(), BO);
+    }
+    return false;
+}
+
+bool LdStCombine::runOnFunction(Function& F)
+{
+    m_CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    // Plan for doing it for LSC message only; But if EnableLdStCombine = 2,
+    // do it for legacy message as well.
+    if (F.hasOptNone() ||
+        (IGC_GET_FLAG_VALUE(EnableLdStCombine) == 1 &&
+         !m_CGC->platform.LSCEnabled()))
+        return false;
+
+    m_DL = &F.getParent()->getDataLayout();
+    m_AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+    m_WI = &getAnalysis<WIAnalysis>();
+    if (IGC_IS_FLAG_ENABLED(DisableUniformAnalysis)) {
+        m_WI = nullptr;
+    }
+    else {
+        m_WI = &getAnalysis<WIAnalysis>();
+    }
+    m_F = &F;
+
+    // Initialize symbolic evaluation
+    m_symEval.setDataLayout(m_DL);
+
+    combineStores(F);
+
+    bool changed = (m_hasLoadCombined || m_hasStoreCombined);
+
+    clear();
+
+    return changed;
+}
+
+// getElments():
+//   Return all valid elements of a given vector V.
+//   It may need to insert ExtractElementInst.
+void LdStCombine::getOrCreateElements(
+    Value* V, SmallVector<Value*, 16>& EltV, Instruction* InsertBefore)
+{
+    Type* Ty = V->getType();
+    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    if (!VTy) {
+        EltV.push_back(V);
+        return;
+    }
+
+    IGCLLVM::FixedVectorType* tVTy = cast<IGCLLVM::FixedVectorType>(VTy);
+    const int32_t nelts = (int32_t)tVTy->getNumElements();
+    EltV.resize(nelts, UndefValue::get(tVTy->getElementType()));
+    Value* ChainVal = V;
+    while (!isa<Constant>(ChainVal)) {
+        InsertElementInst* IEI = dyn_cast<InsertElementInst>(ChainVal);
+        if (!IEI || !isa<ConstantInt>(IEI->getOperand(2))) {
+            break;
+        }
+        ConstantInt* CInt = dyn_cast<ConstantInt>(IEI->getOperand(2));
+        uint32_t idx = (uint32_t)CInt->getZExtValue();
+
+        // Make sure the last IEI will be recorded if an element is
+        // inserted multiple times.
+        if (isa<UndefValue>(EltV[idx])) {
+            EltV[idx] = IEI->getOperand(1);
+        }
+
+        ChainVal = IEI->getOperand(0);
+    }
+
+    if (isa<UndefValue>(ChainVal)) {
+        // All valid elements known. For example,
+        //   v0 = extelt undef, s0, 0
+        //   v1 = extelt v0,    s1, 1
+        //   v2 = extelt v1,    s2, 2
+        //   V  = extelt v2,    s3, 3
+        // EltV[] = { s0, s1, s2, s3 }
+        return;
+    }
+
+    if (ConstantVector* CV = dyn_cast<ConstantVector>(ChainVal)) {
+        // Get valid elements from the final constant vector, for example.
+        //   v0 = extelt {1, 2, 3, 4}, s0, 0
+        //   V  = extelt v0,    s2, 2
+        // EltV[] = { s0, 2, s2, 4}
+        for (int i = 0; i < nelts; ++i) {
+            Value* v = CV->getOperand(i);
+            if (isa<UndefValue>(EltV[i]) && !isa<UndefValue>(v)) {
+                EltV[i] = v;
+            }
+        }
+        return;
+    }
+
+    // Not all elements known, get remaining unknown elements
+    //   LV = load
+    //   v0 = extelt LV,    s0, 0
+    //   V  = extelt v0,    s2, 1
+    // EltV[] = {s0, s1, 'extElt LV, 2', 'extElt LV, 3' }
+    IRBuilder<> builder(InsertBefore);
+    for (int i = 0; i < nelts; ++i) {
+        if (isa<UndefValue>(EltV[i])) {
+            Value* v = builder.CreateExtractElement(V, i);
+            EltV[i] = v;
+        }
+    }
+}
+
+void LdStCombine::combineStores(Function& F)
+{
+    // All store candidates with addr = common-base + const-offset
+    //   All stores have the same common-base and different const-offset.
+    InstAndOffsetPairs Stores;
+
+    // Keep store candidates for checking alias to see if those
+    // stores can be moved to the place of the last store.
+    AliasSetTracker AST(*m_AA);
+
+    auto isStoreCandidate = [&](Instruction* I)
+    {
+        if (StoreInst* SI = dyn_cast<StoreInst>(I))
+        {
+            // Only original, not-yet-visited store can be candidates.
+            bool isOrigSt = (m_instOrder.size() == 0 ||
+                             m_instOrder.count(I) > 0);
+            return (isOrigSt && !isVisited(I) &&
+                SI->isSimple() && SI->isUnordered());
+        }
+        return false;
+    };
+
+    // If all Stores can move down across I, return true;
+    // otherwise, return false.
+    auto canCombineStoresAcross = [&](Instruction* I)
+    {
+        if (I->isFenceLike()) {
+            return false;
+        }
+        if (isa<LoadInst>(I) ||
+            isa<StoreInst>(I) ||
+            I->mayReadOrWriteMemory()) {
+            MemoryLocation memloc = MemoryLocation::get(I);
+            return !hasAlias(AST, memloc);
+        }
+        return true;
+    };
+
+    m_hasStoreCombined = false;
+    for (auto& BB : F)
+    {
+        init(&BB);
+
+        auto IE = BB.end();
+        for (auto II = BB.begin(); II != IE; ++II)
+        {
+            Instruction* base = &*II;
+            if (!isStoreCandidate(base))
+            {
+                continue;
+            }
+
+            Stores.push_back(LdStInfo(base, 0));
+            AST.clear();
+            AST.add(base);
+            for (auto JI = std::next(II); JI != IE; ++JI) {
+                Instruction* I = &*JI;
+                if (canCombineStoresAcross(I)) {
+                    int64_t offset;
+                    if (isStoreCandidate(I) &&
+                        getAddressDiffIfConstant(base, I, offset)) {
+                        Stores.push_back(LdStInfo(I, offset));
+                        AST.add(I);
+                    }
+                    continue;
+                }
+
+                // Cannot add more stores, create bundles now.
+                //   Note: For now, each store is considered once. For example,
+                //     store a
+                //     store b
+                //     store c        // alias to store a
+                //     store d
+                //   As 'store c' aliases to 'store a', candidate 'Stores' stop
+                //   growing at 'store c', giving the first set {a, b}. Even
+                //   though {a, b} cannot combined, 'store b' will not be
+                //   reconsidered for a potential merging of {b, c, d}.
+                //   This can be changed if needed.
+                createBundles(&BB, Stores);
+            }
+
+            // last one
+            createBundles(&BB, Stores);
+        }
+
+        // Actually combining them.
+        createCombinedStores(F);
+    }
+}
+
+void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
+{
+    //
+    // SelectD32OrD64:
+    // a utility class to select whether to use data element D32 or D64 when
+    // the alignment is 8 bytes or 1 bytes. Not used when alignment is 4.
+    // (Here, data element refers to data element in load/store messages.)
+    //   1) use D32 if any store in the bundle has byte-element access (either
+    //      scalar or element type of a vector), and the store is non-uniform,
+    //      as D64 might require stride=8, which is not legit, to merge byte
+    //      elements; or
+    //   2) use D64 if there are more D64 elements than D32 elements (thus
+    //      less move instructions); or
+    //   3) use D64 if VecSize = 3 and there is at least one D64 store
+    //      (note that V3D64 has no equivalent D32 messages).
+    //   4) otherwise, either D32 or D64 based on uniformity and size
+    //      (details in useD64()).
+    //
+    class SelectD32OrD64 {
+        uint32_t LastNumD64, LastNumD32;
+        uint32_t currNumD64, currNumD32;
+        // If byte element is present, save its index.
+        int32_t lastStoreIdxWithByteElt;
+        // Whether this store is uniform or not.
+        const bool isUniform;
+        // Do tracking only for 8byte-aligned D64 or 1byte-aligned
+        const bool doTracking;
+
+        const CodeGenContext* Ctx;
+        const DataLayout* DL;
+    public:
+        SelectD32OrD64(const CodeGenContext* aCtx,
+            const DataLayout* aDL, bool aUniform, uint32_t aAlign)
+            : Ctx(aCtx), DL(aDL)
+            , LastNumD64(0), LastNumD32(0)
+            , currNumD64(0), currNumD32(0)
+            , lastStoreIdxWithByteElt(-1)
+            , isUniform(aUniform)
+            , doTracking(aAlign == 8 || aAlign == 1)
+        {}
+
+        // LSI:   the store to be tracked.
+        // LSIIdx: this store's index in the bundle.
+        // ByteOffset: starting offset of this LSI in the coalesced var.
+        void track(const LdStInfo* LSI, int32_t LSIIdx, uint32_t ByteOffset) {
+            if (!doTracking)
+                return;
+
+            Type* Ty = LSI->getLdStType();
+            if (!(Ty->isVectorTy() || Ty->isIntegerTy() || Ty->isFloatTy()))
+                return;
+
+            Type* eTy = Ty->getScalarType();
+            uint32_t eBytes = (uint32_t)DL->getTypeAllocSize(eTy);
+            uint32_t nElts = 1;
+            if (VectorType* VTy = dyn_cast<VectorType>(Ty)) {
+                auto fVTy = cast<IGCLLVM::FixedVectorType>(VTy);
+                nElts = (uint32_t)fVTy->getNumElements();
+            }
+            // If ByteOffset is odd, need to use byte mov to pack coalesced var
+            // (packed struct). so, treat this the same as byte-element access.
+            if (eBytes == 1 || (ByteOffset & 1) != 0) {
+                lastStoreIdxWithByteElt = LSIIdx;
+            }
+            else if (eBytes == 4) {
+                currNumD32 += nElts;
+            }
+            else if (eBytes == 8) {
+                currNumD64 += nElts;
+            }
+        }
+
+        void save(uint32_t Align) {
+            if (!doTracking)
+                return;
+            LastNumD32 = currNumD32;
+            LastNumD64 = currNumD64;
+        }
+
+        bool useD64(uint32_t VecEltBytes, uint32_t VecSizeInElt) {
+            if (!doTracking)
+                return false;
+
+            if (VecEltBytes == 1) {
+                if (hasByteElement()) {
+                    if (!isUniform) {
+                        IGC_ASSERT(VecSizeInElt <= 4);
+                    }
+                    return false;
+                }
+                if (VecSizeInElt == 8 && !isUniform) {
+                    return true;
+                }
+                // Currently, emit uses d32/d64 scatter for uniform store/load
+                // and is limited to simd8.
+                if (isUniform &&
+                    (VecSizeInElt > (4 * 8) ||
+                     (LastNumD64 > 0 && (2 * LastNumD64 > LastNumD32)))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool hasByteElement() const { return lastStoreIdxWithByteElt >= 0; }
+        bool skip(uint32_t VecEltBytes, uint32_t VecSizeInElt) const {
+            if (!doTracking)
+                return false;
+
+            if (VecEltBytes == 8 ||
+                (VecEltBytes == 1 && VecSizeInElt == 8)) {
+                if (hasByteElement() && !isUniform) {
+                    // case 1: check whether to skip D64.
+                    return true;
+                }
+            }
+            if (VecEltBytes == 8) {
+                if (LastNumD64 > 0 && VecSizeInElt == 3) {
+                    // case 2, check whether to skip D64.
+                    return false;
+                }
+                if (LastNumD64 > 0 && (2 * LastNumD64 > LastNumD32)) {
+                    // case 3: check whether to skip D64.
+                    return false;
+                }
+                // otherwise, skip 8byte-aligned D64
+                return true;
+            }
+            // VecEltBytes == 1; either D32 or D64 is okay, thus no skip.
+            // useD64() will select which one to use.
+            return false;
+        }
+    };
+
+    auto markVisited = [this](InstAndOffsetPairs& Stores) {
+        int32_t SZ = (int)Stores.size();
+        for (int i = 0; i < SZ; ++i)
+        {
+            const LdStInfo* lsi = &Stores[i];
+            setVisited(lsi->Inst);
+        }
+        Stores.clear();
+    };
+
+    int32_t SZ = (int)Stores.size();
+    if (SZ <= 1) {
+        markVisited(Stores);
+        return;
+    }
+
+    auto isBundled = [](const LdStInfo* LSI, SmallVector<Instruction*, 16>& L) {
+        return (std::find(L.begin(), L.end(), LSI->Inst) != L.end());
+    };
+    auto setBundled = [&isBundled](LdStInfo* LSI,
+        SmallVector<Instruction*, 16>& L) {
+        if (!isBundled(LSI, L)) {
+            L.push_back(LSI->Inst);
+        }
+    };
+
+    setInstOrder(BB);
+
+    // Sort stores in the order of increasing ByteOffset
+    std::sort(Stores.begin(), Stores.end(),
+        [](const LdStInfo& A, const LdStInfo& B) {
+            return A.ByteOffset < B.ByteOffset;
+        });
+
+    const LdStInfo* lsi0 = &Stores[0];
+    LoadInst* LI = dyn_cast<LoadInst>(lsi0->Inst);
+    StoreInst* SI = dyn_cast<StoreInst>(lsi0->Inst);
+    bool isUniform = false;
+    if (m_WI)
+    {
+        isUniform = m_WI->isUniform(
+            LI ? LI->getPointerOperand() : SI->getPointerOperand());
+    }
+    const AddressModel AddrModel = lsi0->getAddressModel(m_CGC);
+
+    // Starting from the largest alignment.
+    const uint32_t bundleAlign[] = { 8, 4, 1 };
+    const uint32_t aligns = (int)(sizeof(bundleAlign)/sizeof(bundleAlign[0]));
+    for (int ix = 0; ix < aligns; ++ix)
+    {
+        const uint32_t theAlign = bundleAlign[ix];
+
+        // If i64 insts are not supported, don't do D64 as it might
+        // require i64 mov, etc in codegen emit.
+        if (m_CGC->platform.hasNoFullI64Support() && theAlign > 4)
+            continue;
+
+        // Element size is the same as the alignment.
+        //   1) For byte-aligned, use vecEltBytes = 1 with different
+        //      number of vector elements to map D16U32, D32, D64. The final
+        //      store's type would be <2xi8> or i16 for D16U32, i32 for D32,
+        //      and i64 for D64.  For uniform, multiple of D32/D64 can be
+        //      merged and store's type would be <n x i32> or <n x i64>.
+        //   2) 4-byte aligned D32. vecEltBytes = 4.
+        //      The final store's type is <n x i32>
+        //   3) 8-byte aligned D64. vecEltBytes = 8.
+        //      The final store's type is <n x i64>
+        const uint32_t vecEltBytes = theAlign;
+        int32_t i = 0;
+        while (i < SZ)
+        {
+            // 1. The first one is the leading store.
+            const LdStInfo* leadLSI = &Stores[i];
+            if (isBundled(leadLSI, m_combinedInsts) ||
+                (i+1) == SZ) /* skip for last one */ {
+                ++i;
+                continue;
+            }
+
+            Type* leadTy = leadLSI->getLdStType();
+            Type* eltTy = leadTy->getScalarType();
+            uint32_t eltBytes = (uint32_t)(m_DL->getTypeStoreSize(eltTy));
+            const uint32_t align = leadLSI->getAlignment();
+            // Skip if align is less than the current alignment. Also, avoid
+            // merging non-uniform stores whose size >= 4 bytes when checking
+            // byte-aligned bundling.
+            if (align < theAlign ||
+                (theAlign == 1 && eltBytes >= 4 && !isUniform)) {
+                ++i;
+                continue;
+            }
+
+            BundleConfig  BC(theAlign, isUniform, AddrModel, m_CGC);
+            const uint32_t maxBytes = BC.getMaxVecSizeInBytes();
+            uint32_t totalBytes = (uint32_t)m_DL->getTypeStoreSize(leadTy);
+
+            SelectD32OrD64 D32OrD64(m_CGC, m_DL, isUniform, theAlign);
+            D32OrD64.track(leadLSI, i, 0);
+
+            if (totalBytes >= maxBytes) {
+                ++i;
+                continue;
+            }
+
+            // 2. grow this bundle as much as possible
+            // [i, e]: the range of stores form a legit bundle (e > i).
+            int e = -1;
+            uint32_t vecSize = -1;
+            for (int j = i + 1; j < SZ; ++j) {
+                const LdStInfo* LSI = &Stores[j];
+                if (isBundled(LSI, m_combinedInsts) ||
+                    (leadLSI->ByteOffset + totalBytes) != LSI->ByteOffset)
+                {
+                    // stop as remaining stores are not contiguous
+                    break;
+                }
+                Type* aTy = LSI->getLdStType();
+                uint32_t currByteOffset = totalBytes;
+                totalBytes += (uint32_t)m_DL->getTypeStoreSize(aTy);
+                if (totalBytes > maxBytes) {
+                    break;
+                }
+
+                D32OrD64.track(LSI, j, currByteOffset);
+
+                int nextBytes = BC.getAndUpdateVecSizeInBytes(totalBytes);
+                if (totalBytes == nextBytes &&
+                    !D32OrD64.skip(vecEltBytes, BC.getCurrVecSize())) {
+                    e = j;
+                    vecSize = BC.getCurrVecSize();
+
+                    D32OrD64.save(theAlign);
+                }
+            }
+
+            // If any store has byte element, skip D64 entirely to avoid
+            // forming a partial 8B-aligned D64 stores. Hopefully, this
+            // would result in a bigger 4B-aligned D32 store.
+            if (vecEltBytes == 8 && D32OrD64.hasByteElement()) {
+                // go to next iteration with D32.
+                break;
+            }
+
+            const int bundle_nelts = e - i + 1;
+            if (e >= 0 && bundle_nelts > 1) {
+                // Have a bundle, save it.
+                m_bundles.emplace_back(BundleInfo());
+                BundleInfo& newBundle = m_bundles.back();
+                newBundle.bundle_eltBytes = vecEltBytes;
+                newBundle.bundle_numElts = vecSize;
+                newBundle.useD64 =
+                    (theAlign == 1)
+                    ? D32OrD64.useD64(vecEltBytes, vecSize)
+                    : false;
+                for (int k = i; k <= e; ++k)
+                {
+                    LdStInfo& tlsi = Stores[k];
+                    newBundle.LoadStores.push_back(tlsi);
+                    setBundled(&tlsi, m_combinedInsts);
+                    setVisited(tlsi.Inst);
+                }
+                i = e + 1;
+            }
+            else {
+                ++i;
+            }
+        }
+    }
+
+    markVisited(Stores);
+}
+
+// mergeConstElements
+//   If EltVals has constant elements consecutively, merge them if possible.
+//   The merged constant's size is no more than MaxMergeByte.
+void LdStCombine::mergeConstElements(
+    SmallVector<Value*, 4>& EltVals, uint32_t MaxMergeBytes)
+{
+    // If all sub values are constants, coalescing them into a single
+    // constant of type DstEltTy.
+    //
+    // Merge goes with 2 bytes, 4 bytes, up to EltBytes (DstEltTy).
+    // For example: DstEltTy = i64
+    //     {i8 1, i8 2, i16 0x77, i8 3, i8 4, i8 5, i8 %y}
+    //  b = 2:
+    //     { i16 0x201, i16 0x77, i16 0x403, i8 5, i8 %y}
+    //  b = 4:
+    //     { i32 0x770201, i16 0x403, i8 5, i8 %y}
+    //  b = 8 :
+    //     no change.
+
+    // Check if it has two consecutive constants, skip if not.
+    // This is a quick check to skip for majority of cases.
+    bool isCandidate = false;
+    for (int i = 0, sz = (int)EltVals.size() - 1; i < sz; ++i) {
+        if (isa<Constant>(EltVals[i]) && isa<Constant>(EltVals[i + 1])) {
+            isCandidate = true;
+            break;
+        }
+    }
+    if (!isCandidate) {
+        return;
+    }
+
+    bool hasMerged = false;
+    std::list<Value*> mergedElts(EltVals.begin(), EltVals.end());
+    // b : the number of bytes of the merged value.
+    for (uint32_t b = 2; b <= MaxMergeBytes; b *= 2) {
+        int currOff = 0;
+        auto NI = mergedElts.begin();
+        for (auto II = NI; II != mergedElts.end(); II = NI) {
+            ++NI;
+            if (NI == mergedElts.end()) {
+                break;
+            }
+
+            // Try to merge (II, NI)
+            Value* elt0 = *II;
+            Type* ty0 = elt0->getType();
+            const uint32_t sz0 = (uint32_t)m_DL->getTypeAllocSize(ty0);
+            // Merged value shall be naturally aligned.
+            if ((currOff % b) != 0 || sz0 >= b) {
+                currOff += sz0;
+                continue;
+            }
+            Value* elt1 = *NI;
+            Type* ty1 = elt1->getType();
+            const uint32_t sz1 = (uint32_t)m_DL->getTypeAllocSize(ty1);
+            Constant* C0 = dyn_cast<Constant>(elt0);
+            Constant* C1 = dyn_cast<Constant>(elt1);
+            if (!C0 || !C1 || (sz0 + sz1) != b) {
+                continue;
+            }
+            uint64_t imm0 = GetImmediateVal(C0);
+            uint64_t imm1 = GetImmediateVal(C1);
+            imm0 &= maxUIntN(sz0 * 8);
+            imm1 &= maxUIntN(sz1 * 8);
+            uint64_t imm = ((imm1 << (sz0 * 8)) | imm0);
+            Type* ty = IntegerType::get(ty0->getContext(), (sz0 + sz1) * 8);
+            Constant* nC = ConstantInt::get(ty, imm, false);
+
+            mergedElts.insert(II, nC);
+            auto tII = NI;
+            ++NI;
+            mergedElts.erase(II);
+            mergedElts.erase(tII);
+            hasMerged = true;
+        }
+    }
+
+    if (!hasMerged) {
+        return;
+    }
+
+    EltVals.clear();
+    EltVals.insert(EltVals.end(), mergedElts.begin(), mergedElts.end());
+}
+
+// gatherCopy():
+//   Generate the coalesed values of either struct type or vector type.
+// Arguments:
+//   DstEltTy:     type for vector element. If the final value is a struct,
+//                 its struct member does not need to be DstEltTy, but its
+//                 size must be the same as DstEltTy's size.
+//   DstNElts:     num of elements (vector) or num of direct members (struct)
+//   Vals:         a list of values to be coalesced
+//   InsertBefore: inserting pos for new instructions.
+//
+// Examples:
+//   1. vector type;
+//      given DstEltTy=i32 and DstNElts=4
+//      Vals = { i32 a, i64 b, float c }
+//
+//      <4xi32> returnVal = {
+//        a,
+//        extractElement bitcast (i64 b to <2xi32>), 0
+//        extractElement bitcast (i64 b to <2xi32>), 1
+//        bitcast (float c to i32)
+//      };
+//   2. struct type
+//      given DstNElts x DstEltTy = 8xi32
+//      Vals = { 4xi8 a, i64 b,  4xfloat c, i16 d, i8 e, i8 f}
+//
+//      This function generates a val of struct type:
+//
+//      struct {
+//        struct {   // indexes
+//          i8 d0;   // (0, 0): extElt <4xi8> a,  0
+//          i8 d1;   // (0, 1): extElt <4xi8> a,  1
+//          i8 d2;   // (0, 2): extElt <4xi8> a,  2
+//          i8 d3;   // (0, 3): extElt <4xi8> a,  3
+//        } E0;
+//        i32   E1;    // (1): extElt bitcast (i64 b to <2xi32>), 0
+//        i32   E2;    // (2): extElt bitcast (i64 b to <2xi32>), 1
+//        float E3;    // (3): extElt <4xfloat> c,  0
+//        float E4;    // (4): extElt <4xfloat> c,  1
+//        float E5;    // (5): extElt <4xfloat> c,  2
+//        float E6;    // (6): extElt <4xfloat> c,  3
+//        struct {
+//          i16 d0;  // (7, 0): d
+//          i8  d1;  // (7, 1): e
+//          i8  d2;  // (7, 2): f
+//        } E7;
+//      } returnVal;
+//
+//  The struct layout:
+//    The direct members are in SOA. If its direct members are struct, those
+//    struct members (their size is either 32bit or 64bit) are in AOS. This
+//    is consistent with viewing struct as a vector < DstNElts x DstEltTy >
+//    from layout point of view.
+//
+//    To distinguish the struct generated here from other structs, the struct
+//    generated here are identified with reserved names, returned by
+//    getStructNameForSOALayout() or getStructNameForAOSLayout().
+//
+Value* LdStCombine::gatherCopy(
+    Type* DstEltTy,
+    int   DstNElts,
+    SmallVector<Value*, 16>& Vals,
+    Instruction* InsertBefore)
+{
+    // AllEltVals:
+    //   each entry is one direct member of struct or vector. If an entry has
+    //   more than one elements, it is either D32 or D64 in size, and likely a
+    //   member of type struct.
+    // The final value is either a struct or a vector. Its total size and its
+    // GRF layout is the same as vector type <DstNElts x DstEltTy>.
+    SmallVector<SmallVector<Value*, 4>, 16> allEltVals;
+
+    // eltVals:
+    //   Pending values that are going to form a single element in allEltVals.
+    //   Once all pending values is complete, save it into allEltVals.
+    SmallVector<Value*, 4> eltVals;
+
+    // worklist:
+    //   initialized to all input values in this bundle. Its values are
+    //   gradually moved to AllEltVals one by one until it is empty.
+    std::list<Value*> worklist(Vals.begin(), Vals.end());
+    IRBuilder<> irBuilder(InsertBefore);
+    const uint32_t EltBytes = (DstEltTy->getScalarSizeInBits() / 8);
+
+    // remainingBytes:
+    //   initialize to be the size of DstEltTy. It is the size of each
+    //   member of the struct or vector.
+    uint remainingBytes = EltBytes;
+    while (!worklist.empty()) {
+        Value* v = worklist.front();
+        worklist.pop_front();
+
+        // If v is vector, replace it with its elements
+        if (v->getType()->isVectorTy())
+        {
+            SmallVector<Value*, 16> elts;
+            getOrCreateElements(v, elts, InsertBefore);
+            worklist.insert(worklist.begin(), elts.begin(), elts.end());
+            continue;
+        }
+
+        Type* eTy = v->getType();
+        const uint32_t eBytes = (uint32_t)m_DL->getTypeAllocSize(eTy);
+        if (eTy->isPointerTy()) {
+            // need ptrtoint cast as bitcast does not work
+            IGC_ASSERT(eBytes == 8 || eBytes == 4 || eBytes == 2);
+            eTy = IntegerType::get(eTy->getContext(), eBytes * 8);
+            v = irBuilder.CreateCast(Instruction::PtrToInt, v, eTy);
+        }
+
+        // If v isn't element-size aligned in GRF at this offset, cannot
+        // generate a mov instruction. v must be split into small chunks
+        // that are aligned for mov to work.
+        uint32_t currAlign =
+            (uint32_t)MinAlign(EltBytes, EltBytes - remainingBytes);
+        if (currAlign < eBytes) {
+            // Two cases:
+            //   1. EltBytes = 4
+            //      store i32 p
+            //      store i32 p+4
+            //      store i64 p+8  <- v : i64
+            //     Need to split i64 by casting i64 --> 2xi32
+            //   2. EltBytes = 4, packed struct
+            //      store  i8 p
+            //      store i16 p+1    <- v : i16
+            //      store  i8 p+2
+            //     Need to split i16 into 2xi8
+            IGC_ASSERT((eBytes % currAlign) == 0);
+            int n = eBytes / currAlign;
+            Type* newETy = IntegerType::get(m_F->getContext(), currAlign * 8);
+            VectorType* nVTy = VectorType::get(newETy, n, false);
+            Value* new_v = irBuilder.CreateCast(Instruction::BitCast, v, nVTy);
+            auto insPos = worklist.begin();
+            for (int i = 0; i < n; ++i) {
+                Value* v = irBuilder.CreateExtractElement(new_v, i);
+                worklist.insert(insPos, v);
+            }
+            continue;
+        }
+
+        // v should fit into this remainingByts as v is element-size aligned.
+        IGC_ASSERT(remainingBytes >= eBytes);
+
+        if (remainingBytes > eBytes) {
+            eltVals.push_back(v);
+            remainingBytes -= eBytes;
+        }
+        else {
+            // Found one element of size EltBytes.
+            eltVals.push_back(v);
+
+            mergeConstElements(eltVals, EltBytes);
+
+            allEltVals.push_back(eltVals);
+
+            // Initialization for the next element
+            eltVals.clear();
+            remainingBytes = EltBytes;
+        }
+    }
+
+    IGC_ASSERT(eltVals.empty());
+
+    // A new coalesced value could be one of two types
+    //   1 a vector type  < DstNElts x DstEltTy >
+    //     If The element size of every original stored value is the same as
+    //     or multiple of the size of DstEltTy.
+    //   2 a struct type
+    //     If it cannot be of vector type, it is of a struct type. All the
+    //     elements of the struct must have the same size. If its element
+    //     is also a struct member, that struct member's size must be the
+    //     same as other element's size. And that size is either 32bit or
+    //     64bits. And the struct nesting is at most 2 levels.
+    //
+    //     Those struct or member struct are created as identified struct
+    //     types with a special reserved names. The struct's layout in GRF
+    //     is the same as that of a vector < DstNElts x DstEltTy >. This
+    //     implies that the struct GRF layout is SOA on the first level,
+    //     which is consistent with the current rule; for any of its member
+    //     that is also of struct type, it is AOS.
+    //
+    //     Note that the struct with one-level was supported only in IGC
+    //     until this change.
+    //
+    //    For examples:
+    //     1) vector type (D64 as element)
+    //           store i64 a, p; store i64 b, p+8; store i64 c, p+16
+    //        -->
+    //           store <3xi64> <a, b, c>,  p
+    //     2)struct type (D32 as element)
+    //          store i32 a, p; store i32 b, p+4
+    //          store i8  c0,  p+8; store i8 c1, p+9;
+    //          store i8  c2, p+10; store i8 c3, p+11
+    //          store i32 d, p+12
+    //      -->
+    //          struct __StructSOALayout_ {
+    //            i32, i32, struct {i8, i8, i16}, i32}
+    //          }
+    //          store __StructSOALayout__ <{a, b, <{c0, c1, c2, c3}>, d}>, p
+    //
+    //        Instead of store on struct type, a vector store is used to take
+    //        advantage of the existing vector store of codegen emit.
+    //          let stVal = __StructSOALayout__ <{a, b, <{c0, c1, c2, c3}>, d}>
+    //
+    //          val = bitcast __StructSOALayout__ %stVal to <4xi32>
+    //          store <4xi32> %val, p
+    //
+    //        The "bitcast" is no-op, meaning the layout of stVal is the same as
+    //        that of viewing it as a vector.
+    //
+    bool hasStructMember = false;
+    const int32_t sz = (int)allEltVals.size();
+    IGC_ASSERT(sz == DstNElts);
+    SmallVector<Type*, 16> StructTys;
+    for (int i = 0; i < sz; ++i) {
+        SmallVector<Value*, 4>& subElts = allEltVals[i];
+        int nelts = (int)subElts.size();
+        if (nelts == 1) {
+            Type* ty = subElts[0]->getType();
+            IGC_ASSERT(m_DL->getTypeAllocSize(ty) == EltBytes);
+            StructTys.push_back(ty);
+        }
+        else {
+            SmallVector<Type*, 4> subEltTys;
+            for (auto II : subElts) {
+                Value* elt = II;
+                subEltTys.push_back(elt->getType());
+            }
+
+            // create a member of a packed and identified struct type
+            // whose size = EltBytes. Use AOS layout.
+            Type* eltStTy = StructType::create(subEltTys,
+                getStructNameForAOSLayout(), true);
+            StructTys.push_back(eltStTy);
+
+            hasStructMember = true;
+        }
+    }
+
+    Type* structTy;
+    Value* retVal;
+    if (hasStructMember)
+    {
+        // Packed and named identified struct. Prefix "__" make sure it won't
+        // collide with any user types.  Use SOA layout.
+        structTy =
+            StructType::create(StructTys, getStructNameForSOALayout(), true);
+
+        // Create a value of type structTy
+        retVal = UndefValue::get(structTy);
+        for (int i = 0; i < sz; ++i) {
+            SmallVector<Value*, 4>& eltVals = allEltVals[i];
+            const int sz1 = (int)eltVals.size();
+            if (sz1 == 1) {
+                retVal = irBuilder.CreateInsertValue(retVal, eltVals[0], i);
+            }
+            else {
+                for (int j = 0; j < sz1; ++j) {
+                    uint32_t idxs[2] = { (unsigned)i, (unsigned)j };
+                    retVal =
+                        irBuilder.CreateInsertValue(retVal, eltVals[j], idxs);
+                }
+            }
+        }
+    }
+    else if (DstNElts == 1)
+    {
+        // a <1xDstEltTy>, use scalar type DstEltTy as the final type.
+        SmallVector<Value*, 4>& eltVals = allEltVals[0];
+        retVal = irBuilder.CreateBitCast(eltVals[0], DstEltTy);
+    }
+    else
+    {
+        VectorType* newTy = VectorType::get(DstEltTy, DstNElts, false);
+        retVal = UndefValue::get(newTy);
+        for (int i = 0; i < sz; ++i) {
+            SmallVector<Value*, 4>& eltVals = allEltVals[i];
+            Value* tV = irBuilder.CreateBitCast(eltVals[0], DstEltTy);
+            retVal = irBuilder.CreateInsertElement(retVal, tV, i);
+        }
+    }
+    return retVal;
+}
+
+void LdStCombine::createCombinedStores(Function& F)
+{
+    for (auto& bundle : m_bundles)
+    {
+        InstAndOffsetPairs& Stores = bundle.LoadStores;
+        IGC_ASSERT(bundle.LoadStores.size() >= 2);
+
+        // The new store will be inserted at the place of the last store,
+        // called anchor store, in the bundle. The lead store is the first
+        // store in the bundle.
+        // (Lead store, amaong all stores in the bundle, does not necessarily
+        //  appear first in the BB; and the last store does not necessarily
+        //  have the largest offset in the bundle.)
+        StoreInst* leadStore = static_cast<StoreInst*>(Stores[0].Inst);
+        SmallVector<Value*, 16> storedValues;
+        storedValues.push_back(leadStore->getValueOperand());
+        StoreInst* anchorStore = leadStore;
+        // insts are assigned order number starting from 0. Anchor store is
+        // one with the largest inst order number.
+        for (int i = 1, sz = (int)bundle.LoadStores.size(), n = -1; i < sz; ++i)
+        {
+            StoreInst* SI = static_cast<StoreInst*>(Stores[i].Inst);
+            int SI_no = m_instOrder[SI];
+            if (SI_no > n)
+            {
+                n = SI_no;
+                anchorStore = SI;
+            }
+            storedValues.push_back(SI->getValueOperand());
+        }
+
+        int eltBytes = bundle.bundle_eltBytes;
+        int nelts = bundle.bundle_numElts;
+        if (eltBytes == 1) { // byte-aligned
+            // D64, D32, D16U32
+            if ((nelts % 4) == 0) {
+                if (bundle.useD64) {
+                    // D64
+                    IGC_ASSERT((nelts % 8) == 0);
+                    eltBytes = 8;
+                    nelts = nelts / 8;
+                }
+                else {
+                    // D32
+                    eltBytes = 4;
+                    nelts = nelts / 4;
+                }
+            }
+            else {
+                // <2xi8>,  D16U32
+                IGC_ASSERT(nelts == 2);
+            }
+        }
+
+        // Create the new vector type for these combined stores.
+        Type* eltTy = Type::getIntNTy(F.getContext(), eltBytes * 8);
+        Type* VTy = (nelts == 1 ? eltTy : VectorType::get(eltTy, nelts, false));
+
+        // Generate the coalesced value.
+        Value* nV = gatherCopy(eltTy, nelts, storedValues, anchorStore);
+
+        IRBuilder<> irBuilder(anchorStore);
+        Value* storedVal = nV;
+        if (nV->getType()->isStructTy()) {
+            // Use special bitcast from struct to int vec to use vector emit.
+            // This bitcast is a noop and will be dessa'ed with its source.
+            Type* ITys[2] = { VTy, nV->getType() };
+            Function* IntrDcl = GenISAIntrinsic::getDeclaration(
+                F.getParent(), GenISAIntrinsic::ID::GenISA_bitcastfromstruct, ITys);
+            storedVal = irBuilder.CreateCall(IntrDcl, nV);
+        }
+
+        Value* Addr = leadStore->getPointerOperand();
+        PointerType* PTy = cast<PointerType>(Addr->getType());
+        PointerType* nPTy = PointerType::get(VTy, PTy->getAddressSpace());
+        Value* nAddr = irBuilder.CreateBitCast(Addr, nPTy);
+        StoreInst* finalStore = irBuilder.CreateAlignedStore(storedVal,
+            nAddr, IGCLLVM::getAlign(*leadStore), leadStore->isVolatile());
+        finalStore->setDebugLoc(anchorStore->getDebugLoc());
+
+        // Only keep metadata based on leadStore.
+        // (If each store has a different metadata, should they be merged
+        //  in the first place?)
+        if (MDNode* Node = leadStore->getMetadata("lsc.cache.ctrl"))
+            finalStore->setMetadata("lsc.cache.ctrl", Node);
+        if (MDNode* Node = leadStore->getMetadata(LLVMContext::MD_nontemporal))
+            finalStore->setMetadata(LLVMContext::MD_nontemporal, Node);
+    }
+
+    // Delete stores that have been combined.
+    eraseDeadInsts();
+}
+
+void LdStCombine::eraseDeadInsts()
+{
+    RecursivelyDeleteDeadInstructions(m_combinedInsts);
+    m_combinedInsts.clear();
+}
+
+
+namespace IGC
+{
+
+bool isLayoutStructType(const StructType* StTy)
+{
+    if (!StTy || StTy->isLiteral() || !StTy->hasName() || !StTy->isPacked())
+        return false;
+    StringRef stId = StTy->getName();
+    return (stId.startswith(getStructNameForSOALayout()) ||
+        stId.startswith(getStructNameForAOSLayout()));
+}
+
+uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
+{
+    uint64_t imm = 0;
+    if (StructType* sTy = dyn_cast<StructType>(C->getType())) {
+        IGC_ASSERT(DL->getTypeAllocSizeInBits(sTy) <= 64);
+        const StructLayout* SL = DL->getStructLayout(sTy);
+        int N = (int)sTy->getNumElements();
+        for (int i = 0; i < N; ++i)
+        {
+            Constant* C_i = C->getAggregateElement(i);
+            if (isa<UndefValue>(C_i)) {
+                continue;
+            }
+            Type* ty_i = sTy->getElementType(i);
+            uint32_t offbits = (uint32_t)SL->getElementOffset(i);
+            uint32_t nbits = (uint32_t)DL->getTypeAllocSizeInBits(ty_i);
+            IGC_ASSERT(ty_i->isFloatingPointTy() || ty_i->isIntegerTy());
+
+            uint64_t tImm = GetImmediateVal(C_i);
+            tImm &= maxUIntN(nbits);
+            imm = imm | (tImm << offbits);
+        }
+        return imm;
+    }
+    if (isa<ConstantFP>(C) || isa<ConstantInt>(C)) {
+        return GetImmediateVal(C);
+    }
+    if (isa<UndefValue>(C)) {
+        return 0;
+    }
+    IGC_ASSERT_MESSAGE(0, "unsupported Constant!");
+    return 0;
+}
+
+void getStructMemberByteOffsetAndType_1(const DataLayout* DL,
+    StructType* StTy, const ArrayRef<unsigned>& Indices,
+    Type*& Ty, uint32_t& ByteOffset)
+{
+    IGC_ASSERT_MESSAGE(Indices.size() == 1,
+        "ICE: nested struct not supported!");
+    const StructLayout* aSL = DL->getStructLayout(StTy);
+    uint32_t ix = Indices.front();
+    ByteOffset = (uint32_t)aSL->getElementOffset(ix);
+    Ty = StTy->getElementType(ix);
+    return;
+};
+
+void getStructMemberOffsetAndType_2(const DataLayout* DL,
+    StructType* StTy, const ArrayRef<unsigned>& Indices,
+    Type*& Ty0, uint32_t& ByteOffset0,
+    Type*& Ty1, uint32_t& ByteOffset1)
+{
+    uint32_t ix = Indices[0];
+    const StructLayout* SL0 = DL->getStructLayout(StTy);
+    ByteOffset0 = (uint32_t)SL0->getElementOffset(ix);
+    Ty0 = StTy->getElementType(ix);
+    ByteOffset1 = 0;
+    Ty1 = nullptr;
+
+    if (Indices.size() == 1)
+    {
+        return;
+    }
+
+    IGC_ASSERT(isLayoutStructType(StTy));
+
+    IGC_ASSERT_MESSAGE(Indices.size() <= 2,
+        "struct with nesting level > 2 not supported!");
+    IGC_ASSERT_MESSAGE(Ty0->isStructTy(),
+        "struct with non-struct aggregate member not supported!");
+    uint32_t ix1 = Indices[1];
+    StructType* stTy0 = cast<StructType>(Ty0);
+    const StructLayout* SL1 = DL->getStructLayout(stTy0);
+    ByteOffset1 = (uint32_t)SL1->getElementOffset(ix1);
+    Ty1 = stTy0->getElementType(ix1);
+    return;
+}
+
+void getAllDefinedMembers (const Value* IVI,
+    std::list<ArrayRef<unsigned>>& fieldsTBC)
+{
+    IGC_ASSERT(IVI != nullptr);
+    const Value* V = IVI;
+    while (isa<InsertValueInst>(V))
+    {
+        const InsertValueInst* I = cast<const InsertValueInst>(V);
+        fieldsTBC.push_front(I->getIndices());
+        V = I->getOperand(0);
+    }
+    if (!isa<UndefValue>(V))
+    {
+        // Don't know for sure, assume all have been defined.
+        fieldsTBC.clear();
+        StructType* stTy = cast<StructType>(IVI->getType());
+        fieldsTBC.insert(fieldsTBC.end(), 0, stTy->getNumElements() - 1);
+    }
+}
 }

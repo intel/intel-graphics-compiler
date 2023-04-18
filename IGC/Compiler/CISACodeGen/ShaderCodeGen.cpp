@@ -634,6 +634,14 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
     // Should help MemOpt pass to merge more loads
     mpm.add(createSinkCommonOffsetFromGEPPass());
+
+    if (!isOptDisabled && IGC_IS_FLAG_ENABLED(EnableLdStCombine) &&
+        ctx.type == ShaderType::OPENCL_SHADER)
+    {
+        // start with OCL, will apply to others.
+        mpm.add(createLdStCombinePass());
+    }
+
     // Run MemOpt
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
