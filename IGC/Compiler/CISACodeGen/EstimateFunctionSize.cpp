@@ -52,7 +52,8 @@ IGC::createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel AL) {
 }
 
 EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL)
-    : ModulePass(ID), M(nullptr), AL(AL), tmpHasImplicitArg(false), HasRecursion(false), EnableSubroutine(false), threshold_func_freq(Scaled64::getLargest()){}
+    : ModulePass(ID), M(nullptr), AL(AL), tmpHasImplicitArg(false), HasRecursion(false), EnableSubroutine(false),
+      threshold_func_freq(Scaled64::getLargest()), thresholdForTrimming(Scaled64::get(IGC_GET_FLAG_VALUE(ControlInlineSizeContribution))){}
 
 EstimateFunctionSize::~EstimateFunctionSize() { clear(); }
 
@@ -102,6 +103,13 @@ bool EstimateFunctionSize::runOnModule(Module& Mod) {
 
 namespace {
 
+#define PrintPartitionUnit(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & hex_val) != 0) {dbgs() << "PartitionUnit0x" << hex_val << ": " << contents << "\n";}
+#define PrintControlUnitSize(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintControlUnitSize) & hex_val) != 0) {dbgs() << "ControlUnitSize0x" << hex_val << ": " << contents << "\n";}
+#define PrintControlKernelTotalSize(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & hex_val) != 0) {dbgs() << "ControlKernelTotalSize0x" << hex_val << ": " << contents << "\n";}
+#define PrintTrimUnit(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & hex_val) != 0 || (IGC_GET_FLAG_VALUE(PrintControlUnitSize) & hex_val) != 0) {dbgs() << "TrimUnit0x" << hex_val << ": " << contents << "\n";}
+#define PrintFunctionSizeAnalysis(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & hex_val) != 0) {dbgs() << "FunctionSizeAnalysis0x" << hex_val << ": " << contents << "\n";}
+#define PrintStaticProfilingForKernelSizeReduction(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintStaticProfilingForKernelSizeReduction) & hex_val) != 0) {dbgs() << "StaticProfilingForKernelSizeReduction0x" << hex_val << ": " << contents << "\n";}
+
     typedef enum
     {
         SP_NO_METRIC = 0, /// \brief A flag to indicate whether no metric is used. We use this especially when we only need static profile infomation without enforcement
@@ -123,9 +131,19 @@ namespace {
     /// Associate each function with a partially expanded size and remaining
     /// unexpanded function list, etc.
 
+    typedef enum
+    {
+        FT_NOT_APPLICABLE = 0,       /// \brief A flag to indicate functions don't need to be considered
+        FT_NOT_BEST_EFFORT = (0x1 << 0x1),    /// \brief A flag to indicate function is not open to trimming or partitioning
+        FT_MUL_KERNEL = (0x1 << 0x2),    /// \brief A flag to indicate function is in multiple kernels and they are forced to be inlined
+        FT_BIG_ENOUGH = (0x1 << 0x3),    /// \brief A flag to indicate functions are big enough to trim
+        FT_TOO_TINY = (0x1 << 0x4),    /// \brief A flag to indicate function is too tiny to be trimmed
+        FT_HIGHER_WEIGHT = (0x1 << 0x5),    /// \brief a flag to indicate the function has higher weight than threshold
+        FT_LOWER_WEIGHT = (0x1 << 0x6),    /// \brief a flag to indicate the function has lower weight than threshold
+    } FUNCTION_TRAIT_FLAG_t;
     struct FunctionNode {
         FunctionNode(Function* F, std::size_t Size)
-            : F(F), InitialSize(Size), UnitSize(Size), ExpandedSize(Size), tmpSize(Size), CallingSubroutine(false),
+            : F(F), InitialSize(Size), UnitSize(Size), ExpandedSize(Size), Inline_cnt(0), tmpSize(Size), CallingSubroutine(false),
             FunctionAttr(0), InMultipleUnit(false), HasImplicitArg(false), staticFuncFreq(0,0) {}
 
         Function* F;
@@ -140,6 +158,9 @@ namespace {
 
         /// \brief Expanded size when all functions in a unit below the node are expanded
         uint32_t ExpandedSize;
+
+        /// \brief How many times the function is inlined at callsites.
+        uint32_t Inline_cnt;
 
         /// \brief used to update unit size or expanded unit size in topological sort
         uint32_t tmpSize;
@@ -172,6 +193,11 @@ namespace {
 
         std::string getStaticFuncFreqStr() { return staticFuncFreq.toString();}
 
+        uint64_t getSizeContribution() { return Inline_cnt == 0 ? InitialSize : Inline_cnt * InitialSize; }
+        Scaled64 getWeightForTrimming() {
+            return staticFuncFreq == 0 ? Scaled64::get(getSizeContribution()) : Scaled64::get(getSizeContribution())/staticFuncFreq;
+        }
+
         /// \brief A node becomes a leaf when all called functions are expanded.
         bool isLeaf() const { return CalleeList.empty(); }
 
@@ -179,14 +205,14 @@ namespace {
         // A caller may call the same callee multiple times, e.g. A->{B,B,B}: A->CalleeList(B,B,B), B->CallerList(A,A,A)
         void addCallee(FunctionNode* G) {
             IGC_ASSERT(G);
-            if (!CalleeList.count(G)) //First time added, Initialize it
+            if (CalleeList.find(G) == CalleeList.end()) //First time added, Initialize it
                 CalleeList[G] = 0;
             CalleeList[G] += 1;
             CallingSubroutine = true;
         }
         void addCaller(FunctionNode* G) {
             IGC_ASSERT(G);
-            if (!CallerList.count(G)) //First time added, Initialize it
+            if (CallerList.find(G) == CallerList.end()) //First time added, Initialize it
                 CallerList[G] = 0;
             CallerList[G] += 1;
         }
@@ -236,56 +262,52 @@ namespace {
             return false;
         }
 
-        bool isGoodtoTrim(Scaled64 funcFreqThreshold)
+        uint16_t getFunctionTrait(Scaled64 thresholdForTrimming)
         {
             if (FunctionAttr != FA_BEST_EFFORT_INLINE) //Only best effort inline can be trimmed
-                return false;
+                return FT_NOT_BEST_EFFORT;
             // to allow trimming functions called from other kernels, set the regkey to false
             if (IGC_IS_FLAG_ENABLED(ForceInlineExternalFunctions) && InMultipleUnit)
-                return false;
+                return FT_MUL_KERNEL;
 
             if (IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
             {
-                //Trim big functions.
-                if (InitialSize > IGC_GET_FLAG_VALUE(ControlInlineTinySize))
-                    return true;
-                else if (getStaticFuncFreq() < funcFreqThreshold) //For small functions, we only trim small frequency functions
-                    return true;
+                if (InitialSize < IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSizeContribution)) //It's too small to trim
+                    return FT_TOO_TINY;
+                if (getWeightForTrimming() < thresholdForTrimming)
+                    return FT_LOWER_WEIGHT;
+                else
+                    return FT_HIGHER_WEIGHT;
             }
-            else //When static analysis is disabled, we only check the size of function to decide whetehr to trim or not
-            {
-                //Trim big functions.
-                if (InitialSize > IGC_GET_FLAG_VALUE(ControlInlineTinySize))
-                    return true;
-            }
-            return false;
+
+            //This is a legacy mode trimming based on the size
+            if (InitialSize < IGC_GET_FLAG_VALUE(ControlInlineTinySize)) //It's too small to trim
+                return FT_TOO_TINY;
+            else
+                return FT_BIG_ENOUGH;
+
+            return FT_NOT_APPLICABLE;
         }
 
-        void printFuncAttr()
+        std::string getFuncAttrStr()
         {
-            dbgs() << "Function attribute of " << F->getName().str() << ": ";
             switch (FunctionAttr) {
             case FA_BEST_EFFORT_INLINE:
-                dbgs() << "Best effort innline" << "\n";
-                break;
+                return "Best effort innline";
             case FA_FORCE_INLINE:
-                dbgs() << "Force innline" << "\n";
-                break;
+                return "Force innline";
             case FA_TRIMMED:
-                dbgs() << "Trimmed" << "\n";
-                break;
+                return "Trimmed";
             case FA_STACKCALL:
-                dbgs() << "Stack call" << "\n";
-                break;
+                return "Stack call";
             case FA_KERNEL_ENTRY:
-                dbgs() << "Kernel entry" << "\n";
-                break;
+                return "Kernel entry";
             case FA_ADDR_TAKEN:
-                dbgs() << "Address taken" << "\n";
-                break;
+                return "Address taken";
             default:
-                dbgs() << "Wrong value" << "\n";
+                return "Wrong value";
             }
+            return "";
         }
 
         //Top down bfs to find the size of a compilation unit
@@ -295,22 +317,17 @@ namespace {
             TopDownQueue.push_back(this);
             visit.insert(this);
             uint32_t total = 0;
-            if ((IGC_GET_FLAG_VALUE(PrintControlUnitSize) & 0x1) != 0) {
-                dbgs() << "-------------------------------------------------------------------------------------------------------------------------" << "\n";
-                dbgs() << "Functions in the unit " << F->getName().str() << "\n";
-            }
+            PrintFunctionSizeAnalysis(0x4, "Functions in the unit " << F->getName().str())
             while (!TopDownQueue.empty())
             {
                 FunctionNode* Node = TopDownQueue.front();
-                if ((IGC_GET_FLAG_VALUE(PrintControlUnitSize) & 0x1) != 0) {
-                    dbgs() << Node->F->getName().str() << ": " << Node->InitialSize << "\n";
-                }
+                PrintFunctionSizeAnalysis(0x4, Node->F->getName().str() << ": " << Node->InitialSize)
                 TopDownQueue.pop_front();
                 total += Node->InitialSize;
                 for (auto Callee : Node->CalleeList)
                 {
                     FunctionNode* calleeNode = Callee.first;
-                    if (visit.count(calleeNode) || calleeNode->isStackCallAssigned()) //Already processed or head of stack call
+                    if (visit.find(calleeNode) != visit.end() || calleeNode->isStackCallAssigned()) //Already processed or head of stack call
                         continue;
                     visit.insert(calleeNode);
                     TopDownQueue.push_back(calleeNode);
@@ -329,10 +346,7 @@ namespace {
             if (HasImplicitArg == false && callee->HasImplicitArg == true)
             {
                 HasImplicitArg = true;
-                if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x40) != 0)
-                {
-                    dbgs() << "Func " << this->F->getName().str() << " expands to has implicit arg due to " << callee->F->getName().str() << "\n";
-                }
+                PrintFunctionSizeAnalysis(0x4, "Func " << this->F->getName().str() << " expands to has implicit arg due to " << callee->F->getName().str())
 
                 if (FunctionAttr != FA_KERNEL_ENTRY && FunctionAttr != FA_ADDR_TAKEN) //Can't inline kernel entry or address taken functions
                 {
@@ -439,7 +453,7 @@ bool EstimateFunctionSize::matchImplicitArg( CallInst& CI )
     }
     if( matched && ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x40 ) != 0 )
     {
-        dbgs() << "Matched implicit arg " << funcName.str() << "\n";
+        PrintFunctionSizeAnalysis(0x8, "Matched implicit arg " << funcName.str())
     }
     return matched;
 }
@@ -538,7 +552,7 @@ void EstimateFunctionSize::updateStaticFuncFreq()
             continue;
         FunctionNode* Node = get<FunctionNode>(&F);
 
-        if (Counts.count(&F) > 0)
+        if (Counts.find(&F) != Counts.end())
             Node->setStaticFuncFreq(Counts[&F]);
     }
     return;
@@ -547,6 +561,7 @@ void EstimateFunctionSize::updateStaticFuncFreq()
 void EstimateFunctionSize::runStaticAnalysis()
 {
     //Analyze function frequencies from SyntheticCountsPropagation
+    PrintStaticProfilingForKernelSizeReduction(0x1, "------------------Static analysis start------------------")
     updateStaticFuncFreq();
     std::vector<Scaled64> freqLog;
     if (IGC_GET_FLAG_VALUE(BlockFrequencySampling)) //Set basic blocks as the sample space
@@ -563,8 +578,7 @@ void EstimateFunctionSize::runStaticAnalysis()
 
                 BBCount /= EntryFreq;
                 BBCount *= Node->getStaticFuncFreq();
-                if ((IGC_GET_FLAG_VALUE(PrintStaticProfilingForKernelSizeReduction) & 0x1) != 0)
-                    dbgs() << "Block frequency of " << B.getName().str() << ": " << BBCount.toString() << "\n";
+                PrintStaticProfilingForKernelSizeReduction(0x1, "Block frequency of " << B.getName().str() << ": " << BBCount.toString())
 
                 if (BBCount > 0) //Can't represent 0 in log scale so ignore, better idea?
                     freqLog.push_back(BBCount);
@@ -578,8 +592,7 @@ void EstimateFunctionSize::runStaticAnalysis()
             if (F.empty())
                 continue;
             FunctionNode* Node = get<FunctionNode>(&F);
-            if ((IGC_GET_FLAG_VALUE(PrintStaticProfilingForKernelSizeReduction) & 0x1) != 0)
-                dbgs() << "Function frequency of " << Node->F->getName().str() << ": " << Node->getStaticFuncFreqStr() << "\n";
+            PrintStaticProfilingForKernelSizeReduction(0x1, "Function frequency of " << Node->F->getName().str() << ": " << Node->getStaticFuncFreqStr())
             if (Node->getStaticFuncFreq() > 0) //Can't represent 0 in log scale so ignore, better idea?
                 freqLog.push_back(Node->getStaticFuncFreq());
         }
@@ -612,15 +625,12 @@ void EstimateFunctionSize::runStaticAnalysis()
             threshold_func_freq = freqLog.back();
         else
             threshold_func_freq = map_log10_to_scaled64[*it_lower];
-
-        if ((IGC_GET_FLAG_VALUE(PrintStaticProfilingForKernelSizeReduction) & 0x1) != 0)
-        {
-            dbgs() << "------------------------Normal distribution--------------------" << "\n";
-            dbgs() << "Sample count: " << freqLogDbl.size() << "\n";
-            dbgs() << "Execution frequency mean (Log10 scale): " << mean << "\n";
-            dbgs() << "Standard deviation (Log10 scale): " << standard_deviation << "\n";
-            dbgs() << "Execution frequency threshold with Constant(C) " << C << ": " << threshold_func_freq.toString() << "\n";
-        }
+        thresholdForTrimming = thresholdForTrimming / threshold_func_freq;
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Metric: Normal distribution");
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Sample count: " << freqLogDbl.size());
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Execution frequency mean (Log10 scale): " << mean);
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Standard deviation (Log10 scale): " << standard_deviation);
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Execution frequency threshold with Constant(C) " << C << ": " << threshold_func_freq.toString());
     }
     else if ((IGC_GET_FLAG_VALUE(MetricForKernelSizeReduction) & SP_LONGTAIL_DISTRIBUTION) != 0 && !freqLog.empty()) //When using a long-tail distribution. Ignore when there are no frequency data
     {
@@ -631,12 +641,10 @@ void EstimateFunctionSize::runStaticAnalysis()
         std::nth_element(freqLog.begin(), freqLog.begin() + C_pos, freqLog.end(),
             [](Scaled64& x, Scaled64& y) {return x < y;}); //Low C%
         threshold_func_freq = freqLog[C_pos];
-        if ((IGC_GET_FLAG_VALUE(PrintStaticProfilingForKernelSizeReduction) & 0x1) != 0)
-        {
-            dbgs() << "------------------------Long tail distribution--------------------" << "\n";
-            dbgs() << "Low " << threshold_cold << "% pos: " << C_pos << " out of " << freqLog.size() << "\n";
-            dbgs() << "Execution frequency threshold: " << threshold_func_freq << "\n";
-        }
+        thresholdForTrimming = thresholdForTrimming / threshold_func_freq;
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Metric: Long tail distribution");
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Low " << threshold_cold << "% pos: " << C_pos << " out of " << freqLog.size());
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Execution frequency threshold: " << threshold_func_freq);
     }
     else if ((IGC_GET_FLAG_VALUE(MetricForKernelSizeReduction) & SP_AVERAGE_PERCENTAGE) != 0 && !freqLog.empty()) //When using a average C%
     {
@@ -645,13 +653,12 @@ void EstimateFunctionSize::runStaticAnalysis()
         Scaled64 C = Scaled64::get(IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold)) / Scaled64::get(10); //Scale down /10
         IGC_ASSERT(C > 0 && C <= 100);
         threshold_func_freq = mean * (C / Scaled64::get(100));
-        if ((IGC_GET_FLAG_VALUE(PrintStaticProfilingForKernelSizeReduction) & 0x1) != 0)
-        {
-            dbgs() << "--------------------------------Average%--------------------------------" << "\n";
-            dbgs() << "Average threshold * C " << C.toString() <<"%: " << threshold_func_freq.toString() << "\n";
-        }
+        thresholdForTrimming = thresholdForTrimming / threshold_func_freq;
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Metric: Average%");
+        PrintStaticProfilingForKernelSizeReduction(0x1, "Average threshold * " << C.toString() << "%: " << threshold_func_freq.toString());
     }
 
+    PrintStaticProfilingForKernelSizeReduction(0x1, "------------------Static analysis end------------------\n")
     return;
 }
 void EstimateFunctionSize::analyze() {
@@ -714,43 +721,9 @@ void EstimateFunctionSize::analyze() {
 
     bool needImplAnalysis = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs) || IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
     // check functions and mark those that use implicit args.
+    PrintFunctionSizeAnalysis(0x1, "--------------------------Function size analysis start--------------------------");
     if (needImplAnalysis)
-    {
-        for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I)
-        {
-            FunctionNode* Node = (FunctionNode*)I->second;
-            IGC_ASSERT(Node);
-            tmpHasImplicitArg = false;
-            visit(Node->F);
-            if (!tmpHasImplicitArg) //The function doesn't have an implicit argument: skip
-                continue;
-            Node->HasImplicitArg = true;
-            if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x40) != 0)
-            {
-                static int cnt = 0;
-                const char* Name;
-                if (Node->isLeaf())
-                    Name = "Leaf";
-                else
-                    Name = "nonLeaf";
-                dbgs() << Name << " Func " << ++cnt << " " << Node->F->getName().str() << " calls implicit args so HasImplicitArg" << "\n";
-            }
-
-            if (Node->isEntryFunc() || Node->isAddrTakenFunc()) //Can't inline kernel entry or address taken functions
-                continue;
-
-            if (Node->isStackCallAssigned()) //When stackcall is assigned we need to determine based on the flag
-            {
-                if(IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
-                    Node->setForceInline();
-                continue;
-            }
-
-            //For other cases
-            if(IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs)) //Force inline ordinary functions with implicit arguments
-                Node->setForceInline();
-        }
-    }
+        performImplArgsAnalysis();
 
     // Update expanded and static unit size and propagate implicit argument information which might cancel some stackcalls
     for (void *entry : kernelEntries)
@@ -758,41 +731,69 @@ void EstimateFunctionSize::analyze() {
         FunctionNode* kernelEntry = (FunctionNode*)entry;
         updateExpandedUnitSize(kernelEntry->F, true);
         kernelEntry->updateUnitSize();
-        if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-            dbgs() << "Unit size (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->UnitSize <<"\n";
-            dbgs() << "Expanded unit size (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->ExpandedSize << "\n";
-        }
+        PrintFunctionSizeAnalysis(0x1, "Unit size (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->UnitSize);
+        PrintFunctionSizeAnalysis(0x1, "Expanded unit size (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->ExpandedSize);
     }
 
     // Find all survived stackcalls and address taken functions and update unit sizes
     for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I)
     {
         FunctionNode* Node = (FunctionNode*)I->second;
+        PrintFunctionSizeAnalysis(0x1, "Size contribution " << Node->F->getName().str() << ": " << Node->getSizeContribution() << " whose original size: " << Node->InitialSize << " Inline count: " << Node->Inline_cnt)
         if (Node->isStackCallAssigned())
         {
             stackCallFuncs.push_back(Node);
             Node->updateUnitSize();
-            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                dbgs() << "Unit size (stack call)" << Node->F->getName().str() << ": " << Node->UnitSize << "\n";
-            }
+            PrintFunctionSizeAnalysis(0x1, "Unit size (stack call) " << Node->F->getName().str() << ": " << Node->UnitSize);
         }
         else if (Node->isAddrTakenFunc())
         {
             addressTakenFuncs.push_back(Node);
             Node->updateUnitSize();
-            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                dbgs() << "Unit size (address taken) " << Node->F->getName().str() << ": " << Node->UnitSize << "\n";
-            }
+            PrintFunctionSizeAnalysis(0x1, "Unit size (address taken) " << Node->F->getName().str() << ": " << Node->UnitSize);
         }
     }
+    PrintFunctionSizeAnalysis(0x1, "Function count= " << ECG.size());
+    PrintFunctionSizeAnalysis(0x1, "Kernel count= " << kernelEntries.size());
+    PrintFunctionSizeAnalysis(0x1, "Manual stack call count= " << stackCallFuncs.size());
+    PrintFunctionSizeAnalysis(0x1, "Address taken function call count= " << addressTakenFuncs.size());
+    PrintFunctionSizeAnalysis(0x1, "--------------------------Function size analysis end--------------------------\n");
+    return;
+}
 
-    if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-        dbgs() << "Function count= " << ECG.size() << "\n";
-        dbgs() << "Kernel count= " << kernelEntries.size() << "\n";
-        dbgs() << "Manual stack call count= " << stackCallFuncs.size() << "\n";
-        dbgs() << "Address taken function call count= " << addressTakenFuncs.size() << "\n";
+void EstimateFunctionSize::performImplArgsAnalysis()
+{
+    for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I)
+    {
+        FunctionNode* Node = (FunctionNode*)I->second;
+        IGC_ASSERT(Node);
+        tmpHasImplicitArg = false;
+        visit(Node->F);
+        if (!tmpHasImplicitArg) //The function doesn't have an implicit argument: skip
+            continue;
+        Node->HasImplicitArg = true;
+        static int cnt = 0;
+        const char* Name;
+        if (Node->isLeaf())
+            Name = "Leaf";
+        else
+            Name = "nonLeaf";
+        PrintFunctionSizeAnalysis(0x8, Name << " Func " << ++cnt << " " << Node->F->getName().str() << " calls implicit args so HasImplicitArg")
+
+            if (Node->isEntryFunc() || Node->isAddrTakenFunc()) //Can't inline kernel entry or address taken functions
+                continue;
+
+        if (Node->isStackCallAssigned()) //When stackcall is assigned we need to determine based on the flag
+        {
+            if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
+                Node->setForceInline();
+            continue;
+        }
+
+        //For other cases
+        if (IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs)) //Force inline ordinary functions with implicit arguments
+            Node->setForceInline();
     }
-
     return;
 }
 
@@ -826,17 +827,12 @@ void EstimateFunctionSize::checkSubroutine() {
 
         if (expandedMaxSize <= subroutineThreshold )
         {
-            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                dbgs() << "No need to reduce the kernel size. (The max expanded kernel size is small) " << expandedMaxSize << " < " << subroutineThreshold <<  "\n";
-            }
+            PrintTrimUnit(0x1, "No need to reduce the kernel size. (The max expanded kernel size is small) " << expandedMaxSize << " < " << subroutineThreshold)
             if(!HasRecursion)
                 EnableSubroutine = false;
         }
         else if (AL == AL_Module && IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute)) //kernel trimming and partitioning only kick in at the first EstimationFunctionSize
         {
-            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                dbgs() << "Need to reduce the kernel size. (The max expanded kernel size is large) " << expandedMaxSize << " > " << subroutineThreshold << "\n";
-            }
             //Analyze Function/Block frequencies
             if (IGC_IS_FLAG_ENABLED(StaticProfilingForPartitioning) ||
                 IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming)) // Either a normal or long-tail distribution is enabled
@@ -845,21 +841,23 @@ void EstimateFunctionSize::checkSubroutine() {
             // If the max unit size exceeds threshold, do partitioning
             if (IGC_IS_FLAG_ENABLED(PartitionUnit))
             {
+                PrintPartitionUnit(0x1, "--------------------------Partition unit start--------------------------");
                 uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
                 uint32_t maxUnitSize = getMaxUnitSize();
                 if (maxUnitSize > unitThreshold)
                 {
-                    if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
-                        dbgs() << "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold << "\n";
+                    PrintPartitionUnit(0x1, "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold)
                     partitionKernel();
                 }
                 else
                 {
-                    if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
-                        dbgs() << "Max unit size " << maxUnitSize << " is smaller than the threshold (No partitioning needed) " << unitThreshold << "\n";
+                    PrintPartitionUnit(0x1, "Max unit size " << maxUnitSize << " is smaller than the threshold (No partitioning needed) " << unitThreshold)
                 }
+                PrintPartitionUnit(0x1, "--------------------------Partition unit end--------------------------\n");
             }
 
+            PrintTrimUnit(0x1, "Need to reduce the kernel size. (The max expanded kernel size is large) " << expandedMaxSize << " > " << subroutineThreshold)
+            PrintTrimUnit(0x1, "-----------------------------Trimming start-----------------------------")
             if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize))
             {
                 reduceKernelSize();
@@ -868,6 +866,7 @@ void EstimateFunctionSize::checkSubroutine() {
             {
                 reduceCompilationUnitSize();
             }
+            PrintTrimUnit(0x1, "-----------------------------Trimming end-----------------------------\n")
         }
     }
     IGC_ASSERT(!HasRecursion || EnableSubroutine);
@@ -951,7 +950,7 @@ void EstimateFunctionSize::initializeTopologicalVisit(Function* root, std::unord
         Node->tmpSize = Node->InitialSize;
         for (auto Callee : Node->CalleeList) {
             FunctionNode* CalleeNode = Callee.first;
-            if (FunctionsInKernel.count(CalleeNode))
+            if (FunctionsInKernel.find(CalleeNode) != FunctionsInKernel.end())
                 continue;
             if (!ignoreStackCallBoundary && CalleeNode->isStackCallAssigned()) //This callee is a compilation unit head, so not in the current compilation unit
             {
@@ -963,6 +962,56 @@ void EstimateFunctionSize::initializeTopologicalVisit(Function* root, std::unord
         }
         if (FunctionsInKernel[Node] == 0) // This means no children or all children are compilation unit heads: leaf node
             BottomUpQueue.push_back(Node);
+    }
+    return;
+}
+
+//Update inlined sizes of functions
+void EstimateFunctionSize::updateInlineCnt(Function *root)
+{
+    FunctionNode* root_node = get<FunctionNode>(root);
+    std::unordered_map<void*, uint32_t> unprocessed_callers;//A data structure to collect the number of callers for a functoin in a kernel boundary
+    unprocessed_callers[root_node] = 0;
+
+    std::deque<void*> TopdownQueue;TopdownQueue.push_back(root_node);
+
+    std::unordered_set<void*> visit;visit.insert(root_node);
+
+    //Top down traversal to initialize the number of callers and inline count in a kernel boundary
+    //This step is just for initialization for the topological traverse at the second step
+    while (!TopdownQueue.empty())
+    {
+        FunctionNode* node = (FunctionNode*)TopdownQueue.front(); TopdownQueue.pop_front();
+        node->Inline_cnt = 0;
+        for (auto callee_info : node->CalleeList)
+        {
+            FunctionNode* callee = callee_info.first;
+            if (unprocessed_callers.find(callee) == unprocessed_callers.end())
+                unprocessed_callers[callee] = 0; //Initialize callee's caller count
+
+            unprocessed_callers[callee] += 1; //Increment by 1 since the callee is called by the node
+            if (visit.find(callee) == visit.end())
+            {
+                visit.insert(callee);
+                TopdownQueue.push_back(callee);
+            }
+        }
+    }
+    TopdownQueue.push_back(root_node);
+    while (!TopdownQueue.empty())
+    {
+        FunctionNode* node = (FunctionNode*)TopdownQueue.front(); TopdownQueue.pop_front();
+        for (auto callee_info : node->CalleeList)
+        {
+            FunctionNode* callee = callee_info.first;
+            uint16_t call_cnt = callee_info.second;
+            IGC_ASSERT(unprocessed_callers[callee] != 0);
+            unprocessed_callers[callee] -= 1;
+            if(callee->willBeInlined())
+                callee->Inline_cnt += call_cnt * (node->Inline_cnt == 0 ? 1 : node->Inline_cnt);
+            if (unprocessed_callers[callee] == 0)
+                TopdownQueue.push_back(callee);
+        }
     }
     return;
 }
@@ -991,7 +1040,7 @@ uint32_t EstimateFunctionSize::updateExpandedUnitSize(Function* F, bool ignoreSt
         for (auto c : node->CallerList)
         {
             FunctionNode* caller = c.first;
-            if (!FunctionsInUnit.count(caller)) //Caller is in another compilation unit
+            if (FunctionsInUnit.find(caller) == FunctionsInUnit.end()) //Caller is in another compilation unit
             {
                 node->InMultipleUnit = true;
                 continue;
@@ -1037,29 +1086,34 @@ uint32_t EstimateFunctionSize::bottomUpHeuristic(Function* F, uint32_t& stackCal
 
         if (beStackCall)
         {
-            if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x4) != 0) {
-                dbgs() << "Stack call marked " << Node->F->getName().str() << " Unit size: " << Node->UnitSize << " > Threshold " << threshold
-                    << " Function frequency: " << Node->getStaticFuncFreqStr() << " < " << threshold_func_freq.toString()  << "\n";
-            }
+            PrintPartitionUnit(0x4, "Stack call marked " << Node->F->getName().str() << " Unit size: " << Node->UnitSize << " > Threshold " << threshold
+                << " Function frequency: " << Node->getStaticFuncFreqStr() << " < " << threshold_func_freq.toString())
             stackCallFuncs.push_back(Node); //We have a new unit head
             Node->setStackCall();
             max_unit_size = std::max(max_unit_size, Node->UnitSize);
             stackCall_cnt += 1;
         }
-        else if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x4) != 0)
+        else
         {
             if (!Node->canAssignStackCall())
-                dbgs() << "Stack call not marked: not best effort or trimmed " << Node->F->getName().str() << "\n";
+            {
+                PrintPartitionUnit(0x4, "Stack call not marked: not best effort or trimmed " << Node->F->getName().str())
+            }
             else if (Node->UnitSize <= threshold || Node->updateUnitSize() <= threshold)
-                dbgs() << "Stack call not marked: unit size too small " << Node->F->getName().str() << "\n";
+            {
+                PrintPartitionUnit(0x4, "Stack call not marked: unit size too small " << Node->F->getName().str())
+            }
             else
-                dbgs() << "Stack call not marked: too many function frequencies " << Node->getStaticFuncFreqStr() << " > " << threshold_func_freq.toString() << " " << Node->F->getName().str() << "\n";
+            {
+                PrintPartitionUnit(0x4, "Stack call not marked: too many function frequencies " << Node->getStaticFuncFreqStr()
+                                    << " > " << threshold_func_freq.toString() << " " << Node->F->getName().str())
+            }
         }
 
         for (auto c : Node->CallerList)
         {
             FunctionNode* caller = c.first;
-            if (!FunctionsInUnit.count(caller)) //The caller is in another kernel, skip
+            if (FunctionsInUnit.find(caller) == FunctionsInUnit.end()) //The caller is in another kernel, skip
                 continue;
             FunctionsInUnit[caller] -= 1;
             if (FunctionsInUnit[caller] == 0) //All callees of the caller are processed: become leaf.
@@ -1109,24 +1163,14 @@ void EstimateFunctionSize::partitionKernel() {
             max_unit_size = std::max(max_unit_size, UnitHead->UnitSize);
             continue;
         }
-
-        if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0) {
-            dbgs() << "------------------------------------------------------------------------------------------" << "\n";
-            dbgs() << "Partition Kernel " << UnitHead->F->getName().str() << " Original Unit Size: " << UnitHead->UnitSize << "\n";
-        }
+        PrintPartitionUnit(0x2, "Partition Kernel " << UnitHead->F->getName().str() << " Original Unit Size: " << UnitHead->UnitSize)
         uint32_t size_after_partition = bottomUpHeuristic(UnitHead->F, stackCall_cnt);
         max_unit_size = std::max(max_unit_size, size_after_partition);
-        if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0) {
-            dbgs() << "Unit size after partitioning: " << size_after_partition << "\n";
-        }
+        PrintPartitionUnit(0x2, "Unit size after partitioning: " << size_after_partition)
     }
-    if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0) {
-        dbgs() << "------------------------------------------------------------------------------------------" << "\n";
-        float threshold_err = (float)(max_unit_size - threshold) / threshold * 100;
-        dbgs() << "Max unit size: " << max_unit_size << " Threshold Error Rate: " << threshold_err << "%" << "\n";
-        dbgs() << "Stack call cnt: " << stackCall_cnt << "\n";
-    }
-
+    float threshold_err = (float)(max_unit_size - threshold) / threshold * 100;
+    PrintPartitionUnit(0x2, "Max unit size: " << max_unit_size << " Threshold Error Rate: " << threshold_err << "%");
+    PrintPartitionUnit(0x2, "Stack call cnt: " << stackCall_cnt);
     return;
 }
 
@@ -1146,9 +1190,8 @@ void EstimateFunctionSize::reduceCompilationUnitSize() {
 }
 
 //Top down traverse to find and retrieve functions that meet trimming criteria
-void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64>& functions_to_trim, bool ignoreStackCallBoundary, uint32_t &func_cnt)
+void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64>& trimming_pool, bool ignoreStackCallBoundary, uint32_t &func_cnt)
 {
-    uint32_t PrintTrimUnit = IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) | IGC_GET_FLAG_VALUE(PrintControlUnitSize);
     FunctionNode* unitHead = get<FunctionNode>(root);
     std::unordered_set<FunctionNode*> visit;
     std::deque<FunctionNode*> TopDownQueue;
@@ -1159,25 +1202,50 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallV
     {
         FunctionNode* Node = TopDownQueue.front();TopDownQueue.pop_front();
         func_cnt += 1;
-        if ((PrintTrimUnit & 0x8) != 0)
-            Node->printFuncAttr();
+        uint64_t tinySizeThreshold = IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming) ? IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSizeContribution) : IGC_GET_FLAG_VALUE(ControlInlineTinySize);
+        uint16_t func_trait = Node->getFunctionTrait(thresholdForTrimming);
 
-        if (Node->isGoodtoTrim(threshold_func_freq))
+        switch (func_trait)
         {
-            functions_to_trim.push_back(Node);
-            if ((PrintTrimUnit & 0x4) != 0)
-            {
-                uint64_t size_threshold = IGC_GET_FLAG_VALUE(ControlInlineTinySize);
-                if (Node->InitialSize > size_threshold)
-                    dbgs() << "Good to trim " << Node->F->getName().str() << " Size: " << Node->InitialSize << " > " << size_threshold << " \n";
-                else
-                    dbgs() << "Good to trim " << Node->F->getName().str() << " Freq: " << Node->getStaticFuncFreqStr() << " < " << threshold_func_freq.toString() << " \n";
-            }
+        case FT_NOT_BEST_EFFORT:
+            PrintTrimUnit(0x4, "Can't trim (not best effort inline) " << Node->F->getName().str()
+                << " Function Attribute: " << Node->getFuncAttrStr());
+            break;
+        case FT_MUL_KERNEL:
+            PrintTrimUnit(0x4, "Can't trim (in multiple kernels) " << Node->F->getName().str());
+            break;
+        case FT_BIG_ENOUGH://Functions are big enough to trim
+            trimming_pool.push_back(Node);
+            PrintTrimUnit(0x4, "Good to trim (Big enough) " << Node->F->getName().str()
+                << " function size: " << Node->InitialSize << " > " << tinySizeThreshold);
+            break;
+        case FT_TOO_TINY:
+            PrintTrimUnit(0x4, "Can't trim (Too tiny) " << Node->F->getName().str()
+                << " function size: " << Node->InitialSize << " < " << tinySizeThreshold);
+            break;
+        case FT_HIGHER_WEIGHT:
+            trimming_pool.push_back(Node);
+            PrintTrimUnit(0x4, "Good to trim (High weight) " << Node->F->getName().str()
+                << " Size contribution: " << Node->getSizeContribution()
+                << " Freq: " << Node->getStaticFuncFreqStr()
+                << " Weight: " << Node->getWeightForTrimming().toString() << " > " << thresholdForTrimming);
+            break;
+        case FT_LOWER_WEIGHT:
+            PrintTrimUnit(0x4, "Can't trim (Low weight) " << Node->F->getName().str()
+                << " Size contribution: " << Node->getSizeContribution()
+                << " Freq: " << Node->getStaticFuncFreqStr()
+                << " Weight: " << Node->getWeightForTrimming().toString() << " < " << thresholdForTrimming);
+            break;
+        default:
+            PrintTrimUnit(0x4, "Something goes wrong with the function property " << Node->F->getName().str());
+            break;
         }
+
+
         for (auto Callee : Node->CalleeList)
         {
             FunctionNode* calleeNode = Callee.first;
-            if (visit.count(calleeNode) || (!ignoreStackCallBoundary && calleeNode->isStackCallAssigned()))
+            if (visit.find(calleeNode) != visit.end() || (!ignoreStackCallBoundary && calleeNode->isStackCallAssigned()))
                 continue;
             visit.insert(calleeNode);
             TopDownQueue.push_back(calleeNode);
@@ -1204,7 +1272,6 @@ For each kernel K
 */
 void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &unitHeads, uint32_t threshold, bool ignoreStackCallBoundary)
 {
-    uint32_t PrintTrimUnit = IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) | IGC_GET_FLAG_VALUE(PrintControlUnitSize);
     llvm::SmallVector<FunctionNode*, 64> unitsToTrim;
     //Extract kernels / units that are larger than threshold
     for (auto node : unitHeads)
@@ -1214,27 +1281,16 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
         updateExpandedUnitSize(unitEntry->F, ignoreStackCallBoundary);
         if (unitEntry->ExpandedSize > threshold)
         {
-            if ((PrintTrimUnit & 0x1) != 0)
-            {
-                dbgs() << "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize << " > " << threshold << "\n";
-            }
+            PrintTrimUnit(0x2, "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize << " > " << threshold)
             unitsToTrim.push_back(unitEntry);
         }
         else
-        {
-            if ((PrintTrimUnit & 0x1) != 0)
-            {
-                dbgs() << "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize << " <= " << threshold << "\n";
-            }
-        }
+            PrintTrimUnit(0x2, "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize << " <= " << threshold)
     }
 
     if (unitsToTrim.empty())
     {
-        if ((PrintTrimUnit & 0x1) != 0)
-        {
-            dbgs() << "Kernels / Units become no longer big enough to be trimmed (affected by partitioning)" << "\n";
-        }
+        PrintTrimUnit(0x2, "Kernels / Units become no longer big enough to be trimmed (affected by partitioning)")
         return;
     }
 
@@ -1244,69 +1300,84 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
     // Iterate over units
     for (auto unit : unitsToTrim) {
         size_t expandedUnitSize = updateExpandedUnitSize(unit->F, ignoreStackCallBoundary); //A kernel size can be reduced by a function that is trimmed at previous kernels, so recompute it.
-        if ((PrintTrimUnit & 0x1) != 0) {
-            dbgs() << "Trimming kernel / unit " << unit->F->getName().str() << " expanded size= " << expandedUnitSize << "\n";
-        }
+        if(IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
+            updateInlineCnt(unit->F);
+        PrintTrimUnit(0x2, "Trimming kernel / unit " << unit->F->getName().str() << " expanded size= " << expandedUnitSize)
         if (expandedUnitSize <= threshold) {
-            if ((PrintTrimUnit & 0x2) != 0)
-            {
-                dbgs() << "Kernel / unit " << unit->F->getName().str() << ": The expanded unit size(" << expandedUnitSize << ") is smaller than threshold("<< threshold <<")" << "\n";
-            }
+            PrintTrimUnit(0x2, "Kernel / unit " << unit->F->getName().str() << ": The expanded unit size(" << expandedUnitSize << ") is smaller than threshold(" << threshold << ")")
             continue;
         }
-        if ((PrintTrimUnit & 0x2) != 0) {
-            dbgs() << "Kernel size is bigger than threshold " << "\n";
-            if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x10) != 0)
-            {
-                continue; // dump collected kernels only
-            }
-        }
+        PrintTrimUnit(0x2, "Kernel size is bigger than threshold")
 
-        SmallVector<void*, 64> functions_to_trim;
+        SmallVector<void*, 64> trimming_pool;
+
         uint32_t func_cnt = 0;
-        getFunctionsToTrim(unit->F,functions_to_trim, ignoreStackCallBoundary, func_cnt);
-        if (functions_to_trim.empty())
+        getFunctionsToTrim(unit->F, trimming_pool, ignoreStackCallBoundary, func_cnt);
+        PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " has " << trimming_pool.size() << " functions for trimming out of " << func_cnt)
+        if (trimming_pool.empty())
         {
-            if ((PrintTrimUnit & 0x4) != 0)
-            {
-                dbgs() << "Kernel / Unit " << unit->F->getName().str() << " size " << unit->ExpandedSize << " has no sorted list " << "\n";
-            }
+            PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " size " << unit->ExpandedSize << " has no sorted list")
             continue; // all functions are tiny.
         }
-
-        //Sort all to-be trimmed function according to the its actual size
-        std::sort(functions_to_trim.begin(), functions_to_trim.end(),
-            [&](const void* LHS, const void* RHS) { return ((FunctionNode*)LHS)->InitialSize < ((FunctionNode*)RHS)->InitialSize;}); //Sort by the original function size in an ascending order;
-
-        if ((PrintTrimUnit & 0x1) != 0)
+        uint64_t size_before_trimming = unit->ExpandedSize;
+        performTrimming(unit->F,trimming_pool,threshold,ignoreStackCallBoundary); //Trim cold functions
+        if (!trimming_pool.empty())
         {
-            dbgs() << "Kernel / Unit " << unit->F->getName().str() << " has " << functions_to_trim.size() << " functions for trimming out of " << func_cnt <<"\n";
+            PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": The size becomes below threshold")
+        }
+        else
+        {
+            PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": The size is still above threhosld even though all candidates are trimmed")
         }
 
-        //Repeat trimming functions until the unit size is smaller than threshold
-        while (!functions_to_trim.empty() && unit->ExpandedSize > threshold)
+        PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " final size " << unit->ExpandedSize << " reduced from " << size_before_trimming)
+    }
+}
+
+void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<void*, 64>& functions_to_trim, uint32_t threshold, bool ignoreStackCallBoundary)
+{
+    FunctionNode* unitHead = get<FunctionNode>(head);
+    //Sort all to-be trimmed function according to the its actual size
+
+    //Repeat trimming functions for cold functions until the unit size is smaller than threshold
+    while (!functions_to_trim.empty() && unitHead->ExpandedSize >= threshold)
+    {
+        std::sort(functions_to_trim.begin(), functions_to_trim.end(),
+            [&](const void* LHS, const void* RHS) {
+                if (IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
+                    return ((FunctionNode*)LHS)->getWeightForTrimming() < ((FunctionNode*)RHS)->getWeightForTrimming();
+                return ((FunctionNode*)LHS)->InitialSize < ((FunctionNode*)RHS)->InitialSize;
+            }); //Sort by the expanded size in an ascending order;
+        FunctionNode* functionToTrim = (FunctionNode*)functions_to_trim.back(); //Pick the largest one first to trim
+        functions_to_trim.pop_back();
+        uint64_t original_expandedSize = unitHead->ExpandedSize;
+
+        if (IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
         {
-            FunctionNode* functionToTrim = (FunctionNode*)functions_to_trim.back();
-            functions_to_trim.pop_back();
-            if ((PrintTrimUnit & 0x2) != 0) {
-                dbgs() << functionToTrim->F->getName().str() << ": Now trimmed Total Kernel / Unit Size: " << unit->ExpandedSize << "\n";
+            uint64_t size_contribution = functionToTrim->getSizeContribution();
+            if (functionToTrim->InitialSize == size_contribution) //We don't need to trim function that will be called just one time
+            {
+                PrintTrimUnit(0x8, "Do not trim the funciton since a potential size contribution is the same as its original size: " << size_contribution);
+                continue;
             }
             //Trim the function
+            PrintTrimUnit(0x8, "Trim the function " << functionToTrim->F->getName().str() << " Initial Size: " << functionToTrim->InitialSize << " Size contribution: " << size_contribution);
             functionToTrim->setTrimmed();
-            if ((PrintTrimUnit & 0x4) != 0) {
-                dbgs() << "FunctionToRemove " << functionToTrim->F->getName().str() << " initSize " << functionToTrim->InitialSize << " #callers " << functionToTrim->CallerList.size() << "\n";
-            }
-            //Update the unit size
-            updateExpandedUnitSize(unit->F,ignoreStackCallBoundary);
-            if ((PrintTrimUnit & 0x4) != 0) {
-                dbgs() << "Kernel / Unit size is " << unit->ExpandedSize << " after trimming " << functionToTrim->F->getName().str() << "\n";
-            }
+            //update size contribution
+            updateInlineCnt(head);
+            PrintTrimUnit(0x8, "The size contribution of the trimmed function changes to " << functionToTrim->getSizeContribution());
         }
-        if ((PrintTrimUnit & 0x1) != 0)
+        else
         {
-            dbgs() << "Kernel / Unit " << unit->F->getName().str() << " final size " << unit->ExpandedSize << "\n";
+            //Trim the function
+            PrintTrimUnit(0x8, "Trim the function " << functionToTrim->F->getName().str() << " Initial Size: " << functionToTrim->InitialSize);
+            functionToTrim->setTrimmed();
         }
+        //After trimming, update exapnded size
+        updateExpandedUnitSize(head, ignoreStackCallBoundary);
+        PrintTrimUnit(0x8, "The kernel size is reduced after trimming from " << original_expandedSize << " to " << unitHead->ExpandedSize);
     }
+    return;
 }
 
 bool EstimateFunctionSize::isStackCallAssigned(llvm::Function* F) {
