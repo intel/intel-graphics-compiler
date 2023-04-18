@@ -906,8 +906,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 defInst[dst->getTopDcl()] = callerIt;
                 DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
                 DEBUG_UTIL(inst->dump());
-              } else if (inst->opcode() == G4_sends ||
-                         inst->opcode() == G4_send) {
+              } else if (inst->isSendUnconditional()) {
                 vASSERT(i == 0);
                 // Start adding argument stores to the list
                 storeList.push_back(callerIt);
@@ -963,8 +962,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 defInst[dst->getTopDcl()] = thisIt;
                 DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
                 DEBUG_UTIL(inst->dump());
-              } else if (inst->opcode() == G4_sends ||
-                         inst->opcode() == G4_send) {
+              } else if (inst->isSendUnconditional()) {
                 if (storeList.empty()) {
                   // store prevFP to the callee's frame
                   if (stackPointers[callerBuilder->getFE_SP()] ==

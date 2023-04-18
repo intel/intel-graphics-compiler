@@ -7498,11 +7498,7 @@ void HWConformity::fixImm64(INST_LIST_ITER i, G4_BB *bb) {
           defDcl, builder.createRegionDesc(vs, wd, hs));
       inst->setSrc(new_src, j);
     } else {
-      bool allow64bitimmOperand = false;
-      if ((inst->opcode() == G4_mov)
-      )
-        allow64bitimmOperand = true;
-      if (!allow64bitimmOperand) {
+      if (inst->opcode() != G4_mov) {
         inst->setSrc(insertMovBefore(i, j, src->getType(), bb), j);
       }
     }

@@ -222,13 +222,13 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
 
 G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
                          G4_opcode o, G4_ExecSize size, G4_DstRegRegion *dst,
-                         G4_SrcRegRegion *payload, G4_SrcRegRegion *src1,
-                         G4_Operand *desc, G4_Operand *extDesc, G4_InstOpts opt,
-                         G4_SendDesc *md)
-    : G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, src1,
-              desc, opt),
+                         G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
+                         G4_Operand *src2desc, G4_Operand *src3extDesc,
+                         G4_InstOpts opt, G4_SendDesc *md)
+    : G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, src0, src1,
+              src2desc, opt),
       msgDesc(md) {
-  setSrc(extDesc, 3);
+  setSrc(src3extDesc, 3);
   md->setExecSize(size);
 }
 
@@ -3459,37 +3459,47 @@ void G4_InstSend::emit_send(std::ostream &output) {
   emitInstructionStartColumn(output, *this);
 
   output << ' ';
-  dst->emit(output);
-
-  output << ' ';
-  G4_Operand *currSrc = srcs[0];
-  if (currSrc->isSrcRegRegion()) {
-    // only output reg var & reg off; don't output region desc and type
-    currSrc->asSrcRegRegion()->emitRegVarOff(output);
+  bool printDstType = true;
+  if (printDstType || !dst->isDstRegRegion()) {
+    dst->emit(output); // TODO use emitRegVarOff here after TGL
   } else {
-    currSrc->emit(output);
-  }
-  output << ' ';
-
-  if (isSplitSend()) {
-    // emit src1
-    srcs[1]->asSrcRegRegion()->emitRegVarOff(output);
-    output << ' ';
+    dst->asDstRegRegion()->emitRegVarOff(output);
   }
 
-  // emit exDesc if srcs[3] is not null.
-  // It should always be a0.2 unless it was constant folded
-  if (isSplitSend() && srcs[3]) {
-    srcs[3]->emit(output);
+  auto emitBareSrc =
+    [&](G4_Operand* src) {
+      if (src->isSrcRegRegion()) {
+        // only output reg var & reg off; don't output region desc and type
+        src->asSrcRegRegion()->emitRegVarOff(output);
+      } else { // BAD IR; let's see it
+        src->emit(output);
+      }
+    };
+
+  int nSrcs = getNumSrcPayloads();
+  for (int i = 0; i < nSrcs; i++) {
     output << ' ';
-  } else if (!isSplitSend() && srcs[2]) {
-    srcs[2]->emit(output); // for old unary send
-    output << ' ';
+    emitBareSrc(srcs[i]);
   }
 
-  // emit msgDesc (2 for sends and 1 for send). Last operand shown in asm.
-  int msgDescId = isSplitSend() ? 2 : 1;
-  srcs[msgDescId]->emit(output);
+  // emit descriptors for send[c] or sends[c]
+  auto emitSendDescs = [&]() {
+    // emit exDesc if srcs[3] is not null.
+    // It should always be a0.2 unless it was constant folded
+    if (isSplitSend() && srcs[3]) {
+      output << ' ';
+      srcs[3]->emit(output);
+    } else if (!isSplitSend() && srcs[2]) {
+      output << ' ';
+      srcs[2]->emit(output); // for old unary send
+    }
+    // emit msgDesc (2 for sends and 1 for send). Last operand shown in asm.
+    int msgDescIdx = getNumSrcPayloads();
+    output << ' ';
+    srcs[msgDescIdx]->emit(output);
+  };
+
+  emitSendDescs();
 
   emit_options(output);
 }
@@ -3507,7 +3517,7 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
 
   auto desc = msgDesc->getDescription();
   if (!desc.empty()) {
-    output << msgDesc->getDescription();
+    output << desc;
   }
 
   if (auto immOff = sendInst->getMsgDesc()->getOffset()) {
@@ -3524,15 +3534,16 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
     }
   }
 
-  output << ", dstLen=" << msgDesc->getDstLenRegs();
+  output << "; dstLen=" << msgDesc->getDstLenRegs();
   output << ", src0Len=" << msgDesc->getSrc0LenRegs();
-  if (isSplitSend()) {
-    output << ", src1Len=" << msgDesc->getSrc1LenRegs();
-  }
+  output << ", src1Len=" << msgDesc->getSrc1LenRegs();
 
   if (msgDesc->isBarrier()) {
-    output << ", barrier";
+    output << "; barrier"; // TODO: fix getDescription()
   }
+  auto comments = getComments();
+  if (!comments.empty())
+    output << "; " << comments;
 }
 
 // print r#
@@ -7250,7 +7261,6 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
   auto src0 = nonConstBuilder->duplicateOperand(getSrc(0))->asSrcRegRegion();
-
   if (isSplitSend()) {
     // desc -> src2, extDesc -> src3
     auto src1 = nonConstBuilder->duplicateOperand(getSrc(1))->asSrcRegRegion();

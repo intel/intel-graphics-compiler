@@ -150,8 +150,8 @@ private:
   }
   InstOptSet getIGAInstOptSet(G4_INST *inst) const;
 
-  SendDesc getIGASendDesc(G4_INST *sendInst) const;
-  SendExDescOpts getIGASendExDesc(G4_INST *sendInst) const;
+  SendDesc getIGASendDesc(G4_InstSend *sendInst) const;
+  SendExDescOpts getIGASendExDesc(G4_InstSend *sendInst) const;
   void printSendDataToFile(const G4_SendDescRaw *descG4,
                            const char *filePath) const;
   SendDesc encodeExDescImm(G4_INST *sendInst, SendExDescOpts &sdos) const;
@@ -1242,8 +1242,8 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
         *opSpec, pred, flagReg, execSize, chOff, maskCtrl, brnchCtrl);
   } else if (opSpec->isAnySendFormat()) {
     {
-      SendDesc desc = getIGASendDesc(g4inst);
-      SendExDescOpts sdos = getIGASendExDesc(g4inst);
+      SendDesc desc = getIGASendDesc(g4inst->asSendInst());
+      SendExDescOpts sdos = getIGASendExDesc(g4inst->asSendInst());
 
       igaInst = IGAKernel->createSendInstruction(
           *opSpec, sf.send, pred, flagReg, execSize, chOff, maskCtrl,
@@ -1304,8 +1304,7 @@ void BinaryEncodingIGA::translateInstructionDst(G4_INST *g4inst,
   if (g4inst->isSend() && platform >= GENX_SKL && platform < GENX_ICLLP) {
     const G4_SendDescRaw *msgDesc = g4inst->getMsgDescRaw();
     vISA_ASSERT(msgDesc, "expected raw descriptor");
-    G4_Operand *descOpnd =
-        g4inst->isSplitSend() ? g4inst->getSrc(2) : g4inst->getSrc(1);
+    G4_Operand *descOpnd = g4inst->asSendInst()->getMsgDescOperand();
     if (!descOpnd->isImm() && msgDesc->is16BitReturn()) {
       type = Type::HF;
     }
@@ -1363,8 +1362,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
   int numSrcToEncode = inst->getNumSrc();
   if (inst->isSend()) {
     // skip desc/exdesc as they are handled separately
-    numSrcToEncode = inst->isSplitSend() ? 2 : 1;
-
+    numSrcToEncode = inst->asSendInst()->getNumSrcPayloads();
     if (numSrcToEncode == 1 && platformModel->platform >= Platform::XE) {
       RegRef regTemp(0, 0);
       Region rgnTemp = Region::SRC010;
@@ -1419,8 +1417,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
         // not all bits are copied from immediate descriptor
         G4_SendDescRaw *msgDesc = inst->getMsgDescRaw();
         vISA_ASSERT(msgDesc, "expected raw descriptor");
-        G4_Operand *descOpnd =
-            inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
+        G4_Operand *descOpnd = inst->asSendInst()->getMsgDescOperand();
         if (!descOpnd->isImm() && msgDesc->is16BitInput()) {
           type = Type::HF;
         }
@@ -1469,11 +1466,9 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
   } // for
 }
 
-SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST *sendInst) const {
+SendDesc BinaryEncodingIGA::getIGASendDesc(G4_InstSend *sendInst) const {
   SendDesc desc;
-  vISA_ASSERT(sendInst->isSend(), "expect send inst");
-  G4_Operand *msgDesc =
-      sendInst->isSplitSend() ? sendInst->getSrc(2) : sendInst->getSrc(1);
+  G4_Operand *msgDesc = sendInst->getMsgDescOperand();
   if (msgDesc->isImm()) {
     desc.type = SendDesc::Kind::IMM;
     desc.imm = (uint32_t)msgDesc->asImm()->getImm();
@@ -1484,7 +1479,7 @@ SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST *sendInst) const {
        //            DG2_Backup_Mode = 0
        //            Flush_Range = 0
        //     (So, it is fence.ugm.6.tile !)
-    auto msgDesc = sendInst->asSendInst()->getMsgDesc();
+    auto msgDesc = sendInst->getMsgDesc();
     if (msgDesc->isLSC() && msgDesc->isFence()) {
       // Flush Type : bit[14:12]
       uint32_t flushTy = ((desc.imm >> 12) & 0x7);
@@ -1508,7 +1503,7 @@ SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST *sendInst) const {
 
 ///////////////////////////////////////////////////////////////////////////////
 // ExDesc encoding
-static SendDesc encodeExDescSendUnary(G4_INST *sendInst, int &xlen,
+static SendDesc encodeExDescSendUnary(G4_InstSend *sendInst, int &xlen,
                                       InstOptSet &extraOpts) {
   SendDesc exDescIga;
 
@@ -1663,7 +1658,8 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(G4_INST *sendInst,
   return exDescIga;
 }
 
-SendExDescOpts BinaryEncodingIGA::getIGASendExDesc(G4_INST *sendInst) const {
+SendExDescOpts
+  BinaryEncodingIGA::getIGASendExDesc(G4_InstSend *sendInst) const {
   SendExDescOpts sdos;
 
   vISA_ASSERT(sendInst->isSend(), "expect send inst");
@@ -1672,7 +1668,7 @@ SendExDescOpts BinaryEncodingIGA::getIGASendExDesc(G4_INST *sendInst) const {
     sdos.extraOpts.add(InstOpt::EOT);
 
   if (sendInst->isSplitSend()) {
-    const G4_Operand *exDesc = sendInst->getSrc(3);
+    const G4_Operand *exDesc = sendInst->getMsgExtDescOperand();
     sdos.exDesc = exDesc->isImm() ? encodeExDescImm(sendInst, sdos)
                                   : encodeExDescRegA0(sendInst, sdos);
   } else {

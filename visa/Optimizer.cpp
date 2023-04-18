@@ -8836,8 +8836,7 @@ void Optimizer::setA0toTdrForSendc() {
   for (G4_BB *bb : kernel.fg) {
     if (bb->empty())
       continue;
-    if (bb->back()->opcode() == G4_opcode::G4_sendc ||
-        bb->back()->opcode() == G4_opcode::G4_sendsc) {
+    if (bb->back()->isSendConditional()) {
       // "(W) mov(8) a0.0:uw tdr0.0:uw"
       bb->insertBefore(
           --bb->end(),

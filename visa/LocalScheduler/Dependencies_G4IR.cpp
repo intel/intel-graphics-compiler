@@ -192,7 +192,7 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
   }
   if (inst->isSend()) {
 
-    if (inst->asSendInst()->isSendc()) {
+    if (inst->isSendConditional()) {
       // sendc may imply synchronization
       return SEND_BARRIER;
     }

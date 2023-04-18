@@ -324,10 +324,17 @@ public:
   bool isFReturn() const { return (op == G4_pseudo_fret); }
   bool isMath() const { return op == G4_math; }
   bool isIntrinsic() const { return op == G4_intrinsic; }
-  bool isSend() const {
-    return op == G4_send || op == G4_sendc || op == G4_sends || op == G4_sendsc;
+  bool isSend() const {return op == G4_send || op == G4_sendc || isSplitSend();}
+  // does the send split output payload into src0 and src1
+  bool isSplitSend() const {
+    return op == G4_sends || op == G4_sendsc;
   }
-  bool isSplitSend() const { return op == G4_sends || op == G4_sendsc; }
+  bool isSendUnconditional() const {
+    return op == G4_send || op == G4_sends;
+  }
+  bool isSendConditional() const {
+    return op == G4_sendc || op == G4_sendsc;
+  }
   bool isRSWADivergentInst() const {
     return op == G4_goto || op == G4_while || op == G4_if || op == G4_break;
   }
@@ -1150,13 +1157,12 @@ public:
   // extDesc is either imm or a0.N and in src3
   G4_InstSend(const IR_Builder &builder, G4_Predicate *prd, G4_opcode o,
               G4_ExecSize execSize, G4_DstRegRegion *dst,
-              G4_SrcRegRegion *payload, G4_SrcRegRegion *src1, G4_Operand *desc,
-              G4_Operand *extDesc, G4_InstOpts opt, G4_SendDesc *md);
-
+              G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
+              G4_Operand *src2desc, G4_Operand *src3extDesc,
+              G4_InstOpts opt, G4_SendDesc *md);
 
   G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
-  bool isSendc() const { return op == G4_sendc || op == G4_sendsc; }
   void setSendc() {
     // no effect if op is already G4_sendc/G4_sendsc
     if (op == G4_send) {
@@ -1175,6 +1181,10 @@ public:
     vISA_ASSERT(isSplitSend(), "must be a split send instruction");
     return srcs[3];
   }
+
+  // returns the number of effective srcs that may come from GRFS
+  // for ancient unary send this is only 1; sends allows 2
+  int getNumSrcPayloads() const {return isSplitSend() ? 2 : 1;}
 
   G4_SendDesc *getMsgDesc() const override { return msgDesc; }
 
@@ -1198,6 +1208,10 @@ public:
                    getMsgDesc()->getSFID() != SFID::SAMPLER);
 
     return canEOT;
+  }
+  void setEOT() {
+    vISA_ASSERT(canBeEOT(), "canBeEOT() must hold");
+    setOptionOn(InstOpt_EOT);
   }
 
   bool isFence() const { return getMsgDesc()->isFence(); }

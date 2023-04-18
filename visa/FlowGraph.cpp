@@ -1079,14 +1079,15 @@ void FlowGraph::handleExit() {
                                 WaSendsSrc1SizeLimitWhenEOT))) {
               G4_SendDesc *desc = secondToLastInst->getMsgDesc();
               desc->setEOT();
-              if (secondToLastInst->isSplitSend() &&
-                  secondToLastInst->getMsgDescRaw()) {
-                bool mustUpdateExDescOperand = true;
-                if (mustUpdateExDescOperand &&
-                    secondToLastInst->getSrc(3)->isImm()) {
+              secondToLastInst->setEOT();
+              if (secondToLastInst->isSplitSend()) {
+                G4_SendDescRaw *rawDesc = secondToLastInst->getMsgDescRaw();
+                if (rawDesc != nullptr &&
+                    secondToLastInst->getMsgExtDescOperand()->isImm())
+                {
                   secondToLastInst->setSrc(
                       builder->createImm(
-                          secondToLastInst->getMsgDescRaw()->getExtendedDesc(),
+                          rawDesc->getExtendedDesc(),
                           Type_UD),
                       3);
                 }
