@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <climits>
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/MapVector.h>
+#include <llvm/ADT/SetVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "AdaptorCommon/RayTracing/API/MemoryStyleEnum.h" // ^MDFramework^: ../AdaptorCommon/RayTracing/API
@@ -659,7 +660,7 @@ namespace IGC
         std::map<uint32_t, std::array<uint32_t, 8>> inlineDynTextures;
         std::vector<InlineResInfo> inlineResInfoData;
         ImmConstantInfo immConstant;
-        std::set<llvm::GlobalVariable*> stringConstants;
+        llvm::SetVector<llvm::GlobalVariable*> stringConstants;
         std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
         std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
         std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
@@ -690,7 +691,7 @@ namespace IGC
 
         unsigned int privateMemoryPerWI = 0;
 
-        std::map<llvm::Function*, unsigned int> PrivateMemoryPerFG;
+        llvm::MapVector<llvm::Function*, unsigned int> PrivateMemoryPerFG;
 
         // List of optimizations to disable at a module level
         std::set<std::string> m_OptsToDisable;
