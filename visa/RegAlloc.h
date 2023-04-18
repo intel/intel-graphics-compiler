@@ -110,8 +110,6 @@ public:
   llvm::SparseBitVector<> globalVars;
 
   bool isLocalVar(G4_Declare *decl) const;
-  bool setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
-  bool setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
   bool setVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
   LivenessAnalysis(GlobalRA &gra, unsigned char kind, bool verifyRA = false,
                    bool forceRun = false);

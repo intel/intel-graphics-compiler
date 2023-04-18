@@ -64,122 +64,54 @@ bool LivenessAnalysis::isLocalVar(G4_Declare *decl) const {
   return false;
 }
 
-bool LivenessAnalysis::setGlobalVarIDs(bool verifyRA,
-                                       bool areAllPhyRegAssigned) {
-  bool phyRegAssigned = areAllPhyRegAssigned;
-
-  for (G4_Declare *decl : gra.kernel.Declares) {
-    if (!isLocalVar(decl)) {
-      /* Note that we only do local split, so there is no need to handle partial
-       * declare and splitted declare */
-      if (livenessCandidate(decl, verifyRA) &&
-          decl->getAliasDeclare() == NULL) {
-        globalVars.set(numVarId);
-        decl->getRegVar()->setId(numVarId++);
-        if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
-          numUnassignedVarId++;
-        if (decl->getRegVar()->isPhyRegAssigned() == false) {
-          phyRegAssigned = false;
-        }
-      } else {
-        decl->getRegVar()->setId(UNDEFINED_VAL);
-      }
-    }
-  }
-
-  return phyRegAssigned;
-}
-
-bool LivenessAnalysis::setLocalVarIDs(bool verifyRA,
-                                      bool areAllPhyRegAssigned) {
-  bool phyRegAssigned = areAllPhyRegAssigned;
-
-  for (G4_Declare *decl : gra.kernel.Declares) {
-    if (isLocalVar(decl)) {
-      if (livenessCandidate(decl, verifyRA) &&
-          decl->getAliasDeclare() == NULL) {
-        if (decl->getIsSplittedDcl()) {
-          decl->setSplitVarStartID(0);
-        }
-        if (decl->getIsPartialDcl()) {
-          auto declSplitDcl = gra.getSplittedDeclare(decl);
-          if (declSplitDcl && declSplitDcl->getIsSplittedDcl()) {
-            if (numSplitStartID == 0) {
-              numSplitStartID = numVarId;
-            }
-
-            if (declSplitDcl->getSplitVarStartID() == 0) {
-              declSplitDcl->setSplitVarStartID(numVarId);
-            }
-            numSplitVar++;
-          } else {
-            vISA_ASSERT_UNREACHABLE("Found child declare without parent");
-          }
-        }
-
-        decl->getRegVar()->setId(numVarId++);
-        if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
-          numUnassignedVarId++;
-        if (decl->getRegVar()->isPhyRegAssigned() == false) {
-          phyRegAssigned = false;
-        }
-      } else {
-        decl->getRegVar()->setId(UNDEFINED_VAL);
-      }
-    }
-  }
-
-  return phyRegAssigned;
-}
-
 bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
   bool phyRegAssigned = areAllPhyRegAssigned;
-  for (G4_Declare *decl : gra.kernel.Declares) {
+  bool hasStackCall = fg.getHasStackCalls() || fg.getIsStackCallFunc();
+  bool flag = (selectedRF & G4_GRF) &&
+              !fg.builder->getOption(vISA_GlobalSendVarSplit) && !hasStackCall;
 
-    if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL) {
-      if (decl->getIsSplittedDcl()) {
-        decl->setSplitVarStartID(0);
-      }
-      if (decl->getIsPartialDcl()) {
-        auto declSplitDcl = gra.getSplittedDeclare(decl);
-        if (declSplitDcl->getIsSplittedDcl()) {
-          if (numSplitStartID == 0) {
-            numSplitStartID = numVarId;
-          }
-
-          if (declSplitDcl->getSplitVarStartID() == 0) {
-            declSplitDcl->setSplitVarStartID(numVarId);
-          }
-          numSplitVar++;
-        } else {
-          vISA_ASSERT(false, "Found child declare without parent");
+  auto handleSplitId = [&](G4_Declare *decl) {
+    if (decl->getIsSplittedDcl()) {
+      decl->setSplitVarStartID(0);
+    }
+    if (decl->getIsPartialDcl()) {
+      auto declSplitDcl = gra.getSplittedDeclare(decl);
+      if (declSplitDcl && declSplitDcl->getIsSplittedDcl()) {
+        if (numSplitStartID == 0) {
+          numSplitStartID = numVarId;
         }
+
+        if (declSplitDcl->getSplitVarStartID() == 0) {
+          declSplitDcl->setSplitVarStartID(numVarId);
+        }
+        numSplitVar++;
+      } else {
+        vISA_ASSERT_UNREACHABLE("Found child declare without parent");
+      }
+    }
+  };
+
+  for (G4_Declare *decl : gra.kernel.Declares) {
+    if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL) {
+      if (flag) {
+        bool isLocal = isLocalVar(decl);
+        if (isLocal)
+          handleSplitId(decl);
+        else
+          globalVars.set(numVarId);
+      } else {
+        handleSplitId(decl);
+        // All variables are treated as global in stack call
+        globalVars.set(numVarId);
       }
 
-      globalVars.set(numVarId);
-      // participate liveness analysis
       decl->getRegVar()->setId(numVarId++);
-
       if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
         numUnassignedVarId++;
-
-      //
-      // dump Reg Var info for debugging
-      //
-
       if (decl->getRegVar()->isPhyRegAssigned() == false) {
         phyRegAssigned = false;
       }
-      VISA_DEBUG_VERBOSE({
-        decl->getRegVar()->emit(std::cout);
-        std::cout << " id = " << decl->getRegVar()->getId() << "\n";
-      });
-    }
-    //
-    // those reg vars that are not candidates, set their id to
-    // undefined value
-    //
-    else {
+    } else {
       decl->getRegVar()->setId(UNDEFINED_VAL);
     }
   }
@@ -199,15 +131,8 @@ LivenessAnalysis::LivenessAnalysis(GlobalRA &g, unsigned char kind,
   // Go over each reg var if it's a liveness candidate, assign id for bitset.
   //
   bool areAllPhyRegAssigned = !forceRun;
-  bool hasStackCall = fg.getHasStackCalls() || fg.getIsStackCallFunc();
 
-  if ((selectedRF & G4_GRF) &&
-      !fg.builder->getOption(vISA_GlobalSendVarSplit) && !hasStackCall) {
-    areAllPhyRegAssigned = setGlobalVarIDs(verifyRA, areAllPhyRegAssigned);
-    areAllPhyRegAssigned = setLocalVarIDs(verifyRA, areAllPhyRegAssigned);
-  } else {
-    areAllPhyRegAssigned = setVarIDs(verifyRA, areAllPhyRegAssigned);
-  }
+  areAllPhyRegAssigned = setVarIDs(verifyRA, areAllPhyRegAssigned);
 
   // For Alias Dcl
   for (auto decl : gra.kernel.Declares) {
