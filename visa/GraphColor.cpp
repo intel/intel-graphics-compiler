@@ -2456,6 +2456,10 @@ void Interference::generateSparseIntfGraph() {
 
   sparseIntf.resize(numVars);
 
+  auto sortOnDclId = [&](const unsigned int v1, const unsigned int v2) {
+    return lrs[v1]->getDcl()->getDeclId() < lrs[v2]->getDcl()->getDeclId();
+  };
+
   for (unsigned row = 0; row < numVars; row++) {
     sparseIntf[row].reserve(SPARSE_INTF_VEC_SIZE);
   }
@@ -2489,6 +2493,12 @@ void Interference::generateSparseIntfGraph() {
       }
     }
   }
+
+  // Produce stable neighbor list that's independent of G4_RegVar id
+  for (auto &row : sparseIntf) {
+    std::sort(row.begin(), row.end(), sortOnDclId);
+  }
+
   stopTimer(TimerID::INTERFERENCE);
 }
 
@@ -5718,7 +5728,7 @@ void GraphColor::relaxNeighborDegreeARF(LiveRange *lr) {
 static bool compareSpillCost(LiveRange *lr1, LiveRange *lr2) {
   return lr1->getSpillCost() < lr2->getSpillCost() ||
          (lr1->getSpillCost() == lr2->getSpillCost() &&
-          lr1->getVar()->getId() < lr2->getVar()->getId());
+          lr1->getDcl()->getDeclId() < lr2->getDcl()->getDeclId());
 }
 
 //
