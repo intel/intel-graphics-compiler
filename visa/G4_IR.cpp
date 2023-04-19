@@ -2894,6 +2894,13 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF,
       // also we can't use the scratch message when under stack call
       return true;
     }
+
+    //For DPAS, always Nomask
+    //For send, !isWriteEnableInst in if covers the case with Nomask.
+    if (mayExceedTwoGRF()) {
+      return true;
+    }
+
     if (getMaskOption() != InstOpt_M0) {
       return true;
     }
