@@ -714,8 +714,6 @@ enum LSC_ADDR_SIZE {
   LSC_ADDR_SIZE_32b,  // [ADDR]:a32
   LSC_ADDR_SIZE_64b,  // [ADDR]:a64
 };
-static_assert(LSC_ADDR_SIZE_64b == 3,
-              "vISA binary encoding depends on enum ordinal value");
 
 enum LSC_ADDR_TYPE {
   LSC_ADDR_TYPE_INVALID,
@@ -724,8 +722,7 @@ enum LSC_ADDR_TYPE {
   LSC_ADDR_TYPE_SS,   // surface state offset
   LSC_ADDR_TYPE_BTI,  // binding table interface (legacy)
   //
-  // Pseudo address types
-  LSC_ADDR_TYPE_ARG, // built-in surface access to kernel arguments
+  LSC_ADDR_TYPE_ARG, // pseudo address type for kernel arguments
 };
 
 //
@@ -741,7 +738,6 @@ typedef enum {
   LSC_CACHING_WRITETHROUGH,   // .wt
   LSC_CACHING_STREAMING,      // .st
   LSC_CACHING_READINVALIDATE, // .ri last use / invalidate after read
-
 } LSC_CACHE_OPT;
 // Only some combinations are legal (per platform)
 struct LSC_CACHE_OPTS {
@@ -856,19 +852,22 @@ enum LSC_OP {
 
   LSC_INVALID = 0xFFFFFFFF,
 };
+
+/////////////////////////////////////////////////////////////////////
+// The vISA spec depends on the enum values assigned.  If you really
+// need to change them, fix any consumers encoders dependent on the
+// encoding (e.g. CM binary encoder) as well as the vISA spec.
+// This block just spot-checks a few of them.
+// NOTE: we can remove these constraints once we are rid of the vISA binary format.
 static_assert(LSC_LOAD == 0x0,
               "vISA binary encoding depends on enum ordinal value");
 static_assert(LSC_FENCE == 0x1F,
               "vISA binary encoding depends on enum ordinal value");
-
-/////////////////////////////////////////////////////////////////////
-// The vISA spec depends on the enum values assigned.  If you really
-// need to change then, fix any consumers encoders dependent on the
-// encoding (e.g. CM binary encoder) as well as the vISA spec.
-//
 static_assert(LSC_DATA_ELEMS_8 == 5,
               "vISA binary encoding depends on enum ordinal value");
 static_assert(LSC_ADDR_SIZE_16b == 1,
+              "vISA binary encoding depends on enum ordinal value");
+static_assert(LSC_ADDR_SIZE_64b == 3,
               "vISA binary encoding depends on enum ordinal value");
 static_assert(LSC_DATA_SIZE_8b == 1,
               "vISA binary encoding depends on enum ordinal value");
