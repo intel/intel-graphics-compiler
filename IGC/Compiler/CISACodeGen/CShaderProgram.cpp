@@ -113,6 +113,7 @@ CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
     pShader->m_Platform = &m_context->platform;
     pShader->m_pBtiLayout = &m_context->btiLayout;
     pShader->m_ModuleMetadata = m_context->getModuleMetaData();
+    pShader->m_PrivateMemoryPerWI = pShader->m_ModuleMetadata->PrivateMemoryPerFG[m_kernel];
 
     return pShader;
 }

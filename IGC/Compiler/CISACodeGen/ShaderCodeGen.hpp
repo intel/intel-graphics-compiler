@@ -308,6 +308,7 @@ public:
     bool HasNestedCalls() const { return m_HasNestedCall; }
     bool HasIndirectCalls() const { return m_HasIndirectCall; }
     bool IsIntelSymbolTableVoidProgram() const { return m_IsIntelSymbolTableVoidProgram; }
+    int  PrivateMemoryPerWI() const { return m_PrivateMemoryPerWI;  }
 
     IGCMD::MetaDataUtils* GetMetaDataUtils() { return m_pMdUtils; }
 
@@ -769,6 +770,7 @@ protected:
     bool m_HasNestedCall = false;
     bool m_HasIndirectCall = false;
     bool m_IsIntelSymbolTableVoidProgram = false;
+    int m_PrivateMemoryPerWI = 0;
 };
 
 struct SInstContext

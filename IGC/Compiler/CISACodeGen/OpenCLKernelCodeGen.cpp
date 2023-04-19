@@ -3438,8 +3438,47 @@ namespace IGC
     {
         NO_Retry,
         NO_Retry_Pick_Prv,
+        NO_Retry_ExceedScratch,
+        NO_Retry_WorseStatelessPrivateMemSize,
         YES_Retry
     };
+
+    static unsigned long getScratchUse(CShader* shader, OpenCLProgramContext* ctx)
+    {
+        unsigned int totalScratchUse =
+            shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
+        if (shader->ProgramOutput()->m_UseScratchSpacePrivateMemory)
+            totalScratchUse +=
+            shader->ProgramOutput()->m_scratchSpaceUsedByShader;
+        return totalScratchUse;
+    }
+
+    static bool exceedMaxScratchUse(CShader* shader, OpenCLProgramContext* ctx)
+    {
+        return getScratchUse(shader, ctx) >
+            shader->ProgramOutput()->m_scratchSpaceSizeLimit;
+    }
+
+    static bool isWorsePrivateMemSize(CShader* shader, IGC::CShaderProgram* pPrevKernel)
+    {
+        for (auto mode : { SIMDMode::SIMD8, SIMDMode::SIMD16, SIMDMode::SIMD32 })
+        {
+            auto pPrevShader = pPrevKernel->GetShader(mode);
+            if (pPrevShader)
+            {
+                // if after retry the current function generate 20x more
+                // private memory in global memory - consider using previous kernel
+                if (pPrevShader->PrivateMemoryPerWI() * 20 <
+                    shader->PrivateMemoryPerWI())
+                {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        return false;
+    }
 
     RetryType NeedsRetry(
         OpenCLProgramContext* ctx,
@@ -3467,7 +3506,23 @@ namespace IGC
                 !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get());
         }
 
-        if (isWorstThanPrv)
+        auto pPreviousKernel = ctx->m_retryManager.GetPrevious(&*pKernel);
+
+        if(pPreviousKernel &&
+            exceedMaxScratchUse(program, ctx))
+        {
+            // For case when we have recompilation but exceed
+            // the scratch space in recompiled kernel
+            return RetryType::NO_Retry_ExceedScratch;
+        }
+        else if(pPreviousKernel &&
+            isWorsePrivateMemSize(program, pPreviousKernel))
+        {
+            // For case when we have recompilation but generate 20x more
+            // private memory in global memory in recompiled kernel
+            return RetryType::NO_Retry_WorseStatelessPrivateMemSize;
+        }
+        else if (isWorstThanPrv)
         {
             return RetryType::NO_Retry_Pick_Prv;
         }
@@ -3497,6 +3552,8 @@ namespace IGC
         CShaderProgram::UPtr pSelectedKernel;
         switch (NeedsRetry(ctx, pShader, pKernel, pFunc, pMdUtils, simdMode))
         {
+        case RetryType::NO_Retry_WorseStatelessPrivateMemSize:
+        case RetryType::NO_Retry_ExceedScratch:
         case RetryType::NO_Retry_Pick_Prv:
         {
             // In case retry compilation give worst generated kernel
@@ -3540,18 +3597,12 @@ namespace IGC
                                  COpenCLKernel *simd16Shader,
                                  COpenCLKernel *simd32Shader) {
         auto verify = [ctx](CShader *shader) {
-            unsigned int totalScratchUse =
-                shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
-            if (shader->ProgramOutput()->m_UseScratchSpacePrivateMemory)
-              totalScratchUse +=
-                  shader->ProgramOutput()->m_scratchSpaceUsedByShader;
-            if (totalScratchUse >
-                shader->ProgramOutput()->m_scratchSpaceSizeLimit) {
+            if (exceedMaxScratchUse(shader, ctx)) {
               std::string errorMsg =
                   "total scratch space exceeds HW "
                   "supported limit for kernel " +
                   shader->entry->getName().str() + ": " +
-                  std::to_string(totalScratchUse) + " bytes (max permitted PTSS " +
+                  std::to_string(getScratchUse(shader, ctx)) + " bytes (max permitted PTSS " +
                   std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) +
                   " bytes)";
 
