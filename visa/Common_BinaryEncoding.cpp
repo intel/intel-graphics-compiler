@@ -151,6 +151,9 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
       vISA_ASSERT_UNREACHABLE("unexpected subreg value");
     }
     setWriteMask(dst, writeMask);
+    // FIXME: this is incorrect as it could produce a negative left bound if
+    // subRegOffset is non-zero. HWConformity appears to force 16-byte alignment
+    // on dst, however, so we don't ever hit such case.
     dst->setLeftBound(dst->getLeftBound() - subRegOffset);
     dst->setRightBound(dst->getLeftBound() + 16);
     inst->setExecSize(isDoubleInst ? g4::SIMD2 : g4::SIMD4);
@@ -183,19 +186,18 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
   if (isDoubleInst) {
     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
       vISA_ASSERT(inst->getSrc(i)->isSrcRegRegion(),
-                   "source must have a region");
+                  "source must have a region");
       G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
       const RegionDesc *rd = src->getRegion();
       if (src->isScalar() ||
           (rd->width == 2 && rd->horzStride == 0 && rd->vertStride == 2)) {
         int subRegOffset = src->getLinearizedStart() % 16;
         vISA_ASSERT(subRegOffset == 0 || subRegOffset == 8,
-                     "double source must be 8 byte aligned");
+                    "double source must be 8 byte aligned");
         setSwizzle(src,
                    subRegOffset == 0 ? SrcSwizzle::XYXY : SrcSwizzle::ZWZW);
-        // this forces to subreg to be 16 byte aligned
-        src->setLeftBound(src->getLeftBound() - subRegOffset);
-        src->setRightBound(src->getLeftBound() + 16);
+        // If subRegOffset is not 16-byte aligned, it will be fixed when
+        // when encoding the source reg num.
       }
     }
   }

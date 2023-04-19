@@ -1185,6 +1185,27 @@ inline void EncodeSrc0ArchRegNum(G4_INST *inst, BinInst *mybin,
   }
 }
 
+// Scalar 64-bit operands in three-src instructions require special adjustments
+// for their register offset, because they are required to be 16-byte aligned
+// for encoding purposes but RA only guarantees 8-byte alignment. Such operands
+// should have their align16 swizzle programmed to be .ZWZW (done in
+// FixAlign16Inst), and we adjust its register byte offset by -8 here. For
+// example,
+// r1.1<0;1,0>:df
+// will be encoded as
+// r1.0.zwzw:df
+// in the binary.
+static uint32_t adjust3SrcRegOffset(BinaryEncoding &encoder,
+                                    G4_SrcRegRegion *src) {
+  uint32_t byteOffset = src->getLinearizedStart();
+  auto maybeSwizzle = encoder.getSwizzle(src);
+  if (maybeSwizzle && *maybeSwizzle == SrcSwizzle::ZWZW) {
+    vASSERT(byteOffset % 16 == 8);
+    return byteOffset - 8;
+  }
+  return byteOffset;
+}
+
 inline void BinaryEncoding::EncodeSrc0RegNum(G4_INST *inst, BinInst *mybin,
                                              G4_Operand *src0) {
   if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
@@ -1196,6 +1217,7 @@ inline void BinaryEncoding::EncodeSrc0RegNum(G4_INST *inst, BinInst *mybin,
                  "src0 exceeds total GRF number");
 
     if (mybin->GetIs3Src()) {
+      byteAddress = adjust3SrcRegOffset(*this, src0->asSrcRegRegion());
       // encode dwords
       mybin->SetBits(bits3SrcSrc0RegDWord_H, bits3SrcSrc0RegDWord_L,
                      byteAddress >> 2);
@@ -1838,6 +1860,7 @@ inline void BinaryEncoding::EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin,
                  "src1 exceeds total GRF number");
 
     if (mybin->GetIs3Src()) {
+      byteAddress = adjust3SrcRegOffset(*this, src1->asSrcRegRegion());
       // src1 subregnum crosses dword boundary, which SetBits can't handle, so
       // we have to break it into two (sigh)
       mybin->SetBits(bits3SrcSrc1RegDWord1_H, bits3SrcSrc1RegDWord1_L,
@@ -2255,7 +2278,7 @@ inline void BinaryEncoding::EncodeSrc2RegNum(G4_INST *inst, BinInst *mybin,
                                              G4_Operand *src2) {
   if (EncodingHelper::GetSrcRegFile(src2) != REG_FILE_A &&
       EncodingHelper::GetSrcAddrMode(src2) == ADDR_MODE_IMMED) {
-    uint32_t byteAddress = src2->getLinearizedStart();
+    uint32_t byteAddress = adjust3SrcRegOffset(*this, src2->asSrcRegRegion());
     vISA_ASSERT(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
                  "src2 exceeds total GRF number");
