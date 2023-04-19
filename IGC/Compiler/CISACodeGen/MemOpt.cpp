@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2396,7 +2396,7 @@ namespace {
         LdStCombine()
             : FunctionPass(ID)
             , m_DL(nullptr), m_AA(nullptr), m_WI(nullptr), m_CGC(nullptr)
-            , m_F(nullptr)
+            , m_F(nullptr), m_hasLoadCombined(false), m_hasStoreCombined(false)
         {
             initializeLdStCombinePass(*PassRegistry::getPassRegistry());
         }
