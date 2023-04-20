@@ -306,12 +306,6 @@ namespace IGC
                 IntelHasPositivePointerOffset = true;
             }
 
-            // -cl-intel-has-subDW-aligned-ptr-arg, -ze-opt-has-subDW-aligned-ptr-arg
-            else if (suffix.equals("-has-subDW-aligned-ptr-arg"))
-            {
-                IntelHasSubDWAlignedPtrArg = true;
-            }
-
             // -cl-intel-disable-a64WA
             else if (suffix.equals("-disable-a64WA"))
             {

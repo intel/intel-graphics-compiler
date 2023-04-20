@@ -285,7 +285,6 @@ DECLARE_IGC_REGKEY(DWORD, DebugInternalSwitch,          0,     "Code pass select
 DECLARE_IGC_REGKEY(bool, SToSProducesPositivePointer,   false, "This key is for StatelessToStateful optimization if the  user knows the pointer offset is postive to the kernel argument.", false)
 DECLARE_IGC_REGKEY(bool, EnableSupportBufferOffset,     false, "[debugging]For StatelessToStateful optimization [OCL], support implicit buffer offset argument (same as -cl-intel-has-buffer-offset-arg).", false)
 DECLARE_IGC_REGKEY(bool, EnableOptionalBufferOffset,    true,  "For StatelessToStateful optimization [OCL], if true, make buffer offset optional. Valid only if buffer offset is supported.", true)
-DECLARE_IGC_REGKEY(bool, UseSubDWAlignedPtrArg,         false, "[OCL]If set, for kernel pointer arg such as ptr to char or short, the arg is not necessarily DW aligned", false)
 DECLARE_IGC_REGKEY(bool, EnableTestIGCBuiltin,          false, "Enable testing igc builtin (precompiled kernels) using OCL.", false)
 DECLARE_IGC_REGKEY(bool, EnableCSSIMD32,                false, "Enable computer shader SIMD32 mode, and fall back to lower SIMD when spill", false)
 DECLARE_IGC_REGKEY(bool, ForceCSSIMD32,                 false, "Force computer shader SIMD32 mode", false)

@@ -34,7 +34,6 @@ namespace IGC
                 IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
-                IntelHasSubDWAlignedPtrArg(false),
                 LargeGRFKernels(),
                 RegularGRFKernels()
             {
@@ -72,10 +71,6 @@ namespace IGC
             bool IntelHasPositivePointerOffset; // default: false
             bool IntelHasBufferOffsetArg;       // default: false
             bool IntelBufferOffsetArgOptional;  // default: true
-            bool IntelHasSubDWAlignedPtrArg;
-            // default: false, meaning kernel's sub-DW ptrArgs (char*, short*) are DW-aligned.
-            // This default is stronger than the natural alignment implied by char*/short*. But
-            // for historical reason, we have this.
 
             bool replaceGlobalOffsetsByZero = false;
             bool IntelEnablePreRAScheduling = true;
