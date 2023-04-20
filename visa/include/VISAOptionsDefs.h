@@ -208,7 +208,7 @@ DEF_VISA_OPTION(vISA_renderTargetWriteSendReloc, ET_BOOL,
 DEF_VISA_OPTION(vISA_CodePatch, ET_INT32, "-codePatch", UNUSED, 0)
 DEF_VISA_OPTION(vISA_Linker, ET_INT32, "-linker", UNUSED, 0)
 DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
-                UNUSED, 0x3001E)
+                UNUSED, 0x3003E)
 DEF_VISA_OPTION(vISA_PreserveR0InR0, ET_BOOL, "-preserver0", UNUSED, false)
 DEF_VISA_OPTION(vISA_StackCallABIVer, ET_INT32, "-abiver", UNUSED, 1)
 // override spill/fill cache control. 0 is default (no override). Its values are

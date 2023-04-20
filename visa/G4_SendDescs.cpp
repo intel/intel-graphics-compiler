@@ -80,19 +80,34 @@ std::string vISA::ToSymbol(MsgOp op) {
     return "atomic_xor";
   case MsgOp::ATOMIC_OR:
     return "atomic_or";
+  //
   case MsgOp::EOT:
     return "eot";
   case MsgOp::FENCE:
     return "fence";
   case MsgOp::BARRIER:
-    return "barrier";
+    return "signal_barrier";
   case MsgOp::NBARRIER:
-    return "named_barrier";
+    return "signal_named_barrier";
   default:
     break;
   }
   return "???";
 }
+
+bool vISA::IsQuadMessage(MsgOp op) {
+  switch (op) {
+  case MsgOp::LOAD_QUAD:
+  case MsgOp::STORE_QUAD:
+  case MsgOp::LOAD_QUAD_STATUS:
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
+
+
 
 MsgOp vISA::ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
   switch (op) {
@@ -151,6 +166,7 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::STORE_QUAD;
   case LSC_OP::LSC_STORE_BLOCK2D:
     return MsgOp::STORE_BLOCK2D;
+  //
   case LSC_OP::LSC_ATOMIC_IINC:
     return MsgOp::ATOMIC_IINC;
   case LSC_OP::LSC_ATOMIC_IDEC:
@@ -159,10 +175,21 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::ATOMIC_LOAD;
   case LSC_OP::LSC_ATOMIC_STORE:
     return MsgOp::ATOMIC_STORE;
+  //
   case LSC_OP::LSC_ATOMIC_IADD:
     return MsgOp::ATOMIC_IADD;
   case LSC_OP::LSC_ATOMIC_ISUB:
     return MsgOp::ATOMIC_ISUB;
+  //
+  case LSC_OP::LSC_ATOMIC_SMIN:
+    return MsgOp::ATOMIC_SMIN;
+  case LSC_OP::LSC_ATOMIC_SMAX:
+    return MsgOp::ATOMIC_SMAX;
+  case LSC_OP::LSC_ATOMIC_UMIN:
+    return MsgOp::ATOMIC_UMIN;
+  case LSC_OP::LSC_ATOMIC_UMAX:
+    return MsgOp::ATOMIC_UMAX;
+  //
   case LSC_OP::LSC_ATOMIC_ICAS:
     return MsgOp::ATOMIC_ICAS;
   case LSC_OP::LSC_ATOMIC_FADD:
@@ -175,6 +202,7 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::ATOMIC_FMAX;
   case LSC_OP::LSC_ATOMIC_FCAS:
     return MsgOp::ATOMIC_FCAS;
+  //
   case LSC_OP::LSC_ATOMIC_AND:
     return MsgOp::ATOMIC_AND;
   case LSC_OP::LSC_ATOMIC_XOR:

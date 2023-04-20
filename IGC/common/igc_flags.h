@@ -511,7 +511,7 @@ DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1, \
     "(0 means off/no matching," \
     " 2 means force on for all platforms (vISA will emulate the addition);" \
     " also see LscImmOffsVisaOpts", true)
-DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts,           0x3001E, \
+DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts,           0x3003E, \
     "This maps to vISA_lscEnableImmOffsFor" \
     "(enables/disables immediate offsets for various address types; " \
     "see that option for semantics)", true)
