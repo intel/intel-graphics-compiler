@@ -516,6 +516,7 @@ class GenXKernelBuilder {
   bool HasCallable = false;
   bool HasStackcalls = false;
   bool HasAlloca = false;
+  bool HasSimdCF = false;
   bool UseNewStackBuilder = false;
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFByteSize;
@@ -1176,6 +1177,8 @@ bool GenXKernelBuilder::run() {
 
   IGC_ASSERT(Subtarget);
 
+  HasSimdCF = false;
+
   Func = FG->getHead();
   if (genx::fg::isGroupHead(*Func))
     runOnKernel();
@@ -1189,6 +1192,12 @@ bool GenXKernelBuilder::run() {
 
   // Reset Regalloc hook
   RegAlloc->SetRegPushHook(nullptr, nullptr);
+
+  if (!HasSimdCF && HasStackcalls) {
+    CISA_CALL(Kernel->AddKernelAttribute("AllLaneActive", 1, nullptr));
+    LLVM_DEBUG(dbgs() << " Kernel " << Func->getName() << "has no SIMD CF,\n");
+    LLVM_DEBUG(dbgs() << " Enable AllLaneActive for kernel.\n");
+  }
 
   if (TheKernelMetadata.isKernel()) {
     // For a kernel with no barrier instruction, add a NoBarrier attribute.
@@ -2876,6 +2885,8 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
               vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
                   GenXIntrinsic::genx_any))
           buildIntrinsic(CI, IntrinID, BI, Mod, DstDesc);
+          if (vc::getAnyIntrinsicID(CI->getCalledFunction()) == GenXIntrinsic::genx_simdcf_get_em)
+            HasSimdCF = true;
         break;
       case GenXIntrinsic::not_any_intrinsic:
         IGC_ASSERT_MESSAGE(!Mod,
@@ -2927,6 +2938,7 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
   // (1) generates a vISA forward goto, but the condition has the wrong sense
   // so we need to invert it.
   // (2) generates a vISA backward goto.
+  HasSimdCF = true;
   Value *BranchTarget = nullptr;
   VISA_PREDICATE_STATE StateInvert = PredState_NO_INVERSE;
   if (!Branch ||
@@ -4104,6 +4116,7 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
  *                   one channel enabled
  */
 void GenXKernelBuilder::buildJoin(CallInst *Join, BranchInst *Branch) {
+  IGC_ASSERT(HasSimdCF);
   // A join needs a label. (If the join is at the start of its block, then
   // this gets merged into the block label.)
   addLabelInst(Join);
