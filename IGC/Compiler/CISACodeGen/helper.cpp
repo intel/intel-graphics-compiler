@@ -2453,8 +2453,7 @@ namespace IGC
 
     // MulH implementation for 64-bit signed integers
     Value* CreateMulhS64(IRBuilder<>& B, Value* const u, Value* const v) {
-        // This comes from Hacker's Delight 8-2.
-        // Think of this as elementry schoole multiplication, but base 2^32.
+        // This comes from H.S. Warren's "Hacker's Delight", chap. 8-2, and was adapted for int64.
         ConstantInt* const loMask = getConstantSInt(B, 64, 0xFFFFFFFFll);
         ConstantInt* const hiShift = getConstantSInt(B, 64, 32);
         //
@@ -2473,12 +2472,12 @@ namespace IGC
         Value* const tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
         Value* const t = B.CreateAdd(tLHS, tRHS, "t");
         //
-        // w1 = u0*v0 + (t >> 32)
+        // w1 = u0*v1 + (t >> 32)
         Value* const u0v1 = B.CreateMul(u0, v1);
         Value* const tLO32 = B.CreateAnd(t, loMask, "t.lo32");
         Value* const w1 = B.CreateAdd(u0v1, tLO32, "w1");
         //
-        // return u0*v1 + (t >> 32) + (w1 >> 32)
+        // return u1*v1 + (t >> 32) + (w1 >> 32)
         Value* const u1v1 = B.CreateMul(u1, v1);
         Value* const tHI32 = B.CreateAShr(t, hiShift, "t.hi32");
         Value* const rLHS = B.CreateAdd(u1v1, tHI32);

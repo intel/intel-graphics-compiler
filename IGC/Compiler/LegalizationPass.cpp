@@ -314,7 +314,6 @@ void Legalization::visitCallInst(llvm::CallInst& I)
         I.replaceAllUsesWith(newInst);
         I.eraseFromParent();
     }
-    m_ctx->m_instrTypes.numInsts++;
     if (!m_ctx->platform.supportSamplerFp16Input())
     {
         // promote FP16 sample_xxx to FP32 sample_xxx
@@ -327,6 +326,31 @@ void Legalization::visitCallInst(llvm::CallInst& I)
             }
         }
     }
+    if (m_ctx->platform.hasNoFullI64Support())
+    {
+        if (auto* GII = dyn_cast<GenIntrinsicInst>(&I))
+        {
+            if ((GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH ||
+                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_umulH) &&
+                GII->getArgOperand(0)->getType()->isIntegerTy(64))
+            {
+                BasicBlock* const bb = GII->getParent();
+                IGC_ASSERT(nullptr != bb);
+                Function* const f = bb->getParent();
+                IGC_ASSERT(nullptr != f);
+                IGCLLVM::IRBuilder<> Builder(GII);
+
+                const bool isSigned = GII->getIntrinsicID() == GenISAIntrinsic::GenISA_imulH;
+
+                IGC_ASSERT(GII->getArgOperand(0)->getType() == GII->getArgOperand(1)->getType());
+                Value* newInst = CreateMulh(*f, Builder, isSigned, GII->getArgOperand(0), GII->getArgOperand(1));
+                IGC_ASSERT_MESSAGE(nullptr != newInst, "CreateMulh failed.");
+                GII->replaceAllUsesWith(newInst);
+                GII->eraseFromParent();
+            }
+        }
+    }
+    m_ctx->m_instrTypes.numInsts++;
 }
 
 // Match and legalize the following patterns out of GVN:
@@ -1964,7 +1988,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                     Function* const f = bb->getParent();
                     IGC_ASSERT(nullptr != f);
                     Value* hiDst = CreateMulh(*f, Builder, isSigned, src0, src1);
-                    IGC_ASSERT_MESSAGE( nullptr != hiDst, "CreateMulh failed.");
+                    IGC_ASSERT_MESSAGE(nullptr != hiDst, "CreateMulh failed.");
                     if (isSigned)
                     {
                         // Signed a * b overflows if Mulh(a, b) != 0 or -1   and consequently
