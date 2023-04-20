@@ -177,7 +177,7 @@ static void associateOpndWithInst(G4_Operand *opnd, G4_INST *inst) {
 G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_CondMod *m, G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d,
                  G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
-                 G4_Operand *s4, G4_InstOpts opt)
+                 G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
       localId(0), sat(s ? 1 : 0), evenlySplitInst(false), canBeAcc(false),
@@ -186,7 +186,6 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
   srcs[1] = s1;
   srcs[2] = s2;
   srcs[3] = s3;
-  srcs[4] = s4;
 
   dead = false;
   doPostRA = false;
@@ -196,7 +195,6 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
   resetRightBound(s1);
   resetRightBound(s2);
   resetRightBound(s3);
-  resetRightBound(s4);
   computeRightBound(predicate);
   computeRightBound(mod);
 
@@ -205,7 +203,6 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
   associateOpndWithInst(s1, this);
   associateOpndWithInst(s2, this);
   associateOpndWithInst(s3, this);
-  associateOpndWithInst(s4, this);
   associateOpndWithInst(predicate, this);
   associateOpndWithInst(mod, this);
 }
