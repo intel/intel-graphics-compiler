@@ -15,6 +15,7 @@ set(IGA_Backend
   ${CMAKE_CURRENT_SOURCE_DIR}/EncoderOpts.hpp
   PARENT_SCOPE
 )
+
 set(IGA_Backend_Messages
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.cpp
