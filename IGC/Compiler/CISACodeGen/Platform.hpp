@@ -1408,6 +1408,7 @@ bool noNativeDwordMulSupport() const
     return m_platformInfo.eProductFamily == IGFX_BROXTON ||
         m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
         m_platformInfo.eProductFamily == IGFX_DG2 ||
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
         GetPlatformFamily() == IGFX_GEN11_CORE ||
         GetPlatformFamily() == IGFX_GEN12LP_CORE;
 }
