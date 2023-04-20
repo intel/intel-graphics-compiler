@@ -789,6 +789,8 @@ public:
 
   bool canInstBeAcc() const { return canBeAcc; };
 
+  bool canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const;
+
   bool canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const;
 
   bool canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const;

@@ -821,7 +821,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
     opndDcls[i] = nullptr;
 
     G4_Operand *src = inst->getSrc(i);
-    if (!src || !src->isSrcRegRegion() || src->isAccReg()) {
+    if (!src || !src->isSrcRegRegion() || src->isAreg()) {
       // bank conflict not possible
       continue;
     }

@@ -1797,9 +1797,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
   if (useInst->getDst() == nullptr)
     return false;
 
-  // limit flag copy propagation to opcode known to work for now
-  if (src->isFlag() && useInst->opcode() != G4_not &&
-      useInst->opcode() != G4_and && useInst->opcode() != G4_cbit) {
+  // If the operand to be copied is flag register, need to check if the use
+  // operand can use flag register
+  if (src->isFlag() && !useInst->canSrcBeFlagForPropagation(opndNum)) {
     return false;
   }
 
@@ -7712,4 +7712,21 @@ bool G4_INST::isNamedBarrierWAIntrinsic() const {
 bool G4_INST::isIEEEExceptionTrap() const {
   return isIntrinsic() &&
          asIntrinsicInst()->getIntrinsicId() == Intrinsic::IEEEExceptionTrap;
+}
+
+// In general a flag register can only be src0 for an instruction.
+// This funcion is not for general usage. It is dedicated for copy propagation,
+// for now we just limit to logic instructions.
+bool G4_INST::canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const {
+  if (!isLogic())
+    return false;
+
+  // For non-commutative opcodes, only src0 can be flag. Otherwise, HWConformity
+  // may generate more mov instructions to fix the illegal flag reg operand.
+  // For commutative opcodes, it is fine to have flag reg on non-src0 sources as
+  // HWConformity can fix it by swapping the srouces.
+  if (!INST_COMMUTATIVE(opcode()) && opndNum != Opnd_src0)
+    return false;
+
+  return true;
 }
