@@ -44,6 +44,8 @@ DEF_ATTR_BOOL(ATTR_DoNotSpill, "DoNotSpill", AK_VAR, false,
               "True if var should not be spilled")
 DEF_ATTR_BOOL(ATTR_SepSpillPvtSS, "SepSpillPvtSS", AK_KERNEL, false, "")
 DEF_ATTR_BOOL(ATTR_LTOInvokeOptTarget, "LTO_InvokeOptTarget", AK_KERNEL, 0, "")
+DEF_ATTR_BOOL(ATTR_AllLaneActive, "AllLaneActive", AK_KERNEL, false,
+              "True if all lanes are active at the function entry")
 
 // int32 attributes
 DEF_ATTR_INT32(ATTR_Target, "Target", AK_KERNEL, VISA_CM,

@@ -2378,10 +2378,11 @@ void FlowGraph::markDivergentBBs() {
     return;
   }
 
-  // fcall'ed Function:  to be conservative and assume that any function
-  // that is fcall'ed is divergent on entry
+  // fcall'ed Function: if AllLaneActive attribute is not set,
+  // assume it is divergent on entry
   // (Note that each function has its own CFG)
-  if (builder->getIsFunction()) {
+  if (builder->getIsFunction() &&
+      pKernel->getBoolKernelAttr(Attributes::ATTR_AllLaneActive) == false) {
     for (G4_BB *BB : BBs) {
       BB->setDivergent(true);
     }
