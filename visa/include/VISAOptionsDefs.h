@@ -524,6 +524,11 @@ DEF_VISA_OPTION(vISA_replaceIndirectCallWithJmpi, ET_BOOL,
 DEF_VISA_OPTION(vISA_noMaskWA, ET_BOOL, "-noMaskWA", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceNoMaskWA, ET_BOOL, "-forceNoMaskWA", UNUSED, false)
 DEF_VISA_OPTION(vISA_DPASFuseRSWA, ET_BOOL, "-DPASFuseRSWA", UNUSED, false)
+DEF_VISA_OPTION(vISA_gatherRSFusionSyncWA, ET_BOOL,
+                "-disableGatherRSFusionSyncWA",
+                "Disable the WA for the out of sync issue for gather instruction in "
+                "EU fusion, when read suppression is enabled",
+                true)
 DEF_VISA_OPTION(vISA_noMaskWAOnFuncEntry, ET_BOOL, "-noMaskWAOnFuncEntry",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_fusedCallWA, ET_INT32, "-fusedCallWA",

@@ -63,6 +63,7 @@ DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF settin
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum4CS,                0,     "Total GRF setting for both IGC-LLVM and vISA, for ComputeShader-only experiment.", false)
 DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve register number for spill cost testing.", false)
 DECLARE_IGC_REGKEY(bool, ExpandPlane,                   false, "Enable pln to mad macro expansion.", false)
+DECLARE_IGC_REGKEY(bool, DisableGatherRSFusionSyncWA,       false, "Disable WA for gather instruction when read suppression and EU fusion are enabled.", true)
 DECLARE_IGC_REGKEY(bool, EnableBCR,                     false, "Enable bank conflict reduction.", true)
 DECLARE_IGC_REGKEY(bool, ForceBCR,                      false, "Force bank conflict reduction, no matter spill or not.", true)
 DECLARE_IGC_REGKEY(bool, EnableForceDebugSWSB,          false, "Enable force debugging functionality for software scoreboard generation", true)

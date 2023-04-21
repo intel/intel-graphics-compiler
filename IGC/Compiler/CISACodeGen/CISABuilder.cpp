@@ -4309,6 +4309,11 @@ namespace IGC
             }
         }
 
+        if (IGC_IS_FLAG_ENABLED(DisableGatherRSFusionSyncWA))
+        {
+            SaveOption(vISA_gatherRSFusionSyncWA, false);
+        }
+
         if (IGC_IS_FLAG_ENABLED(DisableCSEL))
         {
             SaveOption(vISA_enableCSEL, false);

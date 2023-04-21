@@ -748,4 +748,7 @@ bool hasSelWDstDwExecTypeAlignIssue() const {
   return getPlatform() == Xe_PVCXT;
 }
 
+bool hasGatherReadSuppressionWARA() const {
+  return getOption(vISA_gatherRSFusionSyncWA) && getPlatform() == Xe_MTL;
+}
 // end HW capabilities

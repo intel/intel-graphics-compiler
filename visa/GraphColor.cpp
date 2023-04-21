@@ -2684,7 +2684,8 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
   unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
   unsigned short elemSize = dst->getElemSize();
 
-  if (inst->isWriteEnableInst()) {
+  if (inst->isWriteEnableInst() ||
+      kernel.fg.builder->hasGatherReadSuppressionWARA()) {
     curEMBit = NOMASK_BYTE;
   }
 
