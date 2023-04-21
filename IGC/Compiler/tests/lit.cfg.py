@@ -59,6 +59,10 @@ else:
   config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', 'CHECK-LLVM-14-PLUS'))
   config.available_features.add('llvm-14-plus')
 
+# FIXME: Remove once older-than-10 LLVM versions go out of use
+if int(config.llvm_version) > 10:
+  config.available_features.add('llvm-10-plus')
+
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
 else:

@@ -706,6 +706,13 @@ void PromoteInt8Type::promoteInstructions()
                         "b2s");
                     break;
                 }
+#if LLVM_VERSION_MAJOR >= 10
+                case Instruction::Freeze:
+                {
+                    newVal = m_builder->CreateFreeze(getSI16Value(v0), "b2s");
+                    break;
+                }
+#endif
                 default:
                     IGC_ASSERT_MESSAGE(0, "Unexpected inst of i8");
                 }  // Switch
