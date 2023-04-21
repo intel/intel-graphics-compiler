@@ -35,15 +35,7 @@ namespace IGC
 
         ThreadIDLayout m_ThreadIDLayout = ThreadIDLayout::X;
 
-        enum WALK_ORDER {
-            WO_XYZ,
-            WO_XZY,
-            WO_YXZ,
-            WO_ZXY,
-            WO_YZX,
-            WO_ZYX
-        };
-        WALK_ORDER m_walkOrder = WALK_ORDER::WO_XYZ;
+        CS_WALK_ORDER m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         enum EMIT_LOCAL_MASK {
             NONE = 0,
             X    = 1,
@@ -56,19 +48,19 @@ namespace IGC
         bool m_enableHWGenerateLID = false;
 
         void setEmitLocalMask(SGVUsage channelNum);
-        static llvm::Optional<WALK_ORDER> selectBestWalkOrder(
+        static llvm::Optional<CS_WALK_ORDER> selectBestWalkOrder(
             ThreadIDLayout Layout,
             bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
         // Determines if HW can handle auto generating local IDs with this
         // order
-        static llvm::Optional<WALK_ORDER> checkLegalWalkOrder(
+        static llvm::Optional<CS_WALK_ORDER> checkLegalWalkOrder(
             const std::array<uint32_t, 3>& Dims,
             const WorkGroupWalkOrderMD& WO);
         static bool enableHWGenerateLID(
-            WALK_ORDER walk_order,
+            CS_WALK_ORDER walk_order,
             bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
         void overrideWalkOrderKeys(
-            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
-        static WALK_ORDER getWalkOrder(uint order0, uint order1);
+            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z, const ComputeShaderInfo& csInfo);
+        static CS_WALK_ORDER getWalkOrder(uint order0, uint order1);
     };
 }

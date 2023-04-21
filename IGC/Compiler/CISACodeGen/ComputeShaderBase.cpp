@@ -52,14 +52,14 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) && is_pow2_x &&
             m_Platform->enableSetDefaultTileYWalk() && m_DriverInfo->SupportHWGenerateTID()) {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
-            m_walkOrder = WO_YXZ;
+            m_walkOrder = CS_WALK_ORDER::WO_YXZ;
         }
         if ((numberOfTypedAccess >= numberOfUntypedAccess) &&
             threadGroupSize_Y % 4 == 0 &&
             !MMD->csInfo.disableLocalIdOrderOptimizations &&
             IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder)) {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
-            m_walkOrder = WO_YXZ;
+            m_walkOrder = CS_WALK_ORDER::WO_YXZ;
         }
 
         bool needsLinearWalk =
@@ -74,7 +74,7 @@ namespace IGC
         if (needsLinearWalk)
         {
             m_ThreadIDLayout = ThreadIDLayout::X;
-            m_walkOrder = WO_XYZ;
+            m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
         if (!(m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID()))
             return;
@@ -98,7 +98,7 @@ namespace IGC
         if ((m_ThreadIDLayout == ThreadIDLayout::TileY) &&
             !iSTD::IsPowerOfTwo(threadGroupSize_Y)) {
             m_ThreadIDLayout = ThreadIDLayout::X;
-            m_walkOrder = WO_XYZ;
+            m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
 
         //if not all DIMs are used, we can assume not-used DIM vals are 1, so, HW might generate LIDs even if original not-used DIM val != pow2
@@ -118,28 +118,28 @@ namespace IGC
             threadGroupSize_Y == 1 && threadGroupSize_Z == 1) {
             // 1D thread group
             m_ThreadIDLayout = ThreadIDLayout::X;
-            m_walkOrder = WO_XYZ;
+            m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
 
         if (!IGC_IS_FLAG_ENABLED(EnableNonOCLWalkOrderSel) || needsLinearWalk) {
             if (threadGroupSize_Y == 1 && threadGroupSize_Z == 1)
             {
-                m_walkOrder = WO_YZX;
+                m_walkOrder = CS_WALK_ORDER::WO_YZX;
                 m_enableHWGenerateLID = true;
             }
             else if (threadGroupSize_X == 1 && threadGroupSize_Z == 1)
             {
-                m_walkOrder = WO_XZY;
+                m_walkOrder = CS_WALK_ORDER::WO_XZY;
                 m_enableHWGenerateLID = true;
             }
             else
             {
-                m_walkOrder = WO_XYZ;
+                m_walkOrder = CS_WALK_ORDER::WO_XYZ;
                 m_enableHWGenerateLID = (is_pow2_x && is_pow2_y);
             }
             //disable tileY if walkorder cannot be changed
             m_ThreadIDLayout = ThreadIDLayout::X;
-            overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z);
+            overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z, MMD->csInfo);
             return;
         }
 
@@ -150,7 +150,7 @@ namespace IGC
             num1DAccesses)
         {
             m_ThreadIDLayout = ThreadIDLayout::X;
-            m_walkOrder = WO_XYZ;
+            m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableNewTileYCheck) &&
@@ -164,7 +164,7 @@ namespace IGC
             if (num1D > num2D && num2D <= 5)
             {
                 m_ThreadIDLayout = ThreadIDLayout::X;
-                m_walkOrder = WO_XYZ;
+                m_walkOrder = CS_WALK_ORDER::WO_XYZ;
             }
         }
 
@@ -178,12 +178,12 @@ namespace IGC
             // Is 2D or 3D dispatch and isnt pow2, so the HW doesn't support it
             m_enableHWGenerateLID = false;
             m_ThreadIDLayout = ThreadIDLayout::X;
-            m_walkOrder = WO_XYZ;
+            m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
-        overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z);
+        overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z, MMD->csInfo);
     }
 
-    Optional<CComputeShaderBase::WALK_ORDER>
+    Optional<CS_WALK_ORDER>
     CComputeShaderBase::checkLegalWalkOrder(
         const std::array<uint32_t, 3>& Dims,
         const WorkGroupWalkOrderMD& WO)
@@ -219,7 +219,7 @@ namespace IGC
         return None;
     }
 
-    Optional<CComputeShaderBase::WALK_ORDER>
+    Optional<CS_WALK_ORDER>
     CComputeShaderBase::selectBestWalkOrder(
         ThreadIDLayout Layout,
         bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
@@ -262,25 +262,25 @@ namespace IGC
 
     bool
     CComputeShaderBase::enableHWGenerateLID(
-        CComputeShaderBase::WALK_ORDER walk_order,
+        CS_WALK_ORDER walk_order,
         bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
     {
         bool bEnableHWGenerateLID = false;
 
         switch (walk_order)
         {
-        case WO_XYZ:
-        case WO_YXZ:
+        case CS_WALK_ORDER::WO_XYZ:
+        case CS_WALK_ORDER::WO_YXZ:
             bEnableHWGenerateLID = (is_pow2_x && is_pow2_y);
             break;
 
-        case WO_XZY:
-        case WO_ZXY:
+        case CS_WALK_ORDER::WO_XZY:
+        case CS_WALK_ORDER::WO_ZXY:
             bEnableHWGenerateLID = (is_pow2_x && is_pow2_z);
             break;
 
-        case WO_YZX:
-        case WO_ZYX:
+        case CS_WALK_ORDER::WO_YZX:
+        case CS_WALK_ORDER::WO_ZYX:
             bEnableHWGenerateLID = (is_pow2_y && is_pow2_z);
             break;
         }
@@ -289,19 +289,25 @@ namespace IGC
 
     void
     CComputeShaderBase::overrideWalkOrderKeys(
-        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
+        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z, const ComputeShaderInfo& csInfo)
     {
         if ((IGC_IS_FLAG_ENABLED(ForceTileY) || GetContext()->getModuleMetaData()->csInfo.forceTileYWalk) &&
             m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
         {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
-            m_walkOrder = WO_YXZ;
+            m_walkOrder = CS_WALK_ORDER::WO_YXZ;
+            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+        }
+
+        if (csInfo.walkOrderEnabled)
+        {
+            m_walkOrder = (CS_WALK_ORDER)csInfo.walkOrderOverride;
             m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
         }
 
         if (IGC_IS_FLAG_ENABLED(OverrideCsWalkOrderEnable))
         {
-            m_walkOrder = (WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
+            m_walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
             m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
         }
 
@@ -314,7 +320,7 @@ namespace IGC
     //order0: the internal walk dim
     //order1: the intermediate walk dim
     //e.g.: 1, 0 means, YXZ walkorder
-    CComputeShaderBase::WALK_ORDER CComputeShaderBase::getWalkOrder(uint order0, uint order1)
+    CS_WALK_ORDER CComputeShaderBase::getWalkOrder(uint order0, uint order1)
     {
         auto getWalkOrderValue = [](uint order0, uint order1) constexpr {
             return (order0 << 4 | order1 << 2);
@@ -322,15 +328,15 @@ namespace IGC
 
         switch (getWalkOrderValue(order0, order1))
         {
-        case getWalkOrderValue(0, 1): return WALK_ORDER::WO_XYZ; //012
-        case getWalkOrderValue(0, 2): return WALK_ORDER::WO_XZY; //021
-        case getWalkOrderValue(1, 0): return WALK_ORDER::WO_YXZ; //102
-        case getWalkOrderValue(1, 2): return WALK_ORDER::WO_YZX; //120
-        case getWalkOrderValue(2, 0): return WALK_ORDER::WO_ZXY; //201
-        case getWalkOrderValue(2, 1): return WALK_ORDER::WO_ZYX; //210
+        case getWalkOrderValue(0, 1): return CS_WALK_ORDER::WO_XYZ; //012
+        case getWalkOrderValue(0, 2): return CS_WALK_ORDER::WO_XZY; //021
+        case getWalkOrderValue(1, 0): return CS_WALK_ORDER::WO_YXZ; //102
+        case getWalkOrderValue(1, 2): return CS_WALK_ORDER::WO_YZX; //120
+        case getWalkOrderValue(2, 0): return CS_WALK_ORDER::WO_ZXY; //201
+        case getWalkOrderValue(2, 1): return CS_WALK_ORDER::WO_ZYX; //210
         default:
             IGC_ASSERT_MESSAGE(0, "unhandled case!");
-            return WALK_ORDER::WO_XYZ;
+            return CS_WALK_ORDER::WO_XYZ;
         }
     }
 

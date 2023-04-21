@@ -466,6 +466,9 @@ namespace IGC
         bool forceTileYWalk = false;
         // enable atomic branch optimization
         bool atomicBranch = false;
+        // enable compute walk order optimization
+        bool walkOrderEnabled = false;
+        unsigned int walkOrderOverride = 0;
         // resource index for hf packing (resourceRangeID, indexIntoRange)
         std::vector<std::vector<unsigned int>> ResForHfPacking;
 

@@ -819,7 +819,7 @@ namespace IGC
             else
             {
                 auto WalkOrder = getWalkOrder(WO.dim0, WO.dim1);
-                if (WalkOrder != WO_XYZ)
+                if (WalkOrder != CS_WALK_ORDER::WO_XYZ)
                 {
                     IGC_ASSERT_MESSAGE(0, "unhandled walk order!");
                 }
@@ -2667,7 +2667,7 @@ namespace IGC
         {
             m_kernelInfo.m_threadPayload.generateLocalID = true;
             m_kernelInfo.m_threadPayload.emitLocalMask = m_emitMask;
-            m_kernelInfo.m_threadPayload.walkOrder = m_walkOrder;
+            m_kernelInfo.m_threadPayload.walkOrder = static_cast<unsigned int>(m_walkOrder);
             m_kernelInfo.m_threadPayload.tileY = (m_ThreadIDLayout == ThreadIDLayout::TileY);
         }
 
