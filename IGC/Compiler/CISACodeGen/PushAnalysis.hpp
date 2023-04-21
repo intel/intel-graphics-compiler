@@ -42,12 +42,10 @@ namespace IGC
         bool m_funcTypeChanged;
         std::map <llvm::Function*, bool> m_isFuncTypeChanged;
 
-        llvm::Module* m_module;
         llvm::Function* m_pFunction;
         IGCMD::MetaDataUtils* m_pMdUtils;
         llvm::PostDominatorTree* m_PDT;
         llvm::DominatorTree* m_DT;
-        llvm::BasicBlock* m_entryBB;
 
         PullConstantHeuristics* m_pullConstantHeuristics;
 
@@ -75,7 +73,7 @@ namespace IGC
             SimplePushInfo& info);
 
         /// Checks if stateless buffer load is not under flow control.
-        bool IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst) const;
+        bool IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst);
 
         // Checks if pAddress is a RuntimeValue and is on the list of pushable
         // runtime values.
@@ -83,7 +81,7 @@ namespace IGC
             llvm::Instruction* inst,
             llvm::Value* pAddress,
             int& pushableAddressGrfOffset,
-            int& pushableOffsetGrfOffset) const;
+            int& pushableOffsetGrfOffset);
 
         bool GetConstantOffsetForDynamicUniformBuffer(
             llvm::Value* offsetValue,
@@ -158,7 +156,8 @@ namespace IGC
         void AnalyzeFunction(llvm::Function* F)
         {
             m_pFunction = F;
-            m_module = F->getParent();
+            m_PDT = nullptr;
+            m_DT = nullptr;
 
             // We need to initialize m_argIndex and m_argList appropriately as there might be some arguments added before push analysis stage
             m_argIndex = 0;

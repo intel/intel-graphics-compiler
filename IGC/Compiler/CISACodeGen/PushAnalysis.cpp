@@ -193,10 +193,6 @@ namespace IGC
         if (!llvm::isa<llvm::LoadInst>(inst))
             return false;
 
-        m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_pFunction).getPostDomTree();
-        m_DT = &getAnalysis<DominatorTreeWrapperPass>(*m_pFunction).getDomTree();
-        m_entryBB = &m_pFunction->getEntryBlock();
-
         // %15 = load <3 x float> addrspace(2)* %14, align 16
         llvm::LoadInst* pLoad = llvm::cast<llvm::LoadInst>(inst);
         uint address_space = pLoad->getPointerAddressSpace();
@@ -372,7 +368,7 @@ namespace IGC
         llvm::Instruction* inst,
         llvm::Value* pAddress,
         int& pushableAddressGrfOffset,
-        int& pushableOffsetGrfOffset) const
+        int& pushableOffsetGrfOffset)
     {
         // skip casts
         while (
@@ -449,8 +445,16 @@ namespace IGC
         return false;
     }
 
-    bool PushAnalysis::IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst) const
+    bool PushAnalysis::IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst)
     {
+        if (!m_PDT)
+        {
+            m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_pFunction).getPostDomTree();
+        }
+        if (!m_DT)
+        {
+            m_DT = &getAnalysis<DominatorTreeWrapperPass>(*m_pFunction).getDomTree();
+        }
         // Find the return BB or the return BB before discard lowering.
         bool searchForRetBBBeforeDiscard = false;
         BasicBlock* retBB = m_PDT->getRootNode()->getBlock();
@@ -741,7 +745,7 @@ namespace IGC
             m_context->platform.getWATable().Wa_16011983264 &&
             m_context->type == ShaderType::HULL_SHADER)
         {
-            Function* URBReadFunction = GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead);
+            Function* URBReadFunction = GenISAIntrinsic::getDeclaration(m_pFunction->getParent(), GenISAIntrinsic::GenISA_URBRead);
             if (GetMaxNumberOfPushedInputs() == 0 ||
                 none_of(URBReadFunction->users(), [](const User* user) { return isa<GenIntrinsicInst>(user); }))
             {
@@ -987,7 +991,6 @@ namespace IGC
             std::min(m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * getMinPushConstantBufferAlignmentInBytes(),
                      (maxPushedGRFs - largestIndex) * getGRFSize());
         unsigned int sizePushed = 0;
-        m_entryBB = &m_pFunction->getEntryBlock();
 
         // Runtime values are changed to intrinsics. So we need to do it before.
         for (auto bb = m_pFunction->begin(), be = m_pFunction->end(); bb != be; ++bb)
