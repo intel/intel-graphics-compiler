@@ -6114,8 +6114,6 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (ST.hasPreemption())
     addArgument("-enablePreemption");
 
-  addArgument("-dumpvisa");
-
   if (ST.hasHalfSIMDLSC())
     addArgument("-enableHalfLSC");
 
