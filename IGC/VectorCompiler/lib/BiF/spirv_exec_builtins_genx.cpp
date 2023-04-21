@@ -75,17 +75,16 @@ CM_NODEBUG CM_INLINE uint __spirv_BuiltInSubgroupMaxSize() {
 }
 
 CM_NODEBUG CM_INLINE uint __spirv_BuiltInNumSubgroups() {
-  return __spirv_BuiltInGlobalSize(0) * __spirv_BuiltInGlobalSize(1) *
-         __spirv_BuiltInGlobalSize(2);
+  return __spirv_BuiltInWorkgroupSize(0) * __spirv_BuiltInWorkgroupSize(1) *
+         __spirv_BuiltInWorkgroupSize(2);
 }
 
 CM_NODEBUG CM_INLINE uint __spirv_BuiltInNumEnqueuedSubgroups() {
-  return __spirv_BuiltInGlobalSize(0) * __spirv_BuiltInGlobalSize(1) *
-         __spirv_BuiltInGlobalSize(2);
+  return __spirv_BuiltInNumSubgroups();
 }
 
 CM_NODEBUG CM_INLINE uint __spirv_BuiltInSubgroupId() {
-  return __spirv_BuiltInGlobalLinearId();
+  return __spirv_BuiltInLocalInvocationIndex();
 }
 
 CM_NODEBUG CM_INLINE uint __spirv_BuiltInSubgroupLocalInvocationId() {
