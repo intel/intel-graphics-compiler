@@ -168,12 +168,10 @@ void Optimizer::finishFusedCallWA_preSWSB() {
     // that the first BB is not necessarily the kernel's entry when kernel needs
     // to load its payload!
     //    (W) or (1|M0)  dmask(sr0.2)  dmasksr0.2  0xFFFF0000
-    //
-    // if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
-    {
+    if (true /*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM */)
+        {
       // Use M16 always.
-      vISA_ASSERT_INPUT(kernel.getSimdSize() <= 16,
-          "Call WA requires SIMD16 dispatch with execution size <= 16");
+      vASSERT(kernel.getSimdSize() <= 16);
       uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFFFFFF00;
 
       G4_VarBase *V_sr0 = builder.phyregpool.getSr0Reg();
