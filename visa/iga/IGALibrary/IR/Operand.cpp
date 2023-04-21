@@ -36,9 +36,9 @@ void Operand::setMacroDestination(DstModifier dstMod, RegName r,
   m_type = type;
 }
 
-void Operand::setInidirectDestination(DstModifier dstMod, const RegRef &reg,
-                                      int16_t immediateOffset,
-                                      const Region::Horz &rgnHz, Type type) {
+void Operand::setIndirectDestination(DstModifier dstMod, const RegRef &reg,
+                                     int16_t immediateOffset,
+                                     const Region::Horz &rgnHz, Type type) {
   m_kind = Operand::Kind::INDIRECT;
 
   m_regMathMacro = MathMacroExt::INVALID;
@@ -58,9 +58,9 @@ void Operand::setImmediateSource(const ImmVal &val, Type type) {
   m_type = type;
 }
 
-void Operand::setInidirectSource(SrcModifier srcMod, RegName regName,
-                                 const RegRef &reg, int16_t immediateOffset,
-                                 const Region &rgn, Type type) {
+void Operand::setIndirectSource(SrcModifier srcMod, RegName regName,
+                                const RegRef &reg, int16_t immediateOffset,
+                                const Region &rgn, Type type) {
   m_kind = Operand::Kind::INDIRECT;
 
   m_regMathMacro = MathMacroExt::INVALID;

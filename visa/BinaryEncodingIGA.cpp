@@ -1323,8 +1323,8 @@ void BinaryEncodingIGA::translateInstructionDst(G4_INST *g4inst,
     RegRef regRef{0, 0};
     bool valid;
     regRef.subRegNum = (uint8_t)dst->ExIndSubRegNum(valid);
-    igaInst->setInidirectDestination(dstModifier, regRef, dst->getAddrImm(),
-                                     hstride, type);
+    igaInst->setIndirectDestination(dstModifier, regRef, dst->getAddrImm(),
+                                    hstride, type);
   }
 }
 
@@ -1448,8 +1448,8 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
         // set to GRF for indirect register access
         iga::RegName regName = iga::RegName::GRF_R;
 
-        igaInst->setInidirectSource(opIx, srcMod, regName, regRef,
-                                    srcRegion->getAddrImm(), region, type);
+        igaInst->setIndirectSource(opIx, srcMod, regName, regRef,
+                                   srcRegion->getAddrImm(), region, type);
       }
     } else if (src->isLabel()) {
       igaInst->setLabelSource(opIx, lookupIGABlock(src->asLabel(), *IGAKernel),

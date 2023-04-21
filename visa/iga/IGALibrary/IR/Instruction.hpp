@@ -91,14 +91,14 @@ public:
                             Region::Horz rgn, Type type);
   void setMacroDestination(DstModifier dstMod, RegName r, RegRef reg,
                            MathMacroExt mme, Region::Horz rgn, Type type);
-  void setInidirectDestination(DstModifier dstMod, RegRef addrReg,
-                               int16_t addrImmOff, Region::Horz rgnH,
-                               Type type);
+  void setIndirectDestination(DstModifier dstMod, RegRef addrReg,
+                              int16_t addrImmOff, Region::Horz rgnH,
+                              Type type);
   void setDirectSource(SourceIndex srcIx, SrcModifier srcMod, RegName rType,
                        RegRef reg, Region rgn, Type type);
-  void setInidirectSource(SourceIndex srcIx, SrcModifier srcMod,
-                          RegName regName, RegRef reg, int16_t m_immOffset,
-                          Region rgn, Type type);
+  void setIndirectSource(SourceIndex srcIx, SrcModifier srcMod,
+                         RegName regName, RegRef reg, int16_t m_immOffset,
+                         Region rgn, Type type);
   void setMacroSource(SourceIndex srcIx, SrcModifier srcMod, RegName r,
                       RegRef reg, MathMacroExt acc, Region rgn, Type type);
   void setImmediateSource(SourceIndex srcIx, const ImmVal &val, Type type);

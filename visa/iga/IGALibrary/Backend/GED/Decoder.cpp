@@ -544,8 +544,8 @@ void Decoder::decodeBasicDestinationAlign16(Instruction *inst) {
     GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
     GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
     RegRef a0(0u, subRegNum);
-    inst->setInidirectDestination(dstMod, a0, (uint16_t)addrImm,
-                                  Region::Horz::HZ_1, type);
+    inst->setIndirectDestination(dstMod, a0, (uint16_t)addrImm,
+                                 Region::Horz::HZ_1, type);
     break;
   }
   default:
@@ -602,8 +602,7 @@ void Decoder::decodeBasicDestinationAlign1(Instruction *inst) {
     GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
     GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
     RegRef a0(0u, subRegNum);
-    inst->setInidirectDestination(dstMod, a0, (uint16_t)addrImm, rgnHzDec,
-                                  type);
+    inst->setIndirectDestination(dstMod, a0, (uint16_t)addrImm, rgnHzDec, type);
     break;
   }
   default:
@@ -1773,7 +1772,7 @@ void Decoder::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE) {
     } else if (addrMode == GED_ADDR_MODE_Indirect) {
       RegRef a0(0u, decodeSrcAddrSubRegNum<S>());
       int16_t addrImm = (uint16_t)decodeSrcAddrImm<S>();
-      inst->setInidirectSource(
+      inst->setIndirectSource(
           toSrcIxE, srcMod,
           RegName::GRF_R, // set to GRF for indirect register access
           a0, addrImm, decRgn, decodeSrcType<S>());
@@ -1857,9 +1856,9 @@ void Decoder::decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcIx) {
       int32_t subRegNum = decodeSrcAddrSubRegNum<S>();
       int32_t addrImm = decodeSrcAddrImm<S>();
       RegRef indReg = {0, (uint8_t)subRegNum};
-      inst->setInidirectSource(toSrcIx, srcMod, RegName::GRF_R, indReg,
-                               (int16_t)addrImm, Region::SRC110,
-                               decodeSrcType<S>());
+      inst->setIndirectSource(toSrcIx, srcMod, RegName::GRF_R, indReg,
+                              (int16_t)addrImm, Region::SRC110,
+                              decodeSrcType<S>());
     } else {
       // == GED_ADDR_MODE_INVALID
       fatalT("src", (int)S, ": invalid addressing mode");

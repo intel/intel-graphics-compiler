@@ -116,9 +116,9 @@ public:
   void setMacroDestination(DstModifier dstMod, RegName rName, const RegRef &reg,
                            MathMacroExt acc, Region::Horz rgnHz, Type type);
   // re-initializes this operand as an indirect destination register operand
-  void setInidirectDestination(DstModifier dstMod, const RegRef &reg,
-                               int16_t immediateOffset,
-                               const Region::Horz &rgnHz, Type type);
+  void setIndirectDestination(DstModifier dstMod, const RegRef &reg,
+                              int16_t immediateOffset,
+                              const Region::Horz &rgnHz, Type type);
 
   // re-initializes this operand as an immeidate value with a given type
   void setImmediateSource(const ImmVal &val, Type type);
@@ -135,9 +135,9 @@ public:
                       MathMacroExt mme, Region rgn, Type type);
 
   // re-initializes this operand as an indirect register operand
-  void setInidirectSource(SrcModifier srcMod, RegName regName,
-                          const RegRef &reg, int16_t addrImmOff,
-                          const Region &rgn, Type type);
+  void setIndirectSource(SrcModifier srcMod, RegName regName,
+                         const RegRef &reg, int16_t addrImmOff,
+                         const Region &rgn, Type type);
   // re-initializes this operand as an immediate branch target
   void setLabelSource(Block *blk, Type type);
   void setLabelSource(int32_t jipOrUip, Type type);

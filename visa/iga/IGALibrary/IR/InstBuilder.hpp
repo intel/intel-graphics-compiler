@@ -375,9 +375,9 @@ public:
                                   m_dst.regOpReg, m_dst.regOpMathMacroExtReg,
                                   m_dst.regOpRgn.getHz(), m_dst.type);
       } else { // Operand::Kind::INDIRECT
-        inst->setInidirectDestination(m_dstModifier, m_dst.regOpReg,
-                                      m_dst.regOpIndOff, m_dst.regOpRgn.getHz(),
-                                      m_dst.type);
+        inst->setIndirectDestination(m_dstModifier, m_dst.regOpReg,
+                                     m_dst.regOpIndOff, m_dst.regOpRgn.getHz(),
+                                     m_dst.type);
       }
     } // end setting destinations
 
@@ -394,9 +394,9 @@ public:
         inst->setMacroSource(opIx, src.regOpSrcMod, src.regOpName, src.regOpReg,
                              src.regOpMathMacroExtReg, src.regOpRgn, src.type);
       } else if (src.kind == Operand::Kind::INDIRECT) {
-        inst->setInidirectSource(opIx, src.regOpSrcMod, src.regOpName,
-                                 src.regOpReg, src.regOpIndOff, src.regOpRgn,
-                                 src.type);
+        inst->setIndirectSource(opIx, src.regOpSrcMod, src.regOpName,
+                                src.regOpReg, src.regOpIndOff, src.regOpRgn,
+                                src.type);
       } else if (src.kind == Operand::Kind::LABEL) {
         if (src.immLabel.empty()) {
           // numeric label was used

@@ -40,10 +40,10 @@ void Instruction::setMacroDestination(DstModifier dstMod, RegName rnm,
   m_dst.setMacroDestination(dstMod, rnm, reg, mme, rgnHz, type);
 }
 
-void Instruction::setInidirectDestination(DstModifier dstMod, RegRef reg,
-                                          int16_t addrImmOff, Region::Horz rgnH,
-                                          Type type) {
-  m_dst.setInidirectDestination(dstMod, reg, addrImmOff, rgnH, type);
+void Instruction::setIndirectDestination(DstModifier dstMod, RegRef reg,
+                                         int16_t addrImmOff, Region::Horz rgnH,
+                                         Type type) {
+  m_dst.setIndirectDestination(dstMod, reg, addrImmOff, rgnH, type);
 }
 
 void Instruction::setDirectSource(SourceIndex srcIx, SrcModifier srcMod,
@@ -69,13 +69,13 @@ void Instruction::setMacroSource(SourceIndex srcIx, SrcModifier srcMod,
   m_srcs[ix].setMacroSource(srcMod, rName, reg, acc, rgn, type);
 }
 
-void Instruction::setInidirectSource(SourceIndex srcIx, SrcModifier srcMod,
-                                     RegName regName, RegRef reg,
-                                     int16_t immediateOffset, Region rgn,
-                                     Type type) {
+void Instruction::setIndirectSource(SourceIndex srcIx, SrcModifier srcMod,
+                                    RegName regName, RegRef reg,
+                                    int16_t immediateOffset, Region rgn,
+                                    Type type) {
   unsigned ix = static_cast<unsigned>(srcIx);
-  m_srcs[ix].setInidirectSource(srcMod, regName, reg, immediateOffset, rgn,
-                                type);
+  m_srcs[ix].setIndirectSource(srcMod, regName, reg, immediateOffset, rgn,
+                               type);
 }
 
 void Instruction::setImmediateSource(SourceIndex srcIx, const ImmVal &val,
