@@ -59,6 +59,7 @@ namespace IGC
         m_samplertoRenderTargetEnable(false),
         m_ctx(nullptr),
         DT(nullptr),
+        PDT(nullptr),
         LI(nullptr),
         m_DL(0),
         m_WI(nullptr),
@@ -112,6 +113,7 @@ namespace IGC
         m_Platform = m_ctx->platform;
 
         DT = &getAnalysis<llvm::DominatorTreeWrapperPass>().getDomTree();
+        PDT = &getAnalysis<llvm::PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<llvm::LoopInfoWrapperPass>().getLoopInfo();
         m_DL = &F.getParent()->getDataLayout();
         m_WI = &getAnalysis<WIAnalysis>();
@@ -826,7 +828,7 @@ namespace IGC
         pat->isUnsigned = isUnsigned;
         pat->needBitCast = !I.getType()->isIntegerTy();
         pat->type = type;
-        pat->src = GetSource(X, !isUnsigned, false);
+        pat->src = GetSource(X, !isUnsigned, false, IsSourceOfSample(&I));
         AddPattern(pat);
 
         return true;
@@ -927,7 +929,7 @@ namespace IGC
         };
 
         IntegerSatTruncPattern* pat = new (m_allocator) IntegerSatTruncPattern();
-        pat->src = GetSource(Src, isSignedSrc, false);
+        pat->src = GetSource(Src, isSignedSrc, false, IsSourceOfSample(&I));
         pat->isSignedDst = isSignedDst;
         pat->isSignedSrc = isSignedSrc;
         AddPattern(pat);
@@ -960,7 +962,7 @@ namespace IGC
         };
 
         SIToFPExtPattern* pat = new (m_allocator) SIToFPExtPattern();
-        pat->src = GetSource(ZEI->getOperand(0), false, false);
+        pat->src = GetSource(ZEI->getOperand(0), false, false, IsSourceOfSample(S2FI));
         AddPattern(pat);
 
         return true;
@@ -1011,7 +1013,7 @@ namespace IGC
         return false;
     }
 
-    void CodeGenPatternMatch::HandleSubspanUse(llvm::Value* v)
+    void CodeGenPatternMatch::HandleSubspanUse(llvm::Value* v, bool isSampleSource)
     {
         IGC_ASSERT(m_root != nullptr);
         if (m_ctx->type != ShaderType::PIXEL_SHADER)
@@ -1020,16 +1022,32 @@ namespace IGC
         }
         if (!isa<Constant>(v) && !m_WI->isUniform(v))
         {
-            if (isa<PHINode>(v) || HasUseOutsideLoop(v) || (isa<SampleIntrinsic>(v)
-                ))
+            if (isa<PHINode>(v) || HasUseOutsideLoop(v))
             {
                 // If a phi is used in a subspan we cannot propagate the subspan use and need to use VMask
-                // Also, we want to apply vector mask instead of no mask to sample instructions,
-                // because it should have better performance on workloads with many disabled subspans
                 m_NeedVMask = true;
             }
             else
             {
+                if (isa<SampleIntrinsic>(v))
+                {
+                    // Also, we want to apply vector mask instead of no mask to sample instructions,
+                    // because it should have better performance on workloads with many disabled subspans
+                    m_NeedVMask = true;
+                }
+
+                if (Instruction* I = dyn_cast<Instruction>(v))
+                {
+                    if (isSampleSource)
+                    {
+                        m_sampleSource.insert(v);
+                        if (!PDT->dominates(I->getParent(), &I->getFunction()->getEntryBlock()))
+                        {
+                            m_sampleUnderCFsource.insert(v);
+                        }
+                    }
+                }
+
                 m_subSpanUse.insert(v);
                 if (LoadInst * load = dyn_cast<LoadInst>(v))
                 {
@@ -1074,8 +1092,8 @@ namespace IGC
         // FIXME: We leave unsigned operand without source modifier so far. When
         // its behavior is detailed and correcty modeled, consider to add source
         // modifier support.
-        pat->srcs[0] = GetSource(LHS, !isUnsigned, false);
-        pat->srcs[1] = GetSource(RHS, !isUnsigned, false);
+        pat->srcs[0] = GetSource(LHS, !isUnsigned, false, IsSourceOfSample(&SI));
+        pat->srcs[1] = GetSource(RHS, !isUnsigned, false, IsSourceOfSample(&SI));
         pat->isMin = isMin;
         pat->isUnsigned = isUnsigned;
         AddPattern(pat);
@@ -1495,10 +1513,10 @@ namespace IGC
                 isCandidate &= index && index->getZExtValue() == 1;
                 if (isCandidate) {
                     Shl32Pattern *Pat = new (m_allocator) Shl32Pattern();
-                    Pat->sources[0] = GetSource(IEI->getOperand(1), false, false);
+                    Pat->sources[0] = GetSource(IEI->getOperand(1), false, false, IsSourceOfSample(&I));
                     Pat->sources[1] = GetSource(
                         ConstantInt::get(Type::getInt32Ty(I.getContext()), 32),
-                        false, false);
+                        false, false, IsSourceOfSample(&I));
                     AddPattern(Pat);
                     return;
                 }
@@ -1534,7 +1552,7 @@ namespace IGC
         {
             if (call->isInlineAsm() && call->getType()->isStructTy())
             {
-                MarkAsSource(call);
+                MarkAsSource(call, IsSourceOfSample(&I));
                 return;
             }
         }
@@ -1580,10 +1598,10 @@ namespace IGC
         if (New) {
             AddPairPattern* Pat = new (m_allocator) AddPairPattern();
             Pat->GII = GII;
-            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false);
-            Pat->Sources[1] = GetSource(GII->getOperand(1), false, false);
-            Pat->Sources[2] = GetSource(GII->getOperand(2), false, false);
-            Pat->Sources[3] = GetSource(GII->getOperand(3), false, false);
+            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[1] = GetSource(GII->getOperand(1), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[2] = GetSource(GII->getOperand(2), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[3] = GetSource(GII->getOperand(3), false, false, IsSourceOfSample(Ex));
             AddPattern(Pat);
         }
         else {
@@ -1630,10 +1648,10 @@ namespace IGC
         if (New) {
             SubPairPattern* Pat = new (m_allocator) SubPairPattern();
             Pat->GII = GII;
-            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false);
-            Pat->Sources[1] = GetSource(GII->getOperand(1), false, false);
-            Pat->Sources[2] = GetSource(GII->getOperand(2), false, false);
-            Pat->Sources[3] = GetSource(GII->getOperand(3), false, false);
+            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[1] = GetSource(GII->getOperand(1), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[2] = GetSource(GII->getOperand(2), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[3] = GetSource(GII->getOperand(3), false, false, IsSourceOfSample(Ex));
             AddPattern(Pat);
         }
         else {
@@ -1680,10 +1698,10 @@ namespace IGC
         if (New) {
             MulPairPattern* Pat = new (m_allocator) MulPairPattern();
             Pat->GII = GII;
-            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false);
-            Pat->Sources[1] = GetSource(GII->getOperand(1), false, false);
-            Pat->Sources[2] = GetSource(GII->getOperand(2), false, false);
-            Pat->Sources[3] = GetSource(GII->getOperand(3), false, false);
+            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[1] = GetSource(GII->getOperand(1), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[2] = GetSource(GII->getOperand(2), false, false, IsSourceOfSample(Ex));
+            Pat->Sources[3] = GetSource(GII->getOperand(3), false, false, IsSourceOfSample(Ex));
             AddPattern(Pat);
         }
         else {
@@ -1730,7 +1748,7 @@ namespace IGC
         if (New) {
             PtrToPairPattern* Pat = new (m_allocator) PtrToPairPattern();
             Pat->GII = GII;
-            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false);
+            Pat->Sources[0] = GetSource(GII->getOperand(0), false, false, IsSourceOfSample(Ex));
             AddPattern(Pat);
         }
         else {
@@ -1761,7 +1779,7 @@ namespace IGC
         if (GetModifier(I, mod, source))
         {
             MovModifierPattern* pattern = new (m_allocator) MovModifierPattern();
-            pattern->source = GetSource(source, mod, false);
+            pattern->source = GetSource(source, mod, false, IsSourceOfSample(&I));
             match = true;
             AddPattern(pattern);
         }
@@ -1799,7 +1817,7 @@ namespace IGC
         if (found)
         {
             FrcPattern* pattern = new (m_allocator) FrcPattern();
-            pattern->source = GetSource(source0, true, false);
+            pattern->source = GetSource(source0, true, false, IsSourceOfSample(&I));
             AddPattern(pattern);
         }
         return found;
@@ -1841,13 +1859,13 @@ namespace IGC
         if (found)
         {
             FloorPattern* pattern = new (m_allocator) FloorPattern();
-            pattern->source = GetSource(source0, true, false);
+            pattern->source = GetSource(source0, true, false, IsSourceOfSample(&I));
             AddPattern(pattern);
         }
         return found;
     }
 
-    SSource CodeGenPatternMatch::GetSource(llvm::Value* value, bool modifier, bool regioning)
+    SSource CodeGenPatternMatch::GetSource(llvm::Value* value, bool modifier, bool regioning, bool isSampleDerivative)
     {
         llvm::Value* sourceValue = value;
         e_modifier mod = EMOD_NONE;
@@ -1855,20 +1873,20 @@ namespace IGC
         {
             GetModifier(*sourceValue, mod, sourceValue);
         }
-        return GetSource(sourceValue, mod, regioning);
+        return GetSource(sourceValue, mod, regioning, isSampleDerivative);
     }
 
-    SSource CodeGenPatternMatch::GetSource(llvm::Value* value, e_modifier mod, bool regioning)
+    SSource CodeGenPatternMatch::GetSource(llvm::Value* value, e_modifier mod, bool regioning, bool isSampleDerivative)
     {
         SSource source;
         GetRegionModifier(source, value, regioning);
         source.value = value;
         source.mod = mod;
-        MarkAsSource(value);
+        MarkAsSource(value, isSampleDerivative);
         return source;
     }
 
-    void CodeGenPatternMatch::MarkAsSource(llvm::Value* v)
+    void CodeGenPatternMatch::MarkAsSource(llvm::Value* v, bool isSampleDerivative)
     {
         // update liveness of the sources
         if (IsConstOrSimdConstExpr(v))
@@ -1887,13 +1905,23 @@ namespace IGC
         }
         if (m_rootIsSubspanUse)
         {
-            HandleSubspanUse(v);
+            HandleSubspanUse(v, isSampleDerivative);
         }
     }
 
     bool CodeGenPatternMatch::IsSubspanUse(llvm::Value* v)
     {
         return m_subSpanUse.find(v) != m_subSpanUse.end();
+    }
+
+    bool CodeGenPatternMatch::IsSourceOfSample(llvm::Value* v)
+    {
+        return m_sampleSource.find(v) != m_sampleSource.end();
+    }
+
+    bool CodeGenPatternMatch::IsSourceOfSampleUnderCF(llvm::Value* v)
+    {
+        return m_sampleUnderCFsource.find(v) != m_sampleUnderCFsource.end();
     }
 
     bool CodeGenPatternMatch::MatchFMA(llvm::IntrinsicInst& I)
@@ -1911,7 +1939,7 @@ namespace IGC
         for (int i = 0; i < 3; i++)
         {
             llvm::Value* V = I.getOperand(i);
-            pattern->sources[i] = GetSource(V, true, false);
+            pattern->sources[i] = GetSource(V, true, false, IsSourceOfSample(&I));
             if (isa<Constant>(V) &&
                 (!m_Platform.support16BitImmSrcForMad() ||
                     V->getType()->getTypeID() != llvm::Type::HalfTyID || i == 1))
@@ -2068,9 +2096,9 @@ namespace IGC
         {
             PredAddPattern* pattern = new (m_allocator) PredAddPattern();
             pattern->predMode = EPRED_NORMAL;
-            pattern->sources[0] = GetSource(sources[0], src_mod[0], false);
-            pattern->sources[1] = GetSource(sources[1], src_mod[1], false);
-            pattern->pred = GetSource(pred, pred_mod, false);
+            pattern->sources[0] = GetSource(sources[0], src_mod[0], false, IsSourceOfSample(&I));
+            pattern->sources[1] = GetSource(sources[1], src_mod[1], false, IsSourceOfSample(&I));
+            pattern->pred = GetSource(pred, pred_mod, false, IsSourceOfSample(&I));
             pattern->invertPred = invertPred;
 
             AddPattern(pattern);
@@ -2178,9 +2206,9 @@ namespace IGC
         GetModifier(*pred, pred_mod, pred);
 
         pattern->predMode = EPRED_NORMAL;
-        pattern->sources[0] = GetSource(sources[0], src_mod[0], false);
-        pattern->sources[1] = GetSource(sources[1], src_mod[1], false);
-        pattern->pred = GetSource(pred, pred_mod, false);
+        pattern->sources[0] = GetSource(sources[0], src_mod[0], false, IsSourceOfSample(&I));
+        pattern->sources[1] = GetSource(sources[1], src_mod[1], false, IsSourceOfSample(&I));
+        pattern->pred = GetSource(pred, pred_mod, false, IsSourceOfSample(&I));
         pattern->invertPred = false;
         AddPattern(pattern);
 
@@ -2368,7 +2396,7 @@ namespace IGC
             MadPattern* pattern = new (m_allocator) MadPattern();
             for (int i = 0; i < 3; i++)
             {
-                pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
+                pattern->sources[i] = GetSource(sources[i], src_mod[i], false, IsSourceOfSample(&I));
                 if (isa<Constant>(sources[i]) &&
                     (!m_Platform.support16BitImmSrcForMad() ||
                     (!sources[i]->getType()->isHalfTy() && !sources[i]->getType()->isIntegerTy()) || i == 1))
@@ -2424,11 +2452,11 @@ namespace IGC
         {
             auto addrBase = I2P->getOperand(0);
             BlockReadWritePointerPattern* pattern = new (m_allocator) BlockReadWritePointerPattern(&I, addrBase);
-            MarkAsSource(addrBase);
+            MarkAsSource(addrBase, IsSourceOfSample(&I));
             // for write mark data ptr as well
             if (I.getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
             {
-                MarkAsSource(I.getOperand(1));
+                MarkAsSource(I.getOperand(1), IsSourceOfSample(&I));
             }
 
             AddPattern(pattern);
@@ -2578,7 +2606,7 @@ namespace IGC
             unsigned numSources = GetNbSources(I);
             for (unsigned i = 0; i < numSources; i++) {
                 if (I.getOperand(i) != intToPtrInst && I.getOperand(i) != addSubInst) {
-                    MarkAsSource(I.getOperand(i));
+                    MarkAsSource(I.getOperand(i), IsSourceOfSample(&I));
                 }
             }
 
@@ -2586,7 +2614,7 @@ namespace IGC
                 addSubInst->getOperand(0) : addSubInst->getOperand(1);
             llvm::Value* varOffset = isConstant0 ?
                 addSubInst->getOperand(1) : addSubInst->getOperand(0);
-            MarkAsSource(varOffset);
+            MarkAsSource(varOffset, IsSourceOfSample(&I));
 
             LSCImmOffsetPattern* pattern = new (m_allocator)
                 LSCImmOffsetPattern(&I, varOffset, llvm::dyn_cast<llvm::ConstantInt>(immOffset));
@@ -2647,12 +2675,12 @@ namespace IGC
             {
                 if (I.getOperand(i) != i2p)
                 {
-                    MarkAsSource(I.getOperand(i));
+                    MarkAsSource(I.getOperand(i), IsSourceOfSample(&I));
                 }
             }
             pattern->offset = i2p->getOperand(0);
             pattern->immOffset = ConstantInt::get(Type::getInt32Ty(I.getContext()), 0);
-            MarkAsSource(pattern->offset);
+            MarkAsSource(pattern->offset, IsSourceOfSample(&I));
             AddPattern(pattern);
             return true;
         }
@@ -2940,7 +2968,7 @@ namespace IGC
             LRPPattern* pattern = new (m_allocator) LRPPattern();
             for (int i = 0; i < 3; i++)
             {
-                pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
+                pattern->sources[i] = GetSource(sources[i], src_mod[i], false, IsSourceOfSample(&I));
             }
             AddPattern(pattern);
         }
@@ -2981,8 +3009,8 @@ namespace IGC
                 bool supportModifer = SupportsModifier(cmpInst);
 
                 pattern->inst = cmpInst;
-                pattern->sources[0] = GetSource(cmpInst->getOperand(0), supportModifer, false);
-                pattern->sources[1] = GetSource(cmpInst->getOperand(1), supportModifer, false);
+                pattern->sources[0] = GetSource(cmpInst->getOperand(0), supportModifer, false, IsSourceOfSample(&I));
+                pattern->sources[1] = GetSource(cmpInst->getOperand(1), supportModifer, false, IsSourceOfSample(&I));
                 AddPattern(pattern);
                 match = true;
             }
@@ -3072,8 +3100,8 @@ namespace IGC
         }
 
         FullMul32Pattern* Pat = new (m_allocator) FullMul32Pattern();
-        Pat->srcs[0] = GetSource(L, !IsUnsigned, false);
-        Pat->srcs[1] = GetSource(R, !IsUnsigned, false);
+        Pat->srcs[0] = GetSource(L, !IsUnsigned, false, IsSourceOfSample(&I));
+        Pat->srcs[1] = GetSource(R, !IsUnsigned, false, IsSourceOfSample(&I));
         Pat->isUnsigned = IsUnsigned;
         AddPattern(Pat);
 
@@ -3215,14 +3243,14 @@ namespace IGC
         {
             if (oprdInfo[i].src)
             {
-                Pat->srcs[i] = GetSource(oprdInfo[i].src, false, false);
+                Pat->srcs[i] = GetSource(oprdInfo[i].src, false, false, IsSourceOfSample(&I));
                 SSource& thisSrc = Pat->srcs[i];
 
                 // for now, Use W/UW only if region_set is false or the src is scalar
                 if (thisSrc.region_set &&
                     !(thisSrc.region[0] == 0 && thisSrc.region[1] == 1 && thisSrc.region[2] == 0))
                 {
-                    Pat->srcs[i] = GetSource(I.getOperand(i), true, false);
+                    Pat->srcs[i] = GetSource(I.getOperand(i), true, false, IsSourceOfSample(&I));
                 }
                 else
                 {
@@ -3235,7 +3263,7 @@ namespace IGC
             }
             else
             {
-                Pat->srcs[i] = GetSource(I.getOperand(i), true, false);
+                Pat->srcs[i] = GetSource(I.getOperand(i), true, false, IsSourceOfSample(&I));
             }
         }
         Pat->rootInst = &I;
@@ -3331,7 +3359,7 @@ namespace IGC
         if (I.getOpcode() == llvm::Instruction::UDiv && src0Inst && src0Inst->getOpcode() == llvm::Instruction::Sub) {
             supportModiferSrc0 = false;
         }
-        pattern->sources[0] = GetSource(sources[0], supportModiferSrc0 && SupportSrc0Mod, supportRegioning);
+        pattern->sources[0] = GetSource(sources[0], supportModiferSrc0 && SupportSrc0Mod, supportRegioning, IsSourceOfSample(&I));
         if (nbSources > 1)
         {
             bool supportModiferSrc1 = SupportsModifier(&I);
@@ -3339,7 +3367,7 @@ namespace IGC
             if (I.getOpcode() == llvm::Instruction::UDiv && src1Inst && src1Inst->getOpcode() == llvm::Instruction::Sub) {
                 supportModiferSrc1 = false;
             }
-            pattern->sources[1] = GetSource(sources[1], supportModiferSrc1, supportRegioning);
+            pattern->sources[1] = GetSource(sources[1], supportModiferSrc1, supportRegioning, IsSourceOfSample(&I));
 
             // add df imm to constant pool for binary/ternary inst
             // we do 64-bit int imm bigger than 32 bits, since smaller may fit in D/W
@@ -3383,7 +3411,7 @@ namespace IGC
                 // Denorms are flushed at input - skip canonicalize
                 src = SkipCanonicalize(src);
             }
-            MarkAsSource(src);
+            MarkAsSource(src, IsSourceOfSample(&I));
         }
 
         if (CallInst * callinst = dyn_cast<CallInst>(&I))
@@ -3391,7 +3419,7 @@ namespace IGC
             // Mark the function pointer in indirect calls as a source
             if (!callinst->getCalledFunction())
             {
-                MarkAsSource(IGCLLVM::getCalledValue(callinst));
+                MarkAsSource(IGCLLVM::getCalledValue(callinst), IsSourceOfSample(&I));
             }
         }
         AddPattern(pattern);
@@ -3431,7 +3459,7 @@ namespace IGC
         }
         if (isa<Argument>(I.getOperand(0)) || !FlushesDenormsOnOutput(*(cast<Instruction>(I.getOperand(0)))))
         {
-            MarkAsSource(I.getOperand(0));
+            MarkAsSource(I.getOperand(0), IsSourceOfSample(&I));
         }
         else
         {
@@ -3473,7 +3501,7 @@ namespace IGC
             {
                 pattern->isDiscardBranch = true;
             }
-            pattern->cond = GetSource(I.getCondition(), false, false);
+            pattern->cond = GetSource(I.getCondition(), false, false, IsSourceOfSample(&I));
         }
         AddPattern(pattern);
         return true;
@@ -3528,7 +3556,7 @@ namespace IGC
             if (!match)
             {
                 satPattern->pattern = nullptr;
-                satPattern->source = GetSource(source, true, false);
+                satPattern->source = GetSource(source, true, false, IsSourceOfSample(&I));
                 match = true;
             }
             if (isUniform(&I) && source->hasOneUse())
@@ -3612,7 +3640,7 @@ namespace IGC
                     uint numSources = GetNbSources(*sourceInst);
                     for (uint i = 0; i < numSources; i++)
                     {
-                        MarkAsSource(sourceInst->getOperand(i));
+                        MarkAsSource(sourceInst->getOperand(i), IsSourceOfSample(&I));
                     }
 
                     UAddPattern* uAddPattern = new (m_allocator) UAddPattern();
@@ -3632,7 +3660,7 @@ namespace IGC
                     match = true;
                     IntegerSatTruncPattern* satPattern = new (m_allocator) IntegerSatTruncPattern();
                     satPattern->isSigned = !isUnsigned;
-                    satPattern->src = GetSource(truncInst->getOperand(0), !isUnsigned, false);
+                    satPattern->src = GetSource(truncInst->getOperand(0), !isUnsigned, false, IsSourceOfSample(&I));
                     AddPattern(satPattern);
                 }
                 else if (llvm::GenIntrinsicInst * genIsaInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(source);
@@ -3647,7 +3675,7 @@ namespace IGC
                     uint numSources = GetNbSources(*sourceInst);
                     for (uint i = 0; i < numSources; i++)
                     {
-                        MarkAsSource(sourceInst->getOperand(i));
+                        MarkAsSource(sourceInst->getOperand(i), IsSourceOfSample(&I));
                     }
 
                     Dp4aSatPattern* dp4aSatPattern = new (m_allocator) Dp4aSatPattern();
@@ -3708,7 +3736,7 @@ namespace IGC
         if (match == true)
         {
             PredicatePattern* pattern = new (m_allocator) PredicatePattern();
-            pattern->flag = GetSource(I.getCondition(), false, false);
+            pattern->flag = GetSource(I.getCondition(), false, false, IsSourceOfSample(&I));
             pattern->invertFlag = invertFlag;
             pattern->patternNotPredicated = Match(*source1);
             pattern->patternPredicated = Match(*source0);
@@ -3735,9 +3763,9 @@ namespace IGC
         SelectPattern* pattern = new (m_allocator) SelectPattern();
         pattern->predMode = EPRED_NORMAL;
 
-        pattern->sources[0] = GetSource(I.getCondition(), false, false);
-        pattern->sources[1] = GetSource(I.getTrueValue(), true, false);
-        pattern->sources[2] = GetSource(I.getFalseValue(), true, false);
+        pattern->sources[0] = GetSource(I.getCondition(), false, false, IsSourceOfSample(&I));
+        pattern->sources[1] = GetSource(I.getTrueValue(), true, false, IsSourceOfSample(&I));
+        pattern->sources[2] = GetSource(I.getFalseValue(), true, false, IsSourceOfSample(&I));
 
         // try to add to constant pool whatever possible.
         if (isCandidateForConstantPool(I.getTrueValue()))
@@ -3846,8 +3874,8 @@ namespace IGC
         if (found)
         {
             PowPattern* pattern = new (m_allocator) PowPattern();
-            pattern->sources[0] = GetSource(source0, true, false);
-            pattern->sources[1] = GetSource(source1, true, false);
+            pattern->sources[0] = GetSource(source0, true, false, IsSourceOfSample(&I));
+            pattern->sources[1] = GetSource(source1, true, false, IsSourceOfSample(&I));
             AddPattern(pattern);
         }
         return found;
@@ -3972,8 +4000,8 @@ namespace IGC
             GenericPointersCmpPattern* pattern = new (m_allocator) GenericPointersCmpPattern();
 
             bool supportsMod = SupportsModifier(&I);
-            pattern->cmpSources[0] = GetSource(I.getOperand(0), supportsMod, false);
-            pattern->cmpSources[1] = GetSource(I.getOperand(1), supportsMod, false);
+            pattern->cmpSources[0] = GetSource(I.getOperand(0), supportsMod, false, IsSourceOfSample(&I));
+            pattern->cmpSources[1] = GetSource(I.getOperand(1), supportsMod, false, IsSourceOfSample(&I));
             pattern->cmp = &I;
             pattern->clearTagMask = clearTagMask;
 
@@ -4055,7 +4083,7 @@ namespace IGC
                         BoolOpPattern* pattern = new (m_allocator) BoolOpPattern();
                         pattern->cmpPattern = Match(*cmp);
                         pattern->boolOp = &I;
-                        pattern->binarySource = GetSource(I.getOperand(1 - i), false, false);
+                        pattern->binarySource = GetSource(I.getOperand(1 - i), false, false, IsSourceOfSample(&I));
                         AddPattern(pattern);
                         found = true;
                         break;
@@ -4102,8 +4130,8 @@ namespace IGC
         // Found the pattern.
         funnelShiftRotatePattern* pattern = new (m_allocator) funnelShiftRotatePattern();
         pattern->instruction = &I;
-        pattern->sources[0] = GetSource(A, true, false);
-        pattern->sources[1] = GetSource(Amt, true, false);
+        pattern->sources[0] = GetSource(A, true, false, IsSourceOfSample(&I));
+        pattern->sources[1] = GetSource(Amt, true, false, IsSourceOfSample(&I));
 
         AddPattern(pattern);
         return true;
@@ -4225,9 +4253,9 @@ namespace IGC
 
         Add3Pattern* pattern = new (m_allocator) Add3Pattern();
         pattern->instruction = &I;
-        pattern->sources[0] = GetSource(s0, true, false);
-        pattern->sources[1] = GetSource(s1, true, false);
-        pattern->sources[2] = GetSource(s2, true, false);
+        pattern->sources[0] = GetSource(s0, true, false, IsSourceOfSample(&I));
+        pattern->sources[1] = GetSource(s1, true, false, IsSourceOfSample(&I));
+        pattern->sources[2] = GetSource(s2, true, false, IsSourceOfSample(&I));
         if (Mod1 != EMOD_NONE) {
             pattern->sources[1].mod = CombineModifier(Mod1, pattern->sources[1].mod);
         }
@@ -4411,9 +4439,9 @@ namespace IGC
         BfnPattern* pattern = new (m_allocator) BfnPattern();
         pattern->booleanFuncCtrl = ctrlcal.getBooleanFuncCtrl();
         pattern->instruction = &I;
-        pattern->sources[0] = GetSource(s0, false, false);
-        pattern->sources[1] = GetSource(s1, false, false);
-        pattern->sources[2] = GetSource(s2, false, false);
+        pattern->sources[0] = GetSource(s0, false, false, IsSourceOfSample(&I));
+        pattern->sources[1] = GetSource(s1, false, false, IsSourceOfSample(&I));
+        pattern->sources[2] = GetSource(s2, false, false, IsSourceOfSample(&I));
 
         // BFN can use imm16 in src0 and src2, check for those;
         // otherwise try to add to constant pool even int32.
@@ -4508,11 +4536,11 @@ namespace IGC
             CmpSelectPattern* pattern = new (m_allocator) CmpSelectPattern();
             pattern->predicate = cmp->getPredicate();
             bool supportsModifer = SupportsModifier(cmp);
-            pattern->cmpSources[0] = GetSource(cmp->getOperand(0), supportsModifer, false);
-            pattern->cmpSources[1] = GetSource(cmp->getOperand(1), supportsModifer, false);
+            pattern->cmpSources[0] = GetSource(cmp->getOperand(0), supportsModifer, false, IsSourceOfSample(&I));
+            pattern->cmpSources[1] = GetSource(cmp->getOperand(1), supportsModifer, false, IsSourceOfSample(&I));
 
-            pattern->bfnSources[1] = GetSource(selSources[0], false, false);
-            pattern->bfnSources[2] = GetSource(selSources[1], false, false);
+            pattern->bfnSources[1] = GetSource(selSources[0], false, false, IsSourceOfSample(&I));
+            pattern->bfnSources[2] = GetSource(selSources[1], false, false, IsSourceOfSample(&I));
             AddPattern(pattern);
 
             return true;
@@ -4653,9 +4681,9 @@ namespace IGC
 
         DpasPattern* pattern = new (m_allocator) DpasPattern();
         pattern->instruction = &I;
-        pattern->source[0] = GetSource(src0, false, false);
-        pattern->source[1] = GetSource(src1, false, false);
-        pattern->source[2] = GetSource(src2, false, false);
+        pattern->source[0] = GetSource(src0, false, false, IsSourceOfSample(&I));
+        pattern->source[1] = GetSource(src1, false, false, IsSourceOfSample(&I));
+        pattern->source[2] = GetSource(src2, false, false, IsSourceOfSample(&I));
         AddPattern(pattern);
 
         return true;
@@ -4748,19 +4776,19 @@ namespace IGC
                     {
                         MatchDp4a* pattern = new (m_allocator) MatchDp4a();
                         pattern->instruction = &I;
-                        pattern->source[0] = GetSource(I.getOperand(0), false, false);
+                        pattern->source[0] = GetSource(I.getOperand(0), false, false, IsSourceOfSample(&I));
 
                         // set regioning to: <0;1,0>, as if we were still going to use the result of the WaveShuffleIndex
                         llvm::BitCastInst* bitCast = llvm::dyn_cast<BitCastInst>(extractInst[0]->getOperand(0));
                         if (bitCast)
                         {
-                            pattern->source[1] = GetSource(bitCast->getOperand(0), false, false);
+                            pattern->source[1] = GetSource(bitCast->getOperand(0), false, false, IsSourceOfSample(&I));
                             pattern->source[1].region[0] = 0;
                             pattern->source[1].region[1] = 1;
                             pattern->source[1].region[2] = 0;
                             pattern->source[1].region_set = true;
 
-                            pattern->source[2] = GetSource(I.getOperand(2), false, false);
+                            pattern->source[2] = GetSource(I.getOperand(2), false, false, IsSourceOfSample(&I));
                             AddPattern(pattern);
                             return true;
                         }
@@ -4806,7 +4834,7 @@ namespace IGC
                     }
                 }
             }
-            pattern->sources[i] = GetSource(src, mod, false);
+            pattern->sources[i] = GetSource(src, mod, false, IsSourceOfSample(&I));
 
             if (isCandidateForConstantPool(src))
             {
@@ -4851,7 +4879,7 @@ namespace IGC
         if (found)
         {
             RsqrtPattern* pattern = new (m_allocator) RsqrtPattern();
-            pattern->source = GetSource(source, true, false);
+            pattern->source = GetSource(source, true, false, IsSourceOfSample(&I));
             AddPattern(pattern);
         }
         return found;
@@ -4870,10 +4898,10 @@ namespace IGC
         };
         GradientPattern* pattern = new (m_allocator) GradientPattern();
         pattern->instruction = &I;
-        pattern->source = GetSource(I.getOperand(0), true, false);
+        pattern->source = GetSource(I.getOperand(0), true, false, IsSourceOfSample(&I));
         AddPattern(pattern);
         // mark the source as subspan use
-        HandleSubspanUse(pattern->source.value);
+        HandleSubspanUse(pattern->source.value, IsSourceOfSample(&I));
         return true;
     }
 
@@ -4959,8 +4987,8 @@ namespace IGC
         if (found)
         {
             AvgPattern* pattern = new (m_allocator)AvgPattern();
-            pattern->sources[0] = GetSource(sources[0], src_mod[0], false);
-            pattern->sources[1] = GetSource(sources[1], src_mod[1], false);
+            pattern->sources[0] = GetSource(sources[0], src_mod[0], false, IsSourceOfSample(&I));
+            pattern->sources[1] = GetSource(sources[1], src_mod[1], false, IsSourceOfSample(&I));
             AddPattern(pattern);
         }
         return found;
@@ -4991,7 +5019,7 @@ namespace IGC
             GetModifier(*sourceV, source.mod, sourceV);
             source.value = sourceV;
             pattern->source = source;
-            MarkAsSource(sourceV);
+            MarkAsSource(sourceV, IsSourceOfSample(&I));
             match = true;
             AddPattern(pattern);
         }
@@ -5005,8 +5033,8 @@ namespace IGC
         if (int_cast<int>(helperLaneMode->getSExtValue()) == 1)
         {
             //only if helperLaneMode==1, we enable helper lane under some shuffleindex cases (not for all cases).
-            HandleSubspanUse(I.getArgOperand(0));
-            HandleSubspanUse(&I);
+            HandleSubspanUse(I.getArgOperand(0), IsSourceOfSample(&I));
+            HandleSubspanUse(&I, IsSourceOfSample(&I));
         }
         return MatchSingleInstruction(I);
     }
@@ -5145,8 +5173,8 @@ namespace IGC
                 pattern->source.region[2] = 0;
 
                 pattern->source.value = data;
-                MarkAsSource(data);
-                HandleSubspanUse(data);
+                MarkAsSource(data, IsSourceOfSample(&I));
+                HandleSubspanUse(data, IsSourceOfSample(&I));
                 AddPattern(pattern);
 
                 isMatch = true;
@@ -5212,20 +5240,20 @@ namespace IGC
         case GenISAIntrinsic::GenISA_sampleptr:
         case GenISAIntrinsic::GenISA_lodptr:
         case GenISAIntrinsic::GenISA_sampleKillPix:
-            HandleSubspanUse(I.getOperand(0));
-            HandleSubspanUse(I.getOperand(1));
-            HandleSubspanUse(I.getOperand(2));
+            HandleSubspanUse(I.getOperand(0), true);
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
             break;
         case GenISAIntrinsic::GenISA_sampleBptr:
         case GenISAIntrinsic::GenISA_sampleCptr:
-            HandleSubspanUse(I.getOperand(1));
-            HandleSubspanUse(I.getOperand(2));
-            HandleSubspanUse(I.getOperand(3));
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
+            HandleSubspanUse(I.getOperand(3), true);
             break;
         case GenISAIntrinsic::GenISA_sampleBCptr:
-            HandleSubspanUse(I.getOperand(2));
-            HandleSubspanUse(I.getOperand(3));
-            HandleSubspanUse(I.getOperand(4));
+            HandleSubspanUse(I.getOperand(2), true);
+            HandleSubspanUse(I.getOperand(3), true);
+            HandleSubspanUse(I.getOperand(4), true);
             break;
         default:
             break;

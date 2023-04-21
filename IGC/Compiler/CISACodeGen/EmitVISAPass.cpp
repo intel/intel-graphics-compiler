@@ -285,7 +285,11 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
         m_destination = GetSymbol(sdag.m_root);
         numInstance = m_destination->GetNumberInstance();
 
-        if (m_pattern->IsSubspanUse(sdag.m_root))
+        if (m_pattern->IsSubspanUse(sdag.m_root) &&
+            (!m_pattern->IsSourceOfSample(sdag.m_root) ||
+            (m_pattern->IsSourceOfSample(sdag.m_root) && m_pCtx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE) != nullptr) ||
+            (m_pattern->IsSourceOfSample(sdag.m_root) && !m_pattern->NeedVMask()) ||
+            (m_pattern->IsSourceOfSample(sdag.m_root) &&  m_pattern->NeedVMask() && m_pattern->IsSourceOfSampleUnderCF(sdag.m_root))))
         {
             m_encoder->SetSubSpanDestination(true);
         }
