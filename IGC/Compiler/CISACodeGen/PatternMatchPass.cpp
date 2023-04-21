@@ -1412,17 +1412,24 @@ namespace IGC
 
     void CodeGenPatternMatch::visitStoreInst(StoreInst& I)
     {
-         bool match = m_Platform.matchImmOffsetsLSC() ?
-             MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
-             MatchSingleInstruction(I);
+        bool match = false;
+        if (m_Platform.matchImmOffsetsLSC()) {
+            match = MatchImmOffsetLSC(I);
+            if (match) return;
+        }
+        match = MatchSingleInstruction(I);
         IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitLoadInst(LoadInst& I)
     {
-        bool match = m_Platform.matchImmOffsetsLSC() ?
-            MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
-            MatchSingleInstruction(I);
+        bool match = false;
+        if (m_Platform.matchImmOffsetsLSC()) {
+            match = MatchImmOffsetLSC(I);
+            if (match)
+                return;
+        }
+        match = MatchSingleInstruction(I);
         IGC_ASSERT(match);
     }
 

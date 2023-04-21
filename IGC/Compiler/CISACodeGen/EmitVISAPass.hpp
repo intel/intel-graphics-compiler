@@ -166,11 +166,15 @@ public:
     void emitOutput(llvm::GenIntrinsicInst* inst);
 
     // TODO: unify the functions below and clean up
-    void emitStore(llvm::StoreInst* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
+    void emitStore(llvm::StoreInst *inst, llvm::Value *varOffset,
+                   llvm::ConstantInt *immOffset
+    );
     void emitStore3D(llvm::StoreInst* inst, llvm::Value* elemIdxV);
     void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
-    void emitLoad(llvm::LoadInst* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);   // single load, no pattern
+    void emitLoad(llvm::LoadInst *inst, llvm::Value *varOffset,
+                  llvm::ConstantInt *immOffset
+    ); // single load, no pattern
     void emitLoad3DInner(llvm::LdRawIntrinsic* inst, ResourceDescriptor& resource, llvm::Value* elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
@@ -413,12 +417,14 @@ public:
     void emitVectorBitCast(llvm::BitCastInst* BCI);
     void emitVectorLoad(llvm::LoadInst* LI, llvm::Value* offset, llvm::ConstantInt* immOffset);
     void emitVectorStore(llvm::StoreInst* SI, llvm::Value* offset, llvm::ConstantInt* immOffset);
-    void emitLSCVectorLoad(
-        llvm::Value* Ptr, llvm::Value* offset, llvm::ConstantInt* immOffset,
-        llvm::Type* Ty, LSC_CACHE_OPTS cacheOpts, uint64_t align);
-    void emitLSCVectorStore(
-        llvm::Value* Ptr, llvm::Value* offset, llvm::ConstantInt* immOffset,
-        llvm::Value* storedVal, LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDMask);
+    void emitLSCVectorLoad(llvm::Value *Ptr,
+                           llvm::Value *offset, llvm::ConstantInt *immOffset,
+                           llvm::Type *Ty, LSC_CACHE_OPTS cacheOpts,
+                           uint64_t align);
+    void emitLSCVectorStore(llvm::Value *Ptr,
+                            llvm::Value *offset, llvm::ConstantInt *immOffset,
+                            llvm::Value *storedVal, LSC_CACHE_OPTS cacheOpts,
+                            alignment_t align, bool dontForceDMask);
     void emitGenISACopy(llvm::GenIntrinsicInst* GenCopyInst);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);

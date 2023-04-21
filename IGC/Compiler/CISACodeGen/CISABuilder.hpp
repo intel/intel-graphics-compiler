@@ -254,18 +254,20 @@ namespace IGC
         static LSC_DATA_ELEMS LSC_GetElementNum(unsigned eNum);
         static LSC_ADDR_TYPE getLSCAddrType(const ResourceDescriptor * resource);
         static LSC_ADDR_TYPE getLSCAddrType(e_predefSurface surfaceType);
-        void LSC_LoadGather(
-            LSC_OP subOp, CVariable* dst, CVariable* offset,
-            LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
-            unsigned blockOffset, ResourceDescriptor* resource,
-            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
-            int immOffset, LSC_CACHE_OPTS cacheOpts);
-        void LSC_StoreScatter(
-            LSC_OP subOp, CVariable * src, CVariable * offset,
-            LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
-            unsigned blockOffset, ResourceDescriptor * resource,
-            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
-            int immOffset, LSC_CACHE_OPTS cacheOpts);
+        void LSC_LoadGather(LSC_OP subOp, CVariable *dst,
+                            CVariable *offset, LSC_DATA_SIZE elemSize,
+                            LSC_DATA_ELEMS numElems, unsigned blockOffset,
+                            ResourceDescriptor *resource,
+                            LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
+                            int immOffset, LSC_CACHE_OPTS cacheOpts);
+        void LSC_StoreScatter(LSC_OP subOp,
+                              CVariable *src, CVariable *offset,
+                              LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
+                              unsigned blockOffset,
+                              ResourceDescriptor *resource,
+                              LSC_ADDR_SIZE addr_size,
+                              LSC_DATA_ORDER data_order, int immOffset,
+                              LSC_CACHE_OPTS cacheOpts);
         void LSC_LoadBlock1D(
             CVariable* dst, CVariable* offset,
             LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
