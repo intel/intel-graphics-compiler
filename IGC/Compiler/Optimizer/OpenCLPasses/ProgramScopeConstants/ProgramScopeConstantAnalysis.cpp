@@ -255,20 +255,19 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     // Stackcalls:
     //  Stackcall ABI does not allow implicit args, so rely on relocation for global variable access
 
-    // Disable ConstBase and GlobalBase implicit arguments on PVC+. StatelessToStateful pass is not
-    // enabled for most of the cases so there is no benefit to add the implicit arguments. Const/Global
-    // variables access can just go through relocations.
-    bool skipInlineGlobalBuffer =
-        Ctx->enableZEBinary() && Ctx->platform.GetProductFamily() >= IGFX_PVC;
-
+    // Disable ConstBase and GlobalBase implicit arguments on PVC+.
+    // StatelessToStateful pass is not enabled for most of the cases so there
+    // is no benefit to add the implicit arguments. Const/Global variables
+    // access can just go through relocations.
     // Workaround: When there is stringConstants in the module, do not insert
     // implicit arguments to prevent const vars getting promoted
     // at statelessToStateful pass. In zebin path, stateful promotion
     // of const vars can't work well with printf strings.
-    bool skipConstBuffer = skipInlineGlobalBuffer ||
-        (Ctx->enableZEBinary() && !m_pModuleMd->stringConstants.empty());
+    bool skipConstAndGlobalBaseArgs = Ctx->enableZEBinary() &&
+         (Ctx->platform.GetProductFamily() >= IGFX_PVC ||
+          !m_pModuleMd->stringConstants.empty());
 
-    if (!skipConstBuffer && hasInlineConstantBuffer)
+    if (!skipConstAndGlobalBaseArgs && hasInlineConstantBuffer)
     {
         for (auto& pFunc : M)
         {
@@ -284,7 +283,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
     }
 
-    if (!skipInlineGlobalBuffer && hasInlineGlobalBuffer)
+    if (!skipConstAndGlobalBaseArgs && hasInlineGlobalBuffer)
     {
         for (auto& pFunc : M)
         {
