@@ -3531,9 +3531,10 @@ void LdStCombine::createCombinedStores(Function& F)
         SmallVector<Value*, 16> storedValues;
         storedValues.push_back(leadStore->getValueOperand());
         StoreInst* anchorStore = leadStore;
+        int n = m_instOrder[anchorStore];
         // insts are assigned order number starting from 0. Anchor store is
         // one with the largest inst order number.
-        for (int i = 1, sz = (int)bundle.LoadStores.size(), n = -1; i < sz; ++i)
+        for (int i = 1, sz = (int)bundle.LoadStores.size(); i < sz; ++i)
         {
             StoreInst* SI = static_cast<StoreInst*>(Stores[i].Inst);
             int SI_no = m_instOrder[SI];
