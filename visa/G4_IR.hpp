@@ -25,6 +25,8 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <vector>
 
+#include <llvm/ADT/SmallVector.h>
+
 #include "Assertions.h"
 #include "Attributes.hpp"
 #include "BitSet.h"
@@ -108,7 +110,7 @@ class G4_INST {
 
 protected:
   G4_opcode op;
-  std::array<G4_Operand *, G4_MAX_SRCS> srcs;
+  llvm::SmallVector<G4_Operand *, G4_MAX_SRCS> srcs;
   G4_DstRegRegion *dst;
   G4_Predicate *predicate;
   G4_CondMod *mod;
@@ -123,7 +125,7 @@ protected:
   DEF_EDGE_LIST defInstList;
 
   // instruction's id in BB. Each optimization should re-initialize before using
-  int32_t localId;
+  int32_t localId = 0;
 
   static const int UndefinedCisaOffset = -1;
   // Id of the vISA instruction this inst is generated from.
@@ -140,12 +142,12 @@ protected:
 
   // WARNING: if adding new options, please make sure that bitfield does not
   // overflow.
-  unsigned short sat : 1;
+  bool sat : 1;
   // during optimization, an inst may become redundant and be marked dead
-  unsigned short dead : 1;
-  unsigned short evenlySplitInst : 1;
-  unsigned short doPostRA : 1; // for NoMaskWA
-  unsigned short canBeAcc : 1; // The inst can be ACC, including the inst's dst
+  bool dead : 1;
+  bool evenlySplitInst : 1;
+  bool doPostRA : 1; // for NoMaskWA
+  bool canBeAcc : 1; // The inst can be ACC, including the inst's dst
                                // and the use operands in the DU chain.
   G4_ExecSize execSize;
 
@@ -153,9 +155,8 @@ protected:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   uint32_t global_id = (uint32_t)-1;
 
-  const IR_Builder
-      &builder; // link to builder to access the various compilation options
-
+  // link to builder to access the various compilation options
+  const IR_Builder &builder;
 public:
   enum SWSBTokenType {
     TOKEN_NONE,
@@ -241,6 +242,9 @@ public:
     return (G4_InstDpas *)this;
   }
 
+private:
+  void initOperands();
+
 public:
   G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o, G4_CondMod *m,
           G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
@@ -255,6 +259,11 @@ public:
   G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o, G4_CondMod *m,
           G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
           G4_Operand *s1, G4_Operand *s2, G4_Operand *s3, G4_InstOpts opt);
+
+  G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o, G4_CondMod *m,
+          G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
+          G4_Operand *s1, G4_Operand *s2, G4_Operand *s3, G4_Operand *s4,
+          G4_Operand *s5, G4_Operand *s6, G4_Operand *s7, G4_InstOpts opt);
 
   virtual ~G4_INST() {}
 
@@ -271,8 +280,8 @@ public:
   void setPredicate(G4_Predicate *p);
   G4_Predicate *getPredicate() const { return predicate; }
 
-  void setSaturate(G4_Sat s) { sat = s == g4::SAT ? 1 : 0; }
-  void setSaturate(bool z) { sat = z ? 1 : 0; }
+  void setSaturate(G4_Sat s) { sat = (s == g4::SAT); }
+  void setSaturate(bool z) { sat = z; }
   G4_Sat getSaturate() const { return sat ? g4::SAT : g4::NOSAT; }
 
   G4_opcode opcode() const { return op; }
@@ -608,10 +617,6 @@ public:
     return opndNum == Opnd_src0 || opndNum == Opnd_src1 ||
            opndNum == Opnd_src2 || opndNum == Opnd_src3 ||
            opndNum == Opnd_src4 || opndNum == Opnd_src5 ||
-           opndNum == Opnd_src6 || opndNum == Opnd_src7;
-  }
-  static bool isInstrinsicOnlySrcNum(Gen4_Operand_Number opndNum) {
-    return opndNum == Opnd_src4 || opndNum == Opnd_src5 ||
            opndNum == Opnd_src6 || opndNum == Opnd_src7;
   }
   const G4_Operand *getOperand(Gen4_Operand_Number opnd_num) const;
@@ -1306,7 +1311,6 @@ static constexpr IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
 namespace vISA {
 class G4_InstIntrinsic : public G4_INST {
   const Intrinsic intrinsicId;
-  std::array<G4_Operand *, G4_MAX_INTRINSIC_SRCS> srcs;
 
 public:
   G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
@@ -1321,12 +1325,10 @@ public:
                    Intrinsic intrinId, G4_ExecSize execSize, G4_DstRegRegion *d,
                    G4_Operand *s0, G4_Operand *s1, G4_Operand *s2,
                    G4_Operand *s3, G4_Operand *s4, G4_Operand *s5,
-                   G4_Operand *s6, G4_Operand *s7, G4_InstOpts opt);
-
-  G4_Operand *getIntrinsicSrc(unsigned i) const;
-  G4_Operand *getOperand(Gen4_Operand_Number opnd_num) const;
-
-  void setIntrinsicSrc(G4_Operand *opnd, unsigned i);
+                   G4_Operand *s6, G4_Operand *s7, G4_InstOpts opt)
+      : G4_INST(builder, prd, G4_intrinsic, nullptr, g4::NOSAT, execSize, d, s0,
+                s1, s2, s3, s4, s5, s6, s7, opt),
+        intrinsicId(intrinId) {}
 
   G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
@@ -1398,21 +1400,13 @@ public:
 };
 
 inline G4_Operand *G4_INST::getOperand(Gen4_Operand_Number opnd_num) {
-  if (isPseudoAddrMovIntrinsic() && isSrcNum(opnd_num))
-    return asIntrinsicInst()->getOperand(opnd_num);
-  if (isInstrinsicOnlySrcNum(opnd_num))
-    return NULL;
   return const_cast<G4_Operand *>(
       ((const G4_INST *)this)->getOperand(opnd_num));
 }
 
 inline G4_Operand *G4_INST::getSrc(unsigned i) const {
-  if (isPseudoAddrMovIntrinsic())
-    return asIntrinsicInst()->getIntrinsicSrc(i);
-  else {
-    vISA_ASSERT(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
-    return srcs[i];
-  }
+  vISA_ASSERT(i < srcs.size(), ERROR_INTERNAL_ARGUMENT);
+  return srcs[i];
 }
 
 inline int G4_INST::getNumSrc() const {

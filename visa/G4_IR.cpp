@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "VISAKernel.h"
 #include "visa_igc_common_header.h"
 
+#include <algorithm>
 #include <iomanip>
 
 using namespace vISA;
@@ -174,37 +175,46 @@ static void associateOpndWithInst(G4_Operand *opnd, G4_INST *inst) {
   }
 }
 
+void G4_INST::initOperands() {
+  resetRightBound(dst);
+  for (G4_Operand *src : srcs)
+    resetRightBound(src);
+  computeRightBound(predicate);
+  computeRightBound(mod);
+
+  associateOpndWithInst(dst, this);
+  for (G4_Operand *src : srcs)
+    associateOpndWithInst(src, this);
+  associateOpndWithInst(predicate, this);
+  associateOpndWithInst(mod, this);
+}
+
 G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_CondMod *m, G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d,
                  G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      localId(0), sat(s ? 1 : 0), evenlySplitInst(false), canBeAcc(false),
-      execSize(size), builder(irb) {
-  srcs[0] = s0;
-  srcs[1] = s1;
-  srcs[2] = s2;
-  srcs[3] = s3;
+      sat(s ? true : false), dead(false), evenlySplitInst(false),
+      doPostRA(false), canBeAcc(false), execSize(size), builder(irb) {
+  // FIXME: Currently srcs would be initialized with a list that has max
+  // allowed size in ctor. Probably should initialize srcs with the actual
+  // required srcs of the inst instead.
+  srcs = {s0, s1, s2, s3};
+  initOperands();
+}
 
-  dead = false;
-  doPostRA = false;
-
-  resetRightBound(dst);
-  resetRightBound(s0);
-  resetRightBound(s1);
-  resetRightBound(s2);
-  resetRightBound(s3);
-  computeRightBound(predicate);
-  computeRightBound(mod);
-
-  associateOpndWithInst(dst, this);
-  associateOpndWithInst(s0, this);
-  associateOpndWithInst(s1, this);
-  associateOpndWithInst(s2, this);
-  associateOpndWithInst(s3, this);
-  associateOpndWithInst(predicate, this);
-  associateOpndWithInst(mod, this);
+G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
+                 G4_CondMod *m, G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d,
+                 G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
+                 G4_Operand *s4, G4_Operand *s5, G4_Operand *s6, G4_Operand *s7,
+                 G4_InstOpts opt)
+    : op(o), dst(d), predicate(prd), mod(m), option(opt),
+      useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
+      sat(s ? true : false), dead(false), evenlySplitInst(false),
+      doPostRA(false), canBeAcc(false), execSize(size), builder(irb) {
+  srcs = {s0, s1, s2, s3, s4, s5, s6, s7};
+  initOperands();
 }
 
 G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
@@ -257,12 +267,9 @@ void G4_INST::setOpcode(G4_opcode opcd) {
   op = opcd;
 
   if (resetBounds) {
-    // FIXME: This is likely not correct given that we have src3 and even src4
-    // now.
     resetRightBound(dst);
-    resetRightBound(srcs[0]);
-    resetRightBound(srcs[1]);
-    resetRightBound(srcs[2]);
+    for (G4_Operand *src : srcs)
+      resetRightBound(src);
     resetRightBound(predicate);
     resetRightBound(mod);
     resetRightBound(getImplAccDst());
@@ -280,12 +287,9 @@ void G4_INST::setExecSize(G4_ExecSize s) {
   execSize = s;
 
   if (resetBounds) {
-    // FIXME: This is likely not correct given that we have src3 and even src4
-    // now.
     resetRightBound(dst);
-    resetRightBound(srcs[0]);
-    resetRightBound(srcs[1]);
-    resetRightBound(srcs[2]);
+    for (G4_Operand *src : srcs)
+      resetRightBound(src);
     resetRightBound(predicate);
     resetRightBound(mod);
     resetRightBound(getImplAccDst());
@@ -526,17 +530,28 @@ void G4_INST::removeDefUse(Gen4_Operand_Number opndNum) {
 }
 
 const G4_Operand *G4_INST::getOperand(Gen4_Operand_Number opnd_num) const {
+  if (isSrcNum(opnd_num) && (size_t)getSrcNum(opnd_num) >= srcs.size())
+    return nullptr;
+
   switch (opnd_num) {
   case Opnd_dst:
     return (G4_Operand *)dst;
   case Opnd_src0:
-    return srcs[0];
+    return getSrc(0);
   case Opnd_src1:
-    return srcs[1];
+    return getSrc(1);
   case Opnd_src2:
-    return srcs[2];
+    return getSrc(2);
   case Opnd_src3:
-    return srcs[3];
+    return getSrc(3);
+  case Opnd_src4:
+    return getSrc(4);
+  case Opnd_src5:
+    return getSrc(5);
+  case Opnd_src6:
+    return getSrc(6);
+  case Opnd_src7:
+    return getSrc(7);
   case Opnd_pred:
     return (G4_Operand *)predicate;
   case Opnd_condMod:
@@ -549,7 +564,7 @@ const G4_Operand *G4_INST::getOperand(Gen4_Operand_Number opnd_num) const {
     vISA_ASSERT_UNREACHABLE("Operand number is out of range.");
     break;
   }
-  return NULL;
+  return nullptr;
 }
 
 USE_EDGE_LIST_ITER G4_INST::eraseUse(USE_EDGE_LIST_ITER iter) {
@@ -6325,24 +6340,14 @@ void G4_INST::setPredicate(G4_Predicate *p) {
 }
 
 void G4_INST::setSrc(G4_Operand *opnd, unsigned i) {
-  if (isPseudoAddrMovIntrinsic()) {
-    asIntrinsicInst()->setIntrinsicSrc(opnd, i);
-    return;
-  }
+  vISA_ASSERT(i < srcs.size(), ERROR_INTERNAL_ARGUMENT);
 
-  vISA_ASSERT(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
-
-  if (srcs[i] != NULL) {
-    if ((srcs[0] == srcs[i] && i != 0) || (srcs[1] == srcs[i] && i != 1) ||
-        (srcs[2] == srcs[i] && i != 2) || (srcs[3] == srcs[i] && i != 3)) {
-      // opnd is present in some other
-      // index of srcs so don't set its
-      // inst to NULL
-    } else {
-      if (srcs[i]->getInst() == this) {
-        srcs[i]->setInst(NULL);
-      }
-    }
+  // If opnd is present in some other index of srcs, don't set its inst to NULL
+  if (srcs[i] && srcs[i]->getInst() == this &&
+      std::none_of(srcs.begin(), srcs.end(), [&](G4_Operand *&src) {
+        return src == srcs[i] && (&src - &srcs.front()) != i;
+      })) {
+    srcs[i]->setInst(nullptr);
   }
 
   srcs[i] = opnd;
@@ -7284,89 +7289,6 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
   }
 
   return newInst;
-}
-
-
-G4_InstIntrinsic::G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
-                                   Intrinsic intrinId, G4_ExecSize execSize,
-                                   G4_DstRegRegion *d, G4_Operand *s0,
-                                   G4_Operand *s1, G4_Operand *s2,
-                                   G4_Operand *s3, G4_Operand *s4,
-                                   G4_Operand *s5, G4_Operand *s6,
-                                   G4_Operand *s7, G4_InstOpts opt)
-    : G4_INST(builder, prd, G4_intrinsic, nullptr, g4::NOSAT, execSize, d,
-              nullptr, nullptr, nullptr, opt),
-      intrinsicId(intrinId) {
-  srcs[0] = s0;
-  srcs[1] = s1;
-  srcs[2] = s2;
-  srcs[3] = s3;
-  srcs[4] = s4;
-  srcs[5] = s5;
-  srcs[6] = s6;
-  srcs[7] = s7;
-
-  resetRightBound(s0);
-  resetRightBound(s1);
-  resetRightBound(s2);
-  resetRightBound(s3);
-  resetRightBound(s4);
-  resetRightBound(s5);
-  resetRightBound(s6);
-  resetRightBound(s7);
-
-  associateOpndWithInst(s0, this);
-  associateOpndWithInst(s1, this);
-  associateOpndWithInst(s2, this);
-  associateOpndWithInst(s3, this);
-  associateOpndWithInst(s4, this);
-  associateOpndWithInst(s5, this);
-  associateOpndWithInst(s6, this);
-  associateOpndWithInst(s7, this);
-}
-
-G4_Operand *G4_InstIntrinsic::getIntrinsicSrc(unsigned i) const {
-  vISA_ASSERT(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
-  return srcs[i];
-}
-
-G4_Operand *G4_InstIntrinsic::getOperand(Gen4_Operand_Number opnd_num) const {
-  switch (opnd_num) {
-  case Opnd_src0:
-    return srcs[0];
-  case Opnd_src1:
-    return srcs[1];
-  case Opnd_src2:
-    return srcs[2];
-  case Opnd_src3:
-    return srcs[3];
-  case Opnd_src4:
-    return srcs[4];
-  case Opnd_src5:
-    return srcs[5];
-  case Opnd_src6:
-    return srcs[6];
-  case Opnd_src7:
-    return srcs[7];
-  default:
-    vISA_ASSERT_UNREACHABLE("Operand number is out of range.");
-    break;
-  }
-  return NULL;
-}
-
-void G4_InstIntrinsic::setIntrinsicSrc(G4_Operand *opnd, unsigned i) {
-  vISA_ASSERT(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
-
-  if (srcs[i] != NULL) {
-    if (srcs[i]->getInst() == (G4_INST *)this) {
-      srcs[i]->setInst(NULL);
-    }
-  }
-  srcs[i] = opnd;
-
-  associateOpndWithInst(opnd, (G4_INST *)this);
-  resetRightBound(opnd);
 }
 
 G4_INST *G4_InstIntrinsic::cloneInst(const IR_Builder *b) {
