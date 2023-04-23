@@ -2846,6 +2846,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
     // a utility class to select whether to use data element D32 or D64 when
     // the alignment is 8 bytes or 1 bytes. Not used when alignment is 4.
     // (Here, data element refers to data element in load/store messages.)
+    //   0) Don't use D64 if i64 is not nativaly supported (no Q mov).
     //   1) use D32 if any store in the bundle has byte-element access (either
     //      scalar or element type of a vector), and the store is non-uniform,
     //      as D64 might require stride=8, which is not legit, to merge byte
@@ -3026,8 +3027,17 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         const uint32_t theAlign = bundleAlign[ix];
 
         // If i64 insts are not supported, don't do D64 as it might
-        // require i64 mov, etc in codegen emit.
-        if (m_CGC->platform.hasNoFullI64Support() && theAlign > 4)
+        // require i64 mov (I64 Emu only handles 1-level insertvalue
+        // and extractvalue so far), etc in codegen emit.
+        //
+        // i64Emu: mimic Emu64Ops's enabling condition. Seems conservative
+        //         and be improved in the future if needed.
+        const bool hasI64Emu =
+               (m_CGC->platform.need64BitEmulation() &&
+                (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
+                 IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)))
+            ||  m_CGC->platform.hasPartialInt64Support();
+        if (hasI64Emu && theAlign > 4)
             continue;
 
         // Element size is the same as the alignment.
@@ -3606,6 +3616,8 @@ void LdStCombine::createCombinedStores(Function& F)
 
     // Delete stores that have been combined.
     eraseDeadInsts();
+
+    m_bundles.clear();
 }
 
 void LdStCombine::eraseDeadInsts()

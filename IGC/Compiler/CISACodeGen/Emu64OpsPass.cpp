@@ -2137,9 +2137,9 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
 
 bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
     IGC_ASSERT(nullptr != Emu);
-    IGC_ASSERT(EVI.getNumIndices() == 1);
     if (!Emu->isInt64(&EVI))
         return false;
+    IGC_ASSERT(EVI.getNumIndices() == 1);
 
     auto* EVICopy = EVI.clone();
     EVICopy->insertBefore(&EVI);
@@ -2155,9 +2155,9 @@ bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
 
 bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
     IGC_ASSERT(nullptr != Emu);
-    IGC_ASSERT(IVI.getNumIndices() == 1);
     if (!Emu->isInt64(IVI.getOperand(1)))
         return false;
+    IGC_ASSERT(IVI.getNumIndices() == 1);
 
     auto* IVICopy = IVI.clone();
     IVICopy->insertBefore(&IVI);
