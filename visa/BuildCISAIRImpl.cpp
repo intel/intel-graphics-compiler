@@ -36,6 +36,8 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <string_view>
 
+#include <llvm/Support/Path.h>
+
 using namespace vISA;
 
 #define IS_GEN_PATH (mBuildOption == VISA_BUILDER_GEN)
@@ -1466,6 +1468,8 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
 
 }
 
+// TODO: Update nameInput to the path to the combined .isaasm file in the
+// compilation. Currently it is a .isa file.
 // TODO: Remove the ostream parameter used to emit visa binary.
 // default size of the kernel mem manager in bytes
 int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
@@ -1505,8 +1509,18 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       return status;
     }
 
-    if (m_options.getOption(vISA_GenerateISAASM)) {
-      status = m_cisaBinary->isaDump(&m_options);
+    llvm::SmallString<64> combinedIsaasmName;
+    if (m_options.getOption(vISA_GenerateCombinedISAASM) &&
+        !m_options.getOption(vISA_ISAASMToConsole)) {
+      // Translate .isa to .isaasm before the nameInput is updated. Use
+      // .isaasm extension to avoid conflict with the existing .visaasm for
+      // a kernel.
+      combinedIsaasmName = nameInput;
+      llvm::sys::path::replace_extension(combinedIsaasmName, ".isaasm");
+    }
+    if (m_options.getOption(vISA_GenerateISAASM) ||
+        m_options.getOption(vISA_GenerateCombinedISAASM)) {
+      status = m_cisaBinary->isaDump(combinedIsaasmName.c_str());
       if (status != VISA_SUCCESS) {
         // Treat VISA_EARLY_EXIT as VISA_SUCCESS.
         return status == VISA_EARLY_EXIT ? VISA_SUCCESS : status;

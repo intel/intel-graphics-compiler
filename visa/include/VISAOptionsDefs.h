@@ -428,6 +428,9 @@ DEF_VISA_OPTION(vISA_SymbolReg, ET_BOOL, "-symbolreg", "DEPRECATED, is a nop", f
 DEF_VISA_OPTION(vISA_PrintASMCount, ET_BOOL, "-printasmcount", UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateBinary, ET_BOOL, "-binary", UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateISAASM, ET_BOOL, "-dumpcommonisa", UNUSED, false)
+DEF_VISA_OPTION(vISA_GenerateCombinedISAASM, ET_BOOL, "-dumpcombinedcisa",
+                "Emit isaasm of all kernels and functions into a combined file "
+                "in a compilation", false)
 DEF_VISA_OPTION(vISA_ISAASMToConsole, ET_BOOL, "-isaasmToConsole",
                 "The option can be used with -dumpcommonisa to make finalizer"
                 "emit isaasm to stdout instead of file and do early exit", false)

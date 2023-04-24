@@ -4333,6 +4333,12 @@ namespace IGC
             SaveOption(vISA_GenerateBinary, true);
             m_enableVISAdump = true;
         }
+        if (IGC_IS_FLAG_ENABLED(EnableVISADumpCombinedCISA))
+        {
+            SaveOption(vISA_DumpvISA, true);
+            SaveOption(vISA_GenerateCombinedISAASM, true);
+            m_enableVISAdump = true;
+        }
         if (IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA))
         {
             SaveOption(vISA_DumpvISA, true);

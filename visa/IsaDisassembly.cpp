@@ -3150,12 +3150,13 @@ static std::string printInstructionLsc(ISA_Opcode opcode,
   return formatter.format();
 }
 std::string VISAKernel_format_provider::printKernelHeader(
-    const common_isa_header &isaHeader) {
+    const common_isa_header &isaHeader, bool printVersion) {
   std::stringstream sstr;
 
   bool isKernel = m_kernel->getIsKernel();
 
-  sstr << printBuildVersion(isaHeader) << "\n";
+  if (printVersion)
+    sstr << printBuildVersion(isaHeader) << "\n";
   sstr << printFunctionDecl(this, isKernel) << "\n";
 
   // Print all functions in the same object

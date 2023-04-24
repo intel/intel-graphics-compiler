@@ -375,6 +375,7 @@ namespace IGC
                     IGC_IS_FLAG_ENABLED(EnableCosDump) ||
                     IGC_IS_FLAG_ENABLED(EnableVISAOutput) ||
                     IGC_IS_FLAG_ENABLED(EnableVISABinary) ||
+                    IGC_IS_FLAG_ENABLED(EnableVISADumpCombinedCISA) ||
                     IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA) ||
                     GetDebugFlag(DebugFlag::DUMP_AFTER_PASSES) ||
                     GetDebugFlag(DebugFlag::VISA_OUTPUT) ||
@@ -572,6 +573,7 @@ namespace IGC
                     IGC_IS_FLAG_ENABLED(EnableCosDump) ||
                     IGC_IS_FLAG_ENABLED(EnableVISAOutput) ||
                     IGC_IS_FLAG_ENABLED(EnableVISABinary) ||
+                    IGC_IS_FLAG_ENABLED(EnableVISADumpCombinedCISA) ||
                     IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA) ||
                     GetDebugFlag(DebugFlag::DUMP_AFTER_PASSES) ||
                     GetDebugFlag(DebugFlag::VISA_OUTPUT) ||

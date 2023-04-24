@@ -444,11 +444,12 @@ void CisaBinary::patchFunction(int index, unsigned genxBufferSize) {
 }
 
 std::string CisaBinary::isaDump(const VISAKernelImpl *kernel,
-                                const VISAKernelImpl *fmtKernel) const {
+                                const VISAKernelImpl *fmtKernel,
+                                bool printVersion) const {
   std::stringstream sstr;
   VISAKernel_format_provider fmt(fmtKernel);
 
-  sstr << fmt.printKernelHeader(m_header);
+  sstr << fmt.printKernelHeader(m_header, printVersion);
 
   auto inst_iter = kernel->getInstructionListBegin();
   auto inst_iter_end = kernel->getInstructionListEnd();
@@ -473,14 +474,18 @@ std::string CisaBinary::isaDump(const VISAKernelImpl *kernel,
   return sstr.str();
 }
 
-int CisaBinary::isaDump(const Options *options) const {
+int CisaBinary::isaDump(const char *combinedIsaasmName) const {
 #ifdef IS_RELEASE_DLL
   return VISA_SUCCESS;
 #else
-  if (!m_options->getOption(vISA_GenerateISAASM))
+  const bool genIsaasm = m_options->getOption(vISA_GenerateISAASM);
+  const bool genCombinedIsaasm =
+      m_options->getOption(vISA_GenerateCombinedISAASM);
+  if (!genIsaasm && !genCombinedIsaasm)
     return VISA_SUCCESS;
 
-  const bool isaasmToConsole = options->getOption(vISA_ISAASMToConsole);
+  const bool isaasmToConsole = m_options->getOption(vISA_ISAASMToConsole);
+  std::stringstream ss;
 
   VISAKernelImpl *mainKernel = *parent->kernel_begin();
   for (auto kTempIt = parent->kernel_begin();
@@ -510,8 +515,19 @@ int CisaBinary::isaDump(const Options *options) const {
     asmName << ".visaasm";
     std::string asmFileName = sanitizePathString(asmName.str());
 
-    if (allowDump(*m_options, asmFileName)) {
-      VISAKernelImpl *fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
+    // Do we still want to support regex for file dump filters when writing
+    // a combined isaasm file?
+    if (!allowDump(*m_options, asmFileName))
+      continue;
+
+    VISAKernelImpl *fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
+    if (genCombinedIsaasm) {
+      // only print version when emitting the first kernel/function in the
+      // output.
+      ss << isaDump(kTemp, fmtKernel, !ss.rdbuf()->in_avail());
+      vISA_ASSERT(!ss.fail(), "Failed to write combined CISA ASM to file");
+    }
+    if (genIsaasm) {
       if (isaasmToConsole) {
         std::cout << isaDump(kTemp, fmtKernel);
       } else {
@@ -522,6 +538,16 @@ int CisaBinary::isaDump(const Options *options) const {
     }
   }
 
+  if (genCombinedIsaasm) {
+    if (isaasmToConsole) {
+      std::cout << ss.rdbuf();
+    } else {
+      vASSERT(combinedIsaasmName);
+      std::ofstream out(combinedIsaasmName);
+      out << ss.rdbuf();
+      vISA_ASSERT(!out.fail(), "Failed to write combined CISA ASM to file");
+    }
+  }
   // Return early exit if emitting isaasm to console.
   return isaasmToConsole? VISA_EARLY_EXIT : VISA_SUCCESS;
 #endif // IS_RELEASE_DLL

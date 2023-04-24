@@ -371,12 +371,15 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
 
   // If the input text lacks "OutputAsmPath" (and it should), then we can
   // override it with the implied name here.
-  auto k = cisa_builder->get_kernel();
-  if (k->getOutputAsmPath().empty()) {
-    const char *outputPrefix = opt.getOptionCstr(VISA_AsmFileName);
-    k->setOutputAsmPath(outputPrefix);
-    cisa_builder->getOptions()->setOptionInternally(VISA_AsmFileName,
-                                                    outputPrefix);
+  for (auto it = cisa_builder->kernel_begin(), ie = cisa_builder->kernel_end();
+       it != ie; ++it) {
+    auto k = *it;
+    if (k->getIsKernel() && k->getOutputAsmPath().empty()) {
+      const char *outputPrefix = opt.getOptionCstr(VISA_AsmFileName);
+      k->setOutputAsmPath(outputPrefix);
+      cisa_builder->getOptions()->setOptionInternally(VISA_AsmFileName,
+                                                      outputPrefix);
+    }
   }
 
   std::string binFileName;
