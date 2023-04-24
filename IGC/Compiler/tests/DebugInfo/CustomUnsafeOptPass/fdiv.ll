@@ -36,7 +36,7 @@
 ; CHECK: store float [[VAL7_V]]{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
 ; CHECK-DAG: store float [[VAL9_V:%[0-9]*]]{{.*}}, !dbg [[STORE4_LOC:![0-9]*]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL9_V]] = fadd fast float [[TEMP_VAL:%[A-z0-9]*]], {{.*}}, !dbg [[VAL9_LOC]]
+; CHECK-DAG: [[VAL9_V]] = fadd float [[TEMP_VAL:%[A-z0-9]*]], {{.*}}, !dbg [[VAL9_LOC]]
 ; It would be more correct to have VAL9_LOC here:
 ; CHECK-DAG: [[TEMP_VAL]] = {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
 
@@ -44,24 +44,24 @@ define spir_kernel void @test_custom(float %a, float addrspace(65549)* %b) !dbg 
 entry:
   %0 = load float, float addrspace(65549)* %b, !dbg !22
   call void @llvm.dbg.value(metadata float %0, metadata !12, metadata !DIExpression()), !dbg !22
-  %1 = fdiv fast float 1.000000e+00, %0, !dbg !23
+  %1 = fdiv float 1.000000e+00, %0, !dbg !23
   call void @llvm.dbg.value(metadata float %1, metadata !14, metadata !DIExpression()), !dbg !23
-  %2 = fdiv fast float 1.000000e+00, %1, !dbg !24
+  %2 = fdiv float 1.000000e+00, %1, !dbg !24
   call void @llvm.dbg.value(metadata float %2, metadata !15, metadata !DIExpression()), !dbg !24
   store float %2, float addrspace(65549)* %b, !dbg !25
-  %3 = fdiv fast float 1.000000e+00, %0, !dbg !26
+  %3 = fdiv float 1.000000e+00, %0, !dbg !26
   call void @llvm.dbg.value(metadata float %3, metadata !16, metadata !DIExpression()), !dbg !26
-  %4 = fdiv fast float %a, %3, !dbg !27
+  %4 = fdiv float %a, %3, !dbg !27
   call void @llvm.dbg.value(metadata float %4, metadata !17, metadata !DIExpression()), !dbg !27
   store float %4, float addrspace(65549)* %b, !dbg !28
   %5 = call float @llvm.GenISA.rsq.f32(float %0), !dbg !29
   call void @llvm.dbg.value(metadata float %5, metadata !18, metadata !DIExpression()), !dbg !29
-  %6 = fdiv fast float %a, %5, !dbg !30
+  %6 = fdiv float %a, %5, !dbg !30
   call void @llvm.dbg.value(metadata float %6, metadata !19, metadata !DIExpression()), !dbg !30
   store float %6, float addrspace(65549)* %b, !dbg !31
-  %7 = fadd fast float %a, %0, !dbg !32
+  %7 = fadd float %a, %0, !dbg !32
   call void @llvm.dbg.value(metadata float %7, metadata !20, metadata !DIExpression()), !dbg !32
-  %8 = fdiv fast float %7, %0, !dbg !33
+  %8 = fdiv float %7, %0, !dbg !33
   call void @llvm.dbg.value(metadata float %8, metadata !21, metadata !DIExpression()), !dbg !33
   store float %8, float addrspace(65549)* %b, !dbg !34
   ret void, !dbg !35

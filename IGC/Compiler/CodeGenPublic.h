@@ -961,9 +961,6 @@ namespace IGC
         BVHInfo bvhInfo;
         // Immediate constant buffer promotion is enabled for all optimization except for Direct storage case
         bool m_disableICBPromotion = false;
-        // Ignore per module fast math flag for code paths that use per instruction fast math flags
-        bool m_ignoreModuleFastMathFlag = false;
-
     private:
         //For storing error message
         std::stringstream oclErrorMessage;

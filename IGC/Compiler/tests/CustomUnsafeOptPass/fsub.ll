@@ -12,7 +12,7 @@
 ; x - x = 0
 define float @test1(float %x) #0 {
 entry:
-  %0 = fsub fast float %x, %x
+  %0 = fsub float %x, %x
   ret float %0
 }
 
@@ -23,10 +23,16 @@ entry:
 ; x - 0 = x
 define float @test2(float %x) #0 {
 entry:
-  %0 = fsub fast float %x, 0.000000e+00
+  %0 = fsub float %x, 0.000000e+00
   ret float %0
 }
 
 ; CHECK-LABEL: define float @test2
 ; CHECK-NOT: fsub
 ; CHECK: ret float %x
+
+!IGCMetadata = !{!0}
+
+!0 = !{!"ModuleMD", !1}
+!1 = !{!"compOpt", !2}
+!2 = !{!"FastRelaxedMath", i1 true}
