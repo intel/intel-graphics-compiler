@@ -430,15 +430,19 @@ namespace llvm {
             UP.MaxCount = UP.Count;
         }
 
-        // do not enable runtime unrolling if the loop is long or trip count is already known.
-        if (instCount > 35 || TripCount)
+        unsigned int runtimeUnroll = IGC_GET_FLAG_VALUE(RuntimeLoopUnrolling); // 0: default, 1: on, 2: off
+        if (runtimeUnroll == 2)
         {
             return;
         }
-
-        if (IGC_IS_FLAG_ENABLED(DisableRuntimeLoopUnrolling))
+        else if (runtimeUnroll == 0)
         {
-            return;
+            // do not enable runtime unrolling if the loop is long or trip count is already known.
+            // skip this check if RuntimeLoopUnrolling is set to force on.
+            if (instCount > 35 || TripCount)
+            {
+                return;
+            }
         }
 
         UP.Runtime = true;
