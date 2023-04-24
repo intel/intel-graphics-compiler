@@ -253,6 +253,9 @@ namespace {
             exit(1);
         }
 #endif
+        // Throw exception to return control to an application,
+        // it can try to gracefully process the error
+        throw std::runtime_error("LLVM Error: " + reasonStrWrapper);
     }
 
     void ComputeFatalErrorHandler(const DiagnosticInfo &DI, void * /*Context*/) {

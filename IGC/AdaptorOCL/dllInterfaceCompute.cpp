@@ -1179,6 +1179,7 @@ bool TranslateBuildSPMD(
     llvm::Module* pKernelModule = nullptr;
     LLVMContextWrapper* llvmContext = new LLVMContextWrapper;
     RegisterComputeErrHandlers(*llvmContext);
+    RegisterErrHandlers();
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
