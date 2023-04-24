@@ -1,0 +1,195 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2023 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+;
+; RUN: opt %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unkonwn-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s
+; RUN: opt %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unkonwn-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-LSC %s
+;
+; CHECK-NOT: WARNING
+; CHECK: CheckModuleDebugify: PASS
+; CHECK-LSC-NOT: WARNING
+; CHECK-LSC: CheckModuleDebugify: PASS
+
+; COM: Basic test on store lowering pass
+; COM: simplest store to addrspace(3)
+
+target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"
+target triple = "genx64-unknown-unknown"
+
+; Address space 6 (32-bit global) operations are lowered into bti/bti intrinsics
+
+define void @replace_store_i8_block(<16 x i8> addrspace(6)* %pi8, <16 x i8> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i8(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i8> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v2i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 2, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <2 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i8> %val, <16 x i8> addrspace(6)* %pi8
+  ret void
+}
+
+define void @replace_store_i16_block(<16 x i16> addrspace(6)* %pi16, <16 x i16> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i16(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i16> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v4i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 4, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <4 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i16> %val, <16 x i16> addrspace(6)* %pi16
+  ret void
+}
+
+define void @replace_store_i32_block(<16 x i32> addrspace(6)* %pi32, <16 x i32> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i32(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i32> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v8i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 5, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <8 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i32> %val, <16 x i32> addrspace(6)* %pi32
+  ret void
+}
+
+define void @replace_store_i64_block(<16 x i64> addrspace(6)* %pi64, <16 x i64> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i64(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i64> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v16i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 6, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <16 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i64> %val, <16 x i64> addrspace(6)* %pi64
+  ret void
+}
+
+define void @replace_store_i8_block_unaligned(<16 x i8> addrspace(6)* %pi8, <16 x i8> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v16i1.v16i32.v16i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v16i1.v16i32.v16i32
+  store <16 x i8> %val, <16 x i8> addrspace(6)* %pi8, align 1
+  ret void
+}
+
+define void @replace_store_i16_block_unaligned(<16 x i16> addrspace(6)* %pi16, <16 x i16> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v16i1.v16i32.v16i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v16i1.v16i32.v16i32
+  store <16 x i16> %val, <16 x i16> addrspace(6)* %pi16, align 1
+  ret void
+}
+
+define void @replace_store_i32_block_unaligned(<16 x i32> addrspace(6)* %pi32, <16 x i32> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v16i1.v16i32.v16i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v16i1.v16i32.v16i32
+  store <16 x i32> %val, <16 x i32> addrspace(6)* %pi32, align 1
+  ret void
+}
+
+define void @replace_store_i64_block_unaligned(<16 x i64> addrspace(6)* %pi64, <16 x i64> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v32i1.v32i32.v32i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v16i1.v16i32.v16i64
+  store <16 x i64> %val, <16 x i64> addrspace(6)* %pi64, align 1
+  ret void
+}
+
+define void @replace_store_i8_block_dwalign(<16 x i8> addrspace(6)* %pi8, <16 x i8> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v16i1.v16i32.v16i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v4i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 4, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <4 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i8> %val, <16 x i8> addrspace(6)* %pi8, align 4
+  ret void
+}
+
+define void @replace_store_i16_block_dwalign(<16 x i16> addrspace(6)* %pi16, <16 x i16> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v16i1.v16i32.v16i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v8i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 5, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <8 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i16> %val, <16 x i16> addrspace(6)* %pi16, align 4
+  ret void
+}
+
+define void @replace_store_i32_block_dwalign(<16 x i32> addrspace(6)* %pi32, <16 x i32> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v16i1.v16i32.v16i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v16i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 6, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <16 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i32> %val, <16 x i32> addrspace(6)* %pi32, align 4
+  ret void
+}
+
+define void @replace_store_i64_block_dwalign(<16 x i64> addrspace(6)* %pi64, <16 x i64> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v32i1.v32i32.v32i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v32i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 7, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <32 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i64> %val, <16 x i64> addrspace(6)* %pi64, align 4
+  ret void
+}
+
+define void @replace_store_i8_block_owalign(<16 x i8> addrspace(6)* %pi8, <16 x i8> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i8(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i8> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v2i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 2, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <2 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i8> %val, <16 x i8> addrspace(6)* %pi8, align 16
+  ret void
+}
+
+define void @replace_store_i16_block_owalign(<16 x i16> addrspace(6)* %pi16, <16 x i16> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i16(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i16> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v4i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 4, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <4 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i16> %val, <16 x i16> addrspace(6)* %pi16, align 16
+  ret void
+}
+
+define void @replace_store_i32_block_owalign(<16 x i32> addrspace(6)* %pi32, <16 x i32> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i32(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i32> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v8i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 5, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <8 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i32> %val, <16 x i32> addrspace(6)* %pi32, align 16
+  ret void
+}
+
+define void @replace_store_i64_block_owalign(<16 x i64> addrspace(6)* %pi64, <16 x i64> %val) {
+; CHECK: call void @llvm.genx.oword.st.v16i64(i32 255, i32 %{{[a-zA-Z0-9.]+}}, <16 x i64> %{{[a-zA-Z0-9.]+}})
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v16i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 6, i8 2, i8 0, i32 %{{[a-zA-Z0-9.]+}}, <16 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <16 x i64> %val, <16 x i64> addrspace(6)* %pi64, align 16
+  ret void
+}
+
+define void @replace_store_i8_block_1023bytes(<1023 x i8> addrspace(6)* %p, <1023 x i8> %val) {
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR0:%[0-9a-zA-Z.]+]], <128 x i8>
+; CHECK: [[ADDR128:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 128
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR128]], <128 x i8>
+; CHECK: [[ADDR256:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 256
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR256]], <128 x i8>
+; CHECK: [[ADDR384:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 384
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR384]], <128 x i8>
+; CHECK: [[ADDR512:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 512
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR512]], <128 x i8>
+; CHECK: [[ADDR640:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 640
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR640]], <128 x i8>
+; CHECK: [[ADDR768:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 768
+; CHECK: call void @llvm.genx.oword.st.v128i8(i32 255, i32 [[ADDR768]], <128 x i8>
+; CHECK: [[ADDR896:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 896
+; CHECK: call void @llvm.genx.oword.st.v64i8(i32 255, i32 [[ADDR896]], <64 x i8>
+; CHECK: [[ADDR960:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 960
+; CHECK: call void @llvm.genx.oword.st.v32i8(i32 255, i32 [[ADDR960]], <32 x i8>
+; CHECK: [[ADDR992:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 992
+; CHECK: call void @llvm.genx.oword.st.v16i8(i32 255, i32 [[ADDR992]], <16 x i8>
+; CHECK: call void @llvm.genx.scatter.scaled.v15i1.v15i32.v15i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v64i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 8, i8 2, i8 0, i32 [[ADDR:%[a-zA-Z0-9.]+]], <64 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDR512:%[^ ]+]] = add i32 [[ADDR]], 512
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v32i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 7, i8 2, i8 0, i32 [[ADDR512]], <32 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDR768:%[^ ]+]] = add i32 [[ADDR]], 768
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v16i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 6, i8 2, i8 0, i32 [[ADDR768]], <16 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDR896:%[^ ]+]] = add i32 [[ADDR]], 896
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v8i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 5, i8 2, i8 0, i32 [[ADDR896]], <8 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDR960:%[^ ]+]] = add i32 [[ADDR]], 960
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v4i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 4, i8 2, i8 0, i32 [[ADDR960]], <4 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDR992:%[^ ]+]] = add i32 [[ADDR]], 992
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v3i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 3, i8 2, i8 0, i32 [[ADDR992]], <3 x i64> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v7i1.v7i32.v7i32(<7 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 5, i8 1, i8 1, i8 0, <7 x i32> %{{[a-zA-Z0-9.]+}}, <7 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <1023 x i8> %val, <1023 x i8> addrspace(6)* %p
+  ret void
+}
+
+define void @replace_store_i8_block_1023bytes_dwalign(<1023 x i8> addrspace(6)* %p, <1023 x i8> %val) {
+; CHECK: call void @llvm.genx.scatter.scaled.v1023i1.v1023i32.v1023i32
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v64i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 8, i8 2, i8 0, i32 [[ADDRDW:%[a-zA-Z0-9.]+]], <64 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW256:%[^ ]+]] = add i32 [[ADDRDW]], 256
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v64i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 8, i8 2, i8 0, i32 [[ADDRDW256]], <64 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW512:%[^ ]+]] = add i32 [[ADDRDW]], 512
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v64i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 8, i8 2, i8 0, i32 [[ADDRDW512]], <64 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW768:%[^ ]+]] = add i32 [[ADDRDW]], 768
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v32i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 7, i8 2, i8 0, i32 [[ADDRDW768]], <32 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW896:%[^ ]+]] = add i32 [[ADDRDW]], 896
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v16i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 6, i8 2, i8 0, i32 [[ADDRDW896]], <16 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW960:%[^ ]+]] = add i32 [[ADDRDW]], 960
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v8i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 5, i8 2, i8 0, i32 [[ADDRDW960]], <8 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW992:%[^ ]+]] = add i32 [[ADDRDW]], 992
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v4i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 4, i8 2, i8 0, i32 [[ADDRDW992]], <4 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: [[ADDRDW1008:%[^ ]+]] = add i32 [[ADDRDW]], 1008
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v1i1.i32.v3i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 3, i8 3, i8 2, i8 0, i32 [[ADDRDW1008]], <3 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+; CHECK-LSC: call void @llvm.genx.lsc.store.bti.v3i1.v3i32.v3i32(<3 x i1> <i1 true, i1 true, i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 5, i8 1, i8 1, i8 0, <3 x i32> %{{[a-zA-Z0-9.]+}}, <3 x i32> %{{[a-zA-Z0-9.]+}}, i32 255)
+  store <1023 x i8> %val, <1023 x i8> addrspace(6)* %p, align 4
+  ret void
+}
