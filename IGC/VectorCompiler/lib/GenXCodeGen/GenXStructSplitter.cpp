@@ -66,7 +66,6 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/DebugInfo.h"
-#include "vc/Utils/General/Iterator.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/IR/DebugInfo.h>
@@ -652,10 +651,12 @@ DependencyGraph::getUniqueSplitTypes(StructType &STy) const {
   // Vector is for determination of structs order.
   std::vector<Type *> UniqueSplitTypesInOrder;
   // Gets unique substructs.
-  for (auto &&BaseTy : vc::make_flat_range(getElemMappingFor(STy))) {
-    auto [_, IsInserted] = UniqueSplitTypes.emplace(BaseTy.getTy());
-    if (IsInserted)
-      UniqueSplitTypesInOrder.push_back(BaseTy.getTy());
+  for (auto &&C : getElemMappingFor(STy)) {
+    for (auto &&BaseTy : C) {
+      auto [_, IsInserted] = UniqueSplitTypes.emplace(BaseTy.getTy());
+      if (IsInserted)
+        UniqueSplitTypesInOrder.push_back(BaseTy.getTy());
+    }
   }
   return UniqueSplitTypesInOrder;
 }
@@ -1007,10 +1008,11 @@ DependencyGraph::checkAbilityToMerge(const ElemMapping &NewSTypes) const {
 
   // Checks that all split structs are same. It is the main criteria for
   // iterations of splitting to be merged.
-  bool AreSameStructs = llvm::all_of(
-      vc::make_flat_range(NewSTypes), [STyToCheck](auto &&Element) {
-        return Element.getStructTyIfPossible() == STyToCheck;
-      });
+  bool AreSameStructs = llvm::all_of(NewSTypes, [STyToCheck](const auto &S) {
+    return llvm::all_of(S, [STyToCheck](const auto &Elt) {
+      return Elt.getStructTyIfPossible() == STyToCheck;
+    });
+  });
 
   if (AreSameStructs && isStructProcessed(*STyToCheck))
     return STyToCheck;
@@ -1078,17 +1080,19 @@ Substituter::generateNewAllocas(AllocaInst &OldInst) {
   std::unordered_set<Type *> UniqueSplitTypes;
   TypeToInstrMap NewInstructions;
 
-  for (auto &&BaseTy : vc::make_flat_range(Graph.getElemMappingFor(STy))) {
-    Type *NewTy = BaseTy.getTy();
-    auto [_, IsTypeInserted] = UniqueSplitTypes.emplace(NewTy);
-    if (IsTypeInserted) {
-      // Generating one alloca to each unique type.
-      AllocaInst *NewAlloca = generateAlloca(OldInst, BaseTy);
-      auto [_, IsAllocaInserted] =
-          NewInstructions.emplace(getBaseTy(NewTy), NewAlloca);
-      IGC_ASSERT_MESSAGE(IsAllocaInserted,
-                         "Alloca instruction responsible for structure(type) "
-                         "has already been created.\n");
+  for (auto &&Base : Graph.getElemMappingFor(STy)) {
+    for (auto &&BaseTy : Base) {
+      Type *NewTy = BaseTy.getTy();
+      auto [_, IsTypeInserted] = UniqueSplitTypes.emplace(NewTy);
+      if (IsTypeInserted) {
+        // Generating one alloca to each unique type.
+        AllocaInst *NewAlloca = generateAlloca(OldInst, BaseTy);
+        auto [_, IsAllocaInserted] =
+            NewInstructions.emplace(getBaseTy(NewTy), NewAlloca);
+        IGC_ASSERT_MESSAGE(IsAllocaInserted,
+                           "Alloca instruction responsible for structure(type) "
+                           "has already been created.\n");
+      }
     }
   }
   return NewInstructions;
@@ -1682,16 +1686,23 @@ bool Substituter::processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
 
   // If MaxPtrOffset covers elements, which will be laid sequitially within one
   // new struct, then we can substitute PTI.
-  for (auto &&ElemEnum : enumerate(vc::make_flat_range(IdxMapping))) {
-    const SElement &Elem = ElemEnum.value();
-    if (!verifyElement(STy, Elem, TheFirstElemTy, ElemEnum.index()))
-      return false;
+  int Index = 0;
+  for (auto &&C : IdxMapping) {
+    bool EarlyExit = false;
+    for (auto &&Elem : C) {
+      if (!verifyElement(STy, Elem, TheFirstElemTy, Index++))
+        return false;
 
-    if (!MaxPtrOffset)
+      if (!MaxPtrOffset) {
+        EarlyExit = true;
+        break;
+      }
+      const uint64_t SizeOfElem =
+          vc::getTypeSize(Elem.retrieveElemTy(), &DL).inBytes();
+      MaxPtrOffset = SizeOfElem > MaxPtrOffset ? 0 : MaxPtrOffset - SizeOfElem;
+    }
+    if (EarlyExit)
       break;
-    const uint64_t SizeOfElem =
-        vc::getTypeSize(Elem.retrieveElemTy(), &DL).inBytes();
-    MaxPtrOffset = SizeOfElem > MaxPtrOffset ? 0 : MaxPtrOffset - SizeOfElem;
   }
 
   Instruction *ToInsert =
@@ -1796,8 +1807,7 @@ bool Substituter::processPTIsUses(Instruction &I,
 //__________________________________________________________________
 //          Block of SElement definition.
 //__________________________________________________________________
-DependencyGraph::SElement::SElement(StructType *const &InTy,
-                                    unsigned InIndex)
+DependencyGraph::SElement::SElement(StructType *const &InTy, unsigned InIndex)
     : Ty{InTy}, Index{InIndex}, IsUnwrapped{false} {}
 
 DependencyGraph::SElement::SElement(Type *const &InTy)
@@ -1830,9 +1840,7 @@ unsigned DependencyGraph::SElement::getIndex() const {
   return Index;
 }
 
-bool DependencyGraph::SElement::isUnwrapped() const {
-  return IsUnwrapped;
-}
+bool DependencyGraph::SElement::isUnwrapped() const { return IsUnwrapped; }
 
 //__________________________________________________________________
 //          Block of SElementsOfType definition.
@@ -1903,7 +1911,7 @@ DependencyGraph::SElementsOfType::const_iterator::const_iterator(
     : TyIt{TyItIn}, IdxIt{IdxItIn} {}
 
 DependencyGraph::SElementsOfType::const_iterator::reference
-    DependencyGraph::SElementsOfType::const_iterator::operator*() const {
+DependencyGraph::SElementsOfType::const_iterator::operator*() const {
   return std::make_pair(*TyIt, *IdxIt);
 }
 
@@ -1922,8 +1930,8 @@ DependencyGraph::SElementsOfType::const_iterator::operator++(int) {
 }
 
 DependencyGraph::SElementsOfType::const_iterator
-DependencyGraph::SElementsOfType::const_iterator::
-operator+(difference_type RHS) const {
+DependencyGraph::SElementsOfType::const_iterator::operator+(
+    difference_type RHS) const {
   return const_iterator{TyIt + RHS, IdxIt + RHS};
 }
 
