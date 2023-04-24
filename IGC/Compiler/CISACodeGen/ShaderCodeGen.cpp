@@ -301,7 +301,9 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(new CastToGASInfoWrapper());
     }
 
-    // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them
+    // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them.
+    // The pass first occurs during optimization, however new freeze instructions could
+    // have been inserted since.
     mpm.add(createEvaluateFreezePass());
 
     // clean up constexpressions after EarlyCSE
@@ -1448,6 +1450,17 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
+#if LLVM_VERSION_MAJOR >= 14
+            // Now that constant propagation is largely complete, perform
+            // initial evaluation of freeze instructions. We need this to make
+            // life easier for subsequent LLVM passes, as passes like
+            // InstCombine/SimplifyCFG can sometimes be lazy in checking freeze
+            // operand's validity over the more complex instruction chains,
+            // simply assuming that it's safer to refrain from optimizations.
+            // TODO: Check if LLVM 15+ provides improvements in that regard,
+            // alleviating the need for early freeze evaluation.
+            mpm.add(createEvaluateFreezePass());
+#endif // LLVM_VERSION_MAJOR
 
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
