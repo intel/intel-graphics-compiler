@@ -551,7 +551,7 @@ DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables Fun
     "When set by this flag, the functions in the FunctionDebug list will override the default FunctionControl mode.", true)
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
 DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true, "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
-DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, true, "If enabled, stack calls that uses implicit args will be force inlined.", true)
+DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, false, "If enabled, stack calls that uses implicit args will be force inlined.", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,     0,
     "Limits the number of cloned functions when called from multiple function groups." \
     "If number of cloned functions exceeds the threshold, compile the function only once and use address relocation instead." \
