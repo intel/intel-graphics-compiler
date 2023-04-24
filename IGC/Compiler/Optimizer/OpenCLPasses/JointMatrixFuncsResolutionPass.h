@@ -44,6 +44,11 @@ namespace IGC
 
         virtual bool runOnFunction(llvm::Function& F) override;
         void visitCallInst(llvm::CallInst& CI);
+        void visitAllocaInst(llvm::AllocaInst &I);
+        void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
+        void visitPtrToIntInst(llvm::PtrToIntInst &I);
+        void visitStoreInst(llvm::StoreInst &I);
+        void visitBitCastInst(llvm::BitCastInst &I);
 
     private:
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
@@ -54,10 +59,22 @@ namespace IGC
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
         llvm::Value *ResolveCall(llvm::CallInst *CI);
+        llvm::Value *ResolveLLVMLoad(llvm::LoadInst *LI);
+        llvm::Value *ResolveLLVMStore(llvm::StoreInst *LI);
+        llvm::Value *ResolveGetElementPtr(llvm::GetElementPtrInst *GEPI);
+        llvm::Value *ResolveAlloca(llvm::AllocaInst *AI);
+        llvm::Value *ResolveBitCast(llvm::BitCastInst *BCI);
+        llvm::Value *ResolveAddrSpaceCast(llvm::AddrSpaceCastInst *ASCI);
+        llvm::Value *ResolvePtrToInt(llvm::PtrToIntInst *PTII);
         llvm::Value *Resolve(llvm::Value *value);
 
         llvm::Type *ResolveType(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDesc);
+        llvm::Type *ResolveTypes(llvm::Type *t, bool *isJointMatrixOp);
+        llvm::Type *ResolveStructType(llvm::Type *t, bool *isJointMatrixOp);
+        llvm::Type *ResolveArrayType(llvm::Type *t, bool *isJointMatrixOp);
+        llvm::Type *ResolvePointerType(llvm::Type *t, bool *isJointMatrixOp);
         void CacheResolvedValue(llvm::Value *oldValue, llvm::Value *newValue);
+        void CacheResolvedTypes(llvm::Type *oldType, llvm::Type *newType);
         void InsertPlaceholder(llvm::Value *v);
 
         std::string GetLoadStoreMatrixFuncName
@@ -67,6 +84,7 @@ namespace IGC
 
         llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
+        std::unordered_map<llvm::Type *, llvm::Type *> ResolvedTypes;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
 
         ModuleMetaData* MMD = nullptr;

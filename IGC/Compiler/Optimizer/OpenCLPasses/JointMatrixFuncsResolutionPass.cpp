@@ -21,9 +21,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/ADT/Sequence.h>
 #include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/PostOrderIterator.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -54,14 +56,25 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
     m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     PlaceholderInstructions.clear();
     ResolvedValues.clear();
+    ResolvedTypes.clear();
     InstsToErase.clear();
     Changed = false;
 
-    visit(F);
+    // Use reverse post order traversal to reduce level or recursion
+    ReversePostOrderTraversal<Function *> RPOT(&F);
+    for (BasicBlock *BB : RPOT)
+        visit(BB);
 
     for (Instruction *I : InstsToErase) {
-        Value *undef = UndefValue::get(I->getType());
-        I->replaceAllUsesWith(undef);
+        if (ResolvedValues[I] && I->getType() == ResolvedValues[I]->getType())
+        {
+            I->replaceAllUsesWith(ResolvedValues[I]);
+        }
+        else
+        {
+            Value *undef = UndefValue::get(I->getType());
+            I->replaceAllUsesWith(undef);
+        }
         I->eraseFromParent();
     }
 
@@ -386,6 +399,22 @@ static void parseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescripti
     outDescription->bitWidth = parseNumber(name, &offset);
 }
 
+static bool isMatrixType(const Type *type)
+{
+    if (!type->isPointerTy())
+        return false;
+
+    Type *eltType = IGCLLVM::getNonOpaquePtrEltTy(type);
+    if (!eltType || !eltType->isStructTy())
+        return false;
+
+    StringRef name = eltType->getStructName();
+    if (name.startswith("intel.joint_matrix"))
+        return true;
+
+    return false;
+}
+
 Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointMatrixTypeDescription *outDesc)
 {
     IGC_ASSERT_EXIT_MESSAGE(opaqueType && opaqueType->isPointerTy(),
@@ -493,7 +522,6 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     IRBuilder builder(CI);
     Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args, "matrix");
-    newCall->setDebugLoc(CI->getDebugLoc());
     if (retTy != matTy) {
         IGCLLVM::FixedVectorType *rawMatTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
         IGCLLVM::FixedVectorType *rawRetTy = dyn_cast<IGCLLVM::FixedVectorType>(retTy);
@@ -503,8 +531,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
             Value *bitcast = builder.CreateBitCast(newCall, matTy, "matrix.load.cast");
             newCall = dyn_cast<Instruction>(bitcast);
         }
-        newCall->setDebugLoc(CI->getDebugLoc());
     }
+    newCall->setDebugLoc(CI->getDebugLoc());
     return newCall;
 }
 
@@ -860,7 +888,7 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
 
     Type *type = v->getType();
     if (type->isPointerTy()) {
-        type = ResolveType(v->getType(), nullptr);
+        type = ResolveTypes(v->getType(), nullptr);
     }
     if (type->isVoidTy()) {
         return;
@@ -881,10 +909,9 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
 
 Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
     Function* func = CI->getCalledFunction();
+    IGC_ASSERT_MESSAGE(func, "Unexpected missing function.");
     if (!func)
         return nullptr;
-
-    IGC_ASSERT_MESSAGE(func, "Unexpected missing function.");
 
     Value *NewValue = nullptr;
     StringRef funcName = func->getName();
@@ -938,6 +965,215 @@ void JointMatrixFuncsResolutionPass::CacheResolvedValue(Value *oldValue, Value *
     ResolvedValues[oldValue] = newValue;
 }
 
+void JointMatrixFuncsResolutionPass::CacheResolvedTypes(Type *oldType, Type *newType)
+{
+    IGC_ASSERT_MESSAGE(newType, "Type should not be null.");
+    if (newType == nullptr)
+        return;
+    ResolvedTypes[oldType] = newType;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveLLVMLoad(LoadInst *LI)
+{
+    InsertPlaceholder(LI);
+    Type *type = ResolveTypes(LI->getType(), nullptr);
+    Value *operand = Resolve(LI->getPointerOperand());
+
+    LoadInst *NewLI = new LoadInst(type, operand, "matrix.load.arr", LI->isVolatile(), IGCLLVM::getAlign(*LI), LI);
+
+    NewLI->setDebugLoc(LI->getDebugLoc());
+    CacheResolvedValue(LI, NewLI);
+    InstsToErase.insert(LI);
+
+    return NewLI;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveLLVMStore(StoreInst *SI)
+{
+    InsertPlaceholder(SI);
+    StoreInst *newSI = new StoreInst(Resolve(SI->getValueOperand()),
+                                     Resolve(SI->getPointerOperand()),
+                                     SI->isVolatile(), IGCLLVM::getAlign(*SI),
+                                     SI);
+    newSI->setDebugLoc(SI->getDebugLoc());
+    CacheResolvedValue(SI, newSI);
+    InstsToErase.insert(SI);
+
+    return newSI;
+}
+
+Type *JointMatrixFuncsResolutionPass::ResolveTypes(llvm::Type *t, bool *isJointMatrixOp)
+{
+    IGC_ASSERT_MESSAGE(isJointMatrixOp == nullptr || (*isJointMatrixOp) == false, "Expected either nullptr or false value.");
+
+    if (StructType *ST = dyn_cast<StructType>(t))
+        return ResolveStructType(ST, isJointMatrixOp);
+    else if (ArrayType *AT = dyn_cast<ArrayType>(t))
+        return ResolveArrayType(AT, isJointMatrixOp);
+    else if (PointerType *PT = dyn_cast<PointerType>(t))
+    {
+        if (isMatrixType(t))
+        {
+            if (isJointMatrixOp != nullptr)
+                *isJointMatrixOp = true;
+            return ResolveType(t, nullptr);
+        }
+        else
+            return ResolvePointerType(PT, isJointMatrixOp);
+    }
+    return t;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveGetElementPtr(GetElementPtrInst *GEPI)
+{
+    InsertPlaceholder(GEPI);
+    std::vector<Value *> IdxList(GEPI->idx_begin(), GEPI->idx_end());
+    GetElementPtrInst *NewGEPI = GetElementPtrInst::Create(
+        ResolveTypes(GEPI->getSourceElementType(), nullptr),
+        Resolve(GEPI->getPointerOperand()), IdxList, GEPI->getName(), GEPI);
+    NewGEPI->setIsInBounds(GEPI->isInBounds());
+    NewGEPI->setDebugLoc(GEPI->getDebugLoc());
+
+    CacheResolvedValue(GEPI, NewGEPI);
+    InstsToErase.insert(GEPI);
+    return NewGEPI;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveAlloca(AllocaInst *AI)
+{
+    InsertPlaceholder(AI);
+    AllocaInst *newAI = new AllocaInst(
+        ResolveTypes(AI->getAllocatedType(), nullptr),
+        AI->getType()->getAddressSpace(), AI->getName(), AI);
+    newAI->setAlignment(IGCLLVM::getAlign(*AI));
+    newAI->setDebugLoc(AI->getDebugLoc());
+
+    CacheResolvedValue(AI, newAI);
+    InstsToErase.insert(AI);
+    return newAI;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveBitCast(BitCastInst *BCI)
+{
+    InsertPlaceholder(BCI);
+    BitCastInst *newBCI = new BitCastInst(Resolve(BCI->getOperand(0)),
+                                          ResolveTypes(BCI->getDestTy(), nullptr),
+                                          BCI->getName(), BCI);
+    newBCI->setDebugLoc(BCI->getDebugLoc());
+
+    CacheResolvedValue(BCI, newBCI);
+    InstsToErase.insert(BCI);
+    return newBCI;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolveAddrSpaceCast(AddrSpaceCastInst *ASCI)
+{
+    InsertPlaceholder(ASCI);
+    AddrSpaceCastInst *newASCI = new AddrSpaceCastInst(Resolve(ASCI->getOperand(0)),
+                                          ResolveTypes(ASCI->getDestTy(), nullptr),
+                                          ASCI->getName(), ASCI);
+    newASCI->setDebugLoc(ASCI->getDebugLoc());
+
+    CacheResolvedValue(ASCI, newASCI);
+    InstsToErase.insert(ASCI);
+    return newASCI;
+}
+
+Value *JointMatrixFuncsResolutionPass::ResolvePtrToInt(PtrToIntInst *PTII)
+{
+    InsertPlaceholder(PTII);
+    PtrToIntInst *newPTII = new PtrToIntInst(Resolve(PTII->getPointerOperand()),
+                                             PTII->getDestTy(), PTII->getName(),
+                                             PTII);
+    newPTII->setDebugLoc(PTII->getDebugLoc());
+
+    CacheResolvedValue(PTII, newPTII);
+    InstsToErase.insert(PTII);
+    return newPTII;
+}
+
+Type *JointMatrixFuncsResolutionPass::ResolveStructType(Type *oldType, bool *isJointMatrixOp)
+{
+    IGC_ASSERT_MESSAGE(isJointMatrixOp == nullptr || (*isJointMatrixOp) == false, "Expected either nullptr or false value.");
+    if (ResolvedTypes.count(oldType) > 0)
+    {
+        if (isJointMatrixOp != nullptr)
+            *isJointMatrixOp = true;
+        return ResolvedTypes[oldType];
+    }
+
+    StructType *structType = dyn_cast<StructType>(oldType);
+    SmallVector<Type *, 1> elements;
+    bool isJointMatrixOpLocal = false;
+    llvm::transform(structType->elements(), std::back_inserter(elements), [&](Type *t)
+                    {
+                        bool isJointMatrixType = false;
+                        Type *resolvedType = ResolveTypes(t, &isJointMatrixType);
+                        if (isJointMatrixType)
+                            isJointMatrixOpLocal = true;
+                        return resolvedType; });
+
+    if (!isJointMatrixOpLocal)
+        return oldType;
+
+    if (isJointMatrixOp != nullptr)
+        *isJointMatrixOp = true;
+
+    SmallString<28> name;
+    Type *newType = StructType::create(elements, (structType->getName() + ".resolved").toStringRef(name));
+    CacheResolvedTypes(oldType, newType);
+    return newType;
+}
+
+Type *JointMatrixFuncsResolutionPass::ResolveArrayType(Type *oldType, bool *isJointMatrixOp)
+{
+    IGC_ASSERT_MESSAGE(isJointMatrixOp == nullptr || (*isJointMatrixOp) == false, "Expected either nullptr or false value.");
+    if (ResolvedTypes.count(oldType) > 0)
+    {
+        if (isJointMatrixOp != nullptr)
+            *isJointMatrixOp = true;
+        return ResolvedTypes[oldType];
+    }
+
+    ArrayType *arrayType = dyn_cast<ArrayType>(oldType);
+    bool isJointMatrixOpLocal = false;
+    Type *resolvedType = ResolveTypes(arrayType->getElementType(), &isJointMatrixOpLocal);
+    if (!isJointMatrixOpLocal)
+        return oldType;
+
+    if (isJointMatrixOp != nullptr)
+        *isJointMatrixOp = true;
+
+    Type *newType = ArrayType::get(resolvedType, arrayType->getNumElements());
+    CacheResolvedTypes(oldType, newType);
+    return newType;
+}
+
+Type *JointMatrixFuncsResolutionPass::ResolvePointerType(Type *oldType, bool *isJointMatrixOp)
+{
+    IGC_ASSERT_MESSAGE(isJointMatrixOp == nullptr || (*isJointMatrixOp) == false, "Expected either nullptr or false value.");
+
+    if (ResolvedTypes.count(oldType) > 0)
+    {
+        if (isJointMatrixOp != nullptr)
+            *isJointMatrixOp = true;
+        return ResolvedTypes[oldType];
+    }
+
+    PointerType *ptrType = dyn_cast<PointerType>(oldType);
+    bool isJointMatrixOpLocal = false;
+    Type *resolvedType = ResolveTypes(IGCLLVM::getNonOpaquePtrEltTy(ptrType), &isJointMatrixOpLocal);
+    if (!isJointMatrixOpLocal)
+        return oldType;
+
+    if (isJointMatrixOp != nullptr)
+        *isJointMatrixOp = true;
+
+    Type *newType = PointerType::get(resolvedType, ptrType->getAddressSpace());
+    CacheResolvedTypes(oldType, newType);
+    return newType;
+}
+
 Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 {
     if (ResolvedValues.count(v) > 0) {
@@ -949,8 +1185,12 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
     } else if (PHINode *PN = dyn_cast<PHINode>(v)) {
         unsigned IncomingCount = PN->getNumIncomingValues();
 
-        Type *type = ResolveType(v->getType(), nullptr);
-        PHINode *NewPN = PHINode::Create(type, IncomingCount, "matrix.phi.node", PN);
+        bool isJointMatrixOp = false;
+        Type *type = ResolveTypes(v->getType(), &isJointMatrixOp);
+        if (!isJointMatrixOp)
+            return nullptr;
+
+        PHINode *NewPN = PHINode::Create(type, IncomingCount, PN->getName(), PN);
         NewPN->setDebugLoc(PN->getDebugLoc());
         CacheResolvedValue(v, NewPN);
 
@@ -962,6 +1202,14 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 
         InstsToErase.insert(PN);
         return NewPN;
+    } else if (LoadInst *LI = dyn_cast<LoadInst>(v)) {
+        return ResolveLLVMLoad(LI);
+    } else if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(v)) {
+        return ResolveGetElementPtr(GEPI);
+    } else if (AllocaInst *AI = dyn_cast<AllocaInst>(v)) {
+        return ResolveAlloca(AI);
+    } else if (AddrSpaceCastInst *ASCI = dyn_cast<AddrSpaceCastInst>(v)){
+        return ResolveAddrSpaceCast(ASCI);
     } else if (isa<UndefValue>(v)) {
         Type *type = ResolveType(v->getType(), nullptr);
         return UndefValue::get(type);
@@ -985,4 +1233,151 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
     if (funcName.startswith(CommonBIPrefix) && ResolvedValues.count(&CI) <= 0) {
         ResolveCall(&CI);
     }
+}
+
+void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    bool isJointMatrixOp = false;
+    ResolveTypes(I.getAllocatedType(), &isJointMatrixOp);
+    if (!isJointMatrixOp)
+        return;
+
+    ResolveAlloca(&I);
+}
+
+void JointMatrixFuncsResolutionPass::visitGetElementPtrInst(GetElementPtrInst &I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    bool isJointMatrixOp = false;
+    ResolveTypes(I.getSourceElementType(), &isJointMatrixOp);
+    if (!isJointMatrixOp)
+        return;
+
+    ResolveGetElementPtr(&I);
+}
+
+void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    Value *val = I.getValueOperand();
+    bool isJointMatrixOp = false;
+    ResolveTypes(val->getType(), &isJointMatrixOp);
+    if (isJointMatrixOp)
+    {
+        ResolveLLVMStore(&I);
+        return;
+    }
+
+    // In cases when Joint Matrix is used in arrays, front end sometimes
+    // inserts pointer manipulations, which are incorrect for
+    // pointers to matrix types. Hence, need to remove ptrtoint
+    // instruciton, which becomes invalid after matrix type resolution.
+    // For example, before resolution, this is valid:
+    // %59 = ptrtoint %intel.joint_matrix_acc_8x16_f32_t addrspace(1)* %23 to i64
+    // After resolution, this is invalid:
+    // %59 = ptrtoint <8 x float> %23 to i64
+    // Since this value is used in store, we need to replace it's usage in store.
+    // The same for bitcast which is done for the Ptr value, where the val is stored.
+    PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(val);
+    BitCastInst *BC = dyn_cast<BitCastInst>(I.getPointerOperand());
+
+    if (PTI == nullptr || !isMatrixType(PTI->getPointerOperand()->getType()) ||
+        !PTI->getDestTy()->isIntegerTy(64) || BC == nullptr)
+        return;
+
+    InsertPlaceholder(&I);
+    Value *PTIOperand = PTI->getOperand(0);
+    Type *newBCElementType = ResolveTypes(
+        dyn_cast<PointerType>(PTIOperand->getType()), nullptr);
+    PointerType *BCDstType = dyn_cast<PointerType>(BC->getDestTy());
+
+    BitCastInst *newBC = new BitCastInst(Resolve(BC->getOperand(0)),
+                                         PointerType::get(newBCElementType,
+                                                          BCDstType->getPointerAddressSpace()),
+                                         BC->getName(), BC);
+
+    StoreInst *newSI = new StoreInst(Resolve(PTIOperand),
+                                     newBC,
+                                     I.isVolatile(), IGCLLVM::getAlign(I),
+                                     &I);
+
+    newSI->setDebugLoc(I.getDebugLoc());
+    CacheResolvedValue(&I, newSI);
+    InstsToErase.insert(&I);
+
+    // Remove incorrect PtrToInt and BitCast instructions
+    InstsToErase.insert(PTI);
+    InstsToErase.insert(BC);
+}
+
+void JointMatrixFuncsResolutionPass::visitBitCastInst(BitCastInst &I)
+{
+    // In cases when Joint Matrix is used in arrays, front end sometimes
+    // inserts pointer manipulations, which are incorrect for
+    // pointers to matrix types. Hence, need to remove bitcast
+    // instruciton, which becomes invalid after matrix type resolution.
+    // Example:
+    // %25 = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix.11"* %arrayidx50113.i to i64*
+    PointerType *srcPtr = dyn_cast<PointerType>(I.getSrcTy());
+    PointerType *dstPtr = dyn_cast<PointerType>(I.getDestTy());
+    if (srcPtr != nullptr && dstPtr != nullptr)
+    {
+        Type *srcPtrType = IGCLLVM::getNonOpaquePtrEltTy(srcPtr);
+        Type *dstPtrType = IGCLLVM::getNonOpaquePtrEltTy(dstPtr);
+
+        StructType *srcStructType = dyn_cast<StructType>(srcPtrType);
+        if (srcStructType != nullptr)
+        {
+            Type *srcElemType = srcStructType->getElementType(0);
+            if (srcStructType->getNumElements() == 1 && isMatrixType(srcElemType) &&
+                dstPtrType->isIntegerTy(64))
+                return;
+        }
+    }
+
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    bool isSrcJointMatrixType = false;
+    ResolveTypes(I.getSrcTy(), &isSrcJointMatrixType);
+    bool isDstJointMatrixType = false;
+    ResolveTypes(I.getDestTy(), &isDstJointMatrixType);
+    if (!isSrcJointMatrixType && !isDstJointMatrixType)
+        return;
+
+    ResolveBitCast(&I);
+}
+
+void JointMatrixFuncsResolutionPass::visitPtrToIntInst(PtrToIntInst &I)
+{
+    // In cases when Joint Matrix is used in arrays, front end sometimes
+    // inserts pointer manipulations, which are incorrect for
+    // pointers to matrix types. Hence, need to remove ptrtoint
+    // instruciton, which becomes invalid after matrix type resolution.
+    // For example, before resolution, this is valid:
+    // %59 = ptrtoint %intel.joint_matrix_acc_8x16_f32_t addrspace(1)* %23 to i64
+    // After resolution, this is invalid:
+    // %59 = ptrtoint <8 x float> %23 to i64
+    // Here we just ignore this ptrtoint instruction. We will replace the use of value
+    // it returns in visitStoreInst and then remove it.
+    if (isMatrixType(I.getPointerOperand()->getType()) &&
+        I.getDestTy()->isIntegerTy(64))
+        return;
+
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    bool isSrcJointMatrixType = false;
+    ResolveTypes(I.getSrcTy(), &isSrcJointMatrixType);
+    if (!isSrcJointMatrixType)
+        return;
+
+    ResolvePtrToInt(&I);
 }
