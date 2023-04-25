@@ -766,9 +766,17 @@ namespace IGC
                 return m_NumGRFPerThread;
             }
         }
-        if (hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
+
+
+        // read value from CompOptions first
+        DWORD GRFNum4RQToUse = getModuleMetaData()->compOpt.ForceLargeGRFNum4RQ ? 0x100 : 0;
+
+        // override if reg key value is set
+        GRFNum4RQToUse = IGC_IS_FLAG_ENABLED( TotalGRFNum4RQ ) ? IGC_GET_FLAG_VALUE( TotalGRFNum4RQ ) : GRFNum4RQToUse;
+
+        if (hasSyncRTCalls() && (this->type != ShaderType::RAYTRACING_SHADER) && GRFNum4RQToUse != 0)
         {
-            m_NumGRFPerThread = IGC_GET_FLAG_VALUE(TotalGRFNum4RQ);
+            m_NumGRFPerThread = GRFNum4RQToUse;
             return m_NumGRFPerThread;
         }
         if (this->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
