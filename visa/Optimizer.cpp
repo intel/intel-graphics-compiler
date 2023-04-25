@@ -8190,7 +8190,7 @@ void Optimizer::loadThreadPayload() {
 // This can be done by introducing a dummy instruction for example:
 //   (W) mov(1) null:ud 0x0:ud
 void Optimizer::addEmaskSetupProlog() {
-  if (!builder.getOption(vISA_addEmaskSetupProlog))
+  if (!builder.needEmaskSetupProlog())
     return;
 
   // When the kernel has no prolog and the first inst has zero emask, insert

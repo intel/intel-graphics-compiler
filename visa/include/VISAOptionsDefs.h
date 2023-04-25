@@ -563,8 +563,8 @@ DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL, "-forceNoMaskOnM0",
                 "Convert any NoMask instruction with non-M0 mask offset "
                 "to M0 if possible",
                 true)
-DEF_VISA_OPTION(vISA_addEmaskSetupProlog, ET_BOOL, "-addEmaskSetupProlog",
-                "Add a prolog code to set up emask", false)
+DEF_VISA_OPTION(vISA_addEmaskSetupProlog, ET_BOOL, "-noEmaskSetupProlog",
+                "Add a prolog code to set up emask", true)
 DEF_VISA_OPTION(vISA_LSCFenceWA, ET_BOOL, "-LSCFenceWA", UNUSED, false)
 DEF_VISA_OPTION(vISA_RestrictSrc1ByteSwizzle, ET_BOOL,
                 "-restrictSrc1ByteSwizzle",
