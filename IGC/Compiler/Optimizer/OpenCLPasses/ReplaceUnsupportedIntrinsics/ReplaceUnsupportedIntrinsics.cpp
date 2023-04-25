@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -107,6 +107,7 @@ namespace
         void replaceExpect(IntrinsicInst* I);
         void replaceFunnelShift(IntrinsicInst* I);
         void replaceLRound(IntrinsicInst* I);
+        void replaceLRint(IntrinsicInst* I);
         void replaceCountTheLeadingZeros(IntrinsicInst* I);
 
         static const std::map< Intrinsic::ID, MemFuncPtr_t > m_intrinsicToFunc;
@@ -134,6 +135,8 @@ const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > Repl
     { Intrinsic::expect,     &ReplaceUnsupportedIntrinsics::replaceExpect },
     { Intrinsic::lround,     &ReplaceUnsupportedIntrinsics::replaceLRound },
     { Intrinsic::llround,    &ReplaceUnsupportedIntrinsics::replaceLRound },
+    { Intrinsic::lrint,      &ReplaceUnsupportedIntrinsics::replaceLRint },
+    { Intrinsic::llrint,     &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros }
 };
 
@@ -987,6 +990,32 @@ void ReplaceUnsupportedIntrinsics::replaceLRound(IntrinsicInst* I) {
     Value* add = Builder.CreateFAdd(inVal, cond);
     Value* conv = Builder.CreateFPToSI(add, dstType);
     I->replaceAllUsesWith(conv);
+    I->eraseFromParent();
+}
+
+/*
+  Replaces llvm.lrint.* and llvm.llrint.* intrinsics.
+  Both simply return the operand rounded to the nearest integer.
+  @llvm.lrint.i32.f32(float f) => (i32)(f)
+  Example:
+  %r = call i32 @llvm.lrint.i32.f32(float %f)
+  =>
+  %f.lrint = fptosi float %f.fpext to i32
+*/
+void ReplaceUnsupportedIntrinsics::replaceLRint(IntrinsicInst* I) {
+    auto IntrID = I->getIntrinsicID();
+    IGC_ASSERT(IntrID == Intrinsic::lrint || IntrID == Intrinsic::llrint);
+    Value* inVal = I->getArgOperand(0);
+    Type* dstType = I->getType();
+    Type* srcType = inVal->getType();
+    IGC_ASSERT(!(srcType->isVectorTy() || dstType->isVectorTy()));
+    IGC_ASSERT(srcType->isFloatTy() || srcType->isDoubleTy());
+    IGC_ASSERT(dstType->isIntegerTy());
+    IGCLLVM::IRBuilder<> Builder(I);
+    StringRef inValName = inVal->getName();
+    const char *suffix = IntrID == Intrinsic::lrint ? ".lrint" : ".llrint";
+    Value* FPToInt = Builder.CreateFPToSI(inVal, dstType, inValName + suffix);
+    I->replaceAllUsesWith(FPToInt);
     I->eraseFromParent();
 }
 
