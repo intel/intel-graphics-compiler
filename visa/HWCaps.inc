@@ -749,6 +749,6 @@ bool hasSelWDstDwExecTypeAlignIssue() const {
 }
 
 bool hasGatherReadSuppressionWARA() const {
-  return getOption(vISA_gatherRSFusionSyncWA) && getPlatform() == Xe_MTL;
+  return (VISA_WA_CHECK(getPWaTable(), Wa_14019028097));
 }
 // end HW capabilities
