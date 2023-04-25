@@ -1162,12 +1162,9 @@ bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const
 
 bool emulateByteScraterMsgForSS() const
 {
-    return (isProductChildOf(IGFX_XE_HP_SDV) &&
-        ((m_platformInfo.usRevId == 0 && m_platformInfo.eProductFamily != IGFX_DG2) ||
-            IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS) ||
-            (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_BEFORE(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) &&
-                !GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) &&
-                !GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID))));
+    return IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS) &&
+        isProductChildOf(IGFX_XE_HP_SDV) &&
+        !hasLSC();
 }
 
 bool has64BMediaBlockRW() const
