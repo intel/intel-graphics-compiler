@@ -207,6 +207,7 @@ static void CommonOCLBasedPasses(
     pContext->metrics.CollectFunctions(pContext->getModule());
 
     unify_opt_PreProcess(pContext);
+    pContext->m_checkFastFlagPerInstructionInCustomUnsafeOptPass = true;
 
     DumpLLVMIR(pContext, "beforeUnification");
 
