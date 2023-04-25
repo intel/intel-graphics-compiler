@@ -5385,10 +5385,10 @@ void HWConformity::avoidDstSrcOverlap(PointsToAnalysis &p) {
   }
 }
 
-//
-//  Avoid the dst and src overlap when they are using the same variable by
-//  inserting a mov instruction add(8)  var1<2>, var2, var1<0, 1, 0>
-//
+// Second half of a source operand must not point to the same register as the
+// first half of destination operand in a compressed instruction.
+// Avoid the dst and src overlap when they are using the same variable by
+// inserting a mov instruction add(8)  var1<2>, var2, var1<0, 1, 0>
 void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
                                           PointsToAnalysis &p) {
   G4_INST *inst = *it;
@@ -5406,17 +5406,14 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
   G4_Declare *dstDcl = dst->getTopDcl();
   if (dstDcl) {
     G4_DstRegRegion *dstRgn = dst;
-    bool dstOpndNumRows =
+    bool dstCrossGRF =
         (dstRgn->getSubRegOff() * dstRgn->getTypeSize() +
         (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) + 1) >
          kernel.numEltPerGRF<Type_UB>();
-    int dstLeft = dstRgn->getLinearizedStart();
-    int dstRight = dstOpndNumRows
-                       ? ((dstLeft / kernel.numEltPerGRF<Type_UB>() + 1) *
-                              kernel.numEltPerGRF<Type_UB>() -
-                          1)
-                       : dstRgn->getLinearizedEnd();
+    int dstFirstHalf =
+        dst->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
 
+    bool srcOverlap = false;
     for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++) {
       G4_Operand *src = inst->getSrc(i);
 
@@ -5424,50 +5421,44 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
         continue;
       }
       G4_Declare *srcDcl = src->getTopDcl();
-      G4_CmpRelation rel = dst->compareOperand(src, builder);
+
       if (src->isSrcRegRegion()) {
-        G4_SrcRegRegion *srcRg = src->asSrcRegRegion();
-        if (srcDcl == dstDcl && srcRg->getRegAccess() == Direct &&
-            srcRg->getBase()->isRegVar()) {
-          if (rel != Rel_disjoint && rel != Rel_undef) // Overlap
-          {
-            G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
-            bool srcOpndNumRows =
-                (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
-                (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) + 1) >
-                kernel.numEltPerGRF<Type_UB>();
-            int srcLeft = srcRgn->getLinearizedStart();
-            int srcRight = srcRgn->getLinearizedEnd();
+        G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+        if (srcDcl == dstDcl && srcRgn->getRegAccess() == Direct &&
+            srcRgn->getBase()->isRegVar()) {
+          bool srcCrossGRF =
+              (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+               (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) +
+               1) > kernel.numEltPerGRF<Type_UB>();
+          int srcSecondHalf =
+              srcRgn->getLinearizedEnd() / kernel.numEltPerGRF<Type_UB>();
 
-            if (!srcRgn->isScalar() && srcOpndNumRows) {
-              srcLeft = (srcRgn->getLinearizedStart() /
-                             kernel.numEltPerGRF<Type_UB>() +
-                         1) *
-                        kernel.numEltPerGRF<Type_UB>();
-            }
-
-            if (dstOpndNumRows || srcOpndNumRows) {
-              if (!(srcLeft > dstRight || dstLeft > srcRight)) {
-                inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
-              }
+          if (dstCrossGRF || srcCrossGRF) {
+            if (dstFirstHalf == srcSecondHalf) {
+              srcOverlap = true;
+              break;
             }
           }
-        } else if (srcRg->isIndirect()) {
+        } else if (srcRgn->isIndirect()) {
           G4_RegVar *ptvar = NULL;
           int vid = 0;
           while ((ptvar = p.getPointsTo(srcDcl->getRegVar(), vid++)) != NULL) {
             G4_Declare *dcl = ptvar->getDeclare();
             if (dstDcl == dcl) {
-              G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
-              G4_DstRegRegion *newDst = insertMovAfter(
-                  it, inst->getDst(), inst->getDst()->getType(), bb);
-              newDst->setAccRegSel(accSel);
-              inst->setDest(newDst);
-              return;
+              srcOverlap = true;
+              break;
             }
           }
         }
       }
+    }
+
+    if (srcOverlap) {
+      G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
+      G4_DstRegRegion *newDst =
+          insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb);
+      newDst->setAccRegSel(accSel);
+      inst->setDest(newDst);
     }
   }
 }
