@@ -90,6 +90,13 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
         return true;
     }
 
+    // then check compiler options in metadata
+    if (!ctx->m_checkFastFlagPerInstructionInCustomUnsafeOptPass &&
+        ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
+    {
+        return true;
+    }
+
     if (IGC_IS_FLAG_ENABLED(EnableFastMath))
     {
         return true;
@@ -1207,11 +1214,15 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
             // otherwise replace mul src0 with the negate
             if (!replaced)
             {
-                fmulInst->setOperand(0, copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", fmulInst), &I));
+                BinaryOperator* fsub = BinaryOperator::CreateFSub(ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", fmulInst);
+                if (m_ctx->m_checkFastFlagPerInstructionInCustomUnsafeOptPass)
+                {
+                    fsub = copyIRFlags(fsub, &I);
+                }
+                fmulInst->setOperand(0, fsub);
 
                 // DIExpression in debug variable instructions must be extended with additional DWARF opcode:
                 // DW_OP_neg
-                Value* fsub = fmulInst->getOperand(0);
                 if (auto fsubInstr = dyn_cast<Instruction>(fsub)) {
                     Value* fsubOp0 = fsubInstr->getOperand(1);
                     if (auto fsubOp0Instr = dyn_cast<Instruction>(fsubOp0)) {
@@ -1483,7 +1494,12 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator& I)
         {
             if (faddInst->getOperand(i) == I.getOperand(1))
             {
-                Value* div = copyIRFlags(BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst), &I);
+                BinaryOperator* div = BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst);
+                if (m_ctx->m_checkFastFlagPerInstructionInCustomUnsafeOptPass)
+                {
+                    div = copyIRFlags(div, &I);
+                }
+
                 const DebugLoc& DL = faddInst->getDebugLoc();
                 if (Instruction* divInst = dyn_cast<Instruction>(div))
                     divInst->setDebugLoc(DL);
