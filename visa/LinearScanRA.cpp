@@ -233,7 +233,7 @@ bool LSLiveRange::isGRFRegAssigned() {
 unsigned int LSLiveRange::getSizeInWords(const IR_Builder &builder) {
   int nrows = getTopDcl()->getNumRows();
   int elemsize = getTopDcl()->getElemSize();
-  int nelems = getTopDcl()->getNumElems();
+  int nelems = getTopDcl()->getNumElems();  //elements per row
   int words = 0;
 
   if (nrows > 1) {
@@ -289,7 +289,8 @@ void globalLinearScan::printActives() {
     startregnum = endregnum = op->asGreg()->getRegNum();
     endsregnum =
         startsregnum +
-        (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) -
+                 (lr->getTopDcl()->getTotalElems() *
+                  lr->getTopDcl()->getElemSize() / 2) -
         1;
 
     if (lr->getTopDcl()->getNumRows() > 1) {
@@ -332,7 +333,7 @@ void globalLinearScan::printActives() {
 
         startregnum = endregnum = op->asGreg()->getRegNum();
         endsregnum = startsregnum +
-                     (lr->getTopDcl()->getNumElems() *
+                     (lr->getTopDcl()->getTotalElems() *
                       lr->getTopDcl()->getElemSize() / 2) -
                      1;
 
@@ -365,7 +366,7 @@ void globalLinearScan::printActives() {
         int startregnum = op->asGreg()->getRegNum();
         int endregnum = startregnum;
         int endsregnum = startsregnum +
-                         (lr->getTopDcl()->getNumElems() *
+                         (lr->getTopDcl()->getTotalElems() *
                           lr->getTopDcl()->getElemSize() / 2) -
                          1;
 
@@ -1026,6 +1027,9 @@ int LinearScanRA::linearScanRA() {
 }
 
 int LinearScanRA::doLinearScanRA() {
+  if (l.getNumSelectedVar() == 0) {
+    return VISA_SUCCESS;
+  }
   RA_TRACE(std::cout << "--Global linear Scan RA--\n");
   // Initial pregs which will be used in the preRAAnalysis
   PhyRegsLocalRA phyRegs(builder, kernel.getNumRegTotal());
@@ -1743,7 +1747,8 @@ static inline void printLiveInterval(LSLiveRange *lr, bool assign,
   startregnum = endregnum = op->asGreg()->getRegNum();
   endsregnum =
       startsregnum +
-      (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) - 1;
+      (lr->getTopDcl()->getTotalElems() * lr->getTopDcl()->getElemSize() / 2) -
+      1;
 
   if (lr->getTopDcl()->getNumRows() > 1) {
     endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
@@ -2023,15 +2028,11 @@ bool globalLinearScan::runLinearScan(IR_Builder &builder,
 #endif
     } else {
       allocateRegResult = true;
-      int startregnum, subregnum, endsregnum;
+      int startregnum, subregnum;
       G4_VarBase *op;
       op = lr->getPhyReg(subregnum);
 
       startregnum = op->asGreg()->getRegNum();
-      endsregnum = subregnum +
-                   (lr->getTopDcl()->getNumElems() *
-                    lr->getTopDcl()->getElemSize() / 2) -
-                   1;
       int nrows = 0;
       int lastRowSize = 0;
       int size = lr->getSizeInWords(builder);

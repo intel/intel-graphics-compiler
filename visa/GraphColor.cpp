@@ -5043,10 +5043,9 @@ bool Interference::linearScanVerify() const {
     unsigned GRFStart_i =
         phyReg_i->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>() +
         regOff_i;
-    unsigned elemsSize_i = lrs[i]->getVar()->getDeclare()->getNumElems() *
+    unsigned elemsSize_i = lrs[i]->getVar()->getDeclare()->getTotalElems() *
                            lrs[i]->getVar()->getDeclare()->getElemSize();
     unsigned GRFEnd_i = GRFStart_i + elemsSize_i - 1;
-
     for (unsigned j = 0; j < maxId; j++) {
       if (interfereBetween(i, j)) {
         if (gra.isUndefinedDcl(lrs[j]->getDcl()) ||
@@ -5061,7 +5060,7 @@ bool Interference::linearScanVerify() const {
         unsigned GRFStart_j =
             phyReg_j->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>() +
             regOff_j;
-        unsigned elemsSize_j = lrs[j]->getVar()->getDeclare()->getNumElems() *
+        unsigned elemsSize_j = lrs[j]->getVar()->getDeclare()->getTotalElems() *
                                lrs[j]->getVar()->getDeclare()->getElemSize();
         unsigned GRFEnd_j = GRFStart_j + elemsSize_j - 1;
         if (!(GRFEnd_i < GRFStart_j || GRFEnd_j < GRFStart_i)) {
@@ -5086,7 +5085,7 @@ bool Interference::linearScanVerify() const {
           std::cout << "(" << i << "," << j << ")"
                     << lrs[i]->getDcl()->getName() << "(" << GRFStart_i << ":"
                     << GRFEnd_i << ")[" << i_start << "," << i_end << "] vs "
-                    << lrs[j]->getDcl()->getName() << "(" << GRFStart_i << ":"
+                    << lrs[j]->getDcl()->getName() << "(" << GRFStart_j << ":"
                     << GRFEnd_j << ")[" << j_start << "," << j_end << "]"
                     << "\n";
         }
