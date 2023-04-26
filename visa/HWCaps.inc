@@ -751,10 +751,4 @@ bool hasSelWDstDwExecTypeAlignIssue() const {
 bool hasGatherReadSuppressionWARA() const {
   return (VISA_WA_CHECK(getPWaTable(), Wa_14019028097));
 }
-
-bool needEmaskSetupProlog() const {
-  if (!getOption(vISA_addEmaskSetupProlog))
-    return false;
-  return getPlatform() >= GENX_TGLLP && getPlatform() <= Xe_PVCXT;
-}
 // end HW capabilities
