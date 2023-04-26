@@ -2935,6 +2935,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 }
                 // Currently, emit uses d32/d64 scatter for uniform store/load
                 // and is limited to simd8.
+                // Use LastNumD64 as the bundle has been found
                 if (isUniform &&
                     (VecSizeInElt > (4 * 8) ||
                      (LastNumD64 > 0 && (2 * LastNumD64 > LastNumD32)))) {
@@ -2957,11 +2958,12 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 }
             }
             if (VecEltBytes == 8) {
-                if (LastNumD64 > 0 && VecSizeInElt == 3) {
+                // use currNumD64 during finding the bundle
+                if (currNumD64 > 0 && VecSizeInElt == 3) {
                     // case 2, check whether to skip D64.
                     return false;
                 }
-                if (LastNumD64 > 0 && (2 * LastNumD64 > LastNumD32)) {
+                if (currNumD64 > 0 && (2 * currNumD64 > currNumD32)) {
                     // case 3: check whether to skip D64.
                     return false;
                 }
@@ -3033,10 +3035,9 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         // i64Emu: mimic Emu64Ops's enabling condition. Seems conservative
         //         and be improved in the future if needed.
         const bool hasI64Emu =
-               (m_CGC->platform.need64BitEmulation() &&
+            (m_CGC->platform.need64BitEmulation() &&
                 (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
-                 IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)))
-            ||  m_CGC->platform.hasPartialInt64Support();
+                 IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)));
         if (hasI64Emu && theAlign > 4)
             continue;
 
@@ -3653,7 +3654,7 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
                 continue;
             }
             Type* ty_i = sTy->getElementType(i);
-            uint32_t offbits = (uint32_t)SL->getElementOffset(i);
+            uint32_t offbits = (uint32_t)SL->getElementOffsetInBits(i);
             uint32_t nbits = (uint32_t)DL->getTypeAllocSizeInBits(ty_i);
             IGC_ASSERT(ty_i->isFloatingPointTy() || ty_i->isIntegerTy());
 
