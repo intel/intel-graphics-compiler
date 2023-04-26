@@ -5363,7 +5363,6 @@ void HWConformity::fixSelCsel(INST_LIST_ITER it, G4_BB *bb) {
   // =>
   // (~f0.1.any) sel (8|M8) (sat)r10.0<2>:uw -r8.23<1;2,0>:w (abs)r6.8<0;1,0>:d
   // (~f0.1.any) mov (8|M8) r12.2<2>:uw r10.0<2>:uw
-  // TODO: repalce hasSelWDstDwExecTypeAlignIssue with wa_id
   if (builder.hasSelWDstDwExecTypeAlignIssue() && inst->opcode() == G4_sel) {
     bool isWDstAndDwExecType =
         IS_WTYPE(inst->getDst()->getType()) && IS_DTYPE(inst->getExecType());

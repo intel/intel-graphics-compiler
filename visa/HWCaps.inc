@@ -745,7 +745,7 @@ bool needBarrierWA() const {
 }
 
 bool hasSelWDstDwExecTypeAlignIssue() const {
-  return getPlatform() == Xe_PVCXT;
+  return getPlatform() == Xe_PVCXT || VISA_WA_CHECK(getPWaTable(), Wa_18027439769);
 }
 
 bool hasGatherReadSuppressionWARA() const {
