@@ -3803,8 +3803,8 @@ struct LscInstVerifier {
       switch (vo.tag & 0x7) {
       case OPERAND_IMMEDIATE:
         verify(vo.opnd_val.const_opnd._val.ival == 0,
-               "Surface: for LSC_ADDR_TYPE_FLAT only imm 0 or V0 allowed");
-        break; // okay
+               "Surface: for LSC_ADDR_TYPE_FLAT only imm 0 or %null allowed");
+        break;
       case OPERAND_GENERAL:
           verify(vo.opnd_val.gen_opnd.index == 0,
                  "Surface: must be null (V0) reg for LSC_ADDR_TYPE_FLAT");
