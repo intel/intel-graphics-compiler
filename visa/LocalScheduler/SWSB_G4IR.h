@@ -921,7 +921,7 @@ class SWSB {
   const unsigned tokenAfterWriteSendSlmCycle;
   const unsigned tokenAfterWriteSendMemoryCycle;
   const unsigned tokenAfterWriteSendSamplerCycle;
-  int tokenAfterDPASCycle = 0;
+  int tokenAfterDPASCycle;
 
   // For profiling
   uint32_t syncInstCount = 0;
@@ -1113,10 +1113,8 @@ public:
     indexes.longIndex = 0;
     indexes.DPASIndex = 0;
     indexes.mathIndex = 0;
-    if (k.fg.builder->hasDPAS()) {
-      tokenAfterDPASCycle =
-          LatencyTable::createLatencyTable(*k.fg.builder)->getDPASLatency(8);
-    }
+    tokenAfterDPASCycle =
+        LatencyTable::createLatencyTable(*k.fg.builder)->getDPASLatency(8);
   }
   ~SWSB() {}
   void SWSBGenerator();
