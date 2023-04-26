@@ -334,6 +334,10 @@ private:
   // of spill, and we want to use a common header
   G4_Declare *spillFillHeader = nullptr;
 
+  // for scatter spills
+  G4_Declare *scatterSpillBaseAddress = nullptr;
+  G4_Declare *scatterSpillAddress = nullptr;
+
   G4_Declare *oldA0Dot2Temp = nullptr;
 
   G4_Declare *builtinScratchSurface = nullptr;
@@ -635,6 +639,9 @@ public:
   G4_Declare *getSpillFillHeader();
   bool hasValidSpillFillHeader() { return spillFillHeader; }
 
+  G4_Declare *getScatterSpillBaseAddress();
+  G4_Declare *getScatterSpillAddress();
+
   G4_Declare *getEUFusionWATmpVar();
 
   G4_Declare *getOldA0Dot2Temp();
@@ -777,6 +784,7 @@ public:
   G4_SrcRegRegion *createScratchExDesc(uint32_t exdesc);
 
   void initScratchSurfaceOffset();
+  void initAddressesForScatterSpills();
 
   G4_Declare *getSpillSurfaceOffset() { return scratchSurfaceOffset; }
 
@@ -822,12 +830,13 @@ public:
   G4_INST *createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *header,
                        G4_SrcRegRegion *payload, G4_ExecSize execSize,
                        uint16_t numRows, uint32_t offset, G4_Declare *fp,
-                       G4_InstOption option, bool addToInstList);
+                       G4_InstOption option, bool addToInstList,
+                       bool isScatter = false);
 
   G4_INST *createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *payload,
                        G4_ExecSize execSize, uint16_t numRows, uint32_t offset,
-                       G4_Declare *fp, G4_InstOption option,
-                       bool addToInstList);
+                       G4_Declare *fp, G4_InstOption option, bool addToInstList,
+                       bool isScatter = false);
 
   G4_INST *createFill(G4_SrcRegRegion *header, G4_DstRegRegion *dstData,
                       G4_ExecSize execSize, uint16_t numRows, uint32_t offset,

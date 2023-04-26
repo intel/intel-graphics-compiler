@@ -9514,6 +9514,7 @@ int GlobalRA::coloringRegAlloc() {
     useLscForSpillFill = true;
     useLscForNonStackCallSpillFill =
         builder.getOption(vISA_lscNonStackSpill) != 0;
+    useLscForScatterSpill = builder.getOption(vISA_scatterSpill);
   }
   //
   // If the graph has stack calls, then add the caller-save/callee-save pseudo
@@ -10038,7 +10039,7 @@ int GlobalRA::coloringRegAlloc() {
           // and live-out. because the variable is emitted only post RA to
           // preserve old value of a0.2.
           kernel.fg.builder->getOldA0Dot2Temp();
-        } else if (useLscForNonStackCallSpillFill) {
+        } else if (useLscForNonStackCallSpillFill || useLscForScatterSpill) {
           kernel.fg.builder->getOldA0Dot2Temp();
         }
 

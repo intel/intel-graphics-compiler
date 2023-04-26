@@ -588,7 +588,8 @@ private:
 
   G4_INST *createLSCSpill(G4_Declare *spillRangeDcl, G4_Declare *mRangeDcl,
                           G4_DstRegRegion *spilledRangeRegion,
-                          G4_ExecSize execSize, unsigned option);
+                          G4_ExecSize execSize, unsigned option,
+                          bool isScatter = false);
 
   G4_INST *createLSCFill(G4_Declare *fillRangeDcl, G4_Declare *mRangeDcl,
                          unsigned regOff, unsigned height, unsigned spillOff);
@@ -728,6 +729,7 @@ private:
 
   bool useLSCMsg = false;
   bool useLscNonstackCall = false;
+  bool useLscForScatterSpill = false;
 
   // Used for new fail safe RA mechanism.
   BoundedRA context;

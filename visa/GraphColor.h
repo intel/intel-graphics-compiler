@@ -886,6 +886,7 @@ private:
   bool spillFillIntrinUsesLSC(G4_INST *spillFillIntrin);
   void expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
   void expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
+  void expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
   void expandFillNonStackcall(uint32_t numRows, uint32_t offset,
                               short rowOffset, G4_SrcRegRegion *header,
                               G4_DstRegRegion *resultRgn, G4_BB *bb,
@@ -929,6 +930,7 @@ public:
   FCALL_RET_MAP fcallRetMap;
 
   bool useLscForSpillFill = false;
+  bool useLscForScatterSpill = false;
   bool useLscForNonStackCallSpillFill = false;
 
   VarSplitPass *getVarSplitPass() const { return kernel.getVarSplitPass(); }

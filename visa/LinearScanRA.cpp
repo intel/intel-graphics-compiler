@@ -949,7 +949,8 @@ int LinearScanRA::linearScanRA() {
           lr = CreateLocalLiveRange(a0Dcl);
           globalDeclares.push_back(a0Dcl);
         }
-      } else if (gra.useLscForNonStackCallSpillFill) {
+      } else if (gra.useLscForNonStackCallSpillFill ||
+                 gra.useLscForScatterSpill) {
         G4_Declare *a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
         LSLiveRange *lr = gra.getSafeLSLR(a0Dcl);
         if (!lr) {

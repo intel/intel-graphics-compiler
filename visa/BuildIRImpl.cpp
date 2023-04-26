@@ -692,6 +692,28 @@ G4_Declare *IR_Builder::getSpillFillHeader() {
   return spillFillHeader;
 }
 
+G4_Declare *IR_Builder::getScatterSpillBaseAddress() {
+  if (!scatterSpillBaseAddress) {
+    scatterSpillBaseAddress = createTempVar(kernel.getSimdSize(), Type_D,
+                                            getGRFAlign(), "baseAddresses");
+    scatterSpillBaseAddress->setLiveOut();
+    scatterSpillBaseAddress->setLiveIn();
+    scatterSpillBaseAddress->setDoNotSpill();
+  }
+  return scatterSpillBaseAddress;
+}
+
+G4_Declare *IR_Builder::getScatterSpillAddress() {
+  if (!scatterSpillAddress) {
+    scatterSpillAddress = createTempVar(kernel.getSimdSize(), Type_D,
+                                        getGRFAlign(), "spillLaneAddresses");
+    scatterSpillAddress->setLiveOut();
+    scatterSpillAddress->setLiveIn();
+    scatterSpillAddress->setDoNotSpill();
+  }
+  return scatterSpillAddress;
+}
+
 G4_Declare *IR_Builder::getEUFusionWATmpVar() {
   if (!euFusionWATmpVar) {
     euFusionWATmpVar = createTempVar(2, Type_UD, Even_Word, "euFusionWATmp");
@@ -865,6 +887,168 @@ void IR_Builder::initScratchSurfaceOffset() {
       }
     }
   }
+
+  // Init addresses for Scatter messages
+  if (kernel.getOptions()->getOption(vISA_scatterSpill) &&
+      !scatterSpillBaseAddress) {
+    initAddressesForScatterSpills();
+  }
+}
+
+// Init vector of addresses for scatter spills assuming a max
+// message execution size of SIMD32.
+// These instructions are placed at entry kernel
+// TODO: Add support for a16 addresses to save registers
+//       when spill size is less than 64KB.
+void IR_Builder::initAddressesForScatterSpills() {
+  auto iter = std::find_if(instList.begin(), instList.end(),
+                           [](G4_INST *inst) { return !inst->isLabel(); });
+  G4_Declare *baseAddresses = getScatterSpillBaseAddress();
+  getScatterSpillAddress();
+  auto simdSize = kernel.getSimdSize();
+
+  if (getGRFSize() == 32) {
+    // Create 8, 16, or 32 addresses (32b each) based on SIMD size.
+    // Generate the following sequence, e.g. for SIMD32:
+    // (W) mov (8) r1.0<1>:w   0x76543210:v
+    // (W) mov (8) r2.0<1>:d   r1.0<1;1,0>:w
+    // (W) add (8) r3.0<1>:d   r1.0<1;1,0>:d  8:w
+    // (W) add (8) r4.0<1>:d   r2.0<1;1,0>:d  16:w
+    // (W) add (8) r5.0<1>:d   r2.0<1;1,0>:d  24:w
+    // (W) mul (16) r2.0<1>:d   r2.0<1;1,0>:d  4:w   -> get addresses in bytes
+    // (W) mul (16) r4.0<1>:d   r4.0<1;1,0>:d  4:w   -> get addresses in bytes
+    // Result:
+    //  r2-5 will hold 32 final 32b addresses
+
+    // mov (8) r1.0<1>:w   0x76543210:v
+    G4_Declare *addressVector =
+        createTempVar(g4::SIMD8, Type_W, Sixteen_Word, "AddressVector");
+    G4_DstRegRegion *movDst =
+        createDst(addressVector->getRegVar(), 0, 0, 1, Type_W);
+    G4_INST *mov = createMov(g4::SIMD8, movDst, createImm(0x76543210, Type_V),
+                             InstOpt_WriteEnable, false);
+    instList.insert(iter, mov);
+
+    // (W) mov (8) r2.0<1>:d   r1.0<1;1,0>:w
+    G4_DstRegRegion *movDstAddress =
+        createDst(baseAddresses->getRegVar(), 0, 0, 1, Type_D);
+    G4_INST *movAddresses =
+        createMov(g4::SIMD8, movDstAddress,
+                  createSrcRegRegion(addressVector, getRegionStride1()),
+                  InstOpt_WriteEnable, false);
+    instList.insert(iter, movAddresses);
+
+    if (simdSize > g4::SIMD8) {
+      // (W) add (8) r3.0<1>:d   r1.0<1;1,0>:d  8:w
+      G4_DstRegRegion *addDstAddress =
+          createDst(baseAddresses->getRegVar(), 1, 0, 1, Type_D);
+      G4_INST *addAddreses =
+          createBinOp(G4_add, g4::SIMD8, addDstAddress,
+                      createSrcRegRegion(addressVector, getRegionStride1()),
+                      createImm(8, Type_W), InstOpt_WriteEnable, false);
+      instList.insert(iter, addAddreses);
+
+      if (simdSize > g4::SIMD16) {
+        // (W) add (8) r4.0<1>:d   r2.0<1;1,0>:d  16:w
+        G4_DstRegRegion *addDstAddress2 =
+            createDst(baseAddresses->getRegVar(), 2, 0, 1, Type_D);
+        G4_INST *addAddreses2 =
+            createBinOp(G4_add, g4::SIMD8, addDstAddress2,
+                        createSrcRegRegion(baseAddresses, getRegionStride1()),
+                        createImm(16, Type_W), InstOpt_WriteEnable, false);
+        instList.insert(iter, addAddreses2);
+
+        // (W) add (8) r5.0<1>:d   r2.0<1;1,0>:d  24:w
+        G4_DstRegRegion *addDstAddress3 =
+            createDst(baseAddresses->getRegVar(), 3, 0, 1, Type_D);
+        G4_INST *addAddreses3 =
+            createBinOp(G4_add, g4::SIMD8, addDstAddress3,
+                        createSrcRegRegion(baseAddresses, getRegionStride1()),
+                        createImm(24, Type_W), InstOpt_WriteEnable, false);
+        instList.insert(iter, addAddreses3);
+      }
+    }
+
+    // (W) mul (16) r2.0<1>:d   r2.0<1;1,0>:d  4:w   -> get addresses in bytes
+    G4_DstRegRegion *mulDstAddress =
+        createDst(baseAddresses->getRegVar(), 0, 0, 1, Type_D);
+    G4_INST *mulAddresses =
+        createBinOp(G4_mul, simdSize > g4::SIMD8 ? g4::SIMD16 : g4::SIMD8, mulDstAddress,
+                    createSrcRegRegion(baseAddresses, getRegionStride1()),
+                    createImm(4, Type_W), InstOpt_WriteEnable, false);
+    instList.insert(iter, mulAddresses);
+
+    if (simdSize > g4::SIMD16) {
+      // (W) mul (16) r4.0<1>:d   r4.0<1;1,0>:d  4:w   -> get addresses in bytes
+      G4_DstRegRegion *mulDstAddress2 =
+          createDst(baseAddresses->getRegVar(), 2, 0, 1, Type_D);
+      G4_INST *mulAddresses2 =
+          createBinOp(G4_mul, g4::SIMD16, mulDstAddress2,
+                      createSrc(baseAddresses->getRegVar(), 2, 0,
+                                getRegionStride1(), Type_D),
+                      createImm(4, Type_W), InstOpt_WriteEnable, false);
+      instList.insert(iter, mulAddresses2);
+    }
+  } else if (getGRFSize() == 64) {
+    // Create 8,16, or 32 addresses (32b each) based on SIMD size
+    // Generate the following sequence, e.g. for SIMD32::
+    // (W) mov (8) r1.0<1>:w   0x76543210:v
+    // (W) mov (8) r2.0<1>:d    r1.0<1;1,0>:w
+    // (W) add (8) r2.8<1>:d   r2.0<1;1,0>:d  8:w
+    // (W) add (16) r3.0<1>:d   r2.0<1;1,0>:d  16:w
+    // (W) mul (32) r2.0<1>:d   r2.0<1;1,0>:d  4:w   -> get addresses in bytes
+    // Result:
+    //  r2 and r3 will hold 32 final 32b addresses
+
+    // (W) mov (8) r1.0<1>:w   0x76543210:v
+    G4_Declare *addressVector =
+        createTempVar(g4::SIMD8, Type_W, Sixteen_Word, "AddressVector");
+    G4_DstRegRegion *movDst =
+        createDst(addressVector->getRegVar(), 0, 0, 1, Type_W);
+    G4_INST *mov = createMov(g4::SIMD8, movDst, createImm(0x76543210, Type_V),
+                             InstOpt_WriteEnable, false);
+    instList.insert(iter, mov);
+
+    // (W) mov (8) r2.0<1>:d    r1.0<1;1,0>:w
+    G4_DstRegRegion *movDstAddress =
+        createDst(baseAddresses->getRegVar(), 0, 0, 1, Type_D);
+    G4_INST *movAddresses =
+        createMov(g4::SIMD8, movDstAddress,
+                  createSrcRegRegion(addressVector, getRegionStride1()),
+                  InstOpt_WriteEnable, false);
+    instList.insert(iter, movAddresses);
+
+    if (simdSize > g4::SIMD8) {
+      // (W) add (8) r2.8<1>:d   r2.0<1;1,0>:d  8:w
+      G4_DstRegRegion *addDstAddress =
+          createDst(baseAddresses->getRegVar(), 0, 8, 1, Type_D);
+      G4_INST *addAddresses =
+          createBinOp(G4_add, g4::SIMD8, addDstAddress,
+                      createSrcRegRegion(baseAddresses, getRegionStride1()),
+                      createImm(8, Type_W), InstOpt_WriteEnable, false);
+      instList.insert(iter, addAddresses);
+
+      if (simdSize > g4::SIMD16) {
+        // (W) add (16) r3.0<1>:d   r2.0<1;1,0>:d  16:w
+        G4_DstRegRegion *addDstAddress2 =
+            createDst(baseAddresses->getRegVar(), 1, 0, 1, Type_D);
+        G4_INST *addAddresses2 =
+            createBinOp(G4_add, g4::SIMD16, addDstAddress2,
+                        createSrcRegRegion(baseAddresses, getRegionStride1()),
+                        createImm(16, Type_W), InstOpt_WriteEnable, false);
+        instList.insert(iter, addAddresses2);
+      }
+    }
+
+    // (W) mul (8|16|32) r2.0<1>:d   r2.0<1;1,0>:d  4:w   -> get addresses in bytes
+    G4_DstRegRegion *mulDstAddress =
+        createDst(baseAddresses->getRegVar(), 0, 0, 1, Type_D);
+    G4_INST *mulAddresses =
+        createBinOp(G4_mul, simdSize, mulDstAddress,
+                    createSrcRegRegion(baseAddresses, getRegionStride1()),
+                    createImm(4, Type_W), InstOpt_WriteEnable, false);
+    instList.insert(iter, mulAddresses);
+  }
 }
 
 G4_Declare *IR_Builder::createTempVar(unsigned int numElements, G4_Type type,
@@ -958,7 +1142,7 @@ G4_INST *IR_Builder::createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *header,
                                  G4_SrcRegRegion *payload, G4_ExecSize execSize,
                                  uint16_t numRows, uint32_t offset,
                                  G4_Declare *fp, G4_InstOption option,
-                                 bool addToInstList) {
+                                 bool addToInstList, bool isScatter) {
   G4_INST *spill =
       createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst, header,
                           payload, nullptr, option, addToInstList);
@@ -967,6 +1151,7 @@ G4_INST *IR_Builder::createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *header,
       (uint32_t)(((uint64_t)offset * HWORD_BYTE_SIZE) /
                  numEltPerGRF<Type_UB>()));
   spill->asSpillIntrinsic()->setNumRows(numRows);
+  spill->asSpillIntrinsic()->setScatterSpill(isScatter);
 
   return spill;
 }
@@ -974,7 +1159,7 @@ G4_INST *IR_Builder::createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *header,
 G4_INST *IR_Builder::createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *payload,
                                  G4_ExecSize execSize, uint16_t numRows,
                                  uint32_t offset, G4_Declare *fp,
-                                 G4_InstOption option, bool addToInstList) {
+                                 G4_InstOption option, bool addToInstList, bool isScatter) {
   auto builtInR0 = getBuiltinR0();
   auto rd = getRegionStride1();
   auto srcRgnr0 = createSrc(builtInR0->getRegVar(), 0, 0, rd, Type_UD);
@@ -986,6 +1171,7 @@ G4_INST *IR_Builder::createSpill(G4_DstRegRegion *dst, G4_SrcRegRegion *payload,
       (uint32_t)(((uint64_t)offset * HWORD_BYTE_SIZE) /
                  numEltPerGRF<Type_UB>()));
   spill->asSpillIntrinsic()->setNumRows(numRows);
+  spill->asSpillIntrinsic()->setScatterSpill(isScatter);
   return spill;
 }
 

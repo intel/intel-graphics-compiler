@@ -1545,8 +1545,10 @@ public:
   void setNumRows(uint32_t r) { numRows = r; }
   void setOffset(uint32_t o) { offset = o; }
   void setFP(G4_Declare *f) { fp = f; }
+  void setScatterSpill(bool b) { scatterSpill = b; }
 
   bool isOffsetValid() const { return offset != InvalidOffset; }
+  bool isScatterSpill() const { return scatterSpill; }
 
   void computeRightBound(G4_Operand *opnd) override;
 
@@ -1554,6 +1556,7 @@ private:
   G4_Declare *fp = nullptr;
   uint32_t numRows = 0;
   uint32_t offset = InvalidOffset;
+  bool scatterSpill = false;
 };
 
 class G4_PseudoAddrMovIntrinsic : public G4_InstIntrinsic {

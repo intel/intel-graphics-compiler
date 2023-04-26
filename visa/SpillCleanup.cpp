@@ -916,6 +916,7 @@ void CoalesceSpillFills::fills() {
     unsigned int instRP = 0;
     unsigned int numRowsFillsToCoalesce = 0;
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
+    bool earlyCoalesce = false;
     for (auto instIter = startIter; instIter != endIter;) {
       auto inst = (*instIter);
 
@@ -956,6 +957,12 @@ void CoalesceSpillFills::fills() {
         instRP = RP;
 
       if (inst->isSpillIntrinsic()) {
+        if (inst->asSpillIntrinsic()->isScatterSpill() &&
+            overlap(inst, fillsToCoalesce)) {
+          // If current intrinsic is scatter spill and ovelaps fills being
+          // tracked, break the coalescing chain
+          earlyCoalesce = true;
+        }
         spills.push_back(instIter);
       } else if (inst->isFillIntrinsic()) {
         // Check if coalescing is possible
@@ -987,10 +994,15 @@ void CoalesceSpillFills::fills() {
         --w;
       }
 
-      if (w == cWindowSize || maxW == cMaxWindowSize || inst == bb->back()) {
+      if (w == cWindowSize || maxW == cMaxWindowSize || inst == bb->back() ||
+          earlyCoalesce) {
         if (fillsToCoalesce.size() > 1) {
-          instIter =
+          auto nextInst =
               analyzeFillCoalescing(fillsToCoalesce, startIter, instIter, bb);
+          if (earlyCoalesce)
+            instIter++;
+          else
+            instIter = nextInst;
         } else if (w == cWindowSize) {
           startIter = instIter;
         } else if (inst == bb->back()) {
@@ -1002,7 +1014,7 @@ void CoalesceSpillFills::fills() {
         numRowsFillsToCoalesce = 0;
         fillsToCoalesce.clear();
         spills.clear();
-
+        earlyCoalesce = false;
         continue;
       }
 
@@ -1126,13 +1138,22 @@ void CoalesceSpillFills::spills() {
                 bb->erase(*coalIt);
               }
 
+              if (inst->asSpillIntrinsic()->isScatterSpill()) {
+                // If current spill is scatter and overlaps with other spills,
+                // break the current coalescing chain
+                earlyCoalesce = true;
+                break;
+              }
+
               coalIt = spillsToCoalesce.erase(coalIt);
               continue;
             }
             coalIt++;
           }
-          spillsToCoalesce.push_back(instIter);
-          numRowsSpillsToCoalesce += inst->asSpillIntrinsic()->getNumRows();
+          if (!earlyCoalesce) {
+            spillsToCoalesce.push_back(instIter);
+            numRowsSpillsToCoalesce += inst->asSpillIntrinsic()->getNumRows();
+          }
         }
       } else if (inst->isFillIntrinsic()) {
         for (auto coalIt = spillsToCoalesce.begin();
@@ -1171,8 +1192,12 @@ void CoalesceSpillFills::spills() {
       if (w == cWindowSize || maxW == cMaxWindowSize || inst == bb->back() ||
           earlyCoalesce) {
         if (spillsToCoalesce.size() > 1) {
-          instIter =
+          auto nextInst =
               analyzeSpillCoalescing(spillsToCoalesce, startIter, instIter, bb);
+          if (earlyCoalesce)
+            instIter++;
+          else
+            instIter = nextInst;
         } else if (w == cWindowSize) {
           startIter = instIter;
         } else if (inst == bb->back()) {
@@ -1550,6 +1575,7 @@ void CoalesceSpillFills::spillFillCleanup() {
     auto endIt = bb->end();
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
     unsigned int regPressure = 0;
+    bool scatterSpillCleanup = false;
     for (auto instIt = startIt; instIt != endIt; instIt++) {
       auto inst = (*instIt);
 
@@ -1568,6 +1594,7 @@ void CoalesceSpillFills::spillFillCleanup() {
       if (inst->isFillIntrinsic()) {
         writesPerOffset.clear();
         defs.clear();
+        scatterSpillCleanup = false;
 
         // Store offset, spill inst pair
         unsigned int rowStart, numRows;
@@ -1621,15 +1648,38 @@ void CoalesceSpillFills::spillFillCleanup() {
               break;
             }
 
-            for (unsigned int pRow = pRowStart; pRow != (pRowStart + pNumRows);
-                 pRow++) {
-              auto writeIt = writesPerOffset.find(pRow);
+            bool fullOverlap = false;
+            if (overlap(pInst, inst, fullOverlap)) {
+              if (pInst->asSpillIntrinsic()->isScatterSpill()) {
+                // When a scatter spill is found and it overlaps the fill
+                // being optimized, there are paths:
+                // 1. If there are no other block spills in between, it's safe
+                //    to optimize the current scatter spill and potentially
+                //    others
+                // 2. If there are block spills in between the cleanup search
+                // stops.
+                if (writesPerOffset.empty()) {
+                  scatterSpillCleanup = true;
+                } else if (!scatterSpillCleanup) {
+                  break;
+                }
+              } else {
+                // If block spill is found but there already scatter spills in
+                // between, the cleanup search stops
+                if (scatterSpillCleanup)
+                  break;
+              }
 
-              // Check whether a more recent write was found for this row
-              if (writeIt != writesPerOffset.end())
-                continue;
+              for (unsigned int pRow = pRowStart;
+                   pRow != (pRowStart + pNumRows); pRow++) {
+                auto writeIt = writesPerOffset.find(pRow);
 
-              writesPerOffset.insert(std::make_pair(pRow, pInst));
+                // Check whether a more recent write was found for this row
+                if (writeIt != writesPerOffset.end())
+                  continue;
+
+                writesPerOffset.insert(std::make_pair(pRow, pInst));
+              }
             }
           }
 

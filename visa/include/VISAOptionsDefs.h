@@ -492,6 +492,8 @@ DEF_VISA_OPTION(vISA_LSCEnableHalfSIMD, ET_BOOL, "-enableHalfLSC", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_lscNonStackSpill, ET_BOOL, "-lscNonStackSpill", UNUSED,
                 false)
+DEF_VISA_OPTION(vISA_scatterSpill, ET_BOOL, "-scatterSpill",
+                "Use LSC scatter store for spills to avoid RMW", false)
 // native int64 adder was removed and then added back (adder lacks saturation)
 // the int64 shifter was never removed
 DEF_VISA_OPTION(vISA_HasInt64Add, ET_BOOL, "-hasInt64Add", UNUSED, false)

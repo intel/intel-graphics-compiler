@@ -163,8 +163,10 @@ SpillManagerGRF::SpillManagerGRF(
   // LSC messages are used when:
   // a. Stack call is used on PVC+,
   // b. Spill size exceeds what can be represented using hword msg on PVC+
+  // c. Scatter store for spill is needed to avoid RMW
   useLSCMsg = gra.useLscForSpillFill;
   useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
+  useLscForScatterSpill = gra.useLscForScatterSpill;
 
   if (failSafeSpill_) {
     if (gra.kernel.getOption(vISA_NewFailSafeRA)) {
@@ -221,8 +223,10 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
   // LSC messages are used when:
   // a. Stack call is used on PVC+,
   // b. Spill size exceeds what can be represented using hword msg on PVC+
+  // c. Scatter store for spill is needed to avoid RMW
   useLSCMsg = gra.useLscForSpillFill;
   useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
+  useLscForScatterSpill = gra.useLscForScatterSpill;
 }
 
 // Get the base regvar for the source or destination region.
@@ -2530,9 +2534,10 @@ G4_INST *SpillManagerGRF::createLSCSpill(G4_Declare *spillRangeDcl,
 G4_INST *SpillManagerGRF::createLSCSpill(G4_Declare *spillRangeDcl,
                                          G4_Declare *mRangeDcl,
                                          G4_DstRegRegion *spilledRangeRegion,
-                                         G4_ExecSize execSize,
-                                         unsigned option) {
-  G4_DstRegRegion *postDst = builder_->createNullDst(Type_UD);
+                                         G4_ExecSize execSize, unsigned option,
+                                         bool isScatter) {
+  G4_DstRegRegion *postDst = builder_->createNullDst(
+      isScatter ? spilledRangeRegion->getType() : Type_UD);
 
   unsigned extMsgLength = spillRangeDcl->getNumRows();
   const RegionDesc *region = builder_->getRegionStride1();
@@ -2553,7 +2558,7 @@ G4_INST *SpillManagerGRF::createLSCSpill(G4_Declare *spillRangeDcl,
   G4_SrcRegRegion *header = getLSCSpillFillHeader(mRangeDcl, fp, offset);
   auto sendInst = builder_->createSpill(
       postDst, header, srcOpnd, execSize, (uint16_t)extMsgLength, offsetHwords,
-      fp, static_cast<G4_InstOption>(option), true);
+      fp, static_cast<G4_InstOption>(option), true, isScatter);
   sendInst->inheritDIFrom(curInst);
 
   return sendInst;
@@ -2934,6 +2939,18 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
     return noRMWNeeded.find(spilledRegion) == noRMWNeeded.end();
   };
 
+  auto isScatterSpillCandidate = [this, inst]() {
+    // Conditions for scatter spill: inst can't be NoMask,
+    // element size is W/DW/Q, isn't dst partial region, and
+    // inst isn't predicated
+    auto elemSz = inst->getDst()->getElemSize();
+    return useLscForScatterSpill && !inst->isWriteEnableInst() &&
+           (elemSz == 2 || elemSz == 4 || elemSz == 8) &&
+           !isPartialRegion(inst->getDst(), inst->getExecSize()) &&
+           !inst->getPredicate();
+  };
+
+
   // subreg offset for new dst that replaces the spilled dst
   auto newSubregOff = 0;
 
@@ -2980,8 +2997,11 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
 
     // Unaligned region specific handling.
     unsigned int spillSendOption = InstOpt_WriteEnable;
+
     auto preloadNeeded = shouldPreloadSpillRange(*spilledInstIter, bb);
-    if (preloadNeeded && checkRMWNeeded()) {
+    auto scatterSpillCandidate = isScatterSpillCandidate();
+
+    if (preloadNeeded && checkRMWNeeded() && !scatterSpillCandidate) {
 
       // Preload the segment aligned spill range from memory to use
       // as an overlay
@@ -3098,7 +3118,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
         newSubregOff = subRegOff;
       }
 
-      if (!bb->isAllLaneActive() && !preloadNeeded) {
+      if ((!bb->isAllLaneActive() && !preloadNeeded) ||  scatterSpillCandidate) {
         spillSendOption = (*spilledInstIter)->getMaskOption();
       }
     }
@@ -3107,9 +3127,10 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
 
     initMWritePayload(spillRangeDcl, mRangeDcl, spilledRegion, execSize);
 
-    if (useLSCMsg) {
-      spillSendInst = createLSCSpill(spillRangeDcl, mRangeDcl, spilledRegion,
-                                     execSize, spillSendOption);
+    if (useLSCMsg || useLscForScatterSpill) {
+      spillSendInst =
+          createLSCSpill(spillRangeDcl, mRangeDcl, spilledRegion, execSize,
+                         spillSendOption, scatterSpillCandidate);
     } else {
       spillSendInst = createSpillSendInstr(
           spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
@@ -4882,6 +4903,102 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   splice(bb, instIt, builder->instList, inst->getVISAId());
 }
 
+void GlobalRA::expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
+  auto &builder = kernel.fg.builder;
+  auto inst = (*instIt)->asSpillIntrinsic();
+  // offset into scratch surface in bytes
+  auto spillOffset = inst->getOffsetInBytes();
+  auto payload = inst->getSrc(1)->asSrcRegRegion();
+  auto rowOffset = payload->getRegOff();
+
+  // Max elements to write in LSC scatter store is 32 (SIMD32)
+  // Scatter spill intrinsics are expanded to either SIMD8, SIMD16 or SIMD32
+  G4_ExecSize execSize(inst->getExecSize());
+  vISA_ASSERT(execSize == 8 || execSize == 16 || execSize == 32,
+              "Execution size not supported for scatter spill");
+
+  LSC_OP op = LSC_STORE;
+  LSC_SFID lscSfid = LSC_UGM;
+  LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
+  LSC_L1_L3_CC store_cc =
+      (LSC_L1_L3_CC)builder->getuint32Option(vISA_lscSpillStoreCCOverride);
+  if (store_cc != LSC_CACHING_DEFAULT) {
+    cacheOpts = convertLSCLoadStoreCacheControlEnum(store_cc, false);
+  }
+
+  // Set the LSC address info
+  LSC_ADDR addrInfo;
+  addrInfo.type = LSC_ADDR_TYPE_SS; // Scratch memory
+  addrInfo.immScale = 1;
+  addrInfo.immOffset = 0;
+  addrInfo.size = LSC_ADDR_SIZE_32b;
+  unsigned int addrSizeInBytes = 4;
+
+  // Set the LSC data shape
+  LSC_DATA_SHAPE dataShape;
+  dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
+  dataShape.elems = LSC_DATA_ELEMS_1;
+
+  auto elemSz = inst->getDst()->getTypeSize();
+  switch (elemSz) {
+  case 2:
+    dataShape.size = LSC_DATA_SIZE_16b;
+    break;
+  case 4:
+    dataShape.size = LSC_DATA_SIZE_32b;
+    break;
+  case 8:
+    dataShape.size = LSC_DATA_SIZE_64b;
+    break;
+  default:
+    vISA_ASSERT(false, "Data size not supported");
+  }
+
+  unsigned numGRFAddressToWrite =
+      execSize * addrSizeInBytes / builder->getGRFSize();
+  builder->instList.clear();
+
+  // Add spill offset to vector of addresses
+  G4_Declare *baseAddresses = builder->getScatterSpillBaseAddress();
+  G4_Declare *spillAddresses = builder->getScatterSpillAddress();
+  G4_INST *addA0 = builder->createBinOp(
+      G4_add, execSize,
+      builder->createDst(spillAddresses->getRegVar(), 0, 0, 1, Type_D),
+      builder->createSrcRegRegion(baseAddresses, builder->getRegionStride1()),
+      builder->createImm(spillOffset, Type_W), inst->getOption(), false);
+  bb->insertBefore(instIt, addA0);
+
+  auto payloadToUse = builder->createSrcWithNewRegOff(payload, rowOffset);
+  auto surface = builder->createSrcRegRegion(builder->getSpillSurfaceOffset(),
+                                             builder->getRegionScalar());
+
+  G4_DstRegRegion *postDst =
+      builder->createNullDst(inst->getDst()->getType());
+  G4_SendDescRaw *desc = builder->createLscMsgDesc(
+      op, lscSfid, Get_VISA_Exec_Size_From_Raw_Size(execSize), cacheOpts,
+      addrInfo, dataShape, surface, 0, numGRFAddressToWrite,
+      LdStAttrs::SCRATCH_SURFACE);
+  auto src0Addr =
+      builder->createSrcRegRegion(spillAddresses, builder->getRegionStride1());
+
+  auto sendInst = builder->createLscSendInst(
+      nullptr, postDst, src0Addr, payloadToUse, execSize, desc,
+      inst->getOption(), LSC_ADDR_TYPE_SS, false);
+
+  sendInst->addComment(makeSpillFillComment(
+      "scatter spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
+      payload->getTopDcl()->getName(), builder->getGRFSize()));
+
+  if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
+    for (auto newInst : builder->instList) {
+      kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
+          inst->asSpillIntrinsic(), newInst);
+    }
+  }
+
+  splice(bb, instIt, builder->instList, inst->getVISAId());
+}
+
 void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   auto &builder = kernel.fg.builder;
   auto inst = (*instIt)->asFillIntrinsic();
@@ -5267,8 +5384,12 @@ void GlobalRA::expandSpillIntrinsic(G4_BB *bb) {
       auto spillIt = instIt;
 
       auto rowOffset = payload->getRegOff();
-      if (useLscForNonStackCallSpillFill || spillFillIntrinUsesLSC(inst)) {
-        expandSpillLSC(bb, instIt);
+      if (useLscForNonStackCallSpillFill || spillFillIntrinUsesLSC(inst) ||
+          useLscForScatterSpill) {
+        if (inst->asSpillIntrinsic()->isScatterSpill())
+          expandScatterSpillLSC(bb, instIt);
+        else
+          expandSpillLSC(bb, instIt);
       } else {
         if (!isOffBP) {
           expandSpillNonStackcall(numRows, offset, rowOffset, header, payload,
