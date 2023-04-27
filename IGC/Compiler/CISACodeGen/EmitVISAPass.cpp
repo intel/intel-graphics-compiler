@@ -3028,7 +3028,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
                     uint32_t eltSize = ty1->getScalarSizeInBits();
                     uint32_t stride = ty0Size / eltSize;
                     IGC_ASSERT((ty0Size % eltSize) == 0);
-                    m_encoder->SetDstRegion(stride);
+                    m_encoder->SetDstRegion(eltDst->IsUniform() ? 1 : stride);
                 }
                 m_encoder->Copy(eltDst, eltSrc);
                 m_encoder->Push();
@@ -3056,7 +3056,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
         uint32_t eltSize = ty1->getScalarSizeInBits();
         uint32_t stride = ty0Size / eltSize;
         IGC_ASSERT((ty0Size % eltSize) == 0);
-        m_encoder->SetDstRegion(stride);
+        m_encoder->SetDstRegion(eltDst->IsUniform() ? 1 : stride);
     }
     m_encoder->Copy(eltDst, EltV);
     m_encoder->Push();
