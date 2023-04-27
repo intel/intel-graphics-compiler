@@ -44,13 +44,13 @@ intel_ray_query_t intel_ray_query_init(
     MemRay_setRayFlags(&rtStack->ray[bvh_level],    ray.flags);
     MemRay_setRayMask(&rtStack->ray[bvh_level],     ray.mask);
 
-    rtStack->hit[COMMITTED].u = rtStack->hit[COMMITTED].v = 0.0f;
+    MemHit_clearUV(&rtStack->hit[COMMITTED]);
     rtStack->hit[COMMITTED].t = INFINITY;
     rtStack->hit[COMMITTED].data0 = 0;
     MemHit_setValid(&rtStack->hit[COMMITTED], 0);
     MemHit_setDone(&rtStack->hit[COMMITTED], 0);
 
-    rtStack->hit[POTENTIAL].u = rtStack->hit[POTENTIAL].v = 0.0f;
+    MemHit_clearUV(&rtStack->hit[POTENTIAL]);
     rtStack->hit[POTENTIAL].t = INFINITY;
     rtStack->hit[POTENTIAL].data0 = 0;
     MemHit_setValid(&rtStack->hit[POTENTIAL], 1);
@@ -145,11 +145,8 @@ void intel_ray_query_commit_potential_hit_override(
     intel_ray_query_t rayquery, float override_hit_distance, intel_float2 override_uv)
 {
     global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
-
     rtStack->hit[POTENTIAL].t = override_hit_distance;
-    rtStack->hit[POTENTIAL].u = override_uv.x;
-    rtStack->hit[POTENTIAL].v = override_uv.y;
-
+    MemHit_setUV(&rtStack->hit[POTENTIAL], override_uv.x, override_uv.y);
     intel_ray_query_commit_potential_hit(rayquery);
 }
 
@@ -227,7 +224,7 @@ float intel_get_hit_distance(
 intel_float2 intel_get_hit_barycentrics(intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 {
     MemHit* hit = get_query_hit(rayquery, hit_type);
-    return (intel_float2){hit->u, hit->v};
+    return MemHit_getUV(hit);
 }
 
 bool intel_get_hit_front_face(

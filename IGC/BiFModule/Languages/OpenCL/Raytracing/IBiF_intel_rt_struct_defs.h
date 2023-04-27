@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "IBiF_intel_rt_utils.cl"
 
+
 // === --------------------------------------------------------------------===
 // === TraceRayCtrl
 // === --------------------------------------------------------------------===
@@ -80,24 +81,60 @@ typedef struct __attribute__((packed, aligned(32)))
 
 } MemRay;
 
-// === MemRay accessors
-inline ulong MemRay_getRootNodePtr(MemRay* memray)            { return __getBits64(memray->data[0],  0, 48); }
-inline ulong MemRay_getRayFlags(MemRay* memray)               { return __getBits64(memray->data[0], 48, 16); }
-inline ulong MemRay_getHitGroupSRBasePtr(MemRay* memray)      { return __getBits64(memray->data[1],  0, 48); }
-inline ulong MemRay_getHitGroupSRStride(MemRay* memray)       { return __getBits64(memray->data[1], 48, 16); }
-inline ulong MemRay_getMissSRPtr(MemRay* memray)              { return __getBits64(memray->data[2],  0, 48); }
-inline ulong MemRay_getShaderIndexMultiplier(MemRay* memray)  { return __getBits64(memray->data[2], 56,  8); }
-inline ulong MemRay_getInstLeafPtr(MemRay* memray)            { return __getBits64(memray->data[3],  0, 48); }
-inline ulong MemRay_getRayMask(MemRay* memray)                { return __getBits64(memray->data[3], 48,  8); }
+// === MemRay getters
+inline ulong MemRay_getRootNodePtr(MemRay* memray)
+{
+    return __getBits64(memray->data[0],  0, 48);
+}
 
-inline ulong MemRay_setRootNodePtr(MemRay* memray, ulong val)            { memray->data[0] = __setBits64(memray->data[0], val,  0, 48); }
-inline ulong MemRay_setRayFlags(MemRay* memray, ulong val)               { memray->data[0] = __setBits64(memray->data[0], val, 48, 16); }
-inline ulong MemRay_setHitGroupSRBasePtr(MemRay* memray, ulong val)      { memray->data[1] = __setBits64(memray->data[1], val,  0, 48); }
-inline ulong MemRay_setHitGroupSRStride(MemRay* memray, ulong val)       { memray->data[1] = __setBits64(memray->data[1], val, 48, 16); }
-inline ulong MemRay_setMissSRPtr(MemRay* memray, ulong val)              { memray->data[2] = __setBits64(memray->data[2], val,  0, 48); }
-inline ulong MemRay_setShaderIndexMultiplier(MemRay* memray, ulong val)  { memray->data[2] = __setBits64(memray->data[2], val, 56,  8); }
-inline ulong MemRay_setInstLeafPtr(MemRay* memray, ulong val)            { memray->data[3] = __setBits64(memray->data[3], val,  0, 48); }
-inline ulong MemRay_setRayMask(MemRay* memray, ulong val)                { memray->data[3] = __setBits64(memray->data[3], val, 48,  8); }
+inline ulong MemRay_getRayFlags(MemRay* memray)
+{
+    return __getBits64(memray->data[0], 48, 16);
+}
+
+inline ulong MemRay_getShaderIndexMultiplier(MemRay* memray)
+{
+    return __getBits64(memray->data[2], 56, 8);
+}
+
+inline ulong MemRay_getInstLeafPtr(MemRay* memray)
+{
+    return __getBits64(memray->data[3], 0, 48);
+}
+
+inline ulong MemRay_getRayMask(MemRay* memray)
+{
+    return __getBits64(memray->data[3], 48, 8);
+}
+
+
+
+// === MemRay setters
+inline void MemRay_setRootNodePtr(MemRay* memray, ulong val)
+{
+    memray->data[0] = __setBits64(memray->data[0], val, 0, 48);
+}
+
+inline void MemRay_setRayFlags(MemRay* memray, ulong val)
+{
+    memray->data[0] = __setBits64(memray->data[0], val, 48, 16);
+}
+
+inline void MemRay_setShaderIndexMultiplier(MemRay* memray, ulong val)
+{
+    memray->data[2] = __setBits64(memray->data[2], val, 56, 8);
+}
+
+inline void MemRay_setInstLeafPtr(MemRay* memray, ulong val)
+{
+    memray->data[3] = __setBits64(memray->data[3], val, 0, 48);
+}
+
+inline void MemRay_setRayMask(MemRay* memray, ulong val)
+{
+    memray->data[3] = __setBits64(memray->data[3], val, 48, 8);
+}
+
 
 
 // === --------------------------------------------------------------------===
@@ -106,12 +143,15 @@ inline ulong MemRay_setRayMask(MemRay* memray, ulong val)                { memra
 typedef struct __attribute__((packed, aligned(32)))
 {
     // 12 B
-    float t;    // hit distance of current hit (or initial traversal distance)
-    float u, v; // barycentric hit coordinates
+    float t;         // hit distance of current hit (or initial traversal distance)
+    uint  dataUV[2]; // barycentric hit coordinates
 
     // 20 B
     uint  data0;
     ulong data1[2];
+    // dataUV[0]  0:32 [32] - barycentric u hit coordinates
+    // dataUV[1]  0:32 [32] - barycentric v hit coordinates
+    //
     // data0  0:16 [16] - primIndexDelta  prim index delta for compressed meshlets and quads
     //       16:17 [ 1] - valid           set if there is a hit
     //       17:20 [ 3] - leafType        type of node primLeafPtr is pointing to
@@ -126,28 +166,66 @@ typedef struct __attribute__((packed, aligned(32)))
     //
     // data1[1]  0:42 [42] - instLeafAddr     address of BVH instance leaf node (in multiple of 64 bytes)
     //          42:64 [16] - hitGroupRecPtr1  MSB of hit group record of the hit triangle (multiple of 16 bytes)
+
 } MemHit;
 
-// === MemHit accessors
-inline uint  MemHit_getPrimIndexDelta(MemHit* memhit)  { return __getBits32(memhit->data0,  0, 16); }
-inline uint  MemHit_getValid(MemHit* memhit)           { return __getBits32(memhit->data0, 16,  1); }
-inline uint  MemHit_getLeafType(MemHit* memhit)        { return __getBits32(memhit->data0, 17,  3); }
-inline uint  MemHit_getPrimLeafIndex(MemHit* memhit)   { return __getBits32(memhit->data0, 20,  4); }
-inline uint  MemHit_getBvhLevel(MemHit* memhit)        { return __getBits32(memhit->data0, 24,  3); }
-inline uint  MemHit_getFrontFace(MemHit* memhit)       { return __getBits32(memhit->data0, 27,  1); }
-inline uint  MemHit_getDone(MemHit* memhit)            { return __getBits32(memhit->data0, 28,  1); }
 
-inline void  MemHit_setValid(MemHit* memhit, bool value) { memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 16, 1); }
-inline void  MemHit_setDone(MemHit* memhit, bool value)  { memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 28, 1); }
+// === MemHit getters
+inline uint MemHit_getPrimIndexDelta(MemHit* memhit)
+{
+    return __getBits32(memhit->data0, 0, 16);
+}
 
-inline ulong MemHit_getPrimLeafAddr(MemHit* memhit)    { return __getBits64(memhit->data1[0],  0, 42); }
-inline ulong MemHit_getHitGroupRecPtr0(MemHit* memhit) { return __getBits64(memhit->data1[0], 42, 16); }
-inline ulong MemHit_getInstLeafAddr(MemHit* memhit)    { return __getBits64(memhit->data1[1],  0, 42); }
-inline ulong MemHit_getHitGroupRecPtr1(MemHit* memhit) { return __getBits64(memhit->data1[1], 42, 16); }
+inline ulong MemHit_getPrimLeafAddr(MemHit* memhit)
+{
+    return __getBits64(memhit->data1[0], 0, 42);
+}
+
+inline ulong MemHit_getInstLeafAddr(MemHit* memhit)
+{
+    return __getBits64(memhit->data1[1], 0, 42);
+}
+
+inline intel_float2 MemHit_getUV(MemHit* memhit)
+{
+    return (intel_float2){((float*)memhit->dataUV)[0], ((float*)memhit->dataUV)[1]};
+}
+
+inline uint MemHit_getValid(MemHit* memhit)         { return __getBits32(memhit->data0, 16, 1); }
+inline uint MemHit_getLeafType(MemHit* memhit)      { return __getBits32(memhit->data0, 17, 3); }
+inline uint MemHit_getPrimLeafIndex(MemHit* memhit) { return __getBits32(memhit->data0, 20, 4); }
+inline uint MemHit_getBvhLevel(MemHit* memhit)      { return __getBits32(memhit->data0, 24, 3); }
+inline uint MemHit_getFrontFace(MemHit* memhit)     { return __getBits32(memhit->data0, 27, 1); }
+inline uint MemHit_getDone(MemHit* memhit)          { return __getBits32(memhit->data0, 28, 1); }
+
+
+// === MemHit setters
+inline void MemHit_clearUV(MemHit* memhit)
+{
+    memhit->dataUV[0] = 0;
+    memhit->dataUV[1] = 0;
+}
+
+inline void MemHit_setUV(MemHit* memhit, float u, float v)
+{
+    ((float*)memhit->dataUV)[0] = u;
+    ((float*)memhit->dataUV)[1] = v;
+}
+
+inline void MemHit_setValid(MemHit* memhit, bool value) { memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 16, 1); }
+inline void MemHit_setDone(MemHit* memhit, bool value)  { memhit->data0 = __setBits32(memhit->data0, value ? 1 : 0, 28, 1); }
+
 
 // === MemHit methods
-inline global void* MemHit_getPrimLeafPtr(MemHit* memhit)     { return to_global((void*)((ulong)MemHit_getPrimLeafAddr(memhit) * 64)); }
-inline global void* MemHit_getInstanceLeafPtr(MemHit* memhit) { return to_global((void*)((ulong)MemHit_getInstLeafAddr(memhit) * 64)); }
+inline global void* MemHit_getPrimLeafPtr(MemHit* memhit)
+{
+    return to_global((void*)((ulong)MemHit_getPrimLeafAddr(memhit) * 64));
+}
+
+inline global void* MemHit_getInstanceLeafPtr(MemHit* memhit)
+{
+    return to_global((void*)((ulong)MemHit_getInstLeafAddr(memhit) * 64));
+}
 
 
 // === --------------------------------------------------------------------===
@@ -199,28 +277,27 @@ typedef struct __attribute__((packed,aligned(8)))
     };
 
     uint data[2];
-    // [0]  0:24 [24] - shaderIndex  shader index used for shader record calculations
-    //     24:32 [ 8] - geomMask     geometry mask used for ray masking
+    // data[0]  0:24 [24] - shaderIndex          shader index used for shader record calculations
+    //         24:32 [ 8] - geomMask             geometry mask used for ray masking
     //
-    // [1]  0:29 [29] - geomIndex  address of BVH leaf node (multiple of 64 bytes)
-    //     29:30 [ 1] - type       LSB of hit group record of the hit triangle (multiple of 16 bytes)
-    //     30:32 [ 2] - geomFlags  geometry flags of this geometry
+    // data[1]  0:24 [24] - geomIndex            the geometry index specifies the n'th geometry of the scene
+    //         24:28 [ 4] - MBZ
+    //         28:29 [ 1] - reserved bit (MBZ)
+    //         29:30 [ 1] - DisableOpacityCull   disables opacity culling
+    //         30:31 [ 1] - OpaqueGeometry       determines if geometry is opaque
+    //         31:32 [ 1] - MBZ
 
 } PrimLeafDesc;
 
-// === PrimLeafDesc accessors
-
+// === PrimLeafDesc getters
 inline uint PrimLeafDesc_getShaderIndex(PrimLeafDesc* leaf) { return __getBits32(leaf->data[0],  0, 24); }
 inline uint PrimLeafDesc_getGeomMask(PrimLeafDesc* leaf)    { return __getBits32(leaf->data[0], 24,  8); }
-inline uint PrimLeafDesc_getGeomIndex(PrimLeafDesc* leaf)   { return __getBits32(leaf->data[1],  0, 29); }
-inline uint PrimLeafDesc_getType(PrimLeafDesc* leaf)        { return __getBits32(leaf->data[1], 29,  1); }
-inline uint PrimLeafDesc_getGeomFlags(PrimLeafDesc* leaf)   { return __getBits32(leaf->data[1], 30,  2); }
+inline uint PrimLeafDesc_getGeomIndex(PrimLeafDesc* leaf)   { return __getBits32(leaf->data[1],  0, 24); }
 
+// === PrimLeafDesc setters
 inline uint PrimLeafDesc_setShaderIndex(PrimLeafDesc* leaf, uint val) { leaf->data[0] = __setBits32(leaf->data[0], val,  0, 24); }
 inline uint PrimLeafDesc_setGeomMask(PrimLeafDesc* leaf, uint val)    { leaf->data[0] = __setBits32(leaf->data[0], val, 24,  8); }
-inline uint PrimLeafDesc_setGeomIndex(PrimLeafDesc* leaf, uint val)   { leaf->data[1] = __setBits32(leaf->data[1], val,  0, 29); }
-inline uint PrimLeafDesc_setType(PrimLeafDesc* leaf, uint val)        { leaf->data[1] = __setBits32(leaf->data[1], val, 29,  1); }
-inline uint PrimLeafDesc_setGeomFlags(PrimLeafDesc* leaf, uint val)   { leaf->data[1] = __setBits32(leaf->data[1], val, 30,  2); }
+inline uint PrimLeafDesc_setGeomIndex(PrimLeafDesc* leaf, uint val)   { leaf->data[1] = __setBits32(leaf->data[1], val,  0, 24); }
 
 
 // === --------------------------------------------------------------------===
@@ -242,19 +319,27 @@ typedef struct __attribute__((packed,aligned(64)))
     float v[4][3];
 } QuadLeaf;
 
-// === QuadLeaf accessors
+// === QuadLeaf getters
+inline uint QuadLeaf_getPrimIndex1Delta(QuadLeaf* leaf)
+{
+    return __getBits32(leaf->data, 0, 16);
+}
 
-inline uint QuadLeaf_getPrimIndex1Delta(QuadLeaf* leaf) { return __getBits32(leaf->data,  0, 16); }
-inline uint QuadLeaf_getJ0(QuadLeaf* leaf)              { return __getBits32(leaf->data, 16,  2); }
-inline uint QuadLeaf_getJ1(QuadLeaf* leaf)              { return __getBits32(leaf->data, 18,  2); }
-inline uint QuadLeaf_getJ2(QuadLeaf* leaf)              { return __getBits32(leaf->data, 20,  2); }
-inline uint QuadLeaf_getLast(QuadLeaf* leaf)            { return __getBits32(leaf->data, 22,  1); }
+inline uint QuadLeaf_getJ0(QuadLeaf* leaf)   { return __getBits32(leaf->data, 16,  2); }
+inline uint QuadLeaf_getJ1(QuadLeaf* leaf)   { return __getBits32(leaf->data, 18,  2); }
+inline uint QuadLeaf_getJ2(QuadLeaf* leaf)   { return __getBits32(leaf->data, 20,  2); }
+inline uint QuadLeaf_getLast(QuadLeaf* leaf) { return __getBits32(leaf->data, 22,  1); }
 
-inline uint QuadLeaf_setPrimIndex1Delta(QuadLeaf* leaf, uint val) { leaf->data = __setBits32(leaf->data, val,  0, 16); }
-inline uint QuadLeaf_setJ0(QuadLeaf* leaf, uint val)              { leaf->data = __setBits32(leaf->data, val, 16,  2); }
-inline uint QuadLeaf_setJ1(QuadLeaf* leaf, uint val)              { leaf->data = __setBits32(leaf->data, val, 18,  2); }
-inline uint QuadLeaf_setJ2(QuadLeaf* leaf, uint val)              { leaf->data = __setBits32(leaf->data, val, 20,  2); }
-inline uint QuadLeaf_setLast(QuadLeaf* leaf, uint val)            { leaf->data = __setBits32(leaf->data, val, 22,  1); }
+// === QuadLeaf setters
+inline void QuadLeaf_setPrimIndex1Delta(QuadLeaf* leaf, uint val)
+{
+    leaf->data = __setBits32(leaf->data, val, 0, 16);
+}
+
+inline void QuadLeaf_setJ0(QuadLeaf* leaf, uint val)   { leaf->data = __setBits32(leaf->data, val, 16,  2); }
+inline void QuadLeaf_setJ1(QuadLeaf* leaf, uint val)   { leaf->data = __setBits32(leaf->data, val, 18,  2); }
+inline void QuadLeaf_setJ2(QuadLeaf* leaf, uint val)   { leaf->data = __setBits32(leaf->data, val, 20,  2); }
+inline void QuadLeaf_setLast(QuadLeaf* leaf, uint val) { leaf->data = __setBits32(leaf->data, val, 22,  1); }
 
 
 // === --------------------------------------------------------------------===
@@ -296,14 +381,15 @@ typedef struct
         // data0[0]  0:24 [24] - shaderIndex  shader index used to calculate instancing shader in case of software instancing
         //          24:32 [ 8] - geomMask     geometry mask used for ray masking
         //
-        // data0[1]  0:24 [24] - instanceContributionToHitGroupIndex  -
-        //          24:29 [ 5] - padding    -
-        //          29:30 [ 1] - type       enables/disables opaque culling (only for procedural instances)
-        //          30:32 [ 2] - geomFlags  (only for procedural instances)
+        // data0[1]  0:24 [24] - instanceContribution  instance contribution to hit group index
+        //          24:29 [ 5] - padding
+        //          29:30 [ 1] - DisableOpacityCull    disables opacity culling
+        //          30:31 [ 1] - OpaqueGeometry        determines if geometry is opaque
+        //          31:32 [ 1] - padding
         //
-        // data1  0:48 [48] - startNodePtr  start node where to continue traversal of the instanced object
-        //       48:56 [ 8] - instFlags     flags for the instance (see InstanceFlags)
-        //       56:64 [ 8] - padding       -
+        // data1     0:48 [48] - startNodePtr     start node where to continue traversal of the instanced object
+        //          48:56 [ 8] - instFlags        flags for the instance (see InstanceFlags)
+
 
         float world2obj_vx[3]; // 1st column of Worl2Obj transform
         float world2obj_vy[3]; // 2nd column of Worl2Obj transform
@@ -315,8 +401,8 @@ typedef struct
     struct Part1
     {
         ulong data;
-        //  0:48 [48] - bvhPtr  pointer to BVH where start node belongs to
-        // 48:64 [16] - pad     -
+        // data  0:48 [48] - bvhPtr  pointer to BVH where start node belongs to
+        // data 48:64 [16] - pad     -
 
         uint instanceID;    // user defined value per DXR spec
         uint instanceIndex; // geometry index of the instance (n'th geometry in scene)
@@ -328,22 +414,41 @@ typedef struct
     } part1;
 } InstanceLeaf;
 
-// === InstanceLeaf accessors
+// === InstanceLeaf getters
+inline ulong InstanceLeaf_getStartNodePtr(InstanceLeaf* leaf)
+{
+    return __getBits64(leaf->part0.data1, 0, 48);
+}
 
-inline uint  InstanceLeaf_getShaderIndex(InstanceLeaf* leaf)                         { return __getBits32(leaf->part0.data0[0],  0, 24); }
-inline uint  InstanceLeaf_getGeomMask(InstanceLeaf* leaf)                            { return __getBits32(leaf->part0.data0[0], 24,  8); }
-inline uint  InstanceLeaf_getInstanceContributionToHitGroupIndex(InstanceLeaf* leaf) { return __getBits32(leaf->part0.data0[1],  0, 24); }
-inline uint  InstanceLeaf_getType(InstanceLeaf* leaf)                                { return __getBits32(leaf->part0.data0[1], 29,  1); }
-inline uint  InstanceLeaf_getGeomFlags(InstanceLeaf* leaf)                           { return __getBits32(leaf->part0.data0[1], 30,  2); }
-inline ulong InstanceLeaf_getStartNodePtr(InstanceLeaf* leaf)                        { return __getBits64(leaf->part0.data1,     0, 48); }
-inline ulong InstanceLeaf_getInstFlags(InstanceLeaf* leaf)                           { return __getBits64(leaf->part0.data1,    48,  8); }
-inline uint  InstanceLeaf_getBvhPtr(InstanceLeaf* leaf)                              { return __getBits32(leaf->part1.data,      0, 48); }
+inline ulong InstanceLeaf_getInstFlags(InstanceLeaf* leaf)
+{
+    return __getBits64(leaf->part0.data1, 48, 8);
+}
 
-inline uint  InstanceLeaf_setShaderIndex(InstanceLeaf* leaf, uint val)                         { leaf->part0.data0[0] = __setBits32(leaf->part0.data0[0], val,  0, 24); }
-inline uint  InstanceLeaf_setGeomMask(InstanceLeaf* leaf, uint val)                            { leaf->part0.data0[0] = __setBits32(leaf->part0.data0[0], val, 24,  8); }
-inline uint  InstanceLeaf_setInstanceContributionToHitGroupIndex(InstanceLeaf* leaf, uint val) { leaf->part0.data0[1] = __setBits32(leaf->part0.data0[1], val,  0, 24); }
-inline uint  InstanceLeaf_setType(InstanceLeaf* leaf, uint val)                                { leaf->part0.data0[1] = __setBits32(leaf->part0.data0[1], val, 29,  1); }
-inline uint  InstanceLeaf_setGeomFlags(InstanceLeaf* leaf, uint val)                           { leaf->part0.data0[1] = __setBits32(leaf->part0.data0[1], val, 30,  2); }
-inline ulong InstanceLeaf_setStartNodePtr(InstanceLeaf* leaf, ulong val)                       { leaf->part0.data1    = __setBits64(leaf->part0.data1,    val,  0, 48); }
-inline ulong InstanceLeaf_setInstFlags(InstanceLeaf* leaf, ulong val)                          { leaf->part0.data1    = __setBits64(leaf->part0.data1,    val, 48,  8); }
-inline uint  InstanceLeaf_setBvhPtr(InstanceLeaf* leaf, uint val)                              { leaf->part1.data     = __setBits32(leaf->part1.data   ,  val,  0, 48); }
+inline ulong InstanceLeaf_getBvhPtr(InstanceLeaf* leaf)
+{
+    return __getBits64(leaf->part1.data, 0, 48);
+}
+
+inline uint InstanceLeaf_getGeomMask(InstanceLeaf* leaf)           { return __getBits32(leaf->part0.data0[0], 24,  8); }
+inline uint InstanceLeaf_getDisableOpacityCull(InstanceLeaf* leaf) { return __getBits32(leaf->part0.data0[1], 29,  1); }
+
+
+// === InstanceLeaf setters
+inline void InstanceLeaf_setStartNodePtr(InstanceLeaf* leaf, ulong val)
+{
+    leaf->part0.data1 = __setBits64(leaf->part0.data1, val, 0, 48);
+}
+
+inline void InstanceLeaf_setInstFlags(InstanceLeaf* leaf, ulong val)
+{
+    leaf->part0.data1 = __setBits64(leaf->part0.data1, val, 48, 8);
+}
+
+inline void InstanceLeaf_setBvhPtr(InstanceLeaf* leaf, ulong val)
+{
+    leaf->part1.data = __setBits64(leaf->part1.data, val, 0, 48);
+}
+
+inline void InstanceLeaf_setGeomMask(InstanceLeaf* leaf, uint val)           { leaf->part0.data0[0] = __setBits32(leaf->part0.data0[0], val, 24,  8); }
+inline void InstanceLeaf_setDisableOpacityCull(InstanceLeaf* leaf, uint val) { leaf->part0.data0[1] = __setBits32(leaf->part0.data0[1], val, 29,  1); }
