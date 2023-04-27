@@ -167,6 +167,7 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
   case GENX_TGLLP:
     VISA_WA_ENABLE(pWaTable, Wa_1406950495);
     VISA_WA_ENABLE(pWaTable, Wa_16013338947);
+    VISA_WA_ENABLE(pWaTable, Wa_14018126777);
     break;
   case Xe_XeHPSDV:
     VISA_WA_ENABLE(pWaTable, Wa_1406950495);

@@ -666,7 +666,7 @@ bool hasDPASSrc2ReadSuppressionDepIssue() const {
 }
 
 bool hasIntraReadSuppressionIssue() const {
-  return getPlatform() == GENX_TGLLP;
+  return (VISA_WA_CHECK(getPWaTable(), Wa_14018126777));
 }
 
 bool hasMathDpasConflict() const {
