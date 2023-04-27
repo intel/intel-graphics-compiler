@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -149,75 +149,93 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
   // After this point, we should not do constant folding.
   Changed |= vc::breakConstantExprs(&F, vc::LegalizationStage::Legalized);
 
-  // The following alorithm runs very slowly on large blocks.
+  // The following algorithm runs very slowly on large blocks.
   if (skipOptWithLargeBlock(F))
     return Changed;
 
-  SmallVector<Instruction *, 16> Deads;
+  SmallVector<Instruction *, 16> OrphanedMadSumOpndInst;
   for (auto &BB : F) {
     for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /* EMPTY */) {
-      Instruction *I = &*BI++;
-      if (!isIntegerMadIntrinsic(I))
+      Instruction *MadInst = &*BI++;
+      if (!isIntegerMadIntrinsic(MadInst))
         continue;
-      auto II = cast<IntrinsicInst>(I);
-      // Check src2 and duplicate if necessary.
-      Value *S2 = II->getOperand(2);
-      if (S2->hasOneUse()) {
-        // Sink S2 closer to user to shorten acc live ranges.
-        // This is particular important when 32 bit integer multiplications
-        // are not native and acc registers will be used to emulate them.
-        auto I2 = dyn_cast<Instruction>(S2);
-        if (I2 == nullptr || I2->getParent() != I->getParent())
+      //-------------------------------------------------------------------
+      // Work with Mad summed operand (operand 2) if it's an instruction:
+      // If it has one use, move it closer to Mad.
+      // If it has more than one use and is Mul or RDRegion, try to duplicate it
+      // closer to Mad where it's used as a summed operand.
+      // For all the other uses try to move it closer.
+      //-------------------------------------------------------------------
+      // This is done to shorten acc live ranges. This is particularly important
+      // when 32 bit integer multiplications are not native and acc
+      // registers will be used to emulate them.
+      //-------------------------------------------------------------------
+      auto *MadSumOpndInst = dyn_cast<Instruction>(MadInst->getOperand(2));
+      if (!MadSumOpndInst)
+        continue;
+      // If Mad summed operand has only single use, try to move it closer to
+      // Mad.
+      if (MadSumOpndInst->hasOneUse()) {
+        if (MadSumOpndInst->getParent() != MadInst->getParent() ||
+            MadSumOpndInst->mayHaveSideEffects() ||
+            isa<PHINode>(MadSumOpndInst) ||
+            MadSumOpndInst->getNextNode() == MadInst ||
+            !genx::isSafeToMoveInstCheckGVLoadClobber(MadSumOpndInst, MadInst,
+                                                      Baling))
           continue;
-        if (I2->mayHaveSideEffects() || isa<PHINode>(I2) ||
-            I2->getNextNode() == I)
-          continue;
-        I2->moveBefore(I);
+        MadSumOpndInst->moveBefore(MadInst);
         Changed = true;
         continue;
       }
-      // Only duplicate on selective instructions.
-      if (!GenXIntrinsic::isRdRegion(S2) && !isIntegerMulIntrinsic(S2))
+      // Only for Mul and RDRegions ...
+      if (!GenXIntrinsic::isRdRegion(MadSumOpndInst) &&
+          !isIntegerMulIntrinsic(MadSumOpndInst))
         continue;
-      Instruction *RII = cast<Instruction>(S2);
-      SmallVector<Instruction *, 16> Others;
-      for (auto UI = S2->use_begin(),
-                UE = S2->use_end(); UI != UE; /* EMPTY */) {
-        Use &U = *UI++;
-        auto InsertPt = cast<Instruction>(U.getUser());
-        if (!isIntegerMadIntrinsic(InsertPt) || U.getOperandNo() != 2) {
-          Others.push_back(InsertPt);
-          continue;
+
+      // If Mad summed operand source has multiple uses,
+      // try to duplicate it closer to Mad where it's used as a summed operand.
+      // For any other uses also try to move closer, see below.
+      SmallVector<Instruction *, 16> OtherUseCases;
+      for (auto UseIt = MadSumOpndInst->use_begin();
+           UseIt != MadSumOpndInst->use_end();
+           /* EMPTY */) {
+        auto &MadSumOpndUse = *UseIt++;
+        auto *UserInst = cast<Instruction>(MadSumOpndUse.getUser());
+        if (isIntegerMadIntrinsic(UserInst) &&
+            MadSumOpndUse.getOperandNo() == 2 &&
+            genx::isSafeToMoveInstCheckGVLoadClobber(MadSumOpndInst, UserInst,
+                                                     Baling)) {
+          auto *NewMadSumOpndInst = MadSumOpndInst->clone();
+          NewMadSumOpndInst->setName(MadSumOpndInst->getName() + ".postimad");
+          NewMadSumOpndInst->insertBefore(UserInst);
+          MadSumOpndUse.set(NewMadSumOpndInst);
+        } else {
+          OtherUseCases.push_back(UserInst);
         }
-        auto NewInst = RII->clone();
-        NewInst->setName(RII->getName() + ".postimad");
-        NewInst->insertBefore(InsertPt);
-        U.set(NewInst);
       }
-      if (!Others.empty()) {
-        // Find a new place for RII.
+
+      // Try to sink the Mul or RDRegion instruction closer to users.
+      if (!OtherUseCases.empty()) {
         BasicBlock *NBB = nullptr;
-        Instruction *Pt = nullptr;
-        std::tie(NBB, Pt) = findNearestInsertPt(DT, Others);
-        Pt = Pt ? Pt : NBB->getTerminator();
-        RII->moveBefore(Pt);
+        Instruction *InsertPt = nullptr;
+        std::tie(NBB, InsertPt) = findNearestInsertPt(DT, OtherUseCases);
+        InsertPt = InsertPt ? InsertPt : NBB->getTerminator();
+        if (genx::isSafeToMoveInstCheckGVLoadClobber(MadSumOpndInst, InsertPt,
+                                                     Baling))
+          MadSumOpndInst->moveBefore(InsertPt);
       } else
-        Deads.push_back(RII);
+        OrphanedMadSumOpndInst.push_back(MadSumOpndInst);
       Changed = true;
     }
   }
-  for (auto I : Deads)
+  for (auto *I : OrphanedMadSumOpndInst)
     I->eraseFromParent();
-
   for (auto &BB : F)
     Changed |= fixMadChain(&BB);
-
-
   return Changed;
 }
 
 bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
-
   // Given the bale 'B', collect all its operand instructions in the same basic
   // block.
   auto collectUnbaledOpndInsts = [](BasicBlock *BB, Bale &B) {
@@ -276,15 +294,14 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
     // Skip if it's already handled.
     if (FMAs.count(CandidateInsn))
       continue;
-
     // Collection of all inputs for the chain curently discovered.
     std::set<Instruction *> Inputs;
     // The mad chain itself.
-    std::vector<Bale> Chain;
-    Chain.push_back(OutB);
+    std::vector<Bale> BaleChain;
+    BaleChain.push_back(OutB);
     FMAs.insert(CandidateInsn);
     do {
-      auto &OutB = Chain.back();
+      auto &OutB = BaleChain.back();
       Instruction *In = nullptr;
       std::vector<Instruction *> Opnds;
       // Collect all operands so that we could grow the chain through the
@@ -335,14 +352,14 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
         }
         if (!In)
           break;
-        Chain.push_back(OpB);
+        BaleChain.push_back(OpB);
       }
       if (!In)
         break;
       // Grow the chain by appending this chain-in.
       Bale InB;
       Baling->buildBale(In, &InB);
-      Chain.push_back(InB);
+      BaleChain.push_back(InB);
       // Stop chaining if it's not mad any more.
       if (!InB.getMainInst())
         break;
@@ -352,20 +369,26 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
         break;
       FMAs.insert(CandidateInst);
     } while (1);
+
     // Cluster the discovered chain together.
     if (FMAs.size() > 1) {
       Instruction *Pos = nullptr;
-      for (auto I = Chain.begin(), E = Chain.end(); I != E; ++I) {
-        for (auto II = I->rbegin(), IE = I->rend(); II != IE; ++II) {
+      for (auto Bale = BaleChain.begin(), BaleChainEnd = BaleChain.end();
+           Bale != BaleChainEnd; ++Bale) {
+        for (auto BaleInst = Bale->rbegin(), BaleEnd = Bale->rend();
+             BaleInst != BaleEnd; ++BaleInst) {
           if (!Pos) {
-            Pos = II->Inst;
+            Pos = BaleInst->Inst;
             continue;
           }
+          // Skip movement of a bale sourcing a global volatile load predecessor
+          // if it can result in potential clobbering by an intervening vstore.
           // Skip phi which is not movable.
-          if (isa<PHINode>(II->Inst))
+          if (!genx::isSafeToMoveBaleCheckGVLoadClobber(*Bale, Pos) ||
+              isa<PHINode>(BaleInst->Inst))
             break;
-          II->Inst->moveBefore(Pos);
-          Pos = II->Inst;
+          BaleInst->Inst->moveBefore(Pos);
+          Pos = BaleInst->Inst;
           Changed = true;
         }
       }
