@@ -3820,7 +3820,7 @@ namespace IGC
         {
             // If stack calls are present, disable simd32 in order to do wa in visa
             bool needCallWA = (IGC_IS_FLAG_ENABLED(EnableCallWA) && m_Context->platform.hasFusedEU());
-            if (needCallWA && simdMode == SIMDMode::SIMD32  && HasStackCalls())
+            if (needCallWA && simdMode == SIMDMode::SIMD32 && HasStackCalls())
             {
                 return false;
             }
@@ -3923,31 +3923,15 @@ namespace IGC
         bool hasSubroutine = m_FGA && m_FGA->getGroup(&F) && !m_FGA->getGroup(&F)->isSingle() && !hasStackCall && !isIndirectGroup;
         bool forceLowestSIMDForStackCalls = IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
 
-        if (hasStackCall || isIndirectGroup || hasSubroutine)
+        if (simd_size == 0)
         {
-            if (!PVCLSCEnabled())
-            {
-                // Only support simd32 for function calls if LSC is enabled
-                if (simdMode == SIMDMode::SIMD32)
-                {
-                    pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                    return SIMDStatus::SIMD_FUNC_FAIL;
-                }
-
-                // Must force simd16 with LSC disabled
-                pCtx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)numLanes(SIMDMode::SIMD16);
-            }
-
             if (hasSubroutine &&
-                simd_size == 0 &&
                 simdMode != SIMDMode::SIMD16)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return SIMDStatus::SIMD_FUNC_FAIL;
             }
-
             if (forceLowestSIMDForStackCalls &&
-                simd_size == 0 &&
                 simdMode != SIMDMode::SIMD16)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
@@ -4109,20 +4093,11 @@ namespace IGC
         bool isIndirectGroup = m_FGA && m_FGA->getGroup(&F) && IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F));
         bool hasSubroutine = m_FGA && m_FGA->getGroup(&F) && !m_FGA->getGroup(&F)->isSingle() && !hasStackCall && !isIndirectGroup;
 
-        // Cannot compile simd32 for function calls due to slicing
-        if (hasStackCall || hasSubroutine || isIndirectGroup)
+        if (simd_size == 0)
         {
-            // Fail on SIMD32 for all groups with function calls
-            if (simdMode == SIMDMode::SIMD32)
-            {
-                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                return SIMDStatus::SIMD_FUNC_FAIL;
-            }
-
             // Default to lowest SIMD mode for stack calls/indirect calls
             if (IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) &&
                 (hasStackCall || isIndirectGroup) &&
-                simd_size == 0 &&
                 simdMode != SIMDMode::SIMD8)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
@@ -4131,7 +4106,6 @@ namespace IGC
 
             // Just subroutines and subgroup size is not set, default to SIMD8
             if (hasSubroutine &&
-                simd_size == 0 &&
                 simdMode != SIMDMode::SIMD8)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);

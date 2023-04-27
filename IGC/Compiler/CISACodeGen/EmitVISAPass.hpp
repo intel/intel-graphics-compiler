@@ -155,7 +155,7 @@ public:
     void InitializeKernelStack(llvm::Function* pKernel);
 
     /// stack-call functions for reading and writing argument/retval data to stack
-    typedef SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> StackDataBlocks;
+    typedef SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t, bool>, 8> StackDataBlocks;
     uint CalculateStackDataBlocks(StackDataBlocks& blkData, std::vector<CVariable*>& Args);
     void ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS);
     void WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS);
@@ -650,7 +650,7 @@ public:
 
     CVariable* ExtendVariable(CVariable* pVar, e_alignment uniformAlign);
     CVariable* BroadcastAndExtend(CVariable* pVar);
-    CVariable* TruncatePointer(CVariable* pVar);
+    CVariable* TruncatePointer(CVariable* pVar, bool TruncBothHalves = false);
     CVariable* ReAlignUniformVariable(CVariable* pVar, e_alignment align);
     CVariable* BroadcastAndTruncPointer(CVariable* pVar);
     CVariable* IndexableResourceIndex(CVariable* indexVar, uint btiIndex);

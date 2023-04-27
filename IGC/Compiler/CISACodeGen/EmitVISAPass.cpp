@@ -974,7 +974,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->GetContext()->getModuleMetaData()->compOpt.OptDisable ||
         m_currShader->GetShaderType() != ShaderType::COMPUTE_SHADER ||
         m_currShader->GetContext()->getModuleMetaData()->csInfo.disableSimd32Slicing ||
-        m_pattern->m_samplertoRenderTargetEnable;
+        m_pattern->m_samplertoRenderTargetEnable ||
+        hasStackCall || isDummyKernel;
 
     IGC::Debug::Dump* llvmtoVISADump = nullptr;
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
@@ -10292,6 +10293,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 ///     The offset relative to the Stack Pointer
 ///     The block size to be stored/loaded
 ///     The offset relative to the current variable being processed
+///     Boolean to indicate IsSecondHalf for instructions with multiple instances
 /// Output: Returns the total byte size required for read/write
 ///
 uint EmitPass::CalculateStackDataBlocks(StackDataBlocks& blkData, std::vector<CVariable*>& Args)
@@ -10301,27 +10303,32 @@ uint EmitPass::CalculateStackDataBlocks(StackDataBlocks& blkData, std::vector<CV
     {
         // stack offset is always oword-aligned
         offsetS = int_cast<unsigned>(llvm::alignTo(offsetS, SIZE_OWORD));
+        unsigned numInstance = Arg->GetNumberInstance();
 
-        // calculate block sizes for each arg
-        int32_t RmnBytes = Arg->GetSize();
-        uint32_t ArgOffset = 0;
-        do
+        for (unsigned i = 0; i < numInstance; i++)
         {
-            uint32_t BlkSize = 0;
-            if (shouldGenerateLSC())
+            // calculate block sizes for each arg
+            int32_t RmnBytes = Arg->GetSize();
+            uint32_t ArgOffset = 0;
+            do
             {
-                BlkSize = getLSCBlockMsgSize(RmnBytes, m_currShader->m_Platform->getMaxLSCBlockMsgSize());
-            }
-            else
-            {
-                BlkSize = getBlockMsgSize(RmnBytes, m_currShader->m_Platform->getMaxBlockMsgSize(false));
-            }
-            blkData.push_back(std::make_tuple(Arg, offsetS, BlkSize, ArgOffset));
+                uint32_t BlkSize = 0;
+                if (shouldGenerateLSC())
+                {
+                    BlkSize = getLSCBlockMsgSize(RmnBytes, m_currShader->m_Platform->getMaxLSCBlockMsgSize());
+                }
+                else
+                {
+                    BlkSize = getBlockMsgSize(RmnBytes, m_currShader->m_Platform->getMaxBlockMsgSize(false));
+                }
+                bool IsSecondHalf = (i == 1);
+                blkData.push_back(std::make_tuple(Arg, offsetS, BlkSize, ArgOffset, IsSecondHalf));
 
-            offsetS += BlkSize;
-            ArgOffset += BlkSize;
-            RmnBytes -= BlkSize;
-        } while (RmnBytes > 0);
+                offsetS += BlkSize;
+                ArgOffset += BlkSize;
+                RmnBytes -= BlkSize;
+            } while (RmnBytes > 0);
+        }
     }
     return offsetS;
 }
@@ -10341,6 +10348,7 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
         uint32_t StackOffset = std::get<1>(I);
         uint32_t BlkSize = std::get<2>(I);
         uint32_t ArgOffset = std::get<3>(I);
+        bool IsSecondHalf = std::get<4>(I);
         // spOffset is a negative offset from SP
         int32_t spOffset = StackOffset - offsetS;
         IGC_ASSERT(spOffset < 0);
@@ -10349,6 +10357,8 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
 
         ResourceDescriptor resource;
         resource.m_surfaceType = ESURFACE_STATELESS;
+
+        m_encoder->SetSecondHalf(IsSecondHalf);
 
         int RmnBytes = LdDst->GetSize() - ArgOffset;
         bool needRmCopy = BlkSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
@@ -10408,6 +10418,7 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
             }
         }
     }
+    m_encoder->SetSecondHalf(false);
 }
 
 /// Given the data block vector calculated by CalculateStackDataBlocks, for each block
@@ -10425,9 +10436,12 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
         uint32_t StackOffset = std::get<1>(I);
         uint32_t BlkSize = std::get<2>(I);
         uint32_t ArgOffset = std::get<3>(I);
+        bool IsSecondHalf = std::get<4>(I);
         // spOffset is a negative offset from SP
         int32_t spOffset = StackOffset - offsetS;
         IGC_ASSERT(spOffset < 0);
+
+        m_encoder->SetSecondHalf(IsSecondHalf);
 
         // LSC Scatter message
         if (shouldGenerateLSC())
@@ -10461,6 +10475,7 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
             m_encoder->Push();
         }
     }
+    m_encoder->SetSecondHalf(false);
 }
 
 void EmitPass::emitStackCall(llvm::CallInst* inst)
@@ -10474,6 +10489,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     uint32_t offsetS = 0;  // visa stack offset
     std::vector<CVariable*> argsOnStack;
     SmallVector<std::tuple<CVariable*, Type*, uint32_t>, 8> argsOnRegister;
+
+    IGC_ASSERT(!m_encoder->IsSecondHalf());
+    bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
 
     for (uint32_t i = 0; i < IGCLLVM::getNumArgOperands(inst); i++)
     {
@@ -10493,7 +10511,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
         // check if an argument can be written to ARGV based upon offset + arg-size
-        unsigned argSize = Src->GetSize();
+        unsigned argSize = Src->GetSize() * Src->GetNumberInstance();
         // Uniform invoke simd target must not be vectorized - callee is compiled by vector compiler
         // where the size is set explicitly and it is treated as scalar.
         if (Src->IsUniform() && !isInvokeSIMDTarget)
@@ -10512,8 +10530,14 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             if (Src->IsUniform() && !isInvokeSIMDTarget)
             {
                 uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
-                CVariable* SrcVec = m_currShader->GetNewVariable(nElts, Src->GetType(), m_currShader->getGRFAlignment(), false, Src->getName());
-                emitCopyAll(SrcVec, Src, argType);
+                unsigned numInstance = hasSecondHalf ? 2 : 1;
+                CVariable* SrcVec = m_currShader->GetNewVariable(nElts, Src->GetType(), m_currShader->getGRFAlignment(), false, numInstance, Src->getName());
+                for (unsigned i = 0; i < numInstance; i++)
+                {
+                    m_encoder->SetSecondHalf(i == 1);
+                    emitCopyAll(SrcVec, Src, argType);
+                }
+                m_encoder->SetSecondHalf(false);
                 Src = SrcVec;
             }
             argsOnStack.push_back(Src);
@@ -10526,7 +10550,8 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     if (!inst->getType()->isVoidTy())
     {
         CVariable* RetV = GetSymbol(inst);
-        retSize = RetV->GetSize();
+        IGC_ASSERT(!RetV->IsUniform());
+        retSize = RetV->GetSize() * RetV->GetNumberInstance();
         returnOnStack = retSize > m_currShader->GetRETV()->GetSize();
     }
 
@@ -10561,9 +10586,20 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             Type* argType = std::get<1>(I);
             uint32_t offset = std::get<2>(I);
 
+            m_encoder->SetSecondHalf(false);
+            unsigned numInstance = hasSecondHalf ? 2 : 1;
+            VISA_Type dataType = m_currShader->GetType(argType);
             uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
-            CVariable* Dst = m_currShader->GetNewAlias(ArgBlkVar, m_currShader->GetType(argType), offset, nElts, false);
+            CVariable* Dst = m_currShader->GetNewAlias(ArgBlkVar, dataType, offset, nElts * numInstance, false);
             emitCopyAll(Dst, Src, argType);
+
+            if (hasSecondHalf)
+            {
+                m_encoder->SetSecondHalf(true);
+                CVariable* TempDst = m_currShader->GetNewAlias(Dst, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, false);
+                emitCopyAll(TempDst, Src, argType);
+                m_encoder->SetSecondHalf(false);
+            }
         }
     };
 
@@ -10574,16 +10610,24 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         if (inst->use_empty()) return;
 
         CVariable* Dst = GetSymbol(inst);
-        CVariable* Src = m_currShader->GetRETV();
+        unsigned numInstance = Dst->GetNumberInstance();
+        unsigned numElts = Dst->GetNumberElement();
+        VISA_Type dataType = Dst->GetType();
 
         if (!returnOnStack)
         {
             // Copy from return GRF
-            if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
-            {
-                Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
-            }
+            m_encoder->SetSecondHalf(false);
+            CVariable* Src = m_currShader->GetNewAlias(m_currShader->GetRETV(), dataType, 0, numElts * numInstance, false);
             emitCopyAll(Dst, Src, inst->getType());
+
+            if (numInstance > 1)
+            {
+                m_encoder->SetSecondHalf(true);
+                CVariable* TempSrc = m_currShader->GetNewAlias(Src, dataType, numElts * m_encoder->GetCISADataTypeSize(dataType), numElts, false);
+                emitCopyAll(Dst, TempSrc, inst->getType());
+                m_encoder->SetSecondHalf(false);
+            }
         }
         else
         {
@@ -10591,7 +10635,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             StackDataBlocks RetBlkData;
             std::vector<CVariable*> retOnStack = { Dst };
             uint offsetS_R = CalculateStackDataBlocks(RetBlkData, retOnStack);
-            IGC_ASSERT(offsetS_R == int_cast<unsigned>(llvm::alignTo(Dst->GetSize(), SIZE_OWORD)));
+            IGC_ASSERT(offsetS_R == int_cast<unsigned>(llvm::alignTo(Dst->GetSize() * numInstance, SIZE_OWORD)));
             ReadStackDataBlocks(RetBlkData, offsetS_R);
         }
     };
@@ -10626,12 +10670,18 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 
             // Get the first active lane's function address
             CVariable* offset = nullptr;
-            funcAddr = TruncatePointer(funcAddr);
+            funcAddr = TruncatePointer(funcAddr, true);
             CVariable* uniformAddr = UniformCopy(funcAddr, offset, eMask);
             // Set the predicate to true for all lanes with the same address
             CVariable* callPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
-            m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
-            m_encoder->Push();
+
+            for (unsigned i = 0; i < funcAddr->GetNumberInstance(); i++)
+            {
+                m_encoder->SetSecondHalf(i == 1);
+                m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
+                m_encoder->Push();
+            }
+            m_encoder->SetSecondHalf(false);
 
             uint callLabel = m_encoder->GetNewLabelID("non_unif_call_end");
             m_encoder->SetInversePredicate(true);
@@ -10705,6 +10755,10 @@ void EmitPass::emitStackFuncEntry(Function* F)
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
     std::vector<CVariable*> argsOnStack;
+
+    IGC_ASSERT(!m_encoder->IsSecondHalf());
+    bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+
     for (auto& Arg : F->args())
     {
         if (!F->hasFnAttribute("referenced-indirectly"))
@@ -10715,9 +10769,11 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
         // adjust offset for alignment
         CVariable* Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, false, true);
+        IGC_ASSERT_MESSAGE(!Dst->IsUniform(), "Function args cannot be uniform!");
         uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
-        uint argSize = Dst->GetSize();
+        unsigned numInstance = Dst->GetNumberInstance();
+        uint argSize = Dst->GetSize() * numInstance;
 
         // check if an argument can be written to ARGV based upon offset + arg-size
         bool overflow = ((offsetA + argSize) > ArgBlkVar->GetSize());
@@ -10726,7 +10782,8 @@ void EmitPass::emitStackFuncEntry(Function* F)
             if (!Arg.use_empty())
             {
                 CVariable* Src = ArgBlkVar;
-                if (m_FGA->isLeafFunc(F))
+                // TODO: Is there a way to map arg directly when numInstances > 1?
+                if (m_FGA->isLeafFunc(F) && !hasSecondHalf)
                 {
                     // Directly map the dst register to an alias of ArgBlkVar, and update symbol mapping for future uses
                     Dst = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
@@ -10745,11 +10802,20 @@ void EmitPass::emitStackFuncEntry(Function* F)
                 else
                 {
                     // For calls not guaranteed to preserve the ARG register, we copy it first to a temp
-                    if (Src->GetType() != Dst->GetType() || offsetA != 0 || Src->IsUniform() != Dst->IsUniform())
-                    {
-                        Src = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
-                    }
+                    m_encoder->SetSecondHalf(false);
+                    VISA_Type dataType = Dst->GetType();
+                    unsigned nElts = Dst->GetNumberElement();
+                    Src = m_currShader->GetNewAlias(ArgBlkVar, dataType, (uint16_t)offsetA, nElts * numInstance, Dst->IsUniform());
                     emitCopyAll(Dst, Src, Arg.getType());
+
+                    if (hasSecondHalf)
+                    {
+                        IGC_ASSERT(numInstance > 1);
+                        m_encoder->SetSecondHalf(true);
+                        CVariable* TempSrc = m_currShader->GetNewAlias(Src, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, Dst->IsUniform());
+                        emitCopyAll(Dst, TempSrc, Arg.getType());
+                        m_encoder->SetSecondHalf(false);
+                    }
                 }
             }
             offsetA += argSize;
@@ -10772,9 +10838,11 @@ void EmitPass::emitStackFuncEntry(Function* F)
     if (!F->getReturnType()->isVoidTy())
     {
         CVariable* RetVal = m_currShader->getOrCreateReturnSymbol(F);
-
-        if (RetVal->GetSize() > m_currShader->GetRETV()->GetSize())
-            offsetS += int_cast<unsigned>(llvm::alignTo(RetVal->GetSize(), SIZE_OWORD));
+        bool isRetUniform = RetVal->IsUniform();
+        unsigned numInstance = RetVal->GetNumberInstance();
+        unsigned RetSize = isRetUniform ? RetVal->GetSize() * numLanes(m_currShader->m_dispatchSize) : RetVal->GetSize() * numInstance;
+        if (RetSize > m_currShader->GetRETV()->GetSize())
+            offsetS += int_cast<unsigned>(llvm::alignTo(RetSize, SIZE_OWORD));
     }
 
     // Read from caller stack back into registers
@@ -10813,17 +10881,29 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
         unsigned nLanes = numLanes(m_currShader->m_dispatchSize);
         CVariable* Src = GetSymbol(inst->getReturnValue());
         bool isSrcUniform = Src->IsUniform();
-        RetSize = isSrcUniform ? nLanes * Src->GetSize() : Src->GetSize();
+        unsigned numInstance = Src->GetNumberInstance();
+        RetSize = isSrcUniform ? Src->GetSize() * nLanes : Src->GetSize() * numInstance;
+
+        IGC_ASSERT(!m_encoder->IsSecondHalf());
+        bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
 
         if (RetSize <= Dst->GetSize())
         {
             // Return on GRF
-            if (Dst->GetType() != Src->GetType() || Dst->IsUniform() != Src->IsUniform())
-            {
-                unsigned elements = isSrcUniform ? Src->GetNumberElement() * nLanes : Src->GetNumberElement();
-                Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, elements, false);
-            }
+            unsigned nElts = m_currShader->GetNumElts(RetTy, false);
+            VISA_Type dataType = Src->GetType();
+
+            m_encoder->SetSecondHalf(false);
+            Dst = m_currShader->GetNewAlias(Dst, dataType, 0, nElts * numInstance, false);
             emitCopyAll(Dst, Src, RetTy);
+
+            if (hasSecondHalf)
+            {
+                m_encoder->SetSecondHalf(true);
+                CVariable* TempDst = m_currShader->GetNewAlias(Dst, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, false);
+                emitCopyAll(TempDst, Src, RetTy);
+                m_encoder->SetSecondHalf(false);
+            }
             m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
         }
         else
@@ -10834,7 +10914,13 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
             {
                 CVariable* retValSymbol = m_currShader->getOrCreateReturnSymbol(F);
                 IGC_ASSERT(retValSymbol->GetType() == Src->GetType());
-                emitCopyAll(retValSymbol, Src, RetTy);
+                unsigned numInstance = retValSymbol->GetNumberInstance();
+                for (unsigned i = 0; i < numInstance; i++)
+                {
+                    m_encoder->SetSecondHalf(i == 1);
+                    emitCopyAll(retValSymbol, Src, RetTy);
+                }
+                m_encoder->SetSecondHalf(false);
                 Src = retValSymbol;
             }
 
@@ -10862,11 +10948,24 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
         CVariable* sretPtr = m_currShader->GetAndResetSRet();
         if (sretPtr && isFuncSRetArg(F->arg_begin()) && !m_FGA->isLeafFunc(F))
         {
+            unsigned numInstance = sretPtr->GetNumberInstance();
+            unsigned numElements = sretPtr->GetNumberElement();
+            VISA_Type dataType = sretPtr->GetType();
+
             // If the sret value is saved, copy it back into arg0
+            m_encoder->SetSecondHalf(false);
             CVariable* ArgBlk = m_currShader->GetARGV();
-            CVariable* Arg0 = m_currShader->GetNewAlias(ArgBlk, sretPtr->GetType(), 0, sretPtr->GetNumberElement(), sretPtr->IsUniform());
+            CVariable* Arg0 = m_currShader->GetNewAlias(ArgBlk, dataType, 0, numElements * numInstance, sretPtr->IsUniform());
             m_encoder->Copy(Arg0, sretPtr);
             m_encoder->Push();
+            if (numInstance > 1)
+            {
+                m_encoder->SetSecondHalf(true);
+                CVariable* TempArg0 = m_currShader->GetNewAlias(Arg0, dataType, numElements * m_encoder->GetCISADataTypeSize(dataType), numElements, sretPtr->IsUniform());
+                m_encoder->Copy(TempArg0, sretPtr);
+                m_encoder->Push();
+                m_encoder->SetSecondHalf(false);
+            }
         }
         m_encoder->SetStackFunctionRetSize(0);
     }
@@ -11951,7 +12050,7 @@ CVariable* EmitPass::BroadcastAndExtend(CVariable* pVar)
     return pBroadcast;
 }
 
-CVariable* EmitPass::TruncatePointer(CVariable* pVar) {
+CVariable* EmitPass::TruncatePointer(CVariable* pVar, bool TruncBothHalves) {
     // Truncate pointer is used to prepare pointers for A32 and A64
     // messages and in stateful loads and stores to prepare the
     // offset value.
@@ -11973,13 +12072,32 @@ CVariable* EmitPass::TruncatePointer(CVariable* pVar) {
     CVariable* NewVar = 0;
     if (pVar->IsUniform()) {
         NewVar = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, CName(pVar->getName(), "Trunc"));
+        m_encoder->Cast(NewVar, pVar);
+        m_encoder->Push();
     }
     else {
+        unsigned numInstance = TruncBothHalves ? pVar->GetNumberInstance() : 1;
         NewVar = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, CName(pVar->getName(), "Trunc"));
+            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, false, numInstance, CName(pVar->getName(), "Trunc"));
+
+        if (TruncBothHalves && numInstance > 1)
+        {
+            // Truncate both halves for SIMD32
+            bool isSecondHalf = m_encoder->IsSecondHalf();
+            m_encoder->SetSecondHalf(false);
+            m_encoder->Cast(NewVar, pVar);
+            m_encoder->Push();
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Cast(NewVar, pVar);
+            m_encoder->Push();
+            m_encoder->SetSecondHalf(isSecondHalf);
+        }
+        else
+        {
+            m_encoder->Cast(NewVar, pVar);
+            m_encoder->Push();
+        }
     }
-    m_encoder->Cast(NewVar, pVar);
-    m_encoder->Push();
 
     return NewVar;
 }
