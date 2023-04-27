@@ -1460,5 +1460,10 @@ uint32_t getMaxAddressedHWThreads() const
     return 4096;
 }
 
+bool supportsNumberOfBariers() const
+{
+    return isProductChildOf(IGFX_DG2);
+}
+
 };
 }//namespace IGC
