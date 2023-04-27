@@ -296,7 +296,7 @@ namespace IGCLLVM
         }
 #endif
 
-        inline llvm::Value* CreateFreeze(llvm::Value* V, const llvm::Twine& Name = "")
+        inline llvm::Value* CreateFreezeIfSupported(llvm::Value* V, const llvm::Twine& Name = "")
         {
 #if LLVM_VERSION_MAJOR < 10
             return V;

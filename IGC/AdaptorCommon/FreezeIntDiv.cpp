@@ -73,7 +73,7 @@ bool FreezeIntDiv::runOnFunction(Function& F)
 void FreezeIntDiv::freezeIntDiv(BinaryOperator& I)
 {
     IGCLLVM::IRBuilder<> builder(I.getNextNode());
-    Value* FI = builder.CreateFreeze(&I, "freeze");
+    Value* FI = builder.CreateFreezeIfSupported(&I, "freeze");
     I.replaceAllUsesWith(FI);
     cast<Instruction>(FI)->setOperand(0, &I);
 }

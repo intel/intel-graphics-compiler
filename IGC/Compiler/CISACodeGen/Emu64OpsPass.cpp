@@ -711,8 +711,8 @@ bool InstExpander::visitFreeze(FreezeInst& FI) {
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
 
-    Value* newLo = IRB->CreateFreeze(Lo);
-    Value* newHi = IRB->CreateFreeze(Hi);
+    Value* newLo = IRB->CreateFreezeIfSupported(Lo);
+    Value* newHi = IRB->CreateFreezeIfSupported(Hi);
 
     Emu->setExpandedValues(&FI, newLo, newHi);
     return true;
@@ -1398,16 +1398,36 @@ bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
     if (SrcTy->isHalfTy()) {
         // Convert half directly into 32-bit integer.
         Value* Lo = IRB->CreateFPToUI(Src, IRB->getInt32Ty());
-        // FIXME: Due to the current OCL builtin implementation, the conversion
-        // from ulong to half and its saturated version share the same LLVM IR. We
-        // cannot tell them during the emulation. Special handle the out-of-range
-        // case for half. We need to revise OCL builtin to use different LLVM IR.
-        Value* EQ =
-            IRB->CreateICmpEQ(Lo, Constant::getAllOnesValue(IRB->getInt32Ty()));
-        Value* Hi =
-            IRB->CreateSelect(EQ, Constant::getAllOnesValue(IRB->getInt32Ty()),
-                Constant::getNullValue(IRB->getInt32Ty()));
+        // FIXME: Due to the current OCL builtin implementation, the simple
+        // conversion from ulong to half and its builtin-provided saturated
+        // version bring about the same fptoui instruction. We cannot tell the
+        // source functions apart during the emulation.
 
+        // Special handling for the out-of-range case for half:
+        // 1. If avalailable, 'freeze' the conversion inst itself. Otherwise,
+        //    subsequent LLVM optimizations can conclude that the source value
+        //    is always within the i32 limits, unaware of our saturation game
+        //    as they are.
+        Lo = IRB->CreateFreezeIfSupported(Lo);
+        // 2. If the i32 value is all ones, we can be sure that it's the effect
+        //    of NaN saturation. Emit the corresponding comparison.
+        Value* WasHalfNaNCond =
+            IRB->CreateICmpEQ(Lo, Constant::getAllOnesValue(IRB->getInt32Ty()));
+        // 3. Based on that, we need our MSB's to either zero-extend or restore
+        //    the original i64's all ones.
+        Value* Hi =
+            IRB->CreateSelect(WasHalfNaNCond, Constant::getAllOnesValue(IRB->getInt32Ty()),
+                Constant::getNullValue(IRB->getInt32Ty()));
+        // FIXME: Instead of that w/a, we should consider either:
+        // a) implementing the emulated version of the saturation builtins
+        //    right at the OCL level and making sure to replace i64-returning
+        //    calls with that;
+        // or:
+        // b) abandoning OCL-level implementations altogether, instead
+        //    replacing these builtin calls with GenISA intrinsic calls prior
+        //    to builtin import, and then inserting IR-level implementations
+        //    that would make the emulation sequence conditional on the source
+        //    value's comparison to NaN.
         Emu->setExpandedValues(&F2U, Lo, Hi);
         return true;
     }
@@ -1453,11 +1473,18 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
     if (SrcTy->isHalfTy()) {
         // Convert half directly into 32-bit integer.
         Value* Lo = IRB->CreateFPToSI(Src, IRB->getInt32Ty());
+        // FIXME: Due to the current OCL builtin implementation, the simple
+        // conversion from ulong to half and its builtin-provided saturated
+        // version bring about the same fptoui instruction. We cannot tell the
+        // source functions apart during the emulation, hence the special handling
+        // for the out-of-range case for half.
+        //
+        // First, 'freeze' the conversion inst itself (if freeze is available).
+        // Otherwise, subsequent LLVM optimizations can conclude that the source
+        // value is always within the i32 limits, unaware of our saturation game
+        // as they are.
+        Lo = IRB->CreateFreezeIfSupported(Lo);
         Value* Hi = IRB->CreateAShr(Lo, 31);
-        // FIXME: Due to the current OCL builtin implementation, the conversion
-        // from ulong to half and its saturated version share the same LLVM IR. We
-        // cannot tell them during the emulation. Special handle the out-of-range
-        // case for half. We need to revise OCL builtin to use different LLVM IR.
         Value* IMax = IRB->getInt32(0x7FFFFFFFU);
         Value* IMin = IRB->getInt32(0x80000000U);
         Value* EQ = IRB->CreateICmpEQ(Lo, IMax);
@@ -1467,6 +1494,16 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
         EQ = IRB->CreateICmpEQ(Lo, IMin);
         Hi = IRB->CreateSelect(EQ, Lo, Hi);
         Lo = IRB->CreateSelect(EQ, Constant::getNullValue(IRB->getInt32Ty()), Lo);
+        // FIXME: Instead of that w/a, we should consider either:
+        // a) implementing the emulated version of the saturation builtins
+        //    right at the OCL level and making sure to replace i64-returning
+        //    calls with that;
+        // or:
+        // b) abandoning OCL-level implementations altogether, instead
+        //    replacing these builtin calls with GenISA intrinsic calls prior
+        //    to builtin import, and then inserting IR-level implementations
+        //    that would make the emulation sequence conditional on the source
+        //    value's comparison to NaN.
 
         Emu->setExpandedValues(&F2S, Lo, Hi);
         return true;
