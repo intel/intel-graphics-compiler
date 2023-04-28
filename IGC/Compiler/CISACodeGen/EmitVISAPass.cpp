@@ -2627,7 +2627,7 @@ void EmitPass::emitMayUnalignedVectorCopy(
     auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
     Type* eltTy = Ty->getScalarType();
-    uint32_t eltBytes = (uint32_t)m_DL->getTypeAllocSize(eltTy);
+    uint32_t eltBytes = (uint32_t)m_DL->getTypeStoreSize(eltTy);
     bool D_uniform = Dst->IsUniform();
     const bool S_uniform = Src->IsUniform();
 
@@ -2774,7 +2774,7 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
 #if defined(_DEBUG)
         if (MemberTy->isSingleValueType()) {
             Type* eTy = MemberTy->getScalarType();
-            uint32_t eltBytes = (uint32_t)m_DL->getTypeAllocSize(eTy);
+            uint32_t eltBytes = (uint32_t)m_DL->getTypeStoreSize(eTy);
             uint32_t align = (uint32_t)MinAlign(eltBytes, ByteOffsets);
             IGC_ASSERT_MESSAGE(align >= eltBytes ||
                 CVar->IsUniform() && STy->isPacked(),
@@ -2869,7 +2869,7 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
 #if defined(_DEBUG)
         if (MemberTy->isSingleValueType()) {
             Type* eTy = MemberTy->getScalarType();
-            uint32_t eltBytes = (uint32_t)m_DL->getTypeAllocSize(eTy);
+            uint32_t eltBytes = (uint32_t)m_DL->getTypeStoreSize(eTy);
             uint32_t align = (uint32_t)MinAlign(eltBytes, ByteOffsets);
             IGC_ASSERT_MESSAGE(align >= eltBytes ||
                 CVar->IsUniform() && STy->isPacked(),
@@ -2957,8 +2957,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
 
     // For now, do not support uniform dst and non-uniform src1
     const Type* src1Ty = src1->getType();
-    IGC_ASSERT_MESSAGE(!src1Ty->isVectorTy() &&
-        (src1Ty->isIntegerTy() || src1Ty->isFloatTy()),
+    IGC_ASSERT_MESSAGE(!src1Ty->isVectorTy() && src1Ty->isSingleValueType(),
         "Layout struct's members are of scalar int or float types.");
     IGC_ASSERT_MESSAGE((!EltV->IsUniform() && DstV->IsUniform()) == false,
         "Can't insert vector value into a scalar struct!");
@@ -2979,7 +2978,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
                     Type* ty = sTy->getElementType(i);
                     uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
 
-                    uint32_t sz = (uint32_t)DL.getTypeAllocSizeInBits(ty);
+                    uint32_t sz = (uint32_t)DL.getTypeStoreSizeInBits(ty);
                     uint64_t imm = bitcastToUI64(elt, &DL);
                     IGC_ASSERT(sz == 64 || sz == 32);
                     VISA_Type visaty = (sz == 64 ? ISA_TYPE_UQ : ISA_TYPE_UD);

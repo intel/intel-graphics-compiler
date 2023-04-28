@@ -2889,11 +2889,11 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 return;
 
             Type* Ty = LSI->getLdStType();
-            if (!(Ty->isVectorTy() || Ty->isIntegerTy() || Ty->isFloatTy()))
+            Type* eTy = Ty->getScalarType();
+            if (!(eTy->isIntegerTy() || eTy->isFloatingPointTy()))
                 return;
 
-            Type* eTy = Ty->getScalarType();
-            uint32_t eBytes = (uint32_t)DL->getTypeAllocSize(eTy);
+            uint32_t eBytes = (uint32_t)DL->getTypeStoreSize(eTy);
             uint32_t nElts = 1;
             if (VectorType* VTy = dyn_cast<VectorType>(Ty)) {
                 auto fVTy = cast<IGCLLVM::FixedVectorType>(VTy);
@@ -3203,7 +3203,7 @@ void LdStCombine::mergeConstElements(
             // Try to merge (II, NI)
             Value* elt0 = *II;
             Type* ty0 = elt0->getType();
-            const uint32_t sz0 = (uint32_t)m_DL->getTypeAllocSize(ty0);
+            const uint32_t sz0 = (uint32_t)m_DL->getTypeStoreSize(ty0);
             // Merged value shall be naturally aligned.
             if ((currOff % b) != 0 || sz0 >= b) {
                 currOff += sz0;
@@ -3211,7 +3211,7 @@ void LdStCombine::mergeConstElements(
             }
             Value* elt1 = *NI;
             Type* ty1 = elt1->getType();
-            const uint32_t sz1 = (uint32_t)m_DL->getTypeAllocSize(ty1);
+            const uint32_t sz1 = (uint32_t)m_DL->getTypeStoreSize(ty1);
             Constant* C0 = dyn_cast<Constant>(elt0);
             Constant* C1 = dyn_cast<Constant>(elt1);
             if (!C0 || !C1 || (sz0 + sz1) != b) {
@@ -3343,7 +3343,7 @@ Value* LdStCombine::gatherCopy(
         }
 
         Type* eTy = v->getType();
-        const uint32_t eBytes = (uint32_t)m_DL->getTypeAllocSize(eTy);
+        const uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(eTy);
         if (eTy->isPointerTy()) {
             // need ptrtoint cast as bitcast does not work
             IGC_ASSERT(eBytes == 8 || eBytes == 4 || eBytes == 2);
@@ -3460,7 +3460,7 @@ Value* LdStCombine::gatherCopy(
         int nelts = (int)subElts.size();
         if (nelts == 1) {
             Type* ty = subElts[0]->getType();
-            IGC_ASSERT(m_DL->getTypeAllocSize(ty) == EltBytes);
+            IGC_ASSERT(m_DL->getTypeStoreSize(ty) == EltBytes);
             StructTys.push_back(ty);
         }
         else {
@@ -3644,7 +3644,7 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
 {
     uint64_t imm = 0;
     if (StructType* sTy = dyn_cast<StructType>(C->getType())) {
-        IGC_ASSERT(DL->getTypeAllocSizeInBits(sTy) <= 64);
+        IGC_ASSERT(DL->getTypeStoreSizeInBits(sTy) <= 64);
         const StructLayout* SL = DL->getStructLayout(sTy);
         int N = (int)sTy->getNumElements();
         for (int i = 0; i < N; ++i)
@@ -3655,7 +3655,7 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
             }
             Type* ty_i = sTy->getElementType(i);
             uint32_t offbits = (uint32_t)SL->getElementOffsetInBits(i);
-            uint32_t nbits = (uint32_t)DL->getTypeAllocSizeInBits(ty_i);
+            uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(ty_i);
             IGC_ASSERT(ty_i->isFloatingPointTy() || ty_i->isIntegerTy());
 
             uint64_t tImm = GetImmediateVal(C_i);
