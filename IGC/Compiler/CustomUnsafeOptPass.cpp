@@ -1840,14 +1840,6 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
-                else if (op0 == op1)
-                {
-                    // X / X = 1
-                    I.replaceAllUsesWith(ConstantFP::get(opType, 1.0));
-                    collectForErase(I);
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
                 else
                 {
                     // a = 1 / b
@@ -1868,27 +1860,6 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                         patternFound = visitBinaryOperatorDivRsq(I);
                     }
 
-                    // a = x Opcode y
-                    // b = x Opcode y
-                    // c = a / b
-                    //    =>
-                    // c = 1
-                    if (!patternFound)
-                    {
-                        llvm::Instruction* prevInst0 = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
-                        llvm::Instruction* prevInst1 = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1));
-                        if (prevInst0 && prevInst1 &&
-                            prevInst0->getOpcode()   == prevInst1->getOpcode()   &&
-                            prevInst0->getOperand(0) == prevInst1->getOperand(0) &&
-                            prevInst0->getOperand(1) == prevInst1->getOperand(1))
-                        {
-                            I.replaceAllUsesWith(ConstantFP::get(opType, 1.0));
-                            collectForErase(I);
-                            ++Stat_FloatRemoved;
-                            patternFound = true;
-                        }
-                    }
-
                     // skip for double type.
                     if (opType->getTypeID() == llvm::Type::FloatTyID || opType->getTypeID() == llvm::Type::HalfTyID)
                     {
@@ -1903,8 +1874,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                         }
 
                         // FDIV to FMUL+INV
-                        if (!patternFound &&
-                            !m_ctx->getCompilerOption().DisableFDivToFMulInvOpt)
+                        if (!patternFound)
                         {
                             if (!(fp0 && fp0->isExactlyValue(1.0)))
                             {
