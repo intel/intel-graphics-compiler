@@ -7348,7 +7348,7 @@ void Optimizer::dumpPayload() {
     msgDescImm |= (blocksizeEncoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
     msgDescImm |= i;
 
-    G4_SendDesc *desc = kernel.fg.builder->createSendMsgDesc(
+    G4_SendDescRaw *desc = kernel.fg.builder->createSendMsgDesc(
         msgDescImm, 0, 1, funcID, msgSize, extFuncCtrl, SendAccess::WRITE_ONLY);
     const RegionDesc *region = kernel.fg.builder->getRegionStride1();
     G4_SrcRegRegion *headerOpnd = kernel.fg.builder->createSrcRegRegion(

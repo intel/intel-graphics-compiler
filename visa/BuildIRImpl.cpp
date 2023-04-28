@@ -1722,7 +1722,7 @@ G4_INST *IR_Builder::createInternalInst(G4_Predicate *prd, G4_opcode op,
 G4_InstSend *IR_Builder::createSendInst(
     G4_Predicate *prd, G4_opcode op, G4_ExecSize execSize,
     G4_DstRegRegion *postDst, G4_SrcRegRegion *currSrc, G4_Operand *msg,
-    G4_InstOpts options, G4_SendDesc *msgDesc, bool addToInstList) {
+    G4_InstOpts options, G4_SendDescRaw *msgDesc, bool addToInstList) {
 
   vISA_ASSERT(msgDesc != nullptr, "msgDesc must not be null");
   G4_InstSend *m = new (mem) G4_InstSend(*this, prd, op, execSize, postDst,
@@ -1746,7 +1746,7 @@ G4_InstSend *IR_Builder::createSendInst(
 G4_InstSend *IR_Builder::createInternalSendInst(
     G4_Predicate *prd, G4_opcode op, G4_ExecSize execSize,
     G4_DstRegRegion *postDst, G4_SrcRegRegion *currSrc, G4_Operand *msg,
-    G4_InstOpts options, G4_SendDesc *msgDesc) {
+    G4_InstOpts options, G4_SendDescRaw *msgDesc) {
   auto ii = createSendInst(prd, op, execSize, postDst, currSrc, msg, options,
                            msgDesc, false);
 
@@ -1764,7 +1764,7 @@ G4_InstSend *IR_Builder::createSplitSendInst(
     G4_SrcRegRegion *src0, // can be header
     G4_SrcRegRegion *src1,
     G4_Operand *msg, // msg descriptor: imm or vec
-    G4_InstOpts options, G4_SendDesc *msgDesc,
+    G4_InstOpts options, G4_SendDescRaw *msgDesc,
     G4_Operand *src3, // ext msg desciptor: imm or vec
     bool addToInstList) {
 
@@ -1775,8 +1775,8 @@ G4_InstSend *IR_Builder::createSplitSendInst(
                 "src1 length must be 0 if it is null");
     src1 = createNullSrc(Type_UD);
   }
-  if (!src3 && msgDesc->isRaw()) {
-    src3 = createImm(((G4_SendDescRaw *)msgDesc)->getExtendedDesc(), Type_UD);
+  if (!src3) {
+    src3 = createImm(msgDesc->getExtendedDesc(), Type_UD);
   }
 
   G4_InstSend *m = new (mem) G4_InstSend(*this, prd, op, execSize, dst, src0,
@@ -1801,7 +1801,7 @@ G4_InstSend *IR_Builder::createInternalSplitSendInst(
     G4_SrcRegRegion *src0, // can be header
     G4_SrcRegRegion *src1,
     G4_Operand *msg, // msg descriptor: imm or vec
-    G4_InstOpts options, G4_SendDesc *msgDesc,
+    G4_InstOpts options, G4_SendDescRaw *msgDesc,
     G4_Operand *src3) // ext msg desciptor: imm or vec)
 {
   auto ii = createSplitSendInst(nullptr, G4_sends, execSize, dst, src0, src1,

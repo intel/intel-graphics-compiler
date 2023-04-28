@@ -1236,29 +1236,28 @@ public:
   G4_InstSend *createSendInst(
       G4_Predicate *prd, G4_opcode op, G4_ExecSize execSize,
       G4_DstRegRegion *postDst, G4_SrcRegRegion *payload, G4_Operand *msg,
-      G4_InstOpts options, // FIXME: re-order options to follow all operands
-      G4_SendDesc *msgDesc, bool addToInstList);
+      G4_InstOpts options,
+      G4_SendDescRaw *msgDesc, bool addToInstList);
 
 
   G4_InstSend *createInternalSendInst(
       G4_Predicate *prd, G4_opcode op, G4_ExecSize execSize,
       G4_DstRegRegion *postDst, G4_SrcRegRegion *payload, G4_Operand *msg,
-      G4_InstOpts options, // FIXME: re-order options to follow all operands
-      G4_SendDesc *msgDescs);
+      G4_InstOpts options,
+      G4_SendDescRaw *msgDescs);
 
   G4_InstSend *createSplitSendInst(G4_Predicate *prd, G4_opcode op,
                                    G4_ExecSize execSize, G4_DstRegRegion *dst,
                                    G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
                                    G4_Operand *msg, G4_InstOpts options,
-                                   G4_SendDesc *msgDesc, G4_Operand *src3,
+                                   G4_SendDescRaw *msgDesc, G4_Operand *src3,
                                    bool addToInstList);
 
   G4_InstSend *
   createInternalSplitSendInst(G4_ExecSize execSize, G4_DstRegRegion *dst,
                               G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
-                              // TODO: reorder parameters to put options last
                               G4_Operand *msg, G4_InstOpts options,
-                              G4_SendDesc *msgDesc, G4_Operand *src3);
+                              G4_SendDescRaw *msgDesc, G4_Operand *src3);
 
   G4_INST *createMathInst(G4_Predicate *prd, G4_Sat sat, G4_ExecSize execSize,
                           G4_DstRegRegion *dst, G4_Operand *src0,

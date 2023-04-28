@@ -7271,7 +7271,7 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
     auto desc = nonConstBuilder->duplicateOperand(getSrc(2));
     auto extDesc = nonConstBuilder->duplicateOperand(getSrc(3));
     newInst = nonConstBuilder->createInternalSplitSendInst(
-        getExecSize(), dst, src0, src1, desc, getOption(), getMsgDesc(),
+        getExecSize(), dst, src0, src1, desc, getOption(), getMsgDescRaw(),
         extDesc);
     if (prd) {
       newInst->setPredicate(prd);
@@ -7280,7 +7280,7 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
     auto desc = nonConstBuilder->duplicateOperand(getSrc(1));
     // desc -> src1, no extDesc (must be imm and stored in SendMsgDesc)
     newInst = nonConstBuilder->createInternalSendInst(
-        prd, op, getExecSize(), dst, src0, desc, getOption(), getMsgDesc());
+        prd, op, getExecSize(), dst, src0, desc, getOption(), getMsgDescRaw());
   }
 
   return newInst;
