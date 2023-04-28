@@ -32,9 +32,9 @@ namespace IGCLLVM {
     inline unsigned getAlignmentValue(unsigned Val) { return Val; }
     inline unsigned getAlign(uint64_t Val) { return (unsigned)Val; }
 #else
-    inline alignment_t getAlignmentValue(llvm::Align A) { return A.value(); }
-    inline alignment_t getAlignmentValue(llvm::MaybeAlign A) { return A ? A->value() : 0; }
-    inline alignment_t getAlignmentValue(uint64_t Val) { return Val; }
+    inline alignment_t getAlignmentValue(llvm::Align A) { return (alignment_t)A.value(); }
+    inline alignment_t getAlignmentValue(llvm::MaybeAlign A) { return A ? (alignment_t)A->value() : 0; }
+    inline alignment_t getAlignmentValue(uint64_t Val) { return (alignment_t)Val; }
     inline llvm::Align getAlign(uint64_t Val) { return llvm::Align{Val}; }
 #endif
 
