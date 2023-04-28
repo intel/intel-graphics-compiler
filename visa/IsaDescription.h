@@ -254,6 +254,11 @@ struct LscOpInfo {
   bool isAtomic() const { return kind == OpKind::ATOMIC; }
   bool isOther() const { return kind == OpKind::OTHER; }
 
+  bool is(LSC_OP o0) const { return o0 == op; }
+  bool isOneOf(LSC_OP o0, LSC_OP o1) const {
+    return o0 == op || o1 == op;
+  }
+
   // other queries
   bool hasChMask() const {
       return (op == LSC_LOAD_QUAD || op == LSC_STORE_QUAD

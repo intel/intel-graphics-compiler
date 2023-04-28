@@ -349,7 +349,7 @@ int IR_Builder::translateLscUntypedInst(
       // lsc_atomic_icas/lsc_atomic_fcas: coalesce parmeters into one
       check(!isNullOperand(src1Data) && !isNullOperand(src2Data),
             "atmoic ternary must have non-null src1 and src2");
-      src1Data = coalescePayload(BYTES_PER_REG, BYTES_PER_REG,
+      src1Data = coalescePayload(pred, BYTES_PER_REG, BYTES_PER_REG,
                                  std::max(minExecSize, execSize), execSize,
                                  {src1Data, src2Data}, execCtrl);
     }
@@ -562,6 +562,54 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   return status;
 }
 
+// return (dst,src1)
+static std::pair<uint32_t,uint32_t> computeLscTypedDataRegs(
+  IR_Builder &irb,
+  const LscOpInfo &opInfo,
+  G4_ExecSize execSize,
+  int dataSizeBits,
+  bool dstIsNull,
+  int chMask)
+{
+  int numChannels = 0;
+  if (opInfo.hasChMask()) {
+    for (auto LSC_CH : {LSC_DATA_CHMASK_X, LSC_DATA_CHMASK_Y,
+                        LSC_DATA_CHMASK_Z, LSC_DATA_CHMASK_W})
+    {
+      if (chMask & LSC_CH)
+        numChannels++;
+    }
+  } else {
+    // atomics are single channel
+    numChannels = 1;
+  }
+
+  const int BYTES_PER_GRF = irb.getGRFSize();
+  const int regsPerDataChannel =
+      std::max<int>(1, dataSizeBits * (int)execSize / 8 / BYTES_PER_GRF);
+  const uint32_t dataRegs = regsPerDataChannel * numChannels;
+
+  uint32_t dstRegs = 0;
+  if (dstIsNull) {
+    dstRegs = 0; // atomic with no return or load to %null
+  } else if (opInfo.isOneOf(LSC_LOAD_STATUS, LSC_READ_STATE_INFO)) {
+    dstRegs = 1; // special cases that load an opaque register
+  } else if (opInfo.isLoad() || opInfo.isAtomic()) {
+    dstRegs = dataRegs; // normal things that load
+  } else { // store
+    dstRegs = 0;
+  }
+  uint32_t src1Len = 0;
+  if (opInfo.isStore()) {
+    src1Len = dataRegs;
+  } else if (opInfo.isAtomic()) {
+    src1Len = dataRegs * opInfo.extraOperands;
+  } else { // load
+    src1Len= 0;
+  }
+  return std::make_pair(dstRegs, src1Len);
+}
+
 int IR_Builder::translateLscTypedInst(
     LSC_OP op, G4_Predicate *pred, VISA_Exec_Size execSizeEnum,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
@@ -590,16 +638,15 @@ int IR_Builder::translateLscTypedInst(
   G4_SrcRegRegion *srcAddrs[2]{};
   G4_SrcRegRegion *srcData = nullptr;
   unsigned srcAddrRegs[2]{};
-  unsigned srcDataRegs = 0;
-  uint32_t dstDataRegs = 0;
+
 
   auto checkPayloadSize = [&](const char *which, const G4_Declare *decl,
                               int expectDeclRegs) {
     int dclRegs = std::max<int>(1, decl->getTotalElems() * decl->getElemSize() /
                                        BYTES_PER_GRF);
-    // if (expectDeclRegs != dclRegs)
-    // TODO: need to fix issue with IGC codegen using offsets
-    // in raw vars
+    // (expectDeclRegs != dclRegs)
+    // cannot expect equality; the declaration could be a raw variable
+    // with consisting of an offset into a bigger block
     if (expectDeclRegs > dclRegs) {
       std::stringstream ss;
       ss << which << " .decl size ";
@@ -628,7 +675,7 @@ int IR_Builder::translateLscTypedInst(
   checkAddrPayloadSize("src0AddrVs", coord1s);
   checkAddrPayloadSize("src0AddrRs", coord2s);
 
-  if (opInfo.op == LSC_READ_STATE_INFO) {
+  if (opInfo.is(LSC_READ_STATE_INFO)) {
     // like fences, send requires *something* (at least one reg) to be
     // sent out; we pick the initial r0 value since it's known to
     // be floating around somewhere until EOT
@@ -652,84 +699,34 @@ int IR_Builder::translateLscTypedInst(
     vISA_ASSERT_INPUT(srcAddrRegs[0] < 32, "too many address registers");
 
     // each channel consumes at least one register (top padding may be 0)
-    srcData = coalescePayload(BYTES_PER_GRF, BYTES_PER_GRF,
+    srcData = coalescePayload(pred, BYTES_PER_GRF, BYTES_PER_GRF,
                               std::max(getNativeExecSize(), execSize), execSize,
                               {src1Data, src2Data}, emask);
   }
   surface = lscTryPromoteSurfaceImmToExDesc(surface, addrModel, exDesc);
 
-  int numChannels = 0;
   if (opInfo.hasChMask()) {
-    if (shape.chmask & LSC_DATA_CHMASK_X) {
-      desc |= 1 << 12;
-      numChannels++;
-    }
-    if (shape.chmask & LSC_DATA_CHMASK_Y) {
-      desc |= 1 << 13;
-      numChannels++;
-    }
-    if (shape.chmask & LSC_DATA_CHMASK_Z) {
-      desc |= 1 << 14;
-      numChannels++;
-    }
-    if (shape.chmask & LSC_DATA_CHMASK_W) {
-      desc |= 1 << 15;
-      numChannels++;
-    }
-    vISA_ASSERT_INPUT(numChannels != 0, "empty channel mask");
-  } else {
-    // atomics are single channel
-    numChannels = 1;
-  }
+    desc |= (shape.chmask & 0xF) << 12;
+    vISA_ASSERT_INPUT(shape.chmask & 0xF, "empty channel mask");
+  } // tgm atomics are single channel
+
   int addrSizeBits = lscEncodeAddrSize(addrSize, desc, status);
   int dataSizeBits = lscEncodeDataSize(shape.size, desc, status);
   (void)addrSizeBits;
-  (void)dataSizeBits;
 
   lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
   lscEncodeAddrType(addrModel, desc, status);
 
-  if (opInfo.op != LSC_READ_STATE_INFO) {
-    const int regsPerDataChannel =
-        std::max<int>(1, dataSizeBits * (int)execSize / 8 / BYTES_PER_GRF);
-    auto checkDataDeclSize = [&](const char *which, const G4_Operand *data) {
-      if (data == nullptr || data->isNullReg()) {
-        return;
-      }
-      const G4_Declare *decl = getDeclare(data);
-      checkPayloadSize(which, decl, regsPerDataChannel * numChannels);
-    };
-    checkDataDeclSize("dstData", dstData);
-    checkDataDeclSize("src1Data", src1Data);
-    checkDataDeclSize("src2Data", src2Data);
-
-    srcDataRegs = 0;
-    if (!srcData->isNullReg()) {
-      const G4_Declare *srcDcl = getDeclare(srcData);
-      srcDataRegs =
-          srcDcl->getTotalElems() * srcDcl->getElemSize() / BYTES_PER_GRF;
-    }
-    dstDataRegs =
-        opInfo.isLoad() || (opInfo.isAtomic() && !dstData->isNullReg())
-            ? regsPerDataChannel * numChannels
-            : 0;
-  }
-  int src1Len = (int)srcDataRegs; // lsc_load_quad.tgm / lsc_atomic_icas.tgm
-
-  if (op == LSC_OP::LSC_LOAD_STATUS || op == LSC_OP::LSC_READ_STATE_INFO) {
-    dstDataRegs = 1; // just a single DW of bits (padded to 1 reg)
-  }
-  // vISA_ASSERT_INPUT(dataSrcsRegs == dataRegs, "mismatch in .decls for "
-  //     "number of data registers in actual message");
-  vISA_ASSERT_INPUT(srcDataRegs < 32, "too many data registers");
+  auto [dstRegs,src1Len] =
+    computeLscTypedDataRegs(
+      *this, opInfo, execSize, dataSizeBits,
+      dstData == nullptr || dstData->isNullReg(), shape.chmask);
 
   desc |= (srcAddrRegs[0] & 0xF) << 25; // mlen == Desc[28:25]
-  if (opInfo.isLoad() || (opInfo.isAtomic() && !dstData->isNullReg())) {
-    desc |= (dstDataRegs & 0x1F) << 20; // rlen == Desc[24:20]
-  }
+  desc |= (dstRegs & 0x1F) << 20; // rlen == Desc[24:20]
 
   G4_SendDescRaw *msgDesc =
-      createLscDesc(SFID::TGM, desc, exDesc, src1Len,
+      createLscDesc(SFID::TGM, desc, exDesc, (int)src1Len,
                     getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
                     surface, LdStAttrs::NONE);
   G4_InstSend *sendInst =

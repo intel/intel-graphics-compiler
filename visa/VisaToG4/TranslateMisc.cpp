@@ -290,6 +290,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
 }
 
 G4_SrcRegRegion *IR_Builder::coalescePayload(
+    G4_Predicate *pred,
     unsigned sourceAlignment, unsigned payloadAlignment,
     uint32_t payloadWidth, // number of elements for one payload in the send.
     uint32_t srcSize,      // number of elements provided by src
@@ -371,7 +372,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
           G4_SrcRegRegion *srcRegion = createSrc(src->getTopDcl()->getRegVar(),
                                                  src->getRegOff() + rowOffset,
                                                  0, getRegionStride1(), type);
-          createMov(MAX_SIMD, dstRegion, srcRegion, instOpt, true);
+          createMov(pred, MAX_SIMD, dstRegion, srcRegion, instOpt, true);
           moveMask = Get_Next_EMask(moveMask, MAX_SIMD);
         }
       };
