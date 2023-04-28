@@ -34,7 +34,7 @@ See LICENSE.TXT for details.
 
 #include "DIE.hpp"
 #include "DwarfDebug.hpp"
-
+#include "Utils.hpp"
 #include "EmitterOpts.hpp"
 
 namespace llvm {
@@ -111,7 +111,9 @@ public:
 
   // Accessors.
   unsigned getUniqueID() const { return UniqueID; }
-  uint16_t getLanguage() const { return (uint16_t)Node->getSourceLanguage(); }
+  uint16_t getLanguage() const {
+    return getSourceLanguage(Node, DD->GetVISAModule()->GetModule());
+  }
   llvm::DICompileUnit *getNode() const { return Node; }
   DIE *getCUDie() const { return CUDie; }
 
