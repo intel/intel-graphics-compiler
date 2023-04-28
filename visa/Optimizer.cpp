@@ -2653,9 +2653,14 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
       return false;
     }
 
+    auto defSrc0 = defInst->getSrc(0);
     if (inst->getDst()->getType() == Type_BF &&
-        defInst->getSrc(0)->getType() != Type_F) {
+        (defSrc0->getType() != Type_F ||
+         (defInst->isMov() &&
+          defSrc0->isSrcRegRegion() &&
+          defSrc0->asSrcRegRegion()->hasModifier()))) {
       // we currently don't handle conversion to BF from other type than float
+      // As F->BF does not support srcMod, cannot hoist if definst has mod.
       return false;
     }
 
