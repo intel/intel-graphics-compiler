@@ -2986,8 +2986,10 @@ private:
     //   2 - SurfaceHeight
     //   3 - SurfacePitch
     //   4 - SurfaceOffsetX
-    //   5 - SurfaceOffsetY
-    //   6 - DataOperand
+    //   5 - x immediate offset
+    //   6 - SurfaceOffsetY
+    //   7 - y immediate offset
+    //   8 - DataOperand
     auto fmtAddrOperand = [&]() {
       ss << "flat";
       ss << "[";
@@ -3000,8 +3002,20 @@ private:
       formatVectorOperand(currOpIx + 4);
       ss << ", ";
       formatVectorOperand(currOpIx + 5);
+      if ((int)getPrimitive<int16_t>(currOpIx + 6) != 0) {
+        if ((int)getPrimitive<int16_t>(currOpIx+6) > 0) {
+          ss << "+";
+        }
+        ss << (int)getPrimitive<int16_t>(currOpIx+6);
+      }
       ss << ", ";
-      formatVectorOperand(currOpIx + 6);
+      formatVectorOperand(currOpIx + 7);
+      if ((int)getPrimitive<int16_t>(currOpIx+8) != 0) {
+        if ((int)getPrimitive<int16_t>(currOpIx+8) > 0) {
+          ss << "+";
+        }
+        ss << (int)getPrimitive<int16_t>(currOpIx+8);
+      }
       ss << "]";
     };
 
@@ -3012,7 +3026,7 @@ private:
     } else {
       fmtAddrOperand();
       ss << "  ";
-      formatDataOperand(currOpIx + 7);
+      formatDataOperand(currOpIx + 9);
     }
   } // formatUntypedBlock2D
 

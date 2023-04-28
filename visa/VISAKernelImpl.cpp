@@ -7789,7 +7789,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
     LSC_DATA_SHAPE_BLOCK2D dataShape2D, VISA_RawOpnd *dstData,
     VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
-    VISA_RawOpnd *src1Data) {
+    int xImmOffset, int yImmOffset, VISA_RawOpnd *src1Data) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   vISA_ASSERT_INPUT(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
@@ -7837,9 +7837,19 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
              CreateOtherOpnd(dataShape2D.vnni ? 1 : 0, ISA_TYPE_UB));
     //
     ADD_OPND(numOpnds, opnds, dstData);
-    for (size_t i = 0; i < LSC_BLOCK2D_ADDR_PARAMS; i++) {
+    size_t i = 0;
+    for (; i < 4; i++) {
       ADD_OPND(numOpnds, opnds, src0Addrs[i]);
     }
+
+    // Block x and x offset
+    ADD_OPND(numOpnds, opnds, src0Addrs[4]);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(xImmOffset, ISA_TYPE_D));
+
+    // Block Y and y offset
+    ADD_OPND(numOpnds, opnds, src0Addrs[5]);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(yImmOffset, ISA_TYPE_D));
+
     ADD_OPND(numOpnds, opnds, src1Data);
 
     CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
@@ -7853,7 +7863,6 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
                                 opnds, numOpnds, instDesc, verifier);
     addInstructionToEnd(inst);
   }
-
   return status;
 }
 

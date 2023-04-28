@@ -3939,7 +3939,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
         CISA_CALL(Kernel->AppendVISALscUntypedBlock2DInst(
             SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, DataShape,
-            DstData, Src0Addrs, Src1Data));
+            DstData, Src0Addrs, 0, 0, Src1Data));
   };
 
   auto CreateLscUntypedBlock2DStateless =
@@ -3962,7 +3962,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
         CISA_CALL(Kernel->AppendVISALscUntypedBlock2DInst(
             SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, DataShape,
-            DstData, Src0Addrs, Src1Data));
+            DstData, Src0Addrs, 0, 0, Src1Data));
   };
 
   auto CreateLscFence =

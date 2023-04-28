@@ -2289,7 +2289,7 @@ static void readInstructionLscUntypedBlock2D(LSC_OP subOpcode,
   //
   container.kernelBuilder->AppendVISALscUntypedBlock2DInst(
       subOpcode, sfid, pred, execSize, execMask, caching, dataShape2D, dstData,
-      src0Addrs, src1Data);
+      src0Addrs, 0, 0, src1Data);
 }
 
 static void readInstructionLscTyped(LSC_OP subOpcode, unsigned &bytePos,

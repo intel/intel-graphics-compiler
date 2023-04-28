@@ -474,7 +474,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     G4_DstRegRegion *dstRead, // dst can be NULL reg (e.g store)
     G4_Operand *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // always the addresses
     G4_SrcRegRegion *src1Data                       // store data
-) {
+){
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   int status = VISA_SUCCESS;
@@ -508,8 +508,6 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   default:
     vISA_ASSERT_UNREACHABLE("invalid SFID for untyped block2d LSC message");
   }
-
-
   // send descriptor
   uint32_t desc = 0;
   uint32_t exDesc = 0;

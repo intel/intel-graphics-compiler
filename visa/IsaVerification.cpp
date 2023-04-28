@@ -4050,9 +4050,9 @@ struct LscInstVerifier {
     verifyVectorOperandNotNull("SurfaceHeight", currOpIx + 3);
     verifyVectorOperandNotNull("SurfacePitch", currOpIx + 4);
     verifyVectorOperandNotNull("OffsetX", currOpIx + 5);
-    verifyVectorOperandNotNull("OffsetY", currOpIx + 6);
+    verifyVectorOperandNotNull("OffsetY", currOpIx + 7);
     //
-    verifyDataOperands(currOpIx, currOpIx + 1 + 6);
+    verifyDataOperands(currOpIx, currOpIx + 9);
   }
 
   ///////////////////////////////////////////////////////////////////////////

@@ -8639,8 +8639,9 @@ namespace IGC
             dataShape2D,
             dstVar,
             blockAddrs,
+            0,
+            0,
             srcVar));
-
     }
 
     void CEncoder::LSC_TypedReadWrite(

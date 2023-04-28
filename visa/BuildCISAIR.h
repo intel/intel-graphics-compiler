@@ -624,7 +624,7 @@ public:
       LSC_DATA_SHAPE_BLOCK2D dataShape, VISA_opnd *dstData,
       VISA_opnd
           *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // {base,surfW,surfH,surfP,x,y}
-      VISA_opnd *src1Data, int lineNum);
+      VISA_opnd *src1Data, int xOffset, int yOffset, int lineNum);
   bool CISA_create_lsc_typed_inst(
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR_TYPE addrModel,

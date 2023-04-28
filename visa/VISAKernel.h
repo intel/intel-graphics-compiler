@@ -917,8 +917,7 @@ public:
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
       LSC_DATA_SHAPE_BLOCK2D dataShape, VISA_RawOpnd *dstData,
       VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
-      VISA_RawOpnd *src1Data) override;
-
+      int xImmOffset, int yImmOffset, VISA_RawOpnd *src1Data) override;
   VISA_BUILDER_API int AppendVISALscTypedLoad(
       LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
