@@ -279,6 +279,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
 
       G4_INST *ip_inst = nullptr;
       if (ip_wa) {
+        // clang-format off
         //  Simplified example to show what it does:
         //      Given
         //          pseudo_fcall (16)    r4.0:ud
@@ -288,21 +289,17 @@ void Optimizer::finishFusedCallWA_preSWSB() {
         //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
         //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
         //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
-        //         (W) mov (1)              r3.0<1>:d  0x89abcdef:d : ip_wa
-        //         (placeholder) (W) add (1)              r2.0<1>:d
-        //         -r3.0<0;1,0>:d  r3.2<0;1,0>:d       : small_start (W) add (1)
-        //         r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d        : small_patch
-        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d
-        //         r4.0<0;1,0>:d       : big_start (W) add (1) r2.0<1>:d
-        //         r2.0<0;1,0>:d  0x33333333:d         : big_patch if (BigEU)
-        //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f //
-        //             $53:&87:
-        //                 pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud :
-        //                 big_call
+        //         (W) mov (1)              r3.0<1>:d  0x89abcdef:d                         : ip_wa (placeholder)
+        //         (W) add (1)              r2.0<1>:d -r3.0<0;1,0>:d  r3.2<0;1,0>:d         : small_start
+        //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d         : small_patch
+        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d r4.0<0;1,0>:d         : big_start
+        //         (W) add (1)              r2.0<1>:d r2.0<0;1,0>:d  0x33333333:d           : big_patch
+        //         if (BigEU)
+        //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f
+        //                 pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud               : big_call
         //         else
         //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
-        //                 pseudo_fcall (16)    r125.0<1>:ud  r125.0<0;1,0>:ud
-        //                 : small_call
+        //                 pseudo_fcall (16)    r125.0<1>:ud  r125.0<0;1,0>:ud              : small_call
         //
         //
         //     After finishFusedCallWA()
@@ -313,24 +310,21 @@ void Optimizer::finishFusedCallWA_preSWSB() {
         //
         //         (W) call (1)             r3.0<1>:d  _label_ip_wa
         //      _label_ip_wa:
-        //         (W) add (1|M16)          r3.0<1>:d  r3.0<0;1,0>:d  0x20:d
-        //         {NoCompact}
-        //          (W) return (1)          r3.0<0;1,0>:d {NoCompact}
+        //         (W) add (1|M16)          r3.0<1>:d  r3.0<0;1,0>:d  0x20:d {NoCompact}
+        //         (W) return (1)          r3.0<0;1,0>:d {NoCompact}
         //
-        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d
-        //         r3.2<0;1,0>:d        : IP (W) add (1)              r70.0<1>:d
-        //         r2.0<0;1,0>:d  144 (W) add (1)              r2.0<1>:d
-        //         -r3.0<0;1,0>:d  r4.0<0;1,0>:d (W) add (1) r2.0<1>:d
-        //         r2.0<0;1,0>:d   96 if (BigEU)
-        //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f //
-        //             $53:&87:
-        //                pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud :
-        //                IP+96
+        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d r3.2<0;1,0>:d         : IP
+        //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  144
+        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d
+        //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d   96
+        //         if (BigEU)
+        //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f
+        //                pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud                : IP+96
         //         else
         //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
-        //                pseudo_fcall (16)    r125.0<1>:ud  r70.0<0;1,0>:f :
-        //                IP+144
+        //                pseudo_fcall (16)    r125.0<1>:ud  r70.0<0;1,0>:f                 : IP+144
         //
+        // clang-format on
         BB->resetLocalIds();
         G4_INST *sI = callWAInfo.Small_start;
         G4_INST *bI = callWAInfo.Big_start;
@@ -7706,23 +7700,22 @@ void Optimizer::loadThreadPayload() {
 
   // preparation of thread payload size and start offsets
 
+  // clang-format off
   //  Payload in Memory                                Payload in GRF (T0)
   //  (Prepared by Runtime)
   //  (Does not contain inlineData)
-  // -----------------------                       R1 -----------------------
-  // <-- perThreadLoadStartGRF |  cross thread data  |
-  // \                        |  per thread data T0 | |                     |
-  // numCrossThreadDW     R4 ----------------------- |                     | /
-  // |  inline data        |
+  // -----------------------                       R1 ----------------------- <-- perThreadLoadStartGRF
+  // |  cross thread data  | \                        |  per thread data T0 |
+  // |                     |  numCrossThreadDW     R4 -----------------------
+  // |                     | /                        |  inline data        |
   // ----------------------- <-- localIDsOffset       |  (if enabled)       |
-  // |  per thread data T0 |                       R5 -----------------------
-  // <-- crossThreadLoadStart, crossThreadLoadStartGRF
+  // |  per thread data T0 |                       R5 ----------------------- <-- crossThreadLoadStart, crossThreadLoadStartGRF
   // -----------------------                          |  cross thread data  | \
-        // |  per thread data T1 |                          |                     |
-  // numCrossThreadDW
+  // |  per thread data T1 |                          |                     |  numCrossThreadDW
   // -----------------------                          |                     | /
   // |        ...          |                          -----------------------
   // -----------------------
+  // clang-format on
 
   const uint32_t perThreadLoadStartGRF =
       kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
@@ -10049,28 +10042,21 @@ static bool preprocessMadInBlock(IR_Builder &builder, G4_BB *bb) {
   return hasMad;
 }
 
+// clang-format off
 //
 // mul (16) V48(0,0)<1>:d r0.1<0;1,0>:w V42_in(7,2)<16;16,1>:ub {Align1, H1}
-// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r1.0<0;1,0>:w
-// V42_in(7,1)<16;16,1>:ub V48(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.2<0;1,0>:w V42_in(7,3)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.3<0;1,0>:w V42_in(8,1)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.4<0;1,0>:w V42_in(8,2)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.5<0;1,0>:w V42_in(8,3)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.6<0;1,0>:w V42_in(9,1)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.7<0;1,0>:w V42_in(9,2)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} psuedo_mad (16)
-// V51_tempConvolve(0,0)<1>:d r0.8<0;1,0>:w V42_in(9,3)<16;16,1>:ub
-// V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1} add (16)
-// V51_tempConvolve(0,0)<1>:d V51_tempConvolve(0,0)<16;16,1>:d 0x4000:w {Align1,
-// H1} shr.sat (16) V52(0,0)<1>:ub V51_tempConvolve(0,0)<16;16,1>:d 0xf:w
-// {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r1.0<0;1,0>:w V42_in(7,1)<16;16,1>:ub V48(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.2<0;1,0>:w V42_in(7,3)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.3<0;1,0>:w V42_in(8,1)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.4<0;1,0>:w V42_in(8,2)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.5<0;1,0>:w V42_in(8,3)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.6<0;1,0>:w V42_in(9,1)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.7<0;1,0>:w V42_in(9,2)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// psuedo_mad (16) V51_tempConvolve(0,0)<1>:d r0.8<0;1,0>:w V42_in(9,3)<16;16,1>:ub V51_tempConvolve(0,0)<16;16,1>:d {Align1, H1}
+// add (16) V51_tempConvolve(0,0)<1>:d V51_tempConvolve(0,0)<16;16,1>:d 0x4000:w {Align1, H1}
+// shr.sat (16) V52(0,0)<1>:ub V51_tempConvolve(0,0)<16;16,1>:d 0xf:w {Align1, H1}
 //
+// clang-format on
 void Optimizer::lowerMadSequence() {
 
   // Only enable CM for now.
@@ -10776,26 +10762,23 @@ void Optimizer::changeMoveType() {
     /*
     TODO: currently we do this
     (W)      mov (1|M0)               r66.0<1>:df   0x37F0000000000000:df
-    //$176:&231:%3784 (W)      mov (1|M0)               r66.1<1>:df
-    0x47F0000000000000:df            //$175:&230:%3768 (W)      mov (1|M0)
-    r66.2<1>:df   0x7FF0000000000000:df            //$178:&232:%3800
+    (W)      mov (1|M0)               r66.1<1>:df   0x47F0000000000000:df
+    (W)      mov (1|M0)               r66.2<1>:df   0x7FF0000000000000:df
     ->
     (W)      mov (1|M0)               r66.1<1>:ud   0x37F00000:ud
-    //$176:&251:%4104 (W)      mov (1|M0)               r66.0<1>:ud   0x0:ud
-    //$176:&252:%4120 (W)      mov (1|M0)               r66.3<1>:ud
-    0x47F00000:ud                    //$175:&249:%4072 (W)      mov (1|M0)
-    r66.2<1>:ud   0x0:ud                           //$175:&250:%4088 (W) mov
-    (1|M0)               r66.5<1>:ud   0x7FF00000:ud //$178:&253:%4136 (W) mov
-    (1|M0)               r66.4<1>:ud   0x0:ud //$178:&254:%4152
+    (W)      mov (1|M0)               r66.0<1>:ud   0x0:ud
+    (W)      mov (1|M0)               r66.3<1>:ud   0x47F00000:ud
+    (W)      mov (1|M0)               r66.2<1>:ud   0x0:ud
+    (W)      mov (1|M0)               r66.5<1>:ud   0x7FF00000:ud
+    (W)      mov (1|M0)               r66.4<1>:ud   0x0:ud
 
     but we could do this ?
     ->
     (W)      mov (1|M0)               r66.1<1>:ud   0x37F00000:ud
-    //$176:&251:%4104 (W)      mov (1|M0)               r66.3<1>:ud
-    0x47F00000:ud                    //$175:&249:%4072 (W)      mov (1|M0)
-    r66.5<1>:ud   0x7FF00000:ud                    //$178:&253:%4136 (W) mov
-    (2|M0)               r66.0<2>:ud   0x0:ud //$176:&252:%4120 (W)      mov
-    (1|M0)               r66.4<1>:ud   0x0:ud //$176:&252:%4120
+    (W)      mov (1|M0)               r66.3<1>:ud   0x47F00000:ud
+    (W)      mov (1|M0)               r66.5<1>:ud   0x7FF00000:ud
+    (W)      mov (2|M0)               r66.0<2>:ud   0x0:ud
+    (W)      mov (1|M0)               r66.4<1>:ud   0x0:ud
     */
   };
 
@@ -11277,6 +11260,7 @@ void Optimizer::clearSendDependencies() {
 // the physical registers have valid values that will be used later, this NoMask
 // instruction will result in incorrect values in those registers.  Here is an
 // example:
+// clang-format off
 //                                                       fusedMask
 //        (0)  (f0.0.any16h) goto(16)  BB1                  [11]
 //  BB0                                                     [01]
@@ -11286,14 +11270,15 @@ void Optimizer::clearSendDependencies() {
 //   BB1:                                                   [01, should be 00]
 //        (3)      join (16)                                [11, should be 10]
 //        (4)  (W) mov (1|M0)  f0.1<1>:uw   0x0:uw
-//        (5)      cmp (16|M0) (eq)f0.1  null<1>:uw  r0.0<0;1,0>:uw
-//        r0.0<0;1,0>:uw (6)  (W&f0.1.any16h) mov (1|M0)  f0.1<1>:uw   0x0:uw
+//        (5)      cmp (16|M0) (eq)f0.1  null<1>:uw  r0.0<0;1,0>:uw r0.0<0;1,0>:uw
+//        (6)  (W&f0.1.any16h) mov (1|M0)  f0.1<1>:uw   0x0:uw
 //   BB2:                                                   [11, should be 10]
 //        (7)  or (8|M0) (ne)f0.1  null<1>:uw r1.4<8;8,1>:uw  r3.0<8;8,1>:uw
 //
 //   BB3:
 //        (8)         join (16)                             [11, correct]
 //        (9)  (f0.1) sel (8|M0)  r1.4<1>:uw   r1.3<0;1,0>:uw  0x0:uw
+// clang-format on
 //
 //  where (4) & (5) are WA instructions. (6) has WA applied. f0.1 at (9) takes
 //  value either defined at (1) or (7).  Suppose BigEU takes BB0 and SmallEU
@@ -12036,6 +12021,7 @@ void Optimizer::applyNoMaskWA() {
     aBB->insertBefore(nextII, I0);
   };
 
+  // clang-format off
   // doFlagModifierInstWA : WA for an inst with flagModifier but no predicate.
   //
   // flagVar : WA flag for this BB.
@@ -12053,20 +12039,18 @@ void Optimizer::applyNoMaskWA() {
   //          (I's entire condMod is defined by I.)
   //           I0  (W)             mov (1|M0)  WATemp  P
   //           I1: (W)             mov (1|M0)  P   flagVar
-  //            I: (W&P)           cmp (16|M0) (ne)P .....          // add
-  //            predicate
+  //            I: (W&P)           cmp (16|M0) (ne)P .....          // add predicate
   //           I2: (W&~flagVar)    mov (1|M0)  P  WATemp
   //      (3) otherwise(less common)
   //               Note that the sequence can only modify P that this cmp will
   //               change.
   //           I0: (W)             mov (1|M0)  WATemp  P
-  //           I1: (W)             or  (1|M0)  P  P   <I's execMask>  // enable
-  //           all I2: (W&~flagVar)    and (1|M0)  P  P   ~<I's execMask> //
-  //           disable all
-  //            I: (W&P)           cmp (16|M0) (ne)P .....            // add
-  //            pred
+  //           I1: (W)             or  (1|M0)  P  P   <I's execMask>  // enable all
+  //           I2: (W&~flagVar)    and (1|M0)  P  P   ~<I's execMask> // disable all
+  //            I: (W&P)           cmp (16|M0) (ne)P .....            // add pred
   //           I3: (W&~flagVar)    mov (1|M0)  P  WATemp
   //
+  // clang-format on
   auto doFlagModifierInstWA = [&](G4_BB *aBB, INST_LIST_ITER &aII,
                                   G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
@@ -12172,6 +12156,7 @@ void Optimizer::applyNoMaskWA() {
     I3->setPredicate(I3_f);
   };
 
+  // clang-format off
   //  doPredicateAndFlagModifierInstWA : WA for inst with both predicate and
   //  condMod
   //
@@ -12184,18 +12169,16 @@ void Optimizer::applyNoMaskWA() {
   //          I0:   (W)           mov (1|M0) WATemp  P
   //      Three cases
   //      case 1:  'I' defines entire P
-  //          I1:   (W&-flagVar)  mov (1|M0) P  0 (for +p)| ExecMask (for -P) //
-  //          disable all lanes
+  //          I1:   (W&-flagVar)  mov (1|M0) P  0 (for +p)| ExecMask (for -P) // disable all lanes
   //      case 2: +P
-  //          I1    (W&-flagVar)  and (1|M0) P   P  ~execMask   // disable all
-  //          lanes
+  //          I1    (W&-flagVar)  and (1|M0) P   P  ~execMask   // disable all lanes
   //      case 3: -P
-  //          I1    (W&-flagVar)   or (1|M0) P   P  execMask    // disable all
-  //          lanes
+  //          I1    (W&-flagVar)   or (1|M0) P   P  execMask    // disable all lanes
   //
   //       I:  (W&[-]P)         and (16|M0) (ne)P  ....    // unchanged
   //       I2: (W&-flagVar)     mov (1|M0)  P   WATemp
   //
+  // clang-format on
   auto doPredicateAndFlagModifierInstWA = [&](G4_BB *aBB, INST_LIST_ITER &aII,
                                               G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
@@ -12427,14 +12410,15 @@ void Optimizer::applyNoMaskWA() {
         G4_RegVar *WAFlagVar = getFlagDcl(WAFreg, WAFsreg, WATy)->getRegVar();
         WAFlagVar->setPhyReg(builder.phyregpool.getFlagAreg(WAFreg), WAFsreg);
 
+        // clang-format off
         // Assume that simdsize = 32 and currII is
         //    (W&f0.1)  or (1|M0) f1.0:uw  f1.1 0x101:uw
         // WA codes are:
         //    1) (W) mov (1|M0)  saveVar:ud   f1.0:ud
         //    2) <init waflag f1.0>
-        //    3) (W&f0.1   or (1|M0) saveVar:uw  saveVar.1:uw  0x101:uw  [WA
-        //    will be applied] 4) (W) mov (1|M0)  f1.0:ud  saveVar:ud [needed
-        //    for dst change]
+        //    3) (W&f0.1)   or (1|M0) saveVar:uw  saveVar.1:uw  0x101:uw  [WA will be applied]
+        //    4) (W) mov (1|M0)  f1.0:ud  saveVar:ud                      [needed for dst change]
+        // clang-format on
 
         // 1) save the original flag for WAFlag.
         (void)createSIMD1Mov(BB, currII, SaveVar, 0, tVar, 0, Type_UD);
@@ -12548,6 +12532,7 @@ void Optimizer::applyNoMaskWA() {
 //  thread 0 via cr0.2. In doing so, thread 1's callee can be invoked. The
 //  details are as follows:
 //
+// clang-format off
 //    before:
 //      BB:
 //              pseudo_fcall (16)     V44(0,0)<0;1,0>:ud
@@ -12558,15 +12543,14 @@ void Optimizer::applyNoMaskWA() {
 //    after WA                                                              //
 //    Var names
 //      BB:
-//         (W)     mov (1 |M0)  tmp<1>:ud    sr0.0<0;1,0>:ud                //
-//         I0 (W)     and (16|M0)  (eq)F  null<1>:uw  tmp<0;1,0>:uw   0x80:uw //
-//         I1 (W&~F)  mov (1 |M0)  cr0.2<1>:ud  Target<0;1,0>:ud // I2 (W) mov
-//         (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud          // I3 (W) add (1
-//         |M0)  I4_IP:d   -ip:d  smallEUTarget:d            // I4_ip_start (W)
-//         add (1 |M0)  I4Target:d   I4_IP:d  0x33333333:d          //
-//         I4_patch_add (W)     add (1 |M0)  I5_IP:d   -ip:d  Target:d //
-//         I5_ip_start (W)     add (1 |M0)  I5Target:d   I5_IP:d  0x33333333:d
-//         // I5_patch_add
+//         (W)     mov (1 |M0)  tmp<1>:ud    sr0.0<0;1,0>:ud                // I0
+//         (W)     and (16|M0)  (eq)F  null<1>:uw  tmp<0;1,0>:uw   0x80:uw  // I1
+//         (W&~F)  mov (1 |M0)  cr0.2<1>:ud  Target<0;1,0>:ud               // I2
+//         (W)     mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud          // I3
+//         (W)     add (1 |M0)  I4_IP:d   -ip:d  smallEUTarget:d            // I4_ip_start
+//         (W)     add (1 |M0)  I4Target:d   I4_IP:d  0x33333333:d          // I4_patch_add
+//         (W)     add (1 |M0)  I5_IP:d   -ip:d  Target:d                   // I5_ip_start
+//         (W)     add (1 |M0)  I5Target:d   I5_IP:d  0x33333333:d          // I5_patch_add
 //         (~F)    goto smallB0
 //                             // [gotoSmallB0]
 //      bigB0:
@@ -12583,6 +12567,7 @@ void Optimizer::applyNoMaskWA() {
 //      nextBB:
 //            join <nextJoin or null>                                       //
 //            finalJoin
+// clang-format on
 //
 // The BBs and those insts such as I4_patch_add/I5_patch_add, etc are added into
 // m_indirectCallWAInfo so that finishFusedCallWA() can finish post-processing

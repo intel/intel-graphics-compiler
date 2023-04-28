@@ -4276,32 +4276,27 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
             if (mayExceedTwoGRF) {
               // this path may be taken if current instruction is a spill
               // intrinsic. for eg, V81 below is not spilled in 1st RA
-              // iteration: mov (16)             SP_GRF_V167_0(0,0)<1>:w
-              // V81(0,0)<1;1,0>:w // $412:&234: (W) intrinsic.spill.1 (16)
-              // Scratch[0x32]  R0_Copy0(0,0)<1;1,0>:ud
-              // SP_GRF_V167_0(0,0)<1;1,0>:w // $412: mov (16)
-              // SP_GRF_V167_1(0,0)<1>:w  V81(1,0)<1;1,0>:w // $413:&235: (W)
-              // intrinsic.spill.1 (16)  Scratch[1x32]  R0_Copy0(0,0)<1;1,0>:ud
-              // SP_GRF_V167_1(0,0)<1;1,0>:w // $413: mov (16)
-              // SP_GRF_V167_2(0,0)<1>:w  V81(2,0)<1;1,0>:w // $414:&236: (W)
-              // intrinsic.spill.1 (16)  Scratch[2x32]  R0_Copy0(0,0)<1;1,0>:ud
-              // SP_GRF_V167_2(0,0)<1;1,0>:w // $414: mov (16)
-              // SP_GRF_V167_3(0,0)<1>:w  V81(3,0)<1;1,0>:w // $415:&237: (W)
-              // intrinsic.spill.1 (16)  Scratch[3x32]  R0_Copy0(0,0)<1;1,0>:ud
-              // SP_GRF_V167_3(0,0)<1;1,0>:w // $415:
+              // iteration:
+              // clang-format off
+              // mov (16)             SP_GRF_V167_0(0,0)<1>:w   V81(0,0)<1;1,0>:w
+              // (W) intrinsic.spill.1 (16)  Scratch[0x32]  R0_Copy0(0,0)<1;1,0>:ud  SP_GRF_V167_0(0,0)<1;1,0>:w
+              // mov (16)             SP_GRF_V167_1(0,0)<1>:w  V81(1,0)<1;1,0>:w
+              // (W) intrinsic.spill.1 (16)  Scratch[1x32]  R0_Copy0(0,0)<1;1,0>:ud  SP_GRF_V167_1(0,0)<1;1,0>:w
+              // mov (16)             SP_GRF_V167_2(0,0)<1>:w  V81(2,0)<1;1,0>:w
+              // (W) intrinsic.spill.1 (16)  Scratch[2x32]  R0_Copy0(0,0)<1;1,0>:ud  SP_GRF_V167_2(0,0)<1;1,0>:w
+              // mov (16)             SP_GRF_V167_3(0,0)<1>:w  V81(3,0)<1;1,0>:w
+              // (W) intrinsic.spill.1 (16)  Scratch[3x32]  R0_Copy0(0,0)<1;1,0>:ud  SP_GRF_V167_3(0,0)<1;1,0>:w
               //
               // ==> spill cleanup emits (notice spill range V81 appears in
               // spill intrinsic but is not spilled itself):
               //
-              // (W) intrinsic.spill.4 (16)  Scratch[0x32]
-              // R0_Copy0(0,0)<1;1,0>:ud  V81(0,0)<1;1,0>:ud // $412:
+              // (W) intrinsic.spill.4 (16)  Scratch[0x32]  R0_Copy0(0,0)<1;1,0>:ud  V81(0,0)<1;1,0>:ud
               //
               // in next RA iteration assume V81 spills. so we should emit:
               //
-              // (W) intrinsic.fill.4 (16)  FL_Send_V81_0(0,0)<1>:uw
-              // R0_Copy0(0,0)<1;1,0>:ud  Scratch[88x32]  // $412: (W)
-              // intrinsic.spill.4 (16)  Scratch[0x32]  R0_Copy0(0,0)<1;1,0>:ud
-              // FL_Send_V81_0(0,0)<1;1,0>:ud // $412:&393:
+              // (W) intrinsic.fill.4 (16)  FL_Send_V81_0(0,0)<1>:uw  R0_Copy0(0,0)<1;1,0>:ud  Scratch[88x32]
+              // (W) intrinsic.spill.4 (16)  Scratch[0x32]  R0_Copy0(0,0)<1;1,0>:ud  FL_Send_V81_0(0,0)<1;1,0>:ud
+              // clang-format on
               //
               // V81 appears in spill intrinsic instruction as an optimization
               // earlier even though it wasnt spilled in 1st RA iteration.

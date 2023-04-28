@@ -652,8 +652,9 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
           return false;
 
         // Sampler definition to be rematerialized
-        // sends (8) V54(0,0):f samplerHeader(0,0) V53(0,0) 0x42:ud
-        // 0x24a7002:ud{Align1, Q1} resLen = 4, msgLen = 1, extMsgLen = 1
+        // clang-format off
+        // sends (8) V54(0,0):f samplerHeader(0,0) V53(0,0) 0x42:ud 0x24a7002:ud{Align1, Q1} resLen = 4, msgLen = 1, extMsgLen = 1
+        // clang-format on
         // samplerHeader can be rematerialized as it is r0.0 with modified r0.2.
         // V53 above will simply be extended since it requires extra computation
         // to rematerialize. Above sampler inst has a header. Some sampler

@@ -9508,19 +9508,18 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     }
     retIter = std::next(it);
   } else {
+    // clang-format off
     // SOA layout of dst:(dst_hi32:d, dst_lo32:d)
-    // if src2 is not immediate value of zero, then expand MADW((dst_hi32,
-    // dst_lo32) = src0 * src1 + src2) to:
+    // if src2 is not zero, then expand MADW(dst_hi32, dst_lo32) = src0 * src1 + src2 to:
     //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
     //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d
-    //     addc (16) dst_lo32<1>:d  acc0.0<1;1,0>:d  src2<1;1,0>:d     // Low 32
-    //     bits add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d  dst_hi32<1;1,0>:d //
-    //     High 32 bits
+    //     addc (16) dst_lo32<1>:d  acc0.0<1;1,0>:d  src2<1;1,0>:d     // Low 32 bits
+    //     add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d  dst_hi32<1;1,0>:d // High 32 bits
     // otherwise, expand to:
     //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
-    //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d // High 32
-    //     bits mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // Low
-    //     32 bits
+    //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d // High 32 bits
+    //     mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // Low 32 bits
+    // clang-format on
 
     // unset AccWrCtrl
     madwInst->setOptionOff(InstOpt_AccWrCtrl);

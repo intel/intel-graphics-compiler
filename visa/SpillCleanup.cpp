@@ -1319,12 +1319,12 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
     // as only they are candidates for this pass.
     // Without this, we might end up identifying
     // other raw movs coming from partial write like:
+    // clang-format off
     // add (8) r8.0<1>:q r20.0<4;4,1>:q r4.0<0;1,0>:ud {Align1, Q1}
-    // send(16) r27.0<1>:uw r26 0xa 0x22c1000 : ud{ Align1, NoMask } // scratch
-    // read, fill, offset = 0, resLen=2, msgLen=1 mov(8) r27.0<1> : q r8.0<4; 4,
-    // 1> : q{ Align1, Q1 } sends(16) null : uw r26 r27 0x8a : ud 0x20f1000 :
-    // ud{ Align1, NoMask } // scratch write, spill, offset = 0, resLen=0,
-    // msgLen=1, extMsgLen=2
+    // send (16) r27.0<1>:uw r26 0xa 0x22c1000 : ud{ Align1, NoMask } // scratch read, fill, offset = 0, resLen=2, msgLen=1
+    // mov (8) r27.0<1> q r8.0<4;4,1>:q{ Align1, Q1 }
+    // sends (16) null:uw r26 r27 0x8a:ud 0x20f1000:ud{ Align1, NoMask } // scratch write, spill, offset = 0, resLen=0, msgLen=1, extMsgLen=2
+    // clang-format on
     //
     // Although there is a raw mov before scratch write,
     // it has to be preserved for correctness.

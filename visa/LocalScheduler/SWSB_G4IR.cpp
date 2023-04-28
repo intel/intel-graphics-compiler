@@ -588,22 +588,23 @@ void SBNode::finalizeDistanceType1(IR_Builder &builder,
 
     // In some platforms, A@ need be used for following case when the regDist
     // cannot be used (due to HW issue), and inst depends on different pipes
-    // mov(8 | M0)               r63.0 < 2 > :ud   r15.0 < 1; 1, 0 > : ud{ I@7
-    // }
-    //...
-    // add(8 | M0)               r95.0 < 1 > : q    r87.0 < 1; 1, 0 > : q
-    // r10.0 < 0; 1, 0 > : q{ I@7 }
-    //...
-    // add(8 | M0)               r55.0 < 2 > : d    r95.0 < 1; 1, 0 > : q
-    // r63.0 < 2; 1, 0 > : ud{ A@4 } In some platforms I@ accurate dependence
+    //
+    // mov (8|M0)   r63.0<2>:ud r15.0<1;1,0>:ud {I@7}
+    // ...
+    // add (8|M0)   r95.0<1>:q  r87.0<1;1,0>:q  r10.0<0;1,0>:q {I@7}
+    // ...
+    // add (8|M0)   r55.0<2>:d  r95.0<1;1,0>:q  r63.0<2;1,0>:ud {A@4}
+    //
+    // In some platforms I@ accurate dependence
     // can used for following case when the regDist cannot be used (due to HW
-    // issue), because inst depends on same pipe The example code piece :
-    // mov(16 | M0) r88.0 < 2 > : d r84.0 < 1; 1, 0 > : d{ F@2 } // $79&103
-    // mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
-    // mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
-    // mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
-    // mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } //
-    // $83&107 Since:q and : d all go to integer pipeline in, @2 should
+    // issue), because inst depends on same pipe The example code piece:
+    //
+    // mov (16|M0)      r88.0<2>:d  r84.0<1;1,0>:d {F@2}
+    // mov (16|M16)     r90.0<2>:d  r85.0<1;1,0>:d
+    // mov (16|M0)      r88.1<2>:d  r86.0<1;1,0>:d {F@1}
+    // mov (16|M16)     r90.1<2>:d  r87.0<1;1,0>:d
+    // mov (16|M0)      r32.0<1>:df r88.0<1;1,0>:q {@2/I@2}
+    // Since :q and :d all go to integer pipeline in, @2 should
     // work.However, due to HW bug, I@2 is good
     bool mulitpleSamePipe = false;
     if (distDep.size() > 1 && sameOperandType) {
@@ -736,22 +737,24 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
 
     // In some platforms, A@ need be used for following case when the regDist
     // cannot be used (due to HW issue), and inst depends on different pipes
-    // mov(8 | M0)               r63.0 < 2 > :ud   r15.0 < 1; 1, 0 > : ud{ I@7
-    // }
-    //...
-    // add(8 | M0)               r95.0 < 1 > : q    r87.0 < 1; 1, 0 > : q
-    // r10.0 < 0; 1, 0 > : q{ I@7 }
-    //...
-    // add(8 | M0)               r55.0 < 2 > : d    r95.0 < 1; 1, 0 > : q
-    // r63.0 < 2; 1, 0 > : ud{ A@4 } In some platforms I@ accurate dependence
+    //
+    // mov (8|M0)       r63.0<2>:ud   r15.0<1;1,0>:ud {I@7}
+    // ...
+    // add (8|M0)       r95.0<1>:q    r87.0<1;1,0>:q    r10.0<0;1,0>:q {I@7}
+    // ...
+    // add (8|M0)       r55.0<2>:d    r95.0<1;1,0>:q    r63.0<2;1,0>:ud {A@4}
+    //
+    // In some platforms I@ accurate dependence
     // can used for following case when the regDist cannot be used (due to HW
-    // issue), because inst depends on same pipe The example code piece :
-    // mov(16 | M0) r88.0 < 2 > : d r84.0 < 1; 1, 0 > : d{ F@2 } // $79&103
-    // mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
-    // mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
-    // mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
-    // mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } //
-    // $83&107 Since:q and : d all go to integer pipeline in, @2 should
+    // issue), because inst depends on same pipe The example code piece:
+    //
+    // mov (16|M0)      r88.0<2>:d    r84.0<1;1,0>:d {F@2}
+    // mov (16|M16)     r90.0<2>:d    r85.0<1;1,0>:d
+    // mov (16|M0)      r88.1<2>:d    r86.0<1;1,0>:d {F@1}
+    // mov (16|M16)     r90.1<2>:d    r87.0<1;1,0>:d
+    // mov (16|M0)      r32.0<1>:df   r88.0<1;1,0>:q {@2/I@2}
+    //
+    // Since:q and : d all go to integer pipeline in, @2 should
     // work.However, due to HW bug, we can only set to I@2 Depends on multiple
     // pipelines but same pipeline
     bool mulitpleSamePipe = true;
@@ -4312,41 +4315,42 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
 }
 
 //
+// clang-format off
 // Insert the test instruction according to token assignment result. Re-assign
 // the node id. Except the test instruction, one instruction can have at most
-// one token. SWSB format - non send 7    6    5    4    3    2    1    0 0    0
-// 0    0    0    0    0    0    No dependency 0    0    0    0    regDist dst
-// Reg only dep (1-15) 0    0    0    1    R    R    R    R    Reserved 0    0
-// 1    0    R    memSBid dst        Memory dst only dep (0-7) 0    0    1    1
-// R    memSBid src         Memory src only dep (0-7) 0    1    R    R    R    R
-// R    R    Reserved for Future extensions 1    memSBid dst        regDist dst
-// Reg and Memory dst dep
+// one token.
+// SWSB format - non send
+// 7    6    5    4    3    2    1    0
+// 0    0    0    0    0    0    0    0     No dependency
+// 0    0    0    0    regDist dst          Reg only dep (1-15)
+// 0    0    0    1    R    R    R    R     Reserved
+// 0    0    1    0    R    memSBid dst     Memory dst only dep (0-7)
+// 0    0    1    1    R    memSBid src     Memory src only dep (0-7)
+// 0    1    R    R    R    R    R    R     Reserved for Future extensions
+// 1    memSBid dst        regDist dst      Reg and Memory dst dep
 //
 // SWSB format - send
 // 0    0    0    0    0    0    0    0    No dependency
-// 0    0    0    0    regDist dst            Reg only dep (1-15)
-// 0    0    0    1    R    memSBid set        SBid allocation only (0-7)
-// 0    0    1    0    R    memSBid dst        Memory dst only dep (0-7)
-// 0    0    1    1    R    memSBid src         Memory src only dep (0-7)
+// 0    0    0    0    regDist dst         Reg only dep (1-15)
+// 0    0    0    1    R    memSBid set    SBid allocation only (0-7)
+// 0    0    1    0    R    memSBid dst    Memory dst only dep (0-7)
+// 0    0    1    1    R    memSBid src    Memory src only dep (0-7)
 // 0    1    R    R    R    R    R    R    Reserved for Future extensions
-// 1    memSBid set        regDist dst            SBid allocation and Reg only
-// dep (1-15)
+// 1    memSBid set        regDist dst     SBid allocation and Reg only dep (1-15)
 //
-// 8bits [7:0]    8bits [15:8]    4bits [27:24]        1 bit  [29]     1bit [30]
-// 16bits [47:32] test = 0x70    SWSB            subOpcode            CmptCtrl =
-// 1 DebugCtrl
-//                               0000 - Only SWSB check
-//                                 0001 - Check Send status 2bits x 8 Sbid
+// 8bits [7:0]    8bits [15:8]    4bits [27:24]        1 bit  [29]     1bit [30]    16bits [47:32]
+// test = 0x70    SWSB            subOpcode            CmptCtrl = 1 DebugCtrl
+//                                0000 - Only SWSB check
+//                                0001 - Check Send status                      2bits x 8 Sbid
 //                                                                              00 - SBid not checked
 //                                                                              01 - reserved
 //                                                                              10 - Check for data sent out
-//                                                                               11 - Check for data received
-//                              0010 - Check Address Register Dep 1bits x 16
-//                              address registers
-//                                                                                0 - Not checked
-//                                                                               1 - Check for Register dependency
-//                                  others - Reserved
-//
+//                                                                              11 - Check for data received
+//                                0010 - Check Address Register Dep             1bit x 16 address registers
+//                                                                              0 - Not checked
+//                                                                              1 - Check for Register dependency
+//                                others - Reserved
+// clang-format on
 void SWSB::insertTest() {
   SBNODE_VECT_ITER node_it = SBNodes.begin();
   int newInstID = 0;
@@ -5884,11 +5888,11 @@ bool G4_BB_SB::hasExtraOverlap(G4_INST *liveInst, G4_INST *curInst,
                                const Gen4_Operand_Number curOpnd,
                                IR_Builder *builder) {
   // W/A for the read suppression caused issue
-  // 1)(~f0.0.anyv) math.cos(2 | M0)      r23.7<2>:hf   r11.7<4; 2, 2> : hf{ $14
-  // } 2)             mul(8 | M0)               acc0.0<1>:ud  r35.3<8; 8, 0> :
-  // ud   r23.0<8; 4, 0> : uw   //With execution mask, only r23.0~r23.3 are read
-  // 3)             mach(8 | M0)              r52.0<1>:ud   r35.3<8; 8, 0> : ud
-  // r23.0<4; 4, 0> : ud{ $14.dst }
+  // clang-format off
+  // 1)(~f0.0.anyv) math.cos (2|M0)      r23.7<2>:hf   r11.7<4;2,2>:hf {$14}
+  // 2)             mul (8|M0)           acc0.0<1>:ud  r35.3<8;8,0>:ud   r23.0<8;4,0>:uw   //With execution mask, only r23.0~r23.3 are read
+  // 3)             mach (8|M0)          r52.0<1>:ud   r35.3<8;8,0>:ud   r23.0<4;4,0>:ud {$14.dst}
+  // clang-format on
   // FIXME, For performance, we need check the 3rd instruction as well
 
   // W/A for src1 read suppression of all ALUG instructions on PVC:
@@ -5896,9 +5900,10 @@ bool G4_BB_SB::hasExtraOverlap(G4_INST *liveInst, G4_INST *curInst,
   //   distributed over 2  GRFs), we need always set a Read after Write (RAW)
   //   dependency to any element in the 2 GRFs we are reading for src1  in the
   //   current instruction.
+  // clang-format off
   //       (W)     add (16|M0)     r7.14<1>:f    r61.14<1;1,0>:f r9.14<1;1,0>:f
-  //       (W)     mad (16|M0)     r26.10<1>:f   r20.10<1;0>:f     r6.10<1;0>:f
-  //       r101.10<1>:f     {F@1}
+  //       (W)     mad (16|M0)     r26.10<1>:f   r20.10<1;0>:f     r6.10<1;0>:f     r101.10<1>:f     {F@1}
+  // clang-format on
   if (((!builder->hasFixedCycleMathPipe() && liveInst->isMath() &&
         !curInst->isMath() && builder->hasRSForSpecificPlatform() &&
         (!hasSamePredicator(liveInst, curInst) || builder->hasMathRSIsuue())) ||
@@ -6294,32 +6299,30 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       }
     }
 
+    // clang-format off
     // Considering instruction level liveness kill, i.e killing the live
     // instructions/operands, the dependence checking order must be RAR/RAW -->
     // WAR/WAW, the bucket descriptions in BDvec must in the order of src->dst.
+    //
     // If WAW is done first, RAW may be missed:
-    //    If both live and current instructions are in-order instructions, WAW
-    //    no dependence required, but RAW is required. If both live and current
-    //    instructions are out-of-order instructions, WAW and RAW have same
-    //    effect. If live is in-order and current is out-of-order, WAW and RAW
-    //    have same effect. If live is out-of-order and current is in-order, WAW
-    //    and RAW have same effect.
+    //    If both live and current instructions are in-order instructions, WAW no dependence required, but RAW is required.
+    //    If both live and current instructions are out-of-order instructions, WAW and RAW have same effect.
+    //    If live is in-order and current is out-of-order, WAW and RAW have same effect.
+    //    If live is out-of-order and current is in-order, WAW and RAW have same effect.
+    //
     // If RAR is done before WAR, WAR will not be missed:
-    //    If both live and current instructions are in-order instructions, both
-    //    RAR and WAR are not required. If both live and current instructions
-    //    are out-of-order instructions,
-    //                                   same pipeline, both RAR and WAR are not
-    //                                   required different pipeline, both R are
-    //                                   kept for RAR, and WAR dependence is
-    //                                   required, RAR will not cause WAR miss.
-    //    If live is in-order and current is out-of-order, WAW and RAW have same
-    //    effect. If live is out-of-order and current is in-order, WAW and RAW
-    //    have same effect.
-    //                                   Both R will be kept, RAR will not cause
-    //                                   WAR miss.
+    //    If both live and current instructions are in-order instructions, both RAR and WAR are not required.
+    //    If both live and current instructions are out-of-order instructions:
+    //      same pipeline, both RAR and WAR are not required.
+    //      different pipeline, both R are kept for RAR, and WAR dependence is required, RAR will not cause WAR miss.
+    //    If live is in-order and current is out-of-order, WAW and RAW have same effect.
+    //    If live is out-of-order and current is in-order, WAW and RAW have same effect.
+    //      Both R will be kept, RAR will not cause WAR miss.
+    //
     // For WAW and RAW, once explicit dependencies are required, kill the
     // liveness of instruction. For WAR, once explicit dependencies is required,
     // kill the source operands. Others, only operand kill.
+    // clang-format on
     bool instKill = false;
 
     // For all bucket descriptors of curInst
@@ -6357,14 +6360,16 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
                                                 internalOffset);
         }
 
-        // RAW:                     R kill W    R-->live       explicit
-        // dependence WAW: same pipeline and inorder   W2 kill W1  W2-->live
-        // implicit dependence WAW: different pipelines or OOO  W2 kill W1
-        // W2-->live      explict dependence WAR: different pipelines W kill R
-        // W-->live       explicit dependence WAR: same pipeline       W kill R
-        // W-->live       implicit dependence RAR: same pipeline R2 kill R1
-        // R2-->live      no dependence RAR: different pipelines         no kill
-        // R1,R2-->live   no dependence Find DEP type
+        // clang-format off
+        // RAW:                             R kill W    R-->live            explicit dependence
+        // WAW: same pipeline and inorder   W2 kill W1  W2-->live           implicit dependence
+        // WAW: different pipelines or OOO  W2 kill W1  W2-->live           explict dependence
+        // WAR: different pipelines         W kill R    W-->live            explicit dependence
+        // WAR: same pipeline               W kill R    W-->live            implicit dependence
+        // RAR: same pipeline               R2 kill R1  R2-->live           no dependence
+        // RAR: different pipelines         no kill     R1,R2-->live        no dependence
+        // clang-format on
+        // Find DEP type
         DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
         if (!hasOverlap && dep == RAW) {
@@ -7220,14 +7225,16 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                                        curFootprint, curOpnd, fg.builder);
           }
 
-          // RAW:                     R kill W    R-->live       explicit
-          // dependence WAW:                     W2 kill W1  W2-->live explicit
-          // dependence WAW: same pipeline/inorder W2 kill W1  W2-->live
-          // implicit dependence WAR: different pipelines W kill R    W-->live
-          // explicit dependence WAR: same pipeline       W kill R    W-->live
-          // implicit dependence RAR: sample pipeline     R2 kill R1  R2-->live
-          // implicit dependence RAR: different pipelines   no kill R1,R2-->live
-          // no dependence
+
+          // clang-format off
+          // RAW:                           R kill W    R-->live        explicit dependence
+          // WAW:                           W2 kill W1  W2-->live       explicit dependence
+          // WAW: same pipeline/inorder     W2 kill W1  W2-->live       implicit dependence
+          // WAR: different pipelines       W kill R    W-->live        explicit dependence
+          // WAR: same pipeline             W kill R    W-->live        implicit dependence
+          // RAR: sample pipeline           R2 kill R1  R2-->live       implicit dependence
+          // RAR: different pipelines       no kill     R1,R2-->live    no dependence
+          // clang-format on
           if (hasOverlap) {
             vASSERT(tokenHonourInstruction(liveInst));
             if (dep == RAW || dep == WAW) {
@@ -7589,14 +7596,15 @@ void SWSB::addGlobalDependenceWithReachingDef(
                                              curFootprint, curOpnd, fg.builder);
           }
 
-          // RAW:                     R kill W    R-->live       explicit
-          // dependence WAW:                     W2 kill W1  W2-->live explicit
-          // dependence WAW: same pipeline/inorder W2 kill W1  W2-->live
-          // implicit dependence WAR: different pipelines W kill R    W-->live
-          // explicit dependence WAR: same pipeline       W kill R    W-->live
-          // implicit dependence RAR: sample pipeline     R2 kill R1  R2-->live
-          // implicit dependence RAR: different pipelines   no kill R1,R2-->live
-          // no dependence
+          // clang-format off
+          // RAW:                           R kill W    R-->live        explicit dependence
+          // WAW:                           W2 kill W1  W2-->live       explicit dependence
+          // WAW: same pipeline/inorder     W2 kill W1  W2-->live       implicit dependence
+          // WAR: different pipelines       W kill R    W-->live        explicit dependence
+          // WAR: same pipeline             W kill R    W-->live        implicit dependence
+          // RAR: sample pipeline           R2 kill R1  R2-->live       implicit dependence
+          // RAR: different pipelines       no kill R1,R2-->live        no dependence
+          // clang-format on
           if (hasOverlap) {
             vASSERT(tokenHonourInstruction(liveInst));
             if (dep == RAW || dep == WAW) {
