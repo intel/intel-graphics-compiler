@@ -160,6 +160,10 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
   if (platform == GENX_ICLLP && (step == Step_A || step == Step_B)) {
     VISA_WA_ENABLE(pWaTable, Wa_2201674230);
   }
+
+  if (platform >= Xe_PVC)
+    VISA_WA_ENABLE(pWaTable, Wa_13010473643);
+
   switch (platform) {
   case GENX_ICLLP:
     VISA_WA_ENABLE(pWaTable, Wa_1406950495);

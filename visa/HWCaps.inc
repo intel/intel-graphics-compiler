@@ -757,4 +757,12 @@ bool needEmaskSetupProlog() const {
     return false;
   return getPlatform() >= GENX_TGLLP && getPlatform() <= Xe_PVCXT;
 }
+
+bool needIndirectSrcForCompressedInstWA() const {
+  if (getOption(vISA_noIndirectSrcForCompressedInstWA))
+    return false;
+
+  return VISA_WA_CHECK(getPWaTable(), Wa_13010473643);
+}
+
 // end HW capabilities

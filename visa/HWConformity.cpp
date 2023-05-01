@@ -1887,6 +1887,58 @@ void HWConformity::fixPredicateIndirectInst(INST_LIST_ITER it, G4_BB *bb) {
   }
 }
 
+// Workaround for compressed instructions with indirect src0:
+// For a compressed instruction with 2 passes, if src0 have indirect 1x1
+// addressing mode then src0 must not have GRF crossover in the first pass. A
+// move must be introduced with GRF offset 0 to avoid src0 and destination
+// crossover in the same instruction.
+bool HWConformity::fixIndirectSrcForCompressedInst(INST_LIST_ITER i, G4_BB *bb) {
+  if (!builder.needIndirectSrcForCompressedInstWA())
+    return false;
+
+  G4_INST *inst = *i;
+  if (inst->mayExceedTwoGRF() || inst->opcode() == G4_nop ||
+      inst->opcode() == G4_madm || inst->isLabel() ||
+      inst->isIntrinsic())
+    return false;
+
+  // apply WA to inst with 1x1 indirect src0
+  G4_Operand *src0 = inst->getSrc(0);
+  if (!src0 || !src0->isIndirect())
+    return false;
+
+  auto src0Region = src0->asSrcRegRegion()->getRegion();
+  if (src0Region->isRegionWH() || src0Region->isRegionV() ||
+      src0Region->isScalar())
+    return false;
+
+  G4_Operand *dst = inst->getDst();
+  if (!dst || dst->isNullReg())
+      return false;
+
+  // apply WA to inst with indirect or cross-grf access dst
+  if (!dst->isIndirect() && !dst->asDstRegRegion()->crossGRF(builder))
+    return false;
+
+  // 1. move dst to a grf-aligned reg
+  //    Do the copy whenever dst stride is not 1 to avoid getting
+  //    an invalid Execution Mask Offset during "evenlySplitInst" (that is,
+  //    avoid splitting simd8 instructions), with the assumption that this WA
+  //    won't apply to GRF size 32 platforms.
+  if (dst->isIndirect() || dst->asDstRegRegion()->getHorzStride() != 1 ||
+      !builder.tryToAlignOperand(dst, builder.getGRFSize()))
+    replaceDst(i, dst->getType(), builder.getGRFAlign());
+
+  // 2. evenly split the instruction so the dst of splitted instructions
+  //    can't cross grf
+  if (inst->getDst()->asDstRegRegion()->crossGRF(builder)) {
+    // Set checkOverlap to false since compressed instructions cannot have
+    // overlapped operands. Hence the splitted result must not have extraMov
+    evenlySplitInst(i, bb, false);
+  }
+  return true;
+}
+
 /*
  * This function checks to see if the instruction's indirect operands
  * potentially require totally more than 8 distinct addr reg sub-registers, and
@@ -5712,12 +5764,14 @@ void HWConformity::conformBB(G4_BB *bb) {
     // HW check #6: indirect operand spilling
     fixIndirectOpnd(i, bb);
 
+    fixIndirectSrcForCompressedInst(i, bb);
+
 #ifdef _DEBUG
     verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
     // HW check #8: unsigned dst with execution type F
-    /* If the execution type is F and the destination type if either UD, UW
-     * or UB and the detination is not saturated, then we need to add an
+    /* If the execution type is F and the destination type is either UD, UW
+     * or UB and the destination is not saturated, then we need to add an
      * intermediate type conversion to D.
      */
     inst = *i;

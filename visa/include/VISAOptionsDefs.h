@@ -578,6 +578,11 @@ DEF_VISA_OPTION(vISA_AddIEEEExceptionTrap, ET_BOOL, "-addIEEEExTrap",
                 "Add IEEE exception trap which inserts an infinite loop "
                 "before EOT to catch any IEEE exception",
                 false)
+DEF_VISA_OPTION(vISA_noIndirectSrcForCompressedInstWA, ET_BOOL,
+                "-noIndirectSrcForCompressedInstWA",
+                "Disable WA for fixing compressed instructions with indirect "
+                "src0 and cross-grf dst",
+                false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,

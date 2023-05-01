@@ -117,6 +117,7 @@ class HWConformity {
   void fixPackedHFConversions(INST_LIST_ITER it, G4_BB *bb);
 
   bool fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb);
+  bool fixIndirectSrcForCompressedInst(INST_LIST_ITER i, G4_BB *bb);
   void fix3SrcInst(INST_LIST_ITER i, G4_BB *bb);
   void fixAlign13SrcInst(INST_LIST_ITER i, G4_BB *bb);
   void fixCompareInst(INST_LIST_ITER i, G4_BB *bb, G4_Type exType,
