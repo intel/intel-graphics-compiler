@@ -3418,6 +3418,10 @@ namespace IGC
         return pShader && pShader->GetEncoder().IsVisaCompiledSuccessfully();
     }
 
+    bool COpenCLKernel::IsVisaCompileStatusFailureForShader(COpenCLKernel *pShader) {
+        return pShader && pShader->GetEncoder().IsVisaCompileStatusFailure();
+    }
+
     enum class RetryType
     {
         NO_Retry,
@@ -3543,11 +3547,14 @@ namespace IGC
             }
         };
 
-        if (simd8Shader)
+        // Need to check if simd* shader is not nullptr and its vISA compile status,
+        // since it may be created without going through full vISA compilation and
+        // the spill size record may be invalid
+        if (simd8Shader && !COpenCLKernel::IsVisaCompileStatusFailureForShader(simd8Shader))
           verify(simd8Shader);
-        else if (simd16Shader)
+        else if (simd16Shader && !COpenCLKernel::IsVisaCompileStatusFailureForShader(simd16Shader))
           verify(simd16Shader);
-        else if (simd32Shader)
+        else if (simd32Shader && !COpenCLKernel::IsVisaCompileStatusFailureForShader(simd32Shader))
           verify(simd32Shader);
     }
 
@@ -3745,6 +3752,7 @@ namespace IGC
                     GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
                 if (COpenCLKernel::IsValidShader(simd8Shader))
                     GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
+                // TODO: check if we need to invoke verifyOOBScratch(...) here
             }
             else if (ctx->m_InternalOptions.EmitVisaOnly)
             {
