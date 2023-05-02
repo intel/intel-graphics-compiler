@@ -133,31 +133,34 @@ int IR_Builder::translateLscUntypedInst(
 
   if (addrInfo.type == LSC_ADDR_TYPE_ARG) {
     // Translate argument loads to platform specific logic
+    // loads via base bti[255][r0[31:6]]
+    // (BTI 255 with :a32 is relative to the General State Base Address)
     vISA_ASSERT_INPUT(addrInfo.size == LSC_ADDR_SIZE_32b,
-                 "lsc_load... arg[...] must be :a32");
+                      "lsc_load... arg[...] must be :a32");
     //
-    // (W)  and (1) TMP0:ud   r0.0:ud  0xFFFFFFC0:ud
-    // (W)  add (1) TMP1:ud   TMP0:ud  src0Addr:ud
-    // ... load.ugm.a32... bti[255][TMP]
+    // (W) and (1)        TMP0:ud   r0.0:ud  0xFFFFFFC0:ud
+    // (W) add (ExecSize) TMP1:ud   TMP0:ud  src0Addr:ud
+    // ... load.ugm.a32... (ExecSize) bti[255][TMP1]
     G4_Declare *argBase = createTempVar(1, Type_UD, Even_Word);
     auto andDst = createDst(argBase->getRegVar(), 0, 0, 1, Type_UD);
     auto andSrc0 = createSrc(getBuiltinR0()->getRegVar(), 0, 0,
                              getRegionScalar(), Type_UD);
-    auto andSrc1 = createImm(0xFFFFFFC0, Type_UD);
-    (void)createBinOp(G4_and, g4::SIMD1, andDst, andSrc0, andSrc1,
+    (void)createBinOp(G4_and, g4::SIMD1, andDst, andSrc0,
+                      createImm(0xFFFFFFC0, Type_UD),
                       InstOpt_WriteEnable, true);
-    auto addDst = createDst(src0Addr->getBase(), src0Addr->getRegOff(),
-                            src0Addr->getSubRegOff(), 1, Type_UD);
-    auto addSrc0 = createSrc(src0Addr->getBase(), src0Addr->getRegOff(),
-                             src0Addr->getSubRegOff(), src0Addr->getRegion(),
-                             src0Addr->getType());
-    auto addSrc1 =
-        createSrc(argBase->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-    (void)createBinOp(G4_add, g4::SIMD1, addDst, addSrc0, addSrc1,
-                      InstOpt_WriteEnable, true);
+    auto tmpAddrs = createTempVar(int(execSize), Type_UD, getGRFAlign());
+    auto addDst = createDst(tmpAddrs->getRegVar(), 0, 0, 1, Type_UD);
+    auto addSrc0 =
+      createSrc(argBase->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+    (void)createBinOp(G4_add, execSize, addDst, addSrc0, src0Addr,
+                      instOpt, true);
     //
     addrInfo.type = LSC_ADDR_TYPE_BTI;
+
     surface = createImm(0xFF, Type_UD);
+
+    src0Addr =
+      createSrc(tmpAddrs->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
   }
 
   SFID sfid = SFID::NULL_SFID;
