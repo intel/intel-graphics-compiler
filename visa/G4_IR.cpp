@@ -220,7 +220,7 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
 G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
                          G4_opcode o, G4_ExecSize size, G4_DstRegRegion *dst,
                          G4_SrcRegRegion *payload, G4_Operand *desc,
-                         G4_InstOpts opt, G4_SendDesc *md)
+                         G4_InstOpts opt, G4_SendDescRaw *md)
     : G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, desc,
               opt),
       msgDesc(md) {
@@ -231,7 +231,7 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
                          G4_opcode o, G4_ExecSize size, G4_DstRegRegion *dst,
                          G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
                          G4_Operand *src2desc, G4_Operand *src3extDesc,
-                         G4_InstOpts opt, G4_SendDesc *md)
+                         G4_InstOpts opt, G4_SendDescRaw *md)
     : G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, src0, src1,
               src2desc, opt),
       msgDesc(md) {

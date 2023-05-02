@@ -1151,7 +1151,7 @@ public:
   G4_InstSend(const IR_Builder &builder, G4_Predicate *prd, G4_opcode o,
               G4_ExecSize execSize, G4_DstRegRegion *dst,
               G4_SrcRegRegion *payload, G4_Operand *desc, G4_InstOpts opt,
-              G4_SendDesc *md);
+              G4_SendDescRaw *md);
 
   // split send (two source)
   // desc is either imm or a0.0 and in src2
@@ -1160,7 +1160,7 @@ public:
               G4_ExecSize execSize, G4_DstRegRegion *dst,
               G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
               G4_Operand *src2desc, G4_Operand *src3extDesc,
-              G4_InstOpts opt, G4_SendDesc *md);
+              G4_InstOpts opt, G4_SendDescRaw *md);
 
   G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
