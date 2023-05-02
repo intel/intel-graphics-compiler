@@ -1518,8 +1518,7 @@ public:
   }
   uint32_t getInputCount() const { return m_kernel->m_input_count; }
 
-  std::string printKernelHeader(const common_isa_header &isaHeader,
-                                bool printVersion);
+  std::string printKernelHeader(bool printVersion);
 };
 
 #endif // VISA_KERNEL_H

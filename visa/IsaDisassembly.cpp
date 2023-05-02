@@ -3149,22 +3149,28 @@ static std::string printInstructionLsc(ISA_Opcode opcode,
   LscInstFormatter formatter(opcode, header, inst, opt);
   return formatter.format();
 }
-std::string VISAKernel_format_provider::printKernelHeader(
-    const common_isa_header &isaHeader, bool printVersion) {
+
+std::string VISAKernel_format_provider::printKernelHeader(bool printVersion) {
   std::stringstream sstr;
 
   bool isKernel = m_kernel->getIsKernel();
+  auto builder = m_kernel->getCISABuilder();
 
   if (printVersion)
-    sstr << printBuildVersion(isaHeader) << "\n";
+    sstr << printBuildVersion(builder->m_header) << "\n";
   sstr << printFunctionDecl(this, isKernel) << "\n";
 
-  // Print all functions in the same object
+  // Print all functions in the same vISA builder. This is just for
+  // informational purposes and does not affect codegen.
   if (isKernel) {
-    for (unsigned i = 0; i < isaHeader.num_functions; i++) {
-      sstr << ".funcdecl ";
-      encodeStringLiteral(sstr, isaHeader.functions[i].name);
-      sstr << "\n";
+    for (auto Iter = builder->kernel_begin(), IterEnd = builder->kernel_end();
+         Iter != IterEnd; ++Iter) {
+      auto KorF = *Iter;
+      if (!KorF->getIsKernel()) {
+        sstr << ".funcdecl ";
+        encodeStringLiteral(sstr, KorF->getName());
+        sstr << "\n";
+      }
     }
   }
 

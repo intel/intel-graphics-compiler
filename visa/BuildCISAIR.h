@@ -120,6 +120,12 @@ public:
 
   int verifyVISAIR();
 
+  int isaDump(const char *combinedIsaasmName) const;
+
+  std::string isaDump(const VISAKernelImpl *kernel,
+                      const VISAKernelImpl *mainKernel,
+                      bool printVersion = true) const;
+
   static void cat(std::stringstream &ss) {}
   template <typename T, typename... Ts>
   static void cat(std::stringstream &ss, T t, Ts... ts) {

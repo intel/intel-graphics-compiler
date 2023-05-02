@@ -9019,7 +9019,7 @@ std::string VISAKernelImpl::getVISAAsm() const {
 
   const VISAKernelImpl *fmtKernel = getFmtKernelForISADump(
           this, *m_CISABuilder);
-  return m_CISABuilder->m_cisaBinary->isaDump(this, fmtKernel);
+  return m_CISABuilder->isaDump(this, fmtKernel);
 }
 
 void VISAKernelImpl::computeAndEmitDebugInfo(KernelListTy &functions) {
