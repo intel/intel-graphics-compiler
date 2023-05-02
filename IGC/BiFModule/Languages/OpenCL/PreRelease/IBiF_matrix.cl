@@ -374,9 +374,45 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
   DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_GLOBAL)
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
+
+/* PackedA store i8 */
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 1, 32, 1x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 2, 32, 2x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 3, 32, 3x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 4, 32, 4x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 5, 32, 5x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 6, 32, 6x32, ROW_MAJOR,    , 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 7, 32, 7x32, ROW_MAJOR,    , 32, false)
 DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 8, 32, 8x32, ROW_MAJOR,    , 32, false)
+
+/* PackedA store i16 */
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 1, 16, 1x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 2, 16, 2x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 3, 16, 3x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 4, 16, 4x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 5, 16, 5x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 6, 16, 6x16, ROW_MAJOR,    , 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 7, 16, 7x16, ROW_MAJOR,    , 16, false)
 DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 8, 16, 8x16, ROW_MAJOR,    , 16, false)
+
+/* PackedA store i8 SG16 */
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 1, 32, 1x32, ROW_MAJOR, _us, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 2, 32, 2x32, ROW_MAJOR, _us, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 3, 32, 3x32, ROW_MAJOR, _us, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 4, 32, 4x32, ROW_MAJOR, _us, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 5, 32, 5x32, ROW_MAJOR, _us, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 6, 32, 6x32, ROW_MAJOR, _us, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 7, 32, 7x32, ROW_MAJOR, _us, 32, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 32, false)
+
+/* PackedA store i16 SG16 */
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 16, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 16, false)
 
 DEFINE_STORE(PackedB_PackedB,      , short, 16, int, 32, 8, 16, 16x8,  ROW_MAJOR, , 16, true)

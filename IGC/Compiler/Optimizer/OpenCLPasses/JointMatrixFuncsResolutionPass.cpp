@@ -647,22 +647,36 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
 }
 
 static int getResolvedVectorSize(Type *matrixType) {
-    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType);
-    IGC_ASSERT_MESSAGE(ty, "Unexpected type when calculating slice size.");
-    return (int)ty->getNumElements();
+    if (IGCLLVM::FixedVectorType *ty =
+            dyn_cast<IGCLLVM::FixedVectorType>(matrixType)) {
+      return (int)ty->getNumElements();
+    }
+    /*We do not have a vector that has one element, so just return 1*/
+    return 1;
 }
 
 static Type *getResolvedVectorElementType(Type *matrixType) {
-    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType);
-    IGC_ASSERT_MESSAGE(ty, "Unexpected type when calculating slice size.");
-    return ty->getElementType();
+    if (IGCLLVM::FixedVectorType *ty =
+            dyn_cast<IGCLLVM::FixedVectorType>(matrixType)) {
+      return ty->getElementType();
+    }
+    return matrixType;
+}
+
+static unsigned getResolvedVectorElemSize(Type *matrixType) {
+    if (IGCLLVM::FixedVectorType *ty =
+            dyn_cast<IGCLLVM::FixedVectorType>(matrixType)) {
+      return ty->getElementType()->getScalarSizeInBits();
+    }
+    // Not a vector, just a single element.  We Use a single element instead
+    // of using a <1xTy> vector, as OpenCL does not support vector of length
+    // 1.
+    return matrixType->getScalarSizeInBits();
 }
 
 static int getSliceSize(const JointMatrixTypeDescription *desc, Type *matTy) {
-    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
-    IGC_ASSERT_MESSAGE(ty, "Expecting vector type in calculating slice size");
+    unsigned contribTypeWidth = getResolvedVectorElemSize(matTy);
 
-    unsigned contribTypeWidth = ty->getElementType()->getScalarSizeInBits();
     if (desc->layout == LayoutRowMajor) {
         return desc->rows;
     }
@@ -747,9 +761,16 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
         fillValue = builder.CreateLoad(vectorElementType, fillValue);
     }
 
-    Value *slice = UndefValue::get(matTy);
-    for (int i = 0; i < vectorSize; i++) {
-        slice = builder.CreateInsertElement(slice, fillValue, i);
+    Value *slice = fillValue;
+
+    if (IGCLLVM::FixedVectorType *ty =
+            dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
+        // We create a vector only for rows > 1, as for rows = 1, we have
+        // one signle element instead of a one-element vector.
+        slice = UndefValue::get(matTy);
+        for (int i = 0; i < vectorSize; i++) {
+            slice = builder.CreateInsertElement(slice, fillValue, i);
+        }
     }
 
     InstsToErase.insert(CI);
@@ -825,13 +846,19 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
 
     IRBuilder builder(CI);
     const int sliceSize = getSliceSize(&desc, rawMatTy);
-    const int vectorSize = getResolvedVectorSize(matTy);
+    const int vectorSize = getResolvedVectorSize(rawMatTy);
 
     Value *slice = nullptr;
     if (sliceSize > vectorSize) {
-        Value *element = createSliceExtract(&builder, matrix, index, &desc, rawMatTy);
+        // If rows = 1, we do not need an extract, so directly use the value.
+        Value *element = matrix;
+        if (matTy) {
+            // We have a vector e.g. a matrix with rows > 1
+            element =
+                createSliceExtract(&builder, matrix, index, &desc, rawMatTy);
+        }
         if (!isa<IntegerType>(element->getType())) {
-            unsigned vecElemSize = matTy->getElementType()->getScalarSizeInBits();
+            unsigned vecElemSize = getResolvedVectorElemSize(rawMatTy);
             element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), vecElemSize));
         }
 
@@ -845,7 +872,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
             component = builder.CreateBitCast(component, Type::getIntNTy(builder.getContext(), desc.bitWidth));
         }
 
-        unsigned vecElemSize = matTy->getElementType()->getScalarSizeInBits();
+        unsigned vecElemSize = getResolvedVectorElemSize(rawMatTy);
         component = builder.CreateZExtOrBitCast(component, Type::getIntNTy(builder.getContext(), vecElemSize));
         offset = builder.CreateTruncOrBitCast(offset, Type::getIntNTy(builder.getContext(), vecElemSize));
 
@@ -863,7 +890,11 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(rawMatTy));
     component = builder.CreateBitCast(component, vectorElementType);
 
-    slice = builder.CreateInsertElement(matrix, component, index);
+    if (matTy) {
+        slice = builder.CreateInsertElement(matrix, component, index);
+    } else {
+        slice = component;
+    }
 
     InstsToErase.insert(CI);
     return slice;
@@ -877,7 +908,14 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
 
     IRBuilder builder(CI);
-    Value *element = createSliceExtract(&builder, matrix, index, &desc, matTy);
+
+    // If we are dealing with a vector, extract the element, else we have a
+    // single value, we can directly use the value
+    Value *element = matrix;
+    if (IGCLLVM::FixedVectorType *ty =
+            dyn_cast<IGCLLVM::FixedVectorType>(matTy))
+        element = createSliceExtract(&builder, matrix, index, &desc, matTy);
+
     /* Unpacking: */
     const int sliceSize = getSliceSize(&desc, matTy);
     const int vectorSize = getResolvedVectorSize(matTy);
