@@ -3825,15 +3825,6 @@ namespace IGC
             }
         }
 
-        {
-            // If stack calls are present, disable simd32 in order to do wa in visa
-            bool needCallWA = (IGC_IS_FLAG_ENABLED(EnableCallWA) && m_Context->platform.hasFusedEU());
-            if (needCallWA && simdMode == SIMDMode::SIMD32 && HasStackCalls())
-            {
-                return false;
-            }
-        }
-
         if (!m_Context->m_retryManager.IsFirstTry())
         {
             m_Context->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
@@ -4100,6 +4091,24 @@ namespace IGC
         bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
         bool isIndirectGroup = m_FGA && m_FGA->getGroup(&F) && IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F));
         bool hasSubroutine = m_FGA && m_FGA->getGroup(&F) && !m_FGA->getGroup(&F)->isSingle() && !hasStackCall && !isIndirectGroup;
+
+        // If stack calls are present, disable simd32 in order to do CallWA in visa
+        if (IGC_IS_FLAG_ENABLED(EnableCallWA) &&
+            pCtx->platform.hasFusedEU() &&
+            pCtx->platform.getWATable().Wa_14016243945 == false &&
+            simdMode == SIMDMode::SIMD32 &&
+            (hasStackCall || isIndirectGroup))
+        {
+            // If sub_group_size is set to 32, resize it to 16 so SIMD16 compilation will still succeed
+            if (simd_size == 32)
+            {
+                llvm::Function* Kernel = m_FGA->getGroup(&F)->getHead();
+                funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
+                funcInfoMD->getSubGroupSize()->setSIMD_size(16);
+            }
+            pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+            return SIMDStatus::SIMD_FUNC_FAIL;
+        }
 
         if (simd_size == 0)
         {
