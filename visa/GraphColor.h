@@ -149,10 +149,14 @@ class LiveRange final {
     };
   };
 
-public:
   LiveRange(G4_RegVar *v, GlobalRA &);
 
-  void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
+  void initializeForbidden();
+
+public:
+  static LiveRange *createNewLiveRange(G4_Declare *dcl, GlobalRA &gra);
+
+  void *operator new(size_t sz, llvm::SpecificBumpPtrAllocator<LiveRange> &m) { return m.Allocate(); }
 
   void setDegree(unsigned d) { degree = d; }
   unsigned getDegree() const { return degree; }
@@ -379,6 +383,78 @@ public:
   }
 };
 
+// This class contains implementation of various methods to implement
+// incremental intf computation. Instance of this class is created
+// once and stored in GlobalRA. This class should therefore not
+// hold pointer to GraphColor/Interference or such other short-living
+// instances.
+class IncrementalRA {
+private:
+  GlobalRA &gra;
+  G4_Kernel &kernel;
+  LiveRangeVec lrs;
+  G4_RegFileKind selectedRF = G4_RegFileKind::G4_UndefinedRF;
+  unsigned int level = 0;
+  std::unordered_set<G4_Declare *> needIntfUpdate;
+  unsigned int maxDclId = 0;
+
+  // Reset state to mark start of new type of GRA (eg, from flag to GRF)
+  void reset();
+
+public:
+  llvm::SpecificBumpPtrAllocator<LiveRange> mem;
+
+  IncrementalRA(GlobalRA &g);
+
+  static bool isEnabled(G4_Kernel &kernel) {
+    // 0 - disabled
+    // 1 - enabled
+    // 2 - enabled with verification
+    return kernel.getOptions()->getuInt32Option(vISA_IncrementalRA) >= 1;
+  }
+
+  static bool isEnabledWithVerification(G4_Kernel &kernel) {
+    return kernel.getOptions()->getuInt32Option(vISA_IncrementalRA) == 2;
+  }
+
+  void registerNextIter(G4_RegFileKind rf,
+                        const LivenessAnalysis *liveness = nullptr);
+  // After computing interference incrementally, GraphColor needs to clear
+  // candidate list to prepare for new incremental RA temps.
+  void clearCandidates() { needIntfUpdate.clear(); }
+
+  LiveRangeVec &getLRs() { return lrs; }
+
+  G4_RegFileKind getSelectedRF() const { return selectedRF; }
+
+  // This method is invoked when a new G4_Declare is created and a
+  // LiveRange instance needs to be added for it.
+  void addNewRAVariable(G4_Declare *dcl);
+  // This method is invoked when an existing RA variable is either
+  // removed from the program or a change is expected in liveness
+  // of a variable due to optimization.
+  void addCandidate(G4_Declare *dcl);
+
+  void skipIncrementalRANextIter();
+
+private:
+  // For verification only
+  std::vector<SparseBitSet> def_in;
+  std::vector<SparseBitSet> def_out;
+  std::vector<SparseBitSet> use_in;
+  std::vector<SparseBitSet> use_out;
+  std::vector<SparseBitSet> use_gen;
+  std::vector<SparseBitSet> use_kill;
+
+  std::unique_ptr<VarReferences> prevIterRefs;
+
+  // return true if verification passes, false otherwise.
+  bool verify(const LivenessAnalysis *curLiveness) const;
+
+  // copy over liveness sets from current iteration's liveness
+  void copyLiveness(const LivenessAnalysis *liveness);
+};
+
 class Interference {
   friend class Augmentation;
 
@@ -399,6 +475,7 @@ class Interference {
   unsigned *matrix = nullptr;
   const LivenessAnalysis *const liveAnalysis;
   Augmentation aug;
+  IncrementalRA &incRA;
 
   std::vector<std::vector<unsigned>> sparseIntf;
 
@@ -582,7 +659,7 @@ class GraphColor {
   Interference intf;
   PhyRegPool &regPool;
   IR_Builder &builder;
-  LiveRangeVec lrs;
+  LiveRangeVec &lrs;
   bool isHybrid;
   LIVERANGE_LIST spilledLRs;
   bool forceSpill;
@@ -958,6 +1035,9 @@ public:
   bool useLscForScatterSpill = false;
   bool useLscForNonStackCallSpillFill = false;
 
+  IncrementalRA incRA;
+
+
   VarSplitPass *getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
   unsigned getSubRetLoc(const G4_BB *bb) {
@@ -1273,7 +1353,7 @@ public:
 
   GlobalRA(G4_Kernel &k, PhyRegPool &r, PointsToAnalysis &p2a)
       : kernel(k), builder(*k.fg.builder), regPool(r), pointsToAnalysis(p2a),
-        fbdRegs(*k.fg.builder) {
+        fbdRegs(*k.fg.builder), incRA(*this) {
     vars.resize(k.Declares.size());
     varMasks.resize(k.Declares.size());
 

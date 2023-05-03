@@ -59,8 +59,10 @@ Interference::Interference(const LivenessAnalysis *l,
                            unsigned n, unsigned ns, unsigned nm, GlobalRA &g)
     : gra(g), kernel(g.kernel), lrs(lr), builder(*g.kernel.fg.builder),
       maxId(n), splitStartId(ns), splitNum(nm), liveAnalysis(l),
-      rowSize(maxId / BITS_DWORD + 1), aug(g.kernel, *this, *l, lr, g) {
+      rowSize(maxId / BITS_DWORD + 1), aug(g.kernel, *this, *l, lr, g),
+      incRA(g.incRA) {
   denseMatrixLimit = builder.getuint32Option(vISA_DenseMatrixLimit);
+  incRA.registerNextIter((G4_RegFileKind)l->getSelectedRF(), l);
 }
 
 criticalCmpForEndInterval::criticalCmpForEndInterval(GlobalRA &g) : gra(g) {}
@@ -1320,6 +1322,57 @@ LiveRange::LiveRange(G4_RegVar *v, GlobalRA &g)
   }
 }
 
+void LiveRange::initializeForbidden() {
+  auto rf = gra.incRA.getSelectedRF();
+  if (LivenessAnalysis::livenessClass(rf, G4_ADDRESS)) {
+    setForbidden(forbiddenKind::FBD_ADDR);
+  } else if (LivenessAnalysis::livenessClass(rf, G4_FLAG)) {
+    setForbidden(forbiddenKind::FBD_FLAG);
+  } else {
+    setForbidden(forbiddenKind::FBD_RESERVEDGRF);
+  };
+
+  bool hasStackCall =
+      gra.kernel.fg.getHasStackCalls() || gra.kernel.fg.getIsStackCallFunc();
+  setCallerSaveBias(hasStackCall);
+  if (getRegKind() == G4_GRF) {
+    if (gra.kernel.fg.isPseudoVCADcl(dcl)) {
+      setForbidden(forbiddenKind::FBD_CALLERSAVE);
+    } else if (gra.kernel.fg.isPseudoVCEDcl(dcl)) {
+      setForbidden(forbiddenKind::FBD_CALLEESAVE);
+    } else if (dcl == gra.getOldFPDcl()) {
+      setForbidden(forbiddenKind::FBD_CALLERSAVE);
+    }
+  }
+}
+
+LiveRange *LiveRange::createNewLiveRange(G4_Declare *dcl, GlobalRA &gra) {
+  auto &IncRAMem = gra.incRA.mem;
+  auto &builder = *gra.kernel.fg.builder;
+  G4_RegVar *var = dcl->getRegVar();
+  vISA_ASSERT(!dcl->getAliasDeclare(),
+              "error: attempt to create LiveRange for non-root dcl");
+  auto *lr = new (IncRAMem) LiveRange(var, gra);
+
+  if (builder.kernel.fg.isPseudoDcl(dcl)) {
+    lr->setIsPseudoNode();
+  }
+  if (dcl->getIsPartialDcl()) {
+    if (G4_Declare *parentDcl = gra.getSplittedDeclare(dcl)) {
+      lr->setParentLRID(parentDcl->getRegVar()->getId());
+      lr->setIsPartialDcl();
+    }
+  }
+  if (dcl->getIsSplittedDcl()) {
+    lr->setIsSplittedDcl(true);
+  }
+  lr->setBC(gra.getBankConflict(dcl));
+
+  lr->initializeForbidden();
+
+  return lr;
+}
+
 void LiveRange::checkForInfiniteSpillCost(
     G4_BB *bb, std::list<G4_INST *>::reverse_iterator &it) {
   // G4_INST at *it defines liverange object (this ptr)
@@ -2396,6 +2449,12 @@ void Interference::computeInterference() {
 
   generateSparseIntfGraph();
   countNeighbors();
+
+  if (IncrementalRA::isEnabled(kernel)) {
+    // Incremental interference was computed for current iteration.
+    // Now prepare for incremental temps in next iteration.
+    gra.incRA.clearCandidates();
+  }
 
   // apply callee save bias after augmentation as interference graph is
   // up-to-date.
@@ -5238,11 +5297,11 @@ GraphColor::GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
       numVar(live.getNumSelectedVar()),
       numSplitStartID(live.getNumSplitStartID()),
       numSplitVar(live.getNumSplitVar()),
-      intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(),
-           live.getNumSplitVar(), gra),
+      intf(&live, live.gra.incRA.getLRs(), live.getNumSelectedVar(),
+           live.getNumSplitStartID(), live.getNumSplitVar(), gra),
       regPool(gra.regPool), builder(gra.builder), isHybrid(hybrid),
       forceSpill(forceSpill_), GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel),
-      liveAnalysis(live) {
+      liveAnalysis(live), lrs(live.gra.incRA.getLRs()) {
   spAddrRegSig.resize(getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
 }
@@ -5252,50 +5311,13 @@ GraphColor::GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
 //
 void GraphColor::createLiveRanges() {
   lrs.resize(numVar);
-  bool hasStackCall = builder.kernel.fg.getHasStackCalls() ||
-                      builder.kernel.fg.getIsStackCallFunc();
-  // Modification For Alias Dcl
   for (auto dcl : gra.kernel.Declares) {
     G4_RegVar *var = dcl->getRegVar();
     // Do not include alias var in liverange creation
     if (!var->isRegAllocPartaker() || dcl->getAliasDeclare() != NULL) {
       continue;
     }
-    lrs[var->getId()] = new (GCMem) LiveRange(var, this->gra);
-
-    if (builder.kernel.fg.isPseudoDcl(dcl)) {
-      lrs[var->getId()]->setIsPseudoNode();
-    }
-    if (dcl->getIsPartialDcl()) {
-      if (G4_Declare *parentDcl = this->gra.getSplittedDeclare(dcl)) {
-        lrs[var->getId()]->setParentLRID(parentDcl->getRegVar()->getId());
-        lrs[var->getId()]->setIsPartialDcl();
-      }
-    }
-    if (dcl->getIsSplittedDcl()) {
-      lrs[var->getId()]->setIsSplittedDcl(true);
-    }
-    lrs[var->getId()]->setBC(gra.getBankConflict(dcl));
-
-    if (liveAnalysis.livenessClass(G4_ADDRESS)) {
-      lrs[var->getId()]->setForbidden(forbiddenKind::FBD_ADDR);
-    } else if (liveAnalysis.livenessClass(G4_FLAG)) {
-      lrs[var->getId()]->setForbidden(forbiddenKind::FBD_FLAG);
-    } else {
-      lrs[var->getId()]->setForbidden(forbiddenKind::FBD_RESERVEDGRF);
-    };
-
-    lrs[var->getId()]->setCallerSaveBias(hasStackCall);
-    G4_Declare *varDcl = lrs[var->getId()]->getDcl();
-    if (lrs[var->getId()]->getRegKind() == G4_GRF) {
-      if (builder.kernel.fg.isPseudoVCADcl(varDcl)) {
-        lrs[var->getId()]->setForbidden(forbiddenKind::FBD_CALLERSAVE);
-      } else if (builder.kernel.fg.isPseudoVCEDcl(varDcl)) {
-        lrs[var->getId()]->setForbidden(forbiddenKind::FBD_CALLEESAVE);
-      } else if (varDcl == gra.getOldFPDcl()) {
-        lrs[var->getId()]->setForbidden(forbiddenKind::FBD_CALLERSAVE);
-      }
-    }
+    lrs[var->getId()] = LiveRange::createNewLiveRange(dcl, gra);
   }
 }
 
@@ -6701,7 +6723,14 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   //
   // create an array of live ranges.
   //
-  createLiveRanges();
+  if (!IncrementalRA::isEnabled(kernel) || lrs.size() == 0) {
+    // Create vector of live ranges if we're not using
+    // incremental RA or if this is 1st iteration.
+    // With incremental RA, live-ranges are created right when
+    // new temp var is created in RA.
+    createLiveRanges();
+  }
+
   //
   // set the pre-assigned registers
   //
@@ -10013,6 +10042,9 @@ int GlobalRA::coloringRegAlloc() {
           splitPass.globalSplit(builder, kernel);
           splitPass.didGlobalSplit = true;
           globalSplitChange = true;
+          // TODO: Since global split is rarely enabled, for now we skip
+          // incremental RA whenever it is enabled.
+          incRA.skipIncrementalRANextIter();
         }
 
         if (iterationNo == 0 && (rerunGRA || globalSplitChange ||

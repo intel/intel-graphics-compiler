@@ -833,6 +833,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
     G4_Operand *src = dstInst->getSrc(i);
     if (src && src->isSrcRegRegion()) {
       incNumRemat(src->asSrcRegRegion()->getTopDcl());
+      gra.incRA.addCandidate(src->getTopDcl());
     }
   }
 
@@ -900,7 +901,6 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
         newSrc0Dcl = kernel.fg.builder->createTempVar(
             src0TopDcl->getTotalElems(), src0TopDcl->getElemType(),
             gra.getSubRegAlign(src0TopDcl));
-
         // Clone all defining instructions for sampler's msg header
         for (unsigned int i = 0; i != (*ops).second.def.size(); i++) {
           auto &headerDefInst = (*ops).second.def[i].first;

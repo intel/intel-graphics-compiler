@@ -4180,8 +4180,13 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
       return false;
     } else {
       lr->getVar()->getDeclare()->setSpillFlag();
+      gra.incRA.addCandidate(lr->getDcl());
     }
   }
+
+  // recompute liveness of r0 in all iterations as it may be extended
+  // due to spill instructions.
+  gra.incRA.addCandidate(builder_->getBuiltinR0());
 
   if (doSpillSpaceCompression) {
     // cache spilling intervals in sorted order so we can use these
@@ -4214,6 +4219,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
       if (gra.splitResults.find(dcl) == gra.splitResults.end())
         continue;
 
+      gra.incRA.addCandidate(dcl);
       LoopVarSplit::removeAllSplitInsts(&gra, dcl);
     }
   }

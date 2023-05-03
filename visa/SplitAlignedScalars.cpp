@@ -345,6 +345,7 @@ void SplitAlignedScalars::run() {
       oldNewDcls[dcl] = nullptr;
       numDclsReplaced++;
     }
+    gra.incRA.addCandidate(dcl);
   }
 
   for (auto bb : kernel.fg) {

@@ -1133,6 +1133,9 @@ bool LoopVarSplit::split(G4_Declare *dcl, Loop &loop) {
       return false;
   }
 
+  // At this point we've decided to split dcl around loop
+  coloring->getGRA().incRA.addCandidate(dcl);
+
   const auto &srcs = getReads(dcl, loop);
 
   auto splitDcl = kernel.fg.builder->createTempVar(

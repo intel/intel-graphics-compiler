@@ -219,6 +219,8 @@ void CoalesceSpillFills::coalesceSpills(
   f++;
 
   for (auto spill : coalesceableSpills) {
+    gra.incRA.addCandidate(
+        (*spill)->asSpillIntrinsic()->getPayload()->getTopDcl());
     bb->erase(spill);
   }
   coalesceableSpills.clear();
@@ -261,6 +263,8 @@ void CoalesceSpillFills::coalesceFills(
     vISA_ASSERT((*c)->isFillIntrinsic() &&
                     !isGRFAssigned((*c)->asFillIntrinsic()->getDst()),
                 "cannot coalesce fill with pre-assigned GRF");
+
+    gra.incRA.addCandidate(fillDst->getTopDcl());
   }
 
   auto leadInst = *coalesceableFills.front();
@@ -1133,6 +1137,10 @@ void CoalesceSpillFills::spills() {
             bool fullOverlap = false;
             if (overlap(*instIter, *(*coalIt), fullOverlap)) {
               if (fullOverlap) {
+                gra.incRA.addCandidate((*(*coalIt))
+                                           ->asSpillIntrinsic()
+                                           ->getPayload()
+                                           ->getTopDcl());
                 // Delete earlier spill since its made redundant
                 // by current spill.
                 bb->erase(*coalIt);
@@ -1285,6 +1293,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap() {
           G4_Declare *copyDcl = kernel.fg.builder->createDeclare(
               dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(),
               src1->getTopDcl()->getNumRows(), Type_UD);
+          gra.incRA.addCandidate(src1->getTopDcl());
 
           unsigned int elems = copyDcl->getNumElems();
           short row = 0;
@@ -1486,6 +1495,8 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
             }
 
             if (success && srcDcl) {
+              gra.incRA.addCandidate(inst->getSrc(1)->getTopDcl());
+              gra.incRA.addCandidate(srcDcl);
               // Replace src1 of send with srcDcl
               G4_SrcRegRegion *sendSrc1 = kernel.fg.builder->createSrc(
                   srcDcl->getRegVar(), base, 0,
@@ -1749,6 +1760,7 @@ void CoalesceSpillFills::spillFillCleanup() {
 
           auto write = writesPerOffset.find(row)->second;
           G4_SrcRegRegion *src1Write = write->getSrc(1)->asSrcRegRegion();
+          gra.incRA.addCandidate(src1Write->getTopDcl());
           unsigned int writeRowStart = write->asSpillIntrinsic()->getOffset();
           unsigned int diff = row - writeRowStart;
           G4_SrcRegRegion *nSrc = kernel.fg.builder->createSrc(
@@ -1929,6 +1941,11 @@ void CoalesceSpillFills::removeRedundantWrites() {
          !isGRFAssigned(inst->asSpillIntrinsic()->getPayload())) ||
         (inst->isFillIntrinsic() &&
          !isGRFAssigned(inst->asFillIntrinsic()->getDst()))) {
+      if (inst->isSpillIntrinsic())
+        gra.incRA.addCandidate(
+            inst->asSpillIntrinsic()->getPayload()->getTopDcl());
+      else if (inst->isFillIntrinsic())
+        gra.incRA.addCandidate(inst->asFillIntrinsic()->getDst()->getTopDcl());
       bb->erase(removeSp.second.first);
     }
   }

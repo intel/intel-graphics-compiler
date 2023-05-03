@@ -91,6 +91,7 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
     }
   };
 
+  auto incRACheck = IncrementalRA::isEnabled(gra.kernel);
   for (G4_Declare *decl : gra.kernel.Declares) {
     if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL) {
       if (flag) {
@@ -103,6 +104,15 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
         handleSplitId(decl);
         // All variables are treated as global in stack call
         globalVars.set(numVarId);
+      }
+
+      if(incRACheck) {
+        // Incremental RA requires that variables preserve their
+        // RA id. So this sanity check is crucial for incremental
+        // RA correctness.
+        auto id = decl->getRegVar()->getId();
+        vISA_ASSERT(id == numVarId || id == UNDEFINED_VAL,
+                    "different id assigned to G4_RegVar");
       }
 
       decl->getRegVar()->setId(numVarId++);

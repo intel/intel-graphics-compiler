@@ -124,8 +124,12 @@ public:
   {
     return addr_taken.isSet(num);
   }
+  unsigned int getSelectedRF() const { return selectedRF; }
+  static bool livenessClass(G4_RegFileKind kind1, G4_RegFileKind kind2) {
+    return (kind1 & kind2) != 0;
+  }
   bool livenessClass(G4_RegFileKind regKind) const {
-    return (selectedRF & regKind) != 0;
+    return livenessClass((G4_RegFileKind)selectedRF, regKind);
   }
   unsigned getNumSelectedVar() const { return numVarId; }
   unsigned getNumSelectedGlobalVar() const { return globalVars.count(); }

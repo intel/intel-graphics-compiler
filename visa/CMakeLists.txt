@@ -237,6 +237,7 @@ set(GenX_Common_Sources_External_Other
   G4_Verifier.cpp
   GraphColor.cpp
   HWConformity.cpp
+  IncrementalRA.cpp
   InstSplit.cpp
   JitterDataStruct.cpp
   LinearScanRA.cpp
