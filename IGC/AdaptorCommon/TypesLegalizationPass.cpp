@@ -22,6 +22,7 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Types Legalization pass"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
+#define MAX_ARRAY_SIZE_THRESHOLD 8
 
 IGC_INITIALIZE_PASS_BEGIN( TypesLegalizationPass,PASS_FLAG,PASS_DESCRIPTION,PASS_CFG_ONLY,PASS_ANALYSIS )
 IGC_INITIALIZE_PASS_END( TypesLegalizationPass,PASS_FLAG,PASS_DESCRIPTION,PASS_CFG_ONLY,PASS_ANALYSIS )
@@ -162,6 +163,24 @@ bool TypesLegalizationPass::LegalizeTypes() {
     modified = true;
   }
   return modified;
+}
+
+///////////////////////////////////////////////////////////////////////
+/// @brief Checks if an array contains null constants
+/// @param  storeInst is an instruction that stores array
+/// @param  indices leading to current structure filed or array elemen
+/// @param  numelems is a number of elements in the array
+bool TypesLegalizationPass::CheckNullArray(Instruction* storeInst) {
+    Value* op0 = storeInst->getOperand(0);
+    Type* type = op0->getType();
+
+    bool isElemVectorType = type->getArrayElementType()->isVectorTy();
+    bool isConstantAggregateZero = isa<ConstantAggregateZero>(op0);
+
+    if (isElemVectorType || !isConstantAggregateZero)
+      return false;
+
+    return true;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -321,10 +340,21 @@ void TypesLegalizationPass::ResolveStoreInst(
     }
   }
   else if(type->isArrayTy()) {
-    for(unsigned elem = 0; elem < type->getArrayNumElements(); ++elem) {
-      indices.push_back( elem );
-      ResolveStoreInst( storeInst,type->getArrayElementType(),indices );
-      indices.pop_back();
+    auto num = type->getArrayNumElements();
+    // Check if recursion depth is 0 (indices.size() == 0) and
+    // create memset instead of multiple store instructions that writes nulls
+    if (!indices.size() && num >= MAX_ARRAY_SIZE_THRESHOLD && CheckNullArray(storeInst)) {
+        IRBuilder<> Builder(storeInst);
+        unsigned int size = type->getArrayElementType()->getScalarSizeInBits() / 8;
+        auto al = IGCLLVM::getAlignmentValue(storeInst);
+        Builder.CreateMemSet(storeInst->getOperand(1), Builder.getInt8(0), Builder.getInt64(num * size), IGCLLVM::getAlign(al), storeInst->isVolatile());
+    }
+    else {
+        for (unsigned elem = 0; elem < type->getArrayNumElements(); ++elem) {
+            indices.push_back(elem);
+            ResolveStoreInst(storeInst, type->getArrayElementType(), indices);
+            indices.pop_back();
+        }
     }
   }
   else {
@@ -355,7 +385,7 @@ void TypesLegalizationPass::ResolveStoreInst( StoreInst *storeInst ) {
   Value *arg = storeInst->getOperand( 0 );
   if(arg != NULL)
   {
-    ResolveStoreInst( storeInst,arg->getType(),indices );
+    ResolveStoreInst(storeInst,arg->getType(),indices);
     storeInst->eraseFromParent();
   }
 }
