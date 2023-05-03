@@ -120,11 +120,11 @@ int IR_Builder::translateLscUntypedInst(
   // and a32* to have D/UD.
   // Later changes will attempt to uncomment this and enforce the change.
   //
-  // vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_64b ||
-  //             IS_QTYPE(src0Addr->getType()),
-  //             ":a64 expects Q/UQ");
-  // vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_32b ||
-  //             IS_DTYPE(src0Addr->getType()), ":a32* expects D/UD");
+  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_64b ||
+                    IS_QTYPE(src0Addr->getType()),
+                    ":a64 expects Q/UQ");
+  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_32b ||
+                    IS_DTYPE(src0Addr->getType()), ":a32* expects D/UD");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
   const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);

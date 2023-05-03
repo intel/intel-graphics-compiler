@@ -2197,6 +2197,9 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
   unsigned numOword = Get_VISA_Oword_Num(size);
 
   G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
+  G4_Declare *dclAsUQ =
+      createSendPayloadDcl(getGenxDataportIOSize() / 2, Type_UQ);
+  dclAsUQ->setAliasDeclare(dcl, 0);
   if (noInt64()) {
     G4_SrcRegRegion *region = address->asSrcRegRegion();
     G4_SrcRegRegion *tmp;
@@ -2211,13 +2214,9 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
                              region->getRegion(), Type_UD);
     createMovInst(dcl, 0, 1, g4::SIMD1, NULL, NULL, tmp, true);
   } else {
-    G4_Declare *dclAsUQ =
-        createSendPayloadDcl(getGenxDataportIOSize() / 2, Type_UQ);
-    dclAsUQ->setAliasDeclare(dcl, 0);
     createMovInst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
   }
 
-  G4_SrcRegRegion *src = createSrcRegRegion(dcl, getRegionStride1());
 
   // This is a WA for fused EU where
   // execution size greater than SIMD size will cause problems
@@ -2227,6 +2226,8 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
     dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
     dataShape.size = LSC_DATA_SIZE_32b;
     dataShape.elems = lscGetElementNum(numOword * 16 / 4);
+
+    G4_SrcRegRegion *srcAddr64 = createSrcRegRegion(dclAsUQ, getRegionStride1());
     return translateLscUntypedInst(
         LSC_LOAD, LSC_UGM, nullptr,
         EXEC_SIZE_1,
@@ -2235,7 +2236,7 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
         {LSC_ADDR_TYPE_FLAT, 1, 0, LSC_ADDR_SIZE_64b},
         dataShape,
         nullptr,
-        dst->asDstRegRegion(), src,
+        dst->asDstRegRegion(), srcAddr64,
         nullptr,
         nullptr,
         nullptr);
@@ -2254,9 +2255,10 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
   G4_ExecSize sendExecSize{FIX_OWORD_SEND_EXEC_SIZE(numOword)};
   dst->setType(*this, Type_UD);
 
-  createSendInst(NULL, dst, src, 1, rspLength, sendExecSize, desc, SFID::DP_DC1,
-                 true, SendAccess::READ_ONLY, NULL, NULL, InstOpt_WriteEnable,
-                 false);
+  G4_SrcRegRegion *srcAddr = createSrcRegRegion(dcl, getRegionStride1());
+  createSendInst(NULL, dst, srcAddr, 1, rspLength, sendExecSize, desc,
+                 SFID::DP_DC1, true, SendAccess::READ_ONLY, NULL, NULL,
+                 InstOpt_WriteEnable, false);
 
   return VISA_SUCCESS;
 }
