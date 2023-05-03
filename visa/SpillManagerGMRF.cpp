@@ -6067,7 +6067,7 @@ void BoundedRA::markUniversalForbidden() {
 
 void BoundedRA::markForbidden(LiveRange *lr) {
   auto totalRegs = gra.kernel.getNumRegTotal();
-  BitSet *forbidden = lr->getForbidden();
+  auto forbidden = lr->getForbidden();
   // We've 0 reserved GRFs if an RA iteration was converted
   // to fail safe. But we may have non-zero reserved GRFs
   // if fail safe was set before running RA iteration.
@@ -6078,7 +6078,7 @@ void BoundedRA::markForbidden(LiveRange *lr) {
             reg < (reservedGRFStart + numReserved));
   };
   for (unsigned int i = 0; i != totalRegs; ++i) {
-    if (!isReservedGRF(i) && forbidden && forbidden->isSet(i))
+    if (!isReservedGRF(i) && forbidden[i])
       markGRF(i);
   }
 
