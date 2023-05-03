@@ -2184,7 +2184,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
         if (dst->getBase()->isRegAllocPartaker() &&
             !dst->getBase()->asRegVar()->isPhyRegAssigned()) {
           int dstId = dst->getBase()->asRegVar()->getId();
-          lrs[dstId]->markForbidden(kernel.getNumRegTotal() - 1, 1);
+          lrs[dstId]->setForbidden(forbiddenKind::FBD_LASTGRF);
         }
       }
     }
@@ -2246,7 +2246,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
             // mark the liveRange as the EOT source
             lrs[id]->setEOTSrc();
             if (builder.hasEOTGRFBinding()) {
-              lrs[id]->markForbidden(0, kernel.getNumRegTotal() - 16);
+              lrs[id]->setForbidden(forbiddenKind::FBD_EOT);
             }
           }
           if (inst->isReturn()) {
@@ -5256,7 +5256,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
 //
 // lrs[i] gives the live range whose id is i
 //
-void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
+void GraphColor::createLiveRanges() {
   lrs.resize(numVar);
   bool hasStackCall = builder.kernel.fg.getHasStackCalls() ||
                       builder.kernel.fg.getIsStackCallFunc();
@@ -5268,7 +5268,6 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
       continue;
     }
     lrs[var->getId()] = new (GCMem) LiveRange(var, this->gra);
-    unsigned reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
 
     if (builder.kernel.fg.isPseudoDcl(dcl)) {
       lrs[var->getId()]->setIsPseudoNode();
@@ -5284,16 +5283,24 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
     }
     lrs[var->getId()]->setBC(gra.getBankConflict(dcl));
 
-    lrs[var->getId()]->allocForbidden(GCMem, hasStackCall, reserveSpillSize,
-                                      reservedGRFNum);
+    if (liveAnalysis.livenessClass(G4_ADDRESS)) {
+      lrs[var->getId()]->setForbidden(forbiddenKind::FBD_ADDR);
+    } else if (liveAnalysis.livenessClass(G4_FLAG)) {
+      lrs[var->getId()]->setForbidden(forbiddenKind::FBD_FLAG);
+    } else {
+      lrs[var->getId()]->setForbidden(forbiddenKind::FBD_RESERVEDGRF);
+    };
+
     lrs[var->getId()]->setCallerSaveBias(hasStackCall);
     G4_Declare *varDcl = lrs[var->getId()]->getDcl();
-    if (builder.kernel.fg.isPseudoVCADcl(varDcl)) {
-      lrs[var->getId()]->allocForbiddenCallerSave(GCMem, &builder.kernel);
-    } else if (builder.kernel.fg.isPseudoVCEDcl(varDcl)) {
-      lrs[var->getId()]->allocForbiddenCalleeSave(GCMem, &builder.kernel);
-    } else if (varDcl == gra.getOldFPDcl()) {
-      lrs[var->getId()]->allocForbiddenCallerSave(GCMem, &builder.kernel);
+    if (lrs[var->getId()]->getRegKind() == G4_GRF) {
+      if (builder.kernel.fg.isPseudoVCADcl(varDcl)) {
+        lrs[var->getId()]->setForbidden(forbiddenKind::FBD_CALLERSAVE);
+      } else if (builder.kernel.fg.isPseudoVCEDcl(varDcl)) {
+        lrs[var->getId()]->setForbidden(forbiddenKind::FBD_CALLEESAVE);
+      } else if (varDcl == gra.getOldFPDcl()) {
+        lrs[var->getId()]->setForbidden(forbiddenKind::FBD_CALLERSAVE);
+      }
     }
   }
 }
@@ -5981,7 +5988,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
                    i != (parentGRFNum + parentNumRows); i += numRows) {
                 if ((i - parentGRFNum) == siblingNum * numRows)
                   continue;
-                lr->markForbidden(i, numRows);
+                lr->markForbidden(GCMem, i, numRows);
               }
               skipParentIntf = true;
             }
@@ -6670,8 +6677,8 @@ void GraphColor::gatherScatterForbiddenWA() {
         if (opndLen > 0 && dcl && dcl->getRegVar() &&
             dcl->getRegVar()->isRegAllocPartaker()) {
           if (lenInSend == (opndLen + 1)) {
-            lrs[dcl->getRegVar()->getId()]->markForbidden(
-                kernel.getNumRegTotal() - 1, 1);
+            lrs[dcl->getRegVar()->getId()]->setForbidden(
+                forbiddenKind::FBD_LASTGRF);
           } else if (lenInSend > opndLen) {
             vISA_ASSERT(false,
                         "mismatch between len in send and that of operand");
@@ -6687,30 +6694,11 @@ void GraphColor::gatherScatterForbiddenWA() {
 }
 
 bool GraphColor::regAlloc(bool doBankConflictReduction,
-                          bool highInternalConflict, bool reserveSpillReg,
-                          unsigned &spillRegSize, unsigned &indrSpillRegSize,
-                          const RPE *rpe) {
+                          bool highInternalConflict, const RPE *rpe) {
   bool useSplitLLRHeuristic = false;
 
   RA_TRACE(std::cout << "\t--# variables: " << liveAnalysis.getNumSelectedVar()
                      << "\n");
-
-  unsigned reserveSpillSize = 0;
-  if (reserveSpillReg) {
-    failSafeIter = reserveSpillReg;
-
-    if (kernel.getOption(vISA_NewFailSafeRA)) {
-      spillRegSize = gra.getNumReservedGRFs();
-      indrSpillRegSize = 0;
-    } else {
-      gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
-    }
-
-    reserveSpillSize = spillRegSize + indrSpillRegSize;
-    vISA_ASSERT(reserveSpillSize < kernel.getNumCalleeSaveRegs(),
-                "Invalid reserveSpillSize in fail-safe RA!");
-    totalGRFRegCount -= reserveSpillSize;
-  }
 
   // Copy over alignment for vars inserted by RA
   gra.copyMissingAlignment();
@@ -6718,7 +6706,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   //
   // create an array of live ranges.
   //
-  createLiveRanges(reserveSpillSize);
+  createLiveRanges();
   //
   // set the pre-assigned registers
   //
@@ -8046,6 +8034,141 @@ void GraphColor::getSaveRestoreRegister() {
   }
   getCallerSaveRegisters();
 }
+
+//
+// Get the forbidden vector size
+//
+unsigned ForbiddenRegs::getForbiddenVectorSize(G4_RegFileKind regKind) const {
+  switch (regKind) {
+  case G4_GRF:
+  case G4_INPUT:
+    return builder.kernel.getNumRegTotal();
+  case G4_ADDRESS:
+    return getNumAddrRegisters();
+  case G4_FLAG:
+    return builder.getNumFlagRegisters();
+  default:
+    vISA_ASSERT_UNREACHABLE("illegal reg file");
+    return 0;
+  }
+}
+
+//
+// Get the forbidden vectors of reserved GRFs
+// May be reserved for user, stack call, and spill
+//
+void ForbiddenRegs::generateReservedGRFForbidden(
+    unsigned reserveSpillSize) {
+  bool hasStackCall = builder.kernel.fg.getHasStackCalls() ||
+                      builder.kernel.fg.getIsStackCallFunc();
+  uint32_t reservedGRFNum = builder.getuint32Option(vISA_ReservedGRFNum);
+  unsigned int stackCallRegSize =
+      hasStackCall ? builder.kernel.numReservedABIGRF() : 0;
+
+  // r0 - Forbidden when platform is not 3d
+  // rMax, rMax-1, rMax-2 - Forbidden in presence of stack call sites
+  forbiddenKind k = forbiddenKind::FBD_RESERVEDGRF;
+  unsigned totalGRFNum = builder.kernel.getNumRegTotal();
+  forbiddenVec[(size_t)k].resize(getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[(size_t)k].clear();
+
+  if (builder.kernel.getKernelType() != VISA_3D ||
+      builder.kernel.getOption(vISA_enablePreemption) ||
+      reserveSpillSize > 0 || builder.kernel.getOption(vISA_ReserveR0) ||
+      builder.kernel.getOption(vISA_PreserveR0InR0)) {
+    forbiddenVec[(size_t)k].set(0, true);
+  }
+
+  if (builder.kernel.getOption(vISA_enablePreemption)) {
+    // r1 is reserved for SIP kernel
+    forbiddenVec[(size_t)k].set(1, true);
+  }
+
+  unsigned reservedRegSize = stackCallRegSize + reserveSpillSize;
+  for (unsigned int i = 0; i < reservedRegSize; i++) {
+    forbiddenVec[(size_t)k].set(totalGRFNum - 1 - i, true);
+  }
+
+  unsigned largestNoneReservedReg = totalGRFNum - reservedRegSize - 1;
+  if (totalGRFNum - reservedRegSize >= totalGRFNum - 16) {
+    largestNoneReservedReg = totalGRFNum - 16 - 1;
+  }
+
+  if (totalGRFNum - reservedRegSize < reservedGRFNum) {
+    vISA_ASSERT(false, "After reservation, there is not enough regiser!");
+  }
+
+  for (unsigned int i = 0; i < reservedGRFNum; i++) {
+    forbiddenVec[(size_t)k].set(largestNoneReservedReg - i, true);
+  }
+}
+
+// ETO use only last 16 registers
+void ForbiddenRegs::generateEOTGRFForbidden() {
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOT].resize(
+      getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOT].clear();
+  for (unsigned i = 0; i < builder.kernel.getNumRegTotal() - 16; i++) {
+    forbiddenVec[(size_t)forbiddenKind::FBD_EOT].set(i, true);
+  }
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOT] |=
+      forbiddenVec[(size_t)forbiddenKind::FBD_RESERVEDGRF];
+}
+
+void ForbiddenRegs::generateLastGRFForbidden() {
+  forbiddenVec[(size_t)forbiddenKind::FBD_LASTGRF].resize(
+      getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[(size_t)forbiddenKind::FBD_LASTGRF].clear();
+  forbiddenVec[(size_t)forbiddenKind::FBD_LASTGRF].set(
+      builder.kernel.getNumRegTotal() - 1, true);
+  forbiddenVec[(size_t)forbiddenKind::FBD_LASTGRF] |=
+      forbiddenVec[(size_t)forbiddenKind::FBD_RESERVEDGRF];
+}
+
+void ForbiddenRegs::generateEOTLastGRFForbidden() {
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOTLASTGRF].resize(
+      getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOTLASTGRF].clear();
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOTLASTGRF] |=
+      forbiddenVec[(size_t)forbiddenKind::FBD_EOT];
+  forbiddenVec[(size_t)forbiddenKind::FBD_EOTLASTGRF] |=
+      forbiddenVec[(size_t)forbiddenKind::FBD_LASTGRF];
+}
+
+
+//
+// mark forbidden registers for caller-save pseudo var
+//
+void ForbiddenRegs::generateCallerSaveGRFForbidden() {
+  unsigned int startCalleeSave = builder.kernel.calleeSaveStart();
+  unsigned int endCalleeSave =
+      startCalleeSave + builder.kernel.getNumCalleeSaveRegs();
+  // r60-r124 are caller save regs for SKL
+  forbiddenVec[(size_t)forbiddenKind::FBD_CALLERSAVE].resize(
+      getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[(size_t)forbiddenKind::FBD_CALLERSAVE].clear();
+  for (unsigned int i = startCalleeSave; i < endCalleeSave; i++) {
+    forbiddenVec[(size_t)forbiddenKind::FBD_CALLERSAVE].set(i, true);
+  }
+  forbiddenVec[(size_t)forbiddenKind::FBD_CALLERSAVE] |=
+      forbiddenVec[(size_t)forbiddenKind::FBD_RESERVEDGRF];
+}
+
+//
+// mark forbidden registers for callee-save pseudo var
+//
+void ForbiddenRegs::generateCalleeSaveGRFForbidden() {
+  unsigned int numCallerSaveGRFs = builder.kernel.getCallerSaveLastGRF() + 1;
+  forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE].resize(
+      getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE].clear();
+  for (unsigned int i = 1; i < numCallerSaveGRFs; i++) {
+    forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE].set(i, true);
+  }
+  forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE] |=
+      forbiddenVec[(size_t)forbiddenKind::FBD_RESERVEDGRF];
+}
+
 //
 // Add GRF caller/callee save/restore code for stack calls.
 // localSpillAreaOwordsize specifices the starting offset of the
@@ -9198,10 +9321,7 @@ void GlobalRA::addrRegAlloc() {
     //
     if (liveAnalysis.getNumSelectedVar() > 0) {
       GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, false);
-      unsigned spillRegSize = 0;
-      unsigned indrSpillRegSize = 0;
-      if (!coloring.regAlloc(false, false, false, spillRegSize,
-                             indrSpillRegSize, nullptr)) {
+      if (!coloring.regAlloc(false, false, nullptr)) {
         SpillManager spillARF(*this, coloring.getSpilledLiveRanges(),
                               addrSpillId);
         spillARF.insertSpillCode();
@@ -9263,10 +9383,7 @@ void GlobalRA::flagRegAlloc() {
     //
     if (liveAnalysis.getNumSelectedVar() > 0) {
       GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, false);
-      unsigned spillRegSize = 0;
-      unsigned indrSpillRegSize = 0;
-      if (!coloring.regAlloc(false, false, false, spillRegSize,
-                             indrSpillRegSize, nullptr)) {
+      if (!coloring.regAlloc(false, false, nullptr)) {
         SpillManager spillFlag(*this, coloring.getSpilledLiveRanges(),
                                flagSpillId);
         spillFlag.insertSpillCode();
@@ -9433,12 +9550,9 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     }
 
     GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), true, false);
-
-    unsigned spillRegSize = 0;
-    unsigned indrSpillRegSize = 0;
+    generateForbiddenTemplates(0);
     bool isColoringGood =
-        coloring.regAlloc(doBankConflictReduction, highInternalConflict, false,
-                          spillRegSize, indrSpillRegSize, &rpe);
+        coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {
       if (!kernel.getOption(vISA_Debug)) {
         // Why?? Keep LRA results when -debug is passed
@@ -9477,6 +9591,41 @@ bool canDoHRA(G4_Kernel &kernel) {
 
   return ret;
 }
+
+
+std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring) {
+  coloring.markFailSafeIter(true);
+  unsigned spillRegSize = 0;
+  unsigned indrSpillRegSize = 0;
+
+  if (kernel.getOption(vISA_NewFailSafeRA)) {
+    spillRegSize = getNumReservedGRFs();
+  } else {
+    determineSpillRegSize(spillRegSize, indrSpillRegSize);
+  }
+
+  vISA_ASSERT(spillRegSize + indrSpillRegSize < kernel.getNumCalleeSaveRegs(),
+              "Invalid reserveSpillSize in fail-safe RA!");
+  coloring.setTotalGRFRegCount(coloring.getTotalGRFRegCount() -
+                               (spillRegSize + indrSpillRegSize));
+  return std::make_pair(spillRegSize, indrSpillRegSize);
+}
+
+// pre-allocate the bits for forbidden registers which will not be used in
+// register assignment.
+// Genernal GRF forbidden including:
+//   reserved for spill,
+//   user reserved,
+//   reserved for stack call.
+void GlobalRA::generateForbiddenTemplates(unsigned reserveSpillSize) {
+  fbdRegs.generateReservedGRFForbidden(reserveSpillSize);
+  fbdRegs.generateCallerSaveGRFForbidden();
+  fbdRegs.generateCalleeSaveGRFForbidden();
+  fbdRegs.generateEOTGRFForbidden();
+  fbdRegs.generateLastGRFForbidden();
+  fbdRegs.generateEOTLastGRFForbidden();
+}
+
 //
 // graph coloring entry point.  returns nonzero if RA fails
 //
@@ -9567,7 +9716,7 @@ int GlobalRA::coloringRegAlloc() {
           LivenessAnalysis live(*this, G4_GRF | G4_INPUT, false, true);
           live.computeLiveness();
           GraphColor coloring(live, kernel.getNumRegTotal(), false, false);
-          coloring.createLiveRanges(0);
+          coloring.createLiveRanges();
           const auto& lrs = coloring.getLiveRanges();
           Interference intf(&live, lrs, live.getNumSelectedVar(),
                             live.getNumSplitStartID(), live.getNumSplitVar(),
@@ -9819,11 +9968,18 @@ int GlobalRA::coloringRegAlloc() {
         coloring.dumpRegisterPressure();
       }
 
+      // Get the size of register which are reserved for spill
       unsigned spillRegSize = 0;
       unsigned indrSpillRegSize = 0;
+
+      if (reserveSpillReg) {
+        std::pair <unsigned, unsigned> p = reserveGRFSpillReg(coloring);
+        spillRegSize = p.first;
+        indrSpillRegSize = p.second;
+      }
+      generateForbiddenTemplates(spillRegSize + indrSpillRegSize);
       bool isColoringGood = coloring.regAlloc(
-          doBankConflictReduction, highInternalConflict, reserveSpillReg,
-          spillRegSize, indrSpillRegSize, &rpe);
+          doBankConflictReduction, highInternalConflict, &rpe);
       if (!isColoringGood) {
         if (isReRAPass()) {
           // Don't modify program if reRA pass spills

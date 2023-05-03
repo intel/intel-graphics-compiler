@@ -196,7 +196,7 @@ int PhyRegUsage::findContiguousWords(uint32_t words, G4_SubReg_Align subAlign,
 //
 // look for contiguous available regs starting from startPos
 //
-bool PhyRegUsage::findContiguousGRF(bool availRegs[], const bool forbidden[],
+bool PhyRegUsage::findContiguousGRF(bool availRegs[], const BitSet *forbidden,
                                     unsigned occupiedBundles, BankAlign align,
                                     unsigned numRegNeeded, unsigned maxRegs,
                                     unsigned &startPos, unsigned &idx,
@@ -244,7 +244,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[], const bool forbidden[],
 // look for contiguous available regs starting from startPos
 //
 bool PhyRegUsage::findContiguousAddrFlag(
-    bool availRegs[], const bool forbidden[], G4_SubReg_Align subAlign,
+    bool availRegs[], const BitSet *forbidden, G4_SubReg_Align subAlign,
     unsigned numRegNeeded, unsigned maxRegs, unsigned &startPos, unsigned &idx,
     bool isCalleeSaveBias, bool isEOTSrc) {
   unsigned startPosRunOne = startPos;
@@ -281,7 +281,7 @@ bool PhyRegUsage::findContiguousAddrFlag(
 }
 
 bool PhyRegUsage::findContiguousGRFFromBanks(
-    G4_Declare *dcl, bool availRegs[], const bool forbidden[],
+    G4_Declare *dcl, bool availRegs[], const BitSet *forbidden,
     BankAlign origAlign, unsigned &idx,
     bool oneGRFBankDivision) { // EOT is not handled in this function
   bool found = false;
@@ -404,7 +404,7 @@ bool PhyRegUsage::isOverlapValid(unsigned int reg, unsigned int numRegs) {
 // look for contiguous available regs from startPos to maxRegs
 //
 bool PhyRegUsage::findContiguousNoWrapGRF(
-    bool availRegs[], const bool forbidden[], unsigned short occupiedBundles,
+    bool availRegs[], const BitSet *forbidden, unsigned short occupiedBundles,
     BankAlign align, unsigned numRegNeeded, unsigned startPos, unsigned endPos,
     unsigned &idx) {
   unsigned i = startPos;
@@ -440,8 +440,7 @@ bool PhyRegUsage::findContiguousNoWrapGRF(
                  occupiedBundles & (1 << gra.get_bundle(i, 1))) {
         i++;
       } else {
-        for (; j < i + numRegNeeded && availRegs[j] &&
-               (forbidden == NULL || !forbidden[j]);
+        for (; j < i + numRegNeeded && availRegs[j] && (!forbidden || !forbidden->isSet(j));
              j++)
           ;
         if (j == i + numRegNeeded) {
@@ -461,7 +460,7 @@ bool PhyRegUsage::findContiguousNoWrapGRF(
 // look for contiguous available regs from startPos to maxRegs
 //
 bool PhyRegUsage::findContiguousNoWrapAddrFlag(
-    bool availRegs[], const bool forbidden[], G4_SubReg_Align subAlign,
+    bool availRegs[], const BitSet *forbidden, G4_SubReg_Align subAlign,
     unsigned numRegNeeded, unsigned startPos, unsigned endPos, unsigned &idx) {
   unsigned i = startPos;
   while (i < endPos) {
@@ -489,7 +488,7 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(
       //
       unsigned j = i;
       for (; j < i + numRegNeeded && availRegs[j] &&
-             (forbidden == NULL || !forbidden[j]);
+             (!forbidden || !forbidden->isSet(j));
            j++)
         ;
       if (j == i + numRegNeeded) {
@@ -506,7 +505,7 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(
 }
 
 bool PhyRegUsage::findFreeRegs(
-    bool availRegs[], const bool forbidden[], BankAlign align,
+    bool availRegs[], const BitSet *forbidden, BankAlign align,
     unsigned numRegNeeded,
     unsigned startRegNum, // inclusive
     unsigned
@@ -556,7 +555,7 @@ bool PhyRegUsage::findFreeRegs(
         //
         unsigned j = i;
         for (; j < i + numRegNeeded && availRegs[j] &&
-               (forbidden == NULL || !forbidden[j]);
+               (!forbidden || !forbidden->isSet(j));
              j++)
           ;
         if (j == i + numRegNeeded) {
@@ -597,7 +596,7 @@ bool PhyRegUsage::canGRFSubRegAlloc(G4_Declare *decl) {
 void PhyRegUsage::findGRFSubRegFromRegs(int startReg, int endReg, int step,
                                         PhyReg *phyReg,
                                         G4_SubReg_Align subAlign,
-                                        unsigned nwords, const bool forbidden[],
+                                        unsigned nwords, const BitSet *forbidden,
                                         bool fromPartialOccupiedReg) {
   int idx = startReg;
   while (1) {
@@ -611,7 +610,7 @@ void PhyRegUsage::findGRFSubRegFromRegs(int startReg, int endReg, int step,
       }
     }
 
-    if (forbidden && forbidden[idx]) {
+    if (forbidden && forbidden->isSet(idx)) {
       idx += step;
       continue;
     }
@@ -637,7 +636,7 @@ void PhyRegUsage::findGRFSubRegFromRegs(int startReg, int endReg, int step,
 }
 
 PhyRegUsage::PhyReg
-PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
+PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const BitSet *forbidden,
                                     bool oneGRFBankDivision) {
   int startReg = 0, endReg = totalGRFNum;
   int step = 0;
@@ -718,7 +717,7 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
 // To support sub-reg alignment
 //
 PhyRegUsage::PhyReg
-PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
+PhyRegUsage::findGRFSubReg(const BitSet *forbidden, bool calleeSaveBias,
                            bool callerSaveBias, BankAlign align,
                            G4_SubReg_Align subAlign, unsigned nwords) {
   int startReg = 0, endReg = totalGRFNum;
@@ -739,7 +738,7 @@ PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
     PhyReg phyReg = {-1, -1};
     for (auto idx = startReg; idx < endReg; idx += step) {
       // forbidden GRF is not an allocation candidate
-      if (forbidden && forbidden[idx]) {
+      if (forbidden && forbidden->isSet(idx)) {
         continue;
       }
 
@@ -791,7 +790,7 @@ PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
 }
 
 bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange *varBasis, BankAlign align,
-                                         const bool *forbidden,
+                                         const BitSet *forbidden,
                                          ColorHeuristic heuristic,
                                          bool oneGRFBankDivision) {
   colorHeuristic = heuristic;
@@ -849,7 +848,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange *varBasis, BankAlign align,
 // To support sub-reg alignment
 //
 bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
-                             const bool *forbidden, BankAlign align,
+                             const BitSet *forbidden, BankAlign align,
                              G4_SubReg_Align subAlign, ColorHeuristic heuristic,
                              float spillCost, bool hintSet) {
   colorHeuristic = heuristic;
@@ -1027,34 +1026,39 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
   }
 }
 
-//
-// allocate forbidden vectors
-//
-unsigned LiveRange::getForbiddenVectorSize() const {
-  switch (regKind) {
-  case G4_GRF:
-  case G4_INPUT:
-    return gra.kernel.getNumRegTotal();
-  case G4_ADDRESS:
-    return getNumAddrRegisters();
-  case G4_FLAG:
-    return gra.builder.getNumFlagRegisters();
-  default:
-    vISA_ASSERT_UNREACHABLE("illegal reg file");
-    return 0;
+BitSet *LiveRange::getForbidden() {
+  return forbidden;
+}
+
+void LiveRange::setForbidden(forbiddenKind f) {
+  if ((f == forbiddenKind::FBD_LASTGRF || f == forbiddenKind::FBD_EOT) &&
+      (forbiddenType == forbiddenKind::FBD_LASTGRF ||
+       forbiddenType == forbiddenKind::FBD_EOT) &&
+      forbiddenType != f) {
+    forbiddenType = forbiddenKind::FBD_EOTLASTGRF;
+    forbidden = gra.getForbiddenRegs(forbiddenType);
+  } else {
+    forbiddenType = f;
+    forbidden = gra.getForbiddenRegs(f);
   }
 }
 
-//
-// allocate forbidden vectors
-//
-void LiveRange::allocForbiddenVector(Mem_Manager &mem) {
-  unsigned size = getForbiddenVectorSize();
+void LiveRange::markForbidden(vISA::Mem_Manager &GCMem, int reg, int numReg) {
+  BitSet *forbiddenBS = new (GCMem) BitSet(gra.getForbiddenVectorSize(G4_GRF), false);
 
-  if (size > 0) {
-    forbidden = (bool *)mem.alloc(sizeof(bool) * size);
-    memset(forbidden, false, size);
+  for (int i = 0; i < numReg; i++) {
+    forbiddenBS->set(reg + i, true);
   }
+
+  if (forbidden) {
+    *forbiddenBS |= *forbidden;
+  }
+
+  forbidden = forbiddenBS;
+}
+
+int LiveRange::getNumForbidden() {
+  return forbidden->count();
 }
 
 void getForbiddenGRFs(std::vector<unsigned int> &regNum, G4_Kernel &kernel,
@@ -1111,66 +1115,6 @@ void getCalleeSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel) {
   unsigned int numCallerSaveGRFs = kernel->getCallerSaveLastGRF() + 1;
   for (unsigned int i = 1; i < numCallerSaveGRFs; i++) {
     regNum.push_back(i);
-  }
-}
-
-//
-// mark forbidden vectors
-//
-void LiveRange::allocForbidden(Mem_Manager &mem, bool reserveStackCallRegs,
-                               unsigned reserveSpillSize,
-                               unsigned rerservedRegNum) {
-  if (forbidden == NULL) {
-    allocForbiddenVector(mem);
-  }
-
-  if (regKind == G4_GRF) {
-    std::vector<unsigned int> forbiddenGRFs;
-    unsigned int stackCallRegSize =
-        reserveStackCallRegs ? gra.kernel.numReservedABIGRF() : 0;
-    getForbiddenGRFs(forbiddenGRFs, gra.kernel, stackCallRegSize,
-                     reserveSpillSize, rerservedRegNum);
-
-    for (unsigned int i = 0; i < forbiddenGRFs.size(); i++) {
-      unsigned int regNum = forbiddenGRFs[i];
-      forbidden[regNum] = true;
-    }
-  }
-}
-
-//
-// mark forbidden registers for caller-save pseudo var
-//
-void LiveRange::allocForbiddenCallerSave(Mem_Manager &mem, G4_Kernel *kernel) {
-  if (forbidden == NULL) {
-    allocForbiddenVector(mem);
-  }
-
-  vISA_ASSERT(regKind == G4_GRF, ERROR_UNKNOWN);
-
-  std::vector<unsigned int> callerSaveRegs;
-  getCallerSaveGRF(callerSaveRegs, kernel);
-  for (unsigned int i = 0; i < callerSaveRegs.size(); i++) {
-    unsigned int callerSaveReg = callerSaveRegs[i];
-    forbidden[callerSaveReg] = true;
-  }
-}
-
-//
-// mark forbidden registers for callee-save pseudo var
-//
-void LiveRange::allocForbiddenCalleeSave(Mem_Manager &mem, G4_Kernel *kernel) {
-  if (forbidden == NULL) {
-    allocForbiddenVector(mem);
-  }
-
-  vISA_ASSERT(regKind == G4_GRF, ERROR_UNKNOWN);
-
-  std::vector<unsigned int> calleeSaveRegs;
-  getCalleeSaveGRF(calleeSaveRegs, kernel);
-  for (unsigned int i = 0; i < calleeSaveRegs.size(); i++) {
-    unsigned int calleeSaveReg = calleeSaveRegs[i];
-    forbidden[calleeSaveReg] = true;
   }
 }
 
