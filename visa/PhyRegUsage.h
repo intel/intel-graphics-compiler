@@ -141,16 +141,16 @@ class PhyRegUsage {
     int subreg; // in unit of words (0-15)
   };            // return type for findGRFSubReg
 
-  PhyReg findGRFSubReg(const BitSet *forbidden, bool callerSaveBias,
+  PhyReg findGRFSubReg(const bool forbidden[], bool callerSaveBias,
                        bool callerSaverBias, BankAlign align,
                        G4_SubReg_Align subAlign, unsigned nwords);
 
   void findGRFSubRegFromRegs(int startReg, int endReg, int step, PhyReg *phyReg,
                              G4_SubReg_Align subAlign, unsigned nwords,
-                             const BitSet *forbidden,
+                             const bool forbidden[],
                              bool fromPartialOccupiedReg);
 
-  PhyReg findGRFSubRegFromBanks(G4_Declare *dcl, const BitSet *forbidden,
+  PhyReg findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
                                 bool oneGRFBankDivision);
 
   void freeGRFSubReg(unsigned regNum, unsigned regOff, unsigned nwords,
@@ -158,17 +158,17 @@ class PhyRegUsage {
   void freeContiguous(bool availRegs[], unsigned start, unsigned numReg,
                       unsigned maxRegs);
   bool canGRFSubRegAlloc(G4_Declare *decl);
-  bool findContiguousNoWrapGRF(bool availRegs[], const BitSet *forbidden,
+  bool findContiguousNoWrapGRF(bool availRegs[], const bool forbidden[],
                                unsigned short occupiedBundles, BankAlign align,
                                unsigned numRegNeeded, unsigned startPos,
                                unsigned endPos, unsigned &idx);
 
-  bool findContiguousNoWrapAddrFlag(bool availRegs[], const BitSet *forbidden,
+  bool findContiguousNoWrapAddrFlag(bool availRegs[], const bool forbidden[],
                                     G4_SubReg_Align subAlign,
                                     unsigned numRegNeeded, unsigned startPos,
                                     unsigned endPos, unsigned &idx);
 
-  bool findFreeRegs(bool availRegs[], const BitSet *forbidden, BankAlign align,
+  bool findFreeRegs(bool availRegs[], const bool forbidden[], BankAlign align,
                     unsigned numRegNeeded, unsigned startRegNum,
                     unsigned endRegNum, unsigned &idx, bool gotoSecondBank,
                     bool oneGRFBankDivision);
@@ -206,12 +206,12 @@ public:
 
   ~PhyRegUsage() {}
 
-  bool assignRegs(bool isSIMD16, LiveRange *var, const BitSet *forbidden,
+  bool assignRegs(bool isSIMD16, LiveRange *var, const bool *forbidden,
                   BankAlign align, G4_SubReg_Align subAlign,
                   ColorHeuristic colorHeuristic, float spillCost, bool hintSet);
 
   bool assignGRFRegsFromBanks(LiveRange *varBasis, BankAlign align,
-                              const BitSet *forbidden, ColorHeuristic heuristic,
+                              const bool *forbidden, ColorHeuristic heuristic,
                               bool oneGRFBankDivision);
 
   void markBusyForDclSplit(G4_RegFileKind kind, unsigned regNum,
@@ -297,7 +297,7 @@ public:
 private:
   void freeRegs(LiveRange *var);
 
-  bool findContiguousAddrFlag(bool availRegs[], const BitSet *forbidden,
+  bool findContiguousAddrFlag(bool availRegs[], const bool forbidden[],
                               G4_SubReg_Align subAlign, unsigned numRegNeeded,
                               unsigned maxRegs,
                               unsigned &startReg, // inout
@@ -306,7 +306,7 @@ private:
                               bool isEOTSrc = false);
 
   bool findContiguousGRFFromBanks(G4_Declare *dcl, bool availRegs[],
-                                  const BitSet *forbidden, BankAlign align,
+                                  const bool forbidden[], BankAlign align,
                                   unsigned &idx, bool oneGRFBankDivision);
 
   unsigned short getOccupiedBundle(const G4_Declare *dcl) const;
@@ -314,7 +314,7 @@ private:
   // find contiguous free words in a registers
   int findContiguousWords(uint32_t words, G4_SubReg_Align alignment,
                           int numWord) const;
-  bool findContiguousGRF(bool availRegs[], const BitSet *forbidden,
+  bool findContiguousGRF(bool availRegs[], const bool forbidden[],
                          unsigned occupiedBundles, BankAlign align,
                          unsigned numRegNeeded, unsigned maxRegs,
                          unsigned &startPos, unsigned &idx,

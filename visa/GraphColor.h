@@ -83,23 +83,6 @@ public:
   BankConflictPass(GlobalRA &g, bool global) : gra(g), forGlobal(global) {}
 };
 
-// The forbidden kind for the forbidden bit of each register files.
-// Note that:
-// a) There is no forbidden regsiter for address and flag regsiters.
-// We keep them just in case.
-// b) All the forbidden kinds from EOT to RESERVEGRF are for GRF
-enum class forbiddenKind {
-  FBD_ADDR = 0,
-  FBD_FLAG = 1,
-  FBD_RESERVEDGRF,
-  FBD_EOT,
-  FBD_LASTGRF,
-  FBD_EOTLASTGRF,
-  FBD_CALLERSAVE,
-  FBD_CALLEESAVE,
-  FBD_NUM,
-};
-
 enum class AugmentationMasks {
   Undetermined = 0,
   Default16Bit = 1,
@@ -113,8 +96,8 @@ class LiveRange final {
   G4_RegVar *const var;
   G4_Declare *const dcl;
   const G4_RegFileKind regKind;
-  forbiddenKind forbiddenType;
-  BitSet *forbidden = nullptr;
+  bool *forbidden = nullptr;
+  int numForbidden = -1;
   bool spilled = false;
   bool isUnconstrained = false;
 
@@ -226,10 +209,33 @@ public:
 
   // From VarBasis
 public:
-  void setForbidden(forbiddenKind f);
-  void markForbidden(vISA::Mem_Manager &GCMem, int reg, int numReg);
-  BitSet *getForbidden();
-  int getNumForbidden();
+  void allocForbidden(vISA::Mem_Manager &mem, bool reserveStackCallRegs,
+                      unsigned reserveSpillSize, unsigned rerservedRegNum);
+  void allocForbiddenCallerSave(vISA::Mem_Manager &mem, G4_Kernel *kernel);
+  void allocForbiddenCalleeSave(vISA::Mem_Manager &mem, G4_Kernel *kernel);
+  const bool *getForbidden() const { return forbidden; }
+  void markForbidden(int reg, int numReg) {
+    vISA_ASSERT(((int)getForbiddenVectorSize()) >= reg + numReg,
+                "forbidden register is out of bound");
+    for (int i = reg; i < reg + numReg; ++i) {
+      forbidden[i] = true;
+    }
+    numForbidden = -1;
+  }
+  int getNumForbidden() {
+    if (forbidden == nullptr) {
+      return 0;
+    }
+    if (numForbidden == -1) {
+      numForbidden = 0;
+      for (int i = 0, size = getForbiddenVectorSize(); i < size; ++i) {
+        if (forbidden[i]) {
+          ++numForbidden;
+        }
+      }
+    }
+    return numForbidden;
+  }
   G4_RegVar *getVar() const { return var; }
   G4_Declare *getDcl() const { return dcl; }
   G4_RegFileKind getRegKind() const { return regKind; }
@@ -253,6 +259,7 @@ public:
 private:
   // const Options *m_options;
   unsigned getForbiddenVectorSize() const;
+  void allocForbiddenVector(vISA::Mem_Manager &mem);
 }; // class LiveRange
 } // namespace vISA
 using LIVERANGE_LIST = std::list<vISA::LiveRange *>;
@@ -639,10 +646,11 @@ public:
   const Options *getOptions() const { return m_options; }
 
   bool regAlloc(bool doBankConflictReduction, bool highInternalConflict,
-                const RPE *rpe);
+                bool reserveSpillReg, unsigned &spillRegSize,
+                unsigned &indrSpillRegSize, const RPE *rpe);
   bool requireSpillCode() const { return !spilledLRs.empty(); }
   const Interference *getIntf() const { return &intf; }
-  void createLiveRanges();
+  void createLiveRanges(unsigned reserveSpillSize = 0);
   const LiveRangeVec& getLiveRanges() const { return lrs; }
   const LIVERANGE_LIST &getSpilledLiveRanges() const { return spilledLRs; }
   void confirmRegisterAssignments();
@@ -659,8 +667,6 @@ public:
   unsigned int getNumVars() const { return numVar; }
   float getSpillRatio() const { return (float) spilledLRs.size() / numVar; }
   void markFailSafeIter(bool f) { failSafeIter = f; }
-  void setTotalGRFRegCount(unsigned c) { totalGRFRegCount = c; }
-  unsigned getTotalGRFRegCount() { return totalGRFRegCount; }
 };
 
 struct BundleConflict {
@@ -746,37 +752,7 @@ public:
 };
 
 class PointsToAnalysis;
-
-class ForbiddenRegs {
-  IR_Builder &builder;
-  std::vector<BitSet> forbiddenVec;
-
-public:
-  ForbiddenRegs(IR_Builder &b): builder(b) {
-    // Initialize forbidden bits
-    forbiddenVec.resize((size_t)forbiddenKind::FBD_NUM);
-    forbiddenVec[(size_t)forbiddenKind::FBD_ADDR].resize(
-        getForbiddenVectorSize(G4_ADDRESS));
-    forbiddenVec[(size_t)forbiddenKind::FBD_FLAG].resize(
-        getForbiddenVectorSize(G4_FLAG));
-  };
-  ~ForbiddenRegs(){};
-
-  unsigned getForbiddenVectorSize(G4_RegFileKind regKind) const;
-  void generateReservedGRFForbidden(unsigned reserveSpillSize);
-  void generateLastGRFForbidden();
-  void generateEOTGRFForbidden();
-  void generateEOTLastGRFForbidden();
-  void generateCallerSaveGRFForbidden();
-  void generateCalleeSaveGRFForbidden();
-
-  BitSet *getForbiddenRegs(forbiddenKind type) {
-    return &forbiddenVec[(size_t)type];
-  }
-};
-
 class GlobalRA {
-
 private:
   std::unordered_set<G4_INST *> EUFusionCallWAInsts;
   bool m_EUFusionCallWANeeded;
@@ -808,8 +784,7 @@ public:
     return true;
   }
   static const char StackCallStr[];
-  //The pre assigned forbidden register bits for different kinds
-  ForbiddenRegs fbdRegs;
+
 private:
   template <class REGION_TYPE>
   static unsigned getRegionDisp(REGION_TYPE *region, const IR_Builder &irb);
@@ -1270,8 +1245,7 @@ public:
   LocalLiveRange *GetOrCreateLocalLiveRange(G4_Declare *topdcl);
 
   GlobalRA(G4_Kernel &k, PhyRegPool &r, PointsToAnalysis &p2a)
-      : kernel(k), builder(*k.fg.builder), regPool(r), pointsToAnalysis(p2a),
-        fbdRegs(*k.fg.builder) {
+      : kernel(k), builder(*k.fg.builder), regPool(r), pointsToAnalysis(p2a) {
     vars.resize(k.Declares.size());
     varMasks.resize(k.Declares.size());
 
@@ -1324,17 +1298,6 @@ public:
                 LocalRA &lra);
   void assignRegForAliasDcl();
   void removeSplitDecl();
-  std::pair<unsigned, unsigned> reserveGRFSpillReg(GraphColor &coloring);
-  void generateForbiddenTemplates(unsigned reserveSpillSize);
-
-  BitSet *getForbiddenRegs(forbiddenKind type) {
-    return fbdRegs.getForbiddenRegs(type);
-  }
-
-  unsigned getForbiddenVectorSize(G4_RegFileKind regKind) {
-    return fbdRegs.getForbiddenVectorSize(regKind);
-  }
-
   int coloringRegAlloc();
   void restoreRegs(unsigned startReg, unsigned owordSize,
                    G4_Declare *scratchRegDcl, G4_Declare *framePtr,
