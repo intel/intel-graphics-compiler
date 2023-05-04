@@ -2623,7 +2623,7 @@ void EmitPass::emitMayUnalignedVectorCopy(
 {
     IGC_ASSERT(Ty->isSingleValueType());
 
-    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
+    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
 
     auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
@@ -2753,7 +2753,7 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     IGC_ASSERT_MESSAGE(sTy != nullptr,
         "ICE: invertvalue - only struct type is supported!");
 
-    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
+    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
 
     if (isLayoutStructType(sTy))
     {
@@ -2949,7 +2949,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
 
     auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
-    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
+    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
 
     Value* src0 = inst->getOperand(0);
     Value* src1 = inst->getOperand(1);
