@@ -453,15 +453,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(llvm::createLoopSimplifyPass());
     }
 
-
-    // Lower/Resolve OCL inlined constants.
-    if (ctx.m_DriverInfo.NeedLoweringInlinedConstants()) {
-        // Run additional constant breaking which is assumed by the constant
-        // resolver.
-        mpm.add(new BreakConstantExpr());
-        mpm.add(new ProgramScopeConstantResolution());
-    }
-
     // This is the condition that double emulation is used.
     ctx.checkDPEmulationEnabled();
 
@@ -532,6 +523,19 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
 
     mpm.add(createReplaceUnsupportedIntrinsicsPass());
+    // Lowering MemCpy may allow us to promote some program scope constants to immediates.
+    // So adding SROA + InstCombine to eliminate alloca + propagate constants.
+    mpm.add(createSROAPass());
+    mpm.add(createIGCInstructionCombiningPass());
+
+    // Lower/Resolve OCL inlined constants.
+    // Doing it after MemCpy lowering to have the last change to promote them to immediates.
+    if (ctx.m_DriverInfo.NeedLoweringInlinedConstants()) {
+        // Run additional constant breaking which is assumed by the constant
+        // resolver.
+        mpm.add(new BreakConstantExpr());
+        mpm.add(new ProgramScopeConstantResolution());
+    }
 
     if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS) &&
         !ctx.getModuleMetaData()->compOpt.IsLibraryCompilation)
