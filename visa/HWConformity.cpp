@@ -3130,7 +3130,8 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
           // second half
           bool dstAddrIncremented = false, src0AddrIncremented = false;
           unsigned int immAddrOff = 4;
-          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512) {
+          // The range of immAddrOff is [-512,511]
+          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
             // increment dst address register by 4, later decrement it
             dstAddrIncremented = true;
             immAddrOff = 0;
@@ -3154,7 +3155,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
               rgnToUse, Type_UD);
           if (newSrc->isIndirect()) {
             // upper 4 bytes
-            if ((4 + src0RR->getAddrImm()) > 512) {
+            if ((4 + src0RR->getAddrImm()) > 511) {
               src0AddrIncremented = true;
               iter = bb->insertBefore(
                   origIter, incrementVar(src0RR, src0RR->getRegion()->width,
@@ -3217,7 +3218,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
 
           bool dstAddrIncremented = false;
           unsigned int immAddrOff = 4;
-          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512) {
+          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
             // increment dst address register by 4, later decrement it
             dstAddrIncremented = true;
             immAddrOff = 0;
@@ -3289,7 +3290,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
 
           bool dstAddrIncremented = false;
           unsigned int immAddrOff = 4;
-          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512) {
+          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
             // increment dst address register by 4, later decrement it
             dstAddrIncremented = true;
             immAddrOff = 0;
@@ -3380,7 +3381,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
     // high
     bool dstAddrIncremented = false;
     unsigned int immAddrOff = 4;
-    if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512) {
+    if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
       // increment dst address register by 4, later decrement it
       dstAddrIncremented = true;
       immAddrOff = 0;
