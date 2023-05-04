@@ -136,7 +136,6 @@ class HWConformity {
   void fixMixedHFInst(G4_BB *bb);
   void fixSendInst(G4_BB *bb);
   void fixsrc1src2Overlap(G4_BB *bb);
-  void fixOverlapInst(G4_BB *bb);
   bool canSplitByteDst(G4_opcode op);
   bool fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB *bb);
   void fixOpndTypeAlign(G4_BB *bb);

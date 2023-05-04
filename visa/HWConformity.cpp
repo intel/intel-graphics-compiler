@@ -5355,44 +5355,6 @@ void HWConformity::fixsrc1src2Overlap(G4_BB *bb) {
   }
 }
 
-void HWConformity::fixOverlapInst(G4_BB *bb) {
-  for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++) {
-    G4_INST *inst = *i;
-
-    if (inst->mayExceedTwoGRF() || inst->opcode() == G4_madm) {
-      continue;
-    }
-
-    if (inst->getDst() != NULL) {
-      // create copy if dst and src0/src1 overlap due to being the same variable
-      G4_Operand *dst = inst->getDst();
-      if (dst != NULL && dst->isDstRegRegion() && dst->getTopDcl() &&
-          dst->getTopDcl()->getRegFile() == G4_GRF) {
-
-        bool srcOverlap = false;
-        for (int i = 0; i < inst->getNumSrc(); i++) {
-          G4_Operand *src = inst->getSrc(i);
-          if (src != NULL && !src->isNullReg() && src->getTopDcl() &&
-              src->getTopDcl()->getRegFile() == G4_GRF) {
-            srcOverlap |= inst->getDst()->compareOperand(
-                              inst->getSrc(i), builder) == Rel_interfere;
-            if (srcOverlap)
-              break;
-          }
-        }
-
-        if (srcOverlap) {
-          G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
-          G4_DstRegRegion *newDst =
-              insertMovAfter(i, inst->getDst(), inst->getDst()->getType(), bb);
-          newDst->setAccRegSel(accSel);
-          inst->setDest(newDst);
-        }
-      }
-    }
-  }
-}
-
 //
 // Fix sel and csel instructions:
 //  -- set their cond mod to null as they don't modify it.  They will be
@@ -6519,10 +6481,6 @@ void HWConformity::chkHWConformity() {
 #endif
 
     fixSendInst(bb);
-
-    if (builder.avoidDstSrcOverlap()) {
-      fixOverlapInst(bb);
-    }
 
     if (builder.avoidSrc1Src2Overlap()) {
       fixsrc1src2Overlap(bb);
