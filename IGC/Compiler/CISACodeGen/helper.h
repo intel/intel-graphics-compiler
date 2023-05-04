@@ -246,8 +246,7 @@ namespace IGC
     {
         // return true if FunctionControl is set to INLINE, and SelectiveFunctionControl does not force fcalls.
         return getFunctionControl(pContext) == FLAG_FCALL_FORCE_INLINE &&
-            (IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == FLAG_FCALL_DEFAULT ||
-                IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == FLAG_FCALL_FORCE_INLINE);
+            IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == 0;
     }
 
     // Strips the clone postfix added by GenXCodeGenModule in the function name

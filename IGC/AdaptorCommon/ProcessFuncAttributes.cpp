@@ -665,15 +665,23 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     // functions existing in 'FunctionDebug.txt' in the default IGC output folder.
     // This flag will override the default FunctionControl setting for these functions.
     //
-    // For example:
-    // We can set FunctionControl=1 and SelectiveFuncionControl=3, such that all functions
-    // in the module are inlined, except those found in the 'FunctionDebug.txt' file, which
-    // are stack-called instead.
+    // For example, in FunctionDebug.txt:
+    //
+    // FLAG_FCALL_FORCE_INLINE:
+    // foo1
+    // foo2
+    // FLAG_FCALL_FORCE_STACKCALL:
+    // foo3
+    //
+    // In this file, foo1 and foo2 will be inlined, and foo3 will use stackcall. Any other functions will use the mode set by FunctionControl.
+    // Can be used to set different FunctionControl modes for individual functions.
+    //
+    // If setting SelectiveFunctionControl=2, print out a list of callable functions to FunctionDebug.txt
     //
     auto SelectFCtrl = IGC_GET_FLAG_VALUE(SelectiveFunctionControl);
-    if (SelectFCtrl != FLAG_FCALL_DEFAULT)
+    if (SelectFCtrl != 0)
     {
-        if (SelectFCtrl == FLAG_FCALL_DUMP_CALLABLE_FUNCTIONS)
+        if (SelectFCtrl == 2)
         {
             // Dump all callable function names
             std::ofstream outputFile(IGC::Debug::GetFunctionDebugFile());
@@ -690,35 +698,52 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         else
         {
             std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
-            if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
-                std::cout << std::endl << "Functions with SelectiveFunctionControl=" << SelectFCtrl<< " read from " << IGC::Debug::GetFunctionDebugFile() << endl;
+            std::cout << std::endl << "SelectiveFunctionControl enabled read from " << IGC::Debug::GetFunctionDebugFile() << endl;
 
             if (inputFile.is_open())
             {
+                auto FunctionControlMode = FLAG_FCALL_DEFAULT;
                 std::string line;
                 while (std::getline(inputFile, line))
                 {
-                    if (Function* F = M.getFunction(line))
+                    StringRef sline(line);
+
+                    // Ignore empty, whitespace lines, or is comment
+                    if (sline.trim().empty() || sline.startswith("//"))
+                        continue;
+
+                    if (sline.equals("FLAG_FCALL_DEFAULT:"))
+                        FunctionControlMode = FLAG_FCALL_DEFAULT;
+                    else if (sline.equals("FLAG_FCALL_FORCE_INLINE:"))
+                        FunctionControlMode = FLAG_FCALL_FORCE_INLINE;
+                    else if (sline.equals("FLAG_FCALL_FORCE_SUBROUTINE:"))
+                        FunctionControlMode = FLAG_FCALL_FORCE_SUBROUTINE;
+                    else if (sline.equals("FLAG_FCALL_FORCE_STACKCALL:"))
+                        FunctionControlMode = FLAG_FCALL_FORCE_STACKCALL;
+                    else if (sline.equals("FLAG_FCALL_FORCE_INDIRECTCALL:"))
+                        FunctionControlMode = FLAG_FCALL_FORCE_INDIRECTCALL;
+
+                    else if (Function* F = M.getFunction(line))
                     {
-                        if (SelectFCtrl == FLAG_FCALL_FORCE_INLINE)
+                        if (FunctionControlMode == FLAG_FCALL_FORCE_INLINE)
                         {
                             F->removeFnAttr("referenced-indirectly");
                             F->removeFnAttr("visaStackCall");
                             SetAlwaysInline(F);
                         }
-                        else if (SelectFCtrl == FLAG_FCALL_FORCE_SUBROUTINE)
+                        else if (FunctionControlMode == FLAG_FCALL_FORCE_SUBROUTINE)
                         {
                             F->removeFnAttr("referenced-indirectly");
                             F->removeFnAttr("visaStackCall");
                             SetNoInline(F);
                         }
-                        else if (SelectFCtrl == FLAG_FCALL_FORCE_STACKCALL)
+                        else if (FunctionControlMode == FLAG_FCALL_FORCE_STACKCALL)
                         {
                             F->removeFnAttr("referenced-indirectly");
                             F->addFnAttr("visaStackCall");
                             SetNoInline(F);
                         }
-                        else if (SelectFCtrl == FLAG_FCALL_FORCE_INDIRECTCALL)
+                        else if (FunctionControlMode == FLAG_FCALL_FORCE_INDIRECTCALL)
                         {
                             pCtx->m_enableFunctionPointer = true;
                             F->addFnAttr("referenced-indirectly");
@@ -726,9 +751,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                             F->setLinkage(GlobalValue::ExternalLinkage);
                             SetNoInline(F);
                         }
-                        if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
-                            std::cout << line << endl;
                     }
+                    else
+                    {
+                        std::cout << "Function Not in Module: ";
+                    }
+
+                    std::cout << line << endl;
                 }
                 inputFile.close();
             }

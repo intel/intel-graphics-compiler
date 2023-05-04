@@ -30,7 +30,6 @@ enum {
     FLAG_FCALL_FORCE_SUBROUTINE = 2,
     FLAG_FCALL_FORCE_STACKCALL = 3,
     FLAG_FCALL_FORCE_INDIRECTCALL = 4,
-    FLAG_FCALL_DUMP_CALLABLE_FUNCTIONS = 5,
 
     // General flags with compiler-defined default value
     DEFAULTABLE_FLAG_DEFAULT = 0,
