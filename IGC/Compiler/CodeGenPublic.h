@@ -423,7 +423,8 @@ namespace IGC
         SIMD_SKIP_SPILL,     // 4: skip this SIMD due to spill or high chance of spilling.
         SIMD_SKIP_STALL,     // 5: skip this SIMD due to stall cycle or thread occupancy heuristic.
         SIMD_SKIP_THGRPSIZE, // 6: skip due to threadGroupSize heuristic(CS / OCL only).
-        SIMD_SKIP_PERF       // 7: skip this SIMD due to performance concern (dx12 + discard, MRT, etc) or other reasons.
+        SIMD_SKIP_PERF,      // 7: skip this SIMD due to performance concern (dx12 + discard, MRT, etc) or other reasons.
+        SIMD_SKIP_ML         // 8: skip this SIMD due to ML engine prediction.
     };
 
     enum SIMDInfoOffset
