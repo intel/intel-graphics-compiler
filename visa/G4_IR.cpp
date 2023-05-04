@@ -7301,8 +7301,17 @@ G4_INST *G4_InstIntrinsic::cloneInst(const IR_Builder *b) {
   auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
   auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
 
-  return nonConstBuilder->createInternalIntrinsicInst(
-      prd, getIntrinsicId(), getExecSize(), dst, src0, src1, src2, option);
+  if (!isPseudoAddrMovIntrinsic())
+    return nonConstBuilder->createInternalIntrinsicInst(
+        prd, getIntrinsicId(), getExecSize(), dst, src0, src1, src2, option);
+
+  auto src3 = nonConstBuilder->duplicateOperand(getSrc(3));
+  auto src4 = nonConstBuilder->duplicateOperand(getSrc(4));
+  auto src5 = nonConstBuilder->duplicateOperand(getSrc(5));
+  auto src6 = nonConstBuilder->duplicateOperand(getSrc(6));
+  auto src7 = nonConstBuilder->duplicateOperand(getSrc(7));
+  return nonConstBuilder->createIntrinsicAddrMovInst(getIntrinsicId(), dst,
+      src0, src1, src2, src3, src4, src5, src6, src7, false);
 }
 
 unsigned G4_InstIntrinsic::getDstByteSize() const {
