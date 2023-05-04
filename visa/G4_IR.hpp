@@ -383,6 +383,11 @@ public:
   bool isAccSrcInst() const;
   bool isAccDstInst() const;
 
+  bool nonALUInstructions() const {
+    return isSend() || isLabel() || isCFInst() ||
+           isDpas() || isIntrinsic() || opcode() == G4_nop;
+  }
+
   G4_InstMath *asMathInst() const {
     vISA_ASSERT(isMath(), ERROR_UNKNOWN);
     return ((G4_InstMath *)this);
