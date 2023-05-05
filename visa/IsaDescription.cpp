@@ -3286,7 +3286,6 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
-      LSC_OP_INVALID,
 };
 
 static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {

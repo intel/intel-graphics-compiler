@@ -453,13 +453,15 @@ lsc_store_block2d {
         return LSC_STORE_BLOCK2D_MNEMONIC;
     }
 
-lsc_atomic_iinc|lsc_atomic_idec|lsc_atomic_iadd|lsc_atomic_load|lsc_atomic_store|lsc_atomic_iadd|lsc_atomic_isub|lsc_atomic_smin|lsc_atomic_smax|lsc_atomic_umin|lsc_atomic_umax|lsc_atomic_icas|lsc_atomic_fadd|lsc_atomic_fsub|lsc_atomic_fmin|lsc_atomic_fmax|lsc_atomic_fcas|lsc_atomic_and|lsc_atomic_xor|lsc_atomic_or|lsc_apndctr_atomic_add|lsc_apndctr_atomic_sub {
+lsc_atomic_iinc|lsc_atomic_idec|lsc_atomic_iadd|lsc_atomic_load|lsc_atomic_store|lsc_atomic_iadd|lsc_atomic_isub|lsc_atomic_smin|lsc_atomic_smax|lsc_atomic_umin|lsc_atomic_umax|lsc_atomic_icas|lsc_atomic_fadd|lsc_atomic_fsub|lsc_atomic_fmin|lsc_atomic_fmax|lsc_atomic_fcas|lsc_atomic_and|lsc_atomic_xor|lsc_atomic_or {
         TRACE("** lsc_atomic INST");
         CISAlval.lsc_subOpcode = str2lscop(yytext);
         // this is set in the parser based on the SFID
         // CISAlval.lsc_opcode = ISA_LSC_UNTYPED;
         return LSC_ATOMIC_MNEMONIC;
     }
+
+
 lsc_read_state_info {
         TRACE("** lsc_read_state_info INST");
         CISAlval.lsc_subOpcode = LSC_READ_STATE_INFO;

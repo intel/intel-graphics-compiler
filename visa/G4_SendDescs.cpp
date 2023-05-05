@@ -316,9 +316,9 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
     return 23;
   case MsgOp::ATOMIC_AND:
     return 24;
-  case MsgOp::ATOMIC_XOR:
-    return 25;
   case MsgOp::ATOMIC_OR:
+    return 25;
+  case MsgOp::ATOMIC_XOR:
     return 26;
   case MsgOp::LOAD_STATUS:
     return 27;

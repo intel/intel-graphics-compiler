@@ -344,14 +344,14 @@ int IR_Builder::translateLscUntypedInst(
   } else if (opInfo.isAtomic()) {
     if (opInfo.extraOperands == 0) { // e.g. lsc_atomic_iinc
       check(isNullOperand(src1Data) && isNullOperand(src2Data),
-            "atmoic unary must have null src1 and src2");
+            "atomic unary must have null src1 and src2");
     } else if (opInfo.extraOperands == 1) { // e.g. lsc_atomic_add
       check(!isNullOperand(src1Data) && isNullOperand(src2Data),
-            "atmoic binary must have non-null src1 and null src2");
+            "atomic binary must have non-null src1 and null src2");
     } else {
       // lsc_atomic_icas/lsc_atomic_fcas: coalesce parmeters into one
       check(!isNullOperand(src1Data) && !isNullOperand(src2Data),
-            "atmoic ternary must have non-null src1 and src2");
+            "atomic ternary must have non-null src1 and src2");
       src1Data = coalescePayload(pred, BYTES_PER_REG, BYTES_PER_REG,
                                  std::max(minExecSize, execSize), execSize,
                                  {src1Data, src2Data}, execCtrl);
