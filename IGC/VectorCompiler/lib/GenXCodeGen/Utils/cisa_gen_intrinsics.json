@@ -38,6 +38,13 @@
       "dst": [ "GENERAL", "DIRECTONLY", 0 ],
       "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
     },
+    "vc::InternalIntrinsic::round_to_tf32": {
+      "opc": "ISA_FCVT",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
+    },
     // vc-intrinsics
     "genx_fptosi_sat": {
       "opc": "ISA_MOV",
@@ -2476,13 +2483,6 @@
     "genx_sbarrier": {
       "opc": "ISA_SBARRIER",
       "signal_flag": [ "BYTE", 1 ]
-    },
-    "genx_tf32_cvt": {
-      "opc": "ISA_FCVT",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "dst": [ "GENERAL", "UNSIGNED", 0 ],
-      "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
     },
     "genx_srnd": {
       "opc": "ISA_SRND",

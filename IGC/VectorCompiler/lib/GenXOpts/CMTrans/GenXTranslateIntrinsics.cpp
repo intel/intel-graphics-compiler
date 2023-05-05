@@ -44,7 +44,8 @@ public:
   void visitCallInst(CallInst &I) const;
 
 private:
-  Value *translateBFloatConvert(CallInst &I) const;
+  Value *translateBFloat16Convert(CallInst &I) const;
+  Value *translateTFloat32Convert(CallInst &I) const;
 };
 } // namespace
 
@@ -75,8 +76,10 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   default:
     return;
   case GenXIntrinsic::genx_bf_cvt:
-    NewI = translateBFloatConvert(I);
+    NewI = translateBFloat16Convert(I);
     break;
+  case GenXIntrinsic::genx_tf32_cvt:
+    NewI = translateTFloat32Convert(I);
   }
 
   if (!NewI)
@@ -88,7 +91,7 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   return;
 }
 
-Value *GenXTranslateIntrinsics::translateBFloatConvert(CallInst &I) const {
+Value *GenXTranslateIntrinsics::translateBFloat16Convert(CallInst &I) const {
   IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
                   GenXIntrinsic::genx_bf_cvt);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
@@ -121,4 +124,23 @@ Value *GenXTranslateIntrinsics::translateBFloatConvert(CallInst &I) const {
   LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
 
   return Builder.CreateBitCast(NewI, RetTy);
+}
+
+Value *GenXTranslateIntrinsics::translateTFloat32Convert(CallInst &I) const {
+  IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
+                  GenXIntrinsic::genx_tf32_cvt);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *Arg = I.getArgOperand(0);
+  auto *ArgTy = Arg->getType();
+  auto *RetTy = I.getType();
+
+  Function *Func = vc::InternalIntrinsic::getInternalDeclaration(
+      M, vc::InternalIntrinsic::round_to_tf32, {RetTy, ArgTy});
+  auto *NewI = Builder.CreateCall(Func, {Arg});
+  LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
+
+  return NewI;
 }

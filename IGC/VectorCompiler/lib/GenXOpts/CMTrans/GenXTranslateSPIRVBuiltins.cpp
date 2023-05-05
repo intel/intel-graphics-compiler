@@ -24,6 +24,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstVisitor.h>
@@ -130,6 +132,19 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
     auto *ArgTy = Arg->getType();
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_from_bf16,
                          {Ty, ArgTy}, {Arg});
+  }
+  // SPV_INTEL_tensor_float32_rounding extension.
+  if (CalleeName.contains("__spirv_RoundFToTF32INTEL") ||
+      CalleeName.contains("__spirv_ConvertFToTF32INTEL")) {
+    auto *Arg = CI.getArgOperand(0);
+    auto *ArgTy = Arg->getType();
+    Type *ResTy = Builder.getInt32Ty();
+    if (auto *ArgVTy = dyn_cast<IGCLLVM::FixedVectorType>(ArgTy))
+      ResTy = IGCLLVM::FixedVectorType::get(ResTy, ArgVTy->getNumElements());
+
+    auto *Intr = emitIntrinsic(Builder, vc::InternalIntrinsic::round_to_tf32,
+                               {ResTy, ArgTy}, {Arg});
+    return Builder.CreateBitCast(Intr, Ty);
   }
 
   // Math builtins.

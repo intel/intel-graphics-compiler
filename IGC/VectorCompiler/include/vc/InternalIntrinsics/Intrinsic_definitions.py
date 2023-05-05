@@ -139,6 +139,19 @@ Imported_Intrinsics = \
                          "attributes": "NoMem",
                        },
 
+## ``llvm.vc.internal.round.to.tf32`` : round float into tfloat32
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, f32 scalar or vector (overloaded)
+##
+## * Return value: i32 scalar or vector (overloaded)
+##
+## This intrinsic represents float -> tfloat32 conversion operation
+    "round_to_tf32" : { "result": "anyfloat",
+                        "arguments": ["anyint"],
+                        "attributes": "NoMem",
+                      },
+
 ### --------------------
 ### Thread ID intrinsics
 ### --------------------
