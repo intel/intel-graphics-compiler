@@ -846,10 +846,20 @@ void CShader::RemoveBitRange(CVariable*& src, unsigned removebit, unsigned range
     encoder.Push();
     encoder.IShr(leftHalf, src, ImmToVariable(range, ISA_TYPE_D));
     encoder.Push();
-    encoder.And(leftHalf, leftHalf, ImmToVariable(~mask, ISA_TYPE_D));
-    encoder.Push();
-    encoder.Or(src, rightHalf, leftHalf);
-    encoder.Push();
+
+    if (IGC_IS_FLAG_ENABLED(EnableBfn) &&
+        m_Platform->supportBfnInstruction()) {
+        // src = leftHalf & ~mask | rightHalf;
+        // Hardcoded bfn control "s0&s1|s2": 0xF8
+        encoder.Bfn(0xF8, src, leftHalf, ImmToVariable(~mask, ISA_TYPE_D),
+                      rightHalf);
+        encoder.Push();
+    } else {
+        encoder.And(leftHalf, leftHalf, ImmToVariable(~mask, ISA_TYPE_D));
+        encoder.Push();
+        encoder.Or(src, rightHalf, leftHalf);
+        encoder.Push();
+    }
 }
 
 CVariable* CShader::GetHWTID()
