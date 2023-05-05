@@ -996,6 +996,16 @@ auto* _getInstanceContributionToHitGroupIndex_Xe(Value* arg_0, Value* arg_1, con
   return V_13;
 }
 
+auto* _getRayMask_Xe(Value* arg_0, const Twine& _ReturnName = "")
+{
+  auto* V_1 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(2), getInt64(0), getInt32(7), getInt32(0), getInt32(0) });
+  auto* V_2 = CreateLoad(V_1);
+  auto* V_3 = CreateLShr(V_2, getInt64(48));
+  auto* V_4 = CreateTrunc(V_3, getInt32Ty());
+  auto* V_5 = CreateAnd(V_4, getInt32(255), _ReturnName);
+  return V_5;
+}
+
 auto* _isValid_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0) });

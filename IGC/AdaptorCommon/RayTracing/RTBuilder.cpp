@@ -899,6 +899,23 @@ Value* RTBuilder::getInstanceContributionToHitGroupIndex(
     return {};
 }
 
+Value* RTBuilder::getRayMask(
+    RTBuilder::StackPointerVal* perLaneStackPtr)
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)                                            \
+    case RTMemoryStyle::X:                                  \
+        return _getRayMask_##X(                             \
+            perLaneStackPtr,                                \
+            VALUE_NAME("RayMask"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
+}
+
 Value* RTBuilder::getObjToWorld(
     RTBuilder::StackPointerVal* perLaneStackPtr,
     uint32_t dim,

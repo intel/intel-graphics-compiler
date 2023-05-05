@@ -294,6 +294,8 @@ public:
 
     Value* getInstanceContributionToHitGroupIndex(RTBuilder::StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
 
+    Value* getRayMask(RTBuilder::StackPointerVal* perLaneStackPtr);
+
     Value* getObjToWorld(
         StackPointerVal* perLaneStackPtr,
         uint32_t dim,
