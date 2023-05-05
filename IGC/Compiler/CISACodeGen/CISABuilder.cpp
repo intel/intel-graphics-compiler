@@ -4486,7 +4486,7 @@ namespace IGC
                 }
                 else if (ClContext->getNumThreadsPerEU() == 0)
                 {
-                    // "Auto" mode per module (by compiler option) - use compiler heuristics to determin number of threads per EU
+                    // "Auto" mode per module (by compiler option) - use compiler heuristics to determine number of threads per EU
                     SaveOption(vISA_TotalGRFNum, unsigned(0));
                     SaveOption(vISA_RegSharingHeuristics, true);
                 }
@@ -8704,26 +8704,6 @@ namespace IGC
             pLODOffset,
             pSrc,
             nullptr));
-    }
-
-    int CEncoder::GetThreadCount(SIMDMode simdMode)
-    {
-        int simdsize = 0;
-        switch (m_program->m_dispatchSize)
-        {
-        case SIMDMode::SIMD8:
-            simdsize = 8;
-            break;
-        case SIMDMode::SIMD16:
-            simdsize = 16;
-            break;
-        case SIMDMode::SIMD32:
-            simdsize = 32;
-            break;
-        default:
-            break;
-        }
-        return simdsize;
     }
 
 }

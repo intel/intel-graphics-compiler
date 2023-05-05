@@ -69,7 +69,7 @@ namespace IGC
         {
             return m_Options.requiredEUThreadCount;
         }
-        if (m_InternalOptions.IntelNumThreadPerEU || m_InternalOptions.Intel256GRFPerThread)
+        if (m_InternalOptions.IntelNumThreadPerEU)
         {
             return m_InternalOptions.numThreadsPerEU;
         }
@@ -368,13 +368,11 @@ namespace IGC
             else if (suffix.equals("-128-GRF-per-thread"))
             {
                 Intel128GRFPerThread = true;
-                numThreadsPerEU = 8;
             }
             else if (suffix.equals("-256-GRF-per-thread") ||
                 suffix.equals("-large-register-file"))
             {
                 Intel256GRFPerThread = true;
-                numThreadsPerEU = 4;
             }
             else if (suffix.equals("-num-thread-per-eu"))
             {
