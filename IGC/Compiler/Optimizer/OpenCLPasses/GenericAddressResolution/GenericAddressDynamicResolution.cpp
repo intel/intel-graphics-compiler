@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -142,6 +142,11 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
         warningInfo << "in function " << F.getName().str();
         warningInfo << " (Enable PrintVerboseGenericControlFlowLog flag to acquire detailed log. Requires debuginfo!)";
         getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str());
+    }
+
+    if (modified)
+    {
+        m_ctx->getModuleMetaData()->genericAccessesResolved = true;
     }
 
     return modified;

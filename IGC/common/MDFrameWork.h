@@ -692,6 +692,10 @@ namespace IGC
         bool statefulResourcesNotAliased = false;
         bool disableMixMode = false;
 
+        // When true, it means that GenericAddressResolution pass has resolved
+        // some memory accesses.
+        bool genericAccessesResolved = false;
+
         unsigned int privateMemoryPerWI = 0;
 
         llvm::MapVector<llvm::Function*, unsigned int> PrivateMemoryPerFG;

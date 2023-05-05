@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -62,7 +62,20 @@ namespace {
                 AS1 != ADDRESS_SPACE_GENERIC &&
                 AS2 != ADDRESS_SPACE_GENERIC &&
                 AS1 != AS2)
-                return IGCLLVM::AliasResultEnum::NoAlias;
+            {
+                bool isDisjointMemory = true;
+                if (CGC.allocatePrivateAsGlobalBuffer() && CGC.getModuleMetaData()->genericAccessesResolved)
+                {
+                    const bool isPrivateGlobal =
+                        (AS1 == ADDRESS_SPACE_PRIVATE && AS2 == ADDRESS_SPACE_GLOBAL) ||
+                        (AS1 == ADDRESS_SPACE_GLOBAL && AS2 == ADDRESS_SPACE_PRIVATE);
+
+                    isDisjointMemory = !isPrivateGlobal;
+                }
+
+                if(isDisjointMemory)
+                    return IGCLLVM::AliasResultEnum::NoAlias;
+            }
 
 
             // Shared local memory doesn't alias any stateful memory.
