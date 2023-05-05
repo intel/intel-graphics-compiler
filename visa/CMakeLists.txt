@@ -249,6 +249,7 @@ set(GenX_Common_Sources_External_Other
   PhyRegUsage.cpp
   PointsToAnalysis.cpp
   PreDefinedVars.cpp
+  PrologEpilog.cpp
   RPE.cpp
   ReduceExecSize.cpp
   RegAlloc.cpp
@@ -259,6 +260,7 @@ set(GenX_Common_Sources_External_Other
   SpillCleanup.cpp
   SpillCode.cpp
   SpillManagerGMRF.cpp
+  SWWA.cpp
   TranslationInterface.cpp
   VISAKernelImpl.cpp
   VarSplit.cpp
