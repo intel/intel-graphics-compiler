@@ -111,6 +111,7 @@ ModulePass *createGenXNumberingWrapperPass();
 ModulePass *createGenXLiveRangesWrapperPass();
 ModulePass *createGenXRematerializationWrapperPass();
 ModulePass *createGenXCoalescingWrapperPass();
+ModulePass *createGenXGVClobberCheckerWrapperPass();
 ModulePass *createGenXAddressCommoningWrapperPass();
 ModulePass *createGenXArgIndirectionWrapperPass();
 FunctionPass *createGenXTidyControlFlowPass();

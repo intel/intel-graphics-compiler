@@ -161,6 +161,8 @@ struct CompileOptions {
   bool IgnoreLoopUnrollThresholdOnPragma = false;
   unsigned InteropSubgroupSize = 16;
 
+  bool CheckGVClobbering = false;
+
   bool EnableHashMovs = false;
   bool EnableHashMovsAtPrologue = false;
   uint64_t AsmHash = 0;

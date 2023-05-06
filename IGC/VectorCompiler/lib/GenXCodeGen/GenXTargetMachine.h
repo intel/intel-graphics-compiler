@@ -212,6 +212,7 @@ void initializeGenXCategoryWrapperPass(PassRegistry &);
 void initializeGenXCFSimplificationPass(PassRegistry &);
 void initializeGenXCisaBuilderWrapperPass(PassRegistry &);
 void initializeGenXCoalescingWrapperPass(PassRegistry &);
+void initializeGenXGVClobberCheckerWrapperPass(PassRegistry &);
 void initializeGenXDeadVectorRemovalPass(PassRegistry &);
 void initializeGenXDepressurizerWrapperPass(PassRegistry &);
 void initializeGenXEarlySimdCFConformancePass(PassRegistry &);

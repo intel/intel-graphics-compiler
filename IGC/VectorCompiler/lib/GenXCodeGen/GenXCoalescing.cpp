@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,8 +22,8 @@ SPDX-License-Identifier: MIT
 /// coalesces the result of the copy into the result of the phi node or
 /// two address op).
 ///
-/// There are three different kinds of coalescing. Copy coalescing is done first,
-/// then the other two are done together.
+/// There are three different kinds of coalescing. Copy coalescing is done
+/// first, then the other two are done together.
 ///
 /// 1. Copy coalescing.
 ///

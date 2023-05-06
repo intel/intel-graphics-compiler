@@ -261,6 +261,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   if (Opts.InteropSubgroupSize)
     BackendOpts.InteropSubgroupSize = Opts.InteropSubgroupSize;
 
+  BackendOpts.CheckGVClobbering = Opts.CheckGVClobbering;
+
   BackendOpts.Binary = Opts.Binary;
 
   BackendOpts.DisableLiveRangesCoalescing =

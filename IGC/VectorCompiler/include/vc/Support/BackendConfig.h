@@ -169,6 +169,9 @@ struct GenXBackendOptions {
   // Subgroup size used for cross-module calls/returns
   unsigned InteropSubgroupSize = 16;
 
+  // Run auxiliary checker/fixup for GV access clobbering cases.
+  bool CheckGVClobbering = false;
+
   // Compile until vISA stage only.
   bool EmitVisaOnly = false;
 
@@ -373,6 +376,8 @@ public:
   unsigned getInteropSubgroupSize() const {
     return Options.InteropSubgroupSize;
   }
+
+  bool checkGVClobbering() const { return Options.CheckGVClobbering; }
 
   bool isHashMovsEnabled() const { return Options.EnableHashMovs; }
   bool isHashMovsAtPrologueEnabled() const {

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,7 +36,13 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 namespace llvm {
+
+class GenXLiveness;
+class GenXBaling;
+
 namespace genx {
+
+class Bale;
 
 // Utility function to get the integral log base 2 of an integer, or -1 if
 // the input is not a power of 2.
@@ -138,9 +144,11 @@ class Bale;
 
 bool isGlobalStore(Instruction *I);
 bool isGlobalStore(StoreInst *ST);
+bool isGlobalVolatileStore(Instruction *I, Value *GV_ = nullptr);
 
 bool isGlobalLoad(Instruction *I);
 bool isGlobalLoad(LoadInst* LI);
+bool isGlobalVolatileLoad(Instruction *I, Value *GV_ = nullptr);
 
 // Check that V is correct as value for global store to StorePtr.
 // This implies:
@@ -738,6 +746,7 @@ std::size_t getStructElementPaddedSize(unsigned ElemIdx, unsigned NumOperands,
 
 // Determine if there is a store to global variable Addr in between of L1 and
 // L2. L1 and L2 can be either vloads or regular stores.
+// TODO: replace with getInterveningGVStoreOrNull.
 bool hasMemoryDeps(Instruction *L1, Instruction *L2, Value *Addr,
                    const DominatorTree *DT);
 
@@ -746,6 +755,48 @@ bool isRdRFromGlobalLoad(Value *V);
 
 // Return true if wrregion has result of load as old value.
 bool isWrRToGlobalLoad(Value *V);
+
+//----------------------------------------------------------
+// Check that a Store potentially clobbers Load's Use.
+//----------------------------------------------------------
+// G = global value, L = load(G), S = store(G), U = use(L)
+// S clobbers L if there's a path from S to U not through
+// L: { S -> U } != { S -> L -> U }
+//----------------------------------------------------------
+// This helper is similar to but not the same as hasMemoryDeps.
+// It also properly works with loops (e.g. in case SI follows UI in a loop
+// body).
+// NB: This function may return a call to a user function as a potential
+//     intervening store. If CallSites is supplied, we'll limit our lookup to
+//     the call instructions mentioned in this list.
+// NB: There may be multiple intervening stores, for now we don't have
+//     a use case where we want the whole list, hence this variant
+//     only returns the first found.
+Instruction *getInterveningGVStoreOrNull(
+    Instruction *LI, Instruction *UIOrPos,
+    llvm::SetVector<Instruction *> *CallSites = nullptr);
+
+void checkGVClobberingByInterveningStore(
+    Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
+    const llvm::StringRef PassName,
+    llvm::SetVector<Instruction *> *SIs = nullptr);
+
+void collectRelatedCallSitesPerFunction(
+    Instruction *SI, class FunctionGroup *FG,
+    std::map<Function *, llvm::SetVector<Instruction *>>
+        &InstAndRelatedCallSitesPerFunction);
+
+llvm::SetVector<Instruction *> getGVLoadPredecessors(Instruction *I,
+                                                     bool OneLevel = false);
+Instruction *getGVLoadPredecessorOrNull(Instruction *I, bool OneLevel = false);
+bool hasGVLoadSource(Instruction *I);
+
+bool isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To);
+bool isSafeToMoveInstCheckGVLoadClobber(
+    Instruction *I, Instruction *To,
+    bool OnlyImmediateGVLoadPredecessors = true);
+bool isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
+                                        GenXBaling *Baling_ = nullptr);
 
 } // namespace genx
 } // namespace llvm

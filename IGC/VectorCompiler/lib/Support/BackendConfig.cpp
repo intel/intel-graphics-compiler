@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -147,6 +147,13 @@ static cl::opt<bool> VCIgnoreLoopUnrollThresholdOnPragma(
 static cl::opt<unsigned> InteropSubgroupSizeOpt("vc-interop-subgroup-size", cl::Hidden,
     cl::desc("Set subgroup size used for cross-module calls"));
 
+// This checker/fixup pass is only necessary until all the passes
+// that break vload semantics by moving its user across vstore are fixed.
+static cl::opt<bool>
+    CheckGVClobberingOpt("check-gv-clobbering", cl::Hidden,
+                         cl::desc("Find, report and fixup clobbered GV load "
+                                  "users before coalescing happened."));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -192,6 +199,7 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(IgnoreLoopUnrollThresholdOnPragma,
                            VCIgnoreLoopUnrollThresholdOnPragma);
   enforceOptionIfSpecified(InteropSubgroupSize, InteropSubgroupSizeOpt);
+  enforceOptionIfSpecified(CheckGVClobbering, CheckGVClobberingOpt);
 }
 
 static std::unique_ptr<MemoryBuffer>

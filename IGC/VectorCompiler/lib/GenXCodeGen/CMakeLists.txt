@@ -45,6 +45,7 @@ set(CODEGEN_SOURCES
   GenXGEPLowering.cpp
   GenXGlobalValueLowering.cpp
   GenXGotoJoin.cpp
+  GenXGVClobberChecker.cpp
   GenXIMadPostLegalization.cpp
   GenXInitBiFConstants.cpp
   GenXInlineAsmLowering.cpp

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,14 +13,18 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "FunctionGroup.h"
 #include "GenX.h"
+#include "GenXBaling.h"
 #include "GenXIntrinsics.h"
+#include "GenXLiveness.h"
 
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/Types.h"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/StringExtras.h"
@@ -30,11 +34,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/Debug.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
@@ -46,6 +50,8 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace genx;
+
+#define DEBUG_TYPE "GENX_UTILS"
 
 namespace {
 struct InstScanner {
@@ -1704,6 +1710,24 @@ bool genx::isGlobalLoad(LoadInst *LI) {
   return vc::getUnderlyingGlobalVariable(LI->getPointerOperand()) != nullptr;
 }
 
+bool genx::isGlobalVolatileLoad(Instruction *I, Value *GV_) {
+  IGC_ASSERT(I);
+  const auto *GV = (GenXIntrinsic::isVLoad(I) || isa<LoadInst>(I))
+                       ? vc::getUnderlyingGlobalVariable(I->getOperand(0))
+                       : nullptr;
+  return GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile) &&
+         (!GV_ || GV_ == GV);
+}
+
+bool genx::isGlobalVolatileStore(Instruction *I, Value *GV_) {
+  IGC_ASSERT(I);
+  const auto *GV = (GenXIntrinsic::isVStore(I) || isa<StoreInst>(I))
+                       ? vc::getUnderlyingGlobalVariable(I->getOperand(1))
+                       : nullptr;
+  return GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile) &&
+         (!GV_ || GV_ == GV);
+}
+
 bool genx::isLegalValueForGlobalStore(Value *V, Value *StorePtr) {
   // Value should be wrregion.
   auto *Wrr = dyn_cast<CallInst>(getBitCastedValue(V));
@@ -2318,3 +2342,183 @@ bool genx::isWrRToGlobalLoad(Value *V) {
       WrR->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
   return I && isGlobalLoad(I);
 };
+
+Instruction *
+genx::getInterveningGVStoreOrNull(Instruction *LI, Instruction *UIOrPos,
+                                  llvm::SetVector<Instruction *> *CallSites) {
+  IGC_ASSERT(isGlobalVolatileLoad(LI));
+  Value *GV = vc::getUnderlyingGlobalVariable(LI->getOperand(0));
+
+  auto isClobberingStore = [&](Instruction &I) {
+    return isGlobalVolatileStore(&I, GV) ||
+           (CallSites ? llvm::find(*CallSites, &I) != CallSites->end()
+                      : isa<CallInst>(I) &&
+                            !GenXIntrinsic::isAnyNonTrivialIntrinsic(&I));
+  };
+
+  if (LI->getParent() == UIOrPos->getParent()) {
+    const auto SII = std::find_if(LI->getIterator(), UIOrPos->getIterator(),
+                                  isClobberingStore);
+    return SII == UIOrPos->getIterator() ? nullptr : &*SII;
+  }
+
+  auto *LIBB = LI->getParent();
+  auto *PosBB = UIOrPos->getParent();
+
+  if (auto SII = std::find_if(PosBB->begin(), UIOrPos->getIterator(),
+                              isClobberingStore);
+      SII != UIOrPos->getIterator())
+    return &*SII;
+  if (auto SII =
+          std::find_if(LI->getIterator(), LIBB->end(), isClobberingStore);
+      SII != LIBB->end())
+    return &*SII;
+
+  std::set<BasicBlock *> Visited{
+      LIBB}; // Do not add PosBB as we still want to visit it for the case of SI
+             // following UIOrPos in loop.
+  std::vector<BasicBlock *> BBs;
+  std::copy_if(pred_begin(PosBB), pred_end(PosBB), std::back_inserter(BBs),
+               [Visited](BasicBlock *BB) { return !Visited.count(BB); });
+
+  while (!BBs.empty()) {
+    BasicBlock *BB = BBs.back();
+    BBs.pop_back();
+
+    if (auto SII = std::find_if(BB->begin(), BB->end(), isClobberingStore);
+        SII != BB->end())
+      return &*SII;
+
+    Visited.insert(BB);
+    std::copy_if(pred_begin(BB), pred_end(BB), std::back_inserter(BBs),
+                 [Visited](BasicBlock *BB) { return !Visited.count(BB); });
+  }
+
+  return nullptr;
+}
+
+void genx::checkGVClobberingByInterveningStore(
+    Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
+    const llvm::StringRef PassName, llvm::SetVector<Instruction *> *SIs) {
+  for (auto *UI_ : LI->users()) {
+    auto *UI = dyn_cast<Instruction>(UI_);
+    if (!UI)
+      continue;
+
+    if (auto *SI = genx::getInterveningGVStoreOrNull(LI, UI, SIs)) {
+      vc::diagnose(LI->getContext(), PassName,
+                   "found intervening vstore, trying to fixup by moving to "
+                   "vload and unbaling if baled.",
+                   DS_Warning, vc::WarningName::Generic, UI);
+      LLVM_DEBUG(dbgs() << __FUNCTION__ << ": Found intervening vstore: ";
+                 SI->print(dbgs());
+                 dbgs() << "\n"
+                        << __FUNCTION__ << ": Affected vload: ";
+                 LI->print(dbgs()); dbgs() << "\n"
+                                           << __FUNCTION__ << ": User: ";
+                 UI->print(dbgs()); dbgs() << "\n";);
+
+      if (GenXIntrinsic::isRdRegion(UI) &&
+          isa<Constant>(
+              UI->getOperand(GenXIntrinsic::GenXRegion::RdIndexOperandNum))) {
+        if (Baling->isBaled(UI))
+          Baling->unbale(UI);
+        UI->moveAfter(LI);
+        if (Liveness->getLiveRangeOrNull(UI))
+          Liveness->removeValue(UI);
+        auto *LR = Liveness->getOrCreateLiveRange(UI);
+        LR->setCategory(Liveness->getLiveRangeOrNull(LI)->getCategory());
+        LR->setLogAlignment(
+            Liveness->getLiveRangeOrNull(LI)->getLogAlignment());
+      } else
+        vc::diagnose(LI->getContext(), PassName,
+                     "fixup is only possible for rdregion with constant "
+                     "offsets as it has single input from vload and "
+                     "can be easily moved back to it, however current case is "
+                     "more complex.",
+                     DS_Warning, vc::WarningName::Generic, UI);
+    }
+  }
+};
+
+void genx::collectRelatedCallSitesPerFunction(
+    Instruction *SI, FunctionGroup *FG,
+    std::map<Function *, llvm::SetVector<Instruction *>>
+        &CallSitesPerFunction) {
+  using FuncsSeenT = llvm::SetVector<Function *>;
+  auto collectRelatedCallSites = [&](Function *Func, FuncsSeenT *FuncsSeen,
+                                     auto &&collectRelatedCallSites) -> void {
+    if (llvm::find(*FuncsSeen, Func) != FuncsSeen->end())
+      return;
+    FuncsSeen->insert(Func);
+    for (const auto &FuncUser : Func->users()) {
+      if (isa<CallBase>(FuncUser)) {
+        auto *Call = dyn_cast<Instruction>(FuncUser);
+        auto *curFunction = Call->getFunction();
+        if (llvm::find(*FG, curFunction) == FG->end())
+          continue;
+        CallSitesPerFunction[curFunction].insert(Call);
+        collectRelatedCallSites(curFunction, FuncsSeen,
+                                collectRelatedCallSites);
+      }
+    }
+  };
+  FuncsSeenT FuncsSeen;
+  collectRelatedCallSites(SI->getFunction(), &FuncsSeen,
+                          collectRelatedCallSites);
+}
+
+llvm::SetVector<Instruction *> genx::getGVLoadPredecessors(Instruction *I_,
+                                                           bool OneLevel) {
+  IGC_ASSERT(I_);
+  llvm::SetVector<Instruction *> res;
+  auto *I = dyn_cast<Instruction>(getBitCastedValue(I_));
+  if (!I)
+    return res;
+  std::vector<Use *> Worklist;
+  for (auto &O : I->operands())
+    Worklist.push_back(&O);
+  while (!Worklist.empty()) {
+    auto *O = Worklist.back();
+    Worklist.pop_back();
+    if (auto *I = dyn_cast<Instruction>(O->get())) {
+      if (isGlobalVolatileLoad(I))
+        res.insert(I);
+      if (!OneLevel)
+        for (auto &O : I->operands())
+          Worklist.push_back(&O);
+    }
+  }
+  return res;
+};
+
+Instruction *genx::getGVLoadPredecessorOrNull(Instruction *I, bool OneLevel) {
+  const auto res = getGVLoadPredecessors(I, OneLevel);
+  return res.size() ? res[0] : nullptr;
+}
+
+bool genx::hasGVLoadSource(Instruction *I) {
+  return getGVLoadPredecessorOrNull(I, true);
+}
+
+bool genx::isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To) {
+  for (auto *LI : B.getGVLoadSources())
+    if (getInterveningGVStoreOrNull(LI, To))
+      return false;
+  return true;
+}
+
+bool genx::isSafeToMoveInstCheckGVLoadClobber(
+    Instruction *I, Instruction *To, bool OnlyImmediateGVLoadPredecessors) {
+  for (auto *LI : getGVLoadPredecessors(I, OnlyImmediateGVLoadPredecessors))
+    if (getInterveningGVStoreOrNull(LI, To))
+      return false;
+  return true;
+}
+
+bool genx::isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
+                                              GenXBaling *Baling_) {
+  Bale Bale_;
+  Baling_->buildBale(I, &Bale_);
+  return isSafeToMoveBaleCheckGVLoadClobber(Bale_, To);
+}

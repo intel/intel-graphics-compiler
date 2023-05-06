@@ -930,7 +930,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   // Normal instruction splitting.
   LLVM_DEBUG(dbgs() << "processBale: "; B.print(dbgs()));
 
-  if (B.isGstoreBale() && !B.isGStoreBaleLegal()) {
+  if (B.isGStoreBale() && !B.isGStoreBaleLegal()) {
 #ifdef _DEBUG
     dbgs() << "processBale: ";
     B.print(dbgs());

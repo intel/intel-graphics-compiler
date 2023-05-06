@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -330,6 +330,9 @@ public:
   BaleInst *getHeadIgnoreGStore() {
     return &*getHeadIgnoreGStoreIt();
   }
+  llvm::SetVector<Instruction *> getGVLoadSources() const;
+  bool hasGVLoadSources() const;
+  bool isGVReaderOnly() const;
   bool endsWithGStore() const {
     return !empty() && rbegin()->Info.Type == BaleInfo::GSTORE;
   }
@@ -354,7 +357,7 @@ public:
   // Debug dump/print
   void dump() const;
   void print(raw_ostream &OS) const;
-  bool isGstoreBale() const { return endsWithGStore(); }
+  bool isGStoreBale() const { return endsWithGStore(); }
   bool isGStoreBaleLegal() const;
 };
 
