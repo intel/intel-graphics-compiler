@@ -468,6 +468,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     uint32_t theEmuKind = (ctx.m_hasDPEmu ? EmuKind::EMU_DP : 0);
     theEmuKind |= (hasDPDivSqrtEmu ? EmuKind::EMU_DP_DIV_SQRT : 0);
     theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
+    theEmuKind |= (ctx.m_DriverInfo.NeedFP64toFP16Conv() ? EmuKind::EMU_FP64_FP16_CONV : 0);
     theEmuKind |=
         ((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
             (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))

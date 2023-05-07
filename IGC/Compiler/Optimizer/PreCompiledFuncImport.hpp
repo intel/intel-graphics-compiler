@@ -33,12 +33,13 @@ namespace IGC
 
     enum EmuKind : uint8_t {
         EMU_UNUSED = 0,
-        EMU_I64DIVREM = 0x1,    // bit 0: original emulation lib, mostly i64 div/rem
-        EMU_DP = 0x2,           // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
-        EMU_DP_DIV_SQRT = 0x4,  // bit 2: IEEE-compliant double emulation for div and sqrt (EMU_DP subset)
-        EMU_SP_DIV = 0x8,       // bit 3: IEEE-complaint float div emulation (float)
-        EMU_I32DIVREM = 0x10,   // bit 4: emulation lib for i32 div/rem
-        EMU_I32DIVREM_SP = 0x20 // bit 5: emulation lib for i32 div/rem using fp32
+        EMU_I64DIVREM = 0x1,      // bit 0: original emulation lib, mostly i64 div/rem
+        EMU_DP = 0x2,             // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
+        EMU_DP_DIV_SQRT = 0x4,    // bit 2: IEEE-compliant double emulation for div and sqrt (EMU_DP subset)
+        EMU_SP_DIV = 0x8,         // bit 3: IEEE-complaint float div emulation (float)
+        EMU_I32DIVREM = 0x10,     // bit 4: emulation lib for i32 div/rem
+        EMU_I32DIVREM_SP = 0x20,  // bit 5: emulation lib for i32 div/rem using fp32
+        EMU_FP64_FP16_CONV = 0x40 // bit 6: fp64 to fp32 conversion
     };
 
     class PreCompiledFuncImport : public llvm::ModulePass, public llvm::InstVisitor<PreCompiledFuncImport>
@@ -234,6 +235,7 @@ namespace IGC
         bool isI32DivRem() const { return (m_emuKind & EmuKind::EMU_I32DIVREM) > 0; }
         bool isI32DivRemSP() const { return (m_emuKind & EmuKind::EMU_I32DIVREM_SP) > 0; }
         bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
+        bool isFP64toFP16() const { return (m_emuKind & EmuKind::EMU_FP64_FP16_CONV) > 0; }
         bool isDPConvFunc(llvm::Function* F) const;
 
         bool m_libModuleToBeImported[NUM_LIBMODS];

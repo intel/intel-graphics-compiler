@@ -60,6 +60,8 @@ namespace TC
 
         bool NeedFP64DivSqrt() const override { return true; }
 
+        bool NeedFP64toFP16Conv() const override { return true; }
+
         bool EnableIntegerMad() const override { return true; }
 
         bool RespectPerInstructionContractFlag() const override { return true; }

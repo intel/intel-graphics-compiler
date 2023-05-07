@@ -135,6 +135,9 @@ namespace IGC
         /// Return true if IGC needs FP64 emulation. (Valid if platform has no double inst.)
         virtual bool NeedFP64(PRODUCT_FAMILY productFamily) const { IGC_UNUSED(productFamily); return false; }
 
+        /// Needs fp64 to fp16 conversion emulation
+        virtual bool NeedFP64toFP16Conv() const { return false; }
+
         /// Needs IEEE fp64 div/sqrt
         virtual bool NeedFP64DivSqrt() const { return false; }
 

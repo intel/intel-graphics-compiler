@@ -1344,7 +1344,7 @@ void PreCompiledFuncImport::getInt64DivideEmuType(EmulatedFunctions function, un
 void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
 {
     m_pCtx->metrics.StatBeginEmuFunc(&inst);
-    if ((isI64DivRem() || isDPEmu()) &&
+    if ((isFP64toFP16() || isDPEmu()) &&
         inst.getDestTy()->isHalfTy() && inst.getSrcTy()->isDoubleTy())
     {
         if (inst.getDestTy()->isVectorTy())
