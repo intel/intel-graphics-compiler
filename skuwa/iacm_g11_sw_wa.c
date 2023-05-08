@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -18,7 +18,9 @@ void InitAcm_G11SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 {
     int StepId_ACM_G11 = (int)pWaParam->usRevId;
 
+
     SI_WA_ENABLE(
+
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
         "No Link Provided",

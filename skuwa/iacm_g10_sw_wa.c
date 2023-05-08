@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2016-2022 Intel Corporation
+Copyright (C) 2016-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -24,6 +24,7 @@ void InitAcm_G10SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No Link Provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
+
 
 }
 

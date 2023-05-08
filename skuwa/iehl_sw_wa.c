@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,14 +22,13 @@ void InitEhlSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
     int iStepId_EHL = (int)pWaParam->usRevId;
 
+
     SI_WA_ENABLE(
         WaReturnZeroforRTReadOutsidePrimitive,
         "No Link provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_UNTIL(iStepId_EHL, EHL_REV_ID_A0));
-
-
 }
 
 #ifdef __KCH

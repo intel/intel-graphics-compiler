@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2013-2023 Intel Corporation
+Copyright (C) 2013-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -47,6 +47,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     ulStepId_CNL = (1 << usHwRevId_CNL);
     ulStepId_PCH = (1 << pWaParam->usRevId_PCH);
 
+
     if ((pWaParam->ePCHProductFamily >= PCH_LPT) &&
         (pWaParam->ePCHProductFamily <= PCH_CNP_H))
     {
@@ -57,15 +58,15 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_CNL,
         WaConservativeRasterization,
-        "No Link Provided",
-        "No Link Provided",
+        "No Link Provided" ,
+        "No Link Provided" ,
         PLATFORM_ALL,
-        SIWA_UNTIL_CNL_A0);
+        SIWA_UNTIL_CNL_A0 );
 
     WA_ENABLE(
         ulStepId_CNL,
         WaReturnZeroforRTReadOutsidePrimitive,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_A0);
@@ -73,8 +74,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_CNL,
         WaClearTDRRegBeforeEOTForNonPS,
-        "No Link Provided",
-        "No Link Provided",
+        "No Link Provided" ,
+        "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_C0);
 
@@ -86,8 +87,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_CNL,
         Wa_220856683,
-        "No Link Provided",
-        "No HWSightingLink provided",
+        "No Link Provided" ,
+        "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER);
 
@@ -95,7 +96,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_CNL,
         WaForceCB0ToBeZeroWhenSendingPC,
-        "No Link Provided",
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_A0);
@@ -105,7 +106,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         ulStepId_CNL,
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
-        "No Link Provided",
+        "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER);
 
@@ -120,18 +121,12 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         ulStepId_CNL,
         WaNoSimd16TernarySrc0Imm,
         "No HWBugLink provided",
-        "No Link Provided",
+        "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER);
 
 
     if ((pWaParam->ePCHProductFamily == PCH_CNP_LP) || (pWaParam->ePCHProductFamily == PCH_CNP_H))
-    {
-
-    }
-
-
-    if (pSkuTable->FtrVcs2)
     {
 
     }

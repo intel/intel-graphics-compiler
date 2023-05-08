@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2016-2023 Intel Corporation
+Copyright (C) 2016-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -21,20 +21,19 @@ void InitAdlsSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INI
     int StepId_ADLS = (int)pWaParam->usRevId;
     int PchStepId_Adls = (int)pWaParam->usRevId_PCH;
 
+
     SI_WA_ENABLE(
+
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
-        "No Link Provided",
+        "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-
-
 }
 
 #ifdef __KCH
 void InitAdlsHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-
 
 }
 #endif
