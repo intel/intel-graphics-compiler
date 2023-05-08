@@ -83,7 +83,7 @@ typedef enum {
  */
 typedef struct GTPIN_IGC_PACK_ATTRIBUTE igc_init_v0_s {
   uint32_t version; // Interface version. Must be the first member
-  uint8_t re_ra;    // RERA - on/off
+  uint8_t re_ra;    // RERA - on/off NOTE: This is deprecated and has no effect.
   uint8_t grf_info; // Free GRF registers and/or indirect GRF accesses - on/off
   uint8_t srcline_mapping; // Source line mapping - on/off
   uint8_t padding[1];      // Alignment padding

@@ -477,10 +477,9 @@ DEF_VISA_OPTION(vISA_NoVerifyvISA, ET_BOOL, "-noverifyCISA", UNUSED, false)
 DEF_VISA_OPTION(vISA_InitPayload, ET_BOOL, "-initializePayload", UNUSED, false)
 DEF_VISA_OPTION(vISA_AvoidUsingR0R1, ET_BOOL, "-avoidR0R1", UNUSED, false)
 DEF_VISA_OPTION(vISA_isParseMode, ET_BOOL, NULLSTR, UNUSED, false)
-//   rerun RA post scheduling for gtpin
-DEF_VISA_OPTION(vISA_ReRAPostSchedule, ET_BOOL, "-rerapostschedule", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_GTPinReRA, ET_BOOL, "-GTPinReRA", UNUSED, false)
+DEF_VISA_OPTION(vISA_ReRAPostSchedule, ET_BOOL, "-rerapostschedule",
+                "DEPRECATED, is a nop", false)
+DEF_VISA_OPTION(vISA_GTPinReRA, ET_BOOL, "-GTPinReRA", "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_GetFreeGRFInfo, ET_BOOL, "-getfreegrfinfo", UNUSED, false)
 DEF_VISA_OPTION(vISA_GTPinScratchAreaSize, ET_INT32, "-GTPinScratchAreaSize",
                 UNUSED, 0)

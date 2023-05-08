@@ -53,26 +53,11 @@ class G4_Kernel;
 
 class gtPinData {
 public:
-  enum RAPass { FirstRAPass = 0, ReRAPass = 1 };
 
-  gtPinData(G4_Kernel &k) : kernel(k) { whichRAPass = FirstRAPass; }
+  gtPinData(G4_Kernel &k) : kernel(k) {}
   ~gtPinData() {}
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
-  void markInst(G4_INST *i) {
-    vISA_ASSERT(whichRAPass == FirstRAPass,
-                 "Unexpectedly marking in re-RA pass.");
-    markedInsts.insert(i);
-  }
-
-  void markInsts();
-  void clearMarkedInsts() { markedInsts.clear(); }
-  void removeUnmarkedInsts();
-
-  bool isFirstRAPass() const { return whichRAPass == RAPass::FirstRAPass; }
-  bool isReRAPass() const { return whichRAPass == RAPass::ReRAPass; }
-  void setRAPass(RAPass p) { whichRAPass = p; }
 
   // All following functions work on byte granularity of GRF file
   void clearFreeGlobalRegs() { globalFreeRegs.clear(); }
@@ -113,8 +98,6 @@ public:
 
 private:
   G4_Kernel &kernel;
-  std::set<G4_INST *> markedInsts;
-  RAPass whichRAPass;
   // globalFreeRegs are in units of bytes in linearized register file.
   // Data is assumed to be sorted in ascending order during insertion.
   // Duplicates are not allowed.

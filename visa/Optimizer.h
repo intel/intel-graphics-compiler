@@ -176,8 +176,6 @@ class Optimizer {
 
   void ifCvtFCCall();
 
-  void reRAPostSchedule();
-
   void dce();
 
   void accSubPostSchedule();
@@ -375,7 +373,6 @@ public:
     PI_cleanupBindless,
     PI_countGRFUsage,
     PI_changeMoveType,
-    PI_reRAPostSchedule,
     PI_accSubBeforeRA,
     PI_accSubPostSchedule,
     PI_dce,

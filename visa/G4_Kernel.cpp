@@ -25,39 +25,6 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-void gtPinData::markInsts() {
-  // Take a snapshot of instructions in kernel.
-  for (auto bb : kernel.fg) {
-    for (auto inst : *bb) {
-      markedInsts.insert(inst);
-    }
-  }
-}
-
-void gtPinData::removeUnmarkedInsts() {
-  if (!kernel.fg.getIsStackCallFunc() && !kernel.fg.getHasStackCalls()) {
-    // Marked instructions correspond to caller/callee save
-    // and FP/SP manipulation instructions.
-    return;
-  }
-
-  vISA_ASSERT(whichRAPass == ReRAPass,
-               "Unexpectedly removing unmarked instructions in first RA pass");
-  // Instructions not seen in "marked" snapshot will be removed by this
-  // function.
-  for (auto bb : kernel.fg) {
-    for (auto it = bb->begin(), itEnd = bb->end(); it != itEnd;) {
-      auto inst = (*it);
-
-      if (markedInsts.find(inst) == markedInsts.end()) {
-        it = bb->erase(it);
-        continue;
-      }
-      it++;
-    }
-  }
-}
-
 void *gtPinData::getFreeGRFInfo(unsigned &size) {
   // Here is agreed upon format for reporting free GRFs:
   // struct freeBytes
@@ -136,8 +103,9 @@ void gtPinData::setGTPinInit(void *buffer) {
                "Check size of igc_init_t");
   gtpin_init = (gtpin::igc::igc_init_t *)buffer;
 
-  if (gtpin_init->re_ra)
-    kernel.getOptions()->setOption(vISA_ReRAPostSchedule, true);
+  // reRA pass is no longer supported.
+  // FIXME: should we assert here?
+  //if (gtpin_init->re_ra)
   if (gtpin_init->grf_info)
     kernel.getOptions()->setOption(vISA_GetFreeGRFInfo, true);
 }
@@ -501,8 +469,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
   name = NULL;
   hasAddrTaken = false;
   kernelDbgInfo = nullptr;
-  if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
-      options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
+  if (options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
       options->getuInt32Option(vISAOptions::vISA_GTPinScratchAreaSize)) {
     allocGTPinData();
   } else {

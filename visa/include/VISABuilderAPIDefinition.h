@@ -1168,12 +1168,10 @@ public:
   VISA_BUILDER_API virtual int SetGTPinInit(void *buffer) = 0;
 
   /// GetGTPinBuffer -- returns data buffer for gtpin (eg, free GRF info)
-  /// This requires reRA pass to be executed, otherwise it returs nullptr
   VISA_BUILDER_API virtual int GetGTPinBuffer(void *&buffer,
                                               unsigned int &size) = 0;
 
   /// GetFreeGRFInfo -- returns free GRF information for gtpin
-  /// This requires reRA pass to be executed, otherwise it returs nullptr
   VISA_BUILDER_API virtual int GetFreeGRFInfo(void *&buffer,
                                               unsigned int &size) = 0;
 

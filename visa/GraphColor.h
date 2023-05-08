@@ -1296,7 +1296,6 @@ public:
   void reportSpillInfo(const LivenessAnalysis &liveness,
                        const GraphColor &coloring) const;
   static uint32_t getRefCount(int loopNestLevel);
-  bool isReRAPass();
   void updateSubRegAlignment(G4_SubReg_Align subAlign);
   bool isChannelSliced();
   void evenAlign();

@@ -2054,12 +2054,6 @@ void Interference::buildInterferenceForFcall(
   }
 }
 
-bool GlobalRA::isReRAPass() {
-  auto gtPinInfo = kernel.getGTPinData();
-  bool reRAPass = gtPinInfo && gtPinInfo->isReRAPass();
-  return reRAPass;
-}
-
 
 void Interference::buildInterferenceForDst(
     G4_BB *bb, SparseBitSet &live, G4_INST *inst,
@@ -6815,8 +6809,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
       return !requireSpillCode();
     }
 
-    if (kernel.getOption(vISA_RoundRobin) && !hasStackCall &&
-        !gra.isReRAPass()) {
+    if (kernel.getOption(vISA_RoundRobin) && !hasStackCall) {
       if (assignColors(ROUND_ROBIN, doBankConflictReduction,
                        highInternalConflict) == false) {
         resetTemporaryRegisterAssignments();
@@ -8175,11 +8168,6 @@ void ForbiddenRegs::generateCalleeSaveGRFForbidden() {
 // caller/callee-save area in this frame. It is 64-byte aligned.
 //
 void GlobalRA::addSaveRestoreCode(unsigned localSpillAreaOwordSize) {
-  auto gtpin = builder.kernel.getGTPinData();
-  if (gtpin && gtpin->isFirstRAPass()) {
-    gtpin->markInsts();
-  }
-
   if (builder.getIsKernel()) {
     builder.kernel.fg.callerSaveAreaOffset = localSpillAreaOwordSize;
   } else {
@@ -8366,12 +8354,6 @@ void GlobalRA::addStoreRestoreToReturn() {
         restoreBE_FPInst);
     if (!EUFusionCallWANeeded())
       builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(saveBE_FPInst);
-  }
-
-  auto gtpin = builder.kernel.getGTPinData();
-  if (gtpin && gtpin->isFirstRAPass()) {
-    gtpin->markInst(saveBE_FPInst);
-    gtpin->markInst(restoreBE_FPInst);
   }
 }
 
@@ -9692,71 +9674,69 @@ int GlobalRA::coloringRegAlloc() {
     spillAnalysis = std::make_unique<SpillAnalysis>();
   }
 
-  if (!isReRAPass()) {
-    // Global linear scan RA
-    if (builder.getOption(vISA_LinearScan) &&
-        builder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
-      copyMissingAlignment();
-      BankConflictPass bc(*this, false);
-      LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
-      liveAnalysis.computeLiveness();
+  // Global linear scan RA
+  if (builder.getOption(vISA_LinearScan) &&
+      builder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
+    copyMissingAlignment();
+    BankConflictPass bc(*this, false);
+    LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
+    liveAnalysis.computeLiveness();
 
-      TIME_SCOPE(LINEARSCAN_RA);
-      LinearScanRA lra(bc, *this, liveAnalysis);
-      int success = lra.doLinearScanRA();
-      if (success == VISA_SUCCESS) {
-        // TODO: Get correct spillSize from LinearScanRA
-        unsigned spillSize = 0;
-        expandSpillFillIntrinsics(spillSize);
-        assignRegForAliasDcl();
-        computePhyReg();
-        if (builder.getOption(vISA_verifyLinearScan)) {
-          resetGlobalRAStates();
-          markGraphBlockLocalVars();
-          LivenessAnalysis live(*this, G4_GRF | G4_INPUT, false, true);
-          live.computeLiveness();
-          GraphColor coloring(live, kernel.getNumRegTotal(), false, false);
-          coloring.createLiveRanges();
-          const auto& lrs = coloring.getLiveRanges();
-          Interference intf(&live, lrs, live.getNumSelectedVar(),
-                            live.getNumSplitStartID(), live.getNumSplitVar(),
-                            *this);
-          intf.init();
-          intf.computeInterference();
+    TIME_SCOPE(LINEARSCAN_RA);
+    LinearScanRA lra(bc, *this, liveAnalysis);
+    int success = lra.doLinearScanRA();
+    if (success == VISA_SUCCESS) {
+      // TODO: Get correct spillSize from LinearScanRA
+      unsigned spillSize = 0;
+      expandSpillFillIntrinsics(spillSize);
+      assignRegForAliasDcl();
+      computePhyReg();
+      if (builder.getOption(vISA_verifyLinearScan)) {
+        resetGlobalRAStates();
+        markGraphBlockLocalVars();
+        LivenessAnalysis live(*this, G4_GRF | G4_INPUT, false, true);
+        live.computeLiveness();
+        GraphColor coloring(live, kernel.getNumRegTotal(), false, false);
+        coloring.createLiveRanges();
+        const auto &lrs = coloring.getLiveRanges();
+        Interference intf(&live, lrs, live.getNumSelectedVar(),
+                          live.getNumSplitStartID(), live.getNumSplitVar(),
+                          *this);
+        intf.init();
+        intf.computeInterference();
 
-          if (kernel.getOption(vISA_DumpRAIntfGraph))
-            intf.dumpInterference();
-          intf.linearScanVerify();
-        }
-        return VISA_SUCCESS;
+        if (kernel.getOption(vISA_DumpRAIntfGraph))
+          intf.dumpInterference();
+        intf.linearScanVerify();
       }
+      return VISA_SUCCESS;
+    }
 
-      if (success == VISA_SPILL) {
-        return VISA_SPILL;
+    if (success == VISA_SPILL) {
+      return VISA_SPILL;
+    }
+  } else if (builder.getOption(vISA_LocalRA) && (!hasStackCall)) {
+    copyMissingAlignment();
+    BankConflictPass bc(*this, false);
+    LocalRA lra(bc, *this);
+    bool success = lra.localRA();
+    if (!success && !builder.getOption(vISA_HybridRAWithSpill)) {
+      if (canDoHRA(kernel)) {
+        success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
+      } else {
+        RA_TRACE(
+            std::cout << "\t--skip HRA due to var split. undo LRA results\n");
+        lra.undoLocalRAAssignments(false);
       }
-    } else if (builder.getOption(vISA_LocalRA) && (!hasStackCall)) {
-      copyMissingAlignment();
-      BankConflictPass bc(*this, false);
-      LocalRA lra(bc, *this);
-      bool success = lra.localRA();
-      if (!success && !builder.getOption(vISA_HybridRAWithSpill)) {
-        if (canDoHRA(kernel)) {
-          success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
-        } else {
-          RA_TRACE(std::cout
-                   << "\t--skip HRA due to var split. undo LRA results\n");
-          lra.undoLocalRAAssignments(false);
-        }
-      }
-      if (success) {
-        // either local or hybrid RA succeeds
-        assignRegForAliasDcl();
-        computePhyReg();
-        return VISA_SUCCESS;
-      }
-      if (builder.getOption(vISA_HybridRAWithSpill)) {
-        insertPhyRegDecls();
-      }
+    }
+    if (success) {
+      // either local or hybrid RA succeeds
+      assignRegForAliasDcl();
+      computePhyReg();
+      return VISA_SUCCESS;
+    }
+    if (builder.getOption(vISA_HybridRAWithSpill)) {
+      insertPhyRegDecls();
     }
   }
 
@@ -9976,10 +9956,6 @@ int GlobalRA::coloringRegAlloc() {
       bool isColoringGood = coloring.regAlloc(
           doBankConflictReduction, highInternalConflict, &rpe);
       if (!isColoringGood) {
-        if (isReRAPass()) {
-          // Don't modify program if reRA pass spills
-          return VISA_SPILL;
-        }
 
         bool runRemat =
             kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM
