@@ -6571,7 +6571,7 @@ void Optimizer::recomputeBound(std::unordered_set<G4_Declare *> &declares) {
 void Optimizer::mergeScalarInst() {
 
   int bundleSizeLimit = BUNDLE_INFO::maxBundleSize;
-  if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
+  if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D || builder.noInt64()) {
     bundleSizeLimit = 4;
   }
 

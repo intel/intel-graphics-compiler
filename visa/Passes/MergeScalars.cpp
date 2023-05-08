@@ -83,11 +83,11 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
   // only used once in the entire bundle, so that the new variable created for
   // the operand does not conflict with another. this is to prevent coalescing
   // two variables with conflicting life range, e.g.,
-  //  add (M1_NM, 1) V66(0,0)<1> V66(0,0)<0;1,0> 0x1:d /// $36 add (M1_NM, 1)
-  //  V67(0,0)<1> V65(0,0)<0;1,0> 0x1:d                             /// $37 or
-  //  make a variable with two root aliases: mul (M1_NM, 1) V186(0,0)<1>
-  //  V184(0,0)<0;1,0> V185(0,0)<0; 1, 0>                /// $206 mul (M1_NM, 1)
-  //  V187(0,0)<1> V182(0,0)<0;1,0> V182(0,0)<0; 1, 0>                /// $207
+  //  add (M1_NM, 1) V66(0,0)<1> V66(0,0)<0;1,0> 0x1:d /// $36
+  //  add (M1_NM, 1) V67(0,0)<1> V65(0,0)<0;1,0> 0x1:d  /// $37 or
+  //  make a variable with two root aliases:
+  //  mul (M1_NM, 1) V186(0,0)<1> V184(0,0)<0;1,0> V185(0,0)<0; 1, 0> /// $206
+  //  mul (M1_NM, 1) V187(0,0)<1> V182(0,0)<0;1,0> V182(0,0)<0; 1, 0> /// $207
   std::set<G4_Declare *> uniqueDeclares;
 
   // check if merging is legal
@@ -166,6 +166,22 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
   } else {
     vISA_ASSERT(dstPattern == OPND_PATTERN::CONTIGUOUS,
                 "unexpected dst pattern");
+
+    // Note that SIMD1 movs may have inefficient or incorrect dst stride prior
+    // to merging. But that is ok because the instruction is SIMD1 and the dst
+    // stride is not exercised
+    // For example:
+    // mov (M1_NM, 1) V0050(0,1)<4> V0046(0,7)<0;1,0>
+    // mov (M1_NM, 1) V0050(0,2)<4> V0046(0,8)<0;1,0>
+    // These movs are correct even though the dst stride is 4; the dst stride
+    // will be ignored because these are SIMD1 movs
+    // However, when we merge these two mov instructions into a SIMD2, we do
+    // not want to apply this stride of 4 to the merged instruction's dest i.e
+    // mov (2) V0050(0,1)<4> V0046(0,7)<1;1,0>:b
+    // the above instruction is incorrect
+
+    // set the destination to have a horizontal stride of 1
+    newInst->getDst()->setHorzStride(1);
   }
 
   for (int i = 0; i < newInst->getNumSrc(); ++i) {
@@ -233,7 +249,6 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       } else {
         src->setRegion(builder, builder.getRegionStride1());
       }
-
       newInst->setExecSize(execSize);
     } else if (srcPattern[i] == OPND_PATTERN::PACKED) {
 
@@ -249,6 +264,8 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
           return Type_UW;
         if (totalBytes == 4)
           return Type_UD;
+        if (totalBytes == 8 && !builder.noInt64())
+          return Type_UQ;
         // todo: revisit this to explore opportunities for coalescing into
         // qword; note that not all platforms support such movs
         return Type_UNDEF;
@@ -291,10 +308,12 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         switch (inst[j]->getDst()->getType()) {
         case G4_Type::Type_UD:
         case G4_Type::Type_D:
+        case G4_Type::Type_F:
           val = (uint32_t)immValue->getImm();
           break;
         case G4_Type::Type_UW:
         case G4_Type::Type_W:
+        case G4_Type::Type_HF:
           val = (uint16_t)immValue->getImm();
           break;
         case G4_Type::Type_UB:
@@ -400,9 +419,9 @@ static bool checkContiguous(unsigned offset1, unsigned offset2, G4_Type type,
 // check if operand span is within 2 GRFs
 // if operand span is less than equal to 2 GRFs, return true
 // else return false
-static bool checkOperandGRFSpan(unsigned short typeSize,
-                                const IR_Builder &builder,
-                                int bundleIndex) {
+static bool checkOperandGRFSpan(const IR_Builder &builder,
+                                int bundleIndex,
+                                unsigned short typeSize) {
   // bundleIndex is the index of the instruction appended to
   // the bundle of instructions to be merged if all checks have passed
   // in this function, we check the following: the number of GRFs occupied by
@@ -411,6 +430,42 @@ static bool checkOperandGRFSpan(unsigned short typeSize,
   size_t accumSizeBytes = (bundleIndex+1) * typeSize;
   if (accumSizeBytes > 2 * builder.numEltPerGRF<Type_UB>()) return false;
   return true;
+}
+
+static bool checkMergedOperandSize(const IR_Builder &builder,
+                                   int bundleIndex,
+                                   unsigned short typeSize) {
+  // for packing immediate patterns, check if the packed data type so far is
+  // within qword (for platforms that support) or dword legal limit
+  // the benefit of doing this check here is so that we can return a non-zero
+  // size of doing partial coalescing rather than failing entirely and not doing
+  // any coalescing/merging in the doMerge function
+  // For example:
+  //   mov (M1_NM, 1) V1ub(0,0)<1> 0x64:ub
+  //   mov (M1_NM, 1) V1ub(0,1)<1> 0x35:ub
+  //   mov (M1_NM, 1) V1ub(0,2)<1> 0x6:ub
+  //   mov (M1_NM, 1) V1ub(0,3)<1> 0x7:ub
+  //   mov (M1_NM, 1) V1ub(0,4)<1> 0x2A:ub
+  //   mov (M1_NM, 1) V1ub(0,5)<1> 0x1C:ub
+  //   mov (M1_NM, 1) V1ub(0,6)<1> 0xE:ub
+  //   mov (M1_NM, 1) V1ub(0,7)<1> 0x3D:ub
+  //   In this example, the logic passes this bundle of 8 instructions to
+  //   doMerge as they pass all checks in canMerge. These 8 instructions can be
+  //   merged into a single qword. However, in doMerge, we check whether the
+  //   platform supports qword movs and on a failure do not do any merging.
+  //   Rather, it would be good to do 2 merges of 4 instructions each rather
+  //   than no merging. By doing this check here, we can tune the bundle size to
+  //   merge
+
+  size_t accumSizeBytes = (bundleIndex+1)*typeSize;
+  if (accumSizeBytes < 8)
+    return true;
+  if (accumSizeBytes == 8) {
+    if (!builder.noInt64())
+      return true;
+  }
+  // return false if accum size is greater than 8 or no qword support
+  return false;
 }
 
 // check if this instruction is eligbile to be merged into a vector instruction
@@ -615,7 +670,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst, const IR_Builder &builder) {
   // check whether dst operand is within 2 GRFs
   // note that we can send the type size of current dst as we check earlier
   // whether the operand types in the bundle are the same
-  return checkOperandGRFSpan(dst->getTypeSize(), builder, size);
+  return checkOperandGRFSpan(builder, size, dst->getTypeSize());
 }
 
 //
@@ -662,8 +717,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
       // For data types above dword, if the values are identical, then the
       // identical pattern logic will be exercised resulting in wider SIMD
       // moves; otherwise no optimization is performed
-      if (builder.getOption(vISA_CoalesceScalarMoves) &&
-          IS_TYPE_INT(src->getType()) && !IS_QTYPE(src->getType())) {
+      if (builder.getOption(vISA_CoalesceScalarMoves) && !IS_QTYPE(src->getType())) {
         // first check whether we have already detected an IDENTICAL or PACKED
         // pattern with prior instructions
         if (srcPattern[srcPos] == OPND_PATTERN::PACKED) {
@@ -798,11 +852,17 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
     }
   }
 
+  if (srcPattern[srcPos] == OPND_PATTERN::PACKED) {
+    if (!checkMergedOperandSize(builder, size, src->getTypeSize())) {
+      return false;
+    }
+  }
+
   // check if src operand is within 2 GRFs
   // note that we can send the type size of current src as we check earlier
   // whether the source operand types of previous and current instruction are
   // the same
-  return checkOperandGRFSpan(src->getTypeSize(), builder, size);
+  return checkOperandGRFSpan(builder, size, src->getTypeSize());
 }
 
 //
