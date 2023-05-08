@@ -583,6 +583,9 @@ void displayAllPasses(const Pass* P)
 
 void IGCPassManager::add(Pass *P)
 {
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
+        return;
+
     //check only once
     static bool checkedToggles = false;
     static bool hasToggles = false;

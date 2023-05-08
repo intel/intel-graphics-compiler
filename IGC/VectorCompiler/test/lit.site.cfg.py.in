@@ -26,7 +26,7 @@ config.vc_printf_ocl_bif = "$<TARGET_PROPERTY:VCBiFPreparation,BINARY_DIR>/VCBiF
 config.vc_spirv_ocl_bif = "$<TARGET_PROPERTY:VCBiFPreparation,BINARY_DIR>/VCSPIRVBuiltins64.opt.bc"
 config.vc_emulation_bif_prefix = "$<TARGET_PROPERTY:VCBiFPreparation,BINARY_DIR>/VCEmulation64"
 config.vc_platform_list = "@SUPPORTED_VC_PLATFORMS@"
-config.use_khronos_spirv_translator_in_sc = "@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@"
+config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
 config.llvm_version = "@LLVM_VERSION_MAJOR@"
 config.llvm_dependent_opt_flags = "@IGC_LLVM_DEPENDENT_OPT_FLAGS@"
 

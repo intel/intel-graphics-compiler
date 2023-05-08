@@ -52,10 +52,15 @@ else() #By default use build from sources
  set(IGC_BUILD__SPIRV-Headers_DIR "${SPIRV-Headers_SOURCE_DIR}")
  set(IGC_BUILD__SPIRV-Tools_DIR "${SPIRV-Tools_SOURCE_DIR}")
 
+ # policy CMP0077 workaround
+ if (NOT DEFINED DEFAULT_SPIRV_SKIP_EXECUTABLES)
+  set(DEFAULT_SPIRV_SKIP_EXECUTABLES ON)
+ endif()
+
  # options used in subdirectory
  option(SKIP_SPIRV_TOOLS_INSTALL "Skip SPIRV-Tools installation" ON)
  option(SPIRV_SKIP_TESTS "Skip building SPIRV-Tools tests along with the library" ON)
- option(SPIRV_SKIP_EXECUTABLES "Skip building SPIRV-Tools executables and tests along with the library" ON)
+ option(SPIRV_SKIP_EXECUTABLES "Skip building SPIRV-Tools executables and tests along with the library" ${DEFAULT_SPIRV_SKIP_EXECUTABLES})
  option(SPIRV_HEADERS_SKIP_INSTALL "Skip SPIRV-Headers installation" ON)
  option(SPIRV_HEADERS_SKIP_EXAMPLES "Skip building SPIRV-Headers examples" ON)
 
