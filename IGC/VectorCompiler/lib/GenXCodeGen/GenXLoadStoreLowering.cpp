@@ -205,6 +205,11 @@ private:
   Value *createTruncateImpl(IRBuilder<> &Builder, IGCLLVM::FixedVectorType *Ty,
                             Value *Data) const;
 
+  Type *lowerBoolType(IRBuilder<> &Builder, Type *Ty) const;
+  Value *lowerBoolOperand(IRBuilder<> &Builder, Module *M, Value *Data) const;
+  Value *extractBoolValue(IRBuilder<> &Builder, Module *M, Value *Data,
+                          Type *Ty) const;
+
   LSC_SCOPE getLSCFenceScope(Instruction *I) const;
   static unsigned getLSCBlockElementSizeBits(unsigned DataSizeBytes,
                                              unsigned Align);
@@ -530,6 +535,73 @@ Value *GenXLoadStoreLowering::createTruncateImpl(IRBuilder<> &Builder,
   return Builder.CreateBitCast(Trunc, Ty);
 }
 
+Type *GenXLoadStoreLowering::lowerBoolType(IRBuilder<> &Builder,
+                                           Type *Ty) const {
+  if (Ty->isIntegerTy(1))
+    return Builder.getInt8Ty();
+
+  auto TargetBits = DL_->getTypeStoreSizeInBits(Ty);
+
+  unsigned TargetElementBits = 0;
+  if (TargetBits % QWordBits == 0)
+    TargetElementBits = QWordBits;
+  else if (TargetBits % DWordBits == 0)
+    TargetElementBits = DWordBits;
+  else if (TargetBits % WordBits == 0)
+    TargetElementBits = WordBits;
+  else
+    TargetElementBits = ByteBits;
+
+  auto *TargetETy = Builder.getIntNTy(TargetElementBits);
+  return IGCLLVM::FixedVectorType::get(TargetETy,
+                                       TargetBits / TargetElementBits);
+}
+
+Value *GenXLoadStoreLowering::lowerBoolOperand(IRBuilder<> &Builder, Module *M,
+                                               Value *Data) const {
+  auto *Ty = Data->getType();
+  if (Ty->isIntegerTy(1))
+    return Builder.CreateZExt(Data, Builder.getInt8Ty());
+
+  auto *VData = makeVector(Builder, Data);
+
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(VData->getType());
+  auto *ETy = VTy->getElementType();
+  IGC_ASSERT(ETy->isIntegerTy(1));
+
+  unsigned DataBits = VTy->getNumElements();
+  unsigned TargetBits = DL_->getTypeStoreSizeInBits(VTy);
+
+  if (TargetBits != DataBits) {
+    auto *TargetBoolVTy = IGCLLVM::FixedVectorType::get(ETy, TargetBits);
+    auto *VZero = Constant::getNullValue(TargetBoolVTy);
+    auto *Func = GenXIntrinsic::getAnyDeclaration(
+        M, GenXIntrinsic::genx_wrpredregion, {TargetBoolVTy, VTy});
+    VData = Builder.CreateCall(Func, {VZero, VData, Builder.getInt32(0)});
+  }
+
+  return Builder.CreateBitCast(VData, lowerBoolType(Builder, VTy));
+}
+
+Value *GenXLoadStoreLowering::extractBoolValue(IRBuilder<> &Builder, Module *M,
+                                               Value *Data, Type *Ty) const {
+  if (Ty->isIntegerTy(1))
+    return Builder.CreateTrunc(Data, Ty);
+
+  auto Bits = DL_->getTypeStoreSizeInBits(Ty);
+  auto *SrcBoolVTy = IGCLLVM::FixedVectorType::get(Builder.getInt1Ty(), Bits);
+  auto *VTy = &vc::getVectorType(*Ty);
+
+  if (VTy != SrcBoolVTy) {
+    auto *Func = GenXIntrinsic::getAnyDeclaration(
+        M, GenXIntrinsic::genx_rdpredregion, {VTy, SrcBoolVTy});
+    auto *Cast = Builder.CreateBitCast(Data, SrcBoolVTy);
+    Data = Builder.CreateCall(Func, {Cast, Builder.getInt32(0)});
+  }
+
+  return Builder.CreateBitCast(Data, Ty);
+}
+
 Value *GenXLoadStoreLowering::makeVector(IRBuilder<> &Builder, Value *Val) {
   auto *Ty = Val->getType();
   if (isa<IGCLLVM::FixedVectorType>(Ty))
@@ -668,6 +740,17 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
   bool IsLoad = isa<LoadInst>(I);
 
   auto *Ty = IsLoad ? I.getType() : Data->getType();
+  auto *OrigTy = Ty;
+
+  if (OrigTy->getScalarType()->isIntegerTy(1)) {
+    if (IsLoad) {
+      Ty = lowerBoolType(Builder, Ty);
+    } else {
+      Data = lowerBoolOperand(Builder, M, Data);
+      Ty = Data->getType();
+    }
+  }
+
   auto *VTy = &vc::getVectorType(*Ty);
 
   if (Ty->isPtrOrPtrVectorTy()) {
@@ -778,6 +861,9 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
     if (Ty->isPtrOrPtrVectorTy())
       Result = Builder.CreateIntToPtr(Result, &vc::getVectorType(*Ty));
     Result = Builder.CreateBitCast(Result, Ty);
+
+    if (OrigTy->getScalarType()->isIntegerTy(1))
+      Result = extractBoolValue(Builder, M, Result, OrigTy);
   }
 
   return cast<Instruction>(Result);
@@ -1656,6 +1742,17 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
   bool IsLoad = isa<LoadInst>(I);
 
   auto *Ty = IsLoad ? I.getType() : Data->getType();
+  auto *OrigTy = Ty;
+
+  if (OrigTy->getScalarType()->isIntegerTy(1)) {
+    if (IsLoad) {
+      Ty = lowerBoolType(Builder, Ty);
+    } else {
+      Data = lowerBoolOperand(Builder, M, Data);
+      Ty = Data->getType();
+    }
+  }
+
   auto *VTy = &vc::getVectorType(*Ty);
 
   if (Ty->isPtrOrPtrVectorTy()) {
@@ -1782,6 +1879,9 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
     if (Ty->isPtrOrPtrVectorTy())
       Result = Builder.CreateIntToPtr(Result, &vc::getVectorType(*Ty));
     Result = Builder.CreateBitCast(Result, Ty);
+
+    if (OrigTy->getScalarType()->isIntegerTy(1))
+      Result = extractBoolValue(Builder, M, Result, OrigTy);
   }
 
   return cast<Instruction>(Result);
