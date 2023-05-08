@@ -132,6 +132,7 @@ StatelessToStateful::StatelessToStateful()
     : FunctionPass(ID),
     m_hasBufferOffsetArg(false),
     m_hasOptionalBufferOffsetArg(false),
+    m_hasSubDWAlignedPtrArg(false),
     m_hasPositivePointerOffset(false),
     m_ACT(nullptr),
     m_pImplicitArgs(nullptr),
@@ -173,6 +174,8 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
 
     m_hasOptionalBufferOffsetArg = (m_hasBufferOffsetArg &&
         (IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) || modMD->compOpt.BufferOffsetArgOptional));
+
+    m_hasSubDWAlignedPtrArg = (IGC_IS_FLAG_ENABLED(UseSubDWAlignedPtrArg) || modMD->compOpt.HasSubDWAlignedPtrArg);
 
     m_hasPositivePointerOffset = (IGC_IS_FLAG_ENABLED(SToSProducesPositivePointer) || modMD->compOpt.HasPositivePointerOffset);
 
@@ -424,7 +427,10 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         // guarantted to be DW-aligned.)
         //
         // Note that implicit arg is always aligned.
-        bool isAlignedPointee = arg->isImplicitArg() ? true : (getPointeeAlign(DL, base) >= 4);
+        bool isAlignedPointee =
+            (!m_hasSubDWAlignedPtrArg || arg->isImplicitArg())
+            ? true
+            : (getPointeeAlign(DL, base) >= 4);
 
         // special handling
         if (m_supportNonGEPPtr && gep == nullptr && !arg->isImplicitArg())
