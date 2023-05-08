@@ -423,11 +423,6 @@ typedef enum __NATIVEGTTYPE
 #define ICHV_PLUS_DESK_DEVICE_F0_ID      0x22B3   // Reserved
 
 //BDW device ids
-#define IBDW_GT0_DESK_DEVICE_F0_ID              0x0BD0
-#define IBDW_GT1_DESK_DEVICE_F0_ID              0x0BD1
-#define IBDW_GT2_DESK_DEVICE_F0_ID              0x0BD2
-#define IBDW_GT3_DESK_DEVICE_F0_ID              0x0BD3
-#define IBDW_GT4_DESK_DEVICE_F0_ID              0x0BD4
 
 #define IBDW_GT1_HALO_MOBL_DEVICE_F0_ID         0x1602
 #define IBDW_GT1_ULT_MOBL_DEVICE_F0_ID          0x1606
