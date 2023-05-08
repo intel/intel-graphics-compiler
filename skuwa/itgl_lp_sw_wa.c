@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2016-2021 Intel Corporation
+Copyright (C) 2016-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,28 +11,28 @@ SPDX-License-Identifier: MIT
 
 
 #include "wa_def.h"
-
-#define TGL_REV_ID_A0   SI_REV_ID(0,0)
-#define TGL_REV_ID_B0   SI_REV_ID(3,3)
+#include "itgl_lp_rev_id.h"
 
 
 void InitTglLpSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int StepId_TGL = (int)pWaParam->usRevId;
 
-
     SI_WA_ENABLE(
+
         WaMixModeSelInstDstNotPacked,
-        "No Link Provided",
+        "No HWBugLink provided",
         "No Link Provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
+
 
 }
 
 #ifdef __KCH
 void InitTgllpHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
+
 
 }
 #endif

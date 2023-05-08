@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2022 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,6 +13,5 @@ SPDX-License-Identifier: MIT
 #include "wa_def.h"
 
 #define GT_12_70_REV_ID_A0   SI_REV_ID(0,0)
-
 #define GT_12_70_REV_ID_B0   SI_REV_ID(4,4)
 

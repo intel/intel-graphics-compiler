@@ -18,9 +18,7 @@ void InitAdlnSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INI
 {
     int StepId_ADLN = (int)pWaParam->usRevId;
 
-
     SI_WA_ENABLE(
-
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
         "No Link Provided",
