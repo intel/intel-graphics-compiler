@@ -61,7 +61,6 @@ class LivenessAnalysis {
       0; // the selected reg file kind for performing liveness
   const PointsToAnalysis &pointsToAnalysis;
   std::unordered_map<G4_Declare *, BitSet> neverDefinedRows;
-  std::unordered_set<const G4_Declare *> defWriteEnable;
 
   void computeGenKillandPseudoKill(G4_BB *bb, SparseBitSet &def_out,
                                    SparseBitSet &use_in, SparseBitSet &use_gen,
@@ -85,8 +84,6 @@ class LivenessAnalysis {
   static void footprintSrc(const G4_INST *i, G4_Operand *opnd,
                            BitSet *srcfootprint);
   void detectNeverDefinedVarRows();
-  void collectNoMaskVars();
-  bool doesVarNeedNoMaskForKill(const G4_Declare* dcl) const;
 
 public:
   GlobalRA &gra;
