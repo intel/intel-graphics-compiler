@@ -21492,12 +21492,12 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
                 offsetof(RTStackFormat::TraceRayMessage::Header, rayQueryLocation) / sizeof(DWORD);
             static_assert(RayQueryDword == 4, "header change?");
 
-        uint64_t rayQueryHeader = 0x0;
+            uint64_t rayQueryHeader = 0x0;
 
-        rayQueryHeader |= RayQueryEnable ? 1 : 0;
+            rayQueryHeader |= RayQueryEnable ? 1 : 0;
 
-        CVariable* RayQueryVal =
-            m_currShader->ImmToVariable(rayQueryHeader, ISA_TYPE_UD);
+            CVariable* RayQueryVal =
+                m_currShader->ImmToVariable(rayQueryHeader, ISA_TYPE_UD);
 
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
