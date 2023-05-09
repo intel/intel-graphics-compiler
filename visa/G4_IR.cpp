@@ -4934,7 +4934,7 @@ G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
   doNotSpill = false;
   capableOfReuse = false;
   addrSpillFill = false;
-
+  forceSpilled = false;
   scopeID = 0;
 
   GRFOffsetFromR0 = 0;

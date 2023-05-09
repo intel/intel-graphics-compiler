@@ -42,6 +42,8 @@ DEF_ATTR_BOOL(ATTR_Input_Output, "Input_Output", AK_VAR, false,
 DEF_ATTR_BOOL(ATTR_NoWidening, "NoWidening", AK_VAR, false, "")
 DEF_ATTR_BOOL(ATTR_DoNotSpill, "DoNotSpill", AK_VAR, false,
               "True if var should not be spilled")
+DEF_ATTR_BOOL(ATTR_ForceSpill, "ForceSpill", AK_VAR, false,
+              "True if var is forced to be spilled")
 DEF_ATTR_BOOL(ATTR_SepSpillPvtSS, "SepSpillPvtSS", AK_KERNEL, false, "")
 DEF_ATTR_BOOL(ATTR_LTOInvokeOptTarget, "LTO_InvokeOptTarget", AK_KERNEL, 0, "")
 DEF_ATTR_BOOL(ATTR_AllLaneActive, "AllLaneActive", AK_KERNEL, false,
