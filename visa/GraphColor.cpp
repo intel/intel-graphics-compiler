@@ -9768,11 +9768,6 @@ int GlobalRA::coloringRegAlloc() {
 
     LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
     liveAnalysis.computeLiveness();
-#ifndef DLL_MODE
-    if (stopAfter("Global_RA_liveness")) {
-      return VISA_EARLY_EXIT;
-    }
-#endif // DLL_MODE
     if (builder.getOption(vISA_dumpLiveness)) {
       liveAnalysis.dump();
     }
