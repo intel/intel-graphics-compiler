@@ -4540,7 +4540,9 @@ RelocationEntry::createRelocation(G4_Kernel &kernel, G4_INST &inst, int opndPos,
                                   RelocationType type) {
   kernel.getRelocationTable().emplace_back(
       RelocationEntry(&inst, opndPos, type, symbolName));
-  return kernel.getRelocationTable().back();
+  auto &entry = kernel.getRelocationTable().back();
+  inst.addComment(std::string(entry.getTypeString()) + ": " + symbolName);
+  return entry;
 }
 
 void RelocationEntry::doRelocation(const G4_Kernel &kernel, void *binary,
