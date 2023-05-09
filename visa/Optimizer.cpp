@@ -1152,7 +1152,6 @@ int Optimizer::optimization() {
 
   runPass(PI_FoldAddrImmediate);
 
-
   // FIXME houjenko: Disable local scheduling due to issues when
   // using extra regiser that may corrupt unknown liveout
   if (!builder.getIsPayload()) {
