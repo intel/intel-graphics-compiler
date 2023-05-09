@@ -104,8 +104,16 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
         }
         if (Semantics & CrossWorkgroupMemory)
         {
-           bool flushL3 = Memory == Device || Memory == CrossDevice;
-           __intel_memfence_handler(flushL3, true, invalidateL1, evictL1);
+           if (Memory == Device || Memory == CrossDevice)
+           {
+               __intel_memfence_handler(true, true, invalidateL1, evictL1);
+           }
+           else
+           {
+               // Single workgroup executes on one DSS and shares the same L1 cache.
+               // If scope doesn't reach outside of workgroup, L1 flush can be skipped.
+               __intel_memfence_handler(false, true, false, false);
+           }
         }
     }
 }
