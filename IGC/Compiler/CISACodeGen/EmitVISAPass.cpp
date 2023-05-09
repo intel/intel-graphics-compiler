@@ -2623,7 +2623,7 @@ void EmitPass::emitMayUnalignedVectorCopy(
 {
     IGC_ASSERT(Ty->isSingleValueType());
 
-    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
 
     auto v_ty = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t v_nelts = v_ty ? (uint32_t)v_ty->getNumElements() : 1;
@@ -2753,7 +2753,7 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     IGC_ASSERT_MESSAGE(sTy != nullptr,
         "ICE: invertvalue - only struct type is supported!");
 
-    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
 
     if (isLayoutStructType(sTy))
     {
@@ -2891,7 +2891,6 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
         if (!isa<UndefValue>(C))
         {
             const bool dstUniform = m_destination->IsUniform();
-            const unsigned lanes = numLanes(m_currShader->m_dispatchSize);
             CVariable* elementSrc = GetSymbol(C->getAggregateElement(idx));
             Type* ty = sTy->getStructElementType(idx);
             emitCopyAll(m_destination, elementSrc, ty);
@@ -2904,7 +2903,7 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
     // For now, do not support uniform dst and non-uniform src
     IGC_ASSERT(!(m_destination->IsUniform() && !srcUniform));
     const unsigned nLanes =
-        (srcUniform ? 1 : numLanes(m_currShader->m_dispatchSize));
+        (srcUniform ? 1 : numLanes(m_currShader->m_SIMDSize));
     Type* ty = sTy->getStructElementType(idx);
     uint32_t elementOffset = (uint32_t)SL->getElementOffset(idx);
 
@@ -2949,7 +2948,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
 
     auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
-    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
 
     Value* src0 = inst->getOperand(0);
     Value* src1 = inst->getOperand(1);
@@ -18528,8 +18527,8 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
 
         StructType* STy = dyn_cast<StructType>(Ty);
         const StructLayout* SL = m_DL->getStructLayout(STy);
-        unsigned srcLanes = Src->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
-        unsigned dstLanes = Dst->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+        unsigned srcLanes = Src->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
+        unsigned dstLanes = Dst->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
         for (unsigned i = 0; i < STy->getNumElements(); i++)
         {
             unsigned elementOffset = (unsigned)SL->getElementOffset(i);

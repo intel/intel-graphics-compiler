@@ -1984,14 +1984,16 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
     }
 
     bool isUniform = m_WI->isUniform(v);
+    const uint16_t Instances = isUniform ? 1 : m_numberInstance;
     StructType* sTy = cast<StructType>(v->getType());
     auto& DL = entry->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
 
     // Represent the struct as a vector of BYTES
     unsigned structSizeInBytes = (unsigned)SL->getSizeInBytes();
-    unsigned lanes = isUniform ? 1 : numLanes(m_dispatchSize);
-    CVariable* cVar = GetNewVariable(structSizeInBytes * lanes, ISA_TYPE_B, EALIGN_GRF, isUniform, "StructV");
+    unsigned lanes = isUniform ? 1 : numLanes(m_SIMDSize);
+    CVariable* cVar = GetNewVariable(structSizeInBytes * lanes,
+        ISA_TYPE_B, EALIGN_GRF, isUniform, Instances, "StructV");
 
     // Initialize the struct default value if it has one
     Constant* C = dyn_cast<Constant>(v);
