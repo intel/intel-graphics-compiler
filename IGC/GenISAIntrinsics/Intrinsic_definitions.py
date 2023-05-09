@@ -2762,7 +2762,7 @@ Imported_Intrinsics = \
     [("anyfloat",                       "return value of operation"),
     [(0,                                "operand 0 of binary operator"),
      (0,                                "operand 1 of binary operator"),
-     ("int",                            "0x1:fadd, 0x2:fsub, 0x4:fmul, 0x8:fdiv, 0x10:frem")],
+     ("int",                            "0x1:fadd, 0x2:fsub, 0x4:fmul, 0x8:fdiv")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_bitcastfromstruct": ["bitcast from a struct to an int (vector), GRF layout related",

@@ -68,8 +68,7 @@ SPDX-License-Identifier: MIT
             FP_BINOP_INSTRUCTION(FAdd,       0x1)  \
             FP_BINOP_INSTRUCTION(FSub,       0x2)  \
             FP_BINOP_INSTRUCTION(FMul,       0x4)  \
-            FP_BINOP_INSTRUCTION(FDiv,       0x8)  \
-            FP_BINOP_INSTRUCTION(FRem,       0x10)
+            FP_BINOP_INSTRUCTION(FDiv,       0x8)
 #endif // FP_BINOP_INSTRUCTION
 
 #ifdef TRIBOOL_OPTION

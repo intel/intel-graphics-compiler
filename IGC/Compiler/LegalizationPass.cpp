@@ -300,9 +300,6 @@ void Legalization::visitCallInst(llvm::CallInst& I)
             case FPOp::FDiv:
                 newInst = m_builder->CreateFDiv(L, R);
                 break;
-            case FPOp::FRem:
-                newInst = m_builder->CreateFRem(L, R);
-                break;
         };
 
         if (isa<Instruction>(newInst))
