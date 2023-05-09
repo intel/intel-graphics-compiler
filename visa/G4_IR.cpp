@@ -3159,6 +3159,10 @@ void G4_INST::emit(std::ostream &output) {
       output << " // ";
       emitInstIds(output);
     }
+    auto comm = getComments();
+    if (!comm.empty()) {
+      output << " // " << comm;
+    }
   } // end: non-label
 } // G4_INST::emit_inst
 

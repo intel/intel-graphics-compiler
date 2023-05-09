@@ -275,185 +275,148 @@ void Optimizer::addFFIDProlog() {
   }
 }
 
-uint32_t Optimizer::findLoadedInputSize(uint32_t &loadStartOffset) {
-  const uint32_t startGRF =
-      kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
-  const uint32_t inputsStart = startGRF * kernel.getGRFSize();
-  const uint32_t inputCount = kernel.fg.builder->getInputCount();
+///////////////////////////////////////////////////////////////////////////////
+// Argument Loading for GPGPU
+//
+// clang-format off
+//  Payload in Memory                                Payload in GRF (T0)
+//  (Prepared by Runtime)
+//  (Does not contain inlineData)
+// -----------------------                       R1 ----------------------- <-- perThreadLoadStartGRF
+// |  cross thread data  | \                        |  per thread data T0 |
+// |                     |  numCrossThreadDW     R4 -----------------------
+// |                     | /                        |  inline data        |
+// ----------------------- <-- localIDsOffset       |  (if enabled)       |
+// |  per thread data T0 |                       R5 ----------------------- <-- crossThreadLoadStart, crossThreadLoadStartGRF
+// -----------------------                          |  cross thread data  | \
+// |  per thread data T1 |                          |                     |  numCrossThreadDW
+// -----------------------                          |                     | /
+// |        ...          |                          -----------------------
+// -----------------------
+// clang-format on
+class PayloadLoader
+{
+  IR_Builder &builder;
+  G4_Kernel &kernel;
+  FlowGraph &fg;
 
-  const bool useInlineData = builder.getOption(vISA_useInlineData);
-  const int PTIS =
-      kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
-  const uint32_t inlineDataSize = builder.getInlineDataSize();
+  // indirect data address is at r0.0[5:31]
+  // local thread id is at r0.2[0:7]
+  G4_Declare *r0;
+  // temp register to use for offset computation or load payload
+  G4_Declare *rtmp;
 
-  // Checks if input_info is cross-thread-input
-  auto isInCrossThreadData = [&](const input_info_t *const input_info) {
-    return (uint32_t)input_info->offset >= inputsStart + PTIS;
-  };
+  // see the image above
+  const uint32_t perThreadLoadStartGRF;
 
-  // Checks if input_info fits in inlineData
-  auto isInInlineData = [&](const input_info_t *const input_info) {
-    if (!useInlineData) {
-      return false;
-    }
-    uint32_t inputEnd = input_info->offset + input_info->size;
-    bool fitsInInlineData = inputEnd <= inputsStart + PTIS + inlineDataSize;
-    return isInCrossThreadData(input_info) && fitsInInlineData;
-  };
-
-  uint32_t firstNotInlinedCrossThreadInput =
-      std::numeric_limits<uint32_t>::max();
-  uint32_t inputEnd = 32;
-
-  // iterate over inputs and find:
-  // - where they end
-  // - where first not inlined cross thread input is
-  for (unsigned int id = 0; id < inputCount; id++) {
-    input_info_t *input_info = kernel.fg.builder->getInputArg(id);
-    // skip pseudo input for register bindings.
-    if (input_info->isPseudoInput()) {
-      continue;
-    }
-    if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel()) {
-      vISA::G4_Declare *dcl = input_info->dcl;
-      if (INPUT_GENERAL == input_info->getInputClass() && !(dcl->isLiveIn())) {
-        break;
-      }
-    }
-    if (inputEnd < (unsigned)(input_info->size + input_info->offset)) {
-      inputEnd = input_info->size + input_info->offset;
-    }
-    // let's find first cross thread input position which is not delivered in
-    // inlineData
-    if (isInCrossThreadData(input_info) && !isInInlineData(input_info) &&
-        firstNotInlinedCrossThreadInput > (uint32_t)input_info->offset) {
-      firstNotInlinedCrossThreadInput = input_info->offset;
-    }
-  }
-
-  loadStartOffset = firstNotInlinedCrossThreadInput;
-  // check if we have anything to load
-  if (firstNotInlinedCrossThreadInput == std::numeric_limits<uint32_t>::max()) {
-    return 0;
-  }
-  return inputEnd - firstNotInlinedCrossThreadInput;
-}
-
-void Optimizer::loadThreadPayload() {
-  if (!builder.loadThreadPayload() || !builder.getIsKernel()) {
-    return;
-  }
-
-  const bool useInlineData = builder.getOption(vISA_useInlineData);
-  const unsigned crossThreadDataAlignment =
-      builder.getuint32Option(vISA_crossThreadDataAlignment);
-
-  // preparation of thread payload size and start offsets
-
-  // clang-format off
-  //  Payload in Memory                                Payload in GRF (T0)
-  //  (Prepared by Runtime)
-  //  (Does not contain inlineData)
-  // -----------------------                       R1 ----------------------- <-- perThreadLoadStartGRF
-  // |  cross thread data  | \                        |  per thread data T0 |
-  // |                     |  numCrossThreadDW     R4 -----------------------
-  // |                     | /                        |  inline data        |
-  // ----------------------- <-- localIDsOffset       |  (if enabled)       |
-  // |  per thread data T0 |                       R5 ----------------------- <-- crossThreadLoadStart, crossThreadLoadStartGRF
-  // -----------------------                          |  cross thread data  | \
-  // |  per thread data T1 |                          |                     |  numCrossThreadDW
-  // -----------------------                          |                     | /
-  // |        ...          |                          -----------------------
-  // -----------------------
-  // clang-format on
-
-  const uint32_t perThreadLoadStartGRF =
-      kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
-  int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
-  uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
-  uint32_t crossThreadLoadStart = 0;    // register file (grf) offset in byte
-  uint32_t crossThreadLoadStartGRF = 0; // grf number
-  // cross thread size (not including inlinedata size and alignement)
-  const uint32_t loadedCrossThreadInputSize =
-      findLoadedInputSize(crossThreadLoadStart);
   // final cross thread size to be loaded as number of DW (including aligenment)
   uint32_t numCrossThreadDW = 0;
   // payload memory offset of where local id should be loaded from
   uint32_t localIDsOffset = 0;
-  int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
-  if (CTIS < 0) {
-    // per-thread payload vars
-    // N = inlinedata size
-    // Cross thread data size is aligned to 32byte,
-    // if inlinedata is used, runtime puts first N bytes of payload in
-    // inlinedata. Rest of payload is shifted in the buffer by N bytes. So
-    // payload args which start at N offset, now start at 0 offset. Because of
-    // this we need to calculate localID offset:
-    const uint32_t inlineDataSize = builder.getInlineDataSize();
-    uint32_t correction = useInlineData ? inlineDataSize : 0;
-    localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction,
-                             crossThreadDataAlignment);
-    localIDsOffset -= useInlineData ? inlineDataSize : 0;
 
-    // cross-thread payload vars
-    numCrossThreadDW =
-        AlignUp(loadedCrossThreadInputSize, crossThreadDataAlignment) /
-        TypeSize(Type_UD);
-    crossThreadLoadStartGRF = crossThreadLoadStart / kernel.getGRFSize();
-  } else {
-    // per-thread payload vars
-    localIDsOffset = CTIS;
-    localIDsOffset -= useInlineData ? builder.getInlineDataSize() : 0;
+  // number of per-thread GRFs to be loaded (e.g. local ids)
+  const uint32_t numPerThreadGRF = 0;
 
-    // cross-thread payload vars
-    numCrossThreadDW = CTIS / TypeSize(Type_UD);
-    crossThreadLoadStartGRF = perThreadLoadStartGRF + numPerThreadGRF;
-    if (useInlineData) {
-      // first GRF of cross-thread data is already loaded
-      crossThreadLoadStartGRF++;
-      // FIXME: reduce "numCrossThreadDW" for grf size instead of inline data
-      // size (builder.getInlineDataSize()) to workaround ogl behavior that it
-      // sets ATTR_CrossThreadInputSize larger than acutal input size.
-      numCrossThreadDW = numCrossThreadDW > kernel.numEltPerGRF<Type_UD>()
-                             ? numCrossThreadDW - kernel.numEltPerGRF<Type_UD>()
-                             : 0;
-    }
-  }
+  // start GRF for load data
+  uint32_t crossThreadLoadStartGRF = 0;
 
   std::vector<G4_INST *> instBuffer;
 
-  // indirect data address is at r0.0[5:31]
-  // local thread id is at r0.2[0:7]
-  // use r127 as the header for each oword load
-  G4_Declare *r0 = builder.createHardwiredDeclare(8, Type_UD, 0, 0);
-  auto totalGRF = kernel.getNumRegTotal();
+public:
+  PayloadLoader(IR_Builder &b, G4_Kernel &k, FlowGraph &_fg)
+    : builder(b), kernel(k), fg(_fg),
+      r0(
+        b.createHardwiredDeclare(
+          k.numEltPerGRF<Type_UD>(), Type_UD, 0, 0)),
+      rtmp(
+        b.createHardwiredDeclare(
+          k.numEltPerGRF<Type_UD>(), Type_UD,
+          k.getNumRegTotal() - 1, 0)),
+      perThreadLoadStartGRF(
+        k.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg)),
+      numPerThreadGRF(
+        k.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize) /
+          k.numEltPerGRF<Type_UB>())
+  {
+    r0->setName("r0");
+    rtmp->setName("rtmp");
 
-  G4_Declare *rtail =
-      builder.createHardwiredDeclare(8, Type_UD, totalGRF - 1, 0);
+    // pre-compute various offsets into memory and GRF for the later use
+    const unsigned crossThreadDataAlignment =
+      builder.getuint32Option(vISA_crossThreadDataAlignment);
+    const bool useInlineData = builder.getOption(vISA_useInlineData);
+    uint32_t crossThreadLoadStart = 0;    // register file (grf) offset in byte
+    // cross thread size (not including inlinedata size and alignement)
+    const uint32_t loadedCrossThreadInputSize =
+        findLoadedInputSize(crossThreadLoadStart);
+    int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
+    if (CTIS < 0) {
+      // per-thread payload vars
+      // N = inlinedata size
+      // Cross thread data size is aligned to 32byte,
+      // if inlinedata is used, runtime puts first N bytes of payload in
+      // inlinedata. Rest of payload is shifted in the buffer by N bytes. So
+      // payload args which start at N offset, now start at 0 offset. Because of
+      // this we need to calculate localID offset:
+      const uint32_t inlineDataSize = builder.getInlineDataSize();
+      uint32_t correction = useInlineData ? inlineDataSize : 0;
+      localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction,
+                               crossThreadDataAlignment);
+      localIDsOffset -= useInlineData ? inlineDataSize : 0;
 
-  auto getHWordBlockEncoding = [](uint32_t numHW) {
-    switch (numHW) {
-    case 1:
-      return 0x0;
-    case 2:
-      return 0x1;
-    case 4:
-      return 0x2;
-    case 8:
-      return 0x3;
-    default:
-      vISA_ASSERT_UNREACHABLE("unexpected number of HW");
-      return 0x0;
+      // cross-thread payload vars
+      numCrossThreadDW =
+        AlignUp(loadedCrossThreadInputSize, crossThreadDataAlignment) /
+          TypeSize(Type_UD);
+      crossThreadLoadStartGRF = crossThreadLoadStart / kernel.getGRFSize();
+    } else {
+      // per-thread payload vars
+      localIDsOffset = CTIS;
+      localIDsOffset -= useInlineData ? builder.getInlineDataSize() : 0;
+
+      // cross-thread payload vars
+      numCrossThreadDW = CTIS / TypeSize(Type_UD);
+      crossThreadLoadStartGRF = perThreadLoadStartGRF + numPerThreadGRF;
+      if (useInlineData) {
+        // first GRF of cross-thread data is already loaded
+        crossThreadLoadStartGRF++;
+        // FIXME: reduce "numCrossThreadDW" for grf size instead of inline data
+        // size (builder.getInlineDataSize()) to workaround ogl behavior that it
+        // sets ATTR_CrossThreadInputSize larger than acutal input size.
+        numCrossThreadDW =
+          numCrossThreadDW > kernel.numEltPerGRF<Type_UD>() ?
+            numCrossThreadDW - kernel.numEltPerGRF<Type_UD>() : 0;
+      }
     }
-  };
+  } // PayloadLoader::PayloadLoader(...)
 
+private:
   // load <numGRF> GRFs from the address "loadAddress", starting from <startGRF>
-  auto loadFromMemory = [this, &instBuffer, getHWordBlockEncoding](
-                            G4_Declare *loadAddress, uint32_t startGRF,
-                            uint32_t numTotalDW) {
+  // using an oword block load
+  void loadFromMemoryHdcBti(G4_Declare *loadAddress,
+                            uint32_t startGRF,
+                            uint32_t numTotalDW)
+  {
+    auto getHWordBlockEncoding = [](uint32_t numHW) {
+      switch (numHW) {
+      case 1:
+        return 0x0;
+      case 2:
+        return 0x1;
+      case 4:
+        return 0x2;
+      case 8:
+        return 0x3;
+      default:
+        vISA_ASSERT_UNREACHABLE("unexpected number of HW");
+        return 0x0;
+      }
+    };
+
     for (uint32_t numRemainingDW = numTotalDW, nextGRF = startGRF;
          numRemainingDW > 0;
-         /* updated in body */) {
+         /* updated in body */)
+    {
       // can load 4, 2 or 1 grf per send.
       // Still load 1 GRF if the remainingDW is less than 1 GRF. The addtional
       // bytes those being loaded won't be used.
@@ -461,8 +424,7 @@ void Optimizer::loadThreadPayload() {
       uint32_t DWin2GRF = DWin4GRF / 2;
       uint32_t DWin1GRF = DWin2GRF / 2;
       uint32_t numGRFToLoad = numRemainingDW >= DWin4GRF ? 4 : // 4 GRF
-                                  numRemainingDW >= DWin2GRF ? 2
-                                                             : // 2 GRF
+                                  numRemainingDW >= DWin2GRF ? 2 : // 2 GRF
                                   1; // 1 GRF or less than 1 GRF
 
       bool useHword = builder.hasHWordBlockLoad();
@@ -486,7 +448,8 @@ void Optimizer::loadThreadPayload() {
       auto sendInst =
           builder.createSendInst(nullptr, G4_send, g4::SIMD8, sendDst, sendSrc,
                                  builder.createImm(msgDescVal, Type_UD),
-                                 InstOpt_WriteEnable, desc, true);
+                                 InstOpt_WriteEnable | InstOpt_NoCompact, desc,
+                                 true);
       instBuffer.push_back(sendInst);
       if (numRemainingDW < DWin1GRF)
         break;
@@ -494,23 +457,26 @@ void Optimizer::loadThreadPayload() {
       nextGRF += numGRFToLoad;
       if (numRemainingDW > 0) {
         // advance the address offset
-        // (W) add (1) loadAddress.2 loadAddress.2 numGRFToLoad*32
+        // (W) add (1) loadAddress.2 loadAddress.2 numGRFToLoad*sizeof(GRF)
         auto addSrc0 = builder.createSrc(loadAddress->getRegVar(), 0, 2,
                                          builder.getRegionScalar(), Type_UD);
         auto addSrc1 = builder.createImm(
-            numGRFToLoad * kernel.numEltPerGRF<Type_UB>(), Type_UW);
+          numGRFToLoad * kernel.numEltPerGRF<Type_UB>(), Type_UW);
         auto addDst =
-            builder.createDst(loadAddress->getRegVar(), 0, 2, 1, Type_UD);
-        auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0,
-                                           addSrc1, InstOpt_WriteEnable, false);
+          builder.createDst(loadAddress->getRegVar(), 0, 2, 1, Type_UD);
+        auto addInst =
+          builder.createBinOp(G4_add, g4::SIMD1,
+                              addDst, addSrc0, addSrc1,
+                              InstOpt_WriteEnable | InstOpt_NoCompact, false);
         instBuffer.push_back(addInst);
       }
     }
-  };
+  } // loadFromMemoryHdcBti
+
 
   // a helper function for loadFromMemoryLSC to get the max DW number which can
   // fulfill LSC element number
-  auto getMaxNumDWforLscElementRequirement = [this](uint32_t numDW) {
+  uint32_t getMaxNumDWforLscElementRequirement(uint32_t numDW) const {
     if (builder.lscGetElementNum(numDW) != LSC_DATA_ELEMS_INVALID)
       return numDW;
     if (numDW > builder.numEltPerGRF<Type_UD>()) {
@@ -536,14 +502,12 @@ void Optimizer::loadThreadPayload() {
       return (uint32_t)16;
     vISA_ASSERT_UNREACHABLE("unreachable");
     return (uint32_t)0;
-  };
+  }
 
-  auto loadFromMemoryLSC = [this, &instBuffer,
-                            &getMaxNumDWforLscElementRequirement](
-                               G4_Declare *loadAddress, uint32_t startGRF,
-                               uint32_t numTotalDW) {
-    const auto ADDR_TYPE = LSC_ADDR_TYPE_BTI;
-
+  void loadFromMemoryLscBti(G4_Declare *loadAddress,
+                            uint32_t startGRF,
+                            uint32_t numTotalDW)
+  {
     for (uint32_t numRemainingDW = numTotalDW, nextGRF = startGRF;
          numRemainingDW > 0;
          /* updated in body */) {
@@ -551,12 +515,12 @@ void Optimizer::loadThreadPayload() {
       LSC_OP op = LSC_LOAD;
       LSC_SFID lscSfid = LSC_UGM;
       LSC_CACHE_OPTS cacheOpts{LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+
       LSC_ADDR addrInfo{};
-      addrInfo.type =
-          ADDR_TYPE; // use BTI 255 to access GSH (global state heap)
+      addrInfo.type = LSC_ADDR_TYPE_BTI;
+      addrInfo.size = LSC_ADDR_SIZE_32b;
       addrInfo.immScale = 1;
       addrInfo.immOffset = 0;
-      addrInfo.size = LSC_ADDR_SIZE_32b;
 
       LSC_DATA_SHAPE dataShape{};
       dataShape.size = LSC_DATA_SIZE_32b; // in the unit of 32b
@@ -582,8 +546,8 @@ void Optimizer::loadThreadPayload() {
           1, LdStAttrs::NONE);
 
       sendInst = builder.createLscSendInst(nullptr, dstRead, src0Addr, nullptr,
-                                           g4::SIMD1, desc, InstOpt_NoOpt,
-                                           ADDR_TYPE, true);
+                                           g4::SIMD1, desc, InstOpt_NoCompact, // TODO: InstOpt_WriteEnable | InstOpt_NoCompact
+                                           LSC_ADDR_TYPE_BTI, true);
       instBuffer.push_back(sendInst);
       // we pick to load all data within one send in
       // getMaxNumDWforLscElementRequirement if numRemainingDW is less than one
@@ -597,238 +561,331 @@ void Optimizer::loadThreadPayload() {
         // advance the address offset
         // (W) add (1) loadAddress.0 loadAddress.0 numGRFToLoad*32
         auto addSrc0 =
-            builder.createSrcRegRegion(loadAddress, builder.getRegionScalar());
+          builder.createSrcRegRegion(loadAddress, builder.getRegionScalar());
         auto addSrc1 =
-            builder.createImm(numDWToLoad * TypeSize(Type_UD), Type_UW);
+          builder.createImm(numDWToLoad * TypeSize(Type_UD), Type_UW);
         auto addDst =
-            builder.createDst(loadAddress->getRegVar(), 0, 0, 1, Type_UD);
-        auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0,
-                                           addSrc1, InstOpt_WriteEnable, false);
+          builder.createDst(loadAddress->getRegVar(), 0, 0, 1, Type_UD);
+        auto addInst =
+          builder.createBinOp(G4_add, g4::SIMD1,
+                              addDst, addSrc0, addSrc1,
+                              InstOpt_WriteEnable | InstOpt_NoCompact,
+                              false);
         instBuffer.push_back(addInst);
       }
     }
-  };
+  } // loadFromMemoryLscBti
 
-  // add (1) r127.2<1>:ud r127.2<0;1,0>:ud <reloc imm>
-  auto emitRelocAddInst = [this, &instBuffer, rtail](int subreg) {
-    auto dst = builder.createDst(rtail->getRegVar(), 0, subreg, 1, Type_UD);
-    auto src0 = builder.createSrc(rtail->getRegVar(), 0, subreg,
+  void loadFromMemory(G4_Declare *loadAddress,
+                      uint32_t startGRF,
+                      uint32_t numTotalDW)
+  {
+    if (builder.useLSCForPayloadLoad()) {
+      loadFromMemoryLscBti(loadAddress, startGRF, numTotalDW);
+    } else {
+      loadFromMemoryHdcBti(loadAddress, startGRF, numTotalDW);
+    }
+  }
+
+  // add (1) rtmp.2<1>:ud rtmp.2<0;1,0>:ud <reloc imm>
+  void emitRelocAddInst(int subreg) {
+    auto dst = builder.createDst(rtmp->getRegVar(), 0, subreg, 1, Type_UD);
+    auto src0 = builder.createSrc(rtmp->getRegVar(), 0, subreg,
                                   builder.getRegionScalar(), Type_UD);
     auto src1 = builder.createRelocImm(0, Type_UD);
     auto addInst =
-        builder.createBinOp(G4_add, g4::SIMD1, dst, src0, src1,
-                            InstOpt_WriteEnable | InstOpt_NoCompact, false);
+      builder.createBinOp(G4_add, g4::SIMD1, dst, src0, src1,
+                          InstOpt_WriteEnable | InstOpt_NoCompact, false);
     RelocationEntry::createRelocation(builder.kernel, *addInst, 1,
                                       CROSS_THREAD_OFF_R0_RELOCATION_NAME,
                                       GenRelocType::R_SYM_ADDR_32);
     instBuffer.push_back(addInst);
-  };
+  }
 
-  // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0
-  auto getStartAddrInst = [this, &instBuffer, r0, rtail](int subreg) {
-    // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0
+  // helper function to find the size of cross thread data which needs to be
+  // loaded loadStartOffset - in this parameter we put the offsset of first
+  // input which gets loaded.
+  uint32_t findLoadedInputSize(uint32_t &loadStartOffset) {
+    const uint32_t startGRF =
+        kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
+    const uint32_t inputsStart = startGRF * kernel.getGRFSize();
+    const uint32_t inputCount = kernel.fg.builder->getInputCount();
+
+    const bool useInlineData = builder.getOption(vISA_useInlineData);
+    const int PTIS =
+        kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+    const uint32_t inlineDataSize = builder.getInlineDataSize();
+
+    // Checks if input_info is cross-thread-input
+    auto isInCrossThreadData = [&](const input_info_t *const input_info) {
+      return (uint32_t)input_info->offset >= inputsStart + PTIS;
+    };
+
+    // Checks if input_info fits in inlineData
+    auto isInInlineData = [&](const input_info_t *const input_info) {
+      if (!useInlineData) {
+        return false;
+      }
+      uint32_t inputEnd = input_info->offset + input_info->size;
+      bool fitsInInlineData = inputEnd <= inputsStart + PTIS + inlineDataSize;
+      return isInCrossThreadData(input_info) && fitsInInlineData;
+    };
+
+    uint32_t firstNotInlinedCrossThreadInput =
+        std::numeric_limits<uint32_t>::max();
+    uint32_t inputEnd = 32;
+
+    // iterate over inputs and find:
+    // - where they end
+    // - where first not inlined cross thread input is
+    for (unsigned int id = 0; id < inputCount; id++) {
+      input_info_t *input_info = kernel.fg.builder->getInputArg(id);
+      // skip pseudo input for register bindings.
+      if (input_info->isPseudoInput()) {
+        continue;
+      }
+      if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel()) {
+        vISA::G4_Declare *dcl = input_info->dcl;
+        if (INPUT_GENERAL == input_info->getInputClass() && !(dcl->isLiveIn())) {
+          break;
+        }
+      }
+      if (inputEnd < (unsigned)(input_info->size + input_info->offset)) {
+        inputEnd = input_info->size + input_info->offset;
+      }
+      // let's find first cross thread input position which is not delivered in
+      // inlineData
+      if (isInCrossThreadData(input_info) && !isInInlineData(input_info) &&
+          firstNotInlinedCrossThreadInput > (uint32_t)input_info->offset) {
+        firstNotInlinedCrossThreadInput = input_info->offset;
+      }
+    }
+
+    loadStartOffset = firstNotInlinedCrossThreadInput;
+    // check if we have anything to load
+    if (firstNotInlinedCrossThreadInput == std::numeric_limits<uint32_t>::max()) {
+      return 0;
+    }
+    return inputEnd - firstNotInlinedCrossThreadInput;
+  } // findLoadedInputSize
+
+  // (W) and (1) rtmp.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0
+  void getStartAddrInst(int subreg) {
     auto src0 = builder.createSrc(r0->getRegVar(), 0, 0,
                                   builder.getRegionScalar(), Type_UD);
     const uint32_t ArgOffsetMask = 0xFFFFFFC0;
     auto src1 = builder.createImm(ArgOffsetMask, Type_UD);
-    auto dst = builder.createDst(rtail->getRegVar(), 0, subreg, 1, Type_UD);
+    auto dst = builder.createDst(rtmp->getRegVar(), 0, subreg, 1, Type_UD);
     auto andInst = builder.createBinOp(G4_and, g4::SIMD1, dst, src0, src1,
-                                       InstOpt_WriteEnable, false);
+                                       InstOpt_WriteEnable | InstOpt_NoCompact,
+                                       false);
     instBuffer.push_back(andInst);
-  };
+  }
 
-  // (W) mov (8) r127.0:ud 0x0
-  auto clearRegister = [this, &instBuffer, rtail]() {
+  // (W) mov (ExecSize) rtmp.0:ud 0x0
+  void clearTmpRegister() {
     auto src0 = builder.createImm(0, Type_UD);
-    auto dst = builder.createDstRegRegion(rtail, 1);
+    auto dst = builder.createDstRegRegion(rtmp, 1);
     G4_ExecSize execSize(kernel.getGRFSize() / 4);
     auto movInst =
-        builder.createMov(execSize, dst, src0, InstOpt_WriteEnable, false);
+      builder.createMov(execSize, dst, src0,
+                        InstOpt_WriteEnable | InstOpt_NoCompact, false);
     instBuffer.push_back(movInst);
   };
 
-  // (W) mov (8) dstGRF:ud srcGRF:ud
-  auto moveGRF = [this, &instBuffer](int dstGRF, int srcGRF) {
+  // (W) mov (NumDwords) dstGRF:ud srcGRF:ud
+  //
+  // Moves the inline argument GRF
+  void movInlineGRF(int dstGRF, int srcGRF, uint32_t numDWord) {
     if (dstGRF == srcGRF) {
       return;
     }
-    uint32_t numDWord = kernel.getGRFSize() / 4;
     G4_Declare *srcDcl =
         builder.createHardwiredDeclare(numDWord, Type_UD, srcGRF, 0);
+    srcDcl->setName("inlineRegFromTDL");
     G4_Declare *dstDcl =
         builder.createHardwiredDeclare(numDWord, Type_UD, dstGRF, 0);
-    auto movInst = builder.createMov(
+    dstDcl->setName("inlineRegExpectedLocation");
+    auto movInst =
+      builder.createMov(
         G4_ExecSize(numDWord), builder.createDstRegRegion(dstDcl, 1),
         builder.createSrcRegRegion(srcDcl, builder.getRegionStride1()),
-        InstOpt_WriteEnable, false);
+        InstOpt_WriteEnable | InstOpt_NoCompact, false);
     instBuffer.push_back(movInst);
-  };
+  }
 
-  auto getLabel = [this](std::string label) {
-    return kernel.fg.createNewLabelInst(
-        builder.createLabel(label, LABEL_BLOCK));
-  };
+  void appendLabel(const char *label) {
+    G4_INST *lbl =
+      kernel.fg.createNewLabelInst(builder.createLabel(label, LABEL_BLOCK));
+    instBuffer.push_back(lbl);
+  }
 
-  int addrSubreg = 2;
-  bool useLSC = builder.useLSCForPayloadLoad();
-  addrSubreg = useLSC ? 0 : 2;
+public:
+  // preparation of thread payload size and start offsets
+  void emitLoadSequence()
+  {
+    // the subregister that the header takes the address from is
+    // addr.2:d for OWord block load and addr.0:d for LSC
+    const int addrSubreg = builder.useLSCForPayloadLoad() ? 0 : 2;
 
-  G4_BB *perThreadBB = nullptr;
-  // Load per-thread data, if any. Per-thread data always start from r1
-  // this is a fixed size 8 inst (nop padded as necessary), which may be skipped
-  // by runtime if the local_id are auto-generated by HW.
-  //
-  // The size of this first block must be a multiple of 64B so that the
-  // forward start label is 64B aligned.
-  if (builder.needsToLoadLocalID()) {
-    instBuffer.push_back(getLabel("per_thread_prolog"));
+    G4_BB *perThreadBB = nullptr;
+    // Load per-thread data, if any. Per-thread data always start from r1
+    // this is a fixed size 8 inst (nop padded as necessary), which may be skipped
+    // by runtime if the local_id are auto-generated by HW.
+    //
+    // The size of this first block must be a multiple of 64B so that the
+    // forward start label is 64B aligned.
+    if (builder.needsToLoadLocalID()) {
+      appendLabel("per_thread_prolog");
 
-    // compute per-thread starting address (r127.2)
-    // (W) mov (8) r127.0:ud 0x0
-    // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0   // start address
-    // (W) and (1) r127.0:uw r0.4:uw(tid) 0xFF  // tid
-    // (W) add (1) r127.2 r127.2 cross_thread_size
-    // (W) mad (1) r127.2 r127.2 r127.0 per_thread_size
+      // compute per-thread starting address into (rtmp.2)
+      // (W) mov (ExecSize) rtmp.0:ud 0x0
+      // (W) and (1) rtmp.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0   // start address
+      // (W) and (1) rtmp.0:uw r0.4:uw(tid) 0xFF  // tid
+      // (W) add (1) rtmp.2 rtmp.2 cross_thread_size
+      // (W) mad (1) rtmp.2 rtmp.2 rtmp.0 per_thread_size
 
-    clearRegister();
+      clearTmpRegister();
 
-    getStartAddrInst(2);
+      getStartAddrInst(2);
 
-    // (W) and (1) r127.0:uw r0.4:uw(tid) 0xFF  // tid
-    auto andSrc0 = builder.createSrc(r0->getRegVar(), 0, 4,
-                                     builder.getRegionScalar(), Type_UW);
-    auto andSrc1 = builder.createImm(0xFF, Type_UW);
-    auto andDst = builder.createDst(rtail->getRegVar(), 0, 0, 1, Type_UW);
-    auto andInst = builder.createBinOp(G4_and, g4::SIMD1, andDst, andSrc0,
-                                       andSrc1, InstOpt_WriteEnable, false);
-    instBuffer.push_back(andInst);
-
-    // (W) add (1) r127.2 r127.2 cross_thread_size
-    auto addSrc0 = builder.createSrc(rtail->getRegVar(), 0, 2,
-                                     builder.getRegionScalar(), Type_UD);
-    // create a relocation for cross_thread_size (per_thread_payload_offset). In
-    // case of the cross_thread_size is changed after compilation (e.g. gtpin
-    // inserted argument), the relocation need to be resolved to the new
-    // cross_thread_size.
-    G4_Operand *addSrc1 = builder.createRelocImm(localIDsOffset, Type_UW);
-    auto addDst = builder.createDst(rtail->getRegVar(), 0, 2, 1, Type_UD);
-    // instruction has relocation must not be compacted
-    auto addInst =
-        builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0, addSrc1,
+      // (W) and (1) rtmp.0:uw r0.4:uw(tid) 0xFF  // tid
+      auto andSrc0 = builder.createSrc(r0->getRegVar(), 0, 4,
+                                       builder.getRegionScalar(), Type_UW);
+      auto andSrc1 = builder.createImm(0xFF, Type_UW);
+      auto andDst = builder.createDst(rtmp->getRegVar(), 0, 0, 1, Type_UW);
+      auto andInst =
+        builder.createBinOp(G4_and, g4::SIMD1, andDst, andSrc0, andSrc1,
                             InstOpt_WriteEnable | InstOpt_NoCompact, false);
+      instBuffer.push_back(andInst);
 
-    // FIXME: before RT supports the R_PER_THREAD_PAYLOAD_OFFSET_32 relocation,
-    // we create relocation only when GTPin option is given to avoid the test
-    // failure. We can remove this option check once RT supports it.
-    if (kernel.getOption(vISA_GetFreeGRFInfo)) {
-      // Relocation with the target symbol set to kernel symbol. Note that
-      // currently only ZEBinary will produce kernel symbols
-      RelocationEntry::createRelocation(
-          kernel, *addInst, 1, kernel.getName(),
-          GenRelocType::R_PER_THREAD_PAYLOAD_OFFSET_32);
-    }
-    instBuffer.push_back(addInst);
+      // (W) add (1) rtmp.2 rtmp.2 cross_thread_size
+      auto addSrc0 = builder.createSrc(rtmp->getRegVar(), 0, 2,
+                                       builder.getRegionScalar(), Type_UD);
+      // create a relocation for cross_thread_size (per_thread_payload_offset). In
+      // case of the cross_thread_size is changed after compilation (e.g. gtpin
+      // inserted argument), the relocation need to be resolved to the new
+      // cross_thread_size.
+      G4_Operand *addSrc1 = builder.createRelocImm(localIDsOffset, Type_UW);
+      auto addDst = builder.createDst(rtmp->getRegVar(), 0, 2, 1, Type_UD);
+      // instruction has relocation must not be compacted
+      auto addInst =
+          builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0, addSrc1,
+                              InstOpt_WriteEnable | InstOpt_NoCompact, false);
 
-    if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc)) {
-      // per thread payload is stored after cross thread
-      // payload in memory. when implicit arg buffer
-      // pointer is present, we need to shift load address
-      // of per thread payload as well.
-      emitRelocAddInst(2);
-    }
-
-    // (W) mad (1) r127.2 r127.2 r127.0 per_thread_size
-    auto madSrc0 = builder.createSrc(rtail->getRegVar(), 0, 2,
-                                     builder.getRegionScalar(), Type_UD);
-    auto madSrc1 = builder.createSrc(rtail->getRegVar(), 0, 0,
-                                     builder.getRegionScalar(), Type_UW);
-    auto madSrc2 = builder.createImm(
-        numPerThreadGRF * kernel.numEltPerGRF<Type_UB>(), Type_UW);
-    auto madDst =
-        builder.createDst(rtail->getRegVar(), 0, addrSubreg, 1, Type_UD);
-    auto madInst = builder.createInternalInst(
-        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1, madDst, madSrc0,
-        madSrc1, madSrc2, InstOpt_WriteEnable);
-    instBuffer.push_back(madInst);
-
-    if (useInlineData) {
-      // copy inline data to the first GRF of cross-thread-data
-      // (W) mov (8) r4.0:ud r1.0:ud
-      moveGRF(perThreadLoadStartGRF + numPerThreadGRF, perThreadLoadStartGRF);
-    }
-
-    if (useLSC) {
-      loadFromMemoryLSC(rtail, perThreadLoadStartGRF,
-                        numPerThreadGRF * builder.numEltPerGRF<Type_UD>());
-    } else {
-      loadFromMemory(rtail, perThreadLoadStartGRF,
-                     numPerThreadGRF * builder.numEltPerGRF<Type_UD>());
-    }
-    perThreadBB = kernel.fg.createNewBB();
-    std::for_each(instBuffer.begin(), instBuffer.end(),
-                  [](G4_INST *inst) { inst->invalidateVISAId(); });
-    perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(),
-                        instBuffer.end());
-    instBuffer.clear();
-
-    kernel.setPerThreadPayloadBB(perThreadBB);
-  }
-
-  // code for loading the cross-thread data
-  if (builder.needsToLoadCrossThreadConstantData()) {
-    G4_BB *crossThreadBB = kernel.fg.createNewBB();
-
-    instBuffer.push_back(getLabel("cross_thread_prolog"));
-    if (!useLSC) {
-      // we must clear r127 again as the per-thread loading code may not be
-      // executed
-      clearRegister();
-    }
-
-    getStartAddrInst(addrSubreg);
-
-    if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc)) {
-      // emit add with relocatable imm operand.
-      // when this is true, runtime loads global
-      // state buffer in r0.0[5:31]. kernel cross
-      // thread data is written in some other
-      // memory location. runtime is required to
-      // patch this relocatable immediate operand
-      // to allow correct loading of cross thread
-      // data.
-      emitRelocAddInst(addrSubreg);
-    }
-
-    // based on discussions with OCL runtime team, the first GRF
-    // of the cross-thread data will be loaded automatically as the inline data,
-    // and it will be either at R1 (if local id is not auto-generated) or
-    // R1 + sizeof(local id) (if local id is auto-generated).
-    {
-      if (useLSC) {
-        loadFromMemoryLSC(rtail, crossThreadLoadStartGRF, numCrossThreadDW);
-      } else {
-        loadFromMemory(rtail, crossThreadLoadStartGRF, numCrossThreadDW);
+      // FIXME: before RT supports the R_PER_THREAD_PAYLOAD_OFFSET_32 relocation,
+      // we create relocation only when GTPin option is given to avoid the test
+      // failure. We can remove this option check once RT supports it.
+      if (kernel.getOption(vISA_GetFreeGRFInfo)) {
+        // Relocation with the target symbol set to kernel symbol. Note that
+        // currently only ZEBinary will produce kernel symbols
+        RelocationEntry::createRelocation(
+            kernel, *addInst, 1, kernel.getName(),
+            GenRelocType::R_PER_THREAD_PAYLOAD_OFFSET_32);
       }
+      instBuffer.push_back(addInst);
+
+      if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc)) {
+        // per thread payload is stored after cross thread
+        // payload in memory. when implicit arg buffer
+        // pointer is present, we need to shift load address
+        // of per thread payload as well.
+        emitRelocAddInst(2);
+      }
+
+      // (W) mad (1) rtmp.2 rtmp.2 rtmp.0 per_thread_size
+      auto madSrc0 = builder.createSrc(rtmp->getRegVar(), 0, 2,
+                                       builder.getRegionScalar(), Type_UD);
+      auto madSrc1 = builder.createSrc(rtmp->getRegVar(), 0, 0,
+                                       builder.getRegionScalar(), Type_UW);
+      auto madSrc2 = builder.createImm(
+          numPerThreadGRF * kernel.numEltPerGRF<Type_UB>(), Type_UW);
+      auto madDst =
+          builder.createDst(rtmp->getRegVar(), 0, addrSubreg, 1, Type_UD);
+      auto madInst = builder.createInternalInst(
+          nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1, madDst, madSrc0,
+          madSrc1, madSrc2, InstOpt_WriteEnable | InstOpt_NoCompact);
+      instBuffer.push_back(madInst);
+
+      if (builder.getOption(vISA_useInlineData)) {
+        // copy inline data to the first GRF of cross-thread-data
+        // e.g. (W) mov (8) r4.0:ud r1.0:ud
+        // Inline GRF is only 8 DWords
+        movInlineGRF(perThreadLoadStartGRF + numPerThreadGRF,
+                     perThreadLoadStartGRF, 8);
+      }
+
+      loadFromMemory(rtmp, perThreadLoadStartGRF,
+                     numPerThreadGRF * builder.numEltPerGRF<Type_UD>());
+
+      perThreadBB = kernel.fg.createNewBB();
+      std::for_each(instBuffer.begin(), instBuffer.end(),
+                    [](G4_INST *inst) { inst->invalidateVISAId(); });
+      perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(),
+                          instBuffer.end());
+      instBuffer.clear();
+
+      kernel.setPerThreadPayloadBB(perThreadBB);
+    } // builder.needsToLoadLocalID()
+
+    // code for loading the cross-thread data
+    if (builder.needsToLoadCrossThreadConstantData()) {
+      G4_BB *crossThreadBB = kernel.fg.createNewBB();
+
+      appendLabel("cross_thread_prolog");
+      if (!builder.useLSCForPayloadLoad()) {
+        // we must clear rtmp again as the per-thread loading code may not be
+        // executed
+        clearTmpRegister();
+      }
+
+      getStartAddrInst(addrSubreg);
+
+      if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc)) {
+        // emit add with relocatable imm operand.
+        // when this is true, runtime loads global
+        // state buffer in r0.0[5:31]. kernel cross
+        // thread data is written in some other
+        // memory location. runtime is required to
+        // patch this relocatable immediate operand
+        // to allow correct loading of cross thread
+        // data.
+        emitRelocAddInst(addrSubreg);
+      }
+
+      // based on discussions with OCL runtime team, the first GRF
+      // of the cross-thread data will be loaded automatically as the inline data,
+      // and it will be either at R1 (if local id is not auto-generated) or
+      // R1 + sizeof(local id) (if local id is auto-generated).
+      loadFromMemory(rtmp, crossThreadLoadStartGRF, numCrossThreadDW);
+
+      std::for_each(instBuffer.begin(), instBuffer.end(),
+                    [](G4_INST *inst) { inst->invalidateVISAId(); });
+
+      // create separate blocks instead of directly inserting to the old entryBB
+      // This is for the situation where the entry BB is part of a loop, as we
+      // don't want the prolog to be executed multiple times
+      crossThreadBB->insert(crossThreadBB->begin(), instBuffer.begin(),
+                            instBuffer.end());
+      instBuffer.clear();
+
+      kernel.fg.addPrologBB(crossThreadBB);
+
+      kernel.setCrossThreadPayloadBB(crossThreadBB);
     }
 
-    std::for_each(instBuffer.begin(), instBuffer.end(),
-                  [](G4_INST *inst) { inst->invalidateVISAId(); });
+    if (perThreadBB) {
+      kernel.fg.addPrologBB(perThreadBB);
+    }
+  } // emitLoadSequence
+}; // class PayloadLoader
 
-    // create separate blocks instead of directly inserting to the old entryBB
-    // This is for the situation where the entry BB is part of a loop, as we
-    // don't want the prolog to be executed multiple times
-    crossThreadBB->insert(crossThreadBB->begin(), instBuffer.begin(),
-                          instBuffer.end());
-    instBuffer.clear();
-
-    kernel.fg.addPrologBB(crossThreadBB);
-
-    kernel.setCrossThreadPayloadBB(crossThreadBB);
+void Optimizer::loadThreadPayload() {
+  if (!builder.loadThreadPayload() || !builder.getIsKernel()) {
+    return;
   }
-
-  if (perThreadBB) {
-    kernel.fg.addPrologBB(perThreadBB);
-  }
+  PayloadLoader pl {builder, kernel, fg};
+  pl.emitLoadSequence();
 }
 
 // Some platforms require that the first instruction of any kernel should have
