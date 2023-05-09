@@ -7346,6 +7346,9 @@ void MadSequenceInfo::populateSrc2Def() {
       !src2Def->hasOneUse())
     return setNotSafe();
 
+  if (!src2Def->canDstBeAcc())
+    return setNotSafe();
+
   if (IS_DTYPE(src2Def->getExecType())) {
     // since we use <1>:w region for our acc temp, due to alignment requirements
     // we can't allow dword source types
