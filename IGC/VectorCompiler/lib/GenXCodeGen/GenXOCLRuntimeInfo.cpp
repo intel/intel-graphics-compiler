@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "OCLRuntimeInfoPrinter.h"
+#include "GenXGlobalUniform.h"
 
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
@@ -252,7 +253,8 @@ KernelArgBuilder::translateArgument(const Argument &Arg) const {
 //===----------------------------------------------------------------------===//
 // Just perform linear instructions scan to find usage stats.
 void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
-    const FunctionGroup &FG, const GenXBackendConfig &BC) {
+    const FunctionGroup &FG, GenXOCLRuntimeInfo &RI,
+    const GenXBackendConfig &BC) {
   for (Function *F : FG) {
     for (BasicBlock &BB : *F) {
       for (Instruction &I : BB) {
@@ -273,10 +275,15 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
         case GenXIntrinsic::genx_sample_unorm:
           UsesSample = true;
           break;
-        case GenXIntrinsic::genx_dpas:
         case GenXIntrinsic::genx_dpas2:
-        case GenXIntrinsic::genx_dpasw:
         case GenXIntrinsic::genx_dpas_nosrc0:
+        case GenXIntrinsic::genx_dpas:
+          if (!DisableEUFusion) {
+            const auto &GUA = RI.getAnalysis<GenXGlobalUniformAnalysis>(*F);
+            if (!GUA.isUniform(BB))
+              DisableEUFusion = true;
+          }
+        case GenXIntrinsic::genx_dpasw:
         case GenXIntrinsic::genx_dpasw_nosrc0:
           UsesDPAS = true;
           break;
@@ -349,9 +356,12 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const GenXSubtarget &ST)
                                                    ST.getGRFByteSize()} {}
 
 GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
+                                           GenXOCLRuntimeInfo &RI,
                                            const GenXSubtarget &ST,
                                            const GenXBackendConfig &BC) {
-  setInstructionUsageProperties(FG, BC);
+  DisableEUFusion = BC.isDisableEUFusion();
+
+  setInstructionUsageProperties(FG, RI, BC);
 
   GRFSizeInBytes = ST.getGRFByteSize();
 
@@ -359,7 +369,6 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
       vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
 
   SupportsDebugging = BC.emitDebuggableKernels();
-  DisableEUFusion = BC.isDisableEUFusion();
 
   vc::KernelMetadata KM{FG.getHead()};
   IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
@@ -685,6 +694,7 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
 namespace {
 
 class RuntimeInfoCollector final {
+  GenXOCLRuntimeInfo &RI;
   const FunctionGroupAnalysis &FGA;
   const GenXBackendConfig &BC;
   VISABuilder &VB;
@@ -698,11 +708,13 @@ public:
   using CompiledModuleT = GenXOCLRuntimeInfo::CompiledModuleT;
 
 public:
-  RuntimeInfoCollector(const FunctionGroupAnalysis &InFGA,
+  RuntimeInfoCollector(GenXOCLRuntimeInfo &InRI,
+                       const FunctionGroupAnalysis &InFGA,
                        const GenXBackendConfig &InBC, VISABuilder &InVB,
                        const GenXSubtarget &InST, const Module &InM,
                        const GenXDebugInfo &InDbg)
-      : FGA{InFGA}, BC{InBC}, VB{InVB}, ST{InST}, M{InM}, DBG{InDbg} {}
+      : RI{InRI}, FGA{InFGA}, BC{InBC}, VB{InVB}, ST{InST}, M{InM}, DBG{InDbg} {
+  }
 
   CompiledModuleT run();
 
@@ -754,7 +766,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
 
   // Compiler info.
-  KernelInfo Info{FG, ST, BC};
+  KernelInfo Info{FG, RI, ST, BC};
 
   const Function *KernelFunction = FG.getHead();
   const std::string KernelName = KernelFunction->getName().str();
@@ -868,6 +880,7 @@ void GenXOCLRuntimeInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXModule>();
   AU.addRequired<GenXDebugInfo>();
   AU.addRequired<TargetPassConfig>();
+  AU.addRequired<GenXGlobalUniformAnalysis>();
   AU.setPreservesAll();
 }
 
@@ -884,7 +897,7 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
   VISABuilder &VB =
       *((GM.HasInlineAsm() || !BC.getVISALTOStrings().empty()) ? GM.GetVISAAsmReader() : GM.GetCisaBuilder());
 
-  CompiledModule = RuntimeInfoCollector{FGA, BC, VB, ST, M, DBG}.run();
+  CompiledModule = RuntimeInfoCollector{*this, FGA, BC, VB, ST, M, DBG}.run();
   return false;
 }
 
@@ -899,5 +912,6 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig);
 INITIALIZE_PASS_DEPENDENCY(GenXModule);
 INITIALIZE_PASS_DEPENDENCY(GenXDebugInfo);
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig);
+INITIALIZE_PASS_DEPENDENCY(GenXGlobalUniformAnalysis);
 INITIALIZE_PASS_END(GenXOCLRuntimeInfo, "GenXOCLRuntimeInfo",
                     "GenXOCLRuntimeInfo", false, true)

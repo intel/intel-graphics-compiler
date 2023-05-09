@@ -192,6 +192,7 @@ public:
 
   private:
     void setInstructionUsageProperties(const FunctionGroup &FG,
+                                       GenXOCLRuntimeInfo &RI,
                                        const GenXBackendConfig &BC);
     void setMetadataProperties(vc::KernelMetadata &KM, const GenXSubtarget &ST);
     void setArgumentProperties(const Function &Kernel,
@@ -209,8 +210,8 @@ public:
     // Creates kernel info for empty kernel.
     KernelInfo(const GenXSubtarget &ST);
     // Creates kernel info for given function group.
-    KernelInfo(const FunctionGroup &FG, const GenXSubtarget &ST,
-               const GenXBackendConfig &BC);
+    KernelInfo(const FunctionGroup &FG, GenXOCLRuntimeInfo &RI,
+               const GenXSubtarget &ST, const GenXBackendConfig &BC);
 
     const std::string &getName() const { return Name; }
 

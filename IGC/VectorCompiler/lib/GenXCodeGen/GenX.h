@@ -128,6 +128,7 @@ FunctionPass *createGenXFixInvalidFuncNamePass();
 ModulePass *createGenXGASCastWrapperPass();
 FunctionPass *createGenXGASDynamicResolutionPass();
 ModulePass *createGenXInitBiFConstantsPass();
+FunctionPass *createGenXGlobalUniformAnalysisPass();
 
 namespace genx {
 
