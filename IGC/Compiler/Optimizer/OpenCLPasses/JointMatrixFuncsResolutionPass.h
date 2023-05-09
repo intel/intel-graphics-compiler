@@ -63,6 +63,8 @@ namespace IGC
         llvm::Value *ResolveGeneric(llvm::Instruction *OldInst);
         llvm::Value *Resolve(llvm::Value *value);
 
+        bool ParseMatrixTypeName(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
+
         llvm::Type *ResolveType(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDesc);
         llvm::Type *ResolveTypes(llvm::Type *t);
         llvm::Type *ResolveStructType(llvm::Type *t);

@@ -203,7 +203,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 // us is empty for int contrib type and _us for short contrib type.
 // stride_opt should be either equal to C or 2*C in case of matrix B, since matrix B is vnni'ed
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
-  INLINE OUT_VEC##M(contrib_type) MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, int stride) { \
+  INLINE OUT_VEC##M(contrib_type) MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, long stride) { \
       if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL \
           ) { \
@@ -336,7 +336,7 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJO
 
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
 #define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt, address_space) \
-  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, OUT_VEC##M(contrib_type) vec, int stride) { \
+  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, OUT_VEC##M(contrib_type) vec, long stride) { \
       if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
           ) { \

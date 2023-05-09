@@ -4011,7 +4011,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     /* Prepare types for the call: */
     Type *RetTy      = transType(MatTy);
     Type *PtrTy      = PointerType::get(Type::getInt8Ty(*Context), AS);
-    Type *StrideTy   = Type::getInt32Ty(*Context);
+    Type *StrideTy   = Type::getInt64Ty(*Context);
     Type *LayoutTy   = Type::getInt32Ty(*Context);
 
     std::vector<Type *> ArgTys = {
@@ -4058,7 +4058,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     /* Prepare types for the call: */
     Type *MatrixTy   = transType(MatTy);
     Type *PtrTy      = PointerType::get(Type::getInt8Ty(*Context), AS);
-    Type *StrideTy   = Type::getInt32Ty(*Context);
+    Type *StrideTy   = Type::getInt64Ty(*Context);
     Type *LayoutTy   = Type::getInt32Ty(*Context);
 
     std::vector<Type *> ArgTys = {

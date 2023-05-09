@@ -82,18 +82,24 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
 }
 
 static const char *CommonBIPrefix = "__builtin_spirv_";
-static const char *JointMatrixLoadPrefx  = "__builtin_spirv_OpJointMatrixLoadINTEL";
-static const char *JointMatrixStorePrefx = "__builtin_spirv_OpJointMatrixStoreINTEL";
-static const char *JointMatrixMadPrefx   = "__builtin_spirv_OpJointMatrixMadINTEL";
-static const char *JointMatrixSUMadPrefx = "__builtin_spirv_OpJointMatrixSUMadINTEL";
-static const char *JointMatrixUSMadPrefx = "__builtin_spirv_OpJointMatrixUSMadINTEL";
-static const char *JointMatrixUUMadPrefx = "__builtin_spirv_OpJointMatrixUUMadINTEL";
-static const char *JointMatrixFillPrefx  = "__builtin_spirv_OpCompositeConstructJointMatrixINTEL";
-static const char *JointMatrixWorkItemLengthPrefx = "__builtin_spirv_OpJointMatrixWorkItemLengthINTEL";
-static const char *JointMatrixSliceInsert  = "__builtin_spirv_OpVectorInsertDynamicJointMatrixINTEL";
-static const char *JointMatrixSliceExtract = "__builtin_spirv_OpVectorExtractDynamicJointMatrixINTEL";
-static const char *JointMatrixGetCoordPrefx =
-    "__builtin_spirv_OpJointMatrixGetElementCoordINTEL";
+static const char *JointMatrixLoadPrefx  = "JointMatrixLoadINTEL";
+static const char *JointMatrixStorePrefx = "JointMatrixStoreINTEL";
+static const char *JointMatrixMadPrefx   = "JointMatrixMadINTEL";
+static const char *JointMatrixSUMadPrefx = "JointMatrixSUMadINTEL";
+static const char *JointMatrixUSMadPrefx = "JointMatrixUSMadINTEL";
+static const char *JointMatrixUUMadPrefx = "JointMatrixUUMadINTEL";
+static const char *JointMatrixFillPrefx  = "CompositeConstruct";
+static const char *JointMatrixWorkItemLengthPrefx = "JointMatrixWorkItemLengthINTEL";
+static const char *JointMatrixSliceInsert  = "VectorInsertDynamic";
+static const char *JointMatrixSliceExtract = "VectorExtractDynamic";
+static const char *JointMatrixGetCoordPrefx = "JointMatrixGetElementCoordINTEL";
+
+enum {
+    UseMatrixA = 0,
+    UseMatrixB = 1,
+    UseAccumulator = 2,
+    UseMax,
+};
 
 enum {
     LayoutRowMajor,
@@ -374,7 +380,8 @@ static unsigned parseNumber(StringRef name, unsigned *offset) {
 #define BUFFER_SIZE 16
     char buffer[BUFFER_SIZE+1];
     unsigned count = 0;
-    while (std::isdigit(name[*offset]) && count < BUFFER_SIZE) {
+    const unsigned lenght = name.size();
+    while (*offset < lenght && std::isdigit(name[*offset]) && count < BUFFER_SIZE) {
         buffer[count] = name[*offset];
         *offset += 1;
         count += 1;
@@ -385,7 +392,7 @@ static unsigned parseNumber(StringRef name, unsigned *offset) {
 
 /* This function extracts metadata from JointMatrix type names. They use the
  * following convention: intel.joint_matrix_acc_8x8_i32_t */
-static void parseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
+static bool parseMatrixTypeNameLegacy(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
     const PointerType *ptrType = cast<PointerType>(opaqueType);
     StringRef name = IGCLLVM::getNonOpaquePtrEltTy(ptrType)->getStructName();
 
@@ -411,6 +418,78 @@ static void parseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescripti
 
     offset += 1; /* Skip type specifier, [f|i] */
     outDescription->bitWidth = parseNumber(name, &offset);
+    return true;
+}
+
+/* %spirv.JointMatrixINTEL._int_8_16_3_3_2   --> C
+ * %spirv.JointMatrixINTEL._char_8_32_0_3_0  --> A
+ * %spirv.JointMatrixINTEL._char_32_16_2_3_1 --> B
+ * type, rows, cols, layout, scope, use
+ * */
+bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
+    const PointerType *ptrType = cast<PointerType>(opaqueType);
+    StringRef name = IGCLLVM::getNonOpaquePtrEltTy(ptrType)->getStructName();
+    StringRef fullName = name;
+
+    if (name.startswith("intel.joint_matrix")) {
+        return parseMatrixTypeNameLegacy(opaqueType, outDescription);
+    }
+
+    if (!name.consume_front("spirv.JointMatrixINTEL._")) {
+        std::string msg = "Unexpected Joint Matrix type name: '"
+                        + fullName.str() + "', unknown prefix.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return false;
+    }
+
+    if (name.consume_front("int_")) {
+        outDescription->bitWidth = 32;
+        outDescription->isFloating = false;
+    } else if (name.consume_front("short_")) {
+        outDescription->bitWidth = 16;
+        outDescription->isFloating = false;
+    } else if (name.consume_front("char_")) {
+        outDescription->bitWidth = 8;
+        outDescription->isFloating = false;
+    } else if (name.consume_front("float_")) {
+        outDescription->bitWidth = 32;
+        outDescription->isFloating = true;
+    } else if (name.consume_front("half_")) {
+        outDescription->bitWidth = 16;
+        outDescription->isFloating = true;
+    } else {
+        std::string msg = "Unexpected Joint Matrix type name: '"
+                        + fullName.str() + "', unknown element type.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return false;
+    }
+
+    unsigned offset = 0;
+    outDescription->rows = parseNumber(name, &offset);
+    offset += 1; /* Skip delimiter, '_'. */
+    outDescription->columns = parseNumber(name, &offset);
+    offset += 1; /* Skip delimiter, '_' */
+    unsigned legacyLayout = parseNumber(name, &offset);
+    offset += 1; /* Skip delimiter, '_' */
+    unsigned scope = parseNumber(name, &offset);
+    offset += 1; /* Skip delimiter, '_' */
+    unsigned use = parseNumber(name, &offset);
+
+    /* currently unused: */
+    (void)legacyLayout; (void)scope;
+
+    if (use == UseMatrixA) {
+        outDescription->layout = LayoutPackedA;
+    } else if (use == UseMatrixB) {
+        outDescription->layout = LayoutPackedB;
+    } else if (use == UseAccumulator) {
+        outDescription->layout = LayoutRowMajor;
+    } else {
+        std::string msg = "Unexpected Joint Matrix type name: '"
+                        + fullName.str() + "', unknown use type.";
+        return false;
+    }
+    return true;
 }
 
 static bool isMatrixType(const Type *type)
@@ -477,7 +556,8 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
         "Unexpected type in matrix function resolution.");
 
     JointMatrixTypeDescription desc;
-    parseMatrixTypeName(opaqueType, &desc);
+    bool parseResult = ParseMatrixTypeName(opaqueType, &desc);
+    IGC_ASSERT_EXIT_MESSAGE(parseResult, "Failed to parse matrix type.");
     /* Treat row major matrices with types not supported by accumulators as
      * PackedA matrices. Both are in row major format. */
     if (desc.layout == LayoutRowMajor && desc.bitWidth <= 16) {
@@ -1045,37 +1125,37 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
 
     Value *NewValue = nullptr;
     StringRef funcName = func->getName();
-    if (funcName.startswith(JointMatrixLoadPrefx)) {
+    if (funcName.contains(JointMatrixLoadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveLoad(CI);
-    } else if (funcName.startswith(JointMatrixStorePrefx)) {
+    } else if (funcName.contains(JointMatrixStorePrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveStore(CI);
-    } else if (funcName.startswith(JointMatrixMadPrefx)) {
+    } else if (funcName.contains(JointMatrixMadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpSS);
-    } else if (funcName.startswith(JointMatrixSUMadPrefx)) {
+    } else if (funcName.contains(JointMatrixSUMadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpSU);
-    } else if (funcName.startswith(JointMatrixUSMadPrefx)) {
+    } else if (funcName.contains(JointMatrixUSMadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpUS);
-    } else if (funcName.startswith(JointMatrixUUMadPrefx)) {
+    } else if (funcName.contains(JointMatrixUUMadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpUU);
-    } else if (funcName.startswith(JointMatrixFillPrefx)) {
+    } else if (funcName.contains(JointMatrixFillPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveFill(CI);
-    } else if (funcName.startswith(JointMatrixWorkItemLengthPrefx)) {
+    } else if (funcName.contains(JointMatrixWorkItemLengthPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveWILength(CI);
-    } else if (funcName.startswith(JointMatrixSliceInsert)) {
+    } else if (funcName.contains(JointMatrixSliceInsert)) {
         InsertPlaceholder(CI);
         NewValue = ResolveSliceInsert(CI);
-    } else if (funcName.startswith(JointMatrixSliceExtract)) {
+    } else if (funcName.contains(JointMatrixSliceExtract)) {
         InsertPlaceholder(CI);
         NewValue = ResolveSliceExtract(CI);
-    } else if (funcName.startswith(JointMatrixGetCoordPrefx)) {
+    } else if (funcName.contains(JointMatrixGetCoordPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveGetCoord(CI);
     }
@@ -1260,13 +1340,22 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
     if (!func)
         return;
 
+    /* Check if already resolved: */
+    if (ResolvedValues.count(&CI) > 0)
+      return;
+
     StringRef funcName = func->getName();
     /* Resolve calls to JointMatrix BIs that haven't been resolved yet. In
      * future when returning and passing matrices by argument is
      * supported also basic block terminators should be used as
      * transformation starting point */
-    if (funcName.startswith(CommonBIPrefix) && ResolvedValues.count(&CI) <= 0) {
+    if (funcName.startswith(CommonBIPrefix)) {
         ResolveCall(&CI);
+        return;
+    }
+    if (funcName.startswith("_Z") && funcName.contains("__spirv_JointMatrix")) {
+        ResolveCall(&CI);
+        return;
     }
 }
 
