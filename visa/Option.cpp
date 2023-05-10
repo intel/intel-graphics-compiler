@@ -698,9 +698,7 @@ void Options::getOptionsFromEV() {
 
 void Options::dump(void) const { m_vISAOptions.dump(); }
 
-Options::Options() {
-  m_vISAOptions = VISAOptionsDB(this);
-
+Options::Options() : m_vISAOptions(this) {
   target = VISA_CM;
 
   initialize_vISAOptionsToStr();
