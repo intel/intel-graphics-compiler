@@ -191,10 +191,18 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         auto DL = M.getDataLayout();
         auto& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
+        // Map used to store child func's private memory for dynamic programming
+        DenseMap<Function*, uint32_t> NestedPrivateMemMap;
+
         // lambda to recursively calculate the max private memory usage for each call path
         std::function<uint32_t(Function*)> AnalyzeCGPrivateMemUsage =
-            [&AnalyzeCGPrivateMemUsage, &modMD, &CG, &DL, &Ctx, &M](Function* F)->uint32_t
+            [&AnalyzeCGPrivateMemUsage, &modMD, &CG, &DL, &Ctx, &M, &NestedPrivateMemMap](Function* F)->uint32_t
         {
+            // Value already calculated
+            auto iter = NestedPrivateMemMap.find(F);
+            if (iter != NestedPrivateMemMap.end())
+                return iter->second;
+
             // Not a valid function, just return 0
             if (!F || F->isDeclaration())
                 return 0;
@@ -247,7 +255,13 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                     argSize += iSTD::Align(static_cast<DWORD>(DL.getTypeAllocSize(childF->getReturnType())), SIZE_OWORD);
                 }
 
-                uint32_t size = argSize + AnalyzeCGPrivateMemUsage(childF);
+                uint32_t childMem = AnalyzeCGPrivateMemUsage(childF);
+                if (NestedPrivateMemMap.find(childF) == NestedPrivateMemMap.end())
+                {
+                    // Store the calculated child func's private mem usage
+                    NestedPrivateMemMap[childF] = childMem;
+                }
+                uint32_t size = argSize + childMem;
                 maxSize = std::max(maxSize, size);
             }
             return currFuncPrivateMem + maxSize;
@@ -284,6 +298,11 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             if (maxPrivateMem > 0)
             {
                 modMD.PrivateMemoryPerFG[pKernel] = (unsigned)maxPrivateMem;
+            }
+
+            if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
+            {
+                dbgs() << pKernel->getName().str() << "\n  PrivateMemoryPerFG (bytes): " << modMD.PrivateMemoryPerFG[pKernel] << "\n";
             }
         }
     }

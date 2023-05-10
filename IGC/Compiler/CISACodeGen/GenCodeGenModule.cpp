@@ -185,7 +185,7 @@ void GenXCodeGenModule::processFunction(Function& F)
         {
             if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
             {
-                std::cout << "Don't Clone: " << F.getName().str() << std::endl;
+                dbgs() << "Make Indirect: " << F.getName().str() << "\n";
             }
             F.addFnAttr("referenced-indirectly");
             pCtx->m_enableFunctionPointer = true;

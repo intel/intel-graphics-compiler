@@ -6579,7 +6579,7 @@ namespace IGC
                 else if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2)
                     ss << "AllowStackCallRetry=2 (Only the spilled functions will be retried with 2nd try states)" << endl << endl;
                 if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
-                    std::cout << ss.str() << endl;
+                    dbgs() << ss.str() << "\n";
             }
         }
 

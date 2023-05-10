@@ -554,8 +554,8 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
-        std::cout << std::endl << "Force Inlined Functions via ForceInlineStackCallWithImplArg:" << std::endl;
+    if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo) && !PrunedFuncs.empty())
+        dbgs() << "\nForce Inlined Functions via ForceInlineStackCallWithImplArg:\n";
 
     for (auto pF : PrunedFuncs)
     {
@@ -584,8 +584,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
         pF->addFnAttr(llvm::Attribute::AlwaysInline);
 
         if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
-            std::cout << pF->getName().str() << std::endl;
-
+            dbgs() << pF->getName().str() << "\n";
         changed = true;
     }
     return changed;
