@@ -129,8 +129,14 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
         m_hasError = true;
         return;
     }
-    Function *F = I.getParent()->getParent();
-    F->addFnAttr("uses-fp64-math");
+
+    // Add "uses-fp64-math" attr for functions when poison fp64 kernels is required
+    // on platform and DP emulation is disabled
+    if (poisonFP64KernelsEnabled && !ctx->m_hasDPEmu)
+    {
+        Function* F = I.getParent()->getParent();
+        F->addFnAttr("uses-fp64-math");
+    }
 }
 
 void ErrorCheck::visitCallInst(CallInst& CI)
