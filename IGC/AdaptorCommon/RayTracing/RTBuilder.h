@@ -365,10 +365,11 @@ public:
         StructType* StructTy,
         uint32_t Align);
 
+    Value* getGlobalSyncStackID();
+
 private:
 
     Value* canonizePointer(Value* Ptr);
-    Value* getGlobalSyncStackID();
     Value* getSyncRTStackSize();
     uint32_t getRTStack2Size() const;
     Value* getRTStackSize(uint32_t Align);
