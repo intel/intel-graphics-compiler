@@ -4391,12 +4391,6 @@ namespace IGC
             SaveOption(vISA_ShaderDumpFilter, regex);
         }
 
-        if (auto *str = IGC_GET_REGKEYSTRING(ForceSpillVariables))
-        {
-            SaveOption(vISA_ForceSpillVariables, str);
-            SaveOption(vISA_LocalRA, false);
-        }
-
         if (auto *str = IGC_GET_REGKEYSTRING(ForceAssignRhysicalReg))
         {
             SaveOption(vISA_ForceAssignRhysicalReg, str);

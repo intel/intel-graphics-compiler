@@ -1586,6 +1586,42 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
                            m_options.getuInt32Option(vISA_Linker));
     }
   }
+  const char *rawStr = m_options.getOptionCstr(vISA_ForceAssignRhysicalReg);
+  if (rawStr && *rawStr != '\0') {
+    std::vector<int> token;
+    std::map<int, int> forceAssign;
+    const char *DELIMITERS = ":, ";
+    std::string line(rawStr);
+    std::size_t pos = 0;
+    std::size_t found;
+    for (; (found = line.find_first_of(DELIMITERS, pos)) != std::string::npos;
+         ++pos) {
+      // Skip consecutive whitespaces.
+      if (found == pos)
+        continue;
+      token.push_back(std::stoi(line.substr(pos, found - pos)));
+      pos = found;
+    }
+    if (pos < line.length())
+      token.push_back(std::stoi(line.substr(pos)));
+
+    for (unsigned int i = 0; i < token.size() - 1; i += 2) {
+      forceAssign[token[i]] = token[i + 1];
+    }
+
+    for (G4_Declare *dcl :
+         m_kernelsAndFunctions.front()->getKernel()->Declares) {
+      if (forceAssign.find(dcl->getDeclId()) != forceAssign.end()) {
+        std::cerr << "Force assigning DeclId : " << dcl->getDeclId() << " to r"
+                  << forceAssign[dcl->getDeclId()] << "\n";
+        dcl->getRegVar()->setPhyReg(
+            m_kernelsAndFunctions.front()->getIRBuilder()->phyregpool.getGreg(
+                forceAssign[dcl->getDeclId()]),
+            0);
+        dcl->dump();
+      }
+    }
+  }
 
   VISAKernelImpl *oldMainKernel = nullptr;
   if (IS_GEN_BOTH_PATH) {

@@ -6070,8 +6070,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
         failed_alloc = true;
       }
 
-      if ((dcl->getNumRows() > totalGRFNum) ||
-          (dcl->isForceSpilled() && (lr->getSpillCost() != MAXSPILLCOST))) {
+      if (dcl->getNumRows() > totalGRFNum) {
         // we sure as hell won't get an assignment
         failed_alloc = true;
       }

@@ -68,8 +68,6 @@ DEF_VISA_OPTION(vISA_removeInstrinsics, ET_BOOL, "-removeInstrinsics", UNUSED,
 DEF_VISA_OPTION(vISA_addSWSBInfo, ET_BOOL, "-addSWSBInfo", UNUSED, true)
 DEF_VISA_OPTION(vISA_DumpRAIntfGraph, ET_BOOL, "-dumpintf", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpGenOffset, ET_BOOL, "-dumpgenoffset", UNUSED, false)
-DEF_VISA_OPTION(vISA_ForceSpillVariables, ET_CSTR, "-forceSpillVariables",
-                "UESAGE: -forceSpillVariables dcl_id_1,dcl_id_2", NULL)
 DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg, ET_CSTR, "-forceAssignRhysicalReg",
                 UNUSED, NULL)
 DEF_VISA_OPTION(

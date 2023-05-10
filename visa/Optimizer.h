@@ -112,7 +112,6 @@ class Optimizer {
   void localInstCombine();
   void optimizeLogicOperation();
   void cselPeepHoleOpt();
-  void preRegAlloc();
   void regAlloc();
   void insertFallThroughJump();
   void reverseOffsetProp(AddrSubReg_Node addrRegInfo[8], int subReg,
@@ -343,8 +342,7 @@ public:
     PI_preRA_HWWorkaround,  // always, each WA under specific control
     PI_postRA_HWWorkaround, // always, each WA under specific control
     PI_preRA_Schedule,
-    PI_preRegAlloc,              // always
-    PI_regAlloc,              // always
+    PI_regAlloc,          // always
     PI_removeLifetimeOps, // always
     PI_removeRedundMov,       // always
     PI_removeEmptyBlocks,     // always

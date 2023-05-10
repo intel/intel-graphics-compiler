@@ -365,7 +365,6 @@ DECLARE_IGC_REGKEY(debugString, ShaderDataBaseStatsFilePath, 0, "Path to a file 
 DECLARE_IGC_REGKEY(bool, AddExtraIntfInfo,                false, "Will add extra inteference info from .extraintf files from c:\\Intel\\IGC\\ShaderOverride", false)
 
 DECLARE_IGC_GROUP("Debugging features")
-DECLARE_IGC_REGKEY(debugString, ForceSpillVariables,            0,     "comma-separated string, each provide the declare id of variable which will be spilled", true)
 DECLARE_IGC_REGKEY(debugString, ForceAssignRhysicalReg,     0, "Force assigning dclId to phyiscal reg.", true)
 DECLARE_IGC_REGKEY(bool, InitializeUndefValueEnable,    false, "Setting this to 1/true initializes all undefs in URB payload to 0", false)
 DECLARE_IGC_REGKEY(bool, InitializeRegistersEnable,     false, "Setting this to 1/true initializes all GRFs, Flag and address registers to 0 at the beginning of the shader", false)
