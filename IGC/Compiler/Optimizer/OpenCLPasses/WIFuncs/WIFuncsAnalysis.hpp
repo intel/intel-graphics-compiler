@@ -73,6 +73,7 @@ namespace IGC
         static const llvm::StringRef GET_STAGE_IN_GRID_ORIGIN;
         static const llvm::StringRef GET_STAGE_IN_GRID_SIZE;
         static const llvm::StringRef GET_SYNC_BUFFER;
+        static const llvm::StringRef GET_ASSERT_BUFFER;
 
     private:
         /// @brief  Function entry point.
@@ -106,6 +107,8 @@ namespace IGC
         bool m_hasStageInGridSize = false;
         /// @brief  Marks whether sync buffer is needed by the current function
         bool m_hasSyncBuffer = false;
+        /// @brief  Marks whether assert buffer is needed by the current function
+        bool m_hasAssertBuffer = false;
         /// @brief Marks whether kernel has stackcalls
         bool m_hasStackCalls = false;
         /// @brief MetaData utils used to generate LLVM metadata

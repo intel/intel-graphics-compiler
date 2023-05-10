@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.30**: Add assert_buffer to payload arguments.
 - **Version 1.29**: Add has_rtcalls to execution_env.
 - **Version 1.28**: Add const_base and global_base to payload arguments.
 - **Version 1.27**: Add has_sample to execution_env.

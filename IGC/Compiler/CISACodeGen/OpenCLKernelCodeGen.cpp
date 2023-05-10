@@ -1734,6 +1734,12 @@ namespace IGC
                 payloadPosition, kernelArg->getAllocateSize());
             break;
 
+        case KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER:
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::assert_buffer,
+                payloadPosition, kernelArg->getAllocateSize());
+            break;
+
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
         case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE: {
           auto zeArgType =

@@ -358,6 +358,9 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
     case ImplicitArg::IMPLICIT_ARG_BUFFER_PTR:
         return KernelArg::ArgType::IMPLICIT_ARG_BUFFER;
 
+    case ImplicitArg::ASSERT_BUFFER_POINTER:
+        return KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER;
+
     default:
         return KernelArg::ArgType::NOT_TO_ALLOCATE;
     }
@@ -842,6 +845,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
             KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
+            KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER,
 
             KernelArg::ArgType::STRUCT,
             KernelArg::ArgType::SAMPLER,
@@ -926,6 +930,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
             KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
+            KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER,
 
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
             KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH,

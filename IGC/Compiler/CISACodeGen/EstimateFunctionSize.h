@@ -108,6 +108,7 @@ namespace IGC {
         const llvm::StringRef GET_STAGE_IN_GRID_ORIGIN = "__builtin_IB_get_stage_in_grid_origin";
         const llvm::StringRef GET_STAGE_IN_GRID_SIZE = "__builtin_IB_get_stage_in_grid_size";
         const llvm::StringRef GET_SYNC_BUFFER = "__builtin_IB_get_sync_buffer";
+        const llvm::StringRef GET_ASSERT_BUFFER = "__builtin_IB_get_assert_buffer";
 
         bool HasRecursion;
         bool EnableSubroutine;

@@ -410,8 +410,9 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
             arg->getArgType() == KernelArg::ArgType::IMPLICIT_SYNC_BUFFER)
             return false;
 
-        // RT_GLOBAL_BUFFER is supported only in stateless mode by the runtime.
-        if (arg->getArgType() == KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER) {
+        // skip implicit buffers that are supported only in stateless mode by the runtime.
+        if (arg->getArgType() == KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER ||
+            arg->getArgType() == KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER) {
             return false;
         }
 

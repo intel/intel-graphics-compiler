@@ -132,6 +132,12 @@ namespace IGC
         /// @return A value representing the sync buffer
         llvm::Value* getSyncBufferPtr(llvm::CallInst& CI);
 
+        /// @brief  Resolves get_assert_buffer().
+        ///         Adds the appropriate sequence of code before the given call instruction
+        /// @param  CI The call instruction.
+        /// @return A value representing the assert buffer
+        llvm::Value* getAssertBufferPtr(llvm::CallInst& CI);
+
         /// @brief  The implicit arguments of the current function
         ImplicitArgs m_implicitArgs;
 

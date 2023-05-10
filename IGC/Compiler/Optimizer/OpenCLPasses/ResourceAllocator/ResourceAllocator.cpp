@@ -164,6 +164,7 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_EVENT_POOL:
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
     case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET:
+    case KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER:
         return AllocationType::Other;
 
     default:

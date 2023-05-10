@@ -124,6 +124,8 @@ namespace IGC
             // Pointer to implicit arguments prepared by runtime
             IMPLICIT_ARG_BUFFER_PTR,
 
+            ASSERT_BUFFER_POINTER,
+
             NUM_IMPLICIT_ARGS
         };
 

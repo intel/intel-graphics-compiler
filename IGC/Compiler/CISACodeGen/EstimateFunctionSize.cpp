@@ -432,6 +432,10 @@ bool EstimateFunctionSize::matchImplicitArg( CallInst& CI )
     {
         matched = true;
     }
+    else if( funcName.equals( GET_ASSERT_BUFFER ) )
+    {
+        matched = true;
+    }
     if( matched && ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x40 ) != 0 )
     {
         dbgs() << "Matched implicit arg " << funcName.str() << "\n";

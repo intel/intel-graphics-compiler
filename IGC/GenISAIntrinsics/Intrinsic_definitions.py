@@ -1226,6 +1226,11 @@ Imported_Intrinsics = \
     [],
     "None"]],
 ####################################################################################################
+"GenISA_getAssertBufferPtr": ["",
+    [("anyptr",                           "result"),
+    [],
+    "None"]],
+####################################################################################################
 "GenISA_getSR0": ["sr0.# the state register",
     [("int",                           "result"),
     [("int",                           "index/offset of the subregister within sr0")],

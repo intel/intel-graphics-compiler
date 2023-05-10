@@ -47,6 +47,7 @@ const llvm::StringRef WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE = "__builtin_IB_g
 const llvm::StringRef WIFuncsAnalysis::GET_STAGE_IN_GRID_ORIGIN = "__builtin_IB_get_stage_in_grid_origin";
 const llvm::StringRef WIFuncsAnalysis::GET_STAGE_IN_GRID_SIZE = "__builtin_IB_get_stage_in_grid_size";
 const llvm::StringRef WIFuncsAnalysis::GET_SYNC_BUFFER = "__builtin_IB_get_sync_buffer";
+const llvm::StringRef WIFuncsAnalysis::GET_ASSERT_BUFFER = "__builtin_IB_get_assert_buffer";
 
 WIFuncsAnalysis::WIFuncsAnalysis() : ModulePass(ID)
 {
@@ -86,6 +87,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     m_hasStageInGridOrigin = false;
     m_hasStageInGridSize = false;
     m_hasSyncBuffer = false;
+    m_hasAssertBuffer = false;
     m_hasStackCalls = false;
 
     // Visit the function
@@ -183,6 +185,10 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     {
         implicitArgs.push_back(ImplicitArg::SYNC_BUFFER);
     }
+    if (m_hasAssertBuffer)
+    {
+        implicitArgs.push_back(ImplicitArg::ASSERT_BUFFER_POINTER);
+    }
 
     // Create the metadata representing the implicit args needed by this function
     ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
@@ -251,5 +257,8 @@ void WIFuncsAnalysis::visitCallInst(CallInst& CI)
     }
     else if (funcName.equals(GET_SYNC_BUFFER)) {
         m_hasSyncBuffer = true;
+    }
+    else if (funcName.equals(GET_ASSERT_BUFFER)) {
+        m_hasAssertBuffer = true;
     }
 }

@@ -22,6 +22,7 @@ struct implicit_args {
     uint32_t group_count_z;
     uint32_t padding0;
     uint64_t rt_global_buffer_ptr;
+    uint64_t assert_buffer_ptr;
 };
 
 #endif // IMPLICIT_ARGS_STRUCT_H_

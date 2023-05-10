@@ -169,6 +169,10 @@ void WIFuncResolution::visitCallInst(CallInst& CI)
     {
         wiRes = getSyncBufferPtr(CI);
     }
+    else if (funcName.equals(WIFuncsAnalysis::GET_ASSERT_BUFFER))
+    {
+        wiRes = getAssertBufferPtr(CI);
+    }
     else
     {
         // Non WI function, do nothing
@@ -253,6 +257,7 @@ static_assert(sizeof(packed::implicit_args) == sizeof(implicit_args), "Implicit 
 //    uint32_t group_count_z;
 //    uint32_t padding0;
 //    uint64_t rt_global_buffer_ptr;
+//    uint64_t assert_buffer_ptr;
 //};
 
 // For SIMD8:
@@ -577,6 +582,19 @@ Value* WIFuncResolution::getSyncBufferPtr(CallInst& CI)
     Value* syncBuffer = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::SYNC_BUFFER, m_pMdUtils);
 
     return syncBuffer;
+}
+
+Value* WIFuncResolution::getAssertBufferPtr(CallInst& CI)
+{
+    // Receives:
+    // call i8 addrspace(1)* @__builtin_IB_get_assert_buffer()
+
+    // Creates:
+    // i8 addrspace(1)* %assertBuffer
+    auto F = CI.getParent()->getParent();
+    Value* assertBuffer = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::ASSERT_BUFFER_POINTER, m_pMdUtils);
+
+    return assertBuffer;
 }
 
 

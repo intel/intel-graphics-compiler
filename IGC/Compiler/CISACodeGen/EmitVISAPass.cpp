@@ -8342,6 +8342,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_getStageInGridSize:
     case GenISAIntrinsic::GenISA_getSyncBuffer:
     case GenISAIntrinsic::GenISA_getRtGlobalBufferPtr:
+    case GenISAIntrinsic::GenISA_getAssertBufferPtr:
         emitImplicitArgIntrinsic(inst);
         break;
     case GenISAIntrinsic::GenISA_AsyncStackID:
