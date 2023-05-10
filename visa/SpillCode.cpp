@@ -360,13 +360,13 @@ void SpillManager::replaceSpilledSrc(
         tmpDcl = createNewTempAddrDeclare(spDcl, num_reg);
         operands_analyzed[i] = ss;
         declares_created[i] = tmpDcl;
-
+        bool isNoMask = (inst->getOption() & InstOpt_WriteEnable) != 0;
         //
         // generate mov Tmp(0,0)<1>  SPILL_LOC_V100(0,0)
         //
         genRegMov(bb, it, spDcl->getRegVar(), ss->getSubRegOff(),
                   tmpDcl->getRegVar(), tmpDcl->getNumElems(),
-                  builder.getPlatform() >= GENX_ICLLP ? false : true);
+                  isNoMask);
       }
 
       // create new src from the temp address variable, with offset 0
