@@ -78,6 +78,7 @@ DECLARE_IGC_REGKEY(bool, EnableSWSBStitch,              false,  "Insert dependen
 DECLARE_IGC_REGKEY(bool, DisableRegDistDep,             false,  "distable regDist dependence", true)
 DECLARE_IGC_REGKEY(bool, EnableQuickTokenAlloc,         false,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, DisableGatherWithImmPreRA,           false,  "enable gather send with immediate", true)
+DECLARE_IGC_REGKEY(bool, EnableGatherWithImmPostRA, true, "dummy key to be removed after BKC is fixed", true)
 DECLARE_IGC_REGKEY(bool, SetA0toTdrForSendc,            false,  "Set A0 to tdr0 before each sendc/sendsc", true)
 DECLARE_IGC_REGKEY(bool, ReplaceIndirectCallWithJmpi,   false,  "Replace indirect call with jmpi instruction (HW WA)", true)
 DECLARE_IGC_REGKEY(bool, AssumeUniformIndirectCall,     false,  "Assume indirect call is uniform to avoid looping code", false)
