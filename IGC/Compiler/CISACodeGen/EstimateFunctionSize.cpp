@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/SyntheticCountsUtils.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvmWrapper/IR/BasicBlock.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include <deque>
@@ -657,7 +658,7 @@ void EstimateFunctionSize::analyze() {
     auto getSize = [](llvm::Function& F) -> std::size_t {
         std::size_t Size = 0;
         for (auto& BB : F.getBasicBlockList())
-            Size += BB.size();
+            Size += IGCLLVM::sizeWithoutDebug(&BB);
         return Size;
     };
 
