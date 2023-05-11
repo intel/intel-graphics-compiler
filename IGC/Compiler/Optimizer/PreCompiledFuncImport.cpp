@@ -2523,6 +2523,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
     bool SPDiv = isSPDiv();
     bool DPEmu = isDPEmu();
     bool DPDivSqrtEmu = isDPDivSqrtEmu();
+    bool I64DivRem = isI64DivRem();
 
     Module* M = m_pCtx->getModule();
     for (auto FI = M->begin(), FE = M->end(); FI != FE; ++FI)
@@ -2561,6 +2562,15 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             case Instruction::UIToFP:
             case Instruction::FPExt:
                 if (DPEmu && I->getType()->isDoubleTy())
+                {
+                    m_enableSubroutineCallForEmulation = true;
+                }
+                break;
+            case Instruction::UDiv:
+            case Instruction::URem:
+            case Instruction::SDiv:
+            case Instruction::SRem:
+                if (I64DivRem && I->getOperand(0)->getType()->isIntegerTy(64))
                 {
                     m_enableSubroutineCallForEmulation = true;
                 }
