@@ -159,6 +159,7 @@ public:
     uint CalculateStackDataBlocks(StackDataBlocks& blkData, std::vector<CVariable*>& Args);
     void ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS);
     void WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS);
+    void emitCopyGRFBlock(CVariable* Dst, CVariable* Src, Type* type, uint32_t BlkOffset, unsigned numInstance, bool isWriteToBlk);
 
     // emits the visa relocation instructions for function/global symbols
     void emitSymbolRelocation(llvm::Function& F);

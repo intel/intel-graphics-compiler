@@ -2886,6 +2886,8 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
     auto& DL = m_currShader->entry->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
 
+    const unsigned nLanes = numLanes(m_currShader->m_SIMDSize);
+
     if (Constant* C = dyn_cast<Constant>(src0))
     {
         if (!isa<UndefValue>(C))
@@ -2902,12 +2904,11 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
     const bool srcUniform = SrcV->IsUniform();
     // For now, do not support uniform dst and non-uniform src
     IGC_ASSERT(!(m_destination->IsUniform() && !srcUniform));
-    const unsigned nLanes =
-        (srcUniform ? 1 : numLanes(m_currShader->m_SIMDSize));
+
     Type* ty = sTy->getStructElementType(idx);
     uint32_t elementOffset = (uint32_t)SL->getElementOffset(idx);
 
-    uint32_t cvar_off = elementOffset * nLanes;
+    uint32_t cvar_off = elementOffset * (srcUniform ? 1 : nLanes);
     emitMayUnalignedVectorCopy(m_destination, 0, SrcV, cvar_off, ty);
 
     verifyMayUnAlign(m_destination, cvar_off, sTy, ty);
@@ -10478,6 +10479,105 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
     m_encoder->SetSecondHalf(false);
 }
 
+/// This function reads from or writes to a contiguous block of GRFs.
+/// The purpose is to read and write arg/retval data for stackcalls in a consistent manner.
+///
+/// Possible usages are:
+/// 1. Write uniform Src to GRFBlk
+/// 2. Write non-uniform (1 or 2 instance) Src to GRFBlk
+/// 3. Write 2-instance Struct Src to GRFBlk while reshuffling to SoA layout, ie. S0[16a, 16b], S1[16a, 16b] -> GRFBlk[32a, 32b]
+/// 4. Read from GRFBlk to non-uniform (1 or 2 instance) Dst
+/// 5. Read from GRFBlk to 2-instance Struct Dst while reshuffling from SoA layout, ie. GRFBlk[32a, 32b] -> S0[16a, 16b], S1[16a, 16b]
+///
+/// Note we cannot read into a uniform Dst
+///
+void EmitPass::emitCopyGRFBlock(CVariable* Dst, CVariable* Src, Type* type, uint32_t BlkOffset, unsigned numInstance, bool isWriteToBlk)
+{
+    VISA_Type dataType = m_currShader->GetType(type);
+    uint16_t nElts = (uint16_t)m_currShader->GetNumElts(type, false);
+    bool hasSecondHalf = (numInstance > 1);
+
+    if (isWriteToBlk)
+    {
+        IGC_ASSERT(Dst->GetNumberInstance() == 1);
+        IGC_ASSERT(!Dst->IsUniform());
+        IGC_ASSERT(dataType == Src->GetType());
+        if (BlkOffset != 0 || Dst->GetType() != dataType)
+            Dst = m_currShader->GetNewAlias(Dst, dataType, BlkOffset, nElts * numInstance, false);
+    }
+    else
+    {
+        IGC_ASSERT(Src->GetNumberInstance() == 1);
+        IGC_ASSERT(!Src->IsUniform() && !Dst->IsUniform());
+        IGC_ASSERT(dataType == Dst->GetType());
+        if (BlkOffset != 0 || Src->GetType() != dataType)
+            Src = m_currShader->GetNewAlias(Src, dataType, BlkOffset, nElts * numInstance, false);
+    }
+
+    if (!type->isStructTy() || !hasSecondHalf)
+    {
+        // For regular types and non-instanced structs, we can use emitCopyAll
+        // This handles scenarios 1, 2 and 4 above.
+        m_encoder->SetSecondHalf(false);
+        emitCopyAll(Dst, Src, type);
+
+        // Copy second instance
+        if (hasSecondHalf)
+        {
+            m_encoder->SetSecondHalf(true);
+            if (isWriteToBlk)
+                Dst = m_currShader->GetNewAlias(Dst, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, false);
+            else
+                Src = m_currShader->GetNewAlias(Src, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, false);
+            emitCopyAll(Dst, Src, type);
+        }
+        m_encoder->SetSecondHalf(false);
+    }
+    else
+    {
+        // SIMD32 structs are a bit tricky, since we have 2 SIMD16 instances of the struct variable,
+        // but we need to copy them either via stack memory or via the ARG/RET GRFs, using the SoA layout.
+        // Depending on if we read or write, we need to shuffle the struct data to and from SoA layout.
+        IGC_ASSERT(type->isStructTy() && numInstance == 2);
+        StructType* STy = dyn_cast<StructType>(type);
+        const StructLayout* SL = m_DL->getStructLayout(STy);
+        unsigned nLanes = numLanes(m_currShader->m_SIMDSize);
+
+        for (unsigned i = 0; i < STy->getNumElements(); i++)
+        {
+            unsigned elementOffset = (unsigned)SL->getElementOffset(i);
+            Type* elementType = STy->getElementType(i);
+            uint32_t CopyBytes = (uint32_t)m_DL->getTypeAllocSize(elementType) * nLanes;
+            if (isWriteToBlk)
+            {
+                uint32_t SrcOff = elementOffset * (Src->IsUniform() ? 1 : nLanes);
+                uint32_t DstOff = elementOffset * nLanes * 2;
+                m_encoder->SetSecondHalf(false);
+                emitMayUnalignedVectorCopy(Dst, DstOff, Src, SrcOff, elementType);
+                if (hasSecondHalf)
+                {
+                    m_encoder->SetSecondHalf(true);
+                    emitMayUnalignedVectorCopy(Dst, DstOff + CopyBytes, Src, SrcOff, elementType);
+                }
+            }
+            else
+            {
+                uint32_t SrcOff = elementOffset * nLanes * 2;
+                uint32_t DstOff = elementOffset * nLanes;
+                m_encoder->SetSecondHalf(false);
+                emitMayUnalignedVectorCopy(Dst, DstOff, Src, SrcOff, elementType);
+                if (hasSecondHalf)
+                {
+                    m_encoder->SetSecondHalf(true);
+                    emitMayUnalignedVectorCopy(Dst, DstOff, Src, SrcOff + CopyBytes, elementType);
+                }
+            }
+        }
+        m_encoder->SetSecondHalf(false);
+    }
+}
+
+
 void EmitPass::emitStackCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
@@ -10526,18 +10626,14 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         }
         else
         {
-            // Vectorize, then push to stack
-            if (Src->IsUniform() && !isInvokeSIMDTarget)
+            // Uniform vars needs to be first vectorized before pushing to stack
+            // For 2-instance structs, we need to reshuffle the struct layout to be SoA in memory
+            if ((Src->IsUniform() && !isInvokeSIMDTarget) || (argType->isStructTy() && hasSecondHalf))
             {
                 uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
                 unsigned numInstance = hasSecondHalf ? 2 : 1;
-                CVariable* SrcVec = m_currShader->GetNewVariable(nElts, Src->GetType(), m_currShader->getGRFAlignment(), false, numInstance, Src->getName());
-                for (unsigned i = 0; i < numInstance; i++)
-                {
-                    m_encoder->SetSecondHalf(i == 1);
-                    emitCopyAll(SrcVec, Src, argType);
-                }
-                m_encoder->SetSecondHalf(false);
+                CVariable* SrcVec = m_currShader->GetNewVariable(nElts * numInstance, Src->GetType(), m_currShader->getGRFAlignment(), false, 1, Src->getName());
+                emitCopyGRFBlock(SrcVec, Src, argType, 0, numInstance, true);
                 Src = SrcVec;
             }
             argsOnStack.push_back(Src);
@@ -10582,24 +10678,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     {
         for (auto& I : argsOnRegister)
         {
-            CVariable * Src = std::get<0>(I);
+            CVariable* Src = std::get<0>(I);
             Type* argType = std::get<1>(I);
             uint32_t offset = std::get<2>(I);
-
-            m_encoder->SetSecondHalf(false);
-            unsigned numInstance = hasSecondHalf ? 2 : 1;
-            VISA_Type dataType = m_currShader->GetType(argType);
-            uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
-            CVariable* Dst = m_currShader->GetNewAlias(ArgBlkVar, dataType, offset, nElts * numInstance, false);
-            emitCopyAll(Dst, Src, argType);
-
-            if (hasSecondHalf)
-            {
-                m_encoder->SetSecondHalf(true);
-                CVariable* TempDst = m_currShader->GetNewAlias(Dst, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, false);
-                emitCopyAll(TempDst, Src, argType);
-                m_encoder->SetSecondHalf(false);
-            }
+            emitCopyGRFBlock(ArgBlkVar, Src, argType, offset, hasSecondHalf ? 2 : 1, true);
         }
     };
 
@@ -10610,33 +10692,37 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         if (inst->use_empty()) return;
 
         CVariable* Dst = GetSymbol(inst);
+        Type* dstTy = inst->getType();
         unsigned numInstance = Dst->GetNumberInstance();
-        unsigned numElts = Dst->GetNumberElement();
-        VISA_Type dataType = Dst->GetType();
-
+        uint32_t dstSize = Dst->GetSize() * numInstance;
         if (!returnOnStack)
         {
-            // Copy from return GRF
-            m_encoder->SetSecondHalf(false);
-            CVariable* Src = m_currShader->GetNewAlias(m_currShader->GetRETV(), dataType, 0, numElts * numInstance, false);
-            emitCopyAll(Dst, Src, inst->getType());
-
-            if (numInstance > 1)
-            {
-                m_encoder->SetSecondHalf(true);
-                CVariable* TempSrc = m_currShader->GetNewAlias(Src, dataType, numElts * m_encoder->GetCISADataTypeSize(dataType), numElts, false);
-                emitCopyAll(Dst, TempSrc, inst->getType());
-                m_encoder->SetSecondHalf(false);
-            }
+            // Read back value from RETV
+            emitCopyGRFBlock(Dst, m_currShader->GetRETV(), dstTy, 0, numInstance, false);
         }
         else
         {
             // Copy from stack
+            CVariable* origDst = Dst;
+            if (dstTy->isStructTy() && numInstance == 2)
+            {
+                // For 2-instance structs, we need an extra copy. The struct data is stored in memory as SoA, so we need to first
+                // read the data in memory into a temp variable, then reshuffle the data into 2 instances of the struct variable.
+                // ie. For S = {a, b}, in memory it looks like {32a, 32b}, we then reshuffle to S0{16a, 16b}, S1{16a, 16b}.
+                uint32_t nElts = m_currShader->GetNumElts(dstTy, false) * numInstance;
+                Dst = m_currShader->GetNewVariable(nElts, Dst->GetType(), m_currShader->getGRFAlignment(), false, 1, "StructV_SoA");
+                IGC_ASSERT(Dst->GetSize() == dstSize);
+            }
             StackDataBlocks RetBlkData;
             std::vector<CVariable*> retOnStack = { Dst };
             uint offsetS_R = CalculateStackDataBlocks(RetBlkData, retOnStack);
-            IGC_ASSERT(offsetS_R == int_cast<unsigned>(llvm::alignTo(Dst->GetSize() * numInstance, SIZE_OWORD)));
+            IGC_ASSERT(offsetS_R == int_cast<unsigned>(llvm::alignTo(dstSize, SIZE_OWORD)));
             ReadStackDataBlocks(RetBlkData, offsetS_R);
+            if (origDst != Dst)
+            {
+                // Copy from SoA struct to 2-instance struct
+                emitCopyGRFBlock(origDst, Dst, dstTy, 0, numInstance, false);
+            }
         }
     };
 
@@ -10758,6 +10844,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     IGC_ASSERT(!m_encoder->IsSecondHalf());
     bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+    SmallVector<std::tuple<CVariable*, CVariable*, Type*>, 8> StructShuffleVector;
 
     for (auto& Arg : F->args())
     {
@@ -10781,7 +10868,6 @@ void EmitPass::emitStackFuncEntry(Function* F)
         {
             if (!Arg.use_empty())
             {
-                CVariable* Src = ArgBlkVar;
                 // TODO: Is there a way to map arg directly when numInstances > 1?
                 if (m_FGA->isLeafFunc(F) && !hasSecondHalf)
                 {
@@ -10802,26 +10888,24 @@ void EmitPass::emitStackFuncEntry(Function* F)
                 else
                 {
                     // For calls not guaranteed to preserve the ARG register, we copy it first to a temp
-                    m_encoder->SetSecondHalf(false);
-                    VISA_Type dataType = Dst->GetType();
-                    unsigned nElts = Dst->GetNumberElement();
-                    Src = m_currShader->GetNewAlias(ArgBlkVar, dataType, (uint16_t)offsetA, nElts * numInstance, Dst->IsUniform());
-                    emitCopyAll(Dst, Src, Arg.getType());
-
-                    if (hasSecondHalf)
-                    {
-                        IGC_ASSERT(numInstance > 1);
-                        m_encoder->SetSecondHalf(true);
-                        CVariable* TempSrc = m_currShader->GetNewAlias(Src, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, Dst->IsUniform());
-                        emitCopyAll(Dst, TempSrc, Arg.getType());
-                        m_encoder->SetSecondHalf(false);
-                    }
+                    emitCopyGRFBlock(Dst, ArgBlkVar, Arg.getType(), offsetA, numInstance, false);
                 }
             }
             offsetA += argSize;
         }
         else
         {
+            if (Arg.getType()->isStructTy() && numInstance == 2)
+            {
+                // For 2-instance structs, we need an extra copy. The struct data is stored in memory as SoA, so we need to first
+                // read the data in memory into a temp variable, then reshuffle the data into 2 instances of the struct variable.
+                // ie. For S = {a, b}, in memory it looks like {32a, 32b}, we then reshuffle to S0{16a, 16b}, S1{16a, 16b}.
+                uint32_t nElts = m_currShader->GetNumElts(Arg.getType(), false);
+                CVariable* TempDst = m_currShader->GetNewVariable(nElts * numInstance, Dst->GetType(), m_currShader->getGRFAlignment(), false, 1, "StructV_SoA");
+                IGC_ASSERT(TempDst->GetSize() == argSize);
+                StructShuffleVector.push_back(std::make_tuple(Dst, TempDst, Arg.getType()));
+                Dst = TempDst;
+            }
             argsOnStack.push_back(Dst);
         }
 
@@ -10847,6 +10931,15 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     // Read from caller stack back into registers
     ReadStackDataBlocks(argBlkData, offsetS);
+
+    // Reshuffle any struct args from SoA to 2-instance variables for SIMD32
+    for (auto &I : StructShuffleVector)
+    {
+        CVariable* Dst = std::get<0>(I);
+        CVariable* Src = std::get<1>(I);
+        Type* argTy = std::get<2>(I);
+        emitCopyGRFBlock(Dst, Src, argTy, 0, Dst->GetNumberInstance(), false);
+    }
 
     unsigned totalAllocaSize = 0;
 
@@ -10874,54 +10967,35 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
 
     llvm::Function* F = inst->getParent()->getParent();
     llvm::Type* RetTy = F->getReturnType();
-    CVariable* Dst = m_currShader->GetRETV();
+    CVariable* RETV = m_currShader->GetRETV();
     if (!RetTy->isVoidTy())
     {
-        unsigned RetSize = 0;
-        unsigned nLanes = numLanes(m_currShader->m_dispatchSize);
+        unsigned nLanes = numLanes(m_currShader->m_SIMDSize);
         CVariable* Src = GetSymbol(inst->getReturnValue());
         bool isSrcUniform = Src->IsUniform();
-        unsigned numInstance = Src->GetNumberInstance();
-        RetSize = isSrcUniform ? Src->GetSize() * nLanes : Src->GetSize() * numInstance;
+        unsigned RetSize = isSrcUniform ? Src->GetSize() * nLanes : Src->GetSize() * Src->GetNumberInstance();
 
         IGC_ASSERT(!m_encoder->IsSecondHalf());
         bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+        unsigned numInstance = hasSecondHalf ? 2 : 1;
 
-        if (RetSize <= Dst->GetSize())
+        if (RetSize <= RETV->GetSize())
         {
-            // Return on GRF
-            unsigned nElts = m_currShader->GetNumElts(RetTy, false);
-            VISA_Type dataType = Src->GetType();
-
-            m_encoder->SetSecondHalf(false);
-            Dst = m_currShader->GetNewAlias(Dst, dataType, 0, nElts * numInstance, false);
-            emitCopyAll(Dst, Src, RetTy);
-
-            if (hasSecondHalf)
-            {
-                m_encoder->SetSecondHalf(true);
-                CVariable* TempDst = m_currShader->GetNewAlias(Dst, dataType, nElts * m_encoder->GetCISADataTypeSize(dataType), nElts, false);
-                emitCopyAll(TempDst, Src, RetTy);
-                m_encoder->SetSecondHalf(false);
-            }
+            // Return on GRF by writing to the RETV register
+            emitCopyGRFBlock(RETV, Src, RetTy, 0, numInstance, true);
             m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
         }
         else
         {
             // Return on Stack
-            // Vectorize, then push to stack
-            if (isSrcUniform)
+            // For uniform var, vectorize then push to stack
+            // For 2-instance structs, need to reshuffle layout to SoA
+            if (isSrcUniform || (RetTy->isStructTy() && hasSecondHalf))
             {
-                CVariable* retValSymbol = m_currShader->getOrCreateReturnSymbol(F);
-                IGC_ASSERT(retValSymbol->GetType() == Src->GetType());
-                unsigned numInstance = retValSymbol->GetNumberInstance();
-                for (unsigned i = 0; i < numInstance; i++)
-                {
-                    m_encoder->SetSecondHalf(i == 1);
-                    emitCopyAll(retValSymbol, Src, RetTy);
-                }
-                m_encoder->SetSecondHalf(false);
-                Src = retValSymbol;
+                uint32_t nElts = m_currShader->GetNumElts(RetTy, false);
+                CVariable* RetTemp = m_currShader->GetNewVariable(nElts * numInstance, Src->GetType(), m_currShader->getGRFAlignment(), false, 1, "RetVec");
+                emitCopyGRFBlock(RetTemp, Src, RetTy, 0, numInstance, true);
+                Src = RetTemp;
             }
 
             StackDataBlocks RetBlkData;
@@ -10948,24 +11022,9 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
         CVariable* sretPtr = m_currShader->GetAndResetSRet();
         if (sretPtr && isFuncSRetArg(F->arg_begin()) && !m_FGA->isLeafFunc(F))
         {
-            unsigned numInstance = sretPtr->GetNumberInstance();
-            unsigned numElements = sretPtr->GetNumberElement();
-            VISA_Type dataType = sretPtr->GetType();
-
             // If the sret value is saved, copy it back into arg0
-            m_encoder->SetSecondHalf(false);
             CVariable* ArgBlk = m_currShader->GetARGV();
-            CVariable* Arg0 = m_currShader->GetNewAlias(ArgBlk, dataType, 0, numElements * numInstance, sretPtr->IsUniform());
-            m_encoder->Copy(Arg0, sretPtr);
-            m_encoder->Push();
-            if (numInstance > 1)
-            {
-                m_encoder->SetSecondHalf(true);
-                CVariable* TempArg0 = m_currShader->GetNewAlias(Arg0, dataType, numElements * m_encoder->GetCISADataTypeSize(dataType), numElements, sretPtr->IsUniform());
-                m_encoder->Copy(TempArg0, sretPtr);
-                m_encoder->Push();
-                m_encoder->SetSecondHalf(false);
-            }
+            emitCopyGRFBlock(ArgBlk, sretPtr, F->arg_begin()->getType(), 0, sretPtr->GetNumberInstance(), true);
         }
         m_encoder->SetStackFunctionRetSize(0);
     }
