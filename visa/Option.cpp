@@ -106,14 +106,27 @@ bool Options::parseOptions(int argc, const char *argv[]) {
       return true;
     };
 
-    // If the current argv has a value, ie, the next argv isn't a flag
-    //   (flag starts with '-') treat it as a unsigned 32bit integer
-    //   and return true if the value is of U32;
+    auto parseBool = [&](bool &val) -> bool {
+      std::string_view arg(argv[i]);
+      if (arg == "true" || arg == "TRUE") {
+        val = true;
+        return true;
+      }
+      if (arg == "false" || arg == "FALSE") {
+        val = false;
+        return true;
+      }
+      return false;
+    };
+
+    // If the current argv has a value, i.e., the next argv isn't a flag
+    //   (flag starts with '-') treat it as either bool ("true" or "false") or a
+    //   unsigned 32bit integer and return true if the value is non-zero;
     // otherwise, return false.
     //
     // Note that this is to make sure a boolean flag can be set true or
     // false explicitly. If no value, it will be inversed.
-    auto parseOptionalU32 = [&]() -> std::optional<uint32_t> {
+    auto parseOptionalBool = [&]() -> std::optional<bool> {
       const int next_i = i + 1;
       if (next_i >= argc)
         return std::nullopt;
@@ -124,13 +137,16 @@ bool Options::parseOptions(int argc, const char *argv[]) {
 
       // advance i to the next argv : the value for this flag
       ++i;
-      uint32_t val;
-      if (!parseU32(val)) {
+      bool boolVal;
+      if (parseBool(boolVal))
+        return boolVal;
+      uint32_t intVal;
+      if (!parseU32(intVal)) {
         // Assume this flag does not have a value
         --i;
         return std::nullopt;
       }
-      return val;
+      return intVal != 0;
     };
 
     // Arg corrsponds to vISAOpt.
@@ -142,10 +158,14 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     switch (type) {
     case ET_BOOL: {
       bool val;
-      std::optional<uint32_t> o = parseOptionalU32();
+      std::optional<bool> o = parseOptionalBool();
       if (o.has_value())
-        val = (o.value() != 0 ? true : false);
+        val = o.value();
       else
+        // TODO: We should change this so that -foo means foo is true instead of
+        // flipping the default value; changing the default value is a major
+        // pain otherwise. This would break existing options like -noschedule,
+        // however. Maybe create a new BOOL_NO_FLIP type?
         val = !m_vISAOptions.getDefaultBool(vISAOpt);
       m_vISAOptions.setBool(vISAOpt, val);
       m_vISAOptions.setArgSetByUser(vISAOpt);
