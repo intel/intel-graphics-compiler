@@ -48,6 +48,7 @@ class DeSSA;
 class CoalescingEngine;
 class GenXFunctionGroupAnalysis;
 class VariableReuseAnalysis;
+class EmitPass;
 
 struct PushInfo;
 
@@ -277,6 +278,7 @@ public:
     void        SetCoalescingEngineHelper(CoalescingEngine* ce) { m_coalescingEngine = ce; }
     void        SetCodeGenHelper(CodeGenPatternMatch* CG) { m_CG = CG; }
     void        SetPushInfoHelper(PushInfo* PI) { pushInfo = *PI; }
+    void        SetEmitPassHelper(EmitPass* EP) { m_EmitPass = EP; }
     void        SetDominatorTreeHelper(llvm::DominatorTree* DT) { m_DT = DT; }
     void        SetDataLayout(const llvm::DataLayout* DL) { m_DL = DL; }
     void        SetFunctionGroupAnalysis(GenXFunctionGroupAnalysis* FGA) { m_FGA = FGA; }
@@ -353,6 +355,7 @@ public:
     SIMDMode m_SIMDSize;
     uint8_t m_numberInstance = 0;
     PushInfo pushInfo;
+    EmitPass* m_EmitPass;
     bool isInputsPulled; //true if any input is pulled, false otherwise
     bool isMessageTargetDataCacheDataPort;
     uint m_sendStallCycle = 0;

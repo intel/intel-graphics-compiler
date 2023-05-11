@@ -668,6 +668,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
     m_currShader->SetVariableReuseAnalysis(m_VRA);
     m_currShader->SetDeSSAHelper(m_deSSA);
+    m_currShader->SetEmitPassHelper(this);
 
     //Add CCtuple root variables.
     if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
@@ -18594,11 +18595,6 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
             unsigned elementOffset = (unsigned)SL->getElementOffset(i);
             Type* elementType = STy->getElementType(i);
 
-            unsigned numElements = 1;
-            if (auto elementVectorType = dyn_cast<IGCLLVM::FixedVectorType>(elementType))
-            {
-                numElements = (unsigned)elementVectorType->getNumElements();
-            }
             emitMayUnalignedVectorCopy(Dst, elementOffset * dstLanes,
                 Src, elementOffset * srcLanes, elementType);
         }

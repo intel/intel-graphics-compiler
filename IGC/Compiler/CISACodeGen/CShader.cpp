@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/VariableReuseAnalysis.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
@@ -41,6 +42,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_DL = nullptr;
     m_FGA = nullptr;
     m_VRA = nullptr;
+    m_EmitPass = nullptr;
     m_shaderStats = nullptr;
     m_constantBufferMask = 0;
     m_constantBufferLoaded = 0;
@@ -2005,10 +2007,9 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
             if (!elementSrc->IsUndef())
             {
                 unsigned elementOffset = (unsigned)SL->getElementOffset(i);
-                CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(),
-                    elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
-                GetEncoder().Copy(elementDst, elementSrc);
-                GetEncoder().Push();
+                Type* elementType = sTy->getElementType(i);
+                m_EmitPass->emitMayUnalignedVectorCopy(
+                    cVar, elementOffset, elementSrc, 0, elementType);
             }
         }
     }
