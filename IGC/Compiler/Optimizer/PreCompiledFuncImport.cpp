@@ -892,6 +892,28 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         }
     }
 
+    // If true, it is a slow version of DP emu functions. Those functions
+    // are the original ones for just passing conformance, not for perf.
+    auto isSlowDPEmuFunc = [](Function* F) {
+        StringRef FN = F->getName();
+        if (FN.equals("__igcbuiltin_dp_add") ||
+            FN.equals("__igcbuiltin_dp_sub") ||
+            FN.equals("__igcbuiltin_dp_fma") ||
+            FN.equals("__igcbuiltin_dp_mul") ||
+            FN.equals("__igcbuiltin_dp_div") ||
+            FN.equals("__igcbuiltin_dp_cmp") ||
+            FN.equals("__igcbuiltin_dp_to_int32") ||
+            FN.equals("__igcbuiltin_dp_to_uint32") ||
+            FN.equals("__igcbuiltin_int32_to_dp") ||
+            FN.equals("__igcbuiltin_uint32_to_dp") ||
+            FN.equals("__igcbuiltin_dp_to_sp") ||
+            FN.equals("__igcbuiltin_sp_to_dp") ||
+            FN.equals("__igcbuiltin_dp_sqrt")) {
+            return true;
+        }
+        return false;
+    };
+
     for (auto II = M.begin(), IE = M.end(); II != IE; )
     {
         Function* Func = &(*II);
@@ -906,9 +928,11 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
             // Use subroutine if ForceSubroutineForEmulation is set or
             // use subroutines if total number of instructions added when
             // all emulated functions are inlined exceed InlinedEmulationThreshold.
+            // If Func is a slow version of DP emu func, perf isn't important.
             if (m_enableSubroutineCallForEmulation &&
                 (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) ||
-                    totalNumberOfInlinedInst > (unsigned)IGC_GET_FLAG_VALUE(InlinedEmulationThreshold)))
+                    totalNumberOfInlinedInst > (unsigned)IGC_GET_FLAG_VALUE(InlinedEmulationThreshold) ||
+                    (isDPEmu() && isSlowDPEmuFunc(Func))))
             {
                 Func->addFnAttr(llvm::Attribute::NoInline);
 
