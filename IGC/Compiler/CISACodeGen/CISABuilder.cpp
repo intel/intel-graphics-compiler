@@ -4391,6 +4391,13 @@ namespace IGC
             SaveOption(vISA_ShaderDumpFilter, regex);
         }
 
+        auto *forceSpillVaraibles = IGC_GET_REGKEYSTRING(ForceSpillVariables);
+        std::string fSVStr(forceSpillVaraibles);
+        if (!fSVStr.empty()) {
+            SaveOption(vISA_ForceSpillVariables, forceSpillVaraibles);
+            SaveOption(vISA_LocalRA, false);
+        }
+
         if (auto *str = IGC_GET_REGKEYSTRING(ForceAssignRhysicalReg))
         {
             SaveOption(vISA_ForceAssignRhysicalReg, str);

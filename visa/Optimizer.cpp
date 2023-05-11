@@ -131,6 +131,52 @@ void Optimizer::insertFallThroughJump() {
   }
 }
 
+void Optimizer::preRegAlloc() {
+  const char *rawStr =
+      builder.getOptions()->getOptionCstr(vISA_ForceAssignRhysicalReg);
+  if (rawStr) {
+    llvm::StringRef line(rawStr);
+    llvm::SmallVector<llvm::StringRef, 4> vars;
+    line.split(vars, ',');
+    std::map<int, int> forceAssign;
+    for (unsigned i = 0; i < vars.size(); i++) {
+      std::pair<llvm::StringRef, llvm::StringRef> split = vars[i].split(':');
+      forceAssign[std::stoi(split.first.str())] = std::stoi(split.second.str());
+    }
+
+    for (G4_Declare *dcl :
+         kernel.Declares) {
+      if (forceAssign.find(dcl->getDeclId()) != forceAssign.end()) {
+        dcl->getRegVar()->setPhyReg(
+            builder.phyregpool.getGreg(forceAssign[dcl->getDeclId()]), 0);
+        VISA_DEBUG({
+          std::cerr << "Force assigning DeclId : " << dcl->getDeclId()
+                    << " to r" << forceAssign[dcl->getDeclId()] << "\n";
+          dcl->dump();
+        });
+      }
+    }
+  }
+
+  rawStr = builder.getOptions()->getOptionCstr(vISA_ForceSpillVariables);
+  if (rawStr) {
+    llvm::StringRef line(rawStr);
+    llvm::SmallVector<llvm::StringRef, 4> vars;
+    line.split(vars, ',');
+    std::vector<int> token;
+
+    for (unsigned i = 0; i < vars.size(); i++) {
+      token.push_back(std::stoi(vars[i].str()));
+    }
+    for (G4_Declare *dcl :
+         kernel.Declares) {
+      if (std::find(token.begin(), token.end(), dcl->getDeclId()) != token.end()) {
+        dcl->setForceSpilled();
+      }
+    }
+  }
+}
+
 void Optimizer::regAlloc() {
 
   fg.prepareTraversal();
@@ -589,6 +635,7 @@ void Optimizer::initOptimizations() {
   INITIALIZE_PASS(preRA_Schedule, vISA_preRA_Schedule,
                   TimerID::PRERA_SCHEDULING);
   INITIALIZE_PASS(preRA_HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
+  INITIALIZE_PASS(preRegAlloc, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(regAlloc, vISA_EnableAlways, TimerID::TOTAL_RA);
   INITIALIZE_PASS(removeLifetimeOps, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(postRA_HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
@@ -847,6 +894,8 @@ int Optimizer::optimization() {
   if (builder.enableACCBeforRA() && !builder.enablePreSchedACC()) {
     runPass(PI_accSubBeforeRA);
   }
+
+  runPass(PI_preRegAlloc);
 
   // perform register allocation
   runPass(PI_regAlloc);

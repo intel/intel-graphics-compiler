@@ -1548,6 +1548,11 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl,
       if (Attributes::isAttribute(Attributes::ATTR_DoNotSpill, attrName)) {
         rootDcl->setDoNotSpill();
       }
+      if (Attributes::isAttribute(Attributes::ATTR_ForceSpill, attrName)) {
+        rootDcl->setForceSpilled();
+        vISA_ASSERT_INPUT(!rootDcl->isDoNotSpill(),
+                          "DoNotSpill cannot be set together with ForceSpill attribute");
+      }
       if (Attributes::isAttribute(Attributes::ATTR_PayloadLiveOut, attrName)) {
         rootDcl->setPayloadLiveOut();
       }

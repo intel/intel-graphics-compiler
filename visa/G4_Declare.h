@@ -91,6 +91,7 @@ class G4_Declare {
   // indicate if this dcl is created from preDefinedVars.
   uint16_t PreDefinedVar : 1;
   uint16_t addrSpillFill : 1;
+  uint16_t forceSpilled : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -183,6 +184,23 @@ public:
 
     // Following executed only if G4_Declare doesnt have an alias
     return spillFlag;
+  }
+
+  void setForceSpilled() {
+    if (auto *dcl = getAliasDeclare()) {
+      // Iterate to top level dcl to set spill flag
+      dcl->setForceSpilled();
+    }
+    forceSpilled = true;
+  }
+
+  bool isForceSpilled() const {
+    if (auto *dcl = getAliasDeclare()) {
+      return dcl->isForceSpilled();
+    }
+
+    // Following executed only if G4_Declare doesnt have an alias
+    return forceSpilled;
   }
 
   bool isEvenAlign() const;
