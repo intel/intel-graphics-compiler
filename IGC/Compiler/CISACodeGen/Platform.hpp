@@ -702,23 +702,9 @@ bool hasPartialInt64Support() const
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B);
 }
 
-bool hasNoInt64AddInst() const
-{
-    // to be changed for PVC-XT with Add Int64 support;
-    return hasNoFullI64Support() && !hasQWAddSupport();
-}
-
 bool hasInt64Add() const
 {
-    if (m_platformInfo.eProductFamily == IGFX_PVC
-        )
-    {
-        return hasQWAddSupport();
-    }
-    else
-    {
-        return !hasNoInt64Inst();
-    }
+    return !hasNoFullI64Support() || hasQWAddSupport();
 }
 
 bool hasFullInt64() const
