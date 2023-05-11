@@ -7339,14 +7339,24 @@ void G4_InstIntrinsic::computeRightBound(G4_Operand *opnd) {
   associateOpndWithInst(opnd, this);
 
   switch (intrinsicId) {
-    case Intrinsic::NamedBarrierWA:
-    case Intrinsic::BarrierWA:
-    case Intrinsic::IEEEExceptionTrap:
-      if (opnd == getDst())
-        opnd->setRightBound(opnd->left_bound + getDstByteSize() - 1);
-      break;
-    default:
-      break;
+  case Intrinsic::NamedBarrierWA:
+  case Intrinsic::BarrierWA:
+  case Intrinsic::IEEEExceptionTrap:
+    if (opnd == getDst())
+      opnd->setRightBound(opnd->left_bound + getDstByteSize() - 1);
+    break;
+  case Intrinsic::PseudoAddrMov:
+    if (opnd != getDst()) { // Source operand only, dst operand will be handled
+                            // as normal dst
+      opnd->setLeftBound(opnd->left_bound +
+                         opnd->asAddrExp()->getOffset());
+      opnd->setRightBound(opnd->left_bound + builder.numEltPerGRF<Type_UB>() -
+                          1);
+      opnd->setBitVecFromSize(builder.numEltPerGRF<Type_UB>(), getBuilder());
+    }
+    break;
+  default:
+    break;
   }
   // Use the default implementation if the intrinsic does not specify how to
   // handle its bound for the operand. The derived class may also provide an

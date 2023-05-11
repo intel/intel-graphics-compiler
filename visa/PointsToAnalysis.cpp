@@ -223,7 +223,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             if (dst && !dst->isNullReg() &&
                 dst->getBase()->asRegVar()->getDeclare()->getRegFile() ==
                     G4_SCALAR) {
-              offset = src->asAddrExp()->getOffset();
+              offset = src->asAddrExp()->getOffset() / fg.builder->getGRFSize();
             }
             addrTakenMapping[ptr->asRegVar()].push_back(
                 std::make_pair(src->asAddrExp(), offset));
@@ -271,7 +271,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                   unsigned char offset = 0;
                   if (ptr->asRegVar()->getDeclare()->getRegFile() ==
                       G4_SCALAR) {
-                    offset = src->asAddrExp()->getOffset();
+                    offset = src->asAddrExp()->getOffset() / fg.builder->getGRFSize();
                   }
                   addToPointsToSet(ptr->asRegVar(), src->asAddrExp(), offset);
                 }

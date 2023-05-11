@@ -72,9 +72,11 @@ struct LiveNode {
   static unsigned getMaskSize(G4_INST *Inst, Gen4_Operand_Number OpNum) {
     G4_Operand *Opnd = Inst->getOperand(OpNum);
     vISA_ASSERT(Opnd, "null opnd");
-
     if (Opnd) {
       G4_Declare *Dcl = Opnd->getTopDcl();
+      if (Opnd->isAddrExp()) {
+        Dcl = Opnd->asAddrExp()->getRegVar()->getDeclare();
+      }
       if (Dcl == nullptr) {
         // There is no top declaration for this operand, so this is ARF.
         return 32;
