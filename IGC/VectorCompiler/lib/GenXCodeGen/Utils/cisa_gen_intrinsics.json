@@ -3258,7 +3258,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "TWOADDR", 13 ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_prefetch_bindless": {
       "opc": "ISA_LSC_UNTYPED",
