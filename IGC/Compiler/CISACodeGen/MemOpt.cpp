@@ -1780,12 +1780,12 @@ bool MemOpt::canonicalizeGEP64(Instruction* I) const {
     if (CGC->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace()) != 64)
         return false;
 
-    IRBuilder<> Builder(isa<Instruction>(GEPOp) ? cast<Instruction>(GEPOp) : I);
-
     bool Changed = false;
     for (auto U = GEPOp->idx_begin(), E = GEPOp->idx_end(); U != E; ++U) {
         Value* Idx = U->get();
         Type* IdxTy = Idx->getType();
+        IRBuilder<> Builder(isa<Instruction>(GEPOp) ? cast<Instruction>(GEPOp) : I);
+
         if (!IdxTy->isIntegerTy(64))
             continue;
         auto ExtOp = dyn_cast<ExtOperator>(Idx);
@@ -1815,6 +1815,12 @@ bool MemOpt::canonicalizeGEP64(Instruction* I) const {
         }
         else if ((ExtOp->isSExt() && BinOp->hasNoSignedWrap()) ||
             (ExtOp->isZExt() && BinOp->hasNoUnsignedWrap())) {
+            Value* BinOpVal = cast<Value>(BinOp);
+            // We want to check if we should create a separate BinOp instruction for this gep instruction.
+            bool NeedToChangeBinOp = BinOpVal->hasOneUse();
+            if (NeedToChangeBinOp)
+                Builder.SetInsertPoint(cast<Instruction>(ExtOp));
+
             auto BinOpcode = BinaryOperator::BinaryOps(BinOp->getOpcode());
             Value* LHS = BinOp->getOperand(0);
             Value* RHS = BinOp->getOperand(1);
@@ -1828,6 +1834,10 @@ bool MemOpt::canonicalizeGEP64(Instruction* I) const {
                 if (BinOp->hasNoSignedWrap())
                     BOP->setHasNoSignedWrap();
             }
+
+            if (NeedToChangeBinOp)
+                ExtOp->replaceAllUsesWith(BO);
+
             U->set(BO);
             RecursivelyDeleteTriviallyDeadInstructions(ExtOp);
             Changed = true;
