@@ -1011,6 +1011,11 @@ void RebuildGlobalAnnotations(IGC::OpenCLProgramContext& oclContext, Module* pKe
     // Remove old "llvm.global.annotations" that refers to kernels not requiring recompilation
     globalAnnotations->eraseFromParent();
 
+    if (newGlobalAnnotations.empty())
+    {
+        return;
+    }
+
     // Create new "llvm.global.annotations" that refers only to kernels that need to be recompiled
     Constant* Array =
         ConstantArray::get(ArrayType::get(newGlobalAnnotations[0]->getType(),
