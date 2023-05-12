@@ -155,7 +155,8 @@ private:
                                       Type *AddrTy) const;
   Instruction *createLSCLoadImpl(IRBuilder<> &Builder, Module *M,
                                  GenXIntrinsic::ID IID, unsigned ESize,
-                                 Value *Pred, Value *BTI, Value *Addr,
+                                 IGCLLVM::FixedVectorType *Ty, Value *Pred,
+                                 Value *BTI, Value *Addr,
                                  Value *Source = nullptr,
                                  ConstantInt *Align = nullptr) const;
   Instruction *createLSCStoreImpl(IRBuilder<> &Builder, Module *M,
@@ -612,17 +613,20 @@ Value *GenXLoadStoreLowering::makeVector(IRBuilder<> &Builder, Value *Val) {
 
 Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
     IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID, unsigned ESize,
-    Value *Pred, Value *BTI, Value *Addr, Value *Source,
-    ConstantInt *Align) const {
-  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_lsc_load_merge_stateless ||
+    IGCLLVM::FixedVectorType *Ty, Value *Pred, Value *BTI, Value *Addr,
+    Value *Source, ConstantInt *Align) const {
+  IGC_ASSERT_EXIT(
+      IID == GenXIntrinsic::genx_lsc_load_stateless ||
+      IID == GenXIntrinsic::genx_lsc_load_slm ||
+      IID == GenXIntrinsic::genx_lsc_load_bti ||
+      (Source && (IID == GenXIntrinsic::genx_lsc_load_merge_stateless ||
                   IID == GenXIntrinsic::genx_lsc_load_merge_slm ||
-                  IID == GenXIntrinsic::genx_lsc_load_merge_bti);
-  IGC_ASSERT_EXIT(Source);
+                  IID == GenXIntrinsic::genx_lsc_load_merge_bti)));
+  IGC_ASSERT_EXIT(Ty);
   IGC_ASSERT_EXIT(Pred);
   IGC_ASSERT_EXIT(BTI);
   IGC_ASSERT_EXIT(Addr);
 
-  auto *Ty = cast<IGCLLVM::FixedVectorType>(Source->getType());
   auto *AddrTy = Addr->getType();
   auto IsBlock = !isa<IGCLLVM::FixedVectorType>(AddrTy);
   auto NElements = Ty->getNumElements();
@@ -648,8 +652,10 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
       Builder.getInt8(0),         // Channel mask, ignored
       Addr,
       BTI,
-      Source,
   };
+
+  if (Source)
+    Args.push_back(Source);
 
   auto *Func = GenXIntrinsic::getGenXDeclaration(
       M, IID, {Ty, Pred->getType(), Addr->getType()});
@@ -795,9 +801,8 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
               Addr, ConstantInt::get(Addr->getType(), Offset));
 
         if (IsLoad) {
-          auto *Load =
-              createLSCLoadImpl(Builder, M, IID, BlockESizeBits, Pred, BTI,
-                                BlockAddr, UndefValue::get(BlockVTy));
+          auto *Load = createLSCLoadImpl(Builder, M, IID, BlockESizeBits,
+                                         BlockVTy, Pred, BTI, BlockAddr);
           Result =
               createInsertDataIntoVectorImpl(Builder, M, Result, Load, Offset);
         } else {
@@ -838,8 +843,8 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
                             ? RestVTy
                             : IGCLLVM::FixedVectorType::get(
                                   Builder.getIntNTy(DWordBits), RestNElements);
-      auto *Load = createLSCLoadImpl(Builder, M, IID, ESize * ByteBits, Pred,
-                                     BTI, VAddr, UndefValue::get(GatherVTy));
+      auto *Load = createLSCLoadImpl(Builder, M, IID, ESize * ByteBits,
+                                     GatherVTy, Pred, BTI, VAddr);
       auto *Trunc = createTruncateImpl(Builder, RestVTy, Load);
       Result =
           createInsertDataIntoVectorImpl(Builder, M, Result, Trunc, Offset);
@@ -883,12 +888,14 @@ Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
   auto ESize = DL_->getTypeSizeInBits(ETy);
 
   auto *Extend = createExtendImpl(Builder, Data);
+  auto *ExtendTy = cast<IGCLLVM::FixedVectorType>(Extend->getType());
+
   auto *Addr = Builder.CreatePtrToInt(
       Ptr, IGCLLVM::FixedVectorType::get(AddrTy, VTy->getNumElements()));
 
   if (IsLoad) {
-    auto *Load = createLSCLoadImpl(Builder, M, LoadIID, ESize, Mask, BTI, Addr,
-                                   Extend, Align);
+    auto *Load = createLSCLoadImpl(Builder, M, LoadIID, ESize, ExtendTy, Mask,
+                                   BTI, Addr, Extend, Align);
     auto *Res = createTruncateImpl(Builder, VTy, Load);
     if (Ty->isPtrOrPtrVectorTy())
       Res = Builder.CreateIntToPtr(Res, Ty);
@@ -2180,7 +2187,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt64Ty();
   return createLSCLoadStore(
-      I, GenXIntrinsic::genx_lsc_load_merge_stateless, Builder.getInt32(0),
+      I, GenXIntrinsic::genx_lsc_load_stateless, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy));
 }
 
@@ -2192,7 +2199,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt32Ty();
   return createLSCLoadStore(
-      I, GenXIntrinsic::genx_lsc_load_merge_bti,
+      I, GenXIntrinsic::genx_lsc_load_bti,
       Builder.getInt32(visa::RSI_Stateless),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy));
 }
@@ -2205,7 +2212,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt32Ty();
   return createLSCLoadStore(
-      I, GenXIntrinsic::genx_lsc_load_merge_slm, Builder.getInt32(0),
+      I, GenXIntrinsic::genx_lsc_load_slm, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy));
 }
 
