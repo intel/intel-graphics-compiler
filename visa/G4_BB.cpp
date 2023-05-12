@@ -1242,7 +1242,7 @@ void G4_BB::addEOTSend(G4_INST *lastInst) {
   auto msgDesc =
       builder->createGeneralMsgDesc(desc, exdesc, SendAccess::WRITE_ONLY);
   G4_INST *sendInst = builder->createSendInst(
-      NULL, G4_send, g4::SIMD8, sendDst, sendSrc,
+      NULL, G4_send, g4::SIMD1, sendDst, sendSrc,
       builder->createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, false);
   sendInst->inheritDIFrom(movInst);
   instList.push_back(sendInst);
