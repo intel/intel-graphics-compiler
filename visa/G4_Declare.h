@@ -319,7 +319,13 @@ public:
   void setCapableOfReuse() { capableOfReuse = true; }
   bool getCapableOfReuse() const { return capableOfReuse; }
 
-  void setAddressed() { addressed = true; }
+  void setAddressed() {
+    if (AliasDCL) {
+      return AliasDCL->setAddressed();
+    }
+    addressed = true;
+  }
+
   bool getAddressed() const {
     if (addressed) {
       return true;

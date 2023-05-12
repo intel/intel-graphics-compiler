@@ -966,7 +966,9 @@ class G4_AddrExp final : public G4_Operand {
 public:
   G4_AddrExp(G4_RegVar *reg, int offset, G4_Type ty)
       : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg),
-        m_offset(offset) {}
+        m_offset(offset) {
+    reg->getDeclare()->setAddressed();
+  }
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 

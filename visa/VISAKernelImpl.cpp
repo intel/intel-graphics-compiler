@@ -1818,14 +1818,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
       return VISA_FAILURE;
     }
 
-    // set up to the top level dcl to be addressed
-    src0Dcl->setAddressed();
     m_kernel->setHasAddrTaken(true);
-    G4_Declare *parentDcl = src0Dcl->getAliasDeclare();
-    while (parentDcl) {
-      parentDcl->setAddressed();
-      parentDcl = parentDcl->getAliasDeclare();
-    }
     cisa_opnd->g4opnd =
         m_builder->createAddrExp(src0Dcl->getRegVar(), offset, Type_UW);
   }
