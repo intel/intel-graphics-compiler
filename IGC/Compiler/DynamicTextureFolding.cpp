@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "common/secure_mem.h"
 #include "DynamicTextureFolding.h"
 #include "Probe/Assertion.h"
-
 using namespace llvm;
 using namespace IGC;
 
@@ -36,15 +35,29 @@ DynamicTextureFolding::DynamicTextureFolding() : FunctionPass(ID)
 void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
 {
     ModuleMetaData* modMD = m_context->getModuleMetaData();
+    Type* type1DArray = GetResourceDimensionType(*m_module, RESOURCE_DIMENSION_TYPE::DIM_1D_ARRAY_TYPE);
+    Type* type2DArray = GetResourceDimensionType(*m_module, RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE);
+    Type* typeCubeArray = GetResourceDimensionType(*m_module, RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
+    bool skipBoundaryCheck = 1;
 
     unsigned addrSpace = 0;
     if (SampleIntrinsic *sInst = dyn_cast<SampleIntrinsic>(&I))
     {
         addrSpace = sInst->getTextureValue()->getType()->getPointerAddressSpace();
+        Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(sInst->getTextureValue()->getType());
+        if (textureType == type1DArray || textureType == type2DArray || textureType == typeCubeArray)
+        {
+            skipBoundaryCheck = 0;
+        }
     }
     else if (SamplerLoadIntrinsic * lInst = dyn_cast<SamplerLoadIntrinsic>(&I))
     {
         addrSpace = lInst->getTextureValue()->getType()->getPointerAddressSpace();
+        Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(lInst->getTextureValue()->getType());
+        if (textureType == type1DArray || textureType == type2DArray || textureType == typeCubeArray)
+        {
+            skipBoundaryCheck = 0;
+        }
     }
     else
     {
@@ -56,15 +69,11 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
     DecodeAS4GFXResource(addrSpace, directIdx, textureIndex);
     IRBuilder<> builder(&I);
     // if the current texture index is found in modMD as uniform texture, replace the texture load/sample as constant.
+
     auto it = modMD->inlineDynTextures.find(textureIndex);
     if (it != modMD->inlineDynTextures.end())
     {
-        bool skipBoundaryCheck = 0;
         Value* cmpInstA = nullptr;
-        if(it->second[7]==0)
-        {
-            skipBoundaryCheck = 1;
-        }
         if (!skipBoundaryCheck)
         {
             builder.SetInsertPoint(&I);
@@ -339,6 +348,7 @@ bool DynamicTextureFolding::doFinalization(llvm::Module& M)
 bool DynamicTextureFolding::runOnFunction(Function& F)
 {
     m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_module = F.getParent();
     visit(F);
     for (auto *insn : InstsToRemove)
         insn->eraseFromParent();

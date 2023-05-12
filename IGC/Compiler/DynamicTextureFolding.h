@@ -53,6 +53,7 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
     private:
         CodeGenContext* m_context = nullptr;
+        Module* m_module = nullptr;
         std::unordered_map<unsigned, SResInfoFoldingOutput> m_ResInfoFoldingOutput;
         void FoldSingleTextureValue(llvm::CallInst& I);
         template<typename ContextT>
