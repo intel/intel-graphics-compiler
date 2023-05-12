@@ -283,15 +283,15 @@ extern "C" int iga_main(int argc, const char **argv) {
       "EXAMPLES:\n"
       "  % iga -p=11 -Xdsd     0x0000010C  0x04025C01\n"
       "    decodes message info for a GEN11 descriptor on SFID (DC1)\n"
-      "  % iga -p=xe -Xdsd dc1     0x0  0x04025C01\n"
-      "  % iga -p=xe -Xdsd dc1 (8) a0.2 0x04025C01\n"
+      "  % iga -p=xe -Xdsd dc1         0x0  0x04025C01\n"
+      "  % iga -p=xe -Xdsd dc1 \"(8)\" a0.2 0x04025C01\n"
       "    decodes message info for a XE descriptor on SFID (DC1)\n"
       "    the latter illustrates with ExecSize of 8 and ExDesc of a0.2\n"
-      "  % iga -p=xehpg  -Xdsd  ugm         0x0   0x08200580\n"
-      "  % iga -p=xehpg  -Xdsd  ugm  \"(8)\"  a0.2  0x620A3484\n"
-      "  % iga -p=xehpg  -Xdsd  ugm         0x0   0x30607502\n"
-      "  % iga -p=xehpg  -Xdsd  ugm  \"(1)\"  0x0   0x0200D504\n"
-      "  % iga -p=xehpc  -Xdsd  ugm         0x0   0x30607502\n"
+      "  % iga -p=xehpg  -Xdsd  ugm           0x0   0x08200580\n"
+      "  % iga -p=xehpg  -Xdsd  ugm  \"(8)\"    a0.2  0x620A3484\n"
+      "  % iga -p=xehpg  -Xdsd  ugm           0x0   0x30607502\n"
+      "  % iga -p=xehpg  -Xdsd  ugm  \"(1)\"    0x0   0x0200D504\n"
+      "  % iga -p=xehpc  -Xdsd  ugm           0x0   0x30607502\n"
       "",
       opts::OptAttrs::ALLOW_UNSET,
       [](const char *, const opts::ErrorHandler &, Opts &baseOpts) {
