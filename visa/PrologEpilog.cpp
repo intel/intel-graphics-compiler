@@ -545,9 +545,11 @@ private:
               : numDWToLoad / builder.numEltPerGRF<Type_UD>(),
           1, LdStAttrs::NONE);
 
-      sendInst = builder.createLscSendInst(nullptr, dstRead, src0Addr, nullptr,
-                                           g4::SIMD1, desc, InstOpt_NoCompact, // TODO: InstOpt_WriteEnable | InstOpt_NoCompact
-                                           LSC_ADDR_TYPE_BTI, true);
+      sendInst =
+        builder.createLscSendInst(nullptr, dstRead, src0Addr, nullptr,
+                                  g4::SIMD1, desc,
+                                  InstOpt_WriteEnable | InstOpt_NoCompact,
+                                  LSC_ADDR_TYPE_BTI, true);
       instBuffer.push_back(sendInst);
       // we pick to load all data within one send in
       // getMaxNumDWforLscElementRequirement if numRemainingDW is less than one
