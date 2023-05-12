@@ -11,38 +11,34 @@ SPDX-License-Identifier: MIT
 
 #if defined(cl_intel_rt_production)
 
-intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
+void __basic_rtstack_init(
+    global RTStack* rtStack,
+    global HWAccel* hwaccel,
+    intel_float3 origin,
+    intel_float3 direction,
+    float tmin,
+    float tmax,
+    uint mask,
+    intel_ray_flags_t flags)
 {
-    return intel_raytracing_ext_flag_ray_query;
-};
-
-intel_ray_query_t intel_ray_query_init(
-    intel_ray_desc_t ray, intel_raytracing_acceleration_structure_t accel)
-{
-    global HWAccel* hwaccel   = to_global((HWAccel*)accel);
     unsigned int    bvh_level = 0;
-
-    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t) __getImplicitDispatchGlobals();
-    global RTStack* rtStack =
-        to_global((RTStack*)__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
-
     /* init ray */
-    rtStack->ray[bvh_level].org[0] = ray.origin.x;
-    rtStack->ray[bvh_level].org[1] = ray.origin.y;
-    rtStack->ray[bvh_level].org[2] = ray.origin.z;
-    rtStack->ray[bvh_level].dir[0] = ray.direction.x;
-    rtStack->ray[bvh_level].dir[1] = ray.direction.y;
-    rtStack->ray[bvh_level].dir[2] = ray.direction.z;
-    rtStack->ray[bvh_level].tnear  = ray.tmin;
-    rtStack->ray[bvh_level].tfar   = ray.tmax;
+    rtStack->ray[bvh_level].org[0] = origin.x;
+    rtStack->ray[bvh_level].org[1] = origin.y;
+    rtStack->ray[bvh_level].org[2] = origin.z;
+    rtStack->ray[bvh_level].dir[0] = direction.x;
+    rtStack->ray[bvh_level].dir[1] = direction.y;
+    rtStack->ray[bvh_level].dir[2] = direction.z;
+    rtStack->ray[bvh_level].tnear  = tmin;
+    rtStack->ray[bvh_level].tfar   = tmax;
 
     rtStack->ray[bvh_level].data[1] = 0;
     rtStack->ray[bvh_level].data[2] = 0;
     rtStack->ray[bvh_level].data[3] = 0;
 
-    MemRay_setRootNodePtr(&rtStack->ray[bvh_level], (ulong)accel + 128);
-    MemRay_setRayFlags(&rtStack->ray[bvh_level],    ray.flags);
-    MemRay_setRayMask(&rtStack->ray[bvh_level],     ray.mask);
+    MemRay_setRootNodePtr(&rtStack->ray[bvh_level], (ulong)hwaccel + 128);
+    MemRay_setRayFlags(&rtStack->ray[bvh_level],    flags);
+    MemRay_setRayMask(&rtStack->ray[bvh_level],     mask);
 
     MemHit_clearUV(&rtStack->hit[COMMITTED]);
     rtStack->hit[COMMITTED].t = INFINITY;
@@ -55,13 +51,58 @@ intel_ray_query_t intel_ray_query_init(
     rtStack->hit[POTENTIAL].data0 = 0;
     MemHit_setValid(&rtStack->hit[POTENTIAL], 1);
     MemHit_setDone(&rtStack->hit[POTENTIAL], 1);
+}
+
+void __basic_ray_forward(
+    global RTStack* rtStack,
+    HWAccel* hwaccel,
+    uint bvhLevel,
+    intel_float3 origin,
+    intel_float3 direction,
+    float tmin,
+    float tmax,
+    uint mask,
+    intel_ray_flags_t flags)
+{
+    rtStack->ray[bvhLevel].org[0] = origin.x;
+    rtStack->ray[bvhLevel].org[1] = origin.y;
+    rtStack->ray[bvhLevel].org[2] = origin.z;
+    rtStack->ray[bvhLevel].dir[0] = direction.x;
+    rtStack->ray[bvhLevel].dir[1] = direction.y;
+    rtStack->ray[bvhLevel].dir[2] = direction.z;
+    rtStack->ray[bvhLevel].tnear  = tmin;
+    rtStack->ray[bvhLevel].tfar   = tmax;
+
+    rtStack->ray[bvhLevel].data[1] = 0;
+    rtStack->ray[bvhLevel].data[2] = 0;
+    rtStack->ray[bvhLevel].data[3] = 0;
+
+    MemRay_setRootNodePtr(&rtStack->ray[bvhLevel], (ulong)hwaccel + 128);
+    MemRay_setRayFlags(&rtStack->ray[bvhLevel],    flags);
+    MemRay_setRayMask(&rtStack->ray[bvhLevel],     mask);
+}
+
+intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
+{
+    return intel_raytracing_ext_flag_ray_query;
+};
+
+intel_ray_query_t intel_ray_query_init(
+    intel_ray_desc_t ray, intel_raytracing_acceleration_structure_t accel)
+{
+    global HWAccel* hwaccel   = to_global((HWAccel*)accel);
+    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t) __getImplicitDispatchGlobals();
+    global RTStack* rtStack =
+        to_global((RTStack*)__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
+
+    __basic_rtstack_init(rtStack, hwaccel, ray.origin, ray.direction, ray.tmin, ray.tmax, ray.mask, ray.flags);
 
     intel_ray_query_t rayquery = __builtin_IB_intel_init_ray_query(
         NULL,
         dispatchGlobalsPtr,
         rtStack,
         TRACE_RAY_INITIAL,
-        bvh_level
+        0
     );
 
     return rayquery;
@@ -72,28 +113,14 @@ void intel_ray_query_forward_ray(
     intel_ray_desc_t                          ray,
     intel_raytracing_acceleration_structure_t accel_i)
 {
-    HWAccel* accel = (HWAccel*)accel_i;
+    HWAccel* hwaccel = (HWAccel*)accel_i;
     global RTStack* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
 
     /* init ray */
     uint bvh_level = __builtin_IB_intel_query_bvh_level(rayquery) + 1;
 
-    rtStack->ray[bvh_level].org[0] = ray.origin.x;
-    rtStack->ray[bvh_level].org[1] = ray.origin.y;
-    rtStack->ray[bvh_level].org[2] = ray.origin.z;
-    rtStack->ray[bvh_level].dir[0] = ray.direction.x;
-    rtStack->ray[bvh_level].dir[1] = ray.direction.y;
-    rtStack->ray[bvh_level].dir[2] = ray.direction.z;
-    rtStack->ray[bvh_level].tnear  = ray.tmin;
-    rtStack->ray[bvh_level].tfar   = ray.tmax;
-
-    rtStack->ray[bvh_level].data[1] = 0;
-    rtStack->ray[bvh_level].data[2] = 0;
-    rtStack->ray[bvh_level].data[3] = 0;
-
-    MemRay_setRootNodePtr(&rtStack->ray[bvh_level], (ulong)accel + 128);
-    MemRay_setRayFlags(&rtStack->ray[bvh_level],    ray.flags);
-    MemRay_setRayMask(&rtStack->ray[bvh_level],     ray.mask);
+    __basic_ray_forward(
+        rtStack, hwaccel, bvh_level, ray.origin, ray.direction, ray.tmin, ray.tmax, ray.mask, ray.flags);
 
     __builtin_IB_intel_update_ray_query(
         rayquery,
