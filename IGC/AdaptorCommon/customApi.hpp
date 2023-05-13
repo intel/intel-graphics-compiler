@@ -11,13 +11,13 @@ SPDX-License-Identifier: MIT
 #include "usc.h"
 #include "common/igc_regkeys.hpp"
 
-#if !( defined( IGC_EXPORTS ) || defined( _DEBUG ) || defined( _INTERNAL ) )
+#if !( defined( IGC_EXPORTS ) || defined( IGC_DEBUG_VARIABLES ) )
 #   include <stdio.h>
 #endif
 
 // In _RELEASE builds, make these api functions available for internal use,
 // but do not export them in the dll.
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
 #   if defined( _WIN32 )
 #       if defined( IGC_EXPORTS )
 #           define IGC_DEBUG_API_CALL __declspec(dllexport)
@@ -139,7 +139,7 @@ namespace IGC
         typedef const char* OutputFolderName;
         typedef const char* OutputName;
 
-#if defined( IGC_EXPORTS ) || defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_EXPORTS ) || defined( IGC_DEBUG_VARIABLES )
 
         /// Convert enum value to string
         EnumStr IGC_DEBUG_API_CALL str(DebugFlag value);

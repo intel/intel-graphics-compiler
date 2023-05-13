@@ -90,6 +90,9 @@ namespace IGC
 {
     namespace Debug
     {
+
+#if defined( IGC_EXPORTS ) || defined( IGC_DEBUG_VARIABLES )
+
         EnumStr IGC_DEBUG_API_CALL str(DebugFlag value)
         {
 #define CASE(x) case DebugFlag::x: return STRINGIFY(x)
@@ -244,7 +247,7 @@ namespace IGC
             IGC_ASSERT_EXIT_MESSAGE((0 <= static_cast<int>(flag)), "range sanity check");
             IGC_ASSERT_EXIT_MESSAGE((static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
 
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
             g_debugFlags[ static_cast<int>( flag ) ] = enabled;
 #else
             (void) flag;
@@ -257,7 +260,7 @@ namespace IGC
             IGC_ASSERT_EXIT_MESSAGE((0 <= static_cast<int>(flag)), "range sanity check");
             IGC_ASSERT_EXIT_MESSAGE((static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
 
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
 
 #if defined(_WIN32 )|| defined( _WIN64 )
             //Disable Dump  for OS Applications
@@ -285,7 +288,7 @@ namespace IGC
             IGC_ASSERT_EXIT_MESSAGE((0 <= static_cast<int>(type)), "range sanity check");
             IGC_ASSERT_EXIT_MESSAGE((static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
 
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
             switch (loc)
             {
             case DumpLoc::ODS  : g_dumpFlags[ static_cast<int>(type) ].dumpODS  = enabled; break;
@@ -304,7 +307,7 @@ namespace IGC
             IGC_ASSERT_EXIT_MESSAGE((0 <= static_cast<int>(type)), "range sanity check");
             IGC_ASSERT_EXIT_MESSAGE((static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
 
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
 
 #if defined(_WIN32 )|| defined( _WIN64 )
             //Disable Dump  for OS Applications
@@ -328,7 +331,7 @@ namespace IGC
 
         void IGC_DEBUG_API_CALL SetShaderCorpusName( CorpusName name )
         {
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
             g_shaderCorpusName = name;
 #else
             (void) name;
@@ -337,7 +340,7 @@ namespace IGC
 
         CorpusName IGC_DEBUG_API_CALL GetShaderCorpusName()
         {
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined( IGC_DEBUG_VARIABLES )
             return g_shaderCorpusName.c_str();
 #else
             return "";
@@ -644,5 +647,7 @@ namespace IGC
         {
             return g_cBuildInfo;
         }
+
+#endif // defined( IGC_EXPORTS ) || defined( IGC_DEBUG_VARIABLES )
     }
 }
