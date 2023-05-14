@@ -277,7 +277,7 @@ namespace IGC {
         bool alignInterfere(e_alignment a1, e_alignment a2);
 
     private:
-        void CoalesceInsertElementsForBasicBlock(llvm::BasicBlock* blk);
+        void CoalesceInsertElements();
 
         void InsEltMapAddValue(llvm::Value* Val) {
             if (InsEltMap.find(Val) == InsEltMap.end()) {
@@ -290,7 +290,8 @@ namespace IGC {
         }
 
         void unionRegs(Node* N1, Node* N2);
-        void CoalesceAliasInstForBasicBlock(llvm::BasicBlock* Blk);
+
+        void CoalesceAliasInst();
         int checkInsertElementAlias(
             llvm::InsertElementInst* IEI,
             llvm::SmallVector<llvm::Value*, 16> & AllIEIs);

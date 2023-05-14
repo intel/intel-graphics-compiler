@@ -394,15 +394,8 @@ bool DeSSA::runOnFunction(Function& MF)
     //  guananteed to be coalesced together at the end of DeSSA. PHI coalescing may
     //  extend those maps by adding other values.
     //
-    for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
-        DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
-        CoalesceAliasInstForBasicBlock(DI->getBlock());
-    }
-
-    for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
-        DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
-        CoalesceInsertElementsForBasicBlock(DI->getBlock());
-    }
+    CoalesceAliasInst();
+    CoalesceInsertElements();
 
     // checkPHILoopInput
     //  PreHeader:
@@ -576,6 +569,133 @@ bool DeSSA::runOnFunction(Function& MF)
     }
     m_F = nullptr;
     return false;
+}
+
+void DeSSA::CoalesceAliasInst()
+{
+    for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
+        DE = df_end(DT->getRootNode()); DI != DE; ++DI)
+    {
+        BasicBlock* Blk = DI->getBlock();
+
+        for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
+            BBI != BBE; ++BBI)
+        {
+            Instruction* I = &(*BBI);
+
+            // We are after patternmatch, would it make more sense to
+            // iterate all patterns instead of instructions ?
+            if (!CG->NeedInstruction(*I)) {
+                continue;
+            }
+
+            if (InsertElementInst* IEI = dyn_cast<InsertElementInst>(I))
+            {
+                if (isa<UndefValue>(I->getOperand(0)))
+                {
+                    SmallVector<Value*, 16> AllIEIs;
+                    int nelts = checkInsertElementAlias(IEI, AllIEIs);
+                    if (nelts > 1)
+                    {
+                        //  Consider the following as an alias if all
+                        //  Vi, i=0, n-1 (except Vn) has a single use.
+                        //     V0 = InsElt undef, S0, 0
+                        //     V1 = InsElt V0, S1, 1
+                        //     ...
+                        //     Vn = InsElt Vn-1, Sn, n
+                        //
+                        //  AliasMap has the following:
+                        //     alias(V0, V0)
+                        //     alias(V1, V0)
+                        //     alias(V2, V0)
+                        //     ......
+                        //     alias(Vn, V0)  <-- V0 is the root!
+                        //
+                        //  Note that elements could be sparse like
+                        //     V0 = InsElt Undef, S1, 1
+                        //     V1 = InsElt V0,    s3, 2
+                        //
+                        Value* aliasee = AllIEIs[0];
+                        AddAlias(aliasee);
+                        for (int i = 1; i < nelts; ++i) {
+                            Value* V = AllIEIs[i];
+                            AliasMap[V] = aliasee;
+
+                            // union liveness info
+                            LV->mergeUseFrom(aliasee, V);
+                        }
+                    }
+                }
+            }
+            if (InsertValueInst* IVI = dyn_cast<InsertValueInst>(I))
+            {
+                // Handle insertValue to struct.
+                //
+                // insertvalue exists when
+                //   1. there are calls to functions with struct-type arguments
+                //      and struct is simple (for example, no struct type as its
+                //      field type) and its size is small (<= 16 bytes ?) so that
+                //      it will be  passed as struct. (Normally, FE will turn a
+                //      larger/not-simple struct arg into a "byval" pointer.)
+                //   2. igc generates it internally
+                coalesceAliasInsertValue(IVI);
+            }
+            else if (CastInst* CastI = dyn_cast<CastInst>(I))
+            {
+                Value* D = CastI;
+                Value* S = CastI->getOperand(0);
+                if (isArgOrNeededInst(S) &&
+                    WIA->whichDepend(D) == WIA->whichDepend(S) &&
+                    isNoOpInst(CastI, CTX))
+                {
+                    if (AliasMap.count(D) == 0) {
+                        AddAlias(S);
+                        Value* aliasee = AliasMap[S];
+                        AliasMap[D] = aliasee;
+
+                        // D will be deleted due to aliasing
+                        NoopAliasMap[D] = 1;
+
+                        // union liveness info
+                        LV->mergeUseFrom(aliasee, D);
+                    }
+                    else {
+                        // Only src operands of a phi can be visited before
+                        // operands' definition. For other instructions such
+                        // as castInst, this shall never happen
+                        IGC_ASSERT_MESSAGE(0, "ICE: Use visited before definition!");
+                    }
+                }
+            }
+            else if (isa<CallInst>(I))
+            {
+                if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I))
+                {
+                    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_bitcastfromstruct &&
+                        !isa<Constant>(GII->getOperand(0)))
+                    {
+                        // special cast just for load/store.
+                        Value* D = GII;
+                        Value* S = GII->getOperand(0);
+
+                        // D must be int or int vector type; S must be struct type.
+                        IGC_ASSERT(D->getType()->getScalarType()->isIntegerTy());
+                        IGC_ASSERT(S->getType()->isStructTy());
+
+                        AddAlias(S);
+                        Value* aliasee = AliasMap[S];
+                        AliasMap[D] = aliasee;
+
+                        // D will be deleted due to aliasing
+                        NoopAliasMap[D] = 1;
+
+                        // union liveness info
+                        LV->mergeUseFrom(aliasee, D);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void DeSSA::addReg(Value* Val, e_alignment Align) {
@@ -1096,44 +1216,49 @@ int getPartialWriteSource(Value *Inst)
 }
 
 void
-DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
+DeSSA::CoalesceInsertElements()
 {
-    for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
-        BBI != BBE; ++BBI) {
-        Instruction* Inst = &(*BBI);
+    for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
+        DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
+        BasicBlock* Blk = DI->getBlock();
 
-        if (!CG->NeedInstruction(*Inst)) {
-            continue;
-        }
-        // Only Aliasee needs to be handled.
-        if (getAliasee(Inst) != Inst) {
-            continue;
-        }
+        for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
+            BBI != BBE; ++BBI) {
+            Instruction* Inst = &(*BBI);
 
-        // For keeping the existing behavior of InsEltMap unchanged
-        auto PWSrcIdx = getPartialWriteSource(Inst);
-        if (PWSrcIdx >= 0)
-        {
-            Value* origSrcV = Inst->getOperand(PWSrcIdx);
-            Value* SrcV = getAliasee(origSrcV);
-            if (SrcV != Inst && isArgOrNeededInst(origSrcV))
+            if (!CG->NeedInstruction(*Inst)) {
+                continue;
+            }
+            // Only Aliasee needs to be handled.
+            if (getAliasee(Inst) != Inst) {
+                continue;
+            }
+
+            // For keeping the existing behavior of InsEltMap unchanged
+            auto PWSrcIdx = getPartialWriteSource(Inst);
+            if (PWSrcIdx >= 0)
             {
-                // union them
-                e_alignment InstAlign = GetPreferredAlignment(Inst, WIA, CTX);
-                e_alignment SrcVAlign = GetPreferredAlignment(SrcV, WIA, CTX);
-                if (!LV->isLiveAt(SrcV, Inst) &&
-                    !alignInterfere(InstAlign, SrcVAlign) &&
-                    (WIA->whichDepend(SrcV) == WIA->whichDepend(Inst)))
+                Value* origSrcV = Inst->getOperand(PWSrcIdx);
+                Value* SrcV = getAliasee(origSrcV);
+                if (SrcV != Inst && isArgOrNeededInst(origSrcV))
                 {
-                    InsEltMapAddValue(SrcV);
-                    InsEltMapAddValue(Inst);
+                    // union them
+                    e_alignment InstAlign = GetPreferredAlignment(Inst, WIA, CTX);
+                    e_alignment SrcVAlign = GetPreferredAlignment(SrcV, WIA, CTX);
+                    if (!LV->isLiveAt(SrcV, Inst) &&
+                        !alignInterfere(InstAlign, SrcVAlign) &&
+                        (WIA->whichDepend(SrcV) == WIA->whichDepend(Inst)))
+                    {
+                        InsEltMapAddValue(SrcV);
+                        InsEltMapAddValue(Inst);
 
-                    Value* SrcVRoot = getInsEltRoot(SrcV);
-                    Value* InstRoot = getInsEltRoot(Inst);
+                        Value* SrcVRoot = getInsEltRoot(SrcV);
+                        Value* InstRoot = getInsEltRoot(Inst);
 
-                    // union them and their liveness info
-                    InsEltMapUnionValue(SrcV, Inst);
-                    LV->mergeUseFrom(SrcVRoot, InstRoot);
+                        // union them and their liveness info
+                        InsEltMapUnionValue(SrcV, Inst);
+                        LV->mergeUseFrom(SrcVRoot, InstRoot);
+                    }
                 }
             }
         }
@@ -1367,125 +1492,6 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
                     }
                 }
             }
-        }
-    }
-}
-
-void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
-{
-    for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
-        BBI != BBE; ++BBI) {
-        Instruction* I = &(*BBI);
-
-        // We are after patternmatch, would it make more sense to
-        // iterate all patterns instead of instructions ?
-        if (!CG->NeedInstruction(*I)) {
-            continue;
-        }
-
-        if (InsertElementInst * IEI = dyn_cast<InsertElementInst>(I))
-        {
-            if (isa<UndefValue>(I->getOperand(0)))
-            {
-                SmallVector<Value*, 16> AllIEIs;
-                int nelts = checkInsertElementAlias(IEI, AllIEIs);
-                if (nelts > 1)
-                {
-                    //  Consider the following as an alias if all
-                    //  Vi, i=0, n-1 (except Vn) has a single use.
-                    //     V0 = InsElt undef, S0, 0
-                    //     V1 = InsElt V0, S1, 1
-                    //     ...
-                    //     Vn = InsElt Vn-1, Sn, n
-                    //
-                    //  AliasMap has the following:
-                    //     alias(V0, V0)
-                    //     alias(V1, V0)
-                    //     alias(V2, V0)
-                    //     ......
-                    //     alias(Vn, V0)  <-- V0 is the root!
-                    //
-                    //  Note that elements could be sparse like
-                    //     V0 = InsElt Undef, S1, 1
-                    //     V1 = InsElt V0,    s3, 2
-                    //
-                    Value* aliasee = AllIEIs[0];
-                    AddAlias(aliasee);
-                    for (int i = 1; i < nelts; ++i) {
-                        Value* V = AllIEIs[i];
-                        AliasMap[V] = aliasee;
-
-                        // union liveness info
-                        LV->mergeUseFrom(aliasee, V);
-                    }
-                }
-            }
-        }
-        if (InsertValueInst* IVI = dyn_cast<InsertValueInst>(I))
-        {
-            // Handle insertValue to struct.
-            //
-            // insertvalue exists when
-            //   1. there are calls to functions with struct-type arguments
-            //      and struct is simple (for example, no struct type as its
-            //      field type) and its size is small (<= 16 bytes ?) so that
-            //      it will be  passed as struct. (Normally, FE will turn a
-            //      larger/not-simple struct arg into a "byval" pointer.)
-            //   2. igc generates it internally
-            coalesceAliasInsertValue(IVI);
-        }
-        else if (CastInst * CastI = dyn_cast<CastInst>(I))
-        {
-            Value* D = CastI;
-            Value* S = CastI->getOperand(0);
-            if (isArgOrNeededInst(S) &&
-                WIA->whichDepend(D) == WIA->whichDepend(S) &&
-                isNoOpInst(CastI, CTX))
-            {
-                if (AliasMap.count(D) == 0) {
-                    AddAlias(S);
-                    Value* aliasee = AliasMap[S];
-                    AliasMap[D] = aliasee;
-
-                    // D will be deleted due to aliasing
-                    NoopAliasMap[D] = 1;
-
-                    // union liveness info
-                    LV->mergeUseFrom(aliasee, D);
-                }
-                else {
-                    // Only src operands of a phi can be visited before
-                    // operands' definition. For other instructions such
-                    // as castInst, this shall never happen
-                    IGC_ASSERT_MESSAGE(0, "ICE: Use visited before definition!");
-                }
-            }
-        }
-        else if (isa<CallInst>(I)) {
-          if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I))
-          {
-            if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_bitcastfromstruct &&
-              !isa<Constant>(GII->getOperand(0)))
-            {
-              // special cast just for load/store.
-              Value* D = GII;
-              Value* S = GII->getOperand(0);
-
-              // D must be int or int vector type; S must be struct type.
-              IGC_ASSERT(D->getType()->getScalarType()->isIntegerTy());
-              IGC_ASSERT(S->getType()->isStructTy());
-
-              AddAlias(S);
-              Value* aliasee = AliasMap[S];
-              AliasMap[D] = aliasee;
-
-              // D will be deleted due to aliasing
-              NoopAliasMap[D] = 1;
-
-              // union liveness info
-              LV->mergeUseFrom(aliasee, D);
-            }
-          }
         }
     }
 }
