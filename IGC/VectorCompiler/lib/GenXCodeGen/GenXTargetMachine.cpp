@@ -102,8 +102,10 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXExtractVectorizerPass(registry);
   initializeGenXVectorCombinerPass(registry);
   initializeGenXFuncBalingPass(registry);
+  initializeGenXFuncLiveElementsPass(registry);
   initializeGenXGEPLoweringPass(registry);
   initializeGenXGroupBalingWrapperPass(registry);
+  initializeGenXGroupLiveElementsWrapperPass(registry);
   initializeGenXIMadPostLegalizationPass(registry);
   initializeGenXLateSimdCFConformanceWrapperPass(registry);
   initializeGenXLegalizationPass(registry);

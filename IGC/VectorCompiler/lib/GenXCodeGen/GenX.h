@@ -84,6 +84,7 @@ FunctionPass *createGenXRegionCollapsingPass();
 FunctionPass *createGenXExtractVectorizerPass();
 FunctionPass *createGenXRawSendRipperPass();
 FunctionPass *createGenXFuncBalingPass(BalingKind Kind, GenXSubtarget *ST);
+FunctionPass *createGenXFuncLiveElementsPass();
 FunctionPass *createGenXPrologEpilogInsertionPass();
 FunctionPass *createGenXLegalizationPass();
 ModulePass *createGenXEmulatePass();
@@ -104,6 +105,7 @@ FunctionPass *createGenXLoadStoreLoweringPass();
 ModulePass *createGenXCategoryWrapperPass();
 ModulePass *createGenXGroupBalingWrapperPass(BalingKind Kind,
                                              GenXSubtarget *ST);
+ModulePass *createGenXGroupLiveElementsWrapperPass();
 ModulePass *createGenXUnbalingWrapperPass();
 ModulePass *createGenXDepressurizerWrapperPass();
 ModulePass *createGenXLateLegalizationWrapperPass();

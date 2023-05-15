@@ -51,6 +51,7 @@ set(CODEGEN_SOURCES
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
   GenXLegalization.cpp
+  GenXLiveElements.cpp
   GenXLiveRanges.cpp
   GenXLiveness.cpp
   GenXLoadStoreLowering.cpp
