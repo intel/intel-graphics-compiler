@@ -148,7 +148,7 @@ protected:
   bool evenlySplitInst : 1;
   bool doPostRA : 1; // for NoMaskWA
   bool canBeAcc : 1; // The inst can be ACC, including the inst's dst
-                               // and the use operands in the DU chain.
+                     // and the use operands in the DU chain.
   G4_ExecSize execSize;
 
   // make it private so only the IR_Builder can create new instructions
@@ -157,6 +157,7 @@ protected:
 
   // link to builder to access the various compilation options
   const IR_Builder &builder;
+
 public:
   enum SWSBTokenType {
     TOKEN_NONE,
@@ -327,7 +328,9 @@ public:
   bool isFReturn() const { return (op == G4_pseudo_fret); }
   bool isMath() const { return op == G4_math; }
   bool isIntrinsic() const { return op == G4_intrinsic; }
-  bool isSend() const {return op == G4_send || op == G4_sendc || isSplitSend();}
+  bool isSend() const {
+    return op == G4_send || op == G4_sendc || isSplitSend();
+  }
   // does the send split output payload into src0 and src1
   bool isSplitSend() const {
     return op == G4_sends || op == G4_sendsc;
@@ -449,8 +452,9 @@ public:
   // Note that def-use chain is not maintained after this; call swapDefUse
   // if you want to update the du-chain.
   void swapSrc(int src1, int src2) {
-    vISA_ASSERT((src1 >= 0 && src1 < getNumSrc() && src2 >= 0 &&
-          src2 < getNumSrc()), "illegal src number");
+    vISA_ASSERT(
+        (src1 >= 0 && src1 < getNumSrc() && src2 >= 0 && src2 < getNumSrc()),
+        "illegal src number");
     std::swap(srcs[src1], srcs[src2]);
   }
 
@@ -481,12 +485,14 @@ public:
   }
 
   void setOptionOn(G4_InstOption o) {
-    vISA_ASSERT(!isMaskOption(o),  "use setMaskOption() to change emask instead");
+    vISA_ASSERT(!isMaskOption(o),
+                "use setMaskOption() to change emask instead");
     option |= o;
   }
 
   void setOptionOff(G4_InstOption o) {
-    vISA_ASSERT(!isMaskOption(o),  "use setMaskOption() to change emask instead");
+    vISA_ASSERT(!isMaskOption(o),
+                "use setMaskOption() to change emask instead");
     option &= (~o);
   }
   unsigned int getOption() const { return option; }
@@ -1162,10 +1168,9 @@ public:
   // desc is either imm or a0.0 and in src2
   // extDesc is either imm or a0.N and in src3
   G4_InstSend(const IR_Builder &builder, G4_Predicate *prd, G4_opcode o,
-              G4_ExecSize execSize, G4_DstRegRegion *dst,
-              G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
-              G4_Operand *src2desc, G4_Operand *src3extDesc,
-              G4_InstOpts opt, G4_SendDescRaw *md);
+              G4_ExecSize execSize, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
+              G4_SrcRegRegion *src1, G4_Operand *src2desc,
+              G4_Operand *src3extDesc, G4_InstOpts opt, G4_SendDescRaw *md);
 
   G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
@@ -1190,7 +1195,7 @@ public:
 
   // returns the number of effective srcs that may come from GRFS
   // for ancient unary send this is only 1; sends allows 2
-  int getNumSrcPayloads() const {return isSplitSend() ? 2 : 1;}
+  int getNumSrcPayloads() const { return isSplitSend() ? 2 : 1; }
 
   G4_SendDesc *getMsgDesc() const override { return msgDesc; }
 
@@ -1233,7 +1238,7 @@ public:
 
   void setSerialize() { option = option | InstOpt_Serialize; }
   bool isSerializedInst() const { return (option & InstOpt_Serialize) != 0; }
-}; // G4_InstSend
+};     // G4_InstSend
 
 } // namespace vISA
 
@@ -1284,38 +1289,48 @@ enum class Phase {
   BinaryEncoding
 };
 
+// bit-field enum for various intrinsic properties, i.e., 1 << Property gives
+// its bit offset.
+// TODO: Would it make sense to unify it with G4_INST's attributes?
+enum IntrinsicFlags { HasSideEffects = 0 };
+
 struct IntrinsicInfo {
   Intrinsic id;
   const char *name;
   int numDst;
   int numSrc;
   Phase loweredBy; // intrinsic must be lowered before entering this phase
-};
-
-static constexpr IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] = {
-    //  id  name   numDst   numSrc  loweredBy
-    {Intrinsic::Wait, "wait", 0, 0, Phase::Optimizer},
-    {Intrinsic::Use, "use", 0, 1, Phase::Scheduler},
-    {Intrinsic::MemFence, "mem_fence", 0, 0, Phase::BinaryEncoding},
-    {Intrinsic::PseudoKill, "pseudo_kill", 1, 1, Phase::RA},
-    {Intrinsic::PseudoUse, "pseudo_use", 0, 1, Phase::RA},
-    {Intrinsic::Spill, "spill", 1, 2, Phase::RA},
-    {Intrinsic::Fill, "fill", 1, 1, Phase::RA},
-    {Intrinsic::Split, "split", 1, 1, Phase::RA},
-    {Intrinsic::CallerSave, "caller_save", 1, 0, Phase::RA},
-    {Intrinsic::CallerRestore, "caller_restore", 0, 1, Phase::RA},
-    {Intrinsic::CalleeSave, "callee_save", 1, 0, Phase::RA},
-    {Intrinsic::CalleeRestore, "callee_restore", 0, 1, Phase::RA},
-    {Intrinsic::FlagSpill, "flagSpill", 0, 1, Phase::RA},
-    {Intrinsic::PseudoAddrMov, "pseudo_addr_mov", 1, 8, Phase::BinaryEncoding},
-    {Intrinsic::NamedBarrierWA, "namedBarrierWA", 1, 1, Phase::SWSB},
-    {Intrinsic::BarrierWA, "barrierWA", 1, 0, Phase::SWSB},
-    {Intrinsic::IEEEExceptionTrap, "ieee_exception_trap", 1, 0, Phase::SWSB},
+  uint64_t flags;
 };
 
 namespace vISA {
 class G4_InstIntrinsic : public G4_INST {
   const Intrinsic intrinsicId;
+
+  static constexpr IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
+      {
+          //  id  name   numDst   numSrc  loweredBy
+          {Intrinsic::Wait, "wait", 0, 0, Phase::Optimizer, 0},
+          {Intrinsic::Use, "use", 0, 1, Phase::Scheduler, 0},
+          {Intrinsic::MemFence, "mem_fence", 0, 0, Phase::BinaryEncoding,
+           1ull << HasSideEffects},
+          {Intrinsic::PseudoKill, "pseudo_kill", 1, 1, Phase::RA, 0},
+          {Intrinsic::PseudoUse, "pseudo_use", 0, 1, Phase::RA, 0},
+          {Intrinsic::Spill, "spill", 1, 2, Phase::RA, 0},
+          {Intrinsic::Fill, "fill", 1, 1, Phase::RA, 0},
+          {Intrinsic::Split, "split", 1, 1, Phase::RA, 0},
+          {Intrinsic::CallerSave, "caller_save", 1, 0, Phase::RA, 0},
+          {Intrinsic::CallerRestore, "caller_restore", 0, 1, Phase::RA, 0},
+          {Intrinsic::CalleeSave, "callee_save", 1, 0, Phase::RA, 0},
+          {Intrinsic::CalleeRestore, "callee_restore", 0, 1, Phase::RA, 0},
+          {Intrinsic::FlagSpill, "flagSpill", 0, 1, Phase::RA, 0},
+          {Intrinsic::PseudoAddrMov, "pseudo_addr_mov", 1, 8,
+           Phase::BinaryEncoding, 0},
+          {Intrinsic::NamedBarrierWA, "namedBarrierWA", 1, 1, Phase::SWSB, 0},
+          {Intrinsic::BarrierWA, "barrierWA", 1, 0, Phase::SWSB, 0},
+          {Intrinsic::IEEEExceptionTrap, "ieee_exception_trap", 1, 0,
+           Phase::SWSB, 0},
+      };
 
 public:
   G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
@@ -1348,6 +1363,10 @@ public:
   }
 
   void computeRightBound(G4_Operand *opnd) override;
+  bool hasSideEffects() const {
+    return G4_Intrinsics[(int)intrinsicId].flags &
+           (1ull << IntrinsicFlags::HasSideEffects);
+  }
 };
 // place for holding all physical register operands
 //

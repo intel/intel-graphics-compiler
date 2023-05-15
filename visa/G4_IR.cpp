@@ -2967,14 +2967,13 @@ bool G4_INST::isOptBarrier() const {
     return true;
   }
 
-  if (isIntrinsic() &&
-      asIntrinsicInst()->getIntrinsicId() == Intrinsic::MemFence) {
+  if (isIntrinsic() && asIntrinsicInst()->hasSideEffects()) {
     return true;
   }
 
   // any instructions that access special ARFs is considered a opt barrier
   // this includes any ARF that is not address/flag/acc
-  if (dst != NULL) {
+  if (dst) {
     if (dst->isAreg()) {
       if (dst->isNReg() || dst->isSrReg() || dst->isCrReg() || dst->isTmReg() ||
           dst->isTDRReg()) {
@@ -7319,7 +7318,7 @@ G4_INST *G4_InstIntrinsic::cloneInst(const IR_Builder *b) {
 }
 
 unsigned G4_InstIntrinsic::getDstByteSize() const {
-  vASSERT(G4_Intrinsics[(int)intrinsicId].numDst == 1 && getDst());
+  vASSERT(getNumDst() == 1 && getDst());
   switch (intrinsicId) {
     case Intrinsic::NamedBarrierWA:
     case Intrinsic::BarrierWA:
