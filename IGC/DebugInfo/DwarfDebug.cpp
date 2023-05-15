@@ -46,7 +46,6 @@ See LICENSE.TXT for details.
 #include "DwarfCompileUnit.hpp"
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
-#include "Utils.hpp"
 #include "VISAModule.hpp"
 #include "VISADebugInfo.hpp"
 
@@ -960,9 +959,8 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit *DIUnit) {
     producer = strProducer.data();
   }
   NewCU->addString(Die, dwarf::DW_AT_producer, producer);
-
   NewCU->addUInt(Die, dwarf::DW_AT_language, dwarf::DW_FORM_data2,
-                 getSourceLanguage(DIUnit, GetVISAModule()->GetModule()));
+                 DIUnit->getSourceLanguage());
   NewCU->addString(Die, dwarf::DW_AT_name, FN);
 
   ModuleBeginSym = Asm->GetTempSymbol("module_begin", NewCU->getUniqueID());

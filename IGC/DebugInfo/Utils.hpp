@@ -14,8 +14,6 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
-#include "llvm/IR/Module.h"
-
 namespace IGC {
 
 template <class ContainerType, class BinaryFunction,
@@ -32,29 +30,6 @@ static void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit,
     const auto &Val = FoundIt->second;
     Visit(Key, Val);
   }
-}
-
-constexpr int32_t SOURCE_LANG_LITERAL_MD_IS_NOT_PRESENT = -1;
-
-inline int32_t getSourceLangLiteralMDValue(const llvm::Module &module) {
-  auto sourceLangLiteral = module.getModuleFlag("Source Lang Literal");
-  if (!sourceLangLiteral) {
-    return SOURCE_LANG_LITERAL_MD_IS_NOT_PRESENT;
-  }
-
-  auto constantAsMetadata = llvm::cast<llvm::ConstantAsMetadata>(
-      llvm::cast<llvm::MDNode>(sourceLangLiteral)->getOperand(2));
-  return int32_t(llvm::cast<llvm::ConstantInt>(constantAsMetadata->getValue())
-                     ->getZExtValue());
-}
-
-inline uint16_t getSourceLanguage(llvm::DICompileUnit *compileUnit,
-                                  const llvm::Module *module) {
-  int32_t sourceLanguage = getSourceLangLiteralMDValue(*module);
-  if (sourceLanguage < 0) {
-    sourceLanguage = compileUnit->getSourceLanguage();
-  }
-  return uint16_t(sourceLanguage);
 }
 
 } // namespace IGC
