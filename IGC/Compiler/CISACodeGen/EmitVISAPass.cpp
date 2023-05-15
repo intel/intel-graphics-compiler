@@ -808,6 +808,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, hasAdditionalVisaAsmToLink, numThreadsPerEU, prevKernel);
+
+        if (!m_encoder->IsCodePatchCandidate())
+            createVMaskPred(m_vMaskPredForSubplane);
+
         initDefaultRoundingMode();
         m_currShader->PreCompile();
 
@@ -1887,7 +1891,6 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
         m_encoder->SetSrcSubReg(1, 4);
         m_encoder->SetNoMask();
 
-
         m_encoder->SetDstModifier(modifier);
         m_encoder->SetDstSubReg(4);
         m_encoder->Add(temp, src, src);
@@ -1957,7 +1960,6 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
             m_encoder->SetDstSubReg(20);
             m_encoder->Add(temp, src, src);
             m_encoder->Push();
-
 
             m_encoder->SetSimdSize(SIMDMode::SIMD4);
             m_encoder->SetSrcModifier(0, src_mod0);
@@ -4155,6 +4157,8 @@ void EmitPass::EmitGenericPointersCmp(llvm::Instruction* inst,
 
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
+    UseVMaskPred();
+
     switch (inst->getOpcode())
     {
     case Instruction::FCmp:
@@ -4573,6 +4577,7 @@ void EmitPass::Unary(e_opcode opCode, const SSource sources[1], const DstModifie
 template<int N>
 void EmitPass::Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier)
 {
+    UseVMaskPred();
 
     CVariable* srcs[3] = { nullptr, nullptr, nullptr };
     for (uint i = 0; i < N; i++)
@@ -4697,6 +4702,43 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
     }
 }
 
+void EmitPass::createVMaskPred(CVariable*& predicate)
+{
+    uint32_t debug = IGC_GET_FLAG_VALUE(VMaskPredDebug);
+    if (debug < 1)
+        return;
+
+    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) && (predicate == nullptr))
+    {
+        // Copy VMASK to a predicate
+        // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
+        predicate = m_currShader->GetNewVariable(
+            numLanes(m_SimdMode),
+            ISA_TYPE_BOOL,
+            EALIGN_DWORD,
+            true,
+            "VectorMaskPredicate");
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcSubReg(0, 3);
+        m_encoder->SetP(predicate, m_currShader->GetSR0());
+        m_encoder->Push();
+    }
+}
+
+void EmitPass::UseVMaskPred()
+{
+    uint32_t debug = IGC_GET_FLAG_VALUE(VMaskPredDebug);
+    if (debug < 2)
+        return;
+
+    bool subspan = m_encoder->IsSubSpanDestination();
+    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) && m_vMaskPredForSubplane &&
+        subspan && !m_destination->IsUniform())
+    {
+        m_encoder->SetPredicate(m_vMaskPredForSubplane);
+    }
+}
+
 
 void EmitPass::emitPlnInterpolation(CVariable* baryVar, CVariable* inputvar)
 {
@@ -4704,6 +4746,8 @@ void EmitPass::emitPlnInterpolation(CVariable* baryVar, CVariable* inputvar)
 
     for (unsigned int i = 0; i < numPln; i++)
     {
+        UseVMaskPred();
+
         // plane will access 4 operands
         m_encoder->SetSrcRegion(0, 0, 4, 1);
         m_encoder->Pln(m_destination, inputvar, baryVar);

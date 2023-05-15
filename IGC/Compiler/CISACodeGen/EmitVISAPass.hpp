@@ -361,6 +361,9 @@ public:
     void emitDiscardBranch(llvm::BranchInst* br, const SSource& cond);
     void emitAluNoModifier(llvm::GenIntrinsicInst* inst);
 
+    void createVMaskPred(CVariable*& predicate);
+    void UseVMaskPred();
+    CVariable* m_vMaskPredForSubplane = nullptr;
 
     void emitGradientX(const SSource& source, const DstModifier& modifier);
     void emitGradientY(const SSource& source, const DstModifier& modifier);

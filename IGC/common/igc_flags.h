@@ -391,6 +391,8 @@ DECLARE_IGC_REGKEY(bool, UseMTInLLD,                    false, "Use multi-thread
 DECLARE_IGC_REGKEY(bool, NoCatchAllDebugLine,           false, "Don't emit special placeholder instruction to map VISA orphan instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableTestSplitI64,            false, "Test legalization that split i64 store unnecessarily, to be deleted once test is done", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpTranslationOnly,     false, "Dump LLVM IR right after translation from SPIRV to stderr and ignore all passes", false)
+DECLARE_IGC_REGKEY(bool, UseVMaskPredicate,             false, "Use VMask as predicate for subspan usage", false)
+DECLARE_IGC_REGKEY(DWORD, VMaskPredDebug,               2,     "Debug only; 0 - No VMaskPred; 1 - createVMaskPred; 2 - createVMaskPred and UseVMaskPred", false)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode", true)
