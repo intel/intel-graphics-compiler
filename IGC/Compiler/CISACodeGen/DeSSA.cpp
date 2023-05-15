@@ -644,9 +644,31 @@ void DeSSA::CoalesceAliasInst()
             {
                 Value* D = CastI;
                 Value* S = CastI->getOperand(0);
+                // For vector bitcase, if both D and S are uniform, they have
+                // the same layout in GRF and can be aliased.
+                //
+                // For now, only do it if S's element type is larger; otherwise
+                // visa variable's alignment might use the smaller element type
+                // and it is not clear what is a clean way to fix that.
+                // For example:
+                //    b = bitcast i64 to <2xi32>
+                // it is okay, but the following isn't
+                //    b = bitcast <2xi32> to i64
+                Type* dTy = D->getType();
+                Type* sTy = S->getType();
+                IGCLLVM::FixedVectorType* dVTy = dyn_cast<IGCLLVM::FixedVectorType>(dTy);
+                IGCLLVM::FixedVectorType* sVTy = dyn_cast<IGCLLVM::FixedVectorType>(sTy);
+                int d_nelts = dVTy ? (int)dVTy->getNumElements() : 1;
+                int s_nelts = sVTy ? (int)sVTy->getNumElements() : 1;
+                const bool canAliasVecCast = (!dVTy || sVTy) &&
+                    d_nelts > s_nelts &&  // S's element type is larger
+                    !isa<PointerType>(dTy->getScalarType()) &&
+                    !isa<PointerType>(sTy->getScalarType());
+
                 if (isArgOrNeededInst(S) &&
                     WIA->whichDepend(D) == WIA->whichDepend(S) &&
-                    isNoOpInst(CastI, CTX))
+                    (isNoOpInst(CastI, CTX) ||
+                        (WIA->isUniform(D) && canAliasVecCast)))
                 {
                     if (AliasMap.count(D) == 0) {
                         AddAlias(S);
