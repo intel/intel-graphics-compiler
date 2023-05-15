@@ -628,6 +628,11 @@ void PreCompiledFuncImport::removeLLVMModuleFlag(Module* M)
 
 bool PreCompiledFuncImport::runOnModule(Module& M)
 {
+    // When we test it, we need to set emuKind
+    if (IGC_IS_FLAG_ENABLED(TestIGCPreCompiledFunctions))
+    {
+        m_emuKind = EmuKind::EMU_DP;
+    }
     // sanity check
     if (m_emuKind == 0) {
         // Nothing to emulate

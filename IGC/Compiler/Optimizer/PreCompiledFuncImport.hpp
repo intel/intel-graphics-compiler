@@ -228,7 +228,7 @@ namespace IGC
         const static char* m_Int32EmuFunctionNames[NUM_INT32_EMU_FUNCTIONS];
 
         /// @brief  Kind of emulations. Its bits are defined by EmuKind.
-        const uint32_t m_emuKind;
+        uint32_t m_emuKind;
         bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
         bool isDPDivSqrtEmu() const { return (m_emuKind & EmuKind::EMU_DP_DIV_SQRT) > 0; }
         bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
