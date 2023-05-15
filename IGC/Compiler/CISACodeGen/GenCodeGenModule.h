@@ -146,9 +146,17 @@ namespace IGC {
         bool hasVariableLengthAlloca() const {
             return m_hasVariableLengthAlloca;
         }
-        /// \brief Function group has indirect calls
+        /// \brief Function group has indirect calls (i.e. calls functions in the Indirect Function Group)
         bool hasIndirectCall() const {
             return m_hasIndirectCall;
+        }
+        /// \brief Function group has nested calls
+        bool hasNestedCall() const {
+            return m_hasNestedCall;
+        }
+        /// \brief Function group has indirect calls where the CG is not available (e.g. calls function pointer, or callees in external module)
+        bool hasCGAvailable() const {
+            return m_hasCGAvailable;
         }
         /// \brief Function group has recursion
         bool hasRecursion() const {
@@ -174,6 +182,8 @@ namespace IGC {
         bool m_hasVariableLengthAlloca = false;
         bool m_hasIndirectCall = false;
         bool m_hasRecursion = false;
+        bool m_hasNestedCall = false;
+        bool m_hasCGAvailable = true;
         bool SIMDModeValid[3] = {true, true, true};
     };
 

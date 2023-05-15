@@ -615,18 +615,40 @@ bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
 
 void GenXFunctionGroupAnalysis::setGroupAttributes()
 {
+    auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
     for (auto FG : Groups)
     {
+        if (FG == IndirectCallGroup)
+        {
+            // The indirect call group is not a true function group, in that the functions in this group does not have
+            // a valid callgraph that connects them. It's a dummy group where all indirectly called functions are contained.
+            // Therefore, the group attributes are not valid here, since they are not connected to the true groupHead, which
+            // is the caller kernel. We unset all the FG flags for this group.
+            //
+            // Note, indirect functions in this group can still directly call stackcalls or subroutines, which may also belong
+            // to this group due to cloning. However we still can't associate all functions in this group with a single callgraph.
+
+            // All other flags are already unset by default
+            FG->m_hasCGAvailable = false;
+            continue;
+        }
+
         for (const Function* F : *FG)
         {
-            // Ignore indirect functions
             if (F->hasFnAttribute("referenced-indirectly"))
             {
+                IGC_ASSERT_MESSAGE(0, "Indirectly referenced function not moved to IndirectCallGroup!");
                 continue;
             }
-            else if (F->hasFnAttribute("visaStackCall"))
+
+            if (F->hasFnAttribute("visaStackCall"))
             {
                 FG->m_hasStackCall = true;
+                if (!isLeafFunc(F))
+                {
+                    FG->m_hasNestedCall = true;
+                }
             }
 
             // check all functions in the group to see if there's an vla alloca
@@ -649,6 +671,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                 if (const CallInst* call = dyn_cast<CallInst>(&*ii))
                 {
                     Function* calledF = call->getCalledFunction();
+                    bool hasStackCall = calledF && calledF->hasFnAttribute("visaStackCall");
                     if (call->isInlineAsm())
                     {
                         // Uses inline asm call
@@ -657,22 +680,28 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                     else if (!calledF || (calledF->isDeclaration() && calledF->hasFnAttribute("referenced-indirectly")))
                     {
                         // This is the true indirect call case, where either the callee's address is taken, or it belongs
-                        // to an external module. We do not know the callgraph in this case, so set the indirectcall flag.
-                        FG->m_hasStackCall = true;
+                        // to an external module. We do not know the callgraph in this case.
+                        hasStackCall = true;
                         FG->m_hasIndirectCall = true;
+                        FG->m_hasCGAvailable = false;
                     }
                     else if (calledF && calledF->hasFnAttribute("referenced-indirectly"))
                     {
                         // This is the case where the callee has the "referenced-indirectly" attribute, but we still
-                        // see the callgraph. The callee may not belong to the same FG as the caller, but it still
-                        // counts as a stackcall.
-                        FG->m_hasStackCall = true;
+                        // see the callgraph. The callee may not belong to the same FG as the caller, but it's CG is still available.
+                        hasStackCall = true;
+                        FG->m_hasIndirectCall = true;
                     }
                     else if (calledF && calledF->isDeclaration() && calledF->hasFnAttribute("invoke_simd_target"))
                     {
                         // Invoke_simd targets use stack call by convention.
-                        FG->m_hasStackCall = true;
+                        hasStackCall = true;
+                        FG->m_hasIndirectCall = true;
+                        FG->m_hasCGAvailable = false;
                     }
+
+                    FG->m_hasStackCall |= hasStackCall;
+                    FG->m_hasNestedCall |= (!isEntryFunc(pMdUtils, F) && hasStackCall);
                 }
             }
         }
