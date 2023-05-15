@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,16 +36,27 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f32_f32, )( float y, float x 
 
     if(__FastRelaxedMath && (!__APIRS))
     {
-        // Implemented as:
-        //  atan(y/x) for x > 0,
-        //  atan(y/x) + M_PI_F for x < 0 and y > 0, and
-        //  atan(y/x) -M_PI_F for x < 0 and y < 0.
-        float px = SPIRV_OCL_BUILTIN(atan, _f32, )( y / x );
-        float py = px + M_PI_F;
-        float ny = px - M_PI_F;
-
-        result = ( y > 0 ) ? py : ny;
-        result = ( x > 0 ) ? px : result;
+        // This works in all special points except when (y, x) are both zeroes
+        //
+        // input;              implementation;        reference;            rel.error
+        // y =  0, x = -1;     3.141592741012573;     3.1415926535897931;    2.78e-08
+        // y = -0, x = -1;    -3.141592741012573;    -3.1415926535897931;    2.78e-08
+        // y =  0, x =  1;    -0.000000000000000;     0.0000000000000000;           0
+        // y = -0, x =  1;     0.000000000000000;    -0.0000000000000000;           0
+        // y = -1, x =  0;    -1.570796370506287;    -1.5707963267948966;    2.78e-08
+        // y = -1, x = -0;    -1.570796370506287;    -1.5707963267948966;    2.78e-08
+        // y =  1, x =  0;     1.570796370506287;     1.5707963267948966;    2.78e-08
+        // y =  1, x = -0;     1.570796370506287;     1.5707963267948966;    2.78e-08
+        //
+        // y =  0, x = -0;     nan;                   3.1415926535897931;         nan
+        // y = -0, x = -0;    -nan;                  -3.1415926535897931;         nan
+        // y =  0, x =  0;     nan;                   0.0000000000000000;         nan
+        // y = -0, x =  0;    -nan;                  -0.0000000000000000;         nan
+        float px = SPIRV_OCL_BUILTIN(atan, _f32, )(y / x);
+        float c = (x >= 0.0f) ? 0.0f : SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(M_PI_F, x * px);
+        result = px + c;
+        result = (0.0f == x) ? result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(result, y) : result;
+        result = (0.0f == y) ? result = SPIRV_OCL_BUILTIN(copysign, _f32_f32, )(result, -x * y) : result;
     }
     else
     {
