@@ -31,13 +31,15 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
-  void print(raw_ostream &OS, const Module *M) const override;
   void releaseMemory() override { m_Divergent.clear(); }
+
+  void print(raw_ostream &OS) const;
 
   bool isUniform(BasicBlock &BB) const {
     IGC_ASSERT(BB.getParent() == F);
     return m_Divergent.find(&BB) == m_Divergent.end();
   }
+
 
 private:
   Function *F = nullptr;

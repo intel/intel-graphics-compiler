@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 #include "GenXGlobalUniform.h"
+#include "GenXUtil.h"
 #include "GenX.h"
 
 #include "llvm/IR/InstIterator.h"
@@ -16,6 +17,10 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "GENX_GLOBAL_UNIFORM"
 
 using namespace llvm;
+
+static cl::opt<bool>
+    PrintGlobalUniform("print-global-uniform-info", cl::init(false), cl::Hidden,
+                       cl::desc("Print GenXGlobalUniform analysis results"));
 
 char GenXGlobalUniformAnalysis::ID = 0;
 
@@ -36,7 +41,7 @@ void GenXGlobalUniformAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
 }
 
-void GenXGlobalUniformAnalysis::print(raw_ostream &OS, const Module *M) const {
+void GenXGlobalUniformAnalysis::print(raw_ostream &OS) const {
   OS << "Non-uniform basic blocks:\n";
   for (auto *BB : m_Divergent)
     OS << "\t" << BB->getName() << "\n";
@@ -120,6 +125,9 @@ bool GenXGlobalUniformAnalysis::runOnFunction(Function &F) {
       Stack.push(cast<Value>(U));
     }
   }
+
+  if (PrintGlobalUniform)
+    print(outs());
 
   return false;
 }

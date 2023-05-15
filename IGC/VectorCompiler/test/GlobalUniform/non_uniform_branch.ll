@@ -5,10 +5,10 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: opt %use_old_pass_manager% -GenXGlobalUniformAnalysis -analyze \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
-; CHECK: Printing analysis 'GenXGlobalUniformAnalysis' for function 'test':
-; CHECK-NEXT: Non-uniform basic blocks:
+; RUN: opt %use_old_pass_manager% -GenXGlobalUniformAnalysis -print-global-uniform-info \
+; RUN: -march=genx64 -mcpu=Gen9 -disable-output -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+
+; CHECK: Non-uniform basic blocks:
 ; CHECK-DAG: BB1
 ; CHECK-DAG: BB2
 ; CHECK-DAG: BB3
