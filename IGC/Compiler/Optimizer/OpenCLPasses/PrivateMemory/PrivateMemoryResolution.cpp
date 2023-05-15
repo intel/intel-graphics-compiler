@@ -158,6 +158,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         }
         bool hasStackCall = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasStackCall()) || m_currFunction->hasFnAttribute("visaStackCall");
         bool hasVLA = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasVariableLengthAlloca()) || m_currFunction->hasFnAttribute("hasVLA");
+        bool isIndirectGroup = FGA && FGA->getGroup(m_currFunction) && isIntelSymbolTableVoidProgram(FGA->getGroupHead(m_currFunction));
         if (Ctx.platform.hasScratchSurface() &&
             modMD.compOpt.UseScratchSpacePrivateMemory)
         {
@@ -175,7 +176,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
 #endif
         }
         // Resolve collected alloca instructions for current function
-        changed |= resolveAllocaInstructions(hasStackCall || hasVLA);
+        changed |= resolveAllocaInstructions(hasStackCall || hasVLA || isIndirectGroup);
 
         // Initialize the stack mem usage per function group to the kernel's privateMemPerWI
         if (isEntryFunc(m_pMdUtils, m_currFunction))
