@@ -115,7 +115,8 @@ CustomUnsafeOptPass::CustomUnsafeOptPass()
 
 bool CustomUnsafeOptPass::runOnFunction(Function& F)
 {
-    if (IGC_IS_FLAG_ENABLED(DisableCustomUnsafeOpt))
+    if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.disableCustomUnsafeOpts ||
+        IGC_IS_FLAG_ENABLED(DisableCustomUnsafeOpt))
     {
         return false;
     }

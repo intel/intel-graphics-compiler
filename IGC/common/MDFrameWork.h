@@ -377,6 +377,7 @@ namespace IGC
         unsigned VISAPreSchedRPThreshold           = 0;
         unsigned SetLoopUnrollThreshold            = 0;
         bool UnsafeMathOptimizations                    = false;
+        bool disableCustomUnsafeOpts                    = false;
         bool FiniteMathOnly                             = false;
         bool FastRelaxedMath                            = false;
         bool DashGSpecified                             = false;
