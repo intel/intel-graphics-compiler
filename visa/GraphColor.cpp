@@ -3833,7 +3833,15 @@ void Augmentation::buildLiveIntervals() {
       for (auto block : loopBody) {
         // FIXME: this may process a BB multiple times
         for (auto succBB : block->Succs) {
-          if (loopBody.find(succBB) == loopBody.end()) {
+          // A subroutine call BB's successor is callee's INIT BB.
+          // Loop data structure doesn't include callee BB. So
+          // succBB not part of loop may still be INIT BB of callee.
+          // Such an INIT BB shouldn't be treated as a loop exit
+          // for live-range extension. If we don't check for INIT BB
+          // we end up extending RET__loc range to loop header
+          // which isn't correct.
+          if (loopBody.find(succBB) == loopBody.end() &&
+              (succBB->getBBType() & G4_BB_INIT_TYPE) == 0) {
             G4_BB *exitBB = succBB;
 
             unsigned latchBBId = (backEdge.first)->getId();
