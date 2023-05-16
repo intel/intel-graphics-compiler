@@ -239,3 +239,4 @@ void initializeRemoveCodeAssumptionsPass(llvm::PassRegistry&);
 void initializePromoteBoolsPass(llvm::PassRegistry&);
 void initializeResolveConstExprCallsPass(llvm::PassRegistry&);
 void initializeHandleSpirvDecorationMetadataPass(llvm::PassRegistry&);
+void initializeNontemporalLoadsAndStoresInAssertPass(llvm::PassRegistry&);

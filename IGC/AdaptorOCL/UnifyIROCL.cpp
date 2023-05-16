@@ -93,6 +93,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelFunctionCloning.h"
+#include "Compiler/Optimizer/OpenCLPasses/NontemporalLoadsAndStoresInAssert/NontemporalLoadsAndStoresInAssert.hpp"
 #include "Compiler/Legalizer/TypeLegalizerPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/Image3dToImage2darray/Image3dToImage2darray.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/RewriteLocalSize/RewriteLocalSize.hpp"
@@ -406,6 +407,9 @@ static void CommonOCLBasedPasses(
         Mask.setFast();
         Mask.setNoSignedZeros(false);
         mpm.add(new SetFastMathFlags(Mask, true));
+
+        // mark load and stores inside assert calls as nontemporal to avoid caching.
+        mpm.add(new NontemporalLoadsAndStoresInAssert());
 
         // Report undef references after setting func attribs for import linking
         mpm.add(new UndefinedReferencesPass());
