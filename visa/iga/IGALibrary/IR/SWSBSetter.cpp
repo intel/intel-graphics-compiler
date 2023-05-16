@@ -929,8 +929,21 @@ void SWSBAnalyzer::postProcess() {
           // insert distance dependency to the instruction following the block
           InstListIterator next = inst_it;
           next++;
-          if (next == instList.end())
+          // if the last instruction in the atomic block is the last instruction
+          // in the BB, insert a sync.nop to carry the required SWSB info
+          // For example:
+          //      BB0:
+          //      (W) mov (32|M0)  r13.0<2>:ub   r50.0<1;1,0>:uw   {Atomic}
+          //      (W) mov (32|M0)  r13.1<2>:ub   r52.0<1;1,0>:uw   {Atomic}
+          //      (W) mov (32|M0)  r13.2<2>:ub   r54.0<1;1,0>:uw   {Atomic}
+          //      (W) mov (32|M0)  r13.3<2>:ub   r56.0<1;1,0>:uw
+          //      (W) sync.nop  {I@1} // insert nop
+          //      BB1:
+          //          add (1)      r13.0<1>:df   r100.0<0;1,0>:df
+          if (next == instList.end()) {
+            instList.push_back(m_kernel.createSyncNopInstruction(allDistSWSB));
             break;
+          }
           addSWSBToInst(next, allDistSWSB, *bb);
         }
       }
