@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 
 #include <memory>
 #include <iomanip>
+#include <signal.h>
+#include <setjmp.h>
 
 #include "cif/builtins/memory/buffer/impl/buffer_impl.h"
 #include "cif/helpers/error.h"
@@ -396,6 +398,57 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return outputInterface.release();
     }
 
+    OclTranslationOutputBase* GetErrorOutput(CIF::Version_t outVersion, unsigned int code) const
+    {
+        auto outputInterface = CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
+        if (outputInterface == nullptr) {
+            return nullptr; // OOM
+        }
+        const char* outputMessage;
+        switch (code) {
+#if defined(WIN32)
+        case EXCEPTION_ACCESS_VIOLATION:
+            outputMessage = "IGC: Internal Compiler Error: Access violation";
+            break;
+        case EXCEPTION_DATATYPE_MISALIGNMENT:
+            outputMessage = "IGC: Internal Compiler Error: Datatype misalignement";
+            break;
+        case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+        case EXCEPTION_INT_DIVIDE_BY_ZERO:
+            outputMessage = "IGC: Internal Compiler Error: Divide by zero";
+            break;
+        case EXCEPTION_STACK_OVERFLOW:
+            outputMessage = "IGC: Internal Compiler Error: Stack overflow";
+            break;
+#else
+        case SIGABRT:
+            outputMessage = "IGC: Internal Compiler Error: Abnormal termination";
+            break;
+        case SIGFPE:
+            outputMessage = "IGC: Internal Compiler Error: Floating point exception";
+            break;
+        case SIGILL:
+            outputMessage = "IGC: Internal Compiler Error: Invalid instruction";
+            break;
+        case SIGINT:
+            outputMessage = "IGC: Internal Compiler Error: Interrupt request sent to the program";
+            break;
+        case SIGSEGV:
+            outputMessage = "IGC: Internal Compiler Error: Segmentation violation";
+            break;
+        case SIGTERM:
+            outputMessage = "IGC: Internal Compiler Error: Termination request sent to the program";
+            break;
+#endif
+        default:
+            outputMessage = "IGC: Internal Compiler Error: Signal caught";
+        }
+        if (outputInterface->GetImpl()->SetError(TranslationErrorType::Internal, outputMessage)) {
+            return outputInterface.release();
+        }
+        return nullptr;
+    }
+
 protected:
     CIF_PIMPL(IgcOclDeviceCtx) &globalState;
     CodeType::CodeType_t inType;
@@ -407,3 +460,48 @@ CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(IgcOclTranslationCtx);
 }
 
 #include "cif/macros/disable.h"
+
+#if defined(NDEBUG)
+#if defined(WIN32)
+int ex_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep);
+
+#define EX_GUARD_BEGIN                                                        \
+__try                                                                         \
+{                                                                             \
+
+#define EX_GUARD_END                                                          \
+}                                                                             \
+__except (ex_filter(GetExceptionCode(), GetExceptionInformation()))           \
+{                                                                             \
+    res = CIF_GET_PIMPL()->GetErrorOutput(outVersion, GetExceptionCode());    \
+}                                                                             \
+
+#else
+void signalHandler(int signal);
+
+#define EX_GUARD_BEGIN                                                        \
+int sig = setjmp(sig_jmp_buf);                                                \
+if (sig == 0) {                                                               \
+    signal(SIGABRT, signalHandler);                                           \
+    signal(SIGFPE,  signalHandler);                                           \
+    signal(SIGILL,  signalHandler);                                           \
+    signal(SIGINT,  signalHandler);                                           \
+    signal(SIGSEGV, signalHandler);                                           \
+    signal(SIGTERM, signalHandler);                                           \
+
+#define EX_GUARD_END                                                          \
+} else {                                                                      \
+    res = CIF_GET_PIMPL()->GetErrorOutput(outVersion, sig);                   \
+}                                                                             \
+signal(SIGABRT, SIG_DFL);                                                     \
+signal(SIGFPE,  SIG_DFL);                                                     \
+signal(SIGILL,  SIG_DFL);                                                     \
+signal(SIGINT,  SIG_DFL);                                                     \
+signal(SIGSEGV, SIG_DFL);                                                     \
+signal(SIGTERM, SIG_DFL);                                                     \
+
+#endif
+#else
+#define EX_GUARD_BEGIN
+#define EX_GUARD_END
+#endif
