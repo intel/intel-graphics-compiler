@@ -77,7 +77,7 @@ private:
         {
             NumDSSPerSlice = SysInfo.MaxSubSlicesSupported / std::max(SysInfo.MaxSlicesSupported, enabledSlices);
             EuCountPerDSS = SysInfo.MaxEuPerSubSlice;
-            MaxDualSubSlicesSupported = SysInfo.MaxSubSlicesSupported;
+            MaxDualSubSlicesSupported = 0;
 
             // GTSystem info fills MaxSubSlicesSupported with the number
             // of enabled SubSlices. But this number does not specify the
@@ -116,12 +116,15 @@ private:
                     }
                 }
             }
+
+            if (!MaxDualSubSlicesSupported)
+                MaxDualSubSlicesSupported = SysInfo.MaxSubSlicesSupported;
         }
         else
         {
             NumDSSPerSlice = SysInfo.MaxDualSubSlicesSupported / std::max(SysInfo.MaxSlicesSupported, enabledSlices);
             EuCountPerDSS = SysInfo.EUCount / SysInfo.DualSubSliceCount;
-            MaxDualSubSlicesSupported = SysInfo.MaxDualSubSlicesSupported;
+            MaxDualSubSlicesSupported = 0;
 
             // GTSystem info fills MaxDualSubSlicesSupported with the number
             // of enabled DualSubSlices. But this number does not specify the
@@ -160,6 +163,9 @@ private:
                     }
                 }
             }
+
+            if (!MaxDualSubSlicesSupported)
+                MaxDualSubSlicesSupported = SysInfo.MaxDualSubSlicesSupported;
         }
         DisableRTGlobalsKnownValues = IGC_IS_FLAG_ENABLED(DisableRTGlobalsKnownValues);
     }
