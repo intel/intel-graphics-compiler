@@ -326,13 +326,13 @@ void Optimizer::insertHashMovs() {
     for (auto it = bb->begin(); it != bb->end(); ++it) {
       auto inst = (*it);
       if (inst->isEOT() || hashAtPrologue) {
+        auto insertBefore = it;
+        if (inst->isLabel())
+          ++insertBefore;
         // We have to insert new instructions after EOT.
         // Lexically, EOT could even be in the middle
         // of the program.
         auto insertHashMovInsts = [&](uint64_t hashVal) {
-          if (hashVal == 0)
-            return;
-
           G4_INST *lo;
           G4_INST *hi;
           lo = kernel.fg.builder->createMov(
@@ -346,29 +346,26 @@ void Optimizer::insertHashMovs() {
               kernel.fg.builder->createImm(
                   (unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
               InstOpt_WriteEnable, false);
-
+          // Option: -hashmovs hi lo
+          //   To be consistent, 'mov hi' goes before 'mov lo'
           if (hashAtPrologue) {
-            if (inst->isLabel()) {
-              bb->insertAfter(it, hi);
-              bb->insertAfter(it, lo);
-            } else {
-              bb->insertBefore(it, hi);
-              bb->insertBefore(it, lo);
-            }
+            bb->insertBefore(insertBefore, hi);
+            bb->insertBefore(insertBefore, lo);
           } else {
-            bb->push_back(lo);
             bb->push_back(hi);
+            bb->push_back(lo);
           }
         };
-        uint64_t hashVal1 = builder.getOptions()->getuInt64Option(vISA_HashVal);
-        uint64_t hashVal2 =
+
+        // This func is called when vISA_HashVal is set by user;
+        // but vISA_HashVal1 is still optional.
+        uint64_t hashVal = builder.getOptions()->getuInt64Option(vISA_HashVal);
+        insertHashMovInsts(hashVal);
+        if (builder.getOptions()->isOptionSetByUser(vISA_HashVal1)) {
+          uint64_t hashVal1 =
             builder.getOptions()->getuInt64Option(vISA_HashVal1);
-        // Ensure same order (hashVal1 then hashVal2) by swapping if
-        // we're going to insertAfter().
-        if (hashAtPrologue && inst->isLabel())
-          std::swap(hashVal1, hashVal2);
-        insertHashMovInsts(hashVal1);
-        insertHashMovInsts(hashVal2);
+          insertHashMovInsts(hashVal1);
+        }
         return;
       }
     }

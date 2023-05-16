@@ -3832,22 +3832,29 @@ namespace IGC
                 params.push_back(param_uptr(OptName, literal_deleter));
                 std::string Low = std::to_string((DWORD)Hash);
                 std::string High = std::to_string((DWORD)(Hash >> 32));
-                params.push_back(param_uptr(_strdup(Low.c_str()), dup_deleter));
                 params.push_back(param_uptr(_strdup(High.c_str()), dup_deleter));
+                params.push_back(param_uptr(_strdup(Low.c_str()), dup_deleter));
             };
 
             QWORD AssemblyHash = context->hash.getAsmHash();
 
 
             addHash("-hashmovs", AssemblyHash);
+            if (context->type == ShaderType::OPENCL_SHADER)
+            {
+                uint32_t kernelId = context->getFunctionID(m_program->entry);
+                addHash("-hashmovs1", (QWORD)kernelId);
+            }
+            else {
 
-            QWORD NosHash = context->hash.getNosHash();
-            QWORD PsoHash = context->hash.getPsoHash();
-            QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
-            if (hashToUse)
-                addHash("-hashmovs1", hashToUse);
-            else if (context->hash.getPerShaderPsoHash() != 0)
-                addHash("-hashmovs1", context->hash.getPerShaderPsoHash());
+                QWORD NosHash = context->hash.getNosHash();
+                QWORD PsoHash = context->hash.getPsoHash();
+                QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
+                if (hashToUse)
+                    addHash("-hashmovs1", hashToUse);
+                else if (context->hash.getPerShaderPsoHash() != 0)
+                    addHash("-hashmovs1", context->hash.getPerShaderPsoHash());
+            }
         }
     }
 
