@@ -66,7 +66,7 @@ endfunction()
 
 set(_oclResSymbolFiles)
 set(_rsResSymbolFiles)
-set(bifDepend ${IGC_BUILD__PROJ__BiFModule_OCL})
+set(bifDepend ${IGC_BUILD__PROJ__BiFModule_OCL} ${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL})
 
 igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BC_120 "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" ${bifDepend})
 igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BC_121 "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" ${bifDepend})

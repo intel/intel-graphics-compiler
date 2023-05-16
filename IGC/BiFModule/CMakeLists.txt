@@ -623,6 +623,7 @@ set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModul
 set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ__BiFModule_OCL}" PARENT_SCOPE)
 set(IGC_BUILD__PROJ_LABEL__BiFModule_OCL "BiFModule-OCL")
 set(IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL clang-tool "${IGC_BUILD__BIF_OCL_FORCE_INC}" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc")
+set(IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL "${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}" PARENT_SCOPE)
 
 
 add_custom_target("${IGC_BUILD__PROJ__BiFModule_OCL}"
