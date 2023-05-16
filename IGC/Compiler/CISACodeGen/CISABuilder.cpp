@@ -4301,7 +4301,7 @@ namespace IGC
             {
                 SaveOption(vISA_fusedCallWA, (uint32_t)2);
             }
-            else if (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram())
+            else if (m_program->HasNestedCalls() || m_program->HasIndirectCalls() || m_program->IsIntelSymbolTableVoidProgram())
             {
                 SaveOption(vISA_fusedCallWA, (uint32_t)1);
             }

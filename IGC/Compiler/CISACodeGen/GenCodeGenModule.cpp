@@ -630,6 +630,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
             // to this group due to cloning. However we still can't associate all functions in this group with a single callgraph.
 
             // All other flags are already unset by default
+            FG->m_isIndirectCallGroup = true;
             FG->m_hasCGAvailable = false;
             continue;
         }
@@ -649,6 +650,10 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                 {
                     FG->m_hasNestedCall = true;
                 }
+            }
+            else if (!isEntryFunc(pMdUtils, F))
+            {
+                FG->m_hasSubroutine = true;
             }
 
             // check all functions in the group to see if there's an vla alloca
