@@ -1155,6 +1155,19 @@ public:
     uint32_t getDim() const {
         return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
     }
+
+    bool hasShaderType() const {
+        return isa<ConstantInt>(getOperand(2));
+    }
+
+    uint32_t getShaderType() const {
+        return (uint32_t)(cast<ConstantInt>(getOperand(2))->getZExtValue());
+    }
+
+    void setShaderType(uint32_t type) {
+        auto& C = this->getContext();
+        setOperand(2, ConstantInt::get(Type::getInt32Ty(C), type));
+    }
 };
 
 class FillValueIntrinsic : public GenIntrinsicInst {

@@ -2581,14 +2581,16 @@ Imported_Intrinsics = \
 "GenISA_RayInfo": ["Raytracing: Query for different ray info. Input is query type, and dimension which " +\
                    "is used for certain types - used for Async Raytracing",
     [("any:float",                     ""),
-    [("int",                           ""),
-     ("int",                           "")],
+    [("int",                           "Query type"),
+     ("int",                           "Dimension"),
+     ("int",                           "Shader type -- will be removed once sync handling stops inlining functions")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_RayTCurrent": ["Raytracing: Signature retained so it is processed the same as the RayInfo intrinsic.",
     [("any:float",                     ""),
-    [("int",                           ""),
-     ("int",                           "")],
+    [("int",                           "Query type"),
+     ("int",                           "Dimension"),
+     ("int",                           "Shader type -- will be removed once sync handling stops inlining functions")],
     "ReadMem"]],
 ####################################################################################################
 "GenISA_ReportHitHL": ["Raytracing: equivalent to DXR ReportHit()",
