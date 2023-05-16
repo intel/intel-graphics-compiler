@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,6 +52,7 @@ namespace VectorizerUtils {
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ScalarizeFunction::ID = 0;
@@ -120,20 +121,26 @@ bool ScalarizeFunction::runOnFunction(Function& F)
     // Scalarization. Iterate over all the instructions
     // Always hold the iterator at the instruction following the one being scalarized (so the
     // iterator will "skip" any instructions that are going to be added in the scalarization work)
-    inst_iterator sI = inst_begin(m_currFunc);
-    inst_iterator sE = inst_end(m_currFunc);
-    while (sI != sE)
+    auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    for (auto dfi = df_begin(DT->getRootNode()), dfe = df_end(DT->getRootNode());
+        dfi != dfe; ++dfi)
     {
-        Instruction* currInst = &*sI;
-        // Move iterator to next instruction BEFORE scalarizing current instruction
-        ++sI;
-        if (m_Excludes.count(currInst))
+        BasicBlock* bb = (*dfi)->getBlock();
+        auto sI = bb->begin();
+        auto sE = bb->end();
+        while (sI != sE)
         {
-            recoverNonScalarizableInst(currInst);
-        }
-        else
-        {
-            dispatchInstructionToScalarize(currInst);
+            Instruction* currInst = &*sI;
+            // Move iterator to next instruction BEFORE scalarizing current instruction
+            ++sI;
+            if (m_Excludes.count(currInst))
+            {
+                recoverNonScalarizableInst(currInst);
+            }
+            else
+            {
+                dispatchInstructionToScalarize(currInst);
+            }
         }
     }
 
@@ -186,116 +193,122 @@ bool ScalarizeFunction::runOnFunction(Function& F)
 /// </summary>
 void ScalarizeFunction::buildExclusiveSet()
 {
-    inst_iterator sI = inst_begin(m_currFunc);
-    inst_iterator sE = inst_end(m_currFunc);
-    while (sI != sE)
+    auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    for (auto dfi = df_begin(DT->getRootNode()), dfe = df_end(DT->getRootNode());
+        dfi != dfe; ++dfi)
     {
-        Instruction* currInst = &*sI;
-        ++sI;
-        // find the seed for the workset
-        std::vector<llvm::Value*> workset;
-        if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(currInst))
+        BasicBlock* bb = (*dfi)->getBlock();
+        auto sI = bb->begin();
+        auto sE = bb->end();
+        while (sI != sE)
         {
-            unsigned numOperands = IGCLLVM::getNumArgOperands(GII);
-            for (unsigned i = 0; i < numOperands; i++)
+            Instruction* currInst = &*sI;
+            ++sI;
+            // find the seed for the workset
+            std::vector<llvm::Value*> workset;
+            if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(currInst))
             {
-                Value* operand = GII->getArgOperand(i);
-                if (isa<VectorType>(operand->getType()))
+                unsigned numOperands = IGCLLVM::getNumArgOperands(GII);
+                for (unsigned i = 0; i < numOperands; i++)
                 {
-                    workset.push_back(operand);
-                }
-            }
-        }
-        else if (auto IEI = dyn_cast<InsertElementInst>(currInst))
-        {
-            Value* scalarIndexVal = IEI->getOperand(2);
-            // If the index is not a constant - we cannot statically remove this inst
-            if (!isa<ConstantInt>(scalarIndexVal)) {
-                workset.push_back(IEI);
-            }
-        }
-        else if (auto EEI = dyn_cast<ExtractElementInst>(currInst))
-        {
-            Value* scalarIndexVal = EEI->getOperand(1);
-            // If the index is not a constant - we cannot statically remove this inst
-            if (!isa<ConstantInt>(scalarIndexVal)) {
-                workset.push_back(EEI->getOperand(0));
-            }
-        }
-        // try to find a phi-web from the seed
-        bool HasPHI = false;
-        std::set<llvm::Value*> defweb;
-        while (!workset.empty())
-        {
-            auto Def = workset.back();
-            workset.pop_back();
-            if (m_Excludes.count(Def) || defweb.count(Def))
-            {
-                continue;
-            }
-            if (auto IEI = dyn_cast<InsertElementInst>(Def))
-            {
-                defweb.insert(IEI);
-                if (!defweb.count(IEI->getOperand(0)) &&
-                    (isa<PHINode>(IEI->getOperand(0)) ||
-                        isa<ShuffleVectorInst>(IEI->getOperand(0)) ||
-                        isa<InsertElementInst>(IEI->getOperand(0))))
-                {
-                    workset.push_back(IEI->getOperand(0));
-                }
-            }
-            else if (auto SVI = dyn_cast<ShuffleVectorInst>(Def))
-            {
-                defweb.insert(SVI);
-                if (!defweb.count(SVI->getOperand(0)) &&
-                    (isa<PHINode>(SVI->getOperand(0)) ||
-                        isa<ShuffleVectorInst>(SVI->getOperand(0)) ||
-                        isa<InsertElementInst>(SVI->getOperand(0))))
-                {
-                    workset.push_back(SVI->getOperand(0));
-                }
-                if (!defweb.count(SVI->getOperand(1)) &&
-                    (isa<PHINode>(SVI->getOperand(1)) ||
-                        isa<ShuffleVectorInst>(SVI->getOperand(1)) ||
-                        isa<InsertElementInst>(SVI->getOperand(1))))
-                {
-                    workset.push_back(SVI->getOperand(1));
-                }
-            }
-            else if (auto PHI = dyn_cast<PHINode>(Def))
-            {
-                defweb.insert(PHI);
-                HasPHI = true;  // !this def-web is qualified!
-                for (int i = 0, n = PHI->getNumOperands(); i < n; ++i)
-                    if (!defweb.count(PHI->getOperand(i)) &&
-                        (isa<PHINode>(PHI->getOperand(i)) ||
-                            isa<ShuffleVectorInst>(PHI->getOperand(i)) ||
-                            isa<InsertElementInst>(PHI->getOperand(i))))
+                    Value* operand = GII->getArgOperand(i);
+                    if (isa<VectorType>(operand->getType()))
                     {
-                        workset.push_back(PHI->getOperand(i));
+                        workset.push_back(operand);
                     }
-            }
-            else
-            {
-                continue;
-            }
-            // check use
-            for (auto U : Def->users())
-            {
-                if (!defweb.count(U) &&
-                    (isa<PHINode>(U) ||
-                        isa<ShuffleVectorInst>(U) ||
-                        isa<InsertElementInst>(U)))
-                {
-                    workset.push_back(U);
                 }
             }
-        }
-        // if we find a qualified web with PHINode, add those instructions
-        // into the exclusion set
-        if (HasPHI)
-        {
-            m_Excludes.merge(defweb);
+            else if (auto IEI = dyn_cast<InsertElementInst>(currInst))
+            {
+                Value* scalarIndexVal = IEI->getOperand(2);
+                // If the index is not a constant - we cannot statically remove this inst
+                if (!isa<ConstantInt>(scalarIndexVal)) {
+                    workset.push_back(IEI);
+                }
+            }
+            else if (auto EEI = dyn_cast<ExtractElementInst>(currInst))
+            {
+                Value* scalarIndexVal = EEI->getOperand(1);
+                // If the index is not a constant - we cannot statically remove this inst
+                if (!isa<ConstantInt>(scalarIndexVal)) {
+                    workset.push_back(EEI->getOperand(0));
+                }
+            }
+            // try to find a phi-web from the seed
+            bool HasPHI = false;
+            std::set<llvm::Value*> defweb;
+            while (!workset.empty())
+            {
+                auto Def = workset.back();
+                workset.pop_back();
+                if (m_Excludes.count(Def) || defweb.count(Def))
+                {
+                    continue;
+                }
+                if (auto IEI = dyn_cast<InsertElementInst>(Def))
+                {
+                    defweb.insert(IEI);
+                    if (!defweb.count(IEI->getOperand(0)) &&
+                        (isa<PHINode>(IEI->getOperand(0)) ||
+                            isa<ShuffleVectorInst>(IEI->getOperand(0)) ||
+                            isa<InsertElementInst>(IEI->getOperand(0))))
+                    {
+                        workset.push_back(IEI->getOperand(0));
+                    }
+                }
+                else if (auto SVI = dyn_cast<ShuffleVectorInst>(Def))
+                {
+                    defweb.insert(SVI);
+                    if (!defweb.count(SVI->getOperand(0)) &&
+                        (isa<PHINode>(SVI->getOperand(0)) ||
+                            isa<ShuffleVectorInst>(SVI->getOperand(0)) ||
+                            isa<InsertElementInst>(SVI->getOperand(0))))
+                    {
+                        workset.push_back(SVI->getOperand(0));
+                    }
+                    if (!defweb.count(SVI->getOperand(1)) &&
+                        (isa<PHINode>(SVI->getOperand(1)) ||
+                            isa<ShuffleVectorInst>(SVI->getOperand(1)) ||
+                            isa<InsertElementInst>(SVI->getOperand(1))))
+                    {
+                        workset.push_back(SVI->getOperand(1));
+                    }
+                }
+                else if (auto PHI = dyn_cast<PHINode>(Def))
+                {
+                    defweb.insert(PHI);
+                    HasPHI = true;  // !this def-web is qualified!
+                    for (int i = 0, n = PHI->getNumOperands(); i < n; ++i)
+                        if (!defweb.count(PHI->getOperand(i)) &&
+                            (isa<PHINode>(PHI->getOperand(i)) ||
+                                isa<ShuffleVectorInst>(PHI->getOperand(i)) ||
+                                isa<InsertElementInst>(PHI->getOperand(i))))
+                        {
+                            workset.push_back(PHI->getOperand(i));
+                        }
+                }
+                else
+                {
+                    continue;
+                }
+                // check use
+                for (auto U : Def->users())
+                {
+                    if (!defweb.count(U) &&
+                        (isa<PHINode>(U) ||
+                            isa<ShuffleVectorInst>(U) ||
+                            isa<InsertElementInst>(U)))
+                    {
+                        workset.push_back(U);
+                    }
+                }
+            }
+            // if we find a qualified web with PHINode, add those instructions
+            // into the exclusion set
+            if (HasPHI)
+            {
+                m_Excludes.merge(defweb);
+            }
         }
     }
 }
@@ -1015,10 +1028,12 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
         auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
 
         Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(op1->getType());
-        Value* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2, "", GI);
+        Value* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2,
+            VALUE_NAME(GI->getName()), GI);
         Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
         Instruction* insert = InsertElementInst::Create(assembledVector,
-            newGEP, constIndex, "assembled.vect", GI);
+            newGEP, constIndex,
+            VALUE_NAME(GI->getName() + ".assembled.vect"), GI);
         assembledVector = insert;
         scalarValues[i] = newGEP;
 
@@ -1148,7 +1163,8 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         for (unsigned i = 0; i < width; ++i)
         {
             Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-            retValues[i + destIdx] = ExtractElementInst::Create(origValue, constIndex, "scalar", locationInst);
+            retValues[i + destIdx] = ExtractElementInst::Create(origValue, constIndex,
+                VALUE_NAME(origValue->getName() + ".scalar"), locationInst);
         }
         SCMEntry* newEntry = getSCMEntry(origValue);
         updateSCMEntryWithValues(newEntry, &(retValues[destIdx]), origValue, false);
@@ -1205,7 +1221,8 @@ void ScalarizeFunction::obtainVectorValueWhichMightBeScalarizedImpl(Value* vecto
         IGC_ASSERT_MESSAGE(NULL != valueEntry->scalarValues[i], "SCM entry has NULL value");
         Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
         Instruction* insert = InsertElementInst::Create(assembledVector,
-            valueEntry->scalarValues[i], constIndex, "assembled.vect", insertLocation);
+            valueEntry->scalarValues[i], constIndex,
+            VALUE_NAME(vectorVal->getName() + ".assembled.vect"), insertLocation);
         VectorizerUtils::SetDebugLocBy(insert, vectorInst);
         assembledVector = insert;
         V_PRINT(scalarizer,
@@ -1359,7 +1376,8 @@ void ScalarizeFunction::resolveDeferredInstructions()
             for (unsigned i = 0; i < width; i++)
             {
                 Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-                Instruction *EE = ExtractElementInst::Create(vectorInst, constIndex, "scalar", &(*insertLocation));
+                Instruction *EE = ExtractElementInst::Create(vectorInst, constIndex,
+                    VALUE_NAME(vectorInst->getName() + ".scalar"), &(*insertLocation));
                 newInsts[i] = EE;
             }
             updateSCMEntryWithValues(currentInstEntry, &(newInsts[0]), vectorInst, false);
