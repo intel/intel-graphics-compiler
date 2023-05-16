@@ -13462,6 +13462,10 @@ void EmitPass::emitScalarAtomics(
     {
     case EATOMIC_IADD:
     case EATOMIC_SUB:
+    case EATOMIC_IADD64:
+    case EATOMIC_SUB64:
+    case EATOMIC_FADD64:
+    case EATOMIC_FSUB64:
     case EATOMIC_INC:
     case EATOMIC_DEC:
     case EATOMIC_FADD:
@@ -13507,6 +13511,10 @@ void EmitPass::emitScalarAtomics(
     {
         type = ISA_TYPE_F;
     }
+    else if (atomic_op == EATOMIC_FADD64 || atomic_op == EATOMIC_FSUB64)
+    {
+        type = ISA_TYPE_DF;
+    }
     else
     {
         type =
@@ -13514,6 +13522,7 @@ void EmitPass::emitScalarAtomics(
             bitWidth == 32 ? ISA_TYPE_D :
                         ISA_TYPE_Q;
     }
+
     IGC_ASSERT_MESSAGE((bitWidth == 16) || (bitWidth == 32) || (bitWidth == 64), "invalid bitsize");
     if (atomic_op == EATOMIC_INC || atomic_op == EATOMIC_DEC)
     {
@@ -13539,6 +13548,22 @@ void EmitPass::emitScalarAtomics(
         negateSrc = true;
         uniformAtomicOp = EATOMIC_IADD;
     }
+    else if (atomic_op == EATOMIC_SUB64)
+    {
+        negateSrc = true;
+        uniformAtomicOp = EATOMIC_IADD64;
+    }
+    else if (atomic_op == EATOMIC_FSUB)
+    {
+        negateSrc = true;
+        uniformAtomicOp = EATOMIC_FADD;
+    }
+    else if (atomic_op == EATOMIC_FSUB64)
+    {
+        negateSrc = true;
+        uniformAtomicOp = EATOMIC_FADD64;
+    }
+
     bool returnsImmValue = (!pInst->use_empty());
     CVariable* pFinalAtomicSrcVal;
     CVariable* pSrcsArr[2] = { nullptr, nullptr };
@@ -13663,9 +13688,27 @@ void EmitPass::emitScalarAtomics(
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetNoMask();
 
+    VISA_Type pReturnValType;
+    if (type == ISA_TYPE_Q)
+    {
+        pReturnValType = ISA_TYPE_UQ;
+    }
+    else if (type == ISA_TYPE_DF)
+    {
+        pReturnValType = ISA_TYPE_DF;
+    }
+    else if (type == ISA_TYPE_F)
+    {
+        pReturnValType = ISA_TYPE_F;
+    }
+    else
+    {
+        pReturnValType = ISA_TYPE_UD;
+    }
+
     CVariable* pReturnVal = returnsImmValue ?
         m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
+            1, pReturnValType, EALIGN_GRF, true, CName::NONE) :
         nullptr;
 
     if (bitWidth == 16)
@@ -13711,7 +13754,7 @@ void EmitPass::emitScalarAtomics(
             m_encoder->Add(pSrcsArr[i], pSrcsArr[i], pReturnVal);
             m_encoder->Push();
 
-            if (atomic_op == EATOMIC_IADD)
+            if (atomic_op == EATOMIC_IADD || atomic_op == EATOMIC_IADD64 || atomic_op == EATOMIC_FADD || atomic_op == EATOMIC_FADD64)
             {
                 m_encoder->SetSrcModifier(1, EMOD_NEG);
             }
@@ -13840,15 +13883,30 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
             id == GenISAIntrinsic::GenISA_floatatomicrawA64)
         {
             Function* F = pInst->getParent()->getParent();
-            //We cannot optimize float atomics if the flag "unsafe-fp-math" was not passed.
-            if (id == GenISAIntrinsic::GenISA_floatatomicrawA64) {
-                if (pInst->getType()->getScalarSizeInBits() != 32) {
-                    return false;
-                }
-                if (!F->hasFnAttribute("unsafe-fp-math") || !(F->getFnAttribute("unsafe-fp-math").getValueAsString() == "true")) {
+
+            unsigned short bitwidth = pInst->getType()->getScalarSizeInBits();
+            //We cannot optimize float and double atomics if the flag "unsafe-fp-math" was not passed.
+            if (id == GenISAIntrinsic::GenISA_floatatomicrawA64)
+            {
+                if (!F->hasFnAttribute("unsafe-fp-math") || !(F->getFnAttribute("unsafe-fp-math").getValueAsString() == "true") || bitwidth == 16)
+                {
                     return false;
                 }
             }
+
+            if (bitwidth == 64)
+            {
+                AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(3))->getZExtValue());
+
+                bool is_i64 = (atomic_op == EATOMIC_IADD64 || atomic_op == EATOMIC_SUB64);
+                bool is_f64 = (atomic_op == EATOMIC_FADD64 || atomic_op == EATOMIC_FSUB64);
+
+                if ((!is_i64 || !m_currShader->m_Platform->hasInt64Add()) && (!is_f64 || !m_currShader->m_Platform->hasFP64GlobalAtomicAdd()))
+                {
+                    return false;
+                }
+            }
+
             if (IGC_IS_FLAG_ENABLED(DisableScalarAtomics) ||
                 F->hasFnAttribute("KMPLOCK") ||
                 m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
@@ -13865,6 +13923,10 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
                 bool isAtomicAdd =
                     atomic_op == EATOMIC_IADD ||
+                    atomic_op == EATOMIC_IADD64 ||
+                    atomic_op == EATOMIC_SUB64 ||
+                    atomic_op == EATOMIC_FADD64 ||
+                    atomic_op == EATOMIC_FSUB64 ||
                     atomic_op == EATOMIC_INC ||
                     atomic_op == EATOMIC_SUB ||
                     atomic_op == EATOMIC_DEC ||
@@ -14032,8 +14094,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     // Dst address in bytes.
     CVariable* pDstAddr = GetSymbol(pllDstAddr);
     // If DisableScalarAtomics regkey is enabled or DisableIGCOptimizations regkey is enabled then
-    // don't enable scalar atomics, also do not enable for 64 bit
-    if (IsUniformAtomic(pInsn) && bitwidth != 64)
+    // don't enable scalar atomics
+    if (IsUniformAtomic(pInsn))
     {
         PointerType* PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
         bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
