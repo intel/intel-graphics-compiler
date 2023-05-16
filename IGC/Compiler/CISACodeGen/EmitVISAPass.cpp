@@ -4704,11 +4704,17 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::createVMaskPred(CVariable*& predicate)
 {
+    if (!m_currShader->IsPatchablePS())
+        return;
+
+    if (predicate != nullptr)
+        return;
+
     uint32_t debug = IGC_GET_FLAG_VALUE(VMaskPredDebug);
     if (debug < 1)
         return;
 
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) && (predicate == nullptr))
+    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate))
     {
         // Copy VMASK to a predicate
         // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
@@ -4727,13 +4733,18 @@ void EmitPass::createVMaskPred(CVariable*& predicate)
 
 void EmitPass::UseVMaskPred()
 {
+    if (!m_currShader->IsPatchablePS())
+        return;
+
+    if (!m_vMaskPredForSubplane)
+        return;
+
     uint32_t debug = IGC_GET_FLAG_VALUE(VMaskPredDebug);
     if (debug < 2)
         return;
 
     bool subspan = m_encoder->IsSubSpanDestination();
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) && m_vMaskPredForSubplane &&
-        subspan && !m_destination->IsUniform())
+    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) && subspan && !m_destination->IsUniform())
     {
         m_encoder->SetPredicate(m_vMaskPredForSubplane);
     }
