@@ -3927,10 +3927,9 @@ namespace IGC
             simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
         }
 
-        auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
-        bool hasStackCall = FG && FG->hasStackCall();
-        bool isIndirectGroup = FG && FG->isIndirectCallGroup();
-        bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+        bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
+        bool isIndirectGroup = m_FGA && m_FGA->getGroup(&F) && IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F));
+        bool hasSubroutine = m_FGA && m_FGA->getGroup(&F) && !m_FGA->getGroup(&F)->isSingle() && !hasStackCall && !isIndirectGroup;
         bool forceLowestSIMDForStackCalls = IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
 
         if (simd_size == 0)
@@ -4099,31 +4098,26 @@ namespace IGC
             }
         }
 
-        auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
-        bool hasStackCall = FG && FG->hasStackCall();
-        bool isIndirectGroup = FG && FG->isIndirectCallGroup();
-        bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+        bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
+        bool isIndirectGroup = m_FGA && m_FGA->getGroup(&F) && IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F));
+        bool hasSubroutine = m_FGA && m_FGA->getGroup(&F) && !m_FGA->getGroup(&F)->isSingle() && !hasStackCall && !isIndirectGroup;
 
         // If stack calls are present, disable simd32 in order to do CallWA in visa
         if (IGC_IS_FLAG_ENABLED(EnableCallWA) &&
             pCtx->platform.hasFusedEU() &&
             pCtx->platform.getWATable().Wa_14016243945 == false &&
-            simdMode == SIMDMode::SIMD32)
+            simdMode == SIMDMode::SIMD32 &&
+            (hasStackCall || isIndirectGroup))
         {
-            bool hasNestedCall = FG && FG->hasNestedCall();
-            bool hasIndirectCall = FG && FG->hasIndirectCall();
-            if (hasNestedCall || hasIndirectCall || isIndirectGroup)
+            // If sub_group_size is set to 32, resize it to 16 so SIMD16 compilation will still succeed
+            if (simd_size == 32)
             {
-                // If sub_group_size is set to 32, resize it to 16 so SIMD16 compilation will still succeed
-                if (simd_size == 32)
-                {
-                    llvm::Function* Kernel = FG->getHead();
-                    funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-                    funcInfoMD->getSubGroupSize()->setSIMD_size(16);
-                }
-                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                return SIMDStatus::SIMD_FUNC_FAIL;
+                llvm::Function* Kernel = m_FGA->getGroup(&F)->getHead();
+                funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
+                funcInfoMD->getSubGroupSize()->setSIMD_size(16);
             }
+            pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+            return SIMDStatus::SIMD_FUNC_FAIL;
         }
 
         if (simd_size == 0)

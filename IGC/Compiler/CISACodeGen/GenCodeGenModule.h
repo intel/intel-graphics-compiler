@@ -135,10 +135,6 @@ namespace IGC {
         bool isSingle() const {
             return (Functions.size() == 1 && Functions.front()->size() == 1);
         }
-        /// \brief Function group has a subroutine
-        bool hasSubroutine() const {
-            return m_hasSubroutine;
-        }
         /// \brief Function group has a stack call (including indirect calls)
         bool hasStackCall() const {
             return m_hasStackCall;
@@ -166,10 +162,6 @@ namespace IGC {
         bool hasRecursion() const {
             return m_hasRecursion;
         }
-        /// \brief This is the indirect call group
-        bool isIndirectCallGroup() const {
-            return m_isIndirectCallGroup;
-        }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             IGC_UNUSED(OH);
@@ -185,7 +177,6 @@ namespace IGC {
         void setSimdModeInvalid(SIMDMode Mode);
 
     private:
-        bool m_hasSubroutine = false;
         bool m_hasStackCall = false;
         bool m_hasInlineAsm = false;
         bool m_hasVariableLengthAlloca = false;
@@ -193,7 +184,6 @@ namespace IGC {
         bool m_hasRecursion = false;
         bool m_hasNestedCall = false;
         bool m_hasCGAvailable = true;
-        bool m_isIndirectCallGroup = false;
         bool SIMDModeValid[3] = {true, true, true};
     };
 

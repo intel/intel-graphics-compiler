@@ -576,26 +576,10 @@ public:
     unsigned int GetScalarTypeSizeInRegisterInBits(const llvm::Type* Ty) const;
     unsigned int GetScalarTypeSizeInRegister(const llvm::Type* Ty) const;
 
-    inline bool HasStackCalls() const
-    {
-        auto FG = m_FGA ? m_FGA->getGroupForHead(entry) : nullptr;
-        return (FG && FG->hasStackCall()) || IGC_IS_FLAG_ENABLED(ForceAddingStackcallKernelPrerequisites);
-    }
-    inline bool IsIntelSymbolTableVoidProgram() const
-    {
-        auto FG = m_FGA ? m_FGA->getGroupForHead(entry) : nullptr;
-        return FG && FG->isIndirectCallGroup();
-    }
-    inline bool HasNestedCalls() const
-    {
-        auto FG = m_FGA ? m_FGA->getGroupForHead(entry) : nullptr;
-        return FG && FG->hasNestedCall();
-    }
-    inline bool HasIndirectCalls() const
-    {
-        auto FG = m_FGA ? m_FGA->getGroupForHead(entry) : nullptr;
-        return FG && FG->hasIndirectCall();
-    }
+    bool HasStackCalls() const { return m_HasStackCalls; }
+    void SetHasStackCalls() { m_HasStackCalls = true; }
+    bool IsIntelSymbolTableVoidProgram() const { return m_isIntelSymbolTableVoidProgram; }
+    void SetIsIntelSymbolTableVoidProgram() { m_isIntelSymbolTableVoidProgram = true; }
 
     ////////////////////////////////////////////////////////////////////
     // NOTE: for vector load/stores instructions pass the
@@ -753,6 +737,8 @@ protected:
 
     DebugInfoData diData;
 
+    bool m_HasStackCalls = false;
+    bool m_isIntelSymbolTableVoidProgram = false;
     // Shader has LSC store messages with non-default L1 cache control
     bool m_HasLscStoresWithNonDefaultL1CacheControls = false;
     bool m_HasSample = false;
