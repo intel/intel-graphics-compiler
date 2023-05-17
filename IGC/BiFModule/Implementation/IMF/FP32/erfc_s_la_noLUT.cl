@@ -157,6 +157,7 @@ static __constant union {
   float f;
 } __serfc_la___Inf = {0x7f800000u};
 
+__attribute__((always_inline))
 static inline int __ocl_svml_internal_serfc(float *px, float *pres)
 {
   int nRet = 0;

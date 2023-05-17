@@ -903,6 +903,7 @@ static __constant _iml_dp_union_t __dpown_la_CoutTab[860] = {
     0x00000000, 0x33700000, /* DENO_UNSCALE = 2^(-200) */
 };
 
+__attribute__((always_inline))
 inline int __dpown_la_pown_lut_cout (double *a, int *b, double *r)
 {
     int nRet = 0;
@@ -1788,7 +1789,7 @@ static __constant union
     double f;
 } __dpown_la_two_64 = { 0x43f0000000000000uL };
 
-inline int __dpown_la_pown_lut_cout (double *pxin, int *pyin, double *pres);
+__attribute__((always_inline))
 inline int __ocl_svml_internal_dpown_noLUT (double *pxin, int *pyin, double *pres)
 {
     int nRet = 0;

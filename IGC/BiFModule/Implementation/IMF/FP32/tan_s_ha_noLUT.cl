@@ -227,6 +227,7 @@ static __constant union
     double f;
 } __stan_ha_invpi_l = { 0xbdfb1bbead603d8buL };
 
+__attribute__((always_inline))
 inline int __ocl_svml_internal_stan_ha_noLUT (float *a, float *pres)
 {
     int nRet = 0;

@@ -133,6 +133,7 @@ static __constant unsigned int __dcos_ha_two_pi[2] = { 0x2168C235u, 0xC90FDAA2u 
 // unsigned 64-bit shift
 // signed 64-bit shift
 // reduce argument to (-2*pi/(2^kbits), 2*pi/(2^kbits)) range
+__attribute__((always_inline))
 static inline double __dcos_ha_trig_reduction (double x, int kbits, double *py_low, int *pinterv)
 {
     unsigned long ix, sgn_x, abs_x, mx, R;
@@ -296,6 +297,7 @@ static inline double __dcos_ha_trig_reduction (double x, int kbits, double *py_l
     return res;
 }
 
+__attribute__((always_inline))
 inline int __ocl_svml_internal_dcos_ha_noLUT (double *a, double *pres)
 {
     int nRet = 0;

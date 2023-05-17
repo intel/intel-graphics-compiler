@@ -111,6 +111,7 @@ static __constant union {
   double f;
 } __dtanh_la___c0 = {0x0000000000000000uL};
 
+__attribute__((always_inline))
 static inline int __ocl_svml_internal_dtanh(double *px, double *pres)
 {
   int nRet = 0;

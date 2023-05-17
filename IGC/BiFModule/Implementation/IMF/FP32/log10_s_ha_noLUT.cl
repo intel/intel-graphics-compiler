@@ -61,6 +61,7 @@ static __constant union {
   double f;
 } __slog10_ha_L10_2 = {0x3fd34413509F79FFuL};
 
+__attribute__((always_inline))
 static inline int __ocl_svml_internal_slog10_ha(float *a, float *r)
 {
   float xin = *a;

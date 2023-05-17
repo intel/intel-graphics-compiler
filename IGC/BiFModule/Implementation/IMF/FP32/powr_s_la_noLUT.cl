@@ -471,6 +471,7 @@ static __constant union
     float f;
 } __spowr_la_sexp_c1 = { 0x3f800000u };
 
+__attribute__((always_inline))
 static inline float __spowr_la_internal_frexpf (float arg, int *exp_res)
 {
     unsigned int uX;
@@ -498,6 +499,7 @@ static inline float __spowr_la_internal_frexpf (float arg, int *exp_res)
     return fR;
 }
 
+__attribute__((always_inline))
 inline int __ocl_svml_internal_spowr_noLUT (float *pxin, float *pyin, float *pres)
 {
     int nRet = 0;

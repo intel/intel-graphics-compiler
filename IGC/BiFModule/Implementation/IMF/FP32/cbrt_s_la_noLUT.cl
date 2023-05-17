@@ -92,6 +92,7 @@ static __constant union
     float f;
 } __scbrt_la___maxnum = { 0x7f7fffffu };
 
+__attribute__((always_inline))
 inline int __ocl_svml_internal_scbrt_noLUT (float *a, float *pres)
 {
     int nRet = 0;

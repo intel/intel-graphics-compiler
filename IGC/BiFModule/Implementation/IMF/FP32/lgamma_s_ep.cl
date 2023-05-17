@@ -806,6 +806,7 @@ static __constant unsigned int __slgamma_ep__RRIB[] = {
 //! @param[in] arg     Argument
 //! @return            Returns 64-bit natural logarithm
 //! ===========================================================================
+__attribute__((always_inline))
 static inline double __slgamma_ep_own_log_lut_fp64 (double x)
 {
     int n = 0, i = 0;
@@ -929,6 +930,7 @@ static inline double __slgamma_ep_own_log_lut_fp64 (double x)
 //! @param[in] sA      Argument
 //! @return            Returns 32-bit nearbyint
 //! ===========================================================================
+__attribute__((always_inline))
 static inline float __slgamma_ep_own_nearbyint_fp32 (float sA)
 {
     float _rnd_s2p23 = 0.0f;
@@ -959,6 +961,7 @@ static inline float __slgamma_ep_own_nearbyint_fp32 (float sA)
 //! @param[in] sA      Argument
 //! @return            Returns 32-bit ceil
 //! ===========================================================================
+__attribute__((always_inline))
 static inline float __slgamma_ep_own_ceilf_fp32 (float sA)
 {
     float _rnd_s2p23 = 0.0f;
@@ -997,6 +1000,7 @@ static inline float __slgamma_ep_own_ceilf_fp32 (float sA)
 //! @param[in] arg     Argument
 //! @return            Returns 32-bit lgamma
 //! ===========================================================================
+__attribute__((always_inline))
 static inline float __slgamma_ep_own_lgamma_fast_fp32 (float arg)
 {
 
@@ -1012,6 +1016,7 @@ static inline float __slgamma_ep_own_lgamma_fast_fp32 (float arg)
 //! @param[in] arg     Argument
 //! @return            Returns 64-bit lgamma
 //! ===========================================================================
+__attribute__((always_inline))
 static inline double __slgamma_ep_own_lgamma_fast_fp64 (double arg)
 {
 
@@ -1027,6 +1032,7 @@ static inline double __slgamma_ep_own_lgamma_fast_fp64 (double arg)
 //! @param[in] arg     Argument
 //! @return            Returns 64-bit lgamma
 //! ===========================================================================
+__attribute__((always_inline))
 static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
 {
     double x = 0.0, result = 0.0, y = 0.0, p = 0.0, y2 = 0.0, lx = 0.0;

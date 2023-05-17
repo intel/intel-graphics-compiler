@@ -331,6 +331,7 @@ static __constant _iml_dp_union_t __datan_la_nolut_CoutTab[242] = {
     0x02000000, 0x41A00000, /* T27 = 2^27+1 */
 };
 
+__attribute__((always_inline))
 inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
 {
     int nRet = 0;

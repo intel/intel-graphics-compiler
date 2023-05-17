@@ -889,6 +889,7 @@ static __constant _iml_dp_union_t __dpowr_la_nolut_CoutTab[860] = {
     0x00000000, 0x33700000,
 };
 
+__attribute__((always_inline))
 inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
 {
     int nRet = 0;
@@ -1646,7 +1647,7 @@ static __constant union
     double f;
 } __dpowr_la_two_64 = { 0x43f0000000000000UL };
 
-inline int __internal_dpowr_lut_cout (double *pxin, double *pyin, double *pres);
+__attribute__((always_inline))
 inline int __internal_dpowr_nolut_cout (double *pxin, double *pyin, double *pres)
 {
     int nRet = 0;

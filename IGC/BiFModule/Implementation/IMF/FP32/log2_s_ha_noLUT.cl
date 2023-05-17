@@ -55,6 +55,7 @@ static __constant union {
   double f;
 } __slog2_ha_dc1 = {0x3ff715476395bd86uL};
 
+__attribute__((always_inline))
 static inline int __ocl_svml_internal_slog2_ha(float *a, float *r)
 {
   float xin = *a;

@@ -341,6 +341,7 @@ static __constant _iml_dp_union_t __dlog1p_la_CoutTab[210] = {
 //   natural logarithm function starts here.
 //
 */
+__attribute__((always_inline))
 inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
 {
     double x, y, u, da, *a = (&da);

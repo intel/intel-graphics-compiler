@@ -138,6 +138,7 @@ static __constant union
     double f;
 } __dexp2_la_thres = { 0x408ff00000000000uL };
 
+__attribute__((always_inline))
 inline int __ocl_svml_internal_dexp2_noLUT (double *a, double *r)
 {
     int nRet = 0;

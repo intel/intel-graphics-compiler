@@ -399,6 +399,7 @@ static __constant union {
   double f;
 } __derfc_la___ce0 = {0x3ff0000000000000uL};
 
+__attribute__((always_inline))
 static inline int __ocl_svml_internal_derfc(double *px, double *pres)
 {
   int nRet = 0;

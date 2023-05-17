@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
 
+__attribute__((always_inline))
 inline int __dpow_la_pow_lut_cout (double *a, double *b, double *r)
 {
     int nRet = 0;
@@ -704,7 +705,7 @@ static __constant union
     double f;
 } __dpow_la_two_64 = { 0x43f0000000000000UL };
 
-inline int __dpow_la_pow_lut_cout (double *pxin, double *pyin, double *pres);
+__attribute__((always_inline))
 inline int __internal_dpow_nolut_cout (double *pxin, double *pyin, double *pres)
 {
     int nRet = 0;
