@@ -4090,11 +4090,12 @@ void SpillManagerGRF::immMovSpillAnalysis() {
   }
 }
 
-bool vISA::isEOTSpill(const IR_Builder &builder, const LiveRange *lr,
-                bool isFailSafeIter) {
+bool vISA::isEOTSpillWithFailSafeRA(const IR_Builder &builder,
+                                    const LiveRange *lr, bool isFailSafeIter) {
   bool needsEOTGRF = lr->getEOTSrc() && builder.hasEOTGRFBinding();
   if (isFailSafeIter && needsEOTGRF &&
-      (lr->getVar()->isRegVarTransient() || lr->getVar()->isRegVarTmp()))
+      (lr->getVar()->isRegVarTransient() || lr->getVar()->isRegVarTmp() ||
+       lr->getIsInfiniteSpillCost()))
     return true;
   return false;
 }
@@ -4113,7 +4114,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
     // Ignore request to spill/fill the spill/fill ranges
     // as it does not help the allocator.
     if (shouldSpillRegister(lr->getVar()) == false) {
-      if (isEOTSpill(*builder_, lr, failSafeSpill_)) {
+      if (isEOTSpillWithFailSafeRA(*builder_, lr, failSafeSpill_)) {
         if (!builder_->getOption(vISA_NewFailSafeRA)) {
           lr->getVar()->setPhyReg(
               builder_->phyregpool.getGreg(

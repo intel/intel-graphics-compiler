@@ -844,8 +844,8 @@ private:
                  std::unordered_map<G4_INST *, G4_BB *> &InstBBMap);
 };
 
-bool isEOTSpill(const IR_Builder &builder, const LiveRange *lr,
-                bool isFailSafeIter);
+bool isEOTSpillWithFailSafeRA(const IR_Builder &builder, const LiveRange *lr,
+                              bool isFailSafeIter);
 
 } // namespace vISA
 

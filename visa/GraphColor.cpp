@@ -10149,7 +10149,8 @@ int GlobalRA::coloringRegAlloc() {
                           // EOT spills even of infinite cost are specially
                           // handled in spill insertion when using old fail safe
                           // RA. So don't assert for such spills.
-                          if (isEOTSpill(builder, spilledLR, reserveSpillReg) &&
+                          if (isEOTSpillWithFailSafeRA(builder, spilledLR,
+                                                       reserveSpillReg) &&
                               !builder.getOption(vISA_NewFailSafeRA))
                             return true;
                           return spilledLR->getSpillCost() != MAXSPILLCOST;
