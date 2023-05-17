@@ -504,10 +504,11 @@ private:
     return (uint32_t)0;
   }
 
-  void loadFromMemoryLscBti(G4_Declare *loadAddress,
+  void loadFromMemoryLscBti(G4_Declare *baseLoadAddr,
                             uint32_t startGRF,
                             uint32_t numTotalDW)
   {
+    G4_Declare *loadAddress = baseLoadAddr;
     for (uint32_t numRemainingDW = numTotalDW, nextGRF = startGRF;
          numRemainingDW > 0;
          /* updated in body */) {
@@ -561,18 +562,34 @@ private:
       bool advanceLoadAddress = numRemainingDW > 0;
       if (advanceLoadAddress) {
         // advance the address offset
-        // (W) add (1) loadAddress.0 loadAddress.0 numGRFToLoad*32
-        auto addSrc0 =
-          builder.createSrcRegRegion(loadAddress, builder.getRegionScalar());
-        auto addSrc1 =
-          builder.createImm(numDWToLoad * TypeSize(Type_UD), Type_UW);
-        auto addDst =
-          builder.createDst(loadAddress->getRegVar(), 0, 0, 1, Type_UD);
+        // (W) add (1) loadAddress.0 baseLoadAddr.0 numGRFLoadedInBytes
+        auto addSrc0 = builder.createSrcRegRegion(
+            baseLoadAddr, builder.getRegionScalar());
+        auto addSrc1 = builder.createImm(
+            (nextGRF - startGRF) * kernel.getGRFSize(), Type_UW);
+        vASSERT(loadAddress->getRegVar()->isPhyRegAssigned() &&
+                loadAddress->getRegVar()->getPhyReg()->isPhyGreg());
+        // Use different GRF for the subsequent load address computation to
+        // mitigate WAR stall on prev send src. Use the address GRF - 1 from
+        // the current load for the next one here, and fallback to use the last
+        // GRF when it conflicts with input.
+        // TODO: Consider moving prolog emission before local schedule or do
+        // hand schedule to hide the RAW dependence of send on the address GRF.
+        unsigned rTmpAddDst =
+            loadAddress->getRegVar()->getPhyReg()->asGreg()->getRegNum() - 1;
+        if (nextGRF * kernel.numEltPerGRF<Type_UD>() + numRemainingDW >
+            rTmpAddDst * kernel.numEltPerGRF<Type_UD>()) {
+          loadAddress = baseLoadAddr;
+        } else {
+          loadAddress =
+              builder.createHardwiredDeclare(1, Type_UD, rTmpAddDst, 0);
+        }
+        auto addDst = builder.createDstRegRegion(loadAddress, 1);
         auto addInst =
-          builder.createBinOp(G4_add, g4::SIMD1,
-                              addDst, addSrc0, addSrc1,
-                              InstOpt_WriteEnable | InstOpt_NoCompact,
-                              false);
+            builder.createBinOp(G4_add, g4::SIMD1,
+                                addDst, addSrc0, addSrc1,
+                                InstOpt_WriteEnable | InstOpt_NoCompact,
+                                false);
         instBuffer.push_back(addInst);
       }
     }
@@ -582,6 +599,11 @@ private:
                       uint32_t startGRF,
                       uint32_t numTotalDW)
   {
+    // Need to reserve 1 GRF for offset computation or load payload at least.
+    vISA_ASSERT(numTotalDW == 0 ||
+        (startGRF + (numTotalDW + kernel.numEltPerGRF<Type_UD>() - 1) /
+            kernel.numEltPerGRF<Type_UD>()) < (kernel.getNumRegTotal() - 1),
+        "The payload exceeds GRF capacity.");
     if (builder.useLSCForPayloadLoad()) {
       loadFromMemoryLscBti(loadAddress, startGRF, numTotalDW);
     } else {
