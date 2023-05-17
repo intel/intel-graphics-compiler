@@ -286,6 +286,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     bool useAssumeUniform = pAlloca->getMetadata("UseAssumeUniform") != nullptr;
     unsigned int allocaSize = extractConstAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
+    unsigned int SIMDSize = numLanes(SIMDMode::SIMD8);
 
     // scale alloc size based on the number of GRFs we have
     float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
@@ -297,8 +298,8 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            auto simdSize = (uint32_t)subGroupSize->getSIMD_size();
-            allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / simdSize;
+            SIMDSize = (uint32_t)subGroupSize->getSIMD_size();
+            allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
         }
     }
     Type* baseType = nullptr;
@@ -312,9 +313,9 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     }
     if (isUniformAlloca)
     {
-        // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
+        // Heuristic: for uniform alloca we divide the size by SIMDSize to adjust the pressure
         // as they will be allocated as uniform array
-        allocaSize = iSTD::Round(allocaSize, SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
+        allocaSize = iSTD::Round(allocaSize, SIMDSize) / SIMDSize;
     }
 
     if (useAssumeUniform || allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
