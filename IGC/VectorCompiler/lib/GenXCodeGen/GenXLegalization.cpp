@@ -236,6 +236,10 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
+static cl::opt<bool> UseUpper16Lanes("vc-use-upper16-lanes", cl::init(true),
+                                     cl::Hidden,
+                                     cl::desc("Limit legalization width"));
+
 namespace {
 
 // Information on a part of a predicate.
@@ -255,7 +259,6 @@ struct LegalPredSize {
 class GenXLegalization : public FunctionPass {
   enum { DETERMINEWIDTH_UNBALE = 0, DETERMINEWIDTH_NO_SPLIT = 256 };
   GenXBaling *Baling = nullptr;
-  GenXBackendConfig *BC = nullptr;
   const GenXSubtarget *ST = nullptr;
   DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;
@@ -474,7 +477,6 @@ void initializeGenXLegalizationPass(PassRegistry &);
 }
 INITIALIZE_PASS_BEGIN(GenXLegalization, "GenXLegalization", "GenXLegalization",
                       false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXFuncBaling)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
@@ -487,7 +489,6 @@ FunctionPass *llvm::createGenXLegalizationPass() {
 }
 
 void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXFuncBaling>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<TargetPassConfig>();
@@ -501,7 +502,6 @@ void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
  */
 bool GenXLegalization::runOnFunction(Function &F) {
   Baling = &getAnalysis<GenXFuncBaling>();
-  BC = &getAnalysis<GenXBackendConfig>();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
@@ -1322,7 +1322,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
   // Prepare to keep track of whether an instruction with a minimum width
   // (e.g. dp4) would be split too small, and whether we need to unbale.
   unsigned ExecSizeAllowedBits = adjustTwiceWidthOrFixed4(B);
-  if (!BC->useUpper16Lanes() || (HasStackCalls && ST->hasFusedEU()))
+  if (!UseUpper16Lanes || (HasStackCalls && ST->hasFusedEU()))
     // Actually, we should legalize with these more strict requirements only FGs
     // of indirectly called functions. But there are two design issues that make
     // us legalize everything if the module has a stack call:

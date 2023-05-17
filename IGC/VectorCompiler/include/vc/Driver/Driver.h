@@ -162,7 +162,6 @@ struct CompileOptions {
   unsigned InteropSubgroupSize = 16;
 
   bool CheckGVClobbering = false;
-  bool UseUpper16Lanes = true;
 
   bool EnableHashMovs = false;
   bool EnableHashMovsAtPrologue = false;

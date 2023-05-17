@@ -172,16 +172,12 @@ struct GenXBackendOptions {
   // Run auxiliary checker/fixup for GV access clobbering cases.
   bool CheckGVClobbering = false;
 
-  // Allow using SIMD32
-  bool UseUpper16Lanes = true;
-
   // Compile until vISA stage only.
   bool EmitVisaOnly = false;
 
   bool EnableHashMovs = false;
   bool EnableHashMovsAtPrologue = false;
   uint64_t AsmHash = 0;
-
 
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
@@ -383,8 +379,6 @@ public:
 
   bool checkGVClobbering() const { return Options.CheckGVClobbering; }
 
-  bool useUpper16Lanes() const { return Options.UseUpper16Lanes; }
-
   bool isHashMovsEnabled() const { return Options.EnableHashMovs; }
   bool isHashMovsAtPrologueEnabled() const {
     return Options.EnableHashMovsAtPrologue;
@@ -393,7 +387,6 @@ public:
   uint64_t getAsmHash() const { return Options.AsmHash; }
 
   vc::BinaryKind getBinaryFormat() const { return Options.Binary; }
-
 };
 } // namespace llvm
 

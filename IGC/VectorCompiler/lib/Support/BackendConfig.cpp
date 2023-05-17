@@ -154,9 +154,6 @@ static cl::opt<bool>
                          cl::desc("Find, report and fixup clobbered GV load "
                                   "users before coalescing happened."));
 
-static cl::opt<bool> UseUpper16LanesOpt("vc-use-upper16-lanes", cl::Hidden,
-                                        cl::desc("Limit legalization width"));
-
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -203,7 +200,6 @@ void GenXBackendOptions::enforceLLVMOptions() {
                            VCIgnoreLoopUnrollThresholdOnPragma);
   enforceOptionIfSpecified(InteropSubgroupSize, InteropSubgroupSizeOpt);
   enforceOptionIfSpecified(CheckGVClobbering, CheckGVClobberingOpt);
-  enforceOptionIfSpecified(UseUpper16Lanes, UseUpper16LanesOpt);
 }
 
 static std::unique_ptr<MemoryBuffer>
