@@ -151,12 +151,12 @@ bool IncrementalRA::verify(const LivenessAnalysis *curLiveness) const {
     }
   }
 
-  auto compare = [&](const std::vector<SparseBitSet> &curLivenessSet,
-                     const std::vector<SparseBitSet> &oldLivenessSet,
+  auto compare = [&](const std::vector<llvm_SBitVector> &curLivenessSet,
+                     const std::vector<llvm_SBitVector> &oldLivenessSet,
                      std::string name) {
     for (unsigned int bb = 0; bb != kernel.fg.getBBList().size(); ++bb) {
-      for (unsigned int i = 0; i != oldLivenessSet[bb].getSize(); ++i) {
-        bool diff = curLivenessSet[bb].isSet(i) ^ oldLivenessSet[bb].isSet(i);
+      for (unsigned int i = 0; i != oldLivenessSet[bb].count(); ++i) {
+        bool diff = curLivenessSet[bb].test(i) ^ oldLivenessSet[bb].test(i);
         if (diff && needIntfUpdate.count(lrs[i]->getDcl()) == 0) {
           std::cerr << lrs[i]->getDcl()->getName()
                     << ": Variable liveness changed but not found in "
