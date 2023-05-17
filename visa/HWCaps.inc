@@ -755,7 +755,8 @@ bool hasGatherReadSuppressionWARA() const {
 bool needEmaskSetupProlog() const {
   if (!getOption(vISA_addEmaskSetupProlog))
     return false;
-  return getPlatform() >= GENX_TGLLP && getPlatform() <= Xe_PVCXT;
+  // Disable the WA for TGLLP for now because of a possible RS issue.
+  return getPlatform() > GENX_TGLLP && getPlatform() <= Xe_PVCXT;
 }
 
 bool needIndirectSrcForCompressedInstWA() const {
