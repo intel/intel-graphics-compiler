@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,7 +12,7 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 @simple_global_int = internal global i32 42, align 4
 @simple_const_float = internal constant float 4.200000e+01, align 4
-@__imparg_llvm.genx.print.buffer = internal global i64 undef
+@__imparg_llvm.vc.internal.print.buffer = internal global i64 undef
 
 ; COM: Fake functions to obtain implicit args inside extern/indirect functions.
 ; COM: In real case scenario there'll be some code in place of those functions,
@@ -37,8 +37,8 @@ define internal spir_func float @bar() {
 define internal spir_func void @indirect() {
 ; CHECK: define internal spir_func void @indirect() #[[ATTR:[0-9]]] {
   %indirect.get.ptr = call i64 @get_printf_ptr()
-  store i64 %indirect.get.ptr, i64* @__imparg_llvm.genx.print.buffer, align 8
-  %indirect.int.load = load i64, i64* @__imparg_llvm.genx.print.buffer, align 8
+  store i64 %indirect.get.ptr, i64* @__imparg_llvm.vc.internal.print.buffer, align 8
+  %indirect.int.load = load i64, i64* @__imparg_llvm.vc.internal.print.buffer, align 8
   ret void
 }
 

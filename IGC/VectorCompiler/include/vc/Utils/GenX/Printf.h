@@ -63,18 +63,18 @@ using PrintfArgInfoSeq = std::vector<PrintfArgInfo>;
 // Minimal parsing of printf format string. Only types of arguments are defined.
 PrintfArgInfoSeq parseFormatString(llvm::StringRef FmtStr);
 
-// Whether \p Usr is @genx.print.format.index inrinsic call.
+// Whether \p Usr is `@llvm.vc.internal.print.format.index` inrinsic call.
 bool isPrintFormatIndex(const llvm::User &Usr);
 
-// Creates @genx.print.format.index inrinsic call with \p Pointer as an operand.
-// The call is inserted before \p InsertionPt.
+// Creates @llvm.vc.internal.print.format.index inrinsic call with \p Pointer as
+// an operand. The call is inserted before \p InsertionPt.
 llvm::CallInst &createPrintFormatIndex(llvm::Value &Pointer,
                                        llvm::Instruction &InsertionPt);
 
-// There's a special case of GEP when all its users are genx.print.format.index
-// intrinsics. Such GEPs live until CisaBuilder and then handled as part of
-// genx.print.format.index intrinsic.
-// This function checks whether \p GEP is a such GEP.
+// There's a special case of GEP when all its users are
+// vc.internal.print.format.index intrinsics. Such GEPs live until CisaBuilder
+// and then handled as part of the intrinsic. This function checks whether \p
+// GEP is a such GEP.
 bool isLegalPrintFormatIndexGEP(const llvm::GEPOperator &GEP);
 bool isLegalPrintFormatIndexGEP(const llvm::Value &V);
 

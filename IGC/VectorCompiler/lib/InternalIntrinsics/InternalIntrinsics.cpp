@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -559,8 +559,8 @@ static InternalIntrinsic::ID lookupInternalIntrinsicID(StringRef Name) {
 }
 
 /// getInternalName(ID) - Return the LLVM name for a Internal intrinsic
-static std::string getInternalName(InternalIntrinsic::ID id,
-                                   ArrayRef<Type *> Tys) {
+std::string InternalIntrinsic::getInternalName(InternalIntrinsic::ID id,
+                                               ArrayRef<Type *> Tys) {
   IGC_ASSERT(InternalIntrinsic::isInternalIntrinsic(id) &&
              "Invalid intrinsic ID!");
   IGC_ASSERT(Tys.empty() || (isOverloaded(id) &&

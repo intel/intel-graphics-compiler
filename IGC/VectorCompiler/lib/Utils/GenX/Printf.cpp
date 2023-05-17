@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/RegexIterator.h"
 #include "vc/Utils/General/Types.h"
 
-#include <llvm/GenXIntrinsics/GenXIntrinsics.h>
+#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/STLExtras.h>
@@ -183,18 +183,18 @@ PrintfArgInfoSeq vc::parseFormatString(StringRef FmtStr) {
 }
 
 bool vc::isPrintFormatIndex(const User &Usr) {
-  return GenXIntrinsic::getGenXIntrinsicID(&Usr) ==
-         GenXIntrinsic::genx_print_format_index;
+  return vc::InternalIntrinsic::getInternalIntrinsicID(&Usr) ==
+         vc::InternalIntrinsic::print_format_index;
 }
 
 CallInst &vc::createPrintFormatIndex(Value &Pointer, Instruction &InsertionPt) {
-  IGC_ASSERT_MESSAGE(
-      Pointer.getType()->isPointerTy(),
-      "wrong argument: genx.print.format.index operand must be a pointer");
+  IGC_ASSERT_MESSAGE(Pointer.getType()->isPointerTy(),
+                     "wrong argument: @llvm.vc.internal.print.format.index "
+                     "operand must be a pointer");
   IRBuilder<> IRB{&InsertionPt};
-  auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      IRB.GetInsertBlock()->getModule(), GenXIntrinsic::genx_print_format_index,
-      Pointer.getType());
+  auto *Decl = vc::InternalIntrinsic::getInternalDeclaration(
+      IRB.GetInsertBlock()->getModule(),
+      vc::InternalIntrinsic::print_format_index, Pointer.getType());
   return *IRB.CreateCall(Decl, &Pointer);
 }
 

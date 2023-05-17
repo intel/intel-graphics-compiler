@@ -165,4 +165,30 @@ Imported_Intrinsics = \
                             "arguments": [],
                             "attributes": "NoMem", },
 
+### ---------------------------
+### Print and assert intrinsics
+### ---------------------------
+
+## ``llvm.vc.internal.print.buffer`` : read stateless pointer to print buffer
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ``llvm.vc.internal.print.buffer`` : read implicit arg print buffer ptr
+##
+## * return value: i64 address of print buffer
+##
+    "print_buffer" : { "result" : "long",
+                       "arguments" : [],
+                       "attributes" : "ReadMem", },
+
+## ``llvm.vc.internal.print.format.index`` : add printf format string to collection
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ``llvm.vc.internal.print.format.index`` :  return index of printf format string
+##
+## * arg0: pointer for printf format string
+##
+## * Return value: the vector value read
+##
+    "print_format_index" : { "result" : "int",
+                             "arguments" : ["anyptr"],
+                             "attributes" : "NoMem", },
+
 }

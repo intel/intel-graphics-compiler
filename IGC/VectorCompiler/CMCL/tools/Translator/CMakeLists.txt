@@ -34,6 +34,5 @@ if(NOT TARGET CMCLTranslatorTool)
 
   target_link_libraries(CMCLTranslatorTool
     CMCLSupport
-  ${LLVM_LIBS})
-
+    ${LLVM_LIBS})
 endif()

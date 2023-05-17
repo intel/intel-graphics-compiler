@@ -2808,10 +2808,11 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
   } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
     (void)LI; // no code generated
   } else if (auto GEPI = dyn_cast<GetElementPtrInst>(Inst)) {
-    // Skip genx.print.format.index GEP here.
-    IGC_ASSERT_MESSAGE(vc::isLegalPrintFormatIndexGEP(*GEPI),
-                       "only genx.print.format.index src GEP can still be "
-                       "present at this stage");
+    // Skip vc.internal.print.format.index GEP here.
+    IGC_ASSERT_MESSAGE(
+        vc::isLegalPrintFormatIndexGEP(*GEPI),
+        "only vc.internal.print.format.index src GEP can still be "
+        "present at this stage");
   } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Inst)) {
     buildUnaryOperator(UO, BI, Mod, DstDesc);
   } else if (auto *CI = dyn_cast<CallInst>(Inst)) {
@@ -2846,7 +2847,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_convert:
         buildConvert(CI, BI, Mod, DstDesc);
         break;
-      case GenXIntrinsic::genx_print_format_index:
+      case vc::InternalIntrinsic::print_format_index:
         buildPrintIndex(CI, IntrinID, Mod, DstDesc);
         break;
       case GenXIntrinsic::genx_convert_addr:

@@ -2,7 +2,7 @@
 
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2021 Intel Corporation
+# Copyright (C) 2021-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -239,7 +239,10 @@ def generate_handlers_array(builtin_descs):
 # argument. If there's no intrinsic, "~0u" is returned.
 def get_intrinsic_id(translation_desc):
   if "VC-Intrinsic" in translation_desc:
-    return "GenXIntrinsic::" + translation_desc["VC-Intrinsic"]
+    intrinsic = translation_desc["VC-Intrinsic"]
+    if intrinsic.startswith("genx_"):
+      return "GenXIntrinsic::" + intrinsic
+    return "vc::InternalIntrinsic::" + intrinsic
   if "LLVM-Intrinsic" in translation_desc:
     return "Intrinsic::" + translation_desc["LLVM-Intrinsic"]
   return "~0u"

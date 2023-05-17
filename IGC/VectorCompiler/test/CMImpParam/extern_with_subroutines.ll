@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -43,12 +43,12 @@ declare i32 @llvm.genx.group.id.x()
 declare i32 @llvm.genx.group.id.y()
 declare i32 @llvm.genx.group.id.z()
 declare <3 x i32> @llvm.genx.group.count.v3i32()
-declare i64 @llvm.genx.print.buffer()
+declare i64 @llvm.vc.internal.print.buffer()
 
 ; COM: Printf buffer is used only in extern function
 define dllexport spir_kernel void @kernel() {
 ; XeHP-OCL: define dllexport spir_kernel void @kernel(
-; XeHP-OCL-NOT: i64 %impl.arg.llvm.genx.print.buffer
+; XeHP-OCL-NOT: i64 %impl.arg.llvm.vc.internal.print.buffer
 ; XeHP-OCL-NOT: <3 x i32> %impl.arg.llvm.genx.local.size
 ; XeHP-OCL-NOT: <3 x i32> %impl.arg.llvm.genx.group.count
 ; XeHP-OCL-SAME: ) #[[KERNEL_ATTR:[0-9]+]]
@@ -70,14 +70,14 @@ define spir_func void @with_printf() {
 ; COM: Loading printf buffer ptr from IAB and storing it to implict arg global:
 ; XeHP-OCL: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[PRINTF_IAB_PTR]], i32 0, i32 10
 ; XeHP-OCL: %[[PRINTF_PBP:[^ ]+]] = load i64, i64 addrspace(6)* %[[PRINTF_PBP_PTR]]
-; XeHP-OCL: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.genx.print.buffer
+; XeHP-OCL: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
 
   call spir_func void @with_printf_impl()
   ret void
 }
 
 define internal spir_func void @with_printf_impl() {
-  %wpi.print = call i64 @llvm.genx.print.buffer()
+  %wpi.print = call i64 @llvm.vc.internal.print.buffer()
   ret void
 }
 
@@ -160,7 +160,7 @@ define spir_func void @extern_calls_extern_and_printf() {
 
 ; XeHP-OCL-NEXT: %[[ECEAP_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[ECEAP_IAB_PTR]], i32 0, i32 10
 ; XeHP-OCL-NEXT: %[[ECEAP_PBP:[^ ]+]] = load i64, i64 addrspace(6)* %[[ECEAP_PBP_PTR]]
-; XeHP-OCL-NEXT: store i64 %[[ECEAP_PBP]], i64* @__imparg_llvm.genx.print.buffer
+; XeHP-OCL-NEXT: store i64 %[[ECEAP_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
 
 ; XeHP-OCL-NEXT: call spir_func void @with_printf_impl()
 ; XeHP-OCL-NEXT: call spir_func void @with_local_size()

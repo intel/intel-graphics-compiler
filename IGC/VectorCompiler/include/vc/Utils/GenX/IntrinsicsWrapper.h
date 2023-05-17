@@ -40,6 +40,8 @@ bool isAnyNonTrivialIntrinsic(unsigned ID);
 llvm::Function *
 getAnyDeclaration(llvm::Module *M, unsigned ID,
                   llvm::ArrayRef<llvm::Type *> Tys = llvm::None);
+
+std::string getAnyName(unsigned id, llvm::ArrayRef<llvm::Type *> Tys);
 } // namespace vc
 
 #endif /* end of include guard: VC_UTILS_INTRINSICS_WRAPPER_H */

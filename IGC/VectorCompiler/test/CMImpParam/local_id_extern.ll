@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -23,7 +23,7 @@ declare <3 x i16> @llvm.genx.local.id16.v3i16()
 
 define dllexport spir_kernel void @kernel() {
 ; Gen9-LABEL: define dllexport spir_kernel void @kernel(
-; Gen9-NOT: i64 %impl.arg.llvm.genx.print.buffer
+; Gen9-NOT: i64 %impl.arg.llvm.vc.internal.print.buffer
 ; Gen9-NOT: <3 x i32> %impl.arg.llvm.genx.local.size
 ; Gen9-NOT: <3 x i32> %impl.arg.llvm.genx.group.count
 ; Gen9-DAG: <3 x i16> %impl.arg.llvm.genx.local.id16

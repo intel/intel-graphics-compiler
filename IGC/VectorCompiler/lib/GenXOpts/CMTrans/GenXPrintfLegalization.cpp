@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9,9 +9,9 @@ SPDX-License-Identifier: MIT
 //
 /// GenXPrintfLegalization
 /// ----------------------
-/// For indexed string - string that is used in @genx.print.format.index and
-/// thus translated into index - only GV to GEP to @genx.print.format.index
-/// value chains are possible.
+/// For indexed string - string that is used in `@print.format.index` and thus
+/// translated into index - only GV to GEP to `@print.format.index` value chains
+/// are possible.
 ///
 /// As first step this pass finds all places where format index doesn't take
 /// pointer directly from GEP that gets pointer to the first character of a

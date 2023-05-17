@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -25,13 +25,13 @@
 declare <3 x i32> @llvm.genx.local.id.v3i32() #0
 declare <3 x i32> @llvm.genx.local.size.v3i32() #0
 declare <3 x i32> @llvm.genx.group.count.v3i32() #0
-declare i64 @llvm.genx.print.buffer() #0
+declare i64 @llvm.vc.internal.print.buffer() #0
 
 define dllexport spir_kernel void @test_kernel() #0 !dbg !6 {
   %1 = call <3 x i32> @llvm.genx.local.id.v3i32()
   %2 = call <3 x i32> @llvm.genx.local.size.v3i32()
   %3 = call <3 x i32> @llvm.genx.group.count.v3i32()
-  %4 = call i64 @llvm.genx.print.buffer()
+  %4 = call i64 @llvm.vc.internal.print.buffer()
   ret void
 }
 
@@ -62,10 +62,10 @@ define dllexport spir_kernel void @test_kernel() #0 !dbg !6 {
 ; CHECK_GROUP_COUNT-DAG: [[#ELEMENTS]] = !{![[#SUBRANGE:]]}
 ; CHECK_GROUP_COUNT-DAG: [[#SUBRANGE]] = !DISubrange(count: 3{{(, lowerBound: 0)?}})
 
-; CHECK_PRINT_BUFFER:     @__imparg_llvm.genx.print.buffer = internal global i64 undef, !dbg ![[#EXPR_NODE:]]
+; CHECK_PRINT_BUFFER:     @__imparg_llvm.vc.internal.print.buffer = internal global i64 undef, !dbg ![[#EXPR_NODE:]]
 ; CHECK_PRINT_BUFFER:     @test_kernel
 ; CHECK_PRINT_BUFFER-DAG: [[#EXPR_NODE]] = !DIGlobalVariableExpression(var: ![[#VAR_NODE:]], expr: !DIExpression())
-; CHECK_PRINT_BUFFER-DAG: [[#VAR_NODE]]  = distinct !DIGlobalVariable(name: "__llvm_genx_print_buffer", linkageName: "__llvm_genx_print_buffer", scope: ![[#]], file: ![[#]], type: ![[#TYPE_NODE:]]
+; CHECK_PRINT_BUFFER-DAG: [[#VAR_NODE]]  = distinct !DIGlobalVariable(name: "__llvm_vc_internal_print_buffer", linkageName: "__llvm_vc_internal_print_buffer", scope: ![[#]], file: ![[#]], type: ![[#TYPE_NODE:]]
 ; CHECK_PRINT_BUFFER-DAG: [[#TYPE_NODE]] = !DIBasicType(name: "ui64", size: 64, encoding: DW_ATE_unsigned)
 
 attributes #0 = { "target-cpu"="Gen9" }
@@ -82,4 +82,3 @@ attributes #0 = { "target-cpu"="Gen9" }
 !5 = !DILocation(line: 1, column: 1, scope: !6)
 !6 = distinct !DISubprogram(name: "test_kernel", linkageName: "test_kernel", scope: null, file: !3, line: 1, type: !7, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !1)
 !7 = !DISubroutineType(types: !1)
-

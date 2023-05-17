@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,7 +14,7 @@ target triple = "spir64-unknown-unknown"
 @__imparg_llvm.genx.local.id16 = internal global <3 x i16> undef
 @__imparg_llvm.genx.local.size = internal global <3 x i32> undef
 @__imparg_llvm.genx.group.count = internal global <3 x i32> undef
-@__imparg_llvm.genx.print.buffer = internal global i64 undef
+@__imparg_llvm.vc.internal.print.buffer = internal global i64 undef
 
 ; COM: Fake functions to obtain implicit args inside extern/indirect functions.
 ; COM: In real case scenario there'll be some code in place of those functions,
@@ -99,18 +99,18 @@ define spir_func void @external_indir_use() #0 {
 
 define spir_func void @external_mixed_use() #0 {
 ; CHECK-LABEL: define spir_func void @external_mixed_use
-; CHECK-DAG: %__imparg_llvm.genx.print.buffer.local = alloca i64
+; CHECK-DAG: %__imparg_llvm.vc.internal.print.buffer.local = alloca i64
 ; CHECK-DAG: %__imparg_llvm.genx.group.count.local = alloca <3 x i32>
 
   %emu.get.printf.ptr = call i64 @get_printf_ptr()
   %emu.get.grp.cnt = call <3 x i32> @get_grp_cnt()
-  store i64 %emu.get.printf.ptr, i64* @__imparg_llvm.genx.print.buffer
+  store i64 %emu.get.printf.ptr, i64* @__imparg_llvm.vc.internal.print.buffer
   store <3 x i32> %emu.get.grp.cnt, <3 x i32>* @__imparg_llvm.genx.group.count
-; CHECK: store i64 %emu.get.printf.ptr, i64* %__imparg_llvm.genx.print.buffer.local
+; CHECK: store i64 %emu.get.printf.ptr, i64* %__imparg_llvm.vc.internal.print.buffer.local
 ; CHECK: store <3 x i32> %emu.get.grp.cnt, <3 x i32>* %__imparg_llvm.genx.group.count.local
 
-  %emu.printf.ptr = load i64, i64* @__imparg_llvm.genx.print.buffer
-; CHECK: %emu.printf.ptr = load i64, i64* %__imparg_llvm.genx.print.buffer.local
+  %emu.printf.ptr = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
+; CHECK: %emu.printf.ptr = load i64, i64* %__imparg_llvm.vc.internal.print.buffer.local
 
   call void @internal_grp_cnt()
 ; CHECK: %__imparg_llvm.genx.group.count.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.group.count.local

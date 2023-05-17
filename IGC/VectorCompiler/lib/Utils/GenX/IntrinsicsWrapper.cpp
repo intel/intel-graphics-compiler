@@ -74,3 +74,10 @@ Function *vc::getAnyDeclaration(Module *M, unsigned ID, ArrayRef<Type *> Tys) {
         M, static_cast<vc::InternalIntrinsic::ID>(ID), Tys);
   return Intrinsic::getDeclaration(M, static_cast<Intrinsic::ID>(ID), Tys);
 }
+
+std::string vc::getAnyName(unsigned Id, ArrayRef<Type *> Tys) {
+  if (vc::InternalIntrinsic::isInternalIntrinsic(Id))
+    return vc::InternalIntrinsic::getInternalName(
+        static_cast<InternalIntrinsic::ID>(Id), Tys);
+  return GenXIntrinsic::getAnyName(Id, Tys);
+}

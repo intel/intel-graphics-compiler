@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -118,6 +118,8 @@ bool isOverloadedArg(unsigned IntrinID, unsigned ArgNum);
 /// in intrinsic is overloaded
 bool isOverloadedRet(unsigned IntrinID);
 
+std::string getInternalName(InternalIntrinsic::ID id,
+                            llvm::ArrayRef<llvm::Type *> Tys);
 } // namespace vc::InternalIntrinsic
 
 #endif

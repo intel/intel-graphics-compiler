@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -39,7 +39,7 @@ declare i32 @llvm.genx.group.id.x()
 declare i32 @llvm.genx.group.id.y()
 declare i32 @llvm.genx.group.id.z()
 declare <3 x i32> @llvm.genx.group.count.v3i32()
-declare i64 @llvm.genx.print.buffer()
+declare i64 @llvm.vc.internal.print.buffer()
 
 define spir_func void @with_printf() {
 ; COM: The signature shouldn't change.
@@ -53,10 +53,10 @@ define spir_func void @with_printf() {
 ; COM: Loading printf buffer ptr from IAB and storing it to implict arg global:
 ; CHECK: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[PRINTF_IAB_PTR]], i32 0, i32 10
 ; CHECK: %[[PRINTF_PBP:[^ ]+]] = load i64, i64 addrspace(6)* %[[PRINTF_PBP_PTR]]
-; CHECK: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.genx.print.buffer
+; CHECK: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
 
-  %wp.print = call i64 @llvm.genx.print.buffer()
-; CHECK: %wp.print = load i64, i64* @__imparg_llvm.genx.print.buffer
+  %wp.print = call i64 @llvm.vc.internal.print.buffer()
+; CHECK: %wp.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
   ret void
 }
 
@@ -116,7 +116,7 @@ define spir_func void @with_all() {
 ; COM: handling printf buffer pointer:
 ; CHECK-DAG: %[[WITHALL_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[WITHALL_IAB_PTR]], i32 0, i32 10
 ; CHECK-DAG: %[[WITHALL_PBP:[^ ]+]] = load i64, i64 addrspace(6)* %[[WITHALL_PBP_PTR]]
-; CHECK-DAG: store i64 %[[WITHALL_PBP]], i64* @__imparg_llvm.genx.print.buffer
+; CHECK-DAG: store i64 %[[WITHALL_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
 
 ; COM: handling local size:
 ; CHECK-DAG: %[[WITHALL_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[WITHALL_IAB_PTR]], i32 0, i32 4
@@ -142,10 +142,10 @@ define spir_func void @with_all() {
 ; CHECK-DAG: %[[WITHALL_CNT:[^ ]+]] = insertelement <3 x i32> %[[WITHALL_CNT_PART_1]], i32 %[[WITHALL_CNT_Z]], i64 2
 ; CHECK-DAG: store <3 x i32> %[[WITHALL_CNT]], <3 x i32>* @__imparg_llvm.genx.group.count
 
-  %wa.print = call i64 @llvm.genx.print.buffer()
+  %wa.print = call i64 @llvm.vc.internal.print.buffer()
   %wa.local.size = call <3 x i32> @llvm.genx.local.size.v3i32()
   %wa.group.count = call <3 x i32> @llvm.genx.group.count.v3i32()
-; CHECK: %wa.print = load i64, i64* @__imparg_llvm.genx.print.buffer
+; CHECK: %wa.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
 ; CHECK: %wa.local.size = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
 ; CHECK: %wa.group.count = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
   ret void

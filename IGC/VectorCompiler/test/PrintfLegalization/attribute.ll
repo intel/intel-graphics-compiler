@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,10 +12,10 @@
 ; CHECK-DAG: @str = internal constant [5 x i8] c"text\00", align 1 #[[ORIG_ATTR:[0-9]+]]
 ; CHECK-DAG: @str.indexed = internal constant [5 x i8] c"text\00", align 1 #[[CLONE_ATTR:[0-9]+]]
 
-declare i32 @llvm.genx.print.format.index.p0i8(i8*)
+declare i32 @llvm.vc.internal.print.format.index.p0i8(i8*)
 
 define dllexport void @str_vs_ptr(<1 x i64> %addr) {
-  %legal.use = tail call i32 @llvm.genx.print.format.index.p0i8(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i64 0, i64 0))
+  %legal.use = tail call i32 @llvm.vc.internal.print.format.index.p0i8(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @str, i64 0, i64 0))
   %illegal.use = ptrtoint [5 x i8]* @str to i64
   ret void
 }

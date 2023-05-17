@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -16,7 +16,7 @@ target triple = "spir64-unknown-unknown"
 
 @str = internal addrspace(2) constant [5 x i8] c"text\00", align 1
 
-declare i32 @llvm.genx.print.format.index.p2i8(i8 addrspace(2)*)
+declare i32 @llvm.vc.internal.print.format.index.p2i8(i8 addrspace(2)*)
 
 ; COM: Indexed string must not be encoded in any section.
 ; CHECK: ModuleInfo:
@@ -32,7 +32,7 @@ declare i32 @llvm.genx.print.format.index.p2i8(i8 addrspace(2)*)
 
 define dllexport spir_kernel void @kernel() #0 {
   %gep = getelementptr inbounds [5 x i8], [5 x i8] addrspace(2)* @str, i64 0, i64 0
-  %idx = tail call i32 @llvm.genx.print.format.index.p2i8(i8 addrspace(2)* %gep)
+  %idx = tail call i32 @llvm.vc.internal.print.format.index.p2i8(i8 addrspace(2)* %gep)
   ret void
 }
 

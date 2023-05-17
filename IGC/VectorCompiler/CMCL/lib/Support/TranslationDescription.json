@@ -131,7 +131,7 @@
       "Name": "printf_buffer",
       "Operands": [],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_print_buffer",
+        "VC-Intrinsic": "print_buffer",
         "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": []
       }
@@ -142,7 +142,7 @@
         {"Name": "Source", "Kind": "Input"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_print_format_index",
+        "VC-Intrinsic": "print_format_index",
         "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]}
