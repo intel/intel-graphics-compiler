@@ -263,9 +263,6 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   BackendOpts.CheckGVClobbering = Opts.CheckGVClobbering;
 
-  if (Opts.UseUpper16Lanes)
-    BackendOpts.UseUpper16Lanes = Opts.UseUpper16Lanes;
-
   BackendOpts.Binary = Opts.Binary;
 
   BackendOpts.DisableLiveRangesCoalescing =
