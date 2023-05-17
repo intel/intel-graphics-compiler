@@ -79,6 +79,9 @@ public:
                                      ArgAccessKind access, bool isBindless,
                                      bool isStateful);
 
+  void createPointerLocalAnnotation(unsigned index, unsigned offset,
+                                    unsigned sizeInBytes, unsigned alignment);
+
   void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
                                    unsigned payloadPosition, int BTI,
                                    unsigned statelessPrivateMemSize,

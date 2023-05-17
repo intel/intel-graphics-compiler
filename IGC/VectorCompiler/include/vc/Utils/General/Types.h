@@ -48,7 +48,7 @@ IGCLLVM::FixedVectorType *changeAddrSpace(IGCLLVM::FixedVectorType *OrigTy,
 llvm::Type *changeAddrSpace(llvm::Type *OrigTy, int AddrSpace);
 
 // Get addrspace of a pointer or a vector of pointers type.
-int getAddrSpace(llvm::Type *PtrOrPtrVec);
+int getAddrSpace(const llvm::Type *PtrOrPtrVec);
 
 // calculates new return type for cast instructions
 // * trunc

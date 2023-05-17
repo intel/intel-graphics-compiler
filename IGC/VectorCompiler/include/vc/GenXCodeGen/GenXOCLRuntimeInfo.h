@@ -44,6 +44,7 @@ public:
       LocalSize,
       GroupCount,
       Buffer,
+      SLM,
       SVM,
       Sampler,
       Image1D,
@@ -71,6 +72,7 @@ public:
                           // explicit arg.
     unsigned SizeInBytes;
     unsigned BTI;
+    unsigned Alignment;
 
   private:
     KernelArgInfo() = default;
@@ -83,6 +85,7 @@ public:
     unsigned getSizeInBytes() const { return SizeInBytes; }
     unsigned getBTI() const { return BTI; }
     unsigned getOffsetInArg() const { return OffsetInArg; }
+    unsigned getAlignment() const { return Alignment; }
 
     bool isImage() const {
       switch (Kind) {

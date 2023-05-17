@@ -105,14 +105,28 @@ private:
     return [Attr](StringRef Token) { return Token == Attr; };
   }
 
-  ArgKindType getOCLArgKind(ArrayRef<StringRef> Tokens, unsigned ArgNo) const;
+  ArgKindType getOCLArgKind(ArrayRef<StringRef> Tokens,
+                            const Argument &Arg) const;
   ArgAccessKindType getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
                                         ArgKindType Kind) const;
   std::pair<ArgKindType, ArgAccessKindType>
-  translateArgDesc(unsigned ArgNo) const;
+  translateArgDesc(const Argument &Arg) const;
   unsigned getArgSizeInBytes(const Argument &Arg) const;
 };
 } // namespace llvm
+
+static alignment_t
+getAlignment(const Argument &Arg,
+             GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind) {
+  using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
+  if (Kind != ArgKindType::SLM)
+    return 0;
+
+  Type *TypeToAlign = Arg.getType();
+  TypeToAlign = IGCLLVM::getNonOpaquePtrEltTy(TypeToAlign);
+  return Arg.getParent()->getParent()->getDataLayout().getABITypeAlignment(
+      TypeToAlign);
+}
 
 KernelArgBuilder::ArgAccessKindType
 KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
@@ -131,6 +145,7 @@ KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
       return ArgAccessKindType::ReadOnly;
     if (any_of(Tokens, getStrPred(OCLAttributes::WriteOnly)))
       return ArgAccessKindType::WriteOnly;
+  case ArgKindType::SLM:
     return ArgAccessKindType::ReadWrite;
   default:
     return ArgAccessKindType::None;
@@ -139,8 +154,10 @@ KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
 
 KernelArgBuilder::ArgKindType
 KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
-                                unsigned ArgNo) const {
+                                const Argument &Arg) const {
+  unsigned ArgNo = Arg.getArgNo();
   unsigned RawKind = KM.getArgKind(ArgNo);
+  const auto *ArgTy = Arg.getType();
 
   // Implicit arguments.
   if (vc::isLocalSizeKind(RawKind))
@@ -166,6 +183,9 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     // Bindless buffers have general category but buffer annotation.
     if (any_of(Tokens, getStrPred(OCLAttributes::Buffer)))
       return ArgKindType::BindlessBuffer;
+    if (ArgTy->isPointerTy())
+      if (vc::getAddrSpace(ArgTy) == vc::AddrSpace::Local)
+        return ArgKindType::SLM;
     return ArgKindType::General;
   case vc::RegCategory::Surface:
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1d)))
@@ -197,7 +217,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
 
 // Retrieve Kind and AccessKind from given ArgTypeDesc in metadata.
 std::pair<KernelArgBuilder::ArgKindType, KernelArgBuilder::ArgAccessKindType>
-KernelArgBuilder::translateArgDesc(unsigned ArgNo) const {
+KernelArgBuilder::translateArgDesc(const Argument &Arg) const {
+  unsigned ArgNo = Arg.getArgNo();
   std::string Translated{KM.getArgTypeDesc(ArgNo)};
   // Transform each separator to space.
   std::transform(Translated.begin(), Translated.end(), Translated.begin(),
@@ -214,7 +235,7 @@ KernelArgBuilder::translateArgDesc(unsigned ArgNo) const {
   std::sort(Tokens.begin(), Tokens.end());
   Tokens.erase(std::unique(Tokens.begin(), Tokens.end()), Tokens.end());
 
-  const ArgKindType Kind = getOCLArgKind(Tokens, ArgNo);
+  const ArgKindType Kind = getOCLArgKind(Tokens, Arg);
   const ArgAccessKindType AccessKind = getOCLArgAccessKind(Tokens, Kind);
   return {Kind, AccessKind};
 }
@@ -231,8 +252,8 @@ unsigned KernelArgBuilder::getArgSizeInBytes(const Argument &Arg) const {
 GenXOCLRuntimeInfo::KernelArgInfo
 KernelArgBuilder::translateArgument(const Argument &Arg) const {
   GenXOCLRuntimeInfo::KernelArgInfo Info;
-  const unsigned ArgNo = Arg.getArgNo();
-  std::tie(Info.Kind, Info.AccessKind) = translateArgDesc(ArgNo);
+  unsigned ArgNo = Arg.getArgNo();
+  std::tie(Info.Kind, Info.AccessKind) = translateArgDesc(Arg);
   Info.Offset = KM.getArgOffset(ArgNo);
   Info.SizeInBytes = getArgSizeInBytes(Arg);
   Info.BTI = KM.getBTI(ArgNo);
@@ -242,6 +263,7 @@ KernelArgBuilder::translateArgument(const Argument &Arg) const {
   // Linearization arguments have a non-zero offset in the original explicit
   // byval arg.
   Info.OffsetInArg = KM.getOffsetInArg(ArgNo);
+  Info.Alignment = (unsigned)getAlignment(Arg, Info.Kind);
 
   return Info;
 }

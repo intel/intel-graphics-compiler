@@ -35,7 +35,7 @@ Type *vc::changeAddrSpace(Type *OrigTy, int AddrSpace) {
   return changeAddrSpace(cast<IGCLLVM::FixedVectorType>(OrigTy), AddrSpace);
 }
 
-int vc::getAddrSpace(Type *PtrOrPtrVec) {
+int vc::getAddrSpace(const Type *PtrOrPtrVec) {
   IGC_ASSERT_MESSAGE(PtrOrPtrVec, "wrong argument");
   IGC_ASSERT_MESSAGE(
       PtrOrPtrVec->isPtrOrPtrVectorTy(),
