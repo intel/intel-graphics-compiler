@@ -67,11 +67,9 @@ void Rematerialization::populateRefs() {
     }
 
     // Update lastUseLexId based on BB live-out set
-    const llvm_SBitVector &UseOut = liveness.use_out[bb->getId()];
-    const llvm_SBitVector &DefOut = liveness.def_out[bb->getId()];
-    llvm_SBitVector DefUseOutAnd = UseOut & DefOut;
-    for (auto I = DefUseOutAnd.begin(), E = DefUseOutAnd.end();
-         I != E;
+    const SparseBitSet &UseOut = liveness.use_out[bb->getId()];
+    const SparseBitSet &DefOut = liveness.def_out[bb->getId()];
+    for (auto I = UseOut.and_begin(DefOut), E = UseOut.and_end(DefOut); I != E;
          ++I) {
       unsigned i = *I;
       if (liveness.isLiveAtExit(bb, i)) {
