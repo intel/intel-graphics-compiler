@@ -1538,21 +1538,26 @@ namespace TC
         }
 
         IOCLFEBinaryResult *pResultPtr = NULL;
+        int res = 0;
+        {
+            static std::mutex cclangMtx;
+            std::lock_guard<std::mutex> lck(cclangMtx);
 #ifdef _WIN32
-        int res = m_CCModule.pCompile(
+            res = m_CCModule.pCompile(
 #else
-        int res = Compile(
+            res = Compile(
 #endif
-            pInputArgs->pszProgramSource,
-            (const char**)pInputArgs->inputHeaders.data(),
-            (unsigned int)pInputArgs->inputHeaders.size(),
-            (const char**)pInputArgs->inputHeadersNames.data(),
-            NULL,
-            0,
-            options.c_str(),
-            optionsEx.c_str(),
-            pInputArgs->oclVersion.c_str(),
-            &pResultPtr);
+                pInputArgs->pszProgramSource,
+                (const char**)pInputArgs->inputHeaders.data(),
+                (unsigned int)pInputArgs->inputHeaders.size(),
+                (const char**)pInputArgs->inputHeadersNames.data(),
+                NULL,
+                0,
+                options.c_str(),
+                optionsEx.c_str(),
+                pInputArgs->oclVersion.c_str(),
+                &pResultPtr);
+        }
         if (0 != BuildOptionsAreValid(options, exceptString)) res = -43;
 
         Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
