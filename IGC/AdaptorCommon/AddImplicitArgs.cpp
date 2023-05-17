@@ -195,7 +195,7 @@ bool AddImplicitArgs::hasStackCallInCG(
         if (const CallInst* call = dyn_cast<CallInst>(*u))
         {
             const Function* parent = call->getParent()->getParent();
-            if (hasStackCallInCG(parent, Ctx))
+            if (parent != F && hasStackCallInCG(parent, Ctx))
                 return true;
         }
     }

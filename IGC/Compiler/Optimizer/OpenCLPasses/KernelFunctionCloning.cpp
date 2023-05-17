@@ -199,7 +199,9 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
 #endif
             if (!call)
                 continue;
-            call->setCalledFunction(NewF);
+
+            if (call->getCalledFunction()->getType() == NewF->getType())
+                call->setCalledFunction(NewF);
         }
 
         Changed = true;

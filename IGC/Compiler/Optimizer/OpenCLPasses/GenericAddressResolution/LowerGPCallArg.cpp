@@ -283,6 +283,7 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function* oldFunc, Function* n
     // Keep track of old calls and addrspacecast to be deleted later
     std::vector<CallInst*> callsToDelete;
     std::vector<AddrSpaceCastInst*> ASCToDelete;
+    std::vector<Use*> UsesToReplace;
 
     for (auto U = oldFunc->user_begin(), E = oldFunc->user_end(); U != E; ++U)
     {
@@ -290,6 +291,15 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function* oldFunc, Function* n
         auto BC = dyn_cast<BitCastInst>(*U);
         if (BC && BC->hasOneUse())
             cInst = dyn_cast<CallInst>(BC->user_back());
+
+        if (cInst->getCalledFunction() != oldFunc)
+        {
+            for (Use& cArg : cInst->args())
+                if (cArg == oldFunc)
+                    UsesToReplace.push_back(&cArg);
+            continue;
+        }
+
         if (!cInst)
         {
             IGC_ASSERT_MESSAGE(0, "Unknown function usage");
@@ -358,5 +368,11 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function* oldFunc, Function* n
     {
         IGC_ASSERT(i->user_empty());
         i->eraseFromParent();
+    }
+
+    // Replace call arguments
+    for (auto i : UsesToReplace)
+    {
+        i->set(newFunc);
     }
 }
