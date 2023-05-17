@@ -1118,7 +1118,8 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb) {
       has_int = true;
     }
   }
-  if (has_float && has_int) {
+
+  if (has_float && has_int && (inst->opcode() != G4_srnd)) {
     for (int i = 0; i < numSrc; i++) {
       if (inst->getSrc(i) && !IS_FTYPE(inst->getSrc(i)->getType()) &&
           !IS_DFTYPE(inst->getSrc(i)->getType())) {
@@ -9315,6 +9316,32 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
     inst->setSrc(newSrc1, 1);
     G4_INST *newMovInst = *(std::prev(it));
     newMovInst->setNoMask(true);
+    changed = true;
+  }
+
+  // SRND src1 operand would need to be changed to
+  // 1. f(unsigned 16bits Integer) for FP32 to FP16 conversions
+  // 2. hf(unsigned 8bits Integer) for FP16 to BF8 conversions
+  //
+  //
+  //(W) srnd(16|M0) r5.0<1>:hf  r3.0<1;1,0>:f  r12.0<1;1,0>:uw
+  //-->
+  //(W) mov (16|M0) r13.0<2>:uw  r12.0<1;1,0>:uw
+  //(W) srnd(16|M0) r5.0<1>:hf  r3.0<1;1,0>:f  r13.0<1;1,0>:f
+  bool typeTransform = true;
+
+  if (typeTransform &&
+      (opnd1->getType() == Type_UB || opnd1->getType() == Type_UW)) {
+    G4_Type src0Type = opnd0->getType();
+    //We are using src0 to check because for immediate ub, vISA always set to uw.
+    G4_Type newType = opnd0->getType() == Type_HF ? Type_UW : Type_UD;
+    vISA_ASSERT(TypeSize(src0Type) == TypeSize(newType),
+                "src0 and src1 have same size operand type in old platforms");
+    G4_Operand *newSrc1 =
+        insertMovBefore(it, 1, newType, bb, builder.getGRFAlign());
+    newSrc1->asSrcRegRegion()->setType(builder, src0Type);
+    inst->setSrc(newSrc1, 1);
+    opnd1 = newSrc1;
     changed = true;
   }
 

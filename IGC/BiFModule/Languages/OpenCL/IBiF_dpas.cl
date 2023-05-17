@@ -525,19 +525,19 @@ DEFN_INTEL_CVT( bf8_to_f16,  half16, char16, bf8tohf_16 )
 
 #ifdef cl_intel_stochastic_rounding
 // stochastic rounding
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char,   half,   half,   srnd_hftobf8_1  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char2,  half2,  half2,  srnd_hftobf8_2  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char3,  half3,  half3,  srnd_hftobf8_3  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char4,  half4,  half4,  srnd_hftobf8_4  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char8,  half8,  half8,  srnd_hftobf8_8  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char16, half16, half16, srnd_hftobf8_16 )
+DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char,   half,   char,   srnd_hftobf8_1_char  )
+DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char2,  half2,  char2,  srnd_hftobf8_2_char  )
+DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char3,  half3,  char3,  srnd_hftobf8_3_char  )
+DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char4,  half4,  char4,  srnd_hftobf8_4_char  )
+DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char8,  half8,  char8,  srnd_hftobf8_8_char  )
+DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char16, half16, char16, srnd_hftobf8_16_char )
 
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half,   float,   float,   srnd_ftohf_1  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half2,  float2,  float2,  srnd_ftohf_2  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half3,  float3,  float3,  srnd_ftohf_3  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half4,  float4,  float4,  srnd_ftohf_4  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half8,  float8,  float8,  srnd_ftohf_8  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half16, float16, float16, srnd_ftohf_16 )
+DEFN_INTEL_CVT2( f32_to_f16_srnd,  half,   float,   short,   srnd_ftohf_1_short  )
+DEFN_INTEL_CVT2( f32_to_f16_srnd,  half2,  float2,  short2,  srnd_ftohf_2_short  )
+DEFN_INTEL_CVT2( f32_to_f16_srnd,  half3,  float3,  short3,  srnd_ftohf_3_short  )
+DEFN_INTEL_CVT2( f32_to_f16_srnd,  half4,  float4,  short4,  srnd_ftohf_4_short  )
+DEFN_INTEL_CVT2( f32_to_f16_srnd,  half8,  float8,  short8,  srnd_ftohf_8_short  )
+DEFN_INTEL_CVT2( f32_to_f16_srnd,  half16, float16, short16, srnd_ftohf_16_short )
 #endif // cl_intel_stochastic_rounding
 
 #endif  // cl_khr_fp16

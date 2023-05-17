@@ -4219,10 +4219,11 @@ void vISAVerifier::verifyInstructionSrnd(const CISA_INST *inst) {
            src1.getOperandClass() == OPERAND_IMMEDIATE),
       "Sources in this instruction must be general or immediate");
 
-  // Verify types
-  REPORT_INSTRUCTION(
-      options, src0Type == src1Type,
-      "Src0 and src1 should have the same type for this instruction");
+  // FIXME, ISA_TYPE_F | ISA_TYPE_HF of src1 is to be WA the LIT test of VC
+  REPORT_INSTRUCTION(options,
+                     src1Type == ISA_TYPE_UW || src1Type == ISA_TYPE_UB ||
+                         src1Type == ISA_TYPE_F || src1Type == ISA_TYPE_HF,
+                     "src1 use UW/UB type");
 
   REPORT_INSTRUCTION(options,
                      (dstType == ISA_TYPE_UB && src0Type == ISA_TYPE_HF) ||

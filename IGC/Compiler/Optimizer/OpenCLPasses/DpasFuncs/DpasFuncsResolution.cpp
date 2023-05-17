@@ -714,14 +714,18 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
         Type* ETy = VTy ? VTy->getElementType() : Ty;
         Type* Opnd0Ty = CI.getArgOperand(0)->getType();
         Type *Opnd1Ty = CI.getArgOperand(1)->getType();
+        FixedVectorType *VOpnd1Ty = dyn_cast<FixedVectorType>(Opnd1Ty);
+        Type *EOpnd1Ty = VOpnd1Ty ? VOpnd1Ty->getElementType() : Opnd1Ty;
         FixedVectorType *VOpnd0Ty = dyn_cast<FixedVectorType>(Opnd0Ty);
         Type* EOpnd0Ty = VOpnd0Ty ? VOpnd0Ty->getElementType() : Opnd0Ty;
         uint32_t n = VTy ? (uint32_t)VTy->getNumElements() : 1;
         uint32_t n0 = VOpnd0Ty ? (uint32_t)VOpnd0Ty->getNumElements() : 1;
 
-        if (n != n0 || n != VecLen || Opnd0Ty != Opnd1Ty ||
-            !((ETy->isHalfTy() && EOpnd0Ty->isFloatTy()) ||
-              (ETy->isIntegerTy(8) && EOpnd0Ty->isHalfTy())))
+        if (n != n0 || n != VecLen ||
+            !(((ETy->isHalfTy() && EOpnd0Ty->isFloatTy()) &&
+                  EOpnd1Ty->isIntegerTy(16)) ||
+              ((ETy->isIntegerTy(8) && EOpnd0Ty->isHalfTy() &&
+               !EOpnd1Ty->isIntegerTy(8)))))
         {
             m_ErrorMsg = "Wrong argument types in srnd builtin!";
             IGC_ASSERT_MESSAGE(0, "Wrong argument types in srnd builtin!");

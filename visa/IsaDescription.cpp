@@ -699,6 +699,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
     },
 
     /// 30 (0x1E)
+    // FIXME, ISA_TYPE_F | ISA_TYPE_HF of src1 is to be WA the LIT test of VC
     {
         Xe_PVCXT,
         ISA_SRND,
@@ -709,8 +710,9 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         {
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
             {OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_HF, 0},
-            {OPND_SRC_GEN, ISA_TYPE_F | ISA_TYPE_HF, 0},
-            {OPND_SRC_GEN | OPND_IMM, ISA_TYPE_F | ISA_TYPE_HF, 0},
+            {OPND_SRC_GEN, ISA_TYPE_HF | ISA_TYPE_F, 0},
+            {OPND_SRC_GEN | OPND_IMM,
+             ISA_TYPE_UB | ISA_TYPE_UW | ISA_TYPE_F | ISA_TYPE_HF, 0},
         },
     },
     /// 31

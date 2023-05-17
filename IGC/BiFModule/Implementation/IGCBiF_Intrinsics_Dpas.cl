@@ -442,20 +442,20 @@ float16 __builtin_IB_tf32tof_16(int16 a) __attribute__((const));
 //      a: hf | f
 //      r: random number, has the same type as a's
 //  HF -> BF8
-char   __builtin_IB_srnd_hftobf8_1 (half   a, half   r) __attribute__((const));
-char2  __builtin_IB_srnd_hftobf8_2 (half2  a, half2  r) __attribute__((const));
-char3  __builtin_IB_srnd_hftobf8_3 (half3  a, half3  r) __attribute__((const));
-char4  __builtin_IB_srnd_hftobf8_4 (half4  a, half4  r) __attribute__((const));
-char8  __builtin_IB_srnd_hftobf8_8 (half8  a, half8  r) __attribute__((const));
-char16 __builtin_IB_srnd_hftobf8_16(half16 a, half16 r) __attribute__((const));
+char   __builtin_IB_srnd_hftobf8_1_char (half   a, char   r) __attribute__((const));
+char2  __builtin_IB_srnd_hftobf8_2_char (half2  a, char2  r) __attribute__((const));
+char3  __builtin_IB_srnd_hftobf8_3_char (half3  a, char3  r) __attribute__((const));
+char4  __builtin_IB_srnd_hftobf8_4_char (half4  a, char4  r) __attribute__((const));
+char8  __builtin_IB_srnd_hftobf8_8_char (half8  a, char8  r) __attribute__((const));
+char16 __builtin_IB_srnd_hftobf8_16_char(half16 a, char16 r) __attribute__((const));
 
 
 // F -> HF
-half   __builtin_IB_srnd_ftohf_1 (float   a, float   r) __attribute__((const));
-half2  __builtin_IB_srnd_ftohf_2 (float2  a, float2  r) __attribute__((const));
-half3  __builtin_IB_srnd_ftohf_3 (float3  a, float3  r) __attribute__((const));
-half4  __builtin_IB_srnd_ftohf_4 (float4  a, float4  r) __attribute__((const));
-half8  __builtin_IB_srnd_ftohf_8 (float8  a, float8  r) __attribute__((const));
-half16 __builtin_IB_srnd_ftohf_16(float16 a, float16 r) __attribute__((const));
+half   __builtin_IB_srnd_ftohf_1_short (float   a, short   r) __attribute__((const));
+half2  __builtin_IB_srnd_ftohf_2_short (float2  a, short2  r) __attribute__((const));
+half3  __builtin_IB_srnd_ftohf_3_short (float3  a, short3  r) __attribute__((const));
+half4  __builtin_IB_srnd_ftohf_4_short (float4  a, short4  r) __attribute__((const));
+half8  __builtin_IB_srnd_ftohf_8_short (float8  a, short8  r) __attribute__((const));
+half16 __builtin_IB_srnd_ftohf_16_short(float16 a, short16 r) __attribute__((const));
 
 #endif // IGCBIF_INTRINSICS_DPAS_CL
