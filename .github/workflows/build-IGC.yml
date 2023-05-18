@@ -47,17 +47,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '20.04' ]
-        llvm_ver: [ 10, 11 ]
+        ubuntu_version: [ '20.04', '22.04' ]
+        llvm_ver: [ 14 ]
         include:
+          - ubuntu_version: '20.04'
+            llvm_ver: 10
+            experimental: true
+          - ubuntu_version: '20.04'
+            llvm_ver: 11
+            experimental: true
           - ubuntu_version: '22.04'
             llvm_ver: 12
             experimental: true
           - ubuntu_version: '22.04'
             llvm_ver: 13
-            experimental: true
-          - ubuntu_version: '22.04'
-            llvm_ver: 14
             experimental: true
           - ubuntu_version: '22.04'
             llvm_ver: 15
@@ -106,20 +109,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '20.04' ]
-        llvm_ver: [ 10, 11 ]
+        ubuntu_version: [ '20.04', '22.04' ]
+        llvm_ver: [ 14 ]
         compiler: [ gcc, clang ]
         include:
+          - ubuntu_version: '20.04'
+            llvm_ver: 10
+            compiler: gcc
+            experimental: true
+          - ubuntu_version: '20.04'
+            llvm_ver: 11
+            compiler: gcc
+            experimental: true
           - ubuntu_version: '22.04'
             llvm_ver: 12
             compiler: gcc
             experimental: true
           - ubuntu_version: '22.04'
             llvm_ver: 13
-            compiler: gcc
-            experimental: true
-          - ubuntu_version: '22.04'
-            llvm_ver: 14
             compiler: gcc
             experimental: true
           - ubuntu_version: '22.04'

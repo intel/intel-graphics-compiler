@@ -23,8 +23,8 @@ else
     echo "[Build Status] UBUNTU_VERSION = ${UBUNTU_VERSION}"
 fi
 if [ -z ${LLVM_VERSION+x} ]; then
-    echo "[Build Status] LLVM_VERSION is unset, use default 11";
-    LLVM_VERSION="11"
+    echo "[Build Status] LLVM_VERSION is unset, use default 14";
+    LLVM_VERSION="14"
 else
     echo "[Build Status] LLVM_VERSION = ${LLVM_VERSION}"
 fi
