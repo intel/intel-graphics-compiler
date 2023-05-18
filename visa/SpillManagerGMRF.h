@@ -356,8 +356,6 @@ private:
 
   unsigned getAddrSpillFillIndex(G4_RegVar *spilledRegVar);
 
-  G4_RegVar *getReprRegVar(G4_RegVar *regVar) const;
-
   template <class REGION_TYPE> G4_RegVar *getRegVar(REGION_TYPE *region) const;
 
   G4_RegFileKind getRFType(G4_RegVar *regvar) const;
@@ -394,8 +392,6 @@ private:
   unsigned getDisp(G4_RegVar *lRange);
 
   template <class REGION_TYPE> unsigned getRegionDisp(REGION_TYPE *region);
-
-  bool spillMemLifetimeInterfere(unsigned i, unsigned j) const;
 
   unsigned calculateSpillDisp(G4_RegVar *lRange) const;
 

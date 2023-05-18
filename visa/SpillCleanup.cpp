@@ -67,7 +67,7 @@ G4_INST *CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion *header,
       32, "COAL_FILL_%d", kernel.Declares.size());
   auto fillDcl = kernel.fg.builder->createDeclare(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), dclSize, Type_UD,
-      DeclareType::CoalescedFill);
+      DeclareType::CoalescedSpillFill);
 
   if (evenAlignDst) {
     fillDcl->setEvenAlign();
@@ -157,7 +157,7 @@ CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize) {
                                              kernel.Declares.size());
   spillDcl = kernel.fg.builder->createDeclare(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), payloadSize, Type_UD,
-      DeclareType::CoalescedSpill);
+      DeclareType::CoalescedSpillFill);
 
   spillDcl->setDoNotSpill();
 
@@ -1253,14 +1253,12 @@ void CoalesceSpillFills::fixSendsSrcOverlap() {
   // Overlap for sends src operands is not allowed.
   //
   // Fix for following code pattern after spill/fill coalescing:
-  // send (16) COAL_FILL_373(0,0)<1>:ud r0 0xa 0x24c2001:ud{Align1, NoMask} //
-  // #??:$365:%657:&-1 // scratch read, resLen=4, msgLen=1 sends(1) null:ud
-  // COAL_FILL_373(0, 0) COAL_FILL_373(1, 0) 0x4c : ud 0x40680ff : ud{ Align1,
-  // Q1, NoMask } // #??:$365:%365:&-1 // a64 scatt ered write, resLen = 0,
-  // msgLen = 2, extMsgLen = 1
+  // clang-format off
+  // send (16)  COAL_FILL_373(0,0)<1>:ud    r0 0xa 0x24c2001:ud{Align1, NoMask} // scratch read, resLen=4, msgLen=1
+  // sends(1)   null:ud     COAL_FILL_373(0,0)  COAL_FILL_373(1,0) 0x4c:ud 0x40680ff:ud{ Align1,Q1, NoMask } // a64 scattered write, resLen=0, msgLen=2, extMsgLen=1
   //
-  // for CISA:
-  // svm_scatter.1.1 (M1_NM, 1) V441.0 V449.0 /// $365
+  // svm_scatter.1.1 (M1_NM, 1) V441.0 V449.0
+  // clang-format on
   //
   // where V441 and V449 are both scalars of type :uq and :ud respectively
   //

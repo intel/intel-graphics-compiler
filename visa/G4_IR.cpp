@@ -5467,22 +5467,6 @@ G4_RegVar *G4_RegVarTransient::getNonTransientBaseRegVar() {
   return base;
 }
 
-G4_RegVar *G4_RegVarTransient::getAbsBaseRegVar() {
-  G4_RegVar *base;
-  for (base = getBaseRegVar(); base->getBaseRegVar() != base;
-       base = base->getBaseRegVar())
-    ;
-  return base;
-}
-
-G4_RegVar *G4_RegVarTmp::getAbsBaseRegVar() {
-  G4_RegVar *base;
-  for (base = getBaseRegVar(); base->getBaseRegVar() != base;
-       base = base->getBaseRegVar())
-    ;
-  return base;
-}
-
 void G4_RegVar::emit(std::ostream &output) {
 
   // Always print the root declare to make the IR dump more readable.

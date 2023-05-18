@@ -655,6 +655,26 @@ class GraphColor {
   const unsigned numVar;
   const unsigned numSplitStartID;
   const unsigned numSplitVar;
+  // The original code has no comments whatsoever (sigh), but best as I can tell
+  // this vector is used to track the active values held by each of A0's
+  // phyiscal subreg. The values themselves correspond to a word in the
+  // GRF home location of a spilled address variable. Each GRF home location is
+  // represented by its allocation order and assumed to be 16-word wide
+  // regardless of its actual size; in other words,
+  // AddrSpillLoc0 has [0-15],
+  // AddrSpillLoc1 has [16-31],
+  // and so on.
+  // When the clean up code sees a address fill of the form
+  //    mov (N) a0.i AddrSpillLoc(K).S<1;1,0>:uw
+  // it updates spAddrRegSig[i, i+N) = [K*16+S, K*16+S+N)
+  // When it sees a write to AddrSpillLoc, i.e., a spill of the form
+  //    mov (N) AddrSpillLoc(k) a0.i<1;1,0>:uw
+  // it clears spAddrRegSig's entries that hold AddrSpillLoc(k).
+  // If it encounters a non-fill write to A0 (e.g., send message descriptor
+  // write), it also clears the corresponding bits in spAddrRegSig.
+  //
+  // FIXME: This code is very likely to be buggy, since its initial value is 0
+  // and this conflicts with AddrSpillLoc0's first word.
   std::vector<unsigned> spAddrRegSig;
   Interference intf;
   PhyRegPool &regPool;

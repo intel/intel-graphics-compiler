@@ -53,8 +53,7 @@ enum DeclareType {
   Spill = 2,
   Tmp = 3,
   AddrSpill = 4,
-  CoalescedFill = 5,
-  CoalescedSpill = 6
+  CoalescedSpillFill = 5,
 };
 
 // forward declaration

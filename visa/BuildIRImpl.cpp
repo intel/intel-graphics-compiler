@@ -86,10 +86,8 @@ G4_Declare *DeclarePool::createDeclare(const char *name, G4_RegFileKind regFile,
     regVar = new (mem)
         G4_RegVarTransient(dcl, base, repRegion->asSrcRegRegion(), execSize,
                            G4_RegVarTransient::TransientType::Fill);
-  else if (kind == DeclareType::CoalescedFill ||
-           kind == DeclareType::CoalescedSpill)
-    regVar =
-        new (mem) G4_RegVarCoalesced(dcl, kind == DeclareType::CoalescedFill);
+  else if (kind == DeclareType::CoalescedSpillFill)
+    regVar = new (mem) G4_RegVar(dcl, G4_RegVar::RegVarType::Coalesced);
   else {
     vISA_ASSERT(false, ERROR_INTERNAL_ARGUMENT);
     regVar = NULL;

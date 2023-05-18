@@ -236,16 +236,6 @@ G4_RegVar *SpillManagerGRF::getRegVar(REGION_TYPE *region) const {
   return spilledRegVar;
 }
 
-// Get the representative regvar that will be assigned a unique spill
-// disp and not a relative spill disp.
-G4_RegVar *SpillManagerGRF::getReprRegVar(G4_RegVar *regVar) const {
-  G4_RegVar *absBase = regVar->getAbsBaseRegVar();
-  if (absBase->isAliased())
-    return getReprRegVar(absBase->getDeclare()->getAliasDeclare()->getRegVar());
-  else
-    return absBase;
-}
-
 // Obtain the register file type of the regvar.
 G4_RegFileKind SpillManagerGRF::getRFType(G4_RegVar *regvar) const {
   return regvar->getDeclare()->getRegFile();
@@ -361,49 +351,6 @@ unsigned SpillManagerGRF::getByteSize(G4_RegVar *regVar) const {
                                    : regVar->getDeclare()->getNumElems() *
                                          regVar->getDeclare()->getElemSize();
   return normalizedRowSize * regVar->getDeclare()->getNumRows();
-}
-
-// Check if the lifetime of the spill/fill memory of live range i interferes
-// with the lifetime of the spill/fill memory of live range j
-bool SpillManagerGRF::spillMemLifetimeInterfere(unsigned i, unsigned j) const {
-  G4_RegVar *ireg = getRegVar(i);
-  G4_RegVar *jreg = getRegVar(j);
-  G4_RegVar *irep = getReprRegVar(ireg);
-  G4_RegVar *jrep = getReprRegVar(jreg);
-  G4_RegVar *inont = ireg->getNonTransientBaseRegVar();
-  G4_RegVar *jnont = jreg->getNonTransientBaseRegVar();
-
-  if (ireg->isRegVarTmp()) {
-    return ireg->getBaseRegVar() == jrep ||
-           spillMemLifetimeInterfere(ireg->getBaseRegVar()->getId(), j);
-  } else if (jreg->isRegVarTmp()) {
-    return jreg->getBaseRegVar() == irep ||
-           spillMemLifetimeInterfere(jreg->getBaseRegVar()->getId(), i);
-  }
-
-  else if (inont->isRegVarTmp()) {
-    return inont->getBaseRegVar() == jrep ||
-           spillMemLifetimeInterfere(inont->getBaseRegVar()->getId(), j);
-
-  }
-
-  else if (jnont->isRegVarTmp()) {
-    return jnont->getBaseRegVar() == irep ||
-           spillMemLifetimeInterfere(jnont->getBaseRegVar()->getId(), i);
-  }
-
-  else {
-    if (spillIntf_->interfereBetween(irep->getId(), jrep->getId()))
-      return true;
-    else if (getRFType(irep) != getRFType(jrep))
-      return true;
-    else
-#ifdef DISABLE_SPILL_MEMORY_COMPRESSION
-      return irep != jrep;
-#else
-      return false;
-#endif
-  }
 }
 
 void SpillManagerGRF::getOverlappingIntervals(

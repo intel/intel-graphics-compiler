@@ -329,7 +329,6 @@ public:
   bool isRegVarCoalesced() const { return type == RegVarType::Coalesced; }
 
   G4_RegVar *getBaseRegVar();
-  G4_RegVar *getAbsBaseRegVar();
 
   G4_RegVar *getNonTransientBaseRegVar();
 
@@ -376,7 +375,6 @@ public:
   G4_RegVar *getBaseRegVar() { return baseRegVar; }
 
   G4_Operand *getRepRegion() const { return repRegion; }
-  G4_RegVar *getAbsBaseRegVar();
   G4_RegVar *getNonTransientBaseRegVar();
   G4_ExecSize getExecSize() const { return execSize; }
 
@@ -396,7 +394,6 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   G4_RegVar *getBaseRegVar() { return baseRegVar; }
-  G4_RegVar *getAbsBaseRegVar();
   G4_RegVar *getNonTransientBaseRegVar() { return baseRegVar; }
 };
 
@@ -415,21 +412,6 @@ public:
   }
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   unsigned getLocId() const { return loc_id; }
-};
-
-class G4_RegVarCoalesced : public G4_RegVar {
-  // If spill, set f to false
-  bool f;
-
-public:
-  G4_RegVarCoalesced(G4_Declare *dcl, bool fill)
-      : G4_RegVar(dcl, RegVarType::Coalesced) {
-    f = fill;
-  }
-
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-  bool isSpill() const { return !f; }
-  bool isFill() const { return f; }
 };
 
 // Inlined members of G4_VarBase.
@@ -593,18 +575,6 @@ inline G4_RegVar *G4_RegVar::getBaseRegVar() {
   }
 
   // For Default, AddrSpillLoc
-  return this;
-}
-
-inline G4_RegVar *G4_RegVar::getAbsBaseRegVar() {
-  if (type == RegVarType::Transient || type == RegVarType::GRFSpillTmp) {
-    G4_RegVar *base;
-    for (base = getBaseRegVar(); base->getBaseRegVar() != base;
-         base = base->getBaseRegVar())
-      ;
-    return base;
-  }
-
   return this;
 }
 
