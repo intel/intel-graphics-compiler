@@ -74,6 +74,9 @@ struct LiveNode {
     vISA_ASSERT(Opnd, "null opnd");
     if (Opnd) {
       G4_Declare *Dcl = Opnd->getTopDcl();
+      if (Opnd->isAddrExp()) {
+        Dcl = Opnd->asAddrExp()->getRegVar()->getDeclare();
+      }
       if (Dcl == nullptr) {
         // There is no top declaration for this operand, so this is ARF.
         return 32;
@@ -425,8 +428,13 @@ static void processReadOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI) {
         opnd->isLabel())
       continue;
 
-    G4_Declare *Dcl = opnd->getTopDcl();
-    LLI.LiveNodes[Dcl].emplace_back(Inst, OpNum);
+    if (Inst->isPseudoAddrMovIntrinsic()) {
+      G4_Declare *Dcl = opnd->asAddrExp()->getRegVar()->getDeclare();
+      LLI.LiveNodes[Dcl].emplace_back(Inst, OpNum);
+    } else {
+      G4_Declare *Dcl = opnd->getTopDcl();
+      LLI.LiveNodes[Dcl].emplace_back(Inst, OpNum);
+    }
   }
 }
 

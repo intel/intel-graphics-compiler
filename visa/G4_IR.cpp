@@ -7328,6 +7328,16 @@ void G4_InstIntrinsic::computeRightBound(G4_Operand *opnd) {
     if (opnd == getDst())
       opnd->setRightBound(opnd->left_bound + getDstByteSize() - 1);
     break;
+  case Intrinsic::PseudoAddrMov:
+    if (opnd != getDst()) { // Source operand only, dst operand will be handled
+                            // as normal dst
+      opnd->setLeftBound(opnd->left_bound +
+                         opnd->asAddrExp()->getOffset());
+      opnd->setRightBound(opnd->left_bound + builder.numEltPerGRF<Type_UB>() -
+                          1);
+      opnd->setBitVecFromSize(builder.numEltPerGRF<Type_UB>(), getBuilder());
+    }
+    break;
   default:
     break;
   }

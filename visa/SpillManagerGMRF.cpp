@@ -3387,7 +3387,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
   }
   for (auto newAddExp : newAddExpList) {
     gra.pointsToAnalysis.patchPointsToSet(addrDcl, newAddExp,
-                                          newAddExp->getOffset() / builder_->getGRFSize());
+                                          newAddExp->getOffset());
   }
 
   return temp;
