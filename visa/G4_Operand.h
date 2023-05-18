@@ -556,8 +556,10 @@ public:
   void setModifier(G4_SrcModifier m) { mod = m; }
 
   bool sameSrcRegRegion(G4_SrcRegRegion &rgn);
+
   void emit(std::ostream &output) override;
   void emitRegVarOff(std::ostream &output);
+  void emitRegVarOffNoRegion(std::ostream &output);
 
   bool isAreg() const { return base->isAreg(); }
   bool isNullReg() const { return base->isNullReg(); }

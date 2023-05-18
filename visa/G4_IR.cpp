@@ -3114,6 +3114,9 @@ void G4_INST::emit(std::ostream &output) {
   if (isLabel()) {
     srcs[0]->emit(output);
     output << ":";
+    return;
+  } else if (isSend()) {
+    asSendInst()->emit_send(output);
   } else {
     // predication, opcode, execsize, condition, ...
     emitInstructionStartColumn(output, *this);
@@ -3152,17 +3155,22 @@ void G4_INST::emit(std::ostream &output) {
       output << "  ";
       asCFInst()->getUip()->emit(output);
     }
-
-    emit_options(output);
-    if (getVISAId() != -1) {
-      output << " // ";
-      emitInstIds(output);
-    }
-    auto comm = getComments();
-    if (!comm.empty()) {
-      output << " // " << comm;
-    }
   } // end: non-label
+
+  emit_options(output);
+  if (getVISAId() != -1) {
+    output << " // ";
+    emitInstIds(output);
+  }
+
+  if (isSend()) {
+    asSendInst()->emit_send_desc(output);
+  }
+
+  auto comm = getComments();
+  if (!comm.empty()) {
+    output << " // " << comm;
+  }
 } // G4_INST::emit_inst
 
 void G4_INST::emitInstIds(std::ostream &output) const {
@@ -3473,6 +3481,7 @@ bool G4_InstSend::isDirectSplittableSend() {
   return false;
 }
 
+
 //
 // emit send instruction with symbolic/physical register operand depending on
 // the operand check
@@ -3495,6 +3504,7 @@ void G4_InstSend::emit_send(std::ostream &output) {
         src->asSrcRegRegion()->emitRegVarOff(output);
       } else { // BAD IR; let's see it
         src->emit(output);
+        output << "?";
       }
     };
 
@@ -3537,21 +3547,20 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
     output << "; ";
   }
 
-  auto desc = msgDesc->getDescription();
-  if (!desc.empty()) {
-    output << desc;
-  }
+  output << msgDesc->getDescription();
 
-  if (auto immOff = sendInst->getMsgDesc()->getOffset()) {
-    int signedOff = immOff->immOff;
-    if (immOff->is2d) {
-      output << "; ImmOff=(" << fmtHex(immOff->immOffX) << " elems,"
-             << fmtHex(immOff->immOffY) << " elems)";
-    } else {
-      if (signedOff > 0) {
-        output << "; ImmOff=+" << fmtHex(signedOff);
-      } else if (signedOff < 0) {
-        output << "; ImmOff=-" << fmtHex(-signedOff);
+  if (msgDesc->isRaw()) {
+    if (auto immOff = msgDesc->getOffset()) {
+      int signedOff = immOff->immOff;
+      if (immOff->is2d) {
+        output << "; ImmOff=(" << fmtHex(immOff->immOffX) << " elems,"
+               << fmtHex(immOff->immOffY) << " elems)";
+      } else {
+        if (signedOff > 0) {
+          output << "; ImmOff=+" << fmtHex(signedOff);
+        } else if (signedOff < 0) {
+          output << "; ImmOff=-" << fmtHex(-signedOff);
+        }
       }
     }
   }
@@ -3560,9 +3569,6 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
   output << ", src0Len=" << msgDesc->getSrc0LenRegs();
   output << ", src1Len=" << msgDesc->getSrc1LenRegs();
 
-  if (msgDesc->isBarrier()) {
-    output << "; barrier"; // TODO: fix getDescription()
-  }
   auto comments = getComments();
   if (!comments.empty())
     output << "; " << comments;
@@ -4113,12 +4119,12 @@ bool G4_SrcRegRegion::isScalar() const {
 }
 
 void G4_SrcRegRegion::emitRegVarOff(std::ostream &output) {
-  bool printSubReg = true;
-  if (inst && inst->isSend()) {
-    printSubReg = false;
-  }
+  bool printSubReg = !inst || !inst->isSend();
   printRegVarOff(output, this, regOff, subRegOff, immAddrOff, type,
                  printSubReg);
+}
+void G4_SrcRegRegion::emitRegVarOffNoRegion(std::ostream &output) {
+  printRegVarOff(output, this, regOff, subRegOff, immAddrOff, type, true);
 }
 
 //

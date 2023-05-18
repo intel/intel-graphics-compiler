@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Timer.h"
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -275,24 +276,32 @@ void Optimizer::addFFIDProlog() {
   }
 }
 
+// clang-format off
 ///////////////////////////////////////////////////////////////////////////////
 // Argument Loading for GPGPU
 //
-// clang-format off
-//  Payload in Memory                                Payload in GRF (T0)
-//  (Prepared by Runtime)
-//  (Does not contain inlineData)
-// -----------------------                       R1 ----------------------- <-- perThreadLoadStartGRF
-// |  cross thread data  | \                        |  per thread data T0 |
-// |                     |  numCrossThreadDW     R4 -----------------------
-// |                     | /                        |  inline data        |
-// ----------------------- <-- localIDsOffset       |  (if enabled)       |
-// |  per thread data T0 |                       R5 ----------------------- <-- crossThreadLoadStart, crossThreadLoadStartGRF
-// -----------------------                          |  cross thread data  | \
-// |  per thread data T1 |                          |                     |  numCrossThreadDW
-// -----------------------                          |                     | /
-// |        ...          |                          -----------------------
-// -----------------------
+//  Payload in Memory                                Payload in GRF
+//    (prepared by runtime)                           (for thread T[i])
+//
+//   IndirectArgPtr = r0.0[31:6] + GeneralStateBase
+//
+// +---------------------+ <- [IndirectArgPtr (from compute walker)]
+// | implicit_args       |
+// |  (if enabled)       |
+// +---------------------+                       R1 +-----------------------+ <-- perThreadLoadStartGRF
+// |  cross thread data  | \                        |  per thread data T[i] |
+// |                     |  numCrossThreadDW     R4 +-----------------------+
+// |                     | /                        |  inline data          |
+// +---------------------+ <-- localIDsOffset       |  (if enabled)         |
+// |  per thread data T0 |                       R5 +-----------------------+ <-- crossThreadLoadStartGRF
+// +---------------------+                          |  cross thread data    | \
+// |  per thread data T1 |                          |                       |  numCrossThreadDW
+// +---------------------+                          |                       | /
+// |        ...          |                          +-----------------------+
+// +---------------------+
+//
+// inline data comes from the walker command not memory;
+//   "inline" (or immediate) with respect the command streamer instructions
 // clang-format on
 class PayloadLoader
 {
@@ -300,8 +309,8 @@ class PayloadLoader
   G4_Kernel &kernel;
   FlowGraph &fg;
 
-  // indirect data address is at r0.0[5:31]
-  // local thread id is at r0.2[0:7]
+  // indirect data address is at r0.0[5:31]:d
+  // local thread id is at r0.2[0:7]:d (same as r0.4[0:7]:w)
   G4_Declare *r0;
   // temp register to use for offset computation or load payload
   G4_Declare *rtmp;
@@ -474,9 +483,11 @@ private:
   } // loadFromMemoryHdcBti
 
 
-  // a helper function for loadFromMemoryLSC to get the max DW number which can
-  // fulfill LSC element number
-  uint32_t getMaxNumDWforLscElementRequirement(uint32_t numDW) const {
+  // a helper function LSC loads to get the max DW number which can
+  // fulfill LSC element number;
+  //  - this rounds down to a GRF, or
+  //  - up to a legal vector size (e.g. 5 -> 8)
+  uint32_t roundDwordsToLegalSize(uint32_t numDW) const {
     if (builder.lscGetElementNum(numDW) != LSC_DATA_ELEMS_INVALID)
       return numDW;
     if (numDW > builder.numEltPerGRF<Type_UD>()) {
@@ -526,8 +537,7 @@ private:
       LSC_DATA_SHAPE dataShape{};
       dataShape.size = LSC_DATA_SIZE_32b; // in the unit of 32b
       dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
-      uint32_t numDWToLoad =
-          getMaxNumDWforLscElementRequirement(numRemainingDW);
+      uint32_t numDWToLoad = roundDwordsToLegalSize(numRemainingDW);
       dataShape.elems = builder.lscGetElementNum(numDWToLoad);
 
       G4_Imm *surfaceBTI = builder.createImm(255, Type_UW);
@@ -553,7 +563,7 @@ private:
                                   LSC_ADDR_TYPE_BTI, true);
       instBuffer.push_back(sendInst);
       // we pick to load all data within one send in
-      // getMaxNumDWforLscElementRequirement if numRemainingDW is less than one
+      // roundDwordsToLegalSize if numRemainingDW is less than one
       // grf. All should be loaded at this point.
       if (numRemainingDW < builder.numEltPerGRF<Type_UD>())
         break;
@@ -720,7 +730,7 @@ private:
   // (W) mov (NumDwords) dstGRF:ud srcGRF:ud
   //
   // Moves the inline argument GRF
-  void movInlineGRF(int dstGRF, int srcGRF, uint32_t numDWord) {
+  void emitMovInlineData(int dstGRF, int srcGRF, uint32_t numDWord) {
     if (dstGRF == srcGRF) {
       return;
     }
@@ -835,8 +845,8 @@ public:
         // copy inline data to the first GRF of cross-thread-data
         // e.g. (W) mov (8) r4.0:ud r1.0:ud
         // Inline GRF is only 8 DWords
-        movInlineGRF(perThreadLoadStartGRF + numPerThreadGRF,
-                     perThreadLoadStartGRF, 8);
+        emitMovInlineData(perThreadLoadStartGRF + numPerThreadGRF,
+                          perThreadLoadStartGRF, 8);
       }
 
       loadFromMemory(rtmp, perThreadLoadStartGRF,
@@ -902,7 +912,9 @@ public:
       kernel.fg.addPrologBB(perThreadBB);
     }
   } // emitLoadSequence
+
 }; // class PayloadLoader
+
 
 void Optimizer::loadThreadPayload() {
   if (!builder.loadThreadPayload() || !builder.getIsKernel()) {

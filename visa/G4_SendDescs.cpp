@@ -12,12 +12,47 @@ SPDX-License-Identifier: MIT
 
 #include <iomanip>
 #include <sstream>
+#include <limits>
 
 using namespace vISA;
 
+static uint64_t getBitFieldMask(int off, int len) {
+  uint64_t mask = len == 64 ?
+    std::numeric_limits<uint64_t>::max() : (1ull << len) - 1;
+  return mask << off;
+}
+static uint64_t getBitField(uint64_t bits, int off, int len) {
+  return ((bits & getBitFieldMask(off, len)) >> off);
+}
+static uint64_t getSignedBitField(uint64_t bits, int off, int len) {
+  auto shlToTopSignBit = 64 - off - len;
+  return (int64_t)(bits << shlToTopSignBit) >> (shlToTopSignBit + off);
+}
+static uint64_t putBitField(uint64_t bits, int off, int len, uint64_t val) {
+  const uint64_t mask = getBitFieldMask(off, len);
+  return (bits & ~mask) | (mask & (val << off));
+}
+static std::string fmtSignedHex(int64_t val) {
+  std::stringstream ss;
+  if (val < 0) {
+    ss << "-";
+    val = -val;
+  }
+  ss << "0x" << std::uppercase << std::hex << val;
+  return ss.str();
+}
+static std::string fmtSignedHexTerm(int64_t val) {
+  if (val == 0)
+    return "";
+  std::stringstream ss;
+  if (val > 0)
+    ss << "+" << fmtSignedHex(val);
+  else
+    ss << fmtSignedHex(val); // will prefix -
+  return ss.str();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
-// LdSt data type support
-// MsgOp
 std::string vISA::ToSymbol(MsgOp op) {
   switch (op) {
   case MsgOp::LOAD:
@@ -93,6 +128,69 @@ std::string vISA::ToSymbol(MsgOp op) {
     break;
   }
   return "???";
+}
+std::string vISA::ToSymbol(vISA::SFID sfid) {
+  switch (sfid) {
+  case SFID::UGM:
+    return "ugm";
+  case SFID::UGML:
+    return "ugml";
+  case SFID::SLM:
+    return "slm";
+  case SFID::TGM:
+    return "tgm";
+  case SFID::URB:
+    return "urb";
+  //
+  case SFID::DP_DC0:
+    return "dc0";
+  case SFID::DP_DC1:
+    return "dc1";
+  case SFID::DP_DC2:
+    return "dc2";
+  case SFID::DP_CC:
+    return "dcro";
+  case SFID::DP_RC:
+    return "rc";
+  //
+  case SFID::RTHW:
+    return "rta";
+  case SFID::BTD:
+    return "btd";
+  //
+  case SFID::GATEWAY:
+    return "gtwy";
+  case SFID::SAMPLER:
+    return "smpl";
+  case SFID::NULL_SFID:
+    return "null";
+  case SFID::CRE:
+    return "cre";
+  default:
+    return ".?";
+  }
+}
+
+static std::string ToSymbolDataSize(int reg, int mem) {
+  if (reg == mem)
+    return "d" + std::to_string(reg);
+  return "d" + std::to_string(mem) + "u" + std::to_string(reg);
+}
+
+static std::string ToSymbol(AddrType at) {
+  switch (at) {
+  case AddrType::FLAT:
+    return "";
+  case AddrType::BSS:
+    return "bss";
+  case AddrType::SS:
+    return "ss";
+  case AddrType::BTI:
+    return "bti";
+  default:
+    break;
+  }
+  return "?";
 }
 
 bool vISA::IsQuadMessage(MsgOp op) {
@@ -343,22 +441,20 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
 // data size
 std::string vISA::ToSymbol(DataSize d) {
   switch (d) {
-  case DataSize::INVALID:
-    return "invalid data size";
   case DataSize::D8:
-    return "8b";
+    return "d8";
   case DataSize::D16:
-    return "16b";
+    return "d16";
   case DataSize::D32:
-    return "32b";
+    return "d32";
   case DataSize::D64:
-    return "64b";
+    return "d64";
   case DataSize::D8U32:
-    return "8b zero extended to 32b";
+    return "d8u32";
   case DataSize::D16U32:
-    return "16b zero extended to 32b";
+    return "d16u32";
   default:
-    return "?";
+    return "d?";
   }
 }
 
@@ -402,20 +498,6 @@ uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
   return 0;
 }
 
-// data order
-std::string vISA::ToSymbol(DataOrder d) {
-  switch (d) {
-  case DataOrder::INVALID:
-    return "invalid data order";
-  case DataOrder::NONTRANSPOSE:
-    return "non transpose";
-  case DataOrder::TRANSPOSE:
-    return "transpose";
-  default:
-    return "?";
-  }
-}
-
 DataOrder vISA::ConvertLSCDataOrder(LSC_DATA_ORDER dord) {
   switch (dord) {
   case LSC_DATA_ORDER_NONTRANSPOSE:
@@ -440,25 +522,58 @@ uint32_t vISA::GetDataOrderEncoding(DataOrder dord) {
   return 0;
 }
 
+std::string vISA::ToSymbol(DataSize dsz, VecElems ve, DataOrder dord) {
+  std::stringstream ss;
+  ss << ToSymbol(dsz);
+  if (ve != VecElems::V1 || dord == DataOrder::TRANSPOSE)
+    ss << "x" << ToSymbol(ve);
+  switch (dord) {
+  case DataOrder::NONTRANSPOSE:
+    break;
+  case DataOrder::TRANSPOSE:
+    ss << "t";
+    break;
+  case DataOrder::VNNI:
+    ss << "v";
+    break;
+  case DataOrder::TRANSPOSE_VNNI:
+    ss << "tv";
+    break;
+  default:
+    ss << "?";
+  }
+  return ss.str();
+}
+std::string vISA::ToSymbol(DataSize dsz, int chMask) {
+  std::stringstream ss;
+  ss << ToSymbol(dsz) << ".";
+  for (int ch = 0; ch < 4; ch++) {
+    if (chMask & (1 << ch)) {
+      ss << "xyzw"[ch];
+    }
+  }
+  return ss.str();
+}
+
 // data elems
 std::string vISA::ToSymbol(VecElems v) {
   switch (v) {
   case VecElems::V1:
-    return "vector length 1";
+    return "1";
   case VecElems::V2:
-    return "vector length 2";
+    return "2";
   case VecElems::V3:
-    return "vector length 3";
+    return "3";
   case VecElems::V4:
-    return "vector length 4";
+    return "4";
   case VecElems::V8:
-    return "vector length 8";
+    return "8";
   case VecElems::V16:
-    return "vector length 16";
+    return "16";
   case VecElems::V32:
-    return "vector length 32";
+    return "32";
   case VecElems::V64:
-    return "vector length 64";
+    return "64";
   default:
     return "?";
   }
@@ -487,7 +602,19 @@ VecElems vISA::ConvertLSCDataElems(LSC_DATA_ELEMS de) {
   }
   return VecElems::INVALID;
 }
-
+VecElems vISA::ToVecElems(int ves) {
+  switch (ves) {
+  case 1: return VecElems::V1;
+  case 2: return VecElems::V2;
+  case 3: return VecElems::V3;
+  case 4: return VecElems::V4;
+  case 8: return VecElems::V8;
+  case 16: return VecElems::V16;
+  case 32: return VecElems::V32;
+  case 64: return VecElems::V64;
+  default: return VecElems::INVALID;
+  }
+}
 uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
   switch (ve) {
   case VecElems::V1:
@@ -510,6 +637,19 @@ uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
     vISA_ASSERT_UNREACHABLE("invalid vector elements");
   }
   return 0;
+}
+int vISA::GetNumVecElems(VecElems ves) {
+  switch (ves) {
+  case VecElems::V1: return 1;
+  case VecElems::V2: return 2;
+  case VecElems::V3: return 3;
+  case VecElems::V4: return 4;
+  case VecElems::V8: return 8;
+  case VecElems::V16: return 16;
+  case VecElems::V32: return 32;
+  case VecElems::V64: return 64;
+  default: return 0;
+  }
 }
 
 
@@ -641,71 +781,6 @@ bool G4_SendDesc::isLSC() const {
     break;
   }
   return false;
-}
-
-static std::string ToSymbol(vISA::SFID sfid) {
-  switch (sfid) {
-  case SFID::UGM:
-    return ".ugm";
-  case SFID::UGML:
-    return ".ugml";
-  case SFID::SLM:
-    return ".slm";
-  case SFID::TGM:
-    return ".tgm";
-  case SFID::URB:
-    return ".urb";
-  //
-  case SFID::DP_DC0:
-    return ".dc0";
-  case SFID::DP_DC1:
-    return ".dc1";
-  case SFID::DP_DC2:
-    return ".dc2";
-  case SFID::DP_CC:
-    return ".dcro";
-  case SFID::DP_RC:
-    return ".rc";
-  //
-  case SFID::RTHW:
-    return ".rta";
-  case SFID::BTD:
-    return ".btd";
-  //
-  case SFID::GATEWAY:
-    return ".gtwy";
-  case SFID::SAMPLER:
-    return ".smpl";
-  case SFID::NULL_SFID:
-    return ".null";
-  case SFID::CRE:
-    return ".cre";
-  default:
-    break;
-  }
-  return ".?";
-}
-
-static std::string ToSymbolDataSize(int reg, int mem) {
-  if (reg == mem)
-    return "d" + std::to_string(reg);
-  return "d" + std::to_string(mem) + "u" + std::to_string(reg);
-}
-
-static std::string ToSymbol(AddrType at) {
-  switch (at) {
-  case AddrType::FLAT:
-    return "";
-  case AddrType::BSS:
-    return "bss";
-  case AddrType::SS:
-    return "ss";
-  case AddrType::BTI:
-    return "bti";
-  default:
-    break;
-  }
-  return "?";
 }
 
 

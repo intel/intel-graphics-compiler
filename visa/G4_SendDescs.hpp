@@ -22,6 +22,7 @@ enum class SendAccess {
   READ_WRITE  // e.g. an atomic with return
 };
 
+
 // used for grouping MsgOp ordinal values so that
 // bit tests can classify the group
 static const int MSGOP_LOAD_GROUP   = 0x0100;
@@ -30,6 +31,9 @@ static const int MSGOP_ATOMIC_GROUP = 0x0400;
 static const int MSGOP_SAMPLE_GROUP = 0x0800;
 static const int MSGOP_GATHER_GROUP = 0x1000;
 static const int MSGOP_OTHER_GROUP  = 0x2000;
+
+std::string ToSymbol(vISA::SFID sfid);
+
 //
 // Various message operations
 // This enumeration includes all SFID's messages that vISA should comprehend.
@@ -157,24 +161,31 @@ DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds);
 uint32_t GetDataSizeEncoding(DataSize ds);
 
 // Data order
-enum class DataOrder { INVALID = 0, NONTRANSPOSE, TRANSPOSE };
+enum class DataOrder {
+  INVALID         = 0x0,
+  NONTRANSPOSE    = 0x1,
+  TRANSPOSE       = 0x2,
+  VNNI            = 0x3,
+  TRANSPOSE_VNNI  = 0x4,
+};
 
-std::string ToSymbol(DataOrder dord);
 DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord);
 uint32_t GetDataOrderEncoding(DataOrder dord);
 
 // Data elems
 enum class VecElems { INVALID = 0, V1, V2, V3, V4, V8, V16, V32, V64 };
 
+std::string ToSymbol(DataSize dsz, VecElems ve, DataOrder dord);
+std::string ToSymbol(DataSize dsz, int chMask);
+
 std::string ToSymbol(VecElems ve);
 VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de);
+VecElems ToVecElems(int ves);
 uint32_t GetVecElemsEncoding(VecElems ve);
-size_t GetNumVecElems(VecElems ve);
+int GetNumVecElems(VecElems ve);
 
 // data chmask
 enum DataChMask { INVALID = 0, X = 1 << 0, Y = 1 << 1, Z = 1 << 2, W = 1 << 3 };
-
-size_t GetNumVecElemsQuad(int chMask);
 
 
 // Cache controls
@@ -321,6 +332,7 @@ public:
   bool isHDC() const;
   bool isLSC() const;
   bool isSampler() const { return getSFID() == SFID::SAMPLER; }
+  bool isGTWY() const {return getSFID() == SFID::GATEWAY;}
   //
   virtual bool isEOT() const = 0;
   virtual bool isSLM() const = 0;
