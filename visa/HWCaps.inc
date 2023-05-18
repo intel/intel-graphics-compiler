@@ -532,7 +532,7 @@ bool hasByteALU() const {
 
 bool hasSingleALUPipe() const { return getPlatform() == GENX_TGLLP; }
 
-bool hasMathRSIsuue() const { return getPlatform() == GENX_TGLLP; }
+bool hasMathRSIsuue() const { return getPlatform() == GENX_TGLLP && getOption(vISA_InsertDummyMovForHWRSWA); }
 
 bool supportsSampler() const {
   return getPlatform() != Xe_PVC && getPlatform() != Xe_PVCXT;
