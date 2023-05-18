@@ -8237,6 +8237,18 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         m_encoder->Push();
         break;
     }
+    case GenISAIntrinsic::GenISA_software_exception:
+    {
+        CVariable *Mask = m_currShader->ImmToVariable(
+            1 << 28,
+            ISA_TYPE_UD);
+
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetDstSubReg(1);
+        m_encoder->Or(m_currShader->GetCR0(), m_currShader->GetCR0(), Mask);
+        m_encoder->Push();
+        break;
+    }
     case GenISAIntrinsic::GenISA_hw_thread_id:
     case GenISAIntrinsic::GenISA_hw_thread_id_alloca:
     {
