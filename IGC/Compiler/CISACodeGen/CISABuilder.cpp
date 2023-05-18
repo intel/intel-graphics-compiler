@@ -4212,6 +4212,14 @@ namespace IGC
             (m_program->m_Platform->preemptionSupported() || IGC_IS_FLAG_ENABLED(ForcePreemptionWA)) &&
             IGC_IS_FLAG_ENABLED(EnablePreemption))
         {
+            // Note that debugger requires r0 to be preserved across platforms.
+            // vISA_enablePreemption switch is used as a proxy to reserve r0 up
+            // to, but excluding, PVC. For PVC+, vISA_enablePreemption may not be
+            // set so we rely on another switch vISA_PreserveR0InR0. There are
+            // differences in behavior of these switches. Latter not only reserves
+            // r0 but VISA refer to r0 directly (BuiltInR0 == RealR0). Whereas,
+            // reserving r0 via vISA_enablePreemption simply forbids RA from
+            // using r0 for assignments.
             SaveOption(vISA_enablePreemption, true);
         }
 
