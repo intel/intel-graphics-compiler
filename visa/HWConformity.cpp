@@ -5307,6 +5307,18 @@ void HWConformity::fixSendInst(G4_BB *bb) {
         }
       }
     }
+
+    // Avoid src0 and src1 overlap for split send.
+    // simd1 split send is allowed to have srcs overlap. When it's simd1,
+    // overlap for the rest of the payload shouldn't matter
+    if (inst->isSplitSend() && inst->getExecSize() != g4::SIMD1) {
+      bool src0Src1Overlap = inst->getSrc(0)->compareOperand(
+                                 inst->getSrc(1), builder) != Rel_disjoint;
+
+      // Fix overlap
+      if (src0Src1Overlap)
+        fixSrc(inst, true);
+    }
   }
 }
 
