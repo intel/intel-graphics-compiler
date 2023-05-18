@@ -18170,48 +18170,77 @@ void EmitPass::emitLSCVectorStore(
 }
 
 
+// DstSubRegOffset and SrcSubRegOffset are in unit of element size.
+void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
+{
+    IGC_ASSERT(Dst->IsUniform() && Src->IsUniform());
+
+    uint32_t width = numLanes(m_currShader->m_SIMDSize);
+    unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
+
+    // The starting index of elements to be copied.
+    unsigned i = 0;
+    auto partialCopy = [=, &i](SIMDMode mod)
+    {
+        unsigned w = numLanes(mod);
+        if (i + w > nElts)
+        {
+            return false;
+        }
+
+        unsigned vStride = (mod == SIMDMode::SIMD1) ? 0 : 1;
+        m_encoder->SetUniformSIMDSize(mod);
+        m_encoder->SetSrcRegion(0, vStride, 1, 0);
+        m_encoder->SetSrcSubReg(0, soff + i);
+        m_encoder->SetDstSubReg(doff + i);
+        m_encoder->Copy(Dst, Src);
+        m_encoder->Push();
+
+        i += w;
+        return true;
+    };
+
+    // Start with the max execution size that is legal for the vector element
+    // and is no greater than the current simdsize.
+    uint32_t maxNumElts = (2 * getGRFSize()) / Dst->GetElemSize();
+    uint32_t maxSimd = std::min(width, (uint32_t)PowerOf2Floor(maxNumElts));
+    if (maxSimd == 32) {
+        while (partialCopy(SIMDMode::SIMD32))
+            ;
+        partialCopy(SIMDMode::SIMD16);
+        partialCopy(SIMDMode::SIMD8);
+    }
+    else if (maxSimd == 16) {
+        while (partialCopy(SIMDMode::SIMD16))
+            ;
+        partialCopy(SIMDMode::SIMD8);
+    }
+    else {
+        while (partialCopy(SIMDMode::SIMD8))
+            ;
+    }
+    partialCopy(SIMDMode::SIMD4);
+    partialCopy(SIMDMode::SIMD2);
+    partialCopy(SIMDMode::SIMD1);
+}
+
+// DstSubRegOffset and SrcSubRegOffset are in unit of element size.
 void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
     uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
 {
-    unsigned int width = numLanes(m_currShader->m_SIMDSize);
     bool srcUniform = Src->IsUniform();
     bool dstUniform = Dst->IsUniform();
-    unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
 
     // Uniform vector copy.
-    if (srcUniform && dstUniform)
-    {
-        // The starting index of elements to be copied.
-        unsigned i = 0;
-        auto partialCopy = [=, &i](SIMDMode mod)
-        {
-            unsigned w = numLanes(mod);
-            if (i + w > nElts)
-            {
-                return false;
-            }
-
-            unsigned vStride = (mod == SIMDMode::SIMD1) ? 0 : 1;
-            m_encoder->SetUniformSIMDSize(mod);
-            m_encoder->SetSrcRegion(0, vStride, 1, 0);
-            m_encoder->SetSrcSubReg(0, soff + i);
-            m_encoder->SetDstSubReg(doff + i);
-            m_encoder->Copy(Dst, Src);
-            m_encoder->Push();
-
-            i += w;
-            return true;
-        };
-
-        // We may select the initial simd size based on the element type.
-        while (partialCopy(SIMDMode::SIMD8))
-            ;
-        partialCopy(SIMDMode::SIMD4);
-        partialCopy(SIMDMode::SIMD2);
-        partialCopy(SIMDMode::SIMD1);
+    if (srcUniform && dstUniform) {
+        emitUniformVectorCopy(
+            Dst, Src, nElts, DstSubRegOffset, SrcSubRegOffset);
         return;
     }
 
+    unsigned int width = numLanes(m_currShader->m_SIMDSize);
+    unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
     for (uint32_t i = 0; i < nElts; ++i)
     {
         uint SrcSubReg = srcUniform ? soff + i : soff + width * i;
