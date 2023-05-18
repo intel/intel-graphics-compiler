@@ -64,13 +64,13 @@ You can use following commands for setup:
 ```shell
 $ cd <workspace>
 $ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
-$ git clone -b llvmorg-11.1.0 https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-110 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-$ git clone -b llvm_release_110 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+$ git clone -b llvmorg-14.0.5 https://github.com/llvm/llvm-project llvm-project
+$ git clone -b ocl-open-140 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_140 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/KhronosGroup/SPIRV-Tools.git SPIRV-Tools
 $ git clone https://github.com/KhronosGroup/SPIRV-Headers.git SPIRV-Headers
 ```
-These commands will set up a workspace with LLVM 11. If you wish to use any other version please refer to the [component revision table](#Revision-table)
+These commands will set up a workspace with LLVM 14. If you wish to use any other version please refer to the [component revision table](#Revision-table)
 
 Correct directory tree looks like this:
 ```
@@ -92,7 +92,7 @@ There are several flags for these builds modes that you can pass to
 cmake command.
 
 - `IGC_OPTION__LLVM_PREFERRED_VERSION` -- sets version of LLVM that
-  will be used by IGC (defaults to "11.1.0").
+  will be used by IGC (defaults to "14.0.5").
 - `IGC_OPTION__LLVM_MODE` -- select LLVM mode for IGC to use. Possible
 values are: **Source**, **Prebuilds** or empty (that is
 default). **Source** mode uses LLVM sources to build LLVM in-tree with
@@ -155,9 +155,9 @@ $ sudo make install
 
 | Version          | Product quality |
 |:----------------:|-----------------|
-| LLVM 12-15       | Experimental    |
-| LLVM 11          | **Production**  |
-| LLVM 10 and older | Experimental    |
+| LLVM 15          | Experimental    |
+| LLVM 14          | **Production**  |
+| LLVM 12 and older | Experimental    |
 
 | Terminology       | Description |
 |-------------------|-|
@@ -169,14 +169,14 @@ $ sudo make install
 LLVM version determines what branches are used when building dependencies.
 When checking out the components refer to the following table, replace **XX** with the LLVM version used:
 
-| Repository name       | Version specific | Branch               | LLVM 11 example  |
+| Repository name       | Version specific | Branch               | LLVM 14 example  |
 |-----------------------|:----------------:|----------------------|------------------|
-| llvm-project          | -                | release/**XX**.x     | release/11.x     |
+| llvm-project          | -                | release/**XX**.x     | release/14.x     |
 | vc-intrinsics         | no               | master               | master           |
 | SPIRV-Tools           | no               | master               | master           |
 | SPIRV-Headers         | no               | master               | master           |
-| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_110 |
-| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-110     |
+| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_140 |
+| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-140     |
 
 ### LLVM/LLD/Clang version specific caveats
 
@@ -200,19 +200,21 @@ which are needed for [enqueue_kernel](https://www.khronos.org/registry/OpenCL/sd
 
 VectorComplier must be disabled by adding ```-DIGC_BUILD__VC_ENABLED=OFF``` to CMake flags.
 
-#### LLVM9/Clang9
+#### LLVM9/Clang9 to LLVM11/Clang11
 
-No additional steps are needed.
+**Deprecated/Experimental**
+We can no longer provide LLVM9-11/Clang9-11 conformance/performance guarantees.
 
-#### LLVM10/Clang10
-
-No additional steps are needed.
-
-#### LLVM11/Clang11
-
-No additional steps are needed.
-
-#### LLVM12/Clang12 to LLVM15/Clang15
+#### LLVM12/Clang12 to LLVM13/Clang13
 
 **Experimental**
-Currently there are none LLVM12+/Clang12+ conformance/performance guarantees.
+There are no LLVM12-13/Clang12-13 conformance/performance guarantees.
+
+#### LLVM14/Clang14
+
+No additional steps are needed.
+
+#### LLVM15/Clang15
+
+**Experimental**
+There are no LLVM15/Clang15 conformance/performance guarantees.
