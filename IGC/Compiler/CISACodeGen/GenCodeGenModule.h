@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/ValueHandle.h"
 #include "llvm/Pass.h"
@@ -135,6 +136,10 @@ namespace IGC {
         bool isSingle() const {
             return (Functions.size() == 1 && Functions.front()->size() == 1);
         }
+        /// \brief Function group has a subroutine
+        bool hasSubroutine() const {
+            return m_hasSubroutine;
+        }
         /// \brief Function group has a stack call (including indirect calls)
         bool hasStackCall() const {
             return m_hasStackCall;
@@ -154,13 +159,17 @@ namespace IGC {
         bool hasNestedCall() const {
             return m_hasNestedCall;
         }
-        /// \brief Function group has indirect calls where the CG is not available (e.g. calls function pointer, or callees in external module)
-        bool hasCGAvailable() const {
-            return m_hasCGAvailable;
+        /// \brief Function group has indirect calls where the full CG is not available (e.g. calls function pointer, or callees in external module)
+        bool hasPartialCallGraph() const {
+            return m_hasPartialCallGraph;
         }
         /// \brief Function group has recursion
         bool hasRecursion() const {
             return m_hasRecursion;
+        }
+        /// \brief Return if the head of this FG is the dummy kernel for indirect calls
+        bool isIndirectCallGroup() const {
+            return IGC::isIntelSymbolTableVoidProgram(this->getHead());
         }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
@@ -177,13 +186,14 @@ namespace IGC {
         void setSimdModeInvalid(SIMDMode Mode);
 
     private:
+        bool m_hasSubroutine = false;
         bool m_hasStackCall = false;
         bool m_hasInlineAsm = false;
         bool m_hasVariableLengthAlloca = false;
         bool m_hasIndirectCall = false;
         bool m_hasRecursion = false;
         bool m_hasNestedCall = false;
-        bool m_hasCGAvailable = true;
+        bool m_hasPartialCallGraph = false;
         bool SIMDModeValid[3] = {true, true, true};
     };
 
@@ -268,10 +278,6 @@ namespace IGC {
         bool isIndirectCallGroup(const llvm::Function* F) {
             FunctionGroup* FG = getGroup(F);
             return FG != nullptr && FG == IndirectCallGroup;
-        }
-
-        FunctionGroup* getIndirectCallGroup() {
-            return IndirectCallGroup;
         }
 
         /// \brief Check whether this is a group header.

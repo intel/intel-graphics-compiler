@@ -103,12 +103,8 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
     if (bOCLLegacyStatelessCheck) {
         if (auto * FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
             if (FGA->getModule() == M) {
-                if (FGA->getIndirectCallGroup() != nullptr)
-                    return false;
                 for (auto& I : *FGA) {
-                    if (I->hasStackCall())
-                        return false;
-                    if (I->hasVariableLengthAlloca())
+                    if (I->isIndirectCallGroup() || I->hasStackCall() || I->hasVariableLengthAlloca())
                         return false;
                 }
             }
