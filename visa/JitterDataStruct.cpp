@@ -30,10 +30,8 @@ llvm::json::Value PERF_STATS::toJSON() {
 llvm::json::Value PERF_STATS_VERBOSE::toJSON() {
   llvm::json::Object jsonObject = llvm::json::Object{
       {"BCNum", BCNum},
-      {"numRMWs", numRMWs},
+      {"numByteRMWs", numByteRMWs},
       {"numALUInst", numALUInst},
-      {"numALUOnlyDst", numALUOnlyDst},
-      {"numALUOnlySrc", numALUOnlySrc},
       {"accSubDef", accSubDef},
       {"accSubUse", accSubUse},
       {"accSubCandidateDef", accSubCandidateDef},

@@ -1016,63 +1016,6 @@ struct AccAssignment {
 };
 
 
-void AccSubPass::CheckALUOnlyDstSrc(G4_INST *inst) {
-  if (inst->isSend() || inst->isLabel() || inst->isCFInst() || inst->isDpas() ||
-      inst->isIntrinsic()) {
-    return;
-  }
-
-  FINALIZER_INFO *jitInfo = builder.getJitInfo();
-  G4_DstRegRegion *dst = inst->getDst();
-
-  if (dst && dst->getTopDcl() != nullptr &&
-      dst->getTopDcl()->getRegFile() == G4_GRF) {
-    bool usedInSend = false;
-    for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I) {
-      auto &&use = *I;
-      G4_INST *useInst = use.first;
-      if (useInst->isSend()) {
-        usedInSend = true;
-      }
-    }
-
-    if (!usedInSend) {
-      jitInfo->statsVerbose.numALUOnlyDst++;
-    }
-  }
-
-  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
-    G4_Operand *srcOpnd = inst->getSrc(i);
-    Gen4_Operand_Number opndNum = (Gen4_Operand_Number)(i + 1);
-    if (!srcOpnd) {
-      continue;
-    }
-    if (!srcOpnd->isSrcRegRegion() || srcOpnd->isImm() ||
-        srcOpnd->isAddrExp() ||
-        srcOpnd->asSrcRegRegion()->getRegAccess() != Direct) {
-      continue;
-    }
-    if (!srcOpnd->asSrcRegRegion()->getBase() ||
-        !srcOpnd->asSrcRegRegion()->getBase()->isRegVar()) {
-      continue;
-    }
-    if (srcOpnd->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF) {
-      continue;
-    }
-    bool defineInSend = false;
-    for (auto DI = inst->def_begin(), DE = inst->def_end(); DI != DE; ++DI) {
-      auto &&def = *DI;
-      if (def.second == opndNum && def.first->isSend()) {
-        defineInSend = true;
-      }
-    }
-
-    if (!defineInSend) {
-      jitInfo->statsVerbose.numALUOnlySrc++;
-    }
-  }
-}
-
 void AccSubPass::doAccSub(G4_BB *bb) {
   bb->resetLocalIds();
   int numGeneralAcc = kernel.getNumAcc();
@@ -1085,7 +1028,6 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd;
        ++instIter) {
     G4_INST *inst = *instIter;
-    CheckALUOnlyDstSrc(inst);
 
     if (inst->defAcc()) {
       // we should only have single def/use acc at this point, so any use would
@@ -1284,7 +1226,6 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
   for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd;
        ++instIter) {
     G4_INST *inst = *instIter;
-    CheckALUOnlyDstSrc(inst);
 
     if (inst->defAcc()) {
       // we should only have single def/use acc at this point, so any use would

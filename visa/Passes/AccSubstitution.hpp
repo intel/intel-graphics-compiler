@@ -47,7 +47,6 @@ public:
   }
   void accSub(G4_BB *bb);
   void multiAccSub(G4_BB *bb);
-  void CheckALUOnlyDstSrc(G4_INST *inst);
   void doAccSub(G4_BB *bb);
 
   void getInstACCAttributes(G4_INST *inst, int &lastUse, bool &isAllFloat);

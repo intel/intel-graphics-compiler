@@ -438,165 +438,7 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
   if (getOptions()->getOption(vISA_GenerateKernelInfo)) {
     auto kernel = getKernel();
     m_kernelInfo = new KERNEL_INFO();
-
-    for (auto decl : kernel->Declares) {
-      auto regVar = decl->getRegVar();
-      if (regVar != nullptr) {
-        if (regVar->isRegVar()) {
-          m_kernelInfo->numReg++;
-        } else if (regVar->isRegVarTmp()) {
-          m_kernelInfo->numTmpReg++;
-          m_kernelInfo->bytesOfTmpReg += decl->getByteSize();
-        } else if (regVar->isRegVarSpill()) {
-          // hasSpillFills = true;
-          m_kernelInfo->numSpillReg++;
-        } else if (regVar->isRegVarFill()) {
-          // hasSpillFills = true;
-          m_kernelInfo->numFillReg++;
-        }
-      }
-    }
-
-    for (auto bb : kernel->fg) {
-      for (auto instr : bb->getInstList()) {
-        if (instr->getExecSize() == g4::SIMD1) {
-          m_kernelInfo->countSIMD1++;
-        } else if (instr->getExecSize() == g4::SIMD2) {
-          m_kernelInfo->countSIMD2++;
-        } else if (instr->getExecSize() == g4::SIMD4) {
-          m_kernelInfo->countSIMD4++;
-        } else if (instr->getExecSize() == g4::SIMD8) {
-          m_kernelInfo->countSIMD8++;
-        } else if (instr->getExecSize() == g4::SIMD16) {
-          m_kernelInfo->countSIMD16++;
-        } else if (instr->getExecSize() == g4::SIMD32) {
-          m_kernelInfo->countSIMD32++;
-        }
-
-        if (instr->isSend()) {
-          G4_InstSend *SendInst = instr->asSendInst();
-          auto sendDesc = SendInst->getMsgDescRaw();
-          if (!sendDesc->isLSC()) {
-#define COUNT_HDC_SEND(SEND, isWRITE)                                          \
-  case SEND:                                                                   \
-    m_kernelInfo->hdcSends.count##SEND++;                                      \
-    m_kernelInfo->hdcSends.hasAnyHDCSend = true;                               \
-    break;
-
-            auto funcID = sendDesc->getSFID();
-            switch (funcID) {
-            case SFID::DP_DC0:
-              switch (sendDesc->getHdcMessageType()) {
-                // Load
-                COUNT_HDC_SEND(DC_OWORD_BLOCK_READ, false)
-                COUNT_HDC_SEND(DC_ALIGNED_OWORD_BLOCK_READ, false)
-                COUNT_HDC_SEND(DC_DWORD_SCATTERED_READ, false)
-                COUNT_HDC_SEND(DC_BYTE_SCATTERED_READ, false)
-                COUNT_HDC_SEND(DC_QWORD_SCATTERED_READ, false)
-                // Store
-                COUNT_HDC_SEND(DC_OWORD_BLOCK_WRITE, true)
-                COUNT_HDC_SEND(DC_DWORD_SCATTERED_WRITE, true)
-                COUNT_HDC_SEND(DC_BYTE_SCATTERED_WRITE, true)
-                COUNT_HDC_SEND(DC_QWORD_SCATTERED_WRITE, true)
-              default:
-                break;
-              }
-              break;
-            case SFID::DP_DC1:
-              switch (sendDesc->getHdcMessageType()) {
-                // Load
-                COUNT_HDC_SEND(DC1_UNTYPED_SURFACE_READ, false)
-                COUNT_HDC_SEND(DC1_MEDIA_BLOCK_READ, false)
-                COUNT_HDC_SEND(DC1_TYPED_SURFACE_READ, false)
-                COUNT_HDC_SEND(DC1_A64_SCATTERED_READ, false)
-                COUNT_HDC_SEND(DC1_A64_UNTYPED_SURFACE_READ, false)
-                COUNT_HDC_SEND(DC1_A64_BLOCK_READ, false)
-                // Store
-                COUNT_HDC_SEND(DC1_UNTYPED_SURFACE_WRITE, true)
-                COUNT_HDC_SEND(DC1_MEDIA_BLOCK_WRITE, true)
-                COUNT_HDC_SEND(DC1_TYPED_SURFACE_WRITE, true)
-                COUNT_HDC_SEND(DC1_A64_BLOCK_WRITE, true)
-                COUNT_HDC_SEND(DC1_A64_UNTYPED_SURFACE_WRITE, true)
-                COUNT_HDC_SEND(DC1_A64_SCATTERED_WRITE, true)
-              default:
-                break;
-              }
-              break;
-            case SFID::DP_DC2:
-              switch (sendDesc->getHdcMessageType()) {
-                // Load
-                COUNT_HDC_SEND(DC2_UNTYPED_SURFACE_READ, false)
-                COUNT_HDC_SEND(DC2_A64_SCATTERED_READ, false)
-                COUNT_HDC_SEND(DC2_A64_UNTYPED_SURFACE_READ, false)
-                COUNT_HDC_SEND(DC2_BYTE_SCATTERED_READ, false)
-                // Store
-                COUNT_HDC_SEND(DC2_UNTYPED_SURFACE_WRITE, true)
-                COUNT_HDC_SEND(DC2_A64_UNTYPED_SURFACE_WRITE, true)
-                COUNT_HDC_SEND(DC2_A64_SCATTERED_WRITE, true)
-                COUNT_HDC_SEND(DC2_BYTE_SCATTERED_WRITE, true)
-              default:
-                break;
-              }
-              break;
-            case SFID::URB:
-              switch (sendDesc->getHdcMessageType()) {
-                // Load
-                COUNT_HDC_SEND(URB_READ_HWORD, false)
-                COUNT_HDC_SEND(URB_READ_OWORD, false)
-                COUNT_HDC_SEND(URB_SIMD8_READ, false)
-                // Store
-                COUNT_HDC_SEND(URB_WRITE_HWORD, true)
-                COUNT_HDC_SEND(URB_WRITE_OWORD, true)
-                COUNT_HDC_SEND(URB_SIMD8_WRITE, true)
-              default:
-                break;
-              }
-              break;
-            default:
-              break;
-            }
-#undef COUNT_HDC_SEND
-          } else {
-#define COUNT_LSC_SEND(SEND, isWRITE)                                          \
-  case LSC_OP::SEND:                                                           \
-    m_kernelInfo->lscSends.count##SEND++;                                      \
-    m_kernelInfo->lscSends.hasAnyLSCSend = true;                               \
-    break;
-
-            switch (sendDesc->getLscOp()) {
-              // Load
-              COUNT_LSC_SEND(LSC_LOAD, false)
-              COUNT_LSC_SEND(LSC_LOAD_STRIDED, false)
-              COUNT_LSC_SEND(LSC_LOAD_QUAD, false)
-              COUNT_LSC_SEND(LSC_LOAD_BLOCK2D, false)
-              // Store
-              COUNT_LSC_SEND(LSC_STORE, true)
-              COUNT_LSC_SEND(LSC_STORE_STRIDED, true)
-              COUNT_LSC_SEND(LSC_STORE_QUAD, true)
-              COUNT_LSC_SEND(LSC_STORE_BLOCK2D, true)
-              COUNT_LSC_SEND(LSC_STORE_UNCOMPRESSED, true)
-            default:
-              break;
-            }
-#undef COUNT_LSC_SEND
-          }
-        }
-
-        if (instr->isSpillIntrinsic()) {
-          auto payload = instr->getSrc(1)->asSrcRegRegion();
-          auto dcl = payload->getTopDcl();
-          m_kernelInfo->spillFills.countBytesSpilled += dcl->getByteSize();
-
-          m_kernelInfo->spillFills.AddVirtualVar(dcl->getName());
-          m_kernelInfo->spillFills.spillInstrOrder.push_back(
-              instr->getVISAId());
-
-        } else if (instr->isFillIntrinsic()) {
-          m_kernelInfo->spillFills.spillInstrOrder.push_back(
-              instr->getVISAId());
-        }
-      }
-    }
+    m_kernelInfo->collectStats(*kernel);
   }
 
   if (m_options->getOption(vISA_asmToConsole)) {
@@ -628,6 +470,164 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
   }
 
   return binary;
+}
+
+
+void KERNEL_INFO::collectStats(G4_Kernel &kernel) {
+  for (auto decl : kernel.Declares) {
+    auto regVar = decl->getRegVar();
+    if (regVar != nullptr) {
+      if (regVar->isRegVar()) {
+        numReg++;
+      } else if (regVar->isRegVarTmp()) {
+        numTmpReg++;
+        bytesOfTmpReg += decl->getByteSize();
+      } else if (regVar->isRegVarSpill()) {
+        numSpillReg++;
+      } else if (regVar->isRegVarFill()) {
+        numFillReg++;
+      }
+    }
+  }
+
+  for (auto bb : kernel.fg) {
+    for (auto instr : bb->getInstList()) {
+      if (instr->getExecSize() == g4::SIMD1) {
+        countSIMD1++;
+      } else if (instr->getExecSize() == g4::SIMD2) {
+        countSIMD2++;
+      } else if (instr->getExecSize() == g4::SIMD4) {
+        countSIMD4++;
+      } else if (instr->getExecSize() == g4::SIMD8) {
+        countSIMD8++;
+      } else if (instr->getExecSize() == g4::SIMD16) {
+        countSIMD16++;
+      } else if (instr->getExecSize() == g4::SIMD32) {
+        countSIMD32++;
+      }
+
+      if (instr->isSend()) {
+        G4_InstSend *SendInst = instr->asSendInst();
+        auto sendDesc = SendInst->getMsgDescRaw();
+        if (!sendDesc->isLSC()) {
+#define COUNT_HDC_SEND(SEND, isWRITE)                                          \
+  case SEND:                                                                   \
+    hdcSends.count##SEND++;                                                    \
+    hdcSends.hasAnyHDCSend = true;                                             \
+    break;
+
+          auto funcID = sendDesc->getSFID();
+          switch (funcID) {
+          case SFID::DP_DC0:
+            switch (sendDesc->getHdcMessageType()) {
+              // Load
+              COUNT_HDC_SEND(DC_OWORD_BLOCK_READ, false)
+              COUNT_HDC_SEND(DC_ALIGNED_OWORD_BLOCK_READ, false)
+              COUNT_HDC_SEND(DC_DWORD_SCATTERED_READ, false)
+              COUNT_HDC_SEND(DC_BYTE_SCATTERED_READ, false)
+              COUNT_HDC_SEND(DC_QWORD_SCATTERED_READ, false)
+              // Store
+              COUNT_HDC_SEND(DC_OWORD_BLOCK_WRITE, true)
+              COUNT_HDC_SEND(DC_DWORD_SCATTERED_WRITE, true)
+              COUNT_HDC_SEND(DC_BYTE_SCATTERED_WRITE, true)
+              COUNT_HDC_SEND(DC_QWORD_SCATTERED_WRITE, true)
+            default:
+              break;
+            }
+            break;
+          case SFID::DP_DC1:
+            switch (sendDesc->getHdcMessageType()) {
+              // Load
+              COUNT_HDC_SEND(DC1_UNTYPED_SURFACE_READ, false)
+              COUNT_HDC_SEND(DC1_MEDIA_BLOCK_READ, false)
+              COUNT_HDC_SEND(DC1_TYPED_SURFACE_READ, false)
+              COUNT_HDC_SEND(DC1_A64_SCATTERED_READ, false)
+              COUNT_HDC_SEND(DC1_A64_UNTYPED_SURFACE_READ, false)
+              COUNT_HDC_SEND(DC1_A64_BLOCK_READ, false)
+              // Store
+              COUNT_HDC_SEND(DC1_UNTYPED_SURFACE_WRITE, true)
+              COUNT_HDC_SEND(DC1_MEDIA_BLOCK_WRITE, true)
+              COUNT_HDC_SEND(DC1_TYPED_SURFACE_WRITE, true)
+              COUNT_HDC_SEND(DC1_A64_BLOCK_WRITE, true)
+              COUNT_HDC_SEND(DC1_A64_UNTYPED_SURFACE_WRITE, true)
+              COUNT_HDC_SEND(DC1_A64_SCATTERED_WRITE, true)
+            default:
+              break;
+            }
+            break;
+          case SFID::DP_DC2:
+            switch (sendDesc->getHdcMessageType()) {
+              // Load
+              COUNT_HDC_SEND(DC2_UNTYPED_SURFACE_READ, false)
+              COUNT_HDC_SEND(DC2_A64_SCATTERED_READ, false)
+              COUNT_HDC_SEND(DC2_A64_UNTYPED_SURFACE_READ, false)
+              COUNT_HDC_SEND(DC2_BYTE_SCATTERED_READ, false)
+              // Store
+              COUNT_HDC_SEND(DC2_UNTYPED_SURFACE_WRITE, true)
+              COUNT_HDC_SEND(DC2_A64_UNTYPED_SURFACE_WRITE, true)
+              COUNT_HDC_SEND(DC2_A64_SCATTERED_WRITE, true)
+              COUNT_HDC_SEND(DC2_BYTE_SCATTERED_WRITE, true)
+            default:
+              break;
+            }
+            break;
+          case SFID::URB:
+            switch (sendDesc->getHdcMessageType()) {
+              // Load
+              COUNT_HDC_SEND(URB_READ_HWORD, false)
+              COUNT_HDC_SEND(URB_READ_OWORD, false)
+              COUNT_HDC_SEND(URB_SIMD8_READ, false)
+              // Store
+              COUNT_HDC_SEND(URB_WRITE_HWORD, true)
+              COUNT_HDC_SEND(URB_WRITE_OWORD, true)
+              COUNT_HDC_SEND(URB_SIMD8_WRITE, true)
+            default:
+              break;
+            }
+            break;
+          default:
+            break;
+          }
+#undef COUNT_HDC_SEND
+        } else {
+#define COUNT_LSC_SEND(SEND, isWRITE)                                          \
+  case LSC_OP::SEND:                                                           \
+    lscSends.count##SEND++;                                                    \
+    lscSends.hasAnyLSCSend = true;                                             \
+    break;
+
+          switch (sendDesc->getLscOp()) {
+            // Load
+            COUNT_LSC_SEND(LSC_LOAD, false)
+            COUNT_LSC_SEND(LSC_LOAD_STRIDED, false)
+            COUNT_LSC_SEND(LSC_LOAD_QUAD, false)
+            COUNT_LSC_SEND(LSC_LOAD_BLOCK2D, false)
+            // Store
+            COUNT_LSC_SEND(LSC_STORE, true)
+            COUNT_LSC_SEND(LSC_STORE_STRIDED, true)
+            COUNT_LSC_SEND(LSC_STORE_QUAD, true)
+            COUNT_LSC_SEND(LSC_STORE_BLOCK2D, true)
+            COUNT_LSC_SEND(LSC_STORE_UNCOMPRESSED, true)
+          default:
+            break;
+          }
+#undef COUNT_LSC_SEND
+        }
+      }
+
+      if (instr->isSpillIntrinsic()) {
+        auto payload = instr->getSrc(1)->asSrcRegRegion();
+        auto dcl = payload->getTopDcl();
+        spillFills.countBytesSpilled += dcl->getByteSize();
+
+        spillFills.AddVirtualVar(dcl->getName());
+        spillFills.spillInstrOrder.push_back(instr->getVISAId());
+
+      } else if (instr->isFillIntrinsic()) {
+        spillFills.spillInstrOrder.push_back(instr->getVISAId());
+      }
+    }
+  }
 }
 
 // dump PERF_STATS into the .stats.json file
@@ -9093,8 +9093,6 @@ void VISAKernelImpl::addFuncPerfStats(const PERF_STATS_VERBOSE& input) {
       m_kernel->fg.builder->getJitInfo()->statsVerbose;
 
   myStats.numALUInst += input.numALUInst;
-  myStats.numALUOnlyDst += input.numALUOnlyDst;
-  myStats.numALUOnlySrc += input.numALUOnlySrc;
   myStats.accSubDef += input.accSubDef;
   myStats.accSubUse += input.accSubUse;
   myStats.accSubCandidateDef += input.accSubCandidateDef;
@@ -9116,8 +9114,6 @@ void VISAKernelImpl::emitPerfStats(std::ostream & os) {
   PERF_STATS_VERBOSE &stats = m_kernel->fg.builder->getJitInfo()->statsVerbose;
   os << "\n\n";
   os << "//.numALUInst: " << stats.numALUInst << "\n";
-  os << "//.numALUOnlyDst: " << stats.numALUOnlyDst << "\n";
-  os << "//.numALUOnlySrc: " << stats.numALUOnlySrc << "\n";
   os << "//.accSubDef: " << stats.accSubDef << "\n";
   os << "//.accSubUse: " << stats.accSubUse << "\n";
   os << "//.accSubCandidateDef: " << stats.accSubCandidateDef << "\n";

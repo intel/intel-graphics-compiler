@@ -991,7 +991,7 @@ void G4_Kernel::emitDeviceAsm(std::ostream &os, const void *binary,
     os << "\n\n";
     auto jitInfo = fg.builder->getJitInfo();
     os << "//.BankConflicts: " << jitInfo->statsVerbose.BCNum << "\n";
-    os << "//.RMWs: " << jitInfo->statsVerbose.numRMWs << "\n//\n";
+    os << "//.ByteRMWs: " << jitInfo->statsVerbose.numByteRMWs << "\n//\n";
   } else {
     os << "// Bank Conflict Statistics: \n";
     os << "// -- GOOD: " << fg.BCStats.NumOfGoodInsts << "\n";

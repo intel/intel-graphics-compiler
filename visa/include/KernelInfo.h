@@ -12,6 +12,10 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <vector>
 
+namespace vISA {
+class G4_Kernel;
+}
+
 struct SpillFillInfo {
   int countBytesSpilled = 0;
 
@@ -153,6 +157,8 @@ public:
     countSIMD32 = 0;
   }
   ~KERNEL_INFO() {}
+
+  void collectStats(vISA::G4_Kernel &kernel);
 };
 
 #endif

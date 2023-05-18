@@ -249,7 +249,7 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
       }
       auto jitInfo = getParent().getKernel()->fg.builder->getJitInfo();
       jitInfo->statsVerbose.BCNum += BCNum;
-      jitInfo->statsVerbose.numRMWs += countReadModifyWrite(output, inst);
+      jitInfo->statsVerbose.numByteRMWs += countReadModifyWrite(output, inst);
     }
   }
 
