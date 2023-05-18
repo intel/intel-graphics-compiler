@@ -552,7 +552,8 @@ bool GenXFunctionGroupAnalysis::verify()
             for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI)
             {
                 Function* F = *FI;
-                if (F->hasFnAttribute("referenced-indirectly"))
+                if (F->hasFnAttribute("referenced-indirectly")
+                    )
                 {
                     continue;
                 }

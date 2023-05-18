@@ -721,21 +721,25 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram* pKernelProgram)
     }
 }
 
-void CShader::CreateFunctionSymbol(llvm::Function* pFunc)
+CVariable* CShader::CreateFunctionSymbol(llvm::Function* pFunc)
 {
     // Functions with uses in this module requires relocation
     CVariable* funcAddr = GetSymbol(pFunc);
     std::string funcName = pFunc->getName().str();
     encoder.AddVISASymbol(funcName, funcAddr);
     encoder.Push();
+
+    return funcAddr;
 }
 
-void CShader::CreateGlobalSymbol(llvm::GlobalVariable* pGlobal)
+CVariable* CShader::CreateGlobalSymbol(llvm::GlobalVariable* pGlobal)
 {
     CVariable* globalAddr = GetSymbol(pGlobal);
     std::string globalName = pGlobal->getName().str();
     encoder.AddVISASymbol(globalName, globalAddr);
     encoder.Push();
+
+    return globalAddr;
 }
 
 void CShader::CacheArgumentsList()

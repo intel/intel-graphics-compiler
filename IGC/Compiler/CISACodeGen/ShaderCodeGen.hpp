@@ -264,8 +264,8 @@ public:
     virtual void MapPushedInputs();
     void        CreateGatherMap();
     void        CreateConstantBufferOutput(SKernelProgram* pKernelProgram);
-    void        CreateFunctionSymbol(llvm::Function* pFunc);
-    void        CreateGlobalSymbol(llvm::GlobalVariable* pGlobal);
+    CVariable*  CreateFunctionSymbol(llvm::Function* pFunc);
+    CVariable*  CreateGlobalSymbol(llvm::GlobalVariable* pGlobal);
 
     CVariable*  GetStructVariable(llvm::Value* v);
 

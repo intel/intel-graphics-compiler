@@ -5551,17 +5551,7 @@ namespace IGC
                 memset(fEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
 
-                bool isTrue = false;
-
-                if (!F.isDeclaration())
-                {
-                    auto& funcMD = modMD->FuncMD;
-                    auto MD = funcMD.find(&F);
-                    IGC_ASSERT_MESSAGE(MD != funcMD.end(), "Missing metadata?");
-                    isTrue = IGC::isContinuation(MD->second);
-                }
-
-                if (F.isDeclaration() || isTrue)
+                if (F.isDeclaration())
                 {
                     // If the function is only declared, set as undefined type
                     fEntry.s_type = vISA::GenSymType::S_UNDEF;

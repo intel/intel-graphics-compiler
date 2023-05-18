@@ -72,7 +72,7 @@ namespace IGC
         /// @brief  Check if a function has a stackcall in its call path to
         ///         decide whether implicit args should be added
         /// @param  pFunc           Source function
-        static bool hasStackCallInCG(const llvm::Function* pFunc, const CodeGenContext& Ctx);
+        static bool hasStackCallInCG(const llvm::Function* pFunc);
     private:
 
         /// @brief  Create the type of the new function,

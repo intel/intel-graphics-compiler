@@ -425,14 +425,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
 
-        bool istrue = false;
-
-        auto funcIt = modMD->FuncMD.find(F);
-        if (funcIt != modMD->FuncMD.end())
-        {
-            istrue = IGC::isContinuation(funcIt->second);
-        }
-
         // set hasVLA function attribute
         {
             bool isSet = false;
@@ -456,7 +448,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         // Functions that have the spir_kernel calling convention
         // This may be true even if isEntryFunc returns false, for invoke kernels and cloned callable kernels
-        if (!isKernel && !istrue && (F->getCallingConv() == CallingConv::SPIR_KERNEL))
+        if (!isKernel && (F->getCallingConv() == CallingConv::SPIR_KERNEL))
         {
             // WA for callable kernels, always inline these.
             SetAlwaysInline(F);
@@ -465,7 +457,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         // Check for functions that can be indirectly called
         bool isIndirect = false;
-        if (!isKernel || istrue)
+        if (!isKernel)
         {
             isIndirect = F->hasFnAttribute("referenced-indirectly") ||
                 (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.IsLibraryCompilation && NeedsLinking(F));
@@ -491,10 +483,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // Add indirect call function attributes
             pCtx->m_enableFunctionPointer = true;
             F->addFnAttr("referenced-indirectly");
-            if (!istrue)
-            {
-                F->addFnAttr("visaStackCall");
-            }
+            F->addFnAttr("visaStackCall");
             F->setLinkage(GlobalValue::ExternalLinkage);
         }
 

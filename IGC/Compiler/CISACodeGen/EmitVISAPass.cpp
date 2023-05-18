@@ -21905,18 +21905,11 @@ void EmitPass::emitGetShaderRecordPtr(GetShaderRecordPtrIntrinsic* I)
     // address space for functions.  We may move to using that once we upgrade.
     // For now, we go through this intrinsic to ensure that we have a 64-bit
     // value going out so the to 32-bits are not truncated away.
-
-    IGC_ASSERT(nullptr != I);
     auto* Fn = I->getContinuationFn();
+    auto* Var = m_currShader->CreateFunctionSymbol(Fn);
 
-    IGC_ASSERT(nullptr != Fn);
-    auto* Var = GetSymbol(Fn);
-
-    IGC_ASSERT(nullptr != Var);
     IGC_ASSERT(Var->GetType() == ISA_TYPE_UQ);
-    IGC_ASSERT(nullptr != m_destination);
     IGC_ASSERT(m_destination->GetType() == ISA_TYPE_UQ);
-    IGC_ASSERT(nullptr != m_encoder);
 
     m_encoder->Copy(m_destination, Var);
     m_encoder->Push();

@@ -49,7 +49,7 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
     {
         Function* pFunc = &(*I);
         // Skip functions called from function marked with stackcall attribute
-        if (AddImplicitArgs::hasStackCallInCG(pFunc, *pCtx))
+        if (AddImplicitArgs::hasStackCallInCG(pFunc))
         {
             hasStackCall = true;
             continue;
