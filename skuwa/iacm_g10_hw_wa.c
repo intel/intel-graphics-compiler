@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2022 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -33,6 +33,14 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, ACM_G10_GT_REV_ID_B0));
+
+
+    SI_WA_ENABLE(
+        Wa_1608127078,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
 
 
     SI_WA_ENABLE(
@@ -160,7 +168,7 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_C0, FUTURE_PROJECT));
 
 
     SI_WA_ENABLE(
@@ -168,7 +176,7 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_C0, FUTURE_PROJECT));
 
 
     SI_WA_ENABLE(
