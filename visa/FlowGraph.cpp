@@ -4538,6 +4538,9 @@ RelocationEntry &
 RelocationEntry::createRelocation(G4_Kernel &kernel, G4_INST &inst, int opndPos,
                                   const std::string &symbolName,
                                   RelocationType type) {
+  // Force NoCompact to the instructions having relocations so the relocation
+  // target offset RelocationEntry::getTargetOffset is correct
+  inst.setOptionOn(InstOpt_NoCompact);
   kernel.getRelocationTable().emplace_back(
       RelocationEntry(&inst, opndPos, type, symbolName));
   auto &entry = kernel.getRelocationTable().back();
@@ -4553,35 +4556,41 @@ void RelocationEntry::doRelocation(const G4_Kernel &kernel, void *binary,
 }
 
 uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
-  // instruction being relocated must not be compacted, or the offset need to be
-  // re-adjusted
-  // FIXME: This only check if vISA force to compact the instruction, it cannot
-  // make sure the Binary encoder won't compact it
-  vASSERT(inst->isCompactedInst() == false);
+  // Instructions must not be compacted so the offset below can be correct
+  vASSERT(inst->isNoCompactedInst());
 
   switch (inst->opcode()) {
   case G4_mov:
   {
     // When src0 type is 64 bits:
-    //  On Pre-Xe:
-    //   Src0.imm[31:0] mapped to Instruction [95:64]
-    //   Src0.imm[63:32] mapped to Instruction [127:96]
-    //  On Xe+:
-    //   Src0.imm[31:0] mapped to Instruction [127:96]
-    //   Src0.imm[63:32] mapped to Instruction [95:64]
+    //   On Pre-Xe:
+    //     Src0.imm[63:0] mapped to Instruction [127:64]   // R_SYM_ADDR
+    //   On Xe+:
+    //     Src0.imm[31:0] mapped to Instruction [127:96]   // R_SYM_ADDR_32
+    //     Src0.imm[63:32] mapped to Instruction [95:64]   // R_SYM_ADDR_32_HI
+    //   Note that we cannot use "R_SYM_ADDR" relocation on XE+ imm64 since
+    //   the low32 and high32 bits of imm64 are flipped in the instruction
+    //   bit fields.
+    //
     // When src0 type is 32 bits:
     //   Src0.imm[31:0] mapped to instruction [127:96]
     G4_Operand* target_operand = inst->getSrc(opndPos);
     vASSERT(target_operand->isRelocImm());
-    vASSERT((target_operand->getType() == Type_UD) ||
-           (target_operand->getType() == Type_D) ||
-           (target_operand->getType() == Type_UQ) ||
-           (target_operand->getType() == Type_Q));
-    vASSERT(opndPos == 0);
-    return (target_operand->getType() == Type_UD ||
-            target_operand->getType() == Type_D)
-               ? 12
-               : 8;
+
+    if (target_operand->getTypeSize() == 8) {
+      if (relocType == RelocationType::R_SYM_ADDR) {
+        vASSERT(builder.getPlatform() < GENX_TGLLP);
+        return 8;
+      } else {
+        vASSERT(builder.getPlatform() >= GENX_TGLLP);
+        return relocType == RelocationType::R_SYM_ADDR_32_HI ?
+            8 : 12;
+      }
+    } else if (target_operand->getTypeSize() == 4) {
+      return 12;
+    }
+    // Unreachable: mov with relocation must have 32b or 64b type
+    break;
   }
   case G4_add:
     // add instruction cannot have 64-bit imm
@@ -4603,8 +4612,7 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
     break;
   }
 
-  // currently we only support relocation on mov or add instruction
-  vISA_ASSERT_UNREACHABLE("Unreachable");
+  vISA_ASSERT_UNREACHABLE("Invalid RelocationEntry");
   return 0;
 }
 
