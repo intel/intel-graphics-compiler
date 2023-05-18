@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "usc.h"
 #include "common/igc_regkeys.hpp"
 
-#if !( defined( IGC_EXPORTS ) || defined( IGC_DEBUG_VARIABLES ) )
+#if !defined( IGC_DEBUG_VARIABLES )
 #   include <stdio.h>
 #endif
 
@@ -139,7 +139,7 @@ namespace IGC
         typedef const char* OutputFolderName;
         typedef const char* OutputName;
 
-#if defined( IGC_EXPORTS ) || defined( IGC_DEBUG_VARIABLES )
+#if defined( IGC_DEBUG_VARIABLES )
 
         /// Convert enum value to string
         EnumStr IGC_DEBUG_API_CALL str(DebugFlag value);
@@ -233,9 +233,35 @@ namespace IGC
             return "";
         }
 
+        inline void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, int value)
+        {
+            (void)flag;
+            (void)value;
+        }
+
+        inline void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s)
+        {
+            (void)flag;
+            (void)s;
+        }
+
+        extern "C" inline void IGC_DEBUG_API_CALL SetCompilerOptionValue(const char* flagName, int value)
+        {
+            (void)flagName;
+            (void)value;
+        }
+
+        extern "C" inline void IGC_DEBUG_API_CALL SetCompilerOptionString(const char* flagName, debugString s)
+        {
+            (void)flagName;
+            (void)s;
+        }
+
+
         /// Do nothing in _RELEASE builds
         inline void SetDebugFlag( DebugFlag flag, bool enabled )
         {
+            (void) flag;
             if ( enabled )
             {
                 printf("WARNING: Debug flags have no effect in _RELEASE builds\n");
@@ -243,29 +269,48 @@ namespace IGC
         }
 
         /// Returns false in _RELEASE builds
-        inline bool GetDebugFlag( DebugFlag flag ) { return false; }
+        inline bool GetDebugFlag( DebugFlag flag ) { (void)flag; return false; }
 
         /// Assign the state of a dump flag (for _DEBUG and _INTERNAL builds only)
         inline void SetDumpFlag( DumpType type, DumpLoc loc, bool enabled )
         {
+            (void)type;
+            (void)loc;
+            (void)enabled;
         }
 
         /// Returns false in _RELEASE builds
-        inline bool GetDumpFlag( DumpType type, DumpLoc loc) { return false; }
+        inline bool GetDumpFlag( DumpType type, DumpLoc loc)
+        {
+            (void)type;
+            (void)loc;
+            return false;
+        }
 
         /// Does nothing in _RELEASE builds
-        inline void IGC_DEBUG_API_CALL SetShaderCorpusName( CorpusName name ) { }
+        inline void IGC_DEBUG_API_CALL SetShaderCorpusName( CorpusName name )
+        {
+            (void)name;
+        }
 
         /// Returns empty string in _RELEASE builds
         inline CorpusName IGC_DEBUG_API_CALL GetShaderCorpusName() { return ""; }
 
         /// Does nothing in _RELEASE builds
-        inline void IGC_DEBUG_API_CALL SetShaderOutputFolder( OutputFolderName name ) { }
-        inline void IGC_DEBUG_API_CALL SetShaderOutputName( OutputName name ) { }
+        inline void IGC_DEBUG_API_CALL SetShaderOutputFolder( OutputFolderName name ) { (void)name; }
+        inline void IGC_DEBUG_API_CALL SetShaderOutputName( OutputName name ) { (void)name; }
 
         /// Returns empty string in _RELEASE builds
         inline OutputFolderName IGC_DEBUG_API_CALL GetShaderOutputFolder() { return ""; }
         inline OutputName IGC_DEBUG_API_CALL GetShaderOutputName() { return ""; }
+
+        inline void IGC_DEBUG_API_CALL SetShaderOverridePath(OutputFolderName pOutputFolderName)
+        {
+            (void)pOutputFolderName;
+        }
+        inline OutputFolderName IGC_DEBUG_API_CALL GetShaderOverridePath() { return ""; }
+
+        inline OutputName IGC_DEBUG_API_CALL GetFunctionDebugFile() { return ""; }
 
         /// Omits changelist and build number in _RELEASE builds
         inline VersionInfo GetVersionInfo() { return "CONFIGURATION: Release"; }
