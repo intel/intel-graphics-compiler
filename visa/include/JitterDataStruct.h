@@ -179,7 +179,7 @@ struct FINALIZER_INFO {
   // GTPin information
   void *freeGRFInfo = nullptr;
   uint32_t freeGRFInfoSize = 0;
-  unsigned char numBytesScratchGtpin = 0;
+  uint32_t numBytesScratchGtpin = 0;
 
   // Used by compiler output (zebin) for setting up "implicit_arg_buffer".
   // When set to true, runtime will allocate space for implicit_arg_buffer
