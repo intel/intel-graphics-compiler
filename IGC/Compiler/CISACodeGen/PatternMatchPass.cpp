@@ -1045,6 +1045,14 @@ namespace IGC
                         {
                             m_sampleUnderCFsource.insert(v);
                         }
+
+                        if (Loop* L = LI->getLoopFor(I->getParent()))
+                        {
+                            if (L->contains(I))
+                            {
+                                m_sampleUnderCFsource.insert(v);
+                            }
+                        }
                     }
                 }
 
