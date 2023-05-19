@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -56,6 +56,9 @@ StructType &vc::ImplicitArgs::Buffer::getType(Module &M) {
   ElementTys[Indices::GroupCountX] = Int32Ty;
   ElementTys[Indices::GroupCountY] = Int32Ty;
   ElementTys[Indices::GroupCountZ] = Int32Ty;
+  ElementTys[Indices::Padding0] = Int32Ty;
+  ElementTys[Indices::RtGlobalBufferPtr] = Int64Ty;
+  ElementTys[Indices::AssertBufferPtr] = Int64Ty;
   IGC_ASSERT_MESSAGE(std::all_of(ElementTys.begin(), ElementTys.end(),
                                  [](Type *Ty) -> bool { return Ty; }),
                      "all structure element types must be set by the function");

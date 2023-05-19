@@ -58,6 +58,11 @@ printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
 }
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>
+__vc_assert_init(cl_vector<int, ArgsInfoVector::Size> ArgsInfo) {
+  return printf_init_impl<StringAnnotationSize, true>(ArgsInfo).cl_vector();
+}
+
+extern "C" cl_vector<BufferElementTy, TransferDataSize>
 __vc_printf_init(cl_vector<int, ArgsInfoVector::Size> ArgsInfo) {
   return printf_init_impl<StringAnnotationSize>(ArgsInfo).cl_vector();
 }

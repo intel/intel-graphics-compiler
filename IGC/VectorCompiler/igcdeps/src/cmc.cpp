@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2022 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -456,6 +456,15 @@ void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
         iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
 }
 
+void CMKernel::createAssertBufferArgAnnotation(unsigned Index, unsigned BTI,
+                                               unsigned Size,
+                                               unsigned ArgOffset) {
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+        m_kernelInfo.m_zePayloadArgs,
+        zebin::PreDefinedAttrGetter::ArgType::assert_buffer, ArgOffset, Size);
+}
+
 void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
                                                unsigned Size,
                                                unsigned ArgOffset) {
@@ -689,6 +698,10 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), Arg.getKind(),
                                    Arg.getAccessKind());
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
+      break;
+    case ArgKind::AssertBuffer:
+      Kernel.createAssertBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),
+                                             Arg.getSizeInBytes(), ArgOffset);
       break;
     case ArgKind::PrintBuffer:
       Kernel.createPrintfBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),

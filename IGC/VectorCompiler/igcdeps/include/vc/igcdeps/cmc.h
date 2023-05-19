@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -100,6 +100,8 @@ public:
   // Sampler
   void createSamplerAnnotation(unsigned argNo, unsigned BTI);
 
+  void createAssertBufferArgAnnotation(unsigned Index, unsigned BTI,
+                                       unsigned Size, unsigned ArgOffset);
   void createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
                                        unsigned Size, unsigned ArgOffset);
 

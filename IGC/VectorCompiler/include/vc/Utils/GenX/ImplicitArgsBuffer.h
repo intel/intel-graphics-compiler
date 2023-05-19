@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -69,6 +69,9 @@ enum Enum {
   GroupCountX,
   GroupCountY,
   GroupCountZ,
+  Padding0,
+  RtGlobalBufferPtr,
+  AssertBufferPtr,
   Size
 };
 } // namespace Indices

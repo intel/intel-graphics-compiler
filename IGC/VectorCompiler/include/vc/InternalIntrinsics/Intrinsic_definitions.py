@@ -169,6 +169,16 @@ Imported_Intrinsics = \
 ### Print and assert intrinsics
 ### ---------------------------
 
+## ``llvm.vc.internal.assert.buffer`` : read stateless pointer to assert buffer
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ``llvm.vc.internal.assert.buffer`` : read implicit arg print assert ptr
+##
+## * return value: i64 address of assert buffer
+##
+    "assert_buffer" : { "result" : "long",
+                        "arguments" : [],
+                        "attributes" : "ReadMem", },
+
 ## ``llvm.vc.internal.print.buffer`` : read stateless pointer to print buffer
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ## ``llvm.vc.internal.print.buffer`` : read implicit arg print buffer ptr

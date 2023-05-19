@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -294,7 +294,8 @@ public:
     // payload in memory (for those platforms r0.0 is used to obtain the
     // pointer).
     IMP_IMPL_ARGS_BUFFER = 0xF << AKBitsForCategory,
-    IMP_PSEUDO_INPUT = 0x10 << AKBitsForCategory
+    IMP_PSEUDO_INPUT = 0x10 << AKBitsForCategory,
+    IMP_OCL_ASSERT_BUFFER = 0x11 << AKBitsForCategory,
   };
 
   enum { SKIP_OFFSET_VAL = -1 };
@@ -353,6 +354,10 @@ inline bool isGroupCountKind(uint32_t ArgKind) {
 
 inline bool isPrintBufferKind(uint32_t ArgKind) {
   return isImplicitArgKind(ArgKind, KernelMetadata::IMP_OCL_PRINTF_BUFFER);
+}
+
+inline bool isAssertBufferKind(uint32_t ArgKind) {
+  return isImplicitArgKind(ArgKind, KernelMetadata::IMP_OCL_ASSERT_BUFFER);
 }
 
 inline bool isPrivateBaseKind(uint32_t ArgKind) {

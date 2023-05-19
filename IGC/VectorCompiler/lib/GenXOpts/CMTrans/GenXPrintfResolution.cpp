@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -58,9 +58,11 @@ using namespace llvm;
 using namespace vc;
 using namespace vc::bif::printf;
 
+namespace {
 namespace PrintfImplFunc {
 enum Enum {
-  Init,
+  AssertInit,
+  PrintfInit,
   Fmt,
   FmtGlobal,
   FmtLegacy,
@@ -71,18 +73,20 @@ enum Enum {
   Ret,
   Size
 };
-static constexpr const char *Name[Size] = {"__vc_printf_init",
-                                           "__vc_printf_fmt",
-                                           "__vc_printf_fmt_global",
-                                           "__vc_printf_fmt_legacy",
-                                           "__vc_printf_arg",
-                                           "__vc_printf_arg_str",
-                                           "__vc_printf_arg_str_global",
-                                           "__vc_printf_arg_str_legacy",
-                                           "__vc_printf_ret"};
+static constexpr const char *Name[Size] = {
+    "__vc_assert_init",
+    "__vc_printf_init",
+    "__vc_printf_fmt",
+    "__vc_printf_fmt_global",
+    "__vc_printf_fmt_legacy",
+    "__vc_printf_arg",
+    "__vc_printf_arg_str",
+    "__vc_printf_arg_str_global",
+    "__vc_printf_arg_str_legacy",
+    "__vc_printf_ret",
+};
 } // namespace PrintfImplFunc
 
-namespace {
 class GenXPrintfResolution final : public ModulePass {
   const DataLayout *DL = nullptr;
   std::array<FunctionCallee, PrintfImplFunc::Size> PrintfImplDecl;
@@ -100,14 +104,14 @@ private:
   void addPrintfImplDeclarations(Module &M);
   void updatePrintfImplDeclarations(Module &M);
   void preparePrintfImplForInlining();
-  CallInst &createPrintfInitCall(CallInst &OrigPrintf, int FmtStrSize,
-                                 const PrintfArgInfoSeq &ArgsInfo);
-  CallInst &createPrintfFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
-  CallInst &createPrintfArgCall(CallInst &OrigPrintf, CallInst &PrevCall,
-                                Value &Arg, PrintfArgInfo Info);
-  CallInst &createPrintfArgStrCall(CallInst &OrigPrintf, CallInst &PrevCall,
-                                   Value &Arg);
-  CallInst &createPrintfRetCall(CallInst &OrigPrintf, CallInst &PrevCall);
+  CallInst &createInitCall(CallInst &Orig, int FmtStrSize,
+                           const PrintfArgInfoSeq &ArgsInfo);
+  CallInst &createPrintFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
+  CallInst &createPrintArgCall(CallInst &OrigPrintf, CallInst &PrevCall,
+                               Value &Arg, PrintfArgInfo Info);
+  CallInst &createPrintArgStrCall(CallInst &OrigPrintf, CallInst &PrevCall,
+                                  Value &Arg);
+  CallInst &createPrintRetCall(CallInst &OrigPrintf, CallInst &PrevCall);
 
   template <PrintfImplFunc::Enum DefaulDeclID>
   CallInst &createCallWithStringArg(CallInst &OrigPrintf, Value &StrArg,
@@ -144,7 +148,7 @@ static bool isPrintfCall(const CallInst &CI) {
   if (!CalledFunc->isDeclaration())
     return false;
   return CalledFunc->getName() == "printf" ||
-    CalledFunc->getName().contains("__spirv_ocl_printf");
+         CalledFunc->getName().contains("__spirv_ocl_printf");
 }
 
 static bool isPrintfCall(const Instruction &Inst) {
@@ -153,14 +157,32 @@ static bool isPrintfCall(const Instruction &Inst) {
   return isPrintfCall(cast<CallInst>(Inst));
 }
 
+static bool isAssertPrintCall(const CallInst &CI) {
+  auto *CalledFunc = CI.getCalledFunction();
+  if (!CalledFunc)
+    return false;
+  if (!CalledFunc->isDeclaration())
+    return false;
+  return CalledFunc->getName().contains("__vc_assert_print");
+}
+
+static bool isAssertPrintCall(const Instruction &Inst) {
+  if (!isa<CallInst>(Inst))
+    return false;
+  return isAssertPrintCall(cast<CallInst>(Inst));
+}
+
 static std::vector<CallInstRef> collectWorkload(Module &M) {
   std::vector<CallInstRef> Workload;
   for (Function &F : M)
-    llvm::transform(
-        make_filter_range(instructions(F),
-                          [](Instruction &Inst) { return isPrintfCall(Inst); }),
-        std::back_inserter(Workload),
-        [](Instruction &Inst) { return std::ref(cast<CallInst>(Inst)); });
+    llvm::transform(make_filter_range(instructions(F),
+                                      [](Instruction &Inst) {
+                                        return isPrintfCall(Inst) ||
+                                               isAssertPrintCall(Inst);
+                                      }),
+                    std::back_inserter(Workload), [](Instruction &Inst) {
+                      return std::ref(cast<CallInst>(Inst));
+                    });
   return Workload;
 }
 
@@ -225,10 +247,12 @@ std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
   return vc::getBiFModuleOrReportError(PrintfBiFModuleBuffer, Ctx);
 }
 
-static void assertPrintfCall(const CallInst &CI) {
-  IGC_ASSERT_MESSAGE(isPrintfCall(CI), "printf call is expected");
-  IGC_ASSERT_MESSAGE(CI.arg_size() > 0,
-                     "printf call must have at least format string argument");
+static void assertValidPrintCall(const CallInst &CI) {
+  IGC_ASSERT_MESSAGE(isPrintfCall(CI) || isAssertPrintCall(CI),
+                     "printf or __vc_assert_print call is expected");
+  IGC_ASSERT_MESSAGE(
+      CI.arg_size() > 0,
+      "print function call must have at least format string argument");
   (void)CI;
 }
 
@@ -289,7 +313,7 @@ static void markPrintfStrings(CallInst &OrigPrintf,
 }
 
 void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
-  assertPrintfCall(OrigPrintf);
+  assertValidPrintCall(OrigPrintf);
   auto [FmtStrSize, ArgsInfo] =
       analyzeFormatString(*OrigPrintf.getArgOperand(0));
   if (ArgsInfo.size() != IGCLLVM::getNumArgOperands(&OrigPrintf) - 1)
@@ -298,8 +322,8 @@ void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
 
   markPrintfStrings(OrigPrintf, ArgsInfo);
 
-  auto &InitCall = createPrintfInitCall(OrigPrintf, FmtStrSize, ArgsInfo);
-  auto &FmtCall = createPrintfFmtCall(OrigPrintf, InitCall);
+  auto &InitCall = createInitCall(OrigPrintf, FmtStrSize, ArgsInfo);
+  auto &FmtCall = createPrintFmtCall(OrigPrintf, InitCall);
 
   // FIXME: combine LLVM call args type and format string info in more
   // intelligent way.
@@ -308,11 +332,11 @@ void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   auto &LastArgCall = *std::accumulate(
       ArgsWithInfo.begin(), ArgsWithInfo.end(), &FmtCall,
       [&OrigPrintf, this](CallInst *PrevCall, auto &&ArgWithInfo) {
-        return &createPrintfArgCall(OrigPrintf, *PrevCall,
-                                    *std::get<Use &>(ArgWithInfo).get(),
-                                    std::get<PrintfArgInfo &>(ArgWithInfo));
+        return &createPrintArgCall(OrigPrintf, *PrevCall,
+                                   *std::get<Use &>(ArgWithInfo).get(),
+                                   std::get<PrintfArgInfo &>(ArgWithInfo));
       });
-  auto &RetCall = createPrintfRetCall(OrigPrintf, LastArgCall);
+  auto &RetCall = createPrintRetCall(OrigPrintf, LastArgCall);
   RetCall.takeName(&OrigPrintf);
   OrigPrintf.replaceAllUsesWith(&RetCall);
   OrigPrintf.eraseFromParent();
@@ -323,13 +347,16 @@ using PrintfImplTypeStorage = std::array<FunctionType *, PrintfImplFunc::Size>;
 static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
   auto *TransferDataTy =
       IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), TransferDataSize);
-  auto *ArgsInfoTy =
-      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), ArgsInfoVector::Size);
-  auto *ArgDataTy = IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), ArgData::Size);
+  auto *ArgsInfoTy = IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx),
+                                                   ArgsInfoVector::Size);
+  auto *ArgDataTy =
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), ArgData::Size);
   constexpr bool IsVarArg = false;
 
   PrintfImplTypeStorage FuncTys;
-  FuncTys[PrintfImplFunc::Init] =
+  FuncTys[PrintfImplFunc::AssertInit] =
+      FunctionType::get(TransferDataTy, ArgsInfoTy, IsVarArg);
+  FuncTys[PrintfImplFunc::PrintfInit] =
       FunctionType::get(TransferDataTy, ArgsInfoTy, IsVarArg);
   FuncTys[PrintfImplFunc::Fmt] =
       FunctionType::get(TransferDataTy,
@@ -390,7 +417,7 @@ using ArgsInfoStorage = std::array<unsigned, ArgsInfoVector::Size>;
 // function.
 static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf, int FmtStrSize,
                                        const PrintfArgInfoSeq &FmtArgsInfo) {
-  assertPrintfCall(OrigPrintf);
+  assertValidPrintCall(OrigPrintf);
 
   ArgsInfoStorage ArgsInfo;
   // It's not about format string.
@@ -414,16 +441,24 @@ static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf, int FmtStrSize,
   return ArgsInfo;
 }
 
-CallInst &GenXPrintfResolution::createPrintfInitCall(
-    CallInst &OrigPrintf, int FmtStrSize, const PrintfArgInfoSeq &FmtArgsInfo) {
-  assertPrintfCall(OrigPrintf);
-  auto ImplArgsInfo = collectArgsInfo(OrigPrintf, FmtStrSize, FmtArgsInfo);
+CallInst &
+GenXPrintfResolution::createInitCall(CallInst &Orig, int FmtStrSize,
+                                     const PrintfArgInfoSeq &FmtArgsInfo) {
+  assertValidPrintCall(Orig);
+  auto ImplArgsInfo = collectArgsInfo(Orig, FmtStrSize, FmtArgsInfo);
 
-  IRBuilder<> IRB{&OrigPrintf};
-  auto *ArgsInfoV =
-      ConstantDataVector::get(OrigPrintf.getContext(), ImplArgsInfo);
-  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Init], ArgsInfoV,
-                         OrigPrintf.getName() + ".printf.init");
+  IRBuilder<> IRB{&Orig};
+  auto *ArgsInfoV = ConstantDataVector::get(Orig.getContext(), ImplArgsInfo);
+
+  FunctionCallee Callee;
+  if (isPrintfCall(Orig))
+    Callee = PrintfImplDecl[PrintfImplFunc::PrintfInit];
+  else if (isAssertPrintCall(Orig))
+    Callee = PrintfImplDecl[PrintfImplFunc::AssertInit];
+  else
+    IGC_ASSERT_UNREACHABLE();
+
+  return *IRB.CreateCall(Callee, ArgsInfoV, Orig.getName() + ".print.init");
 }
 
 template <PrintfImplFunc::Enum DefaulDeclID, unsigned StrAS>
@@ -515,17 +550,17 @@ template <PrintfImplFunc::Enum DefaulDeclID>
 CallInst &GenXPrintfResolution::createCallWithStringArg(CallInst &OrigPrintf,
                                                         Value &StrArg,
                                                         Value &AuxArg) {
-  assertPrintfCall(OrigPrintf);
+  assertValidPrintCall(OrigPrintf);
   IRBuilder<> IRB{&OrigPrintf};
   auto &ResolvedStrArg = resolveStringInGenericASIf(StrArg);
   auto StrAS = ResolvedStrArg.getType()->getPointerAddressSpace();
   PrintfImplFunc::Enum DeclID = mutateDeclID<DefaulDeclID>(StrAS);
   return *IRB.CreateCall(PrintfImplDecl[DeclID], {&AuxArg, &ResolvedStrArg},
-                         OrigPrintf.getName() + ".printf.str.arg");
+                         OrigPrintf.getName() + ".print.str.arg");
 }
 
-CallInst &GenXPrintfResolution::createPrintfFmtCall(CallInst &OrigPrintf,
-                                                    CallInst &InitCall) {
+CallInst &GenXPrintfResolution::createPrintFmtCall(CallInst &OrigPrintf,
+                                                   CallInst &InitCall) {
   return createCallWithStringArg<PrintfImplFunc::Fmt>(
       OrigPrintf, *OrigPrintf.getOperand(0), InitCall);
 }
@@ -652,31 +687,31 @@ static Value &getArgAsVector(Value &Arg, IRBuilder<> &IRB,
 
 // Create call to printf argument handler implementation for string argument
 // (%s). Strings require a separate implementation.
-CallInst &GenXPrintfResolution::createPrintfArgStrCall(CallInst &OrigPrintf,
-                                                       CallInst &PrevCall,
-                                                       Value &Arg) {
+CallInst &GenXPrintfResolution::createPrintArgStrCall(CallInst &OrigPrintf,
+                                                      CallInst &PrevCall,
+                                                      Value &Arg) {
   return createCallWithStringArg<PrintfImplFunc::ArgStr>(OrigPrintf, Arg,
                                                          PrevCall);
 }
 
-CallInst &GenXPrintfResolution::createPrintfArgCall(CallInst &OrigPrintf,
-                                                    CallInst &PrevCall,
-                                                    Value &Arg,
-                                                    PrintfArgInfo Info) {
-  assertPrintfCall(OrigPrintf);
+CallInst &GenXPrintfResolution::createPrintArgCall(CallInst &OrigPrintf,
+                                                   CallInst &PrevCall,
+                                                   Value &Arg,
+                                                   PrintfArgInfo Info) {
+  assertValidPrintCall(OrigPrintf);
   ArgKind::Enum Kind = getArgKind(*Arg.getType(), Info);
   IRBuilder<> IRB{&OrigPrintf};
   if (Kind == ArgKind::String)
-    return createPrintfArgStrCall(OrigPrintf, PrevCall, Arg);
+    return createPrintArgStrCall(OrigPrintf, PrevCall, Arg);
   Value &ArgVec = getArgAsVector(Arg, IRB, *DL);
   return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Arg],
                          {&PrevCall, IRB.getInt32(Kind), &ArgVec},
-                         OrigPrintf.getName() + ".printf.arg");
+                         OrigPrintf.getName() + ".print.arg");
 }
 
-CallInst &GenXPrintfResolution::createPrintfRetCall(CallInst &OrigPrintf,
-                                                    CallInst &PrevCall) {
-  assertPrintfCall(OrigPrintf);
+CallInst &GenXPrintfResolution::createPrintRetCall(CallInst &OrigPrintf,
+                                                   CallInst &PrevCall) {
+  assertValidPrintCall(OrigPrintf);
   IRBuilder<> IRB{&OrigPrintf};
   return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Ret], &PrevCall);
 }

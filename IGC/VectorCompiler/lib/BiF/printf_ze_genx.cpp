@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -44,6 +44,11 @@ printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                     T *String) {
   return printf_arg_impl<StringDWordSize>(TransferData, ArgKind::String,
                                           castPointerToVector(String));
+}
+
+extern "C" cl_vector<BufferElementTy, TransferDataSize>
+__vc_assert_init(cl_vector<int, ArgsInfoVector::Size> ArgsInfo) {
+  return printf_init_impl<StringAnnotationSize, true>(ArgsInfo).cl_vector();
 }
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>

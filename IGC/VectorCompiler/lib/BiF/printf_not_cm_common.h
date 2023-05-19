@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -60,17 +60,10 @@ inline int calcRequiredBufferSize(vector<int, ArgsInfoVector::Size> ArgsInfo) {
 static inline BufferElementTy
 getInitialBufferOffset(__global BufferElementTy *BufferPtr,
                        BufferElementTy RequiredSize) {
-#if __clang_major__ > 9
-  int ByteOffset =
-      atomic::execute<atomic::operation::add, memory_order_relaxed,
-                      memory_scope_all_devices>(BufferPtr, RequiredSize);
-#else  // __clang_major__ > 9
-  // Helping clang-9 correctly deduce the argument type.
   int ByteOffset =
       atomic::execute<atomic::operation::add, memory_order_relaxed,
                       memory_scope_all_devices, __global BufferElementTy>(
           BufferPtr, RequiredSize);
-#endif // __clang_major__ > 9
   return ByteOffset / sizeof(BufferElementTy);
 }
 
@@ -111,21 +104,21 @@ generateTransferData(__global BufferElementTy *InitPtr,
 
 // Printf initial routines. The function gets printf buffer and allocates
 // space in it. It needs some info about args to allocate enough space.
-template <int StringAnnotationSize>
+template <int StringAnnotationSize, bool IsAssert = false>
 vector<BufferElementTy, TransferDataSize>
 printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
+  using namespace cm::detail;
+
   auto FmtStrSize = ArgsInfo[ArgsInfoVector::FormatStrSize];
   if (FmtStrSize > MaxFormatStrSize)
     return generateTransferData(/* BufferPtr */ nullptr, /* ReturnValue */ -1);
+
   auto BufferSize = calcRequiredBufferSize<StringAnnotationSize>(ArgsInfo);
-#if __clang_major__ > 9
-  auto *BufferPtr =
-      static_cast<__global BufferElementTy *>(cm::detail::printf_buffer());
-#else  // __clang_major__ > 9
-  // clang-9 cannot handle this auto.
+
+  __global auto *BufferAddr = IsAssert ? assert_buffer() : printf_buffer();
   __global BufferElementTy *BufferPtr =
-      static_cast<__global BufferElementTy *>(cm::detail::printf_buffer());
-#endif // __clang_major__ > 9
+      static_cast<__global BufferElementTy *>(BufferAddr);
+
   auto Offset = getInitialBufferOffset(BufferPtr, BufferSize);
   return generateTransferData(BufferPtr + Offset, /* ReturnValue */ 0);
 }

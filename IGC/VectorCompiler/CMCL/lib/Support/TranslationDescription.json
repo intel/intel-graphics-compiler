@@ -127,6 +127,16 @@
         ]
       }
     },
+
+    "AssertBuffer": {
+      "Name": "assert_buffer",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "assert_buffer",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
     "PrintfBuffer": {
       "Name": "printf_buffer",
       "Operands": [],

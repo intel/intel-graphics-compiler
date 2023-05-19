@@ -47,6 +47,7 @@ __cm_cl_wrregion_float(vector_impl<T, dst_width> dst,
                        vector_impl<T, src_width> src, int vstride, int width,
                        int stride, vector_offset_type offset);
 // FIXME: For legacy issues 64-bit pointer is always returned.
+uint64_t __cm_cl_assert_buffer();
 uint64_t __cm_cl_printf_buffer();
 
 int __cm_cl_printf_format_index(__constant const char *str);
@@ -228,8 +229,27 @@ void write_region(vector_impl<T, dst_width> &dst, vector_impl<T, src_width> src,
   }
 }
 
+struct __assert_buffer_t {
+  uint32_t size;
+  uint32_t flags;
+  uint32_t begin;
+};
+
+inline __global uint32_t *assert_flags() {
+  auto addr = static_cast<uintptr_t>(__cm_cl_assert_buffer());
+  __global __assert_buffer_t *p =
+      reinterpret_cast<__global __assert_buffer_t *>(addr);
+  return &p->flags;
+}
+
+inline __global void *assert_buffer() {
+  auto addr = static_cast<uintptr_t>(__cm_cl_assert_buffer());
+  __global __assert_buffer_t *p =
+      reinterpret_cast<__global __assert_buffer_t *>(addr);
+  return &p->begin;
+}
+
 inline __global void *printf_buffer() {
-  // FIXME: for legacy issues 64-bit pointer is always returned.
   auto ptr = static_cast<uintptr_t>(__cm_cl_printf_buffer());
   return reinterpret_cast<__global void *>(ptr);
 }

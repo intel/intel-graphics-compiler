@@ -274,27 +274,29 @@ private:
   uint32_t MapToKind(unsigned IID) {
     using namespace vc;
     switch (IID) {
-      default:
-        return KernelMetadata::AK_NORMAL;
-      case vc::InternalIntrinsic::print_buffer:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRINTF_BUFFER;
-      case GenXIntrinsic::genx_local_size:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_SIZE;
-      case GenXIntrinsic::genx_local_id:
-      case GenXIntrinsic::genx_local_id16:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_ID;
-      case GenXIntrinsic::genx_group_count:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_GROUP_COUNT;
-      case GenXIntrinsic::genx_get_scoreboard_deltas:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_SB_DELTAS;
-      case GenXIntrinsic::genx_get_scoreboard_bti:
-        return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_BTI;
-      case GenXIntrinsic::genx_get_scoreboard_depcnt:
-        return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_DEPCNT;
-      case PseudoIntrinsic::PrivateBase:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRIVATE_BASE;
-      case PseudoIntrinsic::ImplicitArgsBuffer:
-        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_IMPL_ARGS_BUFFER;
+    default:
+      return KernelMetadata::AK_NORMAL;
+    case InternalIntrinsic::assert_buffer:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_ASSERT_BUFFER;
+    case vc::InternalIntrinsic::print_buffer:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRINTF_BUFFER;
+    case GenXIntrinsic::genx_local_size:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_SIZE;
+    case GenXIntrinsic::genx_local_id:
+    case GenXIntrinsic::genx_local_id16:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_ID;
+    case GenXIntrinsic::genx_group_count:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_GROUP_COUNT;
+    case GenXIntrinsic::genx_get_scoreboard_deltas:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_SB_DELTAS;
+    case GenXIntrinsic::genx_get_scoreboard_bti:
+      return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_BTI;
+    case GenXIntrinsic::genx_get_scoreboard_depcnt:
+      return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_DEPCNT;
+    case PseudoIntrinsic::PrivateBase:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRIVATE_BASE;
+    case PseudoIntrinsic::ImplicitArgsBuffer:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_IMPL_ARGS_BUFFER;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -339,6 +341,7 @@ private:
 
   static Type *getIntrinRetType(LLVMContext &Context, unsigned IID) {
     switch (IID) {
+    case vc::InternalIntrinsic::assert_buffer:
     case vc::InternalIntrinsic::print_buffer:
     case PseudoIntrinsic::PrivateBase:
     case PseudoIntrinsic::ImplicitArgsBuffer:
@@ -900,6 +903,7 @@ static bool isImplicitArgIntrinsic(const Function &F, bool IsCMRT) {
   case GenXIntrinsic::genx_local_id:
   case GenXIntrinsic::genx_local_id16:
   case GenXIntrinsic::genx_group_count:
+  case vc::InternalIntrinsic::assert_buffer:
   case vc::InternalIntrinsic::print_buffer:
     return true;
   case GenXIntrinsic::genx_get_scoreboard_deltas:

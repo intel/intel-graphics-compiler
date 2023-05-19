@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,6 +53,7 @@ public:
       Image2DArray,
       Image2DMediaBlock,
       Image3D,
+      AssertBuffer,
       PrintBuffer,
       PrivateBase,
       ByValSVM,

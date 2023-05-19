@@ -164,6 +164,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     return ArgKindType::LocalSize;
   if (vc::isGroupCountKind(RawKind))
     return ArgKindType::GroupCount;
+  if (vc::isAssertBufferKind(RawKind))
+    return ArgKindType::AssertBuffer;
   if (vc::isPrintBufferKind(RawKind))
     return ArgKindType::PrintBuffer;
   if (vc::isPrivateBaseKind(RawKind))
