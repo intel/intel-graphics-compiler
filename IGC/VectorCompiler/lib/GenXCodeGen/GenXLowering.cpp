@@ -4698,26 +4698,30 @@ bool GenXLowering::lowerUSubWithSat(CallInst *CI) {
 bool GenXLowering::lowerTrap(CallInst *CI) {
   Module *M = CI->getModule();
   IRBuilder<> Builder(CI);
-  auto &Ctx = CI->getContext();
-  unsigned EMWidth = 32;
-  Type *ArgTypes[] = {
-      IGCLLVM::FixedVectorType::get(Type::getInt1Ty(Ctx), EMWidth),
-      IGCLLVM::FixedVectorType::get(Type::getInt16Ty(Ctx), EMWidth)};
-  auto Fn = GenXIntrinsic::getGenXDeclaration(M,
-    GenXIntrinsic::genx_raw_send_noresult, ArgTypes);
-  SmallVector<Value *, 8> Args;
-  // send
-  Args.push_back(ConstantInt::get(Type::getInt32Ty(Ctx), 0));
-  // predicate all lanes
-  Args.push_back(ConstantVector::getSplat(IGCLLVM::getElementCount(EMWidth),
-                                          ConstantInt::getTrue(Ctx)));
-  // EOT
-  Args.push_back(ConstantInt::get(Type::getInt32Ty(Ctx), 0x27));
-  Args.push_back(ConstantInt::get(Type::getInt32Ty(Ctx), 0x02000010));
-  Args.push_back(
-      ConstantVector::getSplat(IGCLLVM::getElementCount(EMWidth),
-                               Constant::getNullValue(Type::getInt16Ty(Ctx))));
-  Builder.CreateCall(Fn, Args);
+
+  constexpr unsigned Width = 8;
+  auto *PayloadTy = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), Width);
+  auto *PayloadFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_r0, {PayloadTy});
+  auto *Payload = Builder.CreateCall(PayloadFunc, {});
+
+  SmallVector<Value *, 8> Args{
+      Builder.getInt8(2),                        // modifier (EOT)
+      Builder.getInt8(0),                        // log2(exec size)
+      Builder.getTrue(),                         // predicate
+      Builder.getInt8(1),                        // number of source registers
+      Builder.getInt8(ST->hasLSCMessages() ? 3   // Gateway
+                                           : 7), // Thread Spawner
+      Builder.getInt32(0),                       // extened message descriptor
+      Builder.getInt32(0x02000010),              // message descriptor
+      Payload,
+  };
+
+  auto *SendFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_raw_send2_noresult,
+                            {Builder.getInt1Ty(), PayloadTy});
+
+  Builder.CreateCall(SendFunc, Args);
   ToErase.push_back(CI);
 
   return true;
