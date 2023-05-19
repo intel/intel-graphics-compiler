@@ -629,6 +629,7 @@ DECLARE_IGC_REGKEY(bool, MSAA16BitPayloadEnable,        true,  "Enable support f
 DECLARE_IGC_REGKEY(bool, EnableInsertElementScalarCoalescing, false,  "Enable coalescing on the scalar operand of insertelement", false)
 DECLARE_IGC_REGKEY(bool, EnableMixIntOperands,          true,  "Enable generating mix-sized operands for int ALU", false)
 DECLARE_IGC_REGKEY(bool, PixelShaderDoNotAbortOnSpill,  false, "Do not abort on a spill", false)
+DECLARE_IGC_REGKEY(DWORD, ForceScratchSpaceSize,        0,     "Override Scratch Space Size in bytes for perf testing", false)
 DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,     0,     "Setting it to values def in igc.h will force SIMD mode compilation for pixel shaders. Note that only SIMD8 is compiled unless other ForcePixelShaderSIMD* are also selected", false)
 DECLARE_IGC_REGKEY(DWORD, StagedCompilationExperiments, 0,     "Experiment with staged compilation when != 0", false)
 DECLARE_IGC_REGKEY(bool, RequestStage2,                 true, "Enable staged compilation via requesting stage 2", false)

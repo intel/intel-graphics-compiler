@@ -6323,6 +6323,8 @@ namespace IGC
             CreateFuncAttributeTable(pMainKernel, pFGA);
 
         pOutput->m_scratchSpaceUsedBySpills =
+            IGC_IS_FLAG_SET(ForceScratchSpaceSize) ?
+            IGC_GET_FLAG_VALUE(ForceScratchSpaceSize) :
             getSpillMemSizeWithFG(*m_program->entry, jitInfo->stats.spillMemUsed, pFGA);
         pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
 
