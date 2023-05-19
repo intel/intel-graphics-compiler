@@ -3904,14 +3904,18 @@ namespace IGC
             {
                 if (m_program->m_Platform->getGRFSize() >= 64)
                 {
-                    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD8_SpillThreshold) * 4);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold) * 4);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold) * 4);
                 }
                 else
                 {
-                    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD8_SpillThreshold) * 2);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold) * 2);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold) * 2);
