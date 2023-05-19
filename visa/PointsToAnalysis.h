@@ -44,6 +44,7 @@ typedef std::vector<G4_RegVar *> ORG_REGVAR_VECTOR;
  */
 class PointsToAnalysis {
 private:
+  G4_Kernel *kernel = nullptr;
   const unsigned int numBBs;
   unsigned int numAddrs;
 
@@ -79,9 +80,11 @@ private:
 public:
   PointsToAnalysis(const DECLARE_LIST &declares, unsigned numBBs);
 
+  void dump(std::ostream &os = std::cerr) const;
+
   // addr reg -> pointee regs
   void
-  getPointsToMap(std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &);
+  getPointsToMap(std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &) const;
 
   // pointee -> addr reg
   void getRevPointsToMap(

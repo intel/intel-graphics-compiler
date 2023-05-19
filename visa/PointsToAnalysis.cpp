@@ -154,8 +154,39 @@ void PointsToAnalysis::addPointsToSetToBB(int bbId, const G4_RegVar *addr) {
   }
 }
 
+void PointsToAnalysis::dump(std::ostream &os) const {
+  // Dump computed points-to set in human readable format. For eg,
+  //
+  // A0 -> [V1, V2]
+  // A1 -> [V3]
+  // A2 -> []
+  //
+  // Note that non-address registers may contain pointers too.
+
+  if (!kernel)
+    return;
+
+  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> addrTakenMap;
+  getPointsToMap(addrTakenMap);
+
+  for (auto dcl : kernel->Declares) {
+    auto foundIt = addrTakenMap.find(dcl);
+    if (foundIt == addrTakenMap.end())
+      continue;
+
+    os << (*foundIt).first->getName() << " -> [";
+    auto numPointees = (*foundIt).second.size();
+    for (unsigned int i = 0; i != numPointees; ++i) {
+      os << (*foundIt).second[i]->getName();
+      if (i != numPointees - 1)
+        os << ", ";
+    }
+    os << "]" << std::endl;
+  }
+}
+
 void PointsToAnalysis::getPointsToMap(
-    std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &addrTakenMap) {
+    std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &addrTakenMap) const {
   unsigned idx = 0;
 
   // populate map from each addr reg -> addr taken targets
@@ -200,19 +231,31 @@ void PointsToAnalysis::getRevPointsToMap(
 //  GRF) has been inserted.
 //
 void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
+  kernel = fg.getKernel();
+
   if (numAddrs == 0) {
     return;
   }
 
   // keep a list of address taken variables
   std::vector<G4_RegVar *> addrTakenDsts;
+  // map variable containing address to pointed-to variable
+  // eg, A0 = &V10+0
+  // addrTakenMapping would map A0 -> [V10, 0]
   std::map<G4_RegVar *, std::vector<std::pair<G4_AddrExp *, unsigned char>>>
       addrTakenMapping;
+  // List of variables that ever appear as G4_AddrExp in program
   std::vector<std::pair<G4_AddrExp *, unsigned char>> addrTakenVariables;
 
+  // Iterate over all instructions and gather operands that are either
+  // pointers (eg, addr reg, scalar) or are address takens (ie, G4_AddrExp).
   for (G4_BB *bb : fg) {
     for (const G4_INST *inst : *bb) {
       G4_DstRegRegion *dst = inst->getDst();
+      // TODO: Using Type_UD condition is pretty flaky. It's probably checking
+      // whether dst is a msg descriptor (which also uses addr reg with Type_UD).
+      // Ideally, this should be a property of the operand so we don't have
+      // type based check.
       if (dst && dst->getRegAccess() == Direct && dst->getType() != Type_UD) {
         G4_VarBase *ptr = dst->getBase();
 
@@ -254,9 +297,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
              ptr->asRegVar()->getDeclare()->getRegFile() == G4_SCALAR) &&
             !ptr->asRegVar()->getDeclare()->isMsgDesc())
         {
-
           // dst is an address variable.  ExDesc A0 may be ignored since they
           // are never used in indirect access
+          //
+          // This block handles the case where dst is a pointer.
+          // It excludes the case where dst address register uses Type_UD as
+          // that indicates msg descriptor initialization.
           if (inst->isMov() || inst->isPseudoAddrMovIntrinsic()) {
             for (int i = 0; i < inst->getNumSrc(); i++) {
               G4_Operand *src = inst->getSrc(i);
@@ -264,20 +310,37 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                 continue;
               }
               if (src->isAddrExp()) {
-                // case 1:  mov A0 &GRF
+                // mov A0 &GRF
+                // Directly map A0 -> GRF
                 G4_RegVar *addrTaken = src->asAddrExp()->getRegVar();
 
                 if (addrTaken != NULL) {
                   unsigned char offset = 0;
                   if (ptr->asRegVar()->getDeclare()->getRegFile() ==
                       G4_SCALAR) {
-                    offset = src->asAddrExp()->getOffset() / fg.builder->getGRFSize();
+                    offset = src->asAddrExp()->getOffset() /
+                             fg.builder->getGRFSize();
                   }
                   addToPointsToSet(ptr->asRegVar(), src->asAddrExp(), offset);
                 }
               } else {
-                // G4_Operand* srcPtr = src->isSrcRegRegion() ?
-                // src->asSrcRegRegion()->getBase() : src;
+                // Src may be address register or a general register but not
+                // G4_AddrExp.
+                //
+                // For eg,
+                // 1. A0 = A1 <-- In this case, A1 is a pointer so we merge
+                //                points-to set of A1 with A0.
+                // 2. A2 = V1 <-- In this case, we copy pointer from V1 to
+                //                address register A2. Prior to this, there
+                //                could've been an instruction that did V1 = A1
+                //                which transferrred pointer from A1 to V1. So
+                //                we need to transfer A1's pointee to A2 in
+                //                that case.
+                //
+                // Note that this is a context insensitive pass. So when we
+                // encounter scenarios like #1 or #2, we merge points-to sets
+                // instead of copying. In other words, points-to set of A0 and
+                // A1 would become identical in case#1 above.
                 G4_VarBase *srcPtr = src->isSrcRegRegion()
                                          ? src->asSrcRegRegion()->getBase()
                                          : nullptr;
@@ -285,14 +348,25 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                 if (srcPtr && srcPtr->isRegVar() &&
                     (srcPtr->asRegVar()->getDeclare()->getRegFile() ==
                      G4_ADDRESS)) {
-                  // case 2:  mov A0 A1
-                  // merge the two addr's points-to set together
+                  // mov A0 A1
+                  // Merge the two addr's points-to set together as stated in
+                  // #1 above. For eg, consider following program:
+                  // A0 = &V0
+                  // A1 = &V1
+                  // if
+                  //   A1 = A0
+                  // endif
+                  //    = r[A1]
+                  //
+                  // Both A0 and A1 contain V0 and V1 in their points-to set.
                   if (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId()) {
                     mergePointsToSet(srcPtr->asRegVar(), ptr->asRegVar());
                   }
                 } else {
-                  // case ?: mov v1 A0
-                  // case ?: mov A0 v1
+                  // mov A0 v1
+                  //
+                  // Copy over pointee's from V1 to A0, if V1 is a
+                  // pointer.
                   if (srcPtr && srcPtr->isRegVar() &&
                       addrTakenMapping[srcPtr->asRegVar()].size() != 0) {
                     for (int i = 0;
@@ -304,14 +378,18 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                           addrTakenMapping[srcPtr->asRegVar()][i].second);
                     }
                   } else {
-                    // case 3: mov A0 0
+                    // mov A0 0 OR
+                    // mov A0 V1 where V1 is not a pointer
+                    //
                     // Initial of address register, ignore the point-to analysis
                     // FIXME: currently, vISA don't expect mov imm value to the
                     // address register. So, 0 is treated as initialization. If
                     // support mov A0 imm in future, 0 may be R0.
                     if (!(src->isImm() && (src->asImm()->getImm() == 0))) {
-                      // case 4:  mov A0 V2
-                      // conservatively assume address can point to anything
+                      // mov A0 V1
+                      //
+                      // Conservatively assume address can point to any address
+                      // taken.
                       VISA_DEBUG({
                         std::cout
                             << "unexpected addr move for pointer analysis:\n";
@@ -330,6 +408,21 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
               }
             }
           } else if (inst->isArithmetic()) {
+            // Dst is address type operand. Operation is of arithmetic type:
+            // A0 = V1 op V2
+            //
+            // It's assumed arithmetic operation is restricted to 2-srcs only
+            // and only one of those may be an address. Following patterns are
+            // recognized:
+            //
+            // Address on src0:
+            // A0 = &V1 op V2 <-- V1 is address OR
+            // A0 = A1 op V2 <-- A1 is address
+            //
+            // Address on src1:
+            // A0 = V1 op &V2 <-- V2 is address OR
+            // A0 = V1 op A1 <-- A1 is address
+            //
             G4_Operand *src0 = inst->getSrc(0);
             G4_Operand *src1 = inst->getSrc(1);
             bool src0addr = false;
@@ -352,13 +445,15 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
               G4_Operand *src = src0addr ? src0 : src1;
 
               if (src->isAddrExp()) {
-                // case 5:  add/mul A0 &GRF src1
+                // case:  arithmetic-op   A0 &GRF src1
+                //
+                // Add GRF to A0's points-to set.
                 addToPointsToSet(ptr->asRegVar(), src->asAddrExp(), 0);
               } else {
                 G4_VarBase *srcPtr = src->isSrcRegRegion()
                                          ? src->asSrcRegRegion()->getBase()
                                          : nullptr;
-                // case 6:  add/mul A0 A1 src1
+                // case:  arithmetic-op   A0 A1 src1
                 // merge the two addr's points-to set together
                 if (srcPtr &&
                     (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId())) {
@@ -368,7 +463,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             } else if (ptr->isRegVar() && ptr->asRegVar()->isPhyRegAssigned()) {
               // OK, using builtin a0 or a0.2 directly.
             } else {
-              // case 7:  add/mul A0 V1 V2
+              // case:  arithmetic-op   A0 V1 V2
+              //
+              // Either both V1, V2 are pointers or neither are. So we're not
+              // sure what A0 in dst may point to. As a conservative measure we
+              // make A0 point to all variables that are address taken in the
+              // program.
               VISA_DEBUG({
                 std::cout << "unexpected addr add/mul for pointer analysis:\n";
                 inst->emit(std::cout);
@@ -380,7 +480,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
               }
             }
           } else {
-            // case 8: A0 = ???
+            // case: A0 = ???
+            //
+            // This is a non-mov/non-arithmetic instruction with A0 as dst. We
+            // don't recognize the pattern so don't know how to transfer
+            // points-to to A0. So we fall back to being conservative and put
+            // all address takens in program in to A0's points-to set.
             VISA_DEBUG({
               std::cout << "unexpected instruction with address destination:\n";
               inst->emit(std::cout);
@@ -394,17 +499,35 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
         }
         else if (ptr->isRegVar() && !ptr->asRegVar()->getDeclare()->isMsgDesc())
         {
+          // We're at a generic instruction where dst is not an address
+          // register. It's possible this is an intermediate operation where src
+          // contains some address. For eg,
+          //
+          // TMP_A0 = &V1
+          // SPILL_A0 (GRF temp) = TMP_A0 <-- SPILL_A0 is a general register but
+          //                                    contains an address
+          // TMP_A1 = SPILL_A0
+          // TMP = r[TMP_A1]
+          //
+          // In above snippet, SPILL_A0 is a general register. Source of op is
+          // address variable TMP_A0 that has non-empty points-to set. So we
+          // copy over points-to of TMP_A0 in to SPILL_A0. Later, when we
+          // encounter definition of TMP_A1, we again need to transfer
+          // points-to of SPILL_A0 to it so that we know which variables are
+          // accessed by indirect operand r[TMP_A1].
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
             G4_Operand *src = inst->getSrc(i);
             G4_VarBase *srcPtr = (src && src->isSrcRegRegion())
                                      ? src->asSrcRegRegion()->getBase()
                                      : nullptr;
+            // clang-format off
             // We don't support using "r[a0.0]" as address expression.
             // For instructions like following, it's not point-to propagation
             // for simdShuffle and add64_i_i_i_i.
             // (W) mov        (1) simdShuffle(0,0)<1>:d  r[A0(0,0), 0]<0;1,0>:d
             //     pseudo_mad (16) add64_i_i_i_i(0,0)<1>:d  0x6:w  simdShuffle(0,0)<0;0>:d  rem_i_i_i_i(0,0)<1;0>:d
             //     shl        (16) add64_i_i_i_i(0,0)<1>:d add64_i_i_i_i(0,0)<1;1,0>:d  0x2:w
+            // clang-format on
             if (srcPtr != nullptr && srcPtr->isRegVar() && ptr != srcPtr &&
                 !src->isIndirect()) {
               std::vector<G4_RegVar *>::iterator addrDst =

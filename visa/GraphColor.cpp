@@ -9624,6 +9624,15 @@ int GlobalRA::coloringRegAlloc() {
     detectNeverDefinedUses();
   });
 
+#ifndef DLL_MODE
+  // Points-to analysis is done in RegAlloc.cpp just before constructing
+  // GlobalRA instance.
+  if (stopAfter("p2a")) {
+    pointsToAnalysis.dump(std::cout);
+    return VISA_EARLY_EXIT;
+  }
+#endif // DLL_MODE
+
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
