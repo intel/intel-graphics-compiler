@@ -42,6 +42,8 @@ OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID)
 const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 const StringRef OpenCLPrintfAnalysis::ONEAPI_PRINTF_FUNCTION_NAME =
     "ext::oneapi::experimental::printf";
+const StringRef OpenCLPrintfAnalysis::BUILTIN_PRINTF_FUNCTION_NAME =
+"__builtin_IB_printf_to_buffer";
 
 bool OpenCLPrintfAnalysis::isOpenCLPrintf(const llvm::Function *F)
 {
@@ -52,6 +54,11 @@ bool OpenCLPrintfAnalysis::isOneAPIPrintf(const llvm::Function *F)
 {
     std::string demangledName = llvm::demangle(F->getName().str());
     return demangledName.find(ONEAPI_PRINTF_FUNCTION_NAME.data()) != std::string::npos;
+}
+
+bool OpenCLPrintfAnalysis::isBuiltinPrintf(const llvm::Function* F)
+{
+    return F->getName() == BUILTIN_PRINTF_FUNCTION_NAME;
 }
 
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
@@ -131,7 +138,8 @@ bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::U
             // printf call.
             const Function *target = call->getCalledFunction();
             res = OpenCLPrintfAnalysis::isOpenCLPrintf(target) ||
-                  OpenCLPrintfAnalysis::isOneAPIPrintf(target);
+              OpenCLPrintfAnalysis::isOneAPIPrintf(target) ||
+              OpenCLPrintfAnalysis::isBuiltinPrintf(target);
         }
         else if (llvm::dyn_cast<llvm::CastInst>(user) ||
                  llvm::dyn_cast<llvm::SelectInst>(user) ||

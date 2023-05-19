@@ -156,8 +156,8 @@ void OpenCLPrintfResolution::visitCallInst(CallInst& callInst)
     }
 
     StringRef  funcName = callInst.getCalledFunction()->getName();
-    if (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME)
-    {
+    if (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME ||
+        funcName == OpenCLPrintfAnalysis::BUILTIN_PRINTF_FUNCTION_NAME) {
         m_printfCalls.push_back(&callInst);
     }
 }
@@ -358,12 +358,18 @@ std::string OpenCLPrintfResolution::getPrintfStringsMDNodeName(Function& F)
     return "printf.strings";
 }
 
-static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtEnd, DebugLoc DL)
+static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtEnd, DebugLoc DL, bool isNontemporal)
 {
     bool isVolatile = false;
     unsigned Align = 4;
     auto SI = new llvm::StoreInst(Val, Ptr, isVolatile, IGCLLVM::getCorrectAlign(Align), InsertAtEnd);
     SI->setDebugLoc(DL);
+    if (isNontemporal) {
+        Constant *One = ConstantInt::get(Type::getInt32Ty(SI->getContext()), 1);
+        MDNode *Node =
+            MDNode::get(SI->getContext(), ConstantAsMetadata::get(One));
+        SI->setMetadata(LLVMContext::MD_nontemporal, Node);
+    }
     return SI;
 }
 
@@ -419,10 +425,23 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
               // printf returns -1 if failed                               |
               return_val = -1;                                             /
          }
+
+         We also support printf to any provided buffer.
+         This is done with special builtin with following signature:
+         int __builtin_IB_printf_to_buffer(global char* buf, global char* currentOffset, int bufSize, ...);
+           buf - pointer to the begging of the buffer.
+           currentOffset - pointer to the location with the current offset that will be atomically incremented.
+             In the case of regular printf this offset is on the first DWORD of printfBuffer.
+             E.g. in assert buffer it is on the third DWORD.
+            bufSize - total size of the buffer.
+         Note: in the case of builtin printf, all the stores will be nontemporal.
+
+
        ----------------------------------------------------------------------
     */
     MetaDataUtils* MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ImplicitArgs implicitArgs(F, MdUtils);
+    bool isPrintfBuiltin = OpenCLPrintfAnalysis::isBuiltinPrintf(printfCall.getCalledFunction());
 
     BasicBlock* currentBBlock = printfCall.getParent();
 
@@ -431,10 +450,14 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     preprocessPrintfArgs(printfCall);
 
     // writeOffset = atomic_add(bufferPtr, dataSize)
-    Value* basebufferPtr = implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, MdUtils);
+    Value *basebufferPtr = isPrintfBuiltin
+                               ? printfCall.getArgOperand(0)
+                               : implicitArgs.getImplicitArgValue(
+                                     F, ImplicitArg::PRINTF_BUFFER, MdUtils);
 
     Value* dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
-    Instruction* writeOffsetStart = genAtomicAdd(basebufferPtr, dataSizeVal, printfCall, "write_offset");
+    Value* currentOffsetPtr = isPrintfBuiltin ? printfCall.getArgOperand(1) : basebufferPtr;
+    Instruction* writeOffsetStart = genAtomicAdd(currentOffsetPtr, dataSizeVal, printfCall, "write_offset");
     writeOffsetStart->setDebugLoc(m_DL);
 
     Instruction* writeOffset = writeOffsetStart;
@@ -444,7 +467,11 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     Instruction* endOffset = BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", &printfCall);
     endOffset->setDebugLoc(m_DL);
 
-    Value* bufferMaxSize = ConstantInt::get(m_int32Type, m_CGContext->m_DriverInfo.getPrintfBufferSize());
+    Value *bufferMaxSize =
+        isPrintfBuiltin
+            ? printfCall.getArgOperand(2)
+            : ConstantInt::get(m_int32Type,
+                               m_CGContext->m_DriverInfo.getPrintfBufferSize());
 
     // write_ptr = buffer_ptr + write_offset;
     if (m_ptrSizeIntType != writeOffset->getType())
@@ -509,7 +536,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
             writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
                 m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
             writeOffsetPtr->setDebugLoc(m_DL);
-            genStoreInternal(argTypeVal, writeOffsetPtr, bblockTrue, m_DL);
+            genStoreInternal(argTypeVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
 
             // write_offset += 4
             writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", bblockTrue);
@@ -521,7 +548,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
                 writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
                     m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
                 writeOffsetPtr->setDebugLoc(m_DL);
-                genStoreInternal(vecSizeVal, writeOffsetPtr, bblockTrue, m_DL);
+                genStoreInternal(vecSizeVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
 
                 // write_offset += 4
                 writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", bblockTrue);
@@ -542,7 +569,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         }
 
         // *write_offset = argument[i].value
-        genStoreInternal(printfArg, writeOffsetPtr, bblockTrue, m_DL);
+        genStoreInternal(printfArg, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
 
         // write_offset += argument[i].size
         Value* offsetInc = ConstantInt::get(m_ptrSizeIntType, getArgTypeSize(dataType, argDesc->vecSize));
@@ -582,7 +609,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         "write_offset_ptr",
         bblockErrorString);
     writeOffsetPtr->setDebugLoc(m_DL);
-    genStoreInternal(constValErrStringIdx, writeOffsetPtr, bblockErrorString, m_DL);
+    genStoreInternal(constValErrStringIdx, writeOffsetPtr, bblockErrorString, m_DL, isPrintfBuiltin);
     brInst = BranchInst::Create(bblockFalseJoin, bblockErrorString);
     brInst->setDebugLoc(m_DL);
 
@@ -680,7 +707,13 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
 
 void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)
 {
-    for (int i = 0, numArgs = IGCLLVM::getNumArgOperands(&printfCall); i < numArgs; ++i)
+    int i = 0;
+    if (OpenCLPrintfAnalysis::isBuiltinPrintf(printfCall.getCalledFunction())) {
+        // printf builtin function has buffer pointer, current offset pointer and buffer size as first three arguments.
+        // Skip them here, as we want to collect the arguments starting from format string.
+        i = 3;
+    }
+    for (int numArgs = IGCLLVM::getNumArgOperands(&printfCall); i < numArgs; ++i)
     {
         Value* arg = printfCall.getOperand(i);
         Type* argType = arg->getType();
