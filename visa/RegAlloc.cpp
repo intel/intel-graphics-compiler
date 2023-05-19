@@ -370,6 +370,55 @@ void LivenessAnalysis::detectNeverDefinedVarRows() {
   }
 }
 
+// #1 - (P166) sel (M1, 8) V2(0,0)<1> 0x1:d 0x0:d
+// #2 - (W) mov(M1, 8) V1(0,0)<1> 0x0:ud
+// #3 - (W) mov (M1, 1) V3 0x1:ud
+// #4 - add (M1, 8) V1(0,0)<1> V2(0,0)<1;1,0> V3(0,0)<0;1,0>
+//
+// In above 3d program, V1 is written once using WriteEnable and and once without
+// WriteEnable. A var must be treated as KILLED only for widest def. In this case,
+// widest def of V1 is one with WriteEnable set. Although def of V1 in inst# 4
+// writes all enabled channels, it may not be as wide as WriteEnable in inst#1.
+// Marking #4 as KILL allows RA to use same register for V1 and V3 which can be
+// incorrect if all but lowest channel are enabled. Because in this case lowest
+// channel data would be overwritten by V3 def.
+//
+// In this method, we gather all variables written with WriteEnable and refer to
+// this list when computing pseudo_kill. Note that WriteEnable takes effect only
+// in divergent context. In other words, for ESIMD target, all channels are enabled
+// at thread dispatch. Whereas for 3d, even entry BB is considered to be divergent.
+void LivenessAnalysis::collectNoMaskVars() {
+  for (auto bb : gra.kernel.fg) {
+    for (auto inst : *bb) {
+      if (!inst->isWriteEnableInst())
+        continue;
+
+      auto inDivergentContext = [&]() {
+        // 3d is always in divergent context
+        // ESIMD is divergent only in BBs that are explicitly divergent
+        return fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) ==
+                   VISA_3D ||
+               !bb->isAllLaneActive();
+      };
+
+      G4_Operand *opnd = nullptr;
+      if (livenessClass(G4_GRF))
+        opnd = inst->getDst();
+      else if (livenessClass(G4_FLAG))
+        opnd = inst->getCondMod();
+
+      if (opnd && opnd->getBase() && opnd->getBase()->isRegAllocPartaker() &&
+          inDivergentContext()) {
+        defWriteEnable.insert(opnd->getTopDcl());
+      }
+    }
+  }
+}
+
+bool LivenessAnalysis::doesVarNeedNoMaskForKill(const G4_Declare* dcl) const {
+  return defWriteEnable.count(dcl) == 0 ? false : true;
+}
+
 //
 // compute liveness of reg vars
 // Each reg var indicates a region within the register file. As such, the case
@@ -449,6 +498,7 @@ void LivenessAnalysis::computeLiveness() {
     def_out[i].clear();
   }
 
+  collectNoMaskVars();
   if (livenessClass(G4_GRF))
     detectNeverDefinedVarRows();
 
@@ -1113,6 +1163,9 @@ bool LivenessAnalysis::writeWholeRegion(const G4_BB *bb, const G4_INST *inst,
     return false;
   }
 
+  if (doesVarNeedNoMaskForKill(primaryDcl) && !inst->isWriteEnableInst())
+    return false;
+
   return true;
 }
 
@@ -1142,7 +1195,8 @@ void LivenessAnalysis::footprintDst(const G4_BB *bb, const G4_INST *i,
                                     BitSet *dstfootprint) const {
   if (dstfootprint && !(i->isPartialWrite()) &&
       ((bb->isAllLaneActive() || i->isWriteEnableInst() == true) ||
-       gra.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)) {
+       (gra.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+        !doesVarNeedNoMaskForKill(opnd->getTopDcl())))) {
     // Bitwise OR left-bound/right-bound with dst footprint to indicate
     // bytes that are written in to
     opnd->updateFootPrint(*dstfootprint, true, *fg.builder);
