@@ -39,7 +39,9 @@ define spir_kernel void @test_shuf(i32 addrspace(1)* %dst, i32 %src) #0 {
 ; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
 ; CHECK:    store i32 [[SRC:%.*]], i32* [[SRC_ADDR]], align 4
 ; CHECK:    [[TMP0:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
-; CHECK:    [[SIMDSHUFFLEDOWN:%.*]] = call i32 @llvm.genx.GenISA.simdShuffleDown.i32(i32 [[TMP0]], i32 7, i32 3)
+; CHECK:    [[VEC0:%.*]] = insertelement <2 x i32> undef, i32 [[TMP0:%.*]], i32 0
+; CHECK:    [[VEC1:%.*]] = insertelement <2 x i32> [[VEC0]], i32 7, i32 1
+; CHECK:    [[SIMDSHUFFLEDOWN:%.*]] = call i32 @llvm.genx.GenISA.simdShuffleDown.i32.v2i32(<2 x i32> [[VEC1]], i32 3)
 ; CHECK:    store i32 [[SIMDSHUFFLEDOWN]], i32* [[SHUF]], align 4
 ;
 entry:

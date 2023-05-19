@@ -243,6 +243,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         (IGC_IS_FLAG_ENABLED(EnablePromoteI8) && !ctx.platform.supportByteALUOperation()))
     {
         mpm.add(createPromoteInt8TypePass());
+        mpm.add(llvm::createEarlyCSEPass());
+        mpm.add(llvm::createDeadCodeEliminationPass());
     }
 
     // need this before WIAnalysis:

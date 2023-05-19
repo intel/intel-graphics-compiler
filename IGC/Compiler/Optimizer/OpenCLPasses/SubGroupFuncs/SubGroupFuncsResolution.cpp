@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -610,14 +611,21 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC))
     {
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle_down function
-        Value* args[3];
-        args[0] = CI.getArgOperand(0);
-        args[1] = CI.getArgOperand(1);
-        args[2] = CI.getArgOperand(2);
+        IRBuilder<> IRB(&CI);
+        Value* vec = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(CI.getArgOperand(0)->getType(), 2));
+        vec = IRB.CreateInsertElement(vec, CI.getArgOperand(0), IRB.getInt32(0));
+        vec = IRB.CreateInsertElement(vec, CI.getArgOperand(1), IRB.getInt32(1));
+
+        Value* args[2];
+        args[0] = vec;
+        args[1] = CI.getArgOperand(2);
+
+        // overload types for this intrinsic
+        Type* ITys[2] = { CI.getArgOperand(0)->getType(), args[0]->getType() };
 
         Function* simdShuffleDownFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_simdShuffleDown,
-            args[0]->getType());
+            ITys);
         Instruction* simdShuffleDown = CallInst::Create(simdShuffleDownFunc, args, "simdShuffleDown", &CI);
         updateDebugLoc(&CI, simdShuffleDown);
         CI.replaceAllUsesWith(simdShuffleDown);

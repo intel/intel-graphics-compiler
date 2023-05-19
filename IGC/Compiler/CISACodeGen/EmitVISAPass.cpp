@@ -5458,48 +5458,11 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
 
 void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 {
-    CVariable* pCurrentData = GetSymbol(inst->getOperand(0));
-    CVariable* pNextData = GetSymbol(inst->getOperand(1));
-    CVariable* pDelta = m_currShader->GetSymbol(inst->getOperand(2));
+    CVariable* pData  = m_currShader->GetSymbol(inst->getOperand(0));
+    CVariable* pDelta = m_currShader->GetSymbol(inst->getOperand(1));
 
     // temp size is the sum of src0 and src1
     uint16_t nbElements = numLanes(m_SimdMode) * 2;
-
-    // Join current and Next Data
-    CVariable* pCombinedData = m_currShader->GetNewVariable(
-        nbElements,
-        m_destination->GetType(),
-        m_destination->GetAlign(),
-        "ShuffleTmp");
-
-    auto CopyData = [this](CVariable* pDestinationData, CVariable* pSourceData, uint32_t offset)
-    {
-        for (uint32_t i = 0; i < m_currShader->m_numberInstance; i++)
-        {
-            IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
-            uint32_t currentOffset = offset + numLanes(m_encoder->GetSimdSize()) * i;
-            bool isSecondHalf = i == 1;
-
-            if (isSecondHalf)
-            {
-                m_encoder->SetSecondHalf(true);
-            }
-
-            m_encoder->SetSimdSize(m_encoder->GetSimdSize());
-            m_encoder->SetDstSubReg(currentOffset);
-            m_encoder->SetNoMask();
-            m_encoder->Copy(pDestinationData, pSourceData);
-            m_encoder->Push();
-
-            if (isSecondHalf)
-            {
-                m_encoder->SetSecondHalf(false);
-            }
-        }
-    };
-
-    CopyData(pCombinedData, pCurrentData, 0);
-    CopyData(pCombinedData, pNextData, numLanes(m_encoder->GetSimdSize()) * m_currShader->m_numberInstance);
 
     // Emit mov with direct addressing when delta is a compile-time constant.
     const bool useDirectAddressing = pDelta->IsImmediate()
@@ -5517,7 +5480,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
             m_encoder->SetSrcRegion(0, 1, 1, 0);
             m_encoder->SetSrcSubReg(0, dataIndex + nativeExecSize * i);
             m_encoder->SetDstSubReg(nativeExecSize * i);
-            m_encoder->Copy(m_destination, pCombinedData);
+            m_encoder->Copy(m_destination, pData);
             m_encoder->Push();
         }
         return;
@@ -5638,7 +5601,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 
         m_encoder->SetSimdSize(SIMDMode::SIMD16);
         m_encoder->SetSrcRegion(1, 16, 8, 2);
-        m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
+        m_encoder->AddrAdd(pDstArrElm, pData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
         m_encoder->Push();
         m_encoder->SetSimdSize(SIMDMode::SIMD16);
         m_encoder->Copy(m_destination, pDstArrElm);
@@ -5648,7 +5611,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         m_encoder->SetMask(EMASK_H2);
         m_encoder->SetSrcSubReg(1, 32);
         m_encoder->SetSrcRegion(1, 16, 8, 2);
-        m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
+        m_encoder->AddrAdd(pDstArrElm, pData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
         m_encoder->Push();
         m_encoder->SetSimdSize(SIMDMode::SIMD16);
         m_encoder->SetMask(EMASK_H2);
@@ -5683,7 +5646,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 
         m_encoder->SetNoMask();
         m_encoder->SetSrcRegion(1, 16, 8, 2);
-        m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pCurrentByteOffset, ISA_TYPE_UW));
+        m_encoder->AddrAdd(pDstArrElm, pData, m_currShader->BitCast(pCurrentByteOffset, ISA_TYPE_UW));
         m_encoder->Push();
 
         if (isSecondHalf)
