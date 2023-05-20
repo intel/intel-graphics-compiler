@@ -4301,7 +4301,6 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     CVariable* dstHiTemp = m_currShader->GetNewVariable(numLanes(simdMode), hiType, m_destination->GetAlign(),
         dst->IsUniform(), UpdateVariableName(CName(m_destination->getName(), "int64HiTmp")));
 
-
     //
     // Algorithm:
     //   - Break the 64 bit sources into 32bit low/high halves.
