@@ -26,9 +26,7 @@ SPDX-License-Identifier: MIT
 
 // bool attributes
 DEF_ATTR_BOOL(ATTR_Extern, "Extern", AK_KERNEL, false,
-              "True for extern function which is exported for separated module call")
-DEF_ATTR_BOOL(ATTR_Recursive, "Recursive", AK_KERNEL, false,
-              "True for functions which contain recursion in themselves or their callees")
+              "True for extern function")
 DEF_ATTR_BOOL(ATTR_NoBarrier, "NoBarrier", AK_KERNEL, false,
               "True if kernel has no barrier")
 DEF_ATTR_BOOL(ATTR_Callable, "Callable", AK_KERNEL, false, "")

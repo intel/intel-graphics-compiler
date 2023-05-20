@@ -10902,11 +10902,9 @@ void EmitPass::emitStackFuncEntry(Function* F)
     m_currShader->InitializeStackVariables();
 
     if (F->hasFnAttribute("referenced-indirectly"))
+    {
         m_encoder->SetExternFunctionFlag();
-
-    if (auto *fg = m_FGA->getGroup(F))
-        if (fg->hasRecursion())
-            m_encoder->SetRecursiveFunctionFlag();
+    }
 
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
