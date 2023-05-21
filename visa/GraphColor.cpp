@@ -6436,6 +6436,15 @@ bool GlobalRA::livenessCandidate(const G4_Declare *decl) const {
 
 void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
                                      unsigned &indrSpillRegSize) {
+
+  auto isNoSpill = [](G4_RegVar *regVar) {
+    G4_Declare *dcl = regVar->getDeclare();
+    if (dcl->isDoNotSpill() || regVar->isRegVarTransient() ||
+        regVar->isRegVarTmp())
+      return true;
+    return false;
+  };
+
   // Iterate over all BBs
   for (auto curBB : kernel.fg) {
     // Iterate over all insts
@@ -6476,8 +6485,10 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
         unsigned dstSpillRegSize = 0;
         G4_DstRegRegion *dst = curInst->getDst();
         if (dst && dst->getBase()->isRegVar()) {
-          dstSpillRegSize =
-              dst->getBase()->asRegVar()->getDeclare()->getNumRows();
+          G4_RegVar *regVar = dst->getBase()->asRegVar();
+          if (!isNoSpill(regVar)) {
+            dstSpillRegSize = regVar->getDeclare()->getNumRows();
+          }
         }
 
         unsigned srcFillRegSize = 0;
@@ -6486,11 +6497,9 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
 
           if (src && src->isSrcRegRegion() &&
               src->asSrcRegRegion()->getBase()->isRegVar()) {
-            if (src->asSrcRegRegion()
-                    ->getBase()
-                    ->asRegVar()
-                    ->getDeclare()
-                    ->getRegFile() == G4_GRF) {
+            G4_RegVar *regVar = src->asSrcRegRegion()->getBase()->asRegVar();
+            if (regVar->getDeclare()->getRegFile() == G4_GRF &&
+                !isNoSpill(regVar)) {
               unsigned srcSize =
                   src->getBase()->asRegVar()->getDeclare()->getNumRows();
               // FIXME, currently we only use the max src size.
@@ -6511,8 +6520,9 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
           G4_DstRegRegion *dst = curInst->getDst();
 
           if (dst && dst->getBase()->isRegVar()) {
-            if (dst->getBase()->asRegVar()->getDeclare()->getRegFile() ==
-                G4_GRF) {
+            G4_RegVar *regVar = dst->getBase()->asRegVar();
+            if (regVar->getDeclare()->getRegFile() == G4_GRF &&
+                !isNoSpill(regVar)) {
               if (dst->isCrossGRFDst(builder)) {
                 dstSpillRegSize = 2;
               } else {
@@ -6554,11 +6564,9 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
 
           if (src && src->isSrcRegRegion() &&
               src->asSrcRegRegion()->getBase()->isRegVar()) {
-            if (src->asSrcRegRegion()
-                    ->getBase()
-                    ->asRegVar()
-                    ->getDeclare()
-                    ->getRegFile() == G4_GRF) {
+            G4_RegVar *regVar = src->asSrcRegRegion()->getBase()->asRegVar();
+            if (regVar->getDeclare()->getRegFile() == G4_GRF &&
+                !isNoSpill(regVar)) {
               if (src->asSrcRegRegion()->crossGRF(builder)) {
                 srcFillRegSize += 2;
               } else {
