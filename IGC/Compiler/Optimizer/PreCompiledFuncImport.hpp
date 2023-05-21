@@ -214,7 +214,7 @@ namespace IGC
         // Check if subroutine call is needed and set it if so.
         void checkAndSetEnableSubroutine();
         CodeGenContext* m_pCtx;
-        bool m_enableSubroutineCallForEmulation;
+        int m_enableCallForEmulation; // subroutine/stackcall
 
         IGCMD::MetaDataUtils* m_pMdUtils;
         llvm::Module* m_pModule;
