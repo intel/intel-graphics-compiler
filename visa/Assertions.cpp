@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,33 +11,30 @@ SPDX-License-Identifier: MIT
 
 #include <cstdarg>
 
-void assert_and_exit(bool check, std::string errorMsg, const char* const fileName,
+void assert_and_exit(std::string errorMsg, const char* const fileName,
     const char* const functionName, const unsigned int line, std::string customMsg, ...) {
-
-  if (check)
-    return;
   char causeMsg[1024];
   std::va_list vargs;
   va_start(vargs, customMsg);
-  int writtenB = std::vsnprintf(causeMsg, 1024, customMsg.c_str(), vargs);
+  int writtenB =
+    std::vsnprintf(causeMsg, sizeof(causeMsg), customMsg.c_str(), vargs);
   va_end(vargs);
 
   if (writtenB > 0) {
     // writtenB is not negative; succesfully written the cause msg with
     // variadic arguments
-    llvm::errs() << errorMsg << ": " << check << ", " << std::string(causeMsg)
+    llvm::errs() << errorMsg << ": " << std::string(causeMsg)
                  << "\nfile: " << std::string(fileName)
                  << "\nfunction name: " << std::string(functionName)
                  << "\nline: " << line << "\n";
   } else {
     // writtenB is negative, just print the custom msg as is
-    llvm::errs() << errorMsg << ": " << check << ", " << customMsg
+    llvm::errs() << errorMsg << ": " << customMsg
                  << "\nfile: " << std::string(fileName)
                  << "\nfunction name: " << std::string(functionName)
                  << "\nline: " << line << "\n";
   }
   std::abort();
-
 }
 
 void assert_and_exit_generic(bool check) {
