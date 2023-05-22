@@ -586,15 +586,8 @@ FunctionGroup* GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module* p
 {
     if (IndirectCallGroup) return IndirectCallGroup;
 
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-    // Use the dummy kernel if it exists. Otherwise use the unique entry function.
-    // OCL shaders should always use the dummy kernel.
     llvm::Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
-    if (!defaultKernel && pCtx->type != ShaderType::OPENCL_SHADER)
-    {
-        defaultKernel = IGC::getUniqueEntryFunc(pCtx->getMetaDataUtils(), pCtx->getModuleMetaData());
-    }
+
     // No default kernel found
     if (!defaultKernel) return nullptr;
 
@@ -618,18 +611,15 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
 
     for (auto FG : Groups)
     {
-        if (FG == IndirectCallGroup)
+        if (isIndirectCallGroup(FG))
         {
-            // The indirect call group is not a true function group, in that the functions in this group does not have
+            // The dummy kernel group is not a true function group, in that the functions in this group does not have
             // a valid callgraph that connects them. It's a dummy group where all indirectly called functions are contained.
-            // Therefore, the group attributes are not valid here, since they are not connected to the true groupHead, which
-            // is the caller kernel. We unset all the FG flags for this group.
+            // Therefore, the group attributes are not valid here, since they are not connected to the real groupHead, which
+            // is the caller kernel. We don't set any of the FG attribute flags for this group.
             //
             // Note, indirect functions in this group can still directly call stackcalls or subroutines, which may also belong
             // to this group due to cloning. However we still can't associate all functions in this group with a single callgraph.
-
-            // All other flags are already unset by default
-            FG->m_hasCGAvailable = false;
             continue;
         }
 
@@ -648,6 +638,10 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                 {
                     FG->m_hasNestedCall = true;
                 }
+            }
+            else if (!isEntryFunc(pMdUtils, F))
+            {
+                FG->m_hasSubroutine = true;
             }
 
             // check all functions in the group to see if there's an vla alloca
@@ -682,7 +676,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                         // to an external module. We do not know the callgraph in this case.
                         hasStackCall = true;
                         FG->m_hasIndirectCall = true;
-                        FG->m_hasCGAvailable = false;
+                        FG->m_hasPartialCallGraph = true;
                     }
                     else if (calledF && calledF->hasFnAttribute("referenced-indirectly"))
                     {
@@ -694,9 +688,10 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                     else if (calledF && calledF->isDeclaration() && calledF->hasFnAttribute("invoke_simd_target"))
                     {
                         // Invoke_simd targets use stack call by convention.
+                        // Calling a func decl indicates unknown CG
                         hasStackCall = true;
                         FG->m_hasIndirectCall = true;
-                        FG->m_hasCGAvailable = false;
+                        FG->m_hasPartialCallGraph = true;
                     }
 
                     FG->m_hasStackCall |= hasStackCall;

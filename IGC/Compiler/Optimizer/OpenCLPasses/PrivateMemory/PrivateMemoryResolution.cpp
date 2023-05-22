@@ -156,9 +156,10 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         {
             continue;
         }
-        bool hasStackCall = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasStackCall()) || m_currFunction->hasFnAttribute("visaStackCall");
-        bool hasVLA = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasVariableLengthAlloca()) || m_currFunction->hasFnAttribute("hasVLA");
-        bool isIndirectGroup = FGA && FGA->getGroup(m_currFunction) && isIntelSymbolTableVoidProgram(FGA->getGroupHead(m_currFunction));
+        auto FG = FGA ? FGA->getGroup(m_currFunction) : nullptr;
+        bool hasStackCall = (FG && FG->hasStackCall()) || m_currFunction->hasFnAttribute("visaStackCall");
+        bool hasVLA = (FG && FG->hasVariableLengthAlloca()) || m_currFunction->hasFnAttribute("hasVLA");
+        bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
         if (Ctx.platform.hasScratchSurface() &&
             modMD.compOpt.UseScratchSpacePrivateMemory)
         {
@@ -283,7 +284,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 // Analyze call depth for stack memory required
                 maxPrivateMem = AnalyzeCGPrivateMemUsage(pKernel);
             }
-            if (!FG->hasCGAvailable() || FG->hasRecursion())
+            if ((FG->hasIndirectCall() && FG->hasPartialCallGraph()) || FG->hasRecursion())
             {
                 // If indirect calls or recursions exist, add additional 4KB and hope we don't run out.
                 maxPrivateMem += (4 * 1024);

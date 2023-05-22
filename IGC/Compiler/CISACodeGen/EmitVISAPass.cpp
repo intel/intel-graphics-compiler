@@ -687,15 +687,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     CShader* prevShader = m_pCtx->m_prevShader;
     if (isFuncGroupHead)
     {
-        if (hasStackCall)
-        {
-            m_currShader->SetHasStackCalls();
-        }
-        if (isDummyKernel)
-        {
-            m_currShader->SetIsIntelSymbolTableVoidProgram();
-        }
-
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
