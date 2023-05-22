@@ -594,7 +594,8 @@ void G4_Kernel::calculateSimdSize() {
   if (simdSize != g4::SIMD8 && simdSize != g4::SIMD16 &&
       simdSize != g4::SIMD32) {
     vISA_ASSERT(simdSize.value == 0, "vISA: wrong value for SimdSize attribute");
-    simdSize = g4::SIMD8;
+    // pvc+: simd16; simd8 otherwise
+    simdSize = fg.builder->getNativeExecSize();
 
     for (auto bb : fg) {
       for (auto inst : *bb) {
@@ -1216,7 +1217,12 @@ void G4_Kernel::dumpG4InternalTo(std::ostream &os) {
       d->emit(os);
     }
   }
+  os << "\n";
 
+  // Additional dumps for lit testing
+  os << "// simdSize = " << (int)simdSize.value << "\n";
+
+  os << "\n";
   for (std::list<G4_BB *>::iterator it = fg.begin(); it != fg.end(); ++it) {
     // Emit BB number
     G4_BB *bb = (*it);
