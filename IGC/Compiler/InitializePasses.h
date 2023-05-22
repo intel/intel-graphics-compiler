@@ -240,3 +240,4 @@ void initializePromoteBoolsPass(llvm::PassRegistry&);
 void initializeResolveConstExprCallsPass(llvm::PassRegistry&);
 void initializeHandleSpirvDecorationMetadataPass(llvm::PassRegistry&);
 void initializeNontemporalLoadsAndStoresInAssertPass(llvm::PassRegistry&);
+void initializeHandleDevicelibAssertPass(llvm::PassRegistry&);

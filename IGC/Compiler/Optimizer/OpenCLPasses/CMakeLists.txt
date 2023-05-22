@@ -43,6 +43,7 @@ add_subdirectory(UnreachableHandling)
 add_subdirectory(DpasFuncs)
 add_subdirectory(LSCFuncs)
 add_subdirectory(NontemporalLoadsAndStoresInAssert)
+add_subdirectory(HandleDevicelibAssert)
 
 set(IGC_BUILD__SRC__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.cpp"
@@ -91,6 +92,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__SRC__OpenCLPasses_UnreachableHandling}
     ${IGC_BUILD__SRC__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
+    ${IGC_BUILD__SRC__OpenCLPasses_HandleDevicelibAssert}
   )
 
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
@@ -144,6 +146,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__HDR__OpenCLPasses_UnreachableHandling}
     ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
+    ${IGC_BUILD__HDR__OpenCLPasses_HandleDevicelibAssert}
   )
 
 set(IGC_BUILD__HDR__Optimizer_OpenCLPasses
@@ -189,6 +192,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_RewriteLocalSize
     Compiler__OpenCLPasses_UnreachableHandling
     Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
+    Compiler__OpenCLPasses_HandleDevicelibAssert
   )
 
 igc_sg_register(
