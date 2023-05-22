@@ -8239,7 +8239,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_software_exception:
     {
         CVariable *Mask = m_currShader->ImmToVariable(
-            1 << 28,
+            1 << 29,
             ISA_TYPE_UD);
 
         m_encoder->SetSrcSubReg(0, 1);

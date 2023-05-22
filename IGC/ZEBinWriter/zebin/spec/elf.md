@@ -98,7 +98,7 @@ information, depending on section type.
 ## ELF note type for INTELGT
 
 **n_type**
-Currently there are 5 note types defined for INTELGT and the notes are placed
+Currently there are 3 note types defined for INTELGT and the notes are placed
 in the .note.intelgt.compat section. The consumer of the ZE binary file should
 recognize both the owner name (INTELGT) and the type of an ELF note entry to
 interpret its description.
@@ -114,11 +114,6 @@ enum {
     // attribute and section changes. The content is stored in a nul-terminated
     // string and the format is "<Major number>.<Minor number>".
     NT_INTELGT_ZEBIN_VERSION = 4,
-    // The description is stored in a 4-byte ELF word and is used instead
-    // of NT_INTELGT_PRODUCT_FAMILY, NT_INTELGT_GFXCORE_FAMILY and
-    // NT_INTELGT_TARGET_METADATA because it contains all required info to
-    // validate program for a target device
-    NT_INTELGT_PRODUCT_CONFIG = 5,
 };
 ~~~
 
@@ -161,24 +156,6 @@ struct TargetMetadata {
         uint32_t packed = 0U;
     };
 };
-~~~
-
-**The description of NT_INTELGT_PRODUCT_CONFIG note**
-~~~
-typedef struct GFX_GMD_ID_DEF
-{
-    union
-    {
-        struct
-        {
-            unsigned int    RevisionID : 6;
-            unsigned int    Reserved : 8;
-            unsigned int    GMDRelease : 8;
-            unsigned int    GMDArch : 10;
-        }GmdID;
-        unsigned int    Value;
-    };
-}GFX_GMD_ID;
 ~~~
 
 ## Gen Relocation Type
