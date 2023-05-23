@@ -13,6 +13,107 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
+  switch (op) {
+  case LSC_OP::LSC_LOAD:
+    return MsgOp::LOAD;
+  case LSC_OP::LSC_LOAD_STRIDED:
+    return MsgOp::LOAD_STRIDED;
+  case LSC_OP::LSC_LOAD_QUAD:
+    return MsgOp::LOAD_QUAD;
+  case LSC_OP::LSC_LOAD_BLOCK2D:
+    return MsgOp::LOAD_BLOCK2D;
+  case LSC_OP::LSC_LOAD_STATUS:
+    return MsgOp::LOAD_STATUS;
+  case LSC_OP::LSC_STORE:
+    return MsgOp::STORE;
+  case LSC_OP::LSC_STORE_STRIDED:
+    return MsgOp::STORE_STRIDED;
+  case LSC_OP::LSC_STORE_QUAD:
+    return MsgOp::STORE_QUAD;
+  case LSC_OP::LSC_STORE_BLOCK2D:
+    return MsgOp::STORE_BLOCK2D;
+  //
+  case LSC_OP::LSC_ATOMIC_IINC:
+    return MsgOp::ATOMIC_IINC;
+  case LSC_OP::LSC_ATOMIC_IDEC:
+    return MsgOp::ATOMIC_IDEC;
+  case LSC_OP::LSC_ATOMIC_LOAD:
+    return MsgOp::ATOMIC_LOAD;
+  case LSC_OP::LSC_ATOMIC_STORE:
+    return MsgOp::ATOMIC_STORE;
+  //
+  case LSC_OP::LSC_ATOMIC_IADD:
+    return MsgOp::ATOMIC_IADD;
+  case LSC_OP::LSC_ATOMIC_ISUB:
+    return MsgOp::ATOMIC_ISUB;
+  //
+  case LSC_OP::LSC_ATOMIC_SMIN:
+    return MsgOp::ATOMIC_SMIN;
+  case LSC_OP::LSC_ATOMIC_SMAX:
+    return MsgOp::ATOMIC_SMAX;
+  case LSC_OP::LSC_ATOMIC_UMIN:
+    return MsgOp::ATOMIC_UMIN;
+  case LSC_OP::LSC_ATOMIC_UMAX:
+    return MsgOp::ATOMIC_UMAX;
+  //
+  case LSC_OP::LSC_ATOMIC_ICAS:
+    return MsgOp::ATOMIC_ICAS;
+  case LSC_OP::LSC_ATOMIC_FADD:
+    return MsgOp::ATOMIC_FADD;
+  case LSC_OP::LSC_ATOMIC_FSUB:
+    return MsgOp::ATOMIC_FSUB;
+  case LSC_OP::LSC_ATOMIC_FMIN:
+    return MsgOp::ATOMIC_FMIN;
+  case LSC_OP::LSC_ATOMIC_FMAX:
+    return MsgOp::ATOMIC_FMAX;
+  case LSC_OP::LSC_ATOMIC_FCAS:
+    return MsgOp::ATOMIC_FCAS;
+  //
+  case LSC_OP::LSC_ATOMIC_AND:
+    return MsgOp::ATOMIC_AND;
+  case LSC_OP::LSC_ATOMIC_XOR:
+    return MsgOp::ATOMIC_XOR;
+  case LSC_OP::LSC_ATOMIC_OR:
+    return MsgOp::ATOMIC_OR;
+  case LSC_OP::LSC_FENCE:
+    return MsgOp::FENCE;
+  default:
+    return MsgOp::INVALID;
+  }
+}
+
+static DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds) {
+  switch (ds) {
+  case LSC_DATA_SIZE_8b:
+    return DataSize::D8;
+  case LSC_DATA_SIZE_16b:
+    return DataSize::D16;
+  case LSC_DATA_SIZE_32b:
+    return DataSize::D32;
+  case LSC_DATA_SIZE_64b:
+    return DataSize::D64;
+  case LSC_DATA_SIZE_8c32b:
+    return DataSize::D8U32;
+  case LSC_DATA_SIZE_16c32b:
+    return DataSize::D16U32;
+  default:
+    vISA_ASSERT_UNREACHABLE("invalid data size");
+  }
+  return DataSize::INVALID;
+}
+
+static DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord) {
+  switch (dord) {
+  case LSC_DATA_ORDER_NONTRANSPOSE:
+    return DataOrder::NONTRANSPOSE;
+  case LSC_DATA_ORDER_TRANSPOSE:
+    return DataOrder::TRANSPOSE;
+  default:
+    vISA_ASSERT_UNREACHABLE("invalid data order");
+  }
+  return DataOrder::INVALID;
+}
 G4_ExecSize IR_Builder::lscMinExecSize(LSC_SFID lscSfid) const {
   const TARGET_PLATFORM P = getPlatform();
   uint32_t minExecSize = ((P == Xe_DG2 || P == Xe_MTL) ? 8 : 16);
@@ -21,6 +122,57 @@ G4_ExecSize IR_Builder::lscMinExecSize(LSC_SFID lscSfid) const {
     minExecSize *= 2;
   }
   return G4_ExecSize(minExecSize);
+}
+
+static VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de) {
+  switch (de) {
+  case LSC_DATA_ELEMS_1:
+    return VecElems::V1;
+  case LSC_DATA_ELEMS_2:
+    return VecElems::V2;
+  case LSC_DATA_ELEMS_3:
+    return VecElems::V3;
+  case LSC_DATA_ELEMS_4:
+    return VecElems::V4;
+  case LSC_DATA_ELEMS_8:
+    return VecElems::V8;
+  case LSC_DATA_ELEMS_16:
+    return VecElems::V16;
+  case LSC_DATA_ELEMS_32:
+    return VecElems::V32;
+  case LSC_DATA_ELEMS_64:
+    return VecElems::V64;
+  default:
+    vISA_ASSERT_UNREACHABLE("number of data elements");
+  }
+  return VecElems::INVALID;
+}
+
+
+static Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
+  switch (co) {
+  case LSC_CACHING_DEFAULT:
+    return Caching::DF;
+  case LSC_CACHING_UNCACHED:
+    return Caching::UC;
+  case LSC_CACHING_CACHED:
+    return Caching::CA;
+  case LSC_CACHING_WRITEBACK:
+    return Caching::WB;
+  case LSC_CACHING_WRITETHROUGH:
+    return Caching::WT;
+  case LSC_CACHING_STREAMING:
+    return Caching::ST;
+  case LSC_CACHING_READINVALIDATE:
+    return Caching::RI;
+  default:
+    vISA_ASSERT_UNREACHABLE("invalid caching");
+  }
+  return Caching::INVALID;
+}
+static std::pair<Caching, Caching> ConvertLSCCacheOpts(LSC_CACHE_OPT col1,
+                                                       LSC_CACHE_OPT col3) {
+  return std::make_pair(ConvertLSCCacheOpt(col1), ConvertLSCCacheOpt(col3));
 }
 
 static G4_Operand *lscTryPromoteSurfaceImmToExDesc(G4_Operand *surface,

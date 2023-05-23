@@ -329,6 +329,7 @@ set(GenX_Common_Headers
   G4_Declare.h
   G4_IR.hpp
   G4_Kernel.hpp
+  G4_MsgOpDefs.hpp
   G4_Opcode.h
   G4_Operand.h
   G4_Register.h

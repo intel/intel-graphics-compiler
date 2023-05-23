@@ -2890,22 +2890,7 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
 
   return false;
 }
-#if 0  // TODO: replace with newer approach
-bool Augmentation::updateDstMaskForGatherLdSt(
-    G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescLdSt *msgDesc)
-{
-    // as in the raw case only support SIMT
-    if (msgDesc->op != MsgOp::LOAD || msgDesc->order == LdStOrder::SCALAR) {
-        return false;
-    }
-    unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
-    unsigned char execSize = inst->getExecSize();
-    updateMaskSIMT(curEMBit, execSize, mask,
-        msgDesc->elemBitsReg, msgDesc->elemPerAddr);
 
-    return true;
-}
-#endif
 
 // Value stored at each byte in mask determines which bits
 // of EM enable that byte for writing. When checkCmodOnly

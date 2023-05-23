@@ -14,9 +14,45 @@ using namespace vISA;
 static const unsigned MESSAGE_PRECISION_SUBTYPE_OFFSET = 30;
 static const unsigned SIMD_MODE_2_OFFSET = 29;
 
-bool IR_Builder::isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) const {
-
+static bool isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) {
   return false;
+}
+
+static MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
+  switch (op) {
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE:
+    return MsgOp::SAMPLE;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_B:
+    return MsgOp::SAMPLE_B;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L:
+    return MsgOp::SAMPLE_L;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C:
+    return MsgOp::SAMPLE_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D:
+    return MsgOp::SAMPLE_D;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_B_C:
+    return MsgOp::SAMPLE_B_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L_C:
+    return MsgOp::SAMPLE_L_C;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4:
+    return MsgOp::GATHER4;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_C:
+    return MsgOp::GATHER4_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D_C:
+    return MsgOp::SAMPLE_D_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_LZ:
+    return MsgOp::SAMPLE_LZ;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C_LZ:
+    return MsgOp::SAMPLE_C_LZ;
+  case VISASampler3DSubOpCode::VISA_3D_LD_LZ:
+    return MsgOp::LD_LZ;
+  case VISASampler3DSubOpCode::VISA_3D_LD2DMS_W:
+    return MsgOp::LD_2DMS_W;
+  case VISASampler3DSubOpCode::VISA_3D_LD_MCS:
+    return MsgOp::LD_MCS;
+  default:
+    return MsgOp::INVALID;
+  }
 }
 
 uint32_t IR_Builder::createSamplerMsgDesc(VISASampler3DSubOpCode samplerOp,

@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef G4_SEND_DESCS_HPP
 #define G4_SEND_DESCS_HPP
 
+#include "G4_MsgOpDefs.hpp"
+
 #include <optional>
 #include <ostream>
 #include <string>
@@ -22,120 +24,37 @@ enum class SendAccess {
   READ_WRITE  // e.g. an atomic with return
 };
 
-
-// used for grouping MsgOp ordinal values so that
-// bit tests can classify the group
-static const int MSGOP_LOAD_GROUP   = 0x0100;
-static const int MSGOP_STORE_GROUP  = 0x0200;
-static const int MSGOP_ATOMIC_GROUP = 0x0400;
-static const int MSGOP_SAMPLE_GROUP = 0x0800;
-static const int MSGOP_GATHER_GROUP = 0x1000;
-static const int MSGOP_OTHER_GROUP  = 0x2000;
-
 std::string ToSymbol(vISA::SFID sfid);
 
 //
 // Various message operations
-// This enumeration includes all SFID's messages that vISA should comprehend.
+// This enumeration includes all SFIDs's messages that vISA should comprehend.
 // Some of these work only in one SFID (e.g. sampler ops) and some work on
 // several (e.g. load).
 // Helper functions below this allow one to efficiently categorize an op.
 // E.g. IsLoadOp(...)
 enum class MsgOp {
   INVALID = 0,
-  // load
-  LOAD = MSGOP_LOAD_GROUP + 1,
-  LOAD_STRIDED, // same as load, but 1 address (obeys exec mask)
-  LOAD_QUAD,    // e.g. untyped load (loading XYZW)
-  LOAD_BLOCK2D,
-  LOAD_STATUS,
-  LOAD_QUAD_STATUS,
-  // store
-  STORE_GROUP = MSGOP_STORE_GROUP + 1,
-  STORE,
-  STORE_STRIDED,
-  STORE_QUAD,
-  STORE_BLOCK2D,
-  //
-  // atomics
-  //
-  ATOMIC_GROUP = MSGOP_ATOMIC_GROUP + 1,
-  ATOMIC_IINC,
-  ATOMIC_IDEC,
-  ATOMIC_LOAD,
-  ATOMIC_STORE,
-  ATOMIC_IADD,
-  ATOMIC_ISUB,
-  ATOMIC_ICAS,
-  ATOMIC_SMIN,
-  ATOMIC_SMAX,
-  ATOMIC_UMIN,
-  ATOMIC_UMAX,
-  //
-  ATOMIC_FADD,
-  ATOMIC_FSUB,
-  ATOMIC_FMIN,
-  ATOMIC_FMAX,
-  ATOMIC_FCAS,
-  //
-  ATOMIC_AND,
-  ATOMIC_XOR,
-  ATOMIC_OR,
-  //
-  //
-  SAMPLE_GROUP = MSGOP_SAMPLE_GROUP + 1,
-  SAMPLE,
-  SAMPLE_B,
-  SAMPLE_L,
-  SAMPLE_C,
-  SAMPLE_D,
-  SAMPLE_B_C,
-  SAMPLE_L_C,
-  SAMPLE_KILLPIX,
-  SAMPLE_D_C,
-  SAMPLE_LZ,
-  SAMPLE_C_LZ,
-  GATHER_GROUP = MSGOP_GATHER_GROUP + 1,
-  GATHER4,
-  GATHER4_C,
-  LD_LZ,
-  LD2DMS_W,
-  LD_MCS,
-
-  /////////////////////////////////////////////////////
-  // render target operations
-  RTREAD = MSGOP_OTHER_GROUP + 1,
-  RTWRITE,
-  RTDSWRITE,
-  /////////////////////////////////////////////////////
-  // gateway operations, fences etc...
-  // others ...
-  READ_STATE_INFO,
-  //
-  FENCE,
-  //
-  BARRIER,
-  NBARRIER,
-  EOT,
+#define DEFINE_G4_MSGOP(SYMBOL, SYNTAX, ENCODING, GROUP, ATTRS) \
+  SYMBOL = ((ATTRS) << 16) | ((GROUP) << 8) | (ENCODING),
+#include "G4_MsgOpDefs.hpp"
 };
 std::string ToSymbol(MsgOp);
-static inline bool IsLoad(MsgOp o) {return int(o) & MSGOP_LOAD_GROUP;}
-static inline bool IsStore(MsgOp o) {return int(o) & MSGOP_STORE_GROUP;}
-static inline bool IsAtomic(MsgOp o) {return int(o) & MSGOP_ATOMIC_GROUP;}
-bool IsQuadMessage(MsgOp); // e.g. {LOAD,STORE}_QUAD*
-uint32_t GetMsgOpEncoding(MsgOp);
-uint32_t GetSamplerMsgOpEncoding(MsgOp);
-uint32_t GetRenderTargetMsgOpEncoding(MsgOp);
-MsgOp ConvertLSCOpToMsgOp(LSC_OP op);
-MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op);
+static inline bool MsgOpIsLoad(MsgOp o) {
+  return int(o) & (MSGOP_GROUP_LSC_LOAD << 8);
+}
+static inline bool MsgOpIsStore(MsgOp o) {
+  return int(o) & (MSGOP_GROUP_LSC_STORE << 8);
+}
+static inline bool MsgOpIsAtomic(MsgOp o) {
+  return int(o) & (MSGOP_GROUP_LSC_ATOMIC << 8);
+}
+// does it have a data channel mask (e.g. load_quad)
+bool MsgOpHasChMask(MsgOp);
+//
+uint32_t MsgOpEncode(MsgOp msgOp);
+MsgOp MsgOpDecode(SFID sfid, uint32_t enc);
 
-
-enum class LdStOrder {
-  INVALID = 0,
-  //
-  SCALAR, // aka "transposed", typically SIMD1, should be (W)
-  VECTOR, // normal vector message or atomic (honors the execution mask)
-};
 enum class AddrType {
   INVALID = 0,
   //
@@ -157,7 +76,6 @@ enum class DataSize {
 };
 
 std::string ToSymbol(DataSize d);
-DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds);
 uint32_t GetDataSizeEncoding(DataSize ds);
 
 // Data order
@@ -169,7 +87,6 @@ enum class DataOrder {
   TRANSPOSE_VNNI  = 0x4,
 };
 
-DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord);
 uint32_t GetDataOrderEncoding(DataOrder dord);
 
 // Data elems
@@ -179,7 +96,6 @@ std::string ToSymbol(DataSize dsz, VecElems ve, DataOrder dord);
 std::string ToSymbol(DataSize dsz, int chMask);
 
 std::string ToSymbol(VecElems ve);
-VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de);
 VecElems ToVecElems(int ves);
 uint32_t GetVecElemsEncoding(VecElems ve);
 int GetNumVecElems(VecElems ve);
@@ -205,9 +121,7 @@ enum class Caching {
 std::string ToSymbol(Caching);
 // default, default returns ""
 std::string ToSymbol(Caching, Caching);
-Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co);
-std::pair<Caching, Caching> ConvertLSCCacheOpts(LSC_CACHE_OPT col1,
-                                                LSC_CACHE_OPT col3);
+
 
 struct ImmOff {
   bool is2d;

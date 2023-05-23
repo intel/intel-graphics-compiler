@@ -55,80 +55,24 @@ static std::string fmtSignedHexTerm(int64_t val) {
 ///////////////////////////////////////////////////////////////////////////////
 std::string vISA::ToSymbol(MsgOp op) {
   switch (op) {
-  case MsgOp::LOAD:
-    return "load";
-  case MsgOp::LOAD_QUAD:
-    return "load_quad";
-  case MsgOp::LOAD_STRIDED:
-    return "load_strided";
-  case MsgOp::LOAD_BLOCK2D:
-    return "load_block2d";
-  case MsgOp::STORE:
-    return "store";
-  case MsgOp::STORE_QUAD:
-    return "store_quad";
-  case MsgOp::STORE_STRIDED:
-    return "store_strided";
-  case MsgOp::STORE_BLOCK2D:
-    return "store_block2d";
-  case MsgOp::LOAD_STATUS:
-    return "load_status";
-  // general atomics
-  case MsgOp::ATOMIC_LOAD:
-    return "atomic_load";
-  case MsgOp::ATOMIC_STORE:
-    return "atomic_store";
-  // floating point
-  case MsgOp::ATOMIC_FADD:
-    return "atomic_fadd";
-  case MsgOp::ATOMIC_FSUB:
-    return "atomic_fsub";
-  case MsgOp::ATOMIC_FMIN:
-    return "atomic_fmin";
-  case MsgOp::ATOMIC_FMAX:
-    return "atomic_fmax";
-  case MsgOp::ATOMIC_FCAS:
-    return "atomic_fcas";
-  // integer
-  case MsgOp::ATOMIC_IINC:
-    return "atomic_iinc";
-  case MsgOp::ATOMIC_IDEC:
-    return "atomic_idec";
-  case MsgOp::ATOMIC_IADD:
-    return "atomic_iadd";
-  case MsgOp::ATOMIC_ISUB:
-    return "atomic_isub";
-  case MsgOp::ATOMIC_ICAS:
-    return "atomic_icas";
-  case MsgOp::ATOMIC_SMIN:
-    return "atomic_smin";
-  case MsgOp::ATOMIC_SMAX:
-    return "atomic_smax";
-  case MsgOp::ATOMIC_UMIN:
-    return "atomic_umin";
-  case MsgOp::ATOMIC_UMAX:
-    return "atomic_umax";
-  // integer bitwise
-  case MsgOp::ATOMIC_AND:
-    return "atomic_and";
-  case MsgOp::ATOMIC_XOR:
-    return "atomic_xor";
-  case MsgOp::ATOMIC_OR:
-    return "atomic_or";
-  //
-  case MsgOp::EOT:
-    return "eot";
-  case MsgOp::FENCE:
-    return "fence";
-  case MsgOp::BARRIER:
-    return "signal_barrier";
-  case MsgOp::NBARRIER:
-    return "signal_named_barrier";
-  default:
-    break;
+#define DEFINE_G4_MSGOP(SYMBOL, SYNTAX, ENCODING, GROUP, ATTRS) \
+  case (MsgOp::SYMBOL): return (SYNTAX);
+#include "G4_MsgOpDefs.hpp"
+  default: return "MsgOp::<" + fmtSignedHex(int(op)) + "?>";
   }
-  return "???";
 }
+
+#define DEFINE_G4_MSGOP(SYMBOL, SYNTAX, ENCODING, GROUP, ATTRS) \
+  static_assert(((ENCODING) & ~0x3F) == 0,                                    \
+                #SYMBOL ": MsgOp encoding overflowed");                       \
+  static_assert(((GROUP) & ~0xFFF) == 0,                                      \
+                #SYMBOL ": MsgOp group overflowed");                          \
+  static_assert(((GROUP) & ((GROUP) - 1)) == 0,                               \
+                #SYMBOL ": MsgOp should belong to only one group");           \
+  static_assert(((ATTRS) & ~0xFFFF) == 0,                                     \
+                #SYMBOL ": MsgOp attrs overflowed");
+#include "G4_MsgOpDefs.hpp"
+
 std::string vISA::ToSymbol(vISA::SFID sfid) {
   switch (sfid) {
   case SFID::UGM:
@@ -167,7 +111,7 @@ std::string vISA::ToSymbol(vISA::SFID sfid) {
   case SFID::CRE:
     return "cre";
   default:
-    return ".?";
+    return "SFID::<" + fmtSignedHex(int(sfid)) + "?>";
   }
 }
 
@@ -193,11 +137,10 @@ static std::string ToSymbol(AddrType at) {
   return "?";
 }
 
-bool vISA::IsQuadMessage(MsgOp op) {
+bool vISA::MsgOpHasChMask(MsgOp op) {
   switch (op) {
   case MsgOp::LOAD_QUAD:
   case MsgOp::STORE_QUAD:
-  case MsgOp::LOAD_QUAD_STATUS:
     return true;
   default:
     break;
@@ -205,237 +148,106 @@ bool vISA::IsQuadMessage(MsgOp op) {
   return false;
 }
 
-
-
-MsgOp vISA::ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
-  switch (op) {
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE:
-    return MsgOp::SAMPLE;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_B:
-    return MsgOp::SAMPLE_B;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L:
-    return MsgOp::SAMPLE_L;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C:
-    return MsgOp::SAMPLE_C;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D:
-    return MsgOp::SAMPLE_D;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_B_C:
-    return MsgOp::SAMPLE_B_C;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L_C:
-    return MsgOp::SAMPLE_L_C;
-  case VISASampler3DSubOpCode::VISA_3D_GATHER4:
-    return MsgOp::GATHER4;
-  case VISASampler3DSubOpCode::VISA_3D_GATHER4_C:
-    return MsgOp::GATHER4_C;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D_C:
-    return MsgOp::SAMPLE_D_C;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_LZ:
-    return MsgOp::SAMPLE_LZ;
-  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C_LZ:
-    return MsgOp::SAMPLE_C_LZ;
-  case VISASampler3DSubOpCode::VISA_3D_LD_LZ:
-    return MsgOp::LD_LZ;
-  case VISASampler3DSubOpCode::VISA_3D_LD2DMS_W:
-    return MsgOp::LD2DMS_W;
-  case VISASampler3DSubOpCode::VISA_3D_LD_MCS:
-    return MsgOp::LD_MCS;
-  default:
-    return MsgOp::INVALID;
-  }
-}
-
-MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
-  switch (op) {
-  case LSC_OP::LSC_LOAD:
-    return MsgOp::LOAD;
-  case LSC_OP::LSC_LOAD_STRIDED:
-    return MsgOp::LOAD_STRIDED;
-  case LSC_OP::LSC_LOAD_QUAD:
-    return MsgOp::LOAD_QUAD;
-  case LSC_OP::LSC_LOAD_BLOCK2D:
-    return MsgOp::LOAD_BLOCK2D;
-  case LSC_OP::LSC_LOAD_STATUS:
-    return MsgOp::LOAD_STATUS;
-  case LSC_OP::LSC_STORE:
-    return MsgOp::STORE;
-  case LSC_OP::LSC_STORE_STRIDED:
-    return MsgOp::STORE_STRIDED;
-  case LSC_OP::LSC_STORE_QUAD:
-    return MsgOp::STORE_QUAD;
-  case LSC_OP::LSC_STORE_BLOCK2D:
-    return MsgOp::STORE_BLOCK2D;
-  //
-  case LSC_OP::LSC_ATOMIC_IINC:
-    return MsgOp::ATOMIC_IINC;
-  case LSC_OP::LSC_ATOMIC_IDEC:
-    return MsgOp::ATOMIC_IDEC;
-  case LSC_OP::LSC_ATOMIC_LOAD:
-    return MsgOp::ATOMIC_LOAD;
-  case LSC_OP::LSC_ATOMIC_STORE:
-    return MsgOp::ATOMIC_STORE;
-  //
-  case LSC_OP::LSC_ATOMIC_IADD:
-    return MsgOp::ATOMIC_IADD;
-  case LSC_OP::LSC_ATOMIC_ISUB:
-    return MsgOp::ATOMIC_ISUB;
-  //
-  case LSC_OP::LSC_ATOMIC_SMIN:
-    return MsgOp::ATOMIC_SMIN;
-  case LSC_OP::LSC_ATOMIC_SMAX:
-    return MsgOp::ATOMIC_SMAX;
-  case LSC_OP::LSC_ATOMIC_UMIN:
-    return MsgOp::ATOMIC_UMIN;
-  case LSC_OP::LSC_ATOMIC_UMAX:
-    return MsgOp::ATOMIC_UMAX;
-  //
-  case LSC_OP::LSC_ATOMIC_ICAS:
-    return MsgOp::ATOMIC_ICAS;
-  case LSC_OP::LSC_ATOMIC_FADD:
-    return MsgOp::ATOMIC_FADD;
-  case LSC_OP::LSC_ATOMIC_FSUB:
-    return MsgOp::ATOMIC_FSUB;
-  case LSC_OP::LSC_ATOMIC_FMIN:
-    return MsgOp::ATOMIC_FMIN;
-  case LSC_OP::LSC_ATOMIC_FMAX:
-    return MsgOp::ATOMIC_FMAX;
-  case LSC_OP::LSC_ATOMIC_FCAS:
-    return MsgOp::ATOMIC_FCAS;
-  //
-  case LSC_OP::LSC_ATOMIC_AND:
-    return MsgOp::ATOMIC_AND;
-  case LSC_OP::LSC_ATOMIC_XOR:
-    return MsgOp::ATOMIC_XOR;
-  case LSC_OP::LSC_ATOMIC_OR:
-    return MsgOp::ATOMIC_OR;
-  case LSC_OP::LSC_FENCE:
-    return MsgOp::FENCE;
-  default:
-    return MsgOp::INVALID;
-  }
-}
-
-uint32_t vISA::GetRenderTargetMsgOpEncoding(MsgOp m) {
+uint32_t vISA::MsgOpEncode(MsgOp m) {
   switch (m) {
-  case MsgOp::RTREAD:
-    return 2;
-  case MsgOp::RTWRITE:
-    return 6;
-  case MsgOp::RTDSWRITE:
-    return 5;
+#define DEFINE_G4_MSGOP(SYMBOL, SYNTAX, ENCODING, GROUP, ATTRS) \
+  case (MsgOp::SYMBOL): return (ENCODING);
+#include "G4_MsgOpDefs.hpp"
   default:
     vISA_ASSERT_UNREACHABLE("Invalid msg op");
+    return 0x3F; // return all 1's to try and generate an error (0 is load in LSC)
   }
-  return 0;
 }
 
-uint32_t vISA::GetSamplerMsgOpEncoding(MsgOp m) {
-  switch (m) {
-  case MsgOp::SAMPLE:
-    return 0;
-  case MsgOp::SAMPLE_B:
-    return 1;
-  case MsgOp::SAMPLE_L:
-    return 2;
-  case MsgOp::SAMPLE_C:
-    return 3;
-  case MsgOp::SAMPLE_D:
-    return 4;
-  case MsgOp::SAMPLE_B_C:
-    return 5;
-  case MsgOp::SAMPLE_L_C:
-    return 6;
-  case MsgOp::SAMPLE_D_C:
-    return 20;
-  case MsgOp::SAMPLE_LZ:
-    return 24;
-  case MsgOp::SAMPLE_C_LZ:
-    return 25;
-  case MsgOp::GATHER4:
-    return 8;
-  case MsgOp::GATHER4_C:
-    return 16;
-  case MsgOp::LD_LZ:
-    return 26;
-  case MsgOp::LD2DMS_W:
-    return 28;
-  case MsgOp::LD_MCS:
-    return 29;
-  default:
-    vISA_ASSERT_UNREACHABLE("Invalid msg op");
-  }
-  return 0;
-}
+MsgOp vISA::MsgOpDecode(SFID sfid, uint32_t enc) {
+  switch (sfid)
+  {
+  //////////////////////////////
+  // decode LSC
+  case SFID::UGM:
+  case SFID::UGML:
+  case SFID::TGM:
+  case SFID::SLM:
+    switch (enc)
+    {
+#define DEFINE_G4_MSGOP_LSC_LOAD(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#define DEFINE_G4_MSGOP_LSC_STORE(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#define DEFINE_G4_MSGOP_LSC_ATOMIC(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#define DEFINE_G4_MSGOP_LSC_OTHER(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#include "G4_MsgOpDefs.hpp"
+    default: break; // fallthrough to INVALID
+    }
+    break;
 
-uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
-  switch (m) {
-  case MsgOp::LOAD:
-    return 0;
-  case MsgOp::LOAD_QUAD:
-    return 2;
-  case MsgOp::LOAD_BLOCK2D:
-    return 3;
-  case MsgOp::STORE:
-    return 4;
-  case MsgOp::STORE_QUAD:
-    return 6;
-  case MsgOp::STORE_BLOCK2D:
-    return 7;
-  case MsgOp::ATOMIC_IINC:
-    return 8;
-  case MsgOp::ATOMIC_IDEC:
-    return 9;
-  case MsgOp::ATOMIC_LOAD:
-    return 10;
-  case MsgOp::ATOMIC_STORE:
-    return 11;
-  case MsgOp::ATOMIC_IADD:
-    return 12;
-  case MsgOp::ATOMIC_ISUB:
-    return 13;
-  case MsgOp::ATOMIC_SMIN:
-    return 14;
-  case MsgOp::ATOMIC_SMAX:
-    return 15;
-  case MsgOp::ATOMIC_UMIN:
-    return 16;
-  case MsgOp::ATOMIC_UMAX:
-    return 17;
-  case MsgOp::ATOMIC_ICAS:
-    return 18;
-  case MsgOp::ATOMIC_FADD:
-    return 19;
-  case MsgOp::ATOMIC_FSUB:
-    return 20;
-  case MsgOp::ATOMIC_FMIN:
-    return 21;
-  case MsgOp::ATOMIC_FMAX:
-    return 22;
-  case MsgOp::ATOMIC_FCAS:
-    return 23;
-  case MsgOp::ATOMIC_AND:
-    return 24;
-  case MsgOp::ATOMIC_OR:
-    return 25;
-  case MsgOp::ATOMIC_XOR:
-    return 26;
-  case MsgOp::LOAD_STATUS:
-    return 27;
-  case MsgOp::READ_STATE_INFO:
-    return 30;
-  case MsgOp::FENCE:
-    return 31;
-  //
-  case MsgOp::EOT:
-    return 0x0;
-  case MsgOp::BARRIER:
-    return 0x4;
-  case MsgOp::NBARRIER:
-    return 0x5;
-  // TODO: other ops
+  //////////////////////////////
+  // decode gatway
+  case SFID::GATEWAY:
+    switch (enc)
+    {
+#define DEFINE_G4_MSGOP_GTWY(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#include "G4_MsgOpDefs.hpp"
+    default: break; // fallthrough to INVALID
+    }
+    break;
+
+  //////////////////////////////
+  // decode sampler
+  case SFID::SAMPLER:
+    switch (enc)
+    {
+#define DEFINE_G4_MSGOP_SMPL_NORMAL(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#define DEFINE_G4_MSGOP_SMPL_GATHER(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#include "G4_MsgOpDefs.hpp"
+    default: break; // fallthrough to INVALID
+    }
+    break;
+
+  //////////////////////////////
+  // decode render target
+  case SFID::DP_RC:
+    switch (enc)
+    {
+#define DEFINE_G4_MSGOP_RENDER(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#include "G4_MsgOpDefs.hpp"
+    default: break; // fallthrough to INVALID
+    }
+    break;
+
+  //////////////////////////////
+  // decode render target
+  case SFID::RTHW:
+    switch (enc)
+    {
+#define DEFINE_G4_MSGOP_RTA(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#include "G4_MsgOpDefs.hpp"
+    default: break; // fallthrough to INVALID
+    }
+    break;
+
+  //////////////////////////////
+  // decode render target
+  case SFID::BTD:
+    switch (enc)
+    {
+#define DEFINE_G4_MSGOP_BTD(SYMBOL, SYNTAX, ENCODING, ATTRS) \
+    case ENCODING: return MsgOp::SYMBOL;
+#include "G4_MsgOpDefs.hpp"
+    default: break; // fallthrough to INVALID
+    }
+    break;
   default:
-    vISA_ASSERT_UNREACHABLE("Invalid msg op");
+    break; // invalid SFID; fallthrough
   }
-  return 0;
+  return MsgOp::INVALID;
 }
 
 // data size
@@ -458,26 +270,6 @@ std::string vISA::ToSymbol(DataSize d) {
   }
 }
 
-DataSize vISA::ConvertLSCDataSize(LSC_DATA_SIZE ds) {
-  switch (ds) {
-  case LSC_DATA_SIZE_8b:
-    return DataSize::D8;
-  case LSC_DATA_SIZE_16b:
-    return DataSize::D16;
-  case LSC_DATA_SIZE_32b:
-    return DataSize::D32;
-  case LSC_DATA_SIZE_64b:
-    return DataSize::D64;
-  case LSC_DATA_SIZE_8c32b:
-    return DataSize::D8U32;
-  case LSC_DATA_SIZE_16c32b:
-    return DataSize::D16U32;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid data size");
-  }
-  return DataSize::INVALID;
-}
-
 uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
   switch (ds) {
   case DataSize::D8:
@@ -496,18 +288,6 @@ uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
     vISA_ASSERT_UNREACHABLE("invalid data size");
   }
   return 0;
-}
-
-DataOrder vISA::ConvertLSCDataOrder(LSC_DATA_ORDER dord) {
-  switch (dord) {
-  case LSC_DATA_ORDER_NONTRANSPOSE:
-    return DataOrder::NONTRANSPOSE;
-  case LSC_DATA_ORDER_TRANSPOSE:
-    return DataOrder::TRANSPOSE;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid data order");
-  }
-  return DataOrder::INVALID;
 }
 
 uint32_t vISA::GetDataOrderEncoding(DataOrder dord) {
@@ -579,29 +359,6 @@ std::string vISA::ToSymbol(VecElems v) {
   }
 }
 
-VecElems vISA::ConvertLSCDataElems(LSC_DATA_ELEMS de) {
-  switch (de) {
-  case LSC_DATA_ELEMS_1:
-    return VecElems::V1;
-  case LSC_DATA_ELEMS_2:
-    return VecElems::V2;
-  case LSC_DATA_ELEMS_3:
-    return VecElems::V3;
-  case LSC_DATA_ELEMS_4:
-    return VecElems::V4;
-  case LSC_DATA_ELEMS_8:
-    return VecElems::V8;
-  case LSC_DATA_ELEMS_16:
-    return VecElems::V16;
-  case LSC_DATA_ELEMS_32:
-    return VecElems::V32;
-  case LSC_DATA_ELEMS_64:
-    return VecElems::V64;
-  default:
-    vISA_ASSERT_UNREACHABLE("number of data elements");
-  }
-  return VecElems::INVALID;
-}
 VecElems vISA::ToVecElems(int ves) {
   switch (ves) {
   case 1: return VecElems::V1;
@@ -680,34 +437,6 @@ std::string vISA::ToSymbol(Caching l1, Caching l3) {
     return "";
   else
     return ToSymbol(l1) + ToSymbol(l3);
-}
-
-Caching vISA::ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
-  switch (co) {
-  case LSC_CACHING_DEFAULT:
-    return Caching::DF;
-  case LSC_CACHING_UNCACHED:
-    return Caching::UC;
-  case LSC_CACHING_CACHED:
-    return Caching::CA;
-  case LSC_CACHING_WRITEBACK:
-    return Caching::WB;
-  case LSC_CACHING_WRITETHROUGH:
-    return Caching::WT;
-  case LSC_CACHING_STREAMING:
-    return Caching::ST;
-  case LSC_CACHING_READINVALIDATE:
-    return Caching::RI;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid caching");
-  }
-  return Caching::INVALID;
-}
-
-std::pair<Caching, Caching> vISA::ConvertLSCCacheOpts(LSC_CACHE_OPT col1,
-                                                      LSC_CACHE_OPT col3) {
-
-  return std::make_pair(ConvertLSCCacheOpt(col1), ConvertLSCCacheOpt(col3));
 }
 
 int ElemsPerAddr::getCount() const {

@@ -2308,7 +2308,6 @@ public:
 
 private:
   G4_SrcRegRegion *createBindlessExDesc(uint32_t exdesc);
-  bool isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) const;
   uint32_t createSamplerMsgDesc(VISASampler3DSubOpCode samplerOp,
                                 bool isNativeSIMDSize, bool isFP16Return,
                                 bool isFP16Input) const;
