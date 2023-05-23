@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/InitializePasses.h"
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Probe/Assertion.h"
+#include <DebugInfo/DwarfDebug.cpp>
 
 using namespace llvm;
 using namespace IGC;
@@ -2785,9 +2786,10 @@ void LdStCombine::combineStores(Function& F)
     // otherwise, return false.
     auto canCombineStoresAcross = [&](Instruction* I)
     {
-        if (I->isFenceLike()) {
+        // Can't combine for non-debug fence like instructions
+        if (I->isFenceLike() && !IsDebugInst(I))
             return false;
-        }
+
         if (isa<LoadInst>(I) ||
             isa<StoreInst>(I) ||
             I->mayReadOrWriteMemory()) {
