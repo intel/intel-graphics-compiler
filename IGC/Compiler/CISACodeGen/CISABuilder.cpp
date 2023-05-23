@@ -2477,8 +2477,12 @@ namespace IGC
         bool nonUniformState)
     {
 
-        if (!m_program->m_Platform->hasSamplerSupport())
+        if (!m_program->m_Platform->hasSamplerSupport()) {
+            CodeGenContext *context = m_program->GetContext();
+            context->EmitError(
+                "sampler messages not supported on this platform", nullptr);
             return;
+        }
 
         int numMsgSpecificOpnds = numSources;
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
@@ -2535,9 +2539,12 @@ namespace IGC
         bool zeroLOD,
         bool feedbackEnable)
     {
-
-        if (!m_program->m_Platform->hasSamplerSupport())
+        if (!m_program->m_Platform->hasSamplerSupport()) {
+            CodeGenContext *context = m_program->GetContext();
+            context->EmitError(
+                "sampler messages not supported on this platform", nullptr);
             return;
+        }
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
@@ -2599,8 +2606,12 @@ namespace IGC
         bool feedbackEnable)
     {
 
-        if (!m_program->m_Platform->hasSamplerSupport())
+        if (!m_program->m_Platform->hasSamplerSupport()) {
+            CodeGenContext *context = m_program->GetContext();
+            context->EmitError(
+                "sampler messages not supported on this platform", nullptr);
             return;
+        }
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         bool isIdxLT16;
