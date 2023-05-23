@@ -19,11 +19,11 @@ declare void @llvm.trap()
 
 ; CHECK: test_trap
 ; CHECK: mov (M1, 8) [[PAYLOAD:V[0-9]+]](0,0)<1> %r0(0,0)<1;1,0>
-; CHECK: raw_sends.7.eot.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
+; CHECK: raw_sends_eot.7.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
 
 ; CHECK-LSC: test_trap
 ; CHECK-LSC: mov (M1, 8) [[PAYLOAD:V[0-9]+]](0,0)<1> %r0(0,0)<1;1,0>
-; CHECK-LSC: raw_sends.3.eot.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
+; CHECK-LSC: raw_sends_eot.3.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
 
 define spir_kernel void @test_trap(<4 x i32> %arg) local_unnamed_addr #0 {
   %1 = shl <4 x i32> %arg, <i32 3, i32 3, i32 3, i32 3>

@@ -1114,17 +1114,19 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
     uint8_t numSrc0 = getPrimitiveOperand<uint8_t>(inst, i++);
     uint8_t numSrc1 = getPrimitiveOperand<uint8_t>(inst, i++);
     uint8_t numDst = getPrimitiveOperand<uint8_t>(inst, i++);
-    std::string opstring =
-        (modifiers & 0x1) == 1 ? "raw_sendsc." : "raw_sends.";
+
+    bool isCond = modifiers & (0x1 << 0);
+    bool issuesEoT = modifiers & (0x1 << 1);
+
+    std::string opstring = !issuesEoT && !isCond  ? "raw_sends."
+                           : issuesEoT && !isCond ? "raw_sends_eot."
+                           : !issuesEoT && isCond ? "raw_sendsc."
+                                                  : "raw_sendsc_eot.";
 
     sstr << printPredicate(inst->opcode, inst->pred) << opstring.c_str();
 
     uint8_t ffid = getPrimitiveOperand<uint8_t>(inst, i++);
     sstr << (unsigned)ffid << ".";
-
-    if (modifiers & 0x2) {
-      sstr << "eot.";
-    }
 
     sstr << (unsigned)numSrc0 << "." << (unsigned)numSrc1 << "."
          << (unsigned)numDst << " "
