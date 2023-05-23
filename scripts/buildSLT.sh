@@ -42,11 +42,16 @@ if [ "$UBUNTU_VERSION" = "20.04" ]; then
     apt-get install -y cmake
 fi
 
-if [ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" = "15" ]; then
-    echo "[Build Status] Retrieve the LLVM archive signature for LLVM 15 on Ubuntu 22.04";
+if [ "$UBUNTU_VERSION" = "20.04" ] && [ "$LLVM_VERSION" -ge 14 ] || [ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" -ge 15 ]
+then
+    echo "[Build Status] Retrieve the LLVM archive signature for LLVM $LLVM_VERSION on Ubuntu $UBUNTU_VERSION";
     wget -q https://apt.llvm.org/llvm-snapshot.gpg.key
     apt-key add llvm-snapshot.gpg.key
-    add-apt-repository 'deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-15 main'
+    case "$UBUNTU_VERSION" in
+        20.04) OS_HANDLE=focal;;
+        22.04) OS_HANDLE=jammy;;
+    esac
+    add-apt-repository "deb http://apt.llvm.org/$OS_HANDLE/ llvm-toolchain-$OS_HANDLE-$LLVM_VERSION main"
 fi
 
 apt-get install -y llvm-"$LLVM_VERSION" llvm-"$LLVM_VERSION"-dev clang-"$LLVM_VERSION" liblld-"$LLVM_VERSION" liblld-"$LLVM_VERSION"-dev
