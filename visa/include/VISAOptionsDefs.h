@@ -270,7 +270,15 @@ DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, "-abortOnSpill", UNUSED,
                 0)
 DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceBCR, ET_BOOL, "-forceBCR", UNUSED, false)
-DEF_VISA_OPTION(vISA_enableBundleCR, ET_BOOL, "-enableBundleCR", UNUSED, true)
+
+// clang-format off
+// Enable bundle conflict reduction: put operands of instruction into different GRF bundles.
+// Value: 0 disable, 1 dpas instruction, 2 non-dpas instructions, 3 all instructions
+// clang-format on
+DEF_VISA_OPTION(vISA_enableBundleCR, ET_INT32, "-enableBundleCR",
+                "USAGE: -enableBundleCR <0|1|2|3>: 0, disable, 1 dpas "
+                "instructions, 2 non-dpas instructions, 3 all",
+                1)
 DEF_VISA_OPTION(vISA_IntrinsicSplit, ET_BOOL, "-doSplit", UNUSED, false)
 DEF_VISA_OPTION(vISA_LraFFWindowSize, ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",

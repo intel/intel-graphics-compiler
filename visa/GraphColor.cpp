@@ -854,16 +854,17 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
       }
     }
   }
-
   // Add potential bundle conflicts, so that RA can handle it when option
-  // -enableBundleCR is enabled
-  if (dcls[0] && dcls[1]) {
-    gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
-    gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
-  }
-  if (dcls[1] && dcls[2]) {
-    gra.addBundleConflictDcl(dcls[2], dcls[1], offset[2] - offset[1]);
-    gra.addBundleConflictDcl(dcls[1], dcls[2], offset[1] - offset[2]);
+  // -enableBundleCR with value 2 or 3
+  if (gra.kernel.getuInt32Option(vISA_enableBundleCR) & 2) {
+    if (dcls[0] && dcls[1]) {
+      gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
+      gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
+    }
+    if (dcls[1] && dcls[2]) {
+      gra.addBundleConflictDcl(dcls[2], dcls[1], offset[2] - offset[1]);
+      gra.addBundleConflictDcl(dcls[1], dcls[2], offset[1] - offset[2]);
+    }
   }
 
   for (int k = 0; k < 2; k++) {
@@ -5875,7 +5876,7 @@ void PhyRegUsage::updateRegUsage(LiveRange *lr) {
 
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
                               bool doBankConflict, bool highInternalConflict,
-                              bool honorHints) {
+                              bool doBundleConflict, bool honorHints) {
   RA_TRACE(std::cout << "\t--"
                      << (colorHeuristicGRF == ROUND_ROBIN ? "round-robin"
                                                           : "first-fit")
@@ -5921,8 +5922,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
   // FIXME: the bank configs should be computed in PhyRegAllocationState instead
   // of pased in, but the strange early return from above prevents this..
   PhyRegAllocationState parms(gra, lrs, rFile, maxGRFCanBeUsed, bank1_start,
-                              bank1_end, bank2_start, bank2_end,
-                              doBankConflict);
+                              bank1_end, bank2_start, bank2_end, doBankConflict,
+                              doBundleConflict);
   bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
   auto &varSplitPass = *gra.getVarSplitPass();
@@ -6168,7 +6169,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       // correctness.
       resetTemporaryRegisterAssignments();
       return assignColors(colorHeuristicGRF, doBankConflict,
-                          highInternalConflict, false);
+                          highInternalConflict, false, false);
     }
 
     if (honorHints && gra.getIterNo() == 0) {
@@ -6692,6 +6693,7 @@ void GraphColor::gatherScatterForbiddenWA() {
 bool GraphColor::regAlloc(bool doBankConflictReduction,
                           bool highInternalConflict, const RPE *rpe) {
   bool useSplitLLRHeuristic = false;
+  unsigned doBundleConflictReduction = kernel.getuInt32Option(vISA_enableBundleCR);
 
   RA_TRACE(std::cout << "\t--# variables: " << liveAnalysis.getNumSelectedVar()
                      << "\n");
@@ -6820,10 +6822,11 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
 
     if (kernel.getOption(vISA_RoundRobin) && !hasStackCall) {
       if (assignColors(ROUND_ROBIN, doBankConflictReduction,
-                       highInternalConflict) == false) {
+                       highInternalConflict,
+                       doBundleConflictReduction) == false) {
         resetTemporaryRegisterAssignments();
         bool success = assignColors(FIRST_FIT, doBankConflictReduction,
-                                    highInternalConflict);
+                         highInternalConflict, doBundleConflictReduction);
 
         if (!success && doBankConflictReduction && isHybrid) {
           return false;
@@ -6832,14 +6835,13 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         if (!kernel.getOption(vISA_forceBCR)) {
           if (!success && doBankConflictReduction) {
             resetTemporaryRegisterAssignments();
-            kernel.getOptions()->setOption(vISA_enableBundleCR, false);
             assignColors(FIRST_FIT, false, false);
-            kernel.getOptions()->setOption(vISA_enableBundleCR, true);
           }
         }
       }
     } else {
-      bool success = assignColors(FIRST_FIT, true, highInternalConflict);
+      bool success = assignColors(FIRST_FIT, true, highInternalConflict,
+                                  doBundleConflictReduction);
       if (!success) {
         resetTemporaryRegisterAssignments();
         assignColors(FIRST_FIT, false, false);

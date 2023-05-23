@@ -47,6 +47,7 @@ class PhyRegAllocationState {
   unsigned int bank2_start;
   unsigned int bank2_end;
   bool doBankConflict;
+  bool doBundleConflict;
   // FIXME: Why do we need both totalGRF and maxGRFCanBeUsed?
   unsigned int totalGRF;
   const LiveRangeVec& lrs;
@@ -57,7 +58,8 @@ public:
                         G4_RegFileKind r,
                         unsigned int m, unsigned int bank1_s,
                         unsigned int bank1_e, unsigned int bank2_s,
-                        unsigned int bank2_e, bool doBC);
+                        unsigned int bank2_e, bool doBC,
+                        bool doBundleReduction);
 
   void setStartGRF(unsigned startGRF) { startGRFReg = startGRF; }
 };
@@ -133,6 +135,7 @@ class PhyRegUsage {
 
   bool honorBankBias; // whether we honor the bank bias assigned by the bank
                       // conflict avoidance heuristic
+  bool avoidBundleConflict; // whether avoid bundle conflict or not
   bool overlapTest;   // set to true only when current dcl has compatible ranges
                       // marked by augmentation
 

@@ -727,7 +727,8 @@ class GraphColor {
   void relaxNeighborDegreeGRF(LiveRange *lr);
   void relaxNeighborDegreeARF(LiveRange *lr);
   bool assignColors(ColorHeuristic heuristicGRF, bool doBankConflict,
-                    bool highInternalConflict, bool honorHints = true);
+                    bool highInternalConflict, bool doBundleConflict = false,
+                    bool honorHints = true);
 
   void clearSpillAddrLocSignature() {
     std::fill(spAddrRegSig.begin(), spAddrRegSig.end(), 0);
@@ -1071,6 +1072,7 @@ public:
   IncrementalRA incRA;
 
 
+  bool avoidBundleConflict = false;
   VarSplitPass *getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
   unsigned getSubRetLoc(const G4_BB *bb) {

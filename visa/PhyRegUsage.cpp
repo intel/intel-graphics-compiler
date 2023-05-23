@@ -15,6 +15,7 @@ using namespace vISA;
 PhyRegUsage::PhyRegUsage(PhyRegAllocationState &p, FreePhyRegs &pFPR)
     : gra(p.gra), AS(p), FPR(pFPR), lrs(p.lrs), colorHeuristic(FIRST_FIT),
       totalGRFNum(p.totalGRF), honorBankBias(p.doBankConflict),
+      avoidBundleConflict(p.doBundleConflict),
       builder(*p.gra.kernel.fg.builder), regPool(p.gra.regPool) {
   maxGRFCanBeUsed = p.maxGRFCanBeUsed;
   regFile = p.rFile;
@@ -129,7 +130,7 @@ static int getSubAlignInWords(G4_SubReg_Align subAlign) {
 unsigned short PhyRegUsage::getOccupiedBundle(const G4_Declare *dcl) const {
   unsigned short occupiedBundles = 0;
   unsigned bundleNum = 0;
-  if (!builder.getOption(vISA_enableBundleCR)) {
+  if (!avoidBundleConflict) {
     return occupiedBundles;
   }
 
@@ -1149,11 +1150,12 @@ void LiveRange::dump() const {
 }
 
 PhyRegAllocationState::PhyRegAllocationState(
-    GlobalRA &g, const LiveRangeVec& l, G4_RegFileKind r,
-    unsigned int m, unsigned int bank1_s, unsigned int bank1_e,
-    unsigned int bank2_s, unsigned int bank2_e, bool doBC)
+    GlobalRA &g, const LiveRangeVec &l, G4_RegFileKind r, unsigned int m,
+    unsigned int bank1_s, unsigned int bank1_e, unsigned int bank2_s,
+    unsigned int bank2_e, bool doBC, bool doBundleReduction)
     : gra(g), lrs(l), rFile(r), maxGRFCanBeUsed(m), startGRFReg(0),
       startARFReg(0), startFlagReg(0), bank1_start(bank1_s), bank1_end(bank1_e),
-      bank2_start(bank2_s), bank2_end(bank2_e), doBankConflict(doBC) {
+      bank2_start(bank2_s), bank2_end(bank2_e), doBankConflict(doBC),
+      doBundleConflict(doBundleReduction) {
   totalGRF = gra.kernel.getNumRegTotal();
 }
