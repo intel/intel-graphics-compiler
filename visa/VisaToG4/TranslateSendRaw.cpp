@@ -46,14 +46,17 @@ int IR_Builder::translateVISARawSendInst(
       intToSFID(exDesc & 0xF, getPlatform()), desc, exDesc, 0,
       getSendAccessType(isRead, isWrite), nullptr, isValidFuncCtrl);
 
-  if (isExDescEOT(exDesc)) {
-    sendMsgDesc->setEOT();
-  }
-
   // sanity check on srcLen/dstLen moved to ISA verifier
 
-  createSendInst(predOpnd, (modifiers & 1) ? G4_sendc : G4_send, exsize,
-                 dstOpnd, msgOpnd, msgDescOpnd, inst_opt, sendMsgDesc, true);
+  G4_InstSend *inst =
+    createSendInst(predOpnd, (modifiers & 1) ? G4_sendc : G4_send, exsize,
+                   dstOpnd, msgOpnd, msgDescOpnd, inst_opt, sendMsgDesc, true);
+  // for legacy platforms (pre-TGL) where ExDesc has EOT bit
+  // (also possible newer platforms interpret ExDesc[5] as EOT in raw send)
+  bool isEotInExDesc = exDesc & 0x20;
+  if (isEotInExDesc) {
+    inst->setEOT();
+  }
 
   return VISA_SUCCESS;
 }
@@ -110,10 +113,6 @@ int IR_Builder::translateVISARawSendsInst(
       intToSFID(ffid, getPlatform()), descVal, exDescVal, numSrc1,
       SendAccess::READ_WRITE, nullptr, isValidFuncCtrl);
 
-  if (hasEOT) {
-    sendMsgDesc->setEOT();
-  }
-
   vISA_ASSERT(sendMsgDesc->MessageLength() == numSrc0,
                "message length mismatch for raw sends");
   if (!dstOpnd->isNullReg()) {
@@ -128,6 +127,9 @@ int IR_Builder::translateVISARawSendsInst(
                       dstOpnd, src0->asSrcRegRegion(), src1->asSrcRegRegion(),
                       msgDescOpnd, inst_opt, sendMsgDesc, temp_exdesc_src,
                       true);
+  if (hasEOT) {
+    sendInst->setEOT();
+  }
   if (getOption(vISA_renderTargetWriteSendReloc) &&
     dstOpnd->isNullReg() &&
     SFID::DP_RC == intToSFID(ffid, getPlatform()))

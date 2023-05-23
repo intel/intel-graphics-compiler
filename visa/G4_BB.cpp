@@ -1213,7 +1213,7 @@ INST_LIST_ITER G4_BB::getFirstInsertPos() {
 void G4_BB::addEOTSend(G4_INST *lastInst) {
 
   // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
-  // send (8) null r1 0x27 desc
+  // send (1) null r1 0x27 desc
   IR_Builder *builder = parent->builder;
   G4_Declare *dcl =
       builder->createSendPayloadDcl(builder->numEltPerGRF<Type_UD>(), Type_UD);
@@ -1241,9 +1241,10 @@ void G4_BB::addEOTSend(G4_INST *lastInst) {
 
   auto msgDesc =
       builder->createGeneralMsgDesc(desc, exdesc, SendAccess::WRITE_ONLY);
-  G4_INST *sendInst = builder->createSendInst(
+  G4_InstSend *sendInst = builder->createSendInst(
       NULL, G4_send, g4::SIMD1, sendDst, sendSrc,
       builder->createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, false);
+  sendInst->setEOT();
   sendInst->inheritDIFrom(movInst);
   instList.push_back(sendInst);
 

@@ -225,6 +225,9 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
               opt),
       msgDesc(md) {
   md->setExecSize(size);
+  // convert legacy EOT to instruction option if it slipped through in ExDesc[5]
+  if (md->hasLegacyEoT())
+    setEOT();
 }
 
 G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
@@ -237,6 +240,9 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
       msgDesc(md) {
   setSrc(src3extDesc, 3);
   md->setExecSize(size);
+  // convert legacy EOT to instruction option if it slipped through in ExDesc[5]
+  if (md->hasLegacyEoT())
+    setEOT();
 }
 
 
@@ -3295,9 +3301,6 @@ void G4_INST::emit_options(std::ostream &output) const {
   ////////////////////////////////////////////////
   // bitset options
   G4_InstOpts currOpts = option;
-  if (isEOT()) {
-    currOpts |= InstOpt_EOT;
-  }
 
   // strip out stuff we handle elsewhere
   currOpts &= ~(InstOpt_QuarterMasks | InstOpt_WriteEnable);

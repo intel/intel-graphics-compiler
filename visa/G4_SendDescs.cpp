@@ -806,7 +806,6 @@ G4_SendDescRaw::G4_SendDescRaw(uint32_t fCtrl, uint32_t regs2rcv,
   extDesc.layout.extFuncCtrl = extFCtrl;
 
   src1Len = extMsgLen;     // [10:6]
-  eotAfterMessage = false; // [5]
   sfid = fID;
 
   accessType = access;
@@ -838,7 +837,6 @@ G4_SendDescRaw::G4_SendDescRaw(uint32_t descBits, uint32_t extDescBits,
   desc.value = descBits;
   extDesc.value = extDescBits;
   src1Len = (extDescBits >> 6) & 0x1F;  // [10:6]
-  eotAfterMessage = extDesc.layout.eot; // [5]
 
   if (bti && bti->isImm()) {
     setBindingTableIdx((unsigned)bti->asImm()->getInt());
@@ -874,7 +872,6 @@ G4_SendDescRaw::G4_SendDescRaw(SFID _sfid, uint32_t _desc, uint32_t _extDesc,
   desc.value = _desc;
   extDesc.value = _extDesc;
   src1Len = _src1Len;
-  eotAfterMessage = false;
 }
 
 uint32_t G4_SendDescRaw::getHdcMessageType() const {
@@ -937,16 +934,6 @@ LSC_DATA_ORDER G4_SendDescRaw::getLscDataOrder() const {
   }
 }
 
-
-bool G4_SendDescRaw::setEOT() {
-  eotAfterMessage = true;
-
-  if (isLscOp())
-    return true;
-
-  extDesc.layout.eot = true; // for ancient platforms/encoders
-  return true;
-}
 
 static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType,
                                   const IR_Builder &irb) {

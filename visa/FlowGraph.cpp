@@ -1077,21 +1077,7 @@ void FlowGraph::handleExit() {
                 !(secondToLastInst->getMsgDesc()->getSrc1LenRegs() > 2 &&
                   VISA_WA_CHECK(builder->getPWaTable(),
                                 WaSendsSrc1SizeLimitWhenEOT))) {
-              G4_SendDesc *desc = secondToLastInst->getMsgDesc();
-              desc->setEOT();
               secondToLastInst->setEOT();
-              if (secondToLastInst->isSplitSend()) {
-                G4_SendDescRaw *rawDesc = secondToLastInst->getMsgDescRaw();
-                if (rawDesc != nullptr &&
-                    secondToLastInst->getMsgExtDescOperand()->isImm())
-                {
-                  secondToLastInst->setSrc(
-                      builder->createImm(
-                          rawDesc->getExtendedDesc(),
-                          Type_UD),
-                      3);
-                }
-              }
               needsEOTSend = false;
               if (builder->getHasNullReturnSampler() &&
                   VISA_WA_CHECK(builder->getPWaTable(), Wa_1607871015)) {

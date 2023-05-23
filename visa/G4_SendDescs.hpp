@@ -334,7 +334,6 @@ public:
   bool isSampler() const { return getSFID() == SFID::SAMPLER; }
   bool isGTWY() const {return getSFID() == SFID::GATEWAY;}
   //
-  virtual bool isEOT() const = 0;
   virtual bool isSLM() const = 0;
   virtual bool isTyped() const = 0;
   virtual bool isAtomic() const = 0;
@@ -402,10 +401,6 @@ public:
   virtual G4_Operand *getSurface() const = 0;
 
   virtual std::string getDescription() const = 0;
-
-  // Sets the EOT bit of the descriptor,
-  // returns false if the descriptor forbids EOT
-  virtual bool setEOT() = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -468,7 +463,6 @@ private:
   // sfid now stored separately from the ExDesc[4:0] since the new LSC format
   // no longer uses ExDesc for that information
   int src1Len;
-  bool eotAfterMessage = false;
 
   // Mimic SendDescLdSt. Valid only for LSC msg. It's set via setLdStAttr(), not
   // ctor (should be removed if lsc switchs to use SendDescLdSt
@@ -542,6 +536,10 @@ public:
 
   uint32_t getFuncCtrl() const { return desc.layout.funcCtrl; }
 
+  // tests ExDesc[5] on legacy platforms
+  // NOTE: use G4_InstSend::isEOT(); EOT is an instruction option now
+  bool hasLegacyEoT() const {return extDesc.layout.eot;}
+
   ////////////////////////////////////////////////////////////////////////
   // LSC-related operations
   bool isLscOp() const { return isLscDescriptor; }
@@ -555,10 +553,6 @@ public:
   LSC_ADDR_TYPE getLscAddrType() const;
   int getLscAddrSizeBytes() const; // e.g. a64 => 8
   LSC_DATA_ORDER getLscDataOrder() const;
-
-  bool isEOTInst() const { return eotAfterMessage; }
-
-  virtual bool setEOT() override;
 
   // query methods common for all raw sends
   uint16_t ResponseLength() const;
@@ -699,7 +693,6 @@ public:
 
   virtual G4_Operand *getSurface() const override { return m_bti; }
   //
-  virtual bool isEOT() const override { return isEOTInst(); }
   virtual bool isSLM() const override { return isSLMMessage(); }
   virtual bool isAtomic() const override { return isAtomicMessage(); }
   virtual bool isBarrier() const override;

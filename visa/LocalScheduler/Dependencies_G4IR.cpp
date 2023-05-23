@@ -196,7 +196,7 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
       // sendc may imply synchronization
       return SEND_BARRIER;
     }
-    if (inst->getMsgDesc()->isEOT()) {
+    if (inst->isEOT()) {
       // Send with the EOT message desciptor is a barrier.
       return SEND_BARRIER;
     } else if (inst->getMsgDesc()->getSFID() == SFID::GATEWAY ||

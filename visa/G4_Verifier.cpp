@@ -277,7 +277,8 @@ void G4Verifier::verifySend(G4_INST *inst) {
     G4_SrcRegRegion *src1 =
         inst->isSplitSend() ? inst->getSrc(1)->asSrcRegRegion() : nullptr;
 
-    if (inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding()) {
+    bool checkEoT = inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding();
+    if (checkEoT) {
       auto checkEOTSrc = [this](G4_SrcRegRegion *src) {
         const unsigned int EOTStart = 112 * kernel.numEltPerGRF<Type_UB>();
         if (src->isNullReg()) {

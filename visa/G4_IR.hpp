@@ -346,8 +346,9 @@ public:
   }
   bool isBfn() const { return op == G4_bfn; }
 
-  // ToDo: get rid of these functions which don't make sense for non-sends
-  virtual bool isEOT() const { return false; }
+  bool isEOT() const { return getOption() & InstOpt_EOT; }
+
+  // ToDo: get rid of this function which does't make sense for non-sends
   virtual G4_SendDesc *getMsgDesc() const { return nullptr; }
 
   const G4_SendDescRaw *getMsgDescRaw() const {
@@ -1226,8 +1227,6 @@ public:
   }
 
   bool isFence() const { return getMsgDesc()->isFence(); }
-
-  bool isEOT() const override { return msgDesc->isEOT(); }
 
   bool isDirectSplittableSend();
 
