@@ -225,6 +225,16 @@ public:
         return this->CreateZExt(int16LaneId, this->getInt32Ty());
     }
 
+    inline Value* get32BitLaneIDReplicate(void)
+    {
+        Module* module = this->GetInsertBlock()->getModule();
+        Function* pFunc = GenISAIntrinsic::getDeclaration(
+            module,
+            GenISAIntrinsic::GenISA_simdLaneIdReplicate);
+        Value* int16LaneId = this->CreateCall(pFunc);
+        return this->CreateZExt(int16LaneId, this->getInt32Ty());
+    }
+
     std::pair<BasicBlock*, BasicBlock*> createTriangleFlow(
         Value* Cond,
         Instruction* InsertPoint,
@@ -416,6 +426,7 @@ private:
         uint32_t dim,
         IGC::CallableShaderTypeMD ShaderTy);
 
+    GenIntrinsicInst* getSr0_0();
     Value* emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     std::pair<uint32_t, uint32_t> getSliceIDBitsInSR0() const;
     std::pair<uint32_t, uint32_t> getDualSubsliceIDBitsInSR0() const;

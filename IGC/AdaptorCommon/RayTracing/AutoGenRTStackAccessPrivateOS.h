@@ -1639,3 +1639,34 @@ void _commitProceduralPrimitiveHit_Xe(Value* arg_0, Value* arg_1)
   return;
 }
 
+auto* _getSyncStackID_Xe(const Twine& _ReturnName = "")
+{
+  auto* V_0 = getSr0_0();
+  auto* V_1 = CreateShl(V_0, getInt32(3));
+  auto* V_2 = CreateAnd(V_1, getInt32(1408));
+  auto* V_3 = CreateShl(V_0, getInt32(1));
+  auto* V_4 = CreateAnd(V_3, getInt32(512));
+  auto* V_5 = get32BitLaneIDReplicate();
+  auto* V_6 = CreateShl(V_0, getInt32(4));
+  auto* V_7 = CreateAnd(V_6, getInt32(112));
+  auto* V_8 = CreateOr(V_4, V_5);
+  auto* V_9 = CreateOr(V_8, V_2);
+  auto* V_10 = CreateOr(V_9, V_7, _ReturnName);
+  return V_10;
+}
+
+auto* _getSyncStackID_Xe_HPC(const Twine& _ReturnName = "")
+{
+  auto* V_0 = getSr0_0();
+  auto* V_1 = CreateShl(V_0, getInt32(4));
+  auto* V_2 = CreateAnd(V_1, getInt32(768));
+  auto* V_3 = CreateShl(V_0, getInt32(2));
+  auto* V_4 = CreateAnd(V_3, getInt32(1024));
+  auto* V_5 = get32BitLaneIDReplicate();
+  auto* V_6 = CreateAnd(V_1, getInt32(112));
+  auto* V_7 = CreateOr(V_4, V_5);
+  auto* V_8 = CreateOr(V_7, V_2);
+  auto* V_9 = CreateOr(V_8, V_6, _ReturnName);
+  return V_9;
+}
+

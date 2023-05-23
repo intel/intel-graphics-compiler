@@ -5121,6 +5121,11 @@ void EmitPass::emitSimdLaneId(llvm::Instruction* inst)
     m_currShader->GetSimdOffsetBase(m_destination);
 }
 
+void EmitPass::emitSimdLaneIdReplicate(llvm::Instruction* inst)
+{
+    m_currShader->GetSimdOffsetBase(m_destination, true);
+}
+
 
 void EmitPass::emitSimdSize(llvm::Instruction* inst)
 {
@@ -7912,6 +7917,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_simdLaneId:
         emitSimdLaneId(inst);
         break;
+    case GenISAIntrinsic::GenISA_simdLaneIdReplicate:
+        emitSimdLaneIdReplicate(inst);
+        break;
     case GenISAIntrinsic::GenISA_simdSize:
         emitSimdSize(inst);
         break;
@@ -8417,9 +8425,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_AsyncStackID:
         emitAsyncStackID(inst);
-        break;
-    case GenISAIntrinsic::GenISA_SyncStackID:
-        emitSyncStackID(inst);
         break;
     case GenISAIntrinsic::GenISA_GlobalBufferPointer:
         emitGlobalBufferPtr(inst);
@@ -21234,123 +21239,6 @@ LSC_CACHE_OPTS EmitPass::getDefaultRaytracingCachePolicy(bool isLoad) const
 void EmitPass::emitAsyncStackID(llvm::GenIntrinsicInst *I)
 {
     IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
-}
-
-void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
-{
-    // With fused EUs (e.g. DG2)
-    //  SyncStackID = (EUID[3:0] << 7) | (ThreadID[2:0] << 4) | SIMDLaneID[3:0];
-    // With natively wide EUs (e.g. PVC)
-    //  SyncStackID = (EUID[2:0] << 8) | (ThreadID[2:0] << 4) | SIMDLaneID[3:0];
-
-    // Note: bits sr0.0[7:4] in DG2, PVC are not the actual EUID within a DSS:
-
-    // To calculate the true EUID you need to replace bit 6 with
-    // the subslice ID (bit 8 of sr0.0).
-    //
-    // sr0.0 layout:
-    //
-    // DG2:
-    // bits [5:4] = EUID within a row (EUID[1:0])
-    // bit     6  = Must be zero
-    // bit     7  = row ID            (EUID[3])
-    // bit     8  = subslice ID       (EUID[2])
-    //
-    // EUID[3:0]     = sr0.0[7:8:5:4]
-    // ThreadID[2:0] = sr0.0[2:0]
-    //
-    // PVC:
-    // bits [5:4] = EUID within a row (EUID [1:0])
-    // bit     6  = Must be zero
-    // bit     7  = Must be zero (no row ID)
-    // bit     8  = EUID[2]
-    //
-    // EUID[2:0]     = sr0.0[8:5:4]
-    // ThreadID[2:0] = sr0.0[2:0]
-
-    uint32_t euid_and_imm = 0x0;
-    uint32_t euid_shl_imm = 0x0;
-    uint32_t euid_offset  = 0x0;
-    Optional<uint32_t> ssid_shl_imm;
-
-    constexpr uint32_t tid_and_imm = BITMASK_RANGE(0, 2);
-    constexpr uint32_t tid_shl_imm = 0x4;
-    constexpr uint32_t ssid_bit_loc = 8;
-    constexpr uint32_t ssid_mask = BIT(ssid_bit_loc);
-
-    if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2 ||
-        m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE)
-    {
-        euid_offset = 7;
-        euid_and_imm = BITMASK_RANGE(4, 7);
-        euid_shl_imm = -4 + 7;
-
-        ssid_shl_imm = euid_offset + 2 - ssid_bit_loc;
-    }
-    else if (m_currShader->m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE)
-    {
-        euid_offset = 8;
-        euid_and_imm = BITMASK_RANGE(4, 5);
-        euid_shl_imm = -4 + 8;
-
-        ssid_shl_imm = euid_offset + 2 - ssid_bit_loc;
-    }
-    else
-    {
-        IGC_ASSERT_MESSAGE(0, "Invalid Product Family for SyncStackID");
-    }
-
-    //Start with the SIMDLaneID[3:0]
-    CVariable* SyncStackID = m_currShader->GetNewVariable(
-        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "SyncStackID");
-    // Since we have two separate stacks, we actually want to compute the
-    // same lane IDs for the upper and lower instances.
-    m_currShader->GetSimdOffsetBase(SyncStackID, true);
-
-    //Continue with (ThreadID[2:0] << 4)
-    CVariable* ThreadID = m_currShader->GetNewVariable(
-        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "ThreadID");
-    m_encoder->And(
-        ThreadID,
-        m_currShader->GetSR0(),
-        m_currShader->ImmToVariable(tid_and_imm, ISA_TYPE_UD));
-    m_encoder->Shl(
-        ThreadID,
-        ThreadID,
-        m_currShader->ImmToVariable(tid_shl_imm, ISA_TYPE_UD));
-
-    //finish up with (EUID[3:0] << 7) (or EUID[2:0] << 8)
-    CVariable* EUID = m_currShader->GetNewVariable(
-        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "EUID");
-    m_encoder->And(
-        EUID,
-        m_currShader->GetSR0(),
-        m_currShader->ImmToVariable(euid_and_imm, ISA_TYPE_UD));
-    m_encoder->Shl(
-        EUID,
-        EUID,
-        m_currShader->ImmToVariable(euid_shl_imm, ISA_TYPE_UD));
-    if (ssid_shl_imm)
-    {
-        // Now place the subslice id in the bit 6 slot
-        CVariable* SSID = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "SSID");
-        m_encoder->And(
-            SSID,
-            m_currShader->GetSR0(),
-            m_currShader->ImmToVariable(ssid_mask, ISA_TYPE_UD));
-        m_encoder->Shl(
-            SSID,
-            SSID,
-            m_currShader->ImmToVariable(*ssid_shl_imm, ISA_TYPE_UD));
-        //Or them
-        m_encoder->Or(EUID, EUID, SSID);
-    }
-
-    //Or them
-    m_encoder->Or(SyncStackID, SyncStackID, ThreadID);
-    m_encoder->Or(m_destination, SyncStackID, EUID);
-    m_encoder->Push();
 }
 
 void EmitPass::emitGlobalBufferPtr(llvm::GenIntrinsicInst* I)
