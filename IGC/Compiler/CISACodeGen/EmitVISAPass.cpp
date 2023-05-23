@@ -2952,14 +2952,14 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
 
     // For now, do not support uniform dst and non-uniform src1
     const Type* src1Ty = src1->getType();
-    IGC_ASSERT_MESSAGE(!src1Ty->isVectorTy() && src1Ty->isSingleValueType(),
-        "Layout struct's members are of scalar int or float types.");
+    IGC_ASSERT_MESSAGE(src1Ty->isSingleValueType(),
+        "Layout struct's members are of single value type.");
     IGC_ASSERT_MESSAGE((!EltV->IsUniform() && DstV->IsUniform()) == false,
         "Can't insert vector value into a scalar struct!");
 
     // Constants:
     //  1.  %8 = insval undef, float %2, 0
-    //  2.  %8 = insval { i32 16, i32 undef, i32 undef, i32 undef }, i32 %2, 1
+    //  2.  %8 = insval <{ i32 16, i32 undef, i32 undef, i32 undef }>, i32 %2, 1
     if (Constant* CSt = dyn_cast<Constant>(src0))
     {
         if (!isa<UndefValue>(CSt))
@@ -2968,11 +2968,31 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
             for (uint32_t i = 0; i < (uint32_t)sTy->getNumElements(); i++)
             {
                 Constant* elt = CSt->getAggregateElement(i);
-                if (!isa<UndefValue>(elt))
-                {
-                    Type* ty = sTy->getElementType(i);
-                    uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
-
+                if (isa<UndefValue>(elt)) {
+                    continue;
+                }
+                // Note: LdStCombine does not create const vector, but passes
+                //       after LdStCombine might make a vector memeber constant.
+                //       Thus, keep the vector handling in case it does happen.
+                Type* ty = sTy->getElementType(i);
+                uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
+                if (ty->isVectorTy()) {
+                    // level 1 vector member
+                    auto iVTy = cast<IGCLLVM::FixedVectorType>(ty);
+                    uint32_t nelts = (uint32_t)iVTy->getNumElements();
+                    Type* eltTy = iVTy->getElementType();
+                    VISA_Type visaty = m_currShader->GetType(eltTy);
+                    CVariable* eltSrc = m_currShader->GetSymbol(elt);
+                    CVariable* eltDst = m_currShader->GetNewAlias(
+                        DstV,
+                        visaty,
+                        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
+                        nelts * ((DstV->IsUniform() ? 1 : nLanes)));
+                    emitVectorCopy(eltDst, eltSrc, nelts);
+                    continue;
+                }
+                else {
+                    // ty is scalar or AOS struct. Its size <= 64 bits
                     uint32_t sz = (uint32_t)DL.getTypeStoreSizeInBits(ty);
                     uint64_t imm = bitcastToUI64(elt, &DL);
                     IGC_ASSERT(sz == 64 || sz == 32);
@@ -2992,7 +3012,18 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     else
     {
         CVariable* SrcV = GetSymbol(src0);
-        if (DstV != SrcV)
+        if (DstV != SrcV && DstV->IsUniform() && SrcV->IsUniform())
+        {
+            Type* eltTy = sTy->getElementType(0);
+            uint32_t eltBits = (uint32_t)DL.getTypeSizeInBits(eltTy);
+            IGC_ASSERT(eltBits == 32 || eltBits == 64);
+            uint32_t n = sTy->getNumElements();
+            n = n * (eltBits == 64 ? 2 : 1);
+            CVariable* aDst = m_currShader->GetNewAlias(DstV, ISA_TYPE_UD, 0, n);
+            CVariable* aSrc = m_currShader->GetNewAlias(SrcV, ISA_TYPE_UD, 0, n);
+            emitUniformVectorCopy(aDst, aSrc, n);
+        }
+        else if (DstV != SrcV)
         {
             std::list<ArrayRef<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
@@ -3014,18 +3045,15 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
                     m_currShader->GetType(ty),
                     (byteOff0 * (SrcV->IsUniform() ? 1 : nLanes)) + byteOff1,
                     (SrcV->IsUniform() ? 1 : nLanes));
-                if (II.size() == 2)
-                {
-                    // This member is in level 2 and is in AOS, set dst's
-                    // stride correctly.
-                    uint32_t ty0Size = (uint32_t)DL.getTypeSizeInBits(ty0);
-                    uint32_t eltSize = ty1->getScalarSizeInBits();
-                    uint32_t stride = ty0Size / eltSize;
-                    IGC_ASSERT((ty0Size % eltSize) == 0);
-                    m_encoder->SetDstRegion(eltDst->IsUniform() ? 1 : stride);
+                auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+                uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+                if (II.size() == 2) {
+                    uint32_t AOSStBytes = (uint32_t)DL.getTypeStoreSize(ty0);
+                    emitVectorCopyToAOS(AOSStBytes, eltDst, eltSrc, n);
                 }
-                m_encoder->Copy(eltDst, eltSrc);
-                m_encoder->Push();
+                else {
+                    emitVectorCopy(eltDst, eltSrc, n);
+                }
             }
         }
     }
@@ -3042,18 +3070,16 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
         (byteOff0 * (DstV->IsUniform() ? 1 : nLanes)) + byteOff1,
         DstV->IsUniform() ? 1 : nLanes);
 
-    if (inst->getIndices().size() == 2)
-    {
-        // This member is in level 2 and is in AOS, set dst's
-        // stride correctly.
-        uint32_t ty0Size = (uint32_t)DL.getTypeSizeInBits(ty0);
-        uint32_t eltSize = ty1->getScalarSizeInBits();
-        uint32_t stride = ty0Size / eltSize;
-        IGC_ASSERT((ty0Size % eltSize) == 0);
-        m_encoder->SetDstRegion(eltDst->IsUniform() ? 1 : stride);
+    Type* ty = (ty1 == nullptr ? ty0 : ty1);
+    auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+    uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+    if (inst->getIndices().size() == 2) {
+        uint32_t AOSStBytes = (uint32_t)DL.getTypeStoreSize(ty0);
+        emitVectorCopyToAOS(AOSStBytes, eltDst, EltV, n);
     }
-    m_encoder->Copy(eltDst, EltV);
-    m_encoder->Push();
+    else {
+        emitVectorCopy(eltDst, EltV, n);
+    }
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
@@ -18385,6 +18411,51 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
             break;
         }
 
+        m_encoder->SetSrcSubReg(0, SrcSubReg);
+        m_encoder->SetDstSubReg(DstSubReg);
+        m_encoder->Copy(Dst, Src);
+        m_encoder->Push();
+    }
+}
+
+// Copy from SOA vector to a AOS vectors in a struct (or a packed type).
+// The size of 'struct' is given as 'AOSBytes'. For example, 'AOSBytes'
+// is 4 bytes in the following example:
+//
+// __StructSOALayout__ {
+//    __StructAOSLayout__ {
+//        <4xi8> s0;          <-- indices: <0,0>
+//    }
+//    i32 s1
+// }
+// x = insertvalue <__StructSOALayout__> %x0, <4xi8> b, 0, 0
+//
+void EmitPass::emitVectorCopyToAOS(uint32_t AOSBytes,
+    CVariable* Dst, CVariable* Src, uint32_t nElts,
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
+{
+    bool srcUniform = Src->IsUniform();
+    bool dstUniform = Dst->IsUniform();
+
+    // Uniform vector copy.
+    if (srcUniform && dstUniform) {
+        emitUniformVectorCopy(
+            Dst, Src, nElts, DstSubRegOffset, SrcSubRegOffset);
+        return;
+    }
+
+    unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
+    uint32_t eltBytes = Dst->GetElemSize();
+    uint32_t stride = AOSBytes / eltBytes;
+    IGC_ASSERT(stride <= 4 && stride > 0);
+    IGC_ASSERT((AOSBytes % eltBytes) == 0);
+    for (uint32_t i = 0; i < nElts; ++i)
+    {
+        uint SrcSubReg = soff + i;
+        uint DstSubReg = doff + i;
+        uint DstVStride = dstUniform ? 1 : stride;
+
+        m_encoder->SetDstRegion(DstVStride);
         m_encoder->SetSrcSubReg(0, SrcSubReg);
         m_encoder->SetDstSubReg(DstSubReg);
         m_encoder->Copy(Dst, Src);

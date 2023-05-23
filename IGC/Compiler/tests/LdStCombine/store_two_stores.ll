@@ -10,7 +10,7 @@
 
 
  ; Given  store i8
- ;        store i9
+ ;        store i8
  ;   combined into
  ;        <2 x i8> store
  ;

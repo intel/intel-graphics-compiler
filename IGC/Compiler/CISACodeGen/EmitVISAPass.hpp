@@ -147,6 +147,9 @@ public:
     void EmitInsertValueToStruct(llvm::InsertValueInst* II);
     void EmitExtractValueFromStruct(llvm::ExtractValueInst* EI);
     void EmitInsertValueToLayoutStruct(llvm::InsertValueInst* II);
+    void emitVectorCopyToAOS(uint32_t AOSBytes,
+        CVariable* Dst, CVariable* Src, uint32_t nElts,
+        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
 
     /// stack-call code-gen functions
     void emitStackCall(llvm::CallInst* inst);

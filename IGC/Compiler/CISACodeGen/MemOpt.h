@@ -34,8 +34,12 @@ namespace IGC {
         return "__StructAOSLayout_";
     }
 
-    // If struct type is created by LdStCombine(), return true.
+    // If struct type is created by LdStCombine() for layout, return true.
     bool isLayoutStructType(const StructType* StTy);
+    // If struct type is created by LdStCombine() in AOS layout, return true.
+    //   note: if a struct type is a layout struct, but not in AOS layout,
+    //         it must be in SOA layout.
+    bool isLayoutStructTypeAOS(const StructType* StTy);
 
     // bitcastToUI64:
     //   return C as ui64. C must fit into 64bits.

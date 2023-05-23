@@ -2472,6 +2472,8 @@ namespace {
         //   insts; if V is not vector, just V itself.
         void getOrCreateElements(Value* V,
             SmallVector<Value*, 16>& EltV, Instruction* InsertBefore);
+        // If V is constant or created only by IEI with const idx, return true
+        bool isSimpleVector(Value* V) const;
 
         void mergeConstElements(
             SmallVector<Value*, 4>& EltVals,  uint32_t MaxMergeBytes);
@@ -3171,6 +3173,22 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
     markVisited(Stores);
 }
 
+// If V is constant or created only by IEI with const idx, return true.
+bool LdStCombine::isSimpleVector(Value* V) const
+{
+    Value* val = V;
+    while (auto IEI = dyn_cast<InsertElementInst>(val)) {
+        if (!isa<Constant>(IEI->getOperand(2))) {
+            return false;
+        }
+        val = IEI->getOperand(0);
+    }
+    if (isa<Constant>(val)) {
+        return true;
+    }
+    return false;
+}
+
 // mergeConstElements
 //   If EltVals has constant elements consecutively, merge them if possible.
 //   The merged constant's size is no more than MaxMergeByte.
@@ -3203,6 +3221,7 @@ void LdStCombine::mergeConstElements(
         return;
     }
 
+    // If there is a vector constant, expand it with its components
     bool hasMerged = false;
     std::list<Value*> mergedElts(EltVals.begin(), EltVals.end());
     // b : the number of bytes of the merged value.
@@ -3232,6 +3251,8 @@ void LdStCombine::mergeConstElements(
             if (!C0 || !C1 || (sz0 + sz1) != b) {
                 continue;
             }
+            IGC_ASSERT_MESSAGE(!C0->getType()->isVectorTy() &&
+                !C1->getType()->isVectorTy(), "Vector Constant not supported!");
             uint64_t imm0 = GetImmediateVal(C0);
             uint64_t imm1 = GetImmediateVal(C1);
             imm0 &= maxUIntN(sz0 * 8);
@@ -3348,12 +3369,50 @@ Value* LdStCombine::gatherCopy(
         Value* v = worklist.front();
         worklist.pop_front();
 
-        // If v is vector, replace it with its elements
         if (v->getType()->isVectorTy())
         {
-            SmallVector<Value*, 16> elts;
-            getOrCreateElements(v, elts, InsertBefore);
-            worklist.insert(worklist.begin(), elts.begin(), elts.end());
+            IGC_ASSERT((v->getType()->getScalarSizeInBits() % 8) == 0);
+            uint32_t eBytes = (v->getType()->getScalarSizeInBits() / 8);
+            auto iVTy = cast<IGCLLVM::FixedVectorType>(v->getType());
+            uint32_t n = (uint32_t)iVTy->getNumElements();
+
+            // true if v is a legal vector at level 1
+            bool isLvl1 = (remainingBytes == EltBytes && eBytes == EltBytes);
+            // true if v is a legal vector at level 2
+            bool isLvl2 = (remainingBytes >= (eBytes * n));
+            // v is a simple vector if v is either a constant or
+            // all its components are created by IEI.
+            bool isSimpleVec = isSimpleVector(v);
+            if (isLvl1 && !isSimpleVec)
+            {   // case 1
+                // 1st level vector member
+                eltVals.push_back(v);
+                allEltVals.push_back(eltVals);
+
+                eltVals.clear();
+            }
+            else if (isLvl2 && !isSimpleVec)
+            {   // case 2
+                // 2nd level vector member
+                eltVals.push_back(v);
+                remainingBytes -= (eBytes * n);
+
+                if (remainingBytes == 0) {
+                    mergeConstElements(eltVals, EltBytes);
+
+                    allEltVals.push_back(eltVals);
+
+                    // Initialization for the next element
+                    eltVals.clear();
+                    remainingBytes = EltBytes;
+                }
+            }
+            else
+            {   // case 3
+                SmallVector<Value*, 16> elts;
+                getOrCreateElements(v, elts, InsertBefore);
+                worklist.insert(worklist.begin(), elts.begin(), elts.end());
+            }
             continue;
         }
 
@@ -3398,15 +3457,10 @@ Value* LdStCombine::gatherCopy(
 
         // v should fit into this remainingByts as v is element-size aligned.
         IGC_ASSERT(remainingBytes >= eBytes);
-
-        if (remainingBytes > eBytes) {
-            eltVals.push_back(v);
-            remainingBytes -= eBytes;
-        }
-        else {
+        eltVals.push_back(v);
+        remainingBytes -= eBytes;
+        if (remainingBytes == 0) {
             // Found one element of size EltBytes.
-            eltVals.push_back(v);
-
             mergeConstElements(eltVals, EltBytes);
 
             allEltVals.push_back(eltVals);
@@ -3466,22 +3520,30 @@ Value* LdStCombine::gatherCopy(
     //        The "bitcast" is no-op, meaning the layout of stVal is the same as
     //        that of viewing it as a vector.
     //
+    auto isLvl2Vecmember = [=](Type* ty) {
+        uint32_t n = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
+        return ty->isVectorTy() && n < EltBytes;
+    };
+
     bool hasStructMember = false;
+    bool hasVecMember = false;
     const int32_t sz = (int)allEltVals.size();
-    IGC_ASSERT(sz == DstNElts);
     SmallVector<Type*, 16> StructTys;
     for (int i = 0; i < sz; ++i) {
         SmallVector<Value*, 4>& subElts = allEltVals[i];
         int nelts = (int)subElts.size();
-        if (nelts == 1) {
-            Type* ty = subElts[0]->getType();
-            IGC_ASSERT(m_DL->getTypeStoreSize(ty) == EltBytes);
+        Type* ty = subElts[0]->getType();
+        hasVecMember = (hasVecMember || ty->isVectorTy());
+        uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
+        if (nelts == 1 && !isLvl2Vecmember(ty)) {
+            IGC_ASSERT(eBytes == EltBytes);
             StructTys.push_back(ty);
         }
         else {
             SmallVector<Type*, 4> subEltTys;
             for (auto II : subElts) {
                 Value* elt = II;
+                hasVecMember = (hasVecMember || elt->getType()->isVectorTy());
                 subEltTys.push_back(elt->getType());
             }
 
@@ -3495,9 +3557,11 @@ Value* LdStCombine::gatherCopy(
         }
     }
 
+    // If only hasVecMember is true, either struct or vector work; but
+    // struct is better as it will likely have less mov instructions.
     Type* structTy;
     Value* retVal;
-    if (hasStructMember)
+    if (hasStructMember || hasVecMember)
     {
         // Packed and named identified struct. Prefix "__" make sure it won't
         // collide with any user types.  Use SOA layout.
@@ -3509,7 +3573,8 @@ Value* LdStCombine::gatherCopy(
         for (int i = 0; i < sz; ++i) {
             SmallVector<Value*, 4>& eltVals = allEltVals[i];
             const int sz1 = (int)eltVals.size();
-            if (sz1 == 1) {
+            Type* ty = eltVals[0]->getType();
+            if (sz1 == 1 && !isLvl2Vecmember(ty)) {
                 retVal = irBuilder.CreateInsertValue(retVal, eltVals[0], i);
             }
             else {
@@ -3655,11 +3720,25 @@ bool isLayoutStructType(const StructType* StTy)
         stId.startswith(getStructNameForAOSLayout()));
 }
 
+bool isLayoutStructTypeAOS(const StructType* StTy)
+{
+    if (!StTy || StTy->isLiteral() || !StTy->hasName() || !StTy->isPacked())
+        return false;
+    StringRef stId = StTy->getName();
+    return stId.startswith(getStructNameForAOSLayout());
+}
+
 uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
 {
+    Type* ty = C->getType();
+    IGC_ASSERT(DL->getTypeStoreSizeInBits(ty) <= 64);
+    IGC_ASSERT(ty->isStructTy() ||
+        (ty->isSingleValueType() && !ty->isVectorTy()));
+
     uint64_t imm = 0;
     if (StructType* sTy = dyn_cast<StructType>(C->getType())) {
         IGC_ASSERT(DL->getTypeStoreSizeInBits(sTy) <= 64);
+        IGC_ASSERT(isLayoutStructTypeAOS(sTy));
         const StructLayout* SL = DL->getStructLayout(sTy);
         int N = (int)sTy->getNumElements();
         for (int i = 0; i < N; ++i)
@@ -3670,12 +3749,26 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
             }
             Type* ty_i = sTy->getElementType(i);
             uint32_t offbits = (uint32_t)SL->getElementOffsetInBits(i);
-            uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(ty_i);
-            IGC_ASSERT(ty_i->isFloatingPointTy() || ty_i->isIntegerTy());
-
-            uint64_t tImm = GetImmediateVal(C_i);
-            tImm &= maxUIntN(nbits);
-            imm = imm | (tImm << offbits);
+            if (auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty_i)) {
+                // C_I is vector
+                int32_t nelts = (int32_t)iVTy->getNumElements();
+                Type* eTy_i = ty_i->getScalarType();
+                IGC_ASSERT(eTy_i->isFloatingPointTy() || eTy_i->isIntegerTy());
+                uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(eTy_i);
+                for (int j = 0; j < nelts; ++j) {
+                    Constant* c_ij = C_i->getAggregateElement(j);
+                    uint64_t tImm = GetImmediateVal(c_ij);
+                    tImm &= maxUIntN(nbits);
+                    imm = imm | (tImm << (offbits + j * nbits));
+                }
+            }
+            else {
+                // C_i is scalar
+                uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(ty_i);
+                uint64_t tImm = GetImmediateVal(C_i);
+                tImm &= maxUIntN(nbits);
+                imm = imm | (tImm << offbits);
+            }
         }
         return imm;
     }
@@ -3720,11 +3813,11 @@ void getStructMemberOffsetAndType_2(const DataLayout* DL,
     }
 
     IGC_ASSERT(isLayoutStructType(StTy));
-
     IGC_ASSERT_MESSAGE(Indices.size() <= 2,
         "struct with nesting level > 2 not supported!");
-    IGC_ASSERT_MESSAGE(Ty0->isStructTy(),
-        "struct with non-struct aggregate member not supported!");
+    IGC_ASSERT_MESSAGE((Ty0->isStructTy() &&
+        isLayoutStructTypeAOS(cast<StructType>(Ty0))),
+        "Only a special AOS layout struct is supported as a member");
     uint32_t ix1 = Indices[1];
     StructType* stTy0 = cast<StructType>(Ty0);
     const StructLayout* SL1 = DL->getStructLayout(stTy0);
