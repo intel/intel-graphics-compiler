@@ -601,7 +601,8 @@ void G4_Kernel::calculateSimdSize() {
       for (auto inst : *bb) {
         // do not consider send since for certain messages we have to set its
         // execution size to 16 even in simd8 shaders
-        if (!inst->isLabel() && !inst->isSend()) {
+        // Also skip noMask inst
+        if (!inst->isLabel() && !inst->isSend() && !inst->isWriteEnableInst()) {
           uint32_t size = inst->getMaskOffset() + inst->getExecSize();
           if (size > 16) {
             simdSize = g4::SIMD32;
