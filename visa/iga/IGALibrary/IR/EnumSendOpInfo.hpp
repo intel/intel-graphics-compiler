@@ -144,6 +144,36 @@ DEFINE_OTHER_OP(TRACE_RAY, "trace_ray", "trace ray", ATTRS_NONE)
 DEFINE_OTHER_OP(SPAWN, "spawn", "spawn thread", ATTRS_NONE)
 //
 DEFINE_SAMPLE_OP(SAMPLE, "sample", "sampler fetch", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_B, "sample_b", "sample with bias", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_L, "sample_l", "sample with LoD", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_C, "sample_c", "sample with compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_D, "sample_d", "sample with derivatives", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_B_C, "sample_b_c", "sample with bias and compare",
+                 ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_L_C, "sample_l_c",
+                 "sample with LoD and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_D_C, "sample_d_c",
+                 "sampler with derivatives and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_LZ, "sample_lz", "sampler lz", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_C_LZ, "sample_c_lz",
+                 "sampler with compare and lz", ATTRS_NONE)
+//
+DEFINE_SAMPLE_OP(LD, "ld", "sampler load", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_LOD, "sample_lod", "sampler LoD", ATTRS_NONE)
+DEFINE_SAMPLE_OP(LD_LZ, "ld_lz", "sampler ld lz", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_RESINFO, "resinfo", "sampler resolution info",
+                 ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_INFO, "sample_info", "sampler info", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_KILLPIX, "sample_killpix", "sampler kill pixel",
+                 ATTRS_NONE)
+DEFINE_SAMPLE_OP(LD_2DMS_W, "ld_2dms_w", "ld mcs4", ATTRS_NONE)
+DEFINE_SAMPLE_OP(LD_MCS, "ld_mcs", "load MCS", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_FLUSH, "sample_flush",
+                 "sample with UVR offsets and compare", ATTRS_NONE)
+//
+DEFINE_SAMPLE_OP(GATHER4, "gather4", "gather4", ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_C, "gather4_c", "gather4 with compare",
+                 ATTRS_GATHER4)
 //
 DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_WRITE, "render_write", "render write", ATTRS_NONE)
