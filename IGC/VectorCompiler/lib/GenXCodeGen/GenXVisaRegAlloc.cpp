@@ -146,7 +146,7 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       vc::RegCategory::General, PreDefined_Vars::PREDEFINED_CR0,
-      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 4));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       vc::RegCategory::General, PreDefined_Vars::PREDEFINED_CE0,

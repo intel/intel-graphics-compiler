@@ -255,6 +255,7 @@ private:
   bool lowerMul64(Instruction *Inst);
   bool lowerLzd(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
+  bool lowerDebugTrap(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
@@ -3337,6 +3338,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerLzd(Inst);
     case GenXIntrinsic::genx_slm_init:
       return lowerSlmInit(CI);
+    case Intrinsic::debugtrap:
+      return lowerDebugTrap(CI);
     case Intrinsic::trap:
       return lowerTrap(CI);
     case Intrinsic::ctpop:
@@ -4691,6 +4694,44 @@ bool GenXLowering::lowerUSubWithSat(CallInst *CI) {
   Value *Arg1 = IRBuilder<>(CI).CreateNeg(CI->getArgOperand(1), CI->getName());
   auto *UUAddInst = buildUAddWithSat(CI, Arg0, Arg1, CI, /*IsSignedSrc*/ true);
   CI->replaceAllUsesWith(UUAddInst);
+  ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerDebugTrap(CallInst *CI) {
+  Module *M = CI->getModule();
+  IRBuilder<> Builder(CI);
+
+  auto *Cr0Ty = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), 4);
+
+  auto *ReadPredefRegFn = vc::getAnyDeclaration(
+      M, GenXIntrinsic::genx_read_predef_reg, {Cr0Ty, Cr0Ty});
+  auto *WritePredefRegFn = vc::getAnyDeclaration(
+      M, GenXIntrinsic::genx_write_predef_reg, {Cr0Ty, Cr0Ty});
+
+  auto *Cr0Id = Builder.getInt32(PreDefined_Vars::PREDEFINED_CR0);
+  auto *Cr0V =
+      Builder.CreateCall(ReadPredefRegFn, {Cr0Id, UndefValue::get(Cr0Ty)});
+
+  // CR0.1 region
+  Region R{Cr0V};
+  R.NumElements = 1;
+  R.VStride = 0;
+  R.Width = 1;
+  R.Stride = 0;
+  R.Offset = DWordBytes;
+  IGC_ASSERT(R.isScalar());
+
+  constexpr unsigned SWExceptionControl = 29;
+  constexpr unsigned CR0Mask = 1 << SWExceptionControl;
+
+  auto &DL = CI->getDebugLoc();
+  auto *SrcV = R.createRdRegion(Cr0V, "cr0.1", CI, DL);
+  auto *DstV = Builder.CreateOr(SrcV, CR0Mask);
+  auto *ResV = R.createWrRegion(Cr0V, DstV, "cr0.new", CI, DL);
+
+  Builder.CreateCall(WritePredefRegFn, {Cr0Id, ResV});
+
   ToErase.push_back(CI);
   return true;
 }
