@@ -61,7 +61,7 @@ if [ "$UBUNTU_VERSION" = "20.04" ]; then
     apt-get install -y cmake
 fi
 
-if [ "$UBUNTU_VERSION" = "20.04" ] && [ "$LLVM_VERSION" -ge 14 ] || [ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" -ge 15 ]
+if ([ "$UBUNTU_VERSION" = "20.04" ] && [ "$LLVM_VERSION" -ge 14 ]) || ([ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" -ge 15 ])
 then
     echo "[Build Status] Retrieve the LLVM archive signature for LLVM $LLVM_VERSION on Ubuntu $UBUNTU_VERSION";
     wget -q https://apt.llvm.org/llvm-snapshot.gpg.key
