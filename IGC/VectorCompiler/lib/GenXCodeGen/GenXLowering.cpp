@@ -4930,11 +4930,19 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
 
   if (ScalarType(LH)->isIntegerTy(8) || ScalarType(LH)->isIntegerTy(16)) {
     // The result can't exceed 32 bit. Get rid of 64-bit multiplication
-    Value *Mul = B.CreateMul(LH, RH, CI->getName());
+    bool IsSigned = IID == GenXIntrinsic::genx_ssmul;
+    auto *SrcTy = LH->getType();
+    Type *MulTy = B.getIntNTy(ScalarType(LH)->isIntegerTy(8) ? 16 : 32);
+    if (auto *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(SrcTy))
+      MulTy = IGCLLVM::FixedVectorType::get(MulTy, SrcVTy->getNumElements());
+
+    auto *MulFunc =
+        GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, {MulTy, SrcTy});
+    auto *Mul = B.CreateCall(MulFunc, {LH, RH}, CI->getName());
+
     Value *Ext =
-        (IID == GenXIntrinsic::genx_uumul)
-            ? B.CreateZExt(Mul, CI->getType(), CI->getName() + ".zext")
-            : B.CreateSExt(Mul, CI->getType(), CI->getName() + ".sext");
+        IsSigned ? B.CreateSExt(Mul, CI->getType(), CI->getName() + ".sext")
+                 : B.CreateZExt(Mul, CI->getType(), CI->getName() + ".zext");
     CI->replaceAllUsesWith(Ext);
     ToErase.push_back(CI);
     return true;

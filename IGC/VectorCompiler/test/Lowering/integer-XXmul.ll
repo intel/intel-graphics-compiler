@@ -109,10 +109,10 @@ define internal spir_func void @testi32uv(<2 x i32> %op1, <2 x i32> %op2) {
 ; CHECK_WITH_MUL_DDQ-NEXT: ret void
 
 ; CHECK_NO_MUL_DDQ: testi8u
-; CHECK_NO_MUL_DDQ-NEXT: [[SMUL:[^ ]+]] = mul i8 %op1, %op2
-; CHECK_NO_MUL_DDQ-NEXT: [[SEXT:[^ ]+]] = sext i8 [[SMUL]] to i64
-; CHECK_NO_MUL_DDQ-NEXT: [[UMUL:[^ ]+]] = mul i8 %op1, %op2
-; CHECK_NO_MUL_DDQ-NEXT: [[ZEXT:[^ ]+]] = zext i8 [[UMUL]] to i64
+; CHECK_NO_MUL_DDQ-NEXT: [[SMUL:[^ ]+]] = call i16 @llvm.genx.ssmul.i16.i8(i8 %op1, i8 %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[SEXT:[^ ]+]] = sext i16 [[SMUL]] to i64
+; CHECK_NO_MUL_DDQ-NEXT: [[UMUL:[^ ]+]] = call i16 @llvm.genx.uumul.i16.i8(i8 %op1, i8 %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[ZEXT:[^ ]+]] = zext i16 [[UMUL]] to i64
 ; CHECK_NO_MUL_DDQ-NEXT: ret void
 define internal spir_func void @testi8u(i8 %op1, i8 %op2) {
   %res_s = call i64 @llvm.genx.ssmul.i64.i8(i8 %op1, i8 %op2)
@@ -126,10 +126,10 @@ define internal spir_func void @testi8u(i8 %op1, i8 %op2) {
 ; CHECK_WITH_MUL_DDQ-NEXT: ret void
 
 ; CHECK_NO_MUL_DDQ: testi16u
-; CHECK_NO_MUL_DDQ-NEXT: [[SMUL:[^ ]+]] = mul i16 %op1, %op2
-; CHECK_NO_MUL_DDQ-NEXT: [[SEXT:[^ ]+]] = sext i16 [[SMUL]] to i64
-; CHECK_NO_MUL_DDQ-NEXT: [[UMUL:[^ ]+]] = mul i16 %op1, %op2
-; CHECK_NO_MUL_DDQ-NEXT: [[ZEXT:[^ ]+]] = zext i16 [[UMUL]] to i64
+; CHECK_NO_MUL_DDQ-NEXT: [[SMUL:[^ ]+]] = call i32 @llvm.genx.ssmul.i32.i16(i16 %op1, i16 %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[SEXT:[^ ]+]] = sext i32 [[SMUL]] to i64
+; CHECK_NO_MUL_DDQ-NEXT: [[UMUL:[^ ]+]] = call i32 @llvm.genx.uumul.i32.i16(i16 %op1, i16 %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[ZEXT:[^ ]+]] = zext i32 [[UMUL]] to i64
 ; CHECK_NO_MUL_DDQ-NEXT: ret void
 define internal spir_func void @testi16u(i16 %op1, i16 %op2) {
   %res_s = call i64 @llvm.genx.ssmul.i64.i16(i16 %op1, i16 %op2)
