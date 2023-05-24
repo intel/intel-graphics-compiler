@@ -1061,21 +1061,15 @@ Value* RTBuilder::getTraceRayPayload(
     return bitField;
 }
 
-GenIntrinsicInst* RTBuilder::getSr0_0()
+Value* RTBuilder::emitStateRegID(uint32_t BitStart, uint32_t BitEnd)
 {
     Module* module = this->GetInsertBlock()->getModule();
 
-    auto* sr0_0 = this->CreateCall(
+    Value* sr0_0 = this->CreateCall(
         GenISAIntrinsic::getDeclaration(
             module, GenISAIntrinsic::GenISA_getSR0_0),
         None,
         VALUE_NAME("sr0.0"));
-    return cast<GenIntrinsicInst>(sr0_0);
-}
-
-Value* RTBuilder::emitStateRegID(uint32_t BitStart, uint32_t BitEnd)
-{
-    Value* sr0_0 = getSr0_0();
 
     uint32_t and_imm = BITMASK_RANGE(BitStart, BitEnd);
     uint32_t shr_imm = BitStart;
@@ -1434,23 +1428,14 @@ Value* RTBuilder::getGlobalBufferPtr()
 
 Value* RTBuilder::getSyncStackID()
 {
-    auto& PlatformInfo = Ctx.platform.getPlatformInfo();
+    Module* module = this->GetInsertBlock()->getModule();
+    Value* stackID = this->CreateCall(
+        GenISAIntrinsic::getDeclaration(
+            module, GenISAIntrinsic::GenISA_SyncStackID),
+        None,
+        VALUE_NAME("SyncStackID"));
 
-    if (PlatformInfo.eProductFamily == IGFX_DG2        ||
-        PlatformInfo.eProductFamily == IGFX_METEORLAKE)
-    {
-        return _getSyncStackID_Xe(VALUE_NAME("SyncStackID"));
-    }
-    else if (PlatformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE)
-    {
-        return _getSyncStackID_Xe_HPC(VALUE_NAME("SyncStackID"));
-    }
-    else
-    {
-        IGC_ASSERT_MESSAGE(0, "Invalid Product Family for SyncStackID");
-    }
-
-    return {};
+    return stackID;
 }
 
 bool RTBuilder::checkAlign(

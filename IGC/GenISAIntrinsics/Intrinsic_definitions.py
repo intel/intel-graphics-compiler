@@ -1748,11 +1748,6 @@ Imported_Intrinsics = \
     [],
     "NoMem"]],
 ####################################################################################################
-"GenISA_simdLaneIdReplicate": ["replicates the bottom 16 ids in the top 16 for SIMD32",
-    [("short",                         "result"),
-    [],
-    "NoMem"]],
-####################################################################################################
 "GenISA_simdMediaBlockRead": ["",
     [("anyvector",                     ""),
     [("int",                           ""),
@@ -2649,6 +2644,11 @@ Imported_Intrinsics = \
                          " It is just a cast and will be lowered prior to codegen",
     [("anyptr",                         ""),
     [(0,                                "")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_SyncStackID": ["Raytracing: lane Syncstack id",
+    [("short",                         ""),
+    [],
     "NoMem"]],
 ####################################################################################################
 "GenISA_TraceRayAsync": ["Raytracing: codegens to send.rta (sync bit not set)",
