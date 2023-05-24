@@ -445,7 +445,6 @@ bool hasPredicate(ISA_Opcode op) {
             op == ISA_3D_GATHER4 || op == ISA_3D_RT_WRITE ||
             op == ISA_3D_URB_WRITE || op == ISA_3D_TYPED_ATOMIC ||
             op == ISA_QW_GATHER || op == ISA_QW_SCATTER
-
     );
   case ISA_Inst_Flow:
     return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
@@ -486,11 +485,11 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp) {
         op == ISA_3D_LOAD || op == ISA_3D_GATHER4 || op == ISA_3D_URB_WRITE ||
         op == ISA_3D_INFO) {
       return true;
-    }
-    else if (op == ISA_DPAS || op == ISA_DPASW) {
+    } else if (op == ISA_DPAS || op == ISA_DPASW) {
       return true;
-    } else
+    } else {
       return false;
+    }
   case ISA_Inst_Flow:
     if (op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_FADDR) {
       return false;
