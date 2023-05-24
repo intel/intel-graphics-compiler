@@ -152,29 +152,51 @@ void GenXCodeGenModule::processFunction(Function& F)
 
     IGC_ASSERT(CallerFGs.size() >= 1);
 
-    // Don't add referenced-indirectly attr for function with threadgroupbarrier intrinsic
-    // when m_FunctionCloningThreshold is set
-    auto hasUnsupportedCallsInFuncWithStackCalls = [](llvm::Function* F)->bool {
+    auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    auto CanMakeIndirectFunc = [&CallerFGs, &pMdUtils](llvm::Function* F)->bool
+    {
+        // Don't convert subroutines, builtins, or invoke_simd_target
+        if (F->hasFnAttribute("visaStackCall") == false ||
+            F->hasFnAttribute(llvm::Attribute::Builtin) ||
+            F->hasFnAttribute("invoke_simd_target"))
+            return false;
+
+        // If SIMD Variant Compilation is not enabled, we have to make sure all callers
+        // have the same SIMD sizes, otherwise we cannot make it an indirect call
+        int simd_size = 0;
+        for (auto iter : CallerFGs)
+        {
+            Function* callerKernel = iter.first->getHead();
+            auto funcInfoMD = pMdUtils->getFunctionsInfoItem(callerKernel);
+            int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            if (sz != 0 && simd_size == 0)
+                simd_size = sz;
+
+            // Callers have varying SIMD size requirements, do not promote
+            if (simd_size != sz)
+                return false;
+        }
+
+        // Can't make indirect if threadgroupbarrier intrinsic is set
         for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
         {
             if (auto* GII = dyn_cast<GenIntrinsicInst>(&*I))
             {
                 if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
                 {
-                    return true;
+                    return false;
                 }
             }
         }
-        return false;
+        return true;
     };
 
     // Make the function indirect if cloning exceeds the threshold
     // We shouldn't add "referenced-indirectly" attr for builtins
-    if (F.hasFnAttribute("visaStackCall") &&
-        !F.hasFnAttribute(llvm::Attribute::Builtin) &&
-        m_FunctionCloningThreshold > 0 &&
+    if (m_FunctionCloningThreshold > 0 &&
         CallerFGs.size() > m_FunctionCloningThreshold &&
-        !hasUnsupportedCallsInFuncWithStackCalls(&F) &&
+        CanMakeIndirectFunc(&F) &&
         // Don't override the FunctionControl flags used for debugging
         IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
         IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == 0)
@@ -413,13 +435,11 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     // function groups can be cloned. If the number exceeds the threshold, instead of cloning the
     // function N times, make it an indirect call and use relocation instead. The function will only be
     // compiled once and runtime must relocate its address for each caller.
-    // TODO: For zebin path m_FunctionCloningThreshold should be enabled.
-    //       Temporary disabled, because it causing functional regressions
-    //if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary())
-    //{
-    //    // Enable by default for zebin
-    //    m_FunctionCloningThreshold = 1;
-    //}
+    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary())
+    {
+        // Enable by default for zebin
+        m_FunctionCloningThreshold = 1;
+    }
     if (IGC_GET_FLAG_VALUE(FunctionCloningThreshold) != 0)
     {
         // Overwrite with debug flag
