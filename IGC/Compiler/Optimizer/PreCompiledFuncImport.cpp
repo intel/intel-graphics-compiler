@@ -58,15 +58,12 @@ IGC_INITIALIZE_PASS_END(PreCompiledFuncImport, PASS_FLAG, PASS_DESCRIPTION, PASS
 
 char PreCompiledFuncImport::ID = 0;
 
-PreCompiledFuncImport::PreCompiledFuncImport(
-    CodeGenContext* CGCtx, uint32_t TheEmuKind) :
+PreCompiledFuncImport::PreCompiledFuncImport(uint32_t TheEmuKind) :
     ModulePass(ID),
-    m_pCtx(CGCtx),
     m_enableCallForEmulation(false),
     m_emuKind(TheEmuKind)
 {
     initializePreCompiledFuncImportPass(*PassRegistry::getPassRegistry());
-    checkAndSetEnableSubroutine();
 }
 
 const char* PreCompiledFuncImport::m_Int64DivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
@@ -624,22 +621,23 @@ void PreCompiledFuncImport::removeLLVMModuleFlag(Module* M)
 
 bool PreCompiledFuncImport::runOnModule(Module& M)
 {
-    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    m_pModule = &M;
-    m_changed = false;
-
     // When we test it, we need to set emuKind
     if (IGC_IS_FLAG_ENABLED(TestIGCPreCompiledFunctions))
     {
         m_emuKind = EmuKind::EMU_DP;
-        checkAndSetEnableSubroutine();
     }
     // sanity check
     if (m_emuKind == 0) {
         // Nothing to emulate
         return false;
     }
+
+    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_pModule = &M;
+    m_changed = false;
+
+    checkAndSetEnableSubroutine();
 
     m_roundingMode = m_pCtx->m_DriverInfo.DPEmulationRoundingMode();
     m_flushDenorm = (m_pCtx->m_DriverInfo.DPEmulationFlushDenorm()) ? 1 : 0 ;
