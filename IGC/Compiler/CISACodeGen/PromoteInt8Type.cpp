@@ -1102,7 +1102,13 @@ void PromoteInt8Type::promoteIntrinsic()
             // Those are mov insts. Need to promote if its operand is
             // of type I8 and index is not uniform.
             Type* Ty = GII->getType();
-            Value* IndexOrDelta = GII->getArgOperand(1);
+            Value* IndexOrDelta;
+            if (GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveShuffleIndex)) {
+                IndexOrDelta = GII->getArgOperand(1);
+            }
+            else {
+                IndexOrDelta = GII->getArgOperand(2);
+            }
             if (Ty->isIntegerTy(8) && (!isa<ConstantInt>(IndexOrDelta) || ConvertAll))
             {
                 Candidates.push_back(GII);
@@ -1140,89 +1146,73 @@ void PromoteInt8Type::promoteIntrinsic()
                 gid == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
                 gid == GenISAIntrinsic::GenISA_simdShuffleDown)
             {
+                //
+                // All those intrinsic have prototype like
+                //    Ty  <genIntrinsic> (Ty, ......)
+                // where Ty is the sole overloaded type. The intrinsic might
+                // have 2 to 4 arguments.
+                //
                 m_builder->SetInsertPoint(GII);
 
-                Function* nFunc = nullptr;
-                SmallVector<Value*, 4> iArgs; // args for call to the new intrinsic
+                // New intrinsic with return type I16
+                Function* nFunc = GenISAIntrinsic::getDeclaration(M, gid, i16Ty);
+                SmallVector<Value*, 4> iArgs;   // args for call to the new intrinsic
 
-                if (gid == GenISAIntrinsic::GenISA_simdShuffleDown)
+                // It seems safe to use signed extension always, but using zext for
+                // unsigne operation makes code more readable.
+                Value* nS0 = nullptr;
+                if (isUnsigned(GII))
                 {
-                    // prototype:  Ty <shuffledown> (<Ty, Ty>, int)
-                    Value* vec = UndefValue::get(IGCLLVM::FixedVectorType::get(i16Ty, 2));
-                    Type* iTys[2] = { i16Ty, vec->getType() };
-                    nFunc = GenISAIntrinsic::getDeclaration(M, gid, iTys);
-
-                    // It seems safe to use signed extension always, but using zext for
-                    // unsigne operation makes code more readable.
-                    for (auto i = 0; i < 2; ++i)
-                    {
-                        Value* val = m_builder->CreateExtractElement(GII->getArgOperand(0), i);
-                        val = isUnsigned(GII) ? m_builder->CreateZExt(val, i16Ty) : m_builder->CreateSExt(val, i16Ty);
-                        vec = m_builder->CreateInsertElement(vec, val, i);
-                    }
-                    iArgs.push_back(vec);
-                    iArgs.push_back(GII->getArgOperand(1));
+                    nS0 = m_builder->CreateZExt(GII->getArgOperand(0), i16Ty);
                 }
                 else
                 {
-                    //
-                    // All those intrinsic have prototype like
-                    //    Ty  <genIntrinsic> (Ty, ......)
-                    // where Ty is the sole overloaded type. The intrinsic might
-                    // have 2 to 4 arguments.
-                    //
+                    nS0 = m_builder->CreateSExt(GII->getArgOperand(0), i16Ty);
+                }
+                iArgs.push_back(nS0);
 
-                    // New intrinsic with return type I16
-                    nFunc = GenISAIntrinsic::getDeclaration(M, gid, i16Ty);
-
-                    // It seems safe to use signed extension always, but using zext for
-                    // unsigne operation makes code more readable.
-                    Value* nS0 = nullptr;
-                    if (isUnsigned(GII))
-                    {
-                        nS0 = m_builder->CreateZExt(GII->getArgOperand(0), i16Ty);
-                    }
-                    else
-                    {
-                        nS0 = m_builder->CreateSExt(GII->getArgOperand(0), i16Ty);
-                    }
-                    iArgs.push_back(nS0);
-
-                    switch (gid) {
-                    case GenISAIntrinsic::GenISA_WaveClustered:
-                    {
-                        // prototype:
-                        //     Ty <clustered> (Ty, char, int, int)
-                        iArgs.push_back(GII->getArgOperand(1));
-                        iArgs.push_back(GII->getArgOperand(2));
-                        iArgs.push_back(GII->getArgOperand(3));
-                        break;
-                    }
-                    case GenISAIntrinsic::GenISA_WavePrefix:
-                    {
-                        // prototype:  Ty <waveprefix> (Ty, char, bool, bool, int)
-                        iArgs.push_back(GII->getArgOperand(1));
-                        iArgs.push_back(GII->getArgOperand(2));
-                        iArgs.push_back(GII->getArgOperand(3));
-                        iArgs.push_back(GII->getArgOperand(4));
-                        break;
-                    }
-                    case GenISAIntrinsic::GenISA_QuadPrefix:
-                    case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-                    case GenISAIntrinsic::GenISA_WaveAll:
-                    {
-                        // prototype:
-                        //     Ty <quadprefix> (Ty, char, bool)
-                        //     Ty <shuffleIndex> (Ty, int, int)
-                        //     Ty <waveall> (Ty, char, int)
-                        iArgs.push_back(GII->getArgOperand(1));
-                        iArgs.push_back(GII->getArgOperand(2));
-                        break;
-                    }
-                    default:
-                        IGC_ASSERT_MESSAGE(0, "intrinsic candidates should be promoted");
-                        break;
-                    }
+                switch (gid) {
+                case GenISAIntrinsic::GenISA_simdShuffleDown:
+                {
+                    // prototype:  Ty <shuffledown> (Ty, Ty, int)
+                    Value* nS1 = m_builder->CreateSExt(GII->getArgOperand(1), i16Ty);
+                    iArgs.push_back(nS1);
+                    iArgs.push_back(GII->getArgOperand(2));
+                    break;
+                }
+                case GenISAIntrinsic::GenISA_WaveClustered:
+                {
+                    // prototype:
+                    //     Ty <clustered> (Ty, char, int, int)
+                    iArgs.push_back(GII->getArgOperand(1));
+                    iArgs.push_back(GII->getArgOperand(2));
+                    iArgs.push_back(GII->getArgOperand(3));
+                    break;
+                }
+                case GenISAIntrinsic::GenISA_WavePrefix:
+                {
+                    // prototype:  Ty <waveprefix> (Ty, char, bool, bool, int)
+                    iArgs.push_back(GII->getArgOperand(1));
+                    iArgs.push_back(GII->getArgOperand(2));
+                    iArgs.push_back(GII->getArgOperand(3));
+                    iArgs.push_back(GII->getArgOperand(4));
+                    break;
+                }
+                case GenISAIntrinsic::GenISA_QuadPrefix:
+                case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+                case GenISAIntrinsic::GenISA_WaveAll:
+                {
+                    // prototype:
+                    //     Ty <quadprefix> (Ty, char, bool)
+                    //     Ty <shuffleIndex> (Ty, int, int)
+                    //     Ty <waveall> (Ty, char, int)
+                    iArgs.push_back(GII->getArgOperand(1));
+                    iArgs.push_back(GII->getArgOperand(2));
+                    break;
+                }
+                default:
+                    IGC_ASSERT_MESSAGE(0, "intrinsic candidates should be promoted");
+                    break;
                 }
 
                 Value* nCall = m_builder->CreateCall(nFunc, iArgs, "PromotedShuffle");
