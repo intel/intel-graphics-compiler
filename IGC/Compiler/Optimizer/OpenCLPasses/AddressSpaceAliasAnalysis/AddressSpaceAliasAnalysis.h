@@ -21,3 +21,5 @@ namespace IGC {
     void addAddressSpaceAAResult(llvm::Pass&, llvm::Function&, llvm::AAResults&);
 
 } // End IGC namespace
+
+void initializeAddressSpaceAAWrapperPassPass(llvm::PassRegistry&);

@@ -152,6 +152,9 @@ namespace {
             if (isa<LdRawIntrinsic>(I))
                 return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
 
+            if (isa<StoreRawIntrinsic>(I))
+                return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
+
             if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
                 if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
                     return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
