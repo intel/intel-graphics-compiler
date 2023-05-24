@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2022 Intel Corporation
+Copyright (C) 2018-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -112,7 +112,7 @@ private:
 
   Value *getPacketizeValue(Value *OrigValue);
   Value *getUniformValue(Value *OrigValue);
-  Function *getVectorIntrinsic(Module *M, unsigned id, std::vector<Type *> &ArgTy);
+  Function *getVectorIntrinsic(Module *M, unsigned id, ArrayRef<Type *> ArgTy);
   Value *packetizeConstant(Constant *pConstant);
   Value *packetizeGenXIntrinsic(Instruction *pInst);
   Value *packetizeLLVMIntrinsic(Instruction *pInst);
@@ -649,14 +649,12 @@ void GenXPacketize::findUniformInsts(Function &F) {
       const Value* use = (*UI);
       if (auto LI = dyn_cast<LoadInst>(use)) {
         UniformInsts.insert(LI);
-      }
-      else if (auto GEP = dyn_cast<GetElementPtrInst>(use)) {
+      } else if (auto GEP = dyn_cast<GetElementPtrInst>(use)) {
         if (GEP->getPointerOperand() == def) {
           UniformInsts.insert(GEP);
           uvset.push((Value *)GEP);
         }
-      }
-      else if (auto SI = dyn_cast<StoreInst>(use)) {
+      } else if (auto SI = dyn_cast<StoreInst>(use)) {
         if (SI->getPointerOperand() == def)
           UniformInsts.insert(SI);
         else {
@@ -666,8 +664,10 @@ void GenXPacketize::findUniformInsts(Function &F) {
             uvset.push((Value *)AI);
           }
         }
-      }
-      else if (auto CI = dyn_cast<CallInst>(use)) {
+      } else if (auto *Cast = dyn_cast<BitCastInst>(use)) {
+        UniformInsts.insert(Cast);
+        uvset.push((Value *)Cast);
+      } else if (auto CI = dyn_cast<CallInst>(use)) {
         if (Function *Callee = CI->getCalledFunction()) {
           if (GenXIntrinsic::isVLoadStore(Callee)) {
             UniformInsts.insert(CI);
@@ -686,17 +686,18 @@ void GenXPacketize::findUniformInsts(Function &F) {
       if (auto UseI = dyn_cast<Instruction>(use)) {
         if (isa<StoreInst>(UseI)) {
           UniformInsts.insert(UseI);
-        }
-        else if (auto LI = dyn_cast<LoadInst>(UseI)) {
+        } else if (auto LI = dyn_cast<LoadInst>(UseI)) {
           UniformInsts.insert(UseI);
           if (LI->getType()->isPointerTy())
             uvset.push(UseI);
-        }
-        else if (auto GEP = dyn_cast<GetElementPtrInst>(UseI)) {
+        } else if (auto GEP = dyn_cast<GetElementPtrInst>(UseI)) {
           if (GEP->hasAllConstantIndices()) {
             uvset.push(UseI);
             UniformInsts.insert(UseI);
           }
+        } else if (auto *Cast = dyn_cast<BitCastInst>(UseI)) {
+          uvset.push(UseI);
+          UniformInsts.insert(UseI);
         }
       }
     }
@@ -762,21 +763,13 @@ Value *GenXPacketize::getUniformValue(Value *OrigValue) {
 //////////////////////////////////////////////////////////////////////////
 /// @brief Returns the equivalent vector intrinsic for the input scalar
 /// intrinsic
-Function *GenXPacketize::getVectorIntrinsic(Module *M, unsigned id,
-  std::vector<Type *> &ArgTy)
-{
-  if (id == Intrinsic::fma) {
-    return Intrinsic::getDeclaration(M, (Intrinsic::ID)id, ArgTy[0]);
-  } else if (id == Intrinsic::pow) {
-    // for some reason, passing the 2 vector input args to the pow declaration
-    // results in a malformed vectored pow intrinsic. Forcing the expected
-    // vector input here.
-    return Intrinsic::getDeclaration(M, (Intrinsic::ID)id, B->mSimdFP32Ty);
-  } else if ((id == Intrinsic::maxnum) || (id == Intrinsic::minnum)) {
-    return Intrinsic::getDeclaration(M, (Intrinsic::ID)id, ArgTy[0]);
-  } else {
-    return GenXIntrinsic::getAnyDeclaration(M, id, ArgTy);
-  }
+Function *GenXPacketize::getVectorIntrinsic(Module *M, unsigned ID,
+                                            ArrayRef<Type *> ArgTy) {
+  if (GenXIntrinsic::isGenXIntrinsic(ID))
+    return GenXIntrinsic::getGenXDeclaration(
+        M, static_cast<GenXIntrinsic::ID>(ID), ArgTy);
+  return Intrinsic::getDeclaration(M, static_cast<Intrinsic::ID>(ID),
+                                   {ArgTy[0]});
 }
 
 //////////////////////////////////////////////////////////////////////////
