@@ -106,6 +106,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
+#include <iterator>
+
 #define DEBUG_TYPE "GENX_CONSTANTS"
 
 using namespace llvm;
@@ -139,6 +141,30 @@ static Value *loadConstantStruct(
       AddedInstructions->push_back(InsertInst);
   }
   return Agg;
+}
+
+static SmallVector<Instruction *, 8> collectInstSeq(Instruction *Head) {
+  SmallSetVector<Instruction *, 8> WorkList;
+  WorkList.insert(Head);
+  for (auto it = WorkList.begin(); it != WorkList.end(); ++it) {
+    auto *Inst = *it;
+    for (Use &U : Inst->operands()) {
+      if (Instruction *UseInst = dyn_cast<Instruction>(&U)) {
+        const auto d = std::distance(WorkList.begin(), it);
+        WorkList.insert(UseInst);
+        it = WorkList.begin();
+        std::advance(it, d);
+      }
+    }
+  }
+  return WorkList.takeVector();
+}
+
+static unsigned
+getNumberOfUniqueElems(const SmallVectorImpl<Constant *> &Elements) {
+  SmallPtrSet<const Constant *, 32> ElemsSet;
+  ElemsSet.insert(Elements.begin(), Elements.end());
+  return ElemsSet.size();
 }
 
 /***********************************************************************
@@ -1045,80 +1071,6 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
     }
     return cast<Instruction>(V);
   }
-  if (PackedIntScale) {
-    auto PackTy = C->getType()->getScalarType();
-    // limit the constant-type to 32-bit because we do not want 64-bit operation
-    if (DL.getTypeSizeInBits(PackTy) > 32)
-      PackTy = Type::getInt32Ty(Inst->getContext());
-    // Load as a packed int vector with scale and/or adjust.
-    SmallVector<Constant *, 32> PackedVals;
-    for (unsigned
-             i = 0,
-             e = cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements();
-         i != e; ++i) {
-      int64_t Val = 0;
-      if (auto CI = dyn_cast<ConstantInt>(C->getAggregateElement(i))) {
-        Val = CI->getSExtValue();
-        Val -= PackedIntAdjust;
-        Val /= PackedIntScale;
-      }
-      PackedVals.push_back(ConstantInt::get(PackTy, Val, /*isSigned=*/true));
-      IGC_ASSERT(cast<ConstantInt>(PackedVals.back())->getSExtValue() >= -8
-          && cast<ConstantInt>(PackedVals.back())->getSExtValue() <= 15);
-    }
-
-    ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);
-    auto *LoadPacked = Packed.loadNonPackedIntConst(Inst);
-    if (PackedIntScale != 1) {
-      auto *SplatVal =
-          ConstantInt::get(PackTy, PackedIntScale, /*isSigned=*/true);
-      auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
-      auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
-      auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
-      LoadPacked = BinaryOperator::Create(Instruction::Mul, LoadPacked, Op1,
-                                          "constantscale", Inst);
-    }
-    if (PackedIntAdjust) {
-      auto *SplatVal =
-          ConstantInt::get(PackTy, PackedIntAdjust, /*isSigned=*/true);
-      auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
-      auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
-      auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
-      LoadPacked = BinaryOperator::Create(Instruction::Add, LoadPacked, Op1,
-                                          "constantadjust", Inst);
-    }
-    if (DL.getTypeSizeInBits(PackTy) <
-        DL.getTypeSizeInBits(C->getType()->getScalarType())) {
-      LoadPacked = CastInst::CreateSExtOrBitCast(LoadPacked, C->getType(),
-                                                 "constantsext", Inst);
-
-      bool IsI64 =
-          C->getType()->getScalarType() == Type::getInt64Ty(Inst->getContext());
-      if (IsI64 && !allowI64Ops()) {
-        if (LoadPacked->getOpcode() == Instruction::CastOps::SExt) {
-          LoadPacked = genx::emulateI64Operation(&Subtarget, LoadPacked,
-                                                 EmulationFlag::RAUWE);
-        }
-      }
-    }
-    return LoadPacked;
-  }
-  if (auto CC = getConsolidatedConstant(C)) {
-    // We're loading a vector of byte or short (but not i1). Use int so the
-    // instruction does not use so many channels. This may also save it being
-    // split by legalization.
-    ConstantLoader CCL(CC, Subtarget, DL);
-    Instruction *NewInst = nullptr;
-    if (CCL.isSimple())
-      NewInst = CCL.load(Inst);
-    else
-      NewInst = CCL.loadNonSimple(Inst);
-    NewInst = CastInst::Create(Instruction::BitCast, NewInst, C->getType(),
-        "constant", Inst);
-    if (AddedInstructions)
-      AddedInstructions->push_back(NewInst);
-    return NewInst;
-  }
   auto *VT = cast<IGCLLVM::FixedVectorType>(C->getType());
   unsigned NumElements = VT->getNumElements();
   SmallVector<Constant *, 32> Elements;
@@ -1140,13 +1092,72 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
       Elements.push_back(El);
     }
   }
-  unsigned RemainingBits = ~UndefBits
-      & ((NumElements == 32 ? 0 : 1 << NumElements) - 1);
+  unsigned RemainingBits =
+      ~UndefBits & ((NumElements == 32 ? 0 : 1 << NumElements) - 1);
   if (!RemainingBits) {
     // All elements are undef. This should have been simplified away earlier,
     // but we need to cope with it in case it was not. Just load the first
     // element.
     RemainingBits = 1;
+  }
+  if (PackedIntScale) {
+    auto *LoadPacked = loadPackedInt(Inst);
+    // For small vectors the cyclic algo sometimes can provide a performance
+    // benefit but we cannot spot it with the current cost estimation.
+    if (NumElements <= 8)
+      return LoadPacked;
+    auto PackedInstSeq = collectInstSeq(LoadPacked);
+    // The number of unique elements in a constant vector is the lower estimate
+    // for the instruction sequence cost for the cyclic construction.
+    if (getNumberOfUniqueElems(Elements) >= PackedInstSeq.size())
+      return LoadPacked;
+    auto *LoadCC =
+        loadCyclicConstruct(Inst, Elements, UndefBits, RemainingBits, nullptr);
+    auto CCInstSeq = collectInstSeq(LoadCC);
+
+    auto *Result = LoadPacked;
+    auto *SeqToErase = &CCInstSeq;
+    // TODO: implement the better cost estimation for instruction sequences.
+    if (PackedInstSeq.size() > CCInstSeq.size()) {
+      Result = LoadCC;
+      SeqToErase = &PackedInstSeq;
+    }
+
+    // Recreate AddedInstructions and make it contain only those instructions
+    // which will not be removed.
+    if (AddedInstructions) {
+      SmallVector<Instruction *, 16> TmpAddedInsts;
+      SmallPtrSet<Instruction *, 16> TmpSeqToErase;
+      // SeqToErase is guaranteed to containt unique elements therefore sizes of
+      // SeqToErase and TmpSeqToErase are the same.
+      TmpSeqToErase.insert(SeqToErase->begin(), SeqToErase->end());
+      for (auto ii = AddedInstructions->begin(), ie = AddedInstructions->end();
+           ii != ie; ++ii) {
+        auto *Candidate = *ii;
+        if (!TmpSeqToErase.count(Candidate))
+          TmpAddedInsts.push_back(Candidate);
+      }
+      AddedInstructions->swap(TmpAddedInsts);
+    }
+    std::for_each(SeqToErase->begin(), SeqToErase->end(),
+                  [](auto *Inst) { Inst->eraseFromParent(); });
+    return Result;
+  }
+  if (auto CC = getConsolidatedConstant(C)) {
+    // We're loading a vector of byte or short (but not i1). Use int so the
+    // instruction does not use so many channels. This may also save it being
+    // split by legalization.
+    ConstantLoader CCL(CC, Subtarget, DL);
+    Instruction *NewInst = nullptr;
+    if (CCL.isSimple())
+      NewInst = CCL.load(Inst);
+    else
+      NewInst = CCL.loadNonSimple(Inst);
+    NewInst = CastInst::Create(Instruction::BitCast, NewInst, C->getType(),
+                               "constant", Inst);
+    if (AddedInstructions)
+      AddedInstructions->push_back(NewInst);
+    return NewInst;
   }
   Instruction *Result = 0;
   // If it is wider than 8 elements, see if we can load any group of 8 as a
@@ -1182,112 +1193,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
     if (!RemainingBits)
       return Result;
   }
-
-  // Build the splat sets, that is, the sets of elements of identical value.
-  SmallVector<unsigned, 32> SplatSets;
-  {
-    ValueMap<Constant *, unsigned> SplatSetFinder;
-    for (unsigned i = 0; i != NumElements; ++i) {
-      Constant *El = Elements[i];
-      if (!isa<UndefValue>(El)) {
-        std::pair<ValueMap<Constant *, unsigned>::iterator, bool> Created
-            = SplatSetFinder.insert(std::pair<Constant *, unsigned>(El,
-                  SplatSets.size()));
-        if (Created.second) {
-          // First time this Constant has been seen.
-          SplatSets.push_back(1 << i);
-        } else {
-          // Add on to existing splat set.
-          SplatSets[Created.first->second] |= 1 << i;
-        }
-      }
-    }
-  }
-  // Remove any splat set with only a single element.
-  unsigned NewSize = 0;
-  for (unsigned i = 0, e = SplatSets.size(); i != e; ++i) {
-    if (countPopulation(SplatSets[i]) >= 2)
-      SplatSets[NewSize++] = SplatSets[i];
-  }
-  SplatSets.resize(NewSize);
-  // Determine which elements are suitable for inclusion in a packed vector.
-  // FIXME Not implemented yet. For an int vector constant, we need to
-  // determine whether the instruction expects the operand to be signed
-  // or unsigned.
-
-  // Loop constructing the constant until it is complete.
-  do {
-    // Find the splat set that will contribute the most elements
-    // to the vector, taking into account what elements we can access
-    // in a 1D region write. (Initialize BestSplatSetBits so, if no best
-    // splat is found, we just do a single element out of RemainingBits.)
-    //
-    // Note that we are looking for the splat set that sets the most elements,
-    // not the one that _usefully_ sets the most elements. For example,
-    // Examples/sepia has a constant vector of the form
-    // < A, B, C, 0, 0, A, B, C >
-    // We have four splat sets {0,5} {1,6} {2,7} {3,4}, each of which
-    // has two elements. What we want to do is set one of the A, B or C
-    // sets first, rather than the 0s, because region restrictions mean that
-    // we can only set such a pair if we do it first. If the loop below were
-    // to find the splat set that _usefully_ sets the most elements, all four
-    // sets would say "2" and we would arbitrarily pick one of them. But, if
-    // we ask each splat set how many elements it sets, even uselessly, then
-    // the A, B and C sets say "8" and the 0 set says "2", and we ensure that
-    // we do one of the A, B or C sets first.
-    // So we end up setting the constant in this order (arbitrarily picking
-    // A first):
-    //     < A, A, A, A, A, A, A, A >
-    //     <          0, 0          >
-    //     <    B                   >
-    //     <                   B    >
-    //     <       C                >
-    //     <                      C >
-    // giving five wrregion instructions rather than six.
-    unsigned BestSplatSetBits = 1 << genx::log2(RemainingBits);
-    unsigned BestSplatSetUsefulBits = BestSplatSetBits;
-    unsigned BestSplatSetCount = 1;
-    Constant *BestSplatSetConst = Elements[genx::log2(RemainingBits)];
-    for (unsigned i = 0, e = SplatSets.size(); i != e; ++i) {
-      unsigned Bits = getRegionBits(SplatSets[i] & RemainingBits,
-          SplatSets[i] | RemainingBits | UndefBits, NumElements);
-      unsigned Count = countPopulation(Bits);
-      // For this splat set, Bits is a bitmap of the vector elements that
-      // we can set in this splat set in a legal 1D region (possibly including
-      // elements already set and undef elements), and Count is how many
-      // elements that still need setting the region will set.
-      if (Count > BestSplatSetCount) {
-        BestSplatSetBits = Bits;
-        BestSplatSetUsefulBits = Bits & SplatSets[i];
-        BestSplatSetCount = Count;
-        BestSplatSetConst = Elements[genx::log2(SplatSets[i])];
-      }
-    }
-    // Now BestSplatSetBits is a bitmap of the vector elements to include in
-    // the best splat. Set up the splatted constant.
-    if (!Result) {
-      // For the first time round the loop, just splat the whole vector,
-      // whatever BestSplatBits says.
-      Result = loadConstant(
-          ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
-                                   BestSplatSetConst),
-          Inst, Subtarget, DL, AddedInstructions);
-      Result->setDebugLoc(Inst->getDebugLoc());
-    } else {
-      // Not the first time round the loop. Set up the splatted subvector,
-      // and write it as a region.
-      Region R(BestSplatSetBits,
-               DL.getTypeSizeInBits(VT->getElementType()) / genx::ByteBits);
-      Constant *NewConst = ConstantVector::getSplat(
-          IGCLLVM::getElementCount(R.NumElements), BestSplatSetConst);
-      Result = R.createWrConstRegion(Result, NewConst, "constant", Inst,
-                                     Inst->getDebugLoc());
-      if (AddedInstructions)
-        AddedInstructions->push_back(Result);
-    }
-    RemainingBits &= ~BestSplatSetUsefulBits;
-  } while (RemainingBits);
-  return Result;
+  return loadCyclicConstruct(Inst, Elements, UndefBits, RemainingBits, Result);
 }
 
 /***********************************************************************
@@ -1478,6 +1384,204 @@ Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
   }
   return Result;
 }
+
+/***********************************************************************
+ * ConstantLoader::loadPackedInt : break up into packages with size of 8
+ * then materialize the  constantvector with optional mul/add
+ * instructions.
+ *
+ * Enter:   Inst = insert new instruction before here
+ *
+ * Return:  new instruction
+ */
+Instruction *ConstantLoader::loadPackedInt(Instruction *Inst) {
+  IGC_ASSERT(PackedIntScale);
+
+  auto PackTy = C->getType()->getScalarType();
+  // limit the constant-type to 32-bit because we do not want 64-bit operation
+  if (DL.getTypeSizeInBits(PackTy) > 32)
+    PackTy = Type::getInt32Ty(Inst->getContext());
+  // Load as a packed int vector with scale and/or adjust.
+  SmallVector<Constant *, 32> PackedVals;
+  for (unsigned
+           i = 0,
+           e = cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements();
+       i != e; ++i) {
+    int64_t Val = 0;
+    if (auto CI = dyn_cast<ConstantInt>(C->getAggregateElement(i))) {
+      Val = CI->getSExtValue();
+      Val -= PackedIntAdjust;
+      Val /= PackedIntScale;
+    }
+    PackedVals.push_back(ConstantInt::get(PackTy, Val, /*isSigned=*/true));
+    IGC_ASSERT(cast<ConstantInt>(PackedVals.back())->getSExtValue() >= -8 &&
+               cast<ConstantInt>(PackedVals.back())->getSExtValue() <= 15);
+  }
+
+  ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);
+  auto *LoadPacked = Packed.loadNonPackedIntConst(Inst);
+  if (PackedIntScale != 1) {
+    auto *SplatVal =
+        ConstantInt::get(PackTy, PackedIntScale, /*isSigned=*/true);
+    auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
+    auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
+    auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
+    LoadPacked = BinaryOperator::Create(Instruction::Mul, LoadPacked, Op1,
+                                        "constantscale", Inst);
+  }
+  if (PackedIntAdjust) {
+    auto *SplatVal =
+        ConstantInt::get(PackTy, PackedIntAdjust, /*isSigned=*/true);
+    auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
+    auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
+    auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
+    LoadPacked = BinaryOperator::Create(Instruction::Add, LoadPacked, Op1,
+                                        "constantadjust", Inst);
+  }
+  if (DL.getTypeSizeInBits(PackTy) <
+      DL.getTypeSizeInBits(C->getType()->getScalarType())) {
+    LoadPacked = CastInst::CreateSExtOrBitCast(LoadPacked, C->getType(),
+                                               "constantsext", Inst);
+
+    bool IsI64 =
+        C->getType()->getScalarType() == Type::getInt64Ty(Inst->getContext());
+    if (IsI64 && !allowI64Ops()) {
+      if (LoadPacked->getOpcode() == Instruction::CastOps::SExt) {
+        LoadPacked = genx::emulateI64Operation(&Subtarget, LoadPacked,
+                                               EmulationFlag::RAUWE);
+      }
+    }
+  }
+  return LoadPacked;
+}
+
+/***********************************************************************
+ * ConstantLoader::loadCyclicConstruct : cyclic inserting constant elems
+ * to materialize the constant vector.
+ *
+ * Enter:   Inst          = insert new instruction before here.
+ *          Elements      = elements of the constant vector.
+ *          UndefBits     = bit set which matches indices of undefvals
+ * in the constant vector.
+ *          RemainingBits = bit set which matches elements needed to be
+ * inserted.
+ *          Result        = value if a part of the constant was already
+ * created null otherwise.
+ *
+ * Return:  new instruction
+ */
+Instruction *ConstantLoader::loadCyclicConstruct(
+    Instruction *Inst, const SmallVectorImpl<Constant *> &Elements,
+    unsigned UndefBits, unsigned RemainingBits, Instruction *Result) {
+  unsigned NumElements = Elements.size();
+  Type *ElemTy = Elements.front()->getType();
+  // Build the splat sets, that is, the sets of elements of identical value.
+  SmallVector<unsigned, 32> SplatSets;
+  {
+    ValueMap<Constant *, unsigned> SplatSetFinder;
+    for (unsigned i = 0; i != NumElements; ++i) {
+      Constant *El = Elements[i];
+      if (!isa<UndefValue>(El)) {
+        std::pair<ValueMap<Constant *, unsigned>::iterator, bool> Created =
+            SplatSetFinder.insert(
+                std::pair<Constant *, unsigned>(El, SplatSets.size()));
+        if (Created.second) {
+          // First time this Constant has been seen.
+          SplatSets.push_back(1 << i);
+        } else {
+          // Add on to existing splat set.
+          SplatSets[Created.first->second] |= 1 << i;
+        }
+      }
+    }
+  }
+  // Remove any splat set with only a single element.
+  unsigned NewSize = 0;
+  for (unsigned i = 0, e = SplatSets.size(); i != e; ++i) {
+    if (countPopulation(SplatSets[i]) >= 2)
+      SplatSets[NewSize++] = SplatSets[i];
+  }
+  SplatSets.resize(NewSize);
+  // Determine which elements are suitable for inclusion in a packed vector.
+  // FIXME Not implemented yet. For an int vector constant, we need to
+  // determine whether the instruction expects the operand to be signed
+  // or unsigned.
+
+  // Loop constructing the constant until it is complete.
+  do {
+    // Find the splat set that will contribute the most elements
+    // to the vector, taking into account what elements we can access
+    // in a 1D region write. (Initialize BestSplatSetBits so, if no best
+    // splat is found, we just do a single element out of RemainingBits.)
+    //
+    // Note that we are looking for the splat set that sets the most elements,
+    // not the one that _usefully_ sets the most elements. For example,
+    // Examples/sepia has a constant vector of the form
+    // < A, B, C, 0, 0, A, B, C >
+    // We have four splat sets {0,5} {1,6} {2,7} {3,4}, each of which
+    // has two elements. What we want to do is set one of the A, B or C
+    // sets first, rather than the 0s, because region restrictions mean that
+    // we can only set such a pair if we do it first. If the loop below were
+    // to find the splat set that _usefully_ sets the most elements, all four
+    // sets would say "2" and we would arbitrarily pick one of them. But, if
+    // we ask each splat set how many elements it sets, even uselessly, then
+    // the A, B and C sets say "8" and the 0 set says "2", and we ensure that
+    // we do one of the A, B or C sets first.
+    // So we end up setting the constant in this order (arbitrarily picking
+    // A first):
+    //     < A, A, A, A, A, A, A, A >
+    //     <          0, 0          >
+    //     <    B                   >
+    //     <                   B    >
+    //     <       C                >
+    //     <                      C >
+    // giving five wrregion instructions rather than six.
+    unsigned BestSplatSetBits = 1 << genx::log2(RemainingBits);
+    unsigned BestSplatSetUsefulBits = BestSplatSetBits;
+    unsigned BestSplatSetCount = 1;
+    Constant *BestSplatSetConst = Elements[genx::log2(RemainingBits)];
+    for (unsigned i = 0, e = SplatSets.size(); i != e; ++i) {
+      unsigned Bits =
+          getRegionBits(SplatSets[i] & RemainingBits,
+                        SplatSets[i] | RemainingBits | UndefBits, NumElements);
+      unsigned Count = countPopulation(Bits);
+      // For this splat set, Bits is a bitmap of the vector elements that
+      // we can set in this splat set in a legal 1D region (possibly including
+      // elements already set and undef elements), and Count is how many
+      // elements that still need setting the region will set.
+      if (Count > BestSplatSetCount) {
+        BestSplatSetBits = Bits;
+        BestSplatSetUsefulBits = Bits & SplatSets[i];
+        BestSplatSetCount = Count;
+        BestSplatSetConst = Elements[genx::log2(SplatSets[i])];
+      }
+    }
+    // Now BestSplatSetBits is a bitmap of the vector elements to include in
+    // the best splat. Set up the splatted constant.
+    if (!Result) {
+      // For the first time round the loop, just splat the whole vector,
+      // whatever BestSplatBits says.
+      Result = loadConstant(
+          ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
+                                   BestSplatSetConst),
+          Inst, Subtarget, DL, AddedInstructions);
+      Result->setDebugLoc(Inst->getDebugLoc());
+    } else {
+      // Not the first time round the loop. Set up the splatted subvector,
+      // and write it as a region.
+      Region R(BestSplatSetBits, DL.getTypeSizeInBits(ElemTy) / genx::ByteBits);
+      Constant *NewConst = ConstantVector::getSplat(
+          IGCLLVM::getElementCount(R.NumElements), BestSplatSetConst);
+      Result = R.createWrConstRegion(Result, NewConst, "constant", Inst,
+                                     Inst->getDebugLoc());
+      if (AddedInstructions)
+        AddedInstructions->push_back(Result);
+    }
+    RemainingBits &= ~BestSplatSetUsefulBits;
+  } while (RemainingBits);
+  return Result;
+}
+
 /***********************************************************************
  * ConstantLoader::loadBig : insert instruction to load a constant that might
  *      be illegally sized

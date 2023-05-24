@@ -95,6 +95,12 @@ private:
   Instruction *loadNonSimple(Instruction *InsertBefore);
   Instruction *loadSplatConstant(Instruction *InsertPt);
   Instruction *loadNonPackedIntConst(Instruction *InsertPt);
+
+  Instruction *loadPackedInt(Instruction *InsertBefore);
+  Instruction *loadCyclicConstruct(Instruction *InsertBefore,
+                                   const SmallVectorImpl<Constant *> &Elements,
+                                   unsigned UndefBits, unsigned RemainingBits,
+                                   Instruction *Result);
 };
 
 // Some instructions force their operands to be constants.
