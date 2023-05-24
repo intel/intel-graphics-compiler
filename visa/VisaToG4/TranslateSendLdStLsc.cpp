@@ -642,6 +642,27 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     }
   };
 
+  if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE) {
+    switch (dataShape2D.size) {
+    case LSC_DATA_SIZE_8b:
+      check (false, "d8 not supported");
+      break;
+    case LSC_DATA_SIZE_16b:
+      check (false, "d16 not supported");
+      break;
+    case LSC_DATA_SIZE_32b:
+      check (dataShape2D.width <= 16 && dataShape2D.height <= 32,
+          "for d32, width <= 16 and height <= 32 elements");
+      break;
+    case LSC_DATA_SIZE_64b:
+      check (dataShape2D.width <= 4 && dataShape2D.height == 8,
+          "for d64, width <= 8 and height <= 32 elements");
+      break;
+    default:
+      check(false, "invalid data type");
+    }
+  }
+
   const auto opInfo = LscOpInfoGet(op);
   vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
