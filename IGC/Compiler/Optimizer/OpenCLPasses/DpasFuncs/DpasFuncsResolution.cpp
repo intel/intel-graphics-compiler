@@ -355,7 +355,6 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
         }
     }
 
-#if defined( _DEBUG ) || defined( _INTERNAL )
     // verify that intrinsic is valid
     if (!IsDpasw && !m_pCtx->platform.supportDpasInstruction()) {
         m_ErrorMsg = "Dpas instruction not supported!";
@@ -367,6 +366,8 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
         IGC_ASSERT_MESSAGE(0, "Dpasw instruction not supported!");
         return;
     }
+
+#if defined( _DEBUG ) || defined( _INTERNAL )
 
     if (doVerify)
     {
