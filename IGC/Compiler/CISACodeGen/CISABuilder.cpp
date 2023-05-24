@@ -6360,10 +6360,6 @@ namespace IGC
         // we reserve a magic large size. Reserving max PTSS is ideal, but it can
         // lead to OOM on machines with large number of threads.
         auto visaplt = GetVISAPlatform(&(m_program->GetContext()->platform));
-        // Workaround unknown TGL issue that smaller scratch size caused regressions.
-        if (visaplt <= TARGET_PLATFORM::GENX_TGLLP && fg->hasStackCall())
-          return 128 * 1024;
-
         if (fg->hasIndirectCall() || fg->hasRecursion()) {
             if(visaplt == TARGET_PLATFORM::Xe_PVCXT)
                 return 64 * 1024;
