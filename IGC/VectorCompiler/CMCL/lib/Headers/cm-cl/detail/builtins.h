@@ -46,6 +46,10 @@ vector_impl<T, dst_width>
 __cm_cl_wrregion_float(vector_impl<T, dst_width> dst,
                        vector_impl<T, src_width> src, int vstride, int width,
                        int stride, vector_offset_type offset);
+
+void __cm_cl_debugtrap();
+_Noreturn void __cm_cl_trap();
+
 // FIXME: For legacy issues 64-bit pointer is always returned.
 uint64_t __cm_cl_assert_buffer();
 uint64_t __cm_cl_printf_buffer();

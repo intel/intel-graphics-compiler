@@ -256,11 +256,15 @@ void GenXTranslateSPIRVBuiltins::getAnalysisUsage(AnalysisUsage &AU) const {
 // name. Having false positives is not that critical as they won't be linked
 // anyway.
 static bool isSPIRVBuiltinDecl(const Function &F) {
+  auto Name = F.getName();
+  // __devicelib_* functions may have implementations which VC should replace
+  if (Name.startswith("__devicelib") || Name == "__assert_fail")
+    return true;
   if (!F.isDeclaration())
     return false;
   if (F.isIntrinsic() || GenXIntrinsic::isGenXIntrinsic(&F))
     return false;
-  return F.getName().contains("__spirv");
+  return Name.contains("__spirv");
 }
 
 bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
@@ -280,6 +284,16 @@ bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
       getBiFModule(BiFKind::VCSPIRVBuiltins, M.getContext());
   SPIRVBuiltinsModule->setDataLayout(M.getDataLayout());
   SPIRVBuiltinsModule->setTargetTriple(M.getTargetTriple());
+
+  // If the BiF module has the same function, we should select it
+  for (auto &FuncName : SPIRVBuiltins) {
+    auto *Func = M.getFunction(FuncName);
+    auto *NewFunc = SPIRVBuiltinsModule->getFunction(FuncName);
+    if (Func && !Func->isDeclaration() && NewFunc &&
+        !NewFunc->isDeclaration() &&
+        Func->getFunctionType() == NewFunc->getFunctionType())
+      Func->deleteBody();
+  }
 
   if (Linker::linkModules(M, std::move(SPIRVBuiltinsModule),
                           Linker::Flags::LinkOnlyNeeded)) {

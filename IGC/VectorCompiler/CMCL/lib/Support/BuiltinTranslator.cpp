@@ -153,8 +153,18 @@ Function *getAnyDeclarationForIdFromArgs(Type &RetTy, Range &&Args, unsigned Id,
     return getInternalDeclarationForIdFromArgs(
         RetTy, std::forward<Range>(Args),
         static_cast<vc::InternalIntrinsic::ID>(Id), M);
-  return getGenXDeclarationForIdFromArgs(RetTy, std::forward<Range>(Args),
-                                         static_cast<GenXIntrinsic::ID>(Id), M);
+  if (GenXIntrinsic::isGenXIntrinsic(Id))
+    return getGenXDeclarationForIdFromArgs(RetTy, std::forward<Range>(Args),
+                                           static_cast<GenXIntrinsic::ID>(Id),
+                                           M);
+
+  auto IID = static_cast<Intrinsic::ID>(Id);
+
+  SmallVector<Type *, 1> Types;
+  if (Intrinsic::isOverloaded(IID))
+    Types.push_back(&RetTy);
+
+  return Intrinsic::getDeclaration(&M, IID, Types);
 }
 
 static bool isCMCLBuiltin(const Function &F) {
@@ -283,10 +293,9 @@ std::vector<Value *> getTranslatedBuiltinOperands(CallInst &BiCall,
 template <BuiltinID::Enum BiID>
 Value &createMainInst(const std::vector<Value *> &Operands, Type &RetTy,
                       IRBuilder<> &IRB) {
-  auto *Decl = getAnyDeclarationForIdFromArgs(
-      RetTy, Operands,
-      static_cast<GenXIntrinsic::ID>(IntrinsicForBuiltin[BiID]),
-      *IRB.GetInsertBlock()->getModule());
+  auto *Decl =
+      getAnyDeclarationForIdFromArgs(RetTy, Operands, IntrinsicForBuiltin[BiID],
+                                     *IRB.GetInsertBlock()->getModule());
   auto *CI =
       IRB.CreateCall(Decl, Operands, RetTy.isVoidTy() ? "" : "cmcl.builtin");
   return *CI;

@@ -127,7 +127,24 @@
         ]
       }
     },
-
+    "Trap": {
+      "Name": "trap",
+      "Operands": [],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "trap",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "DebugTrap": {
+      "Name": "debugtrap",
+      "Operands": [],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "debugtrap",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
     "AssertBuffer": {
       "Name": "assert_buffer",
       "Operands": [],
