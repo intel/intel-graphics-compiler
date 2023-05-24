@@ -22,8 +22,8 @@ using namespace llvm;
 using namespace IGC;
 
 #define SUCCSZANY     (true)
-#define SUCCHASINST   (succ->size() > 1)
-#define SUCCNOINST    (succ->size() <= 1)
+#define SUCCHASINST   (IGCLLVM::sizeWithoutDebug(succ) > 1)
+#define SUCCNOINST    (IGCLLVM::sizeWithoutDebug(succ) <= 1)
 #define SUCCANYLOOP   (true)
 
 #define PUSHSUCC(BLK, C1, C2) \
@@ -396,8 +396,8 @@ BasicBlock* Layout::selectSucc(
     {
         BasicBlock* succ = *SI;
         if (VisitSet.count(succ) == 0 &&
-            ((SelectNoInstBlk && succ->size() <= 1) ||
-            (!SelectNoInstBlk && succ->size() > 1)))
+            ((SelectNoInstBlk && IGCLLVM::sizeWithoutDebug(succ) <= 1) ||
+            (!SelectNoInstBlk && IGCLLVM::sizeWithoutDebug(succ) > 1)))
         {
             Succs.push_back(succ);
         }
