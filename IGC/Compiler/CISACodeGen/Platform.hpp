@@ -977,8 +977,6 @@ bool supportDpaswInstruction() const
 
 // This represents the max number of logical lanes available for RT,
 // so it is not dependent on compiled SIMD size or "PreferredRayTracingSIMDSize".
-// The calculation here is: (ThreadCount / DualSubSliceCount) * 16,
-// where 16 is max current SIMD lenght for RT.
 unsigned getRTStackDSSMultiplier() const
 {
     IGC_ASSERT(supportRayTracing());

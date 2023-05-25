@@ -21474,7 +21474,8 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
     m_encoder->Push();
 
     const uint32_t NumSend =
-        (m_currShader->m_SIMDSize == SIMDMode::SIMD32) ? 2 : 1;
+        (m_currShader->m_SIMDSize == SIMDMode::SIMD32
+            ) ? 2 : 1;
 
     for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++)
     {
@@ -21497,7 +21498,8 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
                 m_encoder->Copy(TmpGP, globalBufferPtr);
                 globalBufferPtr = UniformCopy(TmpGP, true);
             }
-            else if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+            else if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
+                )
             {
                 auto *Src = m_currShader->GetNewAlias(
                     globalBufferPtr,
@@ -21588,7 +21590,8 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
             m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
 
         CVariable* Dst = RayQueryEnable ? m_destination : nullptr;
-        if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
+            )
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD16);
             if (Cnt == 1)
