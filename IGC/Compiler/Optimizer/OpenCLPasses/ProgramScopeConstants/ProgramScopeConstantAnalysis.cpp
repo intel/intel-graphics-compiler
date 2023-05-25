@@ -407,10 +407,20 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     DataVector& inlineProgramScopeBuffer,
     PointerOffsetInfoList& pointerOffsetInfoList,
     BufferOffsetMap& inlineProgramScopeOffsets,
-    unsigned addressSpace)
+    unsigned addressSpace,
+    bool forceAlignmentOne)
 {
     // Initial alignment padding before insert the current constant into the buffer.
-    alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
+    alignment_t typeAlignment = forceAlignmentOne ? 1 : m_DL->getABITypeAlignment(initializer->getType());
+    alignBuffer(inlineProgramScopeBuffer, typeAlignment);
+
+    // If the initializer is packed struct make sure, that every variable inside
+    // will have also align 1
+    if (StructType* s = dyn_cast<StructType>(initializer->getType()))
+    {
+        if (cast<StructType>(s)->isPacked())
+            forceAlignmentOne = true;
+    }
 
     // We need to do extra work with pointers here: we don't know their actual addresses
     // at compile time so we find the offset from the base of the buffer they point to
@@ -596,7 +606,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             Constant* C = initializer->getAggregateElement(i);
             IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
             // Since the type may not be primitive, extra alignment is required.
-            addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace, forceAlignmentOne);
         }
     }
     // And, finally, we have to handle base types - ints and floats.
@@ -627,5 +637,5 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
 
     // final padding.  This gets used by the vec3 types that will insert zero padding at the
     // end after inserting the actual vector contents (this is due to sizeof(vec3) == 4 * sizeof(scalarType)).
-    alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
+    alignBuffer(inlineProgramScopeBuffer, typeAlignment);
 }

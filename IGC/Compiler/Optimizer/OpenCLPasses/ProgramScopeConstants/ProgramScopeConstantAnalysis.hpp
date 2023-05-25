@@ -81,7 +81,8 @@ namespace IGC
             DataVector& inlineConstantBuffer,
             PointerOffsetInfoList& pointerOffsetInfo,
             BufferOffsetMap& inlineProgramScopeOffsets,
-            unsigned addressSpace);
+            unsigned addressSpace,
+            bool forceAlignmentOne=false);
 
         /// @brief  Align the buffer according to the required alignment
         /// @param  buffer     The buffer to align.
