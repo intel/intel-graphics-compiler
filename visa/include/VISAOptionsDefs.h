@@ -380,10 +380,6 @@ DEF_VISA_OPTION(vISA_LocalScheduleingStartKernel, ET_INT32,
                 "-localScheduleStartKernel", UNUSED, 0)
 DEF_VISA_OPTION(vISA_LocalScheduleingEndKernel, ET_INT32,
                 "-localScheduleEndKernel", UNUSED, UINT_MAX)
-DEF_VISA_OPTION(vISA_ScheduleACCDep, ET_BOOL, "-scheduleACCDep",
-                "Enable scheduling with accurate ACC dependence, instead of "
-                "coarse grained dependence",
-                false)
 
 //=== SWSB options ===
 DEF_VISA_OPTION(vISA_USEL3HIT, ET_BOOL, "-SBIDL3Hit", UNUSED, false)
