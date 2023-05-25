@@ -142,7 +142,13 @@ namespace IGC
         // Pass identification, replacement for typeid
         static char ID;
 
-        PreCompiledFuncImport(uint32_t TheEmuKind = EMU_UNUSED);
+        // For pass registration
+        PreCompiledFuncImport() :
+            ModulePass(ID),
+            m_emuKind(EMU_UNUSED)
+        {};
+
+        PreCompiledFuncImport(CodeGenContext* CGCtx, uint32_t TheEmuKind);
 
         ~PreCompiledFuncImport() {}
 

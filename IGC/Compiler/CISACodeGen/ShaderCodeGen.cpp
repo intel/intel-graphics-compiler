@@ -506,7 +506,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     {
         // Need to break constant expr as PreCompiledFuncImport does not handle it.
         mpm.add(new BreakConstantExpr());
-        mpm.add(new PreCompiledFuncImport(theEmuKind));
+        mpm.add(new PreCompiledFuncImport(&ctx, theEmuKind));
         mpm.add(createAlwaysInlinerLegacyPass());
 
         // Using DCE here as AlwaysInliner does not completely remove dead functions.
