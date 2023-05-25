@@ -1008,7 +1008,20 @@ void LoopVarSplit::removeAllSplitInsts(GlobalRA *gra, G4_Declare *dcl) {
   auto &bbs = gra->splitResults[dcl].insts;
   for (auto &bb : bbs) {
     bb.first->getInstList().remove_if([&](G4_INST *candidate) {
-      return (bb.second.find(candidate) != bb.second.end());
+      auto it = bb.second.find(candidate);
+      if (it != bb.second.end()) {
+        auto dst = candidate->getDst();
+        if (dst && dst->getTopDcl())
+          gra->incRA.markForIntfUpdate(dst->getTopDcl());
+
+        for (unsigned int i = 0; i != candidate->getNumSrc(); ++i) {
+          auto src = candidate->getSrc(i);
+          if (src && src->getTopDcl())
+            gra->incRA.markForIntfUpdate(src->getTopDcl());
+        }
+        return true;
+      }
+      return false;
     });
   }
 }
@@ -1134,7 +1147,7 @@ bool LoopVarSplit::split(G4_Declare *dcl, Loop &loop) {
   }
 
   // At this point we've decided to split dcl around loop
-  coloring->getGRA().incRA.addCandidate(dcl);
+  coloring->getGRA().incRA.markForIntfUpdate(dcl);
 
   const auto &srcs = getReads(dcl, loop);
 

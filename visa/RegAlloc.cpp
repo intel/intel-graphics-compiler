@@ -91,33 +91,82 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
     }
   };
 
-  auto incRACheck = IncrementalRA::isEnabled(gra.kernel);
+  bool incRAVerify = false;
+  auto incRACheck = gra.incRA.isEnabled();
+  if (incRACheck) {
+    // New variables get id assignment from numVarId whereas old
+    // variables reuse their ids.
+    numVarId = gra.incRA.getNextVarId(selectedRF);
+    incRAVerify = gra.incRA.isEnabledWithVerification();
+    gra.incRA.unassignedVars.clear();
+  }
   for (G4_Declare *decl : gra.kernel.Declares) {
     if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL) {
+      // Flag that indicates whether old id was assigned to current decl or
+      // a fresh id is assigned in current iteration.
+      bool useOldId = false;
+      unsigned int varId = numVarId;
+      if (incRACheck) {
+        // If incremental RA is enabled then:
+        // 1. First, check whether dcl had an id assigned from earlier iteration.
+        //    If it did, then reuse the id.
+        // 2. If dcl wasn't seen in earlier iteration then assign a fresh id to
+        //    it beginning from numVarId.
+        auto prevIterId = gra.incRA.getIdFromPrevIter(decl);
+        if (prevIterId.first) {
+          varId = prevIterId.second;
+          useOldId = true;
+        }
+        else
+          gra.incRA.recordVarId(decl, varId);
+      }
       if (flag) {
         bool isLocal = isLocalVar(decl);
         if (isLocal)
           handleSplitId(decl);
         else
-          globalVars.set(numVarId);
+          globalVars.set(varId);
       } else {
         handleSplitId(decl);
         // All variables are treated as global in stack call
-        globalVars.set(numVarId);
+        globalVars.set(varId);
       }
 
-      if(incRACheck) {
+      if(incRACheck && !gra.incRA.getLRs().empty()) {
         // Incremental RA requires that variables preserve their
         // RA id. So this sanity check is crucial for incremental
         // RA correctness.
         auto id = decl->getRegVar()->getId();
-        vISA_ASSERT(id == numVarId || id == UNDEFINED_VAL,
+        vISA_ASSERT(id == varId || id == UNDEFINED_VAL,
                     "different id assigned to G4_RegVar");
+        if (gra.incRA.getLRs().size() > id) {
+          vISA_ASSERT(gra.incRA.getLRs()[id]->getDcl() == decl,
+                      "some other decl found for same id");
+        }
       }
 
-      decl->getRegVar()->setId(numVarId++);
-      if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
+      if (!useOldId) {
+        // Actual id assignment to G4_Declare::G4_RegVar is done
+        // only for new variables. It's assumed that older variables
+        // preserve their ids.
+        decl->getRegVar()->setId(varId);
+      }
+
+      // If new id was assigned then increment numVarId for next fresh variable
+      if (!useOldId)
+        numVarId++;
+      if (!decl->getRegVar()->getPhyReg() && !decl->getIsPartialDcl()) {
         numUnassignedVarId++;
+
+        if (incRAVerify) {
+          // Store list of unassigned variables. This list is pruned later in
+          // determineColorOrdering() to verify that all unallocated ranges
+          // are coloring candidates. Note this is only to aid debugging and
+          // verification of incremental RA.
+          gra.incRA.unassignedVars.insert(decl);
+        }
+
+      }
       if (decl->getRegVar()->isPhyRegAssigned() == false) {
         phyRegAssigned = false;
       }
@@ -2103,6 +2152,7 @@ void GlobalRA::markBlockLocalVars() {
 }
 
 void GlobalRA::resetGlobalRAStates() {
+  auto origDclSize = kernel.Declares.size();
   if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {
     // remove partial decls
     auto isPartialDcl = [](G4_Declare *dcl) { return dcl->getIsPartialDcl(); };
@@ -2111,6 +2161,8 @@ void GlobalRA::resetGlobalRAStates() {
                                          kernel.Declares.end(), isPartialDcl),
                           kernel.Declares.end());
   }
+
+  incRA.reduceMaxDclId(origDclSize - kernel.Declares.size());
 
   for (auto dcl : kernel.Declares) {
     // Reset all the local live ranges
@@ -2122,6 +2174,7 @@ void GlobalRA::resetGlobalRAStates() {
         dcl->setIsSplittedDcl(false);
         clearSubDcl(dcl);
       }
+      incRA.markForIntfUpdate(dcl);
     }
 
     // Remove the bank assignment

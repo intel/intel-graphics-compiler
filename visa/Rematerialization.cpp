@@ -829,13 +829,14 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
 
   auto dstInst = uniqueDef->first;
   auto dst = dstInst->getDst();
+  gra.incRA.markForIntfUpdate(dst->getTopDcl());
   bool isSampler = dstInst->isSplitSend() && dstInst->getMsgDesc()->isSampler();
 
   for (unsigned int i = 0, numSrc = dstInst->getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = dstInst->getSrc(i);
     if (src && src->isSrcRegRegion()) {
       incNumRemat(src->asSrcRegRegion()->getTopDcl());
-      gra.incRA.addCandidate(src->getTopDcl());
+      gra.incRA.markForIntfUpdate(src->getTopDcl());
     }
   }
 

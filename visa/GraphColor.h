@@ -151,12 +151,15 @@ class LiveRange final {
 
   LiveRange(G4_RegVar *v, GlobalRA &);
 
-  void initializeForbidden();
-
 public:
   static LiveRange *createNewLiveRange(G4_Declare *dcl, GlobalRA &gra);
 
+  void initialize();
+  void initializeForbidden();
+
   void *operator new(size_t sz, llvm::SpecificBumpPtrAllocator<LiveRange> &m) { return m.Allocate(); }
+
+  void setBitFieldUnionValue(uint16_t v) { bunch = v; }
 
   void setDegree(unsigned d) { degree = d; }
   unsigned getDegree() const { return degree; }
@@ -253,6 +256,14 @@ public:
 
   bool isSpilled() const { return spilled; }
   void setSpilled(bool v) { spilled = v; }
+
+  void setCandidate(bool v) { isCandidate = v; }
+  bool getCandidate() const { return isCandidate; }
+
+  void resetForbidden() {
+    forbidden = nullptr;
+    forbiddenType = forbiddenKind::FBD_NUM;
+  }
 
 private:
   // const Options *m_options;
@@ -397,6 +408,10 @@ private:
   unsigned int level = 0;
   std::unordered_set<G4_Declare *> needIntfUpdate;
   unsigned int maxDclId = 0;
+  // Map of root G4_Declare* -> id assigned to its G4_RegVar
+  // This allows us to reuse ids from previous iteration.
+  std::unordered_map<G4_Declare *, unsigned int> varIdx;
+  unsigned int maxVarIdx = 0;
 
   // Reset state to mark start of new type of GRA (eg, from flag to GRF)
   void reset();
@@ -405,6 +420,9 @@ public:
   llvm::SpecificBumpPtrAllocator<LiveRange> mem;
 
   IncrementalRA(GlobalRA &g);
+
+  bool isEnabled() { return level > 0; }
+  bool isEnabledWithVerification() { return level == 2; }
 
   static bool isEnabled(G4_Kernel &kernel) {
     // 0 - disabled
@@ -433,9 +451,50 @@ public:
   // This method is invoked when an existing RA variable is either
   // removed from the program or a change is expected in liveness
   // of a variable due to optimization.
-  void addCandidate(G4_Declare *dcl);
+  void markForIntfUpdate(G4_Declare *dcl);
 
   void skipIncrementalRANextIter();
+
+  void moveFromHybridToGlobalGRF() {
+    varIdx.clear();
+    maxVarIdx = 0;
+    reset();
+  }
+
+  // Return idx of a G4_RegVar if it was given an id in previous
+  // iteration. If dcl was present in previous id assign phase
+  // return pair <true, id>. When dcl is seen for first time,
+  // return <false, X>. Second field of pair contains legal value
+  // only if first field is true.
+  std::pair<bool, unsigned int> getIdFromPrevIter(G4_Declare *dcl);
+
+  // Record new dcl and id assigned to its G4_RegVar. Update
+  // maxVarIdx so we know first free id in next RA iteration.
+  void recordVarId(G4_Declare* dcl, unsigned int id);
+
+  // Return next id that can be assigned to a new variable. In 1st
+  // RA iteration, this returns 0 because no variables exist in
+  // incremental RA. In 2nd RA iteration, this method returns
+  // first available index that can be assigned to new variable.
+  unsigned int getNextVarId(unsigned char RF) {
+    if ((RF & selectedRF) == 0) {
+      varIdx.clear();
+      maxVarIdx = 0;
+    }
+    if (varIdx.size() == 0)
+      return 0;
+    return maxVarIdx + 1;
+  }
+
+  // Handle local split here. reduceBy argument tells us how many
+  // G4_Declares were removed by resetGlobalRAStates().
+  // TODO: Deprecate this method once we stop erasing old partial
+  // dcls from kernel.Declares
+  void reduceMaxDclId(unsigned int reduceBy) {
+    if (!level)
+      return;
+    maxDclId -= reduceBy;
+  }
 
 private:
   // For verification only
@@ -448,11 +507,19 @@ private:
 
   std::unique_ptr<VarReferences> prevIterRefs;
 
-  // return true if verification passes, false otherwise.
+  // Return true if verification passes, false otherwise
   bool verify(const LivenessAnalysis *curLiveness) const;
 
-  // copy over liveness sets from current iteration's liveness
+  // Copy over liveness sets from current iteration's liveness
   void copyLiveness(const LivenessAnalysis *liveness);
+
+public:
+  std::unordered_set<G4_Declare *> unassignedVars;
+
+  // Compute variables that are left over in sorted list when
+  // computing color order. This is to aid debugging only.
+  void computeLeftOverUnassigned(const LiveRangeVec &sorted,
+                       const LivenessAnalysis &liveAnalysis);
 };
 
 class Interference {

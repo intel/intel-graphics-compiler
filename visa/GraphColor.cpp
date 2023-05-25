@@ -1347,29 +1347,32 @@ void LiveRange::initializeForbidden() {
   }
 }
 
+void LiveRange::initialize() {
+  if (gra.kernel.fg.isPseudoDcl(dcl)) {
+    setIsPseudoNode();
+  }
+  if (dcl->getIsPartialDcl()) {
+    if (G4_Declare *parentDcl = gra.getSplittedDeclare(dcl)) {
+      setParentLRID(parentDcl->getRegVar()->getId());
+      setIsPartialDcl();
+    }
+  }
+  if (dcl->getIsSplittedDcl()) {
+    setIsSplittedDcl(true);
+  }
+  setBC(gra.getBankConflict(dcl));
+
+  initializeForbidden();
+}
+
 LiveRange *LiveRange::createNewLiveRange(G4_Declare *dcl, GlobalRA &gra) {
   auto &IncRAMem = gra.incRA.mem;
-  auto &builder = *gra.kernel.fg.builder;
   G4_RegVar *var = dcl->getRegVar();
   vISA_ASSERT(!dcl->getAliasDeclare(),
               "error: attempt to create LiveRange for non-root dcl");
   auto *lr = new (IncRAMem) LiveRange(var, gra);
 
-  if (builder.kernel.fg.isPseudoDcl(dcl)) {
-    lr->setIsPseudoNode();
-  }
-  if (dcl->getIsPartialDcl()) {
-    if (G4_Declare *parentDcl = gra.getSplittedDeclare(dcl)) {
-      lr->setParentLRID(parentDcl->getRegVar()->getId());
-      lr->setIsPartialDcl();
-    }
-  }
-  if (dcl->getIsSplittedDcl()) {
-    lr->setIsSplittedDcl(true);
-  }
-  lr->setBC(gra.getBankConflict(dcl));
-
-  lr->initializeForbidden();
+  lr->initialize();
 
   return lr;
 }
@@ -5748,6 +5751,11 @@ void GraphColor::determineColorOrdering() {
       j++;
     }
   }
+
+  if (gra.incRA.isEnabledWithVerification(kernel)) {
+    gra.incRA.computeLeftOverUnassigned(sorted, liveAnalysis);
+  }
+
   vISA_ASSERT(j == numUnassignedVar, ERROR_GRAPHCOLOR);
 
   //
@@ -5782,6 +5790,7 @@ void GraphColor::determineColorOrdering() {
       std::cout << "\t degree=" << sorted[i]->getDegree();
       std::cout << "\t refCnt=" << sorted[i]->getRefCount();
       std::cout << "\t size=" << sorted[i]->getDcl()->getByteSize();
+      std::cout << "\t active=" << sorted[i]->getActive();
       std::cout << "\n";
     }
     std::cout << "\n";
@@ -9814,6 +9823,14 @@ int GlobalRA::coloringRegAlloc() {
   VarSplit splitPass(*this);
   DynPerfModel perfModel(kernel);
   FINALIZER_INFO *jitInfo = builder.getJitInfo();
+
+  // Reset state of incremental RA here as we move from hybrid RA
+  // to global RA. Note that when moving from flag->address or from
+  // address->GRF RA, we don't need to explicitly reset state because
+  // incremental RA can deduce we're moving to RA for different
+  // variable class. But it cannot deduce so when moving from hybrid
+  // to global RA.
+  incRA.moveFromHybridToGlobalGRF();
 
   while (iterationNo < maxRAIterations) {
     jitInfo->statsVerbose.RAIterNum++;
