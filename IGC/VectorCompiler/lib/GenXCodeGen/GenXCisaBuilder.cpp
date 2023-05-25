@@ -6048,12 +6048,15 @@ static void dumpGlobalAnnotations(Module &M) {
 
 namespace {
 
+void initializeGenXFinalizerPass(PassRegistry &);
+
 class GenXFinalizer : public ModulePass {
-  raw_pwrite_stream &Out;
+  raw_pwrite_stream &Out = static_cast<raw_pwrite_stream&>(llvm::nulls());
   LLVMContext *Ctx = nullptr;
 
 public:
   static char ID;
+  explicit GenXFinalizer() : ModulePass(ID) {}
   explicit GenXFinalizer(raw_pwrite_stream &o) : ModulePass(ID), Out(o) {}
 
   StringRef getPassName() const override { return "GenX Finalizer"; }
@@ -6108,6 +6111,14 @@ public:
 } // end anonymous namespace.
 
 char GenXFinalizer::ID = 0;
+
+INITIALIZE_PASS_BEGIN(GenXFinalizer, "GenXFinalizer",
+                      "GenXFinalizer", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
+INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
+INITIALIZE_PASS_DEPENDENCY(GenXModule)
+INITIALIZE_PASS_END(GenXFinalizer, "GenXFinalizer",
+                    "GenXFinalizer", false, false)
 
 ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
   return new GenXFinalizer(o);

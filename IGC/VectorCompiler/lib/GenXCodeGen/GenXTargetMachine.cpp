@@ -160,6 +160,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXGASDynamicResolutionPass(registry);
   initializeGenXInitBiFConstantsPass(registry);
   initializeGenXTranslateIntrinsicsPass(registry);
+  initializeGenXFinalizerPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
