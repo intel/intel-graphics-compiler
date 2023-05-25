@@ -2540,7 +2540,7 @@ private:
       switch (vo.tag & 0x7) {
       case OPERAND_IMMEDIATE:
         ss << "0x" << std::uppercase << std::hex
-           << vo.opnd_val.const_opnd._val.ival << std::dec;
+           << vo.opnd_val.const_opnd._val.lval << std::dec;
         break;
       case OPERAND_GENERAL:
         ss << printVariableDeclName(header, vo.getOperandIndex(), opts,
@@ -2891,7 +2891,7 @@ private:
 
     // see the table below for operand indices
     auto fmtAddrOperand = [&]() {
-        formatAddrType(addrType, currOpIx);
+      formatAddrType(addrType, currOpIx);
       //
       ss << "[";
       if (immediateScale > 1) {
@@ -2996,13 +2996,13 @@ private:
       ss << "flat";
       ss << "[";
       formatVectorOperand(currOpIx + 1);
-      ss << ", ";
+      ss << ",";
       formatVectorOperand(currOpIx + 2);
-      ss << ", ";
+      ss << ",";
       formatVectorOperand(currOpIx + 3);
-      ss << ", ";
+      ss << ",";
       formatVectorOperand(currOpIx + 4);
-      ss << ", ";
+      ss << ",";
       formatVectorOperand(currOpIx + 5);
       if ((int)getPrimitive<int16_t>(currOpIx + 6) != 0) {
         if ((int)getPrimitive<int16_t>(currOpIx+6) > 0) {
@@ -3010,7 +3010,7 @@ private:
         }
         ss << (int)getPrimitive<int16_t>(currOpIx+6);
       }
-      ss << ", ";
+      ss << ",";
       formatVectorOperand(currOpIx + 7);
       if ((int)getPrimitive<int16_t>(currOpIx+8) != 0) {
         if ((int)getPrimitive<int16_t>(currOpIx+8) > 0) {
@@ -3066,15 +3066,15 @@ private:
           // +2 skip surface and dst
           const raw_opnd &ro = getRawOperand(inst, currOpIx + 2 + i);
           auto reg =
-              printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
+            printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
           // TODO: for null operands, printVariableDeclName with
           // NOT_A_STATE_OPND will return %null and not V0
           // Should this be changed to return V0 for null operands?
-          if (reg == "V0")
+          if (reg == "%null")
             break;
           if (i > 0)
-            ss << ", ";
-          ss << reg;
+            ss << ",";
+          formatRawOperand(currOpIx + 2 + i);
         }
       }
       ss << "]";

@@ -3806,8 +3806,8 @@ struct LscInstVerifier {
                "Surface: for LSC_ADDR_TYPE_FLAT only imm 0 or %null allowed");
         break;
       case OPERAND_GENERAL:
-          verify(vo.opnd_val.gen_opnd.index == 0,
-                 "Surface: must be null (V0) reg for LSC_ADDR_TYPE_FLAT");
+        verify(vo.opnd_val.gen_opnd.index == 0,
+               "Surface: must be %null reg for LSC_ADDR_TYPE_FLAT");
         break;
       default:
         error("Surface: invalid operand type");
