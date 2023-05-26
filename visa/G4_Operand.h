@@ -206,6 +206,9 @@ public:
   unsigned short getTypeSize() const { return TypeSize(getType()); }
 
   bool isImm() const { return kind == Kind::immediate; }
+  bool isVectImm() const {
+    return (isImm() && (type == Type_UV || type == Type_V || type == Type_VF));
+  }
   bool isSrcRegRegion() const { return kind == Kind::srcRegRegion; }
   bool isDstRegRegion() const { return kind == Kind::dstRegRegion; }
   bool isRegRegion() const {

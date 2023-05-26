@@ -766,4 +766,8 @@ bool needIndirectSrcForCompressedInstWA() const {
   return VISA_WA_CHECK(getPWaTable(), Wa_13010473643);
 }
 
+bool hasPackedRestrictedFloatVector() const {
+  return true;
+}
+
 // end HW capabilities

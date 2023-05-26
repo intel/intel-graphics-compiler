@@ -1772,6 +1772,11 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
         i + ISA_Inst_Table[opcode].n_dsts); /// dst is at index 0, addc/subbb
                                             /// have two destinations
     VISA_Type srcType = getVectorOperandType(header, src);
+
+    if (!irBuilder->hasPackedRestrictedFloatVector())
+      REPORT_INSTRUCTION(options, srcType != ISA_TYPE_VF,
+                         ":vf datatype is not supported on this platform");
+
     VISA_Modifier srcModifier = src.getOperandModifier();
 
     REPORT_INSTRUCTION(

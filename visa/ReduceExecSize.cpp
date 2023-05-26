@@ -76,17 +76,16 @@ bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
   unsigned hsInBytes = reg->getHorzStride() * reg->getTypeSize();
   for (int k = 0, e = inst->getNumSrc(); k < e; ++k) {
     G4_Operand *src = inst->getSrc(k);
-    if (!src || !src->isImm())
+    if (!src->isVectImm())
       continue;
 
     G4_Type ty = src->getType();
+    if (!builder.hasPackedRestrictedFloatVector())
+      vISA_ASSERT(ty != Type_VF,
+                  ":vf datatype is not supported on this platform");
     G4_Type moveTy = (ty == Type_V)    ? Type_W
                      : (ty == Type_UV) ? Type_UW
-                     : (ty == Type_VF) ? Type_F
-                                       : Type_UNDEF;
-    if (moveTy == Type_UNDEF)
-      continue;
-
+                                       : Type_F;
     if (!dstAligned) {
       inst->setSrc(insertMovBefore(iter, k, moveTy, bb), k);
       changed = true;
@@ -153,25 +152,8 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB *bb) {
       }
     }
 
-    auto hasPackedImm = [](G4_INST *inst) {
-      for (unsigned i = 0, e = inst->getNumSrc(); i != e; ++i) {
-        auto src = inst->getSrc(i);
-        if (!src || !src->isImm())
-          continue;
-        switch (src->getType()) {
-        case Type_V:
-        case Type_UV:
-        case Type_VF:
-          return true;
-        default:
-          break;
-        }
-      }
-      return false;
-    };
-
     // There are vector immediate source operands.
-    if (hasPackedImm(*i)) {
+    if ((*i)->hasVectImm()) {
       if ((insertedInst = fixDstAlignmentWithVectorImm(i, bb))) {
         // Recompute the execution type size if there is some change.
         // This allows fixDstAlignment to fix possible conformity issues.

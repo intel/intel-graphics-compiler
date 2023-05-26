@@ -348,6 +348,14 @@ public:
 
   bool isEOT() const { return getOption() & InstOpt_EOT; }
 
+  bool hasVectImm() const {
+    for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i) {
+      if (getSrc(i)->isVectImm())
+        return true;
+    }
+    return false;
+  }
+
   // ToDo: get rid of this function which does't make sense for non-sends
   virtual G4_SendDesc *getMsgDesc() const { return nullptr; }
 
