@@ -1399,7 +1399,7 @@ bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
         // Convert half directly into 32-bit integer.
         Value* Lo = IRB->CreateFPToUI(Src, IRB->getInt32Ty());
         // FIXME: Due to the current OCL builtin implementation, the simple
-        // conversion from ulong to half and its builtin-provided saturated
+        // conversion from half to ulong and its builtin-provided saturated
         // version bring about the same fptoui instruction. We cannot tell the
         // source functions apart during the emulation.
 
@@ -1474,8 +1474,8 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
         // Convert half directly into 32-bit integer.
         Value* Lo = IRB->CreateFPToSI(Src, IRB->getInt32Ty());
         // FIXME: Due to the current OCL builtin implementation, the simple
-        // conversion from ulong to half and its builtin-provided saturated
-        // version bring about the same fptoui instruction. We cannot tell the
+        // conversion from half to long and its builtin-provided saturated
+        // version bring about the same fptosi instruction. We cannot tell the
         // source functions apart during the emulation, hence the special handling
         // for the out-of-range case for half.
         //
