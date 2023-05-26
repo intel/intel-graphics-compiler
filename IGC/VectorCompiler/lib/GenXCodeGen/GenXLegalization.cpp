@@ -2461,18 +2461,22 @@ Value *GenXLegalization::getSplitSOAOperand(Instruction *Inst, unsigned OperandN
   }
   // Non-constant operand not baled in.
   // Create an rdregion for the operand.
-  if (V->getType()->getScalarType()->isIntegerTy(1)) {
-    report_fatal_error("SOA predicate splitting is currently not supported");
+  Instruction *CreatedInst = nullptr;
+  if (VT->getScalarType()->isIntegerTy(1)) {
+    IGC_ASSERT(InstHeight == 1);
+    CreatedInst = Region::createRdPredRegion(
+        V, StartIdx, Size, V->getName() + ".split" + Twine(StartIdx),
+        InsertBefore, DL);
+  } else {
+    Region R(V);
+    R.Offset = StartIdx * R.ElementBytes;
+    R.Stride = 1;
+    R.VStride = InstWidth;
+    R.Width = Size;
+    R.NumElements = Size * InstHeight;
+    CreatedInst = R.createRdRegion(V, V->getName() + ".split" + Twine(StartIdx),
+                                   InsertBefore, DL);
   }
-  Region R(V);
-  R.Offset = StartIdx * R.ElementBytes;
-  R.Stride = 1;
-  R.VStride = InstWidth;
-  R.Width = Size;
-  R.NumElements = Size * InstHeight;
-  Instruction *CreatedInst =
-      R.createRdRegion(V, V->getName() + ".split" + Twine(StartIdx),
-                       InsertBefore, DL);
   Baling->processInst(CreatedInst);
   return CreatedInst;
 }
