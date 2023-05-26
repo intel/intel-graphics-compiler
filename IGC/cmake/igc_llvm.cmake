@@ -20,7 +20,6 @@ if(NOT IGC_BUILD__LLVM_SOURCES)
   set(LLVM_DIR "${LLVM_DIR}" PARENT_SCOPE)
 
   set(LLVM_DIR_CONFIGURATION_ADJUSTED "${LLVM_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:ReleaseInternal>:Release>")
-  set(LLVM_BIN_DIR_CONFIGURATION_ADJUSTED "${LLVM_DIR_CONFIGURATION_ADJUSTED}/bin")
 
   # Tell the build that we are using prebuilds.
   set(IGC_BUILD__LLVM_PREBUILDS ON)
@@ -39,10 +38,12 @@ if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME AND WIN32)
   set(IGC_OPTION__LLD_DIR "${LLVM_DIR}")
   set(IGC_OPTION__LLDELF_H_DIR "${DEFAULT_IGC_LLVM_SOURCES_DIR}/lld")
 
-  set(LLVM_LINK_EXE "${LLVM_BIN_DIR_CONFIGURATION_ADJUSTED}/llvm-link.exe" CACHE STRING "")
-  set(LLVM_AS_EXE "${LLVM_BIN_DIR_CONFIGURATION_ADJUSTED}/llvm-as.exe" CACHE STRING "")
-  set(LLVM_OPT_EXE "${LLVM_BIN_DIR_CONFIGURATION_ADJUSTED}/opt.exe" CACHE STRING "")
-  set(LLVM_TABLEGEN_EXE "${LLVM_BIN_DIR_CONFIGURATION_ADJUSTED}/llvm-tblgen.exe" CACHE STRING "")
+  #No need to use anything but Release versions of these binaries.
+  #This should speed up overall build time
+  set(LLVM_LINK_EXE "${LLVM_DIR}/Release/bin/llvm-link.exe" CACHE STRING "")
+  set(LLVM_AS_EXE "${LLVM_DIR}/Release/bin/llvm-as.exe" CACHE STRING "")
+  set(LLVM_OPT_EXE "${LLVM_DIR}/Release/bin/opt.exe" CACHE STRING "")
+  set(LLVM_TABLEGEN_EXE "${LLVM_DIR}/Release/bin/llvm-tblgen.exe" CACHE STRING "")
 
   set(LLVM_INCLUDE_DIRS "${LLVM_DIR_CONFIGURATION_ADJUSTED}/include;${DEFAULT_IGC_LLVM_SOURCES_DIR}/llvm/include")
   set(LLVM_INCLUDE_DIRS "${LLVM_INCLUDE_DIRS}" PARENT_SCOPE)

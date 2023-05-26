@@ -69,21 +69,10 @@ function(add_lld_executable EXE_NAME)
       "Cannot find ${EXE_NAME} executable in Release version in ${IGC_OPTION__LLD_DIR}")
     endif()
 
-    find_program(${EXE_NAME}_PATH_DEBUG
-      ${EXE_NAME}
-      PATHS "${IGC_OPTION__LLD_DIR}/Debug/bin"
-      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
-
-    if("${${EXE_NAME}_PATH_DEBUG}" STREQUAL "${EXE_NAME}_PATH_DEBUG-NOTFOUND")
-      message(FATAL_ERROR
-      "Cannot find ${EXE_NAME} executable in Debug version in ${IGC_OPTION__LLD_DIR}")
-    endif()
-
+    #We only need the Release version of lld.exe
     add_executable(${EXE_NAME} IMPORTED GLOBAL)
     set_target_properties(${EXE_NAME} PROPERTIES
-      IMPORTED_LOCATION_RELEASE "${${EXE_NAME}_PATH_RELEASE}"
-      IMPORTED_LOCATION_RELEASEINTERNAL "${${EXE_NAME}_PATH_RELEASE}"
-      IMPORTED_LOCATION_DEBUG "${${EXE_NAME}_PATH_DEBUG}"
+      IMPORTED_LOCATION "${${EXE_NAME}_PATH_RELEASE}"
       )
   else()
     if(NOT DEFINED IGC_OPTION__LLD_BIN_DIR)
