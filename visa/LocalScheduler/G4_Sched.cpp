@@ -1320,11 +1320,6 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
     if (!config.UseLatency)
       return false;
 
-    // When preRA control is set to always latency
-    if (!config.UseSethiUllman && !config.DoClustering) {
-      return true;
-    }
-
     // KernelRP == 0 means we are scheduling for the fixed number of GRF
     if (KernelRP == 0 && MaxPressure >= getLatencyHidingThreshold(kernel, nr))
       return false;
