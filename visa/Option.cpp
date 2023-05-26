@@ -149,10 +149,12 @@ bool Options::parseOptions(int argc, const char *argv[]) {
       return intVal != 0;
     };
 
-    // Arg corrsponds to vISAOpt.
-    // If bool, set it with the inverse of the default value if no explicit
-    //          value is given; set it to the given value otherwise.
-    // Else if int32,int64, or cstr, set parse argv[i+1] and set the value.
+    // Arg corresponds to vISAOpt.
+    // If bool:
+    //  If argv[i+1] is either bool or int value, set the value to it.
+    //  Otherwise, either set it to true or flip the default value depending on
+    //  the option.
+    // If int32,int64, or cstr, parse argv[i+1] and set the value.
     vISAOptions vISAOpt = it->second;
     EntryType type = m_vISAOptions.getType(vISAOpt);
     switch (type) {
@@ -162,11 +164,8 @@ bool Options::parseOptions(int argc, const char *argv[]) {
       if (o.has_value())
         val = o.value();
       else
-        // TODO: We should change this so that -foo means foo is true instead of
-        // flipping the default value; changing the default value is a major
-        // pain otherwise. This would break existing options like -noschedule,
-        // however. Maybe create a new BOOL_NO_FLIP type?
-        val = !m_vISAOptions.getDefaultBool(vISAOpt);
+        val = m_vISAOptions.getFlipBoolDefaultVal(vISAOpt)
+            ? !m_vISAOptions.getDefaultBool(vISAOpt) : true;
       m_vISAOptions.setBool(vISAOpt, val);
       m_vISAOptions.setArgSetByUser(vISAOpt);
       break;
@@ -426,6 +425,12 @@ void Options::initialize_m_vISAOptions(void) {
     /* The casts are here to avoid type conversion warnings */                 \
     Opts->setDefaultBool(ENUM, (bool)(DEFAULT_VAL));                           \
     Opts->setBool(ENUM, (bool)(DEFAULT_VAL));                                  \
+    break;                                                                     \
+  case ET_BOOL_TRUE:                                                           \
+    Opts->setType(ENUM, ET_BOOL);                                              \
+    Opts->setDefaultBool(ENUM, (bool)(DEFAULT_VAL));                           \
+    Opts->setBool(ENUM, (bool)(DEFAULT_VAL));                                  \
+    Opts->setFlipBoolDefaultVal(ENUM, false);                                  \
     break;                                                                     \
   case ET_INT32:                                                               \
     /* The casts are here to avoid type conversion warnings */                 \

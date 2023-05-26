@@ -34,6 +34,10 @@ enum Stepping {
 enum EntryType {
   ET_UNINIT = 0,
   ET_BOOL,
+  // like ET_BOOL, except that when specified without a value in command line
+  // (e.g., "-foo"), it set the option to true instead of flipping its default
+  // value.
+  ET_BOOL_TRUE,
   ET_INT32,
   ET_2xINT32,
   ET_INT64,
@@ -168,12 +172,16 @@ private:
     const char *errorMsg;
     // This is set to TRUE if this option is passed as an argument
     bool argIsSet;
+    // Behavior for a bool flag without value (e.g., "-foo"). TRUE means we flip
+    // the default value, FALSE means we set the option to true.
+    bool flipBoolDefaultVal;
 
     VISAOptionsLine() {
       argStr = (const char *)nullptr;
       type = ET_UNINIT;
       errorMsg = nullptr;
       argIsSet = false;
+      flipBoolDefaultVal = true;
     }
     // Debug print
     void dump() const {
@@ -257,6 +265,15 @@ private:
     // Set the error message
     void setErrorMsg(vISAOptions key, const char *errorMsg) {
       optionsMap[key].errorMsg = errorMsg;
+    }
+
+    void setFlipBoolDefaultVal(vISAOptions key, bool val) {
+      vASSERT(optionsMap[key].type == ET_BOOL);
+      optionsMap[key].flipBoolDefaultVal = val;
+    }
+
+    bool getFlipBoolDefaultVal(vISAOptions key) const {
+      return optionsMap[key].flipBoolDefaultVal;
     }
 
     // Get the argument string "-fooArg"

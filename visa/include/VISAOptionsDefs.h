@@ -13,13 +13,16 @@ SPDX-License-Identifier: MIT
 #define UNUSED ""
 #endif
 
-// There are 4 available types: ET_BOOL, ET_INT32, ET_INT64 and ET_CSTR.
-// DEF_VISA_OPTION(ENUM, ET_BOOL,    STRING, UNUSED,    DEFAULT_VAL)
-// DEF_VISA_OPTION(ENUM, ET_INT32,   STRING, ERROR_MSG, DEFAULT_VAL)
-// DEF_VISA_OPTION(ENUM, ET_INT64,   STRING, ERROR_MSG, DEFAULT_VAL)
-// DEF_VISA_OPTION(ENUM, ET_CSTR,    STRING, ERROR_MSG, DEFAULT_VAL)
+// The available types are:
+// DEF_VISA_OPTION(ENUM, ET_BOOL,       STRING, COMMENTS,   DEFAULT_VAL)
+// Like above, except that for "-foo" it sets the option to true instead of
+// flipping default value.
+// DEF_VISA_OPTION(ENUM, ET_BOOL_TRUE,  STRING, COMMENTS,   DEFAULT_VAL)
+// DEF_VISA_OPTION(ENUM, ET_INT32,      STRING, COMMENTS,   DEFAULT_VAL)
+// DEF_VISA_OPTION(ENUM, ET_INT64,      STRING, COMMENTS,   DEFAULT_VAL)
+// DEF_VISA_OPTION(ENUM, ET_CSTR,       STRING, COMMENTS,   DEFAULT_VAL)
 // Note: ET_2xINT32 is a 64 bit value set using 2 int32 Hi32 Lo32
-// DEF_VISA_OPTION(ENUM, ET_2xINT32, STRING, ERROR_MSG, DEFAULT_VAL)
+// DEF_VISA_OPTION(ENUM, ET_2xINT32,    STRING, COMMENTS,   DEFAULT_VAL)
 
 //=== Debugging options ===
 DEF_VISA_OPTION(vISA_DumpPasses, ET_BOOL, "-dumpPassesAll", UNUSED, false)
@@ -113,7 +116,7 @@ DEF_VISA_OPTION(vISA_OptReport, ET_BOOL, "-optreport", "DEPRECATED, is a nop",
 DEF_VISA_OPTION(vISA_removeRedundMov, ET_BOOL, "-keepRedundMov", UNUSED, true)
 DEF_VISA_OPTION(vISA_MergeScalar, ET_BOOL, "-nomergescalar", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableMACOpt, ET_BOOL, "-nomac", UNUSED, true)
-DEF_VISA_OPTION(vISA_EnableDCE, ET_BOOL, "-dce", UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableDCE, ET_BOOL_TRUE, "-dce", UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableleHFOpt, ET_BOOL, "-disableHFOpt", UNUSED, false)
 DEF_VISA_OPTION(vISA_enableUnsafeCP_DF, ET_BOOL, "-enableUnsafeCP_DF", UNUSED,
                 false)
@@ -641,5 +644,5 @@ DEF_VISA_OPTION(vISA_Stepping, ET_CSTR, "-stepping",
                 "USAGE: missing stepping string. ", NULL)
 DEF_VISA_OPTION(vISA_Platform, ET_CSTR, "-platform",
                 "USAGE: missing platform string. ", NULL)
-DEF_VISA_OPTION(vISA_HasEarlyGRFRead, ET_BOOL, "-earlyGRFRead", UNUSED, false)
+DEF_VISA_OPTION(vISA_HasEarlyGRFRead, ET_BOOL_TRUE, "-earlyGRFRead", UNUSED, false)
 DEF_VISA_OPTION(vISA_staticProfiling, ET_BOOL, "-staticProfiling", UNUSED, true)
