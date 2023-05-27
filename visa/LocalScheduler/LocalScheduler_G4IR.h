@@ -253,6 +253,7 @@ class DDD {
   int OTHER_ARF_BUCKET;
   int TOTAL_BUCKETS;
   int totalGRFNum;
+  int totalACCNum;
   G4_Kernel *kernel;
   PointsToAnalysis &pointsToAnalysis;
 
