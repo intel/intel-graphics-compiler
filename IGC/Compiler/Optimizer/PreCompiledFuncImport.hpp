@@ -163,6 +163,15 @@ namespace IGC
             return "PreCompiledFuncImport";
         }
 
+        void releaseMemory() override
+        {
+            FuncNeedIA.clear();
+            NewFuncWithIA.clear();
+            FuncsImpArgs.clear();
+            m_DPEmuFlagTemp.clear();
+            m_allNewCallInsts.clear();
+        }
+
         virtual bool runOnModule(llvm::Module& M) override;
 
         void visitBinaryOperator(llvm::BinaryOperator& I);
@@ -245,6 +254,10 @@ namespace IGC
 
         static const PreCompiledFuncInfo m_functionInfos[NUM_FUNCTION_IDS];
         static const LibraryModuleInfo m_libModInfos[NUM_LIBMODS];
+        // This is for creating a single flag temp for some of double emulation
+        // As this is never used, we need to remove this flag from emulation
+        // function completely.
+        llvm::DenseMap<llvm::Function*, Value*> m_DPEmuFlagTemp;
 
         unsigned m_roundingMode = 0;
         unsigned m_flushDenorm = 0;

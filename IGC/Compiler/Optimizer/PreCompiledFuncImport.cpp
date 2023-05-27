@@ -1723,12 +1723,19 @@ Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
 // Alloca an int and return address Value to that.
 Value* PreCompiledFuncImport::createFlagValue(Function* F)
 {
-    LLVMContext& Ctx = F->getContext();
-    BasicBlock* EntryBB = &(F->getEntryBlock());
-    Instruction* insert_before = &(*EntryBB->getFirstInsertionPt());
-    Type* intTy = Type::getInt32Ty(Ctx);
-    Value* flagPtrValue = new AllocaInst(intTy, 0, "DPEmuFlag", insert_before);
-    return flagPtrValue;
+    // Note: we ignore error condition. For now, just create
+    //       one for each function.
+    // [todo] remove emulation functions's flag completely.
+    auto II = m_DPEmuFlagTemp.find(F);
+    if (II == m_DPEmuFlagTemp.end()) {
+        LLVMContext& Ctx = F->getContext();
+        BasicBlock* EntryBB = &(F->getEntryBlock());
+        Instruction* insert_before = &(*EntryBB->getFirstInsertionPt());
+        Type* intTy = Type::getInt32Ty(Ctx);
+        Value* flagPtrValue = new AllocaInst(intTy, 0, "DPEmuFlag", insert_before);
+        m_DPEmuFlagTemp[F] = flagPtrValue;
+    }
+    return m_DPEmuFlagTemp[F];
 }
 
 void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
