@@ -1162,7 +1162,7 @@ void OptimizeIR(CodeGenContext* const pContext)
     }
 
     IGCPassManager mpm(pContext, "OPT");
-#if defined(_INTERNAL)
+#if !defined(_DEBUG)
     if (IGC_IS_FLAG_ENABLED(EnableDebugging))
 #endif
         // do verifyModule for debug/release_internal only.

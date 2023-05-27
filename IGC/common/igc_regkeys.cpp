@@ -1108,7 +1108,7 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
         }
 #endif
         LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
-#if defined(_INTERNAL)
+#if !defined(_DEBUG)
         if (IGC_IS_FLAG_ENABLED(EnableDebugging))
 #endif
         {
