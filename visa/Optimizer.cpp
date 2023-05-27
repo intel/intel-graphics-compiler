@@ -1569,13 +1569,14 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
     return false;
   }
 
-  // Do not do def-hoisting for setting flags which is likely to increase flag
-  // register pressure.
   if (auto Dst = inst->getDst()) {
     G4_Declare *Dcl = Dst->getTopDcl();
+    // Do not do def-hoisting for setting flags which is likely to increase flag
+    // register pressure.
     if (Dcl && Dcl->getRegFile() == G4_RegFileKind::G4_FLAG) {
       return false;
     }
+
 
     if (Dcl && Dcl->getRegFile() == G4_RegFileKind::G4_ADDRESS &&
         Dcl->getRegVar() && Dcl->getRegVar()->getPhyReg()) {
