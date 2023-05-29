@@ -494,3 +494,19 @@ void OVERLOADABLE intel_eu_thread_pause( uint value )
 {
     __builtin_IB_eu_thread_pause(value);
 }
+
+__attribute__((always_inline))
+uint OVERLOADABLE intel_get_tile_id( void )
+{
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
+}
+
+#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+// Temporary workaround on a test that uses intel_get_tile_id
+// instead of __builtin_spirv_BuiltInSubDeviceIDINTEL.
+__attribute__((always_inline))
+uint __builtin_spirv_BuiltInSubDeviceIDINTEL( void )
+{
+    return intel_get_tile_id();
+}
+#endif
