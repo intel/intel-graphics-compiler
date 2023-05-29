@@ -468,7 +468,8 @@ bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
     const bool isModified = false; // this is only an analysis
     m_CurrentFunction = &F;
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_HasIndependentSharedMemoryFenceFunctionality = ctx->platform.hasSLMFence();
+    m_HasIndependentSharedMemoryFenceFunctionality = ctx->platform.hasSLMFence() &&
+        IGC_IS_FLAG_DISABLED(DisableIndependentSharedMemoryFenceFunctionality);
     m_ShaderType = ctx->type;
     m_HasTypedMemoryFenceFunctionality = ctx->platform.hasLSC() && ctx->platform.LSCEnabled();
     m_HasUrbFenceFunctionality = ctx->platform.hasURBFence();
@@ -765,6 +766,10 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultWriteMemoryIn
         case LSC_UGM: // .ugm
         case LSC_UGML: // .ugml
             result |= BufferWriteOperation;
+            if (!m_HasIndependentSharedMemoryFenceFunctionality)
+            {
+                result |= SharedMemoryWriteOperation;
+            }
             break;
         case LSC_TGM: // .tgm
             result |= TypedWriteOperation;
@@ -864,6 +869,10 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstruc
         case LSC_UGM: // .ugm
         case LSC_UGML: // .ugml
             result |= AtomicOperation | BufferWriteOperation | BufferReadOperation;
+            if (!m_HasIndependentSharedMemoryFenceFunctionality)
+            {
+                result |= SharedMemoryWriteOperation | SharedMemoryReadOperation;
+            }
             break;
         case LSC_TGM: // .tgm
             result |= AtomicOperation | TypedWriteOperation | TypedReadOperation;
@@ -1614,8 +1623,14 @@ bool SynchronizationObjectCoalescingAnalysis::IsSubsituteInstruction(
     else if (IsLscFenceOperation(pEvaluatedInst) && IsLscFenceOperation(pReferenceInst))
     {
         IGC_ASSERT(m_HasUrbFenceFunctionality);
-        IGC_ASSERT(m_HasIndependentSharedMemoryFenceFunctionality);
-        bool isDuplicate = GetLscMem(pEvaluatedInst) == GetLscMem(pReferenceInst);
+        LSC_SFID evalLscMemSync = GetLscMem(pEvaluatedInst);
+        LSC_SFID refLscMemSync = GetLscMem(pReferenceInst);
+        bool isEvaluatedStrongerOrEqual = evalLscMemSync == refLscMemSync;
+        if (!m_HasIndependentSharedMemoryFenceFunctionality)
+        {
+            isEvaluatedStrongerOrEqual |= evalLscMemSync == LSC_SFID::LSC_UGM && refLscMemSync == LSC_SFID::LSC_SLM;
+        }
+        bool isDuplicate = isEvaluatedStrongerOrEqual;
         isDuplicate &= GetLscScope(pEvaluatedInst) >= GetLscScope(pReferenceInst);
         LSC_FENCE_OP opEvaluated = GetLscFenceOp(pEvaluatedInst);
         LSC_FENCE_OP opReference = GetLscFenceOp(pReferenceInst);
