@@ -434,6 +434,7 @@ namespace IGC
         bool WaEnableALTModeVisaWA                      = false;
         bool NewSpillCostFunction                       = false;
         bool ForceLargeGRFNum4RQ                        = false;
+        bool DisableEUFusion                            = false;
     };
 
     enum class ThreadIDLayout
