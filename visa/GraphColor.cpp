@@ -3740,10 +3740,9 @@ void Augmentation::buildLiveIntervals() {
           !kernel.fg.isPseudoDcl(lrs[i]->getDcl())) {
         // Extend ith live-interval
         G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
-        unsigned oldStart = gra.getStartInterval(dcl)->getLexicalId();
-        (void)oldStart;
         updateStartInterval(dcl, inst);
         VISA_DEBUG_VERBOSE({
+          unsigned oldStart = gra.getStartInterval(dcl)->getLexicalId();
           if (oldStart > gra.getStartInterval(dcl)->getLexicalId()) {
             std::cout << "Extending " << dcl->getName() << " from old start "
                       << oldStart << " to "
