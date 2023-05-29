@@ -406,6 +406,9 @@ private:
     bool IsUntypedMemoryFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const;
 
     ////////////////////////////////////////////////////////////////////////
+    bool IsUntypedMemoryLscFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const;
+
+    ////////////////////////////////////////////////////////////////////////
     static bool IsTypedMemoryFenceOperation(const llvm::Instruction* pInst);
 
     ////////////////////////////////////////////////////////////////////////
@@ -548,7 +551,7 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
             //    instruction because of changing classification of the instruction.
 
             // identify partial redundancies for untyped memory fences
-            if (IsUntypedMemoryFenceOperationForGlobalAccess(pInst))
+            if (IsUntypedMemoryFenceOperationForGlobalAccess(pInst) || IsUntypedMemoryLscFenceOperationForGlobalAccess(pInst))
             {
                 if (IsUntypedMemoryFenceOperationWithInvalidationFunctionality(pInst))
                 {
@@ -760,7 +763,6 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultWriteMemoryIn
     else if (IsLscFenceOperation(pSourceInst))
     {
         IGC_ASSERT(m_HasUrbFenceFunctionality);
-        IGC_ASSERT(m_HasIndependentSharedMemoryFenceFunctionality);
         switch (GetLscMem(pSourceInst))
         {
         case LSC_UGM: // .ugm
@@ -863,7 +865,6 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstruc
     else if (IsLscFenceOperation(pSourceInst))
     {
         IGC_ASSERT(m_HasUrbFenceFunctionality);
-        IGC_ASSERT(m_HasIndependentSharedMemoryFenceFunctionality);
         switch (GetLscMem(pSourceInst))
         {
         case LSC_UGM: // .ugm
@@ -2053,6 +2054,17 @@ bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperationForGl
 }
 
 ////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryLscFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const
+{
+    if (IsLscFenceOperation(pInst))
+    {
+        LSC_SFID mem = GetLscMem(pInst);
+        return mem == LSC_SFID::LSC_UGM || mem == LSC_SFID::LSC_UGML;
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////
 bool SynchronizationObjectCoalescingAnalysis::IsTypedMemoryFenceOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
@@ -2656,6 +2668,14 @@ bool SynchronizationObjectCoalescing::runOnFunction(llvm::Function& F)
         {
             constexpr uint32_t globalMemFenceArg = 5;
             pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType()));
+            break;
+        }
+        case llvm::GenISAIntrinsic::GenISA_LSCFence:
+        {
+            constexpr uint32_t globalMemFenceArg = 0;
+            pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SFID::LSC_SLM)));
+            constexpr uint32_t scopeMemFenceArg = 1;
+            pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(scopeMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SCOPE::LSC_SCOPE_GROUP)));
             break;
         }
         default:
