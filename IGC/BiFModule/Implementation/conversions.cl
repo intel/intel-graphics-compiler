@@ -135,40 +135,41 @@ static int clamp_sat_int(half _T, int _R)
 }
 #endif
 
+#endif //defined(cl_khr_fp16)
+
 #ifdef __IGC_BUILD__
 #define UCHAR_MIN ((uchar)0)
 #define USHRT_MIN ((ushort)0)
 #define UINT_MIN  ((uint)0)
 #define ULONG_MIN ((ulong)0)
 // Helper function for conversions with saturation
-#define SAT_CLAMP_HELPER_SIGN(TO, FROM, TONAME, TOA, INTTYPE, FROMA)        \
-static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                           \
-{                                                                           \
+#define SAT_CLAMP_HELPER_SIGN(TO, FROM, TONAME, TOA, FROMA)        \
+static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                  \
+{                                                                  \
   _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)) ? TONAME##_MIN : _R;  \
   _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)) ? TONAME##_MAX : _R;  \
   _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)) ? 0 : _R;    \
-  return _R;                                                                \
+  return _R;                                                       \
 }
 
-#define SAT_CLAMP_HELPER_UNSIGNED(TO, FROM, TONAME, TOA, INTTYPE, FROMA)    \
-static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                           \
-{                                                                           \
+#define SAT_CLAMP_HELPER_UNSIGNED(TO, FROM, TONAME, TOA, FROMA)    \
+static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                  \
+{                                                                  \
   _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)) ? TONAME##_MIN : _R;  \
   _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)) ? TONAME##_MAX : _R;  \
   _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)) ? 0 : _R;    \
-  return _R;                                                                \
+  return _R;                                                       \
 }
 #if defined(cl_khr_fp64)
-SAT_CLAMP_HELPER_UNSIGNED(uchar, double, UCHAR, f64, i64, i8)
-SAT_CLAMP_HELPER_UNSIGNED(ushort, double, USHRT, f64, i64, i16)
-SAT_CLAMP_HELPER_UNSIGNED(uint, double, UINT, f64, i64, i32)
-SAT_CLAMP_HELPER_SIGN(char, double, CHAR, f64, i64, i8)
-SAT_CLAMP_HELPER_SIGN(short, double, SHRT, f64, i64, i16)
-SAT_CLAMP_HELPER_SIGN(int, double, INT, f64, i64, i32)
+SAT_CLAMP_HELPER_UNSIGNED(uchar, double, UCHAR, f64, i8)
+SAT_CLAMP_HELPER_UNSIGNED(ushort, double, USHRT, f64, i16)
+SAT_CLAMP_HELPER_UNSIGNED(uint, double, UINT, f64, i32)
+SAT_CLAMP_HELPER_SIGN(char, double, CHAR, f64, i8)
+SAT_CLAMP_HELPER_SIGN(short, double, SHRT, f64, i16)
+SAT_CLAMP_HELPER_SIGN(int, double, INT, f64, i32)
 
 #endif //defined(cl_khr_fp64)
-#endif
-#endif
+#endif //__IGC_BUILD__
 
 static float convertUItoFP32(ulong value, char roundingMode, bool s);
 static float convertSItoFP32(long value, char roundingMode);
