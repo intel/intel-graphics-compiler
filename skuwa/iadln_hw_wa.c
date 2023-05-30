@@ -84,6 +84,22 @@ void InitAdlnHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INI
 
 
     SI_WA_ENABLE(
+        Wa_14017131883,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ADLN, ADLN_GT_REV_ID_A0, FUTURE_PROJECT));
+
+
+    SI_WA_ENABLE(
+        Wa_14018126777,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ADLN, ADLN_GT_REV_ID_A0, FUTURE_PROJECT));
+
+
+    SI_WA_ENABLE(
         Wa_14013672992,
         "No Link Provided",
         "No HWSightingLink provided",

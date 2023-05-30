@@ -7,7 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // This is an auto-generated file. Please do not edit!
-// If changes are needed here please reach out to the codeowners, thanks.#include "wa_def.h"
+// If changes are needed here please reach out to the codeowners, thanks.
+
 
 #include "wa_def.h"
 

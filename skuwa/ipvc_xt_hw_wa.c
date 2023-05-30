@@ -55,6 +55,14 @@ void InitPvc_XtHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_I
 
 
     SI_WA_ENABLE(
+        Wa_14012437816,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_NEVER);
+
+
+    SI_WA_ENABLE(
         Wa_22010487853,
         "No Link Provided",
         "No HWSightingLink provided",
@@ -85,10 +93,5 @@ void InitPvc_XtHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_I
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_PVC_XT_ComputeTile, PVC_XT_GT_REV_ID_COMPUTETILE_A0, PVC_XT_GT_REV_ID_COMPUTETILE_B0));
 
-    SI_WA_ENABLE(
-        Wa_16012725276,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_XT_ComputeTile, PVC_XT_GT_REV_ID_COMPUTETILE_A0, PVC_XT_GT_REV_ID_COMPUTETILE_B0));
+
 }
