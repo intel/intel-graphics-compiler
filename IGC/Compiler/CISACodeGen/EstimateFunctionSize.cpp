@@ -739,7 +739,6 @@ void EstimateFunctionSize::analyze() {
     for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I)
     {
         FunctionNode* Node = (FunctionNode*)I->second;
-        PrintFunctionSizeAnalysis(0x1, "Size contribution " << Node->F->getName().str() << ": " << Node->getSizeContribution() << " whose original size: " << Node->InitialSize << " Inline count: " << Node->Inline_cnt)
         if (Node->isStackCallAssigned())
         {
             stackCallFuncs.push_back(Node);
@@ -749,8 +748,10 @@ void EstimateFunctionSize::analyze() {
         else if (Node->isAddrTakenFunc())
         {
             addressTakenFuncs.push_back(Node);
+            updateExpandedUnitSize(Node->F, true);
             Node->updateUnitSize();
             PrintFunctionSizeAnalysis(0x1, "Unit size (address taken) " << Node->F->getName().str() << ": " << Node->UnitSize);
+            PrintFunctionSizeAnalysis(0x1, "Expanded unit size (address taken) " << Node->F->getName().str() << ": " << Node->ExpandedSize);
         }
     }
     PrintFunctionSizeAnalysis(0x1, "Function count= " << ECG.size());
@@ -801,6 +802,10 @@ void EstimateFunctionSize::performImplArgsAnalysis()
 std::size_t EstimateFunctionSize::getMaxExpandedSize() const {
     uint32_t MaxSize = 0;
     for (auto I : kernelEntries) {
+        FunctionNode* Node = (FunctionNode*)I;
+        MaxSize = std::max(MaxSize, Node->ExpandedSize);
+    }
+    for (auto I : addressTakenFuncs) {
         FunctionNode* Node = (FunctionNode*)I;
         MaxSize = std::max(MaxSize, Node->ExpandedSize);
     }
