@@ -378,6 +378,7 @@ namespace IGC
         unsigned SetLoopUnrollThreshold            = 0;
         bool UnsafeMathOptimizations                    = false;
         bool disableCustomUnsafeOpts                    = false;
+        bool disableReducePow                           = false;
         bool FiniteMathOnly                             = false;
         bool FastRelaxedMath                            = false;
         bool DashGSpecified                             = false;

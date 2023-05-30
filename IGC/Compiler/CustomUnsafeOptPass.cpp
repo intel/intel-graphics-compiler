@@ -2423,9 +2423,14 @@ void CustomUnsafeOptPass::strengthReducePowOrExpLog(
 void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst& I)
 {
     const Intrinsic::ID ID = I.getIntrinsicID();
+    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
     if (ID == Intrinsic::pow)
     {
-        strengthReducePowOrExpLog(&I, I.getOperand(0), I.getOperand(1), true /* isPow */);
+        if (!modMD->compOpt.disableReducePow && IGC_IS_FLAG_DISABLED(DisableReducePow))
+        {
+            strengthReducePowOrExpLog(&I, I.getOperand(0), I.getOperand(1), true /* isPow */);
+        }
     }
     else if (ID == Intrinsic::exp2)
     {

@@ -188,6 +188,7 @@ DECLARE_IGC_REGKEY(bool, EnableThreadCombiningOpt,      true,  "Enables the thre
 DECLARE_IGC_REGKEY(bool, DisablePromotePrivMem,         false, "Setting this to 1/true adds a compiler switch to disable IGC private array promotion", false)
 DECLARE_IGC_REGKEY(bool, EnableSimplifyGEP,             true,  "Enable IGC to simplify indices expr of GEP.", false)
 DECLARE_IGC_REGKEY(bool, DisableCustomUnsafeOpt,        false, "Disable IGC to run custom unsafe optimizations", false)
+DECLARE_IGC_REGKEY(bool, DisableReducePow,              false, "Disable IGC to reduce pow instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableFastMath,                false, "Enable fast math optimizations in IGC", false)
 DECLARE_IGC_REGKEY(bool, DisableFlattenSmallSwitch,     false, "Disable the flatten small switch pass", false)
 DECLARE_IGC_REGKEY(bool, DisableIPConstantPropagation,  false, "Disable Inter-procedrual constant propgation", false)
