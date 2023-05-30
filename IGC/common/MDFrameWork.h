@@ -435,6 +435,7 @@ namespace IGC
         bool NewSpillCostFunction                       = false;
         bool ForceLargeGRFNum4RQ                        = false;
         bool DisableEUFusion                            = false;
+        bool DisableFDivToFMulInvOpt                    = false;
     };
 
     enum class ThreadIDLayout
