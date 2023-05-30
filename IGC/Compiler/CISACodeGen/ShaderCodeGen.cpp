@@ -346,6 +346,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
     bool hasUnmaskedRegion = ctx.m_instrTypes.hasUnmaskedRegion;
     IGCPassManager mpm(&ctx, "UpdateOptPre");
     mpm.add(new CodeGenContextWrapper(&ctx));
+    mpm.add(new BreakConstantExpr());
     mpm.add(new CheckInstrTypes(false, false));
     mpm.run(*ctx.getModule());
     ctx.m_instrTypes.numBB = numBB;
