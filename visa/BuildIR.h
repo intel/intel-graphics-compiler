@@ -1673,7 +1673,6 @@ public:
                       G4_ExecSize batchExSize, bool splitSendEnabled,
                       PayloadSource sources[], unsigned len);
 
-
   // Coalesce multiple payloads into a single region.  Pads each region with
   // an optional alignment argument (e.g. a GRF size).  The source region
   // sizes are determined by source dimension, so use an alias if you are

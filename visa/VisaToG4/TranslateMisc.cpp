@@ -153,7 +153,6 @@ static void Copy_Source_To_Payload(IR_Builder *IRB, G4_ExecSize batchExSize,
   }
 }
 
-
 void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
                                 G4_ExecSize batchExSize, bool splitSendEnabled,
                                 PayloadSource srcs[], unsigned len) {

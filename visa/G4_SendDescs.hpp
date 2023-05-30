@@ -49,20 +49,20 @@ static inline bool MsgOpIsStore(MsgOp o) {
 static inline bool MsgOpIsAtomic(MsgOp o) {
   return int(o) & (MSGOP_GROUP_LSC_ATOMIC << 8);
 }
+static inline bool MsgOpIsLoadStoreAtomic(MsgOp o) {
+  return MsgOpIsLoad(o) || MsgOpIsStore(o) || MsgOpIsAtomic(o);
+}
+static inline bool MsgOpIs2D(MsgOp op) {
+  return op == MsgOp::LOAD_BLOCK2D || op == MsgOp::STORE_BLOCK2D;
+}
+
 // does it have a data channel mask (e.g. load_quad)
 bool MsgOpHasChMask(MsgOp);
-//
+
 uint32_t MsgOpEncode(MsgOp msgOp);
 MsgOp MsgOpDecode(SFID sfid, uint32_t enc);
 
-enum class AddrType {
-  INVALID = 0,
-  //
-  FLAT,
-  SS,
-  BSS,
-  BTI
-};
+int MsgOpAtomicExtraArgs(MsgOp msgOp);
 
 // Data size
 enum class DataSize {
@@ -87,21 +87,57 @@ enum class DataOrder {
   TRANSPOSE_VNNI  = 0x4,
 };
 
-uint32_t GetDataOrderEncoding(DataOrder dord);
+uint32_t GetDataOrderEncoding(DataOrder dord); // for non-block2d
+uint32_t GetDataOrderEncoding2D(DataOrder dord); // for block2d
 
 // Data elems
 enum class VecElems { INVALID = 0, V1, V2, V3, V4, V8, V16, V32, V64 };
 
+// data channel mask is a bitset of X, Y, Z, and W channels
+// The ordinal values are direct mapping to encoding slots used
+// in various fields
+enum class DataChMask {
+  // this is illegal in LSC but allowable possibly legal in other APIs
+  EMPTY = 0,
+  //
+  // single channels
+  X = 1 << 0,
+  Y = 1 << 1,
+  Z = 1 << 2,
+  W = 1 << 3,
+  //
+  // dual channels
+  XY = X | Y,
+  XZ = X | Z,
+  XW = X | W,
+  YZ = Y | Z,
+  YW = Y | W,
+  ZW = Z | W,
+  //
+  // triple channels
+  XYZ = X | Y | Z,
+  XYW = X | Y | W,
+  XZW = X | Z | W,
+  YZW = Y | Z | W,
+  //
+  // quad channels
+  XYZW = X | Y | Z | W,
+};
+static_assert(int(DataChMask::XYZW) == 0xF);
+static_assert(int(DataChMask::YZW) == 0xE);
+
+// composing channel masks
+static inline DataChMask operator|(DataChMask c0, DataChMask c1) {
+  return DataChMask(int(c0) | int(c1));
+}
+
 std::string ToSymbol(DataSize dsz, VecElems ve, DataOrder dord);
-std::string ToSymbol(DataSize dsz, int chMask);
+std::string ToSymbol(DataSize dsz, DataChMask chMask);
 
 std::string ToSymbol(VecElems ve);
 VecElems ToVecElems(int ves);
 uint32_t GetVecElemsEncoding(VecElems ve);
 int GetNumVecElems(VecElems ve);
-
-// data chmask
-enum DataChMask { INVALID = 0, X = 1 << 0, Y = 1 << 1, Z = 1 << 2, W = 1 << 3 };
 
 
 // Cache controls

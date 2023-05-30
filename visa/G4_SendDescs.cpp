@@ -121,22 +121,6 @@ static std::string ToSymbolDataSize(int reg, int mem) {
   return "d" + std::to_string(mem) + "u" + std::to_string(reg);
 }
 
-static std::string ToSymbol(AddrType at) {
-  switch (at) {
-  case AddrType::FLAT:
-    return "";
-  case AddrType::BSS:
-    return "bss";
-  case AddrType::SS:
-    return "ss";
-  case AddrType::BTI:
-    return "bti";
-  default:
-    break;
-  }
-  return "?";
-}
-
 bool vISA::MsgOpHasChMask(MsgOp op) {
   switch (op) {
   case MsgOp::LOAD_QUAD:
@@ -155,7 +139,7 @@ uint32_t vISA::MsgOpEncode(MsgOp m) {
 #include "G4_MsgOpDefs.hpp"
   default:
     vISA_ASSERT_UNREACHABLE("Invalid msg op");
-    return 0x3F; // return all 1's to try and generate an error (0 is load in LSC)
+    return 0xFFFFFFFF; // return all 1's to try and generate an error (0 is load in LSC)
   }
 }
 
@@ -250,6 +234,19 @@ MsgOp vISA::MsgOpDecode(SFID sfid, uint32_t enc) {
   return MsgOp::INVALID;
 }
 
+int vISA::MsgOpAtomicExtraArgs(MsgOp msgOp) {
+  if ((unsigned(msgOp) >> 16) & MSGOP_ATTRS_ATOMIC_UNARY) {
+    return 0;
+  } else if ((unsigned(msgOp) >> 16) & MSGOP_ATTRS_ATOMIC_BINARY) {
+    return 1;
+  } else if ((unsigned(msgOp) >> 16) & MSGOP_ATTRS_ATOMIC_TERNARY) {
+    return 2;
+  } else {
+    vISA_ASSERT_UNREACHABLE("expected atomic op");
+    return 0;
+  }
+}
+
 // data size
 std::string vISA::ToSymbol(DataSize d) {
   switch (d) {
@@ -301,6 +298,22 @@ uint32_t vISA::GetDataOrderEncoding(DataOrder dord) {
   }
   return 0;
 }
+uint32_t vISA::GetDataOrderEncoding2D(DataOrder dord) {
+  // for block2d Desc[10:9] (combining data order with vnni)
+  switch (dord) {
+  case DataOrder::NONTRANSPOSE: // non-transpose non-vnni
+    return 0x0;
+  case DataOrder::VNNI: // non-transpose+vnni
+    return 0x1;
+  case DataOrder::TRANSPOSE:
+    return 0x2;
+  case DataOrder::TRANSPOSE_VNNI:
+    return 0x3;
+  default:
+    vISA_ASSERT_UNREACHABLE("invalid data order");
+  }
+  return 0;
+}
 
 std::string vISA::ToSymbol(DataSize dsz, VecElems ve, DataOrder dord) {
   std::stringstream ss;
@@ -324,11 +337,11 @@ std::string vISA::ToSymbol(DataSize dsz, VecElems ve, DataOrder dord) {
   }
   return ss.str();
 }
-std::string vISA::ToSymbol(DataSize dsz, int chMask) {
+std::string vISA::ToSymbol(DataSize dsz, DataChMask chMask) {
   std::stringstream ss;
   ss << ToSymbol(dsz) << ".";
   for (int ch = 0; ch < 4; ch++) {
-    if (chMask & (1 << ch)) {
+    if (int(chMask) & (1 << ch)) {
       ss << "xyzw"[ch];
     }
   }

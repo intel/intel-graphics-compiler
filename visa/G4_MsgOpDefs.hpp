@@ -64,6 +64,9 @@ static_assert((MSGOP_GROUP_BTD & ~0xFFF) == 0, "group field overflowed");
 // e.g. load_quad, store_quad, ...
 static const int MSGOP_ATTRS_EMPTY = 0x0000;
 static const int MSGOP_ATTRS_HAS_CMASK = 0x0001;
+static const int MSGOP_ATTRS_ATOMIC_UNARY = MSGOP_ATTRS_HAS_CMASK << 1;
+static const int MSGOP_ATTRS_ATOMIC_BINARY = MSGOP_ATTRS_ATOMIC_UNARY << 1;
+static const int MSGOP_ATTRS_ATOMIC_TERNARY = MSGOP_ATTRS_ATOMIC_BINARY << 1;
 // other attributes here (NOTE: can overlap based on group)
 #endif // G4_MSGOP_TYPES_DEFINED
 
@@ -157,58 +160,58 @@ DEFINE_G4_MSGOP_LSC_LOAD(LOAD_BLOCK2D,    "load_block2d",   0x03,
 
 ///////////////////////////////////////////////////////////////////////////////
 // LSC stores
-DEFINE_G4_MSGOP_LSC_LOAD(STORE,           "store",          0x04,
-                         MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_LSC_LOAD(STORE_STRIDED,   "store_strided",  0x05,
-                         MSGOP_ATTRS_EMPTY)
-DEFINE_G4_MSGOP_LSC_LOAD(STORE_QUAD,      "store_quad",     0x06,
-                         MSGOP_ATTRS_HAS_CMASK)
-DEFINE_G4_MSGOP_LSC_LOAD(STORE_BLOCK2D,   "store_block2d", 0x07,
-                         MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_LSC_STORE(STORE,           "store",          0x04,
+                          MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_LSC_STORE(STORE_STRIDED,   "store_strided",  0x05,
+                          MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_LSC_STORE(STORE_QUAD,      "store_quad",     0x06,
+                          MSGOP_ATTRS_HAS_CMASK)
+DEFINE_G4_MSGOP_LSC_STORE(STORE_BLOCK2D,   "store_block2d", 0x07,
+                          MSGOP_ATTRS_EMPTY)
 
 ///////////////////////////////////////////////////////////////////////////////
 // LSC atomics
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_IINC,   "atomic_iinc",   0x08,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_UNARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_IDEC,   "atomic_idec",   0x09,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_UNARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_LOAD,   "atomic_load",   0x0A,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_UNARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_STORE,  "atomic_store",  0x0B,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_IADD,   "atomic_iadd",   0x0C,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_ISUB,   "atomic_isub",   0x0D,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 //
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_SMIN,   "atomic_smin",   0x0E,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_SMAX,   "atomic_smax",   0x0F,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_UMIN,   "atomic_umin",   0x10,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_UMAX,   "atomic_umax",   0x11,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_ICAS,   "atomic_icas",   0x12,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_TERNARY)
 //
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_FADD,   "atomic_fadd",   0x13,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_FSUB,   "atomic_fsub",   0x14,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_FMIN,   "atomic_fmin",   0x15,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_FMAX,   "atomic_fmax",   0x16,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_FCAS,   "atomic_fcas",   0x17,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_TERNARY)
 //
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_AND,    "atomic_and",    0x18,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_OR,     "atomic_or",     0x19,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_XOR,    "atomic_xor",    0x1A,
-                           MSGOP_ATTRS_EMPTY)
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 //
 
 ///////////////////////////////////////////////////////////////////////////////

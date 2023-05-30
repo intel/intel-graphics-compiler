@@ -103,17 +103,19 @@ static DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds) {
   return DataSize::INVALID;
 }
 
-static DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord) {
+static DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord, bool vnni = false) {
   switch (dord) {
   case LSC_DATA_ORDER_NONTRANSPOSE:
-    return DataOrder::NONTRANSPOSE;
+    return vnni ? DataOrder::VNNI : DataOrder::NONTRANSPOSE;
   case LSC_DATA_ORDER_TRANSPOSE:
-    return DataOrder::TRANSPOSE;
+    return vnni ? DataOrder::TRANSPOSE_VNNI : DataOrder::TRANSPOSE;
   default:
     vISA_ASSERT_UNREACHABLE("invalid data order");
   }
   return DataOrder::INVALID;
 }
+
+
 G4_ExecSize IR_Builder::lscMinExecSize(LSC_SFID lscSfid) const {
   const TARGET_PLATFORM P = getPlatform();
   uint32_t minExecSize = ((P == Xe_DG2 || P == Xe_MTL) ? 8 : 16);
