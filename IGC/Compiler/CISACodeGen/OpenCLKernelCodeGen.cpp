@@ -4107,10 +4107,7 @@ namespace IGC
         bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
 
         // If stack calls are present, disable simd32 in order to do CallWA in visa
-        if (IGC_IS_FLAG_ENABLED(EnableCallWA) &&
-            pCtx->platform.hasFusedEU() &&
-            pCtx->platform.getWATable().Wa_14016243945 == false &&
-            simdMode == SIMDMode::SIMD32)
+        if (pCtx->platform.requireCallWA() && simdMode == SIMDMode::SIMD32)
         {
             bool hasNestedCall = FG && FG->hasNestedCall();
             bool hasIndirectCall = FG && FG->hasIndirectCall();

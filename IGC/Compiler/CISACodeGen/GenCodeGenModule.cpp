@@ -181,10 +181,7 @@ void GenXCodeGenModule::processFunction(Function& F)
 
         // If CallWA is needed, we should not convert to indirect call when requiring SIMD32,
         // as we can potentially avoid CallWA if there are no indirect calls.
-        if (IGC_IS_FLAG_ENABLED(EnableCallWA) &&
-            pCtx->platform.hasFusedEU() &&
-            pCtx->platform.getWATable().Wa_14016243945 == false &&
-            simd_size == 32)
+        if (pCtx->platform.requireCallWA() && simd_size == 32)
         {
             return false;
         }
@@ -425,11 +422,12 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     // function groups can be cloned. If the number exceeds the threshold, instead of cloning the
     // function N times, make it an indirect call and use relocation instead. The function will only be
     // compiled once and runtime must relocate its address for each caller.
-    if (IGC_IS_FLAG_ENABLED(DisableFunctionCloning))
+    m_FunctionCloningThreshold = 0;
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionCloningControl))
     {
         if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary())
         {
-            // Enable by default for zebin
+            // Avoid cloning by default on zebin
             m_FunctionCloningThreshold = 1;
         }
         if (IGC_GET_FLAG_VALUE(FunctionCloningThreshold) != 0)

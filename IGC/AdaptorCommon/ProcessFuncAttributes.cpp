@@ -663,6 +663,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     // If setting SelectiveFunctionControl=2, print out a list of callable functions to FunctionDebug.txt
     //
     auto SelectFCtrl = IGC_GET_FLAG_VALUE(SelectiveFunctionControl);
+    auto printDbg = IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo);
     if (SelectFCtrl != 0)
     {
         if (SelectFCtrl == 2)
@@ -682,7 +683,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         else
         {
             std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
-            std::cout << std::endl << "SelectiveFunctionControl enabled read from " << IGC::Debug::GetFunctionDebugFile() << endl;
+            if (printDbg) dbgs() << "\nSelectiveFunctionControl enabled read from " << IGC::Debug::GetFunctionDebugFile() << "\n";
 
             if (inputFile.is_open())
             {
@@ -738,10 +739,10 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     }
                     else
                     {
-                        std::cout << "Function Not in Module: ";
+                        if (printDbg) dbgs() << "Function Not in Module: ";
                     }
 
-                    std::cout << line << endl;
+                    if (printDbg) dbgs() << line << "\n";
                 }
                 inputFile.close();
             }

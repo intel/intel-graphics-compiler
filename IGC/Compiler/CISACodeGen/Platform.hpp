@@ -1022,6 +1022,11 @@ bool hasFusedEU() const
         !isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
+bool requireCallWA() const
+{
+    return IGC_IS_FLAG_ENABLED(EnableCallWA) && hasFusedEU() && (getWATable().Wa_14016243945 == false);
+}
+
 bool hasPartialEmuI64Enabled() const
 {
     return hasPartialInt64Support() && IGC_IS_FLAG_ENABLED(EnablePartialEmuI64);
