@@ -10,7 +10,9 @@ SPDX-License-Identifier: MIT
 #define _LOCALSCHEDULER_H_
 
 #include "../BitSet.h"
-#include "../BuildIR.h" // add IR_Builder and G4_Kernel objects to support the exit code patch and combined kernel
+// add IR_Builder and G4_Kernel objects to support the exit code patch and
+// combined kernel
+#include "../BuildIR.h"
 #include "../FlowGraph.h"
 #include "../G4_IR.hpp"
 #include "../Mem_Manager.h"
@@ -28,8 +30,8 @@ SPDX-License-Identifier: MIT
 #define THREE_SOURCE_BLOCK_HERISTIC 0.5
 
 #define FP_BLOCK_SEND_HERISTIC 0.1
-#define FP_MIN_INST_NUM                                                        \
-  12 // at least 3 blocks(4 instructions per block) for either 2XDP or 2XSP
+// at least 3 blocks(4 instructions per block) for either 2XDP or 2XSP
+#define FP_MIN_INST_NUM 12
 namespace vISA {
 
 class Node;
@@ -48,11 +50,8 @@ class Edge {
   uint32_t latency;
 
 public:
-  Edge(Node *Node, DepType Type, uint32_t Latency) {
-    node = Node;
-    type = Type;
-    latency = Latency;
-  }
+  Edge(Node *Node, DepType Type, uint32_t Latency)
+      : node(Node), type(Type), latency(Latency) {}
   Node *getNode() const { return node; }
   DepType getType() const { return type; }
   void setType(DepType newType) { type = newType; }
@@ -88,7 +87,7 @@ class Node {
   Node *lastSchedPred = nullptr;
 
   // Indicates that this Node is writing to a subreg.
-  // This is used to avoid WAW hazzards during scheduling.
+  // This is used to avoid WAW hazards during scheduling.
   int wSubreg = NO_SUBREG;
 
   bool hasTransitiveEdgeToBarrier = false;
@@ -116,7 +115,6 @@ public:
   /* Constructor */
   Node(unsigned, G4_INST *, Edge_Allocator &depEdgeAllocator,
        const LatencyTable &LT);
-  ~Node() {}
   void *operator new(size_t sz, NodeAlloc &Allocator) {
     return Allocator.Allocate(sz / sizeof(Node));
   }
@@ -136,16 +134,16 @@ public:
     return NODEP;
   }
 
-  uint16_t getOccupancy() { return occupancy; }
+  uint16_t getOccupancy() const { return occupancy; }
   uint32_t getEarliest() const { return earliest; }
   int getPriority() const { return priority; }
   void setWritesToSubreg(int reg) { wSubreg = reg; }
-  int writesToSubreg() { return wSubreg; }
+  int writesToSubreg() const { return wSubreg; }
   void addPairInstr(G4_INST *inst) { instVec.push_back(inst); }
   void clear() { instVec.clear(); }
   void deletePred(Node *pred);
   // Xe check BC between adjacent instructions
-  bool hasConflict(Node *node2);
+  bool hasConflict(Node *node2) const;
 
   friend class DDD;
   friend class G4_BB_Schedule;
@@ -224,9 +222,7 @@ struct BucketDescr {
   // The mask helps us track the dependences at a byte granularity.
   Mask mask;
   BucketDescr(int Bucket, const Mask &Mask, Gen4_Operand_Number Operand)
-      : bucket(Bucket), operand(Operand), mask(Mask) {
-    ;
-  }
+      : bucket(Bucket), operand(Operand), mask(Mask) {}
 };
 
 class DDD {
@@ -269,13 +265,13 @@ public:
   void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
   bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst,
-                          BitSet &liveSrc);
+                          BitSet &liveSrc) const;
   bool hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
-                          bool multipSuppression);
+                          bool multipSuppression) const;
 
 private:
   bool hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
-                            BitSet &liveDst, BitSet &liveSrc);
+                            BitSet &liveDst, BitSet &liveSrc) const;
   bool hsaSameTypesAllOperands(const G4_INST &curInst,
                                const G4_INST &nextInst) const;
 
@@ -298,13 +294,13 @@ public:
                                     std::vector<BucketDescr> &BDvec);
   void getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
 
-  uint32_t getEdgeLatency_old(Node *node, DepType depT);
-  uint32_t getEdgeLatency(Node *node, DepType depT);
+  uint32_t getEdgeLatency_old(Node *node, DepType depT) const;
+  uint32_t getEdgeLatency(Node *node, DepType depT) const;
   Mem_Manager *get_mem() { return &DDDMem; }
   IR_Builder *getBuilder() const { return kernel->fg.builder; }
   const Options *getOptions() const { return kernel->getOptions(); }
-  bool getIsThreeSourceBlock() { return isThreeSouceBlock; }
-  bool getIs2xFPBlock() { return is_2XFP_Block; }
+  bool getIsThreeSourceBlock() const { return isThreeSouceBlock; }
+  bool getIs2xFPBlock() const { return is_2XFP_Block; }
 };
 
 class G4_BB_Schedule {
@@ -380,9 +376,11 @@ private:
 //    2, Inst must not have predicate/cond mod
 //    3, The first use of the dst must have DF type as well
 static bool instCanUse2xDP(G4_INST *inst) {
-  if (inst->opcode() == G4_mad && (((inst->getExecSize() == g4::SIMD16) &&
-      (inst->getDst()->getType() == Type_DF)) || ((inst->getExecSize() == g4::SIMD32) &&
-      (inst->getDst()->getType() == Type_F))) &&
+  if (inst->opcode() == G4_mad &&
+      (((inst->getExecSize() == g4::SIMD16) &&
+        (inst->getDst()->getType() == Type_DF)) ||
+       ((inst->getExecSize() == g4::SIMD32) &&
+        (inst->getDst()->getType() == Type_F))) &&
       ((inst->getMaskOption() == InstOpt_M0) ||
        (inst->getMaskOption() == InstOpt_NoOpt)) &&
       inst->getPredicate() == nullptr &&
@@ -456,8 +454,8 @@ public:
       instType = inst->getDst()->getType();
     }
 
-    if (!preBlock) { // First block in group, keep the original instruction
-                     // order
+    if (!preBlock) {
+      // First block in group, keep the original instruction order
       instList.push_back(node);
       for (int i = 0; i < instGRFSize; i++) {
         dstGRF.push_back(dstReg);
@@ -465,38 +463,34 @@ public:
         dstReg++;
         src0Reg++;
       }
-    } else // Non-first block in group
-    {
+    } else {
+      // Non-first block in group
       // First instruction in current block
-      // Currnt block and previous block may have different instruction GRF
+      // Current block and previous block may have different instruction GRF
       // size. For example:
-      //     For K=0
+      //   For K=0
       //     mad (16 | M0) r50.0<1>:f  r34.0<1,0>:f   r10.0<1,0>:f   r77.0<0>:f
-      //     { Align1, Q1 } mad (16 | M0) r51.0<1>:f  r35.0<1,0>:f r11.0<1,0>:f
-      //     r77.0<0>:f   { Align1, Q1 } mad (16 | M0) r52.0<1>:f  r36.0<1,0>:f
-      //     r10.0<1,0>:f   r77.1<0>:f   { Align1, Q1 } mad (16 | M0) r53.0<1>:f
-      //     r37.0<1,0>:f   r11.0<1,0>:f   r77.1<0>:f   { Align1, Q1 } mad (16 |
-      //     M0) r54.0<1>:f  r38.0<1,0>:f   r10.0<1,0>:f   r77.2<0>:f   {
-      //     Align1, Q1 } mad (16 | M0) r55.0<1>:f  r39.0<1,0>:f   r11.0<1,0>:f
-      //     r77.2<0>:f   { Align1, Q1 } mad (16 | M0) r56.0<1>:f  r40.0<1,0>:f
-      //     r10.0<1,0>:f   r77.3<0>:f   { Align1, Q1 } mad (16 | M0) r57.0<1>:f
-      //     r41.0<1,0>:f   r11.0<1,0>:f   r77.3<0>:f   { Align1, Q1 } For K=1
-      //     mad (16  |M0) 60.0<1>:df  50.0<1,0>:df  r12.0<1,0>:df   r78.0<0>:df
-      //     { Align1, Q1 } mad (16 | M0) 62.0<1>:df  52.0<1,0>:df r12.0<1,0>:df
-      //     r78.1<0>:df   { Align1, Q1 } mad (16 | M0) 64.0<1>:df  54.0<1,0>:df
-      //     r12.0<1,0>:df   r78.2<0>:df   { Align1, Q1 } mad (16 |
-      //     M0) 66.0<1>:df  56.0<1,0>:df  r12.0<1,0>:df   r78.3<0>:df   {
-      //     Align1, Q1 } For K=2 mad (16 | M0) r34.0<1>:f  60.0<1,0>:f
-      //     r14.0<1,0>:f   r79.0<0>:f   { Align1, Q1 } mad (16 | M0) r35.0<1>:f
-      //     61.0<1,0>:f   r15.0<1,0>:f   r79.0<0>:f   { Align1, Q1 } mad (16 |
-      //     M0) r36.0<1>:f  62.0<1,0>:f   r14.0<1,0>:f   r79.1<0>:f   { Align1,
-      //     Q1 } mad (16 | M0) r37.0<1>:f  63.0<1,0>:f   r15.0<1,0>:f
-      //     r79.1<0>:f   { Align1, Q1 } mad (16 | M0) r38.0<1>:f  64.0<1,0>:f
-      //     r14.0<1,0>:f   r79.2<0>:f   { Align1, Q1 } mad (16 | M0) r39.0<1>:f
-      //     65.0<1,0>:f   r15.0<1,0>:f   r79.2<0>:f   { Align1, Q1 } mad (16 |
-      //     M0) r40.0<1>:f  66.0<1,0>:f   r14.0<1,0>:f   r79.3<0>:f   { Align1,
-      //     Q1 } mad (16 | M0) r41.0<1>:f  67.0<1,0>:f   r15.0<1,0>:f
-      //     r79.3<0>:f   { Align1, Q1 }
+      //     mad (16 | M0) r51.0<1>:f  r35.0<1,0>:f   r11.0<1,0>:f   r77.0<0>:f
+      //     mad (16 | M0) r52.0<1>:f  r36.0<1,0>:f   r10.0<1,0>:f   r77.1<0>:f
+      //     mad (16 | M0) r53.0<1>:f  r37.0<1,0>:f   r11.0<1,0>:f   r77.1<0>:f
+      //     mad (16 | M0) r54.0<1>:f  r38.0<1,0>:f   r10.0<1,0>:f   r77.2<0>:f
+      //     mad (16 | M0) r55.0<1>:f  r39.0<1,0>:f   r11.0<1,0>:f   r77.2<0>:f
+      //     mad (16 | M0) r56.0<1>:f  r40.0<1,0>:f   r10.0<1,0>:f   r77.3<0>:f
+      //     mad (16 | M0) r57.0<1>:f  r41.0<1,0>:f   r11.0<1,0>:f   r77.3<0>:f
+      //   For K=1
+      //     mad (16 | M0) 60.0<1>:df  50.0<1,0>:df  r12.0<1,0>:df   r78.0<0>:df
+      //     mad (16 | M0) 62.0<1>:df  52.0<1,0>:df  r12.0<1,0>:df   r78.1<0>:df
+      //     mad (16 | M0) 64.0<1>:df  54.0<1,0>:df  r12.0<1,0>:df   r78.2<0>:df
+      //     mad (16 | M0) 66.0<1>:df  56.0<1,0>:df  r12.0<1,0>:df   r78.3<0>:df
+      //   For K=2
+      //     mad (16 | M0) r34.0<1>:f  60.0<1,0>:f   r14.0<1,0>:f   r79.0<0>:f
+      //     mad (16 | M0) r35.0<1>:f  61.0<1,0>:f   r15.0<1,0>:f   r79.0<0>:f
+      //     mad (16 | M0) r36.0<1>:f  62.0<1,0>:f   r14.0<1,0>:f   r79.1<0>:f
+      //     mad (16 | M0) r37.0<1>:f  63.0<1,0>:f   r15.0<1,0>:f   r79.1<0>:f
+      //     mad (16 | M0) r38.0<1>:f  64.0<1,0>:f   r14.0<1,0>:f   r79.2<0>:f
+      //     mad (16 | M0) r39.0<1>:f  65.0<1,0>:f   r15.0<1,0>:f   r79.2<0>:f
+      //     mad (16 | M0) r40.0<1>:f  66.0<1,0>:f   r14.0<1,0>:f   r79.3<0>:f
+      //     mad (16 | M0) r41.0<1>:f  67.0<1,0>:f   r15.0<1,0>:f   r79.3<0>:f
       vISA_ASSERT((std::max(instGRFSize, preBlock->instGRFSize) %
                   std::min(instGRFSize, preBlock->instGRFSize) ==
               0),
@@ -544,7 +538,7 @@ public:
   }
 
   // Check GRF size to see if the instruction can be added the block or not
-  bool checkGRFSize(Node *node) {
+  bool checkGRFSize(Node *node) const {
     G4_INST *inst = node->getInstructions()->front();
     G4_Operand *newOpnd = inst->getDst();
     unsigned platGRFSize = inst->getBuilder().getGRFSize();
@@ -573,7 +567,7 @@ public:
   }
 
   // Check if the instruction can be added into 2xDP block
-  bool canAddToBlock2xDP(Node *node) {
+  bool canAddToBlock2xDP(Node *node) const {
     G4_INST *inst = node->getInstructions()->front();
 
     if (!instCanUse2xDP(inst)) {
@@ -600,14 +594,14 @@ public:
   //     GRF size should be larger than 4
   //     For the non-first block, the src0 of the block should have the same
   //     registers as the dst of previous block
-  bool isGoodBlock() {
+  bool isGoodBlock() const {
     return (int)dstGRF.size() <= kernel->getNumAcc() && dstGRF.size() >= 4 &&
            checkAllInstsSrc0();
   }
 
   // Check if the src0 of the instruction has the same register as the dst of
   // any instruction in previous block
-  bool hasSameOperand(G4_INST *inst) {
+  bool hasSameOperand(G4_INST *inst) const {
     unsigned grfSize = inst->getBuilder().getGRFSize();
     int src0RegStart = int(inst->getSrc(0)->getLinearizedStart() / grfSize);
     int tmpInstGRFSize = (this->instGRFSize == 0)
@@ -633,11 +627,11 @@ public:
 
   // Check if the src0 of all instructions in the current block and the dst of
   // all instructions in the previous block have same registers.
-  bool checkAllInstsSrc0() {
+  bool checkAllInstsSrc0() const {
     // No need to check operand if the current block is the first block
     if (preBlock) {
       std::vector<int>::iterator itDst = preBlock->dstGRF.begin();
-      std::vector<int>::iterator itSrc = this->srcGRF.begin();
+      auto itSrc = this->srcGRF.begin();
       while (itDst != preBlock->dstGRF.end() && itSrc != this->srcGRF.end()) {
         auto dstReg = (*itDst);
         auto srcReg = (*itSrc);
@@ -664,7 +658,7 @@ public:
   }
 
   // Check if block is full
-  bool isBlockFull() {
+  bool isBlockFull() const {
     for (auto const reg : dstGRF) {
       if (reg == -1)
         return false;
@@ -685,7 +679,7 @@ class windowWriteCombine {
 public:
   std::vector<Node *> &getInstList() { return instList; }
 
-  bool isWriteCombineCandidate(Node *node, G4_BB *bb) {
+  bool isWriteCombineCandidate(Node *node, G4_BB *bb) const {
     auto inst = node->getInstructions()->front();
     if (inst->opcode() != G4_mov) {
       return false;
@@ -712,7 +706,7 @@ public:
     }
 
     // 4, for byte write combine atomic sequence, instruction must have no mask
-    // as we cannot gurantee that both bytes in a word are written.
+    // as we cannot guarantee that both bytes in a word are written.
     bool isNoMaskInst = !inst->getPredicate() &&
                         (inst->isWriteEnableInst() || bb->isAllLaneActive());
     if ((IS_BTYPE(dstType) ||
@@ -814,7 +808,7 @@ public:
   // check if current block meets below conditions:
   // 1, block size >= 2
   // 2, both bytes in a word need to be written
-  bool isGoodBlock() {
+  bool isGoodBlock() const {
     if (instList.size() < 2) {
       return false;
     }

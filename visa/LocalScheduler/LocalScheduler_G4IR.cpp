@@ -28,13 +28,12 @@ void LocalScheduler::localScheduling() {
     return;
 
   VISA_DEBUG_VERBOSE(std::cout << "[Scheduling]: Starting...");
-  BB_LIST_ITER ib(fg.begin()), bend(fg.end());
-  vISA_ASSERT(ib != bend, ERROR_SCHEDULER);
+  vISA_ASSERT(!fg.empty(), ERROR_SCHEDULER);
 
-  std::vector<VISA_BB_INFO> bbInfo(fg.size());
-  int i = 0;
+  std::vector<VISA_BB_INFO> bbInfo;
+  bbInfo.reserve(fg.size());
 
-  const Options *m_options = fg.builder->getOptions();
+  const Options *options = fg.builder->getOptions();
   auto LT = LatencyTable::createLatencyTable(*fg.builder);
 
   PointsToAnalysis p(fg.getKernel()->Declares, fg.size());
@@ -42,33 +41,28 @@ void LocalScheduler::localScheduling() {
 
   uint32_t totalCycles = 0;
   uint32_t scheduleStartBBId =
-      m_options->getuInt32Option(vISA_LocalSchedulingStartBB);
+      options->getuInt32Option(vISA_LocalSchedulingStartBB);
   uint32_t shceduleEndBBId =
-      m_options->getuInt32Option(vISA_LocalSchedulingEndBB);
-  for (; ib != bend; ++ib) {
-    if ((*ib)->getId() < scheduleStartBBId ||
-        (*ib)->getId() > shceduleEndBBId) {
+      options->getuInt32Option(vISA_LocalSchedulingEndBB);
+  for (G4_BB *bb : fg) {
+    if (bb->getId() < scheduleStartBBId || bb->getId() > shceduleEndBBId)
       continue;
-    }
 
-    unsigned instCountBefore = (uint32_t)(*ib)->size();
+    unsigned instCountBefore = (uint32_t)bb->size();
 #define SCH_THRESHOLD 2
     if (instCountBefore < SCH_THRESHOLD) {
       unsigned int sequentialCycles = 0;
-      for (INST_LIST_ITER inst_it = (*ib)->begin(), bbEnd = (*ib)->end();
-           inst_it != bbEnd; inst_it++) {
-        sequentialCycles += LT->getOccupancy((*inst_it));
-      }
-      bbInfo[i].id = (*ib)->getId();
-      bbInfo[i].staticCycle = sequentialCycles;
-      bbInfo[i].sendStallCycle = 0;
-      bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
+      for (G4_INST *inst : *bb)
+        sequentialCycles += LT->getOccupancy(inst);
+
+      bbInfo.push_back({(int)bb->getId(), sequentialCycles, 0,
+          (unsigned char)bb->getNestLevel()});
       totalCycles += sequentialCycles;
       continue;
     }
 
     unsigned schedulerWindowSize =
-        m_options->getuInt32Option(vISA_SchedulerWindowSize);
+        options->getuInt32Option(vISA_SchedulerWindowSize);
     if (schedulerWindowSize > 0 && instCountBefore > schedulerWindowSize) {
       // If BB has a lot of instructions then when recursively
       // traversing DAG in list scheduler, stack overflow occurs.
@@ -79,11 +73,11 @@ void LocalScheduler::localScheduling() {
       unsigned int sendStallCycles = 0;
       std::vector<G4_BB *> sections;
 
-      for (INST_LIST_ITER inst_it = (*ib)->begin();; inst_it++) {
-        if (count == schedulerWindowSize || inst_it == (*ib)->end()) {
+      for (auto inst_it = bb->begin(); ; ++inst_it) {
+        if (count == schedulerWindowSize || inst_it == bb->end()) {
           G4_BB *tempBB = fg.createNewBB(false);
           sections.push_back(tempBB);
-          tempBB->splice(tempBB->begin(), (*ib), (*ib)->begin(), inst_it);
+          tempBB->splice(tempBB->begin(), bb, bb->begin(), inst_it);
           G4_BB_Schedule schedule(fg.getKernel(), tempBB, *LT, p);
           sequentialCycles += schedule.sequentialCycle;
           sendStallCycles += schedule.sendStallCycle;
@@ -91,30 +85,22 @@ void LocalScheduler::localScheduling() {
         }
         count++;
 
-        if (inst_it == (*ib)->end()) {
+        if (inst_it == bb->end())
           break;
-        }
       }
 
-      for (unsigned int i = 0; i < sections.size(); i++) {
-        (*ib)->splice((*ib)->end(), sections[i], sections[i]->begin(),
-                      sections[i]->end());
+      for (G4_BB *section : sections) {
+        bb->splice(bb->end(), section, section->begin(), section->end());
       }
-      bbInfo[i].id = (*ib)->getId();
-      bbInfo[i].staticCycle = sequentialCycles;
-      bbInfo[i].sendStallCycle = sendStallCycles;
-      bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
+      bbInfo.push_back({(int)bb->getId(), sequentialCycles, sendStallCycles,
+          (unsigned char)bb->getNestLevel()});
       totalCycles += sequentialCycles;
     } else {
-      G4_BB_Schedule schedule(fg.getKernel(), *ib, *LT, p);
-      bbInfo[i].id = (*ib)->getId();
-      bbInfo[i].staticCycle = schedule.sequentialCycle;
-      bbInfo[i].sendStallCycle = schedule.sendStallCycle;
-      bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
+      G4_BB_Schedule schedule(fg.getKernel(), bb, *LT, p);
+      bbInfo.push_back({(int)bb->getId(), schedule.sequentialCycle,
+          schedule.sendStallCycle, (unsigned char)bb->getNestLevel()});
       totalCycles += schedule.sequentialCycle;
     }
-
-    i++;
   }
 
   // Sum up the cycles for each BB.
@@ -298,7 +284,7 @@ void Node::dump() {
   std::cerr << "\n";
 }
 
- static bool needBothAcc(IR_Builder *builder, G4_INST *inst, G4_Operand *opnd) {
+static bool needBothAcc(IR_Builder *builder, G4_INST *inst, G4_Operand *opnd) {
   switch (opnd->getType()) {
   case Type_F:
     return inst->getExecSize() == G4_ExecSize(builder->getNativeExecSize() * 2);
@@ -759,7 +745,7 @@ with read suppression into single node
 1. per-source slot
 2. No RAW and WAW dependence
 3. Same opcode
-4. acc define will seperate a new group
+4. acc define will separate a new group
 5. No other special register (including implicit) is used.
 6. Only checking the suppression chance between adjacent instructions before
 scheduling.
@@ -778,7 +764,7 @@ destination registers of all the instructions in the group except the last one
 in the group.
 */
 bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
-                             BitSet &liveDst, BitSet &liveSrc) {
+                             BitSet &liveDst, BitSet &liveSrc) const {
   // Not three source
   if (nextInst->getNumSrc() != 3 || nextInst->isSend()) {
     return false;
@@ -841,10 +827,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
                 (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) /
                     kernel->numEltPerGRF<Type_UB>() -
                 1;
-          } else if (srcOpnd->asSrcRegRegion()
-                         ->isScalar()) // No Read suppression for SIMD 16/scalar
-                                       // src
-          {
+          } else if (srcOpnd->asSrcRegRegion()->isScalar()) {
+            // No Read suppression for SIMD 16/scalar src
             isCurrScalar[i] = true;
             currInstRegs[1][i] = currInstRegs[0][i];
           }
@@ -880,9 +864,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
             nextInstRegs[1][i] = reg;
             liveSrc.set(reg, true); // Set live
           }
-          if (srcOpnd->asSrcRegRegion()
-                  ->isScalar()) // No Read suppression for SIMD 16/scalar src
-          {
+          if (srcOpnd->asSrcRegRegion()->isScalar()) {
+            // No Read suppression for SIMD 16/scalar src
             isNextScalar[i] = true;
             nextInstRegs[1][i] = nextInstRegs[0][i];
           }
@@ -957,22 +940,22 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
     }
   }
 
-  // For TGL, src0 support read suppresion as well
+  // For TGL, src0 support read suppression as well
   if (kernel->fg.builder->hasSrc0ReadSuppression()) {
     if (currInstRegs[0][0] == nextInstRegs[0][0] && currInstRegs[0][0] != -1 &&
         curInstSimd8 && nextInstSimd8) {
-      // No scalar supperssion
+      // No scalar suppression
       if (!isCurrScalar[0] && !isNextScalar[0]) {
         return true;
       }
     }
   }
 
-  // If there is read suppresion for src1
+  // If there is read suppression for src1
   // for src1 2 GRF suppression is supported.
   if (currInstRegs[0][1] == nextInstRegs[0][1] && currInstRegs[0][1] != -1 &&
       ((curInstSimd8 && nextInstSimd8) || (!curInstSimd8 && !nextInstSimd8))) {
-    // No scalar supperssion
+    // No scalar suppression
     if (!isCurrScalar[1] && !isNextScalar[1]) {
       return true;
     }
@@ -980,7 +963,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 
   if (currInstRegs[0][2] == nextInstRegs[0][2] && currInstRegs[0][2] != -1 &&
       curInstSimd8 && nextInstSimd8) {
-    // No scalar supperssion
+    // No scalar suppression
     if (!isCurrScalar[2] && !isNextScalar[2]) {
       return true;
     }
@@ -990,7 +973,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 }
 
 bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
-                             bool multiSuppression) {
+                             bool multiSuppression) const {
   // Not three source
   if (nextInst->getNumSrc() != 3 || nextInst->isSend()) {
     return false;
@@ -1053,10 +1036,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
                 (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) /
                     kernel->numEltPerGRF<Type_UB>() -
                 1;
-          } else if (srcOpnd->asSrcRegRegion()
-                         ->isScalar()) // No Read suppression for SIMD 16/scalar
-                                       // src
-          {
+          } else if (srcOpnd->asSrcRegRegion()->isScalar()) {
+            // No Read suppression for SIMD 16/scalar src
             isCurrScalar[i] = true;
             currInstRegs[1][i] = currInstRegs[0][i];
           }
@@ -1089,9 +1070,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
                       1;
             nextInstRegs[1][i] = reg;
           }
-          if (srcOpnd->asSrcRegRegion()
-                  ->isScalar()) // No Read suppression for SIMD 16/scalar src
-          {
+          if (srcOpnd->asSrcRegRegion()->isScalar()) {
+            // No Read suppression for SIMD 16/scalar src
             isNextScalar[i] = true;
             nextInstRegs[1][i] = nextInstRegs[0][i];
           }
@@ -1156,11 +1136,11 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
   }
 
   int suppressionSrcs = 0;
-  // For TGL, src0 support read suppresion as well
+  // For TGL, src0 support read suppression as well
   if (kernel->fg.builder->hasSrc0ReadSuppression()) {
     if (currInstRegs[0][0] == nextInstRegs[0][0] && currInstRegs[0][0] != -1 &&
         curInstSimd8 && nextInstSimd8) {
-      // No scalar supperssion
+      // No scalar suppression
       if (!((!kernel->fg.builder->hasScalarReadSuppression()) &&
             (isCurrScalar[0] || isNextScalar[0]))) {
         if (!multiSuppression) {
@@ -1171,11 +1151,11 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
     }
   }
 
-  // If there is read suppresion for src1
+  // If there is read suppression for src1
   // for src1 2 GRF suppression is supported.
   if (currInstRegs[0][1] == nextInstRegs[0][1] && currInstRegs[0][1] != -1 &&
       ((curInstSimd8 && nextInstSimd8) || (!curInstSimd8 && !nextInstSimd8))) {
-    // No scalar supperssion
+    // No scalar suppression
     if (!((!kernel->fg.builder->hasScalarReadSuppression()) &&
           (isCurrScalar[1] || isNextScalar[1]))) {
       if (!multiSuppression) {
@@ -1187,7 +1167,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 
   if (currInstRegs[0][2] == nextInstRegs[0][2] && currInstRegs[0][2] != -1 &&
       curInstSimd8 && nextInstSimd8) {
-    // No scalar supperssion
+    // No scalar suppression
     if (!((!kernel->fg.builder->hasScalarReadSuppression()) &&
           (isCurrScalar[2] || isNextScalar[2]))) {
       if (!multiSuppression) {
@@ -1217,7 +1197,7 @@ bool DDD::hsaSameTypesAllOperands(const G4_INST &curInst,
 }
 
 bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
-                               BitSet &liveDst, BitSet &liveSrc) {
+                               BitSet &liveDst, BitSet &liveSrc) const {
   if (!hsaSameTypesAllOperands(*curInst, *nextInst))
     return false;
 
@@ -1302,14 +1282,13 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
   return false;
 }
 
-// Construct data dependencey DAG. The function constructs
-// DAG using a bucket-based algorithm. The idea is to setup
-// as many buckets as there are GRFs (and ARFs). Then when
-// testing dependencies the DAG, we only need to look at buckets
-// that current inst may fall into. This saves us from checking
-// dependencies with all insts in live set. After analyzing
-// dependencies and creating necessary edges, current inst
-// is inserted in all buckets it touches.
+// Construct data dependency DAG. The function constructs DAG using
+// a bucket-based algorithm. The idea is to setup as many buckets as there are
+// GRFs (and ARFs). Then when testing dependencies the DAG, we only need to
+// look at buckets that current inst may fall into. This saves us from checking
+// dependencies with all insts in live set. After analyzing dependencies and
+// creating necessary edges, current inst is inserted in all buckets it
+// touches.
 DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
     : DDDMem(4096), LT(lt), kernel(k), pointsToAnalysis(p) {
   Node *lastBarrier = nullptr;
@@ -1671,7 +1650,7 @@ static bool canAvoidDepCycles(Node *firstNode, Node *secondNode,
   return true;
 }
 
-// Return TRUE if INST is the the partN'th part {0,1,2,3} of a typedWrite
+// Return TRUE if INST is the partN'th part {0,1,2,3} of a typedWrite
 static bool isTypedWritePart(G4_INST *inst, int partN) {
   return inst->isSend() && inst->getExecSize() == g4::SIMD8 &&
          inst->getMsgDescRaw() &&
@@ -1808,7 +1787,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     vASSERT(*firstNode->getInstructions()->begin() == firstInstr);
     vASSERT(*secondNode->getInstructions()->begin() == secondInstr);
     if (canAvoidDepCycles(firstNode, secondNode, true)) {
-      // A. move the deps of seconde node to the first.
+      // A. move the deps of second node to the first.
       moveDeps(secondNode, firstNode);
 
       // B. We add the second instruction to the first node.
@@ -2307,7 +2286,7 @@ uint32_t DDD::listScheduleFor2xFP(G4_BB_Schedule *schedule) {
 
   // The blocks are used for the 2xDP and 2xSP instruction block, which will be
   // scheduled at the same time Since the atomic is set according to the
-  // dependence of two contigious blocks, we keep two blocks with two block
+  // dependence of two contiguous blocks, we keep two blocks with two block
   // pointers to use them alternatively.
   window2xSP madBlock1(kernel);
   window2xSP madBlock2(kernel);
@@ -2372,27 +2351,27 @@ uint32_t DDD::listScheduleFor2xFP(G4_BB_Schedule *schedule) {
     if (curBlock->isGoodBlock()) {
       // Try to see if we can schedule current block. If pre-ready queue updated
       // by the block scheduling is empty, which means some instructions in
-      // popped list depeneded by next block should be scheduled firstly. Then
+      // popped list depended by next block should be scheduled firstly. Then
       // schedule current block. Considering below case:
-      //    mad (16)             r5.0<1>:df  r92.0<1;0>:df  r45.0<1;0>:df
-      //    r84.0<0;0>:df mad (16)             r7.0<1>:df  r96.0<1;0>:df
-      //    r45.0<1;0>:df  r84.1<0;0>:df mov (32)             r86.0<1>:d
-      //    r17.0<1;1,0>:d mad (16)             r9.0<1>:df  r100.0<1;0>:df
-      //    r45.0<1;0>:df  r84.2<0;0>:df mad (16)             r11.0<1>:df
-      //    r104.0<1;0>:df  r45.0<1;0>:df  r84.3<0;0>:df
       //
-      //    mad (16)             r5.0<1>:df  r5.0<1;0>:df  r108.0<1;0>:df
-      //    r86.0<0;0>:df mad (16)             r7.0<1>:df  r7.0<1;0>:df
-      //    r108.0<1;0>:df  r86.1<0;0>:df mad (16)             r9.0<1>:df
-      //    r9.0<1;0>:df  r108.0<1;0>:df  r86.2<0;0>:df mad (16) r11.0<1>:df
-      //    r11.0<1;0>:df  r108.0<1;0>:df  r86.3<0;0>:df
+      //    mad (16) r5.0<1>:df  r92.0<1;0>:df  r45.0<1;0>:df r84.0<0;0>:df
+      //    mad (16) r7.0<1>:df  r96.0<1;0>:df  r45.0<1;0>:df  r84.1<0;0>:df
+      //    mov (32) r86.0<1>:d  r17.0<1;1,0>:d
+      //    mad (16) r9.0<1>:df  r100.0<1;0>:df r45.0<1;0>:df  r84.2<0;0>:df
+      //    mad (16) r11.0<1>:df r104.0<1;0>:df  r45.0<1;0>:df  r84.3<0;0>:df
+      //
+      //    mad (16) r5.0<1>:df  r5.0<1;0>:df  r108.0<1;0>:df r86.0<0;0>:df
+      //    mad (16) r7.0<1>:df  r7.0<1;0>:df  r108.0<1;0>:df  r86.1<0;0>:df
+      //    mad (16) r9.0<1>:df  r9.0<1;0>:df  r108.0<1;0>:df  r86.2<0;0>:df
+      //    mad (16) r11.0<1>:df r11.0<1;0>:df  r108.0<1;0>:df  r86.3<0;0>:df
+      //
       // The last 4 mad depends on previous 4 mad and mov. In current block, we
-      // have built the block successfully which includes the first 4
-      // instructions, and the popped list has the mov instruction. If shcedule
-      // the block now, then the next sheduled instruction will be the mov as
-      // the last 4 mad wouldn't be sheduled before all the previous 5
-      // instructions scheduled. So the group of blocks will be broken. Todo: Is
-      // there better solution here?
+      // have built the block successfully which includes the first
+      // 4 instructions, and the popped list has the mov instruction. If
+      // schedule the block now, then the next scheduled instruction will be
+      // the mov as the last 4 mad wouldn't be scheduled before all the
+      // previous 5 instructions scheduled. So the group of blocks will be
+      // broken. Todo: Is there better solution here?
 
       // Schedule instructions in popped list
       for (auto node : popped) {
@@ -2740,19 +2719,15 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
   return currCycle;
 }
 
-// This comment is moved from DDD::Latency()
-// Given two instructions, this function returns latency
-// in number of cycles. If there is a RAW dependency
-// between the two instructions then modeled latency
-// is higher because second instruction needs to wait
-// till first instruction execution is complete to
-// receive operands. In case of false dependencies or
-// no dependencies, second instruction need not wait
-// for completion of execution of first instruction.
-// So modeled latency is lower and equal to latency
-// of first instruction (which is initialized to either
-// 1 or 2 depending on compression attribute).
-uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) {
+// This comment is moved from DDD::Latency() Given two instructions, this
+// function returns latency in number of cycles. If there is a RAW dependency
+// between the two instructions then modeled latency is higher because second
+// instruction needs to wait till first instruction execution is complete to
+// receive operands. In case of false dependencies or no dependencies, second
+// instruction need not wait for completion of execution of first instruction.
+// So modeled latency is lower and equal to latency of first instruction (which
+// is initialized to either 1 or 2 depending on compression attribute).
+uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
   // This is a prefetch read only depending on the terminator.
   // We pessimistically assume that it will be used right after the branch.
   G4_INST *inst = *node->getInstructions()->begin();
@@ -2788,7 +2763,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) {
   return latency;
 }
 
-uint32_t DDD::getEdgeLatency(Node *node, DepType depT) {
+uint32_t DDD::getEdgeLatency(Node *node, DepType depT) const {
   uint32_t latency = getEdgeLatency_old(node, depT);
   if (useMTLatencies) {
     float scale = float(HWthreadsPerEU) / getBuilder()->getCoIssueUints();
@@ -2916,7 +2891,7 @@ void G4_BB_Schedule::emit(std::ostream &out) {
 // Check conflicts according to registers read in same cycle
 // Two kinds conflict:
 // 1. multiple registers from same bundle
-// 2. all three souces from same bank
+// 2. all three sources from same bank
 // Input: regCandidates are the registers which will be read in same cycle
 static bool hasConflictForSchedule(int *regCandidates) {
   int bundles[3];
@@ -2959,7 +2934,7 @@ static bool hasConflictForSchedule(int *regCandidates) {
 // The src0 of second instruction is read together with src1 (and src2) of the
 // first instruction. We only handle the situation that first instruction is a
 // three source instruction.
-bool Node::hasConflict(Node *node2) {
+bool Node::hasConflict(Node *node2) const {
   G4_INST *inst1 = getInstructions()->front();
   G4_INST *inst2 = node2->getInstructions()->front();
 
