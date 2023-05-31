@@ -2070,12 +2070,8 @@ void Interference::buildInterferenceForFcall(
     G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, const G4_VarBase *regVar) {
   vISA_ASSERT(inst->opcode() == G4_pseudo_fcall, "expect fcall inst");
-  unsigned refCount = GlobalRA::getRefCount(
-      kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
-
   if (regVar->isRegAllocPartaker()) {
     unsigned id = static_cast<const G4_RegVar *>(regVar)->getId();
-    lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
 
     buildInterferenceWithLive(live, id);
     updateLiveness(live, id, false);
@@ -2086,8 +2082,6 @@ void Interference::buildInterferenceForFcall(
 void Interference::buildInterferenceForDst(
     G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, G4_DstRegRegion *dst) {
-  unsigned refCount = GlobalRA::getRefCount(
-      kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
 
   if (dst->getBase()->isRegAllocPartaker()) {
     unsigned id = ((G4_RegVar *)dst->getBase())->getId();
@@ -2103,9 +2097,6 @@ void Interference::buildInterferenceForDst(
     // pseudo_kill nodes.
     //
     if (!inst->isPseudoKill() && !inst->isLifeTimeEnd()) {
-      lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                           refCount); // update reference count
-
       buildInterferenceWithLive(live, id);
       if (lrs[id]->getIsSplittedDcl()) {
         buildInterferenceWithSubDcl(id, (G4_Operand *)dst, live, false, true);
@@ -2130,9 +2121,6 @@ void Interference::buildInterferenceForDst(
         }
       }
     }
-
-    // Indirect defs are actually uses of address reg
-    lrs[id]->checkForInfiniteSpillCost(bb, i);
   } else if (dst->isIndirect() && liveAnalysis->livenessClass(G4_GRF)) {
     //
     // add interferences to the list of potential indirect destination accesses.
@@ -2142,10 +2130,6 @@ void Interference::buildInterferenceForDst(
     for (auto pt : pointsToSet) {
       if (pt.var->isRegAllocPartaker()) {
         buildInterferenceWithLive(live, pt.var->getId());
-        if (kernel.getOption(vISA_IncSpillCostAllAddrTaken)) {
-          lrs[pt.var->getId()]->setRefCount(
-              lrs[pt.var->getId()]->getRefCount() + refCount);
-        }
       }
     }
   }
@@ -2153,8 +2137,6 @@ void Interference::buildInterferenceForDst(
 
 void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
   DebugInfoState state;
-  unsigned refCount = GlobalRA::getRefCount(
-      kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
 
   for (auto i = bb->rbegin(); i != bb->rend(); i++) {
     G4_INST *inst = (*i);
@@ -2198,18 +2180,6 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
       markInterferenceToAvoidDstSrcOverlap(bb, inst);
     }
 
-    if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg()) {
-      // r127 must not be used for return address when there is a src and dest
-      // overlap in send instruction. This applies to split-send as well
-      if (kernel.fg.builder->needsToReserveR127() &&
-          liveAnalysis->livenessClass(G4_GRF)) {
-        if (dst->getBase()->isRegAllocPartaker() &&
-            !dst->getBase()->asRegVar()->isPhyRegAssigned()) {
-          int dstId = dst->getBase()->asRegVar()->getId();
-          lrs[dstId]->setForbidden(forbiddenKind::FBD_LASTGRF);
-        }
-      }
-    }
     if (inst->isSplitSend() && !inst->getSrc(1)->isNullReg()) {
       G4_SrcRegRegion *src0 = inst->getSrc(0)->asSrcRegRegion();
       G4_SrcRegRegion *src1 = inst->getSrc(1)->asSrcRegRegion();
@@ -2254,25 +2224,12 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
         G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
         if (srcRegion->getBase()->isRegAllocPartaker()) {
           unsigned id = ((G4_RegVar *)(srcRegion)->getBase())->getId();
-          lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                               refCount); // update reference count
 
           if (!inst->isLifeTimeEnd()) {
             updateLiveness(live, id, true);
             if (lrs[id]->getIsSplittedDcl()) {
               buildInterferenceWithSubDcl(id, src, live, true, false);
             }
-          }
-
-          if (inst->isEOT() && liveAnalysis->livenessClass(G4_GRF)) {
-            // mark the liveRange as the EOT source
-            lrs[id]->setEOTSrc();
-            if (builder.hasEOTGRFBinding()) {
-              lrs[id]->setForbidden(forbiddenKind::FBD_EOT);
-            }
-          }
-          if (inst->isReturn()) {
-            lrs[id]->setRetIp();
           }
         } else if (srcRegion->isIndirect() &&
                    liveAnalysis->livenessClass(G4_GRF)) {
@@ -2283,10 +2240,6 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
           for (auto pt : pointsToSet) {
             if (pt.var->isRegAllocPartaker()) {
               updateLiveness(live, pt.var->getId(), true);
-              if (kernel.getOption(vISA_IncSpillCostAllAddrTaken)) {
-                lrs[pt.var->getId()]->setRefCount(
-                    lrs[pt.var->getId()]->getRefCount() + refCount);
-              }
             }
           }
         }
@@ -2312,15 +2265,11 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
       if (flagReg != NULL) {
         unsigned id = flagReg->asRegVar()->getId();
         if (flagReg->asRegVar()->isRegAllocPartaker()) {
-          lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                               refCount); // update reference count
           buildInterferenceWithLive(live, id);
 
           if (liveAnalysis->writeWholeRegion(bb, inst, flagReg)) {
             updateLiveness(live, id, false);
           }
-
-          lrs[id]->checkForInfiniteSpillCost(bb, i);
         }
       } else {
         vISA_ASSERT((inst->opcode() == G4_sel || inst->opcode() == G4_csel) &&
@@ -2337,8 +2286,6 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
       G4_VarBase *flagReg = predicate->getBase();
       unsigned id = flagReg->asRegVar()->getId();
       if (flagReg->asRegVar()->isRegAllocPartaker()) {
-        lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                             refCount); // update reference count
         live.set(id);
       }
     }
@@ -2372,8 +2319,147 @@ void Interference::applyPartitionBias() {
   }
 }
 
+// Any setting of LiveRange property that is discovered during interference
+// must be done here. Because with incremental RA, we may not run interference
+// computation for all BBs.
+void Interference::setupLRs(G4_BB *bb) {
+  unsigned refCount = GlobalRA::getRefCount(
+      kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
+  bool incSpillCostAddrTaken = kernel.getOption(vISA_IncSpillCostAllAddrTaken);
+
+  for (auto i = bb->rbegin(); i != bb->rend(); i++) {
+    G4_INST *inst = (*i);
+
+    auto dst = inst->getDst();
+    if (dst) {
+      if (dst->getBase()->isRegAllocPartaker()) {
+        unsigned id = ((G4_RegVar *)dst->getBase())->getId();
+        if (!inst->isPseudoKill() && !inst->isLifeTimeEnd()) {
+          lrs[id]->setRefCount(lrs[id]->getRefCount() +
+                               refCount); // update reference count
+        }
+        lrs[id]->checkForInfiniteSpillCost(bb, i);
+      } else if (dst->isIndirect() && liveAnalysis->livenessClass(G4_GRF)) {
+        const REGVAR_VECTOR &pointsToSet =
+            liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
+                                                                          bb);
+        for (auto pt : pointsToSet) {
+          if (!pt.var->isRegAllocPartaker() || !incSpillCostAddrTaken)
+            continue;
+
+          lrs[pt.var->getId()]->setRefCount(
+              lrs[pt.var->getId()]->getRefCount() + refCount);
+        }
+      }
+    }
+
+    if (inst->opcode() == G4_pseudo_fcall &&
+        liveAnalysis->livenessClass(G4_GRF)) {
+      auto fcall = kernel.fg.builder->getFcallInfo(bb->back());
+      G4_Declare *ret = kernel.fg.builder->getStackCallRet();
+      vISA_ASSERT(fcall != std::nullopt, "fcall info not found");
+      uint16_t retSize = fcall->getRetSize();
+      if (ret && retSize > 0 && ret->getRegVar() &&
+          ret->getRegVar()->isRegAllocPartaker()) {
+        unsigned id = static_cast<const G4_RegVar *>(ret->getRegVar())->getId();
+        lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
+      }
+    }
+
+    if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg()) {
+      // r127 must not be used for return address when there is a src and dest
+      // overlap in send instruction. This applies to split-send as well
+      if (kernel.fg.builder->needsToReserveR127() &&
+          liveAnalysis->livenessClass(G4_GRF) &&
+          dst->getBase()->isRegAllocPartaker() &&
+          !dst->getBase()->asRegVar()->isPhyRegAssigned()) {
+        int dstId = dst->getBase()->asRegVar()->getId();
+        lrs[dstId]->setForbidden(forbiddenKind::FBD_LASTGRF);
+      }
+    }
+
+    //
+    // process each source operand
+    //
+    for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
+      G4_Operand *src = inst->getSrc(j);
+      if (!src || !src->isSrcRegRegion())
+        continue;
+
+      G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
+      if (srcRegion->getBase()->isRegAllocPartaker()) {
+        unsigned id = ((G4_RegVar *)(srcRegion)->getBase())->getId();
+        lrs[id]->setRefCount(lrs[id]->getRefCount() +
+                             refCount); // update reference count
+        if (inst->isEOT() && liveAnalysis->livenessClass(G4_GRF)) {
+          // mark the liveRange as the EOT source
+          lrs[id]->setEOTSrc();
+          if (builder.hasEOTGRFBinding()) {
+            lrs[id]->setForbidden(forbiddenKind::FBD_EOT);
+          }
+        }
+        if (inst->isReturn()) {
+          lrs[id]->setRetIp();
+        }
+      } else if (srcRegion->isIndirect() &&
+                 liveAnalysis->livenessClass(G4_GRF)) {
+        // make every var in points-to set live
+        const REGVAR_VECTOR &pointsToSet =
+            liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
+                srcRegion, bb);
+        for (auto pt : pointsToSet) {
+          if (!pt.var->isRegAllocPartaker() || !incSpillCostAddrTaken)
+            continue;
+
+          lrs[pt.var->getId()]->setRefCount(
+              lrs[pt.var->getId()]->getRefCount() + refCount);
+        }
+      }
+    }
+
+    //
+    // Process condMod
+    //
+    if (auto mod = inst->getCondMod()) {
+      G4_VarBase *flagReg = mod->getBase();
+      if (flagReg) {
+        unsigned id = flagReg->asRegVar()->getId();
+        if (flagReg->asRegVar()->isRegAllocPartaker()) {
+          lrs[id]->setRefCount(lrs[id]->getRefCount() +
+                               refCount); // update reference count
+
+          lrs[id]->checkForInfiniteSpillCost(bb, i);
+        }
+      } else {
+        vISA_ASSERT((inst->opcode() == G4_sel || inst->opcode() == G4_csel) &&
+                        inst->getCondMod() != NULL,
+                    "Invalid CondMod");
+      }
+    }
+
+    //
+    // Process predicate
+    //
+    if (auto predicate = inst->getPredicate()) {
+      G4_VarBase *flagReg = predicate->getBase();
+      unsigned id = flagReg->asRegVar()->getId();
+      if (flagReg->asRegVar()->isRegAllocPartaker()) {
+        lrs[id]->setRefCount(lrs[id]->getRefCount() +
+                             refCount); // update reference count
+      }
+    }
+  }
+}
+
 void Interference::computeInterference() {
   startTimer(TimerID::INTERFERENCE);
+
+  for (auto bb : kernel.fg) {
+    // Initialize LR properties like ref count and forbidden here.
+    // This method is invoked for all BBs even with incremental RA.
+    setupLRs(bb);
+  }
+
   //
   // create bool vector, live, to track live ranges that are currently live
   //
@@ -2393,7 +2479,6 @@ void Interference::computeInterference() {
     //
     // traverse inst in the reverse order
     //
-
     buildInterferenceWithinBB(bb, live);
   }
 

@@ -653,6 +653,8 @@ inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
   void generateSparseIntfGraph();
   void countNeighbors();
 
+  void setupLRs(G4_BB* bb);
+
 public:
   Interference(const LivenessAnalysis *l, const LiveRangeVec& lr, unsigned n,
                unsigned ns, unsigned nm, GlobalRA &g);
