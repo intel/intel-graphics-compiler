@@ -1037,8 +1037,8 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
         component = builder.CreateOr(element, component);
     }
 
-    IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(rawMatTy));
-    component = builder.CreateBitCast(component, vectorElementType);
+    if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(rawMatTy)))
+        component = builder.CreateBitCast(component, vectorElementType);
 
     if (matTy) {
         slice = builder.CreateInsertElement(matrix, component, index);
