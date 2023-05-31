@@ -39,7 +39,8 @@ namespace IGC
     /// Array can be stored in SOA form
     /// Helper allowing function to detect if an array can stored in SOA form
     /// It is true
-    bool CanUseSOALayout(llvm::AllocaInst* inst, llvm::Type*& baseType);
+    /// allUsesAreVector shows if all uses are vector (doesn't mean vectorSOA form is available)
+    bool CanUseSOALayout(llvm::AllocaInst* inst, llvm::Type*& baseType, bool& allUsesAreVector);
 
     class TransposeHelper
     {

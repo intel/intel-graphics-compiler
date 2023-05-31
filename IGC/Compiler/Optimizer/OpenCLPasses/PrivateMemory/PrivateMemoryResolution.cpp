@@ -917,12 +917,22 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
             // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
+            bool allUsesAreVector = false;
 
             // TransposeMemLayout is not prepared to work on 64-bit pointers (originally, the private address space is expressed by 32-bit pointers).
             // Address space casting
             bool TransposeMemLayout =
                 ADDRESS_SPACE_PRIVATE == scratchMemoryAddressSpace &&
-                CanUseSOALayout(pAI, pTypeOfAccessedObject);
+                CanUseSOALayout(pAI, pTypeOfAccessedObject, allUsesAreVector);
+
+            if (TransposeMemLayout)
+            {
+                // SOA layout can be not beneficial for the alloca, even is it is possible
+                // For example, if it is not vectorSOA, but all uses are vectors
+                // (in case of vectors of different size of elements number) we close the
+                // possibility to use large loads/stores, so cancel the transformation.
+                TransposeMemLayout &= pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
+            }
 
             unsigned int bufferSize = 0;
             if (TransposeMemLayout)

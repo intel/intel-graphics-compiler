@@ -303,7 +303,8 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         }
     }
     Type* baseType = nullptr;
-    if (!CanUseSOALayout(pAlloca, baseType))
+    bool allUsesAreVector = false;
+    if (!CanUseSOALayout(pAlloca, baseType, allUsesAreVector))
     {
         return StatusPrivArr2Reg::CannotUseSOALayout;
     }
@@ -378,18 +379,20 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     return StatusPrivArr2Reg::OK;
 }
 
-static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
+static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA, bool& allUsesAreVector)
 {
     for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if (CheckUsesForSOAAlyout(gep, vectorSOA))
+            if (CheckUsesForSOAAlyout(gep, vectorSOA, allUsesAreVector))
                 continue;
         }
         if (llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
         {
-            vectorSOA &= pLoad->getType()->isVectorTy();
+            bool isVectorLoad = pLoad->getType()->isVectorTy();
+            vectorSOA &= isVectorLoad;
+            allUsesAreVector &= isVectorLoad;
             if (!pLoad->isSimple())
                 return false;
         }
@@ -398,7 +401,9 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
             if (!pStore->isSimple())
                 return false;
             llvm::Value* pValueOp = pStore->getValueOperand();
-            vectorSOA &= pStore->getValueOperand()->getType()->isVectorTy();
+            bool isVectorStore = pStore->getValueOperand()->getType()->isVectorTy();
+            vectorSOA &= isVectorStore;
+            allUsesAreVector &= isVectorStore;
             if (pValueOp == I)
             {
                 // GEP instruction is the stored value of the StoreInst (not supported case)
@@ -418,7 +423,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
                 baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
             {
                 vectorSOA &= (unsigned int)baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
-                if (CheckUsesForSOAAlyout(pBitCast, vectorSOA))
+                if (CheckUsesForSOAAlyout(pBitCast, vectorSOA, allUsesAreVector))
                     continue;
             }
             else if (IsBitCastForLifetimeMark(pBitCast))
@@ -448,7 +453,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
 }
 
 
-bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
+bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base, bool& allUsesAreVector)
 {
     // Do not allow SOA layout for vla which will be stored on the stack.
     // We don't support SOA layout for privates on stack at all so this is just to make
@@ -473,7 +478,8 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
     if (!(base->getScalarType()->isFloatingPointTy() || base->getScalarType()->isIntegerTy()))
         return false;
     bool vectorSOA = true;
-    bool useSOA = CheckUsesForSOAAlyout(I, vectorSOA);
+    allUsesAreVector = true;
+    bool useSOA = CheckUsesForSOAAlyout(I, vectorSOA, allUsesAreVector);
     if (!vectorSOA)
     {
         base = base->getScalarType();
