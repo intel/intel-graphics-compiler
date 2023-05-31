@@ -128,7 +128,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXTidyControlFlowPass(registry);
   initializeGenXUnbalingWrapperPass(registry);
   initializeGenXVisaRegAllocWrapperPass(registry);
-  initializeTransformPrivMemPass(registry);
+  initializeGenXPromoteArrayPass(registry);
   initializeGenXBackendConfigPass(registry);
   initializeGenXImportOCLBiFPass(registry);
   initializeGenXSimplifyPass(registry);
@@ -346,7 +346,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// removes code that has been made dead by other passes.
   ///
   vc::addPass(PM, createDeadCodeEliminationPass());
-  vc::addPass(PM, createTransformPrivMemPass());
+  vc::addPass(PM, createGenXPromoteArrayPass());
   vc::addPass(PM, createPromoteMemoryToRegisterPass());
   // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.

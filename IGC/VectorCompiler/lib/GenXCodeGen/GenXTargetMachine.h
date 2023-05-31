@@ -247,7 +247,7 @@ void initializeGenXRematerializationWrapperPass(PassRegistry &);
 void initializeGenXTidyControlFlowPass(PassRegistry &);
 void initializeGenXUnbalingWrapperPass(PassRegistry &);
 void initializeGenXVisaRegAllocWrapperPass(PassRegistry &);
-void initializeTransformPrivMemPass(PassRegistry &);
+void initializeGenXPromoteArrayPass(PassRegistry &);
 void initializeGenXLowerJmpTableSwitchPass(PassRegistry &);
 void initializeGenXGlobalValueLoweringPass(PassRegistry &);
 void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);

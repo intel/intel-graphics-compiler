@@ -93,7 +93,7 @@ ModulePass *createGenXEmulationModulePreparePass();
 FunctionPass *createGenXDeadVectorRemovalPass();
 FunctionPass *createGenXPatternMatchPass(PatternMatchKind Kind);
 FunctionPass *createGenXPostLegalizationPass();
-FunctionPass *createTransformPrivMemPass();
+FunctionPass *createGenXPromoteArrayPass();
 ModulePass *createGenXThreadPrivateMemoryPass();
 FunctionPass *createGenXPromotePredicatePass();
 FunctionPass *createGenXIMadPostLegalizationPass();
