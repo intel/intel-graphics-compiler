@@ -54,11 +54,11 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2,
       G4_SendDescRaw *msgDesc = send->getMsgDescRaw();
       if (msgDesc && msgDesc->isLSC() &&
           msgDesc->getLscAddrType() == LSC_ADDR_TYPE_BTI &&
-          msgDesc->getSurface() == nullptr) {
+          msgDesc->getBti() == nullptr) {
         // LSC messages
         bti = msgDesc->getExtendedDesc() >> 24;
         return true;
-      } else if (msgDesc && msgDesc->isHDC() && msgDesc->getSurface() &&
+      } else if (msgDesc && msgDesc->isHDC() && msgDesc->getBti() &&
                  send->getMsgDescOperand()->isImm()) {
         // HDC messages
         bti = (unsigned int)send->getMsgDescOperand()->asImm()->getInt() &

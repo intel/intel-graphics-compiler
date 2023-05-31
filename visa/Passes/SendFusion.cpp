@@ -512,7 +512,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter) {
   G4_SendDescRaw *desc = Send->getMsgDescRaw();
   if (!desc)
     return;
-  G4_Operand *bti = desc->getSurface();
+  G4_Operand *bti = desc->getBti();
   if ((bti && bti->getTopDcl() != movI->getDst()->getTopDcl()) ||
       (addI->getSrc(1)->asImm()->getInt() != desc->getDesc())) {
     return;
@@ -527,7 +527,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter) {
   // Need to re-create descriptor for this send
   G4_SendDesc *newDesc = Builder->createSendMsgDesc(
       desc->getFuncId(), descImm, desc->getExtendedDesc(),
-      desc->extMessageLength(), desc->getAccess(), desc->getSurface(),
+      desc->extMessageLength(), desc->getAccess(), desc->getBti(),
       desc->getExecSize());
   Send->setMsgDesc(newDesc);
 

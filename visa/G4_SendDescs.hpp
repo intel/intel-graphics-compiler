@@ -289,7 +289,6 @@ public:
   virtual bool isAtomic() const = 0;
   virtual bool isBarrier() const = 0;
   virtual bool isFence() const = 0;
-  virtual bool isHeaderPresent() const = 0;
 
   //
   // This gives a general access type
@@ -345,10 +344,6 @@ public:
   // message offset in terms of bytes
   //   e.g. scratch offset
   virtual std::optional<ImmOff> getOffset() const = 0;
-
-  // Returns the associated surface (if any)
-  // This can be a BTI (e.g. a0 register or G4_Imm if immediate)
-  virtual G4_Operand *getSurface() const = 0;
 
   virtual std::string getDescription() const = 0;
 };
@@ -513,6 +508,7 @@ public:
   bool isDataPortWrite() const { return accessType != SendAccess::READ_ONLY; }
   SendAccess getAccess() const { return accessType; }
   bool isValidFuncCtrl() const { return funcCtrlValid; }
+  bool isHeaderPresent() const;
   void setHeaderPresent(bool val);
 
   ///////////////////////////////////////////////////////////////////////
@@ -603,6 +599,8 @@ public:
   // atomic write or explicit barrier
   bool isBarrierOrAtomic() const { return isAtomicMessage() || isBarrier(); }
 
+  // Returns the associated surface (if any)
+  // This can be a BTI (e.g. a0 register or G4_Imm if immediate)
   const G4_Operand *getBti() const { return m_bti; }
   G4_Operand *getBti() { return m_bti; }
   const G4_Operand *getSti() const { return m_sti; }
@@ -641,13 +639,10 @@ public:
   // this returns that offset.  The offset is in bytes.
   virtual std::optional<ImmOff> getOffset() const override;
 
-  virtual G4_Operand *getSurface() const override { return m_bti; }
-  //
   virtual bool isSLM() const override { return isSLMMessage(); }
   virtual bool isAtomic() const override { return isAtomicMessage(); }
   virtual bool isBarrier() const override;
   virtual bool isFence() const override;
-  virtual bool isHeaderPresent() const override;
   virtual bool isScratch() const override { return isScratchRW(); }
   virtual bool isTyped() const override;
   //

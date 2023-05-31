@@ -2229,7 +2229,7 @@ G4_InstSend *IR_Builder::createSendInst(G4_Predicate *pred,
   fixSendDstType(postDst, execsize, *this);
 
   uint32_t desc = msgDesc->getDesc();
-  G4_Operand *bti = msgDesc->getSurface();
+  G4_Operand *bti = msgDesc->getBti();
   G4_Operand *sti = msgDesc->getSti();
   G4_Operand *descOpnd = NULL;
 
@@ -2311,7 +2311,7 @@ IR_Builder::createSplitSendInst(G4_Predicate *pred, G4_DstRegRegion *dst,
 
   uint32_t desc = msgDesc->getDesc();
   uint32_t exdesc = msgDesc->getExtendedDesc();
-  G4_Operand *bti = msgDesc->getSurface();
+  G4_Operand *bti = msgDesc->getBti();
   G4_Operand *sti = msgDesc->getSti();
 
   G4_Operand *descOpnd = NULL;
@@ -2558,7 +2558,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
     G4_InstOpts option, LSC_ADDR_TYPE addrType, bool emitA0RegDef) {
 
   uint32_t exDesc = msgDesc->getExtendedDesc();
-  G4_Operand *surface = msgDesc->getSurface(); // BTI or SS/BSS
+  G4_Operand *surface = msgDesc->getBti(); // BTI or SS/BSS
   G4_Operand *exDescOpnd = nullptr;
 
   if (surface && surface->isSrcRegRegion()) {
@@ -2664,7 +2664,7 @@ G4_InstSend *IR_Builder::createLscSendInstToScratch(
     G4_SrcRegRegion *src1, G4_ExecSize execSize, G4_SendDescRaw *msgDesc,
     G4_InstOpts options, bool usesBti) {
   uint32_t desc = msgDesc->getDesc();
-  G4_Operand *surface = msgDesc->getSurface(); // BTI or SS/BSS
+  G4_Operand *surface = msgDesc->getBti(); // BTI or SS/BSS
   G4_Operand *exDescOpnd = nullptr;
 
   if (isScratchSpace(surface)) {
@@ -2693,7 +2693,7 @@ G4_InstSend *IR_Builder::createSplitSendToRenderTarget(
 
   uint32_t desc = msgDesc->getDesc();
   G4_Operand *descOpnd = nullptr;
-  G4_Operand *bti = msgDesc->getSurface();
+  G4_Operand *bti = msgDesc->getBti();
 
   if (bti && bti->isSrcRegRegion()) {
     // add (1) a0.0:ud bti:ud desc:ud

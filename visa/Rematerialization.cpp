@@ -105,9 +105,11 @@ void Rematerialization::populateSamplerHeaderMap() {
         continue;
       }
 
+      const G4_SendDescRaw *descRaw = inst->getMsgDescRaw();
       if (samplerHeaderMov && inst->isSplitSend() &&
-          inst->getMsgDesc()->isSampler() &&
-          inst->getMsgDesc()->isHeaderPresent()) {
+          descRaw &&
+          descRaw->isSampler() &&
+          descRaw->isHeaderPresent()) {
         vISA_ASSERT(samplerHeaderMov->getExecSize() == 1,
                      "Unexpected sampler header");
         samplerHeaderMap.insert(std::make_pair(inst, samplerHeaderMov));
@@ -683,8 +685,8 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
             uniqueDefInst->getSrc(0)->asSrcRegRegion()->getTopDcl() !=
             kernel.fg.builder->getBuiltinSamplerHeader();
 
-        if (!uniqueDefInst->getMsgDesc()->isHeaderPresent() ||
-            samplerHeaderNotUsed) {
+        const G4_SendDescRaw *descRaw = uniqueDefInst->getMsgDescRaw();
+        if (!descRaw || !descRaw->isHeaderPresent() || samplerHeaderNotUsed) {
           len += uniqueDefInst->getMsgDesc()->getSrc0LenRegs();
 
           auto msgOpnd = uniqueDefInst->getSrc(0);
@@ -941,7 +943,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
     auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(
         dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
         dstMsgDesc->getAccess(),
-        kernel.fg.builder->duplicateOperand(dstMsgDesc->getSurface()),
+        kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
         kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 
     auto dupOp = kernel.fg.builder->createSplitSendInst(
