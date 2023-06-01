@@ -3491,10 +3491,14 @@ static bool analyzeForShiftPattern(Constant *C,
                                    const DataLayout &DL,
                                    const llvm::GenXSubtarget &Subtarget) {
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
-  if (!VT || VT->getScalarSizeInBits() == 1)
+  if (!VT)
     return false;
 
-  unsigned ElmSz = VT->getScalarSizeInBits() / genx::ByteBits;
+  auto *ET = VT->getElementType();
+  if (ET->isPointerTy() || ET->isIntegerTy(1))
+    return false;
+
+  unsigned ElmSz = ET->getScalarSizeInBits() / genx::ByteBits;
   unsigned Width = Subtarget.getGRFByteSize() / ElmSz;
   unsigned NElts = VT->getNumElements();
   if (NElts <= Width || NElts % Width != 0)
