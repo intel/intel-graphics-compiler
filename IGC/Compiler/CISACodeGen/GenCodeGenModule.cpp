@@ -181,7 +181,7 @@ void GenXCodeGenModule::processFunction(Function& F)
 
         // If CallWA is needed, we should not convert to indirect call when requiring SIMD32,
         // as we can potentially avoid CallWA if there are no indirect calls.
-        if (pCtx->platform.requireCallWA() && simd_size == 32)
+        if (pCtx->platform.requireCallWA() /* && simd_size == 32*/)
         {
             return false;
         }
