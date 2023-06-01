@@ -6281,7 +6281,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (GRFSize > 0) {
     addArgument("-TotalGRFNum");
     addArgument(to_string(GRFSize));
-  }
+  } else if (BC.isAutoLargeGRFMode())
+    addArgument("-regSharingHeuristics");
 
   if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");

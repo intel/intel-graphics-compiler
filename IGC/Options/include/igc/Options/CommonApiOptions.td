@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,5 +52,7 @@ def large_GRF : ZeFlag<"opt-large-register-file">,
   Alias<register_file_size>, AliasArgs<["256"]>,
   HelpText<"Increase number of available GRF">;
 
+defm intel_enable_auto_large_GRF_mode : CommonFlag<"intel-enable-auto-large-GRF-mode">,
+  HelpText<"Use compiler heuristics to determine number of GRF">;
 }
 // }} Common API options

@@ -246,6 +246,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.WATable = Opts.WATable;
   if (Opts.GRFSize)
     BackendOpts.GRFSize = Opts.GRFSize.getValue();
+  BackendOpts.AutoLargeGRF = Opts.EnableAutoLargeGRF;
   BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
   if (Opts.SaveStackCallLinkage)
     BackendOpts.SaveStackCallLinkage = true;
@@ -689,6 +690,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.ForceDisableNonOverlappingRegionOpt = true;
   if (ApiOptions.hasArg(OPT_vc_disable_indvars_opt))
     Opts.ForceDisableIndvarsOpt = true;
+  if (ApiOptions.hasArg(OPT_intel_enable_auto_large_GRF_mode_ze))
+    Opts.EnableAutoLargeGRF = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_register_file_size)) {
     StringRef V = A->getValue();

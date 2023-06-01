@@ -125,6 +125,9 @@ struct GenXBackendOptions {
   // use default value.
   unsigned GRFSize = 0;
 
+  // Use compiler heuristics to determine number of GRF.
+  bool AutoLargeGRF = false;
+
   // Use bindless mode for buffers.
   bool UseBindlessBuffers = false;
 
@@ -335,6 +338,8 @@ public:
   FunctionControl getFCtrl() const { return Options.FCtrl; }
 
   unsigned getGRFSize() const { return Options.GRFSize; }
+
+  bool isAutoLargeGRFMode() const { return Options.AutoLargeGRF; }
 
   // Return pointer to WA_TABLE. Can be null.
   const WA_TABLE *getWATable() const {

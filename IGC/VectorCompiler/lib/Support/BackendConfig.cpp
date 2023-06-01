@@ -108,6 +108,10 @@ static cl::opt<FunctionControl> FunctionControlOpt(
 
 static cl::opt<unsigned> GRFSizeOpt("vc-grf-size", cl::desc("Set GRF size"));
 
+static cl::opt<bool> AutoLargeGRFOpt(
+    "vc-auto-large-grf",
+    cl::desc("Use compiler heuristics to determine number of GRF"));
+
 static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
                                            cl::desc("Use bindless buffers"));
 
@@ -186,6 +190,7 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(DisableIndvarsOpt, DisableIndvarsOptOpt);
   enforceOptionIfSpecified(FCtrl, FunctionControlOpt);
   enforceOptionIfSpecified(GRFSize, GRFSizeOpt);
+  enforceOptionIfSpecified(AutoLargeGRF, AutoLargeGRFOpt);
   enforceOptionIfSpecified(UseBindlessBuffers, UseBindlessBuffersOpt);
   enforceOptionIfSpecified(StatelessPrivateMemSize, StatelessPrivateMemSizeOpt);
   enforceOptionIfSpecified(SaveStackCallLinkage, SaveStackCallLinkageOpt);

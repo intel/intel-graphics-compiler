@@ -99,6 +99,8 @@ struct CompileOptions {
   llvm::Optional<unsigned> StackMemSize;
   llvm::Optional<unsigned> GRFSize;
 
+  bool EnableAutoLargeGRF = false;
+
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool ForceDisableIndvarsOpt = false;
