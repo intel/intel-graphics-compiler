@@ -65,6 +65,7 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/General/DebugInfo.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
@@ -1772,19 +1773,32 @@ bool Substituter::processPTIsUses(Instruction &I,
   uint64_t LocalPtrOffset{0};
   for (const auto &U : I.uses()) {
     Instruction *User = dyn_cast<Instruction>(U.getUser());
-    if (User->getOpcode() == Instruction::Add ||
-        User->getOpcode() == Instruction::Or) {
+    auto Opcode = User->getOpcode();
+    if (Opcode == Instruction::Add || Opcode == Instruction::Or) {
       BinaryOperator *BO = dyn_cast<BinaryOperator>(User);
       auto Offset = processAddOrInst(I, *BO);
       if (!Offset)
         return false;
       LocalPtrOffset = std::max(LocalPtrOffset, Offset.getValue());
-    } else if (GenXIntrinsic::isGenXIntrinsic(User) &&
-               User->mayReadOrWriteMemory()) {
-      // We can read/write from/to unsplit block.
+    } else if (auto *LdI = dyn_cast<LoadInst>(User)) {
+      // simple loads are allowed
+      if (!LdI->isSimple())
+        return false;
       continue;
-    } else if (User->getOpcode() != Instruction::ShuffleVector &&
-               User->getOpcode() != Instruction::InsertElement) {
+    } else if (auto *StI = dyn_cast<StoreInst>(User)) {
+      // simple stores are allowed
+      if (!StI->isSimple() || StI->getValueOperand() == &I)
+        return false;
+      continue;
+    } else if (User->mayReadOrWriteMemory()) {
+      // memory read or write intrinsics like gather/scatter are allowed
+      auto IID = vc::getAnyIntrinsicID(User);
+      if (!vc::isAnyNonTrivialIntrinsic(IID))
+        return false;
+      continue;
+    } else if (Opcode != Instruction::ShuffleVector &&
+               Opcode != Instruction::InsertElement &&
+               Opcode != Instruction::IntToPtr) {
       // These extensions are to fit the pattern of using ptrtoint:
       // %pti = ptrtoint %StructTy* %ray to i64
       // %base = insertelement <16 x i64> undef, i64 %pti, i32 0
