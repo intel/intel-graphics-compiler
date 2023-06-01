@@ -246,6 +246,7 @@ namespace IGC
         const llvm::DataLayout* dataLayout;
         TranslationTable* m_TT;
 
+
         /// Examines the uniformity of the load and the number of used elements
         /// to determine whether we should try to merge it.
         bool isProfitableLoad(const Instruction* I, uint32_t &MaxEltPlus) const;
