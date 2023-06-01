@@ -661,16 +661,10 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                SpecConstValues);
   if (!ExpOutput)
     return getError(ExpOutput.takeError(), OutputArgs);
-  vc::CompileOutput &Res = ExpOutput.get();
+  auto &CompileResult = ExpOutput.get();
 
   switch (Opts.Binary) {
-  case vc::BinaryKind::CM: {
-    auto &CompileResult = std::get<vc::cm::CompileOutput>(Res);
-    outputBinary(CompileResult.IsaBinary, llvm::StringRef(), Diag, OutputArgs);
-    break;
-  }
   case vc::BinaryKind::OpenCL: {
-    auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
     vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
                                  IGCPlatform.getWATable()};
     vc::createBinary(CMProgram, CompileResult);
@@ -694,7 +688,6 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     break;
   }
   case vc::BinaryKind::ZE: {
-    auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
     vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
                                  IGCPlatform.getWATable(), Input,
                                  llvm::StringRef(Opts.ApiOptions)};

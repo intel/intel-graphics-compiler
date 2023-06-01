@@ -90,6 +90,7 @@ struct GenXBackendOptions {
 
   // Whether to enable finalizer dumps.
   bool EnableAsmDumps = false;
+  bool EnableIsaDumps = false;
   // Whether to enable dumps of kernel debug information
   bool EnableDebugInfoDumps = false;
   std::string DebugInfoDumpsNameOverride;
@@ -301,6 +302,7 @@ public:
   }
 
   bool asmDumpsEnabled() const { return Options.EnableAsmDumps; }
+  bool isaDumpsEnabled() const { return Options.EnableIsaDumps; }
   bool dbgInfoDumpsEnabled() const { return Options.EnableDebugInfoDumps; }
   const std::string &dbgInfoDumpsNameOverride() const {
     return Options.DebugInfoDumpsNameOverride;

@@ -6051,13 +6051,11 @@ namespace {
 void initializeGenXFinalizerPass(PassRegistry &);
 
 class GenXFinalizer : public ModulePass {
-  raw_pwrite_stream &Out = static_cast<raw_pwrite_stream&>(llvm::nulls());
   LLVMContext *Ctx = nullptr;
 
 public:
   static char ID;
   explicit GenXFinalizer() : ModulePass(ID) {}
-  explicit GenXFinalizer(raw_pwrite_stream &o) : ModulePass(ID), Out(o) {}
 
   StringRef getPassName() const override { return "GenX Finalizer"; }
 
@@ -6084,12 +6082,14 @@ public:
     VISABuilder *CisaBuilder = GM.GetCisaBuilder();
     if (GM.HasInlineAsm() || !BC->getVISALTOStrings().empty())
       CisaBuilder = GM.GetVISAAsmReader();
-    CISA_CALL(CisaBuilder->Compile("genxir", &ss, BC->emitVisaOnly()));
+    CISA_CALL(CisaBuilder->Compile(
+        BC->isaDumpsEnabled() && BC->hasShaderDumper()
+            ? BC->getShaderDumper().composeDumpPath("final.isa").c_str()
+            : "",
+        nullptr, BC->emitVisaOnly()));
 
     if (!BC->isDisableFinalizerMsg())
       dbgs() << CisaBuilder->GetCriticalMsg();
-
-    Out << ss.str();
 
     dumpGlobalAnnotations(M);
 
@@ -6120,8 +6120,8 @@ INITIALIZE_PASS_DEPENDENCY(GenXModule)
 INITIALIZE_PASS_END(GenXFinalizer, "GenXFinalizer",
                     "GenXFinalizer", false, false)
 
-ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
-  return new GenXFinalizer(o);
+ModulePass *llvm::createGenXFinalizerPass() {
+  return new GenXFinalizer();
 }
 
 static SmallVector<const char *, 8>

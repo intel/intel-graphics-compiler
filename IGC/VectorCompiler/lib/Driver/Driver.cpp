@@ -228,6 +228,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   BackendOpts.DisableFinalizerMsg = Opts.DisableFinalizerMsg;
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
+  BackendOpts.EnableIsaDumps = Opts.DumpIsa;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
   BackendOpts.ShaderOverrider = Opts.ShaderOverrider.get();
@@ -382,17 +383,9 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PerModulePasses.run(M);
 }
 
-static void dumpFinalOutput(const vc::CompileOptions &Opts, const Module &M,
-                            StringRef IsaBinary) {
-  if (Opts.DumpIR && Opts.Dumper)
-    Opts.Dumper->dumpModule(M, "final.ll");
-  if (Opts.DumpIsa && Opts.Dumper)
-    Opts.Dumper->dumpBinary({IsaBinary.data(), IsaBinary.size()}, "final.isa");
-}
-
 static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
                                        const vc::ExternalData &ExtData,
-                                       TargetMachine &TM, raw_pwrite_stream &OS,
+                                       TargetMachine &TM,
                                        legacy::PassManager &PM) {
   TargetLibraryInfoImpl TLII{TM.getTargetTriple()};
   PM.add(new TargetLibraryInfoWrapperPass(TLII));
@@ -409,60 +402,25 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
 
+  llvm::raw_null_ostream NOS;
   bool AddPasses =
-      TM.addPassesToEmitFile(PM, OS, nullptr, FileType, DisableIrVerifier);
+      TM.addPassesToEmitFile(PM, NOS, nullptr, FileType, DisableIrVerifier);
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
-}
-
-static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
-                                            const vc::ExternalData &ExtData,
-                                            TargetMachine &TM, Module &M) {
-  vc::PassManager PM;
-
-  SmallString<32> IsaBinary;
-  raw_svector_ostream OS(IsaBinary);
-  raw_null_ostream NullOS;
-  if (Opts.DumpIsa)
-    populateCodeGenPassManager(Opts, ExtData, TM, OS, PM);
-  else
-    populateCodeGenPassManager(Opts, ExtData, TM, NullOS, PM);
-
-  GenXOCLRuntimeInfo::CompiledModuleT CompiledModule;
-  PM.add(createGenXOCLInfoExtractorPass(CompiledModule));
-
-  PM.run(M);
-  dumpFinalOutput(Opts, M, IsaBinary);
-
-  return CompiledModule;
-}
-
-static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,
-                                          const vc::ExternalData &ExtData,
-                                          TargetMachine &TM, Module &M) {
-  vc::PassManager PM;
-
-  SmallString<32> IsaBinary;
-  raw_svector_ostream OS(IsaBinary);
-  populateCodeGenPassManager(Opts, ExtData, TM, OS, PM);
-  PM.run(M);
-  dumpFinalOutput(Opts, M, IsaBinary);
-  vc::cm::CompileOutput Output;
-  Output.IsaBinary.assign(IsaBinary.begin(), IsaBinary.end());
-  return Output;
 }
 
 static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
                                     const vc::ExternalData &ExtData,
                                     TargetMachine &TM, Module &M) {
-  switch (Opts.Binary) {
-  case vc::BinaryKind::CM:
-    return runCmCodeGen(Opts, ExtData, TM, M);
-  case vc::BinaryKind::OpenCL:
-  case vc::BinaryKind::ZE:
-    return runOclCodeGen(Opts, ExtData, TM, M);
-  default:
-      IGC_ASSERT_UNREACHABLE(); // Unknown binary format
-  }
+  vc::PassManager PM;
+
+  populateCodeGenPassManager(Opts, ExtData, TM, PM);
+
+  vc::CompileOutput CompiledModule;
+  PM.add(createGenXOCLInfoExtractorPass(CompiledModule));
+
+  PM.run(M);
+
+  return CompiledModule;
 }
 
 // Parse global llvm cl options.
@@ -588,6 +546,9 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
     Opts.Dumper->dumpModule(M, "optimized.ll");
 
   vc::CompileOutput Output = runCodeGen(Opts, ExtData, TM, M);
+
+  if (Opts.DumpIR && Opts.Dumper)
+    Opts.Dumper->dumpModule(M, "final.ll");
 
   printLLVMStats(Opts);
   printLLVMTimers(Opts);

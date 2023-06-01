@@ -610,7 +610,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
     vc::addPass(PM, createVerifierPass());
   /// .. include:: GenXCisaBuilder.cpp
   vc::addPass(PM, createGenXCisaBuilderWrapperPass());
-  vc::addPass(PM, createGenXFinalizerPass(o));
+  vc::addPass(PM, createGenXFinalizerPass());
   vc::addPass(PM, createGenXDebugInfoPass());
 
   // Analysis for collecting information related to OCL runtime. Can

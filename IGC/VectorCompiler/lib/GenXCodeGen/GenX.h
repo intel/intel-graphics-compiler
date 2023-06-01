@@ -119,7 +119,7 @@ ModulePass *createGenXArgIndirectionWrapperPass();
 FunctionPass *createGenXTidyControlFlowPass();
 ModulePass *createGenXVisaRegAllocWrapperPass();
 ModulePass *createGenXCisaBuilderWrapperPass();
-ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
+ModulePass *createGenXFinalizerPass();
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXGlobalValueLoweringPass();
 ModulePass *createGenXPromoteStatefulToBindlessPass();
