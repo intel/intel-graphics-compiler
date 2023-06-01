@@ -429,7 +429,8 @@ namespace IGC
         bool DisableCPSOmaskWA                          = false;
 
         bool DisableFastestGopt                         = false;
-        bool WaForceHalfPromotion                       = false;
+        bool WaForceHalfPromotionComputeShader          = false;
+        bool WaForceHalfPromotionPixelVertexShader      = false;
         bool DisableConstantCoalescing                  = false;
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
