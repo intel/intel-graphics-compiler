@@ -984,6 +984,7 @@ public:
     }
     Value* getTMin() const { return getOperand(14); }
     Value* getTMax() const { return getOperand(15); }
+    void setTMax(Value* V) { setOperand(15, V); }
     Value* getPayload() const { return getOperand(16); }
 };
 
@@ -1403,6 +1404,7 @@ public:
     }
     Value* getTMin() const { return getOperand(10); }
     Value* getTMax() const { return getOperand(11); }
+    void setTMax(Value* V) { setOperand(11, V); }
 };
 
 class TraceRaySyncProceedHLIntrinsic : public RayQueryInstrisicBase {

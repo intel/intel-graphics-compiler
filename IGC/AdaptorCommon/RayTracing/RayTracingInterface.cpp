@@ -179,6 +179,9 @@ void RayTracingInlineLowering(CodeGenContext* pContext)
     setupRTMemoryStyle(pContext);
     mpm.add(new CodeGenContextWrapper(pContext));
 
+    if (IGC_IS_FLAG_ENABLED(OverrideTMax))
+        mpm.add(createOverrideTMaxPass(IGC_GET_FLAG_VALUE(OverrideTMax)));
+
 
     mpm.add(createTraceRayInlinePrepPass());
     if (IGC_IS_FLAG_ENABLED(EnableRQHideLatency)) {
