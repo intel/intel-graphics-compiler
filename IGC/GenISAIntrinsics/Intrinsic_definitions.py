@@ -2252,7 +2252,7 @@ Imported_Intrinsics = \
     [("int",                           "memory port: ugm, ugml, tgm, slm"),
      ("int",                           "scope of the fence: threadgroup, local, tile, GPU, "+\
                                        "all GPUs, system Release, system Acquire"),
-     ("int",                           "flush type: evict, invalidate, discard, clean, flushl3")],
+     ("int",                           "flush type: none, evict, invalidate, discard, clean, flushl3")],
     "Convergent"]],
 ####################################################################################################
 "GenISA_LSCLoad": ["LSC gathering load instruction",
