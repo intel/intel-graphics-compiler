@@ -265,6 +265,8 @@ void initializeGenXGASCastWrapperPass(PassRegistry &);
 void initializeGenXGASDynamicResolutionPass(PassRegistry &);
 void initializeGenXInitBiFConstantsPass(PassRegistry &);
 void initializeGenXFinalizerPass(PassRegistry &);
+void initializeGenXBuiltinFunctionsPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif

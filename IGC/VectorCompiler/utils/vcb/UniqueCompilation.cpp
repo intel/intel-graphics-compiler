@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -29,7 +29,7 @@ using namespace llvm;
 
 static cl::opt<std::string>
     SymbolPrefix("symb", cl::desc("prefix symbol for emmiting BiF functions "),
-                 cl::value_desc("prefix"), cl::init("VCEmulation64RawData"));
+                 cl::value_desc("prefix"), cl::init("VCBuiltins64RawData"));
 
 // Structure that holds list of platforms and an ordinal number of a
 // corresponding unique BiF.

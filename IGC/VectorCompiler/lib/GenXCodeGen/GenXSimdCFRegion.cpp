@@ -1363,7 +1363,7 @@ bool GenXPredToSimdCF::transform(SimdCFRegion &R) {
 bool GenXPredToSimdCF::runOnFunction(Function &F) {
   const auto &BackendConfig = getAnalysis<GenXBackendConfig>();
 
-  if (!EnableSimdCFTransform && !BackendConfig.isBiFEmulationCompilation())
+  if (!EnableSimdCFTransform && !BackendConfig.isBiFCompilation())
     return false;
 
   auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();

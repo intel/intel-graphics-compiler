@@ -88,8 +88,7 @@ FunctionPass *createGenXFuncLiveElementsPass();
 FunctionPass *createGenXPrologEpilogInsertionPass();
 FunctionPass *createGenXLegalizationPass();
 ModulePass *createGenXEmulatePass();
-ModulePass *createGenXEmulationImportPass();
-ModulePass *createGenXEmulationModulePreparePass();
+ModulePass *createGenXBiFPreparePass();
 FunctionPass *createGenXDeadVectorRemovalPass();
 FunctionPass *createGenXPatternMatchPass(PatternMatchKind Kind);
 FunctionPass *createGenXPostLegalizationPass();
@@ -132,6 +131,7 @@ ModulePass *createGenXGASCastWrapperPass();
 FunctionPass *createGenXGASDynamicResolutionPass();
 ModulePass *createGenXInitBiFConstantsPass();
 FunctionPass *createGenXGlobalUniformAnalysisPass();
+ModulePass *createGenXBuiltinFunctionsPass();
 
 namespace genx {
 
