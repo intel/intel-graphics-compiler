@@ -270,7 +270,7 @@ namespace {
             if (IGC_IS_FLAG_ENABLED(ForceInlineExternalFunctions) && InMultipleUnit)
                 return FT_MUL_KERNEL;
 
-            if (IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
+            if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedInliningTrimming))
             {
                 if (InitialSize < IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSizeContribution)) //It's too small to trim
                     return FT_TOO_TINY;
@@ -840,7 +840,7 @@ void EstimateFunctionSize::checkSubroutine() {
         {
             //Analyze Function/Block frequencies
             if (IGC_IS_FLAG_ENABLED(StaticProfilingForPartitioning) ||
-                IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming)) // Either a normal or long-tail distribution is enabled
+                IGC_IS_FLAG_ENABLED(StaticProfileGuidedInliningTrimming)) // Either a normal or long-tail distribution is enabled
                 runStaticAnalysis();
 
             // If the max unit size exceeds threshold, do partitioning
@@ -1207,7 +1207,7 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallV
     {
         FunctionNode* Node = TopDownQueue.front();TopDownQueue.pop_front();
         func_cnt += 1;
-        uint64_t tinySizeThreshold = IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming) ? IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSizeContribution) : IGC_GET_FLAG_VALUE(ControlInlineTinySize);
+        uint64_t tinySizeThreshold = IGC_IS_FLAG_ENABLED(StaticProfileGuidedInliningTrimming) ? IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSizeContribution) : IGC_GET_FLAG_VALUE(ControlInlineTinySize);
         uint16_t func_trait = Node->getFunctionTrait(thresholdForTrimming);
 
         switch (func_trait)
@@ -1305,7 +1305,7 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
     // Iterate over units
     for (auto unit : unitsToTrim) {
         size_t expandedUnitSize = updateExpandedUnitSize(unit->F, ignoreStackCallBoundary); //A kernel size can be reduced by a function that is trimmed at previous kernels, so recompute it.
-        if(IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
+        if(IGC_IS_FLAG_ENABLED(StaticProfileGuidedInliningTrimming))
             updateInlineCnt(unit->F);
         PrintTrimUnit(0x2, "Trimming kernel / unit " << unit->F->getName().str() << " expanded size= " << expandedUnitSize)
         if (expandedUnitSize <= threshold) {
@@ -1349,7 +1349,7 @@ void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<voi
     {
         std::sort(functions_to_trim.begin(), functions_to_trim.end(),
             [&](const void* LHS, const void* RHS) {
-                if (IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
+                if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedInliningTrimming))
                     return ((FunctionNode*)LHS)->getWeightForTrimming() < ((FunctionNode*)RHS)->getWeightForTrimming();
                 return ((FunctionNode*)LHS)->InitialSize < ((FunctionNode*)RHS)->InitialSize;
             }); //Sort by the expanded size in an ascending order;
@@ -1357,7 +1357,7 @@ void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<voi
         functions_to_trim.pop_back();
         uint64_t original_expandedSize = unitHead->ExpandedSize;
 
-        if (IGC_IS_FLAG_ENABLED(StaticProfilingForInliningTrimming))
+        if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedInliningTrimming))
         {
             uint64_t size_contribution = functionToTrim->getSizeContribution();
             if (functionToTrim->InitialSize == size_contribution) //We don't need to trim function that will be called just one time

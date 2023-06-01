@@ -581,7 +581,7 @@ DECLARE_IGC_REGKEY(DWORD, PrintFunctionSizeAnalysis,     0, "Print analysis data
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold,          110000, "Minimal kernel size to enable subroutines", false)
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold,   3000, "Subroutine inliner threshold", false)
 DECLARE_IGC_REGKEY(bool, ControlKernelTotalSize,        true, "Control kernel total size", true)
-DECLARE_IGC_REGKEY(bool, StaticProfilingForInliningTrimming,  0, "Enable static analysis in the kernel trimming", true)
+DECLARE_IGC_REGKEY(bool, StaticProfileGuidedInliningTrimming,  1, "Enable static analysis in the kernel trimming", true)
 DECLARE_IGC_REGKEY(bool, ControlInlineImplicitArgs,     true, "Avoid trimming functions with implicit args", true)
 DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySize,        200, "Tiny function size for controlling kernel total size", true)
 DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySizeForSizeContribution, 100, "Tiny function size for controlling kernel total size", true)
