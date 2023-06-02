@@ -5591,7 +5591,11 @@ namespace IGC
                 else
                 {
                     uint32_t type = vISA::GenSymType::S_GLOBAL_VAR_CONST;
-                    if (addrSpace == ADDRESS_SPACE_GLOBAL)
+                    // For Zebin always use constant type for string constants
+                    // because of the relaxed address space requirement of
+                    // printf strings.
+                    IGC_ASSERT(modMD->stringConstants.empty() || m_program->GetContext()->enableZEBinary());
+                    if (addrSpace == ADDRESS_SPACE_GLOBAL && !modMD->stringConstants.count(pGlobal))
                         type = vISA::GenSymType::S_GLOBAL_VAR;
                     if (!pGlobal->hasInitializer())
                         type = vISA::GenSymType::S_UNDEF;
