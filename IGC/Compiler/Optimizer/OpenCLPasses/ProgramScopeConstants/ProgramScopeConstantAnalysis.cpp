@@ -129,49 +129,58 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
 
         DataVector* inlineProgramScopeBuffer = nullptr;
-        if (AS == ADDRESS_SPACE_GLOBAL)
-        {
-            if (!hasInlineGlobalBuffer)
-            {
-                InlineProgramScopeBuffer ilpsb;
-                ilpsb.alignment = 0;
-                ilpsb.allocSize = 0;
-                m_pModuleMd->inlineGlobalBuffers.push_back(ilpsb);
-                hasInlineGlobalBuffer = true;
-            }
-            inlineProgramScopeBuffer = &m_pModuleMd->inlineGlobalBuffers.back().Buffer;
+        auto initInlineGlobalBuffer = [&]() {
+            InlineProgramScopeBuffer ilpsb;
+            ilpsb.alignment = 0;
+            ilpsb.allocSize = 0;
+            m_pModuleMd->inlineGlobalBuffers.push_back(ilpsb);
+            hasInlineGlobalBuffer = true;
+        };
+        auto initInlineConstantBuffer = [&]() {
+            // General constants
+            InlineProgramScopeBuffer ilpsb;
+            ilpsb.alignment = 0;
+            ilpsb.allocSize = 0;
+            m_pModuleMd->inlineConstantBuffers.push_back(ilpsb);
 
+            // String literals
+            InlineProgramScopeBuffer ilpsbString;
+            ilpsbString.alignment = 0;
+            ilpsbString.allocSize = 0;
+            m_pModuleMd->inlineConstantBuffers.push_back(ilpsbString);
+            hasInlineConstantBuffer = true;
+        };
+
+        // When ZeBin is enabled, constant variables that are string literals
+        // used only by printf will be stored in the second constant buffer.
+        ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
+        bool isZebinPrintfStringConst = Ctx->enableZEBinary() &&
+            cds && (cds->isCString() || cds->isString()) &&
+            OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
+        // Here we follow SPV_EXT_relaxed_printf_string_address_space to relax
+        // the address space requirement of printf strings and accept
+        // non-constant address space printf strings. However, we expect it is
+        // the only exception and FE should produce a IGC input that satisfies
+        // any other OpenCL printf restrictions.
+        if (isZebinPrintfStringConst)
+        {
+            if (!hasInlineConstantBuffer)
+                initInlineConstantBuffer();
+            m_pModuleMd->stringConstants.insert(globalVar);
+            inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
         }
         else
         {
-            if (!hasInlineConstantBuffer)
+            if (AS == ADDRESS_SPACE_GLOBAL)
             {
-                // General constants
-                InlineProgramScopeBuffer ilpsb;
-                ilpsb.alignment = 0;
-                ilpsb.allocSize = 0;
-                m_pModuleMd->inlineConstantBuffers.push_back(ilpsb);
-
-                // String literals
-                InlineProgramScopeBuffer ilpsbString;
-                ilpsbString.alignment = 0;
-                ilpsbString.allocSize = 0;
-                m_pModuleMd->inlineConstantBuffers.push_back(ilpsbString);
-                hasInlineConstantBuffer = true;
-            }
-
-            // When ZeBin is enabled, constant variables that are string literals
-            // used only by printf will be stored in the second const buffer.
-            ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
-            bool isPrintfStringConst = cds && (cds->isCString() || cds->isString()) &&
-                OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
-            if (Ctx->enableZEBinary() && isPrintfStringConst)
-            {
-                m_pModuleMd->stringConstants.insert(globalVar);
-                inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
+                if (!hasInlineGlobalBuffer)
+                    initInlineGlobalBuffer();
+                inlineProgramScopeBuffer = &m_pModuleMd->inlineGlobalBuffers.back().Buffer;
             }
             else
             {
+                if (!hasInlineConstantBuffer)
+                    initInlineConstantBuffer();
                 inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[0].Buffer;
             }
         }
