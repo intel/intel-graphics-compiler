@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -101,7 +101,7 @@ void GenXTrampolineInsertion::visitFunction(Function &F) {
     return;
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(&F))
     return;
-  if (vc::isBuiltinFunction(F))
+  if (vc::isEmulationFunction(F))
     return;
   if (vc::isKernel(&F))
     return;

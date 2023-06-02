@@ -291,8 +291,8 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
   GenXBackendData BackendData;
   BackendData.BiFModule[BiFKind::OCLGeneric] =
       IGCLLVM::makeMemoryBufferRef(*Data.OCLGenericBIFModule);
-  BackendData.BiFModule[BiFKind::VCBuiltins] =
-      IGCLLVM::makeMemoryBufferRef(*Data.VCBuiltinsBIFModule);
+  BackendData.BiFModule[BiFKind::VCEmulation] =
+      IGCLLVM::makeMemoryBufferRef(*Data.VCEmulationBIFModule);
   BackendData.BiFModule[BiFKind::VCSPIRVBuiltins] =
       IGCLLVM::makeMemoryBufferRef(*Data.VCSPIRVBuiltinsBIFModule);
   if (PointerSizeInBits == 64)

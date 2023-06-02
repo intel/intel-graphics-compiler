@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -104,7 +104,7 @@ void GenXCloneIndirectFunctions::visitFunction(Function &F) {
     return;
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(&F))
     return;
-  if (vc::isBuiltinFunction(F))
+  if (vc::isEmulationFunction(F))
     return;
   if (vc::isKernel(&F))
     return;

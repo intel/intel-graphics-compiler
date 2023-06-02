@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -26,6 +26,6 @@ extern unsigned int VCBiFPrintfZE64RawData_size;
 extern unsigned char VCSPIRVBuiltins64RawData[];
 extern unsigned int VCSPIRVBuiltins64RawData_size;
 
-extern llvm::StringRef getVCBuiltins64RawDataImpl(llvm::StringRef CPUStr);
+extern llvm::StringRef getVCEmulation64RawDataImpl(llvm::StringRef CPUStr);
 
 #endif

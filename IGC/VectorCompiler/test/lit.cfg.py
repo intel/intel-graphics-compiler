@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2023 Intel Corporation
+# Copyright (C) 2020-2021 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -47,8 +47,8 @@ config.substitutions.append(('%VC_SPIRV_OCL_BIF%', config.vc_spirv_ocl_bif))
 
 platforms = config.vc_platform_list.split(";")
 for platform in platforms:
-  builtins_path = '{}_{}.vccg.bc'.format(config.vc_builtins_bif_prefix, platform)
-  config.substitutions.append(('%VC_BUILTINS_BIF_{}%'.format(platform), builtins_path))
+  emulib_path = '{}_{}.vccg.bc'.format(config.vc_emulation_bif_prefix, platform)
+  config.substitutions.append(('%VC_EMULATION_BIF_{}%'.format(platform), emulib_path))
 
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))

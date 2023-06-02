@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -436,41 +436,31 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_fdiv_ieee(vector<double, N> a,
 
   return q;
 }
+
+constexpr bool _nnan = true;
+constexpr bool _ninf = true;
+constexpr bool _nsz = true;
+constexpr bool _ = false;
+
 } // namespace
 
-CM_NODEBUG CM_NOINLINE extern "C" double __vc_builtin_fdiv_f64(double a,
-                                                               double b) {
-  vector<double, 1> va = a;
-  vector<double, 1> vb = b;
-  return __impl_fdiv_ieee<false, false, false>(va, vb)[0];
-}
+#define __IMPL_FDIV_SCALAR(ALG, NNAN, NINF, NSZ)                               \
+  CM_NODEBUG CM_NOINLINE extern "C" double                                     \
+      __cm_intrinsic_impl_fdiv__##ALG##_##NNAN##_##NINF##_##NSZ(double a,      \
+                                                                double b) {    \
+    vector<double, 1> va = a;                                                  \
+    vector<double, 1> vb = b;                                                  \
+    return __impl_fdiv_##ALG<NNAN, NINF, NSZ>(va, vb)[0];                      \
+  }
 
-CM_NODEBUG CM_NOINLINE extern "C" double __vc_builtin_fdiv_fast_f64(double a,
-                                                                    double b) {
-  vector<double, 1> va = a;
-  vector<double, 1> vb = b;
-  return __impl_fdiv_fast<false, false, false>(va, vb)[0];
-}
-
-#define FDIV(WIDTH)                                                            \
+#define __IMPL_FDIV_VECTOR(WIDTH, ALG, NNAN, NINF, NSZ)                        \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, WIDTH>                   \
-      __vc_builtin_fdiv_v##WIDTH##f64(cl_vector<double, WIDTH> a,              \
-                                      cl_vector<double, WIDTH> b) {            \
+      __cm_intrinsic_impl_fdiv__##ALG##__v##WIDTH##_##NNAN##_##NINF##_##NSZ(   \
+          cl_vector<double, WIDTH> a, cl_vector<double, WIDTH> b) {            \
     vector<double, WIDTH> va{a};                                               \
     vector<double, WIDTH> vb{b};                                               \
-    auto r = __impl_fdiv_ieee<false, false, false>(va, vb);                    \
-    return r.cl_vector();                                                      \
-  }                                                                            \
-  CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, WIDTH>                   \
-      __vc_builtin_fdiv_fast_v##WIDTH##f64(cl_vector<double, WIDTH> a,         \
-                                           cl_vector<double, WIDTH> b) {       \
-    vector<double, WIDTH> va{a};                                               \
-    vector<double, WIDTH> vb{b};                                               \
-    auto r = __impl_fdiv_fast<false, false, false>(va, vb);                    \
+    auto r = __impl_fdiv_##ALG<NNAN, NINF, NSZ>(va, vb);                       \
     return r.cl_vector();                                                      \
   }
 
-FDIV(1)
-FDIV(2)
-FDIV(4)
-FDIV(8)
+#include "emulation_fdiv_boilerplate.h"

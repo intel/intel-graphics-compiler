@@ -51,7 +51,7 @@ define dllexport void @main_kernel(i32 %0, i32 %1, i32 %2, i64 %privBase) local_
 ; Function Attrs: nounwind readonly
 declare <8 x i64> @llvm.genx.oword.ld.v8i64(i32, i32, i32) #4
 
-attributes #0 = { noinline nounwind readnone "target-cpu"="Gen9" "VC.Builtin" }
+attributes #0 = { noinline nounwind readnone "target-cpu"="Gen9" "VC.Emulation.Routine" }
 attributes #1 = { noinline nounwind "CMStackCall" "target-cpu"="Gen9" }
 attributes #2 = { nounwind "target-cpu"="Gen9" }
 attributes #3 = { noinline nounwind "CMGenxMain" "oclrt"="1" "target-cpu"="Gen9" }

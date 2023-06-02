@@ -5673,11 +5673,9 @@ bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
                                          GenXIntrinsic::ID GenXID) {
   IGC_ASSERT(CI);
   auto *ResTy = CI->getType();
-  if (!ResTy->getScalarType()->isFloatTy()) {
-    return false;
+  if (!ResTy->getScalarType()->isFloatTy())
     vc::fatal(CI->getContext(), "GenXLowering",
               "Sorry there is only f32 native instruction", CI);
-  }
   auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), GenXID,
                                                  {CI->getType()});
   SmallVector<Value *, 2> Args{CI->args()};

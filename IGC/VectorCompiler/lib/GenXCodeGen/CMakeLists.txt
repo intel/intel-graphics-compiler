@@ -28,8 +28,6 @@ set(CODEGEN_SOURCES
   GenXAnalysisDumper.cpp
   GenXArgIndirection.cpp
   GenXBaling.cpp
-  GenXBiFPrepare.cpp
-  GenXBuiltinFunctions.cpp
   GenXCFSimplification.cpp
   GenXCategory.cpp
   GenXCisaBuilder.cpp

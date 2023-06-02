@@ -50,8 +50,9 @@ inline int getStackAmount(const llvm::Function *F,
   return Result;
 }
 
-inline bool isBuiltinFunction(const llvm::Function &F) {
-  return F.hasFnAttribute(FunctionMD::VCBuiltinFunction);
+// Check if a function is to emulate instructions.
+inline bool isEmulationFunction(const llvm::Function &F) {
+  return F.hasFnAttribute(FunctionMD::VCEmulationRoutine);
 }
 
 // Utility function to tell whether a Function is a vISA kernel.
@@ -93,7 +94,7 @@ inline bool isIndirect(const llvm::Function *F) {
     return false;
   if (vc::isKernel(F))
     return false;
-  if (vc::isBuiltinFunction(*F))
+  if (vc::isEmulationFunction(*F))
     return false;
   if (!F->hasAddressTaken() && F->hasLocalLinkage())
     return false;

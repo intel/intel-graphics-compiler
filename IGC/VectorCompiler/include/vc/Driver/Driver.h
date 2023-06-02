@@ -162,7 +162,7 @@ struct ExternalData {
   std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCPrintf32BIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCPrintf64BIFModule;
-  std::unique_ptr<llvm::MemoryBuffer> VCBuiltinsBIFModule;
+  std::unique_ptr<llvm::MemoryBuffer> VCEmulationBIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCSPIRVBuiltinsBIFModule;
   llvm::ArrayRef<const char*> VISALTOStrings;
   llvm::ArrayRef<const char*> DirectCallFunctions;

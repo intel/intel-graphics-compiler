@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -142,31 +142,20 @@ constexpr bool _ = false;
 
 } // namespace
 
-CM_NODEBUG CM_NOINLINE extern "C" double __vc_builtin_fsqrt_f64(double a) {
-  vector<double, 1> va = a;
-  return __impl_fsqrt<true, false, false, false>(va)[0];
-}
+#define __IMPL_FSQRT_SCALAR(ALG, NNAN, NINF, NSZ)                              \
+  CM_NODEBUG CM_NOINLINE extern "C" double                                     \
+      __cm_intrinsic_impl_fsqrt_##ALG##_##NNAN##_##NINF##_##NSZ(double a) {    \
+    vector<double, 1> va = a;                                                  \
+    return __impl_fsqrt<ALG, NNAN, NINF, NSZ>(va)[0];                          \
+  }
 
-CM_NODEBUG CM_NOINLINE extern "C" double __vc_builtin_fsqrt_fast_f64(double a) {
-  vector<double, 1> va = a;
-  return __impl_fsqrt<false, false, false, false>(va)[0];
-}
-
-#define FSQRT(WIDTH)                                                           \
+#define __IMPL_FSQRT_VECTOR(WIDTH, ALG, NNAN, NINF, NSZ)                       \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, WIDTH>                   \
-      __vc_builtin_fsqrt_v##WIDTH##f64(cl_vector<double, WIDTH> a) {           \
+      __cm_intrinsic_impl_fsqrt_##ALG##__v##WIDTH##_##NNAN##_##NINF##_##NSZ(   \
+          cl_vector<double, WIDTH> a) {                                        \
     vector<double, WIDTH> va{a};                                               \
-    auto r = __impl_fsqrt<true, false, false, false>(va);                      \
-    return r.cl_vector();                                                      \
-  }                                                                            \
-  CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, WIDTH>                   \
-      __vc_builtin_fsqrt_fast_v##WIDTH##f64(cl_vector<double, WIDTH> a) {      \
-    vector<double, WIDTH> va{a};                                               \
-    auto r = __impl_fsqrt<false, false, false, false>(va);                     \
+    auto r = __impl_fsqrt<ALG, NNAN, NINF, NSZ>(va);                           \
     return r.cl_vector();                                                      \
   }
 
-FSQRT(1)
-FSQRT(2)
-FSQRT(4)
-FSQRT(8)
+#include "emulation_fsqrt_boilerplate.h"

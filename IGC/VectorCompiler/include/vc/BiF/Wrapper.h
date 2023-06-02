@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,8 +23,8 @@ enum class RawKind {
   PrintfOCL64,
   PrintfZE32,
   PrintfZE64,
-  Builtins,
-  SPIRVBuiltins,
+  Emulation,
+  SPIRVBuiltins
 };
 
 inline llvm::StringRef getPrintfCM32RawData() {
@@ -57,8 +57,8 @@ inline llvm::StringRef getPrintfZE64RawData() {
           VCBiFPrintfZE64RawData_size};
 }
 
-inline llvm::StringRef getVCBuiltinsRawData(llvm::StringRef CPUStr) {
-  return getVCBuiltins64RawDataImpl(CPUStr);
+inline llvm::StringRef getVCEmulationRawData(llvm::StringRef CPUStr) {
+  return getVCEmulation64RawDataImpl(CPUStr);
 }
 
 inline llvm::StringRef getSPIRVBuiltinsRawData() {
@@ -71,8 +71,8 @@ template <enum RawKind>
 llvm::StringRef getRawDataForArch(llvm::StringRef CPUStr);
 
 template <>
-llvm::StringRef getRawDataForArch<RawKind::Builtins>(llvm::StringRef CPUStr) {
-  return getVCBuiltinsRawData(CPUStr);
+llvm::StringRef getRawDataForArch<RawKind::Emulation>(llvm::StringRef CPUStr) {
+  return getVCEmulationRawData(CPUStr);
 }
 
 template<>

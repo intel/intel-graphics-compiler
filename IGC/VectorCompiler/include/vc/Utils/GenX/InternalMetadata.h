@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,7 +17,7 @@ namespace vc {
 
 namespace FunctionMD {
 inline constexpr const char GenXKernelInternal[] = "genx.kernel.internal";
-inline constexpr const char VCBuiltinFunction[] = "VC.Builtin";
+inline constexpr const char VCEmulationRoutine[] = "VC.Emulation.Routine";
 
 // amount of stack calculated for kernel
 // no attribute means that GenXStackUsage pass failed (recursion, etc)

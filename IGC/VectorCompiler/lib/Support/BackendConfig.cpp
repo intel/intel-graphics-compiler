@@ -55,10 +55,10 @@ static cl::opt<std::string>
                       cl::init(""));
 
 static cl::opt<std::string>
-    VCBuiltinsBiFPath("vc-builtins-bif-path",
-                      cl::desc("full name (with path) of a BiF file with "
-                               "precompiled builtin functions"),
-                      cl::init(""));
+    VCEmulationBiFPath("vc-emulation-bif-path",
+                       cl::desc("full name (with path) of a BiF file with "
+                                "precompiled emulation routines"),
+                       cl::init(""));
 
 static cl::opt<std::string>
     VCSPIRVBuiltinsBiFPath("vc-spirv-builtins-bif-path",
@@ -217,8 +217,8 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
 GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
   setOwningBiFModuleIf(BiFKind::OCLGeneric,
                        readBiFModuleFromFile(OCLGenericBiFPath));
-  setOwningBiFModuleIf(BiFKind::VCBuiltins,
-                       readBiFModuleFromFile(VCBuiltinsBiFPath));
+  setOwningBiFModuleIf(BiFKind::VCEmulation,
+                       readBiFModuleFromFile(VCEmulationBiFPath));
   setOwningBiFModuleIf(BiFKind::VCSPIRVBuiltins,
                        readBiFModuleFromFile(VCSPIRVBuiltinsBiFPath));
   setOwningBiFModuleIf(BiFKind::VCPrintf, readBiFModuleFromFile(VCPrintfBiFPath));

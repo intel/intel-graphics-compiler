@@ -82,7 +82,7 @@ allocas:
 attributes #0 = { nounwind readnone speculatable willreturn "target-cpu"="Gen9" }
 attributes #1 = { nounwind readonly "target-cpu"="Gen9" }
 attributes #2 = { nounwind "target-cpu"="Gen9" }
-attributes #3 = { "target-cpu"="Gen9" "VC.Builtin" }
+attributes #3 = { "target-cpu"="Gen9" "VC.Emulation.Routine" }
 attributes #4 = { noinline nounwind readnone "CMStackCall" "target-cpu"="Gen9" }
 attributes #5 = { noinline nounwind "CMStackCall" "target-cpu"="Gen9" }
 attributes #6 = { nounwind "CMGenxMain" "oclrt"="1" "target-cpu"="Gen9" }

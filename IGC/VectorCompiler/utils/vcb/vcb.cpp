@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -90,10 +90,10 @@ createTargetMachine(Triple &TheTriple, std::string CPUStr) {
 // Precompiles input \p M module for the specified \p Platform. One of the
 // primary entry points to vcb tool.
 // Precompilation is performed via VC CodeGen pipeline configured to use a
-// special "BiFCompilation" mode.
+// special "BiFEmulationCompilation" mode.
 void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   GenXBackendOptions Options;
-  Options.BiFCompilation = true;
+  Options.BiFEmulationCompilation = true;
   // Target configuration.
   Triple TheTriple{Is32Bit ? "genx32-unknown-unknown"
                            : "genx64-unknown-unknown"};

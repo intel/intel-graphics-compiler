@@ -43,7 +43,7 @@ define dllexport spir_kernel void @test_kernel(i32 %0, i32 %1) local_unnamed_add
 
 attributes #0 = { nounwind readonly "target-cpu"="Gen9" }
 attributes #1 = { nounwind "target-cpu"="Gen9" }
-attributes #2 = { noinline nounwind readnone "target-cpu"="Gen9" "VC.Builtin" }
+attributes #2 = { noinline nounwind readnone "target-cpu"="Gen9" "VC.Emulation.Routine" }
 attributes #3 = { noinline nounwind "CMGenxMain" "target-cpu"="Gen9" }
 attributes #4 = { nounwind readnone }
 
