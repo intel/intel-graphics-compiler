@@ -6194,6 +6194,7 @@ namespace IGC
         SetKernelRetryState(context, jitInfo, pFGA);
 
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)
+        COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_SAMPLE_BALLOT_LOOPS, m_program->GetNumSampleBallotLoops());
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT, jitInfo->stats.numAsmCountUnweighted);

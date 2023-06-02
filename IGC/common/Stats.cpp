@@ -200,7 +200,12 @@ void ShaderStats::printSumShaderStats()
             fprintf(fileName_sqm, "total SIMD32 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD32]);
             printf("total SIMD32 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD32]);
         }
-
+        if (m_CompileShaderStats[STATS_SAMPLE_BALLOT_LOOPS] != 0) {
+            fprintf(fileName_sqm, "total number of sample ballot-loops = %d\n",
+                    m_CompileShaderStats[STATS_SAMPLE_BALLOT_LOOPS]);
+            printf("total number of sample ballot-loops = %d\n",
+                   m_CompileShaderStats[STATS_SAMPLE_BALLOT_LOOPS]);
+        }
         fprintf(fileName_sqm, "total SIMD8  shaders = %d\n", m_TotalSimd8);
         fprintf(fileName_sqm, "total SIMD16 shaders = %d\n", m_TotalSimd16);
         fprintf(fileName_sqm, "total SIMD32 shaders = %d\n", m_TotalSimd32);

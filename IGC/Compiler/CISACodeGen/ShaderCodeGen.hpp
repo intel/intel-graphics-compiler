@@ -555,8 +555,10 @@ public:
     void SetHasSample() { m_HasSample = true; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
     void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
+    void IncNumSampleBallotLoops() { ++m_NumSampleBallotLoops; }
     uint32_t GetStatelessWritesCount() const { return m_StatelessWritesCount; }
     uint32_t GetIndirectStatelessCount() const { return m_IndirectStatelessCount; }
+    uint32_t GetNumSampleBallotLoops() const { return m_NumSampleBallotLoops; }
 
     // In bytes
     uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
@@ -752,6 +754,8 @@ protected:
 
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;
+
+    uint32_t m_NumSampleBallotLoops = 0;
 
     DebugInfoData diData;
 

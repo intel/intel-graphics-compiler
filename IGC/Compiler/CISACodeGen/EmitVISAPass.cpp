@@ -19339,6 +19339,7 @@ bool EmitPass::ResourceLoopHeader(
     {
         return false;
     }
+    m_currShader->IncNumSampleBallotLoops();
     CVariable* resourceFlag = nullptr;
     CVariable* samplerFlag = nullptr;
     CVariable* offset = nullptr;
