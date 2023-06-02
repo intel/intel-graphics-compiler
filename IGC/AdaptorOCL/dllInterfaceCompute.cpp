@@ -737,15 +737,13 @@ bool ProcessElfInput(
                 IGC_ASSERT(hasVISALinking);
             }
 
-            // Create a copy of the string to return to the caller. The output type
-            // determines how the buffer gets managed
-            char* pBufResult = static_cast<char*>(operator new(OutputString.size(), std::nothrow));
-            if (pBufResult != NULL)
+            if (outType == TB_DATA_FORMAT_LLVM_BINARY)
             {
-                if (outType == TB_DATA_FORMAT_LLVM_BINARY)
+                // Create a copy of the string to return to the caller.
+                char* pBufResult = static_cast<char*>(operator new(OutputString.size(), std::nothrow));
+                if (pBufResult != NULL)
                 {
                     memcpy_s(pBufResult, OutputString.size(), OutputString.data(), OutputString.size());
-
                     // The buffer is returned to the runtime. When the buffer is not
                     // needed anymore the runtime ir responsible to call the module for
                     // destroying it
@@ -762,17 +760,17 @@ bool ProcessElfInput(
                         QWORD prevAsmHash = previousHash.getAsmHash();
                         std::ostringstream oss1(std::ostringstream::ate);
                         oss1 << std::hex
-                             << std::setfill('0')
-                             << std::setw(sizeof(prevAsmHash) * CHAR_BIT / 4)
-                             << prevAsmHash;
+                            << std::setfill('0')
+                            << std::setw(sizeof(prevAsmHash) * CHAR_BIT / 4)
+                            << prevAsmHash;
                         const std::string prevHashString = oss1.str();
 
                         QWORD newAsmHash = ShaderHashOCL((const UINT*)OutputArgs.pOutput, OutputArgs.OutputSize / 4).getAsmHash();
                         std::ostringstream oss2(std::ostringstream::ate);
                         oss2 << std::hex
-                             << std::setfill('0')
-                             << std::setw(sizeof(newAsmHash) * CHAR_BIT / 4)
-                             << newAsmHash;
+                            << std::setfill('0')
+                            << std::setw(sizeof(newAsmHash) * CHAR_BIT / 4)
+                            << newAsmHash;
                         const std::string newHashString = oss2.str();
 
                         llvm::Twine outputPath = outputDir;
@@ -793,91 +791,90 @@ bool ProcessElfInput(
                     }
 #endif // defined(IGC_SPIRV_ENABLED)
 
-                    if (success == true)
+                    // if -dump-opt-llvm is enabled dump the llvm output to the file
+                    std::string options = "";
+                    if ((InputArgs.pOptions != nullptr) && (InputArgs.OptionsSize > 0))
                     {
-                        // if -dump-opt-llvm is enabled dump the llvm output to the file
-                        std::string options = "";
-                        if ((InputArgs.pOptions != nullptr) && (InputArgs.OptionsSize > 0))
+                        options.append(InputArgs.pOptions, InputArgs.pOptions + InputArgs.OptionsSize);
+                    }
+                    size_t dumpOptPosition = options.find("-dump-opt-llvm");
+                    if (dumpOptPosition != std::string::npos)
+                    {
+                        std::string dumpFileName;
+                        std::istringstream iss(options.substr(dumpOptPosition));
+                        iss >> dumpFileName;
+                        size_t equalSignPosition = dumpFileName.find('=');
+                        if (equalSignPosition != std::string::npos)
                         {
-                            options.append(InputArgs.pOptions, InputArgs.pOptions + InputArgs.OptionsSize);
-                        }
-                        size_t dumpOptPosition = options.find("-dump-opt-llvm");
-                        if (dumpOptPosition != std::string::npos)
-                        {
-                            std::string dumpFileName;
-                            std::istringstream iss(options.substr(dumpOptPosition));
-                            iss >> dumpFileName;
-                            size_t equalSignPosition = dumpFileName.find('=');
-                            if (equalSignPosition != std::string::npos)
+                            dumpFileName = dumpFileName.substr(equalSignPosition + 1);
+                            // dump the buffer
+                            FILE* file = fopen(dumpFileName.c_str(), "wb");
+                            if (file != NULL)
                             {
-                                dumpFileName = dumpFileName.substr(equalSignPosition + 1);
-                                // dump the buffer
-                                FILE* file = fopen(dumpFileName.c_str(), "wb");
-                                if (file != NULL)
-                                {
-                                    fwrite(pBufResult, OutputString.size(), 1, file);
-                                    fclose(file);
-                                }
-                            }
-                            else
-                            {
-                                std::string errorString = "File name not specified with the -dump-opt-llvm option.";
-                                SetWarningMessage(errorString, OutputArgs);
+                                fwrite(pBufResult, OutputString.size(), 1, file);
+                                fclose(file);
                             }
                         }
-                    }
-                }
-                else if (IsDeviceBinaryFormat(outType))
-                {
-                    if (hasVISALinking)
-                    {
-                        if (!Context.enableZEBinary()) {
-                            SetErrorMessage(
-                                "vISA linking can be used only with ZeBinary "
-                                "compiler output format. It seems that it is "
-                                "currently disabled for your platform. You can "
-                                "experiment with EnableZEBinary environmental "
-                                "flag to turn it on.",
-                                OutputArgs);
-                            return false;
-                        }
-
-                        ShaderHash hash = ShaderHashOCL(
-                            reinterpret_cast<const UINT*>(InputArgs.pInput),
-                            InputArgs.InputSize / 4);
-                        std::string errorMessage;
-
-                        // Temporary workaround for invoke_sycl case.
-                        std::reverse(SPIRVToLink.begin(), SPIRVToLink.end());
-
-                        success = VLD::TranslateBuildSPMDAndESIMD(
-                            SPIRVToLink, &OutputArgs, TB_DATA_FORMAT_SPIR_V,
-                            Context.platform, profilingTimerResolution, hash,
-                            errorMessage);
-
-                        if (!success)
+                        else
                         {
-                            SetErrorMessage(errorMessage, OutputArgs);
-                            return false;
+                            std::string errorString = "File name not specified with the -dump-opt-llvm option.";
+                            SetWarningMessage(errorString, OutputArgs);
                         }
-                    }
-                    else
-                    {
-                        InputArgs.pInput = OutputString.data();
-                        InputArgs.InputSize = OutputString.size();
-                        success = TC::TranslateBuild(
-                            &InputArgs, &OutputArgs, TB_DATA_FORMAT_LLVM_BINARY,
-                            Context.platform, profilingTimerResolution);
                     }
                 }
                 else
                 {
-                    IGC_ASSERT_MESSAGE(0, "Unrecognized output format when processing ELF input");
                     success = false;
+                }
+            }
+            else if (IsDeviceBinaryFormat(outType))
+            {
+                if (hasVISALinking)
+                {
+                    if (!Context.enableZEBinary()) {
+                        SetErrorMessage(
+                            "vISA linking can be used only with ZeBinary "
+                            "compiler output format. It seems that it is "
+                            "currently disabled for your platform. You can "
+                            "experiment with EnableZEBinary environmental "
+                            "flag to turn it on.",
+                            OutputArgs);
+                        return false;
+                    }
+
+                    ShaderHash hash = ShaderHashOCL(
+                        reinterpret_cast<const UINT*>(InputArgs.pInput),
+                        InputArgs.InputSize / 4);
+                    std::string errorMessage;
+
+                    // Temporary workaround for invoke_sycl case.
+                    std::reverse(SPIRVToLink.begin(), SPIRVToLink.end());
+
+                    success = VLD::TranslateBuildSPMDAndESIMD(
+                        SPIRVToLink, &OutputArgs, TB_DATA_FORMAT_SPIR_V,
+                        Context.platform, profilingTimerResolution, hash,
+                        errorMessage);
+
+                    if (!success)
+                    {
+                        SetErrorMessage(errorMessage, OutputArgs);
+                        return false;
+                    }
+                }
+                else
+                {
+                    InputArgs.pInput = OutputString.data();
+                    InputArgs.InputSize = OutputString.size();
+                    success = TC::TranslateBuild(
+                        &InputArgs, &OutputArgs, TB_DATA_FORMAT_LLVM_BINARY,
+                        Context.platform, profilingTimerResolution);
+                    InputArgs.pInput = nullptr;
+                    InputArgs.InputSize = 0;
                 }
             }
             else
             {
+                IGC_ASSERT_MESSAGE(0, "Unrecognized output format when processing ELF input");
                 success = false;
             }
         }
