@@ -31,7 +31,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "visa/include/RelocationInfo.h"
-#include "ZEBinWriter/zebin/source/autogen/ZEInfo.hpp"
+#include <ZEInfo.hpp>
 
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"

@@ -1013,7 +1013,8 @@ uint32_t getGRFSize() const
 
 uint32_t getInlineDataSize() const
 {
-    return supportInlineData() ? 32 : 0;
+    if (!supportInlineData()) return 0;
+    return 32;
 }
 
 bool hasFusedEU() const

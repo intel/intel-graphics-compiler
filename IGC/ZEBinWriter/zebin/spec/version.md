@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.29
+Version 1.31
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.31**: Internal changes.
 - **Version 1.30**: Add assert_buffer to payload arguments.
 - **Version 1.29**: Add has_rtcalls to execution_env.
 - **Version 1.28**: Add const_base and global_base to payload arguments.

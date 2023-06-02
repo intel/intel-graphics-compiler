@@ -102,6 +102,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     if (isEntryFunc(m_pMDUtils, &F))
     {
         implicitArgs.push_back(ImplicitArg::R0);
+
         if (RequirePayloadHeader)
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
 

@@ -779,7 +779,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_R0,
 
             KernelArg::ArgType::RUNTIME_VALUE,
-
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
 
             KernelArg::ArgType::PTR_LOCAL,
@@ -904,7 +903,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
             KernelArg::ArgType::RUNTIME_VALUE,
-
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
