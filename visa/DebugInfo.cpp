@@ -2119,8 +2119,20 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
       for (uint32_t i = 0; i < payloadRegs.size(); i++) {
         uint32_t payloadReg = payloadRegs[i];
         RegMap m;
-        m.offset = (int32_t)((memOffset * builder.numEltPerGRF<Type_UB>() / 2) +
-                             (i * builder.numEltPerGRF<Type_UB>()));
+        // Memory offset for LSC is already in bytes so no need of scaling.
+        // Prior to LSC, we used OWord messages for load/store where offset
+        // is in OW units.
+        if (inst->getMsgDesc()->isLSC())
+          m.offset = memOffset + (i * builder.numEltPerGRF<Type_UB>());
+        else
+          m.offset = ((memOffset * 16) + (i * builder.numEltPerGRF<Type_UB>()));
+
+        vISA_ASSERT(m.offset <
+                        static_cast<int32_t>(inst->getBuilder()
+                                                 .kernel.getKernelDebugInfo()
+                                                 ->getFrameSize()),
+                    "offset cannot exceed frame size");
+
         m.isAbs = isOffAbs;
         saveRestoreMap.insert(std::make_pair(
             payloadReg,
@@ -2145,7 +2157,10 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
 
       auto responselen = inst->getMsgDesc()->getDstLenRegs();
       int32_t startoff;
-      startoff = memOffset * builder.numEltPerGRF<Type_UB>() / 2;
+      if (inst->getMsgDesc()->isLSC())
+        startoff = memOffset;
+      else
+        startoff = memOffset * 16;
 
       for (auto reg = dstreg; reg < (responselen + dstreg); reg++) {
         int32_t offsetForReg =
