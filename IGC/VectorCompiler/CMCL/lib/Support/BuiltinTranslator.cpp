@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <algorithm>
 #include <array>
@@ -76,8 +77,7 @@ constexpr const char BuiltinPrefix[] = "__cm_cl_";
 #include "TranslationInfo.inc"
 #undef CMCL_AUTOGEN_BUILTIN_DESCS
 
-template <BuiltinID::Enum BiID>
-static void handleBuiltinCall(CallInst &BiCall);
+template <BuiltinID::Enum BiID> static void handleBuiltinCall(CallInst &BiCall);
 
 // Imports:
 //
@@ -250,7 +250,7 @@ static int getVectorWidth(Type &Ty) {
 }
 
 // A helper function to get structure type from its element types.
-template <typename... ArgTys> Type &getStructureOf(ArgTys &... ElementTys) {
+template <typename... ArgTys> Type &getStructureOf(ArgTys &...ElementTys) {
   return *StructType::create("", &ElementTys...);
 }
 
@@ -321,10 +321,73 @@ Value &createMainInst<BuiltinID::AbsFloat>(const std::vector<Value *> &Operands,
   return createLLVMIntrinsic<BuiltinID::AbsFloat>(Operands, RetTy, IRB);
 }
 
+//------------------------ Memory operations -----------------------------//
+
+template <>
+Value &createMainInst<BuiltinID::Gather>(const std::vector<Value *> &Operands,
+                                         Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == GatherOperand::Size &&
+         "builtin operands should be trasformed into LLVM masked.gather "
+         "intrinsic operands without changes");
+  auto AddrSpace =
+      cast<ConstantInt>(Operands[GatherOperand::AddressSpace])->getZExtValue();
+
+  auto *RetVTy = cast<IGCLLVM::FixedVectorType>(&RetTy);
+  auto *RetETy = RetVTy->getElementType();
+  auto *PtrETy = RetETy->getPointerTo(AddrSpace);
+  auto *PtrVTy =
+      IGCLLVM::FixedVectorType::get(PtrETy, RetVTy->getNumElements());
+  auto *MaskVTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), RetVTy->getNumElements());
+
+  auto *PtrV = IRB.CreateIntToPtr(Operands[GatherOperand::Pointers], PtrVTy);
+  auto Align = IGCLLVM::getCorrectAlign(
+      cast<ConstantInt>(Operands[GatherOperand::Alignment])->getZExtValue());
+  auto *MaskV = IRB.CreateTrunc(Operands[GatherOperand::Mask], MaskVTy);
+  auto *PassthruV = Operands[GatherOperand::Passthru];
+
+#if LLVM_VERSION_MAJOR > 12
+  auto *GatherV = IRB.CreateMaskedGather(RetVTy, PtrV, Align, MaskV, PassthruV);
+#else
+  auto *GatherV = IRB.CreateMaskedGather(PtrV, Align, MaskV, PassthruV);
+#endif
+
+  return *GatherV;
+}
+
+template <>
+Value &createMainInst<BuiltinID::Scatter>(const std::vector<Value *> &Operands,
+                                          Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == ScatterOperand::Size &&
+         "builtin operands should be trasformed into LLVM masked.scatter "
+         "intrinsic operands without changes");
+  auto AddrSpace =
+      cast<ConstantInt>(Operands[ScatterOperand::AddressSpace])->getZExtValue();
+
+  auto *DataV = Operands[ScatterOperand::Data];
+
+  auto *DataVTy = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+  auto *DataETy = DataVTy->getElementType();
+  auto *PtrETy = DataETy->getPointerTo(AddrSpace);
+  auto *PtrVTy =
+      IGCLLVM::FixedVectorType::get(PtrETy, DataVTy->getNumElements());
+  auto *MaskVTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), DataVTy->getNumElements());
+
+  auto *PtrV = IRB.CreateIntToPtr(Operands[ScatterOperand::Pointers], PtrVTy);
+  auto Align = IGCLLVM::getCorrectAlign(
+      cast<ConstantInt>(Operands[ScatterOperand::Alignment])->getZExtValue());
+  auto *MaskV = IRB.CreateTrunc(Operands[ScatterOperand::Mask], MaskVTy);
+
+  auto *ScatterV = IRB.CreateMaskedScatter(DataV, PtrV, Align, MaskV);
+
+  return *ScatterV;
+}
+
 //----------------------- Rounding operations ----------------------------//
 template <>
 Value &createMainInst<BuiltinID::Ceil>(const std::vector<Value *> &Operands,
-                                           Type &RetTy, IRBuilder<> &IRB) {
+                                       Type &RetTy, IRBuilder<> &IRB) {
   assert(Operands.size() == CeilOperand::Size &&
          "builtin operands should be trasformed into LLVM ceil "
          "intrinsic operands without changes");
@@ -333,7 +396,7 @@ Value &createMainInst<BuiltinID::Ceil>(const std::vector<Value *> &Operands,
 
 template <>
 Value &createMainInst<BuiltinID::Floor>(const std::vector<Value *> &Operands,
-                                            Type &RetTy, IRBuilder<> &IRB) {
+                                        Type &RetTy, IRBuilder<> &IRB) {
   assert(Operands.size() == FloorOperand::Size &&
          "builtin operands should be trasformed into LLVM floor "
          "intrinsic operands without changes");
@@ -342,7 +405,7 @@ Value &createMainInst<BuiltinID::Floor>(const std::vector<Value *> &Operands,
 
 template <>
 Value &createMainInst<BuiltinID::Trunc>(const std::vector<Value *> &Operands,
-                                            Type &RetTy, IRBuilder<> &IRB) {
+                                        Type &RetTy, IRBuilder<> &IRB) {
   assert(Operands.size() == TruncOperand::Size &&
          "builtin operands should be trasformed into LLVM trunc "
          "intrinsic operands without changes");
@@ -441,10 +504,10 @@ Value &createMainInst<BuiltinID::Powr>(const std::vector<Value *> &Operands,
   assert(Operands.size() == PowrOperand::Size &&
          "builtin operands should be trasformed into LLVM pow "
          "intrinsic operands without changes");
-  std::vector<Value*> Args{ Operands[PowrOperand::Base],
-                            Operands[PowrOperand::Exponent] };
-  auto *InstPow = cast<Instruction>(&createLLVMIntrinsic<BuiltinID::Powr>(
-      Args, RetTy, IRB));
+  std::vector<Value *> Args{Operands[PowrOperand::Base],
+                            Operands[PowrOperand::Exponent]};
+  auto *InstPow = cast<Instruction>(
+      &createLLVMIntrinsic<BuiltinID::Powr>(Args, RetTy, IRB));
   if (cast<ConstantInt>(Operands[PowrOperand::IsFast])->getSExtValue())
     InstPow->setFast(true);
   return *InstPow;
@@ -452,7 +515,7 @@ Value &createMainInst<BuiltinID::Powr>(const std::vector<Value *> &Operands,
 
 template <>
 Value &createMainInst<BuiltinID::Sin>(const std::vector<Value *> &Operands,
-                                       Type &RetTy, IRBuilder<> &IRB) {
+                                      Type &RetTy, IRBuilder<> &IRB) {
   assert(Operands.size() == SinOperand::Size &&
          "builtin operands should be trasformed into LLVM sin "
          "intrinsic operands without changes");
@@ -465,7 +528,7 @@ Value &createMainInst<BuiltinID::Sin>(const std::vector<Value *> &Operands,
 
 template <>
 Value &createMainInst<BuiltinID::Cos>(const std::vector<Value *> &Operands,
-                                       Type &RetTy, IRBuilder<> &IRB) {
+                                      Type &RetTy, IRBuilder<> &IRB) {
   assert(Operands.size() == CosOperand::Size &&
          "builtin operands should be trasformed into LLVM cos "
          "intrinsic operands without changes");
@@ -630,8 +693,7 @@ static bool handleBuiltin(Function &Builtin) {
     return false;
   auto BiID = decodeBuiltin(Builtin.getName());
   for (User *Usr : Builtin.users()) {
-    assert((BiID >= 0 && BiID < BuiltinID::Size &&
-            BuiltinCallHandlers[BiID]) &&
+    assert((BiID >= 0 && BiID < BuiltinID::Size && BuiltinCallHandlers[BiID]) &&
            "no handler for such builtin ID");
     BuiltinCallHandlers[BiID](*cast<CallInst>(Usr));
   }

@@ -176,6 +176,48 @@
         ]
       }
     },
+    "Gather": {
+      "Name": "gather",
+      "Operands": [
+        {"Name": "AddressSpace", "Kind": "Constant"},
+        {"Name": "Pointers", "Kind": "Input"},
+        {"Name": "Alignment", "Kind": "Constant"},
+        {"Name": "Mask", "Kind": "Input"},
+        {"Name": "Passthru", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "masked_gather",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["AddressSpace"]},
+          {"GetBuiltinOperand": ["Pointers"]},
+          {"GetBuiltinOperand": ["Alignment"]},
+          {"GetBuiltinOperand": ["Mask"]},
+          {"GetBuiltinOperand": ["Passthru"]}
+        ]
+      }
+    },
+    "Scatter": {
+      "Name": "scatter",
+      "Operands": [
+        {"Name": "Data", "Kind": "Input"},
+        {"Name": "AddressSpace", "Kind": "Constant"},
+        {"Name": "Pointers", "Kind": "Input"},
+        {"Name": "Alignment", "Kind": "Constant"},
+        {"Name": "Mask", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "masked_scatter",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Data"]},
+          {"GetBuiltinOperand": ["AddressSpace"]},
+          {"GetBuiltinOperand": ["Pointers"]},
+          {"GetBuiltinOperand": ["Alignment"]},
+          {"GetBuiltinOperand": ["Mask"]}
+        ]
+      }
+    },
     "All": {
       "Name": "all",
       "Operands": [

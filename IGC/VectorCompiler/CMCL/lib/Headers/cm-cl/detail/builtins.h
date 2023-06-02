@@ -64,6 +64,18 @@ int __cm_cl_printf_format_index(__private const char *str);
 template <int width> bool __cm_cl_all(vector_impl<char, width> src);
 template <int width> bool __cm_cl_any(vector_impl<char, width> src);
 
+// clang does not allow vector of pointers so passing vector of uint64_t(s)
+// and creating vector of pointers with inttoptr llvm instruction
+template <typename T, int width>
+vector_impl<T, width>
+__cm_cl_gather(int addrspace, vector_impl<uint64_t, width> ptrs, int alignment,
+               vector_impl<char, width> mask, vector_impl<T, width> passthru);
+
+template <typename T, int width>
+void __cm_cl_scatter(vector_impl<T, width> data, int addrspace,
+                     vector_impl<uint64_t, width> ptrs, int alignment,
+                     vector_impl<char, width> mask);
+
 uint32_t __cm_cl_lzd(uint32_t src);
 template <int width>
 vector_impl<uint32_t, width> __cm_cl_lzd(vector_impl<uint32_t, width> src);
@@ -369,7 +381,7 @@ template <typename T> T trunc(T src) {
 
 template <typename T> T roundne(T src) {
   static_assert(cl::is_floating_point<T>::value,
-    "Roundne function expects floating poing type.");
+                "Roundne function expects floating poing type.");
   return __cm_cl_roundne(src);
 }
 
