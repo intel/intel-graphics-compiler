@@ -20559,22 +20559,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
     if (isTGM)
     {
-        if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM))
-        {
-            // global override cache settings have highest priority
-            return cacheOpts;
-        }
-
-        if (inst)
-        {
-            const MDNode* node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
-            if (node)
-            {
-                ConstantAsMetadata* MD = cast<ConstantAsMetadata>(node->getOperand(0));
-                cacheOpts = translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
-            }
-        }
-
+        tryOverrideCacheOpts(cacheOpts, isLoad, isTGM);
         return cacheOpts;
     }
 
