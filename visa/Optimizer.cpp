@@ -685,7 +685,7 @@ void Optimizer::initOptimizations() {
   INITIALIZE_PASS(expandMulPostSchedule, vISA_expandMulPostSchedule,
                   TimerID::MISC_OPTS);
   INITIALIZE_PASS(zeroSomeARF, vISA_zeroSomeARF, TimerID::MISC_OPTS);
-  INITIALIZE_PASS(addSWSBInfo, vISA_addSWSBInfo, TimerID::MISC_OPTS);
+  INITIALIZE_PASS(addSWSBInfo, vISA_addSWSBInfo, TimerID::SWSB);
   INITIALIZE_PASS(expandMadwPostSchedule, vISA_expandMadwPostSchedule,
                   TimerID::MISC_OPTS);
   INITIALIZE_PASS(ACCSchedule, vISA_PreSchedForAcc, TimerID::PRERA_SCHEDULING);

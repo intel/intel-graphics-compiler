@@ -40,6 +40,7 @@ DEFINE_TIME_STAT(           TIME_VISA_CFG,                       "VISA CFG",    
 DEFINE_TIME_STAT(           TIME_VISA_OPTIMIZER,                 "VISA Optimizer",                         TIME_VISA_TOTAL,                    true,          false,          false,          true )
 DEFINE_TIME_STAT(           TIME_VISA_HW_CONFORMITY,             "VISA HW Conformity",                     TIME_VISA_TOTAL,                    true,          false,          true,           true )
 DEFINE_TIME_STAT(           TIME_VISA_MISC_OPTS,                 "VISA Misc opts",                         TIME_VISA_TOTAL,                    true,          false,          false,          true )
+DEFINE_TIME_STAT(           TIME_VISA_SWSB,                      "VISA swsb",                              TIME_VISA_TOTAL,                    true,          false,          true,           true )
 DEFINE_TIME_STAT(           TIME_VISA_TOTAL_RA,                  "VISA Total RA",                          TIME_VISA_TOTAL,                    true,          false,          true,           true )
 DEFINE_TIME_STAT(             TIME_VISA_ADDR_FLAG_RA,            "VISA Addr Flag RA",                      TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
 DEFINE_TIME_STAT(             TIME_VISA_LOCAL_RA,                "VISA Local RA",                          TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )

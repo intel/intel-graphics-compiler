@@ -59,6 +59,9 @@ static uint8_t getDPASGRFReadCycle(uint8_t repc) {
 static bool hasSameFunctionID(const G4_INST *inst1, const G4_INST *inst2) {
   const bool isInst1Send = inst1->isSend();
   const bool isInst2Send = inst2->isSend();
+  if (isInst1Send ^ isInst2Send) {
+    return false;
+  }
   if (isInst1Send && isInst2Send) {
     G4_SendDesc *msgDesc1 = inst1->getMsgDesc();
     G4_SendDesc *msgDesc2 = inst2->getMsgDesc();
@@ -67,9 +70,6 @@ static bool hasSameFunctionID(const G4_INST *inst1, const G4_INST *inst2) {
     }
 
     return msgDesc1->getSFID() == msgDesc2->getSFID();
-  }
-  if (isInst1Send ^ isInst2Send) {
-    return false;
   }
   if (inst1->isMathPipeInst() ^ inst2->isMathPipeInst()) {
     return false;
@@ -1331,6 +1331,8 @@ void SWSB::SWSBBuildSIMDCFG() {
         continue;
 
       if (firstInst != lastInst &&
+          (!fg.builder->getOptions()->getOption(vISA_DisableJoinInSIMDCF) ||
+           firstInst->opcode() != G4_join) &&
           G4_Inst_Table[firstInst->opcode()].instType == InstTypeFlow) {
         if (firstInst->asCFInst()->getJip()) {
           G4_Operand *jip = firstInst->asCFInst()->getJip();
@@ -1349,7 +1351,9 @@ void SWSB::SWSBBuildSIMDCFG() {
       continue;
     }
 
-    if (G4_Inst_Table[lastInst->opcode()].instType == InstTypeFlow) {
+    if (G4_Inst_Table[lastInst->opcode()].instType == InstTypeFlow &&
+        (!fg.builder->getOptions()->getOption(vISA_DisableJoinInSIMDCF) ||
+         lastInst->opcode() != G4_join)) {
       G4_opcode op = lastInst->opcode();
 
       if (op == G4_jmpi) {
@@ -1373,18 +1377,17 @@ void SWSB::SWSBBuildSIMDCFG() {
           G4_Operand *uip = lastInst->asCFInst()->getUip();
           G4_BB_SB *jipBB = labelToBlockMap[jip->asLabel()];
           G4_BB_SB *uipBB = labelToBlockMap[uip->asLabel()];
-          if (jipBB != uipBB &&
-              jipBB->first_node > uipBB->first_node) { // backedge, goto uip
+          if (jipBB != uipBB) {
             addSIMDEdge(currBB, uipBB);
+            addSIMDEdge(currBB, jipBB);
           } else // goto jip
           {
             addSIMDEdge(currBB, jipBB);
           }
 
-          if (lastInst->getPredicate()) {
-            if (i + 1 != BBVector.size()) {
-              addSIMDEdge(currBB, BBVector[i + 1]);
-            }
+          if (i + 1 != BBVector.size() && uipBB != BBVector[i + 1] &&
+              jipBB != BBVector[i + 1]) {
+            addSIMDEdge(currBB, BBVector[i + 1]);
           }
         } else if (op == G4_break) {
           G4_Operand *jip = lastInst->asCFInst()->getJip();
@@ -2389,7 +2392,6 @@ void SWSB::assignDepToken(SBNode *node) {
   // 8. Add  r8, r16, r10
   // Instead, if RAW happens first as shown in instruction 7, there is NO need
   // for 8.
-
   for (const SBDEP_ITEM &curSucc : node->succs) {
     SBNode *succ = curSucc.node;
     DepType type = curSucc.type;
@@ -5018,9 +5020,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
           if (dep == WAW) {
             send_WAW_may_kill.set(curLiveNode->globalID, true);
           }
-        }
-
-        if (dep == WAR && WARDepRequired(liveInst, curFootprint->inst)) {
+        } else if (dep == WAR && WARDepRequired(liveInst, curFootprint->inst)) {
           send_may_kill.setSrc(curLiveNode->globalID, true);
         }
 
@@ -7157,7 +7157,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     send_kill &= sb_bb->send_may_kill;
 
 #ifdef DEBUG_VERBOSE_ON
+if (!afterWrite) {
     sb_bb->dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
+}
 #endif
     // Change the global send operands into live bucket for liveness scan
     // Instruction level liveness kill:
@@ -7848,7 +7850,6 @@ void G4_BB_SB::createAddGRFEdge(SBNode *pred, SBNode *succ, DepType d,
   //   ...
   // 7. Add  r8,  r2, r10   test $1D
   // For WAW and RAW, we think they are equal.
-
   for (int i = 0; i < (int)(pred->succs.size()); i++) {
     SBDEP_ITEM &curSucc = pred->succs[i];
     if (curSucc.node == succ) {
