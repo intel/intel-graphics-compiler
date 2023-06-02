@@ -297,7 +297,7 @@ void G4Verifier::verifySend(G4_INST *inst) {
       }
     }
 
-    if (inst->isSplitSend()) {
+    if (inst->isSplitSend() && kernel.fg.builder->noSrc0Src1OverlapSend()) {
       // simd1 split send is allowed to have srcs overlap. When it's simd1,
       // overlap for the rest of the payload shouldn't matter
       bool allowSrcOverlap = inst->getExecSize() == g4::SIMD1;
