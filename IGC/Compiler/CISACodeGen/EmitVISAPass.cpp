@@ -3035,18 +3035,18 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
                 getStructMemberOffsetAndType_2(&DL,
                     sTy, II, ty0, byteOff0, ty1, byteOff1);
                 Type* ty = (ty1 == nullptr ? ty0 : ty1);
+                auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+                uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
                 CVariable* eltDst = m_currShader->GetNewAlias(
                     DstV,
                     m_currShader->GetType(ty),
                     (byteOff0 * (DstV->IsUniform() ? 1 : nLanes)) + byteOff1,
-                    (DstV->IsUniform() ? 1 : nLanes));
+                    n * (DstV->IsUniform() ? 1 : nLanes));
                 CVariable* eltSrc = m_currShader->GetNewAlias(
                     SrcV,
                     m_currShader->GetType(ty),
                     (byteOff0 * (SrcV->IsUniform() ? 1 : nLanes)) + byteOff1,
-                    (SrcV->IsUniform() ? 1 : nLanes));
-                auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
-                uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+                    n * (SrcV->IsUniform() ? 1 : nLanes));
                 if (II.size() == 2) {
                     uint32_t AOSStBytes = (uint32_t)DL.getTypeStoreSize(ty0);
                     emitVectorCopyToAOS(AOSStBytes, eltDst, eltSrc, n);
@@ -3064,15 +3064,16 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     getStructMemberOffsetAndType_2(&DL,
         sTy, inst->getIndices(), ty0, byteOff0, ty1, byteOff1);
 
+    Type* ty = (ty1 == nullptr ? ty0 : ty1);
+    auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+    uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+
     CVariable* eltDst = m_currShader->GetNewAlias(
         DstV,
         EltV->GetType(),
         (byteOff0 * (DstV->IsUniform() ? 1 : nLanes)) + byteOff1,
-        DstV->IsUniform() ? 1 : nLanes);
+        n * (DstV->IsUniform() ? 1 : nLanes));
 
-    Type* ty = (ty1 == nullptr ? ty0 : ty1);
-    auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
-    uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
     if (inst->getIndices().size() == 2) {
         uint32_t AOSStBytes = (uint32_t)DL.getTypeStoreSize(ty0);
         emitVectorCopyToAOS(AOSStBytes, eltDst, EltV, n);
