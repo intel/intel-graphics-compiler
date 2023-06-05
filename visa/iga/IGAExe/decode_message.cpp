@@ -525,7 +525,7 @@ bool decodeSendDescriptor(const Opts &opts) {
 
 
   if (argOff >= (int)opts.inputFiles.size()) {
-    fatalExitWithMessage("-Xdsd: expects ExDesc Desc");
+    fatalExitWithMessage("-Xdsd: expects at least ExDesc Desc");
   }
   std::string exDescStr = opts.inputFiles[argOff];
 
@@ -542,6 +542,9 @@ bool decodeSendDescriptor(const Opts &opts) {
       fatalExitWithMessage("-Xdsd: ", ss.str(),
                            ": invalid or unsupported SFID for this platform");
     }
+  }
+  if ((size_t)argOff + 1 >= opts.inputFiles.size()) {
+    fatalExitWithMessage("-Xdsd: expected <sfid> <exdesc> <desc>");
   }
   auto desc = parseSendDescArg("Desc", opts.inputFiles[argOff + 1]);
 
