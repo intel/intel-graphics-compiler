@@ -2273,30 +2273,70 @@ namespace {
 
     typedef SmallVector<uint32_t, 8> BundleSize_t;
 
+    enum class LdStKind { IS_STORE, IS_LOAD };
+
     // BundleConfig:
     //    To tell what vector size is legit. It may need GEN platform as input.
     class BundleConfig {
+        enum {
+            STORE_DEFAULT_BYTES_PER_LANE = 16, // 4 DW for non-uniform
+            LOAD_DEFAULT_BYTES_PER_LANE = 16   // 4 DW for non-uniform
+        };
+
     public:
-        BundleConfig(int ByteAlign, bool Uniform,
-            const AddressModel AddrModel, CodeGenContext* Ctx) {
+        BundleConfig(LdStKind K, int ByteAlign, bool Uniform,
+            const AddressModel AddrModel, CodeGenContext* Ctx)
+        {
+            uint32_t maxBytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
+            if (maxBytes == 0) {
+                // compiler default
+                if (K == LdStKind::IS_STORE)
+                    maxBytes = STORE_DEFAULT_BYTES_PER_LANE;
+                else
+                    maxBytes = LOAD_DEFAULT_BYTES_PER_LANE;
+            }
+            else if (maxBytes < m_eltSizeInBytes) {
+                maxBytes = m_eltSizeInBytes;
+            }
+
+            auto calculateSize = [=](bool Uniform) -> uint32_t
+            {
+                int sz = (int)m_currVecSizeVar->size();
+                if (Uniform) {
+                    return (uint32_t)sz;
+                }
+                int ix = 0;
+                for (; ix < sz; ++ix) {
+                    uint32_t currBytes = (*m_currVecSizeVar)[ix] * m_eltSizeInBytes;
+                    if (currBytes > maxBytes) {
+                        break;
+                    }
+                }
+                return (uint32_t)(ix > 0 ? ix : 1);
+            };
+
             if (Ctx->platform.LSCEnabled()) {
                 if (ByteAlign >= 8) {
                     m_currVecSizeVar =
                         Uniform ? &m_d64VecSizes_u : &m_d64VecSizes;
                     m_eltSizeInBytes = 8;
+                    m_actualSize = calculateSize(Uniform);
                 }
                 else if (ByteAlign == 4) {
                     m_currVecSizeVar =
                         Uniform ? &m_d32VecSizes_u : &m_d32VecSizes;
                     m_eltSizeInBytes = 4;
+                    m_actualSize = calculateSize(Uniform);
                 }
                 else {
                     m_currVecSizeVar =
                         Uniform ? &m_d8VecSizes_u : &m_d8VecSizes;
                     m_eltSizeInBytes = 1;
+                    m_actualSize = (uint32_t)m_currVecSizeVar->size();
                 }
             }
             else {
+                m_currVecSizeVar = &m_vecSizeVar;
                 if (Uniform) {
                     // Limit to simd8 (reasonable?), scattered read/write
                     if (ByteAlign >= 4) {
@@ -2307,29 +2347,32 @@ namespace {
                         m_vecSizeVar = { 2, 4, 8, 16, 32 };
                         m_eltSizeInBytes = 1;
                     }
+                    m_actualSize = (uint32_t)m_vecSizeVar.size();
                 }
                 else {
                     if (ByteAlign >= 8 && AddrModel == AddressModel::A64) {
                         m_vecSizeVar = { 2, 4 };  // QW scattered read/write
                         m_eltSizeInBytes = 8;
+                        m_actualSize = calculateSize(Uniform);
                     }
                     else if (ByteAlign < 4) {
                         m_vecSizeVar = { 2, 4 };  // Byte scattered read/write
                         m_eltSizeInBytes = 1;
+                        m_actualSize = m_vecSizeVar.size();
                     }
                     else {
                         m_vecSizeVar = { 2, 3, 4 };  // untyped read/write
                         m_eltSizeInBytes = 4;
+                        m_actualSize = calculateSize(Uniform);
                     }
                 }
-                m_currVecSizeVar = &m_vecSizeVar;
             }
             m_currIndex = 0;
         }
 
         uint32_t getAndUpdateVecSizeInBytes(uint32_t Bytes) {
             const BundleSize_t& Var = *m_currVecSizeVar;
-            int sz = (int)Var.size();
+            int sz = (int)getSize();
             int i;
             uint32_t total = 0;
             for (i = m_currIndex; i < sz; ++i) {
@@ -2351,14 +2394,16 @@ namespace {
 
         uint32_t getMaxVecSizeInBytes() const {
             const BundleSize_t& Var = *m_currVecSizeVar;
-            return Var.back() * m_eltSizeInBytes;
+            return Var[getSize()-1] * m_eltSizeInBytes;
         }
 
         uint32_t getCurrVecSize() const {
             const BundleSize_t& Var = *m_currVecSizeVar;
-            IGC_ASSERT(0 <= m_currIndex && (int)Var.size() > m_currIndex);
+            IGC_ASSERT(0 <= m_currIndex && (int)getSize() > m_currIndex);
             return Var[m_currIndex];
         }
+
+        uint32_t getSize() const { return m_actualSize; }
 
         //
         // Legal vector sizes for load/store
@@ -2386,7 +2431,11 @@ namespace {
 
         const BundleSize_t* m_currVecSizeVar;
         uint32_t            m_eltSizeInBytes;
+        // m_currIndex is initialized to zero.
+        // m_actualSize is the actual size of BundleSize variable to use
+        //   and it is no larger than the variable's capacity.
         int                 m_currIndex;
+        int                 m_actualSize;
     };
 
     //
@@ -2450,6 +2499,9 @@ namespace {
 
         DenseMap<const Instruction*, int> m_visited;
 
+        // If true, IGC needs to emulate I64.
+        bool m_hasI64Emu;
+
         void init(BasicBlock* BB) {
             m_visited.clear();
             m_instOrder.clear();
@@ -2499,6 +2551,11 @@ namespace {
         // the constant difference if it is; return false otherwise.
         bool getAddressDiffIfConstant(Instruction* I0, Instruction* I1, int64_t& ConstBO);
 
+        // Create unique identified struct type
+        SmallVector<StructType*, 16> m_allLayoutStructTypes;
+        StructType* getOrCreateUniqueIdentifiedStructType(
+            ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked = true);
+
         void eraseDeadInsts();
 
         void clear()
@@ -2509,6 +2566,7 @@ namespace {
             m_visited.clear();
             m_instOrder.clear();
             m_bundles.clear();
+            m_allLayoutStructTypes.clear();
         }
     };
 }
@@ -2682,6 +2740,12 @@ bool LdStCombine::runOnFunction(Function& F)
 
     // Initialize symbolic evaluation
     m_symEval.setDataLayout(m_DL);
+
+    // i64Emu: mimic Emu64Ops's enabling condition. Seems conservative
+    //         and be improved in the future if needed.
+    m_hasI64Emu = (m_CGC->platform.need64BitEmulation() &&
+            (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
+             IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)));
 
     combineStores(F);
 
@@ -3030,6 +3094,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
     const LdStInfo* lsi0 = &Stores[0];
     LoadInst* LI = dyn_cast<LoadInst>(lsi0->Inst);
     StoreInst* SI = dyn_cast<StoreInst>(lsi0->Inst);
+    LdStKind Kind = LI ? LdStKind::IS_LOAD : LdStKind::IS_STORE;
     bool isUniform = false;
     if (m_WI)
     {
@@ -3048,14 +3113,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         // If i64 insts are not supported, don't do D64 as it might
         // require i64 mov (I64 Emu only handles 1-level insertvalue
         // and extractvalue so far), etc in codegen emit.
-        //
-        // i64Emu: mimic Emu64Ops's enabling condition. Seems conservative
-        //         and be improved in the future if needed.
-        const bool hasI64Emu =
-            (m_CGC->platform.need64BitEmulation() &&
-                (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
-                 IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)));
-        if (hasI64Emu && theAlign > 4)
+        if (m_hasI64Emu && theAlign > 4)
             continue;
 
         // Element size is the same as the alignment.
@@ -3093,7 +3151,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 continue;
             }
 
-            BundleConfig  BC(theAlign, isUniform, AddrModel, m_CGC);
+            BundleConfig  BC(Kind, theAlign, isUniform, AddrModel, m_CGC);
             const uint32_t maxBytes = BC.getMaxVecSizeInBytes();
             uint32_t totalBytes = (uint32_t)m_DL->getTypeStoreSize(leadTy);
 
@@ -3276,6 +3334,30 @@ void LdStCombine::mergeConstElements(
 
     EltVals.clear();
     EltVals.insert(EltVals.end(), mergedElts.begin(), mergedElts.end());
+}
+
+// This is to make sure to reuse the layout types. Two identified structs have
+// the same layout if
+//   1. both are SOA or both are AOS; and
+//   2. both are packed; and
+//   3, element types are matched in order.
+StructType* LdStCombine::getOrCreateUniqueIdentifiedStructType(
+    ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked)
+{
+    for (auto II : m_allLayoutStructTypes) {
+        StructType* stTy = II;
+        if (IsPacked == stTy->isPacked() &&
+            IsSOA == isLayoutStructTypeSOA(stTy) &&
+            stTy->elements() == EltTys)
+            return stTy;
+    }
+
+    // Create one
+    StructType* StTy = StructType::create(EltTys,
+        IsSOA ? getStructNameForSOALayout() : getStructNameForAOSLayout(),
+        IsPacked);
+    m_allLayoutStructTypes.push_back(StTy);
+    return StTy;
 }
 
 // gatherCopy():
@@ -3726,6 +3808,11 @@ bool isLayoutStructTypeAOS(const StructType* StTy)
         return false;
     StringRef stId = StTy->getName();
     return stId.startswith(getStructNameForAOSLayout());
+}
+
+bool isLayoutStructTypeSOA(const StructType* StTy)
+{
+    return isLayoutStructType(StTy) && !isLayoutStructTypeAOS(StTy);
 }
 
 uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)

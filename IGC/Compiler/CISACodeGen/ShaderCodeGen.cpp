@@ -658,7 +658,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
             mpm.add(createAdvMemOptPass());
 
-        if (!isOptDisabled && IGC_IS_FLAG_ENABLED(EnableLdStCombine) &&
+        if (IGC_IS_FLAG_ENABLED(EnableLdStCombine) &&
             ctx.type == ShaderType::OPENCL_SHADER)
         {
             // start with OCL, will apply to others.
@@ -846,7 +846,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // If needed ctx.type check can be removed to apply for all shader types
     if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||
         (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotionComputeShader && ctx.type == ShaderType::COMPUTE_SHADER) ||
-        (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotionPixelVertexShader && 
+        (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotionPixelVertexShader &&
             (ctx.type == ShaderType::PIXEL_SHADER || ctx.type == ShaderType::VERTEX_SHADER)) ||
         (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion)))
     {

@@ -40,6 +40,7 @@ namespace IGC {
     //   note: if a struct type is a layout struct, but not in AOS layout,
     //         it must be in SOA layout.
     bool isLayoutStructTypeAOS(const StructType* StTy);
+    bool isLayoutStructTypeSOA(const StructType* StTy);
 
     // bitcastToUI64:
     //   return C as ui64. C must fit into 64bits.
