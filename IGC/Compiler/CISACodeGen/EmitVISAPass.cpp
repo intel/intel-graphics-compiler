@@ -263,6 +263,17 @@ static bool DefReachUseWithinLevel(llvm::Value* def, const llvm::Instruction* us
     return false;
 }
 
+bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
+{
+    if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
+    {
+        return I->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
+               I->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT;
+    }
+
+    return true;
+}
+
 uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing)
 {
     m_encoder->SetSubSpanDestination(false);
@@ -285,7 +296,7 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
         m_destination = GetSymbol(sdag.m_root);
         numInstance = m_destination->GetNumberInstance();
 
-        if (m_pattern->IsSubspanUse(sdag.m_root) &&
+        if (m_pattern->IsSubspanUse(sdag.m_root) && IsNoMaskAllowed(sdag) &&
             (!m_pattern->IsSourceOfSample(sdag.m_root) ||
             (m_pattern->IsSourceOfSample(sdag.m_root) && m_pCtx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE) != nullptr) ||
             (m_pattern->IsSourceOfSample(sdag.m_root) && !m_pattern->NeedVMask()) ||
