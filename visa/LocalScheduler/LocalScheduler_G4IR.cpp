@@ -2430,9 +2430,16 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
   // that is their earliest cycle is >= than the current schedule cycle.
   std::priority_queue<Node *, std::vector<Node *>, earlyCmp> preReadyQueue;
 
-  auto updateForSucc = [&](Node *scheduled,
-                           std::priority_queue<Node *, std::vector<Node *>,
-                                               earlyCmp> *preReadyQueue) {
+  // The scheduler's clock.
+  // This counter is updated in each loop iteration and its
+  // final value represents number of cycles the kernel would
+  // take to execute on the GPU as per the model.
+  uint32_t currCycle = 0;
+
+  // Used to avoid WAW subreg hazards
+  Node *lastScheduled = nullptr;
+
+  auto updateForSucc = [&](Node *scheduled) {
     for (auto &curSucc : scheduled->succs) {
       Node *succ = curSucc.getNode();
       // Recompute the earliest time for each successor.
@@ -2459,7 +2466,210 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       // Decrease the number of predecessors not scheduled for the successor
       // node.
       if ((--(succ->predsNotScheduled)) == 0) {
-        preReadyQueue->push(succ);
+        preReadyQueue.push(succ);
+      }
+    }
+  };
+
+  auto updateForScheduled = [&](Node *scheduled) {
+    // Append the scheduled node to the end of the schedule.
+    schedule->scheduledNodes.push_back(scheduled);
+    lastScheduled = scheduled;
+
+    // Set the cycle at which this node is scheduled.
+    scheduled->schedTime = currCycle;
+
+    updateForSucc(scheduled);
+
+    // Increment the scheduler's clock after each scheduled node
+    currCycle += scheduled->getOccupancy();
+  };
+
+  auto scheduleForSuppression = [&]() -> bool {
+    return !readyList.empty() && lastScheduled &&
+        kernel->fg.builder->hasReadSuppression() &&
+        getOptions()->getuInt32Option(vISA_ReadSuppressionDepth) != 0 &&
+        lastScheduled->getInstructions()->size() == 1 &&
+        (lastScheduled->getInstructions()->front()->opcode() == G4_mad ||
+         lastScheduled->getInstructions()->front()->opcode() == G4_dp4a);
+  };
+
+  auto applySuppressionHeuristic = [&](Node *scheduled, Node *lastScheduled)
+      -> Node * {
+    G4_INST *inst = lastScheduled->getInstructions()->front();
+    std::vector<Node *> popped;
+    const size_t searchSize = std::min(
+        (size_t)getOptions()->getuInt32Option(vISA_ReadSuppressionDepth),
+        readyList.size());
+    for (size_t i = 0; i < searchSize; ++i) {
+      Node *next = readyList.top();
+      if ((next->getInstructions()->size() != 1))
+        continue;
+
+      G4_INST *nextInst = next->getInstructions()->front();
+      readyList.pop();
+      if ((nextInst->opcode() == G4_mad || nextInst->opcode() == G4_dp4a) &&
+          hasReadSuppression(inst, nextInst, false)) {
+        readyList.push(scheduled);
+        scheduled = next;
+        break;
+      } else {
+        popped.push_back(next);
+      }
+    }
+    for (auto nodes : popped) {
+      readyList.push(nodes);
+    }
+    return scheduled;
+  };
+
+  // try to avoid bank conflict for Xe
+  // Such as in following case:
+  // r40 and r56 are from same bundle and have conflict
+  // scheduling next instruction up can avoid the conflict.
+  // mad r10   r20  r33 r40        mad r10   r20  r33 r40
+  // mad r12   r56  r61  r70  -->  mad r14   r58 r 63  r72
+  // mad r14   r58 r 63  r72       mad r12   r56  r61  r70
+  auto scheduleForBankConflictReduction = [&](Node *scheduled) -> bool {
+    return !readyList.empty() && lastScheduled &&
+        kernel->fg.builder->hasEarlyGRFRead() &&
+        lastScheduled->hasConflict(scheduled);
+  };
+
+  auto applyBankConflictReductionHeuristic = [&](Node *scheduled,
+      Node *lastScheduled) -> Node * {
+    std::vector<Node *> popped;
+    const size_t searchSize = std::min((size_t)3, readyList.size());
+    for (size_t i = 0; i < searchSize; ++i) {
+      Node *next = readyList.top();
+      readyList.pop();
+      if (!lastScheduled->hasConflict(next)) {
+        readyList.push(scheduled);
+        scheduled = next;
+        break;
+      } else {
+        popped.push_back(next);
+      }
+    }
+    for (auto nodes : popped) {
+      readyList.push(nodes);
+    }
+    return scheduled;
+  };
+
+  // Try to avoid b2b math if possible as there are pipeline stalls.
+  auto scheduleForB2BMathReduction = [&](Node *scheduled) -> bool {
+    return !readyList.empty() && lastScheduled &&
+        scheduled->getInstructions()->front()->isMath() &&
+        lastScheduled->getInstructions()->front()->isMath();
+  };
+
+  auto applyB2BMathReductionHeuristic = [&](Node *scheduled,
+      Node *lastScheduled) -> Node * {
+    // pick another node on the ready list if it's not math and won't cause
+    // a longer stall to save compile time we currently limit search size to 2
+    std::vector<Node *> popped;
+    const size_t searchSize = std::min((size_t)2, readyList.size());
+    for (size_t i = 0; i < searchSize; ++i) {
+      Node *next = readyList.top();
+      readyList.pop();
+      if (!next->getInstructions()->front()->isMath() &&
+          next->getEarliest() <
+              lastScheduled->schedTime + lastScheduled->getOccupancy()) {
+        readyList.push(scheduled);
+        scheduled = next;
+        break;
+      } else {
+        // keep searching
+        popped.push_back(next);
+      }
+    }
+    for (auto nodes : popped) {
+      readyList.push(nodes);
+    }
+    return scheduled;
+  };
+
+  // Avoid WAW subreg hazard by skipping nodes that cause a WAW subreg
+  // hazard with the lastScheduled instruction.
+  auto scheduleForWAWSubregHazardReduction = [&]() -> bool {
+    // If only 1 instruction ready, then there is nothing we can do
+    return readyList.size() > 1 && lastScheduled &&
+        kernel->fg.builder->avoidWAWSubRegHazard();
+  };
+
+  auto applyWAWSubregHazardReductionHeuristic = [&](Node *scheduled,
+      Node *lastScheduled) -> Node * {
+    // Do not try to fix the hazard for ever (maintain low complexity)
+#define WAW_SUBREG_ATTEMPTS 2
+    Node *extScheduled = scheduled;
+    std::vector<Node *> skippedNodes;
+    int lastReg = lastScheduled->writesToSubreg();
+    // If lastScheduled writes to a subreg
+    int attempts = 0;
+    if (lastReg != Node::NO_SUBREG) {
+      // While there is a WAW subreg hazard with
+      // the scheduled node, get the next from readyList
+      while (scheduled->writesToSubreg() == lastReg &&
+             !readyList.empty() && ++attempts < WAW_SUBREG_ATTEMPTS) {
+        skippedNodes.push_back(scheduled);
+        scheduled = readyList.top();
+        readyList.pop();
+      }
+    }
+
+    // Re-insert the skipped nodes into the readyList
+    for (Node *poppedNode : skippedNodes) {
+      readyList.push(poppedNode);
+    }
+
+    // If we have reached the end of the readyList but we still get a WAW
+    // subreg hazard, choose the top of readyList
+    if (scheduled != extScheduled &&
+        scheduled->writesToSubreg() == lastReg &&
+        (readyList.empty() || attempts >= WAW_SUBREG_ATTEMPTS)) {
+      // Re-insert the scheduled node into the readyList
+      readyList.push(scheduled);
+      // Get the highest priority node
+      scheduled = readyList.top();
+      readyList.pop();
+    }
+    return scheduled;
+  };
+
+  // For write combine feature
+  auto scheduleForWriteCombine = [&](Node *scheduled) -> bool {
+    return !readyList.empty() && kernel->fg.builder->hasWriteCombine() &&
+        getOptions()->getOption(vISA_writeCombine) &&
+        scheduled->getInstructions()->front()->opcode() == G4_mov;
+  };
+
+  auto applyWriteCombineHeuristic = [&](windowWriteCombine &block,
+                                        Node *scheduled) {
+    if (block.isWriteCombineCandidate(scheduled, schedule->getBB())) {
+      block.push(scheduled);
+
+      // build the write combine block from other nodes of readyList
+      while (!readyList.empty()) {
+        Node *next = readyList.top();
+        if (next->getInstructions()->size() == 1 &&
+            block.isWriteCombineCandidate(next, schedule->getBB())) {
+          readyList.pop();
+          block.push(next);
+        } else {
+          break;
+        }
+      }
+
+      while (block.getInstList().size() > 1) {
+        if (block.isGoodBlock())
+          break;
+
+        // pop up the last node from block, and try to see if it is a good
+        // block
+        Node *tmpNode = block.getInstList().back();
+        block.pop();
+        readyList.push(tmpNode);
       }
     }
   };
@@ -2468,15 +2678,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
   for (auto N : Roots) {
     preReadyQueue.push(N);
   }
-
-  // The scheduler's clock.
-  // This counter is updated in each loop iteration and its
-  // final value represents number of cycles the kernel would
-  // take to execute on the GPU as per the model.
-  uint32_t currCycle = 0;
-
-  // Used to avoid WAW subreg hazards
-  Node *lastScheduled = nullptr;
 
   // Keep scheduling until both readyList or preReadyQueue contain instrs.
   while (!(readyList.empty() && preReadyQueue.empty())) {
@@ -2502,212 +2703,42 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     // Pointer to node to be scheduled.
     Node *scheduled = readyList.top();
     readyList.pop();
-    if (lastScheduled && kernel->fg.builder->hasReadSuppression() &&
-        getOptions()->getuInt32Option(vISA_ReadSuppressionDepth) != 0 &&
-        (readyList.size() > 0)) {
-      if (lastScheduled->getInstructions()->size() == 1) {
-        G4_INST *inst = lastScheduled->getInstructions()->front();
-        if (inst->opcode() == G4_mad || inst->opcode() == G4_dp4a) {
-          std::vector<Node *> popped;
-          const int searchSize = std::min(
-              (int)getOptions()->getuInt32Option(vISA_ReadSuppressionDepth),
-              (int)readyList.size());
-          for (int i = 0; i < searchSize; ++i) {
-            Node *next = readyList.top();
-            if ((next->getInstructions()->size() == 1)) {
-              G4_INST *nextInst = next->getInstructions()->front();
-              readyList.pop();
-              if ((nextInst->opcode() == G4_mad ||
-                   nextInst->opcode() == G4_dp4a) &&
-                  hasReadSuppression(inst, nextInst, false)) {
-                readyList.push(scheduled);
-                scheduled = next;
-                break;
-              } else {
-                popped.push_back(next);
-              }
-            }
-          }
-          for (auto nodes : popped) {
-            readyList.push(nodes);
-          }
+    // Apply scheduling heuristics
+    // TODO: add fall-through behavior to try different heuristics.
+    if (scheduleForSuppression()) {
+      scheduled = applySuppressionHeuristic(scheduled, lastScheduled);
+    } else if (scheduleForBankConflictReduction(scheduled)) {
+      scheduled =
+          applyBankConflictReductionHeuristic(scheduled, lastScheduled);
+    } else if (scheduleForB2BMathReduction(scheduled)) {
+      scheduled = applyB2BMathReductionHeuristic(scheduled, lastScheduled);
+    } else if (scheduleForWAWSubregHazardReduction()) {
+      scheduled =
+          applyWAWSubregHazardReductionHeuristic(scheduled, lastScheduled);
+    } else if (scheduleForWriteCombine(scheduled)) {
+      windowWriteCombine block;
+      applyWriteCombineHeuristic(block, scheduled);
+      if (block.isGoodBlock()) {
+        // add atomic to the instructions except for the last one in the
+        // block
+        std::vector<Node *> &instList = block.getInstList();
+        for (size_t id = 0; id < instList.size() - 1; id++) {
+          instList[id]->getInstructions()->front()->setOptionOn(InstOpt_Atomic);
         }
+
+        // schedule together
+        for (auto node : instList) {
+          scheduled = node;
+          updateForScheduled(scheduled);
+        }
+
+        continue;
       }
     }
-    // try to avoid bank conflict for Xe
-    // Such as in following case:
-    // r40 and r56 are from same bundle and have conflict
-    // scheduling next instruction up can avoid the conflit.
-    // mad r10   r20  r33 r40        mad r10   r20  r33 r40
-    // mad r12   r56  r61  r70  -->  mad r14   r58 r 63  r72
-    // mad r14   r58 r 63  r72       mad r12   r56  r61  r70
-    else if (kernel->fg.builder->hasEarlyGRFRead() && lastScheduled &&
-             lastScheduled->hasConflict(scheduled) && (readyList.size() > 0)) {
-      std::vector<Node *> popped;
-      const int searchSize = std::min(3, (int)readyList.size());
-      for (int i = 0; i < searchSize; ++i) {
-        Node *next = readyList.top();
-        readyList.pop();
-        if (!lastScheduled->hasConflict(next)) {
-          readyList.push(scheduled);
-          scheduled = next;
-          break;
-        } else {
-          popped.push_back(next);
-        }
-      }
-      for (auto nodes : popped) {
-        readyList.push(nodes);
-      }
-    } else
-
-      // try to avoid b2b math if possible as there are pipeline stalls
-      if (scheduled->getInstructions()->front()->isMath() && lastScheduled &&
-          lastScheduled->getInstructions()->front()->isMath()) {
-        // pick another node on the ready list if it's not math and won't cause
-        // a longer stall to save compile time we currently limit search size to
-        // 2
-        if (readyList.size() > 0) {
-          std::vector<Node *> popped;
-          const int searchSize = std::min(2, (int)readyList.size());
-          for (int i = 0; i < searchSize; ++i) {
-            Node *next = readyList.top();
-            readyList.pop();
-            if (!next->getInstructions()->front()->isMath() &&
-                next->getEarliest() <
-                    lastScheduled->schedTime + lastScheduled->getOccupancy()) {
-              readyList.push(scheduled);
-              scheduled = next;
-              break;
-            } else {
-              // keep searching
-              popped.push_back(next);
-            }
-          }
-          for (auto nodes : popped) {
-            readyList.push(nodes);
-          }
-        }
-      }
-      // Avoid WAW subreg hazard by skipping nodes that cause a WAW subreg
-      // hazard with the lastScheduled instruction.
-      else if (kernel->fg.builder->avoidWAWSubRegHazard()) {
-        // Do not try to fix the hazard for ever (maintain low complexity)
-#define WAW_SUBREG_ATTEMPTS 2
-        if (lastScheduled) {
-          // If only 1 instruction ready, then there is nothing we can do
-          if (readyList.size() > 1) {
-            Node *extScheduled = scheduled;
-            std::vector<Node *> skippedNodes;
-            int lastReg = lastScheduled->writesToSubreg();
-            // If lastScheduled writes to a subreg
-            int attempts = 0;
-            if (lastReg != Node::NO_SUBREG) {
-              // While there is a WAW subreg hazard with
-              // the scheduled node, get the next from readyList
-              while (scheduled->writesToSubreg() == lastReg &&
-                     !readyList.empty() && ++attempts < WAW_SUBREG_ATTEMPTS) {
-                skippedNodes.push_back(scheduled);
-                scheduled = readyList.top();
-                readyList.pop();
-              }
-            }
-
-            // Re-insert the skipped nodes into the readyList
-            for (Node *poppedNode : skippedNodes) {
-              readyList.push(poppedNode);
-            }
-
-            // If we have reached the end of the readyList but we still
-            // get a WAW subreg hazard, choose the top of readyList
-            if (scheduled != extScheduled &&
-                scheduled->writesToSubreg() == lastReg &&
-                (readyList.empty() || attempts >= WAW_SUBREG_ATTEMPTS)) {
-              // Re-insert the scheduled node into the readyList
-              readyList.push(scheduled);
-              // Get the highest priority node
-              scheduled = readyList.top();
-              readyList.pop();
-            }
-          }
-        }
-      }
-      // For write combine feature
-      else if (kernel->fg.builder->hasWriteCombine() &&
-               getOptions()->getOption(vISA_writeCombine) == true &&
-               scheduled &&
-               scheduled->getInstructions()->front()->opcode() == G4_mov &&
-               readyList.size() > 0) {
-        windowWriteCombine block;
-        if (block.isWriteCombineCandidate(scheduled, schedule->getBB())) {
-          block.push(scheduled);
-
-          const int searchSize = (int)readyList.size();
-
-          // build the write combine block from other nodes of readyList
-          for (int i = 0; i < searchSize; i++) {
-            Node *next = readyList.top();
-            if (next->getInstructions()->size() == 1 &&
-                block.isWriteCombineCandidate(next, schedule->getBB())) {
-              readyList.pop();
-              block.push(next);
-            } else {
-              break;
-            }
-          }
-
-          bool isBlockScheduled = false;
-          while (block.getInstList().size() > 1) {
-            if (block.isGoodBlock()) {
-              // add atomic to the instructions except for the last one in the
-              // block
-              std::vector<Node *> instList = block.getInstList();
-              for (size_t index = 0; index < instList.size() - 1; index++) {
-                instList[index]->getInstructions()->front()->setOptionOn(
-                    InstOpt_Atomic);
-              }
-
-              // schedule together
-              for (auto node : instList) {
-                schedule->scheduledNodes.push_back(node);
-                updateForSucc(node, &preReadyQueue);
-                scheduled = node;
-                scheduled->schedTime = currCycle;
-                currCycle += scheduled->getOccupancy();
-                lastScheduled = scheduled;
-              }
-              isBlockScheduled = true;
-              break;
-            } else // not a good block
-            {
-              // pop up the last node from block, and try to see if it is a good
-              // block
-              Node *tmpNode = block.getInstList().back();
-              block.pop();
-              readyList.push(tmpNode);
-              continue;
-            }
-          }
-
-          if (isBlockScheduled) {
-            continue;
-          }
-        }
-      }
 
     vISA_ASSERT(scheduled, "Must have found an instruction to schedule by now");
 
-    // Append the scheduled node to the end of the schedule.
-    schedule->scheduledNodes.push_back(scheduled);
-    lastScheduled = scheduled;
-
-    // Set the cycle at which this node is scheduled.
-    scheduled->schedTime = currCycle;
-
-    updateForSucc(scheduled, &preReadyQueue);
-
-    // Increment the scheduler's clock after each scheduled node
-    currCycle += scheduled->getOccupancy();
+    updateForScheduled(scheduled);
   }
 
   // Sanity check: Make sure all nodes are scheduled
