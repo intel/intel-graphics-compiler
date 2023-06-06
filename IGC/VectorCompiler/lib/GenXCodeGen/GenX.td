@@ -139,11 +139,6 @@ def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
                                                     "true",
                                                     "need to load thread payload from memory">;
 
-def FeatureBfMixedModeWidth16 : SubtargetFeature<"feature_bf_mixed16",
-                                                 "HasBfMixedModeWidth16",
-                                                 "true",
-                                                 "BF mixed mode operations extended width">;
-
 def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
                                      "HasLSCMessages", "true",
                                      "Target supports LSC messages">;
@@ -375,7 +370,6 @@ def : Proc<"XeHPG", [
 ]>;
 
 def : Proc<"XeLPG", [
-  FeatureBfMixedModeWidth16,
   FeatureFDivFSqrt64Emulation,
   FeatureFP64,
   FeatureFusedEU,
@@ -397,7 +391,6 @@ def : Proc<"XeLPG", [
 ]>;
 
 def : Proc<"XeHPC", [
-  FeatureBfMixedModeWidth16,
   FeatureFP64,
   FeatureGRFByteSize64,
   FeatureHas8ThreadsPerEU,

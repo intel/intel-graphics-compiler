@@ -152,9 +152,6 @@ private:
   /// Packed float immediate vector operands are supported.
   bool HasPackedFloat = false;
 
-  /// True if subtarget accepts 16-wide BF mixed mode operations
-  bool HasBfMixedModeWidth16 = false;
-
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
@@ -266,12 +263,6 @@ public:
   bool hasAdd3Bfn() const { return HasAdd3 && HasBfn; }
 
   int dpasWidth() const { return GRFByteSize / 4; }
-
-  unsigned bfMixedModeWidth() const {
-    if (HasBfMixedModeWidth16)
-      return 16;
-    return 8;
-  }
 
   int getNumElementsInAddrReg() const { return GRFByteSize / 4; }
 

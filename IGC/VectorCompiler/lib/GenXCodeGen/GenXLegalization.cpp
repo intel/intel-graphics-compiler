@@ -405,7 +405,6 @@ private:
   unsigned getExecutionWidth();
   unsigned determineWidth(unsigned WholeWidth, unsigned StartIdx);
   unsigned determineLSCWidth(Instruction *Inst, unsigned StartIdx);
-  unsigned determineBfMixedWidth(unsigned InstWidth) const;
   unsigned determineNonRegionWidth(Instruction *Inst, unsigned StartIdx);
   LegalPredSize getLegalPredSize(Value *Pred, Type *ElementTy,
                                  unsigned StartIdx, unsigned RemainingSize = 0);
@@ -1713,19 +1712,6 @@ unsigned GenXLegalization::determineLSCWidth(Instruction *Inst, unsigned StartId
 }
 
 /***********************************************************************
- * determineBfMixedWidth : determine max valid width of an bf mixed instructions
- *
- * Enter:   InstWidth = the instruction width
- *
- * Return:  max valid width
- */
-unsigned GenXLegalization::determineBfMixedWidth(unsigned InstWidth) const {
-  unsigned MaxWidth = ST->bfMixedModeWidth();
-  unsigned Width = std::min({InstWidth, MaxWidth});
-  return PowerOf2Floor(Width);
-}
-
-/***********************************************************************
  * determineNonRegionWidth : determine max valid width of non-region instruction
  *
  * Width is determined based only on input and output vector element sizes and
@@ -1745,13 +1731,6 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
   if (!VT)
     return 1;
   unsigned Width = VT->getNumElements() - StartIdx;
-  switch (vc::InternalIntrinsic::getInternalIntrinsicID(Inst)) {
-  default:
-    break;
-  case vc::InternalIntrinsic::cast_from_bf16:
-  case vc::InternalIntrinsic::cast_to_bf16:
-    return determineBfMixedWidth(Width);
-  }
   unsigned BytesPerElement = VT->getElementType()->getPrimitiveSizeInBits() / 8;
   // Check whether the operand element size is bigger than the result operand
   // size. Normally we just check operand 0. This won't work on a select, and
