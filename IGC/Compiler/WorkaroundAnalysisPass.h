@@ -50,11 +50,13 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
 
     private:
+        void processDeferredInstruction(llvm::Instruction* I);
         void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
         void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
         const llvm::DataLayout* m_pDataLayout;
         llvm::Module* m_pModule;
         CodeGenContextWrapper* m_pCtxWrapper;
+        llvm::SmallVector<llvm::Instruction*, 4> m_DeferredInstructions;
     };
 
     class WAFMinFMax : public llvm::FunctionPass,

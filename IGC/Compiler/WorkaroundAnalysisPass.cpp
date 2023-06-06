@@ -80,11 +80,17 @@ bool WorkaroundAnalysis::runOnFunction(Function& F)
 {
     m_pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     m_pDataLayout = &F.getParent()->getDataLayout();
+    m_DeferredInstructions.clear();
 
     LLVM3DBuilder<> builder(F.getContext(), m_pCtxWrapper->getCodeGenContext()->platform.getPlatformInfo());
     m_builder = &builder;
     m_pModule = F.getParent();
     visit(F);
+    for (auto I : m_DeferredInstructions)
+    {
+        m_builder->SetInsertPoint(I);
+        processDeferredInstruction(I);
+    }
     return true;
 }
 
@@ -408,6 +414,11 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     Value* gather4c = m_builder->CreateCall(gather4Func, arg);
     gatherpo->replaceAllUsesWith(gather4c);
     gatherpo->eraseFromParent();
+}
+
+
+void WorkaroundAnalysis::processDeferredInstruction(llvm::Instruction* I)
+{
 }
 
 
