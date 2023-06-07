@@ -22,154 +22,142 @@ SPDX-License-Identifier: MIT
 
 // Currently support CL_DEVICE_INTEGER_DOT_PRODUCT_INPUT_4x8BIT_KHR only
 
-#define  DEFN_INTEL_DOT_PRODUCT(TYPE, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, ARG_SUFFIX)        \
-INLINE TYPE OVERLOADABLE dot( TYPE_ARG1 a, TYPE_ARG2 b )                                    \
-{                                                                                           \
-    return __builtin_spirv_Op##TYPE_SUFFIX##DotKHR_##ARG_SUFFIX##_##ARG_SUFFIX(a, b);       \
-}
-
-#define  DEFN_INTEL_DOT_PRODUCT_SAT(TYPE, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, ARG_SUFFIX, ACC_SUFFIX)                \
-INLINE TYPE OVERLOADABLE  dot_acc_sat( TYPE_ARG1 a, TYPE_ARG2 b, TYPE acc )                                         \
-{                                                                                                                   \
-    return __builtin_spirv_Op##TYPE_SUFFIX##DotAccSatKHR_##ARG_SUFFIX##_##ARG_SUFFIX##_##ACC_SUFFIX(a, b, acc);     \
-}
-
-#define DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(TYPE, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, ARG_SUFFIX, TYPE_SUFFIX_IB)   \
-TYPE __builtin_spirv_Op##TYPE_SUFFIX##DotKHR_##ARG_SUFFIX##_##ARG_SUFFIX(TYPE_ARG1 a, TYPE_ARG2 b)                  \
-{                                                                                                                   \
-    union { int _i; TYPE_ARG1 _arg1; TYPE_ARG2 _arg2 } a1, a2;                                                      \
-    a1._arg1 = a;                                                                                                   \
-    a2._arg2 = b;                                                                                                   \
-    return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, a1._i, a2._i);                                                     \
-}
-
-#define DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(TYPE, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, ARG_SUFFIX, ACC_SUFFIX, TYPE_SUFFIX_IB, SAT_PREFIX)   \
-TYPE __builtin_spirv_Op##TYPE_SUFFIX##DotAccSatKHR_##ARG_SUFFIX##_##ARG_SUFFIX##_##ACC_SUFFIX(TYPE_ARG1 a, TYPE_ARG2 b, TYPE acc)               \
-{                                                                                                                                               \
-    union { int _i; TYPE_ARG1 _arg1; TYPE_ARG2 _arg2 } a1, a2;                                                                                  \
-    a1._arg1 = a;                                                                                                                               \
-    a2._arg2 = b;                                                                                                                               \
-    TYPE product = __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, a1._i, a2._i);                                                                         \
-    return SPIRV_OCL_BUILTIN(SAT_PREFIX##_add_sat, _i32_i32, )(product, acc);                                                                   \
-}
-
-#define DEFN_INTEL_DOT_PRODUCT_US(TYPE, ARG_TYPE, ARG_SUFFIX)               \
-INLINE TYPE OVERLOADABLE dot( u##ARG_TYPE a, ARG_TYPE b )                   \
-{                                                                           \
-    return __builtin_spirv_OpSUDotKHR_##ARG_SUFFIX##_##ARG_SUFFIX(b, a);    \
-}
-
-#define DEFN_INTEL_DOT_PRODUCT_SAT_US(TYPE, ARG_TYPE, ARG_SUFFIX, ACC_SUFFIX)                       \
-INLINE TYPE OVERLOADABLE dot_acc_sat( u##ARG_TYPE a, ARG_TYPE b, TYPE acc )                         \
-{                                                                                                   \
-    return __builtin_spirv_OpSUDotAccSatKHR_##ARG_SUFFIX##_##ARG_SUFFIX##_##ACC_SUFFIX(b, a, acc);  \
-}
-
-#define DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(TYPE, TYPE_SUFFIX, TYPE_SUFFIX_IB)                          \
-TYPE __builtin_spirv_Op##TYPE_SUFFIX##DotKHR_i32_i32_i32(uint a, uint b, int packed)                            \
-{                                                                                                               \
-    union { int _i; uint _arg1; uint _arg2 } a1, a2;                                                            \
-    a1._arg1 = a;                                                                                               \
-    a2._arg2 = b;                                                                                               \
-    return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, a1._i, a2._i);                                                 \
-}
-
-#define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(TYPE, TYPE_SUFFIX, TYPE_SUFFIX_IB, SAT_PREFIX)      \
-TYPE __builtin_spirv_Op##TYPE_SUFFIX##DotAccSatKHR_i32_i32_i32_i32(uint a, uint b, TYPE acc, int packed)    \
+#define DEFN_INTEL_DOT_PRODUCT(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW)     \
+INLINE TYPE_RET OVERLOADABLE dot(TYPE_ARG1 a, TYPE_ARG2 b)                                                  \
 {                                                                                                           \
-    union { int _i; uint _arg1; uint _arg2 } a1, a2;                                                        \
-    a1._arg1 = a;                                                                                           \
-    a2._arg2 = b;                                                                                           \
-    TYPE product = __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, a1._i, a2._i);                                     \
-    return SPIRV_OCL_BUILTIN(SAT_PREFIX##_add_sat, _i32_i32, )(product, acc);                               \
+    return SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(a, b);                            \
 }
 
-#define  DEFN_INTEL_DOT_PRODUCT_PACKED(TYPE, ARG_TYPES, TYPE_SUFFIX)            \
-INLINE TYPE OVERLOADABLE dot_4x8packed_##ARG_TYPES##_##TYPE( uint a, uint b)    \
-{                                                                               \
-    return __builtin_spirv_Op##TYPE_SUFFIX##DotKHR_i32_i32_i32(a, b, 0);        \
-}
-
-#define  DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(TYPE, TYPE_SUFFIX, ARG_TYPES)                                        \
-INLINE TYPE OVERLOADABLE  dot_acc_sat_4x8_packed_##ARG_TYPES##_##TYPE( uint a, uint b, TYPE acc)                \
+#define DEFN_INTEL_DOT_PRODUCT_SAT(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW)     \
+INLINE TYPE_RET OVERLOADABLE dot_acc_sat(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc)                                \
 {                                                                                                               \
-    return __builtin_spirv_Op##TYPE_SUFFIX##DotAccSatKHR_i32_i32_i32_i32(a, b, acc, 0);                         \
+    return SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(a, b, acc);                     \
 }
 
-#define DEFN_INTEL_DOT_PRODUCT_PACKED_US                            \
-INLINE int OVERLOADABLE dot_4x8packed_us_int( uint a, uint b)       \
-{                                                                   \
-    return __builtin_spirv_OpSUDotKHR_i32_i32_i32(b, a, 0);         \
+#define DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB)     \
+TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b)                      \
+{                                                                                                                                         \
+    return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, as_int(a), as_int(b));                                                               \
 }
 
-#define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_US                                        \
-INLINE int OVERLOADABLE dot_acc_sat_4x8packed_us_int( uint a, uint b, int acc)      \
-{                                                                                   \
-    return __builtin_spirv_OpSUDotAccSatKHR_i32_i32_i32_i32(b, a, acc, 0);          \
+#define DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB, SAT_PREFIX)     \
+TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc)                  \
+{                                                                                                                                                         \
+    TYPE_RET product = __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, as_int(a), as_int(b));                                                                   \
+    return SPIRV_OCL_BUILTIN(SAT_PREFIX##_add_sat, _i32_i32,)(product, acc);                                                                              \
 }
 
-DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(uint, uchar4, uchar4, U, v4i8, uu)
-DEFN_INTEL_DOT_PRODUCT(uint, uchar4, uchar4, U, v4i8)
-DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(uint, ushort2, ushort2, U, v2i16, uu)
-DEFN_INTEL_DOT_PRODUCT(uint, ushort2, ushort2, U, v2i16)
+#define DEFN_INTEL_DOT_PRODUCT_US(TYPE_RET, TYPE_ARG, MANGLING_OLD, MANGLING_NEW)     \
+INLINE TYPE_RET OVERLOADABLE dot(u##TYPE_ARG a, TYPE_ARG b)                           \
+{                                                                                     \
+    return SPIRV_BUILTIN(SUDotKHR, MANGLING_OLD, MANGLING_NEW)(b, a);                 \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_SAT_US(TYPE_RET, TYPE_ARG, MANGLING_OLD, MANGLING_NEW)        \
+INLINE TYPE_RET OVERLOADABLE dot_acc_sat(u##TYPE_ARG a, TYPE_ARG b, TYPE_RET acc)            \
+{                                                                                            \
+    return SPIRV_BUILTIN(SUDotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(b, a, acc);             \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB)     \
+TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_ARG1 packed)           \
+{                                                                                                                                                \
+    return __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, as_int(a), as_int(b));                                                                      \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(TYPE_RET, TYPE_ARG1, TYPE_ARG2, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW, TYPE_SUFFIX_IB, SAT_PREFIX)     \
+TYPE_RET SPIRV_OVERLOADABLE SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(TYPE_ARG1 a, TYPE_ARG2 b, TYPE_RET acc, TYPE_ARG1 packed)       \
+{                                                                                                                                                                \
+    TYPE_RET product = __builtin_IB_dp4a_##TYPE_SUFFIX_IB(0, as_int(a), as_int(b));                                                                          \
+    return SPIRV_OCL_BUILTIN(SAT_PREFIX##_add_sat, _i32_i32,)(product, acc);                                                                                     \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_PACKED(TYPE_RET, ARG_TYPES, TYPE_SUFFIX, MANGLING_OLD, MANGLING_NEW)     \
+INLINE TYPE_RET OVERLOADABLE dot_4x8packed_##ARG_TYPES##_##TYPE_RET(uint a, uint b)                     \
+{                                                                                                       \
+    return SPIRV_BUILTIN(TYPE_SUFFIX##DotKHR, MANGLING_OLD, MANGLING_NEW)(a, b, 0);                     \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(TYPE_RET, TYPE_SUFFIX, ARG_TYPES, MANGLING_OLD, MANGLING_NEW)        \
+INLINE TYPE_RET OVERLOADABLE dot_acc_sat_4x8_packed_##ARG_TYPES##_##TYPE_RET(uint a, uint b, TYPE_RET acc)     \
+{                                                                                                              \
+    return SPIRV_BUILTIN(TYPE_SUFFIX##DotAccSatKHR, MANGLING_OLD, MANGLING_NEW)(a, b, acc, 0);                 \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_PACKED_US                              \
+INLINE int OVERLOADABLE dot_4x8packed_us_int(uint a, uint b)          \
+{                                                                     \
+    return SPIRV_BUILTIN(SUDotKHR, _i32_i32_i32, _Rint)(b, a, 0);     \
+}
+
+#define DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_US                                         \
+INLINE int OVERLOADABLE dot_acc_sat_4x8packed_us_int(uint a, uint b, int acc)        \
+{                                                                                    \
+    return SPIRV_BUILTIN(SUDotAccSatKHR, _i32_i32_i32_i32, _Rint)(b, a, acc, 0);     \
+}
+
+DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(uint, uchar4, uchar4, U, _v4i8_v4i8, _Ruint, uu)
+DEFN_INTEL_DOT_PRODUCT(uint, uchar4, uchar4, U, _v4i8_v4i8, _Ruint)
+DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(uint, ushort2, ushort2, U, _v2i16_v2i16, _Ruint, uu)
+DEFN_INTEL_DOT_PRODUCT(uint, ushort2, ushort2, U, _v2i16_v2i16, _Ruint)
 #ifdef __opencl_c_integer_dot_product_input_4x8bit_packed
-DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(uint, U, uu)
-DEFN_INTEL_DOT_PRODUCT_PACKED(uint, uu, U)
+DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(uint, uint, uint, U, _i32_i32_i32, _Ruint, uu)
+DEFN_INTEL_DOT_PRODUCT_PACKED(uint, uu, U, _i32_i32_i32, _Ruint)
 #endif // __opencl_c_integer_dot_product_input_4x8bit_packed
 #ifdef __opencl_c_integer_dot_product_saturation_accumulation
-DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(uint, uchar4, uchar4, U, v4i8, i32, uu, u)
-DEFN_INTEL_DOT_PRODUCT_SAT(uint, uchar4, uchar4, U, v4i8, i32)
-DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(uint, ushort2, ushort2, U, v2i16, i32, uu, u)
-DEFN_INTEL_DOT_PRODUCT_SAT(uint, ushort2, ushort2, U, v2i16, i32)
+DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(uint, uchar4, uchar4, U, _v4i8_v4i8_i32, _Ruint, uu, u)
+DEFN_INTEL_DOT_PRODUCT_SAT(uint, uchar4, uchar4, U, _v4i8_v4i8_i32, _Ruint)
+DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(uint, ushort2, ushort2, U, _v2i16_v2i16_i32, _Ruint, uu, u)
+DEFN_INTEL_DOT_PRODUCT_SAT(uint, ushort2, ushort2, U, _v2i16_v2i16_i32, _Ruint)
 #ifdef __opencl_c_integer_dot_product_input_4x8bit_packed
-DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(uint, U, uu, u)
-DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(uint, U, uu)
+DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(uint, uint, uint, U, _i32_i32_i32_i32, _Ruint, uu, u)
+DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(uint, U, uu, _i32_i32_i32_i32, _Ruint)
 #endif // __opencl_c_integer_dot_product_input_4x8bit_packed
 #endif // __opencl_c_integer_dot_product_saturation_accumulation
 
 #ifdef __opencl_c_dot_product_signed
-DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, char4, char4, S, v4i8, ss)
-DEFN_INTEL_DOT_PRODUCT(int, char4, char4, S, v4i8)
-DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, short2, short2, S, v2i16, ss)
-DEFN_INTEL_DOT_PRODUCT(int, short2, short2, S, v2i16)
+DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, char4, char4, S, _v4i8_v4i8, _Rint, ss)
+DEFN_INTEL_DOT_PRODUCT(int, char4, char4, S, _v4i8_v4i8, _Rint)
+DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, short2, short2, S, _v2i16_v2i16, _Rint, ss)
+DEFN_INTEL_DOT_PRODUCT(int, short2, short2, S, _v2i16_v2i16, _Rint)
 #ifdef __opencl_c_integer_dot_product_input_4x8bit_packed
-DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(int, S, ss)
-DEFN_INTEL_DOT_PRODUCT_PACKED(int, ss, S)
+DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(int, int, int, S, _i32_i32_i32, _Rint, ss)
+DEFN_INTEL_DOT_PRODUCT_PACKED(int, ss, S, _i32_i32_i32, _Rint)
 #endif // __opencl_c_integer_dot_product_input_4x8bit_packed
 #ifdef __opencl_c_integer_dot_product_saturation_accumulation
-DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, char4, char4, S, v4i8, i32, ss, s)
-DEFN_INTEL_DOT_PRODUCT_SAT(int, char4, char4, S, v4i8, i32)
-DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, short2, short2, S, v2i16, i32, ss, s)
-DEFN_INTEL_DOT_PRODUCT_SAT(int, short2, short2, S, v2i16, i32)
+DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, char4, char4, S, _v4i8_v4i8_i32, _Rint, ss, s)
+DEFN_INTEL_DOT_PRODUCT_SAT(int, char4, char4, S, _v4i8_v4i8_i32, _Rint)
+DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, short2, short2, S, _v2i16_v2i16_i32, _Rint, ss, s)
+DEFN_INTEL_DOT_PRODUCT_SAT(int, short2, short2, S, _v2i16_v2i16_i32, _Rint)
 #ifdef __opencl_c_integer_dot_product_input_4x8bit_packed
-DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(int, S, ss, s)
-DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(int, S, ss)
+DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(int, int, int, S, _i32_i32_i32_i32, _Rint, ss, s)
+DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(int, S, ss, _i32_i32_i32_i32, _Rint)
 #endif // __opencl_c_integer_dot_product_input_4x8bit_packed
 #endif // __opencl_c_integer_dot_product_saturation_accumulation
 #endif // __opencl_c_dot_product_signed
 
 #ifdef __opencl_c_dot_product_mixed_signedness
-DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, char4, uchar4, SU, v4i8, su)
-DEFN_INTEL_DOT_PRODUCT(int, char4, uchar4, SU, v4i8)
-DEFN_INTEL_DOT_PRODUCT_US(int, char4, v4i8)
-DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, short2, ushort2, SU, v2i16, su)
-DEFN_INTEL_DOT_PRODUCT(int, short2, ushort2, SU, v2i16)
-DEFN_INTEL_DOT_PRODUCT_US(int, short2, v2i16)
+DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, char4, uchar4, SU, _v4i8_v4i8, _Rint, su)
+DEFN_INTEL_DOT_PRODUCT(int, char4, uchar4, SU, _v4i8_v4i8, _Rint)
+DEFN_INTEL_DOT_PRODUCT_US(int, char4, _v4i8_v4i8, _Rint)
+DEFN_INTEL_DOT_PRODUCT_BUILTIN_SPIRV(int, short2, ushort2, SU, _v2i16_v2i16, _Rint, su)
+DEFN_INTEL_DOT_PRODUCT(int, short2, ushort2, SU, _v2i16_v2i16, _Rint)
+DEFN_INTEL_DOT_PRODUCT_US(int, short2, _v2i16_v2i16, _Rint)
 #ifdef __opencl_c_integer_dot_product_input_4x8bit_packed
-DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(int, SU, su)
-DEFN_INTEL_DOT_PRODUCT_PACKED(int, su, SU)
+DEFN_INTEL_DOT_PRODUCT_PACKED_BUILTIN_SPIRV(int, int, uint, SU, _i32_i32_i32, _Rint, su)
+DEFN_INTEL_DOT_PRODUCT_PACKED(int, su, SU, _i32_i32_i32, _Rint)
 DEFN_INTEL_DOT_PRODUCT_PACKED_US
 #endif // __opencl_c_integer_dot_product_input_4x8bit_packed
 #ifdef __opencl_c_integer_dot_product_saturation_accumulation
-DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, char4, uchar4, SU, v4i8, i32, su, s)
-DEFN_INTEL_DOT_PRODUCT_SAT(int, char4, uchar4, SU, v4i8, i32)
-DEFN_INTEL_DOT_PRODUCT_SAT_US(int, char4, v4i8, i32)
-DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, short2, ushort2, SU, v2i16, i32, su, s)
-DEFN_INTEL_DOT_PRODUCT_SAT(int, short2, ushort2, SU, v2i16, i32)
-DEFN_INTEL_DOT_PRODUCT_SAT_US(int, short2, v2i16, i32)
+DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, char4, uchar4, SU, _v4i8_v4i8_i32, _Rint, su, s)
+DEFN_INTEL_DOT_PRODUCT_SAT(int, char4, uchar4, SU, _v4i8_v4i8_i32, _Rint)
+DEFN_INTEL_DOT_PRODUCT_SAT_US(int, char4, _v4i8_v4i8_i32, _Rint)
+DEFN_INTEL_DOT_PRODUCT_SAT_BUILTIN_SPIRV(int, short2, ushort2, SU, _v2i16_v2i16_i32, _Rint, su, s)
+DEFN_INTEL_DOT_PRODUCT_SAT(int, short2, ushort2, SU, _v2i16_v2i16_i32, _Rint)
+DEFN_INTEL_DOT_PRODUCT_SAT_US(int, short2, _v2i16_v2i16_i32, _Rint)
 #ifdef __opencl_c_integer_dot_product_input_4x8bit_packed
-DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(int, SU, su, s)
-DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(int, SU, su)
+DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_BUILTIN_SPIRV(int, int, uint, SU, _i32_i32_i32_i32, _Rint, su, s)
+DEFN_INTEL_DOT_PRODUCT_SAT_PACKED(int, SU, su, _i32_i32_i32_i32, _Rint)
 DEFN_INTEL_DOT_PRODUCT_SAT_PACKED_US
 #endif // __opencl_c_integer_dot_product_input_4x8bit_packed
 #endif // __opencl_c_integer_dot_product_saturation_accumulation
