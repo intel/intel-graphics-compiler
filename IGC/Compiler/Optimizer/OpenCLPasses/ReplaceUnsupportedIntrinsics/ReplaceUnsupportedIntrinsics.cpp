@@ -529,9 +529,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
             Align = adjust_align < Align ? adjust_align : Align;
             SrcAlign = adjust_align < SrcAlign ? adjust_align : SrcAlign;
 
-            // If NewCount is less than 6,  don't generate loop.
-            // Note that 6 is just an arbitrary number here.
-            if (NewCount < 6)
+            // If NewCount is less than the threshold, don't generate loop.
+            if (NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold))
             {
                 for (unsigned i = 0; i < NewCount; ++i)
                 {
@@ -723,11 +722,10 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
             // now emit the <8 x i32> stores
             auto* vSrc = B.CreateBitCast(SkipBitCast(Src), PointerType::get(VecTys[0], SrcAS), "memcpy_vsrc");
             auto* vDst = B.CreateBitCast(SkipBitCast(Dst), PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
-            // If NewCount is less than 6,  don't generate loop.
-            // Note that 6 is just an arbitrary number here.
+            // If NewCount is less than the threshold, don't generate loop.
             uint32_t SZ = (unsigned int)(VecTys[0]->getPrimitiveSizeInBits() / 8);
             uint32_t newAlign = getLargestPowerOfTwo(Align + SZ);
-            if (NewCount < 6)
+            if (NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold))
             {
                 for (unsigned i = 0; i < NewCount; i++)
                 {
@@ -829,9 +827,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
             uint32_t adjust_align = getLargestPowerOfTwo(SZ);
             Align = adjust_align < Align ? adjust_align : Align;
 
-            // If NewCount is less than 6,  don't generate loop.
-            // Note that 6 is just an arbitrary number here.
-            if (NewCount < 6)
+            // If NewCount is less than the threshold, don't generate loop.
+            if (NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold))
             {
                 for (unsigned i = 0; i < NewCount; ++i)
                 {
