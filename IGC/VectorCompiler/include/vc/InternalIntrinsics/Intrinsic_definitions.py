@@ -33,9 +33,7 @@
 # 1 - LLVMMatchType<1>
 # {int} - LLVMMatchType<{int}>
 
-Imported_Intrinsics = \
-{
-
+Imported_Intrinsics = {
 ## ``llvm.vc.internal.jump.table`` : CMC internal, no VISA
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -50,8 +48,7 @@ Imported_Intrinsics = \
 ##
     "jump_table" : { "result" : "anyptr",
                      "arguments" :  ["anyint", "vararg"],
-                     "attributes" :  "NoMem"
-                   },
+                     "attributes" :  "NoMem" },
 
 ## ``llvm.vc.internal.read.variable.region`` : read a vISA variable region
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,8 +69,7 @@ Imported_Intrinsics = \
     "read_variable_region" : { "result": "any",
                                "arguments" : ["anyptr", "int", "int", "int",
                                               "int"],
-                               "attributes" : "ReadMem",
-                              },
+                               "attributes" : "ReadMem", },
 
 ## ``llvm.vc.internal.write.variable.region`` : write a vISA variable region
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,8 +88,7 @@ Imported_Intrinsics = \
     "write_variable_region" : { "result": "void",
                                 "arguments" : ["anyptr", "any", "int",
                                                "int", "anyint"],
-                                "attributes" : "WriteMem",
-                              },
+                                "attributes" : "WriteMem", },
 
 ## ``llvm.vc.internal.cast.to.ptr.explicit`` : convert ptr_generic to
 ## private/local/global ptr.
@@ -107,8 +102,7 @@ Imported_Intrinsics = \
 ##  private/local/global ptr. If the cast fails the intrisic returns null pointer.
     "cast_to_ptr_explicit" : { "result": "anyptr",
                                "arguments": ["ptr_generic"],
-                               "attributes": "NoMem",
-                             },
+                               "attributes": "NoMem", },
 
 ### --------------
 ### ALU intrinsics
@@ -124,8 +118,7 @@ Imported_Intrinsics = \
 ## This intrinsic represents float -> bfloat16 conversion operation
     "cast_to_bf16" : { "result": "anyint",
                        "arguments": ["anyfloat"],
-                       "attributes": "NoMem",
-                     },
+                       "attributes": "NoMem", },
 ## ``llvm.vc.internal.cast.from.bf16`` : convert bfloat16 into float
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -136,8 +129,7 @@ Imported_Intrinsics = \
 ## This intrinsic represents float -> bfloat16 conversion operation
     "cast_from_bf16" : { "result": "anyfloat",
                          "arguments": ["anyint"],
-                         "attributes": "NoMem",
-                       },
+                         "attributes": "NoMem", },
 
 ## ``llvm.vc.internal.round.to.tf32`` : round float into tfloat32
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,8 +141,20 @@ Imported_Intrinsics = \
 ## This intrinsic represents float -> tfloat32 conversion operation
     "round_to_tf32" : { "result": "anyfloat",
                         "arguments": ["anyint"],
-                        "attributes": "NoMem",
-                      },
+                        "attributes": "NoMem", },
+
+## ``llvm.vc.internal.stochastic.round.to.f16`` : half stochastic rounding operation
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, f32 scalar or vector (overloaded)
+## * arg1: random number, i16 scalar or vector of the same width as arg0
+##
+## * Return value: f16 scalar or vector of the same width as arg0
+##
+## This intrinsic represents float -> half stochastic rounding operation
+    "stochastic_round_to_f16" : { "result": "anyfloat",
+                                  "arguments": ["anyfloat", "anyint"],
+                                  "attributes": "NoMem", },
 
 ### --------------------
 ### Thread ID intrinsics
@@ -200,5 +204,4 @@ Imported_Intrinsics = \
     "print_format_index" : { "result" : "int",
                              "arguments" : ["anyptr"],
                              "attributes" : "NoMem", },
-
 }

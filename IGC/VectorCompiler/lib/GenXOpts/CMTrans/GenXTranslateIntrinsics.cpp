@@ -46,6 +46,7 @@ public:
 private:
   Value *translateBFloat16Convert(CallInst &I) const;
   Value *translateTFloat32Convert(CallInst &I) const;
+  Value *translateStochasticRounding(CallInst &I) const;
 };
 } // namespace
 
@@ -80,6 +81,10 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
     break;
   case GenXIntrinsic::genx_tf32_cvt:
     NewI = translateTFloat32Convert(I);
+    break;
+  case GenXIntrinsic::genx_srnd:
+    NewI = translateStochasticRounding(I);
+    break;
   }
 
   if (!NewI)
@@ -140,6 +145,51 @@ Value *GenXTranslateIntrinsics::translateTFloat32Convert(CallInst &I) const {
   Function *Func = vc::InternalIntrinsic::getInternalDeclaration(
       M, vc::InternalIntrinsic::round_to_tf32, {RetTy, ArgTy});
   auto *NewI = Builder.CreateCall(Func, {Arg});
+  LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
+
+  return NewI;
+}
+
+Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
+  IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
+                  GenXIntrinsic::genx_srnd);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *RetTy = I.getType();
+  auto *SrcV = I.getArgOperand(0);
+  auto *RndV = I.getArgOperand(1);
+
+  auto RetElementSize = RetTy->getScalarSizeInBits();
+
+  auto *RndOrigTy = RndV->getType();
+  auto RndElementSize = RndOrigTy->getScalarSizeInBits();
+
+  if (RndOrigTy->isFPOrFPVectorTy()) {
+    Type *RndCastTy = Builder.getIntNTy(RndElementSize);
+    if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(RndOrigTy))
+      RndCastTy =
+          IGCLLVM::FixedVectorType::get(RndCastTy, VTy->getNumElements());
+    RndV = Builder.CreateBitCast(RndV, RndCastTy);
+  }
+
+  if (RndElementSize != RetElementSize) {
+    Type *RndTruncTy = Builder.getIntNTy(RetElementSize);
+    if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(RndOrigTy))
+      RndTruncTy =
+          IGCLLVM::FixedVectorType::get(RndTruncTy, VTy->getNumElements());
+    RndV = Builder.CreateTrunc(RndV, RndTruncTy);
+  }
+
+  auto *SrcTy = SrcV->getType();
+  auto *RndTy = RndV->getType();
+
+  auto IID = vc::InternalIntrinsic::stochastic_round_to_f16;
+
+  Function *Func = vc::InternalIntrinsic::getInternalDeclaration(
+      M, IID, {RetTy, SrcTy, RndTy});
+  auto *NewI = Builder.CreateCall(Func, {SrcV, RndV});
   LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
 
   return NewI;
