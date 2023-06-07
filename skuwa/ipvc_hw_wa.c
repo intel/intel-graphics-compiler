@@ -16,22 +16,14 @@ SPDX-License-Identifier: MIT
 
 void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-    int iStepId_PVC_CT = (int)pWaParam->usRevId & 0b111;
-    int iStepId_PVC_BD = ( (int)pWaParam->usRevId & 0b111000 ) >> 3;
+    int iStepId_PVC_ComputeTile = (int)pWaParam->usRevId & 0b111;
+    int iStepId_PVC_BaseDie = ((int)pWaParam->usRevId & 0b111000) >> 3;
 
-    if (pWaParam->usDeviceID >= 0x0BE5)
+    if (iStepId_PVC_ComputeTile == 0x1)
     {
 
 
-        iStepId_PVC_CT |= 0b1000;
-        iStepId_PVC_BD |= 0b1000;
-    }
-
-    if (iStepId_PVC_CT == 0x1)
-    {
-
-
-        iStepId_PVC_CT = 0x0;
+        iStepId_PVC_ComputeTile = 0x0;
     }
 
 
@@ -40,7 +32,7 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
@@ -48,15 +40,7 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
-
-
-    SI_WA_ENABLE(
-        Wa_1608127078,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
@@ -64,7 +48,7 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
@@ -72,63 +56,7 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
-
-
-    SI_WA_ENABLE(
-        Wa_14012437816,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0, PVC_GT_REV_ID_CTXT_A0));
-
-
-    SI_WA_ENABLE(
-        Wa_14013341720,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_B0));
-
-
-    SI_WA_ENABLE(
-        Wa_14013677893,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0, PVC_GT_REV_ID_CTXT_B0));
-
-
-    SI_WA_ENABLE(
-        Wa_16011698357,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CTXT_A0, PVC_GT_REV_ID_CTXT_B0));
-
-
-    SI_WA_ENABLE(
-        Wa_16012383669,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_16012725276,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CTXT_A0, PVC_GT_REV_ID_CTXT_B0));
-
-
-    SI_WA_ENABLE(
-        Wa_16013338947,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CTXT_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
@@ -136,7 +64,7 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
@@ -144,7 +72,7 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
@@ -152,15 +80,27 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CT_A0P, PVC_GT_REV_ID_CTXT_A0));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTA0));
 
 
     SI_WA_ENABLE(
-        Wa_22013689345,
+        Wa_14013341720,
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_PVC_CT, PVC_GT_REV_ID_CTXT_A0, PVC_GT_REV_ID_CTXT_C0));
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0P, PVC_GT_REV_ID_COMPUTETILE_XTB0));
 
+    SI_WA_ENABLE(
+        Wa_16011698357,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_XTA0, PVC_GT_REV_ID_COMPUTETILE_XTB0));
 
+    SI_WA_ENABLE(
+        Wa_14013677893,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_PVC_ComputeTile, PVC_GT_REV_ID_COMPUTETILE_A0, PVC_GT_REV_ID_COMPUTETILE_XTB0));
 }
