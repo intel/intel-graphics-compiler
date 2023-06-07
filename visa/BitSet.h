@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 // Inside each array element, bits are stored and indexed from lsb to msb.
 typedef unsigned int BITSET_ARRAY_TYPE;
 #define BITS_PER_BYTE 8
-#define BIT(x) (((BITSET_ARRAY_TYPE)1) << x)
+#define _BIT(x) (((BITSET_ARRAY_TYPE)1) << x)
 #define NUM_BITS_PER_ELT (sizeof(BITSET_ARRAY_TYPE) * BITS_PER_BYTE)
 
 typedef llvm::SparseBitVector<2048> llvm_SBitVector;
@@ -86,7 +86,7 @@ public:
 
     unsigned numBitsLeft = m_Size % NUM_BITS_PER_ELT;
     for (unsigned bitIndex = 0; bitIndex < numBitsLeft; bitIndex++) {
-      if ((m_BitSetArray[index] & BIT(bitIndex)) == 0) {
+      if ((m_BitSetArray[index] & _BIT(bitIndex)) == 0) {
         return false;
       }
     }
@@ -98,7 +98,7 @@ public:
     if (index < m_Size) {
       unsigned arrayIndex = index / NUM_BITS_PER_ELT;
       unsigned bitIndex = index % NUM_BITS_PER_ELT;
-      return (m_BitSetArray[arrayIndex] & BIT(bitIndex)) != 0;
+      return (m_BitSetArray[arrayIndex] & _BIT(bitIndex)) != 0;
     }
     return false;
   }
@@ -125,7 +125,7 @@ public:
     if (numBitsBefore) {
       for (unsigned bitIndex = numBitsBefore; bitIndex < NUM_BITS_PER_ELT;
            bitIndex++) {
-        if ((m_BitSetArray[start] & BIT(bitIndex)) == 0) {
+        if ((m_BitSetArray[start] & _BIT(bitIndex)) == 0) {
           return false;
         }
       }
@@ -140,7 +140,7 @@ public:
 
     unsigned numBitsLeft = endIndex % NUM_BITS_PER_ELT;
     for (unsigned bitIndex = 0; bitIndex <= numBitsLeft; bitIndex++) {
-      if ((m_BitSetArray[index] & BIT(bitIndex)) == 0) {
+      if ((m_BitSetArray[index] & _BIT(bitIndex)) == 0) {
         return false;
       }
     }
@@ -170,7 +170,7 @@ public:
     if (numBitsBefore) {
       for (unsigned bitIndex = numBitsBefore; bitIndex < NUM_BITS_PER_ELT;
            bitIndex++) {
-        if ((m_BitSetArray[start] & BIT(bitIndex)) != 0) {
+        if ((m_BitSetArray[start] & _BIT(bitIndex)) != 0) {
           return false;
         }
       }
@@ -185,7 +185,7 @@ public:
 
     unsigned numBitsLeft = endIndex % NUM_BITS_PER_ELT;
     for (unsigned bitIndex = 0; bitIndex <= numBitsLeft; bitIndex++) {
-      if ((m_BitSetArray[index] & BIT(bitIndex)) != 0) {
+      if ((m_BitSetArray[index] & _BIT(bitIndex)) != 0) {
         return false;
       }
     }
@@ -238,9 +238,9 @@ public:
     unsigned bitIndex = index % NUM_BITS_PER_ELT;
 
     if (value) {
-      m_BitSetArray[arrayIndex] |= BIT(bitIndex);
+      m_BitSetArray[arrayIndex] |= _BIT(bitIndex);
     } else {
-      m_BitSetArray[arrayIndex] &= ~BIT(bitIndex);
+      m_BitSetArray[arrayIndex] &= ~_BIT(bitIndex);
     }
   }
 
@@ -343,7 +343,7 @@ public:
   bool isSet(unsigned Bit) const {
     unsigned Word, BitInWord;
     std::tie(Word, BitInWord) = bitToWordPair(Bit);
-    return (Bits[Word] & BIT(BitInWord)) != 0;
+    return (Bits[Word] & _BIT(BitInWord)) != 0;
   }
 
   bool isEmpty() const {
@@ -362,9 +362,9 @@ public:
     unsigned Word, BitInWord;
     std::tie(Word, BitInWord) = bitToWordPair(Bit);
     if (Val)
-      Bits[Word] |= BIT(BitInWord);
+      Bits[Word] |= _BIT(BitInWord);
     else
-      Bits[Word] &= ~BIT(BitInWord);
+      Bits[Word] &= ~_BIT(BitInWord);
   }
 
   bool operator!=(const FixedBitSet &Other) const {

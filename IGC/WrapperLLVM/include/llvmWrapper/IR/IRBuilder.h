@@ -201,13 +201,13 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, Name);
         }
 
-        inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const Twine &Name = "")
+        inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const llvm::Twine &Name = "")
         {
             llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, Name);
         }
 
-        inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, bool isVolatile, const Twine &Name = "")
+        inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, bool isVolatile, const llvm::Twine &Name = "")
         {
             llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, isVolatile, Name);
@@ -253,35 +253,35 @@ namespace IGCLLVM
 
         using llvm::IRBuilder<T, InserterTyDef()>::CreateGEP;
 
-        CallInst *CreateMaskedGather(Value *Ptrs, Align Alignment, Value *Mask,
-                                     Value *PassThru, const Twine &Name) {
-          auto *PtrsTy = cast<FixedVectorType>(Ptrs->getType());
-          auto *PtrTy = cast<PointerType>(PtrsTy->getElementType());
+        llvm::CallInst *CreateMaskedGather(llvm::Value *Ptrs, Align Alignment, llvm::Value *Mask,
+                                     llvm::Value *PassThru, const llvm::Twine &Name) {
+          auto *PtrsTy = llvm::cast<llvm::FixedVectorType>(Ptrs->getType());
+          auto *PtrTy = llvm::cast<llvm::PointerType>(PtrsTy->getElementType());
           unsigned NumElts = PtrsTy->getNumElements();
-          auto *Ty = FixedVectorType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), NumElts);
+          auto *Ty = llvm::FixedVectorType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), NumElts);
           return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather(
               Ty, Ptrs, Alignment, Mask, PassThru, Name);
         }
 
-        AtomicCmpXchgInst *
-        CreateAtomicCmpXchg(Value *Ptr, Value *Cmp, Value *New,
-                            AtomicOrdering SuccessOrdering,
-                            AtomicOrdering FailureOrdering,
-                            SyncScope::ID SSID = SyncScope::System) {
+        llvm::AtomicCmpXchgInst *
+        CreateAtomicCmpXchg(llvm::Value *Ptr, llvm::Value *Cmp, llvm::Value *New,
+                            llvm::AtomicOrdering SuccessOrdering,
+                            llvm::AtomicOrdering FailureOrdering,
+                            llvm::SyncScope::ID SSID = llvm::SyncScope::System) {
           return createAtomicCmpXchg(*this, Ptr, Cmp, New, SuccessOrdering,
                                      FailureOrdering, SSID);
         }
 
-        AtomicRMWInst *CreateAtomicRMW(AtomicRMWInst::BinOp Op, Value *Ptr,
-                                       Value *Val, AtomicOrdering Ordering,
-                                       SyncScope::ID SSID = SyncScope::System) {
+        llvm::AtomicRMWInst *CreateAtomicRMW(llvm::AtomicRMWInst::BinOp Op, llvm::Value *Ptr,
+                                       llvm::Value *Val, llvm::AtomicOrdering Ordering,
+                                       llvm::SyncScope::ID SSID = llvm::SyncScope::System) {
           return createAtomicRMW(*this, Op, Ptr, Val, Ordering, SSID);
         }
 
-        CallInst *CreateMaskedLoad(Value *Ptr, Align Alignment, Value *Mask,
-                                   Value *PassThru, const Twine &Name) {
-          auto *PtrTy = cast<PointerType>(Ptr->getType());
-          Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
+        llvm::CallInst *CreateMaskedLoad(llvm::Value *Ptr, Align Alignment, llvm::Value *Mask,
+                                   llvm::Value *PassThru, const llvm::Twine &Name) {
+          auto *PtrTy = llvm::cast<llvm::PointerType>(Ptr->getType());
+          llvm::Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
           return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedLoad(
               Ty, Ptr, Alignment, Mask, PassThru, Name);
         }
@@ -289,9 +289,9 @@ namespace IGCLLVM
 #endif
 
 #if LLVM_VERSION_MAJOR >= 14
-        Value* CreatePtrDiff(Value *LHS, Value *RHS, const Twine &Name = "") {
-          auto *PtrTy = cast<PointerType>(LHS->getType());
-          Type *Ty = PtrTy->getNonOpaquePointerElementType();
+        llvm::Value* CreatePtrDiff(llvm::Value *LHS, llvm::Value *RHS, const llvm::Twine &Name = "") {
+          auto *PtrTy = llvm::cast<llvm::PointerType>(LHS->getType());
+          llvm::Type *Ty = PtrTy->getNonOpaquePointerElementType();
           return llvm::IRBuilder<T, InserterTyDef()>::CreatePtrDiff(Ty, LHS, RHS, Name);
         }
 #endif
@@ -330,7 +330,7 @@ namespace IGCLLVM
                     llvm::Value *Val, llvm::AtomicOrdering Ordering,
                     llvm::SyncScope::ID SSID = llvm::SyncScope::System) {
 #if LLVM_VERSION_MAJOR >= 13
-      return IRB.CreateAtomicRMW(Op, Ptr, Val, MaybeAlign{}, Ordering, SSID);
+      return IRB.CreateAtomicRMW(Op, Ptr, Val, llvm::MaybeAlign{}, Ordering, SSID);
 #else
       return IRB.CreateAtomicRMW(Op, Ptr, Val, Ordering, SSID);
 #endif
@@ -345,7 +345,7 @@ namespace IGCLLVM
                         llvm::AtomicOrdering FailureOrdering,
                         llvm::SyncScope::ID SSID = llvm::SyncScope::System) {
 #if LLVM_VERSION_MAJOR >= 13
-      return IRB.CreateAtomicCmpXchg(Ptr, Cmp, New, MaybeAlign{},
+      return IRB.CreateAtomicCmpXchg(Ptr, Cmp, New, llvm::MaybeAlign{},
                                      SuccessOrdering, FailureOrdering, SSID);
 #else
       return IRB.CreateAtomicCmpXchg(Ptr, Cmp, New, SuccessOrdering,

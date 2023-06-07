@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Constant.h"
+#include "llvm/IR/Constant.h"
 #include <llvm/IR/NoFolder.h>
 #include "common/LLVMWarningsPop.hpp"
 

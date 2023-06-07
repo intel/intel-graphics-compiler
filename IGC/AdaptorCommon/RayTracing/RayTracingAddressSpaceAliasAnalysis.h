@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvmWrapper/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/BasicAliasAnalysis.h>
-#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {

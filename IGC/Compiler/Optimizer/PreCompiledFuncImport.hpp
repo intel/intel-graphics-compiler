@@ -257,7 +257,7 @@ namespace IGC
         // This is for creating a single flag temp for some of double emulation
         // As this is never used, we need to remove this flag from emulation
         // function completely.
-        llvm::DenseMap<llvm::Function*, Value*> m_DPEmuFlagTemp;
+        llvm::DenseMap<llvm::Function*, llvm::Value*> m_DPEmuFlagTemp;
 
         unsigned m_roundingMode = 0;
         unsigned m_flushDenorm = 0;

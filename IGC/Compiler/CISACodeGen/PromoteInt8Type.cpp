@@ -151,6 +151,49 @@ namespace
         Value* createSI16Value(Value* V) { return createI16Value(V, false); }
         Value* createUI16Value(Value* V) { return createI16Value(V, true); }
     };
+
+
+    ValueInfo* PromoteInt8Type::getValInfo(Value* V) const
+    {
+        if (!V || isa<Constant>(V))
+        {
+            return nullptr;
+        }
+        auto VI = m_valInfoMap.find(V);
+        if (VI != m_valInfoMap.end())
+        {
+            return VI->second;
+        }
+        return nullptr;
+    }
+
+    // Create an entry in m_valInfoMap for V
+    ValueInfo* PromoteInt8Type::addValInfo(Value* V)
+    {
+        auto VI = m_valInfoMap.find(V);
+        if (VI == m_valInfoMap.end())
+        {
+            ValueInfo* valinfo = new (Allocator) ValueInfo(V);
+            m_valInfoMap.insert(std::make_pair(V, valinfo));
+            m_valInsertOrder.push_back(V);
+        }
+        return m_valInfoMap[V];
+    }
+
+    // If V is of i8 type, create an entry in m_valInfoMap (via
+    // addValInfo()) if it does not exist, and return that entry.
+    // If V is not i8 type, do not create an entry and just return
+    // nullptr.
+    ValueInfo* PromoteInt8Type::addValInfoIfI8(Value* V)
+    {
+        ValueInfo* valinfo = nullptr;
+        if (isI8Type(V))
+        {
+            valinfo = addValInfo(V);
+        }
+        return valinfo;
+    }
+
 }
 
 // Register pass to igc-opt
@@ -167,44 +210,6 @@ char PromoteInt8Type::ID = 0;
 FunctionPass* IGC::createPromoteInt8TypePass()
 {
     return new PromoteInt8Type();
-}
-
-ValueInfo* PromoteInt8Type::getValInfo(Value* V) const
-{
-    if (!V || isa<Constant>(V))
-    {
-        return nullptr;
-    }
-    auto VI = m_valInfoMap.find(V);
-    if (VI != m_valInfoMap.end()) {
-        return VI->second;
-    }
-    return nullptr;
-}
-
-// Create an entry in m_valInfoMap for V
-ValueInfo* PromoteInt8Type::addValInfo(Value* V)
-{
-    auto VI = m_valInfoMap.find(V);
-    if (VI == m_valInfoMap.end()) {
-        ValueInfo* valinfo = new (Allocator) ValueInfo(V);
-        m_valInfoMap.insert(std::make_pair(V, valinfo));
-        m_valInsertOrder.push_back(V);
-    }
-    return m_valInfoMap[V];
-}
-
-// If V is of i8 type, create an entry in m_valInfoMap (via
-// addValInfo()) if it does not exist, and return that entry.
-// If V is not i8 type, do not create an entry and just return
-// nullptr.
-ValueInfo* PromoteInt8Type::addValInfoIfI8(Value* V)
-{
-    ValueInfo* valinfo = nullptr;
-    if (isI8Type(V)) {
-        valinfo = addValInfo(V);
-    }
-    return valinfo;
 }
 
 bool PromoteInt8Type::runOnFunction(Function& F)

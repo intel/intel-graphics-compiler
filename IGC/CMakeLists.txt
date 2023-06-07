@@ -1823,6 +1823,36 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
   endif()
 endforeach()
 
+
+# Set precompiled header files for Windows builds
+if(MSVC)
+
+message(STATUS "Using precompiled headers")
+
+  set(PCHTargets
+    Compiler
+    AdaptorOCL
+    Probe
+    GenISAIntrinsics
+    GenX_IR
+    GenXDebugInfo
+    igc_lib
+    VCIGCDeps
+  )
+
+  if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
+    list(APPEND PCHTargets VulkanFrontend)
+  endif()
+
+  foreach(_target ${PCHTargets})
+    target_precompile_headers(${_target}
+      PRIVATE
+      "$<$<COMPILE_LANGUAGE:CXX>:${IGC_BUILD__IGC_SRC_DIR}/PCH/llvm.h>"
+      "$<$<COMPILE_LANGUAGE:CXX>:${IGC_BUILD__IGC_SRC_DIR}/PCH/common.h>"
+    )
+  endforeach()
+endif()
+
 if (FCL_ENABLED)
 #FCL
   get_property(_targetType TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY TYPE)

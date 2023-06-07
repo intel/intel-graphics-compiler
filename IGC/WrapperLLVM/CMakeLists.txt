@@ -31,7 +31,6 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/CallSite.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/CFG.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Comdat.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Constant.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/ConstantFold.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/ConstantFolder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Constants.h"

@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include <type_traits>
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/Support/Alignment.h"
-using namespace llvm;
 #endif
 
 #if LLVM_VERSION_MAJOR >= 14

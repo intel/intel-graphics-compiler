@@ -24,7 +24,10 @@ typedef uint32_t UINT;
 #endif
 typedef uint64_t QWORD;
 
-#define BITFIELD_RANGE(startbit, endbit) ((endbit) - (startbit) + 1)
+#ifndef BITFIELD_RANGE
+#define BITFIELD_RANGE( startbit, endbit )     ((endbit)-(startbit)+1)
+#endif
+
 #define BITFIELD_BIT(bit) 1
 
 #undef __CONCAT

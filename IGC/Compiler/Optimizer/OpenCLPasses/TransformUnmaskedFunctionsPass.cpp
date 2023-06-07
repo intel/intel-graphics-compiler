@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/ADT/SetVector.h"
-#include "llvmWrapper/IR/Constant.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"

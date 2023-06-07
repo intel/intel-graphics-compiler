@@ -26,7 +26,7 @@ void BitSet::create(unsigned size) {
     // same array size, zero out the unused bits if necessary
     m_Size = size;
     if (newArraySize && numBitsLeft != 0) {
-      m_BitSetArray[newArraySize - 1] &= BIT(numBitsLeft) - 1;
+      m_BitSetArray[newArraySize - 1] &= _BIT(numBitsLeft) - 1;
     }
   } else {
     BITSET_ARRAY_TYPE *ptr =
@@ -46,7 +46,7 @@ void BitSet::create(unsigned size) {
           memcpy_s(ptr, newArraySize * sizeof(BITSET_ARRAY_TYPE), m_BitSetArray,
                    newArraySize * sizeof(BITSET_ARRAY_TYPE));
           if (numBitsLeft != 0) {
-            ptr[newArraySize - 1] &= BIT(numBitsLeft) - 1;
+            ptr[newArraySize - 1] &= _BIT(numBitsLeft) - 1;
           }
         }
       } else {
@@ -72,7 +72,7 @@ void BitSet::setAll(void) {
     // bits, so isEmpty() can be implemented faster
     int numBitsLeft = m_Size % NUM_BITS_PER_ELT;
     if (numBitsLeft) {
-      m_BitSetArray[index] = BIT(numBitsLeft) - 1;
+      m_BitSetArray[index] = _BIT(numBitsLeft) - 1;
     }
   }
 }
@@ -87,7 +87,7 @@ void BitSet::invert(void) {
     // do the leftover bits
     int numBitsLeft = m_Size % NUM_BITS_PER_ELT;
     if (numBitsLeft) {
-      m_BitSetArray[index] = ~m_BitSetArray[index] & (BIT(numBitsLeft) - 1);
+      m_BitSetArray[index] = ~m_BitSetArray[index] & (_BIT(numBitsLeft) - 1);
     }
   }
 }

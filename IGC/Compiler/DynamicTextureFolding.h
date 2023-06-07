@@ -53,14 +53,14 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
     private:
         CodeGenContext* m_context = nullptr;
-        Module* m_module = nullptr;
+        llvm::Module* m_module = nullptr;
         std::unordered_map<unsigned, SResInfoFoldingOutput> m_ResInfoFoldingOutput;
         void FoldSingleTextureValue(llvm::CallInst& I);
         template<typename ContextT>
         void copyResInfoData(ContextT* pShaderCtx);
         void FoldResInfoValue(llvm::GenIntrinsicInst* pCall);
         llvm::Value* ShiftByLOD(llvm::Instruction* pCall, unsigned int dimension, llvm::Value* val);
-        SmallVector<Instruction*,4> InstsToRemove;
+        llvm::SmallVector<llvm::Instruction*,4> InstsToRemove;
     };
 }
 

@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #else
 #define DEBUG_TYPE "instcombine"
 #include "llvm/Transforms/Utils/InstructionWorklist.h"
+#undef DEBUG_TYPE
 using InstCombineWorklist = llvm::InstructionWorklist;
 #endif
 #endif

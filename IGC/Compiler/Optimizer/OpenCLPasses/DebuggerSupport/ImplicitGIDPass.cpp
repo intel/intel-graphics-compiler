@@ -306,7 +306,7 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
         // Set function attributes
         AttributeList funcAttrs;
         IGCLLVM::AttrBuilder attBuilder{ pNewFunc->getContext() };
-        attBuilder.addAttribute(Attribute::NoUnwind).addAttribute(Attribute::ReadNone);
+        attBuilder.addAttribute(llvm::Attribute::NoUnwind).addAttribute(llvm::Attribute::ReadNone);
         funcAttrs = AttributeList::get(pNewFunc->getContext(), AttributeList::FunctionIndex, attBuilder);
         pNewFunc->setAttributes(funcAttrs);
 

@@ -122,12 +122,11 @@ bool RayTracingAddressSpaceAAWrapperPass::doInitialization(Module& M)
 {
     if(M.size() > 0)
     {
-        Result.reset(new RayTracingAddressSpaceAAResult(
-        getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(
 #if LLVM_VERSION_MAJOR >= 10
-            *M.begin()
+        auto& F = *M.begin(); // see llvmWrapper/Analysis/TargetLibraryInfo.h
 #endif
-            ),
+        Result.reset(new RayTracingAddressSpaceAAResult(
+            getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(),
             *getAnalysis<CodeGenContextWrapper>().getCodeGenContext()));
     }
     return false;

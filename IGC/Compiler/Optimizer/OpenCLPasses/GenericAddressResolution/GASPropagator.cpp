@@ -375,8 +375,6 @@ bool GASPropagator::visitCallInst(CallInst& I) {
     bool IsP2GAS =
         Callee->getName().equals("__builtin_IB_memcpy_private_to_generic");
     if (IsGAS2P || IsP2GAS) {
-        PointerType* SrcPtrTy = cast<PointerType>(TheVal->getType());
-
         Type* Tys[4];
         Tys[0] = IsGAS2P ? I.getArgOperand(0)->getType() : SrcPtrTy;
         Tys[1] = IsGAS2P ? SrcPtrTy : I.getArgOperand(1)->getType();
@@ -384,32 +382,38 @@ bool GASPropagator::visitCallInst(CallInst& I) {
         Tys[3] = I.getArgOperand(3)->getType();
         FunctionType* FTy = FunctionType::get(I.getType(), Tys, false);
         Module* M = I.getParent()->getParent()->getParent();
-        IGCLLVM::Constant NewF = nullptr;
-        switch (SrcPtrTy->getAddressSpace()) {
-        case ADDRESS_SPACE_PRIVATE:
-            NewF =
-                M->getOrInsertFunction("__builtin_IB_memcpy_private_to_private", FTy);
-            break;
-        case ADDRESS_SPACE_GLOBAL:
-            NewF = M->getOrInsertFunction(
-                IsGAS2P ? "__builtin_IB_memcpy_global_to_private"
-                : "__builtin_IB_memcpy_private_to_global",
-                FTy);
-            break;
-        case ADDRESS_SPACE_CONSTANT:
-            NewF = M->getOrInsertFunction(
-                IsGAS2P ? "__builtin_IB_memcpy_constant_to_private"
-                : "__builtin_IB_memcpy_private_to_constant",
-                FTy);
-            break;
-        case ADDRESS_SPACE_LOCAL:
-            NewF = M->getOrInsertFunction(
-                IsGAS2P ? "__builtin_IB_memcpy_local_to_private"
-                : "__builtin_IB_memcpy_private_to_local",
-                FTy);
-            break;
-        }
 
+        auto getBuiltinFn = [&]()
+        {
+            switch (SrcPtrTy->getAddressSpace())
+            {
+            case ADDRESS_SPACE_PRIVATE:
+                return
+                    M->getOrInsertFunction("__builtin_IB_memcpy_private_to_private", FTy);
+                break;
+            case ADDRESS_SPACE_GLOBAL:
+                return M->getOrInsertFunction(
+                    IsGAS2P ? "__builtin_IB_memcpy_global_to_private"
+                    : "__builtin_IB_memcpy_private_to_global",
+                    FTy);
+                break;
+            case ADDRESS_SPACE_CONSTANT:
+                return M->getOrInsertFunction(
+                    IsGAS2P ? "__builtin_IB_memcpy_constant_to_private"
+                    : "__builtin_IB_memcpy_private_to_constant",
+                    FTy);
+                break;
+            case ADDRESS_SPACE_LOCAL:
+                return M->getOrInsertFunction(
+                    IsGAS2P ? "__builtin_IB_memcpy_local_to_private"
+                    : "__builtin_IB_memcpy_private_to_local",
+                    FTy);
+                break;
+            }
+            return (FunctionCallee)nullptr;
+        };
+
+        auto NewF = getBuiltinFn();
         if (NewF) {
             I.setCalledFunction(NewF);
             TheUse->set(TheVal);

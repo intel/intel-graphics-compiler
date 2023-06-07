@@ -170,7 +170,7 @@ void ConstantLoader::simplify() {
 
         // Skip optimizations on function with optnone.
         Function* F = GEP->getParent()->getParent();
-        if (F->hasFnAttribute(Attribute::OptimizeNone))
+        if (F->hasFnAttribute(llvm::Attribute::OptimizeNone))
             continue;
 
         for (auto I = GEP->user_begin(); I != GEP->user_end(); /* empty */) {

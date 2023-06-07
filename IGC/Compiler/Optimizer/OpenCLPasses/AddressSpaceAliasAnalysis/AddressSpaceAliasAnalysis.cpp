@@ -176,12 +176,11 @@ namespace {
         bool doInitialization(Module& M) override {
             if(M.size() > 0)
             {
-                Result.reset(new AddressSpaceAAResult(
-                getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(
 #if LLVM_VERSION_MAJOR >= 10
-                    *M.begin()
+                auto& F = *M.begin(); // see llvmWrapper/Analysis/TargetLibraryInfo.h
 #endif
-                    ),
+                Result.reset(new AddressSpaceAAResult(
+                    getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(),
                     *getAnalysis<CodeGenContextWrapper>().getCodeGenContext()));
             }
             return false;
