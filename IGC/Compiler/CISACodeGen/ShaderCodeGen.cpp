@@ -1502,8 +1502,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                 // run custom safe opts to potentially get rid of indirect
                 // addressing of private arrays, see visitLoadInst
                 mpm.add(new CustomSafeOptPass());
-                // lower memcpy to be able to promote the constants to immediated with SROA and InstCombine (later)
-                mpm.add(createReplaceUnsupportedIntrinsicsPass(true));
                 mpm.add(createSROAPass());
             }
 
