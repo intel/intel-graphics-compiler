@@ -426,7 +426,7 @@ static bool parseMatrixTypeNameLegacy(const Type *opaqueType, JointMatrixTypeDes
  * %spirv.JointMatrixINTEL._char_32_16_2_3_1 --> B
  * type, rows, cols, layout, scope, use
  * */
-bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
+bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(Type *opaqueType, JointMatrixTypeDescription *outDescription) {
     const PointerType *ptrType = cast<PointerType>(opaqueType);
     StringRef name = IGCLLVM::getNonOpaquePtrEltTy(ptrType)->getStructName();
     StringRef fullName = name;
@@ -472,11 +472,29 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(const Type *opaqueType,
     unsigned legacyLayout = parseNumber(name, &offset);
     offset += 1; /* Skip delimiter, '_' */
     unsigned scope = parseNumber(name, &offset);
-    offset += 1; /* Skip delimiter, '_' */
-    unsigned use = parseNumber(name, &offset);
+
+    /* Use parameter might not be present in older version of SPIR-V. In such
+     * case it should be reconstructed from the layout. Handling of this
+     * special case should be removed once we stop to support legacy SPIR-V
+     * specification.*/
+    unsigned use = UseMax;
+    if (offset < name.size()) {
+        offset += 1; /* Skip delimiter, '_' */
+        use = parseNumber(name, &offset);
+    } else {
+        /* If use parameter is not present deduce the correct use from legacy
+         * layout: */
+        if (legacyLayout == LayoutPackedA) {
+            use = UseMatrixA;
+        } else if (legacyLayout == LayoutPackedB) {
+            use = UseMatrixB;
+        } else {
+            use = UseAccumulator;
+        }
+    }
 
     /* currently unused: */
-    (void)legacyLayout; (void)scope;
+    (void)scope;
 
     if (use == UseMatrixA) {
         outDescription->layout = LayoutPackedA;
@@ -550,7 +568,7 @@ static bool isOrContainsMatrixType(const Type *root)
     return false;
 }
 
-Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointMatrixTypeDescription *outDesc)
+Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixTypeDescription *outDesc)
 {
     IGC_ASSERT_EXIT_MESSAGE(opaqueType && opaqueType->isPointerTy(),
         "Unexpected type in matrix function resolution.");
@@ -573,29 +591,36 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
 
     LLVMContext &ctx = opaqueType->getContext();
 
+    Type *resolvedType = nullptr;
     if (desc.layout == LayoutPackedA) {
         Type *baseType = Type::getInt32Ty(ctx);
         if (m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
-        if (desc.rows == 1)
-            return baseType;
-        return IGCLLVM::FixedVectorType::get(baseType, desc.rows);
+        if (desc.rows == 1) {
+            resolvedType = baseType;
+        } else {
+            resolvedType = IGCLLVM::FixedVectorType::get(baseType, desc.rows);
+        }
     } else if (desc.layout == LayoutPackedB) {
         Type *baseType = Type::getInt32Ty(ctx);
-        return IGCLLVM::FixedVectorType::get(baseType, 8);
+        resolvedType = IGCLLVM::FixedVectorType::get(baseType, 8);
     } else if (desc.layout == LayoutRowMajor) {
         Type *baseType = Type::getInt32Ty(ctx);
         if (desc.isFloating) {
             baseType = Type::getFloatTy(ctx);
         }
-        if (desc.rows == 1)
-            return baseType;
-        return IGCLLVM::FixedVectorType::get(baseType, desc.rows);
+        if (desc.rows == 1) {
+            resolvedType = baseType;
+        } else {
+            resolvedType = IGCLLVM::FixedVectorType::get(baseType, desc.rows);
+        }
     }
 
-    IGC_ASSERT_EXIT_MESSAGE(false, "Failed to resolve matrix type.");
-    return nullptr;
+    IGC_ASSERT_EXIT_MESSAGE(resolvedType != nullptr, "Failed to resolve matrix type.");
+
+    CacheResolvedTypes(opaqueType, resolvedType);
+    return resolvedType;
 }
 
 static uint64_t constIntValue(const Value *v) {
