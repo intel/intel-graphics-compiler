@@ -35,7 +35,7 @@ using namespace llvm;
 using namespace IGC;
 using IGCLLVM::getAlign;
 
-namespace
+namespace IGC
 {
     /// ReplaceIntrinsics pass lowers calls to unsupported intrinsics functions.
     // Two llvm instrinsics are replaced llvm.memcpy and llvm.memset. Both appear in SPIR spec.
@@ -45,7 +45,7 @@ namespace
         typedef void (ReplaceUnsupportedIntrinsics::* MemFuncPtr_t)(IntrinsicInst*);
         static char ID;
 
-        ReplaceUnsupportedIntrinsics();
+        ReplaceUnsupportedIntrinsics(bool replaceOnlyMemCpyWithoutLoop=false);
 
         ~ReplaceUnsupportedIntrinsics() {}
 
@@ -66,6 +66,7 @@ namespace
     private:
         CodeGenContext* m_Ctx;
         std::vector<llvm::IntrinsicInst*> m_instsToReplace;
+        bool m_replaceOnlyMemCpyWithoutLoops;
 
         /// Helper
         ///
@@ -140,7 +141,8 @@ const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > Repl
     { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros }
 };
 
-ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics() : FunctionPass(ID)
+ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics(bool replaceOnlyMemCpyWithoutLoops) :
+    FunctionPass(ID), m_replaceOnlyMemCpyWithoutLoops(replaceOnlyMemCpyWithoutLoops)
 {
     initializeReplaceUnsupportedIntrinsicsPass(*PassRegistry::getPassRegistry());
 }
@@ -517,6 +519,10 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
         // without generating the loop.
         if (NewCount > 0)
         {
+            bool noLoop = NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold);
+            if (m_replaceOnlyMemCpyWithoutLoops && !noLoop) {
+                return;
+            }
             vSrc = Builder.CreateBitCast(SkipBitCast(Src), PointerType::get(VecTys[0], SrcAS), "memcpy_vsrc");
             vDst = Builder.CreateBitCast(SkipBitCast(Dst), PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
 
@@ -530,7 +536,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
             SrcAlign = adjust_align < SrcAlign ? adjust_align : SrcAlign;
 
             // If NewCount is less than the threshold, don't generate loop.
-            if (NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold))
+            if (noLoop)
             {
                 for (unsigned i = 0; i < NewCount; ++i)
                 {
@@ -582,6 +588,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
     }
     else
     {
+        if (m_replaceOnlyMemCpyWithoutLoops) {
+            return;
+        }
         Src = Builder.CreateBitCast(SkipBitCast(Src), TySrcPtrI8, "memcpy_src");
         Dst = Builder.CreateBitCast(SkipBitCast(Dst), TyDstPtrI8, "memcpy_dst");
         // Fall back to i8 copy
@@ -815,6 +824,11 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
         // First, insert main loop before MC.
         if (NewCount > 0)
         {
+            bool noLoop = NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold);
+            if (m_replaceOnlyMemCpyWithoutLoops && !noLoop) {
+                return;
+            }
+
             PointerType* PTy = PointerType::get(VecTys[0], AS);
             vSrc = replicateScalar(Src, VecTys[0], MS);
             vDst = Builder.CreateBitCast(SkipBitCast(Dst), PTy, "memset_vdst");
@@ -828,7 +842,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
             Align = adjust_align < Align ? adjust_align : Align;
 
             // If NewCount is less than the threshold, don't generate loop.
-            if (NewCount < IGC_GET_FLAG_VALUE(MemCpyLoweringUnrollThreshold))
+            if (noLoop)
             {
                 for (unsigned i = 0; i < NewCount; ++i)
                 {
@@ -874,6 +888,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
     }
     else
     {
+        if (m_replaceOnlyMemCpyWithoutLoops) {
+            return;
+        }
         Dst = Builder.CreateBitCast(SkipBitCast(Dst), TyPtrI8, "memset_dst");
         // Fall back to i8 copy
         Instruction* IV = insertLoop(MS, LPCount, "memset");
@@ -1125,7 +1142,9 @@ Value* ReplaceUnsupportedIntrinsics::evaluateCtlz64bit(IGCLLVM::IRBuilder<>* Bui
 
 void ReplaceUnsupportedIntrinsics::visitIntrinsicInst(IntrinsicInst& I) {
     if (m_intrinsicToFunc.find(I.getIntrinsicID()) != m_intrinsicToFunc.end()) {
-        m_instsToReplace.push_back(&I);
+        if (!m_replaceOnlyMemCpyWithoutLoops || isa<MemCpyInst>(&I) || isa<MemSetInst>(&I)) {
+            m_instsToReplace.push_back(&I);
+        }
     }
 }
 
@@ -1140,7 +1159,7 @@ bool ReplaceUnsupportedIntrinsics::runOnFunction(Function& F)
     return !m_instsToReplace.empty();
 }
 
-FunctionPass* IGC::createReplaceUnsupportedIntrinsicsPass()
+FunctionPass* IGC::createReplaceUnsupportedIntrinsicsPass(bool replaceOnlyMemCpyWithoutLoops)
 {
-    return new ReplaceUnsupportedIntrinsics();
+    return new IGC::ReplaceUnsupportedIntrinsics(replaceOnlyMemCpyWithoutLoops);
 }

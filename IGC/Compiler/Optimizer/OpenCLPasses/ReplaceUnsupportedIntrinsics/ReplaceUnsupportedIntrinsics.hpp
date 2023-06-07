@@ -15,5 +15,5 @@ namespace llvm
 
 namespace IGC
 {
-    llvm::FunctionPass* createReplaceUnsupportedIntrinsicsPass();
+    llvm::FunctionPass* createReplaceUnsupportedIntrinsicsPass(bool replaceOnlyMemCpyWithoutLoops=false);
 } // namespace IGC
