@@ -303,6 +303,7 @@ public:
         }
     }
 
+    GenXFunctionGroupAnalysis* GetFGA() { return m_FGA; }
     bool HasStackCalls() const { return m_HasStackCall; }
     bool HasNestedCalls() const { return m_HasNestedCall; }
     bool HasIndirectCalls() const { return m_HasIndirectCall; }

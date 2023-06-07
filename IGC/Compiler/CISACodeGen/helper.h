@@ -231,13 +231,18 @@ namespace IGC
     // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
     bool isA64Ptr(llvm::PointerType* PT, CodeGenContext* pContext);
 
+    // Returns the default dummy kernel to which all symbols are attached
     inline llvm::Function* getIntelSymbolTableVoidProgram(llvm::Module* pM)
     {
         return pM->getFunction(INTEL_SYMBOL_TABLE_VOID_PROGRAM);
     }
+
+    // Check if the current function is a dummy kernel
+    // Note, the module can contain multiple dummy kernels to support SIMD variants.
+    // This function returns true if the current function is any of those variant kernels.
     inline bool isIntelSymbolTableVoidProgram(llvm::Function* pF)
     {
-        return (pF == getIntelSymbolTableVoidProgram(pF->getParent()));
+        return (pF && pF->getName().startswith(INTEL_SYMBOL_TABLE_VOID_PROGRAM));
     }
 
     int getFunctionControl(const CodeGenContext* pContext);

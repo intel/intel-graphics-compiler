@@ -109,16 +109,16 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils* pM,
     pM->setFunctionsInfoItem(ClonedF, Info);
 }
 
-Function* GenXCodeGenModule::cloneFunc(Function* F)
+static Function* cloneFunc(IGCMD::MetaDataUtils* pM, Function* F, string prefix = "", string postfix = "_GenXClone")
 {
     ValueToValueMapTy VMap;
 
     Function* ClonedFunc = CloneFunction(F, VMap);
-    ClonedFunc->setName(F->getName().str() + "_GenXClone");
+    ClonedFunc->setName(prefix + F->getName().str() + postfix);
     //if the function is not added as part of clone, add it
     if (!F->getParent()->getFunction(ClonedFunc->getName()))
         F->getParent()->getFunctionList().push_back(ClonedFunc);
-    CloneFuncMetadata(pMdUtils, ClonedFunc, F);
+    CloneFuncMetadata(pM, ClonedFunc, F);
 
     return ClonedFunc;
 }
@@ -155,7 +155,7 @@ void GenXCodeGenModule::processFunction(Function& F)
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    auto CanMakeIndirectFunc = [&CallerFGs, &pMdUtils, &pCtx](llvm::Function* F)->bool
+    auto CanMakeIndirectFunc = [&](llvm::Function* F)->bool
     {
         // Don't convert subroutines, builtins, or invoke_simd_target
         if (F->hasFnAttribute("visaStackCall") == false ||
@@ -166,17 +166,34 @@ void GenXCodeGenModule::processFunction(Function& F)
         // If SIMD Variant Compilation is not enabled, we have to make sure all callers
         // have the same SIMD sizes, otherwise we cannot make it an indirect call
         int simd_size = 0;
+        unsigned CallersPerSIMD[3] = { 0, 0, 0 };
         for (auto iter : CallerFGs)
         {
             Function* callerKernel = iter.first->getHead();
             auto funcInfoMD = pMdUtils->getFunctionsInfoItem(callerKernel);
             int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
-            if (sz != 0 && simd_size == 0)
-                simd_size = sz;
+            if (sz != 0) {
+                if (simd_size == 0)
+                    simd_size = sz;
+                CallersPerSIMD[(sz >> 4)]++;
+            }
 
             // Callers have varying SIMD size requirements, do not promote
-            if (simd_size != sz)
+            if (IGC_IS_FLAG_DISABLED(EnableSIMDVariantCompilation) && simd_size != sz)
                 return false;
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableSIMDVariantCompilation))
+        {
+            // For MultiSIMD compile, check profitability.
+            // Since we need to clone to each SIMD variant kernel, only promote if the
+            // number of FGs per SIMD is greater than the threshold.
+            if (m_FunctionCloningThreshold > 0 &&
+                CallersPerSIMD[0] <= m_FunctionCloningThreshold &&
+                CallersPerSIMD[1] <= m_FunctionCloningThreshold &&
+                CallersPerSIMD[2] <= m_FunctionCloningThreshold)
+            {
+                return false;
+            }
         }
 
         // If CallWA is needed, we should not convert to indirect call when requiring SIMD32,
@@ -235,7 +252,7 @@ void GenXCodeGenModule::processFunction(Function& F)
         else
         {
             // clone the function, add to this function group
-            auto FCloned = cloneFunc(&F);
+            auto FCloned = cloneFunc(pMdUtils, &F);
 
             // Copy F's property over
             copyFuncProperties(FCloned, &F);
@@ -304,7 +321,7 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
             for (CallGraphNode* Node : (*SCCNodes))
             {
                 Function* F = Node->getFunction();
-                auto FCloned = cloneFunc(F);
+                auto FCloned = cloneFunc(pMdUtils, F);
 
                 // Copy properties
                 copyFuncProperties(FCloned, F);
@@ -480,6 +497,9 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         delete SCCNodes;
     }
 
+    // Clone indirect funcs if SIMD variants are required
+    FGA->CloneFunctionGroupForMultiSIMDCompile(&M);
+
     this->pMdUtils->save(M.getContext());
 
     // Check and set FG attribute flags
@@ -595,22 +615,86 @@ bool GenXFunctionGroupAnalysis::verify()
     return true;
 }
 
-FunctionGroup* GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module* pModule)
+// Returns the default SIMD size to compile Indirect Functions to
+static inline int getDefaultSIMDSize(CodeGenContext* ctx)
 {
-    if (IndirectCallGroup) return IndirectCallGroup;
+    if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
+    {
+        // Forcing SIMD size
+        return ctx->getModuleMetaData()->csInfo.forcedSIMDSize;
+    }
+
+    // By default, use the minimum allowed SIMD for the HW platform
+    int defaultSz = numLanes(ctx->platform.getMinDispatchMode());
+
+    // Library Compilation requires functions to be exported externally, so we should always compile to the default size.
+    // Otherwise, use the sub_group_size set for the dummy kernel (in InsertDummyKernelForSymbolTable pass) if available.
+    if (ctx->getModuleMetaData()->compOpt.IsLibraryCompilation == false)
+    {
+        Function* defaultDummyKernel = IGC::getIntelSymbolTableVoidProgram(ctx->getModule());
+        if (defaultDummyKernel)
+        {
+            auto subGrpSz = ctx->getMetaDataUtils()->getFunctionsInfoItem(defaultDummyKernel)->getSubGroupSize();
+            if (subGrpSz->isSIMD_sizeHasValue())
+                defaultSz = subGrpSz->getSIMD_size();
+        }
+    }
+    return defaultSz;
+}
+
+FunctionGroup* GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module* pModule, int SimdSize)
+{
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto pMdUtil = ctx->getMetaDataUtils();
+    auto pModMD = ctx->getModuleMetaData();
+    int defaultSimd = getDefaultSIMDSize(ctx);
+
+    if (SimdSize == 0)
+    {
+        SimdSize = defaultSimd;
+    }
+
+    IGC_ASSERT(SimdSize == 8 || SimdSize == 16 || SimdSize == 32);
+    int idx = SimdSize >> 4;
+
+    if (IndirectCallGroup[idx] != nullptr) return IndirectCallGroup[idx];
 
     llvm::Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
 
     // No default kernel found
     if (!defaultKernel) return nullptr;
 
-    IndirectCallGroup = getGroup(defaultKernel);
-    if (!IndirectCallGroup)
+    if (SimdSize != defaultSimd)
+    {
+        // Require a SIMD variant version of the dummy kernel.
+        // Create a new dummy kernel clone here to attach all functions with the required SimdSize.
+        std::string fName = std::string(IGC::INTEL_SYMBOL_TABLE_VOID_PROGRAM) + "_GenXSIMD" + std::to_string(SimdSize);
+        Function* pNewFunc = Function::Create(defaultKernel->getFunctionType(), GlobalValue::ExternalLinkage, fName, pModule);
+        BasicBlock* entry = BasicBlock::Create(pModule->getContext(), "entry", pNewFunc);
+        IRBuilder<> builder(entry);
+        builder.CreateRetVoid();
+
+        // Set spirv calling convention and kernel metadata
+        pNewFunc->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
+        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+        FunctionMetaData* funcMD = &pModMD->FuncMD[pNewFunc];
+        funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
+        fHandle->setType(FunctionTypeMD::KernelFunction);
+        pMdUtil->setFunctionsInfoItem(pNewFunc, fHandle);
+        defaultKernel = pNewFunc;
+    }
+    // Set the requested sub_group_size value for this kernel
+    pMdUtil->getFunctionsInfoItem(defaultKernel)->getSubGroupSize()->setSIMD_size(SimdSize);
+    pMdUtil->save(pModule->getContext());
+
+    auto FG = getGroup(defaultKernel);
+    if (!FG)
     {
         setSubGroupMap(defaultKernel, defaultKernel);
-        IndirectCallGroup = createFunctionGroup(defaultKernel);
+        FG = createFunctionGroup(defaultKernel);
     }
-    return IndirectCallGroup;
+    IndirectCallGroup[idx] = FG;
+    return FG;
 }
 
 bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
@@ -726,7 +810,8 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         Function* F = &(*I);
         if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
-        if (F->hasFnAttribute("referenced-indirectly"))
+        if (F->hasFnAttribute("referenced-indirectly") ||
+            F->hasFnAttribute("variant-function-def"))
         {
             IGC_ASSERT(getGroup(F) == nullptr);
             indirectFunctions.push_back(F);
@@ -735,11 +820,146 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     // Add them to the indirect call group
     if (!indirectFunctions.empty())
     {
-        auto IFG = getOrCreateIndirectCallGroup(pModule);
-        IGC_ASSERT(IFG);
+        FunctionGroup* IFG = nullptr;
         for (auto F : indirectFunctions)
         {
+            if (F->hasFnAttribute("variant-function-def"))
+            {
+                // If function variant is already created (meaning this is a rebuild), add them to the correct SIMD group
+                auto [symStr, fName, vecLen] = IGC::ParseVectorVariantFunctionString(F->getName().str());
+                IFG = getOrCreateIndirectCallGroup(pModule, vecLen);
+            }
+            else
+            {
+                IFG = getOrCreateIndirectCallGroup(pModule);
+            }
+            IGC_ASSERT(IFG);
             addToFunctionGroup(F, IFG, F);
+        }
+    }
+}
+
+void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Module* pModule)
+{
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    // Don't clone if forcing SIMD size
+    if (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
+        return;
+
+    int default_size = getDefaultSIMDSize(pCtx);
+
+    // All "referenced-indirectly" funcs should already be added to the default group
+    FunctionGroup* ICG = getOrCreateIndirectCallGroup(pModule);
+    if (!ICG || ICG->isSingle())
+        return;
+
+    for (Function* F : *ICG)
+    {
+        // Check if there are multiple callers with variant SIMD size requirements.
+        int hasReqdSIMD = 0;
+
+        // Only process indirect funcs
+        if (!F->hasFnAttribute("referenced-indirectly"))
+            continue;
+
+        // Assume that if a FG uses the address of a function in the IndirectCallGroup,
+        // then we should compile the IndirectCallGroup with the subgroup size of the user FG.
+        DenseMap<Instruction*, int> UsersMap;
+        for (auto U : F->users())
+        {
+            if (Instruction* inst = dyn_cast<Instruction>(U))
+            {
+                Function* callerF = inst->getParent()->getParent();
+                if (!isIndirectCallGroup(callerF))
+                {
+                    auto FG = getGroup(callerF);
+                    auto funcInfoMD = pMdUtils->getFunctionsInfoItem(FG->getHead());
+                    int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
+                    if (sz != 0)
+                    {
+                        IGC_ASSERT(sz == 8 || sz == 16 || sz == 32);
+                        hasReqdSIMD |= sz;
+                        UsersMap[inst] = sz;
+                    }
+                }
+            }
+        }
+
+        if (hasReqdSIMD > 0)
+        {
+            bool ReqMultipleSIMD = hasReqdSIMD != 8 && hasReqdSIMD != 16 && hasReqdSIMD != 32;
+            if (IGC_IS_FLAG_ENABLED(EnableSIMDVariantCompilation) && ReqMultipleSIMD)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    int simdsz = 1 << (i + 3);
+                    if ((hasReqdSIMD & simdsz) && simdsz != default_size)
+                    {
+                        // Clone the function
+                        // Use the function vector variant syntax for mangling func name
+                        string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
+                        Function* FCloned = cloneFunc(pMdUtils, F, prefix, "");
+                        copyFuncProperties(FCloned, F);
+                        FCloned->addFnAttr("variant-function-def");
+                        auto pNewICG = getOrCreateIndirectCallGroup(pModule, simdsz);
+                        addToFunctionGroup(FCloned, pNewICG, FCloned);
+
+                        for (auto iter : UsersMap)
+                        {
+                            if (iter.second == simdsz)
+                            {
+                                iter.first->replaceUsesOfWith(F, FCloned);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(!ReqMultipleSIMD, "SIMD variant compilation not supported");
+                continue;
+            }
+        }
+    }
+
+    for (Function* F : *ICG)
+    {
+        // In second iteration, process only direct calls.
+        // This is to account for functions converted by FunctionCloningControl, in which
+        // callees of converted indirect functions may be added to the indirect-call group as direct calls.
+        if (F == ICG->getHead() || F->hasFnAttribute("referenced-indirectly"))
+            continue;
+
+        for (int i = 0; i < 3; i++)
+        {
+            int simdsz = 1 << (i + 3);
+            auto ICG = IndirectCallGroup[i];
+            if (ICG && simdsz != default_size)
+            {
+                string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
+                Function* FCloned = cloneFunc(pMdUtils, F, prefix, "");
+                copyFuncProperties(FCloned, F);
+                FCloned->addFnAttr("variant-function-def");
+
+                Function* SubGrpH = useStackCall(F) ? FCloned : ICG->getHead();
+                addToFunctionGroup(FCloned, ICG, SubGrpH);
+
+                // update the edge after clone
+                for (auto UI = F->use_begin(), UE = F->use_end(); UI != UE; /*empty*/)
+                {
+                    // Increment iterator after setting U to change the use.
+                    Use* U = &*UI++;
+                    Function* Caller = cast<CallInst>(U->getUser())->getParent()->getParent();
+                    FunctionGroup* InFG = getGroup(Caller);
+                    Function* InSubGrpH = useStackCall(F) ? FCloned : getSubGroupMap(Caller);
+                    if (InFG == ICG && InSubGrpH == SubGrpH)
+                    {
+                        *U = FCloned;
+                    }
+                }
+            }
         }
     }
 }
@@ -839,7 +1059,9 @@ void GenXFunctionGroupAnalysis::clear()
     for (auto I = begin(), E = end(); I != E; ++I)
         delete* I;
     Groups.clear();
-    IndirectCallGroup = nullptr;
+    IndirectCallGroup[0] = nullptr;
+    IndirectCallGroup[1] = nullptr;
+    IndirectCallGroup[2] = nullptr;
     M = nullptr;
 }
 

@@ -49,7 +49,6 @@ namespace IGC {
         void processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes);
         void setFuncProperties(llvm::CallGraph& CG);
         void copyFuncProperties(llvm::Function* To, llvm::Function* From);
-        llvm::Function* cloneFunc(llvm::Function* F);
         GenXFunctionGroupAnalysis* FGA;
         IGC::IGCMD::MetaDataUtils* pMdUtils;
         bool Modified;
@@ -214,7 +213,7 @@ namespace IGC {
         llvm::DenseMap<const llvm::Function*, uint32_t> FuncProperties;
 
         /// \brief Special group that contains all indirect call functions
-        FunctionGroup* IndirectCallGroup = nullptr;
+        FunctionGroup* IndirectCallGroup[3] = { nullptr, nullptr, nullptr };
 
     public:
         static char ID;
@@ -272,7 +271,10 @@ namespace IGC {
         }
 
         bool isIndirectCallGroup(const FunctionGroup* FG) {
-            return FG && FG == IndirectCallGroup;
+            for (auto ICG : IndirectCallGroup) {
+                if (FG && FG == ICG) return true;
+            }
+            return false;
         }
 
         bool isIndirectCallGroup(const llvm::Function* F) {
@@ -314,7 +316,11 @@ namespace IGC {
         }
 
         /// get or create the function group that holds all indirectly-called functions
-        FunctionGroup* getOrCreateIndirectCallGroup(llvm::Module* pModule);
+        FunctionGroup* getOrCreateIndirectCallGroup(llvm::Module* pModule, int SimdSize = 0);
+
+        /// for multi SIMD variant compilation, clone functions from the default dummy kernel group
+        /// into the SIMD variant version of the dummy kernel.
+        void CloneFunctionGroupForMultiSIMDCompile(llvm::Module* pModule);
 
         /// check if function is stack-called
         bool useStackCall(llvm::Function* F);

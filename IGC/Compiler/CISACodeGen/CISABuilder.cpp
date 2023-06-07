@@ -5554,15 +5554,20 @@ namespace IGC
                     symbolTableList.push_back(std::make_pair(&F, fEntry));
                 }
             }
-            // Ignore variant function definitions
-            else if (F.hasFnAttribute("variant-function-def"))
-            {
-                IGC_ASSERT_MESSAGE(F.use_empty(), "This function should never be accessed directly");
-                continue;
-            }
             // Find all functions in the module we need to export as symbols
             else if (F.hasFnAttribute("referenced-indirectly") && (!F.isDeclaration() || !F.use_empty()))
             {
+                if (IGC_IS_FLAG_ENABLED(EnableSIMDVariantCompilation))
+                {
+                    auto FGA = m_program->GetFGA();
+                    if (FGA && FGA->getGroup(&F))
+                    {
+                        // Only output symbols for functions that exist under the current SIMD kernel variant
+                        if (FGA->getGroupHead(&F) != m_program->entry)
+                            continue;
+                    }
+                }
+
                 vISA::GenSymEntry fEntry;
                 IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
                 memset(fEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
@@ -5588,6 +5593,13 @@ namespace IGC
                 }
                 symbolTableList.push_back(std::make_pair(&F, fEntry));
             }
+        }
+
+        // There is a DEFAULT dummy kernel, and potentially other SIMD variants.
+        // Since Global Variables are not SIMD variant, only attach their symbols to the default dummy kernel.
+        if (IGC::getIntelSymbolTableVoidProgram(pModule) != m_program->entry)
+        {
+            return;
         }
 
         // Export global symbols
