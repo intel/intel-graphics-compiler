@@ -187,8 +187,6 @@ public:
 #endif
                                ) {
     if (BC.ignoreLoopUnrollThresholdOnPragma()) {
-      if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.full"))
-        UP.Threshold = std::numeric_limits<unsigned>::max();
       if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
         UP.Threshold = UP.PartialThreshold =
             std::numeric_limits<unsigned>::max();
@@ -198,6 +196,12 @@ public:
       UP.Threshold = VCUnrollThreshold;
       UP.PartialThreshold = VCUnrollThreshold;
       UP.Partial = true;
+    }
+
+    if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.full")) {
+      UP.Threshold = std::numeric_limits<unsigned>::max();
+      UP.Partial = false;
+      UP.Runtime = false;
     }
   }
 };
