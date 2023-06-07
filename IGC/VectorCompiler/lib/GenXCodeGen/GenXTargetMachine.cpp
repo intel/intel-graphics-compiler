@@ -97,7 +97,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXDeadVectorRemovalPass(registry);
   initializeGenXDepressurizerWrapperPass(registry);
   initializeGenXEarlySimdCFConformancePass(registry);
-  initializeGenXEmulationImportPass(registry);
   initializeGenXEmulatePass(registry);
   initializeGenXExtractVectorizerPass(registry);
   initializeGenXVectorCombinerPass(registry);
@@ -161,6 +160,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXInitBiFConstantsPass(registry);
   initializeGenXTranslateIntrinsicsPass(registry);
   initializeGenXFinalizerPass(registry);
+  initializeGenXBuiltinFunctionsPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -320,8 +320,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   // LowerAggrCopies and InfoAddressSpace
   vc::addPass(PM, createTargetTransformInfoWrapperPass(getTargetIRAnalysis()));
 
-  if (BackendConfig.isBiFEmulationCompilation())
-    vc::addPass(PM, createGenXEmulationModulePreparePass());
+  if (BackendConfig.isBiFCompilation())
+    vc::addPass(PM, createGenXBiFPreparePass());
 
   vc::addPass(PM, createSROAPass());
   vc::addPass(PM, createEarlyCSEPass());
@@ -489,13 +489,15 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXLegalization.cpp
   vc::addPass(PM, createGenXLegalizationPass());
 
-  // emulation BiF compilation mode stops here.
-  if (BackendConfig.isBiFEmulationCompilation())
-    return false;
-
-  vc::addPass(PM, createGenXEmulationImportPass());
   /// .. include:: GenXEmulate.cpp
   vc::addPass(PM, createGenXEmulatePass());
+
+  // BiF compilation mode stops here
+  if (BackendConfig.isBiFCompilation())
+    return false;
+  /// .. include:: GenXBuiltinFunctions.cpp
+  vc::addPass(PM, createGenXBuiltinFunctionsPass());
+
   /// .. include:: GenXPromoteStatefulToBindless.cpp
   vc::addPass(PM, createGenXPromoteStatefulToBindlessPass());
   /// .. include:: GenXDeadVectorRemoval.cpp

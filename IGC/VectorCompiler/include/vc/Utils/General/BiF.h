@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,6 +53,8 @@ FunctionNameSeq collectFunctionNamesIf(const llvm::Module &M, PredT Pred) {
 void internalizeImportedFunctions(const llvm::Module &M,
                                   const FunctionNameSeq &FuncNames,
                                   bool SetAlwaysInline);
+
+constexpr inline const char LibraryFunctionPrefix[] = "__vc_builtin_";
 
 } // namespace vc
 

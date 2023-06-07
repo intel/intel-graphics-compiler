@@ -531,9 +531,9 @@ fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr,
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
-  ExtData.VCEmulationBIFModule =
-      getVCModuleBufferForArch<vc::bif::RawKind::Emulation>(CPUStr);
-  if (!ExtData.VCEmulationBIFModule)
+  ExtData.VCBuiltinsBIFModule =
+      getVCModuleBufferForArch<vc::bif::RawKind::Builtins>(CPUStr);
+  if (!ExtData.VCBuiltinsBIFModule)
     return {};
   ExtData.VCSPIRVBuiltinsBIFModule =
       getVCModuleBuffer<vc::bif::RawKind::SPIRVBuiltins>();

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -85,7 +85,7 @@ define i64 @__cm_intrinsic_impl_fp2si_base(float) #1 {
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0
 
 attributes #0 = { nounwind readnone speculatable }
-attributes #1 = { "VC.Emulation.Routine" }
+attributes #1 = { "VC.Builtin" }
 
 
 !llvm.dbg.cu = !{!0}
