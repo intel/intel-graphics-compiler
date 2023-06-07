@@ -247,7 +247,19 @@ class IR_Builder;
 class G4_SendDesc {
   friend class G4_InstSend;
 
+public:
+  enum class Kind {
+    INVALID,
+    RAW, // G4_SendDescRaw
+  };
+
 protected:
+  const Kind kind;
+
+  const IR_Builder &irb;
+
+  const SFID sfid;
+
   // The execution size for this message.
   G4_ExecSize execSize;
 
@@ -255,17 +267,6 @@ protected:
   void setExecSize(G4_ExecSize v) { execSize = v; }
 
 public:
-  enum class Kind {
-    INVALID,
-    RAW, // G4_SendDescRaw
-  };
-
-  Kind kind;
-
-  SFID sfid;
-
-  const IR_Builder &irb;
-
   G4_SendDesc(Kind k, SFID _sfid, const IR_Builder &builder)
       : kind(k), sfid(_sfid), execSize(g4::SIMD_UNDEFINED), irb(builder) {}
   G4_SendDesc(Kind k, SFID _sfid, G4_ExecSize _execSize,
@@ -274,7 +275,6 @@ public:
 
   SFID getSFID() const { return sfid; }
 
-  // execSize: need to set it in the ctor
   G4_ExecSize getExecSize() const { return execSize; }
 
   bool isRaw() const { return kind == Kind::RAW; }

@@ -547,8 +547,7 @@ G4_SendDescRaw::G4_SendDescRaw(uint32_t fCtrl, uint32_t regs2rcv,
   extDesc.layout.extMsgLength = extMsgLen;
   extDesc.layout.extFuncCtrl = extFCtrl;
 
-  src1Len = extMsgLen;     // [10:6]
-  sfid = fID;
+  src1Len = extMsgLen; // ExDesc[10:6] on some platforms; in EU ISA on others
 
   accessType = access;
   funcCtrlValid = true;
@@ -1419,7 +1418,6 @@ size_t G4_SendDescRaw::getDstLenBytes() const {
     return 16 * getOwordsAccessed(); // OWords
 #if 0
     // Due to VMIT-9224, comment this out!
-    // Use macro fo easy testing.
     } else if (isByteScatterRW() && isDataPortRead()) {
         vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
         uint16_t nbytes = getElemsPerAddr();
