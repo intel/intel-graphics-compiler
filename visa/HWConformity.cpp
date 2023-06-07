@@ -6044,7 +6044,7 @@ bool HWConformity::fixAddcSubb(G4_BB *bb) {
 
       if (carryUse == NULL) {
         // can't find the move using acc, skip this addc/subb
-        vISA_ASSERT(false, "unable to find addc/subc consumer");
+        VISA_DEBUG(std::cout << "unable to find addc/subc consumer\n");
         continue;
       }
 

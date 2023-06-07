@@ -5166,15 +5166,24 @@ unsigned G4_Predicate::computeRightBound(uint8_t exec_size) {
   bitVec[0] = 0;
   bitVec[1] = 0;
 
-  uint16_t group_size = (uint16_t)getPredCtrlGroupSize();
-  uint16_t totalBits = (exec_size > group_size) ? exec_size : group_size;
+  if (control == PRED_ALL_WHOLE || control == PRED_ANY_WHOLE) {
+    // If control is "all" or "any", the left bound is 0 and the right
+    // bound is the the declare size
+    left_bound = 0;
+    uint16_t totalBits = getTopDcl()->getNumberFlagElements();
+    right_bound = totalBits - 1;
+    bitVec[0] = totalBits == 32 ? 0xFFFFFFFF : (1 << totalBits) - 1;
+  } else {
+    uint16_t group_size = (uint16_t)getPredCtrlGroupSize();
+    uint16_t totalBits = (exec_size > group_size) ? exec_size : group_size;
 
-  if (inst)
-    left_bound = inst->getMaskOffset();
+    if (inst)
+      left_bound = inst->getMaskOffset();
 
-  right_bound = left_bound + totalBits - 1;
+    right_bound = left_bound + totalBits - 1;
 
-  bitVec[0] = exec_size == 32 ? 0xFFFFFFFF : (1 << exec_size) - 1;
+    bitVec[0] = exec_size == 32 ? 0xFFFFFFFF : (1 << exec_size) - 1;
+  }
 
   return right_bound;
 }

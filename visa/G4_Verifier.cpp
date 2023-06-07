@@ -87,7 +87,8 @@ bool G4Verifier::verifyInst(G4_INST *inst) {
         passIndex == Optimizer::PI_localCopyPropagation ||
         passIndex == Optimizer::PI_localInstCombine ||
         passIndex == Optimizer::PI_reassociateConst ||
-        passIndex == Optimizer::PI_cselPeepHoleOpt) {
+        passIndex == Optimizer::PI_cselPeepHoleOpt ||
+        passIndex == Optimizer::PI_dce) {
       // def-use chain should be valid after these passes
       return verifyDefUseChain(inst);
     }

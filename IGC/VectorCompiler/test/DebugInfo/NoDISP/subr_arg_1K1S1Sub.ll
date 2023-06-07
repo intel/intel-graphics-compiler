@@ -10,7 +10,7 @@
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
-; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
+; RUN: -finalizer-opts='-generateDebugInfo -dce 0' -o /dev/null
 
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_kernel_dwarf.elf | FileCheck %s
 
