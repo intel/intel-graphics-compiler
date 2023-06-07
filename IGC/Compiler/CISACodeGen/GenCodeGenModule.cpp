@@ -159,7 +159,7 @@ void GenXCodeGenModule::processFunction(Function& F)
     {
         // Don't convert subroutines, builtins, or invoke_simd_target
         if (F->hasFnAttribute("visaStackCall") == false ||
-            F->hasFnAttribute(llvm::Attribute::Builtin) ||
+            F->hasFnAttribute("OclBuiltin") ||
             F->hasFnAttribute("invoke_simd_target"))
             return false;
 

@@ -387,7 +387,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                     IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
                 }
                 else {
-                    pFunc->addFnAttr(llvm::Attribute::Builtin);
+                    pFunc->addFnAttr("OclBuiltin");
                     Explore(pFunc);
                 }
             }
@@ -659,7 +659,7 @@ bool BIImport::runOnModule(Module& M)
                     IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
                 }
                 else {
-                    pFunc->addFnAttr(llvm::Attribute::Builtin);
+                    pFunc->addFnAttr("OclBuiltin");
                     Explore(pFunc);
                 }
             }

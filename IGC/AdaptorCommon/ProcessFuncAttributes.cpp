@@ -293,7 +293,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (F->hasExternalLinkage() && F->getCallingConv() == CallingConv::SPIR_FUNC)
         {
             // builtins should not be externally linked, they will always be resolved by IGC
-            return !(F->hasFnAttribute(llvm::Attribute::Builtin)
+            return !(F->hasFnAttribute("OclBuiltin")
                 || F->getName().startswith("__builtin_")
                 || F->getName().startswith("__igcbuiltin_")
                 || F->getName().startswith("llvm.")
@@ -372,7 +372,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             continue;
         }
         // Set noinline on optnone user functions.
-        if (!F->hasFnAttribute(llvm::Attribute::Builtin) &&
+        if (!F->hasFnAttribute("OclBuiltin") &&
             F->hasFnAttribute(llvm::Attribute::OptimizeNone))
         {
             SetNoInline(F);
@@ -419,7 +419,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // optimizations on builtins.
         if (isOptDisable)
         {
-            if (!F->hasFnAttribute(llvm::Attribute::Builtin))
+            if (!F->hasFnAttribute("OclBuiltin"))
             {
                 F->addFnAttr(llvm::Attribute::OptimizeNone);
             }
@@ -502,7 +502,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         bool mustAlwaysInline = false;
 
         // Add always attribute if function is a builtin
-        if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
+        if (F->hasFnAttribute("OclBuiltin") ||
             F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
         {
             // OptNone builtins are special versions of builtins assuring that all
