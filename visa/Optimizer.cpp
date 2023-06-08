@@ -7379,6 +7379,9 @@ void Optimizer::lowerMadSequence() {
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
     return;
 
+  if (!builder.hasMacl())
+    return;
+
   for (G4_BB *bb : fg) {
     // Preprocess this basic block. If no mad sequence found then skip to
     // the next basic block right away.
