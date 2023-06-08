@@ -56,6 +56,8 @@ public:
   LiveElements(Type *Ty, bool IsLive = false);
   LiveElements(const ArrayRef<SmallBitVector> LE)
       : LiveElems(LE.begin(), LE.end()) {}
+  LiveElements(const SmallBitVector LE)
+      : LiveElems({LE}) {}
 
   iterator begin() { return LiveElems.begin(); }
   const_iterator begin() const { return LiveElems.begin(); }
@@ -121,6 +123,25 @@ public:
 #endif
 private:
   ValueMap<const Value *, genx::LiveElements> LiveMap;
+
+  LiveElements getBitCastLiveElements(const BitCastInst *BCI,
+                                      const LiveElements &InstLiveElems) const;
+  LiveElements getExtractValueLiveElements(const ExtractValueInst *EVI,
+                                           unsigned OperandNo,
+                                           const LiveElements &InstLiveElems) const;
+  LiveElements getInsertValueLiveElements(const InsertValueInst *IVI,
+                                          unsigned OperandNo,
+                                          const LiveElements &InstLiveElems) const;
+  LiveElements getRdRegionLiveElements(const Instruction *RdR,
+                                       unsigned OperandNo,
+                                       const LiveElements &InstLiveElems) const;
+  LiveElements getWrRegionLiveElements(const Instruction *WrR,
+                                       unsigned OperandNo,
+                                       const LiveElements &InstLiveElems) const;
+  LiveElements getTwoDstInstLiveElements(const LiveElements &InstLiveElems) const;
+  LiveElements getOperandLiveElements(const Instruction *Inst,
+                                      unsigned OperandNo,
+                                      const LiveElements &InstLiveElems) const;
 };
 } // namespace genx
 
