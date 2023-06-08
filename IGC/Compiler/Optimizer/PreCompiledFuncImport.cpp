@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IRReader/IRReader.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Builtins/PreCompiledFuncLibrary.hpp"
 #include "Compiler/Builtins/LibraryIntS32DivRemEmu.hpp"
@@ -2351,7 +2352,7 @@ void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function* F)
     }
     m_pMdUtils->setFunctionsInfoItem(F, FH);
 
-    if (!usePrivateMemory(F))
+    if (!usePrivateMemory(F) || AddImplicitArgs::hasStackCallInCG(F))
         return;
 
     // Add private base

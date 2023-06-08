@@ -257,6 +257,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     bool isOptDisable = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
     auto FCtrl = getFunctionControl(pCtx);
 
+    // For controling inline/noinline on DP math builtin functions.
+    pCtx->checkDPEmulationEnabled();
+
     std::set<llvm::Function *> fastMathFunct;
     GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
     if (gv_fastMath)
@@ -303,26 +306,22 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         return false;
     };
 
-    // Returns true if a function is built-in double math function
-    // Our implementations of double math built-in functions are precise only
-    // if we don't make any fast relaxed math optimizations.
-    auto IsBuiltinFP64 = [](Function* F)->bool
-    {
-        StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
-        if (F->getName().startswith(buildinPrefixOpenCL))
+    static std::set<StringRef> mathFunctionNames = {
+#define _OCL_EXT_OP(name, num) #name,
+#include "SPIRV/libSPIRV/OpenCL.stdfuncs.h"
+#undef _OCL_EXT_OP
+    };
+
+    // If a builtin func is a FP64 one with the given prefix, return true.
+    auto IsBuiltinFP64WithPrefix = [](Function* F, StringRef Prefix) {
+        if (F->getName().startswith(Prefix))
         {
             if (F->getReturnType()->isDoubleTy() ||
                 (F->getReturnType()->isVectorTy() && F->getReturnType()->getContainedType(0)->isDoubleTy()))
             {
                 auto functionName = F->getName();
-                functionName = functionName.drop_front(buildinPrefixOpenCL.size());
+                functionName = functionName.drop_front(Prefix.size());
                 functionName = functionName.take_front(functionName.find('_'));
-
-                static std::set<StringRef> mathFunctionNames = {
-#define _OCL_EXT_OP(name, num) #name,
-#include "SPIRV/libSPIRV/OpenCL.stdfuncs.h"
-#undef _OCL_EXT_OP
-                };
 
                 if (mathFunctionNames.find(functionName) != mathFunctionNames.end()) {
                     return true;
@@ -330,6 +329,15 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
         return false;
+    };
+
+    // Returns true if a function is built-in double math function
+    // Our implementations of double math built-in functions are precise only
+    // if we don't make any fast relaxed math optimizations.
+    auto IsBuiltinFP64 = [&IsBuiltinFP64WithPrefix](Function* F)->bool
+    {
+        StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
+        return IsBuiltinFP64WithPrefix(F, buildinPrefixOpenCL);
     };
 
     // Process through all functions and add the appropriate function attributes
@@ -501,6 +509,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // Flag for function calls where alwaysinline must be true
         bool mustAlwaysInline = false;
 
+        // If FunctionControl is default, 'defaultStackCall' is used to
+        // control whether a call is a subroutine call or function call.
+        // If FunctionControl isn't default, FunctionControl decides and
+        // 'defaultStackCall' has no effect.
+        bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall);
+
         // Add always attribute if function is a builtin
         if (F->hasFnAttribute("OclBuiltin") ||
             F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
@@ -514,6 +528,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 F->removeFnAttr(llvm::Attribute::OptimizeNone);
                 // Remove the noinline attribute to allow IGC inlining heuristic to determine inlining
                 F->removeFnAttr(llvm::Attribute::NoInline);
+            }
+            else if (pCtx->m_hasDPEmu &&
+                IsBuiltinFP64WithPrefix(F, igc_spv::kLLVMName::builtinIMFPrefixSVML))
+            {
+                defaultStackCall = true;
+                mustAlwaysInline = false;
             }
             else
             {
@@ -563,9 +583,10 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (FCtrl == FLAG_FCALL_DEFAULT)
         {
             // Set default function call mode to stack call
-            if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall))
+            if (defaultStackCall)
             {
                 F->addFnAttr("visaStackCall");
+                SetNoInline(F);
             }
             // default stackcall for -O0, or when FE force stackcall using attribute
             if (isOptDisable || F->hasFnAttribute("igc-force-stackcall"))

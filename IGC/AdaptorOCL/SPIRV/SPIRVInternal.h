@@ -726,6 +726,7 @@ SPIRVImageManglingMap;
 namespace kLLVMName {
   const static char builtinPrefix[] = "__builtin_spirv_";
   const static char builtinExtInstPrefixOpenCL[] = "__builtin_spirv_OpenCL_";
+  const static char builtinIMFPrefixSVML[] = "__ocl_svml_";
 }
 
 namespace kSPIRVImageSampledTypeName {
