@@ -1379,9 +1379,10 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
     }
 
     if (curInst->isDpas()) {
+      bool tryGroup = true;
       std::list<G4_INST *>::reverse_iterator iNextInst = iInst;
       iNextInst++;
-      if (iNextInst != iInstEnd) {
+      if (tryGroup && iNextInst != iInstEnd) {
         G4_INST *nextInst = *iNextInst;
         BitSet liveSrc(totalGRFNum, false);
         BitSet liveDst(totalGRFNum, false);
@@ -1391,10 +1392,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         // group continuous dpas in the same node if they can potentially form a
         // dpas macro
         while (nextInst->isDpas()) {
-          bool canGroup = false;
-            canGroup =
-                hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc);
-          if (!canGroup)
+          if (!hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc))
             break;
 
           // Pushed to the same node
@@ -2703,19 +2701,27 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     // Pointer to node to be scheduled.
     Node *scheduled = readyList.top();
     readyList.pop();
-    // Apply scheduling heuristics
-    // TODO: add fall-through behavior to try different heuristics.
-    if (scheduleForSuppression()) {
-      scheduled = applySuppressionHeuristic(scheduled, lastScheduled);
-    } else if (scheduleForBankConflictReduction(scheduled)) {
-      scheduled =
+    // Allow fall-through behavior to try different heuristics if possible.
+    // The heuristics are ordered based on their priority.
+    Node *heuCandidate = nullptr;
+    if (!heuCandidate && scheduleForSuppression()) {
+      heuCandidate = applySuppressionHeuristic(scheduled, lastScheduled);
+    }
+    if (!heuCandidate && scheduleForBankConflictReduction(scheduled)) {
+      heuCandidate =
           applyBankConflictReductionHeuristic(scheduled, lastScheduled);
-    } else if (scheduleForB2BMathReduction(scheduled)) {
-      scheduled = applyB2BMathReductionHeuristic(scheduled, lastScheduled);
-    } else if (scheduleForWAWSubregHazardReduction()) {
-      scheduled =
+    }
+    if (!heuCandidate && scheduleForB2BMathReduction(scheduled)) {
+      heuCandidate =
+          applyB2BMathReductionHeuristic(scheduled, lastScheduled);
+    }
+    if (!heuCandidate && scheduleForWAWSubregHazardReduction()) {
+      heuCandidate =
           applyWAWSubregHazardReductionHeuristic(scheduled, lastScheduled);
-    } else if (scheduleForWriteCombine(scheduled)) {
+    }
+    // Note that write combine heuristic seems special. If successful, it'll
+    // schedule multiple nodes together and continue to the next iteration.
+    if (!heuCandidate && scheduleForWriteCombine(scheduled)) {
       windowWriteCombine block;
       applyWriteCombineHeuristic(block, scheduled);
       if (block.isGoodBlock()) {
@@ -2735,6 +2741,8 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
         continue;
       }
     }
+    if (heuCandidate)
+      scheduled = heuCandidate;
 
     vISA_ASSERT(scheduled, "Must have found an instruction to schedule by now");
 
