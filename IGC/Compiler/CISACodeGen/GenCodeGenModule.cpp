@@ -787,7 +787,6 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
                         // Invoke_simd targets use stack call by convention.
                         // Calling a func decl indicates unknown CG
                         hasStackCall = true;
-                        FG->m_hasIndirectCall = true;
                         FG->m_hasPartialCallGraph = true;
                     }
 
