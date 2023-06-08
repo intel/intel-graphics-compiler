@@ -500,7 +500,7 @@ DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced 
 DECLARE_IGC_REGKEY(bool, UniformMemOpt4OW,              false, "increase uniform memory optimization from 2 owords to 4 owords", true)
 DECLARE_IGC_REGKEY(bool, EnableFunctionPointer,         true,  "Enables support for function pointers and indirect calls", false)
 DECLARE_IGC_REGKEY(bool, EnableIndirectCallOptimization, true, "Enables inlining indirect calls by comparing function addresses", false)
-DECLARE_IGC_REGKEY(bool, EnableSIMDVariantCompilation,  false, "Enables compiling kernels in variant SIMD sizes", false)
+DECLARE_IGC_REGKEY(bool, EnableSIMDVariantCompilation,  true,  "Enables compiling kernels in variant SIMD sizes", false)
 DECLARE_IGC_REGKEY(bool, ForceFFIDOverwrite,            false, "Force overwriting ffid in sr0.0", false)
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          true,  "Enables setting GTPin context flags by reading the input to the compiler adapters", false)
 DECLARE_IGC_REGKEY(bool, EnableRuntimeFuncAttributePatching, false,  "Creates a relocation entry to let runtime calculate the max call depth and patch required scratch space usage", true)

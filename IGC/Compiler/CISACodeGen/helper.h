@@ -232,9 +232,17 @@ namespace IGC
     bool isA64Ptr(llvm::PointerType* PT, CodeGenContext* pContext);
 
     // Returns the default dummy kernel to which all symbols are attached
-    inline llvm::Function* getIntelSymbolTableVoidProgram(llvm::Module* pM)
+    inline llvm::Function* getIntelSymbolTableVoidProgram(llvm::Module* pM, int SimdSz = 0)
     {
-        return pM->getFunction(INTEL_SYMBOL_TABLE_VOID_PROGRAM);
+        // Get the default kernel if no Simd Size is specified
+        if (SimdSz == 0)
+            return pM->getFunction(INTEL_SYMBOL_TABLE_VOID_PROGRAM);
+        else {
+            IGC_ASSERT(SimdSz == 8 || SimdSz == 16 || SimdSz == 32);
+            // SIMD variants of the dummy kernel are created in GenXCodeGenModule, get the variant if it exists
+            std::string fName = std::string(INTEL_SYMBOL_TABLE_VOID_PROGRAM) + "_GenXSIMD" + std::to_string(SimdSz);
+            return pM->getFunction(fName.c_str());
+        }
     }
 
     // Check if the current function is a dummy kernel

@@ -213,7 +213,8 @@ namespace IGC {
         llvm::DenseMap<const llvm::Function*, uint32_t> FuncProperties;
 
         /// \brief Special group that contains all indirect call functions
-        FunctionGroup* IndirectCallGroup[3] = { nullptr, nullptr, nullptr };
+        /// SIMD variants stored with SIMD8 in idx 0, SIMD16 in idx 1, SIMD32 in idx 2
+        llvm::SmallVector<FunctionGroup*, 3> IndirectCallGroup{ nullptr, nullptr, nullptr };
 
     public:
         static char ID;

@@ -1058,9 +1058,7 @@ void GenXFunctionGroupAnalysis::clear()
     for (auto I = begin(), E = end(); I != E; ++I)
         delete* I;
     Groups.clear();
-    IndirectCallGroup[0] = nullptr;
-    IndirectCallGroup[1] = nullptr;
-    IndirectCallGroup[2] = nullptr;
+    for (auto FG : IndirectCallGroup) FG = nullptr;
     M = nullptr;
 }
 
