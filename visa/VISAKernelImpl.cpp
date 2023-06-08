@@ -634,24 +634,32 @@ void KERNEL_INFO::collectStats(G4_Kernel &kernel) {
 // filename is the full path of output file name without the extension
 void VISAKernelImpl::dumpPerfStatsInJson(const std::string &filename) {
   std::string outputName = filename + ".stats.json";
-  if (allowDump(*m_options, outputName)) {
-    std::ofstream statsOutput(outputName, std::ofstream::out);
-    if (!statsOutput) {
-      std::cerr << outputName << ": failed to open file\n";
-    } else {
-      if (!m_options->getOption(vISA_DumpPerfStatsVerbose)) {
-        llvm::json::Value jv =
-            llvm::json::Object{{m_name, m_jitInfo->stats.toJSON()}};
-        statsOutput << llvm::formatv("{0:2}", jv).str();
-      } else {
-        llvm::json::Value jv = llvm::json::Object{
-            {m_name,
-             {m_jitInfo->stats.toJSON(), m_jitInfo->statsVerbose.toJSON()}}};
-        statsOutput << llvm::formatv("{0:2}", jv).str();
-      }
+  if (!allowDump(*m_options, outputName)) {
+    return;
+  }
+  std::ofstream statsOutput(outputName, std::ofstream::out);
+  if (!statsOutput) {
+    std::cerr << outputName << ": failed to open file\n";
+    return;
+  }
+
+  llvm::json::Value pv = m_jitInfo->stats;
+  llvm::json::Object* po = pv.getAsObject();
+  po->insert({"name", m_name});
+
+  if (m_options->getOption(vISA_DumpPerfStatsVerbose)) {
+    llvm::json::Value pvv = m_jitInfo->statsVerbose;
+    llvm::json::Object* pvo = pvv.getAsObject();
+    for (auto itr = pvo->begin(); itr != pvo->end(); ++itr) {
+      po->insert({itr->first, itr->second});
     }
   }
+
+  llvm::json::Value output_jv = llvm::json::Array({std::move(pv)});
+  statsOutput << llvm::formatv("{0:2}", output_jv).str() << "\n";
 }
+
+
 
 void VISAKernelImpl::recordFinalizerInfo() {
   auto jitInfo = m_builder->getJitInfo();

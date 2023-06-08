@@ -8,50 +8,53 @@ SPDX-License-Identifier: MIT
 
 #include "JitterDataStruct.h"
 
-using namespace vISA;
+namespace vISA {
 
-llvm::json::Value PERF_STATS::toJSON() {
+llvm::json::Value toJSON(const PERF_STATS &p) {
   // llvm Json cannot support u64 type, force to print string for binaryHash
   return llvm::json::Object{
-    {"binaryHash", std::to_string(binaryHash)},
-    {"numGRFUsed", numGRFUsed},
-    {"numGRFTotal", numGRFTotal},
-    {"numThreads", numThreads},
-    {"numAsmCount", numAsmCountUnweighted},
-    {"numFlagSpillStore", numFlagSpillStore},
-    {"numFlagSpillLoad", numFlagSpillLoad},
-    {"numGRFSpillFill", numGRFSpillFillWeighted},
-    {"GRFSpillSize", spillMemUsed},
-    {"numCycles", numCycles},
-    {"maxGRFPressure", maxGRFPressure}
+    {"binaryHash", std::to_string(p.binaryHash)},
+    {"numGRFUsed", p.numGRFUsed},
+    {"numGRFTotal", p.numGRFTotal},
+    {"numThreads", p.numThreads},
+    {"numAsmCount", p.numAsmCountUnweighted},
+    {"numFlagSpillStore", p.numFlagSpillStore},
+    {"numFlagSpillLoad", p.numFlagSpillLoad},
+    {"numGRFSpillFill", p.numGRFSpillFillWeighted},
+    {"GRFSpillSize", p.spillMemUsed},
+    {"numCycles", p.numCycles},
+    {"maxGRFPressure", p.maxGRFPressure}
   };
 }
 
-llvm::json::Value PERF_STATS_VERBOSE::toJSON() {
+llvm::json::Value toJSON(const PERF_STATS_VERBOSE &p) {
   llvm::json::Object jsonObject = llvm::json::Object{
-      {"BCNum", BCNum},
-      {"numByteRMWs", numByteRMWs},
-      {"numALUInst", numALUInst},
-      {"accSubDef", accSubDef},
-      {"accSubUse", accSubUse},
-      {"accSubCandidateDef", accSubCandidateDef},
-      {"accSubCandidateUse", accSubCandidateUse},
-      {"syncInstCount", syncInstCount},
-      {"tokenReuseCount", tokenReuseCount},
-      {"singlePipeAtOneDistNum", singlePipeAtOneDistNum},
-      {"allAtOneDistNum", allAtOneDistNum},
-      {"AfterWriteTokenDepCount", AfterWriteTokenDepCount},
+      {"BCNum", p.BCNum},
+      {"numByteRMWs", p.numByteRMWs},
+      {"numALUInst", p.numALUInst},
+      {"accSubDef", p.accSubDef},
+      {"accSubUse", p.accSubUse},
+      {"accSubCandidateDef", p.accSubCandidateDef},
+      {"accSubCandidateUse", p.accSubCandidateUse},
+      {"syncInstCount", p.syncInstCount},
+      {"tokenReuseCount", p.tokenReuseCount},
+      {"singlePipeAtOneDistNum", p.singlePipeAtOneDistNum},
+      {"allAtOneDistNum", p.allAtOneDistNum},
+      {"AfterWriteTokenDepCount", p.AfterWriteTokenDepCount},
   };
-  if (RAIterNum) {
-    jsonObject.insert({"RAIterNum", RAIterNum});
-    jsonObject.insert({"varNum", varNum});
-    jsonObject.insert({"globalVarNum", globalVarNum});
-    jsonObject.insert({"maxRP", maxRP});
-    jsonObject.insert({"maxNeighbors", maxNeighbors});
-    jsonObject.insert({"avgNeighbors", avgNeighbors});
-    jsonObject.insert({"normIntfNum", normIntfNum});
-    jsonObject.insert({"augIntfNum", augIntfNum});
+  if (p.RAIterNum) {
+    jsonObject.insert({"RAIterNum", p.RAIterNum});
+    jsonObject.insert({"varNum", p.varNum});
+    jsonObject.insert({"globalVarNum", p.globalVarNum});
+    jsonObject.insert({"maxRP", p.maxRP});
+    jsonObject.insert({"maxNeighbors", p.maxNeighbors});
+    jsonObject.insert({"avgNeighbors", p.avgNeighbors});
+    jsonObject.insert({"normIntfNum", p.normIntfNum});
+    jsonObject.insert({"augIntfNum", p.augIntfNum});
   }
 
   return jsonObject;
 }
+
+} // namespace vISA
+

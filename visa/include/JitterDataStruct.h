@@ -73,9 +73,6 @@ public:
   uint32_t staticCycle = 0;
   uint32_t loopNestedStallCycle = 0;
   uint32_t loopNestedCycle = 0;
-
-public:
-  llvm::json::Value toJSON();
 };
 
 // PERF_STATS_VERBOSE - the verbose vISA static performance stats.
@@ -147,8 +144,6 @@ struct PERF_STATS_VERBOSE {
   uint32_t normIntfNum = 0;
   // Number of SIMD inteference edges.
   uint32_t augIntfNum = 0;
-public:
-  llvm::json::Value toJSON();
 };
 
 struct FINALIZER_INFO {
@@ -201,5 +196,7 @@ struct FINALIZER_INFO {
   PERF_STATS_VERBOSE statsVerbose;
 };
 
+llvm::json::Value toJSON(const PERF_STATS &p);
+llvm::json::Value toJSON(const PERF_STATS_VERBOSE &p);
 } // namespace vISA
 #endif // JITTERDATASTRUCT_
