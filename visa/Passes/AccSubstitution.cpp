@@ -428,10 +428,6 @@ void AccSubPass::getInstACCAttributes(G4_INST *inst, int &lastUse,
     Gen4_Operand_Number opndNum = use.second;
     lastUseId = std::max(lastUseId, useInst->getLocalId());
 
-    if (!useInst->isSrcNum(opndNum)) {
-      continue;
-    }
-
     int srcId = useInst->getSrcNum(opndNum);
     G4_Operand *src = useInst->getSrc(srcId);
 
@@ -501,8 +497,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
       threeSrcUses.push_back(useInst);
       switch (opndNum) {
       case Opnd_src2:
-        if (!kernel.fg.builder->relaxedACCRestrictions3() &&
-            !kernel.fg.builder->removedAccRestrictionsAsGRF()) {
+        if (!kernel.fg.builder->relaxedACCRestrictions3()) {
           // If swapAccSub is disabled, skip further checking on src2.
           if (!SwappableUses)
             return false;
@@ -551,8 +546,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
         // Record swappable use if there is restriction on acc usage on
         // src2 and swapAccSub is enabled and that use is a commutative
         // one.
-        if (!kernel.fg.builder->relaxedACCRestrictions3() &&
-            !kernel.fg.builder->removedAccRestrictionsAsGRF() && SwappableUses &&
+        if (!kernel.fg.builder->relaxedACCRestrictions3() && SwappableUses &&
             isCommutativeOnSrc12(useInst)) {
           // As src2 cannot use acc, acc substitution is only
           // feasible if src1 and src2 are different.
@@ -643,8 +637,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
     int srcId = useInst->getSrcNum(opndNum);
     G4_Operand *src = useInst->getSrc(srcId);
 
-    if ((!kernel.fg.builder->removedAccRestrictionsAsGRF() &&
-                dst->getType() != src->getType()) ||
+    if (dst->getType() != src->getType() ||
         kernel.fg.globalOpndHT.isOpndGlobal(src) ||
         dst->compareOperand(src, builder) != Rel_eq) {
       return false;
@@ -738,7 +731,6 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
       // Note that we only need to check for explicit mac here since we will not
       // change mad to mac
       if (!builder.relaxedACCRestrictions3() &&
-          !builder.removedAccRestrictionsAsGRF() &&
           (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac)) {
         if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg() ||
             useInst->getSrc(0)->compareOperand(useInst->getSrc(1), builder) ==
@@ -752,7 +744,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
             !IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(1)->getType())) {
           return false;
         }
-      }// else if (builder.removedAccRestrictionsAsGRF())
+      }
     } else {
       // do not allow an inst to have multiple acc source operands
       if (useInst->getNumSrc() == 3) {
@@ -1224,8 +1216,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
 
   bool EnableSwapAccSub =
       kernel.getOptions()->getOption(vISA_EnableSwapAccSub) &&
-      !kernel.fg.builder->relaxedACCRestrictions3() &&
-      !kernel.fg.builder->removedAccRestrictionsAsGRF();
+      !kernel.fg.builder->relaxedACCRestrictions3();
   // Each candidate is an acc interval and its list of associated swappable
   // uses, where a swappable use is such a use, which is one of the
   // commutative operands from that user instruction.

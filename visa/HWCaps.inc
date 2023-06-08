@@ -62,9 +62,7 @@ bool encodeUnitStrideTernary() const {
   return getPlatformGeneration() >= PlatformGen::XE;
 }
 
-bool hasMacl() const {
-  return getPlatform() >= GENX_CNL && !removedAccRestrictionsAsGRF();
-}
+bool hasMacl() const { return getPlatform() >= GENX_CNL; }
 
 bool hasCPS() const { return getPlatform() >= GENX_CNL; }
 
@@ -476,10 +474,6 @@ bool useAccForDF() const {
       getPlatform() == Xe_XeHPSDV;
 }
 
-bool hasAccExecSizeRestrictions() const {
-  return !removedAccRestrictionsAsGRF();
-}
-
 bool useAccForMadm() const { return getPlatform() >= Xe_XeHPSDV; }
 
 bool hasUnifiedBarrier() const { return getPlatform() >= Xe_DG2; }
@@ -497,6 +491,8 @@ bool avoidDstSrcOverlap() {
 bool avoidSrc1Src2Overlap() { return getOption(vISA_Src1Src2OverlapWA); }
 
 bool hasTwoGRFMathMacro() const { return getPlatform() >= Xe_PVC; }
+
+bool hasMathAcc() const { return getOption(vISA_mathAccSub); }
 
 // to relax ACC usage restrictions for FP MUL and MAD instructions.
 // 1. Support both sources as ACC for FP MUL
@@ -585,7 +581,7 @@ bool hasAMFSFastClear() const { return getPlatform() >= Xe_XeHPSDV; }
 // Src Type F/HF - Dst Type F/HF
 // Src Type DF   - Dst Type DF
 bool hasFormatConversionACCRestrictions() const {
-  return getPlatform() >= Xe_XeHPSDV && !removedAccRestrictionsAsGRF();
+  return getPlatform() >= Xe_XeHPSDV;
 }
 
 bool hasScratchSurface() const { return getPlatform() >= Xe_XeHPSDV; }
@@ -725,10 +721,6 @@ bool hasSCF() const { return (getPlatform() < Xe_DG2); }
 
 bool hasBDstWSrc1EvenAlignIssue() const {
   return getPlatform() == Xe_PVCXT;
-}
-
-bool removedAccRestrictionsAsGRF() const {
-  return false;
 }
 
 

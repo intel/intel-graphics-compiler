@@ -6714,10 +6714,7 @@ bool G4_INST::mayExpandToAccMacro() const {
          (opcode() == G4_pln && !builder.doPlane());
 }
 
-bool G4_INST::canOpndBeAccCommon(Gen4_Operand_Number opndNum) const {
-  if (!builder.hasAccExecSizeRestrictions()) {
-    return isSupportedAccDstType();
-  }
+bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const {
   switch (dst->getType()) {
   case Type_HF:
   case Type_BF:
@@ -6756,13 +6753,12 @@ bool G4_INST::canOpndBeAccCommon(Gen4_Operand_Number opndNum) const {
     if (!builder.useAccForDF()) {
       return false;
     }
-    // To support DF type ACC operand.
-    // Using the legacy SIMD size way to check
     if (getExecSize() != builder.getNativeExecSize() &&
         getExecSize() != G4_ExecSize(builder.getNativeExecSize() / 2)) {
       return false;
     }
     break;
+  case Type_D:
   case Type_UD:
     if (getExecSize() != builder.getNativeExecSize()) {
       return false;
@@ -6778,38 +6774,12 @@ bool G4_INST::canOpndBeAccCommon(Gen4_Operand_Number opndNum) const {
   return true;
 }
 
-bool G4_INST::isSupportedAccDstType() const {
-  switch (dst->getType()) {
-  case Type_HF:
-  case Type_W:
-  case Type_UW:
-  case Type_F:
-  case Type_DF:
-  case Type_Q:
-  case Type_UQ:
-  case Type_D:
-  case Type_UD:
-  case Type_UB:
-  case Type_B:
-  case Type_BF:
-    return true;
-  default:
-    return false;
-  }
-
-  return true;
-}
-
 // returns true if dst may be replaced by an explicit acc
 // in addition to opcode-specific checks, we require
 // -- dst must be GRF
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
 bool G4_INST::canDstBeAcc() const {
-  if (isSend() || isDpas()) {
-    return false;
-  }
-
   if (mayExpandToAccMacro()) {
     // while this should not prevent dst from becoming acc (mul/plane macros use
     // acc as temp so should not affect final dst), later HW conformity is not
@@ -6839,7 +6809,7 @@ bool G4_INST::canDstBeAcc() const {
     }
   }
 
-  if (!canOpndBeAccCommon(Opnd_dst)) {
+  if (!canExecSizeBeAcc(Opnd_dst)) {
     return false;
   }
 
@@ -6865,6 +6835,9 @@ bool G4_INST::canDstBeAcc() const {
     }
   }
 
+  if (isMath()) {
+    return builder.hasMathAcc();
+  }
   switch (opcode()) {
   case G4_add:
   case G4_and:
@@ -6951,17 +6924,6 @@ bool G4_INST::canDstBeAcc() const {
   case G4_bfn:
   case G4_add3:
     return true;
-  case G4_bfrev:
-  case G4_bfe:
-  case G4_bfi1:
-  case G4_bfi2:
-  case G4_cbit:
-  case G4_fbl:
-  case G4_fbh:
-  case G4_math:
-  case G4_shl:
-  case G4_fcvt:
-    return builder.removedAccRestrictionsAsGRF();
   default:
     return false;
   }
@@ -6977,8 +6939,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   if (!(srcId == 0 || srcId == 1 || srcId == 2))
     return false;
 
-  if (!builder.relaxedACCRestrictions3() &&
-      !builder.removedAccRestrictionsAsGRF() && srcId == 2) {
+  if (!builder.relaxedACCRestrictions3() && srcId == 2) {
     return false;
   }
 
@@ -6991,7 +6952,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   }
 
   G4_SrcRegRegion *src = getSrc(srcId)->asSrcRegRegion();
-  if (!builder.removedAccRestrictionsAsGRF() && srcId == 1 && src->hasModifier()) {
+  if (srcId == 1 && src->hasModifier()) {
     // some platforms allow float src1 acc modifiers,
     // while some don't allow src1 acc modifier at all.
     if (!IS_TYPE_FLOAT_ALL(src->getType()) ||
@@ -7008,26 +6969,27 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
     return false;
   }
 
-  if (!canOpndBeAccCommon(opndNum)) {
+  if (!canExecSizeBeAcc(opndNum)) {
     return false;
   }
 
   if (opcode() == G4_mad && srcId == 0 && !builder.canMadHaveSrc0Acc()) {
     // mac's implicit acc gets its region from dst, so we have to check src and
     // dst have the same type
-    if (!builder.removedAccRestrictionsAsGRF() &&
-        (src->getType() != dst->getType())) {
+    if (src->getType() != dst->getType()) {
       return false;
     }
   }
 
-  if (!builder.removedAccRestrictionsAsGRF() &&
-      (IS_TYPE_FLOAT_ALL(src->getType()) ^
-       IS_TYPE_FLOAT_ALL(getDst()->getType()))) {
+  if (IS_TYPE_FLOAT_ALL(src->getType()) ^
+      IS_TYPE_FLOAT_ALL(getDst()->getType())) {
     // no float <-> int conversion for acc source
     return false;
   }
 
+  if (isMath()) {
+    return builder.hasMathAcc();
+  }
   switch (opcode()) {
   case G4_add:
   case G4_asr:
@@ -7091,42 +7053,28 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   case G4_madm:
     return builder.useAccForMadm();
   case G4_mad:
-    if (builder.removedAccRestrictionsAsGRF()) {
-      return true;
-    } else {
-      return builder.canMadHaveAcc() &&
-             ((srcId == 1 &&
-               (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) ||
-              (builder.relaxedACCRestrictions4() && srcId == 1 &&
-               (IS_TYPE_FLOAT_FOR_ACC(src->getType()))) ||
-              (srcId == 0 && src->getModifier() == Mod_src_undef) ||
-              (srcId == 0 && builder.relaxedACCRestrictions_1()) ||
-              (srcId == 2 &&
-               (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));
-    }
+    // no int acc if it's used as mul operand
+    return builder.canMadHaveAcc() &&
+           ((srcId == 1 &&
+             (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) ||
+            (builder.relaxedACCRestrictions4() && srcId == 1 &&
+             (IS_TYPE_FLOAT_FOR_ACC(src->getType()))) ||
+            (srcId == 0 && src->getModifier() == Mod_src_undef) ||
+            (srcId == 0 && builder.relaxedACCRestrictions_1()) ||
+            (srcId == 2 &&
+             (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));
   case G4_csel:
     return builder.canMadHaveAcc();
   case G4_mul:
-    if (builder.removedAccRestrictionsAsGRF()) {
-      // When destination datatype is an integer, accumulator is not allowed on
-      // Src1 for mul instruction
-      if (IS_INT(dst->getType())) {
-        return srcId == 0;
-      }
-    }
     return IS_TYPE_FLOAT_ALL(src->getType());
   case G4_and:
   case G4_not:
   case G4_or:
   case G4_xor:
-    return builder.removedAccRestrictionsAsGRF() ||
-           src->getModifier() == Mod_src_undef;
+    return src->getModifier() == Mod_src_undef;
   case G4_pln:
     return builder.doPlane() && src->getModifier() == Mod_src_undef;
   case G4_dp4a:
-    if (builder.removedAccRestrictionsAsGRF()) {
-      return true;
-    }
     if (builder.restrictedACCRestrictions()) {
       return srcId == 0;
     }
@@ -7134,18 +7082,6 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   case G4_bfn:
   case G4_add3:
     return true;
-  case G4_bfrev:
-  case G4_bfe:
-  case G4_bfi1:
-  case G4_bfi2:
-  case G4_cbit:
-  case G4_fbl:
-  case G4_fbh:
-  case G4_math:
-  case G4_addc:
-  case G4_subb:
-  case G4_fcvt:
-    return builder.removedAccRestrictionsAsGRF();
   default:
     return false;
   }
@@ -7199,10 +7135,6 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const {
 }
 
 bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const {
-  if (isSend() || isDpas()) {
-    return false;
-  }
-
   return canSrcBeAccBeforeHWConform(opndNum) &&
          canSrcBeAccAfterHWConform(opndNum);
 }
@@ -7216,10 +7148,6 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const {
 // pre RA scheduling for ACC.
 //
 bool G4_INST::canInstBeAcc(GlobalOpndHashTable *ght) {
-  if (isSend() || isDpas()) {
-    return false;
-  }
-
   G4_DstRegRegion *dst = getDst();
   if (!dst || ght->isOpndGlobal(dst) || !canDstBeAcc()) {
     return false;
@@ -7266,12 +7194,11 @@ bool G4_INST::canInstBeAcc(GlobalOpndHashTable *ght) {
 
     int srcId = useInst->getSrcNum(opndNum);
     G4_Operand *src = useInst->getSrc(srcId);
-    if ((dst->getType() != src->getType()) ||
-        ght->isOpndGlobal(src) ||
+
+    if (dst->getType() != src->getType() || ght->isOpndGlobal(src) ||
         dst->compareOperand(src, getBuilder()) != Rel_eq) {
       return false;
     }
-
     if (!useInst->canSrcBeAcc(opndNum)) {
       return false;
     }

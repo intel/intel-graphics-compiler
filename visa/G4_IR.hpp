@@ -806,8 +806,7 @@ public:
   // if instruction requries operansd to have DW (D/UD) type
   bool needsDWType() const { return op == G4_mulh || op == G4_madw; }
 
-  bool canOpndBeAccCommon(Gen4_Operand_Number opndNum) const;
-  bool isSupportedAccDstType() const;
+  bool canExecSizeBeAcc(Gen4_Operand_Number opndNum) const;
   bool canDstBeAcc() const;
   bool canSrcBeAcc(Gen4_Operand_Number opndNum) const;
 
