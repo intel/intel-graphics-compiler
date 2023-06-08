@@ -912,4 +912,5 @@ enum FFID {
   FFID_INVALID = 0xFF
 };
 
-#endif
+
+#endif // _VISA_IGC_COMMON_HEADER_H_

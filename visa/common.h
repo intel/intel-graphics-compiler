@@ -178,7 +178,6 @@ enum class PlatformGen {
 #define ERROR_DATA_RANGE(x) "ERROR: Out of boundary or invalid data value in #x"
 // end of Error Message
 
-
 template <typename Type>
 constexpr Type AlignUp(const Type value, const size_t alignment) {
   Type common = value + alignment - 1;

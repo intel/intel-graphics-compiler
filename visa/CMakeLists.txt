@@ -304,7 +304,6 @@ set(Jitter_Utility_Files
   )
 
 set(GenX_Utility_Files
-  include/VISAOptions.h
   BitSet.cpp
   BitSet.h
   Timer.cpp
@@ -364,7 +363,9 @@ set(GenX_Common_Headers
   include/KernelInfo.h
   include/RT_Jitter_Interface.h
   include/VISABuilderAPIDefinition.h
+  include/VISAOptions.h
   include/VISADefines.h
+  include/VISAOptionsDefs.h
   include/gtpin_IGC_interface.h
   include/visa_igc_common_header.h
   ${LocalScheduler_HEADERS}
