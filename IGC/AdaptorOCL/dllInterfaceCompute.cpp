@@ -476,10 +476,10 @@ bool TranslateSPIRVToLLVM(
             Context,
             *LLVMModule,
             llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize));
-    }
 
-    if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
-        LLVMModule->dump();
+      if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
+          LLVMModule->dump();
+    }
 
     return success;
 }
