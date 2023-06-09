@@ -225,6 +225,7 @@ public:
 
     // message emit functions
     void emitSimdLaneId(llvm::Instruction* inst);
+    void emitSimdLaneIdReplicate(llvm::Instruction* inst);
     void emitSimdSize(llvm::Instruction* inst);
     void emitSimdShuffle(llvm::Instruction* inst);
     void emitCrossInstanceMov(const SSource& source, const DstModifier& modifier);
@@ -471,7 +472,6 @@ public:
     void emitUnmaskedRegionBoundary(bool start);
     LSC_CACHE_OPTS getDefaultRaytracingCachePolicy(bool isLoad) const;
     void emitAsyncStackID(llvm::GenIntrinsicInst* I);
-    void emitSyncStackID(llvm::GenIntrinsicInst* I);
     void emitTraceRay(llvm::TraceRayIntrinsic *I, bool RayQueryEnable);
     void emitReadTraceRaySync(llvm::GenIntrinsicInst* I);
 
