@@ -4044,9 +4044,10 @@ Tristate CShader::shouldGenerateLSCQuery(
 
 // Note that if LSCEnabled() returns true, load/store instructions must be
 // generated with LSC; but some intrinsics are still generated with legacy.
-bool CShader::shouldGenerateLSC(llvm::Instruction* vectorLdStInst)
+bool CShader::shouldGenerateLSC(llvm::Instruction* vectorLdStInst, bool isTGM)
 {
-    if (vectorLdStInst && m_ctx->m_DriverInfo.SupportForceRouteAndCache())
+    if (vectorLdStInst && m_ctx->m_DriverInfo.SupportForceRouteAndCache() &&
+        (!isTGM || m_ctx->platform.supportsNonDefaultLSCCacheSetting()))
     {
         // check if umd specified lsc caching mode and set the metadata if needed.
         if (forceCacheCtrl(vectorLdStInst))

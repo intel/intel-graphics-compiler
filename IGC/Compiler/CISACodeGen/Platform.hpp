@@ -1456,5 +1456,10 @@ uint32_t getVISAABIVersion() const {
   return 2;
 }
 
+bool supportsNonDefaultLSCCacheSetting() const
+{
+    return false;
+}
+
 };
 }//namespace IGC

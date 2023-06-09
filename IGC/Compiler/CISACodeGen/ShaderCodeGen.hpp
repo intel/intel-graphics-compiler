@@ -609,7 +609,7 @@ public:
         const CodeGenContext& Ctx,
         llvm::Instruction* vectorLdStInst = nullptr,
         SIMDMode Mode = SIMDMode::UNKNOWN);
-    bool shouldGenerateLSC(llvm::Instruction* vectorLdStInst = nullptr);
+    bool shouldGenerateLSC(llvm::Instruction* vectorLdStInst = nullptr, bool isTGM = false);
     bool forceCacheCtrl(llvm::Instruction* vectorLdStInst = nullptr);
     // Shader has LSC store messages with cache controls specified in `ops`
     void HasLscStoreCacheControls(const LSC_CACHE_OPTS& opts)

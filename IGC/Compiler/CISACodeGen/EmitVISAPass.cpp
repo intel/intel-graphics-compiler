@@ -14533,7 +14533,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, true, true);
 
     uint numChannels = iSTD::BitCount(writeMask.getEM());
-    auto doLSC = shouldGenerateLSC(pInsn);
+    auto doLSC = shouldGenerateLSC(pInsn, true);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -14702,7 +14702,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             m_currShader->m_SIMDSize);
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
 
-        auto doLSC = shouldGenerateLSC(pInsn);
+        auto doLSC = shouldGenerateLSC(pInsn, true);
 
         if (doLSC)  // Reset if the SIMD32 is enabled
         {
@@ -20590,7 +20590,25 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
     if (isTGM)
     {
-        tryOverrideCacheOpts(cacheOpts, isLoad, isTGM);
+        if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting())
+        {
+            if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM))
+            {
+                // global override cache settings have highest priority
+                return cacheOpts;
+            }
+
+            if (inst)
+            {
+                const MDNode* node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
+                if (node)
+                {
+                    ConstantAsMetadata* MD = cast<ConstantAsMetadata>(node->getOperand(0));
+                    cacheOpts = translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
+                }
+            }
+        }
+
         return cacheOpts;
     }
 
@@ -22018,9 +22036,9 @@ Tristate EmitPass::shouldGenerateLSCQuery(
 
 // Note that if LSCEnabled() returns true, load/store instructions must be
 // generated with LSC; but some intrinsics are still generated with legacy.
-bool EmitPass::shouldGenerateLSC(llvm::Instruction* vectorLdStInst)
+bool EmitPass::shouldGenerateLSC(llvm::Instruction* vectorLdStInst, bool isTGM)
 {
-    return m_currShader->shouldGenerateLSC(vectorLdStInst);
+    return m_currShader->shouldGenerateLSC(vectorLdStInst, isTGM);
 } // shouldGenerateLSC
 
 uint32_t EmitPass::totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst)
