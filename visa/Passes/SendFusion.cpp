@@ -532,32 +532,13 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter) {
   Send->setMsgDesc(newDesc);
 
   // If addI or movI is dead, remove them.
-  // Normally, addI and movI are right before Send and
-  // remove them using iterator is more efficient. So
-  // we check if the previous iterators refer to them,
-  // if so, use iterators to remove them.
-  // (As we found addI and movI in this BB, decreasing
-  //  SendIter twice should be safe and no need to check
-  //  if the iterator refers to the begin().)
-  INST_LIST_ITER I1st = SendIter;
-  --I1st;
-  INST_LIST_ITER I2nd = I1st;
-  --I2nd;
   if (addI->useEmpty()) {
     addI->removeAllDefs();
-    if (addI == *I1st) {
-      CurrBB->erase(I1st);
-    } else {
-      CurrBB->remove(addI);
-    }
+    CurrBB->remove(addI);
   }
   if (movI->useEmpty()) {
     movI->removeAllDefs();
-    if (movI == *I2nd) {
-      CurrBB->erase(I2nd);
-    } else {
-      CurrBB->remove(movI);
-    }
+    CurrBB->remove(movI);
   }
 
   changed = true;
