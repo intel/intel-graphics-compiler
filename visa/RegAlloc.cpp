@@ -2231,8 +2231,8 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
       G4_Declare *r1_dst = builder->createDeclare(
           n, G4_GRF, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
       r1_dst->getRegVar()->setPhyReg(
-          builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()),
-          IR_Builder::SubRegs_Stackcall::Ret_IP);
+          builder->phyregpool.getGreg(builder->kernel.stackCall.getFPSPGRF()),
+          builder->kernel.stackCall.subRegs.Ret_IP);
       G4_DstRegRegion *dstRgn =
           builder->createDst(r1_dst->getRegVar(), 0, 0, 1, Type_UD);
       fcall->setDest(dstRgn);
@@ -2245,8 +2245,8 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
       G4_Declare *r1_src = builder->createDeclare(
           n, G4_INPUT, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
       r1_src->getRegVar()->setPhyReg(
-          builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()),
-          IR_Builder::SubRegs_Stackcall::Ret_IP);
+          builder->phyregpool.getGreg(builder->kernel.stackCall.getFPSPGRF()),
+          builder->kernel.stackCall.subRegs.Ret_IP);
       G4_Operand *srcRgn =
           builder->createSrc(r1_src->getRegVar(), 0, 0, rd, Type_UD);
       fret->setSrc(srcRgn, 0);

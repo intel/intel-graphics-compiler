@@ -64,6 +64,10 @@ void ZEBinaryBuilder::setGfxCoreFamily(GFXCORE_FAMILY value)
     mBuilder.setGfxCoreFamily(value);
 }
 
+void ZEBinaryBuilder::setVISAABIVersion(unsigned int ver) {
+  mBuilder.setVISAABIVersion(ver);
+}
+
 void ZEBinaryBuilder::createKernel(
     const char*  rawIsaBinary,
     unsigned int rawIsaBinarySize,

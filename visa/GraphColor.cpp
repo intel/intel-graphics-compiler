@@ -7191,8 +7191,8 @@ void GlobalRA::stackCallProlog() {
       return;
 
     // emit frame descriptor
-    auto payload =
-        builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
+    auto payload = builder.createHardwiredDeclare(
+        8, Type_UD, kernel.stackCall.getFPSPGRF(), 0);
     payload->setName(builder.getNameString(24, "FrameDescriptorGRF"));
     auto payloadSrc =
         builder.createSrcRegRegion(payload, builder.getRegionStride1());
@@ -7224,6 +7224,10 @@ void GlobalRA::stackCallProlog() {
 
     return;
   }
+
+  // Make r126 a copy of r0 only up to VISA ABI v2
+  if (kernel.stackCall.getVersion() >= StackCallABI::StackCallABIVersion::VER_3)
+    return;
 
   auto dstRgn = builder.createDstRegRegion(builder.kernel.fg.scratchRegDcl, 1);
   auto srcRgn = builder.createSrcRegRegion(builder.getBuiltinR0(),
@@ -7545,7 +7549,7 @@ void GlobalRA::OptimizeActiveRegsFootprint(std::vector<bool> &saveRegs,
 }
 
 void GraphColor::getCallerSaveRegisters() {
-  unsigned callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+  unsigned callerSaveNumGRF = kernel.stackCall.getCallerSaveLastGRF() + 1;
 
   for (BB_LIST_ITER it = builder.kernel.fg.begin();
        it != builder.kernel.fg.end(); ++it) {
@@ -7710,8 +7714,8 @@ void GlobalRA::addCallerSaveRestoreCode() {
 }
 
 void GraphColor::getCalleeSaveRegisters() {
-  unsigned callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
-  unsigned numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
+  unsigned callerSaveNumGRF = kernel.stackCall.getCallerSaveLastGRF() + 1;
+  unsigned numCalleeSaveRegs = kernel.stackCall.getNumCalleeSaveRegs();
 
   // Determine the callee-save registers.
 
@@ -7719,7 +7723,7 @@ void GraphColor::getCalleeSaveRegisters() {
   gra.calleeSaveRegCount = 0;
 
   unsigned pseudoVCEId = builder.kernel.fg.pseudoVCEDcl->getRegVar()->getId();
-  unsigned stackCallStartReg = builder.kernel.getStackCallStartReg();
+  unsigned stackCallStartReg = kernel.stackCall.getStackCallStartReg();
   for (unsigned i = 0; i < numVar; i++) {
     if (pseudoVCEId != i && intf.interfereBetween(pseudoVCEId, i)) {
       if (lrs[i]->getPhyReg()) {
@@ -7746,7 +7750,7 @@ void GraphColor::getCalleeSaveRegisters() {
 // Add callee save/restore code at stack call function entry/exit.
 //
 void GlobalRA::addCalleeSaveRestoreCode() {
-  unsigned callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+  unsigned callerSaveNumGRF = kernel.stackCall.getCallerSaveLastGRF() + 1;
 
   OptimizeActiveRegsFootprint(calleeSaveRegs);
   unsigned calleeSaveRegsWritten = 0;
@@ -8137,7 +8141,7 @@ void ForbiddenRegs::generateReservedGRFForbidden(
                       builder.kernel.fg.getIsStackCallFunc();
   uint32_t reservedGRFNum = builder.getuint32Option(vISA_ReservedGRFNum);
   unsigned int stackCallRegSize =
-      hasStackCall ? builder.kernel.numReservedABIGRF() : 0;
+      hasStackCall ? builder.kernel.stackCall.numReservedABIGRF() : 0;
 
   // r0 - Forbidden when platform is not 3d
   // rMax, rMax-1, rMax-2 - Forbidden in presence of stack call sites
@@ -8214,9 +8218,9 @@ void ForbiddenRegs::generateEOTLastGRFForbidden() {
 // mark forbidden registers for caller-save pseudo var
 //
 void ForbiddenRegs::generateCallerSaveGRFForbidden() {
-  unsigned int startCalleeSave = builder.kernel.calleeSaveStart();
+  unsigned int startCalleeSave = builder.kernel.stackCall.calleeSaveStart();
   unsigned int endCalleeSave =
-      startCalleeSave + builder.kernel.getNumCalleeSaveRegs();
+      startCalleeSave + builder.kernel.stackCall.getNumCalleeSaveRegs();
   // r60-r124 are caller save regs for SKL
   forbiddenVec[(size_t)forbiddenKind::FBD_CALLERSAVE].resize(
       getForbiddenVectorSize(G4_GRF));
@@ -8232,7 +8236,8 @@ void ForbiddenRegs::generateCallerSaveGRFForbidden() {
 // mark forbidden registers for callee-save pseudo var
 //
 void ForbiddenRegs::generateCalleeSaveGRFForbidden() {
-  unsigned int numCallerSaveGRFs = builder.kernel.getCallerSaveLastGRF() + 1;
+  unsigned int numCallerSaveGRFs =
+      builder.kernel.stackCall.getCallerSaveLastGRF() + 1;
   forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE].resize(
       getForbiddenVectorSize(G4_GRF));
   forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE].clear();
@@ -8297,7 +8302,7 @@ void GlobalRA::addCallerSavePseudoCode() {
             builder.getNameString(32, "FCALL_RETVAL_%d", retID++);
         auto retDcl = builder.createHardwiredDeclare(
             kernel.numEltPerGRF<Type_UD>() * retSize, Type_UD,
-            IR_Builder::ArgRet_Stackcall::Ret, 0);
+            kernel.stackCall.retReg, 0);
         retDcl->setName(name);
         addVarToRA(retDcl);
         fcallRetMap.emplace(pseudoVCADcl, retDcl);
@@ -8364,9 +8369,13 @@ void GlobalRA::addCalleeSavePseudoCode() {
 // (W) mov (4) SR_BEStack<1>:ud    r125.0<4;4,1>:ud <-- in prolog
 // (W) mov (4) r125.0<1>:ud        SR_BEStack<4;4,1>:ud <-- in epilog
 void GlobalRA::addStoreRestoreToReturn() {
+  unsigned int size = 4;
+  if (kernel.stackCall.getVersion() ==
+      StackCallABI::StackCallABIVersion::VER_3)
+    size = 8;
 
-  unsigned regNum = builder.kernel.getCallerSaveLastGRF();
-  unsigned subRegNum = kernel.numEltPerGRF<Type_UD>() - 4;
+  unsigned regNum = kernel.stackCall.getCallerSaveLastGRF();
+  unsigned subRegNum = kernel.numEltPerGRF<Type_UD>() - size;
   oldFPDcl = builder.createHardwiredDeclare(4, Type_UD, regNum, subRegNum);
   oldFPDcl->setName(builder.getNameString(24, "CallerSaveRetIp_BE_FP"));
 
@@ -8377,8 +8386,8 @@ void GlobalRA::addStoreRestoreToReturn() {
       builder.createSrc(oldFPDcl->getRegVar(), 0, 0, rd, Type_UD);
 
   auto SRDecl =
-      builder.createHardwiredDeclare(4, Type_UD, builder.kernel.getFPSPGRF(),
-                                     IR_Builder::SubRegs_Stackcall::Ret_IP);
+      builder.createHardwiredDeclare(size, Type_UD, kernel.stackCall.getFPSPGRF(),
+                                     kernel.stackCall.subRegs.Ret_IP);
   addVarToRA(SRDecl);
   SRDecl->setName(builder.getNameString(24, "SR_BEStack"));
   G4_DstRegRegion *FPdst =
@@ -8386,8 +8395,8 @@ void GlobalRA::addStoreRestoreToReturn() {
   rd = builder.getRegionStride1();
   G4_Operand *FPsrc = builder.createSrc(SRDecl->getRegVar(), 0, 0, rd, Type_UD);
 
-  saveBE_FPInst =
-      builder.createMov(g4::SIMD4, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
+  saveBE_FPInst = builder.createMov(size == 4 ? g4::SIMD4 : g4::SIMD8, oldFPDst,
+                                    FPsrc, InstOpt_WriteEnable, false);
   saveBE_FPInst->addComment("save vISA SP/FP to temp");
   builder.setPartFDSaveInst(saveBE_FPInst);
 
@@ -8401,13 +8410,14 @@ void GlobalRA::addStoreRestoreToReturn() {
   vISA_ASSERT((*iter)->isFReturn(), "fret BB must end with fret");
 
   if (!EUFusionCallWANeeded()) {
-    restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc,
-                                         InstOpt_WriteEnable, false);
+    restoreBE_FPInst =
+        builder.createMov(size == 4 ? g4::SIMD4 : g4::SIMD8, FPdst, oldFPSrc,
+                          InstOpt_WriteEnable, false);
     fretBB->insertBefore(iter, restoreBE_FPInst);
   } else {
     // emit frame descriptor
     auto dstDcl =
-        builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
+        builder.createHardwiredDeclare(8, Type_UD, kernel.stackCall.getFPSPGRF(), 0);
     dstDcl->setName(builder.getNameString(24, "FrameDescriptorGRF"));
     auto dstData = builder.createDstRegRegion(dstDcl, 1);
     const unsigned execSize = 8;
@@ -9667,7 +9677,8 @@ std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring)
     determineSpillRegSize(spillRegSize, indrSpillRegSize);
   }
 
-  vISA_ASSERT(spillRegSize + indrSpillRegSize < kernel.getNumCalleeSaveRegs(),
+  vISA_ASSERT(spillRegSize + indrSpillRegSize <
+                  kernel.stackCall.getNumCalleeSaveRegs(),
               "Invalid reserveSpillSize in fail-safe RA!");
   coloring.setTotalGRFRegCount(coloring.getTotalGRFRegCount() -
                                (spillRegSize + indrSpillRegSize));
@@ -9756,7 +9767,8 @@ int GlobalRA::coloringRegAlloc() {
       // bind builtinR0 to the reserved stack call ABI GRF so that caller and
       // callee can agree on which GRF to use for r0
       builder.getBuiltinR0()->getRegVar()->setPhyReg(
-          builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
+          builder.phyregpool.getGreg(kernel.stackCall.getThreadHeaderGRF()),
+          0);
     }
   }
 
@@ -12784,8 +12796,8 @@ void GlobalRA::fixSrc0IndirFcall() {
           src0TopDcl->getNumElems() > 1) {
         // create a copy
         auto tmpDcl = kernel.fg.builder->createHardwiredDeclare(
-            1, src0Rgn->getType(), kernel.getFPSPGRF(),
-            IR_Builder::SubRegs_Stackcall::Ret_IP);
+            1, src0Rgn->getType(), kernel.stackCall.getFPSPGRF(),
+            kernel.stackCall.subRegs.Ret_IP);
         auto dst = kernel.fg.builder->createDst(tmpDcl->getRegVar(),
                                                 src0Rgn->getType());
         auto src = kernel.fg.builder->duplicateOperand(src0Rgn);

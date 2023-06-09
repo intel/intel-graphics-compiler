@@ -659,7 +659,7 @@ void LinearScanRA::preRAAnalysis() {
   if (hasStackCall || reservedGRFNum || builder.getOption(vISA_Debug)) {
     std::vector<unsigned int> forbiddenRegs;
     unsigned int stackCallRegSize =
-        hasStackCall ? gra.kernel.numReservedABIGRF() : 0;
+        hasStackCall ? kernel.stackCall.numReservedABIGRF() : 0;
     getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, 0,
                      reservedGRFNum);
     for (unsigned int i = 0, size = forbiddenRegs.size(); i < size; i++) {
@@ -685,8 +685,8 @@ void LinearScanRA::preRAAnalysis() {
 }
 
 void LinearScanRA::getCalleeSaveRegisters() {
-  unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
-  unsigned int numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
+  unsigned int callerSaveNumGRF = kernel.stackCall.getCallerSaveLastGRF() + 1;
+  unsigned int numCalleeSaveRegs = kernel.stackCall.getNumCalleeSaveRegs();
 
   gra.calleeSaveRegs.resize(numCalleeSaveRegs, false);
   gra.calleeSaveRegCount = 0;
@@ -694,10 +694,10 @@ void LinearScanRA::getCalleeSaveRegisters() {
   G4_Declare *dcl = builder.kernel.fg.pseudoVCEDcl;
   LSLiveRange *lr = gra.getLSLR(dcl);
   const bool *forbidden = lr->getForbidden();
-  unsigned int startCalleeSave = builder.kernel.getCallerSaveLastGRF() + 1;
+  unsigned int startCalleeSave = kernel.stackCall.getCallerSaveLastGRF() + 1;
   unsigned int endCalleeSave =
-      startCalleeSave + builder.kernel.getNumCalleeSaveRegs() - 1;
-  for (unsigned i = 0; i < builder.kernel.getNumRegTotal(); i++) {
+      startCalleeSave + kernel.stackCall.getNumCalleeSaveRegs() - 1;
+  for (unsigned i = 0; i < kernel.getNumRegTotal(); i++) {
     if (forbidden[i]) {
       if (i >= startCalleeSave && i < endCalleeSave) {
         gra.calleeSaveRegs[i - callerSaveNumGRF] = true;
@@ -708,7 +708,7 @@ void LinearScanRA::getCalleeSaveRegisters() {
 }
 
 void LinearScanRA::getCallerSaveRegisters() {
-  unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+  unsigned int callerSaveNumGRF = kernel.stackCall.getCallerSaveLastGRF() + 1;
 
   for (BB_LIST_ITER it = builder.kernel.fg.begin();
        it != builder.kernel.fg.end(); ++it) {
@@ -728,7 +728,7 @@ void LinearScanRA::getCallerSaveRegisters() {
       const bool *forbidden = lr->getForbidden();
       unsigned int startCalleeSave = 1;
       unsigned int endCalleeSave =
-          startCalleeSave + builder.kernel.getCallerSaveLastGRF();
+          startCalleeSave + kernel.stackCall.getCallerSaveLastGRF();
       for (unsigned i = 0; i < builder.kernel.getNumRegTotal(); i++) {
         if (forbidden[i]) {
           if (i >= startCalleeSave && i < endCalleeSave) {
@@ -1797,8 +1797,8 @@ globalLinearScan::globalLinearScan(
 
 void globalLinearScan::getCalleeSaveGRF(std::vector<unsigned int> &regNum,
                                         G4_Kernel *kernel) {
-  unsigned int startCallerSave = kernel->calleeSaveStart();
-  unsigned int endCallerSave = startCallerSave + kernel->getNumCalleeSaveRegs();
+  unsigned int startCallerSave = kernel->stackCall.calleeSaveStart();
+  unsigned int endCallerSave = startCallerSave + kernel->stackCall.getNumCalleeSaveRegs();
 
   for (auto active_it = active.begin(); active_it != active.end();
        active_it++) {
@@ -1824,7 +1824,7 @@ void globalLinearScan::getCallerSaveGRF(std::vector<unsigned int> &regNum,
                                         std::vector<unsigned int> &retRegNum,
                                         G4_Kernel *kernel) {
   unsigned int startCalleeSave = 1;
-  unsigned int endCalleeSave = startCalleeSave + kernel->getCallerSaveLastGRF();
+  unsigned int endCalleeSave = startCalleeSave + kernel->stackCall.getCallerSaveLastGRF();
 
   for (auto active_it = active.begin(); active_it != active.end();
        active_it++) {
@@ -2453,9 +2453,10 @@ void globalLinearScan::expireGlobalRanges(unsigned int idx) {
         }
 
         if (calleeSaveLR) {
-          unsigned int startCallerSave = builder.kernel.calleeSaveStart();
+          unsigned int startCallerSave =
+              builder.kernel.stackCall.calleeSaveStart();
           unsigned int endCallerSave =
-              startCallerSave + builder.kernel.getNumCalleeSaveRegs();
+              startCallerSave + builder.kernel.stackCall.getNumCalleeSaveRegs();
 
           for (unsigned i = startregnum; i <= endregnum; i++) {
             if (i >= startCallerSave && i <= endCallerSave) {

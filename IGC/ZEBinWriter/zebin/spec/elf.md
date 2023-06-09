@@ -98,7 +98,7 @@ information, depending on section type.
 ## ELF note type for INTELGT
 
 **n_type**
-Currently there are 3 note types defined for INTELGT and the notes are placed
+Currently there are 5 note types defined for INTELGT and the notes are placed
 in the .note.intelgt.compat section. The consumer of the ZE binary file should
 recognize both the owner name (INTELGT) and the type of an ELF note entry to
 interpret its description.
@@ -114,6 +114,10 @@ enum {
     // attribute and section changes. The content is stored in a nul-terminated
     // string and the format is "<Major number>.<Minor number>".
     NT_INTELGT_ZEBIN_VERSION = 4,
+    // The description represents VISA ABI version used in generated code.
+    // Note that VISA ABI is valid only when stack calls are used. Without
+    // stack calls, VISA ABI field may be absent.
+    NT_INTELGT_VISA_ABI_VERSION = 5,
 };
 ~~~
 

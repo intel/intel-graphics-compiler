@@ -509,6 +509,7 @@ namespace IGC
 
         bool IsVisaCompiledSuccessfully() const { return m_vIsaCompileStatus == VISA_SUCCESS; }
         bool IsVisaCompileStatusFailure() const { return m_vIsaCompileStatus == VISA_FAILURE; }
+
     private:
         // helper functions
         VISA_VectorOpnd* GetSourceOperand(CVariable* var, const SModifier& mod);

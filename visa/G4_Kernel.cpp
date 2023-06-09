@@ -461,7 +461,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
     : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr),
       m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA), asmInstCount(0),
       kernelID(0), fg(alloc, this, m), major_version(major),
-      minor_version(minor), grfMode(pInfo.platform, options) {
+      minor_version(minor), grfMode(pInfo.platform, options), stackCall(this) {
   vISA_ASSERT(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
                                                minor <= COMMON_ISA_MINOR_VER),
               "CISA version not supported by this JIT-compiler");
@@ -764,18 +764,114 @@ KernelDebugInfo* G4_Kernel::getKernelDebugInfo() {
   return kernelDbgInfo.get();
 }
 
-unsigned G4_Kernel::getStackCallStartReg() const {
+void StackCallABI::setVersion() {
+  uint32_t ABIVersion = kernel->getuInt32Option(vISA_StackCallABIVer);
+  if (ABIVersion == 1)
+    version = StackCallABIVersion::VER_1;
+  else if (ABIVersion == 2)
+    version = StackCallABIVersion::VER_2;
+  else if (ABIVersion == 3)
+    version = StackCallABIVersion::VER_3;
+}
+
+StackCallABI::StackCallABI(G4_Kernel *k) : kernel(k) {
+  setVersion();
+  if (version == StackCallABIVersion::VER_3) {
+    vISA_ASSERT(kernel->getGRFSize() == 64, "require 64-byte GRF for ABI v3");
+  }
+
+  switch (version) {
+  case StackCallABIVersion::VER_1:
+  case StackCallABIVersion::VER_2:
+    subRegs.Ret_IP = SubRegs_Stackcall_v1_v2_Ret_IP;
+    subRegs.Ret_EM = SubRegs_Stackcall_v1_v2_Ret_EM;
+    subRegs.BE_SP = SubRegs_Stackcall_v1_v2_BE_SP;
+    subRegs.BE_FP = SubRegs_Stackcall_v1_v2_BE_FP;
+    subRegs.FE_FP = SubRegs_Stackcall_v1_v2_FE_FP;
+    subRegs.FE_SP = SubRegs_Stackcall_v1_v2_FE_SP;
+
+    offsets.Ret_IP = FrameDescriptorOfsets_v1_v2_Ret_IP;
+    offsets.Ret_EM = FrameDescriptorOfsets_v1_v2_Ret_EM;
+    offsets.BE_SP = FrameDescriptorOfsets_v1_v2_BE_SP;
+    offsets.BE_FP = FrameDescriptorOfsets_v1_v2_BE_FP;
+    offsets.FE_FP = FrameDescriptorOfsets_v1_v2_FE_FP;
+    offsets.FE_SP = FrameDescriptorOfsets_v1_v2_FE_SP;
+    break;
+  case StackCallABIVersion::VER_3:
+    subRegs.Ret_IP = SubRegs_Stackcall_v3_Ret_IP;
+    subRegs.Ret_EM = SubRegs_Stackcall_v3_Ret_EM;
+    subRegs.BE_SP = SubRegs_Stackcall_v3_BE_SP;
+    subRegs.BE_FP = SubRegs_Stackcall_v3_BE_FP;
+    subRegs.FE_FP = SubRegs_Stackcall_v3_FE_FP;
+    subRegs.FE_SP = SubRegs_Stackcall_v3_FE_SP;
+
+    offsets.Ret_IP = FrameDescriptorOfsets_v3_Ret_IP;
+    offsets.Ret_EM = FrameDescriptorOfsets_v3_Ret_EM;
+    offsets.BE_SP = FrameDescriptorOfsets_v3_BE_SP;
+    offsets.BE_FP = FrameDescriptorOfsets_v3_BE_FP;
+    offsets.FE_FP = FrameDescriptorOfsets_v3_FE_FP;
+    offsets.FE_SP = FrameDescriptorOfsets_v3_FE_SP;
+    break;
+  default:
+    vISA_ASSERT(false, "unknown ABI");
+  }
+  argReg = ArgRet_Stackcall_Arg;
+  retReg = ArgRet_Stackcall_Ret;
+}
+
+unsigned StackCallABI::getStackCallStartReg() const {
   // Last 3 (or 2) GRFs reserved for stack call purpose
-  unsigned totalGRFs = getNumRegTotal();
+  unsigned totalGRFs = kernel->getNumRegTotal();
   unsigned startReg = totalGRFs - numReservedABIGRF();
   return startReg;
 }
-unsigned G4_Kernel::calleeSaveStart() const {
+unsigned StackCallABI::calleeSaveStart() const {
   return getCallerSaveLastGRF() + 1;
 }
-unsigned G4_Kernel::getNumCalleeSaveRegs() const {
-  unsigned totalGRFs = getNumRegTotal();
+unsigned StackCallABI::getNumCalleeSaveRegs() const {
+  unsigned totalGRFs = kernel->getNumRegTotal();
   return totalGRFs - calleeSaveStart() - numReservedABIGRF();
+}
+
+uint32_t StackCallABI::numReservedABIGRF() const {
+  if (version == StackCallABIVersion::VER_1)
+    return 3;
+  else {
+    // for ABI version > 1,
+    if (kernel->getOption(vISA_PreserveR0InR0))
+      return 2;
+    return 3;
+  }
+}
+
+uint32_t StackCallABI::getFPSPGRF() const {
+  // For ABI V1 return r125.
+  // For ABI V2, V3 return r127.
+  if (version == StackCallABIVersion::VER_1)
+    return getStackCallStartReg() + FPSPGRF;
+  else
+    return (kernel->getNumRegTotal() - 1) - FPSPGRF;
+}
+
+uint32_t StackCallABI::getSpillHeaderGRF() const {
+  // For ABI V1 return r126.
+  // For ABI V2, V3 return r126.
+  if (version == StackCallABIVersion::VER_1)
+    return getStackCallStartReg() + SpillHeaderGRF;
+  else
+    return (kernel->getNumRegTotal() - 1) - SpillHeaderGRF;
+}
+
+uint32_t StackCallABI::getThreadHeaderGRF() const {
+  // For ABI V1 return r127.
+  // For ABI V2 return r125.
+  vISA_ASSERT(
+      kernel->getOption(vISA_PreserveR0InR0) == false,
+      "r0 is preserved in r0 itself. no special stack call header needed");
+  if (version == StackCallABIVersion::VER_1)
+    return getStackCallStartReg() + ThreadHeaderGRF;
+  else
+    return (kernel->getNumRegTotal() - 1) - ThreadHeaderGRF;
 }
 
 //
@@ -883,7 +979,7 @@ void G4_Kernel::setKernelParameters() {
 
   // Set number of GRFs
   numRegTotal = overrideGRFNum ? overrideGRFNum : grfMode.getNumGRF();
-  callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
+  stackCall.setCallerSaveLastGRF(((numRegTotal - 8) / 2) - 1);
 
   // Set number of threads
   numThreads = grfMode.getNumThreads();

@@ -485,31 +485,12 @@ public:
 
   const USE_DEF_ALLOCATOR &getAllocator() const { return useDefAllocator; }
 
-  // Following enum describes layout of r125 on entry to a function.
-  // Ret_IP and Ret_EM may be altered due to callees. They'll be
-  // restored right before fret.
-  enum SubRegs_Stackcall {
-    Ret_IP = 0, // :ud
-    Ret_EM = 1, // :ud
-    BE_SP = 2,  // :ud
-    BE_FP = 3,  // :ud
-    FE_FP = 2,  // :uq
-    FE_SP = 3,  // :uq
-  };
-
-  enum SubRegs_ImplPtrs {
-    ImplBufPtr = 0,    // :uq
-    LocalIdBufPtr = 3, // :uq
-  };
-
-  enum ArgRet_Stackcall { Arg = 26, Ret = 26 };
-
   // Getter/setter for be_sp and be_fp
   G4_Declare *getBESP() {
     if (be_sp == NULL) {
       be_sp = createDeclare("be_sp", G4_GRF, 1, 1, Type_UD);
-      be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()),
-                                    SubRegs_Stackcall::BE_SP);
+      be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.stackCall.getFPSPGRF()),
+                                    kernel.stackCall.subRegs.BE_SP);
     }
 
     return be_sp;
@@ -518,8 +499,8 @@ public:
   G4_Declare *getBEFP() {
     if (be_fp == NULL) {
       be_fp = createDeclare("be_fp", G4_GRF, 1, 1, Type_UD);
-      be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()),
-                                    SubRegs_Stackcall::BE_FP);
+      be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.stackCall.getFPSPGRF()),
+                                    kernel.stackCall.subRegs.BE_FP);
     }
 
     return be_fp;

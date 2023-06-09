@@ -572,30 +572,30 @@ void IR_Builder::createPreDefinedVars() {
       case PreDefinedVarsInternal::ARG: {
         dcl =
             createDeclare(name, G4_INPUT, numEltPerGRF<Type_UD>(), 32, Type_UD);
-        dcl->getRegVar()->setPhyReg(phyregpool.getGreg(ArgRet_Stackcall::Arg),
+        dcl->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.stackCall.argReg),
                                     0);
         break;
       }
       case PreDefinedVarsInternal::RET: {
         dcl = createDeclare(name, G4_GRF, numEltPerGRF<Type_UD>(), 12, Type_UD);
-        dcl->getRegVar()->setPhyReg(phyregpool.getGreg(ArgRet_Stackcall::Ret),
+        dcl->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.stackCall.retReg),
                                     0);
         dcl->setLiveOut();
         break;
       }
       case PreDefinedVarsInternal::FE_SP: {
-        unsigned int startReg = kernel.getFPSPGRF();
+        unsigned int startReg = kernel.stackCall.getFPSPGRF();
         dcl = createDeclare(name, G4_GRF, 1, 1, Type_UQ);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg),
-                                    SubRegs_Stackcall::FE_SP);
+                                    kernel.stackCall.subRegs.FE_SP);
         break;
       }
       case PreDefinedVarsInternal::FE_FP: {
         // PREDEFINED_FE_FP
-        unsigned int startReg = kernel.getFPSPGRF();
+        unsigned int startReg = kernel.stackCall.getFPSPGRF();
         dcl = createDeclare(name, G4_GRF, 1, 1, Type_UQ);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg),
-                                    SubRegs_Stackcall::FE_FP);
+                                    kernel.stackCall.subRegs.FE_FP);
         break;
       }
       case PreDefinedVarsInternal::HW_TID: {
@@ -613,15 +613,17 @@ void IR_Builder::createPreDefinedVars() {
       }
       case PreDefinedVarsInternal::IMPL_ARG_BUF_PTR: {
         dcl = createDeclare("implBufPtr", G4_GRF, 1, 1, Type_UQ);
-        auto phyReg = phyregpool.getGreg(kernel.getSpillHeaderGRF());
-        dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::ImplBufPtr);
+        auto phyReg = phyregpool.getGreg(kernel.stackCall.getSpillHeaderGRF());
+        dcl->getRegVar()->setPhyReg(
+            phyReg, (uint32_t)StackCallABI::SubRegs_ImplBufPtr);
         break;
       }
 
       case PreDefinedVarsInternal::LOCAL_ID_BUF_PTR: {
         dcl = createDeclare("localIdBufPtr", G4_GRF, 1, 1, Type_UQ);
-        auto phyReg = phyregpool.getGreg(kernel.getSpillHeaderGRF());
-        dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::LocalIdBufPtr);
+        auto phyReg = phyregpool.getGreg(kernel.stackCall.getSpillHeaderGRF());
+        dcl->getRegVar()->setPhyReg(
+            phyReg, (uint32_t)StackCallABI::SubRegs_LocalIdBufPtr);
         break;
       }
       case PreDefinedVarsInternal::MSG0: {

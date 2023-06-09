@@ -3060,7 +3060,7 @@ uint32_t DwarfDebug::writeStackcallCIE() {
     write(data1, (uint32_t)(DWRegEncoded));
   }
   write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-  write(data1, (uint16_t)(BEFPSubReg * 4 * 8));
+  write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
   if (!getEmitterSettings().EnableGTLocationDebugging) {
     write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
     write(data1, (uint8_t)32);
@@ -3284,7 +3284,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       write(data1, (uint32_t)(DWRegEncoded));
     }
     write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-    write(data1, (uint16_t)(BEFPSubReg * 4 * 8));
+    write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
     if (!getEmitterSettings().EnableGTLocationDebugging) {
       write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
       write(data1, (uint8_t)32);

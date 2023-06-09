@@ -59,6 +59,10 @@ enum {
     // attribute and section changes. The content is stored in a nul-terminated
     // string and the format is "<Major number>.<Minor number>".
     NT_INTELGT_ZEBIN_VERSION = 4,
+    // The description represents VISA ABI version used in generated code.
+    // Note that VISA ABI is valid only when stack calls are used. Without
+    // stack calls, VISA ABI field may be absent.
+    NT_INTELGT_VISA_ABI_VERSION = 5,
 };
 
 struct TargetMetadata {

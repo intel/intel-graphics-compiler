@@ -144,7 +144,7 @@ SpillManagerGRF::SpillManagerGRF(
   if (failSafeSpill) {
     bool isStackCall = builder_->usesStack();
     unsigned int stackCallRegSize =
-        isStackCall ? builder_->kernel.numReservedABIGRF() : 0;
+        isStackCall ? g.kernel.stackCall.numReservedABIGRF() : 0;
     indrSpillRegStart_ -= (stackCallRegSize + indrSpillRegSize);
     spillRegStart_ = indrSpillRegStart_ - spillRegSize;
   }

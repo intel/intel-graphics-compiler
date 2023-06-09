@@ -630,6 +630,18 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
     writeOneStrNote("IntelGT",
                     PreDefinedAttrGetter::getVersionNumber(),
                     NT_INTELGT_ZEBIN_VERSION);
+
+    if (m_ObjBuilder.m_zeInfoSection &&
+        std::any_of(m_ObjBuilder.m_zeInfoSection->getZeInfo().kernels.begin(),
+                    m_ObjBuilder.m_zeInfoSection->getZeInfo().kernels.end(),
+                    [](const zeInfoKernel &kernel) {
+                      return kernel.execution_env.has_stack_calls;
+                    })) {
+        // writeNT_INTELGT_VISA_ABI_VERSION
+        writeOneNote("IntelGT", m_ObjBuilder.getVISAABIVersion(),
+                     NT_INTELGT_VISA_ABI_VERSION);
+    }
+
     return std::make_pair(start_off, m_W.OS.tell() - start_off);
 }
 

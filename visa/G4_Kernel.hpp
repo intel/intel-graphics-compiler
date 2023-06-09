@@ -253,6 +253,150 @@ public:
   IndirectCallWAInfo() {}
 };
 
+// StackCallABI class is instantiated by G4_Kernel. It contains
+// definition of subreg and offsets for all supported VISA
+// ABI versions as private members. Its ctor sets up ABI version
+// for which VISA is run. Depending on the version, it copies
+// offsets and subregs from right template.
+class StackCallABI {
+public:
+  enum class StackCallABIVersion {
+    VER_1 = 1, // This version is used pre-zebin
+    VER_2 = 2, // This version is used for zebin
+    VER_3 = 3, // This version is used with 64-bit %ip register
+    VER_UNKNOWN,
+  };
+
+  // Offsets (QW) where these pointers are stored
+  static constexpr unsigned int SubRegs_ImplBufPtr = 0;
+  static constexpr unsigned int SubRegs_LocalIdBufPtr = 3;
+
+private:
+  G4_Kernel *kernel = nullptr;
+  StackCallABIVersion version = StackCallABIVersion::VER_UNKNOWN;
+
+  // Class contains sub-regs for chosen ABI version.
+  // Values are initialized by ctor. For eg,
+  // As per ABI v1, v2 BE_FP is in sub-reg 3 whereas
+  // as per ABI v3, BE_FP is in sub-reg 6.
+  struct SubRegs_Stackcall {
+    unsigned int Ret_IP = 0;
+    unsigned int Ret_EM = 0;
+    unsigned int BE_SP = 0;
+    unsigned int BE_FP = 0;
+    unsigned int FE_FP = 0;
+    unsigned int FE_SP = 0;
+  };
+
+  // Class contains frame descriptor offsets for chosen ABI version.
+  // Values are initialized by ctor.
+  // Frame descriptor offset is sub-reg * type.
+  struct FrameDescriptorOfsets {
+    unsigned int Ret_IP = 0;
+    unsigned int Ret_EM = 0;
+    unsigned int BE_SP = 0;
+    unsigned int BE_FP = 0;
+    unsigned int FE_FP = 0;
+    unsigned int FE_SP = 0;
+  };
+
+public:
+  StackCallABIVersion getVersion() const { return version; }
+  void setVersion();
+
+  SubRegs_Stackcall subRegs;
+  FrameDescriptorOfsets offsets;
+  unsigned int argReg = std::numeric_limits<unsigned int>::max();
+  unsigned int retReg = std::numeric_limits<unsigned int>::max();
+
+  StackCallABI(G4_Kernel *k);
+
+private:
+  // Following constexprs describe layout of various subregs on entry to a
+  // function.
+
+  // For VISA ABI v1, v2
+  static constexpr unsigned int SubRegs_Stackcall_v1_v2_Ret_IP = 0; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v1_v2_Ret_EM = 1; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v1_v2_BE_SP = 2; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v1_v2_BE_FP = 3; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v1_v2_FE_FP = 2; // :uq
+  static constexpr unsigned int SubRegs_Stackcall_v1_v2_FE_SP = 3; // :uq
+
+  // For VISA ABI v3
+  static constexpr unsigned int SubRegs_Stackcall_v3_Ret_IP = 0; // :uq
+  static constexpr unsigned int SubRegs_Stackcall_v3_Ret_EM = 2; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_BE_SP = 4; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_BE_FP = 6; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_FE_FP = 4; // :uq
+  static constexpr unsigned int SubRegs_Stackcall_v3_FE_SP = 5; // :uq
+
+
+  // GRF # that holds Arg and Ret values
+  static constexpr unsigned int ArgRet_Stackcall_Arg = 26;
+  static constexpr unsigned int ArgRet_Stackcall_Ret = 26;
+
+  // Following constexprs hold offsets of various fields in frame descriptor
+  // as per VISA ABI.
+
+  // For VISA ABI v1, v2
+  static constexpr unsigned int FrameDescriptorOfsets_v1_v2_FE_FP =
+      SubRegs_Stackcall_v1_v2_FE_FP * 8;
+  static constexpr unsigned int FrameDescriptorOfsets_v1_v2_FE_SP =
+      SubRegs_Stackcall_v1_v2_FE_SP * 8;
+  static constexpr unsigned int FrameDescriptorOfsets_v1_v2_Ret_IP =
+      SubRegs_Stackcall_v1_v2_Ret_IP * 4;
+  static constexpr unsigned int FrameDescriptorOfsets_v1_v2_Ret_EM =
+      SubRegs_Stackcall_v1_v2_Ret_EM * 4;
+  static constexpr unsigned int FrameDescriptorOfsets_v1_v2_BE_FP =
+      SubRegs_Stackcall_v1_v2_BE_FP * 4;
+  static constexpr unsigned int FrameDescriptorOfsets_v1_v2_BE_SP =
+      SubRegs_Stackcall_v1_v2_BE_SP * 4;
+
+  // For VISA ABI v3
+  static constexpr unsigned int FrameDescriptorOfsets_v3_FE_FP =
+      SubRegs_Stackcall_v3_FE_FP * 8;
+  static constexpr unsigned int FrameDescriptorOfsets_v3_FE_SP =
+      SubRegs_Stackcall_v3_FE_SP * 8;
+  static constexpr unsigned int FrameDescriptorOfsets_v3_Ret_IP =
+      SubRegs_Stackcall_v3_Ret_IP * 8;
+  static constexpr unsigned int FrameDescriptorOfsets_v3_Ret_EM =
+      SubRegs_Stackcall_v3_Ret_EM * 4;
+  static constexpr unsigned int FrameDescriptorOfsets_v3_BE_FP =
+      SubRegs_Stackcall_v3_BE_FP * 4;
+  static constexpr unsigned int FrameDescriptorOfsets_v3_BE_SP =
+      SubRegs_Stackcall_v3_BE_SP * 4;
+
+  unsigned callerSaveLastGRF = 0;
+
+public:
+  unsigned getCallerSaveLastGRF() const { return callerSaveLastGRF; }
+  void setCallerSaveLastGRF(unsigned int grf) { callerSaveLastGRF = grf; }
+
+  // This function returns starting register number to use
+  // for allocating FE/BE stack/frame ptrs.
+  unsigned getStackCallStartReg() const;
+  unsigned calleeSaveStart() const;
+  unsigned getNumCalleeSaveRegs() const;
+
+  // return the number of reserved GRFs for stack call ABI
+  // the reserved registers are at the end of the GRF file (e.g., r125-r127)
+  // for some architectures/ABI version, we dont need a copy of r0 and
+  // instructions can directly refer to r0 in code (eg, sends).
+  uint32_t numReservedABIGRF() const;
+
+  // purpose of the GRFs reserved for stack call ABI
+  const int FPSPGRF = 0;
+  const int SpillHeaderGRF = 1;
+  const int ThreadHeaderGRF = 2;
+
+  uint32_t getFPSPGRF() const;
+
+  uint32_t getSpillHeaderGRF() const;
+
+  uint32_t getThreadHeaderGRF() const;
+};
+
 class G4_Kernel {
 public:
   using RelocationTableTy = std::vector<RelocationEntry>;
@@ -279,8 +423,6 @@ private:
 
   uint32_t asmInstCount = 0;
   uint64_t kernelID = 0;
-
-  unsigned callerSaveLastGRF = 0;
 
   bool m_hasIndirectCall = false;
 
@@ -351,6 +493,8 @@ public:
 
   unsigned char major_version;
   unsigned char minor_version;
+
+  StackCallABI stackCall;
 
   G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
             Mem_Manager &m, Options *options, Attributes *anAttr,
@@ -481,66 +625,6 @@ public:
     setGTPinDataSharedPtr(kernel.getGTPinDataSharedPtr());
   }
   void allocGTPinData() { gtPinInfo = std::make_shared<gtPinData>(*this); }
-
-  unsigned getCallerSaveLastGRF() const { return callerSaveLastGRF; }
-
-  // This function returns starting register number to use
-  // for allocating FE/BE stack/frame ptrs.
-  unsigned getStackCallStartReg() const;
-  unsigned calleeSaveStart() const;
-  unsigned getNumCalleeSaveRegs() const;
-
-  enum StackCallABIVersion {
-    VER_1 = 1, // This version is used pre-zebin
-    VER_2 = 2, // This version is used for zebin
-  };
-
-  // return the number of reserved GRFs for stack call ABI
-  // the reserved registers are at the end of the GRF file (e.g., r125-r127)
-  // for some architectures/ABI version, we dont need a copy of r0 and
-  // instructions can directly refer to r0 in code (eg, sends).
-  uint32_t numReservedABIGRF() const {
-    if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
-      return 3;
-    else {
-      // for ABI version > 1,
-      if (getOption(vISA_PreserveR0InR0))
-        return 2;
-      return 3;
-    }
-  }
-
-  // purpose of the GRFs reserved for stack call ABI
-  const int FPSPGRF = 0;
-  const int SpillHeaderGRF = 1;
-  const int ThreadHeaderGRF = 2;
-
-  uint32_t getFPSPGRF() const {
-    // For ABI V1 return r125.
-    // For ABI V2 return r127.
-    if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
-      return getStackCallStartReg() + FPSPGRF;
-    else
-      return (getNumRegTotal() - 1) - FPSPGRF;
-  }
-
-  uint32_t getSpillHeaderGRF() const {
-    // For ABI V1 return r126.
-    // For ABI V2 return r126.
-    if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
-      return getStackCallStartReg() + SpillHeaderGRF;
-    else
-      return (getNumRegTotal() - 1) - SpillHeaderGRF;
-  }
-
-  uint32_t getThreadHeaderGRF() const {
-    // For ABI V1 return r127.
-    // For ABI V2 return r125.
-    if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
-      return getStackCallStartReg() + ThreadHeaderGRF;
-    else
-      return (getNumRegTotal() - 1) - ThreadHeaderGRF;
-  }
 
   bool hasIndirectCall() const { return m_hasIndirectCall; }
   void setHasIndirectCall() { m_hasIndirectCall = true; }

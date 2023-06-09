@@ -50,6 +50,9 @@ public:
     // Set the GfxCoreFamily as the specified value.
     void setGfxCoreFamily(GFXCORE_FAMILY value);
 
+    // Set VISA ABI version used in generated code.
+    void setVISAABIVersion(unsigned int ver);
+
     // Pair of name for the section (1st elem) and VISA asm text (2nd elem).
     using NamedVISAAsm = std::pair<std::string, std::string>;
 

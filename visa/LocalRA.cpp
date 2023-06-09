@@ -159,7 +159,7 @@ void LocalRA::preLocalRAAnalysis() {
     gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
 
     reserveSpillSize = spillRegSize + indrSpillRegSize;
-    if (reserveSpillSize >= kernel.getNumCalleeSaveRegs()) {
+    if (reserveSpillSize >= kernel.stackCall.getNumCalleeSaveRegs()) {
       const_cast<Options *>(builder.getOptions())
           ->setOption(vISA_HybridRAWithSpill, false);
       const_cast<Options *>(builder.getOptions())
@@ -174,7 +174,7 @@ void LocalRA::preLocalRAAnalysis() {
   }
   bool isStackCall =
       (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc());
-  unsigned int stackCallRegSize = isStackCall ? kernel.numReservedABIGRF() : 0;
+  unsigned int stackCallRegSize = isStackCall ? kernel.stackCall.numReservedABIGRF() : 0;
   unsigned int reservedGRFNum =
       builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum);
 

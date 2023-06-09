@@ -1452,5 +1452,9 @@ bool supportsNumberOfBariers() const
     return isProductChildOf(IGFX_DG2);
 }
 
+uint32_t getVISAABIVersion() const {
+  return 2;
+}
+
 };
 }//namespace IGC

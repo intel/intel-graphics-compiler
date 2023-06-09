@@ -723,6 +723,13 @@ public:
 
   llvm::MCSymbol *GetLabelBeforeIp(unsigned int ip);
 
+  uint32_t getBEFPSubReg() {
+    auto ver = GetABIVersion();
+    if (ver < 3)
+      return BEFPSubReg_1_2;
+    return BEFPSubReg_3;
+  }
+
 private:
   void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE,
                    const llvm::SmallVectorImpl<InsnRange> *Ranges);
@@ -737,18 +744,26 @@ private:
   uint32_t offsetCIEStackCall = 0;
   uint32_t offsetCIESubroutine = 0;
 
+  // Offsets (DW) to special registers are stored as constants here.
+  // These are specified in VISA ABI.
+
   // r[MAX-GRF - 3]
-  static const unsigned int SpecialGRFOff_VISAABI1 = 3;
-  static const unsigned int SpecialGRFOff_VISAABI2 = 1;
-  static const unsigned int RetIpSubReg = 0;
-  static const unsigned int RetEMSubReg = 1;
-  static const unsigned int BESPSubReg = 2;
-  static const unsigned int BEFPSubReg = 3;
+  static const unsigned int SpecialGRFOff_VISAABI_1 = 3;
+  static const unsigned int SpecialGRFOff_VISAABI_2_3 = 1;
+  static const unsigned int RetIpSubReg_1_2_3 = 0;
+  static const unsigned int RetEMSubReg_1_2 = 1;
+  static const unsigned int RetEMSubReg_3 = 2;
+  static const unsigned int BESPSubReg_1_2 = 2;
+  static const unsigned int BESPSubReg_3 = 4;
+  static const unsigned int BEFPSubReg_1_2 = 3;
+  static const unsigned int BEFPSubReg_3 = 6;
 
   uint32_t GetSpecialGRF() {
     if (!EmitSettings.ZeBinCompatible)
-      return GetVISAModule()->getNumGRFs() - SpecialGRFOff_VISAABI1;
-    return GetVISAModule()->getNumGRFs() - SpecialGRFOff_VISAABI2;
+      return GetVISAModule()->getNumGRFs() - SpecialGRFOff_VISAABI_1;
+    return GetVISAModule()->getNumGRFs() - SpecialGRFOff_VISAABI_2_3;
   }
+
+  uint32_t GetABIVersion() { return getEmitterSettings().VISAABIVersion; }
 };
 } // namespace IGC

@@ -924,7 +924,7 @@ void emitDataVarLiveInterval(VISAKernelImpl *visaKernel,
 
 template <class T>
 void emitFrameDescriptorOffsetLiveInterval(
-    LiveIntervalInfo *lrInfo, StackCall::FrameDescriptorOfsets memOffset,
+    LiveIntervalInfo *lrInfo, uint32_t memOffset,
     T &t) {
   // Used to emit fields of Frame Descriptor
   // location = [start, end) @ BE_FP+offset
@@ -953,7 +953,7 @@ void emitFrameDescriptorOffsetLiveInterval(
 
   emitDataUInt8((uint8_t)VARMAP_PREG_FILE_MEMORY, t);
 
-  emitDataUInt32((uint32_t)memOffset, t);
+  emitDataUInt32(memOffset, t);
 }
 
 void populateUniqueSubs(G4_Kernel *kernel,
@@ -978,7 +978,7 @@ void populateUniqueSubs(G4_Kernel *kernel,
                    ->getRegVar()
                    ->getPhyReg()
                    ->asGreg()
-                   ->getRegNum() != kernel->getFPSPGRF())) {
+                   ->getRegNum() != kernel->stackCall.getFPSPGRF())) {
         // This is a subroutine call
         uniqueSubs[bb->Succs.front()] = false;
       }
@@ -1114,13 +1114,13 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c) {
         // Remove temp movs emitted for send header
         // creation since they are not technically
         // caller save
-        if (entry.first < visaKernel->getKernel()->calleeSaveStart() &&
+        if (entry.first < visaKernel->getKernel()->stackCall.calleeSaveStart() &&
             entry.first >= 0 &&
             entry.second.first == SaveRestoreInfo::RegOrMem::MemOffBEFP) {
           removeEntry = false;
         }
       } else if (c == CallerOrCallee::Callee) {
-        if (entry.first >= visaKernel->getKernel()->calleeSaveStart() &&
+        if (entry.first >= visaKernel->getKernel()->stackCall.calleeSaveStart() &&
             entry.second.first == SaveRestoreInfo::RegOrMem::MemOffBEFP) {
           removeEntry = false;
         }
@@ -1303,7 +1303,7 @@ void emitDataCallFrameInfo(VISAKernelImpl *visaKernel, T &t) {
       emitDataUInt8((uint8_t)1, t);
       // Caller's be_fp is stored in frame descriptor
       emitFrameDescriptorOffsetLiveInterval(
-          callerfpLIInfo, StackCall::FrameDescriptorOfsets::BE_FP, t);
+          callerfpLIInfo, kernel->stackCall.offsets.BE_FP, t);
     } else {
       emitDataUInt8((uint8_t)0, t);
     }
@@ -1318,7 +1318,7 @@ void emitDataCallFrameInfo(VISAKernelImpl *visaKernel, T &t) {
     if (fretVarLIInfo) {
       emitDataUInt8((uint8_t)1, t);
       emitFrameDescriptorOffsetLiveInterval(
-          fretVarLIInfo, StackCall::FrameDescriptorOfsets::Ret_IP, t);
+          fretVarLIInfo, kernel->stackCall.offsets.Ret_IP, t);
     } else {
       emitDataUInt8((uint8_t)0, t);
     }

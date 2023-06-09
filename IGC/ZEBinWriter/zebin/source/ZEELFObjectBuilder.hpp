@@ -65,6 +65,9 @@ public:
     void setTargetMetadata(TargetMetadata metadata) { m_metadata = metadata; }
     TargetMetadata getTargetMetadata() const { return m_metadata; }
 
+    void setVISAABIVersion(unsigned int version) { m_VISAABIVersion = version; }
+    unsigned int getVISAABIVersion() const { return m_VISAABIVersion; }
+
     // add a text section contains gen binary
     // - name: section name. This is usually the kernel or function name of
     //         this text section. Do not includes leading .text in given
@@ -375,6 +378,7 @@ private:
     PRODUCT_FAMILY m_productFamily = IGFX_UNKNOWN;
     GFXCORE_FAMILY m_gfxCoreFamily = IGFX_UNKNOWN_CORE;
     TargetMetadata m_metadata;
+    unsigned int m_VISAABIVersion = 0;
 
     StandardSectionListTy m_textSections;
     StandardSectionListTy m_dataAndbssSections; // data and bss sections

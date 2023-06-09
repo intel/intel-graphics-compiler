@@ -75,7 +75,7 @@ private:
         auto regNum = phyReg->asGreg()->getRegNum();
         // Pre-assigned variables like FP, SP from
         // reserved GRFs don't contribute to reg pressure.
-        if (regNum >= fg.builder->kernel.getStackCallStartReg())
+        if (regNum >= fg.getKernel()->stackCall.getStackCallStartReg())
           return true;
       }
     }

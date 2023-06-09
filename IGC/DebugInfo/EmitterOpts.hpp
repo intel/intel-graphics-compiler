@@ -22,6 +22,7 @@ struct DebugEmitterOpts {
   bool ScratchOffsetInOW = true;
   bool EmitATLinkageName = true;
   bool EnableDebugInfoValidation = false;
+  unsigned int VISAABIVersion = 2;
 };
 } // namespace IGC
 

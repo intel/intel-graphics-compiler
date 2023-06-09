@@ -953,6 +953,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnableDebugInfoValidation = IGC_IS_FLAG_ENABLED(DebugInfoValidation);
         DebugOpts.ScratchOffsetInOW = !m_currShader->m_Platform->isProductChildOf(IGFX_DG2);
+        DebugOpts.VISAABIVersion =
+            m_currShader->m_Platform->getVISAABIVersion();
         m_pDebugEmitter = IDebugEmitter::Create();
         m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);
     }

@@ -728,9 +728,9 @@ PhyRegUsage::findGRFSubReg(const BitSet *forbidden, bool calleeSaveBias,
   }
 
   if (calleeSaveBias) {
-    startReg = builder.kernel.calleeSaveStart();
+    startReg = builder.kernel.stackCall.calleeSaveStart();
   } else if (callerSaveBias) {
-    endReg = builder.kernel.calleeSaveStart();
+    endReg = builder.kernel.stackCall.calleeSaveStart();
   }
   int step = align == BankAlign::Even ? 2 : 1;
 
@@ -959,7 +959,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
       // around. NOTE: We are assuming a first-fit strategy when a callee-bias
       // is present.
       if (varBasis->getCalleeSaveBias()) {
-        AS.startGRFReg = builder.kernel.calleeSaveStart();
+        AS.startGRFReg = builder.kernel.stackCall.calleeSaveStart();
       }
 
       if (varBasis->getEOTSrc() && builder.hasEOTGRFBinding()) {
@@ -1103,8 +1103,8 @@ void getForbiddenGRFs(std::vector<unsigned int> &regNum, G4_Kernel &kernel,
 }
 
 void getCallerSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel) {
-  unsigned int startCalleeSave = kernel->calleeSaveStart();
-  unsigned int endCalleeSave = startCalleeSave + kernel->getNumCalleeSaveRegs();
+  unsigned int startCalleeSave = kernel->stackCall.calleeSaveStart();
+  unsigned int endCalleeSave = startCalleeSave + kernel->stackCall.getNumCalleeSaveRegs();
   // r60-r124 are caller save regs for SKL
   for (unsigned int i = startCalleeSave; i < endCalleeSave; i++) {
     regNum.push_back(i);
@@ -1113,7 +1113,7 @@ void getCallerSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel) {
 
 void getCalleeSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel) {
   // r1-r59 are callee save regs for SKL
-  unsigned int numCallerSaveGRFs = kernel->getCallerSaveLastGRF() + 1;
+  unsigned int numCallerSaveGRFs = kernel->stackCall.getCallerSaveLastGRF() + 1;
   for (unsigned int i = 1; i < numCallerSaveGRFs; i++) {
     regNum.push_back(i);
   }

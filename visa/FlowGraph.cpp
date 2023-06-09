@@ -3627,7 +3627,7 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder &builder,
     scratchRegDcl = builder.createDeclare(
         "SR", G4_GRF, builder.numEltPerGRF<Type_UD>(), 1, Type_UD);
     scratchRegDcl->getRegVar()->setPhyReg(
-        regPool.getGreg(builder.kernel.getSpillHeaderGRF()), 0);
+        regPool.getGreg(getKernel()->stackCall.getSpillHeaderGRF()), 0);
   }
 }
 
@@ -3641,7 +3641,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
   // VCE_SAVE (r60.0-r125.0) [r125-127 is reserved]
   //
   if (pseudoVCEDcl == NULL) {
-    unsigned numRowsVCE = getKernel()->getNumCalleeSaveRegs();
+    unsigned numRowsVCE = getKernel()->stackCall.getNumCalleeSaveRegs();
     pseudoVCEDcl = builder.createDeclare(
         "VCE_SAVE", G4_GRF, builder.numEltPerGRF<Type_UD>(),
         static_cast<unsigned short>(numRowsVCE), Type_UD);
@@ -3670,7 +3670,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
                                              "%s_%d", nameBase, i);
     G4_Declare *VCA = builder.createDeclare(
         name, G4_GRF, builder.numEltPerGRF<Type_UD>(),
-        builder.kernel.getCallerSaveLastGRF(), Type_UD);
+        getKernel()->stackCall.getCallerSaveLastGRF(), Type_UD);
     name = builder.getNameString(50, "SA0_%d", i);
     G4_Declare *saveA0 = builder.createDeclare(
         name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
