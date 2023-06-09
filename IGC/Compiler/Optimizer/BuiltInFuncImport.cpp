@@ -984,10 +984,32 @@ void BIImport::removeFunctionBitcasts(Module& M)
                             Function::arg_iterator eSrcFunc = funcTobeChanged->arg_end();
                             llvm::Function::arg_iterator itDest = pDstFunc->arg_begin();
 
+                            // Fix incorrect address space caused by CloneFunctionInto later
+                            // for example, CloneFunctionInto causes incorrect LLVM IR, like below
+                            //     %arrayidx.le.i = getelementptr inbounds i8, i8 addrspace(1)* %8, i64 %conv.le.i
+                            //     %9 = load i8, i8 addrspace(4)* %arrayidx.le.i, align 1, !tbaa !309
+                            // Address space should match for %arrayidx.le.i, so we insert necessary
+                            // address space casts, which should be eliminated later
+                            SmallVector<Instruction *, 5> ascInsts;
+
                             for (; itSrcFunc != eSrcFunc; ++itSrcFunc, ++itDest)
                             {
                                 itDest->setName(itSrcFunc->getName());
-                                operandMap[&(*itSrcFunc)] = &(*itDest);
+
+                                Type *srcType = (*itSrcFunc).getType();
+                                Value *destVal = &(*itDest);
+                                Type *destType = destVal->getType();
+                                if (srcType->isPointerTy() && destType->isPointerTy() &&
+                                    srcType->getPointerAddressSpace() != destType->getPointerAddressSpace())
+                                {
+                                    AddrSpaceCastInst *newASC = new AddrSpaceCastInst(destVal, srcType, destVal->getName() + "cast");
+                                    ascInsts.push_back(newASC);
+                                    operandMap[&(*itSrcFunc)] = newASC;
+                                }
+                                else
+                                {
+                                    operandMap[&(*itSrcFunc)] = &(*itDest);
+                                }
                             }
 
                             // Clone the body of the function into the dest function.
@@ -999,6 +1021,11 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                 IGCLLVM::CloneFunctionChangeType::LocalChangesOnly,
                                 Returns,
                                 "");
+
+                            // get first instruction in function and insert addressspacecast before it
+                            Instruction *firstInst = &(*pDstFunc->begin()->getFirstInsertionPt());
+                            for (Instruction *valToInsert : ascInsts)
+                                valToInsert->insertBefore(firstInst);
 
                             pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());
                             bitcastFunctionMap[funcTobeChanged].push_back(pDstFunc);
