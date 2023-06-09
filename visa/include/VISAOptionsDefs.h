@@ -416,7 +416,7 @@ DEF_VISA_OPTION(vISA_DumpSBID, ET_BOOL, "-dumpSBID", UNUSED, false)
 DEF_VISA_OPTION(vISA_AssignTokenUsingStdSort, ET_BOOL,
                 "-assignSWSBTokUsingStdSort", UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableJoinInSIMDCF, ET_BOOL, "-disableJoinInSIMDCF",
-                UNUSED, false)
+                UNUSED, true)
 
 DEF_VISA_OPTION(vISA_EnableALUThreePipes, ET_BOOL, "-threeALUPipes", UNUSED,
                 true)
