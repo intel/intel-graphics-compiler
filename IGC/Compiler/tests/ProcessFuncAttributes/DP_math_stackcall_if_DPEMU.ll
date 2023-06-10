@@ -14,7 +14,7 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt %s -regkey ForceDPEmulation=1 \
+; RUN: igc_opt %s -ocl -regkey EnableDPEmulation=1 \
 ; RUN:            --platformdg2 --igc-process-func-attributes -S \
 ; RUN:   | FileCheck %s
 
@@ -25,8 +25,7 @@
 ; CHECK-SAME:  nounwind
 ; CHECK:       define internal spir_func double @__ocl_svml_pow(double %a, double %b) local_unnamed_addr [[ATTR1:.*]] {
 ; CHECK:       attributes [[ATTR1]]
-; CHECK-SAME:  OclBuiltin
-; not-CHECK-SAME: visaStackCall
+; CHECK-SAME:  visaStackCall
 
 ; Function Attrs: convergent nounwind
 define spir_kernel void @test_ddiv(double addrspace(1)* %dst, <2 x double> addrspace(1)* %src, i32 %ix) #0 {
