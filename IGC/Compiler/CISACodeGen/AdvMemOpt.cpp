@@ -149,48 +149,14 @@ bool AdvMemOpt::runOnFunction(Function& F) {
 
     auto* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (Ctx->platform.isProductChildOf(IGFX_DG2)) {
-        // 1) split 64-bit uniform store into <2 x i32>, so it has better chance
+        // split 64-bit uniform store into <2 x i32>, so it has better chance
         // to merge with other i32 stores in order to form 16-byte stores that
-        // can use L1 cache.
-        // 2) count the number of sample operations that use lane-varying
-        // resource or sampler state. We need to apply IGC instruction-scheduler
-        // because, once ballot-loop is added, vISA finalizer cannot schedule
-        // those sample operations.
+        // can use L1 cache
         auto& DL = F.getParent()->getDataLayout();
         IRBuilder<> IRB(F.getContext());
         for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */) {
             auto* I = &*II++;
-            if (auto *SI = dyn_cast<SampleIntrinsic>(I)) {
-                if (!WI->isUniform(SI->getTextureValue()) ||
-                    !WI->isUniform(SI->getSamplerValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(I)) {
-                if (!WI->isUniform(GI->getTextureValue()) ||
-                    !WI->isUniform(GI->getSamplerValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
-                if (!WI->isUniform(LI->getTextureValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
-                if (!WI->isUniform(LI->getResourceValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto* SI = dyn_cast<StoreInst>(I)) {
+            if (auto* SI = dyn_cast<StoreInst>(I)) {
                 if (!WI->isUniform(SI))
                     continue;
 
@@ -206,6 +172,86 @@ bool AdvMemOpt::runOnFunction(Function& F) {
                     WI->incUpdateDepend(NewSI->getValueOperand(), WIAnalysis::UNIFORM_THREAD);
                     WI->incUpdateDepend(NewSI->getPointerOperand(), WIAnalysis::UNIFORM_THREAD);
                     SI->eraseFromParent();
+                }
+            }
+        }
+    }
+
+    // hoist input-based sample instructions in pixel shader into Entry-Block
+    unsigned MaxSampleHoisted = IGC_GET_FLAG_VALUE(PixelSampleHoistingLimit);
+    if (Ctx->type == ShaderType::PIXEL_SHADER && MaxSampleHoisted)
+    {
+        auto DL = F.getParent()->getDataLayout();
+        BasicBlock& EntryBlk = F.getEntryBlock();
+        unsigned LiveOutPressure = 0;
+        unsigned NumSampleInsts = 0;
+        unsigned NumOtherInsts = 0;
+        unsigned MaxLevelDeps = 0;
+        std::map<Instruction*, unsigned> InstDepLevel;
+        // check several parameters as the indicator of sampler hoisting:
+        // the number of sample instructions
+        // the number of other instructions
+        // the level of dependencies on sample instructions
+        // the live-out registers in the entry-block
+        for (auto BI = EntryBlk.begin(), BE = EntryBlk.end(); BI != BE; ++BI)
+        {
+            auto Inst = &*BI;
+            // compute instruction's dependency level
+            unsigned DepLevel = 0;
+            for (Value* Opnd : Inst->operands())
+            {
+                if (auto SrcI = dyn_cast<Instruction>(Opnd))
+                {
+                    if (InstDepLevel.find(SrcI) != InstDepLevel.end())
+                    {
+                        DepLevel = max(DepLevel, InstDepLevel[SrcI]);
+                    }
+                }
+            }
+            if (isSampleLoadGather4InfoInstruction(Inst))
+            {
+                NumSampleInsts++;
+                DepLevel++;  // bump up the dependency-level
+            }
+            else
+                NumOtherInsts++;
+            InstDepLevel[Inst] = DepLevel;
+            MaxLevelDeps = max(MaxLevelDeps, DepLevel);
+            if (Inst->isUsedOutsideOfBlock(&EntryBlk))
+            {
+                LiveOutPressure += (uint)(DL.getTypeAllocSize(Inst->getType()));
+            }
+        }
+        // hoist sampler instructions from the blocks post-dominiating the entry block
+        if ((NumSampleInsts * 33) >= NumOtherInsts &&
+            MaxLevelDeps >= 2 && LiveOutPressure <= 96)
+        {
+            auto Node = PDT->getNode(&EntryBlk);
+            unsigned NumSampleHoisted = 0;
+            while (Node->getIDom() && NumSampleHoisted < MaxSampleHoisted)
+            {
+                Node = Node->getIDom();
+                BasicBlock* SuccBlk = Node->getBlock();
+                auto BI = SuccBlk->begin();
+                auto BE = SuccBlk->end();
+                auto Inst = &*BI;
+                while (!isSampleLoadGather4InfoInstruction(Inst) && BI != BE)
+                {
+                    Inst = &*BI++;
+                }
+                while (BI != BE && NumSampleHoisted < MaxSampleHoisted)
+                {
+                    auto NextCand = &*BI++;
+                    while (!isSampleLoadGather4InfoInstruction(NextCand) && BI != BE)
+                    {
+                        NextCand = &*BI++;
+                    }
+                    if (hoistInst(Inst, &EntryBlk))
+                    {
+                        NumSampleHoisted++;
+                    }
+                    if (BI != BE)
+                        Inst = NextCand;
                 }
             }
         }

@@ -909,11 +909,6 @@ bool PreRAScheduler::runOnFunction(Function& F) {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (isOptDisabledForFunction(ctx->getModuleMetaData(), getPassName(), &F))
         return false;
-    // On DG2 and later, only apply IGC-llvm scheduler when there is lane-varying
-    // sample-load because vISA preRA scheduler cannot do that.
-    if (ctx->platform.isCoreChildOf(IGFX_XE_HPG_CORE) &&
-        !F.hasFnAttribute("HasSampleWithVaryingResource"))
-        return false;
 
     m_pLVA = &getAnalysis<LivenessAnalysis>();
     m_pDT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
