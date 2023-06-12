@@ -16,7 +16,11 @@ SPDX-License-Identifier: MIT
 #include "SpillManagerGMRF.h"
 #include "VarSplit.h"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <limits>
 #include <list>

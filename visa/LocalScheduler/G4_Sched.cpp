@@ -11,7 +11,11 @@ SPDX-License-Identifier: MIT
 #include "LocalScheduler_G4IR.h"
 #include "Passes/AccSubstitution.hpp"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <fstream>
 #include <functional>

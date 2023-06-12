@@ -13,7 +13,11 @@ SPDX-License-Identifier: MIT
 #include "G4_Verifier.hpp"
 #include "Optimizer.h"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 typedef uint64_t Value_Hash;
 namespace vISA {

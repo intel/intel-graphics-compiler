@@ -7,7 +7,12 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Assertions.h"
+
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/raw_ostream.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <cstdarg>
 

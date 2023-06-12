@@ -13,7 +13,12 @@ SPDX-License-Identifier: MIT
 #include <cstdlib>
 #include <cstring>
 #include <map>
+
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SparseBitVector.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 // Array-based bitset implementation where each element occupies a single bit.
 // Inside each array element, bits are stored and indexed from lsb to msb.

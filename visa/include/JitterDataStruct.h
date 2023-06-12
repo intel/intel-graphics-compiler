@@ -13,7 +13,11 @@ SPDX-License-Identifier: MIT
 #include <optional>
 #include <stdint.h>
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/JSON.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 namespace vISA {
 

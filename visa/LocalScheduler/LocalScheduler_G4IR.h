@@ -20,7 +20,11 @@ SPDX-License-Identifier: MIT
 #include "Dependencies_G4IR.h"
 #include "LatencyTable.h"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <list>
 #include <set>

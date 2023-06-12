@@ -12,7 +12,13 @@ SPDX-License-Identifier: MIT
 #include "LinearScanRA.h"
 #include "LocalRA.h"
 #include "PhyRegUsage.h"
+
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SparseBitVector.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
+
 
 namespace vISA {
 

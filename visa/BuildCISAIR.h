@@ -12,7 +12,11 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SmallVector.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <cstdint>
 #include <sstream>

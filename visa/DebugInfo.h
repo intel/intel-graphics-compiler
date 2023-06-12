@@ -14,7 +14,11 @@ SPDX-License-Identifier: MIT
 #include "GraphColor.h"
 #include "Mem_Manager.h"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <string>
 #include <unordered_map>

@@ -23,7 +23,11 @@ SPDX-License-Identifier: MIT
 #include "Passes/SendFusion.hpp"
 #include "Passes/StaticProfiling.hpp"
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <algorithm>
 #include <chrono>

@@ -14,7 +14,12 @@ SPDX-License-Identifier: MIT
 #include "../Mem_Manager.h"
 #include "../Timer.h"
 #include "LocalScheduler_G4IR.h"
+
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <bitset>
 #include <set>
