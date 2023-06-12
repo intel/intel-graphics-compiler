@@ -269,12 +269,11 @@ void StackAnalysis::checkKernel(Function &Kernel) {
   // align stack size to kernel alignment requirement
   KernelUsedStack = llvm::alignTo(KernelUsedStack, KernelAlignment);
   if (KernelUsedStack > m_MaxStackSize) {
-    vc::warn(Kernel.getContext(), "StackUsage",
-             "Kernel \"" + Kernel.getName() + "\" may overflow stack. Used " +
-                 std::to_string(KernelUsedStack) + " bytes of " +
-                 std::to_string(m_MaxStackSize) +
-                 "\nCalls: " + GenerateCallSequence(Kernel));
-    return;
+    vc::warn(
+        Kernel.getContext(), "StackUsage",
+        "Required \"" + Kernel.getName() +
+            "\" kernel stack is too large: " + std::to_string(KernelUsedStack) +
+            " bytes used.\nCalls: " + GenerateCallSequence(Kernel));
   }
 
   IGC_ASSERT(!Kernel.hasFnAttribute(vc::FunctionMD::VCStackAmount));
