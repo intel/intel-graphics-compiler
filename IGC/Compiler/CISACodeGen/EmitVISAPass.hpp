@@ -773,6 +773,7 @@ public:
     ModuleMetaData* m_moduleMD = nullptr;
     bool m_canAbortOnSpill;
     PSSignature* const m_pSignature;
+    llvm::DenseSet<llvm::Value*> m_alreadyInitializedPHI;
 
     // Debug info emitter
     IDebugEmitter* m_pDebugEmitter = nullptr;

@@ -263,6 +263,7 @@ namespace IGC
         bool IsSubspanUse(llvm::Value* v);
         bool IsSourceOfSample(llvm::Value* v);
         bool IsSourceOfSampleUnderCF(llvm::Value* v);
+        bool IsPHISourceOfSampleUnderCF(llvm::Value* v);
         bool HasUseOutsideLoop(llvm::Value* v);
         bool NeedVMask();
 
@@ -294,6 +295,7 @@ namespace IGC
         llvm::DenseSet<llvm::Value*>             m_subSpanUse;
         llvm::DenseSet<llvm::Value*>             m_sampleSource;
         llvm::DenseSet<llvm::Value*>             m_sampleUnderCFsource;
+        llvm::DenseSet<llvm::Value*>             m_sampleUnderCFPHIsource;
         llvm::SmallPtrSet<llvm::Value*, 8>       m_forceIsolates;
         std::map<llvm::BasicBlock*, SBasicBlock*> m_blockMap;
         SBasicBlock* m_blocks;

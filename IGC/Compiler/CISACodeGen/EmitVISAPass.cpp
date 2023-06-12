@@ -1658,6 +1658,19 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
             }
         }
         IGC_ASSERT(It != Et);
+        if (m_pCtx->getModuleMetaData()->compOpt.initializePhiSampleSourceWA &&
+            m_pattern->IsPHISourceOfSampleUnderCF((*It)->dstRootV) &&
+            m_alreadyInitializedPHI.find((*It)->dstRootV) == m_alreadyInitializedPHI.end())
+        {
+            // this is WA for situation where application has early return (not discard) from shader
+            // in this case phi node will not set sample coords properly on all simd lanes
+            // WA is to initialize register used for phi node with zero, which eliminates corruptions
+            m_alreadyInitializedPHI.insert((*It)->dstRootV);
+            CVariable* zero = m_currShader->ImmToVariable(0, (*It)->dstCVar->GetType());
+            m_encoder->SetNoMask();
+            m_encoder->Copy((*It)->dstCVar, zero);
+            m_encoder->Push();
+        }
         emitList.push_back(std::pair<CVariable*, CVariable*>((*It)->srcCVar, (*It)->dstCVar));
         phiSrcDstList.erase(It);
     }

@@ -1026,6 +1026,20 @@ namespace IGC
             {
                 // If a phi is used in a subspan we cannot propagate the subspan use and need to use VMask
                 m_NeedVMask = true;
+
+                if (Instruction* I = dyn_cast<Instruction>(v))
+                {
+                    // this is WA for situation where application has early return (not discard) from shader
+                    // in this case phi node will not set sample coords properly on all simd lanes
+                    // WA is to initialize register used for phi node with zero, which eliminates corruptions
+                    // here we collect suspected phi nodes to be resolved later in EmitVISAPass
+                    if (m_ctx->getModuleMetaData()->compOpt.initializePhiSampleSourceWA &&
+                        isSampleSource &&
+                        !PDT->dominates(I->getParent(), &I->getFunction()->getEntryBlock()))
+                    {
+                        m_sampleUnderCFPHIsource.insert(v);
+                    }
+                }
             }
             else
             {
@@ -1930,6 +1944,11 @@ namespace IGC
     bool CodeGenPatternMatch::IsSourceOfSampleUnderCF(llvm::Value* v)
     {
         return m_sampleUnderCFsource.find(v) != m_sampleUnderCFsource.end();
+    }
+
+    bool CodeGenPatternMatch::IsPHISourceOfSampleUnderCF(llvm::Value* v)
+    {
+        return m_sampleUnderCFPHIsource.find(v) != m_sampleUnderCFPHIsource.end();
     }
 
     bool CodeGenPatternMatch::MatchFMA(llvm::IntrinsicInst& I)

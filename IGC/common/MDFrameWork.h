@@ -438,6 +438,7 @@ namespace IGC
         bool ForceLargeGRFNum4RQ                        = false;
         bool DisableEUFusion                            = false;
         bool DisableFDivToFMulInvOpt                    = false;
+        bool initializePhiSampleSourceWA                = false;
     };
 
     enum class ThreadIDLayout
