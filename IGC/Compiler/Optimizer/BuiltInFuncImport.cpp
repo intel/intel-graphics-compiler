@@ -1113,7 +1113,11 @@ void BIImport::InitializeBIFlags(Module& M)
         initializeVarWithValue("__APIRS", false);
     }
 
-    bool useHighAccuracyMathFuncs = false;
+    // High accuracy implementations are also more performant on newer cores,
+    // select them by default.
+    bool useHighAccuracyMathFuncs =
+                  pCtx->platform.isProductChildOf(IGFX_PVC);
+
     if (pCtx->type == ShaderType::OPENCL_SHADER)
     {
         OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(pCtx);
@@ -1123,7 +1127,7 @@ void BIImport::InitializeBIFlags(Module& M)
         float profilingTimerResolution = OCLContext->getProfilingTimerResolution();
         initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
 
-        useHighAccuracyMathFuncs = OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
+        useHighAccuracyMathFuncs = useHighAccuracyMathFuncs || OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
 
         initializeVarWithValue("__UseLSC", pCtx->platform.hasLSC());
         initializeVarWithValue("__ForceL1Prefetch", IGC_IS_FLAG_ENABLED(ForcePrefetchToL1Cache) ? 1 : 0);
