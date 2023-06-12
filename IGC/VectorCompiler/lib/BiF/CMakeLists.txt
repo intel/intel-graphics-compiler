@@ -12,19 +12,14 @@ set(RESOURCE_EMBEDDER_SCRIPT ${IGC_SOURCE_DIR}/BiFModule/resource_embedder.py)
 set(VCB_EXE "vcb" CACHE STRING "")
 
 set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common.h)
-set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
-set(PRINTF_ZE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ze_genx.cpp)
-set(SPIRV_MATH_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_math_builtins_genx.cpp)
-set(SPIRV_ATOMIC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_atomic_builtins_genx.cpp)
-set(SPIRV_EXEC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_exec_builtins_genx.cpp)
 
-vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32
+vc_embed_bif(PRINTF_OCL_32_CPP_PATH printf_ocl_genx.cpp VCBiFPrintfOCL 32
              DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64
+vc_embed_bif(PRINTF_OCL_64_CPP_PATH printf_ocl_genx.cpp VCBiFPrintfOCL 64
              DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-vc_embed_bif(PRINTF_ZE_32_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 32
+vc_embed_bif(PRINTF_ZE_32_CPP_PATH printf_ze_genx.cpp VCBiFPrintfZE 32
              DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-vc_embed_bif(PRINTF_ZE_64_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 64
+vc_embed_bif(PRINTF_ZE_64_CPP_PATH printf_ze_genx.cpp VCBiFPrintfZE 64
              DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
 
 #Define the macro if Khronos SPIR-V translator is used.
@@ -34,8 +29,12 @@ endif()
 
 get_target_include_opt_list(IGC_SPIRV_HEADERS_INCLUDES IGCSPIRVHeaders)
 
+set(SPIRV_BUILTIN_SOURCES
+  spirv_atomic_builtins_genx.cpp
+  spirv_exec_builtins_genx.cpp
+  spirv_math_builtins_genx.cpp)
 vc_embed_bif(SPIRV_BUILTINS_CPP_PATH
-             "${SPIRV_MATH_BUILTINS_SRC_PATH};${SPIRV_ATOMIC_BUILTINS_SRC_PATH};${SPIRV_EXEC_BUILTINS_SRC_PATH}"
+             "${SPIRV_BUILTIN_SOURCES}"
              VCSPIRVBuiltins 64
              CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES}
              CLANG_FLAGS ${CLANG_FLAGS_FOR_SPIRV_BUILTINS})
@@ -64,12 +63,7 @@ add_custom_target(VCBiFPreparation
           ${PRINTF_ZE_32_CPP_PATH}
           ${PRINTF_ZE_64_CPP_PATH}
           ${BUILTINS_CPP_PATH}
-          ${SPIRV_BUILTINS_CPP_PATH}
-  SOURCES ${PRINTF_OCL_SRC_PATH}
-          ${BUILTIN_SOURCES}
-          ${SPIRV_MATH_BUILTINS_SRC_PATH}
-          ${SPIRV_EXEC_BUILTINS_SRC_PATH}
-          ${SPIRV_ATOMIC_BUILTINS_SRC_PATH})
+          ${SPIRV_BUILTINS_CPP_PATH})
 
 add_library(VCEmbeddedBiF OBJECT
   ${PRINTF_OCL_32_CPP_PATH}
@@ -78,6 +72,4 @@ add_library(VCEmbeddedBiF OBJECT
   ${PRINTF_ZE_64_CPP_PATH}
   ${BUILTINS_CPP_PATH}
   ${SPIRV_BUILTINS_CPP_PATH})
-
-add_dependencies(VCEmbeddedBiF VCBiFPreparation)
 target_link_libraries(VCEmbeddedBiF VCHeaders)
