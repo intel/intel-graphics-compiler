@@ -1587,12 +1587,10 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
 
   // Update live-intervals only when bits change in bit-vector.
   // state parameter contains previous instruction and bit-vector.
-  for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar();
-       i++) {
-    bool eltI = live.test(i);
-    bool prevEltI = state->getPrevBitset() ? state->getPrevBitset()->test(i) : false;
-
-    if (eltI && !prevEltI) {
+  for (unsigned i : live) {
+    bool prevEltI =
+        state->getPrevBitset() ? state->getPrevBitset()->test(i) : false;
+    if (!prevEltI) {
       // Some variables have changed state in bit-vector, so update their states
       // accordingly.
       //
@@ -1612,21 +1610,8 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
 
         lr->setStateOpen(inst->getVISAId());
       }
-    } else if (!eltI && prevEltI) {
-      G4_Declare *dcl = lrs[i]->getVar()->getDeclare();
-
-      auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
-
-      if (lr->getState() == LiveIntervalInfo::DebugLiveIntervalState::Open) {
-        auto closeAt = state->getPrevInst()->getVISAId();
-        while (closeAt >= 1 && krnlDbgInfo->isMissingVISAId(closeAt - 1)) {
-          closeAt--;
-        }
-        lr->setStateClosed(closeAt);
-      }
     }
-
-    if (closeAllOpenIntervals && eltI) {
+    if (closeAllOpenIntervals) {
       G4_Declare *dcl = lrs[i]->getVar()->getDeclare();
       auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
 
@@ -1641,6 +1626,24 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
         }
 
         lr->setStateClosed(lastCISAOff);
+      }
+    }
+  }
+
+  if (state->getPrevBitset()) {
+    for (unsigned i : (*state->getPrevBitset())) {
+      if (!live.test(i)) {
+        G4_Declare *dcl = lrs[i]->getVar()->getDeclare();
+
+        auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
+
+        if (lr->getState() == LiveIntervalInfo::DebugLiveIntervalState::Open) {
+          auto closeAt = state->getPrevInst()->getVISAId();
+          while (closeAt >= 1 && krnlDbgInfo->isMissingVISAId(closeAt - 1)) {
+            closeAt--;
+          }
+          lr->setStateClosed(closeAt);
+        }
       }
     }
   }
