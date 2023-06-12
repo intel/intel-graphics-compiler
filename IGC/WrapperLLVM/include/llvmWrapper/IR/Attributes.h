@@ -17,7 +17,7 @@ namespace IGCLLVM {
     /// Return the attribute object that exists at the given index.
     inline llvm::Attribute getAttribute(llvm::AttributeList Attrs, unsigned Index, llvm::Attribute::AttrKind Kind) {
 #if LLVM_VERSION_MAJOR >= 14
-        return Attrs.getAttributeAtIndex(llvm::AttributeList::FunctionIndex, Kind);
+        return Attrs.getAttributeAtIndex(Index, Kind);
 #else
         return Attrs.getAttribute(Index, Kind);
 #endif
@@ -34,9 +34,21 @@ namespace IGCLLVM {
     /// Return the attribute object that exists at the given index.
     inline llvm::Attribute getAttribute(llvm::AttributeList Attrs, unsigned Index, llvm::StringRef Kind) {
 #if LLVM_VERSION_MAJOR >= 14
-        return Attrs.getAttributeAtIndex(llvm::AttributeList::FunctionIndex, Kind);
+        return Attrs.getAttributeAtIndex(Index, Kind);
 #else
         return Attrs.getAttribute(Index, Kind);
+#endif
+    }
+
+    inline bool hasParentContext(llvm::Attribute &Attribute, llvm::LLVMContext &Ctx) {
+#if LLVM_VERSION_MAJOR >= 13
+        return Attribute.hasParentContext(Ctx);
+#else
+        // before llvm 13 there was no functionality for checking attribute validity
+        // nor did llvm::Verifier contain the nested loops checking said validity in
+        // verifyFunctionAttrs() by invoking Attribute::hasParentContext() for each.
+        // Since it wasn't an issue, this wrapper will also treat it as a non-issue.
+        return true;
 #endif
     }
 
