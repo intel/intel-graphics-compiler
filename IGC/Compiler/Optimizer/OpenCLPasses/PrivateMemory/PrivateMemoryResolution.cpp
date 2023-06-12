@@ -931,7 +931,14 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 // For example, if it is not vectorSOA, but all uses are vectors
                 // (in case of vectors of different size of elements number) we close the
                 // possibility to use large loads/stores, so cancel the transformation.
-                TransposeMemLayout &= pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
+                bool isSOABeneficial = pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
+                Type* allocaType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pAI->getType()));
+                if (VectorType* vectorType = dyn_cast<VectorType>(allocaType))
+                {
+                    bool baseTypeIsSmall = (unsigned)(vectorType->getElementType()->getScalarSizeInBits()) < 32;
+                    isSOABeneficial |= baseTypeIsSmall;
+                }
+                TransposeMemLayout &= isSOABeneficial;
             }
 
             unsigned int bufferSize = 0;
