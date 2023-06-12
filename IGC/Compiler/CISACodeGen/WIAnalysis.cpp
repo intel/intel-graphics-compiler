@@ -167,7 +167,7 @@ namespace IGC {
         const IGCLLVM::TerminatorInst* cbr;
         const llvm::BasicBlock* full_join;
         llvm::DenseSet<llvm::BasicBlock*> influence_region;
-        llvm::DenseSet<llvm::BasicBlock*> partial_joins;
+        llvm::SmallPtrSet<llvm::BasicBlock*, 4> partial_joins;
         llvm::BasicBlock* fork_blk;
     };
 } // namespace IGC
@@ -917,38 +917,11 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
     {
         updatePHIDepAtJoin(ipd, &br_info);
     }
-
-    std::vector<BasicBlock*> PJSet;
-    // narrow the partial-join set to the frontier nodes and lcssa nodes
-    // TODO, is it true that lcssa should be right before ipd?
-    for (auto join_it = br_info.partial_joins.begin(),
-              join_e = br_info.partial_joins.end();
-         join_it != join_e; ++join_it) {
-        bool AtFrontier = false;
-        auto *PJB = (*join_it);
-        for (auto pred : predecessors(PJB)) {
-            if (!br_info.partial_joins.count(pred))
-                AtFrontier = true;
-        }
-        if (AtFrontier)
-            PJSet.push_back(PJB);
-        else if (PJB->getSinglePredecessor() && isa<PHINode>(PJB->begin()))
-            PJSet.push_back(PJB);
-    }
     // check dep-type for every phi in the partial-joins
-    for (auto PJB : PJSet) {
-        // skip the special loop-entry case
-        if (DT->dominates(PJB, blk)) {
-            int NumPreds = 0;
-            for (auto pred : predecessors(PJB)) {
-                if (br_info.influence_region.count(pred)) {
-                    NumPreds++;
-                }
-            }
-            if (NumPreds <= 1)
-                continue;
-        }
-        updatePHIDepAtJoin(PJB, &br_info);
+    for (SmallPtrSet<BasicBlock*, 4>::iterator join_it = br_info.partial_joins.begin(),
+        join_e = br_info.partial_joins.end(); join_it != join_e; ++join_it)
+    {
+        updatePHIDepAtJoin(*join_it, &br_info);
     }
 
     // walk through all the instructions in the influence-region
@@ -2203,8 +2176,8 @@ void BranchInfo::print(raw_ostream& OS) const
         full_join->print(IGC::Debug::ods());
     }
     OS << "\nPartial Joins:";
-    auto join_it = partial_joins.begin();
-    auto join_e = partial_joins.end();
+    SmallPtrSet<BasicBlock*, 4>::iterator join_it = partial_joins.begin();
+    SmallPtrSet<BasicBlock*, 4>::iterator join_e = partial_joins.end();
     for (; join_it != join_e; ++join_it)
     {
         BasicBlock* cur_blk = *join_it;
