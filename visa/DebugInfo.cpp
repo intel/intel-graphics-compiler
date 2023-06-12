@@ -233,7 +233,7 @@ int DbgDecoder::ddDbg() {
 
   if (!dbgFile) {
     std::cerr << "Error opening and creating debug file: " << filename << "\n";
-    vISA_ASSERT(false, "Unable to wrie debug file to disk.");
+    vISA_ASSERT(false, "Unable to write debug file to disk.");
     return -1;
   }
 

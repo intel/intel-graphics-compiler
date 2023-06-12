@@ -70,9 +70,12 @@ DEF_VISA_OPTION(vISA_removeInstrinsics, ET_BOOL, "-removeInstrinsics", UNUSED,
                 true)
 DEF_VISA_OPTION(vISA_addSWSBInfo, ET_BOOL, "-addSWSBInfo", UNUSED, true)
 DEF_VISA_OPTION(vISA_DumpRAIntfGraph, ET_BOOL, "-dumpintf", UNUSED, false)
+DEF_VISA_OPTION(vISA_dumpRAMetadata, ET_BOOL_TRUE, "-dumpRAMetadata",
+                "USAGE: when TRUE, emits a file containing metadata about "
+                "physical assignments that is used for RA validation", false)
 DEF_VISA_OPTION(vISA_DumpGenOffset, ET_BOOL, "-dumpgenoffset", UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceSpillVariables, ET_CSTR, "-forceSpillVariables",
-                "UESAGE: -forceSpillVariables dcl_id_1,dcl_id_2", NULL)
+                "USAGE: -forceSpillVariables dcl_id_1,dcl_id_2", NULL)
 DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg, ET_CSTR, "-forceAssignRhysicalReg",
                 UNUSED, NULL)
 DEF_VISA_OPTION(
@@ -478,6 +481,9 @@ DEF_VISA_OPTION(VISA_AsmFileName, ET_CSTR, "-asmOutput",
                 "USAGE: -asmOutput <FILE>\n", NULL)
 DEF_VISA_OPTION(vISA_DecodeDbg, ET_CSTR, "-decodedbg",
                 "USAGE: -decodedbg <dbg filename>\n", NULL)
+DEF_VISA_OPTION(vISA_DecodeRAMetadata, ET_BOOL_TRUE, "-decodeRAMetadata",
+                "USAGE: decodes a file containing RA metadata and "
+                "outputs it to console in human-readable format", false)
 DEF_VISA_OPTION(vISA_encoderFile, ET_CSTR, "-encoderStatisticsFile",
                 "USAGE: -encoderStatisticsFile <reloc file>\n",
                 "encoderStatistics.csv")

@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "G4_IR.hpp"
 #include "IsaVerification.h"
 #include "IGC/common/StringMacros.hpp"
+#include "MetadataDumpRA.h"
 
 #include <fstream>
 #include <functional>
@@ -1802,6 +1803,14 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
     bool hasPayloadPrologue =
         m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Payload_Prologue;
+
+    // initialize new metadata object
+    std::unique_ptr<MetadataDumpRA> metadata;
+    bool dumpMetadata = m_options.getOption(vISA_dumpRAMetadata);
+    if (dumpMetadata) {
+        metadata = std::make_unique<vISA::MetadataDumpRA>();
+    }
+
     // stitch functions and compile to gen binary
     for (auto func : mainFunctions) {
       unsigned int genxBufferSize = 0;
@@ -1830,12 +1839,30 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       }
 
       void *genxBuffer = func->encodeAndEmit(genxBufferSize);
+
+      // create metadata for this kernel if enabled
+      if (dumpMetadata) {
+          metadata->addKernelMD(func->getKernel());
+      }
+
       func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
       if (m_options.getOption(vISA_GenerateDebugInfo)) {
         func->computeAndEmitDebugInfo(subFunctions);
       }
       restoreFCallState(func->getKernel(), origFCallFRet);
 
+    }
+
+    if (dumpMetadata) {
+        // emit the metadata file
+        metadata->emitMetadataFile();
+    }
+
+    // output metadata to console
+    bool decodeMetadata = m_options.getOption(vISA_DecodeRAMetadata);
+    if (decodeMetadata) {
+        MetadataReader MDReader;
+        MDReader.readMetadata();
     }
 
   }

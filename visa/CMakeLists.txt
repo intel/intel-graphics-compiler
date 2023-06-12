@@ -245,6 +245,7 @@ set(GenX_Common_Sources_External_Other
   LocalRA.cpp
   LoopAnalysis.cpp
   Lowered_IR.cpp
+  MetadataDumpRA.cpp
   Optimizer.cpp
   PhyRegCompute.cpp
   PhyRegUsage.cpp
@@ -343,6 +344,7 @@ set(GenX_Common_Headers
   LocalDataflow.h
   LocalRA.h
   Metadata.h
+  MetadataDumpRA.h
   Optimizer.h
   PhyRegUsage.h
   PointsToAnalysis.h
