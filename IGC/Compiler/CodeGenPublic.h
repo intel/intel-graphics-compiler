@@ -336,6 +336,8 @@ namespace IGC
         bool hasPullBary;
         bool sampleCmpToDiscardOptimizationPossible;
         bool hasRuntimeValueVector;
+        bool hasDynamicGenericLoadStore;
+        bool hasUnmaskedRegion;
         unsigned int numCall;
         unsigned int numBarrier;
         unsigned int numLoadStore;
@@ -351,10 +353,9 @@ namespace IGC
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
         unsigned int numAllocaInsts;
         unsigned int numPsInputs;
-        bool hasDynamicGenericLoadStore;
-        bool hasUnmaskedRegion;
         unsigned int numGlobalInsts;
         unsigned int numLocalInsts;
+        unsigned int numSamplesVaryingResource; //<! measured before CodeGen for scheduling heuristic
     };
 
     struct SSimplePushInfo
