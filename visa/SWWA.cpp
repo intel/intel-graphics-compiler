@@ -2305,6 +2305,8 @@ void Optimizer::applyFusedCallWA() {
     G4_INST *joinSmallB0 = builder.createCFInst(
         nullptr, G4_join, simdsz, endLabel, nullptr, InstOpt_NoOpt, false);
     smallB0->push_back(joinSmallB0);
+    // Let SWSB skip this join when building SIMD CF.
+    joinSmallB0->asCFInst()->setSWSBSkip(true);
 
     G4_Label *smallB0Label = smallB0->front()->getLabel();
     G4_INST *gotoEnd = builder.createCFInst(

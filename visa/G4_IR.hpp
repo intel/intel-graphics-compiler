@@ -1070,6 +1070,10 @@ class G4_InstCF : public G4_INST {
   // lanes on entry to shader/kernel.
   bool isUniformBr;
 
+  // Nomrally, SWSB has to consider the control-flow edge created by a join.
+  // If this field is true, SWSB can safely skip the edge from this join.
+  bool SWSBCanSkip;
+
 public:
   static const uint32_t unknownCallee = 0xFFFF;
 
@@ -1080,7 +1084,7 @@ public:
       : G4_INST(builder, prd, op, nullptr, g4::NOSAT, size, nullptr, nullptr,
                 nullptr, instOpt),
         jip(jipLabel), uip(uipLabel), isBackwardBr(op == G4_while),
-        isUniformBr(false) {
+        isUniformBr(false), SWSBCanSkip(false) {
     isUniformBr = (op == G4_jmpi ||
                    (op == G4_goto && (size == g4::SIMD1 || prd == nullptr)));
   }
@@ -1090,7 +1094,8 @@ public:
             G4_CondMod *m, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
             G4_InstOpts opt)
       : G4_INST(builder, prd, o, m, g4::NOSAT, size, d, s0, nullptr, opt),
-        jip(NULL), uip(NULL), isBackwardBr(o == G4_while), isUniformBr(false) {
+        jip(NULL), uip(NULL), isBackwardBr(o == G4_while),
+        isUniformBr(false), SWSBCanSkip(false) {
     isUniformBr = (op == G4_jmpi ||
                    (op == G4_goto && (size == g4::SIMD1 || prd == nullptr)));
   }
@@ -1122,6 +1127,9 @@ public:
 
   void setUniform(bool val) { isUniformBr = val; }
   bool isUniform() const { return isUniformBr; }
+
+  void setSWSBSkip(bool val) { SWSBCanSkip = val; }
+  bool canSWSBSkip() const { return SWSBCanSkip; }
 
   bool isIndirectJmp() const;
 
