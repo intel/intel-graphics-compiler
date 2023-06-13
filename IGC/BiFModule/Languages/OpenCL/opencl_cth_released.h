@@ -6996,11 +6996,6 @@ typedef enum intel_hit_type_t
     intel_hit_type_potential_hit = 1,
 } intel_hit_type_t;
 
-typedef enum
-{
-    intel_raytracing_ext_flag_ray_query = 1 << 0,   // true if ray queries are supported
-} intel_raytracing_ext_flag_t;
-
 typedef struct // intel_float2
 {
     float x, y;
@@ -7034,9 +7029,6 @@ typedef enum // intel_candidate_type_t
 } intel_candidate_type_t;
 
 // --- API functions ---
-
-// check supported ray tracing features
-intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag();
 
 // initialize a ray query
 intel_ray_query_t intel_ray_query_init(
@@ -7110,5 +7102,4 @@ bool intel_is_traversal_done(intel_ray_query_t query);
 // if traversal is done one can test for the presence of a committed hit to
 // either invoke miss or closest hit shader
 bool intel_has_committed_hit(intel_ray_query_t query);
-
 #endif // cl_intel_rt_production

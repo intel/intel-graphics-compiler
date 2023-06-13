@@ -13,9 +13,9 @@ SPDX-License-Identifier: MIT
 #define ATOMIC_FLAG_TRUE 1
 #define ATOMIC_FLAG_FALSE 0
 
-#define SEMANTICS_PRE_OP_NEED_FENCE ( Release | AcquireRelease | SequentiallyConsistent)
+#define SEMANTICS_PRE_OP_NEED_FENCE ( Release | AcquireRelease | SequentiallyConsistent )
 
-#define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent)
+#define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent )
 
 extern __constant int __UseNativeFP32GlobalAtomicAdd;
 extern __constant int __UseNativeFP16AtomicMinMax;

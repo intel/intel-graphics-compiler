@@ -82,6 +82,11 @@ void __basic_ray_forward(
     MemRay_setRayMask(&rtStack->ray[bvhLevel],     mask);
 }
 
+typedef enum
+{
+    intel_raytracing_ext_flag_ray_query = 1 << 0,   // true if ray queries are supported
+} intel_raytracing_ext_flag_t;
+
 intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
 {
     return intel_raytracing_ext_flag_ray_query;
