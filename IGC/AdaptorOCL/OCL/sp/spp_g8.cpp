@@ -459,6 +459,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
     zebuilder.setProductFamily(m_Platform.eProductFamily);
     zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
     zebuilder.setVISAABIVersion(m_Context.platform.getVISAABIVersion());
+    zebuilder.setGmdID(m_Platform.sRenderBlockID);
 
     //
     // Creating ZE binary requires linking individual ELF files,

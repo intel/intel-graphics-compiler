@@ -118,6 +118,11 @@ enum {
     // Note that VISA ABI is valid only when stack calls are used. Without
     // stack calls, VISA ABI field may be absent.
     NT_INTELGT_VISA_ABI_VERSION = 5,
+    // The description is stored in a 4-byte ELF word and is used instead
+    // of NT_INTELGT_PRODUCT_FAMILY, NT_INTELGT_GFXCORE_FAMILY and
+    // NT_INTELGT_TARGET_METADATA because it contains all required info to
+    // validate program for a target device
+    NT_INTELGT_PRODUCT_CONFIG = 6,
 };
 ~~~
 
@@ -160,6 +165,24 @@ struct TargetMetadata {
         uint32_t packed = 0U;
     };
 };
+~~~
+
+**The description of NT_INTELGT_PRODUCT_CONFIG note**
+~~~
+typedef struct GFX_GMD_ID_DEF
+{
+    union
+    {
+        struct
+        {
+            unsigned int    RevisionID : 6;
+            unsigned int    Reserved : 8;
+            unsigned int    GMDRelease : 8;
+            unsigned int    GMDArch : 10;
+        }GmdID;
+        unsigned int    Value;
+    };
+}GFX_GMD_ID;
 ~~~
 
 ## Gen Relocation Type

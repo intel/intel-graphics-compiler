@@ -68,6 +68,9 @@ public:
     void setVISAABIVersion(unsigned int version) { m_VISAABIVersion = version; }
     unsigned int getVISAABIVersion() const { return m_VISAABIVersion; }
 
+    void setGmdID(GFX_GMD_ID gmdID) { m_gmdID = gmdID; }
+    GFX_GMD_ID setGmdID() const { return m_gmdID; }
+
     // add a text section contains gen binary
     // - name: section name. This is usually the kernel or function name of
     //         this text section. Do not includes leading .text in given
@@ -379,6 +382,7 @@ private:
     GFXCORE_FAMILY m_gfxCoreFamily = IGFX_UNKNOWN_CORE;
     TargetMetadata m_metadata;
     unsigned int m_VISAABIVersion = 0;
+    GFX_GMD_ID m_gmdID;
 
     StandardSectionListTy m_textSections;
     StandardSectionListTy m_dataAndbssSections; // data and bss sections

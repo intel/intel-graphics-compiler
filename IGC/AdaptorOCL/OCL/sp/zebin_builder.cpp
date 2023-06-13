@@ -68,6 +68,11 @@ void ZEBinaryBuilder::setVISAABIVersion(unsigned int ver) {
   mBuilder.setVISAABIVersion(ver);
 }
 
+void ZEBinaryBuilder::setGmdID(GFX_GMD_ID value)
+{
+    mBuilder.setGmdID(value);
+}
+
 void ZEBinaryBuilder::createKernel(
     const char*  rawIsaBinary,
     unsigned int rawIsaBinarySize,
