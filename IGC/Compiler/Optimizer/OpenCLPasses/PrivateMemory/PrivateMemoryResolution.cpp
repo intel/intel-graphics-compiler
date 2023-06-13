@@ -136,7 +136,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
     m_ModAllocaInfo = &getAnalysis<ModuleAllocaAnalysis>();
     bool bRet = m_ModAllocaInfo->safeToUseScratchSpace();
     CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (Ctx.platform.hasScratchSurface() && !bRet && Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory())
+    if (!bRet && Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory())
     {
         //MinNOSPushConstantSize is only increased ONCE
         const uint32_t dwordSizeInBits = 32;
@@ -817,7 +817,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // no space left for later spilling.
     bool useStateless = false;
 
-    if (Ctx.type != ShaderType::OPENCL_SHADER && Ctx.platform.hasScratchSurface()) {
+    if (Ctx.type != ShaderType::OPENCL_SHADER) {
         useStateless = Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory();
     }
 
