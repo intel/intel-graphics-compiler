@@ -526,6 +526,10 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
 
   for (;;) {
     Instruction *OuterRd = dyn_cast<Instruction>(InnerRd->getOperand(0));
+
+    if (OuterRd && !genx::isSafeToMoveInstCheckGVLoadClobber(OuterRd, InnerRd))
+      break;
+
     // Go through any bitcasts and up to one sext/zext if necessary to find the
     // outer rdregion.
     Instruction *Extend = nullptr;

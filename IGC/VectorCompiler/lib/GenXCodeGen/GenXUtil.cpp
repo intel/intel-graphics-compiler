@@ -2518,6 +2518,7 @@ bool genx::isSafeToMoveInstCheckGVLoadClobber(
 
 bool genx::isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
                                               GenXBaling *Baling_) {
+  IGC_ASSERT(Baling_); // TODO: change interfaces to references.
   Bale Bale_;
   Baling_->buildBale(I, &Bale_);
   return isSafeToMoveBaleCheckGVLoadClobber(Bale_, To);

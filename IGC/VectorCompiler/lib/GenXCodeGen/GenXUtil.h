@@ -796,7 +796,7 @@ bool isSafeToMoveInstCheckGVLoadClobber(
     Instruction *I, Instruction *To,
     bool OnlyImmediateGVLoadPredecessors = true);
 bool isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
-                                        GenXBaling *Baling_ = nullptr);
+                                        GenXBaling *Baling_);
 
 } // namespace genx
 } // namespace llvm
