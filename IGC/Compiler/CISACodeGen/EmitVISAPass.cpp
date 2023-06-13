@@ -2968,7 +2968,6 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     IGC_ASSERT_MESSAGE(isLayoutStructType(sTy), "ICE: not right struct type!");
 
     auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
-    const StructLayout* SL = DL.getStructLayout(sTy);
     const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
 
     Value* src0 = inst->getOperand(0);
@@ -2990,49 +2989,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     {
         if (!isa<UndefValue>(CSt))
         {
-            // copy all valid const elements
-            for (uint32_t i = 0; i < (uint32_t)sTy->getNumElements(); i++)
-            {
-                Constant* elt = CSt->getAggregateElement(i);
-                if (isa<UndefValue>(elt)) {
-                    continue;
-                }
-                // Note: LdStCombine does not create const vector, but passes
-                //       after LdStCombine might make a vector memeber constant.
-                //       Thus, keep the vector handling in case it does happen.
-                Type* ty = sTy->getElementType(i);
-                uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
-                if (ty->isVectorTy()) {
-                    // level 1 vector member
-                    auto iVTy = cast<IGCLLVM::FixedVectorType>(ty);
-                    uint32_t nelts = (uint32_t)iVTy->getNumElements();
-                    Type* eltTy = iVTy->getElementType();
-                    VISA_Type visaty = m_currShader->GetType(eltTy);
-                    CVariable* eltSrc = m_currShader->GetSymbol(elt);
-                    CVariable* eltDst = m_currShader->GetNewAlias(
-                        DstV,
-                        visaty,
-                        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-                        nelts * ((DstV->IsUniform() ? 1 : nLanes)));
-                    emitVectorCopy(eltDst, eltSrc, nelts);
-                    continue;
-                }
-                else {
-                    // ty is scalar or AOS struct. Its size <= 64 bits
-                    uint32_t sz = (uint32_t)DL.getTypeStoreSizeInBits(ty);
-                    uint64_t imm = bitcastToUI64(elt, &DL);
-                    IGC_ASSERT(sz == 64 || sz == 32);
-                    VISA_Type visaty = (sz == 64 ? ISA_TYPE_UQ : ISA_TYPE_UD);
-                    CVariable* eltSrc = m_currShader->ImmToVariable(imm, visaty);
-                    CVariable* eltDst = m_currShader->GetNewAlias(
-                        DstV,
-                        visaty,
-                        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
-                        (DstV->IsUniform() ? 1 : nLanes));
-                    m_encoder->Copy(eltDst, eltSrc);
-                    m_encoder->Push();
-                }
-            }
+            emitCopyFromLayoutStruct(inst, src0);
         }
     }
     else
@@ -3040,17 +2997,13 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
         CVariable* SrcV = GetSymbol(src0);
         if (DstV != SrcV && DstV->IsUniform() && SrcV->IsUniform())
         {
-            Type* eltTy = sTy->getElementType(0);
-            uint32_t eltBits = (uint32_t)DL.getTypeSizeInBits(eltTy);
-            IGC_ASSERT(eltBits == 32 || eltBits == 64);
-            uint32_t n = sTy->getNumElements();
-            n = n * (eltBits == 64 ? 2 : 1);
-            CVariable* aDst = m_currShader->GetNewAlias(DstV, ISA_TYPE_UD, 0, n);
-            CVariable* aSrc = m_currShader->GetNewAlias(SrcV, ISA_TYPE_UD, 0, n);
-            emitUniformVectorCopy(aDst, aSrc, n);
+            emitCopyFromLayoutStruct(inst, src0);
         }
         else if (DstV != SrcV)
         {
+            // Most often, SrcV has just one defined value and calling
+            // emitCopyFromLayoutStruct() would copy all, thus special
+            // handling here to avoid copy undefined values.
             std::list<ArrayRef<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
             for (auto II : toBeCopied)
@@ -9162,94 +9115,158 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
     m_encoder->Push();
 }
 
-void EmitPass::emitBitcastfromstruct(GenIntrinsicInst* I)
+// Ether struct to int vector or struct to struct copy.
+void EmitPass::emitCopyFromLayoutStruct(Value* D, Value* S)
 {
-    // Special bitcast from a struct to an int vector.
-    //   %b = bitcastfromstruct struct %a to 4xi32
-    //   store 4xi32 *p, %b
-    // This bitcast intrinsic is generated for store combining
-    // in IGC codegen. The struct's GRF layout is exactly the same
-    // as the vector's (struct creating must guarantee this).
-    //
-    // Normally, this bitcast will be aliased by DeSSA, so this function
-    // will not be invoked. It is added in case the bitcase is not aliased
-    // (constant src or DeSSA is off).
-    //
     auto& DL = m_currShader->entry->getParent()->getDataLayout();
-    Value* S = I->getOperand(0);
-    Value* D = I;
     StructType* sTy = dyn_cast<StructType>(S->getType());
-    uint32_t sTyBytes = (uint32_t)DL.getTypeSizeInBits(S->getType());
-    Type* dTy = D->getType();
-    Type* dEltTy = dTy->getScalarType();
-    uint32_t dEltBytes = GetScalarTypeSizeInRegister(dEltTy);
-    uint32_t dNElts =
-        dTy->isVectorTy()
-          ? (uint32_t)cast<IGCLLVM::FixedVectorType>(dTy)->getNumElements()
-          : 1;
 
-    if (!sTy ||
-        (dNElts == 1 && sTyBytes != dEltBytes) ||
-        (dNElts > 1 && sTy->getNumElements() != dNElts) ||
-        !dEltTy->isIntegerTy() ||
-        (dEltBytes != 4 && dEltBytes != 8))
-    {
+    // Sanity check
+    if (!sTy || sTy->getNumElements() == 0) {
         // Should not happen
         IGC_ASSERT(false);
+        return;
     }
 
-    // D's type : <n x i32> or <n x i64>
-    // Direct element-wise copy
+    uint32_t sTyBytes = (uint32_t)DL.getTypeStoreSize(sTy);
+    // struct member could be vector, so take its scalar type.
+    Type* dEltTy = sTy->getElementType(0)->getScalarType();
+    uint32_t dEltBytes = (uint32_t)DL.getTypeStoreSize(dEltTy);
+    // dNElts in unit of dEltTy.
+    //   Note Legal struct has its size be multiple of dEltTy.
+    IGC_ASSERT((sTyBytes % dEltBytes) == 0);
+    uint32_t dNElts = sTyBytes / dEltBytes;
+    IGC_ASSERT(dNElts >= sTy->getNumElements());
+
+#if defined(_DEBUG)
+    if (D->getType()->isStructTy()) {
+        StructType* s1Ty = cast<StructType>(D->getType());
+        // Store combining guarantee that the same layout uses the same type.
+        if (s1Ty != sTy) {
+            // Should not happen
+            IGC_ASSERT(false);
+            return;
+        }
+    }
+    else {
+        // vector or just a scalar type
+        Type* eTy = D->getType()->getScalarType();
+        uint32_t eBytes = (uint32_t)DL.getTypeStoreSize(eTy);
+        auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(D->getType());
+        uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+
+        if (!eTy->isIntegerTy() ||
+            n != dNElts || eBytes != dEltBytes || sTyBytes != (n * eBytes)) {
+            // Should not happen
+            IGC_ASSERT(false);
+            return;
+        }
+    }
+#endif
+
+    const StructLayout* SL = DL.getStructLayout(sTy);
     uint32_t nlanes = numLanes(m_currShader->m_SIMDSize);
-    CVariable* DVar = GetSymbol(D);
-    const uint32_t d_i_nelts = (DVar->IsUniform() ? 1 : nlanes);
+    CVariable* baseD = GetSymbol(D);
     if (Constant* C = dyn_cast<Constant>(S))
     {
-        for (uint32_t i = 0; i < dNElts; i++)
+        // copy all valid struct members.
+        for (uint32_t i = 0; i < sTy->getNumElements(); i++)
         {
-            uint32_t d_offInElt = i * d_i_nelts;
-            Constant* C_i = C->getAggregateElement(i);
-            uint64_t imm = bitcastToUI64(C_i, &DL);
-            CVariable* S_i = m_currShader->ImmToVariable(imm, DVar->GetType());
-            m_encoder->SetDstSubReg(d_offInElt);
-            m_encoder->Copy(DVar, S_i);
-            m_encoder->Push();
+            Constant* elt = C->getAggregateElement(i);
+            if (isa<UndefValue>(elt)) {
+                continue;
+            }
+
+            Type* ty = sTy->getElementType(i);
+            uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
+            IGC_ASSERT_MESSAGE((byteOffset % dEltBytes) == 0,
+                "ICE:  mismatched layout b/w int vector and layout struct!");
+
+            if (ty->isVectorTy()) {
+                // Using a normal copy instead of emitVectorCopy(), as
+                // emitVectorCopy() will result in additional copies for
+                // constant copy a = C like the following:
+                //   t = C; a = t
+                auto iVTy = cast<IGCLLVM::FixedVectorType>(ty);
+                uint32_t nelts = (uint32_t)iVTy->getNumElements();
+
+                Type* eltTy = iVTy->getElementType();
+                IGC_ASSERT(DL.getTypeStoreSize(eltTy) == dEltBytes);
+                VISA_Type visaty = m_currShader->GetType(eltTy);
+                for (uint32_t j = 0; j < nelts; ++j)
+                {
+                    uint32_t offbytes = byteOffset + dEltBytes * j;
+                    Constant* Ci = elt->getAggregateElement(j);
+                    CVariable* eltSrc = m_currShader->GetSymbol(Ci);
+                    CVariable* eltDst = m_currShader->GetNewAlias(
+                        baseD, visaty,
+                        offbytes * (baseD->IsUniform() ? 1 : nlanes),
+                        baseD->IsUniform() ? 1 : nlanes);
+                    m_encoder->Copy(eltDst, eltSrc);
+                    m_encoder->Push();
+                }
+            }
+            else {
+                // ty is scalar or AOS struct
+                uint32_t sz = (uint32_t)DL.getTypeStoreSizeInBits(ty);
+                uint64_t imm = bitcastToUI64(elt, &DL);
+                IGC_ASSERT(sz == 64 || sz == 32 || sz == 16);
+                Type* useTy = Type::getIntNTy(ty->getContext(), sz);
+                VISA_Type visaty = GetType(useTy, m_pCtx);
+                CVariable* eltSrc = m_currShader->ImmToVariable(imm, visaty);
+                CVariable* eltDst = m_currShader->GetNewAlias(
+                    baseD, visaty,
+                    byteOffset * (baseD->IsUniform() ? 1 : nlanes),
+                    (baseD->IsUniform() ? 1 : nlanes));
+                m_encoder->Copy(eltDst, eltSrc);
+                m_encoder->Push();
+            }
         }
+        return;
+    }
+
+    CVariable* baseS = GetSymbol(S);
+    if (baseD == baseS)
+        return;
+
+    // Make sure to use dEltType as copy type.
+    CVariable* DVar = m_currShader->GetNewAlias(baseD, GetType(dEltTy, m_pCtx), 0, 0);
+    CVariable* SVar = m_currShader->GetNewAlias(baseS, DVar->GetType(), 0, 0);
+    if (SVar->IsUniform() && DVar->IsUniform())
+    {
+        emitUniformVectorCopy(DVar, SVar, dNElts);
     }
     else
     {
-        CVariable* baseSVar = GetSymbol(S);
-        CVariable* SVar =
-            m_currShader->GetNewAlias(baseSVar, DVar->GetType(), 0, 0);
-        if (SVar->IsUniform() && DVar->IsUniform())
+        // No packing as both Src and Dst have the same layout.
+        const uint32_t d_i_nelts = (DVar->IsUniform() ? 1 : nlanes);
+        const uint32_t s_i_nelts = (SVar->IsUniform() ? 1 : nlanes);
+        for (int i = 0; i < (int)dNElts; i++)
         {
-            SmallVector<uint32_t, 16> execSeq;
-            splitIntoPowerOfTwo(execSeq, dNElts, nlanes);
-            for (int i = 0, sz = (int)execSeq.size(); i < sz; i += 2)
-            {
-                SIMDMode sm = lanesToSIMDMode(execSeq[i]);
-                uint32_t offInEltTy = execSeq[i + 1];
-
-                m_encoder->SetNoMask();
-                m_encoder->SetUniformSIMDSize(sm);
-                m_encoder->SetDstSubReg(offInEltTy);
-                m_encoder->SetSrcSubReg(0, offInEltTy);
-                m_encoder->Copy(DVar, SVar);
-                m_encoder->Push();
-            }
-        }
-        else
-        {
-            const uint32_t s_i_nelts = (SVar->IsUniform() ? 1 : nlanes);
-            for (int i = 0; i < (int)dNElts; i++)
-            {
-                m_encoder->SetDstSubReg(i * d_i_nelts);
-                m_encoder->SetSrcSubReg(0, i * s_i_nelts);
-                m_encoder->Copy(DVar, SVar);
-                m_encoder->Push();
-            }
+            m_encoder->SetDstSubReg(i * d_i_nelts);
+            m_encoder->SetSrcSubReg(0, i * s_i_nelts);
+            m_encoder->Copy(DVar, SVar);
+            m_encoder->Push();
         }
     }
+}
+
+void EmitPass::emitBitcastfromstruct(GenIntrinsicInst* I)
+{
+    // Special bitcast from a layout struct to an int vector.
+    //   %b = bitcastfromstruct struct %a to 4xi32
+    //   store 4xi32 *p, %b
+    // This bitcast intrinsic is generated for store combining in IGC codegen.
+    // The struct's GRF layout is exactly the same as the vector's (struct
+    // creating must guarantee this).
+    //
+    // This bitcast should be aliased by DeSSA, so this function will not be
+    // invoked. It is added in case the bitcase is not aliased (in case it is
+    // a constant src or DeSSA is off).
+    //
+    Value* S = I->getOperand(0);
+    Value* D = I;
+    emitCopyFromLayoutStruct(D, S);
 }
 
 void EmitPass::emitPtrToInt(llvm::PtrToIntInst* P2I)

@@ -150,6 +150,7 @@ public:
     void emitVectorCopyToAOS(uint32_t AOSBytes,
         CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
+    void emitCopyFromLayoutStruct(llvm::Value* D, llvm::Value* S);
 
     /// stack-call code-gen functions
     void emitStackCall(llvm::CallInst* inst);

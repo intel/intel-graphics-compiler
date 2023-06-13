@@ -2530,9 +2530,10 @@ namespace {
         void mergeConstElements(
             SmallVector<Value*, 4>& EltVals,  uint32_t MaxMergeBytes);
 
-        // GatherCopy: copy vals to Dst
+        // GatherCopy: copy many values (vals) to Dst
         //   It's a packed copy, thus size of vals = size of DstTy.
-        Value* gatherCopy(Type* DstTy,
+        Value* gatherCopy(
+          const uint32_t DstEltBytes,
           int NElts,
           SmallVector<Value*, 16>& Vals,
           Instruction* InsertBefore);
@@ -2553,6 +2554,7 @@ namespace {
 
         // Create unique identified struct type
         SmallVector<StructType*, 16> m_allLayoutStructTypes;
+        void initLayoutStructType(Module* M);
         StructType* getOrCreateUniqueIdentifiedStructType(
             ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked = true);
 
@@ -2737,6 +2739,8 @@ bool LdStCombine::runOnFunction(Function& F)
         m_WI = &getAnalysis<WIAnalysis>();
     }
     m_F = &F;
+
+    initLayoutStructType(m_F->getParent());
 
     // Initialize symbolic evaluation
     m_symEval.setDataLayout(m_DL);
@@ -3336,6 +3340,23 @@ void LdStCombine::mergeConstElements(
     EltVals.insert(EltVals.end(), mergedElts.begin(), mergedElts.end());
 }
 
+// Get all layout struct types created already for different functions in
+// the same module.
+//
+// This is for creating unique struct layout type per module. Layout
+// struct type is identified, but if two identified layout structs are
+// the same layout, they are the same.
+void LdStCombine::initLayoutStructType(Module* M)
+{
+    auto modAllNamedStructTys = M->getIdentifiedStructTypes();
+    for (auto II : modAllNamedStructTys) {
+        StructType* stTy = II;
+        if (isLayoutStructType(stTy)) {
+            m_allLayoutStructTypes.push_back(stTy);
+        }
+    }
+}
+
 // This is to make sure to reuse the layout types. Two identified structs have
 // the same layout if
 //   1. both are SOA or both are AOS; and
@@ -3361,28 +3382,40 @@ StructType* LdStCombine::getOrCreateUniqueIdentifiedStructType(
 }
 
 // gatherCopy():
-//   Generate the coalesed values of either struct type or vector type.
+//   Generate the final value by coalescing given values. The final value is
+//   of either struct type or vector type.
 // Arguments:
-//   DstEltTy:     type for vector element. If the final value is a struct,
-//                 its struct member does not need to be DstEltTy, but its
-//                 size must be the same as DstEltTy's size.
-//   DstNElts:     num of elements (vector) or num of direct members (struct)
-//   Vals:         a list of values to be coalesced
+//   DstEltBytes:  size of vector element if the final value is a vector.
+//                 If the final value is a struct,  its struct member size
+//                 must be the same as DstEltBytes.
+//   DstNElts:     the num of elements if the final value is a vector or
+//                 the num of direct members if the final value is a struct.
+//   Vals:         a list of values to be coalesced into the final value.
 //   InsertBefore: inserting pos for new instructions.
+//
+// DstEltTy: not an argument, but used often in this function and comments.
+//     It is the element type if the final value is a vector; or int type if
+//     the final value is a struct. For a struct, it could be
+//       1.  int64:  DstEltBytes == 8; or  // D64
+//       2.  int32:  DstEltBytes == 4, or  // D32
+//       3.  int16:  DstEltBytes == 2.     // D16U32
 //
 // Examples:
 //   1. vector type;
-//      given DstEltTy=i32 and DstNElts=4
-//      Vals = { i32 a, i64 b, float c }
+//      given DstEltBytes=4 and DstNElts=4
+//      Vals = { i32 a, i64 b, int c }
+//
+//      'b' is split into two i32, the final value is a vector and DstEltTy
+//      is i32.
 //
 //      <4xi32> returnVal = {
 //        a,
 //        extractElement bitcast (i64 b to <2xi32>), 0
 //        extractElement bitcast (i64 b to <2xi32>), 1
-//        bitcast (float c to i32)
+//        c
 //      };
-//   2. struct type
-//      given DstNElts x DstEltTy = 8xi32
+//   2. struct type (multiple of 4 bytes)
+//      given DstNElts x DstEltBytes = 8x4B.
 //      Vals = { 4xi8 a, i64 b,  4xfloat c, i16 d, i8 e, i8 f}
 //
 //      This function generates a val of struct type:
@@ -3407,6 +3440,8 @@ StructType* LdStCombine::getOrCreateUniqueIdentifiedStructType(
 //        } E7;
 //      } returnVal;
 //
+//      As DstEltBytes == 4,  DstEltTy is i32.
+//
 //  The struct layout:
 //    The direct members are in SOA. If its direct members are struct, those
 //    struct members (their size is either 32bit or 64bit) are in AOS. This
@@ -3418,7 +3453,7 @@ StructType* LdStCombine::getOrCreateUniqueIdentifiedStructType(
 //    getStructNameForSOALayout() or getStructNameForAOSLayout().
 //
 Value* LdStCombine::gatherCopy(
-    Type* DstEltTy,
+    const uint32_t DstEltBytes,
     int   DstNElts,
     SmallVector<Value*, 16>& Vals,
     Instruction* InsertBefore)
@@ -3441,12 +3476,11 @@ Value* LdStCombine::gatherCopy(
     //   gradually moved to AllEltVals one by one until it is empty.
     std::list<Value*> worklist(Vals.begin(), Vals.end());
     IRBuilder<> irBuilder(InsertBefore);
-    const uint32_t EltBytes = (DstEltTy->getScalarSizeInBits() / 8);
 
     // remainingBytes:
     //   initialize to be the size of DstEltTy. It is the size of each
     //   member of the struct or vector.
-    uint remainingBytes = EltBytes;
+    uint remainingBytes = DstEltBytes;
     while (!worklist.empty()) {
         Value* v = worklist.front();
         worklist.pop_front();
@@ -3459,7 +3493,7 @@ Value* LdStCombine::gatherCopy(
             uint32_t n = (uint32_t)iVTy->getNumElements();
 
             // true if v is a legal vector at level 1
-            bool isLvl1 = (remainingBytes == EltBytes && eBytes == EltBytes);
+            bool isLvl1 = (remainingBytes == DstEltBytes && eBytes == DstEltBytes);
             // true if v is a legal vector at level 2
             bool isLvl2 = (remainingBytes >= (eBytes * n));
             // v is a simple vector if v is either a constant or
@@ -3480,13 +3514,13 @@ Value* LdStCombine::gatherCopy(
                 remainingBytes -= (eBytes * n);
 
                 if (remainingBytes == 0) {
-                    mergeConstElements(eltVals, EltBytes);
+                    mergeConstElements(eltVals, DstEltBytes);
 
                     allEltVals.push_back(eltVals);
 
                     // Initialization for the next element
                     eltVals.clear();
-                    remainingBytes = EltBytes;
+                    remainingBytes = DstEltBytes;
                 }
             }
             else
@@ -3511,15 +3545,15 @@ Value* LdStCombine::gatherCopy(
         // generate a mov instruction. v must be split into small chunks
         // that are aligned for mov to work.
         uint32_t currAlign =
-            (uint32_t)MinAlign(EltBytes, EltBytes - remainingBytes);
+            (uint32_t)MinAlign(DstEltBytes, DstEltBytes - remainingBytes);
         if (currAlign < eBytes) {
             // Two cases:
-            //   1. EltBytes = 4
+            //   1. DstEltBytes = 4
             //      store i32 p
             //      store i32 p+4
             //      store i64 p+8  <- v : i64
             //     Need to split i64 by casting i64 --> 2xi32
-            //   2. EltBytes = 4, packed struct
+            //   2. DstEltBytes = 4, packed struct
             //      store  i8 p
             //      store i16 p+1    <- v : i16
             //      store  i8 p+2
@@ -3542,46 +3576,40 @@ Value* LdStCombine::gatherCopy(
         eltVals.push_back(v);
         remainingBytes -= eBytes;
         if (remainingBytes == 0) {
-            // Found one element of size EltBytes.
-            mergeConstElements(eltVals, EltBytes);
+            // Found one element of size DstEltBytes.
+            mergeConstElements(eltVals, DstEltBytes);
 
             allEltVals.push_back(eltVals);
 
             // Initialization for the next element
             eltVals.clear();
-            remainingBytes = EltBytes;
+            remainingBytes = DstEltBytes;
         }
     }
 
     IGC_ASSERT(eltVals.empty());
+    Type* DstEltTy = nullptr;
 
     // A new coalesced value could be one of two types
     //   1 a vector type  < DstNElts x DstEltTy >
-    //     If The element size of every original stored value is the same as
-    //     or multiple of the size of DstEltTy.
+    //     If all elements are of the same type (which is DstEltTy). It
+    //     could be a float or integer type.
     //   2 a struct type
-    //     If it cannot be of vector type, it is of a struct type. All the
-    //     elements of the struct must have the same size. If its element
-    //     is also a struct member, that struct member's size must be the
-    //     same as other element's size. And that size is either 32bit or
-    //     64bits. And the struct nesting is at most 2 levels.
+    //     An integer type is used as DstEltTy whose size is DstEltBytes.
+    //     All its members, include struct members, must be this same size.
+    //     The struct nesting is at most 2 levels.
     //
-    //     Those struct or member struct are created as identified struct
-    //     types with a special reserved names. The struct's layout in GRF
-    //     is the same as that of a vector < DstNElts x DstEltTy >. This
-    //     implies that the struct GRF layout is SOA on the first level,
-    //     which is consistent with the current rule; for any of its member
-    //     that is also of struct type, it is AOS.
-    //
-    //     Note that the struct with one-level was supported only in IGC
-    //     until this change.
-    //
-    //    For examples:
-    //     1) vector type (D64 as element)
+    //    More examples:
+    //     1) vector type (i64 as element)
     //           store i64 a, p; store i64 b, p+8; store i64 c, p+16
     //        -->
     //           store <3xi64> <a, b, c>,  p
-    //     2)struct type (D32 as element)
+    //
+    //        Another example,
+    //          store float a, p; store float b, p+4
+    //        -->
+    //          store <2xfloat> <a,b>, p
+    //     2)struct type (i32 as element type)
     //          store i32 a, p; store i32 b, p+4
     //          store i8  c0,  p+8; store i8 c1, p+9;
     //          store i8  c2, p+10; store i8 c3, p+11
@@ -3596,15 +3624,23 @@ Value* LdStCombine::gatherCopy(
     //        advantage of the existing vector store of codegen emit.
     //          let stVal = __StructSOALayout__ <{a, b, <{c0, c1, c2, c3}>, d}>
     //
-    //          val = bitcast __StructSOALayout__ %stVal to <4xi32>
+    //          val = call <4xi32> bitcastfromstruct( __StructSOALayout__ %stVal)
     //          store <4xi32> %val, p
     //
-    //        The "bitcast" is no-op, meaning the layout of stVal is the same as
-    //        that of viewing it as a vector.
+    //        The "bitcastfromstruct" is no-op intrinsic (by dessa).
+    //
+    //        Another example:
+    //             store float a, p; store i32 b, p+4
+    //          -->
+    //             store __StructSOALayout__ <{float a, int b}>, p
+    //          Note in this case, we can do
+    //             store <2xi32> <bitcast(float a to i32), b>, p
+    //          but this will introduce additional bitcast. And struct is
+    //          preferred.
     //
     auto isLvl2Vecmember = [=](Type* ty) {
         uint32_t n = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
-        return ty->isVectorTy() && n < EltBytes;
+        return ty->isVectorTy() && n < DstEltBytes;
     };
 
     bool hasStructMember = false;
@@ -3615,42 +3651,98 @@ Value* LdStCombine::gatherCopy(
         SmallVector<Value*, 4>& subElts = allEltVals[i];
         int nelts = (int)subElts.size();
         Type* ty = subElts[0]->getType();
-        hasVecMember = (hasVecMember || ty->isVectorTy());
         uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
         if (nelts == 1 && !isLvl2Vecmember(ty)) {
-            IGC_ASSERT(eBytes == EltBytes);
+            IGC_ASSERT(eBytes == DstEltBytes);
             StructTys.push_back(ty);
+            hasVecMember = (hasVecMember || ty->isVectorTy());
         }
         else {
             SmallVector<Type*, 4> subEltTys;
             for (auto II : subElts) {
                 Value* elt = II;
-                hasVecMember = (hasVecMember || elt->getType()->isVectorTy());
                 subEltTys.push_back(elt->getType());
+                hasVecMember = (hasVecMember || elt->getType()->isVectorTy());
             }
 
             // create a member of a packed and identified struct type
-            // whose size = EltBytes. Use AOS layout.
-            Type* eltStTy = StructType::create(subEltTys,
-                getStructNameForAOSLayout(), true);
+            // whose size = DstEltBytes. Use AOS layout.
+            Type* eltStTy =
+                getOrCreateUniqueIdentifiedStructType(subEltTys, false, true);
             StructTys.push_back(eltStTy);
 
             hasStructMember = true;
         }
     }
 
-    // If only hasVecMember is true, either struct or vector work; but
-    // struct is better as it will likely have less mov instructions.
+    // Check if a vector is preferred for the final value.
+    // (For reducing the number of struct types created, and also vector
+    //  is better supported in codegen.)
+    if (!hasStructMember && !hasVecMember) {
+        // Set initial value for DstEltTy.
+        // Skip any const as it can be taken as either float or int.
+        int i = 0;
+        for (; i < sz; ++i) {
+            SmallVector<Value*, 4>& subElts = allEltVals[i];
+            int nelts = (int)subElts.size();
+            IGC_ASSERT(nelts == 1);
+            if (!isa<Constant>(subElts[0])) {
+                DstEltTy = subElts[0]->getType();
+                break;
+            }
+        }
+
+        if (DstEltTy != nullptr) {
+            for (++i; i < sz; ++i) {
+                SmallVector<Value*, 4>& subElts = allEltVals[i];
+                int nelts = (int)subElts.size();
+                IGC_ASSERT(nelts == 1);
+                Type* ty = subElts[0]->getType();
+                const bool isConst = isa<Constant>(subElts[0]);
+                if (!isConst && DstEltTy != ty) {
+                    // Use struct is better
+                    DstEltTy = nullptr;
+                    break;
+                }
+            }
+        }
+        else {
+            DstEltTy = Type::getIntNTy(m_F->getContext(), DstEltBytes * 8);
+        }
+    }
+
+    // If DstEltTy != null, use vector; otherwise, use struct as
+    // the struct will likely have less mov instructions.
     Type* structTy;
     Value* retVal;
-    if (hasStructMember || hasVecMember)
-    {
+    if (DstEltTy != nullptr)
+    {   // case 1
+        if (DstNElts == 1) {
+            // Constant store values are combined into a single constant
+            // for D16U32, D32, D64
+            SmallVector<Value*, 4>& eltVals = allEltVals[0];
+            IGC_ASSERT(eltVals.size() == 1);
+            retVal = eltVals[0];
+        }
+        else {
+            // normal vector
+            VectorType* newTy = VectorType::get(DstEltTy, DstNElts, false);
+            retVal = UndefValue::get(newTy);
+            for (int i = 0; i < sz; ++i) {
+                SmallVector<Value*, 4>& eltVals = allEltVals[i];
+                Value* tV = irBuilder.CreateBitCast(eltVals[0], DstEltTy);
+                retVal = irBuilder.CreateInsertElement(retVal, tV, i);
+            }
+        }
+    }
+    else
+    {   // case 2
         // Packed and named identified struct. Prefix "__" make sure it won't
         // collide with any user types.  Use SOA layout.
         structTy =
-            StructType::create(StructTys, getStructNameForSOALayout(), true);
+            getOrCreateUniqueIdentifiedStructType(StructTys, true, true);
 
-        // Create a value of type structTy
+        // Create a value
         retVal = UndefValue::get(structTy);
         for (int i = 0; i < sz; ++i) {
             SmallVector<Value*, 4>& eltVals = allEltVals[i];
@@ -3666,22 +3758,6 @@ Value* LdStCombine::gatherCopy(
                         irBuilder.CreateInsertValue(retVal, eltVals[j], idxs);
                 }
             }
-        }
-    }
-    else if (DstNElts == 1)
-    {
-        // a <1xDstEltTy>, use scalar type DstEltTy as the final type.
-        SmallVector<Value*, 4>& eltVals = allEltVals[0];
-        retVal = irBuilder.CreateBitCast(eltVals[0], DstEltTy);
-    }
-    else
-    {
-        VectorType* newTy = VectorType::get(DstEltTy, DstNElts, false);
-        retVal = UndefValue::get(newTy);
-        for (int i = 0; i < sz; ++i) {
-            SmallVector<Value*, 4>& eltVals = allEltVals[i];
-            Value* tV = irBuilder.CreateBitCast(eltVals[0], DstEltTy);
-            retVal = irBuilder.CreateInsertElement(retVal, tV, i);
         }
     }
     return retVal;
@@ -3736,24 +3812,36 @@ void LdStCombine::createCombinedStores(Function& F)
                     nelts = nelts / 4;
                 }
             }
-            else {
+            else if (nelts == 2) {
                 // <2xi8>,  D16U32
-                IGC_ASSERT(nelts == 2);
+                eltBytes = 2;
+                nelts = 1;
+            }
+            else {
+                IGC_ASSERT(false);
             }
         }
 
-        // Create the new vector type for these combined stores.
-        Type* eltTy = Type::getIntNTy(F.getContext(), eltBytes * 8);
-        Type* VTy = (nelts == 1 ? eltTy : VectorType::get(eltTy, nelts, false));
-
         // Generate the coalesced value.
-        Value* nV = gatherCopy(eltTy, nelts, storedValues, anchorStore);
+        Value* nV = gatherCopy(eltBytes, nelts, storedValues, anchorStore);
+        Type* VTy = nV->getType();
 
         IRBuilder<> irBuilder(anchorStore);
         Value* storedVal = nV;
-        if (nV->getType()->isStructTy()) {
+        if (VTy->isStructTy()) {
+            uint32_t totalBytes = eltBytes * nelts;
+            Type* eltTy;
             // Use special bitcast from struct to int vec to use vector emit.
-            // This bitcast is a noop and will be dessa'ed with its source.
+            if (totalBytes < 4) {
+                // <{i8, i8}>, use i16, not 2xi8
+                eltTy = Type::getIntNTy(F.getContext(), totalBytes * 8);
+            }
+            else {
+                eltTy = Type::getIntNTy(F.getContext(), eltBytes * 8);
+            }
+            // Use an int vector type as VTy
+            VTy = (nelts == 1 || totalBytes < 4)
+                ? eltTy : VectorType::get(eltTy, nelts, false);
             Type* ITys[2] = { VTy, nV->getType() };
             Function* IntrDcl = GenISAIntrinsic::getDeclaration(
                 F.getParent(), GenISAIntrinsic::ID::GenISA_bitcastfromstruct, ITys);
