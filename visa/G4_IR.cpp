@@ -5022,19 +5022,31 @@ void G4_Declare::emit(std::ostream &output) const {
              << regVar->getPhyRegOff() << ")";
     }
   } else if (isSpilled()) {
+    const char *maybeForced = isForceSpilled() ? "force " : "";
     if (spillDCL) {
       // flag/addr spill
-      output << " (spilled -> " << spillDCL->getName() << ")";
+      output << " (" << maybeForced <<
+          "spilled -> " << spillDCL->getName() << ")";
     } else {
       // GRF spill
       auto GRFOffset = getRegVar()->getDisp() / GRFByteSize;
       if (!AliasDCL) {
-        output << " (spilled -> Scratch[" << GRFOffset << "x"
+        output << " (" << maybeForced <<
+            "spilled -> Scratch[" << GRFOffset << "x"
                << (int)GRFByteSize << "])";
       } else {
-        output << " (spilled)";
+        output << " (" << maybeForced << "spilled)";
       }
     }
+  } else if (isDoNotSpill()) {
+    output << " NoSpill";
+  }
+
+  if (isBuiltin()) {
+    output << " IsBuiltin";
+  }
+  if (doNotWiden()) {
+    output << " DoNotWiden";
   }
 
   if (liveIn && liveOut) {

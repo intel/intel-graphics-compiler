@@ -154,9 +154,12 @@ enum class Caching {
   ST, // streaming (load/store)
   WT, // writethrough (store)
 };
+
+
 std::string ToSymbol(Caching);
 // default, default returns ""
 std::string ToSymbol(Caching, Caching);
+
 
 
 struct ImmOff {

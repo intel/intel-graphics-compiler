@@ -4853,7 +4853,7 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   }
 
   splice(bb, instIt, builder->instList, inst->getVISAId());
-}
+} // expandSpillLSC
 
 void GlobalRA::expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   auto &builder = kernel.fg.builder;
@@ -5722,11 +5722,14 @@ void GlobalRA::expandFillIntrinsic(G4_BB *bb) {
 }
 
 
+
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
   auto globalScratchOffset =
       kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
+
+
 
   for (auto bb : kernel.fg) {
     if (builder.hasScratchSurface() &&
@@ -5739,33 +5742,33 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
     // a. XeHP_SDV without stackcall => use hword scratch msg
     // b. XeHP_SDV without stackcall => using oword block msg
     // c. XeHP_SDV with stackcall
-       // d. DG2+ without stackcall => hword scratch msg
-       // e. DG2+ without stackcall => using LSC
-       // f. DG2+ with stackcall    => using LSC
-       //
-       // (a), (d) are similar to SKL with hword scratch msg.
-       //
-       // (c), (f):
-       // a0.2 is saved/restored from r126.6:ud
-       // SSO is saved in r126.7:ud (in replaceSSO function)
-       // XeHP_SDV uses oword msg, DG2+ uses LSC msg
-       // For DG2+, offset is computed in r126.0
-       //
-       // (b):
-       // oword header is prepared in a temp variable, allocated by RA
-       // a0.2 is saved/restored in oldA0Dot2(0,0) whenever required
-       // SSO is allocated to a live-out temp (not tied to r126.7:ud)
-       //
-       // (e):
-       // LSC msg is used for spill/fill
-       // Spill offset is computed in spillHeader(0,0)
-       // a0.2 is saved/restored in oldA0Dot2(0,0) whenever required
-       // spillHeader is marked as live-out
-       //
-       // When needed:
-       // SSO is marked as live-out
-       // r0 is stored in r127
-       //
+    // d. DG2+ without stackcall => hword scratch msg
+    // e. DG2+ without stackcall => using LSC
+    // f. DG2+ with stackcall    => using LSC
+    //
+    // (a), (d) are similar to SKL with hword scratch msg.
+    //
+    // (c), (f):
+    // a0.2 is saved/restored from r126.6:ud
+    // SSO is saved in r126.7:ud (in replaceSSO function)
+    // XeHP_SDV uses oword msg, DG2+ uses LSC msg
+    // For DG2+, offset is computed in r126.0
+    //
+    // (b):
+    // oword header is prepared in a temp variable, allocated by RA
+    // a0.2 is saved/restored in oldA0Dot2(0,0) whenever required
+    // SSO is allocated to a live-out temp (not tied to r126.7:ud)
+    //
+    // (e):
+    // LSC msg is used for spill/fill
+    // Spill offset is computed in spillHeader(0,0)
+    // a0.2 is saved/restored in oldA0Dot2(0,0) whenever required
+    // spillHeader is marked as live-out
+    //
+    // When needed:
+    // SSO is marked as live-out
+    // r0 is stored in r127
+    //
              )) {
       saveRestoreA0(bb);
     }

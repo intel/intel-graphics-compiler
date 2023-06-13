@@ -9748,6 +9748,7 @@ int GlobalRA::coloringRegAlloc() {
     useLscForSpillFill = true;
     useLscForNonStackCallSpillFill =
         builder.getOption(vISA_lscNonStackSpill) != 0;
+
     useLscForScatterSpill = builder.getOption(vISA_scatterSpill);
   }
   //
@@ -10288,7 +10289,9 @@ int GlobalRA::coloringRegAlloc() {
           // preserve old value of a0.2.
           kernel.fg.builder->getOldA0Dot2Temp();
         } else if (useLscForNonStackCallSpillFill || useLscForScatterSpill) {
-          kernel.fg.builder->getOldA0Dot2Temp();
+          {
+            kernel.fg.builder->getOldA0Dot2Temp();
+          }
         }
 
         RA_TRACE({

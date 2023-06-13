@@ -340,9 +340,9 @@ private:
   G4_Declare *oldA0Dot2Temp = nullptr;
 
   G4_Declare *builtinScratchSurface = nullptr;
-  G4_Declare *scratchSurfaceOffset =
-      nullptr; // if scratch surface is used, this will be initialized once at
-               // entry
+  // if scratch surface is used, this will be initialized once at entry
+  G4_Declare *scratchSurfaceOffset = nullptr;
+
 
   // The temp var for eu fusion W/A
   G4_Declare *euFusionWATmpVar = nullptr;

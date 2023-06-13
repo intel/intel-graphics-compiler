@@ -423,7 +423,6 @@ int vISA::GetNumVecElems(VecElems ves) {
 }
 
 
-// caching
 std::string vISA::ToSymbol(Caching c) {
   switch (c) {
   case Caching::CA:

@@ -205,7 +205,6 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
                                                    bool isLoad);
 
 namespace vISA {
-
 // Utility function for allocating memory for finalizer output (e.g., kernel
 // binary, debug info), which may have longer lifetime than the vISA builder.
 // It is the caller's responsiblity to free such resources.

@@ -1016,7 +1016,6 @@ private:
   void expandFillIntrinsic(G4_BB *);
   void expandSpillFillIntrinsics(unsigned);
   void saveRestoreA0(G4_BB *);
-
   static const RAVarInfo defaultValues;
   std::vector<RAVarInfo> vars;
   std::vector<AugmentationMasks> varMasks;
@@ -1039,6 +1038,7 @@ private:
 
   // store instructions that shouldnt be rematerialized.
   std::unordered_set<G4_INST *> dontRemat;
+
 
   // map each BB to its local RA GRF usage summary, populated in local RA.
   std::map<G4_BB *, PhyRegSummary *> bbLocalRAMap;

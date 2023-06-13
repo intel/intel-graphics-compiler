@@ -2431,8 +2431,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
     if (surf_id >= Get_CISA_PreDefined_Surf_Count()) {
       cisa_opnd->g4opnd = m_builder->createSrc(
           dcl->getRegVar(), 0, 0, m_builder->getRegionScalar(), Type_UD);
-    } else // predefined
-    {
+    } else { // predefined
       if (dcl == m_builder->getBuiltinT252()) {
         cisa_opnd->g4opnd = m_builder->createSrcRegRegion(
             m_builder->getBuiltinT252(), m_builder->getRegionScalar());
