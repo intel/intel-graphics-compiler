@@ -8,7 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "GraphColor.h"
 
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringMap.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace vISA;
 

@@ -35,8 +35,10 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 
 #include <cctype>
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Path.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace CisaFramework;
 using namespace vISA;

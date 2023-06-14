@@ -25,7 +25,9 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <vector>
 
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SmallVector.h>
+#include "common/LLVMWarningsPop.hpp"
 
 #include "Assertions.h"
 #include "Attributes.hpp"

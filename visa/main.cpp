@@ -23,8 +23,10 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 
 
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Path.h>
+#include "common/LLVMWarningsPop.hpp"
 
 ///
 /// Reads byte code and calls the builder API as it does so.
