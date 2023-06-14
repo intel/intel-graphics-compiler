@@ -4323,12 +4323,20 @@ namespace IGC
 
         struct CtrlCalculator {
             enum OP { NONE, AND, OR, XOR };
-            enum SOURCE { S0 = 0, S1 = 1, S2 = 2 };
-            // Value of the three sources for calculating BooleanFuncCtrl
-            const uint8_t s[3] = { 0xAA, 0xCC, 0xF0 };
+            enum SOURCE {
+              S0 = 0,  // s0, s1, s2
+              S1 = 1,
+              S2 = 2,
+              NS0 = 3, // ~s0, ~s1, ~s2
+              NS1 = 4,
+              NS2 = 5
+            };
+            // Value of the sources for calculating BooleanFuncCtrl. The
+            // index maps to enum SOURCE
+            const uint8_t s[6] = {0xAA, 0xCC, 0xF0, 0x55, 0x33, 0x0F};
 
-            typedef std::vector<OP> OpVecType;
-            typedef std::vector<SOURCE> SourceVecType;
+            typedef llvm::SmallVector<OP, 2> OpVecType;
+            typedef llvm::SmallVector<SOURCE, 3> SourceVecType;
 
             // The sequence of matched operators, follow the calculation order
             OpVecType ops;
@@ -4383,15 +4391,17 @@ namespace IGC
             }
         };
 
-        auto isBinaryLogic = [](Instruction::BinaryOps op) { return op == Instruction::Or || op == Instruction::And || op == Instruction::Xor; };
+        auto isBinaryLogic = [](Instruction::BinaryOps op) {
+            return op == Instruction::Or || op == Instruction::And || op == Instruction::Xor;
+        };
         // Find BFN patterns. Matched patterns: (op0 and op1 are boolean operations)
-        // s0   s1                   s1  s2
-        //   \ /                      \  /
+        // ~s0  ~s1                  ~s1  ~s2   <-- extra check to matchNot on each found src
+        //  |    |                    |    |
+        // s0   s1  ~s2         ~s0   s1  s2
+        //   \ /    |            |     \  /
         //    op    s2     OR    s0   op1
         //     \   /              \   /
         //      op0                op0   <-- match to BFN
-        //
-        // TODO: Match NOT pattern on source
 
         // if source operand has many uses the bfn pattern match is unlikely to be profitable,
         // as it increases register pressure and makes register bank conflicts more likely
@@ -4414,6 +4424,16 @@ namespace IGC
                 I.setOperand(1, I0);
             }
         }
+
+        // Further match s to not operation. Update s if matched.
+        auto matchNot = [](Value *&s) {
+            BinaryOperator *bo = dyn_cast<BinaryOperator>(s);
+            if (bo && match(s, m_Not(m_Specific(bo->getOperand(0))))) {
+                s = bo->getOperand(0);
+                return true;
+            }
+            return false;
+        };
 
         CtrlCalculator ctrlcal;
         Value* s0 = I.getOperand(0);
@@ -4440,11 +4460,14 @@ namespace IGC
                     s2 = I1->getOperand(1);
 
                     // add ops and sources by execution order
-                    ctrlcal.addSource(CtrlCalculator::S1);
+                    ctrlcal.addSource(matchNot(s1) ? CtrlCalculator::NS1
+                                                   : CtrlCalculator::S1);
                     ctrlcal.addOPFromLLVMOp(I1->getOpcode());
-                    ctrlcal.addSource(CtrlCalculator::S2);
+                    ctrlcal.addSource(matchNot(s2) ? CtrlCalculator::NS2
+                                                   : CtrlCalculator::S2);
                     ctrlcal.addOPFromLLVMOp(I.getOpcode());
-                    ctrlcal.addSource(CtrlCalculator::S0);
+                    ctrlcal.addSource(matchNot(s0) ? CtrlCalculator::NS0
+                                                   : CtrlCalculator::S0);
                 }
             }
         }
@@ -4453,11 +4476,14 @@ namespace IGC
             s2 = I.getOperand(1);
 
             // add ops and sources by execution order
-            ctrlcal.addSource(CtrlCalculator::S0);
+            ctrlcal.addSource(matchNot(s0) ? CtrlCalculator::NS0
+                                           : CtrlCalculator::S0);
             ctrlcal.addOPFromLLVMOp(I0->getOpcode());
-            ctrlcal.addSource(CtrlCalculator::S1);
+            ctrlcal.addSource(matchNot(s1) ? CtrlCalculator::NS1
+                                           : CtrlCalculator::S1);
             ctrlcal.addOPFromLLVMOp(I.getOpcode());
-            ctrlcal.addSource(CtrlCalculator::S2);
+            ctrlcal.addSource(matchNot(s2) ? CtrlCalculator::NS2
+                                           : CtrlCalculator::S2);
         }
 
         if (s2 == nullptr)
