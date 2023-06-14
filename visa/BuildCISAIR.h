@@ -240,6 +240,8 @@ public:
                                       VISA_opnd *src1_cisa,
                                       VISA_opnd *src2_cisa, int lineNum);
 
+  bool CISA_create_breakpoint_instruction(int lineNum);
+
   bool CISA_create_mov_instruction(VISA_opnd *pred, ISA_Opcode opcode,
                                    VISA_EMask_Ctrl emask, unsigned exec_size,
                                    bool sat, VISA_opnd *dst, VISA_opnd *src0,

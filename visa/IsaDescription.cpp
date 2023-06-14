@@ -169,6 +169,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_MADW, ISA_Inst_Arith, "madw", 3, 1},
     {ISA_ADD3O, ISA_Inst_Arith, "add3.o", 3, 1},
     {ISA_RESERVED_93, ISA_Inst_Reserved, "reserved93", 0, 0},
+    {ISA_BREAKPOINT, ISA_Inst_Misc, "breakpoint", 0, 0},
 };
 
 VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
@@ -2693,6 +2694,15 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         0,
         0,
         {},
+    },
+    {
+        ALL,
+        ISA_BREAKPOINT,
+        ISA_Inst_Misc,
+        "breakpoint",
+        0,
+        0,
+        { }
     },
 };
 

@@ -1362,6 +1362,14 @@ void G4_BB::removeIntrinsics(Intrinsic intrinId) {
   });
 }
 
+void G4_BB::removeIntrinsics(std::vector<Intrinsic>& intrinIdVec) {
+  instList.remove_if([=](G4_INST *inst) {
+    return inst->isIntrinsic() &&
+           std::find(intrinIdVec.begin(), intrinIdVec.end(),
+               inst->asIntrinsicInst()->getIntrinsicId()) != intrinIdVec.end();
+  });
+}
+
 // Add two sampler cache flushes before the EOT send.
 // sampler cache flush 1 must have null return
 // sampler cache flush 2 must have valid return

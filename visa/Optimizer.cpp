@@ -7830,9 +7830,40 @@ void Optimizer::staticProfiling() {
 // remove Intrinsics
 //
 void Optimizer::removeInstrinsics() {
+  markBreakpoint();
   for (auto bb : kernel.fg) {
-    bb->removeIntrinsics(Intrinsic::MemFence);
-    bb->removeIntrinsics(Intrinsic::FlagSpill);
+      std::vector<Intrinsic> intrinIdVec =
+        {Intrinsic::MemFence, Intrinsic::FlagSpill, Intrinsic::Breakpoint};
+      bb->removeIntrinsics(intrinIdVec);
+  }
+}
+
+void Optimizer::markBreakpoint() {
+  for (auto bb : kernel.fg) {
+    for (auto I = bb->begin(); I != bb->end(); /*empty*/) {
+      G4_INST *inst = *I;
+      auto nextI = ++I;
+      if (inst->isIntrinsic() &&
+        inst->asIntrinsicInst()->getIntrinsicId() == Intrinsic::Breakpoint) {
+        // if we encounter a breakpoint, mark the instruction after the
+        // breakpoint intrinsic with breakpoint instruction option
+        if (nextI != bb->end()) {
+          // intrinsic is not at the end of bb
+          G4_INST *nextInst = *(nextI);
+          nextInst->setOptionOn(InstOpt_BreakPoint);
+        }
+        else {
+          // intrinsic is at the end of bb
+          // create a dummy mov with breakpoint option set
+          auto nullDst = fg.builder->createNullDst(Type_UD);
+          auto nullSrc = fg.builder->createNullSrc(Type_UD);
+
+          G4_INST* dummyMov = fg.builder->createMov(g4::SIMD1, nullDst, nullSrc,
+              InstOpt_BreakPoint, false);
+          bb->push_back(dummyMov);
+        }
+      }
+    }
   }
 }
 

@@ -1701,6 +1701,9 @@ public:
                                     G4_ExecSize execSize, G4_Type type);
 
   int generateDebugInfoPlaceholder(); // TODO: move to BuildIRImpl.cpp?
+                                      //
+  // handle breakpoint instruction
+  int translateBreakpointInstruction();
 
   // legitimiately belongs in Misc
   int translateVISALifetimeInst(bool isStart, G4_Operand *var);

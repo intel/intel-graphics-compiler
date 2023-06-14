@@ -1348,6 +1348,10 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
 
     break;
   }
+  case ISA_BREAKPOINT: {
+    sstr << "breakpoint";
+    break;
+  }
   default: {
     vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Misc Opcode.");
   }

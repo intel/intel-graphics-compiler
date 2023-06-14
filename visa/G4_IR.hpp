@@ -1294,6 +1294,7 @@ enum class Intrinsic {
   NamedBarrierWA,
   BarrierWA,
   IEEEExceptionTrap,
+  Breakpoint,
   NumIntrinsics
 };
 
@@ -1348,6 +1349,7 @@ class G4_InstIntrinsic : public G4_INST {
           {Intrinsic::BarrierWA, "barrierWA", 1, 0, Phase::SWSB, 0},
           {Intrinsic::IEEEExceptionTrap, "ieee_exception_trap", 1, 0,
            Phase::SWSB, 0},
+          {Intrinsic::Breakpoint, "breakpoint", 0, 0, Phase::SWSB, 1ull << HasSideEffects},
       };
 
 public:

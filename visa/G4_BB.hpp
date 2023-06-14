@@ -324,6 +324,7 @@ public:
   void resetLocalIds();
 
   void removeIntrinsics(Intrinsic intrinId);
+  void removeIntrinsics(std::vector<Intrinsic>& intrinIdVec);
 
   void addSamplerFlushBeforeEOT();
 

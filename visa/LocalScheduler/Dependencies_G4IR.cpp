@@ -209,7 +209,6 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
     // All control flow instructions are scheduling barriers
     return CONTROL_FLOW_BARRIER;
   }
-
   return NODEP;
 }
 

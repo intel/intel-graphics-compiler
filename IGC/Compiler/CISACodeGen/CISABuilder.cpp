@@ -8751,4 +8751,7 @@ namespace IGC
             nullptr));
     }
 
+    void CEncoder::AppendBreakpoint() {
+      V(vKernel->AppendVISABreakpointInst());
+    }
 }

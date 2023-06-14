@@ -306,6 +306,7 @@ namespace IGC
             LSC_ADDR_SIZE addr_size, int chMask,
             LSC_CACHE_OPTS cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT });
 
+        void AppendBreakpoint();
         void ScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteScatter(CVariable* src, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);

@@ -1523,6 +1523,8 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
 
     break;
   }
+  case ISA_BREAKPOINT:
+    break;
   default:
     REPORT_INSTRUCTION(options, false,
                        "Illegal Miscellaneous Flow Instruction Opcode: %d, %s.",

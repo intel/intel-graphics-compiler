@@ -258,6 +258,12 @@ rol|ror {
         return BINARY_LOGIC_OP;
     }
 
+breakpoint {
+        TRACE("** BREAKPOINT_OP");
+        CISAlval.opcode = str2opcode(yytext);
+        return BREAKPOINT_OP;
+}
+
 dpas"."tf32"."tf32"."(1|2|4|8)"."[12345678] {
         TRACE("** DPAS");
         CISAlval.opcode = ISA_DPAS;

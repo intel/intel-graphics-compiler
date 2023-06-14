@@ -2923,6 +2923,22 @@ int VISAKernelImpl::AppendVISASetP(VISA_EMask_Ctrl emask,
                                     dstOpnd, src0);
 }
 
+int VISAKernelImpl::AppendVISABreakpointInst() {
+  TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+  int status = VISA_SUCCESS;
+  if (IS_GEN_BOTH_PATH) {
+    status = m_builder->translateBreakpointInstruction();
+  }
+
+  if (IS_VISA_BOTH_PATH) {
+    VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_BREAKPOINT];
+    CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
+    inst->createCisaInstruction(ISA_BREAKPOINT, 1, 0, PredicateOpnd(), nullptr, 0, inst_desc);
+    addInstructionToEnd(inst);
+  }
+  return status;
+}
+
 int VISAKernelImpl::AppendVISADataMovementInst(
     ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, VISA_EMask_Ctrl emask,
     VISA_Exec_Size executionSize, VISA_VectorOpnd *tmpDst,

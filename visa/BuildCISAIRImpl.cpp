@@ -2447,6 +2447,11 @@ bool CISA_IR_Builder::CISA_create_arith_instruction2(
   return true;
 }
 
+bool CISA_IR_Builder::CISA_create_breakpoint_instruction(int lineNum) {
+  VISA_CALL_TO_BOOL(AppendVISABreakpointInst);
+  return true;
+}
+
 bool CISA_IR_Builder::CISA_create_mov_instruction(
     VISA_opnd *pred, ISA_Opcode opcode, VISA_EMask_Ctrl emask,
     unsigned exec_size, bool sat, VISA_opnd *dst, VISA_opnd *src0,

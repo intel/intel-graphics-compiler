@@ -560,6 +560,9 @@ public:
                         VISA_VectorOpnd *dst, VISA_VectorOpnd *src0,
                         VISA_VectorOpnd *src1) = 0;
 
+  /// AppendVISABreakpointInst -- append breakpoint intrinsic to this kernel
+  VISA_BUILDER_API virtual int AppendVISABreakpointInst() = 0;
+
   /// AppendVISADataMovementInst -- append a one-source data movement
   /// instruction to this kernel [pred] op[.sat] (emask, execSize) dst src0
   VISA_BUILDER_API virtual int

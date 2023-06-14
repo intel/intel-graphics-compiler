@@ -451,6 +451,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <opcode> LIFETIME_START_OP
 %token <opcode> LIFETIME_END_OP
 %token <opcode> AVS_OP
+%token <opcode> BREAKPOINT_OP
 %token <cisa_call> CALL_OP
 
 %type <string> RTWriteModeOpt
@@ -963,7 +964,7 @@ Instruction:
         | QwScatterInstruction
         | LscInstruction
         | FCvtInstruction
-
+        | BreakpointInstruction
 
 Label: LABEL {pBuilder->CISA_create_label($1, CISAlineno);}
 
@@ -991,7 +992,6 @@ LogicInstruction:
         pBuilder->CISA_create_logic_instruction($1, $2, $3, $4.emask, $4.exec_size,
             $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
     }
-
 
 UnaryLogicInstruction:
     Predicate UNARY_LOGIC_OP SatModOpt  ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM
@@ -1152,6 +1152,12 @@ MovInstruction:
     Predicate MOV_OP SatModOpt ExecSize VecDstOperand_G_I PredVar
     {
         ABORT_ON_FAIL(pBuilder->CISA_create_mov_instruction($5.cisa_gen_opnd, $6, CISAlineno));
+    }
+
+BreakpointInstruction:
+    BREAKPOINT_OP
+    {
+      pBuilder->CISA_create_breakpoint_instruction(CISAlineno);
     }
 
 MovsInstruction:

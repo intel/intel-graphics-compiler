@@ -444,6 +444,8 @@ public:
                                              VISA_VectorOpnd *src0,
                                              VISA_VectorOpnd *src1) override;
 
+  VISA_BUILDER_API int AppendVISABreakpointInst() override;
+
   VISA_BUILDER_API int
   AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred,
                              bool satMod, VISA_EMask_Ctrl emask,

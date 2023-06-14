@@ -215,6 +215,7 @@ private:
   void staticProfiling();
 
   void removeInstrinsics();
+  void markBreakpoint();
 
   unsigned int numBankConflicts;
 

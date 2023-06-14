@@ -468,6 +468,13 @@ int IR_Builder::generateDebugInfoPlaceholder() {
   return VISA_SUCCESS;
 }
 
+int IR_Builder::translateBreakpointInstruction() {
+  // create breakpoint intrinsic
+  createIntrinsicInst(nullptr, Intrinsic::Breakpoint, g4::SIMD1, nullptr,
+      nullptr, nullptr, nullptr, InstOpt_BreakPoint, true);
+  return VISA_SUCCESS;
+}
+
 int IR_Builder::translateVISALifetimeInst(bool isStart, G4_Operand *var) {
   // Lifetime.start/end are two variants of this instruction
   if (isStart) {
