@@ -111,9 +111,15 @@ namespace IGC
         // this is currently set only when we enable the A64 WA
         CVariable* m_activeMask = nullptr;   // flag var
         CVariable* m_numActiveLanes = nullptr;  // general var, #lanes for the entire dispatch size.
+
+        // caches combined current+next sources for SimdShuffleDown intrinsic
+        typedef std::pair<llvm::Value*, llvm::Value*> SimdShuffleDownSrcTy;
+        std::map<SimdShuffleDownSrcTy, CVariable*> m_simdShuffleDownSrc;
+
         void clearCaching() {
             m_activeMask = nullptr;
             m_numActiveLanes = nullptr;
+            m_simdShuffleDownSrc.clear();
         }
     };
 
