@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -537,7 +537,8 @@ void ConstantCoalescing::ProcessBlock(
         }
 
         // stateless path: use int2ptr, and support vector-loads
-        if (LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
+        uint addrSpace = LI->getPointerAddressSpace();
+        if (addrSpace == ADDRESS_SPACE_CONSTANT)
         {
             // another limit: load has to be dword-aligned
             if (IGCLLVM::getAlignmentValue(LI) % 4)
@@ -559,13 +560,13 @@ void ConstantCoalescing::ProcessBlock(
                     if (wiAns->isUniform(LI))
                     {   // uniform
                         if (elt_idxv)
-                            MergeUniformLoad(LI, buf_idxv, 0, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_owloads);
+                            MergeUniformLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_owloads);
                         else
-                            MergeUniformLoad(LI, buf_idxv, 0, nullptr, offsetInBytes, maxEltPlus, Extension, dircb_owloads);
+                            MergeUniformLoad(LI, buf_idxv, addrSpace, nullptr, offsetInBytes, maxEltPlus, Extension, dircb_owloads);
                     }
                     else
                     {   // not uniform
-                        MergeScatterLoad(LI, buf_idxv, 0, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_gathers);
+                        MergeScatterLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_gathers);
                     }
                 }
             }
@@ -578,7 +579,6 @@ void ConstantCoalescing::ProcessBlock(
         BufferType bufType = BUFFER_TYPE_UNKNOWN;
         if (IsReadOnlyLoadDirectCB(LI, bufId, elt_ptrv, bufType))
         {
-            uint addrSpace = LI->getPointerAddressSpace();
             uint maxEltPlus = 1;
             if (!isProfitableLoad(LI, maxEltPlus))
                 continue;
@@ -1263,6 +1263,34 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         cov_chunk = *I;
     }
 
+    // Stateless access needs OOB checks to avoid page faults.
+    bool needsOutOfBoundsChecks =
+        IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOutOfBoundsCheck) &&
+        (addrSpace == ADDRESS_SPACE_CONSTANT ||
+         addrSpace == ADDRESS_SPACE_GLOBAL);
+
+    // Lambda rounds the chunk size up to the next value supported by data port
+    // loads or LSC transposed load.
+    // Legacy data port supports:
+    // - block loads of 1, 2, 4 or 8 OWords
+    // - scattered loads of 1, 2 and 4 DWords/QWords
+    // - (byte aligned) 1, 2 and 4 Bytes
+    // LSC supports:
+    // - transposed loads of 1, 2, 3, 4, 8, 16, 32 and 64 DWords/QWords
+    // - (byte aligned) loads of 1, 2 and 4 Bytes
+    auto RoundChunkSize = [this, scalarSizeInBytes](const uint32_t chunkSize)
+    {
+        bool supportsVec3Load = scalarSizeInBytes >= 4 && m_ctx->platform.LSCEnabled();
+        uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ?
+            3 : iSTD::RoundPower2((DWORD)chunkSize);
+        return validChunkSize;
+    };
+    Type* loadDataType = load->getType();
+    const uint32_t loadNumElements = loadDataType->isVectorTy() ?
+        int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataType)->getNumElements()) : 1;
+    // VectorPreProcess pass legalizes loaded data size.
+    IGC_ASSERT(loadNumElements == RoundChunkSize(loadNumElements));
+    IGC_ASSERT(loadNumElements >= RoundChunkSize(maxEltPlus));
     if (!cov_chunk)
     {
         if (isDwordAligned)
@@ -1273,7 +1301,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
             cov_chunk->baseIdxV = eltIdxV;
             cov_chunk->elementSize = scalarSizeInBytes;
             cov_chunk->chunkStart = eltid;
-            cov_chunk->chunkSize = iSTD::RoundPower2((DWORD)maxEltPlus);
+            cov_chunk->chunkSize = RoundChunkSize(maxEltPlus);
             const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
             cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
             chunk_vec.push_back(cov_chunk);
@@ -1287,16 +1315,10 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
 
         // Calculate load start and size adjustments
         uint start_adj = cov_chunk->chunkStart - lb;
-        // Gen only has 1, 2, 4 or 8 oword loads round up
-        uint size_adj = iSTD::RoundPower2((DWORD)(ub - lb)) - cov_chunk->chunkSize;
+        uint size_adj = RoundChunkSize(ub - lb) - cov_chunk->chunkSize;
 
         // Out of bounds check
-        bool isStatelessLoad = false;
-        if (auto* LI = dyn_cast<LoadInst>(load))
-        {
-            isStatelessLoad = (LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT);
-        }
-        if (isStatelessLoad && IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOutOfBoundsCheck))
+        if (needsOutOfBoundsChecks)
         {
             uint furthest_access = size_adj + lb + cov_chunk->chunkSize;
             if (furthest_access > ub)
