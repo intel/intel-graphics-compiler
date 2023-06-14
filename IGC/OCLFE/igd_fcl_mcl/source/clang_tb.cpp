@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "secure_string.h"
 #include "AdaptorCommon/customApi.hpp"
 
+#include <mutex>
 #include <sstream>
 #include <stdlib.h>
 #include <string>
@@ -43,8 +44,6 @@ SPDX-License-Identifier: MIT
 // Code is copied from IGC project. This duplication is undesirable in the long term.
 // IGC is expected to put this code in single file, without unncessary llvm (and other dependencies).
 // Then FCL will just include this single file to avoid code duplication and maintainability issues.
-
-#include <mutex>
 
 #if defined(_WIN32 )|| defined( _WIN64 )
 #include <direct.h>
