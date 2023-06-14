@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,125 +17,11 @@ SPDX-License-Identifier: MIT
 extern __constant int __UseNative64BitIntBuiltin;
 extern __constant int __UseNative64BitFloatBuiltin;
 
-static ulong OVERLOADABLE sat_ulong(half _T, ulong _R);
 #if defined(cl_khr_fp64)
 INLINE float __intel_convert_float_rtp_rtn(double a, uint direction);
 #endif
 
-#if defined(cl_khr_fp16)
-
 /* Helper Functions from IBiF_Conversions.cl */
-#ifdef __IGC_BUILD__
-// Helper function for conversions with saturation
-static ushort OVERLOADABLE sat_ushort(half _T, ushort _R)
-{
-  return SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
-    _R, (ushort)0,
-    SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(
-        (half)((_T < (half)0) | SPIRV_BUILTIN(IsNan, _f16, )(_T))));
-}
-#endif
-
-#ifdef __IGC_BUILD__
-// Helper function for conversions with saturation
-static uint OVERLOADABLE sat_uint(half _T, uint _R)
-{
-  return SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-    as_int(_R), 0,
-    SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
-        (half)((_T < (half)0) | SPIRV_BUILTIN(IsNan, _f16, )(_T))));
-}
-#endif
-
-static ulong OVERLOADABLE sat_ulong(half _T, ulong _R)
-{
-  return SPIRV_OCL_BUILTIN(select, _i64_i64_i64, )(
-    as_long(_R), (long)0,
-    SPIRV_BUILTIN(ConvertFToS, _i64_f16, _Rlong)(
-        (half)((_T < (half)0) | SPIRV_BUILTIN(IsNan, _f16, )(_T))));
-}
-
-#ifdef __IGC_BUILD__
-// Helper function for conversions with saturation
-static uchar clamp_sat_uchar(half _T, uchar _R)
-{
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
-    _R, (uchar)0,
-    SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(
-      (half)(_T < (half)0)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
-    _R, (uchar)UCHAR_MAX,
-    SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(
-      (half)(_T > (half)UCHAR_MAX)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
-    _R, (uchar)0,
-    SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(
-      (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
-  return _R;
-}
-#endif
-
-#ifdef __IGC_BUILD__
-// Helper function for conversions with saturation
-static char clamp_sat_char(half _T, char _R)
-{
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
-    _R, (char)CHAR_MIN,
-    SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(
-      (half)(_T < (half)CHAR_MIN)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
-    _R, (char)CHAR_MAX,
-    SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(
-      (half)(_T > (half)CHAR_MAX)));
-  _R = SPIRV_OCL_BUILTIN(select, _i8_i8_i8, )(
-    _R, (char)0,
-    SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(
-      (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
-  return _R;
-}
-#endif
-
-#ifdef __IGC_BUILD__
-// Helper function for conversions with saturation
-static short clamp_sat_short(half _T, short _R)
-{
-  _R = SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
-    _R, (short)SHRT_MIN,
-    SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(
-      (half)(_T < (half)SHRT_MIN)));
-  _R = SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
-    _R, (short)SHRT_MAX,
-    SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(
-      (half)(_T > (half)SHRT_MAX)));
-  _R = SPIRV_OCL_BUILTIN(select, _i16_i16_i16, )(
-    _R, (short)0,
-    SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(
-      (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
-  return _R;
-}
-#endif
-
-#ifdef __IGC_BUILD__
-// Helper function for conversions with saturation
-static int clamp_sat_int(half _T, int _R)
-{
-    _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-        _R, (int)INT_MIN,
-        SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
-          (half)(_T < (half)INT_MIN)));
-    _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-        _R, (int)INT_MAX,
-        SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
-          (half)(_T > (half)INT_MAX)));
-    _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-        _R, (int)0,
-        SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(
-          (half) SPIRV_BUILTIN(IsNan, _f16, )(_T)));
-  return _R;
-}
-#endif
-
-#endif //defined(cl_khr_fp16)
 
 #ifdef __IGC_BUILD__
 #define UCHAR_MIN ((uchar)0)
@@ -143,32 +29,90 @@ static int clamp_sat_int(half _T, int _R)
 #define UINT_MIN  ((uint)0)
 #define ULONG_MIN ((ulong)0)
 // Helper function for conversions with saturation
-#define SAT_CLAMP_HELPER_SIGN(TO, FROM, TONAME, TOA, FROMA)        \
-static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                  \
-{                                                                  \
-  _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)) ? TONAME##_MIN : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)) ? TONAME##_MAX : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToS, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)) ? 0 : _R;    \
-  return _R;                                                       \
+#define SAT_CLAMP(TO, TONAME, FROM, FROM_MNGL)                                \
+static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
+{                                                                             \
+  /* Produce 0 for NaN values */                                              \
+  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
+  FROM MinClamp = SPIRV_OCL_BUILTIN(fmax, _##FROM_MNGL##_##FROM_MNGL, )(      \
+                                        NaNClamp, (FROM)TONAME##_MIN);        \
+  return (TO)SPIRV_OCL_BUILTIN(fmin, _##FROM_MNGL##_##FROM_MNGL, )(           \
+                                        MinClamp, (FROM)TONAME##_MAX);        \
+}
+// We would love to use fmin/fmax clamping logic for all cases, as it yields
+// better ISA. However, for some int <-> FP type pairs, IMAX value 2^n - 1
+// cannot be represented exactly in the target FP type (never an issue for even
+// IMIN values). When we clamp to IMAX, the backwards conversion to such int
+// type will yield IMAX + 1 and result in integer overflow, which is
+// technically UB for runtime values and practically - for compile-time known
+// constants. Move the upper limit clamping to int type's realm for such cases.
+#define SAT_CLAMP_INEXACT_MAX(TO, TONAME, FROM, FROM_MNGL)                    \
+static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
+{                                                                             \
+  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
+  FROM MinClamp = SPIRV_OCL_BUILTIN(fmax, _##FROM_MNGL##_##FROM_MNGL, )(      \
+                                        NaNClamp, (FROM)TONAME##_MIN);        \
+  return MinClamp >= (FROM)TONAME##_MAX ? TONAME##_MAX : (TO)MinClamp;        \
+}
+// If 'TO' int type limits include 'FROM' FP type normal limits, only INF
+// checks are needed. We need direct comparison to INF to account for
+// compile-time known constant values - with these, LLVM InstSimplifier will
+// view integer min/max conversions to "lesser" FP type as invalid, resulting
+// in UB.
+// TODO: This is but a workaround for LLVM language limitation, because our HW
+// min/max instructions handle infinity values just fine. Should any negative
+// effects on performance be observed, consider re-implementing the convert_sat
+// builtins as intrinsic calls (llvm.fpto*i.sat or synonymic GenISA intrinsics)
+// similarly to fmin/fmax.
+#define SAT_CLAMP_INF_ONLY_SIGNED(TO, TONAME, FROM, FROM_MNGL)                \
+static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
+{                                                                             \
+  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
+  TO MinClamp = _T == (FROM)-INFINITY ? TONAME##_MIN : (TO)NaNClamp;          \
+  return _T == (FROM)INFINITY ? TONAME##_MAX : MinClamp;                      \
+}
+#define SAT_CLAMP_INF_ONLY_UNSIGNED(TO, TONAME, FROM, FROM_MNGL)              \
+static TO __clamp_sat_##TO##_##FROM(FROM _T)                                  \
+{                                                                             \
+  FROM NaNClamp = SPIRV_BUILTIN(IsNan, _##FROM_MNGL, )(_T) ? 0 : _T;          \
+  /* For unsigned, we still need a regular check of lower limit*/             \
+  TO MinClamp = (TO)SPIRV_OCL_BUILTIN(                                        \
+                    fmax, _##FROM_MNGL##_##FROM_MNGL, )(NaNClamp, 0);         \
+  return _T == (FROM)INFINITY ? TONAME##_MAX : MinClamp;                      \
 }
 
-#define SAT_CLAMP_HELPER_UNSIGNED(TO, FROM, TONAME, TOA, FROMA)    \
-static TO clamp_sat_##TO##_##FROM(TO _R, FROM _T)                  \
-{                                                                  \
-  _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T < (FROM)TONAME##_MIN)) ? TONAME##_MIN : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)(_T > (FROM)TONAME##_MAX)) ? TONAME##_MAX : _R;  \
-  _R = SPIRV_BUILTIN(ConvertFToU, _##FROMA##_##TOA, _R##TO)((FROM)SPIRV_BUILTIN(IsNan, _##TOA, )(_T)) ? 0 : _R;    \
-  return _R;                                                       \
-}
+// Half - normal limits are [-65504, 65504]
+#if defined(cl_khr_fp16)
+SAT_CLAMP(uchar, UCHAR, half, f16)
+SAT_CLAMP_INF_ONLY_UNSIGNED(ushort, USHRT, half, f16)
+SAT_CLAMP_INF_ONLY_UNSIGNED(uint, UINT, half, f16)
+SAT_CLAMP_INF_ONLY_UNSIGNED(ulong, ULONG, half, f16)
+SAT_CLAMP(char, CHAR, half, f16)
+SAT_CLAMP_INEXACT_MAX(short, SHRT, half, f16)
+SAT_CLAMP_INF_ONLY_SIGNED(int, INT, half, f16)
+SAT_CLAMP_INF_ONLY_SIGNED(long, LONG, half, f16)
+#endif //defined(cl_khr_fp16)
+// Float - normal limits are approx. [-3.4e+38, 3.4e+38] - exceeds all ints
+SAT_CLAMP(uchar, UCHAR, float, f32)
+SAT_CLAMP(ushort, USHRT, float, f32)
+SAT_CLAMP(uint, UINT, float, f32)
+SAT_CLAMP_INEXACT_MAX(ulong, ULONG, float, f32)
+SAT_CLAMP(char, CHAR, float, f32)
+SAT_CLAMP(short, SHRT, float, f32)
+SAT_CLAMP(int, INT, float, f32)
+SAT_CLAMP_INEXACT_MAX(long, LONG, float, f32)
+// Double - normal limmits are approx. [-1.8e+308, 1.8e+308]
 #if defined(cl_khr_fp64)
-SAT_CLAMP_HELPER_UNSIGNED(uchar, double, UCHAR, f64, i8)
-SAT_CLAMP_HELPER_UNSIGNED(ushort, double, USHRT, f64, i16)
-SAT_CLAMP_HELPER_UNSIGNED(uint, double, UINT, f64, i32)
-SAT_CLAMP_HELPER_SIGN(char, double, CHAR, f64, i8)
-SAT_CLAMP_HELPER_SIGN(short, double, SHRT, f64, i16)
-SAT_CLAMP_HELPER_SIGN(int, double, INT, f64, i32)
-
+SAT_CLAMP(uchar, UCHAR, double, f64)
+SAT_CLAMP(ushort, USHRT, double, f64)
+SAT_CLAMP(uint, UINT, double, f64)
+SAT_CLAMP_INEXACT_MAX(ulong, ULONG, double, f64)
+SAT_CLAMP(char, CHAR, double, f64)
+SAT_CLAMP(short, SHRT, double, f64)
+SAT_CLAMP(int, INT, double, f64)
+SAT_CLAMP_INEXACT_MAX(long, LONG, double, f64)
 #endif //defined(cl_khr_fp64)
+
 #endif //__IGC_BUILD__
 
 static float convertUItoFP32(ulong value, char roundingMode, bool s);
@@ -1014,8 +958,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f16, _Ruchar_rtn)(h
 
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f16, _Ruchar_sat)(half FloatValue)
 {
-  uchar normal = SPIRV_BUILTIN(ConvertFToU, _i8_f16, _Ruchar)(FloatValue);
-  return clamp_sat_uchar(FloatValue, normal);
+  return __clamp_sat_uchar_half(FloatValue);
 }
 
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i8_f16, _Ruchar_sat_rte)(half FloatValue)
@@ -1066,8 +1009,7 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i16_f16, _Rushort_rtn)
 
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f16, _Rushort_sat)(half FloatValue)
 {
-  ushort normal = SPIRV_BUILTIN(ConvertFToU, _i16_f16, _Rushort)(FloatValue);
-  return sat_ushort(FloatValue, normal);
+  return __clamp_sat_ushort_half(FloatValue);
 }
 
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i16_f16, _Rushort_sat_rte)(half FloatValue)
@@ -1118,8 +1060,7 @@ uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i32_f16, _Ruint_rtn)(h
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f16, _Ruint_sat)(half FloatValue)
 {
-  uint normal = SPIRV_BUILTIN(ConvertFToU, _i32_f16, _Ruint)(FloatValue);
-  return sat_uint(FloatValue, normal);
+  return __clamp_sat_uint_half(FloatValue);
 }
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f16, _Ruint_sat_rte)(half FloatValue)
@@ -1170,8 +1111,7 @@ ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i64_f16, _Rulong_rtn)(
 
 ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f16, _Rulong_sat)(half FloatValue)
 {
-  ulong normal = SPIRV_BUILTIN(ConvertFToU, _i64_f16, _Rulong)(FloatValue);
-  return sat_ulong(FloatValue, normal);
+  return __clamp_sat_ulong_half(FloatValue);
 }
 
 ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i64_f16, _Rulong_sat_rte)(half FloatValue)
@@ -1230,9 +1170,7 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f32, _Ruchar_rtn)(f
 
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f32, _Ruchar_sat)(float FloatValue)
 {
-  //return __builtin_IB_ftouc_sat((float)FloatValue);
-  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, 0.0f, (float)UCHAR_MAX);
-  return (uchar)res;
+  return __clamp_sat_uchar_float(FloatValue);
 }
 
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i8_f32, _Ruchar_sat_rte)(float FloatValue)
@@ -1288,9 +1226,7 @@ ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i16_f32, _Rushort_rtn)
 
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f32, _Rushort_sat)(float FloatValue)
 {
-  //return __builtin_IB_ftous_sat((float)FloatValue);
-  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, 0.0f, (float)USHRT_MAX);
-  return (ushort)res;
+  return __clamp_sat_ushort_float(FloatValue);
 }
 
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i16_f32, _Rushort_sat_rte)(float FloatValue)
@@ -1341,7 +1277,7 @@ uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i32_f32, _Ruint_rtn)(f
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(float FloatValue)
 {
-    return SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i32_f32, _Ruint_sat_rtz)(FloatValue);
+  return __clamp_sat_uint_float(FloatValue);
 }
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f32, _Ruint_sat_rte)(float FloatValue)
@@ -1352,15 +1288,7 @@ uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i32_f32, _Ruint_sa
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTZ_i32_f32, _Ruint_sat_rtz)(float FloatValue)
 {
-  uint _R = SPIRV_BUILTIN(ConvertFToU, _RTZ_i32_f32, _Ruint_rtz)(FloatValue);
-  _R = SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(
-      (float)(FloatValue > (float)UINT_MAX)) ?
-      (uint)UINT_MAX : _R;
-
-  return SPIRV_BUILTIN(ConvertFToU, _i32_f32, _Ruint)(
-      (float)((FloatValue < (float)0) |
-          SPIRV_BUILTIN(IsNan, _f32, )(FloatValue))) ?
-      (uint)0 : _R;
+  return SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f32, _Ruint_sat)(FloatValue);
 }
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTP_i32_f32, _Ruint_sat_rtp)(float FloatValue)
@@ -1400,12 +1328,7 @@ ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i64_f32, _Rulong_rtn)(
 
 ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f32, _Rulong_sat)(float FloatValue)
 {
-  if (FloatValue <= 0) {
-    return 0;
-  } else if (FloatValue >= ULONG_MAX) {
-    return ULONG_MAX;
-  }
-  return SPIRV_BUILTIN(ConvertFToU, _i64_f32, _Rulong)(FloatValue);
+  return __clamp_sat_ulong_float(FloatValue);
 }
 
 ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i64_f32, _Rulong_sat_rte)(float FloatValue)
@@ -1458,38 +1381,32 @@ uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i8_f64, _Ruchar_rtn)(d
 
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i8_f64, _Ruchar_sat)(double FloatValue)
 {
-  uchar normal = SPIRV_BUILTIN(ConvertFToU, _i8_f64, _Ruchar)(FloatValue);
-  return clamp_sat_uchar_double(normal, FloatValue);
+  return __clamp_sat_uchar_double(FloatValue);
 }
 
 ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i16_f64, _Rushort_sat)(double FloatValue)
 {
-  ushort normal = SPIRV_BUILTIN(ConvertFToU, _i16_f64, _Rushort)(FloatValue);
-  return clamp_sat_ushort_double(normal, FloatValue);
+  return __clamp_sat_ushort_double(FloatValue);
 }
 
 uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i32_f64, _Ruint_sat)(double FloatValue)
 {
-  uint normal = SPIRV_BUILTIN(ConvertFToU, _i32_f64, _Ruint)(FloatValue);
-  return clamp_sat_uint_double(normal, FloatValue);
+  return __clamp_sat_uint_double(FloatValue);
 }
 
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f64, _Rchar_sat)(double FloatValue)
 {
-  char normal = SPIRV_BUILTIN(ConvertFToS, _i8_f64, _Rchar)(FloatValue);
-  return clamp_sat_char_double(normal, FloatValue);
+  return __clamp_sat_char_double(FloatValue);
 }
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f64, _Rshort_sat)(double FloatValue)
 {
-  short normal = SPIRV_BUILTIN(ConvertFToS, _i16_f64, _Rshort)(FloatValue);
-  return clamp_sat_short_double(normal, FloatValue);
+  return __clamp_sat_short_double(FloatValue);
 }
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f64, _Rint_sat)(double FloatValue)
 {
-  int normal = SPIRV_BUILTIN(ConvertFToS, _i32_f64, _Rint)(FloatValue);
-  return clamp_sat_int_double(normal, FloatValue);
+  return __clamp_sat_int_double(FloatValue);
 }
 
 uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i8_f64, _Ruchar_sat_rte)(double FloatValue)
@@ -1632,12 +1549,7 @@ ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _RTN_i64_f64, _Rulong_rtn)(
 
 ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_i64_f64, _Rulong_sat)(double FloatValue)
 {
-  if (FloatValue <= 0) {
-    return 0;
-  } else if (FloatValue >= ULONG_MAX) {
-    return ULONG_MAX;
-  }
-  return FloatValue;
+  return __clamp_sat_ulong_double(FloatValue);
 }
 
 ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToU, _Sat_RTE_i64_f64, _Rulong_sat_rte)(double FloatValue)
@@ -1690,8 +1602,7 @@ char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f16, _Rchar_rtn)(hal
 
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f16, _Rchar_sat)(half FloatValue)
 {
-  char normal = SPIRV_BUILTIN(ConvertFToS, _i8_f16, _Rchar)(FloatValue);
-  return clamp_sat_char(FloatValue, normal);
+  return __clamp_sat_char_half(FloatValue);
 }
 
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i8_f16, _Rchar_sat_rte)(half FloatValue)
@@ -1742,8 +1653,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f16, _Rshort_rtn)(h
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f16, _Rshort_sat)(half FloatValue)
 {
-  short normal = SPIRV_BUILTIN(ConvertFToS, _i16_f16, _Rshort)(FloatValue);
-  return clamp_sat_short(FloatValue, normal);
+  return __clamp_sat_short_half(FloatValue);
 }
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i16_f16, _Rshort_sat_rte)(half FloatValue)
@@ -1794,8 +1704,7 @@ int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i32_f16, _Rint_rtn)(hal
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f16, _Rint_sat)(half FloatValue)
 {
-  int normal = SPIRV_BUILTIN(ConvertFToS, _i32_f16, _Rint)(FloatValue);
-  return clamp_sat_int(FloatValue, normal);
+  return __clamp_sat_int_half(FloatValue);
 }
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f16, _Rint_sat_rte)(half FloatValue)
@@ -1846,12 +1755,7 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i64_f16, _Rlong_rtn)(ha
 
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f16, _Rlong_sat)(half FloatValue)
 {
-  if (FloatValue <= LONG_MIN) {
-    return LONG_MIN;
-  } else if (FloatValue >= LONG_MAX) {
-    return LONG_MAX;
-  }
-  return FloatValue;
+  return __clamp_sat_long_half(FloatValue);
 }
 
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i64_f16, _Rlong_sat_rte)(half FloatValue)
@@ -1910,9 +1814,7 @@ char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i8_f32, _Rchar_rtn)(flo
 
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i8_f32, _Rchar_sat)(float FloatValue)
 {
-  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, (float)CHAR_MIN, (float)CHAR_MAX);
-  res = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
-  return (char)res;
+  return __clamp_sat_char_float(FloatValue);
 }
 
 char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i8_f32, _Rchar_sat_rte)(float FloatValue)
@@ -1968,9 +1870,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i16_f32, _Rshort_rtn)(f
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i16_f32, _Rshort_sat)(float FloatValue)
 {
-  float res = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(FloatValue, (float)SHRT_MIN, (float)SHRT_MAX);
-  res = SPIRV_OCL_BUILTIN(select, _f32_f32_i32, )(res, 0.0f , SPIRV_BUILTIN(IsNan, _f32, )(FloatValue));
-  return (short)res;
+  return __clamp_sat_short_float(FloatValue);
 }
 
 short SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i16_f32, _Rshort_sat_rte)(float FloatValue)
@@ -2021,7 +1921,7 @@ int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i32_f32, _Rint_rtn)(flo
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(float FloatValue)
 {
-  return SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i32_f32, _Rint_sat_rtz)(FloatValue);
+  return __clamp_sat_int_float(FloatValue);
 }
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f32, _Rint_sat_rte)(float FloatValue)
@@ -2032,19 +1932,7 @@ int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i32_f32, _Rint_sat_
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTZ_i32_f32, _Rint_sat_rtz)(float FloatValue)
 {
-  int _R = SPIRV_BUILTIN(ConvertFToS, _RTZ_i32_f32, _Rint_rtz)(FloatValue);
-  _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-    _R, (int)INT_MIN,
-    SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(
-      (float)(FloatValue < (float)INT_MIN)));
-  _R = SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-    _R, (int)INT_MAX,
-    SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(
-      (float)(FloatValue > (float)INT_MAX)));
-  return SPIRV_OCL_BUILTIN(select, _i32_i32_i32, )(
-    _R, (int)0,
-    SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(
-      (float) SPIRV_BUILTIN(IsNan, _f32, )(FloatValue)));
+  return SPIRV_BUILTIN(ConvertFToS, _Sat_i32_f32, _Rint_sat)(FloatValue);
 }
 
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTP_i32_f32, _Rint_sat_rtp)(float FloatValue)
@@ -2084,12 +1972,7 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i64_f32, _Rlong_rtn)(fl
 
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f32, _Rlong_sat)(float FloatValue)
 {
-  if (FloatValue <= LONG_MIN) {
-    return LONG_MIN;
-  } else if (FloatValue >= LONG_MAX) {
-    return LONG_MAX;
-  }
-  return SPIRV_BUILTIN(ConvertFToS, _i64_f32, _Rlong)(FloatValue);
+  return __clamp_sat_long_float(FloatValue);
 }
 
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i64_f32, _Rlong_sat_rte)(float FloatValue)
@@ -2280,12 +2163,7 @@ long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _RTN_i64_f64, _Rlong_rtn)(do
 
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_i64_f64, _Rlong_sat)(double FloatValue)
 {
-  if (FloatValue <= LONG_MIN) {
-    return LONG_MIN;
-  } else if (FloatValue >= LONG_MAX) {
-    return LONG_MAX;
-  }
-  return FloatValue;
+  return __clamp_sat_long_double(FloatValue);
 }
 
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertFToS, _Sat_RTE_i64_f64, _Rlong_sat_rte)(double FloatValue)
