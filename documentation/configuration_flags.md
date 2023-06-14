@@ -39,6 +39,7 @@ $ export IGC_ShaderDumpEnable=1
 | `DisableFlagOpt` | Disable optimization cmp with logic op | - |
 | `DisableHFMath` | Disables HF math instructions. | - |
 | `DisableIfCvt` | Disable ifcvt | - |
+| `DisableLoopUnroll` | Setting this to 1/true adds a compiler switch to disable loop unrolling | Available |
 | `DisableMixMode` | Disables mix mode in vISA BE. | - |
 | `DisableRegDistDep` | distable regDist dependence | Available |
 | `DisableSendS` | Setting this to 1/true adds a compiler switch to not generate sends commands, default is to enable sends | - |
