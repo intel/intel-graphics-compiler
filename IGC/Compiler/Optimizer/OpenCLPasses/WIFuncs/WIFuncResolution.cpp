@@ -918,6 +918,13 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
             V = Result;
             break;
         }
+        case GenISAIntrinsic::GenISA_getAssertBufferPtr: {
+            unsigned int Offset = offsetof(implicit_args, assert_buffer_ptr);
+            auto Result = BuildLoadInst(CI, Offset, Builder.getInt64Ty());
+            Result = Builder.CreateIntToPtr(Result, CI.getType());
+            V = Result;
+            break;
+        }
         default:
             break;
         }
