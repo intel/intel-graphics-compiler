@@ -5167,7 +5167,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
       return dcl->getRegVar() && dcl->getRegVar()->getPhyReg() &&
              ((inst->isEOT() && builder.hasEOTGRFBinding() &&
                dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum() < 112) ||
-              (builder.getOption(vISA_enablePreemption) &&
+              (builder.mustReserveR1() &&
                dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum() < 2));
     };
 
@@ -5232,7 +5232,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
       }
     }
 
-    if (builder.getOption(vISA_enablePreemption)) {
+    if (builder.mustReserveR1()) {
       G4_DstRegRegion *dst = inst->getDst();
       if (!dst->isNullReg()) {
         G4_Declare *dstTopDcl = dst->getTopDcl();

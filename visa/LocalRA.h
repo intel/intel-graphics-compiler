@@ -153,10 +153,10 @@ public:
     eot = false;
     isSplit = false;
 
-    if (builder.kernel.getOptions()->getOption(vISA_AvoidUsingR0R1)) {
+    if (!builder.canWriteR0())
       addForbidden(0);
+    if (builder.mustReserveR1())
       addForbidden(1);
-    }
   }
 
   // A reference to this live range exists in bb basic block, record it

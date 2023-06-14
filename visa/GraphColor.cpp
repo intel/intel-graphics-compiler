@@ -2689,8 +2689,7 @@ bool GlobalRA::evenAlignNeeded(G4_Declare *dcl) {
               (unsigned)kernel.numEltPerGRF<Type_UB>() &&
           (elemSizeToUse * kernelSimdSizeToUse) <=
               (unsigned)(2 * kernel.numEltPerGRF<Type_UB>()) &&
-          !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-            dcl == kernel.fg.builder->getBuiltinR0())) {
+          !(!builder.canReadR0() && dcl == kernel.fg.builder->getBuiltinR0())) {
         return true;
       }
     }
@@ -2705,7 +2704,7 @@ bool GlobalRA::evenAlignNeeded(G4_Declare *dcl) {
         if ((topdcl->getElemSize() >= 4 ||
              topdclAugMask == AugmentationMasks::Default32Bit) &&
             topdcl->getByteSize() >= kernel.numEltPerGRF<Type_UB>() &&
-            !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
+            !(!builder.canReadR0() &&
               dcl == kernel.fg.builder->getBuiltinR0())) {
           return true;
         }
@@ -2740,8 +2739,7 @@ void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
 
     if (topdclBC != BANK_CONFLICT_NONE) {
       if (topdcl->getElemSize() >= 4 && topdcl->getNumRows() > 1 &&
-          !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-            dcl == kernel.fg.builder->getBuiltinR0())) {
+          !(!builder.canReadR0() && dcl == kernel.fg.builder->getBuiltinR0())) {
         if (topdclBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
             topdclBC == BANK_CONFLICT_SECOND_HALF_ODD) {
           align = BankAlign::Odd;
@@ -5630,8 +5628,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
                lrs[i]->getVar()->isRegVarTmp() == true) &&
               lrs[i]->getVar()->isSpilled() == false) ||
              dcl == gra.getOldFPDcl() ||
-             (m_options->getOption(vISA_enablePreemption) &&
-              dcl == builder.getBuiltinR0())) {
+             (!builder.canReadR0() && dcl == builder.getBuiltinR0())) {
       lrs[i]->setSpillCost(MAXSPILLCOST);
     } else if (dcl->isDoNotSpill()) {
       lrs[i]->setSpillCost(MAXSPILLCOST);
@@ -8155,14 +8152,12 @@ void ForbiddenRegs::generateReservedGRFForbidden(
   forbiddenVec[(size_t)k].resize(getForbiddenVectorSize(G4_GRF));
   forbiddenVec[(size_t)k].clear();
 
-  if (builder.kernel.getKernelType() != VISA_3D ||
-      builder.kernel.getOption(vISA_enablePreemption) ||
-      reserveSpillSize > 0 || builder.kernel.getOption(vISA_ReserveR0) ||
-      builder.kernel.getOption(vISA_PreserveR0InR0)) {
+  if (builder.kernel.getKernelType() != VISA_3D || !builder.canWriteR0() ||
+      reserveSpillSize > 0 || builder.kernel.getOption(vISA_PreserveR0InR0)) {
     forbiddenVec[(size_t)k].set(0, true);
   }
 
-  if (builder.kernel.getOption(vISA_enablePreemption)) {
+  if (builder.mustReserveR1()) {
     // r1 is reserved for SIP kernel
     forbiddenVec[(size_t)k].set(1, true);
   }

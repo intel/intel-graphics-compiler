@@ -7,15 +7,16 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "G4_Kernel.hpp"
+#include "BinaryEncodingIGA.h"
 #include "BuildIR.h"
+#include "Common_ISA_framework.h"
 #include "DebugInfo.h"
 #include "G4_BB.hpp"
-#include "VarSplit.h"
-#include "BinaryEncodingIGA.h"
-#include "Common_ISA_framework.h"
 #include "VISAKernel.h"
-#include "iga/IGALibrary/api/kv.hpp"
+#include "VarSplit.h"
 #include "iga/IGALibrary/Models/Models.hpp"
+#include "iga/IGALibrary/api/kv.hpp"
+#include "visa_wa.h"
 
 #include <fstream>
 #include <functional>

@@ -1071,15 +1071,14 @@ void getForbiddenGRFs(std::vector<unsigned int> &regNum, G4_Kernel &kernel,
   // rMax, rMax-1, rMax-2 - Forbidden in presence of stack call sites
   unsigned totalGRFNum = kernel.getNumRegTotal();
 
-  if (kernel.getKernelType() != VISA_3D ||
-      kernel.getOption(vISA_enablePreemption) || reserveSpillSize > 0 ||
-      kernel.getOption(vISA_ReserveR0) ||
-      kernel.getOption(vISA_PreserveR0InR0)) {
+  // FIXME: We have way too many places that are reserving r0, they need to be
+  // consolidated.
+  if (kernel.getKernelType() != VISA_3D || !kernel.fg.builder->canWriteR0() ||
+      reserveSpillSize > 0 || kernel.getOption(vISA_PreserveR0InR0)) {
     regNum.push_back(0);
   }
 
-  if (kernel.getOption(vISA_enablePreemption)) {
-    // r1 is reserved for SIP kernel
+  if (kernel.fg.builder->mustReserveR1()) {
     regNum.push_back(1);
   }
 

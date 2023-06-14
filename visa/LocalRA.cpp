@@ -257,14 +257,12 @@ void LocalRA::preLocalRAAnalysis() {
     }
   } else {
     pregs->setSimpleGRFAvailable(true);
-    const Options *opt = builder.getOptions();
     if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
-        opt->getOption(vISA_enablePreemption) ||
-        opt->getOption(vISA_ReserveR0)) {
+        !builder.canWriteR0()) {
       pregs->setR0Forbidden();
     }
 
-    if (opt->getOption(vISA_enablePreemption)) {
+    if (builder.mustReserveR1()) {
       pregs->setR1Forbidden();
     }
   }

@@ -805,7 +805,7 @@ void Optimizer::accSubBeforeRA() {
 }
 
 bool Optimizer::R0CopyNeeded() {
-  if (kernel.getOption(vISA_enablePreemption)) {
+  if (!builder.canReadR0()) {
     return true;
   }
 

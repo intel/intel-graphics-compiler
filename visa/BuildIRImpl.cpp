@@ -746,7 +746,7 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
       CanonicalRegionStride4(4, 1, 0), mem(m),
       phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m),
       dclpool(m, *this), instList(alloc), kernel(k), metadataMem(4096),
-      debugNameMem(4096) {
+      debugNameMem(4096), r0AccessMode(getR0AccessFromOptions()) {
   num_temp_dcl = 0;
   kernel.setBuilder(this); // kernel needs pointer to the builder
   if (!getIsPayload())
@@ -3355,4 +3355,22 @@ G4_Type IR_Builder::findConstFoldCommonType(G4_Type type1, G4_Type type2) {
     }
   }
   return Type_UNDEF;
+}
+
+IR_Builder::R0_ACCESS IR_Builder::getR0AccessFromOptions() const {
+  if (getOption(vISA_enablePreemption))
+    return R0_ACCESS::NONE;
+  if (getOption(vISA_AvoidUsingR0R1))
+    return R0_ACCESS::NONE;
+  if (getOption(vISA_ReserveR0))
+    return R0_ACCESS::READ_ONLY;
+  return R0_ACCESS::READ_WRITE;
+}
+
+bool IR_Builder::mustReserveR1() const {
+  if (getOption(vISA_enablePreemption))
+    return true;
+  if (getOption(vISA_AvoidUsingR0R1))
+    return true;
+  return false;
 }

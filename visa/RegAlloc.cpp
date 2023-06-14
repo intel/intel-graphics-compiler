@@ -39,8 +39,8 @@ bool LivenessAnalysis::isLocalVar(G4_Declare *decl) const {
          (fg.getIsStackCallFunc() && fg.builder->getArgSize() == 0))))
     return false;
 
-  if (fg.builder->getOption(vISA_enablePreemption) &&
-      decl == fg.builder->getBuiltinR0())
+  // FIXME: Why special check? Why can't we compute this correctly?
+  if (!fg.builder->canReadR0() && decl == fg.builder->getBuiltinR0())
     return false;
 
   if (decl->isOutput() == true &&
@@ -511,8 +511,9 @@ void LivenessAnalysis::computeLiveness() {
            (fg.getIsStackCallFunc() && fg.builder->getArgSize() == 0))))
       setLiveIn = true;
 
-    if (fg.builder->getOption(vISA_enablePreemption) &&
-        decl == fg.builder->getBuiltinR0())
+    // FIXME: Why make this liveIn? we are copying RealR0 to BuiltInR0 at kernel
+    // entry, so by definition it's not live-in.
+    if (!fg.builder->canReadR0() && decl == fg.builder->getBuiltinR0())
       setLiveIn = true;
 
     if (setLiveIn) {
@@ -528,8 +529,8 @@ void LivenessAnalysis::computeLiveness() {
            (fg.getIsStackCallFunc() && fg.builder->getRetVarSize() == 0))))
       setLiveOut = true;
 
-    if (fg.builder->getOption(vISA_enablePreemption) &&
-        decl == fg.builder->getBuiltinR0())
+    // FIXME: Why do we need to force builtinR0 to be liveOut?
+    if (!fg.builder->canReadR0() && decl == fg.builder->getBuiltinR0())
       setLiveOut = true;
 
     if (setLiveOut) {

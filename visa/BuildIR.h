@@ -444,6 +444,18 @@ private:
   // bump pointer allocator for variable and label names, used for IR dump only.
   Mem_Manager debugNameMem;
 
+  // Whether the kernel should avoid clobbering or even reading R0, this
+  // is generally due to mid-thread preemption.
+  // If mode is read-only, we mark it as forbidden in various RA algorithms so
+  // that it will not be re-assigned to other variables.
+  // If mode is none, we copy it to a different register at kernel entry and use
+  // that in the body instead. r0 should not be used outside the prolog.
+  enum class R0_ACCESS { READ_WRITE, READ_ONLY, NONE };
+  // This unfortunately can't be const due to some context-dependent WA that can
+  // only be set after all instructions are read.
+  R0_ACCESS r0AccessMode;
+  R0_ACCESS getR0AccessFromOptions() const;
+
 public:
   PreDefinedVars preDefVars;
   Mem_Manager &mem;           // memory for all operands and insts
@@ -632,6 +644,15 @@ public:
              const WA_TABLE *pWaTable);
 
   ~IR_Builder();
+
+  void setR0ReadOnly() {
+    // NONE is stronger than READ_ONLY, so don't change it
+    if (r0AccessMode == R0_ACCESS::READ_WRITE)
+      r0AccessMode = R0_ACCESS::READ_ONLY;
+  }
+  bool canReadR0() const { return r0AccessMode != R0_ACCESS::NONE; }
+  bool canWriteR0() const { return r0AccessMode == R0_ACCESS::READ_WRITE; }
+  bool mustReserveR1() const;
 
   void rebuildPhyRegPool(unsigned int numRegisters) {
     phyregpool.rebuildRegPool(mem, numRegisters);

@@ -38,10 +38,10 @@ void LinearScanRA::allocForbiddenVector(LSLiveRange *lr) {
   memset(forbidden, false, size);
   lr->setForbidden(forbidden);
 
-  if (builder.kernel.getOptions()->getOption(vISA_AvoidUsingR0R1)) {
+  if (!builder.canWriteR0())
     lr->addForbidden(0);
+  if (builder.mustReserveR1())
     lr->addForbidden(1);
-  }
 }
 
 void globalLinearScan::allocRetRegsVector(LSLiveRange *lr) {
@@ -670,14 +670,12 @@ void LinearScanRA::preRAAnalysis() {
     }
   } else {
     pregs->setSimpleGRFAvailable(true);
-    const Options *opt = builder.getOptions();
     if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
-        opt->getOption(vISA_enablePreemption) ||
-        opt->getOption(vISA_ReserveR0)) {
+        !builder.canWriteR0()) {
       pregs->setR0Forbidden();
     }
 
-    if (opt->getOption(vISA_enablePreemption)) {
+    if (builder.mustReserveR1()) {
       pregs->setR1Forbidden();
     }
   }

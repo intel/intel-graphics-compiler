@@ -4618,12 +4618,9 @@ int VISAKernelImpl::AppendVISASplitBarrierInst(bool isSignal) {
                                 num_operands, inst_desc);
     addInstructionToEnd(inst);
   }
-
   if (VISA_WA_CHECK(m_builder->getPWaTable(), Wa_14017131883)) {
-    const_cast<Options *>(m_builder->getOptions())
-        ->setOptionInternally(vISA_ReserveR0, true);
+    m_builder->setR0ReadOnly();
   }
-
   return status;
 }
 
