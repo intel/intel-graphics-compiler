@@ -1250,6 +1250,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(new CodeSinking(true));
         }
+        mpm.add(llvm::createEarlyCSEPass());
 #if LLVM_VERSION_MAJOR >= 12
         mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
 #else
@@ -1275,7 +1276,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createLogicalAndToBranchPass());
-        mpm.add(llvm::createEarlyCSEPass());
 
 
         if (pContext->m_instrTypes.CorrelatedValuePropagationEnable)
