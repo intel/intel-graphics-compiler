@@ -1539,9 +1539,9 @@ namespace TC
         IOCLFEBinaryResult *pResultPtr = NULL;
         int res = 0;
         {
+#ifdef _WIN32
             static std::mutex cclangMtx;
             std::lock_guard<std::mutex> lck(cclangMtx);
-#ifdef _WIN32
             res = m_CCModule.pCompile(
 #else
             res = Compile(
