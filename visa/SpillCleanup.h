@@ -36,12 +36,14 @@ private:
   const unsigned int cSpillWindowThreshold128GRF = 120;
   const unsigned int cHighRegPressureForCleanup = 100;
   const unsigned int cHighRegPressureForWindow = 70;
+  const unsigned int cHighRegPressureForHoistUp = 50;
   const unsigned int cInputSizeLimit = 70;
 
   unsigned int fillWindowSizeThreshold = 0;
   unsigned int spillWindowSizeThreshold = 0;
   unsigned int highRegPressureForCleanup = 0;
   unsigned int highRegPressureForWindow = 0;
+  unsigned int highRegPressureForHoistUp = 0;
   unsigned int totalInputSize = 0;
 
   // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
@@ -63,6 +65,7 @@ private:
                              G4_InstOption &);
   void fills();
   void spills();
+  void hoistFillsUp();
   INST_LIST_ITER analyzeFillCoalescing(std::list<INST_LIST_ITER> &,
                                        INST_LIST_ITER, INST_LIST_ITER, G4_BB *);
   INST_LIST_ITER analyzeSpillCoalescing(std::list<INST_LIST_ITER> &,
@@ -110,6 +113,8 @@ public:
         kernel.getScaledGRFSize(cHighRegPressureForCleanup);
     highRegPressureForWindow =
         kernel.getScaledGRFSize(cHighRegPressureForWindow);
+    highRegPressureForHoistUp =
+        kernel.getScaledGRFSize(cHighRegPressureForHoistUp);
 
     auto &inputs = k.fg.builder->m_inputVect;
     for (const input_info_t *input_info : inputs) {

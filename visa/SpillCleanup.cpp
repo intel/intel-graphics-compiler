@@ -1052,6 +1052,88 @@ void CoalesceSpillFills::fills() {
   }
 }
 
+// Iterate over all BBs, find fills and hoist them up.
+// To avoid increasing register pressure (which triggers spills),
+// fills are only hoisted up if
+//  - their corresponding spills are not present in the same BB, and
+//  - register pressure in BB is low enough to hoist the fill up.
+void CoalesceSpillFills::hoistFillsUp() {
+  llvm::SmallVector<G4_INST *, 4> spillsSeen;
+  unsigned int regPressure = 0;
+
+  auto spillInSameBB = [&](G4_INST *fill) {
+    bool b;
+    for (auto spill : spillsSeen)
+      if (overlap(fill, spill, b))
+        return true;
+    return false;
+  };
+
+  // Some intrinsics have zero register pressure, so in that case
+  // we get its preceding instruction's instead.
+  auto getRegPressure = [&](INST_LIST_ITER it, INST_LIST_ITER insertPoint) {
+    unsigned RP = rpe.getRegisterPressure(*it);
+    while (it != insertPoint && RP == 0) {
+      it = std::prev(it);
+      RP = rpe.getRegisterPressure(*it);
+    }
+    return RP;
+  };
+
+  for (auto bb : kernel.fg) {
+    if (!gra.hasSpillCodeInBB(bb))
+      continue;
+    unsigned additionalRP = 0;
+    auto insertPoint = bb->begin();
+    auto instIt = bb->begin();
+    for (auto endIt = bb->end(); instIt != endIt;) {
+      auto inst = *instIt;
+      if (inst->isFillIntrinsic() && !spillInSameBB(inst)) {
+        auto hoistingIt = instIt;
+        auto searchStartIt = instIt;
+        G4_INST *fillKill = nullptr;
+        additionalRP += inst->asFillIntrinsic()->getNumRows();
+        hoistingIt = std::prev(hoistingIt);
+        while (hoistingIt != insertPoint) {
+          auto hInst = *hoistingIt;
+          if (hInst->isPseudoKill() &&
+              hInst->getDst()->getTopDcl() == inst->getDst()->getTopDcl()) {
+            fillKill = hInst;
+          }
+          // try to hoist the fill up while register pressure is low
+          regPressure = getRegPressure(hoistingIt, insertPoint) + additionalRP;
+          if (regPressure > highRegPressureForHoistUp)
+            break;
+          if (hInst->isFlowControl())
+            break;
+          hoistingIt = std::prev(hoistingIt);
+        }
+        if (hoistingIt != std::prev(searchStartIt)) {
+          // able to hoist fill up
+          auto nextInst = instIt;
+          instIt = std::next(nextInst);
+          // insert point is updated to new fill position since:
+          // - reg pressure is high, so hoisting other fills up doesn't help, or
+          // - current fill reached the top of BB and subsequent fills will be
+          //   inserted after it
+          if (fillKill) {
+            bb->remove(fillKill);
+            hoistingIt = bb->insertAfter(hoistingIt, fillKill);
+          }
+          gra.incRA.markForIntfUpdate(inst->getDst()->getTopDcl());
+          bb->remove(inst);
+          insertPoint = bb->insertAfter(hoistingIt, inst);
+          continue;
+        }
+      } else if (inst->isSpillIntrinsic()) {
+        spillsSeen.push_back(inst);
+      }
+      instIt = std::next(instIt);
+    }
+    spillsSeen.clear();
+  }
+}
+
 void CoalesceSpillFills::populateSendDstDcl() {
   // Find and store all G4_Declares that are dest in sends
   // and are spilled. This is required when coalescing
@@ -1960,10 +2042,9 @@ void CoalesceSpillFills::run() {
   spills();
   replaceMap.clear();
   spillFillCleanup();
-
   removeRedundantWrites();
-
   fixSendsSrcOverlap();
+  hoistFillsUp();
 
   kernel.dumpToFile("after.spillCleanup." + std::to_string(iterNo));
 }
