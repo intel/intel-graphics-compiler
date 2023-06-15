@@ -1094,8 +1094,8 @@ public:
             G4_CondMod *m, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
             G4_InstOpts opt)
       : G4_INST(builder, prd, o, m, g4::NOSAT, size, d, s0, nullptr, opt),
-        jip(NULL), uip(NULL), isBackwardBr(o == G4_while),
-        isUniformBr(false), SWSBCanSkip(false) {
+        jip(NULL), uip(NULL), isBackwardBr(o == G4_while), isUniformBr(false),
+        SWSBCanSkip(false) {
     isUniformBr = (op == G4_jmpi ||
                    (op == G4_goto && (size == g4::SIMD1 || prd == nullptr)));
   }

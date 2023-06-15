@@ -1331,10 +1331,11 @@ void SWSB::SWSBBuildSIMDCFG() {
         continue;
 
       if (firstInst != lastInst &&
-          (!fg.builder->getOptions()->getOption(vISA_DisableJoinInSIMDCF) ||
-           firstInst->opcode() != G4_join) &&
           G4_Inst_Table[firstInst->opcode()].instType == InstTypeFlow) {
-        if (firstInst->asCFInst()->getJip()) {
+        if (firstInst->asCFInst()->getJip() &&
+            (!fg.builder->getOptions()->getOption(vISA_IgnoreCFInstInSIMDCF) ||
+             (fg.builder->getOptions()->getOption(vISA_IgnoreCFInstInSIMDCF) &&
+                 !firstInst->asCFInst()->canSWSBSkip()))) {
           G4_Operand *jip = firstInst->asCFInst()->getJip();
           G4_BB_SB *targetBB = labelToBlockMap[jip->asLabel()];
 
@@ -1351,9 +1352,7 @@ void SWSB::SWSBBuildSIMDCFG() {
       continue;
     }
 
-    if (G4_Inst_Table[lastInst->opcode()].instType == InstTypeFlow &&
-        (!fg.builder->getOptions()->getOption(vISA_DisableJoinInSIMDCF) ||
-         lastInst->opcode() != G4_join)) {
+    if (G4_Inst_Table[lastInst->opcode()].instType == InstTypeFlow) {
       G4_opcode op = lastInst->opcode();
 
       if (op == G4_jmpi) {
@@ -1371,7 +1370,12 @@ void SWSB::SWSBBuildSIMDCFG() {
           unsigned bbID = bb->getId();
           addSIMDEdge(currBB, BBVector[bbID]);
         }
-      } else if (lastInst->asCFInst()->getJip()) {
+      } else if (lastInst->asCFInst()->getJip() &&
+                 (!fg.builder->getOptions()->getOption(
+                      vISA_IgnoreCFInstInSIMDCF) ||
+                  (fg.builder->getOptions()->getOption(
+                      vISA_IgnoreCFInstInSIMDCF) &&
+                      !lastInst->asCFInst()->canSWSBSkip()))) {
         if (op == G4_goto) {
           G4_Operand *jip = lastInst->asCFInst()->getJip();
           G4_Operand *uip = lastInst->asCFInst()->getUip();
