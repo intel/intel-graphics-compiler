@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Verifier.h"
@@ -96,10 +97,11 @@ bool DivergentBarrierPass::hasDivergentBarrier(
 
     PostDominatorTree PDT(*F);
     DominatorTree DT(*F);
+    LoopInfo LI(DT);
 
     TranslationTable TT;
     TT.run(*F);
-    WIAnalysisRunner WI(F, &DT, &PDT, m_MDUtils, m_CGCtx, ModMD, &TT);
+    WIAnalysisRunner WI(F, &LI, &DT, &PDT, m_MDUtils, m_CGCtx, ModMD, &TT);
     WI.run();
 
     return llvm::any_of(Barriers, [&](Instruction* I) {

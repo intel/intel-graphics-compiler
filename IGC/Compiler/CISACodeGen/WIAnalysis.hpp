@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Value.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -78,6 +79,7 @@ namespace IGC
     public:
         void init(
             llvm::Function* F,
+            llvm::LoopInfo* LI,
             llvm::DominatorTree* DT,
             llvm::PostDominatorTree* PDT,
             IGCMD::MetaDataUtils* MDUtils,
@@ -87,6 +89,7 @@ namespace IGC
 
         WIAnalysisRunner(
             llvm::Function* F,
+            llvm::LoopInfo* LI,
             llvm::DominatorTree* DT,
             llvm::PostDominatorTree* PDT,
             IGCMD::MetaDataUtils* MDUtils,
@@ -94,7 +97,7 @@ namespace IGC
             ModuleMetaData* ModMD,
             TranslationTable* TransTable)
         {
-            init(F, DT, PDT, MDUtils, CGCtx, ModMD, TransTable);
+            init(F, LI, DT, PDT, MDUtils, CGCtx, ModMD, TransTable);
         }
 
         WIAnalysisRunner() {}
@@ -247,12 +250,6 @@ namespace IGC
             bool& IsLzUniform);
 
     private:
-#ifdef OCL_SPECIFIC
-        // @brief pointer to Soa alloca analysis performed for this function
-        SoaAllocaAnalysis* m_soaAllocaAnalysis = nullptr;
-        /// Runtime services pointer
-        RuntimeServices* m_rtServices = nullptr;
-#endif
 
         /// The WIAnalysis follows pointer arithmetic
         ///  and Index arithmetic when calculating dependency
@@ -281,6 +278,7 @@ namespace IGC
         std::vector<const llvm::Value*> m_forcedUniforms;
 
         llvm::Function* m_func = nullptr;
+        llvm::LoopInfo *LI = nullptr;
         llvm::DominatorTree* DT = nullptr;
         llvm::PostDominatorTree* PDT = nullptr;
         IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
@@ -325,11 +323,9 @@ namespace IGC
         {
             // Analysis pass preserve all
             AU.setPreservesAll();
-#ifdef OCL_SPECIFIC
-            AU.addRequired<SoaAllocaAnalysis>();
-#endif
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
             AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+            AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<TranslationTable>();

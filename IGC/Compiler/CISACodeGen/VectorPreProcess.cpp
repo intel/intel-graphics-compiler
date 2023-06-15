@@ -357,6 +357,7 @@ namespace
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<PostDominatorTreeWrapperPass>();
+            AU.addRequired<LoopInfoWrapperPass>();
         }
 
     private:
@@ -1809,12 +1810,14 @@ bool VectorPreProcess::runOnFunction(Function& F)
                 &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
             auto* PDT =
                 &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+            auto *LI =
+                &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
             auto* ModMD =
                 getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
             TranslationTable TT;
             TT.run(F);
-            WIAnalysisRunner WI(&F, DT, PDT, MDUtils, m_CGCtx, ModMD, &TT);
+            WIAnalysisRunner WI(&F, LI, DT, PDT, MDUtils, m_CGCtx, ModMD, &TT);
             WI.run();
 
             for (uint32_t i = 0; i < m_WorkList.size(); ++i)

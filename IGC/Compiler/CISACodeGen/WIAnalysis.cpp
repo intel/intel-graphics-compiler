@@ -274,6 +274,7 @@ void WIAnalysisRunner::dump() const
 
 void WIAnalysisRunner::init(
     llvm::Function* F,
+    llvm::LoopInfo* LI,
     llvm::DominatorTree* DT,
     llvm::PostDominatorTree* PDT,
     IGC::IGCMD::MetaDataUtils* MDUtils,
@@ -282,6 +283,7 @@ void WIAnalysisRunner::init(
     IGC::TranslationTable* TransTable)
 {
     m_func = F;
+    this->LI = LI;
     this->DT = DT;
     this->PDT = PDT;
     m_pMdUtils = MDUtils;
@@ -381,11 +383,12 @@ bool WIAnalysis::runOnFunction(Function& F)
     auto* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto* DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     auto* PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
-    auto* CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    auto *CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto* ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     auto* pTT = &getAnalysis<TranslationTable>();
 
-    Runner.init(&F, DT, PDT, MDUtils, CGCtx, ModMD, pTT);
+    Runner.init(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, pTT);
     return Runner.run();
 }
 
@@ -911,17 +914,47 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
     BranchInfo br_info(inst, ipd);
     // debug: dump influence region and partial-joins
     // br_info.print(ods());
-
+    auto* CbrLoop = LI->getLoopFor(blk);
+    // Loop* IPDLoop = nullptr;
     // check dep-type for every phi in the full join
     if (ipd)
     {
         updatePHIDepAtJoin(ipd, &br_info);
+        // IPDLoop = LI->getLoopFor(ipd);
     }
     // check dep-type for every phi in the partial-joins
     for (SmallPtrSet<BasicBlock*, 4>::iterator join_it = br_info.partial_joins.begin(),
         join_e = br_info.partial_joins.end(); join_it != join_e; ++join_it)
     {
-        updatePHIDepAtJoin(*join_it, &br_info);
+        auto *PJ = *join_it;
+        // skip the special loop-entry case
+        if (DT->dominates(PJ, blk)) {
+            int NumPreds = 0;
+            for (auto *pred : predecessors(PJ)) {
+                if (br_info.influence_region.count(pred)) {
+                    NumPreds++;
+                }
+            }
+            if (NumPreds <= 1)
+                continue;
+        }
+        auto PJDom = DT->getNode(PJ)->getIDom()->getBlock();
+        // If both partial-join and it IDom are in partial-join region
+        // there are cases in which phi-nodes in partial-joins are not
+        // relevant to the cbr under the investigation
+        auto LoopA = LI->getLoopFor(PJDom);
+        //auto LoopB = LI->getLoopFor(PJ);
+        if (br_info.partial_joins.count(PJDom))
+        {
+            // both PJ and its IDom are outside the CBR loop
+            if (!CbrLoop || !CbrLoop->contains(LoopA))
+                continue;
+            // cbr and its IPD are at the same loop level
+            // the influence region can be considered as a DAG
+            // if (IPDLoop == CbrLoop)
+            //    continue;
+        }
+        updatePHIDepAtJoin(PJ, &br_info);
     }
 
     // walk through all the instructions in the influence-region
@@ -970,6 +1003,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             // 1) if use is in the full-join
             // 2) if use is even outside the full-join
             // 3) if use is in partial-join but def is not in partial-join
+            // 4) if def and use are in partial-join but def inside loop
             Value::use_iterator use_it = defi->use_begin();
             Value::use_iterator use_e = defi->use_end();
             for (; use_it != use_e; ++use_it)
@@ -989,10 +1023,14 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                     // local def-use, not related to control-dependence
                     continue; // skip
                 }
+                auto DefLoop = LI->getLoopFor(def_blk);
+                auto UseLoop = LI->getLoopFor(user_blk);
                 if (user_blk == br_info.full_join ||
                     !br_info.influence_region.count(user_blk) ||
                     (br_info.partial_joins.count(user_blk) &&
-                     !br_info.partial_joins.count(def_blk))
+                      (!br_info.partial_joins.count(def_blk) ||
+                       (DefLoop && !DefLoop->contains(UseLoop)))
+                    )
                    )
                 {
                     updateDepMap(defi, instDep);
