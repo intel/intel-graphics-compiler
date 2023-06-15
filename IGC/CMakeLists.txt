@@ -1829,6 +1829,8 @@ if(MSVC)
 
 message(STATUS "Using precompiled headers")
 
+  add_subdirectory(PCH)
+
   set(PCHTargets
     Compiler
     AdaptorOCL
