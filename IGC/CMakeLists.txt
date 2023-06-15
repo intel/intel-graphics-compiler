@@ -1837,8 +1837,11 @@ message(STATUS "Using precompiled headers")
     GenX_IR
     GenXDebugInfo
     igc_lib
-    VCIGCDeps
   )
+
+  if(IGC_BUILD__VC_ENABLED)
+    list(APPEND PCHTargets VCIGCDeps)
+  endif()
 
   if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
     list(APPEND PCHTargets VulkanFrontend)
