@@ -1383,7 +1383,7 @@ bool supportHeaderRTW() const
 
 bool preemptionSupported() const
 {
-    if (isProductChildOf(IGFX_PVC))
+    if (isCoreChildOf(IGFX_XE_HPC_CORE))
         return false;
 
     return GetPlatformFamily() >= IGFX_GEN9_CORE;

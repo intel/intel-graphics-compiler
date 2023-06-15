@@ -4231,7 +4231,9 @@ namespace IGC
             // r0 but VISA refer to r0 directly (BuiltInR0 == RealR0). Whereas,
             // reserving r0 via vISA_enablePreemption simply forbids RA from
             // using r0 for assignments.
-            SaveOption(vISA_enablePreemption, true);
+            {
+                SaveOption(vISA_enablePreemption, true);
+            }
         }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
