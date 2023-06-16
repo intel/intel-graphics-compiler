@@ -4006,6 +4006,16 @@ namespace IGC
             SaveOption(vISA_enableCloneSampleInst, true);
         }
 
+        if (IGC_IS_FLAG_SET(SSOShifter))
+        {
+            SaveOption(vISA_SSOShifter, IGC_GET_FLAG_VALUE(SSOShifter));
+        }
+
+        if (IGC_IS_FLAG_SET(SkipPaddingScratchSpaceSize))
+        {
+            SaveOption(vISA_SkipPaddingScratchSpaceSize, IGC_GET_FLAG_VALUE(SkipPaddingScratchSpaceSize));
+        }
+
 
         if (m_program->m_Platform->getWATable().Wa_14012760189 && IGC_IS_FLAG_ENABLED(EnableEvaluateSamplerSplit))
         {

@@ -7868,7 +7868,7 @@ void GlobalRA::addGenxMainStackSetupCode() {
         builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
     insertIt = entryBB->insertBefore(insertIt, fpInst);
 
-    setBEFPSetupInst(fpInst);
+    builder.kernel.setBEFPSetupInst(fpInst);
 
     if (builder.kernel.getOption(vISA_GenerateDebugInfo)) {
       builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(fpInst);
@@ -7884,6 +7884,8 @@ void GlobalRA::addGenxMainStackSetupCode() {
     G4_Imm *src = builder.createImm(fpInitVal + frameSize * factor, Type_UD);
     G4_INST *spIncInst =
         builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+
+    builder.kernel.setBESPSetupInst(spIncInst);
     entryBB->insertBefore(++insertIt, spIncInst);
   }
 
@@ -7931,7 +7933,8 @@ void GlobalRA::addCalleeStackSetupCode() {
         std::find(entryBB->begin(), entryBB->end(), getSaveBE_FPInst());
     vISA_ASSERT(insertIt != entryBB->end(), "Can't find BE_FP store inst");
 
-    setBEFPSetupInst(createBEFP);
+    builder.kernel.setBEFPSetupInst(createBEFP);
+    builder.kernel.setBESPSetupInst(addInst);
 
     if (builder.kernel.getOption(vISA_GenerateDebugInfo)) {
       builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(createBEFP);

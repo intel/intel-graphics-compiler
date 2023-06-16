@@ -1066,8 +1066,9 @@ private:
   G4_INST *saveBE_FPInst = nullptr;
   G4_INST *restoreBE_FPInst = nullptr;
 
-  // instruction go update BE_FP, only present in functions
+  // instruction go update BE_FP, BE_SP, only present in functions
   G4_INST *setupBE_FP = nullptr;
+  G4_INST *setupBE_SP = nullptr;
 
   // new temps for each reference of spilled address/flag decls
   std::unordered_set<G4_Declare *> addrFlagSpillDcls;
@@ -1188,9 +1189,6 @@ public:
 
   G4_INST *getSaveBE_FPInst() const { return saveBE_FPInst; };
   G4_INST *getRestoreBE_FPInst() const { return restoreBE_FPInst; };
-
-  G4_INST *getBEFPSetupInst() { return setupBE_FP; }
-  void setBEFPSetupInst(G4_INST *i) { setupBE_FP = i; }
 
   static unsigned owordToGRFSize(unsigned numOwords, const IR_Builder &builder);
   static unsigned hwordToGRFSize(unsigned numHwords, const IR_Builder &builder);

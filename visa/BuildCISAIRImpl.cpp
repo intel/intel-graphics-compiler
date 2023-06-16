@@ -1815,6 +1815,87 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     for (auto func : mainFunctions) {
       unsigned int genxBufferSize = 0;
 
+      if (func->getKernel()->getBEFPSetupInst())
+      {
+        auto& builder = *func->getKernel()->fg.builder;
+        auto& spillMemUsed = builder.getJitInfo()->stats.spillMemUsed;
+        bool skip_padding =
+          builder.kernel.getuInt32Option(vISA_SkipPaddingScratchSpaceSize) >= spillMemUsed;
+        bool SSO_padding =
+          !skip_padding &&
+          builder.getPlatform() == Xe_DG2 &&
+          builder.kernel.getuInt32Option(vISA_SSOShifter) > 0;
+        if (SSO_padding) {
+          G4_Declare *delta = nullptr;
+          G4_Declare *stackPtr = builder.kernel.fg.stackPtrDcl;
+
+          // Temporarily use stackPtrDcl as a tmp register if padding is needed
+          // Here we are working on physical registers after RA. stackPtrDcl is
+          // guraantee no use at this point
+          G4_Declare *tmp = stackPtr;
+          BB_LIST &BBs = builder.kernel.fg.getBBList();
+          // skip prolog sections (per_thread_prolog and cross_thread_prolog)
+          auto entryBB = *(++(++BBs.begin()));
+          auto fpInst = func->getKernel()->getBEFPSetupInst();
+          vISA_ASSERT(fpInst->opcode() == G4_mov, "unexpected pattern");
+          auto spInst = func->getKernel()->getBESPSetupInst();
+          vISA_ASSERT(spInst->opcode() == G4_mov, "unexpected pattern");
+          auto insertIt = std::find_if(entryBB->begin(), entryBB->end(),
+                                     [&](G4_INST *inst) { return inst == fpInst; });
+          // If we cannot find fpInst in the entryBB, it is either
+          // 1. getBEFPSetupInst() does not get correct place we initialize the FP
+          // 2. entryBB is not where we expect to contain fpInst
+          vISA_ASSERT(*insertIt == fpInst, "Cannot find fp setup inst");
+          // hwtid = sr0 & 0x7
+          auto sr0 = builder.createSrc(builder.phyregpool.getSr0Reg(), 0, 0,
+              builder.getRegionScalar(), Type_UD);
+          auto mask = builder.createImm(0x7, Type_UD);
+          auto hwtid = builder.createDst(tmp->getRegVar(), 0, 0, 1, Type_UD);
+
+          auto andInst = builder.createBinOp(G4_and, g4::SIMD1, hwtid, sr0, mask,
+              InstOpt_WriteEnable, false);
+          andInst->setVISAId(UNMAPPABLE_VISA_INDEX);
+          andInst->addComment("hwtid = sr0 & 0x7");
+          entryBB->insertBefore(insertIt, andInst);
+
+          // delta = hwtid << vISA_SSOShifter
+          auto tidSrc = builder.createSrc(hwtid->getBase(), 0, 0, builder.getRegionScalar(), Type_UD);
+          auto imm = builder.createImm(builder.kernel.getuInt32Option(vISA_SSOShifter), Type_UD);
+          delta = tmp;
+          auto shlInst = builder.createBinOp(G4_shl, g4::SIMD1,
+              builder.createDst(tmp->getRegVar(), 0, 0, 1, Type_UD),
+              tidSrc, imm,
+              InstOpt_WriteEnable, false);
+          shlInst->setVISAId(UNMAPPABLE_VISA_INDEX);
+          shlInst->addComment("delta = hwtid << vISA_SSOShifter");
+          shlInst->setDistance(1);
+          shlInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+          entryBB->insertBefore(insertIt, shlInst);
+
+          // add delta to the initialization of SP and FP
+          fpInst->setOpcode(G4_add);
+          fpInst->setSrc(builder.createImm(fpInst->getSrc(0)->asImm()->getImm(), Type_UD), 1);
+          fpInst->setSrc(builder.createSrcRegRegion(delta, builder.getRegionScalar()), 0);
+          fpInst->getDst()->setType(builder, Type_UD);
+
+          spInst->setOpcode(G4_add);
+          spInst->setSrc(builder.createImm(spInst->getSrc(0)->asImm()->getImm(), Type_UD), 1);
+          spInst->setSrc(builder.createSrcRegRegion(delta, builder.getRegionScalar()), 0);
+          spInst->getDst()->setType(builder, Type_UD);
+
+          // Token is inherited by fpInst
+          andInst->inheritSWSBFrom(fpInst);
+          fpInst->setDistance(1);
+          fpInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+          // Remove token
+          fpInst->setTokenType(G4_INST::TOKEN_NONE);
+
+          // preserve additional size to prevent out of bound access
+          spillMemUsed += (1U << builder.kernel.getuInt32Option(vISA_SSOShifter)) * 7;
+          spillMemUsed = ROUND(spillMemUsed, builder.kernel.numEltPerGRF<Type_UB>());
+        }
+      }
+
       // store the BBs with FCall and FRet, which must terminate the BB
       std::map<G4_BB *, G4_INST *> origFCallFRet;
       if (!hasPayloadPrologue) {

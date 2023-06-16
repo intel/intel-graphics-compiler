@@ -621,6 +621,15 @@ public:
     return gtPinInfo.get();
   }
 
+  G4_INST *setupBE_FP = nullptr;
+  G4_INST *setupBE_SP = nullptr;
+
+  G4_INST *getBEFPSetupInst() { return setupBE_FP; }
+  G4_INST *getBESPSetupInst() { return setupBE_SP; }
+  void setBEFPSetupInst(G4_INST *i) { setupBE_FP = i; }
+  void setBESPSetupInst(G4_INST *i) { setupBE_SP = i; }
+
+
   void updateGTPinData(G4_Kernel& kernel) {
     setGTPinDataSharedPtr(kernel.getGTPinDataSharedPtr());
   }
