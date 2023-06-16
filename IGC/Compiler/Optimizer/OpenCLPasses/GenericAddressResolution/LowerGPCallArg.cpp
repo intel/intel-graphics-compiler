@@ -292,18 +292,18 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function* oldFunc, Function* n
         if (BC && BC->hasOneUse())
             cInst = dyn_cast<CallInst>(BC->user_back());
 
+        if (!cInst)
+        {
+            IGC_ASSERT_MESSAGE(0, "Unknown function usage");
+            return;
+        }
+
         if (cInst->getCalledFunction() != oldFunc)
         {
             for (Use& cArg : cInst->args())
                 if (cArg == oldFunc)
                     UsesToReplace.push_back(&cArg);
             continue;
-        }
-
-        if (!cInst)
-        {
-            IGC_ASSERT_MESSAGE(0, "Unknown function usage");
-            return;
         }
 
         // Prepare args for new call
