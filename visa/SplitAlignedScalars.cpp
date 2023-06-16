@@ -75,11 +75,8 @@ std::vector<G4_Declare *> SplitAlignedScalars::gatherCandidates() {
             Data.allowed = false;
           }
 
-          if ((dst->getTypeSize() != dstTopDcl->getByteSize()) &&
-              !(dst->getTypeSize() == 4 && dstTopDcl->getByteSize() == 8)) {
-            // Disallow case where dst opnd does not write complete topdcl,
-            // except QW opnd which may be A64 address computed separately
-            // with low/hi DW opnds
+          if (dst->getTypeSize() != dstTopDcl->getByteSize()) {
+            // we require that dst opnd writes complete topdcl
             Data.allowed = false;
           }
 
@@ -92,11 +89,10 @@ std::vector<G4_Declare *> SplitAlignedScalars::gatherCandidates() {
           auto dstDcl =
               dst->asDstRegRegion()->getBase()->asRegVar()->getDeclare();
           if (dstDcl->getAliasDeclare()) {
-            // Disallow case where dst alias dcl size is different from
-            // top dcl, except QW opnd which may be A64 address computed
-            // separately with low/hi DW opnds
-            if ((dstDcl->getByteSize() != dstTopDcl->getByteSize()) &&
-                !(dstDcl->getByteSize() == 4 && dstTopDcl->getByteSize() == 8))
+            // disallow case where topdcl is scalar, but alias dcl
+            // is not a scalar as it may be smaller in size. for eg,
+            // topdcl may be :uq and alias may be of type :ud.
+            if (dstDcl->getByteSize() != dstTopDcl->getByteSize())
               Data.allowed = false;
           }
 
@@ -216,8 +212,9 @@ void SplitAlignedScalars::pruneCandidates(
   std::for_each(candidates.begin(), candidates.end(),
                 [&](G4_Declare *dcl) { candidateList.push_back(dcl); });
 
-  // First re-order candidates based on spill cost in ascending order
+  // First re-order candidates based on spill cost in descending order
   candidateList.sort(compareSpillCost);
+  std::reverse(candidateList.begin(), candidateList.end());
 
   for (auto it = candidateList.begin(); it != candidateList.end();) {
     auto dcl = *it;
@@ -251,9 +248,7 @@ void SplitAlignedScalars::pruneCandidates(
   candidates.clear();
   unsigned int totalMovsNeeded = 0;
   unsigned int estimatedInstCount = estimateInstCount();
-
-  for (auto ci = candidateList.rbegin(); ci != candidateList.rend(); ++ci) {
-    const auto &candidate = *ci;
+  for (auto candidate : candidateList) {
     bool isCandidate = false;
     auto numMovsNeeded = computeNumMovs(candidate);
 
@@ -279,9 +274,7 @@ void SplitAlignedScalars::pruneCandidates(
 }
 
 bool SplitAlignedScalars::isDclCandidate(G4_Declare *dcl) {
-  if (dcl->getRegFile() == G4_RegFileKind::G4_GRF &&
-      (dcl->getNumElems() == 1 ||
-       (dcl->getNumElems() == 2 && dcl->getElemType() == Type_D)) &&
+  if (dcl->getRegFile() == G4_RegFileKind::G4_GRF && dcl->getNumElems() == 1 &&
       !dcl->getAddressed() && !dcl->getIsPartialDcl() &&
       !dcl->getRegVar()->isPhyRegAssigned() && !dcl->getAliasDeclare() &&
       !dcl->isInput() && !dcl->isOutput() && !dcl->isPayloadLiveOut() &&
@@ -332,15 +325,9 @@ void SplitAlignedScalars::run() {
     return newTopDcl;
   };
 
-  auto getTypeExecSize = [&](G4_Type type, G4_ExecSize execSize) {
-    if (TypeSize(type) < 8) {
-      if (execSize == g4::SIMD1)
-        return std::make_tuple(1, type);
-      else {
-        vISA_ASSERT(execSize == g4::SIMD2, "invalid execution size");
-        return std::make_tuple(2, type);
-      }
-    }
+  auto getTypeExecSize = [&](G4_Type type) {
+    if (TypeSize(type) < 8)
+      return std::make_tuple(1, type);
 
     if (kernel.fg.builder->noInt64())
       return std::make_tuple(2, Type_UD);
@@ -393,10 +380,8 @@ void SplitAlignedScalars::run() {
 
           // emit copy to store data to original non-aligned scalar
           unsigned int execSize = 1;
-          auto oldExecSize = inst->getExecSize();
           G4_Type typeToUse = Type_UD;
-          std::tie(execSize, typeToUse) =
-              getTypeExecSize(dst->getType(), oldExecSize);
+          std::tie(execSize, typeToUse) = getTypeExecSize(dst->getType());
 
           auto src = kernel.fg.builder->createSrc(
               dstRgn->getBase(), dstRgn->getRegOff(), dstRgn->getSubRegOff(),
@@ -452,10 +437,8 @@ void SplitAlignedScalars::run() {
             newAlignedTmpTopDcl->copyAlign(oldTopDcl);
 
             unsigned int execSize = 1;
-            auto oldExecSize = inst->getExecSize();
             G4_Type typeToUse = Type_UD;
-            std::tie(execSize, typeToUse) =
-                getTypeExecSize(srcRgn->getType(), oldExecSize);
+            std::tie(execSize, typeToUse) = getTypeExecSize(srcRgn->getType());
 
             // copy oldDcl in to newAlignedTmpTopDcl
             auto tmpDst = kernel.fg.builder->createDst(

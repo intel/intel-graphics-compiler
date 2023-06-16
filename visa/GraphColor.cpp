@@ -10103,12 +10103,6 @@ int GlobalRA::coloringRegAlloc() {
 
           // Re-run GRA loop if changes were made to IR
           rerunGRA |= split.getChangesMade();
-          kernel.dumpToFile("after.Split_Aligned_Scalar." + std::to_string(iterationNo));
-#ifndef DLL_MODE
-          if (stopAfter("Split_Aligned_Scalar")) {
-            return VISA_EARLY_EXIT;
-          }
-#endif // DLL_MODE
         }
 
         // Calculate the spill caused by send to decide if global splitting is
