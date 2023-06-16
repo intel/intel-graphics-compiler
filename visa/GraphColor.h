@@ -1142,6 +1142,9 @@ public:
   bool useLscForSpillFill = false;
   bool useLscForScatterSpill = false;
   bool useLscForNonStackCallSpillFill = false;
+  bool useFastRA = false;
+  bool useHybridRAwithSpill = false;
+  bool useLocalRA = false;
 
   IncrementalRA incRA;
 
@@ -1507,6 +1510,8 @@ public:
                       std::unordered_set<G4_INST *> &group);
   void addrRegAlloc();
   void flagRegAlloc();
+  void fastRADecision();
+  bool tryHybridRA();
   bool hybridRA(bool doBankConflictReduction, bool highInternalConflict,
                 LocalRA &lra);
   void assignRegForAliasDcl();

@@ -151,8 +151,7 @@ void LocalRA::preLocalRAAnalysis() {
   // Remove unreferenced dcls
   gra.removeUnreferencedDcls();
 
-  if (builder.getOption(vISA_HybridRAWithSpill) ||
-      builder.getOption(vISA_FastCompileRA)) {
+  if (gra.useFastRA || gra.useHybridRAwithSpill) {
     unsigned reserveSpillSize = 0;
     unsigned int spillRegSize = 0;
     unsigned int indrSpillRegSize = 0;
@@ -160,10 +159,8 @@ void LocalRA::preLocalRAAnalysis() {
 
     reserveSpillSize = spillRegSize + indrSpillRegSize;
     if (reserveSpillSize >= kernel.stackCall.getNumCalleeSaveRegs()) {
-      const_cast<Options *>(builder.getOptions())
-          ->setOption(vISA_HybridRAWithSpill, false);
-      const_cast<Options *>(builder.getOptions())
-          ->setOption(vISA_FastCompileRA, false);
+      gra.useFastRA = false;
+      gra.useHybridRAwithSpill = false;
       numRegLRA = numGRF - numRowsReserved;
     } else {
       numRegLRA = numGRF - numRowsReserved - reserveSpillSize -
@@ -356,7 +353,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
 
     needGlobalRA = assignUniqueRegisters(
         doBCR, twoBanksAssign,
-        builder.getOption(vISA_HybridRAWithSpill) && !doRoundRobin);
+        gra.useHybridRAwithSpill && !doRoundRobin);
   }
 
   if (needGlobalRA && doRoundRobin) {
@@ -436,7 +433,7 @@ bool LocalRA::localRA() {
     if (needGlobalRA) {
       RA_TRACE(std::cout << "\t--first-fit RA\n");
       globalLRSize = 0;
-      if (builder.getOption(vISA_HybridRAWithSpill)) {
+      if (gra.useHybridRAwithSpill) {
         countLiveIntervals();
       } else {
         globalLRSize = 0;

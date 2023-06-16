@@ -1184,7 +1184,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis &liveAnalysis) const {
       for (const G4_BB *succ : bb->Succs)
         std::cout << "BB" << succ->getId() << ", ";
 
-      if (kernel.getOption(vISA_LocalRA)) {
+      if (localRAEnable) {
         if (auto summary = getBBLRASummary(bb)) {
           std::cout << "\nLocal RA: ";
           for (unsigned i = 0; i < kernel.getNumRegTotal(); i++) {
@@ -1807,7 +1807,7 @@ void Interference::markInterferenceForSend(G4_BB *bb, G4_INST *inst,
       G4_DstRegRegion *dstRgn = dst;
       isDstRegAllocPartaker = true;
       dstId = ((G4_RegVar *)dstRgn->getBase())->getId();
-    } else if (kernel.getOption(vISA_LocalRA)) {
+    } else if (gra.useLocalRA) {
       LocalLiveRange *localLR = NULL;
       G4_Declare *topdcl = GetTopDclFromRegRegion(dst);
 
@@ -1849,7 +1849,7 @@ void Interference::markInterferenceForSend(G4_BB *bb, G4_INST *inst,
                 }
               }
             }
-          } else if (kernel.getOption(vISA_LocalRA) && isDstRegAllocPartaker) {
+          } else if (gra.useLocalRA && isDstRegAllocPartaker) {
             LocalLiveRange *localLR = nullptr;
             const G4_Declare *topdcl = GetTopDclFromRegRegion(src);
 
@@ -1902,7 +1902,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
                            dst->getLinearizedEnd() - dst->getLinearizedStart() +
                            1 >
                        kernel.numEltPerGRF<Type_UB>();
-    } else if (kernel.getOption(vISA_LocalRA)) {
+    } else if (gra.useLocalRA) {
       LocalLiveRange *localLR = NULL;
       G4_Declare *topdcl = GetTopDclFromRegRegion(dst);
 
@@ -1947,7 +1947,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
             int srcReg = 0;
             bool isSrcEvenAlign = gra.isEvenAligned(srcDcl);
             if (!src->asSrcRegRegion()->getBase()->isRegAllocPartaker() &&
-                kernel.getOption(vISA_LocalRA)) {
+                gra.useLocalRA) {
               int sreg;
               LocalLiveRange *localLR = NULL;
               G4_Declare *topdcl = GetTopDclFromRegRegion(src);
@@ -1996,7 +1996,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
                       }
                     }
                   }
-                } else if (kernel.getOption(vISA_LocalRA) &&
+                } else if (gra.useLocalRA &&
                            isDstRegAllocPartaker) {
                   LocalLiveRange *localLR = NULL;
                   G4_Declare *topdcl = GetTopDclFromRegRegion(src);
@@ -2489,7 +2489,7 @@ void Interference::computeInterference() {
   //
   // Build interference with physical registers assigned by local RA
   //
-  if (kernel.getOption(vISA_LocalRA)) {
+  if (gra.useLocalRA) {
     for (auto curBB : kernel.fg) {
       buildInterferenceWithLocalRA(curBB);
     }
@@ -2560,7 +2560,7 @@ void Interference::getNormIntfNum() {
   }
 
   builder.getJitInfo()->statsVerbose.normIntfNum = numEdges;
-  std::cout << "\t--normal edge #: " << numEdges << "\n";
+  RA_TRACE(std::cout << "\t--normal edge #: " << numEdges << "\n");
 }
 
 #define SPARSE_INTF_VEC_SIZE 64
@@ -4588,7 +4588,7 @@ void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
                                               &overlapDclsWithFunc[func]);
     }
   }
-  if (kernel.getOption(vISA_LocalRA)) {
+  if (gra.useLocalRA) {
     for (uint32_t j = 0; j < kernel.getNumRegTotal(); j++) {
       if (localSummaryOfCallee[func].isGRFBusy(j)) {
         G4_Declare *varDcl = gra.getGRFDclForHRA(j);
@@ -4783,7 +4783,7 @@ void Augmentation::augmentIntfGraph() {
     }
   }
 
-  if (kernel.getOption(vISA_LocalRA)) {
+  if (gra.useLocalRA) {
     buildSummaryForCallees();
   }
 
@@ -6343,7 +6343,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       return false;
     };
 
-    if (builder.getOption(vISA_HybridRAWithSpill)) {
+    if (gra.useHybridRAwithSpill) {
       // This local analysis is skipped in favor of
       // compile time in global RA loop, so run it here
       // when needed.
@@ -6612,8 +6612,7 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
               if (pointsToSet != nullptr) {
                 for (auto pt : *pointsToSet) {
                   if (pt.var->isRegAllocPartaker() ||
-                      ((builder.getOption(vISA_HybridRAWithSpill) ||
-                        builder.getOption(vISA_FastCompileRA)) &&
+                      ((useFastRA || useHybridRAwithSpill) &&
                        livenessCandidate(pt.var->getDeclare()))) {
                     indrVars.push_back(pt.var);
                     indrDstSpillRegSize += pt.var->getDeclare()->getNumRows();
@@ -6648,8 +6647,7 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
               if (pointsToSet != nullptr) {
                 for (auto pt : *pointsToSet) {
                   if (pt.var->isRegAllocPartaker() ||
-                      ((builder.getOption(vISA_HybridRAWithSpill) ||
-                        builder.getOption(vISA_FastCompileRA)) &&
+                      ((useFastRA || useHybridRAwithSpill) &&
                        livenessCandidate(pt.var->getDeclare()))) {
                     if (std::find(indrVars.begin(), indrVars.end(), pt.var) ==
                         indrVars.end()) {
@@ -6871,8 +6869,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
     bool willSpill =
-        ((builder.getOption(vISA_FastCompileRA) ||
-          builder.getOption(vISA_HybridRAWithSpill)) &&
+      ((gra.useFastRA || gra.useHybridRAwithSpill) &&
          (!hasStackCall ||
           builder.getOption(vISA_PartitionWithFastHybridRA))) ||
         (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
@@ -8520,7 +8517,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis &liveAnalysis,
     } else {
       std::cout << "=== Uses with reaching def - GRF ===\n";
     }
-    if (kernel.getOption(vISA_LocalRA)) {
+    if (useLocalRA) {
       std::cout
           << "(Use -nolocalra switch for accurate results of uses without "
              "reaching defs)\n";
@@ -9595,6 +9592,57 @@ void GlobalRA::removeSplitDecl() {
       kernel.Declares.end());
 }
 
+
+void GlobalRA::fastRADecision()
+{
+  if (builder.getOption(vISA_SelectiveFastRA)) {
+    unsigned instNum = 0;
+    for (auto bb : kernel.fg) {
+      instNum += (int)bb->size();
+    }
+
+    if (instNum > builder.getOptions()->getuInt32Option(vISA_SelectiveRAInstThreshold)) {
+      useFastRA = true;
+      useHybridRAwithSpill = true;
+    } else {
+      useFastRA = false;
+      useHybridRAwithSpill = false;
+    }
+    RA_TRACE(std::cout << "\t--SelectiveFastRA decision: " << useFastRA << "\n");
+  } else {
+    useFastRA = builder.getOption(vISA_FastCompileRA);
+    useHybridRAwithSpill = builder.getOption(vISA_HybridRAWithSpill);
+  }
+
+}
+
+
+bool GlobalRA::tryHybridRA() {
+  copyMissingAlignment();
+  BankConflictPass bc(*this, false);
+
+
+  LocalRA lra(bc, *this);
+  if (lra.localRA()) {
+    return true;
+  }
+
+  if (useHybridRAwithSpill) {
+    insertPhyRegDecls();
+  } else {
+    if (!kernel.getVarSplitPass()->splitOccured()) {
+      if (hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra)) {
+          return true;
+      }
+    } else {
+      RA_TRACE(
+          std::cout << "\t--skip HRA due to var split. undo LRA results\n");
+      lra.undoLocalRAAssignments(false);
+    }
+  }
+  return false;
+}
+
 // FIXME: doBankConflictReduction and highInternalConflict are computed by local
 // RA
 //        they should be moved to some common code
@@ -9655,15 +9703,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
   return true;
 }
 
-bool canDoHRA(G4_Kernel &kernel) {
-  bool ret = true;
 
-  if (kernel.getVarSplitPass()->splitOccured()) {
-    ret = false;
-  }
-
-  return ret;
-}
 
 
 std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring) {
@@ -9726,6 +9766,15 @@ int GlobalRA::coloringRegAlloc() {
 
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
+
+  fastRADecision();
+
+  bool hybridWithSpill = useHybridRAwithSpill &&
+    (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA));
+  useLocalRA = builder.getOption(vISA_LocalRA)
+    && (kernel.fg.funcInfoTable.size() == 0
+        || kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D
+        || hybridWithSpill);
 
   // this needs to be called before addr/flag RA since it changes their
   // alignment as well
@@ -9818,28 +9867,11 @@ int GlobalRA::coloringRegAlloc() {
     if (success == VISA_SPILL) {
       return VISA_SPILL;
     }
-  } else if (builder.getOption(vISA_LocalRA) && (!hasStackCall)) {
-    copyMissingAlignment();
-    BankConflictPass bc(*this, false);
-    LocalRA lra(bc, *this);
-    bool success = lra.localRA();
-    if (!success && !builder.getOption(vISA_HybridRAWithSpill)) {
-      if (canDoHRA(kernel)) {
-        success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
-      } else {
-        RA_TRACE(
-            std::cout << "\t--skip HRA due to var split. undo LRA results\n");
-        lra.undoLocalRAAssignments(false);
-      }
-    }
-    if (success) {
-      // either local or hybrid RA succeeds
+  } else if (useLocalRA && !hasStackCall) {
+    if (tryHybridRA()) {
       assignRegForAliasDcl();
       computePhyReg();
       return VISA_SUCCESS;
-    }
-    if (builder.getOption(vISA_HybridRAWithSpill)) {
-      insertPhyRegDecls();
     }
   }
 
@@ -9875,9 +9907,8 @@ int GlobalRA::coloringRegAlloc() {
   uint32_t sendAssociatedGRFSpillFillCount = 0;
   unsigned fastCompileIter = 1;
   bool fastCompile =
-      (builder.getOption(vISA_FastCompileRA) ||
-       builder.getOption(vISA_HybridRAWithSpill)) &&
-      (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA));
+    (useFastRA || useHybridRAwithSpill) &&
+    (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA));
 
   if (fastCompile) {
     fastCompileIter = 0;
@@ -9939,7 +9970,7 @@ int GlobalRA::coloringRegAlloc() {
                        << kernel.getName() << "\n");
     setIterNo(iterationNo);
 
-    if (!builder.getOption(vISA_HybridRAWithSpill)) {
+    if (!useHybridRAwithSpill) {
       resetGlobalRAStates();
     }
 
@@ -9950,7 +9981,7 @@ int GlobalRA::coloringRegAlloc() {
     }
 
     // Identify the local variables to speedup following analysis
-    if (!builder.getOption(vISA_HybridRAWithSpill)) {
+    if (!useHybridRAwithSpill) {
       markGraphBlockLocalVars();
     }
 

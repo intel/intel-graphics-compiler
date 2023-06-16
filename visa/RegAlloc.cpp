@@ -3072,16 +3072,6 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
   //
   gra.assignLocForReturnAddr();
 
-  // FIXME: here is a temp WA
-  bool hybridWithSpill =
-      builder.getOption(vISA_HybridRAWithSpill) &&
-      (!(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()) ||
-       builder.getOption(vISA_PartitionWithFastHybridRA));
-  if (kernel.fg.funcInfoTable.size() > 0 &&
-      kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-      !hybridWithSpill) {
-    kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
-  }
 
   //
   // Mark block local variables for the whole graph prior to performing liveness

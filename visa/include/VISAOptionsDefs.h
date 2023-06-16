@@ -449,6 +449,12 @@ DEF_VISA_OPTION(vISA_PredicatedFdivSqrt, ET_INT32, "-predicatedfdivsqrt",
 DEF_VISA_OPTION(vISA_FastCompileRA, ET_BOOL, "-fastCompileRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_HybridRAWithSpill, ET_BOOL, "-hybridRAWithSpill", UNUSED,
                 false)
+DEF_VISA_OPTION(vISA_SelectiveFastRA, ET_BOOL, "-selectiveFastRA", UNUSED,
+                false)
+DEF_VISA_OPTION(vISA_SelectiveRAInstThreshold, ET_INT32, "-selectiveRAInstThreshold",
+                UNUSED, 128*1024)
+DEF_VISA_OPTION(vISA_SelectiveRAGlobaVarRatioThreshold, ET_CSTR, "-selectiveRAGVRatioThreshold",
+                UNUSED, "0.16")
 DEF_VISA_OPTION(vISA_EnableSwapAccSub, ET_BOOL, "-swapAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableRRAccSub, ET_BOOL, "-roundRobinAccSub", UNUSED,
                 false)

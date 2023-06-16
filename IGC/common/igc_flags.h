@@ -706,6 +706,7 @@ DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Use the old subroutine
 DECLARE_IGC_REGKEY(bool, DisableFastRAWA, true, "Disable Fast RA for hanging issues on large workloads", false)
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
+DECLARE_IGC_REGKEY(bool, SelectiveFastRA, false, "Apply fast RA with spills selectively using heuristics", true)
 DECLARE_IGC_REGKEY(DWORD, AllowStackCallRetry, 2, "Enable/Disable retry when stack function spill. 0 - Don't allow, 1 - Allow retry on kernel group, 2 - Allow retry per function", false)
 DECLARE_IGC_REGKEY(bool, PrintStackCallDebugInfo, false, "Print all debug info to command line related to stack call debugging", true)
 DECLARE_IGC_REGKEY(DWORD, StripDebugInfo, 0,

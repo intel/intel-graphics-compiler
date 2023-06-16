@@ -4646,6 +4646,10 @@ namespace IGC
         {
             SaveOption(vISA_HybridRAWithSpill, true);
         }
+        if (IGC_IS_FLAG_ENABLED(SelectiveFastRA) && !hasStackCall)
+        {
+           SaveOption(vISA_SelectiveFastRA, true);
+        }
         if (IGC_IS_FLAG_ENABLED(PartitionWithFastHybridRA))
         {
             SaveOption(vISA_PartitionWithFastHybridRA, true);
