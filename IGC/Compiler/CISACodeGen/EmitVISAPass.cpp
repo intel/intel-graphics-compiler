@@ -10379,6 +10379,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
     unsigned kernelAllocaSize = pModMD->FuncMD[pKernel].privateMemoryPerWI;
+    unsigned privateMemoryPaddingIfOnStack = pModMD->FuncMD[pKernel].privateMemoryPaddingIfOnStack;
 
     auto stackMemIter = pModMD->PrivateMemoryPerFG.find(pKernel);
     IGC_ASSERT(stackMemIter != pModMD->PrivateMemoryPerFG.end());
@@ -10416,7 +10417,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
         m_encoder->Push();
     }
 
-    unsigned totalAllocaSize = kernelAllocaSize * numLanes(m_currShader->m_dispatchSize);
+    unsigned totalAllocaSize = kernelAllocaSize * numLanes(m_currShader->m_dispatchSize) + privateMemoryPaddingIfOnStack;
 
     // Initialize SP to per-thread kernel stack base
     CVariable* pSP = m_currShader->GetSP();

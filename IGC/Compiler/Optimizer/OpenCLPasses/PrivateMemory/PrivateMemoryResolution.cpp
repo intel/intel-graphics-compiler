@@ -748,6 +748,23 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     if (privateOnStack)
     {
+        // If the private memory is on the stack there may be a situation where
+        // some extra data is placed at the beginning of stack frame (e.g. prev FP).
+        // In that case, allocas' alignment may not be satisfied. To prevent this,
+        // a padding is added between that extra data and the private memory.
+        unsigned int allocasExtraOffset = 0;
+        unsigned int padding = 0;
+        if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+        {
+            allocasExtraOffset += SIZE_OWORD;
+        }
+
+        alignment_t privateMemoryAlignment = m_ModAllocaInfo->getPrivateMemAlignment(m_currFunction);
+        padding = iSTD::Align(allocasExtraOffset, size_t(privateMemoryAlignment)) - allocasExtraOffset;
+
+        modMD->FuncMD[m_currFunction].privateMemoryPaddingIfOnStack = padding;
+
+
         // Creates intrinsics that will be lowered in the CodeGen and will handle the stack-pointer
         Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
         Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
@@ -783,6 +800,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
 
                 Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
+                bufferOffset = builder.CreateAdd(bufferOffset, ConstantInt::get(typeInt32, padding), VALUE_NAME(pAI->getName() + ".SIMDBufferOffsetWithPadding"));
                 Value* increment = isUniform ? builder.getInt32(0) : simdLaneId;
                 Value* perLaneOffset = builder.CreateMul(increment, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
                 Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
