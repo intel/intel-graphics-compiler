@@ -109,15 +109,15 @@ template <>
 uint32_t SWSB::encode<SWSB_ENCODE_MODE::SingleDistPipe>(InstType) const {
   uint32_t swsb = 0; // all 0's means no dependency
 
-  if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
+  if (hasBothDistAndToken()) {
     swsb = sbid;
     swsb |= minDist << SWSB_SHIFT_SBID_SET;
     swsb |= SWSB_FLAG_SBID_SET_REG_DIST;
-  } else if (distType != DistType::NO_DIST) { // Dist only
+  } else if (hasDist()) { // Dist only
     assert(distType == DistType::REG_DIST);
     assert((minDist & (~SWSB_FOOTPRINT_DIST)) == 0);
     swsb = minDist;
-  } else if (tokenType != TokenType::NOTOKEN) { // Token only
+  } else if (hasToken()) { // Token only
     swsb = sbid;
     switch (tokenType) {
     case TokenType::DST:
@@ -140,7 +140,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::SingleDistPipe>(InstType) const {
 
 template <>
 bool SWSB::verify<SWSB_ENCODE_MODE::SingleDistPipe>(InstType instTy) const {
-  if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
+  if (hasBothDistAndToken()) {
     switch (instTy) {
     case InstType::DPAS:
     case InstType::MATH:
@@ -154,7 +154,7 @@ bool SWSB::verify<SWSB_ENCODE_MODE::SingleDistPipe>(InstType instTy) const {
       break;
     }
     return false;
-  } else if (distType != DistType::NO_DIST) { // Dist only
+  } else if (hasDist()) { // Dist only
     if (distType == DistType::REG_DIST)
       return true;
     else
@@ -241,11 +241,11 @@ template <>
 uint32_t SWSB::encode<SWSB_ENCODE_MODE::ThreeDistPipe>(InstType) const {
   uint32_t swsb = 0; // all 0's means no dependency
 
-  if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
+  if (hasBothDistAndToken()) {
     swsb = sbid;
     swsb |= (minDist << SWSB_SHIFT_SBID_SET);
     swsb |= SWSB_FLAG_SBID_SET_REG_DIST;
-  } else if (distType != DistType::NO_DIST) { // Dist only
+  } else if (hasDist()) { // Dist only
     assert((minDist & (~SWSB_3DIST_FOOTPRINT_DIST)) == 0);
     switch (distType) {
     case DistType::REG_DIST:
@@ -267,7 +267,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::ThreeDistPipe>(InstType) const {
       assert(0);
       break;
     }
-  } else if (tokenType != TokenType::NOTOKEN) { // Token only
+  } else if (hasToken()) { // Token only
     switch (tokenType) {
     case TokenType::DST:
       swsb = SWSB_3DIST_FLAG_SBID_DST | sbid;
@@ -287,7 +287,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::ThreeDistPipe>(InstType) const {
 }
 template <>
 bool SWSB::verify<SWSB_ENCODE_MODE::ThreeDistPipe>(InstType instTy) const {
-  if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
+  if (hasBothDistAndToken()) {
     switch (instTy) {
     case InstType::DPAS:
     case InstType::MATH:
@@ -304,7 +304,7 @@ bool SWSB::verify<SWSB_ENCODE_MODE::ThreeDistPipe>(InstType instTy) const {
       break;
     }
     return false;
-  } else if (distType != DistType::NO_DIST) { // Dist only
+  } else if (hasDist()) { // Dist only
     switch (distType) {
     case DistType::REG_DIST:
     case DistType::REG_DIST_ALL:
@@ -440,7 +440,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
     return swsb;
   }
 
-  if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
+  if (hasBothDistAndToken()) {
     assert((sbid & (~DIST4_FOOTPRINT_SBID)) == 0);
     swsb = sbid;
     swsb |= (minDist << DIST4_SHIFT_SBID_SET);
@@ -474,7 +474,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
         swsb |= DIST4_SBID_BOTH_11;
       break;
     }
-  } else if (distType != DistType::NO_DIST) { // Dist only
+  } else if (hasDist()) { // Dist only
     assert((minDist & (~DIST4_FOOTPRINT_DIST)) == 0);
     switch (distType) {
     case DistType::REG_DIST:
@@ -498,7 +498,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
     default:
       break;
     }
-  } else if (tokenType != TokenType::NOTOKEN) { // Token only
+  } else if (hasToken()) { // Token only
     assert((sbid & (~DIST4_FOOTPRINT_SBID)) == 0);
     switch (tokenType) {
     case TokenType::DST:
@@ -519,7 +519,7 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
 
 template <>
 bool SWSB::verify<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
-  if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
+  if (hasBothDistAndToken()) {
     switch (instTy) {
     case InstType::DPAS:
       if (distType == DistType::REG_DIST && tokenType == TokenType::SET)
@@ -551,7 +551,12 @@ bool SWSB::verify<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
       break;
     }
     return false;
-  } else if (distType != DistType::NO_DIST) { // Dist only
+  } else if (instTy == InstType::SEND) {
+    // Send can only have SBID.set if it is not distance/SBID combination
+    if (!hasSWSB() || tokenType == TokenType::SET)
+      return true;
+    return false;
+  } else if (hasDist()) { // Dist only
     switch (distType) {
     case DistType::REG_DIST:
     case DistType::REG_DIST_ALL:

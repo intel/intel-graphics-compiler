@@ -678,18 +678,7 @@ void SWSBAnalyzer::processActiveSBID(SWSB &swsb,
 
   // verify if the combination of token and dist is valid, if not, move the
   // token dependency out and add a sync for it
-  if (!swsb.verify(
-          m_swsbMode, input->getInstruction()->getSWSBInstType(m_swsbMode))) {
-    // add sync for the id
-    SWSB sync_swsb(SWSB::DistType::NO_DIST, swsb.tokenType, 0,
-                   swsb.sbid);
-    auto nopInst = m_kernel.createSyncNopInstruction(sync_swsb);
-    bb->insertInstBefore(instIter, nopInst);
-    swsb.tokenType = SWSB::TokenType::NOTOKEN;
-    swsb.sbid = 0;
-  }
-  assert(swsb.verify(
-      m_swsbMode, input->getInstruction()->getSWSBInstType(m_swsbMode)));
+  adjustSWSB(*bb, instIter, swsb, true);
 }
 
 uint32_t SWSBAnalyzer::getNumOfDistPipe() {
@@ -813,19 +802,59 @@ void SWSBAnalyzer::addSWSBToInst(InstListIterator instIt, const SWSB &swsb,
   // have better readability, but a potential issue is that A@1 is required to
   // be set on the instruction having architecture read/write. This case A@1
   // will be moved out from the instruction
-  if (!new_swsb.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode))) {
-    SWSB tmp_swsb(swsb.distType, SWSB::TokenType::NOTOKEN, swsb.minDist, 0);
-    Instruction *sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
-    block.insertInstBefore(instIt, sync_inst);
+  adjustSWSB(block, instIt, new_swsb, false);
+  inst.setSWSB(new_swsb);
+}
 
-    new_swsb.distType = SWSB::DistType::NO_DIST;
-    new_swsb.minDist = 0;
+void SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
+                                       SWSB &swsb, bool preferMoveOutSBID) {
+  const Instruction* inst = *instIt;
+  if (swsb.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)))
+    return;
+
+  auto movDistToSync = [&]() {
+      assert(swsb.hasDist());
+      SWSB tmp_swsb(swsb.distType, SWSB::TokenType::NOTOKEN, swsb.minDist, 0);
+      Instruction *sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
+      block.insertInstBefore(instIt, sync_inst);
+      swsb.distType = SWSB::DistType::NO_DIST;
+      swsb.minDist = 0;
+  };
+  auto movTokenToSync = [&]() {
+      assert(swsb.hasToken());
+      SWSB tmp_swsb(SWSB::DistType::NO_DIST, swsb.tokenType , 0, swsb.sbid);
+      Instruction *sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
+      block.insertInstBefore(instIt, sync_inst);
+      swsb.tokenType = SWSB::TokenType::NOTOKEN;
+      swsb.sbid = 0;
+  };
+
+  // Send can only have SBID.set and its combination on the instruction
+  if (inst->getOpSpec().isAnySendFormat()) {
+    if (swsb.tokenType == SWSB::TokenType::SET) {
+      // swsb has SBID.set but the combination with distance is invalid.
+      // Move distance to sync.
+      movDistToSync();
+      assert(swsb.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
+    } else {
+      // swsb has no SBID.set at the moment. Send must have SBID.set
+      // later (SWSBAnalyzer::assignSBID) so allow distance swsb and once
+      // SBID.set is set, the distance may be able to combined with it.
+      // Move only Token out of the instruction.
+      if (swsb.hasToken())
+        movTokenToSync();
+    }
+    return;
   }
 
-  inst.setSWSB(new_swsb);
-  IGA_ASSERT(
-      inst.getSWSB().verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode)),
-      "Invalid swsb dist/token combination after merge");
+  // For other instructions, solely SBID or DIST are valid SWSB.
+  // Move one to sync according to the preference.
+  if (preferMoveOutSBID)
+    movTokenToSync();
+  else
+    movDistToSync();
+  assert(swsb.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
+  return;
 }
 
 static bool isSyncNop(const Instruction &i) {
@@ -1060,8 +1089,7 @@ SBID &SWSBAnalyzer::assignSBID(DepSet *input, DepSet *output, Instruction &inst,
   // adding the set for this SBID
   // if the swsb has the token set already, move it out to a sync
   if (swsb.tokenType != SWSB::TokenType::NOTOKEN) {
-    SWSB tDep(SWSB::DistType::NO_DIST, swsb.tokenType, 0,
-              swsb.sbid);
+    SWSB tDep(SWSB::DistType::NO_DIST, swsb.tokenType, 0, swsb.sbid);
     Instruction *tInst = m_kernel.createSyncNopInstruction(tDep);
     curBB->insertInstBefore(insertPoint, tInst);
   }
@@ -1076,17 +1104,8 @@ SBID &SWSBAnalyzer::assignSBID(DepSet *input, DepSet *output, Instruction &inst,
   // FIXME: a potential issue is that A@1 is required to be set on the
   // instruction having architecture read/write. This case A@1 will be moved out
   // from the instruction
-  if (!swsb.verify(m_swsbMode,
-                                 inst.getSWSBInstType(m_swsbMode))) {
-    SWSB tDep(swsb.distType, SWSB::TokenType::NOTOKEN,
-              swsb.minDist, 0);
-    Instruction *tInst = m_kernel.createSyncNopInstruction(tDep);
-    curBB->insertInstBefore(insertPoint, tInst);
-    swsb.distType = SWSB::DistType::NO_DIST;
-    swsb.minDist = 0;
-  }
-  assert(
-      swsb.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode)));
+  adjustSWSB(*curBB, insertPoint, swsb, false);
+
   assert(sbidFree != nullptr);
   return *sbidFree;
 }
@@ -1261,9 +1280,7 @@ void SWSBAnalyzer::run() {
         processActiveSBID(swsb, input, bb, instIter, activeSBID);
 
       // Need to set SBID
-      if (output->getDepClass() == DEP_CLASS::OUT_OF_ORDER &&
-          !(inst->getOpSpec().isSendFormat() &&
-            inst->hasInstOpt(InstOpt::EOT))) {
+      if (output->getDepClass() == DEP_CLASS::OUT_OF_ORDER) {
         InstList::iterator insertPoint = instIter;
         if (first_inst_in_dpas_macro != instList.end())
           insertPoint = first_inst_in_dpas_macro;

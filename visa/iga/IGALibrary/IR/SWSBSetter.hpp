@@ -164,6 +164,13 @@ private:
   // insert sync and A@1 for the last instruction in a BB
   void forceSyncLastInst(const Instruction &lastInst, Block &lastBB);
 
+  // verify if the swsb is valid on the instruction instIt. If not, insert sync.nop
+  // for swsb information until it is valid, but do not set swsb to the instruction.
+  // preferMoveOutSBID - perfer move out sbid to sync.nop if possible. If set to
+  // false, try to move distance out first.
+  void adjustSWSB(Block &block, const InstListIterator instIt,
+                  SWSB &swsb, bool preferMoveOutSBID);
+
   /// ------------ HW Workaround Information ------------ ///
   // MathWAInfo: For a math instruction, when the following instruction has
   // different predication to the math, should assume the math taking the entire
