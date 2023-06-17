@@ -265,11 +265,6 @@ unsigned ModuleAllocaAnalysis::getTotalPrivateMemPerWI(Function* F) const {
     return FI ? FI->TotalSize : 0;
 }
 
-alignment_t ModuleAllocaAnalysis::getPrivateMemAlignment(Function* F) const {
-    auto FI = getFuncAllocaInfo(F);
-    return FI ? FI->MaximumAlignment : 1;
-}
-
 ModuleAllocaAnalysis::FunctionAllocaInfo* ModuleAllocaAnalysis::getFuncAllocaInfo(Function* F) const {
     auto Iter = InfoMap.find(F);
     if (Iter != InfoMap.end())
@@ -304,7 +299,6 @@ void ModuleAllocaAnalysis::analyze() {
             if (Alignment > 0)
                 Offset = iSTD::Align(Offset, (size_t)Alignment);
             getOrCreateFuncAllocaInfo(&F)->TotalSize = Offset;
-            getOrCreateFuncAllocaInfo(&F)->MaximumAlignment = Alignment > 0 ? Alignment : 1;
         }
     }
 }
@@ -335,7 +329,6 @@ void ModuleAllocaAnalysis::analyze(IGC::FunctionGroup* FG)
             if (F->empty())
                 continue;
             getOrCreateFuncAllocaInfo(F)->TotalSize = Offset;
-            getOrCreateFuncAllocaInfo(F)->MaximumAlignment = Alignment > 0 ? Alignment : 1;
         }
     }
 }

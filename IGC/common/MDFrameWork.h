@@ -328,7 +328,6 @@ namespace IGC
         bool localIDPresent = false;
         bool groupIDPresent = false;
         int privateMemoryPerWI = 0;
-        int privateMemoryPaddingIfOnStack = 0;
         bool globalIDPresent = false;
         // This is true if the function has any sync raytracing functionality
         bool hasSyncRTCalls = false;
