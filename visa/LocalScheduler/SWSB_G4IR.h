@@ -66,6 +66,8 @@ enum SBDependenceAttr { DEPENCENCE_ATTR(MAKE_ENUM) };
 
 typedef enum _DPAS_DEP { REP_1 = 1, REP_2 = 2, REP_4 = 4, REP_8 = 8 } DPAS_DEP;
 
+constexpr int INVALID_ID = -1;
+
 #define UNKNOWN_TOKEN -1
 #define UNINIT_BUCKET -1
 
@@ -695,6 +697,10 @@ public:
   unsigned *tokenLiveOutDist;
   SBBitSets localReachingSends;
 
+  SBBUCKET_VECTOR
+  globalARSendOpndList; // All send source operands which live out their
+                        // instructions' BB. No redundant.
+
   // BB local data dependence analysis
   G4_BB_SB(const SWSB &sb, IR_Builder &b, Mem_Manager &m, G4_BB *block,
            SBNODE_VECT *SBNodes, SBNODE_VECT *SBSendNodes,
@@ -1042,7 +1048,7 @@ class SWSB {
   void insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
                   INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens,
                   BitSet *srcTokens);
-  void insertTest();
+  void insertTokenSync();
 
   // Insert sync instructions
   G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter);

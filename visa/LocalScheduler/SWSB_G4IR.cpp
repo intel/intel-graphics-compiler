@@ -1458,7 +1458,7 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
 
 void SWSB::handleFuncCall() {
   for (G4_BB_SB *bb : BBVector) {
-    if (bb->last_node == -1) {
+    if (bb->last_node == INVALID_ID) {
       continue;
     }
 
@@ -1525,11 +1525,11 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
       bb->tokenLiveOutDist =
           (unsigned *)SWSBMem.alloc(sizeof(unsigned) * globalSendNum);
       for (unsigned k = 0; k < globalSendNum; k++) {
-        bb->tokenLiveInDist[k] = -1;
-        bb->tokenLiveOutDist[k] = -1;
+        bb->tokenLiveInDist[k] = INVALID_ID;
+        bb->tokenLiveOutDist[k] = INVALID_ID;
       }
     }
-    if (bb->send_start != -1) {
+    if (bb->send_start != INVALID_ID) {
       for (int k = bb->send_start; k <= bb->send_end; k++) {
         if (globalSendOpndList[k]->opndNum == Opnd_dst) {
           bb->send_def_out.setDst(globalSendOpndList[k]->node->globalID, true);
@@ -1570,7 +1570,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
 
         auto bb1InLoop = bbsInLoop.find(bb->getBB());
         if (bb1InLoop != bbsInLoop.end()) {
-          if (bb->getLoopStartBBID() != -1) {
+          if (bb->getLoopStartBBID() != INVALID_ID) {
             // Innermost loop only
             if (bb->getLoopStartBBID() <= be.second->getId() &&
                 bb->getLoopEndBBID() >= be.first->getId()) {
@@ -1622,9 +1622,9 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
     tokenAllocation();
   }
 
-  // Insert test instruction in case the dependences are more than token field
+  // Insert sync instruction in case the dependences are more than token field
   // in the instruction.
-  insertTest();
+  insertTokenSync();
 }
 
 static FCPatchingInfo::RegAccessType
@@ -1723,14 +1723,14 @@ static void insertSyncBarrier(FCPatchingInfo *FCPI, SBNode *Node,
                               unsigned NumRegs) {
   // Skip if sync barrier is already inserted.
   if (FCPI->RegFirstAccessList.empty() ||
-      FCPI->RegFirstAccessList.back().RegNo == unsigned(-1))
+      FCPI->RegFirstAccessList.back().RegNo == unsigned(INVALID_ID))
     return;
 
   // Sync barrier is a special relocation where all registers are forced to be
   // synchronized.
   FCPatchingInfo::RegAccess Acc;
   Acc.Type = FCPatchingInfo::Fully_Use;
-  Acc.RegNo = unsigned(-1); // A special register.
+  Acc.RegNo = unsigned(INVALID_ID); // A special register.
   // Sync barrier is inserted just before this instruction.
   Acc.Inst = Node->GetInstruction();
 
@@ -1791,7 +1791,7 @@ static void updateTokenSet(FCPatchingInfo *FCPI, SBNODE_VECT &Nodes,
       continue;
     auto T = Inst->getSetToken();
     // Skip if token is not allocated.
-    if (T == (unsigned short)(-1))
+    if (T == (unsigned short)(INVALID_ID))
       return;
     vISA_ASSERT(T < NumTokens, "Invalid token number!");
     FCPI->AllocatedToken.insert(T);
@@ -1934,7 +1934,7 @@ void SWSB::SWSBGenerator() {
     SWSBGlobalTokenGenerator(p, LB, globalSendsLB);
   } else {
     handleFuncCall();
-    insertTest();
+    insertTokenSync();
   }
 
   if (fg.builder->getFCPatchInfo()->getFCComposableKernel()) {
@@ -2033,12 +2033,12 @@ std::pair<int, int> SWSB::examineNodeForTokenReuse(
   } else {
     curDistance *= loopFactorForTokenReuse * loopLevelDiff + 1;
     if (nestLoopLevel && loopLevelDiff == 0) {
-      if (curLoopStartBB == -1 || curLoopEndBB == -1) {
+      if (curLoopStartBB == INVALID_ID || curLoopEndBB == INVALID_ID) {
         curLoopStartBB = bb->getLoopStartBBID();
         curLoopEndBB = bb->getLoopEndBBID();
       }
       // Count the backedge, if the backedge distance is short, take it
-      if (curLoopStartBB != -1 && curLoopEndBB != -1) {
+      if (curLoopStartBB != INVALID_ID && curLoopEndBB != INVALID_ID) {
         unsigned loopStartID = BBVector[curLoopStartBB]->first_node;
         unsigned loopEndID = BBVector[curLoopEndBB]->last_node;
 
@@ -2100,12 +2100,12 @@ SBNode *SWSB::reuseTokenSelection(const SBNode *node) const {
     const unsigned short token = curNode->getLastInstruction()->getSetToken();
     const unsigned lastBefore =
         allTokenNodesMap[token].bitset.findLastIn(0, node->getSendID());
-    unsigned firstAfter = -1;
+    unsigned firstAfter = INVALID_ID;
     if (node->getSendID() < allTokenNodesMap[token].maxSendID) {
       firstAfter = allTokenNodesMap[token].bitset.findFirstIn(
           node->getSendID() + 1, allTokenNodesMap[token].maxSendID + 1);
     }
-    if (lastBefore != -1) {
+    if (lastBefore != INVALID_ID) {
       vASSERT(allTokenNodesMap[token].bitset.isSet(lastBefore));
       const SBNode *n = SBSendNodes[lastBefore];
       auto res = examineNodeForTokenReuse(nodeID, nodeDelay, n, nestLoopLevel,
@@ -2115,7 +2115,7 @@ SBNode *SWSB::reuseTokenSelection(const SBNode *node) const {
       // Closest distance
       minTokenDistance = std::min(minTokenDistance, res.second);
     }
-    if (firstAfter != -1) {
+    if (firstAfter != INVALID_ID) {
       vASSERT(allTokenNodesMap[token].bitset.isSet(firstAfter));
       const SBNode *n = SBSendNodes[firstAfter];
       auto res = examineNodeForTokenReuse(nodeID, nodeDelay, n, nestLoopLevel,
@@ -2327,7 +2327,7 @@ void SWSB::expireIntervals(unsigned startID) {
 #endif
         // Remove token to free list
         freeTokenList[token] = nullptr;
-        if (topIndex == -1) {
+        if (topIndex == INVALID_ID) {
           topIndex = token;
         }
         continue;
@@ -2452,7 +2452,7 @@ void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
 
   if (assignedToken == (unsigned short)UNKNOWN_TOKEN) {
     // Get token
-    if (topIndex != -1) {
+    if (topIndex != INVALID_ID) {
       // Have free token
       token = topIndex;
       freeTokenList[token] = node; // Cannot be moved after setTopTokenIndex();
@@ -2703,7 +2703,7 @@ void SWSB::SWSBGlobalSIMDCFGReachAnalysis() {
 
 void SWSB::setTopTokenIndex() {
   int startIndex = topIndex;
-  if (topIndex == -1) {
+  if (topIndex == INVALID_ID) {
     startIndex = 0;
   }
   for (int i = startIndex; i < (int)totalTokenNum; i++) {
@@ -2747,7 +2747,7 @@ bool SWSB::propogateDist(G4_BB *bb) {
 
     for (unsigned i = 0; i < globalSendNum; i++) {
       if (BBVector[predID]->send_live_out.isDstSet(i) &&
-          BBVector[predID]->tokenLiveOutDist[i] != -1 &&
+          BBVector[predID]->tokenLiveOutDist[i] != INVALID_ID &&
           BBVector[predID]->tokenLiveOutDist[i] < tokenLiveInDist[i]) {
         tokenLiveInDist[i] = BBVector[predID]->tokenLiveOutDist[i];
       }
@@ -2757,7 +2757,7 @@ bool SWSB::propogateDist(G4_BB *bb) {
   // Update the live in
   for (unsigned i = 0; i < globalSendNum; i++) {
     if (tokenLiveInDist[i] != BBVector[bbID]->tokenLiveInDist[i] &&
-        tokenLiveInDist[i] != -1) {
+        tokenLiveInDist[i] != INVALID_ID) {
       changed = true;
       BBVector[bbID]->tokenLiveInDist[i] = tokenLiveInDist[i];
     }
@@ -3032,7 +3032,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode *node, G4_BB *bb,
 
         // What about the global send come back to current BB?
         // Shouldn't be assigned
-        if ((node->globalID != -1) &&
+        if ((node->globalID != INVALID_ID) &&
             (BBVector[useNode->getBBID()]->tokenLiveInDist[node->globalID] !=
              -1) &&
             (useNode->getBBID() != bb->getId() ||
@@ -3113,7 +3113,7 @@ void SWSB::assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb) {
          otherPred->getLastInstruction()->getDst() == nullptr)) {
       if ((!otherPred->reachingSends.isDstSet(pred->sendID)) &&
           (!pred->reachingSends.isDstSet(otherPred->sendID))) {
-        if (otherPred->globalID != -1 &&
+        if (otherPred->globalID != INVALID_ID &&
             BBVector[node->getBBID()]->tokenLiveInDist[otherPred->globalID] !=
                 -1) {
           dist =
@@ -3202,14 +3202,14 @@ bool SWSB::assignTokenWithPred(SBNode *node, G4_BB *bb) {
 }
 
 void SWSB::allocateToken(G4_BB *bb) {
-  if ((BBVector[bb->getId()]->first_send_node == -1) ||
+  if ((BBVector[bb->getId()]->first_send_node == INVALID_ID) ||
       BBVector[bb->getId()]->tokenAssigned) {
     return;
   }
 
   BBVector[bb->getId()]->localReachingSends = SBBitSets(SBSendNodes.size());
 
-  vASSERT((BBVector[bb->getId()]->last_send_node != -1) &&
+  vASSERT((BBVector[bb->getId()]->last_send_node != INVALID_ID) &&
          (BBVector[bb->getId()]->first_send_node <=
           BBVector[bb->getId()]->last_send_node));
 
@@ -3428,7 +3428,7 @@ void SWSB::buildExclusiveForCoalescing() {
 
     // If current one is a node with local live range, reuse cannot happen,
     // because other nodes definitely can reach it.
-    if (node->globalID == -1) {
+    if (node->globalID == INVALID_ID) {
       continue;
     }
 
@@ -4322,7 +4322,7 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
 
 //
 // clang-format off
-// Insert the test instruction according to token assignment result. Re-assign
+// Insert the sync instruction according to token assignment result. Re-assign
 // the node id. Except the test instruction, one instruction can have at most
 // one token.
 // SWSB format - non send
@@ -4357,7 +4357,7 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
 //                                                                              1 - Check for Register dependency
 //                                others - Reserved
 // clang-format on
-void SWSB::insertTest() {
+void SWSB::insertTokenSync() {
   SBNODE_VECT_ITER node_it = SBNodes.begin();
   int newInstID = 0;
 
@@ -4506,6 +4506,31 @@ void SWSB::insertTest() {
       newInstID++;
       node_it++;
     }
+    if (!bb->isLastInstEOT()) {
+      if (!BBVector[bb->getId()]->globalARSendOpndList.empty()) {
+        unsigned src = 0;
+        for (size_t i = 0;
+             i < BBVector[bb->getId()]->globalARSendOpndList.size(); i++) {
+          SBBucketNode *sBucketNode =
+              BBVector[bb->getId()]->globalARSendOpndList[i];
+          SBNode *sNode = sBucketNode->node;
+          unsigned short assignedToken =
+              sNode->getLastInstruction()->getSetToken();
+          unsigned bitToken = 1 << assignedToken;
+          src |= bitToken;
+        }
+
+        INST_LIST_RITER inst_rit(bb->rbegin());
+        G4_INST *inst = *inst_rit;
+        if (inst->isFlowControl()) {
+          inst_rit++;
+          inst = *inst_rit;
+        }
+
+        INST_LIST_ITER tmp_it = inst_rit.base();
+        insertSyncAllRDInstruction(bb, src, tmp_it);
+      }
+    }
   }
 
   tokenProfile.setMathReuseCount(mathReuseCount);
@@ -4625,7 +4650,7 @@ void SWSB::buildLiveIntervals() {
       }
 
       if (bucketNode->opndNum == Opnd_dst) {
-        if (sb_bb->first_node != -1 &&
+        if (sb_bb->first_node != INVALID_ID &&
             send_live_in_scalar.isDstSet((unsigned)globalID)) {
           if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty())) {
             node->setLiveEarliestID(sb_bb->first_node, bbID);
@@ -4634,14 +4659,14 @@ void SWSB::buildLiveIntervals() {
         // FIXME: implicit dependence still have issue.
         // the live range of implicit dependence may not counted. But that's ok?
         // This may cause the delay. ...
-        if (sb_bb->first_node != -1 &&
+        if (sb_bb->first_node != INVALID_ID &&
             send_live_out_scalar.isDstSet((unsigned)globalID)) {
           if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty())) {
             node->setLiveLatestID(sb_bb->last_node, bbID);
           }
         }
       } else if (!trueDepOnly) {
-        if (sb_bb->first_node != -1 &&
+        if (sb_bb->first_node != INVALID_ID &&
             send_live_in.isSrcSet((unsigned)globalID)) {
           if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty())) {
             node->setLiveEarliestID(sb_bb->first_node, bbID);
@@ -4650,7 +4675,7 @@ void SWSB::buildLiveIntervals() {
         // FIXME: implicit dependence still have issue.
         // the live range of implicit dependence may not counted. But that's ok?
         // This may cause the delay. ...
-        if (sb_bb->first_node != -1 &&
+        if (sb_bb->first_node != INVALID_ID &&
             send_live_out.isSrcSet((unsigned)globalID)) {
           if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty())) {
             node->setLiveLatestID(sb_bb->last_node, bbID);
@@ -4752,7 +4777,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
                           unsigned &prunedDiffBBEdgeNum,
                           unsigned &prunedDiffBBSameTokenEdgeNum) {
   for (size_t i = 0; i < BBVector.size(); i++) {
-    if (BBVector[i]->first_node == -1) {
+    if (BBVector[i]->first_node == INVALID_ID) {
       continue;
     }
 
@@ -4790,7 +4815,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
                 // handling
                 predNode->succs.erase(succ_it);
                 prunedEdgeNum++;
-                if (predNode->globalID != -1) {
+                if (predNode->globalID != INVALID_ID) {
                   if (predNode->getBBID() != node->getBBID() &&
                       !killedToken.isSet(
                           predNode->getLastInstruction()->getSetToken()) &&
@@ -4881,7 +4906,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
 void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
                                const SBNODE_VECT &SBNodes) {
   // Empty BB
-  if (first_node == -1) {
+  if (first_node == INVALID_ID) {
     return;
   }
 
@@ -4967,7 +4992,7 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
 void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
                                     SBNODE_VECT &SBNodes, PointsToAnalysis &p) {
   std::vector<SBBucketDesc> BDvec;
-  if (first_node == -1) {
+  if (first_node == INVALID_ID) {
     return;
   }
 
@@ -6000,7 +6025,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       setSpecialDistance(node);
     }
     // Record the node IDs of the instructions in BB
-    if (first_node == -1) {
+    if (first_node == INVALID_ID) {
       first_node = nodeID;
     }
     last_node = nodeID;
@@ -6121,7 +6146,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         while (curInst != nullptr && curInst->isDpas()) {
           // following instructions, first instruction is in node already
           if (dpas_count != 0) {
-            if (nextNode.getNodeID() != -1) {
+            if (nextNode.getNodeID() != INVALID_ID) {
               footprintMerge(node, &nextNode);
             }
             node->addInstruction(curInst);
@@ -6145,7 +6170,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           iInst = iInstNext;
           iInstNext++;
           if (iInstNext == iInstEnd) {
-            if (nextNode.getNodeID() != -1) {
+            if (nextNode.getNodeID() != INVALID_ID) {
               footprintMerge(node, &nextNode);
             }
             node->addInstruction(curInst);
@@ -6680,7 +6705,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
     // Record token sensitive nodes.
     if (tokenHonourInstruction(curInst)) {
-      if (first_send_node == -1) {
+      if (first_send_node == INVALID_ID) {
         first_send_node = SBSendNodes->size();
       }
       last_send_node = SBSendNodes->size();
@@ -6698,32 +6723,41 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     for (auto it = LB->begin(curBucket); it != LB->end(curBucket);) {
       SBBucketNode *liveBN = (*it);
       SBNode *node = liveBN->node;
+      Gen4_Operand_Number opndNum = liveBN->opndNum;
 
       // Only the live outs from current BB
       if (tokenHonourInstruction(node->GetInstruction()) &&
           (int)node->getNodeID() >= first_node &&
           (int)node->getNodeID() <= last_node) {
-        if (liveBN->getSendID() == -1) {
-          if (send_start == -1) {
-            send_start = (int)globalSendOpndList->size();
+        if (!builder.getOption(vISA_SWSBMakeLocalWAR) || opndNum == Opnd_dst) {
+          if (liveBN->getSendID() == INVALID_ID) {
+            if (send_start == INVALID_ID) {
+              send_start = static_cast<int>(globalSendOpndList->size());
+            }
+
+            // Record all send operands which live out current BB.
+            globalSendOpndList->push_back(liveBN);
+            send_end = static_cast<int> (globalSendOpndList->size() - 1);
+
+            // Record the position of the node in global send operands list.
+            liveBN->setSendID(send_end);
           }
 
-          // Record all send operands which live out current BB.
-          globalSendOpndList->push_back(liveBN);
-          send_end = (int)globalSendOpndList->size() - 1;
+          // Set global send instruction ID
+          if (liveBN->node->globalID == INVALID_ID) {
+            liveBN->node->globalID = globalSendNum;
+            globalSendNum++;
+          }
 
-          // Record the position of the node in global send operands list.
-          liveBN->setSendID(send_end);
+          // Record all buckets of the send operand
+          globalSendsLB->add(liveBN, curBucket);
+        } else { // Record all the after read live out ones which will be
+                 // resolved in the end of BB
+          if (liveBN->getSendID() == INVALID_ID) {
+            globalARSendOpndList.push_back(liveBN);
+            liveBN->setSendID(0); //Marked as inserted
+          }
         }
-
-        // Set global send instruction ID
-        if (liveBN->node->globalID == -1) {
-          liveBN->node->globalID = globalSendNum;
-          globalSendNum++;
-        }
-
-        // Record all buckets of the send operand
-        globalSendsLB->add(liveBN, curBucket);
         LB->killSingleOperand(it);
         continue;
       }
@@ -7151,7 +7185,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
   const bool enableDPASTokenReduction =
       fg.builder->getOption(vISA_EnableDPASTokenReduction);
   for (G4_BB_SB *sb_bb : BBVector) {
-    if (sb_bb->first_node == -1) {
+    if (sb_bb->first_node == INVALID_ID) {
       continue;
     }
 
@@ -7309,7 +7343,7 @@ if (!afterWrite) {
                         BBVector[node->getBBID()]->getLoopStartBBID();
                     unsigned loopEndBB =
                         BBVector[curLiveNode->getBBID()]->getLoopEndBBID();
-                    if (loopStartBB != -1 && loopEndBB != -1) {
+                    if (loopStartBB != INVALID_ID && loopEndBB != INVALID_ID) {
                       unsigned frontDist = node->getDPASID() -
                                            BBVector[loopStartBB]->first_DPASID;
                       unsigned endDist = BBVector[loopEndBB]->last_DPASID -
@@ -7438,7 +7472,7 @@ void SWSB::addReachingDefineSet(SBNode *node, SBBitSets *globalLiveSet,
 }
 
 void SWSB::addReachingUseSet(SBNode *node, SBNode *use) {
-  if (use->getSendUseID() != -1) {
+  if (use->getSendUseID() != INVALID_ID) {
     if (node->reachedUses.getSize() == 0) {
       node->reachedUses = SBBitSets(SBSendUses.size());
     }
@@ -7512,19 +7546,19 @@ void SWSB::addGlobalDependenceWithReachingDef(
       sNode->setSourceKilled(false);
     }
 
-    if (BBVector[i]->first_node == -1) {
+    if (BBVector[i]->first_node == INVALID_ID) {
       continue;
     }
 
     BBVector[i]->localReachingSends = SBBitSets(SBSendNodes.size());
 
-    if (BBVector[i]->first_send_node != -1) {
+    if (BBVector[i]->first_send_node != INVALID_ID) {
       for (int j = BBVector[i]->first_send_node;
            j <= BBVector[i]->last_send_node; j++) {
         SBNode *node = SBSendNodes[j];
 
         // Get the live range for the local ones
-        if (node->globalID == -1) {
+        if (node->globalID == INVALID_ID) {
           vASSERT(node->getBBID() == i);
 
           node->setLiveEarliestID(node->getNodeID());
@@ -7668,7 +7702,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
                     unsigned loopEndBB =
                         BBVector[curLiveNode->getBBID()]->getLoopEndBBID();
 
-                    if (loopStartBB != -1 && loopEndBB != -1) {
+                    if (loopStartBB != INVALID_ID && loopEndBB != INVALID_ID) {
                       unsigned frontDist = node->getDPASID() -
                                            BBVector[loopStartBB]->first_DPASID;
                       unsigned endDist = BBVector[loopEndBB]->last_DPASID -
