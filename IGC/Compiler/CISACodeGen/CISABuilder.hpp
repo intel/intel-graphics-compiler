@@ -799,9 +799,9 @@ namespace IGC
         CName currFunctionName;
 
         /// Keep a map between a function and its label, per kernel state.
-        llvm::SmallDenseMap<llvm::Function*, VISA_LabelOpnd*> funcLabelMap;
+        llvm::MapVector<llvm::Function*, VISA_LabelOpnd*> funcLabelMap;
         /// Keep a map between a stack-called function and the corresponding vISA function
-        llvm::SmallDenseMap<llvm::Function*, VISAFunction*> stackFuncMap;
+        llvm::MapVector<llvm::Function*, VISAFunction*> stackFuncMap;
 
         // dummy variables
         VISA_SurfaceVar* dummySurface;
