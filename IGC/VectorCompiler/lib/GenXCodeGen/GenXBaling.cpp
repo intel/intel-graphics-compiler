@@ -335,6 +335,9 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
  * I operation is load-like, we don't sink it only through store-like operations
  */
 bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *To) {
+  if (!genx::isSafeToMoveInstCheckGVLoadClobber(Op, To, this))
+    return false;
+
   if (DisableMemOrderCheck || !Op->mayReadOrWriteMemory())
     return true;
 
@@ -525,7 +528,8 @@ bool GenXBaling::operandCanBeBaled(
     // intrinsic, since in that case AI is initialized to a state
     // where there are no region restrictions.)
     Region RdR = makeRegionFromBaleInfo(Opnd, BaleInfo());
-    if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst)))
+    if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst)) ||
+        !genx::isSafeToMoveInstCheckGVLoadClobber(Opnd, Inst, this))
       return false;
 
     // Do not bale in a region read with multiple uses if
@@ -1466,6 +1470,10 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
             }
             break;
           case GenXIntrinsicInfo::RAW:
+            if (isa<Instruction>(Inst->getOperand(ArgIdx)) &&
+                !genx::isSafeToMoveInstCheckGVLoadClobber(
+                    cast<Instruction>(Inst->getOperand(ArgIdx)), Inst, this))
+              continue;
             // Rdregion can be baled in to a raw operand as long as it is
             // unstrided and starts on a GRF boundary. Ensure that the input to
             // the rdregion is 32 aligned.
