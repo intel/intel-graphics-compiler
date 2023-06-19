@@ -46,6 +46,7 @@ enum TYPE_FORMAT
 
 struct KernelAnnotation
 {
+    virtual ~KernelAnnotation() = default;
 };
 
 
