@@ -520,6 +520,8 @@ class GenXKernelBuilder {
   bool UseNewStackBuilder = false;
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFByteSize;
+  // SIMD size for setting visa kernel attribute
+  unsigned SIMDSize = 8;
 
   // Default stackcall execution size
   VISA_Exec_Size StackCallExecSize = EXEC_SIZE_16;
@@ -795,6 +797,127 @@ private:
 
   void runOnKernel();
   void runOnFunction();
+
+  void updateSIMDSize(VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize) {
+    unsigned Width = ((static_cast<unsigned>(ExecMask) & 7) << 2) +
+                     (1 << static_cast<unsigned>(ExecSize));
+    if (Width <= SIMDSize)
+      return;
+
+    if (Width > 16) {
+      SIMDSize = 32;
+    } else
+      SIMDSize = 16;
+  }
+
+  inline void appendVISAAddrAddInst(VISA_EMask_Ctrl ExecMask,
+                                    VISA_Exec_Size ExecSize,
+                                    VISA_VectorOpnd *Dst, VISA_VectorOpnd *Src0,
+                                    VISA_VectorOpnd *Src1) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(
+        Kernel->AppendVISAAddrAddInst(ExecMask, ExecSize, Dst, Src0, Src1));
+  }
+
+  template <typename... Types>
+  inline void appendVISAArithmeticInst(ISA_Opcode Opcode, VISA_PredOpnd *Pred,
+                                       bool SatMode, VISA_EMask_Ctrl ExecMask,
+                                       VISA_Exec_Size ExecSize, Types... Args) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISAArithmeticInst(Opcode, Pred, SatMode, ExecMask,
+                                               ExecSize, Args...));
+  }
+
+  inline void appendVISACFCallInst(VISA_PredOpnd *Pred,
+                                   VISA_EMask_Ctrl ExecMask,
+                                   VISA_Exec_Size ExecSize,
+                                   VISA_LabelOpnd *Label) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISACFCallInst(Pred, ExecMask, ExecSize, Label));
+  }
+
+  inline void appendVISACFFunctionCallInst(
+      VISA_PredOpnd *Pred, VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize,
+      std::string FuncName, unsigned char ArgSize, unsigned char ReturnSize) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
+        Pred, ExecMask, ExecSize, FuncName, ArgSize, ReturnSize));
+  }
+
+  inline void appendVISACFFunctionRetInst(VISA_PredOpnd *Pred,
+                                          VISA_EMask_Ctrl ExecMask,
+                                          VISA_Exec_Size ExecSize) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISACFFunctionRetInst(Pred, ExecMask, ExecSize));
+  }
+
+  inline void appendVISACFGotoInst(VISA_PredOpnd *Pred,
+                                   VISA_EMask_Ctrl ExecMask,
+                                   VISA_Exec_Size ExecSize,
+                                   VISA_LabelOpnd *Label) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISACFGotoInst(Pred, ExecMask, ExecSize, Label));
+  }
+
+  inline void appendVISACFIndirectFuncCallInst(VISA_PredOpnd *Pred,
+                                               VISA_EMask_Ctrl ExecMask,
+                                               VISA_Exec_Size ExecSize,
+                                               VISA_VectorOpnd *FuncAddr,
+                                               unsigned char ArgSize,
+                                               unsigned char ReturnSize) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
+        Pred, ExecMask, ExecSize, FuncAddr, ArgSize, ReturnSize));
+  }
+
+  inline void appendVISACFRetInst(VISA_PredOpnd *Pred, VISA_EMask_Ctrl ExecMask,
+                                  VISA_Exec_Size ExecSize) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISACFRetInst(Pred, ExecMask, ExecSize));
+  }
+
+  template <typename... Types>
+  inline void appendVISAComparisonInst(VISA_Cond_Mod SubOp,
+                                       VISA_EMask_Ctrl ExecMask,
+                                       VISA_Exec_Size ExecSize, Types... Args) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(
+        Kernel->AppendVISAComparisonInst(SubOp, ExecMask, ExecSize, Args...));
+  }
+
+  template <typename... Types>
+  inline void appendVISADataMovementInst(ISA_Opcode Opcode, VISA_PredOpnd *Pred,
+                                         bool SatMod, VISA_EMask_Ctrl ExecMask,
+                                         VISA_Exec_Size ExecSize,
+                                         Types... Args) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISADataMovementInst(Opcode, Pred, SatMod, ExecMask,
+                                                 ExecSize, Args...));
+  }
+
+  template <typename... Types>
+  inline void
+  appendVISALogicOrShiftInst(ISA_Opcode Opcode, VISA_EMask_Ctrl ExecMask,
+                             VISA_Exec_Size ExecSize, Types... Args) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISALogicOrShiftInst(Opcode, ExecMask, ExecSize,
+                                                 Args...));
+  }
+
+  template <typename... Types>
+  inline void appendVISALogicOrShiftInst(ISA_Opcode Opcode, VISA_PredOpnd *Pred,
+                                         bool SatMode, VISA_EMask_Ctrl ExecMask,
+                                         VISA_Exec_Size ExecSize,
+                                         Types... Args) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISALogicOrShiftInst(Opcode, Pred, SatMode,
+                                                 ExecMask, ExecSize, Args...));
+  }
+
+  inline void appendVISASetP(VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize, VISA_PredVar *Dst, VISA_VectorOpnd *Src) {
+    updateSIMDSize(ExecMask, ExecSize);
+    CISA_CALL(Kernel->AppendVISASetP(ExecMask, ExecSize, Dst, Src));
+  }
 
 public:
   GenXKernelBuilder(FunctionGroup &FG)
@@ -1189,6 +1312,9 @@ bool GenXKernelBuilder::run() {
 
   // Build instructions
   buildInstructions();
+
+  // SIMD size should be calculated during instructions build
+  CISA_CALL(Kernel->AddKernelAttribute("SimdSize", sizeof(SIMDSize), &SIMDSize));
 
   // Reset Regalloc hook
   RegAlloc->SetRegPushHook(nullptr, nullptr);
@@ -2037,9 +2163,9 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
     auto ISAExecSize = static_cast<VISA_Exec_Size>(genx::log2(ExecSize));
     auto Dst = createDestination(CI, UNSIGNED, 0, DstDesc);
     auto Src = createSourceOperand(CI, UNSIGNED, 0, BI);
-    CISA_CALL(Kernel->AppendVISADataMovementInst(
-        ISA_MOVS, nullptr /*Pred*/, false /*Mod*/,
-        NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1, ISAExecSize, Dst, Src));
+    appendVISADataMovementInst(ISA_MOVS, nullptr /*Pred*/, false /*Mod*/,
+                               NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1,
+                               ISAExecSize, Dst, Src);
     return;
   }
 
@@ -2076,8 +2202,7 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   Src1 =
       createImmediateOperand(Constant::getNullValue(CI->getType()), UNSIGNED);
 
-  CISA_CALL(Kernel->AppendVISAAddrAddInst(vISA_EMASK_M1_NM, ISAExecSize, Dst,
-                                          Src0, Src1));
+  appendVISAAddrAddInst(vISA_EMASK_M1_NM, ISAExecSize, Dst, Src0, Src1);
 }
 
 VISA_VectorOpnd *GenXKernelBuilder::createSource(CisaVariable *V,
@@ -2391,9 +2516,8 @@ VISA_PredVar *GenXKernelBuilder::getZeroedPredicateVar(Value *V) {
   auto PredVar = getPredicateVar(Reg);
   unsigned Size = V->getType()->getPrimitiveSizeInBits();
   auto C = Constant::getNullValue(V->getType());
-  CISA_CALL(Kernel->AppendVISASetP(
-    vISA_EMASK_M1_NM, VISA_Exec_Size(genx::log2(Size)),
-    PredVar, createImmediateOperand(C, DONTCARESIGNED)));
+  appendVISASetP(vISA_EMASK_M1_NM, VISA_Exec_Size(genx::log2(Size)), PredVar,
+                 createImmediateOperand(C, DONTCARESIGNED));
 
   return PredVar;
 }
@@ -2460,9 +2584,8 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
   VISA_VectorOpnd *Src0 = createSourceOperand(SI, SrcSignedness, 1, BI);
   VISA_VectorOpnd *Src1 = createSourceOperand(SI, SrcSignedness, 2, BI);
 
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-      ISA_SEL, PredOp, Mod & MODIFIER_SAT, MaskCtrl,
-      getExecSizeFromValue(ExecSize), Dst, Src0, Src1));
+  appendVISADataMovementInst(ISA_SEL, PredOp, Mod & MODIFIER_SAT, MaskCtrl,
+                             getExecSizeFromValue(ExecSize), Dst, Src0, Src1);
 }
 
 void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
@@ -2494,9 +2617,9 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
         C = ConstantInt::get(
             Type::getIntNTy(CI->getContext(), std::max(Size, 8U)), IntVal);
 
-        CISA_CALL(Kernel->AppendVISASetP(
-            vISA_EMASK_M1_NM, VISA_Exec_Size(genx::log2(Size)),
-            getPredicateVar(Reg), createSourceOperand(CI, UNSIGNED, 0, BI)));
+        appendVISASetP(vISA_EMASK_M1_NM, VISA_Exec_Size(genx::log2(Size)),
+                       getPredicateVar(Reg),
+                       createSourceOperand(CI, UNSIGNED, 0, BI));
         return;
       }
       // There does not appear to be a vISA instruction to move predicate
@@ -2516,11 +2639,10 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
 
     VISA_PredVar *PredVar = getPredicateVar(CI);
 
-    CISA_CALL(Kernel->AppendVISASetP(
+    appendVISASetP(
         vISA_EMASK_M1_NM,
-        VISA_Exec_Size(
-            genx::log2(CI->getType()->getPrimitiveSizeInBits())),
-        PredVar, createSourceOperand(CI, UNSIGNED, 0, BI)));
+        VISA_Exec_Size(genx::log2(CI->getType()->getPrimitiveSizeInBits())),
+        PredVar, createSourceOperand(CI, UNSIGNED, 0, BI));
     return;
   }
   if (isa<Constant>(CI->getOperand(0))) {
@@ -2533,10 +2655,10 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
 
     VISA_EMask_Ctrl ctrlMask = getExecMaskFromWrRegion(DstDesc);
     VISA_Exec_Size execSize = getExecSizeFromValue(ExecSize);
-    CISA_CALL(Kernel->AppendVISADataMovementInst(
+    appendVISADataMovementInst(
         ISA_MOV, createPredFromWrRegion(DstDesc), Mod & MODIFIER_SAT, ctrlMask,
         execSize, createDestination(CI, DONTCARESIGNED, Mod, DstDesc),
-        createSourceOperand(CI, DONTCARESIGNED, 0, BI)));
+        createSourceOperand(CI, DONTCARESIGNED, 0, BI));
     return;
   }
   if (CI->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
@@ -2578,12 +2700,12 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
   Region SourceR(CI->getOperand(0));
 
   VISA_EMask_Ctrl ctrlMask = NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
+  appendVISADataMovementInst(
       ISA_MOV, nullptr, Mod, ctrlMask, ExecSize,
-      createRegionOperand(&DestR, DstReg->GetVar<VISA_GenVar>(Kernel), DONTCARESIGNED,
-                          0, true),
-      createRegionOperand(&SourceR, SrcReg->GetVar<VISA_GenVar>(Kernel), Signed, 0,
-                          false)));
+      createRegionOperand(&DestR, DstReg->GetVar<VISA_GenVar>(Kernel),
+                          DONTCARESIGNED, 0, true),
+      createRegionOperand(&SourceR, SrcReg->GetVar<VISA_GenVar>(Kernel), Signed,
+                          0, false));
 }
 
 void GenXKernelBuilder::buildFunctionAddr(Instruction *Inst,
@@ -2615,9 +2737,8 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   // TODO: fix signedness of the source
   auto *Src = createSource(Input, DONTCARESIGNED, false, 0);
   auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc);
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-      ISA_MOV, createPredFromWrRegion(DstDesc), false, ExecMask, ExecSize,
-      Dst, Src));
+  appendVISADataMovementInst(ISA_MOV, createPredFromWrRegion(DstDesc), false,
+                             ExecMask, ExecSize, Dst, Src);
 }
 
 /***********************************************************************
@@ -2638,8 +2759,8 @@ void GenXKernelBuilder::buildLoneWrPredRegion(Instruction *Inst, BaleInfo BI) {
   unsigned IntVal = getPredicateConstantAsInt(C);
   C = ConstantInt::get(Type::getIntNTy(Inst->getContext(), std::max(Size, 8U)),
                        IntVal);
-  CISA_CALL(Kernel->AppendVISASetP(ctrlMask, execSize, getPredicateVar(Inst),
-                                   createImmediateOperand(C, UNSIGNED)));
+  appendVISASetP(ctrlMask, execSize, getPredicateVar(Inst),
+                 createImmediateOperand(C, UNSIGNED));
 }
 
 /***********************************************************************
@@ -2699,10 +2820,10 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
     }
   }
   // TODO: mb need to get signed from dest for src and then modify that
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
+  appendVISADataMovementInst(
       Opcode, (Opcode != ISA_MOVS ? createPredFromWrRegion(DstDesc) : nullptr),
       Mod & MODIFIER_SAT, ExecMask, ExecSize, Dest,
-      createSource(Src, Signed, Baled, 0)));
+      createSource(Src, Signed, Baled, 0));
 }
 
 // FIXME: use vc::TypeSizeWrapper instead.
@@ -3013,7 +3134,7 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
   unsigned LabelID = getOrCreateLabel(BranchTarget, LABEL_BLOCK);
 
   VISA_LabelOpnd *label = Labels[LabelID];
-  CISA_CALL(Kernel->AppendVISACFGotoInst(pred, emask, esize, label));
+  appendVISACFGotoInst(pred, emask, esize, label);
 }
 
 // Convert predicate offset to EM offset according to
@@ -3590,7 +3711,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     }
     bool IsNoMask = AI.getCategory() == II::EXECSIZE_NOMASK;
     *Mask = getExecMaskFromWrRegion(DstDesc, IsNoMask);
-    return getExecSizeFromValue(ExecSize);
+    VISA_Exec_Size Result = getExecSizeFromValue(ExecSize);
+    updateSIMDSize(*Mask, Result);
+    return Result;
   };
 
   auto GetBitWidth = [&](II::ArgInfo AI) {
@@ -3650,7 +3773,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       ExecSize = VT->getNumElements();
     else
       ExecSize = GenXIntrinsicInfo::getOverridedExecSize(CI, Subtarget);
-    return getExecSizeFromValue(ExecSize ? ExecSize : 1);
+    VISA_Exec_Size Result = getExecSizeFromValue(ExecSize ? ExecSize : 1);
+    updateSIMDSize(*ExecMask, Result);
+    return Result;
   };
 
   auto GetExecSizeFromByte = [&](II::ArgInfo AI, VISA_EMask_Ctrl *Mask) {
@@ -3662,14 +3787,16 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                    "Incorrect args to intrinsic call", CI);
     }
     unsigned Byte = Const->getSExtValue() & 0xFF;
-    *Mask = (VISA_EMask_Ctrl)(Byte >> 4);
+    *Mask = static_cast<VISA_EMask_Ctrl>(Byte >> 4);
     unsigned Res = Byte & 0xF;
     if (Res > 5) {
       vc::diagnose(getContext(), "GenXCisaBuilder",
                    "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32)",
                    CI);
     }
-    return (VISA_Exec_Size)Res;
+    VISA_Exec_Size ExecSize = static_cast<VISA_Exec_Size>(Res);
+    updateSIMDSize(*Mask, ExecSize);
+    return ExecSize;
   };
 
   auto CreateImplicitPredication = [&](II::ArgInfo AI) {
@@ -4017,9 +4144,8 @@ void GenXKernelBuilder::buildControlRegUpdate(unsigned Mask, bool Clear) {
   VISA_VectorOpnd *src1 = nullptr;
   CISA_CALL(Kernel->CreateVISAImmediate(src1, &Mask, ISA_TYPE_UD));
 
-  CISA_CALL(Kernel->AppendVISALogicOrShiftInst(Opcode, nullptr, false,
-                                               vISA_EMASK_M1, EXEC_SIZE_1, dst,
-                                               src0, src1, nullptr, nullptr));
+  appendVISALogicOrShiftInst(Opcode, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1,
+                             dst, src0, src1);
 }
 
 /***********************************************************************
@@ -4164,8 +4290,8 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
   auto ExecMask = getExecMaskFromWrRegion(DstDesc);
 
   if (Opcode == ISA_MOV) {
-    CISA_CALL(Kernel->AppendVISADataMovementInst(
-        ISA_MOV, Pred, Mod1 & MODIFIER_SAT, ExecMask, ExecSize, Dst, Src0, NULL));
+    appendVISADataMovementInst(ISA_MOV, Pred, Mod1 & MODIFIER_SAT, ExecMask,
+                               ExecSize, Dst, Src0);
     return;
   }
   report_fatal_error("buildUnaryOperator: unimplemented opcode");
@@ -4409,14 +4535,14 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
   auto ExecMask = getExecMaskFromWrRegion(DstDesc);
 
   if (IsLogic) {
-    CISA_CALL(Kernel->AppendVISALogicOrShiftInst(
-        Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0, Src1, NULL, NULL));
+    appendVISALogicOrShiftInst(Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0,
+                               Src1);
   } else {
     if (Opcode == ISA_ADDC || Opcode == ISA_SUBB) {
         IGC_ASSERT(0);
     } else {
-      CISA_CALL(Kernel->AppendVISAArithmeticInst(
-          Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0, Src1, NULL));
+      appendVISAArithmeticInst(Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0,
+                               Src1);
     }
   }
 }
@@ -4468,9 +4594,8 @@ void GenXKernelBuilder::buildBoolBinaryOperator(BinaryOperator *BO) {
   VISA_PredVar *Src1 =
       Opcode != ISA_NOT ? getPredicateVar(BO->getOperand(1)) : nullptr;
 
-  CISA_CALL(Kernel->AppendVISALogicOrShiftInst(
-      Opcode, NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1, ExecSize, Dst, Src0,
-      Src1));
+  appendVISALogicOrShiftInst(Opcode, NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1,
+                             ExecSize, Dst, Src0, Src1);
 }
 
 void GenXKernelBuilder::buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
@@ -4559,9 +4684,9 @@ void GenXKernelBuilder::buildLoneReadVariableRegion(CallInst &CI) {
       createGeneralOperand(&R, Variable, Signedness::DONTCARESIGNED,
                            MODIFIER_NONE, /* IsDest=*/false);
   VISA_VectorOpnd *DstOp = createDestination(&CI, Signedness::DONTCARESIGNED);
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-      ISA_MOV, /*pred=*/nullptr, /*satMod=*/false, vISA_EMASK_M1_NM,
-      getExecSizeFromValue(R.NumElements), DstOp, SrcOp));
+  appendVISADataMovementInst(ISA_MOV, /*pred=*/nullptr, /*satMod=*/false,
+                             vISA_EMASK_M1_NM,
+                             getExecSizeFromValue(R.NumElements), DstOp, SrcOp);
 }
 
 // Creates MOV instruction for not baled write_variable_region intrinsic.
@@ -4576,9 +4701,9 @@ void GenXKernelBuilder::buildLoneWriteVariableRegion(CallInst &CI) {
   VISA_VectorOpnd *DstOp =
       createGeneralOperand(&R, Variable, Signedness::DONTCARESIGNED,
                            MODIFIER_NONE, /* IsDest=*/true);
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-      ISA_MOV, /*pred=*/nullptr, /*satMod=*/false, vISA_EMASK_M1_NM,
-      getExecSizeFromValue(R.NumElements), DstOp, SrcOp));
+  appendVISADataMovementInst(ISA_MOV, /*pred=*/nullptr, /*satMod=*/false,
+                             vISA_EMASK_M1_NM,
+                             getExecSizeFromValue(R.NumElements), DstOp, SrcOp);
 }
 
 /***********************************************************************
@@ -4597,9 +4722,8 @@ void GenXKernelBuilder::buildWritePredefSurface(CallInst &CI) {
   CISA_CALL(Kernel->CreateVISAStateOperand(SurfOpnd, SurfVar, /*offset=*/0,
                                            /*useAsDst=*/true));
   VISA_VectorOpnd *SrcOpnd = createSource(CI.getArgOperand(1), genx::UNSIGNED);
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-      ISA_MOVS, /*pred=*/nullptr, /*satMod=*/false, vISA_EMASK_M1_NM,
-      EXEC_SIZE_1, SurfOpnd, SrcOpnd));
+  appendVISADataMovementInst(ISA_MOVS, /*pred=*/nullptr, /*satMod=*/false,
+                             vISA_EMASK_M1_NM, EXEC_SIZE_1, SurfOpnd, SrcOpnd);
 }
 
 /***********************************************************************
@@ -4663,8 +4787,8 @@ void GenXKernelBuilder::buildCastInst(CastInst *CI, BaleInfo BI, unsigned Mod,
     InSigned = OutSigned;
   VISA_VectorOpnd *Src0 = createSourceOperand(CI, InSigned, 0, BI);
 
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-      ISA_MOV, Pred, Mod & MODIFIER_SAT, ExecMask, ExecSize, Dst, Src0, NULL));
+  appendVISADataMovementInst(ISA_MOV, Pred, Mod & MODIFIER_SAT, ExecMask,
+                             ExecSize, Dst, Src0);
 }
 
 /***********************************************************************
@@ -4772,14 +4896,12 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     ctrlMask = getExecMaskFromWrPredRegion(DstDesc.WrRegion, false);
     VISA_PredVar *PredVar =
         getPredicateVar(DstDesc.WrRegion ? DstDesc.WrRegion : Cmp);
-    CISA_CALL(Kernel->AppendVISAComparisonInst(opSpec, ctrlMask, ExecSize,
-                                               PredVar, Src0, Src1));
+    appendVISAComparisonInst(opSpec, ctrlMask, ExecSize, PredVar, Src0, Src1);
   } else {
     ctrlMask = getExecMaskFromWrRegion(DstDesc);
     Value *Val = DstDesc.WrRegion ? DstDesc.WrRegion : Cmp->user_back();
     Dst = createDestination(Val, Signed, 0, DstDesc);
-    CISA_CALL(Kernel->AppendVISAComparisonInst(opSpec, ctrlMask, ExecSize, Dst,
-                                               Src0, Src1));
+    appendVISAComparisonInst(opSpec, ctrlMask, ExecSize, Dst, Src0, Src1);
   }
 }
 
@@ -4862,7 +4984,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
     }
   }
   VISA_VectorOpnd *Src2 = createSourceOperand(CI, UNSIGNED, 0, BI);
-  CISA_CALL(Kernel->AppendVISAAddrAddInst(MaskCtrl, ExecSize, Dst, Src1, Src2));
+  appendVISAAddrAddInst(MaskCtrl, ExecSize, Dst, Src1, Src2);
 }
 
 /***********************************************************************
@@ -4900,9 +5022,8 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
       CISA_CALL(Kernel->CreateVISADstOperand(
           DstSp, static_cast<VISA_GenVar *>(Sp), 1, 0, 0));
 
-      CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
-                                                 vISA_EMASK_M1, EXEC_SIZE_1,
-                                                 DstSp, SpSrc, PaddImm));
+      appendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1,
+                               EXEC_SIZE_1, DstSp, SpSrc, PaddImm);
       CurrentPadding += Padding;
     }
   }
@@ -4923,16 +5044,16 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
     CISA_CALL(Kernel->CreateVISASrcOperand(Src, static_cast<VISA_GenVar *>(Sp),
                                            MODIFIER_NONE, 0, 1, 0, 0, 0));
     VISA_VectorOpnd *Dst = createDestination(CI, DONTCARESIGNED, Mod, DstDesc);
-    CISA_CALL(Kernel->AppendVISADataMovementInst(
-        ISA_MOV, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1, Dst, Src));
+    appendVISADataMovementInst(ISA_MOV, nullptr, false, vISA_EMASK_M1,
+                               EXEC_SIZE_1, Dst, Src);
   }
 
   VISA_VectorOpnd *DstSp = nullptr;
   CISA_CALL(Kernel->CreateVISADstOperand(DstSp, static_cast<VISA_GenVar *>(Sp),
                                          1, 0, 0));
 
-  CISA_CALL(Kernel->AppendVISAArithmeticInst(
-      ISA_ADD, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1, DstSp, SpSrc, Imm));
+  appendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1,
+                           DstSp, SpSrc, Imm);
 }
 
 /***********************************************************************
@@ -4952,9 +5073,8 @@ void GenXKernelBuilder::buildPrintIndex(CallInst *CI, unsigned IntrinID,
   unsigned NumOp  = NMD->getNumOperands();
   CISA_CALL(Kernel->CreateVISAImmediate(Imm, &NumOp, ISA_TYPE_UD));
   VISA_VectorOpnd *Dst = createDestination(CI, DONTCARESIGNED, Mod, DstDesc);
-  CISA_CALL(Kernel->AppendVISADataMovementInst(
-            ISA_MOV, nullptr, false, vISA_EMASK_M1_NM,
-            EXEC_SIZE_1, Dst, Imm));
+  appendVISADataMovementInst(ISA_MOV, nullptr, false, vISA_EMASK_M1_NM,
+                             EXEC_SIZE_1, Dst, Imm);
 
   // access string
   StringRef UnderlyingCStr =
@@ -5520,17 +5640,14 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
 
   if (EMOperandNum < 0) {
     // Scalar calls must be marked with NoMask
-    CISA_CALL(Kernel->AppendVISACFCallInst(
-        nullptr, vISA_EMASK_M1_NM, EXEC_SIZE_1,
-        Labels[getOrCreateLabel(Callee, LabelKind)]));
+    appendVISACFCallInst(nullptr, vISA_EMASK_M1_NM, EXEC_SIZE_1,
+                         Labels[getOrCreateLabel(Callee, LabelKind)]);
   } else {
     auto PredicateOpnd = NoMask ? nullptr : createPred(CI, BaleInfo(), EMOperandNum);
     auto *VTy = cast<IGCLLVM::FixedVectorType>(
         CI->getArgOperand(EMOperandNum)->getType());
     VISA_Exec_Size ExecSize = getExecSizeFromValue(VTy->getNumElements());
-    CISA_CALL(Kernel->AppendVISACFCallInst(
-        PredicateOpnd, vISA_EMASK_M1, ExecSize,
-        Labels[getOrCreateLabel(Callee, LabelKind)]));
+    appendVISACFCallInst(PredicateOpnd, vISA_EMASK_M1, ExecSize, Labels[getOrCreateLabel(Callee, LabelKind)]);
   }
 }
 
@@ -5547,10 +5664,9 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
       buildControlRegUpdate(DefaultFloatControl, false);
   }
   if (vc::requiresStackCall(Func)) {
-    CISA_CALL(Kernel->AppendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1,
-                                                  StackCallExecSize));
+    appendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1, StackCallExecSize);
   } else {
-    CISA_CALL(Kernel->AppendVISACFRetInst(nullptr, vISA_EMASK_M1, EXEC_SIZE_1));
+    appendVISACFRetInst(nullptr, vISA_EMASK_M1, EXEC_SIZE_1);
   }
 }
 
@@ -5758,10 +5874,9 @@ void GenXKernelBuilder::emitVectorCopy(T1 *Dst, T2 *Src, unsigned &RowOff,
       ColOff = (ColOff + ByteSz) % GrfByteSize;
 
       if (DoCopy)
-        CISA_CALL(Kernel->AppendVISADataMovementInst(
-            ISA_MOV, nullptr, false,
-            (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
-            getExecSizeFromValue(Sz), ArgDst, ArgSrc));
+        appendVISADataMovementInst(ISA_MOV, nullptr, false,
+                                   (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
+                                   getExecSizeFromValue(Sz), ArgDst, ArgSrc);
       TotalSize -= ByteSz;
     }
   };
@@ -5818,16 +5933,14 @@ void GenXKernelBuilder::pushStackArg(VISA_StateOpndHandle *Dst, Value *Src,
       RawOff += Sz * visa::BytesPerOword;
 
       if (DoCopy) {
-        CISA_CALL(Kernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false,
-                                                     vISA_EMASK_M1, EXEC_SIZE_1,
-                                                     TmpOffDst, SpOpSrc1));
+        appendVISADataMovementInst(ISA_MOV, nullptr, false, vISA_EMASK_M1,
+                                   EXEC_SIZE_1, TmpOffDst, SpOpSrc1);
         CISA_CALL(Kernel->AppendVISASurfAccessOwordLoadStoreInst(
             ISA_OWORD_ST, vISA_EMASK_M1, Dst, getCisaOwordNumFromNumber(Sz),
             TmpOffSrc, RawSrc));
       }
-      CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
-                                                 vISA_EMASK_M1, EXEC_SIZE_1,
-                                                 SpOpDst, SpOpSrc2, Imm));
+      appendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1,
+                               EXEC_SIZE_1, SpOpDst, SpOpSrc2, Imm);
       TotalSz -= ByteSz;
     }
   };
@@ -5873,9 +5986,8 @@ void GenXKernelBuilder::popStackArg(llvm::Value *Dst, VISA_StateOpndHandle *Src,
       VISA_RawOpnd *RawSrc = nullptr;
       CISA_CALL(Kernel->CreateVISARawOperand(RawSrc, TmpVar->getGenVar(), 0));
 
-      CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
-                                                 vISA_EMASK_M1, EXEC_SIZE_1,
-                                                 TmpOffDst, SpOpSrc, Imm));
+      appendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1,
+                               EXEC_SIZE_1, TmpOffDst, SpOpSrc, Imm);
       CISA_CALL(Kernel->AppendVISASurfAccessOwordLoadStoreInst(
           ISA_OWORD_LD, vISA_EMASK_M1, Src, getCisaOwordNumFromNumber(Sz),
           TmpOffSrc, RawSrc));
@@ -6013,15 +6125,15 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
           cast<ConstantAsMetadata>(MDRet->getOperand(0).get())->getValue())
           ->getZExtValue();
   if (Callee) {
-    CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
+    appendVISACFFunctionCallInst(
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize,
-        Callee->getName().str(), ArgSize, RetSize));
+        Callee->getName().str(), ArgSize, RetSize);
   } else {
     auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
     IGC_ASSERT(FuncAddr);
-    CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize, FuncAddr,
-        ArgSize, RetSize));
+    appendVISACFIndirectFuncCallInst(
+        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize,
+        FuncAddr, ArgSize, RetSize);
   }
 }
 
