@@ -4213,6 +4213,7 @@ namespace IGC
         Value* s1 = nullptr, * s2 = nullptr;
         e_modifier Mod1 = EMOD_NONE, Mod2 = EMOD_NONE;
         Instruction* I0 = dyn_cast<Instruction>(s0);
+        Instruction* Add2 = nullptr;
         if (I0)
         {
             if (I0->getOpcode() == Instruction::Sub)
@@ -4220,11 +4221,13 @@ namespace IGC
                 s0 = I0->getOperand(0);
                 s1 = I0->getOperand(1);
                 Mod1 = EMOD_NEG;
+                Add2 = I0;
             }
             else if (I0->getOpcode() == Instruction::Add)
             {
                 s0 = I0->getOperand(0);
                 s1 = I0->getOperand(1);
+                Add2 = I0;
             }
         }
 
@@ -4239,6 +4242,7 @@ namespace IGC
                 {
                     s1 = I1->getOperand(0);
                     s2 = I1->getOperand(1);
+                    Add2 = I1;
                     if (isNeg) {
                         Mod1 = EMOD_NEG;
                     }
@@ -4250,6 +4254,7 @@ namespace IGC
                 {
                     s1 = I1->getOperand(0);
                     s2 = I1->getOperand(1);
+                    Add2 = I1;
                     if (isNeg) {
                         Mod1 = EMOD_NEG;
                         Mod2 = EMOD_NEG;
@@ -4271,6 +4276,16 @@ namespace IGC
         }
 
         // Found the pattern.
+
+        // if source operand corresponding to first add instruction has more than one use
+        // the add3 pattern match is unlikely to be profitable,
+        // as it increases register pressure and makes register bank conflicts more likely
+        if (Add2->hasNUsesOrMore(2))
+        {
+            // add3 is unlikely to be profitable.
+            return false;
+        }
+
         // Make sure that the middle one is not constant
         if (isa<ConstantInt>(s1))
         {
