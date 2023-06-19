@@ -77,6 +77,8 @@ enum class DataSize {
 
 std::string ToSymbol(DataSize d);
 uint32_t GetDataSizeEncoding(DataSize ds);
+uint32_t GetDataSizeBytesReg(DataSize ds); // returns 0 on invalid
+uint32_t GetDataSizeBytesMem(DataSize ds); // returns 0 on invalid
 
 // Data order
 enum class DataOrder {
@@ -123,6 +125,7 @@ enum class DataChMask {
   // quad channels
   XYZW = X | Y | Z | W,
 };
+// test encoding as [3:0]
 static_assert(int(DataChMask::XYZW) == 0xF);
 static_assert(int(DataChMask::YZW) == 0xE);
 
@@ -305,14 +308,17 @@ public:
            getAccessType() == SendAccess::READ_WRITE;
   }
   bool isReadWrite() const { return getAccessType() == SendAccess::READ_WRITE; }
-  // Returns the nubmer of elements each address (or coordinate)
-  // accesses
-  // E.g. d32x2 returns 2 (representing a message that loads
-  // a pair per address).
+
+  // Returns the nubmer of elements each address (or coordinate) accesses
+  //   E.g. d32x2 would return 2 (a message that loads a pair per address)
+  //   E.g. d32.xyz would return 3
+  //   E.g. d32x64t would return 64
   virtual unsigned getElemsPerAddr() const = 0;
   //
   // Returns the size in bytes of each element.
   // E.g. a d32x2 returns 4 (d32 is 32b)
+  // This is the size of the element in memory not the register file
+  // (which might widen the result in GRF).
   virtual unsigned getElemSize() const = 0;
 
   //

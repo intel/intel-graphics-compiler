@@ -286,7 +286,42 @@ uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
   }
   return 0;
 }
-
+uint32_t vISA::GetDataSizeBytesReg(DataSize ds)
+{
+  switch (ds) {
+  case DataSize::D8:
+    return 1;
+  case DataSize::D16:
+    return 2;
+  case DataSize::D32:
+  case DataSize::D8U32:
+  case DataSize::D16U32:
+    return 4;
+  case DataSize::D64:
+    return 8;
+  default:
+    break;
+  }
+  return 0;
+}
+uint32_t vISA::GetDataSizeBytesMem(DataSize ds)
+{
+  switch (ds) {
+  case DataSize::D8:
+  case DataSize::D8U32:
+    return 1;
+  case DataSize::D16:
+  case DataSize::D16U32:
+    return 2;
+  case DataSize::D32:
+    return 4;
+  case DataSize::D64:
+    return 8;
+  default:
+    break;
+  }
+  return 0;
+}
 uint32_t vISA::GetDataOrderEncoding(DataOrder dord) {
   switch (dord) {
   case DataOrder::NONTRANSPOSE:

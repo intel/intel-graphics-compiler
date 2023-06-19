@@ -2053,7 +2053,7 @@ public:
   LSC_DATA_ELEMS lscGetElementNum(unsigned eNum) const;
   int lscEncodeAddrSize(LSC_ADDR_SIZE addr_size, uint32_t &desc,
                         int &status) const;
-  uint32_t lscComputeAddrSize(LSC_ADDR_SIZE addr_size, int &status) const;
+  uint32_t lscComputeAddrSizeBits(LSC_ADDR_SIZE addr_size, int &status) const;
   int lscEncodeDataSize(LSC_DATA_SIZE data_size, uint32_t &desc,
                         int &status) const;
   uint32_t lscComputeDataSize(LSC_DATA_SIZE data_size, int &status) const;

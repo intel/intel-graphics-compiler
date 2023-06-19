@@ -841,7 +841,7 @@ int IR_Builder::translateLscTypedInst(
       return;
     }
     const G4_Declare *decl = getDeclare(srcAddr);
-    uint32_t addrSizeBits = lscComputeAddrSize(addrSize, status);
+    uint32_t addrSizeBits = lscComputeAddrSizeBits(addrSize, status);
     const int regsPerAddrChannel =
         std::max<int>(1, addrSizeBits * (int)execSize / 8 / BYTES_PER_GRF);
     checkPayloadSize(which, decl, regsPerAddrChannel);
@@ -963,8 +963,8 @@ int IR_Builder::lscEncodeAddrSize(LSC_ADDR_SIZE addrSize, uint32_t &desc,
   return addrSizeBits;
 }
 
-uint32_t IR_Builder::lscComputeAddrSize(LSC_ADDR_SIZE addrSize,
-                                        int &status) const {
+uint32_t IR_Builder::lscComputeAddrSizeBits(LSC_ADDR_SIZE addrSize,
+                                            int &status) const {
   int addrSizeBits = 32;
   switch (addrSize) {
   case LSC_ADDR_SIZE_16b:
