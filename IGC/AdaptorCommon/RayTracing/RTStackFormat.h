@@ -340,17 +340,63 @@ struct MemRay<Xe>
     };
 
     // 32 B
-    union {
-        struct {
+
+    // RayFlags:
+    // 
+    // There are 3 sets of flags, from the application point of view,
+    // available during the ray traversal:
+    // 1. RayFlags set in the shader before the TraceRay functions is called.
+    // 2. Flags applied to the entire Pipeline.
+    // 3. Flags applied per instances and geometry in the BVH
+    // 
+    // All the Ray data is stored in the MemRayStructures which have two instances:
+    // 1. TopLevel (Ray0)
+    // 2. BottomLevel (Ray1)
+    //
+    // TopLevel is written by SW when the Ray is cast (before calling TraceRay).
+    // When the traversal reaches the instance and enters related BottomLevel BVH,
+    // TopLevel MemRay is copied by HW. Flags from entered instance are applied to
+    // the RayFlags.
+    // The BottomLevel MemRay is written only by HW, when AnyHit or Intersection
+    // Shaders are called.
+    // 
+    // As HW can only apply flags from TracRay (1) and the BVH (3), flags from
+    // the Pipeline (2) has to applied by SW. It is done by applying them to
+    // the flags set before the TraceRay (1). But the application can read
+    // both the Pipeline flags (2) and the RayFlags (1) independently.
+    // So the original RayFlags (1) are additionally stored in the MemRay memory.
+    // As there is no dedicated space for them, the instLeafPtr from TopLevel MemRay
+    // is used, as it is irrelevant to the traversal at the TopLevel.
+    //
+    // When the AnyHit or Intersection shader are called, there are 3 sets of flags
+    // available:
+    // 1. RayFlags combined with Pipeline Flags - Ray0.rayFlags
+    // 2. RayFlags - Ray0.instLeafPtr aka Ray0.flagsFromTraceRay.rayFlags
+    // 3. RayFlags + Pipeline Flags + Instance/GeometryFlags - Ray1.rayFlags
+    // 
+    // rayFlags defined here is used to access:
+    // 1. Ray0.rayFlags
+    // 2. Ray1.rayFlags
+    //
+    // Additionally an alias for 16-bit access is added.
+    // As we must avoid structure members alignment, to properly generate
+    // offsets in MemRayStructure, rayFlags has 64bit type. To simplify the
+    // access, a 16bit alias is created (rayFlags16BitAccessAlias.rayFlags).
+    // It points to same part of MemHit structure as just rayFlags.
+    union
+    {
+        struct
+        {
             uint16_t uw0;
             uint16_t uw1;
             uint16_t uw2;
             uint16_t rayFlags;
-        } alias;
+        } rayFlags16BitTypeAlias;
 
-        struct {
+        struct
+        {
             uint64_t rootNodePtr : (T)Bits::rootNodePtr; // root node to start traversal at
-            uint64_t rayFlags    : (T)Bits::rayFlags;    // ray flags (see RayFlags structure)
+            uint64_t rayFlags : (T)Bits::rayFlags;    // ray flags (see RayFlags structure)
         };
     };
 
@@ -364,24 +410,30 @@ struct MemRay<Xe>
     uint64_t reserved2             : (T)Bits::reserved2;
     uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
 
-    union {
-        struct {
-            uint16_t rayFlagsCopy;
+    union
+    {
+        // This just an alias for 16-bit type.
+        // As we must avoid structure members alignment, to properly generate
+        // offsets in MemRayStructure, rayFlags has 64bit type. To simplify the
+        // access, a 16bit alias is created (Ray0.flagsFromTraceRay16BitTypeAlias.rayFlags).
+        // It points to same part of MemHit structure as just Ray0.flagsFromTraceRay.rayFlags.
+        struct
+        {
+            uint16_t rayFlags;
             uint16_t uw1;
             uint16_t uw2;
             uint16_t uw3;
-        } alias2;
+        } flagsFromTraceRay16BitTypeAlias;
 
-        struct {
-            // the 'instLeafPtr' is not actually used by HW in the TOP_LEVEL_BVH.
-            // We insert the user set rayflags here (i.e., the flags set without
-            // the pipeline flags from the RTPSO). Other IHVs thought pipeline
-            // flags would not modify the results of RayFlags(). So we will read
-            // that value from here and write the flags|pipline in the rayFlags
-            // above as usual. DXR spec will be modified to this behavior.
-            uint64_t rayFlagsCopy : (T)Bits::instLeafPtr;
+        struct
+        {
+            // This is just an alias for instLeafPtr used to access
+            // RayFlags written by the application in the shader, before the TraceRay.
+            // This structure is used to access Ray0.flagsFromTraceRay.rayFlags
+            // from the above RayFlags description.
+            uint64_t rayFlags : (T)Bits::instLeafPtr;
             uint64_t pad          : 16;
-        } alias3;
+        } flagsFromTraceRay;
 
         struct {
             uint64_t instLeafPtr : (T)Bits::instLeafPtr;  // the pointer to instance leaf in case we traverse an instance (64-bytes alignment)
