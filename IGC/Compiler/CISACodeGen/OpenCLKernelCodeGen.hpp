@@ -300,17 +300,20 @@ namespace IGC
                 }
             };
 
+            // If env flag is set, use it's value no matter what (works as "Force").
             if (IGC_IS_FLAG_SET(EnableZEBinary))
                 m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
-            // TODO: Should options/internal options precede the platform
-            // support status? Consider changing the priority if any
-            // corresponding user scenarios get discovered.
-            else if (!supportsZEBin(platform))
-                m_enableZEBinary = false;
+
+            // Runtime option precede supported platforms (can force zebin on unsupported).
             else if (m_InternalOptions.EnableZEBinary)
                 m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
+
+            // If platform is unsupported, disable regardless of the default.
+            else if (!supportsZEBin(platform))
+                m_enableZEBinary = false;
+
+            // Set the default value from the flag table.
             else
-                // Set the default value from the flag table.
                 m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
         }
 
