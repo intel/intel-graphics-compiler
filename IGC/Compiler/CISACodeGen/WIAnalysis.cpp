@@ -943,16 +943,21 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
         // there are cases in which phi-nodes in partial-joins are not
         // relevant to the cbr under the investigation
         auto LoopA = LI->getLoopFor(PJDom);
-        //auto LoopB = LI->getLoopFor(PJ);
+        auto LoopB = LI->getLoopFor(PJ);
         if (br_info.partial_joins.count(PJDom))
         {
             // both PJ and its IDom are outside the CBR loop
             if (!CbrLoop || !CbrLoop->contains(LoopA))
                 continue;
-            // cbr and its IPD are at the same loop level
-            // the influence region can be considered as a DAG
-            // if (IPDLoop == CbrLoop)
-            //    continue;
+            // CbrLoop contains both PJDom and PJ
+            if (CbrLoop->contains(LoopB))
+            {
+                // Either Cbr-block strongly dominates the PJDom
+                // Or PJ dominates Cbr-block
+                if ((blk != PJDom && DT->dominates(blk, PJDom)) ||
+                    DT->dominates(PJ, blk))
+                    continue;
+            }
         }
         updatePHIDepAtJoin(PJ, &br_info);
     }
