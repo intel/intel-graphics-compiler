@@ -78,7 +78,8 @@ struct TargetMetadata {
     // bit[23:21]: generator of this device binary
     enum GeneratorId : uint8_t {
         UNREGISTERED = 0,
-        IGC          = 1
+        IGC          = 1,
+        NGEN         = 2
     };
 
     union {
