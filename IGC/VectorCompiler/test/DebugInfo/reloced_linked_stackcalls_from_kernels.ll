@@ -16,6 +16,7 @@
 ; RUN: -o dbginfo_%basename_t_linked.elf \
 ; RUN: dbginfo_%basename_t_K1_dwarf.elf dbginfo_%basename_t_K2_dwarf.elf
 
+; REQUIRES: oneapi-readelf
 ; RUN: oneapi-readelf -a dbginfo_%basename_t_linked.elf | FileCheck %s --check-prefix=CHECK_READELF
 
 ; CHECK_READELF: Relocation section '.rela.debug_info' at offset 0x{{[0-9a-f]+}} contains {{[0-9]+}} entries

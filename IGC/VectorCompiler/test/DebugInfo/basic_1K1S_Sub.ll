@@ -13,6 +13,7 @@
 ; COM: the kernel should have two intervals corresponding to subroutine
 ; COM: (since subroutines are copied between kernels and stack-calls)
 
+; REQUIRES: oneapi-readelf
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_K1_dwarf.elf | FileCheck %s --check-prefix=CHECK_SUBROUTINE
 ; COM: this matches any subprogram, then search for Subroutine record
 ; CHECK_SUBROUTINE: DW_TAG_subprogram

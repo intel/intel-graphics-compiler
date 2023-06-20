@@ -12,6 +12,7 @@
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo -dce 0' -o /dev/null
 
+; REQUIRES: oneapi-readelf
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_kernel_dwarf.elf | FileCheck %s
 
 ; CHECK: DW_AT_name           : arg_2

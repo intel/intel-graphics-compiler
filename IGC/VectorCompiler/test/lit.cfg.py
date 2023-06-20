@@ -65,7 +65,7 @@ vc_extra_args = ['-load', config.llvm_plugin]
 tools = [ToolSubst('not'),
          ToolSubst('opt', extra_args=vc_extra_args+[config.llvm_dependent_opt_flags]),
          ToolSubst('llc', extra_args=vc_extra_args),
-         ToolSubst('oneapi-readelf'),
+         ToolSubst('oneapi-readelf', unresolved='ignore'),
          ToolSubst('llvm-dwarfdump'),
          ToolSubst('%igc-lld', command=FindTool('ld.lld'))]
 
@@ -80,5 +80,8 @@ if int(config.llvm_version) < 12:
   config.available_features.add('llvm_11_or_less')
 else:
   config.available_features.add('llvm_12_or_greater')
+
+if config.oneapi_readelf_dir:
+  config.available_features.add('oneapi-readelf')
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)

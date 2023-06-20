@@ -58,6 +58,9 @@ add_subdirectory(lib)
 # some components in IGC.
 add_subdirectory(igcdeps)
 
+if(IGC_BUILD__CMLIT_ENABLE)
+  add_subdirectory(test)
+endif()
 
 add_subdirectory(utils)
 

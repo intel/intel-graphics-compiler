@@ -1464,6 +1464,21 @@ if(IGC_BUILD__VC_ENABLED)
 endif()
 
 if(IGC_BUILD__VC_ENABLED)
+  # VC LIT tests are unix only but
+  set(IGC_BUILD__CMLIT_ENABLE_DEFAULT OFF)
+  if(IGC_OPTION__ENABLE_LIT_TESTS AND LLVM_ON_UNIX)
+    set(IGC_BUILD__CMLIT_ENABLE_DEFAULT ON)
+  endif()
+
+  set(IGC_BUILD__CMLIT_ENABLE ${IGC_BUILD__CMLIT_ENABLE_DEFAULT} CACHE BOOL "Whether VC lit testing is enabled")
+  if(IGC_BUILD__CMLIT_ENABLE)
+    # Path to llvm-opt and llvm lib built with LLVM_LINK_LLVM_DYLIB option
+    # Required to load vc-be plugin in opt
+    set(IGC_BUILD__CMOPT_DEFAULT_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../cmc/cm-opt/llvm-${LLVM_VERSION_MAJOR})
+    set(IGC_BUILD__CMOPT_DIR ${IGC_BUILD__CMOPT_DEFAULT_DIR} CACHE PATH
+        "Path to opt utility for VC lit testing")
+    message(STATUS "VC LIT tests enabled. Opt in ${IGC_BUILD__CMOPT_DIR}")
+  endif()
   add_subdirectory(VectorCompiler)
 endif()
 
@@ -1960,6 +1975,13 @@ endif()
 
 if(DEFINED IGC_BUILD__PROJ__igc_opt AND TARGET ${IGC_BUILD__PROJ__igc_opt})
   add_subdirectory(Compiler/tests)
+endif()
+
+# ============================================ VC LIT TESTS =============================================
+
+# If VC LITs are enabled, we need main target depend from it
+if(IGC_BUILD__CMLIT_ENABLE)
+  add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "check-vc")
 endif()
 
 

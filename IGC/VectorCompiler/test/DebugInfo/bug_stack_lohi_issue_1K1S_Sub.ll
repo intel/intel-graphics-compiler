@@ -15,6 +15,7 @@
 ; COM: lo/hi pc associated with it. This issue shoul be investigated once
 ; COM: problem with stack call is fixed
 
+; REQUIRES: oneapi-readelf
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_K1_dwarf.elf | FileCheck %s --check-prefix=CHECK_STACK
 ; CHECK_STACK: DW_TAG_subprogram
 ; CHECK_STACK: DW_AT_name : S1

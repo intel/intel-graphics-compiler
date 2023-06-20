@@ -17,6 +17,7 @@ target triple = "genx64-unknown-unknown"
 ; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
+; REQUIRES: oneapi-readelf
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_vector_add_dwarf.elf | FileCheck %s
 ; RUN: llvm-dwarfdump dbginfo_%basename_t_vector_add_dwarf.elf | FileCheck %s --check-prefix DWARFDUMP
 

@@ -12,6 +12,7 @@
 ; RUN: -vc-experimental-dbg-info-zebin-compatible \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
+; REQUIRES: oneapi-readelf
 ; RUN: oneapi-readelf -r dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
 
 ; COM: make sure that the produced file can be consumed by lld
