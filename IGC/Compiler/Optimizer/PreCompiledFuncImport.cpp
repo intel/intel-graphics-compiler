@@ -925,12 +925,12 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
             continue;
         }
 
-        // Special handling of DP functions: any one that has not been marked as inline
-        // at this point, it will be either subroutine or stackcall.
-        const bool isDPCallFunc = (isDPEmu() && isSlowDPEmuFunc(Func));
-
         if (!origFunctions.count(Func) && !Func->hasFnAttribute(llvm::Attribute::AlwaysInline))
         {
+            // Special handling of DP functions: any one that has not been marked as inline
+            // at this point, it will be either subroutine or stackcall.
+            const bool isDPCallFunc = (isDPEmu() && isSlowDPEmuFunc(Func));
+
             // Use subroutine/stackcall for some DP emulation functions if
             // EmulationFunctionControl is set so, or
             // use subroutines if total number of instructions added when
@@ -956,6 +956,12 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                 // accordingly.
                 addMDFuncEntryForEmulationFunc(Func);
                 hasNewMDEntry = true;
+
+                if (isDPCallFunc)
+                {
+                    // To reduce compiling time, disable retry
+                    m_pCtx->m_retryManager.Disable(true);
+                }
             }
             else
             {

@@ -746,7 +746,7 @@ namespace IGC
         unsigned GetPerFuncRetryStateId(llvm::Function* F) const;
 
         void Enable();
-        void Disable();
+        void Disable(bool DisablePerKernel=false);
 
         void SetSpillSize(unsigned int spillSize);
         unsigned int GetLastSpillSize() const;

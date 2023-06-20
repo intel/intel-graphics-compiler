@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <string>
 #include <set>
+#include <algorithm>
 
 using namespace llvm;
 using namespace IGC;
@@ -557,7 +558,44 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     break;
                 }
             }
+
+            if (pCtx->m_hasDPEmu && !mustAlwaysInline && !isKernel) {
+                // Prefer stackcall if a func has double operations
+                bool isSet = false;
+                for (auto& BB : F->getBasicBlockList()) {
+                    for (auto& aI : BB.getInstList()) {
+                        auto opc = aI.getOpcode();
+                        if (opc == Instruction::FMul || opc == Instruction::FDiv ||
+                            opc == Instruction::FAdd || opc == Instruction::FSub ||
+                            opc == Instruction::SIToFP || opc == Instruction::UIToFP ||
+                            opc == Instruction::FPExt) {
+                            isSet = aI.getType()->isDoubleTy();
+                        }
+                        else if (opc == Instruction::FPToSI || opc == Instruction::FCmp ||
+                            opc == Instruction::FPToUI || opc == Instruction::FPTrunc) {
+                            isSet = aI.getOperand(0)->getType()->isDoubleTy();
+                        }
+                        else if (isa<IntrinsicInst>(&aI) || isa<GenIntrinsicInst>(&aI)) {
+                            CallInst* callI = cast<CallInst>(&aI);
+                            isSet = (callI->getType()->isDoubleTy() ||
+                                std::any_of(callI->arg_begin(), callI->arg_end(),
+                                    [](Value* v) {
+                                        return v->getType()->isDoubleTy();
+                                    }));
+                        }
+                        if (isSet)
+                            break;
+                    }
+                    if (isSet)
+                        break;
+                }
+                if (isSet) {
+                    defaultStackCall = true;
+                    mustAlwaysInline = false;
+                }
+            }
         }
+
         // WA for scheduler kernel, must inline all calls otherwise we cannot prevent spilling
         if (pCtx->type == ShaderType::OPENCL_SHADER)
         {

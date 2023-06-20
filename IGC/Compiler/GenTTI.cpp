@@ -24,6 +24,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 
+#include <algorithm>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -180,6 +182,65 @@ namespace llvm {
                 LoopUnrollThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThreshold;
             }
         }
+
+        // Special case when DP emulation is needed.
+        if (ctx->m_hasDPEmu) {
+            bool hasDPInst = false;
+            for (auto BB : L->blocks()) {
+                for (auto& I : *BB) {
+                    switch (I.getOpcode()) {
+                    case Instruction::FMul:
+                    case Instruction::FAdd:
+                    case Instruction::FSub:
+                    case Instruction::FDiv:
+                        hasDPInst = I.getType()->isDoubleTy();
+                        break;
+                    case Instruction::FCmp:
+                    case Instruction::FPToUI:
+                    case Instruction::FPToSI:
+                    case Instruction::FPTrunc:
+                        hasDPInst = I.getOperand(0)->getType()->isDoubleTy();
+                        break;
+                    case Instruction::UIToFP:
+                    case Instruction::SIToFP:
+                    case Instruction::FPExt:
+                        hasDPInst = I.getType()->isDoubleTy();
+                        break;
+                    case Instruction::Call:
+                    {
+                        if (isa<GenIntrinsicInst>(&I) ||
+                            isa<IntrinsicInst>(&I)) {
+                            CallInst* callI = cast<CallInst>(&I);
+                            hasDPInst = (callI->getType()->isDoubleTy() ||
+                                std::any_of(callI->arg_begin(), callI->arg_end(),
+                                    [](Value* v) {
+                                        return v->getType()->isDoubleTy();
+                                    }));
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+
+                    if (hasDPInst)
+                        break;
+                }
+                if (hasDPInst)
+                    break;
+            }
+            if (hasDPInst) {
+                // Disable unroll
+                UP.Threshold = 0;
+                UP.OptSizeThreshold = 0;
+                UP.Count = 1;
+                UP.MaxCount = 1;
+                UP.Partial = false;
+                UP.Runtime = false;
+                return;
+            }
+        }
+
         unsigned totalInstCountInShader = countTotalInstructions(L->getBlocks()[0]->getParent());
         uint32_t registerPressureEst = (uint32_t)(IGC_GET_FLAG_VALUE(SetRegisterPressureThresholdForLoopUnroll) * (ctx->getNumGRFPerThread() / 128.0));
         bool lowPressure = (this->ctx->m_tempCount < registerPressureEst) && (totalInstCountInShader < LoopUnrollThreshold);

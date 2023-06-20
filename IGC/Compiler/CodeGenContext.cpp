@@ -185,9 +185,13 @@ namespace IGC
         enabled = true;
     }
 
-    void RetryManager::Disable()
+    // Disable retry
+    // If DisablePerKernel is true, disable retry for all kernels.
+    // If DisablePerKernel is false, this is no-op if per-Kernel retry is on,
+    //   otherwise, disable retry for all kernels.
+    void RetryManager::Disable(bool DisablePerKernel)
     {
-        if (!perKernel)
+        if (DisablePerKernel || !perKernel)
         {
             enabled = false;
         }
