@@ -9,7 +9,7 @@
 add_subdirectory ("source")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/source")
 add_library(zebinlib STATIC ${ZE_INFO_SOURCE_FILE} ${ZE_INFO_INCLUDE_FILE})
-
+add_dependencies(zebinlib intrinsics_gen)
 
 set(ZEBIN_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/source/autogen")
 
