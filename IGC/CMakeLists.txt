@@ -1865,6 +1865,9 @@ message(STATUS "Using precompiled headers")
   endif()
 
   foreach(_target ${PCHTargets})
+    # make sure *inc files are generated before building precompiled header files
+    add_dependencies(${_target} intrinsics_gen)
+
     target_precompile_headers(${_target}
       PRIVATE
       "$<$<COMPILE_LANGUAGE:CXX>:${IGC_BUILD__IGC_SRC_DIR}/PCH/llvm.h>"
