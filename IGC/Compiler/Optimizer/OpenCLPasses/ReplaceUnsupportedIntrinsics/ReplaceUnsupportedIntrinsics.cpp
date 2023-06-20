@@ -489,8 +489,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
 
     IGCLLVM::IRBuilder<> Builder(MC);
 
-    // BaseSize is flag if we want to handle algorithm in general way
-    // or want to keep size of base type to further optimizations
+    // BaseSize == 32 if we want to handle algorithm in general way
+    // or different value if want to keep size of base type to further optimizations
     uint32_t BaseSize = 0;
     Type* RawDstType = IGCLLVM::getNonOpaquePtrEltTy(Dst->stripPointerCasts()->getType());
     if (Type* BaseType = GetBaseType(RawDstType))
@@ -800,6 +800,17 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
 
     IGCLLVM::IRBuilder<> Builder(MS);
 
+    // BaseSize == 32 if we want to handle algorithm in general way
+    // or different value if want to keep size of base type to further optimizations
+    uint32_t BaseSize = 0;
+    Type* RawDstType = IGCLLVM::getNonOpaquePtrEltTy(Dst->stripPointerCasts()->getType());
+    if (Type* BaseType = GetBaseType(RawDstType))
+        BaseSize = BaseType->getScalarSizeInBits();
+
+    if (BaseSize != 16)
+        // size 32 is equal to size of i32, so general algorithm will be applied
+        BaseSize = 32;
+
     ConstantInt* CI = dyn_cast<ConstantInt>(LPCount);
     if (CI)
     {
@@ -807,7 +818,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
 
         Type* VecTys[8];
         uint32_t Len, NewCount;
-        generalGroupI8Stream(C, Count, Align, NewCount, VecTys, Len);
+        generalGroupI8Stream(C, Count, Align, NewCount, VecTys, Len, BaseSize);
 
         Value* NewDst, * vDst, * vSrc;
         uint32_t BOfst = 0; // Byte offset
