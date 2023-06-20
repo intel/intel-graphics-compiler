@@ -452,13 +452,12 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
                 break;
             }
             case Instruction::Mul:
-                IGC_ASSERT(quotient == 2);
                 if (Idx == 0)
                 {
                     NewInst = m_builder->CreateMul(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
                         m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
                 }
-                else
+                else if (Idx == 1)
                 {
                     Type* type = llvm::Type::getIntNTy(I.getContext(), promoteToInt);
                     Function* MulHFunc = llvm::GenISAIntrinsic::getDeclaration(
@@ -476,8 +475,20 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
                     Value* MulLo2Hi1 = m_builder->CreateMul(Lo2, Hi1);
                     Value* AddLoHi = m_builder->CreateAdd(MulLo1Hi2, MulLo2Hi1);
                     Value* AddMulHi = m_builder->CreateAdd(AddLoHi, MulHiLo1Lo2);
-                    uint64_t mask = (1ULL << (Src1width - promoteToInt)) - 1;
-                    NewInst = m_builder->CreateAnd(AddMulHi, mask);
+                    if (Src1width < promoteToInt * 2)
+                    {
+                        uint64_t mask = (1ULL << (Src1width - promoteToInt)) - 1;
+                        NewInst = m_builder->CreateAnd(AddMulHi, mask);
+                    }
+                    else
+                    {
+                        NewInst = AddMulHi;
+                    }
+                }
+                else
+                {
+                    IGC_ASSERT_MESSAGE(0, "Mul legalization for width > 64 (quotient => 3) is not fully supported");
+                    NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
                 }
                 break;
             case Instruction::Add:
@@ -1120,6 +1131,21 @@ void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
         {
             castInst->replaceAllUsesWith(new_inst);
             Changed = true;
+        }
+    }
+    else
+    {
+        for (Value::use_iterator UI = I.use_begin(), UE = I.use_end(); UI != UE; ++UI) {
+            if (TruncInst* useTrunc = dyn_cast<TruncInst>(UI->getUser()))
+            {
+                IGC_ASSERT(I.getType()->getScalarSizeInBits() > useTrunc->getType()->getScalarSizeInBits());
+                auto newTrunc = dyn_cast<TruncInst>(m_builder->CreateTrunc(I.getOperand(0), useTrunc->getType()));
+                useTrunc->replaceAllUsesWith(newTrunc);
+//              Commented out for now because it breaks use_iterator
+//                useTrunc->eraseFromParent();
+                cleanupTruncInst(*newTrunc);
+                Changed = true;
+            }
         }
     }
 
