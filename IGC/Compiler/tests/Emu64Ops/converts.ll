@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -15,8 +15,22 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define void @test_fptoui(float %a) {
-; CHECK-LABEL: @test_fptoui(
+define void @test_fptoui_f16(half %a) {
+; CHECK-LABEL: @test_fptoui_f16
+; CHECK:    [[TMP1:%[A-z0-9]*]] = fptoui half [[A:%[A-z0-9]*]] to i32
+; CHECK:    [[TMP2:%[A-z0-9]*]] = insertelement <2 x i32> undef, i32 [[TMP1]], i32 0
+; CHECK:    [[TMP3:%[A-z0-9]*]] = insertelement <2 x i32> [[TMP2]], i32 0, i32 1
+; CHECK:    [[TMP4:%[A-z0-9]*]] = bitcast <2 x i32> [[TMP3]] to i64
+; CHECK:    call void @use.i64(i64 [[TMP4]])
+; CHECK:    ret void
+;
+  %1 = fptoui half %a to i64
+  call void @use.i64(i64 %1)
+  ret void
+}
+
+define void @test_fptoui_f32(float %a) {
+; CHECK-LABEL: @test_fptoui_f32
 ; CHECK:    [[TMP1:%[A-z0-9]*]] = fmul float [[A:%[A-z0-9]*]], 0x3DF0000000000000
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = call float @llvm.trunc.f32(float [[TMP1]])
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = fptoui float [[TMP2]] to i32
@@ -33,9 +47,23 @@ define void @test_fptoui(float %a) {
   ret void
 }
 
+define void @test_fptosi_f16(half %a) {
+; CHECK-LABEL: @test_fptosi_f16
+; CHECK:    [[TMP1:%[A-z0-9]*]] = fptosi half [[A:%[A-z0-9]*]] to i32
+; CHECK:    [[TMP2:%[A-z0-9]*]] = ashr i32 [[TMP1]], 31
+; CHECK:    [[TMP3:%[A-z0-9]*]] = insertelement <2 x i32> undef, i32 [[TMP1]], i32 0
+; CHECK:    [[TMP4:%[A-z0-9]*]] = insertelement <2 x i32> [[TMP3]], i32 [[TMP2]], i32 1
+; CHECK:    [[TMP5:%[A-z0-9]*]] = bitcast <2 x i32> [[TMP4]] to i64
+; CHECK:    call void @use.i64(i64 [[TMP5]])
+; CHECK:    ret void
+;
+  %1 = fptosi half %a to i64
+  call void @use.i64(i64 %1)
+  ret void
+}
 
-define void @test_fptosi(double %a) {
-; CHECK-LABEL: @test_fptosi(
+define void @test_fptosi_f64(double %a) {
+; CHECK-LABEL: @test_fptosi_f64
 ; CHECK:    [[TMP1:%[A-z0-9]*]] = bitcast double [[A:%[A-z0-9]*]] to <2 x i32>
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = ashr i32 [[TMP2]], 31
@@ -163,11 +191,13 @@ declare void @use.i64(i64)
 declare void @use.f32(float)
 
 
-!igc.functions = !{!0, !3, !4, !5}
+!igc.functions = !{!0, !3, !4, !5, !6, !7}
 
-!0 = !{void (float)* @test_fptoui, !1}
+!0 = !{void (half)* @test_fptoui_f16, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{void (double)* @test_fptosi, !1}
-!4 = !{void (i64)* @test_uitofp, !1}
-!5 = !{void (i64)* @test_sitofp, !1}
+!3 = !{void (float)* @test_fptoui_f32, !1}
+!4 = !{void (half)* @test_fptosi_f16, !1}
+!5 = !{void (double)* @test_fptosi_f64, !1}
+!6 = !{void (i64)* @test_uitofp, !1}
+!7 = !{void (i64)* @test_sitofp, !1}
