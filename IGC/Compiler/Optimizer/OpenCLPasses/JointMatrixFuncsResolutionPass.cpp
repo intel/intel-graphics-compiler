@@ -153,15 +153,16 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
     if (desc->layout == LayoutPackedA) {
         params.maxRows = 8;
         params.columns = maxSliceBitWidth / desc->bitWidth;
-        params.bitWidth = 8 | 16;
+        params.bitWidth = 8 | 16 | 32;
         params.layouts = 1 << LayoutRowMajor;
     } else if (desc->layout == LayoutPackedB) {
         params.rows = maxSliceBitWidth / desc->bitWidth;
         params.columns = useSG16 ? 16 : 8;
-        params.bitWidth = 8 | 16;
+        params.bitWidth = 8 | 16 | 32;
         params.layouts |= 1 << LayoutColumnMajor;
         params.layouts |= 1 << LayoutPackedB;
         params.layouts |= 1 << LayoutPackedA; /* PackedA means just packed in the new version of spec. */
+        params.layouts |= 1 << LayoutRowMajor; /*for tf32*/
     } else { /* accumulator */
         params.maxRows = maxSliceBitWidth / desc->bitWidth;
         params.columns = useSG16 ? 16 : 8;
@@ -568,6 +569,19 @@ static bool isOrContainsMatrixType(const Type *root)
     return false;
 }
 
+// Custom slicing for tf32 for Matrix A.  In each WI, we have half the number
+// of rows that are present in the SG.
+static unsigned getNumRowsPerWIPackedA(const JointMatrixTypeDescription *desc) {
+    IGC_ASSERT_EXIT_MESSAGE(
+        desc->layout == LayoutPackedA,
+        "Expected getNumRowsPerWIPackedA function call for Matrix type A");
+    bool isTF32 = (desc->isFloating) && (desc->bitWidth == 32);
+    if (isTF32) {
+        return desc->rows % 2 ? desc->rows / 2 + 1 : desc->rows / 2;
+    }
+    return desc->rows;
+}
+
 Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixTypeDescription *outDesc)
 {
     IGC_ASSERT_EXIT_MESSAGE(opaqueType && opaqueType->isPointerTy(),
@@ -594,13 +608,16 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     Type *resolvedType = nullptr;
     if (desc.layout == LayoutPackedA) {
         Type *baseType = Type::getInt32Ty(ctx);
-        if (m_Ctx->platform.hasExecSize16DPAS()) {
+        bool isTF32 = (desc.isFloating) && (desc.bitWidth == 32);
+        if (!isTF32 && m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
         if (desc.rows == 1) {
             resolvedType = baseType;
         } else {
-            resolvedType = IGCLLVM::FixedVectorType::get(baseType, desc.rows);
+            unsigned numRowsPerWI = getNumRowsPerWIPackedA(&desc);
+            resolvedType =
+                IGCLLVM::FixedVectorType::get(baseType, numRowsPerWI);
         }
     } else if (desc.layout == LayoutPackedB) {
         Type *baseType = Type::getInt32Ty(ctx);
@@ -754,6 +771,9 @@ static PrecisionType getElementPrecison(const JointMatrixTypeDescription *desc, 
       /* bf is passed as uint16_t, hf is using halfs */
       return desc->isFloating ? PrecisionType::FP16 : PrecisionType::BF16;
   }
+  if (floatOp && width == 32) {
+      return PrecisionType::TF32;
+  }
   if (!floatOp && width == 8) {
       return isUnsigned ? PrecisionType::U8 : PrecisionType::S8;
   }
@@ -857,7 +877,8 @@ static int getSliceSize(const JointMatrixTypeDescription *desc, Type *matTy) {
     }
     if (desc->bitWidth != 0) {
         if (desc->layout == LayoutPackedA) {
-            return desc->rows * (contribTypeWidth / desc->bitWidth);
+            unsigned numRowsPerWI = getNumRowsPerWIPackedA(desc);
+            return numRowsPerWI * (contribTypeWidth / desc->bitWidth);
         }
         if (desc->layout == LayoutPackedB) {
             return 8 * (contribTypeWidth / desc->bitWidth);
