@@ -482,6 +482,7 @@ $ export IGC_ShaderDumpEnable=1
 | `PixelSampleHoistingLimit` | A sub-option of AdvMemOpt: hoist sample instruction in pixel shader | - |
 | `RemoveLegacyOCLStatelessPrivateMemoryCases` | Remove cases where OCL uses stateless private memory. XeHP and above only! [OCL only] | Available |
 | `SampleMultiversioning` | Create branches aroung samplers which can be redundant with some values | - |
+| `SelectiveLoopUnrollForDPEmu` | Setting this to 0/false disable selective loop unrolling for DP emu | Available |
 | `SendMultipleSIMDModesCS` | Send multiple SIMD modes for CS | - |
 | `SkipPsSimdWithDualSimd` | Setting it to values def in igc.h will force SIMD mode to skip if the dual-SIMD8 kernel exists | Available |
 | `UniformMemOpt4OW` | increase uniform memory optimization from 2 owords to 4 owords | Available |

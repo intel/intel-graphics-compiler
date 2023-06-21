@@ -184,7 +184,7 @@ namespace llvm {
         }
 
         // Special case when DP emulation is needed.
-        if (ctx->m_hasDPEmu) {
+        if (ctx->m_hasDPEmu && IGC_IS_FLAG_ENABLED(SelectiveLoopUnrollForDPEmu)) {
             bool hasDPInst = false;
             for (auto BB : L->blocks()) {
                 for (auto& I : *BB) {

@@ -448,6 +448,7 @@ DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         true,  "Enable recursion
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(bool, EnableDPEmulation,             false, "Enforce double precision floating point operations emulation on platforms that do not support it natively", true)
 DECLARE_IGC_REGKEY(bool, DPEmuNeedI64Emu,               true,  "Double Emulation needs I64 emulation. Unsetting it to disable I64 Emulation for testing.", false)
+DECLARE_IGC_REGKEY(bool, SelectiveLoopUnrollForDPEmu,   true,  "Setting this to 0/false disable selective loop unrolling for DP emu.", true)
 DECLARE_IGC_REGKEY(bool, ForceSPDivEmulation,           false, "Force SP Div emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(DWORD, ForceI64DivRemEmu,            0,     "Forces specific int64 div/rem emulation: 0 = platform default, 1 = int based, 2 = SP based, 3 = DP based", false)
 DECLARE_IGC_REGKEY(bool, EnableGen11TwoStackTSG,        false, "Enable Two stack TSG gen11 feature", false)
