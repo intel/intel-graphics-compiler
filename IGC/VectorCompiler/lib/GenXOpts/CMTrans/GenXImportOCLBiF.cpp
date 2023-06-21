@@ -437,8 +437,8 @@ static void InitializeBIFlags(Module &M) {
   initializeVarWithValue("__DashGSpecified", 0);
   initializeVarWithValue("__FastRelaxedMath", 0);
   initializeVarWithValue("__MadEnable", 0);
-  initializeVarWithValue("__UseNative64BitIntSubgroupBuiltin", 1);
-  initializeVarWithValue("__UseNative64BitFloatSubgroupBuiltin", 1);
+  initializeVarWithValue("__UseNative64BitIntBuiltin", 1);
+  initializeVarWithValue("__UseNative64BitFloatBuiltin", 1);
   initializeVarWithValue("__CRMacros", 1);
 
   initializeVarWithValue("__IsSPIRV", 0);
