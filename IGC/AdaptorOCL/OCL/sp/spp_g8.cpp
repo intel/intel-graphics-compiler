@@ -265,6 +265,18 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(char* dstBuffer, size_t dstBu
     return retValue;
 }
 
+static void dumpZEInfo(
+    const IGC::CodeGenContext &Ctx, ZEBinaryBuilder &ZEBuilder)
+{
+    auto filename = IGC::Debug::DumpName(
+        IGC::Debug::GetShaderOutputName())
+        .Hash(Ctx.hash)
+        .Type(ShaderType::OPENCL_SHADER)
+        .Extension("zeinfo");
+
+    ZEBuilder.printZEInfo(filename.str());
+}
+
 void dumpOCLKernelBinary(
     const IGC::COpenCLKernel *Kernel,
     const KernelData &data)
@@ -777,6 +789,11 @@ bool CGen8OpenCLProgram::GetZEBinary(
     }
 
     zebuilder.getBinaryObject(programBinary);
+
+    // dump .ze_info to a file
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        dumpZEInfo(m_Context, zebuilder);
+
     return retValue;
 }
 

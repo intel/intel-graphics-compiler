@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include "llvm/BinaryFormat/ELF.h"
+#include "llvm/Support/raw_ostream.h"
 
 #ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPop.hpp"
@@ -542,6 +543,9 @@ public:
     // all of its sub-attributes are default and are not shown.
     static void addExpPropertiesHasNonKernelArgLdSt(zeInfoKernel& zekernel,
         bool hasNonKernelArgLoad, bool hasNonKernelArgStore, bool hasNonKernelArgAtomic);
+
+    // dump mContainer in yaml format into given raw_ostream
+    void printZEInfoInYaml(llvm::raw_ostream &OS);
 
 private:
     zeInfoContainer mContainer;

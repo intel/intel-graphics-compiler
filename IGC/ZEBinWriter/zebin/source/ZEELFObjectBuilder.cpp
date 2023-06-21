@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/MC/StringTableBuilder.h"
 #include "llvm/Support/EndianStream.h"
 #include "llvm/Support/MathExtras.h"
-#include "llvm/Support/raw_ostream.h"
 
 #ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPop.hpp"
@@ -1288,4 +1287,11 @@ void ZEInfoBuilder::addExpPropertiesHasNonKernelArgLdSt(zeInfoKernel& zekernel,
 void ZEInfoBuilder::addGlobalHostAccessSymbol(const std::string& device_name, const std::string& host_name)
 {
     mContainer.global_host_access_table.push_back(zeInfoHostAccess{ device_name, host_name });
+}
+
+void ZEInfoBuilder::printZEInfoInYaml(raw_ostream &os)
+{
+    // serialize mContainer
+    llvm::yaml::Output yout(os);
+    yout << mContainer;
 }

@@ -907,8 +907,16 @@ void ZEBinaryBuilder::printBinaryObject(const std::string& filename)
 {
     std::error_code EC;
     llvm::raw_fd_ostream os(filename, EC);
-    mBuilder.finalize(os);
-    os.close();
+    if (!EC)
+        mBuilder.finalize(os);
+}
+
+void ZEBinaryBuilder::printZEInfo(const std::string& filename)
+{
+    std::error_code EC;
+    llvm::raw_fd_ostream os(filename, EC);
+    if (!EC)
+        mZEInfoBuilder.printZEInfoInYaml(os);
 }
 
 void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,

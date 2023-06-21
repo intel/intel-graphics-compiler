@@ -89,6 +89,9 @@ public:
 
     void printBinaryObject(const std::string& filename);
 
+    // print .ze_info into a file with given filename
+    void printZEInfo(const std::string& filename);
+
 private:
     /// ------------ program scope helper functions ------------
     /// add program scope information. This function will be called in the ctor.
