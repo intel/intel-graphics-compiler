@@ -924,30 +924,37 @@ private:
     void emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast, CVariable* srcV, unsigned tag);
 
     // used for loading/storing uniform value using scatter/gather messages.
-    CVariable* prepareAddressForUniform(
-        CVariable* AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz, e_alignment Align);
-    CVariable* prepareDataForUniform(CVariable* DataVar, uint32_t ExecSz, e_alignment Align);
+    CVariable *prepareAddressForUniform(CVariable *AddrVar, uint32_t EltBytes,
+                                        uint32_t NElts, uint32_t ExecSz,
+                                        e_alignment Align);
+    CVariable *prepareDataForUniform(CVariable *DataVar, uint32_t ExecSz,
+                                     e_alignment Align);
     // sub-function of vector load/store
-    void emitLSCVectorLoad_subDW(
-        LSC_CACHE_OPTS cacheOpts, bool UseA32,
-        ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes);
-    void emitLSCVectorLoad_uniform(
-        LSC_CACHE_OPTS cacheOpts, bool UseA32,
-        ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, uint64_t Align, uint32_t Addrspace);
-    void emitLSCVectorStore_subDW(
-        LSC_CACHE_OPTS cacheOpts, bool UseA32,
-        ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, alignment_t Align);
-    void emitLSCVectorStore_uniform(
-        LSC_CACHE_OPTS cacheOpts, bool UseA32,
-        ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, alignment_t Align);
-    LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1, bool EvictL1) const;
+    void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+                                 ResourceDescriptor &Resource, CVariable *Dest,
+                                 CVariable *Offset, int ImmOffset,
+                                 uint32_t NumElts, uint32_t EltBytes);
+    void emitLSCVectorLoad_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+                                   ResourceDescriptor &Resource,
+                                   CVariable *Dest, CVariable *Offset,
+                                   int ImmOffset, uint32_t NumElts,
+                                   uint32_t EltBytes, uint64_t Align,
+                                   uint32_t Addrspace);
+    void emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+                                  ResourceDescriptor &Resource,
+                                  CVariable *StoreVar, CVariable *Offset,
+                                  int ImmOffset, uint32_t NumElts,
+                                  uint32_t EltBytes, alignment_t Align);
+    void emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+                                    ResourceDescriptor &Resource,
+                                    CVariable *StoreVar, CVariable *Offset,
+                                    int ImmOffset, uint32_t NumElts,
+                                    uint32_t EltBytes, alignment_t Align);
+    LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1,
+                                     bool EvictL1) const;
     bool m_isDuplicate;
-    CVariable* m_tmpDest = nullptr;
-    std::set<CoalescingEngine::CCTuple*> lifetimeStartAdded;
+    CVariable *m_tmpDest = nullptr;
+    std::set<CoalescingEngine::CCTuple *> lifetimeStartAdded;
 };
 
 } // namespace IGC

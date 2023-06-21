@@ -17682,11 +17682,11 @@ CVariable* EmitPass::prepareDataForUniform(
     return newVar;
 }
 
-void EmitPass::emitLSCVectorLoad_subDW(
-    LSC_CACHE_OPTS cacheOpts, bool UseA32,
-    ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-    uint32_t NumElts, uint32_t EltBytes)
-{
+void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+                                       ResourceDescriptor &Resource,
+                                       CVariable *Dest,
+                                       CVariable *Offset, int ImmOffset,
+                                       uint32_t NumElts, uint32_t EltBytes) {
     // NumElts must be 1 !
     IGC_ASSERT(NumElts == 1 && (EltBytes == 1 || EltBytes == 2));
 
@@ -17738,11 +17738,10 @@ void EmitPass::emitLSCVectorLoad_subDW(
         else
             m_encoder->SetPredicate(flag);
 
-        emitLSCLoad(cacheOpts,
-            gatherDst, eOffset, EltBytes * 8,
-            1, 0, &Resource,
-            UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
-            LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset);
+        emitLSCLoad(cacheOpts, gatherDst,
+                    eOffset, EltBytes * 8, 1, 0, &Resource,
+                    UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+                    LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset);
         m_encoder->Push();
     });
 
@@ -17892,9 +17891,8 @@ void EmitPass::emitLSCVectorLoad(Value *Ptr,
     if (eltBytes < 4)
     {
         IGC_ASSERT(elts == 1);
-        emitLSCVectorLoad_subDW(
-            cacheOpts, useA32,
-            resource, destCVar, eOffset, immOffsetInt, 1, eltBytes);
+      emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar,
+                              eOffset, immOffsetInt, 1, eltBytes);
         return;
     }
 
@@ -17989,11 +17987,12 @@ void EmitPass::emitLSCVectorLoad(Value *Ptr,
 }
 
 // Sub-function of emitLSCVectorStore()
-void EmitPass::emitLSCVectorStore_subDW(
-    LSC_CACHE_OPTS cacheOpts, bool UseA32,
-    ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-    uint32_t NumElts, uint32_t EltBytes, alignment_t Alignment)
-{
+void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+                                        ResourceDescriptor &Resource,
+                                        CVariable *StoreVar, CVariable *Offset,
+                                        int ImmOffset, uint32_t NumElts,
+                                        uint32_t EltBytes,
+                                        alignment_t Alignment) {
     // NumElts must be 1!
     IGC_ASSERT_MESSAGE(NumElts == 1 && (EltBytes == 1 || EltBytes == 2),
         "Number of elements must be 1 for an 8bit or 16bit data type in a non-transposed LSC store.");
@@ -18051,9 +18050,10 @@ void EmitPass::emitLSCVectorStore_subDW(
             m_encoder->SetNoMask();
         }
         // NumElts = 1
-        emitLSCStore(cacheOpts, stVar, eOffset, EltBytes * 8, 1, 0, &Resource,
-            UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
-            LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset);
+        emitLSCStore(cacheOpts,
+                     stVar, eOffset, EltBytes * 8, 1, 0, &Resource,
+                     UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+                     LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset);
         m_encoder->Push();
     });
 
@@ -18205,9 +18205,9 @@ void EmitPass::emitLSCVectorStore(
         checkOCLUniformStore(dstUniform, isOCLUniform);
 
         IGC_ASSERT(elts == 1);
-        emitLSCVectorStore_subDW(
-            cacheOpts, useA32,
-            resource, storedVar, eOffset, immOffsetVal, 1, eltBytes, align);
+        emitLSCVectorStore_subDW(cacheOpts, useA32, resource,
+                                 storedVar, eOffset, immOffsetVal, 1, eltBytes,
+                                 align);
         return;
     }
 
