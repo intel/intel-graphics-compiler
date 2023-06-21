@@ -136,6 +136,8 @@ void Optimizer::initializePayload() {
   unsigned subOffset = (inputEnd % grfSize);
   // beginning execution size for byte remainder initialization
   unsigned execSize = grfSize / 2;
+  // use an already initialized GRF as src
+  unsigned grfSrc = maxGRFNum - 2;
   // inits remainder GRF
   // loops until all bytes within GRF are initialized
   // on each iteration goes down by execution size
@@ -147,9 +149,9 @@ void Optimizer::initializePayload() {
           builder.createHardwiredDeclare(execSize, Type_UB, regNum, subOffset);
       G4_DstRegRegion *dst =
           builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UB);
-
+      vASSERT(grfSrc > regNum);
       G4_Declare *tempDclSrc =
-          builder.createHardwiredDeclare(1, Type_UD, 126, 0);
+          builder.createHardwiredDeclare(1, Type_UD, grfSrc , 0);
       G4_SrcRegRegion *src0 = builder.createSrc(
           tempDclSrc->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
 
