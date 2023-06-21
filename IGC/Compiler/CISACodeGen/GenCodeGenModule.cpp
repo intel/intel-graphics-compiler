@@ -217,14 +217,10 @@ void GenXCodeGenModule::processFunction(Function& F)
         return true;
     };
 
-    // Make the function indirect if cloning exceeds the threshold
-    // We shouldn't add "referenced-indirectly" attr for builtins
+    // Make the function indirect if cloning is required to decrease compile time
     if (m_FunctionCloningThreshold > 0 &&
         CallerFGs.size() > m_FunctionCloningThreshold &&
-        CanMakeIndirectFunc(&F) &&
-        // Don't override the FunctionControl flags used for debugging
-        IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
-        IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == 0)
+        CanMakeIndirectFunc(&F))
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
@@ -856,12 +852,13 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
     if (!ICG || ICG->isSingle())
         return;
 
+    // For the first iteration, clone only functions called from other function groups
+    // that have multiple SIMD size requirements. This is to get a baseline of how many variant
+    // dummy kernels are required.
     for (Function* F : *ICG)
     {
         // Check if there are multiple callers with variant SIMD size requirements.
         int hasReqdSIMD = 0;
-
-        // Only process indirect funcs
         if (!F->hasFnAttribute("referenced-indirectly"))
             continue;
 
@@ -925,12 +922,24 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
         }
     }
 
+    auto hasIndirectCaller = [this](Function* F, FunctionGroup* ICG)->bool
+    {
+        for (auto U : F->users()) {
+            if (Instruction* I = dyn_cast<Instruction>(U)) {
+                Function* callerF = I->getParent()->getParent();
+                if (getGroup(callerF) == ICG)
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    // In second iteration, clone functions that have callers inside the indirect call group.
+    // These functions may have been missed in the first iteration if they are not used outside
+    // the indirect call group, but need to be cloned to each variant dummy kernel we create.
     for (Function* F : *ICG)
     {
-        // In second iteration, process only direct calls.
-        // This is to account for functions converted by FunctionCloningControl, in which
-        // callees of converted indirect functions may be added to the indirect-call group as direct calls.
-        if (F == ICG->getHead() || F->hasFnAttribute("referenced-indirectly"))
+        if (F == ICG->getHead() || !hasIndirectCaller(F, ICG))
             continue;
 
         for (int i = 0; i < 3; i++)
@@ -940,6 +949,11 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
             if (ICG && simdsz != default_size)
             {
                 string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
+
+                // If mangled function already exist, don't re-clone it
+                if (pModule->getFunction(prefix + F->getName().str()) != nullptr)
+                    continue;
+
                 Function* FCloned = cloneFunc(pMdUtils, F, prefix, "");
                 copyFuncProperties(FCloned, F);
                 FCloned->addFnAttr("variant-function-def");
