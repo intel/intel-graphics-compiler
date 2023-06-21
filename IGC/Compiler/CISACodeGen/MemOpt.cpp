@@ -2287,16 +2287,26 @@ namespace {
         BundleConfig(LdStKind K, int ByteAlign, bool Uniform,
             const AddressModel AddrModel, CodeGenContext* Ctx)
         {
-            uint32_t maxBytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
-            if (maxBytes == 0) {
-                // compiler default
-                if (K == LdStKind::IS_STORE)
+            uint32_t maxBytes = 0;
+            if (K == LdStKind::IS_STORE) {
+                maxBytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
+                if (maxBytes != 0) {
+                    // legal values: [8, 32].
+                    maxBytes = std::min(maxBytes, 32u);
+                    maxBytes = std::max(maxBytes, 8u);
+                }
+                else
                     maxBytes = STORE_DEFAULT_BYTES_PER_LANE;
+            }
+            else {
+                maxBytes = IGC_GET_FLAG_VALUE(MaxLoadVectorSizeInBytes);
+                if (maxBytes != 0) {
+                    // legal values: [8, 32]
+                    maxBytes = std::min(maxBytes, 32u);
+                    maxBytes = std::max(maxBytes, 8u);
+                }
                 else
                     maxBytes = LOAD_DEFAULT_BYTES_PER_LANE;
-            }
-            else if (maxBytes < m_eltSizeInBytes) {
-                maxBytes = m_eltSizeInBytes;
             }
 
             auto calculateSize = [=](bool Uniform) -> uint32_t
