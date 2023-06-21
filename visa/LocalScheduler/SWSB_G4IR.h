@@ -183,32 +183,35 @@ struct SBFootprint {
 // of dst and src separately. Each bit map to one global SBID node according to
 // the node's global ID.
 struct SBBitSets {
-  BitSet dst;
-  BitSet src;
+  llvm_SBitVector dst;
+  llvm_SBitVector src;
 
   SBBitSets() {}
 
-  SBBitSets(unsigned size) : dst(size, false), src(size, false) {}
-
   ~SBBitSets() {}
 
-  void setDst(int ID, bool value) { dst.set(ID, value); }
-  void setSrc(int ID, bool value) { src.set(ID, value); }
-
-  unsigned getSize() const {
-    vASSERT(dst.getSize() == src.getSize());
-    return dst.getSize();
+  void setDst(int ID, bool value) {
+    if (value)
+      dst.set(ID);
+    else
+      dst.reset(ID);
+  }
+  void setSrc(int ID, bool value) {
+    if (value)
+      src.set(ID);
+    else
+      src.reset(ID);
   }
 
-  bool isEmpty() const { return dst.isEmpty() && src.isEmpty(); }
+  bool isEmpty() const { return dst.empty() && src.empty(); }
 
-  bool isDstEmpty() const { return dst.isEmpty(); }
+  bool isDstEmpty() const { return dst.empty(); }
 
-  bool isSrcEmpty() const { return src.isEmpty(); }
+  bool isSrcEmpty() const { return src.empty(); }
 
-  bool isDstSet(unsigned i) const { return dst.isSet(i); }
+  bool isDstSet(unsigned i) const { return dst.test(i); }
 
-  bool isSrcSet(unsigned i) const { return src.isSet(i); }
+  bool isSrcSet(unsigned i) const { return src.test(i); }
 
   SBBitSets &operator=(const SBBitSets &other) {
     dst = other.dst;
@@ -216,7 +219,11 @@ struct SBBitSets {
     return *this;
   }
 
-  SBBitSets &operator=(SBBitSets &&other) noexcept = default;
+  SBBitSets &operator=(SBBitSets &other) {
+    dst = other.dst;
+    src = other.src;
+    return *this;
+  }
 
   SBBitSets &operator|=(const SBBitSets &other) {
     dst |= other.dst;
@@ -231,8 +238,8 @@ struct SBBitSets {
   }
 
   SBBitSets &operator-=(const SBBitSets &other) {
-    dst -= other.dst;
-    src -= other.src;
+    dst = dst - other.dst;
+    src = src - other.src;
     return *this;
   }
 
@@ -253,8 +260,6 @@ private:
                         // instructions are not counted.
   unsigned liveStartID = 0;    // The start ID of live range
   unsigned liveEndID = 0;      // The end ID of live range
-  unsigned liveStartBBID = -1; // The start BB ID of live range
-  unsigned liveEndBBID = -1;   // The start BB ID of live range
   int integerID = -1;
   int floatID = -1;
   int longID = -1;
@@ -366,25 +371,18 @@ public:
   unsigned getLiveStartID() const { return liveStartID; }
   unsigned getLiveEndID() const { return liveEndID; }
 
-  unsigned getLiveStartBBID() const { return liveStartBBID; }
-  unsigned getLiveEndBBID() const { return liveEndBBID; }
-
-  void setLiveEarliestID(unsigned id, unsigned startBBID) {
+  void setLiveEarlierID(unsigned id) {
     if (!liveStartID) {
       liveStartID = id;
-      liveStartBBID = startBBID;
     } else if (liveStartID > id) {
       liveStartID = id;
-      liveStartBBID = startBBID;
     }
   }
-  void setLiveLatestID(unsigned id, unsigned endBBID) {
+  void setLiveLaterID(unsigned id) {
     if (!liveEndID) {
       liveEndID = id;
-      liveEndBBID = endBBID;
     } else if (liveEndID < id) {
       liveEndID = id;
-      liveEndBBID = endBBID;
     }
   }
 
@@ -684,7 +682,7 @@ public:
   SBBitSets send_kill_scalar;
 
   BitSet dominators;
-  BitSet send_WAW_may_kill;
+  llvm_SBitVector send_WAW_may_kill;
 
   // For token reduction
   BitSet liveInTokenNodes;
@@ -918,6 +916,12 @@ class SWSB {
   SBNODE_VECT SBNodes;     // All instruction nodes
   SBNODE_VECT SBSendNodes; // All out-of-order instruction nodes
   SBNODE_VECT SBSendUses;  // All out-of-order instruction nodes
+  SBBUCKET_VECTOR
+      globalDstSBSendNodes; // globalID indexed global dst token nodes
+  std::vector<SBBUCKET_VECTOR>
+      globalSrcSBSendNodes; // globalID indexed global src token nodes,
+                            // use SBBUCKET_VECTOR vector because one
+                            // instruction may have multiple source operands.
 #ifdef DEBUG_VERBOSE_ON
   SBNODE_VECT globalSBNodes; // All instruction nodes
 #endif
