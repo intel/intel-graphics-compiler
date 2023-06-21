@@ -2226,8 +2226,6 @@ namespace IGC
             OptDisableSet->insert(IGCOpts::LowerGEPForPrivMemPass);
         if (!pCtx->m_retryManager.AllowAddressArithmeticSinking(F))
             OptDisableSet->insert(IGCOpts::AddressArithmeticSinkingPass);
-        if (!pCtx->m_retryManager.AllowPreRAScheduler(F))
-            OptDisableSet->insert(IGCOpts::PreRASchedulerPass);
         if (!pCtx->m_retryManager.AllowLargeURBWrite(F))
             OptDisableSet->insert(IGCOpts::MergeURBWritePass);
         if (!pCtx->m_retryManager.AllowConstantCoalescing(F))

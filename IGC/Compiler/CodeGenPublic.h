@@ -74,7 +74,6 @@ namespace IGCOpts
     // Pass level optimizations
     static const std::string LowerGEPForPrivMemPass = "IGC-LowerGEPForPrivMem";
     static const std::string AddressArithmeticSinkingPass = "IGC-AddressArithmeticSinking";
-    static const std::string PreRASchedulerPass = "IGC-PreRAScheduler";
     static const std::string MergeURBWritePass = "IGC-MergeURBWrites";
     static const std::string ConstantCoalescingPass = "IGC-ConstantCoalescing";
     static const std::string SinkLoadOptPass = "IGC-SinkLoadOpt";
@@ -730,7 +729,6 @@ namespace IGC
         bool AdvanceState();
         bool AllowLICM(llvm::Function* F = nullptr) const;
         bool AllowPromotePrivateMemory(llvm::Function* F = nullptr) const;
-        bool AllowPreRAScheduler(llvm::Function* F = nullptr) const;
         bool AllowVISAPreRAScheduler(llvm::Function* F = nullptr) const;
         bool AllowCodeSinking(llvm::Function* F = nullptr) const;
         bool AllowAddressArithmeticSinking(llvm::Function* F = nullptr) const;

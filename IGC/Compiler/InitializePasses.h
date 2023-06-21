@@ -205,7 +205,6 @@ void initializeLoopHoistConstantPass(llvm::PassRegistry&);
 void initializeDisableLICMForSpecificLoopsPass(llvm::PassRegistry&);
 void initializeMemOptPass(llvm::PassRegistry&);
 void initializeLdStCombinePass(llvm::PassRegistry&);
-void initializePreRASchedulerPass(llvm::PassRegistry&);
 void initializeBIFTransformsPass(llvm::PassRegistry&);
 void initializeThreadCombiningPass(llvm::PassRegistry&);
 void initializeRegisterPressureEstimatePass(llvm::PassRegistry&);

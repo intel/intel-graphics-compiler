@@ -27,7 +27,6 @@ namespace IGC
         bool allowAddressArithmeticSinking;
         bool allowSimd32Slicing;
         bool allowPromotePrivateMemory;
-        bool allowPreRAScheduler;
         bool allowVISAPreRAScheduler;
         bool allowLargeURBWrite;
         bool allowConstantCoalescing;
@@ -37,9 +36,9 @@ namespace IGC
     };
 
     static const RetryState RetryTable[] = {
-        // licm  codSk AdrSk  Slice  PrivM  PreRA  VISAP  URBWr  Coals  GRF    loadSk
-        { true,  true, false, false, true,  true,  true,  true,  true,  false, false, 1 },
-        { false, true, true,  true,  false, false, false, false, false, true,  true, 500 }
+        // licm  codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk
+        { true,  true, false, false, true,  true,  true,  true,  false, false, 1 },
+        { false, true, true,  true,  false, false, false, false, true,  true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -99,13 +98,6 @@ namespace IGC
         unsigned id = GetPerFuncRetryStateId(F);
         IGC_ASSERT(id < RetryTableSize);
         return RetryTable[id].allowPromotePrivateMemory;
-    }
-
-    bool RetryManager::AllowPreRAScheduler(Function* F) const
-    {
-        unsigned id = GetPerFuncRetryStateId(F);
-        IGC_ASSERT(id < RetryTableSize);
-        return RetryTable[id].allowPreRAScheduler;
     }
 
     bool RetryManager::AllowVISAPreRAScheduler(Function* F) const

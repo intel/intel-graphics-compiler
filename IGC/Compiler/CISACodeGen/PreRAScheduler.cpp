@@ -44,7 +44,7 @@ namespace IGC {
         bool runOnFunction(Function& F) override;
 
         virtual StringRef getPassName() const override {
-            return IGCOpts::PreRASchedulerPass;
+            return "IGC-PreRAScheduler";
         }
 
         LivenessAnalysis* m_pLVA;

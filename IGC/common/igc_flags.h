@@ -413,7 +413,6 @@ DECLARE_IGC_REGKEY(bool, DisableMemOpt2,                false, "Disable MemOpt2"
 DECLARE_IGC_REGKEY(DWORD, EnableLdStCombine,            0,     "Enable load/store combine pass if set to 1 or 2 (intend to replace memopt)", true)
 DECLARE_IGC_REGKEY(DWORD, MaxStoreVectorSizeInBytes,    0,     "[LdStCombine] the max non-uniform vector size for the coalesced store. 0: compiler choice (default, 16(4DW)); others: 8/16/32", true)
 DECLARE_IGC_REGKEY(DWORD, MaxLoadVectorSizeInBytes,     0,     "[LdStCombine] the max non-uniform vector size for the coalesced load.  0: compiler choice (default, 16(4DW)); others: 8/16/32", true)
-DECLARE_IGC_REGKEY(bool, DisablePreRAScheduler,         false, "Disable Pre RA Scheduling", false)
 DECLARE_IGC_REGKEY(DWORD,MaxLiveOutThreshold,           0,     "Max LiveOut Threshold in MemOpt2", false)
 DECLARE_IGC_REGKEY(bool, DisableScalarAtomics,          false, "Disable the Scalar Atomics optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics,      true, "Enable the Scalar Typed Atomics optimization", false)
