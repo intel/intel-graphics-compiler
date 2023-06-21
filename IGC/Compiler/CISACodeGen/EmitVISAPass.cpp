@@ -5477,52 +5477,40 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     uint16_t nbElements = numLanes(m_SimdMode) * 2;
 
     // Join current and Next Data
-    SBasicBlock::SimdShuffleDownSrcTy srcPair(inst->getOperand(0), inst->getOperand(1));
-    SBasicBlock* pCurrBlk = getCurrentBlock();
-    CVariable* pCombinedData = pCurrBlk ? pCurrBlk->m_simdShuffleDownSrc[srcPair] : nullptr;
-    if (pCombinedData == nullptr)
+    CVariable* pCombinedData = m_currShader->GetNewVariable(
+        nbElements,
+        m_destination->GetType(),
+        m_destination->GetAlign(),
+        "ShuffleTmp");
+
+    auto CopyData = [this](CVariable* pDestinationData, CVariable* pSourceData, uint32_t offset)
     {
-        pCombinedData = m_currShader->GetNewVariable(
-            nbElements,
-            m_destination->GetType(),
-            m_destination->GetAlign(),
-            "ShuffleTmp");
-
-        auto CopyData = [this](CVariable* pDestinationData, CVariable* pSourceData, uint32_t offset)
+        for (uint32_t i = 0; i < m_currShader->m_numberInstance; i++)
         {
-            for (uint32_t i = 0; i < m_currShader->m_numberInstance; i++)
+            IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
+            uint32_t currentOffset = offset + numLanes(m_encoder->GetSimdSize()) * i;
+            bool isSecondHalf = i == 1;
+
+            if (isSecondHalf)
             {
-                IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
-                uint32_t currentOffset = offset + numLanes(m_encoder->GetSimdSize()) * i;
-                bool isSecondHalf = i == 1;
-
-                if (isSecondHalf)
-                {
-                    m_encoder->SetSecondHalf(true);
-                }
-
-                m_encoder->SetSimdSize(m_encoder->GetSimdSize());
-                m_encoder->SetDstSubReg(currentOffset);
-                m_encoder->SetNoMask();
-                m_encoder->Copy(pDestinationData, pSourceData);
-                m_encoder->Push();
-
-                if (isSecondHalf)
-                {
-                    m_encoder->SetSecondHalf(false);
-                }
+                m_encoder->SetSecondHalf(true);
             }
-        };
 
-        CopyData(pCombinedData, pCurrentData, 0);
-        CopyData(pCombinedData, pNextData, numLanes(m_encoder->GetSimdSize()) * m_currShader->m_numberInstance);
+            m_encoder->SetSimdSize(m_encoder->GetSimdSize());
+            m_encoder->SetDstSubReg(currentOffset);
+            m_encoder->SetNoMask();
+            m_encoder->Copy(pDestinationData, pSourceData);
+            m_encoder->Push();
 
-        // save it for possible re-use later.
-        if (pCurrBlk)
-        {
-            pCurrBlk->m_simdShuffleDownSrc[srcPair] = pCombinedData;
+            if (isSecondHalf)
+            {
+                m_encoder->SetSecondHalf(false);
+            }
         }
-    }
+    };
+
+    CopyData(pCombinedData, pCurrentData, 0);
+    CopyData(pCombinedData, pNextData, numLanes(m_encoder->GetSimdSize()) * m_currShader->m_numberInstance);
 
     // Emit mov with direct addressing when delta is a compile-time constant.
     const bool useDirectAddressing = pDelta->IsImmediate()
