@@ -1865,8 +1865,11 @@ message(STATUS "Using precompiled headers")
   endif()
 
   foreach(_target ${PCHTargets})
-    # make sure *inc files are generated before building precompiled header files
-    add_dependencies(${_target} intrinsics_gen)
+
+    add_dependencies(${_target}
+      intrinsics_gen # generate *inc files for llvm/IR/Attributes.h
+      GenGenISAIntrinsics # generate IntrinsicGenISA.gen for GenISAIntrinsics/GenIntrinsics.h
+    )
 
     target_precompile_headers(${_target}
       PRIVATE
