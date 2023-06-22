@@ -677,6 +677,16 @@ void EstimateFunctionSize::analyze() {
         if (F.empty())
             continue;
         FunctionNode* node = new FunctionNode(&F, getSize(F));
+        bool isForceTrim = false;
+        if (IGC_IS_FLAG_ENABLED(SelectiveTrimming))
+        {
+            std::string functionToTrim = IGC_GET_REGKEYSTRING(SelectiveTrimming);
+            if (F.getName().str() == functionToTrim)
+            {
+                isForceTrim = true;
+                PrintFunctionSizeAnalysis(0x1, "Force trimming (No inline) " << functionToTrim);
+            }
+        }
         ECG[&F] = node;
         if (isEntryFunc(pMdUtils, node->F)) ///Entry function
         {
@@ -685,7 +695,7 @@ void EstimateFunctionSize::analyze() {
         }
         else if (F.hasFnAttribute("igc-force-stackcall"))
             node->setStackCall();
-        else if (F.hasFnAttribute(llvm::Attribute::NoInline))
+        else if (F.hasFnAttribute(llvm::Attribute::NoInline) || isForceTrim)
             node->setTrimmed();
         else if (F.hasFnAttribute(llvm::Attribute::AlwaysInline))
             node->setForceInline();
