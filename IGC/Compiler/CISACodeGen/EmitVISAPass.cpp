@@ -2637,6 +2637,9 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
 // Unaligned copy exists for insertValue and extractValue on uniform
 // packed struct. And this function is used to copy a member field of
 // the struct variable.
+// Note:
+//   Dst and Src are assumed to be aligned (it is guaranteed for struct
+//   cvariables) so alignment can be verified by checking Dst_off/Src_off.
 void EmitPass::emitMayUnalignedVectorCopy(
     CVariable* Dst, uint32_t Dst_off,
     CVariable* Src, uint32_t Src_off, Type* Ty)
@@ -2651,12 +2654,12 @@ void EmitPass::emitMayUnalignedVectorCopy(
     uint32_t eltBytes = (uint32_t)m_DL->getTypeStoreSize(eltTy);
     bool D_uniform = Dst->IsUniform();
     const bool S_uniform = Src->IsUniform();
+    VISA_Type visaTy = m_currShader->GetType(Ty);
 
     uint32_t currAlign = (uint32_t)MinAlign(eltBytes, Dst_off);
     currAlign = (uint32_t)MinAlign(currAlign, Src_off);
     if (currAlign >= eltBytes) {
         // aligned copy
-        VISA_Type visaTy = m_currShader->GetType(Ty);
         CVariable* D = m_currShader->GetNewAlias(
             Dst, visaTy, Dst_off, v_nelts * (D_uniform ? 1 : nLanes));
         CVariable* S;
@@ -2692,12 +2695,15 @@ void EmitPass::emitMayUnalignedVectorCopy(
     //     mov (16) r10.1<2>:b r20.0<0;1,0>:b
     //     mov (16) r10.2<2>:b r20.1<0;1,0>:b
     //
-    //     The 'stride' could be 2, 4, or 8. If stride is 8, need to move to
-    //     a uniform temp and then aligned copy to %a to avoid stride=8.
+    //     The 'stride' could be 2, 4, or 8. If it is 8, need a special
+    //     handling (it happens only if Dst is non-uniform and elt size
+    //     is 8 bytes and Src is uniform with byte alignment).
     CVariable* origDst = Dst;
     if (!D_uniform && eltBytes == 8 && (Src_off & 1) == 1) {
+        // If stride is 8, need to move to a uniform temp first and then do
+        // aligned-copy to %a to avoid illegal stride=8.
         CVariable* tVar = m_currShader->GetNewVariable(
-            v_nelts, Src->GetType(), EALIGN_QWORD, true, Src->getName());
+            v_nelts, visaTy, EALIGN_QWORD, true, Src->getName());
         Dst = tVar;
         D_uniform = true;
     }
@@ -2722,8 +2728,8 @@ void EmitPass::emitMayUnalignedVectorCopy(
             uint32_t currAlign = (uint32_t)MinAlign(maxAlign, doff);
             currAlign = (uint32_t)MinAlign(currAlign, soff);
 
-            Type* thisTy = IntegerType::get(Ty->getContext(), currAlign * 8);
-            VISA_Type visaTy = m_currShader->GetType(thisTy);
+            Type* tyi = IntegerType::get(Ty->getContext(), currAlign * 8);
+            VISA_Type visaTyi = m_currShader->GetType(tyi);
 
             uint32_t stride = eltBytes / currAlign;
             IGC_ASSERT((eltBytes % currAlign) == 0);
@@ -2735,15 +2741,15 @@ void EmitPass::emitMayUnalignedVectorCopy(
                 // Get immediate at offset = off, with size = currAlign
                 uint64_t thisImm =
                     ((imm >> (off * 8)) & maskTrailingOnes<uint32_t>(currAlign * 8));
-                Constant* Cint = ConstantInt::get(thisTy, thisImm);
+                Constant* Cint = ConstantInt::get(tyi, thisImm);
                 S = m_currShader->GetScalarConstant(Cint);
             } else {
-                S = m_currShader->GetNewAlias(Src, visaTy, soff, 1);
+                S = m_currShader->GetNewAlias(Src, visaTyi, soff, 1);
             }
             // #elts isn't critical as it extends to the end of Dst anyway for
             // alias, but still make sense to get the correct #elts.
             CVariable* D = m_currShader->GetNewAlias(
-                Dst, visaTy, doff, (D_uniform ? 1 : 1 + (nLanes-1) * stride));
+                Dst, visaTyi, doff, (D_uniform ? 1 : 1 + (nLanes-1) * stride));
 
             m_encoder->SetDstRegion(D_uniform ? 1 : stride);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -2758,7 +2764,10 @@ void EmitPass::emitMayUnalignedVectorCopy(
 
     // If a temp is used, need to copy temp to the original Dst
     if (origDst != Dst) {
-        emitVectorCopy(origDst, Dst, v_nelts);
+        IGC_ASSERT(!origDst->IsUniform());
+        CVariable* D = m_currShader->GetNewAlias(
+            origDst, Dst->GetType(), Dst_off, nLanes*v_nelts);
+        emitVectorCopy(D, Dst, v_nelts);
     }
 }
 

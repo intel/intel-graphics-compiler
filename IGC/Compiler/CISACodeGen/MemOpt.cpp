@@ -3321,6 +3321,7 @@ void LdStCombine::mergeConstElements(
             Constant* C0 = dyn_cast<Constant>(elt0);
             Constant* C1 = dyn_cast<Constant>(elt1);
             if (!C0 || !C1 || (sz0 + sz1) != b) {
+                currOff += sz0;
                 continue;
             }
             IGC_ASSERT_MESSAGE(!C0->getType()->isVectorTy() &&
