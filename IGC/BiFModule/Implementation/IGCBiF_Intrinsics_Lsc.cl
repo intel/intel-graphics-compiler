@@ -287,6 +287,7 @@ void  __builtin_IB_lsc_fence_global_untyped(enum LSC_FS scope, enum LSC_FT flush
 void  __builtin_IB_lsc_fence_global_untyped_cross_tile(enum LSC_FS scope, enum LSC_FT flushType);  // Mem Port - UGML
 void  __builtin_IB_lsc_fence_global_typed(enum LSC_FS scope, enum LSC_FT flushType);     // Mem Port - TGM
 void  __builtin_IB_lsc_fence_local();                                                    // Mem Port - SLM
+void  __builtin_IB_lsc_fence_evict_to_memory();                                          // Mem Port - UGM
 
 ///////////////////////////////////////////////////////////////////////
 // LSC atomics

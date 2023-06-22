@@ -73,6 +73,8 @@ namespace {
         /// LSC Fence intrinsics call method
         Instruction* CreateLSCFenceIntrinsicCallInst();
 
+        Instruction* CreateLSCFenceEvictToMemory();
+
         /// LSC Atomic intrinsics call method
         Instruction* CreateLSCAtomicIntrinsicCallInst(bool isLocalMem);
 
@@ -169,6 +171,7 @@ namespace {
         static const StringRef PREFIX_LSC_LOAD_status;
 
         static const StringRef PREFIX_LSC_FENCE;
+        static const StringRef PREFIX_LSC_FENCE_EVICT_TO_MEMORY;
         static const StringRef PREFIX_LSC_ATOMIC;
         static const StringRef PREFIX_LSC_PREFETCH;
     };
@@ -186,6 +189,7 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_BLOCK_global = "__builtin_IB
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_status = "__builtin_IB_lsc_load_status_global_";
 
 const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE  = "__builtin_IB_lsc_fence_";
+const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE_EVICT_TO_MEMORY = "__builtin_IB_lsc_fence_evict_to_memory";
 const StringRef LSCFuncsResolution::PREFIX_LSC_ATOMIC = "__builtin_IB_lsc_atomic_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_PREFETCH = "__builtin_IB_lsc_prefetch_global_";
 
@@ -287,7 +291,11 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
         lscCall = CreateLSCAtomicIntrinsicCallInst(isLocalMem);
     //////////////
     // misc stuff
-    } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_FENCE)) {
+    } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_FENCE_EVICT_TO_MEMORY)) {
+        // LSC fence
+        lscCall = CreateLSCFenceEvictToMemory();
+    }
+    else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_FENCE)) {
         // LSC fence
         lscCall = CreateLSCFenceIntrinsicCallInst();
     } else {
@@ -437,6 +445,44 @@ Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst() {
     Function *lscFunc = GenISAIntrinsic::getDeclaration(
         m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, None);
     Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+    return lscCall;
+}
+
+// Resolve __builtin_IB_lsc_fence_evict_to_memory() builtin.
+// For XE platforms it is represented by the sequence of
+// evict followed by lush_l3 calls.
+Instruction* LSCFuncsResolution::CreateLSCFenceEvictToMemory()
+{
+    auto context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    if (hasError())
+    {
+        return nullptr;
+    }
+
+    Value* args[3]
+    {
+        getConstantInt32(LSC_UGM), // immediate sfid
+        getConstantInt32(LSC_SCOPE_GPU),  // immediate scope of the fence
+        (context->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE) ?
+            getConstantInt32(LSC_FENCE_OP_NONE) :
+            getConstantInt32(LSC_FENCE_OP_EVICT)   // immediate flush type
+    };
+
+    Function* lscFunc = GenISAIntrinsic::getDeclaration(
+        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, None);
+    Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+
+    if (context->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPG_CORE)
+    {
+        args[2] = getConstantInt32(LSC_FENCE_OP_FLUSHL3);
+
+        lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+    }
+
+    // It does not really matter which lscCall is returned, as
+    // that pointer is used to call ReplaceAllUsesWith,
+    // but these two instructions do not have any users.
     return lscCall;
 }
 
