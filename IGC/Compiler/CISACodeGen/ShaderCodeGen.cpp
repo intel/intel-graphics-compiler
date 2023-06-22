@@ -878,8 +878,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(createVectorBitCastOptPass());
     }
 
-    if (ctx.m_instrTypes.hasUniformAssumptions) {
-        mpm.add(new UniformAssumptions());
+    if (ctx.m_instrTypes.hasUniformAssumptions ||
+        IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler)) {
+        mpm.add(new UniformAssumptions(
+            IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler)));
     }
 
     // NanHandlingPass need to be before Legalization since it might make

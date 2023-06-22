@@ -28,8 +28,9 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
         IGC_INITIALIZE_PASS_END(UniformAssumptions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-        UniformAssumptions::UniformAssumptions() : llvm::FunctionPass(ID)
+    UniformAssumptions::UniformAssumptions(bool ForceUniform) : llvm::FunctionPass(ID)
     {
+        m_forceUniform = ForceUniform;
         initializeUniformAssumptionsPass(*PassRegistry::getPassRegistry());
     }
 
@@ -44,7 +45,9 @@ namespace IGC {
         }
 
         // Propagate assumptions backwards (if safe) to increase the coverage.
-        HoistAssumptions(F);
+        if (!m_forceUniform) {
+            HoistAssumptions(F);
+        }
         // Try optimizing non-uniform resource accesses to uniform (to prevent from adding ResourceLoops)
         OptimizeResourceAccesses(F);
 
@@ -79,7 +82,7 @@ namespace IGC {
                 !m_WIAnalysis->isUniform(pTextureValue))
             {
                 // Check assumptions for texture:
-                if (IsAssumedUniform(pTextureValue))
+                if (m_forceUniform || IsAssumedUniform(pTextureValue))
                 {
                     MakeUniformResourceOperand(pTextureValue, &CI);
                 }
@@ -89,7 +92,7 @@ namespace IGC {
                 !m_WIAnalysis->isUniform(pSamplerValue))
             {
                 // Check assumptions for sampler:
-                if (IsAssumedUniform(pSamplerValue))
+                if (m_forceUniform || IsAssumedUniform(pSamplerValue))
                 {
                     MakeUniformResourceOperand(pSamplerValue, &CI);
                 }

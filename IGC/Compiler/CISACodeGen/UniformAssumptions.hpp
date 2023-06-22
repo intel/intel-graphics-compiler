@@ -22,7 +22,7 @@ namespace IGC {
     public:
         static char ID; // Pass identification
 
-        UniformAssumptions();
+        UniformAssumptions(bool ForceUniform = false);
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
@@ -43,6 +43,7 @@ namespace IGC {
         void CollectAssumptions(llvm::Function& F);
         void OptimizeResourceAccesses(llvm::Function& F);
 
+        bool m_forceUniform;
         bool m_changed = false;
         WIAnalysis* m_WIAnalysis = nullptr;
         CodeGenContext* m_pCodeGenContext = nullptr;

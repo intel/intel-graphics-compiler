@@ -81,6 +81,7 @@ DECLARE_IGC_REGKEY(bool, EnableGatherWithImmPreRA,           false,  "enable gat
 DECLARE_IGC_REGKEY(bool, EnableGatherWithImmPostRA,          false,  "enable gather send with immediate post RA", true)
 DECLARE_IGC_REGKEY(bool, SetA0toTdrForSendc,            false,  "Set A0 to tdr0 before each sendc/sendsc", true)
 DECLARE_IGC_REGKEY(bool, ReplaceIndirectCallWithJmpi,   false,  "Replace indirect call with jmpi instruction (HW WA)", true)
+DECLARE_IGC_REGKEY(bool, ForceUniformSurfaceSampler,    false,  "Force surface and sampler operand to be uniform", false)
 DECLARE_IGC_REGKEY(bool, AssumeUniformIndirectCall,     false,  "Assume indirect call is uniform to avoid looping code", false)
 DECLARE_IGC_REGKEY(bool, EnableHWGenerateThreadID,      true, "Enable new behavior of HW generating threadID for GPGPU pipe. XeHP and non-OCL only.", true)
 DECLARE_IGC_REGKEY(bool, EnableHWGenerateThreadIDForTileY, true, "Enable HW generating threadID for GPGPU pipe for TileY mode. XeHP and non-OCL only.", true)
