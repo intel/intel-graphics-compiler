@@ -143,24 +143,25 @@ define void @replace_store_i64_block_owalign(<16 x i64> addrspace(3)* %pi64, <16
 }
 
 define void @replace_store_i8_block_1023bytes(<1023 x i8> addrspace(3)* %p, <1023 x i8> %val) {
-; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR0:%[0-9a-zA-Z.]+]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR128:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 128
+; CHECK-SLM-BLOCK: [[ADDR0:%[^ ]+]] = lshr i32 %[[BASE:[^,]+]], 4
+; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR0]], <128 x i8>
+; CHECK-SLM-BLOCK: [[ADDR128:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 8
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR128]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR256:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 256
+; CHECK-SLM-BLOCK: [[ADDR256:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 16
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR256]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR384:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 384
+; CHECK-SLM-BLOCK: [[ADDR384:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 24
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR384]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR512:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 512
+; CHECK-SLM-BLOCK: [[ADDR512:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 32
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR512]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR640:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 640
+; CHECK-SLM-BLOCK: [[ADDR640:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 40
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR640]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR768:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 768
+; CHECK-SLM-BLOCK: [[ADDR768:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 48
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v128i8(i32 254, i32 [[ADDR768]], <128 x i8>
-; CHECK-SLM-BLOCK: [[ADDR896:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 896
+; CHECK-SLM-BLOCK: [[ADDR896:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 56
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v64i8(i32 254, i32 [[ADDR896]], <64 x i8>
-; CHECK-SLM-BLOCK: [[ADDR960:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 960
+; CHECK-SLM-BLOCK: [[ADDR960:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 60
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v32i8(i32 254, i32 [[ADDR960]], <32 x i8>
-; CHECK-SLM-BLOCK: [[ADDR992:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 992
+; CHECK-SLM-BLOCK: [[ADDR992:%[0-9a-zA-Z.]+]] = add i32 [[ADDR0]], 62
 ; CHECK-SLM-BLOCK: call void @llvm.genx.oword.st.v16i8(i32 254, i32 [[ADDR992]], <16 x i8>
 ; CHECK-SLM-BLOCK: call void @llvm.genx.scatter.scaled.v15i1.v15i32.v15i32
 ; CHECK-LSC: call void @llvm.genx.lsc.store.slm.v1i1.i32.v64i64(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 4, i8 8, i8 2, i8 0, i32 [[ADDR:%[a-zA-Z0-9.]+]], <64 x i64> %{{[a-zA-Z0-9.]+}}, i32 0)

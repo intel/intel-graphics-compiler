@@ -136,26 +136,27 @@ define void @replace_load_i64_block_owalign(<16 x i64> addrspace(6)* %pi64) {
 }
 
 define void @replace_load_i8_block_1023bytes(<1023 x i8> addrspace(6)* %pi8) {
-  ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR0:[A-Za-z0-9.]+]])
-  ; CHECK: %[[ADDR128:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 128
+  ; CHECK: %[[ADDR0:[^ ]+]] = lshr i32 %[[BASE:[^,]+]], 4
+  ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR0]])
+  ; CHECK: %[[ADDR128:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 8
   ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR128]])
-  ; CHECK: %[[ADDR256:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 256
+  ; CHECK: %[[ADDR256:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 16
   ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR256]])
-  ; CHECK: %[[ADDR384:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 384
+  ; CHECK: %[[ADDR384:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 24
   ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR384]])
-  ; CHECK: %[[ADDR512:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 512
+  ; CHECK: %[[ADDR512:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 32
   ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR512]])
-  ; CHECK: %[[ADDR640:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 640
+  ; CHECK: %[[ADDR640:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 40
   ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR640]])
-  ; CHECK: %[[ADDR768:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 768
+  ; CHECK: %[[ADDR768:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 48
   ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 255, i32 %[[ADDR768]])
-  ; CHECK: %[[ADDR896:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 896
+  ; CHECK: %[[ADDR896:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 56
   ; CHECK: call <64 x i8> @llvm.genx.oword.ld.v64i8(i32 0, i32 255, i32 %[[ADDR896]])
-  ; CHECK: %[[ADDR960:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 960
+  ; CHECK: %[[ADDR960:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 60
   ; CHECK: call <32 x i8> @llvm.genx.oword.ld.v32i8(i32 0, i32 255, i32 %[[ADDR960]])
-  ; CHECK: %[[ADDR992:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 992
+  ; CHECK: %[[ADDR992:[A-Za-z0-9.]+]] = add i32 %[[ADDR0]], 62
   ; CHECK: call <16 x i8> @llvm.genx.oword.ld.v16i8(i32 0, i32 255, i32 %[[ADDR992]])
-  ; CHECK: call <15 x i32> @llvm.genx.gather.scaled.v15i32.v15i1.v15i32(<15 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i32 0, i16 0, i32 255, i32 %[[ADDR0]], <15 x i32> <i32 1008, i32 1009, i32 1010, i32 1011, i32 1012, i32 1013, i32 1014, i32 1015, i32 1016, i32 1017, i32 1018, i32 1019, i32 1020, i32 1021, i32 1022>, <15 x i32> undef)
+  ; CHECK: call <15 x i32> @llvm.genx.gather.scaled.v15i32.v15i1.v15i32(<15 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i32 0, i16 0, i32 255, i32 %[[BASE]], <15 x i32> <i32 1008, i32 1009, i32 1010, i32 1011, i32 1012, i32 1013, i32 1014, i32 1015, i32 1016, i32 1017, i32 1018, i32 1019, i32 1020, i32 1021, i32 1022>, <15 x i32> undef)
 
   ; CHECK-LSC: call <64 x i64> @llvm.genx.lsc.load.merge.bti.v64i64.v1i1.i32(<1 x i1> <i1 true>, i8 0, i8 0, i8 0, i16 1, i32 0, i8 4, i8 8, i8 2, i8 0, i32 [[ADDR:%[0-9a-zA-Z.]+]], i32 255, <64 x i64> undef)
   ; CHECK-LSC: [[ADDR512:%[^ ]+]] = add i32 [[ADDR]], 512

@@ -1789,6 +1789,8 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
                                 : GenXIntrinsic::genx_svm_block_ld)
                        : (IsBTI ? GenXIntrinsic::genx_oword_ld_unaligned
                                 : GenXIntrinsic::genx_svm_block_ld_unaligned);
+    unsigned Shift = IsOWordAligned && IsBTI ? Log2_32(OWordBytes) : 0;
+    auto *Base = Shift == 0 ? Addr : Builder.CreateLShr(Addr, Shift);
 
     for (auto OWords : {8, 4, 2, 1}) {
       auto BlockBytes = OWords * OWordBytes;
@@ -1800,10 +1802,12 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
 
       for (; Rest >= BlockBytes; Rest -= BlockBytes) {
         auto Offset = VSize - Rest;
-        auto *BlockAddr =
-            Offset == 0
-                ? Addr
-                : Builder.CreateAdd(Addr, ConstantInt::get(AddrTy, Offset));
+        auto *BlockAddr = Base;
+        if (Offset != 0) {
+          auto MemOffset = Shift == 0 ? Offset : Offset >> Shift;
+          BlockAddr =
+              Builder.CreateAdd(Base, ConstantInt::get(AddrTy, MemOffset));
+        }
 
         if (IsLoad) {
           auto *Load = createLegacyBlockLoadImpl(Builder, M, LoadIID, BTI,
