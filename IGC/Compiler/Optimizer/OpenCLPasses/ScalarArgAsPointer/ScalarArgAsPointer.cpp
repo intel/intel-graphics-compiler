@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
+#include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -22,6 +23,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
+
+#define DEBUG_TYPE "igc-scalar-arg-as-pointer-analysis"
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-scalar-arg-as-pointer-analysis"
@@ -71,6 +74,9 @@ bool ScalarArgAsPointerAnalysis::analyzeFunction(llvm::Function& F)
     m_visitedInst.clear();
     m_allocas.clear();
 
+    LLVM_DEBUG(
+        dbgs() << "running for function " << F.getName() << "\n");
+
     visit(F);
 
     if (m_matchingArgs.empty())
@@ -101,7 +107,7 @@ void ScalarArgAsPointerAnalysis::analyzePointer(llvm::Value* V)
 
     IGC_ASSERT_MESSAGE(type, "Value should be a pointer");
 
-    if (type->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
+    if (type->getAddressSpace() != ADDRESS_SPACE_GLOBAL && type->getAddressSpace() != ADDRESS_SPACE_GENERIC)
         return;
 
     // If scalar is going to be used as pointer, it has to be an instruction, like casting.
@@ -110,7 +116,18 @@ void ScalarArgAsPointerAnalysis::analyzePointer(llvm::Value* V)
         return;
 
     if (auto args = findArgs(inst))
+    {
+        LLVM_DEBUG(
+            for (auto a : *args)
+            {
+                dbgs() << "  access from pointer ";
+                V->printAsOperand(dbgs(), false);
+                dbgs() << " tracks to argument ";
+                a->printAsOperand(dbgs(), false);
+                dbgs() << "\n";
+            });
         m_matchingArgs.insert(args->begin(), args->end());
+    }
 }
 
 const std::shared_ptr<ScalarArgAsPointerAnalysis::ArgSet>
