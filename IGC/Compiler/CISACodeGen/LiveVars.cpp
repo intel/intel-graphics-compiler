@@ -42,6 +42,7 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 #include <algorithm>
 #include "Probe/Assertion.h"
+#include "helper.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -411,6 +412,9 @@ void LiveVars::initDistance(Function& F)
         unsigned Dist = 0;
         for (auto& II : BB) {
             Instruction* MI = &II;
+            if (isDbgIntrinsic(MI)) {
+                continue;
+            }
             DistanceMap.insert(std::make_pair(MI, Dist++));
         }
     }
