@@ -879,9 +879,12 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
 
     if (ctx.m_instrTypes.hasUniformAssumptions ||
-        IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler)) {
+        IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler) ||
+        IGC_IS_FLAG_ENABLED(ForceUniformBuffer)) {
         mpm.add(new UniformAssumptions(
-            IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler)));
+                        IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler),
+                        IGC_IS_FLAG_ENABLED(ForceUniformBuffer))
+        );
     }
 
     // NanHandlingPass need to be before Legalization since it might make

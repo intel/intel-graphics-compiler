@@ -28,9 +28,10 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
         IGC_INITIALIZE_PASS_END(UniformAssumptions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-    UniformAssumptions::UniformAssumptions(bool ForceUniform) : llvm::FunctionPass(ID)
+    UniformAssumptions::UniformAssumptions(bool ForceUniformTexture, bool ForceUniformBuffer) : llvm::FunctionPass(ID)
     {
-        m_forceUniform = ForceUniform;
+        m_forceUniformTexture = ForceUniformTexture;
+        m_forceUniformBuffer = ForceUniformBuffer;
         initializeUniformAssumptionsPass(*PassRegistry::getPassRegistry());
     }
 
@@ -45,7 +46,7 @@ namespace IGC {
         }
 
         // Propagate assumptions backwards (if safe) to increase the coverage.
-        if (!m_forceUniform) {
+        if (m_pCodeGenContext->m_instrTypes.hasUniformAssumptions) {
             HoistAssumptions(F);
         }
         // Try optimizing non-uniform resource accesses to uniform (to prevent from adding ResourceLoops)
@@ -70,6 +71,20 @@ namespace IGC {
 
         if (llvm::GenIntrinsicInst * pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(&CI))
         {
+            // add a case for buffers
+            if (auto *LI = dyn_cast<LdRawIntrinsic>(pIntr))
+            {
+                llvm::Value *pResourceValue = LI->getResourceValue();
+                if (pResourceValue &&
+                    !m_WIAnalysis->isUniform(pResourceValue))
+                {
+                    // Check assumptions for resource:
+                    if (m_forceUniformBuffer || IsAssumedUniform(pResourceValue))
+                    {
+                        MakeUniformResourceOperand(pResourceValue, &CI);
+                    }
+                }
+            }
             // Figure out the intrinsic operands for texture & sampler
             llvm::Value* pTextureValue = nullptr;
             llvm::Value*pSamplerValue = nullptr;
@@ -82,7 +97,7 @@ namespace IGC {
                 !m_WIAnalysis->isUniform(pTextureValue))
             {
                 // Check assumptions for texture:
-                if (m_forceUniform || IsAssumedUniform(pTextureValue))
+                if (m_forceUniformTexture || IsAssumedUniform(pTextureValue))
                 {
                     MakeUniformResourceOperand(pTextureValue, &CI);
                 }
@@ -92,7 +107,7 @@ namespace IGC {
                 !m_WIAnalysis->isUniform(pSamplerValue))
             {
                 // Check assumptions for sampler:
-                if (m_forceUniform || IsAssumedUniform(pSamplerValue))
+                if (m_forceUniformTexture || IsAssumedUniform(pSamplerValue))
                 {
                     MakeUniformResourceOperand(pSamplerValue, &CI);
                 }
