@@ -10276,6 +10276,7 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
     // Static private mem access is done through the FP
     CVariable* pFP = m_currShader->GetFP();
+#if !defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
     {
         // If we have written the previous FP to the current frame's start, the start of
@@ -10284,6 +10285,7 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
         emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(getFPOffset(), ISA_TYPE_UD));
         pFP = tempFP;
     }
+#endif
     CVariable* pOffset = m_currShader->GetSymbol(GII->getOperand(0));
     emitAddPointer(m_destination, pFP, pOffset);
 }
@@ -18528,8 +18530,10 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
 
+#if !defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     // Allocate 1 extra oword to store previous frame's FP
     pushSize += IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) ? SIZE_OWORD : 0;
+#endif
 
     // Since we use unaligned oword writes, pushSize should be OW aligned address
     pushSize = int_cast<unsigned>(llvm::alignTo(pushSize, SIZE_OWORD));
@@ -18539,6 +18543,7 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
         // Update SP by pushSize
         emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
 
+#if !defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
         if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
         {
             // Store old FP value to current FP
@@ -18577,6 +18582,7 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
                 m_encoder->Push();
             }
         }
+#endif
     }
 }
 
