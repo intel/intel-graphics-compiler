@@ -37,7 +37,11 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <string_view>
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/Path.h>
+#include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 using namespace vISA;
 

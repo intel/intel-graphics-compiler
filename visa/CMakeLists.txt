@@ -149,13 +149,8 @@ if (MSVC)
   bs_set_wdk(CISAScanner_target)
 endif()
 
-# Set up include paths used by all the libraries in this file
-# There is a windows specific include path for GNUTools support that is inside the repository. The
-# equivalent support is already included for Linux so is not required for those platforms
+# Set up include paths used by all the libraries in this file.
 set(Jitter_inc_dirs ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
-if (WIN32)
-  set(Jitter_inc_dirs ${Jitter_inc_dirs} ${GNUTOOLS_DIR}/include)
-endif (WIN32)
 
 if (LINK_AS_STATIC_LIB)
   win_static_runtime()
