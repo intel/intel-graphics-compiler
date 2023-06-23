@@ -852,15 +852,9 @@ int IR_Builder::translateLscTypedInst(
   checkAddrPayloadSize("src0AddrRs", coord2s);
 
   if (opInfo.is(LSC_READ_STATE_INFO)) {
-    // like fences, send requires *something* (at least one reg) to be
-    // sent out; we pick the initial r0 value since it's known to
-    // be floating around somewhere until EOT
-    const RegionDesc *rd = getRegionStride1();
-    G4_Declare *r0 = getBuiltinR0();
-    G4_SrcRegRegion *src0Dummy = createSrc(r0->getRegVar(), 0, 0, rd, Type_UD);
     srcAddrRegs[0] = 1;
     srcAddrRegs[1] = 0;
-    srcAddrs[0] = src0Dummy;
+    srcAddrs[0] = coord0s;
   } else {
     PayloadSource srcAddrPayloads[4]{}; // U, V, R, feature
     unsigned numSrcAddrPayloads = 0;
@@ -886,23 +880,32 @@ int IR_Builder::translateLscTypedInst(
     vISA_ASSERT_INPUT(shape.chmask & 0xF, "empty channel mask");
   } // tgm atomics are single channel
 
-  int addrSizeBits = lscEncodeAddrSize(addrSize, desc, status);
-  int dataSizeBits = lscEncodeDataSize(shape.size, desc, status);
-  (void)addrSizeBits;
+  uint32_t dstRegs = 0;
+  int src1Len = 0;
+  if (opInfo.is(LSC_READ_STATE_INFO)) {
+    // read state info returns 64B of data and takes one input reg
+    // it lacks addrSize and dataSize and other such fields
+    src1Len = 0;
+    dstRegs = 64 / getGRFSize(); // 2 on DG2
+  } else {
+    int dataSizeBits = lscEncodeAddrSize(addrSize, desc, status);
+    (void)lscEncodeDataSize(shape.size, desc, status);
+    auto [dstRegsP,src1LenP] =
+      computeLscTypedDataRegs(
+        *this, opInfo, execSize, dataSizeBits,
+        dstData == nullptr || dstData->isNullReg(), shape.chmask);
+    lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
+    dstRegs = dstRegsP;
+    src1Len = (int)src1LenP;
+  }
 
-  lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
   lscEncodeAddrType(addrModel, desc, status);
-
-  auto [dstRegs,src1Len] =
-    computeLscTypedDataRegs(
-      *this, opInfo, execSize, dataSizeBits,
-      dstData == nullptr || dstData->isNullReg(), shape.chmask);
 
   desc |= (srcAddrRegs[0] & 0xF) << 25; // mlen == Desc[28:25]
   desc |= (dstRegs & 0x1F) << 20; // rlen == Desc[24:20]
 
   G4_SendDescRaw *msgDesc =
-      createLscDesc(SFID::TGM, desc, exDesc, (int)src1Len,
+      createLscDesc(SFID::TGM, desc, exDesc, src1Len,
                     getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
                     surface, LdStAttrs::NONE);
   G4_InstSend *sendInst =

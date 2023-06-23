@@ -4148,7 +4148,7 @@ struct LscInstVerifier {
     unsigned int src1OpIx = currOpIx + 6;
        // check all the Src0Addr fields (U, V, R, LOD)
     if (opInfo.op == LSC_READ_STATE_INFO) {
-      verifyRawOperandNull("Src0Addr_Us", uIx);     // U's
+      verifyRawOperandNonNull("Src0Addr_UVRL", uIx);  // SIMD1 (U, V, R, LOD)
       verifyRawOperandNull("Src0Addr_Vs", vIx);     // V's
       verifyRawOperandNull("Src0Addr_Rs", rIx);     // R's
       verifyRawOperandNull("Src0Addr_LODs", lodIx); // LOD's

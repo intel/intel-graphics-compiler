@@ -1898,13 +1898,14 @@ LscTypedAtomic:
             CISAlineno);
     }
 
-// EXAMPLE:
-//   lsc_read_state_info.tgm  VDATA  bti(0x4)
+// EXAMPLES:
+//   lsc_read_state_info.tgm  VDATA  bti(0x4)[VCOORDS.0]
+//   lsc_read_state_info.tgm  VDATA  bss(...)[VCOORDS.0]
 LscTypedReadStateInfo:
 // 1          2                             3
    Predicate  LSC_READ_STATE_INFO_MNEMONIC  LSC_SFID_TYPED_TOKEN
-// 4              5
-   LscPayloadReg  LscRegAddrModel
+// 4              5               6      7             8
+   LscPayloadReg  LscRegAddrModel LBRACK LscPayloadReg RBRACK
    {
         LSC_CACHE_OPTS caching{LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};
         LSC_DATA_SHAPE dataShape{LSC_DATA_SIZE_32b,LSC_DATA_ORDER_NONTRANSPOSE};
@@ -1921,12 +1922,12 @@ LscTypedReadStateInfo:
             dataShape,         // data type
             $5.surface,        // surface
             $4,                // dst data
-            nullptr,           // src0 addrs u
-            nullptr,           // src0 addrs v
-            nullptr,           // src0 addrs r
-            nullptr,           // src0 addrs lod
-            nullptr,           // src1 data
-            nullptr,           // src2 data
+            $7,                // src0 coords (u, v, r, lod) SIMD1 are packed in
+            nullptr,           // no SIMT coords
+            nullptr,           // no SIMT coords
+            nullptr,           // no SIMT coords
+            nullptr,           // no src1 data
+            nullptr,           // no src2 data
             CISAlineno);
    }
 

@@ -3127,6 +3127,7 @@ private:
     formatSfid(LSC_TGM);
 
     // will be default/default (and thus suppressed)
+    // this consumes the operands
     formatCachingOpts();
 
     // exec size is implicit
@@ -3137,7 +3138,10 @@ private:
     ss << "  ";
     formatRawOperand(currOpIx + 1); // dst
     ss << "  ";
-    formatAddrType(addrType, currOpIx);
+    formatAddrType(addrType, currOpIx); // surface (a0.2)
+    ss << "[";
+    formatRawOperand(currOpIx + 2);
+    ss << "]";
   }
 
 public:
