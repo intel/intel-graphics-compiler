@@ -51,6 +51,12 @@ void G4Verifier::verify() {
   for (auto BBI = kernel.fg.cbegin(), BBE = kernel.fg.cend(); BBI != BBE;
        ++BBI) {
     auto bb = *BBI;
+    if (bb->isSpecialEmptyBB()) {
+      // Special empty bb should have a single label instruction.
+      vISA_ASSERT(bb->size() == 1 && bb->front()->isLabel(),
+                  "illegal special basic block");
+    }
+
     for (auto I = bb->begin(), E = bb->end(); I != E; ++I) {
       G4_INST *inst = *I;
       verifyInst(inst);

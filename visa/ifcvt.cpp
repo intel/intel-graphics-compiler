@@ -394,15 +394,6 @@ class IfConverter {
     return oss.str();
   }
 
-  /// markEmptyBB - Mark the given BB as empty.
-  void markEmptyBB(IR_Builder *IRB, G4_BB *BB) const {
-    vISA_ASSERT(BB->empty(), "BB to be marked empty is not empty!");
-
-    G4_Label *label = IRB->createLocalBlockLabel("LABEL__EMPTYBB");
-    G4_INST *inst = IRB->createLabelInst(label, false);
-    BB->push_back(inst);
-  }
-
   void fullConvert(IfConvertible &);
   void partialConvert(IfConvertible &);
 
@@ -524,7 +515,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
     }
     head->insertBefore(pos, I);
   }
-  markEmptyBB(fg.builder, s0);
+  s0->markEmpty(fg.builder);
   // Merge predicated 'else' into header.
   if (s1) {
     // Reverse the flag controling whether the predicate needs reversing.
@@ -555,7 +546,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
       }
       head->insertBefore(pos, I);
     }
-    markEmptyBB(fg.builder, s1);
+    s1->markEmpty(fg.builder);
   }
 
   // Remove 'if' instruction in head.
@@ -574,7 +565,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
   tail->pop_front();
   // Merge head and tail to get more code scheduling chance.
   head->splice(head->end(), tail);
-  markEmptyBB(fg.builder, tail);
+  tail->markEmpty(fg.builder);
 }
 
 void IfConverter::partialConvert(IfConvertible &IC) {

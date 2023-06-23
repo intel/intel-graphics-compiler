@@ -1415,3 +1415,12 @@ void G4_BB::addSamplerFlushBeforeEOT() {
 bool G4_BB::dominates(G4_BB *other) {
   return getParent().getImmDominator().dominates(this, other);
 }
+
+void G4_BB::markEmpty(IR_Builder *IRB, const std::string str) {
+  vISA_ASSERT(empty(), "BB to be marked empty is not empty!");
+  G4_Label *label =
+      IRB->createLocalBlockLabel(str.empty() ? "LABEL__EMPTYBB" : str);
+  G4_INST *inst = IRB->createLabelInst(label, false);
+  push_back(inst);
+  specialEmptyBB = true;
+}

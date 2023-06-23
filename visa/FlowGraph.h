@@ -603,10 +603,6 @@ private:
   // Use normalized region descriptors for each source operand if possible.
   void normalizeRegionDescriptors();
 
-  // Find the BB that has the given label from the range [StartIter, EndIter).
-  static G4_BB *findLabelBB(BB_LIST_ITER StartIter, BB_LIST_ITER EndIter,
-                            const char *Label);
-
   void decoupleReturnBlock(G4_BB *);
   void decoupleInitBlock(G4_BB *, FuncInfoHashTable &funcInfoTable);
   void DFSTraverse(G4_BB *bb, unsigned &preId, unsigned &postId, FuncInfo *fn);

@@ -502,7 +502,7 @@ G4_BB *LoopDetection::getPreheader(Loop *loop) {
   // a valid pre-header wasnt found, so create one and return it
   // unless any pred uses SIMD CF to loop header
   if (header->getLabel()) {
-    auto headerLblStr = std::string(header->getLabel()->getLabel());
+    auto headerLbl = header->getLabel();
     for (auto pred : headerPreds) {
       if (pred->size() == 0 || loop->contains(pred))
         continue;
@@ -527,9 +527,9 @@ G4_BB *LoopDetection::getPreheader(Loop *loop) {
       if (pred->back()->isCFInst()) {
         auto cfInst = pred->back()->asCFInst();
         // Punt if pred refers to header's label in JIP/UIP field.
-        if (cfInst->getJip() && headerLblStr == cfInst->getJipLabelStr())
+        if (cfInst->getJip() && headerLbl == cfInst->getJip())
           return nullptr;
-        if (cfInst->getUip() && headerLblStr == cfInst->getUipLabelStr())
+        if (cfInst->getUip() && headerLbl == cfInst->getUip())
           return nullptr;
       }
     }

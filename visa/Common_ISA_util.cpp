@@ -1554,12 +1554,6 @@ bool strStartsWith(const std::string &str, const std::string &prefix) {
          0 == str.compare(0, prefix.size(), prefix);
 }
 
-// Return true if 'str' is a visa-generated local label (starts with "_") that
-// ends with 'suffix'.
-bool isLocalLabelEndsWith(const std::string &str, const std::string &suffix) {
-  return str.size() > 0 && str[0] == '_' && strEndsWith(str, suffix);
-}
-
 LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
                                                    bool isLoad) {
   LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};

@@ -94,6 +94,8 @@ class G4_BB {
 
   bool Latency_Sched;
 
+  bool specialEmptyBB;
+
   // the physical pred/succ for this block (i.e., the pred/succ for this
   // block in the BB list).  Note that some transformations may rearrange
   // BB layout, so for safety it's best to recompute this
@@ -201,8 +203,9 @@ public:
   G4_BB(INST_LIST_NODE_ALLOCATOR &alloc, unsigned i, FlowGraph *fg)
       : id(i), preId(0), rpostId(0), traversal(0), calleeInfo(NULL),
         BBType(G4_BB_NONE_TYPE), inNaturalLoop(false), hasSendInBB(false),
-        loopNestLevel(0), scopeID(0), divergent(false), physicalPred(NULL),
-        physicalSucc(NULL), parent(fg), instList(alloc), Latency_Sched(false) {}
+        loopNestLevel(0), scopeID(0), divergent(false), specialEmptyBB(false),
+        physicalPred(NULL), physicalSucc(NULL), parent(fg), instList(alloc),
+        Latency_Sched(false) {}
 
   ~G4_BB() { instList.clear(); }
 
@@ -329,6 +332,13 @@ public:
   void addSamplerFlushBeforeEOT();
 
   bool dominates(G4_BB *other);
+
+  /// Mark this BB as a special empty BB with single label
+  /// instruction. It will not be deleted by optimizations such as
+  /// removeRedundnantLabels and removeEmptyBlocks.
+  void markEmpty(IR_Builder *IRB, const std::string str = "");
+  bool isSpecialEmptyBB() const { return specialEmptyBB; }
+
 }; // class G4_BB
 } // namespace vISA
 

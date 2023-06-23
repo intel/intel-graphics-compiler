@@ -1465,9 +1465,7 @@ void FlowGraph::decoupleReturnBlock(G4_BB *bb) {
   oldRetBB->unsetBBType(G4_BB_RETURN_TYPE);
   newRetBB->setBBType(G4_BB_RETURN_TYPE);
 
-  G4_Label *label = builder->createLocalBlockLabel("LABEL__EMPTYBB");
-  G4_INST *labelInst = createNewLabelInst(label);
-  newRetBB->push_back(labelInst);
+  newRetBB->markEmpty(builder);
 }
 
 // Make sure that a BB is at most one of CALL/RETURN/EXIT/INIT. If any
@@ -1734,11 +1732,6 @@ void FlowGraph::removeRedundantLabels() {
     vISA_ASSERT(bb->size() > 0 && bb->front()->isLabel(),
            "Every BB should at least have a label inst!");
 
-    // Possible kernel's entry, don't delete.
-    if (strcmp(bb->front()->getLabelStr(), "per-thread-prolog") == 0) {
-      continue;
-    }
-
     if (bb->getBBType() & (G4_BB_CALL_TYPE | G4_BB_EXIT_TYPE | G4_BB_INIT_TYPE |
                            G4_BB_RETURN_TYPE)) {
       // Keep those BBs
@@ -1750,11 +1743,7 @@ void FlowGraph::removeRedundantLabels() {
     //
     if (bb->Succs.size() == 1 && bb->size() == 1) {
       G4_INST *removedBlockInst = bb->front();
-      if (removedBlockInst->getLabel()->isFuncLabel() ||
-          isLocalLabelEndsWith(removedBlockInst->getLabelStr(),
-                               "LABEL__EMPTYBB") ||
-          isLocalLabelEndsWith(removedBlockInst->getLabelStr(),
-                               "DUMMY_LAST_BB")) {
+      if (removedBlockInst->getLabel()->isFuncLabel() || bb->isSpecialEmptyBB()) {
         continue;
       }
 
@@ -2019,10 +2008,8 @@ void FlowGraph::removeEmptyBlocks() {
       //
       if (bb->size() > 0 && bb->size() < 3) {
         INST_LIST::iterator removedBlockInst = bb->begin();
-
         if ((*removedBlockInst)->isLabel() == false ||
-            !isLocalLabelEndsWith((*removedBlockInst)->getLabelStr(),
-                                  "LABEL__EMPTYBB")) {
+            !bb->isSpecialEmptyBB()) {
           ++it;
           continue;
         }
@@ -2180,10 +2167,7 @@ void FlowGraph::linkDummyBB() {
   //
   if (nonEotExitBB == 1 && exitBBs.size() > 1) {
     G4_BB *dumBB = createNewBB();
-    vISA_ASSERT(dumBB != NULL, ERROR_FLOWGRAPH);
-    G4_Label *dumLabel = builder->createLocalBlockLabel("DUMMY_LAST_BB");
-    G4_INST *label = createNewLabelInst(dumLabel);
-    dumBB->push_back(label);
+    dumBB->markEmpty(builder, "DUMMY_LAST_BB");
     BBs.push_back(dumBB);
 
     for (G4_BB *bb : exitBBs) {
@@ -2214,20 +2198,18 @@ void FlowGraph::reassignBlockIDs() {
   numBBId = i;
 }
 
-G4_BB *FlowGraph::findLabelBB(BB_LIST_ITER StartIter, BB_LIST_ITER EndIter,
-                              const char *Label) {
+// Find the BB that has the given label from the range [StartIter, EndIter).
+static G4_BB *findLabelBB(BB_LIST_ITER StartIter, BB_LIST_ITER EndIter,
+                          G4_Label *Label) {
   for (BB_LIST_ITER it = StartIter; it != EndIter; ++it) {
     G4_BB *bb = *it;
-    G4_INST *first = bb->empty() ? NULL : bb->front();
-
+    G4_INST *first = bb->empty() ? nullptr : bb->front();
     if (first && first->isLabel()) {
-      const char *currLabel = first->getLabelStr();
-      if (strcmp(Label, currLabel) == 0) {
+      if (Label == first->getLabel())
         return bb;
-      }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 typedef enum {
@@ -2562,8 +2544,8 @@ void FlowGraph::markDivergentBBs() {
       pushJoin(joinBB);
     } else if (lastInst->opcode() == G4_if &&
                (!lastInst->asCFInst()->isUniform() || isBBDivergent)) {
-      G4_Label *labelInst = lastInst->asCFInst()->getUip();
-      G4_BB *joinBB = findLabelBB(IT, BBs.end(), labelInst->getLabel());
+      G4_Label *UIPLabel = lastInst->asCFInst()->getUip();
+      G4_BB *joinBB = findLabelBB(IT, BBs.end(), UIPLabel);
       vISA_ASSERT(joinBB, "ICE(vISA) : missing endif label!");
       pushJoin(joinBB);
     } else if (!IsPreScan && lastInst->opcode() == G4_call) {
@@ -3576,8 +3558,8 @@ void FlowGraph::findNestedDivergentBBs(
         G4_BB *joinBB = BB->Succs.back();
         cfs.pushJoin(joinBB);
       } else if (lastInst->opcode() == G4_if) {
-        G4_Label *labelInst = lastInst->asCFInst()->getUip();
-        G4_BB *joinBB = findLabelBB(IT, IE, labelInst->getLabel());
+        G4_Label *UIPLabel = lastInst->asCFInst()->getUip();
+        G4_BB *joinBB = findLabelBB(IT, IE, UIPLabel);
         vISA_ASSERT(joinBB, "ICE(vISA) : missing endif label!");
         cfs.pushJoin(joinBB);
       } else if (lastInst->opcode() == G4_call) {
