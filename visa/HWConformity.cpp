@@ -9107,7 +9107,8 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
 
   if (needFix) {
     if (inst->getExecSize() == g4::SIMD2 && allDirect &&
-        inst->getNumSrc() != 3) {
+        inst->getNumSrc() != 3 && !inst->getPredicate() &&
+        !inst->getCondModBase()) {
       // just split the inst
       evenlySplitInst(it, bb);
       return;
