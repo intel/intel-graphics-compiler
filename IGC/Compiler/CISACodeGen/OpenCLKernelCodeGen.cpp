@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "common/MDFrameWork.h"
 #include <iStdLib/utility.h>
 #include "Probe/Assertion.h"
+#include <fstream>
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
 
 /***********************************************************************************
@@ -3549,8 +3550,10 @@ namespace IGC
         MetaDataUtils* pMdUtils,
         SIMDMode simdMode)
     {
+        IGC_ASSERT_EXIT(ctx != nullptr && pShader != nullptr && pFunc != nullptr && pMdUtils != nullptr);
+
         CShaderProgram::UPtr pSelectedKernel;
-        switch (NeedsRetry(ctx, pShader, pKernel, pFunc, pMdUtils, simdMode))
+        switch (auto retryType = NeedsRetry(ctx, pShader, pKernel, pFunc, pMdUtils, simdMode))
         {
         case RetryType::NO_Retry_WorseStatelessPrivateMemSize:
         case RetryType::NO_Retry_ExceedScratch:
@@ -3559,6 +3562,48 @@ namespace IGC
             // In case retry compilation give worst generated kernel
             // consider using the previous one do not retry on this
             // kernel again
+
+            if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+            {
+                // Set mark on the version which we pick in shader dumps
+                IGC::Debug::DumpName dumpName =
+                    IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+                    .Type(ctx->type)
+                    .Hash(ctx->hash)
+                    .StagedInfo(ctx);
+
+                std::string shaderName(pShader->entry->getName().str());
+                pShader->getShaderFileName(shaderName);
+
+                dumpName = dumpName.PostFix(shaderName);
+
+                std::ostringstream FullPath(dumpName.str(), std::ostringstream::ate);
+                FullPath << "_previous_kernel_pick.txt";
+
+                std::ofstream OutF(FullPath.str(), std::ofstream::out);
+                std::ostringstream DataToDump("Reason why picked previous: ", std::ostringstream::ate);
+
+                switch (retryType)
+                {
+                case RetryType::NO_Retry_WorseStatelessPrivateMemSize:
+                    DataToDump << "NO_Retry_WorseStatelessPrivateMemSize";
+                    break;
+                case RetryType::NO_Retry_ExceedScratch:
+                    DataToDump << "NO_Retry_ExceedScratch";
+                    break;
+                case RetryType::NO_Retry_Pick_Prv:
+                    DataToDump << "NO_Retry_Pick_Prv";
+                    break;
+                default:
+                    DataToDump << "Unknown";
+                    break;
+                }
+
+                if (OutF)
+                    OutF.write(DataToDump.str().c_str(),
+                        DataToDump.str().length());
+            }
+
             pSelectedKernel =
                 CShaderProgram::UPtr(ctx->m_retryManager.GetPrevious(pKernel.get(), true));
         }
