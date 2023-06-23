@@ -14,13 +14,12 @@ SPDX-License-Identifier: MIT
 namespace vISA {
 class SplitAlignedScalars {
 private:
+  const unsigned int MinOptDist = 200;
   // Constant trip count assume for each loop to estimate dynamic inst
   // count change due to splitting.
   const unsigned int EstimatedLoopTripCount = 4;
-  // Minimum instruction distance required for splitting
-  unsigned int MinOptDist = 0;
   // Threshold percent increase in estimated dynamic inst count allowed
-  float BloatAllowed = 0.0f;
+  const float BloatAllowed = 1.0f / 100.0f;
 
   unsigned int numDclsReplaced = 0;
   unsigned int numMovsAdded = 0;
@@ -66,10 +65,6 @@ private:
 public:
   SplitAlignedScalars(GlobalRA &g, GraphColor &c)
       : gra(g), coloring(c), kernel(g.kernel) {
-    MinOptDist =
-        g.kernel.getOptions()->getuInt32Option(vISA_SplitAlignedScalarMinDist);
-    BloatAllowed = g.kernel.getOptions()->getuInt32Option(
-        vISA_SplitAlignedScalarBloatPPT) / 1000.0f;
     for (auto spill : coloring.getSpilledLiveRanges()) {
       spilledDclSet.insert(spill->getDcl());
     }
