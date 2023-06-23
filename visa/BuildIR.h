@@ -1118,7 +1118,7 @@ public:
       std::string tName = sanitizeLabelString(cstr_kname);
       // cstr_kname is just for readability. If it is too long, don't use it.
       // Also, make sure cstr_kname does not start with "_L_" to make sure it
-      // would never be the same as any internal flag (starts with "_L_").
+      // would never be the same as any internal label (starts with "_L_").
       if (tName.size() != 0 && tName.size() <= 30 && tName.find("_L_") != 0) {
         kname = tName;
       }
