@@ -151,15 +151,14 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                 uint32_t newLdmcsNumOfElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(new_mcs_call->getType())->getNumElements();
 
                 // vec of 16bit ints to vec of 32bit ints
-                Type* newLdmcsVecType = IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), newLdmcsNumOfElements / 2);
-                Value* ldmcsExtendedToInt32 = m_builder->CreateBitCast(new_mcs_call, newLdmcsVecType);
-                uint32_t ldmcsExtendedToInt32NumOfElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(ldmcsExtendedToInt32->getType())->getNumElements();
+                Type* newLdmcsVecType = IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), newLdmcsNumOfElements);
+                Value* ldmcsExtendedToInt32 = m_builder->CreateSExt(new_mcs_call, newLdmcsVecType);
 
                 // if ldmcs has fewer elements than new ldmcs, extend vector
                 Value* ldmcsInt32CorrectlySized;
-                if (ldmcsExtendedToInt32NumOfElements != ldmcsNumOfElements)
+                if (newLdmcsNumOfElements != ldmcsNumOfElements)
                 {
-                    IGC_ASSERT(ldmcsExtendedToInt32NumOfElements * 2 >= ldmcsNumOfElements);
+                    IGC_ASSERT(newLdmcsNumOfElements * 2 >= ldmcsNumOfElements);
                     SmallVector<uint32_t, 4> maskVals;
                     for (uint i = 0; i < ldmcsNumOfElements; i++)
                     {
