@@ -3280,11 +3280,16 @@ void LdStCombine::mergeConstElements(
     //  b = 8 :
     //     no change.
 
+    auto isValidConst = [](Value* v){
+        return isa<ConstantInt>(v) || isa<ConstantFP>(v) ||
+               isa<ConstantPointerNull>(v);
+    };
+
     // Check if it has two consecutive constants, skip if not.
     // This is a quick check to skip for majority of cases.
     bool isCandidate = false;
     for (int i = 0, sz = (int)EltVals.size() - 1; i < sz; ++i) {
-        if (isa<Constant>(EltVals[i]) && isa<Constant>(EltVals[i + 1])) {
+        if (isValidConst(EltVals[i]) && isValidConst(EltVals[i + 1])) {
             isCandidate = true;
             break;
         }
@@ -3320,7 +3325,8 @@ void LdStCombine::mergeConstElements(
             const uint32_t sz1 = (uint32_t)m_DL->getTypeStoreSize(ty1);
             Constant* C0 = dyn_cast<Constant>(elt0);
             Constant* C1 = dyn_cast<Constant>(elt1);
-            if (!C0 || !C1 || (sz0 + sz1) != b) {
+            if (!C0 || !C1 || (sz0 + sz1) != b ||
+                !isValidConst(C0) || !isValidConst(C1)) {
                 currOff += sz0;
                 continue;
             }
@@ -3507,8 +3513,6 @@ Value* LdStCombine::gatherCopy(
             bool isLvl1 = (remainingBytes == DstEltBytes && eBytes == DstEltBytes);
             // true if v is a legal vector at level 2
             bool isLvl2 = (remainingBytes >= (eBytes * n));
-            // v is a simple vector if v is either a constant or
-            // all its components are created by IEI.
             bool isSimpleVec = isSimpleVector(v);
             if (isLvl1 && !isSimpleVec)
             {   // case 1
@@ -3949,7 +3953,9 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
                 }
             }
             else {
-                // C_i is scalar
+                // C_i is scalar of int, fp or null pointer
+                IGC_ASSERT(isa<ConstantInt>(C_i) || isa<ConstantFP>(C_i) ||
+                    isa<ConstantPointerNull>(C_i));
                 uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(ty_i);
                 uint64_t tImm = GetImmediateVal(C_i);
                 tImm &= maxUIntN(nbits);
@@ -3961,7 +3967,7 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
     if (isa<ConstantFP>(C) || isa<ConstantInt>(C)) {
         return GetImmediateVal(C);
     }
-    if (isa<UndefValue>(C)) {
+    if (isa<UndefValue>(C) || isa<ConstantPointerNull>(C)) {
         return 0;
     }
     IGC_ASSERT_MESSAGE(0, "unsupported Constant!");
