@@ -77,7 +77,7 @@ namespace IGC
         /// @param  cs            Constant structure to break up
         /// @param  operandIndex  Index of the constant vector operand in the parent instruction
         /// @param  user          The original user of the expression.
-        void breakConstantStruct(llvm::ConstantStruct* cs, int operandIndex, llvm::Instruction* user);
+        bool breakConstantStruct(llvm::ConstantStruct* cs, int operandIndex, llvm::Instruction* user);
 
         /// @brief  Replaces input constant expression or constant vector with a new instruction.
         /// @param  exprOrVec     Constant vector or expressions to replace.
@@ -85,6 +85,9 @@ namespace IGC
         /// @param  operandIndex  Index of the constant vector operand in the parent instruction
         /// @param  user          The original user of the expression.
         void replaceConstantWith(llvm::Constant* exprOrVec, llvm::Instruction* newInst, int operandIndex, llvm::Instruction* user);
+    private:
+        bool hasConstantExpr(llvm::ConstantVector* cvec) const;
+        bool hasConstantExpr(llvm::ConstantStruct* cstruct) const;
     };
 
 } // namespace IGC
