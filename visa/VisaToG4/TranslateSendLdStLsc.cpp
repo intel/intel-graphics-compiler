@@ -78,7 +78,10 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::ATOMIC_OR;
   case LSC_OP::LSC_FENCE:
     return MsgOp::FENCE;
+  case LSC_OP::LSC_READ_STATE_INFO:
+    return MsgOp::RSI;
   default:
+    vISA_ASSERT_UNREACHABLE("unsupported LSC_OP");
     return MsgOp::INVALID;
   }
 }

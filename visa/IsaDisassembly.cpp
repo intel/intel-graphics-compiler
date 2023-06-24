@@ -3120,7 +3120,8 @@ private:
     }
   } // formatTyped
 
-  // e.g. lsc_read_state_info.tgm  VDATA  bti(0x4)
+  // e.g. lsc_read_state_info.tgm  VDATA  bti(0x4)[COORD]
+  // see formatTyped for the parameter order
   void formatTypedRSI() {
     ss << opInfo.mnemonic;
 
@@ -3135,12 +3136,16 @@ private:
     (void)getNextEnumU8<LSC_ADDR_SIZE>();
     (void)getNextDataShape();
 
+    int addrSurfIx = currOpIx + 0;
+    int dstIx = currOpIx + 1;
+    int src0Ix = currOpIx + 2;
+
     ss << "  ";
-    formatRawOperand(currOpIx + 1); // dst
+    formatRawOperand(dstIx); // dst
     ss << "  ";
-    formatAddrType(addrType, currOpIx); // surface (a0.2)
+    formatAddrType(addrType, addrSurfIx); // surface (a0.2)
     ss << "[";
-    formatRawOperand(currOpIx + 2);
+    formatRawOperand(src0Ix);
     ss << "]";
   }
 

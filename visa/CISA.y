@@ -220,6 +220,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
     } lsc_addr_operand;
     struct {
         VISA_opnd               *surface;
+        int                      surfaceIndex;
         // for UNTYPED
         //  simple:  regs[0] = reg addr
         //  strided: regs[0] = base; regs[1] = strided
@@ -228,7 +229,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
         // for TYPED: {U, V, R, sample index/LOD}
         // for TYPED block2d: regs = {BlockStartX, BlockStartY}
         VISA_opnd               *regs[6];
-        int                     immOffsets[2];
+        int                      immOffsets[2];
         LSC_ADDR                 addr;
     } lsc_block2d_addr_operand;
     LSC_ADDR_SIZE              lsc_addr_size;
@@ -1907,9 +1908,9 @@ LscTypedReadStateInfo:
 // 4              5               6      7             8
    LscPayloadReg  LscRegAddrModel LBRACK LscPayloadReg RBRACK
    {
-        LSC_CACHE_OPTS caching{LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};
-        LSC_DATA_SHAPE dataShape{LSC_DATA_SIZE_32b,LSC_DATA_ORDER_NONTRANSPOSE};
-        dataShape.elems = LSC_DATA_ELEMS_1;
+        LSC_CACHE_OPTS caching {LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};
+        LSC_DATA_SHAPE dataShape {LSC_DATA_SIZE_32b,LSC_DATA_ORDER_TRANSPOSE};
+        dataShape.elems = LSC_DATA_ELEMS_16;
         pBuilder->CISA_create_lsc_typed_inst(
             $1,              // predicate
             $2,              // subop
@@ -1992,7 +1993,7 @@ LscUntypedBlock2dAddrOperand:
 //      16
         RBRACK
     {
-        $$ = {nullptr,{$3,$5,$7,$9,$11,$14},{(int)$12, (int)$15},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
+        $$ = {nullptr,0,{$3,$5,$7,$9,$11,$14},{(int)$12, (int)$15},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
     }
     |
 //  1            2
@@ -2012,7 +2013,7 @@ LscUntypedBlock2dAddrOperand:
 //      14
         RBRACK
     {
-        $$ = {nullptr,{$3,$5,$7,$9,$11,$13},{0, 0},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
+        $$ = {nullptr,0,{$3,$5,$7,$9,$11,$13},{0, 0},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
     }
 LscTypedOneAddrOperand:
 // just U
