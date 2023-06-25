@@ -7943,10 +7943,13 @@ LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
-    int surfaceIndex, VISA_RawOpnd *dstData, VISA_RawOpnd *coord0s,
-    int coord0Offset, VISA_RawOpnd *coord1s, int coord1Offset,
-    VISA_RawOpnd *coord2s, int coord2Offset, VISA_RawOpnd *features,
+    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape,
+    VISA_VectorOpnd *surface, int surfaceIndex,
+    VISA_RawOpnd *dstData,
+    VISA_RawOpnd *coord0s, int coord0Offset,
+    VISA_RawOpnd *coord1s, int coord1Offset,
+    VISA_RawOpnd *coord2s, int coord2Offset,
+    VISA_RawOpnd *features,
     VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
 
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
