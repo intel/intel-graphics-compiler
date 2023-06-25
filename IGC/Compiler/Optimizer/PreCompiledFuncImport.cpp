@@ -941,7 +941,8 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                  isDPCallFunc))
             {
                 Func->addFnAttr(llvm::Attribute::NoInline);
-                if (isDPCallFunc && emuFC == FLAG_FCALL_FORCE_STACKCALL)
+                if (isDPCallFunc &&
+                    (emuFC == FLAG_FCALL_DEFAULT || emuFC == FLAG_FCALL_FORCE_STACKCALL))
                 {
                     Func->addFnAttr("visaStackCall");
                 }
