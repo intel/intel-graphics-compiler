@@ -18352,17 +18352,20 @@ void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nE
         return true;
     };
 
+    // True, allow simd32/simd16; otherwise, no simd32/simd16.
+    const bool allowLargerSIMDSize = false;
+
     // Start with the max execution size that is legal for the vector element
     // and is no greater than the current simdsize.
     uint32_t maxNumElts = (2 * getGRFSize()) / Dst->GetElemSize();
     uint32_t maxSimd = std::min(width, (uint32_t)PowerOf2Floor(maxNumElts));
-    if (maxSimd == 32 && IGC_IS_FLAG_ENABLED(EnableTestVecCopy)) {
+    if (maxSimd == 32 && allowLargerSIMDSize) {
         while (partialCopy(SIMDMode::SIMD32))
             ;
         partialCopy(SIMDMode::SIMD16);
         partialCopy(SIMDMode::SIMD8);
     }
-    else if (maxSimd == 16 && IGC_IS_FLAG_ENABLED(EnableTestVecCopy)) {
+    else if (maxSimd == 16 && allowLargerSIMDSize) {
         while (partialCopy(SIMDMode::SIMD16))
             ;
         partialCopy(SIMDMode::SIMD8);

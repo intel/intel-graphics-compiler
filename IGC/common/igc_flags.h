@@ -394,7 +394,6 @@ DECLARE_IGC_REGKEY(bool, PrintDebugSettings,            false, "Prints all non-d
 DECLARE_IGC_REGKEY(bool, UseMTInLLD,                    false, "Use multi-threading when linking multiple elf files", true)
 DECLARE_IGC_REGKEY(bool, NoCatchAllDebugLine,           false, "Don't emit special placeholder instruction to map VISA orphan instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableTestSplitI64,            false, "Test legalization that split i64 store unnecessarily, to be deleted once test is done[temp]", true)
-DECLARE_IGC_REGKEY(bool, EnableTestVecCopy,             true,  "Test uniform vector copy that starts from simd32, to be deleted once test is done[temp]", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpTranslationOnly,     false, "Dump LLVM IR right after translation from SPIRV to stderr and ignore all passes", false)
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicate,             false, "Use VMask as predicate for subspan usage", false)
 DECLARE_IGC_REGKEY(DWORD, VMaskPredDebug,               2,     "Debug only; 0 - No VMaskPred; 1 - createVMaskPred; 2 - createVMaskPred and UseVMaskPred", false)
