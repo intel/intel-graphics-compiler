@@ -30,7 +30,7 @@
 @sycl_multi_ptr_comparison_op-ExtSLM = external addrspace(3) global [0 x i8]
 
 ; Function Attrs: convergent nounwind
-define spir_kernel void @sycl_multi_ptr_comparison_op(%half_impl addrspace(3)*, %half_impl addrspace(1)* readonly, %sycl_V1*, %mptr_nullptr_result addrspace(1)*, %sycl_V1*, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i64 %const_reg_qword, i64 %const_reg_qword1, i32 %bufferOffset, i32 %bufferOffset2) {
+define spir_kernel void @sycl_multi_ptr_comparison_op(%half_impl addrspace(3)*, %half_impl addrspace(1)* readonly, %sycl_V1*, %mptr_nullptr_result addrspace(1)*, %sycl_V1*, i64 %const_reg_qword, i64 %const_reg_qword1) {
   %6 = ptrtoint %mptr_nullptr_result addrspace(1)* %3 to i64
   %7 = shl i64 %const_reg_qword1, 2
   %8 = add i64 %7, %6
