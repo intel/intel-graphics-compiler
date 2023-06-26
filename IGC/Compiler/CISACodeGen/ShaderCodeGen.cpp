@@ -217,13 +217,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 
 
 
-    // To simplify compiler going forward, skip memopt2 for 3D compute on DG2+
-    // TODO/FIXME: should be removed completely because it is redundant.
-    if (IGC_IS_FLAG_DISABLED(DisableMemOpt2) &&
-        ctx.m_DriverInfo.WAEnableMemOpt2ForOCL() &&
-        !isOptDisabled)
+    if (!isOptDisabled && IGC_IS_FLAG_DISABLED(DisableMemOpt2))
     {
-        mpm.add(createMemOpt2Pass(16));
+        if (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())
+            mpm.add(createMemOpt2Pass(16));
     }
 
     // only limited code-sinking to several shader-type

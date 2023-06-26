@@ -10,9 +10,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include <llvm/ADT/DenseSet.h>
-#include <llvm/Analysis/BasicAliasAnalysis.h>
-#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
@@ -20,195 +17,89 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "Compiler/CISACodeGen/MemOpt2.h"
 
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 
-namespace {
+bool MemInstCluster::isDefinedBefore(BasicBlock *BB, Instruction *I, Instruction *Pos) const {
+        // Shortcut
+    if (I == Pos)
+        return true;
 
-    class MemOpt2 : public FunctionPass {
-        const DataLayout* DL;
-        AliasAnalysis* AA;
+    auto BI = BB->begin();
+    for (; &*BI != I && &*BI != Pos; ++BI)
+        /*EMPTY*/;
 
-        unsigned MaxLiveOutThreshold = 16;
-
-        DenseSet<Instruction*> Scheduled;
-
-    public:
-        static char ID;
-
-        MemOpt2(int MLT = -1) : FunctionPass(ID), DL(nullptr), AA(nullptr) {
-            initializeMemOpt2Pass(*PassRegistry::getPassRegistry());
-            if (unsigned T = IGC_GET_FLAG_VALUE(MaxLiveOutThreshold)) {
-                MaxLiveOutThreshold = T;
-            }
-            else if (MLT != -1) {
-                MaxLiveOutThreshold = unsigned(MLT);
-            }
-        }
-
-        bool runOnFunction(Function& F) override;
-
-        bool doFinalization(Module& F) override
-        {
-            Clear();
-            return false;
-        }
-
-    private:
-        void getAnalysisUsage(AnalysisUsage& AU) const override {
-            AU.setPreservesCFG();
-            AU.addRequired<AAResultsWrapperPass>();
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
-
-        bool clusterSampler(BasicBlock* BB);
-
-        bool clusterMediaBlockRead(BasicBlock* BB);
-
-        bool isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVectorImpl<Instruction*>* CheckList) const;
-
-        bool clusterLoad(BasicBlock* BB);
-        bool isDefinedBefore(BasicBlock* BB, Instruction* I, Instruction* Pos) const {
-            // Shortcut
-            if (I == Pos)
-                return true;
-
-            auto BI = BB->begin();
-            for (; &*BI != I && &*BI != Pos; ++BI)
-                /*EMPTY*/;
-
-            return &*BI == I;
-        }
-        bool isSafeToScheduleLoad(const LoadInst* LD,
-            const SmallVectorImpl<Instruction*>* CheckList) const;
-        bool schedule(
-            BasicBlock* BB, Value* V, Instruction*& InsertPos,
-            const SmallVectorImpl<Instruction*>* CheckList = nullptr);
-
-        MemoryLocation getLocation(Instruction* I) const {
-            if (LoadInst * LD = dyn_cast<LoadInst>(I))
-                return MemoryLocation::get(LD);
-            if (StoreInst * ST = dyn_cast<StoreInst>(I))
-                return MemoryLocation::get(ST);
-            return MemoryLocation();
-        }
-
-        unsigned getNumLiveOuts(Instruction* I) const {
-            Type* Ty = I->getType();
-            if (Ty->isVoidTy())
-                return 0;
-            // Don't understand non-single-value type.
-            if (!Ty->isSingleValueType())
-                return UINT_MAX;
-            // Simply return 1 so far for scalar types.
-            IGCLLVM::FixedVectorType* VecTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
-            if (!VecTy)
-                return 1;
-            // Check how that vector is used.
-            unsigned UseCount = 0;
-            for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
-                Instruction* UseI = dyn_cast<Instruction>(*UI);
-                if (!UseI || isInstructionTriviallyDead(UseI))
-                    continue;
-                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(UseI);
-                if (!EEI)
-                    return int_cast<unsigned>(VecTy->getNumElements());
-                Value* Idx = EEI->getIndexOperand();
-                if (!isa<Constant>(Idx))
-                    return int_cast<unsigned>(VecTy->getNumElements());
-                ++UseCount;
-            }
-            return UseCount;
-        }
-
-        unsigned getNumLiveOutBytes(Instruction* I) const {
-            Type* Ty = I->getType();
-            if (Ty->isVoidTy())
-                return 0;
-            // Don't understand non-single-value type.
-            if (!Ty->isSingleValueType())
-                return UINT_MAX;
-            unsigned EltByte = (Ty->getScalarSizeInBits() + 7) / 8;
-            // Simply return 1 so far for scalar types.
-            IGCLLVM::FixedVectorType* VecTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
-            if (!VecTy)
-                return EltByte;
-            // Check how that vector is used.
-            unsigned UseCount = 0;
-            for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
-                Instruction* UseI = dyn_cast<Instruction>(*UI);
-                if (!UseI || isInstructionTriviallyDead(UseI))
-                    continue;
-                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(UseI);
-                if (!EEI)
-                    return unsigned(VecTy->getNumElements()) * EltByte;
-                Value* Idx = EEI->getIndexOperand();
-                if (!isa<Constant>(Idx))
-                    return unsigned(VecTy->getNumElements()) * EltByte;
-                ++UseCount;
-            }
-            return UseCount * EltByte;
-        }
-
-        unsigned getMaxLiveOutThreshold() const {
-            static unsigned MaxLiveOutThreshold = IGC_GET_FLAG_VALUE(MaxLiveOutThreshold) ? IGC_GET_FLAG_VALUE(MaxLiveOutThreshold) : 4;
-            return MaxLiveOutThreshold;
-        }
-
-        void Clear()
-        {
-            Scheduled.clear();
-        }
-    };
-
-    char MemOpt2::ID = 0;
-
-} // End anonymous namespace;
-
-FunctionPass* createMemOpt2Pass(int MLT) {
-    return new MemOpt2(MLT);
+    return &*BI == I;
 }
 
-#define PASS_FLAG     "igc-memopt2"
-#define PASS_DESC     "IGC Memory Optimization, the 2nd"
-#define PASS_CFG_ONLY false
-#define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(RegisterPressureEstimate)
-IGC_INITIALIZE_PASS_END(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+unsigned MemInstCluster::getNumLiveOuts(Instruction *I) const {
+    Type *Ty = I->getType();
+    if (Ty->isVoidTy())
+        return 0;
+    // Don't understand non-single-value type.
+    if (!Ty->isSingleValueType())
+        return UINT_MAX;
+    // Simply return 1 so far for scalar types.
+    IGCLLVM::FixedVectorType *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    if (!VecTy)
+        return 1;
+    // Check how that vector is used.
+    unsigned UseCount = 0;
+    for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
+        Instruction *UseI = dyn_cast<Instruction>(*UI);
+        if (!UseI || isInstructionTriviallyDead(UseI))
+            continue;
+        ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(UseI);
+        if (!EEI)
+            return int_cast<unsigned>(VecTy->getNumElements());
+        Value *Idx = EEI->getIndexOperand();
+        if (!isa<Constant>(Idx))
+            return int_cast<unsigned>(VecTy->getNumElements());
+        ++UseCount;
+    }
+    return UseCount;
+}
 
-bool MemOpt2::runOnFunction(Function& F) {
-    // Skip non-kernel function.
-    MetaDataUtils* MDU = nullptr;
-    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto FII = MDU->findFunctionsInfoItem(&F);
-    if (FII == MDU->end_FunctionsInfo())
-        return false;
+unsigned MemInstCluster::getNumLiveOutBytes(Instruction *I) const {
+    Type *Ty = I->getType();
+    if (Ty->isVoidTy())
+        return 0;
+    // Don't understand non-single-value type.
+    if (!Ty->isSingleValueType())
+        return UINT_MAX;
+    unsigned EltByte = (Ty->getScalarSizeInBits() + 7) / 8;
+    // Simply return 1 so far for scalar types.
+    IGCLLVM::FixedVectorType *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    if (!VecTy)
+        return EltByte;
+    // Check how that vector is used.
+    unsigned UseCount = 0;
+    for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
+        Instruction *UseI = dyn_cast<Instruction>(*UI);
+        if (!UseI || isInstructionTriviallyDead(UseI))
+            continue;
+        ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(UseI);
+        if (!EEI)
+            return unsigned(VecTy->getNumElements()) * EltByte;
+        Value *Idx = EEI->getIndexOperand();
+        if (!isa<Constant>(Idx))
+            return unsigned(VecTy->getNumElements()) * EltByte;
+        ++UseCount;
+    }
+    return UseCount * EltByte;
+}
 
-    if (F.hasFnAttribute(llvm::Attribute::OptimizeNone))
-        return false;
-
-    IGC::CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    DL = &F.getParent()->getDataLayout();
-    AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-
+bool MemInstCluster::run(Function& F) {
     bool Changed = false;
     for (auto& BB : F) {
         bool LocalChanged = false;
         // Clear bookkeeping.
-        Clear();
+        Scheduled.clear();
 
-        if (cgCtx->m_DriverInfo.enableSampleClustering())
+        if (CTX->m_DriverInfo.enableSampleClustering())
         {
             // Cluster samplers.
             LocalChanged = clusterSampler(&BB);
@@ -220,15 +111,16 @@ bool MemOpt2::runOnFunction(Function& F) {
         // Cluster memory loads.
         // TODO: Revise that later
         // considering sampler and load together.
-        if (!LocalChanged && cgCtx->type == ShaderType::OPENCL_SHADER)
+        if (!LocalChanged && CTX->type == ShaderType::OPENCL_SHADER)
             Changed |= clusterLoad(&BB);
         Changed |= LocalChanged;
     }
+    Scheduled.clear();
 
     return Changed;
 }
 
-bool MemOpt2::isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVectorImpl<Instruction*>* CheckList) const {
+bool MemInstCluster::isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVectorImpl<Instruction*>* CheckList) const {
     // TODO: So far, we simply don't allow rescheduling load/atomic operations.
     // Add alias analysis to allow memory operations to be rescheduled.
     if (auto LD = dyn_cast<LoadInst>(I)) {
@@ -262,7 +154,7 @@ bool MemOpt2::isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVector
     return true;
 }
 
-bool MemOpt2::clusterSampler(BasicBlock* BB) {
+bool MemInstCluster::clusterSampler(BasicBlock* BB) {
     const unsigned CLUSTER_SAMPLER_THRESHOLD = 5;
 
     bool Changed = false;
@@ -303,14 +195,13 @@ bool MemOpt2::clusterSampler(BasicBlock* BB) {
             break;
         }
     }
-
     return Changed;
 }
 
 //
 // Congregate MediaBlockRead instrs to hide latency.
 //
-bool MemOpt2::clusterMediaBlockRead(BasicBlock* BB) {
+bool MemInstCluster::clusterMediaBlockRead(BasicBlock* BB) {
     bool Changed = false;
 
     Instruction* InsertPos = nullptr;
@@ -340,7 +231,7 @@ bool MemOpt2::clusterMediaBlockRead(BasicBlock* BB) {
     return Changed;
 }
 
-bool MemOpt2::clusterLoad(BasicBlock* BB) {
+bool MemInstCluster::clusterLoad(BasicBlock* BB) {
     bool Changed = false;
 
     Instruction* InsertPos = nullptr;
@@ -387,7 +278,7 @@ bool MemOpt2::clusterLoad(BasicBlock* BB) {
     return Changed;
 }
 
-bool MemOpt2::isSafeToScheduleLoad(const LoadInst* LD,
+bool MemInstCluster::isSafeToScheduleLoad(const LoadInst* LD,
     const SmallVectorImpl<Instruction*>* CheckList) const {
     MemoryLocation A = MemoryLocation::get(LD);
 
@@ -404,7 +295,7 @@ bool MemOpt2::isSafeToScheduleLoad(const LoadInst* LD,
     return true;
 }
 
-bool MemOpt2::schedule(BasicBlock* BB, Value* V, Instruction*& InsertPos,
+bool MemInstCluster::schedule(BasicBlock* BB, Value* V, Instruction*& InsertPos,
     const SmallVectorImpl<Instruction*>* CheckList) {
     Instruction* I = dyn_cast<Instruction>(V);
     if (!I)
@@ -446,4 +337,70 @@ bool MemOpt2::schedule(BasicBlock* BB, Value* V, Instruction*& InsertPos,
 
     InsertPos = I;
     return true;
+}
+
+namespace {
+
+class MemOpt2 : public FunctionPass {
+
+  public:
+    static char ID;
+
+    MemOpt2(int MLT = -1) : FunctionPass(ID) {
+        initializeMemOpt2Pass(*PassRegistry::getPassRegistry());
+        if (unsigned T = IGC_GET_FLAG_VALUE(MaxLiveOutThreshold)) {
+            MaxLiveOutThreshold = T;
+        } else if (MLT != -1) {
+            MaxLiveOutThreshold = unsigned(MLT);
+        }
+    }
+
+    bool runOnFunction(Function &F) override;
+
+  private:
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+        AU.setPreservesCFG();
+        AU.addRequired<AAResultsWrapperPass>();
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
+    }
+    MemInstCluster Cluster;
+    unsigned MaxLiveOutThreshold = 16;
+};
+
+char MemOpt2::ID = 0;
+
+} // namespace
+
+FunctionPass *createMemOpt2Pass(int MLT) { return new MemOpt2(MLT); }
+
+#define PASS_FLAG "igc-memopt2"
+#define PASS_DESC "IGC Memory Optimization, the 2nd"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,
+                          PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_END(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,
+                        PASS_ANALYSIS)
+
+bool MemOpt2::runOnFunction(Function &F) {
+    // Skip non-kernel function.
+    MetaDataUtils *MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto FII = MDU->findFunctionsInfoItem(&F);
+    if (FII == MDU->end_FunctionsInfo())
+        return false;
+
+    if (F.hasFnAttribute(llvm::Attribute::OptimizeNone))
+        return false;
+
+    IGC::CodeGenContext *cgCtx =
+        getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto DL = &F.getParent()->getDataLayout();
+    auto AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+
+    Cluster.init(cgCtx, DL, AA, MaxLiveOutThreshold);
+    return Cluster.run(F);
 }

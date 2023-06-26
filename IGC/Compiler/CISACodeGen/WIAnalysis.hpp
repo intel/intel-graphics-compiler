@@ -31,13 +31,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
 
-
-#ifdef OCL_SPECIFIC
-#include "RuntimeServices.h"
-#include "SoaAllocaAnalysis.h"
-#include "Logger.h"
-#endif
-
 #include <vector>
 #include <common/Types.hpp>
 

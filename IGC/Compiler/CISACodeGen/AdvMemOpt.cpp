@@ -39,7 +39,6 @@ namespace {
         DominatorTree* DT;
         LoopInfo* LI;
         PostDominatorTree* PDT;
-        ScalarEvolution* SE;
         WIAnalysis* WI;
 
     public:
@@ -63,7 +62,6 @@ namespace {
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<LoopInfoWrapperPass>();
             AU.addRequired<PostDominatorTreeWrapperPass>();
-            AU.addRequired<ScalarEvolutionWrapperPass>();
         }
 
         bool collectOperandInst(SmallPtrSetImpl<Instruction*>&,
@@ -115,7 +113,6 @@ bool AdvMemOpt::runOnFunction(Function& F) {
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
     WI = &getAnalysis<WIAnalysis>();
 
     SmallVector<Loop*, 8> InnermostLoops;
