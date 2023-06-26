@@ -83,7 +83,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
@@ -1429,13 +1428,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                     {
                         mpm.add(createSROAPass());
                     }
-                }
-
-                if (pContext->type == ShaderType::OPENCL_SHADER &&
-                    pContext->m_retryManager.IsFirstTry())
-                {
-                    mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
-                            pContext->m_retryManager.AllowLICM()));
                 }
             }
 
