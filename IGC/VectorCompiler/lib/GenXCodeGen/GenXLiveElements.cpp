@@ -72,25 +72,21 @@ void LiveElements::dump(raw_ostream &OS) const {
   OS << '{' << join(LiveElemsStr, ", ") << '}';
 }
 
-// isRootInst : check if instruction should be the start point for backward
-// propagation (i.e. always live)
-static bool isRootInst(const Instruction *I) {
-  return I->isTerminator() || I->mayHaveSideEffects() ||
-         isa<DbgInfoIntrinsic>(I);
+LiveElements LiveElementsAnalysis::getLiveElements(const Value *V) const {
+  if (auto It = LiveMap.find(V); It != LiveMap.end())
+    return It->second;
+  return LiveElements(V->getType());
 }
 
-// isElementWise : check if instruction does operation independently for each
-// element
-static bool isElementWise(const Instruction *I) {
-  return isa<UnaryOperator>(I) || isa<BinaryOperator>(I) || isa<PHINode>(I) ||
-         isa<CmpInst>(I) || isa<SelectInst>(I) || isa<CastInst>(I) ||
-         GenXIntrinsicInfo(vc::getAnyIntrinsicID(I)).isElementWise();
+LiveElements LiveElementsAnalysis::getLiveElements(const Use *U) const {
+  auto Inst = cast<Instruction>(U->getUser());
+  return getOperandLiveElements(Inst, U->getOperandNo(), getLiveElements(Inst));
 }
 
 // getBitCastLiveElements : propagation function for bitcast - scaling of
 // destination bitmask to source size
-static LiveElements getBitCastLiveElements(const BitCastInst *BCI,
-                                           const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getBitCastLiveElements(
+    const BitCastInst *BCI, const LiveElements &InstLiveElems) const {
   IGC_ASSERT(InstLiveElems.size() == 1);
 
   auto &DstLiveBits = InstLiveElems[0];
@@ -119,9 +115,9 @@ static LiveElements getBitCastLiveElements(const BitCastInst *BCI,
 }
 
 // getExtractValueLiveElements : propagation function for extractvalue
-static LiveElements
-getExtractValueLiveElements(const ExtractValueInst *EVI, unsigned OperandNo,
-                            const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getExtractValueLiveElements(
+    const ExtractValueInst *EVI, unsigned OperandNo,
+    const LiveElements &InstLiveElems) const {
   auto OpTy = EVI->getOperand(OperandNo)->getType();
   if (OperandNo != 0)
     return LiveElements(OpTy, true);
@@ -138,9 +134,9 @@ getExtractValueLiveElements(const ExtractValueInst *EVI, unsigned OperandNo,
 }
 
 // getInsertValueLiveElements : propagation function for insertvalue
-static LiveElements
-getInsertValueLiveElements(const InsertValueInst *IVI, unsigned OperandNo,
-                           const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getInsertValueLiveElements(
+    const InsertValueInst *IVI, unsigned OperandNo,
+    const LiveElements &InstLiveElems) const {
   auto OpTy = IVI->getOperand(OperandNo)->getType();
   if (OperandNo != 0 && OperandNo != 1)
     return LiveElements(OpTy, true);
@@ -162,9 +158,9 @@ getInsertValueLiveElements(const InsertValueInst *IVI, unsigned OperandNo,
 }
 
 // getRdRegionLiveElements : propagation function of rdregion/rdpredregion
-static LiveElements getRdRegionLiveElements(const Instruction *RdR,
-                                            unsigned OperandNo,
-                                            const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getRdRegionLiveElements(
+    const Instruction *RdR, unsigned OperandNo,
+    const LiveElements &InstLiveElems) const {
   auto OpTy = RdR->getOperand(OperandNo)->getType();
   if (OperandNo != OldValueOperandNum)
     return LiveElements(OpTy, true);
@@ -191,9 +187,9 @@ static LiveElements getRdRegionLiveElements(const Instruction *RdR,
 }
 
 // getWrRegionLiveElements : propagation function of wrregion/wrpredregion
-static LiveElements getWrRegionLiveElements(const Instruction *WrR,
-                                            unsigned OperandNo,
-                                            const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getWrRegionLiveElements(
+    const Instruction *WrR, unsigned OperandNo,
+    const LiveElements &InstLiveElems) const {
   auto OpTy = WrR->getOperand(OperandNo)->getType();
   if (OperandNo != OldValueOperandNum && OperandNo != NewValueOperandNum &&
       !(OperandNo == PredicateOperandNum && OpTy->isVectorTy()))
@@ -234,19 +230,27 @@ static LiveElements getWrRegionLiveElements(const Instruction *WrR,
 
 // getTwoDstInstInstLiveElements : propagation function for intrinsics with
 // two destinations (addc, subb)
-static LiveElements
-getTwoDstInstLiveElements(const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getTwoDstInstLiveElements(
+    const LiveElements &InstLiveElems) const {
   IGC_ASSERT(InstLiveElems.size() == 2);
   IGC_ASSERT(InstLiveElems[0].size() == InstLiveElems[1].size());
   return LiveElements(InstLiveElems[0] | InstLiveElems[1]);
 }
 
+// isElementWise : check if instruction does operation independently for each
+// element
+static bool isElementWise(const Instruction *I) {
+  return isa<UnaryOperator>(I) || isa<BinaryOperator>(I) || isa<PHINode>(I) ||
+         isa<CmpInst>(I) || isa<SelectInst>(I) || isa<CastInst>(I) ||
+         GenXIntrinsicInfo(vc::getAnyIntrinsicID(I)).isElementWise();
+}
+
 // getOperandLiveElements : propagation function for instruction operand.
 // Calculates what elements inside operand are required to correctly produce
 // instruction result with live elements InstLiveElems
-static LiveElements getOperandLiveElements(const Instruction *Inst,
-                                           unsigned OperandNo,
-                                           const LiveElements &InstLiveElems) {
+LiveElements LiveElementsAnalysis::getOperandLiveElements(
+    const Instruction *Inst, unsigned OperandNo,
+    const LiveElements &InstLiveElems) const {
   IGC_ASSERT(OperandNo < Inst->getNumOperands());
   auto OpTy = Inst->getOperand(OperandNo)->getType();
 
@@ -262,22 +266,37 @@ static LiveElements getOperandLiveElements(const Instruction *Inst,
   if (auto IVI = dyn_cast<InsertValueInst>(Inst))
     return getInsertValueLiveElements(IVI, OperandNo, InstLiveElems);
 
-  if (GenXIntrinsic::isRdRegion(Inst) ||
-      vc::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_rdpredregion)
+  auto ID = vc::getAnyIntrinsicID(Inst);
+  if (GenXIntrinsic::isRdRegion(Inst) || ID == GenXIntrinsic::genx_rdpredregion)
     return getRdRegionLiveElements(Inst, OperandNo, InstLiveElems);
 
-  if (GenXIntrinsic::isWrRegion(Inst) ||
-      vc::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_wrpredregion)
+  if (GenXIntrinsic::isWrRegion(Inst) || ID == GenXIntrinsic::genx_wrpredregion)
     return getWrRegionLiveElements(Inst, OperandNo, InstLiveElems);
 
-  if (auto ID = vc::getAnyIntrinsicID(Inst);
-      ID == GenXIntrinsic::genx_addc || ID == GenXIntrinsic::genx_subb)
+  if (ID == GenXIntrinsic::genx_addc || ID == GenXIntrinsic::genx_subb)
     return getTwoDstInstLiveElements(InstLiveElems);
 
   if (isElementWise(Inst))
     return InstLiveElems;
 
   return LiveElements(OpTy, true);
+}
+
+// isRootInst : check if instruction should be the start point for backward
+// propagation (i.e. always live)
+static bool isRootInst(const Instruction *I) {
+  if (I->isTerminator() || I->mayHaveSideEffects() || isa<DbgInfoIntrinsic>(I))
+    return true;
+
+  // Even if the whole region is overwritten by a chain of wrregions, wrregions
+  // to predefined register must not be optimized as they are extremely
+  // specific.
+  if (GenXIntrinsic::isWrRegion(I) &&
+      GenXIntrinsic::isReadPredefReg(
+          I->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum)))
+    return true;
+
+  return false;
 }
 
 void LiveElementsAnalysis::processFunction(const Function &F) {
@@ -287,7 +306,7 @@ void LiveElementsAnalysis::processFunction(const Function &F) {
 
   for (auto &I : instructions(F))
     if (isRootInst(&I)) {
-      LLVM_DEBUG(dbgs() << "Adding\n" << I << "\n");
+      LLVM_DEBUG(dbgs() << "Adding:\n" << I << "\n");
       LiveMap.insert({&I, LiveElements(I.getType(), true)});
       Worklist.insert(&I);
     }
@@ -296,7 +315,7 @@ void LiveElementsAnalysis::processFunction(const Function &F) {
     auto Inst = Worklist.pop_back_val();
     IGC_ASSERT(LiveMap.count(Inst));
     auto InstLiveElems = LiveMap[Inst];
-    LLVM_DEBUG(dbgs() << "Visiting\n" << *Inst << " " << InstLiveElems << "\n");
+    LLVM_DEBUG(dbgs() << "Visiting:\n" << *Inst << " " << InstLiveElems << "\n");
     // Estimate each operand
     for (auto &Op : Inst->operands()) {
       if (!isa<Instruction>(Op) && !isa<Argument>(Op))
