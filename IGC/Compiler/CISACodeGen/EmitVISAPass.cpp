@@ -11271,7 +11271,6 @@ void EmitPass::emitStoreRawIndexed(
             varOffset,
             immOffset,
             pValToStore,
-            inst->getParent(),
             cacheOpts,
             inst->getAlignment(),
             false);
@@ -11456,7 +11455,6 @@ void EmitPass::emitStore(
             varOffset,
             immOffset,
             inst->getValueOperand(),
-            inst->getParent(),
             cacheOpts,
             IGCLLVM::getAlignmentValue(inst),
             inst->getMetadata("enable.vmask"));
@@ -18186,8 +18184,7 @@ void EmitPass::emitLSCVectorStore_uniform(
 void EmitPass::emitLSCVectorStore(
     Value* Ptr,
     Value* varOffset, ConstantInt* immOffset,
-    Value* storedVal, BasicBlock* BB,
-    LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDmask)
+    Value* storedVal, LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDmask)
 {
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     Type* Ty = storedVal->getType();
@@ -18195,7 +18192,7 @@ void EmitPass::emitLSCVectorStore(
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
-
+    CVariable* storedVar = GetSymbol(storedVal);
     unsigned int width = numLanes(m_currShader->m_SIMDSize);
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
@@ -18226,28 +18223,6 @@ void EmitPass::emitLSCVectorStore(
 
     // when true, one simd instance is generated only!
     bool isOCLUniform = isUniformStoreOCL(varOffset, storedVal);
-
-    CVariable* storedVar;
-
-    // If constant vector is stored and there is already var instance for it
-    // try reusing it (if it was defined in the same basic block)
-    // or create a new var instance and make it available for reusing in further stores
-    Constant* constantStoredVal = dyn_cast<Constant>(storedVal);
-    ConstVectorStoreData* constVectorData = nullptr;
-    if (constantStoredVal && constantStoredVal->getType()->isVectorTy())
-    {
-        if (!m_constantVectorStores.count(constantStoredVal) ||
-            !(m_constantVectorStores[constantStoredVal].BB == BB))
-        {
-            m_constantVectorStores[constantStoredVal] = {GetSymbol(storedVal), nullptr, BB};
-        }
-        constVectorData = &m_constantVectorStores[constantStoredVal];
-        storedVar = constVectorData->var;
-    }
-    else
-    {
-        storedVar = GetSymbol(storedVal);
-    }
 
     // In case eOffset isn't GRF aligned, need to create a copy
     // For non-uniform variable, it should be already GRF-aligned.
@@ -18285,18 +18260,7 @@ void EmitPass::emitLSCVectorStore(
     VecMessInfo.getLSCInfo(Ty, align, m_currShader->GetContext(), useA32, false);
 
     eOffset = BroadcastIfUniform(eOffset);
-
-    // try reusing the old broadcasted data as well
-    if (constVectorData)
-    {
-        storedVar = constVectorData->broadcastedVar ?
-            constVectorData->broadcastedVar : BroadcastIfUniform(storedVar);
-        constVectorData->broadcastedVar = storedVar;
-    }
-    else
-    {
-        storedVar = BroadcastIfUniform(storedVar);
-    }
+    storedVar = BroadcastIfUniform(storedVar);
 
     ResourceLoop(resource, [&](CVariable* flag) {
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
