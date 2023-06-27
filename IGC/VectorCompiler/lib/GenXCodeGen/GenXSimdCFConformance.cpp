@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -710,7 +710,7 @@ void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
     Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
     for (unsigned Width = 1; Width <= 32; Width <<= 1) {
       Type *Tys[] = {EMTy, IGCLLVM::FixedVectorType::get(I1Ty, Width)};
-      auto GotoJoinFunc = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+      auto *GotoJoinFunc = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
       for (auto ui = GotoJoinFunc->use_begin(), ue = GotoJoinFunc->use_end();
           ui != ue; ++ui) {
         auto GotoJoin = dyn_cast<CallInst>(ui->getUser());
@@ -726,6 +726,8 @@ void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
         if (IncludeIncoming && !isa<Constant>(GotoJoin->getOperand(0)))
           EMVals.insert(SimpleValue(GotoJoin->getOperand(0), 0));
       }
+      if (GotoJoinFunc->use_empty())
+        GotoJoinFunc->eraseFromParent();
     }
   }
 }
@@ -741,7 +743,7 @@ void GenXSimdCFConformance::gatherEMVals()
   Type *I1Ty = Type::getInt1Ty(M->getContext());
   Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
   Type *Tys[] = { EMTy };
-  auto SavemaskFunc = GenXIntrinsic::getGenXDeclaration(
+  auto *SavemaskFunc = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_simdcf_savemask, Tys);
   for (auto ui = SavemaskFunc->use_begin(), ue = SavemaskFunc->use_end(); ui != ue;
        ++ui) {
@@ -756,8 +758,10 @@ void GenXSimdCFConformance::gatherEMVals()
     if (!isa<Constant>(Savemask->getOperand(0)))
       EMVals.insert(SimpleValue(Savemask->getOperand(0), 0));
   }
+  if (SavemaskFunc->use_empty())
+    SavemaskFunc->eraseFromParent();
 
-  auto UnmaskFunc = GenXIntrinsic::getGenXDeclaration(
+  auto *UnmaskFunc = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_simdcf_unmask, Tys);
   for (auto ui = UnmaskFunc->use_begin(), ue = UnmaskFunc->use_end(); ui != ue;
        ++ui) {
@@ -771,7 +775,10 @@ void GenXSimdCFConformance::gatherEMVals()
     // We have a unmask (in our function group in the case of the late
     EMVals.insert(SimpleValue(Unmask));
   }
-  auto RemaskFunc = GenXIntrinsic::getGenXDeclaration(
+  if (UnmaskFunc->use_empty())
+    UnmaskFunc->eraseFromParent();
+
+  auto *RemaskFunc = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_simdcf_remask, Tys);
   for (auto ui = RemaskFunc->use_begin(), ue = RemaskFunc->use_end(); ui != ue;
        ++ui) {
@@ -789,23 +796,32 @@ void GenXSimdCFConformance::gatherEMVals()
     if (!isa<Constant>(Remask->getOperand(0)))
       EMVals.insert(SimpleValue(Remask->getOperand(0)));
   }
+  if (RemaskFunc->use_empty())
+    RemaskFunc->eraseFromParent();
+
   // delete useless cm_unmask_begin and cm_unmask_end
-  auto UnmaskEF = GenXIntrinsic::getGenXDeclaration(
-         M, GenXIntrinsic::genx_unmask_end);
+  auto *UnmaskEF =
+      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_unmask_end);
   for (auto ui = UnmaskEF->use_begin(), ue = UnmaskEF->use_end(); ui != ue;) {
     auto u = ui->getUser();
     ++ui;
     if (auto UnmaskEnd = dyn_cast<CallInst>(u))
       UnmaskEnd->eraseFromParent();
   }
-  auto UnmaskBF = GenXIntrinsic::getGenXDeclaration(
-    M, GenXIntrinsic::genx_unmask_begin);
+  if (UnmaskEF->use_empty())
+    UnmaskEF->eraseFromParent();
+
+  auto *UnmaskBF =
+      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_unmask_begin);
   for (auto ui = UnmaskBF->use_begin(), ue = UnmaskBF->use_end(); ui != ue;) {
     auto u = ui->getUser();
     ++ui;
     if (auto UnmaskBeg = dyn_cast<CallInst>(u))
       UnmaskBeg->eraseFromParent();
   }
+  if (UnmaskBF->use_empty())
+    UnmaskBF->eraseFromParent();
+
   // Find related phi nodes and values related by insertvalue/extractvalue/call
   // using EMVal as a worklist.
   for (unsigned i = 0; i != EMVals.size(); ++i) {
@@ -869,7 +885,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
       (Cat == vc::RegCategory::EM || Cat == vc::RegCategory::Predicate),
       "Handling only EM and Cond!");
 
-  LLVM_DEBUG(dbgs() << "Entering " << Loc->getName() << "\n");
+  LLVM_DEBUG(dbgs() << "findGotoJoinVal: Entering " << Loc->getName() << "\n");
 
   // Check if value was found before
   auto ResIt = foundVals.find(Loc);
@@ -878,12 +894,12 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
 
   DominatorTree *DomTree = getDomTree(Loc->getParent());
   if (DomTree->dominates(TrueEdge, Loc)) {
-    LLVM_DEBUG(dbgs() << "Dominated by True Edge\n");
+    LLVM_DEBUG(dbgs() << "findGotoJoinVal: Dominated by True Edge\n");
     foundVals[Loc] = TrueVal;;
     return TrueVal;
   }
   if (DomTree->dominates(FalseEdge, Loc)) {
-    LLVM_DEBUG(dbgs() << "Dominated by False Edge\n");
+    LLVM_DEBUG(dbgs() << "findGotoJoinVal: Dominated by False Edge\n");
     foundVals[Loc] = FalseVal;
     return FalseVal;
   }
@@ -918,11 +934,11 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
       // true branch.
       if (Pred->getTerminator()->getSuccessor(0) == PhiLoc) {
         Val = TrueVal;
-        LLVM_DEBUG(dbgs() << "Usual case\n");
+        LLVM_DEBUG(dbgs() << "findGotoJoinVal: Usual case\n");
       } else {
         // This situation shouldn't happen, but if so, we can handle it
         Val = FalseVal;
-        LLVM_DEBUG(dbgs() << "Strange case\n");
+        LLVM_DEBUG(dbgs() << "findGotoJoinVal: Strange case\n");
       }
     } else {
       Val = findGotoJoinVal(Cat, Pred, GotoJoinEV, TrueEdge, FalseEdge, TrueVal, FalseVal, foundVals);
@@ -931,7 +947,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
     PHI->addIncoming(Val, Pred);
   }
 
-  LLVM_DEBUG(dbgs() << "Built PHI for EV:" << *PHI << "\n");
+  LLVM_DEBUG(dbgs() << "findGotoJoinVal: Built PHI for EV:" << *PHI << "\n");
   return PHI;
 }
 
@@ -952,11 +968,13 @@ void GenXSimdCFConformance::collectCondEVUsers(ExtractValueInst *CondEV, std::ve
     // If cond EV is used by wrong branch, we can simply consider
     // it as non-baled conditional branch
     if (!Br || Br->getParent() != CondEV->getParent()) {
-      LLVM_DEBUG(dbgs() << "Found bad CondEV user:\n" << *ui->getUser() << "\n");
+      LLVM_DEBUG(dbgs() << "collectCondEVUsers: Found bad CondEV user:\n"
+                        << *ui->getUser() << "\n");
       BadUsers.push_back(ui->getUser());
     } else if (Br) {
       IGC_ASSERT_MESSAGE(!CorrectUser, "Found another correct user!");
-      LLVM_DEBUG(dbgs() << "Found correct user:\n" << *Br << "\n");
+      LLVM_DEBUG(dbgs() << "collectCondEVUsers: Found correct user:\n"
+                        << *Br << "\n");
       CorrectUser = Br;
     }
   }
@@ -1801,12 +1819,13 @@ void GenXSimdCFConformance::ensureConformance()
     auto IID = GenXIntrinsic::getGenXIntrinsicID(i->getValue());
     if (IID != GenXIntrinsic::genx_simdcf_join &&
         IID != GenXIntrinsic::genx_simdcf_unmask &&
-        IID != GenXIntrinsic::genx_simdcf_remask)
+        IID != GenXIntrinsic::genx_simdcf_remask) {
       EMValsStack.insert(*i);
-    if (auto *Inst = dyn_cast<Instruction>(i->getValue())) {
-      auto FuncName = Inst->getFunction()->getName();
-      LLVM_DEBUG(dbgs() << "Entry EMVals " << FuncName << " - ";
-                 i->getValue()->dump());
+      LLVM_DEBUG(if (auto *Inst = dyn_cast<Instruction>(i->getValue())) {
+        auto FuncName = Inst->getFunction()->getName();
+        dbgs() << "Entry EMVals " << FuncName << " - ";
+        i->getValue()->dump();
+      });
     }
   }
   for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
@@ -1854,6 +1873,16 @@ void GenXSimdCFConformance::ensureConformance()
     // been identified in the early pass, unless passes in between have
     // transformed the code in an unexpected way that has made the simd CF
     // non-conformant. Give an error here if this has happened.
+    if (!GotosToLower.empty()) {
+      dbgs() << "Not empty GotosToLower:";
+      for (auto *Dump : GotosToLower)
+        Dump->dump();
+    }
+    if (!JoinsToLower.empty()) {
+      dbgs() << "Not empty JoinsToLower:";
+      for (auto *Dump : JoinsToLower)
+        Dump->dump();
+    }
     IGC_ASSERT_EXIT_MESSAGE(GotosToLower.empty(),
       "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
     IGC_ASSERT_EXIT_MESSAGE(JoinsToLower.empty(),
@@ -2016,6 +2045,8 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs()
       ToDelete.push_back(GetEM);
     }
   }
+  if (GetEMDecl->use_empty())
+    GetEMDecl->eraseFromParent();
 
   for (auto *Inst : ToDelete) {
     Inst->eraseFromParent();
@@ -2065,7 +2096,8 @@ void GenXSimdCFConformance::lowerAllSimdCF()
  */
 bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
 {
-  LLVM_DEBUG(dbgs() << "checkEMVal " << *EMVal.getValue() << "#" << EMVal.getIndex() << "\n");
+  LLVM_DEBUG(dbgs() << "checkEMVal: " << *EMVal.getValue() << "#"
+                    << EMVal.getIndex() << "\n");
   if (!EnableGenXGotoJoin)
     return false; // use of goto/join disabled
   SmallVector<SimpleValue, 8> ConnectedVals;
@@ -2075,7 +2107,7 @@ bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
   if (!getConnectedVals(EMVal, vc::RegCategory::EM, /*IncludeOptional=*/true,
                         /*OkJoin=*/nullptr, &ConnectedVals,
                         /*LowerBadUsers=*/!FG)) {
-    LLVM_DEBUG(dbgs() << "invalid def or uses\n");
+    LLVM_DEBUG(dbgs() << "checkEMVal: invalid def or uses\n");
     return false; // something invalid about the EM value itself
   }
   // Check that all connected values are EM values.
@@ -2083,13 +2115,17 @@ bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
     SimpleValue ConnectedVal = *i;
     if (auto C = dyn_cast<Constant>(ConnectedVal.getValue())) {
       if (!C->isAllOnesValue()) {
-        LLVM_DEBUG(dbgs() << "ConnectedVal is constant that is not all ones\n");
+        LLVM_DEBUG(
+            dbgs()
+            << "checkEMVal: ConnectedVal is constant that is not all ones\n");
         return false; // uses constant that is not all ones, invalid
       }
     } else if (!EMVals.count(ConnectedVal)) {
-      LLVM_DEBUG(dbgs() << "ConnectedVal is not in EMVals\n");
+      LLVM_DEBUG(dbgs() << "checkEMVal: ConnectedVal is not in EMVals\n");
       return false; // connected value is not in EMVals
     }
+    LLVM_DEBUG(dbgs() << "checkEMVal: ConnectedVal checked "
+                      << *ConnectedVal.getValue() << "\n");
   }
   switch (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue())) {
     case GenXIntrinsic::genx_simdcf_goto:
@@ -2158,7 +2194,7 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
   // have ensured this, unless the code was such that it could not.
   auto Join = cast<CallInst>(EMVal.getValue());
   if (!GotoJoin::isValidJoin(Join)) {
-    LLVM_DEBUG(dbgs() << "not valid join\n");
+    LLVM_DEBUG(dbgs() << "checkJoin: not valid join\n");
     return false;
   }
   // If the !any result of this join is used in a conditional branch at the
@@ -2176,7 +2212,8 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
   // Gather the web of RM values.
   auto RMValsEntry = &RMVals[Join];
   RMValsEntry->clear();
-  LLVM_DEBUG(dbgs() << "gather web of RM vals for " << *Join << "\n");
+  LLVM_DEBUG(dbgs() << "checkJoin: gather web of RM vals for " << *Join
+                    << "\n");
   if (!isa<Constant>(Join->getOperand(1)))
     RMValsEntry->insert(Join->getOperand(1));
   for (unsigned rvi = 0; rvi != RMValsEntry->size(); ++rvi) {
@@ -2187,12 +2224,13 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
     bool Ok = getConnectedVals(RM, vc::RegCategory::RM,
                                /*IncludeOptional=*/false, Join, &ConnectedVals);
     LLVM_DEBUG(
-      dbgs() << "getConnectedVals: " << RM.getValue()->getName() << "#" << RM.getIndex() << "\n";
-      for (auto i = ConnectedVals.begin(), e = ConnectedVals.end(); i != e; ++i)
-        dbgs() << "   " << i->getValue()->getName() << "#" << i->getIndex() << "\n"
-    );
+        dbgs() << "checkJoin: getConnectedVals-> " << RM.getValue()->getName()
+               << "#" << RM.getIndex() << "\n";
+        for (auto i = ConnectedVals.begin(), e = ConnectedVals.end(); i != e;
+             ++i) dbgs()
+        << "   " << i->getValue()->getName() << "#" << i->getIndex() << "\n";);
     if (!Ok) {
-      LLVM_DEBUG(dbgs() << "illegal RM value in web\n");
+      LLVM_DEBUG(dbgs() << "checkJoin: illegal RM value in web\n");
       return false;
     }
     for (auto j = ConnectedVals.begin(), je = ConnectedVals.end();
@@ -2201,21 +2239,23 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
       if (auto C = dyn_cast<Constant>(ConnectedVal.getValue())) {
         // A constant in the RM web must be all zeros.
         if (!C->isNullValue()) {
-          LLVM_DEBUG(dbgs() << "non-0 constant in RM web\n");
+          LLVM_DEBUG(dbgs() << "checkJoin: non-0 constant in RM web\n");
           return false;
         }
       } else {
         // Insert the non-constant value.  If it is a goto with struct index
         // other than 1, it is illegal.
         if (RMValsEntry->insert(ConnectedVal)) {
-          LLVM_DEBUG(dbgs() << "New one: " << ConnectedVal.getValue()->getName() << "#" << ConnectedVal.getIndex() << "\n");
+          LLVM_DEBUG(dbgs() << "checkJoin: New one: "
+                            << ConnectedVal.getValue()->getName() << "#"
+                            << ConnectedVal.getIndex() << "\n");
           switch (GenXIntrinsic::getGenXIntrinsicID(ConnectedVal.getValue())) {
             case GenXIntrinsic::genx_simdcf_join:
-              LLVM_DEBUG(dbgs() << "multiple joins in RM web\n");
+              LLVM_DEBUG(dbgs() << "checkJoin: multiple joins in RM web\n");
               return false;
             case GenXIntrinsic::genx_simdcf_goto:
               if (ConnectedVal.getIndex() != 1/* struct index of RM result */) {
-                LLVM_DEBUG(dbgs() << "wrong struct index in goto\n");
+                LLVM_DEBUG(dbgs() << "checkJoin: wrong struct index in goto\n");
                 return false;
               }
               break;
@@ -2230,7 +2270,7 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
   SetVector<Value *> BadDefs;
   checkInterference(RMValsEntry, &BadDefs, Join);
   if (!BadDefs.empty()) {
-    LLVM_DEBUG(dbgs() << "RMs interfere\n");
+    LLVM_DEBUG(dbgs() << "checkJoin: RMs interfere\n");
     return false;
   }
   // Set GotoJoinMap for each goto in the RM web.
@@ -2274,19 +2314,22 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
     if (auto EV = dyn_cast<ExtractValueInst>(ui->getUser()))
       if (!isa<VectorType>(EV->getType()) && EV->hasNUsesOrMore(1)) {
         if (ExtractScalar) {
-          LLVM_DEBUG(dbgs() << "goto/join has more than one extract of its !any result\n");
+          LLVM_DEBUG(dbgs() << "checkGotoJoin: goto/join has more than one "
+                               "extract of its !any result\n");
           return false;
         }
         ExtractScalar = EV;
       }
   if (ExtractScalar) {
     if (!ExtractScalar->hasOneUse()) {
-      LLVM_DEBUG(dbgs() << "goto/join's !any result does not have exactly one use\n");
+      LLVM_DEBUG(dbgs() << "checkGotoJoin: goto/join's !any result does not "
+                           "have exactly one use\n");
       return false;
     }
     auto Br = dyn_cast<BranchInst>(ExtractScalar->use_begin()->getUser());
     if (!Br || Br->getParent() != CI->getParent()) {
-      LLVM_DEBUG(dbgs() << "goto/join's !any result not used in conditional branch in same block\n");
+      LLVM_DEBUG(dbgs() << "checkGotoJoin: goto/join's !any result not used in "
+                           "conditional branch in same block\n");
       return false;
     }
     // For a goto/join with a conditional branch, check that the "true"
@@ -2300,12 +2343,16 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
       // splitter block in between.
       TrueSucc = getEmptyCriticalEdgeSplitterSuccessor(TrueSucc);
       if (!TrueSucc) {
-        LLVM_DEBUG(dbgs() << "goto/join true successor not join label\n");
+        LLVM_DEBUG(
+            dbgs()
+            << "checkGotoJoin: goto/join true successor not join label\n");
         return false; // Not empty critical edge splitter
       }
       if (GenXIntrinsic::getGenXIntrinsicID(TrueSucc->getFirstNonPHIOrDbg())
           != GenXIntrinsic::genx_simdcf_join) {
-        LLVM_DEBUG(dbgs() << "goto/join true successor not join label\n");
+        LLVM_DEBUG(
+            dbgs()
+            << "checkGotoJoin: goto/join true successor not join label\n");
         return false; // Successor is not join label
       }
     }
@@ -2321,11 +2368,7 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
  */
 void GenXSimdCFConformance::removeBadEMVal(SimpleValue EMVal)
 {
-  LLVM_DEBUG(
-    dbgs() << "removeBadEMVal ";
-    EMVal.print(dbgs());
-    dbgs() << "\n"
-  );
+  LLVM_DEBUG(dbgs() << "removeBadEMVal: "; EMVal.print(dbgs()); dbgs() << "\n");
   // Remove the EM value.
   if (!EMVals.remove(EMVal))
     return; // was not in EMVals
@@ -2646,9 +2689,12 @@ bool GenXSimdCFConformance::getConnectedVals(
     return false; // unexpected instruction as def
   // Check the uses.
   std::vector<SimpleValue> UsersToLower;
+  LLVM_DEBUG(dbgs() << "getConnectedVals: get all uses for " << *Val.getValue()
+                    << "\n");
   for (auto ui = Val.getValue()->use_begin(),
       ue = Val.getValue()->use_end(); ui != ue; ++ui) {
     auto User = cast<Instruction>(ui->getUser());
+    LLVM_DEBUG(dbgs() << "getConnectedVals: -> geted " << *User << "\n");
     if (auto Phi = dyn_cast<PHINode>(User)) {
       // Use in phi node. Add the phi result.
       ConnectedVals->push_back(SimpleValue(Phi, Val.getIndex()));
@@ -2703,6 +2749,8 @@ bool GenXSimdCFConformance::getConnectedVals(
           // no arg of the right type found
           Lower = true;
           UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+          LLVM_DEBUG(dbgs() << "getConnectedVals: ai == ae push_back " << *User
+                            << " No=" << ui->getOperandNo() << "\n");
           break;
         }
         auto Arg = &*ai;
@@ -2722,13 +2770,18 @@ bool GenXSimdCFConformance::getConnectedVals(
     }
     if (isa<SelectInst>(User)) {
       // A use in a select is allowed only for EM used as the condition.
-      if (Cat != vc::RegCategory::EM || ui->getOperandNo() != 0)
+      if (Cat != vc::RegCategory::EM || ui->getOperandNo() != 0) {
         UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+        LLVM_DEBUG(dbgs() << "getConnectedVals: cat push_back " << *User
+                          << " No=" << ui->getOperandNo() << "\n");
+      }
       continue;
     }
     if (auto SVI = dyn_cast<ShuffleVectorInst>(User)) {
       if (!ShuffleVectorAnalyzer(SVI).isReplicatedSlice()) {
         UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+        LLVM_DEBUG(dbgs() << "getConnectedVals: shuffle push_back " << *User
+                          << " No=" << ui->getOperandNo() << "\n");
         continue;
       }
       // This is a shufflevector that is a replicated slice, so it can be
@@ -2738,6 +2791,8 @@ bool GenXSimdCFConformance::getConnectedVals(
       // are select or wrregion.
       if (!checkAllUsesAreSelectOrWrRegion(SVI)) {
         UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+        LLVM_DEBUG(dbgs() << "getConnectedVals: all uses push_back " << *User
+                          << " No=" << ui->getOperandNo() << "\n");
         continue;
       }
       // Shufflevector produces EM for value baled inst, so this is a (almost) real EM def:
@@ -2746,18 +2801,23 @@ bool GenXSimdCFConformance::getConnectedVals(
       continue;
     }
     if (auto CI = dyn_cast<CallInst>(User)) {
+      LLVM_DEBUG(dbgs() << "getConnectedVals: CallInst income\n"
+                        << *CI << "\n");
       switch (vc::getAnyIntrinsicID(CI)) {
         case GenXIntrinsic::genx_simdcf_get_em:
+          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_get_em\n");
           IGC_ASSERT(Cat == vc::RegCategory::EM);
           // Skip it if the category is right. This
           // intrinsic doesn't produce EM
           break;
         case GenXIntrinsic::genx_simdcf_unmask:
         case GenXIntrinsic::genx_simdcf_remask:
+          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_**mask\n");
           IGC_ASSERT(Cat == vc::RegCategory::EM);
           ConnectedVals->push_back(SimpleValue(CI, 0));
           break;
         case GenXIntrinsic::genx_simdcf_goto:
+          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_goto\n");
           // use in goto: valid only if arg 0 (EM) or 1 (RM)
           if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
             return false;
@@ -2765,6 +2825,7 @@ bool GenXSimdCFConformance::getConnectedVals(
           ConnectedVals->push_back(SimpleValue(CI, ui->getOperandNo()));
           break;
         case GenXIntrinsic::genx_simdcf_join:
+          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_join\n");
           // use in join: valid only if arg 0 (EM) or 1 (RM)
           if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
             return false;
@@ -2774,7 +2835,8 @@ bool GenXSimdCFConformance::getConnectedVals(
           else if (OkJoin && OkJoin != CI) {
             // RM value used in a join other than OkJoin. That is illegal, as we
             // can only have one join per RM web.
-            LLVM_DEBUG(dbgs() << "getConnectedVals: found illegal join: " << CI->getName() << "\n");
+            LLVM_DEBUG(dbgs() << "getConnectedVals: found illegal join "
+                              << CI->getName() << "\n");
             return false;
           }
           break;
@@ -2782,23 +2844,38 @@ bool GenXSimdCFConformance::getConnectedVals(
         case GenXIntrinsic::genx_wrregioni:
           break; // Use as wrregion predicate is allowed.
         case GenXIntrinsic::genx_rdpredregion:
+          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_rdpredregion\n");
           // We only see rdpredregion in the late pass; in the early pass it is
           // still a shufflevector.  Check that all its uses are select or
           // wrregion.
-          if (!checkAllUsesAreSelectOrWrRegion(CI))
+          if (!checkAllUsesAreSelectOrWrRegion(CI)) {
             UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+            LLVM_DEBUG(dbgs() << "getConnectedVals: all uses push_back " << *CI
+                              << " No=" << ui->getOperandNo() << "\n");
+          }
           break;
         case GenXIntrinsic::genx_wrpredpredregion:
+          LLVM_DEBUG(dbgs()
+                     << "getConnectedVals: case genx_wrpredpredregion\n");
           // Use in wrpredpredregion allowed as the last arg.
-          if (ui->getOperandNo() + 1 != IGCLLVM::getNumArgOperands(CI))
+          if (ui->getOperandNo() + 1 != IGCLLVM::getNumArgOperands(CI)) {
             UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+            LLVM_DEBUG(dbgs() << "getConnectedVals: operands ne push_back "
+                              << *CI << " No=" << ui->getOperandNo() << "\n");
+          }
           break;
         default:
+          LLVM_DEBUG(dbgs() << "case default\n");
           // Allowed as an predicate in a non-ALU intrinsic.
-          if (CI->getCalledFunction()->doesNotAccessMemory())
+          if (CI->getCalledFunction()->doesNotAccessMemory()) {
             UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+            LLVM_DEBUG(dbgs()
+                       << "getConnectedVals: does not access memory push_back "
+                       << *CI << " No=" << ui->getOperandNo() << "\n");
+          }
           break;
         case GenXIntrinsic::not_any_intrinsic: {
+          LLVM_DEBUG(dbgs() << "getConnectedVals: case not_any_intrinsic\n");
           // Use in subroutine call. Add the corresponding function arg.
           Function *CalledFunc = CI->getCalledFunction();
           IGC_ASSERT(CalledFunc);
@@ -2816,9 +2893,14 @@ bool GenXSimdCFConformance::getConnectedVals(
           auto ValTy = IndexFlattener::getElementType(
               Val.getValue()->getType(), Val.getIndex());
           if (auto ST = dyn_cast<StructType>(CI->getType())) {
+            LLVM_DEBUG(dbgs()
+                       << "getConnectedVals: StructType get" << *ST << "\n");
             for (unsigned End = IndexFlattener::getNumElements(ST); ; ++RetIdx) {
-              if (RetIdx == End)
+              if (RetIdx == End) {
                 UsersToLower.push_back(SimpleValue(User, ui->getOperandNo())); // no predicate ret value found
+                LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
+                                  << " No=" << ui->getOperandNo() << "\n");
+              }
               if (IndexFlattener::getElementType(ST, RetIdx) == ValTy) {
                 ConnectedVals->push_back(SimpleValue(CI, RetIdx));
                 break;
@@ -2826,14 +2908,19 @@ bool GenXSimdCFConformance::getConnectedVals(
             }
           } else if (CI->getType() == ValTy)
             ConnectedVals->push_back(SimpleValue(CI, 0));
-          else if (!CI->getType()->isVoidTy())
+          else if (!CI->getType()->isVoidTy()) {
             UsersToLower.push_back(SimpleValue(User, ui->getOperandNo())); // no predicate ret value found
+            LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
+                              << " No=" << ui->getOperandNo() << "\n");
+          }
           break;
         }
       }
       continue;
     }
     UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+    LLVM_DEBUG(dbgs() << "getConnectedVals: default push_back " << *User
+                      << " No=" << ui->getOperandNo() << "\n");
   }
 
   if (LowerBadUsers) {
@@ -2959,7 +3046,8 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
     if (PN->getType() != EMType) {
       // Different type at phi. This may happen if its incoming value
       // became bitcast.
-      LLVM_DEBUG(dbgs() << "Creating new PHI for:\n" << *PN << "\n");
+      LLVM_DEBUG(dbgs() << "eliminateBitCastPreds: Creating new PHI for:\n"
+                        << *PN << "\n");
       NewPN = PHINode::Create(EMType, PN->getNumIncomingValues(), "EMTerm", PN);
       EMProducers[NewPN] = NewPN;
       // In case of cycle, we will return newly created phi
@@ -3003,7 +3091,7 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
  */
 void GenXSimdCFConformance::resolveBitCastChains()
 {
-  LLVM_DEBUG(dbgs() << "Resolving Bitcast chains:\n");
+  LLVM_DEBUG(dbgs() << "resolveBitCastChains: Resolving Bitcast chains:\n");
 
   // We don't have EM values here so we have to gather them
   // here, too. This is because we can change EM values set
@@ -3013,9 +3101,10 @@ void GenXSimdCFConformance::resolveBitCastChains()
   std::set<Value *> DeadInst;
   for (auto Val : EMVals) {
     if (auto PN = dyn_cast<PHINode>(Val.getValue())) {
-      LLVM_DEBUG(dbgs() << "Found phi:\n" << *PN << "\n");
+      LLVM_DEBUG(dbgs() << "resolveBitCastChains: Found phi:\n" << *PN << "\n");
     } else if (auto BCI = dyn_cast<BitCastInst>(Val.getValue())) {
-      LLVM_DEBUG(dbgs() << "Found bitcast:\n" << *BCI << "\n");
+      LLVM_DEBUG(dbgs() << "resolveBitCastChains: Found bitcast:\n"
+                        << *BCI << "\n");
     } else
       continue;
 
@@ -3024,7 +3113,8 @@ void GenXSimdCFConformance::resolveBitCastChains()
     Value *EMProd = getEMProducer(I, Visited, true);
 
     if (!EMProd) {
-      LLVM_DEBUG(dbgs() << "!!! Not EM producer was detected when resolving bitcast chains !!!\n");
+      LLVM_DEBUG(dbgs() << "resolveBitCastChains: !!! Not EM producer was "
+                           "detected when resolving bitcast chains !!!\n");
       continue;
     }
 
@@ -3046,7 +3136,8 @@ void GenXSimdCFConformance::resolveBitCastChains()
   // clean it after these transformation sinse it may contain dead data.
   EMProducers.clear();
 
-  LLVM_DEBUG(dbgs() << "Done resolving bitcast chains:\n");
+  LLVM_DEBUG(
+      dbgs() << "resolveBitCastChains: Done resolving bitcast chains:\n");
 }
 
 /***********************************************************************
@@ -3071,16 +3162,18 @@ void GenXSimdCFConformance::checkEMInterference()
  * findLoweredEMValue : find lowered EM Value
  */
 Value *GenXSimdCFConformance::findLoweredEMValue(Value *Val) {
-  LLVM_DEBUG(dbgs() << "Looking for lowered value for:\n" << *Val << "\n");
+  LLVM_DEBUG(dbgs() << "findLoweredEMValue: Looking for lowered value for:\n"
+                    << *Val << "\n");
 
   auto It = LoweredEMValsMap.find(Val);
   if (It != LoweredEMValsMap.end()) {
     auto *loweredVal = It->second;
-    LLVM_DEBUG(dbgs() << "Found lowered value:\n" << *loweredVal << "\n");
+    LLVM_DEBUG(dbgs() << "findLoweredEMValue: Found lowered value:\n"
+                      << *loweredVal << "\n");
     return loweredVal;
   }
 
-  LLVM_DEBUG(dbgs() << "No lowered value was found\n");
+  LLVM_DEBUG(dbgs() << "findLoweredEMValue: No lowered value was found\n");
 
   return nullptr;
 }
@@ -3096,7 +3189,8 @@ Value *GenXSimdCFConformance::buildLoweringViaGetEM(Value *Val,
   Value *GetEM = CallInst::Create(GetEMDecl, {Val}, "getEM", InsertBefore);
   LoweredEMValsMap[Val] = GetEM;
 
-  LLVM_DEBUG(dbgs() << "Built getEM:\n" << *GetEM << "\n");
+  LLVM_DEBUG(dbgs() << "buildLoweringViaGetEM: Built getEM:\n"
+                    << *GetEM << "\n");
 
   return GetEM;
 }
@@ -3124,7 +3218,7 @@ Value *GenXSimdCFConformance::getGetEMLoweredValue(Value *Val,
 Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
                                           Instruction *User,
                                           BasicBlock *PhiPredBlock) {
-  LLVM_DEBUG(dbgs() << "Lowering EVI use:\n" << *EVI << "\n");
+  LLVM_DEBUG(dbgs() << "lowerEVIUse: Lowering EVI use:\n" << *EVI << "\n");
 
   CallInst *GotoJoin = dyn_cast<CallInst>(EVI->getOperand(0));
   IGC_ASSERT_MESSAGE(testIsGotoJoin(GotoJoin), "Bad ExtractValue with EM!");
@@ -3133,7 +3227,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
   // so isBranchingGotoJoinBlock works correctly here.
   if (GotoJoin::isBranchingGotoJoinBlock(GotoJoin->getParent()) == GotoJoin) {
     // For branching case, we need to create false and true value
-    LLVM_DEBUG(dbgs() << "Handling branching block case\n");
+    LLVM_DEBUG(dbgs() << "lowerEVIUse: Handling branching block case\n");
 
     BasicBlock *DefBB = GotoJoin->getParent();
     BasicBlock *TrueBlock = DefBB->getTerminator()->getSuccessor(0);
@@ -3164,7 +3258,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
   IGC_ASSERT_MESSAGE(testIsJoin(GotoJoin),
          "Gotos should be turned into branching earlier!");
 
-  LLVM_DEBUG(dbgs() << "Handling simple join case\n");
+  LLVM_DEBUG(dbgs() << "lowerEVIUse: Handling simple join case\n");
 
   return getGetEMLoweredValue(EVI, EVI->getNextNode());
 }
@@ -3182,7 +3276,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
  */
 Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
                                           SetVector<Value *> &ToRemove) {
-  LLVM_DEBUG(dbgs() << "Lowering PHI use:\n" << *PN << "\n");
+  LLVM_DEBUG(dbgs() << "lowerPHIUse: Lowering PHI use:\n" << *PN << "\n");
 
   // Check if the phi was already lowered
   if (auto *FoundVal = findLoweredEMValue(PN)) {
@@ -3191,7 +3285,7 @@ Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
 
   if (!GotoJoin::isJoinLabel(PN->getParent())) {
     auto res = getGetEMLoweredValue(PN, PN->getParent()->getFirstNonPHI());
-    LLVM_DEBUG(dbgs() << "Created " << *res << "\n");
+    LLVM_DEBUG(dbgs() << "lowerPHIUse: Created " << *res << "\n");
     return res;
   }
 
@@ -3202,7 +3296,7 @@ Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
   newPN->insertAfter(PN);
   LoweredEMValsMap[PN] = newPN;
 
-  LLVM_DEBUG(dbgs() << "Cloned phi before lowering values:\n"
+  LLVM_DEBUG(dbgs() << "lowerPHIUse: Cloned phi before lowering values:\n"
                     << *newPN << "\n");
 
   // Lower clone's preds
@@ -3211,7 +3305,8 @@ Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
     replaceUseWithLoweredEM(newPN, idx, ToRemove);
   }
 
-  LLVM_DEBUG(dbgs() << "Cloned phi with lowered values:\n" << *newPN << "\n");
+  LLVM_DEBUG(dbgs() << "lowerPHIUse: Cloned phi with lowered values:\n"
+                    << *newPN << "\n");
 
   return newPN;
 }
@@ -3224,7 +3319,8 @@ Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
  * if argument's user was moved under SIMD CF due to some reason.
  */
 Value *GenXSimdCFConformance::lowerArgumentUse(Argument *Arg) {
-  LLVM_DEBUG(dbgs() << "Lowering argument use:\n" << *Arg << "\n");
+  LLVM_DEBUG(dbgs() << "lowerArgumentUse: Lowering argument use:\n"
+                    << *Arg << "\n");
 
   return getGetEMLoweredValue(Arg, Arg->getParent()->front().getFirstNonPHI());
 }
@@ -3238,7 +3334,9 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
 {
   Value *EM = Val->getOperand(operandNo);
 
-  LLVM_DEBUG(dbgs() << "Replacing EM use:\n" << *EM << "\nwith lowered EM for:\n" << *Val << "\n");
+  LLVM_DEBUG(dbgs() << "replaceUseWithLoweredEM: Replacing EM use:\n"
+                    << *EM << "\nwith lowered EM for:\n"
+                    << *Val << "\n");
 
   Value *LoweredEM = nullptr;
 

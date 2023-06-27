@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 -o /dev/null 2>&1 | FileCheck %s
-; CHECK: warning: GenXCisaBuilder failed for: < %call = call i32 asm "mov (M1, 1) $0 $1", "=a,i"(i32 %arg) #2, !srcloc !11, !genx.inlasm.constraints.info !12>: "mov (M1, 1) $0 $1" immediate constraint in inline assembly was satisfied to value
+; CHECK: warning: GenXCisaBuilder failed for: < %call = call i32 asm "mov (M1, 1) $0 $1", "=a,i"(i32 %arg) #{{[0-9]+}}, !srcloc !{{[0-9]+}}, !genx.inlasm.constraints.info !{{[0-9]+}}>: "mov (M1, 1) $0 $1" immediate constraint in inline assembly was satisfied to value
 
 ; Function Attrs: noinline nounwind
 define dllexport spir_kernel void @test(i32 %0, i32 %1, i64 %privBase) #2 {
