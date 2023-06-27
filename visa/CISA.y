@@ -208,6 +208,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 
     struct {
         VISA_opnd               *surface;
+        int                      surfaceIndex;
         // for UNTYPED
         //  simple:  regs[0] = reg addr
         //  strided: regs[0] = base; regs[1] = strided
@@ -232,12 +233,28 @@ std::vector<attr_gen_struct*> AttrOptVar;
         int                      immOffsets[2];
         LSC_ADDR                 addr;
     } lsc_block2d_addr_operand;
+    struct {
+        VISA_opnd *reg;
+        int offset;
+    } lsc_typed_addr_operand;
+    struct {
+        VISA_opnd *regs[6];
+        int uvrOffsets[3];
+    } lsc_typed_addr_operand_list;
+    struct {
+        VISA_opnd              *surface;
+        int                     surfaceIndex;
+        VISA_opnd              *regs[6];
+        int                     uvrOffsets[3];
+        LSC_ADDR                addr;
+    } lsc_typed_operand;
     LSC_ADDR_SIZE              lsc_addr_size;
     LSC_ADDR_TYPE              lsc_addr_type;
     VISA_opnd                 *lsc_addr_surface_ident; // vec. opnd imm or reg
     struct lsc_addr_model_struct {
         LSC_ADDR_TYPE          type;
         VISA_opnd             *surface; // can be imm or reg
+        int                    surfaceIndex;
     } lsc_addr_model;
 
     // Align Support in Declaration
@@ -584,17 +601,14 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <RawVar>                 LscPayloadNonNullReg
 // address syntax; e.g. bss(S2)[V12]:a64
 %type <lsc_addr_model>         LscAddrModelOpt
-%type <lsc_addr_model>         LscRegAddrModel
+%type <lsc_addr_model>         LscAddrModelStateful
 %type <lsc_addr_operand>       LscUntypedAddrOperand
 %type <lsc_addr_operand>       LscUntypedStridedAddrOperand
 %type <lsc_block2d_addr_operand> LscUntypedBlock2dAddrOperand
-%type <lsc_addr_operand>       LscTypedAddrOperand
-%type <lsc_addr_operand>       LscTypedOneAddrOperand
-%type <lsc_addr_operand>       LscTypedTwoAddrOperand
-%type <lsc_addr_operand>       LscTypedThreeAddrOperand
-%type <lsc_addr_operand>       LscTypedFourAddrOperand
+%type <lsc_typed_addr_operand>       LscTypedAddrWithOffsetOperand
+%type <lsc_typed_addr_operand_list>  LscTypedAddrWithOffsetOperandList
+%type <lsc_typed_operand>            LscTypedAddrOperandWithOffsets
 %token <lsc_addr_size>         LSC_ADDR_SIZE_TK
-%type <lsc_addr_type>          LscRegAddrModelKind
 %type <intval>                 LscAddrImmOffsetOpt
 %type <intval>                 LscAddrImmScaleOpt
 %type <lsc_addr_surface_ident> LscVectorOpRegOrImm32
@@ -1592,10 +1606,13 @@ LscInstruction:
 // BSS:
 //     lsc_load.ugm   V53:u8x8  bss(V10)[V52+0x100]:a16
 //
+// ARG:
+//     lsc_load.ugm   V53:u8x8  arg[V52+0x100]:a16
+//
 LscUntypedLoad:
 //  1          2                  3                       4             5
     Predicate  LSC_LOAD_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
-//  6                  7
+//  6               7
     LscDataOperand  LscUntypedAddrOperand
     {
         $5.exec_size =
@@ -1610,6 +1627,7 @@ LscUntypedLoad:
             $7.addr,     // address
             $6.shape,    // data
             $7.surface,  // surface
+            $7.surfaceIndex, // surface index
             $6.reg,      // dst
             $7.regs[0],  // src0
             nullptr,     // src1
@@ -1679,6 +1697,7 @@ LscUntypedBlock2dLoad:
 //
 // EXAMPLE:
 //     lsc_store.ugm    flat[V52]:a64      V53:u32
+//     (also see similar to load)
 LscUntypedStore:
 //  1          2                   3                       4             5
     Predicate  LSC_STORE_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
@@ -1697,12 +1716,14 @@ LscUntypedStore:
             $6.addr,     // address
             $7.shape,    // data
             $6.surface,  // surface
+            $6.surfaceIndex, // surface index
             nullptr,     // dst
             $6.regs[0],  // src0
             $7.reg,      // src1
             nullptr,     // src2
             CISAlineno);
     }
+
 LscUntypedStridedStore:
 //  1          2                           3                       4             5
     Predicate  LSC_STORE_STRIDED_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
@@ -1728,7 +1749,7 @@ LscUntypedStridedStore:
             CISAlineno);
     }
 
-// EXAMPLES
+// EXAMPLES:
 //     lsc_store_block2d.ugm   flat[V_BASE,V_X,V_Y,V_PITCH,V_HEIGHT,VBLOCK_X,VBLOCK_Y,32,4]   V53:u64
 LscUntypedBlock2dStore:
 //  1          2                           3                       4             5
@@ -1758,6 +1779,7 @@ LscUntypedBlock2dStore:
 //     lsc_atomic_iinc.ugm   VRESULT:d32  flat[VADDR]:a64        %null     %null
 //     lsc_atomic_iinc.ugml  VRESULT:d32  flat[VADDR]:a64        %null     %null
 //     lsc_atomic_iadd.slm   VRESULT:d32  flat[VADDR+0x10]:a32   VSRC1     %null
+//
 LscUntypedAtomic:
 //  1         2                    3                       4             5
     Predicate LSC_ATOMIC_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
@@ -1773,15 +1795,17 @@ LscUntypedAtomic:
             $4,                // caching settings
             Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
             $5.emask,
-            $7.addr,     // address info
-            $6.shape,    // data type
-            $7.surface,  // surface
-            $6.reg,      // dst data
-            $7.regs[0],  // src0 addr
-            $8,          // src1 data
-            $9,          // src2 data (for icas/fcas)
+            $7.addr,         // address info
+            $6.shape,        // data type
+            $7.surface,      // surface array base
+            $7.surfaceIndex, // surface index
+            $6.reg,          // dst data
+            $7.regs[0],      // src0 addr
+            $8,              // src1 data
+            $9,              // src2 data (for icas/fcas)
             CISAlineno);
     }
+
 
 // EXAMPLES:
 // SS using only U:
@@ -1794,7 +1818,7 @@ LscTypedLoad:
 //  1          2                  3                     4             5
     Predicate  LSC_LOAD_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
 //  6               7
-    LscDataOperand  LscTypedAddrOperand
+    LscDataOperand  LscTypedAddrOperandWithOffsets
     {
         if ($2 != LSC_LOAD_QUAD) {
             PARSE_ERROR("unsupported load operation for .tgm");
@@ -1808,19 +1832,24 @@ LscTypedLoad:
             $4,  // caching settings
             Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
             $5.emask,
-            $7.addr.type,  // address model
-            $7.addr.size,  // address size
-            $6.shape,    // data type
-            $7.surface,  // surface
-            $6.reg,      // dst data
-            $7.regs[0],  // src0_u
-            $7.regs[1],  // src0_v
-            $7.regs[2],  // src0_r
-            $7.regs[3],  // feature (for example, LOD)
-            nullptr,     // src1 data
-            nullptr,     // src2 data
+            $7.addr.type,      // address type
+            $7.addr.size,      // address size
+            $6.shape,          // data
+            $7.surface,        // surface
+            $7.surfaceIndex,   // surface index
+            $6.reg,            // dst
+            $7.regs[0],        // src0_u
+            $7.uvrOffsets[0],  // u offset
+            $7.regs[1],        // src0_v
+            $7.uvrOffsets[1],  // v offset
+            $7.regs[2],        // src0_r
+            $7.uvrOffsets[2],  // r offset
+            $7.regs[3],        // src0_lod
+            nullptr,           // src1 data
+            nullptr,           // src2 data
             CISAlineno);
     }
+
 //
 // EXAMPLES:
 // SS using only U:
@@ -1829,12 +1858,11 @@ LscTypedLoad:
 //     lsc_store_quad.tgm   V60:u32.xyzw  bss(V10)[V52,V53]:a32
 // BSS using U, V, R, and LOD:
 //     lsc_store_quad.tgm   V60:u32.xz    bss(V10)[V52,V53,V54,V55]:a32
-//
 LscTypedStore:
 //  1          2                   3                     4             5
     Predicate  LSC_STORE_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
-//  6                    7
-    LscTypedAddrOperand  LscDataOperand
+//  6                              7
+    LscTypedAddrOperandWithOffsets LscDataOperand
     {
         if ($2 != LSC_STORE_QUAD) {
             PARSE_ERROR("unsupported store operation for .tgm");
@@ -1848,19 +1876,24 @@ LscTypedStore:
             $4,  // caching settings
             Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
             $5.emask,
-            $6.addr.type,  // address model
-            $6.addr.size,  // address size
-            $7.shape,    // data type
-            $6.surface,  // surface
-            nullptr,     // dst
-            $6.regs[0],  // src0_u
-            $6.regs[1],  // src0_v
-            $6.regs[2],  // src0_r
-            $6.regs[3],  // feature (for example, LOD)
-            $7.reg,      // src1 data
-            nullptr,     // src2 data
+            $6.addr.type,     // address model
+            $6.addr.size,     // address size
+            $7.shape,         // data size
+            $6.surface,       // surface
+            $6.surfaceIndex,  // surface index
+            nullptr,          // dst
+            $6.regs[0],       // src0_u
+            $6.uvrOffsets[0], // u offset
+            $6.regs[1],       // src0_v
+            $6.uvrOffsets[1], // v offset
+            $6.regs[2],       // src0-r
+            $6.uvrOffsets[2], // r offset
+            $6.regs[3],       // src0_lod
+            $7.reg,           // stored data
+            nullptr,          // src2
             CISAlineno);
     }
+
 //
 // EXAMPLES:
 // SS using only U:
@@ -1873,8 +1906,8 @@ LscTypedStore:
 LscTypedAtomic:
 //  1          2                    3                     4             5
     Predicate  LSC_ATOMIC_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
-//  6               7                    8              9
-    LscDataOperand  LscTypedAddrOperand  LscPayloadReg  LscPayloadReg
+//  6               7                              8              9
+    LscDataOperand  LscTypedAddrOperandWithOffsets LscPayloadReg  LscPayloadReg
     {
         $5.exec_size =
             lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
@@ -1889,10 +1922,14 @@ LscTypedAtomic:
             $7.addr.size,  // address size
             $6.shape,    // data type
             $7.surface,  // surface
+            $7.surfaceIndex, // surface index
             $6.reg,      // dst data
             $7.regs[0],  // src0 addrs u
+            $7.uvrOffsets[0], // u offset
             $7.regs[1],  // src0 addrs v
+            $7.uvrOffsets[1], // v offset
             $7.regs[2],  // src0 addrs r
+            $7.uvrOffsets[2], // r offset
             $7.regs[3],  // src0 addrs lod
             $8,          // src1 data
             $9,          // src2 data
@@ -1905,8 +1942,8 @@ LscTypedAtomic:
 LscTypedReadStateInfo:
 // 1          2                             3
    Predicate  LSC_READ_STATE_INFO_MNEMONIC  LSC_SFID_TYPED_TOKEN
-// 4              5               6      7             8
-   LscPayloadReg  LscRegAddrModel LBRACK LscPayloadReg RBRACK
+// 4              5                    6      7                    8
+   LscPayloadReg  LscAddrModelStateful LBRACK LscPayloadNonNullReg RBRACK
    {
         LSC_CACHE_OPTS caching {LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};
         LSC_DATA_SHAPE dataShape {LSC_DATA_SIZE_32b,LSC_DATA_ORDER_TRANSPOSE};
@@ -1915,18 +1952,22 @@ LscTypedReadStateInfo:
             $1,              // predicate
             $2,              // subop
             $3,              // sfid
-            caching,         // caching settings
+            caching,         // no caching settings
             EXEC_SIZE_1,
             vISA_EMASK_M1_NM,
-            $5.type,           // address model
+            $5.type,           // address type
             LSC_ADDR_SIZE_32b, // address size
             dataShape,         // data type
             $5.surface,        // surface
+            $5.surfaceIndex,   // SS_IDX
             $4,                // dst data
             $7,                // src0 coords (u, v, r, lod) SIMD1 are packed in
-            nullptr,           // no SIMT coords
-            nullptr,           // no SIMT coords
-            nullptr,           // no SIMT coords
+            0,                 // no uvr-offsets
+            nullptr,           // no other coords
+            0,                 // no uvr-offsets
+            nullptr,           // no other coords
+            0,                 // no uvr-offsets
+            nullptr,           // no other coords
             nullptr,           // no src1 data
             nullptr,           // no src2 data
             CISAlineno);
@@ -1957,7 +1998,7 @@ LscUntypedAddrOperand:
 //    5                    6             7
       LscAddrImmOffsetOpt  RBRACK LSC_ADDR_SIZE_TK
     {
-        $$ = {$1.surface,{$4},{$1.type,(int)$3,(int)$5,$7}};
+        $$ = {$1.surface, $1.surfaceIndex, {$4}, {$1.type, (int)$3, (int)$5, $7}};
     }
 
 LscUntypedStridedAddrOperand:
@@ -1966,7 +2007,7 @@ LscUntypedStridedAddrOperand:
 //    5                    6     7                     8      9
       LscAddrImmOffsetOpt  COMMA LscVectorOpRegOrImm32 RBRACK LSC_ADDR_SIZE_TK
     {
-        $$ = {$1.surface,{$4,$7},{$1.type,(int)$3,(int)$5,$9}};
+        $$ = {$1.surface, 0, {$4, $7}, {$1.type, (int)$3, (int)$5, $9}};
     }
     | LscUntypedAddrOperand {
         $$ = $1;
@@ -2015,87 +2056,49 @@ LscUntypedBlock2dAddrOperand:
     {
         $$ = {nullptr,0,{$3,$5,$7,$9,$11,$13},{0, 0},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
     }
-LscTypedOneAddrOperand:
-// just U
-//  1               2
-    LscRegAddrModel LBRACK
-//    3
+LscTypedAddrWithOffsetOperand:
+    LscPayloadNonNullReg
+    {
+        $$ = {$1, 0};
+    }
+    | LscPayloadNonNullReg PLUS IntExpMul {
+        $$ = {$1, (int)$3};
+    }
+    | LscPayloadNonNullReg MINUS IntExpMul
+    {
+        $$ = {$1, (int)-$3};
+    }
+LscTypedAddrWithOffsetOperandList:
+      LscTypedAddrWithOffsetOperand {
+        $$ = {{$1.reg}, {$1.offset, 0, 0}};
+      }
+    | LscTypedAddrWithOffsetOperand COMMA
+      LscTypedAddrWithOffsetOperand
+      {
+        $$ = {{$1.reg,$3.reg}, {$1.offset, $3.offset, 0}};
+      }
+    | LscTypedAddrWithOffsetOperand COMMA
+      LscTypedAddrWithOffsetOperand COMMA
+      LscTypedAddrWithOffsetOperand
+    {
+        $$ = {{$1.reg,$3.reg,$5.reg}, {$1.offset, $3.offset, $5.offset}};
+    }
+    | LscTypedAddrWithOffsetOperand COMMA
+      LscTypedAddrWithOffsetOperand COMMA
+      LscTypedAddrWithOffsetOperand COMMA
       LscPayloadNonNullReg
-//    4      5
-      RBRACK LSC_ADDR_SIZE_TK
     {
-        $$ = {$1.surface,{$3},{$1.type,1,0,$5}};
+        $$ = {{$1.reg,$3.reg,$5.reg,$7}, {$1.offset, $3.offset, $5.offset}};
     }
-    |
-//  1                   2
-    LscRegAddrModel LBRACK
-// 3                        4   5           6       7           8       9
-    LscPayloadNonNullReg COMMA BUILTIN_NULL COMMA BUILTIN_NULL COMMA BUILTIN_NULL
-// 10       11
-    RBRACK LSC_ADDR_SIZE_TK
+LscTypedAddrOperandWithOffsets:
+    LscAddrModelStateful LBRACK LscTypedAddrWithOffsetOperandList RBRACK
+    LSC_ADDR_SIZE_TK
     {
-        $$ = {$1.surface,{$3},{$1.type,1,0,$11}};
+        $$ = {$1.surface, $1.surfaceIndex,
+               {$3.regs[0], $3.regs[1], $3.regs[2],$3.regs[3]},
+               {$3.uvrOffsets[0], $3.uvrOffsets[1], $3.uvrOffsets[2]},
+               {$1.type, 1, 0, $5}};
     }
-LscTypedTwoAddrOperand:
-//
-// U, V
-//  1               2
-   LscRegAddrModel LBRACK
-//  3                    4     5
-    LscPayloadNonNullReg COMMA LscPayloadNonNullReg
-//    6             7
-      RBRACK LSC_ADDR_SIZE_TK
-    {
-        $$ = {$1.surface,{$3,$5},{$1.type,1,0,$7}};
-    }
-    |
-//  1                   2
-    LscRegAddrModel LBRACK
-// 3                        4   5           6       7           8       9
-    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA BUILTIN_NULL COMMA BUILTIN_NULL
-// 10       11
-    RBRACK LSC_ADDR_SIZE_TK
-    {
-        $$ = {$1.surface,{$3,$5},{$1.type,1,0,$11}};
-    }
-LscTypedThreeAddrOperand:
-// U, V, R/feature
-//  1               2
-   LscRegAddrModel LBRACK
-//  3                    4     5                    6     7
-    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
-//    8             9
-      RBRACK LSC_ADDR_SIZE_TK
-    {
-        $$ = {$1.surface,{$3,$5,$7},{$1.type,1,0,$9}};
-    }
-    |
-//  1                   2
-    LscRegAddrModel LBRACK
-// 3                        4   5                       6       7               8       9
-    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA BUILTIN_NULL
-// 10       11
-    RBRACK LSC_ADDR_SIZE_TK
-    {
-        $$ = {$1.surface,{$3,$5,$7},{$1.type,1,0,$11}};
-    }
-LscTypedFourAddrOperand:
-// U, V, R, feature
-//  1               2
-   LscRegAddrModel LBRACK
-//  3                    4     5                    6     7
-    LscPayloadNonNullReg COMMA LscPayloadNonNullReg COMMA LscPayloadNonNullReg
-//    8             9           10     11
-    COMMA LscPayloadNonNullReg RBRACK LSC_ADDR_SIZE_TK
-    {
-        $$ = {$1.surface,{$3,$5,$7,$9},{$1.type,1,0,$11}};
-    }
-
-LscTypedAddrOperand:
-    LscTypedOneAddrOperand
-  | LscTypedTwoAddrOperand
-  | LscTypedThreeAddrOperand
-  | LscTypedFourAddrOperand
 
 // Enables stuff like
 // [VADDR + 4*0x100 - 32]
@@ -2103,32 +2106,41 @@ LscTypedAddrOperand:
 LscAddrImmOffsetOpt:
     %empty           {$$ =   0;}
   | PLUS  IntExpAdd  {$$ =  $2;}
-  | MINUS IntExpPrim {$$ = -$2;}
+  | MINUS IntExpMul  {$$ = -$2;}
   ;
 
-// e.g. [4*%sizeof(GRF)*VADDR + ...]
-//       ^
-// Note: we can't allow
+// e.g. [4*VADDR + ...]
 LscAddrImmScaleOpt:
-    %empty            {$$ = 1;}
-    | IntExpMul TIMES {$$ = $1;}
+    %empty           {$$ = 1;}
+  | IntExpPrim TIMES {$$ = $1;}
 
 LscAddrModelOpt:
-    %empty       {$$ = {LSC_ADDR_TYPE_FLAT,nullptr};}
-  | LSC_AM_FLAT  {$$ = {LSC_ADDR_TYPE_FLAT,nullptr};}
-  | LSC_AM_ARG   {$$ = {LSC_ADDR_TYPE_ARG,nullptr};}
-  | LscRegAddrModel
+    %empty       {$$ = {LSC_ADDR_TYPE_FLAT, nullptr, 0};}
+  | LSC_AM_FLAT  {$$ = {LSC_ADDR_TYPE_FLAT, nullptr, 0};}
+  | LSC_AM_ARG   {$$ = {LSC_ADDR_TYPE_ARG, nullptr, 0};}
+  | LscAddrModelStateful
 
-LscRegAddrModel:
-    // address models that take a reg parameter
-    LscRegAddrModelKind  LPAREN  LscVectorOpRegOrImm32  RPAREN {
-        $$ = {$1,$3};
+// Address models that map to a stateful surface
+LscAddrModelStateful:
+    LSC_AM_BSS  LPAREN  LscVectorOpRegOrImm32 RPAREN {
+      $$ = {LSC_ADDR_TYPE_BSS,$3, 0};
+    }
+  | LSC_AM_BSS  LPAREN  LscVectorOpRegOrImm32 COMMA IntExp RPAREN {
+      $$ = {LSC_ADDR_TYPE_BSS, $3, (int)$5};
+    }
+  | LSC_AM_SS   LPAREN  LscVectorOpRegOrImm32 RPAREN {
+      $$ = {LSC_ADDR_TYPE_SS,$3, 0};
+    }
+  | LSC_AM_SS   LPAREN  LscVectorOpRegOrImm32 COMMA IntExp RPAREN {
+      $$ = {LSC_ADDR_TYPE_SS,$3, (int)$5};
+    }
+  | LSC_AM_BTI  LPAREN  LscVectorOpRegOrImm32 RPAREN {
+      $$ = {LSC_ADDR_TYPE_BTI,$3, 0};
+    }
+  | LSC_AM_BTI  LPAREN  LscVectorOpRegOrImm32 COMMA IntExp RPAREN {
+      $$ = {LSC_ADDR_TYPE_BTI,$3, (int)$5};
     }
 
-LscRegAddrModelKind:
-    LSC_AM_BSS {$$ = LSC_ADDR_TYPE_BSS;}
-  | LSC_AM_SS  {$$ = LSC_ADDR_TYPE_SS;}
-  | LSC_AM_BTI {$$ = LSC_ADDR_TYPE_BTI;}
 
 LscVectorOpRegOrImm32: LscVectorOpReg | LscVectorOpImm32
 LscVectorOpRegOrImm64: LscVectorOpReg | LscVectorOpImm64

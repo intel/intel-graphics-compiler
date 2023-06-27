@@ -616,8 +616,13 @@ public:
   bool CISA_create_lsc_untyped_inst(
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
-      LSC_DATA_SHAPE dataShape, VISA_opnd *surface, VISA_opnd *dst,
-      VISA_opnd *src0, VISA_opnd *src1, VISA_opnd *src2, int lineNum);
+      LSC_DATA_SHAPE dataShape,
+      VISA_opnd *surface, int surfaceIndex,
+      VISA_opnd *dst,
+      VISA_opnd *src0,
+      VISA_opnd *src1,
+      VISA_opnd *src2,
+      int lineNum);
   bool CISA_create_lsc_untyped_strided_inst(
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
@@ -631,13 +636,19 @@ public:
       VISA_opnd
           *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // {base,surfW,surfH,surfP,x,y}
       VISA_opnd *src1Data, int xOffset, int yOffset, int lineNum);
+
   bool CISA_create_lsc_typed_inst(
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR_TYPE addrModel,
-      LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_opnd *surface,
-      VISA_opnd *dst_data, VISA_opnd *coord0s, VISA_opnd *coord1s,
-      VISA_opnd *coord2s, VISA_opnd *features, VISA_opnd *src1_data,
-      VISA_opnd *src2_data, int lineNum);
+      LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape,
+      VISA_opnd *surface, int surfaceIndex,
+      VISA_opnd *dst_data,
+      VISA_opnd *src0_Us, int uOffset,
+      VISA_opnd *src0_Vs, int vOffset,
+      VISA_opnd *src0_Rs, int rOffset,
+      VISA_opnd *src0_LODs,
+      VISA_opnd *src1_data, VISA_opnd *src2_data,
+      int lineNum);
   bool CISA_create_lsc_fence(LSC_SFID lscSfid, LSC_FENCE_OP fence,
                              LSC_SCOPE scope, int lineNum);
 

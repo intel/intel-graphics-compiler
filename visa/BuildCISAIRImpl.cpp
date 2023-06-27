@@ -3944,21 +3944,19 @@ bool CISA_IR_Builder::CISA_create_fcvt_instruction(
 bool CISA_IR_Builder::CISA_create_lsc_untyped_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
-    LSC_DATA_SHAPE dataShape, VISA_opnd *surface, VISA_opnd *dstData,
-    VISA_opnd *src0Addr, VISA_opnd *src1Data, VISA_opnd *src2Data,
-    int lineNum) {
-
+    LSC_DATA_SHAPE dataShape, VISA_opnd *surface, int surfaceIndex,
+    VISA_opnd *dstData, VISA_opnd *src0Addr, VISA_opnd *src1Data,
+    VISA_opnd *src2Data, int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISALscUntypedInst, opcode, sfid,
                     static_cast<VISA_PredOpnd *>(pred), execSize, emask,
                     caching, addr, dataShape,
-                    static_cast<VISA_VectorOpnd *>(surface),
+                    static_cast<VISA_VectorOpnd *>(surface), surfaceIndex,
                     static_cast<VISA_RawOpnd *>(dstData),
                     static_cast<VISA_RawOpnd *>(src0Addr),
                     static_cast<VISA_RawOpnd *>(src1Data),
                     static_cast<VISA_RawOpnd *>(src2Data));
   return true;
 }
-
 bool CISA_IR_Builder::CISA_create_lsc_untyped_strided_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
@@ -4000,18 +3998,23 @@ bool CISA_IR_Builder::CISA_create_lsc_untyped_block2d_inst(
 bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR_TYPE addrModel,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_opnd *surface,
-    VISA_opnd *dst_data, VISA_opnd *coord0s, VISA_opnd *coord1s,
-    VISA_opnd *coord2s, VISA_opnd *features, VISA_opnd *src1_data,
-    VISA_opnd *src2_data, int lineNum) {
+    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape,
+    VISA_opnd *surface, int surfaceIndex,
+    VISA_opnd *dst_data,
+    VISA_opnd *coord0s, int coord0Offset,
+    VISA_opnd *coord1s, int coord1Offset,
+    VISA_opnd *coord2s, int coord2Offset,
+    VISA_opnd *features,
+    VISA_opnd *src1_data, VISA_opnd *src2_data,
+    int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISALscTypedInst, opcode,
                     static_cast<VISA_PredOpnd *>(pred), execSize, emask,
                     caching, addrModel, addrSize, dataShape,
-                    static_cast<VISA_VectorOpnd *>(surface),
+                    static_cast<VISA_VectorOpnd *>(surface), surfaceIndex,
                     static_cast<VISA_RawOpnd *>(dst_data),
-                    static_cast<VISA_RawOpnd *>(coord0s),
-                    static_cast<VISA_RawOpnd *>(coord1s),
-                    static_cast<VISA_RawOpnd *>(coord2s),
+                    static_cast<VISA_RawOpnd *>(coord0s), coord0Offset,
+                    static_cast<VISA_RawOpnd *>(coord1s), coord1Offset,
+                    static_cast<VISA_RawOpnd *>(coord2s), coord2Offset,
                     static_cast<VISA_RawOpnd *>(features),
                     static_cast<VISA_RawOpnd *>(src1_data),
                     static_cast<VISA_RawOpnd *>(src2_data));
