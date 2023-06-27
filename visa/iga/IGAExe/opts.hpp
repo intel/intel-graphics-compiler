@@ -132,7 +132,6 @@ template <typename O> struct Opt {
   const char *typeName;
   const char *description;
   const char *extendedDescription;
-  const char *group;
 
   Setter<O> setValue;          // called to set a value
   DefaultSetter<O> setDefault; // called when a option is unspecified
