@@ -34,12 +34,12 @@ entry:
  ; CHECK: ret <4 x float> %2
 
 
-define <4 x float> @f1(i32 %src, i8 addrspace(2490373)* %dst) {
+define <4 x float> @f1(i32 %src) {
 entry:
   %0 = inttoptr i32 %src to i8 addrspace(2490373)*
   %1 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %src, i32 4, i1 false)
-  %2 = add i32 %src, 16
-  store i8 5, i8 addrspace(2490373)* %dst
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f32(i8 addrspace(2490373)* %0, i32 %src, float 0x0, i32 4, i1 false)
+  %2 = add i32 %src, 4
   %3 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %2, i32 4, i1 false)
   %4 = add i32 %src, 32
   %5 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %4, i32 4, i1 false)
@@ -53,19 +53,74 @@ entry:
 }
 
  ; CHECK-LABEL: define <4 x float> @f1
- ; CHECK: %1 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %src, i32 4, i1 false)
- ; CHECK: store i8 5, i8 addrspace(2490373)* %dst, align 1
- ; CHECK: %3 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %2, i32 4, i1 false)
- ; CHECK: %5 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %4, i32 4, i1 false)
- ; CHECK: %7 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %6, i32 4, i1 false)
+ ; CHECK: %1 = call <1 x float> @llvm.genx.GenISA.ldrawvector.indexed.v1f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %src, i32 4, i1 false)
+ ; CHECK: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
+ ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f32(i8 addrspace(2490373)* %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
+ ; CHECK: %3 = add i32 %src, 4
+ ; CHECK: %4 = call <16 x float> @llvm.genx.GenISA.ldrawvector.indexed.v16f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %3, i32 4, i1 false)
+ ; CHECK: %5 = extractelement <16 x float> %4, {{i[0-9]+}} 11
+ ; CHECK: %6 = extractelement <16 x float> %4, {{i[0-9]+}} 7
+ ; CHECK: %7 = extractelement <16 x float> %4, {{i[0-9]+}} 0
+ ; CHECK: %8 = insertelement <4 x float> undef, float %2, {{i[0-9]+}} 0
+ ; CHECK: %9 = insertelement <4 x float> %8, float %7, {{i[0-9]+}} 1
+ ; CHECK: %10 = insertelement <4 x float> %9, float %6, {{i[0-9]+}} 2
+ ; CHECK: %11 = insertelement <4 x float> %10, float %5, {{i[0-9]+}} 3
+ ; CHECK: ret <4 x float> %11
+
+define <4 x float> @f2(i32 %src) {
+entry:
+  %0 = inttoptr i32 %src to i8 addrspace(2490373)*
+  %1 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %src, i32 4, i1 false)
+  br label %storeBB
+storeBB:
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f32(i8 addrspace(2490373)* %0, i32 %src, float 0x0, i32 4, i1 false)
+  br label %exitBB
+exitBB:
+  %2 = add i32 %src, 4
+  %3 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %2, i32 4, i1 false)
+  %4 = add i32 %src, 32
+  %5 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %4, i32 4, i1 false)
+  %6 = add i32 %src, 48
+  %7 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %6, i32 4, i1 false)
+  %8 = insertelement <4 x float> undef, float %1, i32 0
+  %9 = insertelement <4 x float> %8, float %3, i32 1
+  %10 = insertelement <4 x float> %9, float %5, i32 2
+  %11 = insertelement <4 x float> %10, float %7, i32 3
+  ret <4 x float> %11
+}
+
+ ; CHECK-LABEL: define <4 x float> @f2
+ ; CHECK: %1 = call <1 x float> @llvm.genx.GenISA.ldrawvector.indexed.v1f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %src, i32 4, i1 false)
+ ; CHECK: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
+ ; CHECK:  br label %storeBB
+ ; CHECK-LABEL: storeBB:
+ ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f32(i8 addrspace(2490373)* %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
+ ; CHECK: br label %exitBB
+ ; CHECK-LABEL: exitBB:
+ ; CHECK: %3 = add i32 %src, 4
+ ; CHECK: %4 = call <16 x float> @llvm.genx.GenISA.ldrawvector.indexed.v16f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %3, i32 4, i1 false)
+ ; CHECK: %5 = extractelement <16 x float> %4, {{i[0-9]+}} 11
+ ; CHECK: %6 = extractelement <16 x float> %4, {{i[0-9]+}} 7
+ ; CHECK: %7 = extractelement <16 x float> %4, {{i[0-9]+}} 0
+ ; CHECK: %8 = insertelement <4 x float> undef, float %2, {{i[0-9]+}} 0
+ ; CHECK: %9 = insertelement <4 x float> %8, float %7, {{i[0-9]+}} 1
+ ; CHECK: %10 = insertelement <4 x float> %9, float %6, {{i[0-9]+}} 2
+ ; CHECK: %11 = insertelement <4 x float> %10, float %5, {{i[0-9]+}} 3
+ ; CHECK: ret <4 x float> %11
+
 
 ; Function Attrs: argmemonly nounwind readonly
 declare float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(i8 addrspace(2490373)*, i32, i32, i1) argmemonly nounwind readonly
 
-!igc.functions = !{!0, !3}
+; Function Attrs: argmemonly nounwind writeonly
+declare void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f32(i8 addrspace(2490373)*, i32, float, i32, i1) argmemonly nounwind writeonly
+
+
+!igc.functions = !{!0, !3, !4}
 
 !0 = !{<4 x float> (i32)* @f0, !1}
-!3 = !{<4 x float> (i32, i8 addrspace(2490373)*)* @f1, !1}
+!3 = !{<4 x float> (i32)* @f1, !1}
+!4 = !{<4 x float> (i32)* @f2, !1}
 
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}

@@ -400,22 +400,9 @@ void ConstantCoalescing::ProcessBlock(
     std::vector<BufChunk*> & indcb_owloads,
     std::vector<BufChunk*> & indcb_gathers)
 {
-    // checking for stores for future load merging check
-    bool bbHasStores = false;
-    for (BasicBlock::iterator BBI_st = blk->begin(), BBE_st = blk->end();
-        BBI_st != BBE_st; ++BBI_st)
-    {
-        if (isa<StoreInst>(BBI_st) ||
-            isa<StoreRawIntrinsic>(BBI_st))
-        {
-            bbHasStores = true;
-            break;
-        }
-    }
-
     bool isCPS = false;
 
-    bool skipLdrawOpt = isCPS || bbHasStores;
+    bool skipLdrawOpt = isCPS;
     // get work-item analysis, need to update uniformness information
     for (BasicBlock::iterator BBI = blk->begin(), BBE = blk->end();
          BBI != BBE; ++BBI)
@@ -843,7 +830,8 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
         BufChunk* cur_chunk = *rit;
         if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
             cur_chunk->baseIdxV == eltIdxV &&
-            cur_chunk->chunkIO->getType()->getScalarType() == load->getType()->getScalarType())
+            cur_chunk->chunkIO->getType()->getScalarType() == load->getType()->getScalarType() &&
+            !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load))
         {
             uint lb = std::min(eltid, cur_chunk->chunkStart);
             uint ub = std::max(eltid + maxEltPlus, cur_chunk->chunkStart + cur_chunk->chunkSize);
@@ -1242,7 +1230,8 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     {
         if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
             cur_chunk->baseIdxV == eltIdxV &&
-            cur_chunk->chunkIO->getType()->getScalarType() == LoadEltTy)
+            cur_chunk->chunkIO->getType()->getScalarType() == LoadEltTy &&
+            !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load))
         {
             uint lb = std::min(eltid, cur_chunk->chunkStart);
             uint ub = std::max(eltid + maxEltPlus, cur_chunk->chunkStart + cur_chunk->chunkSize);
@@ -2619,4 +2608,127 @@ void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
     loadToReplace->replaceAllUsesWith(result);
 }
 
+// Check if any of the paths from the `dominatingChunk` to `mergeCandidate` has
+// aliasing memory store or atomic operations.
+bool ConstantCoalescing::CheckForAliasingWrites(
+    uint32_t addrSpace,
+    Instruction* dominatingChunk,
+    Instruction* mergeCandidate)
+{
+    BufferType accessType = DecodeBufferType(addrSpace);
+    // Only writable resources need to be checked.
+    if (accessType == STATELESS_READONLY ||
+        accessType == CONSTANT_BUFFER ||
+        accessType == BINDLESS_CONSTANT_BUFFER ||
+        accessType == SSH_BINDLESS_CONSTANT_BUFFER)
+    {
+        return false;
+    }
+
+    const DominatorTree& DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    const bool statefulResourcesNotAliased =
+        m_ctx->getModuleMetaData()->statefulResourcesNotAliased;
+    BasicBlock* chunkBB = dominatingChunk->getParent();
+    BasicBlock* candidateBB = mergeCandidate->getParent();
+
+    // Lambda checks if an instruction may write to memory that potentially
+    // aliases the loaded memory.
+    auto IsAliasedWrite = [accessType, statefulResourcesNotAliased](
+        Instruction* inst)
+    {
+        // Treat memory fences as aliasing writes as they may change results
+        // of subsequent loads.
+        auto* intr = dyn_cast<GenIntrinsicInst>(inst);
+        if (intr &&
+            (intr->getIntrinsicID() == GenISAIntrinsic::GenISA_memoryfence ||
+             intr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCFence))
+        {
+            return true;
+        }
+        if (!inst->mayWriteToMemory())
+        {
+            return false;
+        }
+        Value* ptr = GetBufferOperand(inst);
+        if (ptr == nullptr || !ptr->getType()->isPointerTy())
+        {
+            return false;
+        }
+        BufferType writeAccessType = DecodeBufferType(
+            ptr->getType()->getPointerAddressSpace());
+        if (writeAccessType != STATELESS &&
+            writeAccessType != UAV &&
+            writeAccessType != BINDLESS &&
+            writeAccessType != SSH_BINDLESS)
+        {
+            return false;
+        }
+        if (statefulResourcesNotAliased &&
+            writeAccessType != accessType)
+        {
+            // Note: the following improvements are possible:
+            // - check BTI index for direct access to UAV/CONSTANT_BUFFER
+            // - consider checking the "unique_id" part of the addressspace
+            //   for bindless access
+            return false;
+        }
+        // By default assume that the write access may alias the load
+        return true;
+    };
+
+    // Lambda checks if a range of instructions has an instruction that may
+    // write to memory that potentially aliases the loaded memory.
+    auto HasAliasedWrite = [&IsAliasedWrite](
+        auto beginIt,
+        auto endIt)
+    {
+        for (auto II = beginIt, EI = endIt; II != EI; ++II)
+        {
+            if (IsAliasedWrite(&*II))
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    bool sameBB = chunkBB == candidateBB;
+    // First check the merge candidate BB
+    if (HasAliasedWrite(
+        sameBB ? dominatingChunk->getIterator() : candidateBB->begin(),
+        mergeCandidate->getIterator()))
+    {
+        return true;
+    }
+    if (!sameBB)
+    {
+        // Check the dominating BB
+        if (HasAliasedWrite(dominatingChunk->getIterator(), chunkBB->end()))
+        {
+            return true;
+        }
+        // Check all potentially reachable BBs starting from predecessors of the
+        // candidate merge BB and going up to to the dominating chunk BB.
+        IGC_ASSERT(DT.dominates(chunkBB, candidateBB));
+        SmallSet<BasicBlock*, 16> seen;
+        SmallVector<BasicBlock*, 16> worklist(pred_begin(candidateBB), pred_end(candidateBB));
+        seen.insert(chunkBB);
+        seen.insert(candidateBB);
+        while (!worklist.empty())
+        {
+            BasicBlock* bb = worklist.pop_back_val();
+            if (seen.count(bb) > 0)
+            {
+                continue;
+            }
+            if (HasAliasedWrite(bb->begin(), bb->end()))
+            {
+                return true;
+            }
+            seen.insert(bb);
+            worklist.insert(worklist.end(), pred_begin(bb), pred_end(bb));
+        }
+    }
+    return false;
+}
 char IGC::ConstantCoalescing::ID = 0;

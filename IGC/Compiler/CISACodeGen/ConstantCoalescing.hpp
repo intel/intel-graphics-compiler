@@ -307,6 +307,11 @@ namespace IGC
 
         alignment_t GetAlignment(Instruction* load) const;
         void SetAlignment(Instruction* load, uint alignment);
+
+        bool CheckForAliasingWrites(
+            uint32_t addrSpace,
+            llvm::Instruction* dominatingChunk,
+            llvm::Instruction* mergeCandidate);
     };
 
 }
