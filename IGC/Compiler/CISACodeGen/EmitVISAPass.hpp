@@ -432,7 +432,8 @@ public:
                            uint64_t align);
     void emitLSCVectorStore(llvm::Value *Ptr,
                             llvm::Value *offset, llvm::ConstantInt *immOffset,
-                            llvm::Value *storedVal, LSC_CACHE_OPTS cacheOpts,
+                            llvm::Value *storedVal, llvm::BasicBlock* BB,
+                            LSC_CACHE_OPTS cacheOpts,
                             alignment_t align, bool dontForceDMask);
     void emitGenISACopy(llvm::GenIntrinsicInst* GenCopyInst);
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
@@ -955,6 +956,13 @@ private:
     bool m_isDuplicate;
     CVariable *m_tmpDest = nullptr;
     std::set<CoalescingEngine::CCTuple *> lifetimeStartAdded;
+
+    typedef struct {
+        CVariable* var;
+        CVariable* broadcastedVar;
+        llvm::BasicBlock* BB;
+    } ConstVectorStoreData;
+    llvm::DenseMap<llvm::Constant*, ConstVectorStoreData> m_constantVectorStores;
 };
 
 } // namespace IGC
