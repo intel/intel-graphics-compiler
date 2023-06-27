@@ -68,20 +68,23 @@ bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
          ctx->platform.WaDisableD64ScratchMessage()) &&
         ctx->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory;
 
+    NonBitcastInstructionsLegalized = false;
+    CastInst_ZExtWithIntermediateIllegalsEliminated = false;
+    CastInst_TruncWithIntermediateIllegalsEliminated = false;
+    Bitcast_BitcastWithIntermediateIllegalsEliminated = false;
+
     IGCLLVM::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
 
     Changed = false;
     visit(F);
-    if (Changed) {
-        NonBitcastInstructionsLegalized = true;
-        visit(F);
-        CastInst_ZExtWithIntermediateIllegalsEliminated = true;
-        visit(F);
-        CastInst_TruncWithIntermediateIllegalsEliminated = true;
-        visit(F);
-        Bitcast_BitcastWithIntermediateIllegalsEliminated = true;
-    }
+    NonBitcastInstructionsLegalized = true;
+    visit(F);
+    CastInst_ZExtWithIntermediateIllegalsEliminated = true;
+    visit(F);
+    CastInst_TruncWithIntermediateIllegalsEliminated = true;
+    visit(F);
+    Bitcast_BitcastWithIntermediateIllegalsEliminated = true;
     return Changed;
 }
 
@@ -110,37 +113,39 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
         return;
 
     if (!I.getOperand(0)->getType()->isIntOrIntVectorTy() &&
-        !dyn_cast<ExtractElementInst>(&I))
+        !isa<ExtractElementInst>(&I))
         return; // Legalization for int types only or for extractelements
 
     m_builder->SetInsertPoint(&I);
 
     //Depending on the phase of legalization pass, call appropriate function
     if (!NonBitcastInstructionsLegalized) { // LEGALIZE ALUs first
-        if (dyn_cast<PHINode>(&I)) {
+        if (isa<PHINode>(&I)) {
             legalizePhiInstruction(I);  // phi nodes and all incoming values
         }
-        else if (dyn_cast<UnaryInstruction>(&I)) {
+        else if (isa<UnaryInstruction>(&I)) {
             legalizeUnaryInstruction(I); // pointercast &/or load
         }
-        else if (dyn_cast<ICmpInst>(&I) || dyn_cast<BinaryOperator>(&I) || dyn_cast<SelectInst>(&I)) {
+        else if (isa<ICmpInst>(&I) || isa<BinaryOperator>(&I) || isa<SelectInst>(&I)) {
             legalizeBinaryOperator(I);    // Bitwise and Arithmetic Operations
         }
-        else if (dyn_cast<ExtractElementInst>(&I)) {
+        else if (isa<ExtractElementInst>(&I)) {
             legalizeExtractElement(I);
         }
     }
     else if (!CastInst_ZExtWithIntermediateIllegalsEliminated) { // Eliminate intermediate ILLEGAL operands in bitcast-zext or trunc-zext pairs
-        if (dyn_cast<ZExtInst>(&I))
+        if (isa<ZExtInst>(&I))
             cleanupZExtInst(I);
     }
     else if (!CastInst_TruncWithIntermediateIllegalsEliminated) { // Eliminate intermediate ILLEGAL operands in bitcast-zext or trunc-zext pairs
-        if (dyn_cast<TruncInst>(&I))
+        if (isa<TruncInst>(&I))
             cleanupTruncInst(I);
     }
     else if (!Bitcast_BitcastWithIntermediateIllegalsEliminated) { // Eliminate redundant bitcast-bitcast pairs and eliminate intermediate ILLEGAL operands in bitcast-bitcast pairs with src == dest OR src != dest
-        if (dyn_cast<BitCastInst>(&I))
+        if (isa<BitCastInst>(&I))
             cleanupBitCastInst(I);
+        if (isa<TruncInst>(&I))
+            cleanupBitCastTruncInst(I);
     }
 }
 
@@ -779,6 +784,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
         // %4 = extractelement %1, 1
         // %5 = insertelement %3, %4, 1
         // %6 = bitcast <2 x i64> %5 to i128
+
         unsigned dstSize = I.getType()->getScalarSizeInBits();
         unsigned srcSize = I.getOperand(0)->getType()->getScalarSizeInBits();
 
@@ -801,18 +807,20 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
             return;
         }
 
-        unsigned numSrcElements = srcSize / promotedInt;
-        unsigned numDstElements = dstSize / promotedInt;
+        unsigned numSrcElements = static_cast<unsigned>(I.getOperand(0)->getType()->getPrimitiveSizeInBits() / promotedInt);
+        unsigned numDstElements = static_cast<unsigned>(I.getType()->getPrimitiveSizeInBits() / promotedInt);
         Type* srcVecTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numSrcElements);
         Type* dstVecTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numDstElements);
 
         // Bitcast the illegal src type to a legal vector
         Value* srcVec = m_builder->CreateBitCast(I.getOperand(0), srcVecTy);
         Value* dstVec = UndefValue::get(dstVecTy);
+        unsigned numElements = I.getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements() : 1;
 
         for (unsigned i = 0; i < numDstElements; i++)
         {
-            Value* v = m_builder->CreateExtractElement(srcVec, m_builder->getInt32(i));
+            Value* v = m_builder->CreateExtractElement(srcVec, m_builder->getInt32((i / (numDstElements / numElements)) *
+                (numSrcElements / numElements) + (i % (numDstElements / numElements))));
             dstVec = m_builder->CreateInsertElement(dstVec, v, m_builder->getInt32(i));
         }
         // Cast back to original dst type
@@ -907,6 +915,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                 }
                 else {
                     // this is a place holder, but DO NOT expect to need an implementation for this case.
+                    IGC_ASSERT_MESSAGE(0, "Not yet implemented");
                 }
             }
             else {
@@ -942,6 +951,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         }
         else { // (promoteToInt*quotient != Src1width) case
                // No support yet
+            IGC_ASSERT_MESSAGE(0, "Not yet implemented");
         }
     }
     break;
@@ -1135,23 +1145,26 @@ void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
     }
     else
     {
-        for (Value::use_iterator UI = I.use_begin(), UE = I.use_end(); UI != UE; ++UI) {
-            if (TruncInst* useTrunc = dyn_cast<TruncInst>(UI->getUser()))
-            {
-                IGC_ASSERT(I.getType()->getScalarSizeInBits() > useTrunc->getType()->getScalarSizeInBits());
-                auto newTrunc = dyn_cast<TruncInst>(m_builder->CreateTrunc(I.getOperand(0), useTrunc->getType()));
-                useTrunc->replaceAllUsesWith(newTrunc);
-//              Commented out for now because it breaks use_iterator
-//                useTrunc->eraseFromParent();
-                cleanupTruncInst(*newTrunc);
-                Changed = true;
-            }
+        if (TruncInst* prevTrunc = dyn_cast<TruncInst>(I.getOperand(0)))
+        {
+            //Example:
+            //%1 = trunc i96 %in to i65
+            //%out = trunc i65 %1 to i64
+            //=>
+            //%out = trunc i96 %in to i64
+            IGC_ASSERT(prevTrunc->getType()->getScalarSizeInBits() > I.getType()->getScalarSizeInBits());
+            auto* newTrunc = cast<TruncInst>(m_builder->CreateTrunc(prevTrunc->getOperand(0), I.getType()));
+            I.replaceAllUsesWith(newTrunc);
+            Changed = true;
         }
     }
 
     if (I.use_empty())
     {
+        Instruction* prevInst = dyn_cast<Instruction>(I.getOperand(0));
         I.eraseFromParent();
+        if (prevInst && prevInst->use_empty())
+            prevInst->eraseFromParent();
         Changed = true;
     }
 
@@ -1160,23 +1173,22 @@ void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
 
 void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
 
-    /*
-    Need to handle:
-    1.    bitcast
-    2.    bitcast addrspace*
-
-    a.    bitcast iSrc , iILLEGAL
-        bitcast iILLEGAL, iSrc
-    b.    bitcast iSrc, iILLEGAL
-        bitcast iILLEGAL, iLEGAL
-    */
-
     Instruction* prevInst = dyn_cast<Instruction>(I.getOperand(0));
     if (!prevInst)
         return;
     switch (prevInst->getOpcode()) {
     case Instruction::BitCast:
     {
+        /*
+        Need to handle:
+        1.    bitcast
+        2.    bitcast addrspace*
+
+        a.    bitcast iSrc , iILLEGAL
+            bitcast iILLEGAL, iSrc
+        b.    bitcast iSrc, iILLEGAL
+            bitcast iILLEGAL, iLEGAL
+        */
         Type* srcType = prevInst->getOperand(0)->getType();
         Type* dstType = I.getType();
         if (srcType == dstType)
@@ -1229,7 +1241,138 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
         }
         break;
     }
-    default:
+    case Instruction::ZExt:
+    {
+        Type* srcType = prevInst->getOperand(0)->getType();
+        Type* midType = prevInst->getType();
+        Type* dstType = I.getType();
+        if (isLegalInteger(srcType->getScalarSizeInBits())
+            && !isLegalInteger(midType->getScalarSizeInBits())
+            && isLegalInteger(dstType->getScalarSizeInBits()))
+        {
+            m_builder->SetInsertPoint(&I);
+
+            IGC_ASSERT_MESSAGE(midType->getScalarSizeInBits() % 8 == 0, "Unexpected type");
+            int interimTypeBitWidth = DL->getLargestLegalIntTypeSizeInBits();
+            for (; interimTypeBitWidth >= 8; interimTypeBitWidth /= 2)
+            {
+                if (srcType->getScalarSizeInBits() % interimTypeBitWidth == 0
+                    && midType->getScalarSizeInBits() % interimTypeBitWidth == 0)
+                    break;
+            }
+            Value* newInVecValue = prevInst->getOperand(0);
+            if (srcType->getScalarSizeInBits() != interimTypeBitWidth)
+            {
+                Type* newInVecType = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), interimTypeBitWidth),
+                   static_cast<unsigned>(srcType->getPrimitiveSizeInBits() / interimTypeBitWidth));
+                newInVecValue = m_builder->CreateBitCast(newInVecValue, newInVecType);
+            }
+            Value* newExtVec = UndefValue::get(IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(),
+                interimTypeBitWidth), static_cast<unsigned>(dstType->getPrimitiveSizeInBits() / interimTypeBitWidth)));
+            unsigned numElements = srcType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(srcType)->getNumElements() : 1;
+            unsigned newInQuotient = srcType->getScalarSizeInBits() / interimTypeBitWidth;
+            unsigned extQuotient = static_cast<unsigned>(dstType->getPrimitiveSizeInBits() / numElements / interimTypeBitWidth);
+            auto zero = ConstantInt::get(IntegerType::get(I.getContext(), interimTypeBitWidth), 0, false);
+            for (unsigned i = 0; i < numElements; i++) {
+                for (unsigned k = 0; k < newInQuotient; k++) {
+                    Value* extractedVal = m_builder->CreateExtractElement(newInVecValue, m_builder->getInt32(newInQuotient * i + k));
+                    newExtVec = m_builder->CreateInsertElement(newExtVec, extractedVal, m_builder->getInt32(extQuotient * i + k));
+                }
+                for (unsigned k = newInQuotient; k < extQuotient; k++) {
+                    newExtVec = m_builder->CreateInsertElement(newExtVec, zero, m_builder->getInt32(extQuotient * i + k));
+                }
+            }
+            if (dstType->getScalarSizeInBits() != newExtVec->getType()->getScalarSizeInBits())
+            {
+                newExtVec = m_builder->CreateBitCast(newExtVec, dstType);
+            }
+            I.replaceAllUsesWith(newExtVec);
+            I.eraseFromParent();
+            if (prevInst->use_empty())
+            {
+                prevInst->eraseFromParent();
+            }
+            Changed = true;
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(isLegalInteger(srcType->getScalarSizeInBits())
+                && isLegalInteger(midType->getScalarSizeInBits()),
+                "Unexpected illegal type width");
+        }
         break;
+    }
+    default:
+        IGC_ASSERT_MESSAGE(isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()),
+            "Unexpected illegal type width");
+        break;
+    }
+}
+
+void PeepholeTypeLegalizer::cleanupBitCastTruncInst(Instruction& I) {
+
+    BitCastInst* bitCastInst = dyn_cast<BitCastInst>(I.getOperand(0));
+    if (!bitCastInst)
+        return;
+
+    if (isLegalInteger(bitCastInst->getOperand(0)->getType()->getScalarSizeInBits())
+        && !isLegalInteger(bitCastInst->getType()->getScalarSizeInBits()) &&
+        isLegalInteger(I.getType()->getScalarSizeInBits()))
+    {
+        /*
+            Example:
+            %2 = bitcast <3 x i32> %0 to <2 x i48>
+            %3 = trunc <2 x i48> %2 to <2 x i16>
+            =>
+            %2 = bitcast <3 x i32> %0 to <6 x i16>
+            %3 = extractelement <6 x i16> %2, i32 0
+            %4 = insertelement <2 x i16> undef, i16 %3, i32 0
+            %5 = extractelement <6 x i16> %2, i32 3
+            %6 = insertelement <2 x i16> %4, i16 %5, i32 1
+        */
+
+        m_builder->SetInsertPoint(&I);
+
+        Type* srcType = bitCastInst->getOperand(0)->getType();
+        Type* midType = bitCastInst->getType();
+        Type* dstType = I.getType();
+
+        IGC_ASSERT_MESSAGE(midType->getScalarSizeInBits() % 8 == 0, "Unexpected type");
+        int interimTypeBitWidth = DL->getLargestLegalIntTypeSizeInBits();
+        for (; interimTypeBitWidth >= 8; interimTypeBitWidth /= 2)
+        {
+            if (midType->getScalarSizeInBits() % interimTypeBitWidth == 0
+                && dstType->getScalarSizeInBits() % interimTypeBitWidth == 0)
+                break;
+        }
+        Value* newInVecValue = bitCastInst->getOperand(0);
+        if (srcType->getScalarSizeInBits() != interimTypeBitWidth)
+        {
+            Type* newInVecType = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(),
+                interimTypeBitWidth), static_cast<unsigned>(midType->getPrimitiveSizeInBits() / interimTypeBitWidth));
+            newInVecValue = m_builder->CreateBitCast(newInVecValue, newInVecType);
+        }
+        Value* newTruncVec = UndefValue::get(IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(),
+            interimTypeBitWidth), static_cast<unsigned>(dstType->getPrimitiveSizeInBits() / interimTypeBitWidth)));
+        unsigned numElements = dstType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(dstType)->getNumElements() : 1;
+        unsigned newInQuotient = midType->getScalarSizeInBits() / interimTypeBitWidth;
+        unsigned truncQuotient = static_cast<unsigned>(dstType->getPrimitiveSizeInBits() / numElements / interimTypeBitWidth);
+        for (unsigned i = 0; i < numElements; i++) {
+            for (unsigned k = 0; k < truncQuotient; k++) {
+                Value* extractedVal = m_builder->CreateExtractElement(newInVecValue, m_builder->getInt32(newInQuotient * i + k));
+                newTruncVec = m_builder->CreateInsertElement(newTruncVec, extractedVal, m_builder->getInt32(truncQuotient * i + k));
+            }
+        }
+        if (dstType->getScalarSizeInBits() != newTruncVec->getType()->getScalarSizeInBits())
+        {
+            newTruncVec = m_builder->CreateBitCast(newTruncVec, dstType);
+        }
+        I.replaceAllUsesWith(newTruncVec);
+        I.eraseFromParent();
+        if (bitCastInst->use_empty())
+        {
+            bitCastInst->eraseFromParent();
+        }
+        Changed = true;
     }
 }

@@ -52,6 +52,7 @@ namespace IGC {
             void cleanupZExtInst(Instruction& I);
             void cleanupTruncInst(Instruction& I);
             void cleanupBitCastInst(Instruction& I);
+            void cleanupBitCastTruncInst(Instruction& I);
 
         private:
             bool NonBitcastInstructionsLegalized;
