@@ -35,7 +35,6 @@ namespace VLD {
     SPIRVTypeEnum SpirvType = SPIRVTypeEnum::SPIRV_TYPE_UNKNOWN;
     std::vector<std::string> ExportedFunctions;
     std::vector<std::string> ImportedFunctions;
-    std::vector<std::string> EntryPointNames;
     bool HasEntryPoints = false;
     int ForcedSubgroupSize = 0;
   };

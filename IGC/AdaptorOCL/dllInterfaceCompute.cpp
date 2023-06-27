@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "common/secure_mem.h"
 #include "common/shaderOverride.hpp"
 #include "common/ModuleSplitter.h"
+#include "common/IGCSPIRVParser.h"
 
 #include "CLElfLib/ElfReader.h"
 
@@ -1680,12 +1681,12 @@ bool TranslateBuild(
 {
     ShaderHash inputShHash;
     if (IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash))
+    {
         // Create the hash based on kernel names.
         // This takes the names and concatenates them into a string
         // which is then used to calculate the hash
-    {
-        llvm::Expected<VLD::SPVMetadata> parsedInput = VLD::SpvSplitter().Parse(pInputArgs->pInput, pInputArgs->InputSize);
-        std::vector<std::string> &entryPoints = parsedInput->EntryPointNames;
+        StringRef inputBin(pInputArgs->pInput, pInputArgs->InputSize);
+        const std::vector<std::string> &entryPoints = IGC::SPIRVParser::getEntryPointNames(inputBin);
 
         std::string entryPointsString = std::accumulate(entryPoints.begin(), entryPoints.end(), std::string(""));
 

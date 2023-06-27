@@ -19,6 +19,7 @@ set(IGC_BUILD__SRC__common
     "${CMAKE_CURRENT_SOURCE_DIR}/ShaderOverride.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Stats.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SysUtils.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCSPIRVParser.cpp"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/Debug.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/Dump.cpp"
@@ -66,6 +67,7 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/shaderOverride.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Stats.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SysUtils.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCSPIRVParser.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/Types.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Units.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MDFrameWork.h"

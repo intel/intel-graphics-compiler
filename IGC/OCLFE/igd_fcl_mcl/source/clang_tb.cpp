@@ -1820,7 +1820,9 @@ namespace TC
                     // which is simply not worth it. Without it there's no good and reliable way to get
                     // the kernel names for the hash generation, so the warning is to be emitted instead.
                 {
-                    std::string errorString = pOutputArgs->pErrorString;
+                    std::string errorString("");
+                    if (pOutputArgs->pErrorString)
+                        errorString = pOutputArgs->pErrorString;
                     errorString.append("warning: EnableKernelNamesBasedHash flag doesn't affect .cl dump's hash\n");
                     SetErrorString(errorString.c_str(), pOutputArgs);
                 }
