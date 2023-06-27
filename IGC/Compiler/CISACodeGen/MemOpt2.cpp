@@ -92,18 +92,15 @@ unsigned MemInstCluster::getNumLiveOutBytes(Instruction *I) const {
     return UseCount * EltByte;
 }
 
-bool MemInstCluster::run(Function& F) {
+bool MemInstCluster::runForOCL(Function& F) {
     bool Changed = false;
     for (auto& BB : F) {
         bool LocalChanged = false;
         // Clear bookkeeping.
         Scheduled.clear();
 
-        if (CTX->m_DriverInfo.enableSampleClustering())
-        {
-            // Cluster samplers.
-            LocalChanged = clusterSampler(&BB);
-        }
+        // Cluster samplers.
+        LocalChanged = clusterSampler(&BB);
 
         // Cluster MediaBlockReads
         LocalChanged |= clusterMediaBlockRead(&BB);
@@ -111,7 +108,7 @@ bool MemInstCluster::run(Function& F) {
         // Cluster memory loads.
         // TODO: Revise that later
         // considering sampler and load together.
-        if (!LocalChanged && CTX->type == ShaderType::OPENCL_SHADER)
+        if (!LocalChanged)
             Changed |= clusterLoad(&BB);
         Changed |= LocalChanged;
     }
@@ -402,5 +399,5 @@ bool MemOpt2::runOnFunction(Function &F) {
     auto AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
 
     Cluster.init(cgCtx, DL, AA, MaxLiveOutThreshold);
-    return Cluster.run(F);
+    return Cluster.runForOCL(F);
 }
