@@ -284,6 +284,7 @@ private:
     switch (SrcOprdIx) {
     default:
       vISA_ASSERT_UNREACHABLE("Invalid SrcOprdIx!");
+      ty = Type::INVALID;
       break;
     case 0:
     {

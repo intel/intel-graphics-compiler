@@ -404,6 +404,8 @@ static Mask getMaskForOp(IR_Builder* builder, G4_INST *inst,
   }
   default:
     vISA_ASSERT_UNREACHABLE("Bad opnd");
+    LB = 0;
+    RB = 0;
   }
   return Mask(LB, RB, nonContiguousStride, opnd->getAccRegSel());
 }
