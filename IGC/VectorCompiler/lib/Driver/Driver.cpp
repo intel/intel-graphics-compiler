@@ -659,7 +659,7 @@ deriveOptimizationLevel(opt::Arg *A, OptSpecifier PrimaryOpt) {
     StringRef Val = A->getValue();
     return parseOptimizationLevelString(Val);
   } else {
-    IGC_ASSERT(A->getOption().matches(OPT_opt_disable_common));
+    IGC_ASSERT(A->getOption().matches(OPT_opt_disable_ze));
     return vc::OptimizerLevel::None;
   }
 }
@@ -684,16 +684,16 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.UsePlain2DImages = true;
   if (ApiOptions.hasArg(OPT_vc_enable_preemption))
     Opts.EnablePreemption = true;
-  if (ApiOptions.hasArg(OPT_library_compilation_common))
+  if (ApiOptions.hasArg(OPT_library_compilation_ze))
     Opts.SaveStackCallLinkage = true;
   if (ApiOptions.hasArg(OPT_vc_disable_non_overlapping_region_opt))
     Opts.ForceDisableNonOverlappingRegionOpt = true;
   if (ApiOptions.hasArg(OPT_vc_disable_indvars_opt))
     Opts.ForceDisableIndvarsOpt = true;
-  if (ApiOptions.hasArg(OPT_enable_auto_large_GRF_mode_common))
+  if (ApiOptions.hasArg(OPT_intel_enable_auto_large_GRF_mode_ze))
     Opts.EnableAutoLargeGRF = true;
 
-  if (opt::Arg *A = ApiOptions.getLastArg(OPT_exp_register_file_size_common)) {
+  if (opt::Arg *A = ApiOptions.getLastArg(OPT_register_file_size)) {
     StringRef V = A->getValue();
     auto MaybeGRFSize = StringSwitch<Optional<unsigned>>(V)
                             .Case("128", 128)
@@ -705,12 +705,12 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_enable_zebin_common, OPT_disable_zebin_common))
+          ApiOptions.getLastArg(OPT_enable_zebin_ze, OPT_disable_zebin_ze))
     switch (A->getOption().getID()) {
-    case OPT_enable_zebin_common:
+    case OPT_enable_zebin_ze:
       Opts.Binary = vc::BinaryKind::ZE;
       break;
-    case OPT_disable_zebin_common:
+    case OPT_disable_zebin_ze:
       Opts.Binary = vc::BinaryKind::OpenCL;
       break;
     default:
@@ -731,7 +731,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_vc_optimize, OPT_opt_disable_common)) {
+          ApiOptions.getLastArg(OPT_vc_optimize, OPT_opt_disable_ze)) {
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
@@ -743,7 +743,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_vc_codegen_optimize, OPT_opt_disable_common)) {
+          ApiOptions.getLastArg(OPT_vc_codegen_optimize, OPT_opt_disable_ze)) {
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_codegen_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
@@ -780,9 +780,9 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   if (InternalOptions.hasArg(OPT_freset_llvm_stats))
     Opts.ResetLLVMStats = true;
   Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file).str();
-  if (InternalOptions.hasArg(OPT_use_bindless_buffers_common))
+  if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
     Opts.UseBindlessBuffers = true;
-  if (InternalOptions.hasArg(OPT_emit_zebin_visa_sections_common))
+  if (InternalOptions.hasArg(OPT_emit_zebin_visa_sections))
     Opts.EmitZebinVisaSections = true;
   if (InternalOptions.hasArg(OPT_fdisable_debuggable_kernels))
     Opts.EmitDebuggableKernels = false;
@@ -808,12 +808,12 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   }
 
   if (opt::Arg *A = InternalOptions.getLastArg(
-          OPT_binary_format, OPT_allow_zebin_common, OPT_disable_zebin_common)) {
+          OPT_binary_format, OPT_allow_zebin_ze, OPT_disable_zebin_ze)) {
     auto OptID = A->getOption().getID();
 
-    if (OptID == OPT_allow_zebin_common)
+    if (OptID == OPT_allow_zebin_ze)
       Opts.Binary = vc::BinaryKind::ZE;
-    else if (OptID == OPT_disable_zebin_common)
+    else if (OptID == OPT_disable_zebin_ze)
       Opts.Binary = vc::BinaryKind::OpenCL;
     else {
       StringRef Val = A->getValue();
@@ -881,12 +881,12 @@ static std::string composeLLVMArgs(const opt::ArgList &ApiArgs,
   }
 
   // Add gtpin options if any.
-  if (ApiArgs.hasArg(IGC::options::api::OPT_gtpin_rera_common))
+  if (ApiArgs.hasArg(IGC::options::api::OPT_gtpin_rera))
     Result += " -finalizer-opts='-GTPinReRA'";
-  if (ApiArgs.hasArg(IGC::options::api::OPT_gtpin_grf_info_common))
+  if (ApiArgs.hasArg(IGC::options::api::OPT_gtpin_grf_info))
     Result += " -finalizer-opts='-getfreegrfinfo -rerapostschedule'";
   if (opt::Arg *A =
-          ApiArgs.getLastArg(IGC::options::api::OPT_gtpin_scratch_area_size_common)) {
+          ApiArgs.getLastArg(IGC::options::api::OPT_gtpin_scratch_area_size)) {
     Result += " -finalizer-opts='-GTPinScratchAreaSize ";
     Result += A->getValue();
     Result += "'";

@@ -76,6 +76,9 @@ def Xfinalizer : PlainSeparate<"Xfinalizer">,
 def vc_use_plain_2d_images : PlainFlag<"vc-use-plain-2d-images">,
   HelpText<"Treat image2d_t annotation as non-media image">;
 
+def vc_library_compilation : PlainFlag<"library-compilation">,
+  Alias<library_compilation_ze>;
+
 def vc_disable_non_overlapping_region_opt :
   PlainFlag<"vc-disable-non-overlapping-region-opt">,
   HelpText<"Disable non-overlapping region optimization">;
@@ -86,12 +89,12 @@ def vc_disable_indvars_opt :
 
 // Compatibility alias.
 def : PlainFlag<"doubleGRF">,
-  Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
+  Alias<register_file_size>, AliasArgs<["256"]>,
   HelpText<"Alias for -ze-opt-large-register-file"> {
   let Flags = ApiHelper.VCBackwardCompatFlags;
 }
 def : PlainFlag<"double-GRF">,
-  Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
+  Alias<register_file_size>, AliasArgs<["256"]>,
   HelpText<"Alias for -ze-opt-large-register-file">;
 }
 // }} VC API options

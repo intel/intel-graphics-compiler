@@ -10,10 +10,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/StringExtras.h"
-#include "llvm/Option/ArgList.h"
-#include "llvm/Support/StringSaver.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvmWrapper/Option/OptTable.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -37,7 +33,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <fstream>
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
-#include "igc/Options/Options.h"
 
 /***********************************************************************************
 This file contains the code specific to opencl kernels
@@ -219,469 +214,474 @@ namespace IGC
         return threshold;
     }
 
-    void OpenCLProgramContext::InternalOptions::parseOptions(const char* internalOpts)
+    void OpenCLProgramContext::InternalOptions::parseOptions(const char* IntOptStr)
     {
-        using namespace options::internal;
-        if (internalOpts == nullptr)
-            return;
+        // Assume flags is in the form: <f0>[=<v0>] <f1>[=<v1>] ...
+        // flag name and its value are either seperated by one or many ' ' or a single '='.
+        // A flag seperator between two flags is always one or many ' '.
+        const char* NAMESEP = " =";  // separator b/w name and its value
 
-        llvm::BumpPtrAllocator alloc;
-        llvm::StringSaver saver{ alloc };
-        SmallVector<const char*, 8> argv;
-        cl::TokenizeGNUCommandLine(internalOpts, saver, argv);
-
-        const llvm::opt::OptTable& internalOptionsTable = getInternalOptTable();
-        unsigned missingArgIndex = 0;
-        unsigned missingArgCount = 0;
-        opt::InputArgList internalOptions =
-            internalOptionsTable.ParseArgs(argv, missingArgIndex, missingArgCount, options::Flags::IGCInternalOption);
-
-        if (internalOptions.hasArg(OPT_replace_global_offsets_by_zero_common))
+        llvm::StringRef opts(IntOptStr);
+        size_t Pos = 0;
+        while (Pos != llvm::StringRef::npos)
         {
-            replaceGlobalOffsetsByZero = true;
-        }
+            // Get a flag name
+            Pos = opts.find_first_not_of(' ', Pos);
+            if (Pos == llvm::StringRef::npos)
+                continue;
 
-        if (internalOptions.hasArg(OPT_kernel_debug_enable_common))
-        {
-            KernelDebugEnable = true;
-        }
+            size_t ePos = opts.find_first_of(NAMESEP, Pos);
+            llvm::StringRef flagName = opts.substr(Pos, ePos - Pos);
 
-        if (internalOptions.hasArg(OPT_include_sip_csr_common))
-        {
-            IncludeSIPCSR = true;
-        }
-
-        if (internalOptions.hasArg(OPT_include_sip_kernel_debug_common))
-        {
-            IncludeSIPKernelDebug = true;
-        }
-
-        if (internalOptions.hasArg(OPT_include_sip_kernel_local_debug_common))
-        {
-            IncludeSIPKernelDebugWithLocalMemory = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_32_bit_ptr_arith_common))
-        {
-            Use32BitPtrArith = true;
-        }
-
-        if (internalOptions.hasArg(OPT_greater_than_4GB_buffer_required_common))
-        {
-            IntelGreaterThan4GBBufferRequired = true;
-        }
-
-        if (internalOptions.hasArg(OPT_has_buffer_offset_arg_common))
-        {
-            IntelHasBufferOffsetArg = true;
-        }
-
-        if (internalOptions.hasArg(OPT_buffer_offset_arg_required_common))
-        {
-            IntelBufferOffsetArgOptional = false;
-        }
-
-        if (internalOptions.hasArg(OPT_has_positive_pointer_offset_common))
-        {
-            IntelHasPositivePointerOffset = true;
-        }
-
-        if (internalOptions.hasArg(OPT_has_subdw_aligned_ptr_arg_common))
-        {
-            IntelHasSubDWAlignedPtrArg = true;
-        }
-
-        if (internalOptions.hasArg(OPT_disable_a64wa_common))
-        {
-            IntelDisableA64WA = true;
-        }
-
-        if (internalOptions.hasArg(OPT_force_enable_a64wa_common))
-        {
-            IntelForceEnableA64WA = true;
-        }
-
-        if (internalOptions.hasArg(OPT_no_prera_scheduling_common))
-        {
-            IntelEnablePreRAScheduling = false;
-        }
-
-        if (internalOptions.hasArg(OPT_no_local_to_generic_common))
-        {
-            NoLocalToGeneric = true;
-        }
-
-        if (internalOptions.hasArg(OPT_force_global_mem_allocation_common))
-        {
-            ForceGlobalMemoryAllocation = true;
-        }
-
-        if (internalOptions.hasArg(OPT_128_grf_per_thread_common))
-        {
-            Intel128GRFPerThread = true;
-        }
-
-        if (internalOptions.hasArg(OPT_256_grf_per_thread_common) ||
-            internalOptions.hasArg(OPT_large_register_file_common))
-        {
-            Intel256GRFPerThread = true;
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_num_thread_per_eu_common))
-        {
-            IntelNumThreadPerEU = true;
-            llvm::StringRef valStr = arg->getValue();
-            valStr.getAsInteger(10, numThreadsPerEU);
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_exp_register_file_size_common))
-        {
-            IntelExpGRFSize = true;
-            llvm::StringRef valStr = arg->getValue();
-            valStr.getAsInteger(10, expGRFSize);
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_large_grf_kernel_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            LargeGRFKernels.push_back(valStr.str());
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_regular_grf_kernel_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            RegularGRFKernels.push_back(valStr.str());
-        }
-
-        if (internalOptions.hasArg(OPT_enable_auto_large_GRF_mode_common))
-        {
-            IntelEnableAutoLargeGRF = true;
-        }
-
-        if (internalOptions.hasArg(OPT_disable_recompilation_common))
-        {
-            IGC_SET_FLAG_VALUE(DisableRecompilation, true);
-        }
-
-        if (internalOptions.hasArg(OPT_force_emu_int32divrem_common))
-        {
-            IntelForceInt32DivRemEmu = true;
-        }
-
-        if (internalOptions.hasArg(OPT_force_emu_sp_int32divrem_common))
-        {
-            IntelForceInt32DivRemEmuSP = true;
-        }
-
-        if (internalOptions.hasArg(OPT_force_disable_4GB_buffer_common))
-        {
-            IntelForceDisable4GBBuffer = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_bindless_buffers_common))
-        {
-            PromoteStatelessToBindless = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_bindless_images_common))
-        {
-            PreferBindlessImages = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_bindless_mode_common))
-        {
-            // This is a new option that combines bindless generation for buffers
-            // and images. Keep the old internal options to have compatibility
-            // for existing tests. Those (old) options could be removed in future.
-            UseBindlessMode = true;
-            PreferBindlessImages = true;
-            PromoteStatelessToBindless = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_bindless_printf_common))
-        {
-            UseBindlessPrintf = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_bindless_legacy_mode_common))
-        {
-            UseBindlessLegacyMode = true;
-        }
-
-        if (internalOptions.hasArg(OPT_use_bindless_advanced_mode_common))
-        {
-            UseBindlessLegacyMode = false;
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_vector_coalescing_common))
-        {
-            // -cl-intel-vector-coalescing=<0-5>
-            llvm::StringRef valStr = arg->getValue();
-            int16_t val = 0;
-            if (valStr.getAsInteger(10, val) || val < 0 || val > 5)
+            // Build options:  -cl-intel-xxxx, -ze-intel-xxxx, -ze-opt-xxxx
+            //                 -cl-xxxx, -ze-xxxx
+            // Both cl version and ze version means the same thing.
+            // Here, strip off common prefix.
+            size_t prefix_len;
+            if (flagName.startswith("-cl-intel") || flagName.startswith("-ze-intel"))
             {
-                IGC_ASSERT_MESSAGE(false, "-cl-intel-vector-coalescing: invalid value, ignored!");
+                prefix_len = 9;
+            }
+            else if (flagName.startswith("-ze-opt"))
+            {
+                prefix_len = 7;
+            }
+            else if (flagName.startswith("-cl") || flagName.startswith("-ze"))
+            {
+                prefix_len = 3;
             }
             else
             {
-                VectorCoalescingControl = val;
+                // not a valid flag, skip
+                Pos = opts.find_first_of(' ', Pos);
+                continue;
             }
-        }
 
-        if (internalOptions.hasArg(OPT_allow_zebin_common))
-        {
-            EnableZEBinary = true;
-        }
-
-        if (internalOptions.hasArg(OPT_disable_zebin_common))
-        {
-            EnableZEBinary = false;
-        }
-
-        if (internalOptions.hasArg(OPT_exclude_ir_from_zebin_common))
-        {
-            ExcludeIRFromZEBinary = true;
-        }
-
-        if (internalOptions.hasArg(OPT_emit_zebin_visa_sections_common))
-        {
-            EmitZeBinVISASections = true;
-        }
-
-        if (internalOptions.hasArg(OPT_no_spill_common))
-        {
-            // This is an option to avoid spill/fill instructions in scheduler kernel.
-            // OpenCL Runtime triggers scheduler kernel offline compilation while driver building,
-            // since scratch space is not supported in this specific case, we cannot end up with
-            // spilling kernel. If this option is set, then IGC will recompile the kernel with
-            // some some optimizations disabled to avoid spill/fill instructions.
-            NoSpill = true;
-        }
-
-        if (internalOptions.hasArg(OPT_disable_noMaskWA_common))
-        {
-            DisableNoMaskWA = true;
-        }
-
-        if (internalOptions.hasArg(OPT_ignoreBFRounding_common))
-        {
-            IgnoreBFRounding = true;
-        }
-
-        if (internalOptions.hasArg(OPT_compile_one_at_time_common))
-        {
-            CompileOneKernelAtTime = true;
-        }
-
-        if (internalOptions.hasArg(OPT_skip_reloc_add_common))
-        {
-            AllowRelocAdd = false;
-        }
-
-        if (internalOptions.hasArg(OPT_disableEUFusion_common))
-        {
-            DisableEUFusion = true;
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_functonControl_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            int val = 0;
-            if (valStr.getAsInteger(10, val) || val < 0)
+            llvm::StringRef suffix = flagName.drop_front(prefix_len);
+            if (suffix.equals("-replace-global-offsets-by-zero"))
             {
-                IGC_ASSERT_MESSAGE(false, "-cl-intel-functonControl: invalid value, ignored!");
+                replaceGlobalOffsetsByZero = true;
             }
-            else
+            else if (suffix.equals("-kernel-debug-enable"))
             {
-                FunctionControl = val;
+                KernelDebugEnable = true;
             }
-        }
-
-        if (internalOptions.hasArg(OPT_fail_on_spill_common))
-        {
-            FailOnSpill = true;
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_load_cache_default_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            int val = 0;
-            if (valStr.getAsInteger(10, val) || val < 0)
+            else if (suffix.equals("-include-sip-csr"))
             {
-                IGC_ASSERT_MESSAGE(false, "-cl-load-cache-default: invalid value, ignored!");
+                IncludeSIPCSR = true;
             }
-            else
+            else if (suffix.equals("-include-sip-kernel-debug"))
             {
-                LoadCacheDefault = val;
+                IncludeSIPKernelDebug = true;
             }
-        }
-
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_store_cache_default_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            int val = 0;
-            if (valStr.getAsInteger(10, val) || val < 0)
+            else if (suffix.equals("-include-sip-kernel-local-debug"))
             {
-                IGC_ASSERT_MESSAGE(false, "-cl-store-cache-default: invalid value, ignored!");
+                IncludeSIPKernelDebugWithLocalMemory = true;
             }
-            else
+            else if (suffix.equals("-use-32bit-ptr-arith"))
             {
-                StoreCacheDefault = val;
+                Use32BitPtrArith = true;
             }
-        }
 
-        if (internalOptions.hasArg(OPT_poison_unsupported_fp64_kernels_common))
-        {
-            // This option forces IGC to poison kernels using fp64
-            // operations on platforms without HW support for fp64.
-            EnableUnsupportedFP64Poisoning = true;
-        }
-
-        if (internalOptions.hasArg(OPT_fp64_gen_emu_common))
-        {
-            // This option enables FP64 emulation for platforms that
-            // cannot HW support for double operations
-            EnableFP64GenEmu = true;
-        }
-
-        // *-scratch-space-private-memory-minimal-size-per-thread <SIZE>
-        // SIZE >= 0
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_private_memory_minimal_size_per_thread_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            int val = 0;
-            if (valStr.getAsInteger(10, val) || val < 0)
+            // -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
+            else if (suffix.equals("-greater-than-4GB-buffer-required"))
             {
-                IGC_ASSERT_MESSAGE(false, "-cl-private-memory-minimal-size-per-thread: invalid value, ignored!");
+                IntelGreaterThan4GBBufferRequired = true;
             }
-            else
+
+            // -cl-intel-has-buffer-offset-arg, -ze-opt-has-buffer-offset-arg
+            else if (suffix.equals("-has-buffer-offset-arg"))
             {
-                IntelPrivateMemoryMinimalSizePerThread = val;
+                IntelHasBufferOffsetArg = true;
             }
-        }
 
-        // *-scratch-space-private-memory-minimal-size-per-thread <SIZE>
-        // SIZE >= 0
-        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_scratch_space_private_memory_minimal_size_per_thread_common))
-        {
-            llvm::StringRef valStr = arg->getValue();
-            int val = 0;
-            if (valStr.getAsInteger(10, val) || val < 0)
+            // -cl-intel-buffer-offset-arg-required, -ze-opt-buffer-offset-arg-required
+            else if (suffix.equals("-buffer-offset-arg-required"))
             {
-                IGC_ASSERT_MESSAGE(false, "-cl-private-memory-minimal-size-per-thread: invalid value, ignored!");
+                IntelBufferOffsetArgOptional = false;
             }
-            else
+
+            // -cl-intel-has-positive-pointer-offset, -ze-opt-has-positive-pointer-offset
+            else if (suffix.equals("-has-positive-pointer-offset"))
             {
-                IntelScratchSpacePrivateMemoryMinimalSizePerThread = val;
+                IntelHasPositivePointerOffset = true;
             }
-        }
 
-        if (internalOptions.hasArg(OPT_enable_divergent_barrier_handling_common))
-        {
-            EnableDivergentBarrierHandling = true;
-        }
+            // -cl-intel-has-subDW-aligned-ptr-arg, -ze-opt-has-subDW-aligned-ptr-arg
+            else if (suffix.equals("-has-subDW-aligned-ptr-arg"))
+            {
+                IntelHasSubDWAlignedPtrArg = true;
+            }
 
-        if (internalOptions.hasArg(OPT_high_accuracy_nolut_math_common))
-        {
-            UseHighAccuracyMathFuncs = true;
-        }
+            // -cl-intel-disable-a64WA
+            else if (suffix.equals("-disable-a64WA"))
+            {
+                IntelDisableA64WA = true;
+            }
 
-        if (internalOptions.hasArg(OPT_emit_visa_only))
-        {
-            EmitVisaOnly = true;
-        }
+            // -cl-intel-force-enable-a64WA
+            else if (suffix.equals("-force-enable-a64WA"))
+            {
+                IntelForceEnableA64WA = true;
+            }
 
+            // GTPin flags used by L0 driver runtime
+            // -cl-intel-gtpin-rera
+            else if (suffix.equals("-gtpin-rera"))
+            {
+                GTPinReRA = true;
+            }
+            else if (suffix.equals("-gtpin-grf-info"))
+            {
+                GTPinGRFInfo = true;
+            }
+            else if (suffix.equals("-gtpin-scratch-area-size"))
+            {
+                GTPinScratchAreaSize = true;
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, GTPinScratchAreaSizeValue))
+                {
+                    IGC_ASSERT(0);
+                }
+                Pos = valEnd;
+                continue;
+            }
+            else if (suffix.equals("-gtpin-indir-ref"))
+            {
+                GTPinIndirRef = true;
+            }
+
+            // -cl-intel-no-prera-scheduling
+            else if (suffix.equals("-no-prera-scheduling"))
+            {
+                IntelEnablePreRAScheduling = false;
+            }
+            // -cl-intel-no-local-to-generic
+            else if (suffix.equals("-no-local-to-generic"))
+            {
+                NoLocalToGeneric = true;
+            }
+            // -cl-intel-force-global-mem-allocation
+            else if (suffix.equals("-force-global-mem-allocation"))
+            {
+                ForceGlobalMemoryAllocation = true;
+            }
+
+            //
+            // Options to set the number of GRF and threads
+            // (All start with -cl-intel or -ze-opt)
+            else if (suffix.equals("-128-GRF-per-thread"))
+            {
+                Intel128GRFPerThread = true;
+            }
+            else if (suffix.equals("-256-GRF-per-thread") ||
+                suffix.equals("-large-register-file"))
+            {
+                Intel256GRFPerThread = true;
+            }
+            else if (suffix.equals("-num-thread-per-eu"))
+            {
+                IntelNumThreadPerEU = true;
+
+                // Take an integer value after this option:
+                //   <flag> <number>
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.equals("auto"))
+                {
+                    numThreadsPerEU = 0;
+                }
+                else if (valStr.getAsInteger(10, numThreadsPerEU))
+                {
+                    IGC_ASSERT(0);
+                }
+                Pos = valEnd;
+                continue;
+            } else if (suffix.equals("-exp-register-file-size")) {
+                IntelExpGRFSize = true;
+
+                // Take an integer value after this option:
+                //   <flag> <number>
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr =
+                    opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, expGRFSize)) {
+                    IGC_ASSERT(0);
+                }
+                Pos = valEnd;
+                continue;
+            }
+            else if (suffix.equals("-large-grf-kernel"))
+            {
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+
+                LargeGRFKernels.push_back(valStr.str());
+                Pos = valEnd;
+                continue;
+            }
+            else if (suffix.equals("-regular-grf-kernel"))
+            {
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+
+                RegularGRFKernels.push_back(valStr.str());
+                Pos = valEnd;
+                continue;
+            }
+            else if (suffix.equals("-enable-auto-large-GRF-mode"))
+            {
+                IntelEnableAutoLargeGRF = true;
+            }
+            // -cl-disable-recompilation
+            else if (suffix.equals("-disable-recompilation"))
+            {
+                IGC_SET_FLAG_VALUE(DisableRecompilation, true);
+            }
+            // -cl-intel-force-emu-int32divrem
+            else if (suffix.equals("-force-emu-int32divrem"))
+            {
+                IntelForceInt32DivRemEmu = true;
+            }
+            // -cl-intel-force-emu-sp-int32divrem
+            else if (suffix.equals("-force-emu-sp-int32divrem"))
+            {
+                IntelForceInt32DivRemEmuSP = true;
+            }
+            // -cl-intel-force-disable-4GB-buffer
+            else if (suffix.equals("-force-disable-4GB-buffer"))
+            {
+                IntelForceDisable4GBBuffer = true;
+            }
+            // -cl-intel-use-bindless-buffers
+            else if (suffix.equals("-use-bindless-buffers"))
+            {
+                PromoteStatelessToBindless = true;
+            }
+            // -cl-intel-use-bindless-images
+            else if (suffix.equals("-use-bindless-images"))
+            {
+                PreferBindlessImages = true;
+            }
+            // -cl-intel-use-bindless-mode
+            else if (suffix.equals("-use-bindless-mode"))
+            {
+                // This is a new option that combines bindless generation for buffers
+                // and images. Keep the old internal options to have compatibility
+                // for existing tests. Those (old) options could be removed in future.
+                UseBindlessMode = true;
+                PreferBindlessImages = true;
+                PromoteStatelessToBindless = true;
+            }
+            // -cl-intel-use-bindless-printf
+            else if (suffix.equals("-use-bindless-printf"))
+            {
+                UseBindlessPrintf = true;
+            }
+            // -cl-intel-use-bindless-legacy-mode
+            else if (suffix.equals("-use-bindless-legacy-mode"))
+            {
+                UseBindlessLegacyMode = true;
+            }
+            // -cl-intel-use-bindless-advanced-mode
+            else if (suffix.equals("-use-bindless-advanced-mode"))
+            {
+                UseBindlessLegacyMode = false;
+            }
+            // -cl-intel-vector-coalesing
+            else if (suffix.equals("-vector-coalescing"))
+            {
+                // -cl-intel-vector-coalescing=<0-5>.
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+
+                int16_t val = 0;
+                if (valStr.getAsInteger(10, val))
+                {
+                    IGC_ASSERT_MESSAGE(false, "-cl-intel-vector-coalescing: invalid value, ignored!");
+                }
+                else if (val >= 0 && val <= 5)
+                {
+                    VectorCoalescingControl = val;
+                }
+                Pos = valEnd;
+                continue;
+            }
+            // -cl-allow-zebin
+            else if (suffix.equals("-allow-zebin"))
+            {
+                EnableZEBinary = true;
+            }
+            // -cl-disable-zebin
+            else if (suffix.equals("-disable-zebin"))
+            {
+                EnableZEBinary = false;
+            }
+            // -cl-intel-exclude-ir-from-zebin
+            else if (suffix.equals("-exclude-ir-from-zebin"))
+            {
+                ExcludeIRFromZEBinary = true;
+            }
+            else if (suffix.equals("-emit-zebin-visa-sections"))
+            {
+                EmitZeBinVISASections = true;
+            }
+            // -cl-intel-no-spill
+            else if (suffix.equals("-no-spill"))
+            {
+                // This is an option to avoid spill/fill instructions in scheduler kernel.
+                // OpenCL Runtime triggers scheduler kernel offline compilation while driver building,
+                // since scratch space is not supported in this specific case, we cannot end up with
+                // spilling kernel. If this option is set, then IGC will recompile the kernel with
+                // some some optimizations disabled to avoid spill/fill instructions.
+                NoSpill = true;
+            }
+            // -cl-intel-disable-noMaskWA, -ze-intel-disable-noMaskWA
+            else if (suffix.equals("-disable-noMaskWA"))
+            {
+                DisableNoMaskWA = true;
+            }
+            // -cl-intel-ignoreBFRounding, -ze-intel-ignoreBFRounding
+            else if (suffix.equals("-ignoreBFRounding"))
+            {
+                IgnoreBFRounding = true;
+            }
+            // -cl-compile-one-at-time
+            else if (suffix.equals("-compile-one-at-time"))
+            {
+                CompileOneKernelAtTime = true;
+            }
+            // -cl-skip-reloc-add
+            else if (suffix.equals("-skip-reloc-add"))
+            {
+                AllowRelocAdd = false;
+            }
+            // -cl-intel-disableEUFusion
+            // -ze-intel-disableEUFusion
+            else if (suffix.equals("-disableEUFusion"))
+            {
+                DisableEUFusion = true;
+            }
+            // -cl-intel-functonControl [<n>]
+            // -ze-intel-functionControl [<n>]
+            else if (suffix.equals("-functionControl"))
+            {
+                int val = 0;
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, val))
+                {
+                    IGC_ASSERT(0);
+                }
+                if (val >= 0)
+                {
+                    FunctionControl = val;
+                }
+                Pos = valEnd;
+            }
+            else if (suffix.equals("-fail-on-spill"))
+            {
+                FailOnSpill = true;
+            }
+            // -[cl|ze]-load-cache-default[=| ]<positive int>
+            // -[cl|ze]-store-cache-default[=| ]<positive int>
+            else if (suffix.equals("-load-cache-default") || suffix.equals("-store-cache-default"))
+            {
+                bool isLoad = suffix.equals("-load-cache-default");
+                int val = 0;
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, val))
+                {
+                    IGC_ASSERT(0);
+                }
+                if (val >= 0)
+                {
+                    if (isLoad)
+                        LoadCacheDefault = val;
+                    else
+                        StoreCacheDefault = val;
+                }
+                Pos = valEnd;
+            }
+            // -cl-poison-unsupported-fp64-kernels
+            // -ze-poison-unsupported-fp64-kernels
+            else if (suffix.equals("-poison-unsupported-fp64-kernels"))
+            {
+                // This option forces IGC to poison kernels using fp64
+                // operations on platforms without HW support for fp64.
+                EnableUnsupportedFP64Poisoning = true;
+            }
+            // -cl-fp64-gen-emu
+            // -ze-fp64-gen-emu
+            else if (suffix.equals("-fp64-gen-emu"))
+            {
+                // This option enables FP64 emulation for platforms that
+                // cannot HW support for double operations
+                EnableFP64GenEmu = true;
+            }
+            // *-private-memory-minimal-size-per-thread <SIZE>
+            // SIZE >= 0
+            else if (suffix.equals("-private-memory-minimal-size-per-thread"))
+            {
+                size_t valueStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valueEnd = opts.find_first_of(' ', valueStart);
+                llvm::StringRef valueString = opts.substr(valueStart, valueEnd - valueStart);
+
+                IntelPrivateMemoryMinimalSizePerThread = 0;
+                if (valueString.getAsInteger(10, IntelPrivateMemoryMinimalSizePerThread))
+                {
+                    IGC_ASSERT(0);
+                }
+                Pos = valueEnd;
+                continue;
+            }
+            // *-scratch-space-private-memory-minimal-size-per-thread <SIZE>
+            // SIZE >= 0
+            else if (suffix.equals("-scratch-space-private-memory-minimal-size-per-thread"))
+            {
+                size_t valueStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valueEnd = opts.find_first_of(' ', valueStart);
+                llvm::StringRef valueString = opts.substr(valueStart, valueEnd - valueStart);
+
+                IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
+                if (valueString.getAsInteger(10, IntelScratchSpacePrivateMemoryMinimalSizePerThread))
+                {
+                    IGC_ASSERT(0);
+                }
+                Pos = valueEnd;
+                continue;
+            }
+            else if (suffix.equals("-enable-divergent-barrier-handling"))
+            {
+                EnableDivergentBarrierHandling = true;
+            }
+            // -cl-intel-high-accuracy-nolut-math
+            else if (suffix.equals("-high-accuracy-nolut-math"))
+            {
+                UseHighAccuracyMathFuncs = true;
+            }
+            else if (suffix.equals("-emit-visa-only")) {
+                EmitVisaOnly = true;
+            }
+
+            // advance to the next flag
+            Pos = opts.find_first_of(' ', Pos);
+        }
         if (IntelForceDisable4GBBuffer)
         {
             IntelGreaterThan4GBBufferRequired = false;
         }
     }
-
-    void OpenCLProgramContext::Options::parseOptions(const char* opts)
-    {
-        using namespace options::api;
-        if (opts == nullptr)
-            return;
-
-        llvm::BumpPtrAllocator alloc;
-        llvm::StringSaver saver{ alloc };
-        SmallVector<const char*, 8> argv;
-        cl::TokenizeGNUCommandLine(opts, saver, argv);
-
-        const llvm::opt::OptTable& apiOptionsTable = getApiOptTable();
-        unsigned missingArgIndex = 0;
-        unsigned missingArgCount = 0;
-        opt::InputArgList apiOptions =
-            apiOptionsTable.ParseArgs(argv, missingArgIndex, missingArgCount, options::Flags::IGCApiOption);
-
-        if (apiOptions.hasArg(OPT_fp32_correctly_rounded_divide_sqrt_common))
-        {
-            CorrectlyRoundedSqrt = true;
-        }
-
-        if (apiOptions.hasArg(OPT_no_subgroup_ifp_common))
-        {
-            NoSubgroupIFP = true;
-        }
-
-        if (apiOptions.hasArg(OPT_uniform_work_group_size_common))
-        {
-            // Note that this is only available for -cl-std >= 2.0.
-            // This will be checked before we place this into the
-            // the module metadata.
-            UniformWGS = true;
-        }
-
-        if (apiOptions.hasArg(OPT_take_global_address_common))
-        {
-            EnableTakeGlobalAddress = true;
-        }
-
-        if (apiOptions.hasArg(OPT_library_compilation_common))
-        {
-            EnableTakeGlobalAddress = true;
-        }
-
-        if (apiOptions.hasArg(OPT_emit_lib_compile_errors_common))
-        {
-            EmitErrorsForLibCompilation = true;
-        }
-
-        if (apiOptions.hasArg(OPT_gtpin_rera_common))
-        {
-            GTPinReRA = true;
-        }
-
-        if (apiOptions.hasArg(OPT_gtpin_grf_info_common))
-        {
-            GTPinGRFInfo = true;
-        }
-
-        if (const opt::Arg* arg = apiOptions.getLastArg(OPT_gtpin_scratch_area_size_common))
-        {
-            if (arg->getNumValues() > 0)
-            {
-                GTPinScratchAreaSize = true;
-                llvm::StringRef valStr = arg->getValue();
-                valStr.getAsInteger(10, GTPinScratchAreaSizeValue);
-            }
-        }
-
-        if (apiOptions.hasArg(OPT_gtpin_indir_ref_common))
-        {
-            GTPinIndirRef = true;
-        }
-
-        if (const opt::Arg* arg = apiOptions.getLastArg(OPT_required_thread_count_common))
-        {
-            if (arg->getNumValues() > 0)
-            {
-                IntelRequiredEUThreadCount = true;
-                llvm::StringRef valStr = arg->getValue();
-                valStr.getAsInteger(10, requiredEUThreadCount);
-            }
-        }
-    };
 
     unsigned OpenCLProgramContext::GetSlmSizePerSubslice()
     {
