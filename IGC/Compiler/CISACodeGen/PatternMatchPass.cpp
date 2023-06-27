@@ -336,13 +336,13 @@ namespace IGC
             switch (op->getOpcode())
             {
             case Instruction::Add:
-            case Instruction::Sub:
+                isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+                break;
             case Instruction::Mul:
+                isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+                break;
             case Instruction::Shl:
-            case Instruction::Or:
-            case Instruction::And:
-                isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) &&
-                    IsConstOrSimdConstExpr(op->getOperand(1));
+                isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
                 break;
             default:
                 break;

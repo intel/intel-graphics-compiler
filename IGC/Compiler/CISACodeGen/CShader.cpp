@@ -2938,16 +2938,10 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
         {
         case Instruction::Add:
             return EvaluateSIMDConstExpr(op->getOperand(0)) + EvaluateSIMDConstExpr(op->getOperand(1));
-        case Instruction::Sub:
-            return EvaluateSIMDConstExpr(op->getOperand(0)) - EvaluateSIMDConstExpr(op->getOperand(1));
         case Instruction::Mul:
             return EvaluateSIMDConstExpr(op->getOperand(0)) * EvaluateSIMDConstExpr(op->getOperand(1));
         case Instruction::Shl:
             return EvaluateSIMDConstExpr(op->getOperand(0)) << EvaluateSIMDConstExpr(op->getOperand(1));
-        case Instruction::And:
-            return EvaluateSIMDConstExpr(op->getOperand(0)) & EvaluateSIMDConstExpr(op->getOperand(1));
-        case Instruction::Or:
-            return EvaluateSIMDConstExpr(op->getOperand(0)) | EvaluateSIMDConstExpr(op->getOperand(1));
         default:
             break;
         }
