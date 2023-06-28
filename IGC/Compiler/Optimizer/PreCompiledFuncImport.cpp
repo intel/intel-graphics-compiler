@@ -942,7 +942,8 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
             {
                 Func->addFnAttr(llvm::Attribute::NoInline);
                 if (isDPCallFunc &&
-                    (emuFC == FLAG_FCALL_DEFAULT || emuFC == FLAG_FCALL_FORCE_STACKCALL))
+                    (emuFC == FLAG_FCALL_FORCE_STACKCALL ||
+                     (emuFC == FLAG_FCALL_DEFAULT && m_pCtx->type == ShaderType::OPENCL_SHADER)))
                 {
                     Func->addFnAttr("visaStackCall");
                 }
