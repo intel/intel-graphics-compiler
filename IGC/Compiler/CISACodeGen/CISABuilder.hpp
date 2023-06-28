@@ -132,6 +132,7 @@ namespace IGC
         void GetVISAPredefinedVar(CVariable* pVar, PreDefined_Vars var);
         void CreateVISAVar(CVariable* var);
         void DeclareInput(CVariable* var, uint offset, uint instance);
+        void DeclarePred(CVariable* var, uint offset);
         void MarkAsOutput(CVariable* var);
         void MarkAsPayloadLiveOut(CVariable* var);
         void Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis*& pFGA);

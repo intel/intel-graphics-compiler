@@ -5509,6 +5509,17 @@ namespace IGC
             int_cast<unsigned short>(var->GetSize())));
     }
 
+    void CEncoder::DeclarePred(CVariable * var, uint offset)
+    {
+        // Avoid declaring more inputs/outputs than available registers
+        if (offset + var->GetSize() >= vKernel->getNumRegTotal() * getGRFSize())
+            return;
+        V(vKernel->CreateVISAPredVar(
+            var->visaPredVariable,
+            "",
+            int_cast<unsigned short>(var->GetSize())));
+    }
+
     void CEncoder::MarkAsOutput(CVariable* var)
     {
         for (unsigned int i = 0; i < var->GetNumberInstance(); i++)

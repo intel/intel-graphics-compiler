@@ -527,6 +527,11 @@ void CShader::AddPatchTempSetup(CVariable* var)
     payloadTempSetup.push_back(var);
 }
 
+void CShader::AddPatchPredSetup(CVariable* var)
+{
+    payloadPredSetup.push_back(var);
+}
+
 bool CShader::AppendPayloadSetup(CVariable* var)
 {
     auto v = var->GetAlias() ? var->GetAlias() : var;
@@ -579,6 +584,20 @@ void CShader::AllocateOutput(CVariable* var, uint offset, uint instance)
     IGC_ASSERT(offset % (1u << var->GetAlign()) == 0);
     encoder.DeclareInput(var, offset, instance);
     encoder.MarkAsOutput(var);
+}
+
+void CShader::AllocatePred(CVariable* var, uint offset, bool forceLiveOut)
+{
+    IGC_ASSERT(nullptr != var);
+    IGC_ASSERT(offset % (1u << var->GetAlign()) == 0);
+    encoder.DeclarePred(var, offset);
+    kernelArgToPayloadOffsetMap[var] = offset;
+    // For the payload section, we need to mark inputs to be outputs
+    // so that inputs will be alive across the entire payload section
+    if (forceLiveOut)
+    {
+        encoder.MarkAsPayloadLiveOut(var);
+    }
 }
 
 void CShader::AllocateConstants3DShader(uint& offset)

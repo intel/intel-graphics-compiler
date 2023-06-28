@@ -4707,6 +4707,22 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
     }
 }
 
+CVariable* EmitPass::GetVMaskPred(CVariable*& predicate)
+{
+    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) &&
+        predicate == nullptr)
+    {
+        // Copy VMASK to a predicate
+        // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
+        predicate = m_currShader->GetNewVariable(
+            numLanes(m_SimdMode),
+            ISA_TYPE_BOOL,
+            EALIGN_DWORD,
+            "");
+    }
+    return predicate;
+}
+
 void EmitPass::createVMaskPred(CVariable*& predicate)
 {
     if (!m_currShader->IsPatchablePS())
@@ -4715,24 +4731,26 @@ void EmitPass::createVMaskPred(CVariable*& predicate)
     if (predicate != nullptr)
         return;
 
-    uint32_t debug = IGC_GET_FLAG_VALUE(VMaskPredDebug);
-    if (debug < 1)
-        return;
-
     if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate))
     {
         // Copy VMASK to a predicate
         // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
-        predicate = m_currShader->GetNewVariable(
-            numLanes(m_SimdMode),
-            ISA_TYPE_BOOL,
-            EALIGN_DWORD,
-            true,
-            "VectorMaskPredicate");
+        predicate = GetVMaskPred(predicate);
+
+        if (m_encoder->IsCodePatchCandidate())
+        {
+            m_encoder->SetPayloadSectionAsPrimary();
+        }
+
         m_encoder->SetNoMask();
         m_encoder->SetSrcSubReg(0, 3);
         m_encoder->SetP(predicate, m_currShader->GetSR0());
         m_encoder->Push();
+
+        if (m_encoder->IsCodePatchCandidate())
+        {
+            m_encoder->SetPayloadSectionAsSecondary();
+        }
     }
 }
 
@@ -4742,10 +4760,6 @@ void EmitPass::UseVMaskPred()
         return;
 
     if (!m_vMaskPredForSubplane)
-        return;
-
-    uint32_t debug = IGC_GET_FLAG_VALUE(VMaskPredDebug);
-    if (debug < 2)
         return;
 
     bool subspan = m_encoder->IsSubSpanDestination();
