@@ -20665,6 +20665,21 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     Instruction* inst, bool isLoad, bool isTGM) const
 {
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+
+    if (inst &&
+        !m_currShader->m_ModuleMetadata->RasterizerOrderedViews.empty())
+    {
+        const auto& rasterizerOrderedViews = m_currShader->m_ModuleMetadata->RasterizerOrderedViews;
+        if (rasterizerOrderedViews.find(inst->getOperand(0)->getType()->getPointerAddressSpace()) != rasterizerOrderedViews.end())
+        {
+            // Do not cache ROV in non-coherent cache
+            MDNode* node = MDNode::get(
+                inst->getContext(),
+                ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(inst->getContext()), LSC_L1UC_L3C_WB)));
+            inst->setMetadata("lsc.cache.ctrl", node);
+        }
+    }
+
     if (isTGM)
     {
         if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting())

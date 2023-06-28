@@ -680,6 +680,7 @@ namespace IGC
         std::map<uint32_t, uint32_t> forceLscCacheList;
         std::vector<SrvMapData> SrvMap;
         std::vector<uint32_t> RasterizerOrderedByteAddressBuffer;
+        std::set<uint32_t> RasterizerOrderedViews;
         unsigned int MinNOSPushConstantSize = 0;
         llvm::MapVector<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
