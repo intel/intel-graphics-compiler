@@ -151,6 +151,58 @@ bool MemInstCluster::isSafeToMoveTo(Instruction* I, Instruction* Pos, const Smal
     return true;
 }
 
+// Clustering method does not handle memory dependence.
+// Also we only cluster consecutive memory read from
+// the same resource
+bool MemInstCluster::runForGFX(BasicBlock* BB) {
+    const unsigned CLUSTER_SAMPLER_THRESHOLD = 8;
+
+    bool Changed = false;
+
+    Instruction *InsertPos = nullptr;
+    Value *CurResVal = nullptr;
+    unsigned Count = 0;
+    unsigned numSched = 0;
+    Scheduled.clear();
+    for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+        GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(BI);
+        if (!GII)
+            continue;
+        Value *ResourceVal = nullptr;
+        if (auto *SI = dyn_cast<SampleIntrinsic>(GII)) {
+            ResourceVal = SI->getTextureValue();
+        } else if (auto *SI = dyn_cast<SamplerGatherIntrinsic>(GII)) {
+            ResourceVal = SI->getTextureValue();
+        } else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(GII)) {
+            ResourceVal = LI->getTextureValue();
+        } else if (auto *LI = dyn_cast<LdRawIntrinsic>(GII)) {
+            ResourceVal = LI->getResourceValue();
+        }
+        if (ResourceVal) {
+            if (!InsertPos) {
+                InsertPos = GII;
+                CurResVal = ResourceVal;
+            }
+            // Reschedule those long-latency op to InsertPos
+            Count += getNumLiveOuts(GII);
+            // condition for ending a cluster
+            if (ResourceVal != CurResVal ||
+                Count > MaxLiveOutThreshold ||
+                numSched >= CLUSTER_SAMPLER_THRESHOLD) {
+              Count = 0;
+              InsertPos = GII;
+              CurResVal = ResourceVal;
+              numSched = 0;
+            } else {
+              Changed |= schedule(BB, GII, InsertPos);
+              numSched++;
+            }
+        }
+    }
+    Scheduled.clear();
+    return Changed;
+}
+
 bool MemInstCluster::clusterSampler(BasicBlock* BB) {
     const unsigned CLUSTER_SAMPLER_THRESHOLD = 5;
 
@@ -283,6 +335,8 @@ bool MemInstCluster::isSafeToScheduleLoad(const LoadInst* LD,
         // Skip instructions never writing to memory.
         if (!I->mayWriteToMemory())
             continue;
+        if (!AA)
+            return false;
         // Unsafe if there's alias.
         MemoryLocation B = getLocation(I);
         if (!A.Ptr || !B.Ptr || AA->alias(A, B))

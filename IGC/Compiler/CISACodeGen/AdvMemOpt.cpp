@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
-#include <llvm/Analysis/ScalarEvolution.h>
-#include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Pass.h>
@@ -21,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/MemOpt2.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
@@ -76,6 +75,8 @@ namespace {
 
         bool hasMemoryWrite(BasicBlock* BB) const;
         bool hasMemoryWrite(BasicBlock* Entry, BasicBlock* Exit) const;
+
+        MemInstCluster Cluster;
     };
 
     char AdvMemOpt::ID = 0;
@@ -97,8 +98,7 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
         IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass);
+        IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass);
     IGC_INITIALIZE_PASS_END(AdvMemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 } // End namespace IGC
 
@@ -150,60 +150,69 @@ bool AdvMemOpt::runOnFunction(Function& F) {
         // to merge with other i32 stores in order to form 16-byte stores that
         // can use L1 cache.
         // 2) count the number of sample operations that use lane-varying
-        // resource or sampler state. We need to apply IGC instruction-scheduler
+        // resource or sampler state. We need to apply mem-inst-clustering
         // because, once ballot-loop is added, vISA finalizer cannot schedule
         // those sample operations.
         auto& DL = F.getParent()->getDataLayout();
         IRBuilder<> IRB(F.getContext());
-        for (auto II = inst_begin(&F), EI = inst_end(&F); II != EI; /* empty */) {
-            auto* I = &*II++;
-            if (auto *SI = dyn_cast<SampleIntrinsic>(I)) {
-                if (!WI->isUniform(SI->getTextureValue()) ||
-                    !WI->isUniform(SI->getSamplerValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(I)) {
-                if (!WI->isUniform(GI->getTextureValue()) ||
-                    !WI->isUniform(GI->getSamplerValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
-                if (!WI->isUniform(LI->getTextureValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
-                if (!WI->isUniform(LI->getResourceValue())) {
-                    Ctx->m_instrTypes.numSamplesVaryingResource++;
-                    if (!F.hasFnAttribute("HasSampleWithVaryingResource"))
-                        F.addFnAttr("HasSampleWithVaryingResource");
-                }
-            }
-            else if (auto* SI = dyn_cast<StoreInst>(I)) {
-                if (!WI->isUniform(SI))
-                    continue;
+        Cluster.init(Ctx, &DL, nullptr/*AA*/, 32);
+        for (Function::iterator I = F.begin(), E = F.end(); I != E;
+             ++I) {
+            BasicBlock *BB = &*I;
+            unsigned NumResourceVarying = 0;
+            bool HasStore = false;
+            for (BasicBlock::iterator II = BB->begin(), EI = BB->end();
+                 II != EI;
+                 /*empty*/) {
+                Instruction *I = &*II++;
+                if (I->mayWriteToMemory())
+                    HasStore = true;
+                if (auto *SI = dyn_cast<SampleIntrinsic>(I)) {
+                    if (!WI->isUniform(SI->getTextureValue()) ||
+                        !WI->isUniform(SI->getSamplerValue())) {
+                        NumResourceVarying++;
+                    }
+                } else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(I)) {
+                    if (!WI->isUniform(GI->getTextureValue()) ||
+                        !WI->isUniform(GI->getSamplerValue())) {
+                        NumResourceVarying++;
+                    }
+                } else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
+                    if (!WI->isUniform(LI->getTextureValue())) {
+                        NumResourceVarying++;
+                    }
+                } else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
+                    if (!WI->isUniform(LI->getResourceValue())) {
+                        NumResourceVarying++;
+                    }
+                } else if (auto *SI = dyn_cast<StoreInst>(I)) {
+                    if (!WI->isUniform(SI))
+                      continue;
 
-                unsigned AS = SI->getPointerAddressSpace();
-                if (AS != ADDRESS_SPACE_PRIVATE &&
-                    AS != ADDRESS_SPACE_GLOBAL)
-                    continue;
+                    unsigned AS = SI->getPointerAddressSpace();
+                    if (AS != ADDRESS_SPACE_PRIVATE &&
+                        AS != ADDRESS_SPACE_GLOBAL)
+                      continue;
 
-                IRB.SetInsertPoint(SI);
+                    IRB.SetInsertPoint(SI);
 
-                if (auto NewSI = expand64BitStore(IRB, DL, SI)) {
-                    WI->incUpdateDepend(NewSI, WIAnalysis::UNIFORM_THREAD);
-                    WI->incUpdateDepend(NewSI->getValueOperand(), WIAnalysis::UNIFORM_THREAD);
-                    WI->incUpdateDepend(NewSI->getPointerOperand(), WIAnalysis::UNIFORM_THREAD);
-                    SI->eraseFromParent();
+                    if (auto NewSI = expand64BitStore(IRB, DL, SI)) {
+                      WI->incUpdateDepend(NewSI, WIAnalysis::UNIFORM_THREAD);
+                      WI->incUpdateDepend(NewSI->getValueOperand(),
+                                          WIAnalysis::UNIFORM_THREAD);
+                      WI->incUpdateDepend(NewSI->getPointerOperand(),
+                                          WIAnalysis::UNIFORM_THREAD);
+                      SI->eraseFromParent();
+                    }
                 }
+            }
+            // If a basic-block has lane-varying resource access
+            if (NumResourceVarying) {
+                Ctx->m_instrTypes.numSamplesVaryingResource +=
+                    NumResourceVarying;
+                // clustering method cannot handle memory dependence
+                if (!HasStore)
+                    Cluster.runForGFX(BB);
             }
         }
     }

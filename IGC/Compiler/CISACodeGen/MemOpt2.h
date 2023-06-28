@@ -45,8 +45,10 @@ public:
     AA = pAA;
     MaxLiveOutThreshold = MLT;
   }
-  ///  MemOpt2 function to cluster GPGPU kernels
+  ///  Called by MemOpt2 to cluster GPGPU kernels
   bool runForOCL(Function &F);
+  ///  called by AdvMemOpt to cluster 3D sample-ops
+  bool runForGFX(BasicBlock *BB);
 
 private:
   bool clusterSampler(BasicBlock *BB);
