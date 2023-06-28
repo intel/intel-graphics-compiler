@@ -850,15 +850,16 @@ int IR_Builder::translateLscTypedInst(
     checkPayloadSize(which, decl, regsPerAddrChannel);
   };
 
-  checkAddrPayloadSize("src0AddrUs", coord0s);
-  checkAddrPayloadSize("src0AddrVs", coord1s);
-  checkAddrPayloadSize("src0AddrRs", coord2s);
-
   if (opInfo.is(LSC_READ_STATE_INFO)) {
     srcAddrRegs[0] = 1;
     srcAddrRegs[1] = 0;
     srcAddrs[0] = coord0s;
   } else {
+    checkAddrPayloadSize("src0AddrUs", coord0s);
+    checkAddrPayloadSize("src0AddrVs", coord1s);
+    checkAddrPayloadSize("src0AddrRs", coord2s);
+    checkAddrPayloadSize("src0Feature", features);
+
     PayloadSource srcAddrPayloads[4]{}; // U, V, R, feature
     unsigned numSrcAddrPayloads = 0;
     buildTypedSurfaceAddressPayload(coord0s, coord1s, coord2s,
