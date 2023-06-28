@@ -5963,7 +5963,8 @@ unsigned G4_RegVar::getByteAddr(const IR_Builder &builder) const {
     return reg.phyReg->asGreg()->getRegNum() * builder.numEltPerGRF<Type_UB>() +
            reg.subRegOff * decl->getElemSize();
   }
-  if (reg.phyReg->isA0()) {
+  // Besides A0, support flag register pre-allocation as well
+  if (reg.phyReg->isA0() || reg.phyReg->isFlag()) {
     return reg.subRegOff * TypeSize(Type_UW);
   }
 
