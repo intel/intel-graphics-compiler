@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#include "GenXLowerAggrCopies.h"
 #include "GenX.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/StackProtector.h"
