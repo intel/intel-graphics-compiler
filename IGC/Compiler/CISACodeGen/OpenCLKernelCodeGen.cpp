@@ -3466,9 +3466,10 @@ namespace IGC
             auto pPrevShader = pPrevKernel->GetShader(mode);
             if (pPrevShader)
             {
-                // if after retry the current function generate 20x more
+                // if after retry the current function generate 20x more (and base version had more than 6Kb)
                 // private memory in global memory - consider using previous kernel
-                if (pPrevShader->PrivateMemoryPerWI() * 20 <
+                if (pPrevShader->PrivateMemoryPerWI() > 6000 &&
+                    pPrevShader->PrivateMemoryPerWI() * 20 <
                     shader->PrivateMemoryPerWI())
                 {
                     return true;
