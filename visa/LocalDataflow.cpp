@@ -261,7 +261,14 @@ bool LiveNode::addDefinition(G4_INST *DefInst, Gen4_Operand_Number DefOpNum,
 
 bool LiveNode::dependsOnChannelMask(bool IsInSimdFlow, G4_INST *Inst,
                                     Gen4_Operand_Number OpNum) {
-  if (!IsInSimdFlow || Inst->isWriteEnableInst())
+  // Treat scalar and indirect 1x1/Vx1 uses as noMask. Any non-noMask
+  // inst can't kill it.
+  auto opnd = Inst->getOperand(OpNum);
+  bool isScalarSrc = opnd->isScalarSrc();
+  bool isIndirect1x1Vx1 = opnd->isIndirect() && !opnd->isVxHIndirect();
+
+  if (!IsInSimdFlow || Inst->isWriteEnableInst() || isScalarSrc ||
+      isIndirect1x1Vx1)
     return false;
 
   // Otherwise.
@@ -301,6 +308,13 @@ bool LiveNode::alignedWithChannelMask(G4_INST *DefInst,
   if (Dcl && Dcl->getRegFile() == G4_RegFileKind::G4_FLAG) {
     int DefOffset = int(DefLB - DefMaskOffset);
     int UseOffset = int(UseLB - UseMaskOffset);
+    return DefOffset == UseOffset;
+  }
+
+  // UseOpnd is indirect VxH
+  if (UseOpnd->isVxHIndirect()) {
+    int DefOffset = int(DefLB - DefMaskOffset * TypeSize(ADDR_REG_TYPE));
+    int UseOffset = int(UseLB - UseMaskOffset * TypeSize(ADDR_REG_TYPE));
     return DefOffset == UseOffset;
   }
 

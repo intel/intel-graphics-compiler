@@ -227,6 +227,7 @@ public:
   G4_VarBase *getBase() { return base; }
   void setBase(G4_VarBase *b) { base = b; }
   bool isIndirect() const;
+  bool isVxHIndirect() const;
 
   const G4_Declare *getBaseRegVarRootDeclare() const;
   G4_Declare *getBaseRegVarRootDeclare();
@@ -597,6 +598,10 @@ public:
   void computePReg(const IR_Builder &builder);
 
   bool isIndirect() const { return acc != Direct; }
+
+  bool isVxHIndirect() const {
+    return isIndirect() && getRegion()->isRegionWH() && getRegion()->width == 1;
+  }
 
   unsigned computeRightBound(uint8_t exec_size) override;
   G4_CmpRelation compareOperand(G4_Operand *opnd,
