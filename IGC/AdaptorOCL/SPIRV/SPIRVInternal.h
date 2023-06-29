@@ -723,6 +723,9 @@ SPIRVImageManglingMap;
 #define SPIR_MD_KERNEL_ARG_TYPE_QUAL        "kernel_arg_type_qual"
 #define SPIR_MD_KERNEL_ARG_NAME             "kernel_arg_name"
 
+#define SPIRV_MD_PARAMETER_DECORATIONS "spirv.ParameterDecorations"
+#define SPIRV_MD_DECORATIONS "spirv.Decorations"
+
 namespace kLLVMName {
   const static char builtinPrefix[] = "__builtin_spirv_";
   const static char builtinExtInstPrefixOpenCL[] = "__builtin_spirv_OpenCL_";

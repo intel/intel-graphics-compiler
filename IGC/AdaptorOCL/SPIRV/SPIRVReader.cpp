@@ -146,6 +146,17 @@ addNamedMetadataString(LLVMContext *Context, Module *M,
   NamedMD->addOperand(getMDString(Context, Str));
 }
 
+static void addKernelArgumentMetadata(
+    LLVMContext* Context, const std::string& MDName, SPIRVFunction* BF,
+    llvm::Function* Fn,
+    std::function<Metadata* (SPIRVFunctionParameter*)> ForeachFnArg) {
+    std::vector<Metadata*> ValueVec;
+    BF->foreachArgument([&](SPIRVFunctionParameter* Arg) {
+        ValueVec.push_back(ForeachFnArg(Arg));
+        });
+    Fn->setMetadata(MDName, MDNode::get(*Context, ValueVec));
+}
+
 static void
 addOCLKernelArgumentMetadata(LLVMContext *Context,
   std::vector<llvm::Metadata*> &KernelMD, llvm::StringRef MDName,
@@ -1525,6 +1536,7 @@ public:
   bool transKernelMetadata();
   bool transNonTemporalMetadata(Instruction* I);
   void transCapsIntoMetadata(IGC::ModuleMetaData& MD);
+  void transFunctionDecorationsToMetadata(SPIRVFunction* BF, Function* F);
   template <typename SPIRVInstType>
   void transAliasingMemAccess(SPIRVInstType* BI, Instruction* I);
   void addMemAliasMetadata(Instruction* I, SPIRVId AliasListId,
@@ -1687,7 +1699,7 @@ private:
   Type  *truncBoolType(SPIRVType *SPVType, Type *LLType);
 
   void transMemAliasingINTELDecorations(SPIRVValue* BV, Value* V);
-  void transHostAccessINTELDecorations(SPIRVValue* BV, Value* V);
+  void transDecorationsToMetadata(SPIRVValue* BV, Value* V);
 };
 
 DIGlobalVariableExpression* SPIRVToLLVMDbgTran::createGlobalVar(SPIRVExtInst* inst)
@@ -1830,18 +1842,6 @@ void SPIRVToLLVM::transMemAliasingINTELDecorations(SPIRVValue* BV, Value* V) {
     IGC_ASSERT_MESSAGE(AliasListIds.size() == 1,
       "Memory aliasing decorations must have one argument");
     addMemAliasMetadata(Inst, AliasListIds[0], LLVMContext::MD_noalias);
-  }
-}
-
-void SPIRVToLLVM::transHostAccessINTELDecorations(SPIRVValue* BV, Value* V) {
-  if (auto GV = dyn_cast<GlobalVariable>(V)) {
-    if (BV->hasDecorate(DecorationHostAccessINTEL)) {
-      std::vector<SPIRVDecorate const*> Decorates = BV->getDecorations(DecorationHostAccessINTEL);
-      IGC_ASSERT(Decorates.size() == 1);
-      const auto* const HostAccDeco =
-        static_cast<const SPIRVDecorateHostAccessINTEL*>(Decorates[0]);
-      GV->addAttribute("host_var_name", HostAccDeco->getVarName());
-    }
   }
 }
 
@@ -4595,12 +4595,65 @@ SPIRVToLLVM::transAddressingModel() {
   return true;
 }
 
+static llvm::MDNode*
+transDecorationsToMetadataList(llvm::LLVMContext* Context,
+    std::vector<SPIRVDecorate const*> Decorates) {
+    SmallVector<Metadata*, 4> MDs;
+    MDs.reserve(Decorates.size());
+    for (const auto* Deco : Decorates) {
+        std::vector<Metadata*> OPs;
+        auto* KindMD = ConstantAsMetadata::get(
+            ConstantInt::get(Type::getInt32Ty(*Context), Deco->getDecorateKind()));
+        OPs.push_back(KindMD);
+        switch (static_cast<size_t>(Deco->getDecorateKind())) {
+        case DecorationHostAccessINTEL: {
+            const auto* const HostAccDeco =
+                static_cast<const SPIRVDecorateHostAccessINTEL*>(Deco);
+            auto* const AccModeMD = ConstantAsMetadata::get(ConstantInt::get(
+                Type::getInt32Ty(*Context), HostAccDeco->getAccessMode()));
+            auto* const NameMD = MDString::get(*Context, HostAccDeco->getVarName());
+            OPs.push_back(AccModeMD);
+            OPs.push_back(NameMD);
+            break;
+        }
+        default: {
+            for (const SPIRVWord Lit : Deco->getVecLiteral()) {
+                auto* const LitMD = ConstantAsMetadata::get(
+                    ConstantInt::get(Type::getInt32Ty(*Context), Lit));
+                OPs.push_back(LitMD);
+            }
+            break;
+        }
+        }
+        MDs.push_back(MDNode::get(*Context, OPs));
+    }
+    return MDNode::get(*Context, MDs);
+}
+
+void SPIRVToLLVM::transDecorationsToMetadata(SPIRVValue* BV, Value* V) {
+    if (!BV->isVariable() && !BV->isInst())
+        return;
+
+    auto SetDecorationsMetadata = [&](auto V) {
+        std::vector<SPIRVDecorate const*> Decorates = BV->getDecorations();
+        if (!Decorates.empty()) {
+            MDNode* MDList = transDecorationsToMetadataList(Context, Decorates);
+            V->setMetadata(SPIRV_MD_DECORATIONS, MDList);
+        }
+    };
+
+    if (auto* GV = dyn_cast<GlobalVariable>(V))
+        SetDecorationsMetadata(GV);
+    else if (auto* I = dyn_cast<Instruction>(V))
+        SetDecorationsMetadata(I);
+}
+
 bool
 SPIRVToLLVM::transDecoration(SPIRVValue *BV, Value *V) {
   if (!transAlign(BV, V))
     return false;
   transMemAliasingINTELDecorations(BV, V);
-  transHostAccessINTELDecorations(BV, V);
+  transDecorationsToMetadata(BV, V);
   DbgTran.transDbgInfo(BV, V);
   return true;
 }
@@ -4745,6 +4798,23 @@ SPIRVToLLVM::transCapsIntoMetadata(IGC::ModuleMetaData& MD) {
   }
 }
 
+void SPIRVToLLVM::transFunctionDecorationsToMetadata(SPIRVFunction* BF,
+    Function* F) {
+    size_t TotalParameterDecorations = 0;
+    BF->foreachArgument([&](SPIRVFunctionParameter* Arg) {
+        TotalParameterDecorations += Arg->getNumDecorations();
+        });
+    if (TotalParameterDecorations == 0)
+        return;
+
+    // Generate metadata for spirv.ParameterDecorations
+    addKernelArgumentMetadata(Context, SPIRV_MD_PARAMETER_DECORATIONS, BF, F,
+        [=](SPIRVFunctionParameter* Arg) {
+            return transDecorationsToMetadataList(
+                Context, Arg->getDecorations());
+        });
+}
+
 bool
 SPIRVToLLVM::transKernelMetadata()
 {
@@ -4761,6 +4831,8 @@ SPIRVToLLVM::transKernelMetadata()
         SPIRVFunction *BF = BM->getFunction(I);
         Function *F = static_cast<Function *>(getTranslatedValue(BF));
         IGC_ASSERT_MESSAGE(F, "Invalid translated function");
+
+        transFunctionDecorationsToMetadata(BF, F);
 
         // __attribute__((annotate("some_user_annotation"))) are passed via
         // UserSemantic decoration on functions.

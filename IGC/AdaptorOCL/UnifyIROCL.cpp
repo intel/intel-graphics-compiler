@@ -123,8 +123,8 @@ SPDX-License-Identifier: MIT
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
 #include "preprocess_spvir/PromoteBools.h"
-#include "preprocess_spvir/HandleSpirvDecorationMetadata.h"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+#include "preprocess_spvir/HandleSpirvDecorationMetadata.h"
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
@@ -325,8 +325,8 @@ static void CommonOCLBasedPasses(
     mpmSPIR.add(new SPIRMetaDataTranslation());
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new ConvertUserSemanticDecoratorOnFunctions());
-    mpmSPIR.add(new HandleSpirvDecorationMetadata());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+    mpmSPIR.add(new HandleSpirvDecorationMetadata());
     mpmSPIR.run(*pContext->getModule());
 
     bool isOptDisabled = CompilerOpts.OptDisable;

@@ -33,6 +33,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/HandleSpirvDecorationMetadata.cpp"
   )
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
@@ -40,7 +41,6 @@ if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PreprocessSPVIR.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PromoteBools.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/HandleSpirvDecorationMetadata.cpp"
     )
 endif()
 

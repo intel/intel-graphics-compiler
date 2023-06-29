@@ -338,6 +338,14 @@ SPIRVEntry::getDecorations(Decoration Kind) const {
   return Decors;
 }
 
+std::vector<SPIRVDecorate const*> SPIRVEntry::getDecorations() const {
+    std::vector<SPIRVDecorate const*> Decors;
+    Decors.reserve(Decorates.size());
+    for (auto& DecoPair : Decorates)
+        Decors.push_back(DecoPair.second);
+    return Decors;
+}
+
 std::vector<SPIRVId>
 SPIRVEntry::getDecorationIdLiterals(Decoration Kind) const {
     auto Loc = DecorateIds.find(Kind);

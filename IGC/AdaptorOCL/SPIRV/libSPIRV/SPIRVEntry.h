@@ -225,10 +225,12 @@ public:
   const std::string& getName() const { return Name;}
   bool hasDecorate(Decoration Kind, size_t Index = 0,
       SPIRVWord *Result=0)const;
+  size_t getNumDecorations() const { return Decorates.size(); }
   bool hasDecorateId(Decoration Kind, size_t Index = 0,
       SPIRVId* Result = 0) const;
   std::set<SPIRVWord> getDecorate(Decoration Kind, size_t Index = 0)const;
   std::vector<SPIRVDecorate const*> getDecorations(Decoration Kind) const;
+  std::vector<SPIRVDecorate const*> getDecorations() const;
   std::set<SPIRVId> getDecorateId(Decoration Kind, size_t Index = 0) const;
   std::vector<SPIRVDecorateId const*> getDecorationIds(Decoration Kind) const;
   std::vector<std::string> getDecorationStringLiteral(Decoration Kind) const;
