@@ -16,13 +16,13 @@ SPDX-License-Identifier: MIT
 /// lowered to code that implements the defined semantics for the intrinsics,
 /// but does not use SIMD CF instructions, so is usually less efficient.
 ///
-/// It also makes certain transformations to make goto/join legal in terms of its
-/// position in the basic block. These can fail silently, in which case the
+/// It also makes certain transformations to make goto/join legal in terms of
+/// its position in the basic block. These can fail silently, in which case the
 /// conformance check will fail on the goto/join in question:
 ///
-/// * A goto and its extractvalues must be at the end of the block. (Actually, if
-///   the !any result of the goto is used in a conditional branch at the end of
-///   the block, then the goto being baled into the branch means that it is
+/// * A goto and its extractvalues must be at the end of the block. (Actually,
+///   if the !any result of the goto is used in a conditional branch at the end
+///   of the block, then the goto being baled into the branch means that it is
 ///   treated as being at the end of the block anyway. The only reason we need
 ///   to sink it here is to ensure that isGotoBlock works.)
 ///
@@ -93,11 +93,14 @@ SPDX-License-Identifier: MIT
 ///
 ///    e. by an insertvalue as part of a return value struct;
 ///
-///    f. as the return value of a non-intrinsic call (perhaps as part of a struct),
-///       as long as there is also a call arg that is an EM value, and the called
-///       function has the corresponding function arg and return value as EM values;
+///    f. as the return value of a non-intrinsic call (perhaps as part of a
+///    struct),
+///       as long as there is also a call arg that is an EM value, and the
+///       called function has the corresponding function arg and return value as
+///       EM values;
 ///
-///    g. since shufflevector from EM does not change EM and only makes it shorter
+///    g. since shufflevector from EM does not change EM and only makes it
+///    shorter
 ///       to create implicit predication of desired width, it's also considered
 ///       as an EM definition, but it can only be used by wrregion and select;
 ///
@@ -109,29 +112,32 @@ SPDX-License-Identifier: MIT
 ///
 ///    c. as the condition in a wrregion or select;
 ///
-///    d. as the input to a shufflevector whose effect is to slice part of the EM
+///    d. as the input to a shufflevector whose effect is to slice part of the
+///    EM
 ///       value starting at index 0, as long as the result of that slice is only
 ///       used as the condition in a wrregion or select;
 ///
-///    e. as a call argument, as long as the corresponding function argument is an
+///    e. as a call argument, as long as the corresponding function argument is
+///    an
 ///       EM value, and the call has an EM return value;
 ///
-///    f. in a return (perhaps as part of a struct), as long as the function also
+///    f. in a return (perhaps as part of a struct), as long as the function
+///    also
 ///       has an argument that is an EM value.
 ///
-///    For an EM value defined in a goto, or a join whose scalar BranchCond result
-///    is used in a conditional branch, or in an extractvalue out of
-///    the result of such a goto or join, the only use allowed in the same basic block
-///    as the goto/join is such an extractvalue.
+///    For an EM value defined in a goto, or a join whose scalar BranchCond
+///    result is used in a conditional branch, or in an extractvalue out of the
+///    result of such a goto or join, the only use allowed in the same basic
+///    block as the goto/join is such an extractvalue.
 ///
 /// 4. The OldEM input to the two intrinsics must be either an EM value or
-///    constant all ones. In the latter case, and in the case of a constant incoming
-///    to an EM phi node, its live range is considered to reach
-///    back through all paths to the function entry for the purposes of rule (1).
+///    constant all ones. In the latter case, and in the case of a constant
+///    incoming to an EM phi node, its live range is considered to reach back
+///    through all paths to the function entry for the purposes of rule (1).
 ///
-/// 5. Each join point has a web of RM (resume mask) values, linked as by rules (6)
-///    and (7). All RM values within one join point's web must not interfere with
-///    each other; that is, they must have disjoint live ranges. For the
+/// 5. Each join point has a web of RM (resume mask) values, linked as by rules
+///    (6) and (7). All RM values within one join point's web must not interfere
+///    with each other; that is, they must have disjoint live ranges. For the
 ///    purposes of determining interference, if an RM value is a phi node with
 ///    incoming constant all zeros, then the constant all zeros value is
 ///    counted as being live from the start of the function and is not allowed
@@ -149,15 +155,15 @@ SPDX-License-Identifier: MIT
 ///
 ///    a. as the OldRM input to ``llvm.genx.simdcf.goto``;
 ///
-///    b. as the RM input to ``llvm.genx.simdcf.join``, but only to one join in the
-///       whole web;
+///    b. as the RM input to ``llvm.genx.simdcf.join``, but only to one join in
+///       the whole web;
 ///
 ///    c. in a phi node, as long as the result of the phi node is an RM value.
 ///
 /// 8. The OldRM input to ``llvm.genx.simdcf.goto``, or the RM input to
 ///    ``llvm.genx.simdcf.join``, must be either an RM value, or constant all
-///    zeros. In the latter case, and in the case of a constant incoming to an RM
-///    phi node, its live range is considered to reach back through all paths
+///    zeros. In the latter case, and in the case of a constant incoming to an
+///    RM phi node, its live range is considered to reach back through all paths
 ///    to the function entry or to the web's ``llvm.genx.simdcf.join`` for the
 ///    purposes of rule (5).
 ///
@@ -174,11 +180,11 @@ SPDX-License-Identifier: MIT
 ///     same basic block.
 ///
 /// 11. It must be possible to derive an ordering for the basic blocks in a
-///     function such that, in the conditional branch using the result of any goto
-///     or join, the "false" successor is fall-through and the "true" successor is
-///     to a join later on in the sequence. For a goto followed by an
-///     unconditional branch, the successor is fall-through _and_ the next join
-///     in sequence.
+///     function such that, in the conditional branch using the result of any
+///     goto or join, the "false" successor is fall-through and the "true"
+///     successor is to a join later on in the sequence. For a goto followed by
+///     an unconditional branch, the successor is fall-through _and_ the next
+///     join in sequence.
 ///
 /// **IR restriction**: goto and join intrinsics must conform to these rules
 /// (since this pass lowers any that do not).
@@ -196,6 +202,13 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
+#include "llvmWrapper/Support/TypeSize.h"
+
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SetVector.h"
@@ -208,26 +221,21 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
 
-#include "Probe/Assertion.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/InstrTypes.h"
-#include "llvmWrapper/IR/IntrinsicInst.h"
-#include "llvmWrapper/Support/TypeSize.h"
-
 #define DEBUG_TYPE "GENX_SIMDCFCONFORMANCE"
 
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<bool> EnableGenXGotoJoin("enable-genx-goto-join", cl::init(true), cl::Hidden,
-                                        cl::desc("Enable use of Gen goto/join instructions for SIMD control flow."));
+static cl::opt<bool> EnableGenXGotoJoin(
+    "enable-genx-goto-join", cl::init(true), cl::Hidden,
+    cl::desc(
+        "Enable use of Gen goto/join instructions for SIMD control flow."));
 
 namespace {
 
@@ -239,11 +247,12 @@ private:
   static int getKindID() { return KindID; }
 
 public:
-  static void emit(Instruction *Inst, StringRef Msg, DiagnosticSeverity Severity = DS_Error);
+  static void emit(Instruction *Inst, StringRef Msg,
+                   DiagnosticSeverity Severity = DS_Error);
   DiagnosticInfoSimdCF(DiagnosticSeverity Severity, const Function &Fn,
-      const DebugLoc &DLoc, StringRef Msg)
+                       const DebugLoc &DLoc, StringRef Msg)
       : DiagnosticInfoOptimizationBase((DiagnosticKind)getKindID(), Severity,
-          /*PassName=*/nullptr, Msg, Fn, DLoc) {}
+                                       /*PassName=*/nullptr, Msg, Fn, DLoc) {}
   // This kind of message is always enabled, and not affected by -rpass.
   bool isEnabled() const override { return true; }
   static bool classof(const DiagnosticInfo *DI) {
@@ -251,11 +260,12 @@ public:
   }
 
   // TODO: consider changing format
-  void print(DiagnosticPrinter &DP) const override { DP << "GenXSimdCFConformance: " << RemarkName; }
+  void print(DiagnosticPrinter &DP) const override {
+    DP << "GenXSimdCFConformance: " << RemarkName;
+  }
 };
 
-const int DiagnosticInfoSimdCF::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
+const int DiagnosticInfoSimdCF::KindID = getNextAvailablePluginDiagnosticKind();
 
 // GenX SIMD control flow conformance pass -- common data between early and
 // late passes.
@@ -271,8 +281,8 @@ protected:
   SetVector<SimpleValue> EMVals;
   std::map<CallInst *, SetVector<SimpleValue>> RMVals;
   bool lowerSimdCF = false;
-private:
 
+private:
   // GotoJoinEVs: container for goto/join Extract Value (EV) info. Also
   // allowes to remove duplication of EVs. Performs it in construction
   // and moves EVs right after goto/join. Hoisting can be performed
@@ -290,7 +300,7 @@ private:
 
     bool testPosCorrectness(const unsigned Index) const;
 
-    ExtractValueInst *EVs[PosNum] = { nullptr, nullptr, nullptr };
+    ExtractValueInst *EVs[PosNum] = {nullptr, nullptr, nullptr};
     bool IsGoto;
     Value *GotoJoin;
 
@@ -299,7 +309,6 @@ private:
     void CollectEVs();
 
   public:
-
     GotoJoinEVs(Value *GJ = nullptr);
     ExtractValueInst *getEMEV() const;
     ExtractValueInst *getRMEV() const;
@@ -310,7 +319,6 @@ private:
     bool isGoto() const;
     bool isJoin() const;
     void hoistEVs() const;
-
   };
 
   class JoinPointOptData {
@@ -334,8 +342,8 @@ private:
   std::map<Value *, Value *> LoweredEMValsMap;
 
 protected:
-  GenXSimdCFConformance() :
-    M(0), FG(0), FGA(0), DTWrapper(0), Liveness(0), lowerSimdCF(false) {}
+  GenXSimdCFConformance()
+      : M(0), FG(0), FGA(0), DTWrapper(0), Liveness(0), lowerSimdCF(false) {}
   void gatherEMVals();
   void gatherRMVals();
   void removeFromEMRMVals(Value *V);
@@ -358,6 +366,7 @@ protected:
     BlocksToOptimize.clear();
   }
   DominatorTree *getDomTree(Function *F);
+
 private:
   bool isLatePass() const { return FG != nullptr; }
   void emptyBranchingJoinBlocksInFunc(Function *F);
@@ -374,20 +383,31 @@ private:
                         SmallVectorImpl<SimpleValue> *ConnectedVals,
                         bool LowerBadUsers = false);
   void checkEMInterference();
-  void checkInterference(SetVector<SimpleValue> *Vals, SetVector<Value *> *BadDefs, Instruction *ConstStop);
+  void checkInterference(SetVector<SimpleValue> *Vals,
+                         SetVector<Value *> *BadDefs, Instruction *ConstStop);
   bool hoistGotoUser(Instruction *Inst, CallInst *Goto, unsigned operandNo);
   void gatherGotoJoinEMVals(bool IncludeIncoming = true);
   void handleEVs();
   void resolveBitCastChains();
-  Value *eliminateBitCastPreds(Value *Val, std::set<Value *> &DeadInst, std::set<Value *> &Visited);
-  Value *getEMProducer(Value *Inst, std::set<Value *> &Visited, bool BitCastAllowed = false);
+  Value *eliminateBitCastPreds(Value *Val, std::set<Value *> &DeadInst,
+                               std::set<Value *> &Visited);
+  Value *getEMProducer(Value *Inst, std::set<Value *> &Visited,
+                       bool BitCastAllowed = false);
   void handleCondValue(Value *GotoJoin);
   void handleNoCondEVCase(GotoJoinEVs &GotoJoinData);
-  void handleOptimizedBranchCase(GotoJoinEVs &GotoJoinData, BasicBlock *&TrueSucc, BasicBlock *&FalseSucc);
-  void handleExistingBranchCase(GotoJoinEVs &GotoJoinData, BasicBlock *&TrueSucc, BasicBlock *&FalseSucc, BranchInst *ExistingBranch);
-  void addNewPhisIncomings(BasicBlock *BranchingBlock, BasicBlock *TrueSucc, BasicBlock *FalseSucc);
-  void collectCondEVUsers(ExtractValueInst *CondEV, std::vector<Value *> &BadUsers, BranchInst *&CorrectUser);
-  void updateBadCondEVUsers(GotoJoinEVs &GotoJoinData, std::vector<Value *> &BadUsers, BasicBlock *TrueSucc, BasicBlock *FalseSucc);
+  void handleOptimizedBranchCase(GotoJoinEVs &GotoJoinData,
+                                 BasicBlock *&TrueSucc, BasicBlock *&FalseSucc);
+  void handleExistingBranchCase(GotoJoinEVs &GotoJoinData,
+                                BasicBlock *&TrueSucc, BasicBlock *&FalseSucc,
+                                BranchInst *ExistingBranch);
+  void addNewPhisIncomings(BasicBlock *BranchingBlock, BasicBlock *TrueSucc,
+                           BasicBlock *FalseSucc);
+  void collectCondEVUsers(ExtractValueInst *CondEV,
+                          std::vector<Value *> &BadUsers,
+                          BranchInst *&CorrectUser);
+  void updateBadCondEVUsers(GotoJoinEVs &GotoJoinData,
+                            std::vector<Value *> &BadUsers,
+                            BasicBlock *TrueSucc, BasicBlock *FalseSucc);
   Value *findGotoJoinVal(vc::RegCategory Cat, BasicBlock *Loc,
                          Instruction *CondEV, BasicBlockEdge &TrueEdge,
                          BasicBlockEdge &FalseEdge, Value *TrueVal,
@@ -395,7 +415,8 @@ private:
                          std::map<BasicBlock *, Value *> &foundVals);
   bool canUseLoweredEM(Instruction *Val);
   bool canUseRealEM(Instruction *Inst, unsigned opNo);
-  void replaceUseWithLoweredEM(Instruction *Val, unsigned opNo, SetVector<Value *> &ToRemove);
+  void replaceUseWithLoweredEM(Instruction *Val, unsigned opNo,
+                               SetVector<Value *> &ToRemove);
   Value *findLoweredEMValue(Value *Val);
   Value *buildLoweringViaGetEM(Value *Val, Instruction *InsertBefore);
   Value *getGetEMLoweredValue(Value *Val, Instruction *InsertBefore);
@@ -403,8 +424,10 @@ private:
                      BasicBlock *PhiPredBlock = nullptr);
   Value *lowerPHIUse(PHINode *PN, SetVector<Value *> &ToRemove);
   Value *lowerArgumentUse(Argument *Arg);
-  Value *insertCond(Value *OldVal, Value *NewVal, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
-  Value *truncateCond(Value *In, Type *Ty, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
+  Value *insertCond(Value *OldVal, Value *NewVal, const Twine &Name,
+                    Instruction *InsertBefore, const DebugLoc &DL);
+  Value *truncateCond(Value *In, Type *Ty, const Twine &Name,
+                      Instruction *InsertBefore, const DebugLoc &DL);
   void lowerGoto(CallInst *Goto);
   void lowerJoin(CallInst *Join);
   void replaceGotoJoinUses(CallInst *GotoJoin, ArrayRef<Value *> Vals);
@@ -418,11 +441,11 @@ private:
 };
 
 // GenX early SIMD control flow conformance pass
-class GenXEarlySimdCFConformance
-    : public GenXSimdCFConformance, public ModulePass {
+class GenXEarlySimdCFConformance : public GenXSimdCFConformance,
+                                   public ModulePass {
 public:
   static char ID;
-  explicit GenXEarlySimdCFConformance() : ModulePass(ID) { }
+  explicit GenXEarlySimdCFConformance() : ModulePass(ID) {}
   StringRef getPassName() const override {
     return "GenX early SIMD control flow conformance";
   }
@@ -462,20 +485,19 @@ private:
  * Local function for testing one assertion statement.
  * It returns true if intrinsic is GOTO or JOIN as expected.
  */
-bool testIsGotoJoin(const llvm::Value *const GotoJoin) {
+bool testIsGotoJoin(const Value *const GotoJoin) {
   bool Result = false;
   IGC_ASSERT(GotoJoin);
-  const llvm::GenXIntrinsic::ID ID = llvm::GenXIntrinsic::getGenXIntrinsicID(GotoJoin);
-  switch(ID)
-  {
-    case llvm::GenXIntrinsic::genx_simdcf_goto:
-    case llvm::GenXIntrinsic::genx_simdcf_join:
-      Result = true;
-      break;
-    default:
-      IGC_ASSERT(0);
-      Result = false;
-      break;
+  const auto ID = vc::getAnyIntrinsicID(GotoJoin);
+  switch (ID) {
+  case GenXIntrinsic::genx_simdcf_goto:
+  case GenXIntrinsic::genx_simdcf_join:
+    Result = true;
+    break;
+  default:
+    IGC_ASSERT(0);
+    Result = false;
+    break;
   }
   return Result;
 }
@@ -484,19 +506,18 @@ bool testIsGotoJoin(const llvm::Value *const GotoJoin) {
  * Local function for testing one assertion statement.
  * It returns true if intrinsic is JOIN as expected.
  */
-bool testIsJoin(const llvm::Value *const GotoJoin) {
+bool testIsJoin(const Value *const GotoJoin) {
   bool Result = false;
   IGC_ASSERT(GotoJoin);
-  const llvm::GenXIntrinsic::ID ID = llvm::GenXIntrinsic::getGenXIntrinsicID(GotoJoin);
-  switch(ID)
-  {
-    case llvm::GenXIntrinsic::genx_simdcf_join:
-      Result = true;
-      break;
-    default:
-      IGC_ASSERT(0);
-      Result = false;
-      break;
+  const auto ID = vc::getAnyIntrinsicID(GotoJoin);
+  switch (ID) {
+  case GenXIntrinsic::genx_simdcf_join:
+    Result = true;
+    break;
+  default:
+    IGC_ASSERT(0);
+    Result = false;
+    break;
   }
   return Result;
 }
@@ -505,41 +526,37 @@ bool testIsJoin(const llvm::Value *const GotoJoin) {
  * Local function for testing one assertion statement.
  * It returns true if all is ok.
  */
-bool testIsValidEMUse(const llvm::Value *const User,
-  const llvm::Value::use_iterator& ui) {
+bool testIsValidEMUse(const Value *const User, const Value::use_iterator &ui) {
   bool Result = false;
   IGC_ASSERT(User);
   const unsigned int ID = vc::getAnyIntrinsicID(User);
-  switch(ID)
-  {
-    case llvm::GenXIntrinsic::genx_rdpredregion:
-    case llvm::GenXIntrinsic::genx_simdcf_goto:
-    case llvm::GenXIntrinsic::genx_simdcf_join:
-    case llvm::GenXIntrinsic::genx_simdcf_get_em:
-    case llvm::GenXIntrinsic::genx_wrpredpredregion:
-      Result = true;
-      break;
-    case llvm::GenXIntrinsic::genx_wrregioni:
-    case llvm::GenXIntrinsic::genx_wrregionf:
-      Result = (ui->getOperandNo() ==
-        llvm::GenXIntrinsic::GenXRegion::PredicateOperandNum);
-      IGC_ASSERT(Result);
-      break;
-    case llvm::GenXIntrinsic::not_any_intrinsic:
-      Result = (isa<PHINode>(User) ||
-        isa<InsertValueInst>(User) ||
-        isa<CallInst>(User) ||
-        isa<ReturnInst>(User) ||
-        isa<ShuffleVectorInst>(User));
-      IGC_ASSERT_MESSAGE(Result, "unexpected use of EM");
-      break;
-    default:
-      Result = (isa<ReturnInst>(User) ||
-        isa<InsertValueInst>(User) ||
-        isa<ExtractValueInst>(User) ||
-        !cast<CallInst>(User)->getCalledFunction()->doesNotAccessMemory());
-      IGC_ASSERT_MESSAGE(Result, "unexpected ALU intrinsic use of EM");
-      break;
+  switch (ID) {
+  case GenXIntrinsic::genx_rdpredregion:
+  case GenXIntrinsic::genx_simdcf_goto:
+  case GenXIntrinsic::genx_simdcf_join:
+  case GenXIntrinsic::genx_simdcf_get_em:
+  case GenXIntrinsic::genx_wrpredpredregion:
+    Result = true;
+    break;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+    Result =
+        (ui->getOperandNo() == GenXIntrinsic::GenXRegion::PredicateOperandNum);
+    IGC_ASSERT(Result);
+    break;
+  case GenXIntrinsic::not_any_intrinsic:
+    Result = (isa<PHINode>(User) || isa<InsertValueInst>(User) ||
+              isa<CallInst>(User) || isa<ReturnInst>(User) ||
+              isa<ShuffleVectorInst>(User));
+    IGC_ASSERT_MESSAGE(Result, "unexpected use of EM");
+    break;
+  default:
+    Result =
+        (isa<ReturnInst>(User) || isa<InsertValueInst>(User) ||
+         isa<ExtractValueInst>(User) ||
+         !cast<CallInst>(User)->getCalledFunction()->doesNotAccessMemory());
+    IGC_ASSERT_MESSAGE(Result, "unexpected ALU intrinsic use of EM");
+    break;
   }
   return Result;
 }
@@ -549,22 +566,21 @@ bool testIsValidEMUse(const llvm::Value *const User,
  * It returns true if Pos is correct.
  */
 bool GenXSimdCFConformance::GotoJoinEVs::testPosCorrectness(
-  const unsigned Index) const {
+    const unsigned Index) const {
   bool Result = false;
-  switch (Index)
-  {
-    case EMPos:
-    case RMPos: // same as JoinCondPos
-      Result = true;
-      break;
-    case GotoCondPos:
-      Result = IsGoto;
-      IGC_ASSERT_MESSAGE(Result, "Bad index in ExtractValue for goto/join!");
-      break;
-    default:
-      Result = false;
-      IGC_ASSERT_MESSAGE(0, "Bad index in ExtractValue for goto/join!");
-      break;
+  switch (Index) {
+  case EMPos:
+  case RMPos: // same as JoinCondPos
+    Result = true;
+    break;
+  case GotoCondPos:
+    Result = IsGoto;
+    IGC_ASSERT_MESSAGE(Result, "Bad index in ExtractValue for goto/join!");
+    break;
+  default:
+    Result = false;
+    IGC_ASSERT_MESSAGE(0, "Bad index in ExtractValue for goto/join!");
+    break;
   }
   return Result;
 }
@@ -572,12 +588,15 @@ bool GenXSimdCFConformance::GotoJoinEVs::testPosCorrectness(
 } // end anonymous namespace
 
 char GenXEarlySimdCFConformance::ID = 0;
-namespace llvm { void initializeGenXEarlySimdCFConformancePass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXEarlySimdCFConformance, "GenXEarlySimdCFConformance", "GenXEarlySimdCFConformance", false, false)
-INITIALIZE_PASS_END(GenXEarlySimdCFConformance, "GenXEarlySimdCFConformance", "GenXEarlySimdCFConformance", false, false)
+namespace llvm {
+void initializeGenXEarlySimdCFConformancePass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXEarlySimdCFConformance, "GenXEarlySimdCFConformance",
+                      "GenXEarlySimdCFConformance", false, false)
+INITIALIZE_PASS_END(GenXEarlySimdCFConformance, "GenXEarlySimdCFConformance",
+                    "GenXEarlySimdCFConformance", false, false)
 
-ModulePass *llvm::createGenXEarlySimdCFConformancePass()
-{
+ModulePass *llvm::createGenXEarlySimdCFConformancePass() {
   initializeGenXEarlySimdCFConformancePass(*PassRegistry::getPassRegistry());
   return new GenXEarlySimdCFConformance();
 }
@@ -613,8 +632,7 @@ static bool hasStackCall(const Module &M) {
  * runOnModule : run the early SIMD control flow conformance pass for this
  *  module
  */
-bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM)
-{
+bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM) {
   LLVM_DEBUG(dbgs() << "Early SIMD CF Conformance starts\n");
 
   Modified = false;
@@ -661,8 +679,7 @@ bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM)
  * runOnFunctionGroup : run the late SIMD control flow conformance pass for this
  * FunctionGroup
  */
-bool GenXLateSimdCFConformance::runOnFunctionGroup(FunctionGroup &ArgFG)
-{
+bool GenXLateSimdCFConformance::runOnFunctionGroup(FunctionGroup &ArgFG) {
   LLVM_DEBUG(dbgs() << "Late SIMD CF Conformance starts\n");
 
   Modified = false;
@@ -700,19 +717,19 @@ bool GenXLateSimdCFConformance::runOnFunctionGroup(FunctionGroup &ArgFG)
  *
  * IncludeIncoming is used for adding goto/join def to EMVals
  */
-void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
-{
+void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming) {
   // We find gotos and joins by scanning all uses of the intrinsics and (in the
   // case of the late pass) ignoring ones not in this function group, rather
   // than scanning the whole IR.
   Type *I1Ty = Type::getInt1Ty(M->getContext());
-  for (auto IID : { GenXIntrinsic::genx_simdcf_goto, GenXIntrinsic::genx_simdcf_join }) {
+  for (auto IID :
+       {GenXIntrinsic::genx_simdcf_goto, GenXIntrinsic::genx_simdcf_join}) {
     Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
     for (unsigned Width = 1; Width <= 32; Width <<= 1) {
       Type *Tys[] = {EMTy, IGCLLVM::FixedVectorType::get(I1Ty, Width)};
-      auto *GotoJoinFunc = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+      auto *GotoJoinFunc = vc::getAnyDeclaration(M, IID, Tys);
       for (auto ui = GotoJoinFunc->use_begin(), ue = GotoJoinFunc->use_end();
-          ui != ue; ++ui) {
+           ui != ue; ++ui) {
         auto GotoJoin = dyn_cast<CallInst>(ui->getUser());
         if (!GotoJoin)
           continue;
@@ -735,25 +752,24 @@ void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
 /***********************************************************************
  * gatherEMVals : gather the EM values, including phi nodes
  */
-void GenXSimdCFConformance::gatherEMVals()
-{
+void GenXSimdCFConformance::gatherEMVals() {
   // Collect gotos/joins and their defs
   gatherGotoJoinEMVals(true);
 
   Type *I1Ty = Type::getInt1Ty(M->getContext());
   Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
-  Type *Tys[] = { EMTy };
-  auto *SavemaskFunc = GenXIntrinsic::getGenXDeclaration(
+  Type *Tys[] = {EMTy};
+  auto *SavemaskFunc = vc::getAnyDeclaration(
       M, GenXIntrinsic::genx_simdcf_savemask, Tys);
-  for (auto ui = SavemaskFunc->use_begin(), ue = SavemaskFunc->use_end(); ui != ue;
-       ++ui) {
+  for (auto ui = SavemaskFunc->use_begin(), ue = SavemaskFunc->use_end();
+       ui != ue; ++ui) {
     auto Savemask = dyn_cast<CallInst>(ui->getUser());
     if (!Savemask)
       continue;
     if (FG && (FGA->getGroup(Savemask->getFunction()) != FG ||
                ui->getOperandNo() != IGCLLVM::getNumArgOperands(Savemask)))
       continue;
-      lowerSimdCF = true;
+    lowerSimdCF = true;
     // Add its EM input to EMVals, if not a constant.
     if (!isa<Constant>(Savemask->getOperand(0)))
       EMVals.insert(SimpleValue(Savemask->getOperand(0), 0));
@@ -761,7 +777,7 @@ void GenXSimdCFConformance::gatherEMVals()
   if (SavemaskFunc->use_empty())
     SavemaskFunc->eraseFromParent();
 
-  auto *UnmaskFunc = GenXIntrinsic::getGenXDeclaration(
+  auto *UnmaskFunc = vc::getAnyDeclaration(
       M, GenXIntrinsic::genx_simdcf_unmask, Tys);
   for (auto ui = UnmaskFunc->use_begin(), ue = UnmaskFunc->use_end(); ui != ue;
        ++ui) {
@@ -771,14 +787,14 @@ void GenXSimdCFConformance::gatherEMVals()
     if (FG && (FGA->getGroup(Unmask->getFunction()) != FG ||
                ui->getOperandNo() != IGCLLVM::getNumArgOperands(Unmask)))
       continue;
-      lowerSimdCF = true;
+    lowerSimdCF = true;
     // We have a unmask (in our function group in the case of the late
     EMVals.insert(SimpleValue(Unmask));
   }
   if (UnmaskFunc->use_empty())
     UnmaskFunc->eraseFromParent();
 
-  auto *RemaskFunc = GenXIntrinsic::getGenXDeclaration(
+  auto *RemaskFunc = vc::getAnyDeclaration(
       M, GenXIntrinsic::genx_simdcf_remask, Tys);
   for (auto ui = RemaskFunc->use_begin(), ue = RemaskFunc->use_end(); ui != ue;
        ++ui) {
@@ -788,7 +804,7 @@ void GenXSimdCFConformance::gatherEMVals()
     if (FG && (FGA->getGroup(Remask->getFunction()) != FG ||
                ui->getOperandNo() != IGCLLVM::getNumArgOperands(Remask)))
       continue;
-      lowerSimdCF = true;
+    lowerSimdCF = true;
     // We have a remask (in our function group in the case of the late
     // pass).  Add the EM value (struct index 0) to EMVals.
     EMVals.insert(SimpleValue(Remask));
@@ -801,7 +817,7 @@ void GenXSimdCFConformance::gatherEMVals()
 
   // delete useless cm_unmask_begin and cm_unmask_end
   auto *UnmaskEF =
-      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_unmask_end);
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_unmask_end);
   for (auto ui = UnmaskEF->use_begin(), ue = UnmaskEF->use_end(); ui != ue;) {
     auto u = ui->getUser();
     ++ui;
@@ -812,7 +828,7 @@ void GenXSimdCFConformance::gatherEMVals()
     UnmaskEF->eraseFromParent();
 
   auto *UnmaskBF =
-      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_unmask_begin);
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_unmask_begin);
   for (auto ui = UnmaskBF->use_begin(), ue = UnmaskBF->use_end(); ui != ue;) {
     auto u = ui->getUser();
     ++ui;
@@ -831,8 +847,7 @@ void GenXSimdCFConformance::gatherEMVals()
     getConnectedVals(EMVal, vc::RegCategory::EM, /*IncludeOptional=*/true,
                      /*OkJoin=*/nullptr, &ConnectedVals);
     // Add the connected values to EMVals.
-    for (auto j = ConnectedVals.begin(), je = ConnectedVals.end();
-        j != je; ++j)
+    for (auto j = ConnectedVals.begin(), je = ConnectedVals.end(); j != je; ++j)
       if (!isa<Constant>(j->getValue()))
         EMVals.insert(*j);
   }
@@ -841,11 +856,11 @@ void GenXSimdCFConformance::gatherEMVals()
 /***********************************************************************
  * gatherRMVals : gather RM values for each join
  */
-void GenXSimdCFConformance::gatherRMVals()
-{
+void GenXSimdCFConformance::gatherRMVals() {
   for (auto ji = EMVals.begin(), je = EMVals.end(); ji != je; ++ji) {
     auto EMVal = *ji;
-    if (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue()) != GenXIntrinsic::genx_simdcf_join)
+    auto IID = vc::getAnyIntrinsicID(EMVal.getValue());
+    if (IID != GenXIntrinsic::genx_simdcf_join)
       continue;
     auto Join = cast<CallInst>(EMVal.getValue());
     // We have a join. Gather its web of RM values.
@@ -859,8 +874,8 @@ void GenXSimdCFConformance::gatherRMVals()
       SmallVector<SimpleValue, 8> ConnectedVals;
       getConnectedVals(RM, vc::RegCategory::RM, /*IncludeOptional=*/true, Join,
                        &ConnectedVals);
-      for (auto j = ConnectedVals.begin(), je = ConnectedVals.end();
-          j != je; ++j)
+      for (auto j = ConnectedVals.begin(), je = ConnectedVals.end(); j != je;
+           ++j)
         if (!isa<Constant>(j->getValue()))
           RMValsEntry->insert(*j);
     }
@@ -895,7 +910,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
   DominatorTree *DomTree = getDomTree(Loc->getParent());
   if (DomTree->dominates(TrueEdge, Loc)) {
     LLVM_DEBUG(dbgs() << "findGotoJoinVal: Dominated by True Edge\n");
-    foundVals[Loc] = TrueVal;;
+    foundVals[Loc] = TrueVal;
     return TrueVal;
   }
   if (DomTree->dominates(FalseEdge, Loc)) {
@@ -916,7 +931,8 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
     PhiLoc = Loc;
 
   std::string Name = (Cat == vc::RegCategory::EM) ? "ExecMaskEV" : "CondEV";
-  auto PHI = PHINode::Create(GotoJoinEV->getType(), pred_size(PhiLoc), Name, &PhiLoc->front());
+  auto PHI = PHINode::Create(GotoJoinEV->getType(), pred_size(PhiLoc), Name,
+                             &PhiLoc->front());
   foundVals[PhiLoc] = PHI;
   if (PhiLoc != Loc)
     foundVals[Loc] = PHI;
@@ -941,7 +957,8 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
         LLVM_DEBUG(dbgs() << "findGotoJoinVal: Strange case\n");
       }
     } else {
-      Val = findGotoJoinVal(Cat, Pred, GotoJoinEV, TrueEdge, FalseEdge, TrueVal, FalseVal, foundVals);
+      Val = findGotoJoinVal(Cat, Pred, GotoJoinEV, TrueEdge, FalseEdge, TrueVal,
+                            FalseVal, foundVals);
     }
 
     PHI->addIncoming(Val, Pred);
@@ -958,8 +975,9 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
  * Correct user: conditional branch CondEV's BB. This
  * is the only possible conformant user.
  */
-void GenXSimdCFConformance::collectCondEVUsers(ExtractValueInst *CondEV, std::vector<Value *> &BadUsers, BranchInst *&CorrectUser)
-{
+void GenXSimdCFConformance::collectCondEVUsers(ExtractValueInst *CondEV,
+                                               std::vector<Value *> &BadUsers,
+                                               BranchInst *&CorrectUser) {
   // Bad users: they should not use cond EV. Make a real value for them
   // Correct user: conditional branch in this BB
   for (auto ui = CondEV->use_begin(), ue = CondEV->use_end(); ui != ue; ++ui) {
@@ -986,9 +1004,10 @@ void GenXSimdCFConformance::collectCondEVUsers(ExtractValueInst *CondEV, std::ve
  * It replaces cond EV uses by values that can be
  * obtained on true and false pathes
  */
-void GenXSimdCFConformance::updateBadCondEVUsers(GenXSimdCFConformance::GotoJoinEVs &GotoJoinData,
-  std::vector<Value *> &BadUsers, BasicBlock *TrueSucc, BasicBlock *FalseSucc)
-{
+void GenXSimdCFConformance::updateBadCondEVUsers(
+    GenXSimdCFConformance::GotoJoinEVs &GotoJoinData,
+    std::vector<Value *> &BadUsers, BasicBlock *TrueSucc,
+    BasicBlock *FalseSucc) {
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
   IGC_ASSERT_MESSAGE(CondEV, "Expected valid CondEV!");
 
@@ -1022,12 +1041,12 @@ void GenXSimdCFConformance::updateBadCondEVUsers(GenXSimdCFConformance::GotoJoin
  * is that FalseSucc branches to TrueSucc. Branching Block's
  * successors are TrueSucc and FalseSucc.
  */
-void GenXSimdCFConformance::addNewPhisIncomings(BasicBlock *BranchingBlock, BasicBlock *TrueSucc, BasicBlock *FalseSucc)
-{
-  for (auto Inst = &TrueSucc->front();
-    auto PN = dyn_cast<PHINode>(Inst);
-    Inst = Inst->getNextNode()) {
-    Value* CurrVal = PN->getIncomingValueForBlock(BranchingBlock);
+void GenXSimdCFConformance::addNewPhisIncomings(BasicBlock *BranchingBlock,
+                                                BasicBlock *TrueSucc,
+                                                BasicBlock *FalseSucc) {
+  for (auto Inst = &TrueSucc->front(); auto PN = dyn_cast<PHINode>(Inst);
+       Inst = Inst->getNextNode()) {
+    Value *CurrVal = PN->getIncomingValueForBlock(BranchingBlock);
     PN->addIncoming(CurrVal, FalseSucc);
   }
 }
@@ -1046,8 +1065,8 @@ void GenXSimdCFConformance::addNewPhisIncomings(BasicBlock *BranchingBlock, Basi
  * It is not done now because no non-conformant cases
  * were found so far.
  */
-void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEVs &GotoJoinData)
-{
+void GenXSimdCFConformance::handleNoCondEVCase(
+    GenXSimdCFConformance::GotoJoinEVs &GotoJoinData) {
   IGC_ASSERT_MESSAGE(!GotoJoinData.getCondEV(), "Unexpected CondEV!");
 
   // Handle only goto
@@ -1060,15 +1079,18 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
     if (SplitPoint->isTerminator())
       break;
     if (auto CI = dyn_cast<CallInst>(SplitPoint)) {
-      // We need to perform split before next goto/join to save their conformance
-      if (GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_simdcf_goto ||
-        GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_simdcf_join)
+      // We need to perform split before next goto/join to save their
+      // conformance
+      auto IID = vc::getAnyIntrinsicID(CI);
+      if (IID == GenXIntrinsic::genx_simdcf_goto ||
+          IID == GenXIntrinsic::genx_simdcf_join)
         break;
     }
   }
 
   Value *GotoJoin = GotoJoinData.getGotoJoin();
-  ExtractValueInst *CondEV = ExtractValueInst::Create(GotoJoin, { 2 }, "missing_extractcond", SplitPoint);
+  ExtractValueInst *CondEV = ExtractValueInst::Create(
+      GotoJoin, {2}, "missing_extractcond", SplitPoint);
   GotoJoinData.setCondEV(CondEV);
 
   if (auto Br = dyn_cast<BranchInst>(SplitPoint)) {
@@ -1092,15 +1114,18 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
     // Split point is in the middle of BB. We assume that there is a join point
     // after it.
     // TODO: consider adding this check. No such cases were found now.
-    BasicBlock *TrueSucc = CondEV->getParent()->splitBasicBlock(SplitPoint, "cond_ev_true_split");
+    BasicBlock *TrueSucc =
+        CondEV->getParent()->splitBasicBlock(SplitPoint, "cond_ev_true_split");
     CondEV->getParent()->getTerminator()->eraseFromParent();
-    LLVM_DEBUG(dbgs() << "Created " << TrueSucc->getName() << " to handle missing conditional branch\n");
+    LLVM_DEBUG(dbgs() << "Created " << TrueSucc->getName()
+                      << " to handle missing conditional branch\n");
 
     // False block: need to create new one
     BasicBlock *FalseSucc =
         BasicBlock::Create(CondEV->getContext(), "cond_ev_false_split",
                            CondEV->getFunction(), TrueSucc);
-    LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName() << " to handle missing conditional branch\n");
+    LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName()
+                      << " to handle missing conditional branch\n");
 
     // Link blocks
     BranchInst::Create(TrueSucc, FalseSucc, CondEV, CondEV->getParent());
@@ -1133,8 +1158,9 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
  * basic block. Code movements to sink goto/join will be performed
  * further, we don't need to focus on it here.
  */
-void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::GotoJoinEVs &GotoJoinData, BasicBlock *&TrueSucc, BasicBlock *&FalseSucc)
-{
+void GenXSimdCFConformance::handleOptimizedBranchCase(
+    GenXSimdCFConformance::GotoJoinEVs &GotoJoinData, BasicBlock *&TrueSucc,
+    BasicBlock *&FalseSucc) {
   // Look for the first non-goto/join user inst
   auto SplitPoint = GotoJoinData.getSplitPoint();
 
@@ -1142,13 +1168,16 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::Got
   IGC_ASSERT_MESSAGE(CondEV, "Expected valid CondEV!");
 
   // Split: this is true succ which is join point (at least we assume that)
-  TrueSucc = CondEV->getParent()->splitBasicBlock(SplitPoint, "cond_ev_true_split");
-  LLVM_DEBUG(dbgs() << "Created " << TrueSucc->getName() << " to handle missing conditional branch\n");
+  TrueSucc =
+      CondEV->getParent()->splitBasicBlock(SplitPoint, "cond_ev_true_split");
+  LLVM_DEBUG(dbgs() << "Created " << TrueSucc->getName()
+                    << " to handle missing conditional branch\n");
   CondEV->getParent()->getTerminator()->eraseFromParent();
   // False block: need to create new one
   FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_false_split",
                                  CondEV->getFunction(), TrueSucc);
-  LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName() << " to handle missing conditional branch\n");
+  LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName()
+                    << " to handle missing conditional branch\n");
   // Link blocks
   BranchInst::Create(TrueSucc, FalseSucc, CondEV, CondEV->getParent());
   BranchInst::Create(TrueSucc, FalseSucc);
@@ -1170,12 +1199,13 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::Got
  * It stores True/False successors and adds new BB
  * in case when both successors are the same BB.
  */
-void GenXSimdCFConformance::handleExistingBranchCase(GenXSimdCFConformance::GotoJoinEVs &GotoJoinData,
-  BasicBlock *&TrueSucc, BasicBlock *&FalseSucc, BranchInst *ExistingBranch)
-{
+void GenXSimdCFConformance::handleExistingBranchCase(
+    GenXSimdCFConformance::GotoJoinEVs &GotoJoinData, BasicBlock *&TrueSucc,
+    BasicBlock *&FalseSucc, BranchInst *ExistingBranch) {
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
   IGC_ASSERT_MESSAGE(CondEV, "Expected valid CondEV!");
-  IGC_ASSERT_MESSAGE(ExistingBranch->isConditional(), "Expected conditional branch!");
+  IGC_ASSERT_MESSAGE(ExistingBranch->isConditional(),
+                     "Expected conditional branch!");
 
   TrueSucc = ExistingBranch->getSuccessor(0);
   FalseSucc = ExistingBranch->getSuccessor(1);
@@ -1187,7 +1217,8 @@ void GenXSimdCFConformance::handleExistingBranchCase(GenXSimdCFConformance::Goto
     BranchInst::Create(TrueSucc, FalseSucc);
     ExistingBranch->setSuccessor(1, FalseSucc);
 
-    LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName() << " to handle always taken CONDITIONAL branch\n");
+    LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName()
+                      << " to handle always taken CONDITIONAL branch\n");
 
     // Update phis in TrueSucc
     addNewPhisIncomings(CondEV->getParent(), TrueSucc, FalseSucc);
@@ -1206,8 +1237,7 @@ void GenXSimdCFConformance::handleExistingBranchCase(GenXSimdCFConformance::Goto
  * The basic use case is optimized False Successor. That
  * often happens in standard SimplifyCFG pass.
  */
-void GenXSimdCFConformance::handleCondValue(Value *GotoJoin)
-{
+void GenXSimdCFConformance::handleCondValue(Value *GotoJoin) {
   GotoJoinEVs &GotoJoinData = GotoJoinEVsMap[GotoJoin];
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
 
@@ -1288,8 +1318,7 @@ void GenXSimdCFConformance::splitGotoJoinBlocks() {
  *
  * This is used just before erasing a phi node in moveCodeInJoinBlocks.
  */
-void GenXSimdCFConformance::removeFromEMRMVals(Value *V)
-{
+void GenXSimdCFConformance::removeFromEMRMVals(Value *V) {
   auto VT = dyn_cast<VectorType>(V->getType());
   if (!VT || !VT->getElementType()->isIntegerTy(1))
     return;
@@ -1317,16 +1346,18 @@ void GenXSimdCFConformance::removeFromEMRMVals(Value *V)
  * lead to much worse code when SIMD CF is not conformant (we are not
  * sure that it is conformant at this point).
  */
-bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, unsigned operandNo)
-{
+bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto,
+                                          unsigned operandNo) {
   // Find branch for goto
   ExtractValueInst *CondEV = GotoJoinEVsMap[Goto].getCondEV();
-  auto BrIt = std::find_if(CondEV->use_begin(), CondEV->use_end(),
-    [&Goto](const Use& u) {
-      auto Br = dyn_cast<BranchInst>(u.getUser());
-      return (Br && Br->getParent() == Goto->getParent() && Br->isConditional());
-    });
-  IGC_ASSERT_MESSAGE(BrIt != CondEV->use_end(), "All gotos should become branching earlier!");
+  auto BrIt = std::find_if(
+      CondEV->use_begin(), CondEV->use_end(), [&Goto](const Use &u) {
+        auto Br = dyn_cast<BranchInst>(u.getUser());
+        return (Br && Br->getParent() == Goto->getParent() &&
+                Br->isConditional());
+      });
+  IGC_ASSERT_MESSAGE(BrIt != CondEV->use_end(),
+                     "All gotos should become branching earlier!");
 
   BranchInst *Br = cast<BranchInst>(BrIt->getUser());
   BasicBlock *TrueSucc = Br->getSuccessor(0);
@@ -1344,7 +1375,9 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
   // such bb directly. Examples of that case can be found in local-atomics
   // tests in ISPC.
   if (isa<PHINode>(&FalseSucc->front())) {
-    BasicBlock *Splitter = BasicBlock::Create(FalseSucc->getContext(), "phi_fallthrough_splitter", FalseSucc->getParent());
+    BasicBlock *Splitter =
+        BasicBlock::Create(FalseSucc->getContext(), "phi_fallthrough_splitter",
+                           FalseSucc->getParent());
     Splitter->moveAfter(Goto->getParent());
     BranchInst::Create(FalseSucc, Splitter);
     Br->setSuccessor(1, Splitter);
@@ -1352,7 +1385,8 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
     for (auto CurrInst = &FalseSucc->front();
          auto PN = dyn_cast<PHINode>(CurrInst);
          CurrInst = CurrInst->getNextNode()) {
-      for (unsigned idx = 0, num = PN->getNumIncomingValues(); idx < num; ++idx) {
+      for (unsigned idx = 0, num = PN->getNumIncomingValues(); idx < num;
+           ++idx) {
         if (PN->getIncomingBlock(idx) == Goto->getParent())
           PN->setIncomingBlock(idx, Splitter);
       }
@@ -1367,7 +1401,8 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
   // Copy instruction and set the value for true block. Place it before goto.
   Instruction *TrueVal = Inst->clone();
   TrueVal->insertBefore(Goto);
-  TrueVal->setOperand(operandNo, Constant::getNullValue(Inst->getOperand(operandNo)->getType()));
+  TrueVal->setOperand(operandNo, Constant::getNullValue(
+                                     Inst->getOperand(operandNo)->getType()));
 
   // Copy instruction and place it in the false successor. Get EM will be
   // created later to handle its goto use.
@@ -1428,11 +1463,11 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
  * This can silently fail to sink a goto, in which case checkGoto will spot that
  * the goto is not conformant.
  */
-void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers)
-{
+void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers) {
   for (auto gi = EMVals.begin(), ge = EMVals.end(); gi != ge; ++gi) {
     auto EMVal = *gi;
-    if (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue()) != GenXIntrinsic::genx_simdcf_goto)
+    auto IID = vc::getAnyIntrinsicID(EMVal.getValue());
+    if (IID != GenXIntrinsic::genx_simdcf_goto)
       continue;
     auto Goto = cast<CallInst>(EMVal.getValue());
     // We want to sink the goto and its extracts. In fact we hoist any other
@@ -1454,7 +1489,8 @@ void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers)
       for (unsigned oi = 0, oe = Inst->getNumOperands(); oi != oe; ++oi) {
         if (auto I = dyn_cast<Instruction>(Inst->getOperand(oi)))
           if (Skipping.count(I)) {
-            LLVM_DEBUG(dbgs() << "Skipping " << Inst->getName() << " due to use of skipped inst\n");
+            LLVM_DEBUG(dbgs() << "Skipping " << Inst->getName()
+                              << " due to use of skipped inst\n");
             Skipping.insert(Inst);
             Failed = true;
             break;
@@ -1467,7 +1503,8 @@ void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers)
             if (hoistGotoUsers && hoistGotoUser(Inst, Goto, oi)) {
               continue;
             }
-            LLVM_DEBUG(dbgs() << "moveCodeInGotoBlocks: " << Goto->getName() << " failed\n");
+            LLVM_DEBUG(dbgs() << "moveCodeInGotoBlocks: " << Goto->getName()
+                              << " failed\n");
             LLVM_DEBUG(dbgs() << "Could not hoist " << Inst->getName() << "\n");
             Failed = true;
             Skipping.insert(Inst);
@@ -1527,8 +1564,7 @@ void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers)
  * moveCodeInGotoBlocks needs to run first, as we rely on its sinking of an
  * unconditional branch goto for isBranchingGotoJoinBlock to work.
  */
-void GenXSimdCFConformance::moveCodeInJoinBlocks()
-{
+void GenXSimdCFConformance::moveCodeInJoinBlocks() {
   // a. Handle case 3 join blocks.
   if (!FG) {
     // Early pass: iterate all funcs in the module.
@@ -1550,7 +1586,8 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
   SmallVector<CallInst *, 4> Joins;
   for (auto ji = EMVals.begin(), je = EMVals.end(); ji != je; ++ji) {
     auto EMVal = *ji;
-    if (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue()) != GenXIntrinsic::genx_simdcf_join)
+    auto IID = vc::getAnyIntrinsicID(EMVal.getValue());
+    if (IID != GenXIntrinsic::genx_simdcf_join)
       continue;
     Joins.push_back(cast<CallInst>(EMVal.getValue()));
   }
@@ -1569,7 +1606,8 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
       // I have seen this situation arise where LLVM decides to add a loop
       // pre-header block.
       BasicBlock *PredBlock = nullptr;
-      for (auto ui = JoinBlock->use_begin(), ue = JoinBlock->use_end(); ui != ue; ++ui) {
+      for (auto ui = JoinBlock->use_begin(), ue = JoinBlock->use_end();
+           ui != ue; ++ui) {
         auto Br = dyn_cast<BranchInst>(ui->getUser());
         if (!Br || Br->isConditional())
           continue;
@@ -1585,11 +1623,12 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
         // We have such a predecessor block. First hoist the join in our block.
         if (hoistJoin(Join)) {
           // Join hoisting succeeded. Now merge the blocks.
-          LLVM_DEBUG(dbgs() << "moveCodeInJoinBlocks: merging " << PredBlock->getName()
-              << " into " << JoinBlock->getName() << "\n");
+          LLVM_DEBUG(dbgs()
+                     << "moveCodeInJoinBlocks: merging " << PredBlock->getName()
+                     << " into " << JoinBlock->getName() << "\n");
           // First adjust the phi nodes to include both blocks' incomings.
           for (auto Phi = dyn_cast<PHINode>(&JoinBlock->front()); Phi;
-              Phi = dyn_cast<PHINode>(Phi->getNextNode())) {
+               Phi = dyn_cast<PHINode>(Phi->getNextNode())) {
             int Idx = Phi->getBasicBlockIndex(PredBlock);
             if (Idx >= 0) {
               Value *Incoming = Phi->getIncomingValue(Idx);
@@ -1601,14 +1640,15 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
                 // incomings.
                 Phi->removeIncomingValue(Idx, /*DeletePHIIfEmpty=*/false);
                 for (unsigned oi = 0, oe = PredPhi->getNumIncomingValues();
-                    oi != oe; ++oi)
+                     oi != oe; ++oi)
                   Phi->addIncoming(PredPhi->getIncomingValue(oi),
-                      PredPhi->getIncomingBlock(oi));
+                                   PredPhi->getIncomingBlock(oi));
               } else {
                 // Otherwise, add the predecessors of PredBlock to the phi node
                 // in JoinBlock.
                 for (auto ui2 = PredBlock->use_begin(),
-                    ue2 = PredBlock->use_end(); ui2 != ue2; ++ui2) {
+                          ue2 = PredBlock->use_end();
+                     ui2 != ue2; ++ui2) {
                   Instruction *Term = dyn_cast<Instruction>(ui2->getUser());
                   IGC_ASSERT(Term);
                   if (Term->isTerminator()) {
@@ -1638,7 +1678,7 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
               continue;
             }
             for (auto ui = JoinBlock->use_begin(), ue = JoinBlock->use_end();
-                ui != ue; ++ui) {
+                 ui != ue; ++ui) {
               auto Term = dyn_cast<Instruction>(ui->getUser());
               IGC_ASSERT(Term);
               if (!Term->isTerminator())
@@ -1667,10 +1707,9 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
  *
  * See comment for moveCodeInJoinBlocks above.
  */
-void GenXSimdCFConformance::emptyBranchingJoinBlocksInFunc(Function *F)
-{
+void GenXSimdCFConformance::emptyBranchingJoinBlocksInFunc(Function *F) {
   for (auto i = po_begin(&F->getEntryBlock()), e = po_end(&F->getEntryBlock());
-      i != e; ++i) {
+       i != e; ++i) {
     BasicBlock *BB = *i;
     CallInst *Join = GotoJoin::isBranchingJoinBlock(BB);
     if (!Join)
@@ -1683,8 +1722,7 @@ void GenXSimdCFConformance::emptyBranchingJoinBlocksInFunc(Function *F)
  * emptyBranchingJoinBlock : empty instructions other than the join (and its
  *      extracts) from this branching join block
  */
-void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join)
-{
+void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join) {
   BasicBlock *BB = Join->getParent();
   Instruction *InsertBefore = nullptr;
   for (Instruction *NextInst = BB->getFirstNonPHIOrDbg();;) {
@@ -1694,7 +1732,8 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join)
     NextInst = Inst->getNextNode();
     if (Inst == Join)
       continue; // do not hoist the join itself
-    if (GenXIntrinsic::getGenXIntrinsicID(Inst) == GenXIntrinsic::genx_simdcf_join)
+    auto IID = vc::getAnyIntrinsicID(Inst);
+    if (IID == GenXIntrinsic::genx_simdcf_join)
       break; // we have encountered another join; there must be more than one
     if (auto EV = dyn_cast<ExtractValueInst>(Inst))
       if (EV->getOperand(0) == Join)
@@ -1704,7 +1743,8 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join)
     for (unsigned oi = 0, oe = Inst->getNumOperands(); oi != oe; ++oi) {
       auto Opnd = dyn_cast<Instruction>(Inst->getOperand(oi));
       if (Opnd && Opnd->getParent() == BB) {
-        LLVM_DEBUG(dbgs() << "Failed to empty branching join label for join " << Join->getName() << "\n");
+        LLVM_DEBUG(dbgs() << "Failed to empty branching join label for join "
+                          << Join->getName() << "\n");
         return; // Instruction uses something in this block: abandon.
       }
     }
@@ -1730,8 +1770,7 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join)
 /***********************************************************************
  * getDomTree : get dominator tree for a function
  */
-DominatorTree *GenXSimdCFConformance::getDomTree(Function *F)
-{
+DominatorTree *GenXSimdCFConformance::getDomTree(Function *F) {
   if (!DTWrapper) {
     // In early pass, which is a module pass.
     if (!DTs[F]) {
@@ -1763,8 +1802,7 @@ DominatorTree *GenXSimdCFConformance::getDomTree(Function *F)
  * moveCodeInJoinBlocks in the case that it wants to merge a loop pre-header
  * back into the join block.
  */
-bool GenXSimdCFConformance::hoistJoin(CallInst *Join)
-{
+bool GenXSimdCFConformance::hoistJoin(CallInst *Join) {
   // This only works if no operand of the join uses one of the instructions
   // before it in the block, other than phi nodes.
   // However, if we find such an instruction and it is an extractvalue from the
@@ -1776,9 +1814,9 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join)
       continue;
     if (Opnd->getParent() == Join->getParent()) {
       if (auto EV = dyn_cast<ExtractValueInst>(Opnd)) {
-        unsigned IID = GenXIntrinsic::getGenXIntrinsicID(EV->getOperand(0));
-        if (IID == GenXIntrinsic::genx_simdcf_goto
-            || IID == GenXIntrinsic::genx_simdcf_join) {
+        unsigned IID = vc::getAnyIntrinsicID(EV->getOperand(0));
+        if (IID == GenXIntrinsic::genx_simdcf_goto ||
+            IID == GenXIntrinsic::genx_simdcf_join) {
           auto GotoJoin = cast<CallInst>(EV->getOperand(0));
           if (GotoJoin->getParent() != Join->getParent()) {
             LLVM_DEBUG(dbgs() << "moving out of join block: " << *EV << "\n");
@@ -1810,13 +1848,12 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join)
  * ensureConformance : check for conformance, and lower any non-conformant
  *    gotos and joins
  */
-void GenXSimdCFConformance::ensureConformance()
-{
+void GenXSimdCFConformance::ensureConformance() {
   // Push all EM values onto the stack for checking. Push the joins last, since
   // we want to process those before their corresponding gotos, so that
   // GotoJoinMap is set for a goto by the time we process a valid goto.
   for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
-    auto IID = GenXIntrinsic::getGenXIntrinsicID(i->getValue());
+    auto IID = vc::getAnyIntrinsicID(i->getValue());
     if (IID != GenXIntrinsic::genx_simdcf_join &&
         IID != GenXIntrinsic::genx_simdcf_unmask &&
         IID != GenXIntrinsic::genx_simdcf_remask) {
@@ -1829,7 +1866,7 @@ void GenXSimdCFConformance::ensureConformance()
     }
   }
   for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
-    auto IID = GenXIntrinsic::getGenXIntrinsicID(i->getValue());
+    auto IID = vc::getAnyIntrinsicID(i->getValue());
     if (IID == GenXIntrinsic::genx_simdcf_join)
       EMValsStack.insert(*i);
   } // Process the stack.
@@ -1845,15 +1882,16 @@ void GenXSimdCFConformance::ensureConformance()
       removeBadEMVal(EMVal);
       if (!EMVal.getIndex()) {
         if (auto CI = dyn_cast<CallInst>(EMVal.getValue())) {
-          switch (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue())) {
-            case GenXIntrinsic::genx_simdcf_goto:
-              GotosToLower.push_back(CI);
-              break;
-            case GenXIntrinsic::genx_simdcf_join:
-              JoinsToLower.push_back(CI);
-              break;
-            default:
-              break;
+          auto IID = vc::getAnyIntrinsicID(EMVal.getValue());
+          switch (IID) {
+          case GenXIntrinsic::genx_simdcf_goto:
+            GotosToLower.push_back(CI);
+            break;
+          case GenXIntrinsic::genx_simdcf_join:
+            JoinsToLower.push_back(CI);
+            break;
+          default:
+            break;
           }
         }
       }
@@ -1883,10 +1921,12 @@ void GenXSimdCFConformance::ensureConformance()
       for (auto *Dump : JoinsToLower)
         Dump->dump();
     }
-    IGC_ASSERT_EXIT_MESSAGE(GotosToLower.empty(),
-      "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
-    IGC_ASSERT_EXIT_MESSAGE(JoinsToLower.empty(),
-      "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
+    IGC_ASSERT_EXIT_MESSAGE(
+        GotosToLower.empty(),
+        "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
+    IGC_ASSERT_EXIT_MESSAGE(
+        JoinsToLower.empty(),
+        "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
   }
 
   // Lower gotos and joins that turned out to be non-conformant.
@@ -1916,8 +1956,9 @@ void GenXSimdCFConformance::ensureConformance()
  * getConnectedVals refactor). The idea of such approach is to be
  * able to update info if something changes.
  */
-Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visited, bool BitCastAllowed)
-{
+Value *GenXSimdCFConformance::getEMProducer(Value *User,
+                                            std::set<Value *> &Visited,
+                                            bool BitCastAllowed) {
   LLVM_DEBUG(dbgs() << "Looking for EM producer for value:\n" << *User << "\n");
 
   if (Visited.count(User)) {
@@ -1965,8 +2006,9 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
     CallInst *CI = dyn_cast<CallInst>(EVI->getOperand(0));
     if (CI) {
       // Goto/join check
-      if (GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_simdcf_goto ||
-        GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_simdcf_join) {
+      auto IID = vc::getAnyIntrinsicID(CI);
+      if (IID == GenXIntrinsic::genx_simdcf_goto ||
+          IID == GenXIntrinsic::genx_simdcf_join) {
         LLVM_DEBUG(dbgs() << "Reached goto/join\n");
         EMProducers[EVI] = EVI;
         return EVI;
@@ -1979,7 +2021,7 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
         return EVI;
       }
     }
-  } else if (auto Arg = dyn_cast<Argument>(User)){
+  } else if (auto Arg = dyn_cast<Argument>(User)) {
     // For argument we need to ensure that it is still in EM values
     // since it could be lowered.
     if (EMVals.count(SimpleValue(Arg, Arg->getArgNo()))) {
@@ -1991,7 +2033,8 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
     // Insert value prepares structure for return. Check the
     // value that is being inserted
     Visited.insert(IVI);
-    if (auto EMProd = getEMProducer(IVI->getInsertedValueOperand(), Visited, BitCastAllowed)) {
+    if (auto EMProd = getEMProducer(IVI->getInsertedValueOperand(), Visited,
+                                    BitCastAllowed)) {
       LLVM_DEBUG(dbgs() << "Insert for return\n");
       EMProducers[IVI] = EMProd;
       return IVI;
@@ -2000,7 +2043,8 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
     if (auto BCI = dyn_cast<BitCastInst>(User)) {
       // BitCast doesn't produce new EM. Just go through it.
       Visited.insert(BCI);
-      if (auto EMProd = getEMProducer(BCI->getOperand(0), Visited, BitCastAllowed)) {
+      if (auto EMProd =
+              getEMProducer(BCI->getOperand(0), Visited, BitCastAllowed)) {
         LLVM_DEBUG(dbgs() << "Bitcast from EM producer\n");
         EMProducers[BCI] = EMProd;
         return BCI;
@@ -2021,10 +2065,9 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
  *   - The EM argument is not actually a EM: this may happen if
  *     SIMD CF was non-conformant and this EM was lowered.
  */
-void GenXSimdCFConformance::lowerUnsuitableGetEMs()
-{
-  Type *I1Ty = Type::getInt1Ty(M->getContext());
-  Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
+void GenXSimdCFConformance::lowerUnsuitableGetEMs() {
+  auto *I1Ty = Type::getInt1Ty(M->getContext());
+  auto *GetEMDecl = vc::getAnyDeclaration(
       M, GenXIntrinsic::genx_simdcf_get_em,
       {IGCLLVM::FixedVectorType::get(I1Ty, 32)});
   std::vector<Instruction *> ToDelete;
@@ -2040,7 +2083,8 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs()
     }
 
     // Constants and non-EM values should be used directly
-    if (dyn_cast<Constant>(GetEMPred) || !getEMProducer(dyn_cast<Instruction>(GetEMPred), Visited)) {
+    if (dyn_cast<Constant>(GetEMPred) ||
+        !getEMProducer(dyn_cast<Instruction>(GetEMPred), Visited)) {
       GetEM->replaceAllUsesWith(GetEM->getOperand(0));
       ToDelete.push_back(GetEM);
     }
@@ -2057,11 +2101,10 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs()
  * lowerAllSimdCF : do NOT check for conformance, and simply lower
  * all any gotos, joins, and unmasks
  */
-void GenXSimdCFConformance::lowerAllSimdCF()
-{
+void GenXSimdCFConformance::lowerAllSimdCF() {
   for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
     if (auto CI = dyn_cast<CallInst>(i->getValue())) {
-      auto IID = GenXIntrinsic::getGenXIntrinsicID(i->getValue());
+      auto IID = vc::getAnyIntrinsicID(i->getValue());
       if (IID == GenXIntrinsic::genx_simdcf_join)
         lowerJoin(CI);
       else if (IID == GenXIntrinsic::genx_simdcf_goto)
@@ -2070,18 +2113,20 @@ void GenXSimdCFConformance::lowerAllSimdCF()
         auto SaveMask = CI->getArgOperand(0);
         if (auto CI0 = dyn_cast<CallInst>(SaveMask)) {
           IRBuilder<> Builder(CI0);
-          auto Replace = Builder.CreateBitCast(CI0->getArgOperand(0), CI0->getType());
+          auto Replace =
+              Builder.CreateBitCast(CI0->getArgOperand(0), CI0->getType());
           CI0->replaceAllUsesWith(Replace);
           CI0->eraseFromParent();
         }
         IRBuilder<> Builder(CI);
-        auto Replace = Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
+        auto Replace =
+            Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
         CI->replaceAllUsesWith(Replace);
         CI->eraseFromParent();
-      }
-      else if (IID == GenXIntrinsic::genx_simdcf_remask) {
+      } else if (IID == GenXIntrinsic::genx_simdcf_remask) {
         IRBuilder<> Builder(CI);
-        auto Replace = Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
+        auto Replace =
+            Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
         CI->replaceAllUsesWith(Replace);
         CI->eraseFromParent();
       }
@@ -2094,8 +2139,7 @@ void GenXSimdCFConformance::lowerAllSimdCF()
  *
  * Return:    true if ok, false if the EM value needs to be removed
  */
-bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
-{
+bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal) {
   LLVM_DEBUG(dbgs() << "checkEMVal: " << *EMVal.getValue() << "#"
                     << EMVal.getIndex() << "\n");
   if (!EnableGenXGotoJoin)
@@ -2127,13 +2171,14 @@ bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
     LLVM_DEBUG(dbgs() << "checkEMVal: ConnectedVal checked "
                       << *ConnectedVal.getValue() << "\n");
   }
-  switch (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue())) {
-    case GenXIntrinsic::genx_simdcf_goto:
-      return checkGoto(EMVal);
-    case GenXIntrinsic::genx_simdcf_join:
-      return checkJoin(EMVal);
-    default:
-      break;
+  auto IID = vc::getAnyIntrinsicID(EMVal.getValue());
+  switch (IID) {
+  case GenXIntrinsic::genx_simdcf_goto:
+    return checkGoto(EMVal);
+  case GenXIntrinsic::genx_simdcf_join:
+    return checkJoin(EMVal);
+  default:
+    break;
   }
   return true;
 }
@@ -2142,8 +2187,7 @@ bool GenXSimdCFConformance::checkEMVal(SimpleValue EMVal)
  * checkGotoJoinSunk : check whether a goto/join is sunk to the bottom of
  *    its basic block, other than extractvalues from its result
  */
-static bool checkGotoJoinSunk(CallInst *GotoJoin)
-{
+static bool checkGotoJoinSunk(CallInst *GotoJoin) {
   for (Instruction *Inst = GotoJoin;;) {
     Inst = Inst->getNextNode();
     if (Inst->isTerminator()) {
@@ -2161,8 +2205,7 @@ static bool checkGotoJoinSunk(CallInst *GotoJoin)
 /***********************************************************************
  * checkGoto : check conformance of an actual goto instruction
  */
-bool GenXSimdCFConformance::checkGoto(SimpleValue EMVal)
-{
+bool GenXSimdCFConformance::checkGoto(SimpleValue EMVal) {
   if (!checkGotoJoin(EMVal))
     return false;
   // Check that there is a linked join. (We do not need to check here that the
@@ -2186,8 +2229,7 @@ bool GenXSimdCFConformance::checkGoto(SimpleValue EMVal)
 /***********************************************************************
  * checkJoin : check conformance of an actual join instruction
  */
-bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
-{
+bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal) {
   if (!checkGotoJoin(EMVal))
     return false;
   // Check that the join is at the start of the block. emptyJoinBlock should
@@ -2233,8 +2275,8 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
       LLVM_DEBUG(dbgs() << "checkJoin: illegal RM value in web\n");
       return false;
     }
-    for (auto j = ConnectedVals.begin(), je = ConnectedVals.end();
-        j != je; ++j) {
+    for (auto j = ConnectedVals.begin(), je = ConnectedVals.end(); j != je;
+         ++j) {
       SimpleValue ConnectedVal = *j;
       if (auto C = dyn_cast<Constant>(ConnectedVal.getValue())) {
         // A constant in the RM web must be all zeros.
@@ -2249,18 +2291,19 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
           LLVM_DEBUG(dbgs() << "checkJoin: New one: "
                             << ConnectedVal.getValue()->getName() << "#"
                             << ConnectedVal.getIndex() << "\n");
-          switch (GenXIntrinsic::getGenXIntrinsicID(ConnectedVal.getValue())) {
-            case GenXIntrinsic::genx_simdcf_join:
-              LLVM_DEBUG(dbgs() << "checkJoin: multiple joins in RM web\n");
+          auto IID = vc::getAnyIntrinsicID(ConnectedVal.getValue());
+          switch (IID) {
+          case GenXIntrinsic::genx_simdcf_join:
+            LLVM_DEBUG(dbgs() << "checkJoin: multiple joins in RM web\n");
+            return false;
+          case GenXIntrinsic::genx_simdcf_goto:
+            if (ConnectedVal.getIndex() != 1 /* struct index of RM result */) {
+              LLVM_DEBUG(dbgs() << "checkJoin: wrong struct index in goto\n");
               return false;
-            case GenXIntrinsic::genx_simdcf_goto:
-              if (ConnectedVal.getIndex() != 1/* struct index of RM result */) {
-                LLVM_DEBUG(dbgs() << "checkJoin: wrong struct index in goto\n");
-                return false;
-              }
-              break;
-            default:
-              break;
+            }
+            break;
+          default:
+            break;
           }
         }
       }
@@ -2276,7 +2319,8 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
   // Set GotoJoinMap for each goto in the RM web.
   for (unsigned rvi = 0; rvi != RMValsEntry->size(); ++rvi) {
     SimpleValue RM = (*RMValsEntry)[rvi];
-    if (GenXIntrinsic::getGenXIntrinsicID(RM.getValue()) == GenXIntrinsic::genx_simdcf_goto)
+    auto IID = vc::getAnyIntrinsicID(RM.getValue());
+    if (IID == GenXIntrinsic::genx_simdcf_goto)
       GotoJoinMap[cast<CallInst>(RM.getValue())] = Join;
   }
   return true;
@@ -2287,8 +2331,7 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal)
  *    splitter block (one predecessor and one successor), then return the
  *    single successor
  */
-static BasicBlock *getEmptyCriticalEdgeSplitterSuccessor(BasicBlock *BB)
-{
+static BasicBlock *getEmptyCriticalEdgeSplitterSuccessor(BasicBlock *BB) {
   if (!BB->hasOneUse())
     return nullptr; // not exactly one predecessor
   auto Term = dyn_cast<Instruction>(BB->getFirstNonPHIOrDbg());
@@ -2304,8 +2347,7 @@ static BasicBlock *getEmptyCriticalEdgeSplitterSuccessor(BasicBlock *BB)
  * checkGotoJoin : common code to check conformance of an actual goto or join
  *    instruction
  */
-bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
-{
+bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal) {
   auto CI = cast<CallInst>(EMVal.getValue());
   // If there is an extract of the scalar result of the goto/join, check that
   // it is used in the conditional branch at the end of the block.
@@ -2338,7 +2380,8 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
     // setCategories in this pass.
     BasicBlock *TrueSucc = Br->getSuccessor(0);
     Instruction *First = TrueSucc->getFirstNonPHIOrDbg();
-    if (GenXIntrinsic::getGenXIntrinsicID(First) != GenXIntrinsic::genx_simdcf_join) {
+    auto IID = vc::getAnyIntrinsicID(First);
+    if (IID != GenXIntrinsic::genx_simdcf_join) {
       // "True" successor is not a join label. Check for an empty critical edge
       // splitter block in between.
       TrueSucc = getEmptyCriticalEdgeSplitterSuccessor(TrueSucc);
@@ -2348,8 +2391,8 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
             << "checkGotoJoin: goto/join true successor not join label\n");
         return false; // Not empty critical edge splitter
       }
-      if (GenXIntrinsic::getGenXIntrinsicID(TrueSucc->getFirstNonPHIOrDbg())
-          != GenXIntrinsic::genx_simdcf_join) {
+      if (vc::getAnyIntrinsicID(TrueSucc->getFirstNonPHIOrDbg()) !=
+          GenXIntrinsic::genx_simdcf_join) {
         LLVM_DEBUG(
             dbgs()
             << "checkGotoJoin: goto/join true successor not join label\n");
@@ -2366,8 +2409,7 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal)
  * This removes a non-conformant EM value, and pushes any connected EM value
  * onto the stack so it gets re-checked for conformance.
  */
-void GenXSimdCFConformance::removeBadEMVal(SimpleValue EMVal)
-{
+void GenXSimdCFConformance::removeBadEMVal(SimpleValue EMVal) {
   LLVM_DEBUG(dbgs() << "removeBadEMVal: "; EMVal.print(dbgs()); dbgs() << "\n");
   // Remove the EM value.
   if (!EMVals.remove(EMVal))
@@ -2386,10 +2428,9 @@ void GenXSimdCFConformance::removeBadEMVal(SimpleValue EMVal)
 /***********************************************************************
  * pushValues : push EM struct elements in a value onto EMValsStack
  */
-void GenXSimdCFConformance::pushValues(Value *V)
-{
+void GenXSimdCFConformance::pushValues(Value *V) {
   for (unsigned si = 0, se = IndexFlattener::getNumElements(V->getType());
-      si != se; ++si) {
+       si != se; ++si) {
     SimpleValue SV(V, si);
     if (EMVals.count(SV))
       EMValsStack.insert(SV);
@@ -2405,8 +2446,7 @@ void GenXSimdCFConformance::pushValues(Value *V)
  * value in an rdpredregion, or a shufflevector that is a slice so will be
  * lowered to rdpredregion.
  */
-static bool checkAllUsesAreSelectOrWrRegion(Value *V)
-{
+static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
   for (auto ui2 = V->use_begin(); ui2 != V->use_end(); /*empty*/) {
     auto User2 = cast<Instruction>(ui2->getUser());
     unsigned OpNum = ui2->getOperandNo();
@@ -2423,8 +2463,7 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
 
       // EM && X -> sel EM X 0
       // EM || X -> sel EM 1 X
-      if (Opc == BinaryOperator::And ||
-          Opc == BinaryOperator::Or) {
+      if (Opc == BinaryOperator::And || Opc == BinaryOperator::Or) {
         Value *Ops[3] = {V, nullptr, nullptr};
         if (Opc == BinaryOperator::And) {
           Ops[1] = BI->getOperand(1 - OpNum);
@@ -2462,7 +2501,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
         Instruction *AndInst = BI->user_back();
         Value *Op = AndInst->getOperand(0) != BI ? AndInst->getOperand(0)
                                                  : AndInst->getOperand(1);
-        auto SI = SelectInst::Create(V, AllNul, Op, ".revsel", AndInst, AndInst);
+        auto SI =
+            SelectInst::Create(V, AllNul, Op, ".revsel", AndInst, AndInst);
         AndInst->replaceAllUsesWith(SI);
         AndInst->eraseFromParent();
         BI->eraseFromParent();
@@ -2491,11 +2531,11 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
     unsigned IID = vc::getAnyIntrinsicID(User2);
     if (GenXIntrinsic::isWrRegion(IID))
       continue;
-    if (IID == GenXIntrinsic::genx_wrpredpredregion
-        && OpNum == IGCLLVM::getNumArgOperands(cast<CallInst>(User2)) - 1)
+    if (IID == GenXIntrinsic::genx_wrpredpredregion &&
+        OpNum == IGCLLVM::getNumArgOperands(cast<CallInst>(User2)) - 1)
       continue;
-    if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)
-        && !cast<CallInst>(User2)->doesNotAccessMemory())
+    if (vc::isAnyNonTrivialIntrinsic(IID) &&
+        !cast<CallInst>(User2)->doesNotAccessMemory())
       continue;
     return false;
   }
@@ -2556,10 +2596,10 @@ bool GenXSimdCFConformance::getConnectedVals(
     Function *F = Arg->getParent();
     unsigned RetIdx = 0;
     auto RetTy = F->getReturnType();
-    auto ValTy = IndexFlattener::getElementType(
-        Val.getValue()->getType(), Val.getIndex());
+    auto ValTy = IndexFlattener::getElementType(Val.getValue()->getType(),
+                                                Val.getIndex());
     if (auto ST = dyn_cast<StructType>(RetTy)) {
-      for (unsigned End = IndexFlattener::getNumElements(ST); ; ++RetIdx) {
+      for (unsigned End = IndexFlattener::getNumElements(ST);; ++RetIdx) {
         if (RetIdx == End)
           return false; // no predicate ret value found
         if (IndexFlattener::getElementType(ST, RetIdx) == ValTy)
@@ -2586,17 +2626,20 @@ bool GenXSimdCFConformance::getConnectedVals(
           SimpleValue(Phi->getIncomingValue(oi), Val.getIndex()));
   } else if (auto EVI = dyn_cast<ExtractValueInst>(Val.getValue())) {
     // extractvalue: add the appropriate struct element of the input
-    ConnectedVals->push_back(SimpleValue(EVI->getOperand(0),
-            Val.getIndex() + IndexFlattener::flatten(
-              cast<StructType>(EVI->getOperand(0)->getType()),
-              EVI->getIndices())));
+    ConnectedVals->push_back(SimpleValue(
+        EVI->getOperand(0),
+        Val.getIndex() + IndexFlattener::flatten(
+                             cast<StructType>(EVI->getOperand(0)->getType()),
+                             EVI->getIndices())));
   } else if (auto IVI = dyn_cast<InsertValueInst>(Val.getValue())) {
     // insertvalue: add the appropriate struct element in either the
     // aggregate input or the value to insert input
-    unsigned InsertedIndex = Val.getIndex() - IndexFlattener::flatten(
-        cast<StructType>(IVI->getType()), IVI->getIndices());
-    unsigned NumElements = IndexFlattener::getNumElements(
-        IVI->getOperand(1)->getType());
+    unsigned InsertedIndex =
+        Val.getIndex() -
+        IndexFlattener::flatten(cast<StructType>(IVI->getType()),
+                                IVI->getIndices());
+    unsigned NumElements =
+        IndexFlattener::getNumElements(IVI->getOperand(1)->getType());
     SimpleValue SV;
     if (InsertedIndex < NumElements)
       SV = SimpleValue(IVI->getOperand(1), InsertedIndex);
@@ -2608,82 +2651,83 @@ bool GenXSimdCFConformance::getConnectedVals(
     ConnectedVals->push_back(SimpleValue(SVI->getOperand(0), 0));
   } else if (auto CI = dyn_cast<CallInst>(Val.getValue())) {
     switch (vc::getAnyIntrinsicID(CI)) {
-      case GenXIntrinsic::genx_simdcf_goto:
-        // goto: invalid unless it is the EM/RM result of goto as applicable
-        if (Val.getIndex() != (Cat == vc::RegCategory::EM ? 0U : 1U))
-          return false;
-        // Add the corresponding input.
-        ConnectedVals->push_back(CI->getOperand(Val.getIndex()));
-        // If doing EM connections, add the corresponding join. This does
-        // nothing if checkJoin has not yet run for the corresponding join,
-        // since GotoJoinMap has not yet been set up for our goto. We tolerate
-        // that situation; if the goto really has no linked join, that is
-        // picked up later in checkGoto.
-        if (Cat == vc::RegCategory::EM)
-          if (auto Join = GotoJoinMap[cast<CallInst>(Val.getValue())])
+    case GenXIntrinsic::genx_simdcf_goto:
+      // goto: invalid unless it is the EM/RM result of goto as applicable
+      if (Val.getIndex() != (Cat == vc::RegCategory::EM ? 0U : 1U))
+        return false;
+      // Add the corresponding input.
+      ConnectedVals->push_back(CI->getOperand(Val.getIndex()));
+      // If doing EM connections, add the corresponding join. This does
+      // nothing if checkJoin has not yet run for the corresponding join,
+      // since GotoJoinMap has not yet been set up for our goto. We tolerate
+      // that situation; if the goto really has no linked join, that is
+      // picked up later in checkGoto.
+      if (Cat == vc::RegCategory::EM)
+        if (auto Join = GotoJoinMap[cast<CallInst>(Val.getValue())])
+          ConnectedVals->push_back(
+              SimpleValue(Join, 0 /* struct idx of EM result */));
+      break;
+    case GenXIntrinsic::genx_simdcf_join: {
+      // join: invalid unless it is the EM result
+      if (Val.getIndex() || Cat != vc::RegCategory::EM)
+        return false;
+      // Add the corresponding input.
+      ConnectedVals->push_back(CI->getOperand(Val.getIndex()));
+      // Add the corresponding gotos. This does nothing if checkJoin has not
+      // yet run for this join, since RMVals has not yet been set up for it.
+      // That is OK, because adding the corresponding gotos here is required
+      // only when we are called by removeBadEMVal to remove the join, so the
+      // gotos get re-checked and found to be invalid.
+      auto RMValsEntry = &RMVals[cast<CallInst>(Val.getValue())];
+      for (auto i = RMValsEntry->begin(), e = RMValsEntry->end(); i != e; ++i)
+        if (vc::getAnyIntrinsicID(i->getValue()) ==
+            GenXIntrinsic::genx_simdcf_goto)
+          ConnectedVals->push_back(
+              SimpleValue(i->getValue(), 0 /* struct idx of EM result */));
+      break;
+    }
+    case GenXIntrinsic::genx_simdcf_savemask:
+    case GenXIntrinsic::genx_simdcf_remask:
+    case GenXIntrinsic::genx_simdcf_get_em:
+      // Add the corresponding input.
+      ConnectedVals->push_back(CI->getOperand(0));
+      return true;
+    case GenXIntrinsic::genx_constantpred:
+      // constantpred: add the constant. Don't add any other uses of it,
+      // because it might be commoned up with other RM webs.
+      ConnectedVals->push_back(CI->getOperand(0));
+      return true;
+    case GenXIntrinsic::not_any_intrinsic: {
+      // Value returned from a call.
+      if (Cat != vc::RegCategory::EM)
+        return false; // invalid for RM
+      // Add the corresponding value at each return in the called function.
+      auto CalledFunc = CI->getCalledFunction();
+      for (auto fi = CalledFunc->begin(), fe = CalledFunc->end(); fi != fe;
+           ++fi)
+        if (auto Ret = dyn_cast<ReturnInst>(fi->getTerminator()))
+          if (!Ret->getType()->isVoidTy())
             ConnectedVals->push_back(
-                SimpleValue(Join, 0/* struct idx of EM result */));
-        break;
-      case GenXIntrinsic::genx_simdcf_join: {
-        // join: invalid unless it is the EM result
-        if (Val.getIndex() || Cat != vc::RegCategory::EM)
-          return false;
-        // Add the corresponding input.
-        ConnectedVals->push_back(CI->getOperand(Val.getIndex()));
-        // Add the corresponding gotos. This does nothing if checkJoin has not
-        // yet run for this join, since RMVals has not yet been set up for it.
-        // That is OK, because adding the corresponding gotos here is required
-        // only when we are called by removeBadEMVal to remove the join, so the
-        // gotos get re-checked and found to be invalid.
-        auto RMValsEntry = &RMVals[cast<CallInst>(Val.getValue())];
-        for (auto i = RMValsEntry->begin(), e = RMValsEntry->end(); i != e; ++i)
-          if (GenXIntrinsic::getGenXIntrinsicID(i->getValue()) == GenXIntrinsic::genx_simdcf_goto)
-            ConnectedVals->push_back(
-                SimpleValue(i->getValue(), 0/* struct idx of EM result */));
-        break;
-      }
-      case GenXIntrinsic::genx_simdcf_savemask:
-      case GenXIntrinsic::genx_simdcf_remask:
-      case GenXIntrinsic::genx_simdcf_get_em:
-        // Add the corresponding input.
-        ConnectedVals->push_back(CI->getOperand(0));
-        return true;
-      case GenXIntrinsic::genx_constantpred:
-        // constantpred: add the constant. Don't add any other uses of it,
-        // because it might be commoned up with other RM webs.
-        ConnectedVals->push_back(CI->getOperand(0));
-        return true;
-      case GenXIntrinsic::not_any_intrinsic: {
-        // Value returned from a call.
-        if (Cat != vc::RegCategory::EM)
-          return false; // invalid for RM
-        // Add the corresponding value at each return in the called function.
-        auto CalledFunc = CI->getCalledFunction();
-        for (auto fi = CalledFunc->begin(), fe = CalledFunc->end();
-            fi != fe; ++fi)
-          if (auto Ret = dyn_cast<ReturnInst>(fi->getTerminator()))
-            if (!Ret->getType()->isVoidTy())
-              ConnectedVals->push_back(
-                  SimpleValue(Ret->getOperand(0), Val.getIndex()));
-        // Connected to some call arg. There is a problem here in that it might
-        // find another predicate arg that is nothing to do with SIMD CF, and
-        // thus stop SIMD CF being optimized. But passing a predicate in and
-        // out of a function is rare outside of SIMD CF, so we do not worry
-        // about that.
-        auto ValTy = IndexFlattener::getElementType(
-            Val.getType(), Val.getIndex());
-        for (unsigned Idx = 0, End = IGCLLVM::getNumArgOperands(CI); ; ++Idx) {
-          if (Idx == End)
-            return false; // no corresponding call arg found
-          if (CI->getArgOperand(Idx)->getType() == ValTy) {
-            ConnectedVals->push_back(SimpleValue(CI->getArgOperand(Idx), 0));
-            break;
-          }
+                SimpleValue(Ret->getOperand(0), Val.getIndex()));
+      // Connected to some call arg. There is a problem here in that it might
+      // find another predicate arg that is nothing to do with SIMD CF, and
+      // thus stop SIMD CF being optimized. But passing a predicate in and
+      // out of a function is rare outside of SIMD CF, so we do not worry
+      // about that.
+      auto ValTy =
+          IndexFlattener::getElementType(Val.getType(), Val.getIndex());
+      for (unsigned Idx = 0, End = IGCLLVM::getNumArgOperands(CI);; ++Idx) {
+        if (Idx == End)
+          return false; // no corresponding call arg found
+        if (CI->getArgOperand(Idx)->getType() == ValTy) {
+          ConnectedVals->push_back(SimpleValue(CI->getArgOperand(Idx), 0));
+          break;
         }
-        break;
       }
-      default:
-        return false; // unexpected call as def
+      break;
+    }
+    default:
+      return false; // unexpected call as def
     }
   } else
     return false; // unexpected instruction as def
@@ -2691,8 +2735,8 @@ bool GenXSimdCFConformance::getConnectedVals(
   std::vector<SimpleValue> UsersToLower;
   LLVM_DEBUG(dbgs() << "getConnectedVals: get all uses for " << *Val.getValue()
                     << "\n");
-  for (auto ui = Val.getValue()->use_begin(),
-      ue = Val.getValue()->use_end(); ui != ue; ++ui) {
+  for (auto ui = Val.getValue()->use_begin(), ue = Val.getValue()->use_end();
+       ui != ue; ++ui) {
     auto User = cast<Instruction>(ui->getUser());
     LLVM_DEBUG(dbgs() << "getConnectedVals: -> geted " << *User << "\n");
     if (auto Phi = dyn_cast<PHINode>(User)) {
@@ -2716,8 +2760,8 @@ bool GenXSimdCFConformance::getConnectedVals(
       // to insert.
       unsigned StartIndex = IndexFlattener::flatten(
           cast<StructType>(IVI->getType()), IVI->getIndices());
-      unsigned NumIndices = IndexFlattener::getNumElements(
-          IVI->getOperand(1)->getType());
+      unsigned NumIndices =
+          IndexFlattener::getNumElements(IVI->getOperand(1)->getType());
       if (!ui->getOperandNo()) {
         // Use in insertvalue as the aggregate input. Add the corresponding
         // element in the result, as long as it is not overwritten by the
@@ -2735,16 +2779,16 @@ bool GenXSimdCFConformance::getConnectedVals(
       // Use in a return.
       if (Cat != vc::RegCategory::EM)
         return false; // invalid for RM
-      // Connected to some function arg. There is a problem here in that it might
-      // find another predicate arg that is nothing to do with SIMD CF, and
-      // thus stop SIMD CF being optimized. But passing a predicate in and
+      // Connected to some function arg. There is a problem here in that it
+      // might find another predicate arg that is nothing to do with SIMD CF,
+      // and thus stop SIMD CF being optimized. But passing a predicate in and
       // out of a function is rare outside of SIMD CF, so we do not worry
       // about that.
-      auto ValTy = IndexFlattener::getElementType(
-          Val.getType(), Val.getIndex());
+      auto ValTy =
+          IndexFlattener::getElementType(Val.getType(), Val.getIndex());
       auto F = User->getFunction();
       bool Lower = false;
-      for (auto ai = F->arg_begin(), ae = F->arg_end(); ; ++ai) {
+      for (auto ai = F->arg_begin(), ae = F->arg_end();; ++ai) {
         if (ai == ae) {
           // no arg of the right type found
           Lower = true;
@@ -2795,8 +2839,8 @@ bool GenXSimdCFConformance::getConnectedVals(
                           << " No=" << ui->getOperandNo() << "\n");
         continue;
       }
-      // Shufflevector produces EM for value baled inst, so this is a (almost) real EM def:
-      // add it here to perform correct EM interference check
+      // Shufflevector produces EM for value baled inst, so this is a (almost)
+      // real EM def: add it here to perform correct EM interference check
       ConnectedVals->push_back(SimpleValue(SVI, ui->getOperandNo()));
       continue;
     }
@@ -2804,117 +2848,118 @@ bool GenXSimdCFConformance::getConnectedVals(
       LLVM_DEBUG(dbgs() << "getConnectedVals: CallInst income\n"
                         << *CI << "\n");
       switch (vc::getAnyIntrinsicID(CI)) {
-        case GenXIntrinsic::genx_simdcf_get_em:
-          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_get_em\n");
-          IGC_ASSERT(Cat == vc::RegCategory::EM);
-          // Skip it if the category is right. This
-          // intrinsic doesn't produce EM
-          break;
-        case GenXIntrinsic::genx_simdcf_unmask:
-        case GenXIntrinsic::genx_simdcf_remask:
-          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_**mask\n");
-          IGC_ASSERT(Cat == vc::RegCategory::EM);
+      case GenXIntrinsic::genx_simdcf_get_em:
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_get_em\n");
+        IGC_ASSERT(Cat == vc::RegCategory::EM);
+        // Skip it if the category is right. This
+        // intrinsic doesn't produce EM
+        break;
+      case GenXIntrinsic::genx_simdcf_unmask:
+      case GenXIntrinsic::genx_simdcf_remask:
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_**mask\n");
+        IGC_ASSERT(Cat == vc::RegCategory::EM);
+        ConnectedVals->push_back(SimpleValue(CI, 0));
+        break;
+      case GenXIntrinsic::genx_simdcf_goto:
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_goto\n");
+        // use in goto: valid only if arg 0 (EM) or 1 (RM)
+        if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
+          return false;
+        // Add corresponding result.
+        ConnectedVals->push_back(SimpleValue(CI, ui->getOperandNo()));
+        break;
+      case GenXIntrinsic::genx_simdcf_join:
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_join\n");
+        // use in join: valid only if arg 0 (EM) or 1 (RM)
+        if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
+          return false;
+        // If EM, add corresponding result.
+        if (Cat == vc::RegCategory::EM)
           ConnectedVals->push_back(SimpleValue(CI, 0));
-          break;
-        case GenXIntrinsic::genx_simdcf_goto:
-          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_goto\n");
-          // use in goto: valid only if arg 0 (EM) or 1 (RM)
-          if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
-            return false;
-          // Add corresponding result.
-          ConnectedVals->push_back(SimpleValue(CI, ui->getOperandNo()));
-          break;
-        case GenXIntrinsic::genx_simdcf_join:
-          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_simdcf_join\n");
-          // use in join: valid only if arg 0 (EM) or 1 (RM)
-          if (ui->getOperandNo() != (Cat == vc::RegCategory::EM ? 0U : 1U))
-            return false;
-          // If EM, add corresponding result.
-          if (Cat == vc::RegCategory::EM)
-            ConnectedVals->push_back(SimpleValue(CI, 0));
-          else if (OkJoin && OkJoin != CI) {
-            // RM value used in a join other than OkJoin. That is illegal, as we
-            // can only have one join per RM web.
-            LLVM_DEBUG(dbgs() << "getConnectedVals: found illegal join "
-                              << CI->getName() << "\n");
-            return false;
-          }
-          break;
-        case GenXIntrinsic::genx_wrregionf:
-        case GenXIntrinsic::genx_wrregioni:
-          break; // Use as wrregion predicate is allowed.
-        case GenXIntrinsic::genx_rdpredregion:
-          LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_rdpredregion\n");
-          // We only see rdpredregion in the late pass; in the early pass it is
-          // still a shufflevector.  Check that all its uses are select or
-          // wrregion.
-          if (!checkAllUsesAreSelectOrWrRegion(CI)) {
-            UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
-            LLVM_DEBUG(dbgs() << "getConnectedVals: all uses push_back " << *CI
-                              << " No=" << ui->getOperandNo() << "\n");
-          }
-          break;
-        case GenXIntrinsic::genx_wrpredpredregion:
-          LLVM_DEBUG(dbgs()
-                     << "getConnectedVals: case genx_wrpredpredregion\n");
-          // Use in wrpredpredregion allowed as the last arg.
-          if (ui->getOperandNo() + 1 != IGCLLVM::getNumArgOperands(CI)) {
-            UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
-            LLVM_DEBUG(dbgs() << "getConnectedVals: operands ne push_back "
-                              << *CI << " No=" << ui->getOperandNo() << "\n");
-          }
-          break;
-        default:
-          LLVM_DEBUG(dbgs() << "case default\n");
-          // Allowed as an predicate in a non-ALU intrinsic.
-          if (CI->getCalledFunction()->doesNotAccessMemory()) {
-            UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
-            LLVM_DEBUG(dbgs()
-                       << "getConnectedVals: does not access memory push_back "
-                       << *CI << " No=" << ui->getOperandNo() << "\n");
-          }
-          break;
-        case GenXIntrinsic::not_any_intrinsic: {
-          LLVM_DEBUG(dbgs() << "getConnectedVals: case not_any_intrinsic\n");
-          // Use in subroutine call. Add the corresponding function arg.
-          Function *CalledFunc = CI->getCalledFunction();
-          IGC_ASSERT(CalledFunc);
-          auto ai = CalledFunc->arg_begin();
-          for (unsigned Count = ui->getOperandNo(); Count; --Count, ++ai)
-            ;
-          Argument *Arg = &*ai;
-          ConnectedVals->push_back(SimpleValue(Arg, Val.getIndex()));
-          // Connected to some return value from the call. There is a problem
-          // here in that it might find another predicate return value that is
-          // nothing to do with SIMD CF, and thus stop SIMD CF being optimized.
-          // But passing a predicate in and out of a function is rare outside
-          // of SIMD CF, so we do not worry about that.
-          unsigned RetIdx = 0;
-          auto ValTy = IndexFlattener::getElementType(
-              Val.getValue()->getType(), Val.getIndex());
-          if (auto ST = dyn_cast<StructType>(CI->getType())) {
-            LLVM_DEBUG(dbgs()
-                       << "getConnectedVals: StructType get" << *ST << "\n");
-            for (unsigned End = IndexFlattener::getNumElements(ST); ; ++RetIdx) {
-              if (RetIdx == End) {
-                UsersToLower.push_back(SimpleValue(User, ui->getOperandNo())); // no predicate ret value found
-                LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
-                                  << " No=" << ui->getOperandNo() << "\n");
-              }
-              if (IndexFlattener::getElementType(ST, RetIdx) == ValTy) {
-                ConnectedVals->push_back(SimpleValue(CI, RetIdx));
-                break;
-              }
-            }
-          } else if (CI->getType() == ValTy)
-            ConnectedVals->push_back(SimpleValue(CI, 0));
-          else if (!CI->getType()->isVoidTy()) {
-            UsersToLower.push_back(SimpleValue(User, ui->getOperandNo())); // no predicate ret value found
-            LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
-                              << " No=" << ui->getOperandNo() << "\n");
-          }
-          break;
+        else if (OkJoin && OkJoin != CI) {
+          // RM value used in a join other than OkJoin. That is illegal, as we
+          // can only have one join per RM web.
+          LLVM_DEBUG(dbgs() << "getConnectedVals: found illegal join "
+                            << CI->getName() << "\n");
+          return false;
         }
+        break;
+      case GenXIntrinsic::genx_wrregionf:
+      case GenXIntrinsic::genx_wrregioni:
+        break; // Use as wrregion predicate is allowed.
+      case GenXIntrinsic::genx_rdpredregion:
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_rdpredregion\n");
+        // We only see rdpredregion in the late pass; in the early pass it is
+        // still a shufflevector.  Check that all its uses are select or
+        // wrregion.
+        if (!checkAllUsesAreSelectOrWrRegion(CI)) {
+          UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+          LLVM_DEBUG(dbgs() << "getConnectedVals: all uses push_back " << *CI
+                            << " No=" << ui->getOperandNo() << "\n");
+        }
+        break;
+      case GenXIntrinsic::genx_wrpredpredregion:
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case genx_wrpredpredregion\n");
+        // Use in wrpredpredregion allowed as the last arg.
+        if (ui->getOperandNo() + 1 != IGCLLVM::getNumArgOperands(CI)) {
+          UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+          LLVM_DEBUG(dbgs() << "getConnectedVals: operands ne push_back " << *CI
+                            << " No=" << ui->getOperandNo() << "\n");
+        }
+        break;
+      default:
+        LLVM_DEBUG(dbgs() << "case default\n");
+        // Allowed as an predicate in a non-ALU intrinsic.
+        if (CI->getCalledFunction()->doesNotAccessMemory()) {
+          UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
+          LLVM_DEBUG(dbgs()
+                     << "getConnectedVals: does not access memory push_back "
+                     << *CI << " No=" << ui->getOperandNo() << "\n");
+        }
+        break;
+      case GenXIntrinsic::not_any_intrinsic: {
+        LLVM_DEBUG(dbgs() << "getConnectedVals: case not_any_intrinsic\n");
+        // Use in subroutine call. Add the corresponding function arg.
+        Function *CalledFunc = CI->getCalledFunction();
+        IGC_ASSERT(CalledFunc);
+        auto ai = CalledFunc->arg_begin();
+        for (unsigned Count = ui->getOperandNo(); Count; --Count, ++ai)
+          ;
+        Argument *Arg = &*ai;
+        ConnectedVals->push_back(SimpleValue(Arg, Val.getIndex()));
+        // Connected to some return value from the call. There is a problem
+        // here in that it might find another predicate return value that is
+        // nothing to do with SIMD CF, and thus stop SIMD CF being optimized.
+        // But passing a predicate in and out of a function is rare outside
+        // of SIMD CF, so we do not worry about that.
+        unsigned RetIdx = 0;
+        auto ValTy = IndexFlattener::getElementType(Val.getValue()->getType(),
+                                                    Val.getIndex());
+        if (auto ST = dyn_cast<StructType>(CI->getType())) {
+          LLVM_DEBUG(dbgs()
+                     << "getConnectedVals: StructType get" << *ST << "\n");
+          for (unsigned End = IndexFlattener::getNumElements(ST);; ++RetIdx) {
+            if (RetIdx == End) {
+              UsersToLower.push_back(SimpleValue(
+                  User, ui->getOperandNo())); // no predicate ret value found
+              LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
+                                << " No=" << ui->getOperandNo() << "\n");
+            }
+            if (IndexFlattener::getElementType(ST, RetIdx) == ValTy) {
+              ConnectedVals->push_back(SimpleValue(CI, RetIdx));
+              break;
+            }
+          }
+        } else if (CI->getType() == ValTy)
+          ConnectedVals->push_back(SimpleValue(CI, 0));
+        else if (!CI->getType()->isVoidTy()) {
+          UsersToLower.push_back(SimpleValue(
+              User, ui->getOperandNo())); // no predicate ret value found
+          LLVM_DEBUG(dbgs() << "getConnectedVals: push_back " << *CI
+                            << " No=" << ui->getOperandNo() << "\n");
+        }
+        break;
+      }
       }
       continue;
     }
@@ -2927,7 +2972,7 @@ bool GenXSimdCFConformance::getConnectedVals(
     SetVector<Value *> ToRemove;
     for (auto BadUser : UsersToLower) {
       replaceUseWithLoweredEM(dyn_cast<Instruction>(BadUser.getValue()),
-          BadUser.getIndex(), ToRemove);
+                              BadUser.getIndex(), ToRemove);
     }
     for (auto Inst : ToRemove) {
       removeFromEMRMVals(Inst);
@@ -3004,8 +3049,7 @@ void GenXSimdCFConformance::canonicalizeEM() {
  *
  * All transformations are done in GotoJoinEVs constructor.
  */
-void GenXSimdCFConformance::handleEVs()
-{
+void GenXSimdCFConformance::handleEVs() {
   // Collect gotos/joins
   gatherGotoJoinEMVals(false);
   for (auto val : EMVals) {
@@ -3022,20 +3066,20 @@ void GenXSimdCFConformance::handleEVs()
  * GetEMPred should be called earlier to check if Val is actually
  * a EM producer.
  */
-Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *> &DeadInst, std::set<Value *> &Visited)
-{
+Value *GenXSimdCFConformance::eliminateBitCastPreds(
+    Value *Val, std::set<Value *> &DeadInst, std::set<Value *> &Visited) {
   Type *EMType =
       IGCLLVM::FixedVectorType::get(Type::getInt1Ty(M->getContext()), 32);
 
-  if (Visited.count(Val))
-  {
+  if (Visited.count(Val)) {
     return EMProducers[Val];
   }
 
   Visited.insert(Val);
 
   if (auto BCI = dyn_cast<BitCastInst>(Val)) {
-    IGC_ASSERT_MESSAGE(EMProducers[BCI] == BCI->getOperand(0), "Bad EM producer was saved!");
+    IGC_ASSERT_MESSAGE(EMProducers[BCI] == BCI->getOperand(0),
+                       "Bad EM producer was saved!");
 
     DeadInst.insert(BCI);
     return eliminateBitCastPreds(BCI->getOperand(0), DeadInst, Visited);
@@ -3057,7 +3101,8 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
     }
 
     for (unsigned oi = 0, on = PN->getNumIncomingValues(); oi < on; ++oi) {
-      auto EMProd = eliminateBitCastPreds(PN->getIncomingValue(oi), DeadInst, Visited);
+      auto EMProd =
+          eliminateBitCastPreds(PN->getIncomingValue(oi), DeadInst, Visited);
       if (!NewPN) {
         PN->setIncomingValue(oi, EMProd);
         PN->setIncomingBlock(oi, PN->getIncomingBlock(oi));
@@ -3075,7 +3120,8 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
   } else {
     IGC_ASSERT(Val);
     IGC_ASSERT_MESSAGE(EMProducers[Val] == Val, "Bad EM producer was saved!");
-    IGC_ASSERT_MESSAGE(Val->getType() == EMType, "Unexpected final EM producer!");
+    IGC_ASSERT_MESSAGE(Val->getType() == EMType,
+                       "Unexpected final EM producer!");
 
     return Val;
   }
@@ -3089,8 +3135,7 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
  * resolve it if possible. If it is not, SIMD CF remains non-conformant
  * and is lowered later.
  */
-void GenXSimdCFConformance::resolveBitCastChains()
-{
+void GenXSimdCFConformance::resolveBitCastChains() {
   LLVM_DEBUG(dbgs() << "resolveBitCastChains: Resolving Bitcast chains:\n");
 
   // We don't have EM values here so we have to gather them
@@ -3148,8 +3193,7 @@ void GenXSimdCFConformance::resolveBitCastChains()
  * that our multiple EM values, including phi nodes, do not interfere with each
  * other. This is effectively a register allocator with only one register.
  */
-void GenXSimdCFConformance::checkEMInterference()
-{
+void GenXSimdCFConformance::checkEMInterference() {
   // Do an interference check, returning a list of defs that appear in the live
   // range of other values.
   SetVector<Value *> BadDefs;
@@ -3184,7 +3228,7 @@ Value *GenXSimdCFConformance::findLoweredEMValue(Value *Val) {
  */
 Value *GenXSimdCFConformance::buildLoweringViaGetEM(Value *Val,
                                                     Instruction *InsertBefore) {
-  Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
+  Function *GetEMDecl = vc::getAnyDeclaration(
       M, GenXIntrinsic::genx_simdcf_get_em, {Val->getType()});
   Value *GetEM = CallInst::Create(GetEMDecl, {Val}, "getEM", InsertBefore);
   LoweredEMValsMap[Val] = GetEM;
@@ -3256,7 +3300,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
 
   // Non-branching case: must be join. Insert get_em right after join's EM
   IGC_ASSERT_MESSAGE(testIsJoin(GotoJoin),
-         "Gotos should be turned into branching earlier!");
+                     "Gotos should be turned into branching earlier!");
 
   LLVM_DEBUG(dbgs() << "lowerEVIUse: Handling simple join case\n");
 
@@ -3330,8 +3374,8 @@ Value *GenXSimdCFConformance::lowerArgumentUse(Argument *Arg) {
  *
  * EM is being lowered via genx_simdcf_get_em intrinsic.
  */
-void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned operandNo, SetVector<Value *> &ToRemove)
-{
+void GenXSimdCFConformance::replaceUseWithLoweredEM(
+    Instruction *Val, unsigned operandNo, SetVector<Value *> &ToRemove) {
   Value *EM = Val->getOperand(operandNo);
 
   LLVM_DEBUG(dbgs() << "replaceUseWithLoweredEM: Replacing EM use:\n"
@@ -3353,7 +3397,8 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
     LoweredEM = lowerPHIUse(PN, ToRemove);
   } else if (auto *Arg = dyn_cast<Argument>(EM)) {
     LoweredEM = lowerArgumentUse(Arg);
-  } else if (isa<Constant>(EM) && EM->getType()->getScalarType()->isIntegerTy(1)) {
+  } else if (isa<Constant>(EM) &&
+             EM->getType()->getScalarType()->isIntegerTy(1)) {
     LoweredEM = EM;
   } else
     // All other instructions should not be EM producers with correct DF
@@ -3371,20 +3416,22 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
  * Lowered EM is an explicit value that can be consumed by any
  * instruction except of goto and join because they take implicit EM.
  */
-bool GenXSimdCFConformance::canUseLoweredEM(Instruction *Val)
-{
-  if (GenXIntrinsic::getGenXIntrinsicID(Val) == GenXIntrinsic::genx_simdcf_goto ||
-    GenXIntrinsic::getGenXIntrinsicID(Val) == GenXIntrinsic::genx_simdcf_join)
+bool GenXSimdCFConformance::canUseLoweredEM(Instruction *Val) {
+  auto IID = vc::getAnyIntrinsicID(Val);
+  if (IID == GenXIntrinsic::genx_simdcf_goto ||
+      IID == GenXIntrinsic::genx_simdcf_join)
     return false;
 
   // For phi, check that it does not deal with goto or join.
   if (auto PN = dyn_cast<PHINode>(Val)) {
-    for (unsigned idx = 0, opNo = PN->getNumIncomingValues(); idx < opNo; ++idx) {
+    for (unsigned idx = 0, opNo = PN->getNumIncomingValues(); idx < opNo;
+         ++idx) {
       auto Inst = dyn_cast<ExtractValueInst>(PN->getOperand(idx));
       if (Inst) {
         auto Pred = Inst->getOperand(0);
-        if (GenXIntrinsic::getGenXIntrinsicID(Pred) == GenXIntrinsic::genx_simdcf_goto ||
-          GenXIntrinsic::getGenXIntrinsicID(Pred) == GenXIntrinsic::genx_simdcf_join)
+        auto PredIID = vc::getAnyIntrinsicID(Pred);
+        if (PredIID == GenXIntrinsic::genx_simdcf_goto ||
+            PredIID == GenXIntrinsic::genx_simdcf_join)
           return false;
       }
     }
@@ -3424,7 +3471,7 @@ bool GenXSimdCFConformance::canUseRealEM(Instruction *Inst, unsigned opNo) {
   }
 
   // Left switch for further extensions
-  switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
+  switch (vc::getAnyIntrinsicID(Inst)) {
   case GenXIntrinsic::genx_wrregionf:
   case GenXIntrinsic::genx_wrregioni:
     // Real EM can be wrrregion predicate only
@@ -3475,14 +3522,15 @@ bool GenXSimdCFConformance::canUseRealEM(Instruction *Inst, unsigned opNo) {
  *   setting ConstStop to the join instruction.
  */
 void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
-    SetVector<Value *> *BadDefs, Instruction *ConstStop)
-{
+                                              SetVector<Value *> *BadDefs,
+                                              Instruction *ConstStop) {
   // Scan the live range of each value, looking for a def of another value.
   // Finding such a def indicates interference.
   SetVector<Value *> ToRemove;
   for (auto evi = Vals->begin(), eve = Vals->end(); evi != eve; ++evi) {
     Value *EMVal = evi->getValue();
-    bool IsConstantPred = GenXIntrinsic::getGenXIntrinsicID(EMVal) == GenXIntrinsic::genx_constantpred;
+    bool IsConstantPred =
+        vc::getAnyIntrinsicID(EMVal) == GenXIntrinsic::genx_constantpred;
     // Set of blocks where we know the value is live out.
     SmallSet<BasicBlock *, 8> LiveOut;
     // Start from each use and scan backwards. If the EMVal was affected by
@@ -3560,20 +3608,27 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
               // interfering. However do not mark it if both values are
               // constantpred, since we pretend all of those are defined at the
               // start of the function.
-              if (!IsConstantPred
-                  || GenXIntrinsic::getGenXIntrinsicID(Inst) != GenXIntrinsic::genx_constantpred) {
-                LLVM_DEBUG(dbgs() << "GenXSimdCFConformance::checkInterference: def of " << Inst->getName() << " found in live range of " << EMVal->getName() << "\n");
+              if (!IsConstantPred || vc::getAnyIntrinsicID(Inst) !=
+                                         GenXIntrinsic::genx_constantpred) {
+                LLVM_DEBUG(
+                    dbgs()
+                    << "GenXSimdCFConformance::checkInterference: def of "
+                    << Inst->getName() << " found in live range of "
+                    << EMVal->getName() << "\n");
                 auto SVI = dyn_cast<ShuffleVectorInst>(Inst);
                 if (SVI && SVI->getOperand(0) == EMVal) {
-                  // Shuffle vector is baled as EM of another size: this check is to
-                  // ensure that the EM in SVI is still actual
-                  LLVM_DEBUG(dbgs() << "\tShuffle vector with correct arg, skipping it\n");
+                  // Shuffle vector is baled as EM of another size: this check
+                  // is to ensure that the EM in SVI is still actual
+                  LLVM_DEBUG(
+                      dbgs()
+                      << "\tShuffle vector with correct arg, skipping it\n");
                 } else if (canUseLoweredEM(User) && !FG) {
                   // Lower EM in Early Pass
                   replaceUseWithLoweredEM(User, OpNo, ToRemove);
                   LLVM_DEBUG(dbgs() << "\tSucceded to lower EM for that use\n");
                 } else {
-                  LLVM_DEBUG(dbgs() << "\t!!! Failed to lower EM for that use: def will be lowered\n");
+                  LLVM_DEBUG(dbgs() << "\t!!! Failed to lower EM for that use: "
+                                       "def will be lowered\n");
                   BadDefs->insert(Inst);
                 }
                 // Done for that use
@@ -3601,8 +3656,9 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
  * Return:  value, possibly the same as the input value
  */
 Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
-    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
-{
+                                         const Twine &Name,
+                                         Instruction *InsertBefore,
+                                         const DebugLoc &DL) {
   unsigned OldWidth =
       cast<IGCLLVM::FixedVectorType>(OldVal->getType())->getNumElements();
   unsigned NewWidth =
@@ -3622,7 +3678,8 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
   for (; i != OldWidth; ++i)
     Indices.push_back(UndefIndex);
   auto SV1 = new ShuffleVectorInst(NewVal, UndefValue::get(NewVal->getType()),
-      ConstantVector::get(Indices), NewVal->getName() + ".extend", InsertBefore);
+                                   ConstantVector::get(Indices),
+                                   NewVal->getName() + ".extend", InsertBefore);
   SV1->setDebugLoc(DL);
   if (isa<UndefValue>(OldVal))
     return SV1;
@@ -3632,7 +3689,7 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
   for (; i != OldWidth; ++i)
     Indices.push_back(ConstantInt::get(I32Ty, i));
   auto SV2 = new ShuffleVectorInst(OldVal, SV1, ConstantVector::get(Indices),
-      Name, InsertBefore);
+                                   Name, InsertBefore);
   SV2->setDebugLoc(DL);
   return SV2;
 }
@@ -3649,8 +3706,9 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
  * Return:  value, possibly the same as the input value
  */
 Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
-    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
-{
+                                           const Twine &Name,
+                                           Instruction *InsertBefore,
+                                           const DebugLoc &DL) {
   unsigned InWidth =
       cast<IGCLLVM::FixedVectorType>(In->getType())->getNumElements();
   unsigned TruncWidth = cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
@@ -3662,8 +3720,9 @@ Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
   unsigned i;
   for (i = 0; i != TruncWidth; ++i)
     Indices.push_back(ConstantInt::get(I32Ty, i));
-  auto SV = new ShuffleVectorInst(In, UndefValue::get(In->getType()),
-      ConstantVector::get(Indices), Name, InsertBefore);
+  auto SV =
+      new ShuffleVectorInst(In, UndefValue::get(In->getType()),
+                            ConstantVector::get(Indices), Name, InsertBefore);
   SV->setDebugLoc(DL);
   return SV;
 }
@@ -3676,46 +3735,46 @@ Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
  * to enable or disable the warning, as it is an unexpected situation that
  * we want our users to report.
  */
-void GenXSimdCFConformance::lowerGoto(CallInst *Goto)
-{
+void GenXSimdCFConformance::lowerGoto(CallInst *Goto) {
   LLVM_DEBUG(dbgs() << "lowerGoto: " << *Goto << "\n");
   const DebugLoc &DL = Goto->getDebugLoc();
   if (EnableGenXGotoJoin && !lowerSimdCF)
-    DiagnosticInfoSimdCF::emit(Goto, "failed to optimize SIMD branch", DS_Warning);
+    DiagnosticInfoSimdCF::emit(Goto, "failed to optimize SIMD branch",
+                               DS_Warning);
   Value *Results[3];
   auto EM = Goto->getOperand(0);
   auto Cond = Goto->getOperand(2);
   // EM is always 32 bit. Extract SubEM, of the same width as Cond, from it.
-  auto OldSubEM = truncateCond(EM, Cond->getType(),
-      EM->getName() + ".sub", Goto, DL);
+  auto OldSubEM =
+      truncateCond(EM, Cond->getType(), EM->getName() + ".sub", Goto, DL);
   // Result 1: NewRM = OldRM | (SubEM & ~Cond)
-  auto NotCond = BinaryOperator::Create(Instruction::Xor, Cond,
-      Constant::getAllOnesValue(Cond->getType()),
+  auto NotCond = BinaryOperator::Create(
+      Instruction::Xor, Cond, Constant::getAllOnesValue(Cond->getType()),
       Goto->getName() + ".notcond", Goto);
   NotCond->setDebugLoc(DL);
-  auto NotCondAndSubEM = BinaryOperator::Create(Instruction::And, NotCond,
-      OldSubEM, Goto->getName() + ".disabling", Goto);
+  auto NotCondAndSubEM =
+      BinaryOperator::Create(Instruction::And, NotCond, OldSubEM,
+                             Goto->getName() + ".disabling", Goto);
   NotCondAndSubEM->setDebugLoc(DL);
   Value *OldRM = Goto->getArgOperand(1);
   auto NewRM = BinaryOperator::Create(Instruction::Or, OldRM, NotCondAndSubEM,
-      Goto->getName() + ".newRM", Goto);
+                                      Goto->getName() + ".newRM", Goto);
   NewRM->setDebugLoc(DL);
   Results[1] = NewRM;
   // And SubEM with Cond.
   auto SubEM = BinaryOperator::Create(Instruction::And, OldSubEM, Cond,
-      Goto->getName() + ".subEM", Goto);
+                                      Goto->getName() + ".subEM", Goto);
   SubEM->setDebugLoc(DL);
   // Insert that back into EM. That is result 0.
   Results[0] = EM = insertCond(EM, SubEM, Goto->getName() + ".EM", Goto, DL);
   // Result 2: BranchCond = !any(SubEM)
-  Function *AnyFunc = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_any,
-      SubEM->getType());
-  auto Any = CallInst::Create(AnyFunc, SubEM,
-      SubEM->getName() + ".any", Goto);
+  Function *AnyFunc = vc::getAnyDeclaration(
+      M, GenXIntrinsic::genx_any, SubEM->getType());
+  auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any", Goto);
   Any->setDebugLoc(DL);
   auto Not = BinaryOperator::Create(Instruction::Xor, Any,
-      Constant::getAllOnesValue(Any->getType()),
-      Any->getName() + ".not", Goto);
+                                    Constant::getAllOnesValue(Any->getType()),
+                                    Any->getName() + ".not", Goto);
   Not->setDebugLoc(DL);
   Results[2] = Not;
   // Replace uses.
@@ -3727,31 +3786,29 @@ void GenXSimdCFConformance::lowerGoto(CallInst *Goto)
 /***********************************************************************
  * lowerJoin : lower a llvm.genx.simdcf.join
  */
-void GenXSimdCFConformance::lowerJoin(CallInst *Join)
-{
+void GenXSimdCFConformance::lowerJoin(CallInst *Join) {
   LLVM_DEBUG(dbgs() << "lowerJoin: " << *Join << "\n");
   const DebugLoc &DL = Join->getDebugLoc();
   Value *Results[2];
   auto EM = Join->getOperand(0);
   auto RM = Join->getOperand(1);
   // EM is always 32 bit. Extract SubEM, of the same width as RM, from it.
-  auto OldSubEM = truncateCond(EM, RM->getType(), EM->getName() + ".sub",
-      Join, DL);
+  auto OldSubEM =
+      truncateCond(EM, RM->getType(), EM->getName() + ".sub", Join, DL);
   // Or it with RM.
   auto SubEM = BinaryOperator::Create(Instruction::Or, OldSubEM, RM,
-      Join->getName() + ".subEM", Join);
+                                      Join->getName() + ".subEM", Join);
   SubEM->setDebugLoc(DL);
   // Insert that back into EM. That is result 0.
   Results[0] = EM = insertCond(EM, SubEM, Join->getName() + ".EM", Join, DL);
   // Result 1: BranchCond = !any(SubEM)
-  Function *AnyFunc = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_any,
-      SubEM->getType());
-  auto Any = CallInst::Create(AnyFunc, SubEM,
-      SubEM->getName() + ".any", Join);
+  Function *AnyFunc = vc::getAnyDeclaration(
+      M, GenXIntrinsic::genx_any, SubEM->getType());
+  auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any", Join);
   Any->setDebugLoc(DL);
   auto Not = BinaryOperator::Create(Instruction::Xor, Any,
-      Constant::getAllOnesValue(Any->getType()),
-      Any->getName() + ".not", Join);
+                                    Constant::getAllOnesValue(Any->getType()),
+                                    Any->getName() + ".not", Join);
   Not->setDebugLoc(DL);
   Results[1] = Not;
   // Replace uses.
@@ -3768,11 +3825,10 @@ void GenXSimdCFConformance::lowerJoin(CallInst *Join)
  * It also spots where a value is unused.
  */
 void GenXSimdCFConformance::replaceGotoJoinUses(CallInst *GotoJoin,
-    ArrayRef<Value *> Vals)
-{
+                                                ArrayRef<Value *> Vals) {
   SmallVector<ExtractValueInst *, 4> Extracts;
-  for (auto ui = GotoJoin->use_begin(), ue = GotoJoin->use_end();
-      ui != ue; ++ui) {
+  for (auto ui = GotoJoin->use_begin(), ue = GotoJoin->use_end(); ui != ue;
+       ++ui) {
     auto Extract = dyn_cast<ExtractValueInst>(ui->getUser());
     if (Extract)
       Extracts.push_back(Extract);
@@ -3791,10 +3847,10 @@ void GenXSimdCFConformance::replaceGotoJoinUses(CallInst *GotoJoin,
     Value *StructVal = UndefValue::get(GotoJoin->getType());
     Instruction *InsertBefore = GotoJoin->getNextNode();
     for (unsigned Index = 0,
-        End = cast<StructType>(GotoJoin->getType())->getNumElements();
-        Index != End; ++Index)
-      StructVal = InsertValueInst::Create(StructVal, Vals[Index],
-          Index, "", InsertBefore);
+                  End = cast<StructType>(GotoJoin->getType())->getNumElements();
+         Index != End; ++Index)
+      StructVal = InsertValueInst::Create(StructVal, Vals[Index], Index, "",
+                                          InsertBefore);
     GotoJoin->replaceAllUsesWith(StructVal);
   } else {
     // Remove code for unused value. This is particularly useful at an outer
@@ -3829,7 +3885,7 @@ static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
                      "Awaiting only one successor");
   bool HasOnePred = SuccBB->hasNPredecessors(1);
   Instruction *InsertBefore = SuccBB->getFirstNonPHI();
-  while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
+  while (auto *DBG = dyn_cast<DbgVariableIntrinsic>(BB->begin())) {
     DBG->moveBefore(InsertBefore);
     if (!HasOnePred)
       IGCLLVM::setDbgVariableLocationToUndef(DBG);
@@ -3841,8 +3897,7 @@ static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
  *
  * This also modifies EM uses as needed.
  */
-void GenXLateSimdCFConformance::setCategories()
-{
+void GenXLateSimdCFConformance::setCategories() {
   // First the EM values.
   for (auto ei = EMVals.begin(); ei != EMVals.end(); /* empty */) {
     SimpleValue EMVal = *ei;
@@ -3852,57 +3907,57 @@ void GenXLateSimdCFConformance::setCategories()
     LLVM_DEBUG(dbgs() << "Set category for:\n" << *EMVal.getValue() << "\n");
     if (!isa<StructType>(EMVal.getValue()->getType()))
       modifyEMUses(EMVal.getValue());
-    switch (GenXIntrinsic::getGenXIntrinsicID(EMVal.getValue())) {
-      case GenXIntrinsic::genx_simdcf_join: {
-        // For a join, set the category of each RM value.
-        auto RMValsEntry = &RMVals[cast<CallInst>(EMVal.getValue())];
-        for (auto vi = RMValsEntry->begin(), ve = RMValsEntry->end(); vi != ve; ++vi) {
-          SimpleValue RMVal = *vi;
-          // For this RM value, set its category.
-          Liveness->getOrCreateLiveRange(RMVal)->setCategory(
-              vc::RegCategory::RM);
-        }
+    switch (vc::getAnyIntrinsicID(EMVal.getValue())) {
+    case GenXIntrinsic::genx_simdcf_join: {
+      // For a join, set the category of each RM value.
+      auto RMValsEntry = &RMVals[cast<CallInst>(EMVal.getValue())];
+      for (auto vi = RMValsEntry->begin(), ve = RMValsEntry->end(); vi != ve;
+           ++vi) {
+        SimpleValue RMVal = *vi;
+        // For this RM value, set its category.
+        Liveness->getOrCreateLiveRange(RMVal)->setCategory(vc::RegCategory::RM);
       }
-      // Fall through...
-      case GenXIntrinsic::genx_simdcf_goto: {
-        // See if this is a branching goto/join where the "true" successor is
-        // an empty critical edge splitter block.
-        auto CI = cast<CallInst>(EMVal.getValue());
-        BasicBlock *BB = CI->getParent();
-        if (GotoJoin::isBranchingGotoJoinBlock(BB) == CI) {
-          BasicBlock *TrueSucc = BB->getTerminator()->getSuccessor(0);
-          if (BasicBlock *TrueSuccSucc
-              = getEmptyCriticalEdgeSplitterSuccessor(TrueSucc)) {
-            for (PHINode &Phi : TrueSucc->phis()) {
-              if (Phi.getNumIncomingValues() == 1) {
-                auto *PredInst = Phi.getIncomingValue(0);
-                Phi.replaceAllUsesWith(PredInst);
-                Liveness->eraseLiveRange(&Phi);
-                removeFromEMRMVals(&Phi);
-              } else {
-                IGC_ASSERT_MESSAGE(true, "BB has unremovable phi");
-              }
+    }
+    // Fall through...
+    case GenXIntrinsic::genx_simdcf_goto: {
+      // See if this is a branching goto/join where the "true" successor is
+      // an empty critical edge splitter block.
+      auto CI = cast<CallInst>(EMVal.getValue());
+      BasicBlock *BB = CI->getParent();
+      if (GotoJoin::isBranchingGotoJoinBlock(BB) == CI) {
+        BasicBlock *TrueSucc = BB->getTerminator()->getSuccessor(0);
+        if (BasicBlock *TrueSuccSucc =
+                getEmptyCriticalEdgeSplitterSuccessor(TrueSucc)) {
+          for (PHINode &Phi : TrueSucc->phis()) {
+            if (Phi.getNumIncomingValues() == 1) {
+              auto *PredInst = Phi.getIncomingValue(0);
+              Phi.replaceAllUsesWith(PredInst);
+              Liveness->eraseLiveRange(&Phi);
+              removeFromEMRMVals(&Phi);
+            } else {
+              IGC_ASSERT_MESSAGE(true, "BB has unremovable phi");
             }
-            // Remove phi and move dbg-info
-            fixBlockDataBeforeRemoval(TrueSucc, TrueSuccSucc);
-            IGC_ASSERT_MESSAGE(TrueSucc->front().isTerminator(),
-              "BB is not empty for removal");
-            // For a branching goto/join where the "true" successor is an empty
-            // critical edge splitter block, remove the empty block, to ensure
-            // that the "true" successor is a join label.
-            // Adjust phi nodes in TrueSuccSucc.
-            adjustPhiNodesForBlockRemoval(TrueSuccSucc, TrueSucc);
-            // Replace the use (we know there is only the one).
-            BB->getTerminator()->setSuccessor(0, TrueSuccSucc);
-            // Erase the critical edge splitter block.
-            TrueSucc->eraseFromParent();
-            Modified = true;
           }
+          // Remove phi and move dbg-info
+          fixBlockDataBeforeRemoval(TrueSucc, TrueSuccSucc);
+          IGC_ASSERT_MESSAGE(TrueSucc->front().isTerminator(),
+                             "BB is not empty for removal");
+          // For a branching goto/join where the "true" successor is an empty
+          // critical edge splitter block, remove the empty block, to ensure
+          // that the "true" successor is a join label.
+          // Adjust phi nodes in TrueSuccSucc.
+          adjustPhiNodesForBlockRemoval(TrueSuccSucc, TrueSucc);
+          // Replace the use (we know there is only the one).
+          BB->getTerminator()->setSuccessor(0, TrueSuccSucc);
+          // Erase the critical edge splitter block.
+          TrueSucc->eraseFromParent();
+          Modified = true;
         }
-        break;
       }
-      default:
-        break;
+      break;
+    }
+    default:
+      break;
     }
   }
 }
@@ -3910,13 +3965,12 @@ void GenXLateSimdCFConformance::setCategories()
 /***********************************************************************
  * modifyEMUses : modify EM uses as needed
  */
-void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
-{
+void GenXLateSimdCFConformance::modifyEMUses(Value *EM) {
   LLVM_DEBUG(dbgs() << "modifyEMUses: " << EM->getName() << "\n");
   // Gather the selects we need to modify, at the same time as handling other
   // uses of the EM values.
-  SmallVector <SelectInst *, 4> Selects;
-  SmallVector <Value *, 4> EMs;
+  SmallVector<SelectInst *, 4> Selects;
+  SmallVector<Value *, 4> EMs;
   EMs.push_back(EM);
   for (unsigned ei = 0; ei != EMs.size(); ++ei) {
     EM = EMs[ei];
@@ -3928,8 +3982,7 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
         Selects.push_back(Sel);
       } else {
         IGC_ASSERT(testIsValidEMUse(User, ui));
-        if (vc::getAnyIntrinsicID(User) ==
-          GenXIntrinsic::genx_rdpredregion) {
+        if (vc::getAnyIntrinsicID(User) == GenXIntrinsic::genx_rdpredregion) {
           // An rdpredregion of the EM. Find its uses in select too.
           EMs.push_back(User);
         }
@@ -4004,8 +4057,8 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     Region R(Sel);
     R.Mask = Sel->getCondition();
     IGC_ASSERT(FalseVal);
-    Value *Wr = R.createWrRegion(FalseVal, Sel->getTrueValue(),
-          Sel->getName(), Sel, Sel->getDebugLoc());
+    Value *Wr = R.createWrRegion(FalseVal, Sel->getTrueValue(), Sel->getName(),
+                                 Sel, Sel->getDebugLoc());
     Sel->replaceAllUsesWith(Wr);
     Liveness->eraseLiveRange(Sel);
     Sel->eraseFromParent();
@@ -4027,12 +4080,13 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
  */
 void GenXLateSimdCFConformance::hoistExtractEMInstructions() {
   DenseMap<SimpleValue, ExtractValueInst *> EVs;
-  llvm::SmallVector<ExtractValueInst *, 8> ToRemove;
+  SmallVector<ExtractValueInst *, 8> ToRemove;
 
   for (auto &&EMVal : EMVals)
     if (auto *V = dyn_cast<ExtractValueInst>(EMVal.getValue())) {
       auto *StructVal = cast<Instruction>(V->getAggregateOperand());
-      auto [It, IsInserted] = EVs.try_emplace(SimpleValue{StructVal, V->getIndices()}, V);
+      auto [It, IsInserted] =
+          EVs.try_emplace(SimpleValue{StructVal, V->getIndices()}, V);
       if (IsInserted)
         V->moveAfter(StructVal);
       else {
@@ -4166,8 +4220,7 @@ bool GenXSimdCFConformance::canBeMovedUnderSIMDCF(
   }
 
   // Do not move join instruction
-  if (GenXIntrinsic::getGenXIntrinsicID(Inst) ==
-      GenXIntrinsic::genx_simdcf_join) {
+  if (vc::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_simdcf_join) {
     LLVM_DEBUG(dbgs() << "Join instruction: do not move\n");
     return false;
   }
@@ -4399,13 +4452,14 @@ void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
  * GotoJoinEVs::GotoJoinEVs : collects and handle EVs. See CollectEVs
  * for more info.
  */
-GenXSimdCFConformance::GotoJoinEVs::GotoJoinEVs(Value* GJ) {
+GenXSimdCFConformance::GotoJoinEVs::GotoJoinEVs(Value *GJ) {
   GotoJoin = GJ;
 
   if (!GotoJoin)
     return;
 
-  switch (GenXIntrinsic::getGenXIntrinsicID(GotoJoin)) {
+  auto IID = vc::getAnyIntrinsicID(GotoJoin);
+  switch (IID) {
   case GenXIntrinsic::genx_simdcf_goto:
     IsGoto = true;
     break;
@@ -4465,13 +4519,15 @@ Value *GenXSimdCFConformance::GotoJoinEVs::getGotoJoin() const {
  * a EV or doesn't use Goto/Join. Such instruction always exists
  * in a correct IR - BB terminator is a such instruction.
  */
- Instruction *GenXSimdCFConformance::GotoJoinEVs::getSplitPoint() const {
+Instruction *GenXSimdCFConformance::GotoJoinEVs::getSplitPoint() const {
   IGC_ASSERT_MESSAGE(GotoJoin, "Uninitialized GotoJoinEVs Data!");
   Instruction *SplitPoint = cast<Instruction>(GotoJoin)->getNextNode();
-  for (; isa<ExtractValueInst>(SplitPoint) && SplitPoint->getOperand(0) == GotoJoin;
-    SplitPoint = SplitPoint->getNextNode());
+  for (; isa<ExtractValueInst>(SplitPoint) &&
+         SplitPoint->getOperand(0) == GotoJoin;
+       SplitPoint = SplitPoint->getNextNode())
+    ;
   return SplitPoint;
- }
+}
 
 /***********************************************************************
  * GotoJoinEVs::setCondEV : set EV for goto/join condition. It is
@@ -4556,7 +4612,7 @@ std::string GenXSimdCFConformance::GotoJoinEVs::getNameForMissingEV(
  */
 void GenXSimdCFConformance::GotoJoinEVs::CanonicalizePHIs() {
   // Collect all PHIs from GotoJoin users.
-  llvm::SmallVector<PHINode *, 4> PHINodes;
+  SmallVector<PHINode *, 4> PHINodes;
   for (auto *U : GotoJoin->users())
     if (auto *PN = dyn_cast<PHINode>(U))
       PHINodes.push_back(PN);
@@ -4567,7 +4623,8 @@ void GenXSimdCFConformance::GotoJoinEVs::CanonicalizePHIs() {
     for (auto *PHIUser : PN->users()) {
       auto *EV = dyn_cast<ExtractValueInst>(PHIUser);
       IGC_ASSERT_MESSAGE(EV, "Bad user of goto/join!");
-      IGC_ASSERT_MESSAGE(EV->getNumIndices() == 1, "Expected 1 index in Extract Value for goto/join!");
+      IGC_ASSERT_MESSAGE(EV->getNumIndices() == 1,
+                         "Expected 1 index in Extract Value for goto/join!");
       // Extract index info from the EV - we need to create similar EVs for the
       // goto/join calls themselves.
       ArrayRef<unsigned> idxArray = EV->getIndices();
@@ -4618,7 +4675,8 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
     ++ui;
 
     IGC_ASSERT_MESSAGE(EV, "Bad user of goto/join!");
-    IGC_ASSERT_MESSAGE(EV->getNumIndices() == 1, "Expected 1 index in Extract Value for goto/join!");
+    IGC_ASSERT_MESSAGE(EV->getNumIndices() == 1,
+                       "Expected 1 index in Extract Value for goto/join!");
 
     const unsigned idx = EV->getIndices()[0];
     IGC_ASSERT(testPosCorrectness(idx));
@@ -4626,11 +4684,11 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
     LLVM_DEBUG(dbgs() << "Found EV:\n" << *EV << "\n");
     IGC_ASSERT(idx < (sizeof(EVs) / sizeof(*EVs)));
     if (EVs[idx]) {
-      LLVM_DEBUG(dbgs() << "Duplication: replacing users with:\n" << *EVs[idx] << "\n");
+      LLVM_DEBUG(dbgs() << "Duplication: replacing users with:\n"
+                        << *EVs[idx] << "\n");
       EV->replaceAllUsesWith(EVs[idx]);
       EV->eraseFromParent();
-    }
-    else {
+    } else {
       LLVM_DEBUG(dbgs() << "Saving it.\n");
       EVs[idx] = EV;
     }
@@ -4643,7 +4701,7 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
       continue;
 
     auto EV = ExtractValueInst::Create(
-        GotoJoin, { idx }, getNameForMissingEV(idx), GotoJoinInst->getParent());
+        GotoJoin, {idx}, getNameForMissingEV(idx), GotoJoinInst->getParent());
     EVs[idx] = EV;
   }
 
@@ -4653,7 +4711,7 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
 /***********************************************************************
  * GotoJoinEVs::hoistEVs : move EVs right after goto/join
  */
-void GenXSimdCFConformance::GotoJoinEVs::hoistEVs() const{
+void GenXSimdCFConformance::GotoJoinEVs::hoistEVs() const {
   IGC_ASSERT_MESSAGE(GotoJoin, "Uninitialized GotoJoinEVs Data!");
 
   LLVM_DEBUG(dbgs() << "Moving EV users after:\n" << *GotoJoin << "\n");
@@ -4669,10 +4727,8 @@ void GenXSimdCFConformance::GotoJoinEVs::hoistEVs() const{
  * DiagnosticInfoSimdCF::emit : emit an error or warning
  */
 void DiagnosticInfoSimdCF::emit(Instruction *Inst, StringRef Msg,
-        DiagnosticSeverity Severity)
-{
+                                DiagnosticSeverity Severity) {
   DiagnosticInfoSimdCF Err(Severity, *Inst->getFunction(), Inst->getDebugLoc(),
                            Msg);
   Inst->getContext().diagnose(Err);
 }
-
