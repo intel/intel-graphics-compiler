@@ -327,14 +327,10 @@ namespace {
     void visitPHINode(PHINode &Phi);
     void visitCallInst(CallInst &CI);
     void visitGenXIntrinsicInst(GenXIntrinsicInst &II);
-    void visitInternalIntrinsicInst(InternalIntrinsicInst &II);
     void visitCastInst(CastInst &CI);
     void visitExtractValueInst(ExtractValueInst &EVI);
     void visitInsertValueInst(InsertValueInst &IVI);
-
   private:
-    void processTwoAddrIntrinsic(CallInst &CI);
-
     unsigned getPriority(Type *Ty, BasicBlock *BB) const;
     unsigned getPriority(SimpleValue Val) const;
     // Various permutations of the function to record a coalescing candidate.
@@ -568,20 +564,20 @@ void GenXCoalescing::visitCallInst(CallInst &CI) {
 }
 
 /***********************************************************************
- * processTwoAddrIntrinsic: process an intrinsic with a two address operand
+ * visitGenXIntrinsicInst : process an intrinsic with a two address operand
  * (including the case of operand 0 in wrregion). That operand has to be in
  * the same register as the result.
+ * NOTE: *.predef.reg intrinsics should not participate in coalescing
+ * since they don't have any LR
  */
-void GenXCoalescing::processTwoAddrIntrinsic(CallInst &CI) {
-  auto IID = vc::getAnyIntrinsicID(&CI);
-  IGC_ASSERT(vc::isAnyNonTrivialIntrinsic(IID));
-
-  auto OperandNum = getTwoAddressOperandNum(&CI);
+void GenXCoalescing::visitGenXIntrinsicInst(GenXIntrinsicInst &II) {
+  if (GenXIntrinsic::isReadWritePredefReg(&II))
+    return;
+  auto OperandNum = getTwoAddressOperandNum(&II);
   if (!OperandNum)
     return;
-
-  if (Baling->isBaled(&CI) ||
-      GenXIntrinsic::isReadWritePredefReg(CI.getOperand(0))) {
+  if (Baling->isBaled(&II) ||
+      GenXIntrinsic::isReadWritePredefReg(II.getOperand(0))) {
     // The intrinsic is baled into a wrregion. The two address
     // operand must also have a rdregion baled in whose input is
     // the "old value" input of the wrregion, and the coalescing
@@ -590,21 +586,8 @@ void GenXCoalescing::processTwoAddrIntrinsic(CallInst &CI) {
     // anything here.
     return;
   }
-
   // Normal unbaled twoaddr operand.
-  recordNormalCandidate(&CI, *OperandNum);
-}
-
-void GenXCoalescing::visitInternalIntrinsicInst(InternalIntrinsicInst &II) {
-  processTwoAddrIntrinsic(II);
-}
-
-void GenXCoalescing::visitGenXIntrinsicInst(GenXIntrinsicInst &II) {
-  // *.predef.reg intrinsics should not participate in coalescing since they
-  // don't have any LR
-  if (GenXIntrinsic::isReadWritePredefReg(&II))
-    return;
-  processTwoAddrIntrinsic(II);
+  recordNormalCandidate(&II, *OperandNum);
 }
 
 /***********************************************************************
@@ -2128,3 +2111,4 @@ void GenXCoalescing::replaceAllUsesWith(Instruction *OldInst,
                ToCopy.end());
   OldInst->replaceAllUsesWith(NewInst);
 }
+

@@ -359,11 +359,13 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     auto Inst = cast<Instruction>(V);
     BB = Inst->getParent();
     auto CI = dyn_cast<CallInst>(V);
-    if (CI && !vc::isAnyNonTrivialIntrinsic(vc::getAnyIntrinsicID(CI))) {
-      // For the return value from a call, move the definition point to the ret
-      // post-copy slot after the call, where the post-copy will be inserted if
-      // it fails to be coalesced with the function's unified return value.
-      StartNum = Numbering->getRetPostCopyNumber(CI, SV.getIndex());
+    if (CI) {
+      if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(V)) {
+        // For the return value from a call, move the definition point to the ret
+        // post-copy slot after the call, where the post-copy will be inserted if
+        // it fails to be coalesced with the function's unified return value.
+        StartNum = Numbering->getRetPostCopyNumber(CI, SV.getIndex());
+      }
     }
     EndNum = StartNum + 1;
     if (CI && getTwoAddressOperandNum(CI)) {
@@ -398,7 +400,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
         if (CI->isInlineAsm() || CI->isIndirectCall())
           Num = Numbering->getNumber(UserHead);
         else {
-          switch (vc::getAnyIntrinsicID(CI)) {
+        switch (vc::getAnyIntrinsicID(CI)) {
           case GenXIntrinsic::not_any_intrinsic:
             // Use as a call arg. We say that the use is at the arg pre-copy
             // slot, where the arg copy will be inserted in coalescing. This
@@ -640,9 +642,10 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
     StringRef Name = "arg";
     if (auto Inst = dyn_cast<Instruction>(V.getValue())) {
       unsigned IID = vc::getAnyIntrinsicID(V.getValue());
-      if (vc::isAnyNonTrivialIntrinsic(IID)) {
-        // For an intrinsic call, use the intrinsic name after the final period.
-        NameBuf = vc::getAnyName(IID, None);
+      if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)) {
+        // For an intrinsic call, use the intrinsic name after the
+        // final period.
+        NameBuf = GenXIntrinsic::getAnyName(IID, None);
         Name = NameBuf;
         size_t Period = Name.rfind('.');
         if (Period != StringRef::npos)
@@ -1429,8 +1432,7 @@ void GenXLiveness::eraseUnusedTree(Instruction *TopInst)
       continue;
     if (TopInst != Inst) {
       if (auto CI = dyn_cast<CallInst>(Inst)) {
-        auto IID = vc::getAnyIntrinsicID(CI);
-        if (!vc::isAnyNonTrivialIntrinsic(IID))
+        if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI))
           continue;
         if (!CI->doesNotAccessMemory())
           continue;
@@ -1863,8 +1865,8 @@ void genx::CallGraph::build(GenXLiveness *Liveness) {
         auto Call = cast<CallInst>(ui->getUser());
         auto Caller = Call->getFunction();
         // do not add edges for indirect, recursive and intrinsic calls
-        auto IID = vc::getAnyIntrinsicID(Call);
-        if (Call->getCalledFunction() && !vc::isAnyNonTrivialIntrinsic(IID) &&
+        if (Call->getCalledFunction() &&
+            !GenXIntrinsic::isAnyNonTrivialIntrinsic(Call->getCalledFunction()) &&
             Caller != F)
           Nodes[Caller].insert(
               Edge(Liveness->getNumbering()->getNumber(Call), Call));

@@ -288,7 +288,7 @@ Instruction *genx::findClosestCommonDominator(const DominatorTree *DT,
 llvm::Optional<unsigned> genx::getTwoAddressOperandNum(CallInst *CI)
 {
   auto IntrinsicID = vc::getAnyIntrinsicID(CI);
-  if (!vc::isAnyNonTrivialIntrinsic(IntrinsicID))
+  if (IntrinsicID == GenXIntrinsic::not_any_intrinsic)
     return None; // not intrinsic
   // wr(pred(pred))region has operand 0 as two address operand
   if (GenXIntrinsic::isWrRegion(IntrinsicID) ||

@@ -1818,7 +1818,7 @@ void GenXBaling::setOperandBaled(Instruction *Inst, unsigned OperandNum,
     // Multiple uses. Add to the NeedClone stack. But not if it is a goto/join;
     // we allow a goto/join to be baled into the extract of its !any(EM) result
     // even though it has uses in other extracts.
-    unsigned IID = vc::getAnyIntrinsicID(BaledInst);
+    unsigned IID = GenXIntrinsic::getGenXIntrinsicID(BaledInst);
     if (IID != GenXIntrinsic::genx_simdcf_goto &&
         IID != GenXIntrinsic::genx_simdcf_join)
       NeedCloneStack.push_back(NeedClone(Inst, OperandNum));
@@ -1863,7 +1863,7 @@ void GenXBaling::doClones()
     //    generating instruction must have a single use.
     bool IsBaled = getBaleInfo(NC.Inst).isOperandBaled(NC.OperandNum);
     if (!IsBaled && !isa<CastInst>(Opnd) &&
-        getAddrOperandNum(vc::getAnyIntrinsicID(NC.Inst)) != (int)NC.OperandNum)
+        getAddrOperandNum(GenXIntrinsic::getGenXIntrinsicID(NC.Inst)) != (int)NC.OperandNum)
       continue;
     // Clone it.
     IGC_ASSERT(!isa<PHINode>(Opnd));
@@ -1918,7 +1918,7 @@ void GenXBaling::doClones()
     // must be multiple use because we have just cloned the instruction
     // using them.) Also any address calculation, for the reason given in the
     // comment above.
-    int AON = getAddrOperandNum(vc::getAnyIntrinsicID(Cloned));
+    int AON = getAddrOperandNum(GenXIntrinsic::getGenXIntrinsicID(Cloned));
     for (unsigned i = 0, e = Cloned->getNumOperands(); i != e; ++i)
       if (BI.isOperandBaled(i) ||
           (Kind == BalingKind::BK_CodeGen && AON == (int)i &&
@@ -2094,14 +2094,13 @@ void GenXBaling::buildBaleSub(Instruction *Inst, Bale *B, bool IncludeAddr) cons
 {
   BaleInfo BI = getBaleInfo(Inst);
   B->push_front(BaleInst(Inst, BI));
-  auto IID = vc::getAnyIntrinsicID(Inst);
 
   if (isa<PHINode>(Inst) ||
       (isa<CallInst>(Inst) && !cast<CallInst>(Inst)->isInlineAsm() &&
-       !vc::isAnyNonTrivialIntrinsic(IID)))
+       !GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst)))
     return;
   if (IncludeAddr) {
-    int AddrOperandNum = getAddrOperandNum(vc::getAnyIntrinsicID(Inst));
+    int AddrOperandNum = getAddrOperandNum(GenXIntrinsic::getGenXIntrinsicID(Inst));
     if (AddrOperandNum >= 0) {
       // IncludeAddr: pretend that the address calculation is baled in, as long
       // as it is an instruction.
@@ -2476,7 +2475,7 @@ bool GenXBaling::prologue(Function *F) {
                  GenXIntrinsic::genx_add_addr)
             Index = cast<Instruction>(Index)->getOperand(0);
           Instruction *IndexInst = dyn_cast<Instruction>(Index);
-          if (IndexInst && (vc::getAnyIntrinsicID(IndexInst) ==
+          if (IndexInst && (GenXIntrinsic::getGenXIntrinsicID(IndexInst) ==
                             GenXIntrinsic::genx_convert_addr))
             IndexInst->moveBefore(&Inst);
           Value *OldVal =

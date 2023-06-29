@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -24,34 +24,33 @@ SPDX-License-Identifier: MIT
 #define GENX_VISITOR_H
 
 #include "FunctionGroup.h"
-
-#include "vc/InternalIntrinsics/InternalIntrinsicInst.h"
-
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 #include "llvm/IR/InstVisitor.h"
 
 namespace llvm {
 namespace genx {
 
-#define DELEGATE(CLASS_TO_VISIT)                                               \
-  return static_cast<SubClass *>(this)->visit##CLASS_TO_VISIT(                 \
-      static_cast<CLASS_TO_VISIT &>(I))
+#define DELEGATE(CLASS_TO_VISIT) \
+   return static_cast<SubClass*>(this)-> \
+  visit##CLASS_TO_VISIT(static_cast<CLASS_TO_VISIT&>(I))
 
-#define GENX_DELEGATE(CLASS_TO_VISIT)                                          \
-  return static_cast<SubClass *>(this)->visit##CLASS_TO_VISIT(I)
+#define GENX_DELEGATE(CLASS_TO_VISIT) \
+   return static_cast<SubClass*>(this)->visit##CLASS_TO_VISIT(I)
 
-template <typename SubClass, typename RetTy = void>
+template<typename SubClass, typename RetTy=void>
 class GenXVisitor : public InstVisitor<SubClass, RetTy> {
 public:
   using InstVisitor<SubClass, RetTy>::visit;
   // Visitor for FunctionGroup.
   void visit(FunctionGroup &FG) {
-    static_cast<SubClass *>(this)->visitFunctionGroup(FG);
+    static_cast<SubClass*>(this)->visitFunctionGroup(FG);
     visit(FG.begin(), FG.end());
   };
 
   // Forwarding function so that user can visit with pointer.
-  void visit(FunctionGroup *FG) { visit(*FG); }
+  void visit(FunctionGroup *FG) {
+    visit(*FG);
+  }
 
   // Default fallback for visiting FunctionGroup.
   void visitFunctionGroup(FunctionGroup &FG) {}
@@ -59,22 +58,16 @@ public:
   // Redefine callback for Instruction::Call opcode: if it's GenX intrinsic,
   // delegate it to appropriate callback, otherwise use standard call delegate.
   RetTy visitCall(CallInst &I) {
-    if (vc::InternalIntrinsic::isInternalIntrinsic(&I))
-      return delegateInternalIntrinsic(cast<InternalIntrinsicInst>(I));
-    if (GenXIntrinsic::isGenXIntrinsic(&I))
-      return delegateGenXIntrinsic(cast<GenXIntrinsicInst>(I));
-    return InstVisitor<SubClass, RetTy>::visitCall(I);
+    return GenXIntrinsic::isGenXIntrinsic(&I) ?
+      delegateGenXIntrinsic(cast<GenXIntrinsicInst>(I)) :
+      InstVisitor<SubClass, RetTy>::visitCall(I);
   }
 
-  // Implementation of default callbacks for vc internal intrinsics: propagate
-  // calls to the next level of their hierarchy.
-  RetTy visitInternalIntrinsicInst(InternalIntrinsicInst &I) {
+  // Implementation of default callbacks for GenX intrisnics: propagate calls
+  // to next level of their hierarchy.
+  RetTy visitGenXIntrinsicInst(GenXIntrinsicInst &I) {
     DELEGATE(CallInst);
   }
-
-  // Implementation of default callbacks for GenX intrinsics: propagate calls to
-  // the next level of their hierarchy.
-  RetTy visitGenXIntrinsicInst(GenXIntrinsicInst &I) { DELEGATE(CallInst); }
 
   RetTy visitWrRegion(GenXIntrinsicInst &I) {
     GENX_DELEGATE(GenXIntrinsicInst);
@@ -95,16 +88,7 @@ public:
   RetTy visitWritePredefReg(GenXIntrinsicInst &I) {
     GENX_DELEGATE(ReadWritePredefReg);
   }
-
 private:
-  RetTy delegateInternalIntrinsic(InternalIntrinsicInst &I) {
-    auto ID = I.getIntrinsicID();
-    if (ID == vc::InternalIntrinsic::not_internal_intrinsic)
-      DELEGATE(CallInst);
-    else
-      GENX_DELEGATE(InternalIntrinsicInst);
-  }
-
   RetTy delegateGenXIntrinsic(GenXIntrinsicInst &I) {
     auto ID = I.getIntrinsicID();
     if (ID == GenXIntrinsic::not_genx_intrinsic)

@@ -472,7 +472,7 @@ static LiveRange *coalesceConstState(Instruction &ToCoalesce,
   IGC_ASSERT_MESSAGE(LR->Category == vc::RegCategory::Surface ||
                          LR->Category == vc::RegCategory::Sampler,
                      "wrong argument: ToCoalesce should have surface category");
-  auto IID = vc::getAnyIntrinsicID(&ToCoalesce);
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&ToCoalesce);
   if (IID != GenXIntrinsic::genx_convert &&
       IID != GenXIntrinsic::genx_constanti)
     return CommonLR;
@@ -571,7 +571,7 @@ void GenXVisaRegAlloc::extraCoalescing()
         //
         auto skipTwoAddrCoalesce = [](Instruction *Inst) {
           unsigned IntrinsicID = vc::getAnyIntrinsicID(Inst);
-          if (!vc::isAnyNonTrivialIntrinsic(IntrinsicID))
+          if (IntrinsicID == GenXIntrinsic::not_any_intrinsic)
             return false;
           GenXIntrinsicInfo Info(IntrinsicID);
           for (auto AI : Info.getInstDesc()) {
@@ -608,7 +608,7 @@ void GenXVisaRegAlloc::extraCoalescing()
             continue;
           if (Operand->getType() != Inst->getType())
             continue;
-          if (isRestrictedByVisa(vc::getAnyIntrinsicID(Inst), oi))
+          if (isRestrictedByVisa(GenXIntrinsic::getGenXIntrinsicID(Inst), oi))
             continue;
           auto OperandLR = Liveness->getLiveRangeOrNull(Operand);
           if (!OperandLR || OperandLR->Category != vc::RegCategory::General)
