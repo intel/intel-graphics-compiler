@@ -180,6 +180,8 @@ public:
   void dump(std::ostream &os = std::cerr) const;
 }; // GlobalOpndHashTable
 
+using BBIDMap = std::unordered_map<G4_BB *, uint32_t>;
+
 class FlowGraph {
   // This list maintains the ordering of the basic blocks (i.e., asm and binary
   // emission will output the blocks in list oder. Important: Due to the nature
@@ -501,8 +503,7 @@ public:
 
   //
   // Recompute preId of all BBs in FlowGraph
-  //
-  void recomputePreId();
+  void recomputePreId(BBIDMap &IDMap);
 
   void constructFlowGraph(INST_LIST &instlist);
   bool matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it);
@@ -527,8 +528,6 @@ public:
   // ToDo: maintain this during BB add/delete instead of having to call it
   // explicitly
   void setPhysicalPredSucc();
-
-  void markRPOTraversal();
 
   void findBackEdges();
   void findNaturalLoops();
@@ -605,7 +604,9 @@ private:
 
   void decoupleReturnBlock(G4_BB *);
   void decoupleInitBlock(G4_BB *, FuncInfoHashTable &funcInfoTable);
-  void DFSTraverse(G4_BB *bb, unsigned &preId, unsigned &postId, FuncInfo *fn);
+  using BBPrePostIDMap = std::unordered_map<G4_BB *, std::array<uint32_t, 2>>;
+  void DFSTraverse(G4_BB *bb, unsigned &preId, unsigned &postId, FuncInfo *fn,
+                   BBPrePostIDMap &BBIdMap);
 
 }; // FlowGraph
 

@@ -55,6 +55,10 @@ private:
   std::vector<G4_BB *> iDoms;
   // TODO: Internal data to be removed.
   std::vector<std::vector<G4_BB *>> immDoms;
+  // FIXME: It's already defined inFlowGraph.h, but #include the header causes a
+  // bunch of build errors..
+  using BBIDMap = std::unordered_map<G4_BB *, uint32_t>;
+  BBIDMap preIDMap;
 
   void runIDOM();
   G4_BB *InterSect(G4_BB *bb, int i, int k);

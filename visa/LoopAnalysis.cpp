@@ -21,20 +21,20 @@ G4_BB *ImmDominator::InterSect(G4_BB *bb, int i, int k) {
   G4_BB *finger2 = immDoms[bb->getId()][k];
 
   while ((finger1 != finger2) && (finger1 != nullptr) && (finger2 != nullptr)) {
-    if (finger1->getPreId() == finger2->getPreId()) {
+    if (preIDMap.at(finger1) == preIDMap.at(finger2)) {
       vASSERT(finger1 == kernel.fg.getEntryBB() ||
              finger2 == kernel.fg.getEntryBB());
       return kernel.fg.getEntryBB();
     }
 
     while ((iDoms[finger1->getId()] != nullptr) &&
-           (finger1->getPreId() > finger2->getPreId())) {
+           (preIDMap.at(finger1) > preIDMap.at(finger2))) {
       finger1 = iDoms[finger1->getId()];
       immDoms[bb->getId()][i] = finger1;
     }
 
     while ((iDoms[finger2->getId()] != nullptr) &&
-           (finger2->getPreId() > finger1->getPreId())) {
+           (preIDMap.at(finger2) > preIDMap.at(finger1))) {
       finger2 = iDoms[finger2->getId()];
       immDoms[bb->getId()][k] = finger2;
     }
@@ -47,7 +47,7 @@ G4_BB *ImmDominator::InterSect(G4_BB *bb, int i, int k) {
 
   if (finger1 == finger2) {
     return finger1;
-  } else if (finger1->getPreId() > finger2->getPreId()) {
+  } else if (preIDMap.at(finger1) > preIDMap.at(finger2)) {
     return finger2;
   } else {
     return finger1;
@@ -64,7 +64,7 @@ void ImmDominator::runIDOM() {
   iDoms.resize(kernel.fg.size());
   immDoms.resize(kernel.fg.size());
 
-  kernel.fg.recomputePreId();
+  kernel.fg.recomputePreId(preIDMap);
 
   for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I) {
     auto bb = *I;

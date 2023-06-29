@@ -1379,7 +1379,6 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
       if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true, NumGrfs)) {
         if (NumGrfs >= UpperBoundGRF && SavedEstimation == 0) {
           SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
-          ddd.getBB()->setLatencySched(true);
           return true;
         }
         // if this schedule does not provide expected gain from
@@ -1393,13 +1392,11 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
             CurInsts.push_back(Inst);
           rp.recompute(getBB());
           SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
-          ddd.getBB()->setLatencySched(true);
           return true;
         }
         if (NumGrfs >= UpperBoundGRF) {
           // best schedule is found with the max GRF setting
           SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
-          ddd.getBB()->setLatencySched(true);
           return true;
         }
         // save the current schedule as the potential choice
@@ -1423,7 +1420,6 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
       CurInsts.push_back(Inst);
     rp.recompute(getBB());
     SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
-    ddd.getBB()->setLatencySched(true);
     return true;
   }
   return false;
@@ -2882,7 +2878,7 @@ void preDDD::buildGraphForACC() {
   for (unsigned i = 0; I != E; ++I) {
     preNode *N = new (preNodeAllocator) preNode(*I, i++);
     SNodes.push_back(N);
-    if (m_BB->isLatencySched() && (*I)->isSend()) {
+    if ((*I)->isSend()) {
       N->setBarrier(DepType::SEND_BARRIER);
     }
     addNodeToGraph(N);

@@ -9154,6 +9154,12 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
   std::map<G4_RegVar *, VarRangeListPackage, CmpRegVarId>::iterator varRangesIt;
   std::stack<VarRange *> toDelete;
 
+  // Skip BB if there are no sends.
+  bool hasSends = std::any_of(bb->begin(), bb->end(),
+                              [](G4_INST *inst) { return inst->isSend(); });
+  if (!hasSends)
+    return;
+
   //
   // Iterate instruction in BB from back to front
   //
@@ -9993,9 +9999,7 @@ int GlobalRA::coloringRegAlloc() {
     if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {
       RA_TRACE(std::cout << "\t--split local send--\n");
       for (auto bb : kernel.fg) {
-        if (bb->isSendInBB()) {
-          splitPass.localSplit(builder, bb);
-        }
+        splitPass.localSplit(builder, bb);
       }
     }
 

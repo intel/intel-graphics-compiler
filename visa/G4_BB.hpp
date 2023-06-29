@@ -48,14 +48,6 @@ class G4_BB {
   //
   unsigned id;
   //
-  // preorder block id
-  //
-  unsigned preId;
-  //
-  // reverse postorder block id
-  //
-  unsigned rpostId;
-  //
   // traversal is for traversing control flow graph (to indicate the
   // block is visited)
   //
@@ -79,7 +71,6 @@ class G4_BB {
 
   // indicates if the block is part of a natural loop or not
   bool inNaturalLoop;
-  bool hasSendInBB;
 
   // indicate the nest level of the loop
   unsigned char loopNestLevel;
@@ -91,8 +82,6 @@ class G4_BB {
   // that among all active lanes on entry to shader/kernel, not all lanes are
   // active in this BB.
   bool divergent;
-
-  bool Latency_Sched;
 
   bool specialEmptyBB;
 
@@ -201,11 +190,10 @@ public:
   BB_LIST Succs;
 
   G4_BB(INST_LIST_NODE_ALLOCATOR &alloc, unsigned i, FlowGraph *fg)
-      : id(i), preId(0), rpostId(0), traversal(0), calleeInfo(NULL),
-        BBType(G4_BB_NONE_TYPE), inNaturalLoop(false), hasSendInBB(false),
-        loopNestLevel(0), scopeID(0), divergent(false), specialEmptyBB(false),
-        physicalPred(NULL), physicalSucc(NULL), parent(fg), instList(alloc),
-        Latency_Sched(false) {}
+      : id(i), traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
+        inNaturalLoop(false), loopNestLevel(0), scopeID(0), divergent(false),
+        specialEmptyBB(false), physicalPred(NULL), physicalSucc(NULL),
+        parent(fg), instList(alloc) {}
 
   ~G4_BB() { instList.clear(); }
 
@@ -219,12 +207,6 @@ public:
 
   unsigned getId() const { return id; }
   void setId(unsigned i);
-
-  unsigned getPreId() const { return preId; }
-  void setPreId(unsigned i) { preId = i; }
-
-  unsigned getRPostId() const { return rpostId; }
-  void setRPostId(unsigned i) { rpostId = i; }
 
   void markTraversed(unsigned num) { traversal = num; }
   bool isAlreadyTraversed(unsigned num) const { return traversal >= num; }
@@ -250,8 +232,6 @@ public:
   bool isInNaturalLoop() const { return inNaturalLoop; }
 
   bool isSuccBB(G4_BB *succ) const; // return true if succ is in bb's Succss
-  void setSendInBB(bool val) { hasSendInBB = val; }
-  bool isSendInBB() const { return hasSendInBB; }
 
   void setNestLevel() { loopNestLevel++; }
   unsigned getNestLevel() const { return loopNestLevel; }
@@ -259,8 +239,6 @@ public:
 
   void setDivergent(bool val) { divergent = val; }
   bool isDivergent() const { return divergent; }
-  void setLatencySched(bool val) { Latency_Sched = val; }
-  bool isLatencySched() const { return Latency_Sched; }
   bool isAllLaneActive() const;
 
   unsigned getScopeID() const { return scopeID; }
