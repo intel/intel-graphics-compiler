@@ -16,12 +16,13 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenPublic.h"
 
 #include <string>
 
 namespace IGC
 {
-    class HandleSpirvDecorationMetadata : public llvm::ModulePass
+    class HandleSpirvDecorationMetadata : public llvm::ModulePass, public llvm::InstVisitor<HandleSpirvDecorationMetadata>
     {
     public:
         static char ID;
@@ -38,14 +39,25 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         virtual bool runOnModule(llvm::Module& F) override;
 
-    private:
-        bool updateModuleMetadata = false;
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitStoreInst(llvm::StoreInst& I);
 
-        bool handleDecoration(llvm::GlobalVariable& globalVariable, uint64_t decorationId, llvm::MDNode* node, IGC::ModuleMetaData* moduleMetadata);
-        bool handleHostAccessIntel(llvm::GlobalVariable& globalVariable, llvm::MDNode* node, IGC::ModuleMetaData* moduleMetadata);
+    private:
+        llvm::Module* m_Module = nullptr;
+        CodeGenContext* m_pCtx = nullptr;
+        ModuleMetaData* m_Metadata = nullptr;
+        bool m_updateModuleMetadata = false;
+        bool m_changed = false;
+
+        void handleInstructionsDecorations();
+        void handleGlobalVariablesDecorations();
+
+        void handleHostAccessIntel(llvm::GlobalVariable& globalVariable, llvm::MDNode* node);
+        llvm::DenseMap<uint64_t, llvm::SmallPtrSet<llvm::MDNode*, 4>> parseSPIRVDecorationsFromMD(llvm::Value* V);
     };
 }

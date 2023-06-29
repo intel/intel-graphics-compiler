@@ -124,7 +124,7 @@ SPDX-License-Identifier: MIT
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
 #include "preprocess_spvir/PromoteBools.h"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
-#include "preprocess_spvir/HandleSpirvDecorationMetadata.h"
+#include "preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.h"
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
@@ -311,6 +311,12 @@ static void CommonOCLBasedPasses(
 
     CompilerOpts.FP64GenEmulationEnabled =
         pContext->m_InternalOptions.EnableFP64GenEmu;
+
+    CompilerOpts.LoadCacheDefault =
+        pContext->m_InternalOptions.LoadCacheDefault;
+
+    CompilerOpts.StoreCacheDefault =
+        pContext->m_InternalOptions.StoreCacheDefault;
 
     IGCPassManager mpmSPIR(pContext, "Unify");
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR

@@ -21,7 +21,7 @@ set(IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSpirvDecorationMetadata.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
   )
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
@@ -132,7 +132,7 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSpirvDecorationMetadata.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.h"
 
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API/USC_d3d10.h"

@@ -374,6 +374,9 @@ namespace IGC
         unsigned FloatRoundingMode                      = IGC::ROUND_TO_NEAREST_EVEN;
         unsigned FloatCvtIntRoundingMode                = IGC::ROUND_TO_ZERO;
 
+        int LoadCacheDefault                            = -1;
+        int StoreCacheDefault                           = -1;
+
         unsigned VISAPreSchedRPThreshold           = 0;
         unsigned SetLoopUnrollThreshold            = 0;
         bool UnsafeMathOptimizations                    = false;

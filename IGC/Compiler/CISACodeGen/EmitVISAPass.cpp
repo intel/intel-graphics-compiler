@@ -20688,15 +20688,14 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     if (m_pCtx->type == ShaderType::OPENCL_SHADER &&
         IGC_IS_FLAG_ENABLED(EnableLSCFenceUGMBeforeEOT) && m_pCtx->platform.NeedsLSCFenceUGMBeforeEOT())
     {
-        auto CLCtx = static_cast<const OpenCLProgramContext*>(m_pCtx);
-        if (isLoad && CLCtx->m_InternalOptions.LoadCacheDefault != -1)
+        if (isLoad && m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault != -1)
         {   // load
-            LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.LoadCacheDefault);
+            LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault);
             cacheOpts = translateLSCCacheControlsEnum(L1L3Val, true);
         }
-        else if (!isLoad && CLCtx->m_InternalOptions.StoreCacheDefault != -1)
+        else if (!isLoad && m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault != -1)
         {   // store
-            LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.StoreCacheDefault);
+            LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault);
             cacheOpts = translateLSCCacheControlsEnum(L1L3Val, false);
         }
     }
