@@ -3456,7 +3456,7 @@ namespace IGC
 
     static bool exceedMaxScratchUse(CShader* shader, OpenCLProgramContext* ctx)
     {
-        return getScratchUse(shader, ctx) >
+        return shader && getScratchUse(shader, ctx) >
             shader->ProgramOutput()->m_scratchSpaceSizeLimit;
     }
 
@@ -3638,33 +3638,29 @@ namespace IGC
         }
     }
 
-    static void verifyOOBScratch(OpenCLProgramContext *ctx,
+    static bool verifyHasOOBScratch(OpenCLProgramContext *ctx,
                                  COpenCLKernel *simd8Shader,
                                  COpenCLKernel *simd16Shader,
                                  COpenCLKernel *simd32Shader) {
         auto verify = [ctx](CShader *shader) {
             if (exceedMaxScratchUse(shader, ctx)) {
-              std::string errorMsg =
-                  "total scratch space exceeds HW "
-                  "supported limit for kernel " +
-                  shader->entry->getName().str() + ": " +
-                  std::to_string(getScratchUse(shader, ctx)) + " bytes (max permitted PTSS " +
-                  std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) +
-                  " bytes)";
-
-              ctx->EmitError(errorMsg.c_str(), nullptr);
+                return true;
             }
+            return false;
         };
 
         // Need to check if simd* shader is not nullptr and its vISA compile status,
         // since it may be created without going through full vISA compilation and
         // the spill size record may be invalid
+        bool result = false;
         if (simd8Shader && !COpenCLKernel::IsVisaCompileStatusFailureForShader(simd8Shader))
-          verify(simd8Shader);
+          result |= verify(simd8Shader);
         else if (simd16Shader && !COpenCLKernel::IsVisaCompileStatusFailureForShader(simd16Shader))
-          verify(simd16Shader);
+          result |= verify(simd16Shader);
         else if (simd32Shader && !COpenCLKernel::IsVisaCompileStatusFailureForShader(simd32Shader))
-          verify(simd32Shader);
+          result |= verify(simd32Shader);
+
+        return result;
     }
 
     static void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& shaders)
@@ -3881,9 +3877,36 @@ namespace IGC
                     GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
                 else if (COpenCLKernel::IsValidShader(simd8Shader))
                     GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
-                else
-                  // Verify if compilation failed due to OOB scratch
-                  verifyOOBScratch(ctx, simd8Shader, simd16Shader, simd32Shader);
+                else if (verifyHasOOBScratch(ctx, simd8Shader, simd16Shader, simd32Shader))
+                {
+                    // Get the simd* shader with the OOB access.
+                    COpenCLKernel* shader =
+                        exceedMaxScratchUse(simd32Shader, ctx) ? simd32Shader :
+                        exceedMaxScratchUse(simd16Shader, ctx) ? simd16Shader :
+                        exceedMaxScratchUse(simd8Shader, ctx) ? simd8Shader :
+                        nullptr;
+
+                    IGC_ASSERT(shader);
+
+                    if (!ctx->m_retryManager.IsLastTry())
+                    {
+                        // If this is not the last try, force retry on this kernel to potentially avoid
+                        // OOB access on the next try by reducing spill size and thus SS usage.
+                        ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
+                    }
+                    else
+                    {
+                        std::string errorMsg =
+                            "total scratch space exceeds HW "
+                            "supported limit for kernel " +
+                            shader->entry->getName().str() + ": " +
+                            std::to_string(getScratchUse(shader, ctx)) + " bytes (max permitted PTSS " +
+                            std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) +
+                            " bytes)";
+
+                        ctx->EmitError(errorMsg.c_str(), nullptr);
+                    }
+                }
             }
         }
 

@@ -3101,7 +3101,6 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
       builder.criticalMsgStream()
           << "Total scratch size used by shader exceeds platform capability: "
           << totalScratchUsed << "\n";
-      vISA_ASSERT(false, "spill size exceeds platform capability");
       return VISA_SPILL;
     }
   }
