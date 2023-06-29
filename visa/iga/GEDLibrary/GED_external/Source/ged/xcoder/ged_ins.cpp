@@ -591,6 +591,8 @@ uint32_t GEDIns::GetMappedField(const /* GED_INS_FIELD */ uint32_t field, const 
     case GED_TABLE_ENTRY_TYPE_FRAGMENTED:
         if (0 != ExtractFragmentedEntryValue<uint32_t>(validBits, dataEntry)) break;
         return ExtractFragmentedEntryValue<uint32_t>(_nativeBytes, dataEntry);
+    case GED_TABLE_ENTRY_TYPE_FIXED_VALUE:
+        return dataEntry->_fixed._value;
     default:
         GEDASSERT(0);
     }
