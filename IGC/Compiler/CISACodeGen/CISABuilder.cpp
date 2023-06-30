@@ -8074,6 +8074,8 @@ namespace IGC
         addr.immScale = 1;
         addr.immOffset = immOffset;
         addr.size = addr_size;
+        // TODO: update this accordingly
+        addr.addrSpace = LSC_DOC_ADDR_SPACE::INVALID;
 
         if (resource)
         {
@@ -8219,6 +8221,7 @@ namespace IGC
         addr.immScale = 1;
         addr.immOffset = immOffset;
         addr.size = addr_size;
+        addr.addrSpace = LSC_DOC_ADDR_SPACE::INVALID;
         if (resource)
         {
             addr.type = getLSCAddrType(resource);

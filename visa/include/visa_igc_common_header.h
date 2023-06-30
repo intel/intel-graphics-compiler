@@ -726,6 +726,15 @@ enum LSC_ADDR_TYPE {
   LSC_ADDR_TYPE_ARG, // pseudo address type for kernel arguments
 };
 
+enum class LSC_DOC_ADDR_SPACE {
+  INVALID,
+  PRIVATE,
+  GLOBAL,
+  LOCAL,
+  GENERIC,
+  RAYSTACK,
+};
+
 //
 // Caching override behavior
 //
@@ -780,6 +789,10 @@ struct LSC_ADDR {
 
   // The number of bits per address; not all address models support all sizes
   LSC_ADDR_SIZE size; // e.g. :a64, :a32, ...
+
+  // e.g private, global, local, generic, raystack
+  // used for documentation in comments
+  LSC_DOC_ADDR_SPACE addrSpace;
 };
 
 // The specific fence op

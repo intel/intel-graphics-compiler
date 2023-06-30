@@ -252,6 +252,31 @@ static int lscBlock2dComputeDataRegs(LSC_OP op,
   return dataRegs;
 }
 
+static std::string generateAddrSpaceComment(LSC_DOC_ADDR_SPACE addrSpace) {
+    std::string addrSpaceString = "";
+    switch (addrSpace) {
+    case LSC_DOC_ADDR_SPACE::PRIVATE:
+      addrSpaceString += "address space: private";
+      break;
+    case LSC_DOC_ADDR_SPACE::GLOBAL:
+      addrSpaceString += "address space: global";
+      break;
+    case LSC_DOC_ADDR_SPACE::LOCAL:
+      addrSpaceString += "addres space: local";
+      break;
+    case LSC_DOC_ADDR_SPACE::GENERIC:
+      addrSpaceString += "address space: generic";
+      break;
+    case LSC_DOC_ADDR_SPACE::RAYSTACK:
+      addrSpaceString += "address space: raystack";
+      break;
+    default:
+      // do not print anything
+      break;
+    }
+    return addrSpaceString;
+}
+
 int IR_Builder::translateLscUntypedInst(
     LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
     VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl execCtrl,
@@ -621,9 +646,10 @@ int IR_Builder::translateLscUntypedInst(
                     getSendAccessType(loadAccess, storeAccess),
                     surface, LdStAttrs::NONE);
 
-  createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
+  auto sendInst = createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
                     instOpt, addrInfo.type, true);
 
+  sendInst->addComment(generateAddrSpaceComment(addrInfo.addrSpace));
   return status;
 }
 
