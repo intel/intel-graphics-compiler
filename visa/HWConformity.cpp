@@ -9106,9 +9106,31 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
   }
 
   if (needFix) {
+
+    // split currently can't handle packed imm
+    // Also don't split if src and dst have overlap as it will introduce extra
+    // mov which could be illegal. If we further fix the extra illegal mov
+    // instruction, we will get worse codes compared to not splitting.
+    auto canDoSplit = [](G4_INST *inst, IR_Builder &builder) {
+      if (inst->getPredicate() || inst->getCondMod()) {
+        return false;
+      }
+      for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
+        auto ty = inst->getSrc(i)->getType();
+        if (IS_VINTTYPE(ty) || IS_VFTYPE(ty)) {
+          return false;
+        } else {
+          G4_CmpRelation rel =
+              inst->getDst()->compareOperand(inst->getSrc(i), builder);
+          if (rel != Rel_disjoint)
+            return false;
+        }
+      }
+      return true;
+    };
+
     if (inst->getExecSize() == g4::SIMD2 && allDirect &&
-        inst->getNumSrc() != 3 && !inst->getPredicate() &&
-        !inst->getCondModBase()) {
+        inst->getNumSrc() != 3 && canDoSplit(inst, builder)) {
       // just split the inst
       evenlySplitInst(it, bb);
       return;
