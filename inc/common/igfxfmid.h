@@ -185,8 +185,14 @@ typedef struct PLATFORM_STR {
 
     // Supported from MTL onwards that will hold IP's major/minor version and their individual RevID
     GFX_GMD_ID          sDisplayBlockID;
+    GFX_GMD_ID          sDisplayPicaBlockID;
     GFX_GMD_ID          sRenderBlockID;
     GFX_GMD_ID          sMediaBlockID;
+
+    // Since we override usRevId field for certain platforms ex: RPLS B0, RPLP J0,
+    // This field is required to hold original revid derived from pci config space which is further used to share outside KMD
+    unsigned short      usOriginalRevIdFromPciConfig;
+    unsigned short      padding;
 } PLATFORM;
 
 // add enums at the end
