@@ -69,9 +69,6 @@ class G4_BB {
   //
   unsigned BBType;
 
-  // indicates if the block is part of a natural loop or not
-  bool inNaturalLoop;
-
   // indicate the nest level of the loop
   unsigned char loopNestLevel;
 
@@ -191,7 +188,7 @@ public:
 
   G4_BB(INST_LIST_NODE_ALLOCATOR &alloc, unsigned i, FlowGraph *fg)
       : id(i), traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
-        inNaturalLoop(false), loopNestLevel(0), scopeID(0), divergent(false),
+        loopNestLevel(0), scopeID(0), divergent(false),
         specialEmptyBB(false), physicalPred(NULL), physicalSucc(NULL),
         parent(fg), instList(alloc) {}
 
@@ -227,9 +224,6 @@ public:
   int getBBType() const { return BBType; }
   void setBBType(int type) { BBType |= type; }
   void unsetBBType(G4_BB_TYPE type) { BBType &= ~unsigned(type); }
-
-  void setInNaturalLoop(bool val) { inNaturalLoop = val; }
-  bool isInNaturalLoop() const { return inNaturalLoop; }
 
   bool isSuccBB(G4_BB *succ) const; // return true if succ is in bb's Succss
 

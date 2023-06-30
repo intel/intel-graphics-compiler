@@ -3504,55 +3504,6 @@ bool Augmentation::markNonDefaultMaskDef() {
   return nonDefaultMaskDefFound;
 }
 
-G4_BB *Augmentation::getTopmostBBDst(G4_BB *src, G4_BB *end, G4_BB *origSrc,
-                                     unsigned traversal) {
-  // Start from src BB and do a DFS. If any back-edges
-  // are found then recursively invoke itself with dst
-  // of back-edge. Any path that reaches BB "end"
-  // will not be propagated forward.
-  unsigned topLexId = src->front()->getLexicalId();
-  G4_BB *topmostBB = src;
-
-  if (src != end) {
-    src->markTraversed(traversal);
-    src->setNestLevel();
-
-    for (G4_BB *succ : src->Succs) {
-      if (succ == origSrc) {
-        // Src of traversal traversed again without
-        // ever traversing end node. So abort this path.
-        return nullptr;
-      }
-
-      if (succ->isAlreadyTraversed(traversal) == true)
-        continue;
-
-      G4_BB *recursiveTopMostBB =
-          getTopmostBBDst(succ, end, origSrc, traversal);
-
-      if (recursiveTopMostBB != NULL) {
-        unsigned recursiveTopMostBBLexId =
-            recursiveTopMostBB->front()->getLexicalId();
-
-        if (recursiveTopMostBBLexId < topLexId) {
-          topmostBB = recursiveTopMostBB;
-          topLexId = recursiveTopMostBBLexId;
-        }
-      } else {
-        if (src != origSrc) {
-          topmostBB = NULL;
-          topLexId = 0;
-        }
-      }
-
-      succ->markTraversed(traversal);
-      succ->setNestLevel();
-    }
-  }
-
-  return topmostBB;
-}
-
 void Augmentation::updateStartIntervalForSubDcl(G4_Declare *dcl,
                                                 G4_INST *curInst,
                                                 G4_Operand *opnd) {
@@ -3869,7 +3820,7 @@ void Augmentation::buildLiveIntervals() {
     }
   } else {
     // process each natural loop
-    for (auto &&iter : kernel.fg.naturalLoops) {
+    for (auto &&iter : kernel.fg.getAllNaturalLoops()) {
       auto &&backEdge = iter.first;
       G4_INST *startInst = (backEdge.second)->front();
       const std::set<G4_BB *> &loopBody = iter.second;

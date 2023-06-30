@@ -3835,10 +3835,12 @@ void FlowGraph::findBackEdges() {
 
 //
 // Find natural loops in the flow graph.
-// Assumption: the input FG is reducible.
+// If CFG is irreducible, we give up completely (i.e., no natural loops are
+// detected).
 //
 void FlowGraph::findNaturalLoops() {
   setPhysicalPredSucc();
+  std::unordered_set<G4_BB *> visited;
   for (auto &&backEdge : backEdges) {
     G4_BB *head = backEdge.second;
     G4_BB *tail = backEdge.first;
@@ -3850,30 +3852,28 @@ void FlowGraph::findNaturalLoops() {
     while (!loopBlocks.empty()) {
       G4_BB *loopBlock = loopBlocks.front();
       loopBlocks.pop_front();
-      loopBlock->setInNaturalLoop(true);
+      visited.emplace(loopBlock);
       loopBlock->setNestLevel();
 
       if ((loopBlock == head) || (loopBlock->getBBType() & G4_BB_INIT_TYPE)) {
         // Skip
       } else if (loopBlock->getBBType() & G4_BB_RETURN_TYPE) {
         auto callBB = loopBlock->BBBeforeCall();
-        if (!callBB->isInNaturalLoop()) {
+        if (!visited.count(callBB)) {
           loopBlocks.push_front(callBB);
           loopBody.insert(callBB);
         }
       } else {
         auto entryBB = getEntryBB();
         for (auto predBB : loopBlock->Preds) {
-          if (!predBB->isInNaturalLoop()) {
+          if (!visited.count(predBB)) {
             if (predBB == entryBB && head != entryBB) {
               // graph is irreducible, punt natural loop detection for entire
               // CFG
               this->reducible = false;
               naturalLoops.clear();
-              for (auto BB : BBs) {
-                BB->setInNaturalLoop(false);
+              for (auto BB : BBs)
                 BB->resetNestLevel();
-              }
               return;
             }
             vISA_ASSERT(predBB != entryBB || head == entryBB, ERROR_FLOWGRAPH);
@@ -3883,10 +3883,7 @@ void FlowGraph::findNaturalLoops() {
         }
       }
     }
-
-    for (auto loopBB : loopBody) {
-      loopBB->setInNaturalLoop(false);
-    }
+    visited.clear();
 
     naturalLoops.emplace(backEdge, loopBody);
   }

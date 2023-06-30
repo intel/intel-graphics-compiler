@@ -201,9 +201,8 @@ class FlowGraph {
   bool reducible;        // reducibility of the graph
   bool doIPA;            // requires inter-procedural liveness analysis
   bool hasStackCalls; // indicates that the flowgraph contains STACK_CALL calls
-  bool
-      isStackCallFunc; // indicates the function itself is a STACK_CALL function
-  G4_Kernel *pKernel;  // back pointer to the kernel object
+  bool isStackCallFunc; // indicates the function is a STACK_CALL function
+  G4_Kernel *pKernel;   // back pointer to the kernel object
 
   // list of all BBs ever created
   // This list only grows and is freed when the FlowGraph is destroyed
@@ -217,7 +216,8 @@ class FlowGraph {
   std::unordered_map<G4_INST *, G4_Label *> endifWithLabels;
 
   // label to subroutine BB's map. This is used to add edges between subroutine
-  // caller/callee ToDo: We should use FuncInfo instead, but at the time it was
+  // caller/callee.
+  // TODO: We should use FuncInfo instead, but at the time it was
   // needed FuncInfo was not constructed yet..
   std::unordered_map<G4_Label *, std::vector<G4_BB *>> subroutines;
 
@@ -225,18 +225,21 @@ class FlowGraph {
   vISA::PostDom pDom;
   vISA::LoopDetection loops;
 
-public:
   typedef std::pair<G4_BB *, G4_BB *> Edge;
   typedef std::set<G4_BB *> Blocks;
   typedef std::map<Edge, Blocks> Loop;
-
-  Mem_Manager &mem; // mem mananger for creating BBs & starting IP table
-  INST_LIST_NODE_ALLOCATOR
-  &instListAlloc; // a reference to dedicated mem allocator for holding
-                  // instruction list nodes
-
-  std::list<Edge> backEdges; // list of all backedges (tail->head)
+  std::vector<Edge> backEdges; // list of all backedges (tail->head)
+  // Each natural loop is represented by the loop back edge and all of its basic
+  // blocks; this including all child loops recursively, but not any subroutines
+  // that are called in the loop.
+  // TODO: remove this in favor of LoopAnalysis.
   Loop naturalLoops;
+
+public:
+  Mem_Manager &mem; // mem mananger for creating BBs & starting IP table
+  INST_LIST_NODE_ALLOCATOR &instListAlloc;
+
+  Loop &getAllNaturalLoops() { return naturalLoops; }
 
   // function info nodes. entry function is not included.
   std::vector<FuncInfo *> funcInfoTable;
@@ -250,7 +253,7 @@ public:
 
   IR_Builder *builder; // needed to create new instructions (mainly labels)
 
-  // TODO: This rather strange that global operand table is part of FlowGraph.
+  // TODO: It's rather strange that global operand table is part of FlowGraph.
   //       Consider moving it and the class elsewhere.
   GlobalOpndHashTable globalOpndHT;
 

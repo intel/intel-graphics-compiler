@@ -207,18 +207,8 @@ public:
       }
     }
 
-    std::set<G4_BB *> bbsInLoop;
-    for (auto &&be : kernel.fg.backEdges) {
-      auto loopIt = kernel.fg.naturalLoops.find(be);
-
-      if (loopIt != kernel.fg.naturalLoops.end()) {
-        bbsInLoop.insert(loopIt->second.begin(), loopIt->second.end());
-      }
-    }
-
     for (auto &bb : kernel.fg) {
-      bool bbInLoop = (bbsInLoop.find(bb) != bbsInLoop.end());
-      if (bbInLoop) {
+      if (bb->getNestLevel() != 0) {
         for (auto &inst : *bb) {
           if (!inst->isLabel() && !inst->isPseudoKill()) {
             loopInstsBeforeRemat++;

@@ -351,8 +351,6 @@ private:
                         unsigned lb, unsigned rb, unsigned execSize);
   void markNonDefaultDstRgn(G4_INST *inst, G4_Operand *opnd);
   bool markNonDefaultMaskDef();
-  G4_BB *getTopmostBBDst(G4_BB *src, G4_BB *end, G4_BB *origSrc,
-                         unsigned traversal);
   void updateStartIntervalForSubDcl(G4_Declare *dcl, G4_INST *curInst,
                                     G4_Operand *opnd);
   void updateEndIntervalForSubDcl(G4_Declare *dcl, G4_INST *curInst,

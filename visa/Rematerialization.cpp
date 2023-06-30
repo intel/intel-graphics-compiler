@@ -185,45 +185,23 @@ bool Rematerialization::inSameSubroutine(G4_BB *use, G4_BB *def) {
 // bb2 should be the block where remat is expected.
 bool Rematerialization::areInSameLoop(G4_BB *bb1, G4_BB *bb2,
                                       bool &bb1OutsideLoop) {
-  bool bb1InAnyLoop = false;
   bb1OutsideLoop = false;
 
   // Check whether bb1 is in any loop at all. If not,
   // then we can allow remat even if bb2 is in a loop.
   // The case that is disallowed is where bb1 and bb2
   // are both in loops, but in different ones.
-  for (auto &&be : kernel.fg.backEdges) {
-    auto loopIt = kernel.fg.naturalLoops.find(be);
-
-    if (loopIt != kernel.fg.naturalLoops.end()) {
-      auto &&bbsInLoop = (*loopIt).second;
-
-      auto bb1InLoop = bbsInLoop.find(bb1);
-      if (bb1InLoop != bbsInLoop.end()) {
-        bb1InAnyLoop = true;
-        break;
-      }
-    }
-  }
-
-  if (!bb1InAnyLoop)
+  if (bb1->getNestLevel() == 0)
     bb1OutsideLoop = true;
 
-  for (auto &&be : kernel.fg.backEdges) {
-    auto loopIt = kernel.fg.naturalLoops.find(be);
+  for (auto &loop : kernel.fg.getAllNaturalLoops()) {
+    auto &loopBody = loop.second;
+    auto bb1InLoop = loopBody.count(bb1) != 0;
+    auto bb2InLoop = loopBody.count(bb2) != 0;
 
-    if (loopIt != kernel.fg.naturalLoops.end()) {
-      auto &&bbsInLoop = (*loopIt).second;
-
-      auto bb1InLoop = bbsInLoop.find(bb1);
-      auto bb2InLoop = bbsInLoop.find(bb2);
-
-      // Both BBs must be present in all nested loops
-      if ((bb1InLoop == bbsInLoop.end() && bb2InLoop != bbsInLoop.end()) ||
-          (bb1InLoop != bbsInLoop.end() && bb2InLoop == bbsInLoop.end())) {
-        return false;
-      }
-    }
+    // Both BBs must be present in all nested loops
+    if (bb1InLoop ^ bb2InLoop)
+      return false;
   }
 
   return true;

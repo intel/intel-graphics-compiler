@@ -590,7 +590,7 @@ void LinearScanRA::markBackEdges() {
     }
   } else {
     // Find exit BB of loop and map it to the head BB of loop
-    for (auto &&iter : kernel.fg.naturalLoops) {
+    for (auto &&iter : kernel.fg.getAllNaturalLoops()) {
       auto &&backEdge = iter.first;
       G4_BB *headBB = backEdge.second;
       const std::set<G4_BB *> &loopBody = iter.second;

@@ -1562,25 +1562,20 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   For the irreducible flow graph, those optimizations wouldn't be kicked in.
   */
   for (G4_BB_SB *bb : BBVector) {
-    for (auto &&be : kernel.fg.backEdges) {
-      auto loopIt = kernel.fg.naturalLoops.find(be);
-
-      if (loopIt != kernel.fg.naturalLoops.end()) {
-        auto &&bbsInLoop = loopIt->second;
-
-        auto bb1InLoop = bbsInLoop.find(bb->getBB());
-        if (bb1InLoop != bbsInLoop.end()) {
-          if (bb->getLoopStartBBID() != INVALID_ID) {
-            // Innermost loop only
-            if (bb->getLoopStartBBID() <= be.second->getId() &&
-                bb->getLoopEndBBID() >= be.first->getId()) {
-              bb->setLoopStartBBID(be.second->getId());
-              bb->setLoopEndBBID(be.first->getId());
-            }
-          } else {
+    for (auto loop : kernel.fg.getAllNaturalLoops()) {
+      auto be = loop.first;
+      auto &bbsInLoop = loop.second;
+      if (bbsInLoop.count(bb->getBB())) {
+        if (bb->getLoopStartBBID() != INVALID_ID) {
+          // Innermost loop only
+          if (bb->getLoopStartBBID() <= be.second->getId() &&
+              bb->getLoopEndBBID() >= be.first->getId()) {
             bb->setLoopStartBBID(be.second->getId());
             bb->setLoopEndBBID(be.first->getId());
           }
+        } else {
+          bb->setLoopStartBBID(be.second->getId());
+          bb->setLoopEndBBID(be.first->getId());
         }
       }
     }
