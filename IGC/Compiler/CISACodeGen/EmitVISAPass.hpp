@@ -433,7 +433,8 @@ public:
                            uint64_t align);
     void emitLSCVectorStore(llvm::Value *Ptr,
                             llvm::Value *offset, llvm::ConstantInt *immOffset,
-                            llvm::Value *storedVal, LSC_CACHE_OPTS cacheOpts,
+                            llvm::Value *storedVal, llvm::BasicBlock* BB,
+                            LSC_CACHE_OPTS cacheOpts,
                             alignment_t align, bool dontForceDMask);
     void emitGenISACopy(llvm::GenIntrinsicInst* GenCopyInst);
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
@@ -833,6 +834,13 @@ private:
     bool m_canGenericPointToPrivate = false;
     bool m_canGenericPointToLocal = false;
 
+    typedef struct {
+        CVariable* var;
+        CVariable* broadcastedVar[2];
+        llvm::BasicBlock* BB;
+    } ConstVectorStoreData;
+    llvm::DenseMap<llvm::Constant*, ConstVectorStoreData> m_constantVectorStores;
+
     // Used to relocate phi-mov to different BB. phiMovToBB is the map from "fromBB"
     // to "toBB" (meaning to move phi-mov from "fromBB" to "toBB"). See MovPhiSources.
     llvm::DenseMap<llvm::BasicBlock*, llvm::BasicBlock*>  phiMovToBB;
@@ -872,6 +880,11 @@ private:
         PerLaneOffsetVars.push_back(std::make_pair(TypeSizeInBytes, Var));
         return Var;
     }
+
+    // If constant vector is stored and there is already var instance for it
+    // try reusing it (if it was defined in the same basic block)
+    // or create a new var instance and make it available for reusing in further stores
+    CVariable* tryReusingConstVectorStoreData(llvm::Value* storedVal, llvm::BasicBlock* BB, bool isBroadcast);
 
     // Emit code in slice starting from (reverse) iterator I. Return the
     // iterator to the next pattern to emit.
