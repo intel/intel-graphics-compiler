@@ -1269,7 +1269,7 @@ DeSSA::CoalesceInsertElements()
                     e_alignment SrcVAlign = GetPreferredAlignment(SrcV, WIA, CTX);
                     if (!LV->isLiveAt(SrcV, Inst) &&
                         !alignInterfere(InstAlign, SrcVAlign) &&
-                        (WIA->whichDepend(SrcV) == WIA->whichDepend(Inst)))
+                        (WIA->isUniform(SrcV) == WIA->isUniform(Inst)))
                     {
                         InsEltMapAddValue(SrcV);
                         InsEltMapAddValue(Inst);
@@ -1333,13 +1333,13 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
         SmallVector<Value*, 8>& IVIs)
     {
         InsertValueInst* Inst = aIVI;
-        WIAnalysis::WIDependancy Dep = WIA->whichDepend(Inst);
+        const bool isUniform = WIA->isUniform(Inst);
         while (Inst && Inst->hasOneUse())
         {
             IVIs.push_back(Inst);
             Inst = dyn_cast<InsertValueInst>(Inst->user_back());
-            if (Inst && Dep != WIA->whichDepend(Inst)) {
-                // Don't group values with differnt dependency.
+            if (Inst && isUniform != WIA->isUniform(Inst)) {
+                // Don't group values with differnt uniformness.
                 Inst = nullptr;
             }
         }
@@ -1540,7 +1540,7 @@ int DeSSA::checkInsertElementAlias(
     AllIEIs.resize(nelts, nullptr);
     InsertElementInst* Inst = IEI;
     IGC_ASSERT(nullptr != WIA);
-    WIAnalysis::WIDependancy Dep = WIA->whichDepend(Inst);
+    const bool isUniform = WIA->isUniform(Inst);
     while (Inst)
     {
         // Check if Inst has constant index, stop if not.
@@ -1552,7 +1552,7 @@ int DeSSA::checkInsertElementAlias(
         }
         int ix = (int)CI->getZExtValue();
         AllIEIs[ix] = Inst;
-        if (!Inst->hasOneUse() || Dep != WIA->whichDepend(Inst)) {
+        if (!Inst->hasOneUse() || isUniform != WIA->isUniform(Inst)) {
             break;
         }
         Inst = dyn_cast<InsertElementInst>(Inst->user_back());
