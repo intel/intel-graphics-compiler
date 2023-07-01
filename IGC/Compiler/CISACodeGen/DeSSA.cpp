@@ -58,6 +58,7 @@ See LICENSE.TXT for details.
 //===----------------------------------------------------------------------===//
 
 #include "Compiler/CISACodeGen/DeSSA.hpp"
+#include "Compiler/CISACodeGen/MemOpt.h"    // isLayoutStructType()
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
@@ -1328,17 +1329,23 @@ void DeSSA::getAllValuesInCongruentClass(
 
 void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
 {
+    StructType* StTy = dyn_cast<StructType>(theIVI->getType());
+    bool isLayoutStTy = (StTy != nullptr && isLayoutStructType(StTy));
+
     // Find a chain of insertvalue, and return the last one.
-    auto getInsValChain = [this](InsertValueInst* aIVI,
+    auto getInsValChain = [=](InsertValueInst* aIVI,
         SmallVector<Value*, 8>& IVIs)
     {
         InsertValueInst* Inst = aIVI;
+        const bool isUniform = WIA->isUniform(Inst);
         WIAnalysis::WIDependancy Dep = WIA->whichDepend(Inst);
         while (Inst && Inst->hasOneUse())
         {
             IVIs.push_back(Inst);
             Inst = dyn_cast<InsertValueInst>(Inst->user_back());
-            if (Inst && Dep != WIA->whichDepend(Inst)) {
+            if (Inst &&
+                ((isLayoutStTy && isUniform != WIA->isUniform(Inst)) ||
+                 (!isLayoutStTy && Dep != WIA->whichDepend(Inst)))) {
                 // Don't group values with differnt dependency.
                 Inst = nullptr;
             }
