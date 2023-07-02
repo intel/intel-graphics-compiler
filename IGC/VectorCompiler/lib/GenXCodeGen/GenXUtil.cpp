@@ -2397,50 +2397,6 @@ genx::getInterveningGVStoreOrNull(Instruction *LI, Instruction *UIOrPos,
   return nullptr;
 }
 
-void genx::checkGVClobberingByInterveningStore(
-    Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
-    const llvm::StringRef PassName, llvm::SetVector<Instruction *> *SIs) {
-  for (auto *UI_ : LI->users()) {
-    auto *UI = dyn_cast<Instruction>(UI_);
-    if (!UI)
-      continue;
-
-    if (auto *SI = genx::getInterveningGVStoreOrNull(LI, UI, SIs)) {
-      vc::diagnose(LI->getContext(), PassName,
-                   "found intervening vstore, trying to fixup by moving to "
-                   "vload and unbaling if baled.",
-                   DS_Warning, vc::WarningName::Generic, UI);
-      LLVM_DEBUG(dbgs() << __FUNCTION__ << ": Found intervening vstore: ";
-                 SI->print(dbgs());
-                 dbgs() << "\n"
-                        << __FUNCTION__ << ": Affected vload: ";
-                 LI->print(dbgs()); dbgs() << "\n"
-                                           << __FUNCTION__ << ": User: ";
-                 UI->print(dbgs()); dbgs() << "\n";);
-
-      if (GenXIntrinsic::isRdRegion(UI) &&
-          isa<Constant>(
-              UI->getOperand(GenXIntrinsic::GenXRegion::RdIndexOperandNum))) {
-        if (Baling->isBaled(UI))
-          Baling->unbale(UI);
-        UI->moveAfter(LI);
-        if (Liveness->getLiveRangeOrNull(UI))
-          Liveness->removeValue(UI);
-        auto *LR = Liveness->getOrCreateLiveRange(UI);
-        LR->setCategory(Liveness->getLiveRangeOrNull(LI)->getCategory());
-        LR->setLogAlignment(
-            Liveness->getLiveRangeOrNull(LI)->getLogAlignment());
-      } else
-        vc::diagnose(LI->getContext(), PassName,
-                     "fixup is only possible for rdregion with constant "
-                     "offsets as it has single input from vload and "
-                     "can be easily moved back to it, however current case is "
-                     "more complex.",
-                     DS_Warning, vc::WarningName::Generic, UI);
-    }
-  }
-};
-
 void genx::collectRelatedCallSitesPerFunction(
     Instruction *SI, FunctionGroup *FG,
     std::map<Function *, llvm::SetVector<Instruction *>>

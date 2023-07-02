@@ -776,7 +776,7 @@ Instruction *getInterveningGVStoreOrNull(
     Instruction *LI, Instruction *UIOrPos,
     llvm::SetVector<Instruction *> *CallSites = nullptr);
 
-void checkGVClobberingByInterveningStore(
+bool checkGVClobberingByInterveningStore(
     Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
     const llvm::StringRef PassName,
     llvm::SetVector<Instruction *> *SIs = nullptr);
