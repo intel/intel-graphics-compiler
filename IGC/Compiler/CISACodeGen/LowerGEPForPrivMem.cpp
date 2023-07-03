@@ -286,7 +286,10 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     bool useAssumeUniform = pAlloca->getMetadata("UseAssumeUniform") != nullptr;
     unsigned int allocaSize = extractConstAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
-    unsigned int SIMDSize = numLanes(SIMDMode::SIMD8);
+    unsigned int SIMDSize = numLanes(m_ctx->platform.getMinDispatchMode());
+
+    // consider GRF width in alloca register promotion limit
+    allowedAllocaSizeInBytes = allowedAllocaSizeInBytes * m_ctx->platform.getGRFSize() / 32;
 
     // scale alloc size based on the number of GRFs we have
     float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
@@ -298,9 +301,10 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            SIMDSize = (uint32_t)subGroupSize->getSIMD_size();
-            allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
+            SIMDSize = std::max((uint32_t)subGroupSize->getSIMD_size(), SIMDSize);
         }
+
+        allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
     }
     Type* baseType = nullptr;
     bool allUsesAreVector = false;
