@@ -3513,8 +3513,19 @@ Value* LdStCombine::gatherCopy(
             bool isLvl1 = (remainingBytes == DstEltBytes && eBytes == DstEltBytes);
             // true if v is a legal vector at level 2
             bool isLvl2 = (remainingBytes >= (eBytes * n));
-            bool isSimpleVec = isSimpleVector(v);
-            if (isLvl1 && !isSimpleVec)
+            bool keepVector = true;
+            if (isLvl1 || isLvl2) {
+                if (isSimpleVector(v)) {
+                    keepVector = false;
+                }
+                else if ((eBytes * n) != m_DL->getTypeAllocSize(iVTy)) {
+                    // If vector size isn't packed (store size != alloc size),
+                    // cannot keep vector.
+                    // For example, alloc size(<3 x i32>) = 16B, not 12B
+                    keepVector = false;
+                }
+            }
+            if (isLvl1 && keepVector)
             {   // case 1
                 // 1st level vector member
                 eltVals.push_back(v);
@@ -3522,7 +3533,7 @@ Value* LdStCombine::gatherCopy(
 
                 eltVals.clear();
             }
-            else if (isLvl2 && !isSimpleVec)
+            else if (isLvl2 && keepVector)
             {   // case 2
                 // 2nd level vector member
                 eltVals.push_back(v);
