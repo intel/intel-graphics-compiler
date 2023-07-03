@@ -147,6 +147,16 @@ $ make -j`nproc`
 $ sudo make install
 ```
 
+#### Additional notes on OpenCL LIT tests run
+If you have installed [intel-opencl-icd](https://github.com/intel/compute-runtime), you can pass the following CMake flags to run the integrated OpenCL LIT test-suite when building IGC, or separately afterwards:
+
+```shell
+$ cmake -DIGC_OPTION__ENABLE_OCLOC_LIT_TESTS=ON -DSPIRV_SKIP_EXECUTABLES=OFF ../igc
+$ make check-ocloc -j`nproc`
+```
+
+Also note that these tests require **Debug** IGC build.
+
 ***
 
 ## LLVM/LLD/Clang version information

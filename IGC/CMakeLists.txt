@@ -1991,6 +1991,10 @@ if(IGC_BUILD__CMLIT_ENABLE)
 endif()
 
 
+if(IGC_OPTION__ENABLE_OCLOC_LIT_TESTS)
+  add_subdirectory(ocloc_tests)
+endif()
+
 # ======================================================================================================
 
 # Workaround for MSVS10 to avoid the "Dialog Hell"

@@ -1,0 +1,43 @@
+# ========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2023 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+# =========================== end_copyright_notice =============================
+
+@LIT_SITE_CFG_IN_HEADER@
+
+import sys
+
+config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.lit_tools_dir = "@LLVM_TOOLS_DIR@"
+config.host_triple = "@LLVM_HOST_TRIPLE@"
+config.target_triple = "@TARGET_TRIPLE@"
+config.host_arch = "@HOST_ARCH@"
+config.python_executable = "@PYTHON_EXECUTABLE@"
+config.test_run_dir = "@CMAKE_CURRENT_BINARY_DIR@"
+config.ocloc_dir = "@IGC_OCLOC_BINARY_DIR@"
+config.ocloc_lib_dir = "@IGC_OCLOC_LIBRARY_DIR@"
+config.igc_lib_dir = "@IGC_LIBRARY_DIR@"
+config.cclang_lib_dir = "@OPENCL_CLANG_LIB_DIR@"
+config.regkeys_disabled = $<CONFIG:Release>
+config.spirv_as_enabled = "@IGC_BUILD__PROJ__spirv_as@"
+config.spirv_as_dir = "@IGC_SPIRV_AS_DIR@"
+config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
+config.llvm_version_major = "@LLVM_VERSION_MAJOR@"
+
+# Support substitution of the tools and libs dirs with user parameters. This is
+# used when we can't determine the tool dir at configuration time.
+try:
+    config.llvm_tools_dir = config.llvm_tools_dir % lit_config.params
+except KeyError:
+    e = sys.exc_info()[1]
+    key, = e.args
+    lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@IGC_OCLOC_TEST_SOURCE_DIR@/lit.cfg.py")

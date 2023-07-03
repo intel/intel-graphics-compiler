@@ -1,0 +1,30 @@
+; REQUIRES: regkeys,spirv-as
+; UNSUPPORTED: khronos-translator-9
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefix=%SPV_CHECK_PREFIX%
+               OpCapability Addresses
+               OpCapability Kernel
+               OpCapability Float16
+               OpMemoryModel Physical32 OpenCL
+               OpEntryPoint Kernel %1 "testFMod_v2f16"
+               OpName %a "a"
+               OpName %b "b"
+       %void = OpTypeVoid
+       %half = OpTypeFloat 16
+      %half2 = OpTypeVector %half 2
+          %5 = OpTypeFunction %void %half2 %half2
+          %1 = OpFunction %void None %5
+          %a = OpFunctionParameter %half2
+          %b = OpFunctionParameter %half2
+          %6 = OpLabel
+          %7 = OpFMod %half2 %a %b
+               OpReturn
+               OpFunctionEnd
+
+; CHECK-KHR-DAG: %frem.res = frem <2 x half> %a, %b
+; CHECK-KHR-DAG: %copysign.res = call <2 x half> @llvm.copysign.v2f16(<2 x half> %frem.res, <2 x half> %b)
+; CHECK-KHR-DAG: %fadd.res = fadd <2 x half> {{%frem\.res, %b|%b, %frem\.res}}
+; CHECK-KHR-DAG: %cmp.res = fcmp one <2 x half> {{%frem\.res, %copysign\.res|%copysign\.res, %frem\.res}}
+; CHECK-KHR: select <2 x i1> %cmp.res, <2 x half> %fadd.res, <2 x half> %copysign.res
+
+; CHECK-LEGACY: call spir_func <2 x half> @__builtin_spirv_OpFMod_v2f16_v2f16(<2 x half> %a, <2 x half> %b)
