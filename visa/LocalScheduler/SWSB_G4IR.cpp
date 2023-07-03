@@ -1468,19 +1468,20 @@ void SWSB::handleFuncCall() {
          node->GetInstruction()->isFCall()) ||
         (node->GetInstruction()->isReturn() ||
          node->GetInstruction()->isFReturn())) {
-      LiveGRFBuckets send_use_out(kernel.getNumRegTotal());
-      for (const SBBucketNode *sBucketNode : globalSendOpndList) {
-        SBNode *sNode = sBucketNode->node;
-        if (bb->send_live_out.isSrcSet(sNode->globalID) &&
-            (sBucketNode->opndNum == Opnd_src0 ||
-             sBucketNode->opndNum == Opnd_src1 ||
-             sBucketNode->opndNum == Opnd_src2 ||
-             sBucketNode->opndNum == Opnd_src3)) {
-          bb->createAddGRFEdge(sNode, node, WAR, DEP_EXPLICT);
-        }
-        if (bb->send_live_out.isDstSet(sNode->globalID) &&
-            (sBucketNode->opndNum == Opnd_dst)) {
+
+      // Add dependencies for all after write dependencies live before call
+      for (unsigned globalID : bb->send_live_out.dst) {
+        for (SBBucketNode *sBucketNode : globalDstSBSendNodes[globalID]) {
+          SBNode *sNode = sBucketNode->node;
           bb->createAddGRFEdge(sNode, node, RAW, DEP_EXPLICT);
+        }
+      }
+
+      // Add dependencies for all after read dependencies live before call
+      for (unsigned globalID : bb->send_live_out.src) {
+        for (SBBucketNode *sBucketNode : globalSrcSBSendNodes[globalID]) {
+          SBNode *sNode = sBucketNode->node;
+          bb->createAddGRFEdge(sNode, node, WAR, DEP_EXPLICT);
         }
       }
     }
@@ -1506,15 +1507,9 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
       fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation);
   const bool enableDistPropTokenAllocation =
       fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation);
+
   // Get the live out, may kill bit sets
   for (G4_BB_SB *bb : BBVector) {
-    bb->send_live_in = SBBitSets(globalSendNum);
-    bb->send_live_out = SBBitSets(globalSendNum);
-    bb->send_def_out = SBBitSets(globalSendNum);
-
-    bb->send_live_in_scalar = SBBitSets(globalSendNum);
-    bb->send_live_out_scalar = SBBitSets(globalSendNum);
-    bb->send_kill_scalar = SBBitSets(globalSendNum);
     bb->liveInTokenNodes = BitSet(SBSendNodes.size(), false);
     bb->liveOutTokenNodes = BitSet(SBSendNodes.size(), false);
     bb->killedTokens = BitSet(totalTokenNum, false);
@@ -1545,13 +1540,23 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
       }
     }
 
-    bb->send_may_kill = SBBitSets(globalSendNum);
-    bb->send_WAW_may_kill = BitSet(globalSendNum, false);
     bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
 
 #ifdef DEBUG_VERBOSE_ON
     bb->dumpLiveInfo(&globalSendOpndList, globalSendNum, nullptr);
 #endif
+  }
+
+  // Initial global destination and source operand lists.
+  globalDstSBSendNodes.resize(globalSendNum);
+  globalSrcSBSendNodes.resize(globalSendNum);
+  for (SBBucketNode *sBucketNode : globalSendOpndList) {
+    SBNode *sNode = sBucketNode->node;
+    if (sBucketNode->opndNum == Opnd_dst) {
+      globalDstSBSendNodes[sNode->globalID].push_back(sBucketNode);
+    } else {
+      globalSrcSBSendNodes[sNode->globalID].push_back(sBucketNode);
+    }
   }
 
   /*
@@ -2281,7 +2286,7 @@ void SWSB::tokenDepReduction(SBNode *n1, SBNode *n2) {
     }
   }
 
-  n2->setLiveLatestID(n1->getLiveEndID(), n1->getLiveEndBBID());
+  n2->setLiveLaterID(n1->getLiveEndID());
   linearScanLiveNodes.remove(n1);
 
 #ifdef DEBUG_VERBOSE_ON
@@ -2538,15 +2543,14 @@ void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
             //  If no instruction depends on DPAS, no SBID
             if (!(succ->GetInstruction()->isDpas() && succ->succs.empty())) {
               succ->getLastInstruction()->setSetToken(token);
-              node->setLiveLatestID(succ->getLiveEndID(),
-                                    succ->getLiveEndBBID());
+              node->setLiveLaterID(succ->getLiveEndID());
               allTokenNodesMap[token].set(succ->sendID);
               succ->setTokenReuseNode(node);
               continue;
             }
           } else {
             succ->getLastInstruction()->setSetToken(token);
-            node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
+            node->setLiveLaterID(succ->getLiveEndID());
             allTokenNodesMap[token].set(succ->sendID);
             succ->setTokenReuseNode(node);
             continue;
@@ -2725,9 +2729,9 @@ bool SWSB::propogateDist(G4_BB *bb) {
     return false;
   }
 
-  vASSERT(BBVector[bbID]->send_live_in.getSize() != 0);
+  vASSERT(!BBVector[bbID]->send_live_in.isEmpty());
 
-  SBBitSets temp_live_in(globalSendNum);
+  SBBitSets temp_live_in;
   temp_live_in = BBVector[bbID]->send_live_in;
   std::vector<unsigned> tokenLiveInDist;
   tokenLiveInDist.resize(globalSendNum);
@@ -2970,7 +2974,7 @@ void SWSB::tokenAllocation() {
 unsigned short SWSB::reuseTokenSelectionGlobal(SBNode *node, G4_BB *bb,
                                                SBNode *&candidateNode,
                                                bool &fromSibling) {
-  SBBitSets temp_live_in(globalSendNum);
+  SBBitSets temp_live_in;
   temp_live_in = BBVector[bb->getId()]->send_live_in;
   unsigned short reuseToken = (unsigned short)UNKNOWN_TOKEN;
   unsigned nodeReuseOverhead = -1;
@@ -3202,14 +3206,12 @@ void SWSB::allocateToken(G4_BB *bb) {
     return;
   }
 
-  BBVector[bb->getId()]->localReachingSends = SBBitSets(SBSendNodes.size());
-
   vASSERT((BBVector[bb->getId()]->last_send_node != INVALID_ID) &&
          (BBVector[bb->getId()]->first_send_node <=
           BBVector[bb->getId()]->last_send_node));
 
-  SBBitSets send_live(SBSendNodes.size());
-  SBBitSets send_use(SBSendUses.size());
+  SBBitSets send_live;
+  SBBitSets send_use;
 
   for (int i = BBVector[bb->getId()]->first_send_node;
        i <= BBVector[bb->getId()]->last_send_node; i++) {
@@ -3225,7 +3227,9 @@ void SWSB::allocateToken(G4_BB *bb) {
       continue;
     }
 
-    send_live = node->reachingSends; // The tokens will reach current node
+    if (!node->reachingSends.isEmpty()) {
+      send_live = node->reachingSends; // The tokens will reach current node
+    }
 
     for (unsigned k = 0; k < totalTokenNum; k++) {
       reachTokenArray[k].clear();
@@ -3245,7 +3249,7 @@ void SWSB::allocateToken(G4_BB *bb) {
     }
 
     if (!fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation) &&
-        (node->reachedUses.getSize() != 0)) {
+        (!node->reachedUses.isEmpty())) {
       send_use = node->reachedUses; // The uses of other sends can be reached by
                                     // current node.
       for (size_t k = 0; k < SBSendUses.size(); k++) {
@@ -3269,7 +3273,7 @@ void SWSB::allocateToken(G4_BB *bb) {
 
       // Assigned with coalescing
       if (!fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation) &&
-          (node->reachedUses.getSize() != 0)) {
+          (!node->reachedUses.isEmpty())) {
         for (size_t i = 0; i < node->succs.size(); i++) {
           SBDEP_ITEM &curSucc = node->succs[i];
 
@@ -3318,7 +3322,7 @@ void SWSB::allocateToken(G4_BB *bb) {
         SBNode *reuseNode = nullptr;
         bool reuseSibling = !fg.builder->getOptions()->getOption(
                                 vISA_DistPropTokenAllocation) &&
-                            (node->reachedUses.getSize() != 0);
+                            (!node->reachedUses.isEmpty());
         unsigned short reuseToken =
             reuseTokenSelectionGlobal(node, bb, reuseNode, reuseSibling);
 
@@ -3427,13 +3431,13 @@ void SWSB::buildExclusiveForCoalescing() {
       continue;
     }
 
-    SBBitSets send_live(SBSendNodes.size());
+    SBBitSets send_live;
 
     for (SBDEP_ITEM &curSucc : node->succs) {
       SBNode *succ = curSucc.node;
       DepType type = curSucc.type;
       if (((type == RAW) || (type == WAW)) &&
-          (succ->reachingSends.getSize() != 0)) {
+          (!succ->reachingSends.isEmpty())) {
         send_live = succ->reachingSends;
         // FIXME, the complexity may be a little big high, n*n*succSize
         for (size_t k = 0; k < SBSendNodes.size(); k++) {
@@ -4602,16 +4606,15 @@ void SWSB::buildLiveIntervals() {
   const bool trueDepOnly =
       fg.builder->getOptions()->getOption(vISA_TrueDepOnly);
   for (SBNode *node : SBSendNodes) {
-    node->setLiveEarliestID(node->getNodeID(), node->getBBID());
-    node->setLiveLatestID(node->getNodeID(), node->getBBID());
+    node->setLiveEarlierID(node->getNodeID());
+    node->setLiveLaterID(node->getNodeID());
     for (SBDEP_ITEM &curSucc : node->succs) {
       const SBNode *succ = curSucc.node;
       if (trueDepOnly && node->GetInstruction()->isDpas() &&
           node->getBBID() != succ->getBBID()) {
-        node->setLiveLatestID(BBVector[node->getBBID()]->last_node,
-                              node->getBBID());
+        node->setLiveLaterID(BBVector[node->getBBID()]->last_node);
       } else {
-        node->setLiveLatestID(succ->getNodeID(), succ->getBBID());
+        node->setLiveLaterID(succ->getNodeID());
       }
     }
   }
@@ -4636,44 +4639,52 @@ void SWSB::buildLiveIntervals() {
       continue;
     }
 
-    for (SBBucketNode *bucketNode : globalSendOpndList) {
-      SBNode *node = bucketNode->node;
-      int globalID = node->globalID;
+    if (sb_bb->first_node == INVALID_ID) {
+      continue;
+    }
 
-      if (trueDepOnly && node->GetInstruction()->isDpas()) {
-        continue;
+    //Live in current BB in dst bit vector, set earliest
+    for (unsigned globalID : send_live_in_scalar.dst) {
+      for (SBBucketNode *sBucketNode : globalDstSBSendNodes[globalID]) {
+        SBNode *node = sBucketNode->node;
+
+        // Including both scalar control(*ib) flow and SIMD control flow(sb_bb)
+        if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty())) {
+          node->setLiveEarlierID(sb_bb->first_node);
+        }
+      }
+    }
+
+    //Live out current BB in dst bit vector, set latest
+    for (unsigned globalID : send_live_out_scalar.dst) {
+      for (SBBucketNode *sBucketNode : globalDstSBSendNodes[globalID]) {
+        SBNode *node = sBucketNode->node;
+
+        if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty())) {
+          node->setLiveLaterID(sb_bb->last_node);
+        }
+      }
+    }
+
+    if (!trueDepOnly) { // Not RAW only
+      //Live in current BB in src bit vector, set earliest
+      for (unsigned globalID : send_live_in.src) {
+        for (SBBucketNode *sBucketNode : globalSrcSBSendNodes[globalID]) {
+          SBNode *node = sBucketNode->node;
+
+          if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty())) {
+            node->setLiveEarlierID(sb_bb->first_node);
+          }
+        }
       }
 
-      if (bucketNode->opndNum == Opnd_dst) {
-        if (sb_bb->first_node != INVALID_ID &&
-            send_live_in_scalar.isDstSet((unsigned)globalID)) {
-          if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty())) {
-            node->setLiveEarliestID(sb_bb->first_node, bbID);
-          }
-        }
-        // FIXME: implicit dependence still have issue.
-        // the live range of implicit dependence may not counted. But that's ok?
-        // This may cause the delay. ...
-        if (sb_bb->first_node != INVALID_ID &&
-            send_live_out_scalar.isDstSet((unsigned)globalID)) {
+      // Live out current BB in src bit vector, set latest
+      for (unsigned globalID : send_live_out.src) {
+        for (SBBucketNode *sBucketNode : globalSrcSBSendNodes[globalID]) {
+          SBNode *node = sBucketNode->node;
+
           if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty())) {
-            node->setLiveLatestID(sb_bb->last_node, bbID);
-          }
-        }
-      } else if (!trueDepOnly) {
-        if (sb_bb->first_node != INVALID_ID &&
-            send_live_in.isSrcSet((unsigned)globalID)) {
-          if (!(*ib)->Preds.empty() || !(sb_bb->Preds.empty())) {
-            node->setLiveEarliestID(sb_bb->first_node, bbID);
-          }
-        }
-        // FIXME: implicit dependence still have issue.
-        // the live range of implicit dependence may not counted. But that's ok?
-        // This may cause the delay. ...
-        if (sb_bb->first_node != INVALID_ID &&
-            send_live_out.isSrcSet((unsigned)globalID)) {
-          if (!(*ib)->Succs.empty() || !(sb_bb->Succs.empty())) {
-            node->setLiveLatestID(sb_bb->last_node, bbID);
+            node->setLiveLaterID(sb_bb->last_node);
           }
         }
       }
@@ -4697,7 +4708,7 @@ bool SWSB::globalDependenceDefReachAnalysis(G4_BB *bb) {
     return false;
   }
 
-  SBBitSets temp_live_in(globalSendNum);
+  SBBitSets temp_live_in;
   temp_live_in = BBVector[bbID]->send_live_in;
 
   for (const G4_BB *predBB : bb->Preds) {
@@ -4711,7 +4722,7 @@ bool SWSB::globalDependenceDefReachAnalysis(G4_BB *bb) {
   }
 
   // Record the killed dst and src in scalar CF iterating
-  SBBitSets temp_kill(globalSendNum);
+  SBBitSets temp_kill;
   temp_kill = temp_live_in;
   temp_kill &= BBVector[bbID]->send_may_kill;
   BBVector[bbID]->send_kill_scalar |= temp_kill;
@@ -4723,7 +4734,7 @@ bool SWSB::globalDependenceDefReachAnalysis(G4_BB *bb) {
   // Kill nodes
   // once dst is killed, src definitely is killed
   temp_live_in -= BBVector[bbID]->send_may_kill;
-  temp_live_in.src -= BBVector[bbID]->send_may_kill.dst;
+  temp_live_in.src = temp_live_in.src - BBVector[bbID]->send_may_kill.dst;
 
   BBVector[bbID]->send_live_out |= temp_live_in;
 
@@ -4742,7 +4753,7 @@ bool SWSB::globalDependenceUseReachAnalysis(G4_BB *bb) {
     return false;
   }
 
-  SBBitSets temp_live_in(globalSendNum);
+  SBBitSets temp_live_in;
   temp_live_in = BBVector[bbID]->send_live_in;
 
   for (BB_SWSB_LIST_ITER it = BBVector[bbID]->Preds.begin();
@@ -4759,8 +4770,8 @@ bool SWSB::globalDependenceUseReachAnalysis(G4_BB *bb) {
 
   // Kill scalar kills
   temp_live_in -= BBVector[bbID]->send_kill_scalar;
-  temp_live_in.src -= BBVector[bbID]->send_may_kill.src;
-  temp_live_in.dst -= BBVector[bbID]->send_WAW_may_kill;
+  temp_live_in.src = temp_live_in.src - BBVector[bbID]->send_may_kill.src;
+  temp_live_in.dst = temp_live_in.dst - BBVector[bbID]->send_WAW_may_kill;
 
   BBVector[bbID]->send_live_out |= temp_live_in;
 
@@ -4978,6 +4989,7 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
     liveOutTokenNodes |= tokeNodesMap[i];
   }
 }
+
 //
 // Scan to check which global send operand for sends will be killed by current
 // BB. Note that there is no guarantee the send operand will in the live in set
@@ -5042,7 +5054,7 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
         if (dep == RAW || dep == WAW) {
           send_may_kill.setDst(curLiveNode->globalID, true);
           if (dep == WAW) {
-            send_WAW_may_kill.set(curLiveNode->globalID, true);
+            send_WAW_may_kill.set(curLiveNode->globalID);
           }
         } else if (dep == WAR && WARDepRequired(liveInst, curFootprint->inst)) {
           send_may_kill.setSrc(curLiveNode->globalID, true);
@@ -6933,16 +6945,9 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
   }
   std::cerr << "\n";
 
-  for (size_t i = 0; i < globalSendOpndList->size(); i++) {
-    const SBBucketNode *sNode = (*globalSendOpndList)[i];
-    std::cerr << i << ": ";
-    sNode->dump();
-  }
-  std::cerr << "\n";
-
   std::cerr << "Live In:  ";
   std::cerr << "\n";
-  if (send_live_in.getSize() != 0) {
+  if (!send_live_in.isEmpty()) {
     std::cerr << "\tdst:  ";
     for (const SBBucketNode *sNode : *globalSendOpndList) {
       if (sNode->opndNum == Opnd_dst &&
@@ -6965,7 +6970,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
 
   std::cerr << "May Kill: ";
   std::cerr << "\n";
-  if (send_may_kill.getSize() != 0) {
+  if (!send_may_kill.isEmpty()) {
     std::cerr << "\tdst:  ";
     for (const SBBucketNode *sNode : *globalSendOpndList) {
       if (sNode->opndNum == Opnd_dst &&
@@ -6987,11 +6992,11 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
 
   std::cerr << "WAW May Kill: ";
   std::cerr << "\n";
-  if (send_WAW_may_kill.getSize() != 0) {
+  if (!send_WAW_may_kill.empty()) {
     std::cerr << "\tdst:  ";
     for (const SBBucketNode *sNode : *globalSendOpndList) {
       if (sNode->opndNum == Opnd_dst &&
-          send_WAW_may_kill.isSet(sNode->node->globalID)) {
+          send_WAW_may_kill.test(sNode->node->globalID)) {
         sNode->dump();
       }
     }
@@ -7023,7 +7028,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
 
   std::cerr << "Scalar Killed:   ";
   std::cerr << "\n";
-  if (send_live_out.getSize() != 0) {
+  if (!send_live_out.isEmpty()) {
     std::cerr << "\tdst:  ";
     for (const SBBucketNode *sNode : *globalSendOpndList) {
       if (sNode->opndNum == Opnd_dst &&
@@ -7045,7 +7050,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
 
   std::cerr << "Live Out: ";
   std::cerr << "\n";
-  if (send_live_out.getSize() != 0) {
+  if (!send_live_out.isEmpty()) {
     std::cerr << "\tdst:  ";
     for (const SBBucketNode *sNode : *globalSendOpndList) {
       if (sNode->opndNum == Opnd_dst &&
@@ -7179,20 +7184,21 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                                bool afterWrite) {
   const bool enableDPASTokenReduction =
       fg.builder->getOption(vISA_EnableDPASTokenReduction);
+
   for (G4_BB_SB *sb_bb : BBVector) {
     if (sb_bb->first_node == INVALID_ID) {
       continue;
     }
 
     // Get global send operands killed by current BB
-    SBBitSets send_kill(globalSendNum);
+    SBBitSets send_kill;
     send_kill |= sb_bb->send_live_in;
     send_kill &= sb_bb->send_may_kill;
 
 #ifdef DEBUG_VERBOSE_ON
-if (!afterWrite) {
-    sb_bb->dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
-}
+    if (!afterWrite) {
+      sb_bb->dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
+    }
 #endif
     // Change the global send operands into live bucket for liveness scan
     // Instruction level liveness kill:
@@ -7200,25 +7206,25 @@ if (!afterWrite) {
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
     LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
-    for (SBBucketNode *sBucketNode : *globalSendOpndList) {
-      SBNode *sNode = sBucketNode->node;
-      if (send_kill.isSrcSet(sNode->globalID) &&
-          (sBucketNode->opndNum == Opnd_src0 ||
-           sBucketNode->opndNum == Opnd_src1 ||
-           sBucketNode->opndNum == Opnd_src2 ||
-           sBucketNode->opndNum == Opnd_src3)) {
+    for (unsigned i : send_kill.dst) {
+      for (SBBucketNode *sBucketNode : globalDstSBSendNodes[i]) {
+        SBNode *sNode = sBucketNode->node;
+        sb_bb->getLiveBucketsFromFootprint(sNode->getFirstFootprint(Opnd_dst),
+                                           sBucketNode, &send_use_kills);
+        sNode->setInstKilled(false);
+        sNode->setSourceKilled(false);
+      }
+    }
+
+    for (unsigned i : send_kill.src) {
+      for (SBBucketNode *sBucketNode : globalSrcSBSendNodes[i]) {
+        SBNode *sNode = sBucketNode->node;
         sb_bb->getLiveBucketsFromFootprint(
             sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode,
             &send_use_kills);
+        sNode->setInstKilled(false);
+        sNode->setSourceKilled(false);
       }
-      if (send_kill.isDstSet(sNode->globalID) &&
-          (sBucketNode->opndNum == Opnd_dst)) {
-        sb_bb->getLiveBucketsFromFootprint(
-            sNode->getFirstFootprint(sBucketNode->opndNum), sBucketNode,
-            &send_use_kills);
-      }
-      sNode->setInstKilled(false);
-      sNode->setSourceKilled(false);
     }
 
     // Scan BB again to figure out the dependence caused by global send operands
@@ -7305,7 +7311,7 @@ if (!afterWrite) {
                       unsigned frontDist =
                           node->getDPASID() + curFootprint->offset - // late
                           BBVector[node->getBBID()]->first_DPASID;
-                      unsigned endDist =  //front
+                      unsigned endDist =  // front
                           BBVector[curLiveNode->getBBID()]->last_DPASID -
                           (curLiveNode->getDPASID() + internalOffset);
                       if ((int)(frontDist + endDist) < tokenAfterDPASCycle) {
@@ -7455,26 +7461,15 @@ if (!afterWrite) {
 
 void SWSB::addReachingDefineSet(SBNode *node, SBBitSets *globalLiveSet,
                                 SBBitSets *localLiveSet) {
-  if (node->reachingSends.getSize() == 0) {
-    node->reachingSends = SBBitSets(SBSendNodes.size());
-  }
-
   node->reachingSends |= *globalLiveSet;
-
   node->reachingSends |= *localLiveSet;
-
   return;
 }
 
 void SWSB::addReachingUseSet(SBNode *node, SBNode *use) {
   if (use->getSendUseID() != INVALID_ID) {
-    if (node->reachedUses.getSize() == 0) {
-      node->reachedUses = SBBitSets(SBSendUses.size());
-    }
-
     node->reachedUses.setDst(use->getSendUseID(), true);
   }
-
   return;
 }
 
@@ -7483,13 +7478,13 @@ void SWSB::addGlobalDependenceWithReachingDef(
     SBNODE_VECT &SBNodes, PointsToAnalysis &p, bool afterWrite) {
   for (size_t i = 0; i < BBVector.size(); i++) {
     // Get global send operands killed by current BB
-    SBBitSets send_kill(globalSendNum);
+    SBBitSets send_kill;
     // send_live record the live ones from out side of BB, but kill by BB
-    SBBitSets send_live(SBSendNodes.size());
+    SBBitSets send_live;
 
-    SBBitSets send_live_through(globalSendNum);
+    SBBitSets send_live_through;
     // send_reach_all record all the global livs live through the BB
-    SBBitSets send_reach_all(SBSendNodes.size());
+    SBBitSets send_reach_all;
 
     send_kill |= BBVector[i]->send_live_in;
     send_kill &= BBVector[i]->send_may_kill;
@@ -7545,8 +7540,6 @@ void SWSB::addGlobalDependenceWithReachingDef(
       continue;
     }
 
-    BBVector[i]->localReachingSends = SBBitSets(SBSendNodes.size());
-
     if (BBVector[i]->first_send_node != INVALID_ID) {
       for (int j = BBVector[i]->first_send_node;
            j <= BBVector[i]->last_send_node; j++) {
@@ -7563,7 +7556,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
               SBDEP_ITEM &curSucc = node->succs[k];
               SBNode *succ = curSucc.node;
 
-              node->setLiveLatestID(succ->getNodeID(), succ->getBBID());
+              node->setLiveLaterID(succ->getNodeID());
             }
           } else {
             node->setLiveLatestID(BBVector[i]->last_node);
