@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.32
+Version 1.33
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.33**: Add new enum value NT_INTELGT_PRODUCT_CONFIG to .note.intelgt.compat section.
 - **Version 1.32**: Add new enum value for VISA ABI to .note.intelgt.compat section.
 - **Version 1.31**: Internal changes.
 - **Version 1.30**: Add assert_buffer to payload arguments.
