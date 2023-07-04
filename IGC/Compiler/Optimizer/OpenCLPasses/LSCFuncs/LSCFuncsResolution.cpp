@@ -543,7 +543,7 @@ Instruction* LSCFuncsResolution::CreateLSCAtomicIntrinsicCallInst(
         atomArg2,                      // value [cmpxchg] or zero if unused
         getConstantInt32(atomicOp),    // atomic op
         isLocalMem ?                   // cache options (default for local)
-            getConstantInt32(LSC_L1DEF_L3DEF) : getCacheControlOpts(ccOpndIx)
+            getConstantInt32(LSC_L1DEF_L3DEF) : getCacheControlOpts(ccOpndIx, true)
     };
 
     GenISAIntrinsic::ID id =
@@ -853,10 +853,26 @@ Constant *LSCFuncsResolution::getImmediateElementOffset(
     }
 }
 
-Constant *LSCFuncsResolution::getCacheControlOpts(int i, bool)
+Constant *LSCFuncsResolution::getCacheControlOpts(int i, bool isAtomic)
 {
-    // TODO: error if atomic uses any sort of caching on L1
-    return getImmediateEnum(i, LSC_L1DEF_L3DEF, LSC_L1IAR_WB_L3C_WB);
+    Constant *c = getImmediateEnum(i, LSC_L1DEF_L3DEF, LSC_L1IAR_WB_L3C_WB);
+
+    if (isAtomic)
+    {
+        ConstantInt* ci = dyn_cast<ConstantInt>(c);
+        switch (ci->getZExtValue())
+        {
+        case LSC_L1DEF_L3DEF:
+        case LSC_L1UC_L3UC:
+        case LSC_L1UC_L3C_WB:
+            break;
+        default:
+            reportError("atomic must not use caching on L1");
+            c = getConstantInt32(LSC_L1DEF_L3DEF);
+        }
+    }
+
+    return c;
 }
 
 void LSCFuncsResolution::reportError(const char *what) {
