@@ -3215,43 +3215,39 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
   }
 
 // All LSC typed ops encode the same
-#define LSC_TYPED_OP(ISA_OP, MNEMONIC)                                              \
-  {                                                                                 \
-    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 22, {                                       \
-      /* execution control */                                                       \
-      {OPND_EXECSIZE, ISA_TYPE_UB, 0},                 /* execution size */         \
-          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */ /* caching opts */           \
-          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */                    \
-          {OPND_OTHER, ISA_TYPE_UB,                                                 \
-           0}, /* LSC_CACHE_OPTS::l3 */ /* addr stuff */                            \
-          {OPND_OTHER, ISA_TYPE_UB,                                                 \
-           0}, /* LSC_ADDR::type */ /* confirmed with arch that immoff doesn't      \
-                                       exist for typed */                           \
-          {OPND_OTHER, ISA_TYPE_UB,                                                 \
-           0}, /* LSC_ADDR::size */ /* data shape stuff */ /* we keep               \
-                                                              LSC_DATA_SHAPE::order \
-                                                              due to                \
-                                                              lsc_load_status.tgm   \
-                                                            */                      \
-          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE:size */                   \
-          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */                 \
-          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */                 \
-          {OPND_OTHER, ISA_TYPE_UB,                                                 \
-           0}, /* LSC_DATA_SHAPE::cmask */ /* operands */                           \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,                    \
-           0},                                  /* surface reg or imm */            \
-          {OPND_OTHER, ISA_TYPE_UD, 0},         /* Reserved */                      \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* dst */                           \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Us */                  \
-          {OPND_OTHER, ISA_TYPE_D, 0},          /* Reserved */                      \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Vs */                  \
-          {OPND_OTHER, ISA_TYPE_D, 0},          /* Reserved */                      \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Rs */                  \
-          {OPND_OTHER, ISA_TYPE_D, 0},          /* Reserved */                      \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr LODs */                \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src1 data */                     \
-          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src2 data */                     \
-    }                                                                               \
+#define LSC_TYPED_OP(ISA_OP, MNEMONIC)                                         \
+  {                                                                            \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 22, {                                  \
+      /* execution control */                                                  \
+      {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
+          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
+          /* caching opts */                                                   \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */               \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */               \
+          /* addr stuff */                                                     \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::type */                   \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::size */                   \
+           /* data shape stuff */                                              \
+           /* we keep LSC_DATA_SHAPE::order due to lsc_load_status.tgm */      \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE:size */              \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */            \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */            \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */            \
+          /* operands */                                                       \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
+           0},                                  /* surface (reg or imm) */     \
+          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface imm offset */       \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* dst */                      \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Us */             \
+          {OPND_OTHER, ISA_TYPE_D, 0},          /* src0 addr Us immoff */      \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Vs */             \
+          {OPND_OTHER, ISA_TYPE_D, 0},          /* src0 addr Vs immoff */      \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Rs */             \
+          {OPND_OTHER, ISA_TYPE_D, 0},          /* src0 addr Rs immoff */      \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr LODs */           \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src1 data */                \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src2 data */                \
+    }                                                                          \
   }
 #define LSC_OP_INVALID                                                         \
   {}

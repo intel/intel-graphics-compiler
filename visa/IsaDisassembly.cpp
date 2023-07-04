@@ -3060,25 +3060,40 @@ private:
     auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
     auto addrSize = getNextEnumU8<LSC_ADDR_SIZE>();
     auto dataShape = getNextDataShape();
+    // parameter order (cf IsaDescription.cpp)
+    // ... currOpIx here:
+    //   0 - surface
+    //   1 - surfaceIndex
+    //   2 - dst (data read)
+    //   3 - src0 U's (addr)
+    //   4 - u offset
+    //   5 - src0 V's (addr)
+    //   6 - v offset
+    //   7 - src0 R's (addr)
+    //   8 - r offset
+    //   9 - src0 LOD's (addr)
+    //   10 - src1 (data sent)
+    //   11 - src2 (extra data sent for atomic)
 
     auto fmtAddrOperand = [&]() {
-      // 0 dst, 1-4 u/v/r/lod, 5 src1, 6 src2
       formatAddrType(addrType, currOpIx);
       ss << "[";
-      {
-        for (int i = 0; i < 4; i++) {
-          // +2 skip surface and dst
-          const raw_opnd &ro = getRawOperand(inst, currOpIx + 2 + i);
-          auto reg =
-            printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
-          // TODO: for null operands, printVariableDeclName with
-          // NOT_A_STATE_OPND will return %null and not V0
-          // Should this be changed to return V0 for null operands?
-          if (reg == "%null")
-            break;
-          if (i > 0)
-            ss << ",";
-          formatRawOperand(currOpIx + 2 + i);
+      for (int i = 0; i < 4; i++) {
+        unsigned int ix = currOpIx + 3 + (i * 2);
+        const raw_opnd &ro = getRawOperand(inst, ix);
+        auto reg =
+          printVariableDeclName(header, ro.index, opts, NOT_A_STATE_OPND);
+        if (reg == "%null")
+          break; // assume no coords after %null (no imm offs either)
+        if (i > 0)
+          ss << ",";
+        formatRawOperand(ix);
+        if (i < 3) {
+          int32_t offset = getPrimitive<int32_t>(ix + 1);
+          if (offset > 0)
+            ss << "+" << offset;
+          else if (offset < 0)
+            ss << "-" << -offset;
         }
       }
       ss << "]";
@@ -3086,18 +3101,9 @@ private:
     };
 
     ss << "  ";
-    int dstIx = currOpIx + 1;
-    int src1Ix = currOpIx + 6;
-    int src2Ix = currOpIx + 7;
-    // parameter order (cf IsaDescription.cpp)
-    //   0 - surface
-    //   1 - dst (data read)
-    //   2 - src0 U's (addr)
-    //   3 - src0 V's (addr)
-    //   4 - src0 R's (addr)
-    //   5 - src0 LOD's (addr)
-    //   6 - src1 (data sent)
-    //   7 - src2 (extra data sent for atomic)
+    const int dstIx = currOpIx + 2;
+    const int src1Ix = currOpIx + 10;
+    const int src2Ix = currOpIx + 11;
     if (opInfo.isLoad()) {
       formatDataOperand(dataShape, dstIx);
       ss << "  ";
@@ -3137,8 +3143,9 @@ private:
     (void)getNextDataShape();
 
     int addrSurfIx = currOpIx + 0;
-    int dstIx = currOpIx + 1;
-    int src0Ix = currOpIx + 2;
+  // see formatTyped() for the parameter order
+    int dstIx = currOpIx + 2;
+    int src0Ix = currOpIx + 3;
 
     ss << "  ";
     formatRawOperand(dstIx); // dst

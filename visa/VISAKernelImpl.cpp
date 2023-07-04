@@ -7980,9 +7980,10 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     status = m_builder->translateLscTypedInst(
         subOpcode, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
         emask, cacheOpts, addrType, addrSize, dataShape, surface->g4opnd,
-        dstData->g4opnd->asDstRegRegion(), coord0s->g4opnd->asSrcRegRegion(),
-        coord1s->g4opnd->asSrcRegRegion(),
-        coord2s->g4opnd->asSrcRegRegion(),
+        dstData->g4opnd->asDstRegRegion(),
+        coord0s->g4opnd->asSrcRegRegion(), coord0Offset,
+        coord1s->g4opnd->asSrcRegRegion(), coord1Offset,
+        coord2s->g4opnd->asSrcRegRegion(), coord2Offset,
         features->g4opnd->asSrcRegRegion(),
         src1Data->g4opnd->asSrcRegRegion(), src2Data->g4opnd->asSrcRegRegion());
   }
@@ -8006,10 +8007,14 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape.chmask, ISA_TYPE_UB));
     //
     ADD_OPND(numOpnds, opnds, surface);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(surfaceIndex, ISA_TYPE_D));
     ADD_OPND(numOpnds, opnds, dstData);
     ADD_OPND(numOpnds, opnds, coord0s);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(coord0Offset, ISA_TYPE_D));
     ADD_OPND(numOpnds, opnds, coord1s);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(coord1Offset, ISA_TYPE_D));
     ADD_OPND(numOpnds, opnds, coord2s);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(coord2Offset, ISA_TYPE_D));
     ADD_OPND(numOpnds, opnds, features);
     ADD_OPND(numOpnds, opnds, src1Data);
     ADD_OPND(numOpnds, opnds, src2Data);

@@ -795,8 +795,10 @@ int IR_Builder::translateLscTypedInst(
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
     G4_Operand *surface,      // surface/bti
     G4_DstRegRegion *dstData, // dst on load/atomic
-    G4_SrcRegRegion *coord0s, G4_SrcRegRegion *coord1s,
-    G4_SrcRegRegion *coord2s, G4_SrcRegRegion *features,
+    G4_SrcRegRegion *coord0s, int uOff,
+    G4_SrcRegRegion *coord1s, int vOff,
+    G4_SrcRegRegion *coord2s, int rOff,
+    G4_SrcRegRegion *features,
     G4_SrcRegRegion *src1Data, // store data/extra atomic operands
     G4_SrcRegRegion *src2Data  // icas/fcas only
 ) {
@@ -859,6 +861,26 @@ int IR_Builder::translateLscTypedInst(
     checkAddrPayloadSize("src0AddrVs", coord1s);
     checkAddrPayloadSize("src0AddrRs", coord2s);
     checkAddrPayloadSize("src0Feature", features);
+
+    // emulate coordinate immediate offsets that are unsupported
+    auto addPayloadOffset = [&](G4_SrcRegRegion *srcCoord, int& coordImmOff) {
+      if (coordImmOff == 0)
+        return srcCoord;
+      auto elemsPerCoord =
+        std::max<unsigned>(numEltPerGRF<Type_D>(), (unsigned)execSize);
+      G4_Declare *srcCoordCopy = createSendPayloadDcl(elemsPerCoord, Type_D);
+      srcCoordCopy->setEvenAlign();
+      G4_DstRegRegion *dst = createDstRegRegion(srcCoordCopy, 1);
+      G4_Imm *imm = createImm(coordImmOff, Type_D);
+      G4_Predicate *pr = duplicateOperand(pred);
+      createBinOp(pr, G4_add, execSize, dst, srcCoord, imm, instOpt, true);
+      coordImmOff = 0;
+      return createSrcRegRegion(srcCoordCopy, getRegionStride1());
+    }; // addPayloadOffset
+
+    coord0s = addPayloadOffset(coord0s, uOff);
+    coord1s = addPayloadOffset(coord1s, vOff);
+    coord2s = addPayloadOffset(coord2s, rOff);
 
     PayloadSource srcAddrPayloads[4]{}; // U, V, R, feature
     unsigned numSrcAddrPayloads = 0;

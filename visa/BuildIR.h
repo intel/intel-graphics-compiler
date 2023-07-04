@@ -2044,8 +2044,10 @@ public:
       LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
       G4_Operand *surface,      // surface/bti
       G4_DstRegRegion *dstData, // dst on load/atomic
-      G4_SrcRegRegion *src0AddrUs, G4_SrcRegRegion *src0AddrVs,
-      G4_SrcRegRegion *src0AddrRs, G4_SrcRegRegion *src0AddrLODs,
+      G4_SrcRegRegion *src0AddrUs, int uOff,
+      G4_SrcRegRegion *src0AddrVs, int vOff,
+      G4_SrcRegRegion *src0AddrRs, int rOff,
+      G4_SrcRegRegion *src0AddrLODs,
       G4_SrcRegRegion *src1Data, // store data/extra atomic operands
       G4_SrcRegRegion *src2Data  // icas/fcas only
   );

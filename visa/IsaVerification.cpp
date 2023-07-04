@@ -4140,13 +4140,14 @@ struct LscInstVerifier {
     verifyDataShape(dataShape);
 
     verifyAddressType(addrType, currOpIx);
-    unsigned int uIx = currOpIx + 2;
-    unsigned int vIx = currOpIx + 3;
-    unsigned int rIx = currOpIx + 4;
-    unsigned int lodIx = currOpIx + 5;
-    unsigned int dstOpIx = currOpIx + 1;
-    unsigned int src1OpIx = currOpIx + 6;
-       // check all the Src0Addr fields (U, V, R, LOD)
+    const unsigned uIx = currOpIx + 3;
+    const unsigned vIx = currOpIx + 5;
+    const unsigned rIx = currOpIx + 7;
+    const unsigned lodIx = currOpIx + 9;
+    const unsigned dstOpIx = currOpIx + 2;
+    const unsigned src1OpIx = currOpIx + 10;
+
+    // check all the Src0Addr fields (U, V, R, LOD)
     if (opInfo.op == LSC_READ_STATE_INFO) {
       verifyRawOperandNonNull("Src0Addr_UVRL", uIx);  // SIMD1 (U, V, R, LOD)
       verifyRawOperandNull("Src0Addr_Vs", vIx);     // V's
