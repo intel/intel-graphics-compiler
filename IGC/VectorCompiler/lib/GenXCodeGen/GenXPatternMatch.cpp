@@ -2118,14 +2118,14 @@ bool MinMaxMatcher::emit() {
 
 // For a given instruction, find the insertion position which is the closest
 // to all the similar users to the specified reference user.
-static std::tuple<BasicBlock *, Instruction *>
+static Instruction *
 findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
                         std::function<bool(Instruction *)> IsSimilar) {
   IGC_ASSERT_MESSAGE(!isa<PHINode>(Ref), "PHINode is not expected!");
 
   // Shortcut case. If it's single-used, insert just before that user.
   if (I->hasOneUse())
-    return std::make_tuple(nullptr, Ref);
+    return Ref;
 
   DenseMap<BasicBlock *, Instruction *> BBs;
   for (auto U : I->users()) {
@@ -2150,7 +2150,7 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
   auto MI = BBs.begin();
   // Another shortcut case. If it's only used in a single BB,
   if (BBs.size() == 1)
-    return std::make_tuple(MI->first, MI->second);
+    return MI->second;
 
   BasicBlock *BB = MI->first;
   for (++MI; MI != BBs.end(); ++MI)
@@ -2163,7 +2163,9 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
     Pos = MI->second;
   }
   IGC_ASSERT(BB);
-  return std::make_tuple(BB, Pos);
+  if (!Pos)
+    return BB->getTerminator();
+  return Pos;
 }
 
 // For the specified constant, calculate its reciprocal if it's safe;
@@ -2279,13 +2281,8 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
     return User->getOpcode() == Instruction::FDiv && User->hasAllowReciprocal();
   };
 
-  BasicBlock *BB = nullptr;
-  Instruction *Pos = nullptr;
-  std::tie(BB, Pos) = findOptimalInsertionPos(Divisor, &I, DT, IsSimilar);
-  if (Pos)
-    IRB.SetInsertPoint(Pos);
-  else
-    IRB.SetInsertPoint(BB);
+  Instruction *Pos = findOptimalInsertionPos(Divisor, &I, DT, IsSimilar);
+  IRB.SetInsertPoint(Pos);
 
   // (fdiv 1., (sqrt x)) -> (rsqrt x)
   // TODO: This can be removed if pattern match is applied
