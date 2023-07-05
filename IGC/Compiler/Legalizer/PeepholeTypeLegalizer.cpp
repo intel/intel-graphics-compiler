@@ -1296,8 +1296,7 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
         }
         else
         {
-            IGC_ASSERT_MESSAGE(isLegalInteger(srcType->getScalarSizeInBits())
-                && isLegalInteger(midType->getScalarSizeInBits()),
+            IGC_ASSERT_MESSAGE(isLegalInteger(midType->getScalarSizeInBits()),
                 "Unexpected illegal type width");
         }
         break;
