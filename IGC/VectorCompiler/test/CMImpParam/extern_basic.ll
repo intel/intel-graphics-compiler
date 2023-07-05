@@ -6,17 +6,13 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -cmimpparam -cmimpparam-cmrt=false -march=genx64 -mcpu=XeHP -S < %s \
+; RUN: opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
 ; RUN:    | FileCheck --check-prefix=XeHP-OCL %s
-; RUN: %not_for_vc_diag% opt %use_old_pass_manager% -cmimpparam -cmimpparam-cmrt=true -march=genx64 -mcpu=XeHP -S \
-; RUN:    < %s 2>&1 | FileCheck --check-prefix=XeHP-CM %s
-; RUN: opt %use_old_pass_manager% -cmimpparam -cmimpparam-cmrt=false -cmimpparam-payload-in-memory=false \
+; RUN: opt %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
 ; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix=Gen9-OCL %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
-
-; XeHP-CM: Implicit arguments buffer is required but it is not supported for CM RT
 
 ; COM: Struct indices:
 ; COM: StructSize = 0,

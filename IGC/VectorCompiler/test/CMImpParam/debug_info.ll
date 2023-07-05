@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -cmimpparam -cmimpparam-cmrt=false \
+; RUN: opt %use_old_pass_manager% -cmimpparam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s
 
@@ -35,4 +35,3 @@ attributes #0 = { "target-cpu"="Gen9" }
 !5 = !DILocation(line: 1, column: 1, scope: !6)
 !6 = distinct !DISubprogram(name: "test_implicit_line", linkageName: "test_implicit_line", scope: null, file: !3, line: 1, type: !7, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !2, retainedNodes: !1)
 !7 = !DISubroutineType(types: !1)
-

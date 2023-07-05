@@ -155,9 +155,6 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 
 static cl::opt<bool>
-    CMRTOpt("cmimpparam-cmrt", cl::init(true), cl::Hidden,
-            cl::desc("Should be used only in llvm opt to switch RT"));
-static cl::opt<bool>
     PayloadInMemoryOpt("cmimpparam-payload-in-memory", cl::init(true),
                        cl::Hidden,
                        cl::desc("Whether the target has payload in memory"));
@@ -207,21 +204,17 @@ enum Enum : unsigned {
 
 struct CMImpParam : public ModulePass {
   static char ID;
-  bool IsCmRT = false;
   // Defines whether payload is in memory or on registers. It depends on target
   // architecture.
   bool HasPayloadInMemory = false;
   const DataLayout *DL = nullptr;
 
-  CMImpParam(bool IsCmRTIn, bool HasPayloadInMemoryIn)
-      : ModulePass{ID}, IsCmRT{IsCmRTIn}, HasPayloadInMemory{
-                                              HasPayloadInMemoryIn} {
+  CMImpParam(bool HasPayloadInMemoryIn)
+      : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn} {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
-  CMImpParam()
-      : ModulePass{ID}, IsCmRT{CMRTOpt}, HasPayloadInMemory{
-                                             PayloadInMemoryOpt} {
+  CMImpParam() : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt} {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
@@ -236,7 +229,6 @@ struct CMImpParam : public ModulePass {
 private:
   void replaceWithGlobal(CallInst *CI);
   void replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload);
-  void WriteArgsLinearizationInfo(Module &M);
 
   LinearizedTy LinearizeAggregateType(Type *AggrTy);
   ArgLinearization GenerateArgsLinearizationInfo(Function &F);
@@ -412,7 +404,7 @@ private:
 
 } // namespace
 
-static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M, bool IsCMRT);
+static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M);
 static IntrIDMap fillUsedIntrMap(const ImplArgIntrSeq &Workload);
 
 static bool isPseudoIntrinsic(unsigned IID) {
@@ -526,7 +518,7 @@ bool CMImpParam::runOnModule(Module &M) {
   ConvertToOCLPayload(M);
 
   // Analyze functions for implicit use intrinsic invocation
-  ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M, IsCmRT);
+  ImplArgIntrSeq Workload = collectImplicitArgIntrinsics(M);
   std::vector<FunctionRef> Kernels{vc::kernel_begin(M), vc::kernel_end(M)};
   IntrIDMap UsedIntrInfo = fillUsedIntrMap(Workload);
   auto [FixedSignFuncInfo, RequireImplArgsBuffer] =
@@ -537,11 +529,6 @@ bool CMImpParam::runOnModule(Module &M) {
     // would be at least local_id16 intrinsics). So returning false here is
     // correct.
     return false;
-
-  if (!RequireImplArgsBuffer.empty() && IsCmRT)
-    vc::fatal(M.getContext(), "GenXImplicitParameters",
-              "Implicit arguments buffer is required but it is not "
-              "supported for CM RT");
 
   replaceImplicitArgIntrinsics(Workload);
 
@@ -590,8 +577,7 @@ void CMImpParam::processKernels(
     }
     // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
     // argument which is not supported on CM RT.
-    if (!IsCmRT)
-      RequiredImplArgs.emplace(PseudoIntrinsic::PrivateBase);
+    RequiredImplArgs.emplace(PseudoIntrinsic::PrivateBase);
     vc::internal::createInternalMD(Kernel);
     if (!RequiredImplArgs.empty()) {
       CallGraphNode *NewKernelNode =
@@ -896,7 +882,7 @@ ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
   return Lin;
 }
 
-static bool isImplicitArgIntrinsic(const Function &F, bool IsCMRT) {
+static bool isImplicitArgIntrinsic(const Function &F) {
   auto IID = vc::getAnyIntrinsicID(&F);
   switch (IID) {
   case GenXIntrinsic::genx_local_size:
@@ -909,10 +895,9 @@ static bool isImplicitArgIntrinsic(const Function &F, bool IsCMRT) {
   case GenXIntrinsic::genx_get_scoreboard_deltas:
   case GenXIntrinsic::genx_get_scoreboard_bti:
   case GenXIntrinsic::genx_get_scoreboard_depcnt:
-    if (!IsCMRT)
-      vc::diagnose(F.getContext(), "GenXImplicitParameters",
-                   "scoreboarding intrinsics are supported only for CM RT", &F);
-    return true;
+    vc::diagnose(F.getContext(), "GenXImplicitParameters",
+                 "scoreboarding intrinsics are not supported", &F);
+    return false;
   default:
     return false;
   }
@@ -921,11 +906,10 @@ static bool isImplicitArgIntrinsic(const Function &F, bool IsCMRT) {
 // For each function, see if it uses an intrinsic that in turn requires an
 // implicit kernel argument
 // (such as llvm.genx.local.size)
-static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M, bool IsCMRT) {
+static ImplArgIntrSeq collectImplicitArgIntrinsics(Module &M) {
   ImplArgIntrSeq Workload;
-  auto &&ImplArgIntrinsics = make_filter_range(M, [IsCMRT](const Function &F) {
-    return isImplicitArgIntrinsic(F, IsCMRT);
-  });
+  auto &&ImplArgIntrinsics = make_filter_range(
+      M, [](const Function &F) { return isImplicitArgIntrinsic(F); });
   for (Function &Intr : ImplArgIntrinsics)
     llvm::transform(Intr.users(), std::back_inserter(Workload),
                     [](User *U) { return cast<CallInst>(U); });
@@ -951,24 +935,6 @@ void CMImpParam::replaceImplicitArgIntrinsics(const ImplArgIntrSeq &Workload) {
 
 // Convert to implicit thread payload related intrinsics.
 void CMImpParam::ConvertToOCLPayload(Module &M) {
-  // Check if this kernel is compiled for OpenCL runtime.
-  bool DoConversion = false;
-
-  if (NamedMDNode *Named = M.getNamedMetadata(genx::FunctionMD::GenXKernels)) {
-    for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
-      MDNode *Node = Named->getOperand(I);
-      auto F = dyn_cast_or_null<Function>(
-          getValue(Node->getOperand(genx::KernelMDOp::FunctionRef)));
-      if (F && (F->hasFnAttribute(genx::FunctionMD::OCLRuntime) || !IsCmRT)) {
-        DoConversion = true;
-        break;
-      }
-    }
-  }
-
-  if (!DoConversion)
-    return;
-
   auto getFn = [=, &M](unsigned ID, Type *Ty) {
     return M.getFunction(GenXIntrinsic::getAnyName(ID, Ty));
   };
@@ -1105,12 +1071,10 @@ CMImpParam::processKernelParameters(Function *F,
     // TODO: Might need to also add any attributes from the intrinsic at some
     // point
   }
-  if (!IsCmRT) {
-    // Add types of implicit aggregates linearization
-    for (const auto &ArgLin : ArgsLin) {
-      for (const auto &LinTy : ArgLin.second)
-        ArgTys.push_back(LinTy.Ty);
-    }
+  // Add types of implicit aggregates linearization
+  for (const auto &ArgLin : ArgsLin) {
+    for (const auto &LinTy : ArgLin.second)
+      ArgTys.push_back(LinTy.Ty);
   }
 
   FunctionType *NFTy = FunctionType::get(F->getReturnType(), ArgTys, false);
@@ -1177,21 +1141,19 @@ CMImpParam::processKernelParameters(Function *F,
 
   // Collect arguments linearization to store as metadata.
   vc::ArgToImplicitLinearization LinearizedArgs;
-  if (!IsCmRT) {
-    for (const auto &ArgLin : ArgsLin) {
-      Argument *ExplicitArg = OldToNewArg[ArgLin.first];
-      vc::LinearizedArgInfo &LinearizedArg = LinearizedArgs[ExplicitArg];
-      for (const auto &LinTy : ArgLin.second) {
-        I2->setName("__arg_lin_" + ExplicitArg->getName() + "." +
-                    std::to_string(LinTy.Offset));
-        ImpKinds.push_back(vc::KernelMetadata::AK_NORMAL |
-                           vc::KernelMetadata::IMP_OCL_LINEARIZATION);
-        auto &Ctx = F->getContext();
-        auto *I32Ty = Type::getInt32Ty(Ctx);
-        ConstantInt *Offset = ConstantInt::get(I32Ty, LinTy.Offset);
-        LinearizedArg.push_back({&*I2, Offset});
-        ++I2;
-      }
+  for (const auto &ArgLin : ArgsLin) {
+    Argument *ExplicitArg = OldToNewArg[ArgLin.first];
+    vc::LinearizedArgInfo &LinearizedArg = LinearizedArgs[ExplicitArg];
+    for (const auto &LinTy : ArgLin.second) {
+      I2->setName("__arg_lin_" + ExplicitArg->getName() + "." +
+                  std::to_string(LinTy.Offset));
+      ImpKinds.push_back(vc::KernelMetadata::AK_NORMAL |
+                         vc::KernelMetadata::IMP_OCL_LINEARIZATION);
+      auto &Ctx = F->getContext();
+      auto *I32Ty = Type::getInt32Ty(Ctx);
+      ConstantInt *Offset = ConstantInt::get(I32Ty, LinTy.Offset);
+      LinearizedArg.push_back({&*I2, Offset});
+      ++I2;
     }
   }
 
@@ -1241,6 +1203,6 @@ INITIALIZE_PASS_END(CMImpParam, "cmimpparam",
                     "Transformations required to support implicit arguments",
                     false, false)
 
-Pass *llvm::createCMImpParamPass(bool IsCMRT, bool HasPayloadInMemory) {
-  return new CMImpParam{IsCMRT, HasPayloadInMemory};
+Pass *llvm::createCMImpParamPass(bool HasPayloadInMemory) {
+  return new CMImpParam{HasPayloadInMemory};
 }
