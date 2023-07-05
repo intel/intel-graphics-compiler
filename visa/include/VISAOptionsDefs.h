@@ -278,6 +278,7 @@ DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, "-abortOnSpill", UNUSED,
 DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceBCR, ET_BOOL, "-forceBCR", UNUSED, false)
 
+
 // clang-format off
 // Enable bundle conflict reduction: put operands of instruction into different GRF bundles.
 // Value: 0 disable, 1 dpas instruction, 2 non-dpas instructions, 3 all instructions
@@ -321,7 +322,12 @@ DEF_VISA_OPTION(vISA_FillConstOpt, ET_BOOL, "-nofillconstopt", UNUSED, true)
 DEF_VISA_OPTION(vISA_GCRRInFF, ET_BOOL, "-GCRRinFF", UNUSED, false)
 DEF_VISA_OPTION(vISA_IncrementalRA, ET_INT32, "-incrementalra",
                 "USAGE: -incrementalra <0|1|2> where 0 is disabled, 1 is enabled, 2 is enabled with verification", 0)
-
+DEF_VISA_OPTION(vISA_SplitAlignedScalarMinDist, ET_INT32,
+                "-splitAlignedScalarMinDist",
+                "dist threshold for controlling when to split aligned scalars in RA", 200)
+DEF_VISA_OPTION(vISA_SplitAlignedScalarBloatPPT, ET_INT32,
+                "-splitAlignedScalarBloatRatio",
+                "instuction increase ppt (part per thousand) for controlling when to split aligned scalars in RA", 10)
 //=== scheduler options ===
 DEF_VISA_OPTION(vISA_LocalScheduling, ET_BOOL, "-noschedule", UNUSED, true)
 DEF_VISA_OPTION(vISA_preRA_Schedule, ET_BOOL, "-nopresched", UNUSED, true)
