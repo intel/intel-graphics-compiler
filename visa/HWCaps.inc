@@ -781,4 +781,9 @@ bool hasPackedRestrictedFloatVector() const {
 bool noSrc0Src1OverlapSend() const {
   return getPlatformGeneration() < PlatformGen::XE;
 }
+
+bool hasRSOrSLMWAs() const {
+  return true;
+}
+
 // end HW capabilities
