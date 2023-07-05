@@ -16,10 +16,10 @@
 ; Function Attrs: nounwind
 ; CHECK: f_f
 
-; CHECK: [[GOTO:%[A-z0-9.]*]] = call {{.*}} @llvm.genx.simdcf.goto
+; CHECK: [[GOTO:%[A-z0-9.]*]] = tail call {{.*}} @llvm.genx.simdcf.goto
 ; CHECK: {{.*}} = extractvalue {{.*}} [[GOTO]]
 
-; CHECK: [[JOIN_CALL:%[A-z0-9.]*]] = call {{.*}} @llvm.genx.simdcf.join
+; CHECK: [[JOIN_CALL:%[A-z0-9.]*]] = tail call {{.*}} @llvm.genx.simdcf.join
 ; CHECK: %{{.*}} = extractvalue {{.*}} [[JOIN_CALL]]
 
 define spir_kernel void @f_f(i8 addrspace(1)* "VCArgumentIOKind"="0" %RET, i8 addrspace(1)* "VCArgumentIOKind"="0" %aFOO) #1 !intel_reqd_sub_group_size !4 {

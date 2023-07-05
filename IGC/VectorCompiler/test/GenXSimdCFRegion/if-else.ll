@@ -24,7 +24,7 @@ if.entry:
   br i1 %any, label %if.then, label %if.else
 
 ; CHECK: [[IF_AFTER_ENTRY:[A-z0-9.]*]]:
-; CHECK: [[GOTO:%[A-z0-9.]*]] = call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
+; CHECK: [[GOTO:%[A-z0-9.]*]] = tail call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
 ; CHECK: {{.*}} = extractvalue { <32 x i1>, <16 x i1>, i1 } [[GOTO]]
 
 ; CHECK: [[IF_THEN:[A-z0-9.]*]]:      ; preds = %[[IF_AFTER_ENTRY]]
@@ -41,7 +41,7 @@ if.then:                                          ; preds = %entry
 ; CHECK-DAG: [[AFTERTHEN_PHI_X:%[A-z0-9.]*]] = phi <16 x i32> [ %add.masked{{.*}}, %[[IF_THEN]] ], [ %add.masked{{.*}}, %[[IF_THEN]] ]
 ; CHECK-DAG: [[AFTERTHEN_PHI_Y:%[A-z0-9.]*]] = phi <16 x i32> [ %add2.masked{{.*}}, %[[IF_THEN]] ], [ %add2.masked{{.*}}, %[[IF_THEN]] ]
 ; CHECK-SAME: <i32 1, i32 1, i32 1, i32 1,
-; CHECK: [[JOIN_CALL:%[A-z0-9.]*]] = call { <32 x i1>, i1 } @llvm.genx.simdcf.join
+; CHECK: [[JOIN_CALL:%[A-z0-9.]*]] = tail call { <32 x i1>, i1 } @llvm.genx.simdcf.join
 ; CHECK: %{{.*}} = extractvalue { <32 x i1>, i1 } [[JOIN_CALL]]
 
 ; CHECK: [[IF_ELSE:[A-z0-9.]*]]:      ; preds = %[[AFTERTHEN]]

@@ -23,7 +23,7 @@ allocas:
   br i1 %any_check, label %exit, label %if
 
 ; CHECK: [[AFTER_ALLOCAS:[A-z0-9.]*]]:
-; CHECK: [[GOTO:%[A-z0-9.]*]] = call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
+; CHECK: [[GOTO:%[A-z0-9.]*]] = tail call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
 ; CHECK: {{.*}} = extractvalue { <32 x i1>, <16 x i1>, i1 } [[GOTO]]
 ; CHECK: [[IF:[A-z0-9.]*]]: ; preds = %[[AFTER_ALLOCAS]]
 if:                                           ; preds = %allocas
@@ -34,7 +34,7 @@ if:                                           ; preds = %allocas
   br label %exit
 
 ; CHECK: [[AFTERTHEN:[A-z0-9.]*]]: ; preds = %[[IF]], %[[AFTER_ALLOCAS]]
-; CHECK: [[JOIN:%[A-z0-9.]*]] = call { <32 x i1>, i1 } @llvm.genx.simdcf.join
+; CHECK: [[JOIN:%[A-z0-9.]*]] = tail call { <32 x i1>, i1 } @llvm.genx.simdcf.join
 ; CHECK: %{{.*}} = extractvalue { <32 x i1>, i1 } [[JOIN]]
 ; CHECK: [[EXIT:[A-z0-9.]*]]: ; preds = %[[AFTERTHEN]]
 exit:                                         ; preds = %if, %allocas
