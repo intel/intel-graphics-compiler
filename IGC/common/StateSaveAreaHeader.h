@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -74,6 +74,8 @@ struct alignas(8) intelgt_state_save_area {
     struct regset_desc tm;
     struct regset_desc fc;
     struct regset_desc dbg;
+    struct regset_desc ctx;
+    struct regset_desc dbg_reg;
 };
 
 struct StateSaveAreaHeader {

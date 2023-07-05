@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -50,7 +50,7 @@ struct XeHPCDebugSurfaceLayout
 {
     // The *_ALIGN fields below are padding of the SIP between
     // the registers set.
-    static constexpr size_t GR_COUNT = 128;
+    static constexpr size_t GR_COUNT = 256;
     static constexpr size_t GR_ELEMENTS = 1;
     static constexpr size_t GR_ELEMENT_SIZE = 64;
     static constexpr size_t GR_ALIGN = 0;
@@ -135,6 +135,16 @@ struct XeHPCDebugSurfaceLayout
     static constexpr size_t SIP_CMD_ELEMENT_SIZE = 128;
     static constexpr size_t SIP_CMD_ALIGN = 0;
 
+    static constexpr size_t CONTEXT_ID_COUNT = 1;
+    static constexpr size_t CONTEXT_ID_ELEMENTS = 1;
+    static constexpr size_t CONTEXT_ID_ELEMENT_SIZE = 8;
+    static constexpr size_t CONTEXT_ID_ALIGN = 24;
+
+    static constexpr size_t DBG_REG_COUNT = 1;
+    static constexpr size_t DBG_REG_ELEMENTS = 2;
+    static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
+    static constexpr size_t DBG_REG_ALIGN = 24;
+  
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
     uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
     uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
@@ -152,11 +162,13 @@ struct XeHPCDebugSurfaceLayout
     uint8_t dbg[DBG_COUNT * DBG_ELEMENTS * DBG_ELEMENT_SIZE + DBG_ALIGN];
     uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
     uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
+    uint8_t ctx[CONTEXT_ID_COUNT * CONTEXT_ID_ELEMENTS *CONTEXT_ID_ELEMENT_SIZE +CONTEXT_ID_ALIGN];
+    uint8_t dbg_reg[DBG_REG_COUNT * DBG_REG_ELEMENTS * DBG_REG_ELEMENT_SIZE +DBG_REG_ALIGN];
 };
 
 static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
 {
-    {"tssarea", 0, {2, 1, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
+    {"tssarea", 0, {2, 2, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
     {
         // regHeader
         0,                               // num_slices
@@ -164,7 +176,7 @@ static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
         0,                               // num_eus_per_subslice
         0,                               // num_threads_per_eu
         0,                               // state_area_offset
-        0x2600,                          // state_save_size
+        0x4600,                          // state_save_size
         0,                               // slm_area_offset
         0,                               // slm_bank_size
         0,                               // slm_bank_valid
@@ -214,7 +226,13 @@ static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
         {0, 0, 0, 0},                                  // FC
         {offsetof(struct XeHPCDebugSurfaceLayout, dbg), XeHPCDebugSurfaceLayout::DBG_COUNT,
          XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
-         XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE}  // dbg
+         XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE},  // dbg
+        {offsetof(struct XeHPCDebugSurfaceLayout, ctx), XeHPCDebugSurfaceLayout::CONTEXT_ID_COUNT,
+         XeHPCDebugSurfaceLayout::CONTEXT_ID_ELEMENTS* XeHPCDebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::CONTEXT_ID_ELEMENTS* XeHPCDebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE}, // context id
+        {offsetof(struct XeHPCDebugSurfaceLayout, dbg_reg), XeHPCDebugSurfaceLayout::DBG_REG_COUNT,
+         XeHPCDebugSurfaceLayout::DBG_REG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_REG_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::DBG_REG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_REG_ELEMENT_SIZE}, // dbg registers
     }
 };
 
@@ -323,7 +341,7 @@ struct DebugSurfaceLayout
 
 static struct StateSaveAreaHeader Gen12SIPCSRDebugBindlessDebugHeader =
 {
-    {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
+    {"tssarea", 0, {2, 0, 0}, (offsetof(intelgt_state_save_area, ctx) + sizeof(StateSaveArea)) / 8, {0, 0, 0}},  // versionHeader
     {
         // regHeader
         0,                               // num_slices
@@ -468,6 +486,16 @@ struct XeHPGDebugSurfaceLayout
     static constexpr size_t SIP_CMD_ELEMENT_SIZE = 128;
     static constexpr size_t SIP_CMD_ALIGN = 0;
 
+    static constexpr size_t CONTEXT_ID_COUNT = 1;
+    static constexpr size_t CONTEXT_ID_ELEMENTS = 1;
+    static constexpr size_t CONTEXT_ID_ELEMENT_SIZE = 8;
+    static constexpr size_t CONTEXT_ID_ALIGN = 24;
+
+    static constexpr size_t DBG_REG_COUNT = 1;
+    static constexpr size_t DBG_REG_ELEMENTS = 2;
+    static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
+    static constexpr size_t DBG_REG_ALIGN = 24;
+
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
     uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
     uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
@@ -484,11 +512,13 @@ struct XeHPGDebugSurfaceLayout
     uint8_t dbg[DBG_COUNT * DBG_ELEMENTS * DBG_ELEMENT_SIZE + DBG_ALIGN];
     uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
     uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
+    uint8_t ctx[CONTEXT_ID_COUNT * CONTEXT_ID_ELEMENTS *CONTEXT_ID_ELEMENT_SIZE +CONTEXT_ID_ALIGN];
+    uint8_t dbg_reg[DBG_REG_COUNT * DBG_REG_ELEMENTS * DBG_REG_ELEMENT_SIZE +DBG_REG_ALIGN];
 };
 
 static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
 {
-    {"tssarea", 0, {2, 1, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
+    {"tssarea", 0, {2, 2, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
     {
         // regHeader
         0,                               // num_slices
@@ -496,7 +526,7 @@ static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
         0,                               // num_eus_per_subslice
         0,                               // num_threads_per_eu
         0,                               // state_area_offset
-        0x1800,                          // state_save_size
+        0x2800,                          // state_save_size
         0,                               // slm_area_offset
         0,                               // slm_bank_size
         0,                               // slm_bank_valid
@@ -544,7 +574,13 @@ static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
         {0, 0, 0, 0},                                  // FC
         {offsetof(struct XeHPGDebugSurfaceLayout, dbg), XeHPGDebugSurfaceLayout::DBG_COUNT,
          XeHPGDebugSurfaceLayout::DBG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
-         XeHPGDebugSurfaceLayout::DBG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_ELEMENT_SIZE}  // dbg
+         XeHPGDebugSurfaceLayout::DBG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_ELEMENT_SIZE},  // dbg
+        {offsetof(struct XeHPGDebugSurfaceLayout, ctx), XeHPGDebugSurfaceLayout::CONTEXT_ID_COUNT,
+         XeHPGDebugSurfaceLayout::CONTEXT_ID_ELEMENTS* XeHPGDebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE * 8,
+         XeHPGDebugSurfaceLayout::CONTEXT_ID_ELEMENTS* XeHPGDebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE}, // context id
+        {offsetof(struct XeHPGDebugSurfaceLayout, dbg_reg), XeHPGDebugSurfaceLayout::DBG_REG_COUNT,
+         XeHPGDebugSurfaceLayout::DBG_REG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_REG_ELEMENT_SIZE * 8,
+         XeHPGDebugSurfaceLayout::DBG_REG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_REG_ELEMENT_SIZE}, // dbg registers
     }
 };
 
@@ -747,7 +783,7 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
     SIPKernelInfo[GEN12_LP_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&Gen12LPSIPCSRDebugBindless,
             (int)sizeof(Gen12LPSIPCSRDebugBindless),
             (void*)&Gen12SIPCSRDebugBindlessDebugHeader,
-            (int)sizeof(Gen12SIPCSRDebugBindlessDebugHeader));
+            (int)Gen12SIPCSRDebugBindlessDebugHeader.versionHeader.size * 8);
 
     SIPKernelInfo[XE_HP_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&XeHPSIPCSRDebugBindless,
         (int)sizeof(XeHPSIPCSRDebugBindless),
