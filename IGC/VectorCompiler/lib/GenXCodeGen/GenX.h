@@ -100,7 +100,6 @@ FunctionPass *createGenXAggregatePseudoLoweringPass();
 ModulePass *createGenXModulePass();
 ModulePass *createGenXLateSimdCFConformanceWrapperPass();
 ModulePass *createGenXLivenessWrapperPass();
-FunctionPass *createGenXLoadStoreLegalizationPass();
 FunctionPass *createGenXLoadStoreLoweringPass();
 ModulePass *createGenXCategoryWrapperPass();
 ModulePass *createGenXGroupBalingWrapperPass(BalingKind Kind,
@@ -133,7 +132,6 @@ FunctionPass *createGenXGASDynamicResolutionPass();
 ModulePass *createGenXInitBiFConstantsPass();
 FunctionPass *createGenXGlobalUniformAnalysisPass();
 ModulePass *createGenXBuiltinFunctionsPass();
-FunctionPass *createGenXLegacyToLscTranslatorPass();
 
 namespace genx {
 

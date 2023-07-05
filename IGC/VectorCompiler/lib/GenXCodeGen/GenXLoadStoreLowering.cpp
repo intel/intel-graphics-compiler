@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 
-#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/BreakConst.h"
@@ -147,37 +146,35 @@ private:
                                             Value *Offset, Value *Data,
                                             ConstantInt *Align = nullptr) const;
 
-  Instruction *createLSCLoadStore(Instruction &I, vc::InternalIntrinsic::ID IID,
-                                  Value *Base, Value *Addr,
+  Instruction *createLSCLoadStore(Instruction &I, GenXIntrinsic::ID IID,
+                                  Value *BTI, Value *Addr,
                                   Value *Data = nullptr) const;
   Instruction *createLSCGatherScatter(IntrinsicInst &I,
-                                      vc::InternalIntrinsic::ID LoadIID,
-                                      vc::InternalIntrinsic::ID StoreIID,
-                                      Value *Base, Type *AddrTy) const;
+                                      GenXIntrinsic::ID LoadIID,
+                                      GenXIntrinsic::ID StoreIID, Value *BTI,
+                                      Type *AddrTy) const;
   Instruction *createLSCLoadImpl(IRBuilder<> &Builder, Module *M,
-                                 vc::InternalIntrinsic::ID IID, unsigned ESize,
-                                 Value *Pred, Value *Base, Value *Addr,
+                                 GenXIntrinsic::ID IID, unsigned ESize,
+                                 Value *Pred, Value *BTI, Value *Addr,
                                  Value *Source = nullptr,
                                  ConstantInt *Align = nullptr) const;
   Instruction *createLSCStoreImpl(IRBuilder<> &Builder, Module *M,
-                                  vc::InternalIntrinsic::ID IID, unsigned ESize,
-                                  Value *Pred, Value *Base, Value *Addr,
+                                  GenXIntrinsic::ID IID, unsigned ESize,
+                                  Value *BTI, Value *Pred, Value *Addr,
                                   Value *Data,
                                   ConstantInt *Align = nullptr) const;
 
-  Instruction *createLSCAtomicLoad(LoadInst &I, vc::InternalIntrinsic::ID IID,
+  Instruction *createLSCAtomicLoad(LoadInst &I, GenXIntrinsic::ID IID,
                                    Type *AddrTy, Value *BTI) const;
-  Instruction *createLSCAtomicStore(StoreInst &I, vc::InternalIntrinsic::ID IID,
+  Instruction *createLSCAtomicStore(StoreInst &I, GenXIntrinsic::ID IID,
                                     Type *AddrTy, Value *BTI) const;
-  Instruction *createLSCAtomicRMW(AtomicRMWInst &I,
-                                  vc::InternalIntrinsic::ID IID, Type *AddrTy,
-                                  Value *BTI) const;
+  Instruction *createLSCAtomicRMW(AtomicRMWInst &I, GenXIntrinsic::ID IID,
+                                  Type *AddrTy, Value *BTI) const;
   Instruction *createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
-                                      vc::InternalIntrinsic::ID IID,
-                                      Type *AddrTy, Value *BTI) const;
+                                      GenXIntrinsic::ID IID, Type *AddrTy,
+                                      Value *BTI) const;
 
-  Instruction *createLSCAtomicImpl(Instruction &I,
-                                   vc::InternalIntrinsic::ID IID,
+  Instruction *createLSCAtomicImpl(Instruction &I, GenXIntrinsic::ID IID,
                                    LSC_OP AtomicOp, Value *BTI, Value *Addr,
                                    Value *Src0, Value *Src1) const;
   void createLSCAtomicFenceImpl(Instruction &AtomicI, IRBuilder<> &Builder,
@@ -268,8 +265,8 @@ bool GenXLoadStoreLowering::runOnFunction(Function &F) {
   auto &M = *F.getParent();
   DL_ = &M.getDataLayout();
   ST = &getAnalysis<TargetPassConfig>()
-            .getTM<GenXTargetMachine>()
-            .getGenXSubtarget();
+                 .getTM<GenXTargetMachine>()
+                 .getGenXSubtarget();
   M.getContext().getSyncScopeNames(SyncScopeNames);
   IGC_ASSERT(ST);
   // auto &BEConf = getAnalysis<GenXBackendConfig>();
@@ -614,15 +611,15 @@ Value *GenXLoadStoreLowering::makeVector(IRBuilder<> &Builder, Value *Val) {
 }
 
 Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
-    IRBuilder<> &Builder, Module *M, vc::InternalIntrinsic::ID IID,
-    unsigned ESize, Value *Pred, Value *Base, Value *Addr, Value *Source,
+    IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID, unsigned ESize,
+    Value *Pred, Value *BTI, Value *Addr, Value *Source,
     ConstantInt *Align) const {
-  IGC_ASSERT_EXIT(IID == vc::InternalIntrinsic::lsc_load_bti ||
-                  IID == vc::InternalIntrinsic::lsc_load_slm ||
-                  IID == vc::InternalIntrinsic::lsc_load_ugm);
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_lsc_load_merge_stateless ||
+                  IID == GenXIntrinsic::genx_lsc_load_merge_slm ||
+                  IID == GenXIntrinsic::genx_lsc_load_merge_bti);
   IGC_ASSERT_EXIT(Source);
   IGC_ASSERT_EXIT(Pred);
-  IGC_ASSERT_EXIT(Base);
+  IGC_ASSERT_EXIT(BTI);
   IGC_ASSERT_EXIT(Addr);
 
   auto *Ty = cast<IGCLLVM::FixedVectorType>(Source->getType());
@@ -635,25 +632,26 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
 
   auto ElementSize = getLSCElementSize(ESize);
   auto ElementsPerAddress = getLSCElementsPerAddress(IsBlock ? NElements : 1);
-  auto AddrSize = IID == vc::InternalIntrinsic::lsc_load_ugm
-                      ? LSC_ADDR_SIZE_64b
-                      : LSC_ADDR_SIZE_32b;
+  auto Transpose = IsBlock && NElements > 1 ? LSC_DATA_ORDER_TRANSPOSE
+                                            : LSC_DATA_ORDER_NONTRANSPOSE;
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 13> Args = {
       Pred,
-      Builder.getInt8(AddrSize),
-      Builder.getInt8(ElementSize),
-      Builder.getInt8(ElementsPerAddress),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
-      Base,
+      Builder.getInt8(LSC_LOAD),           // Subopcode
+      Builder.getInt8(0),                  // L1 hint (default)
+      Builder.getInt8(0),                  // L3 hint (default)
+      Builder.getInt16(1),                 // Address scale
+      Builder.getInt32(0),                 // Address offset
+      Builder.getInt8(ElementSize),        // Element size
+      Builder.getInt8(ElementsPerAddress), // Elements per address
+      Builder.getInt8(Transpose), // Transposed (block) or gather operation
+      Builder.getInt8(0),         // Channel mask, ignored
       Addr,
-      Builder.getInt16(1), // Address scale
-      Builder.getInt32(0), // Address offset
+      BTI,
       Source,
   };
 
-  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
+  auto *Func = GenXIntrinsic::getGenXDeclaration(
       M, IID, {Ty, Pred->getType(), Addr->getType()});
   auto *Load = Builder.CreateCall(Func, Args);
 
@@ -668,14 +666,14 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
 }
 
 Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
-    IRBuilder<> &Builder, Module *M, vc::InternalIntrinsic::ID IID,
-    unsigned ESize, Value *Pred, Value *Base, Value *Addr, Value *Data,
+    IRBuilder<> &Builder, Module *M, GenXIntrinsic::ID IID, unsigned ESize,
+    Value *Pred, Value *BTI, Value *Addr, Value *Data,
     ConstantInt *Align) const {
-  IGC_ASSERT_EXIT(IID == vc::InternalIntrinsic::lsc_store_bti ||
-                  IID == vc::InternalIntrinsic::lsc_store_slm ||
-                  IID == vc::InternalIntrinsic::lsc_store_ugm);
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_lsc_store_stateless ||
+                  IID == GenXIntrinsic::genx_lsc_store_bti ||
+                  IID == GenXIntrinsic::genx_lsc_store_slm);
   IGC_ASSERT_EXIT(Pred);
-  IGC_ASSERT_EXIT(Base);
+  IGC_ASSERT_EXIT(BTI);
   IGC_ASSERT_EXIT(Addr);
   IGC_ASSERT_EXIT(Data);
 
@@ -689,25 +687,26 @@ Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
 
   auto ElementSize = getLSCElementSize(ESize);
   auto ElementsPerAddress = getLSCElementsPerAddress(IsBlock ? NElements : 1);
-  auto AddrSize = IID == vc::InternalIntrinsic::lsc_store_ugm
-                      ? LSC_ADDR_SIZE_64b
-                      : LSC_ADDR_SIZE_32b;
+  auto Transpose = IsBlock && NElements > 1 ? LSC_DATA_ORDER_TRANSPOSE
+                                            : LSC_DATA_ORDER_NONTRANSPOSE;
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 13> Args = {
       Pred,
-      Builder.getInt8(AddrSize),
-      Builder.getInt8(ElementSize),
-      Builder.getInt8(ElementsPerAddress),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
-      Base,
+      Builder.getInt8(LSC_STORE),          // Subopcode
+      Builder.getInt8(0),                  // L1 hint (default)
+      Builder.getInt8(0),                  // L3 hint (default)
+      Builder.getInt16(1),                 // Address scale
+      Builder.getInt32(0),                 // Address offset
+      Builder.getInt8(ElementSize),        // Element size
+      Builder.getInt8(ElementsPerAddress), // Elements per address
+      Builder.getInt8(Transpose), // Transposed (block) or scatter operation
+      Builder.getInt8(0),         // Channel mask, ignored
       Addr,
-      Builder.getInt16(1), // Address scale
-      Builder.getInt32(0), // Address offset
       Data,
+      BTI,
   };
 
-  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
+  auto *Func = GenXIntrinsic::getGenXDeclaration(
       M, IID, {Pred->getType(), Addr->getType(), Ty});
   auto *Store = Builder.CreateCall(Func, Args);
 
@@ -721,11 +720,12 @@ Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
   return Store;
 }
 
-Instruction *GenXLoadStoreLowering::createLSCLoadStore(
-    Instruction &I, vc::InternalIntrinsic::ID IID, Value *Base, Value *Addr,
-    Value *Data) const {
+Instruction *GenXLoadStoreLowering::createLSCLoadStore(Instruction &I,
+                                                       GenXIntrinsic::ID IID,
+                                                       Value *BTI, Value *Addr,
+                                                       Value *Data) const {
   LLVM_DEBUG(dbgs() << "Lowering: " << I << "\n");
-  IGC_ASSERT_EXIT(Base);
+  IGC_ASSERT_EXIT(BTI);
   IGC_ASSERT_EXIT(Addr);
   IGC_ASSERT_EXIT(isa<LoadInst>(I) || (isa<StoreInst>(I) && Data));
 
@@ -796,7 +796,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
 
         if (IsLoad) {
           auto *Load =
-              createLSCLoadImpl(Builder, M, IID, BlockESizeBits, Pred, Base,
+              createLSCLoadImpl(Builder, M, IID, BlockESizeBits, Pred, BTI,
                                 BlockAddr, UndefValue::get(BlockVTy));
           Result =
               createInsertDataIntoVectorImpl(Builder, M, Result, Load, Offset);
@@ -804,7 +804,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
           auto *Block = createExtractDataFromVectorImpl(Builder, M, BlockVTy,
                                                         Data, Offset);
           Result = createLSCStoreImpl(Builder, M, IID, BlockESizeBits, Pred,
-                                      Base, BlockAddr, Block);
+                                      BTI, BlockAddr, Block);
         }
       }
     }
@@ -839,7 +839,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
                             : IGCLLVM::FixedVectorType::get(
                                   Builder.getIntNTy(DWordBits), RestNElements);
       auto *Load = createLSCLoadImpl(Builder, M, IID, ESize * ByteBits, Pred,
-                                     Base, VAddr, UndefValue::get(GatherVTy));
+                                     BTI, VAddr, UndefValue::get(GatherVTy));
       auto *Trunc = createTruncateImpl(Builder, RestVTy, Load);
       Result =
           createInsertDataIntoVectorImpl(Builder, M, Result, Trunc, Offset);
@@ -847,7 +847,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
       auto *Source =
           createExtractDataFromVectorImpl(Builder, M, RestVTy, Data, Offset);
       auto *Extend = createExtendImpl(Builder, Source);
-      Result = createLSCStoreImpl(Builder, M, IID, ESize * ByteBits, Pred, Base,
+      Result = createLSCStoreImpl(Builder, M, IID, ESize * ByteBits, Pred, BTI,
                                   VAddr, Extend);
     }
   }
@@ -865,8 +865,8 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
 }
 
 Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
-    IntrinsicInst &I, vc::InternalIntrinsic::ID LoadIID,
-    vc::InternalIntrinsic::ID StoreIID, Value *Base, Type *AddrTy) const {
+    IntrinsicInst &I, GenXIntrinsic::ID LoadIID, GenXIntrinsic::ID StoreIID,
+    Value *BTI, Type *AddrTy) const {
   auto [IsLoad, Mask, Ptr, Data, Align] = getGatherScatterOperands(I);
   IRBuilder<> Builder(&I);
   Module *M = I.getModule();
@@ -887,7 +887,7 @@ Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
       Ptr, IGCLLVM::FixedVectorType::get(AddrTy, VTy->getNumElements()));
 
   if (IsLoad) {
-    auto *Load = createLSCLoadImpl(Builder, M, LoadIID, ESize, Mask, Base, Addr,
+    auto *Load = createLSCLoadImpl(Builder, M, LoadIID, ESize, Mask, BTI, Addr,
                                    Extend, Align);
     auto *Res = createTruncateImpl(Builder, VTy, Load);
     if (Ty->isPtrOrPtrVectorTy())
@@ -895,7 +895,7 @@ Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
     return cast<Instruction>(Res);
   }
 
-  return createLSCStoreImpl(Builder, M, StoreIID, ESize, Mask, Base, Addr,
+  return createLSCStoreImpl(Builder, M, StoreIID, ESize, Mask, BTI, Addr,
                             Extend, Align);
 }
 
@@ -985,12 +985,12 @@ void GenXLoadStoreLowering::createLSCAtomicFenceImpl(Instruction &AtomicI,
 }
 
 Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
-    Instruction &I, vc::InternalIntrinsic::ID IID, LSC_OP AtomicOp, Value *Base,
+    Instruction &I, GenXIntrinsic::ID IID, LSC_OP AtomicOp, Value *BTI,
     Value *Addr, Value *Src0, Value *Src1) const {
   IGC_ASSERT_EXIT(I.isAtomic());
-  IGC_ASSERT_EXIT(IID == vc::InternalIntrinsic::lsc_atomic_bti ||
-                  IID == vc::InternalIntrinsic::lsc_atomic_slm ||
-                  IID == vc::InternalIntrinsic::lsc_atomic_ugm);
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_lsc_xatomic_stateless ||
+                  IID == GenXIntrinsic::genx_lsc_xatomic_slm ||
+                  IID == GenXIntrinsic::genx_lsc_xatomic_bti);
   IRBuilder<> Builder(&I);
   auto *M = I.getModule();
 
@@ -1013,30 +1013,28 @@ Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
     Src1 = Builder.CreateZExt(Src1, Builder.getInt32Ty());
   }
 
-  auto AddrSize = IID == vc::InternalIntrinsic::lsc_atomic_ugm
-                      ? LSC_ADDR_SIZE_64b
-                      : LSC_ADDR_SIZE_32b;
-
   Src0 = makeVector(Builder, Src0);
   Src1 = makeVector(Builder, Src1);
   auto *DataVTy = cast<IGCLLVM::FixedVectorType>(Src0->getType());
 
-  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      M, IID, {DataVTy, PredTy, AddrTy});
+  auto *Func =
+      GenXIntrinsic::getAnyDeclaration(M, IID, {DataVTy, PredTy, AddrTy});
 
-  SmallVector<Value *, 13> Args = {
+  SmallVector<Value *, 15> Args = {
       Pred,
-      Builder.getInt8(AtomicOp),
-      Builder.getInt8(AddrSize),
-      Builder.getInt8(ElementSize),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
-      Base,
+      Builder.getInt8(AtomicOp),    // Atomic operation
+      Builder.getInt8(0),           // L1 hint
+      Builder.getInt8(0),           // L3 hint
+      Builder.getInt16(1),          // Address scale
+      Builder.getInt32(0),          // Immediate offset
+      Builder.getInt8(ElementSize), // Data size
+      Builder.getInt8(LSC_DATA_ELEMS_1),
+      Builder.getInt8(LSC_DATA_ORDER_NONTRANSPOSE),
+      Builder.getInt8(0), // Channel mask, ignored
       Addr,
-      Builder.getInt16(1), // Address scale
-      Builder.getInt32(0), // Address offset
       Src0,
       Src1,
+      BTI,
       UndefValue::get(DataVTy), // Old value to merge
   };
 
@@ -1054,10 +1052,10 @@ Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
   return cast<Instruction>(Cast);
 }
 
-Instruction *
-GenXLoadStoreLowering::createLSCAtomicLoad(LoadInst &I,
-                                           vc::InternalIntrinsic::ID IID,
-                                           Type *AddrTy, Value *Base) const {
+Instruction *GenXLoadStoreLowering::createLSCAtomicLoad(LoadInst &I,
+                                                        GenXIntrinsic::ID IID,
+                                                        Type *AddrTy,
+                                                        Value *BTI) const {
   IGC_ASSERT_EXIT(I.isAtomic());
   IRBuilder<> Builder(&I);
 
@@ -1067,13 +1065,13 @@ GenXLoadStoreLowering::createLSCAtomicLoad(LoadInst &I,
   auto *DataTy = I.getType();
   auto *Undef = UndefValue::get(DataTy);
 
-  return createLSCAtomicImpl(I, IID, LSC_ATOMIC_LOAD, Base, Addr, Undef, Undef);
+  return createLSCAtomicImpl(I, IID, LSC_ATOMIC_LOAD, BTI, Addr, Undef, Undef);
 }
 
-Instruction *
-GenXLoadStoreLowering::createLSCAtomicStore(StoreInst &I,
-                                            vc::InternalIntrinsic::ID IID,
-                                            Type *AddrTy, Value *Base) const {
+Instruction *GenXLoadStoreLowering::createLSCAtomicStore(StoreInst &I,
+                                                         GenXIntrinsic::ID IID,
+                                                         Type *AddrTy,
+                                                         Value *BTI) const {
   IGC_ASSERT_EXIT(I.isAtomic());
   IRBuilder<> Builder(&I);
 
@@ -1084,13 +1082,13 @@ GenXLoadStoreLowering::createLSCAtomicStore(StoreInst &I,
   auto *DataTy = Src->getType();
   auto *Undef = UndefValue::get(DataTy);
 
-  return createLSCAtomicImpl(I, IID, LSC_ATOMIC_STORE, Base, Addr, Src, Undef);
+  return createLSCAtomicImpl(I, IID, LSC_ATOMIC_STORE, BTI, Addr, Src, Undef);
 }
 
-Instruction *
-GenXLoadStoreLowering::createLSCAtomicRMW(AtomicRMWInst &I,
-                                          vc::InternalIntrinsic::ID IID,
-                                          Type *AddrTy, Value *Base) const {
+Instruction *GenXLoadStoreLowering::createLSCAtomicRMW(AtomicRMWInst &I,
+                                                       GenXIntrinsic::ID IID,
+                                                       Type *AddrTy,
+                                                       Value *BTI) const {
   IGC_ASSERT_EXIT(I.isAtomic());
   IRBuilder<> Builder(&I);
 
@@ -1164,13 +1162,13 @@ GenXLoadStoreLowering::createLSCAtomicRMW(AtomicRMWInst &I,
     break;
   }
 
-  return createLSCAtomicImpl(I, IID, AtomicOp, Base, Addr, Src, Undef);
+  return createLSCAtomicImpl(I, IID, AtomicOp, BTI, Addr, Src, Undef);
 }
 
 Instruction *
 GenXLoadStoreLowering::createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
-                                              vc::InternalIntrinsic::ID IID,
-                                              Type *AddrTy, Value *Base) const {
+                                              GenXIntrinsic::ID IID,
+                                              Type *AddrTy, Value *BTI) const {
   IGC_ASSERT_EXIT(I.isAtomic());
   IRBuilder<> Builder(&I);
 
@@ -1184,7 +1182,7 @@ GenXLoadStoreLowering::createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
   Value *Res = UndefValue::get(RetTy);
 
   auto *Atomic =
-      createLSCAtomicImpl(I, IID, LSC_ATOMIC_ICAS, Base, Addr, CmpVal, NewVal);
+      createLSCAtomicImpl(I, IID, LSC_ATOMIC_ICAS, BTI, Addr, CmpVal, NewVal);
   auto *Cmp = Builder.CreateICmpEQ(Atomic, CmpVal);
 
   Res = Builder.CreateInsertValue(Res, Atomic, 0);
@@ -2186,7 +2184,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt64Ty();
   return createLSCLoadStore(
-      I, vc::InternalIntrinsic::lsc_load_ugm, Builder.getInt64(0),
+      I, GenXIntrinsic::genx_lsc_load_merge_stateless, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy));
 }
 
@@ -2198,7 +2196,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt32Ty();
   return createLSCLoadStore(
-      I, vc::InternalIntrinsic::lsc_load_bti,
+      I, GenXIntrinsic::genx_lsc_load_merge_bti,
       Builder.getInt32(visa::RSI_Stateless),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy));
 }
@@ -2211,7 +2209,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt32Ty();
   return createLSCLoadStore(
-      I, vc::InternalIntrinsic::lsc_load_slm, Builder.getInt32(0),
+      I, GenXIntrinsic::genx_lsc_load_merge_slm, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy));
 }
 
@@ -2223,7 +2221,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt64Ty();
   return createLSCLoadStore(
-      I, vc::InternalIntrinsic::lsc_store_ugm, Builder.getInt64(0),
+      I, GenXIntrinsic::genx_lsc_store_stateless, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy),
       I.getValueOperand());
 }
@@ -2236,7 +2234,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt32Ty();
   return createLSCLoadStore(
-      I, vc::InternalIntrinsic::lsc_store_bti,
+      I, GenXIntrinsic::genx_lsc_store_bti,
       Builder.getInt32(visa::RSI_Stateless),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy),
       I.getValueOperand());
@@ -2250,7 +2248,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   Type *AddrTy = Builder.getInt32Ty();
   return createLSCLoadStore(
-      I, vc::InternalIntrinsic::lsc_store_slm, Builder.getInt32(0),
+      I, GenXIntrinsic::genx_lsc_store_slm, Builder.getInt32(0),
       Builder.CreatePtrToInt(I.getPointerOperand(), AddrTy),
       I.getValueOperand());
 }
@@ -2261,10 +2259,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
                                        Atomicity::NonAtomic, IntrinsicInst>(
     IntrinsicInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt64(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt64Ty();
-  return createLSCGatherScatter(I, vc::InternalIntrinsic::lsc_load_ugm,
-                                vc::InternalIntrinsic::lsc_store_ugm, Base,
+  return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_stateless,
+                                GenXIntrinsic::genx_lsc_store_stateless, BTI,
                                 AddrTy);
 }
 
@@ -2276,9 +2274,8 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   auto *BTI = Builder.getInt32(visa::RSI_Stateless);
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCGatherScatter(I, vc::InternalIntrinsic::lsc_load_bti,
-                                vc::InternalIntrinsic::lsc_store_bti, BTI,
-                                AddrTy);
+  return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_bti,
+                                GenXIntrinsic::genx_lsc_store_bti, BTI, AddrTy);
 }
 
 template <>
@@ -2287,11 +2284,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
                                        Atomicity::NonAtomic, IntrinsicInst>(
     IntrinsicInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt32(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCGatherScatter(I, vc::InternalIntrinsic::lsc_load_slm,
-                                vc::InternalIntrinsic::lsc_store_slm, Base,
-                                AddrTy);
+  return createLSCGatherScatter(I, GenXIntrinsic::genx_lsc_load_merge_slm,
+                                GenXIntrinsic::genx_lsc_store_slm, BTI, AddrTy);
 }
 
 template <>
@@ -2300,10 +2296,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
                                        Atomicity::Atomic, LoadInst>(
     LoadInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt64(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt64Ty();
-  return createLSCAtomicLoad(I, vc::InternalIntrinsic::lsc_atomic_ugm, AddrTy,
-                             Base);
+  return createLSCAtomicLoad(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                             AddrTy, BTI);
 }
 
 template <>
@@ -2314,7 +2310,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   auto *BTI = Builder.getInt32(visa::RSI_Stateless);
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicLoad(I, vc::InternalIntrinsic::lsc_atomic_bti, AddrTy,
+  return createLSCAtomicLoad(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
                              BTI);
 }
 
@@ -2324,10 +2320,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
                                        Atomicity::Atomic, LoadInst>(
     LoadInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt32(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicLoad(I, vc::InternalIntrinsic::lsc_atomic_slm, AddrTy,
-                             Base);
+  return createLSCAtomicLoad(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                             BTI);
 }
 
 template <>
@@ -2336,10 +2332,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
                                        Atomicity::Atomic, StoreInst>(
     StoreInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt64(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt64Ty();
-  return createLSCAtomicStore(I, vc::InternalIntrinsic::lsc_atomic_ugm, AddrTy,
-                              Base);
+  return createLSCAtomicStore(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                              AddrTy, BTI);
 }
 
 template <>
@@ -2350,7 +2346,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   auto *BTI = Builder.getInt32(visa::RSI_Stateless);
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicStore(I, vc::InternalIntrinsic::lsc_atomic_bti, AddrTy,
+  return createLSCAtomicStore(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
                               BTI);
 }
 
@@ -2360,10 +2356,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
                                        Atomicity::Atomic, StoreInst>(
     StoreInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt32(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicStore(I, vc::InternalIntrinsic::lsc_atomic_slm, AddrTy,
-                              Base);
+  return createLSCAtomicStore(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                              BTI);
 }
 
 template <>
@@ -2372,10 +2368,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
                                        Atomicity::Atomic, AtomicRMWInst>(
     AtomicRMWInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt64(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt64Ty();
-  return createLSCAtomicRMW(I, vc::InternalIntrinsic::lsc_atomic_ugm, AddrTy,
-                            Base);
+  return createLSCAtomicRMW(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                            AddrTy, BTI);
 }
 
 template <>
@@ -2386,7 +2382,7 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   auto *BTI = Builder.getInt32(visa::RSI_Stateless);
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicRMW(I, vc::InternalIntrinsic::lsc_atomic_bti, AddrTy,
+  return createLSCAtomicRMW(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
                             BTI);
 }
 
@@ -2396,10 +2392,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
                                        Atomicity::Atomic, AtomicRMWInst>(
     AtomicRMWInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt32(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicRMW(I, vc::InternalIntrinsic::lsc_atomic_slm, AddrTy,
-                            Base);
+  return createLSCAtomicRMW(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                            BTI);
 }
 
 template <>
@@ -2408,10 +2404,10 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
                                        Atomicity::Atomic, AtomicCmpXchgInst>(
     AtomicCmpXchgInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt64(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt64Ty();
-  return createLSCAtomicCmpXchg(I, vc::InternalIntrinsic::lsc_atomic_ugm,
-                                AddrTy, Base);
+  return createLSCAtomicCmpXchg(I, GenXIntrinsic::genx_lsc_xatomic_stateless,
+                                AddrTy, BTI);
 }
 
 template <>
@@ -2422,8 +2418,8 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A32, MessageKind::LSC,
   IRBuilder<> Builder(&I);
   auto *BTI = Builder.getInt32(visa::RSI_Stateless);
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicCmpXchg(I, vc::InternalIntrinsic::lsc_atomic_bti,
-                                AddrTy, BTI);
+  return createLSCAtomicCmpXchg(I, GenXIntrinsic::genx_lsc_xatomic_bti, AddrTy,
+                                BTI);
 }
 
 template <>
@@ -2432,8 +2428,8 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
                                        Atomicity::Atomic, AtomicCmpXchgInst>(
     AtomicCmpXchgInst &I) const {
   IRBuilder<> Builder(&I);
-  auto *Base = Builder.getInt32(0);
+  auto *BTI = Builder.getInt32(0); // ignored
   auto *AddrTy = Builder.getInt32Ty();
-  return createLSCAtomicCmpXchg(I, vc::InternalIntrinsic::lsc_atomic_slm,
-                                AddrTy, Base);
+  return createLSCAtomicCmpXchg(I, GenXIntrinsic::genx_lsc_xatomic_slm, AddrTy,
+                                BTI);
 }

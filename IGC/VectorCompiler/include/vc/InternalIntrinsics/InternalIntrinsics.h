@@ -118,22 +118,8 @@ bool isOverloadedArg(unsigned IntrinID, unsigned ArgNum);
 /// in intrinsic is overloaded
 bool isOverloadedRet(unsigned IntrinID);
 
-std::string getInternalName(ID id, llvm::ArrayRef<llvm::Type *> Tys);
-
-bool isInternalMemoryIntrinsic(ID id);
-
-inline bool isInternalMemoryIntrinsic(const llvm::Value *V) {
-  return isInternalMemoryIntrinsic(getInternalIntrinsicID(V));
-}
-
-inline bool isInternalMemoryIntrinsic(const llvm::Function *F) {
-  return isInternalMemoryIntrinsic(getInternalIntrinsicID(F));
-}
-
-unsigned getMemoryVectorSizePerLane(const llvm::Instruction *I);
-unsigned getMemorySimdWidth(const llvm::Instruction *I);
-unsigned getMemoryRegisterElementSize(const llvm::Instruction *I);
-
+std::string getInternalName(InternalIntrinsic::ID id,
+                            llvm::ArrayRef<llvm::Type *> Tys);
 } // namespace vc::InternalIntrinsic
 
 #endif
