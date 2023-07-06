@@ -2799,8 +2799,10 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
 bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
                                   const VISAVariableLocation &loc) {
   const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+  IGC_ASSERT(nullptr != storageMD);
   const auto *VISAMod = loc.GetVISAModule();
   const auto *sizeMD = var.getDbgInst()->getMetadata("StorageSize");
+  IGC_ASSERT(nullptr != sizeMD);
 
   LLVM_DEBUG(dbgs() << "  generating FP-based location\n");
   auto simdSize = VISAMod->GetSIMDSize();

@@ -14696,6 +14696,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             const unsigned int numLanesForInstWidth = numLanes(instWidth);
             IGC_ASSERT(numLanesForInstWidth);
             const unsigned int splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanesForInstWidth;
+            IGC_ASSERT(splitInstCount <= ARRAY_COUNT(tempdst));
 
             for (uint i = 0; i < splitInstCount; ++i)
             {
@@ -18940,7 +18941,7 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
             IGC_ASSERT_MESSAGE(0, "Does not support non-uniform to uniform struct copy");
         }
 
-        StructType* STy = dyn_cast<StructType>(Ty);
+        StructType* STy = cast<StructType>(Ty);
         const StructLayout* SL = m_DL->getStructLayout(STy);
         unsigned srcLanes = Src->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
         unsigned dstLanes = Dst->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);

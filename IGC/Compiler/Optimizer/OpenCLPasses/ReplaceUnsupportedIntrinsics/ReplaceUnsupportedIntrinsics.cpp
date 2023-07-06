@@ -1061,7 +1061,7 @@ void ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros(IntrinsicInst* I)
 
     if (isVector)
     {
-        auto oldIntrinsicDstTypeFVT = dyn_cast<IGCLLVM::FixedVectorType>(oldIntrinsicDstType);
+        auto oldIntrinsicDstTypeFVT = cast<IGCLLVM::FixedVectorType>(oldIntrinsicDstType);
         numOfElements = (uint32_t)oldIntrinsicDstTypeFVT->getNumElements();
         singleElementType = oldIntrinsicDstTypeFVT->getElementType();
     }
