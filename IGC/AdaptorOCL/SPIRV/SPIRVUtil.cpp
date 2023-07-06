@@ -205,6 +205,15 @@ std::string recursive_mangle(const Type* pType)
                 if (isPipe_wo) return "Pipe_wo";
                 bool isReserveId = structName.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + std::string(kSPIRVTypeName::ReserveId));
                 if (isReserveId) return "ReserveId";
+                bool isJointMatrix = structName.startswith(std::string(kJointMatrixName::TypePrefix));
+                if (isJointMatrix)
+                {
+                    bool found = structName.consume_front(kJointMatrixName::TypePrefix);
+                    IGC_ASSERT_MESSAGE(found, "Inconsistent Joint Matrix type!");
+                    found = structName.consume_back(kJointMatrixName::TypeSuffix);
+                    IGC_ASSERT_MESSAGE(found, "Inconsistent Joint Matrix type!");
+                    return structName.str();
+                }
                 return "i64";
             }
 

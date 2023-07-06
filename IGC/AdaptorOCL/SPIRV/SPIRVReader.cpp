@@ -2301,7 +2301,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   case OpTypeJointMatrixINTEL_OLD:
   {
     SPIRVTypeJointMatrixINTEL *MT = static_cast<SPIRVTypeJointMatrixINTEL *>(T);
-    std::string typeName = "intel.joint_matrix_" + MT->getMangledName() + "_t";
+    std::string typeName = kJointMatrixName::TypePrefix + MT->getMangledName() + kJointMatrixName::TypeSuffix;
     return mapType(T, getOrCreateOpaquePtrType(M, typeName, SPIRAddressSpace::SPIRAS_Global));
   }
   default: {

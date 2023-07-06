@@ -788,6 +788,11 @@ namespace kSPIR2MD {
   const static char WGSizeHint[]        = "work_group_size_hint";
 }
 
+namespace kJointMatrixName {
+  const static char TypePrefix[] = "intel.joint_matrix_";
+  const static char TypeSuffix[] = "_t";
+}
+
 enum Spir2SamplerKind {
   CLK_ADDRESS_NONE            = 0x0000,
   CLK_ADDRESS_CLAMP           = 0x0004,
