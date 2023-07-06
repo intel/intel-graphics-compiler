@@ -659,7 +659,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
       break;
     case LSC_DATA_SIZE_64b:
       check (dataShape2D.width <= 4 && dataShape2D.height == 8,
-          "for d64, width <= 8 and height <= 32 elements");
+          "for d64, width <= 4 and height == 8 elements");
       break;
     default:
       check(false, "invalid data type");
