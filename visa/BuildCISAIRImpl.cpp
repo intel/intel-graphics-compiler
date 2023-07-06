@@ -1258,10 +1258,19 @@ void CISA_IR_Builder::LinkTimeOptimization(
   }
 }
 
-static void retrieveBarrierInfoFromCallee(VISAKernelImpl *entry,
-                                          std::set<VISAKernelImpl *> &visited) {
-  auto res = visited.insert(entry);
-  if (!res.second)
+// retrieveInfoFromCallee:
+// 1. Set usesBarrier property for each kernel and function appropriately.
+// resursively propagate barrier information from callees to their caller.
+// This helps to report the correct barrier setting for direct/internal call.
+// For indirect call, the barrier is reported separately per function
+// and relying on runtime to analyze it.
+// 2. Setup funcInfoMap
+static void retrieveInfoFromCallee(
+    VISAKernelImpl *entry, llvm::DenseMap<VISAKernelImpl *, bool> &funcInfoMap) {
+
+  auto mapEntry = funcInfoMap.insert(std::pair(entry, false));
+  // skip the function which has been visited
+  if (!mapEntry.second)
     return;
 
   for (G4_BB *bb : entry->getKernel()->fg) {
@@ -1269,23 +1278,25 @@ static void retrieveBarrierInfoFromCallee(VISAKernelImpl *entry,
       continue;
 
     G4_INST *fcall = bb->back();
-    if (fcall->asCFInst()->isIndirectCall())
+    if (fcall->asCFInst()->isIndirectCall()) {
+      // mark the function to be hasIndirectCall
+      mapEntry.first->second = true;
       continue;
+    }
 
     const char *funcName = fcall->getSrc(0)->asLabel()->getLabel();
     VISAKernelImpl *callee = entry->getCISABuilder()->getKernel(funcName);
     // Propagate properties of callee to caller recursively.
-    retrieveBarrierInfoFromCallee(callee, visited);
+    retrieveInfoFromCallee(callee, funcInfoMap);
     entry->getIRBuilder()->usedBarries() |=
         callee->getIRBuilder()->usedBarries();
+
+    mapEntry.first->second |= funcInfoMap[callee];
   }
   // numBarriers property is propagated to IGC and onwards in to NEO patch
   // token. We need this logic here to propagate barrier usage to IGC and
   // further to NEO so it can set up WG size appropriately.  Without this
   // setting barrier would cause machine to hang.
-  // TODO: How to set numBarriers when callee is indirect in patch token
-  // path? For zebin path, the barrier information of an indirect (external)
-  // function will be provided in the corresponding .ze_info field.
   entry->getIRBuilder()->getJitInfo()->numBarriers =
       entry->getIRBuilder()->numBarriers();
 }
@@ -2017,20 +2028,15 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
   return status;
 }
 
+static uint32_t getConservativeSpillSize(TARGET_PLATFORM plat) {
+  if (plat == TARGET_PLATFORM::Xe_PVCXT)
+    return 64 * 1024;
+  return 128 * 1024;
+}
+
 void CISA_IR_Builder::summarizeFunctionInfo(
     KernelListTy &mainFunctions,
     KernelListTy &subFunction) {
-
-  // Set usesBarrier property for each kernel and function appropriately.
-  // resursively propagate barrier information from callees to their caller.
-  // This helps to report the correct barrier setting for direct/internal call.
-  // For indirect call, the information is reported separately per function
-  // and relying on runtime to analyze it.
-  {
-    std::set<VISAKernelImpl *> visited;
-    for (VISAKernelImpl *f : m_kernelsAndFunctions)
-      retrieveBarrierInfoFromCallee(f, visited);
-  }
 
   // helper functions for visa stack size setting
   auto getStackSize = [](const VISAKernelImpl &k) {
@@ -2042,22 +2048,45 @@ void CISA_IR_Builder::summarizeFunctionInfo(
     k.getKernel()->fg.builder->getJitInfo()->stats.spillMemUsed = size;
   };
 
-  for (auto mfunc : mainFunctions) {
-    uint32_t totalStackSize = getStackSize(*mfunc);
-    for (auto sfunc: subFunction) {
-      // propagate subFunctions' perf stats into mainFunctions'
+  // Keep track of visited functions and if the function hasIndirectCall
+  llvm::DenseMap<VISAKernelImpl *, bool> funcInfoMap;
+
+  for (VISAKernelImpl *mfunc : m_kernelsAndFunctions) {
+    // 1. Set FINALIZER_INFO::numBarriers to each functions
+    // also setup funcInfoMap for hasIndirectCall
+    retrieveInfoFromCallee(mfunc, funcInfoMap);
+
+    uint32_t mfuncStackSize = getStackSize(*mfunc);
+    for (auto sfunc : subFunction) {
+      // 2. Propagate subFunctions' perf stats into mainFunctions'
       mfunc->addFuncPerfStats(
           sfunc->getKernel()->fg.builder->getJitInfo()->statsVerbose);
 
       // Accumulate all subFunctions' spill size and set it to the main
       // function. vISA doesn't have the call graph so conservatively
       // estimate the required size.
-      totalStackSize += getStackSize(*sfunc);
+      // FIXME: Move the stack size estimation into retrieveInfoFromCallee
+      // to consider direct call flow
+      mfuncStackSize += getStackSize(*sfunc);
     }
 
+    // Since it is difficult to predict amount of space needed when having
+    // indirect call or recursive call, we reserve a magic conservative size.
+    // Reserving max PTSS is ideal, but it can lead to OOM on machines with
+    // large number of threads.
+    // Use conservative size when:
+    // - hasIndirectCall: query from funcInfoMap
+    // - hasRecursion: IGC setup ATTR_Recursive if the kernel contains
+    //   recursion in itself or the callees
+    bool hasRecursion = mfunc->getKernelAttributes()->getBoolKernelAttr(
+        Attributes::ATTR_Recursive);
+    if (funcInfoMap[mfunc] || hasRecursion)
+      mfuncStackSize = getConservativeSpillSize(getPlatform());
+
+    // 3. Set FINALIZER_INFO::PERF_STATS::spillMemUsed
     // The estimated size might be larger than what is actually needed.
     // Clamp to max scratch size if the estimated size exceeds it.
-    setStackSizeAndClamp(*mfunc, totalStackSize);
+    setStackSizeAndClamp(*mfunc, mfuncStackSize);
   }
 }
 

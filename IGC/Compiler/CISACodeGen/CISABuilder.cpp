@@ -5301,6 +5301,12 @@ namespace IGC
         V(vKernel->AddKernelAttribute("Extern", 0, nullptr));
     }
 
+    void CEncoder::SetRecursiveFunctionFlag()
+    {
+        IGC_ASSERT(nullptr != vKernel);
+        V(vKernel->AddKernelAttribute("Recursive", 0, nullptr));
+    }
+
     SEncoderState CEncoder::CopyEncoderState()
     {
         return m_encoderState;
@@ -5821,8 +5827,7 @@ namespace IGC
             }
             vISA::FINALIZER_INFO* jitInfo;
             visaFunc->GetJitInfo(jitInfo);
-            entry.f_spillMemPerThread =
-                getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga);
+            entry.f_spillMemPerThread = jitInfo->stats.spillMemUsed;
 
             uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
             // Set per-function barrier count from vISA information.
@@ -6375,8 +6380,9 @@ namespace IGC
 
         pOutput->m_scratchSpaceUsedBySpills =
             IGC_IS_FLAG_SET(ForceScratchSpaceSize) ?
-            IGC_GET_FLAG_VALUE(ForceScratchSpaceSize) :
-            getSpillMemSizeWithFG(*m_program->entry, jitInfo->stats.spillMemUsed, pFGA);
+                IGC_GET_FLAG_VALUE(ForceScratchSpaceSize) :
+                jitInfo->stats.spillMemUsed;
+
         pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
 
         pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
@@ -6389,30 +6395,6 @@ namespace IGC
 
         pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
         pOutput->m_numThreads = jitInfo->stats.numThreads;
-    }
-
-    uint32_t CEncoder::getSpillMemSizeWithFG(const llvm::Function &curFunc,
-        uint32_t curSize, GenXFunctionGroupAnalysis *fga)
-    {
-        if (!fga)
-            return curSize;
-
-        // Return the precise stack size for non-group-head function, and the
-        // estimated conservative value for group head.
-        const FunctionGroup *fg = fga->getGroupForHead(&curFunc);
-        if(!fg)
-            return curSize;
-        // Since it is difficult to predict amount of space needed to store stack,
-        // we reserve a magic large size. Reserving max PTSS is ideal, but it can
-        // lead to OOM on machines with large number of threads.
-        auto visaplt = GetVISAPlatform(&(m_program->GetContext()->platform));
-        if (fg->hasIndirectCall() || fg->hasRecursion()) {
-            if(visaplt == TARGET_PLATFORM::Xe_PVCXT)
-                return 64 * 1024;
-            return 128 * 1024;
-        }
-
-        return curSize;
     }
 
     void CEncoder::createRelocationTables(VISAKernel &pMainKernel)
