@@ -3007,7 +3007,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
             }
         }
 
-        void save(uint32_t Align) {
+        void save() {
             if (!doTracking)
                 return;
             LastNumD32 = currNumD32;
@@ -3199,12 +3199,18 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 D32OrD64.track(LSI, j, currByteOffset);
 
                 int nextBytes = BC.getAndUpdateVecSizeInBytes(totalBytes);
+
+                if (m_hasI64Emu && vecEltBytes == 1 && nextBytes == 8) {
+                    // If I64 emu is on, skip D64 as I64 emu would result
+                    // in inefficient code.
+                    continue;
+                }
                 if (totalBytes == nextBytes &&
                     !D32OrD64.skip(vecEltBytes, BC.getCurrVecSize())) {
                     e = j;
                     vecSize = BC.getCurrVecSize();
 
-                    D32OrD64.save(theAlign);
+                    D32OrD64.save();
                 }
             }
 
