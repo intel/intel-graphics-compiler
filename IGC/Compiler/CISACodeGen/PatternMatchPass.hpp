@@ -211,7 +211,6 @@ namespace IGC
         bool MatchAbsNeg(llvm::Instruction& I);
         bool MatchFloatingPointSatModifier(llvm::Instruction& I);
         bool MatchIntegerSatModifier(llvm::Instruction& I);
-        bool MatchPredicate(llvm::SelectInst& I);
         bool MatchSelectModifier(llvm::SelectInst& I);
         bool MatchPow(llvm::IntrinsicInst& I);
         bool MatchGenericPointersCmp(llvm::CmpInst& I);
@@ -226,7 +225,6 @@ namespace IGC
         bool MatchDp4a(llvm::GenIntrinsicInst& I);
         bool MatchLogicAlu(llvm::BinaryOperator& I);
         bool MatchRsqrt(llvm::BinaryOperator& I);
-        bool MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal);
         bool MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I);
         bool MatchGradient(llvm::GenIntrinsicInst& I);
         bool MatchSampleDerivative(llvm::GenIntrinsicInst& I);

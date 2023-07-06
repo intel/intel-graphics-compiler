@@ -1130,7 +1130,6 @@ namespace IGC
             MatchAbsNeg(I) ||
             MatchFPToIntegerWithSaturation(I) ||
             MatchMinMax(I) ||
-            /*MatchPredicate(I)   ||*/
             MatchCmpSelect(I) ||
             MatchSelectModifier(I);
         IGC_ASSERT_MESSAGE(match, "Pattern Match failed");
@@ -2652,68 +2651,6 @@ namespace IGC
         return false;
     }
 
-    bool CodeGenPatternMatch::MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal)
-    {
-        struct LoadStorePointerPattern : public Pattern
-        {
-            Instruction* inst;
-            Value* offset;
-            ConstantInt* immOffset;
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                if (isa<LoadInst>(inst))
-                {
-                    pass->emitLoad(cast<LoadInst>(inst), offset, immOffset);
-                }
-                else if (isa<StoreInst>(inst))
-                {
-                    pass->emitStore3D(cast<StoreInst>(inst), offset);
-                }
-            }
-        };
-        if (ptrVal.getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL ||
-            ptrVal.getType()->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
-        {
-            return false;
-        }
-
-        // Store3d supports only types equal or less than 128 bits.
-        if (auto* storeInst = dyn_cast<StoreInst>(&I))
-        {
-            IGCLLVM::FixedVectorType* vectorToStore = dyn_cast<IGCLLVM::FixedVectorType>(storeInst->getValueOperand()->getType());
-
-            // If stored value is a vector of pointers, the size must be calculated manually,
-            // because getPrimitiveSizeInBits returns 0 for pointers.
-            if ((storeInst->getValueOperand()->getType()->getPrimitiveSizeInBits() > 128) ||
-                    (vectorToStore &&
-                    (vectorToStore->getElementType()->isPointerTy()) &&
-                    ((vectorToStore->getNumElements() * m_ctx->getModule()->getDataLayout().getPointerSizeInBits(cast<llvm::PointerType>(vectorToStore->getElementType())->getAddressSpace())) > 128)))
-            {
-                return false;
-            }
-        }
-
-        if (auto* i2p = dyn_cast<IntToPtrInst>(&ptrVal))
-        {
-            LoadStorePointerPattern* pattern = new (m_allocator) LoadStorePointerPattern();
-            pattern->inst = &I;
-            uint numSources = GetNbSources(I);
-            for (uint i = 0; i < numSources; i++)
-            {
-                if (I.getOperand(i) != i2p)
-                {
-                    MarkAsSource(I.getOperand(i), IsSourceOfSample(&I));
-                }
-            }
-            pattern->offset = i2p->getOperand(0);
-            pattern->immOffset = ConstantInt::get(Type::getInt32Ty(I.getContext()), 0);
-            MarkAsSource(pattern->offset, IsSourceOfSample(&I));
-            AddPattern(pattern);
-            return true;
-        }
-        return false;
-    }
-
     bool CodeGenPatternMatch::MatchLrp(llvm::BinaryOperator& I)
     {
         struct LRPPattern : public Pattern
@@ -3715,61 +3652,6 @@ namespace IGC
                     IGC_ASSERT_MESSAGE(0, "An undefined pattern match");
                 }
             }
-        }
-        return match;
-    }
-
-    bool CodeGenPatternMatch::MatchPredicate(llvm::SelectInst& I)
-    {
-        struct PredicatePattern : Pattern
-        {
-            bool invertFlag;
-            Pattern* patternNotPredicated;
-            Pattern* patternPredicated;
-            SSource flag;
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                DstModifier mod = modifier;
-                patternNotPredicated->Emit(pass, mod);
-                mod.flag = &flag;
-                mod.invertFlag = invertFlag;
-                patternPredicated->Emit(pass, mod);
-            }
-        };
-        bool match = false;
-        bool invertFlag = false;
-        llvm::Instruction* source0 = llvm::dyn_cast<llvm::Instruction>(I.getTrueValue());
-        llvm::Instruction* source1 = llvm::dyn_cast<llvm::Instruction>(I.getFalseValue());
-        if (source0 && source0->hasOneUse() && source1 && source1->hasOneUse())
-        {
-            if (SupportsPredicate(source0))
-            {
-                // temp fix until we find the best solution for this case
-                if (!isa<ExtractElementInst>(source1))
-                {
-                    match = true;
-                }
-            }
-            else if (SupportsPredicate(source1))
-            {
-                if (!isa<ExtractElementInst>(source0))
-                {
-                    std::swap(source0, source1);
-                    invertFlag = true;
-                    match = true;
-                }
-            }
-        }
-        if (match == true)
-        {
-            PredicatePattern* pattern = new (m_allocator) PredicatePattern();
-            pattern->flag = GetSource(I.getCondition(), false, false, IsSourceOfSample(&I));
-            pattern->invertFlag = invertFlag;
-            pattern->patternNotPredicated = Match(*source1);
-            pattern->patternPredicated = Match(*source0);
-            IGC_ASSERT_MESSAGE(pattern->patternNotPredicated, "Failed to match pattern");
-            IGC_ASSERT_MESSAGE(pattern->patternPredicated, "Failed to match pattern");
-            AddPattern(pattern);
         }
         return match;
     }

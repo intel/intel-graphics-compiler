@@ -94,7 +94,6 @@ public:
     void Pow(const SSource sources[2], const DstModifier& modifier);
     void Avg(const SSource sources[2], const DstModifier& modifier);
     void Rsqrt(const SSource& source, const DstModifier& modifier);
-    void Sqrt(const SSource& source, const DstModifier& modifier);
     void Select(const SSource sources[3], const DstModifier& modifier);
     void PredAdd(const SSource& pred, bool invert, const SSource sources[2], const DstModifier& modifier);
     void Mul(const SSource[2], const DstModifier& modifier);
@@ -174,7 +173,6 @@ public:
     void emitStore(llvm::StoreInst *inst, llvm::Value *varOffset,
                    llvm::ConstantInt *immOffset
     );
-    void emitStore3D(llvm::StoreInst* inst, llvm::Value* elemIdxV);
     void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
     void emitLoad(llvm::LoadInst *inst, llvm::Value *varOffset,
@@ -844,10 +842,6 @@ private:
     // Used to relocate phi-mov to different BB. phiMovToBB is the map from "fromBB"
     // to "toBB" (meaning to move phi-mov from "fromBB" to "toBB"). See MovPhiSources.
     llvm::DenseMap<llvm::BasicBlock*, llvm::BasicBlock*>  phiMovToBB;
-    bool canRelocatePhiMov(
-        llvm::BasicBlock* otherBB, llvm::BasicBlock* phiMovBB, llvm::BasicBlock* phiBB);
-    bool isCandidateIfStmt(
-        llvm::BasicBlock* ifBB, llvm::BasicBlock*& otherBB, llvm::BasicBlock*& emptyBB);
 
     // Used to check for the constraint types with the actual llvmIR params for inlineASM instructions
     bool validateInlineAsmConstraints(llvm::CallInst* inst, llvm::SmallVector<llvm::StringRef, 8> & constraints);

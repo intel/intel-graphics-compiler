@@ -1385,144 +1385,6 @@ EmitPass::emitInSlice(SBasicBlock& block, SBasicBlock::reverse_iterator I)
 }
 
 /// Insert moves at the end of the basic block to replace the phi node of the successors
-// This is a special case that we want to relocate the phi-mov's
-// unconditionally. Two functions, isCandidateIfStmt() and
-// canRelocatePhiMov(), are used to check if this is the special
-// case as below:
-//
-//  x.1 = ...
-//  ...
-//  H: br i1 %cond, OtherBB, phiMovBB   // target BBs interchangeable
-//  OtherBB:
-//     x.0 = ...
-//     br phiBB
-//  phiMovBB:
-//     <empty BB>
-//     br phiBB
-//  phiBB:
-//     phi x = [x.0, OtherBB] [ x.1, phiMovBB]
-//
-// Normally, a phi-mov is to be inserted into phiMovBB.  This optim is to
-// relocate the phi-mov to H so that we have if-then-endif other than
-// if-then-else-endif. To make it simple and correct, the following
-// conditions are required:
-//     1. 'if' branch isn't uniform. (If uniform, it is probably not beneficial
-//        to move phi-mov to H)
-//     2. either x.0 is defined in otherBB or a phi-mov must be inserted
-//        in the otherBB.
-// With this, phi-mov can be relocated to H without using predicate.
-//
-
-// canRelocatePhiMov() checks if all phi-mov to phiMovBB can be relocated.
-bool EmitPass::canRelocatePhiMov(
-    llvm::BasicBlock* otherBB,
-    llvm::BasicBlock* phiMovBB,
-    llvm::BasicBlock* phiBB)
-{
-    // Threshold for phi-mov relocation
-    const int CMAX_PHI_COUNT = 6;
-
-    int n = 0;
-    for (auto I = phiBB->begin(), E = phiBB->end(); I != E; ++I)
-    {
-        llvm::PHINode* PN = llvm::dyn_cast<llvm::PHINode>(I);
-        if (!PN)
-        {
-            break;
-        }
-
-        CVariable* dst = m_currShader->GetSymbol(PN);
-        for (uint i = 0, e = PN->getNumOperands(); i != e; ++i)
-        {
-            Value* V = PN->getOperand(i);
-            CVariable* src = m_currShader->GetSymbol(V);
-            if (PN->getIncomingBlock(i) == phiMovBB)
-            {
-                if (dst != src)
-                {
-                    int numElt = 1;
-                    if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(PN->getType()))
-                    {
-                        numElt = int_cast<int>(vTy->getNumElements());
-                    }
-                    // Conservatively assume the number of mov's is 'numElt'.
-                    n += numElt;
-                }
-            }
-            else
-            {
-                // For case with PN->getIncomingBlock(i) == otherBB
-                Instruction* Inst = dyn_cast<Instruction>(V);
-                if (Inst && Inst->getParent() != otherBB && (dst == src))
-                {
-                    // This is the case that x and x.1 are coalesced, in which
-                    // we cannot move phi-mov from emptyBB to H, as doing so
-                    // will clobber x.1 (x.1 and x are the same virtual reg).
-                    // [Can move it up with predicate always, but need to check
-                    //  doing so would give us perf benefit.]
-                    //           x.1 = ...
-                    //           ...
-                    //        H: br c, B0, B1
-                    //  otherBB:
-                    //           <...>
-                    //           br phiBB
-                    //  emptyBB:
-                    //           br phiBB
-                    //    phiBB:
-                    //           phi x = [x.0  emptyBB] [x.1 otherBB]
-                    return false;
-                }
-            }
-        }
-    }
-    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
-    {
-        n = (2 * n);
-    }
-    return (n > 0) && (n < CMAX_PHI_COUNT);
-}
-
-// Check if 'ifBB' is the If BB for if-then-else pattern in which both then & else
-// are single BBs and one of them is empty. It also make sure the branch is not
-// uniform.   If it is such a BB, it returns true with emptyBB and otherBB set to
-// then & else.
-bool EmitPass::isCandidateIfStmt(
-    llvm::BasicBlock* ifBB, llvm::BasicBlock*& otherBB, llvm::BasicBlock*& emptyBB)
-{
-    llvm::BranchInst* Br = dyn_cast<llvm::BranchInst>(ifBB->getTerminator());
-    if (!Br || Br->getNumSuccessors() != 2 ||
-        m_currShader->GetIsUniform(Br->getCondition()))
-    {
-        return false;
-    }
-
-    llvm::BasicBlock* S0 = Br->getSuccessor(0), * S1 = Br->getSuccessor(1);
-    IGCLLVM::TerminatorInst* T0 = S0->getTerminator(), * T1 = S1->getTerminator();
-    IGC_ASSERT_MESSAGE(nullptr != T1, "BB is missing a terminator!");
-    IGC_ASSERT_MESSAGE(nullptr != T0, "BB is missing a terminator!");
-    bool  isMatch =
-        S0->getSinglePredecessor() == ifBB && S1->getSinglePredecessor() == ifBB &&
-        T0->getNumSuccessors() == 1 && T1->getNumSuccessors() == 1 &&
-        T0->getSuccessor(0) == T1->getSuccessor(0) &&
-        (S0->size() > 1 || S1->size() > 1) &&    // only one empty block
-        (S0->size() == 1 || S1->size() == 1);
-    if (isMatch)
-    {
-        if (S0->size() == 1)
-        {
-            emptyBB = S0;
-            otherBB = S1;
-        }
-        else
-        {
-            emptyBB = S1;
-            otherBB = S0;
-        }
-    }
-    return isMatch;
-}
-
-/// Insert moves at the end of the basic block to replace the phi node of the successors
 void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
 {
     // collect all the src-side phi-moves, then find a good order for emission
@@ -4537,11 +4399,6 @@ void EmitPass::Mov(const SSource& source, const DstModifier& modifier)
 void EmitPass::Rsqrt(const SSource& source, const DstModifier& modifier)
 {
     Unary(EOPCODE_RSQRT, &source, modifier);
-}
-
-void EmitPass::Sqrt(const SSource& source, const DstModifier& modifier)
-{
-    Unary(EOPCODE_SQRT, &source, modifier);
 }
 
 void EmitPass::Mad(const SSource sources[3], const DstModifier& modifier)
@@ -11281,16 +11138,6 @@ void EmitPass::emitStoreRawIndexed(
     }
     IGC_ASSERT(immOffset == nullptr);
     emitStore3DInner(pValToStore, pBufPtr, varOffset);
-}
-
-void EmitPass::emitStore3D(StoreInst* inst, Value* elmIdxV)
-{
-    // Only support for scratch space added currently during emitStore
-    Value* pllValToStore = inst->getValueOperand();
-    Value* pllDstPtr = inst->getPointerOperand();
-
-
-    emitStore3DInner(pllValToStore, pllDstPtr, elmIdxV);
 }
 
 void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* pllElmIdx)
