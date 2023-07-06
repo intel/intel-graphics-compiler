@@ -35,25 +35,25 @@ namespace IGC {
     }
 
     // If struct type is created by LdStCombine() for layout, return true.
-    bool isLayoutStructType(const llvm::StructType* StTy);
+    bool isLayoutStructType(const StructType* StTy);
     // If struct type is created by LdStCombine() in AOS layout, return true.
     //   note: if a struct type is a layout struct, but not in AOS layout,
     //         it must be in SOA layout.
-    bool isLayoutStructTypeAOS(const llvm::StructType* StTy);
-    bool isLayoutStructTypeSOA(const llvm::StructType* StTy);
+    bool isLayoutStructTypeAOS(const StructType* StTy);
+    bool isLayoutStructTypeSOA(const StructType* StTy);
 
     // bitcastToUI64:
     //   return C as ui64. C must fit into 64bits.
-    uint64_t bitcastToUI64(llvm::Constant* C, const llvm::DataLayout* DL);
+    uint64_t bitcastToUI64(Constant* C, const DataLayout* DL);
 
     // getStructMemberOffsetType_1:
     //   Given a struct type 'StTy' and its 'Indices', return the type and
     //   the byte offset of the member referred to by {StTy, Indices}.
     //   This member must be at level 1.
     //   The function checks to make sure 'Indices' has size of 1.
-    void getStructMemberByteOffsetAndType_1(const llvm::DataLayout* DL,
-        llvm::StructType* StTy, const llvm::ArrayRef<unsigned>& Indices,
-        llvm::Type*& Ty, uint32_t& ByteOffset);
+    void getStructMemberByteOffsetAndType_1(const DataLayout* DL,
+        StructType* StTy, const ArrayRef<unsigned>& Indices,
+        Type*& Ty, uint32_t& ByteOffset);
 
     // getStructMemberOffsetType_2:
     //   Given a struct type 'StTy' and its 'Indices', return the types and
@@ -64,10 +64,10 @@ namespace IGC {
     //   {Ty1, ByteOffset1} is for level 2 if it is at level 2 (Ty1 must not
     //   be nullptr).
     //   The function checks to maek sure 'Indices' has size of 2 at most.
-    void getStructMemberOffsetAndType_2(const llvm::DataLayout* DL,
-        llvm::StructType* StTy, const llvm::ArrayRef<unsigned>& Indices,
-        llvm::Type*& Ty0, uint32_t& ByteOffset0,
-        llvm::Type*& Ty1, uint32_t& ByteOffset1);
+    void getStructMemberOffsetAndType_2(const DataLayout* DL,
+        StructType* StTy, const ArrayRef<unsigned>& Indices,
+        Type*& Ty0, uint32_t& ByteOffset0,
+        Type*& Ty1, uint32_t& ByteOffset1);
 
     // getAllDefinedMembers
     //   Given a value 'V' of struct type, return all the indices of members
@@ -81,8 +81,8 @@ namespace IGC {
     //  %10 = insertvalue %9,    i32 %5, 2
     //
     //  The value %9 will return {0, 1}, and %10 will return {0, 1, 2}.
-    void getAllDefinedMembers(const llvm::Value* IVI,
-        std::list<llvm::ArrayRef<unsigned>>& fieldsTBC);
+    void getAllDefinedMembers(const Value* IVI,
+        std::list<ArrayRef<unsigned>>& fieldsTBC);
 }
 
 #endif // _CISA_MEMOPT_H_
