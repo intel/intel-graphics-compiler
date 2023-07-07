@@ -925,12 +925,13 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 ADDRESS_SPACE_PRIVATE == scratchMemoryAddressSpace &&
                 CanUseSOALayout(pAI, pTypeOfAccessedObject, allUsesAreVector);
 
-            if (TransposeMemLayout)
+            if (TransposeMemLayout && IGC_IS_FLAG_ENABLED(EnableSOAPromotionDisablingHeuristic))
             {
                 // SOA layout can be not beneficial for the alloca, even is it is possible
                 // For example, if it is not vectorSOA, but all uses are vectors
                 // (in case of vectors of different size of elements number) we close the
                 // possibility to use large loads/stores, so cancel the transformation.
+                // Currently it is only enabled by option
                 bool isSOABeneficial = pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
                 Type* allocaType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pAI->getType()));
                 if (VectorType* vectorType = dyn_cast<VectorType>(allocaType))

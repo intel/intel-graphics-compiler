@@ -5,12 +5,12 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --regkey EnableSOAPromotionDisablingHeuristic=1 --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s
 
 ; The stored vector has the same baseType but different number of elements as alloca type
-; We could apply SOA, but it is not beneficial, as all the memory operations are vector
-; So we stick to the default AOS approach
+; We could apply SOA, but is looks not beneficial, as all the memory operations are vector
+; So we stick to the default AOS approach if the heuristic is enabled
 define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %src, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset, i32 %bufferOffset1) #0 {
 ; CHECK-LABEL: @test_pmem(
 ; CHECK-NEXT:  entry:

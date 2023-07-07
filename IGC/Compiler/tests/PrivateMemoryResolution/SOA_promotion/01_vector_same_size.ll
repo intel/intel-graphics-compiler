@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --regkey EnableSOAPromotionDisablingHeuristic=1 --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s
 
 ; The stored vector has the same baseType and number of elements as alloca type
 ; Apply SOA, but preserve the vector store (vectorSOA)
