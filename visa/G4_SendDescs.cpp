@@ -637,9 +637,6 @@ G4_SendDescRaw::G4_SendDescRaw(SFID _sfid, uint32_t _desc, uint32_t _extDesc,
   isLscDescriptor = _sfid == SFID::UGM || _sfid == SFID::UGML ||
                     _sfid == SFID::SLM || _sfid == SFID::TGM;
 
-  if (!isLscDescriptor && bti && bti->isImm()) {
-    setBindingTableIdx((unsigned)bti->asImm()->getInt());
-  }
   // ensure ExDesc[10:6] also holds src1Len
   // see the note above (other constructor) about DG2 descriptors and
   // ExDesc[10:6]
