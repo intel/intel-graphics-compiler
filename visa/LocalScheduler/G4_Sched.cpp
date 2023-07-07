@@ -17,11 +17,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
-#include <algorithm>
 #include <fstream>
 #include <functional>
 #include <iostream>
-#include <list>
 #include <queue>
 
 using namespace vISA;
@@ -777,7 +775,7 @@ public:
       TheCurrTupleLead = nullptr;
   }
   virtual void push(preNode *N) = 0;
-  virtual preNode *pickNode() = 0;
+  virtual preNode *pop() = 0;
 
 protected:
   // The current (send) tuple lead.
@@ -817,7 +815,7 @@ public:
   }
 
   // Schedule the top node.
-  preNode *pickNode() override { return select(); }
+  preNode *pop() override { return select(); }
 
   bool empty() const { return Q.empty() && Clusterings.empty(); }
 
@@ -1172,7 +1170,7 @@ void BB_Scheduler::SethiUllmanScheduling() {
   Q.push(ddd.getExitNode());
 
   while (!Q.empty()) {
-    preNode *N = Q.pickNode();
+    preNode *N = Q.pop();
     vASSERT(!N->isScheduled && N->NumSuccsLeft == 0);
     if (N->getInst() != nullptr) {
       // std::cerr << "emit: "; N->getInst()->dump();
@@ -1230,11 +1228,6 @@ class LatencyQueue : public QueueBase {
   // The register-pressure limit we use to decide sub-blocking
   unsigned GroupingPressureLimit;
 
-  // The list is to use to track active scheduled nodes that write flag.
-  std::list<preNode *> FlagWrites;
-  // Numbers of flag registers from getNumFlagRegisters()
-  const unsigned FlagRegNum;
-
 public:
   LatencyQueue(preDDD &ddd, RegisterPressure &rp, SchedConfig config,
                const LatencyTable &LT, unsigned GroupingThreshold)
@@ -1242,8 +1235,7 @@ public:
         ReadyList(
             [this](preNode *a, preNode *b) { return compareReady(a, b); }),
         HoldList([this](preNode *a, preNode *b) { return compareHold(a, b); }),
-        GroupingPressureLimit(GroupingThreshold),
-        FlagRegNum(ddd.getKernel().fg.builder->getNumFlagRegisters()) {
+        GroupingPressureLimit(GroupingThreshold) {
     init();
   }
 
@@ -1255,19 +1247,11 @@ public:
       HoldList.push(N);
   }
 
-  // Pick a node based on heuristics and the heuristics should be ordered based
-  // on their priority.
-  preNode *pickNode() override {
+  // Schedule the top node.
+  preNode *pop() override {
     vASSERT(!ReadyList.empty());
-    preNode *N = nullptr;
-
-    if (!N)
-      N = selectCandidateToAvoidFlagSpill();
-
-    if (!N)
-      N = select();
-
-    vASSERT(N);
+    preNode *N = ReadyList.top();
+    ReadyList.pop();
     return N;
   }
 
@@ -1318,111 +1302,9 @@ public:
     }
   }
 
-  void updateFlagWrites(preNode* N) {
-    vASSERT(N && N->isScheduled);
-    // Only update flag writes when the scheduled node uses flag through
-    // condition modifier and predicate.
-    G4_INST *NInst = N->getInst();
-    if (!NInst || !NInst->getCondMod() || NInst->opcode() == G4_sel)
-      return;
-
-    auto allFlagUsesScheduled = [](preNode *FW) -> bool {
-      return std::all_of(FW->Succs.begin(), FW->Succs.end(), [FW](preEdge &E) {
-        preNode *Succ = E.getNode();
-        G4_INST *SuccInst = Succ->getInst();
-        return !SuccInst ||
-            !SuccInst->getPredicate() ||
-            (SuccInst->getPredicate()->getBase() !=
-                FW->getInst()->getCondMod()->getBase()) ||
-            Succ->isScheduled;
-      });
-    };
-
-    // Erase a flag write if
-    // 1. the new node that has the same cond mod, or
-    // 2. all of its successors that use the flag are scheduled
-    for (auto it = FlagWrites.begin(), ie = FlagWrites.end(); it != ie; ) {
-      preNode *FW = *it;
-      if (FW->getInst()->getCondMod()->getBase() ==
-          NInst->getCondMod()->getBase()) {
-        it = FlagWrites.erase(it);
-      } else if (allFlagUsesScheduled(FW)) {
-        it = FlagWrites.erase(it);
-      } else
-        ++it;
-    }
-    // Append the new flag write to the end.
-    FlagWrites.push_back(N);
-  }
-
 private:
   void init();
   unsigned calculatePriority(preNode *N);
-
-  // Select the top node.
-  preNode *select() {
-    preNode *N = ReadyList.top();
-    ReadyList.pop();
-    SCHED_DUMP({
-      std::cerr << "Picking a node using the default heuristic: ";
-      N->dump();
-    });
-    return N;
-  }
-
-  // Select a candidate that won't increase flag pressure and could avoid flag
-  // spills potentially. Note that currently this heuristic only considers
-  // flag uses in condition modifier and predicate, and does not consider flag
-  // in src or dst.
-  preNode *selectCandidateToAvoidFlagSpill() {
-    // Only try this heuristic when current flag pressure is high.
-    if (FlagWrites.size() < FlagRegNum)
-      return nullptr;
-
-    auto useAnyActiveFlag = [&](preNode *N) -> bool {
-      return N->getInst() && N->getInst()->getPredicate() &&
-          std::any_of(FlagWrites.begin(), FlagWrites.end(), [N](preNode *FW) {
-              return FW->getInst()->getCondMod()->getBase() ==
-                  N->getInst()->getPredicate()->getBase();});
-    };
-
-    std::vector<preNode *> Noninterest;
-    preNode *N = nullptr;
-    while (!ReadyList.empty()) {
-      preNode *X = ReadyList.top();
-      ReadyList.pop();
-      // 1. Pick a node that does not use flag at all.
-      if (!X->getInst() || !X->getInst()->usesFlag()) {
-        N = X;
-        break;
-      }
-      // 2. Pick a node that uses any active flag.
-      if (useAnyActiveFlag(X)) {
-        N = X;
-        break;
-      }
-      Noninterest.push_back(X);
-    }
-
-    // Add noninterest nodes back to the ready list.
-    for (preNode *Node : Noninterest)
-      ReadyList.push(Node);
-
-    SCHED_DUMP({
-      if (!N) {
-        std::cerr << "Unable to pick a node not to increase flag pressure.\n";
-      } else {
-        std::cerr << "Picking a node to avoid flag spills ";
-        if (!N->getInst() || !N->getInst()->usesFlag())
-          std::cerr << "(NO_FLAG_USES) : ";
-        else
-          std::cerr << "(USE_ACTIVE_FLAG) : ";
-        N->dump();
-      }
-    });
-
-    return N;
-  }
 
   // Compare two ready nodes and decide which one should be scheduled first.
   // Return true if N2 has a higher priority than N1, false otherwise.
@@ -1553,7 +1435,7 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
   unsigned CurrentGroup = 0;
   Q.advance(CurrentCycle, CurrentGroup);
   while (!Q.empty()) {
-    preNode *N = Q.pickNode();
+    preNode *N = Q.pop();
     vASSERT(N->NumPredsLeft == 0);
     unsigned NextCycle = CurrentCycle;
     if (N->getInst() != nullptr) {
@@ -1561,9 +1443,6 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
       NextCycle += LT.getOccupancy(N->getInst());
     }
     N->isScheduled = true;
-    // Update flag writes after scheduling a node.
-    Q.updateFlagWrites(N);
-
     for (auto I = N->succ_begin(), E = N->succ_end(); I != E; ++I) {
       preNode *Node = I->getNode();
       vASSERT(!Node->isScheduled && Node->NumPredsLeft);
@@ -2090,8 +1969,7 @@ DepType preNode::checkBarrier(G4_INST *Inst) {
 
 void preNode::print(std::ostream &os) const {
   os << "ID: " << this->ID << "";
-  if (Inst)
-    Inst->emit(os);
+  Inst->emit(os);
 
   os << "Preds: ";
   for (auto &E : this->Preds)
