@@ -4477,9 +4477,8 @@ void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
  * GotoJoinEVs::GotoJoinEVs : collects and handle EVs. See CollectEVs
  * for more info.
  */
-GenXSimdCFConformance::GotoJoinEVs::GotoJoinEVs(Value *GJ) {
-  GotoJoin = GJ;
-
+GenXSimdCFConformance::GotoJoinEVs::GotoJoinEVs(Value *GJ)
+    : GotoJoin(GJ), IsGoto(false) {
   if (!GotoJoin)
     return;
 

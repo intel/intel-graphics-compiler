@@ -110,7 +110,7 @@ struct CommonBaseGroup
     SmallVector<DivergentPointer, 2> DivergentPointers;
     MapVector<BasicBlock*, std::pair<Value*, SmallVector<Value*, 4>>> GroupFactor;
     MapVector<BasicBlock*, AddrSpaceCastInst*> Casts;
-    BasicBlock* Successor;
+    BasicBlock* Successor = nullptr;
 };
 
 class DivergentPointersGroups
@@ -267,7 +267,7 @@ bool DivergentPointersGroups::addToExistingGroup(const DivergentPointer& DP) {
 }
 
 bool DivergentPointersGroups::createAddNewGroups(const DivergentPointer& DP) {
-    CommonBaseGroup Group;
+    CommonBaseGroup Group = {};
     Group.DivergentPointers.push_back(DP);
     for (auto& IT : DP.Geps) {
         BasicBlock* BB          = IT.first;
