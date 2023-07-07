@@ -2648,6 +2648,69 @@ namespace IGC
             return true;
         }
 
+        // At this point neither of addSubInst src operands is constant, so we look for other patterns.
+        // A common pattern from input source includes zext/sext, e.g.
+        //   load[(uint64_t)(A + 3768) + B]
+        // where A is 32-bit and B is already 64-bit. The idea is to fold the constant so
+        // it can be added as load/store immediate offset.
+        //   load[(uint64_t)(A) + B + 3768]
+
+        if (addSubInst->getOpcode() != Instruction::Add) {
+            return false;
+        }
+
+        auto zext0 = dyn_cast<ZExtInst>(addSubInst->getOperand(0));
+        auto zext1 = dyn_cast<ZExtInst>(addSubInst->getOperand(1));
+        auto zextInst = zext0 ? zext0 : zext1;
+        auto sext0 = dyn_cast<SExtInst>(addSubInst->getOperand(0));
+        auto sext1 = dyn_cast<SExtInst>(addSubInst->getOperand(1));
+        auto sextInst = sext0 ? sext0 : sext1;
+        if (addSubInst->getType()->getScalarSizeInBits() == 64 && (zextInst || sextInst)) {
+            // Pattern to match:
+            //   %558 = add i32 %557, 3768;
+            //   %559 = zext/sext i32 %558 to i64;
+            //   %560 = add i64 %81, %559;
+            // Source of zext/sext is an add inst with a constant operand
+            Instruction *extInst = zextInst ? dyn_cast<Instruction>(zextInst)
+                                            : dyn_cast<Instruction>(sextInst);
+            if (extInst->getNumUses() != 1) {
+                return false;
+            }
+            auto addFromExt = dyn_cast<Instruction>(extInst->getOperand(0));
+            if (!addFromExt || addFromExt->getOpcode() != Instruction::Add) {
+                return false;
+            }
+
+            const bool isConstant0 = isa<ConstantInt>(addFromExt->getOperand(0));
+            const bool isConstant1 = isa<ConstantInt>(addFromExt->getOperand(1));
+            if (isConstant1 || isConstant0) {
+                IGC_ASSERT_MESSAGE(!isConstant0 || !isConstant1,
+                    "Both operands are immediate - constants should be folded elsewhere.");
+
+                unsigned numSources = GetNbSources(I);
+                for (unsigned i = 0; i < numSources; i++) {
+                     MarkAsSource(I.getOperand(i), IsSourceOfSample(&I));
+                }
+
+                ConstantInt *constValue = nullptr;
+                if (isConstant0) {
+                     // Constant operand in add/sub instruction is set to 0, since at this point
+                     // instruction can't be removed. Note that this will be optimized in vISA.
+                     constValue = cast<ConstantInt>(addFromExt->getOperand(0));
+                     addFromExt->setOperand(0, ConstantInt::get(Type::getInt32Ty(I.getContext()), 0));
+                } else {
+                     constValue = cast<ConstantInt>(addFromExt->getOperand(1));
+                     addFromExt->setOperand(1, ConstantInt::get(Type::getInt32Ty(I.getContext()), 0));
+                }
+
+                ConstantInt *immOffset = ConstantInt::get(Type::getInt64Ty(I.getContext()),
+                    zextInst ? constValue->getZExtValue() : constValue->getSExtValue());
+                LSCImmOffsetPattern *pattern = new (m_allocator) LSCImmOffsetPattern(&I, addSubInst, immOffset);
+                AddPattern(pattern);
+                return true;
+            }
+        }
+
         return false;
     }
 
