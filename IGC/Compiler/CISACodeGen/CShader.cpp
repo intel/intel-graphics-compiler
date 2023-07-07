@@ -43,6 +43,8 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_FGA = nullptr;
     m_VRA = nullptr;
     m_EmitPass = nullptr;
+    m_HW_TID = nullptr;
+
     m_shaderStats = nullptr;
     m_constantBufferMask = 0;
     m_constantBufferLoaded = 0;
@@ -2572,6 +2574,9 @@ void CShader::BeginFunction(llvm::Function* F)
     bool useStackCall = m_FGA && m_FGA->useStackCall(F);
     if (useStackCall)
     {
+        // Clear cached variables.
+        m_HW_TID = nullptr;
+
         globalSymbolMapping.clear();
         encoder.BeginStackFunction(F);
         // create pre-defined r0
