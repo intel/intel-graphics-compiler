@@ -213,7 +213,7 @@ static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFl
     IGC_UNUSED(options);
     IGC_UNUSED(RegFlagNameError);
 }
-#define IGC_SET_FLAG_VALUE(name, regkeyValue)
+#define IGC_SET_FLAG_VALUE(name, regkeyValue) true
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;
 namespace IGC
@@ -242,6 +242,14 @@ bool IsEnabled(const T& value)
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) {}
 #endif
+
+// unset: Unlimited/Enable - return true
+//     0: Disabled         - return false
+//   >=1: Enable           - key_value -= 1; return true
+#define IGC_COUNT_FLAG_IN_LIMIT(name) \
+  (!IGC_IS_FLAG_SET(name) ? \
+     true : !IGC_GET_FLAG_VALUE(name) ? \
+        false : (IGC_SET_FLAG_VALUE(name, IGC_GET_FLAG_VALUE(name) - 1) || true))
 
 namespace IGC
 {
