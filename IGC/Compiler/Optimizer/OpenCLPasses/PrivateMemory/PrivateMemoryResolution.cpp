@@ -291,8 +291,13 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             }
             if (FG->hasVariableLengthAlloca())
             {
-                // Add another 1KB if there are VLAs
-                maxPrivateMem += 1024;
+                // Add another 4KB if there are VLAs
+                maxPrivateMem += 4096;
+                std::string maxPrivateMemValue = std::to_string(maxPrivateMem);
+                std::string fullWarningMessage = "VLA has been detected, the private memory size is set to " + maxPrivateMemValue + "B. You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. Greater values can affect performance, and lower ones may lead to incorrect results of your program";
+
+                // Now, you can pass the concatenated warning message (const char*) to the EmitWarning function
+                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
             }
             maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
             maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
