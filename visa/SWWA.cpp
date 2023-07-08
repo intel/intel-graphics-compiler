@@ -493,49 +493,49 @@ void Optimizer::finishFusedCallWA_preSWSB() {
       G4_INST *ip_inst = nullptr;
       if (ip_wa) {
         // clang-format off
-        //  Simplified example to show what it does:
-        //      Given
-        //          pseudo_fcall (16)    r4.0:ud
+        // Simplified example to show what it does:
+        //  Given
+        //       pseudo_fcall (16)    r4.0:ud
         //
-        //      After applyFusedCallWA and RA:
-        //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
-        //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
-        //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
-        //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
-        //         (W) mov (1)              r3.0<1>:d  0x89abcdef:d                         : ip_wa (placeholder)
-        //         (W) add (1)              r2.0<1>:d -r3.0<0;1,0>:d  r3.2<0;1,0>:d         : small_start
-        //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d         : small_patch
-        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d r4.0<0;1,0>:d         : big_start
-        //         (W) add (1)              r2.0<1>:d r2.0<0;1,0>:d  0x33333333:d           : big_patch
-        //         if (BigEU)
-        //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f
-        //                 pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud               : big_call
-        //         else
-        //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
-        //                 pseudo_fcall (16)    r125.0<1>:ud  r125.0<0;1,0>:ud              : small_call
+        //  After applyFusedCallWA and RA:
+        //   (W) mov (1)   r2.0<1>:ud  sr0.0<0;1,0>:ud
+        //   (W) and (16) (eq)f1.0 null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
+        //   (W&!f1.0) mov (1)     cr0.2<1>:ud  r4.0<0;1,0>:ud
+        //   (W) mov (1)   r3.2<1>:ud  cr0.2<0;1,0>:ud
+        //   (W) mov (1)   r3.0<1>:d  0x89abcdef:d          :ip_wa (placeholder)
+        //   (W) add (1)   r2.0<1>:d -r3.0<0;1,0>:d  r3.2<0;1,0>:d  :small_start
+        //   (W) add (1)   r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d  :small_patch
+        //   (W) add (1)   r2.0<1>:d  -r3.0<0;1,0>:d r4.0<0;1,0>:d  :big_start
+        //   (W) add (1)   r2.0<1>:d r2.0<0;1,0>:d  0x33333333:d    :big_patch
+        //   if (BigEU)
+        //    (W) mov (1)   r125.0<1>:f  r2.0<0;1,0>:f
+        //        pseudo_fcall (16) r125.0<1>:ud r125.0<0;1,0>:ud  :big_call
+        //   else
+        //    (W) mov (1)            r125.0<1>:f r70.0<0;1,0>:f
+        //        pseudo_fcall (16)  r125.0<1>:ud r125.0<0;1,0>:ud :small_call
         //
         //
-        //     After finishFusedCallWA()
-        //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
-        //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
-        //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
-        //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
+        //  After finishFusedCallWA()
+        //   (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
+        //   (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
+        //   (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
+        //   (W) mov (1)           r3.2<1>:ud  cr0.2<0;1,0>:ud
         //
-        //         (W) call (1)             r3.0<1>:d  _label_ip_wa
-        //      _label_ip_wa:
-        //         (W) add (1|M16)          r3.0<1>:d  r3.0<0;1,0>:d  0x20:d {NoCompact}
-        //         (W) return (1)          r3.0<0;1,0>:d {NoCompact}
+        //   (W) call (1)          r3.0<1>:d  _label_ip_wa
+        //   _label_ip_wa:
+        //   (W) add (1|M16)       r3.0<1>:d  r3.0<0;1,0>:d  0x20:d {NoCompact}
+        //   (W) return (1)        r3.0<0;1,0>:d {NoCompact}
         //
-        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d r3.2<0;1,0>:d         : IP
-        //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  144
-        //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d
-        //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d   96
-        //         if (BigEU)
-        //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f
-        //                pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud                : IP+96
-        //         else
-        //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
-        //                pseudo_fcall (16)    r125.0<1>:ud  r70.0<0;1,0>:f                 : IP+144
+        //   (W) add (1)           r2.0<1>:d  -r3.0<0;1,0>:d r3.2<0;1,0>:d  :IP
+        //   (W) add (1)           r70.0<1>:d  r2.0<0;1,0>:d  144
+        //   (W) add (1)           r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d
+        //   (W) add (1)           r2.0<1>:d  r2.0<0;1,0>:d   96
+        //   if (BigEU)
+        //    (W) mov (1)           r125.0<1>:f  r2.0<0;1,0>:f
+        //        pseudo_fcall (16) r125.0<1>:ud  r125.0<0;1,0>:ud     : IP+96
+        //   else
+        //    (W) mov (1)           r125.0<1>:f  r70.0<0;1,0>:f
+        //        pseudo_fcall (16) r125.0<1>:ud  r70.0<0;1,0>:f       : IP+144
         //
         // clang-format on
         BB->resetLocalIds();
@@ -579,10 +579,10 @@ void Optimizer::finishFusedCallWA() {
   // Regarding using M16 as maskOff to force running some instructions
   //
   // For each nested stack call like the following:
-  //   (1) (W)  mov  (4|M0)    r59.4<1>:ud     r125.0<4;4,1>:ud     // save code
-  //   in prolog (2)     call (16|M0)    r125.0          inner (3) (W)  mov
-  //   (4|M0)    r125.0<1>:ud    r59.4<4;4,1>:ud      // restore code in ret.
-  //   (4)      ret  (16|M0)    r125.0
+  //  (1) (W) mov (4|M0) r59.4<1>:ud r125.0<4;4,1>:ud  // save code in prolog
+  //  (2) call (16|M0) r125.0     inner
+  //  (3) (W) mov (4|M0) r125.0<1>:ud r59.4<4;4,1>:ud  // restore code in ret
+  //  (4) ret  (16|M0)    r125.0
   // If no active channels,  call inst will always execute due to the hw bug,
   // therefore r125 will be modified by this call inst at (2). As no active
   // channels, r125 restore code at (3) is not going to be run. Therefore, r125
@@ -682,11 +682,10 @@ void Optimizer::finishFusedCallWA() {
   }
 
   // RA does the following
-  //   (W) mov(1|M0)  r125.0<1>:f   r60.0<0;1,0>:f
-  //   (W) send.dc0(16|M0)   null r126  r5    0x80      0x020A03FF   // stack
-  //   spill
-  //       sync.nop        null{ Compacted,$4.src }
-  //       call (8|M0)      r125.0   r125.0
+  //  (W) mov(1|M0)  r125.0<1>:f   r60.0<0;1,0>:f
+  //  (W) send.dc0(16|M0)  null r126  r5  0x80  0x020A03FF   // stack spill
+  //      sync.nop        null{ Compacted,$4.src }
+  //      call (8|M0)      r125.0   r125.0
   //
   // To make call WA work,  call for SmallEU has to use r60, not r125, as below:
   //   call (8|M0)  r125.0 r60.0
@@ -741,14 +740,16 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet() {
   // is:
 
   // if has IP WA, more instructions are added:
-  //        call   dst     _label_ip_wa
-  //      _label_ip_wa:
-  //        add    dst     dst     32     // 3rd add  // 32 is hardcoded  //
-  //        sync_off_2 ret    dst
+  //     call   dst     _label_ip_wa
+  //   _label_ip_wa:
+  //     add    dst     dst     32     // 3rd add, sync_off_2
+  //                                   // 32 is hardcoded
+  //     ret    dst
   // else it'll be :
-  //        add  r2.0  -IP   call_target  // 2nd add
-  //        add  r2.0  r2.0  -32          // 1st add  // -32 is hardcoded //
-  //        sync_off_1 call r1.0  r2.0
+  //     add  r2.0  -IP   call_target  // 2nd add
+  //     add  r2.0  r2.0  -32          // 1st add, sync_off_1
+  //                                   // -32 is hardcoded
+  //     call r1.0  r2.0
   // SWSB could've inserted sync instructions between offset-hardcoded
   // instructions. We need to re-adjust the offset
 
@@ -2156,40 +2157,39 @@ void Optimizer::applyNoMaskWA() {
 //  details are as follows:
 //
 // clang-format off
-//    before:
-//      BB:
-//              pseudo_fcall (16)     V44(0,0)<0;1,0>:ud
-//      nextBB:
+//  before:
+//  -------
+//  BB:
+//   pseudo_fcall (16)     V44(0,0)<0;1,0>:ud
+//  nextBB:
 //
-//     Let Target = V44
+//  Let Target = V44
 //
-//    after WA                                                              //
-//    Var names
-//      BB:
-//         (W)     mov (1 |M0)  tmp<1>:ud    sr0.0<0;1,0>:ud                // I0
-//         (W)     and (16|M0)  (eq)F  null<1>:uw  tmp<0;1,0>:uw   0x80:uw  // I1
-//         (W&~F)  mov (1 |M0)  cr0.2<1>:ud  Target<0;1,0>:ud               // I2
-//         (W)     mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud          // I3
-//         (W)     add (1 |M0)  I4_IP:d   -ip:d  smallEUTarget:d            // I4_ip_start
-//         (W)     add (1 |M0)  I4Target:d   I4_IP:d  0x33333333:d          // I4_patch_add
-//         (W)     add (1 |M0)  I5_IP:d   -ip:d  Target:d                   // I5_ip_start
-//         (W)     add (1 |M0)  I5Target:d   I5_IP:d  0x33333333:d          // I5_patch_add
-//         (~F)    goto smallB0
+//  after WA                                                    // Var Names
+//  --------
+//  BB:
+//   (W)    mov (1 |M0) tmp<1>:ud  sr0.0<0;1,0>:ud              // I0
+//   (W)    and (16|M0) (eq)F null<1>:uw tmp<0;1,0>:uw 0x80:uw  // I1
+//   (W&~F) mov (1 |M0) cr0.2<1>:ud  Target<0;1,0>:ud           // I2
+//   (W)    mov (1 |M0) smallEUTarget:ud  cr0.2<0;1,0>:ud       // I3
+//   (W)    add (1 |M0) I4_IP:d   -ip:d  smallEUTarget:d        // I4_ip_start
+//   (W)    add (1 |M0) I4Target:d   I4_IP:d  0x33333333:d      // I4_patch_add
+//   (W)    add (1 |M0) I5_IP:d   -ip:d  Target:d               // I5_ip_start
+//   (W)    add (1 |M0) I5Target:d   I5_IP:d  0x33333333:d      // I5_patch_add
+//   (~F)   goto smallB0
 //                             // [gotoSmallB0]
-//      bigB0:
-//            pseudo_fcall (16)     I5Target:ud                             //
-//            callI: original call
-//      bigB1:
-//            goto nextBB                                                   //
-//            gotoEnd
-//      smallB0:
-//            join nextBB                                                   //
-//            joinSmall pseudo_fcall (16)     I4Target<0;1,0>:ud // nCallI
-//      smallB1:
+//  bigB0:
+//          pseudo_fcall (16)     I5Target:ud                   // callI
+//                                                                 (orig call)
+//  bigB1:
+//          goto nextBB                                         // gotoEnd
+//  smallB0:
+//          join nextBB                                         // joinSmall
+//          pseudo_fcall (16)     I4Target<0;1,0>:ud // nCallI
+//  smallB1:
 //
-//      nextBB:
-//            join <nextJoin or null>                                       //
-//            finalJoin
+//  nextBB:
+//          join <nextJoin or null>                             // finalJoin
 // clang-format on
 //
 // The BBs and those insts such as I4_patch_add/I5_patch_add, etc are added into
