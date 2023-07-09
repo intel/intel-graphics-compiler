@@ -2256,6 +2256,7 @@ namespace {
         Type* getLdStType() const;
         uint32_t getAlignment() const;
         AddressModel getAddressModel(CodeGenContext* Ctx) const;
+        Value* getStoreValue() const;
     };
 
     typedef SmallVector<LdStInfo, 8> InstAndOffsetPairs;
@@ -2638,6 +2639,20 @@ uint32_t LdStInfo::getAlignment() const
     }
     IGC_ASSERT(false);
     return 1;
+}
+
+Value* LdStInfo::getStoreValue() const
+{
+    if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
+    {
+        return nullptr;
+    }
+    else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
+    {
+        return SI->getValueOperand();
+    }
+    IGC_ASSERT(false);
+    return nullptr;
 }
 
 AddressModel LdStInfo::getAddressModel(CodeGenContext* Ctx) const
@@ -3152,6 +3167,13 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 continue;
             }
 
+            if (m_WI && isUniform &&
+                !m_WI->isUniform(leadLSI->getStoreValue())) {
+                // no combining for *uniform-ptr = non-uniform value
+                ++i;
+                continue;
+            }
+
             Type* leadTy = leadLSI->getLdStType();
             Type* eltTy = leadTy->getScalarType();
             uint32_t eltBytes = (uint32_t)(m_DL->getTypeStoreSize(eltTy));
@@ -3189,6 +3211,12 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                     // stop as remaining stores are not contiguous
                     break;
                 }
+                if (m_WI && isUniform &&
+                    !m_WI->isUniform(LSI->getStoreValue())) {
+                    // no combining for *uniform-ptr = non-uniform value
+                    break;
+                }
+
                 Type* aTy = LSI->getLdStType();
                 uint32_t currByteOffset = totalBytes;
                 totalBytes += (uint32_t)m_DL->getTypeStoreSize(aTy);
@@ -3205,6 +3233,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                     // in inefficient code.
                     continue;
                 }
+
                 if (totalBytes == nextBytes &&
                     !D32OrD64.skip(vecEltBytes, BC.getCurrVecSize())) {
                     e = j;
