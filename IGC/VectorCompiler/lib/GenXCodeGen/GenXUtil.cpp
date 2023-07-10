@@ -485,7 +485,8 @@ Value *genx::getMaskOperand(const Instruction *Inst) {
   // return null for any other intrusction except
   // genx intrinsics
   auto *CI = dyn_cast<CallInst>(Inst);
-  if (!CI || !GenXIntrinsic::isGenXIntrinsic(CI))
+  auto IID = vc::getAnyIntrinsicID(Inst);
+  if (!CI || !vc::isAnyNonTrivialIntrinsic(IID))
     return nullptr;
 
   auto MaskOpIt = llvm::find_if(CI->operands(), [](const Use &U) {
@@ -1989,7 +1990,7 @@ unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
     // Do not emit simd32 mad for pre-ICLLP.
     return ST->hasMadSimd32() ? 0x3f : 0x1f;
   default:
-    return GenXIntrinsic::isGenXIntrinsic(ID)
+    return vc::isAnyNonTrivialIntrinsic(ID)
                ? GenXIntrinsicInfo(ID).getExecSizeAllowedBits()
                : 0x3f;
   }
@@ -2135,8 +2136,9 @@ unsigned genx::ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth) {
 }
 
 bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) == GenXIntrinsic::genx_wrpredregion,
-    "wrong argument: wrpredregion intrinsic was expected");
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) ==
+                         GenXIntrinsic::genx_wrpredregion,
+                     "wrong argument: wrpredregion intrinsic was expected");
   auto &NewValue = *WrPredRegion.getOperand(vc::WrPredRegionOperand::NewValue);
   auto ExecSize =
       NewValue.getType()->isVectorTy()
@@ -2350,10 +2352,10 @@ genx::getInterveningGVStoreOrNull(Instruction *LI, Instruction *UIOrPos,
   Value *GV = vc::getUnderlyingGlobalVariable(LI->getOperand(0));
 
   auto isClobberingStore = [&](Instruction &I) {
+    auto IID = vc::getAnyIntrinsicID(&I);
     return isGlobalVolatileStore(&I, GV) ||
            (CallSites ? llvm::find(*CallSites, &I) != CallSites->end()
-                      : isa<CallInst>(I) &&
-                            !GenXIntrinsic::isAnyNonTrivialIntrinsic(&I));
+                      : isa<CallInst>(I) && !vc::isAnyNonTrivialIntrinsic(IID));
   };
 
   if (LI->getParent() == UIOrPos->getParent()) {
