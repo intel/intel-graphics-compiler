@@ -975,25 +975,6 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, SWSB &sw) {
     sw.sbid = token;
   }
 
-  // Workaround: adjust send's swsb to align with HW behavior. Only adjust
-  // when solely token or distance is used on the instruction.
-  // - send has only SBID.src/dst --> SBID.set
-  // - send has only distance     --> $0 and distance
-  // This workaround can be removed once vISA doesn't produce such SWSB.
-  // Currently this could happen only on EOT send.
-  if (inst->isSend() && !sw.hasBothDistAndToken() &&
-      !sw.verify(IGAKernel->getModel().getSWSBEncodeMode(),
-                 SWSB::InstType::SEND)) {
-    sw.tokenType = SWSB::TokenType::SET;
-    if (sw.hasDist()) {
-      // if the distance type cannot be combined with SBID.set, force
-      // to ALL pipe
-      if (sw.distType != SWSB::DistType::REG_DIST_ALL &&
-          sw.distType != SWSB::DistType::REG_DIST_FLOAT &&
-          sw.distType != SWSB::DistType::REG_DIST_INT)
-        sw.distType = SWSB::DistType::REG_DIST_ALL;
-    }
-  }
   return;
 }
 

@@ -2968,7 +2968,8 @@ void SWSB::tokenAllocation() {
     printf("\n=======nodeID: %d, startID: %d, endID: %d\n", node->getNodeID(),
            node->getLiveStartID(), node->getLiveEndID());
 #endif
-    if (inst->isEOT()) {
+
+    if (!fg.builder->hasFourALUPipes() && inst->isEOT()) {
       continue;
     }
 
