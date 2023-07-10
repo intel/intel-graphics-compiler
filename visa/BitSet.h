@@ -254,6 +254,9 @@ public:
 
   bool operator==(const BitSet &other) const {
     if (m_Size == other.m_Size) {
+      if (m_Size == 0) {
+          return true;
+      }
       unsigned sizeInBytes = (m_Size + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
       return 0 == std::memcmp(m_BitSetArray, other.m_BitSetArray, sizeInBytes);
     }
@@ -262,6 +265,9 @@ public:
 
   bool operator!=(const BitSet &other) const {
     if (m_Size == other.m_Size) {
+      if (m_Size == 0) {
+          return false;
+      }
       unsigned sizeInBytes = (m_Size + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
       return 0 != std::memcmp(m_BitSetArray, other.m_BitSetArray, sizeInBytes);
     }
