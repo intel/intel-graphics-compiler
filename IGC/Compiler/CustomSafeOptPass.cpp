@@ -165,19 +165,22 @@ void CustomSafeOptPass::visitXor(Instruction& XorInstr) {
 
     llvm::SmallVector<Instruction*, 4> UsersList;
 
-    for (auto U : ICmpInstr->users()) {
-        if (isa<BranchInst>(U)) {
-            UsersList.push_back(cast<Instruction>(U));
+    for (const auto& U : ICmpInstr->uses()) {
+        auto user = U.getUser();
+        if (isa<BranchInst>(user)) {
+            UsersList.push_back(cast<Instruction>(user));
         }
-        else if (SelectInst* S = dyn_cast<SelectInst>(U)) {
-            if (S->getCondition() == ICmpInstr) {
+        else if (SelectInst* S = dyn_cast<SelectInst>(user)) {
+            constexpr uint32_t condIdx = 0;
+            uint32_t idx = U.getOperandNo();
+            if (condIdx == idx) {
                 UsersList.push_back(cast<Instruction>(S));
             }
             else {
                 return;
             }
         }
-        else if (U != &XorInstr) {
+        else if (user != &XorInstr) {
             return;
         }
     }
