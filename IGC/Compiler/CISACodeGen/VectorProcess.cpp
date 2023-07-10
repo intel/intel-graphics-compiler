@@ -138,6 +138,7 @@ namespace
             , m_DL(nullptr)
             , m_C(nullptr)
             , has_8Byte_A64_BS(true)
+            , has_QW_BTS_GS(false)
             , m_WorkList()
         {
             initializeVectorProcessPass(*PassRegistry::getPassRegistry());
@@ -158,6 +159,7 @@ namespace
         const DataLayout* m_DL;
         LLVMContext* m_C;
         bool has_8Byte_A64_BS; // true if 8-byte A64 Byte scattered is supported
+        bool has_QW_BTS_GS;    // true if qword BTS Gather/Scatter is supported
         InstWorkVector m_WorkList;
     };
 }
@@ -207,13 +209,15 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
         Ptr = II->getOperand(0);
 
-        if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
+        if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+            II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed)
         {
             Ty = II->getType();
         }
         else
         {
-            IGC_ASSERT(II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed);
+            IGC_ASSERT(II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed ||
+                       II->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed);
             IGC_ASSERT(2 < IGCLLVM::getNumArgOperands(II));
             IGC_ASSERT(nullptr != II->getArgOperand(2));
 
@@ -281,6 +285,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         CodeGenContext* cgCtx = nullptr;
         cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         bool useA64 = IGC::isA64Ptr(PtrTy, cgCtx);
+        bool useBSS = IGC::DecodeBufferType(PtrTy->getAddressSpace()) == IGC::BINDLESS;
         alignment_t align;
         if (LI)
         {
@@ -295,8 +300,16 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             align = 1;
         }
 
-        bool useQW = useA64 && ((TBytes % 8) == 0) &&
-            ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
+        bool useQW = false;
+        if (useA64)
+        {
+            useQW = (TBytes % 8 == 0) &&
+                ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
+        }
+        else if (useBSS)
+        {
+            useQW = has_QW_BTS_GS && nelts == 1 && (eTyBytes == 8U && align >= 8U);
+        }
 
         if (cgCtx->platform.LSCEnabled())
         {
@@ -452,7 +465,8 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             store->copyMetadata(*SI);
             SI->eraseFromParent();
         }
-        else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
+        else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+                 II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed)
         {
             Type* types[] =
             {
@@ -472,6 +486,8 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         }
         else
         {
+            IGC_ASSERT(II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed ||
+                       II->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed);
             Type* types[] =
             {
                 newPtrTy,
@@ -541,6 +557,7 @@ bool VectorProcess::runOnFunction(Function& F)
     m_DL = &F.getParent()->getDataLayout();
     m_C = &F.getContext();
     has_8Byte_A64_BS = cgCtx->platform.has8ByteA64ByteScatteredMessage();
+    has_QW_BTS_GS = cgCtx->platform.hasQWGatherScatterBTSMessage();
 
     //  Adjust load/store layout by inserting bitcast.
     //  Those bitcasts should not be optimized away.
@@ -555,7 +572,9 @@ bool VectorProcess::runOnFunction(Function& F)
             if (GenIntrinsicInst * intrin = dyn_cast<GenIntrinsicInst>(inst))
             {
                 if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
-                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
+                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
+                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed ||
+                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed)
                 {
                     m_WorkList.push_back(inst);
                 }

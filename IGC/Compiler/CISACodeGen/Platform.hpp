@@ -92,6 +92,7 @@ SKU_FEATURE_TABLE const& getSkuTable() const { return m_SkuTable; }
 bool hasPackedVertexAttr() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
 bool hasScaledMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
 bool has8ByteA64ByteScatteredMessage() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
+bool hasQWGatherScatterBTSMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_XE_HP_SDV; }
 
 bool hasPredicatedBarriers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
 bool hasIEEEMinmaxBit() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
