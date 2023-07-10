@@ -781,7 +781,8 @@ void HWConformity::splitSIMD32Inst(INST_LIST_ITER iter, G4_BB *bb) {
   // boundary is GRF-boundary and HS change, but for Dst, elements should be
   // symetric if half-GRF boundary is crossed.
   G4_DstRegRegion *dst = inst->getDst();
-  bool nullDst = dst && inst->hasNULLDst();
+  vASSERT(nullptr != dst);
+  bool nullDst = inst->hasNULLDst();
   G4_ExecSize instExSize = inst->getExecSize(),
               currExSize = G4_ExecSize(instExSize / 2);
   for (int i = 0; i < instExSize; i += currExSize) {
@@ -1136,7 +1137,8 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
   // symetric if half-GRF boundary is crossed.
 
   G4_DstRegRegion *dst = inst->getDst();
-  bool nullDst = dst && inst->hasNULLDst();
+  vASSERT(nullptr != dst);
+  bool nullDst = inst->hasNULLDst();
   G4_ExecSize instExSize = inst->getExecSize(),
               currExSize = G4_ExecSize(instExSize / 2);
 
