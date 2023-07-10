@@ -144,7 +144,7 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
     else if (!Bitcast_BitcastWithIntermediateIllegalsEliminated) { // Eliminate redundant bitcast-bitcast pairs and eliminate intermediate ILLEGAL operands in bitcast-bitcast pairs with src == dest OR src != dest
         if (isa<BitCastInst>(&I))
             cleanupBitCastInst(I);
-        if (isa<TruncInst>(&I))
+        else if (isa<TruncInst>(&I))
             cleanupBitCastTruncInst(I);
     }
 }
