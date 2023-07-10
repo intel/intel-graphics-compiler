@@ -2731,10 +2731,9 @@ void GenXLegalization::fixIntrinsicCalls(Function *F) {
 
     // Now replace all uses with this new definition.
     for (auto *Inst : I.second) {
-      std::vector<Instruction *> WorkList{Inst};
+      SmallVector<Instruction *, 8> WorkList{Inst};
       while (!WorkList.empty()) {
-        Instruction *CurI = WorkList.back();
-        WorkList.pop_back();
+        auto *CurI = WorkList.pop_back_val();
 
         for (auto UI = CurI->use_begin(); UI != CurI->use_end();) {
           Use &U = *UI++;

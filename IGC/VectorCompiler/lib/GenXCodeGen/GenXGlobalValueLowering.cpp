@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -472,8 +472,7 @@ void GenXGlobalValueLowering::traverseCallGraph(const FHead &Head,
   ToProcess.push_back(&Head);
 
   while (!ToProcess.empty()) {
-    const Function *F = ToProcess.back();
-    ToProcess.pop_back();
+    const auto *F = ToProcess.pop_back_val();
 
     CallGraphNode &N = *CG[F];
     for (IGCLLVM::CallRecord CE : N) {

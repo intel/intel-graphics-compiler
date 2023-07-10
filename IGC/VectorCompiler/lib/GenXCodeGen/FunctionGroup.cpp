@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -270,11 +270,10 @@ static void traverseCallGraph(const FunctionGroupAnalysis::CallGraphTy &CG,
                               CallbackOnEdge OnEdge, UnaryPredicate Pred) {
   if (!Pred(StartPoint))
     return;
-  std::vector<Function *> Stack = {StartPoint};
+  SmallVector<Function *, 8> Stack = {StartPoint};
   std::unordered_set<Function *> Visited = {StartPoint};
   while (!Stack.empty()) {
-    Function *F = Stack.back();
-    Stack.pop_back();
+    auto *F = Stack.pop_back_val();
     IGC_ASSERT_MESSAGE(CG.count(F), "Inconsistent call graph");
 
     OnNode(F);

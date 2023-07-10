@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -374,7 +374,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
   }
   BBRanges[BB] = Segment(StartNum, EndNum);
   // The stack for predecessors that need to be processed:
-  std::vector<BasicBlock *> Stack;
+  SmallVector<BasicBlock *, 8> Stack;
   // Process each use.
   for (Value::use_iterator i = V->use_begin(), e = V->use_end();
       i != e; ++i) {
@@ -452,8 +452,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     std::copy(pred_begin(BB), pred_end(BB), std::back_inserter(Stack));
     // Process stack until empty.
     while (Stack.size()) {
-      BB = Stack.back();
-      Stack.pop_back();
+      BB = Stack.pop_back_val();
       BBRange = &BBRanges[BB];
       auto BBNum = Numbering->getBBNumber(BB);
       if (BBRange->getEnd()) {
@@ -1423,8 +1422,7 @@ void GenXLiveness::eraseUnusedTree(Instruction *TopInst)
   std::set<Instruction *> ToErase;
   Stack.push_back(TopInst);
   while (!Stack.empty()) {
-    auto Inst = Stack.back();
-    Stack.pop_back();
+    auto *Inst = Stack.pop_back_val();
     if (!Inst->use_empty())
       continue;
     if (TopInst != Inst) {

@@ -1025,8 +1025,7 @@ int GenXUnbaling::getReachability(Instruction *Inst, Instruction *Def)
   std::set<BasicBlock *> BlockSeen;
   Stack.push_back(Block);
   while (!Stack.empty()) {
-    Block = Stack.back();
-    Stack.pop_back();
+    Block = Stack.pop_back_val();
     if (!BlockSeen.insert(Block).second)
       continue; // already seen, terminate this branch of the scan
     if (Block == CurBlock)

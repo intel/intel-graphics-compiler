@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -122,8 +122,7 @@ Alignment AlignmentInfo::get(Value *V)
   for (auto i = InstWeb.begin(), e = InstWeb.end(); i != e; ++i)
     WorkSet.insert(*i);
   while (!InstWeb.empty()) {
-    Instruction *WorkInst = InstWeb.back();
-    InstWeb.pop_back();
+    auto *WorkInst = InstWeb.pop_back_val();
     WorkSet.erase(WorkInst);
     LLVM_DEBUG(dbgs() << "  processing " << WorkInst->getName() << "\n");
 

@@ -1880,8 +1880,7 @@ void GenXSimdCFConformance::ensureConformance() {
   for (;;) {
     if (!EMValsStack.empty()) {
       // Remove and process the top entry on the stack.
-      auto EMVal = EMValsStack.back();
-      EMValsStack.pop_back();
+      auto EMVal = EMValsStack.pop_back_val();
       if (checkEMVal(EMVal))
         continue;
       removeBadEMVal(EMVal);
@@ -3584,8 +3583,7 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
           // Go on to the next pending predecessor.
           if (PendingBBStack.empty())
             break;
-          Inst = PendingBBStack.back()->getTerminator();
-          PendingBBStack.pop_back();
+          Inst = PendingBBStack.pop_back_val()->getTerminator();
         }
         if (&Inst->getParent()->front() == Inst) {
           // Reached the start of the block. Make all unprocessed predecessors

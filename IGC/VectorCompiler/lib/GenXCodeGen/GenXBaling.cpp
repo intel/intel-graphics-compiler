@@ -1843,8 +1843,7 @@ void GenXBaling::doClones()
 {
   while (NeedCloneStack.size()) {
     // Pop a NeedClone off the stack.
-    NeedClone NC = NeedCloneStack.back();
-    NeedCloneStack.pop_back();
+    NeedClone NC = NeedCloneStack.pop_back_val();
     // See if it is still multiple use (earlier cloning may have caused this
     // one to become single use).
     Instruction *Opnd = cast<Instruction>(NC.Inst->getOperand(NC.OperandNum));

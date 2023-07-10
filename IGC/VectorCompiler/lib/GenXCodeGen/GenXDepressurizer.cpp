@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1596,8 +1596,7 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
       continue;
     }
     // Pop a ready block off the stack.
-    auto BB = Ready.back();
-    Ready.pop_back();
+    auto *BB = Ready.pop_back_val();
     Ordering.push_back(BB);
     Done.insert(BB);
     // For each successor, decrement the pending count. If it becomes 0, the

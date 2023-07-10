@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -141,8 +141,7 @@ bool GenXExtractVectorizer::runOnFunction(Function &F)
   // Process each such vector. Processing a vector might result in another
   // new vector being pushed onto Extracted, so that in turn will be processed.
   while (!Extracted.empty()) {
-    Value *V = Extracted.back();
-    Extracted.pop_back();
+    auto *V = Extracted.pop_back_val();
     processExtracted(V);
   }
   return Modified;

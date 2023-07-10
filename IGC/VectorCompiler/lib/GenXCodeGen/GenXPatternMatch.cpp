@@ -2279,11 +2279,10 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
         Wrs.push_back(WII);
         bool HasUnsafeUse = false;
         while (!HasUnsafeUse && !Wrs.empty()) {
-          GenXIntrinsicInst *II = Wrs.back();
-          Wrs.pop_back();
+          auto *II = Wrs.pop_back_val();
           for (auto *U : II->users()) {
             if (GenXIntrinsic::isRdRegion(U)) {
-              GenXIntrinsicInst *RII = cast<GenXIntrinsicInst>(U);
+              auto *RII = cast<GenXIntrinsicInst>(U);
               auto R = makeRegionFromBaleInfo(RII, BaleInfo());
               if (R == W) {
                 for (auto *U2 : RII->users())
@@ -3199,8 +3198,7 @@ bool GenXPatternMatch::reassociateIntegerMad(Function *F) {
         continue;
       }
 
-      BO = AccChain.back();
-      AccChain.pop_back();
+      BO = AccChain.pop_back_val();
 
       IRBuilder<> IRB(BO);
       // Reconstruct a new accumulation chain.
@@ -3221,8 +3219,7 @@ bool GenXPatternMatch::reassociateIntegerMad(Function *F) {
       BI = std::next(BasicBlock::iterator(BO));
       BO->eraseFromParent();
       while (!AccChain.empty()) {
-        BO = AccChain.back();
-        AccChain.pop_back();
+        BO = AccChain.pop_back_val();
         BI = std::next(BasicBlock::iterator(BO));
         BO->eraseFromParent();
       }

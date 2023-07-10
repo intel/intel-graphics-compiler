@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -90,8 +90,7 @@ void GenXGASCastWrapper::traverseCallGraph(
   SmallVector<const Function *, 16> WorkList;
   WorkList.push_back(F);
   while (!WorkList.empty()) {
-    const Function *F = WorkList.back();
-    WorkList.pop_back();
+    const auto *F = WorkList.pop_back_val();
     CallGraphNode &N = *CG[F];
     for (IGCLLVM::CallRecord CE : N) {
       // Skipping reference edges.

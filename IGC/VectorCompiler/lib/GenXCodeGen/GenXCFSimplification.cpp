@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -96,8 +96,7 @@ bool GenXCFSimplification::runOnFunction(Function &F)
   }
   // Process each branched over block.
   while (!BranchedOver.empty()) {
-    auto BB = BranchedOver.back();
-    BranchedOver.pop_back();
+    auto *BB = BranchedOver.pop_back_val();
     BasicBlock *SubsumedInto = processBranchedOverBlock(BB);
     if (!SubsumedInto)
       continue;
