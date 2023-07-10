@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -36,14 +36,13 @@ define internal spir_func <8 x i32> @S1(i32 %0) #1 !dbg !17 {
 ; CHECK_K1-DAG: ![[#K1VAR]] = !DILocalVariable(name: "x", scope: ![[#K1_SP]], file: ![[#]], type: ![[#K1TYPE:]], flags: DIFlagArtificial)
 ; CHECK_K1-DAG: ![[#K1TYPE]] = !DIBasicType(name: "unsigned int", size: 32, encoding: DW_ATE_unsigned)
 define dllexport spir_kernel void @K1(i32 %0, i64 %privBase) #5 !dbg !34 {
-  %2 = call spir_func <8 x i32> @S1(i32 %0) #7, !dbg !38
+  %2 = call spir_func <8 x i32> @S1(i32 %0), !dbg !38
   %3 = load i32, i32* @x, align 4
   ret void
 }
 
-attributes #1 = { noinline nounwind "CMStackCall" }
+attributes #1 = { noinline nounwind }
 attributes #5 = { noinline nounwind "CMGenxMain" "oclrt"="1" }
-attributes #7 = { noinline nounwind }
 
 !llvm.module.flags = !{!7, !8}
 !llvm.dbg.cu = !{!2}

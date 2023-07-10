@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -454,7 +454,8 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   // FIXME: There's no verification that globals are for implicit args. General
   //        private globals may be localized here, but it is not possible to
   //        use them in such functions at all. A nice place for diagnostics.
-  if (vc::isFixedSignatureFunc(*F)) {
+  if (vc::isFixedSignatureFunc(*F) ||
+      F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
     if (!LI.getGlobals().empty())
       LocalizeGlobals(LI);
     return nullptr;
