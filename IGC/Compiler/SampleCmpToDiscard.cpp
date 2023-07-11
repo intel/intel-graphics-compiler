@@ -171,7 +171,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             auto itOtherOp = (bin->getOperand(0) == inst) ? instToValMap.find(bin->getOperand(1)) : instToValMap.find(bin->getOperand(0));
             if (isa<ConstantFP>(bin->getOperand(0)))
             {
-                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
+                ConstantFP* C0 = cast<ConstantFP>(bin->getOperand(0));
                 newConstantFloat = C0->getValueAPF();
                 newConstantFloat.subtract(mapFind->second, llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -179,7 +179,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             }
             else if (isa<ConstantFP>(bin->getOperand(1)))
             {
-                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
+                ConstantFP* C0 = cast<ConstantFP>(bin->getOperand(1));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.subtract(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -207,7 +207,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             auto itOtherOp = (bin->getOperand(0) == inst) ? instToValMap.find(bin->getOperand(1)) : instToValMap.find(bin->getOperand(0));
             if (isa<ConstantFP>(bin->getOperand(0)))
             {
-                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
+                ConstantFP* C0 = cast<ConstantFP>(bin->getOperand(0));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.add(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -215,7 +215,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             }
             else if (isa<ConstantFP>(bin->getOperand(1)))
             {
-                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
+                ConstantFP* C0 = cast<ConstantFP>(bin->getOperand(1));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.add(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -235,7 +235,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             auto itOtherOp = (bin->getOperand(0) == inst) ? instToValMap.find(bin->getOperand(1)) : instToValMap.find(bin->getOperand(0));
             if (isa<ConstantFP>(bin->getOperand(0)))
             {
-                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
+                ConstantFP* C0 = cast<ConstantFP>(bin->getOperand(0));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.multiply(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -243,7 +243,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             }
             else if (isa<ConstantFP>(bin->getOperand(1)))
             {
-                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
+                ConstantFP* C0 = cast<ConstantFP>(bin->getOperand(1));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.multiply(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -260,7 +260,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
 
         else if (isa<GenIntrinsicInst>(*UI) && ((mapFind->second).compare(newConstantFloat) == APFloat::cmpEqual))
         {
-            GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(*UI);
+            GenIntrinsicInst* CI = cast<GenIntrinsicInst>(*UI);
             if ((CI->getIntrinsicID() == GenISA_RTWrite) && (llvm::isa<llvm::ReturnInst>(CI->getNextNode())))
             {
                 return true;

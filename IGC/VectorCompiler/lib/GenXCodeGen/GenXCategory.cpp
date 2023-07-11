@@ -951,9 +951,8 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
       Category = vc::RegCategory::General;
     else {
       Function *Callee = CI->getCalledFunction();
-      unsigned IntrinID = GenXIntrinsic::not_any_intrinsic;
-      if (Callee)
-        IntrinID = vc::getAnyIntrinsicID(Callee);
+      IGC_ASSERT(nullptr != Callee);
+      unsigned IntrinID = vc::getAnyIntrinsicID(Callee);
       // We should not see genx_convert, as it is inserted into a value after
       // using this function to determine its category.
       IGC_ASSERT(IntrinID != GenXIntrinsic::genx_convert);

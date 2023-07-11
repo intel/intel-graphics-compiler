@@ -276,7 +276,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
       // Identity rdregion can be simplified to its "old value" input.
       if (RetTy
           == ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]->getType()) {
-        unsigned NumElements = dyn_cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
+        unsigned NumElements = cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
         unsigned Width = cast<ConstantInt>(
               ArgBegin[GenXIntrinsic::GenXRegion::RdWidthOperandNum])
             ->getZExtValue();
@@ -286,7 +286,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
           return nullptr;
         unsigned Index = 0;
         if (!isa<VectorType>(IndexV->getType()))
-          Index = dyn_cast<ConstantInt>(IndexV)->getZExtValue() /
+          Index = cast<ConstantInt>(IndexV)->getZExtValue() /
                   (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
         else
           return nullptr;
@@ -317,7 +317,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
         if (auto CMask = dyn_cast<Constant>(ArgBegin[
               GenXIntrinsic::GenXRegion::PredicateOperandNum])) {
           if (CMask->isAllOnesValue()) {
-            unsigned NumElements = dyn_cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
+            unsigned NumElements = cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
             unsigned Width = cast<ConstantInt>(
                   ArgBegin[GenXIntrinsic::GenXRegion::WrWidthOperandNum])
                 ->getZExtValue();
@@ -327,7 +327,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
               return nullptr;
             unsigned Index = 0;
             if (!isa<VectorType>(IndexV->getType()))
-              Index = dyn_cast<ConstantInt>(IndexV)->getZExtValue() /
+              Index = cast<ConstantInt>(IndexV)->getZExtValue() /
                       (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
             else
               return nullptr;
