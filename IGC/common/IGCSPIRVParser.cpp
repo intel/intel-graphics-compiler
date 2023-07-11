@@ -8,21 +8,16 @@ SPDX-License-Identifier: MIT
 
 #include "common/IGCSPIRVParser.h"
 
+#include "Probe/Assertion.h"
+
 using namespace IGC;
 
 std::vector<std::string> SPIRVParser::getEntryPointNames(const StringRef binary)
 {
-    auto byteOffsetInWord = [](uint8_t byteIndex, bool isLittleEndian)
+    auto getWord = [&binary](uint32_t offsetInWords)
     {
-        return isLittleEndian ? byteIndex * 8 : 24 - byteIndex * 8;
-    };
-    auto getWord = [&binary, &byteOffsetInWord](uint32_t offsetInWords, bool isLittleEndian)
-    {
-        uint32_t result = 0;
-        for (uint8_t i = 0; i < 4; ++i)
-        {
-            result |= uint32_t(binary[offsetInWords * 4 + i]) << byteOffsetInWord(i, isLittleEndian);
-        }
+        IGC_ASSERT(offsetInWords < (binary.size() / 4));
+        const uint32_t result = *(reinterpret_cast<const uint32_t*>(binary.data() + offsetInWords * 4));
         return result;
     };
 
@@ -31,13 +26,12 @@ std::vector<std::string> SPIRVParser::getEntryPointNames(const StringRef binary)
 
     uint32_t offsetInWords = 0;
 
-    bool isLittleEndian = getWord(0, true) == SPIRVMagicNumber;
     offsetInWords += 5; // skip header
 
     std::vector<std::string> entryPointNames;
     while ((offsetInWords + 1) * 4 < binary.size())
     {
-        uint32_t opFirstWord = getWord(offsetInWords, isLittleEndian);
+        uint32_t opFirstWord = getWord(offsetInWords);
         uint16_t opWordsCount = opFirstWord >> 16;
         uint16_t opCode = opFirstWord & 0xffff;
 
