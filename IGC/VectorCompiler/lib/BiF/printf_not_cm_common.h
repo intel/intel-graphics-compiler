@@ -128,7 +128,7 @@ printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
 static inline __global BufferElementTy *
 writeElementToBuffer(__global BufferElementTy *CurAddress,
                      BufferElementTy Data) {
-  *CurAddress = Data;
+  __builtin_nontemporal_store(Data, CurAddress);
   return ++CurAddress;
 }
 
