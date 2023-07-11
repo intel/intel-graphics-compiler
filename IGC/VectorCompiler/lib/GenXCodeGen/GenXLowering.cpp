@@ -4740,7 +4740,7 @@ bool GenXLowering::lowerTrap(CallInst *CI) {
   Module *M = CI->getModule();
   IRBuilder<> Builder(CI);
 
-  constexpr unsigned Width = 8;
+  const unsigned Width = ST->getGRFByteSize() / DWordBytes;
   auto *PayloadTy = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), Width);
   auto *PayloadFunc =
       vc::getAnyDeclaration(M, GenXIntrinsic::genx_r0, {PayloadTy});

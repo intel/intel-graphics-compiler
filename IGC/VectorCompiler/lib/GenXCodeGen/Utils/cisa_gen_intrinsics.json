@@ -4747,7 +4747,7 @@
           "src",
           "src2",
           "dst",
-          "false"
+          "modifier_sendc & 2"
         ]
       ]
     ],

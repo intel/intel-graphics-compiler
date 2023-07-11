@@ -17,8 +17,8 @@ define spir_func void @test() {
 ; CHECK: call void @llvm.genx.raw.send2.noresult.i1.v8i32(i8 2, i8 0, i1 true, i8 1, i8 7, i32 0, i32 33554448, <8 x i32> [[PAYLOAD]])
 ; CHECK-LSC: [[PAYLOAD:%[^ ]+]] = call <8 x i32> @llvm.genx.r0.v8i32()
 ; CHECK-LSC: call void @llvm.genx.raw.send2.noresult.i1.v8i32(i8 2, i8 0, i1 true, i8 1, i8 3, i32 0, i32 33554448, <8 x i32> [[PAYLOAD]])
-; CHECK-LSC-SIMD16: [[PAYLOAD:%[^ ]+]] = call <8 x i32> @llvm.genx.r0.v8i32()
-; CHECK-LSC-SIMD16: call void @llvm.genx.raw.send2.noresult.i1.v8i32(i8 2, i8 0, i1 true, i8 1, i8 3, i32 0, i32 33554448, <8 x i32> [[PAYLOAD]])
+; CHECK-LSC-SIMD16: [[PAYLOAD:%[^ ]+]] = call <16 x i32> @llvm.genx.r0.v16i32()
+; CHECK-LSC-SIMD16: call void @llvm.genx.raw.send2.noresult.i1.v16i32(i8 2, i8 0, i1 true, i8 1, i8 3, i32 0, i32 33554448, <16 x i32> [[PAYLOAD]])
   tail call void @llvm.trap()
   ret void
 }
