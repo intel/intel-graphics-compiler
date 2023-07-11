@@ -614,14 +614,14 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
           // Check whether input variable has explicit def in function
           if ((*opIt).second.def.size() > 0)
             return false;
-        }
 
-        if ((*opIt).second.lastUseLexId < srcLexId &&
-            (!isPartGRFBusyInput((*opIt).first, srcLexId) || !inSameLoop)) {
-          // Inputs are pre-assigned and extending such ranges
-          // could lead to worse RA results, unless the input
-          // already extends beyond where we intend to remat.
-          return false;
+          if ((*opIt).second.lastUseLexId < srcLexId &&
+              (!isPartGRFBusyInput((*opIt).first, srcLexId) || !inSameLoop)) {
+            // Inputs are pre-assigned and extending such ranges
+            // could lead to worse RA results, unless the input
+            // already extends beyond where we intend to remat.
+            return false;
+          }
         }
       }
 

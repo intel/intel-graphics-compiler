@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Optimizer.h"
 #include "PointsToAnalysis.h"
 #include "Timer.h"
+#include "visa_igc_common_header.h"
 
 #include <algorithm>
 #include <fstream>
@@ -1358,12 +1359,14 @@ void Optimizer::applyNoMaskWA() {
     G4_Declare *retDcl;
     if (aFTy == Type_UD) {
       int ix = aFreg;
+      vASSERT(ix < ARRAY_COUNT(FlagUD));
       if (FlagUD[ix] == nullptr) {
         FlagUD[ix] = builder.createTempFlag(2, "WAFlagUD");
       }
       retDcl = FlagUD[ix];
     } else {
       int ix = 2 * aFreg + aFsreg;
+      vASSERT(ix < ARRAY_COUNT(FlagUW));
       if (FlagUW[ix] == nullptr) {
         FlagUW[ix] = builder.createTempFlag(1, "WAFlagUW");
       }

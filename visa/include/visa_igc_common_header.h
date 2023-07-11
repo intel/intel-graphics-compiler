@@ -9,6 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef _VISA_IGC_COMMON_HEADER_H_
 #define _VISA_IGC_COMMON_HEADER_H_
 
+#ifndef ARRAY_COUNT
+#define ARRAY_COUNT( x ) ( sizeof( x ) / sizeof( x[ 0 ] ) )
+#endif
+
 typedef enum {
   VISA_SUCCESS = 0,
   VISA_FAILURE = -1,

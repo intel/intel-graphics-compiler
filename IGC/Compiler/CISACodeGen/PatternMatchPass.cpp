@@ -4849,19 +4849,20 @@ namespace IGC
     {
         struct GradientPattern : public Pattern
         {
-            SSource source;
+            SSource sources[2];
             llvm::Instruction* instruction;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->BinaryUnary(instruction, &source, modifier);
+                pass->BinaryUnary(instruction, sources, modifier);
             }
         };
         GradientPattern* pattern = new (m_allocator) GradientPattern();
         pattern->instruction = &I;
-        pattern->source = GetSource(I.getOperand(0), true, false, IsSourceOfSample(&I));
+        pattern->sources[0] = GetSource(I.getOperand(0), true, false, IsSourceOfSample(&I));
+        pattern->sources[1] = {};
         AddPattern(pattern);
         // mark the source as subspan use
-        HandleSubspanUse(pattern->source.value, IsSourceOfSample(&I));
+        HandleSubspanUse(pattern->sources[0].value, IsSourceOfSample(&I));
         return true;
     }
 

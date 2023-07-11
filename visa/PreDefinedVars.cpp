@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "PreDefinedVars.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
+#include "Assertions.h"
 
 static const PreDefinedVarInfo preDefinedVarTable[static_cast<int>(
     PreDefinedVarsInternal::VAR_LAST)] = {
@@ -162,25 +163,31 @@ PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id) {
 }
 
 VISA_Type getPredefinedVarType(PreDefinedVarsInternal id) {
+  vASSERT((int)id < ARRAY_COUNT(preDefinedVarTable));
   return preDefinedVarTable[(int)id].type;
 }
 
 const char *getPredefinedVarString(PreDefinedVarsInternal id) {
+  vASSERT((int)id < ARRAY_COUNT(preDefinedVarTable));
   return preDefinedVarTable[(int)id].str;
 }
 
 PreDefinedVarsInternal getPredefinedVarID(PreDefinedVarsInternal id) {
+  vASSERT((int)id < ARRAY_COUNT(preDefinedVarTable));
   return preDefinedVarTable[(int)id].id;
 }
 
 bool isPredefinedVarInR0(PreDefinedVarsInternal id) {
+  vASSERT((int)id < ARRAY_COUNT(preDefinedVarTable));
   return preDefinedVarTable[(int)id].isInR0;
 }
 
 bool predefinedVarNeedGRF(PreDefinedVarsInternal id) {
+  vASSERT((int)id < ARRAY_COUNT(preDefinedVarTable));
   return preDefinedVarTable[(int)id].needsGRF;
 }
 
 uint16_t getPredefinedVarByteOffset(PreDefinedVarsInternal id) {
+  vASSERT((int)id < ARRAY_COUNT(preDefinedVarTable));
   return preDefinedVarTable[(int)id].byteOffset;
 }

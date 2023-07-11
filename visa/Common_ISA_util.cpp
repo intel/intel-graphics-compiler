@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "PreDefinedVars.h"
 #include <sstream>
 #include <string.h>
+#include "visa_igc_common_header.h"
+#include "Assertions.h"
 
 using namespace vISA;
 
@@ -36,6 +38,7 @@ static CISAAlignInfo CISAAlignTable[ALIGN_TOTAL_NUM] = {
     {ALIGN_64WORD, "wordx64", 128}};
 
 const char *Common_ISA_Get_Align_Name(VISA_Align align) {
+  vASSERT(align < ARRAY_COUNT(CISAAlignTable));
   return CISAAlignTable[align].AlignName;
 }
 
@@ -48,6 +51,7 @@ uint32_t getAlignInBytes(VISA_Align A, unsigned grfSize) {
   default:
     break;
   }
+  vASSERT(A < ARRAY_COUNT(CISAAlignTable));
   return CISAAlignTable[A].AlignBytes;
 }
 
