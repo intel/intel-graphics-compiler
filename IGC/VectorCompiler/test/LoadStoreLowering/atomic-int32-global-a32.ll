@@ -61,7 +61,7 @@ define i32 @xchg_i32(i32 addrspace(6)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[XCHG_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(6)* %ptr to i32
   ; CHECK-LSC: [[XCHG_VADDR:%[^ ]+]] = bitcast i32 [[XCHG_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[XCHG_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
-  ; CHECK-LSC: [[XCHG_VRES:%[^ ]+]] = call <1 x i32> @llvm.genx.lsc.xatomic.bti.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 11, i8 0, i8 0, i16 1, i32 0, i8 3, i8 1, i8 1, i8 0, <1 x i32> [[XCHG_VADDR]], <1 x i32> [[XCHG_VDATA]], <1 x i32> undef, i32 255, <1 x i32> undef)
+  ; CHECK-LSC: [[XCHG_VRES:%[^ ]+]] = call <1 x i32> @llvm.genx.lsc.xatomic.bti.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 11, i8 1, i8 1, i16 1, i32 0, i8 3, i8 1, i8 1, i8 0, <1 x i32> [[XCHG_VADDR]], <1 x i32> [[XCHG_VDATA]], <1 x i32> undef, i32 255, <1 x i32> undef)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[XCHG_VRES]] to i32
   %res = atomicrmw xchg i32 addrspace(6)* %ptr, i32 %arg syncscope("all_devices") monotonic
   ret i32 %res
@@ -151,7 +151,7 @@ define i32 @and_i32(i32 addrspace(6)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[AND_VADDR:%[^ ]+]] = bitcast i32 [[AND_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[AND_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 4)
-  ; CHECK-LSC: [[AND_VRES:%[^ ]+]] = call <1 x i32> @llvm.genx.lsc.xatomic.bti.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 24, i8 0, i8 0, i16 1, i32 0, i8 3, i8 1, i8 1, i8 0, <1 x i32> [[AND_VADDR]], <1 x i32> [[AND_VDATA]], <1 x i32> undef, i32 255, <1 x i32> undef)
+  ; CHECK-LSC: [[AND_VRES:%[^ ]+]] = call <1 x i32> @llvm.genx.lsc.xatomic.bti.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 24, i8 1, i8 1, i16 1, i32 0, i8 3, i8 1, i8 1, i8 0, <1 x i32> [[AND_VADDR]], <1 x i32> [[AND_VDATA]], <1 x i32> undef, i32 255, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 4)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[AND_VRES]] to i32
   %res = atomicrmw and i32 addrspace(6)* %ptr, i32 %arg syncscope("all_devices") acq_rel

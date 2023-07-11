@@ -27,7 +27,7 @@ define void @replace_store_i8(i8 addrspace(3)* %pi8, i8 %val) {
 ; CHECK: call void @llvm.genx.scatter.scaled.v1i1.v1i32.v1i32(<1 x i1> <i1 true>, i32 0, i16 0, i32 254, i32 %{{[a-zA-Z0-9.]+}}, <1 x i32> zeroinitializer, <1 x i32> %{{[a-zA-Z0-9.]+}})
 ; CHECK-LSC: [[I8EXT:%[0-9a-zA-Z.]+]] = zext <1 x i8> %{{[0-9a-zA-Z]+}} to <1 x i32>
 ; CHECK-LSC: call void @llvm.genx.lsc.store.slm.v1i1.v1i32.v1i32(<1 x i1> <i1 true>, i8 4, i8 0, i8 0, i16 1, i32 0, i8 5, i8 1, i8 1, i8 0, <1 x i32> %{{[a-zA-Z0-9.]+}}, <1 x i32> [[I8EXT]], i32 0)
-  store i8 %val, i8 addrspace(3)* %pi8
+  store i8 %val, i8 addrspace(3)* %pi8, !nontemporal !0
   ret void
 }
 
@@ -75,3 +75,5 @@ define void @replace_store_f64(double addrspace(3)* %pf64, double %val) {
   store double %val, double addrspace(3)* %pf64
   ret void
 }
+
+!0 = !{i32 1}

@@ -72,7 +72,7 @@ define void @replace_load_f32(float addrspace(3)* %pf32) {
 define void @replace_load_f64(double addrspace(3)* %pf64) {
 ; CHECK: call <2 x i32> @llvm.genx.gather.scaled.v2i32.v2i1.v2i32(<2 x i1> <i1 true, i1 true>, i32 2, i16 0, i32 254, i32 %{{[^ ,]+}}, <2 x i32> <i32 0, i32 4>, <2 x i32> undef)
 ; CHECK-LSC: call <1 x double> @llvm.genx.lsc.load.merge.slm.v1f64.v1i1.i32(<1 x i1> <i1 true>, i8 0, i8 0, i8 0, i16 1, i32 0, i8 4, i8 1, i8 1, i8 0, i32 %{{[a-zA-Z0-9.]+}}, i32 0, <1 x double> undef)
-  %loaded = load double, double addrspace(3)* %pf64
+  %loaded = load double, double addrspace(3)* %pf64, !nontemporal !0
   ret void
 }
 
@@ -82,3 +82,5 @@ define void @replace_load_ptr(i8 * addrspace(3)* %pptr) {
   %loaded = load i8*, i8 * addrspace(3)* %pptr
   ret void
 }
+
+!0 = !{i32 1}
