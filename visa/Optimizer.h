@@ -113,6 +113,8 @@ class Optimizer {
   void localInstCombine();
   void optimizeLogicOperation();
   void cselPeepHoleOpt();
+  void forceAssignRegs();
+  void forceSpillVars();
   void preRegAlloc();
   void regAlloc();
   void insertFallThroughJump();

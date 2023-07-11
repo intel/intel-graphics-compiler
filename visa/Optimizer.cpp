@@ -135,50 +135,71 @@ void Optimizer::insertFallThroughJump() {
   }
 }
 
-void Optimizer::preRegAlloc() {
+void Optimizer::forceAssignRegs() {
   const char *rawStr =
       builder.getOptions()->getOptionCstr(vISA_ForceAssignRhysicalReg);
-  if (rawStr) {
-    llvm::StringRef line(rawStr);
-    llvm::SmallVector<llvm::StringRef, 4> vars;
-    line.split(vars, ',');
-    std::map<int, int> forceAssign;
-    for (unsigned i = 0; i < vars.size(); i++) {
-      std::pair<llvm::StringRef, llvm::StringRef> split = vars[i].split(':');
-      forceAssign[std::stoi(split.first.str())] = std::stoi(split.second.str());
-    }
+  if (!rawStr)
+    return;
 
-    for (G4_Declare *dcl :
-         kernel.Declares) {
-      if (forceAssign.find(dcl->getDeclId()) != forceAssign.end()) {
-        dcl->getRegVar()->setPhyReg(
-            builder.phyregpool.getGreg(forceAssign[dcl->getDeclId()]), 0);
-        VISA_DEBUG({
-          std::cerr << "Force assigning DeclId : " << dcl->getDeclId()
-                    << " to r" << forceAssign[dcl->getDeclId()] << "\n";
-          dcl->dump();
-        });
-      }
-    }
+  llvm::StringRef line(rawStr);
+  llvm::SmallVector<llvm::StringRef, 4> assignments;
+  line.split(assignments, ',');
+  std::map<std::string /*decl name or id*/,
+           std::pair<int /*reg*/, int /*subreg*/>> forceAssign;
+  for (llvm::StringRef assignment : assignments) {
+    llvm::StringRef decl, reg, subreg;
+    std::tie(decl, reg) = assignment.split(':');
+    std::tie(reg, subreg) = reg.split('.');
+    int regNum = std::stoi(reg.str());
+    int subregNum = subreg.empty() ? 0 : std::stoi(subreg.str());
+    forceAssign[decl.str()] = std::make_pair(regNum, subregNum);
   }
 
-  rawStr = builder.getOptions()->getOptionCstr(vISA_ForceSpillVariables);
-  if (rawStr) {
-    llvm::StringRef line(rawStr);
-    llvm::SmallVector<llvm::StringRef, 4> vars;
-    line.split(vars, ',');
-    std::vector<int> token;
-
-    for (unsigned i = 0; i < vars.size(); i++) {
-      token.push_back(std::stoi(vars[i].str()));
+  for (G4_Declare *dcl : kernel.Declares) {
+    int reg, subreg;
+    // skip forcing register assignment for the decl if both name and id are
+    // not specified in the option. Name will be used if both are given.
+    auto it = forceAssign.find(dcl->getName());
+    if (it == forceAssign.end()) {
+      it = forceAssign.find(std::to_string(dcl->getDeclId()));
+      if (it == forceAssign.end())
+        continue;
     }
-    for (G4_Declare *dcl :
-         kernel.Declares) {
-      if (std::find(token.begin(), token.end(), dcl->getDeclId()) != token.end()) {
-        dcl->setForceSpilled();
-      }
+    std::tie(reg, subreg) = it->second;
+    dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(reg), subreg);
+    VISA_DEBUG({
+        std::cerr << "Force assigning Decl : " << it->first
+                  << " to r" << reg << "." << subreg << "\n";
+        dcl->dump();
+    });
+  }
+}
+
+void Optimizer::forceSpillVars() {
+  const char *rawStr =
+      builder.getOptions()->getOptionCstr(vISA_ForceSpillVariables);
+  if (!rawStr)
+     return;
+
+  llvm::StringRef line(rawStr);
+  llvm::SmallVector<llvm::StringRef, 4> vars;
+  line.split(vars, ',');
+  std::vector<int> token;
+
+  for (llvm::StringRef var : vars)
+    token.push_back(std::stoi(var.str()));
+
+  for (G4_Declare *dcl : kernel.Declares) {
+    if (std::find(token.begin(), token.end(), dcl->getDeclId()) !=
+        token.end()) {
+      dcl->setForceSpilled();
     }
   }
+}
+
+void Optimizer::preRegAlloc() {
+  forceAssignRegs();
+  forceSpillVars();
 }
 
 void Optimizer::regAlloc() {

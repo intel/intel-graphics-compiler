@@ -77,7 +77,9 @@ DEF_VISA_OPTION(vISA_DumpGenOffset, ET_BOOL, "-dumpgenoffset", UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceSpillVariables, ET_CSTR, "-forceSpillVariables",
                 "USAGE: -forceSpillVariables dcl_id_1,dcl_id_2", NULL)
 DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg, ET_CSTR, "-forceAssignRhysicalReg",
-                UNUSED, NULL)
+                "USAGE: -forceAssignRhysicalReg [dcl_id]:1,[dcl_name]:2.2,... "
+                "name will be used if both name and id of the decl are given",
+                NULL)
 DEF_VISA_OPTION(
     vISA_StopBeforePass, ET_CSTR, "-stopbefore",
     "For visa LIT test. It dumps g4 to stdout before the given pass"

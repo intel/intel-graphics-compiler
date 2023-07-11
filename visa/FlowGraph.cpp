@@ -1957,32 +1957,45 @@ void FlowGraph::removeRedundantLabels() {
 //
 void FlowGraph::removeRedundMov() {
   for (G4_BB *bb : BBs) {
-    INST_LIST_ITER curr_iter = bb->begin();
-    while (curr_iter != bb->end()) {
-      G4_INST *inst = (*curr_iter);
-      if (inst->isRawMov()) {
-        G4_Operand *src = inst->getSrc(0);
-        G4_DstRegRegion *dst = inst->getDst();
+    for (auto it = bb->begin(), ie = bb->end(), in = ie; it != ie; it = in) {
+      in = std::next(it);
+      G4_INST *inst = *it;
+      // Do not try to remove the instruction if it is a part of an atomic
+      // block.
+      if (inst->isAtomicInst())
+        continue;
 
-        if (src->isSrcRegRegion()) {
-          G4_SrcRegRegion *srcRgn = (G4_SrcRegRegion *)src;
-          if (!dst->isIndirect() && !srcRgn->isIndirect() && dst->isGreg() &&
-              src->isGreg()) {
-            if (dst->getLinearizedStart() == srcRgn->getLinearizedStart() &&
-                dst->getLinearizedEnd() == srcRgn->getLinearizedEnd()) {
-              uint16_t stride = 0;
-              const RegionDesc *rd = srcRgn->getRegion();
-              unsigned ExSize = inst->getExecSize();
-              if (ExSize == 1 || (rd->isSingleStride(ExSize, stride) &&
-                                  (dst->getHorzStride() == stride))) {
-                curr_iter = bb->erase(curr_iter);
-                continue;
-              }
-            }
-          }
-        }
+      if (!inst->isRawMov())
+        continue;
+
+      G4_Operand *src = inst->getSrc(0);
+      if (!src->isSrcRegRegion())
+        continue;
+
+      G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+      G4_DstRegRegion *dst = inst->getDst();
+
+      if (dst->isIndirect() || srcRgn->isIndirect())
+        continue;
+
+      if (!dst->isGreg() || !src->isGreg())
+        continue;
+
+      if (dst->getLinearizedStart() != srcRgn->getLinearizedStart() ||
+          dst->getLinearizedEnd() != srcRgn->getLinearizedEnd())
+        continue;
+
+      uint16_t stride = 0;
+      const RegionDesc *rd = srcRgn->getRegion();
+      unsigned ExSize = inst->getExecSize();
+      if (ExSize == 1 ||
+          (rd->isSingleStride(ExSize, stride) &&
+           (dst->getHorzStride() == stride))) {
+        auto ix = bb->erase(it);
+        vASSERT(ix == in);
+        (void) ix;
+        continue;
       }
-      ++curr_iter;
     }
   }
 }
