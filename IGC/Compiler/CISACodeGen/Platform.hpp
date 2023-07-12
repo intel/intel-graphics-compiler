@@ -654,7 +654,7 @@ bool supportQWRotateInstructions() const
 // compilation by IGC.
 bool supportDynamicBTIsAllocation() const
 {
-    return m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE;
+    return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 bool loosenSimd32occu() const
