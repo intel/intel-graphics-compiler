@@ -215,7 +215,7 @@ namespace IGC {
                 return Width;
             }
 
-            bool isLegalInteger(uint64_t width) const
+            bool isLegalInteger(unsigned width) const
             {
                 switch (width)
                 {
