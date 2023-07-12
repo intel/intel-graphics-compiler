@@ -1842,7 +1842,15 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
           G4_Declare *tmp = stackPtr;
           BB_LIST &BBs = builder.kernel.fg.getBBList();
           // skip prolog sections (per_thread_prolog and cross_thread_prolog)
-          auto entryBB = *(++(++BBs.begin()));
+          G4_BB *entryBB = nullptr;
+          for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); it++) {
+            G4_BB *BB = *it;
+            auto label = BB->getLabel()->getLabel();
+            if (strcmp(label, "per_thread_prolog") && strcmp(label, "cross_thread_prolog")) {
+              entryBB = BB;
+              break;
+            }
+          }
           auto fpInst = func->getKernel()->getBEFPSetupInst();
           vISA_ASSERT(fpInst->opcode() == G4_mov, "unexpected pattern");
           auto spInst = func->getKernel()->getBESPSetupInst();
