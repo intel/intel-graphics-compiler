@@ -270,16 +270,22 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         std::string RegKeysFlagsFromOptions;
         if (inputArgs.pOptions != nullptr)
         {
-            const std::string optionsWithFlags = inputArgs.pOptions;
-            std::size_t found = optionsWithFlags.find("-igc_opts");
-            if (found != std::string::npos)
+            std::string_view optionsWithFlags = inputArgs.pOptions;
+
+            // check if there are more instances of '-igc_opts'
+            while (!optionsWithFlags.empty())
             {
+                std::size_t found = optionsWithFlags.find("-igc_opts");
+                if (found == std::string::npos)
+                    break;
+
                 std::size_t foundFirstSingleQuote = optionsWithFlags.find('\'', found);
                 std::size_t foundSecondSingleQuote = optionsWithFlags.find('\'', foundFirstSingleQuote + 1);
                 if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote)
                 {
-                    RegKeysFlagsFromOptions = optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
+                    RegKeysFlagsFromOptions += optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
                     RegKeysFlagsFromOptions = RegKeysFlagsFromOptions + ',';
+                    optionsWithFlags = optionsWithFlags.substr(foundSecondSingleQuote + 1, optionsWithFlags.length());
                 }
             }
         }
