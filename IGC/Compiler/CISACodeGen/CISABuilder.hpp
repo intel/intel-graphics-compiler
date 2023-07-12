@@ -128,7 +128,6 @@ namespace IGC
         void SetStackFunctionArgSize(uint size);  // size in GRFs
         void SetStackFunctionRetSize(uint size);  // size in GRFs
         void SetExternFunctionFlag();
-        void SetRecursiveFunctionFlag();
 
         void GetVISAPredefinedVar(CVariable* pVar, PreDefined_Vars var);
         void CreateVISAVar(CVariable* var);
@@ -721,6 +720,21 @@ namespace IGC
 
         /// create relocation according to if it's zebin or patch-token formats
         void createRelocationTables(VISAKernel &pMainKernel);
+
+        /// Estimate vISA stack size according to FunctionGroup information.
+        /// Conservatively increase the stack size when having recursive or indirect
+        /// calls if the given function is a Function Group Head. Function group
+        /// heads are kernels/entry functions those their stack size will be used to
+        /// reported back to the Runtime, so we set a conservative value. For other
+        /// non-head functions, we set the precise stack usage of the function.
+        ///
+        /// For group head functions, when having the stack call, the spillSize
+        /// returned by vISA is the sum of required stack size of all potential
+        /// callee and without considering recursive or indirect calls.
+        uint32_t getSpillMemSizeWithFG(const llvm::Function& curFunc,
+                                       uint32_t curSize,
+                                       GenXFunctionGroupAnalysis *fga);
+
     protected:
         // encoder states
         SEncoderState m_encoderState = {};
