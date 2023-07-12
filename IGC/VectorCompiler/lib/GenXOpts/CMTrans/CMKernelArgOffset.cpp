@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -592,8 +592,8 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
               DL.getPointerABIAlignment(Ty->getPointerAddressSpace()));
         }
       } else {
-        Bytes = Ty->getPrimitiveSizeInBits() / 8;
-        Alignment = IGCLLVM::getAlignmentValue(Ty->getScalarSizeInBits() / 8);
+        Bytes = DL.getTypeSizeInBits(Ty) / 8;
+        Alignment = IGCLLVM::getAlignmentValue(DL.getABITypeAlignment(Ty));
       }
       placeArg(&Arg, Bytes, Alignment);
     }
