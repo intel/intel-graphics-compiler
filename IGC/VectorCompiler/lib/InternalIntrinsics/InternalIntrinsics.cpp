@@ -20,6 +20,8 @@ See LICENSE.TXT for details.
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 
+#include "visa_igc_common_header.h"
+
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/CodeGen/ValueTypes.h>
@@ -678,4 +680,136 @@ Function *InternalIntrinsic::getInternalDeclaration(Module *M,
 
   resetInternalAttributes(F);
   return F;
+}
+
+bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
+  switch (id) {
+  default:
+    return false;
+  case InternalIntrinsic::lsc_atomic_bti:
+  case InternalIntrinsic::lsc_atomic_slm:
+  case InternalIntrinsic::lsc_atomic_ugm:
+  case InternalIntrinsic::lsc_load_bti:
+  case InternalIntrinsic::lsc_load_slm:
+  case InternalIntrinsic::lsc_load_ugm:
+  case InternalIntrinsic::lsc_prefetch_bti:
+  case InternalIntrinsic::lsc_prefetch_ugm:
+  case InternalIntrinsic::lsc_store_bti:
+  case InternalIntrinsic::lsc_store_slm:
+  case InternalIntrinsic::lsc_store_ugm:
+  case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_slm:
+  case InternalIntrinsic::lsc_load_quad_ugm:
+  case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_slm:
+  case InternalIntrinsic::lsc_store_quad_ugm:
+    return true;
+  }
+
+  return false;
+}
+
+unsigned
+InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
+  auto IID = getInternalIntrinsicID(I);
+  IGC_ASSERT(isInternalMemoryIntrinsic(IID));
+
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::lsc_load_bti:
+  case InternalIntrinsic::lsc_load_slm:
+  case InternalIntrinsic::lsc_load_ugm:
+  case InternalIntrinsic::lsc_prefetch_bti:
+  case InternalIntrinsic::lsc_prefetch_ugm:
+  case InternalIntrinsic::lsc_store_bti:
+  case InternalIntrinsic::lsc_store_slm:
+  case InternalIntrinsic::lsc_store_ugm: {
+    auto *VectorSize = cast<ConstantInt>(I->getOperand(3));
+    int VSize = VectorSize->getZExtValue();
+
+    switch (LSC_DATA_ELEMS(VSize)) {
+    default:
+      break;
+    case LSC_DATA_ELEMS_1:
+      return 1;
+    case LSC_DATA_ELEMS_2:
+      return 2;
+    case LSC_DATA_ELEMS_3:
+      return 3;
+    case LSC_DATA_ELEMS_4:
+      return 4;
+    case LSC_DATA_ELEMS_8:
+      return 8;
+    case LSC_DATA_ELEMS_16:
+      return 16;
+    case LSC_DATA_ELEMS_32:
+      return 32;
+    case LSC_DATA_ELEMS_64:
+      return 64;
+    }
+
+    IGC_ASSERT_UNREACHABLE();
+  }
+  case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_slm:
+  case InternalIntrinsic::lsc_load_quad_ugm:
+  case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_slm:
+  case InternalIntrinsic::lsc_store_quad_ugm: {
+    auto *ChannelMask = cast<ConstantInt>(I->getOperand(3));
+    auto Mask = ChannelMask->getZExtValue();
+    auto Size = countPopulation(Mask);
+    IGC_ASSERT(Size > 0 && Size <= 4);
+    return Size;
+  }
+  }
+
+  return 1;
+}
+
+unsigned InternalIntrinsic::getMemorySimdWidth(const Instruction *I) {
+  IGC_ASSERT(isInternalMemoryIntrinsic(I));
+
+  auto *Pred = I->getOperand(0);
+  auto *PredTy = Pred->getType();
+
+  if (auto *PredVTy = dyn_cast<IGCLLVM::FixedVectorType>(PredTy))
+    return PredVTy->getNumElements();
+
+  return 1;
+}
+
+unsigned
+InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
+  IGC_ASSERT(isInternalMemoryIntrinsic(I));
+  unsigned ElementSizeIndex = 2;
+
+  auto IID = getInternalIntrinsicID(I);
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::lsc_atomic_bti:
+  case InternalIntrinsic::lsc_atomic_slm:
+  case InternalIntrinsic::lsc_atomic_ugm:
+    ElementSizeIndex = 3;
+    break;
+  }
+
+  auto *ElementSize = cast<ConstantInt>(I->getOperand(ElementSizeIndex));
+  switch (ElementSize->getZExtValue()) {
+  case LSC_DATA_SIZE_8c32b:
+  case LSC_DATA_SIZE_16c32b:
+  case LSC_DATA_SIZE_32b:
+    return 32;
+  case LSC_DATA_SIZE_64b:
+    return 64;
+  default:
+    break;
+  }
+  IGC_ASSERT_UNREACHABLE();
 }

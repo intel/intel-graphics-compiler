@@ -156,6 +156,382 @@ Imported_Intrinsics = {
                                   "arguments": ["anyfloat", "anyint"],
                                   "attributes": "NoMem", },
 
+### ---------------------------
+### Low-level memory intrinsics
+### ---------------------------
+
+## ``llvm.vc.internal.lsc.atomic.*``: LSC atomic intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Atomic opcode [MBC]
+## * arg2: i8 Address size [MBC]
+## * arg3: i8 Element size [MBC]
+## * arg4: i8 L1 cache controls [MBC]
+## * arg5: i8 L3 cache controls [MBC]
+## * arg6: i64 Address base (for stateless)
+##         i32 BTI (for stateful)
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+## * arg10: 1st source vector for the atomic operation,
+##          must be undef for unary operations
+## * arg11: 2nd source vector for the atomic operation,
+##          must be undef for unary and binary operations
+## * arg12: vector to take values for masked simd lanes from
+##
+## * Return value: the value read from memory, merged with arg12 by predicate
+##
+    "lsc_atomic_bti": { "result": "anyvector",
+                        "arguments": [
+                            "anyint", # vNxi1, predicate
+                            "char",   # atomic opcode
+                            "char",   # address size
+                            "char",   # element size
+                            "char",   # L1 cache control
+                            "char",   # L3 cache control
+                            "int",    # i32 BTI
+                            "anyint", # vNi32 address offsets
+                            "short",  # address scale
+                            "int",    # address immediate offset
+                            0,        # src1
+                            0,        # src2
+                            0,        # passthru value
+                        ],
+                        "attributes": "SideEffects", },
+    "lsc_atomic_slm": { "result": "anyvector",
+                        "arguments": [
+                            "anyint", # vNxi1, predicate
+                            "char",   # atomic opcode
+                            "char",   # address size
+                            "char",   # element size
+                            "char",   # L1 cache control
+                            "char",   # L3 cache control
+                            "int",    # i32 address base
+                            "anyint", # vNi32 address offsets
+                            "short",  # address scale
+                            "int",    # address immediate offset
+                            0,        # src1
+                            0,        # src2
+                            0,        # passthru value
+                        ],
+                      "attributes": "SideEffects", },
+    "lsc_atomic_ugm": { "result": "anyvector",
+                        "arguments": [
+                            "anyint", # vNxi1, predicate
+                            "char",   # atomic opcode
+                            "char",   # address size
+                            "char",   # element size
+                            "char",   # L1 cache control
+                            "char",   # L3 cache control
+                            "long",   # i64 address base
+                            "anyint", # vNi32 or vNi64 address offsets
+                            "short",  # address scale
+                            "int",    # address immediate offset
+                            0,        # src1
+                            0,        # src2
+                            0,        # passthru value
+                        ],
+                        "attributes": "SideEffects", },
+
+## ``llvm.vc.internal.lsc.load.*`` : LSC load intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Address size [MBC]
+## * arg2: i8 Element size [MBC]
+## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
+##         i8 Channel mask (for quad intrinsics) [MBC]
+## * arg4: i8 L1 cache controls [MBC]
+## * arg5: i8 L3 cache controls [MBC]
+## * arg6: i64 Address base (for stateless)
+##         i32 BTI (for stateful)
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+## * arg10: vector to take values for masked simd lanes from
+##
+## * Return value: the value read from memory, merged with arg10 by predicate
+##
+    "lsc_load_bti": { "result": "anyvector",
+                      "arguments": [
+                          "anyint", # vNxi1, predicate
+                          "char",   # address size
+                          "char",   # element size
+                          "char",   # vector size
+                          "char",   # L1 cache control
+                          "char",   # L3 cache control
+                          "int",    # i32 BTI
+                          "anyint", # vNi32 address offsets
+                          "short",  # address scale
+                          "int",    # address immediate offset
+                          0,        # passthru value
+                      ],
+                      "attributes": "ReadMem", },
+    "lsc_load_slm": { "result": "anyvector",
+                      "arguments": [
+                          "anyint", # vNxi1, predicate
+                          "char",   # address size
+                          "char",   # element size
+                          "char",   # vector size
+                          "char",   # L1 cache control
+                          "char",   # L3 cache control
+                          "int",    # i32 address base
+                          "anyint", # vNi32 address offsets
+                          "short",  # address scale
+                          "int",    # address immediate offset
+                          0,        # passthru value
+                      ],
+                      "attributes": "ReadMem", },
+    "lsc_load_ugm": { "result": "anyvector",
+                      "arguments": [
+                          "anyint", # vNxi1, predicate
+                          "char",   # address size
+                          "char",   # element size
+                          "char",   # vector size
+                          "char",   # L1 cache control
+                          "char",   # L3 cache control
+                          "long",   # i64 address base
+                          "anyint", # vNi32 or vNi64 address offsets
+                          "short",  # address scale
+                          "int",    # address immediate offset
+                          0,        # passthru value
+                      ],
+                      "attributes": "ReadMem", },
+
+    "lsc_load_quad_bti": { "result": "anyvector",
+                           "arguments": [
+                               "anyint", # vNxi1, predicate
+                               "char",   # address size
+                               "char",   # element size
+                               "char",   # channel mask
+                               "char",   # L1 cache control
+                               "char",   # L3 cache control
+                               "int",    # i32 BTI
+                               "anyint", # vNi32 address offsets
+                               "short",  # address scale
+                               "int",    # address immediate offset
+                               0,        # passthru value
+                           ],
+                           "attributes": "ReadMem", },
+    "lsc_load_quad_slm": { "result": "anyvector",
+                           "arguments": [
+                               "anyint", # vNxi1, predicate
+                               "char",   # address size
+                               "char",   # element size
+                               "char",   # channel mask
+                               "char",   # L1 cache control
+                               "char",   # L3 cache control
+                               "int",    # i32 address base
+                               "anyint", # vNi32 address offsets
+                               "short",  # address scale
+                               "int",    # address immediate offset
+                               0,        # passthru value
+                           ],
+                           "attributes": "ReadMem", },
+    "lsc_load_quad_ugm": { "result": "anyvector",
+                           "arguments": [
+                               "anyint", # vNxi1, predicate
+                               "char",   # address size
+                               "char",   # element size
+                               "char",   # channel mask
+                               "char",   # L1 cache control
+                               "char",   # L3 cache control
+                               "long",   # i64 address base
+                               "anyint", # vNi32 or vNi64 address offsets
+                               "short",  # address scale
+                               "int",    # address immediate offset
+                               0,        # passthru value
+                           ],
+                           "attributes": "ReadMem", },
+
+## ``llvm.vc.internal.lsc.prefetch.*`` : LSC prefetch intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Address size [MBC]
+## * arg2: i8 Element size [MBC]
+## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
+##         i8 Channel mask (for quad intrinsics) [MBC]
+## * arg4: i8 L1 cache controls [MBC]
+## * arg5: i8 L3 cache controls [MBC]
+## * arg6: i64 Address base (for stateless)
+##         i32 BTI (for stateful)
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+##
+## * Return value: void
+##
+    "lsc_prefetch_bti": { "result": "void",
+                          "arguments": [
+                              "anyint", # vNxi1, predicate
+                              "char",   # address size
+                              "char",   # element size
+                              "char",   # vector size
+                              "char",   # L1 cache control
+                              "char",   # L3 cache control
+                              "int",    # i32 BTI
+                              "anyint", # vNi32 address offsets
+                              "short",  # address scale
+                              "int",    # address immediate offset
+                          ],
+                          "attributes": "SideEffects", },
+    "lsc_prefetch_ugm": { "result": "void",
+                          "arguments": [
+                              "anyint", # vNxi1, predicate
+                              "char",   # address size
+                              "char",   # element size
+                              "char",   # vector size
+                              "char",   # L1 cache control
+                              "char",   # L3 cache control
+                              "long",   # i64 address base
+                              "anyint", # vNi32 or vNi64 address offsets
+                              "short",  # address scale
+                              "int",    # address immediate offset
+                          ],
+                          "attributes": "SideEffects", },
+
+    "lsc_prefetch_quad_bti": { "result": "void",
+                               "arguments": [
+                                   "anyint", # vNxi1, predicate
+                                   "char",   # address size
+                                   "char",   # element size
+                                   "char",   # channel mask
+                                   "char",   # L1 cache control
+                                   "char",   # L3 cache control
+                                   "int",    # i32 BTI
+                                   "anyint", # vNi32 address offsets
+                                   "short",  # address scale
+                                   "int",    # address immediate offset
+                               ],
+                               "attributes": "SideEffects", },
+    "lsc_prefetch_quad_ugm": { "result": "void",
+                               "arguments": [
+                                   "anyint", # vNxi1, predicate
+                                   "char",   # address size
+                                   "char",   # element size
+                                   "char",   # channel mask
+                                   "char",   # L1 cache control
+                                   "char",   # L3 cache control
+                                   "long",   # i64 address base
+                                   "anyint", # vNi32 or vNi64 address offsets
+                                   "short",  # address scale
+                                   "int",    # address immediate offset
+                               ],
+                               "attributes": "SideEffects", },
+
+## ``llvm.vc.internal.lsc.store.*`` : LSC store intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Address size [MBC]
+## * arg2: i8 Element size [MBC]
+## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
+##         i8 Channel mask (for quad intrinsics) [MBC]
+## * arg4: i8 L1 cache controls [MBC]
+## * arg5: i8 L3 cache controls [MBC]
+## * arg6: i64 Address base (for stateless)
+##         i32 BTI (for stateful)
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+## * arg10: Data to write (overloaded)
+##
+## * Return value: void
+##
+    "lsc_store_bti": { "result": "void",
+                       "arguments": [
+                           "anyint", # vNxi1, predicate
+                           "char",   # address size
+                           "char",   # element size
+                           "char",   # vector size
+                           "char",   # L1 cache control
+                           "char",   # L3 cache control
+                           "int",    # i32 BTI
+                           "anyint", # vNi32 address offsets
+                           "short",  # address scale
+                           "int",    # address immediate offset
+                           "anyvector", # Data to write
+                       ],
+                       "attributes": "WriteMem", },
+    "lsc_store_slm": { "result": "void",
+                       "arguments": [
+                           "anyint", # vNxi1, predicate
+                           "char",   # address size
+                           "char",   # element size
+                           "char",   # vector size
+                           "char",   # L1 cache control
+                           "char",   # L3 cache control
+                           "int",    # i32 address base
+                           "anyint", # vNi32 address offsets
+                           "short",  # address scale
+                           "int",    # address immediate offset
+                           "anyvector", # Data to write
+                       ],
+                       "attributes": "WriteMem", },
+    "lsc_store_ugm": { "result": "void",
+                       "arguments": [
+                           "anyint", # vNxi1, predicate
+                           "char",   # address size
+                           "char",   # element size
+                           "char",   # vector size
+                           "char",   # L1 cache control
+                           "char",   # L3 cache control
+                           "long",   # i64 address base
+                           "anyint", # vNi32 or vNi64 address offsets
+                           "short",  # address scale
+                           "int",    # address immediate offset
+                           "anyvector", # Data to write
+                       ],
+                       "attributes": "WriteMem", },
+
+    "lsc_store_quad_bti": { "result": "void",
+                            "arguments": [
+                                "anyint", # vNxi1, predicate
+                                "char",   # address size
+                                "char",   # element size
+                                "char",   # channel mask
+                                "char",   # L1 cache control
+                                "char",   # L3 cache control
+                                "int",    # i32 BTI
+                                "anyint", # vNi32 address offsets
+                                "short",  # address scale
+                                "int",    # address immediate offset
+                                "anyvector", # Data to write
+                            ],
+                            "attributes": "WriteMem", },
+    "lsc_store_quad_slm": { "result": "void",
+                            "arguments": [
+                                "anyint", # vNxi1, predicate
+                                "char",   # address size
+                                "char",   # element size
+                                "char",   # channel mask
+                                "char",   # L1 cache control
+                                "char",   # L3 cache control
+                                "int",    # i32 address base
+                                "anyint", # vNi32 address offsets
+                                "short",  # address scale
+                                "int",    # address immediate offset
+                                "anyvector", # Data to write
+                            ],
+                            "attributes": "WriteMem", },
+    "lsc_store_quad_ugm": { "result": "void",
+                            "arguments": [
+                                "anyint", # vNxi1, predicate
+                                "char",   # address size
+                                "char",   # element size
+                                "char",   # channel mask
+                                "char",   # L1 cache control
+                                "char",   # L3 cache control
+                                "long",   # i64 address base
+                                "anyint", # vNi32 or vNi64 address offsets
+                                "short",  # address scale
+                                "int",    # address immediate offset
+                                "anyvector", # Data to write
+                            ],
+                            "attributes": "WriteMem", },
+
 ### --------------------
 ### Thread ID intrinsics
 ### --------------------

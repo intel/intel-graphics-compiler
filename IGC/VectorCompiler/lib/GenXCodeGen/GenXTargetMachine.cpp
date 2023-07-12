@@ -143,6 +143,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXBTIAssignmentPass(registry);
   initializeGenXPromoteStatefulToBindlessPass(registry);
   initializeGenXTranslateSPIRVBuiltinsPass(registry);
+  initializeGenXLoadStoreLegalizationPass(registry);
   initializeGenXLoadStoreLoweringPass(registry);
   initializeGenXStackUsagePass(registry);
   initializeGenXOCLRuntimeInfoPass(registry);
@@ -161,6 +162,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXTranslateIntrinsicsPass(registry);
   initializeGenXFinalizerPass(registry);
   initializeGenXBuiltinFunctionsPass(registry);
+  initializeGenXLegacyToLscTranslatorPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -412,6 +414,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXGASDynamicResolutionPass());
   /// .. include:: GenXLoadStoreLowering.cpp
   vc::addPass(PM, createGenXLoadStoreLoweringPass());
+  /// .. include:: GenXLegacyToLscTranslator.cpp
+  vc::addPass(PM, createGenXLegacyToLscTranslatorPass());
 
   /// InstructionCombining
   /// --------------------
@@ -457,6 +461,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXLoweringPass());
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
+  /// .. include:: GenXLoadStoreLegalization.cpp
+  vc::addPass(PM, createGenXLoadStoreLegalizationPass());
   /// .. include:: GenXRegionCollapsing.cpp
   vc::addPass(PM, createGenXRegionCollapsingPass());
   /// EarlyCSE
