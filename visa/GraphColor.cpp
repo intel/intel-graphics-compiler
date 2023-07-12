@@ -9432,9 +9432,9 @@ void GlobalRA::flagRegAlloc() {
           }
           break;
         }
-        builder.getJitInfo()->stats.numFlagSpillStore =
+        builder.getJitInfo()->stats.numFlagSpillStore +=
             spillFlag.getNumFlagSpillStore();
-        builder.getJitInfo()->stats.numFlagSpillLoad =
+        builder.getJitInfo()->stats.numFlagSpillLoad +=
             spillFlag.getNumFlagSpillLoad();
       } else // successfully allocate register without spilling
       {
