@@ -268,6 +268,7 @@ bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
     if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
     {
         return I->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
+               I->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
                I->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT;
     }
 
