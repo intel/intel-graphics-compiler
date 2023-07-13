@@ -1033,7 +1033,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             m_pDebugEmitter->BeginEncodingMark();
             // create a label
-            m_encoder->Label(block.id);
+            m_encoder->AddLabel(block.id);
             m_encoder->Push();
             m_pDebugEmitter->EndEncodingMark();
         }
@@ -10778,7 +10778,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             CVariable* eMask = GetExecutionMask();
             // Create a label for the loop
             uint label = m_encoder->GetNewLabelID("non_unif_call_body");
-            m_encoder->Label(label);
+            m_encoder->AddLabel(label);
             m_encoder->Push();
 
             // Get the first active lane's function address
@@ -10814,7 +10814,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             CopyReturnValue(inst);
 
             // Label for lanes that skipped the call
-            m_encoder->Label(callLabel);
+            m_encoder->AddLabel(callLabel);
             m_encoder->Push();
 
             // Unset the bits in execution mask for lanes that were called
@@ -16332,7 +16332,7 @@ void EmitPass::A64LSLoopHead(
 
     // create loop
     label = m_encoder->GetNewLabelID("a64_loop");
-    m_encoder->Label(label);
+    m_encoder->AddLabel(label);
     m_encoder->Push();
 
     // Get the first active lane's address-hi
@@ -19325,8 +19325,13 @@ bool EmitPass::ResourceLoopHeader(
     CVariable* resourceFlag = nullptr;
     CVariable* samplerFlag = nullptr;
     CVariable* offset = nullptr;
-    label = m_encoder->GetNewLabelID("resource_loop");
-    m_encoder->Label(label);
+    if (!uniformResource) {
+      label = m_encoder->GetNewLabelID("__opt_resource_loop");
+      m_encoder->AddDivergentResourceLoopLabel(label);
+    } else {
+      label = m_encoder->GetNewLabelID("resource_loop");
+      m_encoder->AddLabel(label);
+    }
     m_encoder->Push();
     if (!uniformResource)
     {

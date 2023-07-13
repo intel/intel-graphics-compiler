@@ -2530,9 +2530,14 @@ bool CISA_IR_Builder::CISA_create_label(const char *label_name, int lineNum) {
   if (!m_kernel->getLabelOperandFromFunctionName(std::string(label_name))) {
     opnd[0] = m_kernel->getLabelOpndFromLabelName(std::string(label_name));
     if (!opnd[0]) {
+
+      VISA_Label_Kind kind = LABEL_BLOCK;
+      if (std::string(label_name).find("__opt_resource_loop")) {
+        kind = LABEL_DIVERGENT_RESOURCE_LOOP;
+      }
       // forward jump
-      VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], label_name, LABEL_BLOCK);
-      if (!m_kernel->setLabelOpndNameMap(label_name, opnd[0], LABEL_BLOCK))
+      VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], label_name, kind);
+      if (!m_kernel->setLabelOpndNameMap(label_name, opnd[0], kind))
         return false;
     }
     VISA_CALL_TO_BOOL(AppendVISACFLabelInst, opnd[0]);

@@ -142,7 +142,8 @@ namespace IGC
         ~CEncoder();
         void SetProgram(CShader* program);
         void Jump(CVariable* flag, uint label);
-        void Label(uint label);
+        void AddLabel(uint label);
+        void AddDivergentResourceLoopLabel(uint label);
         uint GetNewLabelID(const CName &name);
         void DwordAtomicRaw(AtomicOp atomic_op,
             const ResourceDescriptor& bindingTableIndex,
@@ -522,7 +523,7 @@ namespace IGC
         VISA_PredOpnd* GetFlagOperand(const SFlag& flag);
         VISA_StateOpndHandle* GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* bti);
         VISA_StateOpndHandle* GetVISASurfaceOpnd(const ResourceDescriptor& resource);
-        VISA_LabelOpnd* GetLabel(uint label);
+        VISA_LabelOpnd* GetOrCreateLabel(uint label, VISA_Label_Kind kind = LABEL_BLOCK);
         VISA_LabelOpnd* GetFuncLabel(llvm::Function* F);
         void InitLabelMap(const llvm::Function* F);
         CName CreateVisaLabelName(const llvm::StringRef &L = "");

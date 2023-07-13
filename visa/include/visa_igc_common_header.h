@@ -140,7 +140,8 @@ typedef enum {
   LABEL_BLOCK = 0x0,
   LABEL_SUBROUTINE = 0x1,
   LABEL_FC = 0x2,
-  LABEL_FUNCTION = 0x3
+  LABEL_FUNCTION = 0x3,
+  LABEL_DIVERGENT_RESOURCE_LOOP = 0x4,
 } VISA_Label_Kind;
 
 typedef enum {

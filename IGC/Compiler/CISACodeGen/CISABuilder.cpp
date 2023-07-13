@@ -446,7 +446,7 @@ namespace IGC
 
     void CEncoder::Jump(CVariable* flag, uint label)
     {
-        VISA_LabelOpnd* visaLabel = GetLabel(label);
+        VISA_LabelOpnd* visaLabel = GetOrCreateLabel(label);
         m_encoderState.m_flag.var = flag;
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         // control flow instructions cannot be broken down into lower SIMD
@@ -470,9 +470,15 @@ namespace IGC
         V(vKernel->AppendVISACFGotoInst(predOpnd, emask, execSize, visaLabel));
     }
 
-    void CEncoder::Label(uint label)
+    void CEncoder::AddLabel(uint label)
     {
-        VISA_LabelOpnd* visaLabel = GetLabel(label);
+        VISA_LabelOpnd* visaLabel = GetOrCreateLabel(label);
+        V(vKernel->AppendVISACFLabelInst(visaLabel));
+    }
+
+    void CEncoder::AddDivergentResourceLoopLabel(uint label)
+    {
+        VISA_LabelOpnd* visaLabel = GetOrCreateLabel(label, LABEL_DIVERGENT_RESOURCE_LOOP);
         V(vKernel->AppendVISACFLabelInst(visaLabel));
     }
 
@@ -2937,14 +2943,13 @@ namespace IGC
         return RMEncoding::RoundToZero_int;
     }
 
-    VISA_LabelOpnd* CEncoder::GetLabel(uint label)
+    VISA_LabelOpnd* CEncoder::GetOrCreateLabel(uint label, VISA_Label_Kind kind)
     {
         VISA_LabelOpnd* visaLabel = labelMap[label];
         if (visaLabel == nullptr)
         {
             // all blocks should have labels; but new blocks inserted during
             // encoding might not
-            VISA_Label_Kind kind = LABEL_BLOCK;
 
             std::stringstream lbl;
             if (labelNameMap[label].empty()) {

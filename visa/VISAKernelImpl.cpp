@@ -1268,16 +1268,18 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *&opnd, const char *name,
       opnd->g4opnd = m_builder->createLabel(kname, kind);
     }
     if (kind == LABEL_SUBROUTINE) {
-      ((G4_Label *)opnd->g4opnd)->setFuncLabel(true);
+      static_cast<G4_Label*>(opnd->g4opnd)->setFuncLabel(true);
     } else {
-      ((G4_Label *)opnd->g4opnd)->setFuncLabel(false);
-
+      static_cast<G4_Label*>(opnd->g4opnd)->setFuncLabel(false);
       if (kind == LABEL_FC) {
         // Need to do this here because label kind
         // from VISA is not propagated to G4 IR
         // directly.
-        ((G4_Label *)opnd->g4opnd)->setFCLabel(true);
+        static_cast<G4_Label*>(opnd->g4opnd)->setFuncLabel(true);
       }
+    }
+    if (kind == LABEL_DIVERGENT_RESOURCE_LOOP) {
+      static_cast<G4_Label*>(opnd->g4opnd)->setDivergentResourceLoop();
     }
   }
   if (IS_VISA_BOTH_PATH) {
@@ -1290,7 +1292,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *&opnd, const char *name,
 
     VISA_INST_Desc *inst_desc = NULL;
 
-    if (kind == LABEL_BLOCK) {
+    if (kind == LABEL_BLOCK || kind == LABEL_DIVERGENT_RESOURCE_LOOP) {
       inst_desc = &CISA_INST_table[ISA_LABEL];
       opnd->tag = ISA_LABEL;
     } else {
@@ -8457,7 +8459,7 @@ bool VISAKernelImpl::setLabelOpndNameMap(const std::string &name,
                                          VISA_Label_Kind kind) {
   // TODO: Is it possible to merge the 2 maps? Or a function label and
   // a block label are allowed to have the same name?
-  if (kind == LABEL_BLOCK) {
+  if (kind == LABEL_BLOCK || kind == LABEL_DIVERGENT_RESOURCE_LOOP) {
     auto Res = m_label_name_to_index_map.insert({name, lbl});
     return Res.second;
   } else {

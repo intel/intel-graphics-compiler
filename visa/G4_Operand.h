@@ -481,10 +481,12 @@ class G4_Label : public G4_Operand {
   const char *label;
   bool funcLabel;
   bool isFC;
+  bool isDivergentRL;
 
   G4_Label(const char *l) : G4_Operand(G4_Operand::label), label(l) {
     funcLabel = false;
     isFC = false;
+    isDivergentRL = false;
   }
 
 public:
@@ -495,6 +497,8 @@ public:
   bool isFuncLabel() const { return funcLabel; }
   bool isFCLabel() const { return isFC; }
   void setFCLabel(bool fcLabel) { isFC = fcLabel; }
+  void setDivergentResourceLoop() { isDivergentRL = true; }
+  bool isDivergentResourceLoop() { return isDivergentRL; }
 };
 
 class G4_SrcRegRegion final : public G4_Operand {
