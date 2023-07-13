@@ -591,6 +591,10 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
           Alignment = IGCLLVM::getAlignmentValue(
               DL.getPointerABIAlignment(Ty->getPointerAddressSpace()));
         }
+      } else if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty)) {
+        auto *ETy = VTy->getElementType();
+        Bytes = DL.getTypeSizeInBits(Ty) / 8;
+        Alignment = IGCLLVM::getAlignmentValue(DL.getABITypeAlignment(ETy));
       } else {
         Bytes = Ty->getPrimitiveSizeInBits() / 8;
         Alignment = IGCLLVM::getAlignmentValue(Ty->getScalarSizeInBits() / 8);
