@@ -494,7 +494,7 @@ $ export IGC_ShaderDumpEnable=1
 | `AllocaRAPressureThreshold` | The threshold for the register pressure potential | - |
 | `AllocateZeroInitializedVarsInBss` | Allocate zero initialized global variables in .bss section in ZEBinary | Available |
 | `AllowNonLoopConstantPromotion` | Allows promotion for constants not in loop (e.g. used once) | - |
-| `ByPassAllocaSizeHeuristic` | Force some Alloca to pass the pressure heuristic until the given size | - |
+| `ByPassAllocaSizeHeuristic` | Force some Alloca to pass the pressure heuristic until the given size | Available |
 | `CodePatch` | Enable Pixel Shader code patching to directly emit code after stitching | - |
 | `CodePatchExperiments` | Experiment with code patching when != 0 | - |
 | `CodePatchFilter` | Filter out unsupported patterns | - |

@@ -692,7 +692,7 @@ DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, true,  "Enable padding of the T
 DECLARE_IGC_REGKEY(bool, EnableTEFactorsClear, true,  "Enable clearing of tessellation factors.", false)
 DECLARE_IGC_REGKEY(DWORD, EmulationFunctionControl,  0,  "FunctionControl on some DP emulation functions. It has the same value as FunctionControl.", true)
 DECLARE_IGC_REGKEY(DWORD, InlinedEmulationThreshold,    125000, "Inlined instruction threshold for enabling subroutines", false)
-DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to pass the pressure heuristic until the given size", false)
+DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to pass the pressure heuristic until the given size", true)
 DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Size of the window in unit of instructions in which load/stores are allowed to be coalesced. Keep it limited in order to avoid creating long liveranges. Default value is 150", false)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, true, "Enable generation of .debug_loc section", false)
