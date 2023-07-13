@@ -51,6 +51,15 @@ class MCSection;
 bool isUnsignedDIType(IGC::DwarfDebug *DD, llvm::DIType *Ty);
 const llvm::Instruction *getNextInst(const llvm::Instruction *start);
 
+// As per SPIRV spec, storage class value 4 corresponds to WG.
+// We lower this value verbatim in SPIRV translator.
+// So if dwarf address space = 4, mark it as SLM.
+
+constexpr unsigned DwarfLocalAddressSpaceTag = 4u;
+static inline bool isSLMAddressSpaceTag(unsigned addrSpace) {
+  return addrSpace == DwarfLocalAddressSpaceTag;
+}
+
 namespace IGC {
 class StreamEmitter;
 class DbgVariable;

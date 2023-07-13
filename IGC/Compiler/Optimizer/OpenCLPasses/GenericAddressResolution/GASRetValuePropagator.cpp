@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -15,7 +15,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/BinaryFormat/Dwarf.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "DebugInfo/DwarfDebug.hpp"
 
 #define PASS_FLAG "igc-gas-ret-value-propagator"
 #define PASS_DESC "Resolve generic pointer return value"
@@ -271,6 +273,8 @@ void GASRetValuePropagator::updateMetadata(Function* oldFunc, Function* newFunc)
     m_mdUtils->setFunctionsInfoItem(newFunc, oldFuncIter->second);
     m_mdUtils->eraseFunctionsInfoItem(oldFuncIter);
     mbuilder.UpdateShadingRate(oldFunc, newFunc);
+    updateDwarfAddressSpace(newFunc);
+
     auto loc = FuncMD.find(oldFunc);
     if (loc != FuncMD.end())
     {
@@ -280,4 +284,59 @@ void GASRetValuePropagator::updateMetadata(Function* oldFunc, Function* newFunc)
     }
 
     m_mdUtils->save(m_module->getContext());
+}
+
+void GASRetValuePropagator::updateDwarfAddressSpace(Function *F) {
+    DISubprogram *subprogram = F->getSubprogram();
+    if (!subprogram)
+        return;
+
+    // Currently only SLM tag needed
+    if (F->getReturnType()->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+        return;
+
+    DISubroutineType *subtype = subprogram->getType();
+    IGC_ASSERT_MESSAGE(subtype, "Type field must point at DISubroutineType");
+
+    DITypeRefArray functionTypes = subtype->getTypeArray();
+    IGC_ASSERT_MESSAGE(functionTypes.size() > 0, "DITypeRefArray can't be empty");
+    IGC_ASSERT_MESSAGE(functionTypes[0], "Null return value not expected");
+
+    DIDerivedType *returnType = cast<DIDerivedType>(functionTypes[0]);
+
+    auto isPtrOrReferenceTag = [](unsigned tag) {
+      return tag == llvm::dwarf::DW_TAG_pointer_type ||
+             tag == llvm::dwarf::DW_TAG_reference_type;
+    };
+
+    DIDerivedType *prevType = nullptr;
+    while (!isPtrOrReferenceTag(returnType->getTag())) {
+        prevType = returnType;
+        returnType = cast<DIDerivedType>(returnType->getBaseType());
+    }
+
+    DIDerivedType *newType = getDIDerivedTypeWithDwarfAddrspace(
+        returnType, DwarfLocalAddressSpaceTag);
+
+    if (prevType) {
+        IGC_ASSERT(prevType->getOperand(3).get() &&
+                   isa<DIDerivedType>(prevType->getOperand(3).get()));
+        prevType->replaceOperandWith(3, newType);
+    }
+    else
+    {
+        IGC_ASSERT(functionTypes.get()->getOperand(0).get() &&
+                   isa<DIDerivedType>(functionTypes.get()->getOperand(0).get()));
+        functionTypes.get()->replaceOperandWith(0, newType);
+    }
+}
+
+DIDerivedType *
+GASRetValuePropagator::getDIDerivedTypeWithDwarfAddrspace(DIDerivedType* type,
+    unsigned dwarfTag) {
+    return DIDerivedType::get(
+        type->getContext(), type->getTag(), type->getName(), type->getFile(),
+        type->getLine(), type->getScope(), type->getBaseType(),
+        type->getSizeInBits(), type->getAlignInBits(), type->getOffsetInBits(),
+        dwarfTag, type->getFlags(), type->getExtraData());
 }

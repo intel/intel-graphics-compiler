@@ -50,6 +50,8 @@ namespace IGC {
         void transferFunctionBody(Function*, Function*);
         void updateAllUsesWithNewFunction(Function*, Function*);
         void updateMetadata(Function*, Function*);
+        void updateDwarfAddressSpace(Function *);
+        DIDerivedType *getDIDerivedTypeWithDwarfAddrspace(DIDerivedType *, unsigned);
         Function* createNewFunctionDecl(Function*, Type*);
         Function* cloneFunctionWithModifiedRetType(Function*, PointerType*);
     };
