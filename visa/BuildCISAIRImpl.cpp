@@ -1154,6 +1154,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
         }
 
         // clone instructions
+        bool isSubroutine = false;
         for (G4_INST *fret : calleeInsts) {
           G4_INST *inst = nullptr;
           if (fret->opcode() == G4_label) {
@@ -1162,6 +1163,45 @@ void CISA_IR_Builder::LinkTimeOptimization(
           } else {
             inst = fret->cloneInst(builder);
           }
+
+          // Based on vISA's assumption, after visiting fret in callee,
+          // it is entering subroutines' instructions (callee #7-#9 below)
+          // inside the callee.
+          // We have to insert subroutines' instructions to the end of
+          // the instruction list of caller for inlinig rather than the callsite
+          // Example (Before inlining)
+          //   _main_0:                 // caller #1
+          //   ...                      // caller #2
+          //   fcall <<invoke_simd>>    // caller #3
+          //
+          //   <<invoke_simd_ra>>:      // caller #4
+          //   ...                      // caller #5
+          //   pseudo_exit(1)           // caller #6
+          //
+          //   <<invoke_simd>>:         // callee #1
+          //   ((invoke_simd_context))  // callee #2
+          //   call <<subroutine_call>> // callee #3
+          //
+          //   <<subroutine_call_ra>>:  // callee #4
+          //   ...                      // callee #5
+          //   fret (16)                // callee #6
+          //
+          //   <<subroutine_call>>:     // callee #7
+          //   ...                      // callee #8
+          //   return (1)               // callee #9
+          //
+          // If we clone all callee instructions (callee #1 to #9) to the
+          // callsite (caller #3), it will break the assumption of vISA in
+          // which from the entry (caller #1) to exit (caller #6), vISA cannot
+          // have a call-return sequence as subroutines. The correct sequence
+          // is to insert from callee #1 to #6 to the callsite and append the
+          // rest of the callee's instruction to the end of caller's instruction
+          // list.
+          if (inst->opcode() == G4_pseudo_fret) {
+            vISA_ASSERT(isSubroutine == false, "It is impossible to visit fret twice");
+            isSubroutine = true;
+          }
+
           if (inst->opcode() == G4_mov) {
             inst->getSrc(0)->computeRightBound(inst->getExecSize());
           }
@@ -1183,7 +1223,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             inst->getCondMod()->setBase(newDcl->getRegVar());
             inst->getCondMod()->setTopDcl(newDcl);
           }
-          callerInsts.insert(it, inst);
+          callerInsts.insert(isSubroutine ? callerInsts.end() : it, inst);
           if (inst->opcode() != G4_pseudo_fret)
             continue;
           // Change inst to goto
