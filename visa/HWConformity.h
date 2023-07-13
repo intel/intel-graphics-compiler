@@ -69,6 +69,33 @@ class HWConformity {
   bool splitInstListForByteDst(INST_LIST_ITER it, G4_BB *bb,
                                uint16_t extypesize);
 
+  G4_DstRegRegion *insertMovAfter(INST_LIST_ITER &it, G4_DstRegRegion *dst,
+                                  G4_Type type, G4_BB *bb,
+                                  G4_SubReg_Align dstAlign = Any);
+  G4_Operand *insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type,
+                              G4_BB *bb, G4_SubReg_Align tmpAlign = Any);
+  G4_Operand *insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type,
+                              G4_BB *bb, uint16_t stride,
+                              G4_SubReg_Align tmpAlign = Any);
+
+  // replace src <srcNum> for inst <*it> with a temp variable of type <type>
+  // This is used to satisfy various HW restrictions on src
+  // type/alignment/region/modifier/etc.
+  void replaceSrc(INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB *bb,
+                  G4_SubReg_Align tmpAlign = Any) {
+    G4_INST *inst = *it;
+    inst->setSrc(insertMovBefore(it, srcNum, type, bb, tmpAlign), srcNum);
+  }
+  // replace dst for inst <*it> with a temp variable of type <type>
+  // the original dst is now the dst of a new move instruction from the temp
+  // variable. This is used to satisfy various HW restrictions on dst
+  // type/alignment/etc.
+  void replaceDst(INST_LIST_ITER it, G4_Type type,
+                  G4_SubReg_Align dstAlign = Any) {
+    G4_INST *inst = *it;
+    inst->setDest(insertMovAfter(it, inst->getDst(), type, curBB, dstAlign));
+  }
+
   G4_SrcRegRegion *insertCopyBefore(INST_LIST_ITER it, uint32_t srcNum,
                                     G4_SubReg_Align tmpAlign, G4_BB *bb);
   G4_SrcRegRegion *insertCopyAtBBEntry(G4_BB *bb, G4_ExecSize newExecSize,
@@ -217,34 +244,6 @@ class HWConformity {
   INST_LIST_ITER fixMadwInst(INST_LIST_ITER i, G4_BB *bb);
 
   void fixFloatARFDst(INST_LIST_ITER it, G4_BB *bb);
-
-protected:
-  G4_DstRegRegion *insertMovAfter(INST_LIST_ITER &it, G4_DstRegRegion *dst,
-                                  G4_Type type, G4_BB *bb,
-                                  G4_SubReg_Align dstAlign = Any);
-  G4_Operand *insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type,
-                              G4_BB *bb, G4_SubReg_Align tmpAlign = Any);
-  G4_Operand *insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type,
-                              G4_BB *bb, uint16_t stride,
-                              G4_SubReg_Align tmpAlign = Any);
-
-  // replace src <srcNum> for inst <*it> with a temp variable of type <type>
-  // This is used to satisfy various HW restrictions on src
-  // type/alignment/region/modifier/etc.
-  void replaceSrc(INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB *bb,
-                  G4_SubReg_Align tmpAlign = Any) {
-    G4_INST *inst = *it;
-    inst->setSrc(insertMovBefore(it, srcNum, type, bb, tmpAlign), srcNum);
-  }
-  // replace dst for inst <*it> with a temp variable of type <type>
-  // the original dst is now the dst of a new move instruction from the temp
-  // variable. This is used to satisfy various HW restrictions on dst
-  // type/alignment/etc.
-  void replaceDst(INST_LIST_ITER it, G4_Type type,
-                  G4_SubReg_Align dstAlign = Any) {
-    G4_INST *inst = *it;
-    inst->setDest(insertMovAfter(it, inst->getDst(), type, curBB, dstAlign));
-  }
 
 public:
   HWConformity(IR_Builder &b, G4_Kernel &k) : builder(b), kernel(k) {}

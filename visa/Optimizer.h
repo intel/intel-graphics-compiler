@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "BuildIR.h"
 #include "HWConformity.h"
-#include "EmuInt64Add.h"
 #include "LocalScheduler/LocalScheduler_G4IR.h"
 #include "LocalScheduler/SWSB_G4IR.h"
 #include <optional>
@@ -137,7 +136,6 @@ class Optimizer {
 
   void fixEndIfWhileLabels();
   void mergeScalarInst();
-  void EmulateInt64Add() { ::EmulateInt64Add(builder, kernel); }
   void HWConformityChk() { ::HWConformityChk(builder, kernel); }
   void removeRedundMov() { fg.removeRedundMov(); }
   void removeEmptyBlocks() { fg.removeEmptyBlocks(); }
@@ -344,7 +342,6 @@ public:
     PI_removePartialMovs,
     PI_cselPeepHoleOpt,
     PI_optimizeLogicOperation,
-    PI_EmulateInt64Add,
     PI_HWConformityChk,     // always
     PI_preRA_HWWorkaround,  // always, each WA under specific control
     PI_postRA_HWWorkaround, // always, each WA under specific control

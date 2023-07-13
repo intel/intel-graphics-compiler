@@ -4810,9 +4810,9 @@ namespace IGC
         {
             SaveOption(vISA_HasPartialInt64, true);
         }
-        if (!m_program->m_Platform->hasInt64Add())
+        if (m_program->m_Platform->hasInt64Add())
         {
-            SaveOption(vISA_HasNoInt64Add, true);
+            SaveOption(vISA_HasInt64Add, true);
         }
         if (IGC_IS_FLAG_ENABLED(EnableMathDPASWA))
         {
