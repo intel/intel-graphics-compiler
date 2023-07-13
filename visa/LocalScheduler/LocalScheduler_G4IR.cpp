@@ -1257,17 +1257,6 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
       G4_Operand *n_src = nextInst->getSrc(i);
       unsigned short n_srcLB = n_src->getLinearizedStart();
       unsigned short n_srcRB = n_src->getLinearizedEnd();
-#if 0
-            //There is overlap between source and destitation
-            if (!(n_dstLB > n_srcRB || n_dstRB < n_srcLB))
-            {
-                if (i == 1)
-                {
-                    vASSERT(false);
-                }
-                return false;
-            }
-#endif
       // If there is WAR dependence
       int srcReg = n_srcLB / kernel->numEltPerGRF<Type_UB>();
       while (srcReg * kernel->numEltPerGRF<Type_UB>() < n_srcRB) {

@@ -192,7 +192,6 @@ private:
   Options *options;
 };
 
-
 // NoMask WA Information
 class NoMaskWAInfo {
 public:
@@ -779,7 +778,6 @@ public:
     I->setMaskOption(MO);
   }
   // end of WA related
-
 };     // G4_Kernel
 
 } // namespace vISA

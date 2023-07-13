@@ -681,79 +681,6 @@ void LivenessAnalysis::computeLiveness() {
       change |= contextFreeDefAnalyze(*I, change);
   } while (change);
 
-#if 0
-    // debug code to compare old v. new IPA
-    {
-        std::vector<G4_Declare*> idToDecl;
-        idToDecl.resize(numVarId);
-        for (auto dcl : fg.getKernel()->Declares)
-        {
-            auto id = dcl->getRegVar()->getId();
-            if (id < numVarId)
-            {
-                idToDecl[id] = dcl;
-            }
-        }
-
-        fg.getKernel()->dump(std::cerr);
-
-        auto printLive = [this, &idToDecl](int id)
-        {
-            std::cerr << "Liveness for " << idToDecl[id]->getName() << "\n";
-            std::cerr << "Use In: ";
-            for (int i = 0; i < (int) useInCopy.size(); ++i)
-            {
-                if (useInCopy[i].isSet(id))
-                {
-                    std::cerr << "BB" << i << " ";
-                }
-            }
-            std::cerr << "\n";
-            std::cerr << "Use Out: ";
-            for (int i = 0; i < (int) useOutCopy.size(); ++i)
-            {
-                if (useOutCopy[i].isSet(id))
-                {
-                    std::cerr << "BB" << i << " ";
-                }
-            }
-            std::cerr << "\n";
-        };
-
-        auto printSetDiff = [&idToDecl, this](const std::vector<BitSet>& set1,
-            const std::vector<BitSet>& set2)
-        {
-            for (int i = 0, size = (int) set1.size(); i < size; ++i)
-            {
-                bool printBB = true;
-                for (int j = 0; j < (int)numVarId; ++j)
-                {
-                    if (set1[i].isSet(j) ^ set2[i].isSet(j))
-                    {
-                        if (printBB)
-                        {
-                            std::cerr << "BB" << i << ": ";
-                            printBB = false;
-                        }
-                        std::cerr << idToDecl[j]->getName() << "(" << j << "):" <<
-                            (set1[i].isSet(j) ? 1 : 0) << " ";
-                    }
-                }
-                if (!printBB)
-                {
-                    std::cerr << "\n";
-                }
-            }
-        };
-
-        std::cerr << "use-in comparison:\n";
-        printSetDiff(use_in, useInCopy);
-
-        std::cerr << "use-out comparison:\n";
-        printSetDiff(use_out, useOutCopy);
-    }
-#endif
-
   //
   // dump vectors for debugging
   //
@@ -1087,56 +1014,6 @@ void LivenessAnalysis::hierarchicalIPA(const llvm_SBitVector &kernelInput,
       }
     }
   }
-
-#if 0
-    std::vector<G4_Declare*> idToDecl;
-    idToDecl.resize(numVarId);
-    for (auto dcl : fg.getKernel()->Declares)
-    {
-        auto id = dcl->getRegVar()->getId();
-        if (id < numVarId)
-        {
-            idToDecl[id] = dcl;
-        }
-    }
-    for (auto subroutine : fg.sortedFuncTable)
-    {
-        auto printVal = [&idToDecl](const llvm_SBitVector& bs)
-        {
-            for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
-            {
-                if (bs.isSet(i))
-                {
-                    std::cerr << idToDecl[i]->getName() << "(" << i << ") ";
-                }
-            }
-        };
-
-        subroutine->dump();
-
-        if (subroutine != fg.kernelInfo)
-        {
-            std::cerr << "\tArgs: ";
-            printVal(args[subroutine]);
-            std::cerr << "\n";
-
-            std::cerr << "\tRetVal: ";
-            printVal(retVal[subroutine]);
-            std::cerr << "\n";
-            std::cerr << "\tLiveThrough: ";
-            llvm_SBitVector liveThrough = use_in[subroutine->getInitBB()->getId()];
-            liveThrough &= use_out[subroutine->getExitBB()->getId()];
-            printVal(liveThrough);
-            //std::cerr << "\n";
-            //std::cerr << "\tDef in: ";
-            //printVal(def_in[subroutine->getInitBB()->getId()]);
-            //std::cerr << "\n";
-            //std::cerr << "\tDef out: ";
-            //printVal(def_out[subroutine->getInitBB()->getId()]);
-            std::cerr << "\n";
-        }
-    }
-#endif
 }
 
 //

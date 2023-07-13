@@ -159,7 +159,6 @@ bool G4_BB::isAllLaneActive() const {
   return false;
 }
 
-
 void G4_BB::emit(std::ostream &output) {
   for (INST_LIST_ITER it = instList.begin(); it != instList.end(); ++it) {
     emitInstruction(output, it);
@@ -196,7 +195,6 @@ void G4_BB::emitBasicInstruction(std::ostream &output, INST_LIST_ITER &it) {
       emitBankConflict(output, inst);
     }
   }
-
 }
 void G4_BB::emitBasicInstructionComment(std::ostream &output,
                                         INST_LIST_ITER &it, int *suppressRegs,
@@ -252,7 +250,6 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
       jitInfo->statsVerbose.numByteRMWs += countReadModifyWrite(output, inst);
     }
   }
-
 }
 
 void G4_BB::emitInstructionSourceLineMapping(std::ostream &output,

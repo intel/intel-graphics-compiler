@@ -125,21 +125,6 @@ int IR_Builder::translateVISAQWScatterInst(
   return VISA_SUCCESS;
 }
 
-// if surface is PRED_SURF_255, lower it to PRED_SURF_253 so that it's non
-// IA-coherent the surface is not changed otherwise
-static G4_Operand *lowerSurface255To253(G4_Operand *surface,
-                                        IR_Builder &builder) {
-  // disable due to OCL SVM atomics regression
-#if 0
-    if (surface && surface->isImm() && surface->asImm()->getImm() == PREDEF_SURF_255)
-    {
-        return builder.createImm(PREDEF_SURF_253, Type_UW);
-    }
-    else
-#endif
-  { return surface; }
-}
-
 static void BuildStatelessSurfaceMessageHeader(IR_Builder *IRB,
                                                G4_Declare *Header) {
   // No need to mask fft id when scratch surface is bindless as
@@ -234,8 +219,6 @@ int IR_Builder::translateVISAOwordLoadInst(ISA_Opcode opcode, bool modified,
                                            G4_Operand *offOpnd,
                                            G4_DstRegRegion *dstOpnd) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  surface = lowerSurface255To253(surface, *this);
 
   unsigned num_oword = Get_VISA_Oword_Num(size);
   bool unaligned = (opcode == ISA_OWORD_LD_UNALIGNED);
@@ -356,8 +339,6 @@ int IR_Builder::translateVISAOwordStoreInst(G4_Operand *surface,
                                             G4_SrcRegRegion *srcOpnd) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  surface = lowerSurface255To253(surface, *this);
-
   unsigned num_oword = Get_VISA_Oword_Num(size);
   unsigned obj_size = num_oword * 16; // size of obj in bytes
 
@@ -474,8 +455,6 @@ int IR_Builder::translateVISAGatherInst(
     VISA_Exec_Size executionSize, G4_Operand *surface, G4_Operand *gOffOpnd,
     G4_SrcRegRegion *eltOffOpnd, G4_DstRegRegion *dstOpnd) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  surface = lowerSurface255To253(surface, *this);
 
   // Before GEN10, we translate DWORD GATHER on SLM to untyped GATHER4 on
   // SLM with only R channel enabled. The later is considered more
@@ -695,7 +674,6 @@ int IR_Builder::translateVISAScatterInst(
   }
 
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-  surface = lowerSurface255To253(surface, *this);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
@@ -889,8 +867,6 @@ int IR_Builder::translateVISAGather4Inst(
     G4_SrcRegRegion *eltOffOpnd, G4_DstRegRegion *dstOpnd) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  surface = lowerSurface255To253(surface, *this);
-
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
   unsigned int num_channel = chMask.getNumEnabledChannels();
@@ -1049,8 +1025,6 @@ int IR_Builder::translateVISAScatter4Inst(
     G4_Operand *surface, G4_Operand *gOffOpnd, G4_SrcRegRegion *eltOffOpnd,
     G4_SrcRegRegion *srcOpnd) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-  surface = lowerSurface255To253(surface, *this);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
@@ -1260,8 +1234,6 @@ int IR_Builder::translateVISADwordAtomicInst(
   vISA_ASSERT_INPUT(getPlatform() >= Xe_XeHPSDV ||
                   ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
               "FADD/FSUB atomic operations are only supported on this devices");
-
-  surface = lowerSurface255To253(surface, *this);
 
   VISA_Exec_Size instExecSize = execSize;
   execSize = roundUpExecSize(execSize);
@@ -1734,7 +1706,6 @@ int IR_Builder::translateVISAGather4ScaledInst(
     G4_Predicate *pred, VISA_Exec_Size execSize, VISA_EMask_Ctrl eMask,
     ChannelMask chMask, G4_Operand *surface, G4_Operand *globalOffset,
     G4_SrcRegRegion *offsets, G4_DstRegRegion *dst) {
-  surface = lowerSurface255To253(surface, *this);
   return translateGather4Inst(pred, execSize, eMask, chMask, surface,
                               globalOffset, offsets, dst);
 }
@@ -1743,7 +1714,6 @@ int IR_Builder::translateVISAScatter4ScaledInst(
     G4_Predicate *pred, VISA_Exec_Size execSize, VISA_EMask_Ctrl eMask,
     ChannelMask chMask, G4_Operand *surface, G4_Operand *globalOffset,
     G4_SrcRegRegion *offsets, G4_SrcRegRegion *src) {
-  surface = lowerSurface255To253(surface, *this);
   return translateScatter4Inst(pred, execSize, eMask, chMask, surface,
                                globalOffset, offsets, src);
 }
@@ -1952,8 +1922,6 @@ int IR_Builder::translateVISAGatherScaledInst(
     G4_Predicate *pred, VISA_Exec_Size execSize, VISA_EMask_Ctrl eMask,
     VISA_SVM_Block_Num numBlocks, G4_Operand *surface, G4_Operand *globalOffset,
     G4_SrcRegRegion *offsets, G4_DstRegRegion *dst) {
-  surface = lowerSurface255To253(surface, *this);
-
   return translateByteGatherInst(pred, execSize, eMask, numBlocks, surface,
                                  globalOffset, offsets, dst);
 }
@@ -1962,8 +1930,6 @@ int IR_Builder::translateVISAScatterScaledInst(
     G4_Predicate *pred, VISA_Exec_Size execSize, VISA_EMask_Ctrl eMask,
     VISA_SVM_Block_Num numBlocks, G4_Operand *surface, G4_Operand *globalOffset,
     G4_SrcRegRegion *offsets, G4_SrcRegRegion *src) {
-
-  surface = lowerSurface255To253(surface, *this);
   return translateByteScatterInst(pred, execSize, eMask, numBlocks, surface,
                                   globalOffset, offsets, src);
 }

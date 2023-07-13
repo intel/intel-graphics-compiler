@@ -32,7 +32,6 @@ class AccSubPass {
 
   bool replaceDstWithAcc(G4_INST *inst, int accNum);
 
-
 public:
   AccSubPass(IR_Builder &B, G4_Kernel &K) : builder(B), kernel(K) {}
 

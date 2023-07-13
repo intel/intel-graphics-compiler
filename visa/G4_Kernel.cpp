@@ -455,7 +455,6 @@ uint32_t gtPinData::getNumBytesScratchUse() const {
   return 0;
 }
 
-
 G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
                      Mem_Manager &m, Options *options, Attributes *anAttr,
                      uint32_t funcId, unsigned char major, unsigned char minor)

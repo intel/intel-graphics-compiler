@@ -1030,7 +1030,6 @@ struct AccAssignment {
   }
 };
 
-
 void AccSubPass::doAccSub(G4_BB *bb) {
   bb->resetLocalIds();
   int numGeneralAcc = kernel.getNumAcc();
@@ -1179,19 +1178,6 @@ void AccSubPass::doAccSub(G4_BB *bb) {
         jitInfo->statsVerbose.accSubDef++;
         jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
       }
-#if 0
-            std::cout << "Acc sub def inst: \n";
-            inst->emit(std::cout);
-            std::cout << "[" << inst->getLocalId() << "]\n";
-            std::cout << "Uses:\n";
-            for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
-            {
-                auto&& use = *I;
-                std::cout << "\t";
-                use.first->emit(std::cout);
-                std::cout << "[" << use.first->getLocalId() << "]\n";
-            }
-#endif
     }
     if (!interval->isPreAssigned && interval->assignedAcc == -1) {
       inst->addComment("ACC_Candidate");
@@ -1527,23 +1513,8 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
         jitInfo->statsVerbose.accSubDef++;
         jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
       }
-
-#if 0
-            std::cout << "Acc sub def inst: \n";
-            inst->emit(std::cout);
-            std::cout << "[" << inst->getLocalId() << "]\n";
-            std::cout << "Uses:\n";
-            for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
-            {
-                auto&& use = *I;
-                std::cout << "\t";
-                use.first->emit(std::cout);
-                std::cout << "[" << use.first->getLocalId() << "]\n";
-            }
-#endif
     }
   }
-
 
   for (int i = 0, end = (int)intervals.size(); i < end; ++i) {
     delete intervals[i];
@@ -1619,22 +1590,9 @@ void AccSubPass::accSub(G4_BB *bb) {
       instIter = subIter;
       --instIter;
 
-    auto jitInfo = kernel.fg.builder->getJitInfo();
-    jitInfo->statsVerbose.accSubDef++;
-    jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
-
-#if 0
-            std::cout << "Acc sub def inst: \n";
-            inst->emit(std::cout);
-            std::cout << "[" << inst->getLocalId() << "]\n";
-            std::cout << "Uses:\n";
-            for (auto&& use : inst->useInstList)
-            {
-                std::cout << "\t";
-                use.first->emit(std::cout);
-                std::cout << "[" << use.first->getLocalId() << "]\n";
-            }
-#endif
+      auto jitInfo = kernel.fg.builder->getJitInfo();
+      jitInfo->statsVerbose.accSubDef++;
+      jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
     }
   }
 }

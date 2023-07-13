@@ -396,7 +396,6 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
   // perform any necessary relocation
   m_kernel->doRelocation(binary, binarySize);
 
-
   // Update instruction offset in register access maps.
   if (m_builder->hasSWSB() &&
       (isFCCallableKernel() || isFCCallerKernel() || isFCComposableKernel())) {
