@@ -1761,10 +1761,8 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
   if (!DTy->isForwardDecl())
     addSourceLine(&Buffer, DTy);
 
-  // As per SPIRV spec, storage class value 4 corresponds to WG.
-  // We lower this value verbatim in SPIRV translator.
-  // So if dwarf address space = 4, mark it as SLM.
-  if (operator==(DTy->getDWARFAddressSpace(), 4u)) {
+  if (DTy->getDWARFAddressSpace().hasValue() &&
+      isSLMAddressSpaceTag(DTy->getDWARFAddressSpace().getValue())) {
     addUInt(&Buffer, dwarf::DW_AT_address_class, None, 1);
   }
 }
