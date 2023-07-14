@@ -29,8 +29,10 @@ define void @fill_length(i32 %a, i8* %dst, i32* %dst2) {
 ; CHECK:    [[TMP6:%.*]] = insertelement <8 x i32> [[TMP5]], i32 [[A]], i64 5
 ; CHECK:    [[TMP7:%.*]] = insertelement <8 x i32> [[TMP6]], i32 [[A]], i64 6
 ; CHECK:    [[TMP8:%.*]] = insertelement <8 x i32> [[TMP7]], i32 [[A]], i64 7
-; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x4_i8_generic_pi64_v8i8(i8* [[DST:%.*]], <8 x i32> [[TMP8]], i32 8)
-; CHECK:    store i32 32, i32* [[DST2:%.*]], align 4
+; CHECK:    [[PTR:%.*]] = alloca <8 x i32>
+; CHECK:    store <8 x i32> [[TMP8]], <8 x i32>* [[PTR:%.*]]
+; CHECK:    [[MATPTR:%.*]] = bitcast <8 x i32>* [[PTR:%.*]] to i8*
+; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x4_i8_generic_pi64_v8i8(i8* %dst, i8* [[MATPTR]], i32 8), !dbg !14
 ; CHECK:    ret void
 ;
   %1 = call spir_func %intel.joint_matrix_packedA_8x4_i8_* @__builtin_spirv_OpCompositeConstructJointMatrixINTEL(i32 %a)
@@ -49,9 +51,11 @@ declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL(i8*, %intel.join
 
 define void @load_store(i8* %a, i8* %dst) {
 ; CHECK-LABEL: @load_store(
-; CHECK:    [[MATRIX:%.*]] = call <8 x i32> @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i32_generic_v8i8_pi32_i32(i8* [[A:%.*]], i32 16)
-; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i32_generic_pi64_v8i8(i8* [[DST:%.*]], <8 x i32> [[MATRIX]], i32 8)
-; CHECK:    ret void
+; CHECK: [[PTR:%.*]] = alloca <8 x i32>
+; CHECK: [[MATPTR:%.*]] = bitcast <8 x i32>* [[PTR]] to i8*
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i32_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %a, i32 16), !dbg !21
+; CHECK: [[MATRIX:%.*]] = load <8 x i32>, <8 x i32>* [[PTR]]
+; CHECK: ret void
 ;
   %1 = call spir_func %intel.joint_matrix_packedA_8x16_i32_* @__builtin_spirv_OpJointMatrixLoadINTEL(i8* %a, i32 16, i32 0)
   call spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x16(i8* %dst, %intel.joint_matrix_packedA_8x16_i32_* %1, i32 8, i32 0)

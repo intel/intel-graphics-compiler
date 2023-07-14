@@ -644,38 +644,6 @@ static uint64_t constIntValue(const Value *v) {
     return cast<ConstantInt>(v)->getLimitedValue();
 }
 
-static Type *getIntegerEquivalent(Type *matTy) {
-    if (IGCLLVM::FixedVectorType *VT = dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
-        unsigned elements = (unsigned) VT->getNumElements();
-        unsigned size = VT->getElementType()->getScalarSizeInBits();
-        Type *elementType = Type::getIntNTy(matTy->getContext(), size);
-        if (elements >= 5 && elements < 8) {
-            elements = 8;
-        }
-        return IGCLLVM::FixedVectorType::get(elementType, elements);
-    } else {
-        unsigned size = matTy->getScalarSizeInBits();
-        return Type::getIntNTy(matTy->getContext(), size);
-    }
-}
-
-template <class BuilderT>
-static Instruction *shrinkExpandCastVector(BuilderT *builder,
-                                           IGCLLVM::FixedVectorType *rawMatTy, Value *origVal)
-{
-    SmallVector<IGCLLVM::ShuffleVectorMaskType, 8> mask;
-    llvm::copy(llvm::seq<IGCLLVM::ShuffleVectorMaskType>(
-                   0,
-                   (IGCLLVM::ShuffleVectorMaskType)rawMatTy->getNumElements()),
-               std::back_inserter(mask));
-
-    Value *newMat = builder->CreateShuffleVector(origVal,
-                                                 UndefValue::get(origVal->getType()),
-                                                 mask, origVal->getName() + ".shuffle");
-    newMat = builder->CreateBitCast(newMat, rawMatTy, newMat->getName() + ".cast");
-    return cast<Instruction>(newMat);
-}
-
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 {
     Value *ptrVal        = CI->getArgOperand(0);
@@ -686,7 +654,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     Type *matTy = ResolveType(CI->getType(), &desc);
     /* Cast floating types to integer types of the same size. This allows to
      * have a single set of store builtins for floats and integer */
-    Type *retTy = getIntegerEquivalent(matTy);
+    LLVMContext &ctx = CI->getContext();
+    Type *retTy = Type::getVoidTy(ctx);
+    Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
     Module *M = CI->getParent()->getModule();
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
@@ -695,24 +665,20 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     std::string funcName =
         GetMatrixFuncName(false, true, loadLayout, address_space, &desc,
                           "__builtin_spriv_OpJointMatrixLoadINTEL_");
-    FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType() }, false);
-    std::vector<Value *> Args = { ptrVal, strideVal };
+    FunctionType *funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), strideVal->getType() }, false);
 
     InstsToErase.insert(CI);
 
     IRBuilder builder(CI);
-    Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args, "matrix");
-    if (retTy != matTy) {
-        IGCLLVM::FixedVectorType *rawMatTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
-        IGCLLVM::FixedVectorType *rawRetTy = dyn_cast<IGCLLVM::FixedVectorType>(retTy);
-        if (rawMatTy != nullptr && rawMatTy->getNumElements() < rawRetTy->getNumElements()) {
-            newCall = shrinkExpandCastVector(&builder, rawMatTy, newCall);
-        } else {
-            Value *bitcast = builder.CreateBitCast(newCall, matTy, "matrix.load.cast");
-            newCall = dyn_cast<Instruction>(bitcast);
-        }
-    }
+    Value *sliceArray = builder.CreateAlloca(matTy, ADDRESS_SPACE_PRIVATE);
+    Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
+
+    std::vector<Value *> Args = { dst, ptrVal, strideVal };
+    Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args);
     newCall->setDebugLoc(CI->getDebugLoc());
+
+    newCall = builder.CreateLoad(matTy, sliceArray);
+
     return newCall;
 }
 
@@ -725,28 +691,17 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
 
     JointMatrixTypeDescription desc;
     Type *matTy = ResolveType(matrixVal->getType(), &desc);
+    (void)matTy;
     /* Cast floating types to integer types of the same size. This allows to
      * have a single set of store builtins for floats and integers */
-    matTy = getIntegerEquivalent(matTy);
+
+    LLVMContext &ctx = CI->getContext();
+    Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
     Module *M = CI->getParent()->getModule();
     IRBuilder builder(CI);
 
     Value *matVal = Resolve(matrixVal);
-    if (matVal->getType() != matTy) {
-      IGCLLVM::FixedVectorType *rawMatTy =
-          dyn_cast<IGCLLVM::FixedVectorType>(matTy);
-      IGCLLVM::FixedVectorType *rawArgTy =
-          dyn_cast<IGCLLVM::FixedVectorType>(matVal->getType());
-
-      if (rawMatTy != nullptr &&
-          rawArgTy->getNumElements() < rawMatTy->getNumElements()) {
-        matVal = shrinkExpandCastVector(&builder, rawMatTy, matVal);
-      } else {
-        matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy,
-                                     "matrix.store.cast", CI);
-      }
-    }
 
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
@@ -756,10 +711,15 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
                           "__builtin_spriv_OpJointMatrixStoreINTEL_");
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
-            { ptrVal->getType(), matTy, strideVal->getType() }, false);
-    std::vector<Value *> Args = { ptrVal, matVal, strideVal };
+            { ptrVal->getType(), arrayTy, strideVal->getType() }, false);
 
     InstsToErase.insert(CI);
+
+    Value *sliceArray = builder.CreateAlloca(matVal->getType(), ADDRESS_SPACE_PRIVATE);
+    builder.CreateStore(matVal, sliceArray);
+    Value *src = builder.CreateBitCast(sliceArray, arrayTy);
+
+    std::vector<Value *> Args = { ptrVal, src, strideVal };
     Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
     newCall->setDebugLoc(CI->getDebugLoc());
     return newCall;
