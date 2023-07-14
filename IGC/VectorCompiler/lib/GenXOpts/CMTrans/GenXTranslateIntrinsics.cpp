@@ -11,9 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
-
-#include "visa_igc_common_header.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -50,8 +47,6 @@ private:
   Value *translateBFloat16Convert(CallInst &I) const;
   Value *translateTFloat32Convert(CallInst &I) const;
   Value *translateStochasticRounding(CallInst &I) const;
-  Value *translateLscAtomic(CallInst &I) const;
-  Value *translateLscLoadStore(CallInst &I) const;
 };
 } // namespace
 
@@ -90,43 +85,13 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_srnd:
     NewI = translateStochasticRounding(I);
     break;
-  case GenXIntrinsic::genx_lsc_xatomic_bti:
-  case GenXIntrinsic::genx_lsc_xatomic_slm:
-  case GenXIntrinsic::genx_lsc_xatomic_stateless:
-    NewI = translateLscAtomic(I);
-    break;
-  case GenXIntrinsic::genx_lsc_load_bti:
-  case GenXIntrinsic::genx_lsc_load_merge_bti:
-  case GenXIntrinsic::genx_lsc_load_merge_quad_bti:
-  case GenXIntrinsic::genx_lsc_load_merge_quad_slm:
-  case GenXIntrinsic::genx_lsc_load_merge_quad_stateless:
-  case GenXIntrinsic::genx_lsc_load_merge_slm:
-  case GenXIntrinsic::genx_lsc_load_merge_stateless:
-  case GenXIntrinsic::genx_lsc_load_quad_bti:
-  case GenXIntrinsic::genx_lsc_load_quad_slm:
-  case GenXIntrinsic::genx_lsc_load_quad_stateless:
-  case GenXIntrinsic::genx_lsc_load_slm:
-  case GenXIntrinsic::genx_lsc_load_stateless:
-  case GenXIntrinsic::genx_lsc_prefetch_bti:
-  case GenXIntrinsic::genx_lsc_prefetch_stateless:
-  case GenXIntrinsic::genx_lsc_store_bti:
-  case GenXIntrinsic::genx_lsc_store_quad_bti:
-  case GenXIntrinsic::genx_lsc_store_quad_slm:
-  case GenXIntrinsic::genx_lsc_store_quad_stateless:
-  case GenXIntrinsic::genx_lsc_store_slm:
-  case GenXIntrinsic::genx_lsc_store_stateless:
-    NewI = translateLscLoadStore(I);
-    break;
   }
 
   if (!NewI)
     return;
 
-  if (!I.getType()->isVoidTy()) {
-    NewI->takeName(&I);
-    I.replaceAllUsesWith(NewI);
-  }
-
+  NewI->takeName(&I);
+  I.replaceAllUsesWith(NewI);
   I.eraseFromParent();
   return;
 }
@@ -226,196 +191,6 @@ Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
       M, IID, {RetTy, SrcTy, RndTy});
   auto *NewI = Builder.CreateCall(Func, {SrcV, RndV});
   LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
-
-  return NewI;
-}
-
-Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
-  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
-  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
-  Module *M = I.getModule();
-
-  auto *Pred = I.getArgOperand(0);
-  auto *L1Control = I.getArgOperand(2);
-  auto *L3Control = I.getArgOperand(3);
-  auto *Scale = I.getArgOperand(4);
-  auto *Offset = I.getArgOperand(5);
-  auto *ElementSize = I.getArgOperand(6);
-  auto *VectorSize = I.getArgOperand(7);
-  auto *ChannelMask = I.getArgOperand(9);
-  auto *Addr = I.getArgOperand(10);
-
-  Value *Base = nullptr;
-  Value *Src = nullptr;
-
-  auto *ResTy = I.getType();
-  if (!ResTy->isVoidTy())
-    Src = UndefValue::get(ResTy);
-
-  auto AddrSize = LSC_ADDR_SIZE_32b;
-  bool IsQuad = false;
-
-  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
-  switch (IID) {
-  default:
-    IGC_ASSERT_UNREACHABLE();
-  case GenXIntrinsic::genx_lsc_load_merge_quad_bti:
-  case GenXIntrinsic::genx_lsc_load_quad_bti:
-    IsQuad = true;
-    LLVM_FALLTHROUGH;
-  case GenXIntrinsic::genx_lsc_load_merge_bti:
-  case GenXIntrinsic::genx_lsc_load_bti:
-    Base = I.getArgOperand(11);
-    if (IGCLLVM::getNumArgOperands(&I) == 13)
-      Src = I.getArgOperand(12);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_load_quad_bti
-                    : vc::InternalIntrinsic::lsc_load_bti;
-    break;
-  case GenXIntrinsic::genx_lsc_load_merge_quad_slm:
-  case GenXIntrinsic::genx_lsc_load_quad_slm:
-    IsQuad = true;
-    LLVM_FALLTHROUGH;
-  case GenXIntrinsic::genx_lsc_load_merge_slm:
-  case GenXIntrinsic::genx_lsc_load_slm:
-    Base = Builder.getInt32(0);
-    if (IGCLLVM::getNumArgOperands(&I) == 13)
-      Src = I.getArgOperand(12);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_load_quad_slm
-                    : vc::InternalIntrinsic::lsc_load_slm;
-    break;
-  case GenXIntrinsic::genx_lsc_load_merge_quad_stateless:
-  case GenXIntrinsic::genx_lsc_load_quad_stateless:
-    IsQuad = true;
-    LLVM_FALLTHROUGH;
-  case GenXIntrinsic::genx_lsc_load_merge_stateless:
-  case GenXIntrinsic::genx_lsc_load_stateless:
-    Base = Builder.getInt64(0);
-    if (IGCLLVM::getNumArgOperands(&I) == 13)
-      Src = I.getArgOperand(12);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_load_quad_ugm
-                    : vc::InternalIntrinsic::lsc_load_ugm;
-    AddrSize = LSC_ADDR_SIZE_64b;
-    break;
-  case GenXIntrinsic::genx_lsc_prefetch_bti:
-    Src = nullptr;
-    Base = I.getArgOperand(11);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_prefetch_quad_bti
-                    : vc::InternalIntrinsic::lsc_prefetch_bti;
-    break;
-  case GenXIntrinsic::genx_lsc_prefetch_stateless:
-    Src = nullptr;
-    Base = Builder.getInt64(0);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_prefetch_quad_ugm
-                    : vc::InternalIntrinsic::lsc_prefetch_ugm;
-    AddrSize = LSC_ADDR_SIZE_64b;
-    break;
-  case GenXIntrinsic::genx_lsc_store_quad_bti:
-    IsQuad = true;
-    LLVM_FALLTHROUGH;
-  case GenXIntrinsic::genx_lsc_store_bti:
-    Base = I.getArgOperand(12);
-    Src = I.getArgOperand(11);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_store_quad_bti
-                    : vc::InternalIntrinsic::lsc_store_bti;
-    break;
-  case GenXIntrinsic::genx_lsc_store_quad_slm:
-    IsQuad = true;
-    LLVM_FALLTHROUGH;
-  case GenXIntrinsic::genx_lsc_store_slm:
-    Base = Builder.getInt32(0);
-    Src = I.getArgOperand(11);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_store_quad_slm
-                    : vc::InternalIntrinsic::lsc_store_slm;
-    break;
-  case GenXIntrinsic::genx_lsc_store_quad_stateless:
-    IsQuad = true;
-    LLVM_FALLTHROUGH;
-  case GenXIntrinsic::genx_lsc_store_stateless:
-    Base = Builder.getInt64(0);
-    Src = I.getArgOperand(11);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_store_quad_ugm
-                    : vc::InternalIntrinsic::lsc_store_ugm;
-    AddrSize = LSC_ADDR_SIZE_64b;
-    break;
-  }
-
-  SmallVector<Type *, 3> Types;
-  if (!ResTy->isVoidTy())
-    Types.push_back(ResTy);
-  Types.push_back(Pred->getType());
-  Types.push_back(Addr->getType());
-  if (Src && ResTy->isVoidTy())
-    Types.push_back(Src->getType());
-
-  SmallVector<Value *, 11> Args = {
-      Pred, // translate genx to internal intrinsic args
-      Builder.getInt8(AddrSize),
-      ElementSize,
-      IsQuad ? ChannelMask : VectorSize,
-      L1Control,
-      L3Control,
-      Base,
-      Addr,
-      Scale,
-      Offset,
-  };
-  if (Src)
-    Args.push_back(Src);
-
-  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
-  auto *NewI = Builder.CreateCall(Func, Args);
-  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
-
-  return NewI;
-}
-
-Value *GenXTranslateIntrinsics::translateLscAtomic(CallInst &I) const {
-  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
-  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
-  Module *M = I.getModule();
-
-  auto *Pred = I.getArgOperand(0);
-  auto *Opcode = I.getArgOperand(1);
-  auto *L1Control = I.getArgOperand(2);
-  auto *L3Control = I.getArgOperand(3);
-  auto *Scale = I.getArgOperand(4);
-  auto *Offset = I.getArgOperand(5);
-  auto *ElementSize = I.getArgOperand(6);
-  auto *Addr = I.getArgOperand(10);
-  auto *Src0 = I.getArgOperand(11);
-  auto *Src1 = I.getArgOperand(12);
-  auto *Passthru = I.getArgOperand(14);
-
-  Value *Base = nullptr;
-  auto AddrSize = LSC_ADDR_SIZE_32b;
-  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
-
-  switch (IID) {
-  default:
-    IGC_ASSERT_UNREACHABLE();
-  case GenXIntrinsic::genx_lsc_xatomic_bti:
-    Base = I.getArgOperand(13);
-    NewIID = vc::InternalIntrinsic::lsc_atomic_bti;
-    break;
-  case GenXIntrinsic::genx_lsc_xatomic_slm:
-    Base = Builder.getInt32(0);
-    NewIID = vc::InternalIntrinsic::lsc_atomic_slm;
-    break;
-  case GenXIntrinsic::genx_lsc_xatomic_stateless:
-    Base = Builder.getInt64(0);
-    NewIID = vc::InternalIntrinsic::lsc_atomic_ugm;
-    AddrSize = LSC_ADDR_SIZE_64b;
-    break;
-  }
-
-  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      M, NewIID, {I.getType(), Pred->getType(), Addr->getType()});
-  auto *NewI = Builder.CreateCall(
-      Func, {Pred, Opcode, Builder.getInt8(AddrSize), ElementSize, L1Control,
-             L3Control, Base, Addr, Scale, Offset, Src0, Src1, Passthru});
-  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
 
   return NewI;
 }

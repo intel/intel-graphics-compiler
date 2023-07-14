@@ -4040,121 +4040,69 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       };
 
 
-  auto CheckLscOp = [&](LSC_SFID LscSfid, LSC_ADDR_TYPE AddressType,
-                        LSC_ADDR_SIZE AddressSize, LSC_DATA_SIZE ElementSize) {
-    IGC_ASSERT(LscSfid == LSC_UGM || LscSfid == LSC_SLM);
-    IGC_ASSERT((LscSfid == LSC_SLM && AddressType == LSC_ADDR_TYPE_FLAT &&
-                AddressSize == LSC_ADDR_SIZE_32b) ||
-               (LscSfid == LSC_UGM && AddressType == LSC_ADDR_TYPE_FLAT &&
-                AddressSize == LSC_ADDR_SIZE_64b) ||
-               (LscSfid == LSC_UGM && AddressType == LSC_ADDR_TYPE_BTI &&
-                AddressSize == LSC_ADDR_SIZE_32b));
-    IGC_ASSERT(ElementSize == LSC_DATA_SIZE_8c32b ||
-               ElementSize == LSC_DATA_SIZE_16c32b ||
-               ElementSize == LSC_DATA_SIZE_32b ||
-               ElementSize == LSC_DATA_SIZE_64b);
+  auto CreateLscUntyped =
+      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
+          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
+          LSC_CACHE_OPTS CacheOpts, LSC_ADDR Addr, LSC_DATA_SHAPE DataShape,
+          VISA_VectorOpnd *Surface, VISA_RawOpnd *DstData,
+          VISA_RawOpnd *Src0Addr, VISA_RawOpnd *Src1Data,
+          VISA_RawOpnd *Src2Data) {
+        LLVM_DEBUG(dbgs() << "CreateLscUntyped\n");
+        IGC_ASSERT_EXIT(SubOpcode != LSC_LOAD_STRIDED &&
+                        SubOpcode != LSC_STORE_STRIDED);
+        constexpr unsigned AddressOperandNum = 10;
 
-    constexpr unsigned AddressOperandNum = 7;
-    auto *AddrV = CI->getArgOperand(AddressOperandNum);
-    auto *AddrTy = AddrV->getType();
-    if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
-      AddrTy = AddrVTy->getElementType();
-    auto AddrBits = AddrTy->getIntegerBitWidth();
+        auto *AddrV = CI->getArgOperand(AddressOperandNum);
+        auto *AddrTy = AddrV->getType();
+        if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
+          AddrTy = AddrVTy->getElementType();
 
-    IGC_ASSERT((AddrBits == 64 && AddressSize == LSC_ADDR_SIZE_64b) ||
-               AddrBits == 32);
-  };
-
-  auto CreateLscAtomic =
-      [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
-          VISA_EMask_Ctrl ExecMask, LSC_OP Opcode, LSC_SFID LscSfid,
-          LSC_ADDR_TYPE AddressType, LSC_ADDR_SIZE AddressSize,
-          LSC_DATA_SIZE ElementSize, LSC_CACHE_OPT L1Opt, LSC_CACHE_OPT L3Opt,
-          VISA_RawOpnd *Dest, VISA_VectorOpnd *Base, VISA_RawOpnd *Addr,
-          int Scale, int Offset, VISA_RawOpnd *Src1, VISA_RawOpnd *Src2) {
-        LLVM_DEBUG(dbgs() << "CreateLscAtomic\n");
-        CheckLscOp(LscSfid, AddressType, AddressSize, ElementSize);
-        IGC_ASSERT(ElementSize != LSC_DATA_SIZE_8c32b);
-        IGC_ASSERT(Opcode >= LSC_ATOMIC_IINC && Opcode <= LSC_ATOMIC_XOR);
-
-        LSC_CACHE_OPTS CacheOpts = {L1Opt, L3Opt};
-        LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
-        LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE,
-                                   LSC_DATA_ELEMS_1};
-
-        CISA_CALL(Kernel->AppendVISALscUntypedAtomic(
-            Opcode, LscSfid, Pred, ExecSize, ExecMask, CacheOpts, AddressDesc,
-            DataDesc, Base, Dest, Addr, Src1, Src2));
-      };
-
-  auto CreateLscLoad = [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
-                           VISA_EMask_Ctrl ExecMask, LSC_OP Opcode,
-                           LSC_SFID LscSfid, LSC_ADDR_TYPE AddressType,
-                           LSC_ADDR_SIZE AddressSize, LSC_DATA_SIZE ElementSize,
-                           int VectorAttr, LSC_CACHE_OPT L1Opt,
-                           LSC_CACHE_OPT L3Opt, VISA_RawOpnd *Dest,
-                           VISA_VectorOpnd *Base, VISA_RawOpnd *Addr, int Scale,
-                           int Offset) {
-    LLVM_DEBUG(dbgs() << "CreateLscLoad\n");
-    IGC_ASSERT(Opcode == LSC_LOAD || Opcode == LSC_LOAD_QUAD);
-    CheckLscOp(LscSfid, AddressType, AddressSize, ElementSize);
-
-    LSC_CACHE_OPTS CacheOpts = {L1Opt, L3Opt};
-    LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
-    LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE};
-
-    if (Opcode == LSC_LOAD) {
-      DataDesc.elems = LSC_DATA_ELEMS(VectorAttr);
-      DataDesc.order =
-          ExecSize == EXEC_SIZE_1 && DataDesc.elems != LSC_DATA_ELEMS_1
-              ? LSC_DATA_ORDER_TRANSPOSE
-              : LSC_DATA_ORDER_NONTRANSPOSE;
-    } else {
-      IGC_ASSERT(ElementSize == LSC_DATA_SIZE_32b);
-      DataDesc.chmask = VectorAttr;
-    }
-
-    CISA_CALL(Kernel->AppendVISALscUntypedLoad(Opcode, LscSfid, Pred, ExecSize,
-                                               ExecMask, CacheOpts, AddressDesc,
-                                               DataDesc, Base, Dest, Addr));
-  };
-
-  auto CreateLscStore =
-      [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
-          VISA_EMask_Ctrl ExecMask, LSC_OP Opcode, LSC_SFID LscSfid,
-          LSC_ADDR_TYPE AddressType, LSC_ADDR_SIZE AddressSize,
-          LSC_DATA_SIZE ElementSize, int VectorAttr, LSC_CACHE_OPT L1Opt,
-          LSC_CACHE_OPT L3Opt, VISA_VectorOpnd *Base, VISA_RawOpnd *Addr,
-          int Scale, int Offset, VISA_RawOpnd *Data) {
-        LLVM_DEBUG(dbgs() << "CreateLscStore\n");
-        IGC_ASSERT(Opcode == LSC_STORE || Opcode == LSC_STORE_QUAD);
-        CheckLscOp(LscSfid, AddressType, AddressSize, ElementSize);
-
-        LSC_CACHE_OPTS CacheOpts = {L1Opt, L3Opt};
-        LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
-        LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE};
-
-        if (Opcode == LSC_STORE) {
-          DataDesc.elems = LSC_DATA_ELEMS(VectorAttr);
-          DataDesc.order =
-              ExecSize == EXEC_SIZE_1 && DataDesc.elems != LSC_DATA_ELEMS_1
-                  ? LSC_DATA_ORDER_TRANSPOSE
-                  : LSC_DATA_ORDER_NONTRANSPOSE;
-        } else {
-          IGC_ASSERT(ElementSize == LSC_DATA_SIZE_32b);
-          DataDesc.chmask = VectorAttr;
+        switch (AddrTy->getIntegerBitWidth()) {
+        case 32:
+          Addr.size = LSC_ADDR_SIZE_32b;
+          break;
+        case 64:
+          IGC_ASSERT_EXIT(LscSfid != LSC_SLM);
+          IGC_ASSERT_EXIT(Addr.type == LSC_ADDR_TYPE_FLAT);
+          Addr.size = LSC_ADDR_SIZE_64b;
+          break;
+        default:
+          IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported address type");
         }
 
-        CISA_CALL(Kernel->AppendVISALscUntypedStore(
-            Opcode, LscSfid, Pred, ExecSize, ExecMask, CacheOpts, AddressDesc,
-            DataDesc, Base, Addr, Data));
+        Kernel->AppendVISALscUntypedInst(
+            SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
+            DataShape, Surface, DstData, Src0Addr, Src1Data, Src2Data);
       };
+
+  auto CreateLscUntypedBlock2D =
+      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
+          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
+          LSC_CACHE_OPTS CacheOpts, LSC_DATA_SHAPE_BLOCK2D DataShape,
+          VISA_VectorOpnd *Surface, VISA_RawOpnd *DstData,
+          VISA_VectorOpnd *Src0AddrY, VISA_VectorOpnd *Src0AddrX,
+          VISA_RawOpnd *Src1Data) {
+        // FIXME: surface is now FLAT-only
+        // FIXME: fill out the nullptr elements
+        VISA_VectorOpnd *Src0Addrs[LSC_BLOCK2D_ADDR_PARAMS]{
+            nullptr,   // surface base (a 64b scalar addr)
+            nullptr,   // surface width (32b)
+            nullptr,   // surface height (32b)
+            nullptr,   // surface pitch  (32b)
+            Src0AddrX, // block x offset (32b)
+            Src0AddrY, // block y offset (32b)
+        };
+
+        CISA_CALL(Kernel->AppendVISALscUntypedBlock2DInst(
+            SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, DataShape,
+            DstData, Src0Addrs, 0, 0, Src1Data));
+  };
 
   auto CreateLscUntypedBlock2DStateless =
       [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
           VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
           LSC_CACHE_OPTS CacheOpts, LSC_DATA_SHAPE_BLOCK2D DataShape,
-          VISA_VectorOpnd *SurfaceBase, VISA_VectorOpnd *SurfaceWidth,
+          VISA_VectorOpnd *SurfaceBase,  VISA_VectorOpnd *SurfaceWidth,
           VISA_VectorOpnd *SurfaceHeight, VISA_VectorOpnd *SurfacePitch,
           VISA_RawOpnd *DstData, VISA_VectorOpnd *Src0AddrY,
           VISA_VectorOpnd *Src0AddrX, VISA_RawOpnd *Src1Data) {

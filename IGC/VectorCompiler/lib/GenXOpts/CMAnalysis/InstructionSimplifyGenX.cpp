@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -437,6 +437,7 @@ private:
   std::vector<CallInst *> WorkSet;
 
   bool processGenXIntrinsics(Function &F);
+  bool simplifyGenXLscAtomic(CallInst &CI, const DominatorTree &DT);
 };
 } // namespace
 
@@ -501,14 +502,109 @@ bool GenXSimplify::processGenXIntrinsics(Function &F) {
 
     auto GenXID = GenXIntrinsic::getGenXIntrinsicID(CI);
     switch (GenXID) {
-    case GenXIntrinsic::not_genx_intrinsic:
+    case GenXIntrinsic::genx_lsc_atomic_bti:
+      Changed |= simplifyGenXLscAtomic(*CI, DT);
+      LLVM_DEBUG(dbgs() << "finished <lsc atomic> processing\n");
+      break;
     default:
       (void)CI; // do nothing
-      (void)DT;
     }
   }
 
   return Changed;
+}
+/***********************************************************************
+ * simplifyGenXLscAtomic : transforms partial updates of a value
+ * by a predicated lsc_atomic operation to be more bale-friendly.
+ * This allows us to produce more efficient code for such partial updates.
+ * Transformation works like this:
+ *   Before:
+ *      OldValue = ...
+ *      Predicate = ...
+ *      LscResult = lsc_atomic(Predicate, ..., undef)
+ *      UpdatedValue = select(Predicate, LscResult, OldValue)
+ *   After:
+ *      OldValue = ...
+ *      Predicate = ...
+ *      UpdatedValue = lsc_atomic(Predicate, ..., OldValue)
+ * The last argument of such atomic operation represents the "previous value"
+ * which gets updated by the operation. See "TWOADDR" property for more details
+ */
+bool GenXSimplify::simplifyGenXLscAtomic(CallInst &CI,
+                                         const DominatorTree &DT) {
+
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(&CI) ==
+         GenXIntrinsic::genx_lsc_atomic_bti);
+
+  LLVM_DEBUG(dbgs() << "processing <lsc atomic>: " << CI << "\n");
+
+  if (!isa<UndefValue>(CI.getArgOperand(IGCLLVM::getNumArgOperands(&CI) - 1))) {
+    LLVM_DEBUG(dbgs() << "  skipping as instruction already has some " <<
+               "\"previous value\" set\n");
+    return false;
+  }
+  if (!CI.hasOneUse()) {
+    LLVM_DEBUG(dbgs() << "  skipping as instruction has more than one use\n");
+    return false;
+  }
+
+  auto *Select = dyn_cast<SelectInst>(CI.user_back());
+  if (!Select) {
+    LLVM_DEBUG(dbgs() << "  skipping as a user of atomic is not a select\n");
+    return false;
+  }
+
+  auto *SelectCondition = Select->getCondition();
+  auto *InstPredicate = CI.getArgOperand(0);
+
+  LLVM_DEBUG(dbgs() << "SelectCondition: " << *SelectCondition << "\n");
+  LLVM_DEBUG(dbgs() << "InstPredicate: " << *InstPredicate << "\n");
+
+  if (SelectCondition != InstPredicate) {
+    // Are these instructoins ?
+    if (isa<Instruction>(SelectCondition) && isa<Instruction>(InstPredicate)) {
+      if (!cast<Instruction>(SelectCondition)
+               ->isIdenticalTo(cast<Instruction>(InstPredicate))) {
+        return false;
+      }
+
+      LLVM_DEBUG(dbgs() << "  condition is equivalent (as an instructions)!\n");
+
+    } else {
+      LLVM_DEBUG(dbgs() << "  condition does not match!\n");
+      return false;
+    }
+  }
+
+  LLVM_DEBUG(dbgs() << "  condition match!\n");
+
+  auto *TrueInst = Select->getTrueValue();
+  auto *FalseInst = Select->getFalseValue();
+
+  Value *PrevValue = nullptr;
+  if (&CI == TrueInst) {
+    PrevValue = FalseInst;
+  } else if (&CI == FalseInst) {
+    PrevValue = TrueInst;
+  }
+  // Given that we've already determined that the Select is a user of our
+  // instruction we do an assertion test to find a candidate for
+  // the previous value
+  IGC_ASSERT_MESSAGE(PrevValue,
+    "candidate for the previous value must be not found");
+
+  if (isa<Instruction>(PrevValue) &&
+      !DT.dominates(cast<Instruction>(PrevValue), &CI)) {
+    LLVM_DEBUG(dbgs() << "previous value does not dominate candidate!\n");
+    return false;
+  }
+  CI.setArgOperand(IGCLLVM::getNumArgOperands(&CI) - 1, PrevValue);
+
+  Select->replaceAllUsesWith(&CI);
+  Select->eraseFromParent();
+
+  LLVM_DEBUG(dbgs() << "  updated instr: " << CI << "\n");
+  return true;
 }
 
 char GenXSimplify::ID = 0;

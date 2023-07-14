@@ -143,6 +143,11 @@ def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
                                      "HasLSCMessages", "true",
                                      "Target supports LSC messages">;
 
+def FeatureHasLSCOffset : SubtargetFeature<"feature_has_lsc_offset",
+                                           "HasLSCOffset", "true",
+                                           "Target supports constant offset for LSC messages",
+                                           [FeatureHasLSC]>;
+
 def FeatureHasAdd3 : SubtargetFeature<"feature_has_add3",
                                       "HasAdd3", "true",
                                       "Target supports 3-way addition">;
