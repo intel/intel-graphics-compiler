@@ -183,6 +183,11 @@ bool supports8DWLSCMessage() const {
             || isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
+bool allowNonPowerOfTwoTGSlmSize() const
+{
+    return isCoreChildOf(IGFX_XE_HP_CORE);
+}
+
 PRODUCT_FAMILY GetProductFamily() const { return m_platformInfo.eProductFamily; }
 unsigned short GetDeviceId() const { return m_platformInfo.usDeviceID; }
 unsigned short GetRevId() const { return m_platformInfo.usRevId; }
