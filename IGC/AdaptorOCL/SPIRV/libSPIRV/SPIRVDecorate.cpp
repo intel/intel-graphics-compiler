@@ -97,18 +97,20 @@ void
 SPIRVDecorate::decode(std::istream &I)
 {
     getDecoder(I) >> Target >> Dec;
-    auto currLoc = I.tellg();
 
+    auto literalsStartPos = I.tellg();
     getDecoder(I) >> Literals;
+    auto literalsEndPos = I.tellg();
 
     auto *target = getOrCreateTarget();
 
     if (Dec == DecorationLinkageAttributes)
     {
-        I.seekg(currLoc);
+        I.seekg(literalsStartPos);
         std::string funcName;
         getDecoder(I) >> funcName;
         target->setName(funcName);
+        I.seekg(literalsEndPos);
     }
 
     target->addDecorate(this);
