@@ -41,16 +41,7 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
     bool skipBoundaryCheck = 1;
 
     unsigned addrSpace = 0;
-    if (SampleIntrinsic *sInst = dyn_cast<SampleIntrinsic>(&I))
-    {
-        addrSpace = sInst->getTextureValue()->getType()->getPointerAddressSpace();
-        Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(sInst->getTextureValue()->getType());
-        if (textureType == type1DArray || textureType == type2DArray || textureType == typeCubeArray)
-        {
-            skipBoundaryCheck = 0;
-        }
-    }
-    else if (SamplerLoadIntrinsic * lInst = dyn_cast<SamplerLoadIntrinsic>(&I))
+   if (SamplerLoadIntrinsic * lInst = dyn_cast<SamplerLoadIntrinsic>(&I))
     {
         addrSpace = lInst->getTextureValue()->getType()->getPointerAddressSpace();
         Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(lInst->getTextureValue()->getType());
@@ -289,11 +280,8 @@ void DynamicTextureFolding::visitCallInst(CallInst& I)
         auto ID = pCall->getIntrinsicID();
         if (!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) && modMD->inlineDynTextures.size() != 0)
         {
-            if (ID == GenISAIntrinsic::GenISA_sampleptr ||
-                ID == GenISAIntrinsic::GenISA_sampleLptr ||
-                ID == GenISAIntrinsic::GenISA_sampleBptr ||
-                ID == GenISAIntrinsic::GenISA_sampleDptr ||
-                ID == GenISAIntrinsic::GenISA_ldptr)
+            if (ID == GenISAIntrinsic::GenISA_ldptr
+                )
             {
                 FoldSingleTextureValue(I);
             }
