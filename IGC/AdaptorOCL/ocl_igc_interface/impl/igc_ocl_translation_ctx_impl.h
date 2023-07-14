@@ -396,6 +396,38 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return outputInterface.release();
     }
 
+    OclTranslationOutputBase* GetErrorOutput(CIF::Version_t outVersion, unsigned int code) const
+    {
+        auto outputInterface = CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
+        if (outputInterface == nullptr) {
+            return nullptr; // OOM
+        }
+        const char* outputMessage;
+        switch (code) {
+#if defined(WIN32)
+        case EXCEPTION_ACCESS_VIOLATION:
+            outputMessage = "IGC: Internal Compiler Error: Access violation";
+            break;
+        case EXCEPTION_DATATYPE_MISALIGNMENT:
+            outputMessage = "IGC: Internal Compiler Error: Datatype misalignement";
+            break;
+        case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+        case EXCEPTION_INT_DIVIDE_BY_ZERO:
+            outputMessage = "IGC: Internal Compiler Error: Divide by zero";
+            break;
+        case EXCEPTION_STACK_OVERFLOW:
+            outputMessage = "IGC: Internal Compiler Error: Stack overflow";
+            break;
+#endif
+        default:
+            outputMessage = "IGC: Internal Compiler Error: Signal caught";
+        }
+        if (outputInterface->GetImpl()->SetError(TranslationErrorType::Internal, outputMessage)) {
+            return outputInterface.release();
+        }
+        return nullptr;
+    }
+
 protected:
     CIF_PIMPL(IgcOclDeviceCtx) &globalState;
     CodeType::CodeType_t inType;
@@ -407,3 +439,27 @@ CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(IgcOclTranslationCtx);
 }
 
 #include "cif/macros/disable.h"
+
+#if defined(NDEBUG)
+#if defined(WIN32)
+int ex_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep);
+
+#define EX_GUARD_BEGIN                                                        \
+__try                                                                         \
+{                                                                             \
+
+#define EX_GUARD_END                                                          \
+}                                                                             \
+__except (ex_filter(GetExceptionCode(), GetExceptionInformation()))           \
+{                                                                             \
+    res = CIF_GET_PIMPL()->GetErrorOutput(outVersion, GetExceptionCode());    \
+}                                                                             \
+
+#else
+#define EX_GUARD_BEGIN
+#define EX_GUARD_END
+#endif
+#else
+#define EX_GUARD_BEGIN
+#define EX_GUARD_END
+#endif
