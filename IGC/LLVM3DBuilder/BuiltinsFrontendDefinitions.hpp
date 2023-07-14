@@ -814,14 +814,13 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SampleI
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateReadSurfaceInfo(
-    llvm::Value* resourcePtr,
-    llvm::Value* mipmap)
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateReadSurfaceTypeAndFormat(
+    llvm::Value* resourcePtr)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* fn = llvm::GenISAIntrinsic::getDeclaration(
-        module, llvm::GenISAIntrinsic::GenISA_readsurfaceinfoptr, resourcePtr->getType());
-    llvm::Value* packed_tex_call = this->CreateCall2(fn, resourcePtr, mipmap);
+        module, llvm::GenISAIntrinsic::GenISA_readsurfacetypeandformat, resourcePtr->getType());
+    llvm::Value* packed_tex_call = this->CreateCall(fn, resourcePtr);
     return packed_tex_call;
 }
 

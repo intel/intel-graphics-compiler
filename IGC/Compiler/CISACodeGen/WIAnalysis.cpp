@@ -1361,7 +1361,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_runtimeValue ||
         intrinsic_name == llvm_getMessagePhaseX ||
         intrinsic_name == llvm_getMessagePhaseXV ||
-        intrinsic_name == llvm_surfaceinfo ||
+        intrinsic_name == llvm_readsurfacetypeandformat ||
         intrinsic_name == llvm_simdSize ||
         intrinsic_name == llvm_resinfoptr ||
         intrinsic_name == llvm_sampleinfoptr ||

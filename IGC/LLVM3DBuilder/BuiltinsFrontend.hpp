@@ -233,7 +233,7 @@ public:
         llvm::Value* srcBuffer,
         llvm::Value* float_src_s_mip);
 
-    llvm::Value* CreateReadSurfaceInfo(llvm::Value* resource, llvm::Value* mimap);
+    llvm::Value* CreateReadSurfaceTypeAndFormat(llvm::Value* resource);
 
     llvm::Value* Create_typedwrite(
         llvm::Value* dstBuffer,

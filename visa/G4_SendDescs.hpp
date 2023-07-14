@@ -570,7 +570,7 @@ public:
   }
 
   bool isHWordScratchRW() const {
-    if (isLscDescriptor)
+    if (isLscDescriptor || !isValidFuncCtrl())
       return false;
     // legacy DC0 scratch msg: bit[18] = 1
     return getSFID() == SFID::DP_DC0 && ((getFuncCtrl() & 0x40000u) != 0);

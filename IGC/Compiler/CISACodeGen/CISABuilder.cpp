@@ -2590,14 +2590,62 @@ namespace IGC
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
         VISA_RawOpnd* lodVar = GetRawSource(lod);
 
-        V(vKernel->AppendVISA3dInfo(
-            ConvertSubOpcode(subOpcode, false),
-            GetAluEMask(dst),
-            GetAluExecSize(dst),
-            ConvertChannelMaskToVisaType(writeMask),
-            surfOpnd,
-            lodVar,
-            dstVar));
+        if (subOpcode == llvm_readsurfacetypeandformat) {
+
+            auto MovImmediateToTemp = [this](unsigned short imm)
+            {
+                constexpr VISA_Exec_Size execSize = EXEC_SIZE_4;
+                CVariable* temp = m_program->GetNewVariable(
+                    visaNumLanes(execSize), ISA_TYPE_UD, EALIGN_GRF,
+                    true /*uniform*/, CName::NONE);
+                VISA_VectorOpnd* movDst = nullptr;
+                V(vKernel->CreateVISADstOperand(movDst, GetVISAVariable(temp), 1, 0, 0));
+                VISA_VectorOpnd* immSrc = nullptr;
+                V(vKernel->CreateVISAImmediate(immSrc, &imm, ISA_TYPE_UW));
+
+                V(vKernel->AppendVISADataMovementInst(
+                    ISA_MOV, nullptr /*pred*/, false /*sat*/, vISA_EMASK_M1_NM,
+                    execSize, movDst, immSrc));
+                return temp;
+            };
+
+            VISA_RawOpnd* dummyZero = nullptr;
+            CVariable* tmpDst = MovImmediateToTemp(0);
+            V(vKernel->CreateVISARawOperand(dummyZero, GetVISAVariable(tmpDst), 0));
+            LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+            LSC_DATA_SHAPE dataShape{};
+            dataShape.size = LSC_DATA_SIZE_32b; // 8 * 4
+            dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
+            dataShape.elems = LSC_DATA_ELEMS_1; //simd 1
+
+            V(vKernel->AppendVISALscTypedInst(
+                LSC_READ_STATE_INFO,
+                GetFlagOperand(m_encoderState.m_flag),
+                EXEC_SIZE_1,
+                ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
+                cache,
+                getLSCAddrType(&resource),
+                LSC_ADDR_SIZE_32b,
+                dataShape,
+                GetVISALSCSurfaceOpnd(resource.m_surfaceType, resource.m_resource),
+                dstVar,
+                dummyZero,
+                nullptr,
+                nullptr,
+                nullptr,
+                nullptr,
+                nullptr));
+        }
+        else {
+            V(vKernel->AppendVISA3dInfo(
+                ConvertSubOpcode(subOpcode, false),
+                GetAluEMask(dst),
+                GetAluExecSize(dst),
+                ConvertChannelMaskToVisaType(writeMask),
+                surfOpnd,
+                lodVar,
+                dstVar));
+        }
     }
 
     void CEncoder::Gather4Inst(

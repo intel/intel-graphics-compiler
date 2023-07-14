@@ -7419,9 +7419,8 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
 
     ResourceDescriptor resource = GetResourceVariable(texOp);
 
-
     CVariable* lod = nullptr;
-    if (opCode != llvm_sampleinfoptr)
+    if (opCode != llvm_sampleinfoptr && opCode != llvm_readsurfacetypeandformat)
     {
         lod = GetSymbol(inst->getOperand(1));
     }
@@ -7441,7 +7440,7 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     }
 
     CVariable* tempDest = m_destination;
-    if (m_destination->IsUniform())
+    if (m_destination->IsUniform() || opCode == llvm_readsurfacetypeandformat)
     {
         auto uniformSIMDMode = m_currShader->m_Platform->getMinDispatchMode();
         tempDest = m_currShader->GetNewVariable(
@@ -7453,32 +7452,68 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
-    m_encoder->SetPredicate(flag);
 
+    if (opCode == llvm_readsurfacetypeandformat)
+    {
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+    }
+    else
+    {
+        m_encoder->SetPredicate(flag);
+    }
     const CShader::ExtractMaskWrapper writeMask(m_currShader, inst);
     IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
-
     m_encoder->Info(opCode, writeMask.getEM(), resource, lod, tempDest);
     m_encoder->Push();
 
-    ResourceLoopBackEdge(needLoop, flag, label);
-
-    if (tempDest != m_destination)
+    unsigned int writemask = 0;
+    for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
     {
-        unsigned int writemask = 0;
-        for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
+        if (llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I))
         {
-            if (llvm::ExtractElementInst * extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I))
+            if (llvm::ConstantInt* index = llvm::dyn_cast<ConstantInt>(extract->getIndexOperand()))
             {
-                if (llvm::ConstantInt * index = llvm::dyn_cast<ConstantInt>(extract->getIndexOperand()))
-                {
-                    writemask |= BIT(static_cast<uint>(index->getZExtValue()));
-                    continue;
-                }
+                writemask |= BIT(static_cast<uint>(index->getZExtValue()));
+                continue;
             }
-            writemask = 0xF;
-            break;
         }
+        writemask = 0xF;
+        break;
+    }
+
+    if (opCode == llvm_readsurfacetypeandformat)
+    {
+        constexpr uint surfaceInfoSurfaceTypeDword = 4;
+        constexpr uint surfaceInfoSurfaceFormatDword = 5;
+        // Note: for non-uniform destination, the following copy operations are
+        //       done in-place (m_destination == tempDest).
+        if (BIT(1) & writemask)
+        {
+            m_encoder->SetSrcSubReg(0, surfaceInfoSurfaceFormatDword); //surface format
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            if (m_destination->IsUniform())
+            {
+                m_encoder->SetDstSubReg(1);
+            }
+            else
+            {
+                m_encoder->SetDstSubVar((m_encoder->GetSimdSize() == SIMDMode::SIMD32) ? 2 : 1);
+            }
+            m_encoder->Copy(m_destination, tempDest);
+            m_encoder->Push();
+        }
+        if (BIT(0) & writemask)
+        {
+            m_encoder->SetSrcSubReg(0, surfaceInfoSurfaceTypeDword); //surface type
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->Copy(m_destination, tempDest);
+            m_encoder->Push();
+        }
+    }
+    else if (tempDest != m_destination)
+    {
+        IGC_ASSERT(m_destination->IsUniform());
         for (uint i = 0; i < 4; i++)
         {
             if (BIT(i) & writemask)
@@ -7490,6 +7525,8 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
             }
         }
     }
+
+    ResourceLoopBackEdge(needLoop, flag, label);
 }
 
 void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
@@ -7497,13 +7534,13 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     ResourceDescriptor resource = GetResourceVariable(inst->getOperand(0));
     ForceDMask(false);
 
-    DATA_PORT_TARGET_CACHE targetCache = DATA_PORT_TARGET_CONSTANT_CACHE;
     EU_MESSAGE_TARGET messageTarget = EU_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_READ_ONLY;
-    if (m_currShader->m_Platform->supportSamplerCacheResinfo())
-    {
-        targetCache = DATA_PORT_TARGET_SAMPLER_CACHE;
-        messageTarget = EU_MESSAGE_TARGET_DATA_PORT_READ;
-    }
+    bool isIndirectBti =
+        resource.m_surfaceType != ESURFACE_BINDLESS &&
+        !resource.m_resource->IsImmediate();
+    uint bti = resource.m_surfaceType == ESURFACE_BINDLESS ?
+        BINDLESS_BTI :
+        (isIndirectBti ? 0 : int_cast<uint>(resource.m_resource->GetImmediateValue()));
 
     uint messageSpecificControl = DataPortRead(
         1,
@@ -7512,10 +7549,18 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
         EU_DATA_PORT_READ_MESSAGE_TYPE_SURFACE_INFO_READ,
         0,
         false,
-        targetCache,
-        resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
+        DATA_PORT_TARGET_CONSTANT_CACHE,
+        bti);
 
-    CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_D);
+    CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
+    if (isIndirectBti)
+    {
+        CVariable* immDesc = pMessDesc;
+        pMessDesc = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
+        m_encoder->SetNoMask();
+        m_encoder->Or(pMessDesc, resource.m_resource, immDesc);
+        m_encoder->Push();
+    }
 
     CVariable* exDesc =
         m_currShader->ImmToVariable(messageTarget, ISA_TYPE_D);
@@ -7536,14 +7581,53 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     m_encoder->Copy(payload, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
     m_encoder->Push();
 
-    m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
+    //payload destination size is 16 dwords
+    CVariable* tempDest = m_currShader->GetNewVariable(16, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetNoMask();
-    m_encoder->Send(m_destination, payload,
+    m_encoder->Send(tempDest, payload,
         messageTarget, exDesc, pMessDesc);
     m_encoder->Push();
 
-    IGC_ASSERT(m_destination->IsUniform());
+    unsigned int writemask = 0;
+    for (auto U : inst->users())
+    {
+        if (auto extract = dyn_cast<ExtractElementInst>(U))
+        {
+            if (auto index = dyn_cast<ConstantInt>(extract->getIndexOperand()))
+            {
+                writemask |= BIT(static_cast<uint>(index->getZExtValue()));
+            }
+        }
+    }
+    constexpr uint surfaceInfoSurfaceTypeDword = 12;
+    constexpr uint surfaceInfoSurfaceFormatDword = 13;
+    if (BIT(0) & writemask)
+    {
+        m_encoder->SetSrcSubReg(0, surfaceInfoSurfaceTypeDword); //surface type
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->Copy(m_destination, tempDest);
+        m_encoder->Push();
+    }
+
+    if (BIT(1) & writemask)
+    {
+        m_encoder->SetSrcSubReg(0, surfaceInfoSurfaceFormatDword); //surface format
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        if (m_destination->IsUniform())
+        {
+            m_encoder->SetDstSubReg(1);
+        }
+        else
+        {
+            m_encoder->SetDstSubVar((m_encoder->GetSimdSize() == SIMDMode::SIMD16) ? 2 : 1);
+        }
+        m_encoder->Copy(m_destination, tempDest);
+        m_encoder->Push();
+    }
+
     ResourceLoopBackEdge(needLoop, flag, label);
+
     ResetVMask(false);
 }
 
@@ -8109,8 +8193,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_GetBufferPtr:
         emitGetBufferPtr(inst);
         break;
-    case GenISAIntrinsic::GenISA_readsurfaceinfoptr:
-        emitSurfaceInfo(inst);
+    case GenISAIntrinsic::GenISA_readsurfacetypeandformat:
+        if (m_currShader->m_Platform->supportsHDCLegacyDCROMessage())
+            emitSurfaceInfo(inst);
+        else
+            emitInfoInstruction(cast<InfoIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_mov_identity:
     {

@@ -265,6 +265,7 @@ public:
         switch (I->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_sampleinfoptr:
         case GenISAIntrinsic::GenISA_resinfoptr:
+        case GenISAIntrinsic::GenISA_readsurfacetypeandformat:
             return true;
         default: return false;
         }

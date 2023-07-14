@@ -1497,11 +1497,10 @@ Imported_Intrinsics = \
     [("anyptr",                        "")],
     "NoMem"]],
 ####################################################################################################
-"GenISA_readsurfaceinfoptr": ["",
-    [("int16",                         "result : base address, width, Height, Depth, Mip count, "+\
-                                                "Surface type, surface format, reserved"),
-    [("anyptr",                        "source buffer"),
-     ("int",                           "miplevel")],
+"GenISA_readsurfacetypeandformat": ["Queries the surface info on the specified resource and " +\
+                                    "returns the surface type and the surface format",
+    [("int2",                          "result : [0 - surface type, 1 - surface format]"),
+    [("anyptr",                        "source buffer")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_resinfoptr": ["",

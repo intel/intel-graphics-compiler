@@ -1208,7 +1208,7 @@ unsigned G4_SendDescRaw::getElemSize() const {
 }
 
 bool G4_SendDescRaw::isOwordLoad() const {
-  if (!isHDC()) {
+  if (!isHDC() || !isValidFuncCtrl()) {
     return false;
   }
   uint32_t funcCtrl = getFuncCtrl();

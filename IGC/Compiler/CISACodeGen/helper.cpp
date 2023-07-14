@@ -984,7 +984,7 @@ namespace IGC
             break;
         }
         case llvm::GenISAIntrinsic::GenISA_resinfoptr:
-        case llvm::GenISAIntrinsic::GenISA_readsurfaceinfoptr:
+        case llvm::GenISAIntrinsic::GenISA_readsurfacetypeandformat:
         case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
             overloadedTys.push_back(newPtr->getType());
             break;
@@ -1139,7 +1139,7 @@ namespace IGC
             switch (pIntr->getIntrinsicID())
             {
             case llvm::GenISAIntrinsic::GenISA_resinfoptr:
-            case llvm::GenISAIntrinsic::GenISA_readsurfaceinfoptr:
+            case llvm::GenISAIntrinsic::GenISA_readsurfacetypeandformat:
             case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
             case llvm::GenISAIntrinsic::GenISA_typedwrite:
             case llvm::GenISAIntrinsic::GenISA_typedread:

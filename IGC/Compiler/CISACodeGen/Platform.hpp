@@ -129,6 +129,7 @@ bool supportDSDualPatchDispatch() const { return m_platformInfo.eRenderCoreFamil
 bool needsHSBarrierIDWorkaround() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE; }
 bool supportBindless() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
 bool supportsBindlessSamplers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
+bool supportsHDCLegacyDCROMessage() const { return m_platformInfo.eRenderCoreFamily <= IGFX_XE_HPC_CORE; }
 
 
 bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
