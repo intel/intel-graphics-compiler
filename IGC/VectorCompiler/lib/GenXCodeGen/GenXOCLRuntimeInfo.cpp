@@ -248,7 +248,7 @@ unsigned KernelArgBuilder::getArgSizeInBytes(const Argument &Arg) const {
     return DL.getPointerTypeSize(ArgTy);
   if (KM.isBufferType(Arg.getArgNo()))
     return DL.getPointerSize();
-  return ArgTy->getPrimitiveSizeInBits() / genx::ByteBits;
+  return DL.getTypeSizeInBits(ArgTy) / genx::ByteBits;
 }
 
 GenXOCLRuntimeInfo::KernelArgInfo
