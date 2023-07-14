@@ -800,8 +800,7 @@ static bool immFillCandidate(G4_INST *inst) {
   return inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD1 &&
          inst->getSrc(0)->isImm() && inst->isWriteEnableInst() &&
          inst->getDst()->getType() == inst->getSrc(0)->getType() &&
-         !inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate() &&
-         !inst->getSrc(0)->isRelocImm();
+         !inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate();
 }
 
 G4_SrcRegRegion *getSpillFillHeader(IR_Builder &builder, G4_Declare *decl);
