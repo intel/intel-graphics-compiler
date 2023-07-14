@@ -1262,14 +1262,6 @@ public:
   void advance(unsigned &CurCycle, unsigned &CurGroup) {
     if (config.SkipHoldList) {
       vASSERT(HoldList.empty());
-      // tracking cycle and group in this mode is only useful
-      // for understanding the scheduling result
-      if (!ReadyList.empty()) {
-        preNode *N = ReadyList.top();
-        CurCycle = std::max(CurCycle, N->getReadyCycle());
-        if (N->getInst())
-          CurGroup = std::max(CurGroup, GroupInfo[N->getInst()]);
-      }
       return;
     }
     GroupInfo[nullptr] = CurGroup;
@@ -1283,7 +1275,7 @@ public:
       } else
         break;
     }
-    // ready-list is still emtpy, then we need to move forward to
+    // ready-list is still empty, then we need to move forward to
     // the next group or the next cycle so that some instructions
     // can come out of the hold-list.
     if (ReadyList.empty() && !HoldList.empty()) {
@@ -1437,8 +1429,10 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
   while (!Q.empty()) {
     preNode *N = Q.pop();
     vASSERT(N->NumPredsLeft == 0);
-    unsigned NextCycle = CurrentCycle;
-    if (N->getInst() != nullptr) {
+    // Set NextCycle as max of CurrentCycle and N->getReadyCycle() to include
+    // the stall.
+    unsigned NextCycle = std::max(CurrentCycle, N->getReadyCycle());
+    if (N->getInst()) {
       schedule.push_back(N->getInst());
       NextCycle += LT.getOccupancy(N->getInst());
     }
