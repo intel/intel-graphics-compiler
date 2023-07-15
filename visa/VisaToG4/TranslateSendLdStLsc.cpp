@@ -940,8 +940,8 @@ int IR_Builder::translateLscTypedInst(
     src1Len = 0;
     dstRegs = 64 / getGRFSize(); // 2 on DG2
   } else {
-    int dataSizeBits = lscEncodeAddrSize(addrSize, desc, status);
-    (void)lscEncodeDataSize(shape.size, desc, status);
+    (void)lscEncodeAddrSize(addrSize, desc, status);
+    int dataSizeBits = lscEncodeDataSize(shape.size, desc, status);
     auto [dstRegsP,src1LenP] =
       computeLscTypedDataRegs(
         *this, opInfo, execSize, dataSizeBits,
