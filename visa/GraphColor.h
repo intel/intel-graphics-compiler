@@ -25,8 +25,8 @@ SPDX-License-Identifier: MIT
 #include <limits>
 #include <list>
 #include <map>
-#include <queue>
 #include <memory>
+#include <queue>
 #include <unordered_set>
 #include <vector>
 
@@ -161,7 +161,9 @@ public:
   void initialize();
   void initializeForbidden();
 
-  void *operator new(size_t sz, llvm::SpecificBumpPtrAllocator<LiveRange> &m) { return m.Allocate(); }
+  void *operator new(size_t sz, llvm::SpecificBumpPtrAllocator<LiveRange> &m) {
+    return m.Allocate();
+  }
 
   void setBitFieldUnionValue(uint16_t v) { bunch = v; }
 
@@ -276,19 +278,14 @@ private:
 } // namespace vISA
 using LIVERANGE_LIST = std::list<vISA::LiveRange *>;
 using LIVERANGE_LIST_ITER = LIVERANGE_LIST::iterator;
-using LiveRangeVec = std::vector<vISA::LiveRange*>;
+using LiveRangeVec = std::vector<vISA::LiveRange *>;
 
 // A mapping from the pseudo decl created for caller save/restore, to the ret
 // val This is used in augmentIntfGraph to prune interference edges for fcall
 // ret val
 typedef std::map<vISA::G4_Declare *, vISA::G4_Declare *> FCALL_RET_MAP;
-typedef std::map<vISA::G4_Declare *, vISA::G4_Declare *>::iterator
-    FCALL_RET_MAP_ITER;
 typedef std::map<vISA::G4_Declare *, std::pair<vISA::G4_INST *, unsigned>>
     CALL_DECL_MAP;
-typedef std::map<vISA::G4_Declare *,
-                 std::pair<vISA::G4_INST *, unsigned>>::iterator
-    CALL_DECL_MAP_ITER;
 
 namespace vISA {
 struct criticalCmpForEndInterval {
@@ -320,7 +317,7 @@ private:
   Interference &intf;
   GlobalRA &gra;
   const LivenessAnalysis &liveAnalysis;
-  const LiveRangeVec& lrs;
+  const LiveRangeVec &lrs;
   FCALL_RET_MAP &fcallRetMap;
   CALL_DECL_MAP callDclMap;
   std::unordered_map<FuncInfo *, PhyRegSummary> localSummaryOfCallee;
@@ -380,13 +377,13 @@ private:
   void handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl, bool isCall);
   bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
 
-  void addSIMDIntfDclForCallSite(G4_BB* callBB);
+  void addSIMDIntfDclForCallSite(G4_BB *callBB);
 
   void addSIMDIntfForRetDclares(G4_Declare *newDcl);
 
 public:
   Augmentation(G4_Kernel &k, Interference &i, const LivenessAnalysis &l,
-               const LiveRangeVec& ranges, GlobalRA &g);
+               const LiveRangeVec &ranges, GlobalRA &g);
   ~Augmentation();
 
   void augmentIntfGraph();
@@ -472,7 +469,7 @@ public:
 
   // Record new dcl and id assigned to its G4_RegVar. Update
   // maxVarIdx so we know first free id in next RA iteration.
-  void recordVarId(G4_Declare* dcl, unsigned int id);
+  void recordVarId(G4_Declare *dcl, unsigned int id);
 
   // Return next id that can be assigned to a new variable. In 1st
   // RA iteration, this returns 0 because no variables exist in
@@ -521,7 +518,7 @@ public:
   // Compute variables that are left over in sorted list when
   // computing color order. This is to aid debugging only.
   void computeLeftOverUnassigned(const LiveRangeVec &sorted,
-                       const LivenessAnalysis &liveAnalysis);
+                                 const LivenessAnalysis &liveAnalysis);
 };
 
 class Interference {
@@ -535,7 +532,7 @@ class Interference {
 
   GlobalRA &gra;
   G4_Kernel &kernel;
-  const LiveRangeVec& lrs;
+  const LiveRangeVec &lrs;
   IR_Builder &builder;
   const unsigned maxId;
   const unsigned rowSize;
@@ -588,7 +585,7 @@ class Interference {
     }
   }
 
-inline void safeClearInterference(unsigned v1, unsigned v2) {
+  inline void safeClearInterference(unsigned v1, unsigned v2) {
     // Assume v1 < v2
     if (useDenseMatrix()) {
       unsigned col = v2 / BITS_DWORD;
@@ -598,7 +595,7 @@ inline void safeClearInterference(unsigned v1, unsigned v2) {
     }
   }
 
-inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
+  inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
                                           unsigned block) {
     if (useDenseMatrix()) {
 #ifdef _DEBUG
@@ -631,7 +628,8 @@ inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
   void buildInterferenceForDst(G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
                                std::list<G4_INST *>::reverse_iterator i,
                                G4_DstRegRegion *dst);
-  void buildInterferenceForFcall(G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
+  void buildInterferenceForFcall(G4_BB *bb, llvm_SBitVector &live,
+                                 G4_INST *inst,
                                  std::list<G4_INST *>::reverse_iterator i,
                                  const G4_VarBase *regVar);
 
@@ -655,10 +653,10 @@ inline void setBlockInterferencesOneWay(unsigned v1, unsigned col,
   void generateSparseIntfGraph();
   void countNeighbors();
 
-  void setupLRs(G4_BB* bb);
+  void setupLRs(G4_BB *bb);
 
 public:
-  Interference(const LivenessAnalysis *l, const LiveRangeVec& lr, unsigned n,
+  Interference(const LivenessAnalysis *l, const LiveRangeVec &lr, unsigned n,
                unsigned ns, unsigned nm, GlobalRA &g);
 
   ~Interference() {
@@ -735,10 +733,12 @@ public:
 class GraphColor {
   GlobalRA &gra;
 
-  unsigned totalGRFRegCount; // .reg_count_total
+  // This is not necessarily the same as the number of available physical GRFs,
+  // as failSafeRA will reserve some GRF.
+  // FIXME: failSafeRA should use RegisterClass/forbidden GRF to model this
+  // instead of directly changing the number of GRFs.
+  unsigned totalGRFRegCount;
   const unsigned numVar;
-  const unsigned numSplitStartID;
-  const unsigned numSplitVar;
   // The original code has no comments whatsoever (sigh), but best as I can tell
   // this vector is used to track the active values held by each of A0's
   // phyiscal subreg. The values themselves correspond to a word in the
@@ -799,7 +799,11 @@ class GraphColor {
   void relaxNeighborDegreeARF(LiveRange *lr);
   bool assignColors(ColorHeuristic heuristicGRF, bool doBankConflict,
                     bool highInternalConflict, bool doBundleConflict = false,
-                    bool honorHints = true);
+                    bool doCoalescing = true);
+  bool assignColors(ColorHeuristic h) {
+    // Do graph coloring without bank conflict reduction.
+    return assignColors(h, false, false);
+  }
 
   void clearSpillAddrLocSignature() {
     std::fill(spAddrRegSig.begin(), spAddrRegSig.end(), 0);
@@ -813,10 +817,8 @@ class GraphColor {
   void gatherScatterForbiddenWA();
 
 public:
-  G4_Declare *findDeclare(char *name);
   void getExtraInterferenceInfo();
-  GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
-             bool forceSpill_);
+  GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_);
 
   const Options *getOptions() const { return m_options; }
 
@@ -825,7 +827,7 @@ public:
   bool requireSpillCode() const { return !spilledLRs.empty(); }
   const Interference *getIntf() const { return &intf; }
   void createLiveRanges();
-  const LiveRangeVec& getLiveRanges() const { return lrs; }
+  const LiveRangeVec &getLiveRanges() const { return lrs; }
   const LIVERANGE_LIST &getSpilledLiveRanges() const { return spilledLRs; }
   void confirmRegisterAssignments();
   void resetTemporaryRegisterAssignments();
@@ -839,7 +841,7 @@ public:
   GlobalRA &getGRA() { return gra; }
   G4_SrcRegRegion *getScratchSurface() const;
   unsigned int getNumVars() const { return numVar; }
-  float getSpillRatio() const { return (float) spilledLRs.size() / numVar; }
+  float getSpillRatio() const { return (float)spilledLRs.size() / numVar; }
   void markFailSafeIter(bool f) { failSafeIter = f; }
   void setTotalGRFRegCount(unsigned c) { totalGRFRegCount = c; }
   unsigned getTotalGRFRegCount() { return totalGRFRegCount; }
@@ -921,7 +923,7 @@ public:
     bbLabels.clear();
     BBLexId.clear();
   }
-  void loadAugData(std::vector<G4_Declare *> &s, const LiveRangeVec& l,
+  void loadAugData(std::vector<G4_Declare *> &s, const LiveRangeVec &l,
                    unsigned n, const Interference *i, GlobalRA &g);
   void dump(const char *dclName);
   bool isClobbered(LiveRange *lr, std::string &msg);
@@ -934,7 +936,7 @@ class ForbiddenRegs {
   std::vector<BitSet> forbiddenVec;
 
 public:
-  ForbiddenRegs(IR_Builder &b): builder(b) {
+  ForbiddenRegs(IR_Builder &b) : builder(b) {
     // Initialize forbidden bits
     forbiddenVec.resize((size_t)forbiddenKind::FBD_NUM);
     forbiddenVec[(size_t)forbiddenKind::FBD_ADDR].resize(
@@ -990,8 +992,9 @@ public:
     return true;
   }
   static const char StackCallStr[];
-  //The pre assigned forbidden register bits for different kinds
+  // The pre assigned forbidden register bits for different kinds
   ForbiddenRegs fbdRegs;
+
 private:
   template <class REGION_TYPE>
   static unsigned getRegionDisp(REGION_TYPE *region, const IR_Builder &irb);
@@ -1085,8 +1088,8 @@ private:
   // For hword scratch messages, when using separate scratch space for spills,
   // r0.5 needs to be updated before spill/fill to point to slot 1 space.
   // These maps mark which spills/fills need to set/reset r0.5.
-  std::unordered_set<G4_INST*> slot1SetR0;
-  std::unordered_set<G4_INST*> slot1ResetR0;
+  std::unordered_set<G4_INST *> slot1SetR0;
+  std::unordered_set<G4_INST *> slot1ResetR0;
 
   void insertSlot1HwordR0Set(G4_BB *bb, INST_LIST_ITER &instIt);
   void insertSlot1HwordR0Reset(G4_BB *bb, INST_LIST_ITER &instIt);
@@ -1223,9 +1226,7 @@ public:
            UndeclaredVars.end();
   }
 
-  RAVarInfo& addVarToRA(const G4_Declare *dcl) {
-    return allocVar(dcl);
-  }
+  RAVarInfo &addVarToRA(const G4_Declare *dcl) { return allocVar(dcl); }
 
   unsigned getSplitVarNum(const G4_Declare *dcl) const {
     return getVar(dcl).numSplit;
@@ -1510,8 +1511,7 @@ public:
   void flagRegAlloc();
   void fastRADecision();
   bool tryHybridRA();
-  bool hybridRA(bool doBankConflictReduction, bool highInternalConflict,
-                LocalRA &lra);
+  bool hybridRA(LocalRA &lra);
   void assignRegForAliasDcl();
   void removeSplitDecl();
   std::pair<unsigned, unsigned> reserveGRFSpillReg(GraphColor &coloring);
@@ -1632,7 +1632,7 @@ public:
   // spill/fill code. Such variables are not infinite spill
   // cost. So if the variable spills again, we shouldn't
   // get in an infinite loop by retrying same spill/fill.
-  std::unordered_set<G4_Declare*> scalarSpills;
+  std::unordered_set<G4_Declare *> scalarSpills;
 };
 
 inline G4_Declare *Interference::getGRFDclForHRA(int GRFNum) const {
@@ -1674,143 +1674,6 @@ public:
   VarSplit(GlobalRA &g) : kernel(g.kernel), gra(g) {}
 };
 
-//
-// Spill code clean up
-//
-typedef struct _CLEAN_NUM_PROFILE {
-  unsigned spill_clean_num[10]{};
-  unsigned fill_clean_num[10]{};
-} CLEAN_NUM_PROFILE;
-
-typedef struct _SCRATCH_RANGE {
-  unsigned leftOff;
-  unsigned rightOff;
-} SCRATCH_RANGE;
-
-typedef std::vector<SCRATCH_RANGE> SCRATCH_RANGE_VEC;
-typedef std::vector<SCRATCH_RANGE>::iterator SCRATCH_RANGE_VEC_ITER;
-
-typedef struct _RANGE {
-  unsigned linearizedStart;
-  unsigned linearizedEnd;
-  bool predicate;
-} REG_RANGE;
-
-typedef std::vector<REG_RANGE> REG_RANGE_VEC;
-typedef std::vector<REG_RANGE>::iterator REG_RANGE_VEC_ITER;
-
-typedef std::pair<vISA::G4_INST *, int> RENAME_OPND;
-typedef std::vector<RENAME_OPND> RANAME_VEC;
-
-typedef struct _SCRATCH_ACCESS {
-  // Basic info
-#ifdef _DEBUG
-  int regNum;
-#endif
-  vISA::G4_Declare *scratchDcl; // The scrach access
-  vISA::G4_Operand *flagOpnd;
-  INST_LIST_ITER inst_it;
-
-  unsigned linearizedStart; // linearized start register address
-  unsigned linearizedEnd;   // linearized end register address
-  unsigned leftOff;         // left offset in scratch space
-  unsigned rightOff;        // right offset in the scratch space
-  unsigned useCount;
-
-  bool isSpill = false;
-  bool isBlockLocal = false;
-  bool directKill = false;
-
-  bool regKilled = false;
-  bool regPartialKilled = false;
-  bool regOverKilled = false;
-  bool inRangePartialKilled = false;
-  bool regInUse = false;
-
-  bool fillInUse = false;
-  bool removeable = false;
-  bool instKilled = false;
-  bool evicted = false;
-  bool scratchDefined = false;
-
-  unsigned maskFlag;
-
-  RANAME_VEC renameOperandVec;
-  SCRATCH_RANGE_VEC killedScratchRange;
-  REG_RANGE_VEC killedRegRange;
-  struct _SCRATCH_ACCESS *preScratchAccess;
-  struct _SCRATCH_ACCESS *prePreScratchAccess;
-  struct _SCRATCH_ACCESS *preFillAccess;
-
-} SCRATCH_ACCESS;
-
-typedef std::vector<SCRATCH_ACCESS *> SCRATCH_PTR_VEC;
-
-typedef vISA::std_arena_based_allocator<SCRATCH_ACCESS *> SCRATCH_PTR_ALLOCATOR;
-typedef std::list<SCRATCH_ACCESS *, SCRATCH_PTR_ALLOCATOR> SCRATCH_PTR_LIST;
-typedef std::list<SCRATCH_ACCESS *, SCRATCH_PTR_ALLOCATOR>::iterator
-    SCRATCH_PTR_LIST_ITER;
-
-class FlagSpillCleanup {
-private:
-  GlobalRA &gra;
-
-  void FlagLineraizedStartAndEnd(G4_Declare *topdcl, unsigned &linearizedStart,
-                                 unsigned &linearizedEnd);
-  bool replaceWithPreDcl(IR_Builder &builder, SCRATCH_ACCESS *scratchAccess,
-                         SCRATCH_ACCESS *preScratchAccess);
-  bool scratchKilledByPartial(SCRATCH_ACCESS *scratchAccess,
-                              SCRATCH_ACCESS *preScratchAccess);
-  bool addKilledGRFRanges(unsigned linearizedStart, unsigned linearizedEnd,
-                          SCRATCH_ACCESS *scratchAccess,
-                          G4_Predicate *predicate);
-  bool regFullyKilled(SCRATCH_ACCESS *scratchAccess, unsigned linearizedStart,
-                      unsigned linearizedEnd, unsigned short maskFlag);
-  bool inRangePartialKilled(SCRATCH_ACCESS *scratchAccess,
-                            unsigned linearizedStart, unsigned linearizedEnd,
-                            unsigned short maskFlag);
-  bool regDefineAnalysis(SCRATCH_ACCESS *scratchAccess,
-                         unsigned linearizedStart, unsigned linearizedEnd,
-                         unsigned short maskFlag, G4_Predicate *predicate);
-  void regDefineFlag(SCRATCH_PTR_LIST *scratchTraceList, G4_INST *inst,
-                     G4_Operand *opnd);
-  bool regUseAnalysis(SCRATCH_ACCESS *scratchAccess, unsigned linearizedStart,
-                      unsigned linearizedEnd);
-  void regUseFlag(SCRATCH_PTR_LIST *scratchTraceList, G4_INST *inst,
-                  G4_Operand *opnd, int opndIndex);
-  void regUseScratch(SCRATCH_PTR_LIST *scratchTraceList, G4_INST *inst,
-                     G4_Operand *opnd, Gen4_Operand_Number opndIndex);
-  void initializeScratchAccess(SCRATCH_ACCESS *scratchAccess,
-                               INST_LIST_ITER inst_it);
-  bool initializeFlagScratchAccess(SCRATCH_PTR_VEC *scratchAccessList,
-                                   SCRATCH_ACCESS *&scratchAccess,
-                                   INST_LIST_ITER inst_it);
-  void freeScratchAccess(SCRATCH_PTR_VEC *scratchAccessList);
-  void flagDefine(SCRATCH_PTR_LIST &scratchTraceList, G4_INST *inst);
-  void scratchUse(SCRATCH_PTR_LIST &scratchTraceList, G4_INST *inst);
-  void flagUse(SCRATCH_PTR_LIST &scratchTraceList, G4_INST *inst);
-  bool flagScratchDefineUse(G4_BB *bb, SCRATCH_PTR_LIST *scratchTraceList,
-                            SCRATCH_PTR_VEC *candidateList,
-                            SCRATCH_ACCESS *scratchAccess,
-                            CLEAN_NUM_PROFILE *clean_num_profile);
-  void flagSpillFillClean(G4_BB *bb, INST_LIST_ITER inst_it,
-                          SCRATCH_PTR_VEC &scratchAccessList,
-                          SCRATCH_PTR_LIST &scratchTraceList,
-                          SCRATCH_PTR_VEC &candidateList,
-                          CLEAN_NUM_PROFILE *clean_num_profile);
-  void regFillClean(IR_Builder &builder, G4_BB *bb,
-                    SCRATCH_PTR_VEC &candidateList,
-                    CLEAN_NUM_PROFILE *clean_num_profile);
-  void regSpillClean(IR_Builder &builder, G4_BB *bb,
-                     SCRATCH_PTR_VEC &candidateList,
-                     CLEAN_NUM_PROFILE *clean_num_profile);
-
-public:
-  void spillFillCodeCleanFlag(IR_Builder &builder, G4_Kernel &kernel,
-                              CLEAN_NUM_PROFILE *clean_num_profile);
-  FlagSpillCleanup(GlobalRA &g) : gra(g) {}
-};
-
 class DynPerfModel {
 private:
   std::string Buffer;
@@ -1834,6 +1697,5 @@ public:
   void dump();
 };
 } // namespace vISA
-
 
 #endif // __GRAPHCOLOR_H__

@@ -5724,6 +5724,7 @@ void GlobalRA::expandFillIntrinsic(G4_BB *bb) {
 
 
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
+
   auto globalScratchOffset =
       kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
   bool hasStackCall =
