@@ -45,6 +45,8 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-SAME: 15
 ; CHECK-NOT: ,
 ; CHECK-SAME: ]
+@global.zeroinit = addrspace(1) global [1000 x i32] zeroinitializer, align 4
+; CHECK: AdditionalZeroedSpace: 4001
 ; CHECK: Symbols:
 ; CHECK-NEXT: - s_type:   S_GLOBAL_VAR
 ; CHECK-NEXT:   s_offset: 0
@@ -54,6 +56,10 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-NEXT:   s_offset: 2
 ; CHECK-NEXT:   s_size:   1
 ; CHECK-NEXT:   s_name:   global.int.8
+; CHECK-NEXT: - s_type:   S_GLOBAL_VAR
+; CHECK-NEXT:   s_offset: 4
+; CHECK-NEXT:   s_size:   4000
+; CHECK-NEXT:   s_name:   global.zeroinit
 
 ; Function Attrs: noinline nounwind
 define dllexport spir_kernel void @test_kernel(i64 %privBase) local_unnamed_addr #0 {

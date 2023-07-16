@@ -441,6 +441,7 @@ struct ModuleDataT {
   RawSectionInfo Global;
   RawSectionInfo ConstString;
   GenXOCLRuntimeInfo::SymbolSeq ExternalGlobals;
+  GenXOCLRuntimeInfo::SymbolSeq ZeroInitGlobals;
 
   ModuleDataT() = default;
   ModuleDataT(const Module &M);
@@ -651,6 +652,7 @@ ModuleDataT::ModuleDataT(const Module &M) {
       make_filter_range(M.globals(), [](const GlobalVariable &GV) {
         return vc::isRealGlobalVariable(GV);
       });
+  SmallVector<const GlobalVariable*, 4> ZeroInitialized;
   for (auto &GV : RealGlobals) {
     if (GV.isConstant()) {
       if (GV.hasAttribute(vc::PrintfStringVariable))
@@ -665,12 +667,26 @@ ModuleDataT::ModuleDataT(const Module &M) {
     } else if (GV.hasInitializer()) {
       IGC_ASSERT_MESSAGE(!GV.hasAttribute(vc::PrintfStringVariable),
                          "non-const global variable cannot be a printf string");
-      appendGlobalVariableData(Global, GV, DL);
+      auto *Init = GV.getInitializer();
+      if (Init->isNullValue())
+        ZeroInitialized.push_back(&GV);
+      else
+        appendGlobalVariableData(Global, GV, DL);
     } else {
       // External global variables
       auto Name = GV.getName().str();
       ExternalGlobals.emplace_back(vISA::S_UNDEF, 0, 0, Name.c_str());
     }
+  }
+
+  uint32_t Offset = Global.Data.getFullSize();
+  for (auto *GV : ZeroInitialized) {
+    Offset = alignTo(Offset, getAlignment(*GV));
+    uint32_t Size =
+        vc::getTypeSize(GV->getInitializer()->getType(), &DL).inBytes();
+    ZeroInitGlobals.emplace_back(vISA::S_GLOBAL_VAR, Offset, Size,
+                                 GV->getName().str().c_str());
+    Offset += Size;
   }
 }
 
@@ -688,6 +704,8 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
       ModuleData.ConstString.Data.begin(), ModuleData.ConstString.Data.end(),
       std::back_inserter(ModuleInfo.ConstString.Symbols));
 
+  llvm::copy(ModuleData.ZeroInitGlobals,
+             std::back_inserter(ModuleInfo.Global.Symbols));
   llvm::copy(ModuleData.ExternalGlobals,
              std::back_inserter(ModuleInfo.Global.Symbols));
 
@@ -705,7 +723,12 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
   ModuleInfo.Global.Data.Buffer =
       std::move(ModuleData.Global.Data).emitConsolidatedData();
   ModuleInfo.Global.Data.Alignment = 0;
-  ModuleInfo.Global.Data.AdditionalZeroedSpace = 0;
+  if (!ModuleData.ZeroInitGlobals.empty()) {
+    auto &Last = ModuleData.ZeroInitGlobals.back();
+    ModuleInfo.Global.Data.AdditionalZeroedSpace =
+        Last.s_offset + Last.s_size - ModuleInfo.Global.Data.Buffer.size();
+  } else
+    ModuleInfo.Global.Data.AdditionalZeroedSpace = 0;
 
   ModuleInfo.ConstString.Data.Buffer =
       std::move(ModuleData.ConstString.Data).emitConsolidatedData();
