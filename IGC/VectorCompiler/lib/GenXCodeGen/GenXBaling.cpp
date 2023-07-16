@@ -2659,7 +2659,7 @@ bool Bale::isGStoreBaleLegal() const {
 llvm::SetVector<Instruction *> Bale::getGVLoadSources() const {
   llvm::SetVector<Instruction *> res;
   for (const auto &Inst : Insts)
-    for (const auto &GVLoad : genx::getGVLoadPredecessors(Inst.Inst, true))
+    for (const auto &GVLoad : genx::getAncestorGVLoads(Inst.Inst, true))
       res.insert(GVLoad);
   return res;
 }

@@ -786,9 +786,9 @@ void collectRelatedCallSitesPerFunction(
     std::map<Function *, llvm::SetVector<Instruction *>>
         &InstAndRelatedCallSitesPerFunction);
 
-llvm::SetVector<Instruction *> getGVLoadPredecessors(Instruction *I,
-                                                     bool OneLevel = false);
-Instruction *getGVLoadPredecessorOrNull(Instruction *I, bool OneLevel = false);
+llvm::SetVector<Instruction *> getAncestorGVLoads(Instruction *I,
+                                                  bool OneLevel = false);
+Instruction *getAncestorGVLoadOrNull(Instruction *I, bool OneLevel = false);
 bool hasGVLoadSource(Instruction *I);
 
 bool isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To);

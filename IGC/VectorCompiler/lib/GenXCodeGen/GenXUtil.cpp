@@ -2426,37 +2426,41 @@ void genx::collectRelatedCallSitesPerFunction(
                           collectRelatedCallSites);
 }
 
-llvm::SetVector<Instruction *> genx::getGVLoadPredecessors(Instruction *I_,
-                                                           bool OneLevel) {
-  IGC_ASSERT(I_);
+llvm::SetVector<Instruction *> genx::getAncestorGVLoads(Instruction *I,
+                                                        bool OneLevel) {
+  IGC_ASSERT(I);
   llvm::SetVector<Instruction *> res;
-  auto *I = dyn_cast<Instruction>(getBitCastedValue(I_));
-  if (!I)
+  auto *PreBitCastInstr = dyn_cast<Instruction>(getBitCastedValue(I));
+  if (!PreBitCastInstr)
     return res;
   std::vector<Use *> Worklist;
-  for (auto &O : I->operands())
+  for (auto &O : PreBitCastInstr->operands())
     Worklist.push_back(&O);
   while (!Worklist.empty()) {
     auto *O = Worklist.back();
     Worklist.pop_back();
-    if (auto *I = dyn_cast<Instruction>(O->get())) {
-      if (isGlobalVolatileLoad(I))
-        res.insert(I);
-      if (!OneLevel)
-        for (auto &O : I->operands())
-          Worklist.push_back(&O);
+    if (auto *OpndInstr = dyn_cast<Instruction>(O->get())) {
+      auto *PreBitCastOpndInstr =
+          dyn_cast<Instruction>(getBitCastedValue(OpndInstr));
+      if (PreBitCastOpndInstr) {
+        if (isGlobalVolatileLoad(PreBitCastOpndInstr))
+          res.insert(PreBitCastOpndInstr);
+        if (!OneLevel)
+          for (auto &O : PreBitCastOpndInstr->operands())
+            Worklist.push_back(&O);
+      }
     }
   }
   return res;
 };
 
-Instruction *genx::getGVLoadPredecessorOrNull(Instruction *I, bool OneLevel) {
-  const auto res = getGVLoadPredecessors(I, OneLevel);
+Instruction *genx::getAncestorGVLoadOrNull(Instruction *I, bool OneLevel) {
+  const auto res = getAncestorGVLoads(I, OneLevel);
   return res.size() ? res[0] : nullptr;
 }
 
 bool genx::hasGVLoadSource(Instruction *I) {
-  return getGVLoadPredecessorOrNull(I, true);
+  return getAncestorGVLoadOrNull(I, true);
 }
 
 bool genx::isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To) {
@@ -2468,7 +2472,7 @@ bool genx::isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To) {
 
 bool genx::isSafeToMoveInstCheckGVLoadClobber(
     Instruction *I, Instruction *To, bool OnlyImmediateGVLoadPredecessors) {
-  for (auto *LI : getGVLoadPredecessors(I, OnlyImmediateGVLoadPredecessors))
+  for (auto *LI : getAncestorGVLoads(I, OnlyImmediateGVLoadPredecessors))
     if (getInterveningGVStoreOrNull(LI, To))
       return false;
   return true;
