@@ -476,6 +476,9 @@ static bool checkMergedOperandSize(const IR_Builder &builder,
 // -- all sources must be either direct GRF or immediates
 bool BUNDLE_INFO::isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
                                    bool isInSimdFlow) {
+  if (inst->isOptBarrier())
+    return false;
+
   // Don't merge mixed mode instructions as SIMD2/4 mixed mode instructions with
   // packed HF is not allowed by HW.
   if (inst->isMixedMode())
