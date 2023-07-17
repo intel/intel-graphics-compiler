@@ -61,6 +61,9 @@ namespace IGC
         /// \brief Return the total private memory size per WI of a given function.
         unsigned getTotalPrivateMemPerWI(llvm::Function* F) const;
 
+        /// \brief Return maximum alignment among all allocas of a given function.
+        alignment_t getPrivateMemAlignment(llvm::Function* F) const;
+
     private:
         struct FunctionAllocaInfo {
             void setAllocaDesc(llvm::AllocaInst* AI, unsigned Offset, unsigned Size)
@@ -71,6 +74,9 @@ namespace IGC
             /// \brief Total amount of private memory size per kernel. All functions in
             /// a kernel will have the same size.
             unsigned TotalSize = 0;
+
+            /// \brief Maximum alignment among all allocas.
+            alignment_t MaximumAlignment = 1;
 
             /// \brief Alloca instructions for a function.
             llvm::SmallVector<llvm::AllocaInst*, 8> Allocas;
