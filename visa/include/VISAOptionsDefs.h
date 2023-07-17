@@ -442,7 +442,7 @@ DEF_VISA_OPTION(vISA_SplitMov64, ET_INT32, "-SplitMov64",
                 "USAGE: -SplitMov64 (0|1|2)\n", 0)
 
 DEF_VISA_OPTION(vISA_SWSBMakeLocalWAR, ET_BOOL_TRUE, "-SWSBMakeLocalWAR",
-                "Enable WAR Sync at the end of BB", false)
+                "Enable WAR Sync at the end of BB", true)
 DEF_VISA_OPTION(vISA_PredicatedFdivSqrt, ET_INT32, "-predicatedfdivsqrt",
                 "USAGE: -predicatedfdivsqrt 0(if)|1(predicated)|2(auto)", 2)
 DEF_VISA_OPTION(vISA_FastCompileRA, ET_BOOL, "-fastCompileRA", UNUSED, false)
