@@ -41,7 +41,7 @@ entry:
   br label %lbl1, !dbg !32
 
 lbl1:                                             ; preds = %entry
-  %2 = add i32 15, 16, !dbg !33
+  %2 = add i32 %a, 16, !dbg !33
   call void @llvm.dbg.value(metadata i32 %2, metadata !16, metadata !DIExpression()), !dbg !33
   %3 = inttoptr i32 %2 to <2 x float> addrspace(65536)*, !dbg !34
   call void @llvm.dbg.value(metadata <2 x float> addrspace(65536)* %3, metadata !18, metadata !DIExpression()), !dbg !34

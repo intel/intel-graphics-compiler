@@ -43,6 +43,10 @@ namespace IGC
         uint         elementSize;       // size in bytes of the basic data element
         uint         chunkStart;        // offset of the first data element in chunk in units of elementSize
         uint         chunkSize;         // chunk size in elements
+        uint         ub;                // upper bound; the first element after the last element accessed by any of the loads that
+                                        // were merged into chunkIO. TODO: think up a better name for this.
+        uint         lb;                // lower bound; the first element accessed by any of the loads that
+                                        // were merged into chunkIO. TODO: think up a better name for this.
         llvm::Instruction* chunkIO;     // coalesced load
         uint         loadOrder;         // direct CB used order.
     };
@@ -264,6 +268,7 @@ namespace IGC
             llvm::Value* ptr_val, llvm::Value*& buf_idxv,
             llvm::Value*& elt_idxv, uint& eltid, ExtensionKind &Extension);
         static uint CheckVectorElementUses(const llvm::Instruction* load);
+        void AdjustLoad(BufChunk* cov_chunk, const ExtensionKind& Extension);
         void   AdjustChunk(BufChunk* cov_chunk, uint start_adj, uint size_adj, const ExtensionKind &Extension);
         void   EnlargeChunk(BufChunk* cov_chunk, uint size_adj);
         void   MoveExtracts(BufChunk* cov_chunk, llvm::Instruction* load, uint start_adj);
@@ -281,6 +286,8 @@ namespace IGC
             Instruction* loadToReplace,
             Instruction* ldData,
             uint offsetInBytes);
+
+        uint32_t RoundChunkSize(const uint32_t chunkSize, const uint scalarSizeInBytes);
         void MergeUniformLoad(llvm::Instruction* load,
             llvm::Value* bufIdxV, uint addrSpace,
             llvm::Value* eltIdxV, uint offsetInBytes,
@@ -298,6 +305,7 @@ namespace IGC
             llvm::Value* eltIdxV, uint eltid,
             std::vector<BufChunk*>& chunk_vec);
 
+        void ShrinkChunks(std::vector<BufChunk*>& chunk_vec);
         bool CleanupExtract(llvm::BasicBlock* bb);
         void VectorizePrep(llvm::BasicBlock* bb);
         bool safeToMoveInstUp(Instruction* inst, Instruction* newLocation);

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <list>
 #include "Probe/Assertion.h"
@@ -153,6 +154,8 @@ void ConstantCoalescing::ProcessFunction(Function* function)
         }
         // scan and rewrite cb-load in this block
         ProcessBlock(cur_blk, dircb_owloads, indcb_owloads, indcb_gathers);
+        ShrinkChunks(dircb_owloads);
+        ShrinkChunks(indcb_owloads);
         CleanupExtract(cur_blk);
         VectorizePrep(cur_blk);
     }
@@ -237,6 +240,145 @@ static bool canReplaceInsert(InsertElementInst* insertElt)
         }
     }
     return true;
+}
+
+// Attempt to shrink the size of oword loads by looking at the indices of extractelements.
+
+void ConstantCoalescing::ShrinkChunks(std::vector<BufChunk*>& chunk_vec)
+{
+    for (auto chunk : chunk_vec)
+    {
+        uint ub = 1;
+        uint lb = std::numeric_limits<uint>::max();
+        for (auto user : chunk->chunkIO->users())
+        {
+            if (auto extractElement = dyn_cast<ExtractElementInst>(user))
+            {
+                if (auto index = dyn_cast<ConstantInt>(extractElement->getIndexOperand()))
+                {
+                    uint indexValue = int_cast<uint>(index->getZExtValue()) + chunk->chunkStart;
+                    ub = std::max(ub, indexValue + 1);
+                    lb = std::min(lb, indexValue);
+                    continue;
+                }
+            }
+            ub = chunk->ub;
+            lb = chunk->lb;
+            break;
+        }
+
+        uint loadSize = RoundChunkSize(ub - lb, chunk->elementSize);
+        IGCLLVM::FixedVectorType* originalType = dyn_cast<IGCLLVM::FixedVectorType>(chunk->chunkIO->getType());
+        if (originalType && loadSize < originalType->getNumElements())
+        {
+            IGC_ASSERT(chunk->chunkSize >= loadSize);
+            uint start_adj = lb - chunk->chunkStart;
+            chunk->chunkSize = loadSize;
+            chunk->chunkStart = lb;
+            ExtensionKind extension = EK_NotExtended;
+            // Get correct extension type and ensure that final offset is an add instruction
+            // with a constant 2nd operand to satisfy AdjustLoad.
+            if (auto ldRaw = dyn_cast<LdRawIntrinsic>(chunk->chunkIO))
+            {
+                Value* offsetValue = ldRaw->getOffsetValue();
+                if (!isa<ConstantInt>(offsetValue))
+                {
+                    uint offset;
+                    SimpleBaseOffset(offsetValue, offset, extension);
+
+                    if(auto offsetInst = dyn_cast<Instruction>(offsetValue))
+                    {
+                        auto opcode = offsetInst->getOpcode();
+                        if (!(opcode == Instruction::Add && isa<ConstantInt>(offsetInst->getOperand(1))))
+                        {
+                            // Can't use irbuilder to create instruction directly or it will get constant folded.
+                            ldRaw->setOffsetValue(BinaryOperator::Create(Instruction::Add, offsetInst, irBuilder->getInt32(0), "", ldRaw));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                auto load = cast<LoadInst>(chunk->chunkIO);
+                uint bufId = 0;
+                Value* elt_ptrv = nullptr;
+                BufferType bufType = BUFFER_TYPE_UNKNOWN;
+                if (load->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
+                {
+                    uint offset;
+                    Value* buf_idxv = nullptr;
+                    Value* elt_idxv = nullptr;
+                    DecomposePtrExp(load->getPointerOperand(), buf_idxv, elt_idxv, offset, extension);
+                }
+                else if (IsReadOnlyLoadDirectCB(load, bufId, elt_ptrv, bufType))
+                {
+                    if (auto i2p = dyn_cast<IntToPtrInst>(elt_ptrv))
+                    {
+                        if (!isa<ConstantInt>(i2p->getOperand(0)))
+                        {
+                            uint offset = 0;
+                            SimpleBaseOffset(i2p->getOperand(0), offset, extension);
+
+                            if (auto addressInst = dyn_cast<Instruction>(i2p->getOperand(0)))
+                            {
+                                auto opcode = addressInst->getOpcode();
+                                if (!(opcode == Instruction::Add && isa<ConstantInt>(addressInst->getOperand(1))))
+                                {
+                                    // Can't use irbuilder to create instruction directly or it will get constant folded.
+                                    i2p->setOperand(0, BinaryOperator::Create(Instruction::Add, addressInst, irBuilder->getInt32(0), "", i2p));
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    IGC_ASSERT(false); // All cases should be handled by now.
+                }
+            }
+            AdjustLoad(chunk, extension);
+
+            SmallVector<Instruction*, 4> use_set;
+            // adjust all the splitters
+            Value::user_iterator use_it = chunk->chunkIO->user_begin();
+            Value::user_iterator use_e = chunk->chunkIO->user_end();
+            for (; use_it != use_e; ++use_it)
+            {
+                if (auto usei = dyn_cast<ExtractElementInst>(*use_it))
+                {
+                    if (auto e_idx = dyn_cast<ConstantInt>(usei->getIndexOperand()))
+                    {
+                        uint val = (uint)e_idx->getZExtValue();
+                        IGC_ASSERT(val >= start_adj);
+                        val -= start_adj;
+                        // update the index source
+                        e_idx = ConstantInt::get(irBuilder->getInt32Ty(), val);
+                        usei->setOperand(1, e_idx);
+                        continue;
+                    }
+                }
+                use_set.push_back(llvm::cast<Instruction>(*use_it));
+            }
+            if (use_set.size() > 0)
+            {
+                WIAnalysis::WIDependancy loadDep = wiAns->whichDepend(chunk->chunkIO);
+                irBuilder->SetInsertPoint(chunk->chunkIO->getNextNode());
+                Value* vec = UndefValue::get(originalType);
+                for (unsigned i = start_adj; i < originalType->getNumElements(); i++)
+                {
+                    Value* channel = irBuilder->CreateExtractElement(
+                        chunk->chunkIO, irBuilder->getInt32(i));
+                    wiAns->incUpdateDepend(channel, loadDep);
+                    vec = irBuilder->CreateInsertElement(vec, channel, irBuilder->getInt32(i - start_adj));
+                    wiAns->incUpdateDepend(vec, loadDep);
+                }
+                for (auto it : use_set)
+                {
+                    it->replaceUsesOfWith(chunk->chunkIO, vec);
+                }
+            }
+        }
+    }
 }
 
 // pattern match away redundant insertElt/extractElt pairs introduced by coalescing
@@ -1184,6 +1326,23 @@ void ConstantCoalescing::SetAlignment(Instruction* load, uint alignment)
 
 }
 
+// Rounds the chunk size up to the next value supported by data port
+// loads or LSC transposed load.
+// Legacy data port supports:
+// - block loads of 1, 2, 4 or 8 OWords
+// - scattered loads of 1, 2 and 4 DWords/QWords
+// - (byte aligned) 1, 2 and 4 Bytes
+// LSC supports:
+// - transposed loads of 1, 2, 3, 4, 8, 16, 32 and 64 DWords/QWords
+// - (byte aligned) loads of 1, 2 and 4 Bytes
+uint32_t ConstantCoalescing::RoundChunkSize(const uint32_t chunkSize, const uint scalarSizeInBytes)
+{
+    bool supportsVec3Load = scalarSizeInBytes >= 4 && m_ctx->platform.LSCEnabled();
+    uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ?
+        3 : iSTD::RoundPower2((DWORD)chunkSize);
+    return validChunkSize;
+}
+
 void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     Value* bufIdxV, uint addrSpace,
     Value* eltIdxV, uint offsetInBytes,
@@ -1258,28 +1417,12 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         (addrSpace == ADDRESS_SPACE_CONSTANT ||
          addrSpace == ADDRESS_SPACE_GLOBAL);
 
-    // Lambda rounds the chunk size up to the next value supported by data port
-    // loads or LSC transposed load.
-    // Legacy data port supports:
-    // - block loads of 1, 2, 4 or 8 OWords
-    // - scattered loads of 1, 2 and 4 DWords/QWords
-    // - (byte aligned) 1, 2 and 4 Bytes
-    // LSC supports:
-    // - transposed loads of 1, 2, 3, 4, 8, 16, 32 and 64 DWords/QWords
-    // - (byte aligned) loads of 1, 2 and 4 Bytes
-    auto RoundChunkSize = [this, scalarSizeInBytes](const uint32_t chunkSize)
-    {
-        bool supportsVec3Load = scalarSizeInBytes >= 4 && m_ctx->platform.LSCEnabled();
-        uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ?
-            3 : iSTD::RoundPower2((DWORD)chunkSize);
-        return validChunkSize;
-    };
     Type* loadDataType = load->getType();
     const uint32_t loadNumElements = loadDataType->isVectorTy() ?
         int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataType)->getNumElements()) : 1;
     // VectorPreProcess pass legalizes loaded data size.
-    IGC_ASSERT(loadNumElements == RoundChunkSize(loadNumElements));
-    IGC_ASSERT(loadNumElements >= RoundChunkSize(maxEltPlus));
+    IGC_ASSERT(loadNumElements == RoundChunkSize(loadNumElements, scalarSizeInBytes));
+    IGC_ASSERT(loadNumElements >= RoundChunkSize(maxEltPlus, scalarSizeInBytes));
     if (!cov_chunk)
     {
         if (isDwordAligned)
@@ -1290,7 +1433,9 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
             cov_chunk->baseIdxV = eltIdxV;
             cov_chunk->elementSize = scalarSizeInBytes;
             cov_chunk->chunkStart = eltid;
-            cov_chunk->chunkSize = RoundChunkSize(maxEltPlus);
+            cov_chunk->chunkSize = RoundChunkSize(maxEltPlus, scalarSizeInBytes);
+            cov_chunk->ub = cov_chunk->chunkStart + cov_chunk->chunkSize;
+            cov_chunk->lb = cov_chunk->chunkStart;
             const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
             cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
             chunk_vec.push_back(cov_chunk);
@@ -1301,10 +1446,12 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         // Determine load boundaries
         uint lb = std::min(eltid, cov_chunk->chunkStart);
         uint ub = std::max(eltid + maxEltPlus, cov_chunk->chunkStart + cov_chunk->chunkSize);
+        cov_chunk->lb = std::min(eltid, cov_chunk->lb);
+        cov_chunk->ub = std::max(eltid + maxEltPlus, cov_chunk->ub);
 
         // Calculate load start and size adjustments
         uint start_adj = cov_chunk->chunkStart - lb;
-        uint size_adj = RoundChunkSize(ub - lb) - cov_chunk->chunkSize;
+        uint size_adj = RoundChunkSize(ub - lb, scalarSizeInBytes) - cov_chunk->chunkSize;
 
         // Out of bounds check
         if (needsOutOfBoundsChecks)
@@ -1859,13 +2006,9 @@ Instruction* ConstantCoalescing::FindOrAddChunkExtract(BufChunk* cov_chunk, uint
     return splitter;
 }
 
-void ConstantCoalescing::AdjustChunk(
-    BufChunk* cov_chunk, uint start_adj, uint size_adj, const ExtensionKind &Extension)
+void ConstantCoalescing::AdjustLoad(BufChunk* cov_chunk, const ExtensionKind& Extension)
 {
-    cov_chunk->chunkSize += size_adj;
-    cov_chunk->chunkStart -= start_adj;
     // mutateType to change array-size
-    Type* originalType = cov_chunk->chunkIO->getType();
     Type* vty = IGCLLVM::FixedVectorType::get(cov_chunk->chunkIO->getType()->getScalarType(), cov_chunk->chunkSize);
     cov_chunk->chunkIO->mutateType(vty);
     // change the dest ptr-type on bitcast
@@ -1998,6 +2141,15 @@ void ConstantCoalescing::AdjustChunk(
             cast<Instruction>(eac)->setOperand(1, cv_start);
         }
     }
+}
+
+void ConstantCoalescing::AdjustChunk(
+    BufChunk* cov_chunk, uint start_adj, uint size_adj, const ExtensionKind &Extension)
+{
+    cov_chunk->chunkSize += size_adj;
+    cov_chunk->chunkStart -= start_adj;
+    Type* originalType = cov_chunk->chunkIO->getType();
+    AdjustLoad(cov_chunk, Extension);
 
     SmallVector<Instruction*, 4> use_set;
     // adjust all the splitters
@@ -2080,6 +2232,7 @@ void ConstantCoalescing::MoveExtracts(BufChunk* cov_chunk, Instruction* load, ui
             }
             usei->setOperand(0, cov_chunk->chunkIO);
         }
+        replaceAllDbgUsesWith(*load, *cov_chunk->chunkIO, *cov_chunk->chunkIO, getAnalysis<DominatorTreeWrapperPass>().getDomTree());
     }
     else
     {
