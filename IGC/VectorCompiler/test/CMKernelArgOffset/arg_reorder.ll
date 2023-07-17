@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -24,7 +24,7 @@ attributes #0 = { "CMGenxMain" }
 !genx.kernel.internal = !{!3}
 
 ; CHECK: [[KERNEL]] = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, [[OFFSETS:![0-9]+]]
-; CHECK: [[OFFSETS]] = !{i32 56, i32 32}
+; CHECK: [[OFFSETS]] = !{i32 64, i32 68}
 !0 = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, i32 0, !1, !2, i32 0}
 !1 = !{i32 0, i32 0}
 !2 = !{!"", !""}

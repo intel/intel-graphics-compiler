@@ -24,7 +24,7 @@ attributes #0 = { "CMGenxMain" }
 !genx.kernel.internal = !{!3}
 
 ; CHECK: [[KERNEL]] = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, [[OFFSETS:![0-9]+]]
-; CHECK: [[OFFSETS]] = !{i32 32, i32 36}
+; CHECK: [[OFFSETS]] = !{i32 64, i32 68}
 !0 = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, i32 0, !4, !2, i32 0}
 !1 = !{i32 0, i32 0}
 !2 = !{!"", !""}

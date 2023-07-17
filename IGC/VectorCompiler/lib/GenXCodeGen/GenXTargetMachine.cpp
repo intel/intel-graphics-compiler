@@ -788,8 +788,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // CM kernel argument offset.
   auto AddCMKernelArgOffset = [this](const PassManagerBuilder &Builder,
                                      PassManagerBase &PM) {
-    PM.add(createCMKernelArgOffsetPass(Subtarget.getGRFByteSize(),
-                                       Subtarget.isOCLRuntime()));
+    PM.add(createCMKernelArgOffsetPass(Subtarget.getGRFByteSize()));
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
                          AddCMKernelArgOffset);

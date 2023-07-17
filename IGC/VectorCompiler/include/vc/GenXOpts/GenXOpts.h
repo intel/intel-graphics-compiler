@@ -32,7 +32,7 @@ Pass *createCMImpParamPass(bool);
 //
 // CMKernelArgOffset - Determine offset of each CM kernel argument
 //
-Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize, bool OCLCodeGen);
+Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize);
 
 //===----------------------------------------------------------------------===//
 //

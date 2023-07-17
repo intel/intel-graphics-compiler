@@ -109,10 +109,6 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-static cl::opt<bool>
-    CMRTOpt("cmkernelargoffset-cmrt", cl::init(true), cl::Hidden,
-            cl::desc("Should be used only in llvm opt to switch RT"));
-
 namespace llvm {
 unsigned getValueAlignmentInBytes(const Value &Val, const DataLayout &DL) {
   // If this is a volatile global, then its pointer
@@ -143,14 +139,10 @@ struct GrfParamZone {
 class CMKernelArgOffset : public ModulePass {
   vc::KernelMetadata *KM = nullptr;
 
-  // Emit code for OCL runtime.
-  bool OCLCodeGen = false;
-
 public:
   static char ID;
-  CMKernelArgOffset(unsigned GrfByteSize = 32, bool OCLCodeGen = false)
-      : ModulePass(ID), OCLCodeGen(OCLCodeGen || !CMRTOpt),
-        GrfByteSize(GrfByteSize) {
+  CMKernelArgOffset(unsigned GrfByteSize = 32)
+      : ModulePass(ID), GrfByteSize(GrfByteSize) {
     initializeCMKernelArgOffsetPass(*PassRegistry::getPassRegistry());
     GrfMaxCount = 256;
     GrfStartOffset = GrfByteSize;
@@ -171,9 +163,6 @@ private:
     return nullptr;
   }
 
-  // Relayout thread paylod for OpenCL runtime.
-  bool enableOCLCodeGen() const { return OCLCodeGen; }
-
   unsigned GrfByteSize;
   unsigned GrfMaxCount;
   unsigned GrfStartOffset;
@@ -189,8 +178,8 @@ INITIALIZE_PASS_BEGIN(CMKernelArgOffset, "cmkernelargoffset",
 INITIALIZE_PASS_END(CMKernelArgOffset, "cmkernelargoffset",
                     "CM kernel arg offset determination", false, false)
 
-Pass *llvm::createCMKernelArgOffsetPass(unsigned GrfByteSize, bool OCLCodeGen) {
-  return new CMKernelArgOffset(GrfByteSize, OCLCodeGen);
+Pass *llvm::createCMKernelArgOffsetPass(unsigned GrfByteSize) {
+  return new CMKernelArgOffset(GrfByteSize);
 }
 
 // Check whether there is an input/output argument attribute.
@@ -228,214 +217,8 @@ void CMKernelArgOffset::processKernel(Function &Kernel) {
   vc::KernelMetadata KM{&Kernel};
   this->KM = &KM;
 
-  // Layout kernel arguments differently if to run on OpenCL runtime.
-  if (enableOCLCodeGen()) {
-    resolveByValArgs(&Kernel);
-    return processKernelOnOCLRT(&Kernel);
-  }
-
-  auto getTypeSizeInBytes = [&Kernel](Type *Ty) {
-    const DataLayout &DL = Kernel.getParent()->getDataLayout();
-    if (auto PT = dyn_cast<PointerType>(Ty))
-      return DL.getPointerTypeSize(Ty);
-    return static_cast<unsigned>(Ty->getPrimitiveSizeInBits() / 8);
-  };
-
-  // setup kernel inputs, optionally reordering the assigned offsets for
-  // improved packing where appropriate. The reordering algorithm replicates
-  // that used in the legacy Cm compiler, as certain media walker applications
-  // seem sensitive to the way the kernel inputs are laid out.
-  SmallDenseMap<const Argument *, unsigned> PlacedArgs;
-  unsigned Offset = 0;
-  if (canReorderArguments(KM)) {
-    // Reorder kernel input arguments. Arguments are placed in size order,
-    // largest first (then in natural argument order where arguments are the
-    // same size). Each argument is placed at the lowest unused suitably
-    // aligned offset. So, in general big arguments are placed first with the
-    // smaller arguments being fit opportunistically into the gaps left
-    // between arguments placed earlier.
-    //
-    // Arguments that are at least one GRF in size must be aligned to a GRF
-    // boundary. Arguments smaller than a GRF must not cross a GRF boundary.
-    //
-    // FreeZones describes unallocated portions of the kernel input space,
-    // and is list of non-overlapping start-end pairs, ordered lowest first.
-    // Initially it consists of a single pair that describes the whole space
-
-    SmallVector<GrfParamZone, 16> FreeZones;
-    FreeZones.push_back(GrfParamZone(GrfStartOffset, GrfEndOffset));
-
-    // Repeatedly iterate over the arguments list, each time looking for the
-    // largest one that hasn't been processed yet.
-    // But ignore implicit args for now as they want to go after all the others.
-
-    do {
-      Argument *BestArg = nullptr;
-      unsigned BestSize;
-      unsigned BestElemSize;
-
-      auto ArgKinds = KM.getArgKinds();
-      auto Kind = ArgKinds.begin();
-      for (Function::arg_iterator i = Kernel.arg_begin(), e = Kernel.arg_end();
-           i != e; ++i, ++Kind) {
-        Argument *Arg = &*i;
-        if (*Kind & 0xf8)
-          continue; // implicit arg
-
-        if (PlacedArgs.find(Arg) != PlacedArgs.end())
-          // Already done this one.
-          continue;
-
-        Type *Ty = Arg->getType();
-        unsigned Bytes = getTypeSizeInBytes(Ty);
-
-        if (BestArg == nullptr || BestSize < Bytes) {
-          BestArg = Arg;
-          BestSize = Bytes;
-          BestElemSize = getTypeSizeInBytes(Ty->getScalarType());
-        }
-      }
-
-      if (BestArg == nullptr)
-        // All done.
-        break;
-
-      // The best argument in this cycle has been found. Search FreeZones for
-      // a suitably sized and aligned gap.
-
-      unsigned Align;
-
-      if (BestSize > GrfByteSize)
-        Align = GrfByteSize;
-      else
-        Align = BestElemSize;
-
-      auto zi = FreeZones.begin();
-      auto ze = FreeZones.end();
-
-      unsigned Start = 0, End = 0;
-
-      for (; zi != ze; ++zi) {
-        GrfParamZone &Zone = *zi;
-
-        Start = alignTo(Zone.Start, Align);
-        End = Start + BestSize;
-
-        if ((Start % GrfByteSize) != 0 &&
-            (Start / GrfByteSize) != (End - 1) / GrfByteSize) {
-          Start = alignTo(Zone.Start, GrfByteSize);
-          End = Start + BestSize;
-        }
-
-        if (End <= Zone.End)
-          // Found one. This should never fail unless we have too many
-          // parameters to start with.
-          break;
-      }
-
-      IGC_ASSERT_MESSAGE(zi != ze,
-        "unable to allocate argument offset (too many arguments?)");
-
-      // Exclude the found block from the free zones list. This may require
-      // that the found zone be split in two if the start of the block is
-      // not suitably aligned.
-
-      GrfParamZone &Zone = *zi;
-
-      if (Zone.Start == Start)
-        Zone.Start = End;
-      else {
-        unsigned NewEnd = Zone.End;
-        Zone.End = Start;
-        ++zi;
-        FreeZones.insert(zi, GrfParamZone(End, NewEnd));
-      }
-
-      PlacedArgs[BestArg] = Start;
-    } while (true);
-    // Now process the implicit args. First get the offset at the start of the
-    // last free zone. Process the implicit kernel args first, then the
-    // implicit thread args.
-    Offset = FreeZones.back().Start;
-    for (int WantThreadImplicit = 0; WantThreadImplicit != 2;
-         ++WantThreadImplicit) {
-      bool FirstThreadImplicit = WantThreadImplicit;
-      auto ArgKinds = KM.getArgKinds();
-      auto Kind = ArgKinds.begin();
-      for (Function::arg_iterator i = Kernel.arg_begin(), e = Kernel.arg_end();
-           i != e; ++i, ++Kind) {
-        Argument *Arg = &*i;
-        if (!(*Kind & 0xf8))
-          continue;                               // not implicit arg
-        int IsThreadImplicit = (*Kind >> 3) == 3; // local_id
-        if (WantThreadImplicit != IsThreadImplicit)
-          continue;
-        Type *Ty = Arg->getType();
-        unsigned Bytes = Ty->getPrimitiveSizeInBits() / 8U;
-        unsigned Align = Ty->getScalarSizeInBits() / 8U;
-        // If this is the first thread implicit arg, put it in a new GRF.
-        if (FirstThreadImplicit)
-          Align = GrfByteSize;
-        FirstThreadImplicit = false;
-        Offset = alignTo(Offset, Align);
-        if ((Offset & (GrfByteSize - 1)) + Bytes > GrfByteSize) {
-          // GRF align if arg would cross GRF boundary
-          Offset = alignTo(Offset, GrfByteSize);
-        }
-        PlacedArgs[Arg] = Offset;
-        Offset += Bytes;
-      }
-    }
-  } else {
-    // No argument reordering. Arguments are placed at increasing offsets
-    // in their natural order, aligned according to their type.
-    //
-    // Again, arguments that are at least one GRF in size must be aligned to
-    // a GRF boundary. Arguments smaller than a GRF must not cross a GRF
-    // boundary.
-
-    // kernel input start offset
-    auto &DL = Kernel.getParent()->getDataLayout();
-    Offset = GrfStartOffset;
-
-    // Place an argument and update offset.
-    // Arguments larger than a GRF must be at least GRF-aligned. Arguments
-    // smaller than a GRF may not cross GRF boundaries. This means that
-    // arguments cross a GRF boundary must be GRF aligned.
-    auto placeArg = [&](Argument *Arg, unsigned ByteSize, unsigned Align) {
-      Offset = alignTo(Offset, Align);
-      unsigned StartGRF = Offset / GrfByteSize;
-      unsigned EndGRF = (Offset + ByteSize - 1) / GrfByteSize;
-      if (StartGRF != EndGRF)
-        Offset = alignTo(Offset, GrfByteSize);
-      PlacedArgs[Arg] = Offset;
-      Offset += ByteSize;
-    };
-
-    for (auto &Arg : Kernel.args()) {
-      unsigned Alignment = getValueAlignmentInBytes(Arg, DL);
-      Type *Ty = Arg.getType();
-      unsigned Bytes = DL.getTypeSizeInBits(Ty) / 8;
-      placeArg(&Arg, Bytes, Alignment);
-    }
-  }
-
-  SmallVector<unsigned, 8> ArgOffsets;
-  std::transform(
-      Kernel.arg_begin(), Kernel.arg_end(), std::back_inserter(ArgOffsets),
-      [&PlacedArgs](const Argument &Arg) { return PlacedArgs[&Arg]; });
-  KM.updateArgOffsetsMD(std::move(ArgOffsets));
-
-  SmallVector<unsigned, 8> OffsetInArgs(Kernel.arg_size(), 0);
-  KM.updateOffsetInArgsMD(std::move(OffsetInArgs));
-
-  SmallVector<unsigned, 8> Indexes;
-  std::transform(Kernel.arg_begin(), Kernel.arg_end(),
-                 std::back_inserter(Indexes),
-                 [](const Argument &Arg) { return Arg.getArgNo(); });
-  KM.updateArgIndexesMD(std::move(Indexes));
-
-  this->KM = nullptr;
+  resolveByValArgs(&Kernel);
+  return processKernelOnOCLRT(&Kernel);
 }
 
 // CMImpParam generated byval aggregate arguments linearization metadata and
