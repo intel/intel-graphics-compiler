@@ -52,10 +52,12 @@ set(CODEGEN_SOURCES
   GenXInitBiFConstants.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
+  GenXLegacyToLscTranslator.cpp
   GenXLegalization.cpp
   GenXLiveElements.cpp
   GenXLiveRanges.cpp
   GenXLiveness.cpp
+  GenXLoadStoreLegalization.cpp
   GenXLoadStoreLowering.cpp
   GenXLowerAggrCopies.cpp
   GenXLowerJmpTableSwitch.cpp

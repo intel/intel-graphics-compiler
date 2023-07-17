@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -855,8 +855,10 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
       IGC_ASSERT(IntrinsicID != GenXIntrinsic::genx_convert);
       if (IntrinsicID == GenXIntrinsic::genx_convert_addr)
         return vc::RegCategory::Address;
-      if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IntrinsicID) && !GenXIntrinsic::isRdRegion(IntrinsicID)
-          && !GenXIntrinsic::isWrRegion(IntrinsicID) && !GenXIntrinsic::isAbs(IntrinsicID)) {
+      if (vc::isAnyNonTrivialIntrinsic(IntrinsicID) &&
+          !GenXIntrinsic::isRdRegion(IntrinsicID) &&
+          !GenXIntrinsic::isWrRegion(IntrinsicID) &&
+          !GenXIntrinsic::isAbs(IntrinsicID)) {
         // For any normal intrinsic, look up the argument class.
         GenXIntrinsicInfo II(IntrinsicID);
         auto AI = II.getRetInfo();

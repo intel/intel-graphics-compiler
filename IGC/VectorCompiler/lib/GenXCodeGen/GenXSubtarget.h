@@ -155,9 +155,6 @@ private:
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
-  /// True if subtarget supports constant offset for LSC message address
-  bool HasLSCOffset = false;
-
   /// True if subtarget supports half SIMD LSC messages
   bool HasHalfSIMDLSC = false;
 
@@ -267,8 +264,6 @@ public:
   int getNumElementsInAddrReg() const { return GRFByteSize / 4; }
 
   bool hasLSCMessages() const { return HasLSCMessages; }
-
-  bool hasLSCOffset() const { return HasLSCOffset; }
 
   bool translateLegacyMessages() const {
     return (HasLSCMessages && TranslateLegacyMessages);

@@ -92,10 +92,10 @@ SPDX-License-Identifier: MIT
 /// This is achieved in two steps:
 ///
 /// 1. Predicates take part in the main code of GenXLegalization. When deciding
-///    how to split a read or write of a predicate, we determine how the predicate
-///    value will be split into parts (e.g. the 37 split into 32,4,1 example
-///    above), then decides how a part could be subregioned if necessary (e.g.
-///    the 32 could have a 16 aligned 16 bit region, or an 8 aligned 8 bit
+///    how to split a read or write of a predicate, we determine how the
+///    predicate value will be split into parts (e.g. the 37 split into 32,4,1
+///    example above), then decides how a part could be subregioned if necessary
+///    (e.g. the 32 could have a 16 aligned 16 bit region, or an 8 aligned 8 bit
 ///    region). As well as a maximum, this usually gives a minimum size region.
 ///    If the rest of the bale cannot achieve that minimum size, then we unbale
 ///    to avoid the problem and restart the analysis of the bale.
@@ -121,55 +121,9 @@ SPDX-License-Identifier: MIT
 /// predicate. However, the rdpredregion for the 1 bit part is illegal, because
 /// its start offset is not 8 aligned.
 ///
-/// We currently do not cope with that (it will probably assertion fail somewhere). If
-/// we do find a need to cope with it, then the illegal rdpredregion will need
-/// to be lowered to bit twiddling code.
-///
-/// LSC legalization
-/// ^^^^^^^^^^^^^^^^
-///
-/// Non-transposed LSC stores, loads and prefetches are considered legal
-/// if they satisfy the following requirements:
-///
-/// 1. ExecSize is a power of 2 up to a device-specific MaxExecSize
-///    (16 on DG2, 32 on PVC).
-/// 2. Operations with VectorSize > 1 must have DataType D32 or D64.
-/// 3. The number of registers used by the data payload is no more than 8:
-///    ceil(ExecSize * DataSize / GRFSize) * VectorSize <= 8
-///    Here, ExecSize = max(ExecSize, MaxExecSize / 2).
-///    That is, a single channel of data takes up at least 1 register if DataType
-///    is D32 and at least 2 registers if DataType is D64.
-///    This effectively means that the maximum legal VectorSize is 8 if DataType is D32
-///    and 4 if DataType is D64.
-///
-/// If a non-transposed operation doesn't obey rules 1 or 3, we make it legal
-/// by splitting it into several parts. Data is loaded and stored
-/// in Structure of Arrays format, so splitting requires some care.
-/// If the instruction doesn't obey rule 2 or its VectorSize is larger than the largest
-/// one allowed for its DataType, it can't be made legal, so we raise an error.
-///
-/// Transposed LSC stores, loads and prefetches are considered legal
-/// if they satisfy the following requirements:
-///
-/// 1. ExecSize is 1.
-/// 2. DataType is either D32 or D64.
-/// 3. The number of registers used by the data payload is no more than 8:
-///    ceil(VectorSize * DataSize / GRFSize) <= 8
-///
-/// We don't try to legalize transposed operations, so if any of these rules
-/// don't hold, we raise an error.
-///
-/// Fence operations do not require any legalization. However,
-/// we check still that their ExecSize is 1.
-///
-/// Atomic operations can't be legalized, since after legalization these
-/// operations might no longer be atomic. We still check that they are legal
-/// according to the following rules and raise an error if any are violated:
-///
-/// 1. ExecSize is a power of 2 up to a device-specific MaxExecSize.
-///    (16 on DG2, 32 on PVC).
-/// 2. VectorSize is 1.
-/// 3. Transposed operations are not allowed.
+/// We currently do not cope with that (it will probably assertion fail
+/// somewhere). If we do find a need to cope with it, then the illegal
+/// rdpredregion will need to be lowered to bit twiddling code.
 ///
 /// Other tasks of GenXLegalization
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -387,10 +341,7 @@ private:
   unsigned adjustTwiceWidthOrFixed4(const Bale &B);
   bool checkIfLongLongSupportNeeded(const Instruction *Inst) const;
   void verifyLSCFence(const Instruction *Inst);
-  void verifyLSCAtomic(const Instruction *Inst);
   void verifyLSC2D(const Instruction *Inst);
-  void verifyLSCTransposed(const Instruction *Inst);
-  void verifyLSCNonTransposed(const Instruction *Inst);
   void verifyType(const Type *Ty, const Instruction *Inst) const;
   bool checkInst(const Instruction *Inst) const;
   bool processInst(Instruction *Inst);
@@ -400,11 +351,8 @@ private:
   bool processBitCastFromPredicate(Instruction *Inst,
                                    Instruction *InsertBefore);
   bool processBitCastToPredicate(Instruction *Inst, Instruction *InsertBefore);
-  Instruction *baleMainInstLSC();
-  unsigned getLSCMaxWidthWithVectorSize(const Instruction *Inst);
   unsigned getExecutionWidth();
   unsigned determineWidth(unsigned WholeWidth, unsigned StartIdx);
-  unsigned determineLSCWidth(Instruction *Inst, unsigned StartIdx);
   unsigned determineNonRegionWidth(Instruction *Inst, unsigned StartIdx);
   LegalPredSize getLegalPredSize(Value *Pred, Type *ElementTy,
                                  unsigned StartIdx, unsigned RemainingSize = 0);
@@ -430,9 +378,6 @@ private:
   Value *getSplitOperand(Instruction *Inst, unsigned OperandNum,
                          unsigned StartIdx, unsigned Size,
                          Instruction *InsertBefore, const DebugLoc &DL);
-  Value *getSplitSOAOperand(Instruction *Inst, unsigned OperandNum,
-                            unsigned StartIdx, unsigned Size, unsigned InstHeight,
-                            Instruction *InsertBefore, const DebugLoc &DL);
   Instruction *convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
                                       Region *R, Instruction *InsertBefore);
   Instruction *transformMoveType(Bale *B, IntegerType *FromTy,
@@ -451,22 +396,6 @@ private:
 };
 
 static const unsigned MaxPredSize = 32;
-
-bool isLSCWithReturn(Instruction *Inst) {
-  return GenXIntrinsic::isLSC(Inst) && !Inst->getType()->isVoidTy();
-}
-
-bool isLSCWithoutReturn(Instruction *Inst) {
-  return GenXIntrinsic::isLSC(Inst) && Inst->getType()->isVoidTy();
-}
-
-bool isLSCSOAOperand(Instruction *Inst, unsigned OperandNum) {
-  IGC_ASSERT(GenXIntrinsic::isLSC(Inst));
-  unsigned Width = GenXIntrinsic::getLSCWidth(Inst);
-  auto VT = dyn_cast<IGCLLVM::FixedVectorType>(
-      Inst->getOperand(OperandNum)->getType());
-  return VT && VT->getNumElements() > Width;
-}
 
 } // end anonymous namespace
 
@@ -620,72 +549,10 @@ bool GenXLegalization::checkIfLongLongSupportNeeded(
 void GenXLegalization::verifyLSCFence(const Instruction *Inst) {}
 
 /***********************************************************************
- * verifyLSCAtomic: verify whether an atomic LSC instruction is legal
- *  and issue a diagnostic if it is not.
- */
-void GenXLegalization::verifyLSCAtomic(const Instruction *Inst) {
-  IGC_ASSERT(GenXIntrinsic::isLSCAtomic(Inst));
-  unsigned Width = GenXIntrinsic::getLSCWidth(Inst);
-  if (!isPowerOf2_32(Width)) {
-    vc::diagnose(Inst->getContext(), "GenXLegalization",
-                 "LSC atomic instruction execution width must be a power of 2",
-                 Inst);
-  }
-  if (Width > ST->getLSCMaxWidth()) {
-    vc::diagnose(
-        Inst->getContext(), "GenXLegalization",
-        "LSC atomic instruction execution width must be no more than " +
-            Twine(ST->getLSCMaxWidth()),
-        Inst);
-  }
-  unsigned NumVectorElems = GenXIntrinsic::getLSCNumVectorElements(Inst);
-  if (NumVectorElems > 1) {
-    vc::diagnose(Inst->getContext(), "GenXLegalization",
-                 "LSC atomic instruction vector size must be 1", Inst);
-  }
-  if (GenXIntrinsic::isLSCTransposed(Inst)) {
-    vc::diagnose(Inst->getContext(), "GenXLegalization",
-                 "LSC atomic instructions do not support transposed data order",
-                 Inst);
-  }
-}
-
-/***********************************************************************
  * verifyLSC2D: verify whether a 2D LSC load/store instruction is legal
  *  and issue a diagnostic if it is not.
  */
 void GenXLegalization::verifyLSC2D(const Instruction *Inst) {}
-
-/***********************************************************************
- * verifyLSC2D: verify whether a transposed LSC load/store instruction
- *  is legal and issue a diagnostic if it is not.
- */
-void GenXLegalization::verifyLSCTransposed(const Instruction *Inst) {
-  unsigned DataBits = GenXIntrinsic::getLSCNumVectorElements(Inst) *
-                      GenXIntrinsic::getLSCDataBitsRegister(Inst);
-  unsigned MaxDataBits = ST->getGRFByteSize() *
-                         ST->getLSCMaxDataRegisters() *
-                         genx::ByteBits;
-  if (DataBits > MaxDataBits) {
-    vc::diagnose(Inst->getContext(), "GenXLegalization",
-                 "Transposed LSC instruction vector size is too large", Inst);
-  }
-  if (GenXIntrinsic::getLSCWidth(Inst) > 1) {
-    vc::diagnose(Inst->getContext(), "GenXLegalization",
-                 "Transposed LSC instruction execution width must be 1", Inst);
-  }
-}
-
-/***********************************************************************
- * verifyLSC2D: verify whether a non-transposed LSC load/store
- *  instruction is legal and issue a diagnostic if it is not.
- */
-void GenXLegalization::verifyLSCNonTransposed(const Instruction *Inst) {
-  if (getLSCMaxWidthWithVectorSize(Inst) < ST->getLSCMinWidth()) {
-    vc::fatal(Inst->getContext(), *this,
-              "Non-transposed LSC instruction vector size is too large", Inst);
-  }
-}
 
 /***********************************************************************
  * verifyType : check if type is ok according to subtarget
@@ -777,32 +644,17 @@ bool GenXLegalization::processInst(Instruction *Inst) {
       verifyLSCFence(Inst);
       return false;
     }
-    if (GenXIntrinsic::isLSCAtomic(Inst)) {
-      verifyLSCAtomic(Inst);
-      return false;
-    }
-    if (GenXIntrinsic::isLSCLegacyAtomic(Inst)) {
-      vc::diagnose(Inst->getContext(), "GenXLegalization",
-                   "Legacy LSC atomics are not supported", Inst);
-    }
     if (GenXIntrinsic::isLSC2D(Inst)) {
       verifyLSC2D(Inst);
       return false;
-    }
-
-    if (GenXIntrinsic::isLSCTransposed(Inst)) {
-      verifyLSCTransposed(Inst);
-      return false;
-    }
-    if (GenXIntrinsic::isLSCNonTransposed(Inst)) {
-      verifyLSCNonTransposed(Inst);
     }
   }
 
   // Prepare to insert split code after current instruction.
   auto InsertBefore = Inst->getNextNode();
 
-  if (!isa<VectorType>(Inst->getType()) && !GenXIntrinsic::isLSC(Inst)) {
+  if (!isa<VectorType>(Inst->getType()) &&
+      !vc::InternalIntrinsic::isInternalMemoryIntrinsic(Inst)) {
     if (Inst->getOpcode() == Instruction::BitCast &&
         Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
       // Special processing for bitcast from predicate to scalar int.
@@ -811,8 +663,8 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_all:
     case GenXIntrinsic::genx_any:
-      return processAllAny(Inst,
-                           InsertBefore); // Special processing for all/any
+      // Special processing for all/any
+      return processAllAny(Inst, InsertBefore);
     default:
       break;
     }
@@ -869,7 +721,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
         return false;
       default:
         if (GenXIntrinsicInfo(IntrinID).getRetInfo().getCategory() !=
-            GenXIntrinsicInfo::GENERAL && !GenXIntrinsic::isLSC(IntrinID)) {
+            GenXIntrinsicInfo::GENERAL) {
           // This is not an ALU intrinsic (e.g. cm_add).
           // We have a non-splittable intrinsic. Such an intrinsic can
           // have a scalar arg with a baled in rdregion, which does not
@@ -946,12 +798,6 @@ bool GenXLegalization::processInst(Instruction *Inst) {
  * Return:  true to re-process same head of bale
  */
 bool GenXLegalization::processBale(Instruction *InsertBefore) {
-  if (baleMainInstLSC()) {
-    // LSC legalization might create illegal regions.
-    // Insert new instructions after the current instruction
-    // so they will be processed.
-    InsertBefore = CurrentInst;
-  }
   // Get the current execution width.
   unsigned WholeWidth = getExecutionWidth();
   if (WholeWidth == 1)
@@ -1248,37 +1094,6 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
 }
 
 /***********************************************************************
- * baleMainInstLSC : check if the main instruction of the current bale is
- *  an LSC instruction and return it if it is
- */
-Instruction *GenXLegalization::baleMainInstLSC() {
-  auto MainInst = B.getMainInst();
-  if (MainInst && GenXIntrinsic::isLSC(MainInst->Inst))
-    return MainInst->Inst;
-  return nullptr;
-}
-
-/***********************************************************************
- * getLSCMaxWidthWithVectorSize : determine max valid width of an LSC
- * instruction taking into account VectorSize
- *
- * If the returned width is less than the one returned by ST->getLSCMinWidth(),
- * this instruction's VectorSize is too large and it can't be made legal
- *
- * Enter:   Inst = the instruction
- *
- * Return:  max valid width
- */
-unsigned GenXLegalization::getLSCMaxWidthWithVectorSize(const Instruction *Inst) {
-  unsigned NumVectorElems = GenXIntrinsic::getLSCNumVectorElements(Inst);
-  unsigned NumDataBits = GenXIntrinsic::getLSCDataBitsRegister(Inst);
-  unsigned MaxChannelRegisters = ST->getLSCMaxDataRegisters() / NumVectorElems;
-  unsigned GRFElements = ST->getGRFByteSize() * genx::ByteBits / NumDataBits;
-  unsigned MaxWidth = MaxChannelRegisters * GRFElements;
-  return PowerOf2Floor(MaxWidth);
-}
-
-/***********************************************************************
  * getExecutionWidth : get the execution width of the bale
  *
  * If there is no wrregion at the head of the bale, then the execution width is
@@ -1286,9 +1101,6 @@ unsigned GenXLegalization::getLSCMaxWidthWithVectorSize(const Instruction *Inst)
  * execution width is the width of the subregion input to the wrregion.
  */
 unsigned GenXLegalization::getExecutionWidth() {
-  if (auto MainInst = baleMainInstLSC()) {
-    return GenXIntrinsic::getLSCWidth(MainInst);
-  }
   BaleInst *Head = B.getHeadIgnoreGStore();
   Value *Dest = Head->Inst;
   if (Head->Info.Type == BaleInfo::WRREGION ||
@@ -1300,7 +1112,6 @@ unsigned GenXLegalization::getExecutionWidth() {
     return 1;
   return VT->getNumElements();
 }
-
 
 /***********************************************************************
  * determineWidth : determine width of the next split
@@ -1348,12 +1159,6 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     // Determine the width we need for this instruction.
     switch (i->Info.Type) {
     case BaleInfo::WRREGION: {
-      // No legalization required for wrregions with baled in
-      // RAW instruction result.
-      if (auto MainInst = baleMainInstLSC()) {
-        IGC_ASSERT(MainInst == i->Inst->getOperand(1));
-        break;
-      }
       bool Unbale = false;
       Region R = makeRegionFromBaleInfo(i->Inst, i->Info);
       if (R.Mask &&
@@ -1440,12 +1245,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       if (i->Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum) ==
           WrRegionInput)
         IsReadSameVector = true; // See use of this flag below.
-      // No legalization required for an rdregion baled into
-      // RAW operand.
-      if (auto MainInst = baleMainInstLSC()) {
-        IGC_ASSERT(MainInst == i->Inst->user_back());
-        break;
-      }
+
       // Determine the max region width. If this rdregion is baled into a
       // TWICEWIDTH operand, double the start index and half the resulting
       // size.
@@ -1544,17 +1344,6 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
           break;
         case GenXIntrinsic::genx_gather4_scaled2:
         case GenXIntrinsic::genx_gather4_masked_scaled2:
-        case GenXIntrinsic::genx_lsc_load_slm:
-        case GenXIntrinsic::genx_lsc_load_stateless:
-        case GenXIntrinsic::genx_lsc_load_bindless:
-        case GenXIntrinsic::genx_lsc_load_bti:
-        case GenXIntrinsic::genx_lsc_load_merge_slm:
-        case GenXIntrinsic::genx_lsc_load_merge_stateless:
-        case GenXIntrinsic::genx_lsc_load_merge_bindless:
-        case GenXIntrinsic::genx_lsc_load_merge_bti:
-        case GenXIntrinsic::genx_lsc_prefetch_bti:
-        case GenXIntrinsic::genx_lsc_prefetch_stateless:
-        case GenXIntrinsic::genx_lsc_prefetch_bindless:
           continue;
         }
       }
@@ -1671,8 +1460,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
   {
     auto Head = B.getHeadIgnoreGStore();
     if (Head->Info.Type != BaleInfo::WRREGION &&
-        Head->Info.Type != BaleInfo::WRPREDPREDREGION &&
-        !GenXIntrinsic::isLSC(Head->Inst)) {
+        Head->Info.Type != BaleInfo::WRPREDPREDREGION) {
       auto *VT = cast<IGCLLVM::FixedVectorType>(Head->Inst->getType());
       unsigned VecSize = VT->getNumElements();
       if (VecSize != Width) {
@@ -1693,25 +1481,6 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
 }
 
 /***********************************************************************
- * determineLSCWidth : determine max valid width of an LSC instruction
- *
- * Width is determined based on ExecSize, VectorSize and DataType,
- * as well as LSC-specific restrictions.
- *
- * Enter:   Inst = the instruction
- *          StartIdx = start index
- *
- * Return:  max valid width
- */
-unsigned GenXLegalization::determineLSCWidth(Instruction *Inst, unsigned StartIdx) {
-  unsigned MaxWidth = getLSCMaxWidthWithVectorSize(Inst);
-  unsigned Width = GenXIntrinsic::getLSCWidth(Inst) - StartIdx;
-  IGC_ASSERT(Width);
-  Width = std::min({Width, MaxWidth, ST->getLSCMaxWidth()});
-  return PowerOf2Floor(Width);
-}
-
-/***********************************************************************
  * determineNonRegionWidth : determine max valid width of non-region instruction
  *
  * Width is determined based only on input and output vector element sizes and
@@ -1724,9 +1493,6 @@ unsigned GenXLegalization::determineLSCWidth(Instruction *Inst, unsigned StartId
  */
 unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
                                                    unsigned StartIdx) {
-  if (GenXIntrinsic::isLSC(Inst)) {
-    return determineLSCWidth(Inst, StartIdx);
-  }
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType());
   if (!VT)
     return 1;
@@ -1960,21 +1726,6 @@ Value *GenXLegalization::joinBaleResult(Value *PrevSliceRes,
     Region R(Head);
     R.Width = R.NumElements = Width;
     R.Offset = StartIdx * R.ElementBytes;
-    if (auto MainInst = baleMainInstLSC()) {
-      unsigned InstWidth = GenXIntrinsic::getLSCWidth(MainInst);
-      unsigned InstHeight = cast<IGCLLVM::FixedVectorType>(MainInst->getType())
-                                ->getNumElements() /
-                            InstWidth;
-      R.Stride = 1;
-      R.VStride = InstWidth;
-      R.NumElements *= InstHeight;
-      Instruction *CreatedInst =
-          R.createWrRegion(PrevSliceRes, LastSplitInst,
-                           LastSplitInst->getName() + ".join" + Twine(StartIdx),
-                           InsertBefore, Head->getDebugLoc());
-      Baling->processInst(CreatedInst);
-      return CreatedInst;
-    }
     return R.createWrRegion(PrevSliceRes, LastSplitInst,
                             LastSplitInst->getName() + ".join" +
                                 Twine(StartIdx),
@@ -2008,9 +1759,8 @@ Value *GenXLegalization::splitBale(Value *PrevSliceRes, unsigned StartIdx,
   else {
     IGC_ASSERT_MESSAGE(LastCreatedInst, "must have at least some split inst");
     auto Head = B.getHeadIgnoreGStore()->Inst;
-    if (!isLSCWithoutReturn(Head) &&
-        cast<IGCLLVM::FixedVectorType>(Head->getType())->getNumElements() !=
-            Width)
+    if (cast<IGCLLVM::FixedVectorType>(Head->getType())->getNumElements() !=
+        Width)
       LastCreatedInst = joinBaleResult(PrevSliceRes, LastCreatedInst, StartIdx,
                                        Width, InsertBefore);
   }
@@ -2052,25 +1802,6 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
                      /*volatile*/ true, InsertBefore);
     Load->setDebugLoc(BInst.Inst->getDebugLoc());
     In = Load;
-  }
-  if (auto MainInst = baleMainInstLSC()) {
-    IGC_ASSERT(MainInst == BInst.Inst->getOperand(1));
-    unsigned InstWidth = GenXIntrinsic::getLSCWidth(MainInst);
-    unsigned InstHeight = GenXIntrinsic::getLSCNumVectorElements(MainInst);
-    R.Offset = R.Offset + StartIdx * R.ElementBytes;
-    R.Stride = 1;
-    R.Width = Width;
-    R.VStride = InstWidth;
-    R.NumElements = Width * InstHeight;
-    Value *WriteValue =
-        getSplitSOAOperand(BInst.Inst, 1, StartIdx, Width, InstHeight,
-                           InsertBefore, BInst.Inst->getDebugLoc());
-    Instruction *NewWrRegion =
-        R.createWrRegion(In, WriteValue,
-                         BInst.Inst->getName() + ".join" + Twine(StartIdx),
-                         InsertBefore, BInst.Inst->getDebugLoc());
-    Baling->processInst(NewWrRegion);
-    return NewWrRegion;
   }
   R.getSubregion(StartIdx, Width);
   if (R.Mask && isa<VectorType>(R.Mask->getType()))
@@ -2199,22 +1930,6 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
           OldVal = PrevSliceRes;
       }
     }
-    if (auto MainInst = baleMainInstLSC()) {
-      IGC_ASSERT(MainInst == BInst.Inst->user_back());
-      unsigned InstWidth = GenXIntrinsic::getLSCWidth(MainInst);
-      unsigned InstHeight = GenXIntrinsic::getLSCNumVectorElements(MainInst);
-      R.Offset = R.Offset + StartIdx * R.ElementBytes;
-      R.Stride = 1;
-      R.VStride = InstWidth;
-      R.Width = Width;
-      R.NumElements = Width * InstHeight;
-      Instruction *CreatedInst =
-          R.createRdRegion(OldVal,
-                           BInst.Inst->getName() + ".split" + Twine(StartIdx),
-                           InsertBefore, DL);
-      Baling->processInst(CreatedInst);
-      return CreatedInst;
-    }
     R.getSubregion(StartIdx, Width);
     if (!ConvertToMulti) {
       // Not converting to multi indirect.
@@ -2312,13 +2027,9 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   // Some other splittable intrinsic.
   SmallVector<Value *, 2> Args;
   SmallVector<Type *, 2> OverloadedTypes;
-  if (!isLSCWithoutReturn(CI)) {
-    unsigned WidthAdjust = GenXIntrinsic::isLSC(CI) ?
-                           GenXIntrinsic::getLSCNumVectorElements(CI) : 1;
-    OverloadedTypes.push_back(IGCLLVM::FixedVectorType::get(
-        cast<VectorType>(BInst.Inst->getType())->getElementType(),
-        Width * WidthAdjust)); // RetTy
-  }
+  OverloadedTypes.push_back(IGCLLVM::FixedVectorType::get(
+      cast<VectorType>(BInst.Inst->getType())->getElementType(),
+      Width)); // RetTy
   for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(CI); I != E; ++I) {
     Use *U = &CI->getOperandUse(I);
     if (U == Fixed4) {
@@ -2327,12 +2038,6 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
       // TWICEWIDTH: operand is twice the width of other operand and result
       Args.push_back(getSplitOperand(BInst.Inst, I, StartIdx * 2, Width * 2,
                                      InsertBefore, DL));
-    } else if (GenXIntrinsic::isLSC(CI)) {
-      unsigned Height = isLSCSOAOperand(CI, I)
-                            ? GenXIntrinsic::getLSCNumVectorElements(CI)
-                            : 1;
-      Args.push_back(getSplitSOAOperand(BInst.Inst, I, StartIdx, Width, Height,
-                                        InsertBefore, DL));
     } else
       Args.push_back(
           getSplitOperand(BInst.Inst, I, StartIdx, Width, InsertBefore, DL));
@@ -2341,12 +2046,9 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   }
   Module *M = InsertBefore->getModule();
   Function *Decl = vc::getAnyDeclaration(M, IntrinID, OverloadedTypes);
-  auto Name = isLSCWithoutReturn(BInst.Inst) ? "" : ".split" + Twine(StartIdx);
+  auto Name = ".split" + Twine(StartIdx);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
-  if (GenXIntrinsic::isLSC(NewInst)) {
-    Baling->processInst(NewInst);
-  }
   return NewInst;
 }
 
@@ -2392,72 +2094,6 @@ Value *GenXLegalization::getSplitOperand(Instruction *Inst, unsigned OperandNum,
   return Region::createRdPredRegion(V, StartIdx, Size,
                                     V->getName() + ".split" + Twine(StartIdx),
                                     InsertBefore, DL);
-}
-
-/***********************************************************************
- * getSplitSOAOperand : get a possibly split instruction SOA operand
- *
- * Non-transposed LSC instruction data payloads are stored in SOA format,
- * so they can't be split by getSplitOperand with adjusted StartIdx and Size.
- *
- * Enter:   Inst = original non-split instruction
- *          OperandNum = operand number we want
- *          StartIdx = element start index for this split
- *          Size = the width of this split
- *          InstHeight = the number of channels in this split
- *          InsertBefore = where to insert any added rdregion
- *          DL = debug location to give new instruction(s)
- *
- * If the requested operand is a constant, it splits the constant.
- * Otherwise it creates an rdregion from the original operand.
- */
-Value *GenXLegalization::getSplitSOAOperand(Instruction *Inst, unsigned OperandNum,
-                                            unsigned StartIdx, unsigned Size,
-                                            unsigned InstHeight,
-                                            Instruction *InsertBefore,
-                                            const DebugLoc &DL) {
-  Value *V = Inst->getOperand(OperandNum);
-  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
-  if (!VT)
-    return V;
-  unsigned InstWidth = VT->getNumElements() / InstHeight;
-  if (auto C = dyn_cast<Constant>(V)) {
-    Constant *res = nullptr;
-    for (unsigned i = 0; i < InstHeight; i++) {
-      Constant *split =
-          getConstantSubvector(C, StartIdx + i * InstWidth, Size);
-      res = res ? concatConstants(res, split) : split;
-    }
-    return res;
-  }
-  // Split a non-constant vector.
-  // See if this operand is baled in.
-  if (Instruction *OperandInst = dyn_cast<Instruction>(V)) {
-    auto i = SplitMap.find(OperandInst);
-    if (i != SplitMap.end()) {
-      return i->second;
-    }
-  }
-  // Non-constant operand not baled in.
-  // Create an rdregion for the operand.
-  Instruction *CreatedInst = nullptr;
-  if (VT->getScalarType()->isIntegerTy(1)) {
-    IGC_ASSERT(InstHeight == 1);
-    CreatedInst = Region::createRdPredRegion(
-        V, StartIdx, Size, V->getName() + ".split" + Twine(StartIdx),
-        InsertBefore, DL);
-  } else {
-    Region R(V);
-    R.Offset = StartIdx * R.ElementBytes;
-    R.Stride = 1;
-    R.VStride = InstWidth;
-    R.Width = Size;
-    R.NumElements = Size * InstHeight;
-    CreatedInst = R.createRdRegion(V, V->getName() + ".split" + Twine(StartIdx),
-                                   InsertBefore, DL);
-  }
-  Baling->processInst(CreatedInst);
-  return CreatedInst;
 }
 
 /***********************************************************************
