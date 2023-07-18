@@ -466,7 +466,7 @@ GenXLegacyToLscTranslator::translateSVMGatherScatter(CallInst &CI) const {
   auto ElementSize = LSC_DATA_SIZE_INVALID;
   auto ElementsPerLane = 0;
 
-  if (ElementBytes == ByteBytes) {
+  if (ElementBytes < DWordBytes) {
     ElementSize = getLSCElementSize(NumBlocks);
     ElementsPerLane = 1;
   } else {
