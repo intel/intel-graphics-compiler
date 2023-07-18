@@ -9686,6 +9686,38 @@ void GlobalRA::generateForbiddenTemplates(unsigned reserveSpillSize) {
 }
 
 //
+// Create variables will be used in fail safe RA
+//
+void GlobalRA::createVariablesForHybridRAWithSpill() {
+  // To conduct fail safe in iteration 0, some variables need be allocated
+  // first so that they can join RA and be used in the spill/fill directly.
+  addVarToRA(builder.getSpillFillHeader());
+  addVarToRA(builder.getOldA0Dot2Temp());
+
+  if (builder.hasScratchSurface() && !builder.getSpillSurfaceOffset()) {
+    vISA_ASSERT(builder.instList.empty(),
+                "Inst list should be empty at this point before creating "
+                "instruction that initializes SSO");
+    builder.initScratchSurfaceOffset();
+    addVarToRA(builder.getSpillSurfaceOffset());
+    if (!builder.instList.empty()) {
+      // If SSO is not yet initialized, insert the created
+      // instruction into the entry BB.
+      auto entryBB = builder.kernel.fg.getEntryBB();
+      auto iter = std::find_if(entryBB->begin(), entryBB->end(),
+                               [](G4_INST *inst) { return !inst->isLabel(); });
+      entryBB->splice(iter, builder.instList);
+    }
+  }
+  // BuiltinR0 may be spilled which is not allowed.
+  // FIXME: BuiltinR0 spill cost has been set to MAX already,
+  // keep spilling means there is some issue in cost model
+  builder.getBuiltinR0()->setLiveOut();
+  builder.getBuiltinR0()->getRegVar()->setPhyReg(builder.phyregpool.getGreg(0),
+                                                 0);
+}
+
+//
 // graph coloring entry point.  returns nonzero if RA fails
 //
 int GlobalRA::coloringRegAlloc() {
@@ -9867,31 +9899,12 @@ int GlobalRA::coloringRegAlloc() {
       (builder.getOption(vISA_FastSpill) || fastCompile)
           ? fastCompileIter
           : builder.getuint32Option(vISA_FailSafeRALimit);
-  if (failSafeRAIteration == 0) {
-    builder.getSpillFillHeader();
-    builder.getOldA0Dot2Temp();
-    if (builder.hasScratchSurface()) {
-      vISA_ASSERT(builder.instList.empty(),
-                  "Inst list should be empty at this point before creating "
-                  "instruction that initializes SSO");
-      builder.initScratchSurfaceOffset();
-      if (!builder.instList.empty()) {
-        // If SSO is not yet initialized, insert the created
-        // instruction into the entry BB.
-        auto entryBB = builder.kernel.fg.getEntryBB();
-        auto iter =
-            std::find_if(entryBB->begin(), entryBB->end(),
-                         [](G4_INST *inst) { return !inst->isLabel(); });
-        entryBB->splice(iter, builder.instList);
-      }
-    }
-    // BuiltinR0 may be spilled which is not allowed.
-    // FIXME: BuiltinR0 spill cost has been set to MAX already,
-    // keep spilling means there is some issue in cost model
-    builder.getBuiltinR0()->setLiveOut();
-    builder.getBuiltinR0()->getRegVar()->setPhyReg(
-        builder.phyregpool.getGreg(0), 0);
+
+  if (failSafeRAIteration == 0) { // Fail safe RA directly in iteration 0, used
+                                  // for hybrid RA with spill
+    createVariablesForHybridRAWithSpill();
   }
+
   bool rematDone = false, alignedScalarSplitDone = false;
   bool reserveSpillReg = false;
   VarSplit splitPass(*this);
@@ -9935,7 +9948,8 @@ int GlobalRA::coloringRegAlloc() {
     }
 
     // Do variable splitting in each iteration
-    if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {
+    // Don't do when fast compile is required
+    if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA) && !fastCompile) {
       RA_TRACE(std::cout << "\t--split local send--\n");
       for (auto bb : kernel.fg) {
         splitPass.localSplit(builder, bb);

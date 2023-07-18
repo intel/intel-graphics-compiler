@@ -1516,6 +1516,7 @@ public:
   void removeSplitDecl();
   std::pair<unsigned, unsigned> reserveGRFSpillReg(GraphColor &coloring);
   void generateForbiddenTemplates(unsigned reserveSpillSize);
+  void createVariablesForHybridRAWithSpill();
 
   BitSet *getForbiddenRegs(forbiddenKind type) {
     return fbdRegs.getForbiddenRegs(type);
