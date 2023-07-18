@@ -56,6 +56,7 @@ static inline bool MsgOpIs2D(MsgOp op) {
   return op == MsgOp::LOAD_BLOCK2D || op == MsgOp::STORE_BLOCK2D;
 }
 
+
 // does it have a data channel mask (e.g. load_quad)
 bool MsgOpHasChMask(MsgOp);
 

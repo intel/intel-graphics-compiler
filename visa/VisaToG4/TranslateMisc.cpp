@@ -371,7 +371,8 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
           G4_SrcRegRegion *srcRegion = createSrc(src->getTopDcl()->getRegVar(),
                                                  src->getRegOff() + rowOffset,
                                                  0, getRegionStride1(), type);
-          createMov(pred, MAX_SIMD, dstRegion, srcRegion, instOpt, true);
+
+          createMov(duplicateOperand(pred), MAX_SIMD, dstRegion, srcRegion, instOpt, true);
           moveMask = Get_Next_EMask(moveMask, MAX_SIMD);
         }
       };

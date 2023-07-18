@@ -4165,6 +4165,9 @@ struct LscInstVerifier {
   }
 
   void verify() {
+      verifyLSC();
+  }
+  void verifyLSC() {
     if (opInfo.mnemonic == nullptr || opInfo.op == LSC_INVALID) {
       error("invalid LSC subop");
       return;

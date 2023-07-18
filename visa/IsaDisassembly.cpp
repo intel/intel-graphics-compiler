@@ -3044,7 +3044,6 @@ private:
       formatUntypedSimple();
     }
   } // formatUntyped
-
   ///////////////////////////////////////////////////////////////////////////
   void formatTyped() {
     ss << opInfo.mnemonic;
