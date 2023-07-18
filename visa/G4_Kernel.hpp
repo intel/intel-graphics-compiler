@@ -426,7 +426,6 @@ private:
   bool m_hasIndirectCall = false;
 
   VarSplitPass *varSplitPass = nullptr;
-  GRFMode grfMode;
 
   // map key is filename string with complete path.
   // if first elem of pair is false, the file wasn't found.
@@ -494,6 +493,7 @@ public:
   unsigned char minor_version;
 
   StackCallABI stackCall;
+  GRFMode grfMode;
 
   G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
             Mem_Manager &m, Options *options, Attributes *anAttr,

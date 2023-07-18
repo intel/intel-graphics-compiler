@@ -39,6 +39,8 @@ SPDX-License-Identifier: MIT
 #include <tuple>
 #include <vector>
 
+static const unsigned ABORT_ON_SPILL_IF_RP_HIGH = 110; // percentage
+
 using namespace vISA;
 
 void Optimizer::LVN() {
@@ -132,6 +134,28 @@ void Optimizer::insertFallThroughJump() {
       }
     }
     it = next;
+  }
+}
+
+void Optimizer::preRA_Schedule() {
+  bool Changed = false;
+  unsigned KernelPressure = 0;
+  if (kernel.useRegSharingHeuristics()) {
+    preRA_RegSharing Sched(kernel);
+    Changed = Sched.run(KernelPressure);
+  } else {
+    preRA_Scheduler Sched(kernel);
+    Changed = Sched.run(KernelPressure);
+  }
+  // Update Jit info for max register pressure
+  kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = KernelPressure;
+
+  unsigned GRFChange = (KernelPressure * 100) / kernel.getNumRegTotal();
+  if (kernel.getOption(vISA_AbortOnSpill) &&
+      GRFChange > ABORT_ON_SPILL_IF_RP_HIGH) {
+    // If -abortOnSpill is set and register spills are anavoidable,
+    // compilation is aborted.
+    AbortHighRP = true;
   }
 }
 
@@ -905,6 +929,10 @@ int Optimizer::optimization() {
 
   // PreRA scheduling
   runPass(PI_preRA_Schedule);
+  if (AbortHighRP) {
+    // Due to high reg pressure, spills are unavoidable
+    return VISA_SPILL;
+  }
 
   // HW workaround before RA
   runPass(PI_preRA_HWWorkaround);

@@ -343,14 +343,12 @@ public:
 
 class preRA_Scheduler {
 public:
-  preRA_Scheduler(G4_Kernel &k, RPE *rpe);
+  preRA_Scheduler(G4_Kernel &k);
   ~preRA_Scheduler();
-  bool run();
+  bool run(unsigned &KernelPressure);
 
 private:
   G4_Kernel &kernel;
-  RPE *rpe;
-  Options *m_options;
 };
 
 class preRA_ACC_Scheduler {
@@ -367,13 +365,12 @@ private:
 
 class preRA_RegSharing {
 public:
-  preRA_RegSharing(G4_Kernel &k, RPE *rpe);
+  preRA_RegSharing(G4_Kernel &k);
   ~preRA_RegSharing();
-  bool run();
+  bool run(unsigned &KernelPressure);
 
 private:
   G4_Kernel &kernel;
-  RPE *rpe;
 };
 // Restrictions of candidate for 2xDP:
 //    1, Only support SIMD16 DF mad with M0

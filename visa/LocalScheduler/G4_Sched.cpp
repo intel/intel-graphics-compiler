@@ -31,6 +31,7 @@ static const unsigned LARGE_BLOCK_SIZE = 20000;
 static const unsigned LARGE_BLOCK_SIZE_RPE = 32000;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5; // percentage
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
+static const unsigned PRESSURE_LATENCY_HIDING_THRESHOLD = 104;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
 
@@ -361,11 +362,15 @@ struct RegisterPressure {
   }
 
   void recompute(G4_BB *BB) { rpe->runBB(BB); }
+  void recompute() { rpe->run(); }
 
   // Return the register pressure in GRF for an instruction.
   unsigned getPressure(G4_INST *Inst) const {
     return rpe->getRegisterPressure(Inst);
   }
+
+  // Return the max register pressure
+  unsigned getMaxRP() const { return rpe->getMaxRP(); }
 
   // Return the max pressure in GRFs for this block.
   unsigned getPressure(G4_BB *bb, std::vector<G4_INST *> *Insts = nullptr) {
@@ -490,7 +495,7 @@ public:
   // ReassignID of PreNodes when this is not 1st-round scheduling
   // KernelRP is the measure max reg-pressure of this kernel before scheduling
   bool scheduleBlockForLatency(unsigned &MaxPressure, bool ReassignID,
-                               unsigned KernelRP);
+                               unsigned UpperBoundGRF);
 
 private:
   void SethiUllmanScheduling();
@@ -545,29 +550,29 @@ static unsigned getLatencyHidingThreshold(G4_Kernel &kernel, unsigned NumGrfs) {
   unsigned RPThreshold =
       kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
   if (RPThreshold == 0) {
-    RPThreshold = 104;
+    RPThreshold = PRESSURE_LATENCY_HIDING_THRESHOLD;
   }
-  return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 32u) / 96u);
+  return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 48u) / 80u);
 }
 
-preRA_Scheduler::preRA_Scheduler(G4_Kernel &k, RPE *rpe)
-    : kernel(k), rpe(rpe), m_options(kernel.getOptions()) {}
+preRA_Scheduler::preRA_Scheduler(G4_Kernel &k)
+    : kernel(k) {}
 
 preRA_Scheduler::~preRA_Scheduler() {}
 
-bool preRA_Scheduler::run() {
+bool preRA_Scheduler::run(unsigned &KernelPressure) {
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D) {
     // Do not run pre-RA scheduler for CM unless user forces it.
-    if (!m_options->getOption(vISA_preRA_ScheduleForce))
+    if (!kernel.getOption(vISA_preRA_ScheduleForce))
       return false;
   }
 
   unsigned Threshold = getRPReductionThreshold(kernel);
-  unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
+  unsigned SchedCtrl = kernel.getuInt32Option(vISA_preRA_ScheduleCtrl);
 
   auto LT = LatencyTable::createLatencyTable(*kernel.fg.builder);
   SchedConfig config(SchedCtrl);
-  RegisterPressure rp(kernel, rpe);
+  RegisterPressure rp(kernel, nullptr);
   // skip extreme test cases that scheduling does not good
   // if (kernel.fg.getNumBB() >= 10000 && rp.rpe->getMaxRP() >= 800)
   //   return false;
@@ -580,16 +585,16 @@ bool preRA_Scheduler::run() {
       continue;
     }
 
-    if (kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID) &&
+    if (kernel.getuInt32Option(vISA_ScheduleStartBBID) &&
         (bb->getId() <
-         kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID))) {
+         kernel.getuInt32Option(vISA_ScheduleStartBBID))) {
       SCHED_DUMP(std::cerr << "Skip BB" << bb->getId() << "\n");
       continue;
     }
 
-    if (kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID) &&
+    if (kernel.getuInt32Option(vISA_ScheduleEndBBID) &&
         (bb->getId() >
-         kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID))) {
+         kernel.getuInt32Option(vISA_ScheduleEndBBID))) {
       SCHED_DUMP(std::cerr << "Skip BB" << bb->getId() << "\n");
       continue;
     }
@@ -607,120 +612,118 @@ bool preRA_Scheduler::run() {
     Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
     Changed |= S.scheduleBlockForLatency(MaxPressure, Changed, 0);
   }
-  if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
-    rp.rpe->run();
-    kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = rp.rpe->getMaxRP();
-  }
+
+  if (Changed)
+    rp.recompute();
+  KernelPressure = rp.getMaxRP();
+
   return Changed;
 }
 
-preRA_RegSharing::preRA_RegSharing(G4_Kernel &k, RPE *rpe)
-    : kernel(k), rpe(rpe) {}
+preRA_RegSharing::preRA_RegSharing(G4_Kernel &k)
+    : kernel(k) {}
 
 preRA_RegSharing::~preRA_RegSharing() {}
 
-bool preRA_RegSharing::run() {
-  // General algorithm:
-  //  1. Schedule for pressure
-  //      - If RP is low (e.g. < 64, based on platform), set maximum number of
-  //      threads
-  //  2. Estimate number of threads [4 .. 12] based on initial RP
-  //  3. Schedule for latency (obtain ILP, stalls, throughput)
-  //  4. Compute cost of schedule
-  //  5. Based on schedule cost:
-  //      - Return ok (keep best schedule)
-  //      - Goto 3
+bool preRA_RegSharing::run(unsigned &KernelPressure) {
+
 
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D) {
     // Do not run pre-RA scheduler for CM unless user forces it.
-    if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleForce))
+    if (!kernel.getOption(vISA_preRA_ScheduleForce))
       return false;
   }
 
-  bool changed = false;
+  bool Changed = false;
 
-  unsigned SchedCtrl =
-      kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleCtrl);
+  unsigned SchedCtrl = kernel.getuInt32Option(vISA_preRA_ScheduleCtrl);
   SchedConfig config(SchedCtrl);
-
-  RegisterPressure rp(kernel, rpe);
-
-  std::unordered_map<G4_BB *, unsigned int> rpBB;
-  unsigned KernelPressure = 0;
-
-  // Obtain register pressure estimate of every BB
-  for (auto bb : kernel.fg) {
-    if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE_RPE) {
-      SCHED_DUMP(std::cerr << "Skip block with instructions " << bb->size()
-                           << "\n");
-      continue;
-    }
-
-    unsigned pressure = rp.getPressure(bb);
-    rpBB[bb] = pressure;
-
-    if (pressure > KernelPressure) {
-      KernelPressure = pressure;
-    }
-  }
-
-  // Obs: Heuristic considering PVC with 2 GRF modes as of 03/2020
-  // If maximum register pressure is higher than default GRF mode,
-  // assign the smallest number of threads to this kernel.
-  if (!kernel.getOptions()->getuInt32Option(vISA_HWThreadNumberPerEU) &&
-      (KernelPressure >
-       kernel.getScaledGRFSize(PRESSURE_HIGH_THRESHOLD) -
-           kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))) {
-    // Update number of threads, GRF, Acc and SWSB
-    kernel.updateKernelToLargerGRF();
-  }
-
-  // skip extreme test cases that scheduling does not good
-  // if (kernel.fg.getNumBB() >= 10000 && KernelPressure >= 800)
-  //   return false;
-
-  unsigned Threshold = getRPReductionThreshold(kernel);
+  RegisterPressure rp(kernel, nullptr);
+  KernelPressure = rp.getMaxRP();
+  unsigned RPReductionThreshold = getRPReductionThreshold(kernel);
   auto LT = LatencyTable::createLatencyTable(*kernel.fg.builder);
 
+  // Schedule for reg pressure reduction if needed
   for (auto bb : kernel.fg) {
+    // Skip BBs:
     if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
       SCHED_DUMP(std::cerr << "Skip block with instructions " << bb->size()
                            << "\n");
       continue;
     }
 
-    if (kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID) &&
-        (bb->getId() <
-         kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID))) {
+    if (kernel.getuInt32Option(vISA_ScheduleStartBBID) &&
+        (bb->getId() < kernel.getuInt32Option(vISA_ScheduleStartBBID))) {
       SCHED_DUMP(std::cerr << "Skip BB" << bb->getId() << "\n");
       continue;
     }
 
-    if (kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID) &&
-        (bb->getId() >
-         kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID))) {
+    if (kernel.getuInt32Option(vISA_ScheduleEndBBID) &&
+        (bb->getId() > kernel.getuInt32Option(vISA_ScheduleEndBBID))) {
       SCHED_DUMP(std::cerr << "Skip BB" << bb->getId() << "\n");
       continue;
     }
 
-    unsigned MaxPressure = rpBB.find(bb) == rpBB.end() ? 0 : rpBB[bb];
-    if (MaxPressure <= Threshold && !config.UseLatency) {
-      SCHED_DUMP(std::cerr << "Skip block with rp " << MaxPressure << "\n");
-      continue;
-    }
-
-    SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
+    // Schedule:
+    SCHED_DUMP(rp.dump(bb, "Before scheduling for pressure reduction, "));
     preDDD ddd(kernel, bb);
     BB_Scheduler S(kernel, ddd, rp, config, *LT);
+    unsigned BBRP = rp.getPressure(bb);
+    Changed |= S.scheduleBlockForPressure(BBRP, RPReductionThreshold);
+  }
 
-    changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
-      changed |= S.scheduleBlockForLatency(MaxPressure, changed, 0);
+  if (Changed) {
+    // Re-compute register pressure estimation
+    rp.recompute();
+    KernelPressure = rp.getMaxRP();
   }
-  if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
-    rp.rpe->run();
-    kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = rp.rpe->getMaxRP();
+
+  // Adjust GRF based on register pressure
+  unsigned oldGRFNum = kernel.getNumRegTotal();
+  kernel.updateKernelByRegPressure(KernelPressure);
+  bool GRFdecreased = kernel.getNumRegTotal() < oldGRFNum;
+  Changed = false;
+
+  // Schedule for latency hiding if needed
+  for (auto bb : kernel.fg) {
+    // Skip BBs:
+    if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
+      SCHED_DUMP(std::cerr << "Skip block with instructions " << bb->size()
+                           << "\n");
+      continue;
+    }
+
+    if (kernel.getuInt32Option(vISA_ScheduleStartBBID) &&
+        (bb->getId() < kernel.getuInt32Option(vISA_ScheduleStartBBID))) {
+      SCHED_DUMP(std::cerr << "Skip BB" << bb->getId() << "\n");
+      continue;
+    }
+
+    if (kernel.getuInt32Option(vISA_ScheduleEndBBID) &&
+        (bb->getId() > kernel.getuInt32Option(vISA_ScheduleEndBBID))) {
+      SCHED_DUMP(std::cerr << "Skip BB" << bb->getId() << "\n");
+      continue;
+    }
+
+    // Schedule:
+    SCHED_DUMP(rp.dump(bb, "Before scheduling for latency hiding, "));
+    preDDD ddd(kernel, bb);
+    BB_Scheduler S(kernel, ddd, rp, config, *LT);
+    unsigned BBRP = rp.getPressure(bb);
+
+    unsigned UpperBoundGRF = 0;
+    if (GRFdecreased && KernelPressure < kernel.grfMode.getMaxGRF())
+      UpperBoundGRF = kernel.grfMode.getLargerGRF();
+    Changed |= S.scheduleBlockForLatency(BBRP, Changed, UpperBoundGRF);
   }
-  return changed;
+
+  if (Changed) {
+    rp.recompute();
+    KernelPressure = rp.getMaxRP();
+  }
+  kernel.updateKernelByRegPressure(KernelPressure);
+
+  return Changed;
 }
 
 bool BB_Scheduler::verifyScheduling() {
@@ -1431,13 +1434,14 @@ private:
 
 //
 bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
-                                           bool ReassignID, unsigned KernelRP) {
+                                           bool ReassignID, unsigned UpperBoundGRF) {
   auto tryLatencyHiding = [=](unsigned nr) {
     if (!config.UseLatency)
       return false;
 
-    // KernelRP == 0 means we are scheduling for the fixed number of GRF
-    if (KernelRP == 0 && MaxPressure >= getLatencyHidingThreshold(kernel, nr))
+    // UpperBoundGRF == 0 means we are scheduling for the fixed number of GRF
+    if (UpperBoundGRF == 0 &&
+        MaxPressure >= getLatencyHidingThreshold(kernel, nr))
       return false;
 
     // simple ROI check.
@@ -1460,16 +1464,14 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
   if (!tryLatencyHiding(NumGrfs))
     return false;
 
-  // UpperBoundGRF == NumGrfs means we only schedule under single NumGRF
+  // UpperBoundGRF == 0 means we only schedule under single NumGRF
   // setting for this block instead of trying to find the best schedule
-  // among multiple NumGRF setting.
-  unsigned UpperBoundGRF = NumGrfs;
+  // among multiple NumGRF settings.
+  if (UpperBoundGRF == 0)
+    UpperBoundGRF = NumGrfs;
+
   unsigned SavedEstimation = 0;
   std::vector<G4_INST *> SavedSchedule;
-
-  // multiple settings are applied only to some blocks to save time
-  if (KernelRP > 0 && MaxPressure > 40 && MaxPressure * 2 > KernelRP)
-    UpperBoundGRF = std::max(256U, UpperBoundGRF);
 
   for (; NumGrfs <= UpperBoundGRF; NumGrfs += 32) {
     // try grouping-threshold decremently until we find a schedule likely won't
