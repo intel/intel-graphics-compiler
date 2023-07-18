@@ -203,6 +203,9 @@ private:
   /// True if subtarget supports large GRF mode
   bool HasLargeGRF = false;
 
+  // True if target supports local integer compare exchange 64-bit
+  bool HasLocalIntegerCas64 = false;
+
   /// Max supported SLM size (in kbytes)
   int MaxSLMSize = 64;
 
@@ -360,6 +363,8 @@ public:
 
   bool hasBitRotate() const { return HasBitRotate; }
   bool has64BitRotate() const { return Has64BitRotate; }
+
+  bool hasLocalIntegerCas64() const { return HasLocalIntegerCas64; }
 
   bool hasL1ReadOnlyCache() const { return HasL1ReadOnlyCache; }
   bool hasLocalMemFenceSupress() const { return HasLocalMemFenceSupress; }

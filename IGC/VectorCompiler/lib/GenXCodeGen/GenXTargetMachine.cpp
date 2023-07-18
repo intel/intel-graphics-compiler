@@ -503,6 +503,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
     return false;
   /// .. include:: GenXBuiltinFunctions.cpp
   vc::addPass(PM, createGenXBuiltinFunctionsPass());
+  vc::addPass(PM, createAlwaysInlinerLegacyPass());
 
   /// .. include:: GenXPromoteStatefulToBindless.cpp
   vc::addPass(PM, createGenXPromoteStatefulToBindlessPass());

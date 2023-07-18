@@ -76,6 +76,33 @@ void __cm_cl_scatter(vector_impl<T, width> data, int addrspace,
                      vector_impl<uint64_t, width> ptrs, int alignment,
                      vector_impl<char, width> mask);
 
+// vector BTI atomic
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_vector_atomic_bti(
+    vector_impl<char, width> mask, char opcode, char addrsize, char elementsize,
+    char l1cachecontrol, char l3cachecontrol, int bti,
+    vector_impl<int, width> index, short scale, int offset,
+    vector_impl<T, width> src1, vector_impl<T, width> src2,
+    vector_impl<T, width> passthru);
+
+// vector SLM atomic
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_vector_atomic_slm(
+    vector_impl<char, width> mask, char opcode, char addrsize, char elementsize,
+    char l1cachecontrol, char l3cachecontrol, int base,
+    vector_impl<int, width> index, short scale, int offset,
+    vector_impl<T, width> src1, vector_impl<T, width> src2,
+    vector_impl<T, width> passthru);
+
+// vector UGM atomic
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_vector_atomic_ugm(
+    vector_impl<char, width> mask, char opcode, char addrsize, char elementsize,
+    char l1cachecontrol, char l3cachecontrol, long base,
+    vector_impl<long, width> index, short scale, int offset,
+    vector_impl<T, width> src1, vector_impl<T, width> src2,
+    vector_impl<T, width> passthru);
+
 uint32_t __cm_cl_lzd(uint32_t src);
 template <int width>
 vector_impl<uint32_t, width> __cm_cl_lzd(vector_impl<uint32_t, width> src);

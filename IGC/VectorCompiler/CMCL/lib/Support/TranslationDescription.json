@@ -218,6 +218,117 @@
         ]
       }
     },
+    "AtomicBti": {
+      "Name": "vector_atomic_bti",
+      "Operands": [
+        {"Name": "Mask", "Kind": "Input"},
+        {"Name": "Opcode", "Kind": "Input"},
+        {"Name": "AddrSize", "Kind": "Input"},
+        {"Name": "ElemSize", "Kind": "Input"},
+        {"Name": "L1CacheControl", "Kind": "Input"},
+        {"Name": "L3CacheControl", "Kind": "Input"},
+        {"Name": "Bti", "Kind": "Input"},
+        {"Name": "Index", "Kind": "Input"},
+        {"Name": "Scale", "Kind": "Input"},
+        {"Name": "Offset", "Kind": "Input"},
+        {"Name": "Src1", "Kind": "Input"},
+        {"Name": "Src2", "Kind": "Input"},
+        {"Name": "Passthru", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "lsc_atomic_bti",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Mask"]},
+          {"GetBuiltinOperand": ["Opcode"]},
+          {"GetBuiltinOperand": ["AddrSize"]},
+          {"GetBuiltinOperand": ["ElemSize"]},
+          {"GetBuiltinOperand": ["L1CacheControl"]},
+          {"GetBuiltinOperand": ["L3CacheControl"]},
+          {"GetBuiltinOperand": ["Bti"]},
+          {"GetBuiltinOperand": ["Index"]},
+          {"GetBuiltinOperand": ["Scale"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"GetBuiltinOperand": ["Src1"]},
+          {"GetBuiltinOperand": ["Src2"]},
+          {"GetBuiltinOperand": ["Passthru"]}
+        ]
+      }
+    },
+    "AtomicSlm": {
+      "Name": "vector_atomic_slm",
+      "Operands": [
+        {"Name": "Mask", "Kind": "Input"},
+        {"Name": "Opcode", "Kind": "Input"},
+        {"Name": "AddrSize", "Kind": "Input"},
+        {"Name": "ElemSize", "Kind": "Input"},
+        {"Name": "L1CacheControl", "Kind": "Input"},
+        {"Name": "L3CacheControl", "Kind": "Input"},
+        {"Name": "Base", "Kind": "Input"},
+        {"Name": "Index", "Kind": "Input"},
+        {"Name": "Scale", "Kind": "Input"},
+        {"Name": "Offset", "Kind": "Input"},
+        {"Name": "Src1", "Kind": "Input"},
+        {"Name": "Src2", "Kind": "Input"},
+        {"Name": "Passthru", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "lsc_atomic_slm",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Mask"]},
+          {"GetBuiltinOperand": ["Opcode"]},
+          {"GetBuiltinOperand": ["AddrSize"]},
+          {"GetBuiltinOperand": ["ElemSize"]},
+          {"GetBuiltinOperand": ["L1CacheControl"]},
+          {"GetBuiltinOperand": ["L3CacheControl"]},
+          {"GetBuiltinOperand": ["Base"]},
+          {"GetBuiltinOperand": ["Index"]},
+          {"GetBuiltinOperand": ["Scale"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"GetBuiltinOperand": ["Src1"]},
+          {"GetBuiltinOperand": ["Src2"]},
+          {"GetBuiltinOperand": ["Passthru"]}
+        ]
+      }
+    },
+    "AtomicUgm": {
+      "Name": "vector_atomic_ugm",
+      "Operands": [
+        {"Name": "Mask", "Kind": "Input"},
+        {"Name": "Opcode", "Kind": "Input"},
+        {"Name": "AddrSize", "Kind": "Input"},
+        {"Name": "ElemSize", "Kind": "Input"},
+        {"Name": "L1CacheControl", "Kind": "Input"},
+        {"Name": "L3CacheControl", "Kind": "Input"},
+        {"Name": "Base", "Kind": "Input"},
+        {"Name": "Index", "Kind": "Input"},
+        {"Name": "Scale", "Kind": "Input"},
+        {"Name": "Offset", "Kind": "Input"},
+        {"Name": "Src1", "Kind": "Input"},
+        {"Name": "Src2", "Kind": "Input"},
+        {"Name": "Passthru", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "lsc_atomic_ugm",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Mask"]},
+          {"GetBuiltinOperand": ["Opcode"]},
+          {"GetBuiltinOperand": ["AddrSize"]},
+          {"GetBuiltinOperand": ["ElemSize"]},
+          {"GetBuiltinOperand": ["L1CacheControl"]},
+          {"GetBuiltinOperand": ["L3CacheControl"]},
+          {"GetBuiltinOperand": ["Base"]},
+          {"GetBuiltinOperand": ["Index"]},
+          {"GetBuiltinOperand": ["Scale"]},
+          {"GetBuiltinOperand": ["Offset"]},
+          {"GetBuiltinOperand": ["Src1"]},
+          {"GetBuiltinOperand": ["Src2"]},
+          {"GetBuiltinOperand": ["Passthru"]}
+        ]
+      }
+    },
     "All": {
       "Name": "all",
       "Operands": [

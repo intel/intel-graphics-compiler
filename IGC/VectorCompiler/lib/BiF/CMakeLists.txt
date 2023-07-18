@@ -53,7 +53,9 @@ set(BUILTIN_SOURCES
 
   Library/Math/Integer/i64divrem.cpp
   Library/Math/Integer/sdivrem.cpp
-  Library/Math/Integer/udivrem.cpp)
+  Library/Math/Integer/udivrem.cpp
+
+  Library/Atomics/Local/binop.cpp)
 
 vc_embed_optimized_bif(BUILTINS_CPP_PATH "${BUILTIN_SOURCES}" VCBuiltins 64)
 

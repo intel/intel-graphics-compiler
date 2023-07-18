@@ -100,6 +100,11 @@ def FeatureInstr64BitRotate: SubtargetFeature<"bitrotate64",
                                               "true",
                                               "support of 64-bit rol/ror instructions">;
 
+def FeatureInstrLocalIntegerCas64: SubtargetFeature<"localintegercas64",
+                                                    "HasLocalIntegerCas64",
+                                                    "true",
+                                                    "support of local 64-bit integer compare exchange instruction">;
+
 def FeatureHWTIDFromPredef: SubtargetFeature<"hwtidfrompredef",
                                              "GetsHWTIDFromPredef",
                                              "true",
@@ -401,6 +406,7 @@ def : Proc<"XeHPC", [
   FeatureIndirectGRFCrossing,
   FeatureInstr64BitRotate,
   FeatureInstrAdd64,
+  FeatureInstrLocalIntegerCas64,
   FeatureLSCMaxWidth32,
   FeatureLongLong,
   FeaturePartialI64Emulation,

@@ -309,6 +309,27 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
     Func = getBuiltinDeclaration(M, "fptoui", false, {STy});
   } break;
 
+  case vc::InternalIntrinsic::lsc_atomic_slm: {
+    IRBuilder<> Builder(&II);
+    auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
+    if (Opcode->getZExtValue() == LSC_ATOMIC_ICAS)
+      return nullptr;
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+    auto *ETy = VTy->getElementType();
+    if (!ST->hasLocalIntegerCas64() || !ETy->isIntegerTy(64))
+      return nullptr;
+    Func = getBuiltinDeclaration(M, "atomic_slm", false, {VTy});
+
+    auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
+                                                  VTy->getNumElements());
+    auto *Mask = Builder.CreateZExt(II.getArgOperand(0), MaskVTy);
+    SmallVector<Value *, 10> Args = {Mask, Opcode};
+    std::copy(II.arg_begin() + 4, II.arg_end() - 2, std::back_inserter(Args));
+    Args.push_back(II.getArgOperand(12));
+
+    return createLibraryCall(II, Func, Args);
+  }
+
   default:
     break;
   }

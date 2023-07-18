@@ -384,6 +384,82 @@ Value &createMainInst<BuiltinID::Scatter>(const std::vector<Value *> &Operands,
   return *ScatterV;
 }
 
+template <>
+Value &
+createMainInst<BuiltinID::AtomicBti>(const std::vector<Value *> &Operands,
+                                     Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == AtomicBtiOperand::Size &&
+         "builtin operands should be trasformed into VC intrinsic "
+         "vector_atomic_bti "
+         "intrinsic operands without changes");
+
+  auto *RetVTy = cast<IGCLLVM::FixedVectorType>(&RetTy);
+  auto *MaskVTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), RetVTy->getNumElements());
+  auto *MaskV = IRB.CreateTrunc(Operands[AtomicBtiOperand::Mask], MaskVTy);
+
+  std::vector<Value *> Args = Operands;
+
+  Args[AtomicBtiOperand::Mask] = MaskV;
+
+  auto *Decl = getAnyDeclarationForIdFromArgs(
+      RetTy, Args, IntrinsicForBuiltin[BuiltinID::AtomicBti],
+      *IRB.GetInsertBlock()->getModule());
+  auto *CI = IRB.CreateCall(Decl, Args, RetTy.isVoidTy() ? "" : "cmcl.builtin");
+  return *CI;
+}
+
+template <>
+Value &
+createMainInst<BuiltinID::AtomicSlm>(const std::vector<Value *> &Operands,
+                                     Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == AtomicSlmOperand::Size &&
+         "builtin operands should be trasformed into VC intrinsic "
+         "vector_atomic_slm "
+         "intrinsic operands without changes");
+
+  auto *RetVTy = cast<IGCLLVM::FixedVectorType>(&RetTy);
+  auto *MaskVTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), RetVTy->getNumElements());
+  auto *MaskV = IRB.CreateTrunc(Operands[AtomicSlmOperand::Mask], MaskVTy);
+
+  std::vector<Value *> Args = Operands;
+
+  Args[AtomicSlmOperand::Mask] = MaskV;
+
+  auto *Decl = getAnyDeclarationForIdFromArgs(
+      RetTy, Args, IntrinsicForBuiltin[BuiltinID::AtomicSlm],
+      *IRB.GetInsertBlock()->getModule());
+  auto *CI = IRB.CreateCall(Decl, Args, RetTy.isVoidTy() ? "" : "cmcl.builtin");
+  return *CI;
+}
+
+template <>
+Value &
+createMainInst<BuiltinID::AtomicUgm>(const std::vector<Value *> &Operands,
+                                     Type &RetTy, IRBuilder<> &IRB) {
+  assert(Operands.size() == AtomicUgmOperand::Size &&
+         "builtin operands should be trasformed into VC intrinsic "
+         "vector_atomic_ugm "
+         "intrinsic operands without changes");
+
+  auto *RetVTy = cast<IGCLLVM::FixedVectorType>(&RetTy);
+  auto *MaskVTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), RetVTy->getNumElements());
+  auto *MaskV = IRB.CreateTrunc(Operands[AtomicUgmOperand::Mask], MaskVTy);
+
+  std::vector<Value *> Args = Operands;
+
+  Args[AtomicUgmOperand::Mask] = MaskV;
+
+  auto *Decl = getAnyDeclarationForIdFromArgs(
+      RetTy, Args, IntrinsicForBuiltin[BuiltinID::AtomicUgm],
+      *IRB.GetInsertBlock()->getModule());
+  auto *CI = IRB.CreateCall(Decl, Args, RetTy.isVoidTy() ? "" : "cmcl.builtin");
+  return *CI;
+}
+
+
 //----------------------- Rounding operations ----------------------------//
 template <>
 Value &createMainInst<BuiltinID::Ceil>(const std::vector<Value *> &Operands,
