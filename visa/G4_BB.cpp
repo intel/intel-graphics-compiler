@@ -32,13 +32,7 @@ bool G4_BB::isLastInstEOT() const {
     return false;
   }
 
-  // Scan backward because some pass may insert nop after EOT.
-  auto iter = instList.rbegin();
-  G4_INST *i = *iter;
-  while (i->opcode() == G4_nop) {
-    iter++;
-    i = (*iter);
-  }
+  G4_INST *i = instList.back();
 
   if (parent->builder->hasSendShootdown()) {
     // due to send shootdown, a predicated send may not actually be an EOT
