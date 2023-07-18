@@ -19412,13 +19412,8 @@ bool EmitPass::ResourceLoopHeader(
     CVariable* resourceFlag = nullptr;
     CVariable* samplerFlag = nullptr;
     CVariable* offset = nullptr;
-    if (!uniformResource) {
-      label = m_encoder->GetNewLabelID("__opt_resource_loop");
-      m_encoder->AddDivergentResourceLoopLabel(label);
-    } else {
-      label = m_encoder->GetNewLabelID("resource_loop");
-      m_encoder->AddLabel(label);
-    }
+    label = m_encoder->GetNewLabelID("_opt_resource_loop");
+    m_encoder->AddDivergentResourceLoopLabel(label);
     m_encoder->Push();
     if (!uniformResource)
     {
