@@ -11,6 +11,9 @@
 ; RUN: | FileCheck %s --check-prefix=CHECK
 ; RUN: llc %s -march=genx64 -mcpu=XeHPG -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s --check-prefix=CHECK-LSC
+; RUN: llc %s -march=genx64 -mcpu=XeHPC -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: | FileCheck %s --check-prefix=CHECK-LSC-SIMD16
+
 
 target triple = "genx64-unknown-unknown"
 
@@ -24,6 +27,11 @@ declare void @llvm.trap()
 ; CHECK-LSC: test_trap
 ; CHECK-LSC: mov (M1, 8) [[PAYLOAD:V[0-9]+]](0,0)<1> %r0(0,0)<1;1,0>
 ; CHECK-LSC: raw_sends_eot.3.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
+
+; CHECK-LSC-SIMD16: test_trap
+; CHECK-LSC-SIMD16: mov (M1, 16) [[PAYLOAD:V[0-9]+]](0,0)<1> %r0(0,0)<1;1,0>
+; CHECK-LSC-SIMD16: raw_sends_eot.3.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
+
 
 define spir_kernel void @test_trap(<4 x i32> %arg) local_unnamed_addr #0 {
   %1 = shl <4 x i32> %arg, <i32 3, i32 3, i32 3, i32 3>

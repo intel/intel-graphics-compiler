@@ -281,7 +281,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     unsigned Offset = GrfStartOffset;
 
     unsigned ThreadPayloads[] = {
-        Offset // R1, local_id_x, local_id_y, local_id_z
+      Offset, // R1: local_id_x, local_id_y, local_id_z
     };
     auto getImpOffset = [&](uint32_t ArgKind) -> int {
       if (vc::isLocalIDKind(ArgKind))
