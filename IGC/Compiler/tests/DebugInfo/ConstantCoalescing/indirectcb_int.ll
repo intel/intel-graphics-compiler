@@ -24,7 +24,7 @@
 ;
 ; CHECK: entry:
 ; CHECK-DAG: [[EXTR1_V:%[A-z0-9]*]] = extractelement {{.*}}[[LOAD1_V:%[A-z0-9]*]]{{.*}} !dbg [[EXTR1_LOC:![0-9]*]]
-; CHECK-DAG: [[LOAD1_V]] = call <1 x float> {{.*}} !dbg [[LOAD1_LOC:![0-9]*]]
+; CHECK-DAG: [[LOAD1_V]] = call <2 x float> {{.*}} !dbg [[LOAD1_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR2_V:%[A-z0-9]*]] = extractelement {{.*}}[[LOAD2_V:%[A-z0-9]*]]{{.*}} !dbg [[EXTR2_LOC:![0-9]*]]
 ; CHECK-DAG: [[LOAD2_V]] = call <2 x float> {{.*}} !dbg [[LOAD2_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR3_V:%[A-z0-9]*]] = extractelement {{.*}}[[LOAD2_V]]{{.*}} !dbg [[EXTR3_LOC:![0-9]*]]
