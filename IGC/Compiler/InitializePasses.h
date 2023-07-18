@@ -66,7 +66,6 @@ void initializeGenericAddressAnalysisPass(llvm::PassRegistry&);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
 void initializeGenFDIVEmulationPass(llvm::PassRegistry&);
 void initializeGenIRLoweringPass(llvm::PassRegistry&);
-void initializeGEPLoopStrengthReductionPass(llvm::PassRegistry&);
 void initializeGEPLoweringPass(llvm::PassRegistry&);
 void initializeGenSpecificPatternPass(llvm::PassRegistry&);
 void initializeGreedyLiveRangeReductionPass(llvm::PassRegistry&);
