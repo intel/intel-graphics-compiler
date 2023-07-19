@@ -647,7 +647,7 @@ DECLARE_IGC_REGKEY(bool, LTOForStage1Compilation,       true, "LTO for stage 1 c
 DECLARE_IGC_REGKEY(bool, EnableTrackPtr,                false, "Track Staging Context alloc/dealloc", false)
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16,              false,  "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)
 DECLARE_IGC_REGKEY(bool, SaveRestoreIR,                 true,  "Save/Restore IR for staged compilation to avoid duplicated compilations", false)
-DECLARE_IGC_REGKEY(DWORD, SSOShifter,                   9,     "Adjust ScratchSurfaceOffset with shl(hwtid, shifter). 0 menas disabling padding", false)
+DECLARE_IGC_REGKEY(DWORD, SSOShifter,                   0,     "Adjust ScratchSurfaceOffset with shl(hwtid, shifter). 0 menas disabling padding", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatch,                    2,     "Enable Pixel Shader code patching to directly emit code after stitching", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchLimit,               0,     "Debug CodePatch via limiting the number of shader been patched", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchExperiments,         0,      "Experiment with code patching when != 0", false)
