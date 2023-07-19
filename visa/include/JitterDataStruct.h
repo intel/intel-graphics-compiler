@@ -56,6 +56,9 @@ public:
   // spill cost calculation.
   uint32_t numGRFSpillFillWeighted = 0;
 
+  // The limit of scratch space size per kernel
+  uint32_t scratchSpaceSizeLimit = 0;
+
   // spillMemUsed is the scratch size in byte of entire vISA stack for this
   // function/kernel. It contains spill size and caller/callee save size.
   // For kernel/entry functions, the value is the sum of potential callees
