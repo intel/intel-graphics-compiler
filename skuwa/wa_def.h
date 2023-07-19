@@ -56,7 +56,7 @@ SPDX-License-Identifier: MIT
 #define SI_WA_BEFORE(ulRevID, STEPPING) (ulRevID < (int)SI_REV_LO(STEPPING))
 #define SI_WA_UNTIL(ulRevID, STEPPING) (ulRevID <= (int)SI_REV_HI(STEPPING))
 #define SI_WA_FROM(ulRevID, STEPPING) (ulRevID >= (int)SI_REV_LO(STEPPING))
-#define SI_WA_BETWEEN(ulRevID, StepOld, StepNew) ((ulRevID <= (int)SI_REV_HI(StepNew)) && (ulRevID >= (int)SI_REV_LO(StepOld)))
+#define SI_WA_BETWEEN(ulRevID, StepOld, StepNew) ((ulRevID < (int)SI_REV_HI(StepNew)) && (ulRevID >= (int)SI_REV_LO(StepOld)))
 #define SI_WA_FOR_EVER (SIWA_TRUE)
 #define SI_WA_NEVER (SIWA_FALSE)
 
