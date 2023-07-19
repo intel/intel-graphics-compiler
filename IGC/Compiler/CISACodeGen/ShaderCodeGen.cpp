@@ -722,14 +722,20 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     {
         mpm.add(createPruneUnusedArgumentsPass());
 
+        const bool allowIPConstProp =
+            !ctx.m_hasStackCalls &&
+            IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
+
 #if LLVM_VERSION_MAJOR >= 12
-        mpm.add(createIPSCCPPass());
+        if (allowIPConstProp) {
+            mpm.add(createIPSCCPPass());
+        }
+        // Note / todo: LLVM < 12 also runs simple constant propagation pass regardless
+        // of IPSCCP in this case.
+        // This pass is not available on >= 12 version, but maybe SCCP pass would
+        // be suitable here.
 #else
-        if (!ctx.m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation))
-        {
-            // Don't run IPConstantProp when stackcalls are present.
-            // Let global constants be relocated inside stack funcs.
-            // We cannot process SLM constants inside stackcalls, so don't propagate them.
+        if (allowIPConstProp) {
             mpm.add(createIPConstantPropagationPass());
         }
         mpm.add(createConstantPropagationPass());
@@ -1217,14 +1223,24 @@ void OptimizeIR(CodeGenContext* const pContext)
             // possible which potentially allows late stage code sinking of
             // those calls by the instruction combiner.
             mpm.add(createPostOrderFunctionAttrsLegacyPass());
-#if LLVM_VERSION_MAJOR >= 12
-            mpm.add(createIPSCCPPass());
-#else
-            mpm.add(createConstantPropagationPass());
 
             // Don't run IPConstantProp if there are stackcalls
-            if (!pContext->m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation))
+            const bool allowIPConstProp =
+                !pContext->m_hasStackCalls &&
+                IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
+
+#if LLVM_VERSION_MAJOR >= 12
+            if (allowIPConstProp) {
+                mpm.add(createIPSCCPPass());
+            }
+            // Note / todo: LLVM < 12 also runs simple constant propagation pass
+            // regardless of IPSCCP in this case. This pass is not available on
+            // >= 12 version, but maybe SCCP pass would be suitable here.
+#else
+            mpm.add(createConstantPropagationPass());
+            if (allowIPConstProp) {
                 mpm.add(createIPConstantPropagationPass());
+            }
 #endif
         }
         if (IGC_IS_FLAG_ENABLED(MSAA16BitPayloadEnable) &&
