@@ -958,12 +958,6 @@ bool needsWAForThreadsUtilization() const
            m_platformInfo.eProductFamily == IGFX_METEORLAKE;
 }
 
-bool supportTileYOptimizations() const
-{
-    // EnableNewTileYCheck and KeepTileYForFlattened are needed on DG2 only
-    return (m_platformInfo.eProductFamily == IGFX_DG2);
-}
-
 bool supportDualSimd8PS() const
 {
     return IGC_IS_FLAG_ENABLED(EnableDualSIMD8) && (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE);
