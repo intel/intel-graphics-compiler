@@ -216,8 +216,39 @@ static const char *nameLayout(unsigned layout) {
     }
 }
 
+static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool useSG16) {
+    if (!useSG16)
+        return false;
+
+    if (desc->layout == LayoutPackedA) {
+        if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 16)
+            return true;
+        if (desc->rows == 32 && desc->columns == 16 && desc->bitWidth == 16)
+            return true;
+    }
+
+    if (desc->layout == LayoutPackedB) {
+        if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 16)
+            return true;
+        if (desc->rows == 16 && desc->columns == 64 && desc->bitWidth == 16)
+            return true;
+    }
+
+    if (desc->layout == LayoutRowMajor) {
+        if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 32)
+            return true;
+        if (desc->rows == 32 && desc->columns == 64 && desc->bitWidth == 32)
+            return true;
+    }
+
+    return false;
+}
+
 bool JointMatrixFuncsResolutionPass::ValidateLoadStore
         (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx) {
+    if (isSupprtedLargeSlice(desc, m_Ctx->platform.hasExecSize16DPAS())) {
+        return true;
+    }
     SupportedParams params = getSupportedParams(desc, m_Ctx->platform.hasExecSize16DPAS());
     ParamsCheckResult result = checkSupportedParams(desc, operationLayout, params, &m_Ctx->platform);
     if (result != ALL_VALID) {
@@ -606,6 +637,29 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     LLVMContext &ctx = opaqueType->getContext();
 
     Type *resolvedType = nullptr;
+    /* Large slice support: */
+    if (desc.layout == LayoutPackedA && desc.rows == 32 && desc.columns == 16) {
+        Type *baseType = Type::getInt16Ty(ctx);
+        return IGCLLVM::FixedVectorType::get(baseType, 32);
+    }
+    if (desc.layout == LayoutPackedB && desc.rows == 16 && desc.columns == 64) {
+        Type *baseType = Type::getInt32Ty(ctx);
+        return IGCLLVM::FixedVectorType::get(baseType, 32);
+    }
+    if (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 64) {
+        Type *baseType = Type::getInt64Ty(ctx);
+        return IGCLLVM::FixedVectorType::get(baseType, 32);
+    }
+
+    if (desc.layout == LayoutPackedA && desc.rows == 16 && desc.columns == 16) {
+        Type *baseType = Type::getInt16Ty(ctx);
+        return IGCLLVM::FixedVectorType::get(baseType, 16);
+    }
+    if (desc.layout == LayoutRowMajor && desc.rows == 16 && desc.columns == 16) {
+        Type *baseType = Type::getInt32Ty(ctx);
+        return IGCLLVM::FixedVectorType::get(baseType, 16);
+    }
+
     if (desc.layout == LayoutPackedA) {
         Type *baseType = Type::getInt32Ty(ctx);
         bool isTF32 = (desc.isFloating) && (desc.bitWidth == 32);
@@ -740,6 +794,59 @@ static PrecisionType getElementPrecison(const JointMatrixTypeDescription *desc, 
   return PrecisionType::PRECISION_UNUSED;
 }
 
+static const char *getElementName(PrecisionType P) {
+    switch (P) {
+        case PrecisionType::FP16: return "fp16_";
+        case PrecisionType::BF16: return "bf16_";
+        case PrecisionType::U8: return "u8_";
+        case PrecisionType::S8: return "s8_";
+        default: return "i32_";
+    };
+}
+
+static bool isMADSupportedAsBuiltin(unsigned M, unsigned N, unsigned K) {
+    if (M == 16 && N == 16 && K == 16)
+        return true;
+    if (M == 32 && N == 64 && K == 16)
+        return true;
+    return false;
+}
+
+static std::string getMADBuiltinName
+        (unsigned M, unsigned N, unsigned K, PrecisionType PA, PrecisionType PB, bool isFloating) {
+    std::string funcName = "__builtin_spriv_OpJointMatrixMadINTEL_";
+    funcName += std::to_string(M) + "x" + std::to_string(N) + "x" + std::to_string(K) + "_";
+
+    funcName += getElementName(PA);
+    funcName += getElementName(PB);
+
+    if (isFloating) {
+        funcName += "fp32";
+    } else {
+        funcName += "i32";
+    }
+
+    return funcName;
+}
+
+static Function *getMADBuiltin(Module *Mod, unsigned M, unsigned N, unsigned K, PrecisionType PA, PrecisionType PB, bool isFloating) {
+    std::string funcName = getMADBuiltinName(M, N, K, PA, PB, isFloating);
+
+    Type *retTy = Type::getVoidTy(Mod->getContext());
+    Type *argTy = Type::getInt8PtrTy(Mod->getContext(), ADDRESS_SPACE_PRIVATE);
+
+    FunctionType *funcType =
+        FunctionType::get(retTy, { argTy, argTy, argTy, argTy }, false);
+
+    Function *f = Mod->getFunction(funcName);
+    if (f == nullptr) {
+        f = Function::Create(funcType, GlobalValue::ExternalLinkage, funcName, Mod);
+        f->setCallingConv(CallingConv::SPIR_FUNC);
+        f->addFnAttr(llvm::Attribute::NoUnwind);
+    }
+    return f;
+}
+
 Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned OperationType) {
     Value *aMatVal = CI->getArgOperand(0);
     Value *bMatVal = CI->getArgOperand(1);
@@ -767,35 +874,73 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     IGC_ASSERT_MESSAGE(PA != PrecisionType::PRECISION_UNUSED, "Invalid matrix A element type.");
     IGC_ASSERT_MESSAGE(PB != PrecisionType::PRECISION_UNUSED, "Invalid matrix B element type.");
 
-    int SD = 8; // systolic depth, only 8 supported currently
-    int RC = aDesc.rows; // repeat count, from 1 to 8
-
-    IGC_ASSERT_MESSAGE(RC >= 1 && RC <= 8,  "Unexpected repeat count in MAD operaion.");
-
-    bool IsDpasw = false; // is wide
-
-    LLVMContext& Ctx = CI->getContext();
-    Type* intTy = Type::getInt32Ty(Ctx);
-    Type* boolTy = Type::getInt1Ty(Ctx);
-
-    Value* args[8];
-    args[0] = Resolve(cMatVal);
-    args[1] = Resolve(aMatVal);
-    args[2] = Resolve(bMatVal);
-    args[3] = ConstantInt::get(intTy, PA);
-    args[4] = ConstantInt::get(intTy, PB);
-    args[5] = ConstantInt::get(intTy, SD);
-    args[6] = ConstantInt::get(intTy, RC);
-    args[7] = ConstantInt::get(boolTy, IsDpasw);
-
-    Type* ITys[4] = { cMatTy, cMatTy, aMatTy, bMatTy };
+    const unsigned M = aDesc.rows;
+    const unsigned N = bDesc.columns;
+    const unsigned K = bDesc.rows;
 
     Module *Mod = CI->getParent()->getModule();
-    GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    Function *dpasFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
-    Instruction *dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), CI);
-    dpasCall->setDebugLoc(CI->getDebugLoc());
+    Instruction *dpasCall = nullptr;
+    if (isMADSupportedAsBuiltin(M, N, K)) {
+        Function *madFunc = getMADBuiltin(Mod, M, N, K, PA, PB, cDesc.isFloating);
 
+        Value *aMat = Resolve(aMatVal);
+        Value *bMat = Resolve(bMatVal);
+        Value *cMat = Resolve(cMatVal);
+
+        IRBuilder builder(CI);
+
+        Value *sliceA = builder.CreateAlloca(aMat->getType(), ADDRESS_SPACE_PRIVATE);
+        Value *sliceB = builder.CreateAlloca(bMat->getType(), ADDRESS_SPACE_PRIVATE);
+        Value *sliceC = builder.CreateAlloca(cMat->getType(), ADDRESS_SPACE_PRIVATE);
+        Value *sliceD = builder.CreateAlloca(cMat->getType(), ADDRESS_SPACE_PRIVATE);
+
+        builder.CreateStore(aMat, sliceA);
+        builder.CreateStore(bMat, sliceB);
+        builder.CreateStore(cMat, sliceC);
+
+        LLVMContext &ctx = CI->getContext();
+        Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+
+        Value *ptrA = builder.CreateBitCast(sliceA, arrayTy);
+        Value *ptrB = builder.CreateBitCast(sliceB, arrayTy);
+        Value *ptrC = builder.CreateBitCast(sliceC, arrayTy);
+        Value *ptrD = builder.CreateBitCast(sliceD, arrayTy);
+
+        Value* args[4] = { ptrA, ptrB, ptrC, ptrD };
+
+        builder.CreateCall(madFunc, args);
+        dpasCall = builder.CreateLoad(cMat->getType(), sliceD);
+    } else {
+        int SD = 8; // systolic depth, only 8 supported currently
+        int RC = aDesc.rows; // repeat count, from 1 to 8
+
+        IGC_ASSERT_MESSAGE(RC >= 1 && RC <= 8,  "Unexpected repeat count in MAD operaion.");
+
+        bool IsDpasw = false; // is wide
+
+        LLVMContext& Ctx = CI->getContext();
+        Type* intTy = Type::getInt32Ty(Ctx);
+        Type* boolTy = Type::getInt1Ty(Ctx);
+
+        Value* args[8];
+        args[0] = Resolve(cMatVal);
+        args[1] = Resolve(aMatVal);
+        args[2] = Resolve(bMatVal);
+        args[3] = ConstantInt::get(intTy, PA);
+        args[4] = ConstantInt::get(intTy, PB);
+        args[5] = ConstantInt::get(intTy, SD);
+        args[6] = ConstantInt::get(intTy, RC);
+        args[7] = ConstantInt::get(boolTy, IsDpasw);
+
+        Type* ITys[4] = { cMatTy, cMatTy, aMatTy, bMatTy };
+
+        GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_sub_group_dpas;
+        Function *dpasFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
+        dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), CI);
+    }
+
+    /* TODO: null check and throw error here */
+    dpasCall->setDebugLoc(CI->getDebugLoc());
     InstsToErase.insert(CI);
 
     return dpasCall;
