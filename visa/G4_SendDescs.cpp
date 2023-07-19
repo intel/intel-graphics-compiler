@@ -1426,7 +1426,68 @@ std::string G4_SendDescRaw::getDescription() const {
   case SFID::UGML: {
     LscOpInfo opInfo{};
     if (LscOpInfoFind((LSC_OP)(desc.value & 0x3F), opInfo)) { // Desc[5:0]
-      return opInfo.mnemonic;
+      std::stringstream ss;
+      if (opInfo.isLoad() || opInfo.isStore() || opInfo.isAtomic()) {
+        std::string sop = opInfo.mnemonic; // lsc_load
+        if (sop.substr(0, 4) == "lsc_")
+          sop = sop.substr(4); // lsc_load => load
+        ss << sop << "." << ToSymbol(sfid); // leave out .ugm or .slm
+        if (opInfo.hasChMask()) {
+          auto cmask = (int)getBitField(desc.value, 12, 4);
+          ss << ".";
+          for (int i = 0; i < 4;i ++)
+            if (cmask & (1 << i))
+              ss << "xyzw"[i];
+        } else {
+          auto dsz = getBitField(desc.value, 9, 3);
+          switch (dsz) {
+          case 0: ss << ".d8"; break;
+          case 1: ss << ".d16"; break;
+          case 2: ss << ".d32"; break;
+          case 3: ss << ".d64"; break;
+          case 4: ss << ".d8u32"; break;
+          case 5: ss << ".d16u32"; break;
+          default: ss << ".d??"; break;
+          }
+          auto vec = getBitField(desc.value, 12, 3);
+          switch (vec) {
+          case 0: break;
+          case 1: ss << "x2"; break;
+          case 2: ss << "x3"; break;
+          case 3: ss << "x4"; break;
+          case 4: ss << "x8"; break;
+          case 5: ss << "x16"; break;
+          case 6: ss << "x32"; break;
+          case 7: ss << "x64"; break;
+          default: ss << "x?"; break;
+          }
+          if (getBitField(desc.value, 15, 1))
+            ss << "t";
+        }
+        switch (getBitField(desc.value, 7, 2)) {
+        case 2: ss << ".a32"; break;
+        case 3: ss << ".a64"; break;
+        default: ss << "a?"; break;
+        }
+        switch (getBitField(desc.value, 29, 2)) {
+        case 0: ss << " flat[A"; break;
+        case 1: ss << " bss[..][A"; break;
+        case 2: ss << " ss[..][A"; break;
+        case 3: ss << " bti[..][A"; break;
+        default: ss << " ???[A"; break;
+        }
+        if (auto immOff = getOffset()) {
+          if (immOff->is2d) {
+            ss << "+(" <<
+              fmtSignedHex(immOff->immOffX) << "," <<
+              fmtSignedHex(immOff->immOffY) << ")";
+          } else {
+            ss << fmtSignedHexTerm(immOff->immOff);
+          }
+        }
+        ss << "]";
+      }
+      return ss.str();
     } else {
       const char *invalid = "lsc (invalid operation)";
       return invalid;

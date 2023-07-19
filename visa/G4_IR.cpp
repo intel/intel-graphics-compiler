@@ -3552,18 +3552,15 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
 
   output << msgDesc->getDescription();
 
-  if (msgDesc->isRaw()) {
+  if (msgDesc->isRaw() && !msgDesc->isLSC()) {
+    // LSC prints offset in getDescription; only emit it here for legacy
+    // messages such as hword scratch block
     if (auto immOff = msgDesc->getOffset()) {
       int signedOff = immOff->immOff;
-      if (immOff->is2d) {
-        output << "; ImmOff=(" << fmtHex(immOff->immOffX) << " elems,"
-               << fmtHex(immOff->immOffY) << " elems)";
-      } else {
-        if (signedOff > 0) {
-          output << "; ImmOff=+" << fmtHex(signedOff);
-        } else if (signedOff < 0) {
-          output << "; ImmOff=-" << fmtHex(-signedOff);
-        }
+      if (signedOff > 0) {
+        output << "; ImmOff=+" << fmtHex(signedOff);
+      } else if (signedOff < 0) {
+        output << "; ImmOff=-" << fmtHex(-signedOff);
       }
     }
   }
