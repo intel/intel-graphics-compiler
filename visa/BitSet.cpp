@@ -18,6 +18,7 @@ void BitSet::create(unsigned size) {
 
   if (size == 0) {
     free(m_BitSetArray);
+    m_BitSetArray = nullptr;
     m_Size = 0;
     return;
   }

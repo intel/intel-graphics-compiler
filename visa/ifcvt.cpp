@@ -431,9 +431,11 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
       continue;
     }
 
+    vASSERT(s0);
+
     // Conservatively skip if BB is set with G4_BB_KEEP_TYPE
     if ((t && (t->getBBType() & G4_BB_KEEP_TYPE)) ||
-      (s0 && (s0->getBBType() & G4_BB_KEEP_TYPE)) ||
+      ((s0->getBBType() & G4_BB_KEEP_TYPE)) ||
       (s1 && (s1->getBBType() & G4_BB_KEEP_TYPE))) {
       continue;
     }
@@ -443,7 +445,7 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
     unsigned n0 = getPredictableInsts(s0, ifInst);
     unsigned n1 = s1 ? getPredictableInsts(s1, ifInst) : 0;
 
-    if (s0 && s1) {
+    if (s1) {
       if (((n0 > 0) && (n0 < FullyConvertibleMaxInsts)) &&
           ((n1 > 0) && (n1 < FullyConvertibleMaxInsts))) {
         // Both 'if' and 'else' are profitable to be if-converted.

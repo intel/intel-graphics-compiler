@@ -1264,7 +1264,7 @@ void HWConformity::fixOpnds(INST_LIST_ITER it, G4_BB *bb, G4_Type &exType) {
   if (src1_use_VxH) {
     if ((INST_COMMUTATIVE(inst->opcode()) || inst->opcode() == G4_cmp) &&
         !src0_use_VxH &&
-        !(inst->opcode() == G4_mul && IS_DTYPE(src0->getType()))) {
+        !(inst->opcode() == G4_mul && src0 && IS_DTYPE(src0->getType()))) {
       inst->swapSrc(0, 1);
       if (inst->opcode() == G4_cmp) {
         // change condMod
@@ -2149,9 +2149,9 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB *bb) {
 void HWConformity::fixDstHstride(INST_LIST_ITER i, int extypesize) {
   G4_INST *inst = *i;
   G4_DstRegRegion *dst = inst->getDst();
-  int dst_elsize = dst->getTypeSize();
 
   if (dst) {
+    int dst_elsize = dst->getTypeSize();
     unsigned short hs = dst->getHorzStride();
     if (hs * dst_elsize < extypesize) {
       dst->setHorzStride((unsigned short)(extypesize / dst_elsize));

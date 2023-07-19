@@ -2050,7 +2050,7 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
 CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
 {
     IGCLLVM::FixedVectorType* VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
-    if (C && VTy)
+    if (VTy)
     {   // Vector constant
         llvm::Type* eTy = VTy->getElementType();
         IGC_ASSERT_MESSAGE((VTy->getNumElements() < (UINT16_MAX)), "getNumElements more than 64k elements");

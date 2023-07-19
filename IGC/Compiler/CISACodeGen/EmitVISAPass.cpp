@@ -21056,6 +21056,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
 
         m_encoder->SetSrcSubVar(0, subvar);
         m_encoder->SetSrcRegion(0, 0, 1, 0);
+        IGC_ASSERT(nullptr != gatherDst);
         CVariable* newDst = m_currShader->BitCast(gatherDst, ISA_TYPE_UD);
         m_encoder->SetP(flag, newDst);
         m_encoder->Push();

@@ -1193,10 +1193,12 @@ public:
         SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(
             mybin, G9HDL::VERTSTRIDE_4_ELEMENTS);
       }
-    } else if (EncodingHelper::GetSrcAddrMode(src0) ==
-               ADDR_MODE_INDIR) { // indirect
-      SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(
-          mybin, G9HDL::VERTSTRIDE_VXH_OR_VX1_MODE);
+    } else {
+      vASSERT(src0);
+      if (EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_INDIR) { // indirect
+        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(
+            mybin, G9HDL::VERTSTRIDE_VXH_OR_VX1_MODE);
+      }
     }
   }
 

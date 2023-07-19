@@ -621,8 +621,7 @@ void LVN::removePhysicalVarRedefs(G4_DstRegRegion *dst) {
       auto item = (*it);
       bool erase = false;
 
-      auto dstTopDcl =
-          item->inst->getDst() ? item->inst->getDst()->getTopDcl() : nullptr;
+      auto dstTopDcl = item->inst->getDst()->getTopDcl();
       if (dstTopDcl->getRegVar()->isGreg()) {
         if (sameGRFRef(topdcl, dstTopDcl)) {
           item->active = false;

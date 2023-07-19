@@ -141,15 +141,17 @@ namespace {
             bool OrLocal) {
             // Pointers to constant address space memory, well, point to constant memory
             PointerType* ptrType = dyn_cast<PointerType>(Loc.Ptr->getType());
-            if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
-                return true;
+            if (ptrType) {
+                if (ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
+                    return true;
 
-            bool DirectIdx;
-            unsigned BufId;
-            BufferType BufTy = DecodeAS4GFXResource(ptrType->getAddressSpace(),
-                DirectIdx, BufId);
-            if (BufTy == CONSTANT_BUFFER)
-                return true;
+                bool DirectIdx;
+                unsigned BufId;
+                BufferType BufTy = DecodeAS4GFXResource(ptrType->getAddressSpace(),
+                    DirectIdx, BufId);
+                if (BufTy == CONSTANT_BUFFER)
+                    return true;
+            }
 
             return AAResultBase::pointsToConstantMemory(Loc,
 #if LLVM_VERSION_MAJOR >= 9

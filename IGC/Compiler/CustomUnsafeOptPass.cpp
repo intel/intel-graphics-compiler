@@ -3672,7 +3672,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
             }
             else if (GetOpCode(&II) == llvm_max)
             {
-                auto* CI = dyn_cast<CallInst>(&II);
+                auto* CI = cast<CallInst>(&II);
                 OptCandidate = DPMaxPatternEnable &&
                     DotProductSourceMatch(CI) && canOptimizeDotProduct(Values, &II);
                 // Lower the ratio threshold for this case

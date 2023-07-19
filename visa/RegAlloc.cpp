@@ -50,7 +50,7 @@ bool LivenessAnalysis::isLocalVar(G4_Declare *decl) const {
     return false;
 
   LocalLiveRange *dclLR = gra.getLocalLR(decl);
-  if (decl && dclLR && dclLR->isLiveRangeLocal() &&
+  if (dclLR && dclLR->isLiveRangeLocal() &&
       decl->getRegFile() != G4_INPUT) {
     return true;
   }

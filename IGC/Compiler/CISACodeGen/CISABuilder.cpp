@@ -8627,12 +8627,7 @@ namespace IGC
         VISA_RawOpnd* dstOpnd = GetRawDestination(dst);
         VISA_RawOpnd* src0Opnd = GetRawSource(src0);
         VISA_RawOpnd* src1Opnd = nullptr; // vISA accepts nullptr
-        VISA_RawOpnd* src0AddrOpnd = nullptr; // vISA accepts nullptr
-
-        if (offset != nullptr)
-        {
-            src0AddrOpnd = GetRawSource(offset);
-        }
+        VISA_RawOpnd* src0AddrOpnd = GetRawSource(offset); // vISA accepts nullptr
 
         if (src1 != nullptr)
         {

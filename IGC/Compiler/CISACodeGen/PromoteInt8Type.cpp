@@ -566,6 +566,7 @@ void PromoteInt8Type::promoteInstructions()
                 case Instruction::Or:
                 case Instruction::Xor:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     BinaryOperator* BinOp = cast<BinaryOperator>(Inst);
                     newVal = m_builder->CreateBinOp(
                         BinOp->getOpcode(),
@@ -577,6 +578,7 @@ void PromoteInt8Type::promoteInstructions()
                 case Instruction::SDiv:
                 case Instruction::SRem:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     // trunc first, then extend
                     Value* nV0 = m_builder->CreateSExt(getI8Value(v0), i16Ty, "b2s");
                     Value* nV1 = m_builder->CreateSExt(getI8Value(v1), i16Ty, "b2s");
@@ -591,6 +593,7 @@ void PromoteInt8Type::promoteInstructions()
                 case Instruction::UDiv:
                 case Instruction::URem:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     // trunc first, then extend
                     Value* nV0 = m_builder->CreateZExt(getI8Value(v0), i16Ty, "b2s");
                     Value* nV1 = m_builder->CreateZExt(getI8Value(v1), i16Ty, "b2s");
@@ -604,18 +607,21 @@ void PromoteInt8Type::promoteInstructions()
                 }
                 case Instruction::AShr:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     Value* nV0 = m_builder->CreateSExt(getI8Value(v0), i16Ty, "b2s");
                     newVal = m_builder->CreateAShr(nV0, getUI16Value(v1), "b2s");
                     break;
                 }
                 case Instruction::LShr:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     Value* nV0 = m_builder->CreateZExt(getI8Value(v0), i16Ty, "b2s");
                     newVal = m_builder->CreateLShr(nV0, getUI16Value(v1), "b2s");
                     break;
                 }
                 case Instruction::Shl:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     // upper 8-bit does not matter
                     newVal = m_builder->CreateShl(getSI16Value(v0), getUI16Value(v1), "b2s");
                     break;
@@ -645,6 +651,7 @@ void PromoteInt8Type::promoteInstructions()
                 }
                 case Instruction::Select:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     Value* v2 = Inst->getOperand(2);
                     Value* si16v1 = getSI16Value(v1);
                     Value* si16v2 = getSI16Value(v2);
@@ -673,6 +680,7 @@ void PromoteInt8Type::promoteInstructions()
                 }
                 case Instruction::ExtractElement:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     ValueInfo* vinfo = getValInfo(v0);
                     // vector operand
                     //    not promoted : if it isn't constant and marked to be not promoted;
@@ -701,6 +709,7 @@ void PromoteInt8Type::promoteInstructions()
                 }
                 case Instruction::InsertElement:
                 {
+                    IGC_ASSERT(nullptr != v1);
                     ValueInfo* vinfo = getValInfo(Inst->getOperand(0));
                     IGC_ASSERT_MESSAGE((!vinfo || vinfo->NeedPromote), "IEI's vector operands and dst shall be both promoted!");
                     Value* v2 = Inst->getOperand(2);
