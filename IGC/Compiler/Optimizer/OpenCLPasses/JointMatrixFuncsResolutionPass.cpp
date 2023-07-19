@@ -162,7 +162,7 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
         params.layouts |= 1 << LayoutColumnMajor;
         params.layouts |= 1 << LayoutPackedB;
         params.layouts |= 1 << LayoutPackedA; /* PackedA means just packed in the new version of spec. */
-        params.layouts |= 1 << LayoutRowMajor; /*for tf32*/
+        params.layouts |= 1 << LayoutRowMajor; /* for tf32 and VNNIed layouts */
     } else { /* accumulator */
         params.maxRows = maxSliceBitWidth / desc->bitWidth;
         params.columns = useSG16 ? 16 : 8;
