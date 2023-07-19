@@ -38,7 +38,6 @@ SPDX-License-Identifier: MIT
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
 #include <functional>
-#include "iStdLib/utility.h"
 
 typedef unsigned int uint;
 
@@ -370,22 +369,6 @@ namespace IGC
             }
         }
         return  false;
-    }
-
-    static unsigned int allowedTgSlmSize[12] = { 0,1,2,4,8,16,24,32,48,64,96,128 };
-    inline unsigned int roundUpTgSlmSize(unsigned int size, bool allowNonPowerOfTwoSize)
-    {
-        if (allowNonPowerOfTwoSize)
-        {
-            for (int i = 0; i < 12; i++)
-            {
-                if (size <= allowedTgSlmSize[i]*1024)
-                {
-                    return allowedTgSlmSize[i] * 1024;
-                }
-            }
-        }
-        return iSTD::RoundPower2((DWORD)size);
     }
 
     // Return a unique entry function.
