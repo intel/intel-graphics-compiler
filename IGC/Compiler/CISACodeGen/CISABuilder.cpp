@@ -4014,20 +4014,20 @@ namespace IGC
             ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
             AllowSpill = !ClContext->m_InternalOptions.NoSpill;
 
-            if (ClContext->m_InternalOptions.GTPinReRA)
+            if (ClContext->m_Options.GTPinReRA)
             {
                 SaveOption(vISA_GTPinReRA, true);
                 SaveOption(vISA_ReRAPostSchedule, true);
             }
-            if (ClContext->m_InternalOptions.GTPinGRFInfo)
+            if (ClContext->m_Options.GTPinGRFInfo)
             {
                 SaveOption(vISA_GetFreeGRFInfo, true);
             }
-            if (ClContext->m_InternalOptions.GTPinScratchAreaSize)
+            if (ClContext->m_Options.GTPinScratchAreaSize)
             {
-                SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_InternalOptions.GTPinScratchAreaSizeValue);
+                SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_Options.GTPinScratchAreaSizeValue);
             }
-            if (ClContext->m_InternalOptions.GTPinIndirRef)
+            if (ClContext->m_Options.GTPinIndirRef)
             {
                 SaveOption(vISA_GTPinGetIndirRef, true);
             }
