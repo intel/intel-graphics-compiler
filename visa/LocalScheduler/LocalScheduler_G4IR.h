@@ -693,7 +693,8 @@ public:
     }
 
     // 2, check dst data type: dst can only be byte type, and all insts in the
-    // block have the same dst type Todo: support word and dword dst types.
+    // block have the same dst type
+    // Todo: support word and dword dst types.
     if ((dstType == Type_UNDEF && !IS_BTYPE(dst->getType())) ||
         (dstType != Type_UNDEF && dst->getType() != dstType)) {
       return false;
@@ -741,6 +742,10 @@ public:
     if (dst->getHorzStride() == 1 && execSize != 1) {
       return false;
     }
+
+    // 8, conditional modifiers are not used
+    if (inst->getCondMod())
+      return false;
 
     return true;
   }
