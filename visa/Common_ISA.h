@@ -147,7 +147,10 @@ struct var_info_t {
   VISA_Type getType() const { return (VISA_Type)(bit_properties & 0xF); }
 
   VISA_Align getAlignment() const {
-    return (VISA_Align)((bit_properties >> 4) & 0xF);
+    VISA_Align alignment = (VISA_Align)((bit_properties >> 4) & 0xF);
+    vASSERT(alignment <= ALIGN_TOTAL_NUM);
+
+    return alignment;
   }
 
   VISA_Align getTypeAlignment(unsigned grfSize) const {
