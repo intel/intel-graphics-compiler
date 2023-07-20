@@ -964,10 +964,6 @@ void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm:
     {
         elemSize = 32;
     }
-    else if (funcName.consume_front("_u64"))
-    {
-        elemSize = 64;
-    }
 
     if (elemSize == 0)
     {
@@ -989,29 +985,21 @@ void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm:
         // __builtin_IB_subgroup_block_read_flat_u16_m2k16v2
         // __builtin_IB_subgroup_block_read_flat_u16_m4k16v2
         // __builtin_IB_subgroup_block_read_flat_u16_m8k16v2
-        if (funcName.consume_front("_m32"))
+        if (funcName.consume_front("_m1"))
         {
-            tileHeight = 32;
-        }
-        else if (funcName.consume_front("_m16"))
-        {
-            tileHeight = 16;
-        }
-        else if (funcName.consume_front("_m8"))
-        {
-            tileHeight = 8;
-        }
-        else if (funcName.consume_front("_m4"))
-        {
-            tileHeight = 4;
+            tileHeight = 1;
         }
         else if (funcName.consume_front("_m2"))
         {
             tileHeight = 2;
         }
-        else if (funcName.consume_front("_m1"))
+        else if (funcName.consume_front("_m4"))
         {
-            tileHeight = 1;
+            tileHeight = 4;
+        }
+        else if (funcName.consume_front("_m8"))
+        {
+            tileHeight = 8;
         }
         else
         {
@@ -1019,21 +1007,17 @@ void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm:
             return;
         }
 
-        if (funcName.consume_front("k64"))
+        if (funcName.consume_front("k8"))
         {
-            tileWidth = 64;
-        }
-        else if (funcName.consume_front("k32"))
-        {
-            tileWidth = 32;
+            tileWidth = 8;
         }
         else if (funcName.consume_front("k16"))
         {
             tileWidth = 16;
         }
-        else if (funcName.consume_front("k8"))
+        else if (funcName.consume_front("k32"))
         {
-            tileWidth = 8;
+            tileWidth = 32;
         }
         else
         {
