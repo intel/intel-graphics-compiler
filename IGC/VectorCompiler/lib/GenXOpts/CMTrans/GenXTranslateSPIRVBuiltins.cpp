@@ -98,8 +98,9 @@ Value *SPIRVExpander::emitMathIntrinsic(IRBuilder<> &Builder, unsigned IID,
 
 Value *SPIRVExpander::emitFDiv(IRBuilder<> &Builder, Value *L, Value *R,
                                bool ARCP) {
-  auto *FDiv = cast<Instruction>(Builder.CreateFDiv(L, R));
-  FDiv->setHasAllowReciprocal(ARCP);
+  auto *FDiv = Builder.CreateFDiv(L, R);
+  if (auto *FDivInst = dyn_cast<Instruction>(FDiv))
+    FDivInst->setHasAllowReciprocal(ARCP);
   return FDiv;
 }
 

@@ -123,10 +123,10 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
+#include "Probe/Assertion.h"
 #include <algorithm>
 #include <iterator>
 #include <numeric>
-#include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "genx-lowering"
 
@@ -204,7 +204,7 @@ public:
 private:
   bool widenSIMD8GatherScatter(CallInst *CI, unsigned IID);
   bool lowerMediaWalkerAPIs(CallInst *CI, unsigned IID);
-  bool translateSLMOWord(CallInst* CI, unsigned IID);
+  bool translateSLMOWord(CallInst *CI, unsigned IID);
   bool splitGatherScatter(CallInst *CI, unsigned IID);
   bool processTwoAddressOpnd(CallInst *CI);
   bool processInst(Instruction *Inst);
@@ -251,8 +251,9 @@ private:
   bool lowerFMulAdd(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
-  bool lowerF32MathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
-  bool lowerF32FastMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
+  bool lowerMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID,
+                          bool IsHalfAllowed = false);
+  bool lowerFastMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
   bool lowerSlmInit(CallInst *CI);
   bool lowerStackSave(CallInst *CI);
   bool lowerStackRestore(CallInst *CI);
@@ -439,7 +440,8 @@ static Value *generatePredicateForLoadWrregion(
   Value *Pred = OldPred;
   // If old predicate is result of rdpredregion or shufflevector then
   // we can reuse their predicate and offset to avoid double read of predicate.
-  if (GenXIntrinsic::getGenXIntrinsicID(OldPred) == GenXIntrinsic::genx_rdpredregion) {
+  if (GenXIntrinsic::getGenXIntrinsicID(OldPred) ==
+      GenXIntrinsic::genx_rdpredregion) {
     auto *OldPredInst = cast<CallInst>(OldPred);
     Offset += cast<ConstantInt>(OldPredInst->getArgOperand(1))->getZExtValue();
     Pred = OldPredInst->getArgOperand(0);
@@ -480,9 +482,9 @@ static Value *generatePredicatedWrregion(Value *OldVal, Value *NewVal,
                             InsertBefore->getDebugLoc());
 }
 
-
 // Generate partial write for result of splitted 1-channel load instruction.
-// Initially we could have following sequence for illegal load (on gather_scaled example):
+// Initially we could have following sequence for illegal load (on gather_scaled
+// example):
 //   res = gather_scaled <32>
 //   mask = rdpredregion <32> pred, offset
 //   newV = wrregion <32> oldV, res, wroffset, mask
@@ -529,8 +531,8 @@ static Value *generate1ChannelWrrregion(Value *Target, unsigned InitialOffset,
 //   newV = wrregion <64> oldV, res, wroffset, mask
 // After:
 // bale {
-//   res1temp = gather4_scaled <16> RG ; create temporary (unnecessary in case of non-atomics)
-//   splitmask1 = rdpredregion <32> pred, offset ; replicated
+//   res1temp = gather4_scaled <16> RG ; create temporary (unnecessary in case
+//   of non-atomics) splitmask1 = rdpredregion <32> pred, offset ; replicated
 //   res1 = wrregion <32> undef, res1temp, 0, splitmask1
 // }
 // bale {
@@ -575,8 +577,9 @@ static Value *generateNChannelWrregion(Value *Target, unsigned InitialOffset,
   unsigned MaskOffset = ChannelWidth * SplitNum;
 
   // Generate temporary for load.
-  Value *Pred = generatePredicateForLoadWrregion(
-      OldPred, MaskOffset, LoadWidth, NumChannels, InsertBefore, DL, "loadN.pred.split");
+  Value *Pred = generatePredicateForLoadWrregion(OldPred, MaskOffset, LoadWidth,
+                                                 NumChannels, InsertBefore, DL,
+                                                 "loadN.pred.split");
   Region WrR(LoadType);
   WrR.Mask = Pred;
   Value *SplitRes = WrR.createWrRegion(UndefValue::get(LoadType), Load,
@@ -654,7 +657,8 @@ getLoadTarget(CallInst *Load, const GenXSubtarget *ST) {
   SelectInst *SI = getLoadSelect(Load);
 
   if (LoadWrr) {
-    // If wrregion can be represented as raw operand, we can reuse its target and offset.
+    // If wrregion can be represented as raw operand, we can reuse its target
+    // and offset.
     if (genx::isValueRegionOKForRaw(LoadWrr, true /* IsWrite */, ST)) {
       // TODO: mark wrregion to be erased once issue with ToErase and
       // iteration order will be resolved.
@@ -909,14 +913,16 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         CI->setOperand(AddrIdx + 3, UndefValue::get(LOD->getType()));
     }
   }
-  // Deduce intrinsic width: check predicate if exists, then check address vector.
+  // Deduce intrinsic width: check predicate if exists, then check address
+  // vector.
   unsigned WidthOperand;
   if (PredIdx != NONEED)
     WidthOperand = PredIdx;
   else if (AddrIdx != NONEED)
     WidthOperand = AddrIdx;
   else
-    IGC_ASSERT_EXIT_MESSAGE(0, "Cannot infer execution width of intrinsic (checked pred and addr operands)");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Cannot infer execution width of intrinsic "
+                               "(checked pred and addr operands)");
   auto Width =
       cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(WidthOperand)->getType())
           ->getNumElements();
@@ -933,8 +939,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   unsigned NumChannels = NumVectorElements;
   if (MaskIdx != NONEED) {
     vc::checkArgOperandIsConstantInt(*CI, MaskIdx, "channel mask");
-    NumChannels = (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))
-                      ->getZExtValue();
+    NumChannels =
+        (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))->getZExtValue();
     NumChannels = (NumChannels & 1) + ((NumChannels & 2) >> 1) +
                   ((NumChannels & 4) >> 2) + ((NumChannels & 8) >> 3);
     IGC_ASSERT(std::all_of(Widths.begin(), Widths.end(),
@@ -951,7 +957,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     NumBlks = (unsigned)cast<ConstantInt>(CI->getArgOperand(NumBlocksOpIDX))
                   ->getZExtValue();
     NumBlks = (1 << NumBlks);
-    auto ElmSz = CI->getArgOperand(DataIdx)->getType()->getScalarSizeInBits() / 8;
+    auto ElmSz =
+        CI->getArgOperand(DataIdx)->getType()->getScalarSizeInBits() / 8;
     if (ElmSz == 1 && NumBlks < 4)
       NumBlks = 4;
     else if (ElmSz == 2 && NumBlks < 2)
@@ -1039,7 +1046,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         R.Offset = AccumulatedOffset * V->getType()->getScalarSizeInBits() /
                    8; // in bytes
         Args[AtomicSrcIdx + SrcI] = R.createRdRegion(V, "addrsplit", CI, DL);
-        }
+      }
     }
     // now create the new narrower instruction
     if (NewResult) {
@@ -1123,16 +1130,15 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   return true;
 }
 
-static Constant* getConstVector(Type* ITy, unsigned int n, unsigned int step) {
-    std::vector<Constant*> vConsts;
-    unsigned v = 0;
-    for (unsigned i = 0; i < n; i++) {
-        vConsts.push_back(ConstantInt::get(ITy, v));
-        v += step;
-    }
-    return ConstantVector::get(vConsts);
+static Constant *getConstVector(Type *ITy, unsigned int n, unsigned int step) {
+  std::vector<Constant *> vConsts;
+  unsigned v = 0;
+  for (unsigned i = 0; i < n; i++) {
+    vConsts.push_back(ConstantInt::get(ITy, v));
+    v += step;
+  }
+  return ConstantVector::get(vConsts);
 }
-
 
 /***********************************************************************
  * translateSLMOWord : lower SLM OWord load/store to gathers/scatters
@@ -1140,16 +1146,16 @@ static Constant* getConstVector(Type* ITy, unsigned int n, unsigned int step) {
  *
  * We only support the cases of 1,2,4,8 oword cases
  */
-bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
-  LLVMContext& CTX = CI->getContext();
+bool GenXLowering::translateSLMOWord(CallInst *CI, unsigned IID) {
+  LLVMContext &CTX = CI->getContext();
   auto CIntTy = IntegerType::getInt32Ty(CTX);
-  const DebugLoc& DL = CI->getDebugLoc();
+  const DebugLoc &DL = CI->getDebugLoc();
   switch (IID) {
   case GenXIntrinsic::genx_oword_ld:
   case GenXIntrinsic::genx_oword_ld_unaligned: {
     constexpr unsigned BtiIdx = 1;
     constexpr unsigned AddrIdx = 2;
-    Value* BtiV = CI->getArgOperand(BtiIdx);
+    Value *BtiV = CI->getArgOperand(BtiIdx);
     // only slm need this lowering
     if (!isa<ConstantInt>(BtiV))
       return false;
@@ -1158,9 +1164,10 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
       return false;
 
     IRBuilder<> Builder(CI);
-    Value* AddrV = CI->getArgOperand(AddrIdx);
+    Value *AddrV = CI->getArgOperand(AddrIdx);
     if (IID == GenXIntrinsic::genx_oword_ld) {
-      AddrV = Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
+      AddrV =
+          Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
     }
     auto *OrigVT = cast<IGCLLVM::FixedVectorType>(CI->getType());
     unsigned EltSize = OrigVT->getScalarSizeInBits();
@@ -1178,42 +1185,45 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
     // generate gather-scaled
     auto VOffset = getConstVector(CIntTy, SimdWidth, 4);
     // create constant for predicate
-    auto PredVTy = IGCLLVM::FixedVectorType::get(IntegerType::getInt1Ty(CTX), SimdWidth);
+    auto PredVTy =
+        IGCLLVM::FixedVectorType::get(IntegerType::getInt1Ty(CTX), SimdWidth);
     auto OnePredV = Constant::getAllOnesValue(PredVTy);
     auto ScaleC = ConstantInt::get(Type::getInt16Ty(CTX), 0);
     std::string IntrName =
-      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) + "gather.scaled";
+        std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) + "gather.scaled";
     auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
     // crease constant for num-blocks, 2 means 4-bytes
     auto NumBlksC = ConstantInt::get(CIntTy, 2);
     // create the intrinsic call
-    Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), ID, { GatherVT, PredVTy, VOffset->getType() });
-    Instruction* NewInst = nullptr;
+    Function *NewFDecl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), ID, {GatherVT, PredVTy, VOffset->getType()});
+    Instruction *NewInst = nullptr;
     if (DWordCnt == SimdWidth) {
       NewInst = IntrinsicInst::Create(NewFDecl,
-          { OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
-            VOffset, UndefValue::get(GatherVT) },
-          CI->getName() + ".gather", CI);
+                                      {OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+                                       VOffset, UndefValue::get(GatherVT)},
+                                      CI->getName() + ".gather", CI);
       NewInst->setDebugLoc(DL);
       LLVM_DEBUG(dbgs() << "SLM OWord Load:\n");
       LLVM_DEBUG(CI->dump());
       LLVM_DEBUG(dbgs() << "Translated to gather:\n");
       LLVM_DEBUG(NewInst->dump());
-    }
-    else {  // need to two gathers for 8 owords
+    } else { // need to two gathers for 8 owords
       // 1st gather
-      auto New1st = IntrinsicInst::Create(NewFDecl,
-           { OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
-             VOffset, UndefValue::get(GatherVT) },
-           CI->getName() + ".gather1", CI);
+      auto New1st =
+          IntrinsicInst::Create(NewFDecl,
+                                {OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+                                 VOffset, UndefValue::get(GatherVT)},
+                                CI->getName() + ".gather1", CI);
       New1st->setDebugLoc(DL);
       // 2nd gather
-      AddrV = Builder.CreateAdd(AddrV, llvm::ConstantInt::get(AddrV->getType(), 64));
-      auto New2nd = IntrinsicInst::Create(NewFDecl,
-           { OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
-             VOffset, UndefValue::get(GatherVT) },
-           CI->getName() + ".gather2", CI);
+      AddrV = Builder.CreateAdd(AddrV,
+                                llvm::ConstantInt::get(AddrV->getType(), 64));
+      auto New2nd =
+          IntrinsicInst::Create(NewFDecl,
+                                {OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+                                 VOffset, UndefValue::get(GatherVT)},
+                                CI->getName() + ".gather2", CI);
       New2nd->setDebugLoc(DL);
       // write region, 1st half
       Region R(NewVT);
@@ -1222,7 +1232,8 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
       R.Stride = 1;
       R.VStride = 0;
       R.Offset = 0;
-      auto PartialV = R.createWrRegion(UndefValue::get(NewVT), New1st, "", CI, CI->getDebugLoc());
+      auto PartialV = R.createWrRegion(UndefValue::get(NewVT), New1st, "", CI,
+                                       CI->getDebugLoc());
       // write region, 2nd half
       R.Offset = 64;
       NewInst = R.createWrRegion(PartialV, New2nd, "", CI, CI->getDebugLoc());
@@ -1233,7 +1244,7 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
       LLVM_DEBUG(New2nd->dump());
     }
     // cast back if required
-    Value* Casted = NewInst;
+    Value *Casted = NewInst;
     if (NewVT != OrigVT)
       Casted = CastInst::CreateBitOrPointerCast(
           Casted, OrigVT, Casted->getName() + VALUE_NAME(".cast"), CI);
@@ -1245,7 +1256,7 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
     constexpr unsigned DataIdx = 2;
     constexpr unsigned AddrIdx = 1;
     constexpr unsigned BtiIdx = 0;
-    Value* BtiV = CI->getArgOperand(BtiIdx);
+    Value *BtiV = CI->getArgOperand(BtiIdx);
     // Only slm need this lowering
     if (!isa<ConstantInt>(BtiV))
       return false;
@@ -1254,10 +1265,11 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
       return false;
 
     IRBuilder<> Builder(CI);
-    Value* AddrV = CI->getArgOperand(AddrIdx);
-    AddrV = Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
+    Value *AddrV = CI->getArgOperand(AddrIdx);
+    AddrV =
+        Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
 
-    Value* Datum = CI->getArgOperand(DataIdx);
+    Value *Datum = CI->getArgOperand(DataIdx);
     auto *OrigVT = cast<IGCLLVM::FixedVectorType>(Datum->getType());
     unsigned EltSize = OrigVT->getScalarSizeInBits();
     unsigned EltCount = OrigVT->getNumElements();
@@ -1270,7 +1282,7 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
                DWordCnt == 32);
     auto NewVT = IGCLLVM::FixedVectorType::get(CIntTy, DWordCnt);
     IGC_ASSERT_MESSAGE(CastInst::isBitCastable(NewVT, OrigVT),
-        "We expect resulting vectors to be bitcastable");
+                       "We expect resulting vectors to be bitcastable");
     if (NewVT != OrigVT)
       Datum = CastInst::CreateBitOrPointerCast(
           Datum, NewVT, Datum->getName() + VALUE_NAME(".cast"), CI);
@@ -1279,7 +1291,8 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
     // generate scatter-scaled
     auto VOffset = getConstVector(CIntTy, SimdWidth, 4);
     // create constant for predicate
-    auto PredVTy = IGCLLVM::FixedVectorType::get(IntegerType::getInt1Ty(CTX), SimdWidth);
+    auto PredVTy =
+        IGCLLVM::FixedVectorType::get(IntegerType::getInt1Ty(CTX), SimdWidth);
     auto OnePredV = Constant::getAllOnesValue(PredVTy);
     auto ScaleC = ConstantInt::get(Type::getInt16Ty(CTX), 0);
     // create constant for num-blocks
@@ -1289,19 +1302,18 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
     auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
     // create the intrinsic call
     auto ScatterVT = IGCLLVM::FixedVectorType::get(CIntTy, SimdWidth);
-    Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
-              CI->getModule(), ID, { PredVTy, VOffset->getType(), ScatterVT });
+    Function *NewFDecl = GenXIntrinsic::getGenXDeclaration(
+        CI->getModule(), ID, {PredVTy, VOffset->getType(), ScatterVT});
     if (DWordCnt == SimdWidth) {
       // create one scatter
       auto NewInst = Builder.CreateCall(
-               NewFDecl, { OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum });
+          NewFDecl, {OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum});
       NewInst->setDebugLoc(DL);
       LLVM_DEBUG(dbgs() << "SLM OWord Store:\n");
       LLVM_DEBUG(CI->dump());
       LLVM_DEBUG(dbgs() << "Translated to scatter:\n");
       LLVM_DEBUG(NewInst->dump());
-    }
-    else {  // 8-oword (i.e 32 dword) case
+    } else { // 8-oword (i.e 32 dword) case
       // scatter the 1st 16 dwords
       // read region then scatter
       Region R(ScatterVT);
@@ -1311,16 +1323,19 @@ bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
       R.VStride = 0;
       R.Offset = 0;
       auto Datum1st = R.createRdRegion(Datum, "", CI, CI->getDebugLoc());
-      auto New1st = Builder.CreateCall(
-          NewFDecl, { OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum1st });
+      auto New1st =
+          Builder.CreateCall(NewFDecl, {OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+                                        VOffset, Datum1st});
       New1st->setDebugLoc(DL);
       // scatter the 2nd 16 dwords
       // read region then scatter
-      AddrV = Builder.CreateAdd(AddrV, llvm::ConstantInt::get(AddrV->getType(), 64));
+      AddrV = Builder.CreateAdd(AddrV,
+                                llvm::ConstantInt::get(AddrV->getType(), 64));
       R.Offset = 64;
       auto Datum2nd = R.createRdRegion(Datum, "", CI, CI->getDebugLoc());
-      auto New2nd = Builder.CreateCall(
-               NewFDecl, { OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum2nd });
+      auto New2nd =
+          Builder.CreateCall(NewFDecl, {OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+                                        VOffset, Datum2nd});
       New2nd->setDebugLoc(DL);
       LLVM_DEBUG(dbgs() << "SLM OWord Store:\n");
       LLVM_DEBUG(CI->dump());
@@ -1391,9 +1406,11 @@ static Value *ExpandAddrOrData(CallInst *CI, unsigned ArgIdx, unsigned ArgWidth,
       cast<IGCLLVM::FixedVectorType>(InitialData->getType())->getNumElements();
   IGC_ASSERT(ArgWidth);
   IGC_ASSERT_MESSAGE(InitialDataNumElem >= ArgWidth * NumChannels,
-    "there must be enough data and it should be a matrix with ArgWidth width");
+                     "there must be enough data and it should be a matrix with "
+                     "ArgWidth width");
   IGC_ASSERT_MESSAGE(InitialDataNumElem % ArgWidth == 0,
-    "there must be enough data and it should be a matrix with ArgWidth width");
+                     "there must be enough data and it should be a matrix with "
+                     "ArgWidth width");
   auto InitialDataNumRows = InitialDataNumElem / ArgWidth;
 
   auto ExpandDataTy = IGCLLVM::FixedVectorType::get(
@@ -1442,7 +1459,7 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
   constexpr unsigned WidenFactor = 2;
 
   unsigned NumChannels =
-    countPopulation(cast<ConstantInt>(CI->getOperand(0))->getZExtValue());
+      countPopulation(cast<ConstantInt>(CI->getOperand(0))->getZExtValue());
   IGC_ASSERT(NumChannels);
   const DebugLoc &DL = CI->getDebugLoc();
   unsigned LoadWidth =
@@ -1917,8 +1934,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_vload: {
       if (!Inst->use_empty()) {
         Value *Ptr = Inst->getOperand(0);
-        LoadInst *LI = new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()),
-                                    Ptr, "", /*volatile*/ true, Inst);
+        LoadInst *LI =
+            new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, "",
+                         /*volatile*/ true, Inst);
         LI->takeName(Inst);
         LI->setDebugLoc(Inst->getDebugLoc());
         Inst->replaceAllUsesWith(LI);
@@ -2009,21 +2027,21 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::fabs:
       return lowerAbs(CI);
     case Intrinsic::ceil:
-      return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndu);
+      return lowerMathIntrinsic(CI, GenXIntrinsic::genx_rndu);
     case Intrinsic::floor:
-      return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndd);
+      return lowerMathIntrinsic(CI, GenXIntrinsic::genx_rndd);
     case Intrinsic::trunc:
-      return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndz);
+      return lowerMathIntrinsic(CI, GenXIntrinsic::genx_rndz);
     case Intrinsic::exp2:
-      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_exp);
+      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_exp);
     case Intrinsic::log2:
-      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_log);
+      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_log);
     case Intrinsic::pow:
-      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_pow);
+      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_pow);
     case Intrinsic::sin:
-      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_sin);
+      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_sin);
     case Intrinsic::cos:
-      return lowerF32FastMathIntrinsic(CI, GenXIntrinsic::genx_cos);
+      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_cos);
     case Intrinsic::stacksave:
       return lowerStackSave(CI);
     case Intrinsic::stackrestore:
@@ -2040,8 +2058,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
   if (InsertValueInst *IV = dyn_cast<InsertValueInst>(Inst))
     return lowerInsertValue(IV);
   if (isa<AllocaInst>(Inst) && !ST->isOCLRuntime())
-    Inst->getContext().emitError(Inst,
-        "GenX backend cannot handle allocas with CMRT yet");
+    Inst->getContext().emitError(
+        Inst, "GenX backend cannot handle allocas with CMRT yet");
   return false;
 }
 
@@ -2702,16 +2720,15 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
   if (SliceStart >= 0) {
     unsigned Width =
         cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
-    // For llvm.genx.rdpredregion the number of elements to read is determined from the number of elements in the return type,
-    // and must be 4, 8 or 16.
-    if (Width == 4 || Width == 8 || Width == 16)
-    {
-        auto RPR = Region::createRdPredRegion(SI->getOperand(0), SliceStart, Width,
-            "", SI, SI->getDebugLoc());
-        RPR->takeName(SI);
-        SI->replaceAllUsesWith(RPR);
-        ToErase.push_back(SI);
-        return true;
+    // For llvm.genx.rdpredregion the number of elements to read is determined
+    // from the number of elements in the return type, and must be 4, 8 or 16.
+    if (Width == 4 || Width == 8 || Width == 16) {
+      auto RPR = Region::createRdPredRegion(SI->getOperand(0), SliceStart,
+                                            Width, "", SI, SI->getDebugLoc());
+      RPR->takeName(SI);
+      SI->replaceAllUsesWith(RPR);
+      ToErase.push_back(SI);
+      return true;
     }
   }
   // 2. Check for a splat.
@@ -2762,7 +2779,8 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
                                           B.getInt16(0));
   Value *V1 = B.CreateSelect(SI->getOperand(0), C1, C0);
   Value *V2 = B.CreateSelect(SI->getOperand(1), C1, C0);
-  Value *SI1 = B.CreateShuffleVector(V1, V2, IGCLLVM::getShuffleMaskForBitcode(SI), SI->getName());
+  Value *SI1 = B.CreateShuffleVector(
+      V1, V2, IGCLLVM::getShuffleMaskForBitcode(SI), SI->getName());
   Constant *C2 = ConstantVector::getSplat(IGCLLVM::getElementCount(WidthResult),
                                           B.getInt16(0));
   Value *Result = B.CreateICmpNE(SI1, C2);
@@ -2788,7 +2806,8 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
     return VTy->getNumElements() == Width;
   };
 
-  unsigned Width = cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
+  unsigned Width =
+      cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
   if (IsFixedVectorOfWidth(In->getType(), Width)) {
     IRBuilder<> B(SI);
     Constant *C1 = ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
@@ -2822,8 +2841,8 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
     for (unsigned i = 0; i != 2; ++i) {
       auto Opnd = Cmp->getOperand(i);
       if (auto C = dyn_cast<Constant>(Opnd)) {
-        Constant *SplatC = C->getType()->isVectorTy() ?
-          C->getAggregateElement(Idx) : C;
+        Constant *SplatC =
+            C->getType()->isVectorTy() ? C->getAggregateElement(Idx) : C;
         CmpOpnds[i] = ConstantVector::getSplat(
             IGCLLVM::getElementCount(R.NumElements), SplatC);
         continue;
@@ -3015,7 +3034,7 @@ void GenXLowering::lowerShuffleToMove(ShuffleVectorInst *SI) {
     int Idx = It - MaskVals.begin();
     auto OpRegion = Analyzer.getMaskRegionPrefix(Idx);
     IGC_ASSERT_MESSAGE(OpRegion.R.NumElements > 0,
-      "should've match at least 1 element region");
+                       "should've match at least 1 element region");
     Region WrRegion(SI);
     WrRegion.Offset = Idx * WrRegion.ElementBytes;
     WrRegion.NumElements = WrRegion.Width = OpRegion.R.NumElements;
@@ -3543,7 +3562,7 @@ bool GenXLowering::lowerMinMax(CallInst *CI, unsigned IntrinsicID) {
 // Lower llvm.sqrt to genx.ieee.sqrt equivalent.
 bool GenXLowering::lowerSqrt(CallInst *CI) {
   IGC_ASSERT_MESSAGE(vc::getAnyIntrinsicID(CI) == Intrinsic::sqrt,
-    "llvm.sqrt expected");
+                     "llvm.sqrt expected");
   auto *ResTy = CI->getType();
 
   auto *Ty = CI->getType()->getScalarType();
@@ -3670,7 +3689,7 @@ bool GenXLowering::lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID) {
     MulType = IGCLLVM::FixedVectorType::get(MulType, OpVTy->getNumElements());
 
   IRBuilder<> B(CI);
-  auto ExtendMulOperand = [&, IsSignedOps=IsSignedOps](Value *Val) {
+  auto ExtendMulOperand = [&, IsSignedOps = IsSignedOps](Value *Val) {
     return IsSignedOps ? B.CreateSExt(Val, MulType, Val->getName() + ".sext")
                        : B.CreateZExt(Val, MulType, Val->getName() + ".zext");
   };
@@ -3737,7 +3756,7 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
   auto *ResH = Builder.CreateAdd(Temp2, Temp1);
 
   // create the bitcast to the destination-type
-  auto *Replace = SplitBuilder.combineLoHiSplit({ ResL, ResH }, "mul64",
+  auto *Replace = SplitBuilder.combineLoHiSplit({ResL, ResH}, "mul64",
                                                 Inst->getType()->isIntegerTy());
   Inst->replaceAllUsesWith(Replace);
   ToErase.push_back(Inst);
@@ -4077,10 +4096,10 @@ bool GenXLowering::lowerBitreverse(CallInst *CI) {
   auto OriginalElementBitSize = OriginalType->getScalarSizeInBits();
   int ShiftSize = 32 - OriginalElementBitSize;
   if (ShiftSize < 0) {
-    DiagnosticInfoLowering Err(
-        CI,
-        "currently llvm.bitreverse with bitsize bigger than 32 is not supported",
-        DS_Error);
+    DiagnosticInfoLowering Err(CI,
+                               "currently llvm.bitreverse with bitsize bigger "
+                               "than 32 is not supported",
+                               DS_Error);
     CI->getContext().diagnose(Err);
   }
   Value *ShiftSizeVal = ConstantInt::get(BfrevType, ShiftSize);
@@ -4115,8 +4134,9 @@ Value *GenXLowering::swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const {
   if ((ElementBits < QWordBits && ST->hasBitRotate()) || ST->has64BitRotate()) {
     auto *Func = GenXIntrinsic::getAnyDeclaration(M, GenXIntrinsic::genx_rol,
                                                   {VTy, VTy});
-    auto *AmountV = ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
-                                             ConstantInt::get(ETy, ElementBits / 2));
+    auto *AmountV =
+        ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
+                                 ConstantInt::get(ETy, ElementBits / 2));
     return Builder.CreateCall(Func, {Arg, AmountV});
   }
 
@@ -4282,14 +4302,16 @@ bool GenXLowering::lowerAbs(CallInst *CI) {
   return true;
 }
 
-bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
-                                         GenXIntrinsic::ID GenXID) {
+bool GenXLowering::lowerMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID,
+                                      bool IsHalfAllowed) {
   IGC_ASSERT(CI);
   auto *ResTy = CI->getType();
-  if (!ResTy->getScalarType()->isFloatTy()) {
-    return false;
+  auto *ResScalarTy = ResTy->getScalarType();
+  if (!ResScalarTy->isFloatTy() &&
+      !(IsHalfAllowed && ResScalarTy->isHalfTy())) {
     vc::fatal(CI->getContext(), "GenXLowering",
-              "Sorry there is only f32 native instruction", CI);
+              "Sorry there is only f16 and f32 native instruction", CI);
+    return false;
   }
   auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), GenXID,
                                                  {CI->getType()});
@@ -4301,12 +4323,12 @@ bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
   return true;
 }
 
-bool GenXLowering::lowerF32FastMathIntrinsic(CallInst *CI,
-                                             GenXIntrinsic::ID GenXID) {
+bool GenXLowering::lowerFastMathIntrinsic(CallInst *CI,
+                                          GenXIntrinsic::ID GenXID) {
   if (!CI->hasApproxFunc())
     vc::fatal(CI->getContext(), "GenXLowering",
               "Sorry there is only low precision native instruction", CI);
-  return lowerF32MathIntrinsic(CI, GenXID);
+  return lowerMathIntrinsic(CI, GenXID, /*IsHalfAllowed=*/true);
 }
 
 bool GenXLowering::lowerSlmInit(CallInst *CI) {
