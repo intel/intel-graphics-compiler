@@ -633,6 +633,7 @@ void IR_Builder::createPreDefinedVars() {
         break;
       }
       default: {
+        vISA_ASSERT(false, "Invalid PreDefinedVarsInternal value");
         break;
       }
       }

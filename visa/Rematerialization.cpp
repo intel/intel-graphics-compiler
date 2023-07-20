@@ -861,6 +861,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
       }
 
       auto samplerDefIt = samplerHeaderMap.find(uniqueDef->first);
+      vASSERT(samplerDefIt != samplerHeaderMap.end());
       auto prevHeaderMov = (*samplerDefIt).second;
 
       src0 = dstInst->getSrc(0);

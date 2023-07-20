@@ -406,18 +406,22 @@ private:
   class PreDefinedVars {
   public:
     void setHasPredefined(PreDefinedVarsInternal id, bool val) {
+      vASSERT(id < PreDefinedVarsInternal::VAR_LAST);
       hasPredefined[static_cast<int>(id)] = val;
     }
 
     bool isHasPredefined(PreDefinedVarsInternal id) const {
+      vASSERT(id < PreDefinedVarsInternal::VAR_LAST);
       return hasPredefined[static_cast<int>(id)];
     }
 
     void setPredefinedVar(PreDefinedVarsInternal id, G4_Declare *dcl) {
+      vASSERT(id < PreDefinedVarsInternal::VAR_LAST);
       predefinedVars[static_cast<int>(id)] = dcl;
     }
 
     G4_Declare *getPreDefinedVar(PreDefinedVarsInternal id) const {
+      vASSERT(id < PreDefinedVarsInternal::VAR_LAST);
       if (id >= PreDefinedVarsInternal::VAR_LAST) {
         return nullptr;
       }
