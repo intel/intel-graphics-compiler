@@ -513,9 +513,13 @@ void CISA_IR_Builder::ResetHasStackCall(
     for (auto &it : callsites) {
       G4_INST *fcall = *it;
       vASSERT(fcall->opcode() == G4_pseudo_fcall);
-      bool isInSgInvokeList =
-          std::find(sgInvokeList.begin(), sgInvokeList.end(), it) !=
-          sgInvokeList.end();
+      bool isInSgInvokeList = false;
+      for (auto &it2 : sgInvokeList) {
+        G4_INST *inst = *it2;
+        if (inst == fcall) {
+          isInSgInvokeList = true;
+        }
+      }
       if (!isInSgInvokeList) {
         hasStackCall = true;
         break;
@@ -1164,6 +1168,15 @@ void CISA_IR_Builder::LinkTimeOptimization(
             inst = fret->cloneInst(builder);
           }
 
+          // restore fcall info for indirect calls
+          if (inst->opcode() == G4_pseudo_fcall) {
+            auto orig_fcallinfo = callee->fg.builder->getFcallInfo(fret);
+            if (orig_fcallinfo) {
+              builder->addFcallInfo(inst, orig_fcallinfo->getArgSize(),
+                  orig_fcallinfo->getRetSize());
+            }
+          }
+
           // Based on vISA's assumption, after visiting fret in callee,
           // it is entering subroutines' instructions (callee #7-#9 below)
           // inside the callee.
@@ -1243,6 +1256,14 @@ void CISA_IR_Builder::LinkTimeOptimization(
         visited.insert(callee);
         for (G4_INST *fret : calleeInsts) {
           G4_INST *inst = fret->cloneInst(caller->fg.builder);
+          // restore fcall info for indirect calls
+          if (inst->opcode() == G4_pseudo_fcall) {
+            auto orig_fcallinfo = callee->fg.builder->getFcallInfo(fret);
+            if (orig_fcallinfo) {
+              caller->fg.builder->addFcallInfo(inst, orig_fcallinfo->getArgSize(),
+                  orig_fcallinfo->getRetSize());
+            }
+          }
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
             cloneDcl(inst->getSrc(i));
           }
@@ -1611,18 +1632,14 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
   if (m_options.getuInt32Option(vISA_Linker) & (1U << Linker_Subroutine)) {
     std::map<std::string, G4_Kernel *> functionsNameMap;
-    G4_Kernel *mainFunc = m_kernelsAndFunctions.front()->getKernel();
     vISA_ASSERT(m_kernelsAndFunctions.front()->getIsKernel(),
-        "mainFunc must be the kernel entry");
+        "the first function must be the kernel entry");
     std::unordered_map<G4_Kernel *, std::list<std::list<G4_INST *>::iterator>>
         callSites;
     std::list<std::list<G4_INST *>::iterator> sgInvokeList;
     CollectCallSites(m_kernelsAndFunctions, callSites, sgInvokeList);
 
     if (sgInvokeList.size()) {
-      vASSERT(callSites.begin()->first == mainFunc);
-      CheckHazardFeatures(sgInvokeList, callSites);
-
       ResetHasStackCall(sgInvokeList, callSites);
 
       RemoveOptimizingFunction(sgInvokeList);
