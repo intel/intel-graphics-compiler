@@ -1252,7 +1252,12 @@ public:
 
   // Add a new node to queue.
   void push(preNode *N) override {
+    // Always add pseudo_kill to ready-list directly so that group info
+    // advancing won't be affected when moving pseudo_kill from host-list to
+    // ready-list.
     if (config.SkipHoldList)
+      ReadyList.push(N);
+    else if (N->getInst() && N->getInst()->isPseudoKill())
       ReadyList.push(N);
     else
       HoldList.push(N);
@@ -1865,8 +1870,6 @@ bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
   vASSERT(N1->getInst() && N2->getInst());
   G4_INST *Inst1 = N1->getInst();
   G4_INST *Inst2 = N2->getInst();
-  if (Inst1->isPseudoKill() || Inst2->isPseudoKill())
-    return comparePseudoKill(N1, N2);
 
   // Group ID has higher priority, smaller ID means higher priority.
   unsigned GID1 = GroupInfo[Inst1];
