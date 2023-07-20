@@ -1641,7 +1641,7 @@ inline uint32_t GetEncodeExecSize(G4_INST *inst) {
   }
 
   execSize = inst->getExecSize();
-  uint32_t exSz;
+  uint32_t exSz = 0;
   switch (execSize) {
   case 1:
     exSz = ES_1_CHANNEL;
@@ -1662,7 +1662,6 @@ inline uint32_t GetEncodeExecSize(G4_INST *inst) {
     exSz = ES_32_CHANNELS;
     break;
   default:
-    std::stringstream ss;
     vISA_ASSERT_UNREACHABLE("Invalid execution size: %d", (short)execSize);
   }
   return exSz;

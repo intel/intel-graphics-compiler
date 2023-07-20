@@ -2977,10 +2977,10 @@ bool Node::hasConflict(Node *node2) const {
     return false;
   }
 
-  int prevInstRegs[2][G4_MAX_SRCS];
-  int currInstReg;
-  int prevInstExecSize[G4_MAX_SRCS];
-  int firstRegCandidate[G4_MAX_SRCS];
+  int prevInstRegs[2][G4_MAX_SRCS] = {};
+  int currInstReg = 0;
+  int prevInstExecSize[G4_MAX_SRCS] = {};
+  int firstRegCandidate[G4_MAX_SRCS] = {};
   int candidateNum = 0;
 
   // Get the sources of current instruction
