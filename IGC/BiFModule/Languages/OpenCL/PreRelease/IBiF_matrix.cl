@@ -118,6 +118,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define ARR_TO_VEC1(type, arr) \
     arr[0]
 
+#define OUT_VEC16(type) type##16
 #define OUT_VEC8(type) type##8
 #define OUT_VEC7(type) type##8
 #define OUT_VEC6(type) type##8
@@ -610,3 +611,190 @@ DEFINE_GET_COORD(Accumulator, , 32, 8, 8, 8x8, 8, 1)
 //bfloat16
 DEFINE_GET_COORD(PackedA, , 16, 8, 16, 8x16, 8, 1)
 DEFINE_GET_COORD(PackedB, , 16, 16, 8, 16x8, 8, 2)
+
+/* experimental large slice support: */
+
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(__private char *a_ptr, __private char *b_ptr, __private char *raw_c_ptr, __private char *result) {
+    short16 a   = *(short16 *)a_ptr;
+    int8 b      = *(int8 *)b_ptr;
+    int16 raw_c = *(int16 *)raw_c_ptr;
+
+    short8 a0 = (short8)(a.s0, a.s1, a.s2, a.s3, a.s4, a.s5, a.s6, a.s7);
+    short8 a1 = (short8)(a.s8, a.s9, a.sa, a.sb, a.sc, a.sd, a.se, a.sf);
+
+    float16 c = *(float16 *)&raw_c;
+
+    float8 c0 = (float8)(c.s0, c.s1, c.s2, c.s3, c.s4, c.s5, c.s6, c.s7);
+    float8 c1 = (float8)(c.s8, c.s9, c.sa, c.sb, c.sc, c.sd, c.se, c.sf);
+
+    float8 fres0 = __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(c0, a0, b);
+    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(c0, a1, b);
+
+    int8 res0 = *(int8 *)&fres0;
+    int8 res1 = *(int8 *)&fres1;
+
+    __private int16 *dst = (__private int16 *)result;
+    *dst = (int16)(res0.s0, res0.s1, res0.s2, res0.s3, res0.s4, res0.s5, res0.s6, res0.s7,
+                   res1.s0, res1.s1, res1.s2, res1.s3, res1.s4, res1.s5, res1.s6, res1.s7);
+}
+
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_fp16_fp16_fp32(__private char *a_ptr, __private char *b_ptr, __private char *raw_c_ptr, __private char *result) {
+    short16 a   = *(short16 *)a_ptr;
+    int8 b      = *(int8 *)b_ptr;
+    int16 raw_c = *(int16 *)raw_c_ptr;
+
+    short8 a0 = (short8)(a.s0, a.s1, a.s2, a.s3, a.s4, a.s5, a.s6, a.s7);
+    short8 a1 = (short8)(a.s8, a.s9, a.sa, a.sb, a.sc, a.sd, a.se, a.sf);
+
+    float16 c = *(float16 *)&raw_c;
+
+    float8 c0 = (float8)(c.s0, c.s1, c.s2, c.s3, c.s4, c.s5, c.s6, c.s7);
+    float8 c1 = (float8)(c.s8, c.s9, c.sa, c.sb, c.sc, c.sd, c.se, c.sf);
+
+    float8 fres0 = __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(c0, a0, b);
+    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(c0, a1, b);
+
+    int8 res0 = *(int8 *)&fres0;
+    int8 res1 = *(int8 *)&fres1;
+
+    __private int16 *dst = (__private int16 *)result;
+    *dst = (int16)(res0.s0, res0.s1, res0.s2, res0.s3, res0.s4, res0.s5, res0.s6, res0.s7,
+                   res1.s0, res1.s1, res1.s2, res1.s3, res1.s4, res1.s5, res1.s6, res1.s7);
+}
+
+INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(__private char *a_ptr, __private char *b_ptr, __private char *c_ptr, __private char *d_ptr) {
+    __private char *a0 = a_ptr;
+    __private char *a1 = a_ptr + 16 * (sizeof (short));
+
+    __private char *b0 = b_ptr;
+    __private char *b1 = b_ptr + 1 * 16 * (sizeof (short));
+    __private char *b2 = b_ptr + 2 * 16 * (sizeof (short));
+    __private char *b3 = b_ptr + 3 * 16 * (sizeof (short));
+
+    __private char *c0 = c_ptr + 0 * 16 * (sizeof (int));
+    __private char *c1 = c_ptr + 1 * 16 * (sizeof (int));
+    __private char *c2 = c_ptr + 2 * 16 * (sizeof (int));
+    __private char *c3 = c_ptr + 3 * 16 * (sizeof (int));
+    __private char *c4 = c_ptr + 4 * 16 * (sizeof (int));
+    __private char *c5 = c_ptr + 5 * 16 * (sizeof (int));
+    __private char *c6 = c_ptr + 6 * 16 * (sizeof (int));
+    __private char *c7 = c_ptr + 7 * 16 * (sizeof (int));
+
+    __private char *d0 = d_ptr + 0 * 16 * (sizeof (int));
+    __private char *d1 = d_ptr + 1 * 16 * (sizeof (int));
+    __private char *d2 = d_ptr + 2 * 16 * (sizeof (int));
+    __private char *d3 = d_ptr + 3 * 16 * (sizeof (int));
+    __private char *d4 = d_ptr + 4 * 16 * (sizeof (int));
+    __private char *d5 = d_ptr + 5 * 16 * (sizeof (int));
+    __private char *d6 = d_ptr + 6 * 16 * (sizeof (int));
+    __private char *d7 = d_ptr + 7 * 16 * (sizeof (int));
+
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a0, b0, c0, d0);
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a0, b1, c1, d1);
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a0, b2, c2, d2);
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a0, b3, c3, d3);
+
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a1, b0, c4, d4);
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a1, b1, c5, d5);
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a1, b2, c6, d6);
+    __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a1, b3, c7, d7);
+}
+
+INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
+    IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(int, 32, int, 32, 16, 16, 16)
+}
+
+INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
+    IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(short, 16, short, 16, 16, 16, 16)
+}
+
+INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
+    __private char *c0 = dst + 0 * 16 * (sizeof (int));
+    __private char *c1 = dst + 1 * 16 * (sizeof (int));
+    __private char *c2 = dst + 2 * 16 * (sizeof (int));
+    __private char *c3 = dst + 3 * 16 * (sizeof (int));
+    __private char *c4 = dst + 4 * 16 * (sizeof (int));
+    __private char *c5 = dst + 5 * 16 * (sizeof (int));
+    __private char *c6 = dst + 6 * 16 * (sizeof (int));
+    __private char *c7 = dst + 7 * 16 * (sizeof (int));
+
+    char *mem0 = mem + 0 * 16 * (sizeof (int));
+    char *mem1 = mem + 1 * 16 * (sizeof (int));
+    char *mem2 = mem + 2 * 16 * (sizeof (int));
+    char *mem3 = mem + 3 * 16 * (sizeof (int));
+    char *mem4 = mem + 0 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+    char *mem5 = mem + 1 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+    char *mem6 = mem + 2 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+    char *mem7 = mem + 3 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c0, mem0, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c1, mem1, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c2, mem2, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c3, mem3, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c4, mem4, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c5, mem5, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c6, mem6, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c7, mem7, stride);
+}
+
+INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_32x16_i16_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
+    __private char *dst0 = dst;
+    __private char *dst1 = dst + 16 * (sizeof (short));
+
+    char *mem0 = mem;
+    char *mem1 = mem + 16 * (sizeof (short)) * stride;
+
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_generic_v8i8_pi32_i32(dst0, mem0, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_generic_v8i8_pi32_i32(dst1, mem1, stride);
+}
+
+INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x64_i16_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
+    __private char *b0 = dst;
+    __private char *b1 = dst + 1 * 16 * (sizeof (short));
+    __private char *b2 = dst + 2 * 16 * (sizeof (short));
+    __private char *b3 = dst + 3 * 16 * (sizeof (short));
+
+    char *mem0 = mem + 0 * 16 * (sizeof (int));
+    char *mem1 = mem + 1 * 16 * (sizeof (int));
+    char *mem2 = mem + 2 * 16 * (sizeof (int));
+    char *mem3 = mem + 3 * 16 * (sizeof (int));
+
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b0, mem0, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b1, mem1, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b2, mem2, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b3, mem3, stride);
+}
+
+INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(char *mem, __private char *src, long stride) {
+    IMPLEMENT_BLOCK2D_STORE_SG16(int, int, 32, 16, 16, slice)
+}
+
+INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_generic_pi64_v8i8(char *mem, __private char *src, long stride) {
+    __private char *c0 = src + 0 * 16 * (sizeof (int));
+    __private char *c1 = src + 1 * 16 * (sizeof (int));
+    __private char *c2 = src + 2 * 16 * (sizeof (int));
+    __private char *c3 = src + 3 * 16 * (sizeof (int));
+    __private char *c4 = src + 4 * 16 * (sizeof (int));
+    __private char *c5 = src + 5 * 16 * (sizeof (int));
+    __private char *c6 = src + 6 * 16 * (sizeof (int));
+    __private char *c7 = src + 7 * 16 * (sizeof (int));
+
+    char *mem0 = mem + 0 * 16 * (sizeof (int));
+    char *mem1 = mem + 1 * 16 * (sizeof (int));
+    char *mem2 = mem + 2 * 16 * (sizeof (int));
+    char *mem3 = mem + 3 * 16 * (sizeof (int));
+    char *mem4 = mem + 0 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+    char *mem5 = mem + 1 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+    char *mem6 = mem + 2 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+    char *mem7 = mem + 3 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem0, c0, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem1, c1, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem2, c2, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem3, c3, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem4, c4, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem5, c5, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem6, c6, stride);
+    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem7, c7, stride);
+}
+
