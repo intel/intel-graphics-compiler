@@ -762,7 +762,7 @@ bool SLMConstProp::isLinearFuncOfLocalIds(SymExpr* SE)
             sysVal->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue) {
             return false;
         }
-        SGVUsage usage = static_cast<SGVUsage>(dyn_cast<ConstantInt>(sysVal->getOperand(0))->getZExtValue());
+        SGVUsage usage = static_cast<SGVUsage>(cast<ConstantInt>(sysVal->getOperand(0))->getZExtValue());
         if (usage != THREAD_ID_IN_GROUP_X && usage != THREAD_ID_IN_GROUP_Y && usage != THREAD_ID_IN_GROUP_Z)
         {
             return false;

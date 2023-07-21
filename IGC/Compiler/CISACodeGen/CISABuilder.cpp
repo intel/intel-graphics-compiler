@@ -3228,6 +3228,7 @@ namespace IGC
         {
             tempVar = GetRawSource(dst);
         }
+        IGC_ASSERT(tempVar);
 
         MEDIA_LD_mod  modi = (MEDIA_LD_mod)modifier;
         CISA_PLANE_ID planeVar = (CISA_PLANE_ID)plane;

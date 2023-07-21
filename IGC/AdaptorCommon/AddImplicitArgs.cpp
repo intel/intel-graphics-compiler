@@ -415,9 +415,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function* ol
 
                 // tracing it on parent function argument list
                 Value* callArg = ValueTracker::track(cInst, argImpToExpNum[&(*new_arg_iter)]);
-                Argument* arg = dyn_cast<Argument>(callArg);
-
-                IGC_ASSERT_MESSAGE(arg, "Not supported");
+                Argument* arg = cast<Argument>(callArg);
 
                 // build info
 

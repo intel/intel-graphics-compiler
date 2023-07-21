@@ -319,7 +319,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop* loop,
 
     for (auto* UI : fmul->users())
     {
-        IntrinsicInst* intrin = dyn_cast<IntrinsicInst>(UI);
+        IntrinsicInst* intrin = cast<IntrinsicInst>(UI);
         if (intrin->getIntrinsicID() == Intrinsic::fabs &&
             intrin->hasOneUse())
         {

@@ -1005,7 +1005,7 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
         width = int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(baseValue->getType())->getNumElements());
         // Obtain the scalarized operands
         obtainScalarizedValues(operand1, NULL, baseValue, GI);
-        ptrTy = dyn_cast<VectorType>(baseValue->getType())->getElementType();
+        ptrTy = cast<VectorType>(baseValue->getType())->getElementType();
     }
     else
     {

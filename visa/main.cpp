@@ -158,6 +158,9 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
   void *genxBinary = NULL;
   int size = 0;
   kernel->GetJitInfo(tempJitInfo);
+  if (!tempJitInfo) {
+      return JIT_CISA_ERROR;
+  }
   kernel->GetGenxDebugInfo(tempJitInfo->genDebugInfo,
                            tempJitInfo->genDebugInfoSize);
 
@@ -167,7 +170,7 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
                            tempJitInfo->freeGRFInfoSize);
   }
 
-  if (jitInfo != NULL && tempJitInfo != NULL)
+  if (jitInfo != NULL)
     memcpy_s(jitInfo, sizeof(vISA::FINALIZER_INFO), tempJitInfo,
              sizeof(vISA::FINALIZER_INFO));
 

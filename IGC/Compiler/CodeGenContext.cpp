@@ -262,6 +262,9 @@ namespace IGC
                 }
             }
 
+            IGC_ASSERT(currentShader);
+            IGC_ASSERT(previousShader);
+
             // Check if current shader has more than 200% of previous spill size
             bool spillSizeBigger =
                 currentShader->m_spillSize > previousShader->m_spillSize << 1;

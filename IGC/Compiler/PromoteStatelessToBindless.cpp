@@ -197,6 +197,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
         // Get the base bindless pointer
         IGCIRBuilder<> builder(accessInst);
         Value* resourcePtr = IGC::GetBufferOperand(accessInst);
+        IGC_ASSERT(resourcePtr);
         unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS);
         PointerType* basePointerType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(resourcePtr->getType()), bindlessAS);
         Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());

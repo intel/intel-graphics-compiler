@@ -14838,9 +14838,9 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 void EmitPass::emitThreadGroupNamedBarriersInit(llvm::Instruction* inst)
 {
     CVariable* barrierID = m_currShader->ImmToVariable(
-        dyn_cast<llvm::ConstantInt>(inst->getOperand(0))->getSExtValue(), ISA_TYPE_UD);
+        cast<llvm::ConstantInt>(inst->getOperand(0))->getSExtValue(), ISA_TYPE_UD);
     CVariable* barrierCount = m_currShader->ImmToVariable(
-        dyn_cast<llvm::ConstantInt>(inst->getOperand(1))->getSExtValue(), ISA_TYPE_UD);
+        cast<llvm::ConstantInt>(inst->getOperand(1))->getSExtValue(), ISA_TYPE_UD);
 
     m_encoder->NamedBarrier(EBARRIER_SIGNAL, barrierID, barrierCount);
     m_encoder->Push();
@@ -14849,7 +14849,7 @@ void EmitPass::emitThreadGroupNamedBarriersInit(llvm::Instruction* inst)
 void EmitPass::emitThreadGroupNamedBarriersBarrier(llvm::Instruction* inst)
 {
     CVariable* barrierID = m_currShader->ImmToVariable(
-        dyn_cast<llvm::ConstantInt>(inst->getOperand(0))->getSExtValue(), ISA_TYPE_UD);
+        cast<llvm::ConstantInt>(inst->getOperand(0))->getSExtValue(), ISA_TYPE_UD);
 
     m_encoder->NamedBarrier(EBARRIER_WAIT, barrierID, nullptr);
     m_encoder->Push();
@@ -19805,7 +19805,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
     case WaveOps::FMAX:
         opcode = EOPCODE_MAX;
         type = getISAType(opndTy);
-        identity = dyn_cast<ConstantFP>(ConstantFP::getInfinity(opndTy, true))->getValueAPF().bitcastToAPInt().getZExtValue();
+        identity = cast<ConstantFP>(ConstantFP::getInfinity(opndTy, true))->getValueAPF().bitcastToAPInt().getZExtValue();
         break;
     default:
         IGC_ASSERT(0);
@@ -20922,6 +20922,7 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
     //  Operand 2 - [immediate] data size,    (LSC_DATA_SIZE enum)
     //  Operand 3 - [immediate] vector size,  (LSC_DATA_ELEMS enum)
     //  Operand 4 - [immediate] cache options (LSC_CACHE_OPT enum)
+    IGC_ASSERT(inst);
     Value* Ptr = inst->getArgOperand(0);
 
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
@@ -20944,11 +20945,8 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
 
-    if (inst)
-    {
-        if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
-            cacheOpts = *Opts;
-    }
+    if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
+        cacheOpts = *Opts;
 
     emitLscIntrinsicFragments(m_destination, dataSize, dataElems, immOffset,
         [&] (CVariable* gatherDst, int fragIx, LSC_DATA_ELEMS fragElems, int fragImmOffset) {

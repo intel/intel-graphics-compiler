@@ -70,7 +70,9 @@ LatencyTable::createLatencyTable(const IR_Builder &builder) {
 uint16_t LatencyTableLegacy::getLatency(const G4_INST *Inst) const {
   if (Inst->isSend()) {
     G4_SendDesc *MsgDesc = Inst->getMsgDesc();
-    return LegacyFFLatency[SFIDtoInt(MsgDesc->getSFID())];
+    int SFIDint = SFIDtoInt(MsgDesc->getSFID());
+    vASSERT(SFIDint < ARRAY_COUNT(LegacyFFLatency));
+    return LegacyFFLatency[SFIDint];
   } else if (Inst->isMath()) {
     if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
         Inst->asMathInst()->getMathCtrl() == MATH_POW)

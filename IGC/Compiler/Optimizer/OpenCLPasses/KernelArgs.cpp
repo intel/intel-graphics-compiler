@@ -1089,8 +1089,13 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     const unsigned int numExplicitArgs = F.arg_size() - numImplicitArgs - numRuntimeValue;
     llvm::Function::const_arg_iterator funcArg = F.arg_begin();
 
-    auto it = moduleMD->FuncMD.find(const_cast<Function*>(&F));
-    FunctionMetaData* funcMD = it != moduleMD->FuncMD.end() ? &it->second : nullptr;
+    FunctionMetaData* funcMD = nullptr;
+    if (moduleMD) {
+        auto it = moduleMD->FuncMD.find(const_cast<Function*>(&F));
+        if (it != moduleMD->FuncMD.end()) {
+            funcMD = &it->second;
+        }
+    }
 
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&F));
     // Explicit function args
@@ -1100,7 +1105,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
         if (moduleMD && moduleMD->UseBindlessImage)
         {
             // Check for bindless images which require allocation
-            FunctionMetaData* funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
+            funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
             ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
             if (resAllocMD->argAllocMDList.size() > funcArg->getArgNo())
             {

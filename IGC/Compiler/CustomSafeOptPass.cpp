@@ -2246,7 +2246,7 @@ void TrivialLocalMemoryOpsElimination::findNextThreadGroupBarrierInst(Instructio
     auto nextInst = I.getNextNonDebugInstruction();
     if (isa<GenIntrinsicInst>(nextInst))
     {
-        GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(nextInst);
+        GenIntrinsicInst* II = cast<GenIntrinsicInst>(nextInst);
         if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
         {
             m_LocalFencesBariersToRemove.push_back(dyn_cast<CallInst>(nextInst));
@@ -2325,7 +2325,7 @@ void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst& I)
 
     if (isa<GenIntrinsicInst>(I))
     {
-        GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(&I);
+        GenIntrinsicInst* II = cast<GenIntrinsicInst>(&I);
         if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_memoryfence)
         {
             if (isLocalBarrier(I))

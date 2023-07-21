@@ -587,6 +587,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
         }
     }
 
+    IGC_ASSERT(statefulInst);
     statefulInst->setDebugLoc(DL);
     I->replaceAllUsesWith(statefulInst);
     I->eraseFromParent();

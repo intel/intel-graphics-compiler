@@ -1851,7 +1851,7 @@ llvm::Constant* CShader::findCommonConstant(llvm::Constant* C, uint elts, uint c
         // check if the constant can be packed in vf.
         if (!isa<UndefValue>(constC) && elts >= 4)
         {
-            llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(C->getType());
+            llvm::VectorType* VTy = llvm::cast<llvm::VectorType>(C->getType());
             uint8_t encoding = 0;
             if (VTy->getScalarType()->isFloatTy() &&
                 !getByteFloatEncoding(cast<ConstantFP>(constC), encoding))
@@ -2388,8 +2388,8 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
                 // Only oprd1 could be uniform and its alignment could
                 // be less than GRF. All the others are GRF-aligned.
                 if (aV == GII->getArgOperand(1)) {
-                    ConstantInt* pa = dyn_cast<ConstantInt>(GII->getOperand(3)); // oprd1's precision
-                    ConstantInt* sdepth = dyn_cast<ConstantInt>(GII->getOperand(5));
+                    ConstantInt* pa = cast<ConstantInt>(GII->getOperand(3)); // oprd1's precision
+                    ConstantInt* sdepth = cast<ConstantInt>(GII->getOperand(5));
 
                     int PA = (int)pa->getSExtValue();
                     int SD = (int)sdepth->getSExtValue();
@@ -3722,7 +3722,7 @@ void CShader::GetPayloadElementSymbols(llvm::Value* inst, CVariable* payload[], 
     int count = 0;
     //Gather elements of vector
     while (ie != NULL) {
-        int64_t iOffset = llvm::dyn_cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
+        int64_t iOffset = llvm::cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
         IGC_ASSERT(iOffset >= 0);
         IGC_ASSERT(iOffset < vecWidth);
 

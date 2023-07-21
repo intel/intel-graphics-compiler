@@ -2669,8 +2669,7 @@ AddressModel LdStInfo::getAddressModel(CodeGenContext* Ctx) const
         IGC_ASSERT_MESSAGE(false, "Not support yet");
     }
 
-    PointerType* PTy = dyn_cast<PointerType>(Ptr->getType());
-    IGC_ASSERT(PTy);
+    PointerType* PTy = cast<PointerType>(Ptr->getType());
     const uint32_t AS = PTy->getPointerAddressSpace();
     uint bufferIndex = 0;
     bool directIndexing = false;
@@ -2807,7 +2806,7 @@ void LdStCombine::getOrCreateElements(
         if (!IEI || !isa<ConstantInt>(IEI->getOperand(2))) {
             break;
         }
-        ConstantInt* CInt = dyn_cast<ConstantInt>(IEI->getOperand(2));
+        ConstantInt* CInt = cast<ConstantInt>(IEI->getOperand(2));
         uint32_t idx = (uint32_t)CInt->getZExtValue();
 
         // Make sure the last IEI will be recorded if an element is

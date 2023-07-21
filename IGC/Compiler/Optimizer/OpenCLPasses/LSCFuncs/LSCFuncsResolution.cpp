@@ -859,7 +859,7 @@ Constant *LSCFuncsResolution::getCacheControlOpts(int i, bool isAtomic)
 
     if (isAtomic)
     {
-        ConstantInt* ci = dyn_cast<ConstantInt>(c);
+        ConstantInt* ci = cast<ConstantInt>(c);
         switch (ci->getZExtValue())
         {
         case LSC_L1DEF_L3DEF:

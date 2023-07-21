@@ -77,7 +77,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
   const int RetElemSize = DL.getTypeSizeInBits(RetTy->getScalarType()) / 8;
   unsigned Offset = 0;
   if (!isa<VectorType>(OffsetC->getType()))
-    Offset = dyn_cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
+    Offset = cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
   else
     IGC_ASSERT(dyn_cast<IGCLLVM::FixedVectorType>(OffsetC->getType())->getNumElements() ==
                R.NumElements);

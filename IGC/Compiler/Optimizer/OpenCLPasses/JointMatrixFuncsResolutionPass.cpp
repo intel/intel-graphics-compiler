@@ -1353,13 +1353,13 @@ Value *JointMatrixFuncsResolutionPass::ResolveGeneric(Instruction *OldInst)
 
     if (GetElementPtrInst *NewGEPI = dyn_cast<GetElementPtrInst>(NewInst))
     {
-        GetElementPtrInst *OldGEPI = dyn_cast<GetElementPtrInst>(OldInst);
+        GetElementPtrInst *OldGEPI = cast<GetElementPtrInst>(OldInst);
         NewGEPI->setSourceElementType(ResolveTypes(OldGEPI->getSourceElementType()));
         NewGEPI->setResultElementType(ResolveTypes(OldGEPI->getResultElementType()));
     }
     else if (AllocaInst *NewAlloca = dyn_cast<AllocaInst>(NewInst))
     {
-        AllocaInst *OldAlloca = dyn_cast<AllocaInst>(OldInst);
+        AllocaInst *OldAlloca = cast<AllocaInst>(OldInst);
         NewAlloca->setAllocatedType(ResolveTypes(OldAlloca->getAllocatedType()));
     }
 

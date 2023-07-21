@@ -3490,7 +3490,7 @@ namespace IGC
         MetaDataUtils* pMdUtils,
         SIMDMode simdMode)
     {
-        IGC_ASSERT(pShader != nullptr);
+        IGC_ASSERT(pShader && pKernel);
         pShader->FillKernel(simdMode);
         SProgramOutput* pOutput = pShader->ProgramOutput();
 
@@ -3501,14 +3501,13 @@ namespace IGC
         // ignoring case for multi-simd compilation, or if kernel has stackcalls
         if (!((ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
             && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) &&
-            pKernel.get() != nullptr &&
             !(program->HasStackCalls() || program->IsIntelSymbolTableVoidProgram()))
         {
             isWorstThanPrv =
                 !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get());
         }
 
-        auto pPreviousKernel = ctx->m_retryManager.GetPrevious(&*pKernel);
+        auto pPreviousKernel = ctx->m_retryManager.GetPrevious(pKernel.get());
 
         if(pPreviousKernel &&
             exceedMaxScratchUse(program, ctx))
@@ -3551,7 +3550,7 @@ namespace IGC
         MetaDataUtils* pMdUtils,
         SIMDMode simdMode)
     {
-        IGC_ASSERT_EXIT(ctx != nullptr && pShader != nullptr && pFunc != nullptr && pMdUtils != nullptr);
+        IGC_ASSERT_EXIT(ctx && pShader && pKernel && pFunc && pMdUtils);
 
         CShaderProgram::UPtr pSelectedKernel;
         switch (auto retryType = NeedsRetry(ctx, pShader, pKernel, pFunc, pMdUtils, simdMode))
@@ -3611,7 +3610,7 @@ namespace IGC
         case RetryType::NO_Retry:
         {
             // Save the shader program to the state processor to be handled later
-            if (!pSelectedKernel && pKernel)
+            if (!pSelectedKernel)
             {
                 pSelectedKernel = std::move(pKernel);
             }

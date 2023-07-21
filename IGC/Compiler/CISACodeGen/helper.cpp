@@ -1796,7 +1796,7 @@ namespace IGC
 
         llvm::InsertElementInst* ie = llvm::dyn_cast<llvm::InsertElementInst>(inst);
         while (ie != NULL) {
-            int64_t iOffset = llvm::dyn_cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
+            int64_t iOffset = llvm::cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
             IGC_ASSERT(iOffset >= 0);
             if (iOffset == pos) {
                 return ie->getOperand(1);
@@ -1825,7 +1825,7 @@ namespace IGC
         int count = 0;
         llvm::InsertElementInst* ie = llvm::dyn_cast<llvm::InsertElementInst>(inst);
         while (ie != NULL) {
-            int64_t iOffset = llvm::dyn_cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
+            int64_t iOffset = llvm::cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
             IGC_ASSERT(iOffset >= 0);
             if (elem[iOffset] == NULL) {
                 elem[iOffset] = ie->getOperand(1);

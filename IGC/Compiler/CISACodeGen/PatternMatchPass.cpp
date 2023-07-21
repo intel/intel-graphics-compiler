@@ -2390,7 +2390,7 @@ namespace IGC
                 if (isa<ConstantInt>(V))
                 {
                     // only 16-bit int immediate is supported
-                    APInt val = dyn_cast<ConstantInt>(V)->getValue();
+                    APInt val = cast<ConstantInt>(V)->getValue();
                     return val.sge(SHRT_MIN) && val.sle(SHRT_MAX);
                 }
                 // Trace the def-use chain and return the first non up-cast related value.
@@ -4529,8 +4529,8 @@ namespace IGC
         Value* src2 = I.getOperand(2); // weight. operand(4) is its precision
         //ConstantInt* pa = dyn_cast<ConstantInt>(I.getOperand(3));
         //ConstantInt* pb = dyn_cast<ConstantInt>(I.getOperand(4));
-        ConstantInt* sdepth = dyn_cast<ConstantInt>(I.getOperand(5));
-        ConstantInt* rcount = dyn_cast<ConstantInt>(I.getOperand(6));
+        ConstantInt* sdepth = cast<ConstantInt>(I.getOperand(5));
+        ConstantInt* rcount = cast<ConstantInt>(I.getOperand(6));
         int SD = (int)sdepth->getZExtValue();
         int RC = (int)rcount->getZExtValue();
 

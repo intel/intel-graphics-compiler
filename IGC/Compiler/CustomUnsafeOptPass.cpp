@@ -1992,7 +1992,7 @@ void CustomUnsafeOptPass::matchMixOperation(llvm::BinaryOperator& I)
         if ((fSubOpIdx == 1) ||
             ((fSubOpIdx == 0) && !llvm::isa<llvm::ConstantFP>(I.getOperand(1))))
         {
-            llvm::ConstantFP* fSubOpConst = llvm::dyn_cast<llvm::ConstantFP>(I.getOperand(fSubOpIdx));
+            llvm::ConstantFP* fSubOpConst = llvm::cast<llvm::ConstantFP>(I.getOperand(fSubOpIdx));
             const APFloat& APF = fSubOpConst->getValueAPF();
             bool isInf = APF.isInfinity();
             bool isNaN = APF.isNaN();

@@ -1674,6 +1674,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       }
 
       if (kernel->getIsPayload()) {
+        vASSERT(mainKernel);
         // Copy main kernel's declarations (shader body) into payload section
         kernel->CopyVars(mainKernel);
         kernel->getKernel()->Declares = mainKernel->getKernel()->Declares;
@@ -1894,6 +1895,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
               break;
             }
           }
+          vASSERT(entryBB);
           auto fpInst = func->getKernel()->getBEFPSetupInst();
           vISA_ASSERT(fpInst->opcode() == G4_mov, "unexpected pattern");
           auto spInst = func->getKernel()->getBESPSetupInst();
@@ -2893,9 +2895,11 @@ bool CISA_IR_Builder::CISA_create_logic_instruction(
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
   if (!dst) {
     RecordParseError(lineNum, "null dst in logic op");
+    return false;
   }
   if (!src0) {
     RecordParseError(lineNum, "null src0 in logic op");
+    return false;
   }
   if (opcode != ISA_NOT) {
     if (!src1) {

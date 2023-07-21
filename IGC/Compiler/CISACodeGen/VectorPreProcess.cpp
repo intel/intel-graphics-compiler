@@ -427,7 +427,7 @@ bool VectorPreProcess::isValueCreatedOnlyByIEI(Value* V, InsertElementInst** IEI
         {
             return false;
         }
-        ConstantInt* CInt = dyn_cast<ConstantInt>(IEI->getOperand(2));
+        ConstantInt* CInt = cast<ConstantInt>(IEI->getOperand(2));
         uint32_t idx = (uint32_t)CInt->getZExtValue();
 
         // Make sure the last IEI will be recorded if an element is
@@ -454,7 +454,7 @@ bool VectorPreProcess::isValueUsedOnlyByEEI(Value* V, ExtractElementInst** EEIns
         {
             return false;
         }
-        ConstantInt* CInt = dyn_cast<ConstantInt>(EEI->getOperand(1));
+        ConstantInt* CInt = cast<ConstantInt>(EEI->getOperand(1));
         uint32_t idx = (uint32_t)CInt->getZExtValue();
 
         // Quit if there are multiple extract from the same index.

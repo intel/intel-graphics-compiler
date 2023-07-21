@@ -1039,10 +1039,10 @@ namespace IGC
         while (index < numOperands)
         {
             Value* val = GetPayloadElementToValueMapping(inst, index);
-
-            if (!isa<Constant>(val) && GetValueCCTupleMapping(val))
+            CoalescingEngine::CCTuple* ccTupleCheck = GetValueCCTupleMapping(val);
+            if (!isa<Constant>(val) && ccTupleCheck)
             {
-                ccTuple = GetValueCCTupleMapping(val);
+                ccTuple = ccTupleCheck;
 
                 Value* valRoot = getRegRoot(val);
                 IGC_ASSERT(valRoot);

@@ -242,7 +242,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
     Value* trueValue = IRB.getInt1(true);
     Value* falseValue = IRB.getInt1(false);
 
-    ConstantInt* memFenceType = dyn_cast<ConstantInt>(NBarrierSyncCall.getArgOperand(1));
+    ConstantInt* memFenceType = cast<ConstantInt>(NBarrierSyncCall.getArgOperand(1));
     // LOCAL = 1
     // GLOBAL = 2
     Value* isGlobal = ( (int)memFenceType->getValue().getSExtValue() & 2 ) == 2 ? trueValue : falseValue;

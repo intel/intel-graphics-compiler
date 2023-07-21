@@ -187,7 +187,7 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
         // If a pointer is specifically given an 'align' field in the MD, use it.
         MDNode* alignmentMD = I->getMetadata("align");
         if (alignmentMD)
-            newAlign = (alignment_t)mdconst::dyn_extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
+            newAlign = (alignment_t)mdconst::extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
     }
     if (!newAlign)
     {

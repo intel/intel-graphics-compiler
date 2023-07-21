@@ -442,6 +442,8 @@ std::string GenISAIntrinsic::getName(GenISAIntrinsic::ID id, ArrayRef<Type*> Tys
 #include "IntrinsicGenISA.gen"
 #undef GET_INTRINSIC_NAME_TABLE
   };
+
+  IGC_ASSERT(id < ARRAY_COUNT(Table));
   if (Tys.empty())
     return Table[id];
   std::string Result(Table[id]);

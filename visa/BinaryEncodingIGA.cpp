@@ -1125,6 +1125,7 @@ void BinaryEncodingIGA::Encode() {
 #if _DEBUG
       igaInst->validate();
 #endif
+      vASSERT(currBB);
       currBB->appendInstruction(igaInst);
 
       if (bbNew) {

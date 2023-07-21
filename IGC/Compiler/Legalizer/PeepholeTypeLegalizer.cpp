@@ -207,7 +207,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
     unsigned quotient = 0, promoteToInt = 0;
     promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
-    PHINode* oldPhi = dyn_cast<PHINode>(&I);
+    PHINode* oldPhi = cast<PHINode>(&I);
     Value* result = nullptr;
 
     if (quotient > 1)

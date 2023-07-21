@@ -1276,6 +1276,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
             (topdcl != nullptr ? topdcl->getRegVar()
                                : src->asSrcRegRegion()->getBase());
         if (base->isRegAllocPartaker()) {
+          vASSERT(topdcl);
           unsigned id = topdcl->getRegVar()->getId();
           BitSet *srcfootprint = &footprints[id];
 

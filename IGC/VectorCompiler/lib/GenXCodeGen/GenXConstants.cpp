@@ -681,14 +681,14 @@ static bool checkApplyAddPattern(CallVecIterator &I, CallVecIterator &J,
   ++K;
   auto MaxElement = std::max(J_K, -J_K);
   for (; K < N; ++K) {
-    El1 = dyn_cast<ConstantInt>(IFirst->getAggregateElement(K));
-    El2 = dyn_cast<ConstantInt>(ISecond->getAggregateElement(K));
+    El1 = cast<ConstantInt>(IFirst->getAggregateElement(K));
     // For all-equal elements not-apply
     // Finalizer generates more optimal code
     if (El1->getSExtValue() == I_K) {
       ++J;
       return false;
     }
+    El2 = cast<ConstantInt>(ISecond->getAggregateElement(K));
     I_K = El1->getSExtValue();
     J_K = El2->getSExtValue();
     // If delta is different for element - not apply
