@@ -85,7 +85,8 @@ public:
   bool runOnFunction(Function &F) override;
 
   void visitAllocaInst(AllocaInst &I);
-  void visitStore(StoreInst &St);
+  void visitStore(StoreInst &I);
+  void visitLoad(LoadInst &I);
 
   unsigned int extractAllocaSize(AllocaInst *pAlloca);
 
@@ -96,8 +97,8 @@ private:
   void selectAllocasToHandle();
   bool isAllocaPromotable(AllocaInst &pAlloca);
 
-  bool replaceSingleAggrStore(StoreInst *StI);
-  bool replaceAggregatedStore(StoreInst *StI);
+  void replaceAggregatedStore(StoreInst *SI);
+  void replaceAggregatedLoad(LoadInst *LI);
 
   IGCLLVM::FixedVectorType &getVectorTypeForAlloca(AllocaInst &Alloca,
                                                    Type &ElemTy) const;
@@ -109,7 +110,7 @@ private:
   LLVMContext *Ctx = nullptr;
   Function *Func = nullptr;
 
-  std::queue<StoreInst *> StoresToHandle;
+  SmallVector<Instruction *, 8> AggregatesToReplace;
   std::vector<AllocaInst *> AllocasToPrivMem;
   bool ForcePromotion = false;
   bool LargeAllocasWereLeft = false;
@@ -239,7 +240,7 @@ Instruction *TransposeHelper::loadAndCastVector(AllocaInst *VecAlloca,
   auto CastedWidth = AllocatedWidth * (AllocatedElemTy->getScalarSizeInBits() /
                                        CastTy->getScalarSizeInBits());
   auto *CastVTy = IGCLLVM::FixedVectorType::get(CastTy, CastedWidth);
-  auto *Cast = IRB.CreateBitCast(LoadVecAlloca, CastVTy, "post.load.bc");
+  auto *Cast = IRB.CreateBitCast(LoadVecAlloca, CastVTy, ".post.load.bc");
   return cast<Instruction>(Cast);
 }
 
@@ -746,12 +747,14 @@ bool GenXPromoteArray::runOnFunction(Function &F) {
 
   visit(F);
 
-  bool AggrRemoved = false;
-  while (!StoresToHandle.empty()) {
-    auto *StI = StoresToHandle.front();
-    StoresToHandle.pop();
-    if (StI->getValueOperand()->getType()->isAggregateType())
-      AggrRemoved |= replaceAggregatedStore(StI);
+  unsigned AggregatesReplaced = 0;
+  while (!AggregatesToReplace.empty()) {
+    auto *I = AggregatesToReplace.pop_back_val();
+    if (auto SI = dyn_cast<StoreInst>(I))
+      replaceAggregatedStore(SI);
+    else
+      replaceAggregatedLoad(cast<LoadInst>(I));
+    AggregatesReplaced++;
   }
 
   selectAllocasToHandle();
@@ -771,7 +774,7 @@ bool GenXPromoteArray::runOnFunction(Function &F) {
 
   // IR changed only if we had alloca instruction to optimize or if aggregated
   // stores were replaced
-  return !AllocasToPrivMem.empty() || AggrRemoved;
+  return !AllocasToPrivMem.empty() || AggregatesReplaced > 0;
 }
 
 IGCLLVM::FixedVectorType &
@@ -790,59 +793,53 @@ AllocaInst *GenXPromoteArray::createVectorForAlloca(AllocaInst *Alloca,
   return IRB.CreateAlloca(&VecType);
 }
 
-bool GenXPromoteArray::replaceSingleAggrStore(StoreInst *StI) {
-  IRBuilder<> Builder(StI);
-
-  Value *ValueOp = StI->getValueOperand();
-  Value *Ptr = StI->getPointerOperand();
-  unsigned AS = StI->getPointerAddressSpace();
-  Value *ValToStore = Builder.CreateExtractValue(ValueOp, 0);
-  ValToStore->setName(ValueOp->getName() + ".noAggr");
-
-  StoreInst *NewStI = Builder.CreateAlignedStore(
-      ValToStore,
-      Builder.CreateBitCast(Ptr, ValToStore->getType()->getPointerTo(AS)),
-      IGCLLVM::getAlign(*StI), StI->isVolatile());
-  StoresToHandle.push(NewStI);
-  StI->eraseFromParent();
-
-  return true;
+void GenXPromoteArray::replaceAggregatedStore(StoreInst *SI) {
+  IGC_ASSERT(SI->isSimple());
+  IRBuilder<> Builder(SI);
+  auto *Ptr = SI->getPointerOperand();
+  auto *Val = SI->getValueOperand();
+  auto *ValTy = Val->getType();
+  auto *ArrTy = dyn_cast<ArrayType>(ValTy);
+  uint64_t NumElements =
+      ArrTy ? ArrTy->getNumElements() : ValTy->getNumContainedTypes();
+  auto *IdxType = ArrTy ? Type::getInt64Ty(*Ctx) : Type::getInt32Ty(*Ctx);
+  for (uint64_t Idx = 0; Idx < NumElements; Idx++) {
+    auto *ElemVal = Builder.CreateExtractValue(Val, Idx);
+    Value *Indices[2] = {ConstantInt::get(IdxType, 0),
+                         ConstantInt::get(IdxType, Idx)};
+    auto *ElemPtr =
+        Builder.CreateInBoundsGEP(Val->getType(), Ptr, makeArrayRef(Indices));
+    auto *ElemSI = Builder.CreateStore(ElemVal, ElemPtr);
+    if (ElemVal->getType()->isAggregateType())
+      AggregatesToReplace.push_back(ElemSI);
+  }
+  SI->eraseFromParent();
 }
 
-bool GenXPromoteArray::replaceAggregatedStore(StoreInst *StI) {
-  IRBuilder<> Builder(StI);
-  Value *ValueOp = StI->getValueOperand();
-  Type *ValueOpTy = ValueOp->getType();
-  auto *ST = dyn_cast<StructType>(ValueOpTy);
-  auto *AT = dyn_cast<ArrayType>(ValueOpTy);
-
-  IGC_ASSERT(StI->isSimple());
-  IGC_ASSERT(AT || ST);
-
-  uint64_t Count = ST ? ST->getNumElements() : AT->getNumElements();
-  if (Count == 1)
-    return replaceSingleAggrStore(StI);
-
-  auto *IdxType = Type::getInt32Ty(*Ctx);
-  auto *Zero = ConstantInt::get(IdxType, 0);
-  for (uint64_t I = 0; I < Count; ++I) {
-    Value *Indices[2] = {Zero, ConstantInt::get(IdxType, I)};
-
-    Value *Ptr = nullptr;
-    auto *PtrOp = StI->getPointerOperand();
-    if (ST)
-      Ptr = Builder.CreateInBoundsGEP(ST, PtrOp, makeArrayRef(Indices));
-    else
-      Ptr = Builder.CreateInBoundsGEP(AT, PtrOp, makeArrayRef(Indices));
-
-    auto *Val = Builder.CreateExtractValue(ValueOp, I);
-    auto *NewStI = Builder.CreateStore(Val, Ptr, StI->isVolatile());
-    StoresToHandle.push(NewStI);
+void GenXPromoteArray::replaceAggregatedLoad(LoadInst *LI) {
+  IGC_ASSERT(LI->isSimple());
+  IRBuilder<> Builder(LI);
+  auto *Ptr = LI->getPointerOperand();
+  auto *Ty = LI->getType();
+  auto *ArrTy = dyn_cast<ArrayType>(Ty);
+  uint64_t NumElements =
+      ArrTy ? ArrTy->getNumElements() : Ty->getNumContainedTypes();
+  auto *IdxType = ArrTy ? Type::getInt64Ty(*Ctx) : Type::getInt32Ty(*Ctx);
+  auto *Result = cast<Value>(UndefValue::get(Ty));
+  for (uint64_t Idx = 0; Idx < NumElements; Idx++) {
+    auto *ElemTy = ArrTy ? ArrTy->getElementType() : Ty->getContainedType(Idx);
+    Value *Indices[2] = {ConstantInt::get(IdxType, 0),
+                         ConstantInt::get(IdxType, Idx)};
+    auto *ElemPtr = Builder.CreateInBoundsGEP(Ty, Ptr, makeArrayRef(Indices));
+    auto *ElemLI = Builder.CreateLoad(ElemTy, ElemPtr);
+    if (ElemTy->isAggregateType())
+      AggregatesToReplace.push_back(ElemLI);
+    Result = Builder.CreateInsertValue(Result, ElemLI, Idx);
   }
-
-  StI->eraseFromParent();
-
-  return true;
+  auto Name = LI->getName();
+  LI->replaceAllUsesWith(Result);
+  LI->eraseFromParent();
+  Result->setName(Name);
 }
 
 unsigned int GenXPromoteArray::extractAllocaSize(AllocaInst *Alloca) {
@@ -1052,7 +1049,12 @@ bool GenXPromoteArray::isAllocaPromotable(AllocaInst &Alloca) {
 
 void GenXPromoteArray::visitStore(StoreInst &I) {
   if (I.getValueOperand()->getType()->isAggregateType())
-    StoresToHandle.push(&I);
+    AggregatesToReplace.push_back(&I);
+}
+
+void GenXPromoteArray::visitLoad(LoadInst &I) {
+  if (I.getType()->isAggregateType())
+    AggregatesToReplace.push_back(&I);
 }
 
 void GenXPromoteArray::visitAllocaInst(AllocaInst &I) {
