@@ -22,6 +22,12 @@ SPDX-License-Identifier: MIT
 
 #include "IBiF_Header.cl"
 
+enum ERROR_TYPE {
+  ERROR_TYPE_NONE = 0,
+  ERROR_TYPE_ASSERT = 1,
+  ERROR_TYPE_STACK_OVERFLOW = 2
+};
+
 __global volatile uchar* __builtin_IB_get_assert_buffer();
 void __builtin_IB_software_exception();
 int __builtin_IB_printf_to_buffer(global char* buf, global char* currentOffset, int bufSize, ...);
@@ -34,8 +40,46 @@ typedef struct {
 
 void __devicelib_assert_fail(char *expr, char *file, int line, char *func, long gid0, long gid1, long gid2, long lid0, long lid1, long lid2) {
     AssertBufferHeader* header = (AssertBufferHeader*) __builtin_IB_get_assert_buffer();
-    header->flag = 1;
+    header->flag = ERROR_TYPE_ASSERT;
     global char* buf = (global char*) header;
     __builtin_IB_printf_to_buffer(buf, buf + 8, header->size, "%s:%d: %s: global id: [%lu,%lu,%lu], local id: [%lu,%lu,%lu] Assertion `%s` failed\n", file, line, func, gid0, gid1, gid2, lid0, lid1, lid2, expr);
     __builtin_IB_software_exception();
+}
+
+long __builtin_IB_get_stack_pointer();
+int __builtin_IB_get_stack_size_per_thread();
+
+// This function needs to be inserted in entry points.
+// Assert buffer mechanism is used for stack overflow detection, because we can reuse much code this way:
+//  - We need some kind of temp buffer to store the stack size per thread and stack base for each thread.
+//    Assert buffer is used, so that we don't need to allocate additional one.
+//  - Runtime checks for nonzero value in the "flag" of AssertBufferHeader and then aborts.
+//    This is what we want for stack overflow scenario as well.
+void __stackoverflow_init() {
+    int HWTID = __builtin_IB_hw_thread_id();
+    global volatile int* buf =  (global volatile int*)__builtin_IB_get_assert_buffer();
+    // Go to first int after the AssertBufferHeader
+    buf += 3;
+    *buf = __builtin_IB_get_stack_size_per_thread();
+    buf = buf + 1;
+    global long* stackBase = ((global long*)(buf));
+    stackBase[HWTID] = __builtin_IB_get_stack_pointer();
+}
+
+// This function needs to be inserted in places where stack pointer is incremented.
+void __stackoverflow_detection() {
+    int HWTID = __builtin_IB_hw_thread_id();
+    // +12 will be stack size per thread.
+    global volatile int* buf =  (global volatile int*)__builtin_IB_get_assert_buffer();
+    buf += 3;
+    int stackSizePerThread = *buf;
+    buf += 1;
+    long stackBase = ((global long*)(buf))[HWTID];
+
+    if (__builtin_IB_get_stack_pointer() - stackBase > stackSizePerThread) {
+        global volatile AssertBufferHeader* header = (global volatile AssertBufferHeader*) __builtin_IB_get_assert_buffer();
+        printf("Stack overflow detected!\n");
+        header->flag = ERROR_TYPE_STACK_OVERFLOW;
+        __builtin_IB_software_exception();
+    }
 }

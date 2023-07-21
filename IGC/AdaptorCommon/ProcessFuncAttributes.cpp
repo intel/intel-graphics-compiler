@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
 #include "SPIRV/SPIRVInternal.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -800,6 +801,20 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
     // Enable subroutines flag based on function attributes
     pCtx->CheckEnableSubroutine(M);
+
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        // stackoverflow detection functions will be subroutines, so that we can
+        // call them easily in emit pass as well.
+        for (StringRef funcName :
+             {StackOverflowDetectionPass::STACK_OVERFLOW_INIT_BUILTIN_NAME,
+              StackOverflowDetectionPass::STACK_OVERFLOW_DETECTION_BUILTIN_NAME}) {
+            if (auto F = M.getFunction(funcName)) {
+                F->removeFnAttr("referenced-indirectly");
+                F->removeFnAttr("visaStackCall");
+                SetNoInline(F);
+            }
+        }
+    }
 
     return true;
 }

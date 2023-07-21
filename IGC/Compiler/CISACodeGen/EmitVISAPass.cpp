@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "CISABuilder.hpp"
 #include "OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
 #include "AdaptorCommon/RayTracing/RTStackFormat.h"
 #include "DeSSA.hpp"
 #include "messageEncoding.hpp"
@@ -8254,6 +8255,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         m_encoder->Push();
         break;
     }
+    case GenISAIntrinsic::GenISA_getStackPointer: {
+        m_encoder->Copy(m_destination, m_currShader->GetSP());
+        m_encoder->Push();
+        break;
+    }
+    case GenISAIntrinsic::GenISA_getStackSizePerThread: {
+        CVariable *pSize = getStackSizePerThread(inst->getFunction());
+        m_encoder->Copy(m_destination, pSize);
+        m_encoder->Push();
+        break;
+    }
     case GenISAIntrinsic::GenISA_hw_thread_id:
     case GenISAIntrinsic::GenISA_hw_thread_id_alloca:
     {
@@ -10363,27 +10375,11 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     CVariable* pStackBufferBase = m_currShader->GetPrivateBase();
     CVariable* pHWTID = m_currShader->GetHWTID();
-    CVariable* pSize = nullptr;
 
     IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
     unsigned kernelAllocaSize = pModMD->FuncMD[pKernel].privateMemoryPerWI;
 
-    auto stackMemIter = pModMD->PrivateMemoryPerFG.find(pKernel);
-    IGC_ASSERT(stackMemIter != pModMD->PrivateMemoryPerFG.end());
-    unsigned MaxPrivateSize = stackMemIter->second;
-
-    if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
-    {
-        // Experimental: Patch private memory size
-        std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
-        pSize = m_currShader->GetNewVariable(1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true, CName(patchName));
-        m_encoder->AddVISASymbol(patchName, pSize);
-    }
-    else
-    {
-        // hard-code per-workitem private-memory size to max size
-        pSize = m_currShader->ImmToVariable(MaxPrivateSize * numLanes(m_currShader->m_dispatchSize), ISA_TYPE_UD);
-    }
+    CVariable *pSize = getStackSizePerThread(pKernel);
 
     bool is64bitOffsetPossible = true;
     if (pSize->IsImmediate() && (pSize->GetImmediateValue() * pCtx->platform.getMaxAddressedHWThreads()) <= (uint64_t)UINT32_MAX ) {
@@ -10802,6 +10798,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         CVariable* pSP = m_currShader->GetSP();
         CVariable* pPushSize = m_currShader->ImmToVariable(offsetS, ISA_TYPE_UD);
         emitAddPointer(pSP, pSP, pPushSize);
+
+        if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+            emitStackOverflowDetectionCall(inst->getFunction());
+        }
     }
 
     // Write stack arguments
@@ -11089,6 +11089,10 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     // Push a new stack frame
     emitPushFrameToStack(totalAllocaSize);
+
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        emitStackOverflowDetectionCall(F);
+    }
 
     // Set the per-function private mem size
     m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
@@ -22075,5 +22079,63 @@ void EmitPass::emitCastSelect(CVariable* flag, CVariable* dst, CVariable* src0, 
     m_encoder->Select(flag, tmpDst, src0, src1);
     m_encoder->Push();
     m_encoder->Cast(dst, tmpDst);
+}
+
+
+CVariable* EmitPass::getStackSizePerThread(Function* parentFunc) {
+    CVariable *pSize = nullptr;
+    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto pModMD = pCtx->getModuleMetaData();
+
+    Function *groupHead = nullptr;
+    if (!m_FGA || m_FGA->isGroupHead(parentFunc)) {
+        groupHead = parentFunc;
+    } else {
+        groupHead = m_FGA->getSubGroupMap(parentFunc);
+    }
+
+    Function *pKernel = groupHead;
+    IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
+
+    auto stackMemIter = pModMD->PrivateMemoryPerFG.find(pKernel);
+    IGC_ASSERT(stackMemIter != pModMD->PrivateMemoryPerFG.end());
+    unsigned MaxPrivateSize = stackMemIter->second;
+
+    if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching)) {
+        // Experimental: Patch private memory size
+        std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
+        pSize = m_currShader->GetNewVariable(
+            1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true,
+            CName(patchName));
+        m_encoder->AddVISASymbol(patchName, pSize);
+    } else {
+        // hard-code per-workitem private-memory size to max size
+        pSize = m_currShader->ImmToVariable(
+            MaxPrivateSize * numLanes(m_currShader->m_dispatchSize),
+            ISA_TYPE_UD);
+    }
+
+    return pSize;
+}
+
+void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction) {
+    auto FG = m_FGA->getGroup(ParentFunction);
+    Function *StackOverflowDetectionFunction = nullptr;
+    // Function subgroup can contain clones of the subroutine.
+    for (auto F : *FG) {
+        if (F->getName().contains("__stackoverflow_detection") &&
+            m_FGA->getSubGroupMap(ParentFunction) ==
+                m_FGA->getSubGroupMap(F)) {
+            StackOverflowDetectionFunction = F;
+            break;
+        }
+    }
+    m_currFuncHasSubroutine = true;
+    IGC_ASSERT_MESSAGE(
+        StackOverflowDetectionFunction,
+        "Couldn't find __stackoverflow_detection function in the module!");
+
+    m_encoder->SubroutineCall(nullptr, StackOverflowDetectionFunction);
+    m_encoder->Push();
 }
 

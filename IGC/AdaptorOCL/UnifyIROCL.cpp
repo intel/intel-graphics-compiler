@@ -95,6 +95,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/KernelFunctionCloning.h"
 #include "Compiler/Optimizer/OpenCLPasses/NontemporalLoadsAndStoresInAssert/NontemporalLoadsAndStoresInAssert.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/HandleDevicelibAssert/HandleDevicelibAssert.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
 #include "Compiler/Legalizer/TypeLegalizerPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/Image3dToImage2darray/Image3dToImage2darray.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/RewriteLocalSize/RewriteLocalSize.hpp"
@@ -382,6 +383,9 @@ static void CommonOCLBasedPasses(
     mpm.add(new ReduceOptPass());
 
     mpm.add(new HandleDevicelibAssert());
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        mpm.add(new StackOverflowDetectionPass());
+    }
 
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
     mpm.add(new PreBIImportAnalysis());
