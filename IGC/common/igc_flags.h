@@ -270,6 +270,7 @@ DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true, "Enables reduction to lo
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, EnableDebugging,                           false, " Enable shader debugging for release internal", false)
+DECLARE_IGC_REGKEY_BITMASK(GenerateOptionsFile, 0, "Create Options.txt(usually for SIMD related bugs to narrow down shaders), in the shader dump folder.", SHADER_TYPE_MASKS, false)
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
 DECLARE_IGC_REGKEY(bool, EnableHashMovsAtPrologue,      false, "Rather than after EOT, insert hash code movs at shader entry", false)
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Add hash code to the binary", false)

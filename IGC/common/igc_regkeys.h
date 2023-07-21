@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #define EARLY_OUT_CS_PATTERN(Name, Val) #Name "=" #Val ","
 #define EARLY_OUT_PS_PATTERN(Name, Val) #Name "=" #Val ","
 #define FP_BINOP_INSTRUCTION(Name, Val) #Name "=" #Val ","
+#define SHADER_TYPE_MASK(Name, Val) #Name "=" #Val ","
 #define TRIBOOL_OPTION(Name, Val) #Name "=" #Val ","
 #define RTMEMORY_STYLE_OPTION(Name, Val) #Name "=" #Val ","
 

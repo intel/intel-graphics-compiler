@@ -157,6 +157,9 @@ extern SRegKeysList g_RegKeyList;
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) \
   (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value == setOnValue), \
                     g_RegKeyList.subname, subvalue))
+#define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue) \
+  (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value != 0), \
+                    g_RegKeyList.subname, subvalue))
 #else
 #define IGC_GET_FLAG_VALUE(name)                 \
   (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
@@ -170,6 +173,9 @@ extern SRegKeysList g_RegKeyList;
   (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.m_string : "")
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) \
   (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value == setOnValue), \
+                    g_RegKeyList.subname, subvalue))
+#define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue) \
+  (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value != 0), \
                     g_RegKeyList.subname, subvalue))
 #endif
 
@@ -241,6 +247,7 @@ bool IsEnabled(const T& value)
 #define IGC_REGKEY_OR_FLAG_ENABLED(name, flag) \
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) {}
+#define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue) {}
 #endif
 
 // unset: Unlimited/Enable - return true

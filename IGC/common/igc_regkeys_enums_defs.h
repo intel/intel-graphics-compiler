@@ -63,6 +63,21 @@ SPDX-License-Identifier: MIT
         EARLY_OUT_PS_PATTERN(MulMaxMatchEnable,         0x20)
 #endif // EARLY_OUT_PS_PATTERN
 
+// Not able to convert a C++ value (ShaderType::) back to preprocessor
+// copy value by hand
+#ifdef SHADER_TYPE_MASK
+#define SHADER_TYPE_MASKS   \
+            SHADER_TYPE_MASK(VS,       0x2) \
+            SHADER_TYPE_MASK(HS,       0x4) \
+            SHADER_TYPE_MASK(DS,       0x8) \
+            SHADER_TYPE_MASK(GS,       0x10)\
+            SHADER_TYPE_MASK(PS,       0x80)\
+            SHADER_TYPE_MASK(CS,       0x100)   \
+            SHADER_TYPE_MASK(MS,       0x40)\
+            SHADER_TYPE_MASK(TS,       0x20)\
+            SHADER_TYPE_MASK(RT,       0x400)
+#endif // SHADER_TYPE_MASKS
+
 #ifdef FP_BINOP_INSTRUCTION
     #define FP_BINOP_INSTRUCTIONS                  \
             FP_BINOP_INSTRUCTION(FAdd,       0x1)  \
