@@ -610,6 +610,7 @@ public:
 
     void emitMayUnalignedVectorCopy(
         CVariable* D, uint32_t D_off, CVariable* S, uint32_t S_off, llvm::Type* Ty);
+    void emitStackOverflowDetectionCall(llvm::Function* ParentFunction);
 
     std::pair<llvm::Value*, llvm::Value*> getPairOutput(llvm::Value*) const;
 
@@ -960,6 +961,9 @@ private:
                                     uint32_t EltBytes, alignment_t Align);
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1,
                                      bool EvictL1) const;
+
+    CVariable *getStackSizePerThread(llvm::Function* parentFunc);
+
     bool m_isDuplicate;
     CVariable *m_tmpDest = nullptr;
     std::set<CoalescingEngine::CCTuple *> lifetimeStartAdded;
