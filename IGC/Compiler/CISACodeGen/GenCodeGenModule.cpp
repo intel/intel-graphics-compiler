@@ -140,9 +140,26 @@ void GenXCodeGenModule::processFunction(Function& F)
 {
     // See what FunctionGroups this Function is called from.
     SetVector<std::pair<FunctionGroup*, Function*>> CallerFGs;
-    for (auto U : F.users())
+
+    std::vector<llvm::Function*> Callers;
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        if (F.getName().equals("__stackoverflow_detection")) {
+          // Mark all stack calls as users of this detection function.
+          // It will be used as a subroutine, so it needs to be cloned for
+          // each of stack call functions.
+          for (auto& Func : F.getParent()->getFunctionList()) {
+            if (Func.hasFnAttribute("visaStackCall")) {
+              Callers.push_back(&Func);
+            }
+          }
+        }
+    }
+    for (auto U : F.users()) {
+        Callers.push_back(getCallerFunc(U));
+    }
+
+    for (auto Caller : Callers)
     {
-        Function* Caller = getCallerFunc(U);
         FunctionGroup* FG = FGA->getGroup(Caller);
         Function* SubGrpH = FGA->useStackCall(&F) ? (&F) : FGA->getSubGroupMap(Caller);
         if (FG == nullptr || SubGrpH == nullptr)

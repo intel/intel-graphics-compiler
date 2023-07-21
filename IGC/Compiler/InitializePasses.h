@@ -243,3 +243,4 @@ void initializeResolveConstExprCallsPass(llvm::PassRegistry&);
 void initializeHandleSpirvDecorationMetadataPass(llvm::PassRegistry&);
 void initializeNontemporalLoadsAndStoresInAssertPass(llvm::PassRegistry&);
 void initializeHandleDevicelibAssertPass(llvm::PassRegistry&);
+void initializeStackOverflowDetectionPassPass(llvm::PassRegistry &);
