@@ -234,6 +234,7 @@ set(GenX_Common_Sources_External_Other
   GraphColor.cpp
   HWConformity.cpp
   IncrementalRA.cpp
+  EmuInt64Add.cpp
   InstSplit.cpp
   JitterDataStruct.cpp
   LinearScanRA.cpp
@@ -335,6 +336,7 @@ set(GenX_Common_Headers
   G4Instruction.h
   GraphColor.h
   HWConformity.h
+  EmuInt64Add.h
   IGfxHwEuIsaCNL.h
   InstSplit.h
   LinearScanRA.h

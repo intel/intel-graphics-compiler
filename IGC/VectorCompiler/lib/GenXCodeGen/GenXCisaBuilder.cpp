@@ -6331,6 +6331,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
 
+  if (!ST.hasAdd64())
+    addArgument("-hasNoInt64Add");
   if (Info.EmitDebugInformation)
     addArgument("-generateDebugInfo");
   if (Info.EmitCrossThreadOffsetRelocation)

@@ -677,6 +677,7 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(cselPeepHoleOpt, vISA_enableCSEL, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(optimizeLogicOperation, vISA_EnableAlways,
                   TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(EmulateInt64Add, vISA_EnableAlways, TimerID::HW_CONFORMITY);
   OPT_INITIALIZE_PASS(HWConformityChk, vISA_EnableAlways, TimerID::HW_CONFORMITY);
   OPT_INITIALIZE_PASS(preRA_Schedule, vISA_preRA_Schedule,
                   TimerID::PRERA_SCHEDULING);
@@ -910,6 +911,9 @@ int Optimizer::optimization() {
 
   // Dead code elimination
   runPass(PI_dce);
+
+  // Emulate 64 Int add if needed
+  runPass(PI_EmulateInt64Add);
 
   // HW conformity check
   runPass(PI_HWConformityChk);

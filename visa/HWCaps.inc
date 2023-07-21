@@ -644,7 +644,7 @@ bool hasPartialInt64Support() const {
          (getPlatform() >= Xe_PVC && getOption(vISA_HasPartialInt64));
 }
 
-bool hasInt64Add() const { return getOption(vISA_HasInt64Add); }
+bool hasInt64Add() const { return !getOption(vISA_HasNoInt64Add); }
 
 bool supportsLSC() const { return getPlatform() >= Xe_DG2; }
 

@@ -538,7 +538,8 @@ DEF_VISA_OPTION(vISA_scatterSpill, ET_BOOL, "-scatterSpill",
                 "Use LSC scatter store for spills to avoid RMW", false)
 // native int64 adder was removed and then added back (adder lacks saturation)
 // the int64 shifter was never removed
-DEF_VISA_OPTION(vISA_HasInt64Add, ET_BOOL, "-hasInt64Add", UNUSED, false)
+DEF_VISA_OPTION(vISA_HasNoInt64Add, ET_BOOL, "-hasNoInt64Add", UNUSED, false)
+
 // Corresponds to something slightly different in IGC than vISA_HasInt64Add
 // (C.f. Platform.hpp:hasPartialInt64Support)
 DEF_VISA_OPTION(vISA_HasPartialInt64, ET_BOOL, "-partialInt64", UNUSED, false)
