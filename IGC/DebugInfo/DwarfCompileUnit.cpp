@@ -1336,7 +1336,7 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock *Block, const DbgVariable &DV,
     // 1 DW_OP_addr <slm - va>
     uint32_t offset = Loc.GetOffset();
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
-    addUInt(Block, dwarf::DW_FORM_data4, offset);
+    addUInt(Block, dwarf::DW_FORM_addr, (uint64_t)offset);
   }
 }
 
