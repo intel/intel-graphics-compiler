@@ -405,9 +405,6 @@ private:
   bool EarlyExited = false;
   // Indicates whether RA has failed
   bool RAFail = false;
-  // High register pressure detected before RA.
-  // Only considered if vISA option -abortOnSpill is set.
-  bool AbortHighRP = false;
 
   /// Initialize all passes during the construction.
   void initOptimizations();
