@@ -216,7 +216,7 @@ DEF_VISA_OPTION(vISA_renderTargetWriteSendReloc, ET_BOOL,
         "Enables adding offsets of all Render Target Write send instructions to the relocation table.", false)
 DEF_VISA_OPTION(vISA_CodePatch, ET_INT32, "-codePatch", UNUSED, 0)
 DEF_VISA_OPTION(vISA_Linker, ET_INT32, "-linker", UNUSED, 0)
-DEF_VISA_OPTION(vISA_SSOShifter, ET_INT32, "-paddingSSOShifter", UNUSED, 9)
+DEF_VISA_OPTION(vISA_SSOShifter, ET_INT32, "-paddingSSOShifter", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SkipPaddingScratchSpaceSize, ET_INT32, "-skipPaddingScratchSpaceSize", UNUSED, 4096)
 DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
                 UNUSED, 0x3003E)
