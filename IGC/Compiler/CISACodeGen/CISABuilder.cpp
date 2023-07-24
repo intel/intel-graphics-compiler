@@ -6172,6 +6172,8 @@ namespace IGC
               shaderOverrideVISAFirstPass(visaOverrideFiles, kernelName);
         }
 
+        vISA::FINALIZER_INFO* jitInfo = nullptr;
+
         // Compile generated VISA text string for inlineAsm
         if (m_hasInlineAsm || visaAsmOverride || additionalVISAAsmToLink)
         {
@@ -6181,11 +6183,15 @@ namespace IGC
             // return immediately if there is error during parsing visaasm
             if (pMainKernel == nullptr)
                 return;
+            pMainKernel->GetJitInfo(jitInfo);
         }
         //Compile to generate the V-ISA binary
         else
         {
             pMainKernel = vMainKernel;
+            pMainKernel->GetJitInfo(jitInfo);
+
+            jitInfo->stats.scratchSpaceSizeLimit = m_program->ProgramOutput()->m_scratchSpaceSizeLimit;
             m_vIsaCompileStatus = vbuilder->Compile(
                 m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", nullptr, emitVisaOnly);
         }
@@ -6204,9 +6210,6 @@ namespace IGC
         pMainKernel->GetKernelInfo(vISAstats);
         // Collect metrics from vISA
         context->metrics.CollectRegStats(vISAstats, m_program->entry);
-
-        vISA::FINALIZER_INFO* jitInfo = nullptr;
-        pMainKernel->GetJitInfo(jitInfo);
 
         // Depend on vISA information about barriers presence to make sure that it's
         // always set properly, even if a barrier is used as a part of Inline vISA code only.

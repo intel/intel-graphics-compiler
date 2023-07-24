@@ -1862,8 +1862,15 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       {
         auto& builder = *func->getKernel()->fg.builder;
         auto& spillMemUsed = builder.getJitInfo()->stats.spillMemUsed;
+        auto& scratchSpaceSizeLimit = builder.getJitInfo()->stats.scratchSpaceSizeLimit;
+        // Skip padding when
+        // 1. spill size is smaller than the threshold
+        // 2. spill size is larger than scratchSpaceSizeLimit
+        // (it cannot be encoded into the binary due to the limit)
         bool skip_padding =
-          builder.kernel.getuInt32Option(vISA_SkipPaddingScratchSpaceSize) >= spillMemUsed;
+          builder.kernel.getuInt32Option(vISA_SkipPaddingScratchSpaceSize) >= spillMemUsed ||
+          (scratchSpaceSizeLimit != 0 &&
+           spillMemUsed + (1U << builder.kernel.getuInt32Option(vISA_SSOShifter)) * 8 > scratchSpaceSizeLimit);
         bool SSO_padding =
           !skip_padding &&
           builder.getPlatform() == Xe_DG2 &&
