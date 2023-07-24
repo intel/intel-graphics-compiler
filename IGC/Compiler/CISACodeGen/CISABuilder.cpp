@@ -6127,7 +6127,7 @@ namespace IGC
         }
         VISAKernel *pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
         m_vIsaCompileStatus = vAsmTextBuilder->Compile(
-            m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", nullptr,
+            m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
             emitVisaOnly);
 
         return pMainKernel;
@@ -6195,7 +6195,8 @@ namespace IGC
 
             jitInfo->stats.scratchSpaceSizeLimit = m_program->ProgramOutput()->m_scratchSpaceSizeLimit;
             m_vIsaCompileStatus = vbuilder->Compile(
-                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", nullptr, emitVisaOnly);
+                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
+                emitVisaOnly);
         }
 
         COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);

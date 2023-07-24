@@ -75,7 +75,6 @@ public:
   VISA_BUILDER_API int AddPayloadSection(VISAFunction *&function,
                                          const char *functionName) override;
   VISA_BUILDER_API int Compile(const char *isaFileNameint,
-                               std::ostream *os = nullptr,
                                bool emit_visa_only = false) override;
 
   VISA_BUILDER_API void SetOption(vISAOptions option, bool val) override {

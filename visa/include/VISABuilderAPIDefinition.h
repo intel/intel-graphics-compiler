@@ -1240,7 +1240,6 @@ public:
   VISA_BUILDER_API virtual int AddPayloadSection(VISAFunction *&function,
                                                  const char *functionName) = 0;
   VISA_BUILDER_API virtual int Compile(const char *isaFileNameint,
-                                       std::ostream *os = nullptr,
                                        bool emit_visa_only = false) = 0;
 
   VISA_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;

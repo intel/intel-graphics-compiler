@@ -6278,7 +6278,7 @@ public:
         BC->isaDumpsEnabled() && BC->hasShaderDumper()
             ? BC->getShaderDumper().composeDumpPath("final.isa").c_str()
             : "",
-        nullptr, BC->emitVisaOnly()));
+        BC->emitVisaOnly()));
 
     if (!BC->isDisableFinalizerMsg())
       dbgs() << CisaBuilder->GetCriticalMsg();
