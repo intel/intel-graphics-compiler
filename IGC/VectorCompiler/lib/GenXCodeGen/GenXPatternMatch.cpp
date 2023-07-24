@@ -94,7 +94,7 @@ using namespace llvm::PatternMatch;
 using namespace genx;
 using namespace vc;
 
-#define DEBUG_TYPE "GENX_PATTERN_MATCH"
+#define DEBUG_TYPE "genx-pattern-match"
 
 STATISTIC(NumOfMadMatched, "Number of mad instructions matched");
 STATISTIC(NumOfMinMaxMatched, "Number of min/max instructions matched");
@@ -114,13 +114,14 @@ static cl::opt<bool> EnableBfnMatcher("enable-bfn", cl::init(true), cl::Hidden,
                                       cl::desc("Enable bfn matching."));
 
 namespace {
-
 class GenXPatternMatch : public FunctionPass,
                          public InstVisitor<GenXPatternMatch> {
-  DominatorTree *DT = nullptr;
-  LoopInfo *LI = nullptr;
   const DataLayout *DL = nullptr;
   const TargetOptions *Options = nullptr;
+  const GenXSubtarget *ST = nullptr;
+  DominatorTree *DT = nullptr;
+  LoopInfo *LI = nullptr;
+
   // Indicates whether there is any change.
   bool Changed = false;
 
@@ -223,9 +224,9 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
 
   // Before we get the simd-control-flow representation right,
   // we avoid dealing with predicate constants
-  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
-                                 .getTM<GenXTargetMachine>()
-                                 .getGenXSubtarget();
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   if (Kind == PatternMatchKind::PreLegalization) {
     loadPhiConstants(F, DT, *ST, *DL, true);
     Changed |= distributeIntegerMul(&F);
@@ -233,25 +234,21 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
     Changed |= reassociateIntegerMad(&F);
     Changed |= placeConstants(&F);
     Changed |= vectorizeConstants(&F);
+  }
 
-    visit(F);
+  visit(F);
 
+  if (Kind == PatternMatchKind::PreLegalization) {
     Changed |= simplifyVolatileGlobals(&F);
-
     Changed |= simplifySelect(&F);
     // Break big predicate variables and run after min/max pattern match.
     Changed |= decomposeSelect(&F);
-
     Changed |= mergeLscLoad(&F);
 
     // Simplify instructions after select decomposition and clear dead ones.
-    for (auto& BB : F)
+    for (auto &BB : F)
       Changed |= SimplifyInstructionsInBlock(&BB);
   }
-  else {
-    visit(F);
-  }
-
   return Changed;
 }
 
@@ -530,9 +527,6 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
     return;
   }
 
-  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
-                                 .getTM<GenXTargetMachine>()
-                                 .getGenXSubtarget();
   auto IID = vc::getAnyIntrinsicID(&I);
   switch (IID) {
   default:
