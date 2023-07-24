@@ -150,7 +150,15 @@ class Optimizer {
     Sched.run();
   }
 
-  void preRA_Schedule();
+  void preRA_Schedule() {
+    if (kernel.useRegSharingHeuristics()) {
+      preRA_RegSharing Sched(kernel, /*rpe*/ nullptr);
+      Sched.run();
+    } else {
+      preRA_Scheduler Sched(kernel, /*rpe*/ nullptr);
+      Sched.run();
+    }
+  }
   void localSchedule() {
     LocalScheduler lSched(kernel.fg);
     lSched.localScheduling();
@@ -393,15 +401,14 @@ private:
   /// Array of passes registered.
   PassInfo Passes[PI_NUM_PASSES];
 
+  // indicates whether RA has failed
+  bool RAFail;
   // Name of the pass that we should stop before/after, from the
   // -stopbefore/-stopafter flag.
   std::string StopBeforePass;
   std::string StopAfterPass;
-
   // Whether we have hit the stop-after pass.
   bool EarlyExited = false;
-  // Indicates whether RA has failed
-  bool RAFail = false;
   // High register pressure detected before RA.
   // Only considered if vISA option -abortOnSpill is set.
   bool AbortHighRP = false;
