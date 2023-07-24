@@ -18,6 +18,8 @@ SPDX-License-Identifier: MIT
 namespace IGC {
     llvm::FunctionPass* createRematAddressArithmeticPass();
     void initializeRematAddressArithmeticPass(llvm::PassRegistry&);
+    llvm::FunctionPass* createCloneAddressArithmeticPass();
+    void initializeCloneAddressArithmeticPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_REMATADDRESSARITHMETIC_H_
