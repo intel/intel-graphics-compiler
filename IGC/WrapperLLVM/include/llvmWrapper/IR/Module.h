@@ -17,9 +17,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR == 8
-    using llvm::Module;
-#else
+    // TODO: Clean up obsolete uses at call sites
     class Module : public llvm::Module
     {
         public:
@@ -27,6 +25,7 @@ namespace IGCLLVM
             : llvm::Module(ModuleID, C)
             {}
 
+        // TODO: Delete getOrInsertFunction wrappers
         inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty)
         {
             return llvm::Module::getOrInsertFunction(Name, Ty).getCallee();
@@ -36,6 +35,7 @@ namespace IGCLLVM
             return llvm::Module::getOrInsertFunction(Name, Ty, attributeList).getCallee();
         }
 
+        // TODO: Refactor to use the LLVM 12+ signature at call sites
         inline llvm::StructType* getTypeByName(llvm::StringRef Name)
         {
 #if LLVM_VERSION_MAJOR < 12
@@ -46,8 +46,8 @@ namespace IGCLLVM
         }
 
     };
-#endif
 
+    // TODO: Refactor to use the LLVM 12+ signature at call sites
     inline llvm::StructType *getTypeByName(llvm::Module &M, llvm::StringRef Name)
     {
 #if LLVM_VERSION_MAJOR < 12

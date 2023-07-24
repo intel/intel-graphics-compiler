@@ -15,16 +15,6 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR == 8
-    using llvm::InsertPreheaderForLoop;
-#else
-    inline llvm::BasicBlock *InsertPreheaderForLoop(llvm::Loop *L, llvm::DominatorTree *DT, llvm::LoopInfo *LI,
-                                   bool PreserveLCSSA)
-    {
-        return llvm::InsertPreheaderForLoop(L, DT, LI, nullptr, PreserveLCSSA);
-    }
-#endif
-
     inline bool isInnermost(llvm::Loop *L) {
 #if LLVM_VERSION_MAJOR >= 12
         return L->isInnermost();

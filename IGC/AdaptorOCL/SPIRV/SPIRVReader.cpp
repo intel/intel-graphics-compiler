@@ -583,20 +583,12 @@ public:
           return type->getSizeInBits();
       else if (auto DITy = dyn_cast_or_null<llvm::DIDerivedType>(type))
       {
-#if LLVM_VERSION_MAJOR == 8
-          auto baseType = DITy->getBaseType().resolve();
-#else
           auto baseType = DITy->getBaseType();
-#endif
           return getSizeInBits(baseType);
       }
       else if (auto CTy = dyn_cast_or_null<llvm::DICompositeType>(type))
       {
-#if LLVM_VERSION_MAJOR == 8
-          auto baseType = CTy->getBaseType().resolve();
-#else
           auto baseType = CTy->getBaseType();
-#endif
           return getSizeInBits(baseType);
       }
 

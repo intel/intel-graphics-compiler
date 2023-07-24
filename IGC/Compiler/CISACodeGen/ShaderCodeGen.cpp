@@ -146,7 +146,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO/FunctionAttrs.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Scalar/InstSimplifyPass.h>
-#include <llvmWrapper/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -440,7 +440,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         if (LoopUnrollThreshold > 0 && (ctx.m_tempCount < 64))
         {
-            mpm.add(IGCLLVM::createLoopUnrollPass(2, LoopUnrollThreshold, -1, 1));
+            mpm.add(llvm::createLoopUnrollPass(2, false, false,
+                        LoopUnrollThreshold, -1, 1, -1, -1, -1));
         }
 
         mpm.add(createBarrierNoopPass());
@@ -1411,7 +1412,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                      !disableLoopUnrollStage1)
                     || hasIndexTemp)
                 {
-                    mpm.add(IGCLLVM::createLoopUnrollPass());
+                    mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1,
+                                                       -1, -1, -1, -1));
                 }
 
                 // Due to what looks like a bug in LICM, we need to break the LoopPassManager between
@@ -1427,7 +1429,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                 // Second unrolling with the same threshold.
                 if (LoopUnrollThreshold > 0 && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
-                    mpm.add(IGCLLVM::createLoopUnrollPass());
+                    mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1,
+                                                       -1, -1, -1, -1));
                 }
 
                 mpm.add(llvm::createLoopLoadEliminationPass());
@@ -1596,7 +1599,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                          !disableLoopUnrollStage1)
                         || hasIndexTemp)
                     {
-                        mpm.add(IGCLLVM::createLoopUnrollPass());
+                        mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1,
+                                                           -1, -1, -1, -1));
                     }
                 }
 

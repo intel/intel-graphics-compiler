@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
+#include <llvm/Transforms/Utils/LoopUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -882,7 +882,7 @@ bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree* DT, LoopInfo* 
     // Does the loop already have a preheader?  If so, don't insert one.
     BasicBlock* Preheader = L->getLoopPreheader();
     if (!Preheader) {
-        Preheader = IGCLLVM::InsertPreheaderForLoop(L, DT, LI, PreserveLCSSA);
+        Preheader = InsertPreheaderForLoop(L, DT, LI, nullptr, PreserveLCSSA);
         if (Preheader) {
             changed = true;
         }

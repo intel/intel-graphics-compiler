@@ -105,6 +105,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/GVMaterializer.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -191,6 +192,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/InstSimplifyPass.h"
+#include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/FunctionComparator.h"
@@ -220,7 +222,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/InstVisitor.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/IRBuilder.h"
@@ -244,7 +245,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/YAMLParser.h"
 #include "llvmWrapper/Target/TargetMachine.h"
 #include "llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h"
-#include "llvmWrapper/Transforms/Scalar.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvmWrapper/Transforms/Utils/Local.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
@@ -282,7 +282,6 @@ SPDX-License-Identifier: MIT
 // #include "llvm/IR/GlobalValue.h" - uses llvmWrapper
 // #include "llvm/IR/InstrTypes.h" - uses llvmWrapper
 // #include "llvm/IR/Instructions.h" - uses llvmWrapper
-// #include "llvm/IR/InstVisitor.h" - uses llvmWrapper
 // #include "llvm/IR/IntrinsicInst.h" - uses llvmWrapper
 // #include "llvm/IR/Intrinsics.h" - uses llvmWrapper
 // #include "llvm/IR/IRBuilder.h" - uses llvmWrapper
@@ -303,7 +302,6 @@ SPDX-License-Identifier: MIT
 // #include "llvm/Support/SystemUtils.h" - uses llvmWrapper
 // #include "llvm/Target/TargetMachine.h" - uses llvmWrapper
 // #include "llvm/Transforms/InstCombine/InstCombineWorklist.h" - uses llvmWrapper
-// #include "llvm/Transforms/Scalar.h" - uses llvmWrapper
 // #include "llvm/Transforms/Utils/Cloning.h" - uses llvmWrapper
 // #include "llvm/Transforms/Utils/Local.h" - uses llvmWrapper
 // #include "llvm/Transforms/Utils/LoopUtils.h" - uses llvmWrapper

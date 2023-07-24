@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "TypeLegalizer.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/InstVisitor.h"
+#include "llvm/IR/InstVisitor.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
