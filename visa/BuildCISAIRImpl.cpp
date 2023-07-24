@@ -1531,6 +1531,8 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
 // default size of the kernel mem manager in bytes
 int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
                              bool emit_visa_only) {
+  vISA_ASSERT(!os, "std::ostream * parameter is deprecated and expected to be "
+                   "null.");
   stopTimer(
       TimerID::BUILDER); // TIMER_BUILDER is started when builder is created
   int status = VISA_SUCCESS;
@@ -1602,9 +1604,6 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     if (CisaFramework::allowDump(m_options, name))
       status = m_cisaBinary->dumpToFile(name);
   }
-
-  if (os)
-    status = m_cisaBinary->dumpToStream(os);
 
   // Early return if emit_visa_only is true.
   if (emit_visa_only)
@@ -2035,12 +2034,8 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       }
     }
 
-    if (os) {
-      status = m_cisaBinary->dumpToStream(os);
-    } else {
-      if (CisaFramework::allowDump(m_options, name))
-        status = m_cisaBinary->dumpToFile(name);
-    }
+    if (CisaFramework::allowDump(m_options, name))
+      status = m_cisaBinary->dumpToFile(name);
   }
 
   stopTimer(TimerID::TOTAL); // have to record total time before dump the timer
