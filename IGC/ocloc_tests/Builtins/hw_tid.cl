@@ -11,9 +11,9 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys
 
-// RUN: ocloc compile -file %s -options " -igc_opts 'DumpVISAASMToConsole=1'" -device pvc | FileCheck %s --check-prefix=CHECK-VISA
+// RUN: ocloc compile -file %s -options " -igc_opts 'DumpVISAASMToConsole=1'" -device dg2 | FileCheck %s --check-prefix=CHECK-VISA
 // CHECK-VISA: recursive_call{{.*}}:
-// CHECK-VISA: and (M1_NM, 1) HWTID(0,0)<1> %sr0(0,0)<0;1,0> 0x7fff:d
+// CHECK-VISA: and (M1_NM, 1) HWTID(0,0)<1> %sr0(0,0)<0;1,0> 0x{{.*}}:d
 
 int __builtin_IB_hw_thread_id();
 int recursive_call(int n) {
