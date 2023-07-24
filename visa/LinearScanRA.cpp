@@ -801,6 +801,8 @@ int LinearScanRA::linearScanRA() {
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
   int globalScratchOffset =
       kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+  // FXIME: This does not match GCRA's definition (it has an additional
+  // builder.suppportsLSC())
   bool useScratchMsgForSpill =
       !hasStackCall && (globalScratchOffset < (int)(SCRATCH_MSG_LIMIT * 0.6));
   bool enableSpillSpaceCompression =
@@ -922,10 +924,9 @@ int LinearScanRA::linearScanRA() {
         }
       }
 
-      SpillManagerGRF spillGRF(gra, nextSpillOffset, l.getNumSelectedVar(), &l,
-                               &spillLRs, enableSpillSpaceCompression,
-                               useScratchMsgForSpill,
-                               builder.avoidDstSrcOverlap(), {});
+      SpillManagerGRF spillGRF(gra, nextSpillOffset, &l, &spillLRs,
+                               enableSpillSpaceCompression,
+                               useScratchMsgForSpill);
 
       spillGRF.spillLiveRanges(&kernel);
       nextSpillOffset = spillGRF.getNextOffset();

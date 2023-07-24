@@ -9669,14 +9669,15 @@ int GlobalRA::coloringRegAlloc() {
             enableSpillSpaceCompression = false;
           }
         }
-
         startTimer(TimerID::SPILL);
         SpillManagerGRF spillGRF(
-            *this, nextSpillOffset, liveAnalysis.getNumSelectedVar(),
-            &liveAnalysis, coloring.getLiveRanges(), coloring.getIntf(),
-            &coloring.getSpilledLiveRanges(), iterationNo++, reserveSpillReg,
-            spillRegSize, indrSpillRegSize, enableSpillSpaceCompression,
-            useScratchMsgForSpill, builder.avoidDstSrcOverlap());
+            *this, nextSpillOffset, &liveAnalysis, coloring.getLiveRanges(),
+            coloring.getIntf(), &coloring.getSpilledLiveRanges(),
+            reserveSpillReg, spillRegSize, indrSpillRegSize,
+            enableSpillSpaceCompression, useScratchMsgForSpill);
+        // FIXME: This really should be done at loop end, but keep it here to
+        // match old behavior.
+        iterationNo++;
 
         if (kernel.getOption(vISA_SpillAnalysis)) {
           spillAnalysis->Do(&liveAnalysis, &coloring, &spillGRF);

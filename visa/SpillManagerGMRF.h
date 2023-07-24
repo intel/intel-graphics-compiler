@@ -185,12 +185,12 @@ public:
     }
   }
 
-  BoundedRA(GlobalRA &ra, const LiveRangeVec &l);
+  BoundedRA(GlobalRA &ra, const LiveRangeVec *l = nullptr);
 
 private:
   GlobalRA &gra;
   G4_Kernel &kernel;
-  const LiveRangeVec &lrs;
+  const LiveRangeVec *lrs;
   static const unsigned int bitsetSz = 256;
   // Map each inst -> list of busy GRFs
   std::unordered_map<const G4_INST *, std::bitset<bitsetSz>> busyGRF;
@@ -237,30 +237,21 @@ private:
 
 class SpillManagerGRF {
 public:
-  using DECLARE_LIST = std::list<G4_Declare *>;
   using LR_LIST = std::list<LiveRange *>;
   using LSLR_LIST = std::list<LSLiveRange *>;
-  using INST_LIST = std::list<G4_INST *, INST_LIST_NODE_ALLOCATOR>;
-  typedef struct Edge {
-    unsigned first;
-    unsigned second;
-  } EDGE;
-  using INTF_LIST = std::list<EDGE>;
 
-  // Methods
-
-  SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
-                  const LivenessAnalysis *lvInfo, const LiveRangeVec& lrInfo,
+  // Construtor for GCRA.
+  SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
+                  const LivenessAnalysis *lvInfo, const LiveRangeVec &lrInfo,
                   const Interference *intf, const LR_LIST *spilledLRs,
-                  unsigned iterationNo, bool useSpillReg, unsigned spillRegSize,
+                  bool useSpillReg, unsigned spillRegSize,
                   unsigned indrSpillRegSize, bool enableSpillSpaceCompression,
-                  bool useScratchMsg, bool avoidDstSrcOverlap);
+                  bool useScratchMsg);
 
-  SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
+  // Constructor for linear scan RA.
+  SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
                   const LivenessAnalysis *lvInfo, LSLR_LIST *spilledLSLRs,
-                  bool enableSpillSpaceCompression, bool useScratchMsg,
-                  bool avoidDstSrcOverlap,
-                  const LiveRangeVec &emptyLRs);
+                  bool enableSpillSpaceCompression, bool useScratchMsg);
 
   ~SpillManagerGRF() {}
 
@@ -344,17 +335,17 @@ private:
   static unsigned getSendOwordWriteType();
   unsigned getSendExDesc(bool isWrite, bool isScatter) const;
 
-  unsigned getSpillIndex(G4_RegVar *spilledRegVar);
+  unsigned getSpillIndex();
 
-  unsigned getFillIndex(G4_RegVar *spilledRegVar);
+  unsigned getFillIndex();
 
-  unsigned getTmpIndex(G4_RegVar *spilledRegVar);
+  unsigned getTmpIndex();
 
-  unsigned getMsgSpillIndex(G4_RegVar *spilledRegVar);
+  unsigned getMsgSpillIndex();
 
-  unsigned getMsgFillIndex(G4_RegVar *spilledRegVar);
+  unsigned getMsgFillIndex();
 
-  unsigned getAddrSpillFillIndex(G4_RegVar *spilledRegVar);
+  unsigned getAddrSpillFillIndex();
 
   template <class REGION_TYPE> G4_RegVar *getRegVar(REGION_TYPE *region) const;
 
@@ -427,10 +418,6 @@ private:
 
   unsigned getRegionByteSize(G4_SrcRegRegion *region,
                              G4_ExecSize execSize) const;
-
-  bool isScalarReplication(G4_SrcRegRegion *region) const;
-
-  bool repeatSIMD16or32Source(G4_SrcRegRegion *region) const;
 
   G4_Declare *createRangeDeclare(const char *name, G4_RegFileKind regFile,
                                  unsigned short nElems, unsigned short nRows,
@@ -649,20 +636,19 @@ private:
   // Data
   GlobalRA &gra;
   IR_Builder *builder_;
-  unsigned varIdCount_;
+  const unsigned varIdCount_;
   unsigned latestImplicitVarIdCount_;
   const LivenessAnalysis *lvInfo_;
-  const LiveRangeVec &lrInfo_;
+  const LiveRangeVec *lrInfo_;
   const LR_LIST *spilledLRs_;
   LSLR_LIST *spilledLSLRs_;
-  std::vector<unsigned> spillRangeCount_;
-  std::vector<unsigned> fillRangeCount_;
-  std::vector<unsigned> tmpRangeCount_;
-  std::vector<unsigned> msgSpillRangeCount_;
-  std::vector<unsigned> msgFillRangeCount_;
-  std::vector<unsigned> addrSpillFillRangeCount_;
+  unsigned spillRangeCount_ = 0;
+  unsigned fillRangeCount_ = 0;
+  unsigned tmpRangeCount_ = 0;
+  unsigned msgSpillRangeCount_ = 0;
+  unsigned msgFillRangeCount_ = 0;
+  unsigned addrSpillFillRangeCount_ = 0;
   unsigned nextSpillOffset_;
-  unsigned iterationNo_;
   unsigned bbId_ = UINT_MAX;
   unsigned spillAreaOffset_;
   bool doSpillSpaceCompression;
@@ -759,8 +745,6 @@ private:
 
     return needed;
   }
-
-  void initializeRangeCount(unsigned size);
 
   // return true if offset for spill/fill message needs to be GRF-aligned
   bool needGRFAlignedOffset() const { return useScratchMsg_ || useSplitSend(); }

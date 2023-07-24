@@ -110,32 +110,19 @@ static void setNewDclAlignment(GlobalRA &gra, G4_Declare *newDcl,
   gra.setEvenAligned(newDcl, evenAlign);
 }
 
-void SpillManagerGRF::initializeRangeCount(unsigned size) {
-  spillRangeCount_.resize(size, 0);
-  fillRangeCount_.resize(size, 0);
-  tmpRangeCount_.resize(size, 0);
-  msgSpillRangeCount_.resize(size, 0);
-  msgFillRangeCount_.resize(size, 0);
-  addrSpillFillRangeCount_.resize(size, 0);
-}
-
 SpillManagerGRF::SpillManagerGRF(
-    GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
-    const LivenessAnalysis *lvInfo, const LiveRangeVec& lrInfo,
-    const Interference *intf, const LR_LIST *spilledLRs, unsigned iterationNo,
-    bool failSafeSpill, unsigned spillRegSize, unsigned indrSpillRegSize,
-    bool enableSpillSpaceCompression, bool useScratchMsg,
-    bool avoidDstSrcOverlap)
-    : gra(g), builder_(g.kernel.fg.builder), varIdCount_(varIdCount),
-      latestImplicitVarIdCount_(0), lvInfo_(lvInfo), lrInfo_(lrInfo),
-      spilledLRs_(spilledLRs), nextSpillOffset_(spillAreaOffset),
-      iterationNo_(iterationNo),
+    GlobalRA &g, unsigned spillAreaOffset, const LivenessAnalysis *lvInfo,
+    const LiveRangeVec &lrInfo, const Interference *intf,
+    const LR_LIST *spilledLRs, bool failSafeSpill, unsigned spillRegSize,
+    unsigned indrSpillRegSize, bool enableSpillSpaceCompression,
+    bool useScratchMsg)
+    : gra(g), builder_(g.kernel.fg.builder), latestImplicitVarIdCount_(0),
+      lvInfo_(lvInfo), varIdCount_(lvInfo->getNumSelectedVar()),
+      lrInfo_(&lrInfo), spilledLRs_(spilledLRs),
+      nextSpillOffset_(spillAreaOffset),
       doSpillSpaceCompression(enableSpillSpaceCompression),
       failSafeSpill_(failSafeSpill), spillIntf_(intf),
-      useScratchMsg_(useScratchMsg), avoidDstSrcOverlap_(avoidDstSrcOverlap),
-      refs(g.kernel), context(g, lrInfo) {
-  const unsigned size = sizeof(unsigned) * varIdCount;
-  initializeRangeCount(size);
+      useScratchMsg_(useScratchMsg), refs(g.kernel), context(g, &lrInfo) {
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   spillRegStart_ = g.kernel.getNumRegTotal();
@@ -192,21 +179,16 @@ SpillManagerGRF::SpillManagerGRF(
 }
 
 SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
-                                 unsigned varIdCount,
                                  const LivenessAnalysis *lvInfo,
                                  LSLR_LIST *spilledLSLRs,
                                  bool enableSpillSpaceCompression,
-                                 bool useScratchMsg, bool avoidDstSrcOverlap,
-                                 const LiveRangeVec &emptyLRs)
-    : gra(g), builder_(g.kernel.fg.builder), varIdCount_(varIdCount),
-      latestImplicitVarIdCount_(0), lvInfo_(lvInfo),
+                                 bool useScratchMsg)
+    : gra(g), builder_(g.kernel.fg.builder), latestImplicitVarIdCount_(0),
+      lvInfo_(lvInfo), varIdCount_(lvInfo->getNumSelectedVar()),
       spilledLSLRs_(spilledLSLRs), nextSpillOffset_(spillAreaOffset),
       doSpillSpaceCompression(enableSpillSpaceCompression),
-      failSafeSpill_(false), useScratchMsg_(useScratchMsg),
-      avoidDstSrcOverlap_(avoidDstSrcOverlap), refs(g.kernel),
-      context(g, emptyLRs), lrInfo_(emptyLRs) {
-  const unsigned size = sizeof(unsigned) * varIdCount;
-  initializeRangeCount(size);
+      failSafeSpill_(false), useScratchMsg_(useScratchMsg), refs(g.kernel),
+      context(g), lrInfo_(nullptr) {
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   curInst = nullptr;
@@ -336,7 +318,7 @@ bool SpillManagerGRF::shouldSpillRegister(G4_RegVar *regVar) const {
            builder_->kernel.fg.isPseudoVCEDcl(actualRegVar->getDeclare()))
     return false;
   else
-    return lrInfo_[actualRegVar->getId()]->getPhyReg() == NULL;
+    return (*lrInfo_)[actualRegVar->getId()]->getPhyReg() == nullptr;
 }
 
 // Get the regvar with the id.
@@ -418,7 +400,7 @@ unsigned SpillManagerGRF::calculateSpillDisp(G4_RegVar *regVar) const {
   }
 
   std::vector<G4_Declare *> overlappingDcls;
-  getOverlappingIntervals(lrInfo_[lrId]->getDcl()->getRootDeclare(),
+  getOverlappingIntervals((*lrInfo_)[lrId]->getDcl()->getRootDeclare(),
                           overlappingDcls);
   for (auto overlap : overlappingDcls) {
     auto lrEdge = overlap->getRegVar();
@@ -797,7 +779,7 @@ bool SpillManagerGRF::isMultiRegComprSource(G4_SrcRegRegion *src,
                                             G4_INST *inst) const {
   if (!inst->isComprInst()) {
     return false;
-  } else if (isScalarReplication(src)) {
+  } else if (src->isScalar()) {
     return false;
   } else if (inst->getExecSize() <= 8) {
     return false;
@@ -869,48 +851,34 @@ unsigned SpillManagerGRF::getSendExDesc(bool isWrite, bool isScatter) const {
 
 bool SpillManagerGRF::useSplitSend() const { return builder_->useSends(); }
 
-// Get a unique spill range index for regvar.
-unsigned SpillManagerGRF::getSpillIndex(G4_RegVar *spilledRegVar) {
-  return spillRangeCount_[spilledRegVar->getId()]++;
+// Get a unique spill range index.
+unsigned SpillManagerGRF::getSpillIndex() {
+  return spillRangeCount_++;
 }
 
-// Get a unique fill range index for regvar.
-unsigned SpillManagerGRF::getFillIndex(G4_RegVar *spilledRegVar) {
-  return fillRangeCount_[spilledRegVar->getId()]++;
+// Get a unique fill range index.
+unsigned SpillManagerGRF::getFillIndex() {
+  return fillRangeCount_++;
 }
 
-// Get a unique tmp index for spilled regvar.
-unsigned SpillManagerGRF::getTmpIndex(G4_RegVar *spilledRegVar) {
-  return tmpRangeCount_[spilledRegVar->getId()]++;
+// Get a unique tmp index.
+unsigned SpillManagerGRF::getTmpIndex() {
+  return tmpRangeCount_++;
 }
 
-// Get a unique msg index for spilled regvar.
-unsigned SpillManagerGRF::getMsgSpillIndex(G4_RegVar *spilledRegVar) {
-  return msgSpillRangeCount_[spilledRegVar->getId()]++;
+// Get a unique msg spill index.
+unsigned SpillManagerGRF::getMsgSpillIndex() {
+  return msgSpillRangeCount_++;
 }
 
-// Get a unique msg index for filled regvar.
-unsigned SpillManagerGRF::getMsgFillIndex(G4_RegVar *spilledRegVar) {
-  return msgFillRangeCount_[spilledRegVar->getId()]++;
+// Get a unique msg fill index.
+unsigned SpillManagerGRF::getMsgFillIndex() {
+  return msgFillRangeCount_++;
 }
 
-// Get a unique msg index for addr spill fill regvar.
-unsigned SpillManagerGRF::getAddrSpillFillIndex(G4_RegVar *spilledRegVar) {
-  return addrSpillFillRangeCount_[spilledRegVar->getId()]++;
-}
-
-// Check if the region is a scalar replication region.
-bool SpillManagerGRF::isScalarReplication(G4_SrcRegRegion *region) const {
-  return region->isScalar();
-}
-
-// Check if we have to repeat the simd16 source in the simd8 equivalents.
-// The BPSEC mentions that if a replicated scalar appears in an simd16
-// instruction, logically we need to repeat the source region used in
-// the first simd8 instruction in the second simd8 instruction as well
-// (i.e. the reg no is not incremented by one for the second).
-bool SpillManagerGRF::repeatSIMD16or32Source(G4_SrcRegRegion *region) const {
-  return isScalarReplication(region);
+// Get a unique addr spill/fill index.
+unsigned SpillManagerGRF::getAddrSpillFillIndex() {
+  return addrSpillFillRangeCount_++;
 }
 
 // Create a declare directive for a new live range (spill/fill/msg)
@@ -1026,7 +994,7 @@ G4_Declare *SpillManagerGRF::createPostDstSpillRangeDeclare(G4_INST *sendOut) {
   G4_RegVar *spilledRegVar = getRegVar(dst);
   const char *name =
       gra.builder.getNameString(64, "SP_GRF_%s_%d", spilledRegVar->getName(),
-                                getSpillIndex(spilledRegVar));
+                                getSpillIndex());
   unsigned short nRows = getSpillRowSizeForSendDst(sendOut);
 
   G4_DstRegRegion *normalizedPostDst =
@@ -1068,8 +1036,7 @@ G4_Declare *
 SpillManagerGRF::createSpillRangeDeclare(G4_DstRegRegion *spilledRegion,
                                          G4_ExecSize execSize, G4_INST *inst) {
   return createTransientGRFRangeDeclare(spilledRegion, false /*isFill*/,
-                                        getSpillIndex(getRegVar(spilledRegion)),
-                                        execSize, inst);
+                                        getSpillIndex(), execSize, inst);
 }
 
 // Create a regvar and its declare directive to represent the GRF fill live
@@ -1078,8 +1045,7 @@ G4_Declare *SpillManagerGRF::createGRFFillRangeDeclare(
     G4_SrcRegRegion *fillRegion, G4_ExecSize execSize, G4_INST *inst) {
   vASSERT(getRFType(fillRegion) == G4_GRF);
   G4_Declare *fillRangeDecl = createTransientGRFRangeDeclare(
-      fillRegion, true /*isFill*/, getFillIndex(getRegVar(fillRegion)),
-      execSize, inst);
+      fillRegion, true /*isFill*/, getFillIndex(), execSize, inst);
   return fillRangeDecl;
 }
 
@@ -1114,7 +1080,7 @@ SpillManagerGRF::createSendFillRangeDeclare(G4_SrcRegRegion *filledRegion,
                                             G4_INST *sendInst) {
   G4_RegVar *filledRegVar = getRegVar(filledRegion);
   const char *name = gra.builder.getNameString(
-      64, "FL_Send_%s_%d", filledRegVar->getName(), getFillIndex(filledRegVar));
+      64, "FL_Send_%s_%d", filledRegVar->getName(), getFillIndex());
   unsigned short nRows = getSpillRowSizeForSendSrc(sendInst, filledRegion);
 
   G4_SrcRegRegion *normalizedSendSrc = builder_->createSrcRegRegion(
@@ -1167,8 +1133,7 @@ SpillManagerGRF::createTemporaryRangeDeclare(G4_DstRegRegion *spilledRegion,
                                              G4_ExecSize execSize,
                                              bool forceSegmentAlignment) {
   const char *name = gra.builder.getNameString(
-      64, "TM_GRF_%s_%d", getRegVar(spilledRegion)->getName(),
-      getTmpIndex(getRegVar(spilledRegion)));
+      64, "TM_GRF_%s_%d", getRegVar(spilledRegion)->getName(), getTmpIndex());
   unsigned byteSize = (forceSegmentAlignment)
                           ? getSegmentByteSize(spilledRegion, execSize)
                           : getRegionByteSize(spilledRegion, execSize);
@@ -1341,7 +1306,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
   G4_RegVar *repRegVar =
       (regVar->isRegVarTransient()) ? regVar->getBaseRegVar() : regVar;
   const char *name = gra.builder.getNameString(
-      64, "SP_MSG_%s_%d", repRegVar->getName(), getMsgSpillIndex(repRegVar));
+      64, "SP_MSG_%s_%d", repRegVar->getName(), getMsgSpillIndex());
 
   unsigned short height = 1;
   if (!useSplitSend()) {
@@ -1381,7 +1346,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
 }
 
 // Create a GRF regvar and a declare directive for it, to represent an
-// implicit MFR live range that will be used as the send message payload
+// implicit live range that will be used as the send message payload
 // header and write payload for spilling a regvar region to memory.
 G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
                                                  G4_ExecSize execSize) {
@@ -1394,8 +1359,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
   }
 
   const char *name = gra.builder.getNameString(
-      64, "SP_MSG_%s_%d", getRegVar(region)->getName(),
-      getMsgSpillIndex(getRegVar(region)));
+      64, "SP_MSG_%s_%d", getRegVar(region)->getName(), getMsgSpillIndex());
   unsigned short height = 1;
   if (!useSplitSend()) {
     unsigned regionByteSize = getSegmentByteSize(region, execSize);
@@ -1446,8 +1410,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_SrcRegRegion *region,
   }
 
   const char *name = gra.builder.getNameString(
-      64, "FL_MSG_%s_%d", getRegVar(region)->getName(),
-      getMsgFillIndex(getRegVar(region)));
+      64, "FL_MSG_%s_%d", getRegVar(region)->getName(), getMsgFillIndex());
   getSegmentByteSize(region, execSize);
   unsigned payloadHeaderHeight = (getMsgType(region, execSize) == owordMask())
                                      ? OWORD_PAYLOAD_HEADER_MIN_HEIGHT
@@ -3133,7 +3096,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
           spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
     }
 
-    if (failSafeSpill_ && !avoidDstSrcOverlap_) {
+    if (failSafeSpill_ && !builder_->avoidDstSrcOverlap()) {
       spillRegOffset_ = spillRegStart_;
     }
   }
@@ -3412,7 +3375,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
         // it. Else create new one and return it.
         const char *dclName = kernel->fg.builder->getNameString(
             32, "ADDR_SP_FL_V%d_%d", spilledAddrTakenDcl->getDeclId(),
-            getAddrSpillFillIndex(spilledAddrTakenDcl->getRegVar()));
+            getAddrSpillFillIndex());
 
         // temp is created of sub-class G4_RegVarTmp so that is
         // assigned infinite spill cost when coloring.
@@ -4359,20 +4322,6 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
       }
     }
   }
-
-  // Emit the instruction with the introduced spill/fill ranges in the
-  // current iteration.
-
-#ifndef NDEBUG
-#ifdef DEBUG_VERBOSE_ON1
-  std::stringstream fname;
-  fname << "spill_code_" << iterationNo_++ << "_" << kernel->getName() << ends;
-  std::ofstream sout;
-  sout.open(fname.str());
-  kernel->emitDeviceAsm(sout, true, 0);
-  sout.close();
-#endif
-#endif
 
   return true;
 }
@@ -6060,10 +6009,11 @@ std::vector<G4_BB *> vISA::SpillAnalysis::GetIntervalBBs(
   return BBs;
 }
 
-BoundedRA::BoundedRA(GlobalRA &ra, const LiveRangeVec &l)
+BoundedRA::BoundedRA(GlobalRA &ra, const LiveRangeVec *l)
     : gra(ra), kernel(ra.kernel), lrs(l) {}
 
 void vISA::BoundedRA::markBusyGRFs() {
+  vASSERT(lrs);
   auto dst = curInst->getDst();
   if (dst && dst->isDstRegRegion() && dst->getTopDcl() &&
       dst->getTopDcl()->useGRF()) {
@@ -6072,7 +6022,7 @@ void vISA::BoundedRA::markBusyGRFs() {
       bool isPartaker = dst->getTopDcl()->getRegVar()->isRegAllocPartaker();
       auto phyReg = dst->getTopDcl()->getRegVar()->getPhyReg();
       if (!phyReg && isPartaker)
-        phyReg = lrs[id]->getPhyReg();
+        phyReg = (*lrs)[id]->getPhyReg();
       if (phyReg && phyReg->isGreg()) {
         auto regLB =
             phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
@@ -6085,7 +6035,7 @@ void vISA::BoundedRA::markBusyGRFs() {
         for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
           markGRF(reg);
       } else if (isPartaker)
-        markForbidden(lrs[id]);
+        markForbidden((*lrs)[id]);
     } else if (dst->isIndirect()) {
       auto &p2a = gra.pointsToAnalysis;
       auto pointees = p2a.getAllInPointsTo(dst->getTopDcl()->getRegVar());
@@ -6095,7 +6045,7 @@ void vISA::BoundedRA::markBusyGRFs() {
         auto id = pointee.var->getId();
         auto phyReg = pointee.var->getPhyReg();
         if (!phyReg)
-          phyReg = lrs[id]->getPhyReg();
+          phyReg = (*lrs)[id]->getPhyReg();
         if (phyReg) {
           auto regLB =
               phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
@@ -6107,7 +6057,7 @@ void vISA::BoundedRA::markBusyGRFs() {
           for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
             markGRF(reg);
         } else
-          markForbidden(lrs[id]);
+          markForbidden((*lrs)[id]);
       }
     }
   }
@@ -6122,7 +6072,7 @@ void vISA::BoundedRA::markBusyGRFs() {
         bool isPartaker = src->getTopDcl()->getRegVar()->isRegAllocPartaker();
         auto phyReg = src->getTopDcl()->getRegVar()->getPhyReg();
         if (!phyReg && isPartaker)
-          phyReg = lrs[id]->getPhyReg();
+          phyReg = (*lrs)[id]->getPhyReg();
         if (phyReg && phyReg->isGreg()) {
           auto regLB =
               phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
@@ -6135,7 +6085,7 @@ void vISA::BoundedRA::markBusyGRFs() {
           for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
             markGRF(reg);
         } else if (isPartaker)
-          markForbidden(lrs[id]);
+          markForbidden((*lrs)[id]);
       } else if (src->asSrcRegRegion()->isIndirect()) {
         auto &p2a = gra.pointsToAnalysis;
         auto pointees = p2a.getAllInPointsTo(src->getTopDcl()->getRegVar());
@@ -6145,7 +6095,7 @@ void vISA::BoundedRA::markBusyGRFs() {
           auto id = pointee.var->getId();
           auto phyReg = pointee.var->getPhyReg();
           if (!phyReg)
-            phyReg = lrs[id]->getPhyReg();
+            phyReg = (*lrs)[id]->getPhyReg();
           if (phyReg) {
             auto regLB =
                 phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
@@ -6157,7 +6107,7 @@ void vISA::BoundedRA::markBusyGRFs() {
             for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
               markGRF(reg);
           } else
-            markForbidden(lrs[id]);
+            markForbidden((*lrs)[id]);
         }
       }
     }
@@ -6165,11 +6115,12 @@ void vISA::BoundedRA::markBusyGRFs() {
 }
 
 void BoundedRA::markUniversalForbidden() {
+  vASSERT(lrs);
   auto markPhyReg = [&](G4_Declare *dcl) {
     if (dcl->getRegVar() && dcl->getRegVar()->getPhyReg())
       markGRF(dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum());
     else if (dcl->getRegVar()->isRegAllocPartaker())
-      if (auto reg = lrs[dcl->getRegVar()->getId()]->getPhyReg())
+      if (auto reg = (*lrs)[dcl->getRegVar()->getId()]->getPhyReg())
         markGRF(reg->asGreg()->getRegNum());
   };
   // r0 is special and shouldn't be allocated to temps
