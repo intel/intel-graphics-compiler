@@ -135,20 +135,6 @@ void Optimizer::insertFallThroughJump() {
   }
 }
 
-void Optimizer::preRA_Schedule() {
-  bool Changed = false;
-  unsigned KernelPressure = 0;
-  if (kernel.useRegSharingHeuristics()) {
-    preRA_RegSharing Sched(kernel);
-    Changed = Sched.run(KernelPressure);
-  } else {
-    preRA_Scheduler Sched(kernel);
-    Changed = Sched.run(KernelPressure);
-  }
-  // Update Jit info for max register pressure
-  kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = KernelPressure;
-}
-
 void Optimizer::forceAssignRegs() {
   const char *rawStr =
       builder.getOptions()->getOptionCstr(vISA_ForceAssignRhysicalReg);
