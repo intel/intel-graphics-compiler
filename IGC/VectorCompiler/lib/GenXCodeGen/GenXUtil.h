@@ -587,7 +587,7 @@ bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);
 // Many of our analyzes do not check whether a function F's user
 // which is a CallInst calls exactly F. This may not be true
 // when a function pointer is passed as an argument of a call to
-// another function.
+// another function, e.g. genx.faddr intrinsic.
 // Returns V casted to CallInst if the check is true,
 // nullptr otherwise.
 const CallInst *checkFunctionCall(const Value *V, const Function *F);
