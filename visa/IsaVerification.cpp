@@ -358,6 +358,16 @@ void vISAVerifier::verifyVariableDecl(unsigned declID) {
   }
 
   REPORT_HEADER(options,
+                !var->dcl->getAddressed() ||
+                    var->getSize() < irBuilder->kernel.getNumRegTotal() *
+                                         irBuilder->kernel.getGRFSize(),
+                "V%d (size = %d bytes) is indirectly addressed and spans "
+                "complete GRF file of %d GRFs. This cannot be allocated by "
+                "RA.",
+                declID + numPreDefinedVars, var->getSize(),
+                irBuilder->kernel.getNumRegTotal() *
+                    irBuilder->kernel.getGRFSize());
+  REPORT_HEADER(options,
                 var->num_elements != 0 &&
                     var->num_elements <= irBuilder->getMaxVariableSize(),
                 "V%d's number of elements(%d) is out of range: %s",
