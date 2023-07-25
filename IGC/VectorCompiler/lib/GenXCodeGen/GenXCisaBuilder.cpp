@@ -598,7 +598,6 @@ private:
                       unsigned Mod, const DstOpndDesc &DstDesc);
   void buildInputs(Function *F, bool NeedRetIP);
 
-  void buildFunctionAddr(Instruction *Inst, const DstOpndDesc &DstDesc);
   void buildLoneWrRegion(const DstOpndDesc &Desc);
   void buildLoneWrPredRegion(Instruction *Inst, genx::BaleInfo BI);
   void buildLoneOperand(Instruction *Inst, genx::BaleInfo BI, unsigned Mod,
@@ -1662,10 +1661,6 @@ bool GenXKernelBuilder::buildInstruction(Instruction *Inst) {
     Inst = cast<Instruction>(DstDesc.WrRegion->getOperand(OperandNum));
     BI = Baling->getBaleInfo(Inst);
   }
-  if (BI.Type == BaleInfo::FADDR) {
-    buildFunctionAddr(Inst, DstDesc);
-    return false;
-  }
   unsigned Mod = 0;
   if (BI.Type == BaleInfo::SATURATE) {
     // Inst is a fp saturate. See if it bales in the instruction that
@@ -2710,18 +2705,6 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
                           DONTCARESIGNED, 0, true),
       createRegionOperand(&SourceR, SrcReg->GetVar<VISA_GenVar>(Kernel), Signed,
                           0, false));
-}
-
-void GenXKernelBuilder::buildFunctionAddr(Instruction *Inst,
-                                          const DstOpndDesc &DstDesc) {
-  auto *CI = dyn_cast<CallInst>(Inst);
-  IGC_ASSERT(CI);
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_faddr,
-    "genx.faddr expected in a FADDR bale");
-  auto *Dst = createDestination(Inst, DONTCARESIGNED, MODIFIER_NONE, DstDesc);
-  IGC_ASSERT(Dst);
-  auto *F = cast<Function>(Inst->getOperand(0));
-  CISA_CALL(Kernel->AppendVISACFSymbolInst(F->getName().str(), Dst));
 }
 
 /***********************************************************************

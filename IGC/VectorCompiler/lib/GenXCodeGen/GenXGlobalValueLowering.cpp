@@ -23,8 +23,6 @@ SPDX-License-Identifier: MIT
 ///   4. All paths to global SLM use must start from the same kernel.
 ///
 /// For any other global values relocations are used.
-/// In vISA relocations are enabled via faddr instruction:
-/// faddr very_important_data V1(0,0)<1>
 /// For global value symbols (global variable or function) LLVM IR
 /// represintation of this instruction is:
 /// %g = call i64 @llvm.genx.gaddr.i64.p0a8i8([8 x i8]* @very_important_data)

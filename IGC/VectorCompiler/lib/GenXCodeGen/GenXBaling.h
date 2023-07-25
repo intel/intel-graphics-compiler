@@ -243,7 +243,7 @@ struct BaleInfo {
   // Type is how this instruction relates to its bale, whether it is a
   // rdregion, wrregion, modifier, or main instruction.
   enum { MAININST, WRREGION, SATURATE, NOTMOD, NEGMOD, ABSMOD,
-      RDREGION, ADDRADD, ADDROR, FADDR, RDPREDREGION, ALLANY, NOTP, ZEXT, SEXT,
+      RDREGION, ADDRADD, ADDROR, RDPREDREGION, ALLANY, NOTP, ZEXT, SEXT,
       SHUFFLEPRED, WRPREDREGION, WRPREDPREDREGION, CMPDST, GSTORE, REGINTR };
   uint16_t Type;
   uint16_t Bits; // bitmap of which operands are baled in
@@ -464,7 +464,6 @@ private:
   void processRdPredRegion(Instruction *Inst);
   void processInlineAsm(Instruction *Inst);
   void processExtractValue(ExtractValueInst *EV);
-  void processFuncPointer(Instruction *Inst);
   void processRdWrPredefReg(Instruction *Inst);
   void processMainInst(Instruction *Inst, int IntrinID);
   bool processSelectToPredicate(SelectInst *SI);

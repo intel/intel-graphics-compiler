@@ -213,8 +213,6 @@ void GenXBaling::processInst(Instruction *Inst)
     processWrPredPredRegion(Inst);
   else if (IntrinID == GenXIntrinsic::genx_sat || GenXIntrinsic::isIntegerSat(IntrinID))
     processSat(Inst);
-  else if (IntrinID == GenXIntrinsic::genx_faddr)
-    processFuncPointer(Inst);
   else if (GenXIntrinsic::isReadWritePredefReg(IntrinID))
     processRdWrPredefReg(Inst);
   else if (GenXIntrinsic::isRdRegion(IntrinID))
@@ -1002,29 +1000,6 @@ void GenXBaling::processInlineAsm(Instruction *Inst) {
         }
       }
 
-  setBaleInfo(Inst, BI);
-}
-
-/***********************************************************************
- * processFuncPointer : process genx.faddr which is used in <=1 WrRegions
- *                      and is baled into it.
- */
-void GenXBaling::processFuncPointer(Instruction *Inst) {
-  auto *CI = dyn_cast<CallInst>(Inst);
-  IGC_ASSERT_MESSAGE(CI, "genx.faddr expected");
-  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_faddr,
-    "genx.faddr expected");
-  IGC_ASSERT(Inst->hasOneUse());
-  auto *NextUser = Inst->user_back();
-  if (isa<BitCastInst>(NextUser)) {
-    // bitcasts <N x i64> -> <2*N x i32> may appear after i64 emulation
-    IGC_ASSERT(NextUser->hasOneUse());
-    IGC_ASSERT(NextUser->getType()->getScalarType()->isIntegerTy(32));
-    NextUser = NextUser->user_back();
-  }
-  IGC_ASSERT(NextUser->use_empty() || GenXIntrinsic::isWrRegion(NextUser));
-
-  BaleInfo BI(BaleInfo::FADDR);
   setBaleInfo(Inst, BI);
 }
 
@@ -2709,7 +2684,6 @@ const char *BaleInfo::getTypeString() const
     case BaleInfo::CMPDST: return "cmpdst";
     case BaleInfo::GSTORE: return "g_store";
     case BaleInfo::SHUFFLEPRED: return "shufflepred";
-    case BaleInfo::FADDR: return "faddr";
     default: return "???";
   }
 }
