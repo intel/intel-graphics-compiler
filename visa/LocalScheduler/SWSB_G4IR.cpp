@@ -5981,6 +5981,22 @@ bool G4_BB_SB::hasIntraReadSuppression(SBNode *node,
   return false;
 }
 
+static std::string generateALUPipeComment(SB_INST_PIPE aluPipe) {
+  switch (aluPipe) {
+  case PIPE_INT:
+    return "ALU pipe: int";
+  case PIPE_FLOAT:
+    return "ALU pipe: float";
+  case PIPE_LONG:
+    return "ALU pipe: long";
+  case PIPE_MATH:
+    return "ALU pipe: math";
+  default:
+    // non-ALU pipe: do not print anything
+    return "";
+  }
+}
+
 void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
                      LiveGRFBuckets *&globalSendsLB, SBNODE_VECT *SBNodes,
                      SBNODE_VECT *SBSendNodes,
@@ -6637,6 +6653,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         ++bn_it;
       }
     }
+
+    // dump ALU pipe in asm comment
+    node->GetInstruction()->addComment(generateALUPipeComment(node->ALUPipe));
 
     if (node->hasDistInfo()) {
       if (builder.hasFiveALUPipes()) {
