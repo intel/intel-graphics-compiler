@@ -1464,11 +1464,24 @@ std::string G4_SendDescRaw::getDescription() const {
           if (getBitField(desc.value, 15, 1))
             ss << "t";
         }
-        switch (getBitField(desc.value, 7, 2)) {
-        case 2: ss << ".a32"; break;
-        case 3: ss << ".a64"; break;
-        default: ss << "a?"; break;
+        bool hasImpliedA32 = false, hasImpliedA64 = false;
+        if (hasImpliedA32) {
+          ss << ".a32";
+        } else if (hasImpliedA64) {
+          ss << ".a64";
+        } else {
+          switch (getBitField(desc.value, 7, 2)) {
+          case 2: ss << ".a32"; break;
+          case 3: ss << ".a64"; break;
+          default: ss << ".a??"; break;
+          // certain messages have hardcoded or implied address sizes, and
+          // this will report .a?? for those, but good enough for internal debug
+          // for now
+          }
         }
+        auto [l1,l3] = getCaching();
+        ss << ToSymbol(l1, l3);
+
         switch (getBitField(desc.value, 29, 2)) {
         case 0: ss << " flat[A"; break;
         case 1: ss << " bss[..][A"; break;
