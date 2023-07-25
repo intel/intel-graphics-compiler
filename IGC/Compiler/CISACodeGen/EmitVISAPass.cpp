@@ -6635,7 +6635,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     {
         nbElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements();
     }
-    IGC_ASSERT_MESSAGE(nbElements <= 16, "InValid Vector Size");
+    IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
     int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
     int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
@@ -6646,18 +6646,13 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     uint32_t typeSizeInBytes = inst->getType()->getScalarType()->getScalarSizeInBits() / 8;
     uint32_t totalWidth = typeSizeInBytes * numLanes(m_SimdMode);
 
-    uint32_t   pass_axisX = 0;
-    uint32_t   numPasses_axisX = 0;
-
-    uint32_t   pass_axisY = 0;
-    uint32_t   numPasses_axisY = 0;
-
+    uint32_t   pass = 0;
+    uint32_t   numPasses = 0;
     uint32_t   bindingTableIndex = 0;
 
     uint32_t dstSubReg = 0;
     uint32_t blockWidth = 0;
     uint32_t blockHeight = nbElements;
-    uint32_t blockHeight_step = 0;
 
     if (isImageTypeUAV)
     {
@@ -6675,14 +6670,14 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
     if (totalWidth < maxWidth)
     {
-        numPasses_axisX = 1;
+        numPasses = 1;
         blockWidth = totalWidth;
     }
     else
     {
         IGC_ASSERT(maxWidth);
         IGC_ASSERT_MESSAGE(totalWidth % maxWidth == 0, "Total width must be divisible by 32!");
-        numPasses_axisX = totalWidth / maxWidth;
+        numPasses = totalWidth / maxWidth;
         blockWidth = maxWidth;
     }
 
@@ -6692,19 +6687,19 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
         if (totalWidth > 32 && blockHeight <= 4 && (totalWidth % maxWidth == 0))
         {
             // do 64 byte wide read
-            numPasses_axisX = totalWidth / maxWidth;
+            numPasses = totalWidth / maxWidth;
             blockWidth = maxWidth;
         }
     }
 
-    CVariable* pTempVar_axis_X_offset = nullptr;
-    CVariable* pTempVar_axis_Y_offset = nullptr;
+    CVariable* pTempVar0 = nullptr;
+    CVariable* pTempVar = nullptr;
 
     uint32_t blockRegSize = 0;
 
     //Following variable declaration is SIMD8 based, UD is used, so blockRegSize is total required registers.
     auto simdMode = lanesToSIMDMode(blockWidth / typeSizeInBytes);
-    blockRegSize = numPasses_axisX * blockHeight * numLanes(simdMode);
+    blockRegSize = numPasses * blockHeight * numLanes(simdMode);
 
     CVariable* pTempDest = m_currShader->GetNewVariable(
         blockRegSize,
@@ -6715,149 +6710,92 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     CVariable* xVar = GetSymbol(xOffset);
     CVariable* yVar = GetSymbol(yOffset);
 
+    // Emits a MEDIA_BLOCK_READ instruction.
+    // Considering block width as x-axis and block height as y axis:
+    // Pass 0 reads from (xOffset,yOffset) to (xOffset+31, yOffset+blockheight)
+    // Pass 1 reads from (xOffset+32, yOffset) to (xOffset+63, yOffset+blockheight)
+    // Instructions generated:
+    // mov(1) r36.1<1>:d r16.0<0; 1, 0>:d{ Align1, NoMask }
+    // mov(1) r36.2<1>:ud 0x3001f:ud{ Align1, NoMask }
+    // mov(1) r36.0<1>:ud r15.0<0; 1, 0>:ud{ Align1, NoMask, Compacted }
+    // send(8) r28.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
+    // add(1) r36.0<1>:ud r15.0<0; 1, 0>:ud 0x20:uw{ Align1, NoMask }
+    // mov(1) r36.1<1>:d r13.1<0; 1, 0>:d{ Align1, NoMask }
+    // send(8) r32.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
+    //      -----------------
+    //      |       |       |
+    //      |       |       |
+    //      -----------------
+    //      ---------  r28 output
+    //      |       |
+    //      |       |
+    //      ---------  r32
+    //      |       |
+    //      |       |
+    //      ---------
+    //  32 or 64 bytes at most, that's the reason simd8 is used.
+
     int scale = blockWidth / getGRFSize();
 
-    const int MediaBlockReadByteMax = 256;
-    int totalBytesToLoad = blockRegSize * typeSizeInBytes;
-
-    if (totalBytesToLoad > MediaBlockReadByteMax)
-    {
-        numPasses_axisY = totalBytesToLoad / MediaBlockReadByteMax;
-        // Slice the block horizontally by number of axisY passes
-        blockHeight_step = blockHeight / numPasses_axisY;
-    }
-    else
-    {
-        numPasses_axisY = 1;
-    }
-
-    // In case when we wanted to load more than MediaBlockLoadByteMax=256 data in
-    // one send instruction. For such scenario we are slicing the data horizontally, example:
-    //
-    // media_ld : grf_0  [.........]
-    //            grf_1  [.........]
-    //            ...
-    //            grf_x  [.........]
-    //            ...
-    //            grf_15 [.........]
-    // In such example we wanted to load 512 bytes - the limitation is 256 bytes, so slice
-    // input data for two sends:
-    //
-    // media_ld_0 : grf_0  [.........]
-    //              grf_1  [.........]
-    //              ...
-    //              grf_x  [.........]
-    //              ...
-    //              grf_7  [.........]
-    // media_ld_1 : grf_8  [.........]
-    //              grf_9  [.........]
-    //              ...
-    //              grf_x  [.........]
-    //              ...
-    //              grf_15 [.........]
-    for (pass_axisY = 0; pass_axisY < numPasses_axisY; ++pass_axisY)
+    for (pass = 0; pass < numPasses; pass++)
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         m_encoder->SetSrcRegion(0, 0, 1, 0);
 
-        if (pass_axisY == 0)
+        if (pass == 0)
         {
-            pTempVar_axis_Y_offset = m_currShader->GetNewVariable(
+            pTempVar0 = m_currShader->GetNewVariable(
                 numLanes(m_SimdMode),
                 ISA_TYPE_UD,
                 EALIGN_DWORD,
                 CName::NONE);
 
-            m_encoder->Copy(pTempVar_axis_Y_offset, yVar);
+            m_encoder->Copy(pTempVar0, xVar);
         }
         else
         {
-            m_encoder->Add(pTempVar_axis_Y_offset, pTempVar_axis_Y_offset, m_currShader->ImmToVariable(blockHeight_step, ISA_TYPE_UD));
-            uint32_t subOffset = MediaBlockReadByteMax * pass_axisY;
+            m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
+            uint32_t subOffset = blockWidth * blockHeight;
             subOffset /= getGRFSize();
             dstSubReg = dstSubReg + subOffset;
         }
         m_encoder->Push();
 
-        // Emits a MEDIA_BLOCK_READ instruction.
-        // Considering block width as x-axis and block height as y axis:
-        // Pass 0 reads from (xOffset,yOffset) to (xOffset+31, yOffset+blockheight)
-        // Pass 1 reads from (xOffset+32, yOffset) to (xOffset+63, yOffset+blockheight)
-        // Instructions generated:
-        // mov(1) r36.1<1>:d r16.0<0; 1, 0>:d{ Align1, NoMask }
-        // mov(1) r36.2<1>:ud 0x3001f:ud{ Align1, NoMask }
-        // mov(1) r36.0<1>:ud r15.0<0; 1, 0>:ud{ Align1, NoMask, Compacted }
-        // send(8) r28.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
-        // add(1) r36.0<1>:ud r15.0<0; 1, 0>:ud 0x20:uw{ Align1, NoMask }
-        // mov(1) r36.1<1>:d r13.1<0; 1, 0>:d{ Align1, NoMask }
-        // send(8) r32.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
-        //      -----------------
-        //      |       |       |
-        //      |       |       |
-        //      -----------------
-        //      ---------  r28 output
-        //      |       |
-        //      |       |
-        //      ---------  r32
-        //      |       |
-        //      |       |
-        //      ---------
-        //  32 or 64 bytes at most, that's the reason simd8 is used.
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
 
-        for (pass_axisX = 0; pass_axisX < numPasses_axisX; pass_axisX++)
+        pTempVar = m_currShader->GetNewVariable(
+            numLanes(m_SimdMode),
+            ISA_TYPE_UD,
+            EALIGN_DWORD,
+            CName::NONE);
+
+        m_encoder->Copy(pTempVar, yVar);
+        m_encoder->Push();
+
+        m_encoder->SetDstSubVar(dstSubReg);
+
+        CVariable* dstVar = numPasses == 1 ? m_destination : pTempDest;
+
         {
-            m_encoder->SetSimdSize(SIMDMode::SIMD1);
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-
-            if (pass_axisX == 0)
-            {
-                pTempVar_axis_X_offset = m_currShader->GetNewVariable(
-                    numLanes(m_SimdMode),
-                    ISA_TYPE_UD,
-                    EALIGN_DWORD,
-                    CName::NONE);
-
-                m_encoder->Copy(pTempVar_axis_X_offset, xVar);
-            }
-            else
-            {
-                m_encoder->Add(pTempVar_axis_X_offset, pTempVar_axis_X_offset, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
-                uint32_t subOffset = blockWidth * blockHeight;
-                subOffset /= getGRFSize();
-                dstSubReg = dstSubReg + subOffset;
-            }
-            m_encoder->Push();
-
-            m_encoder->SetDstSubVar(dstSubReg);
-
-            CVariable* dstVar = numPasses_axisX == 1 ? m_destination : pTempDest;
-
-            int blockHeight2Load = numPasses_axisY > 1 ?
-                // For case when one send cannot handle the whole load
-                blockHeight_step :
-                // For normal case
-                blockHeight;
-
-            {
-                m_encoder->MediaBlockMessage(
-                    ISA_Opcode::ISA_MEDIA_LD,
-                    dstVar,
-                    ESURFACE_NORMAL,
-                    srcbti,
-                    pTempVar_axis_X_offset,
-                    pTempVar_axis_Y_offset,
-                    0,
-                    (unsigned char)blockWidth,
-                    (unsigned char)blockHeight2Load,
-                    0);
-            }
-            m_encoder->Push();
+            m_encoder->MediaBlockMessage(
+                ISA_Opcode::ISA_MEDIA_LD,
+                dstVar,
+                ESURFACE_NORMAL,
+                srcbti,
+                pTempVar0,
+                pTempVar,
+                0,
+                (unsigned char)blockWidth,
+                (unsigned char)blockHeight,
+                0);
         }
+        m_encoder->Push();
     }
 
-    if (numPasses_axisX > 1)
+    if (numPasses > 1)
     {
         dstSubReg = 0;
 
@@ -6910,7 +6848,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
             uint32_t dstSubRegOffset = 0;
             uint32_t srcSubRegOffset = 0;
 
-            for (uint32_t pass = 0; pass < numPasses_axisX; pass++) //Width
+            for (uint32_t pass = 0; pass < numPasses; pass++) //Width
             {
                 m_encoder->SetSimdSize(simdMode);
                 m_encoder->SetNoMask();
@@ -6951,7 +6889,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     {
         nbElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(dataPtr->getType())->getNumElements();
     }
-    IGC_ASSERT_MESSAGE(nbElements <= 16, "InValid Vector Size");
+    IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
     CVariable* data = GetSymbol(dataPtr);
     data = BroadcastIfUniform(data);
@@ -6959,15 +6897,11 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     uint32_t typeSizeInBytes = dataPtr->getType()->getScalarType()->getScalarSizeInBits() / 8;
     uint32_t totalWidth = typeSizeInBytes * numLanes(m_SimdMode);
 
-    uint32_t   pass_axisX = 0;
-    uint32_t   numPasses_axisX = 0;
-
-    uint32_t   pass_axisY = 0;
-    uint32_t   numPasses_axisY = 0;
+    uint32_t   pass = 0;
+    uint32_t   numPasses = 0;
 
     uint32_t blockWidth = 0;
     uint32_t blockHeight = nbElements;
-    uint32_t blockHeight_step = 0;
     uint32_t bindingTableIndex = 0;
 
     if (isImageTypeUAV)
@@ -6986,14 +6920,14 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 
     if (totalWidth < maxWidth)
     {
-        numPasses_axisX = 1;
+        numPasses = 1;
         blockWidth = totalWidth;
     }
     else
     {
         IGC_ASSERT(maxWidth);
         IGC_ASSERT_MESSAGE(totalWidth % maxWidth == 0, "Total width must be divisible by 32!");
-        numPasses_axisX = totalWidth / maxWidth;
+        numPasses = totalWidth / maxWidth;
         blockWidth = maxWidth;
     }
 
@@ -7003,225 +6937,155 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         if (totalWidth > 32 && blockHeight <= 4 && totalWidth % maxWidth == 0)
         {
             // do 64 byte wide read
-            numPasses_axisX = totalWidth / maxWidth;
+            numPasses = totalWidth / maxWidth;
             blockWidth = maxWidth;
         }
     }
 
-    CVariable* pTempVar_axis_X_offset = nullptr;
-    CVariable* pTempVar_axis_Y_offset = nullptr;
+    CVariable* pTempVar0 = nullptr;
+    CVariable* pTempVar = nullptr;
 
     uint32_t dstSubReg = 0;
-    uint32_t srcSubReg = 0;
 
     int scale = blockWidth / getGRFSize();
     auto simdMode = lanesToSIMDMode(blockWidth / typeSizeInBytes);
-
-    const int MediaBlockStoreByteMax = 256;
-    int blockRegSize = numPasses_axisX * blockHeight * numLanes(simdMode);
-    int totalBytesToStore = blockRegSize * typeSizeInBytes;
-
-    if (totalBytesToStore > MediaBlockStoreByteMax)
+    for (pass = 0; pass < numPasses; pass++)
     {
-        numPasses_axisY = totalBytesToStore / MediaBlockStoreByteMax;
-        // Slice the block horizontally by number of axisY passes
-        blockHeight_step = blockHeight / numPasses_axisY;
-    }
-    else
-    {
-        numPasses_axisY = 1;
-    }
+        uint32_t srcSubVar = pass * blockWidth / getGRFSize();
+        uint32_t dstSubVar = 0;
+        uint32_t srcSubRegOffset = (pass * blockWidth) % getGRFSize();
+        uint32_t dstSubRegOffset = 0;
 
-    // In case when we wanted to store more than MediaBlockStoreByteMax=256 data in
-    // one send instruction. For such scenario we are slicing the data horizontally, example:
-    //
-    // media_st : grf_0  [.........]
-    //            grf_1  [.........]
-    //            ...
-    //            grf_x  [.........]
-    //            ...
-    //            grf_15 [.........]
-    // In such example we wanted to store 512 bytes - the limitation is 256 bytes, so slice
-    // input data for two sends:
-    //
-    // media_st_0 : grf_0  [.........]
-    //              grf_1  [.........]
-    //              ...
-    //              grf_x  [.........]
-    //              ...
-    //              grf_7  [.........]
-    // media_st_1 : grf_8  [.........]
-    //              grf_9  [.........]
-    //              ...
-    //              grf_x  [.........]
-    //              ...
-    //              grf_15 [.........]
-    for (pass_axisY = 0; pass_axisY < numPasses_axisY; ++pass_axisY)
-    {
-        for (pass_axisX = 0; pass_axisX < numPasses_axisX; pass_axisX++)
+        CVariable* tempdst = nullptr;
+        tempdst = m_currShader->GetNewVariable(
+            nbElements * numLanes(simdMode),
+            data->GetType(),
+            m_currShader->getGRFAlignment(),
+            CName::NONE);
+
+        // Split the data.
+        // mov (8) r22.0<1>:d r14.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r23.0<1>:d r16.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r24.0<1>:d r18.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r25.0<1>:d r20.0<8;8,1>:d {Align1, Q1, Compacted}
+
+        //FOR 64 bytes GRF:
+        //    A0....A1....A2....A3........r60....r60.8....r61....r61.8
+        //    B0....B1....B2....B3........r62....r62.8....r63....r63.8
+        //    C0....C1....C2....C3........r64....r64.8....r65....r65.8
+        //    D0....D1....D2....D3........r66....r66.8....r67....r67.8
+        //    E0....E1....E2....E3........r68....r68.8....r69....r69.8
+        //    F0....F1....F2....F3........r70....r70.8....r71....r71.8
+        //    G0....G1....G2....G3........r72....r72.8....r73....r73.8
+        //    H0....H1....H2....H3........r74....r74.8....r75....r75.8
+        //
+        // block 0
+        // mov (8) r20.0<1>:d r60.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r20.8<1>:d r62.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r21.0<1>:d r64.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r21.8<1>:d r66.0<8;8,1>:d {Align1, Q1, Compacted}
+        // ...
+        //block 1
+        // mov (8) r30.0<1>:d r60.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r30.8<1>:d r62.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r31.0<1>:d r64.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r31.8<1>:d r66.8<8;8,1>:d {Align1, Q1, Compacted}
+        //...
+
+        if (numPasses > 1)
         {
-            uint32_t srcSubVar = pass_axisX * blockWidth / getGRFSize();
-            uint32_t dstSubVar = 0;
-            uint32_t srcSubRegOffset = (pass_axisX * blockWidth) % getGRFSize();
-            uint32_t dstSubRegOffset = 0;
-
-            CVariable* tempdst = nullptr;
-            tempdst = m_currShader->GetNewVariable(
-                nbElements * numLanes(simdMode),
-                data->GetType(),
-                m_currShader->getGRFAlignment(),
-                CName::NONE);
-
-            // Split the data.
-            // mov (8) r22.0<1>:d r14.0<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r23.0<1>:d r16.0<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r24.0<1>:d r18.0<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r25.0<1>:d r20.0<8;8,1>:d {Align1, Q1, Compacted}
-
-            //FOR 64 bytes GRF:
-            //    A0....A1....A2....A3........r60....r60.8....r61....r61.8
-            //    B0....B1....B2....B3........r62....r62.8....r63....r63.8
-            //    C0....C1....C2....C3........r64....r64.8....r65....r65.8
-            //    D0....D1....D2....D3........r66....r66.8....r67....r67.8
-            //    E0....E1....E2....E3........r68....r68.8....r69....r69.8
-            //    F0....F1....F2....F3........r70....r70.8....r71....r71.8
-            //    G0....G1....G2....G3........r72....r72.8....r73....r73.8
-            //    H0....H1....H2....H3........r74....r74.8....r75....r75.8
-            //
-            // block 0
-            // mov (8) r20.0<1>:d r60.0<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r20.8<1>:d r62.0<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r21.0<1>:d r64.0<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r21.8<1>:d r66.0<8;8,1>:d {Align1, Q1, Compacted}
-            // ...
-            //block 1
-            // mov (8) r30.0<1>:d r60.8<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r30.8<1>:d r62.8<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r31.0<1>:d r64.8<8;8,1>:d {Align1, Q1, Compacted}
-            // mov (8) r31.8<1>:d r66.8<8;8,1>:d {Align1, Q1, Compacted}
-            //...
-
-            if (numPasses_axisX > 1)
+            for (uint i = 0; i < nbElements; ++i)
             {
-                for (uint i = 0; i < nbElements; ++i)
+                m_encoder->SetSimdSize(simdMode);
+                m_encoder->SetNoMask();
+
+                //Src
+                m_encoder->SetSrcSubVar(0, srcSubVar);
+                m_encoder->SetSrcSubReg(0, srcSubRegOffset / typeSizeInBytes);
+                //Dst
+                m_encoder->SetDstSubVar(dstSubVar);
+                m_encoder->SetDstSubReg(dstSubRegOffset / typeSizeInBytes);
+                //Strides for dst and src
+                dstSubRegOffset = ((i + 1) * blockWidth) % getGRFSize();
+                if (dstSubRegOffset == 0)
                 {
-                    m_encoder->SetSimdSize(simdMode);
-                    m_encoder->SetNoMask();
-
-                    //Src
-                    m_encoder->SetSrcSubVar(0, srcSubVar);
-                    m_encoder->SetSrcSubReg(0, srcSubRegOffset / typeSizeInBytes);
-                    //Dst
-                    m_encoder->SetDstSubVar(dstSubVar);
-                    m_encoder->SetDstSubReg(dstSubRegOffset / typeSizeInBytes);
-                    //Strides for dst and src
-                    dstSubRegOffset = ((i + 1) * blockWidth) % getGRFSize();
-                    if (dstSubRegOffset == 0)
-                    {
-                        dstSubVar += scale > 0 ? scale : 1;
-                    }
-                    srcSubVar = srcSubVar + (numPasses_axisX * blockWidth / getGRFSize());
-
-                    m_encoder->Copy(tempdst, data);
-                    m_encoder->Push();
+                    dstSubVar += scale > 0 ? scale : 1;
                 }
-            }
-            else
-            {
-                tempdst = data;
-            }
-            // Emits a MEDIA_BLOCK_WRITE instruction.
-            // Considering block width as x-axis and block height as y axis:
-            // Pass 0 writes from (xOffset,yOffset) to (xOffset+31, yOffset+blockheight)
-            // Pass 1 writes from (xOffset+32, yOffset) to (xOffset+63, yOffset+blockheight)
-            // mov (8) r28.0<1>:ud r0.0<8;8,1>:ud {Align1, NoMask, Compacted}
-            // mov (1) r28.2<1>:ud 0x3001f:ud {Align1, NoMask}
-            // mov (1) r28.0<1>:ud r6.0<0;1,0>:d {Align1, NoMask}
-            // mov (1) r28.1<1>:ud r7.0<0;1,0>:d {Align1, NoMask}
-            // mov (16) r29.0<1>:ud r22.0<8;8,1>:ud {Align1, NoMask, Compacted}
-            // mov (16) r31.0<1>:ud r24.0<8;8,1>:ud {Align1, NoMask, Compacted}
-            // send (8) null<1>:ud r28 0xc 0xa0a8002:ud{Align1, NoMask} // media block write
-            if (pass_axisX == 0)
-            {
-                CVariable* xVar = GetSymbol(xOffset);
-                m_encoder->SetSimdSize(SIMDMode::SIMD1);
-                m_encoder->SetNoMask();
-                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                srcSubVar = srcSubVar + (numPasses * blockWidth / getGRFSize());
 
-                pTempVar_axis_X_offset = m_currShader->GetNewVariable(
-                    numLanes(m_SimdMode),
-                    ISA_TYPE_D,
-                    EALIGN_DWORD,
-                    CName::NONE);
-
-                m_encoder->Cast(pTempVar_axis_X_offset, xVar);
+                m_encoder->Copy(tempdst, data);
                 m_encoder->Push();
             }
-            else
-            {
-                m_encoder->SetSimdSize(SIMDMode::SIMD1);
-                m_encoder->SetNoMask();
-                m_encoder->SetSrcRegion(0, 0, 1, 0);
-                m_encoder->Add(pTempVar_axis_X_offset, pTempVar_axis_X_offset, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
-                m_encoder->Push();
-                dstSubReg = dstSubReg + scale * blockHeight;
-            }
-
+        }
+        else
+        {
+            tempdst = data;
+        }
+        // Emits a MEDIA_BLOCK_WRITE instruction.
+        // Considering block width as x-axis and block height as y axis:
+        // Pass 0 writes from (xOffset,yOffset) to (xOffset+31, yOffset+blockheight)
+        // Pass 1 writes from (xOffset+32, yOffset) to (xOffset+63, yOffset+blockheight)
+        // mov (8) r28.0<1>:ud r0.0<8;8,1>:ud {Align1, NoMask, Compacted}
+        // mov (1) r28.2<1>:ud 0x3001f:ud {Align1, NoMask}
+        // mov (1) r28.0<1>:ud r6.0<0;1,0>:d {Align1, NoMask}
+        // mov (1) r28.1<1>:ud r7.0<0;1,0>:d {Align1, NoMask}
+        // mov (16) r29.0<1>:ud r22.0<8;8,1>:ud {Align1, NoMask, Compacted}
+        // mov (16) r31.0<1>:ud r24.0<8;8,1>:ud {Align1, NoMask, Compacted}
+        // send (8) null<1>:ud r28 0xc 0xa0a8002:ud{Align1, NoMask} // media block write
+        if (pass == 0)
+        {
+            CVariable* xVar = GetSymbol(xOffset);
+            CVariable* yVar = GetSymbol(yOffset);
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
             m_encoder->SetSrcRegion(0, 0, 1, 0);
 
-            CVariable* yVar = GetSymbol(yOffset);
-            if (pass_axisY == 0)
-            {
-                pTempVar_axis_Y_offset = m_currShader->GetNewVariable(
-                    numLanes(m_SimdMode),
-                    ISA_TYPE_D,
-                    EALIGN_DWORD,
-                    CName::NONE);
+            pTempVar0 = m_currShader->GetNewVariable(
+                numLanes(m_SimdMode),
+                ISA_TYPE_D,
+                EALIGN_DWORD,
+                CName::NONE);
 
-                m_encoder->Cast(pTempVar_axis_Y_offset, yVar);
-                m_encoder->Push();
-            }
-            else
-            {
-                m_encoder->Add(pTempVar_axis_Y_offset, pTempVar_axis_Y_offset, m_currShader->ImmToVariable(blockHeight_step, ISA_TYPE_UD));
-                m_encoder->Push();
-                uint32_t subOffset = MediaBlockStoreByteMax * pass_axisY;
-                srcSubReg = srcSubReg + subOffset;
+            m_encoder->Cast(pTempVar0, xVar);
+            m_encoder->Push();
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
 
-                // Offset the source for next store instr
-                tempdst =
-                    m_currShader->GetNewAlias(
-                        tempdst,
-                        tempdst->GetType(),
-                        srcSubReg,
-                        tempdst->GetNumberElement());
-            }
+            pTempVar = m_currShader->GetNewVariable(
+                numLanes(m_SimdMode),
+                ISA_TYPE_D,
+                EALIGN_DWORD,
+                CName::NONE);
 
-            m_encoder->SetDstSubVar(dstSubReg);
-
-            int blockHeight2Store = numPasses_axisY > 1 ?
-                // For case when one send cannot handle the whole store
-                blockHeight_step :
-                // For normal case
-                blockHeight;
-
-            {
-                m_encoder->MediaBlockMessage(
-                    ISA_Opcode::ISA_MEDIA_ST,
-                    tempdst,
-                    ESURFACE_NORMAL,
-                    srcbti,
-                    pTempVar_axis_X_offset,
-                    pTempVar_axis_Y_offset,
-                    0,
-                    (unsigned char)blockWidth,
-                    (unsigned char)blockHeight2Store,
-                    0);
-            }
+            m_encoder->Cast(pTempVar, yVar);
             m_encoder->Push();
         }
+        else
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
+            m_encoder->Push();
+            dstSubReg = dstSubReg + scale * blockHeight;
+        }
+
+        m_encoder->SetDstSubVar(dstSubReg);
+
+        {
+            m_encoder->MediaBlockMessage(
+                ISA_Opcode::ISA_MEDIA_ST,
+                tempdst, ESURFACE_NORMAL,
+                srcbti,
+                pTempVar0,
+                pTempVar,
+                0,
+                (unsigned char)blockWidth,
+                (unsigned char)blockHeight,
+                0);
+        }
+        m_encoder->Push();
     }
 }
 
