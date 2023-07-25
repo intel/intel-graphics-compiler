@@ -6819,8 +6819,6 @@ bool G4_INST::isSupportedAccDstType() const {
   case Type_UQ:
   case Type_D:
   case Type_UD:
-  case Type_UB:
-  case Type_B:
   case Type_BF:
     return true;
   default:
