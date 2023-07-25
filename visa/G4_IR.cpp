@@ -5407,17 +5407,16 @@ void G4_Imm::emit(std::ostream &output) {
   // we only emit hex in this function
   //
   std::ios::fmtflags outFlags(output.flags());
-  output.flags(std::ios_base::hex | std::ios_base::showbase);
+  output.flags(std::ios_base::hex);
+  output << "0x";
 
-  short word;
   if (type == Type_DF) {
     output << (uint64_t)imm.num;
   } else if (type == Type_F) {
     output << imm.num32;
   } else if (type == Type_W || type == Type_UW || type == Type_B ||
              type == Type_UB) {
-    word = (short)imm.num;
-    output << word;
+    output << (short)imm.num;
   } else if (type == Type_D || type == Type_UD) {
     // 32-bit int
     output << (int)imm.num;
