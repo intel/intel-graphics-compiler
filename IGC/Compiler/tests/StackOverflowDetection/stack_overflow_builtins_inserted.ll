@@ -14,8 +14,8 @@
 
 define spir_kernel void @test(i64 %addr) #0 {
 entry:
-; CHECK: call void @__stackoverflow_init()
-; CHECK: call void @__stackoverflow_detection()
+; CHECK: call spir_func void @__stackoverflow_init()
+; CHECK: call spir_func void @__stackoverflow_detection()
   %0 = inttoptr i64 %addr to i32 addrspace(4)*
   store i32 39, i32 addrspace(4)* %0, align 4
   ret void

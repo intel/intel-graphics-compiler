@@ -43,20 +43,34 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
   }
 
   bool changed = false;
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  auto& MDUWAnalysis = getAnalysis<MetaDataUtilsWrapper>();
+  auto pMdUtils = MDUWAnalysis.getMetaDataUtils();
+  auto pModMD = MDUWAnalysis.getModuleMetaData();
+  const bool isLibraryCompilation = pModMD->compOpt.IsLibraryCompilation;
 
   for (Function &F : M) {
-    if (isEntryFunc(pMdUtils, &F)) {
+    const bool isEntryFunction = isEntryFunc(pMdUtils, &F);
+    if (isEntryFunction || isLibraryCompilation) {
+      if (F.isDeclaration())
+        continue;
       IGCLLVM::IRBuilder<> builder(&*F.begin()->begin());
 
-      auto StackOverflowInitFunc = M.getOrInsertFunction(
-          STACK_OVERFLOW_INIT_BUILTIN_NAME,
-          FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
+      if (isEntryFunction) {
+        auto StackOverflowInitFunc = M.getOrInsertFunction(
+            STACK_OVERFLOW_INIT_BUILTIN_NAME,
+            FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
+        Function *Callee = cast<Function>(StackOverflowInitFunc.getCallee());
+        IGC_ASSERT(Callee);
+        auto InitCall = builder.CreateCall(Callee);
+        InitCall->setCallingConv(CallingConv::SPIR_FUNC);
+      }
       auto StackOverflowDetectionFunc = M.getOrInsertFunction(
           STACK_OVERFLOW_DETECTION_BUILTIN_NAME,
           FunctionType::get(Type::getVoidTy(M.getContext()), {}, false));
-      builder.CreateCall(StackOverflowInitFunc.getCallee());
-      builder.CreateCall(StackOverflowDetectionFunc.getCallee());
+      Function *Callee = cast<Function>(StackOverflowDetectionFunc.getCallee());
+      IGC_ASSERT(Callee);
+      auto CallInst = builder.CreateCall(Callee);
+      CallInst->setCallingConv(CallingConv::SPIR_FUNC);
 
       changed = true;
     }
