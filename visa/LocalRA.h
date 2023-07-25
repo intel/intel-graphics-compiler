@@ -136,8 +136,6 @@ private:
   IR_Builder &builder;
 
   std::unordered_set<unsigned int> forbiddenGRFs;
-  const static unsigned int UndefHint = 0xffffffff;
-  unsigned int hint = UndefHint;
 
 public:
   LocalLiveRange(IR_Builder &b) : builder(b) {
@@ -225,10 +223,6 @@ public:
 
   void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); }
   std::unordered_set<unsigned int> &getForbidden() { return forbiddenGRFs; }
-
-  void setHint(unsigned int h) { hint = h; }
-  bool hasHint() const { return hint != UndefHint; }
-  unsigned int getHint() const { return hint; }
 };
 
 class InputLiveRange {
@@ -353,8 +347,7 @@ public:
                                    int nrows, int lastRowSize, int endReg,
                                    unsigned short occupiedBundles, int instID,
                                    bool isHybridAlloc,
-                                   std::unordered_set<unsigned int> &forbidden,
-                                   bool hintSet);
+                                   std::unordered_set<unsigned int> &forbidden);
 
   void markPhyRegs(G4_Declare *topdcl);
 
@@ -456,13 +449,6 @@ public:
     availableRegs.setTwoBanksRA(_twoBanksRA);
   }
 
-  int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign,
-                   int &regnum, int &subregnum, int startRegNum, int endRegNum,
-                   unsigned short occupiedBundles, unsigned int instID,
-                   bool isHybridAlloc,
-                   std::unordered_set<unsigned int> &forbidden, bool hasHint,
-                   unsigned int hintReg);
-
   void freeRegs(int regnum, int subregnum, int numwords, int instID);
   PhyRegsLocalRA *getAvailableRegs() { return &availableRegs; }
   int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign,
@@ -492,7 +478,6 @@ private:
   bool allocateRegsFromBanks(LocalLiveRange *);
   bool allocateRegs(LocalLiveRange *lr, G4_BB *bb, IR_Builder &builder,
                     LLR_USE_MAP &LLRUseMap);
-  void coalesceSplit(LocalLiveRange *lr);
   void freeAllocedRegs(LocalLiveRange *, bool);
   void updateActiveList(LocalLiveRange *);
 

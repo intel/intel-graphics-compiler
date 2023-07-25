@@ -851,7 +851,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange *varBasis, BankAlign align,
 bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
                              const BitSet *forbidden, BankAlign align,
                              G4_SubReg_Align subAlign, ColorHeuristic heuristic,
-                             float spillCost, bool hintSet) {
+                             float spillCost) {
   colorHeuristic = heuristic;
 
   G4_Declare *decl = varBasis->getDcl();
@@ -935,7 +935,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
           gra.getBankConflict(varBasis->getVar()->asRegVar()->getDeclare());
 
       if (!builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
-          honorBankBias && varBasisBC != BANK_CONFLICT_NONE && !hintSet) {
+          honorBankBias && varBasisBC != BANK_CONFLICT_NONE) {
         if (highInternalConflict) {
           switch (varBasisBC) {
           case BANK_CONFLICT_FIRST_HALF_EVEN:

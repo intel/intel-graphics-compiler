@@ -2995,9 +2995,6 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
     return status;
   }
 
-  if (auto sp = kernel.getVarSplitPass()) {
-    sp->replaceIntrinsics();
-  }
   if (builder.getOption(vISA_VerifyRA)) {
     // Mark local variables to improve the liveness analysis on partially
     // written local variables.

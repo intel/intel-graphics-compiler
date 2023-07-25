@@ -296,7 +296,6 @@ private:
   void recomputeBound(std::unordered_set<G4_Declare *> &declares);
 
   void mapOrphans();
-  void varSplit();
   void cloneSampleInst();
 
   /// Each optimization should be a member function of this class.
@@ -387,7 +386,6 @@ public:
     PI_insertFenceBeforeEOT,
     PI_insertScratchReadBeforeEOT,
     PI_mapOrphans,
-    PI_varSplit,
     PI_legalizeType,
     PI_analyzeMove,
     PI_removeInstrinsics,

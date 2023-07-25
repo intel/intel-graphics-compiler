@@ -2511,11 +2511,6 @@ BankAlign globalLinearScan::getBankAlign(LSLiveRange *lr) {
   BankAlign bankAlign =
       gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
 
-  if (gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl())) {
-    // Special alignment is not needed for var split intrinsic
-    bankAlign = BankAlign::Either;
-  }
-
   return bankAlign;
 }
 

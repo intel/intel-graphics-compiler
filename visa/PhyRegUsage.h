@@ -211,7 +211,7 @@ public:
 
   bool assignRegs(bool isSIMD16, LiveRange *var, const BitSet *forbidden,
                   BankAlign align, G4_SubReg_Align subAlign,
-                  ColorHeuristic colorHeuristic, float spillCost, bool hintSet);
+                  ColorHeuristic colorHeuristic, float spillCost);
 
   bool assignGRFRegsFromBanks(LiveRange *varBasis, BankAlign align,
                               const BitSet *forbidden, ColorHeuristic heuristic,

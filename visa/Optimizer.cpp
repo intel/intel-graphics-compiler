@@ -703,7 +703,6 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT,
                   TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(mapOrphans, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(varSplit, vISA_EnableAlways, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(legalizeType, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(analyzeMove, vISA_analyzeMove, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(removeInstrinsics, vISA_removeInstrinsics,
@@ -903,8 +902,6 @@ int Optimizer::optimization() {
   runPass(PI_split4GRFVars);
 
   runPass(PI_insertFenceBeforeEOT);
-
-  runPass(PI_varSplit);
 
 
   // PreRA scheduling
@@ -5894,14 +5891,6 @@ void Optimizer::mapOrphans() {
         inst->setVISAId(catchAllCISAOff);
       }
     }
-  }
-}
-
-void Optimizer::varSplit() {
-  VarSplitPass *splitPass = kernel.getVarSplitPass();
-  // Run explicit variable split pass
-  if (kernel.getOption(vISA_IntrinsicSplit)) {
-    splitPass->run();
   }
 }
 

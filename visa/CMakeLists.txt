@@ -224,6 +224,7 @@ set(GenX_Common_Sources_External_Other
   CFGStructurizer.cpp
   Common_BinaryEncoding.cpp
   DebugInfo.cpp
+  RADebug.cpp
   FlagSpillCleanup.cpp
   FlowGraph.cpp
   G4_BB.cpp
@@ -321,6 +322,7 @@ set(GenX_Common_Headers
   Common_BinaryEncoding.h
   Common_GEN.h
   DebugInfo.h
+  RADebug.h
   FlagSpillCleanup.h
   FlowGraph.h
   G4_BB.hpp

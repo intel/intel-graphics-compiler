@@ -425,7 +425,6 @@ private:
 
   bool m_hasIndirectCall = false;
 
-  VarSplitPass *varSplitPass = nullptr;
   GRFMode grfMode;
 
   // map key is filename string with complete path.
@@ -648,8 +647,6 @@ public:
   G4_INST *getFirstNonLabelInst() const;
 
   std::string getDebugSrcLine(const std::string &filename, int lineNo);
-
-  VarSplitPass *getVarSplitPass();
 
   VISATarget getKernelType() const { return kernelType; }
   void setKernelType(VISATarget t) { kernelType = t; }

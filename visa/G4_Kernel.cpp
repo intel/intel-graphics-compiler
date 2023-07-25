@@ -491,11 +491,6 @@ G4_Kernel::~G4_Kernel() {
     gtPinInfo.reset();
   }
 
-  if (varSplitPass) {
-    delete varSplitPass;
-    varSplitPass = nullptr;
-  }
-
   Declares.clear();
 }
 
@@ -922,15 +917,6 @@ std::string G4_Kernel::getDebugSrcLine(const std::string &fileName,
     return "invalid line number";
   }
   return lines[srcLine - 1];
-}
-
-VarSplitPass *G4_Kernel::getVarSplitPass() {
-  if (varSplitPass)
-    return varSplitPass;
-
-  varSplitPass = new VarSplitPass(*this);
-
-  return varSplitPass;
 }
 
 unsigned G4_Kernel::getLargestInputRegister() {

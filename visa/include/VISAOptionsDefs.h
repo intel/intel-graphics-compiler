@@ -289,7 +289,6 @@ DEF_VISA_OPTION(vISA_enableBundleCR, ET_INT32, "-enableBundleCR",
                 "USAGE: -enableBundleCR <0|1|2|3>: 0, disable, 1 dpas "
                 "instructions, 2 non-dpas instructions, 3 all",
                 1)
-DEF_VISA_OPTION(vISA_IntrinsicSplit, ET_BOOL, "-doSplit", UNUSED, false)
 DEF_VISA_OPTION(vISA_LraFFWindowSize, ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",
                 UNUSED, true)

@@ -644,7 +644,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
   bool needGlobalRA = true;
   uint32_t nextEOTGRF = numRegLRA;
   std::unordered_set<unsigned int> emptyForbidden;
-  auto varSplitPass = gra.getVarSplitPass();
 
   if (nextEOTGRF < 112 && builder.hasEOTGRFBinding()) {
     // we can't guarantee unique assignments for all the EOT sources
@@ -680,9 +679,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
           updateDebugInfo(kernel, dcl, start, end);
         }
       } else {
-        if (varSplitPass->isSplitDcl(dcl) || varSplitPass->isPartialDcl(dcl)) {
-          return true;
-        }
         numRows += dcl->getNumRows();
         if (hybridWithSpill) {
           if (dcl->isDoNotSpill()) {
@@ -772,11 +768,11 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
             getOccupiedBundle(builder, gra, dcl, preferBank);
         nrows = phyRegMgr.findFreeRegs(
             sizeInWords, assignAlign, subAlign, regNum, subregNum, 0,
-            numRegLRA - 1, occupiedBundles, 0, false, emptyForbidden, false, 0);
+            numRegLRA - 1, occupiedBundles, 0, false, emptyForbidden);
       } else {
         nrows = phyRegMgr.findFreeRegs(sizeInWords, assignAlign, subAlign,
                                        regNum, subregNum, numRegLRA - 1, 0, 0,
-                                       0, false, emptyForbidden, false, 0);
+                                       0, false, emptyForbidden);
       }
 
       if (nrows) {
@@ -1813,7 +1809,7 @@ bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word, int howmany) {
 bool PhyRegsLocalRA::findFreeMultipleRegsForward(
     int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize,
     int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc,
-    std::unordered_set<unsigned int> &forbidden, bool hintSet) {
+    std::unordered_set<unsigned int> &forbidden) {
   int foundItem = 0;
   int startReg = 0;
   int i = regIdx;
@@ -1836,8 +1832,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(
         regBusyVector[i] == 0 &&
         (!isHybridAlloc ||
          (((instID - regLastUse[i]) / 2 >= LraFFWindowSize) ||
-          (regLastUse[i] == 0)) ||
-         hintSet)) {
+          (regLastUse[i] == 0)))) {
       foundItem++;
     } else if (foundItem < grfRows) {
       foundItem = 0;
@@ -2101,47 +2096,37 @@ int PhyRegsManager::findFreeRegs(int size, BankAlign align,
                                  int &subregnum, int startRegNum, int endRegNum,
                                  unsigned short occupiedBundles,
                                  unsigned int instID, bool isHybridAlloc,
-                                 std::unordered_set<unsigned int> &forbidden,
-                                 bool hintSet, unsigned int hintReg) {
+                                 std::unordered_set<unsigned int> &forbidden) {
   int nrows = 0;
   int lastRowSize = 0;
   LocalRA::getRowInfo(size, nrows, lastRowSize, builder);
 
-  bool forward = hintSet ? true : (startRegNum <= endRegNum ? true : false);
+  bool forward = (startRegNum <= endRegNum ? true : false);
   int startReg = forward ? startRegNum : startRegNum - nrows + 1;
   int endReg = forward ? endRegNum - nrows + 1 : endRegNum;
 
   bool found = false;
 
   if (size >= (int)builder.numEltPerGRF<Type_UW>()) {
-    if (!hintSet) {
-      if (forward) {
-        found = availableRegs.findFreeMultipleRegsForward(
-            startReg, align, regnum, nrows, lastRowSize, endReg,
-            occupiedBundles, instID, isHybridAlloc, forbidden, hintSet);
-      } else {
-        found = availableRegs.findFreeMultipleRegsBackward(
-            startReg, align, regnum, nrows, lastRowSize, endReg, instID,
-            isHybridAlloc, forbidden);
-      }
+    if (forward) {
+      found = availableRegs.findFreeMultipleRegsForward(
+          startReg, align, regnum, nrows, lastRowSize, endReg, occupiedBundles,
+          instID, isHybridAlloc, forbidden);
     } else {
-      regnum = hintReg;
-      found = true;
+      found = availableRegs.findFreeMultipleRegsBackward(
+          startReg, align, regnum, nrows, lastRowSize, endReg, instID,
+          isHybridAlloc, forbidden);
     }
     if (found) {
       subregnum = 0;
       if (size % builder.numEltPerGRF<Type_UW>() == 0) {
         availableRegs.setGRFBusy(regnum, nrows);
       } else {
-        vISA_ASSERT(
-            !hintSet,
-            "Not expecting split for variable with alignment != n*sizeof(GRF)");
         availableRegs.setGRFBusy(regnum, nrows - 1);
         availableRegs.setWordBusy(regnum + nrows - 1, 0, lastRowSize);
       }
     }
   } else {
-    vISA_ASSERT(!hintSet, "Not expecting split with sub-GRF granularity");
     found = availableRegs.findFreeSingleReg(startReg, size, align, subalign,
                                             regnum, subregnum, endReg, instID,
                                             isHybridAlloc, forward, forbidden);
@@ -2262,7 +2247,7 @@ void LinearScan::run(G4_BB *bb, IR_Builder &builder, LLR_USE_MAP &LLRUseMap) {
     expireRanges(idx);
     expireInputRanges(currInst->getLexicalId(), idx, firstGlobalIdx);
 
-    if (!lr->hasHint() && doBankConflict && builder.lowHighBundle() &&
+    if (doBankConflict && builder.lowHighBundle() &&
         (highInternalConflict ||
          (simdSize >= 16 && builder.oneGRFBankDivision()))) {
       allocateRegResult = allocateRegsFromBanks(lr);
@@ -2464,28 +2449,19 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
     }
   }
 
-  *startGRFReg = lr->hasHint() ? lr->getHint() : *startGRFReg;
-  if (lr->hasHint() && gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl())) {
-    // Special alignment is not needed for var split intrinsic
-    bankAlign = BankAlign::Either;
-  }
-
   if (useRoundRobin) {
     nrows = pregManager.findFreeRegs(
         size, bankAlign, subalign, regnum, subregnum, *startGRFReg,
-        localRABound, occupiedBundles, instID, false, lr->getForbidden(),
-        lr->hasHint(), lr->getHint());
+        localRABound, occupiedBundles, instID, false, lr->getForbidden());
   } else {
     nrows = pregManager.findFreeRegs(
         size, bankAlign, subalign, regnum, subregnum, *startGRFReg,
-        localRABound, occupiedBundles, instID, true, lr->getForbidden(),
-        lr->hasHint(), lr->getHint());
+        localRABound, occupiedBundles, instID, true, lr->getForbidden());
 
     if (!nrows) {
       nrows = pregManager.findFreeRegs(
           size, bankAlign, subalign, regnum, subregnum, *startGRFReg,
-          localRABound, occupiedBundles, instID, false, lr->getForbidden(),
-          lr->hasHint(), lr->getHint());
+          localRABound, occupiedBundles, instID, false, lr->getForbidden());
     }
   }
 
@@ -2498,8 +2474,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
 
       nrows = pregManager.findFreeRegs(size, bankAlign, subalign, regnum,
                                        subregnum, 0, endGRFReg, occupiedBundles,
-                                       instID, false, lr->getForbidden(),
-                                       lr->hasHint(), lr->getHint());
+                                       instID, false, lr->getForbidden());
 
       if (nrows) {
         *startGRFReg = (regnum + nrows) % (localRABound);
@@ -2752,62 +2727,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
 
   lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
 
-  if (gra.getVarSplitPass()->isSplitDcl(lr->getTopDcl())) {
-    // Update hint for all children of lr to coalesce
-    coalesceSplit(lr);
-  }
-
-#ifdef _DEBUG
-  if (gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl())) {
-    int s;
-    vISA_ASSERT(lr->getPhyReg(s)->asGreg()->getRegNum() == lr->getHint() ||
-                    !lr->hasHint(),
-                "hint not honored for child dcl");
-  }
-#endif
-
   return true;
-}
-
-void LinearScan::coalesceSplit(LocalLiveRange *lr) {
-  // lr is split parent. set hint on all children.
-  // immediately free unused rows of split variable.
-  int subreg;
-  auto regnum = lr->getPhyReg(subreg)->asGreg()->getRegNum();
-  auto varSplit = gra.getVarSplitPass();
-  std::unordered_set<unsigned int> unrefGRFs;
-  for (unsigned int i = regnum; i != (regnum + lr->getTopDcl()->getNumRows());
-       i++) {
-    unrefGRFs.insert(i);
-  }
-  for (auto l : liveIntervals) {
-    if (!varSplit->isParentChildRelation(lr->getTopDcl(), l->getTopDcl()))
-      continue;
-
-    auto siblingNum = varSplit->getSiblingNum(l->getTopDcl());
-    unsigned int sizePerChild = l->getTopDcl()->getNumRows();
-
-    // this hint is binding on children to guarantee coalescing of split
-    // intrinsic
-    l->setHint(regnum + (siblingNum * sizePerChild));
-#ifdef _DEBUG
-    int s;
-    if (l->getAssigned())
-      vISA_ASSERT(!l->getPhyReg(s), "split child already allocated");
-#endif
-    for (unsigned int i = regnum + (siblingNum * sizePerChild);
-         i != regnum + ((siblingNum + 1) * sizePerChild); i++) {
-      unrefGRFs.erase(i);
-    }
-  }
-
-  // now free phy regs of split that dont have an intrinsic split emitted, ie
-  // unused rows of parent dcl.
-  unsigned int idx;
-  lr->getFirstRef(idx);
-  for (auto f : unrefGRFs) {
-    pregManager.freeRegs(f, 0, builder.numEltPerGRF<Type_UW>(), idx);
-  }
 }
 
 bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
@@ -2882,7 +2802,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
   if (useRoundRobin) {
     nrows = pregManager.findFreeRegs(size, align, subalign, regnum, subregnum,
                                      *startGRFReg, tmpLocalRABound, 0, instID,
-                                     false, lr->getForbidden(), false, 0);
+                                     false, lr->getForbidden());
 
     if (nrows) {
       // Wrapper handling
@@ -2914,7 +2834,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
 
       nrows = pregManager.findFreeRegs(size, align, subalign, regnum, subregnum,
                                        *startGRFReg, tmpLocalRABound, 0, instID,
-                                       false, lr->getForbidden(), false, 0);
+                                       false, lr->getForbidden());
 
       if (!nrows) {
         // Still fail, wrapper round in original bank
@@ -2930,13 +2850,13 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
         }
         nrows = pregManager.findFreeRegs(
             size, align, subalign, regnum, subregnum, *startGRFReg,
-            tmpLocalRABound, 0, instID, false, lr->getForbidden(), false, 0);
+            tmpLocalRABound, 0, instID, false, lr->getForbidden());
       }
     }
   } else {
     nrows = pregManager.findFreeRegs(size, align, subalign, regnum, subregnum,
                                      *startGRFReg, tmpLocalRABound, 0, instID,
-                                     true, lr->getForbidden(), false, 0);
+                                     true, lr->getForbidden());
 
     if (!nrows) { // Try without window, no even/odd alignment for bank, but
                   // still low and high(keep in same bank)
@@ -2945,7 +2865,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
           gra.isEvenAligned(lr->getTopDcl()) ? BankAlign::Even
                                              : BankAlign::Either,
           subalign, regnum, subregnum, *startGRFReg, tmpLocalRABound, 0, instID,
-          false, lr->getForbidden(), false, 0);
+          false, lr->getForbidden());
     }
 
     if (!nrows) {
@@ -2963,7 +2883,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
           gra.isEvenAligned(lr->getTopDcl()) ? BankAlign::Even
                                              : BankAlign::Either,
           subalign, regnum, subregnum, *startGRFReg, tmpLocalRABound, 0, instID,
-          false, lr->getForbidden(), false, 0);
+          false, lr->getForbidden());
     }
   }
 
@@ -2973,15 +2893,6 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
   }
 
   lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
-
-  if (gra.getVarSplitPass()->isSplitDcl(lr->getTopDcl())) {
-    // Update hint for all children of lr to coalesce
-    coalesceSplit(lr);
-  }
-
-  vISA_ASSERT(!gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl()) ||
-                  !lr->hasHint(),
-              "not expecting to use this allocate method for split dcl");
 
 #ifdef DEBUG_VERBOSE_ON
   COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum
@@ -3005,11 +2916,8 @@ void LinearScan::freeAllocedRegs(LocalLiveRange *lr, bool setInstID) {
     lr->getLastRef(idx);
   }
 
-  auto varSplitPass = gra.getVarSplitPass();
-  if (!varSplitPass->isSplitDcl(lr->getTopDcl())) {
-    pregManager.freeRegs(preg->asGreg()->getRegNum(), sregnum,
-                         lr->getSizeInWords(), idx);
-  }
+  pregManager.freeRegs(preg->asGreg()->getRegNum(), sregnum,
+                       lr->getSizeInWords(), idx);
 }
 
 // ********* PhyRegSummary class implementation *********

@@ -130,8 +130,6 @@ class LiveRange final {
   AssignedReg reg;
   float spillCost;
   BankConflict bc = BANK_CONFLICT_NONE;
-  const static unsigned UndefHint = 0xffffffff;
-  unsigned allocHint = UndefHint;
 
   union {
     uint16_t bunch = 0;
@@ -231,11 +229,6 @@ public:
   void setBC(BankConflict c) { bc = c; }
   void setParentLRID(int id) { parentLRID = id; }
   unsigned getParentLRID() const { return parentLRID; }
-
-  unsigned getAllocHint() const { return allocHint; }
-  bool hasAllocHint() const { return allocHint != UndefHint; }
-  void setAllocHint(unsigned h);
-  void resetAllocHint() { allocHint = UndefHint; }
 
   // From VarBasis
 public:
@@ -798,8 +791,7 @@ class GraphColor {
   void relaxNeighborDegreeGRF(LiveRange *lr);
   void relaxNeighborDegreeARF(LiveRange *lr);
   bool assignColors(ColorHeuristic heuristicGRF, bool doBankConflict,
-                    bool highInternalConflict, bool doBundleConflict = false,
-                    bool doCoalescing = true);
+                    bool highInternalConflict, bool doBundleConflict = false);
   bool assignColors(ColorHeuristic h) {
     // Do graph coloring without bank conflict reduction.
     return assignColors(h, false, false);
@@ -1151,7 +1143,6 @@ public:
 
 
   bool avoidBundleConflict = false;
-  VarSplitPass *getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
   unsigned getSubRetLoc(const G4_BB *bb) {
     auto it = subretloc.find(bb);
