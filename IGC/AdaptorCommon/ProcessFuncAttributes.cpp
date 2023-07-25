@@ -843,13 +843,33 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
         // stackoverflow detection functions will be subroutines, so that we can
         // call them easily in emit pass as well.
-        for (StringRef funcName :
-             {StackOverflowDetectionPass::STACK_OVERFLOW_INIT_BUILTIN_NAME,
-              StackOverflowDetectionPass::STACK_OVERFLOW_DETECTION_BUILTIN_NAME}) {
-            if (auto F = M.getFunction(funcName)) {
+        std::array<StringRef,2> DetectionFunctions = {
+            StackOverflowDetectionPass::STACK_OVERFLOW_INIT_BUILTIN_NAME,
+            StackOverflowDetectionPass::STACK_OVERFLOW_DETECTION_BUILTIN_NAME};
+
+        for (StringRef FuncName : DetectionFunctions) {
+            if (auto F = M.getFunction(FuncName)) {
                 F->removeFnAttr("referenced-indirectly");
                 F->removeFnAttr("visaStackCall");
                 SetNoInline(F);
+            }
+        }
+        bool HasStackCalls = std::any_of(M.getFunctionList().begin(), M.getFunctionList().end(),
+            [](auto &F) { return F.hasFnAttribute("visaStackCall"); });
+        if (!HasStackCalls) {
+            for (auto FuncName : DetectionFunctions) {
+                if (auto F = M.getFunction(FuncName)) {
+                    std::vector<CallInst *> CallersToDelete;
+                    for (auto User : F->users()) {
+                        if (auto I = dyn_cast<CallInst>(User)) {
+                            CallersToDelete.push_back(I);
+                        }
+                    }
+                    std::for_each(
+                        CallersToDelete.begin(), CallersToDelete.end(),
+                        [](auto CallInst) { CallInst->eraseFromParent(); });
+                    F->eraseFromParent();
+                }
             }
         }
     }
