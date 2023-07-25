@@ -318,18 +318,18 @@ int IR_Builder::translateVISALogicInst(
     G4_Declare *tmpDcl =
         createTempVar(exsize, g4Srcs[0]->getType(), getGRFAlign());
     G4_DstRegRegion *tmpDst = createDstRegRegion(tmpDcl, 1);
-    createInst(predOpnd, g4_op, NULL, saturate,
+    createInst(duplicateOperand(predOpnd), g4_op, nullptr, saturate,
                exsize, // it is number of bits for predicate logic op
                tmpDst, g4Srcs[0], g4Srcs[1], inst_opt, true);
 
     G4_SrcRegRegion *src0 = createSrcRegRegion(
         tmpDcl, (exsize == 1) ? getRegionScalar() : getRegionStride1());
-    createInst(predOpnd, G4_bfi2, NULL, saturate,
+    createInst(predOpnd, G4_bfi2, nullptr, saturate,
                exsize, // it is number of bits for predicate logic op
                dst, src0, g4Srcs[2], g4Srcs[3], inst_opt, true);
   } else {
     // create inst
-    createInst(predOpnd, g4_op, NULL, saturate,
+    createInst(predOpnd, g4_op, nullptr, saturate,
                exsize, // it is number of bits for predicate logic op
                dst, g4Srcs[0], g4Srcs[1], g4Srcs[2], inst_opt, true);
   }
