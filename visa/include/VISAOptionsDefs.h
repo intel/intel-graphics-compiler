@@ -206,11 +206,19 @@ DEF_VISA_OPTION(vISA_loadCrossThreadConstantData, ET_BOOL, "-loadCTCD", UNUSED,
                 true)
 DEF_VISA_OPTION(vISA_useInlineData, ET_BOOL, "-useInlineData", UNUSED, false)
 DEF_VISA_OPTION(vISA_crossThreadDataAlignment, ET_INT32,
-                "-crossThreadDataAlignment", UNUSED, 32)
+                "-crossThreadDataAlignment",
+                "If .kernel_attr CrossThreadInputSize .. is absent, "
+                "computation of cross kernel arguments aligns up to this value "
+                "(so per-thread arguments that follow cross thread are aligned "
+                "to this)",
+                32)
 DEF_VISA_OPTION(vISA_loadThreadPayloadStartReg, ET_INT32, "-setStartReg",
-                UNUSED, 1)
+                "The start register at which to begin loading kernel arguments", 1)
 DEF_VISA_OPTION(vISA_emitCrossThreadOffR0Reloc, ET_BOOL,
-                "-emitCrossThreadOffR0Reloc", UNUSED, false)
+                "-emitCrossThreadOffR0Reloc",
+                "Causes kernel argument loading to create a relocatable add "
+                "to load from an offset past (e.g. for implicit_args).",
+                false)
 DEF_VISA_OPTION(vISA_renderTargetWriteSendReloc, ET_BOOL,
         "-renderTargetWriteSendReloc",
         "Enables adding offsets of all Render Target Write send instructions to the relocation table.", false)

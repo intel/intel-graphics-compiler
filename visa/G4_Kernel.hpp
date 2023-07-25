@@ -396,6 +396,37 @@ public:
   uint32_t getThreadHeaderGRF() const;
 };
 
+// represents an argument placement
+struct ArgLayout {
+  const G4_Declare       *decl;
+
+  // the byte offset in GRF this argument is loaded to
+  int                     dstGrfAddr;
+
+  // kernel argument buffer source region
+  enum class MemSrc {
+    INVALID,
+    // cross thread input
+    CTI,
+    // per thread input
+    PTI,
+    // inline data register
+    INLINE
+  };
+  MemSrc                  memSource;
+
+  // the offset within the memory region this is loaded from
+  int                     memOffset;
+
+  // the size (in memory and GRF) of the argument in bytes
+  int                     size;
+
+  ArgLayout(const G4_Declare *dcl, int dstGrfAdr, MemSrc mSrc, int mOff,
+            int sz)
+    : decl(dcl), dstGrfAddr(dstGrfAdr), memSource(mSrc), memOffset(mOff),
+      size(sz) { }
+};
+
 class G4_Kernel {
 public:
   using RelocationTableTy = std::vector<RelocationEntry>;
@@ -557,6 +588,8 @@ public:
   uint32_t getFunctionId() const { return m_function_id; }
 
   Options *getOptions() { return m_options; }
+  const Options *getOptions() const { return m_options; }
+
   const Attributes *getKernelAttrs() const { return m_kernelAttrs; }
   bool getBoolKernelAttr(Attributes::ID aID) const {
     return getKernelAttrs()->getBoolKernelAttr(aID);
@@ -721,6 +754,9 @@ public:
     // This also sets accDef's parent to inst.
     inst->computeRightBound(accDef);
   }
+
+  bool hasInlineData() const;
+  std::vector<ArgLayout> getArgumentLayout();
 
 private:
   G4_BB *getNextBB(G4_BB *bb) const;

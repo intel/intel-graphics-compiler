@@ -278,6 +278,7 @@ void Optimizer::addFFIDProlog() {
   }
 }
 
+
 // clang-format off
 ///////////////////////////////////////////////////////////////////////////////
 // Argument Loading for GPGPU
@@ -287,23 +288,34 @@ void Optimizer::addFFIDProlog() {
 //
 //   IndirectArgPtr = r0.0[31:6] + GeneralStateBase
 //
-// +---------------------+ <- [IndirectArgPtr (from compute walker)]
+// As an example, assume per thread data is 3 GRFs (numCrossThreadDW / 16 = 3)
+//
+//  Memory:                                            Register File:
+//
+// +---------------------+ <- [IndirectArgPtr e.g. r0.0[31:6]+GeneralStateBase]
 // | implicit_args       |
 // |  (if enabled)       |
-// +---------------------+                       R1 +-----------------------+ <-- perThreadLoadStartGRF
-// |  cross thread data  | \                        |  per thread data T[i] |
-// |                     |  numCrossThreadDW     R4 +-----------------------+
-// |                     | /                        |  inline data          |
-// +---------------------+ <-- localIDsOffset       |  (if enabled)         |
-// |  per thread data T0 |                       R5 +-----------------------+ <-- crossThreadLoadStartGRF
-// +---------------------+                          |  cross thread data    | \
-// |  per thread data T1 |                          |                       |  numCrossThreadDW
-// +---------------------+                          |                       | /
-// |        ...          |                          +-----------------------+
-// +---------------------+
+// +---------------------+                         R1 +------------------------+ <-- perThreadLoadStartGRF
+// |  cross thread data  | \                          |                        |
+// |                     |  numCrossThreadDW          |  per thread data T[i]  |
+// | ... [ padding? *  ] | /                          |                        |
+// +---------------------+ <-- perThreadOffsetMem  R4 +------------------------+ <- perThreadLoadGRF + numPerThreadGRF
+// |                     | \                          | inline data (optional) |
+// |  per thread data T0 |    numPerThreadGRF      R5 +------------------------+ <-- crossThreadLoadStartGRF
+// |                     | /    (GRFs)                |  cross thread data     | \
+// +---------------------+                            |                        |  numCrossThreadDW (Dwords)
+// |                     |                            |                        | /
+// |  per thread data T1 |                            +------------------------+
+// |                     |                           (NOTE: register numbers are examples)
+// +---------------------+                           vISA_loadThreadPayloadStartReg shifts payload in GRF
+//          ...
 //
-// inline data comes from the walker command not memory;
+// * inline data comes from the compute walker command not memory;
 //   "inline" (or immediate) with respect the command streamer instructions
+//
+// * padding vISA_crossThreadDataAlignment rounds up cross-thread memory section
+//   so that per-thread blocks start aligned; successive per thread blocks are GRF aligned
+//
 // clang-format on
 class PayloadLoader
 {
@@ -311,8 +323,11 @@ class PayloadLoader
   G4_Kernel &kernel;
   FlowGraph &fg;
 
+  // if the inline data register is being used
+  const bool useInlineData;
+
   // indirect data address is at r0.0[5:31]:d
-  // local thread id is at r0.2[0:7]:d (same as r0.4[0:7]:w)
+  // thread id in group is at r0.2[7:0]:d (same as r0.4[7:0]:w)
   G4_Declare *r0;
   // temp register to use for offset computation or load payload
   G4_Declare *rtmp;
@@ -321,9 +336,11 @@ class PayloadLoader
   const uint32_t perThreadLoadStartGRF;
 
   // final cross thread size to be loaded as number of DW (including aligenment)
+  // does not include the inline register argument
   uint32_t numCrossThreadDW = 0;
   // payload memory offset of where local id should be loaded from
-  uint32_t localIDsOffset = 0;
+  // this is in bytes
+  uint32_t perThreadOffsetMem = 0;
 
   // number of per-thread GRFs to be loaded (e.g. local ids)
   const uint32_t numPerThreadGRF = 0;
@@ -336,6 +353,7 @@ class PayloadLoader
 public:
   PayloadLoader(IR_Builder &b, G4_Kernel &k, FlowGraph &_fg)
     : builder(b), kernel(k), fg(_fg),
+      useInlineData(k.hasInlineData()),
       r0(
         b.createHardwiredDeclare(
           k.numEltPerGRF<Type_UD>(), Type_UD, 0, 0)),
@@ -346,20 +364,15 @@ public:
       perThreadLoadStartGRF(
         k.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg)),
       numPerThreadGRF(
-        k.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize) /
-          k.numEltPerGRF<Type_UB>())
+        AlignUp(k.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize),
+                k.numEltPerGRF<Type_UB>()) / k.numEltPerGRF<Type_UB>())
   {
     r0->setName("r0");
     rtmp->setName("rtmp");
 
     // pre-compute various offsets into memory and GRF for the later use
-    const unsigned crossThreadDataAlignment =
-      builder.getuint32Option(vISA_crossThreadDataAlignment);
-    const bool useInlineData = builder.getOption(vISA_useInlineData);
     uint32_t crossThreadLoadStart = 0;    // register file (grf) offset in byte
     // cross thread size (not including inlinedata size and alignement)
-    const uint32_t loadedCrossThreadInputSize =
-        findLoadedInputSize(crossThreadLoadStart);
     int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
     if (CTIS < 0) {
       // per-thread payload vars
@@ -369,11 +382,16 @@ public:
       // inlinedata. Rest of payload is shifted in the buffer by N bytes. So
       // payload args which start at N offset, now start at 0 offset. Because of
       // this we need to calculate localID offset:
+      const unsigned crossThreadDataAlignment =
+          builder.getuint32Option(vISA_crossThreadDataAlignment);
+      const uint32_t loadedCrossThreadInputSize =
+          findCrossThreadInputSize(crossThreadLoadStart);
       const uint32_t inlineDataSize = builder.getInlineDataSize();
-      uint32_t correction = useInlineData ? inlineDataSize : 0;
-      localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction,
-                               crossThreadDataAlignment);
-      localIDsOffset -= useInlineData ? inlineDataSize : 0;
+      perThreadOffsetMem =
+          useInlineData ?
+            AlignUp(loadedCrossThreadInputSize + inlineDataSize,
+                    crossThreadDataAlignment) - inlineDataSize :
+            AlignUp(loadedCrossThreadInputSize, crossThreadDataAlignment);
 
       // cross-thread payload vars
       numCrossThreadDW =
@@ -382,8 +400,8 @@ public:
       crossThreadLoadStartGRF = crossThreadLoadStart / kernel.getGRFSize();
     } else {
       // per-thread payload vars
-      localIDsOffset = CTIS;
-      localIDsOffset -= useInlineData ? builder.getInlineDataSize() : 0;
+      perThreadOffsetMem = CTIS;
+      perThreadOffsetMem -= useInlineData ? builder.getInlineDataSize() : 0;
 
       // cross-thread payload vars
       numCrossThreadDW = CTIS / TypeSize(Type_UD);
@@ -517,6 +535,37 @@ private:
     return (uint32_t)0;
   }
 
+  // LSC allows transpose with V1, V2, V3, V4, V8, V16, V32, V64
+  // We assume this is called in descending sequence with register-sized
+  // chunks and then on down to sub register size.
+  //
+  // Only the last load in a sequence may be smaller than a GRF and must
+  // round up.
+  //  DWords:
+  //    >=64    => d32x64t   possible residue of next iteration
+  //    32-63   => d32x32t   possible residue of next iteration
+  //    17-31   => d32x16t   possible residue of next iteration
+  //  Final Load Residues:
+  //    9-16    => d32x16t   loads some padding
+  //    5-8     => d32x8t    loads some padding
+  //    4,3,2,1 => d32x{4,3,2,1}t
+  //
+  //   Thus, given V7 we need to load V8
+  //
+  uint32_t roundDwordsToLegalSizeLSC(uint32_t numDw) {
+    if (numDw >= 64) {
+      return 64; // 4GRF
+    } else if (numDw >= 32) {
+      return 32; // 2GRF
+    } else if (numDw > 8) {
+      return 16; // 1GRF (possibly padding)
+    } else if (numDw > 4) {
+      return 8; // half a GRF (possibly padding)
+    } else { // V1, V2, V3, V4
+      return numDw;
+    }
+  }
+
   void loadFromMemoryLscBti(G4_Declare *baseLoadAddr,
                             uint32_t startGRF,
                             uint32_t numTotalDW)
@@ -639,17 +688,19 @@ private:
   }
 
   // helper function to find the size of cross thread data which needs to be
-  // loaded loadStartOffset - in this parameter we put the offsset of first
-  // input which gets loaded.
-  uint32_t findLoadedInputSize(uint32_t &loadStartOffset) {
+  // loaded
+  //  * loadStartOffset - in this parameter we put the offset of first
+  //                      cross thread input which gets loaded.
+  //  * returns the size of the cross thread section that must be loaded
+  uint32_t findCrossThreadInputSize(uint32_t &loadStartOffset) const {
     const uint32_t startGRF =
         kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
     const uint32_t inputsStart = startGRF * kernel.getGRFSize();
     const uint32_t inputCount = kernel.fg.builder->getInputCount();
 
-    const bool useInlineData = builder.getOption(vISA_useInlineData);
     const int PTIS =
-        kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+        AlignUp(kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize),
+                kernel.getGRFSize());
     const uint32_t inlineDataSize = builder.getInlineDataSize();
 
     // Checks if input_info is cross-thread-input
@@ -675,13 +726,13 @@ private:
     // - where they end
     // - where first not inlined cross thread input is
     for (unsigned int id = 0; id < inputCount; id++) {
-      input_info_t *input_info = kernel.fg.builder->getInputArg(id);
+      const input_info_t *input_info = kernel.fg.builder->getInputArg(id);
       // skip pseudo input for register bindings.
       if (input_info->isPseudoInput()) {
         continue;
       }
       if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel()) {
-        vISA::G4_Declare *dcl = input_info->dcl;
+        const vISA::G4_Declare *dcl = input_info->dcl;
         if (INPUT_GENERAL == input_info->getInputClass() && !(dcl->isLiveIn())) {
           break;
         }
@@ -703,7 +754,7 @@ private:
       return 0;
     }
     return inputEnd - firstNotInlinedCrossThreadInput;
-  } // findLoadedInputSize
+  } // findCrossThreadInputSize
 
   // (W) and (1) rtmp.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFC0
   void getStartAddrInst(int subreg) {
@@ -802,7 +853,7 @@ public:
       // case of the cross_thread_size is changed after compilation (e.g. gtpin
       // inserted argument), the relocation need to be resolved to the new
       // cross_thread_size.
-      G4_Operand *addSrc1 = builder.createRelocImm(localIDsOffset, Type_UW);
+      G4_Operand *addSrc1 = builder.createRelocImm(perThreadOffsetMem, Type_UW);
       auto addDst = builder.createDst(rtmp->getRegVar(), 0, 2, 1, Type_UD);
       // instruction has relocation must not be compacted
       auto addInst =
@@ -845,7 +896,7 @@ public:
 
       if (builder.getOption(vISA_useInlineData)) {
         // copy inline data to the first GRF of cross-thread-data
-        // e.g. (W) mov (8) r4.0:ud r1.0:ud
+        // e.g. (W) mov (8) inlineDataReg.0:ud r1.0:ud
         // Inline GRF is only 8 DWords
         emitMovInlineData(perThreadLoadStartGRF + numPerThreadGRF,
                           perThreadLoadStartGRF, 8);

@@ -983,6 +983,78 @@ void G4_Kernel::setKernelParameters() {
   }
 }
 
+bool G4_Kernel::hasInlineData() const {
+  const IR_Builder &b = *fg.builder;
+  return
+      b.getOption(vISA_useInlineData);
+}
+
+std::vector<ArgLayout> G4_Kernel::getArgumentLayout() {
+  const uint32_t startGRF =
+      getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
+  const uint32_t inputsStart = startGRF * getGRFSize();
+  const uint32_t inputCount = fg.builder->getInputCount();
+
+  const int PTIS =
+      AlignUp(getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize),
+              getGRFSize());
+
+  // Checks if input_info is cross-thread-input
+  auto isInCrossThreadData = [&](const input_info_t * input_info) {
+    return (uint32_t)input_info->offset >= inputsStart + PTIS;
+  };
+
+  const uint32_t inlineDataSize = fg.builder->getInlineDataSize();
+  const bool useInlineData = hasInlineData();
+  // Checks if input_info fits in inlineData
+  auto isInInlineData = [&](const input_info_t *const input_info) {
+    if (!useInlineData) {
+      return false;
+    }
+    uint32_t inputEnd = input_info->offset + input_info->size;
+    bool fitsInInlineData = inputEnd <= inputsStart + PTIS + inlineDataSize;
+    return isInCrossThreadData(input_info) && fitsInInlineData;
+  };
+
+  const uint32_t startGrfAddr =
+      getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg) *
+        getGRFSize();
+
+  std::vector<ArgLayout> args;
+  for (unsigned ix = 0; ix < inputCount; ix++) {
+    const input_info_t *input = fg.builder->getInputArg(ix);
+    if (input->isPseudoInput()) {
+      continue;
+    } else if (fg.builder->getFCPatchInfo()->getIsEntryKernel()) {
+      const vISA::G4_Declare *dcl = input->dcl;
+      if (INPUT_GENERAL == input->getInputClass() && !dcl->isLiveIn()) {
+        break;
+      }
+    }
+    int dstGrfAddr = input->offset;
+    auto memSrc = ArgLayout::MemSrc::INVALID;
+    int memOff = input->offset - startGrfAddr; // subtract off r0
+    if (isInInlineData(input)) {
+      memSrc = ArgLayout::MemSrc::INLINE;
+      memOff %= getGRFSize();
+      vISA_ASSERT(memOff < (int)inlineDataSize, "inline reg arg OOB");
+      vISA_ASSERT(memOff + (int)input->size <= (int)inlineDataSize,
+                  "inline reg arg overflows");
+    } else if (isInCrossThreadData(input)) {
+      memSrc = ArgLayout::MemSrc::CTI;
+      memOff -= PTIS + (useInlineData ? inlineDataSize : 0);
+    } else {
+      memSrc = ArgLayout::MemSrc::PTI;
+    }
+    args.emplace_back(input->dcl, dstGrfAddr, memSrc, memOff, input->size);
+  }
+  std::sort(args.begin(), args.end(),
+            [&](const ArgLayout &a1,const ArgLayout &a2) {
+              return a1.dstGrfAddr < a2.dstGrfAddr;
+            });
+  return args;
+}
+
 void G4_Kernel::dump(std::ostream &os) const { fg.print(os); }
 
 void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
@@ -1399,16 +1471,17 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
     return ss.str();
   };
 
-  const unsigned inputCount = fg.builder->getInputCount();
+  auto args = getArgumentLayout();
+  const unsigned inputCount = (unsigned)args.size();
   std::vector<std::string> argNames;
   size_t maxNameLen = 8;
-  for (unsigned id = 0; id < inputCount; id++) {
-    const input_info_t *ii = fg.builder->getInputArg(id);
+  for (unsigned ix = 0; ix < inputCount; ix++) {
+    const ArgLayout &a = args[ix];
     std::stringstream ss;
-    if (ii->dcl && ii->dcl->getName()) {
-      ss << ii->dcl->getName();
+    if (a.decl && a.decl->getName()) {
+      ss << a.decl->getName();
     } else {
-      ss << "__unnamed" << (id + 1);
+      ss << "__unnamed" << (ix + 1);
     }
     argNames.push_back(ss.str());
     maxNameLen = std::max(maxNameLen, argNames.back().size());
@@ -1419,8 +1492,8 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
   const size_t COLW_IDENT = maxNameLen;
   static const size_t COLW_TYPE = 8;
   static const size_t COLW_SIZE = 6;
-  static const size_t COLW_AT = 8;
-  static const size_t COLW_CLASS = 10;
+  static const size_t COLW_AT = 8;    // e.g. "r16+0x20"
+  static const size_t COLW_FROM = 16; // e.g. "inline+0x20"
 
   std::stringstream bordss;
   bordss << "// ";
@@ -1433,7 +1506,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
   bordss << '+';
   bordss << std::setfill('-') << std::setw(COLW_AT + 2) << "";
   bordss << '+';
-  bordss << std::setfill('-') << std::setw(COLW_CLASS + 2) << "";
+  bordss << std::setfill('-') << std::setw(COLW_FROM + 2) << "";
   bordss << '+' << "\n";
   std::string border = bordss.str();
 
@@ -1443,23 +1516,23 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
      << " | " << std::left << std::setw(COLW_TYPE) << "type"
      << " | " << std::right << std::setw(COLW_SIZE) << "bytes"
      << " | " << std::left << std::setw(COLW_AT) << "at"
-     << " | " << std::left << std::setw(COLW_CLASS) << "class"
+     << " | " << std::left << std::setw(COLW_FROM) << "from"
      << " |"
      << "\n";
   os << border;
 
   const unsigned grfSize = getGRFSize();
-  for (unsigned id = 0; id < inputCount; id++) {
-    const input_info_t *input_info = fg.builder->getInputArg(id);
+  for (unsigned ix = 0; ix < inputCount; ix++) {
+    const ArgLayout &a = args[ix];
     //
     os << "//";
     //
     // id
-    os << " | " << std::left << std::setw(COLW_IDENT) << argNames[id];
+    os << " | " << std::left << std::setw(COLW_IDENT) << argNames[ix];
     //
     // type and length
     //   e.g. :uq x 16
-    const G4_Declare *dcl = input_info->dcl;
+    const G4_Declare *dcl = a.decl;
     std::stringstream sstype;
     if (dcl) {
       switch (dcl->getElemType()) {
@@ -1521,35 +1594,30 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
     os << " | " << std::left << std::setw(COLW_TYPE) << sstype.str();
     //
     // size
-    os << " | " << std::right << std::setw(COLW_SIZE) << std::dec
-       << input_info->size;
+    os << " | " << std::right << std::setw(COLW_SIZE) << fmtHex(a.size);
 
     // location
-    unsigned reg = input_info->offset / grfSize,
-             subRegBytes = input_info->offset % grfSize;
+    unsigned reg = a.dstGrfAddr / grfSize,
+             subRegBytes = a.dstGrfAddr % grfSize;
     std::stringstream ssloc;
     ssloc << "r" << reg;
     if (subRegBytes != 0)
-      ssloc << "+" << subRegBytes;
+      ssloc << "+" << fmtHex(subRegBytes);
     os << " | " << std::left << std::setw(COLW_AT) << ssloc.str();
 
-    // class
-    std::string inpcls;
-    switch (input_info->getInputClass()) {
-    case INPUT_GENERAL:
-      inpcls = "general";
-      break;
-    case INPUT_SAMPLER:
-      inpcls = "sampler";
-      break;
-    case INPUT_SURFACE:
-      inpcls = "surface";
-      break;
-    default:
-      inpcls = fmtHex((int)input_info->getInputClass());
-      break;
+    // from
+    std::string from;
+    switch (a.memSource) {
+    case ArgLayout::MemSrc::CTI: from = "cti"; break;
+    case ArgLayout::MemSrc::PTI: from = "pti[tid]"; break;
+    case ArgLayout::MemSrc::INLINE: from = "inline"; break;
+    default: from = fmtHex(int(a.memSource)) + "?"; break;
     }
-    os << " | " << std::left << std::setw(COLW_CLASS) << inpcls;
+    std::stringstream ssf;
+    ssf << from;
+    ssf << "+" << fmtHex(a.memOffset);
+
+    os << " | " << std::left << std::setw(COLW_FROM) << ssf.str();
     //
     os << " |\n";
   }
