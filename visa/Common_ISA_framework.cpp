@@ -32,6 +32,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
   uint8_t subOpcode = 0;
   bool hasSubOpcode = false;
   int descOpndCount = inst_desc->opnd_num;
+  vASSERT(descOpndCount <= MAX_OPNDS_PER_INST);
 
   for (int i = 0; i < descOpndCount; i++) {
     if (inst_desc->opnd_desc[i].opnd_type == OPND_SUBOPCODE) {
