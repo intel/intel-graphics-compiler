@@ -134,7 +134,7 @@ AbortOnSpill("abort-on-spill",
              cl::Hidden);
 
 static cl::opt<ShaderDispatchMode>
-DispatchMode("dispatc-mode",
+DispatchMode("dispatch-mode",
              cl::desc("Shader dispatch mode"),
              cl::values(clEnumValN(ShaderDispatchMode::NOT_APPLICABLE, "na",          "dispatch mode not applicable"),
                         clEnumValN(ShaderDispatchMode::SINGLE_PATCH,   "single",      "single-dispatch mode"),
@@ -4979,29 +4979,6 @@ static int GetOffsetIncrement(const DataLayout* m_DL, SIMDMode simdMode, Value* 
     return inc;
 }
 
-
-// Generate a predicate based on current active channels.  The 'alias' is
-// some existing variable in context to be reused only for generating mask,
-// to avoid allocating a new variable.
-
-void EmitPass::emitPredicateFromChannelIP(CVariable* dst, CVariable* alias)
-{
-    CVariable* any;
-
-    if (alias)
-    {
-        any = m_currShader->GetNewAlias(alias, ISA_TYPE_UD, 0, 1);
-    }
-    else
-    {
-        any = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, CName::NONE);
-    }
-
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->SetSrcRegion(1, 0, 1, 0);
-    m_encoder->Cmp(EPREDICATE_EQ, dst, any, any);
-    m_encoder->Push();
-}
 
 
 void EmitPass::emitSimdLaneId(llvm::Instruction* inst)
@@ -16467,63 +16444,6 @@ unsigned int EmitPass::GetScalarTypeSizeInRegister(const Type* Ty) const
     return m_currShader->GetScalarTypeSizeInRegister(Ty);
 }
 
-static uint32_t getUGMLoadBlockVecSize(uint32_t totalBytes, uint32_t& eltBytes)
-{
-    uint32_t QWVecSize = totalBytes / sizeof(QWORD);
-
-    if (totalBytes % sizeof(QWORD) == 0)
-    {
-        if (QWVecSize == 2 ||
-            QWVecSize == 3 ||
-            QWVecSize == 4 ||
-            QWVecSize == 8 ||
-            QWVecSize == 16 ||
-            QWVecSize == 32 ||
-            QWVecSize == 64)
-        {
-            eltBytes = sizeof(QWORD);
-            return QWVecSize;
-        }
-    }
-
-    uint32_t DWVecSize = totalBytes / sizeof(DWORD);
-    if (totalBytes % sizeof(DWORD) == 0)
-    {
-        if (DWVecSize == 2 ||
-            DWVecSize == 3 ||
-            DWVecSize == 4 ||
-            DWVecSize == 8 ||
-            DWVecSize == 16 ||
-            DWVecSize == 32 ||
-            DWVecSize == 64)
-        {
-            eltBytes = sizeof(DWORD);
-            return DWVecSize;
-        }
-    }
-
-    eltBytes = 0;
-    return 0;
-}
-
-static uint32_t getNonTransposePayloadSize(SIMDMode SM, uint32_t elemByteSize, uint32_t numElems)
-{
-    if (SM == SIMDMode::SIMD32)
-    {
-        if (elemByteSize * 32 < 64)
-        {
-            return numElems;
-        }
-        else
-        {
-            uint32_t totalBytes = elemByteSize * numElems * 32;
-            return totalBytes / 64;
-        }
-    }
-    return 0;
-}
-
-
 void EmitPass::A64LSLoopHead(
     CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label)
 {
@@ -18656,15 +18576,6 @@ void EmitPass::emitVectorCopyToAOS(uint32_t AOSBytes,
         m_encoder->Copy(Dst, Src);
         m_encoder->Push();
     }
-}
-
-// Handle Copy intrinsic
-void EmitPass::emitGenISACopy(GenIntrinsicInst* GenCopyInst)
-{
-    CVariable* Dst = m_destination;
-    CVariable* Src = GetSymbol(GenCopyInst->getArgOperand(0));
-    Type* Ty = GenCopyInst->getType();
-    emitCopyAll(Dst, Src, Ty);
 }
 
 // Push a new frame onto the stack by:

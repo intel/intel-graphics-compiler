@@ -194,9 +194,6 @@ public:
     void emitLifetimeStart(CVariable* Var, llvm::BasicBlock* BB, llvm::Instruction* I, bool ForAllInstance);
     bool waveShuffleCase(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance);
 
-    // set the predicate with current active channels
-    void emitPredicateFromChannelIP(CVariable* dst, CVariable* alias = NULL);
-
     // Helper methods for message emit functions.
     template <typename T>
     void prepareRenderTargetWritePayload(
@@ -434,7 +431,6 @@ public:
                             llvm::Value *storedVal, llvm::BasicBlock* BB,
                             LSC_CACHE_OPTS cacheOpts,
                             alignment_t align, bool dontForceDMask);
-    void emitGenISACopy(llvm::GenIntrinsicInst* GenCopyInst);
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
