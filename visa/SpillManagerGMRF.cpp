@@ -2800,13 +2800,61 @@ void SpillManagerGRF::updateRMWNeeded() {
     // Check0 : Def is NoMask, -- checked in isPartialWriteForSpill()
     // Check1 : Def is unique def,
     // Check2 : Def is in loop L and all use(s) of dcl are in loop L or it's
-    // inner loop nest, Check3 : Flowgraph is reducible RMW_Not_Needed = Check0
-    // || (Check1 && Check2 && Check3)
+    //          inner loop nest,
+    // Check3 : Flowgraph is reducible
+    // Check4 : Dcl is not a split around loop temp
+    // RMW_Not_Needed = (Check0 || (Check1 && Check2 && Check3)) && Check4
     bool RMW_Needed = true;
 
-    if (isUniqueDef && builder_->kernel.fg.isReducible() &&
-        checkDefUseDomRel(spilledRegion, bb)) {
-      RMW_Needed = false;
+    // Reason for Check4:
+    // ********************
+    // Before:
+    // Loop_Header:
+    // V10:uq = ...
+    // ...
+    // jmpi Loop_Header
+    // ...
+    // = V10
+    // ********************
+    // After split around loop:
+    //
+    // (W) LOOP_TMP = V10
+    // Loop_Header:
+    // LOOP_TMP:uq = ...
+    // ...
+    // jmpi Loop_Header
+    // (W) V10 = LOOP_TMP
+    // ...
+    // = V10
+    // ********************
+    // Since V10 is spilled already, spill/fill code is inserted as:
+    // (Note that program no longer has direct references to V10)
+    //
+    // (W) FILL_TMP = Fill from V10 offset
+    // (W) LOOP_TMP = FILL_TMP
+    // Loop_Header:
+    // LOOP_TMP:uq = ...
+    // ...
+    // jmpi Loop_Header
+    // (W) SPILL_TMP = LOOP_TMP
+    // (W) Spill SPILL_TMP to V10 offset
+    // ...
+    // (W) FILL_TMP1 = Fill from V10 offset
+    // = FILL_TMP1
+    // ********************
+    //
+    // If LOOP_TMP is spilled in later iteration, we need to check whether
+    // RMW is needed for its def in the loop body. But by this iteration
+    // all original references to V10 have already been transformed to
+    // temporary ranges, so we cannot easily determine dominance relation
+    // between LOOP_TMP and other V10 references. If LOOP_TMP doesn't
+    // dominate all defs and uses then it would be illegal to skip RMW. Hence,
+    // we conservatively assume RMW is required for LOOP_TMP.
+    if (gra.splitResults.count(spilledRegion->getTopDcl()) == 0) {
+      if (isUniqueDef && builder_->kernel.fg.isReducible() &&
+          checkDefUseDomRel(spilledRegion, bb)) {
+        RMW_Needed = false;
+      }
     }
 
     return RMW_Needed;
