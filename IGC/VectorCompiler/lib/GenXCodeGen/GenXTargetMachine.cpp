@@ -671,14 +671,12 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createCFGSimplificationPass());
 #endif
     PM.add(createInstructionCombiningPass());
-    PM.add(createGenXSimplifyPass());
     PM.add(createDeadCodeEliminationPass());
     PM.add(createSROAPass());
     PM.add(createInferAddressSpacesPass());
     PM.add(createEarlyCSEPass(true));
     PM.add(createCFGSimplificationPass());
     PM.add(createInstructionCombiningPass());
-    PM.add(createGenXSimplifyPass());
     PM.add(createDeadCodeEliminationPass());
     // PM.add(createGlobalDCEPass());
   };
