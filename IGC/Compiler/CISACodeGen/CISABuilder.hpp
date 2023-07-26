@@ -820,7 +820,7 @@ namespace IGC
             unsigned argumentStackSize = 0;
             unsigned allocaStackSize = 0;
         };
-        llvm::SmallDenseMap<llvm::Function*, FuncAttrib> funcAttributeMap;
+        llvm::MapVector<llvm::Function*, FuncAttrib> funcAttributeMap;
 
     public:
         // Used by EmitVISAPass to set function attributes
