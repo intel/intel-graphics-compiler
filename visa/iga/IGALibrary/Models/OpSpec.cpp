@@ -189,6 +189,14 @@ bool OpSpec::supportsSubfunction() const {
 }
 
 
+bool OpSpec::isBinaryWithExecDataType() const {
+  return false;
+}
+
+bool OpSpec::hasDstHorzStride() const {
+  return !isDpasFormat();
+}
+
 unsigned OpSpec::getSourceCount(Subfunction sf) const {
   if (is(Op::MATH)) {
     IGA_ASSERT(sf.isValid(), "invalid math function");

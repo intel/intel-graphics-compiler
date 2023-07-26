@@ -574,6 +574,26 @@ static inline GED_SATURATE lowerSaturate(DstModifier dstSat) {
   return gedSat;
 }
 
+static inline GED_EXECUTION_DATA_TYPE lowerExecDataType(Type opndType) {
+  GED_EXECUTION_DATA_TYPE type = GED_EXECUTION_DATA_TYPE_INVALID;
+
+  switch (opndType) {
+  case Type::HF:
+  case Type::BF:
+  case Type::F:
+  case Type::DF:
+  case Type::NF:
+  case Type::BF8:
+  case Type::TF32:
+    type = GED_EXECUTION_DATA_TYPE::GED_EXECUTION_DATA_TYPE_Float;
+    break;
+  default:
+    type = GED_EXECUTION_DATA_TYPE::GED_EXECUTION_DATA_TYPE_Integer;
+    break;
+  }
+  return type;
+}
+
 static inline GED_DATA_TYPE lowerDataType(Type opndType) {
   GED_DATA_TYPE dataType = GED_DATA_TYPE_INVALID;
 

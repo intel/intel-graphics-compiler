@@ -238,6 +238,18 @@ struct Region {
            getHz() != Horz::HZ_INVALID;
   }
 
+  bool isScalar() const {
+    if (bits == SRC010.bits || bits == SRC0X0.bits || bits == SRCXX0.bits)
+      return true;
+    return false;
+  }
+
+  bool isFlat() const {
+    if (bits == SRC110.bits || bits == SRC1X0.bits)
+      return true;
+    return false;
+  }
+
   // define [in]equality based on bits
   bool operator==(const Region &b) const {
     // careful: fails if padding differs (we prevent that now)

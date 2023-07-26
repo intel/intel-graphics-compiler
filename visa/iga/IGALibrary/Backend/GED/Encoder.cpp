@@ -461,6 +461,11 @@ void Encoder::encodeInstruction(Instruction &inst) {
 void Encoder::encodeBasicInstruction(const Instruction &inst,
                                      GED_ACCESS_MODE accessMode) {
   const OpSpec &os = inst.getOpSpec();
+
+  if (os.isBinaryWithExecDataType())
+    GED_ENCODE(ExecutionDataType,
+               lowerExecDataType(inst.getDestination().getType()));
+
   if (os.supportsDestination()) {
     encodeBasicDestination(inst, inst.getDestination(), accessMode);
   } else if (os.op == Op::WAIT) {
@@ -498,12 +503,8 @@ void Encoder::encodeTernaryDestinationAlign1(const Instruction &inst) {
                SubRegToBinaryOffset(dst.getDirRegRef().subRegNum,
                                     dst.getDirRegName(), dst.getType(),
                                     m_model.platform));
-    bool hasDstRgnHz = true;
-    // dpas does not have a dst region
-    hasDstRgnHz = !inst.getOpSpec().isDpasFormat();
-    if (hasDstRgnHz) {
+    if (inst.getOpSpec().hasDstHorzStride())
       GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
-    }
   }
 }
 
@@ -567,18 +568,22 @@ void Encoder::encodeTernarySourceAlign1(const Instruction &inst) {
     //
     // ternary align1 puts SpcAcc into subreg, so regions may be set
     // in all cases
-    auto rgn = src.getRegion();
     // * madm doesn't have a region in GEN9 ...
     //   it does in GEN10+, but we haven't supported it in syntax yet
     //   and leave it to GED to set it
     // * src0 and src1 only has <w;h>, src2 only has <h>
     bool hasSrcRgnHz = !inst.isMacro();
     bool hasSrcRgnVt = !inst.isMacro() && S < SourceIndex::SRC2;
-    if (hasSrcRgnHz) {
-      encodeSrcRegionHorz<S>(rgn.getHz());
-    }
-    if (hasSrcRgnVt) {
-      encodeTernarySrcRegionVert(S, rgn.getVt());
+    bool hasReducedRegion =
+        m_model.srcHasReducedRegion(static_cast<uint32_t>(S));
+    auto rgn = src.getRegion();
+    if (hasReducedRegion) {
+      encodeSrcReducedRegion<S>(rgn);
+    } else {
+      if (hasSrcRgnHz)
+        encodeSrcRegionHorz<S>(rgn.getHz());
+      if (hasSrcRgnVt)
+        encodeTernarySrcRegionVert(S, rgn.getVt());
     }
     // register and subregister
     encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
@@ -588,11 +593,12 @@ void Encoder::encodeTernarySourceAlign1(const Instruction &inst) {
         return;
       }
       encodeSrcMathMacroReg<S>(src.getMathMacroExt());
-      if (S != SourceIndex::SRC2) {
-        encodeTernarySrcRegionVert(S, Region::Vert::VT_4);
+      if (!hasReducedRegion) {
+        if (S != SourceIndex::SRC2) {
+          encodeTernarySrcRegionVert(S, Region::Vert::VT_4);
+        }
+        encodeSrcRegionHorz<S>(Region::Horz::HZ_1);
       }
-      encodeSrcRegionHorz<S>(Region::Horz::HZ_1);
-
     } else {
       auto subReg = SubRegToBinaryOffset(src.getDirRegRef().subRegNum,
                                          src.getDirRegName(), src.getType(),
@@ -930,11 +936,9 @@ void Encoder::encodeSendDescsPreXe(const Instruction &i) {
       GED_ENCODE(MsgDesc, msgDescriptor);
     }
     GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
-    uint8_t regNumBits;
     const RegInfo *ri = m_model.lookupRegInfoByRegName(RegName::ARF_A);
     IGA_ASSERT(ri, "failed to find a0 register");
-    ri->encode((int)desc.reg.regNum, regNumBits);
-    GED_ENCODE(DescRegNum, regNumBits);
+    GED_ENCODE(DescRegNum, ri->encodeARFRegNum((int)desc.reg.regNum));
   } else if (desc.isImm()) {
     GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
     GED_ENCODE(MsgDesc, desc.imm);
@@ -1222,7 +1226,8 @@ void Encoder::encodeBranchSource(const Operand &src) {
 }
 
 template <SourceIndex S>
-void Encoder::encodeBasicSource(const Instruction &inst, const Operand &src,
+void Encoder::encodeBasicSource(const Instruction &inst,
+                                const Operand &src,
                                 GED_ACCESS_MODE accessMode) {
   // setting the reg file must precede  must precede setting the type in GED
   switch (src.getKind()) {
@@ -1364,13 +1369,18 @@ void Encoder::encodeBasicSource(const Instruction &inst, const Operand &src,
       }
       encodeSrcChanSel<S>(chSel[0], chSel[1], chSel[2], chSel[3]);
     } else { // Align1
-      bool hasRgnWi = true;
-      encodeSrcRegion<S>(src.getRegion(), hasRgnWi);
+      if (m_model.srcHasReducedRegion(static_cast<uint32_t>(S)))
+        encodeSrcReducedRegion<S>(src.getRegion());
+      else
+        encodeSrcRegion<S>(src.getRegion(), true);
     }
     break;
   case Operand::Kind::MACRO:
     if (accessMode == GED_ACCESS_MODE_Align1) {
-      encodeSrcRegion<S>(src.getRegion());
+      if (m_model.srcHasReducedRegion(static_cast<uint32_t>(S)))
+        encodeSrcReducedRegion<S>(src.getRegion());
+      else
+        encodeSrcRegion<S>(src.getRegion());
     } // else {align16 macros use the regioning bits, don't clobber them}
     break;
   default:
@@ -1773,8 +1783,6 @@ void Encoder::encodeSrcChanSel(GED_SWIZZLE chSelX, GED_SWIZZLE chSelY,
 }
 
 uint32_t Encoder::translateRegNum(int opIx, RegName regName, uint16_t regNum) {
-  uint8_t regNumBits = 0;
-
   const char *whichOp = opIx == 0   ? "src0"
                         : opIx == 1 ? "src1"
                         : opIx == 2 ? "src2"
@@ -1785,10 +1793,10 @@ uint32_t Encoder::translateRegNum(int opIx, RegName regName, uint16_t regNum) {
     errorT(whichOp, ": invalid register name for this platform");
   } else if (!ri->isRegNumberValid((int)regNum)) {
     errorT(whichOp, ": ", ri->syntax, regNum, " number out of range");
-  } else {
-    ri->encode((int)regNum, regNumBits);
+  } else if (regName != RegName::GRF_R) {
+    return ri->encodeARFRegNum((int)regNum);
   }
-  return regNumBits; // widen for GED
+  return regNum; // widen for GED
 }
 
 uint32_t Encoder::mathMacroRegToBits(int src, MathMacroExt implAcc) {

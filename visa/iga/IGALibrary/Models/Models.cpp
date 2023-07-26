@@ -74,7 +74,6 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
                          0, // regNum7_4, regNumBase
                          1, // accGran
                          256, (0)),
-
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_NULL, "null", "Null", 0x0, 0, 0, 0,
                               (32)),
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_A, "a", "Index", 0x1, 0, 2, 1, (32)),
@@ -321,24 +320,32 @@ const RegInfo *Model::lookupArfRegInfoByRegNum(uint8_t regNum7_0) const {
   return arfAcc;
 }
 
-bool RegInfo::encode(int reg, uint8_t &regNumBits) const {
-  if (!isRegNumberValid(reg)) {
-    return false;
-  }
+bool Model::srcHasReducedRegion(uint32_t srcIdx) const {
+  return false;
+}
 
-  if (regName == RegName::GRF_R) {
-    regNumBits = (uint8_t)reg;
-  } else {
-    // ARF
-    // RegNum[7:4] = high bits from the spec
-    reg += regNumBase;
-    // this assert would suggest that something is busted in
-    // the RegInfo table
-    IGA_ASSERT(reg <= 0xF, "ARF encoding overflowed");
-    regNumBits = (uint8_t)(regNum7_4 << 4);
-    regNumBits |= (uint8_t)reg;
-  }
+bool RegInfo::encode(int reg, uint16_t &regNumBits) const {
+  if (!isRegNumberValid(reg))
+    return false;
+
+  if (regName == RegName::GRF_R)
+    regNumBits = (uint16_t)reg;
+  else
+    regNumBits = encodeARFRegNum(reg);
   return true;
+}
+
+uint8_t RegInfo::encodeARFRegNum(int reg) const {
+  // ARF
+  // RegNum[7:4] = high bits from the spec
+  reg += regNumBase;
+  // this assert would suggest that something is busted in
+  // the RegInfo table
+  IGA_ASSERT(reg <= 0xF, "ARF encoding overflowed");
+  uint8_t regNumBits = 0;
+  regNumBits = (uint8_t)(regNum7_4 << 4);
+  regNumBits |= (uint8_t)reg;
+  return regNumBits;
 }
 
 bool RegInfo::decode(uint8_t regNumBits, int &reg) const {

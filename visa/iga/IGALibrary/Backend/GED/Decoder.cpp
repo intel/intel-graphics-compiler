@@ -998,7 +998,11 @@ void Decoder::decodeTernarySourceAlign1(Instruction *inst) {
                            decodeSrcType<S>());
     } else {
       // normal access
-      Region rgn = decodeSrcRegionTernaryAlign1<S>(inst->getOpSpec());
+      Region rgn;
+      if (m_model.srcHasReducedRegion(static_cast<uint32_t>(S)))
+        rgn = decodeSrcReducedRegionTernary<S>();
+      else
+        rgn = decodeSrcRegionTernaryAlign1<S>(inst->getOpSpec());
       DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
       inst->setDirectSource(S, decodeSrcModifier<S>(), opInfo.regName,
                             opInfo.regRef, rgn, opInfo.type);

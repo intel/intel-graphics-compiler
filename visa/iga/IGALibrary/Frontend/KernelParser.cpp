@@ -2166,7 +2166,7 @@ public:
     addrOff += baseOff;
 
     // regioning... <V;W,H> or <V,H>
-    Region rgn = ParseSrcOpRegionInd(srcOpIx);
+    Region rgn = ParseSrcOpRegionInd(srcOpIx, opStart);
 
     // :t
     Type sty = ParseSrcOpTypeWithDefault(srcOpIx, true);
@@ -2231,6 +2231,11 @@ public:
       rgn = ParseSrcOpRegionVWH(ri, srcOpIx, hasExplicitSubreg);
     }
 
+    // Verify if the region is valid
+    if (m_model.srcHasReducedRegion(srcOpIx) &&
+        !rgn.isScalar() && !rgn.isFlat())
+        ErrorAtT(opStart, "Invalid region");
+
     // :t
     Type sty = Type::INVALID;
     if (m_opSpec->isAnySendFormat()) {
@@ -2257,7 +2262,7 @@ public:
       m_builder.InstSrcOpRegMathMacroExtReg(srcOpIx, opStart, srcMod,
                                             ri.regName, regNum, mme, rgn, sty);
     } else {
-      RegRef reg((uint8_t)regNum, (uint8_t)subregNum);
+      RegRef reg((uint16_t)regNum, (uint16_t)subregNum);
       m_builder.InstSrcOpRegDirect(srcOpIx, opStart, srcMod, ri.regName, reg,
                                    rgn, sty);
     }
@@ -2377,7 +2382,7 @@ public:
 
   // '<' INT ',' INT '>'             (VxH mode)
   // '<' INT ';' INT ',' INT '>'
-  Region ParseSrcOpRegionInd(int srcOpIx) {
+  Region ParseSrcOpRegionInd(int srcOpIx, const Loc &opStart) {
     if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_execSize,
                                        m_builder.isMacroOp())) {
       if (!LookingAt(LANGLE)) {
@@ -3963,7 +3968,7 @@ bool KernelParser::ParseLdStInst() {
       return;
     }
     ppi.regName = regInfo->regName;
-    ppi.regNum = (uint8_t)regNum;
+    ppi.regNum = (uint16_t)regNum;
   };
 
   // r13:0, r13 (meaning r13:1)

@@ -114,6 +114,7 @@ protected:
   template <SourceIndex S>
   void encodeSrcRegion(const Region &r, bool hasRgnWi = true);
   template <SourceIndex S> void encodeSrcRegionWidth(Region::Width w);
+  template <SourceIndex S> void encodeSrcReducedRegion(const Region& rgn);
   template <SourceIndex S> void encodeSrcRepCtrl(GED_REP_CTRL rep);
   template <SourceIndex S>
   void encodeSrcChanSel(GED_SWIZZLE chSelX, GED_SWIZZLE chSelY,
@@ -290,39 +291,15 @@ protected:
   ////////////////////////////////////////////////////////////////
   // allowable types for ternary Align1
   static bool isTernaryAlign1Floating(Type t) {
-    switch (t) {
-    case Type::HF:
-    case Type::BF:
-    case Type::BF8:
-    case Type::HF8:
-    case Type::TF32:
-    case Type::F:
-    case Type::DF:
-    case Type::NF:
-      return true;
-    default:
-      return false;
-    }
+    return lowerExecDataType(t) ==
+           GED_EXECUTION_DATA_TYPE::GED_EXECUTION_DATA_TYPE_Float;
   }
 
   // allowable types for ternary Align1
-
   static bool isTernaryAlign1Integral(Type t) {
-    switch (t) {
-    case Type::UQ: // technically uq not allows today, but maybe in future
-    case Type::Q:  // same as :uq
-    case Type::UD:
-    case Type::D:
-    case Type::UW:
-    case Type::W:
-    case Type::UB:
-    case Type::B:
-      return true;
-    default:
-      return false;
-    }
+    return lowerExecDataType(t) ==
+           GED_EXECUTION_DATA_TYPE::GED_EXECUTION_DATA_TYPE_Integer;
   }
-
 }; // end: class definition Encoder
 
 template <SourceIndex S> void Encoder::encodeSrcRegFile(GED_REG_FILE rf) {
@@ -401,9 +378,9 @@ void Encoder::encodeSrcReg(RegName regName, uint16_t regNum) {
     if (!ri) {
       errorT("src", (int)S, ": unexpected register on this platform");
     } else {
-      uint8_t reg8;
-      ri->encode((int)regNum, reg8);
-      regBits = reg8; // widen for GED
+      uint16_t reg;
+      ri->encode((int)regNum, reg);
+      regBits = reg; // widen for GED
     }
   }
   if (S == SourceIndex::SRC0) {
@@ -475,6 +452,11 @@ void Encoder::encodeSrcRegion(const Region &rgn, bool hasRgnWi) {
   } else {
     IGA_ASSERT_FALSE("Encoder::encodeSrcRegion: only works on src0 and src1");
   }
+}
+
+template <SourceIndex S>
+void Encoder::encodeSrcReducedRegion(const Region& rgn) {
+  IGA_ASSERT_FALSE("Unreachable: Unsupported region");
 }
 
 template <SourceIndex S> void Encoder::encodeSrcRegionWidth(Region::Width w) {

@@ -303,6 +303,14 @@ protected:
     return translate(decodeSrcDataType<S>());
   }
 
+  template <SourceIndex S> Region decodeSrcReducedRegionTernary() {
+    return Region::INVALID;
+  }
+
+  template <SourceIndex S> Region decodeSrcReducedRegion() {
+    return Region::INVALID;
+  }
+
   template <SourceIndex S> Region decodeSrcRegionVWH() {
     return transateGEDtoIGARegion(decodeSrcVertStride<S>(), decodeSrcWidth<S>(),
                                   decodeSrcHorzStride<S>());

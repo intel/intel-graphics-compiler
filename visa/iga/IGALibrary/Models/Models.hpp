@@ -97,8 +97,8 @@ struct RegInfo {
   }
 
   int getNumReg() const { return numRegs; }
-
-  bool encode(int reg, uint8_t &regNumBits) const;
+  bool encode(int reg, uint16_t &regNumBits) const;
+  uint8_t encodeARFRegNum(int reg) const;
   bool decode(uint8_t regNumBits, int &reg) const;
 }; // RegInfo
 
@@ -380,6 +380,8 @@ struct Model {
   // The platform will read the other half and perform word write.
   // This will affect swsb setting behavior.
   bool hasReadModifiedWriteOnByteDst() const { return getGRFByteSize() == 64; }
+
+  bool srcHasReducedRegion(uint32_t srcIdx) const;
 }; // class Model
 
 ///////////////////////////////////////////////////////////////////////////

@@ -372,7 +372,7 @@ inline void InstEncoder::encodeReg(const Field &fREGFILE, const Field &fREG,
     internalErrorBadIR(fREG, "unsupported register for platform");
     return;
   }
-  uint8_t regNumBits = 0;
+  uint16_t regNumBits = 0;
   if (!ri->encode(regNum, regNumBits)) {
     internalErrorBadIR(fREG, "invalid register");
     return;

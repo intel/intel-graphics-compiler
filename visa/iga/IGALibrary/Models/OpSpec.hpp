@@ -305,6 +305,7 @@ struct OpSpec {
        // includes send, sends, or any other send formats
   bool isAnySendFormat() const { return (format & SEND) != 0; }
 
+  bool isBinary() const { return (format & BINARY) != 0; }
   bool isTernary() const { return (format & TERNARY) != 0; }
 
   // GED doesn't permit us to set execution offset for jmpi
@@ -377,6 +378,11 @@ struct OpSpec {
            !is(Op::ILLEGAL);
   }
 
+
+  // check if the instruction is binary (2-src) and has
+  // ExecDataType
+  bool isBinaryWithExecDataType() const;
+  bool hasDstHorzStride() const;
 
   bool isDpasFormat() const {
     return isOneOf(Op::DPAS, Op::DPASW
