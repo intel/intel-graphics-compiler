@@ -611,7 +611,7 @@ private:
         builder.createLscSendInst(nullptr, dstRead, src0Addr, nullptr,
                                   g4::SIMD1, desc,
                                   InstOpt_WriteEnable | InstOpt_NoCompact,
-                                  LSC_ADDR_TYPE_BTI, true);
+                                  LSC_ADDR_TYPE_BTI, 0x0, true);
       instBuffer.push_back(sendInst);
       // we pick to load all data within one send in
       // roundDwordsToLegalSize if numRemainingDW is less than one

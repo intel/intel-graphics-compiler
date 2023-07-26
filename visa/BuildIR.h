@@ -1385,9 +1385,10 @@ public:
 
   G4_InstSend *createLscSendInst(G4_Predicate *pred, G4_DstRegRegion *dst,
                                  G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
-                                 G4_ExecSize execsize, G4_SendDescRaw *msgDesc,
+                                 G4_ExecSize execsize,
+                                 G4_SendDescRaw *msgDesc,
                                  G4_InstOpts option, LSC_ADDR_TYPE addrType,
-                                 bool emitA0RegDef);
+                                 unsigned surfOff, bool emitA0RegDef);
 
 
   G4_SrcRegRegion *getScratchSurfaceStatusIndex();
@@ -2031,6 +2032,7 @@ public:
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR addrInfo,
       LSC_DATA_SHAPE shape,
       G4_Operand *surface, // surface/bti
+      unsigned ssIdx, // optional BSSO index
       G4_DstRegRegion *dstData, G4_SrcRegRegion *src0AddrOrBlockY,
       G4_Operand *src0AddrStrideOrBlockX, // only for strided and block2d
       G4_SrcRegRegion *src1Data,          // store data/extra atomic operands
@@ -2047,6 +2049,7 @@ public:
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
       LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
       G4_Operand *surface,      // surface/bti
+      unsigned surfaceIndex,
       G4_DstRegRegion *dstData, // dst on load/atomic
       G4_SrcRegRegion *src0AddrUs, int uOff,
       G4_SrcRegRegion *src0AddrVs, int vOff,

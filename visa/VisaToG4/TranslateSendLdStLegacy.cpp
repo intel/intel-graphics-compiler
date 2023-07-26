@@ -2201,7 +2201,7 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
         {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT},
         {LSC_ADDR_TYPE_FLAT, 1, 0, LSC_ADDR_SIZE_64b},
         dataShape,
-        nullptr,
+        nullptr, 0x0, // surface, ssidx
         dst->asDstRegRegion(), srcAddr64,
         nullptr,
         nullptr,

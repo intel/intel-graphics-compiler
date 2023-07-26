@@ -4108,11 +4108,11 @@ struct LscInstVerifier {
 
     // now we are at the registers
     verifyAddressType(addrType, currOpIx); // Surface
-    int dstIx = currOpIx + 1;
-    int src1DataIx = currOpIx + 3;
-    int src0Ix = currOpIx + 2;
+    int dstIx = currOpIx + 2;
+    int src1DataIx = currOpIx + 4;
+    int src0Ix = currOpIx + 3;
     if (opInfo.isStrided())
-      src1DataIx = currOpIx + 4;
+      src1DataIx = currOpIx + 5;
     const char *src0Name = opInfo.isStrided() ? "Src0AddrBase" : "Src0Addr";
     verifyRawOperand(src0Name, src0Ix); // Src0Addr
     if (opInfo.isStrided()) {

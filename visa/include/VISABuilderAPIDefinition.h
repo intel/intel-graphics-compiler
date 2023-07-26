@@ -413,14 +413,14 @@ public:
                            VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
                            LSC_CACHE_OPTS cacheOpts, LSC_ADDR addr,
                            LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-                           int surfaceIndex, VISA_RawOpnd *dstData,
+                           unsigned surfaceIndex, VISA_RawOpnd *dstData,
                            VISA_RawOpnd *src0Addr) = 0;
   /// append an *untyped* LSC store operation
   VISA_BUILDER_API virtual int AppendVISALscUntypedStore(
       LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
       LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-      int surfaceIndex, VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) = 0;
+      unsigned surfaceIndex, VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) = 0;
   /// append an *untyped* LSC atomic operation
   //
   /// atomic unary operations (e.g. lsc_atomic_iinc) take no extra data
@@ -431,7 +431,7 @@ public:
       LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
       LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-      int surfaceIndex, VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
+      unsigned surfaceIndex, VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
       VISA_RawOpnd *src1AtomOpnd1 = nullptr,
       VISA_RawOpnd *src2AtomOpnd2 = nullptr) = 0;
   //
@@ -442,8 +442,9 @@ public:
   AppendVISALscUntypedInst(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
                            VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
                            LSC_CACHE_OPTS cacheOpts, LSC_ADDR addr,
-                           LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-                           int surfaceIndex, VISA_RawOpnd *dst, VISA_RawOpnd *src0,
+                           LSC_DATA_SHAPE data,
+                           VISA_VectorOpnd *surface, unsigned surfaceIndex,
+                           VISA_RawOpnd *dst, VISA_RawOpnd *src0,
                            VISA_RawOpnd *src1, VISA_RawOpnd *src2) = 0;
   VISA_BUILDER_API virtual int
   AppendVISALscUntypedInst(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
@@ -457,7 +458,8 @@ public:
   VISA_BUILDER_API virtual int AppendVISALscUntypedStridedInst(
       LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-      LSC_ADDR addrInfo, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
+      LSC_ADDR addrInfo, LSC_DATA_SHAPE dataShape,
+      VISA_VectorOpnd *surface, unsigned surfaceIndex,
       VISA_RawOpnd *dstData, VISA_RawOpnd *src0AddrBase,
       VISA_VectorOpnd *src0AddrPitch, VISA_RawOpnd *src1Data) = 0;
   /// A generic constructor for lsc_load_block2d and lsc_store_block2d.
@@ -508,10 +510,13 @@ public:
   VISA_BUILDER_API virtual int AppendVISALscTypedInst(
       LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
-      LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-      int surfaceIndex, VISA_RawOpnd *dst, VISA_RawOpnd *coord0s,
-      int coord0Offset, VISA_RawOpnd *coord1s, int coord1Offset,
-      VISA_RawOpnd *coord2s, int coord2Offset, VISA_RawOpnd *features,
+      LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data,
+      VISA_VectorOpnd *surface, unsigned surfaceIndex,
+      VISA_RawOpnd *dst,
+      VISA_RawOpnd *coord0s, int coord0Offset,
+      VISA_RawOpnd *coord1s, int coord1Offset,
+      VISA_RawOpnd *coord2s, int coord2Offset,
+      VISA_RawOpnd *features,
       VISA_RawOpnd *src1, VISA_RawOpnd *src2) = 0;
   ///////////////////////////////////////////////////////////////////////////
   // LSC fences

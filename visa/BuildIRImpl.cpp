@@ -2558,7 +2558,8 @@ G4_SendDescRaw *IR_Builder::createLscDesc(SFID sfid, uint32_t desc,
 G4_InstSend *IR_Builder::createLscSendInst(
     G4_Predicate *pred, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
     G4_SrcRegRegion *src1, G4_ExecSize execSize, G4_SendDescRaw *msgDesc,
-    G4_InstOpts option, LSC_ADDR_TYPE addrType, bool emitA0RegDef) {
+    G4_InstOpts option, LSC_ADDR_TYPE addrType, unsigned ssIdx,
+    bool emitA0RegDef) {
 
   uint32_t exDesc = msgDesc->getExtendedDesc();
   G4_Operand *surface = msgDesc->getBti(); // BTI or SS/BSS
@@ -2592,8 +2593,16 @@ G4_InstSend *IR_Builder::createLscSendInst(
         // SS or BSS
         G4_DstRegRegion *addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
         if ((addrType == LSC_ADDR_TYPE_BSS) || (addrType == LSC_ADDR_TYPE_SS)) {
-          //   mov    a0.2  surface
-          createMov(g4::SIMD1, addrDstOpnd, surface, InstOpt_WriteEnable, true);
+          if (ssIdx == 0x0) {
+            //   (W) mov (1)  a0.2  surface
+            createMov(g4::SIMD1, addrDstOpnd, surface, InstOpt_WriteEnable, true);
+          } else {
+            //   (W) add (1)  a0.2  surface   (0x40 * ssIdx):ud
+            const unsigned SIZEOF_SURFACE_STATE = 0x40;
+            auto *surfOffImm = createImm(SIZEOF_SURFACE_STATE * ssIdx, Type_UD);
+            createBinOp(G4_add, g4::SIMD1, addrDstOpnd, surface, surfOffImm,
+                        InstOpt_WriteEnable, true);
+          }
         } else {
           vISA_ASSERT(false, "FLAT have surface == nullptr here");
         }

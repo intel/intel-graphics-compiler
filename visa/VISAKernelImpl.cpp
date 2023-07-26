@@ -7512,7 +7512,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedLoad(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
     LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    int surfaceIndex, VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr) {
+    unsigned surfaceIndex, VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr) {
   return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
                                   cacheOpts, addr, data, surface, surfaceIndex,
                                   dstData, src0Addr, nullptr, nullptr);
@@ -7532,7 +7532,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStore(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
     LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    int surfaceIndex,VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) {
+    unsigned surfaceIndex,VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) {
   return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
                                   cacheOpts, addr, data, surface, surfaceIndex,
                                   nullptr, src0Addr, src1Data, nullptr);
@@ -7553,11 +7553,12 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedAtomic(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
     LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    int surfaceIndex, VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
+    unsigned surfaceIndex, VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
     VISA_RawOpnd *src1AtomOpnd1, VISA_RawOpnd *src2AtomOpnd2) {
   return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
                                   cacheOpts, addr, data, surface, surfaceIndex,
-                                  dstReadBack, src0Addr, src1AtomOpnd1, src2AtomOpnd2);
+                                  dstReadBack, src0Addr, src1AtomOpnd1,
+                                  src2AtomOpnd2);
 }
 static const int LSC_ZERO = 0;
 
@@ -7580,8 +7581,7 @@ static const int LSC_ZERO = 0;
 #define LSC_CHECK_NULL_DST(X) LSC_CHECK_NULL_OPND(X, true)
 #define LSC_CHECK_NULL_SRC(X) LSC_CHECK_NULL_OPND(X, false)
 
-VISA_BUILDER_API int VISAKernelImpl::
-AppendVISALscUntypedInst(
+VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
         LSC_OP subOpcode, LSC_SFID lscSfid, VISA_PredOpnd *pred,
         VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
         LSC_ADDR addr, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd* surface,
@@ -7596,13 +7596,14 @@ AppendVISALscUntypedInst(
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
     LSC_OP subOpcode, LSC_SFID lscSfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
-    int surfaceIndex, VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr,
+    LSC_ADDR addr, LSC_DATA_SHAPE dataShape,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr,
     VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
   if (subOpcode == LSC_LOAD_STRIDED || subOpcode == LSC_STORE_STRIDED) {
     return AppendVISALscUntypedStridedInst(
         subOpcode, lscSfid, pred, execSize, emask, cacheOpts, addr, dataShape,
-        surface, dstData, src0Addr, nullptr, src1Data);
+        surface, surfaceIndex, dstData, src0Addr, nullptr, src1Data);
   }
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
@@ -7626,7 +7627,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
 
     status = m_builder->translateLscUntypedInst(
         subOpcode, lscSfid, pred ? pred->g4opnd->asPredicate() : nullptr,
-        execSize, emask, cacheOpts, addr, dataShape, surface->g4opnd,
+        execSize, emask, cacheOpts, addr, dataShape,
+        surface->g4opnd, surfaceIndex,
         dstData->g4opnd->asDstRegRegion(), src0Addr->g4opnd->asSrcRegRegion(),
         nullptr, src1Data->g4opnd->asSrcRegRegion(), src2Data->g4opnd->asSrcRegRegion());
   }
@@ -7654,6 +7656,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape.chmask, ISA_TYPE_UB));
     //
     ADD_OPND(numOpnds, opnds, surface);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(surfaceIndex, ISA_TYPE_D));
     ADD_OPND(numOpnds, opnds, dstData);
     ADD_OPND(numOpnds, opnds, src0Addr);
     ADD_OPND(numOpnds, opnds, src1Data);
@@ -7737,7 +7740,9 @@ static int lscStridedOpBlockStride(LSC_DATA_SHAPE dataShape) {
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStridedInst(
     LSC_OP op, LSC_SFID lscSfid, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR addrInfo,
-    LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface, VISA_RawOpnd *dstData,
+    LSC_DATA_SHAPE dataShape,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *dstData,
     VISA_RawOpnd *src0AddrBase, VISA_VectorOpnd *src0AddrPitch,
     VISA_RawOpnd *src1Data) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
@@ -7764,7 +7769,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStridedInst(
     CreateGenRawSrcOperand(src1Data);
     status |= m_builder->translateLscUntypedInst(
         op, lscSfid, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
-        emask, cacheOpts, addrInfo, dataShape, surface->g4opnd,
+        emask, cacheOpts, addrInfo, dataShape,
+        surface->g4opnd, surfaceIndex,
         dstData->g4opnd->asDstRegRegion(),
         src0AddrBase->g4opnd->asSrcRegRegion(), src0AddrPitch->g4opnd,
         src1Data->g4opnd->asSrcRegRegion(), nullptr);
@@ -7793,6 +7799,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStridedInst(
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(0, ISA_TYPE_UB)); // chmask
     //
     ADD_OPND(numOpnds, opnds, surface);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(surfaceIndex, ISA_TYPE_UD));
     ADD_OPND(numOpnds, opnds, dstData);
     ADD_OPND(numOpnds, opnds, src0AddrBase);
     ADD_OPND(numOpnds, opnds, src0AddrPitch);
@@ -7946,7 +7953,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape,
-    VISA_VectorOpnd *surface, int surfaceIndex,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
     VISA_RawOpnd *dstData,
     VISA_RawOpnd *coord0s, int coord0Offset,
     VISA_RawOpnd *coord1s, int coord1Offset,
@@ -7981,7 +7988,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
 
     status = m_builder->translateLscTypedInst(
         subOpcode, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
-        emask, cacheOpts, addrType, addrSize, dataShape, surface->g4opnd,
+        emask, cacheOpts, addrType, addrSize, dataShape,
+        surface->g4opnd, surfaceIndex,
         dstData->g4opnd->asDstRegRegion(),
         coord0s->g4opnd->asSrcRegRegion(), coord0Offset,
         coord1s->g4opnd->asSrcRegRegion(), coord1Offset,
@@ -8010,6 +8018,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     //
     ADD_OPND(numOpnds, opnds, surface);
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(surfaceIndex, ISA_TYPE_D));
+    //
     ADD_OPND(numOpnds, opnds, dstData);
     ADD_OPND(numOpnds, opnds, coord0s);
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(coord0Offset, ISA_TYPE_D));

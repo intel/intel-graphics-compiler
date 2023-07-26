@@ -617,7 +617,7 @@ public:
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
       LSC_DATA_SHAPE dataShape,
-      VISA_opnd *surface, int surfaceIndex,
+      VISA_opnd *surface, unsigned surfaceIndex,
       VISA_opnd *dst,
       VISA_opnd *src0,
       VISA_opnd *src1,
@@ -626,7 +626,9 @@ public:
   bool CISA_create_lsc_untyped_strided_inst(
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
-      LSC_DATA_SHAPE dataShape, VISA_opnd *surface, VISA_opnd *dstData,
+      LSC_DATA_SHAPE dataShape,
+      VISA_opnd *surface, unsigned surfaceIndex,
+      VISA_opnd *dstData,
       VISA_opnd *src0AddrBase, VISA_opnd *src0AddrPitch, VISA_opnd *src1Data,
       int lineNum);
   bool CISA_create_lsc_untyped_block2d_inst(
@@ -641,7 +643,7 @@ public:
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR_TYPE addrModel,
       LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape,
-      VISA_opnd *surface, int surfaceIndex,
+      VISA_opnd *surface, unsigned surfaceIndex,
       VISA_opnd *dst_data,
       VISA_opnd *src0_Us, int uOffset,
       VISA_opnd *src0_Vs, int vOffset,

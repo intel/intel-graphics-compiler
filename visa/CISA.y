@@ -1599,15 +1599,17 @@ LscInstruction:
 //
 // BTI:
 //     lsc_load.ugm   V53:u32  bti(0x10)[V52]:a32
-//     lsc_load.ugml  V53:u32  bti(V10.2)[V52]:a32
+//     lsc_load.ugm   V53:u32  bti(V10(0,1))[V52]:a32
 //
-// SS:
-//     lsc_load.ugm   V53:u64   ss(0x200)[V52+0x100]:a16
 // BSS:
-//     lsc_load.ugm   V53:u8x8  bss(V10)[V52+0x100]:a16
+//     lsc_load.ugm   V53:u8x8  bss(V10)[V52+0x100]:a32
+//     lsc_load.ugm   V53:u8x8  bss(V10(0,0),0x3)[V52+0x100]:a32
+// SS:
+//     lsc_load.ugm   V53:u64   ss(V10(0,0))[V52+0x100]:a32
+//     lsc_load.ugm   V53:u64   ss(0x200)[V52+0x100]:a32
 //
 // ARG:
-//     lsc_load.ugm   V53:u8x8  arg[V52+0x100]:a16
+//     lsc_load.ugm   V53:u8x8  arg[V52+0x100]:a32
 //
 LscUntypedLoad:
 //  1          2                  3                       4             5
@@ -1659,6 +1661,7 @@ LscUntypedStridedLoad:
             $7.addr,     // address
             $6.shape,    // data
             $7.surface,  // surface
+            $7.surfaceIndex, // surface index
             $6.reg,      // dst
             $7.regs[0],  // src0 base
             $7.regs[1],  // src0 stride
@@ -1742,6 +1745,7 @@ LscUntypedStridedStore:
             $6.addr,     // address
             $7.shape,    // data
             $6.surface,  // surface
+            $6.surfaceIndex, // surface index
             nullptr,     // dst
             $6.regs[0],  // src0 base
             $6.regs[1],  // src0 stride
@@ -2007,7 +2011,7 @@ LscUntypedStridedAddrOperand:
 //    5                    6     7                     8      9
       LscAddrImmOffsetOpt  COMMA LscVectorOpRegOrImm32 RBRACK LSC_ADDR_SIZE_TK
     {
-        $$ = {$1.surface, 0, {$4, $7}, {$1.type, (int)$3, (int)$5, $9}};
+        $$ = {$1.surface, $1.surfaceIndex, {$4, $7}, {$1.type, (int)$3, (int)$5, $9}};
     }
     | LscUntypedAddrOperand {
         $$ = $1;

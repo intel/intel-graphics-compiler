@@ -146,7 +146,7 @@ G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
                                               SendAccess::READ_WRITE, nullptr);
   G4_InstSend *fenceInst =
       createLscSendInst(nullptr, dstDummy, src0Dummy, src1NullReg, execSize,
-                        msgDesc, instOpt, LSC_ADDR_TYPE_FLAT, true);
+                        msgDesc, instOpt, LSC_ADDR_TYPE_FLAT, 0x0, true);
   (void)fenceInst;
 
   return fenceInst;

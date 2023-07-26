@@ -3117,65 +3117,65 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
      }}};
 
 ///////////////////////////////////////////////////////////////////////////
-// New LSC ops
+// LSC ops
+// clang-format off
 #define LSC_UNTYPED_OP(ISA_OP, MNEMONIC)                                       \
   {                                                                            \
     (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, {                                  \
       /* execution control */                                                  \
       {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
-          {OPND_PRED, ISA_TYPE_UW,                                             \
-           0}, /* predicate */ /* getPrimitiveOperand(0) */                    \
+          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
+          /* getPrimitiveOperand(0) */                                         \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_SFID */ /* caching opts */      \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */               \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_CACHE_OPTS::l3 */ /* addr stuff */                       \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */               \
+          /* addr operands */                                                  \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::type */                   \
           {OPND_OTHER, ISA_TYPE_UW, 0}, /* LSC_ADDR::immScale */               \
           {OPND_OTHER, ISA_TYPE_D, 0},  /* LSC_ADDR::immOffset */              \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_ADDR::size */     /* data shape stuff */                 \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::size */                   \
+          /* data shape */                                                     \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::size */             \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */            \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */            \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_DATA_SHAPE::cmask */ /* operands */                      \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0},                                  /* Surface */                  \
-          {OPND_OTHER, ISA_TYPE_UD, 0},         /* Reserved */                 \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */            \
+          /* operands */                                                       \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* surface base */ \
+          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface index */            \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* DstData */                  \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src0Addr */                 \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src1Data */                 \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src2Data */                 \
     }                                                                          \
   }
-//{OPND_OTHER,    ISA_TYPE_UD, 0}, /* surface index
+
 #define LSC_UNTYPED_STRIDED_OP(ISA_OP, MNEMONIC)                               \
   {                                                                            \
-    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, {                                  \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, {                                  \
       /* execution control */                                                  \
       {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
-          {OPND_PRED, ISA_TYPE_UW,                                             \
-           0}, /* predicate */ /* getPrimitiveOperand(0) */                    \
-          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_SFID */ /* caching opts */      \
+          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
+          /* getPrimitiveOperand(0) */                                         \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_SFID */                         \
+          /* caching opts */                                                   \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */               \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_CACHE_OPTS::l3 */ /* addr stuff */                       \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */               \
+          /* addr stuff */                                                     \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::type */                   \
           {OPND_OTHER, ISA_TYPE_UW, 0}, /* LSC_ADDR::immScale */               \
           {OPND_OTHER, ISA_TYPE_D, 0},  /* LSC_ADDR::immOffset */              \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_ADDR::size */     /* data shape stuff */                 \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::size */                   \
+          /* data shape stuff */                                               \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::size */             \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */            \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */            \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_DATA_SHAPE::cmask */ /* operands */                      \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0},                                  /* Surface */                  \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */            \
+          /* operands */                                                       \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* surface base */ \
+          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface index */            \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* DstData */                  \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src0AddrBase */             \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0},                                  /* Src0AddrPitch */            \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* Src0AddrPitch */ \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src1Data */                 \
     }                                                                          \
   }
@@ -3184,32 +3184,27 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
     (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, {                                  \
       /* execution control */                                                  \
       {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
-          {OPND_PRED, ISA_TYPE_UW,                                             \
-           0}, /* predicate */ /* getPrimitiveOperand(0) */                    \
-          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_SFID */ /* caching opts */      \
+          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
+          /* getPrimitiveOperand(0) */                                         \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_SFID */                         \
+          /* caching opts */                                                   \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */               \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_CACHE_OPTS::l3 */ /* block 2d data shape stuff */        \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */               \
+          /* block 2d data shape stuff */                                      \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::size */     \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::order */    \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::blocks */   \
           {OPND_OTHER, ISA_TYPE_UW, 0}, /* LSC_DATA_SHAPE_BLOCK2D::width */    \
           {OPND_OTHER, ISA_TYPE_UW, 0}, /* LSC_DATA_SHAPE_BLOCK2D::height */   \
-          {OPND_OTHER, ISA_TYPE_UB,                                            \
-           0}, /* LSC_DATA_SHAPE_BLOCK2D::vnni */ /* operands */               \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE_BLOCK2D::vnni */     \
+          /* operands */                                                       \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED},   /* DstData */                \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0}, /* SurfBase */                                                  \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0}, /* SurfWidth */                                                 \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0}, /* SurfHeight */                                                \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0}, /* SurfPitch */                                                 \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0}, /* SurfOffX */                                                  \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0},                                  /* SurfOffY */                 \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfBase */ \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfWidth */ \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfHeight */ \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfPitch */ \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfOffX */ \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfOffY */ \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src1Data */                 \
     }                                                                          \
   }
@@ -3234,9 +3229,8 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */            \
           {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */            \
           /* operands */                                                       \
-          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB,               \
-           0},                                  /* surface (reg or imm) */     \
-          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface imm offset */       \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* surface base */ \
+          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface index */            \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* dst */                      \
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Us */             \
           {OPND_OTHER, ISA_TYPE_D, 0},          /* src0 addr Us immoff */      \
@@ -3251,6 +3245,8 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
   }
 #define LSC_OP_INVALID                                                         \
   {}
+
+// clang-format on
 
 static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
   LSC_UNTYPED_OP(LSC_LOAD, "lsc_load"),

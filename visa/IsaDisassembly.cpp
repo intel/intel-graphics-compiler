@@ -2562,6 +2562,65 @@ private:
       }
     }
   }
+  // Prints the address type operands
+  // We conditionally print these.
+  //  * flat omits the offset if it's 0x0 (include if reg)
+  //  * anything else includes an operand argument
+  //  * ssIdx is assumed to be after the surface operand 'surfaceOpIx'
+  //
+  // flat[...] (flat omits surface offset if it's flat(0x0))
+  // ^^^^
+  // bss(VAR)[...]
+  // bss(VAR,SSOFF)[...]
+  //
+  // bti(0x0)[...]
+  void formatAddrTypeArgs(LSC_ADDR_TYPE addrType, int surfaceOpIx) {
+    const auto &vo = getVectorOperand(inst, surfaceOpIx);
+    // SS_IDX for stateful
+    uint32_t surfaceIndex = getPrimitive<uint32_t>(surfaceOpIx + 1);
+
+    if (getOperandType(inst, surfaceOpIx) != CISA_OPND_VECTOR) {
+      error = true;
+      ss << "(<<BAD_OPERAND_NOT_VECTOR>>)";
+    } else {
+      switch (vo.tag & 0x7) {
+      case OPERAND_IMMEDIATE: {
+        bool isZero =
+          vo.opnd_val.const_opnd._val.lval == 0 && surfaceIndex == 0;
+        bool isFlatOrArg =
+          addrType == LSC_ADDR_TYPE_FLAT || addrType == LSC_ADDR_TYPE_ARG;
+        if (!isZero || !isFlatOrArg) {
+          ss << "(";
+          ss << "0x" << std::uppercase << std::hex
+             << vo.opnd_val.const_opnd._val.lval << std::dec;
+          if (surfaceIndex != 0) {
+            ss << ",0x" << std::uppercase << std::hex << surfaceIndex;
+          }
+          ss << ")";
+        }
+        break;
+      }
+      case OPERAND_GENERAL:
+        ss << "(";
+        ss << printVariableDeclName(header, vo.getOperandIndex(), opts,
+                                    NOT_A_STATE_OPND);
+        if (vo.opnd_val.gen_opnd.row_offset != 0 ||
+            vo.opnd_val.gen_opnd.col_offset != 0) {
+          ss << std::dec << "(" << (unsigned)vo.opnd_val.gen_opnd.row_offset
+             << "," << (unsigned)vo.opnd_val.gen_opnd.col_offset << ")";
+          if (surfaceIndex != 0) {
+            ss << ",0x" << std::uppercase << std::hex << surfaceIndex;
+          }
+        }
+        ss << ")";
+        break;
+      default:
+        error = true;
+        ss << "(<<BAD_OPERAND_VECTOR_KIND>>)";
+        break;
+      }
+    }
+  }
 
   void formatRawOperand(int absIx) {
     if (getOperandType(inst, absIx) != CISA_OPND_RAW) {
@@ -2600,19 +2659,8 @@ private:
       formatBadEnum(addrType);
       break;
     }
-    switch (addrType) {
-    case LSC_ADDR_TYPE_BSS:
-    case LSC_ADDR_TYPE_SS:
-    case LSC_ADDR_TYPE_BTI:
-      ss << "(";
-      formatVectorOperand(absSurfOpIx);
-      ss << ")";
-      break;
-    default:
-      break;
-    }
-  }
-
+    formatAddrTypeArgs(addrType, absSurfOpIx);
+  } // formatAddrType
 
   void formatAddrSize(LSC_ADDR_SIZE addrSize) {
     ss << ":";
@@ -2893,6 +2941,21 @@ private:
     //
     ss << "  ";
 
+    // parameter order (c.f. IsaDescription.cpp)
+    // (currOpIx is at surface)
+    // =============================+===========================
+    //  regular                     |  strided
+    // =============================+===========================
+    //   0 - surface                |  surface
+    //   1 - surface index          |  surface index
+    //   2 - dst       (data read)  |  dst         (data read)
+    //   3 - src0      (addr)       |  src0        (addr-base)
+    //   4 - src1      (data sent)  |  src0-stride (addr-stride)
+    //   5 - src2      (atomic arg) |  src1        (store data)
+    //                              |  (src2 doesn't exist in strided)
+    // =============================+===========================
+    int src1AbsIx = opInfo.isStrided() ? currOpIx + 5 : currOpIx + 4;
+
     // see the table below for operand indices
     auto fmtAddrOperand = [&]() {
       formatAddrType(addrType, currOpIx);
@@ -2901,7 +2964,7 @@ private:
       if (immediateScale > 1) {
         ss << "0x" << std::hex << immediateScale << "*";
       }
-      unsigned int src0Ix = currOpIx + 2;
+      const unsigned int src0Ix = currOpIx + 3;
       formatRawOperand(src0Ix);
       if (immediateOffset != 0) {
         if (immediateOffset < 0) {
@@ -2913,48 +2976,34 @@ private:
         ss << "0x" << std::hex << immediateOffset;
       }
       if (opInfo.isStrided()) {
-        const vector_opnd &vo = getVectorOperand(inst, currOpIx + 3);
+        const vector_opnd &vo = getVectorOperand(inst, src0Ix);
         if (!isVectorOpV0(vo)) {
           // only non-V0 values
           ss << ", ";
-          formatVectorOperand(currOpIx + 3);
+          formatVectorOperand(src0Ix + 1);
         }
       }
       ss << "]";
       formatAddrSize(addrSize);
     };
-    {
-      // parameter order (c.f. IsaDescription.cpp)
-      // =============================+===========================
-      //  regular                     |  strided
-      // =============================+===========================
-      //   0 - surface                |  surface
-      //   1 - dst       (data read)  |  dst         (data read)
-      //   2 - src0      (addr)       |  src0        (addr-base)
-      //   3 - src1      (data sent)  |  src0-stride (data sent)
-      //   4 - src2      (atomic arg) |  src1        (data sent/atomic)
-      //                              |  (src2 doesn't exist in strided)
-      // =============================+===========================
-      int src1AbsIx = opInfo.isStrided() ? currOpIx + 4 : currOpIx + 3;
-      if (opInfo.isLoad()) {
-        formatDataOperand(dataShape, currOpIx + 1); // dst
-        ss << "  ";
-        fmtAddrOperand(); // src0
-      } else if (opInfo.isStore()) {
-        fmtAddrOperand(); // src0
-        ss << "  ";
-        formatDataOperand(dataShape, src1AbsIx); // src1
-      } else if (opInfo.isAtomic()) {
-        formatDataOperand(dataShape, currOpIx + 1); // dst
-        ss << "  ";
-        fmtAddrOperand(); // src0
-        ss << "  ";
-        formatRawOperand(src1AbsIx); // src1
-        ss << "  ";
-        formatRawOperand(src1AbsIx + 1); // src2
-      } else {
-        vISA_ASSERT_UNREACHABLE("must be load or store or atomic");
-      }
+    if (opInfo.isLoad()) {
+      formatDataOperand(dataShape, currOpIx + 2); // dst
+      ss << "  ";
+      fmtAddrOperand(); // src0
+    } else if (opInfo.isStore()) {
+      fmtAddrOperand(); // src0
+      ss << "  ";
+      formatDataOperand(dataShape, src1AbsIx); // src1
+    } else if (opInfo.isAtomic()) {
+      formatDataOperand(dataShape, currOpIx + 2); // dst
+      ss << "  ";
+      fmtAddrOperand(); // src0
+      ss << "  ";
+      formatRawOperand(src1AbsIx); // src1
+      ss << "  ";
+      formatRawOperand(src1AbsIx + 1); // src2
+    } else {
+      vISA_ASSERT_UNREACHABLE("must be load or store or atomic");
     }
   } // formatUntypedSimple
 

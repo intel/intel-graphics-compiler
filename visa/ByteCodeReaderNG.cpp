@@ -2234,6 +2234,7 @@ static void readInstructionLscUntyped(LSC_OP subOpcode, unsigned &bytePos,
 
   VISA_VectorOpnd *surface =
       readVectorOperandNG(bytePos, buf, container, false);
+  auto ssIdx = readPrimitiveOperandNG<uint32_t>(bytePos, buf);
   VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
   VISA_RawOpnd *src0 = readRawOperandNG(bytePos, buf, container);
   VISA_VectorOpnd *src0Pitch = nullptr;
@@ -2249,11 +2250,11 @@ static void readInstructionLscUntyped(LSC_OP subOpcode, unsigned &bytePos,
   if (opInfo.isStrided()) {
     container.kernelBuilder->AppendVISALscUntypedStridedInst(
         subOpcode, lscSfid, pred, execSize, execMask, caching, addrInfo,
-        dataInfo, surface, dst, src0, src0Pitch, src1);
+        dataInfo, surface, ssIdx, dst, src0, src0Pitch, src1);
   } else {
     container.kernelBuilder->AppendVISALscUntypedInst(
         subOpcode, lscSfid, pred, execSize, execMask, caching, addrInfo,
-        dataInfo, surface, dst, src0, src1, src2);
+        dataInfo, surface, ssIdx, dst, src0, src1, src2);
   }
 }
 
@@ -2323,17 +2324,26 @@ static void readInstructionLscTyped(LSC_OP subOpcode, unsigned &bytePos,
 
   VISA_VectorOpnd *surface =
       readVectorOperandNG(bytePos, buf, container, false);
+  auto ssIdx = readPrimitiveOperandNG<uint32_t>(bytePos, buf);
   VISA_RawOpnd *dstData = readRawOperandNG(bytePos, buf, container);
   VISA_RawOpnd *src0AddrsU = readRawOperandNG(bytePos, buf, container);
+  auto uOff = readPrimitiveOperandNG<int32_t>(bytePos, buf);
   VISA_RawOpnd *src0AddrsV = readRawOperandNG(bytePos, buf, container);
+  auto vOff = readPrimitiveOperandNG<int32_t>(bytePos, buf);
   VISA_RawOpnd *src0AddrsR = readRawOperandNG(bytePos, buf, container);
+  auto rOff = readPrimitiveOperandNG<int32_t>(bytePos, buf);
   VISA_RawOpnd *src0AddrsLOD = readRawOperandNG(bytePos, buf, container);
   VISA_RawOpnd *src1Data = readRawOperandNG(bytePos, buf, container);
   VISA_RawOpnd *src2Data = readRawOperandNG(bytePos, buf, container);
 
   container.kernelBuilder->AppendVISALscTypedInst(
       subOpcode, pred, execSize, execMask, caching, addrModel, addrSize,
-      dataInfo, surface, dstData, src0AddrsU, src0AddrsV, src0AddrsR,
+      dataInfo,
+      surface, ssIdx,
+      dstData,
+      src0AddrsU, uOff,
+      src0AddrsV, vOff,
+      src0AddrsR, rOff,
       src0AddrsLOD, src1Data, src2Data);
 }
 static void readInstructionLscFence(unsigned &bytePos, const char *buf,

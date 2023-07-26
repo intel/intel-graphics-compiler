@@ -4820,7 +4820,7 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 
     auto sendInst = builder->createLscSendInst(
         nullptr, postDst, src0Addr, payloadToUse, g4::SIMD1, desc,
-        inst->getOption(), LSC_ADDR_TYPE_SS, false);
+        inst->getOption(), LSC_ADDR_TYPE_SS, 0x0, false);
 
     sendInst->addComment(makeSpillFillComment(
         "spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
@@ -4935,7 +4935,7 @@ void GlobalRA::expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 
   auto sendInst = builder->createLscSendInst(
       nullptr, postDst, src0Addr, payloadToUse, execSize, desc,
-      inst->getOption(), LSC_ADDR_TYPE_SS, false);
+      inst->getOption(), LSC_ADDR_TYPE_SS, 0x0, false);
 
   sendInst->addComment(makeSpillFillComment(
       "scatter spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
@@ -5012,7 +5012,8 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
     auto sendInst = builder->createLscSendInst(
         nullptr, dstRead,
         builder->createSrcRegRegion(fillAddr, builder->getRegionScalar()),
-        nullptr, g4::SIMD1, desc, inst->getOption(), LSC_ADDR_TYPE_SS, false);
+        nullptr, g4::SIMD1, desc, inst->getOption(), LSC_ADDR_TYPE_SS, 0x0,
+        false);
 
     sendInst->addComment(makeSpillFillComment(
         "fill", "from", inst->getFP() ? "FP" : "offset", fillOffset,

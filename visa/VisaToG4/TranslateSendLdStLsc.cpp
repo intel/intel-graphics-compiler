@@ -282,6 +282,7 @@ int IR_Builder::translateLscUntypedInst(
     VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl execCtrl,
     LSC_CACHE_OPTS cacheOpts, LSC_ADDR addrInfo, LSC_DATA_SHAPE dataShape,
     G4_Operand *surface,        // can be G4_Imm or G4_SrcRegRegion
+    unsigned ssIdx,             // only for BSSO
     G4_DstRegRegion *dstRead,   // dst can be NULL reg (e.g store)
     G4_SrcRegRegion *src0Addr,  // always the addresses (base for strided)
     G4_Operand *src0AddrStride, // only for strided
@@ -646,8 +647,9 @@ int IR_Builder::translateLscUntypedInst(
                     getSendAccessType(loadAccess, storeAccess),
                     surface, LdStAttrs::NONE);
 
-  auto sendInst = createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
-                    instOpt, addrInfo.type, true);
+  auto sendInst =
+    createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
+                      instOpt, addrInfo.type, ssIdx, true);
 
   sendInst->addComment(generateAddrSpaceComment(addrInfo.addrSpace));
   return status;
@@ -761,7 +763,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
 
   G4_InstSend *sendInst =
       createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
-                        instOpt, LSC_ADDR_TYPE_FLAT, true);
+                        instOpt, LSC_ADDR_TYPE_FLAT, 0x0, true);
   (void)sendInst;
 
   return status;
@@ -819,7 +821,8 @@ int IR_Builder::translateLscTypedInst(
     LSC_OP op, G4_Predicate *pred, VISA_Exec_Size execSizeEnum,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE shape,
-    G4_Operand *surface,      // surface/bti
+    G4_Operand *surface, // surface/bti/bss etc..
+    unsigned ssIdx, // index relative to surface
     G4_DstRegRegion *dstData, // dst on load/atomic
     G4_SrcRegRegion *coord0s, int uOff,
     G4_SrcRegRegion *coord1s, int vOff,
@@ -845,7 +848,6 @@ int IR_Builder::translateLscTypedInst(
   G4_SrcRegRegion *srcAddrs[2]{};
   G4_SrcRegRegion *srcData = nullptr;
   unsigned srcAddrRegs[2]{};
-
 
   auto checkPayloadSize = [&](const char *which, const G4_Declare *decl,
                               int expectDeclRegs) {
@@ -962,7 +964,7 @@ int IR_Builder::translateLscTypedInst(
                     surface, LdStAttrs::NONE);
   G4_InstSend *sendInst =
       createLscSendInst(pred, dstData, srcAddrs[0], srcData, execSize, msgDesc,
-                        instOpt, addrModel, true);
+                        instOpt, addrModel, ssIdx, true);
   (void)sendInst;
 
   return status;

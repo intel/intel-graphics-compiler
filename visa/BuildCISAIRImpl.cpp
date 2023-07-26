@@ -4003,7 +4003,8 @@ bool CISA_IR_Builder::CISA_create_fcvt_instruction(
 bool CISA_IR_Builder::CISA_create_lsc_untyped_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
-    LSC_DATA_SHAPE dataShape, VISA_opnd *surface, int surfaceIndex,
+    LSC_DATA_SHAPE dataShape,
+    VISA_opnd *surface, unsigned surfaceIndex,
     VISA_opnd *dstData, VISA_opnd *src0Addr, VISA_opnd *src1Data,
     VISA_opnd *src2Data, int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISALscUntypedInst, opcode, sfid,
@@ -4019,13 +4020,16 @@ bool CISA_IR_Builder::CISA_create_lsc_untyped_inst(
 bool CISA_IR_Builder::CISA_create_lsc_untyped_strided_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
-    LSC_DATA_SHAPE dataShape, VISA_opnd *surface, VISA_opnd *dst,
+    LSC_DATA_SHAPE dataShape,
+    VISA_opnd *surface, unsigned surfaceIndex,
+    VISA_opnd *dst,
     VISA_opnd *src0Base, VISA_opnd *src0Stride, VISA_opnd *src1Data,
     int lineNum) {
   VISA_CALL_TO_BOOL(
       AppendVISALscUntypedStridedInst, opcode, sfid,
       static_cast<VISA_PredOpnd *>(pred), execSize, emask, caching, addr,
-      dataShape, static_cast<VISA_VectorOpnd *>(surface),
+      dataShape,
+      static_cast<VISA_VectorOpnd *>(surface), surfaceIndex,
       static_cast<VISA_RawOpnd *>(dst), static_cast<VISA_RawOpnd *>(src0Base),
       static_cast<VISA_VectorOpnd *>(src0Stride),
       static_cast<VISA_RawOpnd *>(src1Data));
@@ -4058,7 +4062,7 @@ bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR_TYPE addrModel,
     LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape,
-    VISA_opnd *surface, int surfaceIndex,
+    VISA_opnd *surface, unsigned surfaceIndex,
     VISA_opnd *dst_data,
     VISA_opnd *coord0s, int coord0Offset,
     VISA_opnd *coord1s, int coord1Offset,
