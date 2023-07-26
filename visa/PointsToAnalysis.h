@@ -34,6 +34,7 @@ struct addrExpInfo {
 typedef std::vector<pointInfo> REGVAR_VECTOR;
 typedef std::vector<addrExpInfo> ADDREXP_VECTOR;
 typedef std::vector<G4_RegVar *> ORG_REGVAR_VECTOR;
+typedef std::map<const G4_RegVar *, unsigned> REGVAR_ID_MAP;
 
 /*
  *  Performs flow-insensitive points-to analysis.
@@ -57,7 +58,7 @@ private:
   // index of an address's points-to set in the pointsToSets vector
   std::vector<unsigned> addrPointsToSetIndex;
   // original regvar ptrs
-  ORG_REGVAR_VECTOR regVars;
+  REGVAR_ID_MAP regVars;
 
   void resizePointsToSet(unsigned int newsize);
 
@@ -84,17 +85,31 @@ public:
 
   // addr reg -> pointee regs
   void
-  getPointsToMap(std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &) const;
+  getPointsToMap(std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>> &) const;
 
   // pointee -> addr reg
   void getRevPointsToMap(
-      std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &);
+      std::unordered_map<G4_Declare *, std::vector<const G4_Declare *>> &);
 
   void doPointsToAnalysis(FlowGraph &fg);
 
   const REGVAR_VECTOR &getIndrUseVectorForBB(unsigned int bbId) const {
     vISA_ASSERT(bbId < numBBs, "invalid basic block id");
     return indirectUses[bbId];
+  }
+
+  G4_RegVar* getRootRegVar(G4_RegVar *a) const {
+    G4_RegVar *addr = a->getDeclare()->getAliasDeclare()
+                          ? a->getDeclare()->getRootDeclare()->getRegVar()
+                          : a;
+    return addr;
+  }
+
+  const G4_RegVar* getRootRegVar(const G4_RegVar *a) const {
+    const G4_RegVar *addr = a->getDeclare()->getAliasDeclare()
+                                ? a->getDeclare()->getRootDeclare()->getRegVar()
+                                : a;
+    return addr;
   }
 
   // Following methods were added to support address taken spill/fill

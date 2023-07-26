@@ -16,39 +16,14 @@ PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares,
     : numBBs(numBB), numAddrs(0),
       indirectUses(std::make_unique<REGVAR_VECTOR[]>(numBB)) {
   for (auto decl : declares) {
-    // add alias check, For Alias Dcl
     if ((decl->getRegFile() == G4_ADDRESS || decl->getRegFile() == G4_SCALAR) &&
-        decl->getAliasDeclare() == NULL) // It is a base declaration, not alias
-    {
-      // participate liveness analysis
-      decl->getRegVar()->setId(numAddrs++);
-    } else {
-      decl->getRegVar()->setId(UNDEFINED_VAL);
+        !decl->getAliasDeclare()) {
+      regVars.emplace(decl->getRegVar(), regVars.size());
     }
   }
 
-  // assign all addr aliases the same ID as its root
-  for (auto decl : declares) {
-    if ((decl->getRegFile() == G4_ADDRESS || decl->getRegFile() == G4_SCALAR) &&
-        decl->getAliasDeclare() != NULL) {
-      // participate liveness analysis
-      decl->getRegVar()->setId(decl->getRootDeclare()->getRegVar()->getId());
-    }
-  }
-
+  numAddrs = regVars.size();
   if (numAddrs > 0) {
-    for (unsigned int i = 0; i < numAddrs; i++)
-      regVars.push_back(NULL);
-
-    for (auto decl : declares) {
-      if ((decl->getRegFile() == G4_ADDRESS ||
-           decl->getRegFile() == G4_SCALAR) &&
-          decl->getAliasDeclare() == NULL &&
-          decl->getRegVar()->getId() != UNDEFINED_VAL) {
-        regVars[decl->getRegVar()->getId()] = decl->getRegVar();
-      }
-    }
-
     pointsToSets.resize(numAddrs);
     addrExpSets.resize(numAddrs);
     addrPointsToSetIndex.resize(numAddrs);
@@ -88,27 +63,30 @@ void PointsToAnalysis::addIndirectUseToBB(unsigned int bbId, pointInfo pt) {
 
 void PointsToAnalysis::mergePointsToSet(const G4_RegVar *addr1,
                                       const G4_RegVar *addr2) {
+  unsigned addr1Id = getIndexOfRegVar(addr1);
+  unsigned addr2Id = getIndexOfRegVar(addr2);
+
   vISA_ASSERT(addr1->getDeclare()->getRegFile() == G4_ADDRESS &&
-                   addr2->getDeclare()->getRegFile() == G4_ADDRESS,
-               "expect address variable");
-  int addr2PTIndex = addrPointsToSetIndex[addr2->getId()];
+                  addr2->getDeclare()->getRegFile() == G4_ADDRESS,
+              "expect address variable");
+  int addr2PTIndex = addrPointsToSetIndex[addr2Id];
   ADDREXP_VECTOR &vec = addrExpSets[addr2PTIndex];
   for (int i = 0; i < (int)vec.size(); i++) {
     addToPointsToSet(addr1, vec[i].exp, vec[i].off);
   }
-  int addr1PTIndex = addrPointsToSetIndex[addr1->getId()];
-  addrPointsToSetIndex[addr2->getId()] = addr1PTIndex;
-  DEBUG_VERBOSE("merge Addr " << addr1->getId() << " with Addr "
-                              << addr2->getId());
+  int addr1PTIndex = addrPointsToSetIndex[addr1Id];
+  addrPointsToSetIndex[addr2Id] = addr1PTIndex;
+  DEBUG_VERBOSE("merge Addr " << addr1Id << " with Addr " << addr2Id);
 }
 
 void PointsToAnalysis::addToPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
                       unsigned char offset) {
+  unsigned addrId = getIndexOfRegVar(addr);
   vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
-  vISA_ASSERT(addr->getId() < numAddrs, "addr id is not set");
-  int addrPTIndex = addrPointsToSetIndex[addr->getId()];
+  vISA_ASSERT(addrId < numAddrs, "addr id is not set");
+  int addrPTIndex = addrPointsToSetIndex[addrId];
   REGVAR_VECTOR &vec = pointsToSets[addrPTIndex];
   pointInfo pi = {opnd->getRegVar(), offset};
 
@@ -118,7 +96,7 @@ void PointsToAnalysis::addToPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
       });
   if (it == vec.end()) {
     vec.push_back(pi);
-    DEBUG_VERBOSE("Addr " << addr->getId() << " <-- "
+    DEBUG_VERBOSE("Addr " << addrId << " <-- "
                           << pi.var->getDeclare()->getName() << "\n");
   }
 
@@ -137,18 +115,21 @@ unsigned int PointsToAnalysis::getIndexOfRegVar(const G4_RegVar *r) const {
   // Given a regvar pointer, return the index it was
   // found. This function is useful when regvar ids
   // are reset.
-
-  const auto it = std::find(regVars.begin(), regVars.end(), r);
-  return it == regVars.end() ? UINT_MAX
-                             : static_cast<unsigned int>(it - regVars.begin());
+  const G4_RegVar *addr = getRootRegVar(r);
+  auto it = regVars.find(addr);
+  if (it != regVars.end()) {
+    return it->second;
+  } else {
+    return UINT_MAX;
+  }
 }
 
 void PointsToAnalysis::addPointsToSetToBB(int bbId, const G4_RegVar *addr) {
+  unsigned addrId = getIndexOfRegVar(addr);
   vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
-  const REGVAR_VECTOR &addrTakens =
-      pointsToSets[addrPointsToSetIndex[addr->getId()]];
+  const REGVAR_VECTOR &addrTakens = pointsToSets[addrPointsToSetIndex[addrId]];
   for (auto addrTaken : addrTakens) {
     addIndirectUseToBB(bbId, addrTaken);
   }
@@ -166,7 +147,7 @@ void PointsToAnalysis::dump(std::ostream &os) const {
   if (!kernel)
     return;
 
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> addrTakenMap;
+  std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>> addrTakenMap;
   getPointsToMap(addrTakenMap);
 
   for (auto dcl : kernel->Declares) {
@@ -186,23 +167,24 @@ void PointsToAnalysis::dump(std::ostream &os) const {
 }
 
 void PointsToAnalysis::getPointsToMap(
-    std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &addrTakenMap) const {
-  unsigned idx = 0;
+  std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>> &addrTakenMap) const {
 
   // populate map from each addr reg -> addr taken targets
   for (auto &RV : regVars) {
+    unsigned idx = RV.second;
+    const G4_RegVar *var = RV.first;
     auto ptsToIdx = addrPointsToSetIndex[idx];
     for (auto &item : pointsToSets[ptsToIdx])
-      addrTakenMap[RV->getDeclare()->getRootDeclare()].push_back(
+      addrTakenMap[var->getDeclare()->getRootDeclare()].push_back(
           item.var->getDeclare()->getRootDeclare());
     ++idx;
   }
 }
 
 void PointsToAnalysis::getRevPointsToMap(
-    std::unordered_map<G4_Declare *, std::vector<G4_Declare *>>
+    std::unordered_map<G4_Declare *, std::vector<const G4_Declare *>>
         &revAddrTakenMap) {
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> forwardMap;
+  std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>> forwardMap;
   getPointsToMap(forwardMap);
 
   for (auto &entry : forwardMap) {
@@ -359,8 +341,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                   //    = r[A1]
                   //
                   // Both A0 and A1 contain V0 and V1 in their points-to set.
-                  if (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId()) {
-                    mergePointsToSet(srcPtr->asRegVar(), ptr->asRegVar());
+                  G4_RegVar *ptrVar = ptr->asRegVar();
+                  G4_RegVar *srcPtrVar = srcPtr->asRegVar();
+                  unsigned int ptrId = getIndexOfRegVar(ptrVar);
+                  unsigned int srcPtrId = getIndexOfRegVar(srcPtrVar);
+                  if (ptrId != srcPtrId) {
+                    mergePointsToSet(srcPtrVar, ptrVar);
                   }
                 } else {
                   // mov A0 v1
@@ -455,9 +441,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                                          : nullptr;
                 // case:  arithmetic-op   A0 A1 src1
                 // merge the two addr's points-to set together
-                if (srcPtr &&
-                    (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId())) {
-                  mergePointsToSet(srcPtr->asRegVar(), ptr->asRegVar());
+                G4_RegVar *ptrVar = ptr->asRegVar();
+                G4_RegVar *srcPtrVar = srcPtr->asRegVar();
+                unsigned int ptrId = getIndexOfRegVar(ptrVar);
+                unsigned int srcPtrId = getIndexOfRegVar(srcPtrVar);
+                if (srcPtrId != ptrId) {
+                  mergePointsToSet(srcPtrVar, ptrVar);
                 }
               }
             } else if (ptr->isRegVar() && ptr->asRegVar()->isPhyRegAssigned()) {
@@ -625,23 +614,21 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
 }
 
 void PointsToAnalysis::insertAndMergeFilledAddr(const G4_RegVar *addr1,
-                                              G4_RegVar *addr2) {
-  unsigned int oldid = addr2->getId();
-  addr2->setId(numAddrs);
+                                              G4_RegVar *a2) {
+  G4_RegVar *addr2 = getRootRegVar(a2);
   vISA_ASSERT(
       regVars.size() == numAddrs,
       "Inconsistency found between size of regvars and number of addr vars");
 
   resizePointsToSet(numAddrs + 1);
-
-  regVars.push_back(addr2);
+  // add2 is the new one
+  regVars.emplace(addr2, regVars.size());
 
   mergePointsToSet(addr1, addr2);
-  addr2->setId(oldid);
 }
 
 const REGVAR_VECTOR *
-PointsToAnalysis::getAllInPointsTo(const G4_RegVar *addr) const {
+PointsToAnalysis::getAllInPointsTo(const G4_RegVar *addr) const{
   vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
@@ -773,7 +760,7 @@ void PointsToAnalysis::patchPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
       });
   if (it == vec.end()) {
     vec.push_back(pi);
-    DEBUG_VERBOSE("Addr " << addr->getId() << " <-- "
+    DEBUG_VERBOSE("Addr " <<id << " <-- "
                           << pi.var->getDeclare()->getName() << "\n");
   }
 

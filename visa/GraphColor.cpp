@@ -5128,7 +5128,9 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
     return refCount == 0 ? 1 : refCount;
   };
 
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> addrTakenMap,
+  std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>>
+      addrTakenMap;
+  std::unordered_map<G4_Declare *, std::vector<const G4_Declare *>>
       revAddrTakenMap;
   bool addrMapsComputed = false;
   auto incSpillCostCandidate = [&](LiveRange *lr) {

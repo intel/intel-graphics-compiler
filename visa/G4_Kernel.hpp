@@ -92,7 +92,7 @@ public:
   void setGTPinInitFromL0(bool val) { gtpinInitFromL0 = val; }
   bool isGTPinInitFromL0() const { return gtpinInitFromL0; }
 
-  void addIndirRef(G4_Declare *addr, G4_Declare *target) {
+  void addIndirRef(const G4_Declare *addr, G4_Declare *target) {
     indirRefs[addr].push_back(target);
   }
 
@@ -109,7 +109,7 @@ private:
   gtpin::igc::igc_init_t *gtpin_init = nullptr;
 
   // Store Addr Var -> Array of targets
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> indirRefs;
+  std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>> indirRefs;
 }; // class gtPinData
 
 class G4_BB;

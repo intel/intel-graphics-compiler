@@ -2984,7 +2984,7 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
   }
 
   // propagate address takens to gtpin info
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> addrTakenMap;
+  std::unordered_map<const G4_Declare *, std::vector<G4_Declare *>> addrTakenMap;
   pointsToAnalysis.getPointsToMap(addrTakenMap);
   auto gtpinData = kernel.getGTPinData();
   for (auto &indirRef : addrTakenMap) {
