@@ -239,6 +239,18 @@ void CImagesBI::createGetBufferPtr()
     unsigned int addressSpace = IGC::EncodeAS4GFXResource(*imageIndex, bufType);
     Type* ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
 
+    if (bufType == BufferType::BINDLESS)
+    {
+        // If bindless image is preferred, don't create GetBufferPtr, instead just map the bindless pointer
+        auto modMD = m_pCodeGenContext->getModuleMetaData();
+        if (modMD->UseBindlessImage)
+        {
+            Value* basePointer = BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", m_pCallInst);
+            m_args.push_back(basePointer);
+            return;
+        }
+    }
+
     Function* pFuncGetBufferPtr = getFunctionDeclaration(GenISAIntrinsic::GenISA_GetBufferPtr, ptrTy);
 
     //%base_ptr = call float* @llvm.GenISA.GetBufferPtr(i32 %bufIdx, i32 %type)

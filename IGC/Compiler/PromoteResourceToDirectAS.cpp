@@ -233,7 +233,8 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
                     ArgAllocMD* argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
                     IGC_ASSERT_MESSAGE((size_t)argPtr->getArgNo() < resAllocMD->argAllocMDList.size(), "ArgAllocMD List Out of Bounds Error");
 
-                    if (argInfo->type == ResourceTypeEnum::BindlessUAVResourceType)
+                    if (argInfo->type == ResourceTypeEnum::BindlessUAVResourceType &&
+                        !modMD->UseBindlessImage) // don't promote if bindless image is preferred
                     {
                         bufID = (unsigned)argInfo->indexType;
                         bufTy = BufferType::UAV;
