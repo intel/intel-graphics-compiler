@@ -647,8 +647,12 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
         return IGCLLVM::FixedVectorType::get(baseType, 32);
     }
     if (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 64) {
+        /* This should ideally be a vector of <i32 x 128>. However since IGC
+         * code gen supports vector operations only on vectors up to 32
+         * entries, we model this slice as array of [2 x <i64 x 32>]. */
         Type *baseType = Type::getInt64Ty(ctx);
-        return IGCLLVM::FixedVectorType::get(baseType, 32);
+        Type *halfTy = IGCLLVM::FixedVectorType::get(baseType, 32);
+        return ArrayType::get(halfTy, 2);
     }
 
     if (desc.layout == LayoutPackedA && desc.rows == 16 && desc.columns == 16) {
@@ -698,6 +702,33 @@ static uint64_t constIntValue(const Value *v) {
     return cast<ConstantInt>(v)->getLimitedValue();
 }
 
+template <class BuilderT>
+static Instruction *loadSlice(BuilderT *builder, Type *matTy, Value *sliceArray) {
+    IGCLLVM::FixedVectorType *sliceTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
+    if (sliceTy && sliceTy->getNumElements() <= 32) {
+        return builder->CreateLoad(matTy, sliceArray);
+    } else if (matTy->isArrayTy() && matTy->getArrayNumElements() == 2) {
+        Type *baseType = Type::getInt64Ty(builder->getContext());
+        Type *halfTy = IGCLLVM::FixedVectorType::get(baseType, 32);
+        Type *halfPtrTy = halfTy->getPointerTo(ADDRESS_SPACE_PRIVATE);
+
+        Value *ptr0 = builder->CreateBitCast(sliceArray, halfPtrTy);
+        Value *slice0 = builder->CreateLoad(halfTy, ptr0);
+
+        Value *ptr1 = builder->CreateGEP(halfTy, ptr0, { builder->getInt32(1) });
+        Value *slice1 = builder->CreateLoad(halfTy, ptr1);
+
+        Value *pair = UndefValue::get(ArrayType::get(halfTy, 2));
+        pair = builder->CreateInsertValue(pair, slice0, { 0 });
+        pair = builder->CreateInsertValue(pair, slice1, { 1 });
+
+        return dyn_cast<Instruction>(pair);
+    }
+
+    IGC_ASSERT_MESSAGE(false, "Unexpected number of elements in matrix slice.");
+    return nullptr;
+}
+
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 {
     Value *ptrVal        = CI->getArgOperand(0);
@@ -731,7 +762,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args);
     newCall->setDebugLoc(CI->getDebugLoc());
 
-    newCall = builder.CreateLoad(matTy, sliceArray);
+    newCall = loadSlice(&builder, matTy, sliceArray);
 
     return newCall;
 }
@@ -909,7 +940,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
         Value* args[4] = { ptrA, ptrB, ptrC, ptrD };
 
         builder.CreateCall(madFunc, args);
-        dpasCall = builder.CreateLoad(cMat->getType(), sliceD);
+        dpasCall = loadSlice(&builder, cMat->getType(), sliceD);
     } else {
         int SD = 8; // systolic depth, only 8 supported currently
         int RC = aDesc.rows; // repeat count, from 1 to 8
@@ -1259,11 +1290,21 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
     if (Instruction *inst = dyn_cast<Instruction>(v)) {
         predecesor = inst;
     }
-    /* Using bit-casts as placeholder values. Undefs of each type are unique per
-     * module and cannot be used as unique placeholders. */
-    Instruction *placeholder =
-        BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
-                            type, "tmp.value", predecesor);
+
+    Instruction *placeholder = nullptr;
+    if (!type->isArrayTy()) {
+        /* Using bit-casts as placeholder values. Undefs of each type are unique per
+         * module and cannot be used as unique placeholders. */
+        placeholder =
+            BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
+                                type, "tmp.value", predecesor);
+    } else {
+        /* Array types cannot be bitcasted. Use instert element with two undefs
+         * to create unique placeholder for array value.*/
+        Value *array = UndefValue::get(type);
+        Value *element = UndefValue::get(type->getArrayElementType());
+        placeholder = InsertValueInst::Create(array, element, { 0 }, "tmp.value", predecesor);
+    }
     ResolvedValues[v] = placeholder;
     PlaceholderInstructions[v] = placeholder;
 }
