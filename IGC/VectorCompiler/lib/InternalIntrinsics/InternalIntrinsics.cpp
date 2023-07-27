@@ -711,6 +711,30 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   return false;
 }
 
+bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
+  if (!isInternalMemoryIntrinsic(I))
+    return false;
+  if (getMemorySimdWidth(I) != 1)
+    return false;
+
+  auto IID = getInternalIntrinsicID(I);
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_slm:
+  case InternalIntrinsic::lsc_load_quad_ugm:
+  case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_slm:
+  case InternalIntrinsic::lsc_store_quad_ugm:
+    return false;
+  }
+
+  return true;
+}
+
 unsigned
 InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   auto IID = getInternalIntrinsicID(I);

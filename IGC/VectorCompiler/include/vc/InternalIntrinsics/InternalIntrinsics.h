@@ -130,6 +130,8 @@ inline bool isInternalMemoryIntrinsic(const llvm::Function *F) {
   return isInternalMemoryIntrinsic(getInternalIntrinsicID(F));
 }
 
+bool isMemoryBlockIntrinsic(const llvm::Instruction *I);
+
 unsigned getMemoryVectorSizePerLane(const llvm::Instruction *I);
 unsigned getMemorySimdWidth(const llvm::Instruction *I);
 unsigned getMemoryRegisterElementSize(const llvm::Instruction *I);

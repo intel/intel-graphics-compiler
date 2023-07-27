@@ -135,7 +135,7 @@ void GenXLoadStoreLegalization::visitCallInst(CallInst &CI) {
   const auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
   if (!vc::InternalIntrinsic::isInternalMemoryIntrinsic(IID))
     return;
-  LLVM_DEBUG(dbgs() << "Trying: " << CI);
+  LLVM_DEBUG(dbgs() << "Trying: " << CI << "\n");
 
   const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
   const auto VectorSize =
@@ -145,9 +145,10 @@ void GenXLoadStoreLegalization::visitCallInst(CallInst &CI) {
   const auto MinWidth = getMinLegalSimdWidth(CI);
 
   // No legalization needed: scalar/block operation or legal simd width
-  if ((ExecSize == 1) || (isPowerOf2_32(ExecSize) && ExecSize >= MinWidth &&
-                          ExecSize <= MaxWidth)) {
-    LLVM_DEBUG(dbgs() << "The instruction is already legal: " << CI);
+  if (vc::InternalIntrinsic::isMemoryBlockIntrinsic(&CI) ||
+      (isPowerOf2_32(ExecSize) && ExecSize >= MinWidth &&
+       ExecSize <= MaxWidth)) {
+    LLVM_DEBUG(dbgs() << "The instruction is already legal: " << CI << "\n");
     return;
   }
 
@@ -200,7 +201,7 @@ Value *GenXLoadStoreLegalization::splitMemoryOperation(Value *InsertTo,
     });
 
     auto *NewCI = Builder.CreateCall(Func, Args);
-    LLVM_DEBUG(dbgs() << "Created split: " << *NewCI);
+    LLVM_DEBUG(dbgs() << "Created split: " << *NewCI << "\n");
 
     if (InsertTo)
       InsertTo = createInsertToSOAValue(&CI, InsertTo, NewCI, VectorSize, Index,
@@ -243,16 +244,16 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
         ETy, IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
     Value *Insert = ETy->isIntegerTy(1) ? Constant::getNullValue(InsTy)
                                         : UndefValue::get(InsTy);
-    return createInsertToSOAValue(&CI, Insert, Arg, IsSOA ? VectorSize : 1,
-                                  Index, RestSize);
+    return createInsertToSOAValue(&CI, Insert, Arg, IsSOA ? VectorSize : 1, 0,
+                                  RestSize);
   });
 
   Value *Res = Builder.CreateCall(Func, Args);
-  LLVM_DEBUG(dbgs() << "Created extend: " << *Res);
+  LLVM_DEBUG(dbgs() << "Created extend: " << *Res << "\n");
 
   if (InsertTo) {
     if (RestSize != ExtendWidth)
-      Res = createExtractFromSOAValue(&CI, Res, VectorSize, Index, RestSize);
+      Res = createExtractFromSOAValue(&CI, Res, VectorSize, 0, RestSize);
     if (Index == 0)
       InsertTo = Res;
     else
@@ -348,12 +349,18 @@ Value *GenXLoadStoreLegalization::createExtractFromSOAValue(
     Instruction *InsertBefore, Value *Data, unsigned VectorSize, unsigned Index,
     unsigned Width) const {
   auto *VTy = cast<IGCLLVM::FixedVectorType>(Data->getType());
+  auto *ETy = VTy->getElementType();
   auto OrigWidth = VTy->getNumElements() / VectorSize;
+
+  if (isa<UndefValue>(Data)) {
+    auto *ResTy = IGCLLVM::FixedVectorType::get(ETy, Width * VectorSize);
+    return UndefValue::get(ResTy);
+  }
 
   Value *Extract = nullptr;
   const auto &DL = InsertBefore->getDebugLoc();
 
-  if (VTy->getElementType()->isIntegerTy(1)) {
+  if (ETy->isIntegerTy(1)) {
     IGC_ASSERT(VectorSize == 1);
     Extract = Region::createRdPredRegionOrConst(Data, Index, Width, "",
                                                 InsertBefore, DL);

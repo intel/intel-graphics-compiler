@@ -457,12 +457,12 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   /// .. include:: GenXGEPLowering.cpp
   vc::addPass(PM, createGenXGEPLoweringPass());
+  /// .. include:: GenXLoadStoreLegalization.cpp
+  vc::addPass(PM, createGenXLoadStoreLegalizationPass());
   /// .. include:: GenXLowering.cpp
   vc::addPass(PM, createGenXLoweringPass());
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
-  /// .. include:: GenXLoadStoreLegalization.cpp
-  vc::addPass(PM, createGenXLoadStoreLegalizationPass());
   /// .. include:: GenXRegionCollapsing.cpp
   vc::addPass(PM, createGenXRegionCollapsingPass());
   /// EarlyCSE
