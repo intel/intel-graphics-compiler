@@ -11,7 +11,7 @@
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
-; RUN: llvm-dwarfdump -a dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
+; RUN: llvm-dwarfdump -debug-info -debug-line -debug-abbrev dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
 
 ; CHECK: .debug_abbrev contents:
 ; CHECK: .debug_info contents:

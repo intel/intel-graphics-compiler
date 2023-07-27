@@ -747,7 +747,6 @@ private:
   uint32_t writeStackcallCIE();
   void writeFDESubroutine(VISAModule *m);
   void writeFDEStackCall(VISAModule *m);
-  bool DwarfFrameSectionNeeded() const;
 
   // Store offset of 2 CIEs, one for stack call and other for subroutines.
   uint32_t offsetCIEStackCall = 0;

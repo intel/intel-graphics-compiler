@@ -10,7 +10,7 @@
 ; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo -noschedule' -o /dev/null
 
-; RUN: llvm-dwarfdump -a dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
+; RUN: llvm-dwarfdump -debug-line dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
 
 ; CHECK: Address Line Column File ISA Discriminator Flags
 ; CHECK:           42      0    1   0           0   is_stmt

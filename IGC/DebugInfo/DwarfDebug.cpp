@@ -1198,18 +1198,15 @@ void DwarfDebug::beginModule() {
   // Prime section data.
   SectionMap[Asm->GetTextSection()];
 
-  if (DwarfFrameSectionNeeded()) {
-    Asm->SwitchSection(Asm->GetDwarfFrameSection());
-    if (m_pModule->hasOrIsStackCall(*VisaDbgInfo)) {
-      // First stack call CIE is written out,
-      // next subroutine CIE if required.
-      offsetCIEStackCall = 0;
-      offsetCIESubroutine = writeStackcallCIE();
-    }
-
-    if (!m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
-      // writeSubroutineCIE();
-    }
+  Asm->SwitchSection(Asm->GetDwarfFrameSection());
+  if (m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
+    // First stack call CIE is written out,
+    // next subroutine CIE if required.
+    offsetCIEStackCall = 0;
+    offsetCIESubroutine = writeStackcallCIE();
+  } else {
+    // TODO: .debug_frame for subrotuines is currently unsupported.
+    // writeSubroutineCIE();
   }
 }
 
@@ -2408,16 +2405,14 @@ void DwarfDebug::endFunction(const Function *MF) {
   constructScopeDIE(TheCU, FnScope);
   LLVM_DEBUG(dbgs() << "[DwarfDebug] FnScope constructed ***\n");
 
-  if (DwarfFrameSectionNeeded()) {
-    Asm->SwitchSection(Asm->GetDwarfFrameSection());
-    if (m_pModule->hasOrIsStackCall(*VisaDbgInfo)) {
-      LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall start ---\n");
-      writeFDEStackCall(m_pModule);
-      LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall end  ***\n");
-    } else {
-      LLVM_DEBUG(dbgs() << "[DwarfDebug] FDESubproutine skipped  ***\n");
-      // writeFDESubroutine(m_pModule);
-    }
+  Asm->SwitchSection(Asm->GetDwarfFrameSection());
+  if (m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall start ---\n");
+    writeFDEStackCall(m_pModule);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall end  ***\n");
+  } else {
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] FDESubproutine skipped  ***\n");
+    // writeFDESubroutine(m_pModule);
   }
 
   ScopeVariables.clear();
@@ -3539,10 +3534,6 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     for (auto &byte : data)
       Asm->EmitInt8(byte);
   }
-}
-bool DwarfDebug::DwarfFrameSectionNeeded() const {
-  return (m_pModule->hasOrIsStackCall(*VisaDbgInfo) ||
-          (!m_pModule->getSubroutines(*VisaDbgInfo)->empty()));
 }
 
 llvm::MCSymbol *DwarfDebug::GetLabelBeforeIp(unsigned int ip) {
