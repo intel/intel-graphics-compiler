@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "GenCodeGenModule.h"
 #include "VariableReuseAnalysis.hpp"
 #include "CastToGASAnalysis.h"
+#include "ResourceLoopAnalysis.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
@@ -76,6 +77,7 @@ public:
         addRequired<CodeGenContextWrapper>(AU);
         addRequired<VariableReuseAnalysis>(AU);
         addRequired<CastToGASInfo>(AU);
+        addRequired<ResourceLoopAnalysis>(AU);
     }
 
     virtual bool runOnFunction(llvm::Function& F) override;
@@ -768,6 +770,7 @@ public:
     const llvm::DataLayout* m_DL = nullptr;
     CoalescingEngine* m_CE = nullptr;
     VariableReuseAnalysis* m_VRA = nullptr;
+    ResourceLoopAnalysis *m_RLA = nullptr;
     ModuleMetaData* m_moduleMD = nullptr;
     bool m_canAbortOnSpill;
     PSSignature* const m_pSignature;

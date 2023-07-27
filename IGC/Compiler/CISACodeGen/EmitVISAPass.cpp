@@ -161,6 +161,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(Simd32ProfitabilityAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(VariableReuseAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASInfo)
+IGC_INITIALIZE_PASS_DEPENDENCY(ResourceLoopAnalysis)
 IGC_INITIALIZE_PASS_END(EmitPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 }
 
@@ -670,6 +671,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_blockCoalescing = &getAnalysis<BlockCoalescing>();
     m_CE = &getAnalysis<CoalescingEngine>();
     m_VRA = &getAnalysis<VariableReuseAnalysis>();
+    m_RLA = &getAnalysis<ResourceLoopAnalysis>();
 
     m_currShader->SetUniformHelper(&getAnalysis<WIAnalysis>());
     m_currShader->SetCodeGenHelper(m_pattern);
