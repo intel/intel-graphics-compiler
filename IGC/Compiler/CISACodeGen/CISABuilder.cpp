@@ -2628,10 +2628,11 @@ namespace IGC
                 LSC_ADDR_SIZE_32b,
                 dataShape,
                 GetVISALSCSurfaceOpnd(resource.m_surfaceType, resource.m_resource),
+                0,
                 dstVar,
-                dummyZero,
-                nullptr,
-                nullptr,
+                dummyZero, 0,
+                nullptr, 0,
+                nullptr, 0,
                 nullptr,
                 nullptr,
                 nullptr));
@@ -8236,6 +8237,7 @@ namespace IGC
                 addr,
                 dataShape,
                 globalOffsetOpnd,
+                0,
                 dstOpnd,
                 addressOpnd));
 
@@ -8250,12 +8252,14 @@ namespace IGC
                 addr2,
                 dataShape2,
                 globalOffsetOpnd2,
+                0,
                 dstOpnd2,
                 addressOpnd2));
 
             return;
         }
 
+        unsigned surfaceIndex = 0x0;
         V(vKernel->AppendVISALscUntypedLoad(
             subOp,
             lscSfid,
@@ -8266,6 +8270,7 @@ namespace IGC
             addr,
             dataShape,
             globalOffsetOpnd,
+            surfaceIndex,
             dstOpnd,
             addressOpnd));
     }
@@ -8371,6 +8376,7 @@ namespace IGC
                 addr,
                 dataShape,
                 globalOffsetOpnd,
+                0,
                 addressOpnd,
                 src1Opnd));
 
@@ -8385,6 +8391,7 @@ namespace IGC
                 addr2,
                 dataShape2,
                 globalOffsetOpnd2,
+                0,
                 addressOpnd2,
                 src1Opnd2));
 
@@ -8400,6 +8407,7 @@ namespace IGC
             addr,
             dataShape,
             globalOffsetOpnd,
+            0,
             addressOpnd,
             src1Opnd));
     }
@@ -8453,6 +8461,7 @@ namespace IGC
             addr,
             dataShape,
             globalOffsetOpnd,
+            0,
             dstOpnd,
             addressOpnd));
     }
@@ -8504,6 +8513,7 @@ namespace IGC
             addr,
             dataShape,
             globalOffsetOpnd,
+            0,
             addressOpnd,
             src1Opnd));
     }
@@ -8652,6 +8662,7 @@ namespace IGC
             addr,
             dataShape,
             globalOffsetOpnd,
+            0,
             dstOpnd,
             src0AddrOpnd,
             src0Opnd,
@@ -8801,7 +8812,9 @@ namespace IGC
         VISA_RawOpnd* pUOffset = GetRawSource(pU, m_encoderState.m_srcOperand[0].subVar * getGRFSize());
         VISA_RawOpnd* pVOffset = GetRawSource(pV, m_encoderState.m_srcOperand[1].subVar * getGRFSize());
         VISA_RawOpnd* pROffset = GetRawSource(pR, m_encoderState.m_srcOperand[2].subVar * getGRFSize());
-        VISA_RawOpnd* pLODOffset = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar * getGRFSize());
+
+        // LoD or whatever indexing is being used
+        VISA_RawOpnd* pIndex = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar * getGRFSize());
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         IGC_ASSERT(m_encoderState.m_dstOperand.subVar == 0);
@@ -8813,6 +8826,9 @@ namespace IGC
         dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
         dataShape.elems = LSC_GetElementNum(numElems);
         dataShape.chmask = chMask;
+        unsigned surfaceIndex = 0;
+        int uOff = 0, vOff = 0, rOff = 0;
+
         V(vKernel->AppendVISALscTypedInst(
             subOp,
             predOpnd,
@@ -8823,11 +8839,12 @@ namespace IGC
             addr_size,
             dataShape,
             globalOffsetOpnd,
+            surfaceIndex,
             pDst,
-            pUOffset,
-            pVOffset,
-            pROffset,
-            pLODOffset,
+            pUOffset, uOff,
+            pVOffset, vOff,
+            pROffset, rOff,
+            pIndex,
             pSrc,
             nullptr));
     }

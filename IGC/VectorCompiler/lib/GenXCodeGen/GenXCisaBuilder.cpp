@@ -4082,9 +4082,10 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE,
                                    LSC_DATA_ELEMS_1};
 
+        unsigned SurfIdx = 0;
         CISA_CALL(Kernel->AppendVISALscUntypedAtomic(
             Opcode, LscSfid, Pred, ExecSize, ExecMask, CacheOpts, AddressDesc,
-            DataDesc, Base, Dest, Addr, Src1, Src2));
+            DataDesc, Base, SurfIdx, Dest, Addr, Src1, Src2));
       };
 
   auto CreateLscLoad = [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
@@ -4114,9 +4115,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       DataDesc.chmask = VectorAttr;
     }
 
+    unsigned SurfIdx = 0;
     CISA_CALL(Kernel->AppendVISALscUntypedLoad(Opcode, LscSfid, Pred, ExecSize,
                                                ExecMask, CacheOpts, AddressDesc,
-                                               DataDesc, Base, Dest, Addr));
+                                               DataDesc, Base, SurfIdx, Dest,
+                                               Addr));
   };
 
   auto CreateLscStore =
@@ -4145,9 +4148,10 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
           DataDesc.chmask = VectorAttr;
         }
 
+        unsigned SurfIdx = 0;
         CISA_CALL(Kernel->AppendVISALscUntypedStore(
             Opcode, LscSfid, Pred, ExecSize, ExecMask, CacheOpts, AddressDesc,
-            DataDesc, Base, Addr, Data));
+            DataDesc, Base, SurfIdx, Addr, Data));
       };
 
   auto CreateLscUntypedBlock2DStateless =

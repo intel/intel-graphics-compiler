@@ -7501,65 +7501,41 @@ int VISAKernelImpl::AppendVISAQwordScatterInst(
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedLoad(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+    LSC_ADDR addr, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
     VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr) {
   return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
-                                  cacheOpts, addr, data, surface, dstData,
+                                  cacheOpts, addr, data,
+                                  surface, surfaceIndex, dstData,
                                   src0Addr, nullptr, nullptr);
 }
 
-VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedLoad(
-    LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
-    VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    unsigned surfaceIndex, VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr) {
-  return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
-                                  cacheOpts, addr, data, surface, surfaceIndex,
-                                  dstData, src0Addr, nullptr, nullptr);
-}
-
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStore(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+    LSC_ADDR addr, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
     VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) {
   return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
-                                  cacheOpts, addr, data, surface, nullptr,
+                                  cacheOpts, addr, data,
+                                  surface, surfaceIndex, nullptr,
                                   src0Addr, src1Data, nullptr);
 }
 
-VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStore(
-    LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
-    VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    unsigned surfaceIndex,VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) {
-  return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
-                                  cacheOpts, addr, data, surface, surfaceIndex,
-                                  nullptr, src0Addr, src1Data, nullptr);
-}
-
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedAtomic(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+    LSC_ADDR addr, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
     VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
     VISA_RawOpnd *src1AtomOpnd1, VISA_RawOpnd *src2AtomOpnd2) {
   return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
-                                  cacheOpts, addr, data, surface, dstReadBack,
+                                  cacheOpts, addr, data,
+                                  surface, surfaceIndex,
+                                  dstReadBack,
                                   src0Addr, src1AtomOpnd1, src2AtomOpnd2);
 }
 
-VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedAtomic(
-    LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
-    VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-    LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    unsigned surfaceIndex, VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
-    VISA_RawOpnd *src1AtomOpnd1, VISA_RawOpnd *src2AtomOpnd2) {
-  return AppendVISALscUntypedInst(subOpcode, sfid, pred, execSize, emask,
-                                  cacheOpts, addr, data, surface, surfaceIndex,
-                                  dstReadBack, src0Addr, src1AtomOpnd1,
-                                  src2AtomOpnd2);
-}
 static const int LSC_ZERO = 0;
 
 #define LSC_CHECK_NULL_VECTOR_OPERAND(X)                                       \
@@ -7580,18 +7556,6 @@ static const int LSC_ZERO = 0;
   } while (0)
 #define LSC_CHECK_NULL_DST(X) LSC_CHECK_NULL_OPND(X, true)
 #define LSC_CHECK_NULL_SRC(X) LSC_CHECK_NULL_OPND(X, false)
-
-VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
-        LSC_OP subOpcode, LSC_SFID lscSfid, VISA_PredOpnd *pred,
-        VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
-        LSC_ADDR addr, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd* surface,
-        VISA_RawOpnd *dstData, VISA_RawOpnd *src0Addr,
-        VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
-
-    return AppendVISALscUntypedInst(subOpcode, lscSfid, pred, execSize, emask, cacheOpts,
-            addr, dataShape, surface, 0 /* default value */, dstData, src0Addr,
-            src1Data, src2Data);
-}
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
     LSC_OP subOpcode, LSC_SFID lscSfid, VISA_PredOpnd *pred,
@@ -7905,50 +7869,53 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedLoad(
     LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    VISA_RawOpnd *dstData, VISA_RawOpnd *Us, VISA_RawOpnd *Vs, VISA_RawOpnd *Rs,
+    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *dstData,
+    VISA_RawOpnd *Us, int uOffset,
+    VISA_RawOpnd *Vs, int vOffset,
+    VISA_RawOpnd *Rs, int rOffset,
     VISA_RawOpnd *LODs) {
   return AppendVISALscTypedInst(op, pred, execSize, emask, cacheOpts, addrType,
-                                addrSize, data, surface, dstData, Us, Vs, Rs,
+                                addrSize, data, surface, surfaceIndex, dstData,
+                                Us, uOffset, Vs, vOffset, Rs, rOffset,
                                 LODs, nullptr, nullptr);
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedStore(
     LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    VISA_RawOpnd *Us, VISA_RawOpnd *Vs, VISA_RawOpnd *Rs, VISA_RawOpnd *LODs,
+    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *Us, int uOffset,
+    VISA_RawOpnd *Vs, int vOffset,
+    VISA_RawOpnd *Rs, int rOffset,
+    VISA_RawOpnd *LODs,
     VISA_RawOpnd *src1Data) {
   return AppendVISALscTypedInst(op, pred, execSize, emask, cacheOpts, addrType,
-                                addrSize, data, surface, nullptr, Us, Vs, Rs,
+                                addrSize, data, surface, surfaceIndex, nullptr,
+                                Us, uOffset, Vs, vOffset, Rs, rOffset,
                                 LODs, src1Data, nullptr);
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedAtomic(
     LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
-    VISA_RawOpnd *dstReadBack, VISA_RawOpnd *Us, VISA_RawOpnd *Vs,
-    VISA_RawOpnd *Rs, VISA_RawOpnd *LODs, VISA_RawOpnd *src1AtomicOpnd1,
-    VISA_RawOpnd *src2AtomicOpnd2) {
+    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *dstReadBack,
+    VISA_RawOpnd *Us, int uOffset,
+    VISA_RawOpnd *Vs, int vOffset,
+    VISA_RawOpnd *Rs, int rOffset,
+    VISA_RawOpnd *LODs,
+    VISA_RawOpnd *src1AtomicOpnd1, VISA_RawOpnd *src2AtomicOpnd2) {
   return AppendVISALscTypedInst(op, pred, execSize, emask, cacheOpts, addrType,
-                                addrSize, data, surface, dstReadBack, Us, Vs,
-                                Rs, LODs, src1AtomicOpnd1, src2AtomicOpnd2);
+                                addrSize, data,
+                                surface, surfaceIndex, dstReadBack,
+                                Us, uOffset, Vs, vOffset, Rs, rOffset,
+                                LODs, src1AtomicOpnd1, src2AtomicOpnd2);
 }
 
-VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
-LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
-    VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
-    LSC_ADDR_SIZE addrSize, LSC_DATA_SHAPE dataShape, VISA_VectorOpnd *surface,
-    VISA_RawOpnd *dstData, VISA_RawOpnd *coord0s, VISA_RawOpnd *coord1s,
-    VISA_RawOpnd *coord2s, VISA_RawOpnd *features,
-    VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
-
-  return AppendVISALscTypedInst(subOpcode, pred, execSize, emask, cacheOpts, addrType,
-    addrSize, dataShape, surface, 0, dstData, coord0s, 0, coord1s, 0, coord2s,
-    0, features, src1Data, src2Data);
-
-}
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
