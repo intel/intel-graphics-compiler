@@ -100,9 +100,9 @@ public:
   }
 
   ~FreePhyRegs() {
-    delete availableGregs;
-    delete availableAddrs;
-    delete availableFlags;
+    delete[] availableGregs;
+    delete[] availableAddrs;
+    delete[] availableFlags;
   }
 
   void reset() {
