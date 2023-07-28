@@ -537,24 +537,17 @@ void __builtin_IB_assume_uniform(void*);
 // SubGroup Functions
 int     __builtin_IB_get_simd_size( void );
 int     __builtin_IB_get_simd_id( void );
-uint    __builtin_IB_simd_shuffle(         uint,   uint );
-bool    __builtin_IB_simd_shuffle_b(       bool,   uint);
-uchar   __builtin_IB_simd_shuffle_c(       uchar,  uint );
-ushort  __builtin_IB_simd_shuffle_us(      ushort, uint );
-float   __builtin_IB_simd_shuffle_f(       float,  uint );
-half    __builtin_IB_simd_shuffle_h(       half,   uint );
-double  __builtin_IB_simd_shuffle_df(      double, uint);
-uint    __builtin_IB_simd_shuffle_down(    uint,   uint,   uint );
+uint     __builtin_IB_simd_shuffle( uint, uint );
+bool    __builtin_IB_simd_shuffle_b(bool, uint);
+uchar    __builtin_IB_simd_shuffle_c( uchar, uint );
+ushort  __builtin_IB_simd_shuffle_us( ushort, uint );
+float     __builtin_IB_simd_shuffle_f( float, uint );
+half     __builtin_IB_simd_shuffle_h( half, uint );
+double  __builtin_IB_simd_shuffle_df(double, uint);
+uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
-uchar   __builtin_IB_simd_shuffle_down_uc( uchar,  uchar,  uint );
-uint    __builtin_IB_simd_broadcast(       uint,   uint );
-bool    __builtin_IB_simd_broadcast_b(     bool,   uint );
-uchar   __builtin_IB_simd_broadcast_c(     uchar,  uint );
-ushort  __builtin_IB_simd_broadcast_us(    ushort, uint );
-float   __builtin_IB_simd_broadcast_f(     float,  uint );
-half    __builtin_IB_simd_broadcast_h(     half,   uint );
-double  __builtin_IB_simd_broadcast_df(    double, uint );
-void    __builtin_IB_sub_group_barrier();
+uchar  __builtin_IB_simd_shuffle_down_uc( uchar, uchar, uint );
+void   __builtin_IB_sub_group_barrier();
 
 // Block read : global address space
 uint    __builtin_IB_simd_block_read_1_global( const __global uint* );

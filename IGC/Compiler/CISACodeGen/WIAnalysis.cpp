@@ -844,12 +844,6 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
             dep = WIAnalysis::UNIFORM_THREAD;
         }
 
-        // Spec enforces subgroup broadcast to use thread-uniform local ID.
-        if (isWaveBroadcastIndex(inst))
-        {
-            dep = WIAnalysis::UNIFORM_THREAD;
-        }
-
         // If the value was changed in this calculation
         if (!hasOriginal || dep != orig)
         {
@@ -905,18 +899,6 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchIn
         }
     }
     return true;
-}
-
-bool WIAnalysisRunner::isWaveBroadcastIndex(const llvm::Instruction* inst)
-{
-    for (auto it = inst->users().begin(); it != inst->users().end(); ++it)
-    {
-        const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(*it);
-        if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast && GII->getOperand(1) == inst)
-            return true;
-    }
-
-    return false;
 }
 
 void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
@@ -1387,7 +1369,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_ldraw_indexed ||
         intrinsic_name == llvm_cycleCounter ||
         intrinsic_name == llvm_waveShuffleIndex ||
-        intrinsic_name == llvm_waveBroadcast ||
         intrinsic_name == llvm_waveBallot ||
         intrinsic_name == llvm_waveAll ||
         intrinsic_name == llvm_waveClustered ||
@@ -1620,8 +1601,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             return WIAnalysis::UNIFORM_THREAD;
         }
 
-        if (intrinsic_name == llvm_waveShuffleIndex ||
-            intrinsic_name == llvm_waveBroadcast)
+        if (intrinsic_name == llvm_waveShuffleIndex)
         {
             Value* op0 = inst->getArgOperand(0);
             Value* op1 = inst->getArgOperand(1);

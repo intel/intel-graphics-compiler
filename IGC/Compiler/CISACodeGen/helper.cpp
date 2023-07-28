@@ -1402,7 +1402,6 @@ namespace IGC
         switch (GII->getIntrinsicID())
         {
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-        case GenISAIntrinsic::GenISA_WaveBroadcast:
         case GenISAIntrinsic::GenISA_simdShuffleDown:
         case GenISAIntrinsic::GenISA_simdShuffleXor:
         case GenISAIntrinsic::GenISA_simdBlockRead:
@@ -1683,7 +1682,6 @@ namespace IGC
             opcode == llvm_waveClustered ||
             opcode == llvm_wavePrefix ||
             opcode == llvm_waveShuffleIndex ||
-            opcode == llvm_waveBroadcast ||
             opcode == llvm_waveBallot ||
             opcode == llvm_simdShuffleDown ||
             opcode == llvm_simdBlockRead||

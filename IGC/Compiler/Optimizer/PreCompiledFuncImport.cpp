@@ -497,13 +497,12 @@ bool PreCompiledFuncImport::preProcessDouble()
                     CallI->replaceAllUsesWith(res);
                     toBeDeleted.push_back(CallI);
                 }
-                else if (resTy->isDoubleTy() && GII &&
-                    (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
-                     GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast))
+                else if (resTy->isDoubleTy() &&
+                    GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
                 {
                     IRBuilder<> builder(Inst);
                     Value* newBitCast = builder.CreateBitCast(CallI->getOperand(0), builder.getInt64Ty());
-                    Function* newFunc = GenISAIntrinsic::getDeclaration(GII->getModule(), GII->getIntrinsicID(), builder.getInt64Ty());
+                    Function* newFunc = GenISAIntrinsic::getDeclaration(GII->getModule(), GenISAIntrinsic::GenISA_WaveShuffleIndex, builder.getInt64Ty());
                     Value* Args[] = { newBitCast, GII->getOperand(1), GII->getOperand(2) };
                     Value* newI64Intrinsic = builder.CreateCall(newFunc, Args);
 

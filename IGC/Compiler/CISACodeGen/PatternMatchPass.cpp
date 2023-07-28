@@ -1307,7 +1307,6 @@ namespace IGC
                 match = MatchIntegerSatModifier(I);
                 break;
             case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-            case GenISAIntrinsic::GenISA_WaveBroadcast:
                 match = MatchRegisterRegion(*GII) ||
                     MatchShuffleBroadCast(*GII) ||
                     MatchWaveShuffleIndex(*GII);
@@ -4591,8 +4590,7 @@ namespace IGC
                     // by WaveShuffleIndex intrinsic
                     GenIntrinsicInst* WSI = dyn_cast<GenIntrinsicInst>(elem);
                     if (!WSI ||
-                        (WSI->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex &&
-                         WSI->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveBroadcast))
+                        WSI->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex)
                     {
                         WSVal = nullptr;
                         break;
@@ -4707,9 +4705,7 @@ namespace IGC
                     break;
 
                 llvm::GenIntrinsicInst* intrin = llvm::dyn_cast<llvm::GenIntrinsicInst>(temp);
-                if (!intrin ||
-                    (intrin->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex &&
-                     intrin->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveBroadcast))
+                if (!intrin || intrin->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex)
                     break;
                 waveInst[i] = temp;
             }
@@ -5166,7 +5162,7 @@ namespace IGC
         if (llvm::GenIntrinsicInst * intrin = llvm::dyn_cast<llvm::GenIntrinsicInst>(source))
         {
             GenISAIntrinsic::ID id = intrin->getIntrinsicID();
-            if (id == GenISAIntrinsic::GenISA_WaveShuffleIndex || id == GenISAIntrinsic::GenISA_WaveBroadcast)
+            if (id == GenISAIntrinsic::GenISA_WaveShuffleIndex)
             {
                 if (llvm::ConstantInt * channelVal = llvm::dyn_cast<llvm::ConstantInt>(intrin->getOperand(1)))
                 {

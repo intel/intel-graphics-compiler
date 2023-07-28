@@ -709,14 +709,6 @@ Imported_Intrinsics = \
                                        "in wave ops, 2: helper lanes do not participate in wave ops.")],
     "Convergent,NoMem"]],
 ####################################################################################################
-"GenISA_WaveBroadcast": ["Broadcasts from specific lane to all lanes. " +\
-                         "Overlaps with WaveShuffleIndex, but guarantees that lane is thread-uniform.",
-    [("anyint",                        "result"),
-    [(0,                               "value"),
-     ("int",                           "lane"),
-     ("int",                           "helperLaneMode - to match WaveShuffleIndex")],
-    "Convergent,NoMem"]],
-####################################################################################################
 "GenISA_WorkGroupAny": ["This intrinsic implies a barrier",
     [("int",                           ""),
     [("int",                           "")],
