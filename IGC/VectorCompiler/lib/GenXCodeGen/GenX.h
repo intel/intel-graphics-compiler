@@ -60,6 +60,11 @@ enum class PatternMatchKind {
   PostLegalization,  // pattern match after legalization
 };
 
+enum class BuiltinFunctionKind {
+  PreLegalization,
+  PostLegalization,
+};
+
 FunctionPass *createGenXPrinterPass(raw_ostream &O, const std::string &Banner);
 ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
                                        const std::string &Banner);
@@ -132,7 +137,7 @@ ModulePass *createGenXGASCastWrapperPass();
 FunctionPass *createGenXGASDynamicResolutionPass();
 ModulePass *createGenXInitBiFConstantsPass();
 FunctionPass *createGenXGlobalUniformAnalysisPass();
-ModulePass *createGenXBuiltinFunctionsPass();
+ModulePass *createGenXBuiltinFunctionsPass(BuiltinFunctionKind Kind);
 FunctionPass *createGenXLegacyToLscTranslatorPass();
 
 namespace genx {

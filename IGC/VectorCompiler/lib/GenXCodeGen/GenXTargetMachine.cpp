@@ -459,6 +459,15 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXGEPLoweringPass());
   /// .. include:: GenXLoadStoreLegalization.cpp
   vc::addPass(PM, createGenXLoadStoreLegalizationPass());
+
+  /// .. include:: GenXBuiltinFunctions.cpp
+  // early built-in functions, which allowed to inline
+  if (!BackendConfig.isBiFCompilation()) {
+    vc::addPass(PM, createGenXBuiltinFunctionsPass(
+                        BuiltinFunctionKind::PreLegalization));
+    vc::addPass(PM, createAlwaysInlinerLegacyPass());
+  }
+
   /// .. include:: GenXLowering.cpp
   vc::addPass(PM, createGenXLoweringPass());
   if (!DisableVerify)
@@ -502,8 +511,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   if (BackendConfig.isBiFCompilation())
     return false;
   /// .. include:: GenXBuiltinFunctions.cpp
-  vc::addPass(PM, createGenXBuiltinFunctionsPass());
-  vc::addPass(PM, createAlwaysInlinerLegacyPass());
+  vc::addPass(PM, createGenXBuiltinFunctionsPass(
+                      BuiltinFunctionKind::PostLegalization));
 
   /// .. include:: GenXPromoteStatefulToBindless.cpp
   vc::addPass(PM, createGenXPromoteStatefulToBindlessPass());

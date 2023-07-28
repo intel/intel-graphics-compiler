@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
+#include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
@@ -39,7 +40,9 @@ class GenXBuiltinFunctions : public ModulePass,
 public:
   static char ID;
 
-  GenXBuiltinFunctions() : ModulePass(ID) {}
+  explicit GenXBuiltinFunctions(
+      BuiltinFunctionKind Kind = BuiltinFunctionKind::PostLegalization)
+      : ModulePass(ID), Kind(Kind) {}
   StringRef getPassName() const override;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
@@ -72,6 +75,7 @@ private:
                            ArrayRef<Value *> Args);
 
   const GenXSubtarget *ST = nullptr;
+  BuiltinFunctionKind Kind;
 };
 
 char GenXBuiltinFunctions::ID = 0;
@@ -94,9 +98,9 @@ INITIALIZE_PASS_BEGIN(GenXBuiltinFunctions, "GenXBuiltinFunctions",
 INITIALIZE_PASS_END(GenXBuiltinFunctions, "GenXBuiltinFunctions",
                     "GenXBuiltinFunctions", false, false)
 
-ModulePass *llvm::createGenXBuiltinFunctionsPass() {
+ModulePass *llvm::createGenXBuiltinFunctionsPass(BuiltinFunctionKind Kind) {
   initializeGenXBuiltinFunctionsPass(*PassRegistry::getPassRegistry());
-  return new GenXBuiltinFunctions;
+  return new GenXBuiltinFunctions(Kind);
 }
 
 bool GenXBuiltinFunctions::runOnModule(Module &M) {
@@ -278,6 +282,7 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   auto *Ty = II.getType();
   auto &M = *II.getModule();
   Function *Func = nullptr;
+  SmallVector<Value *, 2> Args(II.args());
 
   switch (IID) {
   case Intrinsic::sqrt:
@@ -323,18 +328,18 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
     auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
                                                   VTy->getNumElements());
     auto *Mask = Builder.CreateZExt(II.getArgOperand(0), MaskVTy);
-    SmallVector<Value *, 10> Args = {Mask, Opcode};
+
+    Args.clear();
+    Args.push_back(Mask);
+    Args.push_back(Opcode);
     std::copy(II.arg_begin() + 4, II.arg_end() - 2, std::back_inserter(Args));
     Args.push_back(II.getArgOperand(12));
-
-    return createLibraryCall(II, Func, Args);
-  }
+  } break;
 
   default:
     break;
   }
 
-  SmallVector<Value *, 2> Args(II.args());
   return createLibraryCall(II, Func, Args);
 }
 
@@ -363,6 +368,15 @@ Function *GenXBuiltinFunctions::getBuiltinDeclaration(Module &M, StringRef Name,
   FuncName += Suffix;
 
   auto *Func = M.getFunction(FuncName);
+  if (!Func)
+    return nullptr;
+
+  // We can only inline the functions before legalization
+  bool IsInline = Func->hasFnAttribute(Attribute::AlwaysInline);
+  if (Kind == (IsInline ? BuiltinFunctionKind::PostLegalization
+                        : BuiltinFunctionKind::PreLegalization))
+    return nullptr;
+
   return Func;
 }
 

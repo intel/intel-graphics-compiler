@@ -139,6 +139,23 @@ bool GenXBiFPrepare::isNeededForTarget(const Function &F,
       return false;
   }
 
+  static SmallVector<StringRef, 4> IDivRem = {"udiv", "sdiv", "urem", "srem"};
+  auto IsDivRem = llvm::any_of(
+      IDivRem, [&Name](const auto &Arg) { return Name.startswith(Arg); });
+  if (IsDivRem && ST.hasIntDivRem32() &&
+      !F.getReturnType()->isIntOrIntVectorTy(64))
+    return false;
+
+  static SmallVector<StringRef, 4> FpCvt = {"fptosi", "fptoui", "sitofp",
+                                            "uitofp"};
+  auto IsFpCvt = llvm::any_of(
+      FpCvt, [&Name](const auto &Arg) { return Name.startswith(Arg); });
+  if (IsFpCvt && !ST.emulateLongLong())
+    return false;
+
+  if (!ST.hasLocalIntegerCas64() && Name.startswith("atomic_slm"))
+    return false;
+
   return true;
 }
 
