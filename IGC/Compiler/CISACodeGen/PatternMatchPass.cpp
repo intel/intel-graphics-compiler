@@ -4999,6 +4999,7 @@ namespace IGC
         {
             //only if helperLaneMode==1, we enable helper lane under some shuffleindex cases (not for all cases).
             HandleSubspanUse(I.getArgOperand(0), IsSourceOfSample(&I));
+            HandleSubspanUse(I.getArgOperand(1), IsSourceOfSample(&I));
             HandleSubspanUse(&I, IsSourceOfSample(&I));
         }
         return MatchSingleInstruction(I);
