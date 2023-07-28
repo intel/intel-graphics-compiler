@@ -44,6 +44,13 @@ const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF = "__builtin
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN = "__builtin_IB_simd_shuffle_down";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US = "__builtin_IB_simd_shuffle_down_us";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC = "__builtin_IB_simd_shuffle_down_uc";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST = "__builtin_IB_simd_broadcast";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_B = "__builtin_IB_simd_broadcast_b";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_C = "__builtin_IB_simd_broadcast_c";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_US = "__builtin_IB_simd_broadcast_us";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_F = "__builtin_IB_simd_broadcast_f";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_H = "__builtin_IB_simd_broadcast_h";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_DF = "__builtin_IB_simd_broadcast_df";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL = "__builtin_IB_simd_block_read_1_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL = "__builtin_IB_simd_block_read_2_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL = "__builtin_IB_simd_block_read_4_global";
@@ -603,6 +610,29 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         Instruction* simdShuffle = CallInst::Create(simdShuffleFunc, args, "simdShuffle", &CI);
         updateDebugLoc(&CI, simdShuffle);
         CI.replaceAllUsesWith(simdShuffle);
+        CI.eraseFromParent();
+    }
+    else if (funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST_US) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST_F) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST_H) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST_C) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST_B) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_BROADCAST_DF)
+        )
+    {
+        // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_broadcast function
+        IRBuilder<> IRB(&CI);
+        Value* args[3];
+        args[0] = CI.getArgOperand(0);
+        args[1] = CI.getArgOperand(1);
+        args[2] = IRB.getInt32(0);
+
+        Function* simdBroadcastFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WaveBroadcast, args[0]->getType());
+        Instruction* simdBroadcast = CallInst::Create(simdBroadcastFunc, args, "simdBroadcast", &CI);
+        updateDebugLoc(&CI, simdBroadcast);
+        CI.replaceAllUsesWith(simdBroadcast);
         CI.eraseFromParent();
     }
     else if (funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN) ||

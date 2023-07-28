@@ -1108,7 +1108,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i32, )(int Execu
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_b(Value, LocalId.s0);
+        return __builtin_IB_simd_broadcast_b(Value, LocalId.s0);
     }
     else
     {
@@ -1124,7 +1124,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i1_v3i64, )(int Execu
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_b(Value, (uint)LocalId.s0);
+        return __builtin_IB_simd_broadcast_b(Value, (uint)LocalId.s0);
     }
     else
     {
@@ -1140,7 +1140,7 @@ char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i32, )(int Execu
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_c(Value, LocalId.s0);
+        return __builtin_IB_simd_broadcast_c(Value, LocalId.s0);
     }
     else
     {
@@ -1156,7 +1156,7 @@ char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i8_v3i64, )(int Execu
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_c(Value, (uint)LocalId.s0);
+        return __builtin_IB_simd_broadcast_c(Value, (uint)LocalId.s0);
     }
     else
     {
@@ -1172,7 +1172,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i32, )(int Exe
     }
     else if (Execution == Subgroup)
     {
-        return as_ushort(__builtin_IB_simd_shuffle_h(as_half(Value), LocalId.s0));
+        return as_ushort(__builtin_IB_simd_broadcast_h(as_half(Value), LocalId.s0));
     }
     else
     {
@@ -1188,7 +1188,7 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i16_v3i64, )(int Exe
     }
     else if (Execution == Subgroup)
     {
-        return as_ushort(__builtin_IB_simd_shuffle_h(as_half(Value), (uint)LocalId.s0));
+        return as_ushort(__builtin_IB_simd_broadcast_h(as_half(Value), (uint)LocalId.s0));
     }
     else
     {
@@ -1204,7 +1204,7 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(int Execu
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle(Value, LocalId.s0);
+        return __builtin_IB_simd_broadcast(Value, LocalId.s0);
     }
     else
     {
@@ -1220,7 +1220,7 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i64, )(int Execu
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle(Value, (uint)LocalId.s0);
+        return __builtin_IB_simd_broadcast(Value, (uint)LocalId.s0);
     }
     else
     {
@@ -1236,7 +1236,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i32, )(int Exec
     }
     else if (Execution == Subgroup)
     {
-        return ((((ulong)__builtin_IB_simd_shuffle(Value >> 32, LocalId.s0)) << 32 ) | __builtin_IB_simd_shuffle((uint)Value, LocalId.s0));
+        return ((((ulong)__builtin_IB_simd_broadcast(Value >> 32, LocalId.s0)) << 32 ) | __builtin_IB_simd_broadcast((uint)Value, LocalId.s0));
     }
     else
     {
@@ -1252,7 +1252,7 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_i64_v3i64, )(int Exec
     }
     else if (Execution == Subgroup)
     {
-        return ((((ulong)__builtin_IB_simd_shuffle(Value >> 32, (uint)LocalId.s0)) << 32 ) | __builtin_IB_simd_shuffle((uint)Value, (uint)LocalId.s0));
+        return ((((ulong)__builtin_IB_simd_broadcast(Value >> 32, (uint)LocalId.s0)) << 32 ) | __builtin_IB_simd_broadcast((uint)Value, (uint)LocalId.s0));
     }
     else
     {
@@ -1268,7 +1268,7 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i32, )(int Exec
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_h( Value, (uint)LocalId.s0 );
+        return __builtin_IB_simd_broadcast_h( Value, (uint)LocalId.s0 );
     }
     else
     {
@@ -1284,7 +1284,7 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f16_v3i64, )(int Exec
     }
     else if (Execution == Subgroup)
     {
-        return as_half2(__builtin_IB_simd_shuffle( (uint)(as_short(Value)), (uint)LocalId.s0 )).x;
+        return as_half2(__builtin_IB_simd_broadcast( (uint)(as_short(Value)), (uint)LocalId.s0 )).x;
     }
     else
     {
@@ -1300,7 +1300,7 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i32, )(int Exe
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_f( Value, LocalId.s0 );
+        return __builtin_IB_simd_broadcast_f( Value, LocalId.s0 );
     }
     else
     {
@@ -1316,7 +1316,7 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f32_v3i64, )(int Exe
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_f( Value, (uint)LocalId.s0 );
+        return __builtin_IB_simd_broadcast_f( Value, (uint)LocalId.s0 );
     }
     else
     {
@@ -1334,7 +1334,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i32, )(int Ex
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_df( Value, LocalId.s0 );
+        return __builtin_IB_simd_broadcast_df( Value, LocalId.s0 );
     }
     else
     {
@@ -1351,7 +1351,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_f64_v3i64, )(int Ex
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_df( Value, (uint) LocalId.s0 );
+        return __builtin_IB_simd_broadcast_df( Value, (uint) LocalId.s0 );
     }
     else
     {
