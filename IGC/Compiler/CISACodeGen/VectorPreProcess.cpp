@@ -1550,10 +1550,11 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 unsigned Idx = int_cast<unsigned>(CI->getZExtValue());
                 if (NewEEI[Idx] == nullptr)
                 {
-                    NewEEI[Idx] = Builder.CreateExtractElement(NewLI, CI);
+                    // To preserve the order, insert next to the original EEI
+                    NewEEI[Idx] = ExtractElementInst::Create(NewLI, CI, "", EEI);
                     if (BC)
                     {
-                        NewBC[Idx] = Builder.CreateBitCast(NewEEI[Idx], DstEltTy);
+                        NewBC[Idx] = CastInst::Create(BC->getOpcode(), NewEEI[Idx], DstEltTy, "", EEI);
                         dyn_cast<BitCastInst>(NewBC[Idx])->setDebugLoc(BC->getDebugLoc());
                     }
                 }
