@@ -70,10 +70,6 @@ defm large_register_file : CommonFlag<"large-register-file">,
   Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
   HelpText<"Increase number of available GRF">;
 
-// -cl-intel-enable-auto-large-GRF-mode, -ze-opt-enable-auto-large-GRF-mode
-defm enable_auto_large_GRF_mode : CommonFlag<"enable-auto-large-GRF-mode">,
-  HelpText<"Use compiler heuristics to determine number of GRF">;
-
 // -cl-intel-force-global-mem-allocation, -cl-force-global-mem-allocation, -ze-force-global-mem-allocation
 defm force_global_mem_allocation : CommonFlag<"force-global-mem-allocation">;
 

@@ -81,9 +81,6 @@ namespace IGC
             bool IntelExpGRFSize                            = false;
             uint32_t expGRFSize                             = 0;
 
-            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
-            bool IntelEnableAutoLargeGRF                    = false;
-
             // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
             // IntelForceInt32DivRemEmu wins if both are set and can be applied.
             bool IntelForceInt32DivRemEmu                   = false;
@@ -157,6 +154,9 @@ namespace IGC
 
             std::vector<std::string> LargeGRFKernels;
             std::vector<std::string> RegularGRFKernels;
+
+            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
+            bool IntelEnableAutoLargeGRF        = false;
 
             // Generic address related
             bool NoLocalToGeneric               = false;
