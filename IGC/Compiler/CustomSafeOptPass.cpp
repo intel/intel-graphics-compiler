@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -782,6 +782,37 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         default:
             break;
         }
+    }
+}
+
+void CustomSafeOptPass::visitSelectInst(SelectInst& I)
+{
+    // select i1 %x, 1, %y ->  or i1 %x, %y
+    // select i1 %x, %y, 0 -> and i1 %x, %y
+
+    using namespace llvm::PatternMatch;
+    llvm::IRBuilder<> Builder(&I);
+
+    if (I.getType()->isIntegerTy(1) && match(&I, m_Select(m_Value(), m_SpecificInt(1), m_Value())))
+    {
+        auto NewVal = Builder.CreateOr(I.getOperand(0), I.getOperand(2));
+        Instruction *OrInst = dyn_cast<Instruction>(NewVal);
+        if (OrInst)
+        {
+            OrInst->setDebugLoc(I.getDebugLoc());
+        }
+        I.replaceAllUsesWith(NewVal);
+    }
+
+    if (I.getType()->isIntegerTy(1) && match(&I, m_Select(m_Value(), m_Value(), m_SpecificInt(0))))
+    {
+        auto NewVal = Builder.CreateAnd(I.getOperand(0), I.getOperand(1));
+        Instruction *AndInst = dyn_cast<Instruction>(NewVal);
+        if (AndInst)
+        {
+            AndInst->setDebugLoc(I.getDebugLoc());
+        }
+        I.replaceAllUsesWith(NewVal);
     }
 }
 
