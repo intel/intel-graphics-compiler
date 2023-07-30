@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -75,6 +75,7 @@ namespace IGC
         void visitAnd(llvm::BinaryOperator& I);
         void visitXor(llvm::Instruction& XorInstr);
         void visitShuffleIndex(llvm::CallInst* I);
+        void visitSelectInst(llvm::SelectInst& S);
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.
