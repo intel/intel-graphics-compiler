@@ -46,6 +46,18 @@ ResourceLoopAnalysis::ResourceLoopAnalysis() : FunctionPass(ID) {
   initializeResourceLoopAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
+static bool ValueOnlyUsedByEEI(Value *V) {
+  for (Value::user_iterator UI = V->user_begin(), UE = V->user_end(); UI != UE;
+       ++UI) {
+    ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(*UI);
+    if (!EEI || (EEI->getOperand(0) != V) ||
+        !isa<ConstantInt>(EEI->getOperand(1))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool ResourceLoopAnalysis::runOnFunction(Function &F) {
   auto WI = &(getAnalysis<WIAnalysis>());
   CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -69,6 +81,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
     Value *loopSamp = nullptr;
     auto prevMemIter = BB->end();   // last memory-inst in the loop
     SmallPtrSet<Value *, 8> DefSet; // all memory-inst in the loop
+    SmallPtrSet<Value *, 8> DefOnly4EEI;
     for (BasicBlock::iterator II = BB->begin(), EI = BB->end(); II != EI;
          ++II) {
       Instruction *I = &*II;
@@ -102,8 +115,24 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
       bool HasDeps = false;
       for (Value *opnd : I->operands()) {
         if (DefSet.count(opnd)) {
-          HasDeps = true;
-          break;
+          // special handling on extract-element in the loop
+          bool SkipEEI = false;
+          if (auto EEI = dyn_cast<ExtractElementInst>(I)) {
+            if (opnd == EEI->getVectorOperand()) {
+              if (DefOnly4EEI.count(opnd))
+                SkipEEI = true;
+              else if (ValueOnlyUsedByEEI(opnd)) {
+                DefOnly4EEI.insert(opnd);
+                SkipEEI = true;
+              }
+            }
+          }
+          if (SkipEEI)
+            DefSet.insert(I); // add EEI to the def-set
+          else {
+            HasDeps = true;
+            break;
+          }
         }
       }
       if (curRes || curSamp) {
@@ -118,6 +147,10 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           ++III;
           while (!LoopEnd && III != II) {
             auto defInst = &*III;
+            if (isa<ExtractElementInst>(defInst) && DefSet.count(defInst)) {
+              ++III;
+              continue;
+            }
             for (auto UI = defInst->user_begin(), UE = defInst->user_end();
                  !LoopEnd && UI != UE; ++UI) {
               // Determine the block of the use.
