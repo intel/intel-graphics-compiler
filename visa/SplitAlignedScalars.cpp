@@ -332,8 +332,13 @@ void SplitAlignedScalars::run() {
   auto getNewDcl = [&](G4_Declare *oldDcl) {
     auto newTopDcl = oldNewDcls[oldDcl];
     if (newTopDcl == nullptr) {
-      newTopDcl = kernel.fg.builder->createTempVar(
-          oldDcl->getNumElems(), oldDcl->getElemType(), G4_SubReg_Align::Any);
+      auto builder = kernel.fg.builder;
+      auto numElems = oldDcl->getNumElems();
+      auto elemType = oldDcl->getElemType();
+      auto subAlign = Get_G4_SubRegAlign_From_Size(
+          numElems * TypeSize(elemType), builder->getPlatform(),
+          builder->getGRFAlign());
+      newTopDcl = builder->createTempVar(numElems, elemType, subAlign);
       oldNewDcls[oldDcl] = newTopDcl;
     }
     return newTopDcl;
