@@ -140,6 +140,12 @@ public:
       }
     }
   }
+  bool isValidNumGRFs(unsigned grfs) const {
+    auto iter =
+        std::find_if(configs.begin(), configs.end(),
+                     [grfs](const Config &c) { return c.numGRF == grfs; });
+    return iter != configs.end();
+  }
 
   unsigned findModeByRegPressure(unsigned maxRP, unsigned largestInputReg);
 
@@ -631,6 +637,7 @@ public:
   bool updateKernelToLargerGRF();
   bool updateKernelToSmallerGRF();
   void updateKernelByRegPressure(unsigned regPressure);
+  bool updateKernelFromNumGRFAttr();
 
   void evalAddrExp();
 

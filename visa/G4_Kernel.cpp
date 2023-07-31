@@ -475,7 +475,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
   } else {
     gtPinInfo = nullptr;
   }
-
+  regSharingHeuristics = m_options->getOption(vISA_RegSharingHeuristics);
   // NoMask WA
   m_EUFusionNoMaskWAInfo = nullptr;
 
@@ -663,6 +663,25 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
 
   // Update physical register pool
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
+}
+
+//
+// Updates kernel's related structures based on NumGRF attribute
+//
+bool G4_Kernel::updateKernelFromNumGRFAttr() {
+  unsigned attrNumGRF =
+      m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_NumGRF);
+  if (!grfMode.isValidNumGRFs(attrNumGRF))
+    return false;
+  if (numRegTotal == attrNumGRF)
+    return true;
+
+  numRegTotal = attrNumGRF;
+  regSharingHeuristics = false;
+  // Scale number of GRFs, Acc, SWSB tokens.
+  setKernelParameters();
+  fg.builder->rebuildPhyRegPool(getNumRegTotal());
+  return true;
 }
 
 //
@@ -939,7 +958,6 @@ void G4_Kernel::setKernelParameters() {
   overrideNumThreads = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
   overrideNumSWSB = m_options->getuInt32Option(vISA_SWSBTokenNum);
   overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
-  regSharingHeuristics = m_options->getOption(vISA_RegSharingHeuristics);
 
   //
   // Number of threads/GRF can currently be set by:
@@ -947,7 +965,11 @@ void G4_Kernel::setKernelParameters() {
   // 2.- Compiler option entered by user for
   //      2.1 entire module
   //      2.2 kernel function
-  // 3.- Compiler heuristics
+  // 3.- Per kernel attribute
+  // 4.- Compiler heuristics
+  //
+  // 1 and 2 are set via vISA option; 3 via kernel attribute.
+  // If none of them are set, compiler selects the best option (4).
   //
 
   if (overrideNumThreads > 0) {
@@ -955,7 +977,7 @@ void G4_Kernel::setKernelParameters() {
     overrideGRFNum = 0;
   } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
     grfMode.setModeByNumGRFs(overrideGRFNum);
-  } else if (regSharingHeuristics) {
+  } else {
     // GRFMode is set to default mode when kernel is created
     // During compilation GRFMode may change by updating numRegTotal
     if (numRegTotal > 0)

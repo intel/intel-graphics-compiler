@@ -128,6 +128,15 @@ int VISAKernelImpl::compileFastPath() {
         m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_RetValSize))),
       "vISA: input for function must have attributes ArgSize and RetValSize!");
 
+  if (getIsKernel() &&
+      m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_NumGRF)) {
+    if (!m_kernel->updateKernelFromNumGRFAttr()) {
+      m_builder->criticalMsgStream()
+          << "vISA: wrong value for .kernel_attr NumGRF";
+      return VISA_FAILURE;
+    }
+  }
+
   if (getIsKernel()) {
     status = calculateTotalInputSize();
   }
