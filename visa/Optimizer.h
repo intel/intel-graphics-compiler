@@ -153,13 +153,16 @@ class Optimizer {
   }
 
   void preRA_Schedule() {
+    unsigned KernelPressure = 0;
     if (kernel.useRegSharingHeuristics()) {
-      preRA_RegSharing Sched(kernel, /*rpe*/ nullptr);
-      Sched.run();
+      preRA_RegSharing Sched(kernel);
+      Sched.run(KernelPressure);
     } else {
-      preRA_Scheduler Sched(kernel, /*rpe*/ nullptr);
-      Sched.run();
+      preRA_Scheduler Sched(kernel);
+      Sched.run(KernelPressure);
     }
+    // Update Jit info for max register pressure
+    kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = KernelPressure;
   }
   void localSchedule() {
     LocalScheduler lSched(kernel.fg);
