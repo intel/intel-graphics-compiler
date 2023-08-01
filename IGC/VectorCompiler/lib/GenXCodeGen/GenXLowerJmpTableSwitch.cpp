@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -246,6 +246,9 @@ bool GenXLowerJmpTableSwitch::runOnFunction(Function &F) {
     return false;
 
   if (!ST->hasSwitchjmp())
+    return false;
+
+  if (F.hasFnAttribute(Attribute::AlwaysInline))
     return false;
 
   auto Candidates = collectSwitchCandidates(F);
