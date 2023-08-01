@@ -1286,19 +1286,23 @@ void GenXKernelBuilder::runOnFunction() {
 }
 
 bool GenXKernelBuilder::run() {
-  GrfByteSize = Subtarget ? Subtarget->getGRFByteSize() : defaultGRFByteSize;
-  StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
+  if (!Subtarget) {
+    vc::diagnose(getContext(), "GenXKernelBuilder",
+                 "Invalid kernel without subtarget");
+    IGC_ASSERT_UNREACHABLE();
+  }
+  GrfByteSize = Subtarget->getGRFByteSize();
+  StackSurf = Subtarget->stackSurface();
 
   CRMask = CRBits::SinglePrecisionMode | CRBits::RoundingMode |
            CRBits::DoublePrecisionDenorm | CRBits::SinglePrecisionDenorm |
            CRBits::HalfPrecisionDenorm;
 
+
   UseNewStackBuilder =
       BackendConfig->useNewStackBuilder() && Subtarget->isOCLRuntime();
   StackCallExecSize =
       getExecSizeFromValue(BackendConfig->getInteropSubgroupSize());
-
-  IGC_ASSERT(Subtarget);
 
   HasSimdCF = false;
 
@@ -2355,7 +2359,7 @@ std::string GenXKernelBuilder::createInlineAsmOperand(
   default: {
     diagnoseInlineAsm(getContext(), Inst,
                       " constraint incorrect in inline assembly", DS_Error);
-    break;
+    IGC_ASSERT_UNREACHABLE();
   }
   case ConstraintType::Constraint_i: {
     diagnoseInlineAsm(
@@ -3553,6 +3557,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (!Const) {
       vc::diagnose(getContext(), "GenXCisaBuilder",
                    "Incorrect args to intrinsic call", CI);
+      IGC_ASSERT_UNREACHABLE();
     }
     unsigned val = Const->getSExtValue();
     LLVM_DEBUG(dbgs() << "GetUnsignedValue from op #" << AI.getArgIdx()
@@ -3801,6 +3806,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (!Const) {
       vc::diagnose(getContext(), "GenXCisaBuilder",
                    "Incorrect args to intrinsic call", CI);
+      IGC_ASSERT_UNREACHABLE();
     }
     unsigned Byte = Const->getSExtValue() & 0xFF;
     *Mask = static_cast<VISA_EMask_Ctrl>(Byte >> 4);
@@ -3907,6 +3913,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (!VT) {
       vc::diagnose(getContext(), "GenXCisaBuilder", "Invalid number of GRFs",
                    CI);
+      IGC_ASSERT_UNREACHABLE();
     }
     int DataSize = VT->getNumElements() *
                    VT->getElementType()->getPrimitiveSizeInBits() / 8;
@@ -3920,6 +3927,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (!Const) {
       vc::diagnose(getContext(), "GenXCisaBuilder",
                    "Incorrect args to intrinsic call", CI);
+      IGC_ASSERT_UNREACHABLE();
     }
     unsigned Byte = Const->getSExtValue() & 15;
     // Find the U_offset arg. It is the first vector arg after this one.
@@ -6195,7 +6203,10 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
   VISA_PredOpnd *Pred = nullptr;
   auto *MDArg = CI->getMetadata(vc::InstMD::FuncArgSize);
   auto *MDRet = CI->getMetadata(vc::InstMD::FuncRetSize);
-  IGC_ASSERT(MDArg && MDRet);
+  if (!MDArg || !MDRet) {
+    vc::diagnose(getContext(), "GenXCisaBuilder", "Invalid stack call", CI);
+    IGC_ASSERT_UNREACHABLE();
+  }
   auto ArgSize =
       cast<ConstantInt>(
           cast<ConstantAsMetadata>(MDArg->getOperand(0).get())->getValue())

@@ -877,7 +877,7 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
   // for a bitcast). This typically happens when the arg and ret were a by ref
   // region of a matrix, but the matrix was initialized to constant, or not
   // initialized at all, before the call, so the rdregion got simplified away.
-  if (!RetRWS.isNull()) {
+  if (!RetRWS.isNull() && RetRWS.OldVal) {
     Value *RetOldVal = RetRWS.OldVal;
     while (auto BC = dyn_cast<BitCastInst>(RetOldVal))
       RetOldVal = BC->getOperand(0);
