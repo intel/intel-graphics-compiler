@@ -2676,7 +2676,7 @@ bool SynchronizationObjectCoalescing::runOnFunction(llvm::Function& F)
             constexpr uint32_t globalMemFenceArg = 0;
             pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SFID::LSC_SLM)));
             constexpr uint32_t scopeMemFenceArg = 1;
-            pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(scopeMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SCOPE::LSC_SCOPE_GROUP)));
+            pGenIntrinsicInst->setOperand(scopeMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(scopeMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SCOPE::LSC_SCOPE_GROUP)));
             break;
         }
         default:
