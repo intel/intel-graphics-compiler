@@ -1637,6 +1637,15 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     if (NonTempMD)
         NewStore->setMetadata("nontemporal", NonTempMD);
 
+    // Clone metadata
+    llvm::SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;
+    TailingStore->getAllMetadata(MDs);
+    for (llvm::SmallVectorImpl<std::pair<unsigned, llvm::MDNode*> >::iterator
+        MI = MDs.begin(), ME = MDs.end(); MI != ME; ++MI)
+    {
+        NewStore->setMetadata(MI->first, MI->second);
+    }
+
     // Replace the list to be optimized with the new store.
     Instruction* NewOne = NewStore;
     std::swap(ToOpt.back(), NewOne);
