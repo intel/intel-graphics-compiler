@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -47,18 +48,24 @@ namespace IGC {
       AU.addRequired<WIAnalysis>();
       AU.addRequired<CodeGenContextWrapper>();
     }
-#if 0
-    void StateLoopStart(IGC::CVariable *f, unsigned l) {
+
+    void SaveStateLoopStart(ResourceDescriptor res, SamplerDescriptor samp, CVariable *f, unsigned l) {
+      resource = res;
+      sampler = samp;
       flag = f;
       label = l;
     }
-    void StateLoopEnd() {
+    void ClearStateLoopEnd() {
+      resource.m_resource = nullptr;
+      sampler.m_sampler = nullptr;
       flag = nullptr;
       label = 0;
     }
+    ResourceDescriptor& GetResourceLoopResource() { return resource; }
+    SamplerDescriptor& GetResourceLoopSampler() { return sampler; }
     unsigned GetResourceLoopLabel() { return label; }
-    IGC::CVariable *GetResourceLoopFlag() { return flag; }
-#endif
+    CVariable *GetResourceLoopFlag() { return flag; }
+
     unsigned GetResourceLoopMarker(llvm::Instruction *inst) {
       if (LoopMap.find(inst) == LoopMap.end())
         return MarkResourceLoopOutside;
@@ -72,8 +79,10 @@ namespace IGC {
     // analysis result
     llvm::DenseMap<llvm::Instruction*, unsigned> LoopMap;
     // recording state for loop emission
-    // IGC::CVariable *flag;
-    // uint32_t label;
+    ResourceDescriptor resource;
+    SamplerDescriptor sampler;
+    CVariable *flag;
+    uint32_t label;
   };
 
   llvm::FunctionPass *createResourceLoopAnalysisPass();

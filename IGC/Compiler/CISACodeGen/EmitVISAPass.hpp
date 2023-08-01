@@ -424,10 +424,10 @@ public:
     void emitVectorBitCast(llvm::BitCastInst* BCI);
     void emitVectorLoad(llvm::LoadInst* LI, llvm::Value* offset, llvm::ConstantInt* immOffset);
     void emitVectorStore(llvm::StoreInst* SI, llvm::Value* offset, llvm::ConstantInt* immOffset);
-    void emitLSCVectorLoad(llvm::Value *Ptr,
+    void emitLSCVectorLoad(llvm::Instruction *Inst,
+                           llvm::Value *Ptr,
                            llvm::Value *offset, llvm::ConstantInt *immOffset,
-                           llvm::Type *Ty, LSC_CACHE_OPTS cacheOpts,
-                           uint64_t align);
+                           LSC_CACHE_OPTS cacheOpts);
     void emitLSCVectorStore(llvm::Value *Ptr,
                             llvm::Value *offset, llvm::ConstantInt *immOffset,
                             llvm::Value *storedVal, llvm::BasicBlock* BB,
@@ -685,33 +685,29 @@ public:
         ResourceDescriptor& resource,
         SamplerDescriptor& sampler,
         CVariable*& flag,
-        uint& label);
+        uint& label,
+        uint ResourceLoopMarker = 0);
     bool ResourceLoopHeader(
         ResourceDescriptor& resource,
         CVariable*& flag,
-        uint& label);
-    void ResourceLoopBackEdge(bool needLoop, CVariable* flag, uint label);
+        uint& label,
+        uint ResourceLoopMarker = 0);
+    void ResourceLoopBackEdge(
+        bool needLoop,
+        CVariable* flag,
+        uint label,
+        uint ResourceLoopMarker = 0);
     template<typename Func>
-    void ResourceLoop(ResourceDescriptor& resource, Func Fn)
+    void ResourceLoop(ResourceDescriptor &resource, Func Fn,
+                      uint ResourceLoopMarker = 0)
     {
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
+        bool needLoop = ResourceLoopHeader(resource, flag, label, ResourceLoopMarker);
 
         Fn(flag);
 
-        ResourceLoopBackEdge(needLoop, flag, label);
-    }
-    template<typename Func>
-    void ResourceLoop(ResourceDescriptor& resource, SamplerDescriptor& sampler, Func Fn)
-    {
-        uint label = 0;
-        CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
-
-        Fn(flag);
-
-        ResourceLoopBackEdge(needLoop, flag, label);
+        ResourceLoopBackEdge(needLoop, flag, label, ResourceLoopMarker);
     }
 
     void ForceDMask(bool createJmpForDiscard = true);

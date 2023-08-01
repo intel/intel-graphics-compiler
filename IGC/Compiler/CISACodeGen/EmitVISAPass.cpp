@@ -9897,12 +9897,11 @@ void EmitPass::emitLoadRawIndexed(
         LSC_CACHE_OPTS cacheOpts =
             translateLSCCacheControlsFromMetadata(inst, true);
         emitLSCVectorLoad(
+            inst,
             bufPtrv,
             varOffset,
             immOffset,
-            inst->getType(),
-            cacheOpts,
-            inst->getAlignment());
+            cacheOpts);
         return;
     }
     IGC_ASSERT(immOffset == nullptr);
@@ -10208,12 +10207,11 @@ void EmitPass::emitLoad(
         LSC_CACHE_OPTS cacheOpts =
             translateLSCCacheControlsFromMetadata(inst, true);
         emitLSCVectorLoad(
+            inst,
             inst->getPointerOperand(),
             offset,
             immOffset,
-            inst->getType(),
-            cacheOpts,
-            IGCLLVM::getAlignmentValue(inst));
+            cacheOpts);
         return;
     }
     emitVectorLoad(inst, offset, immOffset);
@@ -17931,10 +17929,16 @@ void EmitPass::emitLSCVectorLoad_uniform(
     return;
 }
 
-void EmitPass::emitLSCVectorLoad(Value *Ptr,
+void EmitPass::emitLSCVectorLoad(Instruction* inst,
+                                 Value *Ptr,
                                  Value *varOffset, ConstantInt *immOffset,
-                                 Type *Ty, LSC_CACHE_OPTS cacheOpts,
-                                 uint64_t align) {
+                                 LSC_CACHE_OPTS cacheOpts) {
+    Type *Ty = inst->getType();
+    uint64_t align = 0;
+    if (auto LI = dyn_cast<LoadInst>(inst))
+        align = IGCLLVM::getAlignmentValue(LI);
+    else if (auto CI = dyn_cast<LdRawIntrinsic>(inst))
+        align = CI->getAlignment();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -18058,7 +18062,7 @@ void EmitPass::emitLSCVectorLoad(Value *Ptr,
                 emitVectorCopy(destCVar, gatherDst, instElts, eltOff, 0);
             }
         }
-    });
+    }, m_RLA->GetResourceLoopMarker(inst));
 }
 
 // Sub-function of emitLSCVectorStore()
@@ -19438,10 +19442,11 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
 bool EmitPass::ResourceLoopHeader(
     ResourceDescriptor& resource,
     CVariable*& flag,
-    uint& label)
+    uint& label,
+    uint ResourceLoopMarker)
 {
     SamplerDescriptor sampler;
-    return ResourceLoopHeader(resource, sampler, flag, label);
+    return ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker);
 }
 
 // Insert loop header to handle non-uniform resource and sampler
@@ -19450,20 +19455,30 @@ bool EmitPass::ResourceLoopHeader(
     ResourceDescriptor& resource,
     SamplerDescriptor& sampler,
     CVariable*& flag,
-    uint& label)
+    uint& label,
+    uint ResourceLoopMarker)
 {
     if (resource.m_surfaceType != ESURFACE_BINDLESS &&
         resource.m_surfaceType != ESURFACE_SSHBINDLESS &&
         resource.m_surfaceType != ESURFACE_NORMAL)
     {
         // Loop only needed for access with surface state
+        IGC_ASSERT(ResourceLoopMarker == 0);
         return false;
     }
     bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
     bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
     if (uniformResource && uniformSampler)
     {
+        IGC_ASSERT(ResourceLoopMarker == 0);
         return false;
+    }
+    if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside)
+    {
+        resource = m_RLA->GetResourceLoopResource();
+        sampler = m_RLA->GetResourceLoopSampler();
+        flag = m_RLA->GetResourceLoopFlag();
+        return true;
     }
     m_currShader->IncNumSampleBallotLoops();
     CVariable* resourceFlag = nullptr;
@@ -19513,12 +19528,30 @@ bool EmitPass::ResourceLoopHeader(
         m_encoder->Push();
         m_encoder->SetSecondHalf(!m_encoder->IsSecondHalf());
     }
+    if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopStart)
+    {
+        m_RLA->SaveStateLoopStart(resource, sampler, flag, label);
+    }
     return true;
 }
 
-void EmitPass::ResourceLoopBackEdge(bool needLoop, CVariable* flag, uint label)
+void EmitPass::ResourceLoopBackEdge(
+    bool needLoop,
+    CVariable* flag,
+    uint label,
+    uint ResourceLoopMarker)
 {
-    if (needLoop)
+    if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopEnd)
+    {
+        flag = m_RLA->GetResourceLoopFlag();
+        label = m_RLA->GetResourceLoopLabel();
+        IGC_ASSERT(flag && label);
+        m_encoder->SetInversePredicate(true);
+        m_encoder->Jump(flag, label);
+        m_encoder->Push();
+        m_RLA->ClearStateLoopEnd();
+    }
+    else if(needLoop && !ResourceLoopMarker)
     {
         m_encoder->SetInversePredicate(true);
         m_encoder->Jump(flag, label);
