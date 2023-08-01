@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-    enum HullShaderDispatchModes : signed int
+    enum HullShaderDispatchModes : unsigned int
     {
         SINGLE_PATCH_DISPATCH_MODE,
         DUAL_PATCH_DISPATCH_MODE,
