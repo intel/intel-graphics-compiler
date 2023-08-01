@@ -105,6 +105,11 @@ def FeatureInstrLocalIntegerCas64: SubtargetFeature<"localintegercas64",
                                                     "true",
                                                     "support of local 64-bit integer compare exchange instruction">;
 
+def FeatureInstrGlobalAtomicAddF64: SubtargetFeature<"globaldoubleaddsub",
+                                                    "HasGlobalAtomicAddF64",
+                                                    "true",
+                                                    "support of global double precision atomic add/sub instructions">;
+
 def FeatureHWTIDFromPredef: SubtargetFeature<"hwtidfrompredef",
                                              "GetsHWTIDFromPredef",
                                              "true",
@@ -406,6 +411,7 @@ def : Proc<"XeHPC", [
   FeatureIndirectGRFCrossing,
   FeatureInstr64BitRotate,
   FeatureInstrAdd64,
+  FeatureInstrGlobalAtomicAddF64,
   FeatureInstrLocalIntegerCas64,
   FeatureLSCMaxWidth32,
   FeatureLongLong,

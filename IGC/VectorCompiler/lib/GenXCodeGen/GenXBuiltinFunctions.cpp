@@ -281,6 +281,7 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   auto IID = vc::getAnyIntrinsicID(&II);
   auto *Ty = II.getType();
   auto &M = *II.getModule();
+  IRBuilder<> Builder(&II);
   Function *Func = nullptr;
   SmallVector<Value *, 2> Args(II.args());
 
@@ -315,7 +316,6 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   } break;
 
   case vc::InternalIntrinsic::lsc_atomic_slm: {
-    IRBuilder<> Builder(&II);
     auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
     if (Opcode->getZExtValue() == LSC_ATOMIC_ICAS)
       return nullptr;
@@ -332,9 +332,30 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
     Args.clear();
     Args.push_back(Mask);
     Args.push_back(Opcode);
-    std::copy(II.arg_begin() + 4, II.arg_end() - 2, std::back_inserter(Args));
-    Args.push_back(II.getArgOperand(12));
+    std::copy(II.arg_begin() + 4, II.arg_end(), std::back_inserter(Args));
   } break;
+
+  case vc::InternalIntrinsic::lsc_atomic_ugm: {
+    IRBuilder<> Builder(&II);
+    auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
+    auto ElementSize = cast<ConstantInt>(II.getArgOperand(3))->getZExtValue();
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+    auto *ETy = VTy->getElementType();
+    const bool isAddSub = Opcode->getZExtValue() == LSC_ATOMIC_FADD ||
+                          Opcode->getZExtValue() == LSC_ATOMIC_FSUB;
+    if ((!ETy->isDoubleTy() || (ST->hasGlobalAtomicAddF64() && isAddSub)) &&
+        !(ElementSize == LSC_DATA_SIZE_16c32b && isAddSub))
+      return nullptr;
+    Func = getBuiltinDeclaration(M, "atomic_ugm", false, {VTy});
+
+    auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
+                                                  VTy->getNumElements());
+    auto *Mask = Builder.CreateZExt(II.getArgOperand(0), MaskVTy);
+    SmallVector<Value *, 10> Args = {Mask, Opcode};
+    std::copy(II.arg_begin() + 4, II.arg_end(), std::back_inserter(Args));
+
+    return createLibraryCall(II, Func, Args);
+  }
 
   default:
     break;
