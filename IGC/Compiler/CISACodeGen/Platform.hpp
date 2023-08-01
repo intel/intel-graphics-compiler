@@ -304,6 +304,11 @@ bool hasSLMFence() const
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
 }
 
+bool hasIndependentSharedMemoryFenceFunctionality() const
+{
+    return (m_platformInfo.eProductFamily == IGFX_DG2);
+}
+
 bool supportRotateInstruction() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
 bool supportLRPInstruction() const { return m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE; }
 bool support16bitMSAAPayload() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
