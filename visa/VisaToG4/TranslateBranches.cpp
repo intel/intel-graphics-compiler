@@ -171,14 +171,17 @@ int IR_Builder::translateVISACFSymbolInst(const std::string &symbolName,
 
   if (symbolName.compare("INTEL_PATCH_PRIVATE_MEMORY_SIZE") == 0) {
     // Relocation for runtime-calculated private memory size
-    auto *privateMemPatch = createRelocImm(Type_UD);
+    auto *privateMemPatch =
+        createRelocImm(GenRelocType::R_SYM_ADDR_32, symbolName, Type_UD);
     dst->setType(*this, Type_UD);
     G4_INST *mov =
         createMov(g4::SIMD1, dst, privateMemPatch, InstOpt_WriteEnable, true);
     RelocationEntry::createRelocation(kernel, *mov, 0, symbolName,
                                       GenRelocType::R_SYM_ADDR_32);
   } else if (Type_D == dst->getType()) {
-    auto patchImm = createRelocImm(dst->getType());
+    auto patchImm =
+        createRelocImm(GenRelocType::R_GLOBAL_IMM_32, symbolName,
+                       dst->getType());
     auto movInst =
         createMov(g4::SIMD1, dst, patchImm, InstOpt_WriteEnable, true);
 
@@ -186,10 +189,13 @@ int IR_Builder::translateVISACFSymbolInst(const std::string &symbolName,
                                       GenRelocType::R_GLOBAL_IMM_32);
   } else if (noInt64() || needSwap64ImmLoHi() ||
              VISA_WA_CHECK(getPWaTable(), WaDisallow64BitImmMov)) {
-    auto *funcAddrLow = createRelocImm(Type_UD);
-    auto *funcAddrHigh = createRelocImm(Type_UD);
-
     vASSERT(!dst->isIndirect());
+
+    auto *funcAddrLow =
+        createRelocImm(GenRelocType::R_SYM_ADDR_32, symbolName, Type_UD);
+    auto *funcAddrHigh =
+        createRelocImm(GenRelocType::R_SYM_ADDR_32_HI, symbolName, Type_UD);
+
     // change type from uq to ud, adjust the subRegOff
     auto dstLo = createDst(dst->getBase(), dst->getRegOff(),
                            dst->getSubRegOff() * 2, 1, Type_UD);
@@ -207,7 +213,8 @@ int IR_Builder::translateVISACFSymbolInst(const std::string &symbolName,
                                       GenRelocType::R_SYM_ADDR_32_HI);
   } else {
     // symbolic imm representing symbol's address
-    auto funcAddr = createRelocImm(Type_UQ);
+    auto funcAddr =
+        createRelocImm(GenRelocType::R_SYM_ADDR, symbolName, Type_UQ);
     auto movInst =
         createMov(g4::SIMD1, dst, funcAddr, InstOpt_WriteEnable, true);
 

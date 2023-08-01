@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "G4_Declare.h"
 #include "G4_Opcode.h"
 #include "G4_Register.h"
+#include "include/RelocationInfo.h"
 
 #include <iostream>
 #include <vector>
@@ -464,16 +465,25 @@ public:
 };
 
 class G4_Reloc_Imm : public G4_Imm {
+  friend class IR_Builder;
 
-public:
+  GenRelocType relocKind;
+  const char  *symbol;
+
+  // G4_Reloc_Imm is a relocation target field.
+  // Use Build_IR::createRelocImm to construct one of these operands.
+  G4_Reloc_Imm(GenRelocType rt, const char *sym, int64_t val, G4_Type ty)
+    : G4_Imm(val, ty), symbol(sym), relocKind(rt) {}
+
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
+public:
+
   bool isRelocImm() const override { return true; }
 
-  // G4_Reloc_Imm is the relocation target field. If the value is not given,
-  // a magic number 0x6e10ca2e will present in final output
-  G4_Reloc_Imm(G4_Type ty) : G4_Imm((int64_t)0x6e10ca2e, ty) {}
+  void emit(std::ostream &output) override;
 
-  G4_Reloc_Imm(int64_t val, G4_Type ty) : G4_Imm(val, ty) {}
+  // magic value used when no default relocation value is given
+  static const uint32_t DEFAULT_MAGIC = 0x6e10ca2e;
 };
 
 class G4_Label : public G4_Operand {

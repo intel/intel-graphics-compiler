@@ -4576,7 +4576,7 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
   return 0;
 }
 
-const char *RelocationEntry::getTypeString() const {
+const char *RelocationEntry::getTypeString(RelocationType relocType) {
   switch (relocType) {
   case RelocationType::R_SYM_ADDR:
     return "R_SYM_ADDR";
@@ -4592,38 +4592,15 @@ const char *RelocationEntry::getTypeString() const {
     return "R_SEND";
   default:
     vISA_ASSERT_UNREACHABLE("unhandled relocation type");
-    return "";
+    return "??";
   }
 }
 
 void RelocationEntry::dump(std::ostream &os) const {
-  os << "Relocation entry: " << getTypeString() << "\n";
+  os << "Relocation entry: " << getTypeString(relocType) << "\n";
   os << "\t";
   inst->dump();
-  switch (relocType) {
-  case RelocationType::R_NONE:
-    os << "R_NONE: symbol name = " << symName;
-    break;
-  case RelocationType::R_SYM_ADDR:
-    os << "R_SYM_ADDR: symbol name = " << symName;
-    break;
-  case RelocationType::R_SYM_ADDR_32:
-    os << "R_SYM_ADDR_32: symbol name = " << symName;
-    break;
-  case RelocationType::R_SYM_ADDR_32_HI:
-    os << "R_SYM_ADDR_32_HI: symbol name = " << symName;
-    break;
-  case RelocationType::R_PER_THREAD_PAYLOAD_OFFSET_32:
-    os << "R_PER_THREAD_PAYLOAD_OFFSET_32: symbol name = " << symName;
-    break;
-  case RelocationType::R_GLOBAL_IMM_32:
-    os << "R_GLOBAL_IMM_32: symbol name = " << symName;
-    break;
-  case RelocationType::R_SEND:
-    os << "R_SEND: symbol name = " << symName;
-    break;
-  }
-  os << "\n";
+  os << "  symbol = " << symName << "; src" << opndPos << "\n";
 }
 
 void FuncInfo::dump() const {

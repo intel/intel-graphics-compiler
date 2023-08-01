@@ -33,7 +33,8 @@ public:
   G4_INST *getInst() const { return inst; }
 
   RelocationType getType() const { return relocType; }
-  const char *getTypeString() const;
+  const char *getTypeString() const {return getTypeString(getType());}
+  static const char *getTypeString(RelocationType rt);
 
   uint32_t getOpndPos() const { return opndPos; }
 

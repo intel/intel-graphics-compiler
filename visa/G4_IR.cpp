@@ -5490,6 +5490,46 @@ int64_t G4_Imm::typecastVals(int64_t value, G4_Type type) {
   return retVal;
 }
 
+void G4_Reloc_Imm::emit(std::ostream &output) {
+  // @RelocTy(Symbol):OpType
+  // @RelocTy(Symbol+Imm):OpType
+  output << "@" << RelocationEntry::getTypeString(relocKind);
+  output << "(\"";
+  const char *sym = symbol;
+  for (; *sym; sym++) {
+    switch (*sym) {
+    case '\"':
+      output << "\\\"";
+      break;
+    case '\'':
+      output << "\\\'";
+      break;
+    case '\\':
+      output << "\\\\";
+      break;
+    default:
+      if (std::isprint(*sym))
+        output << *sym;
+      else
+        output <<
+          "\\x" <<
+          "0123456789ABCDEF"[(*sym >> 4) & 0xF] <<
+          "0123456789ABCDEF"[(*sym >> 0) & 0xF];
+    }
+  }
+  output << "\"";
+  if (getImm() != 0) {
+    output << "," <<
+      (TypeSize(type) == 8 ? fmtHex(getImm()) : fmtHex((uint32_t)getImm()));
+  }
+  output << ")";
+
+
+  if (Type_UNDEF != type) {
+    output << ':' << TypeSymbol(type);
+  }
+}
+
 G4_RegVar *G4_RegVarTransient::getNonTransientBaseRegVar() {
   G4_RegVar *base;
   for (base = getBaseRegVar(); base->isRegVarTransient();

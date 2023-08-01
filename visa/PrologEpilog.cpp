@@ -677,7 +677,9 @@ private:
     auto dst = builder.createDst(rtmp->getRegVar(), 0, subreg, 1, Type_UD);
     auto src0 = builder.createSrc(rtmp->getRegVar(), 0, subreg,
                                   builder.getRegionScalar(), Type_UD);
-    auto src1 = builder.createRelocImm(0, Type_UD);
+    auto src1 =
+      builder.createRelocImm(GenRelocType::R_SYM_ADDR_32,
+                             CROSS_THREAD_OFF_R0_RELOCATION_NAME, 0, Type_UD);
     auto addInst =
       builder.createBinOp(G4_add, g4::SIMD1, dst, src0, src1,
                           InstOpt_WriteEnable | InstOpt_NoCompact, false);
@@ -853,7 +855,9 @@ public:
       // case of the cross_thread_size is changed after compilation (e.g. gtpin
       // inserted argument), the relocation need to be resolved to the new
       // cross_thread_size.
-      G4_Operand *addSrc1 = builder.createRelocImm(perThreadOffsetMem, Type_UW);
+      G4_Operand *addSrc1 =
+          builder.createRelocImm(GenRelocType::R_PER_THREAD_PAYLOAD_OFFSET_32,
+                                 kernel.getName(), perThreadOffsetMem, Type_UD);
       auto addDst = builder.createDst(rtmp->getRegVar(), 0, 2, 1, Type_UD);
       // instruction has relocation must not be compacted
       auto addInst =

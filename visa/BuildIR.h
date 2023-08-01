@@ -1069,10 +1069,10 @@ public:
   // Create immediate operand without looking up hash table. This operand
   // is a relocatable immediate type.
   //
-  G4_Reloc_Imm *createRelocImm(G4_Type ty) {
-    G4_Reloc_Imm *newImm;
-    newImm = new (mem) G4_Reloc_Imm(ty);
-    return newImm;
+  G4_Reloc_Imm *createRelocImm(
+    GenRelocType st, const std::string &sym, G4_Type ty)
+  {
+    return createRelocImm(st, sym, G4_Reloc_Imm::DEFAULT_MAGIC, ty);
   }
 
   //
@@ -1080,9 +1080,13 @@ public:
   // is a relocatable immediate type. Specify the value of this imm field,
   // which will present in the output instruction's imm value.
   //
-  G4_Reloc_Imm *createRelocImm(int64_t immval, G4_Type ty) {
-    G4_Reloc_Imm *newImm;
-    newImm = new (mem) G4_Reloc_Imm(immval, ty);
+  G4_Reloc_Imm *createRelocImm(
+    GenRelocType st, const std::string &sym, int64_t immval, G4_Type ty)
+  {
+    size_t len = sym.size() + 1;
+    char *symCopy = (char *)mem.alloc(len); // +1 for null that ends the string
+    memcpy_s(symCopy, len, sym.c_str(), len);
+    G4_Reloc_Imm *newImm = new (mem) G4_Reloc_Imm(st, symCopy, immval, ty);
     return newImm;
   }
 
