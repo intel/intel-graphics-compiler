@@ -1567,7 +1567,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   For the irreducible flow graph, those optimizations wouldn't be kicked in.
   */
   for (G4_BB_SB *bb : BBVector) {
-    for (auto loop : kernel.fg.getAllNaturalLoops()) {
+    for (const auto &loop : kernel.fg.getAllNaturalLoops()) {
       auto be = loop.first;
       auto &bbsInLoop = loop.second;
       if (bbsInLoop.count(bb->getBB())) {
