@@ -194,7 +194,9 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
         else if (I->mayReadOrWriteMemory())
           LoopEnds = true;
         else if (WI->isUniform(I))
-          LoopEnds = true;
+          LoopEnds = true; // avoid uniform in ballot loop
+        else if (I->getType()->getScalarType()->isIntegerTy(1))
+          LoopEnds = true; // avoid flag modification
 
         if (LoopEnds && prevMemIter != BB->end()) {
           auto PI = &*prevMemIter;
