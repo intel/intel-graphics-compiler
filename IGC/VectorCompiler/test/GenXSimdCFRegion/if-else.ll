@@ -15,7 +15,11 @@
 
 ; CHECK: foo
 define void @foo(i32 %In, i32 %Out) #0 {
+
+; CHECK: [[IF_ENTRY:[A-z0-9.]*]]:
 if.entry:
+; CHECK: %[[RM_ALLOCA:[A-z0-9.]*]] = alloca <16 x i1>
+; CHECK: %[[EM_ALLOCA:[A-z0-9.]*]] = alloca <32 x i1>
   %x = tail call <16 x i32> @llvm.genx.oword.ld.v16i32(i32 0, i32 1, i32 0)
   %y = tail call <16 x i32> @llvm.genx.oword.ld.v16i32(i32 0, i32 1, i32 0)
   %mask = icmp slt <16 x i32> %x, zeroinitializer
@@ -24,10 +28,20 @@ if.entry:
   br i1 %any, label %if.then, label %if.else
 
 ; CHECK: [[IF_AFTER_ENTRY:[A-z0-9.]*]]:
-; CHECK: [[GOTO:%[A-z0-9.]*]] = tail call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
-; CHECK: {{.*}} = extractvalue { <32 x i1>, <16 x i1>, i1 } [[GOTO]]
+; CHECK: %[[GOTO:[A-z0-9.]*]] = tail call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
+; CHECK: %[[BASIC_EM:[A-z0-9.]*]] = extractvalue { <32 x i1>, <16 x i1>, i1 } %[[GOTO]], 0
+; CHECK-DAG: store <32 x i1> %[[BASIC_EM]], <32 x i1>* %[[EM_ALLOCA]]
+; CHECK: %[[BASIC_RM:[A-z0-9.]*]] = extractvalue { <32 x i1>, <16 x i1>, i1 } %[[GOTO]], 1
+; CHECK-DAG: store <16 x i1> %[[BASIC_RM]], <16 x i1>* %[[RM_ALLOCA]]
+; CHECK: %[[BASIC_COND:[A-z0-9.]*]] = extractvalue { <32 x i1>, <16 x i1>, i1 } %[[GOTO]], 2
+; CHECK: br i1 %[[BASIC_COND]], label %[[AFTERTHEN:[A-z0-9.]*]], label %[[IF_THEN:[A-z0-9.]*]]
 
-; CHECK: [[IF_THEN:[A-z0-9.]*]]:      ; preds = %[[IF_AFTER_ENTRY]]
+; CHECK: [[IF_THEN]]:      ; preds = %[[IF_AFTER_ENTRY]]
+; CHECK: %[[LOAD_EM:[A-z0-9.]*]] = load {{.*}} %[[EM_ALLOCA]]
+; CHECK: %[[GOTO_ZERO:[A-z0-9.]*]] = tail call{{.*}}llvm.genx.simdcf.goto{{.*}}[[LOAD_EM]]{{.*}}zeroinitializer{{.*}}zeroinitializer
+; CHECK: %[[COND_ZERO:[A-z0-9.]*]] = extractvalue{{.*}}%[[GOTO_ZERO]], 2
+; CHECK: br i1 %[[COND_ZERO]]
+
 if.then:                                          ; preds = %entry
   %mul = mul <16 x i32> %x, <i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
   %mul2 = mul <16 x i32> %y, <i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
@@ -37,9 +51,9 @@ if.then:                                          ; preds = %entry
   %any.not = call i1 @llvm.genx.any.v16i1(<16 x i1> %not.mask)
   br i1 %any.not, label %if.else, label %if.end
 
-; CHECK: [[AFTERTHEN:[A-z0-9.]*]]: ; preds = %[[IF_THEN]], %[[IF_THEN]], %[[IF_AFTER_ENTRY]]
-; CHECK-DAG: [[AFTERTHEN_PHI_X:%[A-z0-9.]*]] = phi <16 x i32> [ %add.masked{{.*}}, %[[IF_THEN]] ], [ %add.masked{{.*}}, %[[IF_THEN]] ]
-; CHECK-DAG: [[AFTERTHEN_PHI_Y:%[A-z0-9.]*]] = phi <16 x i32> [ %add2.masked{{.*}}, %[[IF_THEN]] ], [ %add2.masked{{.*}}, %[[IF_THEN]] ]
+; CHECK: [[AFTERTHEN]]: ; preds = %[[IF_THEN]], %[[IF_THEN]], %[[IF_AFTER_ENTRY]]
+; CHECK-DAG: %[[AFTERTHEN_PHI_X:[A-z0-9.]*]] = phi <16 x i32> [ %add.masked{{.*}}, %[[IF_THEN]] ], [ %add.masked{{.*}}, %[[IF_THEN]] ]
+; CHECK-DAG: %[[AFTERTHEN_PHI_Y:[A-z0-9.]*]] = phi <16 x i32> [ %add2.masked{{.*}}, %[[IF_THEN]] ], [ %add2.masked{{.*}}, %[[IF_THEN]] ]
 ; CHECK-SAME: <i32 1, i32 1, i32 1, i32 1,
 ; CHECK: [[JOIN_CALL:%[A-z0-9.]*]] = tail call { <32 x i1>, i1 } @llvm.genx.simdcf.join
 ; CHECK: %{{.*}} = extractvalue { <32 x i1>, i1 } [[JOIN_CALL]]
@@ -54,8 +68,8 @@ if.else:
   br label %if.end
 
 ; CHECK: if.end: ; preds = %[[AFTERTHEN]], %[[IF_ELSE]]
-; C HECK-DAG: %{{[A-z0-9.]*}} = phi <16 x i32> [ [[AFTERTHEN_PHI_X]], {{.*}}afterthen ], [ %{{[A-z0-9.]*}}, %[[IF_ELSE]] ]
-; C HECK-DAG: %{{[A-z0-9.]*}} = phi <16 x i32> [ [[AFTERTHEN_PHI_Y]], {{.*}}afterthen ], [ %{{[A-z0-9.]*}}, %[[IF_ELSE]] ]
+; CHECK-DAG: %{{[A-z0-9.]*}} = phi <16 x i32> [ %[[AFTERTHEN_PHI_X]], {{.*}}afterthen ], [ %{{[A-z0-9.]*}}, %[[IF_ELSE]] ]
+; CHECK-DAG: %{{[A-z0-9.]*}} = phi <16 x i32> [ %[[AFTERTHEN_PHI_Y]], {{.*}}afterthen ], [ %{{[A-z0-9.]*}}, %[[IF_ELSE]] ]
 if.end:                                           ; preds = %if.then, %entry
   %a = phi <16 x i32> [ %add.masked, %if.then ], [ %add.1.masked, %if.else ]
   %b = phi <16 x i32> [ %add2.masked, %if.then ], [ %add2.1.masked, %if.else ]

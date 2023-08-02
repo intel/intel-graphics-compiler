@@ -19,7 +19,7 @@ define dllexport spir_kernel void @f_v(i8* %RET, i64 %impl.arg.private.base) #2 
 allocas:
   %pow_const = call <16 x float> @llvm.genx.pow.v16f32.v16f32(<16 x float> <float 1.0, float 1.0, float 0.0, float 0.0, float 1.0, float 1.0, float 0.0, float 0.0, float 1.0, float 1.0, float 0.0, float 0.0, float 1.0, float 1.0, float 0.0, float 0.0>, <16 x float> <float 0.0, float 1.0, float 0.0, float 1.0, float 0.0, float 1.0, float 0.0, float 1.0, float 0.0, float 1.0, float 0.0, float 1.0, float 0.0, float 1.0, float 0.0, float 1.0>)
   %fcmp_result = fcmp olt <16 x float> %pow_const, <float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0, float 1.0>
-  %any_check = call i1 @llvm.genx.all.v16i1(<16 x i1> %fcmp_result)
+  %any_check = call i1 @llvm.genx.any.v16i1(<16 x i1> %fcmp_result)
   br i1 %any_check, label %exit, label %if
 
 ; CHECK: [[AFTER_ALLOCAS:[A-z0-9.]*]]:
@@ -45,7 +45,7 @@ exit:                                         ; preds = %if, %allocas
   ret void
 }
 
-declare i1 @llvm.genx.all.v16i1(<16 x i1>) #0
+declare i1 @llvm.genx.any.v16i1(<16 x i1>) #0
 declare <16 x float> @llvm.genx.pow.v16f32.v16f32(<16 x float>, <16 x float>) #0
 declare void @llvm.genx.svm.block.st.i64.v16f32(i64, <16 x float>) #1
 

@@ -39,17 +39,6 @@ for_loop:                                         ; preds = %end_loop_exit, %all
   %i_load6_sext.elt0 = sext i32 %phi_inc_elt to i64
   %ptr = getelementptr float, float* %data_addr, i64 %i_load6_sext.elt0
   %mask_cast = bitcast <16 x i1> %phi_mask to i16
-  %mask_cut = and i16 %mask_cast, -32767
-  %cmp_and = icmp eq i16 %mask_cut, -32767
-  br i1 %cmp_and, label %vload_i, label %vgather_i
-
-vload_i:                                          ; preds = %for_loop
-  %bitptr.i.i = bitcast float* %ptr to <16 x float>*
-  %res_load = load <16 x float>, <16 x float>* %bitptr.i.i, align 64
-  %res_masked = select <16 x i1> %phi_mask, <16 x float> %res_load, <16 x float> undef
-  br label %end_loop_exit
-
-vgather_i:                                        ; preds = %for_loop
   %ptr_to_int = ptrtoint float* %ptr to i64
   %base = insertelement <16 x i64> undef, i64 %ptr_to_int, i32 0
   %shuffle = shufflevector <16 x i64> %base, <16 x i64> undef, <16 x i32> zeroinitializer
@@ -58,8 +47,7 @@ vgather_i:                                        ; preds = %for_loop
   br label %end_loop_exit
 
 end_loop_exit:                                    ; preds = %vgather_i, %vload_i
-  %phi_common_ret = phi <16 x float> [ %res_masked, %vload_i ], [ %res_gather, %vgather_i ]
-  %sum_exit = fadd <16 x float> %phi_sum, %phi_common_ret
+  %sum_exit = fadd <16 x float> %phi_sum, %res_gather
   %blend.i = select <16 x i1> %phi_mask, <16 x float> %sum_exit, <16 x float> %phi_sum
   ; <<<
   %increment_elt = add i32 %phi_inc_elt, 16
