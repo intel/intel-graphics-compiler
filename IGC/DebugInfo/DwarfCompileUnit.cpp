@@ -2500,13 +2500,6 @@ void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst,
     return;
   }
 
-  if (Loc.HasSurface()) {
-    IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
-    addRegisterOp(Block, Loc.GetSurface());
-    // Now attach the surface information to the DIE.
-    addBlock(VariableDie, dwarf::DW_AT_segment, Block);
-  }
-
   IGC::DIEBlock *locationAT = nullptr;
   if (Loc.IsSLM())
     locationAT = buildSLM(DV, Loc, VariableDie);
