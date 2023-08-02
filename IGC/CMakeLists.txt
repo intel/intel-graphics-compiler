@@ -1874,7 +1874,7 @@ message(STATUS "Using precompiled headers")
 
     add_dependencies(${_target}
       intrinsics_gen # generate *inc files for llvm/IR/Attributes.h
-      GenGenISAIntrinsics # generate IntrinsicGenISA.gen for GenISAIntrinsics/GenIntrinsics.h
+      IntrinsicDefintionGenerator # generate IntrinsicGenISA.gen for GenIntrinsicEnum.h
     )
 
     target_precompile_headers(${_target}

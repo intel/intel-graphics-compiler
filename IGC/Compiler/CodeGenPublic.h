@@ -54,6 +54,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <optional>
 #include <Metrics/IGCMetric.h>
+#include "llvmWrapper/IR/Module.h"
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
