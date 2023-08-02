@@ -1542,7 +1542,7 @@ DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
 void DepSet::setDstRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
                           uint32_t typeSizeBits) {
   // Previously we also skip acc register with subRegNum < 2 ==> WHY?
-  // The conditio is (rn == RegName::ARF_ACC && rr.subRegNum < 2)
+  // The condition is (rn == RegName::ARF_ACC && rr.subRegNum < 2)
   if (!isRegTracked(rn)) {
     // In the case that an instruction has only non-tracked register access,
     // we still want it to mark swsb if its previous instruction having
@@ -1558,55 +1558,58 @@ void DepSet::setDstRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
 
   m_dType = DEP_TYPE::WRITE;
 
-  uint32_t hz = static_cast<uint32_t>(rgn.getHz());
-  // sets a region for a basic operand
-  uint32_t grfAddr = addressOf(rn, rr, typeSizeBits);
-  if (grfAddr >= m_DB.getTOTAL_BITS())
-    return;
+  auto setBitsFromRegRef = [&](RegRef regRef) {
+    // sets a region for a basic operand
+    uint32_t grfAddr = addressOf(rn, regRef, typeSizeBits);
+    if (grfAddr >= m_DB.getTOTAL_BITS())
+      return;
+    uint32_t lowBound = m_DB.getTOTAL_BITS();
+    uint32_t upperBound = 0;
 
-  uint32_t lowBound = m_DB.getTOTAL_BITS();
-  uint32_t upperBound = 0;
+    // the acc0/acc1 could have overlapping. (same as acc2/acc3, acc4/acc5, ...)
+    // To be conservative we always mark them together when one of it is used
+    // This is to resolve the acc arrangement difference between int and float
+    // E.g. acc3.3:f and acc2.7:w have an overlap
+    if (rn == RegName::ARF_ACC) {
+      RegRef tmp_rr;
+      tmp_rr.regNum =
+          (regRef.regNum % 2) == 0 ? regRef.regNum : regRef.regNum - 1;
+      tmp_rr.subRegNum = 0;
+      lowBound = addressOf(rn, tmp_rr, typeSizeBits);
 
-  // the acc0/acc1 could have overlapping. (same as acc2/acc3, acc4/acc5, ...)
-  // To be conservative we always mark them together when
-  // one of it is used
-  // This is to resolve the acc arrangement difference between int and float
-  // E.g. acc3.3:f and acc2.7:w have an overlap
-  if (rn == RegName::ARF_ACC) {
-    RegRef tmp_rr;
-    tmp_rr.regNum = (rr.regNum % 2) == 0 ? rr.regNum : rr.regNum - 1;
-    tmp_rr.subRegNum = 0;
-    lowBound = addressOf(rn, tmp_rr, typeSizeBits);
+      // reg access cross two acc
+      upperBound = lowBound + 2 * m_DB.getARF_A_BYTES_PER_REG();
+      bits->set(lowBound, 2 * (size_t)m_DB.getARF_A_BYTES_PER_REG());
+    } else {
+      // otherwise caculate the access registers range from region
+      uint32_t hz = static_cast<uint32_t>(rgn.getHz());
+      for (uint32_t ch = 0; ch < execSize; ch++) {
+        uint32_t offset = ch * hz * typeSizeBits / 8;
+        uint32_t start = grfAddr + offset;
+        bits->set(start, typeSizeBits / 8);
 
-    // reg access cross two acc
-    upperBound = lowBound + 2 * m_DB.getARF_A_BYTES_PER_REG();
-    bits->set(lowBound, 2 * (size_t)m_DB.getARF_A_BYTES_PER_REG());
-  } else {
-    // otherwise caculate the access registers range from region
-    for (uint32_t ch = 0; ch < execSize; ch++) {
-      uint32_t offset = ch * hz * typeSizeBits / 8;
-      uint32_t start = grfAddr + offset;
-      bits->set(start, typeSizeBits / 8);
-
-      if (start < lowBound) {
-        lowBound = start;
-      }
-      if (start + typeSizeBits / 8 > upperBound) {
-        upperBound = start + typeSizeBits / 8;
+        if (start < lowBound) {
+          lowBound = start;
+        }
+        if (start + typeSizeBits / 8 > upperBound) {
+          upperBound = start + typeSizeBits / 8;
+        }
       }
     }
-  }
 
-  if (isRegTracked(rn)) {
-    uint32_t startRegNum = lowBound / m_DB.getBYTES_PER_BUCKET();
-    uint32_t upperRegNum = (upperBound - 1) / m_DB.getBYTES_PER_BUCKET();
+    if (isRegTracked(rn)) {
+      uint32_t startRegNum = lowBound / m_DB.getBYTES_PER_BUCKET();
+      uint32_t upperRegNum = (upperBound - 1) / m_DB.getBYTES_PER_BUCKET();
 
-    for (uint32_t i = startRegNum; i <= upperRegNum; i++) {
-      // note: bucket start is already included in 'i' calculation
-      // used to be: m_bucketList.push_back(i + DepSet::getBucketStart(rn));
-      m_bucketList.push_back(i);
+      for (uint32_t i = startRegNum; i <= upperRegNum; i++) {
+        // note: bucket start is already included in 'i' calculation
+        // used to be: m_bucketList.push_back(i + DepSet::getBucketStart(rn));
+        m_bucketList.push_back(i);
+      }
     }
-  }
+  };
+  setBitsFromRegRef(rr);
+
 
   // Special registers has side effects so even if there is no direct
   // interference subsequent instrucion might depend on it. Also the prior
