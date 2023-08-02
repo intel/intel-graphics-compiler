@@ -2076,6 +2076,10 @@ void Optimizer::applyNoMaskWA() {
                 // src0
                 G4_SrcRegRegion *newSreg = builder.createSrc(
                     SaveVar, 0, fsr, sreg->getRegion(), sreg->getType());
+                if (O->asSrcRegRegion() &&
+                    O->asSrcRegRegion()->getModifier() != Mod_src_undef) {
+                  newSreg->setModifier(O->asSrcRegRegion()->getModifier());
+                }
                 I->setSrc(newSreg, 0);
               }
             }
