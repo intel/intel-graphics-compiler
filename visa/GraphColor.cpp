@@ -9200,13 +9200,6 @@ int GlobalRA::coloringRegAlloc() {
        // a. Stack call is used on PVC+,
        // b. Spill size exceeds what can be represented using hword msg on PVC+
 
-  if (builder.supportsLSC()) {
-    useLscForSpillFill = true;
-    useLscForNonStackCallSpillFill =
-        builder.getOption(vISA_lscNonStackSpill) != 0;
-
-    useLscForScatterSpill = builder.getOption(vISA_scatterSpill);
-  }
   //
   // If the graph has stack calls, then add the caller-save/callee-save pseudo
   // declares and code. This currently must be done after flag/addr RA due to

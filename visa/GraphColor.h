@@ -1132,9 +1132,9 @@ public:
   PointsToAnalysis &pointsToAnalysis;
   FCALL_RET_MAP fcallRetMap;
 
-  bool useLscForSpillFill = false;
-  bool useLscForScatterSpill = false;
-  bool useLscForNonStackCallSpillFill = false;
+  const bool useLscForSpillFill;
+  const bool useLscForScatterSpill;
+  const bool useLscForNonStackCallSpillFill;
   bool useFastRA = false;
   bool useHybridRAwithSpill = false;
   bool useLocalRA = false;
@@ -1452,7 +1452,12 @@ public:
 
   GlobalRA(G4_Kernel &k, PhyRegPool &r, PointsToAnalysis &p2a)
       : kernel(k), builder(*k.fg.builder), regPool(r), pointsToAnalysis(p2a),
-        fbdRegs(*k.fg.builder), incRA(*this) {
+        fbdRegs(*k.fg.builder), incRA(*this),
+        useLscForSpillFill(k.fg.builder->supportsLSC()),
+        useLscForNonStackCallSpillFill(
+            k.fg.builder->useLscForNonStackSpillFill()),
+        useLscForScatterSpill(k.fg.builder->supportsLSC() &&
+                              k.fg.builder->getOption(vISA_scatterSpill)) {
     vars.resize(k.Declares.size());
     varMasks.resize(k.Declares.size());
 

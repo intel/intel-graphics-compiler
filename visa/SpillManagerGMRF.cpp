@@ -147,14 +147,6 @@ SpillManagerGRF::SpillManagerGRF(
     splice(entryBB, iter, builder_->instList, UNMAPPABLE_VISA_INDEX);
   }
 
-  // LSC messages are used when:
-  // a. Stack call is used on PVC+,
-  // b. Spill size exceeds what can be represented using hword msg on PVC+
-  // c. Scatter store for spill is needed to avoid RMW
-  useLSCMsg = gra.useLscForSpillFill;
-  useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
-  useLscForScatterSpill = gra.useLscForScatterSpill;
-
   if (failSafeSpill_) {
     if (gra.kernel.getOption(vISA_NewFailSafeRA)) {
       unsigned int spaceForPhyGRFSpill =
@@ -202,13 +194,20 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
                              [](G4_INST *inst) { return !inst->isLabel(); });
     splice(entryBB, iter, builder_->instList, UNMAPPABLE_VISA_INDEX);
   }
-  // LSC messages are used when:
-  // a. Stack call is used on PVC+,
-  // b. Spill size exceeds what can be represented using hword msg on PVC+
-  // c. Scatter store for spill is needed to avoid RMW
-  useLSCMsg = gra.useLscForSpillFill;
-  useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
-  useLscForScatterSpill = gra.useLscForScatterSpill;
+}
+
+bool SpillManagerGRF::headerNeeded() const {
+  if (useScratchMsg_ && builder_->getPlatform() >= GENX_SKL)
+    return false;
+
+  if (builder_->kernel.fg.getHasStackCalls() ||
+      builder_->kernel.fg.getIsStackCallFunc())
+    return false;
+
+  if (gra.useLscForSpillFill)
+    return false;
+
+  return true;
 }
 
 // Get the base regvar for the source or destination region.
@@ -274,22 +273,9 @@ unsigned SpillManagerGRF::owordMask() const {
   return mask;
 }
 
-// Get an dword word mask with the lower 2 bits zeroed.
-unsigned SpillManagerGRF::dwordMask() const {
-  unsigned mask = 0;
-  mask = (mask - 1);
-  mask = mask << 2;
-  return mask;
-}
-
 // Test of the offset is oword aligned.
 bool SpillManagerGRF::owordAligned(unsigned offset) const {
   return (offset & owordMask()) == offset;
-}
-
-// Test of the offset is oword aligned.
-bool SpillManagerGRF::dwordAligned(unsigned offset) const {
-  return (offset & dwordMask()) == offset;
 }
 
 // Get the ceil of the ratio.
@@ -622,7 +608,7 @@ bool SpillManagerGRF::isUnalignedRegion(REGION_TYPE *region,
   unsigned regionByteSize = getRegionByteSize(region, execSize);
 
   bool needs32ByteAlign = useScratchMsg_;
-  needs32ByteAlign |= useLSCMsg;
+  needs32ByteAlign |= gra.useLscForSpillFill;
 
   auto bytePerGRF = builder_->numEltPerGRF<Type_UB>();
   if (needs32ByteAlign) {
@@ -1297,7 +1283,7 @@ G4_SrcRegRegion *SpillManagerGRF::createBlockSpillRangeSrcRegion(
 G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
   if (useSplitSend() && useScratchMsg_) {
     return builder_->getBuiltinR0();
-  } else if (useLSCMsg) {
+  } else if (gra.useLscForSpillFill) {
     return nullptr;
   } else if (builder_->usesStack()) {
     return gra.kernel.fg.scratchRegDcl;
@@ -1352,7 +1338,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
                                                  G4_ExecSize execSize) {
   if (useSplitSend() && useScratchMsg_) {
     return builder_->getBuiltinR0();
-  } else if (useLSCMsg) {
+  } else if (gra.useLscForSpillFill) {
     return nullptr;
   } else if (builder_->usesStack()) {
     return gra.kernel.fg.scratchRegDcl;
@@ -1403,7 +1389,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_SrcRegRegion *region,
                                                  G4_ExecSize execSize) {
   if (useSplitSend() && useScratchMsg_) {
     return builder_->getBuiltinR0();
-  } else if (useLSCMsg) {
+  } else if (gra.useLscForSpillFill) {
     return nullptr;
   } else if (builder_->usesStack()) {
     return gra.kernel.fg.scratchRegDcl;
@@ -1517,7 +1503,6 @@ G4_Declare *SpillManagerGRF::initMHeader(G4_Declare *mRangeDcl,
   G4_SrcRegRegion *inputPayload = createInputPayloadSrcRegion();
   createMovInst(G4_ExecSize(builder_->numEltPerGRF<Type_UD>()),
                 mHeaderInputDstRegion, inputPayload);
-  numGRFMove++;
 
   if (useScratchMsg_) {
     // Initialize msg header when region is a spill
@@ -1543,7 +1528,6 @@ G4_Declare *SpillManagerGRF::initMHeader(G4_Declare *mRangeDcl,
     } else {
       createMovInst(g4::SIMD1, mHeaderOffsetDstRegion, segmentDispImm);
     }
-    numGRFMove++;
   }
 
   // Initialize the message header with the spill disp for scatter
@@ -1573,7 +1557,6 @@ G4_Declare *SpillManagerGRF::initMHeader(G4_Declare *mRangeDcl) {
   G4_SrcRegRegion *inputPayload = createInputPayloadSrcRegion();
   createMovInst(G4_ExecSize(builder_->numEltPerGRF<Type_UD>()),
                 mHeaderInputDstRegion, inputPayload);
-  numGRFMove++;
 
   return mRangeDcl;
 }
@@ -1608,7 +1591,6 @@ void SpillManagerGRF::initMWritePayload(G4_Declare *spillRangeDcl,
           G4_ExecSize((nRows > 1) ? builder_->numEltPerGRF<Type_UD>()
                                   : spillRangeDcl->getNumElems());
       createMovInst(movExecSize, mPayloadWriteDstRegion, spillRangeSrcRegion);
-      numGRFMove++;
     }
   }
 }
@@ -1643,7 +1625,6 @@ void SpillManagerGRF::initMWritePayload(G4_Declare *spillRangeDcl,
     vASSERT(segmentByteSize % DWORD_BYTE_SIZE == 0);
     vASSERT(movExecSize <= g4::SIMD16);
     createMovInst(movExecSize, mPayloadWriteDstRegion, spillRangeSrcRegion);
-    numGRFMove++;
   }
 }
 
@@ -1904,7 +1885,6 @@ void SpillManagerGRF::sendInSpilledRegVarPortions(G4_Declare *fillRangeDcl,
                                                   unsigned regOff,
                                                   unsigned height,
                                                   unsigned srcRegOff) {
-  // if (!headerNeeded())
   if ((useScratchMsg_ && mRangeDcl == builder_->getBuiltinR0()) ||
       !headerNeeded()) {
     // Skip initializing message header
@@ -1924,14 +1904,13 @@ void SpillManagerGRF::sendInSpilledRegVarPortions(G4_Declare *fillRangeDcl,
     } else {
       createMovInst(g4::SIMD1, mHeaderOffsetDstRegion, segmentDispImm);
     }
-    numGRFMove++;
   }
 
   // Read in the portions using a greedy approach.
   int currentStride = getNextSize(height, useScratchMsg_, *builder_);
 
   if (currentStride) {
-    if (useLSCMsg) {
+    if (gra.useLscForSpillFill) {
       createLSCFill(fillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
     } else {
       createFillSendInstr(fillRangeDcl, mRangeDcl, regOff, currentStride,
@@ -2026,7 +2005,7 @@ void SpillManagerGRF::preloadSpillRange(G4_Declare *spillRangeDcl,
                         preloadRegion, InstOpt_NoOpt, false);
   }
 
-  if (useLSCMsg) {
+  if (gra.useLscForSpillFill) {
     createLSCFill(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
   } else {
     createFillSendInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
@@ -2391,13 +2370,14 @@ G4_INST *SpillManagerGRF::createFillSendInstr(
   return fillInst;
 }
 
-// LSC versions of spill/fill, useLSCMsg must be true for these functions
+// LSC versions of spill/fill, gra.useLscForSpillFill must be true for these functions
 
 G4_SrcRegRegion *SpillManagerGRF::getLSCSpillFillHeader(G4_Declare *mRangeDcl,
                                                         const G4_Declare *fp,
                                                         int offset) {
   G4_SrcRegRegion *headerOpnd = nullptr;
-  if (!fp && offset < SCRATCH_MSG_LIMIT && !useLscNonstackCall) {
+  if (!fp && offset < SCRATCH_MSG_LIMIT &&
+      !gra.useLscForNonStackCallSpillFill) {
     // using LSC because we exceed 128k of DC0 message
     headerOpnd = builder_->createSrcRegRegion(builder_->getBuiltinR0(),
                                               builder_->getRegionStride1());
@@ -2600,7 +2580,6 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions(G4_Declare *spillRangeDcl,
     } else {
       createMovInst(g4::SIMD1, mHeaderOffsetDstRegion, segmentDispImm);
     }
-    numGRFMove++;
   }
 
   // Write out the portions using a greedy approach.
@@ -2609,7 +2588,7 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions(G4_Declare *spillRangeDcl,
   if (currentStride) {
     initMWritePayload(spillRangeDcl, mRangeDcl, regOff, currentStride);
 
-    if (useLSCMsg) {
+    if (gra.useLscForSpillFill) {
       createLSCSpill(spillRangeDcl, mRangeDcl, regOff, currentStride,
                      srcRegOff);
     } else {
@@ -2863,8 +2842,8 @@ bool SpillManagerGRF::usesOWOrLSC(G4_DstRegRegion *spilledRegion) {
   auto inst = spilledRegion->getInst();
 
   // Use LSC always
-  if (useLscNonstackCall)
-    return useLscNonstackCall;
+  if (gra.useLscForNonStackCallSpillFill)
+    return true;
 
   // * platform supports LSC and/or OW
   // * but we favor HW scratch, offset permitting
@@ -2904,7 +2883,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
     // element size is W/DW/Q, isn't dst partial region, and
     // inst isn't predicated
     auto elemSz = inst->getDst()->getElemSize();
-    return useLscForScatterSpill && !inst->isWriteEnableInst() &&
+    return gra.useLscForScatterSpill && !inst->isWriteEnableInst() &&
            (elemSz == 2 || elemSz == 4 || elemSz == 8) &&
            !isPartialRegion(inst->getDst(), inst->getExecSize()) &&
            !inst->getPredicate();
@@ -3001,7 +2980,6 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
       createMovInst(execSize, spillRangeDstRegion, tmpRangeSrcRegion,
                     builder_->duplicateOperand(predicate),
                     (*spilledInstIter)->getMaskOption());
-      numGRFMove++;
 
       replacementRangeDcl = tmpRangeDcl;
       // maintain the spilled dst's subreg to not break the regioning
@@ -3087,7 +3065,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
 
     initMWritePayload(spillRangeDcl, mRangeDcl, spilledRegion, execSize);
 
-    if (useLSCMsg || useLscForScatterSpill) {
+    if (gra.useLscForSpillFill || gra.useLscForScatterSpill) {
       spillSendInst =
           createLSCSpill(spillRangeDcl, mRangeDcl, spilledRegion, execSize,
                          spillSendOption, scatterSpillCandidate);
@@ -3233,7 +3211,7 @@ void SpillManagerGRF::insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
         createGRFFillRangeDeclare(filledRegion, execSize, *filledInstIter);
     G4_Declare *mRangeDcl = createAndInitMHeader(filledRegion, execSize);
 
-    if (useLSCMsg) {
+    if (gra.useLscForSpillFill) {
       fillSendInst =
           createLSCFill(fillRangeDcl, mRangeDcl, filledRegion, execSize);
     } else {
@@ -3299,10 +3277,9 @@ void SpillManagerGRF::insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
 }
 
 // Create the code to create the GRF fill range and load it to spill memory.
-INST_LIST::iterator
-SpillManagerGRF::insertSendFillRangeCode(G4_SrcRegRegion *filledRegion,
-                                         INST_LIST::iterator filledInstIter,
-                                         G4_BB *bb) {
+void SpillManagerGRF::insertSendFillRangeCode(
+    G4_SrcRegRegion *filledRegion, INST_LIST::iterator filledInstIter,
+    G4_BB *bb) {
   G4_INST *sendInst = *filledInstIter;
 
   unsigned width =
@@ -3328,10 +3305,6 @@ SpillManagerGRF::insertSendFillRangeCode(G4_SrcRegRegion *filledRegion,
   INST_LIST::iterator insertPos = filledInstIter;
 
   splice(bb, insertPos, builder_->instList, curInst->getVISAId());
-
-  // Return the next instruction
-
-  return ++filledInstIter;
 }
 
 G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
@@ -3657,7 +3630,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
       }
 
       if (failSafeSpill_ && builder_->getOption(vISA_NewFailSafeRA)) {
-        context.insertPushPop(useLSCMsg);
+        context.insertPushPop(gra.useLscForSpillFill);
       }
     }
   }
@@ -4298,7 +4271,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
       }
 
       if (failSafeSpill_ && builder_->getOption(vISA_NewFailSafeRA)) {
-        context.insertPushPop(useLSCMsg);
+        context.insertPushPop(gra.useLscForSpillFill);
       }
 
       jt = kt;

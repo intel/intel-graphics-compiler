@@ -266,7 +266,6 @@ public:
 
   unsigned getNumGRFSpill() const { return numGRFSpill; }
   unsigned getNumGRFFill() const { return numGRFFill; }
-  unsigned getNumGRFMove() const { return numGRFMove; }
   // return the next cumulative logical offset. This does not non-spilled stuff
   // like private variables placed by IGC (marked by spill_mem_offset) this
   // should only be called after insertSpillFillCode()
@@ -363,11 +362,7 @@ private:
 
   unsigned owordMask() const;
 
-  unsigned dwordMask() const;
-
   bool owordAligned(unsigned offset) const;
-
-  bool dwordAligned(unsigned offset) const;
 
   static unsigned cdiv(unsigned dvd, unsigned dvr);
 
@@ -590,45 +585,13 @@ private:
 
   void insertSpillRangeCode(INST_LIST::iterator spilledInstIter, G4_BB *bb);
 
-  INST_LIST::iterator
-  insertSendFillRangeCode(G4_SrcRegRegion *filledRegion,
-                          INST_LIST::iterator filledInstIter, G4_BB *bb);
+  void insertSendFillRangeCode(G4_SrcRegRegion *filledRegion,
+                               INST_LIST::iterator filledInstIter, G4_BB *bb);
 
   void insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
                               INST_LIST::iterator filledInstIter, G4_BB *bb);
 
   bool useSplitSend() const;
-
-  int getHWordEncoding(int numHWord) {
-    switch (numHWord) {
-    case 1:
-      return 0;
-    case 2:
-      return 1;
-    case 4:
-      return 2;
-    case 8:
-      return 3;
-    default:
-      vISA_ASSERT_UNREACHABLE("only 1/2/4/8 HWords are supported");
-      return 0;
-    }
-  }
-
-  ChannelMask getChMaskForSpill(int numHWord) const {
-    switch (numHWord) {
-    case 1:
-    case 2:
-      return ChannelMask::createFromAPI(CHANNEL_MASK_R);
-    case 4:
-      return ChannelMask::createFromAPI(CHANNEL_MASK_RG);
-    case 8:
-      return ChannelMask::createFromAPI(CHANNEL_MASK_RGBA);
-    default:
-      vISA_ASSERT_UNREACHABLE("illegal spill size");
-      return ChannelMask::createFromAPI(CHANNEL_MASK_R);
-    }
-  }
 
   void getOverlappingIntervals(G4_Declare *dcl,
                                std::vector<G4_Declare *> &intervals) const;
@@ -668,9 +631,6 @@ private:
   // The number of GRF fill.
   unsigned numGRFFill = 0;
 
-  // The number of mov.
-  unsigned numGRFMove = 0;
-
   // CISA instruction id of current instruction
   G4_INST *curInst;
 
@@ -709,10 +669,6 @@ private:
   bool checkDefUseDomRel(G4_DstRegRegion *dst, G4_BB *bb);
   void updateRMWNeeded();
 
-  bool useLSCMsg = false;
-  bool useLscNonstackCall = false;
-  bool useLscForScatterSpill = false;
-
   // Used for new fail safe RA mechanism.
   BoundedRA context;
 
@@ -730,21 +686,7 @@ private:
     return iter == addrTakenSpillFill.end() ? nullptr : iter->second;
   }
 
-  bool headerNeeded() const {
-    bool needed = true;
-
-    if (useScratchMsg_ && builder_->getPlatform() >= GENX_SKL)
-      needed = false;
-
-    if (builder_->kernel.fg.getHasStackCalls() ||
-        builder_->kernel.fg.getIsStackCallFunc())
-      needed = false;
-
-    if (useLSCMsg)
-      needed = false;
-
-    return needed;
-  }
+  bool headerNeeded() const;
 
   // return true if offset for spill/fill message needs to be GRF-aligned
   bool needGRFAlignedOffset() const { return useScratchMsg_ || useSplitSend(); }

@@ -648,6 +648,11 @@ bool hasInt64Add() const { return !getOption(vISA_HasNoInt64Add); }
 
 bool supportsLSC() const { return getPlatform() >= Xe_DG2; }
 
+bool useLscForNonStackSpillFill() const {
+  bool useLSC = getOption(vISA_lscNonStackSpill);
+  return supportsLSC() && useLSC;
+}
+
 bool encodeSendSrc1Length() const { return getPlatform() >= Xe_DG2; }
 
 bool hasLSCEnableHalfSIMD() const {
