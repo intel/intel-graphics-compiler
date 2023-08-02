@@ -21,7 +21,9 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <list>
+#include <optional>
 #include <queue>
 
 using namespace vISA;
@@ -758,9 +760,6 @@ protected:
   // Options to customize scheduler.
   SchedConfig config;
 
-  // Ready nodes.
-  std::vector<preNode *> Q;
-
   QueueBase(preDDD &ddd, RegisterPressure &rp, SchedConfig config)
       : ddd(ddd), rp(rp), config(config) {}
 
@@ -792,6 +791,9 @@ protected:
 
 // Queue for Sethi-Ullman scheduling to reduce register pressure.
 class SethiUllmanQueue : public QueueBase {
+  // Ready nodes.
+  std::vector<preNode *> Q;
+
   // Sethi-Ullman numbers.
   // max-reg-pressure for the sub-exp-tree starting from a node
   std::vector<int> MaxRegs;
@@ -1210,6 +1212,46 @@ namespace {
 
 // Queue for scheduling to hide latency.
 class LatencyQueue : public QueueBase {
+  // Represent the type of SchedCandidate picked from ready-list. The types are
+  // listed in decreasing priority.
+  enum CandReason : uint8_t {
+    NoCand,
+    PseudoKill,
+    UsesActiveFlag,
+    UsesNoFlag,
+    NodeGroup,
+    SendNoReturn,
+    NodePriority,
+    Send,
+    // NodeID (order) is the lowest priority
+    NodeID = std::numeric_limits<uint8_t>::max(),
+  };
+
+  const char *getReasonStr(CandReason Reason) const {
+    switch (Reason) {
+    case NoCand:         return "NOCAND";
+    case PseudoKill:     return "KILL";
+    case UsesActiveFlag: return "ACTIVEFLAG";
+    case UsesNoFlag:     return "NOFLAG";
+    case NodeGroup:      return "GROUP";
+    case SendNoReturn:   return "SENDNORET";
+    case NodePriority:   return "PRIORITY";
+    case Send:           return "SEND";
+    case NodeID:         return "ID";
+    };
+    vISA_ASSERT_UNREACHABLE("Unknown reason!");
+    return "UNKNOWN";
+  }
+
+  struct SchedCandidate {
+    preNode* Node = nullptr;
+    CandReason Reason = NoCand;
+    bool UsesFlag = false;
+    bool UsesActiveFlag = false;
+
+    bool isValid() const { return Node; }
+  };
+
   // Assign a priority to each node.
   std::vector<unsigned> Priorities;
 
@@ -1220,13 +1262,9 @@ class LatencyQueue : public QueueBase {
   // Instruction latency information.
   const LatencyTable &LT;
 
-  // TODO: Try to apply priority queue to SethiUllmanQueue as well.
-
   // nodes with all predecessors scheduled and ready-cycle <= current-cycle for
   // topdown scheduling
-  std::priority_queue<preNode *, std::vector<preNode *>,
-                      std::function<bool(preNode *, preNode *)>>
-      ReadyList;
+  std::vector<preNode *> ReadyList;
   // nodes with all predecessors scheduled and ready-cycle > current-cycle for
   // topdown scheduling
   std::priority_queue<preNode *, std::vector<preNode *>,
@@ -1244,8 +1282,6 @@ public:
   LatencyQueue(preDDD &ddd, RegisterPressure &rp, SchedConfig config,
                const LatencyTable &LT, unsigned GroupingThreshold)
       : QueueBase(ddd, rp, config), LT(LT),
-        ReadyList(
-            [this](preNode *a, preNode *b) { return compareReady(a, b); }),
         HoldList([this](preNode *a, preNode *b) { return compareHold(a, b); }),
         GroupingPressureLimit(GroupingThreshold),
         FlagRegNum(ddd.getKernel().fg.builder->getNumFlagRegisters()) {
@@ -1258,27 +1294,36 @@ public:
     // advancing won't be affected when moving pseudo_kill from host-list to
     // ready-list.
     if (config.SkipHoldList)
-      ReadyList.push(N);
+      ReadyList.push_back(N);
     else if (N->getInst() && N->getInst()->isPseudoKill())
-      ReadyList.push(N);
+      ReadyList.push_back(N);
     else
       HoldList.push(N);
   }
 
-  // Pick a node based on heuristics and the heuristics should be ordered based
-  // on their priority.
+  // Pick a node based on heuristics.
   preNode *pickNode() override {
     vASSERT(!ReadyList.empty());
-    preNode *N = nullptr;
+    SchedCandidate Cand;
+    auto IT = ReadyList.begin(), IE = ReadyList.end(), IC = IE;
+    for (; IT != IE; ++IT) {
+      SchedCandidate TryCand = {*IT};
+      initCandidate(TryCand);
+      if (tryCandidate(Cand, TryCand)) {
+        Cand = TryCand;
+        IC = IT;
+      }
+    }
+    vASSERT(IC != IE && *IC == Cand.Node && Cand.Reason != NoCand);
+    std::swap(*IC, ReadyList.back());
+    ReadyList.pop_back();
+    SCHED_DUMP({
+        std::cerr << "Picking a node based on reason "
+                  << getReasonStr(Cand.Reason) << ": ";
+        Cand.Node->dump();
+    });
 
-    if (!N)
-      N = selectCandidateToAvoidFlagSpill();
-
-    if (!N)
-      N = select();
-
-    vASSERT(N);
-    return N;
+    return Cand.Node;
   }
 
   bool empty() const { return ReadyList.empty(); }
@@ -1297,7 +1342,7 @@ public:
       if (GroupInfo[N->getInst()] <= CurGroup &&
           N->getReadyCycle() <= CurCycle) {
         HoldList.pop();
-        ReadyList.push(N);
+        ReadyList.push_back(N);
       } else
         break;
     }
@@ -1313,12 +1358,14 @@ public:
         if (GroupInfo[N->getInst()] <= CurGroup &&
             N->getReadyCycle() <= CurCycle) {
           HoldList.pop();
-          ReadyList.push(N);
+          ReadyList.push_back(N);
         } else
           break;
       } while (!HoldList.empty());
     }
   }
+
+  bool isFlagPressureHigh() const { return FlagWrites.size() >= FlagRegNum; }
 
   void updateFlagUsage(preNode* N) {
     vASSERT(N && N->isScheduled);
@@ -1363,78 +1410,144 @@ private:
   void init();
   unsigned calculatePriority(preNode *N);
 
-  // Select the top node.
-  preNode *select() {
-    preNode *N = ReadyList.top();
-    ReadyList.pop();
-    SCHED_DUMP({
-      std::cerr << "Picking a node using the default heuristic: ";
-      N->dump();
-    });
-    return N;
+  // Return which candidate is better (less) if the heuristic determines
+  // a less-than order. Return no candidate if the order can't be determined.
+  std::optional<SchedCandidate *> tryLess(int TryVal, int CandVal,
+      SchedCandidate &TryCand, SchedCandidate &Cand, CandReason Reason) const {
+    // 1. Return TryCand as it is better. Also update its reason.
+    if (TryVal < CandVal) {
+      TryCand.Reason = Reason;
+      return std::make_optional(&TryCand);
+    }
+    // 2. Return Cand as it is better. Update its reason if the priority
+    //    (reason) of the heuristic is higher (smaller).
+    if (TryVal > CandVal) {
+      if (Cand.Reason > Reason)
+        Cand.Reason = Reason;
+      return std::make_optional(&Cand);
+    }
+    return std::nullopt;
   }
 
-  // Select a candidate that won't increase flag pressure and could avoid flag
-  // spills potentially. Note that currently this heuristic only considers
+  // Return which candidate is better (greater) if the heuristic determines
+  // a greater-than order. Return no candidate if the order can't be
+  // determined.
+  std::optional<SchedCandidate *> tryGreater(int TryVal, int CandVal,
+      SchedCandidate &TryCand, SchedCandidate &Cand, CandReason Reason) const {
+    // 1. Return TryCand as it is better. Also update its reason.
+    if (TryVal > CandVal) {
+      TryCand.Reason = Reason;
+      return std::make_optional(&TryCand);
+    }
+    // 2. Return Cand as it is better. Update its reason if the priority
+    //    (reason) of the heuristic is higher (smaller).
+    if (TryVal < CandVal) {
+      if (Cand.Reason > Reason)
+        Cand.Reason = Reason;
+      return std::make_optional(&Cand);
+    }
+    return std::nullopt;
+  }
+
+  // Return the candidate that won't increase flag pressure and could avoid
+  // flag spills potentially. Note that currently this heuristic only considers
   // flag uses in condition modifier and predicate, and does not consider flag
   // in src or dst.
-  preNode *selectCandidateToAvoidFlagSpill() {
-    // Only try this heuristic when current flag pressure is high.
-    if (FlagWrites.size() < FlagRegNum)
-      return nullptr;
+  std::optional<SchedCandidate *> tryCandidateToAvoidFlagSpill(
+      SchedCandidate &Cand, SchedCandidate &TryCand) const {
+    // Favor a node that uses any active flag.
+    if (auto Res = tryGreater(TryCand.UsesActiveFlag, Cand.UsesActiveFlag,
+                              TryCand, Cand, UsesActiveFlag))
+      return Res;
 
-    auto useAnyActiveFlag = [&](preNode *N) -> bool {
-      return N->getInst() && N->getInst()->getPredicate() &&
-          std::any_of(FlagWrites.begin(), FlagWrites.end(), [N](preNode *FW) {
-              return FW->getInst()->getCondMod()->getBase() ==
-                  N->getInst()->getPredicate()->getBase();});
-    };
+    // Favor a node that does not use flag at all.
+    if (auto Res = tryLess(TryCand.UsesFlag, Cand.UsesFlag, TryCand, Cand,
+                           UsesNoFlag))
+      return Res;
 
-    std::vector<preNode *> Noninterest;
-    preNode *N = nullptr;
-    while (!ReadyList.empty()) {
-      preNode *X = ReadyList.top();
-      ReadyList.pop();
-      // 1. Pick a node that does not use flag at all.
-      if (!X->getInst() || !X->getInst()->usesFlag()) {
-        N = X;
-        break;
-      }
-      // 2. Pick a node that uses any active flag.
-      if (useAnyActiveFlag(X)) {
-        N = X;
-        break;
-      }
-      Noninterest.push_back(X);
-    }
-
-    // Add noninterest nodes back to the ready list.
-    for (preNode *Node : Noninterest)
-      ReadyList.push(Node);
-
-    SCHED_DUMP({
-      if (!N) {
-        std::cerr << "Unable to pick a node not to increase flag pressure.\n";
-      } else {
-        std::cerr << "Picking a node to avoid flag spills ";
-        if (!N->getInst() || !N->getInst()->usesFlag())
-          std::cerr << "(NO_FLAG_USES) : ";
-        else
-          std::cerr << "(USE_ACTIVE_FLAG) : ";
-        N->dump();
-      }
-    });
-
-    return N;
+    return std::nullopt;
   }
 
-  // Compare two ready nodes and decide which one should be scheduled first.
-  // Return true if N2 has a higher priority than N1, false otherwise.
-  bool compareReady(preNode *N1, preNode *N2);
+  void initCandidate(SchedCandidate &TryCand) {
+    // Only record the flag stat for the candidate when current flag pressure
+    // is high.
+    if (!isFlagPressureHigh())
+      return;
+
+    G4_INST *Inst = TryCand.Node->getInst();
+    TryCand.UsesFlag = Inst && Inst->usesFlag();
+    TryCand.UsesActiveFlag = Inst && Inst->getPredicate() &&
+        std::any_of(FlagWrites.begin(), FlagWrites.end(), [Inst](preNode *FW) {
+            return FW->getInst()->getCondMod()->getBase() ==
+                Inst->getPredicate()->getBase();});
+  }
+
+  // Return true if TryCand is better than current Cand. The heuristics should
+  // be ordered based on their priority.
+  bool tryCandidate(SchedCandidate &Cand, SchedCandidate &TryCand) {
+    // Initialize the candidate. If Cand is invalid, just use the first TryCand
+    // and set the reason to the lowest priority.
+    if (!Cand.isValid()) {
+      TryCand.Reason = NodeID;
+      return true;
+    }
+
+    preNode *CandNode = Cand.Node;
+    preNode *TryCandNode = TryCand.Node;
+    G4_INST *CandInst = CandNode->getInst();
+    G4_INST *TryCandInst = TryCandNode->getInst();
+
+    // Try scheduling pseudo kill first.
+    bool IsCandPseudoKill = CandInst && CandInst->isPseudoKill();
+    bool IsTryCandPseudoKil = TryCandInst && TryCandInst->isPseudoKill();
+    if (auto Res = tryGreater(IsTryCandPseudoKil, IsCandPseudoKill, TryCand,
+                              Cand, PseudoKill))
+      return Res.value() == &TryCand;
+
+    // Avoid increasing the flag pressure.
+    if (auto Res = tryCandidateToAvoidFlagSpill(Cand, TryCand))
+      return Res.value() == &TryCand;
+
+    // Group ID has higher priority, smaller ID means higher priority.
+    unsigned CandGID = GroupInfo[Cand.Node->getInst()];
+    unsigned TryCandGID = GroupInfo[TryCand.Node->getInst()];
+    if (auto Res = tryLess(TryCandGID, CandGID, TryCand, Cand, NodeGroup))
+      return Res.value() == &TryCand;
+
+    // Favor sends without return such as stores or urb-writes because they
+    // likely release source registers.
+    // FIXME: Check why the heuristic is good for latency scheduling.
+    auto isSendNoReturn = [](G4_INST *Inst) -> bool {
+      return Inst && Inst->isSend() && Inst->getDst()->isNullReg();
+    };
+    bool IsCandSendNoRet = isSendNoReturn(CandInst);
+    bool IsTryCandSendNoRet = isSendNoReturn(TryCandInst);
+    if (auto Res = tryGreater(IsTryCandSendNoRet, IsCandSendNoRet, TryCand,
+                              Cand, SendNoReturn))
+      return Res.value() == &TryCand;
+
+    // Within the same group, compare their priority.
+    unsigned CandPriority = Priorities[CandNode->getID()];
+    unsigned TryCandPriority = Priorities[TryCandNode->getID()];
+    if (auto Res = tryGreater(TryCandPriority, CandPriority, TryCand, Cand,
+                              NodePriority))
+      return Res.value() == &TryCand;
+
+    // Favor sends.
+    bool IsCandSend = CandInst && CandInst->isSend();
+    bool IsTryCandSend = TryCandInst && TryCandInst->isSend();
+    if (auto Res = tryGreater(IsTryCandSend, IsCandSend, TryCand, Cand, Send))
+      return Res.value() == &TryCand;
+
+    // Otherwise, break tie on ID. Larger ID means higher priority.
+    if (auto Res = tryGreater(TryCandNode->getID(), CandNode->getID(), TryCand,
+                              Cand, NodeID))
+      return Res.value() == &TryCand;
+
+    return false;
+  }
 
   bool compareHold(preNode *N1, preNode *N2);
-
-  bool comparePseudoKill(preNode *N1, preNode *N2) const;
 };
 
 } // namespace
@@ -1814,57 +1927,6 @@ unsigned LatencyQueue::calculatePriority(preNode *N) {
   return std::max(1U, Priority);
 }
 
-// Compare two ready nodes and decide which one should be scheduled first.
-// Return true if N2 has a higher priority than N1, false otherwise.
-bool LatencyQueue::compareReady(preNode *N1, preNode *N2) {
-  vASSERT(N1->getID() != N2->getID());
-  vASSERT(N1->getInst() && N2->getInst());
-
-  auto isSendNoReturn = [](G4_INST *Inst) {
-    if (Inst->isSend() &&
-        (Inst->getDst() == nullptr || Inst->getDst()->isNullReg()))
-      return true;
-    return false;
-  };
-
-  G4_INST *Inst1 = N1->getInst();
-  G4_INST *Inst2 = N2->getInst();
-  if (Inst1->isPseudoKill() || Inst2->isPseudoKill())
-    return comparePseudoKill(N1, N2);
-
-  // Group ID has higher priority, smaller ID means higher priority.
-  unsigned GID1 = GroupInfo[N1->getInst()];
-  unsigned GID2 = GroupInfo[N2->getInst()];
-  if (GID1 > GID2)
-    return true;
-  if (GID1 < GID2)
-    return false;
-
-  // Favor sends without return such as stores or urb-writes
-  // because they likely release source registers
-  if (isSendNoReturn(Inst1) && !isSendNoReturn(Inst2))
-    return false;
-  else if (!isSendNoReturn(Inst1) && isSendNoReturn(Inst2))
-    return true;
-  // Within the same group, compare their priority.
-  unsigned P1 = Priorities[N1->getID()];
-  unsigned P2 = Priorities[N2->getID()];
-  if (P2 > P1)
-    return true;
-  if (P1 > P2)
-    return false;
-
-  // Favor sends.
-  if (Inst1->isSend() && !Inst2->isSend())
-    return false;
-  else if (!Inst1->isSend() && Inst2->isSend())
-    return true;
-
-  // Otherwise, break tie on ID.
-  // Larger ID means higher priority.
-  return N2->getID() > N1->getID();
-}
-
 // hold-list is sorted by nodes' ready cycle
 bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
   vASSERT(N1->getID() != N2->getID());
@@ -1891,20 +1953,6 @@ bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
   // Otherwise, break tie on ID.
   // Larger ID means higher priority.
   return N2->getID() > N1->getID();
-}
-
-bool LatencyQueue::comparePseudoKill(preNode *N1, preNode *N2) const {
-  vASSERT(N1->getID() != N2->getID());
-  vASSERT(N1->getInst() && N2->getInst());
-  vASSERT(N1->getInst()->isPseudoKill() || N2->getInst()->isPseudoKill());
-  // Break tie when both are pseudo_kill and larger ID means higher priority.
-  if (N1->getInst()->isPseudoKill() && N2->getInst()->isPseudoKill())
-    return N2->getID() > N1->getID();
-  // Make pseudo_kill higher priority.
-  if (N2->getInst()->isPseudoKill())
-    return true;
-  else
-    return false;
 }
 
 // Find the edge with smallest ID.
