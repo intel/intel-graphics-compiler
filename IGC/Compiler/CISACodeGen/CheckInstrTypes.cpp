@@ -293,6 +293,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             g_InstrTypes.hasDiscard = true;
             break;
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+        case GenISAIntrinsic::GenISA_WaveBroadcast:
             g_InstrTypes.mayHaveIndirectOperands = true;
             g_InstrTypes.numWaveIntrinsics++;
             break;

@@ -8464,6 +8464,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitWaveInverseBallot(inst);
         break;
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+    case GenISAIntrinsic::GenISA_WaveBroadcast:
         emitSimdShuffle(inst);
         break;
     case GenISAIntrinsic::GenISA_WavePrefix:
@@ -8997,7 +8998,8 @@ bool EmitPass::waveShuffleCase(CVariable* Var, BasicBlock* BB, Instruction* I, b
                 if (GenIntrinsicInst* WaveShuffleIndexInst = dyn_cast<GenIntrinsicInst>(UI->getOperand(i)))
                 {
                     // if some of the payload come from waveShuffleIndex with indirect index, add the lifetimeStart.
-                    if (WaveShuffleIndexInst->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
+                    if (WaveShuffleIndexInst->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
+                        WaveShuffleIndexInst->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast)
                     {
                         CVariable* data = GetSymbol(WaveShuffleIndexInst->getOperand(0));
                         CVariable* simdChannel = GetSymbol(WaveShuffleIndexInst->getOperand(1));

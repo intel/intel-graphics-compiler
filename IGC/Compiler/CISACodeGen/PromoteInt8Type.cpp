@@ -1111,13 +1111,15 @@ void PromoteInt8Type::promoteIntrinsic()
         if (!GII)
             continue;
         if (GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveShuffleIndex) ||
+            GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveBroadcast) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_simdShuffleDown))
         {
             // Those are mov insts. Need to promote if its operand is
             // of type I8 and index is not uniform.
             Type* Ty = GII->getType();
             Value* IndexOrDelta;
-            if (GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveShuffleIndex)) {
+            if (GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveShuffleIndex) ||
+                GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveBroadcast)) {
                 IndexOrDelta = GII->getArgOperand(1);
             }
             else {
@@ -1158,6 +1160,7 @@ void PromoteInt8Type::promoteIntrinsic()
                 gid == GenISAIntrinsic::GenISA_WavePrefix ||
                 gid == GenISAIntrinsic::GenISA_QuadPrefix ||
                 gid == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
+                gid == GenISAIntrinsic::GenISA_WaveBroadcast ||
                 gid == GenISAIntrinsic::GenISA_simdShuffleDown)
             {
                 //
@@ -1214,6 +1217,7 @@ void PromoteInt8Type::promoteIntrinsic()
                 }
                 case GenISAIntrinsic::GenISA_QuadPrefix:
                 case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+                case GenISAIntrinsic::GenISA_WaveBroadcast:
                 case GenISAIntrinsic::GenISA_WaveAll:
                 {
                     // prototype:
