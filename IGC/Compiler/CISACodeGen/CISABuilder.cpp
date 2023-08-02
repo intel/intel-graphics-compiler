@@ -4926,6 +4926,7 @@ namespace IGC
         else
         {
             SaveOption(vISA_accSubstitution, false);
+            SaveOption(vISA_accSubBeforeRA, false);
         }
 
         if (IGC_IS_FLAG_ENABLED(GlobalSendVarSplit))
