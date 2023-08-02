@@ -34,6 +34,7 @@ static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_LATENCY_HIDING_THRESHOLD = 104;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
+static const unsigned EXTRA_REGISTERS_FOR_RA = 10; // percentage
 
 namespace {
 
@@ -718,7 +719,11 @@ bool preRA_RegSharing::run(unsigned &KernelPressure) {
     rp.recompute();
     KernelPressure = rp.getMaxRP();
   }
-  kernel.updateKernelByRegPressure(KernelPressure);
+  // In RA extra registers might be needed to satisfy
+  // some restrictions, e.g. alignment, SIMD size, etc.
+  // So extra registers are provided.
+  unsigned ExtraRegs = (unsigned)(kernel.getNumRegTotal() * EXTRA_REGISTERS_FOR_RA / 100.0f);
+  kernel.updateKernelByRegPressure(KernelPressure + ExtraRegs);
 
   return Changed;
 }
