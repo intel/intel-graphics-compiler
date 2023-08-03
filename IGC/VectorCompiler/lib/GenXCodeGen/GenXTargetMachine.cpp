@@ -457,6 +457,14 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   /// .. include:: GenXGEPLowering.cpp
   vc::addPass(PM, createGenXGEPLoweringPass());
+  /// InstCombine
+  /// -----------
+  /// This is a standard LLVM pass, run at this point in the GenX backend. GEP
+  /// lowering emits sequences of useless `inttoptr`, `bitcast` and `ptrtoint`
+  /// instructions, which prevent further passes to optimize the code. The
+  /// instcombine pass folds these sequences.
+  vc::addPass(PM, createInstructionCombiningPass());
+
   /// .. include:: GenXLoadStoreLegalization.cpp
   vc::addPass(PM, createGenXLoadStoreLegalizationPass());
 
