@@ -42,6 +42,8 @@ private:
   unsigned int spillWindowSizeThreshold = 0;
   unsigned int highRegPressureForCleanup = 0;
   unsigned int highRegPressureForWindow = 0;
+  unsigned int inputSizeLimit = 0;
+  unsigned int spillFillCleanupWindowSize = 0;
   unsigned int totalInputSize = 0;
 
   // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
@@ -110,6 +112,10 @@ public:
         kernel.getScaledGRFSize(cHighRegPressureForCleanup);
     highRegPressureForWindow =
         kernel.getScaledGRFSize(cHighRegPressureForWindow);
+    inputSizeLimit = kernel.getScaledGRFSize(cInputSizeLimit);
+    spillFillCleanupWindowSize = std::min<unsigned int>(
+        kernel.getScaledGRFSize(cSpillFillCleanupWindowSize),
+        cSpillFillCleanupWindowSize);
 
     auto &inputs = k.fg.builder->m_inputVect;
     for (const input_info_t *input_info : inputs) {

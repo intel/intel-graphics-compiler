@@ -1615,13 +1615,12 @@ void CoalesceSpillFills::spillFillCleanup() {
         // have been written.
         auto pInstIt = instIt;
         pInstIt--;
-        unsigned int w = cSpillFillCleanupWindowSize;
+        unsigned int w = spillFillCleanupWindowSize;
         unsigned int maxW = 0;
 
         auto dstSize =
             inst->asFillIntrinsic()->getDst()->getTopDcl()->getNumRows();
-        if (dstSize >= 8 ||
-            (totalInputSize > cInputSizeLimit && dstSize >= 4)) {
+        if (dstSize >= 8 || (totalInputSize > inputSizeLimit && dstSize >= 4)) {
           // avoid attempting cleanup for high reg pressure
           if (regPressure > highRegPressureForCleanup) {
             continue;
