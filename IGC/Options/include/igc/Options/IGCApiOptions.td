@@ -12,27 +12,34 @@ SPDX-License-Identifier: MIT
 let Flags = [IGCApiOption] in {
 
 // Backend API options {{
-def : ClFlag<"intel-gtpin-rera">, Alias<gtpin_rera>,
-  HelpText<"Alias for -ze-gtpin-rera">;
 
-def : ClFlag<"intel-gtpin-grf-info">, Alias<gtpin_grf_info>,
-  HelpText<"Alias for -ze-gtpin-grf-info">;
+// -cl-fp32-correctly-rounded-divide-sqrt, -ze-fp32-correctly-rounded-divide-sqrt
+defm fp32_correctly_rounded_divide_sqrt : CommonFlag<"fp32-correctly-rounded-divide-sqrt">;
 
-def : ClSeparate<"intel-gtpin-scratch-area-size">,
-  Alias<gtpin_scratch_area_size>,
-  HelpText<"Alias for -ze-gtpin-scratch-area-size">;
-def : ClJoined<"intel-gtpin-scratch-area-size=">,
-  Alias<gtpin_scratch_area_size>,
-  HelpText<"Alias for -ze-gtpin-scratch-area-size">;
-
-defm fp32_correctly_rounded_divide_sqrt :
-  CommonFlag<"fp32-correctly-rounded-divide-sqrt">;
-
+// -cl-no-subgroup-ifp, -ze-no-subgroup-ifp
 defm no_subgroup_ifp : CommonFlag<"no-subgroup-ifp">;
 
+// -cl-uniform-work-group-size, -ze-uniform-work-group-size
 defm uniform_work_group_size : CommonFlag<"uniform-work-group-size">;
 
+// -cl-take-global-address, -ze-take-global-address
 defm take_global_address : CommonFlag<"take-global-address">;
+
+defm emit_lib_compile_errors : CommonFlag<"emit-lib-compile-errors">;
+
+// -cl-intel-reqd-eu-thread-count
+defm required_thread_count : CommonSeparate<"reqd-eu-thread-count">;
+defm : CommonJoined<"reqd-eu-thread-count=">, Alias<required_thread_count_common>;
+
+// -ze-opt-large-grf-kernel
+defm large_grf_kernel : CommonSeparate<"large-grf-kernel">;
+
+// -ze-opt-regular-grf-kernel
+defm regular_grf_kernel : CommonSeparate<"regular-grf-kernel">;
+
+// -cl-intel-no-local-to-generic, -ze-opt-no-local-to-generic
+defm no_local_to_generic : CommonFlag<"no-local-to-generic">;
+
 // }} Backend API options
 
 // API options from source translation {{
@@ -76,15 +83,6 @@ def oclfe_triple : PlainSeparate<"triple">;
 
 def oclfe_dwarf_column_info : PlainFlag<"dwarf-column-info">;
 
-def no_prera_scheduling : ClFlag<"intel-no-prera-scheduling">;
-
-def greater_than_4gb_buffer_required :
-  ClFlag<"intel-greater-than-4GB-buffer-required">;
-def : ZeFlag<"opt-greater-than-4GB-buffer-required">,
-  Alias<greater_than_4gb_buffer_required>;
-
-def has_buffer_offset_arg : ClFlag<"intel-has-buffer-offset-arg">;
-def : ZeFlag<"opt-has-buffer-offset-arg">, Alias<has_buffer_offset_arg>;
 
 def debug_info : ClFlag<"intel-debug-info">;
 

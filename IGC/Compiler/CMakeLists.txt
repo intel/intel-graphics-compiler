@@ -185,4 +185,6 @@ add_library("${IGC_BUILD__PROJ__Compiler}" STATIC
   )
 set_property(TARGET "${IGC_BUILD__PROJ__Compiler}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__Compiler}")
 
+target_link_libraries("${IGC_BUILD__PROJ__Compiler}" IGCOptions)
+
 add_dependencies("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")

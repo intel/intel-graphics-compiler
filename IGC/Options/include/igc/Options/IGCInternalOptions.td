@@ -12,8 +12,9 @@ SPDX-License-Identifier: MIT
 let Flags = [IGCInternalOption] in {
 
 // Backend internal options {{
-defm replace_global_offsets_by_zero :
-  CommonFlag<"replace-global-offsets-by-zero">;
+
+// -cl-replace-global-offsets-by-zero, -ze-replace-global-offsets-by-zero
+defm replace_global_offsets_by_zero : CommonFlag<"replace-global-offsets-by-zero">;
 
 defm kernel_debug_enable : CommonFlag<"kernel-debug-enable">;
 
@@ -21,60 +22,142 @@ defm include_sip_csr : CommonFlag<"include-sip-csr">;
 
 defm include_sip_kernel_debug : CommonFlag<"include-sip-kernel-debug">;
 
-defm include_sip_kernel_local_debug :
-  CommonFlag<"include-sip-kernel-local-debug">;
+defm include_sip_kernel_local_debug : CommonFlag<"include-sip-kernel-local-debug">;
 
-defm use_32_bit_ptr_arith : CommonFlag<"intel-use-32bit-ptr-arith">;
+// -cl-intel-use-32bit-ptr-arith
+defm use_32_bit_ptr_arith : CommonFlag<"use-32bit-ptr-arith">;
 
-def greater_than_4GB_buffer_required :
-  ZeFlag<"opt-greater-than-4GB-buffer-required">;
-def : ClFlag<"intel-greater-than-4GB-buffer-required">,
-  Alias<greater_than_4GB_buffer_required>;
+// -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
+defm greater_than_4GB_buffer_required : CommonFlag<"greater-than-4GB-buffer-required">;
 
-def has_buffer_offset_arg : ZeFlag<"opt-has-buffer-offset-arg">;
-def : ClFlag<"intel-has-buffer-offset-arg">, Alias<has_buffer_offset_arg>;
+// -cl-intel-has-buffer-offset-arg, -ze-opt-has-buffer-offset-arg, -ze-intel-has-buffer-offset-arg
+defm has_buffer_offset_arg : CommonFlag<"has-buffer-offset-arg">;
 
-def buffer_offset_arg_required : ZeFlag<"opt-buffer-offset-arg-required">;
-def : ClFlag<"intel-buffer-offset-arg-required">,
-  Alias<buffer_offset_arg_required>;
+// -cl-intel-buffer-offset-arg-required, -ze-opt-buffer-offset-arg-required
+defm buffer_offset_arg_required : CommonFlag<"buffer-offset-arg-required">;
 
-def has_positive_pointer_offset : ZeFlag<"opt-has-positive-pointer-offset">;
-def : ClFlag<"intel-has-positive-pointer-offset">,
-  Alias<has_positive_pointer_offset>;
+// -cl-intel-has-positive-pointer-offset, -ze-opt-has-positive-pointer-offset
+defm has_positive_pointer_offset : CommonFlag<"has-positive-pointer-offset">;
 
-def has_subdw_aligned_ptr_arg : ZeFlag<"opt-has-subDW-aligned-ptr-arg">;
-def : ClFlag<"intel-has-subDW-aligned-ptr-arg">,
-  Alias<has_subdw_aligned_ptr_arg>;
+// -cl-intel-has-subDW-aligned-ptr-arg, -ze-opt-has-subDW-aligned-ptr-arg
+defm has_subdw_aligned_ptr_arg : CommonFlag<"has-subDW-aligned-ptr-arg">;
 
-defm intel_disable_a64wa : CommonFlag<"intel-disable-a64WA">;
-defm intel_force_enable_a64wa : CommonFlag<"intel-force-enable-a64WA">;
+// -cl-intel-disable-a64WA
+defm disable_a64wa : CommonFlag<"disable-a64WA">;
 
-defm intel_gtpin_rera : CommonFlag<"intel-gtpin-rera">;
+// -cl-intel-force-enable-a64WA
+defm force_enable_a64wa : CommonFlag<"force-enable-a64WA">;
 
-defm intel_enable_prera_scheduling : CommonFlag<"intel-no-prera-scheduling">;
+// -cl-intel-no-prera-scheduling
+defm no_prera_scheduling : CommonFlag<"no-prera-scheduling">;
 
-defm intel_128_grf_per_thread : CommonFlag<"intel-128-GRF-per-thread">;
+// (All start with -cl-intel or -ze-opt)
+defm num_thread_per_eu : CommonSeparate<"num-thread-per-eu">;
 
-defm opt_large_register_file : CommonFlag<"opt-large-register-file">;
-defm : CommonFlag<"intel-256-GRF-per-thread">,
-  Alias<opt_large_register_file_ze>;
+defm exp_register_file_size : CommonSeparate<"exp-register-file-size">,
+  HelpText<"Set amount of registers used by regalloc">;
+defm : CommonJoined<"exp-register-file-size=">, Alias<exp_register_file_size_common>,
+  HelpText<"Alias for -ze-exp-register-file-size">;
 
-defm intel_num_thread_per_eu : CommonSeparate<"intel-num-thread-per-eu">;
+// -cl-intel-128-GRF-per-thread
+defm 128_grf_per_thread : CommonFlag<"128-GRF-per-thread">;
+
+// -cl-intel-256-GRF-per-thread
+defm 256_grf_per_thread : CommonFlag<"256-GRF-per-thread">;
+
+// -ze-opt-large-register-file
+defm large_register_file : CommonFlag<"large-register-file">,
+  Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
+  HelpText<"Increase number of available GRF">;
+
+// -cl-intel-force-global-mem-allocation, -cl-force-global-mem-allocation, -ze-force-global-mem-allocation
+defm force_global_mem_allocation : CommonFlag<"force-global-mem-allocation">;
 
 
-defm intel_use_bindless_images : CommonFlag<"intel-use-bindless-images">;
+// (All start with -cl-intel or -ze-opt)
 
-defm intel_use_bindless_mode : CommonFlag<"intel-use-bindless-mode">;
+// -cl-disable-recompilation, -ze-opt-disable-recompilation
+defm disable_recompilation : CommonFlag<"disable-recompilation">;
 
-defm intel_use_bindless_printf : CommonFlag<"intel-use-bindless-printf">;
+// -cl-intel-force-emu-int32divrem
+defm force_emu_int32divrem : CommonFlag<"force-emu-int32divrem">;
 
-defm intel_force_global_mem_allocation :
-  CommonFlag<"intel-force-global-mem-allocation">;
-defm intel_no_local_to_generic : CommonFlag<"intel-no-local-to-generic">;
+// -cl-intel-force-emu-sp-int32divrem
+defm force_emu_sp_int32divrem : CommonFlag<"force-emu-sp-int32divrem">;
 
-defm intel_vector_coalescing : CommonJoined<"intel-vector-coalesing=">;
+// -cl-intel-force-disable-4GB-buffer
+defm force_disable_4GB_buffer : CommonFlag<"force-disable-4GB-buffer">;
 
-defm intel_no_spill : CommonFlag<"intel-no-spill">;
+// -cl-intel-use-bindless-images
+defm use_bindless_images : CommonFlag<"use-bindless-images">;
+
+// -cl-intel-use-bindless-mode
+defm use_bindless_mode : CommonFlag<"use-bindless-mode">;
+
+// -cl-intel-use-bindless-printf
+defm use_bindless_printf : CommonFlag<"use-bindless-printf">;
+
+// -cl-intel-use-bindless-legacy-mode
+defm use_bindless_legacy_mode : CommonFlag<"use-bindless-legacy-mode">;
+
+// -cl-intel-use-bindless-advanced-mode
+defm use_bindless_advanced_mode : CommonFlag<"use-bindless-advanced-mode">;
+
+// -cl-intel-vector-coalesing
+defm vector_coalescing : CommonSeparate<"vector-coalesing">;
+defm : CommonJoined<"vector-coalesing=">, Alias<vector_coalescing_common>;
+
+// -cl-intel-exclude-ir-from-zebin
+defm exclude_ir_from_zebin : CommonFlag<"exclude-ir-from-zebin">;
+
+// -cl-intel-no-spill
+defm no_spill : CommonFlag<"no-spill">;
+
+// -cl-intel-disable-noMaskWA, -ze-intel-disable-noMaskWA
+defm disable_noMaskWA : CommonFlag<"disable-noMaskWA">;
+
+// -cl-intel-ignoreBFRounding, -ze-intel-ignoreBFRounding
+defm ignoreBFRounding : CommonFlag<"ignoreBFRounding">;
+
+// -cl-compile-one-at-time
+defm compile_one_at_time : CommonFlag<"compile-one-at-time">;
+
+// -cl-skip-reloc-add
+defm skip_reloc_add : CommonFlag<"skip-reloc-add">;
+
+// -cl-intel-disableEUFusion -ze-intel-disableEUFusion
+defm disableEUFusion : CommonFlag<"disableEUFusion">;
+
+// -cl-intel-functonControl [<n>] -ze-intel-functionControl [<n>]
+defm functonControl : CommonSeparate<"functonControl">;
+
+defm fail_on_spill : CommonFlag<"fail-on-spill">;
+
+// -[cl|ze]-load-cache-default[=| ]<positive int>
+defm load_cache_default : CommonSeparate<"load-cache-default">;
+defm : CommonJoined<"load-cache-default=">, Alias<load_cache_default_common>;
+
+// -[cl|ze]-store-cache-default[=| ]<positive int>
+defm store_cache_default : CommonSeparate<"store-cache-default">;
+defm : CommonJoined<"store-cache-default=">, Alias<store_cache_default_common>;
+
+// -cl-poison-unsupported-fp64-kernels -ze-poison-unsupported-fp64-kernels
+defm poison_unsupported_fp64_kernels : CommonFlag<"poison-unsupported-fp64-kernels">;
+
+// -cl-fp64-gen-emu  -ze-fp64-gen-emu
+defm fp64_gen_emu : CommonFlag<"fp64-gen-emu">;
+
+// *-private-memory-minimal-size-per-thread <SIZE>
+defm private_memory_minimal_size_per_thread : CommonSeparate<"private-memory-minimal-size-per-thread">;
+
+// *-scratch-space-private-memory-minimal-size-per-thread <SIZE>
+defm scratch_space_private_memory_minimal_size_per_thread : CommonSeparate<"scratch-space-private-memory-minimal-size-per-thread">;
+
+defm enable_divergent_barrier_handling : CommonFlag<"enable-divergent-barrier-handling">;
+
+// -cl-intel-high-accuracy-nolut-math
+defm high_accuracy_nolut_math : CommonFlag<"high-accuracy-nolut-math">;
+
 // }} Backend internal options
 
 // Internal options from source translation {{
