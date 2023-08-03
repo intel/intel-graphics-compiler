@@ -150,7 +150,11 @@ bool CustomUnsafeOptPass::runOnFunction(Function& F)
     }
 
     // Do reassociate to emit more mad.
-    reassociateMulAdd(F);
+    // Skip this optimization for domain shaders due to precision issues observed in those shaders specifically
+    if (m_ctx->type != ShaderType::DOMAIN_SHADER)
+    {
+        reassociateMulAdd(F);
+    }
 
     eraseCollectedInst();
 
