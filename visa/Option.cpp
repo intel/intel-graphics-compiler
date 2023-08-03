@@ -365,9 +365,8 @@ bool Options::parseOptions(int argc, const char *argv[]) {
 }
 
 void Options::showUsage(std::ostream &output) {
-  output << "USAGE: GenX_IR <InputFilename.isa> {Option List}\n";
-  output << "Converts a vISA assembly or binary file into Gen binary or "
-            "assembly\n";
+  output << "USAGE: GenX_IR <InputFilename.visaasm> {Option List}\n";
+  output << "Converts a vISA assembly into Gen binary or assembly\n";
   output << "Options:\n";
 #ifndef DLL_MODE
   output << "    -platform PLT                   - Gen platform to use "
@@ -375,8 +374,8 @@ void Options::showUsage(std::ostream &output) {
             "        supported platforms are: "
          << makePlatformsString()
          << "\n"
-            "    -binary                         - Emit the binary code (CISA "
-            "binary .isa and GEN bits as .dat).\n";
+            "    -binary                         - Emit the binary code (Gen "
+            "bits as .dat).\n";
 #endif
   output
       << "    -output                         - Emit GEN assembly code to a "
@@ -385,7 +384,7 @@ void Options::showUsage(std::ostream &output) {
          "(.visaasm).\n"
          "    -noschedule                     - Turn off code scheduling.\n"
          "    -nocompaction                   - Turn off binary compaction.\n"
-         "    -outputCisaBinaryName <PATH>    - name for the CISA binary "
+         "    -outputIsaasmName <PATH>        - name for the combined .isaasm "
          "file.\n"
          "    -... many more; use -dumpVisaOptionsAll\n"
          "\n";

@@ -47,63 +47,6 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
 #define JIT_CISA_ERROR 3
 #define JIT_INVALID_PLATFORM 5
 
-#ifndef DLL_MODE
-int parseBinary(std::string fileName, int argc, const char *argv[],
-                Options &opt) {
-  vISA::Mem_Manager mem(4096);
-
-  /// Try opening the file.
-  FILE *isafile = fopen(fileName.c_str(), "rb");
-  if (!isafile) {
-    std::cerr << fileName << ": cannot open file\n";
-    return EXIT_FAILURE;
-  }
-
-  /// Calculate file size.
-  fseek(isafile, 0, SEEK_END);
-  long isafilesize = ftell(isafile);
-  rewind(isafile);
-
-  /// Reading file into buffer.
-  char *isafilebuf = (char *)mem.alloc(isafilesize);
-  if (isafilesize != fread(isafilebuf, 1, isafilesize, isafile)) {
-    std::cerr << fileName << ": Unable to read entire file into buffer.\n";
-    return EXIT_FAILURE;
-  }
-  fclose(isafile);
-
-  TARGET_PLATFORM platform =
-      static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
-  VISA_BUILDER_OPTION builderOption =
-      (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
-  CISA_IR_Builder *cisa_builder = NULL;
-
-  CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption,
-                                 platform, argc, argv);
-  vISA_ASSERT(cisa_builder, "cisa_builder is NULL.");
-
-  std::vector<VISAKernel *> kernels;
-  bool success = readIsaBinaryNG(isafilebuf, cisa_builder, kernels, NULL,
-                                 COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER);
-  if (!success)
-    return EXIT_FAILURE;
-
-  llvm::SmallString<64> isaasmFileName;
-  if (auto cisaBinaryName =
-          cisa_builder->m_options.getOptionCstr(vISA_OutputvISABinaryName)) {
-    isaasmFileName = cisaBinaryName;
-    llvm::sys::path::replace_extension(isaasmFileName, ".isaasm");
-  }
-
-  auto result = cisa_builder->Compile(isaasmFileName.c_str());
-  if (result != VISA_SUCCESS) {
-    return result;
-  }
-  result = CISA_IR_Builder::DestroyBuilder(cisa_builder);
-  return result;
-}
-#endif
-
 #define COMMON_ISA_MAX_KERNEL_NAME_LEN 255
 
 int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
@@ -240,17 +183,14 @@ int main(int argc, const char *argv[]) {
   // here we let the tool quit instead of crashing
   if (argc < 2) {
     Options::showUsage(COUT_ERROR);
-    return 1;
+    return EXIT_FAILURE;
   }
 
+  // Skip program name and the input .visaasm or .isaasm.
   int startPos = 1;
-  bool parserMode = false;
   llvm::StringRef input = argv[1];
   llvm::StringRef ext = llvm::sys::path::extension(input);
   if (ext == ".visaasm" || ext == ".isaasm") {
-    startPos++;
-    parserMode = true;
-  } else if (ext == ".isa") {
     startPos++;
   }
 
@@ -259,29 +199,14 @@ int main(int argc, const char *argv[]) {
   // platform and stepping
   Options opt;
   if (!opt.parseOptions(argc - startPos, &argv[startPos])) {
-    return 1;
+    return EXIT_FAILURE;
   }
 
   TARGET_PLATFORM platform =
       static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
-  bool dumpCommonIsa = false;
-  bool generateBinary = false;
-  opt.getOption(vISA_GenerateISAASM, dumpCommonIsa);
+  vASSERT(platform != GENX_NONE);
 
-  if (opt.getOption(vISA_isParseMode))
-    parserMode = true;
-
-  opt.getOption(vISA_GenerateBinary, generateBinary);
-  if (platform == GENX_NONE &&
-      ((!dumpCommonIsa && !parserMode) || generateBinary)) {
-    std::cerr << "USAGE: must specify platform\n";
-    Options::showUsage(COUT_ERROR);
-    return EXIT_FAILURE;
-  }
-
-  if (opt.getOptionCstr(vISA_DecodeDbg)) {
-    const char *dbgName;
-    opt.getOption(vISA_DecodeDbg, dbgName);
+  if (const char *dbgName = opt.getOptionCstr(vISA_DecodeDbg)) {
     decodeAndDumpDebugInfo((char *)dbgName, platform);
     return EXIT_SUCCESS;
   }
@@ -307,12 +232,7 @@ int main(int argc, const char *argv[]) {
     opt.setOptionInternally(VISA_AsmFileName, stem.c_str());
   }
 
-  int err = VISA_SUCCESS;
-  if (parserMode) {
-    err = parseText(input, argc - startPos, &argv[startPos], opt);
-  } else {
-    err = parseBinary(input.str(), argc - startPos, &argv[startPos], opt);
-  }
+  int err = parseText(input, argc - startPos, &argv[startPos], opt);
 
 #ifdef COLLECT_ALLOCATION_STATS
 #if 0
@@ -338,7 +258,6 @@ DLL_EXPORT void freeBlock(void *ptr) {
   }
 }
 
-
 #ifndef DLL_MODE
 
 extern int CISAparse(CISA_IR_Builder *builder);
@@ -347,13 +266,9 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
               Options &opt) {
   TARGET_PLATFORM platform =
       static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
-  VISA_BUILDER_OPTION builderOption =
-      (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
-
   CISA_IR_Builder *cisa_builder = nullptr;
-
   auto err = CISA_IR_Builder::CreateBuilder(
-      cisa_builder, vISA_ASM_READER, builderOption, platform, argc, argv);
+      cisa_builder, vISA_ASM_READER, VISA_BUILDER_BOTH, platform, argc, argv);
   if (err)
     return EXIT_FAILURE;
 
@@ -390,9 +305,8 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
   }
 
   llvm::SmallString<64> isaasmFileName;
-  if (auto cisaBinaryName = opt.getOptionCstr(vISA_OutputvISABinaryName)) {
-    isaasmFileName = cisaBinaryName;
-    llvm::sys::path::replace_extension(isaasmFileName, ".isaasm");
+  if (auto isaasmName = opt.getOptionCstr(vISA_OutputIsaasmName)) {
+    isaasmFileName = isaasmName;
   } else {
     // Use VISA_AsmFileName as the stem of the final isaasm.
     isaasmFileName = opt.getOptionCstr(VISA_AsmFileName);
