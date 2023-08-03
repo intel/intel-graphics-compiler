@@ -2268,21 +2268,14 @@ namespace IGC
             return false;
         }
 
-        if (bool allow = m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS ||
-                         IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS);
-            m_ctx->type == ShaderType::VERTEX_SHADER &&
-                           m_ctx->m_DriverInfo.PreventZFighting() && !allow)
+        bool allow = m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS || IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS);
+
+        using namespace llvm::PatternMatch;
+        if (m_ctx->type == ShaderType::VERTEX_SHADER &&
+            m_ctx->m_DriverInfo.PreventZFighting() && !allow)
         {
             if (m_PosDep->PositionDependsOnInst(&I))
-            {
                 return false;
-            }
-        }
-
-        if (m_ctx->type == ShaderType::COMPUTE_SHADER &&
-                           m_ctx->getModuleMetaData()->disableMatchMadOptimizationForCS)
-        {
-            return false;
         }
 
         if (IGC_IS_FLAG_ENABLED(DisableMatchMad))

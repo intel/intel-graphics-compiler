@@ -694,9 +694,6 @@ namespace IGC
         //when true, compiler enables MatchMad optimization for VS
         bool allowMatchMadOptimizationforVS = false;
 
-        //when true, compiler disables MatchMad optimization for CS
-        bool disableMatchMadOptimizationForCS = false;
-
         bool disableMemOptforNegativeOffsetLoads = false;
 
         bool enableThreeWayLoadSpiltOpt = false;
