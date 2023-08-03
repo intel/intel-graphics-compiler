@@ -65,11 +65,6 @@ defm 128_grf_per_thread : CommonFlag<"128-GRF-per-thread">;
 // -cl-intel-256-GRF-per-thread
 defm 256_grf_per_thread : CommonFlag<"256-GRF-per-thread">;
 
-// -ze-opt-large-register-file
-defm large_register_file : CommonFlag<"large-register-file">,
-  Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
-  HelpText<"Increase number of available GRF">;
-
 // -cl-intel-force-global-mem-allocation, -cl-force-global-mem-allocation, -ze-force-global-mem-allocation
 defm force_global_mem_allocation : CommonFlag<"force-global-mem-allocation">;
 

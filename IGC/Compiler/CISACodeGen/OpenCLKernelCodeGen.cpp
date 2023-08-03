@@ -87,6 +87,9 @@ namespace IGC
         if (m_InternalOptions.IntelExpGRFSize) {
             return m_InternalOptions.expGRFSize;
         }
+        if (m_Options.IntelExpGRFSize) {
+            return m_Options.expGRFSize;
+        }
 
         return 0;
     }
@@ -99,7 +102,8 @@ namespace IGC
             {
                 return 128;
             }
-            else if (m_InternalOptions.Intel256GRFPerThread)
+            else if (m_InternalOptions.Intel256GRFPerThread ||
+                     m_Options.IntelLargeRegisterFile)
             {
                 return 256;
             }
@@ -316,8 +320,7 @@ namespace IGC
             Intel128GRFPerThread = true;
         }
 
-        if (internalOptions.hasArg(OPT_256_grf_per_thread_common) ||
-            internalOptions.hasArg(OPT_large_register_file_common))
+        if (internalOptions.hasArg(OPT_256_grf_per_thread_common))
         {
             Intel256GRFPerThread = true;
         }
@@ -675,6 +678,15 @@ namespace IGC
         if (apiOptions.hasArg(OPT_enable_auto_large_GRF_mode_common))
         {
             IntelEnableAutoLargeGRF = true;
+        }
+
+        if (const opt::Arg* arg = apiOptions.getLastArg(OPT_exp_register_file_size_common))
+        {
+            IntelExpGRFSize = true;
+            llvm::StringRef valStr = arg->getValue();
+            valStr.getAsInteger(10, expGRFSize);
+
+            IntelLargeRegisterFile = expGRFSize == 256;
         }
 
         if (apiOptions.hasArg(OPT_no_local_to_generic_common))

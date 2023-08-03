@@ -78,6 +78,7 @@ namespace IGC
             bool Intel256GRFPerThread                       = false;
             bool IntelNumThreadPerEU                        = false;
             int32_t numThreadsPerEU                         = -1;
+
             bool IntelExpGRFSize                            = false;
             uint32_t expGRFSize                             = 0;
 
@@ -157,6 +158,11 @@ namespace IGC
 
             // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
             bool IntelEnableAutoLargeGRF        = false;
+
+            bool IntelLargeRegisterFile         = false;
+
+            bool IntelExpGRFSize                = false;
+            uint32_t expGRFSize                 = 0;
 
             // Generic address related
             bool NoLocalToGeneric               = false;
