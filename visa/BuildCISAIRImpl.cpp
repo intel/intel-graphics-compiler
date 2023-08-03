@@ -1546,15 +1546,11 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
 
 }
 
-// TODO: Update nameInput to the path to the combined .isaasm file in the
-// compilation. Currently it is a .isa file.
-// TODO: Remove the ostream parameter used to emit visa binary.
 // default size of the kernel mem manager in bytes
-int CISA_IR_Builder::Compile(const char *nameInput, bool emit_visa_only) {
-  stopTimer(
-      TimerID::BUILDER); // TIMER_BUILDER is started when builder is created
+int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
+  // TIMER_BUILDER is started when builder is created
+  stopTimer(TimerID::BUILDER);
   int status = VISA_SUCCESS;
-  std::string name = std::string(nameInput);
 
   if (IS_VISA_BOTH_PATH) {
     if (m_builderMode == vISA_ASM_WRITER) {
@@ -1586,18 +1582,9 @@ int CISA_IR_Builder::Compile(const char *nameInput, bool emit_visa_only) {
       return status;
     }
 
-    llvm::SmallString<64> combinedIsaasmName;
-    if (m_options.getOption(vISA_GenerateCombinedISAASM) &&
-        !m_options.getOption(vISA_ISAASMToConsole)) {
-      // Translate .isa to .isaasm before the nameInput is updated. Use
-      // .isaasm extension to avoid conflict with the existing .visaasm for
-      // a kernel.
-      combinedIsaasmName = nameInput;
-      llvm::sys::path::replace_extension(combinedIsaasmName, ".isaasm");
-    }
     if (m_options.getOption(vISA_GenerateISAASM) ||
         m_options.getOption(vISA_GenerateCombinedISAASM)) {
-      status = isaDump(combinedIsaasmName.c_str());
+      status = isaDump(isaasmFileName);
       if (status != VISA_SUCCESS) {
         // Treat VISA_EARLY_EXIT as VISA_SUCCESS.
         return status == VISA_EARLY_EXIT ? VISA_SUCCESS : status;
@@ -1612,20 +1599,25 @@ int CISA_IR_Builder::Compile(const char *nameInput, bool emit_visa_only) {
     }
   }
 
-  /*
-      In case there is an assert in compilation phase, at least vISA binary will
-     be generated.
-  */
-  // Ignore dumpvISA if 'emit_visa_only' is true
-  if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA) && nameInput &&
-      !emit_visa_only) {
-    if (CisaFramework::allowDump(m_options, name))
-      status = m_cisaBinary->dumpToFile(name);
-  }
-
   // Early return if emit_visa_only is true.
   if (emit_visa_only)
     return status;
+
+  // In case there is an assert in compilation phase, at least vISA binary will
+  // be generated.
+  std::string isaFileName;
+  const bool dumpVISA = m_options.getOption(vISA_DumpvISA);
+  if (dumpVISA) {
+    // Translate .isaasm to .isa.
+    llvm::SmallString<64> temp(isaasmFileName);
+    llvm::sys::path::replace_extension(temp, ".isa");
+    isaFileName = temp.c_str();
+  }
+
+  if (IS_VISA_BOTH_PATH && dumpVISA && !isaFileName.empty()) {
+    if (CisaFramework::allowDump(m_options, isaFileName))
+      status = m_cisaBinary->dumpToFile(isaFileName);
+  }
 
   if (m_options.getuInt32Option(vISA_Linker) & (1U << Linker_Subroutine)) {
     std::map<std::string, G4_Kernel *> functionsNameMap;
@@ -2022,7 +2014,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, bool emit_visa_only) {
 
   }
 
-  if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA)) {
+  if (IS_VISA_BOTH_PATH && dumpVISA) {
     unsigned int numGenBinariesWillBePatched =
         m_options.getuInt32Option(vISA_NumGenBinariesWillBePatched);
 
@@ -2057,8 +2049,8 @@ int CISA_IR_Builder::Compile(const char *nameInput, bool emit_visa_only) {
       }
     }
 
-    if (CisaFramework::allowDump(m_options, name))
-      status = m_cisaBinary->dumpToFile(name);
+    if (CisaFramework::allowDump(m_options, isaFileName))
+      status = m_cisaBinary->dumpToFile(isaFileName);
   }
 
   stopTimer(TimerID::TOTAL); // have to record total time before dump the timer

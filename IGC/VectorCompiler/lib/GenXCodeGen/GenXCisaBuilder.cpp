@@ -6287,7 +6287,7 @@ public:
       CisaBuilder = GM.GetVISAAsmReader();
     CISA_CALL(CisaBuilder->Compile(
         BC->isaDumpsEnabled() && BC->hasShaderDumper()
-            ? BC->getShaderDumper().composeDumpPath("final.isa").c_str()
+            ? BC->getShaderDumper().composeDumpPath("final.isaasm").c_str()
             : "",
         BC->emitVisaOnly()));
 

@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Path.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -86,14 +87,15 @@ int parseBinary(std::string fileName, int argc, const char *argv[],
                                  COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER);
   if (!success)
     return EXIT_FAILURE;
-  std::string binFileName;
 
+  llvm::SmallString<64> isaasmFileName;
   if (auto cisaBinaryName =
           cisa_builder->m_options.getOptionCstr(vISA_OutputvISABinaryName)) {
-    binFileName = cisaBinaryName;
+    isaasmFileName = cisaBinaryName;
+    llvm::sys::path::replace_extension(isaasmFileName, ".isaasm");
   }
 
-  auto result = cisa_builder->Compile((char *)binFileName.c_str());
+  auto result = cisa_builder->Compile(isaasmFileName.c_str());
   if (result != VISA_SUCCESS) {
     return result;
   }
@@ -387,16 +389,17 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
     }
   }
 
-  std::string binFileName;
+  llvm::SmallString<64> isaasmFileName;
   if (auto cisaBinaryName = opt.getOptionCstr(vISA_OutputvISABinaryName)) {
-    binFileName = cisaBinaryName;
+    isaasmFileName = cisaBinaryName;
+    llvm::sys::path::replace_extension(isaasmFileName, ".isaasm");
   } else {
-    // Use VISA_AsmFileName as the stem of the final binary.
-    binFileName = opt.getOptionCstr(VISA_AsmFileName);
-    binFileName += ".isa";
+    // Use VISA_AsmFileName as the stem of the final isaasm.
+    isaasmFileName = opt.getOptionCstr(VISA_AsmFileName);
+    isaasmFileName += ".isaasm";
   }
 
-  auto compErr = cisa_builder->Compile(binFileName.c_str());
+  auto compErr = cisa_builder->Compile(isaasmFileName.c_str());
   if (compErr) {
     std::cerr << cisa_builder->GetCriticalMsg() << "\n";
     return EXIT_FAILURE;

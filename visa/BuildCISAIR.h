@@ -74,7 +74,7 @@ public:
                                    const char *functionName) override;
   VISA_BUILDER_API int AddPayloadSection(VISAFunction *&function,
                                          const char *functionName) override;
-  VISA_BUILDER_API int Compile(const char *isaFileNameint,
+  VISA_BUILDER_API int Compile(const char *isaasmFileName,
                                bool emit_visa_only = false) override;
 
   VISA_BUILDER_API void SetOption(vISAOptions option, bool val) override {
