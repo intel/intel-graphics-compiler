@@ -705,7 +705,8 @@ static uint64_t constIntValue(const Value *v) {
 template <class BuilderT>
 static Instruction *loadSlice(BuilderT *builder, Type *matTy, Value *sliceArray) {
     IGCLLVM::FixedVectorType *sliceTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
-    if (sliceTy && sliceTy->getNumElements() <= 32) {
+    if ((sliceTy && sliceTy->getNumElements() <= 32)
+          || matTy->isIntegerTy() || matTy->isFloatingPointTy()) {
         return builder->CreateLoad(matTy, sliceArray);
     } else if (matTy->isArrayTy() && matTy->getArrayNumElements() == 2) {
         Type *baseType = Type::getInt64Ty(builder->getContext());
