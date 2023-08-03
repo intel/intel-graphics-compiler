@@ -226,11 +226,6 @@ std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequentia
 
 Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
 {
-    if (m_CGContext->enableZEBinary())
-    {
-        return arg;
-    }
-
     GlobalVariable* formatString = nullptr;
 
     if (isa<GlobalVariable>(arg))
@@ -241,6 +236,12 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
             IGC_ASSERT_MESSAGE(0, "Unexpected printf argument (expected string literal)");
             return ConstantInt::get(m_int32Type, -1);
         }
+
+        if (m_CGContext->enableZEBinary())
+        {
+            return arg;
+        }
+
         ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
         std::string escaped_string = getEscapedString(formatStringConst);
 
@@ -373,6 +374,24 @@ static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtE
     return SI;
 }
 
+void OpenCLPrintfResolution::removeExcessArgs()
+{
+    SPrintfArgDescriptor* formatStringArgDesc = &m_argDescriptors[0];
+
+    Value* formatString = formatStringArgDesc->value;
+    IGC::SHADER_PRINTF_TYPE dataType = formatStringArgDesc->argType;
+    IGC_ASSERT(dataType == SHADER_PRINTF_STRING_LITERAL);
+
+    if (auto GV = dyn_cast<GlobalVariable>(formatString))
+    {
+        IGC_ASSERT(GV->hasInitializer());
+
+        unsigned int numFormatSpecifiers = getNumFormatSpecifiers(cast<ConstantDataArray>(GV->getInitializer()));
+        if (m_argDescriptors.size() > numFormatSpecifiers + 1)
+            m_argDescriptors.erase(m_argDescriptors.begin() + numFormatSpecifiers + 1, m_argDescriptors.end());
+    }
+}
+
 void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
 {
     /* Replace a printf call with IR instructions that fill the printf
@@ -448,6 +467,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     // Put all printf argument into m_argDescriptors vector.
     // Scalarize vector arguments and substitute string arguments by their indices.
     preprocessPrintfArgs(printfCall);
+
+    removeExcessArgs();
 
     // writeOffset = atomic_add(bufferPtr, dataSize)
     Value *basebufferPtr = isPrintfBuiltin
@@ -703,6 +724,29 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
     }
 
     return arg;
+}
+
+unsigned OpenCLPrintfResolution::getNumFormatSpecifiers(const ConstantDataArray* dataArray)
+{
+    unsigned int count = 0;
+    StringRef formatString = dataArray->getRawDataValues();
+
+    const size_t length = formatString.size();
+    for (size_t i = 0; i < length; i++)
+    {
+        if (formatString[i] == '%')
+        {
+            if (i + 1 < length && formatString[i + 1] == '%')
+            {
+                i++;
+                continue;
+            }
+
+            count++;
+        }
+    }
+
+    return count;
 }
 
 void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)

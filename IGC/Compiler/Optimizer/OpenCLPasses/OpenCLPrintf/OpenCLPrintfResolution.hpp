@@ -88,6 +88,14 @@ namespace IGC
         // Replaces a printf call with a sequence of IR instrictions.
         void expandPrintfCall(llvm::CallInst& printfCall, llvm::Function& F);
 
+        // Removes excess arguments from m_argDescriptors vector. Excess arguments
+        // are arguments that do not have a corresponding format specifier in a
+        // format string.
+        void removeExcessArgs();
+
+        // Returns number of format specifiers in a format string.
+        unsigned getNumFormatSpecifiers(const llvm::ConstantDataArray* formatString);
+
         // Walkes over printf arguments (including the format string) and adds them to printfArgs.
         // If an argument has vector type, adds the vector elements instead.
         void preprocessPrintfArgs(llvm::CallInst& printfCall);
