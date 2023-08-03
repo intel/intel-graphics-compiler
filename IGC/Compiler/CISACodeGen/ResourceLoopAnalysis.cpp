@@ -77,6 +77,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
       InstOrder[I] = SeqNo++;
     }
     // find and mark resource-loops
+    unsigned loopOpTy = 0;
     Value *loopRes = nullptr;
     Value *loopSamp = nullptr;
     auto prevMemIter = BB->end();   // last memory-inst in the loop
@@ -85,6 +86,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
     for (BasicBlock::iterator II = BB->begin(), EI = BB->end(); II != EI;
          ++II) {
       Instruction *I = &*II;
+      unsigned curOpTy = 0;
       Value *curRes = nullptr;
       Value *curSamp = nullptr;
       // There are more types of lane-varying resource access than what are
@@ -95,20 +97,24 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
             !WI->isUniform(SI->getSamplerValue())) {
           curRes = SI->getTextureValue();
           curSamp = SI->getSamplerValue();
+          curOpTy = 1;
         }
       } else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(I)) {
         if (!WI->isUniform(GI->getTextureValue()) ||
             !WI->isUniform(GI->getSamplerValue())) {
           curRes = GI->getTextureValue();
           curSamp = GI->getSamplerValue();
+          curOpTy = 2;
         }
       } else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
         if (!WI->isUniform(LI->getTextureValue())) {
           curRes = LI->getTextureValue();
+          curOpTy = 3;
         }
       } else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
         if (!WI->isUniform(LI->getResourceValue())) {
           curRes = LI->getResourceValue();
+          curOpTy = 4;
         }
       }
       // check data-dependence from mem-ops in the current set
@@ -135,10 +141,11 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           }
         }
       }
-      if (curRes || curSamp) {
+      if ((curRes || curSamp) && curOpTy) {
         // this is a lane-varying-resource-access
         bool LoopEnd = HasDeps;
-        if (!LoopEnd && curRes == loopRes && curSamp == loopSamp) {
+        if (!LoopEnd && curOpTy == loopOpTy &&
+            curRes == loopRes && curSamp == loopSamp) {
           // need to check ALU instruction in between
           // all those instructions should only be used
           // inside the loop
@@ -163,8 +170,10 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
             }
             ++III;
           }
-        } else
-          LoopEnd = true;
+        } else {
+          LoopEnd = true; // mismatch resource/sampler/op-type
+        }
+
         if (!LoopEnd) {
           LoopMap[I] = MarkResourceLoopInside;
           prevMemIter = II;
@@ -178,10 +187,12 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
             prevMemIter = BB->end();
             loopRes = nullptr;
             loopSamp = nullptr;
+            loopOpTy = 0;
           }
           LoopMap[I] = MarkResourceLoopStart;
           loopRes = curRes;
           loopSamp = curSamp;
+          loopOpTy = curOpTy;
           prevMemIter = II;
           DefSet.clear();
           DefSet.insert(I);
@@ -205,6 +216,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           prevMemIter = BB->end();
           loopRes = nullptr;
           loopSamp = nullptr;
+          loopOpTy = 0;
           DefSet.clear();
         }
       }
