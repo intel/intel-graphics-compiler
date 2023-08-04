@@ -19,18 +19,30 @@ Def::Def(G4_DstRegRegion* dst) {
     G4_RegVar* dstRegVar = dstBase->asRegVar();
     G4_Declare* dstDecl = dstRegVar->getDeclare();
 
-    this->name = dstRegVar->getName();
-    this->nameLen = strnlen(this->name, MAX_STRLEN);
+    // handle the case where this VV is aliased to another VV
+    unsigned int rootOffset = 0;
+    G4_Declare* rootDecl = dstDecl->getRootDeclare(rootOffset);
+    G4_RegVar* rootRegVar = rootDecl->getRegVar();
 
-    this->hstride = dst->getHorzStride();
-    this->typeSize = dst->getTypeSize();
+    regFileKind = rootDecl->getRegFile();
+    reg = rootRegVar->getPhyReg()->asGreg()->getRegNum();
+    subreg = rootRegVar->getPhyRegOff();
+    byteSize = rootDecl->getByteSize();
+    aliasOffset = rootOffset;
 
-    this->reg = dstRegVar->getPhyReg()->asGreg()->getRegNum();
-    this->subreg = dstRegVar->getPhyRegOff() + dst->getSubRegOff();
+    rowOffset = dst->getRegOff();
+    colOffset = dst->getSubRegOff();
 
-    unsigned int offsetFromR0 = dstDecl->getGRFOffsetFromR0();
-    this->leftBound = offsetFromR0 + dst->getLeftBound();
-    this->rightBound = offsetFromR0 + dst->getRightBound();
+    hstride = dst->getHorzStride();
+    typeSize = dst->getTypeSize();
+
+    unsigned int offsetFromR0 = rootDecl->getGRFOffsetFromR0();
+    rootBound = offsetFromR0 + rootOffset;
+    leftBound = dst->getLeftBound();
+    rightBound = dst->getRightBound();
+
+    name = rootRegVar->getName();
+    nameLen = strnlen(this->name, MAX_STRLEN);
 }
 
 Use::Use(G4_SrcRegRegion* src) {
@@ -38,21 +50,33 @@ Use::Use(G4_SrcRegRegion* src) {
     G4_RegVar* srcRegVar = srcBase->asRegVar();
     G4_Declare* srcDecl = srcRegVar->getDeclare();
 
-    this->name = srcRegVar->getName();
-    this->nameLen = strnlen(this->name, MAX_STRLEN);
+    // handle the case where this VV is aliased to another VV
+    unsigned int rootOffset = 0;
+    G4_Declare* rootDecl = srcDecl->getRootDeclare(rootOffset);
+    G4_RegVar* rootRegVar = rootDecl->getRegVar();
+
+    regFileKind = rootDecl->getRegFile();
+    reg = rootRegVar->getPhyReg()->asGreg()->getRegNum();
+    subreg = rootRegVar->getPhyRegOff();
+    byteSize = rootDecl->getByteSize();
+    aliasOffset = rootOffset;
+
+    rowOffset = src->getRegOff();
+    colOffset = src->getSubRegOff();
 
     const RegionDesc* srcRegion = src->getRegion();
-    this->hstride = srcRegion->horzStride;
-    this->vstride = srcRegion->vertStride;
-    this->width = srcRegion->width;
+    hstride = srcRegion->horzStride;
+    vstride = srcRegion->vertStride;
+    width = srcRegion->width;
+    typeSize = src->getTypeSize();
 
-    this->typeSize = src->getTypeSize();
-    this->reg = srcRegVar->getPhyReg()->asGreg()->getRegNum();
-    this->subreg = srcRegVar->getPhyRegOff() + src->getSubRegOff();
+    unsigned int offsetFromR0 = rootDecl->getGRFOffsetFromR0();
+    rootBound = offsetFromR0 + rootOffset;
+    leftBound = src->getLeftBound();
+    rightBound = src->getRightBound();
 
-    unsigned int offsetFromR0 = srcDecl->getGRFOffsetFromR0();
-    this->leftBound = offsetFromR0 + src->getLeftBound();
-    this->rightBound = offsetFromR0 + src->getRightBound();
+    name = rootRegVar->getName();
+    nameLen = strnlen(this->name, MAX_STRLEN);
 }
 
 void MetadataDumpRA::addKernelMD(G4_Kernel* kernel) {
@@ -155,12 +179,14 @@ void MetadataDumpRA::addKernelMD(G4_Kernel* kernel) {
 // |---   ...               ...                                               ...
 //                          <repeats numKernels times, for each Kernel>
 // |---   ...               ...                                               ...
-void MetadataDumpRA::emitMetadataFile() {
+void MetadataDumpRA::emitMetadataFile(std::string asmName, std::string kernelName) {
     using namespace std;
-    ofstream MDFile;
 
-    // create metadata file in CWD -- FIXME: emit to a specific dump dir
-    MDFile.open("RA_METADATA_DUMP", ios::trunc);
+    // create metadata file in shader dump
+    ofstream MDFile;
+    stringstream ssInit;
+    ssInit << asmName << "_" << kernelName << ".ra_metadata";
+    MDFile.open(ssInit.str(), std::ofstream::binary);
 
     // write number of kernels to file
     assert(numKernels == kernelMetadatas.size());
@@ -184,13 +210,15 @@ void MetadataDumpRA::emitMetadataFile() {
 
             for (Def def : iMD.instDefs) {
 
+                // uchar (1) : regFileKind
                 // ushort (1) : typeSize
-                // uint (6) : leftBound, rightBound, reg, subreg, hstride, nameLen
-                streamsize defOffset = sizeof(unsigned short) + sizeof(unsigned int) * 6;
+                // uint (10) : reg, subreg, byteSize, aliasOffset, row/colOffset, hstride, root/l/rBound, nameLen
+                streamsize defOffset = sizeof(unsigned char) + sizeof(unsigned short) + sizeof(unsigned int) * 11;
                 MDFile.write((char*)&def, defOffset);
 
                 // write virtual variable name to file
                 MDFile.write(def.name, def.nameLen);
+                vISA_ASSERT(MDFile.good(), "RA metadata file write stream error for Def");
             }
 
             // write number of uses in this inst to file
@@ -199,15 +227,18 @@ void MetadataDumpRA::emitMetadataFile() {
 
             for (Use use : iMD.instUses) {
 
+                // uchar (1) : regFileKind
                 // ushort (1) : typeSize
-                // uint (8) : leftBound, rightBound, reg, subreg, hstride, vstride, width, nameLen
-                streamsize useOffset = sizeof(unsigned short) + sizeof(unsigned int) * 8;
+                // uint (12) : reg, subreg, byteSize, aliasOffset, row/colOffset, h/vstride, width, root/l/rBound, nameLen
+                streamsize useOffset = sizeof(unsigned char) + sizeof(unsigned short) + sizeof(unsigned int) * 13;
                 MDFile.write((char*)&use, useOffset);
 
                 // write virtual variable name to file
                 MDFile.write(use.name, use.nameLen);
-
+                vISA_ASSERT(MDFile.good(), "RA metadata file write stream error for Use");
             }
+
+            MDFile.flush();
         }
     }
     MDFile.close();
@@ -221,10 +252,10 @@ void MetadataReader::printName(const char* name, unsigned int nameLen) {
 }
 
 // Reads a metadata file from the dump directory
-void MetadataReader::readMetadata() {
+void MetadataReader::readMetadata(std::string fileName) {
     ifstream MDFile;
 
-    MDFile.open("RA_METADATA_DUMP", ios::in);
+    MDFile.open(fileName, ios::binary);
 
     unsigned int numKernels;
     MDFile.read((char*)&numKernels, sizeof(unsigned int));
@@ -252,20 +283,25 @@ void MetadataReader::readMetadata() {
 
             for (unsigned int d = 0; d < numDefs; d++) {
                 Def def;
+
+                // uchar (1) : regFileKind
                 // ushort (1) : typeSize
-                // uint (6) : leftBound, rightBound, reg, subreg, hstride, nameLen
-                streamsize defOffset = sizeof(unsigned short) + sizeof(unsigned int) * 6;
+                // uint (10) : reg, subreg, byteSize, aliasOffset, row/colOffset, hstride, root/l/rBound, nameLen
+                streamsize defOffset = sizeof(unsigned char) + sizeof(unsigned short) + sizeof(unsigned int) * 11;
+
                 MDFile.read((char*)&def, defOffset);
 
-                char* name = new char[def.nameLen];
+                char name[MAX_NAMELEN];
                 MDFile.read(name, def.nameLen);
                 def.name = name;
+
+                vISA_ASSERT(MDFile.good(), "RA metadata file read stream error for Def");
 
                 printf("|            ");
                 this->printName(def.name, def.nameLen);
                 printf(" \t\t|");
                 printf("%5u -> %-5u| ", def.leftBound, def.rightBound);
-                printf("  r%-5u.%-5u<%-5u%-5s%-5s  >:%-5u", def.reg, def.subreg, def.hstride, "", "", def.typeSize);
+                printf("  r%-5u.%-5u(%-5u,%-5u)<%-5u%-5s%-5s  >:%-5u_%-5u_%-5u", def.reg, def.subreg, def.rowOffset, def.colOffset, def.hstride, "", "", def.typeSize, def.byteSize, (unsigned int)def.regFileKind);
                 printf("\n");
             }
 
@@ -274,20 +310,25 @@ void MetadataReader::readMetadata() {
 
             for (unsigned int u = 0; u < numUses; u++) {
                 Use use;
+
+                // uchar (1) : regFileKind
                 // ushort (1) : typeSize
-                // uint (8) : leftBound, rightBound, reg, subreg, hstride, vstride, width, nameLen
-                streamsize useOffset = sizeof(unsigned short) + sizeof(unsigned int) * 8;
+                // uint (12) : reg, subreg, byteSize, aliasOffset, row/colOffset, h/vstride, width, root/l/rBound, nameLen
+                streamsize useOffset = sizeof(unsigned char) + sizeof(unsigned short) + sizeof(unsigned int) * 13;
+
                 MDFile.read((char*)&use, useOffset);
 
-                char* name = new char[use.nameLen];
+                char name[MAX_NAMELEN];
                 MDFile.read(name, use.nameLen);
                 use.name = name;
+
+                vISA_ASSERT(MDFile.good(), "RA metadata file read stream error for Use");
 
                 printf("|            ");
                 this->printName(use.name, use.nameLen);
                 printf(" \t\t|");
                 printf("%5u -> %-5u| ", use.leftBound, use.rightBound);
-                printf("  r%-5u.%-5u<%-5u;%-5u,%-5u>:%-5u", use.reg, use.subreg, use.vstride, use.width, use.hstride, use.typeSize);
+                printf("  r%-5u.%-5u(%-5u,%-5u)<%-5u;%-5u,%-5u>:%-5u_%-5u_%-5u", use.reg, use.subreg, use.rowOffset, use.colOffset, use.vstride, use.width, use.hstride, use.typeSize, use.byteSize, (unsigned int)use.regFileKind);
                 printf("\n");
             }
         }

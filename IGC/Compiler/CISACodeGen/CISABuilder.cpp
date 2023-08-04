@@ -4670,6 +4670,10 @@ namespace IGC
         if (dumpJSON != 0)
             SaveOption(vISA_dumpIgaJson, dumpJSON);
 
+        auto dumpRAMetadata = (bool)IGC_GET_FLAG_VALUE(ShaderDumpEnableRAMetadata);
+        if (dumpRAMetadata)
+            SaveOption(vISA_dumpRAMetadata, dumpRAMetadata);
+
         if (EnableBarrierInstCounterBits)
         {
             SaveOption(VISA_EnableBarrierInstCounterBits, true);

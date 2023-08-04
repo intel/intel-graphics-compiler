@@ -1856,9 +1856,15 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
 
     // initialize new metadata object
     std::unique_ptr<MetadataDumpRA> metadata;
+    const char* raFileName = nullptr;
+    const char* kernelName = nullptr;
     bool dumpMetadata = m_options.getOption(vISA_dumpRAMetadata);
+    bool decodeMetadata = m_options.getOption(vISA_DecodeRAMetadata);
     if (dumpMetadata) {
         metadata = std::make_unique<vISA::MetadataDumpRA>();
+    }
+    if (dumpMetadata || decodeMetadata) {
+        m_options.getOption(VISA_AsmFileName, raFileName);
     }
 
     // stitch functions and compile to gen binary
@@ -1991,6 +1997,9 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
       if (dumpMetadata) {
           metadata->addKernelMD(func->getKernel());
       }
+      if (dumpMetadata || decodeMetadata) {
+          kernelName = func->getKernel()->getName();
+      }
 
       func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
       if (m_options.getOption(vISA_GenerateDebugInfo)) {
@@ -2002,14 +2011,16 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
 
     if (dumpMetadata) {
         // emit the metadata file
-        metadata->emitMetadataFile();
+        metadata->emitMetadataFile(raFileName, kernelName);
     }
-
     // output metadata to console
-    bool decodeMetadata = m_options.getOption(vISA_DecodeRAMetadata);
+
     if (decodeMetadata) {
+        stringstream ssInit;
+        ssInit << raFileName << "_" << kernelName << ".ra_metadata";
+
         MetadataReader MDReader;
-        MDReader.readMetadata();
+        MDReader.readMetadata(ssInit.str());
     }
 
   }
