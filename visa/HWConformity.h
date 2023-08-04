@@ -155,6 +155,7 @@ class HWConformity {
   void fixDPAS(INST_LIST_ITER it, G4_BB *bb);
   bool fixSrnd(INST_LIST_ITER i, G4_BB *bb);
   void fixShiftInsts(INST_LIST_ITER i, G4_BB *bb);
+  void split64bCopyToSIMD1Insts(INST_LIST_ITER it, G4_BB *bb);
 
   void helperGenerateTempDst(G4_BB *bb, INST_LIST_ITER instIter, G4_INST *inst,
                              uint8_t hStride, G4_Type tempDstType,

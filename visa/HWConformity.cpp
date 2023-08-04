@@ -8130,6 +8130,50 @@ uint16_t HWConformity::getSrcStride(G4_SrcRegRegion *src) {
   return srcStride;
 };
 
+// split 64b copy move to multiple simd1 instructions
+void HWConformity::split64bCopyToSIMD1Insts(INST_LIST_ITER it, G4_BB *bb) {
+  G4_INST *movInst = *it;
+  vISA_ASSERT(
+      !(movInst->getSrc(0)->isIndirect() &&
+        movInst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH()),
+      "unexpected vx1/vxh indirect for 64b types");
+
+  auto origIter = it;
+  auto stride = movInst->getDst()->getHorzStride();
+  for (int i = 0; i < static_cast<int>(movInst->getExecSize()); i++) {
+    auto oldDst = movInst->getDst();
+    G4_DstRegRegion *newDst = nullptr;
+    if (oldDst->isIndirect()) {
+      newDst = builder.createIndirectDst(
+          oldDst->getBase(), oldDst->getSubRegOff(), 1, oldDst->getType(),
+          oldDst->getAddrImm() + stride * i * 8);
+    } else {
+      newDst = builder.createDst(oldDst->getBase(), oldDst->getRegOff(),
+                                 oldDst->getSubRegOff() + stride * i, 1,
+                                 oldDst->getType(), oldDst->getAccRegSel());
+    }
+
+    auto oldSrc = movInst->getSrc(0)->asSrcRegRegion();
+    G4_SrcRegRegion *newSrc = nullptr;
+    if (oldSrc->isIndirect()) {
+      newSrc = builder.createIndirectSrc(
+          oldSrc->getModifier(), oldSrc->getBase(), oldSrc->getRegOff(),
+          oldSrc->getSubRegOff(), builder.getRegionScalar(), oldSrc->getType(),
+          oldSrc->getAddrImm() + stride * i * 8);
+    } else {
+      newSrc = builder.createSrcRegRegion(
+          oldSrc->getModifier(), oldSrc->getRegAccess(), oldSrc->getBase(),
+          oldSrc->getRegOff(), oldSrc->getSubRegOff() + stride * i,
+          builder.getRegionScalar(), oldSrc->getType(), oldSrc->getAccRegSel());
+    }
+
+    auto newMov = builder.createMov(g4::SIMD1, newDst, newSrc,
+                                    InstOpt_WriteEnable, false);
+    it = bb->insertBefore(origIter, newMov);
+  }
+  bb->erase(origIter);
+}
+
 // on XeHP_SDV we have to make sure each source element is alignd to each dst
 // element for all float/64b inst (packed HF is ok in mixed mode inst) For all
 // violating instructions, we align each operand to the execution type for float
@@ -8218,10 +8262,17 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
           src0RR->setType(builder, intType);
         } else if (isNoMaskInst && inst->getDst()->getHorzStride() == 1 &&
                    srcStride != 0) {
-          // for packed 64b copy moves that are not under divergent CF, we can
+          // For packed 64b copy moves that are not under divergent CF, we can
           // change its type to UD
           change64bCopyToUD(inst, srcStride / inst->getSrc(0)->getTypeSize());
-        } else if (srcStride != 0 &&
+        } else if (isNoMaskInst && inst->getDst()->getHorzStride() == 4 &&
+                   srcStride != 0) {
+          // If the dst stride of the 64b copy moves is 4, we can't split it
+          // into 2 UD moves as the dst stride can't exceed 4. If it's not
+          // under divergent CF, we can change it to multiple SIMD1 insts.
+          // TODO: how to handle the case under divergent CF?
+          split64bCopyToSIMD1Insts(it, bb);
+        } else if (inst->getDst()->getHorzStride() < 4 && srcStride != 0 &&
                    !(src0RR->isIndirect() && dst->isIndirect())) {
           // If both dst and src0 are indirect, do not split 64b moves into 2 UD
           // moves as it may cause "infinite spill" assertion in RA for the case
