@@ -197,6 +197,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                                      *m_programInfo, SpirvData, SpirvSize,
                                      nullptr, 0, OptsData, OptsSize);
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
+  zebuilder.setGmdID(m_Platform.sRenderBlockID);
 
   for (const auto &kernel : m_kernels) {
     zebuilder.createKernel(
