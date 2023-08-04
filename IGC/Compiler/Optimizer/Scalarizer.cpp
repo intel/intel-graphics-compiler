@@ -855,16 +855,6 @@ void ScalarizeFunction::scalarizeInstruction(InsertElementInst* II)
     // If the index is not a constant - we cannot statically remove this inst
     if (!isa<ConstantInt>(scalarIndexVal)) return recoverNonScalarizableInst(II);
 
-    // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(II);
-
-    IGC_ASSERT_MESSAGE(isa<ConstantInt>(scalarIndexVal), "inst arguments error");
-    uint64_t scalarIndex = cast<ConstantInt>(scalarIndexVal)->getZExtValue();
-    IGC_ASSERT_MESSAGE(
-        scalarIndex <
-            dyn_cast<IGCLLVM::FixedVectorType>(II->getType())->getNumElements(),
-        "index error");
-
     // Obtain breakdown of input vector
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>scalarValues;
     if (isa<UndefValue>(sourceVectorValue))
@@ -881,15 +871,25 @@ void ScalarizeFunction::scalarizeInstruction(InsertElementInst* II)
         {
             scalarValues[j] = undefVal;
         }
-        scalarValues[static_cast<unsigned int>(scalarIndex)] = sourceScalarValue;
     }
     else
     {
         // Obtain the scalar values of the input vector
         obtainScalarizedValues(scalarValues, NULL, sourceVectorValue, II);
+    }
+
+    IGC_ASSERT_MESSAGE(isa<ConstantInt>(scalarIndexVal), "inst arguments error");
+    uint64_t scalarIndex = cast<ConstantInt>(scalarIndexVal)->getZExtValue();
+
+    if (scalarIndex <
+        dyn_cast<IGCLLVM::FixedVectorType>(II->getType())->getNumElements())
+    {
         // Add the new element
         scalarValues[static_cast<unsigned int>(scalarIndex)] = sourceScalarValue;
     }
+
+    // Prepare empty SCM entry for the instruction
+    SCMEntry* newEntry = getSCMEntry(II);
 
     // Add new value/s to SCM
     updateSCMEntryWithValues(newEntry, &(scalarValues[0]), II, true, false);
