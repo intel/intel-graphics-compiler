@@ -215,6 +215,15 @@ namespace IGCLLVM
 
         using llvm::IRBuilder<T, InserterTyDef()>::CreateLoad;
 
+        /// Provided to resolve 'CreateAlignedLoad(Ptr, Align, "...")'
+        /// correctly, instead of converting the string to 'bool' for the isVolatile
+        /// parameter.
+        inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const char* Name)
+        {
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
+        }
+
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
         {
             llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
