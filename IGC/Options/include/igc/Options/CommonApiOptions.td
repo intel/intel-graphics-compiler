@@ -12,21 +12,16 @@ SPDX-License-Identifier: MIT
 // Common API options {{
 let Flags = ApiHelper.CommonApiFlags in {
 
-// -cl-intel-gtpin-rera, -ze-gtpin-rera
-defm gtpin_rera : CommonFlag<"gtpin-rera">,
+def gtpin_rera : ZeFlag<"gtpin-rera">,
   HelpText<"Enables vISA re_ra interface for gtpin structure generation">;
 
-// -cl-intel-gtpin-grf-info, -ze-gtpin-grf-info
-defm gtpin_grf_info : CommonFlag<"gtpin-grf-info">,
+def gtpin_grf_info : ZeFlag<"gtpin-grf-info">,
   HelpText<"Enable vISA grf-info interface for gtpin structure generation">;
 
-// -cl-intel-gtpin-scratch-area-size, -ze-gtpin-scratch-area-sizegtpin-scratch-area-size
-defm gtpin_scratch_area_size : CommonSeparate<"gtpin-scratch-area-size">,
+def gtpin_scratch_area_size : ZeSeparate<"gtpin-scratch-area-size">,
   HelpText<"Set gtpin scratch area size">;
-defm : CommonJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size_common>,
+def : ZeJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size>,
   HelpText<"Alias for -ze-gtpin-scratch-area-size">;
-
-defm gtpin_indir_ref : CommonFlag<"gtpin-indir-ref">;
 
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
@@ -36,27 +31,28 @@ defm opt_disable : CommonFlag<"opt-disable">,
 
 defm library_compilation : CommonFlag<"library-compilation">;
 
-// -cl-enable-zebin, -ze-enable-zebin
 defm enable_zebin : CommonFlag<"enable-zebin">,
   HelpText<"Emit level zero binary (zebin)">;
+def intel_enable_zebin : ClFlag<"intel-enable-zebin">,
+  Alias<enable_zebin_ze>,
+  HelpText<"Alias for -cl-enable-zebin">;
 
-// -cl-disable-zebin, -ze-disable-zebin
 defm disable_zebin : CommonFlag<"disable-zebin">,
   HelpText<"Emit binary in legacy format">;
+def intel_disable_zebin : ClFlag<"intel-disable-zebin">,
+  Alias<disable_zebin_ze>,
+  HelpText<"Alias for -cl-disable-zebin">;
 
-defm exp_register_file_size : CommonSeparate<"exp-register-file-size">,
+def register_file_size : ZeSeparate<"exp-register-file-size">,
   HelpText<"Set amount of registers used by regalloc">;
-defm : CommonJoined<"exp-register-file-size=">, Alias<exp_register_file_size_common>,
+def : ZeJoined<"exp-register-file-size=">, Alias<register_file_size>,
   HelpText<"Alias for -ze-exp-register-file-size">;
 
-// -ze-opt-large-register-file
-defm large_register_file : CommonFlag<"large-register-file">,
-  Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
+def large_GRF : ZeFlag<"opt-large-register-file">,
+  Alias<register_file_size>, AliasArgs<["256"]>,
   HelpText<"Increase number of available GRF">;
 
-// -cl-intel-enable-auto-large-GRF-mode, -ze-opt-enable-auto-large-GRF-mode
-defm enable_auto_large_GRF_mode : CommonFlag<"enable-auto-large-GRF-mode">,
+defm intel_enable_auto_large_GRF_mode : CommonFlag<"intel-enable-auto-large-GRF-mode">,
   HelpText<"Use compiler heuristics to determine number of GRF">;
-
 }
 // }} Common API options
