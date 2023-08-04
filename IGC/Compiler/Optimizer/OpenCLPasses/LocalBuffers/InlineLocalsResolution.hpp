@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>

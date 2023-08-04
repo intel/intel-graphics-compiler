@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -368,19 +368,20 @@ void VISAModule::print(raw_ostream &OS) const {
   OS << "[DBG] VisaModule\n";
 
   OS << "  --- VisaIndexToInst Dump\n";
-  OrderedTraversal(
+  Utils::OrderedTraversal(
       VisaIndexToInst, [&OS](const auto &VisaIdx, const auto &Inst) {
         OS << "    VI2Inst: " << VisaIdx << " ->  inst: " << *Inst << "\n";
       });
   OS << "  ___\n";
 
   OS << "  --- VISAIndexToSize Dump\n";
-  OrderedTraversal(VisaIndexToVisaSizeIndex,
-                   [&OS](const auto &VisaIdx, const auto &VisaInterval) {
-                     OS << "    VI2Size: " << VisaIdx
-                        << " -> {offset: " << VisaInterval.VisaOffset
-                        << ", size: " << VisaInterval.VisaInstrNum << "}\n";
-                   });
+  Utils::OrderedTraversal(VisaIndexToVisaSizeIndex,
+                          [&OS](const auto &VisaIdx, const auto &VisaInterval) {
+                            OS << "    VI2Size: " << VisaIdx
+                               << " -> {offset: " << VisaInterval.VisaOffset
+                               << ", size: " << VisaInterval.VisaInstrNum
+                               << "}\n";
+                          });
   OS << "  ___\n";
 }
 

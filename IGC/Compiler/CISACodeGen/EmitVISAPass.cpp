@@ -9,39 +9,41 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/StringMacros.hpp"
 #include "EmitVISAPass.hpp"
 #include "CISABuilder.hpp"
-#include "OpenCLKernelCodeGen.hpp"
+#include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/RayTracing/RTStackFormat.h"
+#include "Compiler/CISACodeGen/helper.h"
+#include "Compiler/IGCPassSupport.h"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
-#include "AdaptorCommon/RayTracing/RTStackFormat.h"
 #include "DeSSA.hpp"
-#include "messageEncoding.hpp"
+#include "DebugInfo/EmitterOpts.hpp"
+#include "DebugInfo/Utils.hpp"
+#include "DebugInfo/VISAIDebugEmitter.hpp"
+#include "Compiler/ScalarDebugInfo/VISAScalarModule.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "MemOpt.h" // helper functions related struct value.
+#include "OpenCLKernelCodeGen.hpp"
 #include "PayloadMapping.hpp"
-#include "VectorProcess.hpp"
+#include "Probe/Assertion.h"
 #include "ShaderCodeGen.hpp"
-#include "MemOpt.h"           // helper functions related struct value.
+#include "VectorProcess.hpp"
+
+#include "common/Stats.hpp"
 #include "common/allocator.h"
 #include "common/debug/Dump.hpp"
-#include "common/debug/Dump.hpp"
 #include "common/igc_regkeys.hpp"
-#include "common/Stats.hpp"
-#include "Compiler/CISACodeGen/helper.h"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "common/secure_mem.h"
-#include "DebugInfo/VISAIDebugEmitter.hpp"
-#include "DebugInfo/EmitterOpts.hpp"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
-#include "AdaptorCommon/ImplicitArgs.hpp"
-#include "Compiler/IGCPassSupport.h"
+#include "messageEncoding.hpp"
+
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Path.h"
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/IR/AssemblyAnnotationWriter.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
+#include "llvm/IR/AssemblyAnnotationWriter.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/Path.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Probe/Assertion.h"
 
 #include <fstream>
 
@@ -945,9 +947,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         Function* Entry = m_currShader->entry;
         // owned by m_pDebugEmitter
         const bool IsPrimary = true;
-        auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry, IsPrimary);
+        auto vMod = IGC::VISAScalarModule::BuildNew(m_currShader, Entry, IsPrimary);
         IGC::DebugEmitterOpts DebugOpts;
-        DebugOpts.DebugEnabled = DebugInfoData::hasDebugInfo(m_currShader);
+        DebugOpts.DebugEnabled = m_currShader->HasDebugInfo();
         DebugOpts.EnableGTLocationDebugging = IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging);
         DebugOpts.UseOffsetInLocation = IGC_IS_FLAG_ENABLED(UseOffsetInLocation);
         DebugOpts.EmitDebugLoc = IGC_IS_FLAG_ENABLED(EmitDebugLoc);
@@ -965,14 +967,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     IGC_ASSERT(m_pDebugEmitter);
 
-    if (DebugInfoData::hasDebugInfo(m_currShader))
-    {
-        m_currShader->GetDebugInfoData().m_pShader = m_currShader;
-        m_currShader->GetDebugInfoData().m_pDebugEmitter = m_pDebugEmitter;
+    if (m_currShader->HasDebugInfo()) {
+      m_currShader->GetDebugInfoData().m_pShader = m_currShader;
+      m_currShader->GetDebugInfoData().m_pDebugEmitter = m_pDebugEmitter;
 
-        const bool IsPrimary = isFuncGroupHead;
-        m_pDebugEmitter->resetModule(
-            IGC::ScalarVisaModule::BuildNew(m_currShader, &F, IsPrimary));
+      const bool IsPrimary = isFuncGroupHead;
+      m_pDebugEmitter->resetModule(
+          IGC::VISAScalarModule::BuildNew(m_currShader, &F, IsPrimary));
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
@@ -1230,30 +1231,32 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (m_currShader->GetDebugInfoData().m_pDebugEmitter)
     {
-        DebugInfoData::extractAddressClass(F);
+      // TODO: I am not sure if we still need that function
+      IGC::Utils::eraseAddressClassDIExpression(F);
 
-        if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
-        {
-            if (IGC::ForceAlwaysInline(m_pCtx) ||
-                ((OpenCLProgramContext*)(m_currShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
-            {
-                DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
-            }
-            ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->getCurrentVISA());
-            if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP())
-            {
-                // Stack calls in use. Nothing is needed to be marked as Output.
-                // Just setting frame pointer is required for debug info when stack calls are in use.
-                scVISAMod->setFramePtr(m_currShader->GetFP());
-            }
+      // TODO: This mechanism might be outdated and unneeded
+      if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation)) {
+        if (IGC::ForceAlwaysInline(m_pCtx) ||
+            ((OpenCLProgramContext *)(m_currShader->GetContext()))
+                ->m_InternalOptions.KernelDebugEnable) {
+          m_currShader->GetDebugInfoData().markAsOutputWithOffset(F);
+        }
+        VISAScalarModule *scVISAMod =
+            (VISAScalarModule *)(m_pDebugEmitter->getCurrentVISA());
+        if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP()) {
+          // Stack calls in use. Nothing is needed to be marked as Output.
+          // Just setting frame pointer is required for debug info when stack
+          // calls are in use.
+          scVISAMod->setFramePtr(m_currShader->GetFP());
+        }
         }
         else
         {
-            m_currShader->GetDebugInfoData().markOutput(F, m_currShader);
+          m_currShader->GetDebugInfoData().markAsOutputNoOffset(F);
         }
 
         m_currShader->GetDebugInfoData().addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
-        m_currShader->GetDebugInfoData().transferMappings(F);
+        m_currShader->GetDebugInfoData().saveVISAIdMappings(F);
     }
 
     // Compile only when this is the last function for this kernel.

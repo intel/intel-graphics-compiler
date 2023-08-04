@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -455,10 +455,7 @@ void CShader::CreateImplicitArgs()
     CreateAliasVars();
 }
 
-DebugInfoData& IGC::CShader::GetDebugInfoData()
-{
-    return diData;
-}
+CShaderDebugInfo &CShader::GetDebugInfoData() { return diData; }
 
 // For sub-vector aliasing, pre-allocating cvariables for those
 // valeus that have sub-vector aliasing before emit instructions.
@@ -4162,4 +4159,8 @@ void CShader::getShaderFileName(std::string& ShaderName) const
         ShaderName = "";
     }
     return;
+}
+
+bool CShader::HasDebugInfo() const {
+  return GetContext()->m_instrTypes.hasDebugInfo;
 }

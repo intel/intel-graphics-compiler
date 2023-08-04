@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -74,8 +74,9 @@ void VISAObjectDebugInfo::print(llvm::raw_ostream &OS) const {
   OS << "LUT for <" << CO.kernelName << "> {\n";
 
   OS << "  --- VISAIndexToAllGenISAOff Dump (\n";
-  OrderedTraversal(VISAIndexToAllGenISAOff, [&OS](const auto &VisaIdx,
-                                                  const auto &GenOffsets) {
+  Utils::OrderedTraversal(VISAIndexToAllGenISAOff, [&OS](
+                                                       const auto &VisaIdx,
+                                                       const auto &GenOffsets) {
     OS << "    VI2Gen: " << VisaIdx << " => [";
     std::vector<std::string> HexStrings;
     std::transform(
@@ -96,7 +97,7 @@ void VISAObjectDebugInfo::print(llvm::raw_ostream &OS) const {
   OS << "  )___\n";
 
   OS << "  --- GenISAInstSizeBytes Dump (\n";
-  OrderedTraversal(
+  Utils::OrderedTraversal(
       GenISAInstSizeBytes, [&OS](const auto &GenOffset, const auto &Size) {
         OS << "    GI2Size: 0x" << llvm::Twine::utohexstr(GenOffset) << " => ";
         OS << Size << "\n";
@@ -168,14 +169,15 @@ void VISADebugInfo::print(llvm::raw_ostream &OS) const {
   DecodedDebugStorage.print(OS);
   OS << "--- [DBG] VISADebugInfo LUTS [DBG] ---\n";
 
-  OrderedTraversal(DebugInfoMap,
-                   [&OS](const auto *CompiledObjDI, const auto &VoDI) {
-                     (void)CompiledObjDI;
-                     VoDI.print(OS);
-                   },
-                   [](const auto *CompiledObjL, const auto *CompiledObjR) {
-                     return CompiledObjL->kernelName < CompiledObjR->kernelName;
-                   });
+  Utils::OrderedTraversal(
+      DebugInfoMap,
+      [&OS](const auto *CompiledObjDI, const auto &VoDI) {
+        (void)CompiledObjDI;
+        VoDI.print(OS);
+      },
+      [](const auto *CompiledObjL, const auto *CompiledObjR) {
+        return CompiledObjL->kernelName < CompiledObjR->kernelName;
+      });
 }
 
 } // namespace IGC
