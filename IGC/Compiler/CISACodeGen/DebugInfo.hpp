@@ -24,6 +24,9 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace std;
 
+// This type matches VISA index with its associated Function-VISAModule pair.
+using VISAIndexToModule = std::pair<unsigned int, IGC::VISAModule *>;
+
 namespace IGC
 {
     class CVariable;
@@ -52,6 +55,7 @@ namespace IGC
 
         std::vector<CShader *> findShaderCandidates();
         void emitDebugInfo(bool, const IGC::VISADebugInfo &VDI);
+        void getSortedVISAModules(llvm::SmallVector<VISAIndexToModule, 8> &, const DbgDecoder &);
     };
 
     class CatchAllLineNumber : public llvm::FunctionPass

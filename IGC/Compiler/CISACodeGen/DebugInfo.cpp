@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISADebugInfo.hpp"
 #include "Compiler/ScalarDebugInfo/VISAScalarModule.hpp"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/ADT/SmallVector.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -26,8 +27,6 @@ using namespace CLElfLib;
 
 char DebugInfoPass::ID = 0;
 char CatchAllLineNumber::ID = 0;
-
-using VISAIndexToModule = std::pair<unsigned int, std::pair<llvm::Function *, IGC::VISAModule *>>;
 
 // Register pass to igc-opt
 #define PASS_FLAG1 "igc-debug-finalize"
@@ -112,9 +111,10 @@ void setVISAModuleType(VISAModule *v, const DbgDecoder &decodedDbg) {
   }
 }
 
-unsigned int getGenISAIndex(
+unsigned int getGenOffset(
     const std::vector<std::pair<unsigned int, unsigned int>> &indexMap,
     unsigned int VISAIndex) {
+  // indexMap is VISA index <-> gen offset mapping.
   unsigned retval = 0;
   for (auto &item : indexMap) {
     if (item.first == VISAIndex) {
@@ -124,51 +124,86 @@ unsigned int getGenISAIndex(
   return retval;
 }
 
-unsigned int getLastVISAIndex(IGC::VISAModule *v,
-                              const DbgDecoder &decodedDbg) {
-  // Detect last instructions of kernel. This information is absent in
-  // dbg info. So detect is as first instruction of first subroutine - 1.
+unsigned int getLastGenOffset(IGC::VISAModule *v,
+                              const DbgDecoder &decodedDbg,
+                              const DenseMap<uint32_t, unsigned int> &genOffsetToLastVISAindex) {
 
-  // reloc_index <-> first subroutine inst's VISA id
-  std::unordered_map<uint32_t, unsigned int> firstSubroutineVISAIndex;
+  // Iterate through dbg info objects to find the one which matches the given VISAModule.
+  for (auto &item : decodedDbg.compiledObjs) {
+    // Name of the kernel or stack call function.
+    auto &objectName = item.kernelName;
+
+    // First instruction that went through the LLVM IR -> VISA translation.
+    auto firstInst = (v->GetInstInfoMap()->begin())->first;
+
+    // Parent function of firstInst. It can be kernel, stackcall or subroutine.
+    auto funcName = firstInst->getParent()->getParent()->getName();
+
+    if (funcName.compare(objectName) == 0) {
+      // firstInst is inside a function having no subroutines -> last VISA is trivial.
+      if (item.subs.size() == 0)
+        return item.CISAIndexMap.back().second;
+      // firstInst is inside a function having subroutines. Use created mapping.
+      return getGenOffset(item.CISAIndexMap, genOffsetToLastVISAindex.lookup(item.relocOffset));
+    }
+
+    // Check if firstInst is inside a subroutine.
+    for (auto &sub : item.subs) {
+      auto &subName = sub.name;
+      if (funcName.compare(subName) == 0)
+        return getGenOffset(item.CISAIndexMap, sub.endVISAIndex);
+    }
+  }
+
+  return 0;
+}
+
+void DebugInfoPass::getSortedVISAModules(
+    llvm::SmallVector<VISAIndexToModule, 8> &sortedModules,
+                          const DbgDecoder &decodedDbg) {
+
+  // This structure contains mapping:
+  // gen offset <-> VISA index of the last instruction
+  // for every compile object (kernel or stack call function) in the shader.
+  //
+  // Last VISA id is the smallest from: last VISA id from object's index map
+  // and start VISA indexes of object's subroutines - 1.
+  // We use the fact that subroutines are always placed after kernel / stack
+  // call function.
+  llvm::DenseMap<uint32_t, unsigned int> genOffsetToLastVISAindex;
 
   for (auto &item : decodedDbg.compiledObjs) {
-    firstSubroutineVISAIndex[item.relocOffset] = item.CISAIndexMap.back().first;
+    genOffsetToLastVISAindex[item.relocOffset] = item.CISAIndexMap.back().first;
     for (auto &subroutine : item.subs) {
       auto subStartVISAIndex = subroutine.startVISAIndex;
-      if (firstSubroutineVISAIndex[item.relocOffset] > subStartVISAIndex)
-        firstSubroutineVISAIndex[item.relocOffset] = subStartVISAIndex - 1;
+      if (genOffsetToLastVISAindex[item.relocOffset] > subStartVISAIndex)
+        genOffsetToLastVISAindex[item.relocOffset] = subStartVISAIndex - 1;
     }
   }
 
-  unsigned int genOffset = 0;
-  for (auto &item : decodedDbg.compiledObjs) {
-    auto &name = item.kernelName;
-    auto firstInst = (v->GetInstInfoMap()->begin())->first;
-    auto funcName = firstInst->getParent()->getParent()->getName();
-    if (item.subs.size() == 0 && funcName.compare(name) == 0) {
-      // No subroutines -> last visa is trivial.
-      genOffset = item.CISAIndexMap.back().second;
-    } else {
-      if (funcName.compare(name) == 0) {
-        genOffset = getGenISAIndex(item.CISAIndexMap,
-                                   firstSubroutineVISAIndex[item.relocOffset]);
-        break;
-      }
-      for (auto &sub : item.subs) {
-        auto &subName = sub.name;
-        if (funcName.compare(subName) == 0) {
-          genOffset = getGenISAIndex(item.CISAIndexMap, sub.endVISAIndex);
-          break;
-        }
-      }
-    }
+  for (auto &m : m_currShader->GetDebugInfoData().m_VISAModules) {
+    // Deduce and set correct module type: KERNEL, STACKCALL_FUNC or
+    // SUBROUTINE.
+    setVISAModuleType(m.second, decodedDbg);
 
-    if (genOffset)
-      break;
+    // getLastGenOffset returns zero if debug info for given function
+    // was not found, skip the function in such case. This can happen,
+    // when the function was optimized away but the definition is still
+    // present inside the module.
+    // Otherwise, it returns offset of the last instruction of the function.
+
+    unsigned int lastGenOffset =
+        getLastGenOffset(m.second, decodedDbg, genOffsetToLastVISAindex);
+    if (lastGenOffset == 0)
+      continue;
+    sortedModules.push_back(std::make_pair(lastGenOffset, m.second));
   }
 
-  return genOffset;
+  // We sort VISA modules by their gen offset.
+  std::sort(sortedModules.begin(), sortedModules.end(),
+            [](VISAIndexToModule &p1, VISAIndexToModule &p2) {
+              return p1.first < p2.first;
+            });
 }
 
 bool DebugInfoPass::runOnModule(llvm::Module &M) {
@@ -209,37 +244,14 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
         m_currShader->ProgramOutput()->m_debugDataGenISA);
     const DbgDecoder &decodedDbg = VisaDbgInfo.getRawDecodedData();
 
-    // This vector binds Function-VISAModule pairs with Function's last
-    // VISA index. We sort functions in order of their placement in binary.
-    std::vector<VISAIndexToModule> sortedVISAModules;
-
-    for (auto &m : m_currShader->GetDebugInfoData().m_VISAModules) {
-      // Deduce and set correct module type: KERNEL, STACKCALL_FUNC or
-      // SUBROUTINE
-      setVISAModuleType(m.second, decodedDbg);
-
-      // getLastVISAIndex returns zero if debug info for given function
-      // was not found, skip the function in such case. This can happen,
-      // when the function was optimized away but the definition is still
-      // present inside the module.
-      // Otherwise, it returns VISA index of the last instruction in the
-      // function.
-
-      unsigned int lastVISAId = getLastVISAIndex(m.second, decodedDbg);
-      if (lastVISAId == 0)
-        continue;
-      sortedVISAModules.push_back(
-          std::make_pair(lastVISAId, std::make_pair(m.first, m.second)));
-    }
-
-    std::sort(sortedVISAModules.begin(), sortedVISAModules.end(),
-              [](VISAIndexToModule &p1, VISAIndexToModule &p2) {
-                return p1.first < p2.first;
-              });
+    // This vector contains VISAModules sorted by their last gen offset.
+    // It means they are sorted in order of their placement in binary.
+    llvm::SmallVector<VISAIndexToModule, 8> sortedVISAModules;
+    getSortedVISAModules(sortedVISAModules, decodedDbg);
 
     m_pDebugEmitter->SetDISPCache(&DISPCache);
     for (auto &m : sortedVISAModules) {
-      m_pDebugEmitter->registerVISA(m.second.second);
+      m_pDebugEmitter->registerVISA(m.second);
     }
 
     unsigned int size = sortedVISAModules.size();
@@ -247,7 +259,7 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
     for (auto &m : sortedVISAModules) {
       if (--size == 0)
         finalize = true;
-      m_pDebugEmitter->setCurrentVISA(m.second.second);
+      m_pDebugEmitter->setCurrentVISA(m.second);
       emitDebugInfo(finalize, VisaDbgInfo);
     }
 
