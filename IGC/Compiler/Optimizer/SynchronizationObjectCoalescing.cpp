@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -471,8 +471,8 @@ bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
     const bool isModified = false; // this is only an analysis
     m_CurrentFunction = &F;
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_HasIndependentSharedMemoryFenceFunctionality = ctx->platform.hasSLMFence() &&
-        ctx->platform.hasIndependentSharedMemoryFenceFunctionality() &&
+    m_HasIndependentSharedMemoryFenceFunctionality = !ctx->platform.hasSLMFence() ||
+        (ctx->platform.hasSLMFence() && ctx->platform.hasIndependentSharedMemoryFenceFunctionality()) ||
         IGC_IS_FLAG_ENABLED(EnableIndependentSharedMemoryFenceFunctionality);
     m_ShaderType = ctx->type;
     m_HasTypedMemoryFenceFunctionality = ctx->platform.hasLSC() && ctx->platform.LSCEnabled();

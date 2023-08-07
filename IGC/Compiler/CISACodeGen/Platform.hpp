@@ -306,7 +306,7 @@ bool hasSLMFence() const
 
 bool hasIndependentSharedMemoryFenceFunctionality() const
 {
-    return (m_platformInfo.eProductFamily == IGFX_DG2);
+    return (m_platformInfo.eProductFamily != IGFX_DG2);
 }
 
 bool supportRotateInstruction() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
