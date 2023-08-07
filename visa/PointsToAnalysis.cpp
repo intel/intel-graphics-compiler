@@ -485,9 +485,8 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                                addrTakenVariables[i].second);
             }
           }
-        }
-        else if (ptr->isRegVar() && !ptr->asRegVar()->getDeclare()->isMsgDesc())
-        {
+        } else if (ptr->isRegVar() &&
+                   !ptr->asRegVar()->getDeclare()->isMsgDesc()) {
           // We're at a generic instruction where dst is not an address
           // register. It's possible this is an intermediate operation where src
           // contains some address. For eg,
