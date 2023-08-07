@@ -74,6 +74,8 @@ private:
   Value *createLibraryCall(Instruction &I, Function *Func,
                            ArrayRef<Value *> Args);
 
+  bool isHandleUgmAtomics(const CallInst &II) const;
+
   const GenXSubtarget *ST = nullptr;
   BuiltinFunctionKind Kind;
 };
@@ -277,10 +279,31 @@ Value *GenXBuiltinFunctions::visitURem(BinaryOperator &I) {
   return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
 }
 
+bool GenXBuiltinFunctions::isHandleUgmAtomics(const CallInst &II) const {
+  auto *Ty = II.getType();
+  auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+  auto *ETy = VTy->getElementType();
+  switch (Opcode->getZExtValue()) {
+  case LSC_ATOMIC_FADD:
+  case LSC_ATOMIC_FSUB:
+    return (ETy->isDoubleTy() && !ST->hasGlobalAtomicAddF64()) ||
+           cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
+               LSC_DATA_SIZE_16c32b;
+  case LSC_ATOMIC_FMIN:
+  case LSC_ATOMIC_FMAX:
+  case LSC_ATOMIC_FCAS:
+    return ETy->isDoubleTy();
+  default:
+    return false;
+  }
+}
+
 Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   auto IID = vc::getAnyIntrinsicID(&II);
   auto *Ty = II.getType();
   auto &M = *II.getModule();
+  IRBuilder<> Builder(&II);
   Function *Func = nullptr;
   SmallVector<Value *, 2> Args(II.args());
 
@@ -315,7 +338,6 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   } break;
 
   case vc::InternalIntrinsic::lsc_atomic_slm: {
-    IRBuilder<> Builder(&II);
     auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
     if (Opcode->getZExtValue() == LSC_ATOMIC_ICAS)
       return nullptr;
@@ -332,8 +354,26 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
     Args.clear();
     Args.push_back(Mask);
     Args.push_back(Opcode);
-    std::copy(II.arg_begin() + 4, II.arg_end() - 2, std::back_inserter(Args));
-    Args.push_back(II.getArgOperand(12));
+    std::copy(II.arg_begin() + 4, II.arg_end(), std::back_inserter(Args));
+  } break;
+
+  case vc::InternalIntrinsic::lsc_atomic_ugm: {
+    if (!isHandleUgmAtomics(II))
+      return nullptr;
+
+    auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+
+    Func = getBuiltinDeclaration(M, "atomic_ugm", false, {VTy});
+
+    auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
+                                                  VTy->getNumElements());
+    auto *Mask = Builder.CreateZExt(II.getArgOperand(0), MaskVTy);
+
+    Args.clear();
+    Args.push_back(Mask);
+    Args.push_back(Opcode);
+    std::copy(II.arg_begin() + 4, II.arg_end(), std::back_inserter(Args));
   } break;
 
   default:

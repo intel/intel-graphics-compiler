@@ -1,0 +1,48 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2023 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; RUN: opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unkonwn-unknown \
+; RUN: -mcpu=XeLPG -S < %s 2>&1 | FileCheck %s
+; RUN: opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unkonwn-unknown \
+; RUN: -mcpu=XeHPC -S < %s 2>&1 | FileCheck --check-prefix=CHECK-2 %s
+
+; CHECK-NOT: WARNING
+; CHECK-2-NOT: WARNING
+
+; CHECK: @test_fadd_kernel
+; CHECK: = call <16 x i32> @__vc_builtin_atomic_ugm_v16i32
+; CHECK: ret void
+; CHECK: @test_fcas_kernel
+; CHECK: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
+; CHECK: ret void
+; CHECK-2: @test_fadd_kernel
+; CHECK-2: = call <16 x i32> @__vc_builtin_atomic_ugm_v16i32
+; CHECK-2: ret void
+; CHECK-2: @test_fcas_kernel
+; CHECK-2: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
+; CHECK-2: ret void
+
+declare <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1>, i8, i8, i8, i8, i8, i64, <16 x i64>, i16, i32, <16 x i32>, <16 x i32>, <16 x i32>)
+
+define dllexport spir_kernel void @test_fadd_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru) {
+  %1 = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1> %pred, i8 19, i8 3, i8 6, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru)
+  ret void
+}
+
+define dllexport spir_kernel void @test_fcas_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru) {
+  %1 = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1> %pred, i8 23, i8 3, i8 6, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru)
+  ret void
+}
+
+; COM: The presence of these __vc_builtin_* funcitions is a HACK to trick VC
+; COM: backend into thinking that we have built-in routines
+define <16 x i32> @__vc_builtin_atomic_ugm_v16i32(<16 x i8> noundef %pred, i8 noundef signext %op, i8 noundef signext %l1cachecontrol, i8 noundef signext %l3cachecontrol, i64 noundef %base, <16 x i64> noundef %index, i16 noundef signext %scale, i32 noundef %offset, <16 x i32> noundef %src1, <16 x i32> noundef %src2, <16 x i32> noundef %passthru) #0 {
+  ret <16 x i32> zeroinitializer
+}
+
+attributes #0 = { "VC.Builtin" }
