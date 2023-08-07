@@ -623,10 +623,8 @@ bool G4_Kernel::updateKernelToLargerGRF() {
   if (numRegTotal == grfMode.getMaxGRF())
     return false;
 
-  numRegTotal = grfMode.getLargerGRF();
-
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters();
+  setKernelParameters(grfMode.getLargerGRF());
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -638,10 +636,8 @@ bool G4_Kernel::updateKernelToSmallerGRF() {
   if (numRegTotal == grfMode.getMinGRF())
     return false;
 
-  numRegTotal = grfMode.getSmallerGRF();
-
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters();
+  setKernelParameters(grfMode.getSmallerGRF());
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -656,10 +652,8 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
   if (newGRF == numRegTotal)
     return;
 
-  numRegTotal = newGRF;
-
   // Scale number of threads, Acc, SWSB tokens.
-  setKernelParameters();
+  setKernelParameters(newGRF);
 
   // Update physical register pool
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
@@ -676,10 +670,9 @@ bool G4_Kernel::updateKernelFromNumGRFAttr() {
   if (numRegTotal == attrNumGRF)
     return true;
 
-  numRegTotal = attrNumGRF;
   regSharingHeuristics = false;
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters();
+  setKernelParameters(attrNumGRF);
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -950,7 +943,7 @@ unsigned G4_Kernel::getLargestInputRegister() {
   return regNum;
 }
 
-void G4_Kernel::setKernelParameters() {
+void G4_Kernel::setKernelParameters(unsigned newGRF) {
   unsigned overrideGRFNum = 0, overrideNumThreads = 0, overrideNumSWSB = 0,
            overrideNumAcc = 0;
 
@@ -961,27 +954,31 @@ void G4_Kernel::setKernelParameters() {
 
   //
   // Number of threads/GRF can currently be set by:
-  // 1.- IGC flag (reg key)
-  // 2.- Compiler option entered by user for
+  // 1.- Per kernel attribute
+  // 2.- IGC flag (reg key)
+  // 3.- Compiler option entered by user for
   //      2.1 entire module
   //      2.2 kernel function
-  // 3.- Per kernel attribute
   // 4.- Compiler heuristics
   //
-  // 1 and 2 are set via vISA option; 3 via kernel attribute.
+  // 1 is set via kernel attribute. 2 and 3 via vISA option.
   // If none of them are set, compiler selects the best option (4).
   //
 
-  if (overrideNumThreads > 0) {
+  if (newGRF > 0) {
+    // per kernel attribute or GRF change during compilation
+    grfMode.setModeByNumGRFs(newGRF);
+    overrideGRFNum = 0;
+  } else if (overrideNumThreads > 0) {
+    // per kernel/module number of threads
     grfMode.setModeByNumThreads(overrideNumThreads);
     overrideGRFNum = 0;
   } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
+    // per kernel/module number of GRFs
     grfMode.setModeByNumGRFs(overrideGRFNum);
   } else {
-    // GRFMode is set to default mode when kernel is created
-    // During compilation GRFMode may change by updating numRegTotal
-    if (numRegTotal > 0)
-      grfMode.setModeByNumGRFs(numRegTotal);
+    // Use default value
+    grfMode.setDefaultGRF();
     overrideGRFNum = 0;
   }
 

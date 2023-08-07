@@ -155,6 +155,7 @@ public:
     return configs[configs.size() - 1].numGRF;
   }
   unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
+  void setDefaultGRF() { currentMode = defaultMode; }
   unsigned getLargerGRF() const {
     return currentMode + 1 < configs.size() ? configs[currentMode + 1].numGRF
                                             : configs[currentMode].numGRF;
@@ -768,7 +769,7 @@ private:
   G4_BB *getNextBB(G4_BB *bb) const;
   unsigned getBinOffsetOfBB(G4_BB *bb) const;
 
-  void setKernelParameters();
+  void setKernelParameters(unsigned newGRF = 0);
 
   void dumpDotFileInternal(const std::string &baseName);
   void dumpG4Internal(const std::string &baseName);
