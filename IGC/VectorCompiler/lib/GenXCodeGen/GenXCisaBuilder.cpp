@@ -3348,12 +3348,6 @@ void GenXKernelBuilder::collectKernelInfo() {
               HasAlloca = true;
           } else {
             Function *Callee = CI->getCalledFunction();
-            if (!Callee || vc::requiresStackCall(Callee)) {
-              HasStackcalls = true;
-              // We cannot check stackcall or indirect callee, so assuming such
-              // functions have barriers
-              HasBarrier = true;
-            }
             if (Callee && Callee->hasFnAttribute("CMCallable"))
               HasCallable = true;
           }
