@@ -9120,8 +9120,8 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
     // original-dest.sub(ds) however, if the original-dest is NOT grf-aligned,
     // we need another B2B or W2W to shift the location of packed bytes or words
     // after packing.
-    if (dstAligned &&
-        (tempSize <= (unsigned short)(builder.getGRFSize() * 2))) {
+    if (dstAligned && (tempSize * TypeSize(dstTy) <=
+                       (unsigned short)(builder.getGRFSize() * 2))) {
       G4_Declare *unpackDcl =
           builder.createTempVar(tempSize, dstTy, builder.getGRFAlign());
 
@@ -9129,11 +9129,10 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
           builder.createSrc(unpackDcl->getRegVar(), 0, tmpSSR, unpackRegion,
                             unpackDcl->getElemType());
 
-      G4_Predicate *pred = NULL;
+      G4_Predicate *pred = nullptr;
       if (inst->opcode() != G4_sel) {
         pred = inst->getPredicate();
-        inst->setPredicate(NULL);
-        // maintainDU4TempMov will update def-use
+        inst->setPredicate(nullptr);
       }
       unsigned int new_option = inst->getMaskOption();
 
@@ -9146,8 +9145,6 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       packInst->setPredicate(pred);
       bb->insertBefore(pos, packInst);
 
-      // update def-use info
-      maintainDU4TempMov(inst, packInst);
       // change the destination of the original instruction
       if (dstTy == Type_UW || dstTy == Type_W || inst->getSaturate() ||
           (tmpSSR % scale)) {
@@ -9170,11 +9167,10 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
           inst->getExecSize() * scale, dstTy, builder.getGRFAlign());
       G4_SrcRegRegion *unpackSrc =
           builder.createSrcRegRegion(unpackDcl, unpackRegion);
-      G4_Predicate *pred = NULL;
+      G4_Predicate *pred = nullptr;
       if (inst->opcode() != G4_sel) {
         pred = inst->getPredicate();
-        inst->setPredicate(NULL);
-        // maintainDU4TempMov will update def-use
+        inst->setPredicate(nullptr);
       }
       unsigned int new_option = inst->getMaskOption();
       auto pos = it;
@@ -9185,18 +9181,16 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       G4_SrcRegRegion *shiftSrc =
           builder.createSrcRegRegion(shiftDcl, shiftRegion);
       auto packTmp = builder.createDstRegRegion(shiftDcl, dstride);
+
       // pack
       G4_INST *packInst = builder.createMov(inst->getExecSize(), packTmp,
                                             unpackSrc, new_option, false);
-      packInst->setPredicate(pred);
       pos = bb->insertAfter(pos, packInst);
       // then shift the bytes and words location
       G4_INST *shiftInst = builder.createMov(inst->getExecSize(), dst, shiftSrc,
                                              new_option, false);
       shiftInst->setPredicate(pred);
       pos = bb->insertAfter(pos, shiftInst);
-      // update propagation info
-      maintainDU4TempMov(inst, shiftInst);
       // change the destination of the original instruction
       if (dstTy == Type_UW || dstTy == Type_W || inst->getSaturate()) {
         inst->setDest(builder.createDstRegRegion(unpackDcl, scale));
