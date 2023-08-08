@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,21 +17,23 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXModule.h"
 #include "Probe/Assertion.h"
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GetElementPtrTypeIterator.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Module.h"
-#include "llvm/InitializePasses.h"
-#include "llvm/Pass.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
-#include "llvm/Support/Debug.h"
+
+#include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/InitializePasses.h>
+#include <llvm/Pass.h>
+#include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "GENX_GEPLowering"
 
@@ -39,8 +41,11 @@ using namespace llvm;
 using namespace genx;
 
 namespace {
-class GenXGEPLowering : public FunctionPass {
+class GenXGEPLowering : public FunctionPass,
+                        public InstVisitor<GenXGEPLowering, Value *> {
   const DataLayout *DL = nullptr;
+  const TargetTransformInfo *TTI = nullptr;
+
   LoopInfo *LI = nullptr;
   IRBuilder<> *Builder = nullptr;
   Module *M = nullptr;
@@ -62,9 +67,11 @@ public:
     AU.addPreserved<LoopInfoWrapperPass>();
   }
 
+  Value *visitGetElementPtrInst(GetElementPtrInst &GEP);
+  Value *visitPtrToIntInst(PtrToIntInst &PTI);
+  Value *visitInstruction(Instruction &) { return nullptr; }
+
 private:
-  bool lowerGetElementPtrInst(GetElementPtrInst *GEP,
-                              BasicBlock::iterator &BBI) const;
   Value *truncExpr(Value *Val, Type *NewTy) const;
   Value *getSExtOrTrunc(Value *, Type *) const;
 };
@@ -93,9 +100,7 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
   M = F.getParent();
   DL = &M->getDataLayout();
 
-  const TargetTransformInfo &TTI =
-      getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
-  auto FlatAddrSpace = TTI.getFlatAddressSpace();
+  TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
 
   IGC_ASSERT_MESSAGE(DL, "null datalayout");
 #if 0
@@ -108,54 +113,77 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
   IRBuilder<> TheBuilder(F.getContext());
   Builder = &TheBuilder;
 
-  bool Changed = false;
-  for (auto &BB : F) {
-    for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
-      Instruction *Inst = &(*BI++);
-      Builder->SetInsertPoint(Inst);
+  bool Modified = false;
 
-      switch (Inst->getOpcode()) {
-      default: // By default, DO NOTHING
-        break;
-      case Instruction::GetElementPtr:
-        Changed |= lowerGetElementPtrInst(cast<GetElementPtrInst>(Inst), BI);
-        break;
-      case Instruction::PtrToInt:
-        auto PtrV = cast<PtrToIntInst>(Inst)->getPointerOperand();
-        auto AddrSpace = cast<PtrToIntInst>(Inst)->getPointerAddressSpace();
-        if (AddrSpace == FlatAddrSpace) {
-          if (auto PtrCast = dyn_cast<AddrSpaceCastInst>(PtrV)) {
-            // this is no-op AddrSpaceCast, should be removed
-            // create a new PtrToInt from the original pointer
-            // bypass the AddrSpaceCast and PtrToInt
-            auto P2I = Builder->CreatePtrToInt(PtrCast->getOperand(0),
-                                               Inst->getType());
-            Inst->replaceAllUsesWith(P2I);
-            Inst->eraseFromParent();
-            if (PtrCast->use_empty()) {
-              PtrCast->eraseFromParent();
-            }
-          }
-        }
-        break;
-      }
+  for (auto &BB : F)
+    for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
+      auto &Inst = *BI++;
+      Builder->SetInsertPoint(&Inst);
+
+      auto *NewV = visit(Inst);
+      Modified |= NewV != nullptr;
+
+      if (auto *NewI = dyn_cast_or_null<Instruction>(NewV))
+        BI = BasicBlock::iterator(NewI);
     }
-  }
+
   LLVM_DEBUG(dbgs() << "After GEPLowering\n");
   LLVM_DEBUG(F.dump());
   Builder = nullptr;
 
-  return Changed;
+  return Modified;
 }
 
-bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
-                                             BasicBlock::iterator &BBI) const {
+Value *GenXGEPLowering::visitPtrToIntInst(PtrToIntInst &PTI) {
   IGC_ASSERT(Builder);
-  Value *PtrOp = GEP->getPointerOperand();
+  IGC_ASSERT(TTI);
+  auto *PtrV = PTI.getPointerOperand();
+  auto *Ty = PTI.getType();
+  Value *NewI = nullptr;
+  Instruction *EraseCandidate = nullptr;
 
-  Value *PointerValue;
+  LLVM_DEBUG(dbgs() << "Trying to fold ptrtoint: " << PTI << "\n");
+  LLVM_DEBUG(dbgs() << "Pointer operand: " << *PtrV << "\n");
+
+  if (auto *Cast = dyn_cast<AddrSpaceCastInst>(PtrV)) {
+    auto AddrSpace = PTI.getPointerAddressSpace();
+    if (AddrSpace != TTI->getFlatAddressSpace())
+      return nullptr;
+    // this is no-op AddrSpaceCast, should be removed
+    // create a new PtrToInt from the original pointer
+    // bypass the AddrSpaceCast and PtrToInt
+    NewI = Builder->CreatePtrToInt(Cast->getOperand(0), Ty);
+    EraseCandidate = Cast;
+  } else if (auto *Cast = dyn_cast<BitCastInst>(PtrV)) {
+    // fold bitcast->ptrtoint sequence
+    NewI = Builder->CreatePtrToInt(Cast->getOperand(0), Ty);
+    EraseCandidate = Cast;
+  } else if (auto *ITP = dyn_cast<IntToPtrInst>(PtrV)) {
+    // fold inttoptr->ptrtoint sequence
+    NewI = Builder->CreateIntCast(ITP->getOperand(0), Ty, false);
+    EraseCandidate = ITP;
+  }
+
+  if (NewI) {
+    if (isa<Instruction>(NewI))
+      NewI->takeName(&PTI);
+    PTI.replaceAllUsesWith(NewI);
+    PTI.eraseFromParent();
+  }
+
+  if (EraseCandidate && EraseCandidate->use_empty())
+    EraseCandidate->eraseFromParent();
+
+  return NewI;
+}
+
+Value *GenXGEPLowering::visitGetElementPtrInst(GetElementPtrInst &GEP) {
+  IGC_ASSERT(Builder);
+  Value *PtrOp = GEP.getPointerOperand();
+
+  Value *PointerValue = nullptr;
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
-  Type *IntPtrTy;
+  Type *IntPtrTy = nullptr;
   if (PtrTy) {
     IntPtrTy =
         DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
@@ -176,13 +204,19 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
     if (IntOp->getType() == IntPtrTy)
       PointerValue = IntOp;
   }
+
   PointerValue = Builder->CreatePtrToInt(PtrOp, IntPtrTy);
+  if (auto *PTI = dyn_cast<PtrToIntInst>(PointerValue)) {
+    auto *NewV = visitPtrToIntInst(*PTI);
+    if (NewV)
+      PointerValue = NewV;
+  }
 
   unsigned PtrMathSizeInBits =
       DL->getPointerSizeInBits(PtrTy->getAddressSpace());
   auto *PtrMathTy = IntegerType::get(Builder->getContext(), PtrMathSizeInBits);
 
-  auto *GEPVecTy = dyn_cast<IGCLLVM::FixedVectorType>(GEP->getType());
+  auto *GEPVecTy = dyn_cast<IGCLLVM::FixedVectorType>(GEP.getType());
   if (GEPVecTy && isa<PointerType>(PtrOp->getType())) {
     PointerValue = Builder->CreateVectorSplat(
         GEPVecTy->getNumElements(), PointerValue, PtrOp->getName() + ".splat");
@@ -190,7 +224,7 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
 
   Type *Ty = PtrOp->getType();
   gep_type_iterator GTI = gep_type_begin(GEP);
-  for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI) {
+  for (auto OI = GEP.op_begin() + 1, E = GEP.op_end(); OI != E; ++OI, ++GTI) {
     Value *Idx = *OI;
     if (StructType *StTy = GTI.getStructTypeOrNull()) {
       int64_t Field = 0;
@@ -221,7 +255,7 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
           // invariant (but not b), so we could rearrange the lowered code into
           // (base + (a << shftAmt)) + (b << shftAmt).
           Loop *L = LI ? LI->getLoopFor(BO->getParent()) : nullptr;
-          if (L && L->isLoopInvariant(GEP->getPointerOperand()) &&
+          if (L && L->isLoopInvariant(GEP.getPointerOperand()) &&
               BO->getOpcode() == Instruction::Add) {
 
             auto reassociate = [&](Value *A, Value *B) {
@@ -267,15 +301,11 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
     }
   }
 
-  PointerValue = Builder->CreateIntToPtr(PointerValue, GEP->getType());
-  GEP->replaceAllUsesWith(PointerValue);
-  GEP->eraseFromParent();
-  if (Instruction *I = dyn_cast<Instruction>(PointerValue)) {
-    BBI = BasicBlock::iterator(I);
-    ++BBI;
-  }
-
-  return true;
+  PointerValue = Builder->CreateIntToPtr(PointerValue, GEP.getType());
+  PointerValue->takeName(&GEP);
+  GEP.replaceAllUsesWith(PointerValue);
+  GEP.eraseFromParent();
+  return PointerValue;
 }
 
 Value *GenXGEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
