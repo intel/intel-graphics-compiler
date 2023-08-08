@@ -5778,7 +5778,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       auto lr = (*lrIt);
       bool needsEOTGRF = lr->getEOTSrc() && builder.hasEOTGRFBinding();
       if (needsEOTGRF && gra.isBlockLocal(lr->getDcl()) &&
-          (totalGRFRegCount + lr->getNumRegNeeded()) <=
+          (totalGRFRegCount - reserveSpillGRFCount + lr->getNumRegNeeded()) <=
               kernel.getNumRegTotal() &&
           !hasSpilledNeighbor(lr->getVar()->getId())) {
         // Following conditions true:
@@ -9094,11 +9094,11 @@ std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring)
     determineSpillRegSize(spillRegSize, indrSpillRegSize);
   }
 
-  vISA_ASSERT(spillRegSize + indrSpillRegSize <
-                  kernel.stackCall.getNumCalleeSaveRegs(),
-              "Invalid reserveSpillSize in fail-safe RA!");
-  coloring.setTotalGRFRegCount(coloring.getTotalGRFRegCount() -
-                               (spillRegSize + indrSpillRegSize));
+  if (builder.usesStack())
+    vISA_ASSERT(spillRegSize + indrSpillRegSize <
+                    kernel.stackCall.getNumCalleeSaveRegs(),
+                "Invalid reserveSpillSize in fail-safe RA!");
+  coloring.setReserveSpillGRFCount(spillRegSize + indrSpillRegSize);
   return std::make_pair(spillRegSize, indrSpillRegSize);
 }
 

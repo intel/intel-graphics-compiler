@@ -726,11 +726,8 @@ public:
 class GraphColor {
   GlobalRA &gra;
 
-  // This is not necessarily the same as the number of available physical GRFs,
-  // as failSafeRA will reserve some GRF.
-  // FIXME: failSafeRA should use RegisterClass/forbidden GRF to model this
-  // instead of directly changing the number of GRFs.
-  unsigned totalGRFRegCount;
+  // Same as GRF count in G4_Kernel.
+  const unsigned totalGRFRegCount;
   const unsigned numVar;
   // The original code has no comments whatsoever (sigh), but best as I can tell
   // this vector is used to track the active values held by each of A0's
@@ -779,6 +776,8 @@ class GraphColor {
   unsigned numColor = 0;
 
   bool failSafeIter = false;
+  // Reserved GRF count for fail-safe RA
+  unsigned reserveSpillGRFCount = 0;
 
   unsigned edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2);
   unsigned edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2);
@@ -835,8 +834,7 @@ public:
   unsigned int getNumVars() const { return numVar; }
   float getSpillRatio() const { return (float)spilledLRs.size() / numVar; }
   void markFailSafeIter(bool f) { failSafeIter = f; }
-  void setTotalGRFRegCount(unsigned c) { totalGRFRegCount = c; }
-  unsigned getTotalGRFRegCount() { return totalGRFRegCount; }
+  void setReserveSpillGRFCount(unsigned c) { reserveSpillGRFCount = c; }
 };
 
 struct BundleConflict {
