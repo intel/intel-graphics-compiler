@@ -19474,6 +19474,12 @@ bool EmitPass::ResourceLoopHeader(
         IGC_ASSERT(ResourceLoopMarker == 0);
         return false;
     }
+    // cannot fuse resource loop in simd32 mode when there are
+    // two separated loops for 1st-half and 2nd-half.
+    if (m_SimdMode == SIMDMode::SIMD32 && m_currShader->m_numberInstance >= 2)
+    {
+        ResourceLoopMarker = 0;
+    }
     if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside)
     {
         resource = m_RLA->GetResourceLoopResource();
@@ -19542,6 +19548,12 @@ void EmitPass::ResourceLoopBackEdge(
     uint label,
     uint ResourceLoopMarker)
 {
+    // cannot fuse resource loop in simd32 mode when there are
+    // two separated loops for 1st-half and 2nd-half.
+    if (m_SimdMode == SIMDMode::SIMD32 && m_currShader->m_numberInstance >= 2)
+    {
+        ResourceLoopMarker = 0;
+    }
     if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopEnd)
     {
         flag = m_RLA->GetResourceLoopFlag();
