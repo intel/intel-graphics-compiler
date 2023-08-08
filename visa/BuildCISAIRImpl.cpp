@@ -1606,7 +1606,8 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
   // In case there is an assert in compilation phase, at least vISA binary will
   // be generated.
   std::string isaFileName;
-  const bool dumpVISA = m_options.getOption(vISA_DumpvISA);
+  // TODO: Delete the related code that generate visa binary (.isa).
+  const bool dumpVISA = false;
   if (dumpVISA) {
     // Translate .isaasm to .isa.
     llvm::SmallString<64> temp(isaasmFileName);

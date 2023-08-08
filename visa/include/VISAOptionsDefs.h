@@ -485,7 +485,8 @@ DEF_VISA_OPTION(vISA_DumpIsaVarNames, ET_BOOL, "-dumpisavarnames", UNUSED, true)
 DEF_VISA_OPTION(vISA_UniqueLabels, ET_BOOL, "-uniqueLabel", UNUSED, false)
 DEF_VISA_OPTION(vISA_ShaderDumpFilter, ET_CSTR, "-shaderDumpFilter",
                 "USAGE: -shaderDumpFilter <regex>\n", NULL)
-DEF_VISA_OPTION(vISA_DumpvISA, ET_BOOL, "-dumpvisa", UNUSED, false)
+DEF_VISA_OPTION(vISA_DumpvISA, ET_BOOL, "-dumpvisa",
+                "-dumpvisa is deprecated and will be removed.", false)
 DEF_VISA_OPTION(vISA_StripComments, ET_BOOL, "-stripcomments", UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpNewSyntax, ET_BOOL, "-disableIGASyntax", UNUSED, true)
 DEF_VISA_OPTION(vISA_NumGenBinariesWillBePatched, ET_INT32,
