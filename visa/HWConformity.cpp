@@ -3002,21 +3002,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
   vISA_ASSERT(!inst->getCondMod(), "cant handle cond mod");
   auto dstHS = dst->getHorzStride();
 
-  auto incrementVar = [&](G4_Operand *var, unsigned int width,
-                          unsigned int regOff, unsigned int sregOff,
-                          G4_INST *inst, short increment) {
-    auto addrDst =
-        builder.createDst(var->getBase(), regOff, sregOff, 1, Type_UW);
-    auto addrSrc = builder.createSrc(var->getBase(), regOff, sregOff,
-                                     builder.getRegionStride1(), Type_UW);
-    auto incrementImm = builder.createImm(increment, Type_W);
-    auto addrAddInst = builder.createInternalInst(
-        nullptr, G4_add, nullptr, g4::NOSAT,
-        G4_ExecSize(inst->getExecSize() / width), addrDst, addrSrc,
-        incrementImm, InstOpt_WriteEnable);
-    return addrAddInst;
-  };
-
   if (src0->isSrcRegRegion()) {
     auto src0RR = src0->asSrcRegRegion();
     vISA_ASSERT(src0RR->getModifier() == Mod_src_undef,
@@ -3119,7 +3104,8 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
               src0RR->isIndirect() ? src0RR->getSubRegOff()
                                    : (src0RR->getSubRegOff() * 2),
               rgnToUse, Type_UD);
-          newSrc->setImmAddrOff(src0RR->getAddrImm());
+          if (newSrc->isIndirect())
+            newSrc->setImmAddrOff(src0RR->getAddrImm());
           auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc,
                                            inst->getOption(), false);
           newInst->setPredicate(
@@ -3129,22 +3115,10 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
           iter = bb->insertBefore(origIter, newInst);
 
           // second half
-          bool dstAddrIncremented = false, src0AddrIncremented = false;
-          unsigned int immAddrOff = 4;
-          // The range of immAddrOff is [-512,511]
-          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
-            // increment dst address register by 4, later decrement it
-            dstAddrIncremented = true;
-            immAddrOff = 0;
-            iter = bb->insertBefore(origIter,
-                                    incrementVar(dst, inst->getExecSize(),
-                                                 dst->getRegOff(),
-                                                 dst->getSubRegOff(), inst, 4));
-          }
           newDst = dst->isIndirect()
                        ? (builder.createIndirectDst(
                              dst->getBase(), dst->getSubRegOff(), 2 * dstHS,
-                             Type_UD, immAddrOff + dst->getAddrImm()))
+                             Type_UD, 4 + dst->getAddrImm()))
                        : (builder.createDst(dst->getBase(), dst->getRegOff(),
                                             dst->getSubRegOff() * 2 + 1,
                                             2 * dstHS, Type_UD));
@@ -3154,18 +3128,8 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
               src0RR->isIndirect() ? src0RR->getSubRegOff()
                                    : (src0RR->getSubRegOff() * 2 + 1),
               rgnToUse, Type_UD);
-          if (newSrc->isIndirect()) {
-            // upper 4 bytes
-            if ((4 + src0RR->getAddrImm()) > 511) {
-              src0AddrIncremented = true;
-              iter = bb->insertBefore(
-                  origIter, incrementVar(src0RR, src0RR->getRegion()->width,
-                                         src0RR->getRegOff(),
-                                         src0RR->getSubRegOff(), inst, 4));
-              newSrc->setImmAddrOff(src0RR->getAddrImm());
-            } else
-              newSrc->setImmAddrOff(4 + src0RR->getAddrImm());
-          }
+          if (newSrc->isIndirect())
+            newSrc->setImmAddrOff(4 + src0RR->getAddrImm());
           newInst = builder.createMov(inst->getExecSize(), newDst, newSrc,
                                       inst->getOption(), false);
           newInst->setPredicate(
@@ -3173,20 +3137,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
                   ? builder.createPredicate(*inst->getPredicate())
                   : nullptr);
           iter = bb->insertBefore(origIter, newInst);
-
-          if (dstAddrIncremented) {
-            iter = bb->insertBefore(
-                origIter,
-                incrementVar(dst, inst->getExecSize(), dst->getRegOff(),
-                             dst->getSubRegOff(), inst, -4));
-          }
-
-          if (src0AddrIncremented) {
-            iter = bb->insertBefore(
-                origIter, incrementVar(src0RR, src0RR->getRegion()->width,
-                                       src0RR->getRegOff(),
-                                       src0RR->getSubRegOff(), inst, -4));
-          }
 
           bb->erase(origIter);
 
@@ -3217,22 +3167,10 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
                   : nullptr);
           iter = bb->insertBefore(origIter, newInst);
 
-          bool dstAddrIncremented = false;
-          unsigned int immAddrOff = 4;
-          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
-            // increment dst address register by 4, later decrement it
-            dstAddrIncremented = true;
-            immAddrOff = 0;
-            iter = bb->insertBefore(origIter,
-                                    incrementVar(dst, inst->getExecSize(),
-                                                 dst->getRegOff(),
-                                                 dst->getSubRegOff(), inst, 4));
-          }
-
           newDst = dst->isIndirect()
                        ? (builder.createIndirectDst(
                              dst->getBase(), dst->getSubRegOff(), 2 * dstHS,
-                             Type_D, immAddrOff + dst->getAddrImm()))
+                             Type_D, 4 + dst->getAddrImm()))
                        : (builder.createDst(dst->getBase(), dst->getRegOff(),
                                             dst->getSubRegOff() * 2 + 1,
                                             2 * dstHS, Type_D));
@@ -3254,13 +3192,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
                   ? builder.createPredicate(*inst->getPredicate())
                   : nullptr);
           iter = bb->insertBefore(origIter, newInst);
-
-          if (dstAddrIncremented) {
-            iter = bb->insertBefore(
-                origIter,
-                incrementVar(dst, inst->getExecSize(), dst->getRegOff(),
-                             dst->getSubRegOff(), inst, -4));
-          }
 
           bb->erase(origIter);
 
@@ -3289,21 +3220,10 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
                   : nullptr);
           iter = bb->insertBefore(origIter, newInst);
 
-          bool dstAddrIncremented = false;
-          unsigned int immAddrOff = 4;
-          if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
-            // increment dst address register by 4, later decrement it
-            dstAddrIncremented = true;
-            immAddrOff = 0;
-            iter = bb->insertBefore(origIter,
-                                    incrementVar(dst, inst->getExecSize(),
-                                                 dst->getRegOff(),
-                                                 dst->getSubRegOff(), inst, 4));
-          }
           newDst = dst->isIndirect()
                        ? (builder.createIndirectDst(
                              dst->getBase(), dst->getSubRegOff(), 2 * dstHS,
-                             Type_UD, immAddrOff + dst->getAddrImm()))
+                             Type_UD, 4 + dst->getAddrImm()))
                        : (builder.createDst(dst->getBase(), dst->getRegOff(),
                                             dst->getSubRegOff() * 2 + 1,
                                             2 * dstHS, Type_UD));
@@ -3315,13 +3235,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
                   ? builder.createPredicate(*inst->getPredicate())
                   : nullptr);
           iter = bb->insertBefore(origIter, newInst);
-
-          if (dstAddrIncremented) {
-            iter = bb->insertBefore(
-                origIter,
-                incrementVar(dst, inst->getExecSize(), dst->getRegOff(),
-                             dst->getSubRegOff(), inst, -4));
-          }
 
           bb->erase(origIter);
 
@@ -3380,20 +3293,10 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
     iter = bb->insertBefore(origIter, newInst);
 
     // high
-    bool dstAddrIncremented = false;
-    unsigned int immAddrOff = 4;
-    if (dst->isIndirect() && (4 + dst->getAddrImm()) > 511) {
-      // increment dst address register by 4, later decrement it
-      dstAddrIncremented = true;
-      immAddrOff = 0;
-      iter = bb->insertBefore(
-          origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(),
-                                 dst->getSubRegOff(), inst, 4));
-    }
     newDst = dst->isIndirect()
                  ? (builder.createIndirectDst(
                        dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_D,
-                       immAddrOff + dst->getAddrImm()))
+                       4 + dst->getAddrImm()))
                  : (builder.createDst(dst->getBase(), dst->getRegOff(),
                                       dst->getSubRegOff() * 2 + 1, 2 * dstHS,
                                       Type_D));
@@ -3404,12 +3307,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
                               ? builder.createPredicate(*inst->getPredicate())
                               : nullptr);
     iter = bb->insertBefore(origIter, newInst);
-
-    if (dstAddrIncremented) {
-      iter = bb->insertBefore(
-          origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(),
-                                 dst->getSubRegOff(), inst, -4));
-    }
 
     bb->erase(origIter);
 
@@ -5968,6 +5865,15 @@ void HWConformity::conformBB(G4_BB *bb) {
       verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
     }
+  }
+
+  // Immdiate Address offset OOB check should be put at the end of conformBB
+  // as previous fixes may generate invalid ImmAddrOffset.
+  for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter) {
+    fixImmAddrOffsetOOB(iter, bb);
+#ifdef _DEBUG
+    verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
   }
 }
 
@@ -9847,5 +9753,107 @@ void HWConformity::fixFloatARFDst(INST_LIST_ITER it, G4_BB *bb) {
     G4_INST *movInst = builder.createMov(inst->getExecSize(), dst, newSrcRegion,
                                          inst->getMaskOption(), false);
     bb->insertAfter(it, movInst);
+  }
+}
+
+// There is a 10-bits encoding limit on immediate address offset. So the value
+// must be [-512,511].
+void HWConformity::fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb) {
+  G4_INST *inst = *it;
+
+  if (inst->nonALUInstructions())
+    return;
+
+  auto generateAddrAddInst = [&](G4_Operand *var, unsigned int sregOff,
+                                 short imm, int execSize) {
+    // Generate address add instruction:
+    //  add(execSize) A(0,0)<1>:uw  A(0,0)<1;1,0>:uw  imm:w
+    auto addrDst = builder.createDst(var->getBase(), 0, sregOff, 1, Type_UW);
+    auto addrSrc = builder.createSrc(var->getBase(), 0, sregOff,
+                                     builder.getRegionStride1(), Type_UW);
+    auto immSrc = builder.createImm(imm, Type_W);
+    auto addrAddInst = builder.createInternalInst(
+        nullptr, G4_add, nullptr, g4::NOSAT, G4_ExecSize(execSize), addrDst,
+        addrSrc, immSrc, InstOpt_WriteEnable);
+    return addrAddInst;
+  };
+
+  // Indirect operand can be on dst, src0 or src1.
+  // Check if dst and src operands have common base.
+  G4_VarBase *commonBase = nullptr;
+  bool hasCommonBase = false;
+  bool isSrcImmAddrOffsetOOB = false;
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc && i < 2; ++i) {
+    auto src = inst->getSrc(i);
+    if (!src->isIndirect())
+      continue;
+    auto srcRR = src->asSrcRegRegion();
+    isSrcImmAddrOffsetOOB |=
+        (srcRR->getAddrImm() > 511 || srcRR->getAddrImm() < -512);
+    if (commonBase == nullptr) {
+      commonBase = src->getBase();
+    } else if (commonBase == src->getBase()) {
+      hasCommonBase = true;
+    }
+  }
+
+  auto dst = inst->getDst();
+  bool isDstImmAddrOffsetOOB = false;
+  if (dst->isIndirect()) {
+    isDstImmAddrOffsetOOB = dst->getAddrImm() > 511 || dst->getAddrImm() < -512;
+    hasCommonBase |= (commonBase == dst->getBase());
+  }
+
+  if (!isDstImmAddrOffsetOOB && !isSrcImmAddrOffsetOOB)
+    return;
+
+  // TODO: dst/src operands are indirect and have common base, and any
+  //       operand has invalid immAddrOffset.
+  vISA_ASSERT(!hasCommonBase,
+              "Unhandled case that dst and src operands are indirect and have "
+              "common base, and any ooperand has invalid immAddrOffset");
+
+  // Fix dst
+  if (isDstImmAddrOffsetOOB) {
+    auto immAddrOff = dst->getAddrImm();
+    // Increase dst address register by immAddrOff
+    bb->insertBefore(
+        it, generateAddrAddInst(dst, dst->getSubRegOff(), immAddrOff, 1));
+    // Set immAddrOff of dst as 0
+    dst->setImmAddrOff(0);
+    // Decrease dst address register by immAddrOff
+    bb->insertAfter(
+        it, generateAddrAddInst(dst, dst->getSubRegOff(), -immAddrOff, 1));
+  }
+
+  if (!isSrcImmAddrOffsetOOB)
+    return;
+
+  // Fix src0 and src1
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc && i < 2; ++i) {
+    auto src = inst->getSrc(i);
+    if (!src->isIndirect())
+      continue;
+
+    auto srcRR = src->asSrcRegRegion();
+    bool isImmAddrOffsetOOB =
+        srcRR->getAddrImm() > 511 || srcRR->getAddrImm() < -512;
+    if (!isImmAddrOffsetOOB)
+      continue;
+
+    auto immAddrOff = srcRR->getAddrImm();
+    auto execSize = srcRR->getRegion()->isRegionWH()
+                        ? inst->getExecSize() / srcRR->getRegion()->width
+                        : 1;
+    // Increase src address register by immAddrOff
+    bb->insertBefore(it,
+                     generateAddrAddInst(srcRR, srcRR->getSubRegOff(),
+                                         immAddrOff, G4_ExecSize(execSize)));
+    // // Set immAddrOff of src as 0
+    srcRR->setImmAddrOff(0);
+    // Decrease src address register by immAddrOff
+    bb->insertAfter(it,
+                    generateAddrAddInst(srcRR, srcRR->getSubRegOff(),
+                                        -immAddrOff, G4_ExecSize(execSize)));
   }
 }

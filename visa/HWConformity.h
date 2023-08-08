@@ -219,6 +219,8 @@ class HWConformity {
 
   void fixFloatARFDst(INST_LIST_ITER it, G4_BB *bb);
 
+  void fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb);
+
 protected:
   G4_DstRegRegion *insertMovAfter(INST_LIST_ITER &it, G4_DstRegRegion *dst,
                                   G4_Type type, G4_BB *bb,
