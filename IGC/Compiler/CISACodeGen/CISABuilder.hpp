@@ -260,8 +260,7 @@ namespace IGC
                             LSC_DATA_ELEMS numElems, unsigned blockOffset,
                             ResourceDescriptor *resource,
                             LSC_ADDR_SIZE addr_size, LSC_DATA_ORDER data_order,
-                            int immOffset, LSC_CACHE_OPTS cacheOpts,
-                            LSC_DOC_ADDR_SPACE addrSpace);
+                            int immOffset, LSC_CACHE_OPTS cacheOpts);
         void LSC_StoreScatter(LSC_OP subOp,
                               CVariable *src, CVariable *offset,
                               LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,
@@ -269,8 +268,7 @@ namespace IGC
                               ResourceDescriptor *resource,
                               LSC_ADDR_SIZE addr_size,
                               LSC_DATA_ORDER data_order, int immOffset,
-                              LSC_CACHE_OPTS cacheOpts,
-                              LSC_DOC_ADDR_SPACE addrSpace);
+                              LSC_CACHE_OPTS cacheOpts);
         void LSC_LoadBlock1D(
             CVariable* dst, CVariable* offset,
             LSC_DATA_SIZE elemSize, LSC_DATA_ELEMS numElems,

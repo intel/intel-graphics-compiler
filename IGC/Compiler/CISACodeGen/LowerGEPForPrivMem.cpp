@@ -504,68 +504,6 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst& I)
     }
     if (status != StatusPrivArr2Reg::OK)
     {
-        char* reason = nullptr;
-        // The reason why the user private variable
-        // wasn't promoted to grfs
-        switch (status)
-        {
-        case StatusPrivArr2Reg::CannotUseSOALayout:
-            reason = "CannotUseSOALayout";
-            break;
-        case StatusPrivArr2Reg::IsDynamicAlloca:
-            reason = "IsDynamicAlloca";
-            break;
-        case StatusPrivArr2Reg::IsNotNativeType:
-            reason = "IsNotNativeType";
-            break;
-        case StatusPrivArr2Reg::OutOfAllocSizeLimit:
-            reason = "OutOfAllocSizeLimit";
-            break;
-        case StatusPrivArr2Reg::OutOfMaxGRFPressure:
-            reason = "OutOfMaxGRFPressure";
-            break;
-        default:
-            reason = "NotDefine";
-            break;
-        }
-        MDNode* node = MDNode::get(
-            I.getContext(),
-            MDString::get(I.getContext(), reason));
-
-        std::function<void(Instruction*, MDNode*)> markAS_PRIV;
-        markAS_PRIV = [&markAS_PRIV](Instruction* instr, MDNode* node) -> void
-        {
-            for (auto user_i = instr->user_begin();
-                user_i != instr->user_end(); ++user_i)
-            {
-                // Adding this mark because, during compilation the orginal
-                // addrspace is changed (for ex. from PRIVATE to GLOBAL) and
-                // is not visible on end stages of compilation. This will help
-                // to identify - which load/store is related for the private
-                // variables of user.
-
-                if (LoadInst* load = llvm::dyn_cast<LoadInst>(*user_i))
-                {
-                    // Add mark for any load which will read the data from
-                    // user private variable. This information will be passing
-                    // to the assembly level.
-                    load->setMetadata("user_addrspace_priv", node);
-                }
-                else if (StoreInst* store = llvm::dyn_cast<StoreInst>(*user_i))
-                {
-                    // Add mark for any store which will pushing the data from
-                    // user private variable. This information will be passing
-                    // to the assembly level.
-                    store->setMetadata("user_addrspace_priv", node);
-                }
-                else if (GetElementPtrInst* gep = llvm::dyn_cast<GetElementPtrInst>(*user_i))
-                {
-                    markAS_PRIV(gep, node);
-                }
-            }
-        };
-
-        markAS_PRIV(&I, node);
         // alloca size extends remain per-lane-reg space
         return;
     }

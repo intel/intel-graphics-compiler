@@ -427,14 +427,12 @@ public:
     void emitLSCVectorLoad(llvm::Instruction *Inst,
                            llvm::Value *Ptr,
                            llvm::Value *offset, llvm::ConstantInt *immOffset,
-                           LSC_CACHE_OPTS cacheOpts,
-                           LSC_DOC_ADDR_SPACE addrSpace);
+                           LSC_CACHE_OPTS cacheOpts);
     void emitLSCVectorStore(llvm::Value *Ptr,
                             llvm::Value *offset, llvm::ConstantInt *immOffset,
                             llvm::Value *storedVal, llvm::BasicBlock* BB,
                             LSC_CACHE_OPTS cacheOpts,
-                            alignment_t align, bool dontForceDMask,
-                            LSC_DOC_ADDR_SPACE addrSpace);
+                            alignment_t align, bool dontForceDMask);
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
@@ -555,8 +553,7 @@ public:
         ResourceDescriptor* resource,
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
-        int immOffset,
-        LSC_DOC_ADDR_SPACE addrSpace);
+        int immOffset);
     void emitLSCStore(
         llvm::Instruction* inst,
         CVariable* src,
@@ -578,8 +575,7 @@ public:
         ResourceDescriptor* resource,
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
-        int immOffset,
-        LSC_DOC_ADDR_SPACE addrSpace);
+        int immOffset);
     ////////////////////////////////////////////////////////////////////
     // NOTE: for vector load/stores instructions pass the
     // optional instruction argument checks additional constraints
@@ -941,27 +937,23 @@ private:
     void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                  ResourceDescriptor &Resource, CVariable *Dest,
                                  CVariable *Offset, int ImmOffset,
-                                 uint32_t NumElts, uint32_t EltBytes,
-                                 LSC_DOC_ADDR_SPACE addrSpace);
+                                 uint32_t NumElts, uint32_t EltBytes);
     void emitLSCVectorLoad_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                    ResourceDescriptor &Resource,
                                    CVariable *Dest, CVariable *Offset,
                                    int ImmOffset, uint32_t NumElts,
                                    uint32_t EltBytes, uint64_t Align,
-                                   uint32_t Addrspace,
-                                   LSC_DOC_ADDR_SPACE userAddrSpace);
+                                   uint32_t Addrspace);
     void emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                   ResourceDescriptor &Resource,
                                   CVariable *StoreVar, CVariable *Offset,
                                   int ImmOffset, uint32_t NumElts,
-                                  uint32_t EltBytes, alignment_t Align,
-                                  LSC_DOC_ADDR_SPACE addrSpace);
+                                  uint32_t EltBytes, alignment_t Align);
     void emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                     ResourceDescriptor &Resource,
                                     CVariable *StoreVar, CVariable *Offset,
                                     int ImmOffset, uint32_t NumElts,
-                                    uint32_t EltBytes, alignment_t Align,
-                                    LSC_DOC_ADDR_SPACE addrSpace);
+                                    uint32_t EltBytes, alignment_t Align);
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1,
                                      bool EvictL1) const;
 
@@ -970,8 +962,6 @@ private:
     bool m_isDuplicate;
     CVariable *m_tmpDest = nullptr;
     std::set<CoalescingEngine::CCTuple *> lifetimeStartAdded;
-
-    LSC_DOC_ADDR_SPACE GetUserAddrSpace(llvm::Instruction* inst);
 };
 
 } // namespace IGC

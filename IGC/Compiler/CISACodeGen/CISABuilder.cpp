@@ -8142,8 +8142,7 @@ namespace IGC
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
         int immOffset,
-        LSC_CACHE_OPTS cacheOpts,
-        LSC_DOC_ADDR_SPACE addrSpace)
+        LSC_CACHE_OPTS cacheOpts)
     {
         LSC_SFID lscSfid =
             resource && resource->m_surfaceType == ESURFACE_SLM ?
@@ -8157,7 +8156,8 @@ namespace IGC
         addr.immScale = 1;
         addr.immOffset = immOffset;
         addr.size = addr_size;
-        addr.addrSpace = addrSpace;
+        // TODO: update this accordingly
+        addr.addrSpace = LSC_DOC_ADDR_SPACE::INVALID;
 
         if (resource)
         {
@@ -8292,8 +8292,7 @@ namespace IGC
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
         int immOffset,
-        LSC_CACHE_OPTS cacheOpts,
-        LSC_DOC_ADDR_SPACE addrSpace)
+        LSC_CACHE_OPTS cacheOpts)
     {
         LSC_SFID lscSfid =
             resource && resource->m_surfaceType == ESURFACE_SLM ?
@@ -8308,8 +8307,7 @@ namespace IGC
         addr.immScale = 1;
         addr.immOffset = immOffset;
         addr.size = addr_size;
-        addr.addrSpace = addrSpace;
-
+        addr.addrSpace = LSC_DOC_ADDR_SPACE::INVALID;
         if (resource)
         {
             addr.type = getLSCAddrType(resource);
