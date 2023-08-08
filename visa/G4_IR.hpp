@@ -151,6 +151,7 @@ protected:
   bool doPostRA : 1; // for NoMaskWA
   bool canBeAcc : 1; // The inst can be ACC, including the inst's dst
                      // and the use operands in the DU chain.
+  bool doNotDelete : 1;
   G4_ExecSize execSize;
 
   // make it private so only the IR_Builder can create new instructions
@@ -815,7 +816,10 @@ public:
 
   bool canInstBeAcc(GlobalOpndHashTable *ght);
 
-  bool canInstBeAcc() const { return canBeAcc; };
+  bool canInstBeAcc() const { return canBeAcc; }
+
+  virtual bool isDoNotDelete() const { return doNotDelete; }
+  void markDoNotDelete() { doNotDelete = true; }
 
   bool canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const;
 
@@ -1386,6 +1390,12 @@ public:
   bool hasSideEffects() const {
     return G4_Intrinsics[(int)intrinsicId].flags &
            (1ull << IntrinsicFlags::HasSideEffects);
+  }
+
+  bool isDoNotDelete() const override {
+    // Return true if hasSideEffects is true. Otherwise, check if doNotDelete
+    // is marked or not.
+    return hasSideEffects() ? true : doNotDelete;
   }
 };
 // place for holding all physical register operands

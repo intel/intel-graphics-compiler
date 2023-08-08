@@ -1965,9 +1965,8 @@ void FlowGraph::removeRedundMov() {
     for (auto it = bb->begin(), ie = bb->end(), in = ie; it != ie; it = in) {
       in = std::next(it);
       G4_INST *inst = *it;
-      // Do not try to remove the instruction if it is a part of an atomic
-      // block.
-      if (inst->isAtomicInst())
+      // Do not try to remove the instruction that is marked as doNotDelete.
+      if (inst->isDoNotDelete())
         continue;
 
       if (!inst->isRawMov())

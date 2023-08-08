@@ -2717,10 +2717,13 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       applyWriteCombineHeuristic(block, scheduled);
       if (block.isGoodBlock()) {
         // add atomic to the instructions except for the last one in the
-        // block
+        // block. Also mark the instructions as doNotDelete.
         std::vector<Node *> &instList = block.getInstList();
-        for (size_t id = 0; id < instList.size() - 1; id++) {
-          instList[id]->getInstructions()->front()->setOptionOn(InstOpt_Atomic);
+        for (size_t id = 0, ie = instList.size(); id < ie; id++) {
+          G4_INST *inst = instList[id]->getInstructions()->front();
+          inst->markDoNotDelete();
+          if (id != ie - 1)
+            inst->setOptionOn(InstOpt_Atomic);
         }
 
         // schedule together

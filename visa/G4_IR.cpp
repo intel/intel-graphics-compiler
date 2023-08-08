@@ -196,7 +196,8 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
       sat(s ? true : false), dead(false), evenlySplitInst(false),
-      doPostRA(false), canBeAcc(false), execSize(size), builder(irb) {
+      doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
+      builder(irb) {
   // FIXME: Currently srcs would be initialized with a list that has max
   // allowed size in ctor. Probably should initialize srcs with the actual
   // required srcs of the inst instead.
@@ -212,7 +213,8 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
       sat(s ? true : false), dead(false), evenlySplitInst(false),
-      doPostRA(false), canBeAcc(false), execSize(size), builder(irb) {
+      doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
+      builder(irb) {
   srcs = {s0, s1, s2, s3, s4, s5, s6, s7};
   initOperands();
 }
