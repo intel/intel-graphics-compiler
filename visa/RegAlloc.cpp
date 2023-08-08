@@ -2033,6 +2033,7 @@ void GlobalRA::markBlockLocalVars() {
 void GlobalRA::resetGlobalRAStates() {
   auto origDclSize = kernel.Declares.size();
   if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {
+    incRA.resetPartialDcls();
     // remove partial decls
     auto isPartialDcl = [](G4_Declare *dcl) { return dcl->getIsPartialDcl(); };
 
@@ -2052,8 +2053,8 @@ void GlobalRA::resetGlobalRAStates() {
       if (dcl->getIsSplittedDcl()) {
         dcl->setIsSplittedDcl(false);
         clearSubDcl(dcl);
+        incRA.markForIntfUpdate(dcl);
       }
-      incRA.markForIntfUpdate(dcl);
     }
 
     // Remove the bank assignment

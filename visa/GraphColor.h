@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
+#include "llvm/ADT/DenseSet.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -305,7 +306,7 @@ namespace vISA {
 class Augmentation {
 private:
   // pair of default mask, non-default mask
-  using MaskDeclares = std::pair<llvm_SBitVector, llvm_SBitVector>;
+  using MaskDeclares = std::pair<llvm::DenseSet<unsigned int>, llvm::DenseSet<unsigned int>>;
   G4_Kernel &kernel;
   Interference &intf;
   GlobalRA &gra;
@@ -321,6 +322,7 @@ private:
   // all call sites of func.
   std::unordered_map<FuncInfo *, MaskDeclares> overlapDclsWithFunc;
   std::unordered_map<G4_Declare *, MaskDeclares> retDeclares;
+  bool useGenericAugAlign = false;
 
   bool updateDstMaskForGather(G4_INST *inst, std::vector<unsigned char> &mask);
   bool updateDstMaskForGatherRaw(G4_INST *inst,
@@ -359,24 +361,24 @@ private:
   bool isCompatible(const G4_Declare *testDcl,
                     const G4_Declare *biggerDcl) const;
   void buildInterferenceIncompatibleMask();
-  void buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
+  void buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declare*>& dcls,
                                                MaskDeclares *mask);
   void buildInteferenceForCallsite(FuncInfo *func);
   void buildInteferenceForRetDeclares();
   void buildSummaryForCallees();
   void expireIntervals(unsigned startIdx);
-  void buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall);
-  void buildSIMDIntfAll(G4_Declare *newDcl);
+  void buildSIMDIntfDcl(G4_Declare *newDcl);
+  void storeOverlapWithCallRet(G4_Declare *newDcl,
+                               const std::vector<bool> &globalVars);
   void handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl, bool isCall);
   bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
-
-  void addSIMDIntfDclForCallSite(G4_BB *callBB);
-
-  void addSIMDIntfForRetDclares(G4_Declare *newDcl);
+  void addSIMDIntfDclForCallSite(G4_BB *callBB,
+                                 const std::vector<bool> &globalVars);
+  void addSIMDIntfForRetDclares(G4_Declare *newDcl,
+                                const std::vector<bool> &globalVars);
 
 public:
-  Augmentation(G4_Kernel &k, Interference &i, const LivenessAnalysis &l,
-               const LiveRangeVec &ranges, GlobalRA &g);
+  Augmentation(Interference &i, const LivenessAnalysis &l, GlobalRA &g);
   ~Augmentation();
 
   void augmentIntfGraph();
@@ -386,35 +388,76 @@ public:
   }
 };
 
+// This class stores base matrices used for interference building for graph coloring.
+struct InterferenceMatrixStorage {
+  // This member is a half triangle representation of interference graph implemented
+  // as a sparse bitvector. Interference construction uses this member. When
+  // incremental RA is enabled, this member is updated incrementally.
+  std::vector<llvm_SBitVector> sparseMatrix;
+  // This member is constructed after SIMT and SIMD interference are computed.
+  // It's a full triangle representation of interference matrix with trivial
+  // traversal. This member is reconstructed in each graph color iteration.
+  std::vector<std::vector<unsigned>> sparseIntf;
+};
+
 // This class contains implementation of various methods to implement
 // incremental intf computation. Instance of this class is created
 // once and stored in GlobalRA. This class should therefore not
 // hold pointer to GraphColor/Interference or such other short-living
 // instances.
 class IncrementalRA {
+  friend Interference;
+
+  const llvm_SBitVector &getSparseMatrix(unsigned int id) {
+    return sparseMatrix[id];
+  }
+
 private:
   GlobalRA &gra;
   G4_Kernel &kernel;
   LiveRangeVec lrs;
+  std::vector<llvm_SBitVector>& sparseMatrix;
+  std::vector<std::vector<unsigned>>& sparseIntf;
   G4_RegFileKind selectedRF = G4_RegFileKind::G4_UndefinedRF;
   unsigned int level = 0;
   std::unordered_set<G4_Declare *> needIntfUpdate;
+  std::unordered_set<G4_Declare *> evenAlignCache;
   unsigned int maxDclId = 0;
   // Map of root G4_Declare* -> id assigned to its G4_RegVar
   // This allows us to reuse ids from previous iteration.
   std::unordered_map<G4_Declare *, unsigned int> varIdx;
   unsigned int maxVarIdx = 0;
 
+  // Only BBs present in this set have interference computation
+  // done for them. It's assumed other BBs have no change in
+  // liveness so no change in interference is expected.
+  std::unordered_set<const G4_BB *> updateIntfForBB;
+
+  bool updateIntfForBBValid = false;
+
   // Reset state to mark start of new type of GRA (eg, from flag to GRF)
   void reset();
+
+  // During incremental update we need to remove edges between each
+  // incremental intf candidate and their neighbor.
+  void resetEdges();
+
+  // Compute BBs needing incremental update in current iteration.
+  // List of BBs needing update is stored in updateIntfForBB set.
+  void collectBBs(const LivenessAnalysis *liveness);
+
+  // Special variables such as r0 that are live-out have their
+  // interference marked already. So these should never be treated as
+  // incremental RA candidates.
+  void eraseLiveOutsFromIncrementalUpdate();
 
 public:
   llvm::SpecificBumpPtrAllocator<LiveRange> mem;
 
   IncrementalRA(GlobalRA &g);
 
-  bool isEnabled() { return level > 0; }
-  bool isEnabledWithVerification() { return level == 2; }
+  bool isEnabled() const { return level > 0; }
+  bool isEnabledWithVerification() const { return level == 2; }
 
   static bool isEnabled(G4_Kernel &kernel) {
     // 0 - disabled
@@ -428,10 +471,20 @@ public:
   }
 
   void registerNextIter(G4_RegFileKind rf,
-                        const LivenessAnalysis *liveness = nullptr);
+                        const LivenessAnalysis *liveness,
+                        const Interference *intf);
   // After computing interference incrementally, GraphColor needs to clear
   // candidate list to prepare for new incremental RA temps.
-  void clearCandidates() { needIntfUpdate.clear(); }
+  void clearCandidates() {
+    needIntfUpdate.clear();
+    updateIntfForBB.clear();
+    updateIntfForBBValid = false;
+    for (auto* evenAlignCandidate : evenAlignCache) {
+      if (!evenAlignCandidate->getAliasDeclare())
+        needIntfUpdate.insert(evenAlignCandidate);
+    }
+    evenAlignCache.clear();
+  }
 
   LiveRangeVec &getLRs() { return lrs; }
 
@@ -485,8 +538,32 @@ public:
   void reduceMaxDclId(unsigned int reduceBy) {
     if (!level)
       return;
-    maxDclId -= reduceBy;
+    if (maxDclId > 0) {
+      vISA_ASSERT(maxDclId >= reduceBy, "error removing partial dcls");
+      maxDclId -= reduceBy;
+    }
   }
+
+  void resetPartialDcls();
+
+  bool intfNeededForBB(const G4_BB *bb) const {
+    // If incremental RA is not enabled then all BBs need intf update.
+    if (!isEnabled() || !updateIntfForBBValid)
+      return true;
+    // If incremental RA is enabled then check whether we need to run
+    // intf for BB.
+    return updateIntfForBB.count(bb) > 0;
+  }
+
+  bool hasAnyCandidates() const { return needIntfUpdate.size() > 0; }
+
+  bool intfNeededForVar(G4_Declare *dcl) const {
+    if (needIntfUpdate.size() == 0)
+      return true;
+    return needIntfUpdate.count(dcl) > 0;
+  }
+
+  void evenAlignUpdate(G4_Declare *dcl) { evenAlignCache.insert(dcl); }
 
 private:
   // For verification only
@@ -536,14 +613,14 @@ class Interference {
   Augmentation aug;
   IncrementalRA &incRA;
 
-  std::vector<std::vector<unsigned>> sparseIntf;
+  std::vector<std::vector<unsigned>>& sparseIntf;
 
   // sparse interference matrix.
   // we don't directly update sparseIntf to ensure uniqueness
   // like dense matrix, interference is not symmetric (that is, if v1 and v2
   // interfere and v1 < v2, we insert (v1, v2) but not (v2, v1)) for better
   // cache behavior
-  std::vector<llvm_SBitVector> sparseMatrix;
+  std::vector<llvm_SBitVector>& sparseMatrix;
 
   unsigned int denseMatrixLimit = 0;
 
@@ -556,16 +633,6 @@ class Interference {
   }
 
   G4_Declare *getGRFDclForHRA(int GRFNum) const;
-
-  bool useDenseMatrix() const {
-    // The size check is added to prevent offset overflow in
-    // generateSparseIntfGraph() and help avoid out-of-memory
-    // issue in dense matrix allocation.
-    unsigned long long size = static_cast<unsigned long long>(rowSize) *
-                              static_cast<unsigned long long>(maxId);
-    unsigned long long max = std::numeric_limits<unsigned int>::max();
-    return (maxId < denseMatrixLimit) && (size < max);
-  }
 
   // Only upper-half matrix is now used in intf graph.
   inline void safeSetInterference(unsigned v1, unsigned v2) {
@@ -649,13 +716,22 @@ class Interference {
   void setupLRs(G4_BB *bb);
 
 public:
-  Interference(const LivenessAnalysis *l, const LiveRangeVec &lr, unsigned n,
-               unsigned ns, unsigned nm, GlobalRA &g);
+  Interference(const LivenessAnalysis *l, GlobalRA &g);
 
   ~Interference() {
     if (useDenseMatrix()) {
       delete[] matrix;
     }
+  }
+
+  bool useDenseMatrix() const {
+    // The size check is added to prevent offset overflow in
+    // generateSparseIntfGraph() and help avoid out-of-memory
+    // issue in dense matrix allocation.
+    unsigned long long size = static_cast<unsigned long long>(rowSize) *
+                              static_cast<unsigned long long>(maxId);
+    unsigned long long max = std::numeric_limits<unsigned int>::max();
+    return (maxId < denseMatrixLimit) && (size < max);
   }
 
   const std::vector<G4_Declare *> *
@@ -862,6 +938,7 @@ struct RAVarInfo {
   std::vector<BundleConflict> bundleConflicts;
   G4_SubReg_Align subAlign = G4_SubReg_Align::Any;
   bool isEvenAlign = false;
+  AugmentationMasks augMask = AugmentationMasks::Undetermined;
 };
 
 class VerifyAugmentation {
@@ -1009,7 +1086,6 @@ private:
   void saveRestoreA0(G4_BB *);
   static const RAVarInfo defaultValues;
   std::vector<RAVarInfo> vars;
-  std::vector<AugmentationMasks> varMasks;
   std::vector<G4_Declare *> UndeclaredVars;
 
   // fake declares for each GRF reg, used by HRA
@@ -1137,6 +1213,7 @@ public:
   bool useHybridRAwithSpill = false;
   bool useLocalRA = false;
 
+  InterferenceMatrixStorage intfStorage;
   IncrementalRA incRA;
 
 
@@ -1332,18 +1409,11 @@ public:
   }
 
   AugmentationMasks getAugmentationMask(const G4_Declare *dcl) const {
-    auto dclid = dcl->getDeclId();
-    if (dclid >= varMasks.size()) {
-      return AugmentationMasks::Undetermined;
-    }
-    return varMasks[dclid];
+    return getVar(dcl).augMask;
   }
 
   void setAugmentationMask(const G4_Declare *dcl, AugmentationMasks m) {
-    auto dclid = dcl->getDeclId();
-    if (dclid >= varMasks.size())
-      varMasks.resize(dclid + 1);
-    varMasks[dclid] = m;
+    allocVar(dcl).augMask = m;
     if (dcl->getIsSplittedDcl()) {
       for (const G4_Declare *subDcl : getSubDclList(dcl)) {
         setAugmentationMask(subDcl, m);
@@ -1457,7 +1527,6 @@ public:
         useLscForScatterSpill(k.fg.builder->supportsLSC() &&
                               k.fg.builder->getOption(vISA_scatterSpill)) {
     vars.resize(k.Declares.size());
-    varMasks.resize(k.Declares.size());
 
     if (kernel.getOptions()->getOption(vISA_VerifyAugmentation)) {
       verifyAugmentation = std::make_unique<VerifyAugmentation>();

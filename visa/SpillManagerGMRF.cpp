@@ -112,17 +112,17 @@ static void setNewDclAlignment(GlobalRA &gra, G4_Declare *newDcl,
 
 SpillManagerGRF::SpillManagerGRF(
     GlobalRA &g, unsigned spillAreaOffset, const LivenessAnalysis *lvInfo,
-    const LiveRangeVec &lrInfo, const Interference *intf,
-    const LR_LIST *spilledLRs, bool failSafeSpill, unsigned spillRegSize,
-    unsigned indrSpillRegSize, bool enableSpillSpaceCompression,
-    bool useScratchMsg)
+    const Interference *intf, const LR_LIST *spilledLRs, bool failSafeSpill,
+    unsigned spillRegSize, unsigned indrSpillRegSize,
+    bool enableSpillSpaceCompression, bool useScratchMsg)
     : gra(g), builder_(g.kernel.fg.builder), latestImplicitVarIdCount_(0),
       lvInfo_(lvInfo), varIdCount_(lvInfo->getNumSelectedVar()),
-      lrInfo_(&lrInfo), spilledLRs_(spilledLRs),
+      lrInfo_(&g.incRA.getLRs()), spilledLRs_(spilledLRs),
       nextSpillOffset_(spillAreaOffset),
       doSpillSpaceCompression(enableSpillSpaceCompression),
       failSafeSpill_(failSafeSpill), spillIntf_(intf),
-      useScratchMsg_(useScratchMsg), refs(g.kernel), context(g, &lrInfo) {
+      useScratchMsg_(useScratchMsg), refs(g.kernel),
+      context(g, &g.incRA.getLRs()) {
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   spillRegStart_ = g.kernel.getNumRegTotal();

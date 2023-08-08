@@ -14,7 +14,9 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-IncrementalRA::IncrementalRA(GlobalRA &g) : gra(g), kernel(g.kernel) {
+IncrementalRA::IncrementalRA(GlobalRA &g)
+    : gra(g), kernel(g.kernel), sparseMatrix(g.intfStorage.sparseMatrix),
+      sparseIntf(g.intfStorage.sparseIntf) {
   level = kernel.getOptions()->getuInt32Option(vISA_IncrementalRA);
 }
 
@@ -23,6 +25,10 @@ void IncrementalRA::reset() {
   lrs.clear();
   needIntfUpdate.clear();
   maxDclId = kernel.Declares.size();
+  sparseMatrix.clear();
+  sparseIntf.clear();
+  updateIntfForBB.clear();
+  updateIntfForBBValid = false;
 
   if (isEnabledWithVerification()) {
     def_in.clear();
@@ -35,9 +41,43 @@ void IncrementalRA::reset() {
   }
 }
 
+void IncrementalRA::eraseLiveOutsFromIncrementalUpdate() {
+  // BuiltInR0 is supposed to be live-out of program, so no need to ever
+  // recompute its intf.
+  needIntfUpdate.erase(kernel.fg.builder->getBuiltinR0()->getRootDeclare());
+  vISA_ASSERT(kernel.fg.builder->getBuiltinR0()->isOutput(),
+              "expecting live-out");
+  {
+    vISA_ASSERT(!kernel.fg.builder->hasScratchSurface() ||
+                    kernel.fg.builder->getSpillSurfaceOffset(),
+                "expecting valid SSO");
+    if (kernel.fg.builder->hasScratchSurface()) {
+      needIntfUpdate.erase(kernel.fg.builder->getSpillSurfaceOffset());
+      vISA_ASSERT(kernel.fg.builder->getSpillSurfaceOffset()->isOutput(),
+                  "expecting live-out");
+    }
+
+    vISA_ASSERT(!kernel.fg.builder->hasScratchSurface() ||
+                    kernel.fg.builder->hasValidOldA0Dot2(),
+                "expecting valid old a0dot2 temp");
+    if (kernel.fg.builder->hasValidOldA0Dot2()) {
+      needIntfUpdate.erase(kernel.fg.builder->getOldA0Dot2Temp());
+      vISA_ASSERT(kernel.fg.builder->getOldA0Dot2Temp()->isOutput(),
+                  "expecting live-out");
+    }
+  }
+
+  vISA_ASSERT(kernel.fg.builder->hasValidSpillFillHeader(),
+              "expecting valid spill fill header");
+  needIntfUpdate.erase(kernel.fg.builder->getSpillFillHeader());
+  vISA_ASSERT(kernel.fg.builder->getSpillFillHeader()->isOutput(),
+              "expecting live-out");
+}
+
 // Invoked from ctor of latest GraphColor instance.
 void IncrementalRA::registerNextIter(G4_RegFileKind rf,
-                                     const LivenessAnalysis *liveness) {
+                                     const LivenessAnalysis *liveness,
+                                     const Interference *intf) {
   // If incremental RA is not enabled, reset state so we run
   // RA iteration with a clean slate.
   if (!level) {
@@ -47,9 +87,14 @@ void IncrementalRA::registerNextIter(G4_RegFileKind rf,
 
   // Skip incremental RA for everything but GRF RA for now as we still need to
   // mark candidates in address, flag, scalar spill and cleanup.
-  if (rf == G4_RegFileKind::G4_FLAG ||
-      rf == G4_RegFileKind::G4_ADDRESS ||
+  if (rf == G4_RegFileKind::G4_FLAG || rf == G4_RegFileKind::G4_ADDRESS ||
       rf == G4_RegFileKind::G4_SCALAR) {
+    reset();
+    return;
+  }
+
+  // TODO: Add support for dense intf matrix
+  if (intf->useDenseMatrix()) {
     reset();
     return;
   }
@@ -58,6 +103,8 @@ void IncrementalRA::registerNextIter(G4_RegFileKind rf,
     reset();
     selectedRF = rf;
   }
+
+  eraseLiveOutsFromIncrementalUpdate();
 
   // Create live-ranges for new vars created in previous GraphColor instance
   if (kernel.Declares.size() > maxDclId) {
@@ -71,12 +118,6 @@ void IncrementalRA::registerNextIter(G4_RegFileKind rf,
       // New dcl seen, so create live-range for it
       addNewRAVariable(dcl);
     }
-  }
-
-  if (liveness->livenessClass(G4_GRF)) {
-    // recompute liveness of r0 in all iterations as it may be extended
-    // due to spill instructions.
-    markForIntfUpdate(kernel.fg.builder->getBuiltinR0()->getRootDeclare());
   }
 
   // Reset several fields of LiveRange instances from previous iteration. Fields
@@ -100,6 +141,10 @@ void IncrementalRA::registerNextIter(G4_RegFileKind rf,
     lr->initialize();
   }
 
+  collectBBs(liveness);
+
+  resetEdges();
+
   if (isEnabledWithVerification())
     verify(liveness);
 
@@ -109,11 +154,137 @@ void IncrementalRA::registerNextIter(G4_RegFileKind rf,
     // copy over liveness sets
     copyLiveness(liveness);
     // force compute var refs
-    prevIterRefs = std::unique_ptr<VarReferences>(new VarReferences(gra.kernel));
+    prevIterRefs =
+        std::unique_ptr<VarReferences>(new VarReferences(gra.kernel));
     prevIterRefs->setStale();
     prevIterRefs->recomputeIfStale();
   }
 }
+
+void IncrementalRA::resetEdges() {
+  std::unordered_map<unsigned int, std::vector<unsigned int>> toReset;
+  // Reset neighbor list of incremental candidates
+  for (auto candidate : needIntfUpdate) {
+    auto id = candidate->getRegVar()->getId();
+    // Clear neighbor list.
+
+    if (id < sparseMatrix.size()) {
+      // Sparse matrix uses upper triangle representation. So that makes it
+      // difficult to get list of all neighbors of a node. So we use
+      // sparseIntf data structure here that uses lower and upper triangle
+      // representation making is easy to remove edges efficiently.
+
+      // First go to each neighbor of node and remove edge.
+      for (auto neighbor : sparseIntf[id]) {
+        if (neighbor < id) {
+          toReset[neighbor].push_back(id);
+        }
+      }
+      sparseMatrix[id].clear();
+    }
+  }
+
+  for (const auto &item : toReset) {
+    for (const auto &neighbor : item.second) {
+      sparseMatrix[item.first].reset(neighbor);
+    }
+  }
+
+  // Now there should be no edge from candidate to/from any other node.
+
+  sparseIntf.clear();
+}
+
+void IncrementalRA::collectBBs(const LivenessAnalysis *liveness) {
+  vISA_ASSERT(liveness, "expecting valid liveness set");
+  VarReferences refs(kernel, true, false);
+  updateIntfForBB.clear();
+
+  // In first iteration, needIntfUpdate is empty.
+  if (needIntfUpdate.size() == 0) {
+    std::for_each(kernel.fg.getBBList().begin(), kernel.fg.getBBList().end(),
+                  [&](G4_BB *bb) { updateIntfForBB.insert(bb); });
+    updateIntfForBBValid = true;
+    return;
+  }
+
+  std::unordered_map<unsigned int, G4_BB *> idToBBPtr;
+  for (auto bb : kernel.fg.getBBList())
+    idToBBPtr[bb->getId()] = bb;
+
+  std::vector<unsigned int> intfCandidates;
+  for (auto newVar : needIntfUpdate) {
+    // Most spilled variables are locals. We know which BBs they appear in
+    // because markBlockLocalVars() is run in RA loop. We take advantage of
+    // this pre-computed information for early exit.
+    if (gra.isBlockLocal(newVar)) {
+      auto *bb = idToBBPtr.at(gra.getBBId(newVar));
+      updateIntfForBB.insert(bb);
+      continue;
+    }
+
+    // It's sufficient to remove spilled vars from
+    // all its neighbors. There's no need to redo
+    // intf for all BBs they were live in.
+    if (newVar->isSpilled() || newVar->getRegVar()->getPhyReg())
+      continue;
+    intfCandidates.push_back(newVar->getRegVar()->getId());
+  }
+
+  for (auto bb : kernel.fg.getBBList()) {
+    if (updateIntfForBB.count(bb) > 0)
+      continue;
+    auto bbId = bb->getId();
+    auto liveSet = (liveness->use_in[bbId] & liveness->def_in[bbId]) |
+                   (liveness->use_out[bbId] & liveness->def_out[bbId]) |
+                   liveness->use_kill[bbId];
+    std::vector<bool> liveSetVec;
+    liveSetVec.resize(liveness->getNumSelectedVar());
+    for (auto setBit : liveSet) {
+      liveSetVec[setBit] = true;
+    }
+
+    for (auto id : intfCandidates) {
+      vISA_ASSERT(lrs[id]->getVar()->isRegAllocPartaker(),
+                  "expecting RA candidate");
+
+      if (liveSetVec[id]) {
+        updateIntfForBB.insert(bb);
+        break;
+      }
+    }
+  }
+
+  updateIntfForBBValid = true;
+}
+
+void IncrementalRA::resetPartialDcls() {
+  if (!isEnabled())
+    return;
+
+  // Partial dcls are removed from kernel.Declares list.
+  // We want to remove any interference bits from those dcls here.
+  for (auto dcl : kernel.Declares) {
+    if (!dcl->getIsPartialDcl())
+      continue;
+
+    // Removed partial dcl
+    auto id = dcl->getRegVar()->getId();
+
+    if (id < sparseMatrix.size()) {
+      // Clear partial dcl edge from all neighbors
+      for (auto neighbor : sparseIntf[id]) {
+        sparseMatrix[neighbor].reset(id);
+      }
+
+      // Clear all neighbors of partial dcl itself
+      sparseMatrix[id].clear();
+    }
+
+    // Now there should be no edge from partial dcl to/from any other node.
+  }
+}
+
 
 void IncrementalRA::copyLiveness(const LivenessAnalysis* liveness) {
   def_in = liveness->def_in;

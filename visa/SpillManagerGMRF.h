@@ -242,11 +242,10 @@ public:
 
   // Construtor for GCRA.
   SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
-                  const LivenessAnalysis *lvInfo, const LiveRangeVec &lrInfo,
-                  const Interference *intf, const LR_LIST *spilledLRs,
-                  bool useSpillReg, unsigned spillRegSize,
-                  unsigned indrSpillRegSize, bool enableSpillSpaceCompression,
-                  bool useScratchMsg);
+                  const LivenessAnalysis *lvInfo, const Interference *intf,
+                  const LR_LIST *spilledLRs, bool useSpillReg,
+                  unsigned spillRegSize, unsigned indrSpillRegSize,
+                  bool enableSpillSpaceCompression, bool useScratchMsg);
 
   // Constructor for linear scan RA.
   SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,

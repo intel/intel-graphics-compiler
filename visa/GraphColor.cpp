@@ -57,15 +57,15 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
 #define NOMASK_BYTE 0x80
 
-Interference::Interference(const LivenessAnalysis *l,
-                           const LiveRangeVec& lr,
-                           unsigned n, unsigned ns, unsigned nm, GlobalRA &g)
-    : gra(g), kernel(g.kernel), lrs(lr), builder(*g.kernel.fg.builder),
-      maxId(n), splitStartId(ns), splitNum(nm), liveAnalysis(l),
-      rowSize(maxId / BITS_DWORD + 1), aug(g.kernel, *this, *l, lr, g),
-      incRA(g.incRA) {
+Interference::Interference(const LivenessAnalysis *l, GlobalRA &g)
+    : gra(g), kernel(g.kernel), lrs(gra.incRA.getLRs()),
+      builder(*g.kernel.fg.builder), maxId(l->getNumSelectedVar()),
+      splitStartId(l->getNumSplitStartID()), splitNum(l->getNumSplitVar()),
+      liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1), aug(*this, *l, g),
+      incRA(g.incRA), sparseMatrix(g.intfStorage.sparseMatrix),
+      sparseIntf(g.intfStorage.sparseIntf) {
   denseMatrixLimit = builder.getuint32Option(vISA_DenseMatrixLimit);
-  incRA.registerNextIter((G4_RegFileKind)l->getSelectedRF(), l);
+  incRA.registerNextIter((G4_RegFileKind)l->getSelectedRF(), l, this);
 }
 
 criticalCmpForEndInterval::criticalCmpForEndInterval(GlobalRA &g) : gra(g) {}
@@ -1534,8 +1534,7 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const {
     return matrix[v1 * rowSize + col] & (1 << (v2 % BITS_DWORD));
   } else {
     auto &set1 = sparseMatrix[v1];
-    auto &set2 = sparseMatrix[v2];
-    return set1.test(v2) || set2.test(v1);
+    return set1.test(v2);
   }
 }
 
@@ -2453,6 +2452,9 @@ void Interference::computeInterference() {
   buildInterferenceAmongLiveOuts();
 
   for (G4_BB *bb : kernel.fg) {
+    if (!incRA.intfNeededForBB(bb)) {
+      continue;
+    }
     //
     // mark all live ranges dead
     //
@@ -2489,6 +2491,7 @@ void Interference::computeInterference() {
       builder.getJitInfo()->statsVerbose.RAIterNum == 1) {
     getNormIntfNum();
   }
+
   // Augment interference graph to accomodate non-default masks
   aug.augmentIntfGraph();
 
@@ -2704,6 +2707,9 @@ void GlobalRA::evenAlign() {
   for (auto dcl : kernel.Declares) {
     if (dcl->getRegFile() & G4_GRF) {
       if (evenAlignNeeded(dcl)) {
+        if (!isEvenAligned(dcl)) {
+          incRA.evenAlignUpdate(dcl);
+        }
         setEvenAligned(dcl, true);
       }
     }
@@ -2732,11 +2738,14 @@ void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
   }
 }
 
-Augmentation::Augmentation(G4_Kernel &k, Interference &i,
+Augmentation::Augmentation(Interference &i,
                            const LivenessAnalysis &l,
-                           const LiveRangeVec &ranges, GlobalRA &g)
-    : kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges),
-      fcallRetMap(g.fcallRetMap) {}
+                           GlobalRA &g)
+    : kernel(g.kernel), intf(i), gra(g), liveAnalysis(l), lrs(g.incRA.getLRs()),
+      fcallRetMap(g.fcallRetMap) {
+  useGenericAugAlign =
+      GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration());
+}
 
 // For Scatter read, the channel is not handled as the block read.
 // Update the emask according to the definition of VISA
@@ -3947,10 +3956,10 @@ void Augmentation::handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl,
     }
   };
 
-  if (firstDcl->getRegFile() == G4_INPUT &&
-      firstDcl->getRegVar()->getPhyReg() != NULL &&
-      secondDcl->getRegFile() == G4_INPUT &&
-      secondDcl->getRegVar()->getPhyReg() != NULL) {
+  auto firstRegVar = firstDcl->getRegVar();
+  auto secondRegVar = secondDcl->getRegVar();
+  if (firstDcl->getRegFile() == G4_INPUT && firstRegVar->getPhyReg() &&
+      secondDcl->getRegFile() == G4_INPUT && secondRegVar->getPhyReg()) {
     return;
   }
 
@@ -4004,15 +4013,15 @@ void Augmentation::handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl,
     }
   }
 
-  if (firstDcl->getRegVar()->isRegAllocPartaker() &&
-      secondDcl->getRegVar()->isRegAllocPartaker()) {
-    if (!intf.varSplitCheckBeforeIntf(firstDcl->getRegVar()->getId(),
-                                      secondDcl->getRegVar()->getId())) {
-      intf.checkAndSetIntf(firstDcl->getRegVar()->getId(),
-                           secondDcl->getRegVar()->getId());
+  if (firstRegVar->isRegAllocPartaker() &&
+      secondRegVar->isRegAllocPartaker()) {
+    if (!intf.varSplitCheckBeforeIntf(firstRegVar->getId(),
+                                      secondRegVar->getId())) {
+      intf.checkAndSetIntf(firstRegVar->getId(),
+                           secondRegVar->getId());
       if (isCall) {
-        intf.buildInterferenceWithAllSubDcl(firstDcl->getRegVar()->getId(),
-                                            secondDcl->getRegVar()->getId());
+        intf.buildInterferenceWithAllSubDcl(firstRegVar->getId(),
+                                            secondRegVar->getId());
       }
       VISA_DEBUG_VERBOSE(std::cout << "Marking interference between "
                                    << firstDcl->getName() << " and "
@@ -4021,12 +4030,12 @@ void Augmentation::handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl,
   } else if (liveAnalysis.livenessClass(G4_GRF)) {
     LocalLiveRange *secondDclLR = nullptr, *firstDclLR = nullptr;
 
-    if (firstDcl->getRegVar()->isRegAllocPartaker() &&
+    if (firstRegVar->isRegAllocPartaker() &&
         (secondDclLR = gra.getLocalLR(secondDcl)) &&
         secondDclLR->getAssigned() && !secondDclLR->isEOT()) {
       // secondDcl was assigned by local RA and it uses
       markIntfWithLRAAssignment(firstDcl, secondDcl, intf);
-    } else if (secondDcl->getRegVar()->isRegAllocPartaker() &&
+    } else if (secondRegVar->isRegAllocPartaker() &&
                (firstDclLR = gra.getLocalLR(firstDcl)) &&
                firstDclLR->getAssigned() && !firstDclLR->isEOT()) {
       // Call self with reversed parameters instead of re-implementing
@@ -4181,7 +4190,7 @@ bool Interference::isStrongEdgeBetween(const G4_Declare *dcl1,
 
 bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask,
                                   AugmentationMasks newDclMask) {
-  if (GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration())) {
+  if (useGenericAugAlign) {
     // Weak edge needed in case #GRF exceeds 2
     if (newDclMask == AugmentationMasks::Default64Bit)
       return (TypeSize(Type_Q) * kernel.getSimdSizeWithSlicing()) >
@@ -4206,7 +4215,8 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask,
 // at end of callBB. The idea here is to mark every such active interval
 // with mask associated with func. Later, we'll mark interference with
 // each live-interval bit set here and maydef of func.
-void Augmentation::addSIMDIntfDclForCallSite(G4_BB* callBB) {
+void Augmentation::addSIMDIntfDclForCallSite(
+    G4_BB *callBB, const std::vector<bool> &globalVars) {
   FuncInfo *func = callBB->getCalleeInfo();
   auto isLiveThroughFunc = [&](unsigned int id) {
     if (liveAnalysis.isLiveAtExit(callBB, id)) {
@@ -4220,18 +4230,19 @@ void Augmentation::addSIMDIntfDclForCallSite(G4_BB* callBB) {
   auto& overlapDeclares = overlapDclsWithFunc[func];
   for (auto defaultDcl : defaultMaskQueue) {
     auto id = defaultDcl->getRegVar()->getId();
-    if (!isLiveThroughFunc(id))
-      overlapDeclares.first.set(id);
+    if (!isLiveThroughFunc(id) && globalVars[id])
+      overlapDeclares.first.insert(id);
   }
 
   for (auto nonDefaultDcl : nonDefaultMaskQueue) {
     auto id = nonDefaultDcl->getRegVar()->getId();
-    if (!isLiveThroughFunc(id))
-      overlapDeclares.second.set(id);
+    if (!isLiveThroughFunc(id) && globalVars[id])
+      overlapDeclares.second.insert(id);
   }
 }
 
-void Augmentation::addSIMDIntfForRetDclares(G4_Declare *newDcl) {
+void Augmentation::addSIMDIntfForRetDclares(
+    G4_Declare *newDcl, const std::vector<bool> &globalVars) {
   auto dclIt = retDeclares.find(newDcl);
   MaskDeclares *mask = nullptr;
   if (dclIt == retDeclares.end()) {
@@ -4243,11 +4254,15 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare *newDcl) {
   }
 
   for (auto defaultDcl : defaultMaskQueue) {
-    mask->first.set(defaultDcl->getRegVar()->getId());
+    auto id = defaultDcl->getRegVar()->getId();
+    if (globalVars[id])
+      mask->first.insert(id);
   }
 
   for (auto nonDefaultDcl : nonDefaultMaskQueue) {
-    mask->second.set(nonDefaultDcl->getRegVar()->getId());
+    auto id = nonDefaultDcl->getRegVar()->getId();
+    if (globalVars[id])
+      mask->second.insert(id);
   }
 }
 
@@ -4255,43 +4270,80 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare *newDcl) {
 // Mark interference between newDcl and other incompatible dcls in current
 // active lists.
 //
-void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall) {
+void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
   auto newDclAugMask = gra.getAugmentationMask(newDcl);
+  auto intfNeededForNewDcl =
+      (gra.incRA.isEnabled() && gra.incRA.hasAnyCandidates())
+          ? gra.incRA.intfNeededForVar(newDcl)
+          : true;
+  auto id1 = newDcl->getRegVar()->getId();
+  auto newDclRAPartaker = newDcl->getRegVar()->isRegAllocPartaker();
 
-  for (auto defaultDcl : defaultMaskQueue) {
-    if (gra.getAugmentationMask(defaultDcl) != newDclAugMask) {
-      handleSIMDIntf(defaultDcl, newDcl, isCall);
-    } else {
-      if (liveAnalysis.livenessClass(G4_GRF) &&
-          // Populate compatible sparse intf data structure
-          // only for weak edges.
-          weakEdgeNeeded(gra.getAugmentationMask(defaultDcl), newDclAugMask)) {
-        if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
-            newDcl->getRegVar()->isPhyRegAssigned()) {
+  auto intfNeeded = [&](G4_Declare *otherDcl) {
+    if (!intfNeededForNewDcl && !gra.incRA.intfNeededForVar(otherDcl)) {
+      return false;
+    }
+
+    auto otherRegVar = otherDcl->getRegVar();
+    if (newDclRAPartaker && otherRegVar->isRegAllocPartaker()) {
+      auto id2 = otherRegVar->getId();
+
+      if (intf.interfereBetween(id1, id2)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  if (newDclAugMask == AugmentationMasks::NonDefault)
+  {
+    for (auto defaultDcl : defaultMaskQueue) {
+      if (!intfNeeded(defaultDcl))
+        continue;
+
+      handleSIMDIntf(defaultDcl, newDcl, false);
+    }
+  } else {
+    for (auto defaultDcl : defaultMaskQueue) {
+      auto defaultDclAugMask = gra.getAugmentationMask(defaultDcl);
+      if (defaultDclAugMask != newDclAugMask) {
+        if (!intfNeeded(defaultDcl))
           continue;
-        }
 
-        if (intf.isStrongEdgeBetween(defaultDcl, newDcl)) {
-          // No need to add weak edge
-          continue;
-        }
+        handleSIMDIntf(defaultDcl, newDcl, false);
+      } else {
+        if (liveAnalysis.livenessClass(G4_GRF) &&
+            // Populate compatible sparse intf data structure
+            // only for weak edges.
+            weakEdgeNeeded(defaultDclAugMask, newDclAugMask)) {
+          if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
+              newDcl->getRegVar()->isPhyRegAssigned()) {
+            continue;
+          }
 
-        // defaultDcl and newDcl are compatible live-ranges and can have weak
-        // edge in intf graph
-        auto it = intf.compatibleSparseIntf.find(defaultDcl);
-        if (it != intf.compatibleSparseIntf.end()) {
-          it->second.push_back(newDcl);
-        } else {
-          std::vector<G4_Declare *> v(1, newDcl);
-          intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
-        }
+          if (intf.isStrongEdgeBetween(defaultDcl, newDcl)) {
+            // No need to add weak edge
+            continue;
+          }
 
-        it = intf.compatibleSparseIntf.find(newDcl);
-        if (it != intf.compatibleSparseIntf.end()) {
-          it->second.push_back(defaultDcl);
-        } else {
-          std::vector<G4_Declare *> v(1, defaultDcl);
-          intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
+          // defaultDcl and newDcl are compatible live-ranges and can have weak
+          // edge in intf graph
+          auto it = intf.compatibleSparseIntf.find(defaultDcl);
+          if (it != intf.compatibleSparseIntf.end()) {
+            it->second.push_back(newDcl);
+          } else {
+            std::vector<G4_Declare *> v(1, newDcl);
+            intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
+          }
+
+          it = intf.compatibleSparseIntf.find(newDcl);
+          if (it != intf.compatibleSparseIntf.end()) {
+            it->second.push_back(defaultDcl);
+          } else {
+            std::vector<G4_Declare *> v(1, defaultDcl);
+            intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
+          }
         }
       }
     }
@@ -4382,8 +4434,13 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall) {
 
     if (!isAugNeeded())
       continue;
-    // Non-default masks are different so mark interference
-    handleSIMDIntf(nonDefaultDcl, newDcl, isCall);
+
+    if (!intfNeeded(nonDefaultDcl))
+      continue;
+
+    // Non-default masks are different so mark interference.
+    // SIMD interference for call sites is handled separately.
+    handleSIMDIntf(nonDefaultDcl, newDcl, false);
   }
 }
 
@@ -4392,26 +4449,20 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl, bool isCall) {
 // active lists. If newDcl was created for a subroutine call, do this for all
 // varaibles in function summary.
 //
-void Augmentation::buildSIMDIntfAll(G4_Declare *newDcl) {
-  auto callDclMapIt = callDclMap.find(newDcl);
-  if (callDclMapIt != callDclMap.end()) {
+void Augmentation::storeOverlapWithCallRet(G4_Declare *newDcl,
+                                           const std::vector<bool>& globalVars) {
+  vISA_ASSERT(callDclMap.count(newDcl) > 0, "expecting newDcl in map");
+  auto& callDclData = callDclMap[newDcl];
 
-    G4_Declare *varDcl = NULL;
-
-    if (liveAnalysis.livenessClass(G4_GRF)) // For return value
-    {
-      G4_INST *callInst = callDclMapIt->second.first;
-      varDcl = callInst->getDst()->getBase()->asRegVar()->getDeclare();
-      addSIMDIntfForRetDclares(varDcl);
-    }
-
-    auto *callBB = callDclMapIt->second.second;
-    addSIMDIntfDclForCallSite(callBB);
-    return;
+  if (liveAnalysis.livenessClass(G4_GRF)) // For return value
+  {
+    G4_INST *callInst = callDclData.first;
+    auto* varDcl = callInst->getDst()->getTopDcl();
+    addSIMDIntfForRetDclares(varDcl, globalVars);
   }
 
-  buildSIMDIntfDcl(newDcl, false);
-  return;
+  auto *callBB = callDclData.second;
+  addSIMDIntfDclForCallSite(callBB, globalVars);
 }
 
 //
@@ -4419,14 +4470,25 @@ void Augmentation::buildSIMDIntfAll(G4_Declare *newDcl) {
 // incompatible masks.
 //
 void Augmentation::buildInterferenceIncompatibleMask() {
+  // Collect global vars in unordered_set for quick lookup
+  std::vector<bool> globalVars(liveAnalysis.getNumSelectedVar(), false);
+  if (!kernel.fg.funcInfoTable.empty()) {
+    for (auto bit : liveAnalysis.globalVars)
+      globalVars[bit] = true;
+  }
+
   // Create 2 active lists - 1 for holding active live-intervals
   // with non-default mask and other for default mask
-
   for (G4_Declare *newDcl : sortedIntervals) {
     unsigned startIdx = gra.getStartInterval(newDcl)->getLexicalId();
     VISA_DEBUG_VERBOSE(std::cout << "New idx " << startIdx << "\n");
     expireIntervals(startIdx);
-    buildSIMDIntfAll(newDcl);
+
+    if (callDclMap.count(newDcl) > 0) {
+      storeOverlapWithCallRet(newDcl, globalVars);
+    } else {
+      buildSIMDIntfDcl(newDcl);
+    }
 
     // Add newDcl to correct list
     if (gra.getHasNonDefaultMaskDef(newDcl) || newDcl->getAddressed() == true) {
@@ -4446,65 +4508,89 @@ void Augmentation::buildInterferenceIncompatibleMask() {
   buildInteferenceForRetDeclares();
 }
 
-void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
+void Augmentation::buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declare*>& dcls,
                                                            MaskDeclares *mask) {
-  auto newDclAugMask = gra.getAugmentationMask(newDcl);
+  for (auto newDcl : dcls) {
+    auto newDclAugMask = gra.getAugmentationMask(newDcl);
+    auto intfNeededForNewDcl =
+        (gra.incRA.isEnabled() && gra.incRA.hasAnyCandidates())
+            ? gra.incRA.intfNeededForVar(newDcl)
+            : true;
+    auto id1 = newDcl->getRegVar()->getId();
+    auto newDclRAPartaker = newDcl->getRegVar()->isRegAllocPartaker();
 
-  for (auto LI = mask->first.begin(), LE = mask->first.end(); LI != LE; ++LI) {
-    unsigned i = *LI;
-    // Process only global vars
-    if (!liveAnalysis.globalVars.test(i))
-      continue;
-    {
-      G4_Declare *defaultDcl = lrs[i]->getDcl();
-      if (gra.getAugmentationMask(defaultDcl) != newDclAugMask) {
+    auto intfNeeded = [&](G4_Declare *otherDcl) {
+      if (!intfNeededForNewDcl && !gra.incRA.intfNeededForVar(otherDcl)) {
+        return false;
+      }
+
+      auto otherRegVar = otherDcl->getRegVar();
+      if (newDclRAPartaker && otherRegVar->isRegAllocPartaker()) {
+        auto id2 = otherRegVar->getId();
+        if (intf.interfereBetween(id1, id2)) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    if (newDclAugMask == AugmentationMasks::NonDefault) {
+      for (auto i : mask->first) {
+        G4_Declare *defaultDcl = lrs[i]->getDcl();
+        if (!intfNeeded(defaultDcl))
+          continue;
         handleSIMDIntf(defaultDcl, newDcl, true);
-      } else {
-        if (liveAnalysis.livenessClass(G4_GRF) &&
-            // Populate compatible sparse intf data structure
-            // only for weak edges.
-            weakEdgeNeeded(gra.getAugmentationMask(defaultDcl),
-                           newDclAugMask)) {
-          if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
-              newDcl->getRegVar()->isPhyRegAssigned()) {
+      }
+    } else {
+      for (auto i : mask->first) {
+        G4_Declare *defaultDcl = lrs[i]->getDcl();
+        if (gra.getAugmentationMask(defaultDcl) != newDclAugMask) {
+          if (!intfNeeded(defaultDcl))
             continue;
-          }
+          handleSIMDIntf(defaultDcl, newDcl, true);
+        } else {
+          if (liveAnalysis.livenessClass(G4_GRF) &&
+              // Populate compatible sparse intf data structure
+              // only for weak edges.
+              weakEdgeNeeded(gra.getAugmentationMask(defaultDcl),
+                             newDclAugMask)) {
+            if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
+                newDcl->getRegVar()->isPhyRegAssigned()) {
+              continue;
+            }
 
-          if (intf.isStrongEdgeBetween(defaultDcl, newDcl)) {
-            // No need to add weak edge
-            continue;
-          }
+            if (intf.isStrongEdgeBetween(defaultDcl, newDcl)) {
+              // No need to add weak edge
+              continue;
+            }
 
-          // defaultDcl and newDcl are compatible live-ranges and can have weak
-          // edge in intf graph
-          auto it = intf.compatibleSparseIntf.find(defaultDcl);
-          if (it != intf.compatibleSparseIntf.end()) {
-            it->second.push_back(newDcl);
-          } else {
-            std::vector<G4_Declare *> v(1, newDcl);
-            intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
-          }
+            // defaultDcl and newDcl are compatible live-ranges and can have
+            // weak edge in intf graph
+            auto it = intf.compatibleSparseIntf.find(defaultDcl);
+            if (it != intf.compatibleSparseIntf.end()) {
+              it->second.push_back(newDcl);
+            } else {
+              std::vector<G4_Declare *> v(1, newDcl);
+              intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
+            }
 
-          it = intf.compatibleSparseIntf.find(newDcl);
-          if (it != intf.compatibleSparseIntf.end()) {
-            it->second.push_back(defaultDcl);
-          } else {
-            std::vector<G4_Declare *> v(1, defaultDcl);
-            intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
+            it = intf.compatibleSparseIntf.find(newDcl);
+            if (it != intf.compatibleSparseIntf.end()) {
+              it->second.push_back(defaultDcl);
+            } else {
+              std::vector<G4_Declare *> v(1, defaultDcl);
+              intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
+            }
           }
         }
       }
     }
-  }
 
-  for (auto LI = mask->second.begin(), LE = mask->second.end(); LI != LE;
-       ++LI) {
-    unsigned i = *LI;
-    // Process only global vars
-    if (!liveAnalysis.globalVars.test(i))
-      continue;
-    // Mark interference among non-default mask variables
-    {
+    for (auto i : mask->second) {
+      if (!intfNeeded(lrs[i]->getDcl()))
+        continue;
+      // Mark interference among non-default mask variables
       G4_Declare *nonDefaultDcl = lrs[i]->getDcl();
       // Non-default masks are different so mark interference
       handleSIMDIntf(nonDefaultDcl, newDcl, true);
@@ -4512,30 +4598,41 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare *newDcl,
   }
 }
 
+std::vector<G4_Declare *> SBitToVector(llvm_SBitVector *sparseBitVector,
+                                       const LiveRangeVec &lrs) {
+  std::vector<G4_Declare *> retVector;
+  for (auto bit : *sparseBitVector) {
+    auto *varDcl = lrs[bit]->getDcl();
+    retVector.push_back(varDcl);
+  }
+
+  return retVector;
+}
+
+// This method is invoked once per subroutine func.
 void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
   auto maydefConst = liveAnalysis.subroutineMaydef.find(func);
   if (maydefConst != liveAnalysis.subroutineMaydef.end()) {
     auto *maydef = const_cast<llvm_SBitVector *>(&maydefConst->second);
-    for (auto bit : *maydef) {
-      G4_Declare *varDcl = lrs[bit]->getDcl();
-      buildInteferenceForCallSiteOrRetDeclare(varDcl,
-                                              &overlapDclsWithFunc[func]);
-    }
+    std::vector<G4_Declare *> maydefDcls(SBitToVector(maydef, lrs));
+    buildInteferenceForCallSiteOrRetDeclare(maydefDcls, &overlapDclsWithFunc[func]);
   }
   if (gra.useLocalRA) {
+    std::vector<G4_Declare *> lraDcls;
     for (uint32_t j = 0; j < kernel.getNumRegTotal(); j++) {
       if (localSummaryOfCallee[func].isGRFBusy(j)) {
         G4_Declare *varDcl = gra.getGRFDclForHRA(j);
-        buildInteferenceForCallSiteOrRetDeclare(varDcl,
-                                                &overlapDclsWithFunc[func]);
+        lraDcls.push_back(varDcl);
       }
     }
+    buildInteferenceForCallSiteOrRetDeclare(lraDcls, &overlapDclsWithFunc[func]);
   }
 }
 
 void Augmentation::buildInteferenceForRetDeclares() {
-  for (auto retDclIt : retDeclares) {
-    buildInteferenceForCallSiteOrRetDeclare(retDclIt.first, &retDclIt.second);
+  for (auto &retDclIt : retDeclares) {
+    std::vector<G4_Declare *> retDclVec({retDclIt.first});
+    buildInteferenceForCallSiteOrRetDeclare(retDclVec, &retDclIt.second);
   }
 }
 
@@ -4892,15 +4989,12 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
   }
 }
 
-GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid,
-                       bool forceSpill_)
+GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_)
     : gra(live.gra), totalGRFRegCount(gra.kernel.getNumRegTotal()),
-      numVar(live.getNumSelectedVar()),
-      intf(&live, live.gra.incRA.getLRs(), live.getNumSelectedVar(),
-           live.getNumSplitStartID(), live.getNumSplitVar(), gra),
-      regPool(gra.regPool), builder(gra.builder), isHybrid(hybrid),
-      forceSpill(forceSpill_), GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel),
-      liveAnalysis(live), lrs(live.gra.incRA.getLRs()) {
+      numVar(live.getNumSelectedVar()), intf(&live, gra), regPool(gra.regPool),
+      builder(gra.builder), isHybrid(hybrid), forceSpill(forceSpill_),
+      GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel), liveAnalysis(live),
+      lrs(live.gra.incRA.getLRs()) {
   spAddrRegSig.resize(getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
 }
@@ -9242,10 +9336,7 @@ int GlobalRA::coloringRegAlloc() {
         live.computeLiveness();
         GraphColor coloring(live, false, false);
         coloring.createLiveRanges();
-        const auto &lrs = coloring.getLiveRanges();
-        Interference intf(&live, lrs, live.getNumSelectedVar(),
-                          live.getNumSplitStartID(), live.getNumSplitVar(),
-                          *this);
+        Interference intf(&live, *this);
         intf.init();
         intf.computeInterference();
 
@@ -9334,6 +9425,24 @@ int GlobalRA::coloringRegAlloc() {
   // to global RA.
   incRA.moveFromHybridToGlobalGRF();
 
+  // This part makes incremental RA a non-NFC change. The reason we need
+  // to do this is because variables that spill intrinsics use may end up
+  // getting extended in each RA iteration. Given that those variables
+  // are either r0 or scalars, we mark them as Output here so they're
+  // live-out throughout. To make this an NFC change, we can enable this
+  // block even when incremental RA is not enabled.
+  if (incRA.isEnabled()) {
+    builder.getBuiltinR0()->getRootDeclare()->setLiveOut();
+    builder.getSpillFillHeader();
+    bool flag = true;
+    if (flag) {
+      if (builder.hasScratchSurface()) {
+        builder.initScratchSurfaceOffset();
+        builder.getOldA0Dot2Temp();
+      }
+    }
+  }
+
   while (iterationNo < maxRAIterations) {
     jitInfo->statsVerbose.RAIterNum++;
     if (builder.getOption(vISA_DynPerfModel)) {
@@ -9397,6 +9506,10 @@ int GlobalRA::coloringRegAlloc() {
       RA_TRACE(std::cout << "\t--enable failSafe RA\n");
       reserveSpillReg = true;
 
+      if (incRA.isEnabled()) {
+        incRA.skipIncrementalRANextIter();
+      }
+
       if (builder.hasScratchSurface() && !hasStackCall) {
         // Since this is fail safe RA iteration, we ensure the 2 special
         // variables are created before coloring so spill code can use
@@ -9412,6 +9525,7 @@ int GlobalRA::coloringRegAlloc() {
 
     LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
     liveAnalysis.computeLiveness();
+
 #ifndef DLL_MODE
     if (stopAfter("Global_RA_liveness")) {
       return VISA_EARLY_EXIT;
@@ -9654,10 +9768,10 @@ int GlobalRA::coloringRegAlloc() {
         }
         startTimer(TimerID::SPILL);
         SpillManagerGRF spillGRF(
-            *this, nextSpillOffset, &liveAnalysis, coloring.getLiveRanges(),
-            coloring.getIntf(), &coloring.getSpilledLiveRanges(),
-            reserveSpillReg, spillRegSize, indrSpillRegSize,
-            enableSpillSpaceCompression, useScratchMsgForSpill);
+            *this, nextSpillOffset, &liveAnalysis, coloring.getIntf(),
+            &coloring.getSpilledLiveRanges(), reserveSpillReg, spillRegSize,
+            indrSpillRegSize, enableSpillSpaceCompression,
+            useScratchMsgForSpill);
         // FIXME: This really should be done at loop end, but keep it here to
         // match old behavior.
         iterationNo++;
