@@ -260,6 +260,7 @@ $ export IGC_ShaderDumpEnable=1
 | `UseHDCTypedReadForAllTypedBuffers` | Setting this to use HDC message rather than sampler ld for buffer read | - |
 | `UseTiledCSThreadOrder` | Use 4x4 disaptch for CS order when it seems beneficial | - |
 | `WaAllowMatchMadOptimizationforVS` | Setting this to 1/true adds a compiler switch to enable mul+add = mad optimization for VS | - |
+| `WaDisableMatchMadOptimizationForCS` | Setting this to 1/true adds a compiler switch to disable mul+add = mad optimization for CS | - |
 | `forceFullUrbWriteMask` | Set Full URB write mask. | - |
 | `forcePushConstantMode` | set the push constant mode, 0 is default behavior, 1 is simple push, 2 is gather constant, 3 is none/pull constants | - |
 ## Shader debugging
