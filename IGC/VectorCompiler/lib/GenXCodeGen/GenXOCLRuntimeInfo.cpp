@@ -284,6 +284,13 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
       for (Instruction &I : BB) {
         switch (GenXIntrinsic::getGenXIntrinsicID(&I)) {
         default:
+          if (auto *CI = dyn_cast<CallInst>(&I)) {
+            auto *Callee = CI->getCalledFunction();
+            // We cannot check stackcall or indirect callee, so assuming such
+            // functions have barriers
+            if (!Callee || vc::requiresStackCall(Callee))
+              NumBarriers = 1;
+          }
           break;
         case GenXIntrinsic::genx_group_id_x:
         case GenXIntrinsic::genx_group_id_y:
