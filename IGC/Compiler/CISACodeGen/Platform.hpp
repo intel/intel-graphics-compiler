@@ -957,12 +957,6 @@ bool typedReadSupportsAllRenderableFormats() const
     return false;
 }
 
-bool supportTileYOptimizations() const
-{
-    // EnableNewTileYCheck and KeepTileYForFlattened are needed on DG2 only
-    return (m_platformInfo.eProductFamily == IGFX_DG2);
-}
-
 bool needsWAForThreadsUtilization() const
 {
     return m_platformInfo.eProductFamily == IGFX_DG2 ||
