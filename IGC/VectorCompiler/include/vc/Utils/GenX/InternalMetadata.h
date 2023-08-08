@@ -33,6 +33,7 @@ namespace InstMD {
 inline constexpr const char SVMBlockType[] = "SVMBlockType";
 
 // These two are used in prologue/epilogue insertion
+// In units of GRFs.
 inline constexpr const char FuncArgSize[] = "FuncArgSize";
 inline constexpr const char FuncRetSize[] = "FuncRetSize";
 } // namespace InstMD

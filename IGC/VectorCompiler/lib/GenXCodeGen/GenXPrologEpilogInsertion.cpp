@@ -118,7 +118,8 @@ public:
       : ArgRegByteSize(ArgRegByteSizeIn), RetRegByteSize(RetRegByteSizeIn),
         GRFByteSize(GRFByteSizeIn), DL(DLIn) {}
 
-  void analyze(const FunctionType &FTy, bool InternalCC);
+  void analyze(const FunctionType &FTy, const GenXBackendConfig &BEConf,
+               bool InternalCC);
   void clear();
 
   unsigned getStackBytesUsed() const {
@@ -279,6 +280,10 @@ FunctionPass *llvm::createGenXPrologEpilogInsertionPass() {
 
 namespace {
 
+static bool isStackCallImplicitlyVectorized(const llvm::Type &Ty) {
+  return Ty.isFloatingPointTy() || Ty.isIntegerTy() || Ty.isPointerTy();
+}
+
 // FIXME: Do we really need this MD? Isn't it better to use some analysis here
 // and in cisa builder.
 template <typename T>
@@ -327,7 +332,8 @@ static unsigned getTypeSizeNoPadding(Type *Ty, const DataLayout *DL) {
 
 // FIXME: bool InternalCC might be replaced with llvm::CallingConv but firstly
 // we should create/adapt some stack analyzes.
-void ArgsAnalyzer::analyze(const FunctionType &FTy, bool InternalCC) {
+void ArgsAnalyzer::analyze(const FunctionType &FTy,
+                           const GenXBackendConfig &BEConf, bool InternalCC) {
   clear();
 
   for (unsigned i = 0; i < FTy.getNumParams(); ++i) {
@@ -369,19 +375,15 @@ void ArgsAnalyzer::analyze(const FunctionType &FTy, bool InternalCC) {
   if (RetTy->isVoidTy())
     return;
 
-  unsigned MinSize = getTypeSizeNoPadding(RetTy, &DL);
-  IGC_ASSERT_MESSAGE(MinSize, "Non-void ret type size cannot be zero");
-  IGC_ASSERT_MESSAGE(calcPadding(StackBytesUsedForRet, OWordBytes) == 0,
-                     "Must be oword aligned");
-  if (MinSize > RetRegByteSize) {
-    IGC_ASSERT_MESSAGE(InternalCC,
-                       "Return type is too big to be passed on registers");
-    StackBytesUsedForRet = vc::getTypeSize(RetTy, &DL).inBytes();
-    StackBytesUsedForRet += calcPadding(StackBytesUsedForRet, OWordBytes);
-  } else {
-    RetRegBytesUsed = MinSize;
-    RetRegBytesUsed += calcPadding(RetRegBytesUsed, GRFByteSize);
-  }
+  const auto RetSize = getTypeSizeNoPadding(RetTy, &DL) *
+                       (!InternalCC && isStackCallImplicitlyVectorized(*RetTy)
+                            ? BEConf.getInteropSubgroupSize()
+                            : 1);
+
+  if (RetSize > RetRegByteSize)
+    StackBytesUsedForRet = RetSize + calcPadding(RetSize, OWordBytes);
+  else
+    RetRegBytesUsed = RetSize + calcPadding(RetSize, GRFByteSize);
 }
 
 GenXPrologEpilogInsertion::GenXPrologEpilogInsertion() : FunctionPass(ID) {
@@ -540,11 +542,17 @@ void GenXPrologEpilogInsertion::restoreFPAndSP(Value *TmpFP,
 //   retBlock: (any)
 //     SP = tmpFP
 void GenXPrologEpilogInsertion::generatePrologEpilog(Function &F) {
+  /*NB/TODO: ArgsAnalyzer Info is only used for stack call cases below and
+    isInternalCC is always false in those cases. If ArgsAnalyzer can not be
+    reused for subroutine-related parts, the code needs to be refactored to
+    eliminate excessive entities.
+  */
   ArgsAnalyzer Info(ArgRegByteSize, RetRegByteSize, ST->getGRFByteSize(), *DL);
   Value *TmpFP = nullptr;
 
   if (vc::requiresStackCall(&F)) {
-    Info.analyze(*F.getFunctionType(), isInternalCC(F));
+    Info.analyze(*F.getFunctionType(), *BEConf,
+                 /*NB/TODO: this is always false here*/ isInternalCC(F));
     TmpFP = generateStackCallProlog(F, Info);
   } else
     TmpFP = generateSubroutineProlog(F);
@@ -587,6 +595,12 @@ void GenXPrologEpilogInsertion::generateStackCallEpilog(
     return;
 
   Value *RetVal = RI.getReturnValue();
+  // Implicitly vectorize the returned value based on calling convention
+  // requirement. This is supported only for scalars.
+  // https://github.com/intel/llvm/blob/sycl/sycl/doc/extensions/experimental/sycl_ext_oneapi_invoke_simd.asciidoc
+  if (isStackCallImplicitlyVectorized(*RetVal->getType()))
+    RetVal = IRB.CreateVectorSplat(BEConf->getInteropSubgroupSize(), RetVal,
+                                   "call_conv_vectorized_retval");
   if (Info.getRetRegBytesUsed()) {
     IGC_ASSERT(!Info.getStackBytesUsedForRet());
     passInReg(*RetVal, 0, IRB, PreDefined_Vars::PREDEFINED_RET, RetRegByteSize);
@@ -796,7 +810,7 @@ void GenXPrologEpilogInsertion::clear() {
 // generate caller site of stack call
 void GenXPrologEpilogInsertion::generateStackCall(CallInst &CI) {
   ArgsAnalyzer Info(ArgRegByteSize, RetRegByteSize, ST->getGRFByteSize(), *DL);
-  Info.analyze(*CI.getFunctionType(), isInternalCC(CI));
+  Info.analyze(*CI.getFunctionType(), *BEConf, isInternalCC(CI));
 
   IRBuilder<> IRB(&CI);
   ArgRegUsed |= static_cast<bool>(Info.getArgRegBytesUsed());
