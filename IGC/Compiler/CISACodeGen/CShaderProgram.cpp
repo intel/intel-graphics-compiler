@@ -76,7 +76,7 @@ void CShaderProgram::freeShaderOutput(CShader* shader)
 {
     if (hasShaderOutput(shader))
     {
-        shader->ProgramOutput()->Destroy();
+        IGC::aligned_free(shader->ProgramOutput()->m_programBin);
         shader->ProgramOutput()->m_programSize = 0;
     }
 }

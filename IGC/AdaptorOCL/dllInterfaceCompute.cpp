@@ -1316,7 +1316,7 @@ bool TranslateBuildSPMD(
                          IGC_IS_FLAG_ENABLED(CompileOneAtTime);
     // set retry manager
     bool retry = false;
-    oclContext.m_retryManager.Enable(ShaderType::OPENCL_SHADER);
+    oclContext.m_retryManager.Enable();
     do
     {
         llvm::TinyPtrVector<const llvm::Function*> kernelFunctions;

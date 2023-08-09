@@ -83,8 +83,7 @@ namespace IGC
         // Since we currently can't enable/disable LICM per-function, enabling LICM
         // when retrying for stackcalls seems to give better performance. So always
         // enable when recompiling with stackcalls.
-        return RetryTable[id].allowLICM ||
-            (shaderType == ShaderType::OPENCL_SHADER && !PerFuncRetrySet.empty());
+        return RetryTable[id].allowLICM || !PerFuncRetrySet.empty();
     }
 
     bool RetryManager::AllowAddressArithmeticSinking(Function* F) const
@@ -173,10 +172,9 @@ namespace IGC
         return stateId;
     }
 
-    void RetryManager::Enable(ShaderType ty)
+    void RetryManager::Enable()
     {
         enabled = true;
-        shaderType = ty;
     }
 
     // Disable retry
