@@ -4573,8 +4573,7 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
 
 CVariable* EmitPass::GetVMaskPred(CVariable*& predicate)
 {
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) &&
-        predicate == nullptr)
+    if ((IGC_IS_FLAG_ENABLED(UseVMaskPredicate) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads)) && predicate == nullptr)
     {
         // Copy VMASK to a predicate
         // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
@@ -4595,25 +4594,28 @@ void EmitPass::createVMaskPred(CVariable*& predicate)
     if (predicate != nullptr)
         return;
 
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate))
+    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
     {
         // Copy VMASK to a predicate
         // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
         predicate = GetVMaskPred(predicate);
 
-        if (m_encoder->IsCodePatchCandidate())
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate))
         {
-            m_encoder->SetPayloadSectionAsPrimary();
-        }
+            if (m_encoder->IsCodePatchCandidate())
+            {
+                m_encoder->SetPayloadSectionAsPrimary();
+            }
 
-        m_encoder->SetNoMask();
-        m_encoder->SetSrcSubReg(0, 3);
-        m_encoder->SetP(predicate, m_currShader->GetSR0());
-        m_encoder->Push();
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcSubReg(0, 3);
+            m_encoder->SetP(predicate, m_currShader->GetSR0());
+            m_encoder->Push();
 
-        if (m_encoder->IsCodePatchCandidate())
-        {
-            m_encoder->SetPayloadSectionAsSecondary();
+            if (m_encoder->IsCodePatchCandidate())
+            {
+                m_encoder->SetPayloadSectionAsSecondary();
+            }
         }
     }
 }
@@ -4631,6 +4633,47 @@ void EmitPass::UseVMaskPred()
     {
         m_encoder->SetPredicate(m_vMaskPredForSubplane);
     }
+}
+
+CVariable* EmitPass::GetCombinedVMaskPred(CVariable* basePredicate)
+{
+    if (!m_currShader->IsPatchablePS())
+        return basePredicate;
+
+    if (!m_vMaskPredForSubplane)
+        return basePredicate;
+
+    bool subspan = m_encoder->IsSubSpanDestination();
+    if ((IGC_IS_FLAG_ENABLED(UseVMaskPredicate) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads)) &&
+        subspan && !m_destination->IsUniform())
+    {
+        CVariable* vmaskPredicate = m_vMaskPredForSubplane;
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
+        {
+            vmaskPredicate = m_currShader->GetNewVariable(
+                numLanes(m_SimdMode),
+                ISA_TYPE_BOOL,
+                EALIGN_DWORD,
+                "");
+            m_encoder->SetSrcSubReg(0, 3);
+            m_encoder->SetP(vmaskPredicate, m_currShader->GetSR0());
+            m_encoder->Push();
+        }
+        if (basePredicate)
+        {
+            IGC_ASSERT(basePredicate->GetNumberElement() == vmaskPredicate->GetNumberElement());
+            CVariable* combinedPredicate = m_currShader->GetNewVariable(
+                numLanes(m_SimdMode),
+                ISA_TYPE_BOOL,
+                EALIGN_DWORD,
+                "");
+            m_encoder->And(combinedPredicate, vmaskPredicate, basePredicate);
+            m_encoder->Push();
+            return combinedPredicate;
+        }
+        return vmaskPredicate;
+    }
+    return basePredicate;
 }
 
 
@@ -17810,7 +17853,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
         if (doUniformLoad)
             m_encoder->SetNoMask();
         else
-            m_encoder->SetPredicate(flag);
+            m_encoder->SetPredicate(GetCombinedVMaskPred(flag));
 
         emitLSCLoad(cacheOpts, gatherDst,
                     eOffset, EltBytes * 8, 1, 0, &Resource,
@@ -18040,7 +18083,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                     dVisaTy, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             }
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
-            m_encoder->SetPredicate(flag);
+            m_encoder->SetPredicate(GetCombinedVMaskPred(flag));
             switch (messageType) {
             case VectorMessage::MESSAGE_A32_LSC_RW:
                 emitLSCLoad(
