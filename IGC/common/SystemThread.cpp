@@ -406,7 +406,7 @@ struct XeHPGDebugSurfaceLayout
 {
     // The *_ALIGN fields below are padding of the SIP between
     // the registers set.
-    static constexpr size_t GR_COUNT = 128;
+    static constexpr size_t GR_COUNT = 256;
     static constexpr size_t GR_ELEMENTS = 1;
     static constexpr size_t GR_ELEMENT_SIZE = 32;
     static constexpr size_t GR_ALIGN = 0;
