@@ -1209,11 +1209,10 @@ namespace IGC
             baseType = cast<VectorType>(baseType)->getElementType();
         }
 
-        // Integer types need to be qualified with a "u" if they are unsigned
+        // ExecutionModel doesn't differentiate base type in term of signed/unsigned.
         if (baseType->isIntegerTy())
         {
-            std::string signString = vecTypeHintInfo->getSign() ? "" : "u";
-            vecTypeString += signString;
+            vecTypeString += "u";
         }
 
         switch (baseType->getTypeID())
