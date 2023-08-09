@@ -1825,13 +1825,15 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
   Value *Result = UndefValue::get(VTy);
 
   // Some target platforms do not support SLM oword block messages
-  bool IsBlockAllowed = BTI == visa::RSI_Slm ? ST->hasSLMOWord() : true;
+  bool IsSLM = BTI == visa::RSI_Slm;
+  bool IsBlockAllowed = IsSLM ? ST->hasSLMOWord() : true;
 
   bool IsOWordAligned = Align >= OWordBytes;
   bool IsDWordAligned = Align >= DWordBytes;
 
   // Try to generate OWord block load/store
-  if (IsBlockAllowed && (IsOWordAligned || (IsLoad && IsDWordAligned))) {
+  if (IsBlockAllowed &&
+      (IsOWordAligned || (IsLoad && IsDWordAligned && !IsSLM))) {
     auto LoadIID = IsOWordAligned
                        ? (IsBTI ? GenXIntrinsic::genx_oword_ld
                                 : GenXIntrinsic::genx_svm_block_ld)
