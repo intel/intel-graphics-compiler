@@ -1185,7 +1185,7 @@ void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm:
         BlockFunc = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_LSC2DBlockWrite,
-            CI.getCalledFunction()->getReturnType());
+            CI.getArgOperand(5)->getType());
     }
 
     auto* BlockOp = cast<GenIntrinsicInst>(CallInst::Create(BlockFunc, args, "", &CI));
