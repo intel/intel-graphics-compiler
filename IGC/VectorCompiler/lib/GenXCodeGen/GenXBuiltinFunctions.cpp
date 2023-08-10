@@ -75,6 +75,7 @@ private:
                            ArrayRef<Value *> Args);
 
   bool isHandleUgmAtomics(const CallInst &II) const;
+  bool isHandleSlmAtomics(const CallInst &II) const;
 
   const GenXSubtarget *ST = nullptr;
   BuiltinFunctionKind Kind;
@@ -299,6 +300,23 @@ bool GenXBuiltinFunctions::isHandleUgmAtomics(const CallInst &II) const {
   }
 }
 
+bool GenXBuiltinFunctions::isHandleSlmAtomics(const CallInst &II) const {
+  auto *Ty = II.getType();
+  auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+  auto *ETy = VTy->getElementType();
+  switch (Opcode->getZExtValue()) {
+  case LSC_ATOMIC_ICAS:
+    return false;
+  case LSC_ATOMIC_FADD:
+  case LSC_ATOMIC_FSUB:
+    return !ETy->isDoubleTy() || ST->hasLocalIntegerCas64();
+  default:
+    return (ETy->isIntegerTy(64) || ETy->isDoubleTy()) &&
+           ST->hasLocalIntegerCas64();
+  }
+}
+
 Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   auto IID = vc::getAnyIntrinsicID(&II);
   auto *Ty = II.getType();
@@ -338,13 +356,11 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   } break;
 
   case vc::InternalIntrinsic::lsc_atomic_slm: {
+    if (!isHandleSlmAtomics(II))
+      return nullptr;
     auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
-    if (Opcode->getZExtValue() == LSC_ATOMIC_ICAS)
-      return nullptr;
     auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
-    auto *ETy = VTy->getElementType();
-    if (!ST->hasLocalIntegerCas64() || !ETy->isIntegerTy(64))
-      return nullptr;
+
     Func = getBuiltinDeclaration(M, "atomic_slm", false, {VTy});
 
     auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),

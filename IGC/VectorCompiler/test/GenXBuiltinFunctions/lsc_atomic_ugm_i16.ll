@@ -14,10 +14,10 @@
 ; CHECK-NOT: WARNING
 ; CHECK-2-NOT: WARNING
 
-; CHECK: @test_fadd_kernel
-; CHECK: = call <16 x i32> @__vc_builtin_atomic_ugm_v16i32
+; CHECK: @test_iadd_kernel
+; CHECK: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
 ; CHECK: ret void
-; CHECK: @test_fcas_kernel
+; CHECK: @test_icas_kernel
 ; CHECK: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
 ; CHECK: ret void
 ; CHECK: @test_store_kernel
@@ -26,10 +26,10 @@
 ; CHECK: @test_load_kernel
 ; CHECK: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
 ; CHECK: ret void
-; CHECK-2: @test_fadd_kernel
-; CHECK-2: = call <16 x i32> @__vc_builtin_atomic_ugm_v16i32
+; CHECK-2: @test_iadd_kernel
+; CHECK-2: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
 ; CHECK-2: ret void
-; CHECK-2: @test_fcas_kernel
+; CHECK-2: @test_icas_kernel
 ; CHECK-2: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64
 ; CHECK-2: ret void
 ; CHECK-2: @test_store_kernel
@@ -41,13 +41,13 @@
 
 declare <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1>, i8, i8, i8, i8, i8, i64, <16 x i64>, i16, i32, <16 x i32>, <16 x i32>, <16 x i32>)
 
-define dllexport spir_kernel void @test_fadd_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru) {
-  %1 = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1> %pred, i8 19, i8 3, i8 6, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru)
+define dllexport spir_kernel void @test_iadd_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru) {
+  %1 = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1> %pred, i8 12, i8 3, i8 6, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru)
   ret void
 }
 
-define dllexport spir_kernel void @test_fcas_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru) {
-  %1 = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1> %pred, i8 23, i8 3, i8 6, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru)
+define dllexport spir_kernel void @test_icas_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru) {
+  %1 = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.ugm.v16i32.v16i1.v16i64(<16 x i1> %pred, i8 18, i8 3, i8 6, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x i32> %src1, <16 x i32> %src2, <16 x i32> %passthru)
   ret void
 }
 

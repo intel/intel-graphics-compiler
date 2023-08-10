@@ -100,6 +100,7 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
       newval = newval - 1;
       break;
     case AtomicOp::Load:
+      // no memory update
       break;
     default:
       break;
@@ -111,6 +112,192 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
         orig.cl_vector(), newval.cl_vector(), orig.cl_vector());
     pred &= res != orig;
     orig = res;
+  } while (pred.any());
+
+  return orig;
+}
+
+template <int N>
+CM_NODEBUG CM_INLINE vector<double, N>
+__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
+                    char l3cachecontrol, int base, vector<int, N> index,
+                    short scale, int offset, vector<double, N> src1,
+                    vector<double, N> src2, vector<double, N> passthru) {
+  vector<int, N> addr = base + index * scale + offset;
+  vector<uint64_t, N> laddr = addr;
+  vector<double, N> orig =
+      detail::__cm_cl_gather(3, laddr.cl_vector(), sizeof(double),
+                             pred.cl_vector(), passthru.cl_vector());
+
+  // Value should be equal to LSC_ADDR_SIZE_32b from
+  // Source/visa/include/visa_igc_common_header.h
+  constexpr char AddrSize = 2;
+
+  // Value should be equal to LSC_DATA_SIZE_64b from
+  // Source/visa/include/visa_igc_common_header.h
+  constexpr char DataSize = 4;
+
+  do {
+    vector<double, N> newval = orig;
+    switch (op) {
+    case AtomicOp::Fadd:
+      newval += src1;
+      break;
+    case AtomicOp::Fsub:
+      newval -= src1;
+      break;
+    case AtomicOp::Fmin:
+      newval.merge(src1, src1 < newval);
+      break;
+    case AtomicOp::Fmax:
+      newval.merge(src1, src1 > newval);
+      break;
+    case AtomicOp::Fcas:
+      newval.merge(src2, src1 == newval);
+      break;
+    case AtomicOp::Xchg:
+      newval = src1;
+      break;
+    case AtomicOp::Load:
+      // no memory update
+      break;
+    default:
+      break;
+    }
+
+    vector<uint64_t, N> iorig = orig.template format<uint64_t>();
+    vector<uint64_t, N> inewval = newval.template format<uint64_t>();
+
+    vector<uint64_t, N> res = detail::__cm_cl_vector_atomic_slm(
+        pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
+        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
+        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+    vector<double, N> fres = res.template format<double>();
+    pred &= fres != orig;
+    orig = fres;
+  } while (pred.any());
+
+  return orig;
+}
+
+template <int N>
+CM_NODEBUG CM_INLINE vector<uint32_t, N>
+__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
+                    char l3cachecontrol, int base, vector<int, N> index,
+                    short scale, int offset, vector<uint32_t, N> src1,
+                    vector<uint32_t, N> src2, vector<uint32_t, N> passthru) {
+  vector<int, N> addr = base + index * scale + offset;
+  vector<uint64_t, N> laddr = addr;
+
+  vector<half, N> hpassthru =
+      passthru.template format<half>().template select<N, 2>(0);
+
+  vector<half, N> orig =
+      detail::__cm_cl_gather(3, laddr.cl_vector(), sizeof(half),
+                             pred.cl_vector(), hpassthru.cl_vector());
+
+  vector<uint32_t, N> iorig;
+
+  // Value should be equal to LSC_ADDR_SIZE_32b from
+  // Source/visa/include/visa_igc_common_header.h
+  constexpr char AddrSize = 2;
+
+  // Value should be equal to LSC_DATA_SIZE_16c32b from
+  // Source/visa/include/visa_igc_common_header.h
+  constexpr char DataSize = 6;
+
+  vector<half, N> hsrc = src1.template format<half>().template select<N, 2>(0);
+
+  do {
+    vector<half, N> newval = orig;
+    switch (op) {
+    case AtomicOp::Fadd:
+      newval += hsrc;
+      break;
+    case AtomicOp::Fsub:
+      newval -= hsrc;
+      break;
+    case AtomicOp::Fmin:
+      newval.merge(hsrc, hsrc < newval);
+      break;
+    case AtomicOp::Fmax:
+      newval.merge(hsrc, hsrc > newval);
+      break;
+    default:
+      break;
+    }
+
+    iorig.template format<half>().template select<N, 2>(0) = orig;
+
+    vector<uint32_t, N> inewval;
+    inewval.template format<half>().template select<N, 2>(0) = newval;
+
+    vector<uint32_t, N> res = detail::__cm_cl_vector_atomic_slm(
+        pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
+        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
+        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+
+    vector<half, N> hres = res.template format<half>().template select<N, 2>(0);
+
+    pred &= hres != orig;
+    orig = hres;
+  } while (pred.any());
+
+  return iorig;
+}
+
+template <int N>
+CM_NODEBUG CM_INLINE vector<float, N>
+__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
+                    char l3cachecontrol, int base, vector<int, N> index,
+                    short scale, int offset, vector<float, N> src1,
+                    vector<float, N> src2, vector<float, N> passthru) {
+  vector<int, N> addr = base + index * scale + offset;
+  vector<uint64_t, N> laddr = addr;
+
+  vector<float, N> orig =
+      detail::__cm_cl_gather(3, laddr.cl_vector(), sizeof(float),
+                             pred.cl_vector(), passthru.cl_vector());
+
+  // Value should be equal to LSC_ADDR_SIZE_32b from
+  // Source/visa/include/visa_igc_common_header.h
+  constexpr char AddrSize = 2;
+
+  // Value should be equal to LSC_DATA_SIZE_32b from
+  // Source/visa/include/visa_igc_common_header.h
+  constexpr char DataSize = 3;
+
+  do {
+    vector<float, N> newval = orig;
+    switch (op) {
+    case AtomicOp::Fadd:
+      newval += src1;
+      break;
+    case AtomicOp::Fsub:
+      newval -= src1;
+      break;
+    case AtomicOp::Fmin:
+      newval.merge(src1, src1 < newval);
+      break;
+    case AtomicOp::Fmax:
+      newval.merge(src1, src1 > newval);
+      break;
+    default:
+      break;
+    }
+
+    vector<uint32_t, N> iorig = orig.template format<uint32_t>();
+    vector<uint32_t, N> inewval = newval.template format<uint32_t>();
+
+    vector<uint32_t, N> res = detail::__cm_cl_vector_atomic_slm(
+        pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
+        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
+        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+
+    vector<float, N> fres = res.template format<float>();
+
+    pred &= fres != orig;
+    orig = fres;
   } while (pred.any());
 
   return orig;
@@ -248,6 +435,55 @@ __impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
     vector<uint64_t, WIDTH> vsrc1{src1};                                       \
     vector<uint64_t, WIDTH> vsrc2{src2};                                       \
     vector<uint64_t, WIDTH> vpassthru{passthru};                               \
+    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
+                                      l3cachecontrol, base, vindex, scale,     \
+                                      offset, vsrc1, vsrc2, vpassthru)         \
+        .cl_vector();                                                          \
+  }                                                                            \
+  CM_NODEBUG CM_INLINE extern "C" cl_vector<uint32_t, WIDTH>                   \
+      __vc_builtin_atomic_slm_v##WIDTH##i32(                                   \
+          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
+          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
+          short scale, int offset, cl_vector<uint32_t, WIDTH> src1,            \
+          cl_vector<uint32_t, WIDTH> src2,                                     \
+          cl_vector<uint32_t, WIDTH> passthru) {                               \
+    mask<WIDTH> vpred{pred};                                                   \
+    vector<int, WIDTH> vindex{index};                                          \
+    vector<uint32_t, WIDTH> vsrc1{src1};                                       \
+    vector<uint32_t, WIDTH> vsrc2{src2};                                       \
+    vector<uint32_t, WIDTH> vpassthru{passthru};                               \
+    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
+                                      l3cachecontrol, base, vindex, scale,     \
+                                      offset, vsrc1, vsrc2, vpassthru)         \
+        .cl_vector();                                                          \
+  }                                                                            \
+  CM_NODEBUG CM_INLINE extern "C" cl_vector<float, WIDTH>                      \
+      __vc_builtin_atomic_slm_v##WIDTH##f32(                                   \
+          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
+          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
+          short scale, int offset, cl_vector<float, WIDTH> src1,               \
+          cl_vector<float, WIDTH> src2, cl_vector<float, WIDTH> passthru) {    \
+    mask<WIDTH> vpred{pred};                                                   \
+    vector<int, WIDTH> vindex{index};                                          \
+    vector<float, WIDTH> vsrc1{src1};                                          \
+    vector<float, WIDTH> vsrc2{src2};                                          \
+    vector<float, WIDTH> vpassthru{passthru};                                  \
+    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
+                                      l3cachecontrol, base, vindex, scale,     \
+                                      offset, vsrc1, vsrc2, vpassthru)         \
+        .cl_vector();                                                          \
+  }                                                                            \
+  CM_NODEBUG CM_INLINE extern "C" cl_vector<double, WIDTH>                     \
+      __vc_builtin_atomic_slm_v##WIDTH##f64(                                   \
+          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
+          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
+          short scale, int offset, cl_vector<double, WIDTH> src1,              \
+          cl_vector<double, WIDTH> src2, cl_vector<double, WIDTH> passthru) {  \
+    mask<WIDTH> vpred{pred};                                                   \
+    vector<int, WIDTH> vindex{index};                                          \
+    vector<double, WIDTH> vsrc1{src1};                                         \
+    vector<double, WIDTH> vsrc2{src2};                                         \
+    vector<double, WIDTH> vpassthru{passthru};                                 \
     return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
                                       l3cachecontrol, base, vindex, scale,     \
                                       offset, vsrc1, vsrc2, vpassthru)         \

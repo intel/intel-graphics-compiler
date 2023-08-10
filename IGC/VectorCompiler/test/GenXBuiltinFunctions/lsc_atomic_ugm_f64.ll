@@ -20,11 +20,23 @@
 ; CHECK: @test_fcas_kernel
 ; CHECK: = call <16 x double> @__vc_builtin_atomic_ugm_v16f64
 ; CHECK: ret void
+; CHECK: @test_store_kernel
+; CHECK: = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64
+; CHECK: ret void
+; CHECK: @test_load_kernel
+; CHECK: = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64
+; CHECK: ret void
 ; CHECK-2: @test_fadd_kernel
 ; CHECK-2: = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64
 ; CHECK-2: ret void
 ; CHECK-2: @test_fcas_kernel
 ; CHECK-2: = call <16 x double> @__vc_builtin_atomic_ugm_v16f64
+; CHECK-2: ret void
+; CHECK-2: @test_store_kernel
+; CHECK-2: = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64
+; CHECK-2: ret void
+; CHECK-2: @test_load_kernel
+; CHECK-2: = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64
 ; CHECK-2: ret void
 
 declare <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64(<16 x i1>, i8, i8, i8, i8, i8, i64, <16 x i64>, i16, i32, <16 x double>, <16 x double>, <16 x double>)
@@ -36,6 +48,16 @@ define dllexport spir_kernel void @test_fadd_kernel(<16 x i1> %pred, <16 x i64> 
 
 define dllexport spir_kernel void @test_fcas_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x double> %src1, <16 x double> %src2, <16 x double> %passthru) {
   %1 = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64(<16 x i1> %pred, i8 23, i8 3, i8 4, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x double> %src1, <16 x double> %src2, <16 x double> %passthru)
+  ret void
+}
+
+define dllexport spir_kernel void @test_store_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x double> %src1, <16 x double> %src2, <16 x double> %passthru) {
+  %1 = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64(<16 x i1> %pred, i8 11, i8 3, i8 4, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x double> %src1, <16 x double> %src2, <16 x double> %passthru)
+  ret void
+}
+
+define dllexport spir_kernel void @test_load_kernel(<16 x i1> %pred, <16 x i64> %index, <16 x double> %src1, <16 x double> %src2, <16 x double> %passthru) {
+  %1 = tail call <16 x double> @llvm.vc.internal.lsc.atomic.ugm.v16f64.v16i1.v16i64(<16 x i1> %pred, i8 10, i8 3, i8 4, i8 0, i8 0, i64 0, <16 x i64> %index, i16 1, i32 0, <16 x double> %src1, <16 x double> %src2, <16 x double> %passthru)
   ret void
 }
 
