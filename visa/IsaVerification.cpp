@@ -4378,11 +4378,6 @@ void vISAVerifier::verifyKernelHeader() {
       }
     }
 
-    if (i >= implicitIndex) {
-      REPORT_HEADER(options, header->getInput(i)->getImplicitKind() != 0,
-                    "Explicit input %d must not follow an implicit input %d", i,
-                    implicitIndex);
-    }
     switch (header->getInput(i)->getInputClass()) {
     case INPUT_GENERAL:
       if (header->getInput(i)->index < numPreDefinedVars) {
