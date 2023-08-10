@@ -1907,7 +1907,9 @@ void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst* inst)
 
             // For new_offset we need to take into acount the index of the Extract
             // and convert it to bytes and add it to the existing offset
-            auto new_offset = constIndex->getZExtValue() * 4;
+            constexpr uint32_t numBitsPerByte = 8;
+            const uint32_t numBytesPerElement = EE->getType()->getScalarSizeInBits() / numBitsPerByte;
+            auto new_offset = constIndex->getZExtValue() * numBytesPerElement;
 
             llvm::SmallVector<llvm::Value*, 4> new_args{
                 inst->getOperand(0),
