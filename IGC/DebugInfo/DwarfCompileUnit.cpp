@@ -2651,6 +2651,7 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
                        " (simdSize*<var_offset>) + (simdLaneId * <var_size>))");
 
   const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+  IGC_ASSERT(storageMD != nullptr);
   const auto *VISAMod = loc.GetVISAModule();
   auto privateBaseRegNum = VISAMod->getPrivateBaseReg();
   int64_t offset = 0;
