@@ -206,7 +206,7 @@ namespace IGC
             pAddress = cast<Instruction>(pAddress)->getOperand(0);
         }
 
-        uint64_t offset = 0;
+        int64_t offset = 0;
         SmallVector<Value*, 4> potentialPushableAddresses;
         std::function<void(Value*)> GetPotentialPushableAddresses;
         GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset, &GetPotentialPushableAddresses](
@@ -262,6 +262,19 @@ namespace IGC
             %13 = extractvalue { i32, i32 } %12, 0
             %14 = extractvalue { i32, i32 } %12, 1
             %15 = call i8 addrspace(1441792)* addrspace(2)* @llvm.genx.GenISA.pair.to.ptr.p2p1441792i8(i32 %13, i32 %14)
+                      or
+            %7 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 2)
+            %8 = call i64 @llvm.genx.GenISA.RuntimeValue.i64(i32 0)
+            %9 = bitcast i64 %8 to <2 x i32>
+            %10 = extractelement <2 x i32> %9, i32 0
+            %11 = extractelement <2 x i32> %9, i32 1
+            %12 = call { i32, i32 } @llvm.genx.GenISA.add.pair(i32 %10, i32 %11, i32 %1, i32 0)
+            %13 = extractvalue { i32, i32 } %12, 0
+            %14 = extractvalue { i32, i32 } %12, 1
+            %15 = call { i32, i32 } @llvm.genx.GenISA.add.pair(i32 %13, i32 %14, i32 16, i32 0)
+            %16 = extractvalue { i32, i32 } %15, 0
+            %17 = extractvalue { i32, i32 } %15, 1
+            %18 = call i8 addrspace(1441792)* addrspace(2)* @llvm.genx.GenISA.pair.to.ptr.p2p1441792i8(i32 %16, i32 %17)
             */
             if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_pair_to_ptr)
             {
@@ -277,19 +290,26 @@ namespace IGC
                             pAddress = genIntr2->getOperand(0);
                         }
 
-                        if (genIntr2->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
+                        while (genIntr2 &&
+                            genIntr2->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
                         {
-                            Value* pAddress = nullptr;
+                            pAddress = nullptr;
                             ExtractValueInst* Lo2 = dyn_cast<ExtractValueInst>(genIntr2->getOperand(0));
                             ExtractValueInst* Hi2 = dyn_cast<ExtractValueInst>(genIntr2->getOperand(1));
                             if (Lo2 && Hi2 && Lo2->getOperand(0) == Hi2->getOperand(0))
                             {
-                                if (GenIntrinsicInst* ptrToPair = dyn_cast<GenIntrinsicInst>(Lo2->getOperand(0)))
+                                if (GenIntrinsicInst* genIntr3 = dyn_cast<GenIntrinsicInst>(Lo2->getOperand(0)))
                                 {
-                                    if (ptrToPair->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
+                                    if (genIntr3->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
                                     {
                                         // pattern no. 1
-                                        pAddress = ptrToPair->getOperand(0);
+                                        pAddress = genIntr3->getOperand(0);
+                                    }
+                                    else if (genIntr3->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
+                                    {
+                                        // multiple add_pair calls, to be
+                                        // processed in the next iteration
+                                        pAddress = genIntr3;
                                     }
                                 }
                             }
@@ -303,14 +323,34 @@ namespace IGC
                                     pAddress = Lo3->getOperand(0);
                                 }
                             }
-                            if (pAddress &&
-                                isa<ConstantInt>(genIntr2->getOperand(3)) &&
-                                cast<ConstantInt>(genIntr2->getOperand(3))->getZExtValue() == 0)
+                            ConstantInt* offsetLo2 = dyn_cast<ConstantInt>(genIntr2->getOperand(2));
+                            ConstantInt* offsetHi2 = dyn_cast<ConstantInt>(genIntr2->getOperand(3));
+                            if (pAddress && offsetHi2)
                             {
-                                offset = 0;
-                                GetPotentialPushableAddresses(genIntr2->getOperand(2)); // offset
-                                GetPotentialPushableAddresses(pAddress);
+                                // Note that the offset in the add_pair
+                                // instruction may be a negative value (MemOpt
+                                // creates negative offsets)
+                                if (offsetLo2  &&
+                                    (offsetHi2->getZExtValue() == 0 || offsetHi2->getZExtValue() == ~0u)) // offset is a 32-bit value
+                                {
+                                    offset += offsetLo2->getSExtValue();
+                                }
+                                else if (offsetHi2->getZExtValue() == 0)
+                                {
+                                    GetPotentialPushableAddresses(genIntr2->getOperand(2)); // offset
+                                }
+                                genIntr2 = dyn_cast<GenIntrinsicInst>(pAddress);
                             }
+                            else
+                            {
+                                // Not a supported pattern
+                                pAddress = nullptr;
+                                break;
+                            }
+                        }
+                        if (pAddress)
+                        {
+                            GetPotentialPushableAddresses(pAddress);
                         }
                     }
                 }
@@ -339,7 +379,7 @@ namespace IGC
             GetPotentialPushableAddresses(pAddress);
         }
 
-        if (offset <= std::numeric_limits<uint>::max() && // pushableOffset is a 32bit value
+        if (offset >= 0 && offset <= std::numeric_limits<uint>::max() && // pushableOffset is a positive 32bit value
             (potentialPushableAddresses.size() == 1 ||
              potentialPushableAddresses.size() == 2))
         {
