@@ -1890,42 +1890,6 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                         patternFound = visitBinaryOperatorDivRsq(I);
                     }
 
-                    // a = x Opcode y
-                    // b = x Opcode y
-                    // c = a / b
-                    //    =>
-                    // c = 1
-                    if (!patternFound)
-                    {
-                        llvm::Instruction* prevInst0 = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
-                        llvm::Instruction* prevInst1 = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1));
-                        if (prevInst0 && prevInst1 &&
-                            prevInst0->getOpcode() == prevInst1->getOpcode())
-                        {
-                            const unsigned numOpInst0 = prevInst0->getNumOperands();
-                            const unsigned numOpInst1 = prevInst1->getNumOperands();
-                            if (numOpInst0 == numOpInst1)
-                            {
-                                bool bAllOperandsEqual = true;
-                                for (unsigned i = 0; i < numOpInst0; i++)
-                                {
-                                    if (prevInst0->getOperand(i) != prevInst1->getOperand(i))
-                                    {
-                                        bAllOperandsEqual = false;
-                                        break;
-                                    }
-                                }
-                                if (bAllOperandsEqual)
-                                {
-                                    I.replaceAllUsesWith(ConstantFP::get(opType, 1.0));
-                                    collectForErase(I);
-                                    ++Stat_FloatRemoved;
-                                    patternFound = true;
-                                }
-                            }
-                        }
-                    }
-
                     // skip for double type.
                     if (opType->getTypeID() == llvm::Type::FloatTyID || opType->getTypeID() == llvm::Type::HalfTyID)
                     {
