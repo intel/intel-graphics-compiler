@@ -334,6 +334,8 @@ public:
   void setPreDefinedVar(bool b) { PreDefinedVar = b; }
   bool isPreDefinedVar() const { return PreDefinedVar; }
 
+  unsigned getNumRegNeeded() const;
+
   void emit(std::ostream &output) const;
 
   void dump() const { emit(std::cerr); }

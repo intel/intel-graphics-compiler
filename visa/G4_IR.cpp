@@ -4988,6 +4988,19 @@ void G4_Declare::resizeNumRows(unsigned int numrows) {
   setTotalElems(byteSize / getElemSize());
 }
 
+unsigned G4_Declare::getNumRegNeeded() const {
+  auto regKind = getRegFile();
+  if (regKind == G4_ADDRESS)
+    return getNumElems() * getElemSize() / G4_WSIZE;
+  else if (regKind == G4_FLAG) {
+    // number of elements are in words
+    return getNumElems();
+  } else {
+    // number of GRFs
+    return getNumRows();
+  }
+}
+
 void G4_Declare::emit(std::ostream &output) const {
 
   output << "//.declare " << name << " (" << getDeclId() << ") ";

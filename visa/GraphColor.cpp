@@ -1303,19 +1303,9 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
 }
 
 LiveRange::LiveRange(G4_RegVar *v, GlobalRA &g)
-    : var(v), dcl(v->getDeclare()), regKind(dcl->getRegFile()), gra(g) {
+    : var(v), dcl(v->getDeclare()), regKind(dcl->getRegFile()), gra(g),
+      numRegNeeded(dcl->getNumRegNeeded()) {
   isCandidate = true;
-
-  if (getRegKind() == G4_ADDRESS)
-    numRegNeeded = v->getDeclare()->getNumElems() *
-                   v->getDeclare()->getElemSize() / G4_WSIZE;
-  else if (getRegKind() == G4_FLAG) {
-    // number of elements are in words
-    numRegNeeded = v->getDeclare()->getNumElems();
-  } else {
-    // number of GRFs
-    numRegNeeded = v->getDeclare()->getNumRows();
-  }
 }
 
 void LiveRange::initializeForbidden() {

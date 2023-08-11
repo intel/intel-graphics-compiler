@@ -283,6 +283,13 @@ public:
 
   void setPredicate(G4_Predicate *p);
   G4_Predicate *getPredicate() const { return predicate; }
+  const G4_VarBase *getPredicateBase() const {
+    return predicate ? predicate->getBase() : nullptr;
+  }
+  G4_VarBase *getPredicateBase() {
+    return const_cast<G4_VarBase *>(((const G4_INST *)this)
+        ->getPredicateBase());
+  }
 
   void setSaturate(G4_Sat s) { sat = (s == g4::SAT); }
   void setSaturate(bool z) { sat = z; }

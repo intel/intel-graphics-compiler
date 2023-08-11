@@ -43,6 +43,7 @@ namespace {
 // Forward declaration.
 class preNode;
 struct RegisterPressure;
+template<G4_RegFileKind Kind> class AregUsage;
 
 using preNodeAlloc = llvm::SpecificBumpPtrAllocator<preNode>;
 
@@ -200,6 +201,7 @@ private:
   friend class SethiUllmanACCQueue;
   friend class SethiUllmanQueue;
   friend class LatencyQueue;
+  template <G4_RegFileKind Kind> friend class AregUsage;
 };
 
 // The dependency graph for a basic block.
@@ -1210,6 +1212,107 @@ void BB_Scheduler::SethiUllmanScheduling() {
 
 namespace {
 
+template<G4_RegFileKind Kind>
+class AregUsage {
+  struct Write {
+    preNode *N = nullptr;
+    unsigned NumRegsUsed = 0;
+  };
+  // The list is to use to track active scheduled nodes that write Aregs.
+  std::list<Write> Writes;
+  // Numbers of physical architecture registers
+  const unsigned PhyRegNum;
+  // The total Aregs used by active Areg writes.
+  unsigned NumRegsUsed = 0;
+
+public:
+  AregUsage(unsigned N) : PhyRegNum(N) {}
+
+  bool isPressureHigh() const { return NumRegsUsed >= PhyRegNum; }
+
+  unsigned numRegsUsed() const { return NumRegsUsed; }
+
+  unsigned numPhysicalRegs() const { return PhyRegNum; }
+
+  void update(preNode *N);
+
+  unsigned numActiveRegWritten(const G4_INST *Inst) const;
+
+  unsigned numActiveRegRead(const G4_INST *Inst) const;
+};
+
+template<>
+void AregUsage<G4_FLAG>::update(preNode *N) {
+  vASSERT(N && N->isScheduled);
+  // Only update flag usage when the scheduled node uses flag through condition
+  // modifier and predicate. Currently assume the register allocator could do
+  // the optimal assignment and simply add the numbers of flag registers used
+  // by active flag writes to represent the total active flag registers.
+  // TODO: Consider tracking flag uses through src and dst as well.
+  G4_INST *NInst = N->getInst();
+  if (!NInst || !NInst->usesFlag())
+    return;
+
+  auto allFlagUsesScheduled = [](preNode *Wr) -> bool {
+    return std::all_of(Wr->Succs.begin(), Wr->Succs.end(), [Wr](preEdge &E) {
+      preNode *Succ = E.getNode();
+      G4_INST *SuccInst = Succ->getInst();
+      return !SuccInst ||
+          SuccInst->getPredicateBase() != Wr->getInst()->getCondModBase() ||
+          Succ->isScheduled;
+    });
+  };
+
+  // Erase a flag write if
+  // 1. the new node that has the same cond mod, or
+  // 2. all of its successors that use the flag are scheduled
+  bool WriteFlag = NInst->getCondMod() && NInst->opcode() != G4_sel;
+  for (auto IT = Writes.begin(), IE = Writes.end(); IT != IE; ) {
+    Write &Wr = *IT;
+    if (WriteFlag &&
+        NInst->getCondModBase() == Wr.N->getInst()->getCondModBase()) {
+      NumRegsUsed -= Wr.NumRegsUsed;
+      IT = Writes.erase(IT);
+    } else if (allFlagUsesScheduled(Wr.N)) {
+      NumRegsUsed -= Wr.NumRegsUsed;
+      IT = Writes.erase(IT);
+    } else
+      ++IT;
+  }
+  // Append the new flag write to the end.
+  if (WriteFlag) {
+    unsigned NumRegsNeeded =
+        NInst->getCondMod()->getTopDcl()->getNumRegNeeded();
+    vASSERT(NumRegsNeeded == 1 || NumRegsNeeded == 2);
+    NumRegsUsed += NumRegsNeeded;
+    Writes.push_back({N, NumRegsNeeded});
+  }
+}
+
+template<>
+unsigned AregUsage<G4_FLAG>::numActiveRegWritten(const G4_INST *Inst) const {
+  if (!Inst || !Inst->getCondMod() || Inst->opcode() == G4_sel)
+    return 0;
+
+  for (const Write &Wr : Writes) {
+    if (Inst->getCondModBase() == Wr.N->getInst()->getCondModBase())
+      return Wr.NumRegsUsed;
+  }
+  return 0;
+}
+
+template<>
+unsigned AregUsage<G4_FLAG>::numActiveRegRead(const G4_INST *Inst) const {
+  if (!Inst || !Inst->getPredicate())
+    return 0;
+
+  for (const Write &Wr : Writes) {
+    if (Inst->getPredicateBase() == Wr.N->getInst()->getCondModBase())
+      return Wr.NumRegsUsed;
+  }
+  return 0;
+}
+
 // Queue for scheduling to hide latency.
 class LatencyQueue : public QueueBase {
   // Represent the type of SchedCandidate picked from ready-list. The types are
@@ -1217,8 +1320,7 @@ class LatencyQueue : public QueueBase {
   enum CandReason : uint8_t {
     NoCand,
     PseudoKill,
-    UsesActiveFlag,
-    UsesNoFlag,
+    AregPhyLimit,
     NodeGroup,
     SendNoReturn,
     NodePriority,
@@ -1231,8 +1333,7 @@ class LatencyQueue : public QueueBase {
     switch (Reason) {
     case NoCand:         return "NOCAND";
     case PseudoKill:     return "KILL";
-    case UsesActiveFlag: return "ACTIVEFLAG";
-    case UsesNoFlag:     return "NOFLAG";
+    case AregPhyLimit:   return "AREGPHYLIMIT";
     case NodeGroup:      return "GROUP";
     case SendNoReturn:   return "SENDNORET";
     case NodePriority:   return "PRIORITY";
@@ -1246,8 +1347,10 @@ class LatencyQueue : public QueueBase {
   struct SchedCandidate {
     preNode* Node = nullptr;
     CandReason Reason = NoCand;
-    bool UsesFlag = false;
-    bool UsesActiveFlag = false;
+    // Number of flag register added if selecting the candidate. A negative
+    // number means the candidate reads an active flag and could release the
+    // flag potentially.
+    int NumFlagRegsAdded = 0;
 
     bool isValid() const { return Node; }
   };
@@ -1273,10 +1376,7 @@ class LatencyQueue : public QueueBase {
   // The register-pressure limit we use to decide sub-blocking
   unsigned GroupingPressureLimit;
 
-  // The list is to use to track active scheduled nodes that write flag.
-  std::list<preNode *> FlagWrites;
-  // Numbers of flag registers from getNumFlagRegisters()
-  const unsigned FlagRegNum;
+  AregUsage<G4_FLAG> FlagUsage;
 
 public:
   LatencyQueue(preDDD &ddd, RegisterPressure &rp, SchedConfig config,
@@ -1284,7 +1384,7 @@ public:
       : QueueBase(ddd, rp, config), LT(LT),
         HoldList([this](preNode *a, preNode *b) { return compareHold(a, b); }),
         GroupingPressureLimit(GroupingThreshold),
-        FlagRegNum(ddd.getKernel().fg.builder->getNumFlagRegisters()) {
+        FlagUsage(ddd.getKernel().fg.builder->getNumFlagRegisters()) {
     init();
   }
 
@@ -1365,45 +1465,8 @@ public:
     }
   }
 
-  bool isFlagPressureHigh() const { return FlagWrites.size() >= FlagRegNum; }
-
-  void updateFlagUsage(preNode* N) {
-    vASSERT(N && N->isScheduled);
-    // Only update flag usage when the scheduled node uses flag through
-    // condition modifier and predicate.
-    G4_INST *NInst = N->getInst();
-    if (!NInst || !NInst->usesFlag())
-      return;
-
-    auto allFlagUsesScheduled = [](preNode *FW) -> bool {
-      return std::all_of(FW->Succs.begin(), FW->Succs.end(), [FW](preEdge &E) {
-        preNode *Succ = E.getNode();
-        G4_INST *SuccInst = Succ->getInst();
-        return !SuccInst ||
-            !SuccInst->getPredicate() ||
-            (SuccInst->getPredicate()->getBase() !=
-                FW->getInst()->getCondMod()->getBase()) ||
-            Succ->isScheduled;
-      });
-    };
-
-    // Erase a flag write if
-    // 1. the new node that has the same cond mod, or
-    // 2. all of its successors that use the flag are scheduled
-    bool writeFlag = NInst->getCondMod() && NInst->opcode() != G4_sel;
-    for (auto it = FlagWrites.begin(), ie = FlagWrites.end(); it != ie; ) {
-      preNode *FW = *it;
-      if (writeFlag && NInst->getCondMod()->getBase() ==
-                           FW->getInst()->getCondMod()->getBase()) {
-        it = FlagWrites.erase(it);
-      } else if (allFlagUsesScheduled(FW)) {
-        it = FlagWrites.erase(it);
-      } else
-        ++it;
-    }
-    // Append the new flag write to the end.
-    if (writeFlag)
-      FlagWrites.push_back(N);
+  void updateAregUsage(preNode* N) {
+    FlagUsage.update(N);
   }
 
 private:
@@ -1449,37 +1512,46 @@ private:
     return std::nullopt;
   }
 
-  // Return the candidate that won't increase flag pressure and could avoid
-  // flag spills potentially. Note that currently this heuristic only considers
-  // flag uses in condition modifier and predicate, and does not consider flag
-  // in src or dst.
+  // Return the candidate that won't increase flag pressure above the physical
+  // limit and could avoid flag spills potentially. Note that currently this
+  // heuristic only considers flag uses in condition modifier and predicate,
+  // and does not consider flag in src or dst.
   std::optional<SchedCandidate *> tryCandidateToAvoidFlagSpill(
       SchedCandidate &Cand, SchedCandidate &TryCand) const {
-    // Favor a node that uses any active flag.
-    if (auto Res = tryGreater(TryCand.UsesActiveFlag, Cand.UsesActiveFlag,
-                              TryCand, Cand, UsesActiveFlag))
-      return Res;
-
-    // Favor a node that does not use flag at all.
-    if (auto Res = tryLess(TryCand.UsesFlag, Cand.UsesFlag, TryCand, Cand,
-                           UsesNoFlag))
+    // If both won't cause spill, they are equally good. Otherwise, favor the
+    // one that has lower pressure.
+    int PhyRegNum = FlagUsage.numPhysicalRegs();
+    int TryCandPressure = TryCand.NumFlagRegsAdded + FlagUsage.numRegsUsed();
+    int CandPressure = Cand.NumFlagRegsAdded + FlagUsage.numRegsUsed();
+    int TryCandVal = TryCandPressure > PhyRegNum ? TryCandPressure : PhyRegNum;
+    int CandVal = CandPressure > PhyRegNum ? CandPressure : PhyRegNum;
+    if (auto Res = tryLess(TryCandVal, CandVal, TryCand, Cand, AregPhyLimit))
       return Res;
 
     return std::nullopt;
   }
 
   void initCandidate(SchedCandidate &TryCand) {
-    // Only record the flag stat for the candidate when current flag pressure
-    // is high.
-    if (!isFlagPressureHigh())
-      return;
-
     G4_INST *Inst = TryCand.Node->getInst();
-    TryCand.UsesFlag = Inst && Inst->usesFlag();
-    TryCand.UsesActiveFlag = Inst && Inst->getPredicate() &&
-        std::any_of(FlagWrites.begin(), FlagWrites.end(), [Inst](preNode *FW) {
-            return FW->getInst()->getCondMod()->getBase() ==
-                Inst->getPredicate()->getBase();});
+    // Only record the flag stats for the candidate when it uses flag.
+    if (Inst && Inst->usesFlag()) {
+      // Update NumFlagRegsAdded if the TryCand writes to a different flag than
+      // active flag writes.
+      if (Inst->getCondMod() && Inst->opcode() != G4_sel &&
+          FlagUsage.numActiveRegWritten(Inst) == 0) {
+        TryCand.NumFlagRegsAdded +=
+            Inst->getCondMod()->getTopDcl()->getNumRegNeeded();
+        vASSERT(TryCand.NumFlagRegsAdded == 1 || TryCand.NumFlagRegsAdded == 2);
+      }
+      // Update NumFlagRegsAdded if the TryCand reads any active flag register
+      // and does not overwrite the same flag.
+      // TODO: Consider something like assigning a fractional weight if the
+      // flag has multiple uses to favor the only use or the last use in some
+      // way. Currently treat all uses as the only use to simplify the
+      // implementation.
+      if (Inst->getPredicateBase() != Inst->getCondModBase())
+        TryCand.NumFlagRegsAdded -= FlagUsage.numActiveRegRead(Inst);
+    }
   }
 
   // Return true if TryCand is better than current Cand. The heuristics should
@@ -1678,8 +1750,8 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
       NextCycle += LT.getOccupancy(N->getInst());
     }
     N->isScheduled = true;
-    // Update flag usage after scheduling a node.
-    Q.updateFlagUsage(N);
+    // Update AReg usage after scheduling a node.
+    Q.updateAregUsage(N);
 
     for (auto I = N->succ_begin(), E = N->succ_end(); I != E; ++I) {
       preNode *Node = I->getNode();
