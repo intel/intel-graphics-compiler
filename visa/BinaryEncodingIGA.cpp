@@ -1100,6 +1100,9 @@ void BinaryEncodingIGA::Encode() {
   auto platformGen = kernel.getPlatformGeneration();
   std::list<std::pair<Instruction *, G4_INST *>> encodedInsts;
   Block *bbNew = nullptr;
+
+  SWSB_ENCODE_MODE swsbEncodeMode = IGAKernel->getModel().getSWSBEncodeMode();
+
   for (auto bb : this->kernel.fg) {
     for (auto inst : *bb) {
       bbNew = nullptr;
@@ -1136,7 +1139,7 @@ void BinaryEncodingIGA::Encode() {
           instTy = SWSB::InstType::OTHERS;
 
         // Verify if swsb is in encode-able dist and token combination
-        if (!sw.verify(IGAKernel->getModel().getSWSBEncodeMode(), instTy))
+        if (!sw.verify(swsbEncodeMode, instTy))
           IGA_ASSERT_FALSE("Invalid swsb dist and token combination");
         igaInst->setSWSB(sw);
       }
@@ -1176,7 +1179,7 @@ void BinaryEncodingIGA::Encode() {
       autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
 
     KernelEncoder encoder(IGAKernel, autoCompact);
-    encoder.setSWSBEncodingMode(IGAKernel->getModel().getSWSBEncodeMode());
+    encoder.setSWSBEncodingMode(swsbEncodeMode);
 
     if (kernel.getOption(vISA_EnableIGASWSB)) {
       encoder.enableIGAAutoDeps();

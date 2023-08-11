@@ -1002,6 +1002,7 @@ class SWSB {
   void expireIntervals(unsigned startID);
   void addToLiveList(SBNode *node);
 
+  void updateTokensForNodeSuccs(SBNode *node, unsigned short token);
   std::pair<int /*reuseDelay*/, int /*curDistance*/>
   examineNodeForTokenReuse(unsigned nodeID, unsigned nodeDelay,
                            const SBNode *curNode, unsigned char nestLoopLevel,
