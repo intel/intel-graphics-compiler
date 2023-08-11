@@ -1668,7 +1668,7 @@ static void updateRegAccess(FCPatchingInfo *FCPI, SBNode *Node,
       Acc.RegNo = n;
       Acc.Pipe = getRegAccessPipe(Node->GetInstruction());
       Acc.Inst = Node->GetInstruction();
-      Acc.Token = Acc.Inst->getSBIDSetToken();
+      Acc.Token = Acc.Inst->getSetToken();
       // Update the first access list & map.
       if (!FCPI->RegFirstAccessMap.count(n)) {
         FCPI->RegFirstAccessList.push_back(Acc);
@@ -1789,7 +1789,7 @@ static void updateTokenSet(FCPatchingInfo *FCPI, SBNODE_VECT &Nodes,
     auto Inst = (*NI)->GetInstruction();
     if (LastAccInsts.count(Inst))
       continue;
-    auto T = Inst->getSBIDSetToken();
+    auto T = Inst->getSetToken();
     // Skip if token is not allocated.
     if (T == (unsigned short)(INVALID_ID))
       return;
@@ -1844,7 +1844,7 @@ void SWSB::genSWSBPatchInfo() {
           Acc.RegNo = curBucket;
           Acc.Pipe = getRegAccessPipe(curLiveNode->GetInstruction());
           Acc.Inst = curLiveNode->GetInstruction();
-          Acc.Token = Acc.Inst->getSBIDSetToken();
+          Acc.Token = Acc.Inst->getSetToken();
           FCPI->RegLastAccessList.push_back(Acc);
           FCPI->RegLastAccessMap[curBucket] = &FCPI->RegLastAccessList.back();
         }
@@ -2097,7 +2097,7 @@ SBNode *SWSB::reuseTokenSelection(const SBNode *node) const {
     // token allocation is done in ascending order. So, searching backward
     // should be fast. As for searching forward, only do that if there's
     // indeed a such node.
-    const unsigned short token = curNode->getLastInstruction()->getSBIDSetToken();
+    const unsigned short token = curNode->getLastInstruction()->getSetToken();
     const unsigned lastBefore =
         allTokenNodesMap[token].bitset.findLastIn(0, node->getSendID());
     unsigned firstAfter = INVALID_ID;
@@ -2290,7 +2290,7 @@ void SWSB::tokenDepReduction(SBNode *n1, SBNode *n2) {
   linearScanLiveNodes.remove(n1);
 
 #ifdef DEBUG_VERBOSE_ON
-  printf("remove token 1: %d\n", n1->getLastInstruction()->getSBIDSetToken());
+  printf("remove token 1: %d\n", n1->getLastInstruction()->getSetToken());
 #endif
   return;
 }
@@ -2318,7 +2318,7 @@ void SWSB::expireIntervals(unsigned startID) {
     if (curNode->getLiveEndID() <= startID) {
       const SBNode *node = linearScanLiveNodes.front();
       if (node->hasAWDep() || cycleExpired(node, startID)) {
-        unsigned short token = node->getLastInstruction()->getSBIDSetToken();
+        unsigned short token = node->getLastInstruction()->getSetToken();
 
         vASSERT(token != (unsigned short)-1);
         node_it = linearScanLiveNodes.erase(node_it);
@@ -2365,7 +2365,7 @@ void SWSB::shareToken(const SBNode *node, const SBNode *succ,
             curBB->send_live_in.isSrcSet((unsigned)succPred->globalID) ||
             succPredBB->send_live_in.isDstSet((unsigned)node->globalID) ||
             succPredBB->send_live_in.isSrcSet((unsigned)node->globalID))) {
-        succPred->getLastInstruction()->setSBIDSetToken(token);
+        succPred->getLastInstruction()->setSetToken(token);
       }
     }
   }
@@ -2374,7 +2374,7 @@ void SWSB::shareToken(const SBNode *node, const SBNode *succ,
 }
 
 void SWSB::assignDepToken(SBNode *node) {
-  unsigned short token = node->getLastInstruction()->getSBIDSetToken();
+  unsigned short token = node->getLastInstruction()->getSetToken();
   vISA_ASSERT(token != (unsigned short)-1,
          "Failed to add token dependence to the node without token");
 
@@ -2404,15 +2404,10 @@ void SWSB::assignDepToken(SBNode *node) {
     if (attr == DEP_IMPLICIT) {
       continue;
     }
-    if (node == succ) {
-      // same token and dependency on itself
-      // no need to set dep token
-      continue;
-    }
 
     // Same token,reuse happened, no need to set dep token
     if (tokenHonourInstruction(succ->getLastInstruction()) &&
-        succ->getLastInstruction()->getSBIDToken(SWSBTokenType::SB_SET) == token &&
+        succ->getLastInstruction()->getSetToken() == token &&
         (succ->instVec.size() <= 1)) // If the node size, the token reuse cannot
                                      // guard the last instruction.
     {
@@ -2443,60 +2438,10 @@ void SWSB::assignDepTokens() {
       continue;
     }
 
-    unsigned short token = inst->getSBIDSetToken();
+    unsigned short token = inst->getSetToken();
     if (token != (unsigned short)-1) {
       assignDepToken(node);
     }
-  }
-}
-
-void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
-  // Sort succs according to the BBID and node ID.
-  std::sort(node->succs.begin(), node->succs.end(), nodeSortCompare);
-  for (auto node_it = node->succs.begin(); node_it != node->succs.end();) {
-    const SBDEP_ITEM &curItem = (*node_it);
-    SBNode *curNode = curItem.node;
-    SBDependenceAttr attr = curItem.attr;
-
-    if (attr == DEP_IMPLICIT) {
-      node_it++;
-      continue;
-    }
-
-    // In the case like following
-    //  1. math.rsqrt   r20 r10           { $1 }
-    //  2. math.in      r50  r20          { $1 }
-    //  3. mul          r60 r50 r40       { $1.dst }
-    if (tokenHonourInstruction(curNode->getLastInstruction())) {
-      unsigned distance = curNode->getSendID() > node->getSendID()
-                              ? curNode->getSendID() - node->getSendID()
-                              : node->getSendID() - curNode->getSendID();
-      if ((fg.builder->getOptions()->getOption(vISA_EnableISBIDBUNDLE) ||
-           distance < totalTokenNum)) {
-        if ((curItem.type == RAW || curItem.type == WAW) &&
-            curNode->getLastInstruction()->getSBIDSetToken() ==
-                (unsigned short)UNKNOWN_TOKEN) {
-          if (fg.builder->getOptions()->getOption(
-                  vISA_EnableDPASTokenReduction)) {
-            //  If no instruction depends on DPAS, no SBID
-            if (!(curNode->GetInstruction()->isDpas() && curNode->succs.empty())) {
-              curNode->getLastInstruction()->setSBIDSetToken(token);
-              node->setLiveLaterID(curNode->getLiveEndID());
-              allTokenNodesMap[token].set(curNode->sendID);
-              curNode->setTokenReuseNode(node);
-              continue;
-            }
-          } else {
-            curNode->getLastInstruction()->setSBIDSetToken(token);
-            node->setLiveLaterID(curNode->getLiveEndID());
-            allTokenNodesMap[token].set(curNode->sendID);
-            curNode->setTokenReuseNode(node);
-            continue;
-          }
-        }
-      }
-    }
-    node_it++;
   }
 }
 
@@ -2519,7 +2464,7 @@ void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
     } else {
       // Have no free, use the oldest
       SBNode *oldNode = reuseTokenSelection(node);
-      token = oldNode->getLastInstruction()->getSBIDSetToken();
+      token = oldNode->getLastInstruction()->getSetToken();
       tokenDepReduction(oldNode, node);
       freeTokenList[token] = node;
 #ifdef DEBUG_VERBOSE_ON
@@ -2564,12 +2509,60 @@ void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
 #endif
 
   // Set token to send
-  node->getLastInstruction()->setSBIDSetToken(token);
+  node->getLastInstruction()->setSetToken(token);
   // For token reduction
   allTokenNodesMap[token].set(node->sendID);
 
-  // update tokens for node's successesor (dependents)
-  updateTokensForNodeSuccs(node, token);
+  // Sort succs according to the BBID and node ID.
+  std::sort(node->succs.begin(), node->succs.end(), nodeSortCompare);
+  for (auto node_it = node->succs.begin(); node_it != node->succs.end();) {
+    const SBDEP_ITEM &curSucc = (*node_it);
+    SBNode *succ = curSucc.node;
+    SBDependenceAttr attr = curSucc.attr;
+
+    if (attr == DEP_IMPLICIT) {
+      node_it++;
+      continue;
+    }
+
+    // In the case like following
+    //  1. math.rsqrt   r20 r10           { $1 }
+    //  2. math.in      r50  r20          { $1 }
+    //  3. mul          r60 r50 r40       { $1.dst }
+    if (tokenHonourInstruction(succ->getLastInstruction())) {
+      unsigned distance = succ->getSendID() > node->getSendID()
+                              ? succ->getSendID() - node->getSendID()
+                              : node->getSendID() - succ->getSendID();
+      if ((fg.builder->getOptions()->getOption(vISA_EnableISBIDBUNDLE) ||
+           distance < totalTokenNum)) {
+        if ((curSucc.type == RAW || curSucc.type == WAW) &&
+            succ->getLastInstruction()->getSetToken() ==
+                (unsigned short)UNKNOWN_TOKEN) {
+          if (fg.builder->getOptions()->getOption(
+                  vISA_EnableDPASTokenReduction)) {
+            //  If no instruction depends on DPAS, no SBID
+            if (!(succ->GetInstruction()->isDpas() && succ->succs.empty())) {
+              succ->getLastInstruction()->setSetToken(token);
+              node->setLiveLaterID(succ->getLiveEndID());
+              allTokenNodesMap[token].set(succ->sendID);
+              succ->setTokenReuseNode(node);
+              continue;
+            }
+          } else {
+            succ->getLastInstruction()->setSetToken(token);
+            node->setLiveLaterID(succ->getLiveEndID());
+            allTokenNodesMap[token].set(succ->sendID);
+            succ->setTokenReuseNode(node);
+            continue;
+          }
+        }
+      }
+    }
+
+    node_it++;
+  }
+
+  return;
 }
 
 void SWSB::addToLiveList(SBNode *node) {
@@ -2612,7 +2605,7 @@ void SWSB::addToLiveList(SBNode *node) {
   vASSERT(usedToken == linearScanLiveNodes.size());
 
 #ifdef DEBUG_VERBOSE_ON
-  printf("Add token: %d\n", node->getLastInstruction()->getSBIDSetToken());
+  printf("Add token: %d\n", node->getLastInstruction()->getSetToken());
 #endif
   return;
 }
@@ -2850,9 +2843,9 @@ void SWSB::quickTokenAllocation() {
   // Linear scan
   for (SBNode *node : SBSendNodes) {
 
-    vASSERT(node->getLastInstruction()->getSBIDSetToken() ==
+    vASSERT(node->getLastInstruction()->getSetToken() ==
            (unsigned short)UNKNOWN_TOKEN);
-    node->getLastInstruction()->setSBIDSetToken(token);
+    node->getLastInstruction()->setSetToken(token);
     if (token >= totalTokenNum - 1) {
       token = 0;
     } else {
@@ -2932,7 +2925,7 @@ void SWSB::tokenAllocation() {
 
     expireIntervals(startID);
 
-    unsigned short assignedToken = node->getLastInstruction()->getSBIDSetToken();
+    unsigned short assignedToken = node->getLastInstruction()->getSetToken();
     // If token reuse happened, and the live range of old node is longer than
     // current one, we will keep the old one in the active list.
     assignToken(node, assignedToken, AWTokenReuseCount, ARTokenReuseCount,
@@ -3096,9 +3089,9 @@ void SWSB::expireLocalIntervals(unsigned startID, unsigned BBID) {
 
 void SWSB::assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb) {
   unsigned predDist = -1;
-  SBNode *candidateNode = nullptr;
+  SBNode *canidateNode = nullptr;
 
-  vASSERT(pred->getLastInstruction()->getSBIDSetToken() !=
+  vASSERT(pred->getLastInstruction()->getSetToken() !=
          (unsigned short)UNKNOWN_TOKEN);
 
   for (auto node_it = node->preds.begin(); node_it != node->preds.end();
@@ -3113,7 +3106,7 @@ void SWSB::assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb) {
     }
 
     if (tokenHonourInstruction(otherPred->getLastInstruction()) &&
-        (otherPred->getLastInstruction()->getSBIDSetToken() ==
+        (otherPred->getLastInstruction()->getSetToken() ==
          (unsigned short)UNKNOWN_TOKEN) &&
         (type == RAW || type == WAW ||
          otherPred->getLastInstruction()->getDst() == nullptr)) {
@@ -3130,27 +3123,27 @@ void SWSB::assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb) {
           dist = node->getNodeID() - otherPred->getNodeID();
         }
         if (dist < predDist) {
-          candidateNode = otherPred;
+          canidateNode = otherPred;
           predDist = dist;
         }
       }
     }
   }
 
-  if (candidateNode != nullptr) {
-    candidateNode->getLastInstruction()->setSBIDSetToken(
-        pred->getLastInstruction()->getSBIDSetToken());
+  if (canidateNode != nullptr) {
+    canidateNode->getLastInstruction()->setSetToken(
+        pred->getLastInstruction()->getSetToken());
 #ifdef DEBUG_VERBOSE_ON
     printf("Node: %d, PRED assign: %d, token: %d\n", node->getNodeID(),
-           candidateNode->getNodeID(),
-           candidateNode->getLastInstruction()->getSBIDSetToken());
+           canidateNode->getNodeID(),
+           canidateNode->getLastInstruction()->getSetToken());
 #endif
   }
 }
 
 bool SWSB::assignTokenWithPred(SBNode *node, G4_BB *bb) {
   unsigned predDist = -1;
-  SBNode *candidateNode = nullptr;
+  SBNode *canidateNode = nullptr;
   for (auto node_it = node->preds.begin(); node_it != node->preds.end();
        node_it++) {
     SBDEP_ITEM &curPred = (*node_it);
@@ -3159,7 +3152,7 @@ bool SWSB::assignTokenWithPred(SBNode *node, G4_BB *bb) {
     unsigned dist = 0;
 
     if (tokenHonourInstruction(pred->getLastInstruction()) &&
-        (pred->getLastInstruction()->getSBIDSetToken() !=
+        (pred->getLastInstruction()->getSetToken() !=
          (unsigned short)UNKNOWN_TOKEN) &&
         ((type == RAW) || (type == WAW) ||
          (pred->getLastInstruction()->getDst() == nullptr))) {
@@ -3185,21 +3178,21 @@ bool SWSB::assignTokenWithPred(SBNode *node, G4_BB *bb) {
         }
       }
       if (dist < predDist) {
-        candidateNode = pred;
+        canidateNode = pred;
         predDist = dist;
       }
     }
   }
 
-  if (candidateNode != nullptr) {
-    node->getLastInstruction()->setSBIDSetToken(
-        candidateNode->getLastInstruction()->getSBIDSetToken());
-    allTokenNodesMap[candidateNode->getLastInstruction()->getSBIDSetToken()].set(
+  if (canidateNode != nullptr) {
+    node->getLastInstruction()->setSetToken(
+        canidateNode->getLastInstruction()->getSetToken());
+    allTokenNodesMap[canidateNode->getLastInstruction()->getSetToken()].set(
         node->sendID);
 #ifdef DEBUG_VERBOSE_ON
     printf("Node: %d, pred reuse assign: %d, token: %d\n", node->getNodeID(),
-           candidateNode->getNodeID(),
-           node->getLastInstruction()->getSBIDSetToken());
+           canidateNode->getNodeID(),
+           node->getLastInstruction()->getSetToken());
 #endif
     return true;
   }
@@ -3224,7 +3217,7 @@ void SWSB::allocateToken(G4_BB *bb) {
        i <= BBVector[bb->getId()]->last_send_node; i++) {
     SBNode *node = SBSendNodes[i];
 
-    if (node->getLastInstruction()->getSBIDSetToken() !=
+    if (node->getLastInstruction()->getSetToken() !=
         (unsigned short)UNKNOWN_TOKEN) {
       continue;
     }
@@ -3245,12 +3238,12 @@ void SWSB::allocateToken(G4_BB *bb) {
 
     for (size_t k = 0; k < SBSendNodes.size(); k++) {
       SBNode *liveNode = SBSendNodes[k];
-      if ((liveNode->getLastInstruction()->getSBIDSetToken() !=
+      if ((liveNode->getLastInstruction()->getSetToken() !=
            (unsigned short)UNKNOWN_TOKEN) &&
           (send_live.isDstSet(k) ||
            (send_live.isSrcSet(k) &&
             isPrefetch(liveNode->getLastInstruction())))) {
-        reachTokenArray[liveNode->getLastInstruction()->getSBIDSetToken()]
+        reachTokenArray[liveNode->getLastInstruction()->getSetToken()]
             .push_back(liveNode);
       }
     }
@@ -3265,9 +3258,9 @@ void SWSB::allocateToken(G4_BB *bb) {
           for (size_t m = 0; m < liveNode->preds.size(); m++) {
             SBDEP_ITEM &curPred = liveNode->preds[m];
             SBNode *pred = curPred.node;
-            if (pred->getLastInstruction()->getSBIDSetToken() !=
+            if (pred->getLastInstruction()->getSetToken() !=
                 (unsigned short)UNKNOWN_TOKEN) {
-              reachUseArray[pred->getLastInstruction()->getSBIDSetToken()]
+              reachUseArray[pred->getLastInstruction()->getSetToken()]
                   .push_back(liveNode);
             }
           }
@@ -3291,11 +3284,11 @@ void SWSB::allocateToken(G4_BB *bb) {
           for (size_t j = 0; j < curSucc.exclusiveNodes.size(); j++) {
             SBNode *exclusiveNode = curSucc.exclusiveNodes[j];
             unsigned short exToken =
-                exclusiveNode->getLastInstruction()->getSBIDSetToken();
+                exclusiveNode->getLastInstruction()->getSetToken();
             if (exToken != (unsigned short)UNKNOWN_TOKEN) {
               if (reachTokenArray[exToken].empty() &&
                   reachUseArray[exToken].empty()) {
-                node->getLastInstruction()->setSBIDSetToken(exToken);
+                node->getLastInstruction()->setSetToken(exToken);
                 allTokenNodesMap[exToken].set(node->sendID);
 #ifdef DEBUG_VERBOSE_ON
                 printf("node: %d :: Use exclusive token: %d\n",
@@ -3313,7 +3306,7 @@ void SWSB::allocateToken(G4_BB *bb) {
         // Assigned with first free token
         for (unsigned k = 0; k < totalTokenNum; k++) {
           if (reachTokenArray[k].empty() && reachUseArray[k].empty()) {
-            node->getLastInstruction()->setSBIDSetToken(k);
+            node->getLastInstruction()->setSetToken(k);
             allTokenNodesMap[k].set(node->sendID);
             assigned = true;
 #ifdef DEBUG_VERBOSE_ON
@@ -3342,7 +3335,8 @@ void SWSB::allocateToken(G4_BB *bb) {
                  node->getNodeID(), reuseToken, reuseNode->getNodeID());
         }
 #endif
-        node->getLastInstruction()->setSBIDSetToken(reuseToken);
+
+        node->getLastInstruction()->setSetToken(reuseToken);
         allTokenNodesMap[reuseToken].set(node->sendID);
       }
     }
@@ -4151,7 +4145,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->isMathPipeInst()) // math Will be filtered out by
                                   // tokenHonourInstruction in PVC
       {
-        if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN ||
+        if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN ||
             node->getDepTokenNum()) {
           if (!operandTypeIndicated) {
             G4_INST *synInst = insertSyncInstruction(bb, inst_it);
@@ -4173,7 +4167,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
       //     RegDistFloat   SBID.set
       //     RegDistInt     SBID.set
       if (inst->isSend()) {
-        if (inst->getSBIDSetToken() !=
+        if (inst->getSetToken() !=
             (unsigned short)
                 UNKNOWN_TOKEN) { // SBID.set > SBID.dst > SBID.src > distance
           if (!(distType == G4_INST::DistanceType::DISTALL ||
@@ -4254,7 +4248,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
   }
 
   bool removeAllTokenDep =
-      (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN);
+      (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN);
   removeAllTokenDep =
       removeAllTokenDep || (inst->opcode() == G4_mad && inst->hasNoACCSBSet());
   // For out-of-order instruction, all dependence token will be moved out to
@@ -4418,9 +4412,9 @@ void SWSB::insertTokenSync() {
               synInst->setLexicalId(newInstID);
             } else {
               fusedSync = true;
-              if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
-                dstTokens.set(inst->getSBIDSetToken(), false);
-                srcTokens.set(inst->getSBIDSetToken(), false);
+              if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+                dstTokens.set(inst->getSetToken(), false);
+                srcTokens.set(inst->getSetToken(), false);
               }
             }
           }
@@ -4457,7 +4451,7 @@ void SWSB::insertTokenSync() {
                       dstDcl) != kernel.callerRestoreDecls.end()) {
           G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
           unsigned short dstToken = (unsigned short)-1;
-          dstToken = node->getLastInstruction()->getSBIDSetToken();
+          dstToken = node->getLastInstruction()->getSetToken();
           syncInst->setToken(dstToken);
           syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
         }
@@ -4473,13 +4467,13 @@ void SWSB::insertTokenSync() {
         node_it++;
         inst = *inst_it;
         node = *node_it;
-        if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
-          dstTokens.set(inst->getSBIDSetToken(), false);
-          srcTokens.set(inst->getSBIDSetToken(), false);
+        if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+          dstTokens.set(inst->getSetToken(), false);
+          srcTokens.set(inst->getSetToken(), false);
         }
         // tmp_it keeps the position to insert new generated instructions.
         insertSync(bb, node, inst, tmp_it, newInstID, &dstTokens, &srcTokens);
-        unsigned short token = inst->getSBIDSetToken();
+        unsigned short token = inst->getSetToken();
         if (token != (unsigned short)UNKNOWN_TOKEN) {
           G4_INST *synInst = insertSyncInstruction(bb, tmp_it);
           synInst->setToken(token);
@@ -4490,9 +4484,9 @@ void SWSB::insertTokenSync() {
         insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens);
       }
 
-      if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
-        dstTokens.set(inst->getSBIDSetToken(), false);
-        srcTokens.set(inst->getSBIDSetToken(), false);
+      if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+        dstTokens.set(inst->getSetToken(), false);
+        srcTokens.set(inst->getSetToken(), false);
       }
 
       inst->setLexicalId(newInstID);
@@ -4503,9 +4497,9 @@ void SWSB::insertTokenSync() {
       }
 
       if (tokenHonourInstruction(inst) &&
-          inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
-        dstTokens.set(inst->getSBIDSetToken(), false);
-        srcTokens.set(inst->getSBIDSetToken(), false);
+          inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+        dstTokens.set(inst->getSetToken(), false);
+        srcTokens.set(inst->getSetToken(), false);
       }
 
       newInstID++;
@@ -4520,7 +4514,7 @@ void SWSB::insertTokenSync() {
               BBVector[bb->getId()]->globalARSendOpndList[i];
           SBNode *sNode = sBucketNode->node;
           unsigned short assignedToken =
-              sNode->getLastInstruction()->getSBIDSetToken();
+              sNode->getLastInstruction()->getSetToken();
           unsigned bitToken = 1 << assignedToken;
           src |= bitToken;
         }
@@ -4830,7 +4824,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
                 if (predNode->globalID != INVALID_ID) {
                   if (predNode->getBBID() != node->getBBID() &&
                       !killedToken.isSet(
-                          predNode->getLastInstruction()->getSBIDSetToken()) &&
+                          predNode->getLastInstruction()->getSetToken()) &&
                       (!(fg.builder->getOptions()->getOption(
                              vISA_GlobalTokenAllocation) ||
                          fg.builder->getOptions()->getOption(
@@ -4844,7 +4838,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
                     prunedDiffBBEdgeNum++;
 #ifdef DEBUG_VERBOSE_ON
                     std::cerr << "Diff BB Token: "
-                              << predNode->getLastInstruction()->getSBIDSetToken()
+                              << predNode->getLastInstruction()->getSetToken()
                               << " <Pred: " << predNode->getNodeID()
                               << ", Succ: " << node->getNodeID() << ">"
                               << "\n";
@@ -4854,7 +4848,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
                     prunedDiffBBSameTokenEdgeNum++;
 #ifdef DEBUG_VERBOSE_ON
                     std::cerr << "Diff BB Same Token: "
-                              << predNode->getLastInstruction()->getSBIDSetToken()
+                              << predNode->getLastInstruction()->getSetToken()
                               << " <Pred: " << predNode->getNodeID()
                               << ", Succ: " << node->getNodeID() << ">"
                               << "\n";
@@ -4864,7 +4858,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
                     prunedGlobalEdgeNum++;
 #ifdef DEBUG_VERBOSE_ON
                     std::cerr << "Global Token: "
-                              << predNode->getLastInstruction()->getSBIDSetToken()
+                              << predNode->getLastInstruction()->getSetToken()
                               << " <Pred: " << predNode->getNodeID()
                               << ", Succ: " << node->getNodeID() << ">"
                               << "\n";
@@ -4875,7 +4869,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
 #ifdef DEBUG_VERBOSE_ON
                 else {
                   std::cerr << "Local Token: "
-                            << predNode->getLastInstruction()->getSBIDSetToken()
+                            << predNode->getLastInstruction()->getSetToken()
                             << " <Pred: " << predNode->getNodeID()
                             << ", Succ: " << node->getNodeID() << ">"
                             << "\n";
@@ -4890,7 +4884,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
             // Kill the dependence if it's a AW dependence
             // What about WAR?
             if (type == RAW || type == WAW) {
-              int token = predNode->getLastInstruction()->getSBIDSetToken();
+              int token = predNode->getLastInstruction()->getSetToken();
               if (token != (unsigned short)UNKNOWN_TOKEN) {
                 activateLiveIn -= allTokenNodesMap[token].bitset;
                 killedToken.set(token, true);
@@ -4905,7 +4899,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
       // Token reuse will kill all previous nodes with same token? yes
       if (tokenHonourInstruction(node->GetInstruction()) &&
           !node->GetInstruction()->isEOT()) {
-        int token = node->getLastInstruction()->getSBIDSetToken();
+        int token = node->getLastInstruction()->getSetToken();
         if (token != (unsigned short)UNKNOWN_TOKEN) {
           activateLiveIn -= allTokenNodesMap[token].bitset;
           activateLiveIn.set(node->sendID, true);
@@ -4949,9 +4943,9 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
       // If there is a .dst dependence, kill all nodes with same token
       if (tokenHonourInstruction(predNode->getLastInstruction()) &&
           (type == RAW || type == WAW)) {
-        if (predNode->getLastInstruction()->getSBIDSetToken() !=
+        if (predNode->getLastInstruction()->getSetToken() !=
             (unsigned short)UNKNOWN_TOKEN) {
-          unsigned short token = predNode->getLastInstruction()->getSBIDSetToken();
+          unsigned short token = predNode->getLastInstruction()->getSetToken();
           // 1:  send r112                   {$9}
           // 2:  send r18                    {$9}
           // 3:  send r112                   {$9}
@@ -4977,9 +4971,9 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
     // Will have only one?, yes, for BB local scan
     if (tokenHonourInstruction(node->getLastInstruction()) &&
         !node->getLastInstruction()->isEOT() &&
-        node->getLastInstruction()->getSBIDSetToken() !=
+        node->getLastInstruction()->getSetToken() !=
             (unsigned short)UNKNOWN_TOKEN) {
-      unsigned short token = node->getLastInstruction()->getSBIDSetToken();
+      unsigned short token = node->getLastInstruction()->getSetToken();
       tokeNodesMap[token].clear();
 
       // For future live in, will always be killed by current instruction
@@ -6448,6 +6442,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
             hasOverlap = true;
           }
         }
+
         if (!hasOverlap) {
           ++bn_it;
           continue;
@@ -7162,7 +7157,7 @@ void SWSB::dumpTokenLiveInfo() {
         SBNode *node = (*node_it);
         if (BBVector[i]->liveOutTokenNodes.isSet(node->sendID)) {
           std::cerr << " #" << node->getNodeID() << ":" << node->sendID << ":"
-                    << node->GetInstruction()->getSBIDSetToken();
+                    << node->GetInstruction()->getSetToken();
         }
       }
       std::cerr << "\n";
@@ -8038,7 +8033,7 @@ static G4_INST *setForceDebugSWSB(IR_Builder *builder, G4_BB *bb,
   }
 
   if (inst->tokenHonourInstruction()) {
-    inst->setSBIDSetToken(0);
+    inst->setSetToken(0);
     if (inst->isEOT()) {
       inst->setDistance(1);
       if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
@@ -8129,7 +8124,7 @@ static void setInstructionStallSWSB(IR_Builder *builder, G4_BB *bb,
       G4_SrcRegRegion *src0 = builder->createNullSrc(Type_UD);
       G4_INST *syncInst = builder->createSync(G4_sync_nop, src0);
 
-      unsigned short token = inst->getSBIDSetToken();
+      unsigned short token = inst->getSetToken();
       SWSBTokenType tokenType = SWSBTokenType::TOKEN_NONE;
       G4_Operand *opnd = inst->getOperand(Opnd_dst);
       if (!opnd || !opnd->getBase() || opnd->isNullReg()) {

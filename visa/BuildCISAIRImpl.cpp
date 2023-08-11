@@ -2567,7 +2567,7 @@ bool CISA_IR_Builder::CISA_create_label(const char *label_name, int lineNum) {
     if (!opnd[0]) {
 
       VISA_Label_Kind kind = LABEL_BLOCK;
-      if (std::string(label_name).find("__opt_resource_loo") != std::string::npos) {
+      if (std::string(label_name).find("__opt_resource_loop")) {
         kind = LABEL_DIVERGENT_RESOURCE_LOOP;
       }
       // forward jump

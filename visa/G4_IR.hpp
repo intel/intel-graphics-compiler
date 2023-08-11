@@ -220,23 +220,15 @@ public:
   }
   SWSBTokenType getTokenType() const { return (SWSBTokenType)swsb.tokenType; }
 
-  void setSBIDSetToken(unsigned short token) {
+  void setSetToken(unsigned short token) {
     swsb.SBToken = token;
     swsb.tokenType = SB_SET;
   }
-  // TODO: return the swsb struct and strip out the necessary info at the
-  // calling site
-  unsigned short getSBIDSetToken() const {
+  unsigned short getSetToken() const {
     if (swsb.tokenType == SB_SET)
       return swsb.SBToken;
     else
       return -1;
-  }
-
-  unsigned short getSBIDToken(SWSBTokenType t) const {
-    if (swsb.tokenType == t)
-      return swsb.SBToken;
-    return -1;
   }
 
   void setNoACCSBSet() { swsb.tokenType = NoACCSBSet; }
