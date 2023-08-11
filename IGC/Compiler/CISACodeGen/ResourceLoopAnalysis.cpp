@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -108,8 +109,19 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
         }
       } else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
         if (!WI->isUniform(LI->getTextureValue())) {
-          curRes = LI->getTextureValue();
-          curOpTy = 3;
+          // need extra restrictions:
+          // no half-type because it may need extra op for packing
+          // no return of the number of elements >= 5, that is
+          // sampler-feedback
+          unsigned NumElt = 1;
+          if (auto vecTy = dyn_cast<IGCLLVM::FixedVectorType>(LI->getType())) {
+            NumElt = (unsigned)vecTy->getNumElements();
+          }
+          if (LI->getType()->getScalarSizeInBits() >= 32 &&
+              NumElt <= 4) {
+            curRes = LI->getTextureValue();
+            curOpTy = 3;
+          }
         }
       } else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
         if (!WI->isUniform(LI->getResourceValue())) {

@@ -4951,7 +4951,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     CVariable* flag = nullptr;
     Value* ptr = inst->getOperand(textureArgIdx);
     ResourceDescriptor resource = GetResourceVariable(ptr);
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
+    bool needLoop = ResourceLoopHeader(resource, flag, label,
+                                       m_RLA->GetResourceLoopMarker(inst));
     m_encoder->SetPredicate(flag);
     if (m_destination->IsUniform())
     {
@@ -4980,7 +4981,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
     }
-    ResourceLoopBackEdge(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label,
+                         m_RLA->GetResourceLoopMarker(inst));
 
     {
         if (m_destination->IsUniform())
