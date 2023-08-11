@@ -637,8 +637,6 @@ private:
                        const DstOpndDesc &DstDesc);
   void buildBinaryOperator(BinaryOperator *BO, genx::BaleInfo BI, unsigned Mod,
                            const DstOpndDesc &DstDesc);
-  void buildUnaryOperator(UnaryOperator *UO, genx::BaleInfo BI, unsigned Mod,
-                          const DstOpndDesc &DstDesc);
   void buildBoolBinaryOperator(BinaryOperator *BO);
   void buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
                        const DstOpndDesc &DstDesc);
@@ -2938,8 +2936,6 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
         vc::isLegalPrintFormatIndexGEP(*GEPI),
         "only vc.internal.print.format.index src GEP can still be "
         "present at this stage");
-  } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Inst)) {
-    buildUnaryOperator(UO, BI, Mod, DstDesc);
   } else if (auto *CI = dyn_cast<CallInst>(Inst)) {
     if (CI->isInlineAsm())
       buildInlineAsm(CI);
@@ -4332,52 +4328,6 @@ void GenXKernelBuilder::buildJoin(CallInst *Join, BranchInst *Branch) {
   addLabelInst(Join);
   // There is no join instruction in vISA -- the finalizer derives it by
   // looking for gotos targeting the basic block's label.
-}
-
-/***********************************************************************
- * buildUnaryOperator : build code for an unary operator
- *
- * Enter:   UO = the UnaryOperator
- *          BI = BaleInfo for UO
- *          Mod = modifier bits for destination
- *          WrRegion = 0 else wrregion for destination
- *          WrRegionBI = BaleInfo for WrRegion
- */
-void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
-                                           unsigned Mod,
-                                           const DstOpndDesc &DstDesc) {
-  ISA_Opcode Opcode = ISA_RESERVED_0;
-  Signedness DstSigned = SIGNED;
-  Signedness SrcSigned = SIGNED;
-  unsigned Mod1 = 0;
-  VISA_Exec_Size ExecSize = EXEC_SIZE_1;
-  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(UO->getType()))
-    ExecSize = getExecSizeFromValue(VT->getNumElements());
-
-  switch (UO->getOpcode()) {
-  case Instruction::FNeg:
-    Opcode = ISA_MOV;
-    Mod1 ^= MODIFIER_NEG;
-    break;
-  default:
-    report_fatal_error("buildUnaryOperator: unimplemented unary operator");
-  }
-
-  VISA_VectorOpnd *Dst = createDestination(UO, DstSigned, Mod, DstDesc);
-
-  VISA_VectorOpnd *Src0 = nullptr;
-  VISA_PredOpnd *Pred = createPredFromWrRegion(DstDesc);
-
-  Src0 = createSourceOperand(UO, SrcSigned, 0, BI, Mod1);
-
-  auto ExecMask = getExecMaskFromWrRegion(DstDesc);
-
-  if (Opcode == ISA_MOV) {
-    appendVISADataMovementInst(ISA_MOV, Pred, Mod1 & MODIFIER_SAT, ExecMask,
-                               ExecSize, Dst, Src0);
-    return;
-  }
-  report_fatal_error("buildUnaryOperator: unimplemented opcode");
 }
 
 /***********************************************************************
