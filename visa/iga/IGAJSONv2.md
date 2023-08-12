@@ -89,7 +89,7 @@ instruction object.  Other fields within these elements vary based on this.
 
 A label might look like the following.
 
-        {"kind":"L", "id":2, "value":"L0016", "preds":[2], "succs":[2,3]},
+        {"kind":"L", "id":2, "symbol":"L0016", "preds":[2], "succs":[2,3]},
 
 Labels have the following fields.
 
@@ -118,7 +118,7 @@ for a given instruction and a default value should be inferred.
   * `dst` an optional destination operand `Operand`
   * `srcs` is an optional list of source `Operand`s
   * `implicit` is an object with `defs` and `uses` for implicitly written or read registers (e.g. `addc` writes `acc0` and `mach` reads it).
-  * `regDist` the register distance string (e.g. `"@4"`)
+  * `regDist` the register distance string (e.g. `"@4"` or `"A@1"` etc.)
   * `sbid` either `null` or any SBID set in the instruction options (e.g. `"$4.dst"`)
   * `opts` a list of extra instruction options not specified above
   * `comment` an extra per-instruction comments the disassembler deigns to generate
@@ -144,11 +144,12 @@ In operands that are writen `uses` will be included.
 
 
 ### Label Operands: `"kind":"LB"`
-A label have a `target` key with a string indicating the label target.
+A label has a `target` key with a string indicating the target of a jump or other.
 
     (W&f0.0) jmpi begin
 
-Generates the object `{"kind":"LB", "target":"L0016"}`
+The above will have a source operand: `{"kind":"LB", "target":"begin",...}`.
+There should be a listing element with kind `"L"` and `"symbol"` equal to `"begin"`.
 
 ### Immediate Operands: `"kind":"IM"`
 An immediate source operand will have a `value` and possibly a `type` field.
@@ -163,6 +164,7 @@ A direct register operand has a `Reg` object
 * `reg` is the register reference (a `Reg` object)
 * `rgn` is the operand's region (an `Rgn`)
 * `type` contains the operand type (a string)
+* `mods` may exist for source operands (combination of `"n"` for negation `"a"` for absolute value)
 
 Send descriptor register operands will lack a `type`.
 
@@ -172,6 +174,7 @@ A register indirect operand has the following fields.
 * `aoff` is the address offset (an integer)
 * `rgn` is the operand's region (an `Rgn`)
 * `type` contains the operand type (a string)
+* `mods` may exist for sources operands (combination of `"n"` for negation `"a"` for absolute value)
 
 For example consider the following instruction.
 
@@ -184,6 +187,7 @@ This generates JSON including.
     "srcs":[
     {"kind":"RI", "areg":{"rn":"a","r":0,"sr":0}, "aoff":-16, "rgn":{"w":1,"h":0}, "type":"ud"},
     ...
+    ]
 
 
 ### Register Indirect Operands: `"kind":"DA"`
@@ -201,6 +205,7 @@ an address payload operand which can be fairly complicated.
   and usually consists of addresses or header information
 * `alen` the count of registers being sent as payload
 * `adefs` the definitions of the address registers sent
+* `ascale` for any address scaling factor (if supported)
 
 In addition some optional fields may be included.
 
@@ -208,6 +213,8 @@ In addition some optional fields may be included.
 * `sbase` for any message supporting a base register
 * `soff` for state base or base address register; for a BTI/BSS/SS this is the a0.# register
 * `sdefs` any dependencies for the any surface or base register
+* `sbase2` any secondary base register
+* `sdefs2` defs for `sbase2`
 
 
 ## `Reg` Objects
