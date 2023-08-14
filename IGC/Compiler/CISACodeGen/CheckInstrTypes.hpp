@@ -72,6 +72,7 @@ namespace IGC
         CodeGenContext* context = nullptr;
 
         void print(llvm::raw_ostream& OS) const;
+        void updateContext();
     };
 
     class InstrStatistic : public llvm::FunctionPass, public llvm::InstVisitor<InstrStatistic>

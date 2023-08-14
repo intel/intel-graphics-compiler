@@ -41,11 +41,15 @@ static cl::opt<bool> enableInstrTypesPrint(
 
 static cl::opt<bool> afterOptsFlag(
     "after-opts-flag", cl::init(false), cl::Hidden,
-    cl::desc("Set AfterOpts flag value for default constructor (debug purpuses)"));
+    cl::desc("Set AfterOpts flag value for default constructor (debug purposes)"));
 
 static cl::opt<bool> metricsFlag(
     "metrics-flag", cl::init(false), cl::Hidden,
-    cl::desc("Set metrics flag value for default constructor (debug purpuses)"));
+    cl::desc("Set metrics flag value for default constructor (debug purposes)"));
+
+static cl::opt<bool> InstrTypesOnRun(
+    "igc-update-instrtypes-on-run", cl::init(false), cl::Hidden,
+    cl::desc("Update InstrTypes during runOnFunction (debug purposes)"));
 
 char CheckInstrTypes::ID = 0;
 
@@ -75,6 +79,18 @@ void CheckInstrTypes::SetLoopFlags(Function& F)
     }
 }
 
+void CheckInstrTypes::updateContext()
+{
+    // in case there's no function to run on
+    if (!context)
+        return;
+
+    if (g_AfterOpts)
+        context->m_instrTypesAfterOpts = g_InstrTypes;
+    else
+        context->m_instrTypes = g_InstrTypes;
+}
+
 bool CheckInstrTypes::runOnFunction(Function& F)
 {
     // despite CodeGenContextWrapper is a functional pass, context itself is the Module's entity
@@ -97,19 +113,15 @@ bool CheckInstrTypes::runOnFunction(Function& F)
     visit(F);
     SetLoopFlags(F);
 
+    if (InstrTypesOnRun)
+        updateContext();
+
     return false;
 }
 
 bool CheckInstrTypes::doFinalization(llvm::Module& M)
 {
-    // in case there's no function to run on
-    if (context == nullptr)
-        return false;
-
-    if (g_AfterOpts)
-        context->m_instrTypesAfterOpts = g_InstrTypes;
-    else
-        context->m_instrTypes = g_InstrTypes;
+    updateContext();
 
     if (enableInstrTypesPrint)
         print(IGC::Debug::ods());
