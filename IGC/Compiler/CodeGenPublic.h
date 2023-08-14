@@ -747,7 +747,7 @@ namespace IGC
         unsigned GetRetryId() const;
         unsigned GetPerFuncRetryStateId(llvm::Function* F) const;
 
-        void Enable();
+        void Enable(ShaderType ty = ShaderType::UNKNOWN);
         void Disable(bool DisablePerKernel=false);
 
         void SetSpillSize(unsigned int spillSize);
@@ -795,6 +795,9 @@ namespace IGC
 
         // internal knob to disable retry manager.
         bool enabled;
+
+        // shader type for shader specific opt
+        ShaderType shaderType;
 
         unsigned lastSpillSize = 0;
 
