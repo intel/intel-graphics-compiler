@@ -50,6 +50,12 @@ typedef enum
 {
 
     /*!
+     * GED Model Version: none
+     * Supported CPUs: none
+     */
+    GED_MODEL_NONE,
+
+    /*!
      * GED Model Version: 7
      * Supported CPUs: ivb
      */
@@ -120,6 +126,12 @@ typedef enum
      * Supported CPUs: XeHpc
      */
     GED_MODEL_XE_HPC,
+
+    /*!
+     * GED Model Version: xe.lpg.md
+     * Supported CPUs: Xe_LPG_MD
+     */
+    GED_MODEL_XE_LPG_MD,
     GED_MODEL_INVALID
 } GED_MODEL;
 
@@ -337,6 +349,30 @@ extern bool GED_CALLCONV GED_IsCompact(const ged_ins_t* ins);
  * @return      Model ID
  */
 extern GED_MODEL GED_CALLCONV GED_GetModel(const ged_ins_t* ins);
+
+/*!
+ * Get the value of the ___SrcImm field in the given instruction. See @ref GED_INS_FIELD____SrcImm for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_Get___SrcImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the ___SrcImm field in the given instruction. See @ref GED_INS_FIELD____SrcImm for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_Set___SrcImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the NumOfSourceOperands field in the given instruction. See @ref GED_INS_FIELD_NumOfSourceOperands for the field's

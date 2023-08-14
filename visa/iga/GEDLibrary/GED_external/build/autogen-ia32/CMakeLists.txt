@@ -27,11 +27,13 @@ set(GED_autogenia32_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8_1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_none.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpg.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_lpg_md.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   PARENT_SCOPE
@@ -59,11 +61,13 @@ set(GED_autogenia32_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8_1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_none.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpg.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_lpg_md.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.h
   PARENT_SCOPE
 )

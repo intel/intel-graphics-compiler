@@ -49,4 +49,5 @@ extern const ged_unsigned_table_t EnumInterpretersTable3[3];
 extern const ged_unsigned_table_t EnumInterpretersTable4[3];
 extern const ged_unsigned_table_t EnumInterpretersTable5[3];
 extern const ged_unsigned_table_t EnumInterpretersTable6[3];
+extern const ged_unsigned_table_t EnumInterpretersTable7[3];
 #endif // GED_ENUM_INTERPRETERS_H

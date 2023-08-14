@@ -24,76 +24,76 @@ typedef enum
 } GED_ACCESS_MODE;
 typedef enum
 {
-    GED_ACC_WR_CTRL_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_ACC_WR_CTRL_AccWrEn, ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
+    GED_ACC_WR_CTRL_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ACC_WR_CTRL_AccWrEn, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_ACC_WR_CTRL_INVALID
 } GED_ACC_WR_CTRL;
 typedef enum
 {
-    GED_ADDR_MODE_Direct,   ///< all
-    GED_ADDR_MODE_Indirect, ///< all
+    GED_ADDR_MODE_Direct,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ADDR_MODE_Indirect, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_ADDR_MODE_INVALID
 } GED_ADDR_MODE;
 typedef enum
 {
-    GED_ARCH_REG_null,    ///< all
-    GED_ARCH_REG_a0,      ///< all
-    GED_ARCH_REG_acc,     ///< all
-    GED_ARCH_REG_f,       ///< all
-    GED_ARCH_REG_ce,      ///< all
-    GED_ARCH_REG_msg,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
+    GED_ARCH_REG_null,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_a0,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_acc,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_f,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_ce,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_msg,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
     GED_ARCH_REG_sp,      ///< 10, 11, TGL, 7.5, 8, 8.1, 9
-    GED_ARCH_REG_sr0,     ///< all
-    GED_ARCH_REG_cr0,     ///< all
-    GED_ARCH_REG_n0,      ///< all
-    GED_ARCH_REG_ip,      ///< all
-    GED_ARCH_REG_tdr,     ///< all
-    GED_ARCH_REG_tm0,     ///< all
-    GED_ARCH_REG_fc,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_ARCH_REG_dbg0,    ///< all
+    GED_ARCH_REG_sr0,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_cr0,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_n0,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_ip,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_tdr,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_tm0,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_fc,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_ARCH_REG_dbg0,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_ARCH_REG_INVALID
 } GED_ARCH_REG;
 typedef enum
 {
-    GED_ATOMIC_OPERATION_TYPE_AOP_AND,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_OR,     ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_XOR,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_MOV,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_INC,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_DEC,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_ADD,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_SUB,    ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_REVSUB, ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_IMAX,   ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_IMIN,   ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_UMAX,   ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_UMIN,   ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_CMPWR,  ///< all
-    GED_ATOMIC_OPERATION_TYPE_AOP_PREDEC, ///< all
+    GED_ATOMIC_OPERATION_TYPE_AOP_AND,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_OR,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_XOR,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_MOV,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_INC,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_DEC,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_ADD,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_SUB,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_REVSUB, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_IMAX,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_IMIN,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_UMAX,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_UMIN,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_CMPWR,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_ATOMIC_OPERATION_TYPE_AOP_PREDEC, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_ATOMIC_OPERATION_TYPE_INVALID
 } GED_ATOMIC_OPERATION_TYPE;
 typedef enum
 {
-    GED_BLOCK_SIZE_OW1L,    ///< all
-    GED_BLOCK_SIZE_OW1H,    ///< all
-    GED_BLOCK_SIZE_OW2,     ///< all
-    GED_BLOCK_SIZE_OW4,     ///< all
-    GED_BLOCK_SIZE_OW8,     ///< all
+    GED_BLOCK_SIZE_OW1L,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_BLOCK_SIZE_OW1H,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_BLOCK_SIZE_OW2,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_BLOCK_SIZE_OW4,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_BLOCK_SIZE_OW8,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_BLOCK_SIZE_INVALID
 } GED_BLOCK_SIZE;
 typedef enum
 {
-    GED_BRANCH_CTRL_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_BRANCH_CTRL_Branch,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
+    GED_BRANCH_CTRL_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_BRANCH_CTRL_Branch,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
     GED_BRANCH_CTRL_INVALID
 } GED_BRANCH_CTRL;
 typedef enum
 {
-    GED_CHANNEL_MASK_R,           ///< all
-    GED_CHANNEL_MASK_NotIncluded, ///< all
-    GED_CHANNEL_MASK_B,           ///< all
-    GED_CHANNEL_MASK_G,           ///< all
-    GED_CHANNEL_MASK_A,           ///< all
+    GED_CHANNEL_MASK_R,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_MASK_NotIncluded, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_MASK_B,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_MASK_G,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_MASK_A,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_CHANNEL_MASK_INVALID
 } GED_CHANNEL_MASK;
 typedef enum
@@ -104,47 +104,47 @@ typedef enum
 } GED_CHANNEL_MODE;
 typedef enum
 {
-    GED_CHANNEL_OFFSET_M0,      ///< all
-    GED_CHANNEL_OFFSET_M4,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_CHANNEL_OFFSET_M8,      ///< all
-    GED_CHANNEL_OFFSET_M12,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_CHANNEL_OFFSET_M16,     ///< all
-    GED_CHANNEL_OFFSET_M20,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_CHANNEL_OFFSET_M24,     ///< all
-    GED_CHANNEL_OFFSET_M28,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M0,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M4,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M8,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M12,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M16,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M20,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M24,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_CHANNEL_OFFSET_M28,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_CHANNEL_OFFSET_INVALID
 } GED_CHANNEL_OFFSET;
 typedef enum
 {
-    GED_COND_MODIFIER_Normal,  ///< all
-    GED_COND_MODIFIER_z,       ///< all
-    GED_COND_MODIFIER_nz,      ///< all
-    GED_COND_MODIFIER_g,       ///< all
-    GED_COND_MODIFIER_ge,      ///< all
-    GED_COND_MODIFIER_l,       ///< all
-    GED_COND_MODIFIER_le,      ///< all
-    GED_COND_MODIFIER_o,       ///< all
-    GED_COND_MODIFIER_u,       ///< all
+    GED_COND_MODIFIER_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_z,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_nz,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_g,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_ge,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_l,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_le,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_o,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_COND_MODIFIER_u,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_COND_MODIFIER_INVALID
 } GED_COND_MODIFIER;
 typedef enum
 {
-    GED_DATA_TYPE_ud,      ///< all
-    GED_DATA_TYPE_d,       ///< all
-    GED_DATA_TYPE_uw,      ///< all
-    GED_DATA_TYPE_w,       ///< all
-    GED_DATA_TYPE_ub,      ///< all
-    GED_DATA_TYPE_b,       ///< all
-    GED_DATA_TYPE_df,      ///< all
-    GED_DATA_TYPE_f,       ///< all
-    GED_DATA_TYPE_uq,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_DATA_TYPE_q,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_DATA_TYPE_hf,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_DATA_TYPE_uv,      ///< all
-    GED_DATA_TYPE_vf,      ///< all
-    GED_DATA_TYPE_v,       ///< all
-    GED_DATA_TYPE_nf,      ///< 11, TGL, XE.HP, XE.HPG
-    GED_DATA_TYPE_bf,      ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_DATA_TYPE_ud,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_d,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_uw,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_w,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_ub,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_b,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_df,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_f,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_uq,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_DATA_TYPE_q,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_DATA_TYPE_hf,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_DATA_TYPE_uv,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_vf,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_v,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DATA_TYPE_nf,      ///< 11, TGL, XE.HP, XE.HPG, XE.LPG.MD
+    GED_DATA_TYPE_bf,      ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DATA_TYPE_qf,      ///< XE.HPC.A
     GED_DATA_TYPE_bf8,     ///< XE.HPC
     GED_DATA_TYPE_tf32,    ///< XE.HPC
@@ -152,8 +152,8 @@ typedef enum
 } GED_DATA_TYPE;
 typedef enum
 {
-    GED_DEBUG_CTRL_Normal,     ///< all
-    GED_DEBUG_CTRL_Breakpoint, ///< all
+    GED_DEBUG_CTRL_Normal,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_DEBUG_CTRL_Breakpoint, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_DEBUG_CTRL_INVALID
 } GED_DEBUG_CTRL;
 typedef enum
@@ -166,98 +166,98 @@ typedef enum
 } GED_DEP_CTRL;
 typedef enum
 {
-    GED_DP_ADDR_SIZE_A16,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_ADDR_SIZE_A32,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_ADDR_SIZE_A64,     ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_ADDR_SIZE_A16,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_ADDR_SIZE_A32,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_ADDR_SIZE_A64,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_ADDR_SIZE_INVALID
 } GED_DP_ADDR_SIZE;
 typedef enum
 {
-    GED_DP_ADDR_SURFACE_TYPE_FLAT,    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_ADDR_SURFACE_TYPE_BSS,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_ADDR_SURFACE_TYPE_SS,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_ADDR_SURFACE_TYPE_BTI,     ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_ADDR_SURFACE_TYPE_FLAT,    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_ADDR_SURFACE_TYPE_BSS,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_ADDR_SURFACE_TYPE_SS,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_ADDR_SURFACE_TYPE_BTI,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_ADDR_SURFACE_TYPE_INVALID
 } GED_DP_ADDR_SURFACE_TYPE;
 typedef enum
 {
-    GED_DP_DATA_SIZE_D8,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_DATA_SIZE_D16,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_DATA_SIZE_D32,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_DATA_SIZE_D64,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_DATA_SIZE_D8U32,   ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_DATA_SIZE_D16U32,  ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_DATA_SIZE_D16BF32, ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_DATA_SIZE_D8,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_DATA_SIZE_D16,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_DATA_SIZE_D32,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_DATA_SIZE_D64,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_DATA_SIZE_D8U32,   ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_DATA_SIZE_D16U32,  ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_DATA_SIZE_D16BF32, ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_DATA_SIZE_INVALID
 } GED_DP_DATA_SIZE;
 typedef enum
 {
-    GED_DP_FENCE_SCOPE_Threadgroup,    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_FENCE_SCOPE_Local,          ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_FENCE_SCOPE_Tile,           ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_FENCE_SCOPE_GPU,            ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_FENCE_SCOPE_AllGPU,         ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_FENCE_SCOPE_Threadgroup,    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_FENCE_SCOPE_Local,          ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_FENCE_SCOPE_Tile,           ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_FENCE_SCOPE_GPU,            ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_FENCE_SCOPE_AllGPU,         ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_FENCE_SCOPE_System_Release, ///< XE.HPC.A, XE.HPC
     GED_DP_FENCE_SCOPE_System_Acquire, ///< XE.HPC.A, XE.HPC
     GED_DP_FENCE_SCOPE_INVALID
 } GED_DP_FENCE_SCOPE;
 typedef enum
 {
-    GED_DP_FLUSH_TYPE_Evict,           ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_FLUSH_TYPE_Invalidate,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_FLUSH_TYPE_Discard,         ///< XE.HPG
-    GED_DP_FLUSH_TYPE_Clean,           ///< XE.HPG
-    GED_DP_FLUSH_TYPE_DGT_L3OnlyFlush, ///< XE.HPG
-    GED_DP_FLUSH_TYPE_None,            ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_FLUSH_TYPE_Evict,           ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_FLUSH_TYPE_Invalidate,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_FLUSH_TYPE_Discard,         ///< XE.HPG, XE.LPG.MD
+    GED_DP_FLUSH_TYPE_Clean,           ///< XE.HPG, XE.LPG.MD
+    GED_DP_FLUSH_TYPE_DGT_L3OnlyFlush, ///< XE.HPG, XE.LPG.MD
+    GED_DP_FLUSH_TYPE_None,            ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_FLUSH_TYPE_INVALID
 } GED_DP_FLUSH_TYPE;
 typedef enum
 {
-    GED_DP_OPCODE_LOAD,                          ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_LOAD_CMASK,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE,                         ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE_CMASK,                   ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_INCREMENT,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_DECREMENT,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_LOAD,                   ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_STORE,                  ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_ADD,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_SUB,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_MIN,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_MAX,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_UMIN,                   ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_UMAX,                   ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_COMPARE_EXCHANGE,       ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FLOAT_ADD,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FLOAT_SUB,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FLOAT_MIN,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FLOAT_MAX,              ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_FLOAT_COMPARE_EXCHANGE, ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_AND,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_OR,                     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_ATOMIC_XOR,                    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_STORE_UNCOMPRESSED,            ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_OPCODE_FENCE,                         ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_OPCODE_LOAD,                          ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_LOAD_CMASK,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_STORE,                         ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_STORE_CMASK,                   ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_INCREMENT,              ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_DECREMENT,              ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_LOAD,                   ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_STORE,                  ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_ADD,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_SUB,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_MIN,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_MAX,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_UMIN,                   ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_UMAX,                   ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_COMPARE_EXCHANGE,       ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_FLOAT_ADD,              ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_FLOAT_SUB,              ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_FLOAT_MIN,              ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_FLOAT_MAX,              ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_FLOAT_COMPARE_EXCHANGE, ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_AND,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_OR,                     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_ATOMIC_XOR,                    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_STORE_UNCOMPRESSED,            ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_OPCODE_FENCE,                         ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_OPCODE_LOAD_2D_BLOCK,                 ///< XE.HPC.A, XE.HPC
     GED_DP_OPCODE_STORE_2D_BLOCK,                ///< XE.HPC.A, XE.HPC
     GED_DP_OPCODE_INVALID
 } GED_DP_OPCODE;
 typedef enum
 {
-    GED_DP_TRANSPOSE_SIMT,    ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_TRANSPOSE_SIMD,    ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_TRANSPOSE_SIMT,    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_TRANSPOSE_SIMD,    ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_TRANSPOSE_INVALID
 } GED_DP_TRANSPOSE;
 typedef enum
 {
-    GED_DP_VECT_SIZE_V1,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V2,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V3,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V4,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V8,      ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V16,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V32,     ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_DP_VECT_SIZE_V64,     ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_DP_VECT_SIZE_V1,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V2,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V3,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V4,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V8,      ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V16,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V32,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_DP_VECT_SIZE_V64,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_DP_VECT_SIZE_INVALID
 } GED_DP_VECT_SIZE;
 typedef enum
@@ -282,8 +282,8 @@ typedef enum
 } GED_DST_CHAN_EN;
 typedef enum
 {
-    GED_EOT_None,    ///< all
-    GED_EOT_EOT,     ///< all
+    GED_EOT_None,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_EOT_EOT,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_EOT_INVALID
 } GED_EOT;
 typedef enum
@@ -306,127 +306,127 @@ typedef enum
 } GED_EXEC_MASK_OFFSET_CTRL;
 typedef enum
 {
-    GED_EXECUTION_DATA_TYPE_Integer, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_EXECUTION_DATA_TYPE_Float,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_EXECUTION_DATA_TYPE_Integer, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_EXECUTION_DATA_TYPE_Float,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_EXECUTION_DATA_TYPE_INVALID
 } GED_EXECUTION_DATA_TYPE;
 typedef enum
 {
-    GED_FUSION_CTRL_Normal,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_FUSION_CTRL_Serialized, ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_FUSION_CTRL_Normal,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_FUSION_CTRL_Serialized, ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_FUSION_CTRL_INVALID
 } GED_FUSION_CTRL;
 typedef enum
 {
-    GED_HEADER_PRESENT_no,      ///< all
-    GED_HEADER_PRESENT_yes,     ///< all
+    GED_HEADER_PRESENT_no,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_HEADER_PRESENT_yes,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_HEADER_PRESENT_INVALID
 } GED_HEADER_PRESENT;
 typedef enum
 {
-    GED_MASK_CTRL_Normal,  ///< all
-    GED_MASK_CTRL_NoMask,  ///< all
+    GED_MASK_CTRL_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MASK_CTRL_NoMask,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MASK_CTRL_INVALID
 } GED_MASK_CTRL;
 typedef enum
 {
-    GED_MATH_FC_INV,               ///< all
-    GED_MATH_FC_LOG,               ///< all
-    GED_MATH_FC_EXP,               ///< all
-    GED_MATH_FC_SQRT,              ///< all
-    GED_MATH_FC_RSQ,               ///< all
-    GED_MATH_FC_SIN,               ///< all
-    GED_MATH_FC_COS,               ///< all
+    GED_MATH_FC_INV,               ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_LOG,               ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_EXP,               ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_SQRT,              ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_RSQ,               ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_SIN,               ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MATH_FC_COS,               ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_FDIV,              ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_POW,               ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_INT_DIV_BOTH,      ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_INT_DIV_QUOTIENT,  ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
     GED_MATH_FC_INT_DIV_REMAINDER, ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
-    GED_MATH_FC_INVM,              ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_FC_RSQRTM,            ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
+    GED_MATH_FC_INVM,              ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_FC_RSQRTM,            ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
     GED_MATH_FC_INVALID
 } GED_MATH_FC;
 typedef enum
 {
-    GED_MATH_MACRO_EXT_mme0,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme1,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme2,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme3,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme4,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme5,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme6,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_mme7,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MATH_MACRO_EXT_nomme,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme0,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme1,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme2,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme3,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme4,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme5,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme6,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_mme7,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MATH_MACRO_EXT_nomme,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
     GED_MATH_MACRO_EXT_INVALID
 } GED_MATH_MACRO_EXT;
 typedef enum
 {
-    GED_MESSAGE_TYPE_MSD0R_HWB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MSD0W_HWB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT0R_OWB,         ///< all
-    GED_MESSAGE_TYPE_MT0R_OWAB,        ///< all
+    GED_MESSAGE_TYPE_MSD0R_HWB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MSD0W_HWB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT0R_OWB,         ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT0R_OWAB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT0R_OWDB,        ///< 10, 11, 7, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT0R_DWS,         ///< all
-    GED_MESSAGE_TYPE_MT0R_BS,          ///< all
+    GED_MESSAGE_TYPE_MT0R_DWS,         ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT0R_BS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT0_MEMFENCE,     ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT0W_OWB,         ///< all
+    GED_MESSAGE_TYPE_MT0W_OWB,         ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT0W_OWDB,        ///< 10, 11, 7, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT0W_DWS,         ///< all
-    GED_MESSAGE_TYPE_MT0W_BS,          ///< all
+    GED_MESSAGE_TYPE_MT0W_DWS,         ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT0W_BS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1R_T,           ///< 10, 11, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1R_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_UI,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1R_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_UI,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_UI4x2,       ///< 10, 11, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1R_MB,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1R_TS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_TA,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1R_MB,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1R_TS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_TA,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_TA4x2,       ///< 10, 11, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1W_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1W_MB,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_TC,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1W_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1W_MB,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_TC,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_TC4x2,       ///< 10, 11, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1W_TS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1R_A64_SB,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1R_A64_US,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_A64_UI,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1W_TS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1R_A64_SB,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1R_A64_US,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_A64_UI,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT1A_A64_UI4x2,   ///< 10, 11, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1R_A64_B,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1W_A64_B,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1W_A64_US,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1W_A64_SB,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT2R_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
+    GED_MESSAGE_TYPE_MT1R_A64_B,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1W_A64_B,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1W_A64_US,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1W_A64_SB,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT2R_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
     GED_MESSAGE_TYPE_MT2R_A64_SB,      ///< 10, 11, 9
     GED_MESSAGE_TYPE_MT2R_A64_US,      ///< 10, 11, 9
-    GED_MESSAGE_TYPE_MT2R_BS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
-    GED_MESSAGE_TYPE_MT2W_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
+    GED_MESSAGE_TYPE_MT2R_BS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
+    GED_MESSAGE_TYPE_MT2W_US,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
     GED_MESSAGE_TYPE_MT2W_A64_US,      ///< 10, 11, 9
     GED_MESSAGE_TYPE_MT2W_A64_SB,      ///< 10, 11, 9
-    GED_MESSAGE_TYPE_MT2W_BS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
-    GED_MESSAGE_TYPE_MT_CC_OWB,        ///< all
-    GED_MESSAGE_TYPE_MT_CC_OWUB,       ///< all
+    GED_MESSAGE_TYPE_MT2W_BS,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
+    GED_MESSAGE_TYPE_MT_CC_OWB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT_CC_OWUB,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_MESSAGE_TYPE_MT_CC_OWDB,       ///< 10, 11, 7, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT_CC_DWS,        ///< all
-    GED_MESSAGE_TYPE_MT_SC_OWUB,       ///< all
-    GED_MESSAGE_TYPE_MT_SC_MB,         ///< all
-    GED_MESSAGE_TYPE_MT_RSI,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT_RTW,           ///< all
-    GED_MESSAGE_TYPE_MT_RTR,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_MESSAGE_TYPE_MT1A_UHI,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT1A_TAH,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT1A_TCH,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT1A_A64_UHI,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT1A_UF,          ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
-    GED_MESSAGE_TYPE_MT1A_UHF,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT1A_A64_UF,      ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
-    GED_MESSAGE_TYPE_MT1A_A64_UHF,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_MESSAGE_TYPE_MT_CC_DWS,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT_SC_OWUB,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT_SC_MB,         ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT_RSI,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT_RTW,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT_RTR,           ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_MESSAGE_TYPE_MT1A_UHI,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT1A_TAH,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT1A_TCH,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT1A_A64_UHI,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT1A_UF,          ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
+    GED_MESSAGE_TYPE_MT1A_UHF,         ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT1A_A64_UF,      ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
+    GED_MESSAGE_TYPE_MT1A_A64_UHF,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_MESSAGE_TYPE_MT_US_CCS_OP,     ///< XE.HP
-    GED_MESSAGE_TYPE_MT_US_UCW,        ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT_TS_CCS_OP,     ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT_TS_UCW,        ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_MESSAGE_TYPE_MT_A64_CCS_PG_OP, ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_MESSAGE_TYPE_MT_US_UCW,        ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT_TS_CCS_OP,     ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT_TS_UCW,        ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_MESSAGE_TYPE_MT_A64_CCS_PG_OP, ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_MESSAGE_TYPE_MT_A64_US_CCS_OP, ///< XE.HP
     GED_MESSAGE_TYPE_MT_A64_US_UCW,    ///< XE.HP
-    GED_MESSAGE_TYPE_MT_BTD_SPAWN,     ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_MESSAGE_TYPE_MT_BTD_SPAWN,     ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_MESSAGE_TYPE_MTR_MB,           ///< 7, 7.5
     GED_MESSAGE_TYPE_MTRR_TS,          ///< 7
     GED_MESSAGE_TYPE_MTRA_TA,          ///< 7
@@ -448,82 +448,83 @@ typedef enum
 } GED_NO_SRC_DEP_SET;
 typedef enum
 {
-    GED_OPCODE_illegal, ///< all
-    GED_OPCODE_mov,     ///< all
-    GED_OPCODE_sel,     ///< all
-    GED_OPCODE_movi,    ///< all
-    GED_OPCODE_not,     ///< all
-    GED_OPCODE_and,     ///< all
-    GED_OPCODE_or,      ///< all
-    GED_OPCODE_xor,     ///< all
-    GED_OPCODE_shr,     ///< all
-    GED_OPCODE_shl,     ///< all
+    GED_OPCODE_stub,    ///< all
+    GED_OPCODE_illegal, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_mov,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_sel,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_movi,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_not,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_and,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_or,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_xor,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_shr,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_shl,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_smov,    ///< 10, 11, 8, 8.1, 9
-    GED_OPCODE_asr,     ///< all
-    GED_OPCODE_cmp,     ///< all
-    GED_OPCODE_cmpn,    ///< all
-    GED_OPCODE_csel,    ///< all
-    GED_OPCODE_bfrev,   ///< all
-    GED_OPCODE_bfe,     ///< all
-    GED_OPCODE_bfi1,    ///< all
-    GED_OPCODE_bfi2,    ///< all
-    GED_OPCODE_jmpi,    ///< all
-    GED_OPCODE_brd,     ///< all
-    GED_OPCODE_if,      ///< all
-    GED_OPCODE_brc,     ///< all
-    GED_OPCODE_else,    ///< all
-    GED_OPCODE_endif,   ///< all
-    GED_OPCODE_while,   ///< all
-    GED_OPCODE_break,   ///< all
-    GED_OPCODE_cont,    ///< all
-    GED_OPCODE_halt,    ///< all
-    GED_OPCODE_calla,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
-    GED_OPCODE_call,    ///< all
-    GED_OPCODE_ret,     ///< all
-    GED_OPCODE_goto,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_OPCODE_join,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
+    GED_OPCODE_asr,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_cmp,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_cmpn,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_csel,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_bfrev,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_bfe,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_bfi1,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_bfi2,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_jmpi,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_brd,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_if,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_brc,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_else,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_endif,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_while,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_break,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_cont,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_halt,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_calla,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
+    GED_OPCODE_call,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_ret,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_goto,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_OPCODE_join,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
     GED_OPCODE_wait,    ///< 10, 11, 7, 7.5, 8, 8.1, 9
-    GED_OPCODE_send,    ///< all
-    GED_OPCODE_sendc,   ///< all
+    GED_OPCODE_send,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_sendc,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_sends,   ///< 10, 11, 9
     GED_OPCODE_sendsc,  ///< 10, 11, 9
-    GED_OPCODE_math,    ///< all
-    GED_OPCODE_add,     ///< all
-    GED_OPCODE_mul,     ///< all
-    GED_OPCODE_avg,     ///< all
-    GED_OPCODE_frc,     ///< all
-    GED_OPCODE_rndu,    ///< all
-    GED_OPCODE_rndd,    ///< all
-    GED_OPCODE_rnde,    ///< all
-    GED_OPCODE_rndz,    ///< all
-    GED_OPCODE_mac,     ///< all
-    GED_OPCODE_mach,    ///< all
-    GED_OPCODE_lzd,     ///< all
-    GED_OPCODE_fbh,     ///< all
-    GED_OPCODE_fbl,     ///< all
-    GED_OPCODE_cbit,    ///< all
-    GED_OPCODE_addc,    ///< all
-    GED_OPCODE_subb,    ///< all
-    GED_OPCODE_sad2,    ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_OPCODE_sada2,   ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_math,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_add,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_mul,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_avg,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_frc,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_rndu,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_rndd,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_rnde,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_rndz,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_mac,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_mach,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_lzd,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_fbh,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_fbl,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_cbit,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_addc,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_subb,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_sad2,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_sada2,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_dp4,     ///< 10, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_dph,     ///< 10, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_dp3,     ///< 10, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_dp2,     ///< 10, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_line,    ///< 10, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_pln,     ///< 10, 7, 7.5, 8, 8.1, 9
-    GED_OPCODE_mad,     ///< all
+    GED_OPCODE_mad,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_OPCODE_lrp,     ///< 10, 7, 7.5, 8, 8.1, 9
-    GED_OPCODE_madm,    ///< 10, 11, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 8, 8.1, 9
-    GED_OPCODE_nop,     ///< all
-    GED_OPCODE_ror,     ///< 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_OPCODE_rol,     ///< 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_OPCODE_dp4a,    ///< 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_OPCODE_sync,    ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_OPCODE_add3,    ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_OPCODE_madm,    ///< 10, 11, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 8, 8.1, 9
+    GED_OPCODE_nop,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_OPCODE_ror,     ///< 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_OPCODE_rol,     ///< 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_OPCODE_dp4a,    ///< 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_OPCODE_sync,    ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_OPCODE_add3,    ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_OPCODE_dpas,    ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
     GED_OPCODE_dpasw,   ///< XE.HP, XE.HPG
-    GED_OPCODE_bfn,     ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_OPCODE_bfn,     ///< XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_OPCODE_macl,    ///< XE.HPC.A, XE.HPC
     GED_OPCODE_srnd,    ///< XE.HPC
     GED_OPCODE_f32to16, ///< 7, 7.5
@@ -550,20 +551,20 @@ typedef enum
 } GED_PRECISION;
 typedef enum
 {
-    GED_PRED_CTRL_Normal,     ///< all
-    GED_PRED_CTRL_Sequential, ///< all
-    GED_PRED_CTRL_anyv,       ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_allv,       ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_any2h,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_all2h,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_any4h,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_all4h,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_any8h,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_all8h,      ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_any16h,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_all16h,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_any32h,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
-    GED_PRED_CTRL_all32h,     ///< 10, 11, TGL, XE.HP, XE.HPG, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_Normal,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_Sequential, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_anyv,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_allv,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_any2h,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_all2h,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_any4h,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_all4h,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_any8h,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_all8h,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_any16h,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_all16h,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_any32h,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_CTRL_all32h,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_PRED_CTRL_x,          ///< 10, 7, 7.5, 8, 8.1, 9
     GED_PRED_CTRL_y,          ///< 10, 7, 7.5, 8, 8.1, 9
     GED_PRED_CTRL_z,          ///< 10, 7, 7.5, 8, 8.1, 9
@@ -574,15 +575,15 @@ typedef enum
 } GED_PRED_CTRL;
 typedef enum
 {
-    GED_PRED_INV_Normal,  ///< all
-    GED_PRED_INV_Invert,  ///< all
+    GED_PRED_INV_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_PRED_INV_Invert,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_PRED_INV_INVALID
 } GED_PRED_INV;
 typedef enum
 {
-    GED_REG_FILE_ARF,     ///< all
-    GED_REG_FILE_GRF,     ///< all
-    GED_REG_FILE_IMM,     ///< all
+    GED_REG_FILE_ARF,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_REG_FILE_GRF,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_REG_FILE_IMM,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_REG_FILE_INVALID
 } GED_REG_FILE;
 typedef enum
@@ -593,61 +594,61 @@ typedef enum
 } GED_REP_CTRL;
 typedef enum
 {
-    GED_RETURN_DATA_CONTROL_Disabled, ///< all
-    GED_RETURN_DATA_CONTROL_Enabled,  ///< all
+    GED_RETURN_DATA_CONTROL_Disabled, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_RETURN_DATA_CONTROL_Enabled,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_RETURN_DATA_CONTROL_INVALID
 } GED_RETURN_DATA_CONTROL;
 typedef enum
 {
-    GED_SATURATE_Normal,  ///< all
-    GED_SATURATE_sat,     ///< all
+    GED_SATURATE_Normal,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SATURATE_sat,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_SATURATE_INVALID
 } GED_SATURATE;
 typedef enum
 {
-    GED_SFID_NULL,       ///< all
-    GED_SFID_SAMPLER,    ///< all
-    GED_SFID_GATEWAY,    ///< all
-    GED_SFID_DP_DC2,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
-    GED_SFID_DP_RC,      ///< all
-    GED_SFID_URB,        ///< all
+    GED_SFID_NULL,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SFID_SAMPLER,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SFID_GATEWAY,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SFID_DP_DC2,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
+    GED_SFID_DP_RC,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SFID_URB,        ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_SFID_SPAWNER,    ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
     GED_SFID_VME,        ///< 10, 11, TGL, XE.HP, 7, 7.5, 8, 8.1, 9
-    GED_SFID_DP_DCRO,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 9
-    GED_SFID_DP_DC0,     ///< all
-    GED_SFID_PI,         ///< all
-    GED_SFID_DP_DC1,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, 7.5, 8, 8.1, 9
+    GED_SFID_DP_DCRO,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 9
+    GED_SFID_DP_DC0,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SFID_PI,         ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SFID_DP_DC1,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7.5, 8, 8.1, 9
     GED_SFID_CRE,        ///< 10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
     GED_SFID_UGML,       ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_SFID_BTD,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_SFID_RTA,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_SFID_TGM,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_SFID_SLM,        ///< XE.HPG, XE.HPC.A, XE.HPC
-    GED_SFID_UGM,        ///< XE.HPG, XE.HPC.A, XE.HPC
+    GED_SFID_BTD,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SFID_RTA,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SFID_TGM,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SFID_SLM,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SFID_UGM,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_SFID_DP_SAMPLER, ///< 7, 7.5, 8, 8.1
     GED_SFID_DP_CC,      ///< 7, 7.5, 8, 8.1
     GED_SFID_INVALID
 } GED_SFID;
 typedef enum
 {
-    GED_SIMDMODE_SIMD4x2, ///< all
-    GED_SIMDMODE_SIMD16,  ///< all
-    GED_SIMDMODE_SIMD8,   ///< all
+    GED_SIMDMODE_SIMD4x2, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SIMDMODE_SIMD16,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SIMDMODE_SIMD8,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_SIMDMODE_INVALID
 } GED_SIMDMODE;
 typedef enum
 {
-    GED_SLOT_GROUP_SIMD4x2, ///< all
-    GED_SLOT_GROUP_low_8,   ///< all
-    GED_SLOT_GROUP_high_8,  ///< all
+    GED_SLOT_GROUP_SIMD4x2, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SLOT_GROUP_low_8,   ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SLOT_GROUP_high_8,  ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_SLOT_GROUP_INVALID
 } GED_SLOT_GROUP;
 typedef enum
 {
-    GED_SRC_MOD_Normal,            ///< all
-    GED_SRC_MOD_Absolute,          ///< all
-    GED_SRC_MOD_Negative,          ///< all
-    GED_SRC_MOD_Negative_Absolute, ///< all
+    GED_SRC_MOD_Normal,            ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SRC_MOD_Absolute,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SRC_MOD_Negative,          ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SRC_MOD_Negative_Absolute, ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_SRC_MOD_INVALID
 } GED_SRC_MOD;
 typedef enum
@@ -663,8 +664,8 @@ typedef enum
 } GED_SUB_BYTE_PRECISION;
 typedef enum
 {
-    GED_SUB_FUNC_ID_GetTimeStamp,    ///< all
-    GED_SUB_FUNC_ID_BarrierMsg,      ///< all
+    GED_SUB_FUNC_ID_GetTimeStamp,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_SUB_FUNC_ID_BarrierMsg,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_SUB_FUNC_ID_OpenGateway,     ///< 7, 7.5, 8, 8.1
     GED_SUB_FUNC_ID_CloseGateway,    ///< 7, 7.5, 8, 8.1
     GED_SUB_FUNC_ID_ForwardMsg,      ///< 7, 7.5, 8, 8.1
@@ -682,19 +683,19 @@ typedef enum
 } GED_SWIZZLE;
 typedef enum
 {
-    GED_SYNC_FC_nop,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_SYNC_FC_grfsb,   ///< TGL, XE.HP, XE.HPG
-    GED_SYNC_FC_allrd,   ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_SYNC_FC_allwr,   ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_SYNC_FC_bar,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-    GED_SYNC_FC_host,    ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+    GED_SYNC_FC_nop,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SYNC_FC_grfsb,   ///< TGL, XE.HP, XE.HPG, XE.LPG.MD
+    GED_SYNC_FC_allrd,   ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SYNC_FC_allwr,   ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SYNC_FC_bar,     ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
+    GED_SYNC_FC_host,    ///< TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD
     GED_SYNC_FC_fence,   ///< XE.HPC.A, XE.HPC
     GED_SYNC_FC_INVALID
 } GED_SYNC_FC;
 typedef enum
 {
-    GED_THREAD_CTRL_Normal,    ///< all
-    GED_THREAD_CTRL_Atomic,    ///< all
+    GED_THREAD_CTRL_Normal,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
+    GED_THREAD_CTRL_Atomic,    ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, 7, 7.5, 8, 8.1, 9
     GED_THREAD_CTRL_NoPreempt, ///< 10, 11
     GED_THREAD_CTRL_Switch,    ///< 10, 11, 7, 7.5, 8, 8.1, 9
     GED_THREAD_CTRL_INVALID

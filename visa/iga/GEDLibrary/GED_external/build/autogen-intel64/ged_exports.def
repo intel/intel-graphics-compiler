@@ -32,6 +32,8 @@ EXPORTS
   GED_SetOpcode
   GED_IsCompact
   GED_GetModel
+  GED_Get___SrcImm
+  GED_Set___SrcImm
   GED_GetNumOfSourceOperands
   GED_GetHasDestinationOperand
   GED_GetAccessMode

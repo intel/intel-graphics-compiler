@@ -16,9 +16,9 @@ SPDX-License-Identifier: MIT
 #include "ged_decoding_tables.h"
 #include "ged_mapping_tables.h"
 #include "ged_encoding_masks_tables.h"
-#include "ged_model_xe_hpg.h"
+#include "ged_model_xe_lpg_md.h"
 
-namespace GED_MODEL_NS_XE_HPG
+namespace GED_MODEL_NS_XE_LPG_MD
 {
 
 /*!
@@ -103,7 +103,7 @@ static ged_compact_mapping_table_t oneSourceCompactMapping = MappingTable50;
  * Top level decoding table in the decoding chain for the format send.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t sendDecoding = DecodingTable642;
+static ged_ins_decoding_table_t sendDecoding = DecodingTable663;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format send.
@@ -127,13 +127,13 @@ static ged_instruction_masks_table_t syncEncodingMasks = EncodingMasksTable119;
  * Top level decoding table in the decoding chain for the format threeSource.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable637;
+static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable664;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format threeSource.
  * The table is a list of encoding masks entries terminated by a NO_MASKS entry.
  */
-static ged_instruction_masks_table_t threeSourceEncodingMasks = EncodingMasksTable135;
+static ged_instruction_masks_table_t threeSourceEncodingMasks = EncodingMasksTable173;
 
 /*!
  * Top level decoding table in the decoding chain for the format threeSourceCompact.
@@ -157,7 +157,7 @@ static ged_compact_mapping_table_t threeSourceCompactMapping = MappingTable51;
  * Top level decoding table in the decoding chain for the format threeSourceMacro.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t threeSourceMacroDecoding = DecodingTable638;
+static ged_ins_decoding_table_t threeSourceMacroDecoding = DecodingTable665;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format threeSourceMacro.
@@ -285,8 +285,8 @@ OpcodeTables Opcodes[128] =
     NULL, NULL, NULL, NULL, NULL, // 86
     NULL, NULL, NULL, NULL, NULL, // 87
     threeSourceDecoding, threeSourceEncodingMasks, threeSourceCompactDecoding, threeSourceCompactEncodingMasks, threeSourceCompactMapping, // 88
-    threeSourceDecoding, threeSourceEncodingMasks, threeSourceCompactDecoding, threeSourceCompactEncodingMasks, threeSourceCompactMapping, // 89
-    threeSourceDecoding, threeSourceEncodingMasks, threeSourceCompactDecoding, threeSourceCompactEncodingMasks, threeSourceCompactMapping, // 90
+    NULL, NULL, NULL, NULL, NULL, // 89
+    NULL, NULL, NULL, NULL, NULL, // 90
     threeSourceDecoding, threeSourceEncodingMasks, threeSourceCompactDecoding, threeSourceCompactEncodingMasks, threeSourceCompactMapping, // 91
     NULL, NULL, NULL, NULL, NULL, // 92
     threeSourceMacroDecoding, threeSourceMacroEncodingMasks, NULL, NULL, NULL, // 93
@@ -325,4 +325,4 @@ OpcodeTables Opcodes[128] =
     NULL, NULL, NULL, NULL, NULL, // 126
     NULL, NULL, NULL, NULL, NULL // 127
 }; // Opcodes[]
-} // namespace GED_MODEL_NS_XE_HPG
+} // namespace GED_MODEL_NS_XE_LPG_MD

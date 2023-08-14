@@ -836,13 +836,12 @@ void Encoder::encodeSendInstruction(const Instruction &i) {
   ////////////////////////////////////////////
   // send operands
   const OpSpec &os = i.getOpSpec();
+  encodeSendDestination(i.getDestination());
   if (os.isSendsFormat()) {
     // old sends sources get special treatment
-    encodeSendDestination(i.getDestination());
     encodeSendsSource0(i.getSource(0));
     encodeSendsSource1(i.getSource(1));
   } else {
-    encodeSendDestination(i.getDestination());
     encodeSendSource0(i.getSource(0));
     if (m_model.supportsXeSend()) {
       encodeSendsSource1(i.getSource(1));

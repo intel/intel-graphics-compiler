@@ -343,6 +343,17 @@ protected:
     return regName;
   }
 
+  template <SourceIndex S> void decodeGrfSourceReg(RegRef& regRef) {
+    uint32_t regNumBits = decodeSrcRegNum<S>();
+    RegName regName = RegName::INVALID;
+    decodeReg((int)S, GED_REG_FILE_GRF, regNumBits, regName, regRef);
+    if (!m_opSpec->isAnySendFormat() && !isMacro()) {
+      regRef.subRegNum = (uint16_t)decodeSrcSubRegNum<S>();
+    } else {
+      regRef.subRegNum = 0;
+    }
+  }
+
   template <SourceIndex S> DirRegOpInfo decodeSrcDirRegOpInfo() {
     DirRegOpInfo dri;
     dri.regName = decodeSourceReg<S>(dri.regRef);

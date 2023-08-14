@@ -2909,6 +2909,8 @@ public:
     int srcLen = -1;
     ConsumeOrFail(COLON, "expected payload length suffix (e.g. :2)");
 
+    int regLimit = 255;
+
     // explicit length syntax
     //   e.g. "r13:4"
     //   e.g. "r13:(2*2)"
@@ -2921,7 +2923,7 @@ public:
     }
     if (v.s64 < 0 || v.s64 > 0x1F) {
       FailAtT(at, "SrcLen out of range");
-    } else if (regNum + (int)v.s64 - 1 > 255) {
+    } else if (regNum + (int)v.s64 - 1 > regLimit) {
       FailAtT(at, "SrcLen register range extends past GRF end");
     }
     if (v.s64 > 32) { // could constrain this more

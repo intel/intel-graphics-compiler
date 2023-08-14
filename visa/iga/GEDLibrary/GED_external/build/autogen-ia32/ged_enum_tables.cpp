@@ -2717,272 +2717,11 @@ static GED_OPCODE OpcodeVar77 = (GED_OPCODE)77;
 static GED_OPCODE OpcodeVar78 = (GED_OPCODE)78;
 static GED_OPCODE OpcodeVar79 = (GED_OPCODE)79;
 static GED_OPCODE OpcodeVar80 = (GED_OPCODE)80;
+static GED_OPCODE OpcodeVar81 = (GED_OPCODE)81;
 const GED_OPCODE* OpcodeTable0[128] =
 {
     &OpcodeVar0, // 0
-    &OpcodeVar1, // 1
-    &OpcodeVar2, // 2
-    &OpcodeVar3, // 3
-    &OpcodeVar4, // 4
-    &OpcodeVar5, // 5
-    &OpcodeVar6, // 6
-    &OpcodeVar7, // 7
-    &OpcodeVar8, // 8
-    &OpcodeVar9, // 9
-    &OpcodeVar10, // 10
-    NULL, // 11
-    &OpcodeVar11, // 12
-    NULL, // 13
-    NULL, // 14
-    NULL, // 15
-    &OpcodeVar12, // 16
-    &OpcodeVar13, // 17
-    &OpcodeVar14, // 18
-    NULL, // 19
-    NULL, // 20
-    NULL, // 21
-    NULL, // 22
-    &OpcodeVar15, // 23
-    &OpcodeVar16, // 24
-    &OpcodeVar17, // 25
-    &OpcodeVar18, // 26
-    NULL, // 27
-    NULL, // 28
-    NULL, // 29
-    NULL, // 30
-    NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
-    NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
-    &OpcodeVar34, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
-    &OpcodeVar37, // 51
-    &OpcodeVar38, // 52
-    NULL, // 53
-    NULL, // 54
-    NULL, // 55
-    &OpcodeVar39, // 56
-    NULL, // 57
-    NULL, // 58
-    NULL, // 59
-    NULL, // 60
-    NULL, // 61
-    NULL, // 62
-    NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
-    NULL, // 82
-    NULL, // 83
-    &OpcodeVar58, // 84
-    &OpcodeVar59, // 85
-    &OpcodeVar60, // 86
-    &OpcodeVar61, // 87
-    NULL, // 88
-    &OpcodeVar62, // 89
-    &OpcodeVar63, // 90
-    &OpcodeVar64, // 91
-    &OpcodeVar65, // 92
-    &OpcodeVar66, // 93
-    NULL, // 94
-    NULL, // 95
-    NULL, // 96
-    NULL, // 97
-    NULL, // 98
-    NULL, // 99
-    NULL, // 100
-    NULL, // 101
-    NULL, // 102
-    NULL, // 103
-    NULL, // 104
-    NULL, // 105
-    NULL, // 106
-    NULL, // 107
-    NULL, // 108
-    NULL, // 109
-    NULL, // 110
-    NULL, // 111
-    NULL, // 112
-    NULL, // 113
-    NULL, // 114
-    NULL, // 115
-    NULL, // 116
-    NULL, // 117
-    NULL, // 118
-    NULL, // 119
-    NULL, // 120
-    NULL, // 121
-    NULL, // 122
-    NULL, // 123
-    NULL, // 124
-    NULL, // 125
-    &OpcodeVar67, // 126
-    NULL // 127
-}; // OpcodeTable0[]
-const GED_OPCODE* OpcodeTable1[128] =
-{
-    &OpcodeVar0, // 0
-    &OpcodeVar1, // 1
-    &OpcodeVar2, // 2
-    &OpcodeVar3, // 3
-    &OpcodeVar4, // 4
-    &OpcodeVar5, // 5
-    &OpcodeVar6, // 6
-    &OpcodeVar7, // 7
-    &OpcodeVar8, // 8
-    &OpcodeVar9, // 9
-    &OpcodeVar10, // 10
-    NULL, // 11
-    &OpcodeVar11, // 12
-    NULL, // 13
-    &OpcodeVar68, // 14
-    &OpcodeVar69, // 15
-    &OpcodeVar12, // 16
-    &OpcodeVar13, // 17
-    &OpcodeVar14, // 18
-    NULL, // 19
-    NULL, // 20
-    NULL, // 21
-    NULL, // 22
-    &OpcodeVar15, // 23
-    &OpcodeVar16, // 24
-    &OpcodeVar17, // 25
-    &OpcodeVar18, // 26
-    NULL, // 27
-    NULL, // 28
-    NULL, // 29
-    NULL, // 30
-    NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
-    NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
-    &OpcodeVar34, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
-    &OpcodeVar37, // 51
-    &OpcodeVar38, // 52
-    NULL, // 53
-    NULL, // 54
-    NULL, // 55
-    &OpcodeVar39, // 56
-    NULL, // 57
-    NULL, // 58
-    NULL, // 59
-    NULL, // 60
-    NULL, // 61
-    NULL, // 62
-    NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
-    NULL, // 82
-    NULL, // 83
-    NULL, // 84
-    NULL, // 85
-    NULL, // 86
-    NULL, // 87
-    &OpcodeVar70, // 88
-    NULL, // 89
-    NULL, // 90
-    &OpcodeVar64, // 91
-    NULL, // 92
-    &OpcodeVar66, // 93
-    NULL, // 94
-    NULL, // 95
-    NULL, // 96
-    NULL, // 97
-    NULL, // 98
-    NULL, // 99
-    NULL, // 100
-    NULL, // 101
-    NULL, // 102
-    NULL, // 103
-    NULL, // 104
-    NULL, // 105
-    NULL, // 106
-    NULL, // 107
-    NULL, // 108
-    NULL, // 109
-    NULL, // 110
-    NULL, // 111
-    NULL, // 112
-    NULL, // 113
-    NULL, // 114
-    NULL, // 115
-    NULL, // 116
-    NULL, // 117
-    NULL, // 118
-    NULL, // 119
-    NULL, // 120
-    NULL, // 121
-    NULL, // 122
-    NULL, // 123
-    NULL, // 124
-    NULL, // 125
-    &OpcodeVar67, // 126
-    NULL // 127
-}; // OpcodeTable1[]
-const GED_OPCODE* OpcodeTable2[128] =
-{
-    &OpcodeVar0, // 0
-    &OpcodeVar71, // 1
+    NULL, // 1
     NULL, // 2
     NULL, // 3
     NULL, // 4
@@ -3013,31 +2752,31 @@ const GED_OPCODE* OpcodeTable2[128] =
     NULL, // 29
     NULL, // 30
     NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
+    NULL, // 32
+    NULL, // 33
+    NULL, // 34
+    NULL, // 35
+    NULL, // 36
+    NULL, // 37
     NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
+    NULL, // 39
+    NULL, // 40
+    NULL, // 41
+    NULL, // 42
+    NULL, // 43
+    NULL, // 44
+    NULL, // 45
+    NULL, // 46
+    NULL, // 47
     NULL, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
+    NULL, // 49
+    NULL, // 50
     NULL, // 51
     NULL, // 52
     NULL, // 53
     NULL, // 54
     NULL, // 55
-    &OpcodeVar39, // 56
+    NULL, // 56
     NULL, // 57
     NULL, // 58
     NULL, // 59
@@ -3045,75 +2784,337 @@ const GED_OPCODE* OpcodeTable2[128] =
     NULL, // 61
     NULL, // 62
     NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
+    NULL, // 64
+    NULL, // 65
+    NULL, // 66
+    NULL, // 67
+    NULL, // 68
+    NULL, // 69
+    NULL, // 70
+    NULL, // 71
+    NULL, // 72
+    NULL, // 73
+    NULL, // 74
+    NULL, // 75
+    NULL, // 76
+    NULL, // 77
+    NULL, // 78
+    NULL, // 79
+    NULL, // 80
+    NULL, // 81
     NULL, // 82
     NULL, // 83
     NULL, // 84
     NULL, // 85
     NULL, // 86
     NULL, // 87
-    &OpcodeVar70, // 88
+    NULL, // 88
     NULL, // 89
     NULL, // 90
-    &OpcodeVar64, // 91
+    NULL, // 91
     NULL, // 92
     NULL, // 93
     NULL, // 94
     NULL, // 95
-    &OpcodeVar67, // 96
-    &OpcodeVar1, // 97
-    &OpcodeVar2, // 98
-    &OpcodeVar3, // 99
-    &OpcodeVar4, // 100
-    &OpcodeVar5, // 101
-    &OpcodeVar6, // 102
-    &OpcodeVar7, // 103
-    &OpcodeVar8, // 104
-    &OpcodeVar9, // 105
+    NULL, // 96
+    NULL, // 97
+    NULL, // 98
+    NULL, // 99
+    NULL, // 100
+    NULL, // 101
+    NULL, // 102
+    NULL, // 103
+    NULL, // 104
+    NULL, // 105
     NULL, // 106
     NULL, // 107
-    &OpcodeVar11, // 108
+    NULL, // 108
     NULL, // 109
-    &OpcodeVar68, // 110
-    &OpcodeVar69, // 111
-    &OpcodeVar12, // 112
-    &OpcodeVar13, // 113
-    &OpcodeVar14, // 114
+    NULL, // 110
+    NULL, // 111
+    NULL, // 112
+    NULL, // 113
+    NULL, // 114
     NULL, // 115
     NULL, // 116
     NULL, // 117
     NULL, // 118
-    &OpcodeVar15, // 119
-    &OpcodeVar16, // 120
-    &OpcodeVar17, // 121
-    &OpcodeVar18, // 122
+    NULL, // 119
+    NULL, // 120
+    NULL, // 121
+    NULL, // 122
     NULL, // 123
     NULL, // 124
     NULL, // 125
     NULL, // 126
     NULL // 127
+}; // OpcodeTable0[]
+const GED_OPCODE* OpcodeTable1[128] =
+{
+    &OpcodeVar1, // 0
+    &OpcodeVar2, // 1
+    &OpcodeVar3, // 2
+    &OpcodeVar4, // 3
+    &OpcodeVar5, // 4
+    &OpcodeVar6, // 5
+    &OpcodeVar7, // 6
+    &OpcodeVar8, // 7
+    &OpcodeVar9, // 8
+    &OpcodeVar10, // 9
+    &OpcodeVar11, // 10
+    NULL, // 11
+    &OpcodeVar12, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    &OpcodeVar13, // 16
+    &OpcodeVar14, // 17
+    &OpcodeVar15, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    &OpcodeVar16, // 23
+    &OpcodeVar17, // 24
+    &OpcodeVar18, // 25
+    &OpcodeVar19, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
+    &OpcodeVar35, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    &OpcodeVar38, // 51
+    &OpcodeVar39, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    NULL, // 82
+    NULL, // 83
+    &OpcodeVar59, // 84
+    &OpcodeVar60, // 85
+    &OpcodeVar61, // 86
+    &OpcodeVar62, // 87
+    NULL, // 88
+    &OpcodeVar63, // 89
+    &OpcodeVar64, // 90
+    &OpcodeVar65, // 91
+    &OpcodeVar66, // 92
+    &OpcodeVar67, // 93
+    NULL, // 94
+    NULL, // 95
+    NULL, // 96
+    NULL, // 97
+    NULL, // 98
+    NULL, // 99
+    NULL, // 100
+    NULL, // 101
+    NULL, // 102
+    NULL, // 103
+    NULL, // 104
+    NULL, // 105
+    NULL, // 106
+    NULL, // 107
+    NULL, // 108
+    NULL, // 109
+    NULL, // 110
+    NULL, // 111
+    NULL, // 112
+    NULL, // 113
+    NULL, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    NULL, // 119
+    NULL, // 120
+    NULL, // 121
+    NULL, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    &OpcodeVar68, // 126
+    NULL // 127
+}; // OpcodeTable1[]
+const GED_OPCODE* OpcodeTable2[128] =
+{
+    &OpcodeVar1, // 0
+    &OpcodeVar2, // 1
+    &OpcodeVar3, // 2
+    &OpcodeVar4, // 3
+    &OpcodeVar5, // 4
+    &OpcodeVar6, // 5
+    &OpcodeVar7, // 6
+    &OpcodeVar8, // 7
+    &OpcodeVar9, // 8
+    &OpcodeVar10, // 9
+    &OpcodeVar11, // 10
+    NULL, // 11
+    &OpcodeVar12, // 12
+    NULL, // 13
+    &OpcodeVar69, // 14
+    &OpcodeVar70, // 15
+    &OpcodeVar13, // 16
+    &OpcodeVar14, // 17
+    &OpcodeVar15, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    &OpcodeVar16, // 23
+    &OpcodeVar17, // 24
+    &OpcodeVar18, // 25
+    &OpcodeVar19, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
+    &OpcodeVar35, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    &OpcodeVar38, // 51
+    &OpcodeVar39, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    NULL, // 82
+    NULL, // 83
+    NULL, // 84
+    NULL, // 85
+    NULL, // 86
+    NULL, // 87
+    &OpcodeVar71, // 88
+    NULL, // 89
+    NULL, // 90
+    &OpcodeVar65, // 91
+    NULL, // 92
+    &OpcodeVar67, // 93
+    NULL, // 94
+    NULL, // 95
+    NULL, // 96
+    NULL, // 97
+    NULL, // 98
+    NULL, // 99
+    NULL, // 100
+    NULL, // 101
+    NULL, // 102
+    NULL, // 103
+    NULL, // 104
+    NULL, // 105
+    NULL, // 106
+    NULL, // 107
+    NULL, // 108
+    NULL, // 109
+    NULL, // 110
+    NULL, // 111
+    NULL, // 112
+    NULL, // 113
+    NULL, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    NULL, // 119
+    NULL, // 120
+    NULL, // 121
+    NULL, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    &OpcodeVar68, // 126
+    NULL // 127
 }; // OpcodeTable2[]
 const GED_OPCODE* OpcodeTable3[128] =
 {
-    &OpcodeVar0, // 0
-    &OpcodeVar71, // 1
+    &OpcodeVar1, // 0
+    &OpcodeVar72, // 1
     NULL, // 2
     NULL, // 3
     NULL, // 4
@@ -3144,31 +3145,31 @@ const GED_OPCODE* OpcodeTable3[128] =
     NULL, // 29
     NULL, // 30
     NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
     NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
     NULL, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
     NULL, // 51
     NULL, // 52
     NULL, // 53
     NULL, // 54
     NULL, // 55
-    &OpcodeVar39, // 56
+    &OpcodeVar40, // 56
     NULL, // 57
     NULL, // 58
     NULL, // 59
@@ -3176,65 +3177,65 @@ const GED_OPCODE* OpcodeTable3[128] =
     NULL, // 61
     NULL, // 62
     NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
-    &OpcodeVar72, // 82
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    NULL, // 82
     NULL, // 83
     NULL, // 84
     NULL, // 85
     NULL, // 86
     NULL, // 87
-    &OpcodeVar70, // 88
-    &OpcodeVar73, // 89
-    &OpcodeVar74, // 90
-    &OpcodeVar64, // 91
+    &OpcodeVar71, // 88
+    NULL, // 89
+    NULL, // 90
+    &OpcodeVar65, // 91
     NULL, // 92
-    &OpcodeVar66, // 93
+    NULL, // 93
     NULL, // 94
     NULL, // 95
-    &OpcodeVar67, // 96
-    &OpcodeVar1, // 97
-    &OpcodeVar2, // 98
-    &OpcodeVar3, // 99
-    &OpcodeVar4, // 100
-    &OpcodeVar5, // 101
-    &OpcodeVar6, // 102
-    &OpcodeVar7, // 103
-    &OpcodeVar8, // 104
-    &OpcodeVar9, // 105
+    &OpcodeVar68, // 96
+    &OpcodeVar2, // 97
+    &OpcodeVar3, // 98
+    &OpcodeVar4, // 99
+    &OpcodeVar5, // 100
+    &OpcodeVar6, // 101
+    &OpcodeVar7, // 102
+    &OpcodeVar8, // 103
+    &OpcodeVar9, // 104
+    &OpcodeVar10, // 105
     NULL, // 106
-    &OpcodeVar75, // 107
-    &OpcodeVar11, // 108
+    NULL, // 107
+    &OpcodeVar12, // 108
     NULL, // 109
-    &OpcodeVar68, // 110
-    &OpcodeVar69, // 111
-    &OpcodeVar12, // 112
-    &OpcodeVar13, // 113
-    &OpcodeVar14, // 114
+    &OpcodeVar69, // 110
+    &OpcodeVar70, // 111
+    &OpcodeVar13, // 112
+    &OpcodeVar14, // 113
+    &OpcodeVar15, // 114
     NULL, // 115
     NULL, // 116
     NULL, // 117
     NULL, // 118
-    &OpcodeVar15, // 119
-    &OpcodeVar16, // 120
-    &OpcodeVar17, // 121
-    &OpcodeVar18, // 122
+    &OpcodeVar16, // 119
+    &OpcodeVar17, // 120
+    &OpcodeVar18, // 121
+    &OpcodeVar19, // 122
     NULL, // 123
     NULL, // 124
     NULL, // 125
@@ -3243,8 +3244,8 @@ const GED_OPCODE* OpcodeTable3[128] =
 }; // OpcodeTable3[]
 const GED_OPCODE* OpcodeTable4[128] =
 {
-    &OpcodeVar0, // 0
-    &OpcodeVar71, // 1
+    &OpcodeVar1, // 0
+    &OpcodeVar72, // 1
     NULL, // 2
     NULL, // 3
     NULL, // 4
@@ -3275,31 +3276,31 @@ const GED_OPCODE* OpcodeTable4[128] =
     NULL, // 29
     NULL, // 30
     NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
     NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
     NULL, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
     NULL, // 51
     NULL, // 52
     NULL, // 53
     NULL, // 54
     NULL, // 55
-    &OpcodeVar39, // 56
+    &OpcodeVar40, // 56
     NULL, // 57
     NULL, // 58
     NULL, // 59
@@ -3307,65 +3308,65 @@ const GED_OPCODE* OpcodeTable4[128] =
     NULL, // 61
     NULL, // 62
     NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    NULL, // 80
-    NULL, // 81
-    &OpcodeVar72, // 82
-    &OpcodeVar76, // 83
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    &OpcodeVar73, // 82
+    NULL, // 83
     NULL, // 84
     NULL, // 85
     NULL, // 86
     NULL, // 87
-    &OpcodeVar70, // 88
-    &OpcodeVar73, // 89
-    NULL, // 90
-    &OpcodeVar64, // 91
+    &OpcodeVar71, // 88
+    &OpcodeVar74, // 89
+    &OpcodeVar75, // 90
+    &OpcodeVar65, // 91
     NULL, // 92
-    &OpcodeVar66, // 93
+    &OpcodeVar67, // 93
     NULL, // 94
     NULL, // 95
-    &OpcodeVar67, // 96
-    &OpcodeVar1, // 97
-    &OpcodeVar2, // 98
-    &OpcodeVar3, // 99
-    &OpcodeVar4, // 100
-    &OpcodeVar5, // 101
-    &OpcodeVar6, // 102
-    &OpcodeVar7, // 103
-    &OpcodeVar8, // 104
-    &OpcodeVar9, // 105
+    &OpcodeVar68, // 96
+    &OpcodeVar2, // 97
+    &OpcodeVar3, // 98
+    &OpcodeVar4, // 99
+    &OpcodeVar5, // 100
+    &OpcodeVar6, // 101
+    &OpcodeVar7, // 102
+    &OpcodeVar8, // 103
+    &OpcodeVar9, // 104
+    &OpcodeVar10, // 105
     NULL, // 106
-    &OpcodeVar75, // 107
-    &OpcodeVar11, // 108
+    &OpcodeVar76, // 107
+    &OpcodeVar12, // 108
     NULL, // 109
-    &OpcodeVar68, // 110
-    &OpcodeVar69, // 111
-    &OpcodeVar12, // 112
-    &OpcodeVar13, // 113
-    &OpcodeVar14, // 114
+    &OpcodeVar69, // 110
+    &OpcodeVar70, // 111
+    &OpcodeVar13, // 112
+    &OpcodeVar14, // 113
+    &OpcodeVar15, // 114
     NULL, // 115
     NULL, // 116
     NULL, // 117
     NULL, // 118
-    &OpcodeVar15, // 119
-    &OpcodeVar16, // 120
-    &OpcodeVar17, // 121
-    &OpcodeVar18, // 122
+    &OpcodeVar16, // 119
+    &OpcodeVar17, // 120
+    &OpcodeVar18, // 121
+    &OpcodeVar19, // 122
     NULL, // 123
     NULL, // 124
     NULL, // 125
@@ -3374,8 +3375,8 @@ const GED_OPCODE* OpcodeTable4[128] =
 }; // OpcodeTable4[]
 const GED_OPCODE* OpcodeTable5[128] =
 {
-    &OpcodeVar0, // 0
-    &OpcodeVar71, // 1
+    &OpcodeVar1, // 0
+    &OpcodeVar72, // 1
     NULL, // 2
     NULL, // 3
     NULL, // 4
@@ -3406,31 +3407,31 @@ const GED_OPCODE* OpcodeTable5[128] =
     NULL, // 29
     NULL, // 30
     NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
     NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
     NULL, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
     NULL, // 51
     NULL, // 52
     NULL, // 53
     NULL, // 54
     NULL, // 55
-    &OpcodeVar39, // 56
+    &OpcodeVar40, // 56
     NULL, // 57
     NULL, // 58
     NULL, // 59
@@ -3438,65 +3439,65 @@ const GED_OPCODE* OpcodeTable5[128] =
     NULL, // 61
     NULL, // 62
     NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
     NULL, // 80
     NULL, // 81
-    &OpcodeVar72, // 82
-    &OpcodeVar76, // 83
-    &OpcodeVar77, // 84
+    &OpcodeVar73, // 82
+    &OpcodeVar77, // 83
+    NULL, // 84
     NULL, // 85
     NULL, // 86
     NULL, // 87
-    &OpcodeVar70, // 88
-    &OpcodeVar73, // 89
+    &OpcodeVar71, // 88
+    &OpcodeVar74, // 89
     NULL, // 90
-    &OpcodeVar64, // 91
+    &OpcodeVar65, // 91
     NULL, // 92
-    &OpcodeVar66, // 93
+    &OpcodeVar67, // 93
     NULL, // 94
     NULL, // 95
-    &OpcodeVar67, // 96
-    &OpcodeVar1, // 97
-    &OpcodeVar2, // 98
-    &OpcodeVar3, // 99
-    &OpcodeVar4, // 100
-    &OpcodeVar5, // 101
-    &OpcodeVar6, // 102
-    &OpcodeVar7, // 103
-    &OpcodeVar8, // 104
-    &OpcodeVar9, // 105
+    &OpcodeVar68, // 96
+    &OpcodeVar2, // 97
+    &OpcodeVar3, // 98
+    &OpcodeVar4, // 99
+    &OpcodeVar5, // 100
+    &OpcodeVar6, // 101
+    &OpcodeVar7, // 102
+    &OpcodeVar8, // 103
+    &OpcodeVar9, // 104
+    &OpcodeVar10, // 105
     NULL, // 106
-    &OpcodeVar75, // 107
-    &OpcodeVar11, // 108
+    &OpcodeVar76, // 107
+    &OpcodeVar12, // 108
     NULL, // 109
-    &OpcodeVar68, // 110
-    &OpcodeVar69, // 111
-    &OpcodeVar12, // 112
-    &OpcodeVar13, // 113
-    &OpcodeVar14, // 114
+    &OpcodeVar69, // 110
+    &OpcodeVar70, // 111
+    &OpcodeVar13, // 112
+    &OpcodeVar14, // 113
+    &OpcodeVar15, // 114
     NULL, // 115
     NULL, // 116
     NULL, // 117
     NULL, // 118
-    &OpcodeVar15, // 119
-    &OpcodeVar16, // 120
-    &OpcodeVar17, // 121
-    &OpcodeVar18, // 122
+    &OpcodeVar16, // 119
+    &OpcodeVar17, // 120
+    &OpcodeVar18, // 121
+    &OpcodeVar19, // 122
     NULL, // 123
     NULL, // 124
     NULL, // 125
@@ -3505,325 +3506,63 @@ const GED_OPCODE* OpcodeTable5[128] =
 }; // OpcodeTable5[]
 const GED_OPCODE* OpcodeTable6[128] =
 {
-    &OpcodeVar0, // 0
-    &OpcodeVar1, // 1
-    &OpcodeVar2, // 2
-    &OpcodeVar3, // 3
-    &OpcodeVar4, // 4
-    &OpcodeVar5, // 5
-    &OpcodeVar6, // 6
-    &OpcodeVar7, // 7
-    &OpcodeVar8, // 8
-    &OpcodeVar9, // 9
+    &OpcodeVar1, // 0
+    &OpcodeVar72, // 1
+    NULL, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
     NULL, // 10
     NULL, // 11
-    &OpcodeVar11, // 12
+    NULL, // 12
     NULL, // 13
     NULL, // 14
     NULL, // 15
-    &OpcodeVar12, // 16
-    &OpcodeVar13, // 17
-    &OpcodeVar14, // 18
-    &OpcodeVar78, // 19
-    &OpcodeVar79, // 20
-    NULL, // 21
-    NULL, // 22
-    &OpcodeVar15, // 23
-    &OpcodeVar16, // 24
-    &OpcodeVar17, // 25
-    &OpcodeVar18, // 26
-    NULL, // 27
-    NULL, // 28
-    NULL, // 29
-    NULL, // 30
-    NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
-    NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    NULL, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    NULL, // 46
-    NULL, // 47
-    &OpcodeVar34, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
-    NULL, // 51
-    NULL, // 52
-    NULL, // 53
-    NULL, // 54
-    NULL, // 55
-    &OpcodeVar39, // 56
-    NULL, // 57
-    NULL, // 58
-    NULL, // 59
-    NULL, // 60
-    NULL, // 61
-    NULL, // 62
-    NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
-    NULL, // 82
-    NULL, // 83
-    &OpcodeVar58, // 84
-    &OpcodeVar59, // 85
-    &OpcodeVar60, // 86
-    &OpcodeVar61, // 87
-    NULL, // 88
-    &OpcodeVar62, // 89
-    &OpcodeVar63, // 90
-    &OpcodeVar64, // 91
-    &OpcodeVar65, // 92
-    NULL, // 93
-    NULL, // 94
-    NULL, // 95
-    NULL, // 96
-    NULL, // 97
-    NULL, // 98
-    NULL, // 99
-    NULL, // 100
-    NULL, // 101
-    NULL, // 102
-    NULL, // 103
-    NULL, // 104
-    NULL, // 105
-    NULL, // 106
-    NULL, // 107
-    NULL, // 108
-    NULL, // 109
-    NULL, // 110
-    NULL, // 111
-    NULL, // 112
-    NULL, // 113
-    NULL, // 114
-    NULL, // 115
-    NULL, // 116
-    NULL, // 117
-    NULL, // 118
-    NULL, // 119
-    NULL, // 120
-    NULL, // 121
-    NULL, // 122
-    NULL, // 123
-    NULL, // 124
-    NULL, // 125
-    &OpcodeVar67, // 126
-    NULL // 127
-}; // OpcodeTable6[]
-const GED_OPCODE* OpcodeTable7[128] =
-{
-    &OpcodeVar0, // 0
-    &OpcodeVar1, // 1
-    &OpcodeVar2, // 2
-    &OpcodeVar3, // 3
-    &OpcodeVar4, // 4
-    &OpcodeVar5, // 5
-    &OpcodeVar6, // 6
-    &OpcodeVar7, // 7
-    &OpcodeVar8, // 8
-    &OpcodeVar9, // 9
-    &OpcodeVar80, // 10
-    NULL, // 11
-    &OpcodeVar11, // 12
-    NULL, // 13
-    NULL, // 14
-    NULL, // 15
-    &OpcodeVar12, // 16
-    &OpcodeVar13, // 17
-    &OpcodeVar14, // 18
-    &OpcodeVar78, // 19
-    &OpcodeVar79, // 20
-    NULL, // 21
-    NULL, // 22
-    &OpcodeVar15, // 23
-    &OpcodeVar16, // 24
-    &OpcodeVar17, // 25
-    &OpcodeVar18, // 26
-    NULL, // 27
-    NULL, // 28
-    NULL, // 29
-    NULL, // 30
-    NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
-    NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    NULL, // 46
-    NULL, // 47
-    &OpcodeVar34, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
-    NULL, // 51
-    NULL, // 52
-    NULL, // 53
-    NULL, // 54
-    NULL, // 55
-    &OpcodeVar39, // 56
-    NULL, // 57
-    NULL, // 58
-    NULL, // 59
-    NULL, // 60
-    NULL, // 61
-    NULL, // 62
-    NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
-    NULL, // 82
-    NULL, // 83
-    &OpcodeVar58, // 84
-    &OpcodeVar59, // 85
-    &OpcodeVar60, // 86
-    &OpcodeVar61, // 87
-    NULL, // 88
-    &OpcodeVar62, // 89
-    &OpcodeVar63, // 90
-    &OpcodeVar64, // 91
-    &OpcodeVar65, // 92
-    NULL, // 93
-    NULL, // 94
-    NULL, // 95
-    NULL, // 96
-    NULL, // 97
-    NULL, // 98
-    NULL, // 99
-    NULL, // 100
-    NULL, // 101
-    NULL, // 102
-    NULL, // 103
-    NULL, // 104
-    NULL, // 105
-    NULL, // 106
-    NULL, // 107
-    NULL, // 108
-    NULL, // 109
-    NULL, // 110
-    NULL, // 111
-    NULL, // 112
-    NULL, // 113
-    NULL, // 114
-    NULL, // 115
-    NULL, // 116
-    NULL, // 117
-    NULL, // 118
-    NULL, // 119
-    NULL, // 120
-    NULL, // 121
-    NULL, // 122
-    NULL, // 123
-    NULL, // 124
-    NULL, // 125
-    &OpcodeVar67, // 126
-    NULL // 127
-}; // OpcodeTable7[]
-const GED_OPCODE* OpcodeTable8[128] =
-{
-    &OpcodeVar0, // 0
-    &OpcodeVar1, // 1
-    &OpcodeVar2, // 2
-    &OpcodeVar3, // 3
-    &OpcodeVar4, // 4
-    &OpcodeVar5, // 5
-    &OpcodeVar6, // 6
-    &OpcodeVar7, // 7
-    &OpcodeVar8, // 8
-    &OpcodeVar9, // 9
-    &OpcodeVar10, // 10
-    NULL, // 11
-    &OpcodeVar11, // 12
-    NULL, // 13
-    NULL, // 14
-    NULL, // 15
-    &OpcodeVar12, // 16
-    &OpcodeVar13, // 17
-    &OpcodeVar14, // 18
+    NULL, // 16
+    NULL, // 17
+    NULL, // 18
     NULL, // 19
     NULL, // 20
     NULL, // 21
     NULL, // 22
-    &OpcodeVar15, // 23
-    &OpcodeVar16, // 24
-    &OpcodeVar17, // 25
-    &OpcodeVar18, // 26
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
     NULL, // 27
     NULL, // 28
     NULL, // 29
     NULL, // 30
     NULL, // 31
-    &OpcodeVar19, // 32
-    &OpcodeVar20, // 33
-    &OpcodeVar21, // 34
-    &OpcodeVar22, // 35
-    &OpcodeVar23, // 36
-    &OpcodeVar24, // 37
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
     NULL, // 38
-    &OpcodeVar25, // 39
-    &OpcodeVar26, // 40
-    &OpcodeVar27, // 41
-    &OpcodeVar28, // 42
-    &OpcodeVar29, // 43
-    &OpcodeVar30, // 44
-    &OpcodeVar31, // 45
-    &OpcodeVar32, // 46
-    &OpcodeVar33, // 47
-    &OpcodeVar34, // 48
-    &OpcodeVar35, // 49
-    &OpcodeVar36, // 50
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
+    NULL, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
     NULL, // 51
     NULL, // 52
     NULL, // 53
     NULL, // 54
     NULL, // 55
-    &OpcodeVar39, // 56
+    &OpcodeVar40, // 56
     NULL, // 57
     NULL, // 58
     NULL, // 59
@@ -3831,36 +3570,298 @@ const GED_OPCODE* OpcodeTable8[128] =
     NULL, // 61
     NULL, // 62
     NULL, // 63
-    &OpcodeVar40, // 64
-    &OpcodeVar41, // 65
-    &OpcodeVar42, // 66
-    &OpcodeVar43, // 67
-    &OpcodeVar44, // 68
-    &OpcodeVar45, // 69
-    &OpcodeVar46, // 70
-    &OpcodeVar47, // 71
-    &OpcodeVar48, // 72
-    &OpcodeVar49, // 73
-    &OpcodeVar50, // 74
-    &OpcodeVar51, // 75
-    &OpcodeVar52, // 76
-    &OpcodeVar53, // 77
-    &OpcodeVar54, // 78
-    &OpcodeVar55, // 79
-    &OpcodeVar56, // 80
-    &OpcodeVar57, // 81
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    NULL, // 80
+    NULL, // 81
+    &OpcodeVar73, // 82
+    &OpcodeVar77, // 83
+    &OpcodeVar78, // 84
+    NULL, // 85
+    NULL, // 86
+    NULL, // 87
+    &OpcodeVar71, // 88
+    &OpcodeVar74, // 89
+    NULL, // 90
+    &OpcodeVar65, // 91
+    NULL, // 92
+    &OpcodeVar67, // 93
+    NULL, // 94
+    NULL, // 95
+    &OpcodeVar68, // 96
+    &OpcodeVar2, // 97
+    &OpcodeVar3, // 98
+    &OpcodeVar4, // 99
+    &OpcodeVar5, // 100
+    &OpcodeVar6, // 101
+    &OpcodeVar7, // 102
+    &OpcodeVar8, // 103
+    &OpcodeVar9, // 104
+    &OpcodeVar10, // 105
+    NULL, // 106
+    &OpcodeVar76, // 107
+    &OpcodeVar12, // 108
+    NULL, // 109
+    &OpcodeVar69, // 110
+    &OpcodeVar70, // 111
+    &OpcodeVar13, // 112
+    &OpcodeVar14, // 113
+    &OpcodeVar15, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    &OpcodeVar16, // 119
+    &OpcodeVar17, // 120
+    &OpcodeVar18, // 121
+    &OpcodeVar19, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    NULL, // 126
+    NULL // 127
+}; // OpcodeTable6[]
+const GED_OPCODE* OpcodeTable7[128] =
+{
+    &OpcodeVar1, // 0
+    &OpcodeVar72, // 1
+    NULL, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    NULL, // 16
+    NULL, // 17
+    NULL, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
+    NULL, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    NULL, // 51
+    NULL, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    &OpcodeVar73, // 82
+    NULL, // 83
+    NULL, // 84
+    NULL, // 85
+    NULL, // 86
+    NULL, // 87
+    &OpcodeVar71, // 88
+    NULL, // 89
+    NULL, // 90
+    &OpcodeVar65, // 91
+    NULL, // 92
+    &OpcodeVar67, // 93
+    NULL, // 94
+    NULL, // 95
+    &OpcodeVar68, // 96
+    &OpcodeVar2, // 97
+    &OpcodeVar3, // 98
+    &OpcodeVar4, // 99
+    &OpcodeVar5, // 100
+    &OpcodeVar6, // 101
+    &OpcodeVar7, // 102
+    &OpcodeVar8, // 103
+    &OpcodeVar9, // 104
+    &OpcodeVar10, // 105
+    NULL, // 106
+    &OpcodeVar76, // 107
+    &OpcodeVar12, // 108
+    NULL, // 109
+    &OpcodeVar69, // 110
+    &OpcodeVar70, // 111
+    &OpcodeVar13, // 112
+    &OpcodeVar14, // 113
+    &OpcodeVar15, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    &OpcodeVar16, // 119
+    &OpcodeVar17, // 120
+    &OpcodeVar18, // 121
+    &OpcodeVar19, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    NULL, // 126
+    NULL // 127
+}; // OpcodeTable7[]
+const GED_OPCODE* OpcodeTable8[128] =
+{
+    &OpcodeVar1, // 0
+    &OpcodeVar2, // 1
+    &OpcodeVar3, // 2
+    &OpcodeVar4, // 3
+    &OpcodeVar5, // 4
+    &OpcodeVar6, // 5
+    &OpcodeVar7, // 6
+    &OpcodeVar8, // 7
+    &OpcodeVar9, // 8
+    &OpcodeVar10, // 9
+    NULL, // 10
+    NULL, // 11
+    &OpcodeVar12, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    &OpcodeVar13, // 16
+    &OpcodeVar14, // 17
+    &OpcodeVar15, // 18
+    &OpcodeVar79, // 19
+    &OpcodeVar80, // 20
+    NULL, // 21
+    NULL, // 22
+    &OpcodeVar16, // 23
+    &OpcodeVar17, // 24
+    &OpcodeVar18, // 25
+    &OpcodeVar19, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    NULL, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    NULL, // 46
+    NULL, // 47
+    &OpcodeVar35, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    NULL, // 51
+    NULL, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
     NULL, // 82
     NULL, // 83
-    &OpcodeVar58, // 84
-    &OpcodeVar59, // 85
-    &OpcodeVar60, // 86
-    &OpcodeVar61, // 87
+    &OpcodeVar59, // 84
+    &OpcodeVar60, // 85
+    &OpcodeVar61, // 86
+    &OpcodeVar62, // 87
     NULL, // 88
-    &OpcodeVar62, // 89
-    &OpcodeVar63, // 90
-    &OpcodeVar64, // 91
-    &OpcodeVar65, // 92
-    &OpcodeVar66, // 93
+    &OpcodeVar63, // 89
+    &OpcodeVar64, // 90
+    &OpcodeVar65, // 91
+    &OpcodeVar66, // 92
+    NULL, // 93
     NULL, // 94
     NULL, // 95
     NULL, // 96
@@ -3893,9 +3894,271 @@ const GED_OPCODE* OpcodeTable8[128] =
     NULL, // 123
     NULL, // 124
     NULL, // 125
-    &OpcodeVar67, // 126
+    &OpcodeVar68, // 126
     NULL // 127
 }; // OpcodeTable8[]
+const GED_OPCODE* OpcodeTable9[128] =
+{
+    &OpcodeVar1, // 0
+    &OpcodeVar2, // 1
+    &OpcodeVar3, // 2
+    &OpcodeVar4, // 3
+    &OpcodeVar5, // 4
+    &OpcodeVar6, // 5
+    &OpcodeVar7, // 6
+    &OpcodeVar8, // 7
+    &OpcodeVar9, // 8
+    &OpcodeVar10, // 9
+    &OpcodeVar81, // 10
+    NULL, // 11
+    &OpcodeVar12, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    &OpcodeVar13, // 16
+    &OpcodeVar14, // 17
+    &OpcodeVar15, // 18
+    &OpcodeVar79, // 19
+    &OpcodeVar80, // 20
+    NULL, // 21
+    NULL, // 22
+    &OpcodeVar16, // 23
+    &OpcodeVar17, // 24
+    &OpcodeVar18, // 25
+    &OpcodeVar19, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    NULL, // 46
+    NULL, // 47
+    &OpcodeVar35, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    NULL, // 51
+    NULL, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    NULL, // 82
+    NULL, // 83
+    &OpcodeVar59, // 84
+    &OpcodeVar60, // 85
+    &OpcodeVar61, // 86
+    &OpcodeVar62, // 87
+    NULL, // 88
+    &OpcodeVar63, // 89
+    &OpcodeVar64, // 90
+    &OpcodeVar65, // 91
+    &OpcodeVar66, // 92
+    NULL, // 93
+    NULL, // 94
+    NULL, // 95
+    NULL, // 96
+    NULL, // 97
+    NULL, // 98
+    NULL, // 99
+    NULL, // 100
+    NULL, // 101
+    NULL, // 102
+    NULL, // 103
+    NULL, // 104
+    NULL, // 105
+    NULL, // 106
+    NULL, // 107
+    NULL, // 108
+    NULL, // 109
+    NULL, // 110
+    NULL, // 111
+    NULL, // 112
+    NULL, // 113
+    NULL, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    NULL, // 119
+    NULL, // 120
+    NULL, // 121
+    NULL, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    &OpcodeVar68, // 126
+    NULL // 127
+}; // OpcodeTable9[]
+const GED_OPCODE* OpcodeTable10[128] =
+{
+    &OpcodeVar1, // 0
+    &OpcodeVar2, // 1
+    &OpcodeVar3, // 2
+    &OpcodeVar4, // 3
+    &OpcodeVar5, // 4
+    &OpcodeVar6, // 5
+    &OpcodeVar7, // 6
+    &OpcodeVar8, // 7
+    &OpcodeVar9, // 8
+    &OpcodeVar10, // 9
+    &OpcodeVar11, // 10
+    NULL, // 11
+    &OpcodeVar12, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    &OpcodeVar13, // 16
+    &OpcodeVar14, // 17
+    &OpcodeVar15, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    &OpcodeVar16, // 23
+    &OpcodeVar17, // 24
+    &OpcodeVar18, // 25
+    &OpcodeVar19, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar20, // 32
+    &OpcodeVar21, // 33
+    &OpcodeVar22, // 34
+    &OpcodeVar23, // 35
+    &OpcodeVar24, // 36
+    &OpcodeVar25, // 37
+    NULL, // 38
+    &OpcodeVar26, // 39
+    &OpcodeVar27, // 40
+    &OpcodeVar28, // 41
+    &OpcodeVar29, // 42
+    &OpcodeVar30, // 43
+    &OpcodeVar31, // 44
+    &OpcodeVar32, // 45
+    &OpcodeVar33, // 46
+    &OpcodeVar34, // 47
+    &OpcodeVar35, // 48
+    &OpcodeVar36, // 49
+    &OpcodeVar37, // 50
+    NULL, // 51
+    NULL, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar40, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar41, // 64
+    &OpcodeVar42, // 65
+    &OpcodeVar43, // 66
+    &OpcodeVar44, // 67
+    &OpcodeVar45, // 68
+    &OpcodeVar46, // 69
+    &OpcodeVar47, // 70
+    &OpcodeVar48, // 71
+    &OpcodeVar49, // 72
+    &OpcodeVar50, // 73
+    &OpcodeVar51, // 74
+    &OpcodeVar52, // 75
+    &OpcodeVar53, // 76
+    &OpcodeVar54, // 77
+    &OpcodeVar55, // 78
+    &OpcodeVar56, // 79
+    &OpcodeVar57, // 80
+    &OpcodeVar58, // 81
+    NULL, // 82
+    NULL, // 83
+    &OpcodeVar59, // 84
+    &OpcodeVar60, // 85
+    &OpcodeVar61, // 86
+    &OpcodeVar62, // 87
+    NULL, // 88
+    &OpcodeVar63, // 89
+    &OpcodeVar64, // 90
+    &OpcodeVar65, // 91
+    &OpcodeVar66, // 92
+    &OpcodeVar67, // 93
+    NULL, // 94
+    NULL, // 95
+    NULL, // 96
+    NULL, // 97
+    NULL, // 98
+    NULL, // 99
+    NULL, // 100
+    NULL, // 101
+    NULL, // 102
+    NULL, // 103
+    NULL, // 104
+    NULL, // 105
+    NULL, // 106
+    NULL, // 107
+    NULL, // 108
+    NULL, // 109
+    NULL, // 110
+    NULL, // 111
+    NULL, // 112
+    NULL, // 113
+    NULL, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    NULL, // 119
+    NULL, // 120
+    NULL, // 121
+    NULL, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    &OpcodeVar68, // 126
+    NULL // 127
+}; // OpcodeTable10[]
 static GED_PRECISION PrecisionVar0 = (GED_PRECISION)0;
 static GED_PRECISION PrecisionVar1 = (GED_PRECISION)1;
 static GED_PRECISION PrecisionVar2 = (GED_PRECISION)2;
@@ -4266,6 +4529,25 @@ const GED_SFID* SFIDTable2[16] =
     NULL, // 1
     &SFIDVar1, // 2
     &SFIDVar2, // 3
+    &SFIDVar3, // 4
+    &SFIDVar4, // 5
+    &SFIDVar5, // 6
+    &SFIDVar14, // 7
+    &SFIDVar15, // 8
+    &SFIDVar8, // 9
+    &SFIDVar9, // 10
+    &SFIDVar10, // 11
+    &SFIDVar11, // 12
+    &SFIDVar16, // 13
+    &SFIDVar17, // 14
+    &SFIDVar18 // 15
+}; // SFIDTable2[]
+const GED_SFID* SFIDTable3[16] =
+{
+    &SFIDVar0, // 0
+    NULL, // 1
+    &SFIDVar1, // 2
+    &SFIDVar2, // 3
     &SFIDVar19, // 4
     &SFIDVar4, // 5
     &SFIDVar5, // 6
@@ -4278,8 +4560,8 @@ const GED_SFID* SFIDTable2[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // SFIDTable2[]
-const GED_SFID* SFIDTable3[16] =
+}; // SFIDTable3[]
+const GED_SFID* SFIDTable4[16] =
 {
     &SFIDVar0, // 0
     NULL, // 1
@@ -4297,7 +4579,7 @@ const GED_SFID* SFIDTable3[16] =
     &SFIDVar12, // 13
     NULL, // 14
     NULL // 15
-}; // SFIDTable3[]
+}; // SFIDTable4[]
 static GED_SIMDMODE SIMDModeVar0 = (GED_SIMDMODE)0;
 static GED_SIMDMODE SIMDModeVar1 = (GED_SIMDMODE)1;
 static GED_SIMDMODE SIMDModeVar2 = (GED_SIMDMODE)2;
