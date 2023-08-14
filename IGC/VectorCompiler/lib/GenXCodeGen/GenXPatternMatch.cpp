@@ -254,6 +254,21 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
 
 namespace {
 
+class FmaMatcher {
+public:
+  explicit FmaMatcher(Instruction *I) : AddSub(I) {}
+
+  bool match();
+
+private:
+  bool isProfitable() const;
+  bool emit();
+
+  Instruction *AddSub;
+  std::array<Value *, 3> Srcs = {nullptr};
+  int NegSrcIndex = -1;
+};
+
 // Helper class to share common code.
 class MadMatcher {
 public:
@@ -263,11 +278,8 @@ public:
     Srcs[0] = Srcs[1] = Srcs[2] = nullptr;
   }
 
-  // Match mads with floating point operands.
-  bool matchFpMad();
-
   // Match integer mads that starts with binary operators.
-  bool matchIntegerMad();
+  bool match();
 
 private:
   // Return true if changes are made.
@@ -293,9 +305,6 @@ private:
     return isI64(MInst) || isI64(AInst);
   }
 
-  // Checks whether a fp mad is being matched or not.
-  bool isFpMad() const { return ID == Intrinsic::fma; }
-
   void setMInst(Instruction *I) { MInst = I; }
 
   // Checks whether 'MInst' is an integer shift, which could be turned back to
@@ -307,13 +316,11 @@ private:
 
 private:
   // The instruction starts the mad matching:
-  // * fadd/fsub
   // * add/sub
   // * genx_*add
   Instruction *AInst;
 
   // The instruction being sinked into:
-  // * fmul
   // * mul/shl
   // * genx_*mul
   Instruction *MInst;
@@ -471,11 +478,11 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
         break;
       case Instruction::FAdd:
       case Instruction::FSub:
-        Changed |= isFpMadEnabled() && MadMatcher(&I).matchFpMad();
+        Changed |= isFpMadEnabled() && FmaMatcher(&I).match();
         break;
       case Instruction::Add:
       case Instruction::Sub:
-        if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad())
+        if (EnableMadMatcher && MadMatcher(&I).match())
           Changed = true;
         else if (ST && (ST->hasAdd3Bfn()))
           Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3();
@@ -501,18 +508,17 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
             Changed = true;
         break;
       }
-  }
-  else {
+  } else {
     switch (I.getOpcode()) {
     default:
       break;
     case Instruction::FAdd:
     case Instruction::FSub:
-      Changed |= isFpMadEnabled() && MadMatcher(&I).matchFpMad();
+      Changed |= isFpMadEnabled() && FmaMatcher(&I).match();
       break;
     case Instruction::Add:
     case Instruction::Sub:
-      if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad())
+      if (EnableMadMatcher && MadMatcher(&I).match())
         Changed = true;
       break;
     }
@@ -1007,6 +1013,87 @@ static Value *getEffectiveValueUp(Value *V) {
   return V;
 }
 
+bool isIndirectRdRegion(Value *V) {
+  if (!GenXIntrinsic::isRdRegion(V))
+    return false;
+  auto R = makeRegionFromBaleInfo(cast<Instruction>(V), BaleInfo());
+  return R.Indirect;
+}
+
+bool isIndirectWrRegion(User *U) {
+  if (!GenXIntrinsic::isWrRegion(U))
+    return false;
+  auto R = makeRegionFromBaleInfo(cast<Instruction>(U), BaleInfo());
+  return R.Indirect;
+}
+
+bool FmaMatcher::match() {
+  const auto Opcode = AddSub->getOpcode();
+  IGC_ASSERT(Opcode == Instruction::FAdd || Opcode == Instruction::FSub);
+
+  auto *Op0 = AddSub->getOperand(0);
+  auto *Op1 = AddSub->getOperand(1);
+
+  bool IsMatched = false;
+
+  if (auto *Mul = dyn_cast<BinaryOperator>(Op0);
+      Mul && Mul->getOpcode() == Instruction::FMul) {
+    // X * Y +/- Z
+    Srcs[0] = Mul->getOperand(0);
+    Srcs[1] = Mul->getOperand(1);
+    Srcs[2] = Op1;
+    if (Opcode == Instruction::FSub)
+      NegSrcIndex = 2;
+    IsMatched = isProfitable();
+  }
+
+  if (auto *Mul = dyn_cast<BinaryOperator>(Op1);
+      !IsMatched && Mul && Mul->getOpcode() == Instruction::FMul) {
+    // Z +/- X * Y
+    Srcs[0] = Mul->getOperand(0);
+    Srcs[1] = Mul->getOperand(1);
+    Srcs[2] = Op0;
+    if (Opcode == Instruction::FSub)
+      NegSrcIndex = 1;
+    IsMatched = isProfitable();
+  }
+
+  if (!IsMatched)
+    return false;
+
+  NumOfMadMatched++;
+  return emit();
+}
+
+bool FmaMatcher::isProfitable() const {
+  if (AddSub->use_empty())
+    return false;
+
+  unsigned IndirectCount =
+      count_if(Srcs, [](auto *Src) { return isIndirectRdRegion(Src); });
+
+  if (AddSub->hasOneUse()) {
+    auto *U = AddSub->use_begin()->getUser();
+    if (isIndirectWrRegion(U))
+      IndirectCount++;
+  }
+
+  return IndirectCount <= 1;
+}
+
+bool FmaMatcher::emit() {
+  IRBuilder<> Builder(AddSub);
+
+  if (NegSrcIndex >= 0)
+    Srcs[NegSrcIndex] = Builder.CreateFNeg(Srcs[NegSrcIndex]);
+
+  auto *Func = Intrinsic::getDeclaration(AddSub->getModule(), Intrinsic::fma,
+                                         {AddSub->getType()});
+  auto *Fma = Builder.CreateCall(Func, Srcs);
+  AddSub->replaceAllUsesWith(Fma);
+  return true;
+}
+
 // Determine whether it is profitable to match a mad. This function assumes
 // that it is valid to match.
 bool MadMatcher::isProfitable() const {
@@ -1043,43 +1130,12 @@ bool MadMatcher::isProfitable() const {
   Value *Vals[] = {getEffectiveValueUp(Srcs[0]), getEffectiveValueUp(Srcs[1]),
                    getEffectiveValueUp(Srcs[2])};
 
-  auto isIndirectRdRegion = [](Value *V) -> bool {
-    if (!GenXIntrinsic::isRdRegion(V))
-      return false;
-    auto R = makeRegionFromBaleInfo(cast<Instruction>(V), BaleInfo());
-    return R.Indirect;
-  };
-
-  auto isIndirectWrRegion = [](User *U) -> bool {
-    if (!GenXIntrinsic::isWrRegion(U))
-      return false;
-    auto R = makeRegionFromBaleInfo(cast<Instruction>(U), BaleInfo());
-    return R.Indirect;
-  };
-
   // If the result of this mad used solely in an indirect
   // region write, count it as an indirect access.
   bool IsIndirectDst = false;
   if (AInst->hasOneUse()) {
     User *U = AInst->use_begin()->getUser();
     IsIndirectDst = isIndirectWrRegion(U);
-  }
-
-  if (isFpMad()) {
-    // Agressive on floating point types since there are fewer constraints,
-    // considering up to one indirect region access to be worthwhile.
-    // For non-FP mads, any indirect region accesses make it not worth
-    // bothering.
-    unsigned IndirectCount = 0;
-    if (isIndirectRdRegion(Vals[0]))
-      IndirectCount++;
-    if (isIndirectRdRegion(Vals[1]))
-      IndirectCount++;
-    if (isIndirectRdRegion(Vals[2]))
-      IndirectCount++;
-    if (IsIndirectDst)
-      IndirectCount++;
-    return IndirectCount <= 1;
   }
 
   if (IsIndirectDst || isIndirectRdRegion(Vals[2]) ||
@@ -1243,56 +1299,7 @@ MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
   return std::make_tuple(nullptr, false);
 }
 
-// The floating point case is relatively simple. Only need to match with fmul.
-bool MadMatcher::matchFpMad() {
-  const bool isFAdd = AInst->getOpcode() == Instruction::FAdd;
-  const bool isFSub = AInst->getOpcode() == Instruction::FSub;
-  IGC_ASSERT(isFAdd || isFSub);
-  (void)isFAdd;
-
-  Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
-
-  for (unsigned Idx = 0; Idx != 2; ++Idx) {
-    Value *Op0 = Ops[Idx];
-    Value *Op1 = Ops[1 - Idx];
-    if (BinaryOperator *BO = dyn_cast<BinaryOperator>(Op0)) {
-      // Case +/-(X * Y) +/- Z
-      if (BO->getOpcode() == Instruction::FMul) {
-        Srcs[0] = BO->getOperand(0);
-        Srcs[1] = BO->getOperand(1);
-        Srcs[2] = Op1;
-
-        setMInst(BO);
-        if (isFSub)
-          NegIndex = 2 - Idx;
-        break;
-      }
-    }
-    if (!MInst) {
-      if (BinaryOperator *BO = dyn_cast<BinaryOperator>(Op1)) {
-        // Case Z +/- X * Y
-        if (BO->getOpcode() == Instruction::FMul) {
-          Srcs[0] = BO->getOperand(0);
-          Srcs[1] = BO->getOperand(1);
-          Srcs[2] = Op0;
-
-          setMInst(BO);
-          if (isFSub)
-            NegIndex = 1;
-          break;
-        }
-      }
-    }
-  }
-
-  // No genx intrinsic mad for the fp case.
-  ID = Intrinsic::fma;
-
-  // Emit mad if matched and profitable.
-  return emit();
-}
-
-bool MadMatcher::matchIntegerMad() {
+bool MadMatcher::match() {
   const bool isAdd = AInst->getOpcode() == Instruction::Add;
   const bool isSub = AInst->getOpcode() == Instruction::Sub;
   IGC_ASSERT(isAdd || isSub);
@@ -1395,7 +1402,7 @@ bool MadMatcher::emit() {
   IRBuilder<> Builder(AInst);
 
   auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Srcs[2]->getType());
-  if (!isFpMad() && VTy && VTy->getScalarType()->isIntegerTy(32)) {
+  if (VTy && VTy->getScalarType()->isIntegerTy(32)) {
     Value *V = getBroadcastFromScalar(Srcs[2]);
     if (!V)
       V = Srcs[2];
@@ -1486,22 +1493,14 @@ bool MadMatcher::emit() {
   }
 
   // Perform source operand negation if necessary.
-  if (NegIndex >= 0) {
-    if (AInst->getType()->isFPOrFPVectorTy())
-      Vals[NegIndex] = Builder.CreateFNeg(Vals[NegIndex], "fneg");
-    else
-      Vals[NegIndex] = Builder.CreateNeg(Vals[NegIndex], "neg");
-  }
+  if (NegIndex >= 0)
+    Vals[NegIndex] = Builder.CreateNeg(Vals[NegIndex], "neg");
 
   Function *Fn = nullptr;
   {
     Module *M = AInst->getModule();
-    if (AInst->getType()->isFPOrFPVectorTy())
-      Fn = GenXIntrinsic::getAnyDeclaration(M, ID, AInst->getType());
-    else {
-      Type *Tys[2] = {AInst->getType(), Vals[0]->getType()};
-      Fn = GenXIntrinsic::getAnyDeclaration(M, ID, Tys);
-    }
+    Type *Tys[2] = {AInst->getType(), Vals[0]->getType()};
+    Fn = GenXIntrinsic::getAnyDeclaration(M, ID, Tys);
   }
   CallInst *CI = Builder.CreateCall(Fn, Vals, "mad");
   CI->setDebugLoc(AInst->getDebugLoc());
@@ -2214,7 +2213,7 @@ public:
       return true;
     if (CallInst *CI = dyn_cast<CallInst>(U)) {
       switch (GenXIntrinsic::getGenXIntrinsicID(CI)) {
-      // Keep this list consistent with the one used for matchIntegerMad(IID).
+      // Keep this list consistent with the one used for match(IID).
       case GenXIntrinsic::genx_ssadd_sat:
       case GenXIntrinsic::genx_suadd_sat:
       case GenXIntrinsic::genx_usadd_sat:
