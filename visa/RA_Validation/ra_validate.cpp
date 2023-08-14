@@ -97,6 +97,7 @@ public:
     inline GED_REG_FILE  getRegFile() const                    { return _regFile; }
     inline uint32_t      getRegNum() const                     { return _baseRegNum; }
     inline uint32_t      getSubRegNum() const                  { return _baseRegSubNum; }
+    inline uint32_t      getAliasOffset() const                { return _aliasOffset; }
     inline uint32_t      getRootBound() const                  { return _rootBound; }
     inline uint32_t      getLbound() const                     { return _lbound; }
     inline uint32_t      getRbound() const                     { return _rbound; }
@@ -120,6 +121,7 @@ public:
     inline void          setRegFile(GED_REG_FILE regFile)      { _regFile = regFile; }
     inline void          setRegNum(uint32_t baseRegNum)        { _baseRegNum = baseRegNum; }
     inline void          setSubRegNum(uint32_t baseRegSubNum)  { _baseRegSubNum = baseRegSubNum; }
+    inline void          setAliasOffset(uint32_t aliasOff)     { _aliasOffset = aliasOff; }
     inline void          setRootBound(uint32_t rootBound)      { _rootBound = rootBound; }
     inline void          setLbound(uint32_t lbound)            { _lbound = lbound; }
     inline void          setRbound(uint32_t rbound)            { _rbound = rbound; }
@@ -144,6 +146,7 @@ private:
     string               _VVName;                              // virtual variable name
     uint32_t             _baseRegNum = 0;                      // register number that defines start of physical assignment
     uint32_t             _baseRegSubNum = 0;                   // subregister number of physical assignment
+    uint32_t             _aliasOffset = 0;                     // byte offset from the start of the root virtual variable
     uint32_t             _rootBound = 0;                       // byte offset into the register file (VV start)
     uint32_t             _lbound = 0;                          // byte offset into the register file (VV start + operand row/col offset)
     uint32_t             _rbound = 0;                          // byte offset into the register file (VV start + operand total size)
@@ -261,8 +264,8 @@ public:
             }
             currElemStart = currOffset;
 
-            // only check the elements for channels that are active
-            if ((execMask & (1 << elemIdx)) || iOper->isSendOper() || isInitialize) {
+            // only set the elements for channels that are active
+            if ((execMask & (1 << elemIdx)) || isInitialize || iOper->isSendOper()) {
                 // iterate through the bytes of this element
                 for (unsigned int byte = 0; byte < typeSize; byte++) {
                     _byteValues.at(currOffset) = val.at(valIdx);
@@ -344,7 +347,7 @@ public:
             currElemStart = currOffset;
 
             // only check the elements for channels that are active
-            if (execMask & (1 << elemIdx)) {
+            if ((execMask & (1 << elemIdx)) || iOper->isSendOper()) {
                 // iterate through the bytes of this element
                 for (unsigned int byte = 0; byte < typeSize; byte++) {
 
@@ -366,13 +369,6 @@ public:
             rowIdx += 1;
         }
         return true;
-    }
-
-    // prints out all the bytes of this VV's physical data
-    void printValue() {
-        for (unsigned int byte = 0; byte < getDataSize(); byte++) {
-            cout << _byteValues[byte];
-        }
     }
 
 private:
@@ -619,9 +615,15 @@ void ReadMetadata(string kernelName) {
                 var->setRegFile(GED_REG_FILE_GRF); // FIXME correct later when other register types added
                 var->setRegNum(def.reg);
                 var->setSubRegNum(def.subreg);
-                var->setRootBound(def.rootBound);
+
+                // FIXME note that rootBound in the metadata is actually offsetFromR0 + aliasOffset,
+                // since we just want the offset of the root here, remove the aliasOffset. Also, note
+                // that the left and right bounds already include the aliasOffset
+                var->setAliasOffset(def.aliasOffset);
+                var->setRootBound(def.rootBound - def.aliasOffset);
                 var->setLbound(def.leftBound);
                 var->setRbound(def.rightBound);
+
                 var->setTypeSize(def.typeSize);
                 var->setH(def.hstride);
                 var->setV(0);
@@ -666,9 +668,15 @@ void ReadMetadata(string kernelName) {
                 var->setRegFile(GED_REG_FILE_GRF);
                 var->setRegNum(use.reg);
                 var->setSubRegNum(use.subreg);
-                var->setRootBound(use.rootBound);
+
+                // FIXME note that rootBound in the metadata is actually offsetFromR0 + aliasOffset,
+                // since we just want the offset of the root here, remove the aliasOffset. Also, note
+                // that the left and right bounds already include the aliasOffset
+                var->setAliasOffset(use.aliasOffset);
+                var->setRootBound(use.rootBound - use.aliasOffset);
                 var->setLbound(use.leftBound);
                 var->setRbound(use.rightBound);
+
                 var->setTypeSize(use.typeSize);
                 var->setH(use.hstride);
                 var->setV(use.vstride);
@@ -784,7 +792,7 @@ void ObtainVisaVarValueFromState(GTReplayState state, InstOperand& iOper, vector
         uint32_t subRegNum = (currOffset % gRegSize) / typeSize;
 
         // only obtain elements for channels that are active
-        if ((execMask & (1 << elemIdx)) || isInitialize) {
+        if ((execMask & (1 << elemIdx)) || isInitialize || iOper.isSendOper()) {
             if (regFile == GED_REG_FILE_GRF)
             {
                 // copy the appropriate number of bytes for this elem according to type size
@@ -838,7 +846,7 @@ void ObtainVisaVarValueFromState(GTReplayState state, InstOperand& iOper, vector
  */
 void VisaUseCallback(uint32_t tileId, uint32_t tid, GTReplayIns ins, GTReplayState state, void* ioper)
 {
-    GTREPLAY_ASSERT(tileId < gMaxNumOfTiles&& tid < gMaxNumOfHwThreads);
+    GTREPLAY_ASSERT(tileId < gMaxNumOfTiles && tid < gMaxNumOfHwThreads);
 
     InstOperand* IOPtr = (InstOperand*)ioper;
     string VVName = IOPtr->getName();
@@ -888,6 +896,7 @@ void VisaDefCallback(uint32_t tileId, uint32_t tid, GTReplayIns ins, GTReplaySta
 
     InstOperand* IOPtr = (InstOperand*)ioper;
     string VVName = IOPtr->getName();
+    uint32_t offset = GTReplay_InsOffset(ins);
 
     uint32_t execMask = GTReplay_DynamicExecMask(ins, state);
     IOPtr->setExecMask(execMask);
@@ -920,8 +929,8 @@ void VisaDefCallback(uint32_t tileId, uint32_t tid, GTReplayIns ins, GTReplaySta
         // since this VVdata's byteValues data buffer has already been previously
         // initialized, we only update the bytes that are being set by the InstOperand
         // argument, leaving the rest of the mapped data buffer unmodified
-        ObtainVisaVarValueFromState(state, *IOPtr, physical_value, false);
-        storedVVData->setValue(IOPtr, physical_value, false);
+        ObtainVisaVarValueFromState(state, *IOPtr, physical_value, true);
+        storedVVData->setValue(IOPtr, physical_value, true);
     }
 }
 
