@@ -7457,7 +7457,8 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     CVariable* flag = nullptr;
     bool zeroLOD = m_currShader->m_Platform->supportSampleAndLd_lz() && inst->ZeroLOD() &&
                    !m_currShader->m_Platform->WaDisableSampleLz();
-    bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
+    bool needLoop = ResourceLoopHeader(resource, sampler, flag, label,
+                                       m_RLA->GetResourceLoopMarker(inst));
 
     if (m_currShader->m_Platform->getWATable().Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask))
     {
@@ -7490,7 +7491,8 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
     }
-    ResourceLoopBackEdge(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label,
+                         m_RLA->GetResourceLoopMarker(inst));
 
     {
         if (simd8HFRet)

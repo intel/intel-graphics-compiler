@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/InstIterator.h>
@@ -93,21 +92,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
       // There are more types of lane-varying resource access than what are
       // listed below. Limited the optimization to get most of performance and
       // to reduce debugging scope.
-      if (auto *SI = dyn_cast<SampleIntrinsic>(I)) {
-        if (!WI->isUniform(SI->getTextureValue()) ||
-            !WI->isUniform(SI->getSamplerValue())) {
-          curRes = SI->getTextureValue();
-          curSamp = SI->getSamplerValue();
-          curOpTy = 1;
-        }
-      } else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(I)) {
-        if (!WI->isUniform(GI->getTextureValue()) ||
-            !WI->isUniform(GI->getSamplerValue())) {
-          curRes = GI->getTextureValue();
-          curSamp = GI->getSamplerValue();
-          curOpTy = 2;
-        }
-      } else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
+      if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
         if (!WI->isUniform(LI->getTextureValue())) {
           // need extra restrictions:
           // no half-type because it may need extra op for packing
@@ -117,8 +102,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           if (auto vecTy = dyn_cast<IGCLLVM::FixedVectorType>(LI->getType())) {
             NumElt = (unsigned)vecTy->getNumElements();
           }
-          if (LI->getType()->getScalarSizeInBits() >= 32 &&
-              NumElt <= 4) {
+          if (LI->getType()->getScalarSizeInBits() >= 32 && NumElt <= 4) {
             curRes = LI->getTextureValue();
             curOpTy = 3;
           }
@@ -156,8 +140,8 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
       if ((curRes || curSamp) && curOpTy) {
         // this is a lane-varying-resource-access
         bool LoopEnd = HasDeps;
-        if (!LoopEnd && curOpTy == loopOpTy &&
-            curRes == loopRes && curSamp == loopSamp) {
+        if (!LoopEnd && curOpTy == loopOpTy && curRes == loopRes &&
+            curSamp == loopSamp) {
           // need to check ALU instruction in between
           // all those instructions should only be used
           // inside the loop
