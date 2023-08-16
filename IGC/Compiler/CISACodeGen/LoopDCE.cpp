@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -346,7 +346,7 @@ static BlockValueMapVector getNodeLoops(const Loop* L) {
     std::function<bool(BlockValueMap&, PHINode*)> CollectConnected =
         [&CollectConnected](BlockValueMap& BlockMap, PHINode* P) {
         // Check if we have never met phi node parent (basic block) before
-        auto Inserted = BlockMap.insert(std::make_pair(P->getParent(), P));
+        auto Inserted = BlockMap.insert(make_pair(P->getParent(), P));
 
         if (Inserted.second) {
             // New pair of phi node and basic block inserted

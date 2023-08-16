@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,73 +8,15 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-// clang-format off
-#include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DIBuilder.h"
-#include "llvm/Config/llvm-config.h"
-#include "llvm/IR/DebugInfoMetadata.h"
-#include "llvm/IR/Instruction.h"
-#include "llvm/IR/Module.h"
-#include "common/LLVMWarningsPop.hpp"
-
 #include <algorithm>
 #include <string>
 #include <vector>
 
 #include "Probe/Assertion.h"
-// clang-format on
+
+#include "llvm/IR/Module.h"
 
 namespace IGC {
-namespace Utils {
-
-#define __OCL_DBG_VARIABLES 9
-
-/// @brief Return true if given module contains debug info.
-/// @param M The LLVM module.
-/// @return True if given module contains debug info.
-bool hasDebugInfo(llvm::Module &M);
-
-/// @brief Creates a new call instruction to llvm.dbg.value intrinsic with
-///        same information as in debug info of given global variable and
-///        with value set to new given value.
-/// @param pGlobalVar  Global variable to handle its debug info.
-/// @param pNewVal     New value to map to the source variable (in the debug
-/// info).
-/// @param pEntryPoint Entry point instruction to add new instructions before.
-/// @param isIndirect  True if pNewValue type is a pointer to source variable
-/// type.
-/// @return New call instruction to llvm.dbg.value intrinsic
-llvm::Instruction *updateGlobalVarDebugInfo(llvm::GlobalVariable *pGlobalVar,
-                                            llvm::Value *pNewVal,
-                                            llvm::Instruction *pEntryPoint,
-                                            bool isIndirect);
-
-/// @brief Calculate hash index for OCL special debug variables.
-/// @param Variable name like: __ocl_dbg_gid0.
-/// @return Hash index for variable name.
-unsigned int getSpecialDebugVariableHash(const std::string &name);
-
-/// @brief Check for OCL special debug variable such as __ocl_dbg_gid0.
-///        Assumes all special variables start with __ocl_dbg.
-/// @param Variable name like: __ocl_dbg_gid0.
-/// @return True if variable starts with "__ocl_dbg" prefix.
-bool isSpecialDebugVariable(const std::string &name);
-
-/// @brief Check for OCL special debug variable such as in metadata.
-///        Assumes all special variables start with __ocl_dbg.
-/// @param Instruction with target metadata.
-/// @return Special variable name if inst has corresponding metadata.
-std::string getSpecialVariableMetaName(const llvm::Instruction *inst);
-
-int32_t getSourceLangLiteralMDValue(const llvm::Module &module);
-uint16_t getSourceLanguage(llvm::DICompileUnit *compileUnit,
-                           const llvm::Module *module);
-
-/// @brief Detect instructions with an address class pattern.
-///        Then remove all opcodes of this pattern from
-///        this instruction's last operand (metadata of DIExpression).
-/// @param Function to erase DIExpression's from.
-void eraseAddressClassDIExpression(llvm::Function &F);
 
 template <class ContainerType, class BinaryFunction,
           class Sorter = std::less<typename ContainerType::key_type>>
@@ -83,7 +25,6 @@ static void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit,
   std::vector<typename ContainerType::key_type> Keys;
   std::transform(Data.begin(), Data.end(), std::back_inserter(Keys),
                  [](const auto &KV) { return KV.first; });
-
   std::sort(Keys.begin(), Keys.end(), SortProcedure);
   for (const auto &Key : Keys) {
     auto FoundIt = Data.find(Key);
@@ -167,5 +108,4 @@ inline uint16_t getSourceLanguage(const llvm::DICompileUnit *compileUnit,
   return uint16_t(sourceLanguage);
 }
 
-} // namespace Utils
 } // namespace IGC

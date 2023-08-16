@@ -961,9 +961,8 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit *DIUnit) {
   }
   NewCU->addString(Die, dwarf::DW_AT_producer, producer);
 
-  NewCU->addUInt(
-      Die, dwarf::DW_AT_language, dwarf::DW_FORM_data2,
-      Utils::getSourceLanguage(DIUnit, GetVISAModule()->GetModule()));
+  NewCU->addUInt(Die, dwarf::DW_AT_language, dwarf::DW_FORM_data2,
+                 getSourceLanguage(DIUnit, GetVISAModule()->GetModule()));
   NewCU->addString(Die, dwarf::DW_AT_name, FN);
 
   ModuleBeginSym = Asm->GetTempSymbol("module_begin", NewCU->getUniqueID());

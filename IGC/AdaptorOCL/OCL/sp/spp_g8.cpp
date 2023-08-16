@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -482,9 +482,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
     // containing mapping between temp name and 'usual' kernel name.
     //
     // JSON file is created if IGC_ElfTempDumpEnable is enabled.
-
-    // List of parameters for the linker, contains in/out ELF file names and params
-    std::list<std::string> elfVecNames;
+    std::list<string> elfVecNames;      // List of parameters for the linker, contains in/out ELF file names and params
     std::vector<const char*> elfVecPtrs;        // Vector of pointers to the elfVecNames vector elements
 
     const unsigned int maxElfFileNameLength = 512;

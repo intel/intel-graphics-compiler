@@ -22,8 +22,8 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-class CShaderDebugInfo;
-class VISADebugInfo;
+    class DebugInfoData;
+    class VISADebugInfo;
 }
 
 namespace IGCMetrics
@@ -100,9 +100,7 @@ namespace IGCMetrics
 
         void CollectNonUniformLoop(llvm::Function* pFunc, short LoopCount, llvm::Loop* problematicLoop);
 
-        void CollectDataFromDebugInfo(llvm::Function *pFunc,
-                                      IGC::CShaderDebugInfo *pDebugInfo,
-                                      const IGC::VISADebugInfo *pDebugDecoder);
+        void CollectDataFromDebugInfo(llvm::Function* pFunc, IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pDebugDecoder);
 
         void FinalizeStats();
 

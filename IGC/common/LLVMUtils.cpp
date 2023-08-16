@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -508,22 +508,23 @@ void displaySkippedPass(const PassDisableConfig& pdc, const std::string& current
 
     if (displayHeader)
     {
-      std::cerr << std::left << std::endl
-                << std::setw(15) << "Pass number"
-                << std::setw(50) << "Pass name"
-                << std::setw(20) << "Pass occurrence"
-                << std::setw(75) << "skippedBy" << std::endl;
-      displayHeader = false;
+        std::cerr << std::left << std::endl
+            << setw(15) << "Pass number"
+            << setw(50) << "Pass name"
+            << setw(20) << "Pass occurrence"
+            << setw(75) << "skippedBy"
+            << std::endl;
+        displayHeader = false;
     }
     auto singlePass = pdc.passesOccuranceCount.find(currentPassName);
     if (singlePass != pdc.passesOccuranceCount.end())
     {
-      std::cerr << std::left
-                << std::setw(15) << pdc.passCount
-                << std::setw(50) << currentPassName
-                << std::setw(20) << singlePass->second
-                << std::setw(75) << skippedByString
-                << std::endl;
+        std::cerr << std::left
+            << setw(15) << pdc.passCount
+            << setw(50) << currentPassName
+            << setw(20) << singlePass->second
+            << setw(75) << skippedByString
+            << std::endl;
     }
     else
     {
@@ -565,17 +566,17 @@ void displayAllPasses(const Pass* P)
     }
     if (!countPass)
     {
-      std::cerr << std::left << std::endl
-                << std::setw(12) << "Pass number"
-                << std::setw(50) << "Pass name"
-                << std::setw(20) << "Pass occurrence"
-                << std::endl;
+        std::cerr << std::left << std::endl
+            << setw(12) << "Pass number"
+            << setw(50) << "Pass name"
+            << setw(20) << "Pass occurrence"
+            << std::endl;
     }
     std::cerr << std::left
-              << std::setw(12) << countPass
-              << std::setw(50) << currentPassName
-              << std::setw(20) << passesOccuranceCountToDisplay[currentPassName]
-              << std::endl;
+        << setw(12) << countPass
+        << setw(50) << currentPassName
+        << setw(20) << passesOccuranceCountToDisplay[currentPassName]
+        << std::endl;
 
     countPass++;
 }

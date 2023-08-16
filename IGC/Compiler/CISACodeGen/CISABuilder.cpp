@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -6631,8 +6631,8 @@ namespace IGC
             float threshold = 0.0f;
             bool noRetryForStack = true;
             std::stringstream ss;
-            ss << std::endl << "Stack Function Spill Info:" << std::endl;
-            ss << "KERNEL: " << m_program->entry->getName().str() << std::endl;
+            ss << endl << "Stack Function Spill Info:" << endl;
+            ss << "KERNEL: " << m_program->entry->getName().str() << endl;
             if (m_program->m_spillCost > threshold || context->HasFuncExpensiveLoop(m_program->entry))
             {
                 // First check the kernel
@@ -6651,7 +6651,7 @@ namespace IGC
                 {
                     // Check each stackcall function
                     noRetryForStack = false;
-                    std::string FName = StripCloneName(func.first->getName().str());
+                    string FName = StripCloneName(func.first->getName().str());
                     context->m_retryManager.PerFuncRetrySet.insert(FName);
                     ss << "  STACK_FUNC Retry: " << FName << std::endl;
                     ss << "    HasFuncExpensiveLoop = " << context->HasFuncExpensiveLoop(func.first) << std::endl;
@@ -6677,8 +6677,8 @@ namespace IGC
                             continue;
 
                         Function* SGH = pFGA->getSubGroupMap(F);
-                        std::string FName = StripCloneName(F->getName().str());
-                        std::string SGHName = StripCloneName(SGH->getName().str());
+                        string FName = StripCloneName(F->getName().str());
+                        string SGHName = StripCloneName(SGH->getName().str());
                         if (context->m_retryManager.PerFuncRetrySet.count(SGHName) != 0)
                         {
                             noRetryForStack = false;
@@ -6697,15 +6697,9 @@ namespace IGC
             else if (!context->m_retryManager.IsLastTry())
             {
                 if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 1)
-                  ss << "AllowStackCallRetry=1 (All functions in this kernel "
-                        "group will be retried with 2nd try states)"
-                     << std::endl
-                     << std::endl;
+                    ss << "AllowStackCallRetry=1 (All functions in this kernel group will be retried with 2nd try states)" << endl << endl;
                 else if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2)
-                  ss << "AllowStackCallRetry=2 (Only the spilled functions "
-                        "will be retried with 2nd try states)"
-                     << std::endl
-                     << std::endl;
+                    ss << "AllowStackCallRetry=2 (Only the spilled functions will be retried with 2nd try states)" << endl << endl;
                 if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
                     dbgs() << ss.str() << "\n";
             }
