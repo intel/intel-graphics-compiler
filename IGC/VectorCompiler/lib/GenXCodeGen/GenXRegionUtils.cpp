@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1099,12 +1099,12 @@ static Value *simplifyRegionRead(Instruction *Inst, const DataLayout *DL) {
             IGCLLVM::getElementCount(Ty->getNumElements()), Splat);
       return Splat;
     }
-  } else if (GenXIntrinsic::isWrRegion(Input) && Input->hasOneUse()) {
+  } else if (GenXIntrinsic::isWrRegion(Input)) {
     // W = wrr(A, B, R)
     // C = rdr(W, R)
     // =>
     // replace C by B
-    Instruction *WI = cast<Instruction>(Input);
+    auto *WI = cast<Instruction>(Input);
     Region R1 = makeRegionFromBaleInfo(WI, BaleInfo());
     Region R2 = makeRegionFromBaleInfo(Inst, BaleInfo());
     if (R1 == R2) {
