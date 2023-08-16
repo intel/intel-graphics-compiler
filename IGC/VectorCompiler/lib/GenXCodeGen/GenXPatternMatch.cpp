@@ -1007,7 +1007,7 @@ void GenXPatternMatch::visitSelectInst(SelectInst &I) {
 
 // Trace the def-use chain and return the first non up-cast related value.
 static Value *getEffectiveValueUp(Value *V) {
-  if (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
+  if (isa<ZExtInst>(V) || isa<SExtInst>(V))
     return getEffectiveValueUp(cast<Instruction>(V)->getOperand(0));
 
   return V;
@@ -1125,7 +1125,7 @@ bool MadMatcher::isProfitable() const {
     if (C->isZeroValue())
       return false;
 
-  // Ignores upward or bit casts, which usually will be performed by copy
+  // Ignores upward which usually will be performed by copy
   // propagation within jitter.
   Value *Vals[] = {getEffectiveValueUp(Srcs[0]), getEffectiveValueUp(Srcs[1]),
                    getEffectiveValueUp(Srcs[2])};
