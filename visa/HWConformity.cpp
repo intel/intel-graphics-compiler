@@ -5355,8 +5355,15 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
               (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
                (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) +
                1) > kernel.numEltPerGRF<Type_UB>();
-          int srcSecondHalf =
-              srcRgn->getLinearizedEnd() / kernel.numEltPerGRF<Type_UB>();
+          // The half define in region rule "second half of a source operand
+          // must not point to the same register as the first half of
+          // destination operand in a compressed instruction" is exactly size
+          // half, not GRF boundary based half.
+          int srcSecondHalf = (srcRgn->getLinearizedStart() +
+                               ((srcRgn->getLinearizedEnd() -
+                                 srcRgn->getLinearizedStart() + 1) /
+                                2)) /
+                              kernel.numEltPerGRF<Type_UB>();
 
           if (dstCrossGRF || srcCrossGRF) {
             if (dstFirstHalf == srcSecondHalf) {
