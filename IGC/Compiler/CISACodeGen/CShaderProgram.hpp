@@ -41,13 +41,13 @@ namespace IGC
 
         bool hasShaderOutput(CShader* shader);
 
-        void freeShaderOutput(CShader* shader);
-
         void ClearShaderPtr(SIMDMode simd);
 
     protected:
         CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
         CShader* CreateNewShader(SIMDMode simd);
+
+        void freeShaderOutput(CShader* shader);
 
         CodeGenContext* m_context;
         llvm::Function* m_kernel;
