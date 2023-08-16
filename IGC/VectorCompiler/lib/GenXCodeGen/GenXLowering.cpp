@@ -3589,7 +3589,6 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
     return false;
   IGC_ASSERT(IID == GenXIntrinsic::genx_uumul ||
              IID == GenXIntrinsic::genx_ssmul);
-  bool IsSigned = IID == GenXIntrinsic::genx_ssmul;
 
   auto ScalarType = [](Value *V) { return V->getType()->getScalarType(); };
   if (!ScalarType(CI)->isIntegerTy(64))
@@ -3604,6 +3603,7 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
 
   if (ScalarType(LH)->isIntegerTy(8) || ScalarType(LH)->isIntegerTy(16)) {
     // The result can't exceed 32 bit. Get rid of 64-bit multiplication
+    bool IsSigned = IID == GenXIntrinsic::genx_ssmul;
     auto *SrcTy = LH->getType();
     Type *MulTy = B.getIntNTy(ScalarType(LH)->isIntegerTy(8) ? 16 : 32);
     if (auto *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(SrcTy))
@@ -3621,18 +3621,17 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
     return true;
   }
 
-  auto NewIID =
-      IsSigned ? GenXIntrinsic::genx_simad : GenXIntrinsic::genx_uimad;
+  auto *M = CI->getModule();
+  Type *tys[2] = {LH->getType(), RH->getType()};
 
-  auto *Ty = LH->getType();
-  auto *Func =
-      GenXIntrinsic::getGenXDeclaration(CI->getModule(), NewIID, {Ty, Ty});
+  Function *MulHFunc =
+      (IID == GenXIntrinsic::genx_uumul)
+          ? GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_umulh, tys)
+          : GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_smulh,
+                                              tys);
 
-  auto *Zero = Constant::getNullValue(Ty);
-  auto *IMad = B.CreateCall(Func, {LH, RH, Zero});
-
-  auto *MulLo = B.CreateExtractValue(IMad, {1}, CI->getName() + ".lo.");
-  auto *MulHi = B.CreateExtractValue(IMad, {0}, CI->getName() + ".hi.");
+  Value *MulLo = B.CreateMul(LH, RH, CI->getName() + ".lo.");
+  Value *MulHi = B.CreateCall(MulHFunc, {LH, RH}, CI->getName() + ".hi.");
 
   IGC_ASSERT(MulLo->getType() == MulHi->getType());
   if (!MulLo->getType()->isVectorTy()) {
@@ -3690,19 +3689,17 @@ bool GenXLowering::lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID) {
     MulType = IGCLLVM::FixedVectorType::get(MulType, OpVTy->getNumElements());
 
   IRBuilder<> B(CI);
-  auto *M = CI->getModule();
-
-  auto MulIID =
-      IsSignedOps ? GenXIntrinsic::genx_ssmul : GenXIntrinsic::genx_uumul;
-  auto *MulFunc =
-      GenXIntrinsic::getGenXDeclaration(M, MulIID, {MulType, OpType});
-  auto *Mul = B.CreateCall(MulFunc, {CI->getOperand(0), CI->getOperand(1)},
-                           CI->getName());
-
-  auto TruncSatIID = GetTruncSatIntrinsicId(IsSignedRes, IsSignedOps);
-  auto *TruncSatFunc =
-      GenXIntrinsic::getGenXDeclaration(M, TruncSatIID, {ResType, MulType});
-  auto *Result = B.CreateCall(TruncSatFunc, {Mul}, CI->getName() + ".sat");
+  auto ExtendMulOperand = [&, IsSignedOps = IsSignedOps](Value *Val) {
+    return IsSignedOps ? B.CreateSExt(Val, MulType, Val->getName() + ".sext")
+                       : B.CreateZExt(Val, MulType, Val->getName() + ".zext");
+  };
+  Value *FstMulOpnd = ExtendMulOperand(CI->getOperand(0)),
+        *SndMulOpnd = ExtendMulOperand(CI->getOperand(1));
+  Value *Mul = B.CreateMul(FstMulOpnd, SndMulOpnd, CI->getName());
+  Function *TruncSatFunc = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GetTruncSatIntrinsicId(IsSignedRes, IsSignedOps),
+      {ResType, MulType});
+  Value *Result = B.CreateCall(TruncSatFunc, {Mul}, CI->getName() + ".sat");
   CI->replaceAllUsesWith(Result);
   ToErase.push_back(CI);
   return true;
@@ -3728,28 +3725,28 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
 
   if (ST->useMulDDQ()) {
     // Create uumul intrinsic for DxD->Q multiplication
-    SmallVector<Type *, 2> Tys{Inst->getType(), Src0.Lo->getType()};
-    Function *UUMulFunc =
-        GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uumul, Tys);
+    Type *tys[2] = {Inst->getType(), Src0.Lo->getType()};
+    Function *IntrinsicUUMul =
+        GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uumul, tys);
+    SmallVector<llvm::Value *, 2> args{Src0.Lo, Src1.Lo};
 
-    SmallVector<Value *, 2> Args{Src0.Lo, Src1.Lo};
-    auto *UUMul = Builder.CreateCall(UUMulFunc, Args);
+    auto *UUMul = Builder.CreateCall(IntrinsicUUMul, args);
     auto Res = SplitBuilder.splitValueLoHi(*UUMul);
 
     Cari = Res.Hi;
     ResL = Res.Lo;
   } else {
-    // create uimad intrinsic for DxD->Q multiplication
-    auto *Ty = Src0.Lo->getType();
-    auto *UMadIFunc = GenXIntrinsic::getGenXDeclaration(
-        M, GenXIntrinsic::genx_uimad, {Ty, Ty});
+    // Create mul instruction and mulh intrinsic
+    ResL = Builder.CreateMul(Src0.Lo, Src1.Lo);
 
-    auto *Zero = Constant::getNullValue(Ty);
-    SmallVector<Value *, 3> Args{Src0.Lo, Src1.Lo, Zero};
-    auto *UMadI = Builder.CreateCall(UMadIFunc, Args);
+    // create the mulh intrinsic to the get the carry-part
+    Type *tys[2] = {ResL->getType(), Src0.Lo->getType()};
+    // build argument list
+    SmallVector<llvm::Value *, 2> args{Src0.Lo, Src1.Lo};
+    Function *IntrinFunc =
+        GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_umulh, tys);
 
-    ResL = Builder.CreateExtractValue(UMadI, {1});
-    Cari = Builder.CreateExtractValue(UMadI, {0}, ".cari");
+    Cari = Builder.CreateCall(IntrinFunc, args, ".cari");
   }
 
   // create muls and adds

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -38,14 +38,15 @@ declare i64 @llvm.genx.uumul.i64.i16(i16, i16)
 ; CHECK_WITH_MUL_DDQ-NEXT: ret void
 
 ; CHECK_NO_MUL_DDQ: testi32s
-; CHECK_NO_MUL_DDQ: [[SMADW:[^ ]+]] = call <16 x i32> @llvm.genx.smadw.v16i32.v1i32
-; CHECK_NO_MUL_DDQ: [[CAST_LO:[^ ]+]] = bitcast i32 [[MUL:%[^ ]+]] to <1 x i32>
-; CHECK_NO_MUL_DDQ: [[CAST_HI:[^ ]+]] = bitcast i32 [[MULH:%[^ ]+]] to <1 x i32>
-; CHECK_NO_MUL_DDQ: [[PJOIN:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> undef, <1 x i32> [[CAST_LO]], i32 0, i32 1, i32 2, i16 0, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[JOINED:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> [[PJOIN]], <1 x i32> [[CAST_HI]], i32 0, i32 1, i32 2, i16 4, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[CAST_RES:[^ ]+]]  = bitcast <2 x i32> [[JOINED]] to <1 x i64>
-; CHECK_NO_MUL_DDQ: [[RECAST:[^ ]+]] = bitcast <1 x i64> [[CAST_RES]] to i64
-; CHECK_NO_MUL_DDQ: ret void
+; CHECK_NO_MUL_DDQ-NEXT: [[MUL:[^ ]+]] = mul i32 %op1, %op2
+; CHECK_NO_MUL_DDQ-NEXT: [[MULH:[^ ]+]] = call i32 @llvm.genx.smulh.i32.i32(i32 %op1, i32 %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_LO:[^ ]+]] = bitcast i32 [[MUL]] to <1 x i32>
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_HI:[^ ]+]] = bitcast i32 [[MULH]] to <1 x i32>
+; CHECK_NO_MUL_DDQ-NEXT: [[PJOIN:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> undef, <1 x i32> [[CAST_LO]], i32 0, i32 1, i32 2, i16 0, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[JOINED:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> [[PJOIN]], <1 x i32> [[CAST_HI]], i32 0, i32 1, i32 2, i16 4, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_RES:[^ ]+]]  = bitcast <2 x i32> [[JOINED]] to <1 x i64>
+; CHECK_NO_MUL_DDQ-NEXT: [[RECAST:[^ ]+]] = bitcast <1 x i64> [[CAST_RES]] to i64
+; CHECK_NO_MUL_DDQ-NEXT: ret void
 define internal spir_func void @testi32s(i32 %op1, i32 %op2) {
   %res = call i64 @llvm.genx.ssmul.i64.i32(i32 %op1, i32 %op2)
   ret void
@@ -56,11 +57,12 @@ define internal spir_func void @testi32s(i32 %op1, i32 %op2) {
 ; CHECK_WITH_MUL_DDQ-NEXT: ret void
 
 ; CHECK_NO_MUL_DDQ: testi32sv
-; CHECK_NO_MUL_DDQ: [[SMADW:[^ ]+]] = call <16 x i32> @llvm.genx.smadw.v16i32.v2i32
-; CHECK_NO_MUL_DDQ: [[PJOIN:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> undef, <2 x i32> [[MUL:%[^ ]+]], i32 0, i32 2, i32 2, i16 0, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[JOINED:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> [[PJOIN]], <2 x i32> [[MULH:%[^ ]+]], i32 0, i32 2, i32 2, i16 4, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[CAST_RES:[^ ]+]]  = bitcast <4 x i32> [[JOINED]] to <2 x i64>
-; CHECK_NO_MUL_DDQ: ret void
+; CHECK_NO_MUL_DDQ-NEXT: [[MUL:[^ ]+]] = mul <2 x i32> %op1, %op2
+; CHECK_NO_MUL_DDQ-NEXT: [[MULH:[^ ]+]] = call <2 x i32> @llvm.genx.smulh.v2i32.v2i32(<2 x i32> %op1, <2 x i32> %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[PJOIN:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> undef, <2 x i32> [[MUL]], i32 0, i32 2, i32 2, i16 0, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[JOINED:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> [[PJOIN]], <2 x i32> [[MULH]], i32 0, i32 2, i32 2, i16 4, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_RES:[^ ]+]]  = bitcast <4 x i32> [[JOINED]] to <2 x i64>
+; CHECK_NO_MUL_DDQ-NEXT: ret void
 define internal spir_func void @testi32sv(<2 x i32> %op1, <2 x i32> %op2) {
   %res = call <2 x i64> @llvm.genx.ssmul.v2i64.v2i32(<2 x i32> %op1, <2 x i32> %op2)
   ret void
@@ -71,14 +73,15 @@ define internal spir_func void @testi32sv(<2 x i32> %op1, <2 x i32> %op2) {
 ; CHECK_WITH_MUL_DDQ-NEXT: ret void
 
 ; CHECK_NO_MUL_DDQ: testi32u
-; CHECK_NO_MUL_DDQ: [[UMADW:[^ ]+]] = call <16 x i32> @llvm.genx.umadw.v16i32.v1i32
-; CHECK_NO_MUL_DDQ: [[CAST_LO:[^ ]+]] = bitcast i32 [[MUL:%[^ ]+]] to <1 x i32>
-; CHECK_NO_MUL_DDQ: [[CAST_HI:[^ ]+]] = bitcast i32 [[MULH:%[^ ]+]] to <1 x i32>
-; CHECK_NO_MUL_DDQ: [[PJOIN:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> undef, <1 x i32> [[CAST_LO]], i32 0, i32 1, i32 2, i16 0, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[JOINED:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> [[PJOIN]], <1 x i32> [[CAST_HI]], i32 0, i32 1, i32 2, i16 4, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[CAST_RES:[^ ]+]]  = bitcast <2 x i32> [[JOINED]] to <1 x i64>
-; CHECK_NO_MUL_DDQ: [[RECAST:[^ ]+]] = bitcast <1 x i64> [[CAST_RES]] to i64
-; CHECK_NO_MUL_DDQ: ret void
+; CHECK_NO_MUL_DDQ-NEXT: [[MUL:[^ ]+]] = mul i32 %op1, %op2
+; CHECK_NO_MUL_DDQ-NEXT: [[MULH:[^ ]+]] = call i32 @llvm.genx.umulh.i32.i32(i32 %op1, i32 %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_LO:[^ ]+]] = bitcast i32 [[MUL]] to <1 x i32>
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_HI:[^ ]+]] = bitcast i32 [[MULH]] to <1 x i32>
+; CHECK_NO_MUL_DDQ-NEXT: [[PJOIN:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> undef, <1 x i32> [[CAST_LO]], i32 0, i32 1, i32 2, i16 0, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[JOINED:[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<2 x i32> [[PJOIN]], <1 x i32> [[CAST_HI]], i32 0, i32 1, i32 2, i16 4, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_RES:[^ ]+]]  = bitcast <2 x i32> [[JOINED]] to <1 x i64>
+; CHECK_NO_MUL_DDQ-NEXT: [[RECAST:[^ ]+]] = bitcast <1 x i64> [[CAST_RES]] to i64
+; CHECK_NO_MUL_DDQ-NEXT: ret void
 define internal spir_func void @testi32u(i32 %op1, i32 %op2) {
   %res = call i64 @llvm.genx.uumul.i64.i32(i32 %op1, i32 %op2)
   ret void
@@ -89,11 +92,12 @@ define internal spir_func void @testi32u(i32 %op1, i32 %op2) {
 ; CHECK_WITH_MUL_DDQ-NEXT: ret void
 
 ; CHECK_NO_MUL_DDQ: testi32uv
-; CHECK_NO_MUL_DDQ: [[UMADW:[^ ]+]] = call <16 x i32> @llvm.genx.umadw.v16i32.v2i32
-; CHECK_NO_MUL_DDQ: [[PJOIN:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> undef, <2 x i32> [[MUL:%[^ ]+]], i32 0, i32 2, i32 2, i16 0, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[JOINED:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> [[PJOIN]], <2 x i32> [[MULH:%[^ ]+]], i32 0, i32 2, i32 2, i16 4, i32 undef, i1 true)
-; CHECK_NO_MUL_DDQ: [[CAST_RES:[^ ]+]]  = bitcast <4 x i32> [[JOINED]] to <2 x i64>
-; CHECK_NO_MUL_DDQ: ret void
+; CHECK_NO_MUL_DDQ-NEXT: [[MUL:[^ ]+]] = mul <2 x i32> %op1, %op2
+; CHECK_NO_MUL_DDQ-NEXT: [[MULH:[^ ]+]] = call <2 x i32> @llvm.genx.umulh.v2i32.v2i32(<2 x i32> %op1, <2 x i32> %op2)
+; CHECK_NO_MUL_DDQ-NEXT: [[PJOIN:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> undef, <2 x i32> [[MUL]], i32 0, i32 2, i32 2, i16 0, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[JOINED:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.{{[^(]+}}(<4 x i32> [[PJOIN]], <2 x i32> [[MULH]], i32 0, i32 2, i32 2, i16 4, i32 undef, i1 true)
+; CHECK_NO_MUL_DDQ-NEXT: [[CAST_RES:[^ ]+]]  = bitcast <4 x i32> [[JOINED]] to <2 x i64>
+; CHECK_NO_MUL_DDQ-NEXT: ret void
 define internal spir_func void @testi32uv(<2 x i32> %op1, <2 x i32> %op2) {
   %res = call <2 x i64> @llvm.genx.uumul.v2i64.v2i32(<2 x i32> %op1, <2 x i32> %op2)
   ret void
@@ -132,3 +136,4 @@ define internal spir_func void @testi16u(i16 %op1, i16 %op2) {
   %res_u = call i64 @llvm.genx.uumul.i64.i16(i16 %op1, i16 %op2)
   ret void
 }
+
