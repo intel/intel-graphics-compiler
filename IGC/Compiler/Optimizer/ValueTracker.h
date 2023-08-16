@@ -13,6 +13,17 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
 
+namespace llvm
+{
+    class Value;
+    class GenIntrinsicInst;
+    class ExtractElementInst;
+    class GlobalVariable;
+    class ConstantExpr;
+    class Function;
+    class CallInst;
+}
+
 namespace IGC
 {
     //===----------------------------------------------------------------------===//

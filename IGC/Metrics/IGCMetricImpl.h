@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 #endif // IGC_METRICS
 
 #include "Compiler/CISACodeGen/CVariable.hpp"
-#include <Compiler/CISACodeGen/DebugInfoData.hpp>
+#include <Compiler/CISACodeGen/CShaderDebugInfo.hpp>
 #include <DebugInfo/VISADebugDecoder.hpp>
 
 #pragma once
@@ -155,10 +155,9 @@ namespace IGCMetrics
             llvm::Function* pFunc,
             bool IsGeminiLakeWithDoubles);
 
-        void CollectDataFromDebugInfo(
-            llvm::Function* pFunc,
-            IGC::DebugInfoData *pDebugInfo,
-            const IGC::VISADebugInfo *pVisaDbgInfo);
+        void CollectDataFromDebugInfo(llvm::Function *pFunc,
+                                      IGC::CShaderDebugInfo *pDebugInfo,
+                                      const IGC::VISADebugInfo *pVisaDbgInfo);
 
         void CollectInstructionCnt(
             llvm::Function* pFunc,

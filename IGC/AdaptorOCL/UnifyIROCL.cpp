@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -139,9 +139,9 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
-#include "Compiler/DebugInfo/Utils.h"
+#include "DebugInfo/Utils.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
+#include "Compiler/ScalarDebugInfo/VISAScalarModule.hpp"
 
 #include <string>
 #include <algorithm>

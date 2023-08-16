@@ -6,41 +6,44 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Compiler/CISACodeGen/MemOpt.h"
+#include "Compiler/CISACodeGen/SLMConstProp.hpp"
+#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/InitializePasses.h"
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "Probe/Assertion.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
-#include <llvm/ADT/STLExtras.h>
-#include <llvmWrapper/Analysis/InstructionSimplify.h>
-#include <llvmWrapper/Analysis/MemoryLocation.h>
-#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
-#include <llvm/Analysis/AliasAnalysis.h>
 #include "llvm/Analysis/AliasSetTracker.h"
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/CommandLine.h"
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/IR/Constant.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/GlobalAlias.h>
-#include <llvmWrapper/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 #include <llvm/Pass.h>
-#include <llvmWrapper/Support/Alignment.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/DebugCounter.h>
 #include <llvm/Support/raw_ostream.h>
-#include "llvm/Support/CommandLine.h"
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/Analysis/InstructionSimplify.h>
+#include <llvmWrapper/Analysis/MemoryLocation.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include <llvmWrapper/IR/IRBuilder.h>
+#include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/SLMConstProp.hpp"
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
-#include "Compiler/InitializePasses.h"
-#include "Compiler/CISACodeGen/MemOpt.h"
-#include "Probe/Assertion.h"
-#include <DebugInfo/DwarfDebug.cpp>
+
+#include <list>
 
 using namespace llvm;
 using namespace IGC;
@@ -2810,7 +2813,7 @@ void LdStCombine::getOrCreateElements(
     const int32_t nelts = (int32_t)tVTy->getNumElements();
     EltV.resize(nelts, UndefValue::get(tVTy->getElementType()));
     Value* ChainVal = V;
-    while (!isa<Constant>(ChainVal)) {
+    while (!isa<llvm::Constant>(ChainVal)) {
         InsertElementInst* IEI = dyn_cast<InsertElementInst>(ChainVal);
         if (!IEI || !isa<ConstantInt>(IEI->getOperand(2))) {
             break;
@@ -2893,8 +2896,8 @@ void LdStCombine::combineStores(Function& F)
     auto canCombineStoresAcross = [&](Instruction* I)
     {
         // Can't combine for non-debug fence like instructions
-        if (I->isFenceLike() && !IsDebugInst(I))
-            return false;
+        if (I->isFenceLike() && !isa<DbgInfoIntrinsic>(I))
+          return false;
 
         if (isa<LoadInst>(I) ||
             isa<StoreInst>(I) ||
@@ -3293,12 +3296,12 @@ bool LdStCombine::isSimpleVector(Value* V) const
 {
     Value* val = V;
     while (auto IEI = dyn_cast<InsertElementInst>(val)) {
-        if (!isa<Constant>(IEI->getOperand(2))) {
+        if (!isa<llvm::Constant>(IEI->getOperand(2))) {
             return false;
         }
         val = IEI->getOperand(0);
     }
-    if (isa<Constant>(val)) {
+    if (isa<llvm::Constant>(val)) {
         return true;
     }
     return false;
@@ -3366,8 +3369,8 @@ void LdStCombine::mergeConstElements(
             Value* elt1 = *NI;
             Type* ty1 = elt1->getType();
             const uint32_t sz1 = (uint32_t)m_DL->getTypeStoreSize(ty1);
-            Constant* C0 = dyn_cast<Constant>(elt0);
-            Constant* C1 = dyn_cast<Constant>(elt1);
+            llvm::Constant *C0 = dyn_cast<llvm::Constant>(elt0);
+            llvm::Constant *C1 = dyn_cast<llvm::Constant>(elt1);
             if (!C0 || !C1 || (sz0 + sz1) != b ||
                 !isValidConst(C0) || !isValidConst(C1)) {
                 currOff += sz0;
@@ -3381,7 +3384,7 @@ void LdStCombine::mergeConstElements(
             imm1 &= maxUIntN(sz1 * 8);
             uint64_t imm = ((imm1 << (sz0 * 8)) | imm0);
             Type* ty = IntegerType::get(ty0->getContext(), (sz0 + sz1) * 8);
-            Constant* nC = ConstantInt::get(ty, imm, false);
+            llvm::Constant *nC = ConstantInt::get(ty, imm, false);
 
             mergedElts.insert(II, nC);
             auto tII = NI;
@@ -3755,7 +3758,7 @@ Value* LdStCombine::gatherCopy(
             SmallVector<Value*, 4>& subElts = allEltVals[i];
             int nelts = (int)subElts.size();
             IGC_ASSERT(nelts == 1);
-            if (!isa<Constant>(subElts[0])) {
+            if (!isa<llvm::Constant>(subElts[0])) {
                 DstEltTy = subElts[0]->getType();
                 break;
             }
@@ -3767,7 +3770,7 @@ Value* LdStCombine::gatherCopy(
                 int nelts = (int)subElts.size();
                 IGC_ASSERT(nelts == 1);
                 Type* ty = subElts[0]->getType();
-                const bool isConst = isa<Constant>(subElts[0]);
+                const bool isConst = isa<llvm::Constant>(subElts[0]);
                 if (!isConst && DstEltTy != ty) {
                     // Use struct is better
                     DstEltTy = nullptr;
@@ -3972,7 +3975,7 @@ bool isLayoutStructTypeSOA(const StructType* StTy)
     return isLayoutStructType(StTy) && !isLayoutStructTypeAOS(StTy);
 }
 
-uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
+uint64_t bitcastToUI64(llvm::Constant* C, const DataLayout* DL)
 {
     Type* ty = C->getType();
     IGC_ASSERT(DL->getTypeStoreSizeInBits(ty) <= 64);
@@ -3987,7 +3990,7 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
         int N = (int)sTy->getNumElements();
         for (int i = 0; i < N; ++i)
         {
-            Constant* C_i = C->getAggregateElement(i);
+            llvm::Constant* C_i = C->getAggregateElement(i);
             if (isa<UndefValue>(C_i)) {
                 continue;
             }
@@ -4000,7 +4003,7 @@ uint64_t bitcastToUI64(Constant* C, const DataLayout* DL)
                 IGC_ASSERT(eTy_i->isFloatingPointTy() || eTy_i->isIntegerTy());
                 uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(eTy_i);
                 for (int j = 0; j < nelts; ++j) {
-                    Constant* c_ij = C_i->getAggregateElement(j);
+                    llvm::Constant* c_ij = C_i->getAggregateElement(j);
                     uint64_t tImm = GetImmediateVal(c_ij);
                     tImm &= maxUIntN(nbits);
                     imm = imm | (tImm << (offbits + j * nbits));

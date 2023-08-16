@@ -9,15 +9,15 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "Compiler/DebugInfo/Utils.h"
+#include "DebugInfo/Utils.hpp"
+#include "IGC/common/StringMacros.hpp"
+#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
+#include "Probe/Assertion.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
-#include "Probe/Assertion.h"
-#include "IGC/common/StringMacros.hpp"
 
 using namespace llvm;
 using namespace IGC;

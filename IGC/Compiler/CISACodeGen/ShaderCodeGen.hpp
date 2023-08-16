@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,18 +8,18 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "common/LLVMUtils.h"
-#include "Compiler/CISACodeGen/DebugInfoData.hpp"
-#include "Compiler/CISACodeGen/CVariable.hpp"
-#include "Compiler/CISACodeGen/PushAnalysis.hpp"
-#include "Compiler/CISACodeGen/helper.h"
-#include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
-#include "Compiler/CISACodeGen/LiveVars.hpp"
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CISACodeGen/CShaderDebugInfo.hpp"
+#include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
+#include "Compiler/CISACodeGen/LiveVars.hpp"
+#include "Compiler/CISACodeGen/PushAnalysis.hpp"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "common/LLVMUtils.h"
 // Needed for SConstantGatherEntry
 #include "usc_gen7.h"
 #include "common/Types.hpp"
@@ -598,7 +598,7 @@ public:
         return it != kernelArgToPayloadOffsetMap.end() ? (int64_t) it->second : -1;
     }
 
-    DebugInfoData& GetDebugInfoData();
+    CShaderDebugInfo &GetDebugInfoData();
 
     unsigned int GetPrimitiveTypeSizeInRegisterInBits(const llvm::Type* Ty) const;
     unsigned int GetPrimitiveTypeSizeInRegister(const llvm::Type* Ty) const;
@@ -631,6 +631,7 @@ public:
     void setShaderProgramID(int aID) { m_shaderProgramID = aID; }
     int getShaderProgramID() const { return m_shaderProgramID; }
     void getShaderFileName(std::string& ShaderName) const;
+    bool HasDebugInfo() const;
 
 protected:
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
@@ -762,7 +763,7 @@ protected:
 
     uint32_t m_NumSampleBallotLoops = 0;
 
-    DebugInfoData diData;
+    CShaderDebugInfo diData;
 
     // Shader has LSC store messages with non-default L1 cache control
     bool m_HasLscStoresWithNonDefaultL1CacheControls = false;

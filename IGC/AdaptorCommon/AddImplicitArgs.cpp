@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,30 +8,31 @@ SPDX-License-Identifier: MIT
 
 #include "AddImplicitArgs.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
-#include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
-#include "Compiler/Optimizer/OCLBIUtils.h"
+#include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
+#include "Compiler/Optimizer/OCLBIUtils.h"
+#include "DebugInfo/VISADebugEmitter.hpp"
+#include "Compiler/ScalarDebugInfo/VISAScalarModule.hpp"
 #include "LLVM3DBuilder/MetadataBuilder.h"
+#include "Probe/Assertion.h"
+#include "common/debug/Debug.hpp"
+
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/SCCIterator.h"
-#include <llvm/IR/Module.h>
+#include <llvm/ADT/SCCIterator.h>
+#include <llvm/IR/DIBuilder.h>
+#include <llvm/ADT/DepthFirstIterator.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvmWrapper/ADT/STLExtras.h>
 #include <llvmWrapper/IR/Instructions.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/DerivedTypes.h>
-#include "llvm/IR/DIBuilder.h"
-#include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "common/debug/Debug.hpp"
-#include "DebugInfo/VISADebugEmitter.hpp"
+
 #include <map>
 #include <utility>
-#include <iostream>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;

@@ -1,44 +1,43 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "GenCodeGenModule.h"
-#include "EstimateFunctionSize.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/helper.h"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "DebugInfo/VISADebugEmitter.hpp"
+#include "Compiler/ScalarDebugInfo/VISAScalarModule.hpp"
+#include "EstimateFunctionSize.h"
+#include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
-#include "llvm/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
-#include "llvm/ADT/SetVector.h"
+#include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvm/ADT/SCCIterator.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/InlineCost.h"
 #include "llvm/Analysis/ValueTracking.h"
-#include "llvmWrapper/IR/CallSite.h"
-#include "llvm/IR/Module.h"
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/Argument.h"
+#include "llvm/IR/DIBuilder.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstVisitor.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
-#include "llvmWrapper/Transforms/Utils/Cloning.h"
-#include "llvm/IR/DebugInfo.h"
-#include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "DebugInfo/VISADebugEmitter.hpp"
 #include <numeric>
 #include <utility>
-#include <iostream>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -109,18 +108,19 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils* pM,
     pM->setFunctionsInfoItem(ClonedF, Info);
 }
 
-static Function* cloneFunc(IGCMD::MetaDataUtils* pM, Function* F, string prefix = "", string postfix = "_GenXClone")
-{
-    ValueToValueMapTy VMap;
+static Function *cloneFunc(IGCMD::MetaDataUtils *pM, Function *F,
+                           std::string prefix = "",
+                           std::string postfix = "_GenXClone") {
+  ValueToValueMapTy VMap;
 
-    Function* ClonedFunc = CloneFunction(F, VMap);
-    ClonedFunc->setName(prefix + F->getName().str() + postfix);
-    //if the function is not added as part of clone, add it
-    if (!F->getParent()->getFunction(ClonedFunc->getName()))
-        F->getParent()->getFunctionList().push_back(ClonedFunc);
-    CloneFuncMetadata(pM, ClonedFunc, F);
+  Function *ClonedFunc = CloneFunction(F, VMap);
+  ClonedFunc->setName(prefix + F->getName().str() + postfix);
+  // if the function is not added as part of clone, add it
+  if (!F->getParent()->getFunction(ClonedFunc->getName()))
+    F->getParent()->getFunctionList().push_back(ClonedFunc);
+  CloneFuncMetadata(pM, ClonedFunc, F);
 
-    return ClonedFunc;
+  return ClonedFunc;
 }
 
 inline Function* getCallerFunc(Value* user)
@@ -914,7 +914,8 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
                     {
                         // Clone the function
                         // Use the function vector variant syntax for mangling func name
-                        string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
+                        std::string prefix =
+                            "_ZGVxN" + std::to_string(simdsz) + "_";
                         Function* FCloned = cloneFunc(pMdUtils, F, prefix, "");
                         copyFuncProperties(FCloned, F);
                         FCloned->addFnAttr("variant-function-def");
@@ -965,31 +966,32 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
             auto ICG = IndirectCallGroup[i];
             if (ICG && simdsz != default_size)
             {
-                string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
+              std::string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
 
-                // If mangled function already exist, don't re-clone it
-                if (pModule->getFunction(prefix + F->getName().str()) != nullptr)
-                    continue;
+              // If mangled function already exist, don't re-clone it
+              if (pModule->getFunction(prefix + F->getName().str()) != nullptr)
+                continue;
 
-                Function* FCloned = cloneFunc(pMdUtils, F, prefix, "");
-                copyFuncProperties(FCloned, F);
-                FCloned->addFnAttr("variant-function-def");
+              Function *FCloned = cloneFunc(pMdUtils, F, prefix, "");
+              copyFuncProperties(FCloned, F);
+              FCloned->addFnAttr("variant-function-def");
 
-                Function* SubGrpH = useStackCall(F) ? FCloned : ICG->getHead();
-                addToFunctionGroup(FCloned, ICG, SubGrpH);
+              Function *SubGrpH = useStackCall(F) ? FCloned : ICG->getHead();
+              addToFunctionGroup(FCloned, ICG, SubGrpH);
 
-                // update the edge after clone
-                for (auto UI = F->use_begin(), UE = F->use_end(); UI != UE; /*empty*/)
-                {
-                    // Increment iterator after setting U to change the use.
-                    Use* U = &*UI++;
-                    Function* Caller = cast<CallInst>(U->getUser())->getParent()->getParent();
-                    FunctionGroup* InFG = getGroup(Caller);
-                    Function* InSubGrpH = useStackCall(F) ? FCloned : getSubGroupMap(Caller);
-                    if (InFG == ICG && InSubGrpH == SubGrpH)
-                    {
-                        *U = FCloned;
-                    }
+              // update the edge after clone
+              for (auto UI = F->use_begin(), UE = F->use_end(); UI != UE;
+                   /*empty*/) {
+                // Increment iterator after setting U to change the use.
+                Use *U = &*UI++;
+                Function *Caller =
+                    cast<CallInst>(U->getUser())->getParent()->getParent();
+                FunctionGroup *InFG = getGroup(Caller);
+                Function *InSubGrpH =
+                    useStackCall(F) ? FCloned : getSubGroupMap(Caller);
+                if (InFG == ICG && InSubGrpH == SubGrpH) {
+                  *U = FCloned;
+                }
                 }
             }
         }

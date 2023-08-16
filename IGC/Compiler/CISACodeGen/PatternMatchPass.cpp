@@ -1,30 +1,30 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
-#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
-#include "common/igc_regkeys.hpp"
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InlineAsm.h>
-#include <llvm/IR/Dominators.h>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/PatternMatch.h>
-#include <llvmWrapper/IR/Instructions.h>
-#include <llvm/IR/IntrinsicInst.h>
-#include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
+#include "Compiler/ScalarDebugInfo/VISAScalarModule.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
+#include "common/igc_regkeys.hpp"
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/IR/InlineAsm.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/PatternMatch.h>
+#include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/Instructions.h>
 
 using namespace llvm;
 using namespace IGC;

@@ -6,19 +6,19 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
-#include "Compiler/CodeGenPublic.h"
-#include "Compiler/IGCPassSupport.h"
+#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/helper.h"
-#include "Compiler/DebugInfo/Utils.h"
+#include "Compiler/CodeGenPublic.h"
+#include "Compiler/IGCPassSupport.h"
+#include "DebugInfo/Utils.hpp"
+#include "Probe/Assertion.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Probe/Assertion.h"
 
 #include <unordered_set>
 
@@ -472,7 +472,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         {
             Instruction * pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());
             TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
-            Utils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true);
+            Utils::updateGlobalVarDebugInfo(G, G, pInsertBefore, true);
         }
     }
 }

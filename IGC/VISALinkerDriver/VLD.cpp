@@ -219,10 +219,10 @@ MoveEntryPointModuleToTheEnd(
 // vice-versa.
 std::vector<const char *> GetDirectCallFunctions(
     llvm::ArrayRef<IGC::VLD::SPVTranslationPair> InputModules) {
-  set<StringRef> exportedFunctionsSPMD;
-  set<StringRef> exportedFunctionsESIMD;
-  set<StringRef> importedFunctionsSPMD;
-  set<StringRef> importedFunctionsESIMD;
+  std::set<StringRef> exportedFunctionsSPMD;
+  std::set<StringRef> exportedFunctionsESIMD;
+  std::set<StringRef> importedFunctionsSPMD;
+  std::set<StringRef> importedFunctionsESIMD;
 
   auto insertToVec = [](const auto &InputVec, auto &OutSPMD, auto &OutESIMD,
                         auto SpirvType) {
