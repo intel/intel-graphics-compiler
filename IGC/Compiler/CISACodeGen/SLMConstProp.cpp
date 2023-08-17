@@ -455,7 +455,7 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
                         S = add(S, ByteOffset);
                     }
                 }
-                else if (!S0 || !S1)
+                else if (S0 || S1)
                 {
                     int64_t tC = S1 ? ByteOffset : (ByteOffset + C1);
                     S = S1 ? S1 : S0;

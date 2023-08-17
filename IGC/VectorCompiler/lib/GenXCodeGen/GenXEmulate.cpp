@@ -957,6 +957,11 @@ Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
       Value *Cond = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Zero));
       Value *Select = ensureEmulated(Builder.CreateSelect(Cond, Zero, VOp.V));
       Result = ensureEmulated(Builder.CreateZExt(Select, VTy64));
+      break;
+    }
+    default: {
+      IGC_ASSERT_MESSAGE(false, "Unsupported intrinsic");
+      break;
     }
     }
   } else {

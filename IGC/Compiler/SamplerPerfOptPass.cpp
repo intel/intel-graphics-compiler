@@ -171,7 +171,7 @@ bool SamplerPerfOptPass::FixCubeHFPrecisionBug(SampleIntrinsic* sampleInst)
                         if (!fmul_src0)
                             fmul_src0 = builder.CreateFPExt(fmulInstr->getOperand(0), builder.getFloatTy());
                         if (!fmul_src1)
-                            fmul_src0 = builder.CreateFPExt(fmulInstr->getOperand(1), builder.getFloatTy());
+                            fmul_src1 = builder.CreateFPExt(fmulInstr->getOperand(1), builder.getFloatTy());
 
                         llvm::Value* fpFMulRes = builder.CreateFMul(fmul_src0, fmul_src1);
                         llvm::Value* fpTohfOp = builder.CreateFPTrunc(fpFMulRes, builder.getHalfTy());
