@@ -1098,6 +1098,7 @@ void Optimizer::insertFenceBeforeEOT() {
       builder.getOption(vISA_clearLSCUGMWritesBeforeEOT);
   bool clearHDCWritesBeforeEOT =
       builder.getOption(vISA_clearHDCWritesBeforeEOT);
+  bool clearWritesBeforeEOT = builder.needBarrierWA() && builder.supportsLSC();
   // for vector path we need this WA always, so just use table
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) {
     clearHDCWritesBeforeEOT =
@@ -1107,7 +1108,8 @@ void Optimizer::insertFenceBeforeEOT() {
                            VISA_WA_CHECK(builder.getPWaTable(), Wa_22013689345);
   }
   if (!toRemoveFence && !clearHDCWritesBeforeEOT &&
-      !(builder.supportsLSC() && clearHdcWritesLSCUGM)) {
+      !(builder.supportsLSC() && clearHdcWritesLSCUGM) &&
+      !clearWritesBeforeEOT) {
     return;
   }
 
@@ -1119,6 +1121,7 @@ void Optimizer::insertFenceBeforeEOT() {
   bool hasUAVWrites = false;
   bool hasSLMWrites = false;
   bool hasTypedWrites = false;
+  bool hasWrites = false;
   std::list<std::pair<G4_BB *, G4_INST *>> toBeRemoved;
 
   for (auto bb : kernel.fg) {
@@ -1130,11 +1133,12 @@ void Optimizer::insertFenceBeforeEOT() {
       hasUAVWrites = true;
       hasSLMWrites = true;
       hasTypedWrites = true;
+      hasWrites = true;
       break;
     }
 
     for (auto inst : *bb) {
-      if (inst->isSend()) {
+      if (inst->isSend() && !inst->isEOT()) {
         auto msgDesc = inst->asSendInst()->getMsgDesc();
         if (msgDesc->isLSC()) {
           if (toRemoveFence && msgDesc->getSFID() == SFID::UGM &&
@@ -1148,6 +1152,7 @@ void Optimizer::insertFenceBeforeEOT() {
         }
 
         if (msgDesc->isWrite()) {
+          hasWrites = true;
           if (msgDesc->isHDC()) {
             if (msgDesc->isSLM()) {
               hasSLMWrites = true;
@@ -1204,8 +1209,9 @@ void Optimizer::insertFenceBeforeEOT() {
   }
 
   if ((!clearHDCWritesBeforeEOT &&
-       !(builder.supportsLSC() && clearHdcWritesLSCUGM)) ||
-      !(hasUAVWrites || hasSLMWrites || hasTypedWrites)) {
+       !(builder.supportsLSC() && clearHdcWritesLSCUGM) &&
+       !clearWritesBeforeEOT) ||
+      !(hasUAVWrites || hasSLMWrites || hasTypedWrites || hasWrites)) {
     return;
   }
 
@@ -1266,6 +1272,13 @@ void Optimizer::insertFenceBeforeEOT() {
           }
         }
       }
+
+      if (clearWritesBeforeEOT && hasWrites) {
+        auto fenseInst = builder.translateLscFence(
+            nullptr, SFID::UGM, LSC_FENCE_OP_EVICT, LSC_SCOPE_TILE);
+        bb->insertBefore(iter, fenseInst);
+      }
+
       builder.instList.clear();
     }
   }
