@@ -1210,7 +1210,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
         offset = builder.CreateTruncOrBitCast(offset, Type::getIntNTy(builder.getContext(), vecElemSize));
 
         /* clear element bits: */
-        uint64_t maskValue = (1 << desc.bitWidth) - 1;
+        uint64_t maskValue = (1ULL << desc.bitWidth) - 1;
         Value *mask = builder.CreateShl(ConstantInt::get(element->getType(), maskValue), offset);
         mask = builder.CreateNot(mask);
         element = builder.CreateAnd(element, mask);
@@ -1258,7 +1258,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
         Value *offset = builder.CreateURem(index, ConstantInt::get(index->getType(), packFactor));
         offset = builder.CreateMul(offset, ConstantInt::get(offset->getType(), desc.bitWidth));
         element = builder.CreateAShr(element, offset);
-        uint64_t mask = (1 << desc.bitWidth) - 1;
+        uint64_t mask = (1ULL << desc.bitWidth) - 1;
         element = builder.CreateAnd(element, mask);
 
         element = builder.CreateTruncOrBitCast(element, Type::getIntNTy(builder.getContext(), desc.bitWidth));
@@ -1441,7 +1441,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveStructType(Type *oldType)
     if (ResolvedTypes.count(oldType) > 0)
         return ResolvedTypes[oldType];
 
-    StructType *structType = dyn_cast<StructType>(oldType);
+    StructType *structType = cast<StructType>(oldType);
     SmallString<28> name;
     StructType *newType = StructType::create(oldType->getContext(),
                                              (structType->getName() +

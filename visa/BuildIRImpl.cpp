@@ -2584,7 +2584,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
         auto tmpSrc = createSrcRegRegion(tmpDecl, getRegionScalar());
         // set src1.length into exDesc. BTI message is required to be on ExBSO=0
         // mode, so the src.length is part of exDesc
-        exDesc = (exDesc & (~0x7FF)) | (msgDesc->extMessageLength() << 6);
+        exDesc = (exDesc & (~0x7FF)) | ((uint32_t)msgDesc->extMessageLength() << 6);
         G4_DstRegRegion *addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
         // add a0.2 tmpSrc exdesc
         createBinOp(G4_add, g4::SIMD1, addrDstOpnd, tmpSrc,

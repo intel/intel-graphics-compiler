@@ -1107,13 +1107,13 @@ namespace IGC
         void SetSIMDInfo(SIMDInfoBit bit, SIMDMode simd, ShaderDispatchMode mode)
         {
             unsigned int offset = GetSIMDInfoOffset(simd, mode);
-            m_SIMDInfo |= (uint64_t)1 << (bit + offset);
+            m_SIMDInfo |= 1ULL << (bit + offset);
         }
 
         void ClearSIMDInfo(SIMDMode simd, ShaderDispatchMode mode)
         {
             unsigned int offset = GetSIMDInfoOffset(simd, mode);
-            m_SIMDInfo &= ~(0xff << offset);
+            m_SIMDInfo &= ~(0xffULL << offset);
         }
 
         uint64_t GetSIMDInfo() { return m_SIMDInfo; }

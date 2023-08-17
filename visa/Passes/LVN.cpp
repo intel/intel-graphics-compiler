@@ -563,26 +563,28 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion *dst) {
         auto lvnItems = (*second);
         auto lvnItemsInst = lvnItems->inst;
 
-        for (unsigned int i = 0, numSrc = lvnItemsInst->getNumSrc(); i < numSrc;
-             i++) {
-          if (lvnItemsInst && lvnItemsInst->getSrc(i) &&
-              lvnItemsInst->getSrc(i)->isSrcRegRegion() &&
-              lvnItemsInst->getSrc(i)->asSrcRegRegion()->isIndirect()) {
-            if (p2a.isPresentInPointsTo(lvnItemsInst->getSrc(i)
-                                            ->asSrcRegRegion()
-                                            ->getTopDcl()
-                                            ->getRegVar(),
-                                        dst->getTopDcl()->getRegVar())) {
-              lvnItems->active = false;
-              second = dcls.second.erase(second);
+        if (lvnItemsInst) {
+          for (unsigned int i = 0, numSrc = lvnItemsInst->getNumSrc();
+               i < numSrc; i++) {
+            if (lvnItemsInst->getSrc(i) &&
+                lvnItemsInst->getSrc(i)->isSrcRegRegion() &&
+                lvnItemsInst->getSrc(i)->asSrcRegRegion()->isIndirect()) {
+              if (p2a.isPresentInPointsTo(lvnItemsInst->getSrc(i)
+                                              ->asSrcRegRegion()
+                                              ->getTopDcl()
+                                              ->getRegVar(),
+                                          dst->getTopDcl()->getRegVar())) {
+                lvnItems->active = false;
+                second = dcls.second.erase(second);
 
-              for (auto use : lvnItems->uses) {
-                use->active = false;
+                for (auto use : lvnItems->uses) {
+                  use->active = false;
+                }
               }
-              continue;
             }
           }
         }
+
         if (second != dcls.second.end()) {
           // Increment iterator only if dcls.second is not empty.
           // Erase operation in earlier loop can result in this.

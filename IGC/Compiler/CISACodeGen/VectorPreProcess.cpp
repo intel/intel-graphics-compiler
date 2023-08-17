@@ -1554,10 +1554,10 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                     if (BC)
                     {
                         NewBC[Idx] = Builder.CreateBitCast(NewEEI[Idx], DstEltTy);
-                        dyn_cast<BitCastInst>(NewBC[Idx])->setDebugLoc(BC->getDebugLoc());
+                        cast<BitCastInst>(NewBC[Idx])->setDebugLoc(BC->getDebugLoc());
                     }
                 }
-                dyn_cast<ExtractElementInst>(NewEEI[Idx])->setDebugLoc(EEI->getDebugLoc());
+                cast<ExtractElementInst>(NewEEI[Idx])->setDebugLoc(EEI->getDebugLoc());
                 EEI->replaceAllUsesWith(BC ? NewBC[Idx] : NewEEI[Idx]);
                 EEI->eraseFromParent();
             }

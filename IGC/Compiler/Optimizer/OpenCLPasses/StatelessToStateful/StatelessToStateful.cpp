@@ -661,7 +661,7 @@ void StatelessToStateful::promoteInstruction(StatelessToStateful::InstructionInf
         promoteIntrinsic(InstInfo);
         break;
     default:
-        IGC_ASSERT("Unsupported instruction!");
+        IGC_ASSERT_MESSAGE(false, "Unsupported instruction!");
     }
 }
 

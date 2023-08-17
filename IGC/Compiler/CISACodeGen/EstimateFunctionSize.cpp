@@ -193,7 +193,7 @@ namespace {
 
         std::string getStaticFuncFreqStr() { return staticFuncFreq.toString();}
 
-        uint64_t getSizeContribution() { return Inline_cnt == 0 ? InitialSize : Inline_cnt * InitialSize; }
+        uint64_t getSizeContribution() { return Inline_cnt == 0 ? InitialSize : static_cast<uint64_t>(Inline_cnt) * InitialSize; }
         Scaled64 getWeightForTrimming() {
             return staticFuncFreq == 0 ? Scaled64::get(getSizeContribution()) : Scaled64::get(getSizeContribution())/staticFuncFreq;
         }

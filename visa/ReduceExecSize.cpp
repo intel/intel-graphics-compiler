@@ -962,7 +962,8 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB *bb,
       }
     }
 
-    if (dst && !nullDst) {
+    vASSERT(dst);
+    if (!nullDst) {
       opndExSize[0] = dst->getMaxExecSize(builder, i, currExSize, crossGRFsrc);
 
       if (opndExSize[0] > 8 && rule4_11)

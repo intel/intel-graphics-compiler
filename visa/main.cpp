@@ -82,11 +82,10 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
 
   CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption,
                                  platform, numArgs, args);
-  cisa_builder->setGtpinInit(gtpin_init);
-
   if (!cisa_builder) {
     return JIT_CISA_ERROR;
   }
+  cisa_builder->setGtpinInit(gtpin_init);
 
   std::vector<VISAKernel *> kernels;
   bool passed = readIsaBinaryNG(isafilebuf, cisa_builder, kernels, kernelName,

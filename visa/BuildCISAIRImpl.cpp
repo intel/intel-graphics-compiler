@@ -249,6 +249,7 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
 
   if (!builder->m_options.parseOptions(numArgs, flags)) {
     delete builder;
+    builder = nullptr;
     vISA_ASSERT(false, "parsing error");
     return VISA_FAILURE;
   }

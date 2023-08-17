@@ -19889,7 +19889,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
     case WaveOps::AND:
         opcode = EOPCODE_AND;
         type = getISAType(opndTy, false);
-        identity = dyn_cast<IntegerType>(opndTy)->getBitMask();
+        identity = cast<IntegerType>(opndTy)->getBitMask();
         break;
     case WaveOps::FSUM:
         opcode = EOPCODE_ADD;
@@ -19904,7 +19904,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
     case WaveOps::FMIN:
         opcode = EOPCODE_MIN;
         type = getISAType(opndTy);
-        identity = dyn_cast<ConstantFP>(ConstantFP::getInfinity(opndTy))->getValueAPF().bitcastToAPInt().getZExtValue();
+        identity = cast<ConstantFP>(ConstantFP::getInfinity(opndTy))->getValueAPF().bitcastToAPInt().getZExtValue();
         break;
     case WaveOps::FMAX:
         opcode = EOPCODE_MAX;

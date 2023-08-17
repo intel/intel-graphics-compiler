@@ -887,7 +887,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     }
 
     //NOTE: Below if block logic is used either for SSS RW or non-OCL stateless RW
-    if (modMD && (modMD->compOpt.UseScratchSpacePrivateMemory || useStateless)) {
+    if (modMD->compOpt.UseScratchSpacePrivateMemory || useStateless) {
         // We want to use this pass to lower alloca instruction
         // to remove some redundant instruction caused by alloca. For original approach,
         // different threads use the same private base. While for this approach, each

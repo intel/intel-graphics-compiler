@@ -451,7 +451,7 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                     if (auto operandInst = dyn_cast<Instruction>(operand))
                     {
                         insertBefore = operandInst->getNextNode();
-                        while (isa<PHINode>(insertBefore))
+                        while (isa_and_nonnull<PHINode>(insertBefore))
                         {
                             insertBefore = insertBefore->getNextNode();
                         }
@@ -463,7 +463,7 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                     auto trunc = convertI8ToI1(promoted, insertBefore);
                     if (isa<Instruction>(trunc) && isa<Instruction>(promoted))
                     {
-                        dyn_cast<Instruction>(trunc)->setDebugLoc(dyn_cast<Instruction>(promoted)->getDebugLoc());
+                        cast<Instruction>(trunc)->setDebugLoc(cast<Instruction>(promoted)->getDebugLoc());
                     }
                     instruction->replaceUsesOfWith(operand, trunc);
                 }
