@@ -2776,29 +2776,31 @@ bool G4_INST::detectComprInst() const {
 
   // Cross GRF boundary check for dst and src operands
   // NOTE: The function cannot handle indirect
-  G4_DstRegRegion *dst = getDst();
-  if (dst && dst->getRegAccess() == Direct && dst->isDstRegRegion() &&
-      dst->getBase()->isRegVar() &&
-      (dst->getTopDcl()->getRegFile() == G4_GRF)) {
-    if (dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
-            dst->getLinearizedStart() + 1 >
-        getBuilder().numEltPerGRF<Type_UB>()) {
-      return true;
-    }
-  }
-
-  for (unsigned j = 0, numSrc = getNumSrc(); j < numSrc; j++) {
-    G4_Operand *src = getSrc(j);
-    if (src != NULL && src->isSrcRegRegion() &&
-        src->asSrcRegRegion()->getRegAccess() == Direct &&
-        src->asSrcRegRegion()->getBase()->isRegVar() &&
-        (src->getTopDcl()->getRegFile() == G4_GRF ||
-         src->getTopDcl()->getRegFile() == G4_INPUT)) {
-      G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
-      if (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
-              srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 >
+  else {
+    G4_DstRegRegion *dst = getDst();
+    if (dst && dst->getRegAccess() == Direct && dst->isDstRegRegion() &&
+        dst->getBase()->isRegVar() &&
+        (dst->getTopDcl()->getRegFile() == G4_GRF)) {
+      if (dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
+              dst->getLinearizedStart() + 1 >
           getBuilder().numEltPerGRF<Type_UB>()) {
         return true;
+      }
+    }
+
+    for (unsigned j = 0, numSrc = getNumSrc(); j < numSrc; j++) {
+      G4_Operand *src = getSrc(j);
+      if (src != NULL && src->isSrcRegRegion() &&
+          src->asSrcRegRegion()->getRegAccess() == Direct &&
+          src->asSrcRegRegion()->getBase()->isRegVar() &&
+          (src->getTopDcl()->getRegFile() == G4_GRF ||
+           src->getTopDcl()->getRegFile() == G4_INPUT)) {
+        G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+        if (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+                srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 >
+            getBuilder().numEltPerGRF<Type_UB>()) {
+          return true;
+        }
       }
     }
   }
