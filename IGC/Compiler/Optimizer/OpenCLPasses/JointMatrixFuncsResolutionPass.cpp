@@ -46,19 +46,104 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : FunctionPass(ID)
+JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : ModulePass(ID)
 {
     initializeJointMatrixFuncsResolutionPassPass(*PassRegistry::getPassRegistry());
 }
 
-bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
+bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
 {
     m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    Changed = false;
+
+    for (auto &F : M)
+    {
+        if (F.isDeclaration())
+            continue;
+
+        Function *entryFunction = getEntryFunction(&F);
+        if (entryFunction) {
+            IGCMD::FunctionInfoMetaDataHandle funcInfoMD = m_mdUtils->getFunctionsInfoItem(entryFunction);
+            IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+            if (subGroupSize->hasValue())
+                m_SIMDSize = subGroupSize->getSIMD_size();
+        }
+
+        // If no entry function found (it means that we could not detect that current function is called
+        // from any kernel) or kernel function doesn't have sub group size requirement set, we anyway
+        // will resolve function, just in case, using default sub group size.
+        // In theory it may cause resolution conflicts if sub group sizes are mixed.
+        if (m_SIMDSize == 0)
+            m_SIMDSize = m_Ctx->platform.hasExecSize16DPAS() ? 16 : 8;
+
+        if (runOnFunction(F))
+            Changed = true;
+    }
+
+    return Changed;
+}
+
+// Finds entry function for input function. If there are several entry
+// functions, it will return only one (first found).
+// So currently the case, when the same function which is using Joint Matrix
+// is called from several kernels with different sub-group size required,
+// not supported and behavior is undefined.
+Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F)
+{
+    if (FunctionsMap.count(F) > 0)
+        return FunctionsMap[F];
+
+    if (isEntryFunc(m_mdUtils, F))
+    {
+        FunctionsMap[F] = F;
+        return F;
+    }
+
+    SmallVector<Function *, 8> toProcess;
+    toProcess.push_back(F);
+    SmallVector<Function *, 8> toSetEntry;
+    toSetEntry.push_back(F);
+
+    while (!toProcess.empty())
+    {
+        Function *curFunc = toProcess.pop_back_val();
+        for (auto It = curFunc->use_begin(); It != curFunc->use_end(); It++)
+        {
+            auto user = It->getUser();
+            if (!isa<CallInst>(user))
+                continue;
+
+            auto *CI = cast<CallInst>(user);
+            if (CI->getCalledFunction() == curFunc)
+            {
+                auto caller = CI->getFunction();
+                Function *entryFunc = nullptr;
+                if (FunctionsMap.count(caller) > 0)
+                    entryFunc = FunctionsMap[caller];
+                if (!entryFunc && isEntryFunc(m_mdUtils, caller))
+                    entryFunc = caller;
+                if (entryFunc)
+                {
+                    for (auto *fToSetEntry : toSetEntry)
+                        FunctionsMap[fToSetEntry] = entryFunc;
+                    return entryFunc;
+                }
+                toProcess.push_back(caller);
+                toSetEntry.push_back(caller);
+            }
+        }
+    }
+    FunctionsMap[F] = nullptr;
+    return nullptr;
+}
+
+bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
+{
     PlaceholderInstructions.clear();
     ResolvedValues.clear();
     ResolvedTypes.clear();
     InstsToErase.clear();
-    Changed = false;
 
     // Use reverse post order traversal to reduce level or recursion
     ReversePostOrderTraversal<Function *> RPOT(&F);
@@ -78,7 +163,7 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
         I->eraseFromParent();
     }
 
-    return Changed;
+    return !ResolvedValues.empty();
 }
 
 static const char *CommonBIPrefix = "__builtin_spirv_";
@@ -375,21 +460,13 @@ std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
     name += std::to_string(desc->rows);
     name += "x";
     name += std::to_string(desc->columns);
-    name += "_";
-
-    if (desc->bitWidth == 8) {
-        name += "i8";
-    } else if (desc->bitWidth == 16) {
-        name += "i16";
-    } else if (desc->bitWidth == 32) {
-        name += "i32";
-    } else {
-        IGC_ASSERT_MESSAGE(false, "Unexpected matrix element size.");
-    }
+    name += "_i" + std::to_string(desc->bitWidth);
 
     // We are done creating the mangling for get_coord here()
     if (isGetCoord)
         return name;
+
+    name += "_" + std::to_string(getNumRowsPerWI(desc));
 
     // Continue mangling for load and store
     if (address_space == ADDRESS_SPACE_GLOBAL) {
@@ -424,7 +501,7 @@ static unsigned parseNumber(StringRef name, unsigned *offset) {
 
 /* This function extracts metadata from JointMatrix type names. They use the
  * following convention: intel.joint_matrix_acc_8x8_i32_t */
-static bool parseMatrixTypeNameLegacy(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
+bool JointMatrixFuncsResolutionPass::parseMatrixTypeNameLegacy(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
     const PointerType *ptrType = cast<PointerType>(opaqueType);
     StringRef name = IGCLLVM::getNonOpaquePtrEltTy(ptrType)->getStructName();
 
@@ -438,6 +515,10 @@ static bool parseMatrixTypeNameLegacy(const Type *opaqueType, JointMatrixTypeDes
     } else if (name.startswith("intel.joint_matrix_acc_")) {
         outDescription->layout = LayoutRowMajor;
         offset += sizeof "intel.joint_matrix_acc_";
+    } else {
+        std::string msg = "Unexpected Joint Matrix type name: '" + name.str() + "', unknown layout.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return false;
     }
     offset -= 1; /* Go back to the end of prefix. */
     outDescription->rows = parseNumber(name, &offset);
@@ -450,6 +531,11 @@ static bool parseMatrixTypeNameLegacy(const Type *opaqueType, JointMatrixTypeDes
 
     offset += 1; /* Skip type specifier, [f|i] */
     outDescription->bitWidth = parseNumber(name, &offset);
+    IGC_ASSERT_MESSAGE(outDescription->bitWidth == 8 ||
+                           outDescription->bitWidth == 16 ||
+                           outDescription->bitWidth == 32,
+                       "Unexpected matrix element size.");
+
     return true;
 }
 
@@ -537,6 +623,7 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(Type *opaqueType, Joint
     } else {
         std::string msg = "Unexpected Joint Matrix type name: '"
                         + fullName.str() + "', unknown use type.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
         return false;
     }
     return true;
@@ -552,7 +639,7 @@ static bool isMatrixType(const Type *type)
         return false;
 
     StringRef name = eltType->getStructName();
-    if (name.startswith("intel.joint_matrix"))
+    if (name.startswith("intel.joint_matrix") || name.startswith("spirv.JointMatrixINTEL._"))
         return true;
 
     return false;
@@ -600,17 +687,24 @@ static bool isOrContainsMatrixType(const Type *root)
     return false;
 }
 
-// Custom slicing for tf32 for Matrix A.  In each WI, we have half the number
-// of rows that are present in the SG.
-static unsigned getNumRowsPerWIPackedA(const JointMatrixTypeDescription *desc) {
-    IGC_ASSERT_EXIT_MESSAGE(
-        desc->layout == LayoutPackedA,
-        "Expected getNumRowsPerWIPackedA function call for Matrix type A");
-    bool isTF32 = (desc->isFloating) && (desc->bitWidth == 32);
-    if (isTF32) {
-        return desc->rows % 2 ? desc->rows / 2 + 1 : desc->rows / 2;
+unsigned JointMatrixFuncsResolutionPass::getNumRowsPerWI(const JointMatrixTypeDescription *desc) {
+    if (desc->layout == LayoutPackedA) {
+        // Custom slicing for tf32 for Matrix A.  In each WI, we have half the number
+        // of rows that are present in the SG.
+        bool isTF32 = (desc->isFloating) && (desc->bitWidth == 32);
+
+        if (m_Ctx->platform.hasExecSize16DPAS() && (m_SIMDSize == 32 || isTF32))
+            return desc->rows % 2 ? desc->rows / 2 + 1 : desc->rows / 2;
+        return desc->rows;
+    } else if (desc->layout == LayoutPackedB) {
+        return (m_Ctx->platform.hasExecSize16DPAS() && m_SIMDSize == 32) ? 4 : 8;
+    } else if (desc->layout == LayoutRowMajor) {
+        if (m_Ctx->platform.hasExecSize16DPAS() && m_SIMDSize == 32)
+            return desc->rows % 2 ? desc->rows / 2 + 1 : desc->rows / 2;
+        return desc->rows;
     }
-    return desc->rows;
+    IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
+    return 1;
 }
 
 Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixTypeDescription *outDesc)
@@ -664,32 +758,22 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
         return IGCLLVM::FixedVectorType::get(baseType, 16);
     }
 
+    /* Small slice support: */
+    Type *baseType = Type::getInt32Ty(ctx);
     if (desc.layout == LayoutPackedA) {
-        Type *baseType = Type::getInt32Ty(ctx);
         bool isTF32 = (desc.isFloating) && (desc.bitWidth == 32);
         if (!isTF32 && m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
-        if (desc.rows == 1) {
-            resolvedType = baseType;
-        } else {
-            unsigned numRowsPerWI = getNumRowsPerWIPackedA(&desc);
-            resolvedType =
-                IGCLLVM::FixedVectorType::get(baseType, numRowsPerWI);
-        }
-    } else if (desc.layout == LayoutPackedB) {
-        Type *baseType = Type::getInt32Ty(ctx);
-        resolvedType = IGCLLVM::FixedVectorType::get(baseType, 8);
-    } else if (desc.layout == LayoutRowMajor) {
-        Type *baseType = Type::getInt32Ty(ctx);
-        if (desc.isFloating) {
-            baseType = Type::getFloatTy(ctx);
-        }
-        if (desc.rows == 1) {
-            resolvedType = baseType;
-        } else {
-            resolvedType = IGCLLVM::FixedVectorType::get(baseType, desc.rows);
-        }
+    } else if (desc.layout == LayoutRowMajor && desc.isFloating) {
+        baseType = Type::getFloatTy(ctx);
+    }
+
+    unsigned vectorSize = getNumRowsPerWI(&desc);
+    if (vectorSize == 1) {
+        resolvedType = baseType;
+    } else {
+        resolvedType = IGCLLVM::FixedVectorType::get(baseType, vectorSize);
     }
 
     IGC_ASSERT_EXIT_MESSAGE(resolvedType != nullptr, "Failed to resolve matrix type.");
@@ -1006,22 +1090,21 @@ static unsigned getResolvedVectorElemSize(Type *matrixType) {
     return matrixType->getScalarSizeInBits();
 }
 
-static int getSliceSize(const JointMatrixTypeDescription *desc, Type *matTy) {
-    unsigned contribTypeWidth = getResolvedVectorElemSize(matTy);
+int JointMatrixFuncsResolutionPass::getSliceSize(const JointMatrixTypeDescription *desc, Type *matTy) {
+    if (desc->layout == LayoutRowMajor)
+        return getNumRowsPerWI(desc);
 
-    if (desc->layout == LayoutRowMajor) {
-        return desc->rows;
-    }
-    if (desc->bitWidth != 0) {
-        if (desc->layout == LayoutPackedA) {
-            unsigned numRowsPerWI = getNumRowsPerWIPackedA(desc);
-            return numRowsPerWI * (contribTypeWidth / desc->bitWidth);
+    if (desc->layout == LayoutPackedA || desc->layout == LayoutPackedB) {
+        if (desc->bitWidth == 0) {
+            IGC_ASSERT_MESSAGE(false, "Unexpected matrix element bit width.");
+            return 1;
         }
-        if (desc->layout == LayoutPackedB) {
-            return 8 * (contribTypeWidth / desc->bitWidth);
-        }
+
+        unsigned contribTypeWidth = getResolvedVectorElemSize(matTy);
+        return getNumRowsPerWI(desc) * (contribTypeWidth / desc->bitWidth);
     }
-    IGC_ASSERT_MESSAGE(true, "Unexpected matrix layout.");
+
+    IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
     return 1;
 }
 
@@ -1154,9 +1237,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveGetCoord(CallInst *CI) {
     return newCall;
 }
 
-template <class BuilderT>
-static Value *createSliceExtract
-      (BuilderT *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc, Type *matTy) {
+Value *JointMatrixFuncsResolutionPass::createSliceExtract
+      (IRBuilder<> *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc, Type *matTy) {
     const int sliceSize = getSliceSize(desc, matTy);
     const int vectorSize = getResolvedVectorSize(matrix->getType());
     /* Unpacking: */
