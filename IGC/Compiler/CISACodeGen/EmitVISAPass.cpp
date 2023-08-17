@@ -5167,10 +5167,6 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
 
         bool channelUniform = simdChannel->IsUniform();
 
-        auto* GII = dyn_cast<GenIntrinsicInst>(inst);
-        if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast)
-            channelUniform = true;
-
         IGC_ASSERT_MESSAGE(m_encoder->GetCISADataTypeSize(simdChannel->GetType()) == 4,
             "simdChannel size of simdShuffle should be 4 bytes!");
 
