@@ -427,12 +427,14 @@ public:
     void emitLSCVectorLoad(llvm::Instruction *Inst,
                            llvm::Value *Ptr,
                            llvm::Value *offset, llvm::ConstantInt *immOffset,
-                           LSC_CACHE_OPTS cacheOpts);
+                           LSC_CACHE_OPTS cacheOpts,
+                           LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCVectorStore(llvm::Value *Ptr,
                             llvm::Value *offset, llvm::ConstantInt *immOffset,
                             llvm::Value *storedVal, llvm::BasicBlock* BB,
                             LSC_CACHE_OPTS cacheOpts,
-                            alignment_t align, bool dontForceDMask);
+                            alignment_t align, bool dontForceDMask,
+                            LSC_DOC_ADDR_SPACE addrSpace);
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
@@ -553,7 +555,8 @@ public:
         ResourceDescriptor* resource,
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
-        int immOffset);
+        int immOffset,
+        LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCStore(
         llvm::Instruction* inst,
         CVariable* src,
@@ -575,7 +578,8 @@ public:
         ResourceDescriptor* resource,
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
-        int immOffset);
+        int immOffset,
+        LSC_DOC_ADDR_SPACE addrSpace);
     ////////////////////////////////////////////////////////////////////
     // NOTE: for vector load/stores instructions pass the
     // optional instruction argument checks additional constraints
@@ -937,23 +941,27 @@ private:
     void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                  ResourceDescriptor &Resource, CVariable *Dest,
                                  CVariable *Offset, int ImmOffset,
-                                 uint32_t NumElts, uint32_t EltBytes);
+                                 uint32_t NumElts, uint32_t EltBytes,
+                                 LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCVectorLoad_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                    ResourceDescriptor &Resource,
                                    CVariable *Dest, CVariable *Offset,
                                    int ImmOffset, uint32_t NumElts,
                                    uint32_t EltBytes, uint64_t Align,
-                                   uint32_t Addrspace);
+                                   uint32_t Addrspace,
+                                   LSC_DOC_ADDR_SPACE userAddrSpace);
     void emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                   ResourceDescriptor &Resource,
                                   CVariable *StoreVar, CVariable *Offset,
                                   int ImmOffset, uint32_t NumElts,
-                                  uint32_t EltBytes, alignment_t Align);
+                                  uint32_t EltBytes, alignment_t Align,
+                                  LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                     ResourceDescriptor &Resource,
                                     CVariable *StoreVar, CVariable *Offset,
                                     int ImmOffset, uint32_t NumElts,
-                                    uint32_t EltBytes, alignment_t Align);
+                                    uint32_t EltBytes, alignment_t Align,
+                                    LSC_DOC_ADDR_SPACE addrSpace);
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1,
                                      bool EvictL1) const;
 

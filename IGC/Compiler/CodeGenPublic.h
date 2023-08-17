@@ -55,6 +55,7 @@ SPDX-License-Identifier: MIT
 #include <optional>
 #include <Metrics/IGCMetric.h>
 #include "llvmWrapper/IR/Module.h"
+#include "Compiler/UserAddrSpaceMD.hpp"
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
@@ -902,6 +903,8 @@ namespace IGC
 
         IGCMetrics::IGCMetric metrics;
 
+        UserAddrSpaceMD m_UserAddrSpaceMD;
+
         // shader stat for opt customization
         uint32_t     m_tempCount = 0;
         uint32_t     m_sampler = 0;
@@ -1026,6 +1029,8 @@ namespace IGC
 
             // Set retry behavor for Disable()
             m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
+
+            m_UserAddrSpaceMD = UserAddrSpaceMD(llvmCtxWrapper);
         }
 
         CodeGenContext(CodeGenContext&) = delete;
