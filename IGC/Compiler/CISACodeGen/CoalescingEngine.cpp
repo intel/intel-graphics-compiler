@@ -74,7 +74,7 @@ namespace IGC
 
     void CoalescingEngine::CCTuple::print(raw_ostream& OS, const Module*) const
     {
-        OS << "CC Tuple";
+        OS << "CC Tuple ";
 
         auto IT = OffsetToCCMap.begin();
         while (IT != OffsetToCCMap.end())
@@ -144,6 +144,8 @@ namespace IGC
 
             IncrementalCoalesce(DI->getBlock());
         }
+        if (IGC_IS_FLAG_ENABLED(PrintToConsole))
+            dump();
         return false;
     }
 
