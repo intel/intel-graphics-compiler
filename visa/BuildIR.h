@@ -718,11 +718,9 @@ public:
   }
 
   G4_Declare *getBuiltinR0() { return builtinR0; }
-  void setBuiltInR0(G4_Declare *dcl) { builtinR0 = dcl; }
   G4_Declare *getRealR0() const {
     return realR0;
   } // undefined terminology: what's "real" here (vs "builtin" above)?
-  void setRealR0(G4_Declare *dcl) { realR0 = dcl; }
   G4_Declare *getBuiltinA0() { return builtinA0; }
   G4_Declare *getBuiltinA0Dot2() { return builtinA0Dot2; }
   G4_Declare *getBuiltinHWTID() const { return builtinHWTID; }
