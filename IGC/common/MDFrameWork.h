@@ -442,6 +442,7 @@ namespace IGC
         bool DisableEUFusion                            = false;
         bool DisableFDivToFMulInvOpt                    = false;
         bool initializePhiSampleSourceWA                = false;
+        bool WaDisableSubspanUseNoMaskForCB             = false;
     };
 
     enum class ThreadIDLayout
