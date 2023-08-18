@@ -405,11 +405,9 @@ static VISA_VectorOpnd *readVectorOperandNG(unsigned &bytePos, const char *buf,
     READ_CISA_FIELD(index, uint16_t, bytePos, buf);
 
     uint16_t predIndex = index & 0xfff;
-    VISA_PredVar *decl = NULL;
+    vASSERT(predIndex >= COMMON_ISA_NUM_PREDEFINED_PRED);
 
-    if (predIndex >= COMMON_ISA_NUM_PREDEFINED_PRED)
-      decl = container.predicateVarDecls[predIndex];
-
+    VISA_PredVar *decl = container.predicateVarDecls[predIndex];
     VISA_VectorOpnd *opnd = nullptr;
     if (isDst) {
       kernelBuilderImpl->CreateVISAPredicateDstOperand(opnd, decl, size);
