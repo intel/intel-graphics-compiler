@@ -1,23 +1,23 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
-#include "Compiler/CISACodeGen/helper.h"
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
-#include "DebugInfo/Utils.hpp"
-#include "Probe/Assertion.h"
-#include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
+#include "Compiler/DebugInfo/Utils.h"
+#include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
+#include "common/igc_regkeys.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -49,11 +49,12 @@ ImplicitGlobalId::ImplicitGlobalId() : ModulePass(ID)
 
 bool ImplicitGlobalId::runOnModule(Module& M)
 {
-  if (!Utils::hasDebugInfo(M)) {
-    // If there is no debug info, then it must be GenISA debugger.
-    // Thus, no need to add OpenCL global id variable. Just return.
-    return false;
-  }
+    if (!Utils::HasDebugInfo(M))
+    {
+        // If there is no debug info, then it must be GenISA debugger.
+        // Thus, no need to add OpenCL global id variable. Just return.
+        return false;
+    }
     m_pModule = &M;
     m_pDIB = std::unique_ptr<DIBuilder>(new DIBuilder(M));
 
@@ -360,23 +361,24 @@ bool CleanImplicitIds::processFunc(Function& F)
 
     bool Changed = false;
 
-    auto FindPredefinedInst = [](auto &PredefinedInsts, std::string &name) {
-      unsigned int idx = Utils::getSpecialDebugVariableHash(name);
-      IGC_ASSERT_MESSAGE(idx < 9, "Name __ocl_dbg_* not found ");
-      if (idx < __OCL_DBG_VARIABLES)
-        return PredefinedInsts[idx];
+    auto FindPredefinedInst = [](auto& PredefinedInsts, std::string& name)
+    {
+        unsigned int idx = Utils::GetSpecialDebugVariableHash(name);
+        IGC_ASSERT_MESSAGE(idx < 9, "Name __ocl_dbg_* not found ");
+        if (idx < __OCL_DBG_VARIABLES)
+            return PredefinedInsts[idx];
 
-      return (llvm::DbgValueInst *)nullptr;
+        return (llvm::DbgValueInst*)nullptr;
     };
 
-    auto FindPredefinedDummyInst = [](auto &PredefinedDummyInsts,
-                                      std::string &name) {
-      unsigned int idx = Utils::getSpecialDebugVariableHash(name);
-      IGC_ASSERT_MESSAGE(idx < 9, "Name __ocl_dbg_* not found ");
-      if (idx < __OCL_DBG_VARIABLES)
-        return PredefinedDummyInsts[idx];
+    auto FindPredefinedDummyInst = [](auto& PredefinedDummyInsts, std::string& name)
+    {
+        unsigned int idx = Utils::GetSpecialDebugVariableHash(name);
+        IGC_ASSERT_MESSAGE(idx < 9, "Name __ocl_dbg_* not found ");
+        if (idx < __OCL_DBG_VARIABLES)
+            return PredefinedDummyInsts[idx];
 
-      return (llvm::CallInst *)nullptr;
+        return (llvm::CallInst*)nullptr;
     };
 
     for (auto& BB : F)
@@ -386,23 +388,25 @@ bool CleanImplicitIds::processFunc(Function& F)
             if (auto DbgVal = dyn_cast_or_null<DbgValueInst>(&I))
             {
                 auto Name = DbgVal->getVariable()->getName().str();
-                if (Utils::isSpecialDebugVariable(Name)) {
-                  auto PredefVar = FindPredefinedInst(PredefinedInsts, Name);
-                  if (PredefVar == nullptr) {
-                    unsigned int idx = Utils::getSpecialDebugVariableHash(Name);
-                    IGC_ASSERT_MESSAGE(idx < __OCL_DBG_VARIABLES,
-                                       "Name __ocl_dbg_* not found ");
+                if (Utils::IsSpecialDebugVariable(Name))
+                {
+                    auto PredefVar = FindPredefinedInst(PredefinedInsts, Name);
+                    if (PredefVar == nullptr)
+                    {
+                        unsigned int idx = Utils::GetSpecialDebugVariableHash(Name);
+                        IGC_ASSERT_MESSAGE(idx < __OCL_DBG_VARIABLES, "Name __ocl_dbg_* not found ");
 
-                    if (idx < __OCL_DBG_VARIABLES)
-                      PredefinedInsts[idx] = DbgVal;
-                  } else {
-                    // dbg.value from inlined function
-                    DIB->insertDbgValueIntrinsic(
-                        PredefVar->getValue(), DbgVal->getVariable(),
-                        DbgVal->getExpression(), DbgVal->getDebugLoc(), &I);
-                    ToErase.push_back(DbgVal);
-                    Changed = true;
-                  }
+                        if (idx < __OCL_DBG_VARIABLES)
+                            PredefinedInsts[idx] = DbgVal;
+                    }
+                    else
+                    {
+                        // dbg.value from inlined function
+                        DIB->insertDbgValueIntrinsic(PredefVar->getValue(), DbgVal->getVariable(),
+                            DbgVal->getExpression(), DbgVal->getDebugLoc(), &I);
+                        ToErase.push_back(DbgVal);
+                        Changed = true;
+                    }
                 }
             }
             else if (dyn_cast_or_null<CallInst>(&I) &&
@@ -411,7 +415,7 @@ bool CleanImplicitIds::processFunc(Function& F)
                 I.getMetadata("implicitGlobalID"))
             {
                 auto CI = dyn_cast_or_null<CallInst>(&I);
-                auto Name = Utils::getSpecialVariableMetaName(&I);
+                auto Name = Utils::GetSpecialVariableMetaName(&I);
                 IGC_ASSERT_MESSAGE(!Name.empty(), "Unexpected dummy instruction");
                 if (!Name.empty())
                 {
@@ -419,13 +423,11 @@ bool CleanImplicitIds::processFunc(Function& F)
 
                     if (PredefVar == nullptr)
                     {
-                      unsigned int idx =
-                          Utils::getSpecialDebugVariableHash(Name);
-                      IGC_ASSERT_MESSAGE(idx < __OCL_DBG_VARIABLES,
-                                         "Name __ocl_dbg_* not found ");
+                        unsigned int idx = Utils::GetSpecialDebugVariableHash(Name);
+                        IGC_ASSERT_MESSAGE(idx < __OCL_DBG_VARIABLES, "Name __ocl_dbg_* not found ");
 
-                      if (idx < __OCL_DBG_VARIABLES)
-                        PredefinedDummyInsts[idx] = CI;
+                        if (idx < __OCL_DBG_VARIABLES)
+                            PredefinedDummyInsts[idx] = CI;
                     }
                     else
                     {

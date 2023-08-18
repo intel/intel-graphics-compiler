@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2023 Intel Corporation
+Copyright (C) 2018-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -43,15 +43,17 @@ namespace IGC
         CShader* m_currShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
+        virtual bool doInitialization(llvm::Module& M) override;
+        virtual bool doFinalization(llvm::Module& M) override;
+
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.setPreservesAll();
         }
 
-        std::vector<CShader *> findShaderCandidates();
-        void emitDebugInfo(bool, const IGC::VISADebugInfo &VDI);
+        void EmitDebugInfo(bool, const IGC::VISADebugInfo &VDI);
     };
 
     class CatchAllLineNumber : public llvm::FunctionPass

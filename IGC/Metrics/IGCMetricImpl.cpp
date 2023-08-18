@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -19,12 +19,12 @@ SPDX-License-Identifier: MIT
 #include <Metrics/IGCMetricsVer.h>
 #endif
 
+#include <Probe/Assertion.h>
 #include <Compiler/CISACodeGen/ShaderCodeGen.hpp>
 #include <DebugInfo/VISAModule.hpp>
-#include <Compiler/ScalarDebugInfo/VISAScalarModule.hpp>
-#include <Probe/Assertion.h>
-#include <visa/Common_ISA.h>
+#include <Compiler/DebugInfo/ScalarVISAModule.h>
 #include <visaBuilder_interface.h>
+#include <visa/Common_ISA.h>
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Instructions.h>
@@ -622,9 +622,8 @@ namespace IGCMetrics
 #endif
     }
 
-    void IGCMetricImpl::CollectDataFromDebugInfo(
-        llvm::Function *pFunc, IGC::CShaderDebugInfo *pDebugInfo,
-        const IGC::VISADebugInfo *pVisaDbgInfo) {
+    void IGCMetricImpl::CollectDataFromDebugInfo(llvm::Function* pFunc, IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pVisaDbgInfo)
+    {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
 
@@ -792,6 +791,7 @@ namespace IGCMetrics
         }
 #endif
     }
+
 
     void IGCMetricImpl::CollectInstructionCnt(
         llvm::Function* pFunc,

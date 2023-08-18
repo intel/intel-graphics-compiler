@@ -112,7 +112,7 @@ public:
   // Accessors.
   unsigned getUniqueID() const { return UniqueID; }
   uint16_t getLanguage() const {
-    return Utils::getSourceLanguage(Node, DD->GetVISAModule()->GetModule());
+    return getSourceLanguage(Node, DD->GetVISAModule()->GetModule());
   }
   llvm::DICompileUnit *getNode() const { return Node; }
   DIE *getCUDie() const { return CUDie; }

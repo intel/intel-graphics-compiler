@@ -21,8 +21,8 @@ endif()
 add_subdirectory(CISACodeGen)
 igc_sg_define(Compiler__CISACodeGen)
 
-add_subdirectory(ScalarDebugInfo)
-igc_sg_define(Compiler__ScalarDebugInfo)
+add_subdirectory(DebugInfo)
+igc_sg_define(Compiler__DebugInfo)
 
 add_subdirectory(Legalizer)
 igc_sg_define(Compiler__Legalizer)
@@ -110,7 +110,7 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_12_71_hw_wa.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SamplerPerfOptPass.cpp"
     ${IGC_BUILD__SRC__Compiler_CISACodeGen}
-    ${IGC_BUILD__SRC__Compiler_ScalarDebugInfo}
+    ${IGC_BUILD__SRC__Compiler_DebugInfo}
     ${IGC_BUILD__SRC__Compiler_Legalizer}
     ${IGC_BUILD__SRC__Compiler_MetaDataApi}
     ${IGC_BUILD__SRC__Compiler_Optimizer}
@@ -165,7 +165,7 @@ set(IGC_BUILD__HDR__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/RemoveCodeAssumptions.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ModuleAllocaAnalysis.hpp"
     ${IGC_BUILD__HDR__Compiler_CISACodeGen}
-    ${IGC_BUILD__HDR__Compiler_ScalarDebugInfo}
+    ${IGC_BUILD__HDR__Compiler_DebugInfo}
     ${IGC_BUILD__HDR__Compiler_Legalizer}
     ${IGC_BUILD__HDR__Compiler_MetaDataApi}
     ${IGC_BUILD__HDR__Compiler_Optimizer}

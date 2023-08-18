@@ -41,7 +41,6 @@ class DwarfDebug;
 class DwarfDISubprogramCache;
 class CodeGenContext;
 class VISADebugInfo;
-class VISAObjectDebugInfo;
 
 class DebugEmitter : public IDebugEmitter {
 public:
