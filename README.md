@@ -12,18 +12,18 @@ SPDX-License-Identifier: MIT
 
 ## Introduction
 
-The Intel&reg; Graphics Compiler for OpenCL&trade; is an LLVM based compiler for
-OpenCL&trade; targeting Intel Gen graphics hardware architecture.
+The Intel&reg; Graphics Compiler for OpenCL&trade; is an LLVM-based compiler designed for
+OpenCL&trade;, targeting Intel Gen graphics hardware architecture.
 
-Please refer to http://01.org/compute-runtime for additional details regarding
- Intel's motivation and intentions wrt OpenCL support in the open source.
+Please refer to [OpenCl&trade; applications](https://www.intel.com/content/www/us/en/developer/articles/guide/sdk-for-opencl-2017-gsg.html) 
+for additional details regarding Intel's motivation with OpenCL support in the [open-source community]( http://01.org/compute-runtime).
 
 
 ## License
 
 The Intel&reg; Graphics Compute Runtime for OpenCL&trade; is distributed under the MIT License.
 
-You may obtain a copy of the License at:
+For detailed terms, you can access the full License at:
 
 https://opensource.org/licenses/MIT
 
@@ -36,7 +36,7 @@ https://opensource.org/licenses/MIT
 
 ## Supported Linux versions
 
-IGC is supported on the following 64 bit Linux operating systems:
+IGC is supported on the following 64-bit Linux operating systems:
 
 * Ubuntu 18.04
 * Ubuntu 19.04
@@ -59,9 +59,9 @@ IGC is supported on the following 64 bit Linux operating systems:
 * Intel Atom Processors supporting Gen9 graphics devices
 
 ## How to provide feedback
-Please submit an issue using native github.com interface: https://github.com/intel/intel-graphics-compiler/issues.
+If you have any feedback or questions, please open an issue through the native github.com interface: [Submit an issue](https://github.com/intel/intel-graphics-compiler/issues).
 
 ## How to contribute
 
-Create a pull request on github.com with your patch. Make sure your change is
-cleanly building. A maintainer will contact you if there are questions or concerns.
+Create a pull request on github.com with your changes. Ensure that your modifications build without errors. 
+A maintainer will get in touch with you if there are any inquiries or concerns.
