@@ -26,6 +26,9 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define AS_LOCAL   1
 #define AS_GLOBAL  2
 
+#define TF32 1
+#define notTF32 0
+
 // Matrix layout
 #define _PackedA_RowMajor 0
 #define _PackedB_RowMajor 1
@@ -46,11 +49,11 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define IND_VNNI_TX(slid, stride, i) (i + (slid * stride))
 
 // The following variations are added to calculate index based on the new
-// slicing for sub group size bigger than N.  Currently we do not have any test case
-// of col_major matrix, therefore we keep the implementation of
+// slicing idea for MatA of TF32 type.  Currently we do not have any test case
+// of col_major A of TF32 type, therefore we keep the implementation of
 // COL_MAJOR same as the old slicing case.
 // Arguments:
-//   sg_cols: Number of contiguous columns held in the subgroup
+//   sg_cols: Number of columns held in the subgroup
 //   skip_factor: n, where we include elements from every n-th row of the JM
 //   to be part of the wi.  e.g for a Matrix
 //     1 2 3 4
@@ -59,9 +62,9 @@ extern __constant int __JointMatrixLoadStoreOpt;
 //     13 14 15 16
 //    if skip_factor == 2, we will include items <1, 9> (every "2"nd row) in the
 //    first WI, <2, 10> in the second WI and so on..
-#define IND_ROW_MAJOR_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) (slid/sg_cols*stride + slid%sg_cols + i*stride*skip_factor)
-#define IND_COL_MAJOR_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) IND_COL_MAJOR(slid, stride, i) // placeholder
-#define IND_VNNI_TX_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) IND_VNNI_TX(slid, stride, i) // placeholder
+#define IND_ROW_MAJOR_TF32_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) ((slid/sg_cols*stride) + (i*stride*skip_factor) + (slid%sg_cols))
+#define IND_COL_MAJOR_TF32_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) (i + (slid * stride)) // placeholder
+#define IND_VNNI_TX_TF32_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) (i + (slid * stride)) // placeholder
 
 // no int7, int6, int5 types
 #define VEC_TO_VEC8(type, vec) \
@@ -138,16 +141,14 @@ extern __constant int __JointMatrixLoadStoreOpt;
 // sg is empty for XMX8 and _SG16 for PVC
 // elem_bitwidth is 8, 16 or 32
 // shape is shape of the matrix, like 8x16
-// WI_rows is the number of rows owned by each WI, which can be different from M e.g. for tf32
-#define MANGLE_LOAD_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape, WI_rows) \
-  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_generic_v8i8_pi32_i32
+#define MANGLE_LOAD_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_generic_v8i8_pi32_i32
 
-#define MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape, WI_rows) \
-  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_local_v8i8_pi32_i32
+#define MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_local_v8i8_pi32_i32
 
-#define MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape, WI_rows) \
-  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_global_v8i8_pi32_i32
-
+#define MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_global_v8i8_pi32_i32
 
 #define SUB_GROUP_LOAD(readop, M, src, dst, stride, contrib_type) \
     contrib_type *ptr = (contrib_type *)mem; \
@@ -243,18 +244,16 @@ extern __constant int __JointMatrixLoadStoreOpt;
 //      in case of vnni'd B, so we keep it.
 // order is ROW_MAJOR or COL_MAJOR
 // us is empty for int contrib type and _us for short contrib type.
-// WI_rows is the number of rows owned by each WI, which can be different from M e.g. for tf32
-// stride_opt should be either equal to N or vnni_factor*N in case of matrix B, since matrix B is vnni'ed
-#define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, address_space) \
-  INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride) { \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+// stride_opt should be either equal to C or 2*C in case of matrix B, since matrix B is vnni'ed
+// Currently, for TF32 type, we use naive load/store
+#define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space, isTF32) \
+  INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape) (__private char *dst, char *mem, long stride) { \
+      if (!isTF32 && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && (order == _ROW_MAJOR || order == _VNNI_TX) && address_space == AS_GLOBAL \
           ) { \
-          /* It seems __builtin_IB_subgroup_block_rw always needs k=16 \
-             Maybe it is number of columns divided by pack factor which always gives 16 on SG16 HW */ \
-          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, stride_opt) \
+          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
       } \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL \
+      if (!isTF32 && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL \
           && stride == stride_opt && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           ) { \
@@ -262,7 +261,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
           *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
           return; \
       } \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_IMPL && order == _ROW_MAJOR \
+      if (!isTF32 && __JointMatrixLoadStoreOpt >= VECTOR_IMPL && order == _ROW_MAJOR \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           ) { \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
@@ -275,150 +274,122 @@ extern __constant int __JointMatrixLoadStoreOpt;
       int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
       stride = stride / pack_factor; \
       __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
-      for (int i = 0; i < WI_rows; i++) { \
-          if (WI_rows != M ) { \
-            int skip_factor = M / WI_rows; \
-            int sg_cols = K / pack_factor; \
-            wi_contrib[i] = ptr[IND##order##_NEW_SLIC(slid, stride, skip_factor, i, sg_cols)]; \
+      for (int i = 0; i < M; i++) { \
+          if (isTF32 && (_##layout == _PackedA_RowMajor)) { \
+            int skip_factor = 2; /*num_rows_sg / num_rows_wi*/ \
+            wi_contrib[i] = ptr[IND##order##_TF32_NEW_SLIC(slid, stride, skip_factor, i, K /*sg_cols*/)]; \
           } else { \
             wi_contrib[i] = ptr[IND##order(slid, stride, i)]; \
           } \
       } \
   }
 
-#define DEFINE_LOAD(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt) \
-  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, stride_opt, AS_GENERIC) \
-  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, stride_opt, AS_LOCAL) \
-  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, stride_opt, AS_GLOBAL)
+#define DEFINE_LOAD(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, isTF32) \
+  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GENERIC, isTF32) \
+  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_LOCAL, isTF32) \
+  DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GLOBAL, isTF32)
 
 /* PackedA load i16 */
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 7, 16, 7x16, ROW_MAJOR, , 7, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 6, 16, 6x16, ROW_MAJOR, , 6, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 5, 16, 5x16, ROW_MAJOR, , 5, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 4, 16, 4x16, ROW_MAJOR, , 4, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 3, 16, 3x16, ROW_MAJOR, , 3, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 2, 16, 2x16, ROW_MAJOR, , 2, 16)
-DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 7, 16, 7x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 6, 16, 6x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 5, 16, 5x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 4, 16, 4x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 3, 16, 3x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 2, 16, 2x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , short, 16, int, 32, 1, 16, 1x16, ROW_MAJOR, , 16, notTF32)
 
 /* PackedA load i8 */
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 8, 32, 8x32, ROW_MAJOR, , 8, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 7, 32, 7x32, ROW_MAJOR, , 7, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 6, 32, 6x32, ROW_MAJOR, , 6, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 5, 32, 5x32, ROW_MAJOR, , 5, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 4, 32, 4x32, ROW_MAJOR, , 4, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 3, 32, 3x32, ROW_MAJOR, , 3, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 2, 32, 2x32, ROW_MAJOR, , 2, 32)
-DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 1, 32, 1x32, ROW_MAJOR, , 1, 32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 8, 32, 8x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 7, 32, 7x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 6, 32, 6x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 5, 32, 5x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 4, 32, 4x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 3, 32, 3x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 2, 32, 2x32, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, , char, 8, int, 32, 1, 32, 1x32, ROW_MAJOR, , 32, notTF32)
 
 /* PackedA load i16 SG16 */
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 8, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 7, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 6, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 5, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 4, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 3, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 2, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 1, 16)
-
-/* PackedA load i16 SG16 for sub group size = 32*/
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 4, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 4, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 3, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 3, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 2, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 2, 16)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 1, 16)
-// DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 1, 16) same as for subgroup 16
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 16, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 16, notTF32)
 
 /* PackedA load i8 SG16 */
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 8, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 7, 32, 7x32, ROW_MAJOR, _us, 7, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 6, 32, 6x32, ROW_MAJOR, _us, 6, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 5, 32, 5x32, ROW_MAJOR, _us, 5, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 4, 32, 4x32, ROW_MAJOR, _us, 4, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 3, 32, 3x32, ROW_MAJOR, _us, 3, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 2, 32, 2x32, ROW_MAJOR, _us, 2, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 1, 32, 1x32, ROW_MAJOR, _us, 1, 32)
-
-/* PackedA load i8 SG16 for sub group size 32*/
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 4, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 7, 32, 7x32, ROW_MAJOR, _us, 4, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 6, 32, 6x32, ROW_MAJOR, _us, 3, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 5, 32, 5x32, ROW_MAJOR, _us, 3, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 4, 32, 4x32, ROW_MAJOR, _us, 2, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 3, 32, 3x32, ROW_MAJOR, _us, 2, 32)
-DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 2, 32, 2x32, ROW_MAJOR, _us, 1, 32)
-// DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 1, 32, 1x32, ROW_MAJOR, _us, 1, 32)  same as for subgroup 16
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 8, 16, 8x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 7, 16, 7x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 6, 16, 6x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 5, 16, 5x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 4, 16, 4x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 3, 16, 3x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 2, 16, 2x32, ROW_MAJOR, _us, 32, notTF32)
+DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 1, 16, 1x32, ROW_MAJOR, _us, 32, notTF32)
 
 /* A load tf32 SG16 */
-DEFINE_LOAD(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 4, 8)
+// Please note that even though the JM size is 8x8, we are passing 4 as the parameter M
+// instead of 8, because due to new slicing, we want each WI to return a vector of 4
+// elements.  Currently, we use M as the size of the vector.  Making a change to use
+// M/2 will require singinifcant code changes, therefore we are using M=4 here.
+DEFINE_LOAD(PackedA_RowMajor, _SG16, int, 32, int, 32, 4, 8, 8x8, ROW_MAJOR, , 8, TF32)
 
 /* PackedB load i16 */
-DEFINE_LOAD(PackedB_ColumnMajor, , short, 16, int, 32, 8, 16,  16x8,  COL_MAJOR, , 8, -1)
-DEFINE_LOAD(PackedB_PackedB, ,     short, 16, int, 32, 8, 16,  16x8,  ROW_MAJOR, , 8, 16)
+DEFINE_LOAD(PackedB_ColumnMajor, , short, 16, int, 32, 8, 8,  16x8,  COL_MAJOR, , -1, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     , short, 16, int, 32, 8, 8,  16x8,  ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     , short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, notTF32)
 
 /* PackedB load i8 */
-DEFINE_LOAD(PackedB_ColumnMajor, , char, 8, int, 32, 8, 32,  32x8,  COL_MAJOR, , 8, -1)
-DEFINE_LOAD(PackedB_PackedB,     , char, 8, int, 32, 8, 32,  32x8,  ROW_MAJOR, , 8, 16)
+DEFINE_LOAD(PackedB_ColumnMajor, , char, 8, int, 32, 8, 8,  32x8,  COL_MAJOR, , -1, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     , char, 8, int, 32, 8, 8,  32x8,  ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     , char, 8, int, 32, 8, 16, 32x16, ROW_MAJOR, , 32, notTF32)
 
 /* PackedB load i16 SG16 */
-DEFINE_LOAD(PackedB_ColumnMajor, _SG16, short, 16, int, 32, 8, 32, 16x16, COL_MAJOR, , 8, -1)
-DEFINE_LOAD(PackedB_PackedB,     _SG16, short, 16, int, 32, 8, 32, 16x16, ROW_MAJOR, , 8, 32)
-DEFINE_LOAD(PackedB_RowMajor,    _SG16, short, 16, int, 32, 8, 32, 16x16, VNNI_TX, , 8, 32)
-
-/* PackedB load i16 for sub group size = 32*/
-DEFINE_LOAD(PackedB_PackedB,     _SG16, short, 16, int, 32, 8, 32, 16x16, ROW_MAJOR, , 4, 32)
+DEFINE_LOAD(PackedB_ColumnMajor, _SG16, short, 16, int, 32, 8, 8,  16x8,  COL_MAJOR, , -1, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     _SG16, short, 16, int, 32, 8, 8,  16x8,  ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     _SG16, short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedB_RowMajor,    _SG16, short, 16, int, 32, 8, 8,  16x8,  VNNI_TX, , 16, notTF32)
+DEFINE_LOAD(PackedB_RowMajor,    _SG16, short, 16, int, 32, 8, 16, 16x16, VNNI_TX, , 16, notTF32)
 
 /* PackedB load i8 SG16*/
-DEFINE_LOAD(PackedB_ColumnMajor, _SG16, char, 8, int, 32, 8, 64, 32x16, COL_MAJOR, , 8, -1)
-DEFINE_LOAD(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 64, 32x16, ROW_MAJOR, , 8, 64)
-DEFINE_LOAD(PackedB_RowMajor,    _SG16, char, 8, int, 32, 8, 64, 32x16, VNNI_TX,   , 8, 64)
-
-/* PackedB load i8 SG16 for sub group size 32*/
-DEFINE_LOAD(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 64, 32x16, ROW_MAJOR, , 4, 64)
+DEFINE_LOAD(PackedB_ColumnMajor, _SG16, char, 8, int, 32, 8, 8,  32x8,  COL_MAJOR, , -1, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 8,  32x8,  ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 16, 32x16, ROW_MAJOR, , 32, notTF32)
+DEFINE_LOAD(PackedB_RowMajor,    _SG16, char, 8, int, 32, 8, 8,  32x8,  VNNI_TX, , 16, notTF32)
+DEFINE_LOAD(PackedB_RowMajor,    _SG16, char, 8, int, 32, 8, 16, 32x16, VNNI_TX, , 32, notTF32)
 
 /* B load tf32 SG16 */
-DEFINE_LOAD(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16,  8x16,  ROW_MAJOR, , 8, 16)
+DEFINE_LOAD(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16,  8x16,  ROW_MAJOR, , 16, TF32)
 
 /* Load accumulator is a special case of load packed A, both are row major: */
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 7, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 6, 8, 6x8, ROW_MAJOR, , 6, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 5, 8, 5x8, ROW_MAJOR, , 5, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 4, 8, 4x8, ROW_MAJOR, , 4, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 3, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 2, 8)
-DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 1, 8)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 6, 8, 6x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 5, 8, 5x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 4, 8, 4x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 8, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 8, notTF32)
 
-/* SG16*/
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 7, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, ROW_MAJOR, , 6, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, ROW_MAJOR, , 5, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJOR, , 4, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 3, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 2, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16)
-
-/* SG16 for subgroup 32*/
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 4, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 4, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, ROW_MAJOR, , 3, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, ROW_MAJOR, , 3, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJOR, , 2, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 2, 16)
-DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 1, 16)
-// DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16) same as for subgroup 16
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 16, notTF32)
+DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 16, notTF32)
 
 // --------- STORE built-ins --------------------------------------
 
-#define MANGLE_STORE_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape, WI_rows) \
-  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_generic_pi64_v8i8
-#define MANGLE_STORE_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape, WI_rows) \
-  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_local_pi64_v8i8
-#define MANGLE_STORE_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape, WI_rows) \
-  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_global_pi64_v8i8
+#define MANGLE_STORE_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_generic_pi64_v8i8
+#define MANGLE_STORE_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_local__pi64_v8i8
+#define MANGLE_STORE_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_global_pi64_v8i8
 
 #define VEC_IND8(var, ind) var[ind]
 #define VEC_IND7(var, ind) var[ind]
@@ -430,14 +401,14 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJO
 #define VEC_IND1(var, ind) var
 
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
-#define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, block_opt, address_space) \
-  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, long stride) { \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+#define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt, address_space, isTF32) \
+  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape) (char *mem, __private char *src, long stride) { \
+      if (!isTF32 && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
           ) { \
           IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, src) \
       } \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL && stride == stride_opt \
+      if (!isTF32 && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL && stride == stride_opt \
           && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           ) { \
@@ -445,7 +416,7 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJO
           DEFINE_BLOCK_RW_NAME##M(write, us)((ATTRIBUTE_##address_space u##contrib_type *)mem, VEC_TO_VEC_STORE##M(u##contrib_type , vec)); \
           return; \
       } \
-      if (WI_rows == M && (__JointMatrixLoadStoreOpt >= VECTOR_IMPL) \
+      if (!isTF32 && (__JointMatrixLoadStoreOpt >= VECTOR_IMPL) \
           && order == _ROW_MAJOR && block_opt == true \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           ) { \
@@ -461,142 +432,101 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJO
       int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
       stride = stride / pack_factor; \
       __private contrib_type *slice = (__private contrib_type *)src; \
-      for (int i = 0; i < WI_rows; i++) { \
-          if (WI_rows != M) { \
-              int skip_factor = M / WI_rows; \
-              int sg_cols = K / pack_factor; \
-              ptr[IND##order##_NEW_SLIC(slid, stride, skip_factor, i, sg_cols)] = slice[i]; \
+      for (int i = 0; i < M; i++) { \
+        if (isTF32 && (_##layout == _PackedA_RowMajor)) { \
+            ptr[ IND##order##_TF32_NEW_SLIC(slid, stride, 2 /*skip_factor*/, i, K /*sg_cols*/) ] = slice[i]; \
           } else { \
-              ptr[ IND##order(slid, stride, i) ] = slice[i]; \
+            ptr[ IND##order(slid, stride, i) ] = slice[i]; \
           } \
       } \
   }
 
-#define DEFINE_STORE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, block_opt) \
-  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, stride_opt, block_opt, AS_GENERIC) \
-  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, stride_opt, block_opt, AS_LOCAL) \
-  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, stride_opt, block_opt, AS_GLOBAL)
+#define DEFINE_STORE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, block_opt, isTF32) \
+  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_GENERIC, isTF32) \
+  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_LOCAL, isTF32) \
+  DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, block_opt, AS_GLOBAL, isTF32)
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
 
 /* PackedA store i8 */
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 1, 32, 1x32, ROW_MAJOR,    , 1, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 2, 32, 2x32, ROW_MAJOR,    , 2, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 3, 32, 3x32, ROW_MAJOR,    , 3, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 4, 32, 4x32, ROW_MAJOR,    , 4, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 5, 32, 5x32, ROW_MAJOR,    , 5, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 6, 32, 6x32, ROW_MAJOR,    , 6, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 7, 32, 7x32, ROW_MAJOR,    , 7, 32, false)
-DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 8, 32, 8x32, ROW_MAJOR,    , 8, 32, false)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 1, 32, 1x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 2, 32, 2x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 3, 32, 3x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 4, 32, 4x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 5, 32, 5x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 6, 32, 6x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 7, 32, 7x32, ROW_MAJOR,    , 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , char,  8,  int,   32, 8, 32, 8x32, ROW_MAJOR,    , 32, false, notTF32)
 
 /* PackedA store i16 */
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 1, 16, 1x16, ROW_MAJOR,    , 1, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 2, 16, 2x16, ROW_MAJOR,    , 2, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 3, 16, 3x16, ROW_MAJOR,    , 3, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 4, 16, 4x16, ROW_MAJOR,    , 4, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 5, 16, 5x16, ROW_MAJOR,    , 5, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 6, 16, 6x16, ROW_MAJOR,    , 6, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 7, 16, 7x16, ROW_MAJOR,    , 7, 16, false)
-DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 8, 16, 8x16, ROW_MAJOR,    , 8, 16, false)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 1, 16, 1x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 2, 16, 2x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 3, 16, 3x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 4, 16, 4x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 5, 16, 5x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 6, 16, 6x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 7, 16, 7x16, ROW_MAJOR,    , 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor,      , short, 16, int,   32, 8, 16, 8x16, ROW_MAJOR,    , 16, false, notTF32)
 
 /* PackedA store i8 SG16 */
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 1, 32, 1x32, ROW_MAJOR, _us, 1, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 2, 32, 2x32, ROW_MAJOR, _us, 2, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 3, 32, 3x32, ROW_MAJOR, _us, 3, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 4, 32, 4x32, ROW_MAJOR, _us, 4, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 5, 32, 5x32, ROW_MAJOR, _us, 5, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 6, 32, 6x32, ROW_MAJOR, _us, 6, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 7, 32, 7x32, ROW_MAJOR, _us, 7, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 8, 32, false)
-
-/* PackedA store i8 SG16 for subgroup 32*/
-// DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 1, 32, 1x32, ROW_MAJOR, _us, 1, 32, false) same as for subgroup 16
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 2, 32, 2x32, ROW_MAJOR, _us, 1, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 3, 32, 3x32, ROW_MAJOR, _us, 2, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 4, 32, 4x32, ROW_MAJOR, _us, 2, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 5, 32, 5x32, ROW_MAJOR, _us, 3, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 6, 32, 6x32, ROW_MAJOR, _us, 3, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 7, 32, 7x32, ROW_MAJOR, _us, 4, 32, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 4, 32, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 1, 32, 1x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 2, 32, 2x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 3, 32, 3x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 4, 32, 4x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 5, 32, 5x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 6, 32, 6x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 7, 32, 7x32, ROW_MAJOR, _us, 32, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, char,  8,  short, 16, 8, 32, 8x32, ROW_MAJOR, _us, 32, false, notTF32)
 
 /* PackedA store i16 SG16 */
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 1, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 2, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 3, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 4, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 5, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 6, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 7, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 8, 16, false)
-
-/* PackedA store i16 SG16 for sub group size 32 */
-// DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 1, 16, false) same as for subgroup 16
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 1, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 2, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 2, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 3, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 3, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 4, 16, false)
-DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 4, 16, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 1, 16, 1x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 2, 16, 2x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 3, 16, 3x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 4, 16, 4x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 5, 16, 5x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 6, 16, 6x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 7, 16, 7x16, ROW_MAJOR, _us, 16, false, notTF32)
+DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJOR, _us, 16, false, notTF32)
 
 /* A store tf32 SG16 */
-DEFINE_STORE(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 4, 8, false)
+DEFINE_STORE(PackedA_RowMajor, _SG16, int, 32, int, 32, 4, 8, 8x8, ROW_MAJOR, , 8, false, TF32)
 
-/* PackedB store i16*/
-DEFINE_STORE(PackedB_ColumnMajor, , short, 16, int, 32, 8, 16, 16x8, COL_MAJOR, , 8, -1, false)
-DEFINE_STORE(PackedB_PackedB,     , short, 16, int, 32, 8, 16, 16x8, ROW_MAJOR, , 8, 16, true)
-
-/* PackedB store i16 SG16*/
-DEFINE_STORE(PackedB_ColumnMajor, _SG16, short, 16, int, 32, 8, 32, 16x16,  COL_MAJOR, , 8, -1, false)
-DEFINE_STORE(PackedB_PackedB,     _SG16, short, 16, int, 32, 8, 32, 16x16, ROW_MAJOR, , 8, 32, true)
-
-/* PackedB store i16 SG16 for subgroup 32*/
-DEFINE_STORE(PackedB_PackedB,     _SG16, short, 16, int, 32, 8, 32, 16x16, ROW_MAJOR, , 4, 32, true)
+DEFINE_STORE(PackedB_PackedB,      , short, 16, int, 32, 8, 16, 16x8,  ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(PackedB_PackedB,      , short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, true, notTF32)
+DEFINE_STORE(PackedB_PackedB, _SG16, short, 16, int, 32, 8, 16, 16x8,  ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(PackedB_PackedB, _SG16, short, 16, int, 32, 8, 16, 16x16, ROW_MAJOR, , 32, true, notTF32)
 
 // TODO: investigate why intel_sub_group_block_write causes an assertion and enable blocked non-continuous optimization
-/* PackedB store i8 */
-DEFINE_STORE(PackedB_ColumnMajor, , char, 8, int, 32, 8, 32, 32x8, COL_MAJOR, , 8, -1, false)
-DEFINE_STORE(PackedB_PackedB,     , char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 8, 32, false)
-
-/* PackedB store i8 SG16 */
-DEFINE_STORE(PackedB_ColumnMajor, _SG16, char, 8, int, 32, 8, 64, 32x16, COL_MAJOR, , 8, -1, false)
-DEFINE_STORE(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 64, 32x16, ROW_MAJOR, , 8, 64, false)
-
-/* PackedB store i8 SG16 for subgroup 32*/
-DEFINE_STORE(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 64, 32x16, ROW_MAJOR, , 4, 64, true)
+DEFINE_STORE(PackedB_PackedB,      , char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false, notTF32)
+DEFINE_STORE(PackedB_PackedB, _SG16, char, 8, int, 32, 8, 32, 32x8, ROW_MAJOR, , 16, false, notTF32)
+DEFINE_STORE(PackedB_PackedB, _SG16, char, 8, int, 32, 8, 32, 32x16, ROW_MAJOR, , 32, false, notTF32)
 
 /* B store tf32 SG16 */
-DEFINE_STORE(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16, true)
+DEFINE_STORE(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, true, TF32)
 
-/* Acc i32 */
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 7, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 6, 8, 6x8, ROW_MAJOR, , 6, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 5, 8, 5x8, ROW_MAJOR, , 5, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 4, 8, 4x8, ROW_MAJOR, , 4, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 3, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 2, 8, true)
-DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 1, 8, true)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 6, 8, 6x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 5, 8, 5x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 4, 8, 4x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 8, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 8, true, notTF32)
 
-/* Acc i32 SG16 */
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 7, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, ROW_MAJOR, , 6, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, ROW_MAJOR, , 5, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJOR, , 4, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 3, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 2, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16, true)
+DEFINE_STORE(Accumulator_RowMajor,      , int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, true, notTF32)
 
-/* Acc i32 SG16 for subgroup 32*/
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 4, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 4, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, ROW_MAJOR, , 3, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, ROW_MAJOR, , 3, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJOR, , 2, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 2, 16, true)
-DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 1, 16, true)
-// DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16, true) same as for subgroup 16
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 16, true, notTF32)
+DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 16, true, notTF32)
+
+DEFINE_STORE(Accumulator_ColumnMajor,      , int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , -1, false, notTF32)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , -1, false, notTF32)
+
 
 // get_coord()
 #define MANGLE_GETCOORD_NAME(layout, sg, elem_bitwidth, shape) \
@@ -829,10 +759,10 @@ INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x64_i1
     char *mem2 = mem + 2 * 16 * (sizeof (int));
     char *mem3 = mem + 3 * 16 * (sizeof (int));
 
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b0, mem0, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b1, mem1, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b2, mem2, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b3, mem3, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b0, mem0, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b1, mem1, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b2, mem2, stride);
+    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_generic_v8i8_pi32_i32(b3, mem3, stride);
 }
 
 INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(char *mem, __private char *src, long stride) {
@@ -867,3 +797,4 @@ INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32
     __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem6, c6, stride);
     __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem7, c7, stride);
 }
+

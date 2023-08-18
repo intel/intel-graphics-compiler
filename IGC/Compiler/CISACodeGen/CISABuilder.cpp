@@ -7756,7 +7756,7 @@ namespace IGC
             execSize = EXEC_SIZE_16;
         }
         VISA_Exec_Size aluExecSize = GetAluExecSize(dst);
-        if (needsSplitting(aluExecSize) && execSize != EXEC_SIZE_8 && execSize != EXEC_SIZE_16)
+        if (needsSplitting(aluExecSize) && execSize != EXEC_SIZE_8)
         {
             IGC_ASSERT(execSize == EXEC_SIZE_16);
             unsigned numParts = 2;

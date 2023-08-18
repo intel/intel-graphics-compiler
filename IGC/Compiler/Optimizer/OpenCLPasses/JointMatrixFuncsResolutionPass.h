@@ -21,7 +21,7 @@ namespace IGC
     struct JointMatrixTypeDescription;
 
     class JointMatrixFuncsResolutionPass final
-        : public llvm::ModulePass
+        : public llvm::FunctionPass
         , public llvm::InstVisitor<JointMatrixFuncsResolutionPass>
     {
     public:
@@ -42,8 +42,7 @@ namespace IGC
             AU.addRequired<IGC::CodeGenContextWrapper>();
         }
 
-        virtual bool runOnModule(llvm::Module& M) override;
-        bool runOnFunction(llvm::Function& F);
+        virtual bool runOnFunction(llvm::Function& F) override;
         void visitCallInst(llvm::CallInst& CI);
         void visitAllocaInst(llvm::AllocaInst &I);
         void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
@@ -55,21 +54,17 @@ namespace IGC
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
         llvm::Instruction *ResolveStore(llvm::CallInst *CI);
         llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
-        int getSliceSize(const JointMatrixTypeDescription *desc, llvm::Type *matTy);
         llvm::Value *ResolveFill(llvm::CallInst *CI);
         llvm::Value *ResolveWILength(llvm::CallInst *CI);
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
         llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
-        llvm::Value *createSliceExtract(llvm::IRBuilder<> *builder, llvm::Value *matrix, llvm::Value *index, const JointMatrixTypeDescription *desc, llvm::Type *matTy);
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *ResolveGeneric(llvm::Instruction *OldInst);
         llvm::Value *Resolve(llvm::Value *value);
 
-        bool parseMatrixTypeNameLegacy(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
         bool ParseMatrixTypeName(llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
 
-        unsigned getNumRowsPerWI(const JointMatrixTypeDescription *desc);
         llvm::Type *ResolveType(llvm::Type *opaqueType, JointMatrixTypeDescription *outDesc);
         llvm::Type *ResolveTypes(llvm::Type *t);
         llvm::Type *ResolveStructType(llvm::Type *t);
@@ -87,19 +82,14 @@ namespace IGC
 
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
-        llvm::Function *getEntryFunction(llvm::Function *F);
 
         llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
         std::unordered_map<llvm::Type *, llvm::Type *> ResolvedTypes;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
-        // Maps function to it's kernel entry function
-        std::unordered_map<llvm::Function *, llvm::Function *> FunctionsMap;
 
         ModuleMetaData* MMD = nullptr;
         CodeGenContext* m_Ctx = nullptr;
-        IGCMD::MetaDataUtils *m_mdUtils = nullptr;
         bool Changed = false;
-        int32_t m_SIMDSize = 0;
     };
 };
