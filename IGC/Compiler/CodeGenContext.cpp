@@ -48,6 +48,7 @@ namespace IGC
         firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
         stateId = firstStateId;
         prevStateId = 500;
+        shaderType = ShaderType::UNKNOWN;
         IGC_ASSERT(stateId < RetryTableSize);
     }
 
