@@ -395,8 +395,8 @@ public:
   void mergeReturn(FuncInfoHashTable &funcInfoTable);
   G4_BB *mergeSubRoutineReturn(G4_Label *subroutine);
   void normalizeSubRoutineBB(FuncInfoHashTable &funcInfoTable);
-  void processGoto(bool HasSIMDCF);
-  void processSCF(FuncInfoHashTable &FuncInfoMap);
+  void processGoto();
+  void processSCF();
   // Insert a join at the beginning of 'bb' with given 'execsize' and
   // 'maskoffset'. If a join is already present, update that join to cover the
   // given 'execsize' and 'maskoffset'.
@@ -405,7 +405,6 @@ public:
 
   // functions for structure analysis
   G4_Kernel *getKernel() const { return pKernel; }
-  G4_Label *insertEndif(G4_BB *bb, G4_ExecSize execSize, bool createLabel);
   void setJIPForEndif(G4_INST *endif, G4_INST *target, G4_BB *targetBB);
   void convertGotoToJmpi(G4_INST *gotoInst);
   G4_BB *getSinglePredecessor(G4_BB *BB, G4_BB *ExcludedPred) const;
@@ -489,10 +488,6 @@ public:
   // analysis.
   //
   void removeEmptyBlocks();
-  //
-  // Add a dummy BB for multiple-exit flow graph
-  //
-  void linkDummyBB();
   //
   // Re-assign block ID so that we can use id to determine the ordering of two
   // blocks in the code layout

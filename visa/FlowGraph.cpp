@@ -743,57 +743,20 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
             addUniquePredSuccEdges(curr_BB, next_BB);
           }
         } // if (i->opcode()
-        else if (i->opcode() == G4_if || i->opcode() == G4_while ||
-                 i->opcode() == G4_else) {
+        else if (i->opcode() == G4_if) {
           hasSIMDCF = true;
           if (i->asCFInst()->getJip()->isLabel()) {
-            if (i->opcode() == G4_else || i->opcode() == G4_while) {
-              // for G4_while, jump no matter predicate
-              addPredSuccEdges(curr_BB,
-                               getLabelBB(labelMap, i->asCFInst()->getJip()));
-            } else if ((i->getPredicate() != NULL) ||
-                       ((i->getCondMod() != NULL) && (i->getSrc(0) != NULL) &&
-                        (i->getSrc(1) != NULL))) {
+            if (i->getPredicate()) {
               addPredSuccEdges(curr_BB,
                                getLabelBB(labelMap, i->asCFInst()->getJip()));
             }
           }
-          if (i->opcode() == G4_while) {
-            // always do this since break jumps to while, otherwise code after
-            // while without predicate appears unreachable. add fall through
-            // edge if while is not the last instruction
-            if (next_BB) {
-              addPredSuccEdges(curr_BB, next_BB);
-            }
-          } else {
-            //  always fall through
-            addPredSuccEdges(curr_BB, next_BB); // add fall through edge
-          }
-        } else if (i->opcode() == G4_break || i->opcode() == G4_cont ||
-                   i->opcode() == G4_halt) {
-          // JIP and UIP must have been computed at this point
-          vISA_ASSERT(i->asCFInst()->getJip() != NULL &&
-                           i->asCFInst()->getUip() != NULL,
-                       "null JIP or UIP for break/cont instruction");
-          addPredSuccEdges(curr_BB,
-                           getLabelBB(labelMap, i->asCFInst()->getJip()));
-
-          if (strcmp(i->asCFInst()->getJipLabelStr(),
-                     i->asCFInst()->getUipLabelStr()) != 0)
-            addPredSuccEdges(curr_BB,
-                             getLabelBB(labelMap, i->asCFInst()->getUip()));
-
-          //
-          // pred means conditional branch
-          //
-          if (i->getPredicate() != NULL) {
-            // add fall through edge
-            addPredSuccEdges(curr_BB, next_BB);
-          }
+          // always fall through
+          addPredSuccEdges(curr_BB, next_BB);
         } else if (i->isReturn() || i->opcode() == G4_pseudo_exit) {
           // does nothing for unconditional return;
           // later phase will link the return and the return address
-          if (i->getPredicate() != NULL) {
+          if (i->getPredicate()) {
             // add fall through edge
             addPredSuccEdges(curr_BB, next_BB);
           }
@@ -901,7 +864,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
       removeRedundantLabels();
       pKernel->dumpToFile("after.PostStructurizerRedundantLabels");
     } else {
-      processGoto(hasSIMDCF);
+      processGoto();
       pKernel->dumpToFile("after.ProcessGoto");
     }
   }
@@ -912,9 +875,12 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
   reassignBlockIDs();
   findBackEdges();
 
+  // TODO: I think this can be removed since vISA no longer has structured CF.
+  // For math intrinsics if/endif may still be generated, but they are present
+  // for IGC as well, which suggests this pass is not needed.
   if (hasSIMDCF &&
       pKernel->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) {
-    processSCF(funcInfoHashTable);
+    processSCF();
     addSIMDEdges();
   }
 
@@ -2145,51 +2111,6 @@ void FlowGraph::mergeFReturns() {
 }
 
 //
-// Add a dummy BB for multiple-exit flow graph
-// The criteria of a valid multiple-exit flow graph is:
-//  (1). equal or less than one BB w/o successor has non-EOT last instruction;
-//  (2). Other BBs w/o successor must end with EOT
-//
-void FlowGraph::linkDummyBB() {
-  //
-  // check the flow graph to find if it satify the criteria and record the exit
-  // BB
-  //
-  std::list<G4_BB *> exitBBs;
-  int nonEotExitBB = 0;
-  for (G4_BB *bb : BBs) {
-    if (bb->Succs.empty()) {
-      exitBBs.push_back(bb); // record exit BBs
-      G4_INST *last = bb->back();
-      if (last == NULL) {
-        vISA_ASSERT(false, "ERROR: Invalid flow graph with empty exit BB!");
-      }
-      if (!bb->isLastInstEOT()) {
-        nonEotExitBB++;
-        if (nonEotExitBB > 1) {
-          vISA_ASSERT(false, "ERROR: Invalid flow graph with more than one "
-                              "exit BB not end with EOT!");
-        }
-      }
-    }
-  }
-
-  //
-  // create the dummy BB and link the exit BBs to it
-  //
-  if (nonEotExitBB == 1 && exitBBs.size() > 1) {
-    G4_BB *dumBB = createNewBB();
-    dumBB->markEmpty(builder, "DUMMY_LAST_BB");
-    BBs.push_back(dumBB);
-
-    for (G4_BB *bb : exitBBs) {
-      dumBB->Preds.push_back(bb);
-      bb->Succs.push_back(dumBB);
-    }
-  }
-}
-
-//
 // Re-assign block ID so that we can use id to determine the ordering of two
 // blocks in the code layout
 //
@@ -2271,7 +2192,7 @@ struct StructuredCF {
  *  The simd control flow blocks must be well-structured
  *
  */
-void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap) {
+void FlowGraph::processSCF() {
   std::stack<StructuredCF *> ifAndLoops;
   std::vector<StructuredCF *> structuredSimdCF;
 
@@ -2853,28 +2774,6 @@ void FlowGraph::setPhysicalPredSucc() {
   }
 }
 
-G4_Label *FlowGraph::insertEndif(G4_BB *bb, G4_ExecSize execSize,
-                                 bool createLabel) {
-  // endif is placed immediately after the label
-  G4_INST *endifInst = builder->createInternalCFInst(NULL, G4_endif, execSize,
-                                                     NULL, NULL, InstOpt_NoOpt);
-  INST_LIST_ITER iter = bb->begin();
-  vISA_ASSERT(iter != bb->end(), "empty BB");
-  iter++;
-  bb->insertBefore(iter, endifInst);
-
-  // this block may be a target of multiple ifs, in which case we will need to
-  // insert one endif for each if.  The innermost endif will use the BB label,
-  // while for the other endifs a new label will be created for each of them.
-  if (createLabel) {
-    G4_Label *label = builder->createLocalBlockLabel();
-    endifWithLabels.emplace(endifInst, label);
-    return label;
-  } else {
-    return bb->getLabel();
-  }
-}
-
 // This function set the JIP of the endif to the target instruction (either
 // endif or while)
 void FlowGraph::setJIPForEndif(G4_INST *endif, G4_INST *target,
@@ -2948,7 +2847,7 @@ void FlowGraph::convertGotoToJmpi(G4_INST *gotoInst) {
  * well-formed vISA program should not have overlapped goto and structured CF
  * instructions.
  */
-void FlowGraph::processGoto(bool HasSIMDCF) {
+void FlowGraph::processGoto() {
   // For a given loop (StartBB, EndBB) (EndBB->StartBB is a backedge), this
   // function return a BB in which an out-of-loop join will be inserted.
   //
