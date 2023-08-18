@@ -216,7 +216,7 @@ void ImmDominator::dumpImmDom(std::ostream &os) {
     for (auto domBB : domBBs) {
       os << "BB" << domBB->getId();
       if (domBB->getLabel()) {
-        os << " (" << domBB->getLabel()->getLabel() << ")";
+        os << " (" << domBB->getLabel()->getLabelName() << ")";
       }
       os << ", ";
     }
@@ -340,7 +340,7 @@ void PostDom::dumpImmDom(std::ostream &os) {
     for (auto pdomBB : pdomBBs) {
       os << "BB" << pdomBB->getId();
       if (pdomBB->getLabel()) {
-        os << " (" << pdomBB->getLabel()->getLabel() << ")";
+        os << " (" << pdomBB->getLabel()->getLabelName() << ")";
       }
       os << ", ";
     }
@@ -921,7 +921,7 @@ void Loop::dump(std::ostream &os) {
       (preHeader ? std::to_string(preHeader->getId()) : std::string("--"));
 
   if (preHeader && preHeader->getLabel())
-    labelStr += "(" + std::string(preHeader->getLabel()->getLabel()) + ")";
+    labelStr += "(" + std::string(preHeader->getLabel()->getLabelName()) + ")";
 
   std::string exitBBs = "{ ";
   for (auto bb : loopExits) {

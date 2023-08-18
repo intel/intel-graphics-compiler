@@ -490,26 +490,25 @@ class G4_Label : public G4_Operand {
   friend class IR_Builder;
 
   const char *label;
-  bool funcLabel;
-  bool isFC;
-  bool isDivergentRL;
+  VISA_Label_Kind kind;
 
-  G4_Label(const char *l) : G4_Operand(G4_Operand::label), label(l) {
-    funcLabel = false;
-    isFC = false;
-    isDivergentRL = false;
-  }
+  G4_Label(const char *l, VISA_Label_Kind k)
+      : G4_Operand(G4_Operand::label), label(l), kind(k) {}
 
 public:
-  const char *getLabel() const { return label; }
+  const char *getLabelName() const { return label; }
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   void emit(std::ostream &output) override;
-  void setFuncLabel(bool val) { funcLabel = val; }
-  bool isFuncLabel() const { return funcLabel; }
-  bool isFCLabel() const { return isFC; }
-  void setFCLabel(bool fcLabel) { isFC = fcLabel; }
-  void setDivergentResourceLoop() { isDivergentRL = true; }
-  bool isDivergentResourceLoop() { return isDivergentRL; }
+  bool isStackFunction() const { return kind == LABEL_FUNCTION; }
+  bool isSubroutine() const { return kind == LABEL_SUBROUTINE; }
+  bool isFCLabel() const { return kind == LABEL_FC; }
+  bool isBlock() const {
+    return kind == LABEL_BLOCK || kind == LABEL_DIVERGENT_RESOURCE_LOOP;
+  }
+  bool isDivergentResourceLoop() const {
+    return kind == LABEL_DIVERGENT_RESOURCE_LOOP;
+  }
+  VISA_Label_Kind getLabelKind() const { return kind; }
 };
 
 class G4_SrcRegRegion final : public G4_Operand {

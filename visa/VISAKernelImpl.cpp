@@ -1274,22 +1274,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *&opnd, const char *name,
       std::string fname = "L_f" + std::to_string(m_functionId) + "_" + name;
       opnd->g4opnd = m_builder->createLabel(fname, kind);
     } else {
-      std::string kname(name);
-      opnd->g4opnd = m_builder->createLabel(kname, kind);
-    }
-    if (kind == LABEL_SUBROUTINE) {
-      static_cast<G4_Label*>(opnd->g4opnd)->setFuncLabel(true);
-    } else {
-      static_cast<G4_Label*>(opnd->g4opnd)->setFuncLabel(false);
-      if (kind == LABEL_FC) {
-        // Need to do this here because label kind
-        // from VISA is not propagated to G4 IR
-        // directly.
-        static_cast<G4_Label*>(opnd->g4opnd)->setFuncLabel(true);
-      }
-    }
-    if (kind == LABEL_DIVERGENT_RESOURCE_LOOP) {
-      static_cast<G4_Label*>(opnd->g4opnd)->setDivergentResourceLoop();
+      opnd->g4opnd = m_builder->createLabel(name, kind);
     }
   }
   if (IS_VISA_BOTH_PATH) {
@@ -8892,7 +8877,7 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase *binEncodingInstance) {
         callToPatch->callOffset = i;
         std::string_view labelStr(
             static_cast<G4_Label *>(fcMapIt->second.first->getSrc(0))
-                ->getLabel());
+                ->getLabelName());
         unsigned int strLength = (uint32_t)labelStr.size();
         char *labelString = (char *)builder->mem.alloc(strLength + 1);
         strcpy_s(labelString, strLength + 1, labelStr.data());
@@ -8940,9 +8925,9 @@ void VISAKernelImpl::computeFCInfo() {
         FCCalls *CallToPatch = (FCCalls *)builder->mem.alloc(sizeof(FCCalls));
         CallToPatch->callOffset = Slot;
         G4_Label *Label = inst->getSrc(0)->asLabel();
-        size_t Len = std::string_view(Label->getLabel()).size();
+        size_t Len = std::string_view(Label->getLabelName()).size();
         char *S = (char *)builder->mem.alloc(Len + 1);
-        strcpy_s(S, Len + 1, Label->getLabel());
+        strcpy_s(S, Len + 1, Label->getLabelName());
         CallToPatch->calleeLabelString = S;
         builder->getFCPatchInfo()->getFCCallsToPatch().push_back(CallToPatch);
       } else if (opc == G4_pseudo_fc_ret) {

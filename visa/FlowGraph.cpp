@@ -679,7 +679,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
     curr_BB->splice(curr_BB->end(), instlist, iter);
     G4_INST *next_i = (instlist.empty()) ? nullptr : instlist.front();
 
-    if (i->isLabel() && i->getLabel()->isFuncLabel()) {
+    if (i->isLabel() && i->getLabel()->isSubroutine()) {
       std::vector<G4_BB *> bbvec;
       subroutines[i->getLabel()] = bbvec;
       currSubroutine = i->getLabel();
@@ -738,9 +738,6 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
             // only remove the link when it is not a conditional call
             //
             addPredSuccEdges(curr_BB, next_BB);
-            if (i->getSrc(0)->isLabel()) {
-              i->getSrc(0)->asLabel()->setFuncLabel(true);
-            }
           } else if (i->getPredicate()) {
             // add fall through edge
             addUniquePredSuccEdges(curr_BB, next_BB);
@@ -1745,7 +1742,8 @@ void FlowGraph::removeRedundantLabels() {
     //
     if (bb->Succs.size() == 1 && bb->size() == 1) {
       G4_INST *removedBlockInst = bb->front();
-      if (removedBlockInst->getLabel()->isFuncLabel() || bb->isSpecialEmptyBB()) {
+      if (removedBlockInst->getLabel()->isSubroutine() ||
+          bb->isSpecialEmptyBB()) {
         continue;
       }
 
@@ -1910,7 +1908,7 @@ void FlowGraph::removeRedundantLabels() {
       vASSERT(labelInst->isLabel());
       if (!singlePred->back()->isFlowControl() &&
           singlePred->getPhysicalSucc() == bb /* sanity */ &&
-          !labelInst->getLabel()->isFuncLabel() /* skip special bb */ &&
+          !labelInst->getLabel()->isSubroutine() /* skip special bb */ &&
           bb != singlePred /* [special] skip dead single-BB loop */) {
         bool doMerging = true;
         G4_INST *whileInst = bb->back();

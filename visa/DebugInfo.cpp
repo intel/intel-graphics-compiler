@@ -1037,7 +1037,7 @@ template <class T> void emitDataSubroutines(VISAKernelImpl *visaKernel, T &t) {
                          ->getRootDeclare();
           }
         }
-        emitDataName(subLabel->getLabel(), t);
+        emitDataName(subLabel->getLabelName(), t);
         emitDataUInt32(start, t);
         emitDataUInt32(end, t);
 
@@ -2237,7 +2237,7 @@ void emitSubRoutineInfo(VISAKernelImpl *visaKernel) {
 
         calleeBB = calleeBB->Preds.front();
       }
-      std::cerr << "Func info id " << subLabel->getLabel() << "\n";
+      std::cerr << "Func info id " << subLabel->getLabelName() << "\n";
       std::cerr << "First inst " << start << ", last inst " << end << "\n";
       std::cerr << "Return value in dcl " << retval->getName() << "\n";
 

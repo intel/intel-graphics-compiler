@@ -54,7 +54,7 @@ int IR_Builder::translateVISACFLabelInst(G4_Label *lab) {
 
   createLabelInst(lab, true);
 
-  if (lab->isFuncLabel()) {
+  if (lab->isSubroutine()) {
     subroutineId++;
   }
 

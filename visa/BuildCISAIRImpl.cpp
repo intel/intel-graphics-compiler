@@ -496,7 +496,7 @@ G4_Kernel *CISA_IR_Builder::GetCalleeKernel(G4_INST *fcall) {
   if (!asLabel) {
     return nullptr;
   }
-  std::string funcName = asLabel->getLabel();
+  std::string funcName = asLabel->getLabelName();
   auto iter = functionsNameMap.find(funcName);
   if (iter != functionsNameMap.end()) {
     return iter->second;
@@ -677,6 +677,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
       vISA_ASSERT(calleeLabel->isLabel() == true, "Entry inst is not a label");
 
       // Change fcall to call
+      // FIXME: This is dangerous, also I think we need to convert the label's
+      // kind from FUNCTION to SUBROUTINE.
       fcall->setOpcode(G4_call);
       fcall->setSrc(calleeLabel->getSrc(0), 0);
       // we only record a single callsite to the target in order to convert to
@@ -1142,7 +1144,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
       std::map<G4_Label *, G4_Label *> labelMap;
       if (inlining) {
         auto &builder = caller->fg.builder;
-        std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+        std::string funcName = fcall->getSrc(0)->asLabel()->getLabelName();
         G4_Label *raLabel = builder->createLabel(
             funcName + "_ret" + std::to_string(raUID++), LABEL_BLOCK);
         G4_INST *ra = caller->fg.createNewLabelInst(raLabel);
@@ -1151,9 +1153,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
         // Iterate once to clone labels
         for (G4_INST *inst : calleeInsts) {
           if (inst->opcode() == G4_label) {
-            std::string name = inst->getSrc(0)->asLabel()->getLabel();
-            G4_Label *newLabel = builder->createLabel(
-                name + "_" + std::to_string(funcUID), LABEL_BLOCK);
+            std::string name = inst->getLabelStr();
+            G4_Label *newLabel =
+                builder->createLabel(name + "_" + std::to_string(funcUID),
+                                     inst->getLabel()->getLabelKind());
             labelMap[inst->getSrc(0)->asLabel()] = newLabel;
           }
         }
@@ -1306,7 +1309,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
       auto &builder = caller->fg.builder;
       call->setOpcode(G4_goto);
       call->asCFInst()->setUip(label->getLabel());
-      std::string funcName = call->getSrc(0)->asLabel()->getLabel();
+      std::string funcName = call->getSrc(0)->asLabel()->getLabelName();
       G4_Label *raLabel = builder->createLabel(funcName + "_ret", LABEL_BLOCK);
       G4_INST *ra = caller->fg.createNewLabelInst(raLabel);
       auto &callerInsts = caller->fg.builder->instList;
@@ -1334,7 +1337,7 @@ static void retrieveBarrierInfoFromCallee(VISAKernelImpl *entry,
     if (fcall->asCFInst()->isIndirectCall())
       continue;
 
-    const char *funcName = fcall->getSrc(0)->asLabel()->getLabel();
+    const char *funcName = fcall->getSrc(0)->asLabel()->getLabelName();
     VISAKernelImpl *callee = entry->getCISABuilder()->getKernel(funcName);
     // Propagate properties of callee to caller recursively.
     retrieveBarrierInfoFromCallee(callee, visited);
@@ -1392,7 +1395,7 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
         // Setup caller/callee edges for direct call
         // ToDo: remove this once SWSB is moved before stithcing, as we would
         // not need to maintain CFG otherwise
-        std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+        std::string funcName = fcall->getSrc(0)->asLabel()->getLabelName();
 
         auto iter = subFuncs.find(funcName);
         vISA_ASSERT(iter != subFuncs.end(), "can't find function with given name");
@@ -1903,7 +1906,7 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
           G4_BB *entryBB = nullptr;
           for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); it++) {
             G4_BB *BB = *it;
-            auto label = BB->getLabel()->getLabel();
+            auto label = BB->getLabel()->getLabelName();
             if (strcmp(label, "per_thread_prolog") && strcmp(label, "cross_thread_prolog")) {
               entryBB = BB;
               break;

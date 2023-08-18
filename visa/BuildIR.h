@@ -1099,7 +1099,7 @@ public:
     size_t len = lab.size() + 1;
     char *new_str = (char *)mem.alloc(len); // +1 for null that ends the string
     memcpy_s(new_str, len, labStr, len);
-    return new (mem) G4_Label(new_str);
+    return new (mem) G4_Label(new_str, kind);
   }
 
   uint32_t getAndUpdateNextLabelId() { return m_next_local_label_id++; }
@@ -1142,7 +1142,7 @@ public:
     size_t len = ss.str().size() + 1;
     char *new_str = (char *)mem.alloc(len); // +1 for null that ends the string
     memcpy_s(new_str, len, ss.str().c_str(), len);
-    return new (mem) G4_Label(new_str);
+    return new (mem) G4_Label(new_str, LABEL_BLOCK);
   }
 
   G4_Predicate *createPredicate(G4_PredState s, G4_VarBase *flag,

@@ -466,8 +466,8 @@ void dumpbbid(BB_LIST *bblist, uint32_t BBId) {
 void dumpbblabel(BB_LIST *bblist, char *labelString) {
   for (BB_LIST_ITER I = bblist->begin(), E = bblist->end(); I != E; ++I) {
     G4_BB *bb = *I;
-    G4_Label *labelInst = bb->getLabel();
-    if (labelInst && strcmp(labelInst->getLabel(), labelString) == 0) {
+    G4_Label *label = bb->getLabel();
+    if (label && strcmp(label->getLabelName(), labelString) == 0) {
       dumpbb(bb);
       break;
     }
@@ -489,10 +489,10 @@ void dumpbblist(BB_LIST *bblist) {
 
   for (BB_LIST_ITER I = bblist->begin(), E = bblist->end(); I != E; ++I) {
     G4_BB *bb = *I;
-    G4_Label *labelInst = bb->getLabel();
+    G4_Label *label = bb->getLabel();
     (*dumpOut) << "  BB(" << bb->getId() << ")";
-    if (labelInst) {
-      (*dumpOut) << " " << labelInst->getLabel() << ",";
+    if (label) {
+      (*dumpOut) << " " << label->getLabelName() << ",";
     }
     (*dumpOut) << "  Preds:";
     for (BB_LIST_ITER I = bb->Preds.begin(), E = bb->Preds.end(); I != E; ++I) {

@@ -1552,7 +1552,7 @@ inline bool G4_INST::isRelocationMov() const {
 
 inline const char *G4_INST::getLabelStr() const {
   vISA_ASSERT(srcs[0] && srcs[0]->isLabel(), ERROR_UNKNOWN);
-  return srcs[0]->asLabel()->getLabel();
+  return srcs[0]->asLabel()->getLabelName();
 }
 
 inline bool G4_InstCF::isUniformGoto(unsigned KernelSimdSize) const {
@@ -1571,12 +1571,12 @@ inline bool G4_InstCF::isIndirectJmp() const {
 
 inline const char *G4_InstCF::getJipLabelStr() const {
   vISA_ASSERT(jip != NULL && jip->isLabel(), ERROR_UNKNOWN);
-  return jip->asLabel()->getLabel();
+  return jip->asLabel()->getLabelName();
 }
 
 inline const char *G4_InstCF::getUipLabelStr() const {
   vISA_ASSERT(uip != NULL && uip->isLabel(), ERROR_UNKNOWN);
-  return uip->asLabel()->getLabel();
+  return uip->asLabel()->getLabelName();
 }
 
 inline bool G4_InstCF::isIndirectCall() const {
