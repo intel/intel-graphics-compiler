@@ -10,7 +10,7 @@ import os
 import sys
 import re
 import json
-import importlib
+import importlib.util
 import argparse
 from Intrinsic_definition_objects import *
 from Intrinsic_utils import file_path, Path
