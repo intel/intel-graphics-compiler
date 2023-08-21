@@ -148,6 +148,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   auto genxISA = m_pVISAModule->getGenBinary();
   DebugLoc prevSrcLoc = DebugLoc();
   unsigned int pc = prevLastGenOff;
+  DILocation *lastInlinedAtLocation = nullptr;
 
   LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] updated bounds info: "
                     << "pc = 0x" << llvm::Twine::utohexstr(pc) << "\n");
@@ -156,6 +157,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     IGC_ASSERT(pc < genxISA.size());
     IGC_ASSERT(GenISAToVISAIndex.begin()->GenOffset >= pc);
   }
+
   for (const auto &item : GenISAToVISAIndex) {
     for (unsigned int i = pc; i != item.GenOffset; i++) {
       EmitIpLabel(i);
@@ -205,7 +207,14 @@ void DebugEmitter::processCurrentFunction(bool finalize,
         m_pStreamEmitter->GetDwarfCompileUnitID());
 
     unsigned int Flags = 0;
-    if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true)) {
+    // Add is_stmt flag if (line, inlinedAt) pair is seen for the first time.
+    // Moreover add is_stmt flag if current location is inlinedAt attribute of
+    // previous location, because we need additional BP after inlined function
+    // returns.
+    if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true) ||
+        (lastInlinedAtLocation &&
+         lastInlinedAtLocation->getLine() == loc.getLine() &&
+         lastInlinedAtLocation->getScope() == loc.getScope())) {
       Flags |= DWARF2_FLAG_IS_STMT;
     }
 
@@ -217,6 +226,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
                                             Flags, 0, 0, scope->getFilename());
 
     prevSrcLoc = loc;
+    lastInlinedAtLocation = loc.getInlinedAt();
   }
   if (finalize) {
     size_t unpaddedSize = m_pVISAModule->getUnpaddedProgramSize();
