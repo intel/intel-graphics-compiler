@@ -4622,18 +4622,17 @@ namespace IGC
                         "Mismatch between the large GRF and annotated number of threads");
                 }
             }
-        }
-        if (IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU) != 0)
-        {
-            SaveOption(vISA_HWThreadNumberPerEU,
-                       IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
-        }
-        else if (m_program->m_Platform->supportsAutoGRFSelection() &&
-            context->m_DriverInfo.supportsAutoGRFSelection() &&
-            IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection))
-        {
-            // When user hasn't specified number of threads, we can rely on compiler heuristics
-            SaveOption(vISA_RegSharingHeuristics, true);
+        } else { // Other shader types
+            if (IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU) != 0) {
+                SaveOption(vISA_HWThreadNumberPerEU,
+                           IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
+            } else if (m_program->m_Platform->supportsAutoGRFSelection() &&
+                       context->m_DriverInfo.supportsAutoGRFSelection() &&
+                       IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)) {
+                // When user hasn't specified number of threads, we can rely on
+                // compiler heuristics
+                SaveOption(vISA_RegSharingHeuristics, true);
+            }
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue))

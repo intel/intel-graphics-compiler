@@ -970,12 +970,14 @@ void G4_Kernel::setKernelParameters(unsigned newGRF) {
     grfMode.setModeByNumGRFs(newGRF);
     overrideGRFNum = 0;
   } else if (overrideNumThreads > 0) {
-    // per kernel/module number of threads
+    // Forcing a specific number of threads
     grfMode.setModeByNumThreads(overrideNumThreads);
     overrideGRFNum = 0;
+    regSharingHeuristics = false;
   } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
-    // per kernel/module number of GRFs
+    // Forcing a specific number of GRFs
     grfMode.setModeByNumGRFs(overrideGRFNum);
+    regSharingHeuristics = false;
   } else {
     // Use default value
     grfMode.setDefaultGRF();
