@@ -123,13 +123,14 @@ int IR_Builder::translateVISACFFCallInst(VISA_Exec_Size execsize,
   auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,
                           nullptr, callLabel, nullptr, InstOpt_NoOpt, true);
 
-  addFcallInfo(fcall, argSize, returnSize);
+  addFcallInfo(fcall, argSize, returnSize, false);
   return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFIFCallInst(VISA_Exec_Size execsize,
                                           VISA_EMask_Ctrl emask,
                                           G4_Predicate *predOpnd,
+                                          bool isUniform,
                                           G4_Operand *funcAddr, uint8_t argSize,
                                           uint8_t returnSize) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
@@ -160,7 +161,7 @@ int IR_Builder::translateVISACFIFCallInst(VISA_Exec_Size execsize,
   auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,
                           nullptr, src0, nullptr, InstOpt_NoOpt, true);
 
-  addFcallInfo(fcall, argSize, returnSize);
+  addFcallInfo(fcall, argSize, returnSize, isUniform);
 
   return VISA_SUCCESS;
 }

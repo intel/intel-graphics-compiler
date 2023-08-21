@@ -87,14 +87,16 @@ class BinInst;
 class G4_FCALL {
   uint16_t argSize;
   uint16_t retSize;
+  bool uniform = false;
 
 public:
   G4_FCALL() = delete;
-  G4_FCALL(uint16_t argVarSz, uint16_t retVarSz)
-      : argSize(argVarSz), retSize(retVarSz) {}
+  G4_FCALL(uint16_t argVarSz, uint16_t retVarSz, bool isUniform)
+      : argSize(argVarSz), retSize(retVarSz), uniform(isUniform) {}
 
   uint16_t getArgSize() const { return argSize; }
   uint16_t getRetSize() const { return retSize; }
+  bool isUniform() const { return uniform; }
 };
 
 // Forward references for classes used by G4_INST.

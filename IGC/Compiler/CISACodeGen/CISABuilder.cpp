@@ -416,7 +416,8 @@ namespace IGC
         VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
         VISA_VectorOpnd* funcAddrOpnd = GetSourceOperandNoModifier(funcPtr);
-        V(vKernel->AppendVISACFIndirectFuncCallInst(predOpnd, emask, execSize, funcAddrOpnd, argSize, retSize));
+        V(vKernel->AppendVISACFIndirectFuncCallInst(
+            predOpnd, emask, execSize, false, funcAddrOpnd, argSize, retSize));
     }
 
     void CEncoder::SubroutineRet(CVariable* flag, llvm::Function* F)

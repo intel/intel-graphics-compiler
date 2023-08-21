@@ -1194,12 +1194,13 @@ static void readInstructionControlFlow(unsigned &bytePos, const char *buf,
                               ? readPredicateOperandNG(bytePos, buf, container)
                               : nullptr;
 
+    bool isUniform = false;
     VISA_VectorOpnd *funcAddr =
         readVectorOperandNG(bytePos, buf, container, false);
     uint8_t argSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     uint8_t retSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-    kernelBuilder->AppendVISACFIndirectFuncCallInst(pred, emask, esize,
-                                                    funcAddr, argSize, retSize);
+    kernelBuilder->AppendVISACFIndirectFuncCallInst(
+        pred, emask, esize, isUniform, funcAddr, argSize, retSize);
     return;
   }
   case ISA_FADDR: {

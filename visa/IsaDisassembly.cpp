@@ -980,13 +980,14 @@ printInstructionControlFlow(const print_format_provider_t *header,
       sstr << uniqueSuffixStr;
   } else {
     sstr << printPredicate(inst->opcode, inst->pred)
-         << ISA_Inst_Table[opcode].str << " "
-         << printExecutionSize(inst->opcode, inst->execsize);
+         << ISA_Inst_Table[opcode].str;
 
     switch (opcode) {
     case ISA_JMP:
     case ISA_GOTO:
     case ISA_FCALL: {
+      sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
+
       /// label / function id to jump / call to.
       label_id = getPrimitiveOperand<uint32_t>(inst, i++);
 
@@ -1013,6 +1014,11 @@ printInstructionControlFlow(const print_format_provider_t *header,
       break;
     }
     case ISA_IFCALL: {
+      /// isUniform
+      auto isUniform = getPrimitiveOperand<unsigned>(inst, i++);
+      if (isUniform)
+        sstr << ".uniform";
+      sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
       sstr << printOperand(header, inst, i++, opt);
       /// arg size
       sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
@@ -1021,6 +1027,7 @@ printInstructionControlFlow(const print_format_provider_t *header,
       break;
     }
     case ISA_FADDR: {
+      sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
       /// symbol name in string
       const char *sym =
           header->getString(getPrimitiveOperand<uint32_t>(inst, i++));
@@ -1034,6 +1041,7 @@ printInstructionControlFlow(const print_format_provider_t *header,
       break;
     }
     case ISA_SWITCHJMP: {
+      sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
       /// skip num_labels
       i++;
       /// index
@@ -1053,6 +1061,7 @@ printInstructionControlFlow(const print_format_provider_t *header,
       break;
     }
     default:
+      sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
       break; // Prevent gcc warning
     }
   }

@@ -487,8 +487,9 @@ public:
 
   bool CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
                                       VISA_EMask_Ctrl emask, unsigned exec_size,
-                                      VISA_opnd *funcAddr, unsigned arg_size,
-                                      unsigned return_size, int lineNum);
+                                      bool isUniform, VISA_opnd *funcAddr,
+                                      unsigned arg_size, unsigned return_size,
+                                      int lineNum);
 
   bool CISA_create_faddr_instruction(const char *sym_name, VISA_opnd *dst,
                                      int lineNum);

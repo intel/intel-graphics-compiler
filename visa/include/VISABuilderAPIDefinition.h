@@ -643,7 +643,7 @@ public:
   /// [0, sizeof(Arg)] returnSize must be [0, sizeof(RetVal)]
   VISA_BUILDER_API virtual int AppendVISACFIndirectFuncCallInst(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-      VISA_VectorOpnd *funcAddr, unsigned char argSize,
+      bool isUniform, VISA_VectorOpnd *funcAddr, unsigned char argSize,
       unsigned char returnSize) = 0;
 
   /// AppendVISACFFuncAddrInst -- stores the address of a symbol <symbolName>

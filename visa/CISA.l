@@ -1228,6 +1228,11 @@ arg    {return LSC_AM_ARG;}
         return IDENT;
     }
 
+".uniform" {
+        TRACE("** UNIFORM");
+        CISAlval.string = strdup(yytext);
+        return UNIFORM;
+    }
 
 
 

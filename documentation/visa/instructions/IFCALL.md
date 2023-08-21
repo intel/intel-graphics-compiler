@@ -87,7 +87,7 @@ SPDX-License-Identifier: MIT
 
 
 
-    [(<P>)] IFCALL (<exec_size>) <func_id> <arg_size> <return_size>
+    [(<P>)] IFCALL.[uniform] (<exec_size>) <func_id> <arg_size> <return_size>
 ```
 ## Notes
 
@@ -96,6 +96,8 @@ SPDX-License-Identifier: MIT
 
 
 ```
+    Optional .uniform modifier is set if all threads invoke same callee.
+
     If <exec_size> is one: Execution jumps to the function if the predicate is true. The call mask will be initialized to all ones at function entry. Scalar calls must be marked with {NoMask}.
 
     If <exec_size> is greater than one: The call is executed if any of the active channels are predicated. At function entry, the call mask will be initialized to the set of active channels that are predicated.

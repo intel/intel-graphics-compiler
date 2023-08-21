@@ -1177,7 +1177,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
             auto orig_fcallinfo = callee->fg.builder->getFcallInfo(fret);
             if (orig_fcallinfo) {
               builder->addFcallInfo(inst, orig_fcallinfo->getArgSize(),
-                  orig_fcallinfo->getRetSize());
+                                    orig_fcallinfo->getRetSize(),
+                                    orig_fcallinfo->isUniform());
             }
           }
 
@@ -1264,8 +1265,9 @@ void CISA_IR_Builder::LinkTimeOptimization(
           if (inst->opcode() == G4_pseudo_fcall) {
             auto orig_fcallinfo = callee->fg.builder->getFcallInfo(fret);
             if (orig_fcallinfo) {
-              caller->fg.builder->addFcallInfo(inst, orig_fcallinfo->getArgSize(),
-                  orig_fcallinfo->getRetSize());
+              caller->fg.builder->addFcallInfo(
+                  inst, orig_fcallinfo->getArgSize(),
+                  orig_fcallinfo->getRetSize(), orig_fcallinfo->isUniform());
             }
           }
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
@@ -3593,12 +3595,13 @@ bool CISA_IR_Builder::CISA_create_fcall_instruction(
 
 bool CISA_IR_Builder::CISA_create_ifcall_instruction(
     VISA_opnd *pred_opnd, VISA_EMask_Ctrl emask, unsigned exec_size,
-    VISA_opnd *funcAddr, unsigned arg_size, unsigned return_size,
+    bool isUniform, VISA_opnd *funcAddr, unsigned arg_size,
+    unsigned return_size,
     int lineNum) // last index
 {
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
   VISA_CALL_TO_BOOL(AppendVISACFIndirectFuncCallInst,
-                    (VISA_PredOpnd *)pred_opnd, emask, executionSize,
+                    (VISA_PredOpnd *)pred_opnd, emask, executionSize, isUniform,
                     (VISA_VectorOpnd *)funcAddr, (uint8_t)arg_size,
                     (uint8_t)return_size);
   return true;

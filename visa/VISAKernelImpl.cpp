@@ -3347,7 +3347,8 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(
 
 int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
     VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    VISA_VectorOpnd *funcAddr, uint8_t argSize, uint8_t returnSize) {
+    bool isUniform, VISA_VectorOpnd *funcAddr, uint8_t argSize,
+    uint8_t returnSize) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   AppendVISAInstCommon();
@@ -3355,15 +3356,20 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
   int status = VISA_SUCCESS;
   if (IS_GEN_BOTH_PATH) {
     G4_Predicate *g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
-    status = m_builder->translateVISACFIFCallInst(
-        executionSize, emask, g4Pred, funcAddr->g4opnd, argSize, returnSize);
+    status = m_builder->translateVISACFIFCallInst(executionSize, emask, g4Pred,
+                                                  isUniform, funcAddr->g4opnd,
+                                                  argSize, returnSize);
   }
   if (IS_VISA_BOTH_PATH) {
     VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_IFCALL];
-    VISA_opnd *opnd[3]; // should be more then enough
+    VISA_opnd *opnd[4]; // should be more then enough
     int num_pred_desc_operands = 2;
     GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
     int num_operands = 0;
+
+    ADD_OPND(num_operands, opnd,
+             CreateOtherOpndHelper(num_pred_desc_operands, num_operands,
+                                   inst_desc, isUniform));
 
     opnd[num_operands] = funcAddr;
     ++num_operands;

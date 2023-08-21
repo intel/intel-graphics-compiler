@@ -2243,8 +2243,9 @@ void Optimizer::applyFusedCallWA() {
     }
   };
 
+  unsigned int fusedEUCallWA = builder.getuint32Option(vISA_fusedCallWA);
   // Only process call wa (fusedCallWA = 1) or indirect call is non-uniform
-  if (!((builder.getuint32Option(vISA_fusedCallWA) == 1) ||
+  if (!((fusedEUCallWA == 1) ||
         !builder.getOption(vISA_fusedCallUniform))) {
     return;
   }
@@ -2261,6 +2262,13 @@ void Optimizer::applyFusedCallWA() {
     if (!callI->isIndirectCall()) {
       // direct call, no wa needed
       continue;
+    }
+
+    if (fusedEUCallWA == 2) {
+      auto callInfo = builder.getFcallInfo(callI);
+      vISA_ASSERT(callInfo, "call info absent for ifcall");
+      if (callInfo->isUniform())
+        continue;
     }
 
     // Assume fcall always have a single/fall-thru succ
@@ -2410,7 +2418,8 @@ void Optimizer::applyFusedCallWA() {
       auto orig_fcallinfo = builder.getFcallInfo(callI);
       if (orig_fcallinfo) {
         builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(),
-                             orig_fcallinfo->getRetSize());
+                             orig_fcallinfo->getRetSize(),
+                             orig_fcallinfo->isUniform());
       }
       // Might need to update subroutine table
       updateSubroutineTableIfNeeded(origNextBB, bigB0, bigB1, smallB0, smallB1,
@@ -2635,7 +2644,8 @@ void Optimizer::applyFusedCallWA() {
     auto orig_fcallinfo = builder.getFcallInfo(callI);
     if (orig_fcallinfo) {
       builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(),
-                           orig_fcallinfo->getRetSize());
+                           orig_fcallinfo->getRetSize(),
+                           orig_fcallinfo->isUniform());
     }
     // Might need to update subroutine table
     updateSubroutineTableIfNeeded(origNextBB, bigB0, bigB1, smallB0, smallB1,
