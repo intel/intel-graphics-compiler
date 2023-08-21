@@ -311,7 +311,7 @@ void Legalization::visitCallInst(llvm::CallInst& I)
         I.replaceAllUsesWith(newInst);
         I.eraseFromParent();
     }
-    if (!m_ctx->platform.supportSamplerFp16Input())
+    else if (!m_ctx->platform.supportSamplerFp16Input())
     {
         // promote FP16 sample_xxx to FP32 sample_xxx
         if (llvm::isa<SampleIntrinsic>(&I) ||
@@ -323,7 +323,7 @@ void Legalization::visitCallInst(llvm::CallInst& I)
             }
         }
     }
-    if (m_ctx->platform.hasNoFullI64Support())
+    else if (m_ctx->platform.hasNoFullI64Support())
     {
         if (auto* GII = dyn_cast<GenIntrinsicInst>(&I))
         {
