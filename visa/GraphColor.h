@@ -88,11 +88,18 @@ public:
   BankConflictPass(GlobalRA &g, bool global) : gra(g), forGlobal(global) {}
 };
 
-// The forbidden kind for the forbidden bit of each register files.
-// Note that:
-// a) There is no forbidden regsiter for address and flag regsiters.
-// We keep them just in case.
-// b) All the forbidden kinds from EOT to RESERVEGRF are for GRF
+// A LiveRange's Register Class (RC) is expressed as a bitset of
+// forbidden physical registers that it cannot be assigned to.
+// -- Address and Flag live ranges currently all belong to same RC
+// (FBD_ADDR/FBD_FLAG) as there are no restrictions on their assignment.
+// -- The rest of RCs are for GRF live ranges. By default such live ranges have
+// FBD_RESERVEDGRF, which reserves a number of GRFs such as r0/r1/RN-1 based on
+// kernel type and user options.
+// -- The other GRF RCs (e.g., FBD_EOT) reserves additional GRFs on top of
+// FDB_RESERVEDGRF base on their usage in the kernel.
+// -- RCs must be pre-defined, dynamic creation of new RCs is not supported. If
+// your live range belongs to more than one RC, you should add a new RC and
+// initialize it in generateForbiddenTemplates()
 enum class forbiddenKind {
   FBD_ADDR = 0,
   FBD_FLAG = 1,
@@ -102,8 +109,31 @@ enum class forbiddenKind {
   FBD_EOTLASTGRF,
   FBD_CALLERSAVE,
   FBD_CALLEESAVE,
-  FBD_NUM,
+  FBD_UNASSIGNED, // This should only ever exist in between rounds of
+                  // incremental RA.
 };
+
+constexpr bool isGRFRegClass(forbiddenKind kind) {
+  return kind == forbiddenKind::FBD_RESERVEDGRF ||
+         kind == forbiddenKind::FBD_EOT || kind == forbiddenKind::FBD_LASTGRF ||
+         kind == forbiddenKind::FBD_EOTLASTGRF ||
+         kind == forbiddenKind::FBD_CALLERSAVE ||
+         kind == forbiddenKind::FBD_CALLEESAVE;
+}
+
+// Return true if k1 is a sub RC of k2, i.e., all of k2's forbidden registers
+// are also forbidden in k1.
+constexpr bool isSubRegClass(forbiddenKind k1, forbiddenKind k2) {
+  if (k1 == k2)
+    return true;
+  if (k2 == forbiddenKind::FBD_UNASSIGNED)
+    return true;
+  if (k2 == forbiddenKind::FBD_RESERVEDGRF && isGRFRegClass(k1))
+    return true;
+  if (k1 == forbiddenKind::FBD_EOTLASTGRF)
+    return k2 == forbiddenKind::FBD_EOT || k2 == forbiddenKind::FBD_LASTGRF;
+  return false;
+}
 
 enum class AugmentationMasks {
   Undetermined = 0,
@@ -118,7 +148,7 @@ class LiveRange final {
   G4_RegVar *const var;
   G4_Declare *const dcl;
   const G4_RegFileKind regKind;
-  forbiddenKind forbiddenType;
+  forbiddenKind forbiddenType = forbiddenKind::FBD_UNASSIGNED;
   BitSet *forbidden = nullptr;
   bool spilled = false;
   bool isUnconstrained = false;
@@ -235,7 +265,7 @@ public:
 public:
   void setForbidden(forbiddenKind f);
   void markForbidden(vISA::Mem_Manager &GCMem, int reg, int numReg);
-  BitSet *getForbidden();
+  const BitSet *getForbidden();
   int getNumForbidden();
   G4_RegVar *getVar() const { return var; }
   G4_Declare *getDcl() const { return dcl; }
@@ -262,7 +292,7 @@ public:
 
   void resetForbidden() {
     forbidden = nullptr;
-    forbiddenType = forbiddenKind::FBD_NUM;
+    forbiddenType = forbiddenKind::FBD_UNASSIGNED;
   }
 
 private:
@@ -1005,7 +1035,7 @@ class ForbiddenRegs {
 public:
   ForbiddenRegs(IR_Builder &b) : builder(b) {
     // Initialize forbidden bits
-    forbiddenVec.resize((size_t)forbiddenKind::FBD_NUM);
+    forbiddenVec.resize((size_t)forbiddenKind::FBD_UNASSIGNED);
     forbiddenVec[(size_t)forbiddenKind::FBD_ADDR].resize(
         getForbiddenVectorSize(G4_ADDRESS));
     forbiddenVec[(size_t)forbiddenKind::FBD_FLAG].resize(

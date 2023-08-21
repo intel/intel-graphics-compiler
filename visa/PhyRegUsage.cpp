@@ -1027,18 +1027,48 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
   }
 }
 
-BitSet *LiveRange::getForbidden() {
+const BitSet *LiveRange::getForbidden() {
   return forbidden;
 }
 
+// Find the intersected RC for two reg classes, i.e., one that contains the
+// forbidden registers for both RC.
+static std::optional<forbiddenKind> intersectRegClass(forbiddenKind k1,
+    forbiddenKind k2) {
+  if (k1 == k2)
+    return k1;
+  if (isSubRegClass(k1, k2))
+    return k1;
+  if (isSubRegClass(k2, k1))
+    return k2;
+  // Special case: FBD_EOTLASTGRF = FBD_EOT & FBD_LASTGRF
+  auto isEOTorLASTGRF = [](forbiddenKind kind) {
+    return kind == forbiddenKind::FBD_LASTGRF || kind == forbiddenKind::FBD_EOT;
+  };
+  if (isEOTorLASTGRF(k1) && isEOTorLASTGRF(k2))
+    return forbiddenKind::FBD_EOTLASTGRF;
+  // TODO: Add more intersection RCs as the need arises.
+  return std::nullopt;
+}
+
+// This function does not simply override the live range's RC to the new one;
+// instead, it tries to find an intersected RC for the new and the existing RC,
+// asserting if we can't find one among the pre-defined RCs.
+// This both simplifies the caller (no need to manually perform intersection)
+// and may help catch subtle bugs where different parts of code assign a live
+// range to non-compatible RCs (e.g., caller-save and callee-save).
+// If you want to force-override the existing RC, use resetForbidden() followed
+// by setForbidden().
 void LiveRange::setForbidden(forbiddenKind f) {
-  if ((f == forbiddenKind::FBD_LASTGRF || f == forbiddenKind::FBD_EOT) &&
-      (forbiddenType == forbiddenKind::FBD_LASTGRF ||
-       forbiddenType == forbiddenKind::FBD_EOT) &&
-      forbiddenType != f) {
-    forbiddenType = forbiddenKind::FBD_EOTLASTGRF;
-    forbidden = gra.getForbiddenRegs(forbiddenType);
+  // New RC should be a valid one.
+  vASSERT(f != forbiddenKind::FBD_UNASSIGNED);
+  auto newRC = intersectRegClass(f, forbiddenType);
+  vISA_ASSERT(newRC, "can't find a valid intersection RC");
+  if (newRC) {
+    forbiddenType = *newRC;
+    forbidden = gra.getForbiddenRegs(*newRC);
   } else {
+    // In NDEBUG build, just overwrite the RC to keep with the old behavior.
     forbiddenType = f;
     forbidden = gra.getForbiddenRegs(f);
   }

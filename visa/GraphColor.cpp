@@ -2350,7 +2350,8 @@ void Interference::setupLRs(G4_BB *bb) {
       }
     }
 
-    if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg()) {
+    bool isSend = inst->isSend() || inst->isFillIntrinsic();
+    if (isSend && !dst->isNullReg()) {
       // r127 must not be used for return address when there is a src and dest
       // overlap in send instruction. This applies to split-send as well
       if (kernel.fg.builder->needsToReserveR127() &&
@@ -2361,6 +2362,7 @@ void Interference::setupLRs(G4_BB *bb) {
         lrs[dstId]->setForbidden(forbiddenKind::FBD_LASTGRF);
       }
     }
+
 
     //
     // process each source operand
@@ -2373,8 +2375,7 @@ void Interference::setupLRs(G4_BB *bb) {
       G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
       if (srcRegion->getBase()->isRegAllocPartaker()) {
         unsigned id = ((G4_RegVar *)(srcRegion)->getBase())->getId();
-        lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                             refCount); // update reference count
+        lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
         if (inst->isEOT() && liveAnalysis->livenessClass(G4_GRF)) {
           // mark the liveRange as the EOT source
           lrs[id]->setEOTSrc();
@@ -2409,9 +2410,7 @@ void Interference::setupLRs(G4_BB *bb) {
       if (flagReg) {
         unsigned id = flagReg->asRegVar()->getId();
         if (flagReg->asRegVar()->isRegAllocPartaker()) {
-          lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                               refCount); // update reference count
-
+          lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
           lrs[id]->checkForInfiniteSpillCost(bb, i);
         }
       } else {
@@ -2428,8 +2427,7 @@ void Interference::setupLRs(G4_BB *bb) {
       G4_VarBase *flagReg = predicate->getBase();
       unsigned id = flagReg->asRegVar()->getId();
       if (flagReg->asRegVar()->isRegAllocPartaker()) {
-        lrs[id]->setRefCount(lrs[id]->getRefCount() +
-                             refCount); // update reference count
+        lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
       }
     }
   }
@@ -7645,6 +7643,7 @@ unsigned ForbiddenRegs::getForbiddenVectorSize(G4_RegFileKind regKind) const {
 //
 // Get the forbidden vectors of reserved GRFs
 // May be reserved for user, stack call, and spill
+// This is the default RC for all GRF live ranges.
 //
 void ForbiddenRegs::generateReservedGRFForbidden(
     unsigned reserveSpillSize) {
@@ -7655,25 +7654,25 @@ void ForbiddenRegs::generateReservedGRFForbidden(
       hasStackCall ? builder.kernel.stackCall.numReservedABIGRF() : 0;
 
   // r0 - Forbidden when platform is not 3d
-  // rMax, rMax-1, rMax-2 - Forbidden in presence of stack call sites
-  forbiddenKind k = forbiddenKind::FBD_RESERVEDGRF;
+  // The last 1-3 GRFs may be reserved for stack call ABIs.
+  int index = static_cast<int>(forbiddenKind::FBD_RESERVEDGRF);
   unsigned totalGRFNum = builder.kernel.getNumRegTotal();
-  forbiddenVec[(size_t)k].resize(getForbiddenVectorSize(G4_GRF));
-  forbiddenVec[(size_t)k].clear();
+  forbiddenVec[index].resize(getForbiddenVectorSize(G4_GRF));
+  forbiddenVec[index].clear();
 
   if (builder.kernel.getKernelType() != VISA_3D || !builder.canWriteR0() ||
       reserveSpillSize > 0 || builder.kernel.getOption(vISA_PreserveR0InR0)) {
-    forbiddenVec[(size_t)k].set(0, true);
+    forbiddenVec[index].set(0, true);
   }
 
   if (builder.mustReserveR1()) {
     // r1 is reserved for SIP kernel
-    forbiddenVec[(size_t)k].set(1, true);
+    forbiddenVec[index].set(1, true);
   }
 
   unsigned reservedRegSize = stackCallRegSize + reserveSpillSize;
   for (unsigned int i = 0; i < reservedRegSize; i++) {
-    forbiddenVec[(size_t)k].set(totalGRFNum - 1 - i, true);
+    forbiddenVec[index].set(totalGRFNum - 1 - i, true);
   }
 
   unsigned largestNoneReservedReg = totalGRFNum - reservedRegSize - 1;
@@ -7686,7 +7685,7 @@ void ForbiddenRegs::generateReservedGRFForbidden(
   }
 
   for (unsigned int i = 0; i < reservedGRFNum; i++) {
-    forbiddenVec[(size_t)k].set(largestNoneReservedReg - i, true);
+    forbiddenVec[index].set(largestNoneReservedReg - i, true);
   }
 }
 
@@ -9188,10 +9187,8 @@ std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring)
 
 // pre-allocate the bits for forbidden registers which will not be used in
 // register assignment.
-// Genernal GRF forbidden including:
-//   reserved for spill,
-//   user reserved,
-//   reserved for stack call.
+// Note that the order of the calls matters, as all RCs inherit from RESERVEDGRF
+// for example.
 void GlobalRA::generateForbiddenTemplates(unsigned reserveSpillSize) {
   fbdRegs.generateReservedGRFForbidden(reserveSpillSize);
   fbdRegs.generateCallerSaveGRFForbidden();
