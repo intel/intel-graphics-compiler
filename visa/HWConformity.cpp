@@ -5355,8 +5355,53 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
               (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
                (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) +
                1) > kernel.numEltPerGRF<Type_UB>();
-          int srcSecondHalf =
-              srcRgn->getLinearizedEnd() / kernel.numEltPerGRF<Type_UB>();
+          // The half define in region rule "second half of a source operand
+          // must not point to the same register as the first half of
+          // destination operand in a compressed instruction" is exactly size
+          // half, not GRF boundary based half.
+          int srcSecondHalf = 0;
+          if (srcRgn->getRegion()->isContiguous(
+                  inst->getExecSize())) { // For contiguous region, linear
+                                          // start/end can be used to calculate
+                                          // the start GRF of half size of
+                                          // region
+            srcSecondHalf = (srcRgn->getLinearizedStart() +
+                             ((srcRgn->getLinearizedEnd() -
+                               srcRgn->getLinearizedStart() + 1) /
+                              2)) /
+                            kernel.numEltPerGRF<Type_UB>();
+          } else { // For non-congtiguous region, there are holes in the region,
+                   // the start of second half elements need be calcauted in
+                   // stride and elemement sizes at same time.
+            // Such as in following cases, there is no first/second half overlap issues.
+            // add(M1, 32) V146(0,1)<2> V146(0,1)<2;1,0> V146(0,0)<2;1,0>
+            // add(M1, 16) V147(0,2)<4> V147(0,2)<4;1,0> V147(0,1)<4;1,0>
+            // add(M1, 16) V148(0,3)<4> V148(0,3)<4;1,0> V148(0,1)<4;1,0>
+            const RegionDesc *regionDesc = srcRgn->getRegion();
+            uint16_t vertSize = regionDesc->vertStride * srcRgn->getElemSize();
+            uint16_t execTypeSize =
+                regionDesc->horzStride == 0
+                    ? srcRgn->getElemSize()
+                    : regionDesc->horzStride * srcRgn->getElemSize();
+            uint16_t rowSize = regionDesc->horzStride == 0
+                                   ? execTypeSize
+                                   : regionDesc->width * execTypeSize,
+                     numRows = regionDesc->vertStride == 0
+                                   ? 1
+                                   : inst->getExecSize() / regionDesc->width,
+                     numElePerRow = rowSize / execTypeSize,
+                     numExecEmePerRow =
+                         regionDesc->horzStride == 0 ? 1 : regionDesc->width;
+            uint16_t totalNumEle =
+                (regionDesc->vertStride >= numElePerRow)
+                    ? (numRows * numExecEmePerRow)
+                    : (srcRgn->getRightBound() - srcRgn->getLeftBound() + 1) /
+                          execTypeSize;
+            srcSecondHalf =
+                (srcRgn->getLeftBound() % builder.numEltPerGRF<Type_UB>() +
+                 (totalNumEle / 2) * vertSize) /
+                            builder.numEltPerGRF<Type_UB>();
+          }
 
           if (dstCrossGRF || srcCrossGRF) {
             if (dstFirstHalf == srcSecondHalf) {
