@@ -1384,7 +1384,10 @@ void G4_Kernel::dumpG4Internal(const std::string &file) {
 }
 
 void G4_Kernel::dumpG4InternalTo(std::ostream &os) {
-  os << ".kernel " << name << "\n";
+  if (name)
+    os << ".kernel " << name << "\n";
+  else
+    os << ".kernel\n";
 
   for (const G4_Declare *d : Declares) {
     static const int MIN_DECL = 34; // skip the built-in decls

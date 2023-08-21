@@ -669,7 +669,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
     // split into
     //  two simd8, we can use quarter control in some cases.
 
-    if (!nullDst &&
+    if (!nullDst && dst &&
         ((!crossGRFDst && !goodOneGRFDst) || (crossGRFDst && !goodTwoGRFDst) ||
          (goodTwoGRFDst && specialCondForComprInst))) {
       // TODO: NULL dst
@@ -730,7 +730,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
     return insertMOV;
   }
 
-  if (!nullDst && !crossGRFDst && !goodOneGRFDst && !hasBadTwoGRFSrc) {
+  if (!nullDst && dst && !crossGRFDst && !goodOneGRFDst && !hasBadTwoGRFSrc) {
     // insert a temp dst and a MOV
     // example:
     // add (8) r5.3<1>:w r2.0<16;8,2>:w 0x1:w

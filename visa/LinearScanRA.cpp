@@ -1120,6 +1120,9 @@ void LinearScanRA::setDstReferences(
     lr = CreateLocalLiveRange(dcl);
   }
 
+  if (!lr)
+    return;
+
   if (dcl->isOutput() && !lr->isGRFRegAssigned()) {
     lr->setLastRef(curInst, lastInstLexID * 2 + 1);
     if (!lr->isPushedToIntervalList()) {
@@ -1129,8 +1132,7 @@ void LinearScanRA::setDstReferences(
     return;
   }
 
-  if (lr == nullptr ||
-      (dcl->getRegFile() == G4_INPUT &&
+  if ((dcl->getRegFile() == G4_INPUT &&
        dcl != kernel.fg.builder->getStackCallArg() &&
        dcl != kernel.fg.builder->getStackCallRet()) ||
       (lr->isGRFRegAssigned() && (!dcl->getRegVar()->isGreg()))) // ARF
@@ -1209,6 +1211,9 @@ void LinearScanRA::setSrcReferences(
     lr = CreateLocalLiveRange(dcl);
   }
 
+  if (!lr)
+    return;
+
   if (dcl->isOutput() && !lr->isGRFRegAssigned()) {
     lr->setLastRef(curInst, lastInstLexID * 2 + 1);
     if (!lr->isPushedToIntervalList()) {
@@ -1218,8 +1223,7 @@ void LinearScanRA::setSrcReferences(
     return;
   }
 
-  if (lr == nullptr ||
-      (dcl->getRegFile() == G4_INPUT &&
+  if ((dcl->getRegFile() == G4_INPUT &&
        dcl != kernel.fg.builder->getStackCallRet() &&
        dcl != kernel.fg.builder->getStackCallArg()) ||
       (lr->isGRFRegAssigned() && (!dcl->getRegVar()->isGreg()))) // ARF

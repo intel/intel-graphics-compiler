@@ -950,7 +950,7 @@ bool G4_INST::isIntegerPipeInstructionXe() const {
     return true;
   }
 
-  if (builder.hasQ2FInIntegerPipe() && dst->getType() == Type_F) {
+  if (builder.hasQ2FInIntegerPipe() && dst && dst->getType() == Type_F) {
     const G4_Operand *src = getSrc(0);
     if (src && (src->getType() == Type_Q || src->getType() == Type_UQ)) {
       return true;

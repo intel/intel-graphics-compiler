@@ -221,7 +221,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
 
     // Create new destination
     G4_DstRegRegion *newDst;
-    if (!nullDst) {
+    if (dst && !nullDst) {
       newDst = m_builder->createSubDstOperand(dst, (uint16_t)i, newExecSize);
     } else {
       newDst = dst;
