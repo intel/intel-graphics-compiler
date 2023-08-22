@@ -505,11 +505,13 @@ bool GenXBaling::operandCanBeBaled(
         // Don't allow sext->zext baling
         if (Mod == BaleInfo::SEXT && isa<ZExtInst>(Inst))
           return false;
-        // NOTE: mulh does not allow sext/zext bailing, as it allows only
+        // NOTE: mulh and madw don't allow sext/zext bailing, as it allows only
         // D/UD operands
         auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
         if (IID == GenXIntrinsic::genx_smulh ||
-            IID == GenXIntrinsic::genx_umulh)
+            IID == GenXIntrinsic::genx_umulh ||
+            IID == GenXIntrinsic::genx_smadw ||
+            IID == GenXIntrinsic::genx_umadw)
           return false;
         return true;
       } break;
