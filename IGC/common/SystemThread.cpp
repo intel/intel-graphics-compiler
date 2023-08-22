@@ -442,34 +442,39 @@ struct XeHPGDebugSurfaceLayout
     static constexpr size_t IP_ALIGN = 28;
 
     static constexpr size_t N_COUNT = 1;
-    static constexpr size_t N_ELEMENTS = 3;
+    static constexpr size_t N_ELEMENTS = 2;
     static constexpr size_t N_ELEMENT_SIZE = 4;
-    static constexpr size_t N_ALIGN = 20;
+    static constexpr size_t N_ALIGN = 24;
 
-    static constexpr size_t TDR_COUNT = 1;
-    static constexpr size_t TDR_ELEMENTS = 8;
-    static constexpr size_t TDR_ELEMENT_SIZE = 2;
-    static constexpr size_t TDR_ALIGN = 16;
+    static constexpr size_t TDR_COUNT = 0;
+    static constexpr size_t TDR_ELEMENTS = 0;
+    static constexpr size_t TDR_ELEMENT_SIZE = 0;
+    static constexpr size_t TDR_ALIGN = 0;
 
-    static constexpr size_t ACC_COUNT = 10;
+    static constexpr size_t ACC_COUNT = 4;
     static constexpr size_t ACC_ELEMENTS = 8;
     static constexpr size_t ACC_ELEMENT_SIZE = 4;
     static constexpr size_t ACC_ALIGN = 0;
-// TODO add adjust ACC to 4 and MME to 8
+
+    static constexpr size_t MME_COUNT = 8;
+    static constexpr size_t MME_ELEMENTS = 8;
+    static constexpr size_t MME_ELEMENT_SIZE = 4;
+    static constexpr size_t MME_ALIGN = 0;
+
     static constexpr size_t TM_COUNT = 1;
-    static constexpr size_t TM_ELEMENTS = 4;
+    static constexpr size_t TM_ELEMENTS = 5;
     static constexpr size_t TM_ELEMENT_SIZE = 4;
-    static constexpr size_t TM_ALIGN = 16;
+    static constexpr size_t TM_ALIGN = 12;
 
     static constexpr size_t CE_COUNT = 1;
     static constexpr size_t CE_ELEMENTS = 1;
     static constexpr size_t CE_ELEMENT_SIZE = 4;
     static constexpr size_t CE_ALIGN = 28;
 
-    static constexpr size_t SP_COUNT = 1;
-    static constexpr size_t SP_ELEMENTS = 2;
-    static constexpr size_t SP_ELEMENT_SIZE = 8;
-    static constexpr size_t SP_ALIGN = 16;
+    static constexpr size_t SP_COUNT = 0;
+    static constexpr size_t SP_ELEMENTS = 0;
+    static constexpr size_t SP_ELEMENT_SIZE = 0;
+    static constexpr size_t SP_ALIGN = 32;
 
     static constexpr size_t DBG_COUNT = 1;
     static constexpr size_t DBG_ELEMENTS = 1;
@@ -502,10 +507,9 @@ struct XeHPGDebugSurfaceLayout
     uint8_t execmask[EXEC_MASK_COUNT * EXEC_MASK_ELEMENTS * EXEC_MASK_ELEMENT_SIZE + EXEC_MASK_ALIGN];
     uint8_t sr[SR_COUNT * SR_ELEMENTS * SR_ELEMENT_SIZE + SR_ALIGN];
     uint8_t cr[CR_COUNT * CR_ELEMENTS * CR_ELEMENT_SIZE + CR_ALIGN];
-    uint8_t ip[IP_COUNT * IP_ELEMENTS * IP_ELEMENT_SIZE + IP_ALIGN];
     uint8_t n[N_COUNT * N_ELEMENTS * N_ELEMENT_SIZE + N_ALIGN];
-    uint8_t tdr[TDR_COUNT * TDR_ELEMENTS * TDR_ELEMENT_SIZE + TDR_ALIGN];
     uint8_t acc[ACC_COUNT * ACC_ELEMENTS * ACC_ELEMENT_SIZE + ACC_ALIGN];
+    uint8_t mme[MME_COUNT * MME_ELEMENTS * MME_ELEMENT_SIZE + MME_ALIGN];
     uint8_t tm[TM_COUNT * TM_ELEMENTS * TM_ELEMENT_SIZE + TM_ALIGN];
     uint8_t ce[CE_COUNT * CE_ELEMENTS * CE_ELEMENT_SIZE + CE_ALIGN];
     uint8_t sp[SP_COUNT * SP_ELEMENTS * SP_ELEMENT_SIZE + SP_ALIGN];
@@ -552,13 +556,13 @@ static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
         {offsetof(struct XeHPGDebugSurfaceLayout, n), XeHPGDebugSurfaceLayout::N_COUNT,
          XeHPGDebugSurfaceLayout::N_ELEMENTS* XeHPGDebugSurfaceLayout::N_ELEMENT_SIZE * 8,
          XeHPGDebugSurfaceLayout::N_ELEMENTS* XeHPGDebugSurfaceLayout::N_ELEMENT_SIZE},  // notification
-        {offsetof(struct XeHPGDebugSurfaceLayout, tdr), XeHPGDebugSurfaceLayout::TDR_COUNT,
-         XeHPGDebugSurfaceLayout::TDR_ELEMENTS* XeHPGDebugSurfaceLayout::TDR_ELEMENT_SIZE * 8,
-         XeHPGDebugSurfaceLayout::TDR_ELEMENTS* XeHPGDebugSurfaceLayout::TDR_ELEMENT_SIZE},  // tdr
+        {0, 0, 0, 0},                                                                   // tdr
         {offsetof(struct XeHPGDebugSurfaceLayout, acc), XeHPGDebugSurfaceLayout::ACC_COUNT,
          XeHPGDebugSurfaceLayout::ACC_ELEMENTS* XeHPGDebugSurfaceLayout::ACC_ELEMENT_SIZE * 8,
          XeHPGDebugSurfaceLayout::ACC_ELEMENTS* XeHPGDebugSurfaceLayout::ACC_ELEMENT_SIZE},  // acc
-        {0, 0, 0, 0},                                  // mme
+        {offsetof(struct XeHPGDebugSurfaceLayout, mme), XeHPGDebugSurfaceLayout::MME_COUNT,
+         XeHPGDebugSurfaceLayout::MME_ELEMENTS* XeHPGDebugSurfaceLayout::MME_ELEMENT_SIZE * 8,
+         XeHPGDebugSurfaceLayout::MME_ELEMENTS* XeHPGDebugSurfaceLayout::MME_ELEMENT_SIZE}, // mme
         {offsetof(struct XeHPGDebugSurfaceLayout, ce), XeHPGDebugSurfaceLayout::CE_COUNT,
          XeHPGDebugSurfaceLayout::CE_ELEMENTS* XeHPGDebugSurfaceLayout::CE_ELEMENT_SIZE * 8,
          XeHPGDebugSurfaceLayout::CE_ELEMENTS* XeHPGDebugSurfaceLayout::CE_ELEMENT_SIZE},  // ce
