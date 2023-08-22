@@ -66,10 +66,8 @@ else:
 
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))
-  config.available_features.add('khronos-translator')
 else:
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-LEGACY'))
-  config.available_features.add('legacy-translator')
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
 

@@ -6,8 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: khronos-translator
-
 ; This test checks if DWARF attributes are updated correctly after changing address space from generic to SLM
 
 ; RUN: igc_opt %s -S -o - -igc-gas-ret-value-propagator | FileCheck %s
