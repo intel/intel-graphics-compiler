@@ -1016,7 +1016,7 @@ void MessageDecoderHDC::tryDecodeDC0() {
   case MSD0R_QWS: // qword gather
   case MSD0W_QWS: // qword scatter
   {
-    auto isRead = MSD0R_QWS;
+    auto isRead = msgType == MSD0R_QWS;
     const char *msgName =
         isRead ? "qword gathering read" : "qword scattering write";
     addMessageType(msgName);
