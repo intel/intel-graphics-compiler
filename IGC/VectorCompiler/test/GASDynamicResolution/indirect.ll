@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -13,7 +13,7 @@
 ; know what function is going to be called by a function pointer, so it is not possible
 ; to check whether callee contains addrspacecast's from private/local to generic addrspace.
 
-target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
 declare spir_func void @foo(i32 addrspace(4)* %ptr) "referenced-indirectly"
 

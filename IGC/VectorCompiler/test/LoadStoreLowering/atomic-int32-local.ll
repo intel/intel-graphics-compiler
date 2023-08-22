@@ -17,7 +17,7 @@
 ; COM: Basic test on atomic lowering pass
 ; COM: load/store atomic, atomicrmw, cmpxchg from addrspace(3), i32
 
-target datalayout = "e-p:64:64-i64:64-n8:16:32"
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
 
 ; Address space 1 (global) operations are lowered into dword/slm intrinsics

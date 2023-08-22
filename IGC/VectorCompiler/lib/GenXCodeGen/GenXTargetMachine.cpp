@@ -76,8 +76,8 @@ static cl::opt<bool> EmitVLoadStore(
 
 // There's another copy of DL string in clang/lib/Basic/Targets.cpp
 static std::string getDL(bool Is64Bit) {
-  return Is64Bit ? "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"
-                 : "e-p:32:32-p6:32:32-i64:64-n8:16:32";
+  return Is64Bit ? "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
+                 : "e-p:32:32-p3:32:32-p6:32:32-i64:64-n8:16:32";
 }
 
 namespace llvm {

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -24,7 +24,7 @@
 ; Memory operations accesible from kernelB should not be optimized, since it uses both global and
 ; local memory.
 
-target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
 ; CHECK-LABEL: define spir_func void @f2
 define spir_func void @f2(i32 addrspace(4)* %ptr) {
@@ -77,12 +77,11 @@ define spir_kernel void @kernelA(i32 addrspace(1)* %global_buffer) #0 {
 
 define spir_kernel void @kernelB(i32 addrspace(1)* %global_buffer, i32 addrspace(3)* %local_buffer) #0 {
   %local_ptr = addrspacecast i32 addrspace(3)* %local_buffer to i32 addrspace(4)*
-  ; CHECK: %[[P3I32_TO_I64:.*]] = ptrtoint i32 addrspace(3)* %local_buffer to i64
+  ; CHECK: %[[P3I32_TO_I64:.*]] = ptrtoint i32 addrspace(4)* %local_ptr to i64
   ; CHECK: %[[I64_TO_V2I32:.*]] = bitcast i64 %[[P3I32_TO_I64:.*]] to <2 x i32>
   ; CHECK: %[[TAGGED_MEMORY:.*]] = insertelement <2 x i32> %[[I64_TO_V2I32:.*]], i32 1073741824, i64 1
   ; CHECK: %[[V2I32_TO_I64:.*]] = bitcast <2 x i32> %[[TAGGED_MEMORY:.*]] to i64
-  ; CHECK: %[[I64_TO_P3I32:.*]] = inttoptr i64 %[[V2I32_TO_I64:.*]] to i32 addrspace(3)*
-  ; CHECK: %local_ptr = addrspacecast i32 addrspace(3)* %[[I64_TO_P3I32:.*]] to i32 addrspace(4)*
+  ; CHECK: %local_ptr.tagged = inttoptr i64 %[[V2I32_TO_I64:.*]] to i32 addrspace(4)*
 
   %global_ptr = addrspacecast i32 addrspace(1)* %global_buffer to i32 addrspace(4)*
   call spir_func void @f2(i32 addrspace(4)* %local_ptr)

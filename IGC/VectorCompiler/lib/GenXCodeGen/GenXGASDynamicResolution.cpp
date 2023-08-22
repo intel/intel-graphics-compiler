@@ -221,7 +221,7 @@ FunctionPass *llvm::createGenXGASDynamicResolutionPass() {
 }
 
 bool GenXGASDynamicResolution::runOnFunction(Function &F) {
-  auto &M = *F.getParent();
+  const auto &M = *F.getParent();
   // Cannot resolve 32bit pointers.
   if (M.getDataLayout().getPointerSizeInBits(vc::AddrSpace::Generic) != 64)
     return false;
@@ -361,21 +361,26 @@ void GenXGASDynamicResolution::visitAddrSpaceCastInst(
       CI.getDestAddressSpace() != vc::AddrSpace::Generic)
     return;
 
-  IGCLLVM::IRBuilder<> Builder{&CI};
-  auto PtrOp = CI.getPointerOperand();
-  auto PtrOpTy = PtrOp->getType();
+  IGCLLVM::IRBuilder<> Builder{CI.getNextNode()};
+  auto PtrOpTy = CI.getType();
   Constant *ShiftedTag = Builder.getInt32(LocalTag << 29);
   if (PtrOpTy->isVectorTy()) {
     unsigned NElems = cast<IGCLLVM::FixedVectorType>(PtrOpTy)->getNumElements();
     ShiftedTag = IGCLLVM::ConstantFixedVector::getSplat(NElems, ShiftedTag);
   }
 
-  auto TaggedPtr =
-      writeHigh32BitsOfPtr(Builder, PtrOp, ShiftedTag, CI.getModule());
-  auto NewASCast = Builder.CreateAddrSpaceCast(TaggedPtr, CI.getType());
-  NewASCast->takeName(&CI);
-  CI.replaceAllUsesWith(NewASCast);
-  CI.eraseFromParent();
+  // We must replace all uses of a generic pointer with a tagged pointer
+  // except the first ptrtoint inst. To workaround the use replacement in
+  // the ptrtoint inst a bitcast is used.
+  auto Dummy = CastInst::Create(Instruction::BitCast, &CI, CI.getType(), "",
+                                CI.getNextNode());
+  auto TaggedPtr = cast<Instruction>(
+      writeHigh32BitsOfPtr(Builder, Dummy, ShiftedTag, CI.getModule()));
+  TaggedPtr->setName(CI.getName() + ".tagged");
+
+  CI.replaceAllUsesWith(TaggedPtr);
+  Dummy->replaceAllUsesWith(&CI);
+  Dummy->eraseFromParent();
 }
 
 // Resolve GAS in load/store by dynamic information(tag) which is attached to

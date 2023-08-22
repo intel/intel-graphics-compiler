@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,7 @@
 ;
 ; RUN: opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 ;
-target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
 define spir_func void @foo(i8* %.p0, i8 addrspace(3)* %.p3, i8 addrspace(1)* %.p1) {
   ret void
@@ -46,11 +46,11 @@ define spir_kernel void @kernelB(i8* %private_buffer, i8 addrspace(3)* %local_bu
   ; CHECK-DAG: %[[CALL1:[^ ]+]] = select i1 %isPrivateTag, i8* %[[P4_TO_P0:[^ ]+]], i8* null
 
   %call2 = tail call i8 addrspace(3)* @llvm.vc.internal.cast.to.ptr.explicit.p3i8(i8 addrspace(4)* %.p3top4)
-  ; CHECK-DAG: %[[P2I_1:[^ ]+]] = ptrtoint i8 addrspace(4)* %.p3top4 to i64
+  ; CHECK-DAG: %[[P2I_1:[^ ]+]] = ptrtoint i8 addrspace(4)* %.p3top4.tagged to i64
   ; CHECK-DAG: %[[BCAST_1:[^ ]+]] = bitcast i64 %[[P2I_1:[^ ]+]] to <2 x i32>
   ; CHECK-DAG: %[[EXTRACT_1:[^ ]+]] = extractelement <2 x i32> %[[BCAST_1:[^ ]+]], i64 1
   ; CHECK-DAG: %isLocalTag = icmp eq i32 %[[EXTRACT_1:[^ ]+]], 1073741824
-  ; CHECK-DAG: %[[P4_TO_P3:[^ ]+]] = addrspacecast i8 addrspace(4)* %.p3top4 to i8 addrspace(3)*
+  ; CHECK-DAG: %[[P4_TO_P3:[^ ]+]] = addrspacecast i8 addrspace(4)* %.p3top4.tagged to i8 addrspace(3)*
   ; CHECK-DAG: %[[CALL2:[^ ]+]] = select i1 %isLocalTag, i8 addrspace(3)* %[[P4_TO_P3:[^ ]+]], i8 addrspace(3)* null
 
   ; COM: Since there are no global->generic casts to.global.explicit will return null.

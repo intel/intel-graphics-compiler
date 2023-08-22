@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
 ; RUN: opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
 define spir_func float @nested(float addrspace(4)* addrspace(4)* %gen_ptr_ptr) {
 entry:

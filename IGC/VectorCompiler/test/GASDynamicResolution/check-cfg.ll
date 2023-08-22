@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
 ; RUN: opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
 define spir_kernel void @kernel(i32 addrspace(1)* %global_buffer, i32 addrspace(3)* %local_buffer) #0 {
 entry:
@@ -25,7 +27,7 @@ gen.to.as1:
   br label %body
 body:
   %generic_ptr = phi i32 addrspace(4)* [ %generic_ptr_1, %gen.to.as1 ], [ %generic_ptr_3, %gen.to.as3 ]
-  ; CHECK: %generic_ptr = phi i32 addrspace(4)* [ %generic_ptr_1, %gen.to.as1 ], [ %generic_ptr_3, %gen.to.as3 ]
+  ; CHECK: %generic_ptr = phi i32 addrspace(4)* [ %generic_ptr_1, %gen.to.as1 ], [ %generic_ptr_3.tagged, %gen.to.as3 ]
 
   %ld = load i32, i32 addrspace(4)* %generic_ptr, align 4
   ; CHECK: %[[LD_CAST:.*]] = ptrtoint i32 addrspace(4)* %generic_ptr to i64

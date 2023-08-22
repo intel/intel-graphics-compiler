@@ -18,7 +18,7 @@
 ; COM: Basic test on load lowering pass
 ; COM: simplest load from addrspace(3)
 
-target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
 
 ; Address space 3 (local) operations are lowered into slm(254)/slm intrinsics
