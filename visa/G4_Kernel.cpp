@@ -843,11 +843,14 @@ unsigned StackCallABI::getNumCalleeSaveRegs() const {
 uint32_t StackCallABI::numReservedABIGRF() const {
   if (version == StackCallABIVersion::VER_1)
     return 3;
-  else {
-    // for ABI version > 1,
+  else if (version == StackCallABIVersion::VER_2) {
     if (kernel->getOption(vISA_PreserveR0InR0))
       return 2;
     return 3;
+  }
+  else {
+    // for ABI version > 2
+    return 1;
   }
 }
 
@@ -862,11 +865,14 @@ uint32_t StackCallABI::getFPSPGRF() const {
 
 uint32_t StackCallABI::getSpillHeaderGRF() const {
   // For ABI V1 return r126.
-  // For ABI V2, V3 return r126.
+  // For ABI V2 return r126.
+  // For ABI V3 return r127.
   if (version == StackCallABIVersion::VER_1)
     return getStackCallStartReg() + SpillHeaderGRF;
-  else
+  else if (version == StackCallABIVersion::VER_2)
     return (kernel->getNumRegTotal() - 1) - SpillHeaderGRF;
+  else
+    return kernel->stackCall.getFPSPGRF();
 }
 
 uint32_t StackCallABI::getThreadHeaderGRF() const {

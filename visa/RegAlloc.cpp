@@ -2107,7 +2107,7 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
       const char *n = builder->getNameString(25, "FCALL_RET_LOC_%d", call_id++);
 
       G4_INST *fcall = bb->back();
-      // Set call dst to r125.0
+      // Set call dst to fpspGRF
       G4_Declare *r1_dst = builder->createDeclare(
           n, G4_GRF, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
       r1_dst->getRegVar()->setPhyReg(
@@ -2864,7 +2864,9 @@ void GlobalRA::verifySpillFill() {
 
 static void replaceSSO(G4_Kernel &kernel) {
   // Invoke function only for XeHP_SDV and later
-  // Replace SSO with r126.7 (scratch reg)
+  // Replace SSO with r126.7:ud (scratch reg) up to VISA ABI v2
+  if (!kernel.fg.builder->getSpillSurfaceOffset())
+    return;
 
   auto dst = kernel.fg.builder->createDst(
       kernel.fg.getScratchRegDcl()->getRegVar(), 0, 7, 1, Type_UD);

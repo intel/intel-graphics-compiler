@@ -284,7 +284,7 @@ private:
   // Class contains sub-regs for chosen ABI version.
   // Values are initialized by ctor. For eg,
   // As per ABI v1, v2 BE_FP is in sub-reg 3 whereas
-  // as per ABI v3, BE_FP is in sub-reg 6.
+  // as per ABI v3, BE_FP is in sub-reg 0.
   struct SubRegs_Stackcall {
     unsigned int Ret_IP = 0;
     unsigned int Ret_EM = 0;
@@ -330,10 +330,10 @@ private:
   static constexpr unsigned int SubRegs_Stackcall_v1_v2_FE_SP = 3; // :uq
 
   // For VISA ABI v3
-  static constexpr unsigned int SubRegs_Stackcall_v3_Ret_IP = 0; // :uq
-  static constexpr unsigned int SubRegs_Stackcall_v3_Ret_EM = 2; // :ud
-  static constexpr unsigned int SubRegs_Stackcall_v3_BE_SP = 4; // :ud
-  static constexpr unsigned int SubRegs_Stackcall_v3_BE_FP = 6; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_BE_FP = 0;  // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_BE_SP = 2;  // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_Ret_IP = 4; // :ud
+  static constexpr unsigned int SubRegs_Stackcall_v3_Ret_EM = 6; // :ud
   static constexpr unsigned int SubRegs_Stackcall_v3_FE_FP = 4; // :uq
   static constexpr unsigned int SubRegs_Stackcall_v3_FE_SP = 5; // :uq
 
@@ -365,7 +365,7 @@ private:
   static constexpr unsigned int FrameDescriptorOfsets_v3_FE_SP =
       SubRegs_Stackcall_v3_FE_SP * 8;
   static constexpr unsigned int FrameDescriptorOfsets_v3_Ret_IP =
-      SubRegs_Stackcall_v3_Ret_IP * 8;
+      SubRegs_Stackcall_v3_Ret_IP * 4;
   static constexpr unsigned int FrameDescriptorOfsets_v3_Ret_EM =
       SubRegs_Stackcall_v3_Ret_EM * 4;
   static constexpr unsigned int FrameDescriptorOfsets_v3_BE_FP =

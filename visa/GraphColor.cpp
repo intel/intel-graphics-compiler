@@ -7893,15 +7893,19 @@ void GlobalRA::addStoreRestoreToReturn() {
   G4_Operand *oldFPSrc =
       builder.createSrc(oldFPDcl->getRegVar(), 0, 0, rd, Type_UD);
 
-  auto SRDecl =
-      builder.createHardwiredDeclare(size, Type_UD, kernel.stackCall.getFPSPGRF(),
-                                     kernel.stackCall.subRegs.Ret_IP);
-  addVarToRA(SRDecl);
-  SRDecl->setName(builder.getNameString(24, "SR_BEStack"));
+  unsigned saveRestoreSubReg =
+      kernel.stackCall.getVersion() == StackCallABI::StackCallABIVersion::VER_3
+          ? kernel.stackCall.subRegs.BE_FP
+          : kernel.stackCall.subRegs.Ret_IP;
+  auto saveRestoreDecl = builder.createHardwiredDeclare(
+      size, Type_UD, kernel.stackCall.getFPSPGRF(), saveRestoreSubReg);
+  addVarToRA(saveRestoreDecl);
+  saveRestoreDecl->setName(builder.getNameString(24, "SR_BEStack"));
   G4_DstRegRegion *FPdst =
-      builder.createDst(SRDecl->getRegVar(), 0, 0, 1, Type_UD);
+      builder.createDst(saveRestoreDecl->getRegVar(), 0, 0, 1, Type_UD);
   rd = builder.getRegionStride1();
-  G4_Operand *FPsrc = builder.createSrc(SRDecl->getRegVar(), 0, 0, rd, Type_UD);
+  G4_Operand *FPsrc =
+      builder.createSrc(saveRestoreDecl->getRegVar(), 0, 0, rd, Type_UD);
 
   saveBE_FPInst = builder.createMov(size == 4 ? g4::SIMD4 : g4::SIMD8, oldFPDst,
                                     FPsrc, InstOpt_WriteEnable, false);

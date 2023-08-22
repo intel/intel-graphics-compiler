@@ -758,13 +758,14 @@ private:
   // r[MAX-GRF - 3]
   static const unsigned int SpecialGRFOff_VISAABI_1 = 3;
   static const unsigned int SpecialGRFOff_VISAABI_2_3 = 1;
-  static const unsigned int RetIpSubReg_1_2_3 = 0;
-  static const unsigned int RetEMSubReg_1_2 = 1;
-  static const unsigned int RetEMSubReg_3 = 2;
-  static const unsigned int BESPSubReg_1_2 = 2;
-  static const unsigned int BESPSubReg_3 = 4;
-  static const unsigned int BEFPSubReg_1_2 = 3;
-  static const unsigned int BEFPSubReg_3 = 6;
+  static const unsigned int RetIpSubReg_1_2 = 0; // :ud
+  static const unsigned int RetIpSubReg_3 = 4;   // :ud
+  static const unsigned int RetEMSubReg_1_2 = 1; // :ud
+  static const unsigned int RetEMSubReg_3 = 6;   // :ud
+  static const unsigned int BESPSubReg_1_2 = 2;  // :ud
+  static const unsigned int BESPSubReg_3 = 2;    // :ud
+  static const unsigned int BEFPSubReg_1_2 = 3;  // :ud
+  static const unsigned int BEFPSubReg_3 = 0;    // :ud
 
   uint32_t GetSpecialGRF() {
     if (!EmitSettings.ZeBinCompatible)

@@ -1661,6 +1661,7 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
     VISAKernelImpl *mainKernel = nullptr;
     KernelListTy::iterator iter = kernel_begin();
     KernelListTy::iterator iend = kernel_end();
+    bool hasEarlyExit = false;
     for (int i = 0; iter != iend; iter++, i++) {
       VISAKernelImpl *kernel = (*iter);
       if ((uint32_t)i < localScheduleStartKernelId ||
@@ -1712,13 +1713,17 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
       }
       int status = kernel->compileFastPath();
       if (status != VISA_SUCCESS) {
-        stopTimer(TimerID::TOTAL);
-        if (status == VISA_EARLY_EXIT)
-          // Consider early exit to still be a success as test run
-          // lines may check exit status.
-          status = VISA_SUCCESS;
-        return status;
+        if (status == VISA_EARLY_EXIT) {
+          // Consider stackcall or muti-kernel cases, need to continue
+          // to compile next one until the last one.
+          hasEarlyExit = true;
+          continue;
+        } else {
+          stopTimer(TimerID::TOTAL);
+          return status;
+        }
       }
+
       if (kernel->getIsPayload()) {
         // Remove payload live-outs from the kernel after the compilation since
         // they will not be outputs anymore after stitching.
@@ -1733,6 +1738,14 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
         }
       }
     }
+
+    if (hasEarlyExit) {
+      // Consider early exit to still be a success as test run
+      // lines may check exit status.
+      status = VISA_SUCCESS;
+      return status;
+    }
+
     // Here we change the payload section as the main kernel in
     // m_kernelsAndFunctions During stitching, all functions will be cloned and
     // stitched to the main kernel. Demoting the shader body to a function type
