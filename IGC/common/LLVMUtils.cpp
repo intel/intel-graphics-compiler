@@ -642,11 +642,16 @@ void IGCPassManager::add(Pass *P)
     }
 
     // Skip adding a printer pass for analysis passes.
-    const PassInfo* PI = Pass::lookupPassInfo(P->getPassID());
-    bool isAnalysisPass = PI && PI->isAnalysis();
     std::string pname(P->getPassName().str());
+    auto isAnalysisPass = [&]() {
+        const PassInfo* PI = Pass::lookupPassInfo(P->getPassID());
+        if (PI && PI->isAnalysis())
+            return true;
+        else
+            return false; // unknown or not an analysis pass
+    }();
 
-    if (PI && !isAnalysisPass && isPrintBefore(P))
+    if (!isAnalysisPass && isPrintBefore(P))
     {
         addPrintPass(P, true);
     }
@@ -663,7 +668,7 @@ void IGCPassManager::add(Pass *P)
         PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + pname, STATS_COUNTER_END));
     }
 
-    if (PI && !isAnalysisPass && isPrintAfter(P))
+    if (!isAnalysisPass && isPrintAfter(P))
     {
         addPrintPass(P, false);
     }
