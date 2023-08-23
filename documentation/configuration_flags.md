@@ -247,7 +247,7 @@ $ export IGC_ShaderDumpEnable=1
 | `PSSIMD32HeuristicLoopAndDiscard` | enable PS SIMD32 heuristic based on loop info and discard | - |
 | `PayloadSizeThreshold` | Set the max payload size threshold for short shades that have PSD bottleneck. | - |
 | `RovOpt` | Bitmask for ROV optimizations. 0 for all off, 1 for force fence flush none, 2 for setting LSC_L1UC_L3C_WB, 3 for both opt on | - |
-| `SelectiveHashOptions` | applies options to hash ragne via string | - |
+| `SelectiveHashOptions` | applies options to hash range via string | - |
 | `SetBranchSwapThreshold` | Set the branch swaping threshold. | - |
 | `SetDefaultTileYWalk` | Use TileY walk as default for HW generating threadID | Available |
 | `SetLoopUnrollThreshold` | Set the loop unroll threshold. Value 0 will use the default threshold. | - |
