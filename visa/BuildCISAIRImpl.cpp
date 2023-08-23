@@ -2128,6 +2128,7 @@ int CISA_IR_Builder::verifyVISAIR() {
     // Payload section is a mirror compilation to the main kernel
     // Load the main kernel to access its symbol table
     VISAKernelImpl *fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
+    vASSERT(fmtKernel);
 
     VISAKernel_format_provider fmt(fmtKernel);
 

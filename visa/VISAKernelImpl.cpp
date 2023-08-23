@@ -5468,10 +5468,10 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
     G4_SrcRegRegion *cPSCounterOpnd =
         (cPSCounter) ? cPSCounter->g4opnd->asSrcRegRegion() : nullptr;
     G4_SrcRegRegion *sampleIndexOpnd =
-        (cntrls.isSampleIndex) ? sampleIndex->g4opnd->asSrcRegRegion()
+        (cntrls.isSampleIndex && sampleIndex) ? sampleIndex->g4opnd->asSrcRegRegion()
                                : nullptr;
     G4_Operand *renderTargetIndexOpnd =
-        (cntrls.RTIndexPresent) ? renderTargetIndex->g4opnd : nullptr;
+        (cntrls.RTIndexPresent && renderTargetIndex) ? renderTargetIndex->g4opnd : nullptr;
     G4_SrcRegRegion *r1HeaderOpnd = nullptr;
 
     if (r1Header) {

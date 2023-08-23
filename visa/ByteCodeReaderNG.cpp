@@ -1481,6 +1481,8 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
       kernelBuilder->CreateVISAPredicateOperand(
           predOpnd, decl, PredState_NO_INVERSE, PRED_CTRL_NON);
       opnd = (VISA_VectorOpnd *)predOpnd;
+    } else {
+      vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Operand Class");
     }
 
     kernelBuilder->AppendVISALifetime(lifetime, opnd);
@@ -2082,6 +2084,9 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     numRawSrcs = 0;
     numMiscOpnds = 0;
     numStateOpnds = 0;
+
+    if (subOpcode >= 8 && subOpcode <= 15 && subOpcode != 14)
+      vASSERT(dst);
 
     switch (subOpcode) {
     case VA_OP_CODE_FLOOD_FILL:

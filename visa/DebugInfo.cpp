@@ -1037,6 +1037,7 @@ template <class T> void emitDataSubroutines(VISAKernelImpl *visaKernel, T &t) {
                          ->getRootDeclare();
           }
         }
+        vISA_ASSERT(retval && subLabel, "All of the basic blocks are empty.");
         emitDataName(subLabel->getLabelName(), t);
         emitDataUInt32(start, t);
         emitDataUInt32(end, t);
@@ -2237,6 +2238,7 @@ void emitSubRoutineInfo(VISAKernelImpl *visaKernel) {
 
         calleeBB = calleeBB->Preds.front();
       }
+      vISA_ASSERT(retval && subLabel, "All of the basic blocks are empty.");
       std::cerr << "Func info id " << subLabel->getLabelName() << "\n";
       std::cerr << "First inst " << start << ", last inst " << end << "\n";
       std::cerr << "Return value in dcl " << retval->getName() << "\n";
