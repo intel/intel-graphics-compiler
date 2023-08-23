@@ -10273,6 +10273,10 @@ void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic)
         emitAddPointer(pSP, pSP, vla_size);
         m_encoder->Push();
     }
+
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        emitStackOverflowDetectionCall(intrinsic->getFunction());
+    }
 }
 
 void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
