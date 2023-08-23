@@ -16,13 +16,14 @@ SPDX-License-Identifier: MIT
 
 // forward declaration
 class VISAKernelImpl;
+class VISAKernel_format_provider;
+
 namespace vISA {
 class IR_Builder;
 }
 
 class vISAVerifier {
-  const common_isa_header &isaHeader;
-  const print_format_provider_t *header;
+  const VISAKernel_format_provider *header;
   Options *options;
   const vISA::IR_Builder *irBuilder = nullptr; // for capability check
 
@@ -34,11 +35,9 @@ class vISAVerifier {
   std::map<int, bool> labelDefs;
 
 public:
-  vISAVerifier(const common_isa_header &vISAHeader,
-               const print_format_provider_t *kernelHeader, Options *opt,
+  vISAVerifier(const VISAKernel_format_provider *kernelHeader, Options *opt,
                const vISA::IR_Builder *ir_Builder)
-      : isaHeader(vISAHeader), header(kernelHeader), options(opt),
-        irBuilder(ir_Builder) {}
+      : header(kernelHeader), options(opt), irBuilder(ir_Builder) {}
 
   virtual ~vISAVerifier() = default;
 

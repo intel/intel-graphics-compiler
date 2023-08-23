@@ -7,25 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 /*
- * ISA IR Disassembler
- *
- * This library is designed to be extremely reusable and general in nature, and
- * as a result the following ISA IR disassembly code primarily uses the
- * following IR and data types:
- *
- * - common_isa_header
- * - kernel_format_t
- * - attribute_info_t
- * - VISA_opnd
- * - vector_opnd
- * - raw_opnd
- * - CISA_INST
- * - std::list<CISA_INST*>
- *
- * and prints them as human readable text to an isaasm file.
- *
- * Use of any other data types should be discussed by several members of the CM
- * jitter team before hand.
+ * vISA IR Disassembler
  *
  */
 
@@ -60,16 +42,6 @@ static const bool g_inlineTypePrint =
 static const bool g_prettyPrint = true; /// Line up the comments.
 static const bool g_ignorelocs = false; /// Ignore printing LOCs.
 static const bool g_noinstid = false;   /// Ignore printing instruction id comments.
-
-const char *printAsmName(const print_format_provider_t *header) {
-  for (unsigned i = 0; i < header->getAttrCount(); i++) {
-    const char *attrName = header->getString(header->getAttr(i)->nameIndex);
-    if (Attributes::isAttribute(Attributes::ATTR_OutputAsmPath, attrName))
-      return header->getAttr(i)->value.stringVal;
-  }
-
-  return "";
-}
 
 const char *getGenVarName(int id, const print_format_provider_t &header) {
   int numPredefined = Get_CISA_PreDefined_Var_Count();
@@ -1376,14 +1348,14 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
 // Bit   5: pixelNullMask
 // Bit   6: cpsEnable
 //
-static VISA3DSamplerOp getSamplerSubOpcode(const common_isa_header &isaHeader,
+static VISA3DSamplerOp getSamplerSubOpcode(uint16_t majorV,
                                            const CISA_INST *inst, unsigned i) {
   // The vISA version that widens the opcode field is 4
   // the below check is necessary to pick the correct
   // width during decoding based on input binary version
   const int WIDE_OPCODE_ISA_VER = 4;
 
-  auto val = ((int)(isaHeader.major_version) >= WIDE_OPCODE_ISA_VER)
+  auto val = (majorV >= WIDE_OPCODE_ISA_VER)
                  ? getPrimitiveOperand<uint16_t>(inst, i)
                  : getPrimitiveOperand<uint8_t>(inst, i);
   return VISA3DSamplerOp::extractSamplerOp(val);
@@ -1425,8 +1397,7 @@ constexpr const char *lbp_creation_mode[3] = {"VA_5x5_mode", "VA_3x3_mode",
                                     "VA_BOTH_mode"};
 
 static std::string
-printInstructionSampler(const common_isa_header &isaHeader,
-                        const print_format_provider_t *header,
+printInstructionSampler(const print_format_provider_t *header,
                         const CISA_INST *inst, const Options *opt) {
   std::stringstream sstr;
 
@@ -1484,7 +1455,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
     // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
     //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
     //   <dst> <u> <v> <r> <ai>
-    auto subop = getSamplerSubOpcode(isaHeader, inst, i++);
+    auto subop = getSamplerSubOpcode(header->getMajorVersion(), inst, i++);
 
     TARGET_PLATFORM platform =
         static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
@@ -1536,7 +1507,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
     break;
   }
   case ISA_3D_LOAD: {
-    auto subop = getSamplerSubOpcode(isaHeader, inst, i++);
+    auto subop = getSamplerSubOpcode(header->getMajorVersion(), inst, i++);
 
     TARGET_PLATFORM platform =
         static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
@@ -1579,7 +1550,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
     break;
   }
   case ISA_3D_GATHER4: {
-    auto subop = getSamplerSubOpcode(isaHeader, inst, i++);
+    auto subop = getSamplerSubOpcode(header->getMajorVersion(), inst, i++);
 
     TARGET_PLATFORM platform =
         static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
@@ -3250,7 +3221,7 @@ std::string VISAKernel_format_provider::printKernelHeader(bool printVersion) {
   auto builder = m_kernel->getCISABuilder();
 
   if (printVersion)
-    sstr << printBuildVersion(builder->m_header) << "\n";
+    sstr << printBuildVersion(getMajorVersion(), getMinorVersion()) << "\n";
   sstr << printFunctionDecl(this, isKernel) << "\n";
 
   // Print all functions in the same vISA builder. This is just for
@@ -3367,16 +3338,15 @@ std::string printFunctionDecl(const print_format_provider_t *header,
   return sstr.str();
 }
 
-std::string printBuildVersion(const common_isa_header &isaHeader) {
+std::string printBuildVersion(uint16_t major, uint16_t minor) {
   std::stringstream sstr;
-  sstr << ".version " << (int)(isaHeader.major_version) << "."
-       << (int)(isaHeader.minor_version);
+  sstr << ".version " << major << "." << minor;
   return sstr.str();
 }
 
-std::string printInstruction(const common_isa_header &isaHeader,
-                             const print_format_provider_t *header,
-                             const CISA_INST *instruction, const Options *opt) {
+std::string
+VISAKernel_format_provider::printInstruction(const CISA_INST *instruction,
+                                             const Options *opt) const {
   std::stringstream sstr;
 
   ISA_Opcode opcode = (ISA_Opcode)instruction->opcode;
@@ -3392,25 +3362,25 @@ std::string printInstruction(const common_isa_header &isaHeader,
     case ISA_Inst_Compare:
     case ISA_Inst_Address:
     case ISA_Inst_SIMD_Flow:
-      sstr << printInstructionCommon(header, instruction, opt);
+      sstr << printInstructionCommon(this, instruction, opt);
       break;
     case ISA_Inst_SVM:
-      sstr << printInstructionSVM(header, instruction, opt);
+      sstr << printInstructionSVM(this, instruction, opt);
       break;
     case ISA_Inst_Flow:
-      sstr << printInstructionControlFlow(header, instruction, opt);
+      sstr << printInstructionControlFlow(this, instruction, opt);
       break;
     case ISA_Inst_Misc:
-      sstr << printInstructionMisc(header, instruction, opt);
+      sstr << printInstructionMisc(this, instruction, opt);
       break;
     case ISA_Inst_Sampler:
-      sstr << printInstructionSampler(isaHeader, header, instruction, opt);
+      sstr << printInstructionSampler(this, instruction, opt);
       break;
     case ISA_Inst_Data_Port:
-      sstr << printInstructionDataport(header, instruction, opt);
+      sstr << printInstructionDataport(this, instruction, opt);
       break;
     case ISA_Inst_LSC:
-      sstr << printInstructionLsc(opcode, header, instruction, opt);
+      sstr << printInstructionLsc(opcode, this, instruction, opt);
       break;
     default: {
       sstr << "Illegal or unimplemented CISA instruction (opcode, type): ("

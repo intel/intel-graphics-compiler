@@ -476,8 +476,7 @@ std::string CISA_IR_Builder::isaDump(const VISAKernelImpl *kernel,
     // repKernel (which is used to look up variable name) is potentially a
     // different kernel. Have we verified that .visaasm dump works correctly for
     // PS code patching?
-    sstr << printInstruction(m_header, &header, inst, kernel->getOptions())
-         << "\n";
+    sstr << header.printInstruction(inst, kernel->getOptions()) << "\n";
   }
 
 #ifdef DLL_MODE

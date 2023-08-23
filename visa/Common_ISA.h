@@ -378,6 +378,9 @@ extern GenPrecision_Info_t
 
 class print_format_provider_t {
 public:
+
+  virtual uint16_t getMajorVersion() const = 0;
+  virtual uint16_t getMinorVersion() const = 0;
   virtual uint32_t getNameIndex() const = 0;
 
   virtual const char *getString(uint32_t str_id) const = 0;

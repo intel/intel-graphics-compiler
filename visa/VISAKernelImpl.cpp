@@ -722,10 +722,8 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name) {
   }
 
   CISABuildPreDefinedDecls();
-
   fmt = new VISAKernel_format_provider(this);
-  verifier =
-      new vISAVerifier(m_CISABuilder->m_header, fmt, m_options, m_builder);
+  verifier = new vISAVerifier(fmt, m_options, m_builder);
 
   return status;
 }
@@ -8148,9 +8146,7 @@ void VISAKernelImpl::addInstructionToEnd(CisaInst *inst) {
     // Print instructions
     VISAKernel_format_provider fmt(this);
     m_CISABuilder->m_ssIsaAsm
-        << printInstruction(m_CISABuilder->m_header, &fmt, inst->getCISAInst(),
-                            getOptions())
-        << "\n";
+        << fmt.printInstruction(inst->getCISAInst(), getOptions()) << "\n";
   }
 }
 

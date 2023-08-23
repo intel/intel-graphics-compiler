@@ -320,7 +320,9 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
   if (mode == vISA_ASM_WRITER) {
     // If writing asm text, clear the stream and print the build version
     builder->ClearAsmTextStreams();
-    builder->m_ssIsaAsm << printBuildVersion(builder->m_header) << "\n";
+    builder->m_ssIsaAsm << printBuildVersion(builder->getMajorVersion(),
+                                             builder->getMinorVersion())
+                        << "\n";
   }
 
   // Give builder phase a name so that we could control debug information in
@@ -2182,8 +2184,7 @@ int CISA_IR_Builder::verifyVISAIR() {
 
     VISAKernel_format_provider fmt(fmtKernel);
 
-    vISAVerifier verifier(m_header, &fmt, getOptions(),
-                          fmtKernel->getIRBuilder());
+    vISAVerifier verifier(&fmt, getOptions(), fmtKernel->getIRBuilder());
     verifier.run(kTemp);
 
     if (verifier.hasErrors()) {

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "Attributes.hpp"
 #include "IsaDisassembly.h"
 #include "PreDefinedVars.h"
+#include "VISAKernel.h"
 
 #include "G4_IR.hpp"
 /* stdio.h portability code start */
@@ -41,7 +42,7 @@ using namespace vISA;
       memset(buf, 0, sz);                                                      \
       sprintf_s(buf, sz, __VA_ARGS__);                                         \
       error_list.push_back(                                                    \
-          createIsaError(isaHeader, header, std::string(buf), opt));           \
+          createIsaError(header, std::string(buf), opt));                      \
       free(buf);                                                               \
     }                                                                          \
   while (0)
@@ -55,7 +56,7 @@ using namespace vISA;
       memset(buf, 0, sz);                                                      \
       sprintf_s(buf, sz, __VA_ARGS__);                                         \
       error_list.push_back(                                                    \
-          createIsaError(isaHeader, header, std::string(buf), opt, inst));     \
+          createIsaError(header, std::string(buf), opt, inst));                \
       free(buf);                                                               \
     }                                                                          \
   while (0)
@@ -119,8 +120,7 @@ static int getDstIndex(const CISA_INST *inst) {
 
 // diagDumpInstructionOperandDecls() is used to generate the error report
 static std::string
-diagDumpInstructionOperandDecls(const common_isa_header &isaHeader,
-                                const print_format_provider_t *header,
+diagDumpInstructionOperandDecls(const print_format_provider_t *header,
                                 const CISA_INST *inst, Options *options) {
   std::stringstream sstr;
 
@@ -177,10 +177,9 @@ diagDumpInstructionOperandDecls(const common_isa_header &isaHeader,
   return sstr.str();
 }
 
-static std::string createIsaError(const common_isa_header &isaHeader,
-                                  const print_format_provider_t *header,
+static std::string createIsaError(const VISAKernel_format_provider *header,
                                   std::string msg, Options *opt,
-                                  const CISA_INST *inst = NULL) {
+                                  const CISA_INST *inst = nullptr) {
   std::stringstream sstr;
   if (!inst)
     sstr << "\n/-------------------------------------------!!!KERNEL HEADER "
@@ -192,13 +191,13 @@ static std::string createIsaError(const common_isa_header &isaHeader,
        << (char *)header->getString(header->getNameIndex()) << "\n";
   sstr << std::setw(33) << "Error Message: " << msg << "\n";
 
-  if (NULL != inst) {
+  if (inst) {
     sstr << std::setw(33) << "Diagnostics:\n";
     sstr << std::setw(33) << " Instruction variables' decls: ";
-    sstr << diagDumpInstructionOperandDecls(isaHeader, header, inst, opt)
+    sstr << diagDumpInstructionOperandDecls(header, inst, opt) << "\n";
+    sstr << std::setw(33)
+         << " Violating Instruction: " << header->printInstruction(inst, opt)
          << "\n";
-    sstr << std::setw(33) << " Violating Instruction: "
-         << printInstruction(isaHeader, header, inst, opt) << "\n";
   }
 
   sstr << "\\------------------------------------------------------------------"
@@ -716,7 +715,7 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
                       << h_stride_val << ")) * " << VN_size << ") < " << VN_size
                       << " * " << num_elements << "\n";
             std::cout << "Violating Instruction: "
-                      << printInstruction(isaHeader, header, inst, options)
+                      << header->printInstruction(inst, options)
                       << "\n";
 #endif // DLL_MODE
           }
@@ -817,8 +816,7 @@ void vISAVerifier::verifyRawOperand(const CISA_INST *inst, unsigned i) {
   }
 }
 
-static bool isReadWritePreDefinedVar(const common_isa_header &isaHeader,
-                                     uint32_t index, uint32_t byteOffset) {
+static bool isReadWritePreDefinedVar(uint32_t index, uint32_t byteOffset) {
   PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index);
   if (internalIndex == PreDefinedVarsInternal::ARG ||
       internalIndex == PreDefinedVarsInternal::RET ||
@@ -902,12 +900,7 @@ void vISAVerifier::verifyVectorOperand(const CISA_INST *inst, unsigned i) {
 
     if (operand_index < header->getVarCount() + numPreDefinedVars &&
         numPreDefinedVars <= operand_index) {
-      // var_info_t* var = &header->variables[operand_index-numPreDefinedVars];
-      /// do some var verifications here.
-
-      // VISA_Type isa_type_decl = (VISA_Type)((var->bit_properties) & 0xF);
-      // VISA_Type isa_type_var  = getVectorOperandType(isaHeader, header,
-      // opnd);
+      // TODO: add variable verification.
     }
   }
 
@@ -925,10 +918,9 @@ void vISAVerifier::verifyVectorOperand(const CISA_INST *inst, unsigned i) {
             opnd.opnd_val.gen_opnd.col_offset *
                 Get_VISA_Type_Size(getPredefinedVarType(
                     mapExternalToInternalPreDefVar(operand_index)));
-        REPORT_INSTRUCTION(
-            options,
-            isReadWritePreDefinedVar(isaHeader, operand_index, byteOffset),
-            "Not allowed to write to a read only variable");
+        REPORT_INSTRUCTION(options,
+                           isReadWritePreDefinedVar(operand_index, byteOffset),
+                           "Not allowed to write to a read only variable");
       }
     }
   }
@@ -3238,7 +3230,7 @@ void vISAVerifier::verifyInstructionDataport(const CISA_INST *inst) {
   }
   case ISA_GATHER4_TYPED:
   case ISA_SCATTER4_TYPED: {
-    if (getVersionAsInt(isaHeader.major_version, isaHeader.minor_version) >=
+    if (getVersionAsInt(header->getMajorVersion(), header->getMinorVersion()) >=
         getVersionAsInt(3, 2)) {
       uint8_t ch_mask = 0;
       ch_mask = getPrimitiveOperand<uint8_t>(inst, i++);
@@ -3439,7 +3431,6 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
 }
 
 struct LscInstVerifier {
-  const common_isa_header &isaHeader;
   const print_format_provider_t *header;
   const CISA_INST *inst;
   const IR_Builder &builder;
@@ -3453,11 +3444,10 @@ struct LscInstVerifier {
 
   int currOpIx = 0;
 
-  LscInstVerifier(const common_isa_header &_isaHeader,
-                  const print_format_provider_t *_header,
+  LscInstVerifier(const print_format_provider_t *_header,
                   const CISA_INST *_inst, const IR_Builder &_builder,
                   Options *_options)
-      : isaHeader(_isaHeader), header(_header), inst(_inst), builder(_builder),
+      : header(_header), inst(_inst), builder(_builder),
         options(_options) {
     if (_inst->opcode == ISA_LSC_FENCE) {
       subOp = LSC_FENCE;
@@ -4202,12 +4192,11 @@ void vISAVerifier::verifyInstructionLsc(const CISA_INST *inst) {
   // This mostly comes from:
   // https://gfxspecs.intel.com/Predator/Home/Index/53578 But there's also a
   // spreadsheet floating around
-  LscInstVerifier verifier(isaHeader, header, inst, *irBuilder, options);
+  LscInstVerifier verifier(header, inst, *irBuilder, options);
   verifier.verify();
   if (verifier.errorStream.tellp() > 0) {
     std::stringstream ss;
-    ss << "in instruction "
-       << printInstruction(isaHeader, header, inst, options) << "\n";
+    ss << "in instruction " << header->printInstruction(inst, options) << "\n";
     ss << verifier.errorStream.str();
     error_list.push_back(ss.str());
   }
@@ -4344,7 +4333,7 @@ void vISAVerifier::verifyKernelHeader() {
   // This information is only used by the CM runtime, not by Finalizer.
   unsigned implicitIndex = header->getInputCount();
   uint32_t versionNum =
-      getVersionAsInt(isaHeader.major_version, isaHeader.minor_version);
+      getVersionAsInt(header->getMajorVersion(), header->getMinorVersion());
   if (versionNum >= getVersionAsInt(3, 3)) {
     for (unsigned i = 0; i < header->getInputCount(); i++) {
       if (header->getInput(i)->getImplicitKind() != 0) {

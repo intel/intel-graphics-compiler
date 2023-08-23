@@ -1403,6 +1403,9 @@ protected:
 public:
   VISAKernel_format_provider(const VISAKernelImpl *kernel) : m_kernel(kernel) {}
 
+  uint16_t getMajorVersion() const { return m_kernel->m_major_version; }
+  uint16_t getMinorVersion() const { return m_kernel->m_minor_version; }
+
   uint32_t getNameIndex() const { return m_kernel->m_cisa_kernel.name_index; }
   const char *getString(uint32_t str_id) const {
     vASSERT(str_id < m_kernel->m_string_pool.size());
@@ -1468,6 +1471,9 @@ public:
   uint32_t getInputCount() const { return m_kernel->m_input_count; }
 
   std::string printKernelHeader(bool printVersion);
+
+  std::string printInstruction(const CISA_INST *instruction,
+                               const Options *opt) const;
 };
 
 #endif // VISA_KERNEL_H

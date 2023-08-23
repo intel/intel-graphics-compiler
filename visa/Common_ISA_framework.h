@@ -126,9 +126,6 @@ public:
   void setMinorVersion(unsigned char v) { m_header.minor_version = v; }
   unsigned char getMajorVersion() const { return m_header.major_version; }
   unsigned char getMinorVersion() const { return m_header.minor_version; }
-  unsigned int getMagicNumber() const { return m_header.magic_number; }
-
-  const common_isa_header &getIsaHeader() const { return m_header; }
 
   void initKernel(int kernelIndex, VISAKernelImpl *kernel);
   int finalizeCisaBinary();
