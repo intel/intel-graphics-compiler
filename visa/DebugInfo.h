@@ -72,7 +72,7 @@ void addCallFrameInfo(VISAKernelImpl *kernel);
 // For ranges colored during graph coloring
 void updateDebugInfo(vISA::G4_Kernel &kernel, vISA::G4_INST *inst,
                      const vISA::LivenessAnalysis &liveAnalysis,
-                     const LiveRangeVec& lrs, SparseBitVector &live,
+                     const LiveRangeVec& lrs, llvm_SBitVector &live,
                      vISA::DebugInfoState *state, bool closeAllOpenIntervals);
 // For ranges allocated by local RA
 void updateDebugInfo(vISA::G4_Kernel &kernel,
@@ -454,14 +454,14 @@ public:
 class DebugInfoState {
   // Class used to store state during RA.
 public:
-  void setPrevBitset(const SparseBitVector &b) { prevBitset = b; }
+  void setPrevBitset(const llvm_SBitVector &b) { prevBitset = b; }
   void setPrevInst(G4_INST *i) {
     if (i->getVISAId() != UNMAPPABLE_VISA_INDEX) {
       prevInst = i;
     }
   }
 
-  SparseBitVector *getPrevBitset() {
+  llvm_SBitVector *getPrevBitset() {
     if (prevBitset.empty())
       return nullptr;
     return &prevBitset;
@@ -469,7 +469,7 @@ public:
   G4_INST *getPrevInst() { return prevInst; }
 
 private:
-  SparseBitVector prevBitset;
+  llvm_SBitVector prevBitset;
   G4_INST *prevInst = nullptr;
 };
 } // namespace vISA

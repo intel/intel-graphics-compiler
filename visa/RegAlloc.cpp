@@ -291,8 +291,8 @@ bool LivenessAnalysis::livenessCandidate(const G4_Declare *decl,
 }
 
 void LivenessAnalysis::updateKillSetForDcl(
-    G4_Declare *dcl, SparseBitVector *curBBGen, SparseBitVector *curBBKill,
-    G4_BB *curBB, SparseBitVector *entryBBGen, SparseBitVector *entryBBKill,
+    G4_Declare *dcl, llvm_SBitVector *curBBGen, llvm_SBitVector *curBBKill,
+    G4_BB *curBB, llvm_SBitVector *entryBBGen, llvm_SBitVector *entryBBKill,
     G4_BB *entryBB, unsigned scopeID) {
   if (scopeID != 0 && scopeID != UINT_MAX && dcl->getScopeID() == scopeID) {
     entryBBKill->set(dcl->getRegVar()->getId());
@@ -310,10 +310,10 @@ void LivenessAnalysis::updateKillSetForDcl(
 // killed in the bb it appears and a sub-routine local variable is killed in
 // entry block of the sub-routine. No error check is performed currently so if
 // variable scoping information is incorrect then generated code will be so too.
-void LivenessAnalysis::performScoping(SparseBitVector *curBBGen,
-                                      SparseBitVector *curBBKill, G4_BB *curBB,
-                                      SparseBitVector *entryBBGen,
-                                      SparseBitVector *entryBBKill,
+void LivenessAnalysis::performScoping(llvm_SBitVector *curBBGen,
+                                      llvm_SBitVector *curBBKill, G4_BB *curBB,
+                                      llvm_SBitVector *entryBBGen,
+                                      llvm_SBitVector *entryBBKill,
                                       G4_BB *entryBB) {
   unsigned scopeID = curBB->getScopeID();
   for (G4_INST *inst : *curBB) {
@@ -493,8 +493,8 @@ void LivenessAnalysis::computeLiveness() {
   // mark input arguments live at the entry of kernel
   // mark output arguments live at the exit of kernel
   //
-  SparseBitVector inputDefs;
-  SparseBitVector outputUses;
+  llvm_SBitVector inputDefs;
+  llvm_SBitVector outputUses;
 
   for (unsigned i = 0; i < numVarId; i++) {
     bool setLiveIn = false;
@@ -570,8 +570,8 @@ void LivenessAnalysis::computeLiveness() {
   }
 
   G4_BB *subEntryBB = NULL;
-  SparseBitVector *subEntryKill = NULL;
-  SparseBitVector *subEntryGen = NULL;
+  llvm_SBitVector *subEntryKill = NULL;
+  llvm_SBitVector *subEntryGen = NULL;
 
   if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) {
     //
@@ -760,7 +760,7 @@ void LivenessAnalysis::useAnalysis(FuncInfo *subroutine) {
         use_in[bbid] = use_in[bbid] - use_kill[bbid];
         use_in[bbid] |= use_gen[bbid];
       } else {
-        SparseBitVector oldUseIn = use_in[bbid];
+        llvm_SBitVector oldUseIn = use_in[bbid];
 
         use_in[bbid] = use_out[bbid];
         use_in[bbid] = use_in[bbid] - use_kill[bbid];
@@ -780,8 +780,8 @@ void LivenessAnalysis::useAnalysis(FuncInfo *subroutine) {
 //
 void LivenessAnalysis::useAnalysisWithArgRetVal(
     FuncInfo *subroutine,
-    const std::unordered_map<FuncInfo *, SparseBitVector> &args,
-    const std::unordered_map<FuncInfo *, SparseBitVector> &retVal) {
+    const std::unordered_map<FuncInfo *, llvm_SBitVector> &args,
+    const std::unordered_map<FuncInfo *, llvm_SBitVector> &retVal) {
   bool changed = false;
   do {
     changed = false;
@@ -818,7 +818,7 @@ void LivenessAnalysis::useAnalysisWithArgRetVal(
         use_in[bbid] = use_in[bbid] - use_kill[bbid];
         use_in[bbid] |= use_gen[bbid];
       } else {
-        SparseBitVector oldUseIn = use_in[bbid];
+        llvm_SBitVector oldUseIn = use_in[bbid];
 
         use_in[bbid] = use_out[bbid];
         use_in[bbid] = use_in[bbid] - use_kill[bbid];
@@ -847,7 +847,7 @@ void LivenessAnalysis::defAnalysis(FuncInfo *subroutine) {
     changed = false;
     for (auto &&bb : subroutine->getBBList()) {
       uint32_t bbid = bb->getId();
-      std::optional<SparseBitVector> defInOrNull = std::nullopt;
+      std::optional<llvm_SBitVector> defInOrNull = std::nullopt;
       if (!changed) {
         defInOrNull = def_in[bbid];
       }
@@ -879,13 +879,13 @@ void LivenessAnalysis::defAnalysis(FuncInfo *subroutine) {
   } while (changed);
 }
 
-void LivenessAnalysis::hierarchicalIPA(const SparseBitVector &kernelInput,
-                                       const SparseBitVector &kernelOutput) {
+void LivenessAnalysis::hierarchicalIPA(const llvm_SBitVector &kernelInput,
+                                       const llvm_SBitVector &kernelOutput) {
 
   vISA_ASSERT(fg.sortedFuncTable.size() > 0,
               "topological sort must already be performed");
-  std::unordered_map<FuncInfo *, SparseBitVector> args;
-  std::unordered_map<FuncInfo *, SparseBitVector> retVal;
+  std::unordered_map<FuncInfo *, llvm_SBitVector> args;
+  std::unordered_map<FuncInfo *, llvm_SBitVector> retVal;
 
 #ifdef _DEBUG
   auto verifyFuncTable = [&]() {
@@ -1138,8 +1138,8 @@ void LivenessAnalysis::footprintSrc(const G4_INST *i, G4_Operand *opnd,
 }
 
 void LivenessAnalysis::computeGenKillandPseudoKill(
-    G4_BB *bb, SparseBitVector &def_out, SparseBitVector &use_in,
-    SparseBitVector &use_gen, SparseBitVector &use_kill) const {
+    G4_BB *bb, llvm_SBitVector &def_out, llvm_SBitVector &use_in,
+    llvm_SBitVector &use_gen, llvm_SBitVector &use_kill) const {
   //
   // Mark each fcall as using all globals and arg pre-defined var
   //
@@ -1590,7 +1590,7 @@ bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB *bb, bool isChanged) {
     }
     changed = true;
   } else {
-    SparseBitVector old = use_out[bbid];
+    llvm_SBitVector old = use_out[bbid];
     for (auto succBB : bb->Succs) {
       use_out[bbid] |= use_in[succBB->getId()];
     }
@@ -1625,7 +1625,7 @@ bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB *bb, bool isChanged) {
     }
     changed = true;
   } else {
-    SparseBitVector old = def_in[bbid];
+    llvm_SBitVector old = def_in[bbid];
     for (auto predBB : bb->Preds) {
       def_in[bbid] |= def_out[predBB->getId()];
     }
@@ -1792,12 +1792,12 @@ void LivenessAnalysis::dumpLive(BitSet &live) const {
 // dump which vars are live at the entry of BB
 //
 void LivenessAnalysis::dumpGlobalVarNum() const {
-  SparseBitVector global_def_out;
-  SparseBitVector global_use_in;
+  llvm_SBitVector global_def_out;
+  llvm_SBitVector global_use_in;
 
   for (auto bb : fg) {
-    SparseBitVector global_in = use_in[bb->getId()];
-    SparseBitVector global_out = def_out[bb->getId()];
+    llvm_SBitVector global_in = use_in[bb->getId()];
+    llvm_SBitVector global_out = def_out[bb->getId()];
     global_in &= def_in[bb->getId()];
     global_use_in |= global_in;
     global_out &= use_out[bb->getId()];
@@ -2450,7 +2450,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 liveOutRegMapIt != liveOutRegMap.end(),
                 "RA verification error: Invalid entry in liveOutRegMap!");
             if (liveOutRegVec[idx] != varID) {
-              const SparseBitVector &indr_use = liveAnalysis.indr_use[bb->getId()];
+              const llvm_SBitVector &indr_use = liveAnalysis.indr_use[bb->getId()];
 
               if (strstr(dcl->getName(), GlobalRA::StackCallStr) != nullptr) {
                 vISA_ASSERT(false,
@@ -2616,7 +2616,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
             liveOutRegMap.emplace(idx, dcl);
           } else {
             if (liveOutRegVec[idx] != varID) {
-              const SparseBitVector &indr_use = liveAnalysis.indr_use[bb->getId()];
+              const llvm_SBitVector &indr_use = liveAnalysis.indr_use[bb->getId()];
 
               if (dcl->isInput()) {
                 vISA_ASSERT(false,
@@ -2750,7 +2750,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 liveOutRegMap.emplace(idx, dcl);
               } else {
                 if (liveOutRegVec[idx] != varID) {
-                  const SparseBitVector &indr_use =
+                  const llvm_SBitVector &indr_use =
                       liveAnalysis.indr_use[bb->getId()];
 
                   if (dcl->isInput()) {

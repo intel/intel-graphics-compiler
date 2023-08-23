@@ -14,6 +14,10 @@ SPDX-License-Identifier: MIT
 #include <cstring>
 #include <map>
 
+// clang-format off
+#include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/SparseBitVector.h"
+#include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
 // Array-based bitset implementation where each element occupies a single bit.
@@ -22,6 +26,8 @@ typedef unsigned int BITSET_ARRAY_TYPE;
 #define BITS_PER_BYTE 8
 #define _BIT(x) (((BITSET_ARRAY_TYPE)1) << x)
 #define NUM_BITS_PER_ELT (sizeof(BITSET_ARRAY_TYPE) * BITS_PER_BYTE)
+
+typedef llvm::SparseBitVector<2048> llvm_SBitVector;
 
 class BitSet {
 public:

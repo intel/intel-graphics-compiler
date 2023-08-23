@@ -389,8 +389,8 @@ bool IncrementalRA::verify(const LivenessAnalysis *curLiveness) const {
     }
   }
 
-  auto compare = [&](const std::vector<SparseBitVector> &curLivenessSet,
-                     const std::vector<SparseBitVector> &oldLivenessSet,
+  auto compare = [&](const std::vector<llvm_SBitVector> &curLivenessSet,
+                     const std::vector<llvm_SBitVector> &oldLivenessSet,
                      std::string name) {
     for (unsigned int bb = 0; bb != kernel.fg.getBBList().size(); ++bb) {
       for (unsigned int i = 0, cnt = oldLivenessSet[bb].count(); i != cnt;
