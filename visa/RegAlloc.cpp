@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1433,6 +1433,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
     //
     if (dst && dst->getBase()->isRegAllocPartaker()) {
       G4_Declare *topdcl = GetTopDclFromRegRegion(dst);
+      vASSERT(topdcl);
       unsigned id = topdcl->getRegVar()->getId();
       auto dstfootprint = &footprints[id];
 
@@ -1448,7 +1449,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
              // whole region
              topdcl->getRegVar()->isRegVarTransient() ||
              // Check whether local RA marked this range
-             (topdcl && (topdclLR = gra.getLocalLR(topdcl)) &&
+             ((topdclLR = gra.getLocalLR(topdcl)) &&
               topdclLR->isLiveRangeLocal() && (!topdcl->isInput()) &&
               topdclLR->getFirstRef(first) == i)) &&
             // If single inst writes whole region then dont insert pseudo_kill
@@ -1507,6 +1508,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
         mod->getBase()->asRegVar()->isRegAllocPartaker()) {
       G4_VarBase *flagReg = mod->getBase();
       G4_Declare *topdcl = flagReg->asRegVar()->getDeclare();
+      vASSERT(topdcl);
       unsigned id = topdcl->getRegVar()->getId();
       auto dstfootprint = &footprints[id];
 
@@ -1517,7 +1519,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
              // Check whether local RA marked this range
              // This may not be necessary as currently local RA is not performed
              // for flags.
-             (topdcl && (topdclLR = gra.getLocalLR(topdcl)) &&
+             ((topdclLR = gra.getLocalLR(topdcl)) &&
               topdclLR->isLiveRangeLocal() &&
               topdclLR->getFirstRef(first) == i)) &&
             // If single inst writes whole region then dont insert pseudo_kill

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2327,7 +2327,7 @@ void Interference::setupLRs(G4_BB *bb) {
         const REGVAR_VECTOR &pointsToSet =
             liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
                                                                           bb);
-        for (auto pt : pointsToSet) {
+        for (auto &pt : pointsToSet) {
           if (!pt.var->isRegAllocPartaker() || !incSpillCostAddrTaken)
             continue;
 
