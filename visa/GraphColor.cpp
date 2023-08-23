@@ -1545,7 +1545,7 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const {
 // hence is not a candidate for being marked with an infinite spill cost.
 //
 void Interference::buildInterferenceAtBBExit(const G4_BB *bb,
-                                             llvm_SBitVector &live) {
+                                             SparseBitVector &live) {
 
   // live must be empty at this point
   live = liveAnalysis->use_out[bb->getId()];
@@ -1593,7 +1593,7 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
 // partial declare does not interference with hybrid declares added by local RA,
 // the reason is simple, these declares are assigned register already.
 //
-void Interference::buildInterferenceWithLive(const llvm_SBitVector &live,
+void Interference::buildInterferenceWithLive(const SparseBitVector &live,
                                              unsigned i) {
   // set interference between variable with index "i" and variable set in "live".
   // j is the valid bit index in the live.
@@ -1645,7 +1645,7 @@ void Interference::buildInterferenceWithLive(const llvm_SBitVector &live,
 }
 
 void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
-                                               llvm_SBitVector &live, bool setLive,
+                                               SparseBitVector &live, bool setLive,
                                                bool setIntf) {
 
   const G4_Declare *dcl = lrs[lr_id]->getDcl();
@@ -1694,7 +1694,7 @@ void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2) {
 // always save/restore before/after call and are better assigned to the
 // caller-save space.
 //
-void Interference::addCalleeSaveBias(const llvm_SBitVector &live) {
+void Interference::addCalleeSaveBias(const SparseBitVector &live) {
   for (unsigned i = 0; i < maxId; i++) {
     if (live.test(i)) {
       lrs[i]->setCallerSaveBias(false);
@@ -2051,7 +2051,7 @@ uint32_t GlobalRA::getRefCount(int loopNestLevel) {
 
 // handle return value interference for fcall
 void Interference::buildInterferenceForFcall(
-    G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
+    G4_BB *bb, SparseBitVector &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, const G4_VarBase *regVar) {
   vISA_ASSERT(inst->opcode() == G4_pseudo_fcall, "expect fcall inst");
   if (regVar->isRegAllocPartaker()) {
@@ -2064,7 +2064,7 @@ void Interference::buildInterferenceForFcall(
 
 
 void Interference::buildInterferenceForDst(
-    G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
+    G4_BB *bb, SparseBitVector &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, G4_DstRegRegion *dst) {
 
   if (dst->getBase()->isRegAllocPartaker()) {
@@ -2119,7 +2119,7 @@ void Interference::buildInterferenceForDst(
   }
 }
 
-void Interference::buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live) {
+void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitVector &live) {
   DebugInfoState state;
 
   for (auto i = bb->rbegin(); i != bb->rend(); i++) {
@@ -2445,7 +2445,7 @@ void Interference::computeInterference() {
   //
   // create bool vector, live, to track live ranges that are currently live
   //
-  llvm_SBitVector live;
+  SparseBitVector live;
 
   buildInterferenceAmongLiveOuts();
 
@@ -4596,7 +4596,7 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declar
   }
 }
 
-std::vector<G4_Declare *> SBitToVector(llvm_SBitVector *sparseBitVector,
+std::vector<G4_Declare *> SBitToVector(SparseBitVector *sparseBitVector,
                                        const LiveRangeVec &lrs) {
   std::vector<G4_Declare *> retVector;
   for (auto bit : *sparseBitVector) {
@@ -4611,7 +4611,7 @@ std::vector<G4_Declare *> SBitToVector(llvm_SBitVector *sparseBitVector,
 void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
   auto maydefConst = liveAnalysis.subroutineMaydef.find(func);
   if (maydefConst != liveAnalysis.subroutineMaydef.end()) {
-    auto *maydef = const_cast<llvm_SBitVector *>(&maydefConst->second);
+    auto *maydef = const_cast<SparseBitVector *>(&maydefConst->second);
     std::vector<G4_Declare *> maydefDcls(SBitToVector(maydef, lrs));
     buildInteferenceForCallSiteOrRetDeclare(maydefDcls, &overlapDclsWithFunc[func]);
   }
@@ -4755,7 +4755,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
   }
 
   BitSet cur(kernel.getNumRegTotal(), true);
-  llvm_SBitVector live;
+  SparseBitVector live;
   std::vector<int> curUpdate;
 
   buildInterferenceAtBBExit(bb, live);

@@ -144,7 +144,7 @@ void RPE::regPressureBBExit(G4_BB *bb) {
   regPressure += (double)numScalarBytes / gra.builder.getGRFSize();
 }
 
-void RPE::updateLiveness(llvm_SBitVector &live, uint32_t id, bool val) {
+void RPE::updateLiveness(SparseBitVector &live, uint32_t id, bool val) {
   bool change = false;
   bool clean = false;
   if (val) { //true

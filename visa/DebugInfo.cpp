@@ -1578,7 +1578,7 @@ void resetGenOffsets(G4_Kernel &kernel) {
 void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
                      const LivenessAnalysis &liveAnalysis,
                      const LiveRangeVec& lrs,
-                     llvm_SBitVector &live, DebugInfoState *state,
+                     SparseBitVector &live, DebugInfoState *state,
                      bool closeAllOpenIntervals) {
   if (closeAllOpenIntervals && !state->getPrevInst())
     return;

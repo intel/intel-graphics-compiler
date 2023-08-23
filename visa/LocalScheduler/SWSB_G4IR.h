@@ -9,11 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef _SWSB_H_
 #define _SWSB_H_
 #include "../BitSet.h"
+#include "FastSparseBitVector.h"
 #include "../FlowGraph.h"
 #include "../G4_IR.hpp"
+#include "LocalScheduler_G4IR.h"
 #include "../Mem_Manager.h"
 #include "../Timer.h"
-#include "LocalScheduler_G4IR.h"
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
@@ -183,8 +184,8 @@ struct SBFootprint {
 // of dst and src separately. Each bit map to one global SBID node according to
 // the node's global ID.
 struct SBBitSets {
-  llvm_SBitVector dst;
-  llvm_SBitVector src;
+  SparseBitVector dst;
+  SparseBitVector src;
 
   SBBitSets() {}
 
@@ -682,7 +683,7 @@ public:
   SBBitSets send_kill_scalar;
 
   BitSet dominators;
-  llvm_SBitVector send_WAW_may_kill;
+  SparseBitVector send_WAW_may_kill;
 
   // For token reduction
   BitSet liveInTokenNodes;

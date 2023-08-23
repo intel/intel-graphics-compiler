@@ -305,6 +305,7 @@ set(Jitter_Utility_Files
 set(GenX_Utility_Files
   BitSet.cpp
   BitSet.h
+  FastSparseBitVector.h
   Timer.cpp
   Timer.h
   )

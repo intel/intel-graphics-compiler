@@ -423,7 +423,7 @@ struct InterferenceMatrixStorage {
   // This member is a half triangle representation of interference graph implemented
   // as a sparse bitvector. Interference construction uses this member. When
   // incremental RA is enabled, this member is updated incrementally.
-  std::vector<llvm_SBitVector> sparseMatrix;
+  std::vector<SparseBitVector> sparseMatrix;
   // This member is constructed after SIMT and SIMD interference are computed.
   // It's a full triangle representation of interference matrix with trivial
   // traversal. This member is reconstructed in each graph color iteration.
@@ -438,7 +438,7 @@ struct InterferenceMatrixStorage {
 class IncrementalRA {
   friend Interference;
 
-  const llvm_SBitVector &getSparseMatrix(unsigned int id) {
+  const SparseBitVector &getSparseMatrix(unsigned int id) {
     return sparseMatrix[id];
   }
 
@@ -446,7 +446,7 @@ private:
   GlobalRA &gra;
   G4_Kernel &kernel;
   LiveRangeVec lrs;
-  std::vector<llvm_SBitVector>& sparseMatrix;
+  std::vector<SparseBitVector>& sparseMatrix;
   std::vector<std::vector<unsigned>>& sparseIntf;
   G4_RegFileKind selectedRF = G4_RegFileKind::G4_UndefinedRF;
   unsigned int level = 0;
@@ -597,12 +597,12 @@ public:
 
 private:
   // For verification only
-  std::vector<llvm_SBitVector> def_in;
-  std::vector<llvm_SBitVector> def_out;
-  std::vector<llvm_SBitVector> use_in;
-  std::vector<llvm_SBitVector> use_out;
-  std::vector<llvm_SBitVector> use_gen;
-  std::vector<llvm_SBitVector> use_kill;
+  std::vector<SparseBitVector> def_in;
+  std::vector<SparseBitVector> def_out;
+  std::vector<SparseBitVector> use_in;
+  std::vector<SparseBitVector> use_out;
+  std::vector<SparseBitVector> use_gen;
+  std::vector<SparseBitVector> use_kill;
 
   std::unique_ptr<VarReferences> prevIterRefs;
 
@@ -650,11 +650,11 @@ class Interference {
   // like dense matrix, interference is not symmetric (that is, if v1 and v2
   // interfere and v1 < v2, we insert (v1, v2) but not (v2, v1)) for better
   // cache behavior
-  std::vector<llvm_SBitVector>& sparseMatrix;
+  std::vector<SparseBitVector>& sparseMatrix;
 
   unsigned int denseMatrixLimit = 0;
 
-  static void updateLiveness(llvm_SBitVector &live, uint32_t id, bool val) {
+  static void updateLiveness(SparseBitVector &live, uint32_t id, bool val) {
     if (val) {
       live.set(id);
     } else {
@@ -711,23 +711,23 @@ class Interference {
     return matrix[idx];
   }
 
-  void addCalleeSaveBias(const llvm_SBitVector &live);
+  void addCalleeSaveBias(const SparseBitVector &live);
 
-  void buildInterferenceAtBBExit(const G4_BB *bb, llvm_SBitVector &live);
-  void buildInterferenceWithinBB(G4_BB *bb, llvm_SBitVector &live);
-  void buildInterferenceForDst(G4_BB *bb, llvm_SBitVector &live, G4_INST *inst,
+  void buildInterferenceAtBBExit(const G4_BB *bb, SparseBitVector &live);
+  void buildInterferenceWithinBB(G4_BB *bb, SparseBitVector &live);
+  void buildInterferenceForDst(G4_BB *bb, SparseBitVector &live, G4_INST *inst,
                                std::list<G4_INST *>::reverse_iterator i,
                                G4_DstRegRegion *dst);
-  void buildInterferenceForFcall(G4_BB *bb, llvm_SBitVector &live,
+  void buildInterferenceForFcall(G4_BB *bb, SparseBitVector &live,
                                  G4_INST *inst,
                                  std::list<G4_INST *>::reverse_iterator i,
                                  const G4_VarBase *regVar);
 
   inline void filterSplitDclares(unsigned startIdx, unsigned endIdx, unsigned n,
                                  unsigned col, unsigned &elt, bool is_split);
-  void buildInterferenceWithLive(const llvm_SBitVector &live, unsigned i);
+  void buildInterferenceWithLive(const SparseBitVector &live, unsigned i);
   void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
-                                   llvm_SBitVector &live, bool setLive,
+                                   SparseBitVector &live, bool setLive,
                                    bool setIntf);
   void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
 
