@@ -186,33 +186,23 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             auto funcMD = modMD.FuncMD.find(m_currFunction);
             if (funcMD != modMD.FuncMD.end())
             {
-                if (FGA)
-                {
-                    modMD.PrivateMemoryPerFG[m_currFunction] = funcMD->second.privateMemoryPerWI;
-                }
-                else
+                modMD.PrivateMemoryPerFG[m_currFunction] = funcMD->second.privateMemoryPerWI;
+
+                // VLA uses private mem on stack, but if used in a single entry function, may not get FGA.
+                // If this is the case, still increase the private mem allocation to account for VLA.
+                if (!FGA && hasVLA)
                 {
                     uint32_t maxPrivateMem = funcMD->second.privateMemoryPerWI;
+                    // Add another 4KB if there are VLAs
+                    maxPrivateMem += 4096;
+                    std::string maxPrivateMemValue = std::to_string(maxPrivateMem);
+                    std::string fullWarningMessage = "VLA has been detected, the private memory size is set to " + maxPrivateMemValue + "B. You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. Greater values can affect performance, and lower ones may lead to incorrect results of your program";
 
-                    // Add 1 OWORD for FP stack write
-                    if ((hasStackCall || hasVLA) && IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)) {
-                        maxPrivateMem += uint32_t(EmitPass::getFPOffset());
-                    }
-
-                    if (hasVLA)
-                    {
-                        // Add another 4KB if there are VLAs
-                        maxPrivateMem += 4096;
-                        std::string maxPrivateMemValue = std::to_string(maxPrivateMem);
-                        std::string fullWarningMessage = "VLA has been detected, the private memory size is set to " + maxPrivateMemValue + "B. You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. Greater values can affect performance, and lower ones may lead to incorrect results of your program";
-
-                        // Now, you can pass the concatenated warning message (const char*) to the EmitWarning function
-                        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
-                    }
+                    // Now, you can pass the concatenated warning message (const char*) to the EmitWarning function
+                    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
                     maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
                     maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
-
-                    modMD.PrivateMemoryPerFG[m_currFunction] = (unsigned)maxPrivateMem;
+                    modMD.PrivateMemoryPerFG[m_currFunction] = maxPrivateMem;
 
                     if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
                     {
