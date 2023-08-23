@@ -161,13 +161,8 @@ public:
 
     uint64_t _dispatch_mode        : 1;   // 0 = SIMD16, 1 = SIMD8
     uint64_t _reserved0            : 1;
-    uint64_t _shader               : 48;  // shader function pointer:
-                                          // In hardware this are only 26 bits and
-                                          // functions are assumed to be 64 bit aligned.
-                                          // The functional model cannot assume 64 bit alignment
-                                          // and we have to use more bits to store function pointers.
-
-    uint64_t _reserved1            : 10;  // unused padding bytes
+    uint64_t _shader               : 26;  // shader function pointer
+    uint64_t _reserved1            : 32;  // unused padding bytes
 };
 
 static_assert(sizeof(KSP) == 8, "changed?");
@@ -342,13 +337,13 @@ struct MemRay<Xe>
     // 32 B
 
     // RayFlags:
-    // 
+    //
     // There are 3 sets of flags, from the application point of view,
     // available during the ray traversal:
     // 1. RayFlags set in the shader before the TraceRay functions is called.
     // 2. Flags applied to the entire Pipeline.
     // 3. Flags applied per instances and geometry in the BVH
-    // 
+    //
     // All the Ray data is stored in the MemRayStructures which have two instances:
     // 1. TopLevel (Ray0)
     // 2. BottomLevel (Ray1)
@@ -359,7 +354,7 @@ struct MemRay<Xe>
     // the RayFlags.
     // The BottomLevel MemRay is written only by HW, when AnyHit or Intersection
     // Shaders are called.
-    // 
+    //
     // As HW can only apply flags from TracRay (1) and the BVH (3), flags from
     // the Pipeline (2) has to applied by SW. It is done by applying them to
     // the flags set before the TraceRay (1). But the application can read
@@ -373,7 +368,7 @@ struct MemRay<Xe>
     // 1. RayFlags combined with Pipeline Flags - Ray0.rayFlags
     // 2. RayFlags - Ray0.instLeafPtr aka Ray0.flagsFromTraceRay.rayFlags
     // 3. RayFlags + Pipeline Flags + Instance/GeometryFlags - Ray1.rayFlags
-    // 
+    //
     // rayFlags defined here is used to access:
     // 1. Ray0.rayFlags
     // 2. Ray1.rayFlags
