@@ -443,6 +443,8 @@ _SPIRV_OP(OpSatConvertUToS)
 _SPIRV_OP(OpSatConvertSToU)
 _SPIRV_OP(OpConvertFToBF16INTEL)
 _SPIRV_OP(OpConvertBF16ToFINTEL)
+// Rounding builtins
+_SPIRV_OP(OpRoundFToTF32INTEL)
 // SPV_INTEL_arithmetic_fence
 _SPIRV_OP(OpArithmeticFenceINTEL)
 // Arithmetic Instructions

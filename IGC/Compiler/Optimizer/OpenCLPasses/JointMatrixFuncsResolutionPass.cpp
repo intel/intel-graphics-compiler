@@ -1094,6 +1094,15 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
         fillValue = builder.CreateLoad(vectorElementType, fillValue);
     }
 
+    // For TF32 type, the slice has a type of i32, however, the value we are
+    // filling with has a type of float.  So we need a bitcast.
+    bool isTF32 = (desc.isFloating) && (desc.bitWidth == 32);
+    if (isTF32) {
+        fillValue = builder.CreateBitCast(
+            fillValue, Type::getIntNTy(builder.getContext(),
+                                       getResolvedVectorElemSize(matTy)));
+    }
+
     Value *slice = fillValue;
 
     if (IGCLLVM::FixedVectorType *ty =

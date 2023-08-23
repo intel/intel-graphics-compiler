@@ -20392,7 +20392,18 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
         }
         else if (id == GenISAIntrinsic::GenISA_ftotf32) {
             tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 0);
-            tSrc = src;
+            // Does not support immediate source of type float, therefore we
+            // need a temporary "general" variable and copy the immediate
+            // value to that temporary variable first.  Then we can use this
+            // temporary as an operand of fcvt.
+            if (src->IsImmediate()) {
+                CVariable *tfSrc = m_currShader->GetNewVariable(
+                    1, ISA_TYPE_F, EALIGN_GRF, "tmp_cvt");
+                m_encoder->Copy(tfSrc, src);
+                tSrc = tfSrc;
+            } else {
+                tSrc = src;
+            }
         }
         else {
             IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
