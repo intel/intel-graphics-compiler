@@ -22,7 +22,6 @@ namespace IGC
 {
     struct RetryState
     {
-        bool allowAddrArithCloning;
         bool allowLICM;
         bool allowCodeSinking;
         bool allowAddressArithmeticSinking;
@@ -37,9 +36,9 @@ namespace IGC
     };
 
     static const RetryState RetryTable[] = {
-       // adrCl  licm  codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk
-        { false, true,  true, false, false, true,  true,  true,  true,  false, false, 1 },
-        { true,  false, true, true,  true,  false, false, false, false, true,  true, 500 }
+        // licm  codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk
+        { true,  true, false, false, true,  true,  true,  true,  false, false, 1 },
+        { false, true, true,  true,  false, false, false, false, true,  true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -115,13 +114,6 @@ namespace IGC
         unsigned id = GetPerFuncRetryStateId(F);
         IGC_ASSERT(id < RetryTableSize);
         return RetryTable[id].allowCodeSinking;
-    }
-
-    bool RetryManager::AllowCloneAddressArithmetic(Function* F) const
-    {
-        unsigned id = GetPerFuncRetryStateId(F);
-        IGC_ASSERT(id < RetryTableSize);
-        return RetryTable[id].allowAddrArithCloning;
     }
 
     bool RetryManager::AllowSimd32Slicing(Function* F) const

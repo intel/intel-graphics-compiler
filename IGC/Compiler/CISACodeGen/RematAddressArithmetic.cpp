@@ -51,18 +51,17 @@ class CloneAddressArithmetic : public FunctionPass {
 public:
     static char ID;
 
-    ~CloneAddressArithmetic() { Uses.clear(); }
-    CloneAddressArithmetic() : FunctionPass(ID) {
+    CloneAddressArithmetic() : FunctionPass(ID)
+    {
         initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
     }
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
         AU.setPreservesCFG();
     }
 
     bool runOnFunction(Function&) override;
-    void rematWholeChain(llvm::IntToPtrInst *I);
-    std::unordered_map<llvm::Value*, unsigned int> Uses;
 
 private:
     bool greedyRemat(Function &F);
@@ -103,14 +102,13 @@ static bool isAddressArithmetic(Instruction* I)
     return false;
 }
 
-void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
+void rematWholeChain(llvm::IntToPtrInst *I) {
 
   llvm::SmallVector<llvm::Instruction *, 4> RematVector;
   std::queue<llvm::Instruction *> BFSQ;
   BFSQ.push((Instruction *)I);
 
   const unsigned NumOfUsesLimit = IGC_GET_FLAG_VALUE(RematUsesThreshold);
-  const unsigned RematChainLimit = IGC_GET_FLAG_VALUE(RematChainLimit);
 
   // we are traversing ssa-chain for address arithmetic
   while (!BFSQ.empty()) {
@@ -125,7 +123,7 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
 
         bool NotPHI = !llvm::isa<llvm::PHINode>(Op);
         bool NotConstant = !llvm::isa<llvm::Constant>(Op);
-        bool SameBB = IGC_IS_FLAG_ENABLED(RematSameBBScope) ? Op->getParent() == I->getParent() : true;
+        bool SameBB = Op->getParent() == I->getParent();
         bool AddressArithmetic = isAddressArithmetic(Op);
 
         // if operand has more uses than specified, we do not rematerialize it.
@@ -139,7 +137,7 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
         // ...
         // mul r2 someCommonValue
         // load r2
-        bool NotTooManyUses = Uses[Op] < NumOfUsesLimit;
+        bool NotTooManyUses = Op->getNumUses() < NumOfUsesLimit;
 
         if (SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic) {
 
@@ -150,8 +148,6 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
     }
   }
 
-  // if the remat chain will be too long, probably we don't want that
-  if(RematVector.size() > RematChainLimit) return;
   std::unordered_map<Instruction *, Instruction *> OldToNew;
   std::reverse(RematVector.begin(), RematVector.end());
 
@@ -182,11 +178,6 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
 bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
   bool Result = false;
-
-  for (BasicBlock &BB : F) {
-    for (auto &I : BB) { Uses[&I] = I.getNumUses(); }
-  }
-
   llvm::SmallVector<llvm::IntToPtrInst *, 4> ToProcess;
 
   // go through block, collect all inttoptr instructions to do
