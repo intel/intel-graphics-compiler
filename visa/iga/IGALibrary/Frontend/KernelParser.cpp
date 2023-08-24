@@ -3468,7 +3468,8 @@ public:
         } else if (ConsumeIdentEq("src")) {
           // $4.src
           m_builder.InstDepInfoSBidSrc(loc, sbid);
-        } else {
+        }
+        else {
           FailT("invalid SBID directive expecting 'dst' or 'src'");
         }
       } else if (!LookingAtAnyOf(COMMA, RBRACE)) {

@@ -36,7 +36,6 @@ enum class SWSB_ENCODE_MODE : uint32_t {
   FourDistPipeReduction = 6,
   // MTL: 3 distance pipe with DP operations in Math pipe
   ThreeDistPipeDPMath = 7,
-
 };
 
 static_assert((uint32_t)SWSB_ENCODE_MODE::SWSBInvalidMode == 0,
@@ -64,7 +63,12 @@ public:
     REG_DIST_MATH,       // XeHPC
   };
 
-  enum class TokenType { NOTOKEN, SET, SRC, DST };
+  enum class TokenType {
+    NOTOKEN,
+    SET,
+    SRC,
+    DST,
+  };
 
   enum class InstType { UNKNOWN, DPAS, MATH, SEND, OTHERS };
 
