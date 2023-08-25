@@ -699,15 +699,31 @@ static bool isOrContainsMatrixType(const Type *root)
     return false;
 }
 
+// As both float and tf32 types are represented as float, the TF32 type info
+// is lost starting at the SPIRV level. Therefore, we use the following
+// heuristics for determing the TF32 type.  We know that the K value is fixed
+// for a given platform, matrix and data type. Also TF32 is supported starting
+// from PVC.  Therefore we use the K == 8, along with data type check to
+// determine the TF32 type.  For float the K value is 16 (hence this function
+// will return false).
+static bool isTF32(const JointMatrixTypeDescription *desc) {
+    bool matATF32 = desc->layout == LayoutPackedA && desc->isFloating &&
+                    desc->bitWidth == 32 && desc->columns == 8;
+    bool matBTF32 = desc->layout == LayoutPackedB && desc->isFloating &&
+                    desc->bitWidth == 32 && desc->rows == 8;
+    if (matATF32 || matBTF32)
+        return true;
+    return false;
+}
+
 unsigned JointMatrixFuncsResolutionPass::getNumRowsPerWI(const JointMatrixTypeDescription *desc) {
     IGC_ASSERT_MESSAGE(m_SIMDSize > 0, "Unexpected sub group size.");
 
     if (desc->layout == LayoutPackedA) {
         // Custom slicing for tf32 for Matrix A.  In each WI, we have half the number
         // of rows that are present in the SG.
-        bool isTF32 = (desc->isFloating) && (desc->bitWidth == 32);
-
-        if (isTF32 || (m_Ctx->platform.hasExecSize16DPAS() && m_SIMDSize == 32))
+        if (isTF32(desc) ||
+            (m_Ctx->platform.hasExecSize16DPAS() && m_SIMDSize == 32))
             return desc->rows % 2 ? desc->rows / 2 + 1 : desc->rows / 2;
         return desc->rows;
     } else if (desc->layout == LayoutPackedB) {
@@ -775,8 +791,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     /* Small slice support: */
     Type *baseType = Type::getInt32Ty(ctx);
     if (desc.layout == LayoutPackedA) {
-        bool isTF32 = (desc.isFloating) && (desc.bitWidth == 32);
-        if (!isTF32 && m_Ctx->platform.hasExecSize16DPAS()) {
+        if (!isTF32(&desc) && m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
         }
     } else if (desc.layout == LayoutRowMajor && desc.isFloating) {
@@ -1193,8 +1208,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
 
     // For TF32 type, the slice has a type of i32, however, the value we are
     // filling with has a type of float.  So we need a bitcast.
-    bool isTF32 = (desc.isFloating) && (desc.bitWidth == 32);
-    if (isTF32) {
+    if (isTF32(&desc)) {
         fillValue = builder.CreateBitCast(
             fillValue, Type::getIntNTy(builder.getContext(),
                                        getResolvedVectorElemSize(matTy)));
