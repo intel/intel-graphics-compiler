@@ -443,6 +443,8 @@ namespace IGC
         bool DisableFDivToFMulInvOpt                    = false;
         bool initializePhiSampleSourceWA                = false;
         bool WaDisableSubspanUseNoMaskForCB             = false;
+        
+        unsigned FastestS1Options                       = 0;  // FCEXP_NO_EXPRIMENT. Can't access the enum here for some reason.
     };
 
     enum class ThreadIDLayout

@@ -154,6 +154,8 @@ typedef enum CG_FLAG_t {
     ValidStage2Modes(prev_ctx_ptr, stats) \
     )
 
+#define FastestS1Options(ctx_ptr) (IGC_GET_FLAG_VALUE(FastestS1Experiments) ? IGC_GET_FLAG_VALUE(FastestS1Experiments) : ctx_ptr->getModuleMetaData()->compOpt.FastestS1Options)
+
 // CodePatch compilation experimental flags
 typedef enum
 {
@@ -181,6 +183,12 @@ typedef enum
     FCEXP_QUICKTOKEN_ALLOC              = ( 0x1 << 0xa ),
     FCEXP_DISABLE_UNROLL                = ( 0x1 << 0xb ),
     FCEXP_TOBE_DESIGNED                 = ( 0x1 << 0xc ),
+
+    // Current default stage 1 options. *Must* be updated whenever the default changes.
+    FCEXP_DEFAULT                       = ( FCEXP_DISABLE_LVN | FCEXP_LINEARSCAN | FCEXP_DISABLE_GOPT | FCEXP_LOCAL_SCHEDULING | FCEXP_PRERA_SCHEDULING | FCEXP_SPILL_COMPRESSION | FCEXP_QUICKTOKEN_ALLOC ),
+
+    // Alias for UMD to indicate staged compilation must be disabled
+    FCEXP_DISABLED                      = FCEXP_TOBE_DESIGNED
 } FCEXP_FLAG_t;
 
 #endif // __IGC_H

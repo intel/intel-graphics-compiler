@@ -4996,7 +4996,7 @@ namespace IGC
              IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
              m_program->m_DriverInfo->SupportFastestStage1())
         {
-            if (IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT)
+            if (FastestS1Options(context) == FCEXP_NO_EXPRIMENT)
             {
                 SaveOption(vISA_LocalScheduling, false);
                 SaveOption(vISA_preRA_Schedule, false);
@@ -5011,32 +5011,32 @@ namespace IGC
             }
             else
             {
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_FASTSPILL)
+                if (FastestS1Options(context) & FCEXP_FASTSPILL)
                     SaveOption(vISA_FastSpill, true);
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LOCAL_SCHEDULING)
+                if (FastestS1Options(context) & FCEXP_LOCAL_SCHEDULING)
                     SaveOption(vISA_LocalScheduling, false);
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_PRERA_SCHEDULING)
+                if (FastestS1Options(context) & FCEXP_PRERA_SCHEDULING)
                     SaveOption(vISA_preRA_Schedule, false);
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_NO_REMAT)
+                if (FastestS1Options(context) & FCEXP_NO_REMAT)
                     SaveOption(vISA_NoRemat, true);
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_SPILL_COMPRESSION)
+                if (FastestS1Options(context) & FCEXP_SPILL_COMPRESSION)
                     SaveOption(vISA_SpillSpaceCompression, false);
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA)
+                if (FastestS1Options(context) & FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA)
                     SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_LVN)
+                if (FastestS1Options(context) & FCEXP_DISABLE_LVN)
                     SaveOption(vISA_LVN, false);
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_QUICKTOKEN_ALLOC)
+                if (FastestS1Options(context) & FCEXP_QUICKTOKEN_ALLOC)
                     SaveOption(vISA_QuickTokenAllocation, true);
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LINEARSCAN)
+                if (FastestS1Options(context) & FCEXP_LINEARSCAN)
                     SaveOption(vISA_LinearScan, true); // use linearScan
 
-                if (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_1PASSRA)
+                if (FastestS1Options(context) & FCEXP_1PASSRA)
                     SaveOption(vISA_FastCompileRA, true); // use 1 iteration RA
             }
         }

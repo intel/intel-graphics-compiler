@@ -1382,8 +1382,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         bool disableGOPT = ( (IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
-                             ((IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT) ||
-                               IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
+                             ((FastestS1Options(pContext) & FCEXP_DISABLE_GOPT) ||
+                               FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
                                pContext->getModuleMetaData()->compOpt.DisableFastestGopt));
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
@@ -1447,8 +1447,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                 bool hasIndexTemp = (pContext->m_indexableTempSize[0] > 0);
                 bool disableLoopUnrollStage1 =
                     IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
-                       (IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
-                        (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_UNROLL));
+                       (FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
+                        (FastestS1Options(pContext) & FCEXP_DISABLE_UNROLL));
                 if ((LoopUnrollThreshold > 0 &&
                      unroll &&
                      !disableLoopUnrollStage1)
@@ -1643,8 +1643,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                     // Enable loop unrolling for stage 1 for now due to persisting regressions
                     bool disableLoopUnrollStage1 =
                         IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
-                           (//IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
-                            (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_UNROLL));
+                           (//FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
+                            (FastestS1Options(pContext) & FCEXP_DISABLE_UNROLL));
                     if ((LoopUnrollThreshold > 0 &&
                          unroll &&
                          !disableLoopUnrollStage1)
