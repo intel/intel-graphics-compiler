@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include "skuwa/iacm_g11_rev_id.h"
 #include "skuwa/iacm_g12_rev_id.h"
 
+#include "iStdLib/utility.h"
+
 namespace IGC
 {
 
@@ -1466,6 +1468,13 @@ uint32_t getVISAABIVersion() const {
 bool supportsNonDefaultLSCCacheSetting() const
 {
     return false;
+}
+
+unsigned int roundUpTgsmSize(DWORD size) const
+{
+    const DWORD blockSize = getSharedLocalMemoryBlockSize() ? getSharedLocalMemoryBlockSize() : sizeof(KILOBYTE);
+    size = iSTD::Round(size, blockSize) / blockSize;
+    return iSTD::RoundPower2(size) * blockSize;
 }
 
 };
