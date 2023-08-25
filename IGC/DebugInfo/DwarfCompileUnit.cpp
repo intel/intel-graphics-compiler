@@ -43,6 +43,7 @@ See LICENSE.TXT for details.
 #include "StreamEmitter.hpp"
 #include "VISADebugInfo.hpp"
 #include "VISAModule.hpp"
+#include "DwarfExpression.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 
@@ -2262,6 +2263,33 @@ IGC::DIE *CompileUnit::getOrCreateModuleDIE(DIModule *MD) {
   return MDDie;
 }
 
+DIEDwarfExpression::DIEDwarfExpression(const StreamEmitter &AP, CompileUnit &CU,
+                                       DIEBlock &DIE)
+    : DwarfExpression(CU), AP(AP), OutDIE(DIE) {}
+
+void DwarfExpression::addExpression(DIExpressionCursor &&ExprCursor) {
+  addExpression(std::move(ExprCursor),
+                [](unsigned Idx, DIExpressionCursor &Cursor) -> bool {
+                  llvm_unreachable("unhandled opcode found in expression");
+                });
+}
+
+void DIEDwarfExpression::emitOp(uint8_t Op, const char *Comment) {
+  CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_data1, Op);
+}
+
+void DIEDwarfExpression::emitSigned(int64_t Value) {
+  CU.addSInt(&getActiveDIE(), dwarf::DW_FORM_sdata, Value);
+}
+
+void DIEDwarfExpression::emitUnsigned(uint64_t Value) {
+  CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_udata, Value);
+}
+
+void DIEDwarfExpression::emitData1(uint8_t Value) {
+  CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_data1, Value);
+}
+
 /// constructSubrangeDIE - Construct subrange DIE from DISubrange.
 void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
                                        DIE *IndexTy) {
@@ -2271,51 +2299,43 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
   // The LowerBound value defines the lower bounds which is typically zero for
   // C/C++. The Count value is the number of elements.  Values are 64 bit. If
   // Count == -1 then the array is unbounded and we do not emit
-  // DW_AT_lower_bound and DW_AT_upper_bound attributes. If LowerBound == 0 and
-  // Count == 0, then the array has zero elements in which case we do not emit
-  // an upper bound.
-#if LLVM_VERSION_MAJOR <= 10
-  int64_t LowerBound = SR->getLowerBound();
-#endif
+  // DW_AT_lower_bound and DW_AT_count attributes.
   int64_t DefaultLowerBound = getDefaultLowerBound();
-  auto *CI = SR->getCount().dyn_cast<ConstantInt *>();
 
-#if LLVM_VERSION_MAJOR >= 11
-  auto addBoundTypeEntry = [&](dwarf::Attribute Attr,
+#if LLVM_VERSION_MAJOR >= 13
+  auto AddBoundTypeEntry = [&](dwarf::Attribute Attr,
                                DISubrange::BoundType Bound) -> void {
     if (auto *BV = Bound.dyn_cast<DIVariable *>()) {
       if (auto *VarDIE = getDIE(BV))
         addDIEEntry(DW_Subrange, Attr, VarDIE);
-    }
-    /*
-    LLVM11-UPGRADE : TODO
-            else if (auto * BE = Bound.dyn_cast<DIExpression*>()) {
-                DIELoc* Loc = new (DIEValueAllocator) DIELoc;
-                DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
-                DwarfExpr.setMemoryLocationKind();
-                DwarfExpr.addExpression(BE);
-                addBlock(DW_Subrange, Attr, DwarfExpr.finalize());
-            }
-    */
-    else if (auto *BI = Bound.dyn_cast<ConstantInt *>()) {
-      if (Attr != dwarf::DW_AT_lower_bound || DefaultLowerBound == -1 ||
-          BI->getSExtValue() != DefaultLowerBound)
+    } else if (auto *BE = Bound.dyn_cast<DIExpression *>()) {
+      DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
+      IGC::DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
+      // DwarfExpr.setMemoryLocationKind();
+      DwarfExpr.addExpression(BE);
+      addBlock(DW_Subrange, Attr, DwarfExpr.finalize());
+    } else if (auto *BI = Bound.dyn_cast<ConstantInt *>()) {
+      if (Attr == dwarf::DW_AT_count) {
+        if (BI->getSExtValue() != -1)
+          addUInt(DW_Subrange, Attr, None, BI->getSExtValue());
+      } else if (Attr != dwarf::DW_AT_lower_bound || DefaultLowerBound == -1 ||
+                 BI->getSExtValue() != DefaultLowerBound)
         addSInt(DW_Subrange, Attr, dwarf::DW_FORM_sdata, BI->getSExtValue());
     }
   };
 
-  addBoundTypeEntry(dwarf::DW_AT_lower_bound, SR->getLowerBound());
+  AddBoundTypeEntry(dwarf::DW_AT_lower_bound, SR->getLowerBound());
 
-  if (auto *CV = SR->getCount().dyn_cast<DIVariable *>()) {
-    if (auto *CountVarDIE = getDIE(CV))
-      addDIEEntry(DW_Subrange, dwarf::DW_AT_count, CountVarDIE);
-  } else if (CI && CI->getSExtValue() != -1)
-    addUInt(DW_Subrange, dwarf::DW_AT_count, None, CI->getSExtValue());
+  AddBoundTypeEntry(dwarf::DW_AT_count, SR->getCount());
 
-  addBoundTypeEntry(dwarf::DW_AT_upper_bound, SR->getUpperBound());
+  AddBoundTypeEntry(dwarf::DW_AT_upper_bound, SR->getUpperBound());
 
-  addBoundTypeEntry(dwarf::DW_AT_byte_stride, SR->getStride());
-#else
+  AddBoundTypeEntry(dwarf::DW_AT_byte_stride, SR->getStride());
+
+#elif LLVM_VERSION_MAJOR <= 10
+  int64_t LowerBound = SR->getLowerBound();
+  auto *CI = SR->getCount().dyn_cast<ConstantInt *>();
+
   if (DefaultLowerBound == -1 || LowerBound != DefaultLowerBound) {
     addUInt(DW_Subrange, dwarf::DW_AT_lower_bound, None, LowerBound);
   }

@@ -117,6 +117,8 @@ public:
   llvm::DICompileUnit *getNode() const { return Node; }
   DIE *getCUDie() const { return CUDie; }
 
+  CompileUnit &getCU() { return *this; }
+
   unsigned getDebugInfoOffset() const { return DebugInfoOffset; }
   void setDebugInfoOffset(unsigned DbgInfoOff) { DebugInfoOffset = DbgInfoOff; }
 

@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2021 Intel Corporation
+# Copyright (C) 2020-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -10,6 +10,7 @@ set(DEBUG_INFO_LIBRARY_SOURCES
   StreamEmitter.cpp
   DIE.cpp
   DwarfCompileUnit.cpp
+  DwarfExpression.cpp
   LexicalScopes.cpp
   DwarfDebug.cpp
   VISADebugInfo.cpp
