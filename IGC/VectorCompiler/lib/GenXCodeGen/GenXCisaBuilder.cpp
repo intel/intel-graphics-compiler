@@ -867,7 +867,7 @@ private:
                                                unsigned char ReturnSize) {
     updateSIMDSize(ExecMask, ExecSize);
     CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
-        Pred, ExecMask, ExecSize, false, FuncAddr, ArgSize, ReturnSize));
+        Pred, ExecMask, ExecSize, true, FuncAddr, ArgSize, ReturnSize));
   }
 
   inline void appendVISACFRetInst(VISA_PredOpnd *Pred, VISA_EMask_Ctrl ExecMask,

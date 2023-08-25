@@ -417,7 +417,8 @@ namespace IGC
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
         VISA_VectorOpnd* funcAddrOpnd = GetSourceOperandNoModifier(funcPtr);
         V(vKernel->AppendVISACFIndirectFuncCallInst(
-            predOpnd, emask, execSize, false, funcAddrOpnd, argSize, retSize));
+            predOpnd, emask, execSize, funcPtr->IsUniform(), funcAddrOpnd,
+            argSize, retSize));
     }
 
     void CEncoder::SubroutineRet(CVariable* flag, llvm::Function* F)
