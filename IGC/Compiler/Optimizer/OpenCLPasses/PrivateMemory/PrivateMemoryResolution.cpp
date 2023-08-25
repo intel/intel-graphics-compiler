@@ -1051,6 +1051,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         if (!safe32bitOffset)
             perLaneOffset = builder.CreateZExt(perLaneOffset, typeInt64);
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
+        if (m_currFunction->getParent()->getDataLayout().getPointerSize() == 8)
+            // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
+            totalOffset = builder.CreateZExt(totalOffset, typeInt64);
         Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 

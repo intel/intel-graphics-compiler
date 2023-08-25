@@ -23,7 +23,8 @@ entry:
 ; CHECK:  [[bufferOffsetForThread:%[.A-z0-9]*]] = add i32 [[perThreadOffset]], [[SIMDBufferOffset]]
 ; CHECK:  [[perLaneOffset:%[A-z0-9]*]] = mul i32 [[simdLaneId]], 400
 ; CHECK:  [[totalOffset:%[.A-z0-9]*]] = add i32 [[bufferOffsetForThread]], [[perLaneOffset]]
-; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* %privateBase, i32 [[totalOffset]]
+; CHECK:  [[totalOffsetExt:%[.A-z0-9]*]] = zext i32 [[totalOffset]] to i64
+; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* %privateBase, i64 [[totalOffsetExt]]
 ; CHECK:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[privateBufferGEP]] to [100 x float]*
 ; CHECK:  ret void
 }
