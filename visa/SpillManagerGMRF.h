@@ -458,6 +458,8 @@ private:
                                                   unsigned regOff = 0,
                                                   unsigned subregOff = 0);
 
+  std::optional<G4_Declare *> getPreDefinedMRangeDeclare() const;
+
   G4_Declare *createMRangeDeclare(G4_RegVar *regVar);
 
   G4_Declare *createMRangeDeclare(G4_DstRegRegion *region,
@@ -557,21 +559,20 @@ private:
                                G4_SrcRegRegion *filledRangeRegion,
                                G4_ExecSize execSize);
 
-  G4_SrcRegRegion *getLSCSpillFillHeader(G4_Declare *mRangeDcl,
-                                         const G4_Declare *fp, int offset);
+  G4_SrcRegRegion *getLSCSpillFillHeader(const G4_Declare *fp, int offset);
 
-  G4_INST *createLSCSpill(G4_Declare *spillRangeDcl, G4_Declare *mRangeDcl,
-                          unsigned regOff, unsigned height, unsigned spillOff);
+  G4_INST *createLSCSpill(G4_Declare *spillRangeDcl, unsigned regOff,
+                          unsigned height, unsigned spillOff);
 
-  G4_INST *createLSCSpill(G4_Declare *spillRangeDcl, G4_Declare *mRangeDcl,
+  G4_INST *createLSCSpill(G4_Declare *spillRangeDcl,
                           G4_DstRegRegion *spilledRangeRegion,
                           G4_ExecSize execSize, unsigned option,
                           bool isScatter = false);
 
-  G4_INST *createLSCFill(G4_Declare *fillRangeDcl, G4_Declare *mRangeDcl,
-                         unsigned regOff, unsigned height, unsigned spillOff);
+  G4_INST *createLSCFill(G4_Declare *fillRangeDcl, unsigned regOff,
+                         unsigned height, unsigned spillOff);
 
-  G4_INST *createLSCFill(G4_Declare *fillRangeDcl, G4_Declare *mRangeDcl,
+  G4_INST *createLSCFill(G4_Declare *fillRangeDcl,
                          G4_SrcRegRegion *filledRangeRegion,
                          G4_ExecSize execSize);
 
@@ -635,7 +636,7 @@ private:
 
   int globalScratchOffset;
 
-  bool useScratchMsg_;
+  const bool useScratchMsg_;
   bool avoidDstSrcOverlap_;
   // spilled declares that represent a scalar immediate (created due to encoding
   // restrictions) We rematerialize the immediate value instead of spill/fill
