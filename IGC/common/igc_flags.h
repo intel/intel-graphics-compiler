@@ -231,8 +231,8 @@ DECLARE_IGC_REGKEY(bool, EnableHighestSIMDForNoSpill,   false,   "When there is 
 DECLARE_IGC_REGKEY(bool, ForceAddressArithSinking,      false,   "Force sinking address arithmetic closer to the usage", false)
 DECLARE_IGC_REGKEY(bool, SetDefaultTileYWalk,           true,  "Use TileY walk as default for HW generating threadID", true)
 DECLARE_IGC_REGKEY(bool, ForceTileY,                    false, "Force TileY mode on DG2", false)
-DECLARE_IGC_REGKEY(DWORD, EnableNewTileYCheck,              2, "Enable new TileY check. 0 for off, 1 for on, 2 for platform default", false)
-DECLARE_IGC_REGKEY(DWORD, KeepTileYForFlattened,            2, "Keep TileY for FlattenedThreadIdInGroup. 0 for off, 1 for on, 2 for platform default", false)
+DECLARE_IGC_REGKEY(bool, EnableNewTileYCheck,           true, "Enable new TileY check on DG2", false)
+DECLARE_IGC_REGKEY(bool, KeepTileYForFlattened,         false, "Keep TileY for FlattenedThreadIdInGroup on DG2", false)
 
 DECLARE_IGC_REGKEY(bool, DisableDynamicTextureFolding,  false,  "Disable Dynamic Texture Folding", false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicResInfoFolding,  true,  "Disable Dynamic ResInfo Instruction Folding", false)
