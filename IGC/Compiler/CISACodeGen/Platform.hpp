@@ -729,7 +729,7 @@ bool hasFullInt64() const
 
 bool hasInt64DstMul() const
 {
-    return m_platformInfo.eProductFamily == IGFX_PVC;
+    return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId < REVISION_B);
 }
 
 bool hasExecSize16DPAS() const
