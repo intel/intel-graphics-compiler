@@ -64,9 +64,15 @@ namespace IGC
 
         bool needsLinearWalk =
             MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
+
+        // If KeepTileYForFlattened == 2, use the platform default value. Otherwise 0 is forced off, 1 is forced on.
+        bool KeepTileYForFlattenedValue = IGC_GET_FLAG_VALUE(KeepTileYForFlattened) == 2 ?
+            m_Platform->EnableKeepTileYForFlattenedDefault() :
+            IGC_IS_FLAG_ENABLED(KeepTileYForFlattened);
+
         if (m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
         {
-            if (IGC_IS_FLAG_DISABLED(KeepTileYForFlattened) && useLinearWalk)
+            if (!KeepTileYForFlattenedValue && useLinearWalk)
             {
                 needsLinearWalk = true;
             }
@@ -153,7 +159,11 @@ namespace IGC
             m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableNewTileYCheck) &&
+        // If EnableNewTileYCheck == 2, use the platform default value. Otherwise 0 is forced off, 1 is forced on.
+        bool b_EnableNewTileYCheck = IGC_GET_FLAG_VALUE(EnableNewTileYCheck) == 2 ?
+            m_Platform->EnableNewTileYCheckDefault() : IGC_GET_FLAG_VALUE(EnableNewTileYCheck);
+
+        if (b_EnableNewTileYCheck &&
             IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
             EMIT_LOCAL_MASK::XY == m_emitMask)
