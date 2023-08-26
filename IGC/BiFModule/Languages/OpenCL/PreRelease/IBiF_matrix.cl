@@ -41,14 +41,10 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define ATTRIBUTE_AS_LOCAL   __local
 #define ATTRIBUTE_AS_GLOBAL  __global
 
-#define IND_ROW_MAJOR(slid, stride, i) (slid + (i * stride))
-#define IND_COL_MAJOR(slid, stride, i) (i + (slid * stride))
-#define IND_VNNI_TX(slid, stride, i) (i + (slid * stride))
-
-// The following variations are added to calculate index based on the new
-// slicing for sub group size bigger than N.  Currently we do not have any test case
-// of col_major matrix, therefore we keep the implementation of
-// COL_MAJOR same as the old slicing case.
+// Index for row major layout is calculated based on that sub group size may be
+// bigger than N.  Currently we do not have any test case
+// of col_major matrix for such case, therefore we keep the implementation of
+// COL_MAJOR simple.
 // Arguments:
 //   sg_cols: Number of contiguous columns held in the subgroup
 //   skip_factor: n, where we include elements from every n-th row of the JM
@@ -59,9 +55,9 @@ extern __constant int __JointMatrixLoadStoreOpt;
 //     13 14 15 16
 //    if skip_factor == 2, we will include items <1, 9> (every "2"nd row) in the
 //    first WI, <2, 10> in the second WI and so on..
-#define IND_ROW_MAJOR_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) (slid/sg_cols*stride + slid%sg_cols + i*stride*skip_factor)
-#define IND_COL_MAJOR_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) IND_COL_MAJOR(slid, stride, i) // placeholder
-#define IND_VNNI_TX_NEW_SLIC(slid, stride, skip_factor, i, sg_cols) IND_VNNI_TX(slid, stride, i) // placeholder
+#define IND_ROW_MAJOR(slid, stride, skip_factor, i, sg_cols) (slid/sg_cols*stride + slid%sg_cols + i*stride*skip_factor)
+#define IND_COL_MAJOR(slid, stride, skip_factor, i, sg_cols) (i + (slid * stride))
+#define IND_VNNI_TX(slid, stride, skip_factor, i, sg_cols) (i + (slid * stride))
 
 // no int7, int6, int5 types
 #define VEC_TO_VEC8(type, vec) \
@@ -247,6 +243,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 // stride_opt should be either equal to N or vnni_factor*N in case of matrix B, since matrix B is vnni'ed
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, address_space) \
   INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride) { \
+      int sg_size = get_sub_group_size(); \
       if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && (order == _ROW_MAJOR || order == _VNNI_TX) && address_space == AS_GLOBAL \
           ) { \
@@ -263,7 +260,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
           return; \
       } \
       if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_IMPL && order == _ROW_MAJOR \
-          && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
+          && (address_space == AS_GLOBAL || address_space == AS_LOCAL) && (M != 1 || sg_size != 32) \
           ) { \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
           stride = stride / pack_factor; \
@@ -274,15 +271,14 @@ extern __constant int __JointMatrixLoadStoreOpt;
       int slid = get_sub_group_local_id(); \
       int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
       stride = stride / pack_factor; \
+      int sg_cols = K / pack_factor; \
+      int skip_factor = sg_size / sg_cols; \
       __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
       for (int i = 0; i < WI_rows; i++) { \
-          if (WI_rows != M ) { \
-            int skip_factor = M / WI_rows; \
-            int sg_cols = K / pack_factor; \
-            wi_contrib[i] = ptr[IND##order##_NEW_SLIC(slid, stride, skip_factor, i, sg_cols)]; \
-          } else { \
-            wi_contrib[i] = ptr[IND##order(slid, stride, i)]; \
-          } \
+        if ( (i*skip_factor + slid/sg_cols) < M ) \
+          wi_contrib[i] = ptr[IND##order(slid, stride, skip_factor, i, sg_cols)]; \
+        else \
+          wi_contrib[i] = 0; /*last even row for matrix with odd number of rows doesn't exist*/ \
       } \
   }
 
@@ -432,6 +428,7 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJO
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
 #define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, block_opt, address_space) \
   INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, long stride) { \
+      int sg_size = get_sub_group_size(); \
       if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
           ) { \
@@ -448,6 +445,7 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJO
       if (WI_rows == M && (__JointMatrixLoadStoreOpt >= VECTOR_IMPL) \
           && order == _ROW_MAJOR && block_opt == true \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
+          && (M != 1 || sg_size != 32) \
           ) { \
           ATTRIBUTE_##address_space u##contrib_type *ptr = (ATTRIBUTE_##address_space u##contrib_type *)mem; \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
@@ -460,15 +458,14 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJO
       int slid = get_sub_group_local_id(); \
       int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
       stride = stride / pack_factor; \
+      int sg_cols = K / pack_factor; \
+      int skip_factor = sg_size / sg_cols; \
       __private contrib_type *slice = (__private contrib_type *)src; \
       for (int i = 0; i < WI_rows; i++) { \
-          if (WI_rows != M) { \
-              int skip_factor = M / WI_rows; \
-              int sg_cols = K / pack_factor; \
-              ptr[IND##order##_NEW_SLIC(slid, stride, skip_factor, i, sg_cols)] = slice[i]; \
-          } else { \
-              ptr[ IND##order(slid, stride, i) ] = slice[i]; \
-          } \
+        if ( (i*skip_factor + slid/sg_cols) < M ) \
+          ptr[IND##order(slid, stride, skip_factor, i, sg_cols)] = slice[i]; \
+        else \
+          continue; /*last even row for matrix with odd number of rows doesn't exist*/ \
       } \
   }
 
