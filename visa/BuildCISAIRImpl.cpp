@@ -166,6 +166,9 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
     VISA_WA_ENABLE(pWaTable, Wa_2201674230);
   }
 
+  if (platform == Xe_PVCXT)
+    VISA_WA_ENABLE(pWaTable, Wa_22011647401);
+
   if (platform >= Xe_PVC)
     VISA_WA_ENABLE(pWaTable, Wa_13010473643);
 

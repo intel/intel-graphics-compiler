@@ -526,7 +526,7 @@ bool enablePreSchedACC() const {
 bool hasDoubleAcc() const { return getOption(vISA_hasDoubleAcc); }
 
 bool hasHFMathGRFAlign() const {
-  return getPlatform() == Xe_PVCXT;
+  return VISA_WA_CHECK(getPWaTable(), Wa_22011647401);
 }
 
 bool hasHFMathSrcBroadCast() const {
