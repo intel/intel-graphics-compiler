@@ -2343,7 +2343,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
   }
 
   bool doNativeMul = false;
-  if (!builder.no64bitRegioning()) {
+  if (builder.hasQDDMul()) {
     // platform natively supports DW-DW multiply, no need to generate
     // mul/mach/mov sequence
     doNativeMul = true;
@@ -2620,7 +2620,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER &i, G4_BB *bb) {
   }
 
   bool useMulQDD = false;
-  if (execSize <= builder.getNativeExecSize() && !builder.no64bitRegioning() &&
+  if (execSize <= builder.getNativeExecSize() && builder.hasQDDMul() &&
       builder.supportFloatOr64bRegioning()) {
     useMulQDD = true;
     if (!IS_DTYPE(src0->getType()) || !IS_DTYPE(src1->getType())) {
