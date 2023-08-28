@@ -137,13 +137,8 @@ Value *GenXGEPLowering::visitPtrToIntInst(PtrToIntInst &PTI) {
       // The `addrspacecast` is just no-op so it can be eliminated
       Src = Cast->getOperand(0);
     } else if (isa<BitCastInst>(Cast)) {
-      auto *Arg = Cast->getOperand(0);
-      auto *ArgTy = Arg->getType();
-      auto *CastTy = Cast->getType();
-      if (ArgTy->isVectorTy() != CastTy->isVectorTy())
-        break;
       // The `bitcast` is just no-op so it can be eliminated
-      Src = Arg;
+      Src = Cast->getOperand(0);
     } else {
       // We found `inttoptr`, getting rid of `ptrtoint`
       if (isa<IntToPtrInst>(Cast))

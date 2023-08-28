@@ -151,6 +151,8 @@ public:
 
   void visitICmpInst(ICmpInst &I);
 
+  void visitPHINode(PHINode &I);
+
   void visitSRem(BinaryOperator &I);
 
   void visitSDiv(BinaryOperator &I);
@@ -3668,4 +3670,38 @@ bool GenXPatternMatch::extendMask(BinaryOperator *BO) {
   BO->replaceAllUsesWith(Inst);
 
   return true;
+}
+
+void GenXPatternMatch::visitPHINode(PHINode &I) {
+  if (Kind != PatternMatchKind::PreLegalization)
+    return;
+
+  std::unordered_set<PHINode *> Visited;
+  SmallVector<PHINode *, 8> Stack;
+  Stack.push_back(&I);
+  bool Cycle = false;
+  while (!Stack.empty()) {
+    auto *Phi = Stack.pop_back_val();
+    if (Visited.find(Phi) != Visited.end()) {
+      Cycle = true;
+      continue;
+    }
+    Visited.insert(Phi);
+    for (auto U : Phi->users()) {
+      auto *PhiUser = dyn_cast<PHINode>(U);
+      if (!PhiUser)
+        return;
+      Stack.push_back(PhiUser);
+    }
+  }
+
+  if (!Cycle)
+    return;
+
+  for (auto *Inst : Visited) {
+    Inst->replaceAllUsesWith(UndefValue::get(Inst->getType()));
+    Inst->eraseFromParent();
+  }
+
+  Changed = true;
 }

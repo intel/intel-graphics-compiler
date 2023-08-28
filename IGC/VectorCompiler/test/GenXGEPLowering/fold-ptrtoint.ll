@@ -63,14 +63,3 @@ label:                                                ; preds = %entry
   %splat = shufflevector <16 x i64> %ins, <16 x i64> undef, <16 x i32> zeroinitializer
   ret void
 }
-
-; CHECK-LABEL: @test_bitcast_vector_to_scalar
-define i64 @test_bitcast_vector_to_scalar(<1 x i8*> %vptr) {
-  %ptr = bitcast <1 x i8*> %vptr to i8*
-  %gep = getelementptr i8, i8* %ptr, i32 123
-  %addr = ptrtoint i8* %gep to i64
-  ; CHECK: [[PTI:%[^ ]+]] = ptrtoint i8* %ptr to i64
-  ; CHECK: [[ADD:%[^ ]+]] = add i64 [[PTI]], 123
-  ; CHECK: ret i64 [[ADD]]
-  ret i64 %addr
-}
