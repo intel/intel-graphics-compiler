@@ -5224,7 +5224,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             m_encoder->Copy(m_destination, pDstArrElm);
             m_encoder->Push();
 
-            if (!channelUniform)
+            // If destination is uniform, don't execute second half.
+            if (!channelUniform && !m_destination->IsUniform())
             {
 
                 m_encoder->SetSimdSize(SIMDMode::SIMD16);
