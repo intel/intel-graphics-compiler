@@ -1560,31 +1560,34 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
   stopTimer(TimerID::BUILDER);
   int status = VISA_SUCCESS;
 
+  // TODO: remove vISA binary emission code.
+  const bool emitVISABinary = false;
   if (IS_VISA_BOTH_PATH) {
     if (m_builderMode == vISA_ASM_WRITER) {
       vISA_ASSERT(false, "Should not be calling Compile() in asm text writer mode!");
       return VISA_FAILURE;
     }
-    if (IS_BOTH_PATH) {
-      m_options.setOptionInternally(vISA_NumGenBinariesWillBePatched,
-                                    (uint32_t)1);
+    if (emitVISABinary) {
+      if (IS_BOTH_PATH)
+        m_options.setOptionInternally(vISA_NumGenBinariesWillBePatched, 1u);
+      m_cisaBinary->initCisaBinary(m_kernel_count, m_function_count);
+      m_cisaBinary->setMajorVersion((unsigned char)m_header.major_version);
+      m_cisaBinary->setMinorVersion((unsigned char)m_header.minor_version);
+      m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
     }
-    m_cisaBinary->initCisaBinary(m_kernel_count, m_function_count);
-    m_cisaBinary->setMajorVersion((unsigned char)m_header.major_version);
-    m_cisaBinary->setMinorVersion((unsigned char)m_header.minor_version);
-    m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
 
     CBinaryCISAEmitter cisaBinaryEmitter;
     int status = VISA_SUCCESS;
-    int kernelIndex = 0;
     for (auto func : m_kernelsAndFunctions) {
       func->finalizeAttributes();
-      unsigned int binarySize = 0;
-      status = cisaBinaryEmitter.Emit(func, binarySize);
-      m_cisaBinary->initKernel(kernelIndex, func);
-      kernelIndex++;
+      if (emitVISABinary) {
+        unsigned int binarySize = 0;
+        status = cisaBinaryEmitter.Emit(func, binarySize);
+        m_cisaBinary->initKernel(func);
+      }
     }
-    m_cisaBinary->finalizeCisaBinary();
+    if (emitVISABinary)
+      m_cisaBinary->finalizeCisaBinary();
 
     if (status != VISA_SUCCESS) {
       return status;
@@ -1610,23 +1613,6 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
   // Early return if emit_visa_only is true.
   if (emit_visa_only)
     return status;
-
-  // In case there is an assert in compilation phase, at least vISA binary will
-  // be generated.
-  std::string isaFileName;
-  // TODO: Delete the related code that generate visa binary (.isa).
-  const bool dumpVISA = false;
-  if (dumpVISA) {
-    // Translate .isaasm to .isa.
-    llvm::SmallString<64> temp(isaasmFileName);
-    llvm::sys::path::replace_extension(temp, ".isa");
-    isaFileName = temp.c_str();
-  }
-
-  if (IS_VISA_BOTH_PATH && dumpVISA && !isaFileName.empty()) {
-    if (CisaFramework::allowDump(m_options, isaFileName))
-      status = m_cisaBinary->dumpToFile(isaFileName);
-  }
 
   if (m_options.getuInt32Option(vISA_Linker) & (1U << Linker_Subroutine)) {
     std::map<std::string, G4_Kernel *> functionsNameMap;
@@ -2039,45 +2025,6 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
         MDReader.readMetadata(ssInit.str());
     }
 
-  }
-
-  if (IS_VISA_BOTH_PATH && dumpVISA) {
-    unsigned int numGenBinariesWillBePatched =
-        m_options.getuInt32Option(vISA_NumGenBinariesWillBePatched);
-
-    if (numGenBinariesWillBePatched) {
-      // only patch for Both path; vISA path doesn't need this.
-      int kernelCount = 0;
-      int functionCount = 0;
-      for (auto func : m_kernelsAndFunctions) {
-        if (func->getIsKernel()) {
-          m_cisaBinary->patchKernel(kernelCount, func->getGenxBinarySize(),
-                                    func->getGenxBinaryBuffer(),
-                                    m_platformInfo->encoding);
-          kernelCount++;
-        } else {
-          // functions be treated as "mainFunctions" will have its own binary,
-          // will need to specify its binary buffer in m_cisaBinary
-          // FIXME: By this the external functions' gen-binary will be part of
-          // .isa output when calling CisaBinary::dumpToStream, and avoid the
-          // assert in dumpToStream. But when parsing the emited .isa file, our
-          // parser may not correctly support this case.
-          if (m_options.getOption(vISA_noStitchExternFunc) &&
-              func->getKernel()->getBoolKernelAttr(Attributes::ATTR_Extern)) {
-            m_cisaBinary->patchFunctionWithGenBinary(
-                functionCount, func->getGenxBinarySize(),
-                func->getGenxBinaryBuffer());
-          } else {
-            m_cisaBinary->patchFunction(functionCount,
-                                        func->getGenxBinarySize());
-          }
-          functionCount++;
-        }
-      }
-    }
-
-    if (CisaFramework::allowDump(m_options, isaFileName))
-      status = m_cisaBinary->dumpToFile(isaFileName);
   }
 
   stopTimer(TimerID::TOTAL); // have to record total time before dump the timer

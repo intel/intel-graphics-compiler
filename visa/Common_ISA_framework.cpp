@@ -133,25 +133,11 @@ CisaBinary::CisaBinary(CISA_IR_Builder *builder)
   memset(&m_header, 0, sizeof(common_isa_header));
 }
 
-void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl *kernel) {
-  unsigned functionIndex = 0; // separating function and kernel index
-  vISA_ASSERT(kernelIndex <
-                       (m_upper_bound_kernels + m_upper_bound_functions) &&
-                   kernelIndex >= 0,
-               "Invalid kernelIndex in CisaBinary initialization.\n");
-
+void CisaBinary::initKernel(VISAKernelImpl *kernel) {
   int nameLen = (int)std::string_view(kernel->getName()).size();
 
-  if (this->getMajorVersion()) {
-    if (kernel->getIsKernel())
-      kernelIndex = m_header.num_kernels++;
-    else {
-      m_header.num_functions++;
-      kernel->GetFunctionId(functionIndex);
-    }
-  }
-
   if (kernel->getIsKernel()) {
+    int kernelIndex = m_header.num_kernels++;
     m_header.kernels[kernelIndex].name_len = (unsigned short)nameLen;
     m_header.kernels[kernelIndex].name = (char *)m_mem.alloc(nameLen + 1);
     m_header.kernels[kernelIndex].name[nameLen] = 0;
@@ -183,22 +169,25 @@ void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl *kernel) {
       m_header.kernels[kernelIndex].gen_binaries[i].binary_offset = 0;
       m_header.kernels[kernelIndex].gen_binaries[i].platform = 0;
     }
+    return;
   }
 
-  if (!kernel->getIsKernel()) {
-    m_header.functions[functionIndex].linkage = 0; // deprecated and MBZ
-    m_header.functions[functionIndex].name_len = (unsigned short)nameLen;
-    m_header.functions[functionIndex].name = (char *)m_mem.alloc(nameLen + 1);
-    memcpy_s(m_header.functions[functionIndex].name,
-             m_header.functions[functionIndex].name_len, kernel->getName(),
-             m_header.functions[functionIndex].name_len);
-    m_header.functions[functionIndex].name[nameLen] = 0;
-    m_header.functions[functionIndex].offset =
-        0; // will be set later during finalize
-    m_header.functions[functionIndex].size = kernel->getCisaBinarySize();
-    m_header.functions[functionIndex].cisa_binary_buffer =
-        kernel->getCisaBinaryBuffer(); // buffer containing entire kernel
-  }
+  // vISA function
+  unsigned functionIndex = 0;
+  m_header.num_functions++;
+  kernel->GetFunctionId(functionIndex);
+  m_header.functions[functionIndex].linkage = 0; // deprecated and MBZ
+  m_header.functions[functionIndex].name_len = (unsigned short)nameLen;
+  m_header.functions[functionIndex].name = (char *)m_mem.alloc(nameLen + 1);
+  memcpy_s(m_header.functions[functionIndex].name,
+           m_header.functions[functionIndex].name_len, kernel->getName(),
+           m_header.functions[functionIndex].name_len);
+  m_header.functions[functionIndex].name[nameLen] = 0;
+  m_header.functions[functionIndex].offset =
+      0; // will be set later during finalize
+  m_header.functions[functionIndex].size = kernel->getCisaBinarySize();
+  m_header.functions[functionIndex].cisa_binary_buffer =
+      kernel->getCisaBinaryBuffer(); // buffer containing entire kernel
 }
 
 unsigned long CisaBinary::writeInToCisaHeaderBuffer(const void *value,
@@ -344,104 +333,6 @@ int CisaBinary::finalizeCisaBinary() {
   }
 
   return VISA_SUCCESS;
-}
-
-int CisaBinary::dumpToStream(std::ostream *os) {
-  os->write(this->m_header_buffer, this->m_header_size);
-
-  for (int i = 0; i < m_header.num_kernels; i++) {
-    os->write(m_header.kernels[i].cisa_binary_buffer, m_header.kernels[i].size);
-    os->write(m_header.kernels[i].genx_binary_buffer,
-              m_header.kernels[i].binary_size);
-  }
-
-  for (int i = 0; i < m_header.num_functions; i++) {
-    os->write(m_header.functions[i].cisa_binary_buffer,
-              m_header.functions[i].size);
-  }
-  return VISA_SUCCESS;
-}
-
-int CisaBinary::dumpToFile(std::string binFileName) {
-  if (binFileName == "") {
-    binFileName = "temp.isa";
-  }
-  std::ofstream os(binFileName.c_str(), std::ios::binary | std::ios::out);
-  if (!os) {
-    std::cerr << binFileName << ": unable to open output file\n";
-    return VISA_FAILURE;
-  }
-  int result = dumpToStream(&os);
-  os.close();
-  return result;
-}
-
-void CisaBinary::patchKernel(int index, unsigned int genxBufferSize,
-                             void *buffer, int platform) {
-  int copySize = 0;
-  m_header.kernels[index].offset += genxBinariesSize;
-  copySize = sizeof(m_header.kernels[index].offset);
-  memcpy_s(&m_header_buffer[this->m_kernelOffsetLocationsArray[index]],
-           copySize, &m_header.kernels[index].offset, copySize);
-
-  m_header.kernels[index].input_offset += genxBinariesSize;
-  copySize = sizeof(m_header.kernels[index].input_offset);
-  memcpy_s(&m_header_buffer[this->m_kernelInputOffsetLocationsArray[index]],
-           copySize, &m_header.kernels[index].input_offset, copySize);
-
-  int offsetGenBinary = this->m_krenelBinaryInfoLocationsArray[index];
-  m_header.kernels[index].num_gen_binaries = 1;
-  copySize = sizeof(m_header.kernels[index].num_gen_binaries);
-  memcpy_s(&m_header_buffer[offsetGenBinary], copySize,
-           &m_header.kernels[index].num_gen_binaries, copySize);
-  offsetGenBinary += sizeof(m_header.kernels[index].num_gen_binaries);
-
-  m_header.kernels[index].gen_binaries[0].platform =
-      static_cast<unsigned char>(platform);
-  copySize = sizeof(m_header.kernels[index].gen_binaries[0].platform);
-  memcpy_s(&m_header_buffer[offsetGenBinary], copySize,
-           &m_header.kernels[index].gen_binaries[0].platform, copySize);
-  offsetGenBinary += sizeof(m_header.kernels[index].gen_binaries[0].platform);
-
-  m_header.kernels[index].gen_binaries[0].binary_offset += genxBinariesSize;
-  copySize = sizeof(m_header.kernels[index].gen_binaries[0].binary_offset);
-  memcpy_s(&m_header_buffer[offsetGenBinary], copySize,
-           &m_header.kernels[index].gen_binaries[0].binary_offset, copySize);
-  offsetGenBinary +=
-      sizeof(m_header.kernels[index].gen_binaries[0].binary_offset);
-
-  m_header.kernels[index].gen_binaries[0].binary_size = genxBufferSize;
-  copySize = sizeof(m_header.kernels[index].gen_binaries[0].binary_size);
-  memcpy_s(&m_header_buffer[offsetGenBinary], copySize,
-           &m_header.kernels[index].gen_binaries[0].binary_size, copySize);
-  offsetGenBinary +=
-      sizeof(m_header.kernels[index].gen_binaries[0].binary_size);
-
-  m_header.kernels[index].genx_binary_buffer = (char *)buffer;
-  m_header.kernels[index].binary_size = genxBufferSize;
-  this->genxBinariesSize += genxBufferSize;
-}
-
-void CisaBinary::patchFunctionWithGenBinary(int index,
-                                            unsigned int genxBufferSize,
-                                            char *buffer) {
-  m_header.functions[index].offset += genxBinariesSize;
-  size_t copySize = sizeof(m_header.functions[index].offset);
-  memcpy_s(&m_header_buffer[this->m_functionOffsetLocationsArray[index]],
-           copySize, &m_header.functions[index].offset, copySize);
-
-  m_header.functions[index].genx_binary_buffer = buffer;
-
-  this->genxBinariesSize += genxBufferSize;
-}
-
-void CisaBinary::patchFunction(int index, unsigned genxBufferSize) {
-  m_header.functions[index].offset += genxBinariesSize;
-  size_t copySize = sizeof(m_header.functions[index].offset);
-  memcpy_s(&m_header_buffer[this->m_functionOffsetLocationsArray[index]],
-           copySize, &m_header.functions[index].offset, copySize);
-
-  this->genxBinariesSize += genxBufferSize;
 }
 
 bool allowDump(const Options &options, const std::string &fileName) {

@@ -127,10 +127,8 @@ public:
   unsigned char getMajorVersion() const { return m_header.major_version; }
   unsigned char getMinorVersion() const { return m_header.minor_version; }
 
-  void initKernel(int kernelIndex, VISAKernelImpl *kernel);
+  void initKernel(VISAKernelImpl *kernel);
   int finalizeCisaBinary();
-  int dumpToFile(std::string binFileName);
-  int dumpToStream(std::ostream *os);
 
   void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
 
@@ -144,12 +142,6 @@ public:
   unsigned short getNumberFunctions() { return m_header.num_functions; }
 
   char *getVisaHeaderBuffer() { return m_header_buffer; }
-
-  void patchKernel(int index, unsigned int genxBufferSize, void *buffer,
-                   int platform);
-  void patchFunction(int index, unsigned genxBufferSize);
-  void patchFunctionWithGenBinary(int index, unsigned int genxBufferSize,
-                                  char *buffer);
 
   Options *getOptions() { return m_options; }
 
