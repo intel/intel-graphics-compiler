@@ -137,8 +137,13 @@ Value *GenXGEPLowering::visitPtrToIntInst(PtrToIntInst &PTI) {
       // The `addrspacecast` is just no-op so it can be eliminated
       Src = Cast->getOperand(0);
     } else if (isa<BitCastInst>(Cast)) {
+      auto *Arg = Cast->getOperand(0);
+      auto *ArgTy = Arg->getType();
+      auto *CastTy = Cast->getType();
+      if (ArgTy->isVectorTy() != CastTy->isVectorTy())
+        break;
       // The `bitcast` is just no-op so it can be eliminated
-      Src = Cast->getOperand(0);
+      Src = Arg;
     } else {
       // We found `inttoptr`, getting rid of `ptrtoint`
       if (isa<IntToPtrInst>(Cast))
@@ -189,9 +194,9 @@ Value *GenXGEPLowering::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   }
 
   PointerValue = Builder->CreatePtrToInt(PtrOp, IntPtrTy);
-  auto *PTI = dyn_cast<PtrToIntInst>(PointerValue);
-  if (auto *NewPTI = visitPtrToIntInst(*PTI))
-    PointerValue = NewPTI;
+  if (auto *PTI = dyn_cast<PtrToIntInst>(PointerValue))
+    if (auto *NewPTI = visitPtrToIntInst(*PTI))
+      PointerValue = NewPTI;
 
   unsigned PtrMathSizeInBits =
       DL->getPointerSizeInBits(PtrTy->getAddressSpace());
