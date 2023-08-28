@@ -5592,6 +5592,10 @@ namespace IGC
 
     bool CEncoder::AvoidRetryOnSmallSpill() const
     {
+        if (IGC_GET_FLAG_VALUE(ForceAllowSmallSpill))
+        {
+            return true;
+        }
         return false;
     }
 
