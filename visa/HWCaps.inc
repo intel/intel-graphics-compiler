@@ -345,6 +345,12 @@ bool noFP64() const {
   return getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2;
 }
 
+bool hasQDDMul() const {
+  return getPlatform() == GENX_BDW || getPlatform() == GENX_SKL ||
+         getPlatform() == GENX_BXT || getPlatform() == GENX_CNL ||
+         getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC;
+}
+
 bool no64bitRegioning() const {
   return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
          getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2 ||
