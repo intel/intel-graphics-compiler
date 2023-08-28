@@ -194,9 +194,9 @@ Value *GenXGEPLowering::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   }
 
   PointerValue = Builder->CreatePtrToInt(PtrOp, IntPtrTy);
-  auto *PTI = dyn_cast<PtrToIntInst>(PointerValue);
-  if (auto *NewPTI = visitPtrToIntInst(*PTI))
-    PointerValue = NewPTI;
+  if (auto *PTI = dyn_cast<PtrToIntInst>(PointerValue))
+    if (auto *NewPTI = visitPtrToIntInst(*PTI))
+      PointerValue = NewPTI;
 
   unsigned PtrMathSizeInBits =
       DL->getPointerSizeInBits(PtrTy->getAddressSpace());
