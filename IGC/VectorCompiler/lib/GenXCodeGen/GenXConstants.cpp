@@ -681,6 +681,7 @@ static bool checkApplyAddPattern(CallVecIterator &I, CallVecIterator &J,
   ++K;
   auto MaxElement = std::max(J_K, -J_K);
   for (; K < N; ++K) {
+    IGC_ASSERT_EXIT(isa<ConstantInt>(IFirst->getAggregateElement(K)));
     El1 = cast<ConstantInt>(IFirst->getAggregateElement(K));
     // For all-equal elements not-apply
     // Finalizer generates more optimal code

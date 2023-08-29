@@ -2038,14 +2038,10 @@ bool genx::isPredefRegDestination(const Value *V) {
 }
 
 // info is at main template function
-CastInst *genx::scalarizeOrVectorizeIfNeeded(Instruction *Inst, Type *RefType) {
-  return scalarizeOrVectorizeIfNeeded(Inst, &RefType, std::next(&RefType));
-}
-
-// info is at main template function
 CastInst *genx::scalarizeOrVectorizeIfNeeded(Instruction *Inst,
   Instruction *InstToReplace) {
-  return scalarizeOrVectorizeIfNeeded(Inst, &InstToReplace, std::next(&InstToReplace));
+  SmallVector<Type *, 1> Types = {InstToReplace->getType()};
+  return scalarizeOrVectorizeIfNeeded(Inst, Types.begin(), Types.end());
 }
 
 Function *genx::getFunctionPointerFunc(Value *V) {

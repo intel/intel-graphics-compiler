@@ -1775,6 +1775,7 @@ bool Substituter::processPTIsUses(Instruction &I,
     Instruction *User = dyn_cast<Instruction>(U.getUser());
     auto Opcode = User->getOpcode();
     if (Opcode == Instruction::Add || Opcode == Instruction::Or) {
+      IGC_ASSERT_EXIT(dyn_cast<BinaryOperator>(User));
       BinaryOperator *BO = cast<BinaryOperator>(User);
       auto Offset = processAddOrInst(I, *BO);
       if (!Offset)

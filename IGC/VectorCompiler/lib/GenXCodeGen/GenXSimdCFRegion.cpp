@@ -1611,8 +1611,8 @@ bool checkSelects(PHINode &PHINode, SimdCFIfRegion *R,
   auto *IV2 = PHINode.getIncomingValue(1);
   // R.getIfThen vs R.getIfElse
   if (isa<SelectInst>(IV1) && isa<SelectInst>(IV2)) {
-    SelectInst *V1 = dyn_cast<SelectInst>(IV1);
-    SelectInst *V2 = dyn_cast<SelectInst>(IV2);
+    auto *V1 = cast<SelectInst>(IV1);
+    auto *V2 = cast<SelectInst>(IV2);
 
     // TODO: support check for each block in region
     IGC_ASSERT(R->getIfThenRegion()->getEntry() ==

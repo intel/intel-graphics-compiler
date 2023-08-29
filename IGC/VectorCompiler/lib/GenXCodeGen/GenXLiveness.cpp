@@ -789,7 +789,7 @@ Value *GenXLiveness::createUnifiedRet(Function *F) {
   for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi)
     if ((Ret = dyn_cast<ReturnInst>(fi->getTerminator())))
       break;
-  IGC_ASSERT_MESSAGE(Ret, "must find return instruction");
+  IGC_ASSERT_EXIT_MESSAGE(Ret, "must find return instruction");
   Value *RetVal = Ret->getOperand(0);
   // Use the categories of its operand to set the categories of the unified
   // return value.

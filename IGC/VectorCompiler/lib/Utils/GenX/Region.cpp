@@ -134,7 +134,7 @@ CMRegion::CMRegion(const Instruction *Inst, bool WantParentWidth)
       break;
   }
   // Get the region parameters.
-  IGC_ASSERT(Subregion);
+  IGC_ASSERT_EXIT(Subregion);
   ElementTy = Subregion->getType();
   if (IGCLLVM::FixedVectorType *VT =
           dyn_cast<IGCLLVM::FixedVectorType>(ElementTy)) {

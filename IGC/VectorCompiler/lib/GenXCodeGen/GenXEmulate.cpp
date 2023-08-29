@@ -1053,6 +1053,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
     }
   }
 
+  IGC_ASSERT_EXIT(Result);
   if (Result->getType() != CI.getType())
     Result = Builder.CreateBitCast(Result, CI.getType());
 
@@ -1084,7 +1085,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxMinMax(CallInst &CI) {
     CondVal = Builder.CreateICmpSLT(Lhs, Rhs);
     break;
   }
-  IGC_ASSERT(CondVal);
+  IGC_ASSERT_EXIT(CondVal);
   CondVal = ensureEmulated(CondVal);
   return ensureEmulated(Builder.CreateSelect(CondVal, Lhs, Rhs));
 }

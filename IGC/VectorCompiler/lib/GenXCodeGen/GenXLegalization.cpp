@@ -1760,9 +1760,11 @@ Value *GenXLegalization::splitBale(Value *PrevSliceRes, unsigned StartIdx,
     IGC_ASSERT_MESSAGE(LastCreatedInst, "must have at least some split inst");
     auto Head = B.getHeadIgnoreGStore()->Inst;
     if (cast<IGCLLVM::FixedVectorType>(Head->getType())->getNumElements() !=
-        Width)
+        Width) {
+      IGC_ASSERT_EXIT(PrevSliceRes);
       LastCreatedInst = joinBaleResult(PrevSliceRes, LastCreatedInst, StartIdx,
                                        Width, InsertBefore);
+    }
   }
   SplitMap.clear();
   return LastCreatedInst;
@@ -2576,15 +2578,17 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
         Rd->replaceAllUsesWith(Part);
         Rd->eraseFromParent();
       }
+      StackEntry EntryCopy =
+          *Entry; // Coping ref to don't invalidates Stack below
       // All remaining uses must be wrpredregion. Push them onto the stack.
-      for (auto ui = Entry->Wr->use_begin(), ue = Entry->Wr->use_end();
+      for (auto ui = EntryCopy.Wr->use_begin(), ue = EntryCopy.Wr->use_end();
            ui != ue; ++ui) {
         auto User = cast<Instruction>(ui->getUser());
         IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(User) == GenXIntrinsic::genx_wrpredregion,
           "expecting only wrpredregion uses");
         IGC_ASSERT_MESSAGE(!ui->getOperandNo(),
           "expecting only wrpredregion uses");
-        Stack.push_back(StackEntry(User, Entry->Wr));
+        Stack.push_back(StackEntry(User, EntryCopy.Wr));
       }
     }
   }

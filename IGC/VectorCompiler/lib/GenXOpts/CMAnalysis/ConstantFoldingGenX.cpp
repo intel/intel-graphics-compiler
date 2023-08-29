@@ -96,9 +96,10 @@ static Constant *constantFoldRdRegion(Type *RetTy,
       RowIdx += R.VStride;
       Idx = RowIdx;
     }
-    if (isa<VectorType>(OffsetC->getType())) {
+    if (isa<VectorType>(OffsetC->getType()) &&
+        isa<ConstantInt>(OffsetC->getAggregateElement(i))) {
       auto EltOffset =
-        dyn_cast<ConstantInt>(OffsetC->getAggregateElement(i))->getZExtValue();
+          cast<ConstantInt>(OffsetC->getAggregateElement(i))->getZExtValue();
       EltOffset =
           EltOffset / (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
       Idx += EltOffset;

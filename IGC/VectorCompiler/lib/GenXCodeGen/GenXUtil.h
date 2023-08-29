@@ -564,11 +564,8 @@ CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst,
   return scalarizeOrVectorizeIfNeeded(Inst, Types.begin(), Types.end());
 }
 
-CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, Type *RefType);
-
 CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst,
                                        Instruction *InstToReplace);
-
 
 // Returns log alignment for align type and target grf width, because ALIGN_GRF
 // must be target-dependent.

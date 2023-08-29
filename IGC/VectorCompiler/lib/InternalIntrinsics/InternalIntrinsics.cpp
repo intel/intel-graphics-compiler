@@ -373,9 +373,8 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   case IITDescriptor::PtrToElt: {
     Type *Ty = Tys[D.getArgumentNumber()];
     VectorType *VTy = dyn_cast<VectorType>(Ty);
-    if (!VTy)
-      IGC_ASSERT_MESSAGE(0, "Expected an argument of Vector Type");
-    Type *EltTy = cast<VectorType>(VTy)->getElementType();
+    IGC_ASSERT_EXIT_MESSAGE(VTy, "Expected an argument of Vector Type");
+    Type *EltTy = VTy->getElementType();
     return PointerType::getUnqual(EltTy);
   }
   case IITDescriptor::VecOfAnyPtrsToElt:

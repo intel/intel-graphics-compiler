@@ -4500,6 +4500,7 @@ bool GenXLowering::lowerLogicalThreadID(CallInst *CI) {
                          InsertTo);
 
   if (!isPowerOf2_32(NumThreads)) {
+    IGC_ASSERT_EXIT(Res);
     auto *Mul = IRB.CreateMul(Res, ConstantInt::get(Ty, NumThreads));
     Res = IRB.CreateAdd(Mul, TID);
   }

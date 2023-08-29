@@ -284,7 +284,7 @@ Value *GenXLegacyToLscTranslator::translateOWordLoadStore(CallInst &CI) const {
 
   auto *OrigVTy = dyn_cast<IGCLLVM::FixedVectorType>(CI.getType());
   if (!OrigVTy) {
-    IGC_ASSERT(Data);
+    IGC_ASSERT_EXIT(Data);
     OrigVTy = dyn_cast<IGCLLVM::FixedVectorType>(Data->getType());
   }
   IGC_ASSERT(OrigVTy);

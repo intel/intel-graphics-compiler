@@ -1358,8 +1358,9 @@ getKernelAndVisaOwners(const GenXFunctionConstPtrList &GFs) {
   GenXFunctionConstPtrList StackCalls;
   std::copy_if(GFs.begin(), GFs.end(), std::back_inserter(StackCalls),
                isStackCallGF);
-  auto KGFIt = std::find_if(GFs.begin(), GFs.end(), isKernelGF);
   IGC_ASSERT(std::count_if(GFs.begin(), GFs.end(), isKernelGF) == 1);
+  auto KGFIt = std::find_if(GFs.begin(), GFs.end(), isKernelGF);
+  IGC_ASSERT_EXIT(KGFIt != GFs.end());
   return {*KGFIt, std::move(StackCalls)};
 }
 

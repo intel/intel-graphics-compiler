@@ -268,7 +268,7 @@ Function *
 GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
                                               unsigned NewWidth) const {
   const auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
-
+  IGC_ASSERT_EXIT(IID != vc::InternalIntrinsic::not_internal_intrinsic);
   const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
   const auto VectorSize =
       vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
