@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2482,7 +2482,7 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV,
 
   // Check if variable is described by a DBG_VALUE instruction.
   const Instruction *pDbgInst = DV.getDbgInst();
-  if (!pDbgInst) {
+  if (!pDbgInst || !isa<DbgDeclareInst>(pDbgInst)) {
     DV.setDIE(VariableDie);
     LLVM_DEBUG(dbgs() << " done. No dbg.inst assotiated\n");
     return VariableDie;

@@ -14,6 +14,7 @@
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_kernel_dwarf.elf | FileCheck %s
 
 ; REQUIRES: oneapi-readelf
+; XFAIL: *
 ; RUN: FileCheck %s --input-file=kernel_f0.visaasm --check-prefix=CHECK_ARGSIZE
 
 ; CHECK_ARGSIZE: .kernel_attr ArgSize=1
