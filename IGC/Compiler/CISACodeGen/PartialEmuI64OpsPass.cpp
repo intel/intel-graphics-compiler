@@ -217,6 +217,7 @@ namespace {
         bool visitResume(ResumeInst&) { return false; }
         bool visitUnreachable(UnreachableInst&) { return false; }
 
+        bool visitFNeg(UnaryOperator&) { return false; }
         bool visitFAdd(BinaryOperator&) { return false; }
         bool visitFSub(BinaryOperator&) { return false; }
         bool visitFMul(BinaryOperator&) { return false; }
