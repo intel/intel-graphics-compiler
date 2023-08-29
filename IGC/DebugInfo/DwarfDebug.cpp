@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1683,6 +1683,7 @@ void DwarfDebug::collectVariableInfo(
         RegVar =
             createDbgVariable(cast<DILocalVariable>(DV),
                               AbsVar ? AbsVar->getLocation() : nullptr, AbsVar);
+        RegVar->setDbgInst(pInst);
         LLVM_DEBUG(dbgs() << "  regular variable: "; RegVar->dump());
 
         if (!addCurrentFnArgument(MF, RegVar, Scope))
@@ -1692,8 +1693,6 @@ void DwarfDebug::collectVariableInfo(
             std::make_tuple(DV, pInst->getDebugLoc().getInlinedAt(), RegVar));
       } else
         RegVar = prevRegVar;
-
-      RegVar->setDbgInst(pInst);
 
       // Conditions below decide whether we want to emit location to debug_loc
       // or inline it in the DIE. To inline in DIE, we simply dont emit anything

@@ -14,7 +14,6 @@
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
 ; REQUIRES: oneapi-readelf
-; XFAIL: *
 ; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_kernel_dwarf.elf | FileCheck %s
 
 ; CHECK:      (DW_TAG_variable)
