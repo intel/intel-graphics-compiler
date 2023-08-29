@@ -466,6 +466,14 @@ void Encoder::encodeBasicInstruction(const Instruction &inst,
     GED_ENCODE(ExecutionDataType,
                lowerExecDataType(inst.getDestination().getType()));
 
+  switch (inst.getSourceCount()) {
+  case 2:
+    encodeBasicSource<SourceIndex::SRC1>(inst, inst.getSource(1), accessMode);
+    // vvvv fall through vvvv
+  case 1:
+    encodeBasicSource<SourceIndex::SRC0>(inst, inst.getSource(0), accessMode);
+  }
+
   if (os.supportsDestination()) {
     encodeBasicDestination(inst, inst.getDestination(), accessMode);
   } else if (os.op == Op::WAIT) {
@@ -474,14 +482,6 @@ void Encoder::encodeBasicInstruction(const Instruction &inst,
     Operand copy(inst.getSource(0));
     copy.setRegion(Region::DST1);
     encodeBasicDestination(inst, copy);
-  }
-
-  switch (inst.getSourceCount()) {
-  case 2:
-    encodeBasicSource<SourceIndex::SRC1>(inst, inst.getSource(1), accessMode);
-    // vvvv fall through vvvv
-  case 1:
-    encodeBasicSource<SourceIndex::SRC0>(inst, inst.getSource(0), accessMode);
   }
 }
 
