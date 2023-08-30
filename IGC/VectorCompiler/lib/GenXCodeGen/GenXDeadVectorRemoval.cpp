@@ -140,7 +140,7 @@ Value *GenXDeadVectorRemoval::trySimplify(Value *V,
   if (LiveElems.isAllDead())
     return UndefValue::get(V->getType());
 
-  if (auto C = dyn_cast<Constant>(V))
+  if (auto *C = dyn_cast<Constant>(V))
     return trySimplify(C, LiveElems);
 
   return V;
@@ -189,9 +189,8 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
 
 Constant *GenXDeadVectorRemoval::trySimplify(ConstantData *CD,
                                              const LiveElements &LiveElems) {
-  IGC_ASSERT(LiveElems.size() == 1);
-
-  if (isa<UndefValue>(CD) || isa<ConstantAggregateZero>(CD))
+  if (isa<UndefValue>(CD) || isa<ConstantAggregateZero>(CD) ||
+      LiveElems.size() != 1)
     return CD;
 
   if (auto CDS = dyn_cast<ConstantDataSequential>(CD))
