@@ -94,6 +94,8 @@ DEF_VISA_OPTION(vISA_asmToConsole, ET_BOOL, "-asmToConsole",
 DEF_VISA_OPTION(vISA_DebugOnly, ET_CSTR, "-debug-only", UNUSED, NULL)
 DEF_VISA_OPTION(vISA_DisablePrefetchToL1Cache, ET_BOOL, "-disablePrefetchL1",
                 "Disables L1 cached for prefetch messages", false)
+DEF_VISA_OPTION(vISA_CopyA0ToDBG0, ET_BOOL, "-copyA0ToDBG0",
+                "copy value of a0 used for extend msg descriptor of send to the dbg0 register", false)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways, ET_BOOL, NULLSTR, UNUSED, true)

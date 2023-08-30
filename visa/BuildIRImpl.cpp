@@ -1855,6 +1855,12 @@ G4_SrcRegRegion *IR_Builder::createScratchExDesc(uint32_t exdesc) {
     createBinOp(G4_add, g4::SIMD1, dst, T251, createImm(exdesc, Type_UD),
                 InstOpt_WriteEnable, true);
   }
+  if (getOption(vISA_CopyA0ToDBG0)) {
+    G4_SrcRegRegion *srcA0 = createSrcRegRegion(exDescDecl, getRegionScalar());
+    G4_DstRegRegion *dstDbg0 =
+        createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+    createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
+  }
   return createSrcRegRegion(exDescDecl, getRegionScalar());
 }
 
@@ -2192,6 +2198,12 @@ G4_SrcRegRegion *IR_Builder::createBindlessExDesc(uint32_t exdesc) {
     createBinOp(G4_add, g4::SIMD1, dst, T252, createImm(exdesc, Type_UD),
                 InstOpt_WriteEnable, true);
   }
+  if (getOption(vISA_CopyA0ToDBG0)) {
+    G4_SrcRegRegion *srcA0 = createSrcRegRegion(exDescDecl, getRegionScalar());
+    G4_DstRegRegion *dstDbg0 =
+        createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+    createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable | dbgOpt, true);
+  }
   return createSrcRegRegion(exDescDecl, getRegionScalar());
 }
 
@@ -2271,6 +2283,12 @@ G4_InstSend *IR_Builder::createSendInst(G4_Predicate *pred,
       }
     }
 
+    if (getOption(vISA_CopyA0ToDBG0)) {
+      G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0, getRegionScalar());
+      G4_DstRegRegion *dstDbg0 =
+          createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+      createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
+    }
     descOpnd = createSrcRegRegion(builtinA0, getRegionScalar());
   } else {
     descOpnd = createImm(desc, Type_UD);
@@ -2394,6 +2412,13 @@ IR_Builder::createSplitSendInst(G4_Predicate *pred, G4_DstRegRegion *dst,
   }
 
   if (needsSurfaceMove || needsSamplerMove) {
+    if (getOption(vISA_CopyA0ToDBG0)) {
+      G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0, getRegionScalar());
+      G4_DstRegRegion *dstDbg0 =
+          createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+      createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
+    }
+
     descOpnd = createSrcRegRegion(builtinA0, getRegionScalar());
   } else {
     descOpnd = createImm(desc, Type_UD);
@@ -2609,6 +2634,12 @@ G4_InstSend *IR_Builder::createLscSendInst(
       }
     }
 
+    if (getOption(vISA_CopyA0ToDBG0)) {
+      G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+      G4_DstRegRegion *dstDbg0 =
+          createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+      createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
+    }
     exDescOpnd = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
     msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
   } else if (surface && surface->isImm()) {
@@ -2631,6 +2662,12 @@ G4_InstSend *IR_Builder::createLscSendInst(
       createMov(g4::SIMD1, addrDstOpnd, createImm(imm, Type_UD),
                 InstOpt_WriteEnable, true);
 
+      if (getOption(vISA_CopyA0ToDBG0)) {
+        G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+        G4_DstRegRegion *dstDbg0 =
+            createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+        createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
+      }
       exDescOpnd = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
       msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
     } else {
@@ -2712,6 +2749,12 @@ G4_InstSend *IR_Builder::createSplitSendToRenderTarget(
     G4_DstRegRegion *addrDstOpnd = createDstRegRegion(builtinA0, 1);
     createBinOp(G4_add, g4::SIMD1, addrDstOpnd, bti, createImm(desc, Type_UD),
                 InstOpt_WriteEnable, true);
+    if (getOption(vISA_CopyA0ToDBG0)) {
+      G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0, getRegionScalar());
+      G4_DstRegRegion *dstDbg0 =
+          createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
+      createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
+    }
     descOpnd = createSrcRegRegion(builtinA0, getRegionScalar());
   } else {
     descOpnd = createImm(desc, Type_UD);

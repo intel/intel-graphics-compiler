@@ -2987,7 +2987,7 @@ bool G4_INST::isOptBarrier() const {
   if (dst) {
     if (dst->isAreg()) {
       if (dst->isNReg() || dst->isSrReg() || dst->isCrReg() || dst->isTmReg() ||
-          dst->isTDRReg()) {
+          dst->isTDRReg() || dst->isDbgReg()) {
         return true;
       }
     }

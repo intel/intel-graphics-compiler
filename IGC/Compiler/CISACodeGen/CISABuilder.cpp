@@ -4805,6 +4805,11 @@ namespace IGC
             SaveOption(vISA_EnableGroupScheduleForBC, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(CopyA0ToDBG0))
+        {
+            SaveOption(vISA_CopyA0ToDBG0, true);
+        }
+
         if (VISAPlatform == Xe_XeHPSDV && IGC_IS_FLAG_ENABLED(DPASTokenReduction))
         {
             SaveOption(vISA_EnableDPASTokenReduction, true);
