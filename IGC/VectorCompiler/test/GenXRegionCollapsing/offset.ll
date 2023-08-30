@@ -35,3 +35,28 @@ define void @test(i64 %in, i64 %out) {
   ret void
 }
 
+declare <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16(<264 x float>, i32, i32, i32, <8 x i16>, i32)
+declare <264 x float> @llvm.genx.wrregionf.v264f32.f32.i16.i1(<264 x float>, float, i32, i32, i32, i16, i32, i1)
+
+; Check that rdregions with non periodic offsets not generated
+; CHECK:define void @test2
+define void @test2(float %in, <8 x float>* %out) {
+  %1 = call <264 x float> @llvm.genx.wrregionf.v264f32.f32.i16.i1(<264 x float> undef, float %in, i32 0, i32 8, i32 1, i16 0, i32 undef, i1 true)
+  ; Not fit
+  ; CHECK: call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16{{.*}} <i16 24, i16 28, i16 96, i16 100, i16 104, i16 108, i16 112, i16 116>
+  %2 = call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16(<264 x float> %1, i32 0, i32 1, i32 0, <8 x i16> <i16 24, i16 28, i16 96, i16 100, i16 104, i16 108, i16 112, i16 116>, i32 0)
+  store <8 x float> %2, <8 x float>* %out, align 4
+  ; fit
+  ; CHECK: call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.i16(<264 x float> %1, i32 20, i32 4, i32 1, i16 24
+  %3 = call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16(<264 x float> %1, i32 0, i32 1, i32 0, <8 x i16> <i16 24, i16 28, i16 32, i16 36, i16 104, i16 108, i16 112, i16 116>, i32 0)
+  store <8 x float> %3, <8 x float>* %out, align 4
+  ; Not fit
+  ; CHECK:  call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16{{.*}} <i16 24, i16 28, i16 32, i16 36, i16 40, i16 108, i16 112,
+  %4 = call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16(<264 x float> %1, i32 0, i32 1, i32 0, <8 x i16> <i16 24, i16 28, i16 32, i16 36, i16 40, i16 108, i16 112, i16 116>, i32 0)
+  store <8 x float> %4, <8 x float>* %out, align 4
+  ; Not fit
+  ; CHECK:  call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16{{.*}} <i16 24, i16 28, i16 32, i16 36, i16 40, i16 44, i16 112,
+  %5 = call <8 x float> @llvm.genx.rdregionf.v8f32.v264f32.v8i16(<264 x float> %1, i32 0, i32 1, i32 0, <8 x i16> <i16 24, i16 28, i16 32, i16 36, i16 40, i16 44, i16 112, i16 116>, i32 0)
+  store <8 x float> %5, <8 x float>* %out, align 4
+  ret void
+}

@@ -906,9 +906,18 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
       return Inst;
 
     int64_t nextVal = ci->getSExtValue();
+
+    if (Width != 1 && (i % Width == 0)) {
+      if (nextVal != val0 + VStride || i != i0 + Width)
+        return Inst; // different strides
+      val0 = nextVal;
+      i0 = i;
+    }
     if (prevVal + diff != nextVal) {
       if (Width == 1) {
         Width = i - i0;
+        if (i - vectorLength/2 > 0)
+          return Inst; // different strides
         VStride = nextVal - val0;
         val0 = nextVal;
         i0 = i;
