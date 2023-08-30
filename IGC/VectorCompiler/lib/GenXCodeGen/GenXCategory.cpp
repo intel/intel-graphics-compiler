@@ -201,6 +201,7 @@ namespace {
   private:
     using ConvListT = std::array<llvm::Instruction *, vc::numRegCategories()>;
 
+    bool commonUpSurface(BasicBlock *BB);
     bool processFunction(Function *F);
     bool fixCircularPhis(Function *F);
     bool processValue(Value *V);
@@ -506,6 +507,50 @@ static bool commonUpPredicate(BasicBlock *BB) {
 }
 
 /***********************************************************************
+ * isToSurfaceConversion : returns true if the input instruction is a
+ * surface conversion intrinsic.
+ */
+static bool isToSurfaceConversion(Instruction *I,
+                                  const GenXLiveness *Liveness) {
+  if (IntrinsicInst *IC = dyn_cast<IntrinsicInst>(I)) {
+    unsigned IntrinsicID = vc::getAnyIntrinsicID(IC);
+    if (IntrinsicID != GenXIntrinsic::genx_convert)
+      return false;
+    if (auto LR = Liveness->getLiveRangeOrNull(I)) {
+      auto Cat = LR->getCategory();
+      if (Cat == vc::RegCategory::Surface)
+        return true;
+    }
+  }
+  return false;
+}
+
+/***********************************************************************
+ * commonUpSurface : perform surface commoning to reduce number of
+ * instructions to stop the surface conversion falling outside of the
+ * register into which it points to avoid going out of spec (256). The
+ * logic is applied within a basic block to avoid dramatic live ranges
+ * increase.
+ */
+bool GenXCategory::commonUpSurface(BasicBlock *BB) {
+  bool Modified = false;
+  // Maps the original value to after-conversion value.
+  SmallDenseMap<Value *, Value *> ConvMap;
+  for (auto bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
+    Instruction *I = &*bi;
+    if (!isToSurfaceConversion(I, Liveness))
+      continue;
+    IGC_ASSERT(I->hasOneUse());
+    if (!ConvMap.insert({I->getOperand(0), I}).second) {
+      Modified = true;
+      I->replaceAllUsesWith(ConvMap[I->getOperand(0)]);
+      ToErase.push_back(I);
+    }
+  }
+  return Modified;
+}
+
+/***********************************************************************
  * processFunction : run the category conversion pass for this Function
  *
  * This does a postordered depth first traversal of the CFG,
@@ -538,6 +583,8 @@ bool GenXCategory::processFunction(Function *F)
 
     // This commons up constpred calls just loaded.
     Modified |= commonUpPredicate(BB);
+    // This commons up to-surface conversion calls.
+    Modified |= commonUpSurface(BB);
 
     // Erase instructions (and their live ranges) as requested by processValue.
     for (unsigned i = 0, e = ToErase.size(); i != e; ++i) {
