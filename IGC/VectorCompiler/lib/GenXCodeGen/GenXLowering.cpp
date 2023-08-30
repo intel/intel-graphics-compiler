@@ -4361,24 +4361,15 @@ bool GenXLowering::lowerSlmInit(CallInst *CI) {
 bool GenXLowering::lowerStackSave(CallInst *CI) {
   IRBuilder<> IRB{CI};
 
-  auto *ReadPredef = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_read_predef_reg,
-      {IRB.getInt64Ty(), IRB.getInt64Ty()});
-  Value *Tmp1 = IRB.CreateCall(ReadPredef,
-                               {IRB.getInt32(PreDefined_Vars::PREDEFINED_FE_SP),
-                                UndefValue::get(IRB.getInt64Ty())});
+  auto *Ty = IRB.getInt64Ty();
+  auto *Func = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_read_predef_reg, {Ty, Ty});
 
-  auto *ReadRegion = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_rdregioni,
-      {IRB.getInt64Ty(), IRB.getInt64Ty(), IRB.getInt16Ty()});
-  Value *Tmp2 = IRB.CreateCall(
-      ReadRegion, {Tmp1, IRB.getInt32(0), IRB.getInt32(1), IRB.getInt32(1),
-                   IRB.getInt16(0), UndefValue::get(IRB.getInt32Ty())});
-  CastInst *Res =
-      CastInst::CreateBitOrPointerCast(Tmp2, CI->getType(), CI->getName(), CI);
-  Res->setDebugLoc(CI->getDebugLoc());
-
+  auto *PredefReg = IRB.getInt32(PreDefined_Vars::PREDEFINED_FE_SP);
+  auto *FeSp = IRB.CreateCall(Func, {PredefReg, UndefValue::get(Ty)});
+  auto *Res = IRB.CreateIntToPtr(FeSp, CI->getType());
   CI->replaceAllUsesWith(Res);
+  Res->takeName(CI);
 
   ToErase.push_back(CI);
 
@@ -4388,23 +4379,14 @@ bool GenXLowering::lowerStackSave(CallInst *CI) {
 bool GenXLowering::lowerStackRestore(CallInst *CI) {
   IRBuilder<> IRB{CI};
 
-  Value *Tmp1 = IRB.CreatePtrToInt(CI->getOperand(0), IRB.getInt64Ty());
+  auto *Ty = IRB.getInt64Ty();
 
-  auto *WriteRegion = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_wrregioni,
-      {IRB.getInt64Ty(), IRB.getInt64Ty(), IRB.getInt16Ty(), IRB.getInt1Ty()});
-  Value *Tmp2 = IRB.CreateCall(
-      WriteRegion, {UndefValue::get(IRB.getInt64Ty()), Tmp1, IRB.getInt32(0),
-                    IRB.getInt32(1), IRB.getInt32(1), IRB.getInt16(0),
-                    UndefValue::get(IRB.getInt32Ty()), IRB.getInt1(true)});
+  auto *Func = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_write_predef_reg, {Ty, Ty});
 
-  auto *WritePredef = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_write_predef_reg,
-      {IRB.getInt64Ty(), IRB.getInt64Ty()});
-  CallInst *Res = CallInst::Create(
-      WritePredef, {IRB.getInt32(PreDefined_Vars::PREDEFINED_FE_SP), Tmp2},
-      CI->getName(), CI);
-  Res->setDebugLoc(CI->getDebugLoc());
+  auto *FeSp = IRB.CreatePtrToInt(CI->getOperand(0), Ty);
+  auto *PredefReg = IRB.getInt32(PreDefined_Vars::PREDEFINED_FE_SP);
+  IRB.CreateCall(Func, {PredefReg, FeSp});
 
   ToErase.push_back(CI);
 
