@@ -963,13 +963,13 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I) const {
           getBaseType(IGCLLVM::getNonOpaquePtrEltTy(
                           Cast->getOperand(0)->getType()->getScalarType()),
                       nullptr);
-      IGC_ASSERT(SrcTy);
       // either the point-to-element-type is the same or
       // the point-to-element-type is the byte or a function pointer
-      if (!BaseTy)
+      if (!BaseTy || !SrcTy)
         return false;
-      if (BaseTy->getScalarSizeInBits() != 8 &&
-          BaseTy->getScalarSizeInBits() != SrcTy->getScalarSizeInBits() &&
+      auto BaseScalarSizeInBits = BaseTy->getScalarSizeInBits();
+      if (BaseScalarSizeInBits != 8 &&
+          BaseScalarSizeInBits != SrcTy->getScalarSizeInBits() &&
           (!BaseTy->isPointerTy() ||
            !IGCLLVM::getNonOpaquePtrEltTy(BaseTy)->isFunctionTy()))
         return false;
