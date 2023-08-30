@@ -346,10 +346,6 @@ static void CommonOCLBasedPasses(
 
     mpm.add( new llvm::TargetLibraryInfoWrapperPass(TLI));
 
-    // This should be removed, once FE will be updated to use LLVM IR that supports
-    // AllowContract and ApproxFunc FastMathFlags.
-    mpm.add(new FixFastMathFlags());
-
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
 
