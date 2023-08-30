@@ -6,10 +6,36 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-/*
- * vISA IR Disassembler
- *
- */
+//
+// vISA IR Disassembler
+//
+// A vISA assembly file (.visaasm) has one or more kernels and global functions.
+//
+// A kernel (.kernel) represents an entry point of GPU execution. It may only be
+// invoked from the host program.
+//
+// A global function (.global_function) may be invoked by a kernel or another
+// function through the FCALL/IFCALL instruction.
+//
+// Each kernel or function contains a number of variables (.decl). By default
+// the declares are printed at the top of the kernel/function (i.e., they are
+// visible everywhere inside the function), though they can also be interleaved
+// with the instructions so long as each variable is declared before its use.
+// C-style block scope support also exists with the {} operator.
+//
+// A kernel may declare input variables via the .input directive, which also
+// binds the variable to a fixed GRF location. Input variables are considered
+// live-in to the kernel.
+//
+// Each kernel/function may declare a number of attributes (.kernel_attr
+// directive) to communicate additional information about the function. They
+// have to be declared before any instructions in the function.
+//
+// A kernel/function's instructions are organized into subroutines (.function)
+// that are invoked through the CALL instruction. By convention the first
+// subroutine represents the entry point of the kernel/function, and it may not
+// be the target of a CALL.
+//
 
 #include "IGC/common/StringMacros.hpp"
 #include <algorithm>
@@ -478,16 +504,13 @@ std::string printSurfaceDecl(const print_format_provider_t *header,
 }
 
 std::string printFuncInput(const print_format_provider_t *header,
-                           unsigned declID, bool isKernel,
-                           const Options *options) {
+                           unsigned declID, const Options *options) {
   vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
 
   const input_info_t *input = header->getInput(declID);
-  if (!isKernel) {
-    sstr << ".parameter " /* function */;
-  } else if (!input->getImplicitKind()) {
-    sstr << ".input " /* kernel */;
+  if (!input->getImplicitKind()) {
+    sstr << ".input ";
   } else {
     sstr << input->getImplicitKindString() << " ";
   }
@@ -499,9 +522,7 @@ std::string printFuncInput(const print_format_provider_t *header,
     sstr << Input_Class_String[input->getInputClass()] << input->index;
   }
 
-  if (isKernel)
-    sstr << " offset=" << input->offset;
-
+  sstr << " offset=" << input->offset;
   sstr << " size=" << input->size;
 
   return sstr.str();
@@ -3287,7 +3308,7 @@ std::string VISAKernel_format_provider::printKernelHeader(bool printVersion) {
   }
   // inputs to kernel
   for (unsigned i = 0; i < getInputCount(); i++) {
-    sstr << "\n" << printFuncInput(this, i, isKernel, options);
+    sstr << "\n" << printFuncInput(this, i, options);
   }
 
   bool isTargetSet = false;

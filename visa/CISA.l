@@ -171,7 +171,6 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
         CISAlval.string[yyleng] = '\0';
         return DIRECTIVE_IMPLICIT;
     }
-".parameter"        {TRACE("** PARAMETER"); return DIRECTIVE_PARAMETER;}
 ".function"         {TRACE("** FUNCTION"); return DIRECTIVE_FUNC;}
 ".global_function"  {TRACE("** GLOBAL FUNCTION"); return DIRECTIVE_GLOBAL_FUNC;}
 ".kernel"           {TRACE("** KERNEL NAME DIRECTIVE"); return DIRECTIVE_KERNEL;}

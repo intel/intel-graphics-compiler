@@ -1659,6 +1659,11 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl, uint16_t offset,
                                        uint16_t size, uint8_t implicitKind) {
   TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
 
+  if (!getIsKernel()) {
+    vISA_ASSERT(false, "only kernels may have input variables");
+    return VISA_FAILURE;
+  }
+
   unsigned int status = VISA_SUCCESS;
   input_info_t *input = (input_info_t *)m_mem.alloc(sizeof(input_info_t));
   input->kind = GetInputClass(decl->type);
@@ -1708,7 +1713,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl, uint16_t offset,
         VISAKernel_format_provider fmt(this);
         m_CISABuilder->m_ssIsaAsm
             << printFuncInput(&fmt, m_printDeclIndex.input_index++,
-                              getIsKernel(), getOptions())
+                              getOptions())
             << "\n";
       }
     }

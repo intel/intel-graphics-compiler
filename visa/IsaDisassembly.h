@@ -32,8 +32,7 @@ std::string printSamplerDecl(const print_format_provider_t *header,
 std::string printSurfaceDecl(const print_format_provider_t *header,
                              unsigned declID, unsigned numPredefinedSurfaces);
 std::string printFuncInput(const print_format_provider_t *header,
-                           unsigned declID, bool isKernel,
-                           const Options *options);
+                           unsigned declID, const Options *options);
 std::string printOneAttribute(const print_format_provider_t *kernel,
                               const attribute_info_t *attr);
 // Used for printing non-kernel attributes

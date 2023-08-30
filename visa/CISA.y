@@ -26,7 +26,6 @@ static int lscCheckExecSize(
     LSC_DATA_ORDER data_order,
     int exec_size);
 
-//VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type);
 void CISAerror(CISA_IR_Builder* builder, char const* msg);
 int yylex(CISA_IR_Builder *pBuilder);
 extern int CISAlineno;
@@ -36,9 +35,6 @@ static bool ParseAlign(CISA_IR_Builder* pBuilder, const char *sym, VISA_Align &v
 static VISA_Align AlignBytesToVisaAlignment(int bytes);
 static int DataTypeSizeOf(VISA_Type type);
 static bool ParseEMask(const char* sym, VISA_EMask_Ctrl &emask);
-
-
-
 
 //
 // check if the cond is true.
@@ -64,9 +60,7 @@ static bool ParseEMask(const char* sym, VISA_EMask_Ctrl &emask);
     } while (0)
 
 std::deque<const char*> switchLabels;
-char * switch_label_array[32];
 std::vector<VISA_opnd*> RTRWOperandsVec;
-int num_parameters;
 
 VISA_RawOpnd* rawOperandArray[16];
 
@@ -300,8 +294,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token          DIRECTIVE_INPUT       // .input
 %token          DIRECTIVE_KERNEL      // .kernel
 %token          DIRECTIVE_KERNEL_ATTR // .kernel_attr
-%token          DIRECTIVE_PARAMETER   // .parameter
-%token          DIRECTIVE_VERSION     // .verions
+%token          DIRECTIVE_VERSION     // .version
 
 // tokens to support .decl and .input
 %token ALIAS_EQ             // .decl ... alias=...
@@ -675,7 +668,6 @@ Statement:
     | DirectiveGlobalFunction
     | DirectiveImplicitInput
     | DirectiveInput
-    | DirectiveParameter
     | DirectiveFunc
     | DirectiveAttr
     | Instruction
@@ -816,13 +808,6 @@ InputOffset: %empty {$$ = 0;} | OFFSET_EQ IntExp {$$ = $2;}
 InputSize: SIZE_EQ IntExp {$$ = $2;}
 
 ///////////////////////////////////////////////////////////
-// ----- .parameter ------
-
-DirectiveParameter:
-    //      1            2       3        4
-    DIRECTIVE_PARAMETER IDENT InputSize GenAttrOpt {
-        ABORT_ON_FAIL(pBuilder->CISA_input_directive($2, 0, (unsigned short)$3, CISAlineno));
-    }
 // ----- .attribute ------
 
 DirectiveAttr:
