@@ -23,36 +23,36 @@ Subject: [PATCH] [InstCombine] Check for NaN before folding `select` for FP
  operators
 
 ---
- llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp b/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp
-index 9f8991f4d..ff52bb9cf 100644
+index 881b00f2a..9cdde7433 100644
 --- a/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp
 +++ b/llvm/lib/Transforms/InstCombine/InstCombineSelect.cpp
-@@ -456,8 +456,11 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
+@@ -455,6 +455,12 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
+         }
 
          if (OpToFold) {
-           FastMathFlags FMF;
--          if (isa<FPMathOperator>(&SI))
++          FastMathFlags FMF;
 +          if (isa<FPMathOperator>(&SI)) {
-             FMF = SI.getFastMathFlags();
++            FMF = SI.getFastMathFlags();
 +            if (!FMF.noNaNs())
 +              return nullptr;
 +          }
-           Constant *C = ConstantExpr::getBinOpIdentity(
-               TVI->getOpcode(), TVI->getType(), true, FMF.noSignedZeros());
+           Constant *C = ConstantExpr::getBinOpIdentity(TVI->getOpcode(),
+                                                        TVI->getType(), true);
            Value *OOp = TVI->getOperand(2-OpToFold);
-@@ -493,8 +496,11 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
+@@ -487,6 +493,12 @@ Instruction *InstCombinerImpl::foldSelectIntoOp(SelectInst &SI, Value *TrueVal,
+         }
 
          if (OpToFold) {
-           FastMathFlags FMF;
--          if (isa<FPMathOperator>(&SI))
++          FastMathFlags FMF;
 +          if (isa<FPMathOperator>(&SI)) {
-             FMF = SI.getFastMathFlags();
++            FMF = SI.getFastMathFlags();
 +            if (!FMF.noNaNs())
 +              return nullptr;
 +          }
-           Constant *C = ConstantExpr::getBinOpIdentity(
-               FVI->getOpcode(), FVI->getType(), true, FMF.noSignedZeros());
+           Constant *C = ConstantExpr::getBinOpIdentity(FVI->getOpcode(),
+                                                        FVI->getType(), true);
            Value *OOp = FVI->getOperand(2-OpToFold);
