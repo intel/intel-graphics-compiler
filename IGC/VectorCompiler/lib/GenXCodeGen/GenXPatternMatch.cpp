@@ -2158,23 +2158,24 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   auto Rcp = getReciprocal(IRB, Divisor);
   cast<Instruction>(Rcp)->setDebugLoc(I.getDebugLoc());
 
-  for (auto U : Divisor->users()) {
-    Instruction *User = dyn_cast<Instruction>(U);
-    if (!User || User == Rcp || !IsSimilar(User))
+  for (auto UI = Divisor->user_begin(); UI != Divisor->user_end();) {
+    auto *U = *UI++;
+    Instruction *UserInst = dyn_cast<Instruction>(U);
+    if (!UserInst || UserInst == Rcp || !IsSimilar(UserInst))
       continue;
-    Op0 = User->getOperand(0);
+    Op0 = UserInst->getOperand(0);
     Value *NewVal = Rcp;
     if (!match(Op0, m_FPOne())) {
-      IRB.SetInsertPoint(User);
-      IRB.setFastMathFlags(User->getFastMathFlags());
+      IRB.SetInsertPoint(UserInst);
+      IRB.setFastMathFlags(UserInst->getFastMathFlags());
       NewVal = IRB.CreateFMul(Op0, Rcp);
     }
-    User->replaceAllUsesWith(NewVal);
-    // Skip removing dead instruction if it's the current instruction being
+    UserInst->replaceAllUsesWith(NewVal);
+    // Skip removing dead instruction if it's NOT the current instruction being
     // visited as that might invalidate the iterator of this BB. These dead
     // 'fdiv' will be removed when they are visited then.
-    if (User == &I)
-      User->eraseFromParent();
+    if (UserInst == &I)
+      UserInst->eraseFromParent();
   }
   Changed |= true;
   return;
