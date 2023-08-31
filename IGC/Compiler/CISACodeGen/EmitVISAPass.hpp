@@ -878,12 +878,7 @@ private:
     // If constant vector is stored and there is already var instance for it
     // try reusing it (if it was defined in the same basic block)
     // or create a new var instance and make it available for reusing in further stores
-    CVariable* tryReusingConstVectorStoreData(llvm::Value* storedVal,
-        llvm::BasicBlock* BB, bool isBroadcast);
-
-    CVariable* tryReusingXYZWPayload(llvm::Value* storedVal,
-        llvm::BasicBlock* BB, unsigned numElems, VISA_Type type, CVariable* pSrc_X,
-        CVariable* pSrc_Y, CVariable* pSrc_Z, CVariable* pSrc_W, const unsigned int numEltGRF);
+    CVariable* tryReusingConstVectorStoreData(llvm::Value* storedVal, llvm::BasicBlock* BB, bool isBroadcast);
 
     // Emit code in slice starting from (reverse) iterator I. Return the
     // iterator to the next pattern to emit.
