@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef _REGALLOC_H_
 #define _REGALLOC_H_
 #include "BitSet.h"
+#include "FastSparseBitVector.h"
 #include "LinearScanRA.h"
 #include "LocalRA.h"
 #include "PhyRegUsage.h"
@@ -69,9 +70,9 @@ class LivenessAnalysis {
   std::unordered_map<G4_Declare *, BitSet> neverDefinedRows;
   std::unordered_set<const G4_Declare *> defWriteEnable;
 
-  void computeGenKillandPseudoKill(G4_BB *bb, llvm_SBitVector &def_out,
-                                   llvm_SBitVector &use_in, llvm_SBitVector &use_gen,
-                                   llvm_SBitVector &use_kill) const;
+  void computeGenKillandPseudoKill(G4_BB *bb, SparseBitVector &def_out,
+                                   SparseBitVector &use_in, SparseBitVector &use_gen,
+                                   SparseBitVector &use_kill) const;
 
   bool contextFreeUseAnalyze(G4_BB *bb, bool isChanged);
   bool contextFreeDefAnalyze(G4_BB *bb, bool isChanged);
@@ -82,9 +83,9 @@ class LivenessAnalysis {
   void dump_fn_vector(char *vname, std::vector<FuncInfo *> &fns,
                       std::vector<BitSet> &vec);
 
-  void updateKillSetForDcl(G4_Declare *dcl, llvm_SBitVector *curBBGen,
-                           llvm_SBitVector *curBBKill, G4_BB *curBB,
-                           llvm_SBitVector *entryBBGen, llvm_SBitVector *entryBBKill,
+  void updateKillSetForDcl(G4_Declare *dcl, SparseBitVector *curBBGen,
+                           SparseBitVector *curBBKill, G4_BB *curBB,
+                           SparseBitVector *entryBBGen, SparseBitVector *entryBBKill,
                            G4_BB *entryBB, unsigned scopeID);
   void footprintDst(const G4_BB *bb, const G4_INST *i, G4_Operand *opnd,
                     BitSet *dstfootprint) const;
@@ -103,14 +104,14 @@ public:
   //
   // Bitsets used for data flow.
   //
-  std::vector<llvm_SBitVector> def_in;
-  std::vector<llvm_SBitVector> def_out;
-  std::vector<llvm_SBitVector> use_in;
-  std::vector<llvm_SBitVector> use_out;
-  std::vector<llvm_SBitVector> use_gen;
-  std::vector<llvm_SBitVector> use_kill;
-  std::vector<llvm_SBitVector> indr_use;
-  std::unordered_map<FuncInfo *, llvm_SBitVector> subroutineMaydef;
+  std::vector<SparseBitVector> def_in;
+  std::vector<SparseBitVector> def_out;
+  std::vector<SparseBitVector> use_in;
+  std::vector<SparseBitVector> use_out;
+  std::vector<SparseBitVector> use_gen;
+  std::vector<SparseBitVector> use_kill;
+  std::vector<SparseBitVector> indr_use;
+  std::unordered_map<FuncInfo *, SparseBitVector> subroutineMaydef;
 
   // Hold variables known to be globals
   llvm::SparseBitVector<> globalVars;
@@ -157,17 +158,17 @@ public:
   bool writeWholeRegion(const G4_BB *bb, const G4_INST *prd,
                         const G4_VarBase *flagReg) const;
 
-  void performScoping(llvm_SBitVector *curBBGen, llvm_SBitVector *curBBKill,
-                      G4_BB *curBB, llvm_SBitVector *entryBBGen,
-                      llvm_SBitVector *entryBBKill, G4_BB *entryBB);
+  void performScoping(SparseBitVector *curBBGen, SparseBitVector *curBBKill,
+                      G4_BB *curBB, SparseBitVector *entryBBGen,
+                      SparseBitVector *entryBBKill, G4_BB *entryBB);
 
-  void hierarchicalIPA(const llvm_SBitVector &kernelInput,
-                       const llvm_SBitVector &kernelOutput);
+  void hierarchicalIPA(const SparseBitVector &kernelInput,
+                       const SparseBitVector &kernelOutput);
   void useAnalysis(FuncInfo *subroutine);
   void useAnalysisWithArgRetVal(
       FuncInfo *subroutine,
-      const std::unordered_map<FuncInfo *, llvm_SBitVector> &args,
-      const std::unordered_map<FuncInfo *, llvm_SBitVector> &retVal);
+      const std::unordered_map<FuncInfo *, SparseBitVector> &args,
+      const std::unordered_map<FuncInfo *, SparseBitVector> &retVal);
   void defAnalysis(FuncInfo *subroutine);
   void maydefAnalysis();
 
