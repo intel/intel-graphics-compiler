@@ -3089,12 +3089,15 @@ bool mergeApply(CallInst *CI) {
   default:
     return false;
   case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_atomic_bss:
   case vc::InternalIntrinsic::lsc_atomic_slm:
   case vc::InternalIntrinsic::lsc_atomic_ugm:
   case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_load_bss:
   case vc::InternalIntrinsic::lsc_load_slm:
   case vc::InternalIntrinsic::lsc_load_ugm:
   case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bss:
   case vc::InternalIntrinsic::lsc_load_quad_slm:
   case vc::InternalIntrinsic::lsc_load_quad_ugm:
     break;

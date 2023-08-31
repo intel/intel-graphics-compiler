@@ -118,7 +118,8 @@ bool isOverloadedArg(unsigned IntrinID, unsigned ArgNum);
 /// in intrinsic is overloaded
 bool isOverloadedRet(unsigned IntrinID);
 
-std::string getInternalName(ID id, llvm::ArrayRef<llvm::Type *> Tys);
+std::string getInternalName(ID id,
+                            llvm::ArrayRef<llvm::Type *> Tys = llvm::None);
 
 bool isInternalMemoryIntrinsic(ID id);
 

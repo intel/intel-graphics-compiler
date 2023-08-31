@@ -686,22 +686,29 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   default:
     return false;
   case InternalIntrinsic::lsc_atomic_bti:
+  case InternalIntrinsic::lsc_atomic_bss:
   case InternalIntrinsic::lsc_atomic_slm:
   case InternalIntrinsic::lsc_atomic_ugm:
   case InternalIntrinsic::lsc_load_bti:
+  case InternalIntrinsic::lsc_load_bss:
   case InternalIntrinsic::lsc_load_slm:
   case InternalIntrinsic::lsc_load_ugm:
   case InternalIntrinsic::lsc_prefetch_bti:
+  case InternalIntrinsic::lsc_prefetch_bss:
   case InternalIntrinsic::lsc_prefetch_ugm:
   case InternalIntrinsic::lsc_store_bti:
+  case InternalIntrinsic::lsc_store_bss:
   case InternalIntrinsic::lsc_store_slm:
   case InternalIntrinsic::lsc_store_ugm:
   case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_bss:
   case InternalIntrinsic::lsc_load_quad_slm:
   case InternalIntrinsic::lsc_load_quad_ugm:
   case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_bss:
   case InternalIntrinsic::lsc_prefetch_quad_ugm:
   case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_bss:
   case InternalIntrinsic::lsc_store_quad_slm:
   case InternalIntrinsic::lsc_store_quad_ugm:
     return true;
@@ -721,11 +728,14 @@ bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
   default:
     break;
   case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_bss:
   case InternalIntrinsic::lsc_load_quad_slm:
   case InternalIntrinsic::lsc_load_quad_ugm:
   case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_bss:
   case InternalIntrinsic::lsc_prefetch_quad_ugm:
   case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_bss:
   case InternalIntrinsic::lsc_store_quad_slm:
   case InternalIntrinsic::lsc_store_quad_ugm:
     return false;
@@ -743,11 +753,14 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   default:
     break;
   case InternalIntrinsic::lsc_load_bti:
+  case InternalIntrinsic::lsc_load_bss:
   case InternalIntrinsic::lsc_load_slm:
   case InternalIntrinsic::lsc_load_ugm:
   case InternalIntrinsic::lsc_prefetch_bti:
+  case InternalIntrinsic::lsc_prefetch_bss:
   case InternalIntrinsic::lsc_prefetch_ugm:
   case InternalIntrinsic::lsc_store_bti:
+  case InternalIntrinsic::lsc_store_bss:
   case InternalIntrinsic::lsc_store_slm:
   case InternalIntrinsic::lsc_store_ugm: {
     auto *VectorSize = cast<ConstantInt>(I->getOperand(3));
@@ -777,11 +790,14 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
     IGC_ASSERT_UNREACHABLE();
   }
   case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_bss:
   case InternalIntrinsic::lsc_load_quad_slm:
   case InternalIntrinsic::lsc_load_quad_ugm:
   case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_bss:
   case InternalIntrinsic::lsc_prefetch_quad_ugm:
   case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_bss:
   case InternalIntrinsic::lsc_store_quad_slm:
   case InternalIntrinsic::lsc_store_quad_ugm: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(3));

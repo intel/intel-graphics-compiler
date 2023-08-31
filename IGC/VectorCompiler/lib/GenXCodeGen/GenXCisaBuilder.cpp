@@ -4055,7 +4055,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                 AddressSize == LSC_ADDR_SIZE_32b) ||
                (LscSfid == LSC_UGM && AddressType == LSC_ADDR_TYPE_FLAT &&
                 AddressSize == LSC_ADDR_SIZE_64b) ||
-               (LscSfid == LSC_UGM && AddressType == LSC_ADDR_TYPE_BTI &&
+               (LscSfid == LSC_UGM &&
+                (AddressType == LSC_ADDR_TYPE_BTI ||
+                 AddressType == LSC_ADDR_TYPE_BSS) &&
                 AddressSize == LSC_ADDR_SIZE_32b));
     IGC_ASSERT(ElementSize == LSC_DATA_SIZE_8c32b ||
                ElementSize == LSC_DATA_SIZE_16c32b ||

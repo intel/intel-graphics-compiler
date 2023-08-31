@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -143,6 +143,14 @@ static void reportUnhandledIntrinsic(const char *Func, GenXIntrinsic::ID Id) {
   llvm::report_fatal_error(llvm::StringRef(SS.str()));
 }
 
+static void reportUnhandledIntrinsic(const char *Func,
+                                     vc::InternalIntrinsic::ID Id) {
+  std::ostringstream SS;
+  SS << "In function '" << Func << "': Intrinsic '"
+     << vc::InternalIntrinsic::getInternalName(Id) << "' is not yet supported";
+  llvm::report_fatal_error(llvm::StringRef(SS.str()));
+}
+
 // Buffer argument kind is converted to GENERAL to denote that
 // argument is not BTI but SSO.
 Optional<unsigned> PromoteToBindless::tryConvertBuffer(unsigned Kind,
@@ -260,59 +268,59 @@ static unsigned getSurfaceOperandNo(GenXIntrinsic::ID Id) {
 // They are coming from CM and this also allows to prevent
 // code bloat because of supporting of legacy versions.
 static bool isBufferIntrinsic(const Instruction &I) {
-  using namespace GenXIntrinsic;
-
-  const auto ID = getGenXIntrinsicID(&I);
+  const auto ID = vc::getAnyIntrinsicID(&I);
   switch (ID) {
   // LSC.
-  case genx_lsc_load_bti:
-  case genx_lsc_prefetch_bti:
-  case genx_lsc_load_quad_bti:
-  case genx_lsc_store_bti:
-  case genx_lsc_store_quad_bti:
-  case genx_lsc_xatomic_bti:
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+  case vc::InternalIntrinsic::lsc_store_bti:
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
     return true;
 
   // DWORD binary atomics.
-  case genx_dword_atomic2_add:
-  case genx_dword_atomic2_sub:
-  case genx_dword_atomic2_min:
-  case genx_dword_atomic2_max:
-  case genx_dword_atomic2_xchg:
-  case genx_dword_atomic2_and:
-  case genx_dword_atomic2_or:
-  case genx_dword_atomic2_xor:
-  case genx_dword_atomic2_imin:
-  case genx_dword_atomic2_imax:
+  case GenXIntrinsic::genx_dword_atomic2_add:
+  case GenXIntrinsic::genx_dword_atomic2_sub:
+  case GenXIntrinsic::genx_dword_atomic2_min:
+  case GenXIntrinsic::genx_dword_atomic2_max:
+  case GenXIntrinsic::genx_dword_atomic2_xchg:
+  case GenXIntrinsic::genx_dword_atomic2_and:
+  case GenXIntrinsic::genx_dword_atomic2_or:
+  case GenXIntrinsic::genx_dword_atomic2_xor:
+  case GenXIntrinsic::genx_dword_atomic2_imin:
+  case GenXIntrinsic::genx_dword_atomic2_imax:
 
   // DWORD floating binary atomics
-  case genx_dword_atomic2_fmin:
-  case genx_dword_atomic2_fmax:
-  case genx_dword_atomic2_fadd:
-  case genx_dword_atomic2_fsub:
+  case GenXIntrinsic::genx_dword_atomic2_fmin:
+  case GenXIntrinsic::genx_dword_atomic2_fmax:
+  case GenXIntrinsic::genx_dword_atomic2_fadd:
+  case GenXIntrinsic::genx_dword_atomic2_fsub:
 
   // DWORD unary atomics.
-  case genx_dword_atomic2_inc:
-  case genx_dword_atomic2_dec:
+  case GenXIntrinsic::genx_dword_atomic2_inc:
+  case GenXIntrinsic::genx_dword_atomic2_dec:
 
   // DWORD ternary atomics.
-  case genx_dword_atomic2_cmpxchg:
-  case genx_dword_atomic2_fcmpwr:
+  case GenXIntrinsic::genx_dword_atomic2_cmpxchg:
+  case GenXIntrinsic::genx_dword_atomic2_fcmpwr:
 
   // Gather/scatter operations.
-  case genx_gather_masked_scaled2:
-  case genx_gather4_masked_scaled2:
-  case genx_scatter_scaled:
-  case genx_scatter4_scaled:
+  case GenXIntrinsic::genx_gather_masked_scaled2:
+  case GenXIntrinsic::genx_gather4_masked_scaled2:
+  case GenXIntrinsic::genx_scatter_scaled:
+  case GenXIntrinsic::genx_scatter4_scaled:
 
   // OWORD operations.
-  case genx_oword_ld:
-  case genx_oword_ld_unaligned:
-  case genx_oword_st: {
+  case GenXIntrinsic::genx_oword_ld:
+  case GenXIntrinsic::genx_oword_ld_unaligned:
+  case GenXIntrinsic::genx_oword_st: {
     // Check additionally that surface argument in not a constant.
     // If argument is a constant then promotion cannot happen because
     // it can be SLM, stack or stateless access.
-    const unsigned SurfOpNo = getSurfaceOperandNo(ID);
+    const unsigned SurfOpNo =
+        getSurfaceOperandNo(static_cast<GenXIntrinsic::ID>(ID));
     return !isa<ConstantInt>(cast<CallInst>(I).getArgOperand(SurfOpNo));
   }
   default:
@@ -432,26 +440,26 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
 }
 
 // Get bindless version of given bti lsc intrinsic.
-static GenXIntrinsic::ID getBindlessLscIntrinsicID(GenXIntrinsic::ID Id) {
-  using namespace GenXIntrinsic;
+static vc::InternalIntrinsic::ID
+getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID) {
+#define MAP(INTR)                                                              \
+  case vc::InternalIntrinsic::INTR##_bti:                                      \
+    return vc::InternalIntrinsic::INTR##_bss
 
-#define MAP(intr)                                                              \
-  case intr##_bti:                                                             \
-    return intr##_bindless;
-
-  switch (Id) {
-    MAP(genx_lsc_load);
-    MAP(genx_lsc_prefetch);
-    MAP(genx_lsc_load_quad);
-    MAP(genx_lsc_store);
-    MAP(genx_lsc_store_quad);
-    MAP(genx_lsc_xatomic);
+  switch (IID) {
+    MAP(lsc_atomic);
+    MAP(lsc_load);
+    MAP(lsc_load_quad);
+    MAP(lsc_prefetch);
+    MAP(lsc_prefetch_quad);
+    MAP(lsc_store);
+    MAP(lsc_store_quad);
   default:
-    reportUnhandledIntrinsic("getBindlessLscIntrinsicID", Id);
+    reportUnhandledIntrinsic("getBindlessLscIntrinsicID", IID);
   }
 #undef MAP
 
-  return not_genx_intrinsic;
+  return vc::InternalIntrinsic::not_any_intrinsic;
 }
 
 // Create bindless version of lsc bti intrinsic.
@@ -461,11 +469,11 @@ static GenXIntrinsic::ID getBindlessLscIntrinsicID(GenXIntrinsic::ID Id) {
 // there is no need to use %bss variable and SSO goes directly to lsc
 // instruction.
 static CallInst *createBindlessLscIntrinsic(CallInst &CI) {
-  const auto ID = GenXIntrinsic::getGenXIntrinsicID(&CI);
+  const auto ID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
   const auto NewId = getBindlessLscIntrinsicID(ID);
 
-  auto *Decl = vc::getGenXDeclarationForIdFromArgs(CI.getType(), CI.args(),
-                                                   NewId, *CI.getModule());
+  auto *Decl = vc::getInternalDeclarationForIdFromArgs(CI.getType(), CI.args(),
+                                                       NewId, *CI.getModule());
 
   IRBuilder<> IRB{&CI};
   SmallVector<Value *, 16> Args{CI.args()};
@@ -473,54 +481,55 @@ static CallInst *createBindlessLscIntrinsic(CallInst &CI) {
 }
 
 void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
-  using namespace GenXIntrinsic;
-
-  const auto ID = getGenXIntrinsicID(&CI);
+  const auto ID = vc::getAnyIntrinsicID(&CI);
   CallInst *BindlessCI = nullptr;
   switch (ID) {
   default:
     IGC_ASSERT_MESSAGE(0, "Unhandled buffer intrinsic");
     break;
-  case genx_dword_atomic2_add:
-  case genx_dword_atomic2_sub:
-  case genx_dword_atomic2_min:
-  case genx_dword_atomic2_max:
-  case genx_dword_atomic2_xchg:
-  case genx_dword_atomic2_and:
-  case genx_dword_atomic2_or:
-  case genx_dword_atomic2_xor:
-  case genx_dword_atomic2_imin:
-  case genx_dword_atomic2_imax:
-  case genx_dword_atomic2_fmin:
-  case genx_dword_atomic2_fmax:
-  case genx_dword_atomic2_fadd:
-  case genx_dword_atomic2_fsub:
-  case genx_dword_atomic2_inc:
-  case genx_dword_atomic2_dec:
-  case genx_dword_atomic2_cmpxchg:
-  case genx_dword_atomic2_fcmpwr:
-  case genx_gather_masked_scaled2:
-  case genx_gather4_masked_scaled2:
-  case genx_scatter_scaled:
-  case genx_scatter4_scaled:
-  case genx_oword_ld:
-  case genx_oword_ld_unaligned:
-  case genx_oword_st:
+  case GenXIntrinsic::genx_dword_atomic2_add:
+  case GenXIntrinsic::genx_dword_atomic2_sub:
+  case GenXIntrinsic::genx_dword_atomic2_min:
+  case GenXIntrinsic::genx_dword_atomic2_max:
+  case GenXIntrinsic::genx_dword_atomic2_xchg:
+  case GenXIntrinsic::genx_dword_atomic2_and:
+  case GenXIntrinsic::genx_dword_atomic2_or:
+  case GenXIntrinsic::genx_dword_atomic2_xor:
+  case GenXIntrinsic::genx_dword_atomic2_imin:
+  case GenXIntrinsic::genx_dword_atomic2_imax:
+  case GenXIntrinsic::genx_dword_atomic2_fmin:
+  case GenXIntrinsic::genx_dword_atomic2_fmax:
+  case GenXIntrinsic::genx_dword_atomic2_fadd:
+  case GenXIntrinsic::genx_dword_atomic2_fsub:
+  case GenXIntrinsic::genx_dword_atomic2_inc:
+  case GenXIntrinsic::genx_dword_atomic2_dec:
+  case GenXIntrinsic::genx_dword_atomic2_cmpxchg:
+  case GenXIntrinsic::genx_dword_atomic2_fcmpwr:
+  case GenXIntrinsic::genx_gather_masked_scaled2:
+  case GenXIntrinsic::genx_gather4_masked_scaled2:
+  case GenXIntrinsic::genx_scatter_scaled:
+  case GenXIntrinsic::genx_scatter4_scaled:
+  case GenXIntrinsic::genx_oword_ld:
+  case GenXIntrinsic::genx_oword_ld_unaligned:
+  case GenXIntrinsic::genx_oword_st:
     BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
     break;
-  case genx_lsc_load_bti:
-  case genx_lsc_prefetch_bti:
-  case genx_lsc_load_quad_bti:
-  case genx_lsc_store_bti:
-  case genx_lsc_store_quad_bti:
-  case genx_lsc_xatomic_bti:
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+  case vc::InternalIntrinsic::lsc_store_bti:
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
     BindlessCI = createBindlessLscIntrinsic(CI);
     break;
   }
 
   IGC_ASSERT_MESSAGE(BindlessCI, "Expected created bindless instruction");
-  if (!CI.getType()->isVoidTy())
+  if (!CI.getType()->isVoidTy()) {
     CI.replaceAllUsesWith(BindlessCI);
+    BindlessCI->takeName(&CI);
+  }
   CI.eraseFromParent();
 }
 
@@ -540,12 +549,10 @@ bool PromoteToBindless::rewriteBufferIntrinsics() {
 // Return true if there were changes.
 // Currently only buffer intrinsics are supported.
 bool PromoteToBindless::rewriteIntrinsics() {
-  bool Changed = false;
+  if (!BC.useBindlessBuffers())
+    return false;
 
-  if (BC.useBindlessBuffers())
-    Changed |= rewriteBufferIntrinsics();
-
-  return Changed;
+  return rewriteBufferIntrinsics();
 }
 
 bool PromoteToBindless::run() {

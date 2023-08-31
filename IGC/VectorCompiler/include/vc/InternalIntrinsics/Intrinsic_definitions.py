@@ -199,6 +199,23 @@ Imported_Intrinsics = {
                             0,        # passthru value
                         ],
                         "attributes": "SideEffects", },
+    "lsc_atomic_bss": { "result": "anyvector",
+                        "arguments": [
+                            "anyint", # vNxi1, predicate
+                            "char",   # atomic opcode
+                            "char",   # address size
+                            "char",   # element size
+                            "char",   # L1 cache control
+                            "char",   # L3 cache control
+                            "int",    # i32 BSS
+                            "anyint", # vNi32 address offsets
+                            "short",  # address scale
+                            "int",    # address immediate offset
+                            0,        # src1
+                            0,        # src2
+                            0,        # passthru value
+                        ],
+                        "attributes": "SideEffects", },
     "lsc_atomic_slm": { "result": "anyvector",
                         "arguments": [
                             "anyint", # vNxi1, predicate
@@ -268,6 +285,21 @@ Imported_Intrinsics = {
                           0,        # passthru value
                       ],
                       "attributes": "ReadMem", },
+    "lsc_load_bss": { "result": "anyvector",
+                      "arguments": [
+                          "anyint", # vNxi1, predicate
+                          "char",   # address size
+                          "char",   # element size
+                          "char",   # vector size
+                          "char",   # L1 cache control
+                          "char",   # L3 cache control
+                          "int",    # i32 BSS
+                          "anyint", # vNi32 address offsets
+                          "short",  # address scale
+                          "int",    # address immediate offset
+                          0,        # passthru value
+                      ],
+                      "attributes": "ReadMem", },
     "lsc_load_slm": { "result": "anyvector",
                       "arguments": [
                           "anyint", # vNxi1, predicate
@@ -308,6 +340,21 @@ Imported_Intrinsics = {
                                "char",   # L1 cache control
                                "char",   # L3 cache control
                                "int",    # i32 BTI
+                               "anyint", # vNi32 address offsets
+                               "short",  # address scale
+                               "int",    # address immediate offset
+                               0,        # passthru value
+                           ],
+                           "attributes": "ReadMem", },
+    "lsc_load_quad_bss": { "result": "anyvector",
+                           "arguments": [
+                               "anyint", # vNxi1, predicate
+                               "char",   # address size
+                               "char",   # element size
+                               "char",   # channel mask
+                               "char",   # L1 cache control
+                               "char",   # L3 cache control
+                               "int",    # i32 BSS
                                "anyint", # vNi32 address offsets
                                "short",  # address scale
                                "int",    # address immediate offset
@@ -377,6 +424,20 @@ Imported_Intrinsics = {
                               "int",    # address immediate offset
                           ],
                           "attributes": "SideEffects", },
+    "lsc_prefetch_bss": { "result": "void",
+                          "arguments": [
+                              "anyint", # vNxi1, predicate
+                              "char",   # address size
+                              "char",   # element size
+                              "char",   # vector size
+                              "char",   # L1 cache control
+                              "char",   # L3 cache control
+                              "int",    # i32 BSS
+                              "anyint", # vNi32 address offsets
+                              "short",  # address scale
+                              "int",    # address immediate offset
+                          ],
+                          "attributes": "SideEffects", },
     "lsc_prefetch_ugm": { "result": "void",
                           "arguments": [
                               "anyint", # vNxi1, predicate
@@ -401,6 +462,20 @@ Imported_Intrinsics = {
                                    "char",   # L1 cache control
                                    "char",   # L3 cache control
                                    "int",    # i32 BTI
+                                   "anyint", # vNi32 address offsets
+                                   "short",  # address scale
+                                   "int",    # address immediate offset
+                               ],
+                               "attributes": "SideEffects", },
+    "lsc_prefetch_quad_bss": { "result": "void",
+                               "arguments": [
+                                   "anyint", # vNxi1, predicate
+                                   "char",   # address size
+                                   "char",   # element size
+                                   "char",   # channel mask
+                                   "char",   # L1 cache control
+                                   "char",   # L3 cache control
+                                   "int",    # i32 BSS
                                    "anyint", # vNi32 address offsets
                                    "short",  # address scale
                                    "int",    # address immediate offset
@@ -455,6 +530,21 @@ Imported_Intrinsics = {
                            "anyvector", # Data to write
                        ],
                        "attributes": "WriteMem", },
+    "lsc_store_bss": { "result": "void",
+                       "arguments": [
+                           "anyint", # vNxi1, predicate
+                           "char",   # address size
+                           "char",   # element size
+                           "char",   # vector size
+                           "char",   # L1 cache control
+                           "char",   # L3 cache control
+                           "int",    # i32 BSS
+                           "anyint", # vNi32 address offsets
+                           "short",  # address scale
+                           "int",    # address immediate offset
+                           "anyvector", # Data to write
+                       ],
+                       "attributes": "WriteMem", },
     "lsc_store_slm": { "result": "void",
                        "arguments": [
                            "anyint", # vNxi1, predicate
@@ -495,6 +585,21 @@ Imported_Intrinsics = {
                                 "char",   # L1 cache control
                                 "char",   # L3 cache control
                                 "int",    # i32 BTI
+                                "anyint", # vNi32 address offsets
+                                "short",  # address scale
+                                "int",    # address immediate offset
+                                "anyvector", # Data to write
+                            ],
+                            "attributes": "WriteMem", },
+    "lsc_store_quad_bss": { "result": "void",
+                            "arguments": [
+                                "anyint", # vNxi1, predicate
+                                "char",   # address size
+                                "char",   # element size
+                                "char",   # channel mask
+                                "char",   # L1 cache control
+                                "char",   # L3 cache control
+                                "int",    # i32 BSS
                                 "anyint", # vNi32 address offsets
                                 "short",  # address scale
                                 "int",    # address immediate offset
