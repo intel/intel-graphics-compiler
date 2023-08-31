@@ -189,10 +189,10 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
 
 Constant *GenXDeadVectorRemoval::trySimplify(ConstantData *CD,
                                              const LiveElements &LiveElems) {
-  if (isa<UndefValue>(CD) || isa<ConstantAggregateZero>(CD) ||
-      LiveElems.size() != 1)
+  if (isa<UndefValue>(CD) || isa<ConstantAggregateZero>(CD))
     return CD;
 
+  IGC_ASSERT(LiveElems.size() == 1);
   if (auto CDS = dyn_cast<ConstantDataSequential>(CD))
     return trySimplify(CDS, LiveElems);
 
