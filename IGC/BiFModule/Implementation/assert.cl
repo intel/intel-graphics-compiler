@@ -46,7 +46,7 @@ void __devicelib_assert_fail(char *expr, char *file, int line, char *func, long 
     __builtin_IB_software_exception();
 }
 
-long __builtin_IB_get_stack_pointer();
+ulong __builtin_IB_get_stack_pointer();
 int __builtin_IB_get_stack_size_per_thread();
 
 // This function needs to be inserted in entry points.
@@ -62,7 +62,7 @@ void __stackoverflow_init() {
     buf += 3;
     *buf = __builtin_IB_get_stack_size_per_thread();
     buf = buf + 1;
-    global long* stackBase = ((global long*)(buf));
+    global ulong* stackBase = ((global ulong*)(buf));
     stackBase[HWTID] = __builtin_IB_get_stack_pointer();
 }
 
@@ -74,7 +74,7 @@ void __stackoverflow_detection() {
     buf += 3;
     int stackSizePerThread = *buf;
     buf += 1;
-    long stackBase = ((global long*)(buf))[HWTID];
+    ulong stackBase = ((global ulong*)(buf))[HWTID];
 
     if (__builtin_IB_get_stack_pointer() - stackBase > stackSizePerThread) {
         global volatile AssertBufferHeader* header = (global volatile AssertBufferHeader*) __builtin_IB_get_assert_buffer();
