@@ -666,8 +666,7 @@ bool supportDynamicBTIsAllocation() const
 
 bool loosenSimd32occu() const
 {
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
-            m_platformInfo.eRenderCoreFamily != IGFX_XE_HPG_CORE);
+    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE && m_platformInfo.eProductFamily != IGFX_DG2);
 }
 
 // Local memory here refers to memory on the device- e.g. HBM for PVC.
