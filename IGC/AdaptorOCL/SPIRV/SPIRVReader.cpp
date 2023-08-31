@@ -3182,11 +3182,13 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       std::vector<Type *> ArgTys = { CV[0]->getType() };
       std::vector<Value *> Args = { CV[0] };
 
-      Type *T = transType( BV->getType() );
+      auto *ResMatTy = static_cast<SPIRVTypeJointMatrixINTEL *>(BV->getType());
+      Type *T = transType( ResMatTy );
       FunctionType *builtinTy = FunctionType::get( T, ArgTys, false );
 
       auto BI = static_cast<SPIRVInstruction *>( BV );
-      std::string builtinName( getSPIRVBuiltinName( BV->getOpCode(), BI, ArgTys, "JointMatrixINTEL" ) );
+      std::string suffix = "JointMatrixINTEL_" + ResMatTy->getMangledName();
+      std::string builtinName( getSPIRVBuiltinName( BV->getOpCode(), BI, ArgTys, suffix ) );
       Function *Func = cast<Function>( M->getOrInsertFunction( builtinName, builtinTy ) );
 
       CallInst *CI = CallInst::Create( Func, Args, "matrix", BB );
