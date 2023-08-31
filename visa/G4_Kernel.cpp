@@ -646,8 +646,14 @@ bool G4_Kernel::updateKernelToSmallerGRF() {
 // Updates kernel's related structures based on register pressure
 //
 void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
-  unsigned newGRF =
-      grfMode.findModeByRegPressure(regPressure, getLargestInputRegister());
+  unsigned largestInputReg = getLargestInputRegister();
+  if (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_MaxRegThreadDispatch)) {
+    unsigned maxRegPayloadDispatch = m_kernelAttrs->getInt32KernelAttr(
+        Attributes::ATTR_MaxRegThreadDispatch);
+    largestInputReg = std::max(largestInputReg, maxRegPayloadDispatch);
+  }
+
+  unsigned newGRF = grfMode.findModeByRegPressure(regPressure, largestInputReg);
 
   if (newGRF == numRegTotal)
     return;

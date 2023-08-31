@@ -1258,6 +1258,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->GetDebugInfoData().transferMappings(F);
     }
 
+    m_encoder->SetMaxRegForThreadDispatch();
+
     // Compile only when this is the last function for this kernel.
     bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
     if (m_FGA) {

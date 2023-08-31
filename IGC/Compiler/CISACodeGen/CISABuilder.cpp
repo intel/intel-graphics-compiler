@@ -5336,6 +5336,17 @@ namespace IGC
         }
     }
 
+    void CEncoder::SetMaxRegForThreadDispatch()
+    {
+        CodeGenContext *context = m_program->GetContext();
+        if (context->type == ShaderType::VERTEX_SHADER || context->type == ShaderType::DOMAIN_SHADER ||
+            context->type == ShaderType::GEOMETRY_SHADER || context->type == ShaderType::HULL_SHADER)
+        {
+            unsigned maxReg = m_program->GetMaxRegForThreadDispatch();
+            V(vKernel->AddKernelAttribute("MaxRegThreadDispatch", 1, &maxReg));
+        }
+    }
+
     void CEncoder::SetStackFunctionArgSize(uint size)
     {
         uint8_t sz = (uint8_t)size;

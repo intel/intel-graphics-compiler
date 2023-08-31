@@ -122,6 +122,13 @@ public:
         IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
+    virtual OctEltUnit GetTotalURBReadLength() const {
+        return OctEltUnit(0);
+    }
+    unsigned GetMaxRegForThreadDispatch() const
+    {
+        return m_simdProgram.m_startReg + 8 * GetTotalURBReadLength().Count();
+    }
 
     // if true, HW will pass one GRF NOS of inlinedata to payload, (compute only right now)
     virtual bool passNOSInlineData() { return false; }
