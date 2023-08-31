@@ -8355,7 +8355,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     }
     case GenISAIntrinsic::GenISA_getStackPointer: {
-        m_encoder->Copy(m_destination, m_currShader->GetSP());
+        IGC_ASSERT(m_destination->GetType() == ISA_TYPE_Q);
+        IGC_ASSERT(m_currShader->GetSP() &&
+                   (m_currShader->GetSP()->GetType() == ISA_TYPE_UQ ||
+                    m_currShader->GetSP()->GetType() == ISA_TYPE_UD));
+        m_encoder->Cast(m_destination, m_currShader->GetSP());
         m_encoder->Push();
         break;
     }
