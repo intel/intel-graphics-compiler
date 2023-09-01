@@ -30,6 +30,7 @@ const Region Region::SRC010 = REGION_VWH(VT_0, WI_1, HZ_0);
 const Region Region::SRC110 = REGION_VWH(VT_1, WI_1, HZ_0);
 const Region Region::SRC210 = REGION_VWH(VT_2, WI_1, HZ_0);
 const Region Region::SRC410 = REGION_VWH(VT_4, WI_1, HZ_0);
+const Region Region::SRC810 = REGION_VWH(VT_8, WI_1, HZ_0);
 const Region Region::SRC221 = REGION_VWH(VT_2, WI_2, HZ_1);
 const Region Region::SRC441 = REGION_VWH(VT_4, WI_4, HZ_1);
 const Region Region::SRC881 = REGION_VWH(VT_8, WI_8, HZ_1);
@@ -40,6 +41,10 @@ const Region Region::SRC1X0 = REGION_VWH(VT_1, WI_INVALID, HZ_0);
 const Region Region::SRC2X1 = REGION_VWH(VT_2, WI_INVALID, HZ_1);
 const Region Region::SRC4X1 = REGION_VWH(VT_4, WI_INVALID, HZ_1);
 const Region Region::SRC8X1 = REGION_VWH(VT_8, WI_INVALID, HZ_1);
+// ternery flat src1
+const Region Region::SRC2X0 = REGION_VWH(VT_2, WI_INVALID, HZ_0);
+const Region Region::SRC4X0 = REGION_VWH(VT_4, WI_INVALID, HZ_0);
+const Region Region::SRC8X0 = REGION_VWH(VT_8, WI_INVALID, HZ_0);
 // ternary align src2
 const Region Region::SRCXX0 = REGION_VWH(VT_INVALID, WI_INVALID, HZ_0);
 const Region Region::SRCXX1 = REGION_VWH(VT_INVALID, WI_INVALID, HZ_1);

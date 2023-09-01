@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "GEDToIGATranslation.hpp"
 #include "ged.h"
 
+#include <optional>
+
 #define GED_DECODE_TO(FIELD, TRANS, DST)                                       \
   do {                                                                         \
     GED_RETURN_VALUE _status;                                                  \
@@ -303,15 +305,17 @@ protected:
     return translate(decodeSrcDataType<S>());
   }
 
-  template <SourceIndex S> Region decodeSrcReducedRegionTernary() {
-    return Region::INVALID;
+  template <SourceIndex S>
+  std::optional<Region> decodeSrcReducedRegionTernary() {
+    return {};
   }
 
-  template <SourceIndex S> Region decodeSrcReducedRegion() {
-    return Region::INVALID;
+  template <SourceIndex S>
+  std::optional<Region> decodeSrcReducedRegion() {
+    return {};
   }
 
-  template <SourceIndex S> Region decodeSrcRegionVWH() {
+  template <SourceIndex S> std::optional<Region> decodeSrcRegionVWH() {
     return transateGEDtoIGARegion(decodeSrcVertStride<S>(), decodeSrcWidth<S>(),
                                   decodeSrcHorzStride<S>());
   }

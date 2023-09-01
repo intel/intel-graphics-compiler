@@ -928,6 +928,27 @@ Region Decoder::decodeSrcRegionTernaryAlign1(const OpSpec &os) {
       rgnVt, static_cast<uint32_t>(Region::Width::WI_INVALID), rgnHz);
 }
 
+// get full region from dst and src type. This function must be called
+// after src and dst type are decoded.
+static Region retrieveReducedRegionTernary(Type srcType, Type dstType,
+    Region dstRegion) {
+  IGA_ASSERT(dstRegion.getHz() != Region::Horz::HZ_INVALID &&
+      srcType != Type::INVALID && dstType != Type::INVALID,
+      "Decoder: cannot derive src1 region");
+  auto sVertStride =
+      dstRegion.h * TypeSizeInBits(dstType) / TypeSizeInBits(srcType);
+  switch (sVertStride) {
+  case 1: return Region::SRC1X0;
+  case 2: return Region::SRC2X0;
+  case 4: return Region::SRC4X0;
+  case 8: return Region::SRC8X0;
+  default:
+    break;
+  }
+  IGA_ASSERT_FALSE("Decoder: cannot derive src1 region");
+  return Region::INVALID;
+}
+
 template <SourceIndex S>
 void Decoder::decodeTernarySourceAlign1(Instruction *inst) {
   if (platform() < Platform::GEN10) {
@@ -998,14 +1019,22 @@ void Decoder::decodeTernarySourceAlign1(Instruction *inst) {
                            decodeSrcType<S>());
     } else {
       // normal access
-      Region rgn;
-      if (m_model.srcHasReducedRegion(static_cast<uint32_t>(S)))
+      std::optional<Region> rgn;
+      bool hasReduceRegion = m_model.srcHasReducedRegion(static_cast<uint32_t>(S));
+      if (hasReduceRegion)
         rgn = decodeSrcReducedRegionTernary<S>();
       else
         rgn = decodeSrcRegionTernaryAlign1<S>(inst->getOpSpec());
+
       DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
+      if (hasReduceRegion && !rgn) {
+        rgn = retrieveReducedRegionTernary(opInfo.type,
+                 inst->getDestination().getType(),
+                 inst->getDestination().getRegion());
+      }
+
       inst->setDirectSource(S, decodeSrcModifier<S>(), opInfo.regName,
-                            opInfo.regRef, rgn, opInfo.type);
+                            opInfo.regRef, *rgn, opInfo.type);
     }
   } else { // GED_REG_FILE_INVALID
     fatalT("invalid register file in src", (int)S);
@@ -1236,7 +1265,7 @@ void Decoder::decodeSendSource0(Instruction *inst) {
 
     if (hasSrcRgnEncoding) {
       // these bits are implicitly set by GED on SKL, and they disallow access
-      rgn = decodeSrcRegionVWH<SourceIndex::SRC0>();
+      rgn = *decodeSrcRegionVWH<SourceIndex::SRC0>();
     }
 
       inst->setDirectSource(SourceIndex::SRC0, SrcModifier::NONE, dri.regName,
@@ -1284,7 +1313,7 @@ Instruction *Decoder::decodeBranchInstruction(Kernel &kernel) {
         decodeSourceBasic<SourceIndex::SRC1>(inst, SourceIndex::SRC0,
                                              GED_ACCESS_MODE_Align1);
       } else {
-        Region rgn = decodeSrcRegionVWH<SourceIndex::SRC0>();
+        Region rgn = *decodeSrcRegionVWH<SourceIndex::SRC0>();
         DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<SourceIndex::SRC0>();
         inst->setDirectSource(SourceIndex::SRC0, SrcModifier::NONE,
                               opInfo.regName, opInfo.regRef, rgn, opInfo.type);
@@ -1717,6 +1746,27 @@ ImmVal Decoder::decodeSrcImmVal(Type t) {
   return val;
 }
 
+// get full region from dst and src type. This function must be called
+// after src and dst type are decoded.
+static Region retrieveReducedRegionVWH(Type srcType, Type dstType,
+    Region dstRegion) {
+  IGA_ASSERT(dstRegion.getHz() != Region::Horz::HZ_INVALID &&
+      srcType != Type::INVALID && dstType != Type::INVALID,
+      "Decoder: cannot derive src1 region");
+  auto sVertStride =
+      dstRegion.h * TypeSizeInBits(dstType) / TypeSizeInBits(srcType);
+  switch (sVertStride) {
+  case 1: return Region::SRC110;
+  case 2: return Region::SRC210;
+  case 4: return Region::SRC410;
+  case 8: return Region::SRC810;
+  default:
+    break;
+  }
+  IGA_ASSERT_FALSE("Decoder: cannot derive src1 region");
+  return Region::INVALID;
+}
+
 template <SourceIndex S>
 void Decoder::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE) {
   const int toSrcIx = static_cast<int>(toSrcIxE);
@@ -1738,11 +1788,16 @@ void Decoder::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE) {
       implRgn = inst->getOpSpec().implicitSrcRegion(
           toSrcIx, inst->getExecSize(), isMacro());
     }
-    Region decRgn = Region::INVALID;
+    std::optional<Region> decRgn;
     if (m_opSpec->isAnySendFormat()) {
       decRgn = implRgn;
     } else {
       decRgn = decodeSrcRegionVWH<S>();
+      if (!decRgn) {
+        IGA_ASSERT(m_model.srcHasReducedRegion(static_cast<uint32_t>(S)), "Invalid src region");
+        decRgn = retrieveReducedRegionVWH(decodeSrcType<S>(),
+            inst->getDestination().getType(), inst->getDestination().getRegion());
+      }
     }
     // ensure the region matches any implicit region rules
     if (!m_opSpec->isAnySendFormat() &&
@@ -1765,13 +1820,13 @@ void Decoder::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE) {
         MathMacroExt mme = decodeSrcMathMacroReg<S>();
         RegRef regRef{0, 0};
         RegName regName = decodeSourceReg<S>(regRef);
-        inst->setMacroSource(toSrcIxE, srcMod, regName, regRef, mme, decRgn,
+        inst->setMacroSource(toSrcIxE, srcMod, regName, regRef, mme, *decRgn,
                              decodeSrcType<S>());
       } else {
         // normal access
         DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
         inst->setDirectSource(toSrcIxE, srcMod, opInfo.regName, opInfo.regRef,
-                              decRgn, opInfo.type);
+                              *decRgn, opInfo.type);
       }
     } else if (addrMode == GED_ADDR_MODE_Indirect) {
       RegRef a0(0u, decodeSrcAddrSubRegNum<S>());
@@ -1779,7 +1834,7 @@ void Decoder::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE) {
       inst->setIndirectSource(
           toSrcIxE, srcMod,
           RegName::GRF_R, // set to GRF for indirect register access
-          a0, addrImm, decRgn, decodeSrcType<S>());
+          a0, addrImm, *decRgn, decodeSrcType<S>());
     } else { // == GED_ADDR_MODE_INVALID
       fatalT("invalid addressing mode in src", (int)S);
     }
