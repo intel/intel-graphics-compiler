@@ -26,7 +26,7 @@ target triple = "genx64-unknown-unknown"
 
 define spir_func i32 @test() #0 !FuncArgSize !0 !FuncRetSize !1 {
   %constant = call i32 @llvm.genx.constanti.i32(i32 0)
-  %loadstruct = insertvalue %str undef, i32 %constant, 0
+  %loadstruct = tail call spir_func %str @proc1(i32 %constant)
   %ret = tail call spir_func i32 @proc(%str %loadstruct)
   %reg1 = call <96 x i32> @llvm.genx.read.predef.reg.v96i32.v96i32(i32 9, <96 x i32> undef)
   %wrregioni = call <96 x i32> @llvm.genx.wrregioni.v96i32.i32.i16.i1(<96 x i32> %reg1, i32 %ret, i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
@@ -38,6 +38,12 @@ define spir_func i32 @test() #0 !FuncArgSize !0 !FuncRetSize !1 {
 define internal spir_func i32 @proc(%str %arg) #1 {
   %v = extractvalue %str %arg, 1
   ret i32 %v
+}
+
+; Function Attrs: noinline
+define internal spir_func %str @proc1(i32 %arg) #1 {
+  %v = insertvalue %str undef, i32 %arg, 0
+  ret %str %v
 }
 
 ; Function Attrs: nounwind readonly

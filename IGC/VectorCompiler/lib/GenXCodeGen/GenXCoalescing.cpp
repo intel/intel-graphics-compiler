@@ -1486,7 +1486,10 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           StructEnd = IndexFlattener::getNumElements(UnifiedRet->getType());
           StructIdx != StructEnd; ++StructIdx) {
         auto DestLR = Liveness->getLiveRange(SimpleValue(UnifiedRet, StructIdx));
-        auto SourceLR = Liveness->getLiveRange(SimpleValue(Input, StructIdx));
+        auto SourceLR = Liveness->getLiveRangeOrNull(SimpleValue(Input, StructIdx));
+        if (!SourceLR)
+          // Source is undef at this index
+          continue;
         if (DestLR == SourceLR)
           continue; // coalesced
         // Need to insert a copy. Give it the number of the ret pre-copy slot.
