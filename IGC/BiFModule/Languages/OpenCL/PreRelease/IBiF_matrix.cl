@@ -377,6 +377,9 @@ DEFINE_LOAD(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 64, 32x16, ROW_MAJO
 /* B load tf32 SG16 */
 DEFINE_LOAD(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16,  8x16,  ROW_MAJOR, , 8, 16)
 
+/* B load tf32 SG16 sub group = 32 */
+DEFINE_LOAD(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16,  8x16,  ROW_MAJOR, , 4, 16)
+
 /* Load accumulator is a special case of load packed A, both are row major: */
 DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, 8)
 DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 7, 8, 7x8, ROW_MAJOR, , 7, 8)
