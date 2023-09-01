@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/shaderOverride.hpp"
 #include "common/IntrinsicAnnotator.hpp"
 #include "common/LLVMUtils.h"
+#include "common/PrintMetaDataPass.h"
 #include <iomanip>
 #include <iostream>
 #include <unordered_map>
@@ -24,8 +25,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvmWrapper/ADT/StringRef.h>
-#include "common/LLVMWarningsPop.hpp"
 #include <llvm/IR/IRPrintingPasses.h>
+#include "common/LLVMWarningsPop.hpp"
+
 
 using namespace IGC;
 using namespace IGC::Debug;
@@ -752,6 +754,10 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
     // stack, then that reference would go bad as soon as we exit this scope, and then
     // the printer pass would access an invalid pointer later on when we call PassManager::run()
     m_irDumps.emplace_front(name, IGC::Debug::DumpType::PASS_IR_TEXT);
+    if (IGC_IS_FLAG_ENABLED(PrintMDBeforeModule))
+    {
+        PassManager::add(new PrintMetaDataPass(m_irDumps.front().stream()));
+    }
     auto printerPass = P->createPrinterPass(m_irDumps.front().stream(), "");
     if (printerPass->getPassKind() == PT_Function) //Enabling debug info for -O2
         printerPass = llvm::createPrintModulePass(m_irDumps.front().stream(), "");

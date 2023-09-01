@@ -346,6 +346,7 @@ DECLARE_IGC_REGKEY(bool, ShowFullVectorsInShaderDumps,  false, "print all elemen
 DECLARE_IGC_REGKEY(bool, PrintHexFloatInShaderDumpAsm,  true, "print floats in hex in asm dump", true)
 DECLARE_IGC_REGKEY(debugString, PrintAfter,             0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR after the given pass is done (mimic llvm print-after)", true)
 DECLARE_IGC_REGKEY(debugString, PrintBefore,            0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR before the given pass is done (mimic llvm print-before)", true)
+DECLARE_IGC_REGKEY(bool, PrintMDBeforeModule,           false, "Print metadata of the module at the beginning of the dump. Used for LIT tests.", true)
 DECLARE_IGC_REGKEY(bool, DumpUseShorterName,            true,  "If set, use an internal shader name(_entry_id) in dump file name", true)
 DECLARE_IGC_REGKEY(bool, EnableKernelNamesBasedHash,    false, "If set, use kernels' names to calculate the hash", false)
 DECLARE_IGC_REGKEY(bool, InterleaveSourceShader,        true, "Interleave the source shader in asm dump", true)
