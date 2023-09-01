@@ -171,7 +171,8 @@ namespace IGC
             }
 
             if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() &&
-                IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers))
+                IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers) &&
+                !m_context->getModuleMetaData()->pushInfo.dynamicBufferInfo.forceDisabled)
             {
                 unsigned int relativeOffsetInBytes = 0; // offset in bytes starting from dynamic buffer offset
                 if (GetConstantOffsetForDynamicUniformBuffer(offsetVal, relativeOffsetInBytes))
@@ -722,7 +723,9 @@ namespace IGC
                 }
             }
 
-            if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() && IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers))
+            if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() &&
+                IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers) &&
+                !m_context->getModuleMetaData()->pushInfo.dynamicBufferInfo.forceDisabled)
             {
                 unsigned int relativeOffsetInBytes = 0; // offset in bytes starting from dynamic buffer offset
                 if (GetConstantOffsetForDynamicUniformBuffer(eltPtrVal, relativeOffsetInBytes))
@@ -1460,6 +1463,7 @@ namespace IGC
 
             if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() &&
                 IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers) &&
+                !pushInfo.dynamicBufferInfo.forceDisabled &&
                 pushInfo.dynamicBufferInfo.numOffsets > 0 &&
                 index >= pushInfo.dynamicBufferInfo.firstIndex &&
                 index < pushInfo.dynamicBufferInfo.firstIndex + pushInfo.dynamicBufferInfo.numOffsets)

@@ -443,7 +443,7 @@ namespace IGC
         bool DisableFDivToFMulInvOpt                    = false;
         bool initializePhiSampleSourceWA                = false;
         bool WaDisableSubspanUseNoMaskForCB             = false;
-        
+
         unsigned FastestS1Options                       = 0;  // FCEXP_NO_EXPRIMENT. Can't access the enum here for some reason.
     };
 
@@ -568,6 +568,10 @@ namespace IGC
         // of runtime values with indices in [firstIndex, firstIndex + numOffsets).
         unsigned int firstIndex = 0;
         unsigned int numOffsets = 0;
+
+        // Some conditions, like robust buffer access, requires dynamic buffer support to be disabled regardless
+        // if the client support them and simple push
+        bool forceDisabled = false;
     };
 
     // simplePushInfoArr needs to be initialized to a vector of size g_c_maxNumberOfBufferPushed, which we are doing in module MD initialization done in code gen context

@@ -138,6 +138,7 @@ DECLARE_IGC_REGKEY(bool, DisableUniformAnalysis,        false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, EnableWorkGroupUniformGoto,    false, "Setting to 1 enables generating uniform goto for work group uniform [eu fusion only]", false)
 DECLARE_IGC_REGKEY(DWORD, DisablePushConstant,           0, "Bit mask to disable push constant per shader stages. bit0 = All, Bit 1 = VS, Bit 2 = HS, Bit 3 = DS, Bit 4 = GS, Bit 5 = PS", false)
 DECLARE_IGC_REGKEY(DWORD, DisableAttributePush,          0, "Bit mask to disable push Attribute per shader stages. bit0 = All, Bit 1 = VS, Bit 2 = HS, Bit 3 = DS, Bit 4 = GS", false)
+DECLARE_IGC_REGKEY(bool, EnableRobustBufferAccessPush,  false, "Setting to 1/true will allow a single push buffer to be supported when the client requests robust buffer access (DG2+ only)", false)
 DECLARE_IGC_REGKEY(bool, DisableSimplePushWithDynamicUniformBuffers, false,"Disable Simple Push Constants Optimization for dynamic uniform buffers.", false)
 DECLARE_IGC_REGKEY(bool, DisableStaticCheck,            false, "Disable static check to push constants.", false)
 DECLARE_IGC_REGKEY(bool, DisableStaticCheckForConstantFolding,  true, "Disable static check to fold constants.", false)
