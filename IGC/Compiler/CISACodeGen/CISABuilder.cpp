@@ -4992,7 +4992,7 @@ namespace IGC
             {
                 SaveOption(vISA_LocalScheduling, false);
                 SaveOption(vISA_preRA_Schedule, false);
-                SaveOption(vISA_SpillSpaceCompression, false);
+                SaveOption(vISA_SpillSpaceCompression, true);
                 SaveOption(vISA_LVN, false);
                 SaveOption(vISA_QuickTokenAllocation, true);
                 if (!context->getModuleMetaData()->compOpt.DisableFastestLinearScan &&
@@ -5015,7 +5015,7 @@ namespace IGC
                 if (FastestS1Options(context) & FCEXP_NO_REMAT)
                     SaveOption(vISA_NoRemat, true);
 
-                if (FastestS1Options(context) & FCEXP_SPILL_COMPRESSION)
+                if (FastestS1Options(context) & FCEXP_NO_SPILL_COMPRESSION)
                     SaveOption(vISA_SpillSpaceCompression, false);
 
                 if (FastestS1Options(context) & FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA)
