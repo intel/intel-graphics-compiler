@@ -357,16 +357,16 @@ public:
       r0(
         b.createHardwiredDeclare(
           k.numEltPerGRF<Type_UD>(), Type_UD, 0, 0)),
-      rtmp(
-        b.createHardwiredDeclare(
-          k.numEltPerGRF<Type_UD>(), Type_UD,
-          k.getNumRegTotal() - 1, 0)),
       perThreadLoadStartGRF(
         k.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg)),
       numPerThreadGRF(
         AlignUp(k.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize),
                 k.numEltPerGRF<Type_UB>()) / k.numEltPerGRF<Type_UB>())
   {
+
+    auto rtmpRegNum = k.getNumRegTotal() - 1;
+    rtmp = b.createHardwiredDeclare(k.numEltPerGRF<Type_UD>(), Type_UD, rtmpRegNum, 0);
+
     r0->setName("r0");
     rtmp->setName("rtmp");
 

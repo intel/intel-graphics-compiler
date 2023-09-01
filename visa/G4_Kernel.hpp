@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "include/gtpin_IGC_interface.h"
 #include "Assertions.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <map>
@@ -150,20 +151,8 @@ public:
   unsigned findModeByRegPressure(unsigned maxRP, unsigned largestInputReg);
 
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
-  unsigned getMinGRF() const { return configs[0].numGRF; }
-  unsigned getMaxGRF() const {
-    return configs[configs.size() - 1].numGRF;
-  }
   unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
   void setDefaultGRF() { currentMode = defaultMode; }
-  unsigned getLargerGRF() const {
-    return currentMode + 1 < configs.size() ? configs[currentMode + 1].numGRF
-                                            : configs[currentMode].numGRF;
-  }
-  unsigned getSmallerGRF() const {
-    return (signed)currentMode - 1 >= 0 ? configs[currentMode - 1].numGRF
-                                        : configs[currentMode].numGRF;
-  }
 
   unsigned getNumThreads() const { return configs[currentMode].numThreads; }
   unsigned getMinNumThreads() const {
@@ -180,13 +169,51 @@ public:
 
   unsigned getNumAcc() const { return configs[currentMode].numAcc; }
 
+  // ----- helper functions for regSharingHeuristics (VRT) ----- //
+  unsigned getVRTMinGRF() const {
+    auto found = std::find_if(configs.begin(), configs.end(),
+                              [](const Config &c) { return c.VRTEnable; });
+    return found->numGRF;
+  }
+
+  unsigned getVRTMaxGRF() const {
+    auto found = std::find_if(configs.rbegin(), configs.rend(),
+                              [](const Config &c) { return c.VRTEnable; });
+    return found->numGRF;
+  }
+
+  unsigned getVRTLargerGRF() const {
+    // find the first larger mode that's available for VRT
+    for (auto i = currentMode + 1; i < configs.size(); ++i) {
+      if (configs[i].VRTEnable)
+        return configs[i].numGRF;
+    }
+    return configs[currentMode].numGRF;
+  }
+
+  unsigned getVRTSmallerGRF() const {
+    for (auto i = currentMode - 1; i >= 0 ; --i) {
+      if (configs[i].VRTEnable)
+        return configs[i].numGRF;
+    }
+    return configs[currentMode].numGRF;
+  }
+
 private:
   // Parameters associated to a GRF mode
   struct Config {
+    constexpr Config()
+        : numGRF(0), numThreads(0), numSWSB(0), numAcc(0), VRTEnable(false) {}
+    constexpr Config(unsigned NumGRF, unsigned NumThreads, unsigned NumSWSB,
+                     unsigned NumAcc, bool enableForVRT = true)
+        : numGRF(NumGRF), numThreads(NumThreads), numSWSB(NumSWSB),
+          numAcc(NumAcc), VRTEnable(enableForVRT) {}
     unsigned numGRF;
     unsigned numThreads;
     unsigned numSWSB;
     unsigned numAcc;
+    // if the config can be used by regSharingHeuristics
+    bool     VRTEnable;
   };
   // Vector configs maintains all the GRF modes available for the platform
   // being compiled.

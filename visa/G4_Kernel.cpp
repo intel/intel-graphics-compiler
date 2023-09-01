@@ -620,11 +620,11 @@ void G4_Kernel::calculateSimdSize() {
 // Updates kernel's related structures to large GRF
 //
 bool G4_Kernel::updateKernelToLargerGRF() {
-  if (numRegTotal == grfMode.getMaxGRF())
+  if (numRegTotal == grfMode.getVRTMaxGRF())
     return false;
 
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters(grfMode.getLargerGRF());
+  setKernelParameters(grfMode.getVRTLargerGRF());
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -633,11 +633,11 @@ bool G4_Kernel::updateKernelToLargerGRF() {
 // Updates kernel's related structures to smaller GRF
 //
 bool G4_Kernel::updateKernelToSmallerGRF() {
-  if (numRegTotal == grfMode.getMinGRF())
+  if (numRegTotal == grfMode.getVRTMinGRF())
     return false;
 
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters(grfMode.getSmallerGRF());
+  setKernelParameters(grfMode.getVRTSmallerGRF());
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -1739,6 +1739,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
     return;
 
   iga_gen_t igaPlatform = getIGAPlatform(getPlatform());
+
   const iga::Model *igaModel =
       iga::Model::LookupModel(iga::ToPlatform(igaPlatform));
   iga::SWSB_ENCODE_MODE swsbEncodeMode = igaModel->getSWSBEncodeMode();
@@ -2048,6 +2049,7 @@ unsigned G4_Kernel::getComputeFFIDGP1NextOff() const {
 
 
 // GRF modes supported by HW
+// There must be at least one Config that is VRTEnable for each platform
 GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   switch (platform) {
   case Xe_XeHPSDV:
@@ -2055,16 +2057,16 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   case Xe_MTL:
     configs.resize(2);
     // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
-    configs[0] = {128, 8, 16, 4};
-    configs[1] = {256, 4, 16, 8};
+    configs[0] = Config(128, 8, 16, 4);
+    configs[1] = Config(256, 4, 16, 8);
     defaultMode = 0;
     break;
   case Xe_PVC:
   case Xe_PVCXT:
     configs.resize(2);
     // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
-    configs[0] = {128, 8, 16, 4};
-    configs[1] = {256, 4, 32, 8};
+    configs[0] = Config(128, 8, 16, 4);
+    configs[1] = Config(256, 4, 32, 8);
     defaultMode = 0;
     break;
   default:
@@ -2082,7 +2084,8 @@ unsigned GRFMode::findModeByRegPressure(unsigned maxRP, unsigned largestInputReg
   unsigned i = 0, newGRF = 0;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
-    if (maxRP <= configs[i].numGRF && largestInputReg <= configs[i].numGRF) {
+    if (configs[i].VRTEnable && maxRP <= configs[i].numGRF &&
+        largestInputReg <= configs[i].numGRF) {
       newGRF = configs[i].numGRF;
       break;
     }
@@ -2091,7 +2094,7 @@ unsigned GRFMode::findModeByRegPressure(unsigned maxRP, unsigned largestInputReg
   // if not found, pressure is too high
   // set largest grf mode
   if (i == size)
-    newGRF = getMaxGRF();
+    newGRF = getVRTMaxGRF();
 
   return newGRF;
 }

@@ -714,8 +714,8 @@ bool preRA_RegSharing::run(unsigned &KernelPressure) {
     unsigned BBRP = rp.getPressure(bb);
 
     unsigned UpperBoundGRF = 0;
-    if (GRFdecreased && KernelPressure < kernel.grfMode.getMaxGRF())
-      UpperBoundGRF = kernel.grfMode.getLargerGRF();
+    if (GRFdecreased && KernelPressure < kernel.grfMode.getVRTMaxGRF())
+      UpperBoundGRF = kernel.grfMode.getVRTLargerGRF();
     Changed |= S.scheduleBlockForLatency(BBRP, Changed, UpperBoundGRF);
   }
 

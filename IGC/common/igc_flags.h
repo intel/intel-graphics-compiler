@@ -227,6 +227,7 @@ DECLARE_IGC_REGKEY(bool, EnablePlatformFenceOpt,        true,  "Force DG2 only f
 DECLARE_IGC_REGKEY(bool, EnableSLMConstProp,            true,   "Enable SLM constant propagation (compute shader only).", false)
 DECLARE_IGC_REGKEY(bool, EnableStatelessToStateful,    true,  "Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels", false)
 DECLARE_IGC_REGKEY(bool, EnableStatefulToken,           true,  "Enable generating patch token to indicate a ptr argument is fully converted to stateful (temporary)", false)
+DECLARE_IGC_REGKEY(bool, DisableConstBaseGlobalBaseArg, false,  "Do no generate kernel implicit arguments: constBase and globalBase", false)
 DECLARE_IGC_REGKEY(bool, EnableGenUpdateCB,             false, "Enable derived constant optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnableGenUpdateCBResInfo,      false, "Enable derived constant optimization with resinfo.", false)
 DECLARE_IGC_REGKEY(bool, EnableHighestSIMDForNoSpill,   false,   "When there is no spill choose highest SIMD (compute shader only).", false)
