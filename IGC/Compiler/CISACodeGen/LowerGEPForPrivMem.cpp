@@ -73,6 +73,7 @@ namespace IGC {
         StatusPrivArr2Reg CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
         bool IsNativeType(Type* type);
 
+        void MarkNotPromtedAllocas(llvm::AllocaInst& I, IGC::StatusPrivArr2Reg status);
     public:
         static char ID;
 
@@ -491,6 +492,90 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base, bool& allUsesAreVector)
     return useSOA;
 }
 
+void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst& I, IGC::StatusPrivArr2Reg status)
+{
+    const char* reason = nullptr;
+    // The reason why the user private variable
+    // wasn't promoted to grfs
+    switch (status)
+    {
+    case StatusPrivArr2Reg::CannotUseSOALayout:
+        reason = "CannotUseSOALayout";
+        break;
+    case StatusPrivArr2Reg::IsDynamicAlloca:
+        reason = "IsDynamicAlloca";
+        break;
+    case StatusPrivArr2Reg::IsNotNativeType:
+        reason = "IsNotNativeType";
+        break;
+    case StatusPrivArr2Reg::OutOfAllocSizeLimit:
+        reason = "OutOfAllocSizeLimit";
+        break;
+    case StatusPrivArr2Reg::OutOfMaxGRFPressure:
+        reason = "OutOfMaxGRFPressure";
+        break;
+    default:
+        reason = "NotDefine";
+        break;
+    }
+    MDNode* node = MDNode::get(
+        I.getContext(),
+        MDString::get(I.getContext(), reason));
+
+    UserAddrSpaceMD& userASMD = m_ctx->m_UserAddrSpaceMD;
+    std::function<void(Instruction*, MDNode*)> markAS_PRIV;
+    markAS_PRIV = [&markAS_PRIV, &userASMD](Instruction* instr, MDNode* node) -> void
+    {
+        // Avoid instruction which has already md set
+        if (!userASMD.Has(instr, LSC_DOC_ADDR_SPACE::PRIVATE))
+        {
+            // Adding this mark because, during compilation the orginal
+            // addrspace is changed (for ex. from PRIVATE to GLOBAL) and
+            // is not visible on end stages of compilation. This will help
+            // to identify - which load/store is related for the private
+            // variables of user.
+
+            bool isLoadStore =
+                instr->getOpcode() == Instruction::Store ||
+                instr->getOpcode() == Instruction::Load;
+
+            if (isLoadStore)
+            {
+                // Add mark for any load/store which will read/write the data from
+                // user private variable. This information will be passed
+                // to the assembly level.
+                userASMD.Set(instr, LSC_DOC_ADDR_SPACE::PRIVATE, node);
+            }
+            else
+            {
+                // Special case to avoid stack overflow
+                userASMD.Set(instr, LSC_DOC_ADDR_SPACE::PRIVATE);
+
+                bool allowedInst =
+                    instr->getOpcode() == Instruction::Alloca ||
+                    instr->getOpcode() == Instruction::PHI ||
+                    instr->getOpcode() == Instruction::GetElementPtr ||
+                    instr->getOpcode() == Instruction::PtrToInt ||
+                    instr->getOpcode() == Instruction::IntToPtr ||
+                    instr->isBinaryOp();
+
+
+                if (allowedInst)
+                {
+                    for (auto user_i = instr->user_begin();
+                        user_i != instr->user_end();
+                        ++user_i)
+                    {
+                        markAS_PRIV(llvm::dyn_cast<Instruction>(*user_i), node);
+                    }
+                }
+            }
+        }
+    };
+
+    markAS_PRIV(&I, node);
+}
+
 void LowerGEPForPrivMem::visitAllocaInst(AllocaInst& I)
 {
     // Alloca should always be private memory
@@ -504,6 +589,7 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst& I)
     }
     if (status != StatusPrivArr2Reg::OK)
     {
+        MarkNotPromtedAllocas(I, status);
         // alloca size extends remain per-lane-reg space
         return;
     }

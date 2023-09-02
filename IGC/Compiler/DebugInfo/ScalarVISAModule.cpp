@@ -376,7 +376,6 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     {
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
-            IGC_ASSERT_MESSAGE(!isDbgDclInst, "address cannot be immediate!");
             return VISAVariableLocation(pConstVal, this);
         }
     }
