@@ -2109,19 +2109,8 @@ namespace IGC
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_Exec_Size execSize = GetAluExecSize(dst);
 
-        switch (execSize)
-        {
-        case EXEC_SIZE_1:
-        case EXEC_SIZE_8:
-        case EXEC_SIZE_16:
-            break;
-        case EXEC_SIZE_32:
-            IGC_ASSERT(getGRFSize() == 64);
-            break;
-        default:
-            IGC_ASSERT_MESSAGE(0, "Unknown execution size on carry-borrow-arith!");
-            break;
-        }
+        IGC_ASSERT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16 ||
+            (execSize == EXEC_SIZE_32 && getGRFSize() == 64));
 
         IGC_ASSERT_MESSAGE(m_encoderState.m_dstOperand.mod == EMOD_NONE, "addc/subb doesn't support saturate");
 
