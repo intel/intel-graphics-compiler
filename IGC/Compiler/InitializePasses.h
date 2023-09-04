@@ -221,7 +221,6 @@ void initializeCheckInstrTypesPass(llvm::PassRegistry&);
 void initializeInstrStatisticPass(llvm::PassRegistry&);
 void initializeHalfPromotionPass(llvm::PassRegistry&);
 void initializeCapLoopIterationsPass(llvm::PassRegistry&);
-void initializeFixFastMathFlagsPass(llvm::PassRegistry&);
 void initializeFCmpPaternMatchPass(llvm::PassRegistry&);
 void initializeCodeAssumptionPass(llvm::PassRegistry&);
 void initializeIGCInstructionCombiningPassPass(llvm::PassRegistry&);

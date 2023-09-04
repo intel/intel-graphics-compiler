@@ -116,7 +116,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/FixResourcePtr.hpp"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
-#include "Compiler/Optimizer/FixFastMathFlags.hpp"
 #include "Compiler/Optimizer/ReduceOptPass.hpp"
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"

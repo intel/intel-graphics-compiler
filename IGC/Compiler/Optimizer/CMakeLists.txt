@@ -18,7 +18,6 @@ add_subdirectory(IGCInstCombiner)
 set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntDivConstantReduction.cpp"
@@ -45,7 +44,6 @@ set(IGC_BUILD__SRC__Compiler_Optimizer
 set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntDivConstantReduction.hpp"
