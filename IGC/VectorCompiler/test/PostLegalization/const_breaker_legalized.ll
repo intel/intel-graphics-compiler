@@ -73,3 +73,25 @@ define <2 x i8*> @test_constexpr_ptrvect() {
   %data = call <2 x i8*> @llvm.genx.rdregioni.v2p0i8.v2p0i8.i16(<2 x i8*> <i8 addrspace(0)* inttoptr (i32 2 to i8 addrspace(0)*), i8 addrspace(0)* inttoptr (i32 1 to i8 addrspace(0)*)>, i32 0, i32 1, i32 1, i16 0, i32 undef)
   ret <2 x i8*> %data
 }
+
+; CHECK-LABEL: @test_constexpr_phi
+; CHECK-NEXT: BB1:
+; CHECK-NEXT: [[PTRCAST1:%[^ ]+]] = inttoptr i32 1 to i8*
+; CHECK-NEXT: br i1 %cond, label %BB2, label %BB3
+; CHECK: BB2:
+; CHECK-NEXT: [[PTRCAST2:%[^ ]+]] = inttoptr i32 2 to i8*
+; CHECK-NEXT: br label %BB3
+; CHECK: BB3:
+; CHECK-NEXT: [[RESULT:%[^ ]+]] = phi i8* [ [[PTRCAST1]], %BB1 ], [ [[PTRCAST2]], %BB2 ]
+; CHECK-NEXT: ret i8* [[RESULT]]
+define i8* @test_constexpr_phi(i1 %cond) {
+BB1:
+  br i1 %cond, label %BB2, label %BB3
+
+BB2:
+  br label %BB3
+
+BB3:
+  %phi = phi i8* [ inttoptr (i32 1 to i8 addrspace(0)*), %BB1 ], [ inttoptr (i32 2 to i8 addrspace(0)*), %BB2 ]
+  ret i8* %phi
+}

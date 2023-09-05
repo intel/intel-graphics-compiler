@@ -146,7 +146,7 @@ bool vc::breakConstantExprs(Instruction *I,
       if (ConstantExpr *CE = dyn_cast<ConstantExpr>(Op)) {
         Instruction *NewInst = CE->getAsInstruction();
         NewInst->setDebugLoc(CurInst->getDebugLoc());
-        NewInst->insertBefore(CurInst);
+        NewInst->insertBefore(InsertPt);
         CurInst->setOperand(i, NewInst);
         Worklist.push_back(NewInst);
         Modified = true;
