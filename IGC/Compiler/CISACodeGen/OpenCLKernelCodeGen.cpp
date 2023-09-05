@@ -98,11 +98,13 @@ namespace IGC
     {
         if (platform.supportsStaticRegSharing())
         {
-            if (m_InternalOptions.Intel128GRFPerThread)
+            if (m_InternalOptions.Intel128GRFPerThread ||
+                m_Options.Intel128GRFPerThread)
             {
                 return 128;
             }
             else if (m_InternalOptions.Intel256GRFPerThread ||
+                     m_Options.Intel256GRFPerThread ||
                      m_Options.IntelLargeRegisterFile)
             {
                 return 256;
@@ -692,6 +694,21 @@ namespace IGC
         if (apiOptions.hasArg(OPT_no_local_to_generic_common))
         {
             NoLocalToGeneric = true;
+        }
+
+        if (apiOptions.hasArg(OPT_greater_than_4GB_buffer_required_common))
+        {
+            IntelGreaterThan4GBBufferRequired = true;
+        }
+
+        if (apiOptions.hasArg(OPT_128_grf_per_thread_common))
+        {
+            Intel128GRFPerThread = true;
+        }
+
+        if (apiOptions.hasArg(OPT_256_grf_per_thread_common))
+        {
+            Intel256GRFPerThread = true;
         }
     };
 

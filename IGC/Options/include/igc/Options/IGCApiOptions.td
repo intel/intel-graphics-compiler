@@ -40,6 +40,15 @@ defm regular_grf_kernel : CommonSeparate<"regular-grf-kernel">;
 // -cl-intel-no-local-to-generic, -ze-opt-no-local-to-generic
 defm no_local_to_generic : CommonFlag<"no-local-to-generic">;
 
+// -cl-intel-128-GRF-per-thread
+defm 128_grf_per_thread : CommonFlag<"128-GRF-per-thread">;
+
+// -cl-intel-256-GRF-per-thread
+defm 256_grf_per_thread : CommonFlag<"256-GRF-per-thread">;
+
+// -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
+defm greater_than_4GB_buffer_required : CommonFlag<"greater-than-4GB-buffer-required">;
+
 // }} Backend API options
 
 // API options from source translation {{

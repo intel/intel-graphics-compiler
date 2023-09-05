@@ -265,7 +265,8 @@ static void CommonOCLBasedPasses(
         !pContext->m_InternalOptions.Use32BitPtrArith;
 
     CompilerOpts.GreaterThan4GBBufferRequired =
-        pContext->m_InternalOptions.IntelGreaterThan4GBBufferRequired;
+        (pContext->m_InternalOptions.IntelGreaterThan4GBBufferRequired ||
+         pContext->m_Options.IntelGreaterThan4GBBufferRequired);
 
     CompilerOpts.DisableA64WA =
         pContext->m_InternalOptions.IntelDisableA64WA;

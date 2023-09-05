@@ -137,35 +137,39 @@ namespace IGC
                 }
             }
 
-            bool CorrectlyRoundedSqrt           = false;
-            bool NoSubgroupIFP                  = false;
-            bool UniformWGS                     = false;
-            bool EnableTakeGlobalAddress        = false;
-            bool IsLibraryCompilation           = false;
-            bool IntelRequiredEUThreadCount     = false;
-            bool EmitErrorsForLibCompilation    = false;
-            uint32_t requiredEUThreadCount      = 0;
+            bool CorrectlyRoundedSqrt               = false;
+            bool NoSubgroupIFP                      = false;
+            bool UniformWGS                         = false;
+            bool EnableTakeGlobalAddress            = false;
+            bool IsLibraryCompilation               = false;
+            bool IntelRequiredEUThreadCount         = false;
+            bool EmitErrorsForLibCompilation        = false;
+            uint32_t requiredEUThreadCount          = 0;
 
 
-            bool GTPinReRA                      = false;
-            bool GTPinGRFInfo                   = false;
-            bool GTPinScratchAreaSize           = false;
-            bool GTPinIndirRef                  = false;
-            uint32_t GTPinScratchAreaSizeValue  = 0;
+            bool GTPinReRA                          = false;
+            bool GTPinGRFInfo                       = false;
+            bool GTPinScratchAreaSize               = false;
+            bool GTPinIndirRef                      = false;
+            uint32_t GTPinScratchAreaSizeValue      = 0;
 
             std::vector<std::string> LargeGRFKernels;
             std::vector<std::string> RegularGRFKernels;
 
             // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
-            bool IntelEnableAutoLargeGRF        = false;
+            bool IntelEnableAutoLargeGRF            = false;
 
-            bool IntelLargeRegisterFile         = false;
+            bool IntelLargeRegisterFile             = false;
 
-            bool IntelExpGRFSize                = false;
-            uint32_t expGRFSize                 = 0;
+            bool Intel128GRFPerThread               = false;
+            bool Intel256GRFPerThread               = false;
+            bool IntelGreaterThan4GBBufferRequired  = false;
+
+            bool IntelExpGRFSize                    = false;
+            uint32_t expGRFSize                     = 0;
 
             // Generic address related
-            bool NoLocalToGeneric               = false;
+            bool NoLocalToGeneric                   = false;
 
         private:
             void parseOptions(const char* opts);
