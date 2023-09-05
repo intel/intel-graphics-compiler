@@ -12056,13 +12056,53 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar, bool nomask)
     return pVar;
 }
 
+CVariable* EmitPass::tryReusingXYZWPayload(Value* storedVal, BasicBlock* BB,
+    unsigned numElems, VISA_Type type, CVariable* pSrc_X, CVariable* pSrc_Y,
+    CVariable* pSrc_Z, CVariable* pSrc_W, const unsigned int numEltGRF)
+{
+    Constant* constantStoredVal = dyn_cast<Constant>(storedVal);
+    if (!constantStoredVal ||
+        !(constantStoredVal->getType()->isFPOrFPVectorTy() ||
+          constantStoredVal->getType()->isIntOrIntVectorTy()))
+    {
+      return nullptr;
+    }
+
+    ConstVectorStoreData& storeData = m_constantVectorStores[constantStoredVal];
+    if (storeData.BB != BB)
+    {
+      // Make an entry of this store data with BB in the constant vector stores
+      storeData = {
+          m_currShader->GetNewVariable(
+          numElems,
+          type,
+          EALIGN_GRF,
+          CName::NONE), {nullptr, nullptr}, BB};
+
+      m_currShader->CopyVariable(storeData.var, pSrc_X, 0);
+      m_currShader->CopyVariable(storeData.var, pSrc_Y, numEltGRF);
+      m_currShader->CopyVariable(storeData.var, pSrc_Z, 2 * numEltGRF);
+      m_currShader->CopyVariable(storeData.var, pSrc_W, 3 * numEltGRF);
+    }
+
+    CVariable* broadcastedVar = storeData.broadcastedVar[m_encoder->IsSecondHalf()];
+    if (!broadcastedVar)
+    {
+        broadcastedVar = BroadcastIfUniform(storeData.var);
+        storeData.broadcastedVar[m_encoder->IsSecondHalf()] = broadcastedVar;
+    }
+    return broadcastedVar;
+}
+
 // If constant vector is stored and there is already var instance for it
 // try reusing it (if it was defined in the same basic block)
 // or create a new var instance and make it available for reusing in further stores
 CVariable* EmitPass::tryReusingConstVectorStoreData(Value* storedVal, BasicBlock* BB, bool isBroadcast)
 {
     Constant* constantStoredVal = dyn_cast<Constant>(storedVal);
-    if (!constantStoredVal || !constantStoredVal->getType()->isVectorTy())
+    if (!constantStoredVal ||
+        !(constantStoredVal->getType()->isFPOrFPVectorTy() ||
+          constantStoredVal->getType()->isIntOrIntVectorTy()))
     {
         return nullptr;
     }
@@ -12072,7 +12112,6 @@ CVariable* EmitPass::tryReusingConstVectorStoreData(Value* storedVal, BasicBlock
     {
         // the variable is not yet created or has different BB, create the new instance
         storeData = {GetSymbol(constantStoredVal), {nullptr, nullptr}, BB};
-        IGC_ASSERT(!isBroadcast);  // if we need broadcast we must have already created it for this store
     }
 
     if (!isBroadcast)
@@ -14880,16 +14919,33 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 
         if (!needsSplit)
         {
-            CVariable* pPayload = m_currShader->GetNewVariable(
-                parameterLength * numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_F,
-                EALIGN_GRF,
-                CName::NONE);
-            // pSrcX, Y, Z & W are broadcast to uniform by this function itself.
-            m_currShader->CopyVariable(pPayload, pSrc_X, 0);
-            m_currShader->CopyVariable(pPayload, pSrc_Y, 1);
-            m_currShader->CopyVariable(pPayload, pSrc_Z, 2);
-            m_currShader->CopyVariable(pPayload, pSrc_W, 3);
+            Constant* p_X = dyn_cast<Constant>(pllSrc_X);
+            Constant* p_Y = dyn_cast<Constant>(pllSrc_Y);
+            Constant* p_Z = dyn_cast<Constant>(pllSrc_Z);
+            Constant* p_W = dyn_cast<Constant>(pllSrc_W);
+
+            CVariable* pPayload = nullptr;
+            if (p_X && p_Y && p_Z && p_W) {
+                // if x, y, z, w are constants, find opportunities to reuse
+                std::vector<Constant*> xyzwPayload{ p_X, p_Y, p_Z, p_W };
+                llvm::Constant* payloadConstant = llvm::ConstantVector::get(xyzwPayload);
+                pPayload = tryReusingXYZWPayload(payloadConstant, pInsn->getParent(),
+                parameterLength * numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F,
+                pSrc_X, pSrc_Y, pSrc_Z, pSrc_W, 1);
+            }
+
+            if (!pPayload) {
+                pPayload = m_currShader->GetNewVariable(
+                    parameterLength * numLanes(m_currShader->m_SIMDSize),
+                    ISA_TYPE_F,
+                    EALIGN_GRF,
+                    CName::NONE);
+                // pSrcX, Y, Z & W are broadcast to uniform by this function itself.
+                m_currShader->CopyVariable(pPayload, pSrc_X, 0);
+                m_currShader->CopyVariable(pPayload, pSrc_Y, 1);
+                m_currShader->CopyVariable(pPayload, pSrc_Z, 2);
+                m_currShader->CopyVariable(pPayload, pSrc_W, 3);
+            }
             m_encoder->SetPredicate(flag);
             m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload, writeMask);
 
@@ -22321,4 +22377,5 @@ void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction) {
 
     m_encoder->SubroutineCall(nullptr, StackOverflowDetectionFunction);
     m_encoder->Push();
-}
+}
+
