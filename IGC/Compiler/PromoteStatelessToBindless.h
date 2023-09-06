@@ -49,9 +49,16 @@ namespace IGC
         void PromoteStatelessToBindlessBuffers(llvm::Function& F) const;
         void CheckPrintfBuffer(llvm::Function& F);
 
-        std::set<unsigned> m_promotedArgs;
-        std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
-        std::unordered_map<llvm::Value*, llvm::Value*> m_AddressUsedSrcPtrMap;
+        // Pair of bindless resource access instructions.
+        // The first is the actual instruction accessing the bindless buffer (load/store/etc)
+        // The second is the instruction accessing the address of the bindless buffer, which may or may not
+        // be identical to the first. Needed to convert to null address.
+        typedef std::pair<llvm::Value*, llvm::Value*> BindlessAccessInsts;
+        // Map of the srcPtr (kernel arg resource) to a vector of instructions accessing it
+        llvm::DenseMap<llvm::Value*, llvm::SmallVector<BindlessAccessInsts, 8>> m_SrcPtrToAccessMap;
+        // Tracks the set of resources that must have at least one stateless access
+        std::set<llvm::Value*> m_SrcPtrNeedStatelessAccess;
+
         llvm::Value* m_PrintfBuffer;
     };
 

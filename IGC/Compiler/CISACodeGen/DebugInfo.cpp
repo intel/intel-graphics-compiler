@@ -298,7 +298,14 @@ static void debugDump(const CShader* Shader, llvm::StringRef Ext,
         return;
 
     auto ExtStr = Ext.str();
-    std::string DumpName = IGC::Debug::GetDumpName(Shader, ExtStr.c_str());
+    IGC::Debug::DumpName DumpNameObj = IGC::Debug::GetDumpNameObj(Shader, ExtStr.c_str());
+    std::string DumpName = DumpNameObj.str();
+    if (IGC_IS_FLAG_ENABLED(DebugDumpNamePrefix))
+    {
+        auto hash = ShaderHash();
+        DumpNameObj = DumpNameObj.Hash(hash);
+        DumpName = DumpNameObj.AbsolutePath(IGC_GET_REGKEYSTRING(DebugDumpNamePrefix));
+    }
     FILE* const DumpFile = fopen(DumpName.c_str(), "wb+");
     if (nullptr == DumpFile)
         return;

@@ -44,12 +44,18 @@ tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir]
 if llvm_config.add_tool_substitutions([ToolSubst('ocloc', unresolved='break')], tool_dirs) is False:
   lit_config.note('Did not find ocloc in %s, ocloc will be used from system paths' % tool_dirs)
 
+llvm_config.add_tool_substitutions([ToolSubst('llvm-dwarfdump')], tool_dirs)
+llvm_config.add_tool_substitutions([ToolSubst('opt')], tool_dirs)
+
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
 
 if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
   llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], tool_dirs)
+
+if config.is32b == "1":
+  config.available_features.add('sys32')
 
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.available_features.add('khronos-translator')

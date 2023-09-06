@@ -344,6 +344,7 @@ DECLARE_IGC_REGKEY(bool,  ShaderDumpInstNamer,          false, "dump all unnamed
 DECLARE_IGC_REGKEY(debugString, ShaderDumpFilter,       0,     "Only dump files matching the given regex", true)
 DECLARE_IGC_REGKEY(bool, ElfDumpEnable,                 false, "dump ELF file", true)
 DECLARE_IGC_REGKEY(bool, ElfTempDumpEnable,             false, "dump temporary ELF files", true)
+DECLARE_IGC_REGKEY(debugString, DebugDumpNamePrefix,    0,     "Set a prefix to debug info dump filenames(with path) and drop hash info from them (for testing purposes)", true)
 DECLARE_IGC_REGKEY(bool, ShowFullVectorsInShaderDumps,  false, "print all elements of vectors in ShaderDumps, can dramatically increase ShaderDumps size", true)
 DECLARE_IGC_REGKEY(bool, PrintHexFloatInShaderDumpAsm,  true, "print floats in hex in asm dump", true)
 DECLARE_IGC_REGKEY(debugString, PrintAfter,             0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR after the given pass is done (mimic llvm print-after)", true)

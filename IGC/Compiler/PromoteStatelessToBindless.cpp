@@ -51,8 +51,8 @@ bool PromoteStatelessToBindless::runOnFunction(Function& F)
     if (HasStackCall)
         return false;
 
-    m_AccessToSrcPtrMap.clear();
-    m_AddressUsedSrcPtrMap.clear();
+    m_SrcPtrNeedStatelessAccess.clear();
+    m_SrcPtrToAccessMap.clear();
     if (!ClContext->m_InternalOptions.UseBindlessPrintf)
     {
         CheckPrintfBuffer(F);
@@ -83,6 +83,8 @@ void PromoteStatelessToBindless::CheckPrintfBuffer(Function& F)
 
 void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst, Value* resourcePtr)
 {
+    bool canPromoteAccess = true;
+    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     unsigned addrSpace = resourcePtr->getType()->getPointerAddressSpace();
 
     if (addrSpace != ADDRESS_SPACE_GLOBAL && addrSpace != ADDRESS_SPACE_CONSTANT)
@@ -103,14 +105,16 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
                 break;
             case GenISAIntrinsic::GenISA_intatomicrawA64:
                 // Ignore a buffer in this intrinsic, keep it stateless.
-                return;
+                canPromoteAccess = false;
+                break;
             default:
                 IGC_ASSERT_MESSAGE(0, "Unsupported Instruction");
-                return;
+                canPromoteAccess = false;
+                break;
             }
         }
         else
-            return;
+            canPromoteAccess = false;
     }
 
     std::vector<Value*> tempList;
@@ -130,22 +134,36 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         // printf buffer address (through atomic add), see printf implementation in
         // OpenCLPrintfResolution.cpp. Currently keep printf implementation as stateless and
         // thus skip printf buffer for now.
-        return;
+        canPromoteAccess = false;
     }
 
-    m_promotedArgs.insert(cast<Argument>(srcPtr)->getArgNo());
-
-    // Save the instruction, which makes access (load/store/intrinsic) to the buffer
-    m_AccessToSrcPtrMap[inst] = srcPtr;
-    // Save the instruction, which generate an address of the buffer. This is the
-    // instruction right before the last one. The last one has to be the buffer itself.
-    if (tempList.size() > 1)
+    if (modMD->compOpt.UseLegacyBindlessMode)
     {
-        m_AddressUsedSrcPtrMap[tempList[tempList.size()-2]] = srcPtr;
+        if (!canPromoteAccess)
+        {
+            // In this case, the srcPtr is traced to a kernel arg, but the access instruction does not support
+            // bindless access, so we have to make all access stateless.
+            // Remove all access instructions of this srcPtr that may have been added in previous passes, to
+            // prevent promoting it to bindless.
+            m_SrcPtrNeedStatelessAccess.insert(srcPtr);
+            m_SrcPtrToAccessMap.erase(srcPtr);
+            return;
+        }
+        else if (m_SrcPtrNeedStatelessAccess.count(srcPtr) != 0)
+        {
+            return;
+        }
     }
-    else
+
+    if (canPromoteAccess)
     {
-        m_AddressUsedSrcPtrMap[inst] = srcPtr;
+        // Save the instruction, which makes access (load/store/intrinsic) to the buffer
+        Value* accessInst = inst;
+        // Save the instruction, which generate an address of the buffer. This is the
+        // instruction right before the last one. The last one has to be the buffer itself.
+        Value* addrUsedInst = (tempList.size() > 1) ? tempList[tempList.size() - 2] : inst;
+
+        m_SrcPtrToAccessMap[srcPtr].push_back(std::make_pair(accessInst, addrUsedInst));
     }
 }
 
@@ -164,85 +182,95 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
 
     bool supportDynamicBTIsAllocation = ctx->platform.supportDynamicBTIsAllocation();
 
-    // Modify the reference to the buffer not through all users but only in instructions
-    // which are used in accesing (load/store) the buffer.
-    for (auto inst : m_AddressUsedSrcPtrMap)
+    for (auto iter : m_SrcPtrToAccessMap)
     {
-        Instruction* accessInst = cast<Instruction>(inst.first);
-        Argument* srcPtr = cast<Argument>(inst.second);
-
-        Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
-        accessInst->replaceUsesOfWith(srcPtr, nullSrcPtr);
+        Argument* srcPtr = cast<Argument>(iter.first);
 
         ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
         IGC_ASSERT_MESSAGE((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
-        // Update metadata to show bindless resource type
-        argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
+
+        if (modMD->compOpt.UseLegacyBindlessMode)
+        {
+            // Update metadata to show bindless resource type.
+            // Do this only for legacy mode, since the resource type of the original
+            // kernel arg needs to be bindless for it to be reinterpreted as a bindless offset.
+            // In advanced mode, always keep the original kernel arg as stateless, and use the
+            // IMPLICIT_BUFFER_OFFSET arg for bindless access.
+            argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
+        }
+
         if (supportDynamicBTIsAllocation)
         {
             argInfo->indexType =
                 resourceAlloc->uavsNumType +
-                (unsigned)std::distance(m_promotedArgs.begin(), m_promotedArgs.find(srcPtr->getArgNo()));
+                (unsigned)std::distance(m_SrcPtrToAccessMap.begin(), m_SrcPtrToAccessMap.find(srcPtr));
+        }
+
+        // Loop through all access instructions for srcPtr
+        for (auto insts : iter.second)
+        {
+            Instruction* accessInst = cast<Instruction>(insts.first);
+            Instruction* addrUsedInst = cast<Instruction>(insts.second);
+
+            // Modify the reference to the buffer not through all users but only in instructions
+            // which are used in accesing (load/store) the buffer.
+            Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
+            addrUsedInst->replaceUsesOfWith(srcPtr, nullSrcPtr);
+
+            // Get the base bindless pointer
+            IGCIRBuilder<> builder(accessInst);
+            Value* resourcePtr = IGC::GetBufferOperand(accessInst);
+            IGC_ASSERT(resourcePtr);
+            unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS);
+            PointerType* basePointerType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(resourcePtr->getType()), bindlessAS);
+            Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
+
+            Value* basePointer = nullptr;
+            if (!modMD->compOpt.UseLegacyBindlessMode) {
+                Argument* srcOffset = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
+                basePointer = builder.CreateIntToPtr(srcOffset, basePointerType);
+            }
+            else {
+                basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
+            }
+
+            if (LoadInst* load = dyn_cast<LoadInst>(accessInst))
+            {
+                Value* ldraw = IGC::CreateLoadRawIntrinsic(load, cast<Instruction>(basePointer), bufferOffset);
+                load->replaceAllUsesWith(ldraw);
+                load->eraseFromParent();
+            }
+            else if (StoreInst* store = dyn_cast<StoreInst>(accessInst))
+            {
+                IGC::CreateStoreRawIntrinsic(store, cast<Instruction>(basePointer), bufferOffset);
+                store->eraseFromParent();
+            }
+            else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(accessInst))
+            {
+                if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
+                {
+                    Function* newBlockReadFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
+                        GenISAIntrinsic::GenISA_simdBlockReadBindless,
+                        { accessInst->getType(), basePointer->getType(),Type::getInt32Ty(accessInst->getContext()) });
+                    Instruction* newBlockRead = CallInst::Create(newBlockReadFunc, { basePointer, bufferOffset }, "", accessInst);
+                    newBlockRead->setDebugLoc(pIntr->getDebugLoc());
+                    accessInst->replaceAllUsesWith(newBlockRead);
+                    accessInst->eraseFromParent();
+                }
+                else if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
+                {
+                    Function* newBlockWriteFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
+                        GenISAIntrinsic::GenISA_simdBlockWriteBindless,
+                        { basePointer->getType(), pIntr->getOperand(1)->getType(), Type::getInt32Ty(accessInst->getContext()) });
+                    Instruction* newBlockWrite = CallInst::Create(newBlockWriteFunc, { basePointer, pIntr->getOperand(1), bufferOffset }, "", accessInst);
+                    newBlockWrite->setDebugLoc(pIntr->getDebugLoc());
+                    accessInst->replaceAllUsesWith(newBlockWrite);
+                    accessInst->eraseFromParent();
+                }
+            }
         }
     }
 
     if(supportDynamicBTIsAllocation)
-        resourceAlloc->uavsNumType += m_promotedArgs.size();
-
-    for (auto inst : m_AccessToSrcPtrMap)
-    {
-        Instruction* accessInst = cast<Instruction>(inst.first);
-        Argument* srcPtr = cast<Argument>(inst.second);
-
-        // Get the base bindless pointer
-        IGCIRBuilder<> builder(accessInst);
-        Value* resourcePtr = IGC::GetBufferOperand(accessInst);
-        IGC_ASSERT(resourcePtr);
-        unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS);
-        PointerType* basePointerType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(resourcePtr->getType()), bindlessAS);
-        Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
-
-        Value* basePointer = nullptr;
-        if (!modMD->compOpt.UseLegacyBindlessMode) {
-            Argument * srcOffset = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
-            basePointer = builder.CreateIntToPtr(srcOffset, basePointerType);
-        } else {
-            basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
-        }
-
-        if (LoadInst * load = dyn_cast<LoadInst>(accessInst))
-        {
-            Value* ldraw = IGC::CreateLoadRawIntrinsic(load, cast<Instruction>(basePointer), bufferOffset);
-            load->replaceAllUsesWith(ldraw);
-            load->eraseFromParent();
-        }
-        else if (StoreInst * store = dyn_cast<StoreInst>(accessInst))
-        {
-            IGC::CreateStoreRawIntrinsic(store, cast<Instruction>(basePointer), bufferOffset);
-            store->eraseFromParent();
-        }
-        else if (GenIntrinsicInst * pIntr = dyn_cast<GenIntrinsicInst>(accessInst))
-        {
-            if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
-            {
-                Function* newBlockReadFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
-                    GenISAIntrinsic::GenISA_simdBlockReadBindless,
-                    { accessInst->getType(), basePointer->getType(),Type::getInt32Ty(accessInst->getContext()) });
-                Instruction* newBlockRead = CallInst::Create(newBlockReadFunc, { basePointer, bufferOffset }, "", accessInst);
-                newBlockRead->setDebugLoc(pIntr->getDebugLoc());
-                accessInst->replaceAllUsesWith(newBlockRead);
-                accessInst->eraseFromParent();
-            }
-            else if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
-            {
-                Function* newBlockWriteFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
-                    GenISAIntrinsic::GenISA_simdBlockWriteBindless,
-                    { basePointer->getType(), pIntr->getOperand(1)->getType(), Type::getInt32Ty(accessInst->getContext()) });
-                Instruction* newBlockWrite = CallInst::Create(newBlockWriteFunc, { basePointer, pIntr->getOperand(1), bufferOffset }, "", accessInst);
-                newBlockWrite->setDebugLoc(pIntr->getDebugLoc());
-                accessInst->replaceAllUsesWith(newBlockWrite);
-                accessInst->eraseFromParent();
-            }
-        }
-    }
+        resourceAlloc->uavsNumType += m_SrcPtrToAccessMap.size();
 }
