@@ -919,7 +919,7 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstruc
         IGC_ASSERT(0);
     }
 
-    if (static_cast<uint32_t>(result & SharedMemoryWriteOperation) != 0)
+    if (static_cast<uint32_t>(result & (SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation)) != 0)
     {
 
         result = static_cast<InstructionMask>(
@@ -1285,7 +1285,8 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
     }
 
     // write -> fence -> ret
-    bool isWriteSyncRetCase = (writeBit == SharedMemoryWriteOperation) && ((localBackwardMemoryInstructionMask & writeBit) != 0 &&
+    bool requiresFlush = static_cast<uint32_t>(writeBit & (SharedMemoryWriteOperation | BufferWriteOperation | TypedWriteOperation)) != 0;
+    bool isWriteSyncRetCase = requiresFlush && ((localBackwardMemoryInstructionMask & writeBit) != 0 &&
         (localForwardMemoryInstructionMask & EndOfThreadOperation) != 0);
     if (isWriteSyncRetCase)
     {
