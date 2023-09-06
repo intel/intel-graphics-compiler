@@ -1492,7 +1492,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 }
 
                 if (pContext->type == ShaderType::OPENCL_SHADER &&
-                    pContext->platform.isCoreChildOf(IGFX_XE_HPC_CORE) &&
+                    pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
                     !useStatelessToStateful(*pContext) &&
                     pContext->m_retryManager.IsFirstTry())
                 {
