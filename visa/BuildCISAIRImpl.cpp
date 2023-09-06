@@ -639,6 +639,16 @@ void CISA_IR_Builder::ProcessSgInvokeList(
   }
 }
 
+void CISA_IR_Builder::PropagateInfo(
+    vISA::G4_Kernel *caller, vISA::G4_Kernel *callee) {
+  // Need to propagate HasStackCall from the caller to callee after LTO
+  bool callerHasStackCall =
+    caller->fg.getHasStackCalls() ||
+    callee->fg.getHasStackCalls();
+  if (callerHasStackCall)
+    caller->fg.setHasStackCalls();
+}
+
 // #define DEBUG_LTO
 #ifdef DEBUG_LTO
 #define DEBUG_PRINT(msg) std::cerr << __LINE__ << " " << msg;
@@ -677,6 +687,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
       bool removeArgRet = (options & (1U << Linker_RemoveArgRet));
       bool removeStackArg = (options & (1U << Linker_RemoveStackArg)) && caller->fg.builder->hasInt64Add();
       bool removeStackFrame = (options & (1U << Linker_RemoveStackFrame));
+
+      PropagateInfo(caller, callee);
 
       G4_INST *calleeLabel = *callee->fg.builder->instList.begin();
       vISA_ASSERT(calleeLabel->isLabel() == true, "Entry inst is not a label");

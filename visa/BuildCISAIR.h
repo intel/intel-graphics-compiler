@@ -746,6 +746,10 @@ private:
                          std::list<std::list<vISA::G4_INST *>::iterator>>
           &callee2Callers);
 
+  // Propagate info from callee to callee
+  void PropagateInfo(
+      vISA::G4_Kernel *caller, vISA::G4_Kernel *callee);
+
   // Perform LinkTimeOptimization for call related transformations
   void LinkTimeOptimization(
       std::unordered_map<vISA::G4_Kernel *,
