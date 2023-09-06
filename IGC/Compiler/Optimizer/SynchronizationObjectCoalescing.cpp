@@ -64,6 +64,7 @@ enum InstructionMask : uint32_t
     BufferWriteOperation       = (1 << 6),
     SharedMemoryReadOperation  = (1 << 7),
     SharedMemoryWriteOperation = (1 << 8),
+    EndOfThreadOperation       = (1 << 9),
 };
 constexpr InstructionMask AllNoAtomicMask =
     InstructionMask{ ((1 << 9) - 1) & ~InstructionMask::AtomicOperation };
@@ -122,6 +123,7 @@ inline constexpr InstructionMask& operator|=(InstructionMask& a, InstructionMask
 ///    - any write instruction, this synchronization instruction, any atomic instruction (RAW or WAW),
 ///    - any atomic instruction, this synchronization instruction, any read instruction (RAW),
 ///    - any atomic instruction, this synchronization instruction, any write instruction (WAR or WAW),
+///    - any write instruction, this synchronization instruction, any return instruction (WAE),
 ///    - (only for barriers or dependent fences****) any read instruction, this synchronization instruction,
 ///      any write instruction (WAR),
 ///    - any read instruction, this synchronization instruction, any atomic instruction (RAW),
@@ -253,6 +255,7 @@ private:
         ReadSyncAtomic = 0x20,
         WriteSyncRead = 0x40,
         AtomicSyncAtomic = 0x80,
+        WriteSyncRet = 0x100
     };
 
     static constexpr SynchronizationCaseMask sc_FullSynchronizationCaseMask = static_cast<SynchronizationCaseMask>(
@@ -389,6 +392,9 @@ private:
 
     ////////////////////////////////////////////////////////////////////////
     static bool IsSharedMemoryWriteOperation(const llvm::Instruction* pInst);
+
+    ////////////////////////////////////////////////////////////////////////
+    static bool IsReturnOperation(const llvm::Instruction* pInst);
 
     ////////////////////////////////////////////////////////////////////////
     static bool IsThreadBarrierOperation(const llvm::Instruction* pInst);
@@ -912,7 +918,22 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstruc
     {
         IGC_ASSERT(0);
     }
+
+    if (static_cast<uint32_t>(result & SharedMemoryWriteOperation) != 0)
+    {
+
+        result = static_cast<InstructionMask>(
+            result |
+            EndOfThreadOperation);
+    }
+
     return result;
+}
+
+////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescingAnalysis::IsReturnOperation(const llvm::Instruction* pInst)
+{
+    return llvm::isa<llvm::ReturnInst>(pInst);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1263,6 +1284,14 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
         result = static_cast<SynchronizationCaseMask>(result | SynchronizationCaseMask::WriteSyncWrite);
     }
 
+    // write -> fence -> ret
+    bool isWriteSyncRetCase = (writeBit == SharedMemoryWriteOperation) && ((localBackwardMemoryInstructionMask & writeBit) != 0 &&
+        (localForwardMemoryInstructionMask & EndOfThreadOperation) != 0);
+    if (isWriteSyncRetCase)
+    {
+        result = static_cast<SynchronizationCaseMask>(result | SynchronizationCaseMask::WriteSyncRet);
+    }
+
     // atomic -> barrier/fence -> read
     bool isAtomicSyncReadCase = ((localBackwardMemoryInstructionMask & AtomicOperation) != 0 && (localForwardMemoryInstructionMask & readBit) != 0);
     if (isAtomicSyncReadCase)
@@ -1319,6 +1348,8 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
     {
         // fences doesn't provide any guarantees for the order of instruction execution between threads
         strictSynchronizationCaseMask = static_cast<SynchronizationCaseMask>((~SynchronizationCaseMask::AtomicSyncAtomic) & strictSynchronizationCaseMask);
+
+        strictSynchronizationCaseMask = static_cast<SynchronizationCaseMask>((SynchronizationCaseMask::WriteSyncRet) | strictSynchronizationCaseMask);
 
         // Note: Please change the description in igc flags if the value is changed.
         static_assert(SynchronizationCaseMask::ReadSyncWrite == 0x01);
@@ -2223,6 +2254,10 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(cons
     {
         return InstructionMask::BufferReadOperation |
                InstructionMask::BufferWriteOperation;
+    }
+    else if (IsReturnOperation(pInst))
+    {
+        return InstructionMask::EndOfThreadOperation;
     }
 
     return InstructionMask::None;
