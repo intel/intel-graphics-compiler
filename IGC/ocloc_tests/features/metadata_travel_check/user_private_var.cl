@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 // RUN: ocloc compile -file %s -options " -g -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM3
 // RUN: ocloc compile -file %s -options " -g -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=EmitPass'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM4
 
+// Looking for the comment which informs about the amount of spill size
+// CHECK-ASM: //.private memory size
 // Looking for the comment attached to the instructions ex:
 // (W)     store.ugm .... //  address space: private; ; $193
 // CHECK-ASM: address space: private;

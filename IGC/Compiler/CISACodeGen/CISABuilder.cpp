@@ -5307,8 +5307,13 @@ namespace IGC
         IGC_ASSERT(nullptr != vKernel);
         uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
 
-        if (scratchSpaceSizeTemp == 0 ||
-            !m_program->GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
+        CodeGenContext* context = m_program->GetContext();
+
+        bool noticedScratchSpaceByIGC = context->m_ScratchSpaceUsage.count(m_program->entry) > 0 &&
+            context->m_ScratchSpaceUsage[m_program->entry] > 0;
+
+        if (!noticedScratchSpaceByIGC && (scratchSpaceSizeTemp == 0 ||
+            !m_program->GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory))
             return;
         // slot1 is used for spilling only when SeparatingSpillAndPrivateScratchMemorySpace is on
         // and Slot0 is used for IGC private memory

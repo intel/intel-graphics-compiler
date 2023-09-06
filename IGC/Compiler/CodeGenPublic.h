@@ -905,6 +905,9 @@ namespace IGC
 
         UserAddrSpaceMD m_UserAddrSpaceMD;
 
+        // Used scratch space for private variables
+        llvm::DenseMap<llvm::Function*, uint64_t> m_ScratchSpaceUsage;
+
         // shader stat for opt customization
         uint32_t     m_tempCount = 0;
         uint32_t     m_sampler = 0;
