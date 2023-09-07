@@ -1365,7 +1365,8 @@ namespace TC
                             (strcmp(pParam, "-ze-gtpin-grf-info") == 0) || //used by GTPin
                             (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0) || //used by GTPin
                             (strcmp(pParam, "-ze-opt-enable-auto-large-GRF-mode") == 0) ||
-                            (strcmp(pParam, "-cl-intel-enable-auto-large-GRF-mode") == 0);
+                            (strcmp(pParam, "-cl-intel-enable-auto-large-GRF-mode") == 0) ||
+                            (strcmp(pParam, "-ze-skip-fde") == 0);
 
                         if (isCommonOption)
                         {

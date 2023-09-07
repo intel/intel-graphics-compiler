@@ -143,11 +143,12 @@ namespace IGC
             bool EmitErrorsForLibCompilation        = false;
             uint32_t requiredEUThreadCount          = 0;
 
-
             bool GTPinReRA                          = false;
             bool GTPinGRFInfo                       = false;
             bool GTPinScratchAreaSize               = false;
             bool GTPinIndirRef                      = false;
+            // Skip emission of Frame Descriptor Entry in VISA.
+            bool SkipFDE                            = false;
             uint32_t GTPinScratchAreaSizeValue      = 0;
 
             std::vector<std::string> LargeGRFKernels;

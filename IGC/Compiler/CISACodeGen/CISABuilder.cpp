@@ -4028,6 +4028,11 @@ namespace IGC
             {
                 SaveOption(vISA_GTPinGetIndirRef, true);
             }
+
+            if (ClContext->m_Options.SkipFDE)
+            {
+                SaveOption(vISA_skipFDE, true);
+            }
         }
 
         bool EnableBarrierInstCounterBits = false;

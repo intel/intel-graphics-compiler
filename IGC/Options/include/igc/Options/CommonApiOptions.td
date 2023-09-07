@@ -28,6 +28,8 @@ defm : CommonJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size_c
 
 defm gtpin_indir_ref : CommonFlag<"gtpin-indir-ref">;
 
+defm skip_fde : CommonFlag<"skip-fde">;
+
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
 // These are coming from NEO when run under debugger.

@@ -648,6 +648,11 @@ namespace IGC
             GTPinIndirRef = true;
         }
 
+        if (apiOptions.hasArg(OPT_skip_fde_common))
+        {
+            SkipFDE = true;
+        }
+
         if (const opt::Arg* arg = apiOptions.getLastArg(OPT_required_thread_count_common))
         {
             if (arg->getNumValues() > 0)
