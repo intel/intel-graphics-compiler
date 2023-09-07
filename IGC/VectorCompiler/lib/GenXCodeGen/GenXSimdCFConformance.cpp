@@ -281,6 +281,7 @@ protected:
   SetVector<SimpleValue> EMVals;
   std::map<CallInst *, SetVector<SimpleValue>> RMVals;
   bool lowerSimdCF = false;
+  SmallSet<Instruction *, 32> CrossInsts;
 
 private:
   // GotoJoinEVs: container for goto/join Extract Value (EV) info. Also
@@ -364,6 +365,7 @@ protected:
     EMProducers.clear();
     LoweredEMValsMap.clear();
     BlocksToOptimize.clear();
+    CrossInsts.clear();
   }
   DominatorTree *getDomTree(Function *F);
 
@@ -852,6 +854,7 @@ void GenXSimdCFConformance::gatherEMVals() {
       if (!isa<Constant>(j->getValue()))
         EMVals.insert(*j);
   }
+  CrossInsts.clear();
 }
 
 /***********************************************************************
@@ -882,6 +885,7 @@ void GenXSimdCFConformance::gatherRMVals() {
           RMValsEntry->insert(*j);
     }
   }
+  CrossInsts.clear();
 }
 
 /***********************************************************************
@@ -2753,6 +2757,12 @@ bool GenXSimdCFConformance::getConnectedVals(
   for (auto ui = Val.getValue()->use_begin(), ue = Val.getValue()->use_end();
        ui != ue; ++ui) {
     auto User = cast<Instruction>(ui->getUser());
+    // Can't have 2 difference EMs in one instruction
+    if (!isa<PHINode>(User) && !isa<CallInst>(User) &&
+        !isa<ExtractValueInst>(User) && !CrossInsts.insert(User).second) {
+      LLVM_DEBUG(dbgs() << "Found multy-EM use instruction:\n" << *User);
+      lowerSimdCF = true;
+    }
     LLVM_DEBUG(dbgs() << "getConnectedVals: -> geted " << *User << "\n");
     if (auto Phi = dyn_cast<PHINode>(User)) {
       // Use in phi node. Add the phi result.
