@@ -2409,13 +2409,6 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
     if (!isa<UndefValue>(OldV))
       return false;
 
-    // have to keep faddr's wrregion to ensure faddr's proper baling
-    auto *Parent = NewV;
-    while (isa<BitCastInst>(Parent))
-      Parent = cast<Instruction>(Parent)->getOperand(0);
-    if (vc::getAnyIntrinsicID(Parent) == GenXIntrinsic::genx_faddr)
-      return false;
-
     if (NewVTy->isVectorTy() &&
         cast<IGCLLVM::FixedVectorType>(NewVTy)->getNumElements() > 1)
       return false;
