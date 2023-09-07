@@ -4495,10 +4495,6 @@ namespace IGC
             SaveOption(vISA_ALTMode, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(DisableSendS))
-        {
-            SaveOption(vISA_UseSends, false);
-        }
         if (IGC_IS_FLAG_ENABLED(DisablePrefetchToL1Cache)) {
             SaveOption(vISA_DisablePrefetchToL1Cache, true);
         }

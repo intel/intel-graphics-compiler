@@ -774,7 +774,6 @@ static void setImpliedIGCKeys()
     IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, EnableDeSSA, false);
     //disable now until we figure out the issue
     //IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, DisablePayloadCoalescing, true);
-    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableSendS, true);
     IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, EnableVISANoSchedule, true);
     IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableUniformAnalysis, true);
     IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisablePushConstant, true);

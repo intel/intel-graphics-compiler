@@ -2280,7 +2280,7 @@ public:
   }
 
   bool useSends() const {
-    return getPlatform() >= GENX_SKL && m_options->getOption(vISA_UseSends) &&
+    return getPlatform() >= GENX_SKL &&
            !(VISA_WA_CHECK(m_pWaTable, WaDisableSendsSrc0DstOverlap));
   }
 
