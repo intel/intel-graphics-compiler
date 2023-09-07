@@ -939,9 +939,8 @@ static Region retrieveReducedRegionTernary(Type srcType, Type dstType,
       dstRegion.h * TypeSizeInBits(dstType) / TypeSizeInBits(srcType);
   switch (sVertStride) {
   case 1: return Region::SRC1X0;
-  case 2: return Region::SRC2X0;
-  case 4: return Region::SRC4X0;
-  case 8: return Region::SRC8X0;
+  case 2: return Region::SRC4X2;
+  case 4: return Region::SRC8X4;
   default:
     break;
   }
@@ -1756,10 +1755,11 @@ static Region retrieveReducedRegionVWH(Type srcType, Type dstType,
   auto sVertStride =
       dstRegion.h * TypeSizeInBits(dstType) / TypeSizeInBits(srcType);
   switch (sVertStride) {
-  case 1: return Region::SRC110;
-  case 2: return Region::SRC210;
-  case 4: return Region::SRC410;
-  case 8: return Region::SRC810;
+  case 1:  return Region::SRC110;
+  case 2:  return Region::SRC210;
+  case 4:  return Region::SRC410;
+  case 8:  return Region::SRC810;
+  case 16: return Region::SRC1610;
   default:
     break;
   }
