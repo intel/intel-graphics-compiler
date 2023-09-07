@@ -886,19 +886,20 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
 
   // patch the last BB for the kernel
   if (funcInfoTable.size() > 0) {
-    // handleExit() and normalizeSubRoutineBB() may split subroutine's entry
-    // BB. If this happens, the original entry is no longer the entry, but its
-    // physical predecesor must be the new entry!
-    G4_BB* oldEntry = subroutineStartBB[1];
-    G4_BB* kernelExitBB = oldEntry->getPhysicalPred();
-    if ((oldEntry->getBBType() & G4_BB_INIT_TYPE) == 0) {
-      vISA_ASSERT((kernelExitBB->getBBType() & G4_BB_INIT_TYPE),
-        "INIT BB must be the phy-pred of the original INIT BB!");
-      kernelExitBB = kernelExitBB->getPhysicalPred();
-    }
-    kernelInfo->updateExitBB(kernelExitBB);
+    // subroutineStartBB[1] may be dead or no longer entry BB of the first
+    // subroutine(due to normalizeSubRoutineBB()/removeUnreachableBlocks()).
+    // Need to find out the entry BB of the first subroutine.
+    auto iter = std::find_if(BBs.begin(), BBs.end(),
+      [](G4_BB* B) { return (B->getBBType() & G4_BB_INIT_TYPE); });
+    G4_BB* exitBB = nullptr;
+    if (iter != BBs.end())
+      exitBB = (*iter)->getPhysicalPred();
+    else
+      exitBB = BBs.back();
+    kernelInfo->updateExitBB(exitBB);
     topologicalSortCallGraph();
-  } else {
+  }
+  else {
     kernelInfo->updateExitBB(BBs.back());
   }
 
