@@ -4033,8 +4033,6 @@ void EmitPass::EmitGenericPointersCmp(llvm::Instruction* inst,
 
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
-    UseVMaskPred();
-
     switch (inst->getOpcode())
     {
     case Instruction::FCmp:
@@ -4447,8 +4445,6 @@ void EmitPass::Unary(e_opcode opCode, const SSource sources[1], const DstModifie
 template<int N>
 void EmitPass::Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier)
 {
-    UseVMaskPred();
-
     CVariable* srcs[3] = { nullptr, nullptr, nullptr };
     for (uint i = 0; i < N; i++)
     {
