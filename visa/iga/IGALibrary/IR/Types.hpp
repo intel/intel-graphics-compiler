@@ -245,9 +245,10 @@ struct Region {
   }
 
   bool isFlat() const {
-    if (bits == SRC1X0.bits || bits == SRC4X2.bits || bits == SRC8X4.bits ||
+    if (bits == SRC1X0.bits || bits == SRC2X0.bits || bits == SRC4X0.bits ||
+        bits == SRC8X0.bits ||
         bits == SRC110.bits || bits == SRC210.bits || bits == SRC410.bits ||
-        bits == SRC810.bits || bits == SRC1610.bits)
+        bits == SRC810.bits)
       return true;
     return false;
   }
@@ -268,12 +269,11 @@ struct Region {
   static const Region DST4; // <4>
   //
   // generalized src regions
-  static const Region SRC010;  // <0;1,0> (broadcast scalar)
-  static const Region SRC110;  // <1;1,0> (packed access)
-  static const Region SRC210;  // <2;1,0> (even strided access)
-  static const Region SRC410;  // <4;1,0> (quarter stided access)
-  static const Region SRC810;  // <8;1,0>
-  static const Region SRC1610; // <16;1,0>
+  static const Region SRC010; // <0;1,0> (broadcast scalar)
+  static const Region SRC110; // <1;1,0> (packed access)
+  static const Region SRC210; // <2;1,0> (even strided access)
+  static const Region SRC410; // <4;1,0> (quarter stided access)
+  static const Region SRC810; // <8;1,0>
   //
   // older src regions
   static const Region SRC221; // <2;2,1>
@@ -287,8 +287,10 @@ struct Region {
   static const Region SRC2X1; // <2;1> (ternary align1 src0 and src1)
   static const Region SRC1X0; // <1;0> XE_LP changes 2 to 1 in encoding
   static const Region SRC4X1; // <4;1> (ternary align1 src0 and src1)
-  static const Region SRC4X2; // <4;2> single-stride 2
-  static const Region SRC8X4; // <8;4> single-stride 4
+  // ternery flat src1
+  static const Region SRC2X0; // <2;0>
+  static const Region SRC4X0; // <4;0>
+  static const Region SRC8X0; // <8;0>
   // ternary src2
   static const Region SRC8X1; // <8;1> (ternary align1 src0 and src1)
   static const Region SRCXX0; // <0>   (ternary align1 src2)

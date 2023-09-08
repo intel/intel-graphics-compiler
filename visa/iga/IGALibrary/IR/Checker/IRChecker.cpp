@@ -214,7 +214,6 @@ struct SemanticChecker : LOCChecker {
     }
   }
 
-
   void checkRegRegioningRestrictions(ExecSize es, const Operand &dst,
                                      const Operand &src) {
     // only for the form:
