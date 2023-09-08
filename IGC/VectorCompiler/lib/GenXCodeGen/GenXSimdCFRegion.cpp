@@ -432,7 +432,6 @@ private:
   std::pair<BranchInst *, Value *>
   findSimdCFLoopBranchAndCondition(const Loop &L);
   SimdCFRegionPtr tryMatchLoop(BasicBlock &BB);
-  bool CheckForBranching(Function *F, SimdCFRegionsT *Regions);
 };
 
 Value *GenXPredToSimdCF::getEMAddr(Function *F) {
@@ -948,56 +947,6 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchLoop(BasicBlock &BB) {
       &getAnalysis<DominatorTreeWrapperPass>().getDomTree());
 }
 
-bool GenXPredToSimdCF::CheckForBranching(Function *F, SimdCFRegionsT *Regions) {
-  SmallVector<BasicBlock *, 10> Terms;
-  for (auto &BB : F->getBasicBlockList()) {
-    auto *Terminator = dyn_cast<BranchInst>(BB.getTerminator());
-    if (Terminator && Terminator->isConditional()) {
-      Terms.push_back(&BB);
-      LLVM_DEBUG(Terminator->dump());
-    }
-  }
-  auto CheckTerms = [&](Region *R) {
-    for (auto *It : R->blocks()) {
-      LLVM_DEBUG(It->getTerminator()->dump());
-      Terms.erase(std::remove(Terms.begin(), Terms.end(), &*It), Terms.end());
-    }
-  };
-  LLVM_DEBUG(dbgs() << " Check now:\n");
-  for (auto &R : *Regions) {
-    if (auto *IFThen = dyn_cast_or_null<SimdCFIfRegion>(R.get())) {
-      CheckTerms(IFThen);
-      CheckTerms(IFThen->getIfThenRegion());
-
-      auto It = IFThen->getIfSimdBranch()->getParent();
-      LLVM_DEBUG(It->dump());
-      Terms.erase(std::remove(Terms.begin(), Terms.end(), It), Terms.end());
-      if (!IFThen->hasElse())
-        continue;
-      CheckTerms(IFThen->getIfElseRegion());
-    }
-    if (auto *Loop = dyn_cast_or_null<SimdCFLoopRegion>(R.get())) {
-      CheckTerms(Loop);
-      auto It = Loop->getSimdBranch()->getParent();
-      Terms.erase(std::remove(Terms.begin(), Terms.end(), It), Terms.end());
-    }
-  }
-  // Not supported any non-simd conditionals for now
-  if (Terms.empty()) {
-    LLVM_DEBUG(if (!Regions->empty()) dbgs() << "Success check\n");
-
-    return true;
-  }
-
-  LLVM_DEBUG(if (!Regions->empty()) {
-    dbgs() << "Failed to check Regions for conditional\n";
-    for (auto *Term : Terms)
-      Term->dump();
-  });
-
-  return false;
-}
-
 // TODO: rewrite this algo to use Region as arg instead of Fuction to allow
 // reuse it for matching subregions
 SimdCFRegionsT GenXPredToSimdCF::findSimdCFRegions(Function &F) {
@@ -1046,8 +995,6 @@ SimdCFRegionsT GenXPredToSimdCF::findSimdCFRegions(Function &F) {
     Visited.insert(&BB);
     LLVM_DEBUG(dbgs() << "Marking BB '" << BB.getName() << "' as visited\n");
   }
-  if (!CheckForBranching(&F, &Regions))
-    Regions.clear();
 
   return Regions;
 }
