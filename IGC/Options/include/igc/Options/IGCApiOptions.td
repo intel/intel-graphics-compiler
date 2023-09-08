@@ -49,6 +49,9 @@ defm 256_grf_per_thread : CommonFlag<"256-GRF-per-thread">;
 // -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
 defm greater_than_4GB_buffer_required : CommonFlag<"greater-than-4GB-buffer-required">;
 
+// -cl-poison-unsupported-fp64-kernels -ze-poison-unsupported-fp64-kernels
+defm poison_unsupported_fp64_kernels : CommonFlag<"poison-unsupported-fp64-kernels">;
+
 // }} Backend API options
 
 // API options from source translation {{

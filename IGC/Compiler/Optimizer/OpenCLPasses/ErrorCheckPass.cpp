@@ -111,7 +111,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     if (ctx->type == ShaderType::OPENCL_SHADER)
     {
         OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(ctx);
-        poisonFP64KernelsEnabled = OCLContext->m_InternalOptions.EnableUnsupportedFP64Poisoning;
+        poisonFP64KernelsEnabled = OCLContext->m_Options.EnableUnsupportedFP64Poisoning;
     }
 
     // chcek that has HW DP support and DP emu is disabled

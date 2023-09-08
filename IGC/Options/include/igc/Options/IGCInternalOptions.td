@@ -136,9 +136,6 @@ defm : CommonJoined<"load-cache-default=">, Alias<load_cache_default_common>;
 defm store_cache_default : CommonSeparate<"store-cache-default">;
 defm : CommonJoined<"store-cache-default=">, Alias<store_cache_default_common>;
 
-// -cl-poison-unsupported-fp64-kernels -ze-poison-unsupported-fp64-kernels
-defm poison_unsupported_fp64_kernels : CommonFlag<"poison-unsupported-fp64-kernels">;
-
 // -cl-fp64-gen-emu  -ze-fp64-gen-emu
 defm fp64_gen_emu : CommonFlag<"fp64-gen-emu">;
 
