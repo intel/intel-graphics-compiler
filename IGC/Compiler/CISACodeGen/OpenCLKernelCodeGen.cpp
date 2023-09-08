@@ -506,13 +506,6 @@ namespace IGC
             }
         }
 
-        if (internalOptions.hasArg(OPT_poison_unsupported_fp64_kernels_common))
-        {
-            // This option forces IGC to poison kernels using fp64
-            // operations on platforms without HW support for fp64.
-            EnableUnsupportedFP64Poisoning = true;
-        }
-
         if (internalOptions.hasArg(OPT_fp64_gen_emu_common))
         {
             // This option enables FP64 emulation for platforms that
@@ -687,6 +680,13 @@ namespace IGC
         if (apiOptions.hasArg(OPT_no_local_to_generic_common))
         {
             NoLocalToGeneric = true;
+        }
+
+        if (apiOptions.hasArg(OPT_poison_unsupported_fp64_kernels_common))
+        {
+            // This option forces IGC to poison kernels using fp64
+            // operations on platforms without HW support for fp64.
+            EnableUnsupportedFP64Poisoning = true;
         }
     };
 

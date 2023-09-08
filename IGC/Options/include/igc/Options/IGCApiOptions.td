@@ -40,6 +40,9 @@ defm regular_grf_kernel : CommonSeparate<"regular-grf-kernel">;
 // -cl-intel-no-local-to-generic, -ze-opt-no-local-to-generic
 defm no_local_to_generic : CommonFlag<"no-local-to-generic">;
 
+// -cl-poison-unsupported-fp64-kernels -ze-poison-unsupported-fp64-kernels
+defm poison_unsupported_fp64_kernels : CommonFlag<"poison-unsupported-fp64-kernels">;
+
 // }} Backend API options
 
 // API options from source translation {{

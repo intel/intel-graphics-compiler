@@ -89,9 +89,6 @@ namespace IGC
             int FunctionControl                             = -1;
             // Fail comilation if spills are present in compiled kernel
             bool FailOnSpill                                = false;
-            // This option forces IGC to poison kernels using fp64
-            // operations on platforms without HW support for fp64.
-            bool EnableUnsupportedFP64Poisoning             = false;
             // This option enables FP64 emulation for platforms that
             // cannot HW support for double operations
             bool EnableFP64GenEmu                           = false;
@@ -162,6 +159,10 @@ namespace IGC
 
             // Generic address related
             bool NoLocalToGeneric               = false;
+
+            // This option forces IGC to poison kernels using fp64
+            // operations on platforms without HW support for fp64.
+            bool EnableUnsupportedFP64Poisoning = false;
 
         private:
             void parseOptions(const char* opts);
