@@ -805,7 +805,7 @@ bool VectorPreProcess::splitStore(
         IGCLLVM::FixedVectorType* VTy1 = dyn_cast<IGCLLVM::FixedVectorType>(Ty1);
         for (uint32_t j = 0; j < len1; ++j)
         {
-            alignment_t vAlign = (alignment_t)MinAlign(Align, (alignment_t)(eOffset * EBytes));
+            alignment_t vAlign = (alignment_t)MinAlign(Align, (alignment_t)eOffset * EBytes);
             Value* offsetAddr = ASI.CreateConstScalarGEP(svals[subIdx]->getType(), Addr, eOffset);
             Instruction* newST = ASI.Create(svals[subIdx], offsetAddr, vAlign, IsVolatile);
             eOffset += (VTy1 ? int_cast<uint32_t>(VTy1->getNumElements()) : 1);
@@ -911,7 +911,7 @@ bool VectorPreProcess::splitLoad(
         IGCLLVM::FixedVectorType* VTy1 = dyn_cast<IGCLLVM::FixedVectorType>(Ty1);
         for (uint32_t j = 0; j < len1; ++j)
         {
-            alignment_t vAlign = (alignment_t)MinAlign(Align, (alignment_t)(eOffset * EBytes));
+            alignment_t vAlign = (alignment_t)MinAlign(Align, (alignment_t)eOffset * EBytes);
             Value* offsetAddr = ALI.CreateConstScalarGEP(Ty1, Addr, eOffset);
             Instruction* I = ALI.Create(Ty1, offsetAddr, vAlign, IsVolatile);
             eOffset += (VTy1 ? int_cast<uint32_t>(VTy1->getNumElements()) : 1);

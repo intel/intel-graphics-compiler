@@ -39,6 +39,7 @@ constexpr uint32_t scNumIntrinsics = static_cast<uint32_t>(llvm::GenISAIntrinsic
 /// collisions between two unrelated function types. Otherwise, you might
 /// parse ffXX as f(fXX) or f(fX)X.  (X is a placeholder for any other type.)
 static std::string getMangledTypeStr(llvm::Type* Ty) {
+    IGC_ASSERT(Ty);
     std::string Result;
     if (llvm::PointerType* PTyp = llvm::dyn_cast<llvm::PointerType>(Ty)) {
         Result += "p" + llvm::utostr(PTyp->getAddressSpace()) +
@@ -69,7 +70,7 @@ static std::string getMangledTypeStr(llvm::Type* Ty) {
     else if (llvm::isa<llvm::VectorType>(Ty))
         Result += "v" + llvm::utostr(llvm::cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()) +
         getMangledTypeStr(llvm::cast<llvm::VectorType>(Ty)->getElementType());
-    else if (Ty)
+    else
         Result += llvm::EVT::getEVT(Ty).getEVTString();
     return Result;
 }
