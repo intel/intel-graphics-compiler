@@ -66,8 +66,8 @@ entry:
 ; CHECK-DAG: [[SYMBOL]] = !{!"Symbol", !"a"}
 ; CHECK-DAG: !{!"inlineProgramScopeOffsets", [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP0:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE0:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP1:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE1:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP2:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE2:![0-9]*]]}
 ; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP0]] = !{!"inlineProgramScopeOffsetsMap[0]", [2 x i32] addrspace(2)* @a}
-; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE0]] = !{!"inlineProgramScopeOffsetsValue[0]", i32 0}
+; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE0]] = !{!"inlineProgramScopeOffsetsValue[0]", i64 0}
 ; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP1]] = !{!"inlineProgramScopeOffsetsMap[1]", i32 addrspace(2)* addrspace(1)* @d}
-; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE1]] = !{!"inlineProgramScopeOffsetsValue[1]", i32 0}
+; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE1]] = !{!"inlineProgramScopeOffsetsValue[1]", i64 0}
 ; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP2]] = !{!"inlineProgramScopeOffsetsMap[2]", i32 addrspace(1)* @c}
-; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE2]] = !{!"inlineProgramScopeOffsetsValue[2]", i32 8}
+; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE2]] = !{!"inlineProgramScopeOffsetsValue[2]", i64 8}

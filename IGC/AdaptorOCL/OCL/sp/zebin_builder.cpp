@@ -193,9 +193,9 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
     if (annotations.m_initConstantAnnotation && annotations.m_initConstantAnnotation->AllocSize) {
         auto& ca = annotations.m_initConstantAnnotation;
         // the normal .data.const size
-        uint32_t dataSize = ca->InlineData.size();
+        uint64_t dataSize = ca->InlineData.size();
         // the zero-initialize variables size, the .bss.const size
-        uint32_t bssSize = ca->AllocSize - dataSize;
+        uint64_t bssSize = ca->AllocSize - dataSize;
         uint32_t alignment = ca->Alignment;
 
         if (IGC_IS_FLAG_ENABLED(AllocateZeroInitializedVarsInBss)) {
@@ -220,8 +220,9 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
         } else {
             // before runtime can support bss section, we create all 0s in .const.data section by adding
             // bssSize of padding
+            IGC_ASSERT_MESSAGE(bssSize == static_cast<uint32_t>(bssSize), ".const.data padding size overflows 32 bits");
             mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
-                dataSize, bssSize, alignment, /*rodata*/true);
+                dataSize, static_cast<uint32_t>(bssSize), alignment, /*rodata*/true);
         }
     }
 
@@ -248,8 +249,8 @@ void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
     if (!ca->AllocSize)
         return;
 
-    uint32_t dataSize = ca->InlineData.size();
-    uint32_t bssSize = ca->AllocSize - dataSize;
+    uint64_t dataSize = ca->InlineData.size();
+    uint64_t bssSize = ca->AllocSize - dataSize;
     uint32_t alignment = ca->Alignment;
 
     if (IGC_IS_FLAG_ENABLED(AllocateZeroInitializedVarsInBss)) {
@@ -271,8 +272,9 @@ void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
     } else {
         // before runtime can support bss section, we create all 0s in .global.data section by adding
         // bssSize of padding
+        IGC_ASSERT_MESSAGE(bssSize == static_cast<uint32_t>(bssSize), ".global.data padding size overflows 32 bits");
         mGlobalSectID = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
-            dataSize, bssSize, alignment, /*rodata*/false);
+            dataSize, static_cast<uint32_t>(bssSize), alignment, /*rodata*/false);
     }
 }
 

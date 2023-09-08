@@ -692,7 +692,7 @@ namespace IGC
         std::vector<uint32_t> RasterizerOrderedByteAddressBuffer;
         std::set<uint32_t> RasterizerOrderedViews;
         unsigned int MinNOSPushConstantSize = 0;
-        llvm::MapVector<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
+        llvm::MapVector<llvm::GlobalVariable*, uint64_t> inlineProgramScopeOffsets;
         ShaderData shaderData;
         URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;

@@ -187,22 +187,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
         if (initializer->isZeroValue())
         {
-            // For zero initialized values, we dont need to copy the data, just tell driver how much to allocate
-            // However, if it's used as a pointer value, we need to do patching and therefore cannot defer the offset calculation
-            bool hasPointerUser = false;
-            for (auto UI : globalVar->users())
-            {
-                if (isa<Constant>(UI) && UI->getType()->isPointerTy())
-                {
-                    hasPointerUser = true;
-                    break;
-                }
-            }
-            if (!hasPointerUser)
-            {
-                zeroInitializedGlobals.push_back(globalVar);
-                continue;
-            }
+            zeroInitializedGlobals.push_back(globalVar);
+            continue;
         }
 
         // Align the buffer.
@@ -243,6 +229,22 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 #endif
         inlineProgramScopeOffsets[globalVar] = offset;
         offset += (unsigned)(m_DL->getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(globalVar->getType())));
+    }
+
+    // Patch the offsets for usages of zero initialized globals after those offsets have been calculated in the previous step.
+    // TODO: Remove this logic after enabling ZeBinary, since we will switch the patching to use relocation table instead.
+    for (ZeroInitPatchInfo &patchData : m_PatchLaterDataVector)
+    {
+        char* whereToPatch = std::get<0>(patchData);
+        unsigned patchSize = std::get<1>(patchData);
+        GlobalVariable* globalVar = std::get<2>(patchData);
+        uint64_t offset = std::get<3>(patchData);
+
+        auto iter = inlineProgramScopeOffsets.find(globalVar);
+        IGC_ASSERT(iter != inlineProgramScopeOffsets.end());
+
+        const uint64_t patchOffset = iter->second + offset;
+        memcpy_s(whereToPatch, patchSize, (char*)&patchOffset, patchSize);
     }
 
     if (inlineProgramScopeOffsets.size())
@@ -346,7 +348,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     const bool changed = !inlineProgramScopeOffsets.empty();
     for (auto offset : inlineProgramScopeOffsets)
     {
-        m_pModuleMd->inlineProgramScopeOffsets[offset.first] = offset.second;
+        m_pModuleMd->inlineProgramScopeOffsets[offset.first] = static_cast<uint64_t>(offset.second);
     }
 
     // Update LLVM metadata based on IGC MetadataUtils
@@ -476,20 +478,26 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 }
                 else
                 {
+                    // Add the patching info for runtime
+                    pointerOffsetInfoList.push_back(PointerOffsetInfo(addressSpace, inlineProgramScopeBuffer.size(), pointedToAddrSpace));
+
                     auto iter = inlineProgramScopeOffsets.find(ptrBase);
-                    IGC_ASSERT(iter != inlineProgramScopeOffsets.end());
+                    if (iter != inlineProgramScopeOffsets.end())
+                    {
+                        const uint64_t pointeeOffset = iter->second + offset;
+                        // For old patching logic, write the offset relative to the entire global/constant buffer where the base global resides.
+                        // The base address of the buffer will be added to it at runtime.
+                        inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)&pointeeOffset, ((char*)&pointeeOffset) + pointerSize);
+                    }
+                    else
+                    {
+                        // If we can't find the base global variable, it must be a zero initialized value whose data is not directly copied.
+                        // Save the info for now, and patch it later once we have the offsets for this zeroinit global vars.
+                        unsigned patchIdx = inlineProgramScopeBuffer.size();
+                        inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
 
-                    const uint64_t pointeeOffset = iter->second + offset;
-
-                    pointerOffsetInfoList.push_back(
-                        PointerOffsetInfo(
-                            addressSpace,
-                            inlineProgramScopeBuffer.size(),
-                            pointedToAddrSpace));
-
-                    // For old patching logic, write the offset relative to the entire global/constant buffer where the base global resides.
-                    // The base address of the buffer will be added to it at runtime.
-                    inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)&pointeeOffset, ((char*)&pointeeOffset) + pointerSize);
+                        m_PatchLaterDataVector.push_back(std::make_tuple((char*)(&inlineProgramScopeBuffer[patchIdx]), pointerSize, ptrBase, offset));
+                    }
                 }
             }
             else
