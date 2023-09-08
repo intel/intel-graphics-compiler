@@ -2953,11 +2953,8 @@ bool G4_INST::isAccDstInst() const {
   return false;
 }
 
-bool G4_INST::isArithAddr() const {
-  if (srcs[1] != NULL)
-    return isArithmetic() && srcs[1]->isAddrExp();
-  else
-    return false;
+bool G4_INST::isAddrAdd() const {
+  return op == G4_add && srcs[1]->isAddrExp();
 }
 
 bool G4_INST::isMovAddr() const {

@@ -410,7 +410,7 @@ public:
 
   bool isPartialWrite() const;
   bool isPartialWriteForSpill(bool inSIMDCF, bool useNonScratchForSpill) const;
-  bool isArithAddr() const;
+  bool isAddrAdd() const;
   bool isMovAddr() const;
   bool isAccSrcInst() const;
   bool isAccDstInst() const;

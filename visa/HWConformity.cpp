@@ -9109,6 +9109,20 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
 
   if (needFix) {
 
+    // For addr add instruction, fix src0 instead of dst. This will
+    // simplify pointer to analysis.
+    // For example:
+    //   add (16) A0(0,0)<1>:uw ByteOffset_0(0,0)<2;1,0>:uw &ShuffleTmp+0
+    //   =>
+    //   mov (16) TV1(0,0)<1>:uw ByteOffset_0(0,0)<2;1,0>:uw
+    //   add (16) A0(0,0)<1>:uw TV1(0,0)<1;1,0>:uw &ShuffleTmp+0
+    if (inst->isAddrAdd()) {
+      replaceSrc(it, 0, inst->getSrc(0)->getType(), bb, builder.getGRFAlign());
+      // Fix the new inserted mov inst
+      fixByteXBarRestriction(std::prev(it), bb);
+      return;
+    }
+
     // split currently can't handle packed imm
     // Also don't split if src and dst have overlap as it will introduce extra
     // mov which could be illegal. If we further fix the extra illegal mov
