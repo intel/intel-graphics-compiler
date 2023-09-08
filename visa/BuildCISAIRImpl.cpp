@@ -2482,7 +2482,13 @@ bool CISA_IR_Builder::CISA_attr_directive(const char *input_name,
     }
     input_name = "OutputAsmPath"; // normalize to new name
 
-    char *asmFileName = strdup(input_var);
+    // OutputAsmPath attribute value is copied to an arena allocated buffer.
+    // So we don't need to explicitly deallocate the buffer.
+    const unsigned int maxStrSize = 1024;
+    unsigned int strLength = strnlen_s(input_var, maxStrSize);
+    unsigned int allocSize = strLength + 1;
+    char *asmFileName = (char *)(m_mem.alloc(allocSize));
+    strncpy_s(asmFileName, allocSize, input_var, strLength);
     char *pos = strstr(asmFileName, ".asm");
     if (pos != NULL) {
       *pos = '\0';
