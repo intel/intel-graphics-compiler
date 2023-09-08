@@ -8139,6 +8139,7 @@ namespace IGC
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
         int immOffset,
+        int immScale,
         LSC_CACHE_OPTS cacheOpts,
         LSC_DOC_ADDR_SPACE addrSpace)
     {
@@ -8151,7 +8152,7 @@ namespace IGC
         LSC_ADDR addr{ };
         VISA_VectorOpnd* globalOffsetOpnd = nullptr;
         addr.type = LSC_ADDR_TYPE_FLAT;
-        addr.immScale = 1;
+        addr.immScale = immScale;
         addr.immOffset = immOffset;
         addr.size = addr_size;
         addr.addrSpace = addrSpace;

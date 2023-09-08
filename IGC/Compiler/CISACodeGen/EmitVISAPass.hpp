@@ -178,7 +178,7 @@ public:
     void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
     void emitLoad(llvm::LoadInst *inst, llvm::Value *varOffset,
-                  llvm::ConstantInt *immOffset
+                  llvm::ConstantInt *immOffset, ConstantInt *immScale = nullptr
     ); // single load, no pattern
     void emitLoad3DInner(llvm::LdRawIntrinsic* inst, ResourceDescriptor& resource, llvm::Value* elemIdxV);
 
@@ -427,6 +427,7 @@ public:
     void emitLSCVectorLoad(llvm::Instruction *Inst,
                            llvm::Value *Ptr,
                            llvm::Value *offset, llvm::ConstantInt *immOffset,
+                           ConstantInt *immScale,
                            LSC_CACHE_OPTS cacheOpts,
                            LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCVectorStore(llvm::Value *Ptr,
@@ -544,7 +545,8 @@ public:
         ResourceDescriptor* resource,
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
-        int immOffset);
+        int immOffset,
+        int immScale);
     void emitLSCLoad(
         LSC_CACHE_OPTS cacheOpts,
         CVariable* dst,
@@ -556,6 +558,7 @@ public:
         LSC_ADDR_SIZE addr_size,
         LSC_DATA_ORDER data_order,
         int immOffset,
+        int immScale,
         LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCStore(
         llvm::Instruction* inst,
@@ -945,13 +948,14 @@ private:
     // sub-function of vector load/store
     void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                  ResourceDescriptor &Resource, CVariable *Dest,
-                                 CVariable *Offset, int ImmOffset,
+                                 CVariable *Offset, int ImmOffset, int ImmScale,
                                  uint32_t NumElts, uint32_t EltBytes,
                                  LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCVectorLoad_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                    ResourceDescriptor &Resource,
-                                   CVariable *Dest, CVariable *Offset,
-                                   int ImmOffset, uint32_t NumElts,
+                                   CVariable *Dest,
+                                   CVariable *Offset, int ImmOffset,
+                                   int ImmScale, uint32_t NumElts,
                                    uint32_t EltBytes, uint64_t Align,
                                    uint32_t Addrspace,
                                    LSC_DOC_ADDR_SPACE userAddrSpace);
