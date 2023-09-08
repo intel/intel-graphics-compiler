@@ -660,7 +660,7 @@ DECLARE_IGC_REGKEY(DWORD, CodePatchExperiments,         0,      "Experiment with
 DECLARE_IGC_REGKEY(DWORD, CodePatchFilter,            0x7,      "Filter out unsupported patterns", false)
 DECLARE_IGC_REGKEY(DWORD, FirstStagedSIMD,              0,      "Force Pixel shader to be 1: FastSIMD (SIMD8), 2: BestSIMD (SIMD16 or SIMD8), 3: FatestSIMD (SIMD8 opt off)", false)
 DECLARE_IGC_REGKEY(DWORD, FastestS1Experiments,         0,      "Select configs for fastest compilation by bits.", false)
-DECLARE_IGC_REGKEY(bool, ForceAddingStackcallKernelPrerequisites, false,  "Force adding static overhead for stackcall to the kernel entry such as HWTID instructions for experiments", false)
+DECLARE_IGC_REGKEY(bool, ForceAddingStackcallKernelPrerequisites, false,  "Force adding static overhead for stackcall to the kernel entry such as HWTID instructions for experiments", true)
 DECLARE_IGC_REGKEY(bool, DisableFastestLinearScan,      false,   "Disable LinearScanRA in FastestSIMD.", false)
 DECLARE_IGC_REGKEY(bool, DisableFastestGopt,            false,   "Disable global optimizations for stage 1 shaders.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force pixel shader to return SIMD8 as fast as possible.", false)
