@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <deque>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace IGC {
 
@@ -76,13 +77,16 @@ namespace IGC {
         void performImplArgsAnalysis();
         void initializeTopologicalVisit(llvm::Function* root, std::unordered_map<void*, uint32_t>& FunctionsInKernel, std::deque<void*>& BottomUpQueue, bool ignoreStackCallBoundary);
         uint32_t updateExpandedUnitSize(llvm::Function* F, bool ignoreStackCallBoundary);
+        void UpdateExpectedSizeAfterInlining(std::deque<void*>& leafNodes, std::unordered_set<void*> &funcsInKernel);
         void updateInlineCnt(llvm::Function* root);
+        llvm::ScaledNumber<uint64_t> calculateTotalWeight(llvm::Function* root);
         uint32_t bottomUpHeuristic(llvm::Function* F, uint32_t& stackCall_cnt);
         void partitionKernel();
         void runStaticAnalysis();
         void reduceCompilationUnitSize();
         void trimCompilationUnit(llvm::SmallVector<void*, 64> &unitHeads, uint32_t threshold, bool ignoreStackCallBoundary);
         void performTrimming(llvm::Function *head, llvm::SmallVector<void*, 64>& functions_to_trim, uint32_t threshold, bool ignoreStackCallBoundary);
+        void performGreedyTrimming(llvm::Function* head, llvm::SmallVector<void*, 64>& functions_to_trim, uint32_t threshold, bool ignoreStackCallBoundary);
         uint32_t getMaxUnitSize();
         void getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64> &trimming_pool, bool ignoreStackCallBoundary, uint32_t& func_cnt);
         void updateStaticFuncFreq();
