@@ -108,6 +108,14 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
 
 
     SI_WA_ENABLE(
+        Wa_16012292205,
+        "No Link Provided",
+        "No Link Provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_GT_REV_ID_B0, FUTURE_PROJECT));
+
+
+    SI_WA_ENABLE(
         Wa_16012061344,
         "No Link Provided",
         "No HWSightingLink provided",
