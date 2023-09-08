@@ -126,22 +126,14 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             continue;
         }
 
-        // Get the offset of this constant from the base.
-        int offset = -1;
-
         auto bufferOffset = modMD->inlineProgramScopeOffsets.find(pGlobalVar);
-        if (bufferOffset != modMD->inlineProgramScopeOffsets.end())
-        {
-            offset = bufferOffset->second;
-        }
+        if (bufferOffset == modMD->inlineProgramScopeOffsets.end())
+            continue; // This constant is not used, so it didn't get an offset.
 
-        // This constant is not used, so it didn't get an offset.
-        if (offset == -1)
-        {
-            continue;
-        }
+        // Get the offset of this constant from the base.
+        int64_t offset = bufferOffset->second;
+        ConstantInt* pOffset = ConstantInt::get(Type::getInt64Ty(C), offset);
 
-        ConstantInt* pOffset = ConstantInt::get(Type::getInt32Ty(C), offset);
         const ImplicitArg::ArgType argType =
             AS == ADDRESS_SPACE_GLOBAL ? ImplicitArg::GLOBAL_BASE : ImplicitArg::CONSTANT_BASE;
 

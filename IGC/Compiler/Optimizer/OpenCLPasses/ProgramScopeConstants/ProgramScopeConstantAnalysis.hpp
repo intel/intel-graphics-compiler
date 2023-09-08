@@ -54,7 +54,7 @@ namespace IGC
 
     protected:
         typedef std::vector<unsigned char> DataVector;
-        typedef llvm::MapVector<llvm::GlobalVariable*, int> BufferOffsetMap;
+        typedef llvm::MapVector<llvm::GlobalVariable*, int64_t> BufferOffsetMap;
 
         struct PointerOffsetInfo
         {
@@ -91,6 +91,10 @@ namespace IGC
 
         const llvm::DataLayout* m_DL;
         ModuleMetaData* m_pModuleMd;
+
+        // Used to patch offsets for zero initialized globals
+        typedef std::tuple<char*, unsigned, llvm::GlobalVariable*, uint64_t> ZeroInitPatchInfo;
+        std::vector<ZeroInitPatchInfo> m_PatchLaterDataVector;
     };
 
 } // namespace IGC
