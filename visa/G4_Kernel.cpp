@@ -2085,7 +2085,10 @@ unsigned GRFMode::findModeByRegPressure(unsigned maxRP, unsigned largestInputReg
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && maxRP <= configs[i].numGRF &&
-        largestInputReg <= configs[i].numGRF) {
+        // Check that we've at least 8 GRFs over and above
+        // those blocked for kernel input. This helps cases
+        // where an 8 GRF variable shows up in entry BB.
+        (largestInputReg + 8) <= configs[i].numGRF) {
       newGRF = configs[i].numGRF;
       break;
     }
