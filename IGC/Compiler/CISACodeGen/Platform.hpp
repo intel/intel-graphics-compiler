@@ -1447,9 +1447,10 @@ bool WaDisableD64ScratchMessage() const
 
 bool limitedBCR() const
 {
-    return m_platformInfo.eProductFamily == IGFX_DG2 &&
+    return (m_platformInfo.eProductFamily == IGFX_DG2 &&
          (GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
-          GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID));
+              GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID))) ||
+         (m_platformInfo.eProductFamily == IGFX_METEORLAKE);
 }
 
 uint32_t getMaxAddressedHWThreads() const
