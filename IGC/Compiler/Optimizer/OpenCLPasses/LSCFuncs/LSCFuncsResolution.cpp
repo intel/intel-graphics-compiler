@@ -220,6 +220,7 @@ bool LSCFuncsResolution::runOnFunction(Function &F)
     {
     case IGFX_DG2:
     case IGFX_METEORLAKE:
+    case IGFX_ARROWLAKE:
         defaultSimdSize = 16;
         break;
     default:

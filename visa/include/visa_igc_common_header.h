@@ -490,6 +490,7 @@ typedef enum {
   Xe_XeHPSDV,
   Xe_DG2,
   Xe_MTL,
+  Xe_ARL,
   Xe_PVC,
   Xe_PVCXT,
   ALL

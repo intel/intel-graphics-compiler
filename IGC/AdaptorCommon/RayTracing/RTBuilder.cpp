@@ -1437,6 +1437,7 @@ Value* RTBuilder::getSyncStackID()
     auto& PlatformInfo = Ctx.platform.getPlatformInfo();
 
     if (PlatformInfo.eProductFamily == IGFX_DG2        ||
+        PlatformInfo.eProductFamily == IGFX_ARROWLAKE  ||
         PlatformInfo.eProductFamily == IGFX_METEORLAKE)
     {
         return _getSyncStackID_Xe(VALUE_NAME("SyncStackID"));

@@ -144,7 +144,7 @@ struct XeHPCDebugSurfaceLayout
     static constexpr size_t DBG_REG_ELEMENTS = 2;
     static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
     static constexpr size_t DBG_REG_ALIGN = 24;
-  
+
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
     uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
     uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
@@ -733,7 +733,6 @@ bool CSystemThread::CreateSystemThreadKernel(
     return success;
 }
 
-
 void CSystemThread::DeleteSystemThreadKernel(
     USC::SSystemThreadKernelOutput* &pSystemThreadKernelOutput )
 {
@@ -971,6 +970,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 break;
             case IGFX_DG2:
             case IGFX_METEORLAKE:
+            case IGFX_ARROWLAKE:
                 SIPIndex =  bindlessMode ? XE_HPG_CSR_DEBUG_BINDLESS : XE_HPG_CSR_DEBUG;
                 break;
       // No support for Bindful mode for PVC.
@@ -1002,6 +1002,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_DG2:
             case IGFX_PVC:
             case IGFX_METEORLAKE:
+            case IGFX_ARROWLAKE:
 
             default:
                 break;

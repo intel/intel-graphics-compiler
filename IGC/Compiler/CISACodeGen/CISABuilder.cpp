@@ -3115,6 +3115,10 @@ namespace IGC
             {
                 return Xe_MTL;
             }
+            else if (platform->getPlatformInfo().eProductFamily == IGFX_ARROWLAKE)
+            {
+                return Xe_ARL;
+            }
             else if (platform->getPlatformInfo().eProductFamily == IGFX_PVC)
             {
                 if (platform->getPlatformInfo().usRevId >= REVISION_B)

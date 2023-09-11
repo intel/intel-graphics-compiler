@@ -15223,7 +15223,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
             if (CLCtx->m_InternalOptions.StoreCacheDefault != -1)
                 L1_Evict = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.StoreCacheDefault) == LSC_L1IAR_WB_L3C_WB;
         }
-        // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
+        // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL and ARL.
         if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&
             m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
@@ -21005,7 +21005,8 @@ EmitPass::LscMessageFragmentInfo EmitPass::checkForLscMessageFragmentation(
     const int dataSizeMemBytes = toBytesMem(dataSize);
     // const int dataElemsCount = toCount(dataElems);
     const bool isDg2 = (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2
-        || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE);
+        || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE
+        || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_ARROWLAKE);
     const bool isPvcPlus = !isDg2;
     const int simdElems = numLanes(m_currShader->m_SIMDSize);
     bool halfSimdMode =
@@ -21560,7 +21561,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
         IGC_ASSERT_EXIT_MESSAGE(0, "LSC system scope is available for UGM data-port only.");
     }
 
-    // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
+    // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL and ARL.
     if (scope == LSC_SCOPE_GPU &&
         !m_currShader->m_Platform->hasMultiTile() &&
         m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&

@@ -146,6 +146,10 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
         {
             return IGA_XE_HPG;
         }
+        else if (ProductFamily == IGFX_ARROWLAKE)
+        {
+            return IGA_XE_HPG;
+        }
         else if (ProductFamily == IGFX_PVC)
         {
             return IGA_XE_HPC;

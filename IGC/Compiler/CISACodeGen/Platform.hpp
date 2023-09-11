@@ -61,7 +61,8 @@ bool hasNoInt64Inst() const {
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
         m_platformInfo.eProductFamily == IGFX_DG1 ||
         m_platformInfo.eProductFamily == IGFX_DG2 ||
-        m_platformInfo.eProductFamily == IGFX_METEORLAKE;
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE;
 }
 
 public:
@@ -698,7 +699,8 @@ bool hasHalfSIMDLSC() const
         GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID) ||
         // false for PVC XL A0 RevID==0x0, true from PVC XT A0 RevID==0x3==REVISION_B
         (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B) ||
-        m_platformInfo.eProductFamily == IGFX_METEORLAKE;
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE;
 }
 
 bool NeedsLSCFenceUGMBeforeEOT() const
@@ -799,7 +801,8 @@ bool supports3DAndCubeSampleD() const
     return (
         m_platformInfo.eProductFamily != IGFX_XE_HP_SDV &&
         m_platformInfo.eProductFamily != IGFX_DG2 &&
-        m_platformInfo.eProductFamily != IGFX_METEORLAKE
+        m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
+        m_platformInfo.eProductFamily != IGFX_ARROWLAKE
         ) ||
         IGC_IS_FLAG_DISABLED(EnableSampleDEmulation);
 }
@@ -850,7 +853,8 @@ uint32_t getMaxLSCBlockMsgSize(bool isD64 = true) const
 bool hasURBFence() const
 {
     return m_platformInfo.eProductFamily == IGFX_DG2 ||
-        m_platformInfo.eProductFamily == IGFX_METEORLAKE;
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE;
 }
 
 bool hasMultiTile() const
@@ -862,8 +866,10 @@ bool hasMultiTile() const
 // UGM LSC fence with GPU scope triggers L3 flush
 bool hasL3FlushOnGPUScopeInvalidate() const
 {
-    return m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
-           m_platformInfo.eProductFamily == IGFX_DG2;
+    return
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE ||
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_DG2;
 }
 
 bool L3CacheCoherentCrossTiles() const {
@@ -874,6 +880,7 @@ bool AllowFenceOpt() const
 {
     return ((m_platformInfo.eProductFamily == IGFX_DG2
         || m_platformInfo.eProductFamily == IGFX_METEORLAKE
+        || m_platformInfo.eProductFamily == IGFX_ARROWLAKE
         || m_platformInfo.eProductFamily == IGFX_PVC) &&
         IGC_IS_FLAG_ENABLED(EnablePlatformFenceOpt));
 }
@@ -952,6 +959,7 @@ bool typedReadSupportsAllRenderableFormats() const
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isChildOfDG2B0) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G12Config) ||
         (m_platformInfo.eProductFamily == IGFX_METEORLAKE) ||
+        (m_platformInfo.eProductFamily == IGFX_ARROWLAKE) ||
         (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE))
     {
         return IGC_IS_FLAG_DISABLED(ForceFormatConversionDG2Plus);
@@ -962,8 +970,9 @@ bool typedReadSupportsAllRenderableFormats() const
 
 bool needsWAForThreadsUtilization() const
 {
-    return m_platformInfo.eProductFamily == IGFX_DG2 ||
-           m_platformInfo.eProductFamily == IGFX_METEORLAKE;
+    return (m_platformInfo.eProductFamily == IGFX_DG2 ||
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE);
 }
 
 bool supportDualSimd8PS() const
@@ -1124,12 +1133,14 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_P &&
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_N &&
         m_platformInfo.eProductFamily != IGFX_DG2 &&
-        m_platformInfo.eProductFamily != IGFX_METEORLAKE);
+        m_platformInfo.eProductFamily != IGFX_METEORLAKE) &&
+        m_platformInfo.eProductFamily != IGFX_ARROWLAKE;
 }
 
 // Has 64bit support but use 32bit for perf reasons
 bool preferFP32IntDivRemEmu() const {
-    return m_platformInfo.eProductFamily == IGFX_METEORLAKE;
+    return m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE;
 }
 
 // Platforms that haven't HW support for FP64 operations
@@ -1204,6 +1215,7 @@ bool canFuseTypedWrite() const
     bool isDG2G11Config = GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
     bool isDG2G12Config = GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID);
     bool canFuse = (m_platformInfo.eProductFamily == IGFX_METEORLAKE) ||
+        (m_platformInfo.eProductFamily == IGFX_ARROWLAKE) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isChildOfDG2C0) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isChildOfDG2B0) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G12Config);
@@ -1334,7 +1346,8 @@ bool supportSystemFence() const
 {
     return hasLSC()
         && m_platformInfo.eProductFamily != IGFX_DG2
-        && m_platformInfo.eProductFamily != IGFX_METEORLAKE;
+        && m_platformInfo.eProductFamily != IGFX_METEORLAKE
+        && m_platformInfo.eProductFamily != IGFX_ARROWLAKE;
 }
 
 
@@ -1406,6 +1419,7 @@ bool noNativeDwordMulSupport() const
         m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
         m_platformInfo.eProductFamily == IGFX_DG2 ||
         m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ARROWLAKE ||
         GetPlatformFamily() == IGFX_GEN11_CORE ||
         GetPlatformFamily() == IGFX_GEN12LP_CORE;
 }
