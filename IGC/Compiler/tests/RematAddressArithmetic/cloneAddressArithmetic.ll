@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-clone-address-arithmetic --dce | FileCheck %s
+; RUN: igc_opt %s -S -o - -igc-clone-address-arithmetic --regkey=RematChainLimit=10 --dce | FileCheck %s
 
 define spir_kernel void @main(double addrspace(1)* %base, i64 %offset, i64 %I, i64 %J) {
 ; CHECK: define spir_kernel void @main(double addrspace(1)* [[BASE:%.*]], i64 [[OFFSET:%.*]], i64 %I, i64 %J)
