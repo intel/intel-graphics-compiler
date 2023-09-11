@@ -861,12 +861,17 @@ uint32_t StackCallABI::numReservedABIGRF() const {
 }
 
 uint32_t StackCallABI::getFPSPGRF() const {
-  // For ABI V1 return r125.
-  // For ABI V2, V3 return r127.
-  if (version == StackCallABIVersion::VER_1)
+  // For ABI V1, return (numRegTotal - 3), i.e. 125.
+  // For ABI V2, return (numRegTotal - 1), i.e. 127, 255.
+  // For ABI V3, return (numRegTotal - 1), i.e. 127, 255.
+
+  if (version == StackCallABIVersion::VER_1) {
     return getStackCallStartReg() + FPSPGRF;
-  else
+  } else if (version == StackCallABIVersion::VER_2) {
     return (kernel->getNumRegTotal() - 1) - FPSPGRF;
+  } else {
+    return (kernel->getNumRegTotal() - 1) - FPSPGRF;
+  }
 }
 
 uint32_t StackCallABI::getSpillHeaderGRF() const {
