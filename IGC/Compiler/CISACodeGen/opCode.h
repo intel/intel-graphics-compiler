@@ -56,6 +56,7 @@ DECLARE_OPCODE(sin, Intrinsic, llvm_sin, true, true, true, false, true, false, f
 DECLARE_OPCODE(log2, Intrinsic, llvm_log, true, true, true, false, true, false, false)
 DECLARE_OPCODE(exp2, Intrinsic, llvm_exp, true, true, true, false, true, false, false)
 DECLARE_OPCODE(pow, Intrinsic, llvm_pow, true, true, true, false, true, false, false)
+DECLARE_OPCODE(powi, Intrinsic, llvm_powi, true, true, true, false, true, false, false)
 DECLARE_OPCODE(fma, Intrinsic, llvm_fma, true, true, true, false, false, false, false)
 DECLARE_OPCODE(floor, Intrinsic, llvm_floor, true, true, true, true, true, false, false)
 DECLARE_OPCODE(ceil, Intrinsic, llvm_ceil, true, true, true, true, true, false, false)

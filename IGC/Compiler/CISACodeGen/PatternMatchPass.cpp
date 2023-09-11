@@ -1409,6 +1409,7 @@ namespace IGC
         case Intrinsic::cos:
         case Intrinsic::sin:
         case Intrinsic::pow:
+        case Intrinsic::powi:
         case Intrinsic::floor:
         case Intrinsic::ceil:
         case Intrinsic::trunc:

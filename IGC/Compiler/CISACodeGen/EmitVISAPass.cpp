@@ -1929,6 +1929,9 @@ void EmitPass::EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], cons
             }
             break;
         }
+        case Intrinsic::powi:
+            Powi(source, modifier);
+            break;
         default:
             // no special handling
             EmitSimpleAlu(I, source, modifier);
@@ -2415,6 +2418,14 @@ void EmitPass::EmitMinMax(bool isMin, bool isUnsigned, const SSource sources[2],
         dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
     }
     EmitSimpleAlu(opCode, dst, srcs[0], srcs[1]);
+}
+
+void EmitPass::Powi(const SSource sources[2], const DstModifier& modifier)
+{
+    CVariable* src0 = GetSrcVariable(sources[0]);
+    CVariable* src1 = m_currShader->GetNewVariable(src0);
+    m_encoder->Cast(src1, GetSrcVariable(sources[1]));
+    EmitSimpleAlu(EOPCODE::llvm_pow, m_destination, src0, src1);
 }
 
 void IGC::EmitPass::EmitUAdd(llvm::BinaryOperator* inst, const DstModifier& modifier)
