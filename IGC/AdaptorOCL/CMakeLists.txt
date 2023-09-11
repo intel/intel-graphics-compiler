@@ -133,6 +133,7 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/CacheControlsHelper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.h"
 
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API/USC_d3d10.h"

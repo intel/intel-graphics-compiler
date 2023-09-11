@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "HandleSpirvDecorationMetadata.h"
+#include "CacheControlsHelper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
@@ -147,6 +148,12 @@ void HandleSpirvDecorationMetadata::visitLoadInst(LoadInst& I)
     {
         switch (DecorationId)
         {
+            // IDecCacheControlLoadINTEL
+            case 6442:
+            {
+                handleCacheControlINTEL<LoadCacheControl>(I, MDNodes);
+                break;
+            }
             default: continue;
         }
     }
@@ -159,8 +166,75 @@ void HandleSpirvDecorationMetadata::visitStoreInst(StoreInst& I)
     {
         switch (DecorationId)
         {
+            // IDecCacheControlStoreINTEL
+            case 6443:
+            {
+                handleCacheControlINTEL<StoreCacheControl>(I, MDNodes);
+                break;
+            }
             default: continue;
         }
     }
 }
 
+template<typename T>
+void HandleSpirvDecorationMetadata::handleCacheControlINTEL(Instruction& I, SmallPtrSetImpl<MDNode*>& MDNodes)
+{
+    static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
+    SmallDenseMap<CacheLevel, T> cacheControls = parseCacheControlsMD<T>(MDNodes);
+    IGC_ASSERT(!cacheControls.empty());
+
+    // SPV_INTEL_cache_controls extension specification states the following:
+    // "Cache Level is an unsigned 32-bit integer telling the cache level to
+    //  which the control applies. The value 0 indicates the cache level closest
+    //  to the processing unit, the value 1 indicates the next furthest cache
+    //  level, etc. If some cache level does not exist, the decoration is ignored."
+    //
+    // Therefore Cache Level equal to 0 maps to L1$ and Cache Level equal to 1 maps to L3$.
+    // Other Cache Level values are ignored.
+    auto L1CacheControl = getCacheControl(cacheControls, CacheLevel(0));
+    auto L3CacheControl = getCacheControl(cacheControls, CacheLevel(1));
+
+    if (!L1CacheControl && !L3CacheControl)
+    {
+        // Early exit if there are no cache controls set for cache levels that are controllable
+        // by Intel GPUs.
+        return;
+    }
+
+    LSC_L1_L3_CC defaultLSCCacheControls = static_cast<LSC_L1_L3_CC>(
+        std::is_same_v<T, LoadCacheControl> ?
+            m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault :
+            m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault);
+
+    auto [L1Default, L3Default] = mapToSPIRVCacheControl<T>(defaultLSCCacheControls);
+
+    IGC_ASSERT(L1Default != T::Invalid && L3Default != T::Invalid);
+
+    T newL1CacheControl = L1CacheControl ? L1CacheControl.value() : L1Default;
+    T newL3CacheControl = L3CacheControl ? L3CacheControl.value() : L3Default;
+
+    LSC_L1_L3_CC newLSCCacheControl =
+        mapToLSCCacheControl(newL1CacheControl, newL3CacheControl);
+
+    if (defaultLSCCacheControls == newLSCCacheControl)
+    {
+        // No need to set lsc.cache.ctrl metadata if requested cache controls are the same
+        // as default cache controls.
+        return;
+    }
+
+    if (newLSCCacheControl != LSC_CC_INVALID)
+    {
+        MDNode* CacheCtrlNode = MDNode::get(
+            I.getContext(),
+            ConstantAsMetadata::get(
+                ConstantInt::get(Type::getInt32Ty(I.getContext()), newLSCCacheControl)));
+        I.setMetadata("lsc.cache.ctrl", CacheCtrlNode);
+        m_changed = true;
+    }
+    else
+    {
+        m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+    }
+}
