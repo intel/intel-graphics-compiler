@@ -1867,12 +1867,10 @@ void GenXSimdCFConformance::ensureConformance() {
         IID != GenXIntrinsic::genx_simdcf_unmask &&
         IID != GenXIntrinsic::genx_simdcf_remask) {
       EMValsStack.insert(*i);
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
       LLVM_DEBUG(if (auto *Inst = dyn_cast<Instruction>(i->getValue())) {
         auto FuncName = Inst->getFunction()->getName();
         dbgs() << "Entry EMVals " << FuncName << " - " << *Inst << "\n";
       });
-#endif
     }
   }
   for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
@@ -1920,18 +1918,16 @@ void GenXSimdCFConformance::ensureConformance() {
     // been identified in the early pass, unless passes in between have
     // transformed the code in an unexpected way that has made the simd CF
     // non-conformant. Give an error here if this has happened.
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-    if (!GotosToLower.empty()) {
-      dbgs() << "Not empty GotosToLower:";
-      for (auto *Dump : GotosToLower)
-        Dump->dump();
-    }
-    if (!JoinsToLower.empty()) {
-      dbgs() << "Not empty JoinsToLower:";
-      for (auto *Dump : JoinsToLower)
-        Dump->dump();
-    }
-#endif
+    LLVM_DEBUG(
+        if (!GotosToLower.empty()) {
+          dbgs() << "Not empty GotosToLower:";
+          for (auto *Dump : GotosToLower)
+            dbgs() << *Dump;
+        } if (!JoinsToLower.empty()) {
+          dbgs() << "Not empty JoinsToLower:";
+          for (auto *Dump : JoinsToLower)
+            dbgs() << *Dump;
+        });
     IGC_ASSERT_EXIT_MESSAGE(
         GotosToLower.empty(),
         "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
@@ -2463,9 +2459,7 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
     auto User2 = cast<Instruction>(ui2->getUser());
     unsigned OpNum = ui2->getOperandNo();
     ++ui2;
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
     LLVM_DEBUG(dbgs() << "checkAllUsesAreSelectOrWrRegion: for user " << *User2 << "\n");
-#endif
     if (isa<SelectInst>(User2))
       continue;
 
@@ -3009,14 +3003,12 @@ bool GenXSimdCFConformance::getConnectedVals(
     }
   } else {
     if (!UsersToLower.empty()) {
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
       LLVM_DEBUG(dbgs() << "getConnectedVals: find bad users:\n";
                  for (auto &BadUser
                       : UsersToLower) {
                    dbgs() << "    ";
-                   BadUser.dump();
+                   BadUser.print(dbgs());
                  });
-#endif
       return false;
     }
   }

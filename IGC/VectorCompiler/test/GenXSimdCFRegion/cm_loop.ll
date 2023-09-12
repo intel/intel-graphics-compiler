@@ -6,9 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -simdcf-region -enable-simdcf-transform \
-; RUN: -simdcf-skip-search-preds -simdcf-rm-loop-mask -march=genx64 -mcpu=Gen9 \
-; RUN: -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -simdcf-region -simdcf-skip-search-preds \
+; RUN: -simdcf-rm-loop-mask -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenXSimdCFRegion
 ; ------------------------------------------------

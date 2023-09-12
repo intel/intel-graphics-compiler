@@ -130,7 +130,6 @@ SPDX-License-Identifier: MIT
 // NOTE: transformation is much harded in details than it is decribed above.
 // Main problem is to make this pass and SimdCFConformace be compatible.
 
-#include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/General/Types.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -144,14 +143,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Verifier.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/FormattedStream.h>
 
 #define DEBUG_TYPE "simdcf-region"
 
 using namespace llvm;
-
-static cl::opt<bool>
-    EnableSimdCFTransform("enable-simdcf-transform", cl::init(true), cl::Hidden,
-                          cl::desc("Enable simd cf transformation."));
 
 static cl::opt<bool>
     SimdCFRMLoopMask("simdcf-rm-loop-mask", cl::init(false), cl::Hidden,
@@ -167,37 +163,56 @@ namespace llvm::genx {
 bool isPredicate(Instruction *Inst);
 bool isPredNot(Instruction *Inst);
 
+using RegionIterator = SmallVector<BasicBlock *, 8>;
+
 class SimdCFRegion : public Region {
 protected:
-  std::set<SimdCFRegion *> SubRegions; // set because subregions are unique
   Value *Mask = nullptr;
-  enum CFRegionKind { RK_IfReg, RK_LoopReg };
+  enum CFRegionKind { RK_IfReg, RK_LoopReg, RK_BaseReg };
   const CFRegionKind Kind;
-
 public:
   SimdCFRegion(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
-               DominatorTree *DT, CFRegionKind K,
-               SimdCFRegion *Parent = nullptr)
-      : Region(Entry, Exit, RI, DT, Parent), Kind(K) {}
-  virtual ~SimdCFRegion() {}
+               DominatorTree *DT, SimdCFRegion *Parent, CFRegionKind K);
   virtual bool verify() const = 0;
-  auto *getMask() const { return Mask; }
-  CFRegionKind getKind() const { return Kind; };
+  auto *getMask() const;
+  CFRegionKind getKind() const;
+  void print(raw_ostream &ROS);
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  virtual void dump();
+#endif
 };
 
-using SimdCFRegionPtr = std::unique_ptr<SimdCFRegion>;
+class SimdCFRegionBase : public SimdCFRegion {
+  RegionIterator BBlocks;
+
+public:
+  SimdCFRegionBase(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
+                   DominatorTree *DT, SimdCFRegion *Parent = nullptr,
+                   CFRegionKind K = RK_BaseReg);
+  virtual bool verify() const;
+  virtual RegionIterator *Blocks();
+  virtual const RegionIterator *Blocks() const;
+  // llvm RTTY information
+  static bool classof(const SimdCFRegion *S) {
+    return S->getKind() == RK_BaseReg;
+  }
+};
+
+using SimdCFRegionPtr = std::unique_ptr<SimdCFRegionBase>;
 using SimdCFRegionsT = std::vector<SimdCFRegionPtr>;
 
-class SimdCFIfRegion final : public SimdCFRegion {
-  Region *IfThenRegion = nullptr;
-  Region *IfElseRegion = nullptr;
+class SimdCFIfRegion final : public SimdCFRegionBase {
+  SimdCFRegionBase *IfThenRegion = nullptr;
+  SimdCFRegionBase *IfElseRegion = nullptr;
   BranchInst *SimdIfBranch = nullptr;
+  RegionIterator AllBlocks;
+
 public:
-  SimdCFIfRegion(BasicBlock *, Region *, Region *, BasicBlock *, RegionInfo *,
-                 DominatorTree *, SimdCFRegion *);
+  SimdCFIfRegion(BasicBlock *, SimdCFRegionBase *, SimdCFRegionBase *,
+                 BasicBlock *, RegionInfo *, DominatorTree *, SimdCFRegion *);
   bool hasElse() const;
-  Region *getIfThenRegion() const;
-  Region *getIfElseRegion() const;
+  SimdCFRegionBase *getIfThenRegion() const;
+  SimdCFRegionBase *getIfElseRegion() const;
   BranchInst *getIfSimdBranch() const;
   int getIdThen() const;
   CallInst *getIfSimdCondition() const;
@@ -205,17 +220,18 @@ public:
   // Conformance-pass expect true edge to join-block - that's why here swap
   // successors
   bool needSwap();
+  RegionIterator *Blocks() override;
+  BasicBlock *SplitBlock(Instruction *);
   // llvm RTTY information
   static bool classof(const SimdCFRegion *S) {
     return S->getKind() == RK_IfReg;
   }
 };
 
-class SimdCFLoopRegion final : public SimdCFRegion {
+class SimdCFLoopRegion final : public SimdCFRegionBase {
   Loop *SimdLoop;
   BranchInst *SimdLoopBranch = nullptr;
   BasicBlock *LoopHead = nullptr;
-
 public:
   SimdCFLoopRegion(BasicBlock *, Loop *, BasicBlock *, RegionInfo *,
                    DominatorTree *, SimdCFRegion *Parent = nullptr);
@@ -233,23 +249,80 @@ public:
   }
 };
 
-SimdCFIfRegion::SimdCFIfRegion(BasicBlock *Entry, Region *IfThen,
-                               Region *IfElse, BasicBlock *Exit, RegionInfo *RI,
-                               DominatorTree *DT,
+// Usefull getters:
+static inline uint64_t getSimdSize(Type *Ty) {
+  auto *SimdTy = cast<IGCLLVM::FixedVectorType>(Ty);
+  return SimdTy->getNumElements();
+}
+
+static inline uint64_t getSimdSize(CallInst *AnyInst) {
+  auto *Ty = AnyInst->getOperand(0)->getType();
+  return getSimdSize(Ty);
+}
+
+// SimdCFRegion methods definition
+
+SimdCFRegion::SimdCFRegion(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
+                           DominatorTree *DT, SimdCFRegion *Parent,
+                           CFRegionKind K)
+    : Region(Entry, Exit, RI, DT, Parent), Kind(K) {}
+
+auto *SimdCFRegion::getMask() const { return Mask; }
+
+SimdCFRegion::CFRegionKind SimdCFRegion::getKind() const { return Kind; }
+
+// SimdCFRegionBase methods definition
+
+SimdCFRegionBase::SimdCFRegionBase(BasicBlock *Entry, BasicBlock *Exit,
+                                   RegionInfo *RI, DominatorTree *DT,
+                                   SimdCFRegion *Parent, CFRegionKind K)
+    : SimdCFRegion(Entry, Exit, RI, DT, Parent, K) {
+  if (Entry == Exit)
+    BBlocks.push_back(Entry);
+  else
+    for (auto *BB : blocks())
+      BBlocks.push_back(BB);
+}
+
+bool SimdCFRegionBase::verify() const { return true; }
+RegionIterator *SimdCFRegionBase::Blocks() { return &BBlocks; }
+const RegionIterator *SimdCFRegionBase::Blocks() const { return &BBlocks; }
+
+// SimdCFIfRegion methods definition
+
+RegionIterator *SimdCFIfRegion::Blocks() { return &AllBlocks; }
+
+SimdCFIfRegion::SimdCFIfRegion(BasicBlock *Entry, SimdCFRegionBase *IfThen,
+                               SimdCFRegionBase *IfElse, BasicBlock *Exit,
+                               RegionInfo *RI, DominatorTree *DT,
                                SimdCFRegion *Parent = nullptr)
-    : SimdCFRegion(Entry, Exit, RI, DT, RK_IfReg, Parent), IfThenRegion(IfThen),
-      IfElseRegion(IfElse) {
+    : SimdCFRegionBase(Entry, Exit, RI, DT, Parent, RK_IfReg),
+      IfThenRegion(IfThen), IfElseRegion(IfElse),
+      AllBlocks(*SimdCFRegionBase::Blocks()) {
   IGC_ASSERT(IfThenRegion);
   SimdIfBranch = cast<BranchInst>(Entry->getTerminator());
-  IGC_ASSERT(SimdIfBranch);
   CallInst *Cond = dyn_cast<CallInst>(SimdIfBranch->getCondition());
   IGC_ASSERT(Cond);
   Mask = Cond->getArgOperand(0);
+  AllBlocks.append(IfThenRegion->Blocks()->begin(),
+                   IfThenRegion->Blocks()->end());
+  if (hasElse())
+    AllBlocks.append(IfElseRegion->Blocks()->begin(),
+                     IfElseRegion->Blocks()->end());
 }
+
 bool SimdCFIfRegion::hasElse() const { return IfElseRegion != nullptr; }
-Region *SimdCFIfRegion::getIfThenRegion() const { return IfThenRegion; }
-Region *SimdCFIfRegion::getIfElseRegion() const { return IfElseRegion; }
+
+SimdCFRegionBase *SimdCFIfRegion::getIfThenRegion() const {
+  return IfThenRegion;
+}
+
+SimdCFRegionBase *SimdCFIfRegion::getIfElseRegion() const {
+  return IfElseRegion;
+}
+
 BranchInst *SimdCFIfRegion::getIfSimdBranch() const { return SimdIfBranch; }
+
 int SimdCFIfRegion::getIdThen() const {
   IGC_ASSERT(getIfSimdBranch()->isConditional());
   IGC_ASSERT(getIfSimdBranch()->getNumSuccessors() == 2);
@@ -258,6 +331,7 @@ int SimdCFIfRegion::getIdThen() const {
   IGC_ASSERT(getIfSimdBranch()->getSuccessor(1) == IfThenRegion->getEntry());
   return 1;
 }
+
 CallInst *SimdCFIfRegion::getIfSimdCondition() const {
   return dyn_cast<CallInst>(getIfSimdBranch()->getCondition());
 }
@@ -274,39 +348,60 @@ bool SimdCFIfRegion::verify() const {
   // for now)
   auto *RegionCheck = getIfThenRegion();
   auto CheckIf = [&](BasicBlock *BB) {
-    if (BB == RegionCheck->getExit())
+    if (BB == RegionCheck->getExit()) {
+      LLVM_DEBUG(dbgs() << "First Exit\n");
       return false;
+    }
     auto *BI = dyn_cast<BranchInst>(BB->getTerminator());
-    if (BI && BI->getNumSuccessors() > 1)
+    if (BI && BI->getNumSuccessors() > 1) {
+      LLVM_DEBUG(BI->print(dbgs()));
+      LLVM_DEBUG(dbgs() << "Exit for branch with num succ "
+                        << BI->getNumSuccessors() << " \n");
       return true;
+    }
+    LLVM_DEBUG(dbgs() << "Default exit\n");
     return false;
   };
 
-  if (find_if(RegionCheck->blocks(), CheckIf) != RegionCheck->block_end())
+  LLVM_DEBUG(dbgs() << " Dump blocks name: \n"; for (auto *BB
+                                                     : *RegionCheck->Blocks()) {
+    dbgs() << " BB = " << BB->getName() << "\n";
+  });
+  if (find_if(*RegionCheck->Blocks(), CheckIf) != RegionCheck->Blocks()->end())
     return false;
   if (!hasElse())
     return true;
 
   RegionCheck = getIfElseRegion();
-  if (find_if(RegionCheck->blocks(), CheckIf) != RegionCheck->block_end())
+  if (find_if(*RegionCheck->Blocks(), CheckIf) != RegionCheck->Blocks()->end())
     return false;
   return true;
 }
 
 bool SimdCFIfRegion::needSwap() { return getIdThen() == 0; }
 
+BasicBlock *SimdCFIfRegion::SplitBlock(Instruction *OldCond) {
+  auto *OldCondBB = OldCond->getParent();
+
+  auto *JPSplit = OldCondBB->splitBasicBlock(OldCond, OldCondBB->getName());
+
+  AllBlocks.push_back(JPSplit);
+  return JPSplit;
+}
+
+// SimdCFLoopRegion methods definition
+
 SimdCFLoopRegion::SimdCFLoopRegion(BasicBlock *Entry, Loop *L, BasicBlock *Exit,
                                    RegionInfo *RI, DominatorTree *DT,
                                    SimdCFRegion *Parent)
-    : SimdCFRegion(Entry, Exit, RI, DT, RK_LoopReg, Parent), SimdLoop(L) {
+    : SimdCFRegionBase(Entry, Exit, RI, DT, Parent, RK_LoopReg), SimdLoop(L) {
   SimdLoopBranch =
       cast<BranchInst>(SimdLoop->getExitingBlock()->getTerminator());
-  IGC_ASSERT(SimdLoopBranch);
-  auto *Cond = dyn_cast<CallInst>(getSimdBranch()->getCondition());
-  IGC_ASSERT(Cond);
+  auto *Cond = cast<CallInst>(getSimdBranch()->getCondition());
   Mask = Cond->getArgOperand(0);
   LoopHead = SimdLoopBranch->getSuccessor(getIdExit());
 }
+
 BranchInst *SimdCFLoopRegion::getSimdBranch() const { return SimdLoopBranch; }
 
 CallInst *SimdCFLoopRegion::getSimdCondition() const {
@@ -335,12 +430,56 @@ bool SimdCFLoopRegion::verify() const {
     return false;
   };
 
-  if (find_if(blocks(), CheckLoop) != block_end())
+  if (std::find_if(Blocks()->begin(), Blocks()->end(), CheckLoop) !=
+      Blocks()->end())
     return false;
 
   return true;
 }
+
 bool SimdCFLoopRegion::needSwap() { return getIdExit() != 0; }
+
+void SimdCFRegion::print(raw_ostream &ROS) {
+  formatted_raw_ostream OS(ROS);
+  if (auto *Loop = dyn_cast<SimdCFLoopRegion>(this)) {
+    OS << "Print Loop blocks:\n";
+    for (auto *BB : *Loop->Blocks())
+      OS << "    loop block " << BB->getName() << "\n";
+    Region::print(OS);
+  } else if (auto *IfThen = dyn_cast<SimdCFIfRegion>(this)) {
+    OS << "Print If-Then-Else blocks:\n";
+    OS << "  curr empty: " << (IfThen->Blocks()->empty() ? "y" : "n") << "\n";
+
+    for (auto *BB : *IfThen->Blocks()) {
+      OS << "  curr blocks ";
+      BB->printAsOperand(OS, false);
+      OS << "\n";
+    }
+    OS << "Then-blocks:\n";
+    IfThen->getIfThenRegion()->print(OS);
+    if (IfThen->hasElse()) {
+      OS << "Else-blocks:\n";
+      IfThen->getIfElseRegion()->print(OS);
+    }
+    Region::print(OS);
+  } else if (auto *Base = dyn_cast<SimdCFRegionBase>(this)) {
+    OS << "\t\tPrint BaseRegion blocks:\n";
+    auto *CurrBlocks = Base->Blocks();
+    OS << "\t\tempty: " << (CurrBlocks->empty() ? "y" : "n") << "\n";
+    for (auto *BB : *CurrBlocks) {
+      OS << "\t\tblock ";
+      BB->printAsOperand(OS, false);
+      OS << "\n";
+    }
+  } else {
+    Region::print(OS);
+  }
+}
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void SimdCFRegion::dump() { print(dbgs()); }
+#endif
+
 } // namespace llvm::genx
 
 using namespace genx;
@@ -382,7 +521,6 @@ public:
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<RegionInfoPass>();
-    AU.addRequired<GenXBackendConfig>();
   }
 
 private:
@@ -391,7 +529,7 @@ private:
   void insertIfGotoJoin(SimdCFIfRegion *R);
   void removeMask(SimdCFIfRegion *R);
   void removeMask(SimdCFLoopRegion *R);
-  void removeMachMask(SimdCFRegion *R);
+  void removeMachMask(SimdCFRegionBase *R);
   void fixPHIs(SimdCFIfRegion *R);
   void insertLoopGotoJoin(SimdCFLoopRegion *R);
   void fixPHIs(SimdCFLoopRegion *R);
@@ -407,6 +545,7 @@ private:
   //  Get or create EM-Load for basic-block
   Value *getEMValue(BasicBlock *BB);
   void saveGotoEMRM(CallInst *Goto);
+  bool TryReplace(SimdCFRegionBase *Reg, Use *Ui, bool IsEm);
 
   Value *getRMAddr(unsigned Width = 0);
   bool isSimdCFCondition(Value *Cond);
@@ -529,7 +668,8 @@ GenXPredToSimdCF::findSimdCFBranchAndCondition(BasicBlock &BB) {
   if (isSimdCFCondition(Cond))
     return std::make_pair(BrInst, Cond);
 
-  LLVM_DEBUG(dbgs() << "Condition isn't a Simd CF condition:\n"; Cond->dump());
+  LLVM_DEBUG(dbgs() << "Condition isn't a Simd CF condition:\n";
+             Cond->print(dbgs()));
   return std::make_pair(nullptr, nullptr);
 }
 
@@ -581,14 +721,13 @@ bool GenXPredToSimdCF::areOppositeSimdCFConditions(Value *IfCond,
   auto *ElseMask = dyn_cast<Instruction>(ElseCondCall->getArgOperand(0));
   if (!IfMask || !ElseMask)
     return false;
-  LLVM_DEBUG(dbgs() << "IfMask: "; IfMask->dump(); dbgs() << "ElseMask: ";
-             ElseMask->dump());
+  LLVM_DEBUG(dbgs() << "IfMask: " << *IfMask << "\nElseMask: " << *ElseMask);
 
   if (isIfCondReduceOr && isElseCondReduceOr) {
     if (!genx::isPredicate(IfMask) || !genx::isPredNot(ElseMask))
       return false;
-    LLVM_DEBUG(dbgs() << "Comparing "; IfMask->dump(); dbgs() << "against   ";
-               ElseMask->getOperand(0)->dump());
+    LLVM_DEBUG(dbgs() << "Comparing " << *IfMask << "against   "
+                      << *ElseMask->getOperand(0));
     return IfMask == ElseMask->getOperand(0);
   }
   if (isIfCondReduceOr && !isElseCondReduceOr)
@@ -598,8 +737,8 @@ bool GenXPredToSimdCF::areOppositeSimdCFConditions(Value *IfCond,
   // last variant - if (!isIfCondReduceOr && !isElseCondReduceOr)
   if (!genx::isPredicate(IfMask) || !genx::isPredNot(ElseMask))
     return false;
-  LLVM_DEBUG(dbgs() << "Comparing "; IfMask->dump(); dbgs() << "against   ";
-             ElseMask->getOperand(0)->dump());
+  LLVM_DEBUG(dbgs() << "Comparing " << *IfMask << "against   "
+                    << *ElseMask->getOperand(0));
   return IfMask == ElseMask->getOperand(0);
 }
 
@@ -741,11 +880,22 @@ bool GenXPredToSimdCF::analizeInsts(BBContainer *Container, Value *Cond) {
   // 2-st case - if predicate is constant:
   //    lookup all instructions, is there same constant?
   if (auto *Const = dyn_cast<Constant>(Pred)) {
-    for (auto *BB : Container->blocks()) {
-      for (auto &Inst : *BB) {
-        if (isa<SelectInst>(Inst) && Inst.getOperand(0) == Const) {
-          LLVM_DEBUG(dbgs() << "Find const-pred inst " << Inst.getName());
-          RetVal = true;
+    if constexpr (std::is_base_of<SimdCFRegionBase, BBContainer>::value) {
+      for (auto *BB : *Container->Blocks()) {
+        for (auto &Inst : *BB) {
+          if (isa<SelectInst>(Inst) && Inst.getOperand(0) == Const) {
+            LLVM_DEBUG(dbgs() << "Find const-pred inst " << Inst.getName());
+            RetVal = true;
+          }
+        }
+      }
+    } else {
+      for (auto *BB : Container->blocks()) {
+        for (auto &Inst : *BB) {
+          if (isa<SelectInst>(Inst) && Inst.getOperand(0) == Const) {
+            LLVM_DEBUG(dbgs() << "Find const-pred inst " << Inst.getName());
+            RetVal = true;
+          }
         }
       }
     }
@@ -779,10 +929,18 @@ bool GenXPredToSimdCF::analizeInsts(BBContainer *Container, Value *Cond) {
   if (!BBs.size())
     return false;
 
-  for (auto *BB : Container->blocks()) {
-    if (BBs.count(BB))
-      return true; // ---> Success exit
+  if constexpr (std::is_base_of<SimdCFRegionBase, BBContainer>::value) {
+    for (auto *BB : *Container->Blocks()) {
+      if (BBs.count(BB))
+        return true; // ---> Success exit
+    }
+  } else {
+    for (auto *BB : Container->blocks()) {
+      if (BBs.count(BB))
+        return true; // ---> Success exit
+    }
   }
+
   return false;
 }
 
@@ -794,29 +952,30 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchIf(BasicBlock &BB) {
   if (!Branch || !Cond)
     return nullptr;
 
-  LLVM_DEBUG(dbgs() << "Find Simd CF If branch and condition:\n"; Cond->dump();
-             Branch->dump());
+  LLVM_DEBUG(dbgs() << "Find Simd CF If branch and condition:\n"
+                    << *Cond << "\n"
+                    << *Branch);
   BasicBlock *Entry = &BB;
   BasicBlock *IfThenEntry = getIfThenEntry(*Branch);
   if (!IfThenEntry)
     return nullptr;
-  LLVM_DEBUG(dbgs() << "Find Simd CF IfThenEntry BB: " << IfThenEntry->getName()
-                    << '\n');
+  LLVM_DEBUG(dbgs() << "Find Simd CF IfThenEntry BB: ";
+             IfThenEntry->printAsOperand(dbgs(), false); dbgs() << '\n');
   BasicBlock *IfThenEnd = getIfThenEnd(*Branch);
   if (!IfThenEnd)
     return nullptr;
   // Find Simd CF IfThenEnd BB: if.then
-  LLVM_DEBUG(dbgs() << "Find Simd CF IfThenEnd BB: " << IfThenEnd->getName()
-                    << '\n');
+  LLVM_DEBUG(dbgs() << "Find Simd CF IfThenEnd BB: ";
+             IfThenEnd->printAsOperand(dbgs(), false); dbgs() << '\n');
 
-  auto IfThenRegion = std::make_unique<Region>(
+  auto IfThenRegion = std::make_unique<SimdCFRegionBase>(
       IfThenEntry, IfThenEnd, &getAnalysis<RegionInfoPass>().getRegionInfo(),
-      &getAnalysis<DominatorTreeWrapperPass>().getDomTree());
+      &getAnalysis<DominatorTreeWrapperPass>().getDomTree(), nullptr);
   IfThenRegion->verifyRegion();
   // Finded IfThenRegion 'if.then => if.then': [0] if.then => if.then
   LLVM_DEBUG(dbgs() << "Finded IfThenRegion '" << IfThenRegion->getNameStr()
                     << "':\n";
-             IfThenRegion->dump());
+             IfThenRegion->print(dbgs()));
 
   auto [ElseBranch, ElseCond] = findSimdCFBranchAndCondition(*IfThenEnd);
 
@@ -824,12 +983,14 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchIf(BasicBlock &BB) {
     bool areOppositeConds = areOppositeSimdCFConditions(Cond, ElseCond);
     if (!areOppositeConds) {
       LLVM_DEBUG(dbgs() << "Finded Simd CF Else condition is not opposite to "
-                           "the If condition:\n";
-                 ElseCond->dump(); ElseBranch->dump());
+                           "the If condition:\n"
+                        << *ElseCond << "\n"
+                        << *ElseBranch);
       return nullptr;
     }
-    LLVM_DEBUG(dbgs() << "Find Simd CF Else branch and condition:\n";
-               ElseCond->dump(); ElseBranch->dump());
+    LLVM_DEBUG(dbgs() << "Find Simd CF Else branch and condition:\n"
+                      << *ElseCond << "\n"
+                      << *ElseBranch);
     BasicBlock *IfElseEntry = getIfElseEntry(*ElseBranch);
     if (!IfElseEntry)
       return nullptr;
@@ -841,13 +1002,13 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchIf(BasicBlock &BB) {
     LLVM_DEBUG(dbgs() << "Find Simd CF IfElseEnd BB: " << IfElseEnd->getName()
                       << '\n');
 
-    auto IfElseRegion = std::make_unique<Region>(
+    auto IfElseRegion = std::make_unique<SimdCFRegionBase>(
         IfElseEntry, IfElseEnd, &getAnalysis<RegionInfoPass>().getRegionInfo(),
-        &getAnalysis<DominatorTreeWrapperPass>().getDomTree());
+        &getAnalysis<DominatorTreeWrapperPass>().getDomTree(), nullptr);
     IfElseRegion->verifyRegion();
     LLVM_DEBUG(dbgs() << "Finded IfElseRegion '" << IfElseRegion->getNameStr()
                       << "':\n";
-               IfElseRegion->dump());
+               IfElseRegion->print(dbgs()));
 
     BasicBlock *Exit = getIfExitFromElseBranch(*ElseBranch);
     if (!Exit)
@@ -860,10 +1021,13 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchIf(BasicBlock &BB) {
 
     if (!(analizeInsts(IfThenRegion.get(), Cond) ||
           analizeInsts(IfElseRegion.get(), Cond))) {
-      LLVM_DEBUG(dbgs() << "Filed to find predicated instructions for";
-                 Cond->dump());
+      LLVM_DEBUG(dbgs() << "Filed to find predicated instructions for"
+                        << *Cond);
       return nullptr;
     }
+
+    if (getSimdSize(cast<CallInst>(Cond)) <= 1)
+      return nullptr;
 
     LLVM_DEBUG(dbgs() << "Find Simd CF IfEnd BB: " << Exit->getName() << '\n');
     return std::make_unique<SimdCFIfRegion>(
@@ -883,8 +1047,7 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchIf(BasicBlock &BB) {
   // Check there is any predicated(select) instructions
   // in region found.
   if (!analizeInsts(IfThenRegion.get(), Cond)) {
-    LLVM_DEBUG(dbgs() << "Filed to find predicated instructions for";
-               Cond->dump());
+    LLVM_DEBUG(dbgs() << "Filed to find predicated instructions for" << *Cond);
     return nullptr;
   }
 
@@ -923,8 +1086,9 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchLoop(BasicBlock &BB) {
     LLVM_DEBUG(dbgs() << "Didn't find Simd CF Loop branch and condition\n");
     return nullptr;
   }
-  LLVM_DEBUG(dbgs() << "Find Simd CF Loop branch and condition:\n";
-             Cond->dump(); Branch->dump());
+  LLVM_DEBUG(dbgs() << "Find Simd CF Loop branch and condition:\n"
+                    << *Cond << "\n"
+                    << *Branch);
   auto *Entry = Loop->getLoopPredecessor();
   if (!Entry)
     return nullptr;
@@ -958,18 +1122,19 @@ SimdCFRegionsT GenXPredToSimdCF::findSimdCFRegions(Function &F) {
                         << '\n');
       continue;
     }
-
     auto *Loop = LI.getLoopFor(&BB);
     if (!Loop) {
       if (SimdCFRegionPtr Match = tryMatchIf(BB)) {
         LLVM_DEBUG(dbgs() << "Matched Simd CF If on BB '" << BB.getName()
                           << "'\n";
-                   Match->dump());
-        for (auto *MBB : Match->blocks()) {
+                   Match->print(dbgs()));
+
+        for (auto &MBB : *Match->Blocks()) {
           Visited.insert(MBB);
           LLVM_DEBUG(dbgs()
                      << "Marking BB '" << MBB->getName() << "' as visited\n");
         }
+        LLVM_DEBUG(dbgs() << "Add -> SimdCFRegion:\n"; Match->print(dbgs()));
         Regions.push_back(std::move(Match));
       } else
         LLVM_DEBUG(dbgs() << "Couldn't match Simd CF on BB '" << BB.getName()
@@ -978,12 +1143,13 @@ SimdCFRegionsT GenXPredToSimdCF::findSimdCFRegions(Function &F) {
       if (SimdCFRegionPtr Match = tryMatchLoop(BB)) {
         LLVM_DEBUG(dbgs() << "Matched Simd CF Loop on BB '" << BB.getName()
                           << "'\n";
-                   Match->dump());
-        for (auto *MBB : Match->blocks()) {
+                   Match->print(dbgs()));
+        for (auto &MBB : *Match->Blocks()) {
           Visited.insert(MBB);
           LLVM_DEBUG(dbgs()
                      << "Marking BB '" << MBB->getName() << "' as visited\n");
         }
+        LLVM_DEBUG(dbgs() << "Add -> SimdCFRegion:\n"; Match->print(dbgs()));
         Regions.push_back(std::move(Match));
       } else
         LLVM_DEBUG(dbgs() << "Couldn't match Simd CF on BB '" << BB.getName()
@@ -1001,8 +1167,7 @@ Value *GenXPredToSimdCF::generateJoin(BasicBlock *JoinBlock) {
   auto *F = JoinBlock->getParent();
   Value *EM = getEMAddr(F);
 
-  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  auto SimdWidth = SimdTy->getNumElements();
+  auto SimdWidth = getSimdSize(Mask->getType());
   IRBuilder<> Builder(JoinBlock, JoinBlock->begin());
 
   // Fix execution mask in after-then branch
@@ -1030,8 +1195,7 @@ Value *GenXPredToSimdCF::generateJoin(BasicBlock *JoinBlock) {
 }
 
 void GenXPredToSimdCF::saveGotoEMRM(CallInst *Goto) {
-  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  auto SimdWidth = SimdTy->getNumElements();
+  auto SimdWidth = getSimdSize(Mask->getType());
   IRBuilder<> Builder(Goto->getParent()->getTerminator());
 
   // Save EM-value
@@ -1073,9 +1237,7 @@ void GenXPredToSimdCF::generateOppositeMask(Type *RmTy) {
 void GenXPredToSimdCF::generateGoto(BranchInst *Br) {
   IRBuilder<> Builder(Br);
 
-  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  auto SimdWidth = SimdTy->getNumElements();
-
+  auto SimdWidth = getSimdSize(Mask->getType());
   auto *F = Br->getFunction();
   Value *EM = getEMAddr(F);
   Instruction *OldGotoEM =
@@ -1120,12 +1282,9 @@ void GenXPredToSimdCF::generateGoto(BranchInst *Br) {
 // allOne) == OldRM | OldEM == (enable all)
 // * Cond = !any(zero) == !false == true
 void GenXPredToSimdCF::generateThenGoto(BranchInst *Br, BasicBlock *Join) {
-  // IGC_ASSERT(Br->isUnconditional());
   IRBuilder<> Builder(Br);
 
-  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  auto SimdWidth = SimdTy->getNumElements();
-
+  auto SimdWidth = getSimdSize(Mask->getType());
   auto *M = Br->getModule();
   Value *OldGotoEM = getEMValue(Br->getParent());
 
@@ -1203,7 +1362,7 @@ void GenXPredToSimdCF::insertIfGotoJoin(SimdCFIfRegion *R) {
 }
 
 void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion *R) {
-  auto *Br = R->getSimdBranch(); // TODO : auto *
+  auto *Br = R->getSimdBranch();
   auto *M = Br->getModule();
   // Will be removed:
   OldCond = R->getSimdCondition();
@@ -1233,13 +1392,13 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion *R) {
   IRBuilder<> Builder(JoinBlock, JoinBlock->end());
   Builder.CreateBr(R->getExit());
 
-  LLVM_DEBUG(dbgs() << "Join block\n"; JoinBlock->dump());
+  LLVM_DEBUG(dbgs() << "Join block\n" << *JoinBlock);
 }
 
 void GenXPredToSimdCF::replaceUses(Use *Ui, bool BuildEM) {
   auto *Use = Ui->getUser();
   auto *Inst = dyn_cast<Instruction>(Use);
-  LLVM_DEBUG(dbgs() << "replaceUses: for instruction "; Inst->dump());
+  LLVM_DEBUG(dbgs() << "replaceUses: for instruction " << *Inst);
   auto OpNo = Ui->getOperandNo();
   auto *CondTy = Inst->getOperand(OpNo)->getType();
   IGC_ASSERT(CondTy == Ui->get()->getType());
@@ -1251,9 +1410,7 @@ void GenXPredToSimdCF::replaceUses(Use *Ui, bool BuildEM) {
   if (BuildEM) {
     CurrMask = getEMValue(Inst->getParent());
   } else {
-    // Used class-member Mask definition
-    auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-    auto SimdWidth = SimdTy->getNumElements();
+    auto SimdWidth = getSimdSize(Mask->getType());
     // And class-member JP
     auto *RMAddr = getRMAddr(SimdWidth);
     CurrMask =
@@ -1282,6 +1439,32 @@ void GenXPredToSimdCF::replaceUses(Use *Ui, bool BuildEM) {
   Inst->setOperand(OpNo, CurrMask);
 }
 
+bool GenXPredToSimdCF::TryReplace(SimdCFRegionBase *Reg, Use *Ui, bool IsEm) {
+  if (!Reg)
+    return false;
+  auto *Inst = dyn_cast<Instruction>(Ui->getUser());
+  auto *Par = Inst->getParent();
+  if (isa<SelectInst>(Inst) && (Ui->getOperandNo() == 0)) {
+    auto Exit = Reg->getExit();
+    if (Reg->getEntry() == Exit && Exit == Par) {
+      LLVM_DEBUG(dbgs() << "Replace Then-use in " << (IsEm ? "EM" : "RM")
+                        << ": " << *Inst);
+      replaceUses(&*Ui, IsEm);
+      return true;
+    } else {
+      if (find(*Reg->Blocks(), Inst->getParent()) != Reg->Blocks()->end()) {
+        LLVM_DEBUG(dbgs() << "Replace Then-use in " << (IsEm ? "EM" : "RM")
+                          << ": " << *Inst);
+        replaceUses(&*Ui, IsEm);
+        return true;
+      }
+    }
+  }
+  LLVM_DEBUG(dbgs() << " Failed to replace Else-use in " << (IsEm ? "EM" : "RM")
+                    << ": " << *Inst);
+  return false;
+}
+
 void GenXPredToSimdCF::removeMask(SimdCFIfRegion *R) {
   auto *CurrMask = R->getMask();
   while (isa<CastInst>(CurrMask))
@@ -1289,8 +1472,7 @@ void GenXPredToSimdCF::removeMask(SimdCFIfRegion *R) {
 
   ToErase.insert(CurrMask);
 
-  LLVM_DEBUG(dbgs() << "Trying to remove selects with mask: ";
-             CurrMask->dump());
+  LLVM_DEBUG(dbgs() << "Trying to remove selects with mask: " << *CurrMask);
   auto *ThenReg = R->getIfThenRegion();
   auto *ElseReg = R->getIfElseRegion();
   if (NeedSwap)
@@ -1313,29 +1495,13 @@ void GenXPredToSimdCF::removeMask(SimdCFIfRegion *R) {
     // TODO: Do not touch only join-phi's all another fits
     if (isa<PHINode>(Inst))
       continue;
-    if (ThenReg &&
-        (llvm::find(ThenReg->blocks(), Inst->getParent()) !=
-         ThenReg->block_end()) &&
-        (isa<SelectInst>(Inst) && (Ui->getOperandNo() == 0))) {
-      LLVM_DEBUG(dbgs() << "Replace Then-use in (RM): "; Inst->dump());
-      replaceUses(&*Ui, false);
+
+    if (TryReplace(ThenReg, Ui, false))
       continue;
-    } else {
-      LLVM_DEBUG(dbgs() << "Failed to replace then-use in (RM): ";
-                 Inst->dump());
-    }
-    // Replace Mask for EM's
-    if (ElseReg &&
-        (llvm::find(ElseReg->blocks(), Inst->getParent()) !=
-         ElseReg->block_end()) &&
-        (isa<SelectInst>(Inst) && (Ui->getOperandNo() == 0))) {
-      LLVM_DEBUG(dbgs() << "Replace Else-use in (EM): "; Inst->dump());
-      replaceUses(&*Ui, true);
+
+    if (TryReplace(ElseReg, Ui, true))
       continue;
-    } else {
-      LLVM_DEBUG(dbgs() << " Failed to replace Else-use in (EM): ";
-                 Inst->dump());
-    }
+
     if (isa<CastInst>(Inst)) {
       for (auto CUi = Inst->use_begin(), CUe = Inst->use_end(); CUi != CUe;
            ++CUi)
@@ -1345,7 +1511,7 @@ void GenXPredToSimdCF::removeMask(SimdCFIfRegion *R) {
   }
 }
 
-void GenXPredToSimdCF::removeMachMask(SimdCFRegion *R) {
+void GenXPredToSimdCF::removeMachMask(SimdCFRegionBase *R) {
   auto *CurrMask = R->getMask();
   auto *EBB = R->getExit();
   while (isa<CastInst>(CurrMask))
@@ -1420,8 +1586,8 @@ void GenXPredToSimdCF::removeMachMask(SimdCFRegion *R) {
       continue;
     }
 
-    if (llvm::find(R->blocks(), Inst->getParent()) != R->block_end()) {
-      LLVM_DEBUG(dbgs() << "Replace Loop-use in (EM): "; Inst->dump());
+    if (llvm::find(*R->Blocks(), Inst->getParent()) != R->Blocks()->end()) {
+      LLVM_DEBUG(dbgs() << "Replace Loop-use in (EM): " << *Inst);
       replaceUses(&*Ui, true);
       continue;
     }
@@ -1441,8 +1607,7 @@ void GenXPredToSimdCF::removeMask(SimdCFLoopRegion *R) {
 
   removeMachMask(R);
 
-  LLVM_DEBUG(dbgs() << "Trying to remove selects with mask: ";
-             CurrMask->dump());
+  LLVM_DEBUG(dbgs() << "Trying to remove selects with mask: " << *CurrMask);
 
   auto *EBB = R->getExit();
 
@@ -1500,9 +1665,9 @@ void GenXPredToSimdCF::removeMask(SimdCFLoopRegion *R) {
 
     // TODO: support here another instructions
     //    in select-inst -replace only predicate incomes
-    if ((llvm::find(R->blocks(), Inst->getParent()) != R->block_end()) &&
+    if ((llvm::find(*R->Blocks(), Inst->getParent()) != R->Blocks()->end()) &&
         (isa<SelectInst>(Inst) && (Ui->getOperandNo() == 0))) {
-      LLVM_DEBUG(dbgs() << "Replace Loop-use in (RM): "; Inst->dump());
+      LLVM_DEBUG(dbgs() << "Replace Loop-use in (RM): " << *Inst);
       replaceUses(&*Ui, true);
       continue;
     }
@@ -1598,7 +1763,7 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion *R) {
     }
     for (auto *PHINode : Phis) {
       PHINode->moveBefore(InsertPoint);
-      LLVM_DEBUG(PHINode->dump());
+      LLVM_DEBUG(dbgs() << *PHINode);
       if (JPSplit)
         for (unsigned i = 0, e = PHINode->getNumIncomingValues(); i != e; i++) {
           auto *IB = PHINode->getIncomingBlock(i);
@@ -1679,7 +1844,7 @@ void GenXPredToSimdCF::fixPHIs(SimdCFLoopRegion *R) {
       if (LoopEnd == IB)
         PHINode.setIncomingBlock(i, JoinBlocks[R]);
     }
-    LLVM_DEBUG(PHINode.dump());
+    LLVM_DEBUG(dbgs() << PHINode);
   }
 }
 
@@ -1688,9 +1853,12 @@ bool GenXPredToSimdCF::transform(SimdCFIfRegion *R) {
   insertIfGotoJoin(R);
 
   OldCondBB = OldCond->getParent();
-  LLVM_DEBUG(dbgs() << " For: " << OldCondBB->getParent()->getName() << "\n");
-  JPSplit =
-      OldCondBB->splitBasicBlock(OldCond->getPrevNode(), OldCondBB->getName());
+
+  LLVM_DEBUG(dbgs() << " For: " << OldCondBB->getParent()->getName() << "\n"
+                    << *OldCondBB);
+
+  JPSplit = R->SplitBlock(OldCond);
+
   LLVM_DEBUG(dbgs() << "splitting block\n : " << OldCondBB->getName()
                     << " created " << JPSplit->getName() << "\n");
 
@@ -1724,10 +1892,8 @@ bool GenXPredToSimdCF::transform(SimdCFLoopRegion *R) {
 
 bool GenXPredToSimdCF::transform(SimdCFRegion *R) {
   Mask = R->getMask();
-  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  IGC_ASSERT(SimdTy);
-  auto SimdWidth = SimdTy->getNumElements();
-  if (SimdWidth <= 1)
+
+  if (getSimdSize(Mask->getType()) <= 1)
     return false;
 
   if (dyn_cast_or_null<SimdCFIfRegion>(R))
@@ -1745,10 +1911,7 @@ static bool hasStackCall(const Module &M) {
 }
 
 bool GenXPredToSimdCF::runOnFunction(Function &F) {
-  const auto &BackendConfig = getAnalysis<GenXBackendConfig>();
-
-  if (!EnableSimdCFTransform && !BackendConfig.isBiFCompilation() ||
-      hasStackCall(*F.getParent()))
+  if (hasStackCall(*F.getParent()))
     return false;
 
   auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
@@ -1761,9 +1924,9 @@ bool GenXPredToSimdCF::runOnFunction(Function &F) {
   for (auto &R : Regions) {
     bool ChangeCurrReg = false;
     if (!R->verify()) {
-      LLVM_DEBUG(dbgs() << "Not verified SimdCFRegion:\n"; R->dump());
+      LLVM_DEBUG(dbgs() << "Not verified SimdCFRegion:\n"; R->print(dbgs()));
     } else {
-      LLVM_DEBUG(dbgs() << "Verified SimdCFRegion:\n"; R->dump());
+      LLVM_DEBUG(dbgs() << "Verified SimdCFRegion:\n"; R->print(dbgs()));
       ChangeCurrReg = transform(R.get());
     }
     // If apply - the pass changes dominate structure
@@ -1772,7 +1935,7 @@ bool GenXPredToSimdCF::runOnFunction(Function &F) {
       PDT->recalculate(F);
     }
     for (auto *I : ToErase) {
-      LLVM_DEBUG(I->dump());
+      LLVM_DEBUG(dbgs() << *I);
       if (auto *Inst = dyn_cast<Instruction>(I); Inst && Inst->use_empty()) {
         LLVM_DEBUG(dbgs() << "Erased \n");
         Inst->eraseFromParent();
@@ -1813,7 +1976,6 @@ INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(RegionInfoPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXPredToSimdCF, DEBUG_TYPE, DEBUG_TYPE, false, false)
 
 namespace llvm {
