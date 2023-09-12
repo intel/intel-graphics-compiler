@@ -363,6 +363,9 @@ namespace IGC
 
         // Specifies alignment of indirect data
         virtual unsigned getCrossThreadDataAlignment() const { return 32; }
+
+        virtual bool supportLoosenSimd32occu() const { return false; }
+
 protected:
     bool autoGRFSelection = false;
     };
