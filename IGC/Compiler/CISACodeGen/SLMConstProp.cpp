@@ -159,7 +159,7 @@ void SymbolicEvaluation::dump_symbols()
     dbgs() << "\n\n";
 }
 
-void SymbolicEvaluation::print(raw_ostream& OS, SymProd* P)
+void SymbolicEvaluation::print(raw_ostream& OS, const SymProd* P)
 {
     bool hasError = false;
     for (int i = 0; i < (int)P->Prod.size(); ++i) {
@@ -178,7 +178,7 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymProd* P)
     }
 }
 
-void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymProd* P)
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, const SymProd* P)
 {
     std::map<const Value*, int> varMap;
     const int psz = (int)P->Prod.size();
@@ -202,7 +202,7 @@ void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymProd* P)
     }
 }
 
-void SymbolicEvaluation::print(raw_ostream& OS, SymTerm* T)
+void SymbolicEvaluation::print(raw_ostream& OS, const SymTerm* T)
 {
     if (T->Term->Prod.size() > 0) {
         if (T->Coeff != 1) {
@@ -216,12 +216,12 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymTerm* T)
     }
 }
 
-void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymTerm* T)
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, const SymTerm* T)
 {
     print_varMapping(OS, T->Term);
 }
 
-void SymbolicEvaluation::print(raw_ostream& OS, SymExpr* SE)
+void SymbolicEvaluation::print(raw_ostream& OS, const SymExpr* SE)
 {
     int e = (int)SE->SymTerms.size();
     for (int i = 0; i < e; ++i) {
@@ -239,7 +239,7 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymExpr* SE)
     }
 }
 
-void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymExpr* SE)
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, const SymExpr* SE)
 {
     std::map<const Value*, int> varMap;
     const int e = (int)SE->SymTerms.size();
@@ -291,7 +291,7 @@ void SymbolicEvaluation::print_varMapping(raw_ostream& OS, const Value* V)
     }
 }
 
-void SymbolicEvaluation::dump(SymProd* P)
+void SymbolicEvaluation::dump(const SymProd* P)
 {
     dbgs() << "\n";
     print(dbgs(), P);
@@ -299,7 +299,7 @@ void SymbolicEvaluation::dump(SymProd* P)
     dbgs() << "\n";
 }
 
-void SymbolicEvaluation::dump(SymTerm* T)
+void SymbolicEvaluation::dump(const SymTerm* T)
 {
     dbgs() << "\n";
     print(dbgs(), T);
@@ -307,7 +307,7 @@ void SymbolicEvaluation::dump(SymTerm* T)
     dbgs() << "\n";
 }
 
-void SymbolicEvaluation::dump(SymExpr* SE)
+void SymbolicEvaluation::dump(const SymExpr* SE)
 {
     dbgs() << "\n";
     print(dbgs(), SE);
@@ -643,9 +643,9 @@ SymExpr* SymbolicEvaluation::add(
             if (Coeff != 0)
             {
                 T = T0;
-                ++i0;
-                ++i1;
             }
+            ++i0;
+            ++i1;
         }
 
         if (T != nullptr) {

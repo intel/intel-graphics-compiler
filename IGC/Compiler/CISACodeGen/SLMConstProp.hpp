@@ -141,19 +141,19 @@ namespace IGC
         }
 
 #if defined(_DEBUG)
-        void print(llvm::raw_ostream& OS, SymProd* P);
-        void print(llvm::raw_ostream& OS, SymTerm* T);
-        void print(llvm::raw_ostream& OS, SymExpr* SE);
+        void print(llvm::raw_ostream& OS, const SymProd* P);
+        void print(llvm::raw_ostream& OS, const SymTerm* T);
+        void print(llvm::raw_ostream& OS, const SymExpr* SE);
         void print(llvm::raw_ostream& OS, const llvm::Value* V);
-        void print_varMapping(llvm::raw_ostream& OS, SymProd* P);
-        void print_varMapping(llvm::raw_ostream& OS, SymTerm* T);
-        void print_varMapping(llvm::raw_ostream& OS, SymExpr* SE);
+        void print_varMapping(llvm::raw_ostream& OS, const SymProd* P);
+        void print_varMapping(llvm::raw_ostream& OS, const SymTerm* T);
+        void print_varMapping(llvm::raw_ostream& OS, const SymExpr* SE);
         void print_varMapping(llvm::raw_ostream& OS, const llvm::Value* V);
 
         void dump_symbols();
-        void dump(SymProd* P);
-        void dump(SymTerm* T);
-        void dump(SymExpr* SE);
+        void dump(const SymProd* P);
+        void dump(const SymTerm* T);
+        void dump(const SymExpr* SE);
         void dump(const llvm::Value* V);
 #endif
 
