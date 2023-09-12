@@ -2231,11 +2231,6 @@ public:
       rgn = ParseSrcOpRegionVWH(ri, srcOpIx, hasExplicitSubreg);
     }
 
-    // Verify if the region is valid
-    if (m_model.srcHasReducedRegion(srcOpIx) &&
-        !rgn.isScalar() && !rgn.isFlat())
-      ErrorAtT(opStart, "Invalid region");
-
     // :t
     Type sty = Type::INVALID;
     if (m_opSpec->isAnySendFormat()) {
@@ -2441,10 +2436,6 @@ public:
     } else {
       rgn = Region::SRC110;
     }
-    // Verify if the region is valid
-    if (m_model.srcHasReducedRegion(srcOpIx) &&
-        !rgn.isScalar() && !rgn.isFlat())
-      ErrorAtT(opStart, "Invalid region");
     return rgn;
   }
 
