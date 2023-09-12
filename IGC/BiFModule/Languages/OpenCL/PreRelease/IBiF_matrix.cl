@@ -121,6 +121,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define OUT_VEC2(type) type##2
 #define OUT_VEC1(type) type
 
+#define OUT_STORE_VEC16(type) type##16
 #define OUT_STORE_VEC8(type) type##8
 #define OUT_STORE_VEC7(type) type##8
 #define OUT_STORE_VEC6(type) type##8
@@ -152,6 +153,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
         wi_contrib[i] = readop((src) + i * (stride));
 
 // variants for 7,6,5,3 and 1 are only used to make the code compilable
+#define DEFINE_BLOCK_RW_NAME16(rw, us) intel_sub_group_block_##rw##us##16
 #define DEFINE_BLOCK_RW_NAME8(rw, us) intel_sub_group_block_##rw##us##8
 #define DEFINE_BLOCK_RW_NAME7(rw, us) intel_sub_group_block_##rw##us##8
 #define DEFINE_BLOCK_RW_NAME6(rw, us) intel_sub_group_block_##rw##us##8
@@ -775,100 +777,168 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(__priv
     __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a1, b3, c7, d7);
 }
 
-INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
-    IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(int, 32, int, 32, 16, 16, 16)
-}
+#define DEFINE_LOAD_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
+  INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, M) (__private char *dst, char *mem, long stride) { \
+      int sg_size = get_sub_group_size(); \
+      if ( __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8 || M == 16) \
+          && (order == _ROW_MAJOR || order == _VNNI_TX) && address_space == AS_GLOBAL \
+          ) { \
+          /* It seems __builtin_IB_subgroup_block_rw always needs k=16 \
+             Maybe it is number of columns divided by pack factor which always gives 16 on SG16 HW */ \
+          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, stride_opt) \
+      } \
+      contrib_type *ptr = (contrib_type *)mem; \
+      int slid = get_sub_group_local_id(); \
+      int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
+      stride = stride / pack_factor; \
+      int sg_cols = K / pack_factor; \
+      int skip_factor = sg_size / sg_cols; \
+      __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
+      for (int i = 0; i < M; i++) { \
+        if ( (i*skip_factor + slid/sg_cols) < M ) \
+          wi_contrib[i] = ptr[IND##order(slid, stride, skip_factor, i, sg_cols)]; \
+        else \
+          wi_contrib[i] = 0; /*last even row for matrix with odd number of rows doesn't exist*/ \
+      } \
+  }
 
-INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
-    IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(short, 16, short, 16, 16, 16, 16)
-}
+#define DEFINE_LOAD_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt) \
+  DEFINE_LOAD_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GENERIC) \
+  DEFINE_LOAD_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_LOCAL) \
+  DEFINE_LOAD_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GLOBAL)
 
-INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
-    __private char *c0 = dst + 0 * 16 * (sizeof (int));
-    __private char *c1 = dst + 1 * 16 * (sizeof (int));
-    __private char *c2 = dst + 2 * 16 * (sizeof (int));
-    __private char *c3 = dst + 3 * 16 * (sizeof (int));
-    __private char *c4 = dst + 4 * 16 * (sizeof (int));
-    __private char *c5 = dst + 5 * 16 * (sizeof (int));
-    __private char *c6 = dst + 6 * 16 * (sizeof (int));
-    __private char *c7 = dst + 7 * 16 * (sizeof (int));
+DEFINE_LOAD_LARGE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 16, 16, 16x16, ROW_MAJOR, , 16)
+DEFINE_LOAD_LARGE(PackedA_RowMajor, _SG16, short, 16, short, 16, 16, 16, 16x16, ROW_MAJOR, , 16)
 
-    char *mem0 = mem + 0 * 16 * (sizeof (int));
-    char *mem1 = mem + 1 * 16 * (sizeof (int));
-    char *mem2 = mem + 2 * 16 * (sizeof (int));
-    char *mem3 = mem + 3 * 16 * (sizeof (int));
-    char *mem4 = mem + 0 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-    char *mem5 = mem + 1 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-    char *mem6 = mem + 2 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-    char *mem7 = mem + 3 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
+#define DEFINE_ACC_ROW_MAJOR_32x64(address_space) \
+  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_32_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
+      __private char *c0 = dst + 0 * 16 * (sizeof (int)); \
+      __private char *c1 = dst + 1 * 16 * (sizeof (int)); \
+      __private char *c2 = dst + 2 * 16 * (sizeof (int)); \
+      __private char *c3 = dst + 3 * 16 * (sizeof (int)); \
+      __private char *c4 = dst + 4 * 16 * (sizeof (int)); \
+      __private char *c5 = dst + 5 * 16 * (sizeof (int)); \
+      __private char *c6 = dst + 6 * 16 * (sizeof (int)); \
+      __private char *c7 = dst + 7 * 16 * (sizeof (int)); \
+\
+      char *mem0 = mem + 0 * 16 * (sizeof (int)); \
+      char *mem1 = mem + 1 * 16 * (sizeof (int)); \
+      char *mem2 = mem + 2 * 16 * (sizeof (int)); \
+      char *mem3 = mem + 3 * 16 * (sizeof (int)); \
+      char *mem4 = mem + 0 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;\
+      char *mem5 = mem + 1 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;\
+      char *mem6 = mem + 2 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;\
+      char *mem7 = mem + 3 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;\
+\
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c0, mem0, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c1, mem1, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c2, mem2, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c3, mem3, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c4, mem4, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c5, mem5, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c6, mem6, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_v8i8_pi32_i32(c7, mem7, stride); \
+  }
 
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c0, mem0, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c1, mem1, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c2, mem2, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c3, mem3, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c4, mem4, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c5, mem5, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c6, mem6, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_v8i8_pi32_i32(c7, mem7, stride);
-}
+DEFINE_ACC_ROW_MAJOR_32x64(generic)
+DEFINE_ACC_ROW_MAJOR_32x64(global)
+DEFINE_ACC_ROW_MAJOR_32x64(local)
 
-INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_32x16_i16_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
-    __private char *dst0 = dst;
-    __private char *dst1 = dst + 16 * (sizeof (short));
+#define DEFINE_A_ROW_MAJOR_32x16(address_space) \
+  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_32x16_i16_32_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
+      __private char *dst0 = dst; \
+      __private char *dst1 = dst + 16 * (sizeof (short)); \
+\
+      char *mem0 = mem; \
+      char *mem1 = mem + 16 * (sizeof (short)) * stride; \
+\
+      __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_16_##address_space##_v8i8_pi32_i32(dst0, mem0, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_16_##address_space##_v8i8_pi32_i32(dst1, mem1, stride); \
+  }
 
-    char *mem0 = mem;
-    char *mem1 = mem + 16 * (sizeof (short)) * stride;
+DEFINE_A_ROW_MAJOR_32x16(generic)
+DEFINE_A_ROW_MAJOR_32x16(global)
+DEFINE_A_ROW_MAJOR_32x16(local)
 
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_generic_v8i8_pi32_i32(dst0, mem0, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_16x16_i16_generic_v8i8_pi32_i32(dst1, mem1, stride);
-}
+#define DEFINE_B_B_16x64(address_space) \
+  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x64_i16_8_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
+      __private char *b0 = dst; \
+      __private char *b1 = dst + 1 * 16 * (sizeof (short)); \
+      __private char *b2 = dst + 2 * 16 * (sizeof (short)); \
+      __private char *b3 = dst + 3 * 16 * (sizeof (short)); \
+\
+      char *mem0 = mem + 0 * 16 * (sizeof (int)); \
+      char *mem1 = mem + 1 * 16 * (sizeof (int)); \
+      char *mem2 = mem + 2 * 16 * (sizeof (int)); \
+      char *mem3 = mem + 3 * 16 * (sizeof (int)); \
+\
+      __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_##address_space##_v8i8_pi32_i32(b0, mem0, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_##address_space##_v8i8_pi32_i32(b1, mem1, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_##address_space##_v8i8_pi32_i32(b2, mem2, stride); \
+      __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_##address_space##_v8i8_pi32_i32(b3, mem3, stride); \
+  }
 
-INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x64_i16_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride) {
-    __private char *b0 = dst;
-    __private char *b1 = dst + 1 * 16 * (sizeof (short));
-    __private char *b2 = dst + 2 * 16 * (sizeof (short));
-    __private char *b3 = dst + 3 * 16 * (sizeof (short));
+DEFINE_B_B_16x64(generic)
+DEFINE_B_B_16x64(global)
+DEFINE_B_B_16x64(local)
 
-    char *mem0 = mem + 0 * 16 * (sizeof (int));
-    char *mem1 = mem + 1 * 16 * (sizeof (int));
-    char *mem2 = mem + 2 * 16 * (sizeof (int));
-    char *mem3 = mem + 3 * 16 * (sizeof (int));
+#define DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
+  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, M) (char *mem, __private char *src, long stride) { \
+      int sg_size = get_sub_group_size(); \
+      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+          && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
+          ) { \
+          IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, src) \
+      } \
+      contrib_type *ptr = (contrib_type *)mem; \
+      int slid = get_sub_group_local_id(); \
+      int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
+      stride = stride / pack_factor; \
+      int sg_cols = K / pack_factor; \
+      int skip_factor = sg_size / sg_cols; \
+      __private contrib_type *slice = (__private contrib_type *)src; \
+      for (int i = 0; i < M; i++) { \
+          ptr[IND##order(slid, stride, skip_factor, i, sg_cols)] = slice[i]; \
+      } \
+  }
 
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b0, mem0, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b1, mem1, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b2, mem2, stride);
-    __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x16_i16_8_generic_v8i8_pi32_i32(b3, mem3, stride);
-}
+#define DEFINE_STORE_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt) \
+  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GENERIC) \
+  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_LOCAL) \
+  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, stride_opt, AS_GLOBAL)
 
-INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(char *mem, __private char *src, long stride) {
-    IMPLEMENT_BLOCK2D_STORE_SG16(int, int, 32, 16, 16, slice)
-}
+DEFINE_STORE_LARGE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 16, 16, 16x16, ROW_MAJOR, , 16)
 
-INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_generic_pi64_v8i8(char *mem, __private char *src, long stride) {
-    __private char *c0 = src + 0 * 16 * (sizeof (int));
-    __private char *c1 = src + 1 * 16 * (sizeof (int));
-    __private char *c2 = src + 2 * 16 * (sizeof (int));
-    __private char *c3 = src + 3 * 16 * (sizeof (int));
-    __private char *c4 = src + 4 * 16 * (sizeof (int));
-    __private char *c5 = src + 5 * 16 * (sizeof (int));
-    __private char *c6 = src + 6 * 16 * (sizeof (int));
-    __private char *c7 = src + 7 * 16 * (sizeof (int));
+#define DEFINE_STORE_ACC_ROW_MAJOR_32x64(address_space) \
+  INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_32_##address_space##_pi64_v8i8(char *mem, __private char *src, long stride) { \
+      __private char *c0 = src + 0 * 16 * (sizeof (int)); \
+      __private char *c1 = src + 1 * 16 * (sizeof (int)); \
+      __private char *c2 = src + 2 * 16 * (sizeof (int)); \
+      __private char *c3 = src + 3 * 16 * (sizeof (int)); \
+      __private char *c4 = src + 4 * 16 * (sizeof (int)); \
+      __private char *c5 = src + 5 * 16 * (sizeof (int)); \
+      __private char *c6 = src + 6 * 16 * (sizeof (int)); \
+      __private char *c7 = src + 7 * 16 * (sizeof (int)); \
+\
+      char *mem0 = mem + 0 * 16 * (sizeof (int)); \
+      char *mem1 = mem + 1 * 16 * (sizeof (int)); \
+      char *mem2 = mem + 2 * 16 * (sizeof (int)); \
+      char *mem3 = mem + 3 * 16 * (sizeof (int)); \
+      char *mem4 = mem + 0 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride; \
+      char *mem5 = mem + 1 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride; \
+      char *mem6 = mem + 2 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride; \
+      char *mem7 = mem + 3 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride; \
+\
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem0, c0, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem1, c1, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem2, c2, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem3, c3, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem4, c4, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem5, c5, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem6, c6, stride); \
+      __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_##address_space##_pi64_v8i8(mem7, c7, stride); \
+  }
 
-    char *mem0 = mem + 0 * 16 * (sizeof (int));
-    char *mem1 = mem + 1 * 16 * (sizeof (int));
-    char *mem2 = mem + 2 * 16 * (sizeof (int));
-    char *mem3 = mem + 3 * 16 * (sizeof (int));
-    char *mem4 = mem + 0 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-    char *mem5 = mem + 1 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-    char *mem6 = mem + 2 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-    char *mem7 = mem + 3 * 16 * (sizeof (int)) + 16 * (sizeof (int)) * stride;
-
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem0, c0, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem1, c1, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem2, c2, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem3, c3, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem4, c4, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem5, c5, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem6, c6, stride);
-    __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_generic_pi64_v8i8(mem7, c7, stride);
-}
+DEFINE_STORE_ACC_ROW_MAJOR_32x64(generic)
+DEFINE_STORE_ACC_ROW_MAJOR_32x64(global)
+DEFINE_STORE_ACC_ROW_MAJOR_32x64(local)
