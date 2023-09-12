@@ -5323,7 +5323,8 @@ namespace IGC
         // slot1 is used for spilling only when SeparatingSpillAndPrivateScratchMemorySpace is on
         // and Slot0 is used for IGC private memory
         if (m_program->m_Platform->hasScratchSurface() &&
-            m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace())
+            (m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace() ||
+             m_program->GetContext()->getModuleMetaData()->compOpt.SeparateSpillPvtScratchSpace))
         {
             V(vKernel->AddKernelAttribute("SepSpillPvtSS", 0, nullptr));
         }

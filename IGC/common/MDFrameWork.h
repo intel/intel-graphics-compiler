@@ -387,6 +387,8 @@ namespace IGC
         bool DashGSpecified                             = false;
         bool FastCompilation                            = false;
         bool UseScratchSpacePrivateMemory               = true;
+        bool SeparateSpillPvtScratchSpace               = false;
+        bool DisableSeparateScratchWA                   = false;
         bool RelaxedBuiltins                            = false;
         bool SubgroupIndependentForwardProgressRequired = true;
         bool GreaterThan2GBBufferRequired               = true;

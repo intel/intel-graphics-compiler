@@ -148,6 +148,7 @@ namespace IGC
         bool            m_roundPower2KBytes = false;
         bool            m_UseScratchSpacePrivateMemory = true;
         bool            m_SeparatingSpillAndPrivateScratchMemorySpace = false;
+        bool            m_EnableSeparateScratchWA = true;
         unsigned int m_scratchSpaceSizeLimit = 0;
         unsigned int m_numGRFTotal = 128;
         unsigned int m_numGRFSpillFill = 0;
@@ -195,12 +196,14 @@ namespace IGC
             }
         }
 
-        void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory, bool SepSpillPvtSS)
+        void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory, bool SepSpillPvtSS,
+            bool SeparateScratchWA)
         {
             m_roundPower2KBytes = roundPower2KBytes;
             m_scratchSpaceSizeLimit = scratchSpaceSizeLimitT;
             m_UseScratchSpacePrivateMemory = useScratchSpacePrivateMemory;
             m_SeparatingSpillAndPrivateScratchMemorySpace = SepSpillPvtSS;
+            m_EnableSeparateScratchWA = SeparateScratchWA;
         }
 
         // if IGC needs scratch for private memory, we use slot0 for private
@@ -218,7 +221,7 @@ namespace IGC
             {
                 result += (m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
             }
-            else
+            else if (m_EnableSeparateScratchWA)
             {
                 // \TODO: doubts about driver-compiler interface, conservatively set the size
                 // to the max of two slots
@@ -236,9 +239,16 @@ namespace IGC
             unsigned int result = 0;
             if (m_SeparatingSpillAndPrivateScratchMemorySpace && slot0_offset > 0)
             {
-                // \TODO: doubts about driver-compiler interface, conservatively set the size
-                // to the max of two slots
-                result = std::max(slot0_offset, m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+                if (m_EnableSeparateScratchWA)
+                {
+                    // \TODO: doubts about driver-compiler interface, conservatively set the size
+                    // to the max of two slots
+                    result = std::max(slot0_offset, m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin);
+                }
+                else
+                {
+                    result = m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin;
+                }
             }
             result = roundSize(result);
             IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
