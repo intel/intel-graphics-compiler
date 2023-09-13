@@ -6687,16 +6687,14 @@ G4_Imm *GlobalRA::createMsgDesc(unsigned owordSize, bool writeType,
 }
 
 void GlobalRA::stackCallProlog() {
-  // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
-  // This sets up the header for oword block r/w used for caller/callee-save
+  G4_BB *entryBB = builder.kernel.fg.getEntryBB();
 
-  // Kernel should've already setup r0 in r126.
-  // Useful data in r126 is expected to be preserved by all functions.
+
+  // Emit frame descriptor
   if (kernel.fg.getIsStackCallFunc()) {
     if (kernel.getOption(vISA_skipFDE))
       return;
 
-    // emit frame descriptor
     auto payload = builder.createHardwiredDeclare(
         8, Type_UD, kernel.stackCall.getFPSPGRF(), 0);
     payload->setName(builder.getNameString(24, "FrameDescriptorGRF"));
@@ -6716,10 +6714,9 @@ void GlobalRA::stackCallProlog() {
                               builder.getBESP(), InstOpt_WriteEnable, false);
     }
     builder.setFDSpillInst(store);
-    G4_BB *entryBB = builder.kernel.fg.getEntryBB();
     auto iter = std::find_if(entryBB->begin(), entryBB->end(),
                              [](G4_INST *inst) { return !inst->isLabel(); });
-    entryBB->insertBefore(iter, store);
+    iter = entryBB->insertBefore(iter, store);
 
     if (EUFusionCallWANeeded()) {
       auto oldSaveInst = builder.getPartFDSaveInst();
@@ -6735,6 +6732,7 @@ void GlobalRA::stackCallProlog() {
   if (kernel.stackCall.getVersion() >= StackCallABI::StackCallABIVersion::VER_3)
     return;
 
+  // mov (8)  r126.0<1>:ud  r0.0<1;1,1>:ud
   auto dstRgn = builder.createDstRegRegion(builder.kernel.fg.scratchRegDcl, 1);
   auto srcRgn = builder.createSrcRegRegion(builder.getBuiltinR0(),
                                            builder.getRegionStride1());
@@ -6742,7 +6740,6 @@ void GlobalRA::stackCallProlog() {
   G4_INST *mov = builder.createMov(G4_ExecSize(kernel.numEltPerGRF<Type_UD>()),
                                    dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
-  G4_BB *entryBB = builder.kernel.fg.getEntryBB();
   auto iter = std::find_if(entryBB->begin(), entryBB->end(),
                            [](G4_INST *inst) { return !inst->isLabel(); });
   entryBB->insertBefore(iter, mov);
