@@ -759,7 +759,6 @@ DECLARE_IGC_REGKEY(bool, OverrideCsTileLayout,       0,     "Override compute wa
 DECLARE_IGC_REGKEY(DWORD, MemCpyLoweringUnrollThreshold, 12, "Min number of mem instructions that require non-unrolled loop when lowering memcpy", false)
 DECLARE_IGC_REGKEY(bool, EnableSOAPromotionDisablingHeuristic, false, "Enable heuristic to disable SOA promotion when it may be not beneficial", false)
 DECLARE_IGC_REGKEY(bool, EnableCSContentCheck, false, "Enable CS content check to force SIMD32", true)
-DECLARE_IGC_REGKEY(bool, DisableFastMathConstantHandling, false, "Disable Fast Math Constant Handling", true)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservativeRasterization for the platforms enabled", false)
