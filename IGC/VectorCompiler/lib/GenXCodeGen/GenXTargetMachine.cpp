@@ -93,7 +93,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXCFSimplificationPass(registry);
   initializeGenXCisaBuilderWrapperPass(registry);
   initializeGenXCoalescingWrapperPass(registry);
-  initializeGenXGVClobberCheckerWrapperPass(registry);
+  initializeGenXGVClobberCheckerPass(registry);
   initializeGenXDeadVectorRemovalPass(registry);
   initializeGenXDepressurizerWrapperPass(registry);
   initializeGenXEarlySimdCFConformancePass(registry);
@@ -609,7 +609,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXLiveRangesWrapperPass());
   /// .. include:: GenXGVClobberChecker.cpp
   if (BackendConfig.checkGVClobbering())
-    vc::addPass(PM, createGenXGVClobberCheckerWrapperPass());
+    vc::addPass(PM, createGenXGVClobberCheckerPass());
   /// .. include:: GenXCoalescing.cpp
   vc::addPass(PM, createGenXCoalescingWrapperPass());
   /// .. include:: GenXAddressCommoning.cpp

@@ -60,7 +60,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 
-#include <map>
+#include <unordered_map>
 
 #define DEBUG_TYPE "GENX_CLOBBER_CHECKER"
 
@@ -82,7 +82,7 @@ static cl::opt<bool> CheckGVClobberingCollectRelatedGVStoreCallSites(
 
 namespace {
 
-class GenXGVClobberChecker : public FGPassImplInterface,
+class GenXGVClobberChecker : public ModulePass,
                              public IDMixin<GenXGVClobberChecker> {
 private:
   GenXBaling *Baling = nullptr;
@@ -92,34 +92,34 @@ private:
                                            llvm::SetVector<Instruction *> *SIs);
 
 public:
-  explicit GenXGVClobberChecker() {}
-  static StringRef getPassName() { return "GenX GV clobber checker/fixup"; }
-  static void getAnalysisUsage(AnalysisUsage &AU) {
-    AU.addRequired<GenXLiveness>();
-    AU.addRequired<GenXGroupBaling>();
+  explicit GenXGVClobberChecker() : ModulePass(ID) {}
+  StringRef getPassName() const override {
+    return "GenX GV clobber checker/fixup";
+  }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addUsedIfAvailable<GenXLiveness>();
+    AU.addUsedIfAvailable<GenXGroupBaling>();
     if (!CheckGVClobberingTryFixup)
       AU.setPreservesAll();
   }
-  bool runOnFunctionGroup(FunctionGroup &FG) override;
+  bool runOnModule(Module &) override;
 };
 } // namespace
 
 namespace llvm {
-void initializeGenXGVClobberCheckerWrapperPass(PassRegistry &);
-using GenXGVClobberCheckerWrapper =
-    FunctionGroupWrapperPass<GenXGVClobberChecker>;
+void initializeGenXGVClobberCheckerPass(PassRegistry &);
 } // namespace llvm
-INITIALIZE_PASS_BEGIN(GenXGVClobberCheckerWrapper,
-                      "GenXGVClobberCheckerWrapper",
+
+INITIALIZE_PASS_BEGIN(GenXGVClobberChecker, "GenXGVClobberChecker",
                       "GenX global volatile clobbering checker", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
-INITIALIZE_PASS_END(GenXGVClobberCheckerWrapper, "GenXGVClobberCheckerWrapper",
+INITIALIZE_PASS_END(GenXGVClobberChecker, "GenXGVClobberChecker",
                     "GenX global volatile clobbering checker", false, false)
 
-ModulePass *llvm::createGenXGVClobberCheckerWrapperPass() {
-  initializeGenXGVClobberCheckerWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXGVClobberCheckerWrapper();
+ModulePass *llvm::createGenXGVClobberCheckerPass() {
+  initializeGenXGVClobberCheckerPass(*PassRegistry::getPassRegistry());
+  return new GenXGVClobberChecker();
 }
 
 bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
@@ -130,9 +130,7 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
     if (!UI)
       continue;
 
-    const StringRef DiagPrefix =
-        "Global volatile clobbering checker: clobbering detected,"
-        " some optimizations resulted in over-optimization,";
+    const StringRef DiagPrefix = "potential clobbering detected:";
 
     if (auto *SI = genx::getInterveningGVStoreOrNull(LI, UI, SIs)) {
       vc::diagnose(LI->getContext(), DiagPrefix,
@@ -148,18 +146,26 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
                                            << __FUNCTION__ << ": User: ";
                  UI->print(dbgs()); dbgs() << "\n";);
       if (CheckGVClobberingTryFixup) {
+        if (!Baling || !Liveness)
+          vc::diagnose(LI->getContext(), DiagPrefix,
+                       "Either Baling or Liveness analysis results are not "
+                       "available",
+                       DS_Warning, vc::WarningName::Generic, UI);
+
         if (GenXIntrinsic::isRdRegion(UI) &&
             isa<Constant>(
                 UI->getOperand(GenXIntrinsic::GenXRegion::RdIndexOperandNum))) {
-          if (Baling->isBaled(UI))
-            Baling->unbale(UI);
           UI->moveAfter(LI);
-          if (Liveness->getLiveRangeOrNull(UI))
-            Liveness->removeValue(UI);
-          auto *LR = Liveness->getOrCreateLiveRange(UI);
-          LR->setCategory(Liveness->getLiveRangeOrNull(LI)->getCategory());
-          LR->setLogAlignment(
-              Liveness->getLiveRangeOrNull(LI)->getLogAlignment());
+          if (Baling && Baling->isBaled(UI))
+            Baling->unbale(UI);
+          if (Liveness) {
+            if (Liveness->getLiveRangeOrNull(UI))
+              Liveness->removeValue(UI);
+            auto *LR = Liveness->getOrCreateLiveRange(UI);
+            LR->setCategory(Liveness->getLiveRangeOrNull(LI)->getCategory());
+            LR->setLogAlignment(
+                Liveness->getLiveRangeOrNull(LI)->getLogAlignment());
+          }
           Changed |= true;
         } else {
           vc::diagnose(
@@ -176,55 +182,34 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
   return Changed;
 };
 
-bool GenXGVClobberChecker::runOnFunctionGroup(FunctionGroup &FG) {
+bool GenXGVClobberChecker::runOnModule(Module &M) {
   bool Changed = false;
-  Baling = &getAnalysis<GenXGroupBaling>();
-  Liveness = &getAnalysis<GenXLiveness>();
+  Baling = getAnalysisIfAvailable<GenXGroupBaling>();
+  Liveness = getAnalysisIfAvailable<GenXLiveness>();
 
-  for (auto &GV : FG.getModule()->globals()) {
-    if (!GV.hasAttribute(genx::FunctionMD::GenXVolatile))
-      continue;
+  llvm::SetVector<Instruction *> Loads;
+  std::unordered_map<
+      Value *, std::unordered_map<Function *, llvm::SetVector<Instruction *>>>
+      ClobberingInsns{};
 
-    auto *GvLiveRange = Liveness->getLiveRangeOrNull(&GV);
-    if (!GvLiveRange)
-      continue;
-
-    llvm::SetVector<Instruction *> LoadsInFunctionGroup;
-    std::map<Function *, llvm::SetVector<Instruction *>>
-        GVStoreRelatedCallSitesPerFunction{};
-
-    for (const auto &User : GV.users()) {
-      auto *GVUserInst = dyn_cast<Instruction>(User);
-      if (!GVUserInst)
-        continue;
-
-      if (llvm::find(FG, GVUserInst->getFunction()) == FG.end())
-        continue;
-
-      if (isa<LoadInst>(GVUserInst))
-        LoadsInFunctionGroup.insert(GVUserInst);
-      else if (CheckGVClobberingCollectRelatedGVStoreCallSites &&
-               isa<StoreInst>(GVUserInst))
-        genx::collectRelatedCallSitesPerFunction(
-            GVUserInst, &FG, GVStoreRelatedCallSitesPerFunction);
-
-      // Global variable is used in a constexpr.
-      if (&GV != vc::getUnderlyingGlobalVariable(GVUserInst))
-        continue;
-
-      // Loads preceded by bitcasts.
-      for (const auto &User : GVUserInst->users())
-        if (auto *Load = dyn_cast<LoadInst>(User))
-          if (llvm::find(FG, Load->getFunction()) != FG.end())
-            LoadsInFunctionGroup.insert(Load);
-    }
-
-    for (const auto &LI : LoadsInFunctionGroup)
-      Changed |= checkGVClobberingByInterveningStore(
-          LI, CheckGVClobberingCollectRelatedGVStoreCallSites
-                  ? &GVStoreRelatedCallSitesPerFunction[LI->getFunction()]
-                  : nullptr);
+  for (auto &F : M.functions()) {
+    for (auto &BB : F)
+      for (auto &I : BB)
+        if (genx::isGlobalVolatileLoad(&I))
+          Loads.insert(&I);
+        else if (CheckGVClobberingCollectRelatedGVStoreCallSites &&
+                 genx::isGlobalVolatileStore(&I))
+          genx::collectRelatedCallSitesPerFunction(
+              &I, nullptr,
+              ClobberingInsns[genx::getBitCastedValue(I.getOperand(1))]);
   }
+
+  for (const auto &LI : Loads)
+    Changed |= checkGVClobberingByInterveningStore(
+        LI, CheckGVClobberingCollectRelatedGVStoreCallSites
+                ? &ClobberingInsns[genx::getBitCastedValue(LI->getOperand(0))]
+                                  [LI->getFunction()]
+                : nullptr);
 
   return Changed;
 }

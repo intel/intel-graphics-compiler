@@ -41,14 +41,11 @@ bool vc::isRealGlobalVariable(const GlobalVariable &GV) {
 }
 
 const GlobalVariable *vc::getUnderlyingGlobalVariable(const Value *V) {
-  while (auto *BI = dyn_cast<BitCastInst>(V))
-    V = BI->getOperand(0);
-  while (auto *CE = dyn_cast_or_null<ConstantExpr>(V)) {
-    if (CE->getOpcode() == CastInst::BitCast)
-      V = CE->getOperand(0);
-    else
-      break;
-  }
+  while (isa<BitCastInst>(V) ||
+         (isa<ConstantExpr>(V) &&
+          cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast))
+    V = isa<BitCastInst>(V) ? cast<Instruction>(V)->getOperand(0)
+                            : cast<ConstantExpr>(V)->getOperand(0);
   return dyn_cast_or_null<GlobalVariable>(V);
 }
 

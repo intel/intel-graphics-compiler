@@ -1575,8 +1575,11 @@ void genx::LayoutBlocks(Function &func)
 }
 
 Value *genx::getBitCastedValue(Value *V) {
-  while (auto *BCI = dyn_cast<BitCastInst>(V))
-    V = BCI->getOperand(0);
+  while (isa<BitCastInst>(V) ||
+         (isa<ConstantExpr>(V) &&
+          cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast))
+    V = isa<BitCastInst>(V) ? cast<Instruction>(V)->getOperand(0)
+                            : cast<ConstantExpr>(V)->getOperand(0);
   return V;
 }
 
@@ -2397,7 +2400,7 @@ genx::getInterveningGVStoreOrNull(Instruction *LI, Instruction *UIOrPos,
 
 void genx::collectRelatedCallSitesPerFunction(
     Instruction *SI, FunctionGroup *FG,
-    std::map<Function *, llvm::SetVector<Instruction *>>
+    std::unordered_map<Function *, llvm::SetVector<Instruction *>>
         &CallSitesPerFunction) {
   using FuncsSeenT = llvm::SetVector<Function *>;
   auto collectRelatedCallSites = [&](Function *Func, FuncsSeenT *FuncsSeen,
@@ -2409,7 +2412,7 @@ void genx::collectRelatedCallSitesPerFunction(
       if (isa<CallBase>(FuncUser)) {
         auto *Call = dyn_cast<Instruction>(FuncUser);
         auto *curFunction = Call->getFunction();
-        if (llvm::find(*FG, curFunction) == FG->end())
+        if (FG && llvm::find(*FG, curFunction) == FG->end())
           continue;
         CallSitesPerFunction[curFunction].insert(Call);
         collectRelatedCallSites(curFunction, FuncsSeen,

@@ -780,7 +780,7 @@ bool checkGVClobberingByInterveningStore(
 
 void collectRelatedCallSitesPerFunction(
     Instruction *SI, class FunctionGroup *FG,
-    std::map<Function *, llvm::SetVector<Instruction *>>
+    std::unordered_map<Function *, llvm::SetVector<Instruction *>>
         &InstAndRelatedCallSitesPerFunction);
 
 llvm::SetVector<Instruction *> getAncestorGVLoads(Instruction *I,
