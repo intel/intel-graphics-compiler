@@ -27,6 +27,9 @@ public:
     static char ID;
     bool runOnFunction(Function& F) override;
     void visitInstruction(Instruction& I);
+#if LLVM_VERSION_MAJOR >= 10
+    void visitFNeg(Instruction& I);
+#endif
     virtual llvm::StringRef getPassName() const override { return "Fast Math Constant Handling"; }
 
     void getAnalysisUsage(AnalysisUsage& AU) const override
@@ -61,7 +64,7 @@ void FastMathConstantHandling::visitInstruction(Instruction& I)
             bool hasInf = false;
             bool hasNan = false;
             bool hasNegZero = false;
-        } BSC;
+        }BSC;
 
         for (auto &Op : I.operands())
         {
@@ -84,6 +87,20 @@ void FastMathConstantHandling::visitInstruction(Instruction& I)
             I.setHasNoSignedZeros(false);
     }
 }
+#if LLVM_VERSION_MAJOR >= 10
+void FastMathConstantHandling::visitFNeg(Instruction& I)
+{
+    auto* fp_val = dyn_cast<llvm::ConstantFP>(I.getOperand(0));
+    if (fp_val && fp_val->getValueAPF().isZero())
+    {
+        for (auto* UI : I.users())
+        {
+            if (isa<FPMathOperator>(UI))
+                cast<Instruction>(UI)->setHasNoSignedZeros(false);
+        }
+    }
+}
+#endif
 
 bool FastMathConstantHandling::runOnFunction(Function& F)
 {
