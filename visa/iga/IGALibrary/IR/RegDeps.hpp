@@ -176,6 +176,7 @@ public:
 private:
   void setInputsFlagDep();
   void setInputsSrcDep();
+  void setInputsSendDescDep();
 
   void setOutputsFlagDep();
   void setOutputsDstDep();
@@ -197,6 +198,7 @@ private:
   // has intra read suppression.
   std::pair<uint32_t, uint32_t> setSrcRegion(
     RegName rn, RegRef rr, Region r, uint32_t execSize, uint32_t typeSizeBits);
+
 
   // Set the bits to this DepSet with the given reg_range
   void addDependency(const RegRangeType &reg_range);

@@ -84,6 +84,7 @@ static void setSendPipeType(DEP_PIPE &pipe_type, const Instruction &inst,
   pipe_type = DEP_PIPE::SEND;
   // XeHPG+: slm send should be considered in different pipes
   // Check if it's SLM
+
   if (model.platform >= Platform::XE_HPG) {
     if (inst.getMsgDescriptor().isReg())
       pipe_type = DEP_PIPE::SEND_UNKNOWN;
@@ -925,6 +926,8 @@ DepSet *DepSetBuilder::createSrcDepSet(const Instruction &i,
   setDEPPipeClass(enc_mode, *inps, i, mPlatformModel);
 
   inps->setInputsFlagDep();
+  if (i.getOpSpec().isAnySendFormat())
+    inps->setInputsSendDescDep();
   inps->setInputsSrcDep();
   return inps;
 }
@@ -960,17 +963,19 @@ void DepSet::setInputsFlagDep() {
     addFBytes(addr, execSize / 8);
     m_bucketList.push_back(addr / m_DB.getBYTES_PER_BUCKET());
   }
+}
 
-  // immediate send descriptors
-  if (m_instruction->getOpSpec().isAnySendFormat()) {
-    auto desc = m_instruction->getMsgDescriptor();
-    if (desc.isReg()) {
-      addA_D(desc.reg); // e.g. a0.0
-    }
-    auto exDesc = m_instruction->getExtMsgDescriptor();
-    if (exDesc.isReg()) {
-      addA_D(exDesc.reg); // e.g. a0.0
-    }
+void DepSet::setInputsSendDescDep() {
+  IGA_ASSERT(m_instruction->getOpSpec().isAnySendFormat(),
+      "DepSet::setInputsSendDescDep: must be send format");
+  // set up reg footprint for desc and exdesc if they are registers
+  auto desc = m_instruction->getMsgDescriptor();
+  if (desc.isReg()) {
+    addA_D(desc.reg); // e.g. a0.0
+  }
+  auto exDesc = m_instruction->getExtMsgDescriptor();
+  if (exDesc.isReg()) {
+    addA_D(exDesc.reg); // e.g. a0.0
   }
 }
 
@@ -1444,6 +1449,7 @@ bool static const isSpecial(RegName rn) {
   }
   return false;
 }
+
 
 std::pair<uint32_t, uint32_t>
 DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
