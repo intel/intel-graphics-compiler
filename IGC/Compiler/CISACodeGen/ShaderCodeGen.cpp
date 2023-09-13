@@ -924,12 +924,16 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(createVectorBitCastOptPass());
     }
 
+    bool csForceUniformSurfaceSampler = ( ctx.type == ShaderType::COMPUTE_SHADER && ctx.getModuleMetaData()->csInfo.forceUniformSurfaceSampler );
+    bool csForceUniformBuffer = ( ctx.type == ShaderType::COMPUTE_SHADER && ctx.getModuleMetaData()->csInfo.forceUniformBuffer );
     if (ctx.m_instrTypes.hasUniformAssumptions ||
         IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler) ||
-        IGC_IS_FLAG_ENABLED(ForceUniformBuffer)) {
+        csForceUniformSurfaceSampler ||
+        IGC_IS_FLAG_ENABLED(ForceUniformBuffer) ||
+        csForceUniformBuffer ) {
         mpm.add(new UniformAssumptions(
-                        IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler),
-                        IGC_IS_FLAG_ENABLED(ForceUniformBuffer))
+                        IGC_IS_FLAG_ENABLED(ForceUniformSurfaceSampler) || csForceUniformSurfaceSampler,
+                        IGC_IS_FLAG_ENABLED(ForceUniformBuffer) || csForceUniformBuffer )
         );
     }
 

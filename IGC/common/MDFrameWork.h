@@ -470,6 +470,8 @@ namespace IGC
         bool disableSimd32Slicing = false;
         bool disableSplitOnSpill = false;
         bool forcedVISAPreRAScheduler = false;
+        bool forceUniformBuffer = false;
+        bool forceUniformSurfaceSampler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
         // force disables dispatch along y optimization
