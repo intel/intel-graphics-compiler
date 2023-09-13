@@ -151,6 +151,11 @@ struct PERF_STATS_VERBOSE {
   uint32_t normIntfNum = 0;
   // Number of SIMD inteference edges.
   uint32_t augIntfNum = 0;
+
+  // preRA scheduler counters
+  uint32_t minRegClusterCount;
+  uint32_t minRegSUCount;
+  uint32_t minRegRestCount;
 };
 
 struct FINALIZER_INFO {
