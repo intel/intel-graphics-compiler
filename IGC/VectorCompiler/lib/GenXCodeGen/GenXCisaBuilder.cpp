@@ -3307,6 +3307,25 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
   Reg.SetVar(Kernel, Decl);
   LLVM_DEBUG(dbgs() << "Resulting decl: " << Decl << "\n");
 
+  // After assigning a variable a general category register can't have
+  // DONTCARESIGNED signedness anymore. We have to set it according to the
+  // variable's type
+  if (Reg.Signed == DONTCARESIGNED) {
+    switch (TD.VisaType) {
+    case ISA_TYPE_UB:
+    case ISA_TYPE_UW:
+    case ISA_TYPE_UD:
+    case ISA_TYPE_BOOL:
+    case ISA_TYPE_UQ:
+    case ISA_TYPE_UV:
+      Reg.Signed = UNSIGNED;
+      break;
+    default:
+      Reg.Signed = SIGNED;
+      break;
+    }
+  }
+
   for (auto &Attr : Reg.Attributes) {
     CISA_CALL(Kernel->AddAttributeToVar(
         Decl, getStringByIndex(Attr.first).begin(), Attr.second.size(),
