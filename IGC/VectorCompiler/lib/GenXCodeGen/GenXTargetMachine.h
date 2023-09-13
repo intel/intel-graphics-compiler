@@ -214,7 +214,7 @@ void initializeGenXAddressCommoningWrapperPass(PassRegistry &);
 void initializeGenXArgIndirectionWrapperPass(PassRegistry &);
 void initializeGenXCategoryWrapperPass(PassRegistry &);
 void initializeGenXCFSimplificationPass(PassRegistry &);
-void initializeGenXCisaBuilderWrapperPass(PassRegistry &);
+void initializeGenXCisaBuilderPass(PassRegistry &);
 void initializeGenXCoalescingWrapperPass(PassRegistry &);
 void initializeGenXGVClobberCheckerPass(PassRegistry &);
 void initializeGenXDeadVectorRemovalPass(PassRegistry &);

@@ -458,32 +458,51 @@ public:
 /// GenXCisaBuilder
 /// ------------------
 ///
-/// This class encapsulates a creation of vISA kernels.
-/// It is a FunctionGroupWrapperPass, thus it runs once for each kernel and
-/// builds vISA kernel via class GenXKernelBuilder.
-/// All created kernels are stored in CISA Builder object which is provided
-/// by finalizer.
+/// This class encapsulates creation of vISA kernels. It is a ModulePass, thus
+/// it runs once for a module, iterates thru the function groups array and
+/// builds vISA kernels via class GenXKernelBuilder. All created kernels are
+/// stored in CISA Builder object which is provided by finalizer.
 ///
 //===----------------------------------------------------------------------===//
-class GenXCisaBuilder : public FGPassImplInterface,
-                        public IDMixin<GenXCisaBuilder> {
-  LLVMContext *Ctx = nullptr;
-
+class GenXCisaBuilder : public ModulePass {
 public:
-  explicit GenXCisaBuilder() {}
+  static char ID;
 
-  static StringRef getPassName() { return "GenX CISA construction pass"; }
-  static void getAnalysisUsage(AnalysisUsage &AU);
-  bool runOnFunctionGroup(FunctionGroup &FG) override;
+  explicit GenXCisaBuilder() : ModulePass(ID) {}
+
+  StringRef getPassName() const override;
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+
+  bool runOnModule(Module &M) override;
+  bool runOnFunctionGroup(FunctionGroup &FG) const;
 
   LLVMContext &getContext() {
     IGC_ASSERT(Ctx);
     return *Ctx;
   }
+
+private:
+  LLVMContext *Ctx = nullptr;
+
+  GenXModule *GM = nullptr;
+  FunctionGroupAnalysis *FGA = nullptr;
+  GenXVisaRegAllocWrapper *RegAlloc = nullptr;
+  GenXGroupBalingWrapper *Baling = nullptr;
+  LoopInfoGroupWrapperPassWrapper *LoopInfo = nullptr;
+  GenXLivenessWrapper *Liveness = nullptr;
+
+  const GenXBackendConfig *BC = nullptr;
+  const GenXSubtarget *ST = nullptr;
 };
 
-void initializeGenXCisaBuilderWrapperPass(PassRegistry &);
-using GenXCisaBuilderWrapper = FunctionGroupWrapperPass<GenXCisaBuilder>;
+char GenXCisaBuilder::ID = 0;
+
+void initializeGenXCisaBuilderPass(PassRegistry &);
+
+ModulePass *createGenXCisaBuilderPass() {
+  initializeGenXCisaBuilderPass(*PassRegistry::getPassRegistry());
+  return new GenXCisaBuilder();
+}
 
 //===----------------------------------------------------------------------===//
 /// GenXKernelBuilder
@@ -938,71 +957,99 @@ public:
   unsigned addStringToPool(StringRef Str);
   StringRef getStringByIndex(unsigned Val);
 };
-ModulePass *createGenXCisaBuilderWrapperPass() {
-  initializeGenXCisaBuilderWrapperPass(*PassRegistry::getPassRegistry());
-  return new GenXCisaBuilderWrapper();
-}
 
 } // end namespace llvm
 
-INITIALIZE_PASS_BEGIN(GenXCisaBuilderWrapper, "GenXCisaBuilderPassWrapper",
-                      "GenXCisaBuilderPassWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPassWrapper)
+INITIALIZE_PASS_BEGIN(GenXCisaBuilder, "GenXCisaBuilderPass",
+                      "GenXCisaBuilderPass", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+
+INITIALIZE_PASS_DEPENDENCY(GenXModule)
+
+INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
+
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAllocWrapper)
-INITIALIZE_PASS_DEPENDENCY(GenXModule)
-INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
-INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
-INITIALIZE_PASS_END(GenXCisaBuilderWrapper, "GenXCisaBuilderPassWrapper",
-                    "GenXCisaBuilderPassWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPassWrapper)
+INITIALIZE_PASS_END(GenXCisaBuilder, "GenXCisaBuilderPass",
+                    "GenXCisaBuilderPass", false, false)
 
-void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) {
-  AU.addRequired<LoopInfoGroupWrapperPass>();
-  AU.addRequired<GenXGroupBaling>();
-  AU.addRequired<GenXLiveness>();
-  AU.addRequired<GenXVisaRegAlloc>();
-  AU.addRequired<GenXModule>();
-  AU.addRequired<FunctionGroupAnalysis>();
-  AU.addRequired<TargetPassConfig>();
+StringRef GenXCisaBuilder::getPassName() const {
+  return "GenX CISA construction pass";
+}
+
+void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();
+  AU.addRequired<TargetPassConfig>();
+
+  AU.addRequired<GenXModule>();
+
+  AU.addRequired<FunctionGroupAnalysis>();
+
+  AU.addRequired<GenXGroupBalingWrapper>();
+  AU.addRequired<GenXLivenessWrapper>();
+  AU.addRequired<GenXVisaRegAllocWrapper>();
+  AU.addRequired<LoopInfoGroupWrapperPassWrapper>();
   AU.setPreservesAll();
 }
 
-bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
-  Ctx = &FG.getContext();
-  std::unique_ptr<GenXKernelBuilder> KernelBuilder(new GenXKernelBuilder(FG));
-  KernelBuilder->FGA = getAnalysisIfAvailable<FunctionGroupAnalysis>();
-  KernelBuilder->GM = getAnalysisIfAvailable<GenXModule>();
-  KernelBuilder->CisaBuilder = KernelBuilder->GM->GetCisaBuilder();
-  KernelBuilder->RegAlloc = getAnalysisIfAvailable<GenXVisaRegAlloc>();
-  KernelBuilder->Baling = &getAnalysis<GenXGroupBaling>();
-  KernelBuilder->LIs = &getAnalysis<LoopInfoGroupWrapperPass>();
-  KernelBuilder->Liveness = &getAnalysis<GenXLiveness>();
-  KernelBuilder->Subtarget = &getAnalysis<TargetPassConfig>()
-                                  .getTM<GenXTargetMachine>()
-                                  .getGenXSubtarget();
-  const auto &BC = getAnalysis<GenXBackendConfig>();
-  KernelBuilder->BackendConfig = &BC;
+bool GenXCisaBuilder::runOnModule(Module &M) {
+  Ctx = &M.getContext();
 
-  KernelBuilder->run();
+  FGA = &getAnalysis<FunctionGroupAnalysis>();
+  GM = &getAnalysis<GenXModule>();
 
-  GenXModule *GM = KernelBuilder->GM;
-  if (GM->HasInlineAsm() || !BC.getVISALTOStrings().empty()) {
-    auto VISAAsmTextReader = GM->GetVISAAsmReader();
-    auto ParseVISA = [&](const std::string& text) {
-      const int R = VISAAsmTextReader->ParseVISAText(text, "");
-      if (R != 0)
-        handleInlineAsmParseError(BC, VISAAsmTextReader->GetCriticalMsg(), text,
-                                  *Ctx);
+  // Function group passes
+  RegAlloc = &getAnalysis<GenXVisaRegAllocWrapper>();
+  Baling = &getAnalysis<GenXGroupBalingWrapper>();
+  LoopInfo = &getAnalysis<LoopInfoGroupWrapperPassWrapper>();
+  Liveness = &getAnalysis<GenXLivenessWrapper>();
+
+  BC = &getAnalysis<GenXBackendConfig>();
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
+
+  bool Changed = false;
+  for (auto *FG : FGA->AllGroups())
+    Changed |= runOnFunctionGroup(*FG);
+
+  auto LTOStrings = BC->getVISALTOStrings();
+
+  if (GM->HasInlineAsm() || !LTOStrings.empty()) {
+    auto *VISAAsmTextReader = GM->GetVISAAsmReader();
+    auto *CisaBuilder = GM->GetCisaBuilder();
+
+    auto ParseVISA = [&](const std::string &Text) {
+      if (VISAAsmTextReader->ParseVISAText(Text, "") != 0)
+        handleInlineAsmParseError(*BC, VISAAsmTextReader->GetCriticalMsg(),
+                                  Text, *Ctx);
     };
-    ParseVISA(KernelBuilder->CisaBuilder->GetAsmTextStream().str());
-    for (auto VisaAsm : BC.getVISALTOStrings()) {
+
+    ParseVISA(CisaBuilder->GetAsmTextStream().str());
+    for (auto VisaAsm : LTOStrings)
       ParseVISA(VisaAsm);
-    }
   }
 
-  return false;
+  return Changed;
+}
+
+bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) const {
+  auto KernelBuilder = std::make_unique<GenXKernelBuilder>(FG);
+
+  KernelBuilder->FGA = FGA;
+  KernelBuilder->GM = GM;
+  KernelBuilder->CisaBuilder = GM->GetCisaBuilder();
+  KernelBuilder->RegAlloc = &RegAlloc->getFGPassImpl(&FG);
+  KernelBuilder->Baling = &Baling->getFGPassImpl(&FG);
+  KernelBuilder->LIs = &LoopInfo->getFGPassImpl(&FG);
+  KernelBuilder->Liveness = &Liveness->getFGPassImpl(&FG);
+  KernelBuilder->Subtarget = ST;
+  KernelBuilder->BackendConfig = BC;
+
+  return KernelBuilder->run();
 }
 
 static bool isDerivedFromUndef(Constant *C) {

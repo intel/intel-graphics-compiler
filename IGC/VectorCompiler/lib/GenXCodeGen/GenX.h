@@ -123,7 +123,7 @@ ModulePass *createGenXAddressCommoningWrapperPass();
 ModulePass *createGenXArgIndirectionWrapperPass();
 FunctionPass *createGenXTidyControlFlowPass();
 ModulePass *createGenXVisaRegAllocWrapperPass();
-ModulePass *createGenXCisaBuilderWrapperPass();
+ModulePass *createGenXCisaBuilderPass();
 ModulePass *createGenXFinalizerPass();
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXGlobalValueLoweringPass();

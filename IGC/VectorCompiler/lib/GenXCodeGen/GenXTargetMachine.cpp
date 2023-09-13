@@ -91,7 +91,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXArgIndirectionWrapperPass(registry);
   initializeGenXCategoryWrapperPass(registry);
   initializeGenXCFSimplificationPass(registry);
-  initializeGenXCisaBuilderWrapperPass(registry);
+  initializeGenXCisaBuilderPass(registry);
   initializeGenXCoalescingWrapperPass(registry);
   initializeGenXGVClobberCheckerPass(registry);
   initializeGenXDeadVectorRemovalPass(registry);
@@ -619,7 +619,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXTidyControlFlow.cpp
   vc::addPass(PM, createGenXTidyControlFlowPass());
   /// .. include:: GenXVisaRegAlloc.h
-  auto RegAlloc = createGenXVisaRegAllocWrapperPass();
+  auto *RegAlloc = createGenXVisaRegAllocWrapperPass();
   vc::addPass(PM, RegAlloc);
   if (BackendConfig.enableRegAllocDump())
     vc::addPass(PM, createGenXModuleAnalysisDumperPass(RegAlloc, FGDumpsPrefix,
@@ -627,7 +627,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
   /// .. include:: GenXCisaBuilder.cpp
-  vc::addPass(PM, createGenXCisaBuilderWrapperPass());
+  vc::addPass(PM, createGenXCisaBuilderPass());
   vc::addPass(PM, createGenXFinalizerPass());
   vc::addPass(PM, createGenXDebugInfoPass());
 
