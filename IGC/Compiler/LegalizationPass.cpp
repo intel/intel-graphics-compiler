@@ -2710,19 +2710,37 @@ static bool needsNoScaling(Value* Val)
 bool IGC::expandFDIVInstructions(llvm::Function& F)
 {
     bool Changed = false;
-    for (auto& BB : F.getBasicBlockList()) {
-        for (auto Iter = BB.begin(); Iter != BB.end();) {
+    for (auto BBIter = F.begin(); BBIter != F.end();) {
+        BasicBlock* BB = &*BBIter++;
+
+        for (auto Iter = BB->begin(); Iter != BB->end();) {
             Instruction* Inst = &*Iter++;
             if (!isCandidateFDiv(Inst))
                 continue;
-
-            IRBuilder<> Builder(Inst);
-            Builder.setFastMathFlags(Inst->getFastMathFlags());
 
             auto& Ctx = Inst->getContext();
             Value* X = Inst->getOperand(0);
             Value* Y = Inst->getOperand(1);
             Value* V = nullptr;
+
+            BasicBlock* PreFDIVExpBB = BB;
+            BasicBlock* PostFDIVExpBB = BB->splitBasicBlock(Inst->getNextNode());
+            BasicBlock* FDIVExpBB = BB->splitBasicBlock(Inst);
+
+            IRBuilder<> Builder(FDIVExpBB->getPrevNode()->getTerminator());
+            Builder.setFastMathFlags(Inst->getFastMathFlags());
+
+            // If x == y then x/y == 1, skip FDIV expansion basic block to avoid
+            // reciprocal round-trip error, break to post-FDIV-expansion basic
+            // block.
+            Value* CmpXY = Builder.CreateFCmp(CmpInst::FCMP_OEQ, X, Y);
+            Builder.CreateCondBr(CmpXY, PostFDIVExpBB, FDIVExpBB)->getNextNode()->eraseFromParent();
+
+            // Update iterators after creating BBs.
+            BBIter = PostFDIVExpBB->getIterator();
+            BB = FDIVExpBB;
+            Iter = ++FDIVExpBB->begin();
+            Builder.SetInsertPoint(Inst);
 
             if (Inst->getType()->isHalfTy()) {
                 if (Inst->hasAllowReciprocal()) {
@@ -2771,7 +2789,16 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                 V = Builder.CreateFMul(V, Scale);
             }
 
-            Inst->replaceAllUsesWith(V);
+            Builder.SetInsertPoint(&*PostFDIVExpBB->begin());
+            PHINode* Phi = Builder.CreatePHI(V->getType(), 2);
+            APFloat VConstOne(1.0f);
+            if (V->getType()->isHalfTy()) {
+                bool ignored;
+                VConstOne.convert(APFloat::IEEEhalf(), APFloat::rmTowardZero, &ignored);
+            }
+            Phi->addIncoming(ConstantFP::get(Ctx, VConstOne), PreFDIVExpBB);
+            Phi->addIncoming(V, FDIVExpBB);
+            Inst->replaceAllUsesWith(Phi);
             Inst->eraseFromParent();
             Changed = true;
         }
