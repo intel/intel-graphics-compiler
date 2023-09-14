@@ -4882,12 +4882,18 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     IGC_ASSERT_MESSAGE(0, "unsupported fcmp predicate");
     break;
   case CmpInst::FCMP_OEQ:
-  case CmpInst::ICMP_EQ:
     opSpec = ISA_CMP_E;
     break;
+  case CmpInst::ICMP_EQ:
+    opSpec = ISA_CMP_E;
+    Signed = SIGNED;
+    break;
   case CmpInst::FCMP_UNE:
+    opSpec = ISA_CMP_NE;
+    break;
   case CmpInst::ICMP_NE:
     opSpec = ISA_CMP_NE;
+    Signed = SIGNED;
     break;
   case CmpInst::FCMP_OGT:
     opSpec = ISA_CMP_G;
