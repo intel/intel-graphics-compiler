@@ -262,8 +262,8 @@ private:
 class Reducer
 {
 public:
-    Reducer(const DataLayout &DL, DominatorTree &DT, Loop &L, LoopInfo &LI, ModuleMetaData &MMD, RegisterPressureEstimate &RPE, ScalarEvolution &SE, unsigned MaxPressure, bool AllowLICM)
-        : DT(DT), L(L), LI(LI), RPE(RPE), SE(SE), E(SE, DL, "gep-loop-strength-reduction"), MaxPressure(MaxPressure), AllowLICM(AllowLICM), Scorer(DL, L, MMD) {}
+    Reducer(const DataLayout &DL, DominatorTree &DT, Loop &L, LoopInfo &LI, ModuleMetaData &MMD, RegisterPressureEstimate &RPE, ScalarEvolution &SE, SCEVExpander &E, unsigned MaxPressure, bool AllowLICM)
+        : DT(DT), L(L), LI(LI), RPE(RPE), SE(SE), E(E), MaxPressure(MaxPressure), AllowLICM(AllowLICM), Scorer(DL, L, MMD) {}
 
     bool reduce();
 
@@ -280,7 +280,7 @@ private:
     LoopInfo &LI;
     RegisterPressureEstimate &RPE;
     ScalarEvolution &SE;
-    SCEVExpander E;
+    SCEVExpander &E;
 
     Scorer Scorer;
 
@@ -305,22 +305,26 @@ namespace SCEVHelper
     class SCEVAddBuilder
     {
     public:
-        SCEVAddBuilder(ScalarEvolution &SE, Type *T) :
-            SE(SE), T(T)
-        {
-            IGC_ASSERT_MESSAGE(T->isIntegerTy(), "builder requires integer type");
-        }
+        SCEVAddBuilder(ScalarEvolution &SE) : SE(SE) {}
 
         SCEVAddBuilder &add(const SCEV *S, bool Negative = false);
 
         SCEVAddBuilder &addNegative(const SCEV *S) { return add(S, true); }
 
-        const SCEV *build() { return SE.getAddExpr(Ops); }
+        const SCEV *build();
 
     private:
+
+        struct Op
+        {
+            Op(const SCEV *S, bool Negative) : S(S), Negative(Negative) {}
+
+            const SCEV *S;
+            bool Negative;
+        };
+
         ScalarEvolution &SE;
-        Type *T;
-        SmallVector<const SCEV*, 16> Ops;
+        SmallVector<Op, 16> Ops;
     };
 };
 
@@ -406,7 +410,7 @@ bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst 
     // Can't use ScalarEvolution::computeConstantDifference, as it only
     // supports SCEVAddExpr with two operands. Calculate difference as:
     //     new candidate's operands + (-1 * base's operands)
-    SCEVHelper::SCEVAddBuilder Builder(SE, SE.getWiderType(S->getType(), Base.S->getType()));
+    SCEVHelper::SCEVAddBuilder Builder(SE);
     const SCEVConstant *Sum = dyn_cast<SCEVConstant>(Builder.add(S).addNegative(Base.S).build());
     if (!Sum)
         return false;
@@ -900,7 +904,7 @@ bool Reducer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
 
         const SCEV *OpSCEV = nullptr;
         int64_t OpStep = 0;
-        SCEVHelper::SCEVAddBuilder Builder(SE, S->getType());
+        SCEVHelper::SCEVAddBuilder Builder(SE);
 
         for (auto *Op : Add->operands())
         {
@@ -1036,16 +1040,33 @@ SCEVHelper::SCEVAddBuilder &SCEVHelper::SCEVAddBuilder::add(const SCEV *S, bool 
         return *this;
     }
 
-    // ScalarEvolution::getAddExpr requires all operands to have the same
-    // type. Extend type if required.
-    S = S->getType() == T ? S : SE.getSignExtendExpr(S, T);
-
-    // Change expresion to "-1 * expression"
-    S = Negative ? SE.getNegativeSCEV(S) : S;
-
-    Ops.push_back(S);
+    Ops.emplace_back(S, Negative);
 
     return *this;
+}
+
+
+const SCEV *SCEVHelper::SCEVAddBuilder::build()
+{
+    // ScalarEvolution::getAddExpr requires all operands to have the same
+    // type. First find the widest type.
+    Type *T = nullptr;
+    for (auto *It = Ops.begin(); It != Ops.end(); ++It)
+    {
+        T = T ? SE.getWiderType(T, It->S->getType()) : It->S->getType();
+    }
+
+    // Join list of operands, extending type if required.
+    SmallVector<const SCEV*, 16> FinalOps;
+
+    for (auto *It = Ops.begin(); It != Ops.end(); ++It)
+    {
+        const SCEV *S = It->S;
+        S = S->getType() == T ? S : SE.getSignExtendExpr(S, T);
+        FinalOps.push_back(It->Negative ? SE.getNegativeSCEV(S) : S);
+    }
+
+    return SE.getAddExpr(FinalOps);
 }
 
 
@@ -1093,9 +1114,12 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
 
     bool changed = false;
 
+    // Using one SCEV expander between all reductions reduces number of duplicated new instructions.
+    auto E = SCEVExpander(SE, DL, "gep-loop-strength-reduction");
+
     for (Loop *L : LI.getLoopsInPreorder())
     {
-        changed |= Reducer(DL, DT, *L, LI, MMD, RPE, SE, MaxPressure, AllowLICM).reduce();
+        changed |= Reducer(DL, DT, *L, LI, MMD, RPE, SE, E, MaxPressure, AllowLICM).reduce();
     }
 
     return changed;

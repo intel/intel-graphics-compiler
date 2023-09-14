@@ -35,14 +35,10 @@ entry:
   br i1 %cmp1, label %for.body.lr.ph, label %for.end
 
 ; CHECK-LABEL: for.body.lr.ph:
-; CHECK:         [[EXT1:%.*]] = sext i32 %b to i64
-; CHECK:         [[EXT2:%.*]] = sext i32 %a to i64
-; CHECK:         [[ADD1:%.*]] = add i64 [[EXT1]], [[EXT2]]
-; CHECK:         [[ADD2:%.*]] = add i32 %b, %a
-; CHECK:         [[MUL:%.*]] = mul i32 %c, [[ADD2]]
-; CHECK:         [[EXT3:%.*]] = sext i32 [[MUL]] to i64
-; CHECK:         [[ADD3:%.*]] = add i64 [[ADD1]], [[EXT3]]
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[ADD3]]
+; CHECK:         [[ADD1:%.*]] = add i32 %b, %a
+; CHECK:         [[MUL:%.*]] = mul i32 %c, [[ADD1]]
+; CHECK:         [[ADD2:%.*]] = add i32 [[ADD1]], [[MUL]]
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i32 [[ADD2]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
