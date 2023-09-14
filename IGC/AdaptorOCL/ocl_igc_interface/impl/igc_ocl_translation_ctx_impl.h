@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 
 #include <memory>
 #include <iomanip>
+#include <signal.h>
+#include <setjmp.h>
 
 #include "cif/builtins/memory/buffer/impl/buffer_impl.h"
 #include "cif/helpers/error.h"
@@ -90,6 +92,9 @@ spv_result_t DisassembleSPIRV(
     const char* pBuffer,
     UINT bufferSize,
     spv_text* outSpirvAsm);
+
+void UnlockMutex();
+
 }
 
 bool enableSrcLine(void*);
@@ -424,6 +429,25 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         case EXCEPTION_STACK_OVERFLOW:
             outputMessage = "IGC: Internal Compiler Error: Stack overflow";
             break;
+#else
+        case SIGABRT:
+            outputMessage = "IGC: Internal Compiler Error: Abnormal termination";
+            break;
+        case SIGFPE:
+            outputMessage = "IGC: Internal Compiler Error: Floating point exception";
+            break;
+        case SIGILL:
+            outputMessage = "IGC: Internal Compiler Error: Invalid instruction";
+            break;
+        case SIGINT:
+            outputMessage = "IGC: Internal Compiler Error: Interrupt request sent to the program";
+            break;
+        case SIGSEGV:
+            outputMessage = "IGC: Internal Compiler Error: Segmentation violation";
+            break;
+        case SIGTERM:
+            outputMessage = "IGC: Internal Compiler Error: Termination request sent to the program";
+            break;
 #endif
         default:
             outputMessage = "IGC: Internal Compiler Error: Signal caught";
@@ -458,12 +482,53 @@ __try                                                                         \
 }                                                                             \
 __except (ex_filter(GetExceptionCode(), GetExceptionInformation()))           \
 {                                                                             \
+    TC::UnlockMutex();                                                        \
     res = CIF_GET_PIMPL()->GetErrorOutput(outVersion, GetExceptionCode());    \
 }                                                                             \
 
 #else
-#define EX_GUARD_BEGIN
-#define EX_GUARD_END
+void signalHandler(int sig, siginfo_t* info, void* ucontext);
+
+#define SET_SIG_HANDLER(SIG)                                                  \
+struct sigaction saold_##SIG;                                                 \
+sigaction(SIG, NULL, &saold_##SIG);                                           \
+if (saold_##SIG.sa_handler == SIG_DFL)                                        \
+{                                                                             \
+    sigaction(SIG, &sa, NULL);                                                \
+}                                                                             \
+
+#define REMOVE_SIG_HANDLER(SIG)                                               \
+if (saold_##SIG.sa_handler == SIG_DFL)                                        \
+{                                                                             \
+    sigaction(SIG, &saold_##SIG, NULL);                                       \
+}                                                                             \
+
+#define EX_GUARD_BEGIN                                                        \
+struct sigaction sa;                                                          \
+sigemptyset(&sa.sa_mask);                                                     \
+sa.sa_sigaction = signalHandler;                                              \
+sa.sa_flags = 0;                                                              \
+SET_SIG_HANDLER(SIGABRT)                                                      \
+SET_SIG_HANDLER(SIGFPE)                                                       \
+SET_SIG_HANDLER(SIGILL)                                                       \
+SET_SIG_HANDLER(SIGINT)                                                       \
+SET_SIG_HANDLER(SIGSEGV)                                                      \
+SET_SIG_HANDLER(SIGTERM)                                                      \
+int sig = setjmp(sig_jmp_buf);                                                \
+if (sig == 0) {                                                               \
+
+#define EX_GUARD_END                                                          \
+} else {                                                                      \
+    res = CIF_GET_PIMPL()->GetErrorOutput(outVersion, sig);                   \
+}                                                                             \
+REMOVE_SIG_HANDLER(SIGABRT)                                                   \
+REMOVE_SIG_HANDLER(SIGFPE)                                                    \
+REMOVE_SIG_HANDLER(SIGILL)                                                    \
+REMOVE_SIG_HANDLER(SIGINT)                                                    \
+REMOVE_SIG_HANDLER(SIGSEGV)                                                   \
+REMOVE_SIG_HANDLER(SIGTERM)                                                   \
+TC::UnlockMutex();
+
 #endif
 #else
 #define EX_GUARD_BEGIN

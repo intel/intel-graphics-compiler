@@ -9,6 +9,10 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/igc_ocl_translation_ctx.h"
 #include "ocl_igc_interface/impl/igc_ocl_translation_ctx_impl.h"
 
+#ifndef WIN32
+jmp_buf sig_jmp_buf;
+#endif
+
 #include "cif/macros/enable.h"
 
 namespace IGC {
@@ -74,5 +78,10 @@ OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(IgcOclTranslationCtx, 3)::Tran
 int ex_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
 {
     return EXCEPTION_EXECUTE_HANDLER;
+}
+#else
+void signalHandler(int sig, siginfo_t* info, void* ucontext)
+{
+    longjmp(sig_jmp_buf, sig);
 }
 #endif

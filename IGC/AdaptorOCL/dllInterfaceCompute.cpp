@@ -151,6 +151,11 @@ namespace TC
 
 static std::mutex llvm_mutex;
 
+void UnlockMutex()
+{
+    llvm_mutex.unlock();
+}
+
 extern bool ProcessElfInput(
     STB_TranslateInputArgs& InputArgs,
     STB_TranslateOutputArgs& OutputArgs,
