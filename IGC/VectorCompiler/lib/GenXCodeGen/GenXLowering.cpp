@@ -3543,7 +3543,7 @@ static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
   case Intrinsic::maxnum:
     return GenXIntrinsic::genx_fmax;
   };
-  IGC_ASSERT_MESSAGE(0, "unknown min/max intrinsic");
+  IGC_ASSERT_EXIT_MESSAGE(0, "unknown min/max intrinsic");
   return GenXIntrinsic::not_any_intrinsic;
 }
 

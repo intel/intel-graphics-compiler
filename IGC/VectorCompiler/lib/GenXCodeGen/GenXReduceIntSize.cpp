@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -843,6 +843,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
           // Other cases: use the original size as the result type.
           ResTy = Inst->getType();
         }
+        IGC_ASSERT_EXIT(IID != GenXIntrinsic::not_any_intrinsic);
         TruncBits = ResTy->getScalarType()->getPrimitiveSizeInBits();
         Type *Tys[] = { ResTy, Opnd0->getType() };
         Function *Decl =

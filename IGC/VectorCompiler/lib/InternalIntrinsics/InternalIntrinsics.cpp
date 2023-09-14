@@ -393,7 +393,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
 static void
 getIntrinsicInfoTableEntries(InternalIntrinsic::ID id,
                              SmallVectorImpl<Intrinsic::IITDescriptor> &T) {
-  IGC_ASSERT(isInternalIntrinsic(id));
+  IGC_ASSERT_EXIT(isInternalIntrinsic(id));
 
   // transform id
   // from [not_internal_intrinsic; num_internal_intrinsic] to [0, ...]
@@ -484,7 +484,7 @@ static const char *const InternalIntrinsicNameTable[] = {
 /// Intrinsic::isOverloaded(ID) - Returns true if the intrinsic can be
 /// overloaded.
 static bool isOverloaded(InternalIntrinsic::ID id) {
-  IGC_ASSERT(isInternalIntrinsic(id) && "Invalid intrinsic ID!");
+  IGC_ASSERT_EXIT(isInternalIntrinsic(id) && "Invalid intrinsic ID!");
   id = static_cast<InternalIntrinsic::ID>(
       id - InternalIntrinsic::not_internal_intrinsic);
 #define GET_INTRINSIC_OVERLOAD_TABLE
@@ -539,7 +539,7 @@ static InternalIntrinsic::ID lookupInternalIntrinsicID(StringRef Name) {
   if (Idx == -1) {
     return InternalIntrinsic::not_internal_intrinsic;
   }
-  IGC_ASSERT(Idx >= 0);
+  IGC_ASSERT_EXIT(Idx >= 0);
 
   // Intrinsic IDs correspond to the location in IntrinsicNameTable, but we have
   // an index into a sub-table.
@@ -562,10 +562,11 @@ static InternalIntrinsic::ID lookupInternalIntrinsicID(StringRef Name) {
 /// getInternalName(ID) - Return the LLVM name for a Internal intrinsic
 std::string InternalIntrinsic::getInternalName(InternalIntrinsic::ID id,
                                                ArrayRef<Type *> Tys) {
-  IGC_ASSERT(InternalIntrinsic::isInternalIntrinsic(id) &&
-             "Invalid intrinsic ID!");
-  IGC_ASSERT(Tys.empty() || (isOverloaded(id) &&
-                             "Non-overloadable intrinsic was overloaded!"));
+  IGC_ASSERT_EXIT(InternalIntrinsic::isInternalIntrinsic(id) &&
+                  "Invalid intrinsic ID!");
+  IGC_ASSERT_EXIT(
+      Tys.empty() ||
+      (isOverloaded(id) && "Non-overloadable intrinsic was overloaded!"));
   id = static_cast<InternalIntrinsic::ID>(
       id - InternalIntrinsic::not_internal_intrinsic);
   std::string Result(InternalIntrinsicNameTable[id]);
@@ -608,11 +609,11 @@ static FunctionType *getInternalType(LLVMContext &Context,
 /// F is required to be a Internal intrinsic function
 static void resetInternalAttributes(Function *F) {
 
-  IGC_ASSERT(F);
+  IGC_ASSERT_EXIT(F);
 
   InternalIntrinsic::ID GXID = InternalIntrinsic::getInternalIntrinsicID(F);
 
-  IGC_ASSERT(GXID != InternalIntrinsic::not_internal_intrinsic);
+  IGC_ASSERT_EXIT(GXID != InternalIntrinsic::not_internal_intrinsic);
 
   // Since Function::isIntrinsic() will return true due to llvm. prefix,
   // Module::getOrInsertFunction fails to add the attributes. explicitly adding
@@ -634,7 +635,7 @@ static void resetInternalAttributes(Function *F) {
 
 InternalIntrinsic::ID
 InternalIntrinsic::getInternalIntrinsicID(const Function *F) {
-  IGC_ASSERT(F);
+  IGC_ASSERT_EXIT(F);
   llvm::StringRef Name = F->getName();
   if (!Name.startswith(getInternalIntrinsicPrefix())) {
     return InternalIntrinsic::not_internal_intrinsic;
@@ -659,17 +660,18 @@ InternalIntrinsic::getInternalIntrinsicID(const Function *F) {
 
   // Fallback to string lookup.
   auto ID = lookupInternalIntrinsicID(Name);
-  IGC_ASSERT(ID != InternalIntrinsic::not_internal_intrinsic &&
-             "Intrinsic not found!");
+  IGC_ASSERT_EXIT(ID != InternalIntrinsic::not_internal_intrinsic &&
+                  "Intrinsic not found!");
   return ID;
 }
 
 Function *InternalIntrinsic::getInternalDeclaration(Module *M,
                                                     InternalIntrinsic::ID id,
                                                     ArrayRef<Type *> Tys) {
-  IGC_ASSERT(isInternalNonTrivialIntrinsic(id));
-  IGC_ASSERT(Tys.empty() || (isOverloaded(id) &&
-                             "Non-overloadable intrinsic was overloaded!"));
+  IGC_ASSERT_EXIT(isInternalNonTrivialIntrinsic(id));
+  IGC_ASSERT_EXIT(
+      Tys.empty() ||
+      (isOverloaded(id) && "Non-overloadable intrinsic was overloaded!"));
 
   auto InternalName = getInternalName(id, Tys);
   FunctionType *FTy = getInternalType(M->getContext(), id, Tys);
@@ -747,7 +749,7 @@ bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
 unsigned
 InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   auto IID = getInternalIntrinsicID(I);
-  IGC_ASSERT(isInternalMemoryIntrinsic(IID));
+  IGC_ASSERT_EXIT(isInternalMemoryIntrinsic(IID));
 
   switch (IID) {
   default:
@@ -812,7 +814,7 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
 }
 
 unsigned InternalIntrinsic::getMemorySimdWidth(const Instruction *I) {
-  IGC_ASSERT(isInternalMemoryIntrinsic(I));
+  IGC_ASSERT_EXIT(isInternalMemoryIntrinsic(I));
 
   auto *Pred = I->getOperand(0);
   auto *PredTy = Pred->getType();
@@ -825,7 +827,7 @@ unsigned InternalIntrinsic::getMemorySimdWidth(const Instruction *I) {
 
 unsigned
 InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
-  IGC_ASSERT(isInternalMemoryIntrinsic(I));
+  IGC_ASSERT_EXIT(isInternalMemoryIntrinsic(I));
   unsigned ElementSizeIndex = 2;
 
   auto IID = getInternalIntrinsicID(I);
