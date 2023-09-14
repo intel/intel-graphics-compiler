@@ -4044,8 +4044,6 @@ void EmitPass::EmitGenericPointersCmp(llvm::Instruction* inst,
 
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
-    UseVMaskPred();
-
     switch (inst->getOpcode())
     {
     case Instruction::FCmp:
@@ -4458,8 +4456,6 @@ void EmitPass::Unary(e_opcode opCode, const SSource sources[1], const DstModifie
 template<int N>
 void EmitPass::Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier)
 {
-    UseVMaskPred();
-
     CVariable* srcs[3] = { nullptr, nullptr, nullptr };
     for (uint i = 0; i < N; i++)
     {
@@ -4585,17 +4581,6 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
 
 CVariable* EmitPass::GetVMaskPred(CVariable*& predicate)
 {
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) &&
-        predicate == nullptr)
-    {
-        // Copy VMASK to a predicate
-        // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
-        predicate = m_currShader->GetNewVariable(
-            numLanes(m_SimdMode),
-            ISA_TYPE_BOOL,
-            EALIGN_DWORD,
-            "");
-    }
     return predicate;
 }
 
@@ -4607,27 +4592,6 @@ void EmitPass::createVMaskPred(CVariable*& predicate)
     if (predicate != nullptr)
         return;
 
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate))
-    {
-        // Copy VMASK to a predicate
-        // (W) mov (1|M0) f0.0<1>:ud sr0.3<0;1,0>:ud
-        predicate = GetVMaskPred(predicate);
-
-        if (m_encoder->IsCodePatchCandidate())
-        {
-            m_encoder->SetPayloadSectionAsPrimary();
-        }
-
-        m_encoder->SetNoMask();
-        m_encoder->SetSrcSubReg(0, 3);
-        m_encoder->SetP(predicate, m_currShader->GetSR0());
-        m_encoder->Push();
-
-        if (m_encoder->IsCodePatchCandidate())
-        {
-            m_encoder->SetPayloadSectionAsSecondary();
-        }
-    }
 }
 
 void EmitPass::UseVMaskPred()
@@ -4638,11 +4602,6 @@ void EmitPass::UseVMaskPred()
     if (!m_vMaskPredForSubplane)
         return;
 
-    bool subspan = m_encoder->IsSubSpanDestination();
-    if (IGC_IS_FLAG_ENABLED(UseVMaskPredicate) && subspan && !m_destination->IsUniform())
-    {
-        m_encoder->SetPredicate(m_vMaskPredForSubplane);
-    }
 }
 
 
