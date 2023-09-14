@@ -1664,7 +1664,7 @@ private:
   Type *transFPType(SPIRVType* T);
   BinaryOperator *transShiftLogicalBitwiseInst(SPIRVValue* BV, BasicBlock* BB,
       Function* F);
-  Instruction *transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F);
+  Value *transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F);
   Instruction *transLifetimeInst(SPIRVInstTemplateBase* BV, BasicBlock* BB, Function* F);
   uint64_t calcImageType(const SPIRVValue *ImageVal);
   std::string transOCLImageTypeName(igc_spv::SPIRVTypeImage* ST);
@@ -2574,23 +2574,27 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
     return pCI;
 }
 
-Instruction *
+Value *
 SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
   SPIRVCompare* BC = static_cast<SPIRVCompare*>(BV);
-  IGC_ASSERT_MESSAGE(BB, "Invalid BB");
   SPIRVType* BT = BC->getOperand(0)->getType();
-  Instruction* Inst = nullptr;
+  Value* Inst = nullptr;
+
+  Value* Op0 = transValue(BC->getOperand(0), F, BB);
+  Value* Op1 = transValue(BC->getOperand(1), F, BB);
+
+  IRBuilder<> Builder(*Context);
+  if (BB) {
+      Builder.SetInsertPoint(BB);
+  }
+
   if (BT->isTypeVectorOrScalarInt()
    || BT->isTypePointer()
    || BT->isTypeQueue()
    || BT->isTypeBool())
-    Inst = new ICmpInst(*BB, CmpMap::rmap(BC->getOpCode()),
-        transValue(BC->getOperand(0), F, BB),
-        transValue(BC->getOperand(1), F, BB));
+    Inst = Builder.CreateICmp(CmpMap::rmap(BC->getOpCode()), Op0, Op1);
   else if (BT->isTypeVectorOrScalarFloat())
-    Inst = new FCmpInst(*BB, CmpMap::rmap(BC->getOpCode()),
-        transValue(BC->getOperand(0), F, BB),
-        transValue(BC->getOperand(1), F, BB));
+    Inst = Builder.CreateFCmp(CmpMap::rmap(BC->getOpCode()), Op0, Op1);
   IGC_ASSERT_MESSAGE(Inst, "not implemented");
 
   if (PlaceholderMap.count(BV) && Inst){
