@@ -1558,6 +1558,16 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         if (R.Indirect) {
           R.Indirect = getPacketizeValue(R.Indirect);
         }
+        auto *Src0Pack = getPacketizeValue(CI->getOperand(0));
+        auto *Src0PackVTy = cast<IGCLLVM::FixedVectorType>(Src0Pack->getType());
+        auto *ResVTy = cast<IGCLLVM::FixedVectorType>(CI->getType());
+        if (!R.Indirect && ResVTy->getNumElements() == 1 &&
+            Src0PackVTy->getNumElements() == B->mVWidth) {
+          R.Width = B->mVWidth;
+          replacement =
+              R.createWrRegion(Src0Pack, NewV1, CI->getName(), CI, DL);
+          return replacement;
+        }
         replacement =
             R.createWrRegion(CI->getOperand(0), NewV1, CI->getName(), CI, DL);
         return replacement;

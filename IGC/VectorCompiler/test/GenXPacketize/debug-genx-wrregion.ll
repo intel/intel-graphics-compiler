@@ -25,7 +25,9 @@ define void @test_packetize() !dbg !6 {
 ; Modified part:
 ; CHECK: define internal void @test_vectorize{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <1 x i32> [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+;
+; Value Dbg info cannot be preserved since the wrregion size has changed.
+; CHECK: void @llvm.dbg.value(metadata {{.*}}, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
 
 declare void @test_use(<1 x i32>)
 
