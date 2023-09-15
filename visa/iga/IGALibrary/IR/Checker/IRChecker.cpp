@@ -110,6 +110,7 @@ struct SemanticChecker : LOCChecker {
   void checkExecSize(const Instruction &i) {
   }
 
+
   void checkDst(const Instruction &i, const Operand &op) {
     switch (op.getKind()) {
     case Operand::Kind::DIRECT:
@@ -175,6 +176,7 @@ struct SemanticChecker : LOCChecker {
         // destination type mismatch, try the next destination
         continue;
       }
+
       const auto srcs = EnumBitset<Type>(tm.srcs);
       for (size_t s_ix = 0; s_ix < i.getSourceCount(); s_ix++) {
         if (srcs.contains(i.getSource(s_ix).getType())) {
