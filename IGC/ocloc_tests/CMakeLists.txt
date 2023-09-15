@@ -36,6 +36,7 @@ endif()
     FileCheck
     count
     not
+    llvm-dwarfdump
     "${IGC_BUILD__PROJ__ocloc}"
     "${IGC_BUILD__PROJ__ocloc_lib}"
     "${IGC_BUILD__PROJ__igc_dll}"
