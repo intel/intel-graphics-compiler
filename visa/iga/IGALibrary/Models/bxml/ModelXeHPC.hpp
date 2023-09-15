@@ -576,8 +576,6 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       {TYPE(Type::DF),TYPE(Type::DF)},
       // DF <- DF
       {TYPE(Type::DF),TYPE(Type::DF)},
-      // UQ,Q <- UD,D
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UD)|TYPE(Type::D)},
       // UD,D <- UD,D
       {TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UD)|TYPE(Type::D)}
     },
