@@ -269,7 +269,8 @@ namespace IGC
                               unsigned blockOffset,
                               ResourceDescriptor *resource,
                               LSC_ADDR_SIZE addr_size,
-                              LSC_DATA_ORDER data_order, int immOffset,
+                              LSC_DATA_ORDER data_order,
+                              int immOffset, int immScale,
                               LSC_CACHE_OPTS cacheOpts,
                               LSC_DOC_ADDR_SPACE addrSpace);
         void LSC_LoadBlock1D(
