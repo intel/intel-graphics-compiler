@@ -363,6 +363,13 @@ namespace IGC
 
         // Specifies alignment of indirect data
         virtual unsigned getCrossThreadDataAlignment() const { return 32; }
+
+        // Informs if LSC immediate global offset for A64 is supported
+        virtual bool supportsLSCImmediateGlobalBaseOffsetForA64() const { return true; }
+
+        // Informs if LSC immediate global offset for A32 is supported
+        virtual bool supportsLSCImmediateGlobalBaseOffsetForA32() const { return true; }
+
 protected:
     bool autoGRFSelection = false;
     };

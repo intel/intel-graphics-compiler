@@ -293,6 +293,9 @@ namespace IGC
             return m_WI && (m_WI->isUniform(V));
         };
 
+        bool supportsLSCImmediateGlobalBaseOffset();
+
+
     public:
         llvm::DenseSet<llvm::Instruction*>       m_usedInstructions;
         bool                  m_rootIsSubspanUse;

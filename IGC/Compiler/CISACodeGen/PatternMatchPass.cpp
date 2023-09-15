@@ -46,7 +46,6 @@ IGC_INITIALIZE_PASS_END(CodeGenPatternMatch, PASS_FLAG, PASS_DESCRIPTION, PASS_C
 
 namespace IGC
 {
-
     CodeGenPatternMatch::CodeGenPatternMatch() : FunctionPass(ID),
         m_rootIsSubspanUse(false),
         m_blocks(nullptr),
@@ -395,6 +394,15 @@ namespace IGC
             LCA = DT->findNearestCommonDominator(LCA, BB);
         IGC_ASSERT_MESSAGE(LCA, "LCA always exists for reachable BBs within a function!");
         ConstantPlacement[C] = LCA;
+    }
+
+    bool CodeGenPatternMatch::supportsLSCImmediateGlobalBaseOffset()
+    {
+        bool res = IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1 ||
+            (m_Platform.matchImmOffsetsLSC() &&
+                (m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA64() ||
+                    m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA32()));
+        return res;
     }
 
     // Check bool values that can be emitted as a single element predicate.
@@ -1281,7 +1289,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_ldraw_indexed:
             case GenISAIntrinsic::GenISA_storerawvector_indexed:
             case GenISAIntrinsic::GenISA_storeraw_indexed:
-                match = m_Platform.matchImmOffsetsLSC() ?
+                match = supportsLSCImmediateGlobalBaseOffset() ?
                     MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
                     MatchSingleInstruction(I);
                 break;
@@ -1454,7 +1462,7 @@ namespace IGC
     void CodeGenPatternMatch::visitStoreInst(StoreInst& I)
     {
         bool match = false;
-        if (m_Platform.matchImmOffsetsLSC()) {
+        if (supportsLSCImmediateGlobalBaseOffset()) {
             match = MatchImmOffsetLSC(I);
             if (match) return;
         }
@@ -1465,7 +1473,7 @@ namespace IGC
     void CodeGenPatternMatch::visitLoadInst(LoadInst& I)
     {
         bool match = false;
-        if (m_Platform.matchImmOffsetsLSC()) {
+        if (supportsLSCImmediateGlobalBaseOffset()) {
             match = MatchImmOffsetLSC(I);
             if (match)
                 return;
@@ -2609,11 +2617,25 @@ namespace IGC
 
         llvm::Instruction *addSubInst =
             llvm::dyn_cast<llvm::Instruction>(I.getOperand((unsigned)addrOpnd));
-        llvm::Instruction *intToPtrInst = nullptr;
         if (!addSubInst) {
             // e.g. the address is a constant
             return false;
         }
+
+        Type* addInstType = addSubInst->getType();
+        // Note that the A64 addressing mode can be only connected with load and store instructions
+        bool isA64AddressingModel = addInstType->isPointerTy() &&
+            IGC::isA64Ptr(cast<PointerType>(addInstType), m_ctx);
+
+        bool isSupportedCase =
+            (isA64AddressingModel && m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA64()) ||
+            (!isA64AddressingModel && m_ctx->m_DriverInfo.supportsLSCImmediateGlobalBaseOffsetForA32()) ||
+            IGC_GET_FLAG_VALUE(LscImmOffsMatch) > 1;
+        if (!isSupportedCase)
+        {
+            return false;
+        }
+        llvm::Instruction* intToPtrInst = nullptr;
         if (addSubInst->getOpcode() == llvm::Instruction::IntToPtr) {
             intToPtrInst = addSubInst;
             addSubInst = llvm::dyn_cast<llvm::Instruction>(addSubInst->getOperand(0));
