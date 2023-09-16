@@ -79,4 +79,4 @@ declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL.8x16(i8*, %intel
 !0 = !{void (i32, i8*, i32*, i8*, i8*)* @test_jm, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
+!3 = !{!"sub_group_size", i32 8}

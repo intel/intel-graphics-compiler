@@ -211,4 +211,4 @@ declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x6
 !5 = !{void (i8 addrspace(3)*, i8 addrspace(3)*)* @test_local, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
+!3 = !{!"sub_group_size", i32 8}

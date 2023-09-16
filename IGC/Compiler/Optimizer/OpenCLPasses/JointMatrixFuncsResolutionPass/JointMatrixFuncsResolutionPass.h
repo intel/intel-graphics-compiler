@@ -87,8 +87,14 @@ namespace IGC
 
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
+
+        // SIMD Size helpers
         llvm::Function *getEntryFunction(llvm::Function *F);
         void ResolveSIMDSize(llvm::Function *F);
+        int32_t DetermineForcedSIMDSize();
+        int32_t DefineKernelSIMDSize();
+        bool IsSIMDSizeValid(int32_t simdSize);
+        void ForceKernelSIMDSize(llvm::Function *F, int32_t forcedSIMDSize);
 
         llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;

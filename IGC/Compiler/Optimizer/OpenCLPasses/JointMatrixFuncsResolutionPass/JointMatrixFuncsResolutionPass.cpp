@@ -130,23 +130,125 @@ Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F)
     return nullptr;
 }
 
-void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F) {
-    if (m_SIMDSize != 0) return;
+int32_t JointMatrixFuncsResolutionPass::DetermineForcedSIMDSize()
+{
+    int32_t forcedSIMDSize = m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize;
 
+    if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_DISABLED(ForceCSSIMD16) && (forcedSIMDSize == 32 || IGC_IS_FLAG_ENABLED(ForceCSSIMD32)))
+    {
+        if (forcedSIMDSize == 0)
+            m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = 32;
+        return 32;
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_DISABLED(ForceCSSIMD32) && (forcedSIMDSize == 16 || IGC_IS_FLAG_ENABLED(ForceCSSIMD16)))
+    {
+        if (forcedSIMDSize == 0)
+            m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = 16;
+        return 16;
+    }
+
+    return forcedSIMDSize;
+}
+
+int32_t JointMatrixFuncsResolutionPass::DefineKernelSIMDSize()
+{
+    if (m_Ctx->platform.hasExecSize16DPAS())
+    {
+        if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_DISABLED(ForceCSSIMD32))
+            return 16;
+        if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_DISABLED(ForceCSSIMD16))
+            return 32;
+        std::string msg = "Sub group sizes supported by Joint Matrix for this platform are disabled by flags or non-supported sub group size forced.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return 0;
+    }
+    if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_ENABLED(ForceCSSIMD32))
+    {
+        std::string msg = "Sub group size 32 forced by flags but not supported by Joint Matrix on this platform.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return 0;
+    }
+    if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_ENABLED(ForceCSSIMD16))
+    {
+        std::string msg = "Sub group size 16 forced by flags but not supported by Joint Matrix on this platform.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return 0;
+    }
+    return 8;
+}
+
+bool JointMatrixFuncsResolutionPass::IsSIMDSizeValid(int32_t simdSize)
+{
+    return ((m_Ctx->platform.hasExecSize16DPAS() && (simdSize == 16 || simdSize == 32)) ||
+            (!m_Ctx->platform.hasExecSize16DPAS() && simdSize == 8));
+}
+
+void JointMatrixFuncsResolutionPass::ForceKernelSIMDSize(Function *F, int32_t forcedSIMDSize)
+{
     Function *entryFunction = getEntryFunction(F);
-    if (entryFunction) {
+    if (entryFunction) // if can find entry function
+    {
+        IGCMD::FunctionInfoMetaDataHandle funcInfoMD = m_mdUtils->getFunctionsInfoItem(entryFunction);
+        IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+        subGroupSize->setSIMD_size(forcedSIMDSize);
+    }
+}
+
+void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F)
+{
+    if (m_SIMDSize != 0)
+        return;
+
+    int32_t forcedSIMDSize = DetermineForcedSIMDSize();
+    if (forcedSIMDSize != 0)
+    {
+        if (IsSIMDSizeValid(forcedSIMDSize))
+        {
+            m_SIMDSize = forcedSIMDSize;
+            ForceKernelSIMDSize(F, m_SIMDSize);
+            return;
+        }
+        // if forced and not ok for platform exit with error
+        std::string msg = "Sub group size " + std::to_string(forcedSIMDSize) + " is forced by flags but not supported by Joint Matrix on this platform.";
+        m_Ctx->EmitError(msg.c_str(), nullptr);
+        return;
+    }
+
+    // if not forced by driver of flags, check on entry function level
+    Function *entryFunction = getEntryFunction(F);
+    if (entryFunction) // if can find entry function
+    {
         IGCMD::FunctionInfoMetaDataHandle funcInfoMD = m_mdUtils->getFunctionsInfoItem(entryFunction);
         IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
-            m_SIMDSize = subGroupSize->getSIMD_size();
+        {
+            int32_t kernelSIMDSize = subGroupSize->getSIMD_size();
+            if (kernelSIMDSize != 0)
+            {
+                if (IsSIMDSizeValid(kernelSIMDSize))
+                {
+                    m_SIMDSize = kernelSIMDSize;
+                    return;
+                }
+                // if set on entry function level and not ok for this platform exit with error
+                std::string msg = "Sub group size " + std::to_string(kernelSIMDSize) + " is forced by attribute but not supported by Joint Matrix on this platform.";
+                m_Ctx->EmitError(msg.c_str(), nullptr);
+                return;
+            }
+        }
+        // if not set on entry function level, define ourselves
+        m_SIMDSize = DefineKernelSIMDSize();
+        // and set to entry level function
+        subGroupSize->setSIMD_size(m_SIMDSize);
+        return;
     }
 
     // If no entry function found (it means that we could not detect that current function is called
-    // from any kernel) or kernel function doesn't have sub group size requirement set, we anyway
-    // will resolve function, just in case, using default sub group size.
-    // In theory it may cause resolution conflicts if sub group sizes are mixed.
-    if (m_SIMDSize == 0)
-        m_SIMDSize = m_Ctx->platform.hasExecSize16DPAS() ? 16 : 8;
+    // from any kernel), we anyway will resolve function, just in case, using default sub group size.
+    m_SIMDSize = DefineKernelSIMDSize();
+    // Force SIMD size if not set, as Joint Matrix need it to define numer of elements in WI
+    m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)m_SIMDSize;
 }
 
 bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
@@ -178,7 +280,8 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
     return !ResolvedValues.empty();
 }
 
-static const char *CommonBIPrefix = "__builtin_spirv_";
+static const char *JointMatrixBIPrefix = "__builtin_spirv_OpJointMatrix";
+static const char *JointMatrixBISuffix = "JointMatrixINTEL_";
 static const char *JointMatrixLoadPrefx  = "JointMatrixLoadINTEL";
 static const char *JointMatrixStorePrefx = "JointMatrixStoreINTEL";
 static const char *JointMatrixMadPrefx   = "JointMatrixMadINTEL";
@@ -1661,7 +1764,7 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
      * future when returning and passing matrices by argument is
      * supported also basic block terminators should be used as
      * transformation starting point */
-    if (funcName.startswith(CommonBIPrefix)) {
+    if (funcName.startswith(JointMatrixBIPrefix) || funcName.contains(JointMatrixBISuffix)) {
         ResolveSIMDSize(CI.getParent()->getParent());
         ResolveCall(&CI);
         return;
