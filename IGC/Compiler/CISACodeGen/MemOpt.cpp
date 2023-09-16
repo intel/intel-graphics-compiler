@@ -2779,7 +2779,7 @@ bool LdStCombine::runOnFunction(Function& F)
     m_symEval.setDataLayout(m_DL);
 
     // i64Emu: mimic Emu64Ops's enabling condition. Seems conservative
-    //         but can be improved in the future if needed.
+    //         and be improved in the future if needed.
     m_hasI64Emu = (m_CGC->platform.need64BitEmulation() &&
             (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
              IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)));
@@ -2787,6 +2787,9 @@ bool LdStCombine::runOnFunction(Function& F)
     combineStores(F);
 
     bool changed = (m_hasLoadCombined || m_hasStoreCombined);
+
+    clear();
+
     return changed;
 }
 
@@ -3933,8 +3936,6 @@ void LdStCombine::createCombinedStores(Function& F)
 
     // Delete stores that have been combined.
     eraseDeadInsts();
-
-    m_hasStoreCombined = (!m_bundles.empty());
 
     m_bundles.clear();
 }
