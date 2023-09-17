@@ -145,6 +145,20 @@ struct XeHPCDebugSurfaceLayout
     static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
     static constexpr size_t DBG_REG_ALIGN = 24;
 
+    // Number of Registers:	4
+    // Elements:	32
+    // Element Size:	64 bits
+    // fc0.0-fc0.31
+    // fc1.0 , All other encodings like fc1.1 to f1.31 are reserved.
+    // fc2.0 , All other encodings like fc2.1 to f2.31 are reserved.
+    // fc3.0 , All other encodings like fc3.1 to f3.31 are reserved.
+    static constexpr size_t FC_COUNT = 4;
+    static constexpr size_t FC_ELEMENTS = 32;
+    static constexpr size_t FC_ELEMENT_SIZE = 8;
+    static constexpr size_t FC_ALIGN = 0;
+
+    static constexpr size_t XEHPC_STATE_SAVE_AREA_SIZE = 0x4920;
+
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
     uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
     uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
@@ -164,6 +178,7 @@ struct XeHPCDebugSurfaceLayout
     uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
     uint8_t ctx[CONTEXT_ID_COUNT * CONTEXT_ID_ELEMENTS *CONTEXT_ID_ELEMENT_SIZE +CONTEXT_ID_ALIGN];
     uint8_t dbg_reg[DBG_REG_COUNT * DBG_REG_ELEMENTS * DBG_REG_ELEMENT_SIZE +DBG_REG_ALIGN];
+    uint8_t fc[FC_COUNT * FC_ELEMENTS * FC_ELEMENT_SIZE + FC_ALIGN];
 };
 
 static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
@@ -176,7 +191,7 @@ static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
         0,                               // num_eus_per_subslice
         0,                               // num_threads_per_eu
         0,                               // state_area_offset
-        0x4600,                          // state_save_size
+        XeHPCDebugSurfaceLayout::XEHPC_STATE_SAVE_AREA_SIZE ,// state_save_size
         0,                               // slm_area_offset
         0,                               // slm_bank_size
         0,                               // slm_bank_valid
@@ -223,7 +238,9 @@ static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
         {offsetof(struct XeHPCDebugSurfaceLayout, tm), XeHPCDebugSurfaceLayout::TM_COUNT,
          XeHPCDebugSurfaceLayout::TM_ELEMENTS* XeHPCDebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
          XeHPCDebugSurfaceLayout::TM_ELEMENTS* XeHPCDebugSurfaceLayout::TM_ELEMENT_SIZE},  // tm
-        {0, 0, 0, 0},                                  // FC
+        {offsetof(struct XeHPCDebugSurfaceLayout, fc), XeHPCDebugSurfaceLayout::FC_COUNT,
+         XeHPCDebugSurfaceLayout::FC_ELEMENTS *XeHPCDebugSurfaceLayout::FC_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::FC_ELEMENTS *XeHPCDebugSurfaceLayout::FC_ELEMENT_SIZE}, // FC
         {offsetof(struct XeHPCDebugSurfaceLayout, dbg), XeHPCDebugSurfaceLayout::DBG_COUNT,
          XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
          XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE},  // dbg
@@ -501,6 +518,20 @@ struct XeHPGDebugSurfaceLayout
     static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
     static constexpr size_t DBG_REG_ALIGN = 24;
 
+    // Number of Registers:	4
+    // Elements:	32
+    // Element Size:	64 bits
+    // fc0.0-fc0.31
+    // fc1.0 , All other encodings like fc1.1 to f1.31 are reserved.
+    // fc2.0 , All other encodings like fc2.1 to f2.31 are reserved.
+    // fc3.0 , All other encodings like fc3.1 to f3.31 are reserved.
+    static constexpr size_t FC_COUNT = 4;
+    static constexpr size_t FC_ELEMENTS = 32;
+    static constexpr size_t FC_ELEMENT_SIZE = 8;
+    static constexpr size_t FC_ALIGN = 0;
+
+    static constexpr size_t XEHPG_STATE_SAVE_AREA_SIZE = 0x2800;
+
     uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
     uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
     uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
@@ -518,6 +549,7 @@ struct XeHPGDebugSurfaceLayout
     uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
     uint8_t ctx[CONTEXT_ID_COUNT * CONTEXT_ID_ELEMENTS *CONTEXT_ID_ELEMENT_SIZE +CONTEXT_ID_ALIGN];
     uint8_t dbg_reg[DBG_REG_COUNT * DBG_REG_ELEMENTS * DBG_REG_ELEMENT_SIZE +DBG_REG_ALIGN];
+    uint8_t fc[FC_COUNT * FC_ELEMENTS * FC_ELEMENT_SIZE + FC_ALIGN];
 };
 
 static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
@@ -530,7 +562,7 @@ static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
         0,                               // num_eus_per_subslice
         0,                               // num_threads_per_eu
         0,                               // state_area_offset
-        0x2800,                          // state_save_size
+        XeHPGDebugSurfaceLayout::XEHPG_STATE_SAVE_AREA_SIZE , // state_save_size
         0,                               // slm_area_offset
         0,                               // slm_bank_size
         0,                               // slm_bank_valid
@@ -575,7 +607,9 @@ static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader =
         {offsetof(struct XeHPGDebugSurfaceLayout, tm), XeHPGDebugSurfaceLayout::TM_COUNT,
          XeHPGDebugSurfaceLayout::TM_ELEMENTS* XeHPGDebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
          XeHPGDebugSurfaceLayout::TM_ELEMENTS* XeHPGDebugSurfaceLayout::TM_ELEMENT_SIZE},  // tm
-        {0, 0, 0, 0},                                  // FC
+        {offsetof(struct XeHPGDebugSurfaceLayout, fc), XeHPGDebugSurfaceLayout::FC_COUNT,
+         XeHPGDebugSurfaceLayout::FC_ELEMENTS *XeHPGDebugSurfaceLayout::FC_ELEMENT_SIZE * 8,
+         XeHPGDebugSurfaceLayout::FC_ELEMENTS *XeHPGDebugSurfaceLayout::FC_ELEMENT_SIZE}, // FC
         {offsetof(struct XeHPGDebugSurfaceLayout, dbg), XeHPGDebugSurfaceLayout::DBG_COUNT,
          XeHPGDebugSurfaceLayout::DBG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
          XeHPGDebugSurfaceLayout::DBG_ELEMENTS* XeHPGDebugSurfaceLayout::DBG_ELEMENT_SIZE},  // dbg
@@ -733,6 +767,7 @@ bool CSystemThread::CreateSystemThreadKernel(
     return success;
 }
 
+
 void CSystemThread::DeleteSystemThreadKernel(
     USC::SSystemThreadKernelOutput* &pSystemThreadKernelOutput )
 {
@@ -747,6 +782,67 @@ void CSystemThread::DeleteSystemThreadKernel(
 void populateSIPKernelInfo(const IGC::CPlatform &platform,
         std::map< unsigned char, std::tuple<void*, unsigned int, void*, unsigned int> > &SIPKernelInfo)
 {
+    // static checks
+
+    {
+        // XEHPG
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, grf) == 0,"Offset of GRF regs");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, a0) == 0x2000, "Offset of addr reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, f) == 0x2020,"Offset of flag reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, execmask) == 0x203c,"Offset of execmask reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, sr) == 0x2040,"Offset of sr reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, cr) == 0x2060,"Offset of cr reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, n) == 0x2080,"Offset of notification reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, acc) == 0x20a0,"Offset of acc reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, mme) == 0x2120,"Offset of mme reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, ce) == 0x2240,"Offset of ce reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, sp) == 0x2260,"Offset of sp reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, sip_cmd) == 0x22a0,"Offset of cmd reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, tm) == 0x2220,"Offset of tm reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, dbg) == 0x2280,"Offset of dbg reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, ctx) == 0x2320,"Offset of ctx reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, dbg_reg) == 0x2340,"Offset of dbg_reg reg");
+        static_assert(offsetof(XeHPGDebugSurfaceLayout, fc) == 0x2360,"Offset of fc reg");
+
+        // Check that state save area size is atleast equal or greater than the last register size
+        static_assert(XeHPGDebugSurfaceLayout::XEHPG_STATE_SAVE_AREA_SIZE >=
+                    (offsetof(struct XeHPGDebugSurfaceLayout, fc) +
+                     (XeHPGDebugSurfaceLayout::FC_COUNT *
+                          XeHPGDebugSurfaceLayout::FC_ELEMENTS *
+                          XeHPGDebugSurfaceLayout::FC_ELEMENT_SIZE +
+                      XeHPGDebugSurfaceLayout::FC_ALIGN)),"Offset of fc reg");
+
+    }
+    {
+        // XEHPC
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, grf) == 0,"Offset of GRF regs");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, a0) == 0x4000, "Offset of addr reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, f) == 0x4020,"Offset of flag reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, execmask) == 0x403c,"Offset of execmask reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, sr) == 0x4040,"Offset of sr reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, cr) == 0x4060,"Offset of cr reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, n) == 0x40a0,"Offset of notification reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, tdr) == 0x40c0,"Offset of tdr reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, acc) == 0x4100,"Offset of acc reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, mme) == 0x4200,"Offset of mme reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, ce) == 0x4420,"Offset of ce reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, sp) == 0x4430,"Offset of sp reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, sip_cmd) == 0x4460,"Offset of cmd reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, tm) == 0x4400,"Offset of tm reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, dbg) == 0x4440,"Offset of dbg reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, ctx) == 0x44e0,"Offset of ctx reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, dbg_reg) == 0x4500,"Offset of dbg_reg reg");
+        static_assert(offsetof(XeHPCDebugSurfaceLayout, fc) == 0x4520,"Offset of fc reg");
+
+        // Check that state save area size is atleast equal or greater than the last register size
+        static_assert(XeHPCDebugSurfaceLayout::XEHPC_STATE_SAVE_AREA_SIZE >=
+                    (offsetof(struct XeHPCDebugSurfaceLayout, fc) +
+                     (XeHPCDebugSurfaceLayout::FC_COUNT *
+                          XeHPCDebugSurfaceLayout::FC_ELEMENTS *
+                          XeHPCDebugSurfaceLayout::FC_ELEMENT_SIZE +
+                      XeHPCDebugSurfaceLayout::FC_ALIGN)),"Offset of fc reg");
+    }
+
     //LLVM_UPGRADE_TODO
     // check if (int)sizeof(T) is ok or change the pair def for SIPKernelInfo
     SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_tuple((void*)&Gen9SIPDebug, (int)sizeof(Gen9SIPDebug), nullptr, 0);
@@ -970,7 +1066,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 break;
             case IGFX_DG2:
             case IGFX_METEORLAKE:
-            case IGFX_ARROWLAKE:
                 SIPIndex =  bindlessMode ? XE_HPG_CSR_DEBUG_BINDLESS : XE_HPG_CSR_DEBUG;
                 break;
       // No support for Bindful mode for PVC.
@@ -1002,7 +1097,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_DG2:
             case IGFX_PVC:
             case IGFX_METEORLAKE:
-            case IGFX_ARROWLAKE:
 
             default:
                 break;
