@@ -5067,7 +5067,10 @@ namespace IGC
         }
 
         if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) ||
-            context->getCompilerOption().NewSpillCostFunction)
+            context->getCompilerOption().NewSpillCostFunction ||
+            ( context->type == ShaderType::COMPUTE_SHADER &&
+              context->getModuleMetaData()->csInfo.enableNewSpillCostFunction)
+            )
         {
             SaveOption(vISA_NewSpillCostFunction, true);
         }

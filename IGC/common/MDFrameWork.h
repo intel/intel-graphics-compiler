@@ -469,6 +469,7 @@ namespace IGC
         bool allowLowerSimd = false;
         bool disableSimd32Slicing = false;
         bool disableSplitOnSpill = false;
+        bool enableNewSpillCostFunction = false;
         bool forcedVISAPreRAScheduler = false;
         bool forceUniformBuffer = false;
         bool forceUniformSurfaceSampler = false;
