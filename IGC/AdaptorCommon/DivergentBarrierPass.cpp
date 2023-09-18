@@ -493,17 +493,21 @@ bool DivergentBarrierPass::processShader(Function* F)
     // so no need to add the divergent barrier WA.
     bool skipTGbarriers = false;
     unsigned forcedSimdSize = 0;
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) ||
-        m_CGCtx->getModuleMetaData()->csInfo.waveSize == 32 ||
-        m_CGCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32))
     {
         forcedSimdSize = 32;
     }
-    else if (IGC_IS_FLAG_ENABLED(ForceCSSIMD16) ||
-        m_CGCtx->getModuleMetaData()->csInfo.waveSize == 16 ||
-        m_CGCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 16)
+    else if (IGC_IS_FLAG_ENABLED(ForceCSSIMD16))
     {
         forcedSimdSize = 16;
+    }
+    else if (m_CGCtx->getModuleMetaData()->csInfo.forcedSIMDSize >= 16)
+    {
+        forcedSimdSize = m_CGCtx->getModuleMetaData()->csInfo.forcedSIMDSize;
+    }
+    else if (m_CGCtx->getModuleMetaData()->csInfo.waveSize >= 16)
+    {
+        forcedSimdSize = m_CGCtx->getModuleMetaData()->csInfo.waveSize;
     }
     ConstantInt* groupSize = dyn_cast<ConstantInt>(getGroupSize(*F));
     if (groupSize &&

@@ -967,10 +967,16 @@ bool RTGlobalsPointerLoweringPass::needsSplitting(const CodeGenContext* Ctx)
 
     auto& csInfo = Ctx->getModuleMetaData()->csInfo;
 
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32)           ||
-        IGC_GET_FLAG_VALUE(ForceCSSimdSize4RQ) == 32 ||
-        csInfo.waveSize == 32                        ||
-        csInfo.forcedSIMDSize == 32)
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) ||
+        IGC_GET_FLAG_VALUE(ForceCSSimdSize4RQ) == 32)
+        return true;
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD16))
+        return false;
+    if (csInfo.forcedSIMDSize == 32)
+        return true;
+    if (csInfo.forcedSIMDSize == 16)
+        return false;
+    if (csInfo.waveSize == 32)
         return true;
 
     return false;
