@@ -781,12 +781,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     ++I;
                 }
             }
-            if ((IGC_GET_FLAG_VALUE(CodePatchFilter) & (0x1 << 0x4)) &&
+            if ((IGC_GET_FLAG_VALUE(CodePatchFilter) & CODE_PATCH_NO_UNSTABLE_PLATFORM) &&
                 (m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_DG2 ||
                  m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_P ||
                  m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_N ||
                  m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_S ||
-                 m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_METEORLAKE)) {
+                 m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_METEORLAKE ||
+                 m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ARROWLAKE)) {
                 m_encoder->SetIsCodePatchCandidate(false);
             }
         }

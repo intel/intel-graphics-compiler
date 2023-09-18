@@ -1081,7 +1081,8 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
            (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0)) ||
            GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID) ||
            GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
-            m_platformInfo.eProductFamily == IGFX_METEORLAKE;
+           m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+           m_platformInfo.eProductFamily == IGFX_ARROWLAKE;
 }
 
 bool useScratchSpaceForOCL() const

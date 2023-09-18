@@ -164,6 +164,7 @@ typedef enum
     CODE_PATCH_NO_PullSnapped                = ( 0x1 << 0x1 ),
     CODE_PATCH_NO_PullCentroid               = ( 0x1 << 0x2 ),
     CODE_PATCH_NO_ZWDelta                    = ( 0x1 << 0x3 ),
+    CODE_PATCH_NO_UNSTABLE_PLATFORM          = ( 0x1 << 0x4 ),
 } CODE_PATCH_FLAG_t;
 
 // Fastest compilation experimental flags
