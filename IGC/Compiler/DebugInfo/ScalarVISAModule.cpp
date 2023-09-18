@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/DebugInfo/Utils.h"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"

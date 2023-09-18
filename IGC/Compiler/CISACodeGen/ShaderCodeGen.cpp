@@ -79,7 +79,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"

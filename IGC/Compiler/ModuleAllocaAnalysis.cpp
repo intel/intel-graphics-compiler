@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "ModuleAllocaAnalysis.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"

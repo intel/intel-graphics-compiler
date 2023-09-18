@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/ModuleAllocaAnalysis.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"

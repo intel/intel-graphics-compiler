@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>

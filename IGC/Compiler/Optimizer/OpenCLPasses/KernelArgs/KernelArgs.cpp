@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"

@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "AdaptorOCL/OCL/KernelAnnotations.hpp"

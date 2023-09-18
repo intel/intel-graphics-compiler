@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"

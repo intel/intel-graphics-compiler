@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>

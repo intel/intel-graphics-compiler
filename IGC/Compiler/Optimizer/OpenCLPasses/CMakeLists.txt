@@ -14,89 +14,92 @@ add_subdirectory(AlignmentAnalysis)
 add_subdirectory(Atomics)
 add_subdirectory(BIFTransforms)
 add_subdirectory(BreakConstantExpr)
+add_subdirectory(BreakdownIntrinsic)
 add_subdirectory(CorrectlyRoundedDivSqrt)
 add_subdirectory(DebuggerSupport)
 add_subdirectory(DeviceEnqueueFuncs)
 add_subdirectory(DisableLoopUnrollOnRetry)
+add_subdirectory(DpasFuncs)
+add_subdirectory(ErrorCheckPass)
 add_subdirectory(ExtensionFuncs)
-add_subdirectory(GenericAddressResolution)
 add_subdirectory(GEPLoopStrengthReduction)
+add_subdirectory(GenericAddressResolution)
+add_subdirectory(HandleDevicelibAssert)
+add_subdirectory(Image3dToImage2darray)
 add_subdirectory(ImageFuncs)
+add_subdirectory(JointMatrixFuncsResolutionPass)
+add_subdirectory(KernelArgs)
+add_subdirectory(KernelFunctionCloning)
+add_subdirectory(LSCFuncs)
 add_subdirectory(LocalBuffers)
 add_subdirectory(NamedBarriers)
+add_subdirectory(NontemporalLoadsAndStoresInAssert)
 add_subdirectory(OpenCLPrintf)
+add_subdirectory(PoisonFP64KernelsPass)
 add_subdirectory(PrivateMemory)
 add_subdirectory(ProgramScopeConstants)
 add_subdirectory(RayTracing)
 add_subdirectory(RegPressureLoopControl)
 add_subdirectory(ReplaceUnsupportedIntrinsics)
 add_subdirectory(ResourceAllocator)
+add_subdirectory(RewriteLocalSize)
 add_subdirectory(ScalarArgAsPointer)
 add_subdirectory(SetFastMathFlags)
-add_subdirectory(SubGroupFuncs)
+add_subdirectory(StackOverflowDetection)
 add_subdirectory(StatelessToStateful)
+add_subdirectory(SubGroupFuncs)
+add_subdirectory(TransformUnmaskedFunctionsPass)
 add_subdirectory(UndefinedReferences)
+add_subdirectory(UnreachableHandling)
 add_subdirectory(WGFuncs)
 add_subdirectory(WIFuncs)
-add_subdirectory(Image3dToImage2darray)
-add_subdirectory(RewriteLocalSize)
-add_subdirectory(UnreachableHandling)
-add_subdirectory(DpasFuncs)
-add_subdirectory(LSCFuncs)
-add_subdirectory(NontemporalLoadsAndStoresInAssert)
-add_subdirectory(HandleDevicelibAssert)
-add_subdirectory(StackOverflowDetection)
 
-set(IGC_BUILD__SRC__OpenCLPasses
-    "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/BreakdownIntrinsic.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/TransformUnmaskedFunctionsPass.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PoisonFP64KernelsPass.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/JointMatrixFuncsResolutionPass.cpp"
-  )
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
-    ${IGC_BUILD__SRC__OpenCLPasses}
     ${IGC_BUILD__SRC__OpenCLPasses_AddressSpaceAliasAnalysis}
     ${IGC_BUILD__SRC__OpenCLPasses_AggregateArguments}
     ${IGC_BUILD__SRC__OpenCLPasses_AlignmentAnalysis}
     ${IGC_BUILD__SRC__OpenCLPasses_Atomics}
     ${IGC_BUILD__SRC__OpenCLPasses_BIFTransforms}
     ${IGC_BUILD__SRC__OpenCLPasses_BreakConstantExpr}
+    ${IGC_BUILD__SRC__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__SRC__OpenCLPasses_CorrectlyRoundedDivSqrt}
     ${IGC_BUILD__SRC__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_ErrorCheckPass}
     ${IGC_BUILD__SRC__OpenCLPasses_ExtensionFuncs}
-    ${IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_GEPLoopStrengthReduction}
+    ${IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution}
+    ${IGC_BUILD__SRC__OpenCLPasses_HandleDevicelibAssert}
+    ${IGC_BUILD__SRC__OpenCLPasses_Image3dToImage2darray}
     ${IGC_BUILD__SRC__OpenCLPasses_ImageFuncs}
-    ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
-    ${IGC_BUILD__SRC__OpenCLPasses_LowerLocalMemPool}
+    ${IGC_BUILD__SRC__OpenCLPasses_JointMatrixFuncsResolutionPass}
+    ${IGC_BUILD__SRC__OpenCLPasses_KernelArgs}
+    ${IGC_BUILD__SRC__OpenCLPasses_KernelFunctionCloning}
     ${IGC_BUILD__SRC__OpenCLPasses_LSCFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__SRC__OpenCLPasses_NamedBarriers}
+    ${IGC_BUILD__SRC__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf}
+    ${IGC_BUILD__SRC__OpenCLPasses_PoisonFP64KernelsPass}
     ${IGC_BUILD__SRC__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__SRC__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__SRC__OpenCLPasses_Raytracing}
     ${IGC_BUILD__SRC__OpenCLPasses_RegPressureLoopControl}
     ${IGC_BUILD__SRC__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
+    ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__SRC__OpenCLPasses_ScalarArgAsPointer}
     ${IGC_BUILD__SRC__OpenCLPasses_SetFastMathFlags}
-    ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_StackOverflowDetection}
     ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStateful}
+    ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_TransformUnmaskedFunctionsPass}
     ${IGC_BUILD__SRC__OpenCLPasses_UndefinedReferences}
+    ${IGC_BUILD__SRC__OpenCLPasses_UnreachableHandling}
     ${IGC_BUILD__SRC__OpenCLPasses_WGFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_WIFuncs}
-    ${IGC_BUILD__SRC__OpenCLPasses_Image3dToImage2darray}
-    ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
-    ${IGC_BUILD__SRC__OpenCLPasses_UnreachableHandling}
-    ${IGC_BUILD__SRC__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
-    ${IGC_BUILD__SRC__OpenCLPasses_HandleDevicelibAssert}
-    ${IGC_BUILD__SRC__OpenCLPasses_StackOverflowDetection}
   )
 
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
@@ -104,35 +107,33 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
     PARENT_SCOPE
   )
 
-set(IGC_BUILD__HDR__OpenCLPasses
-    "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/BreakdownIntrinsic.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/TransformUnmaskedFunctionsPass.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/JointMatrixFuncsResolutionPass.h"
-  )
 set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
-    ${IGC_BUILD__HDR__OpenCLPasses}
     ${IGC_BUILD__HDR__OpenCLPasses_AddressSpaceAliasAnalysis}
     ${IGC_BUILD__HDR__OpenCLPasses_AggregateArguments}
     ${IGC_BUILD__HDR__OpenCLPasses_AlignmentAnalysis}
     ${IGC_BUILD__HDR__OpenCLPasses_Atomics}
     ${IGC_BUILD__HDR__OpenCLPasses_BIFTransforms}
     ${IGC_BUILD__HDR__OpenCLPasses_BreakConstantExpr}
+    ${IGC_BUILD__HDR__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__HDR__OpenCLPasses_CorrectlyRoundedDivSqrt}
     ${IGC_BUILD__HDR__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__HDR__OpenCLPasses_DpasFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_ErrorCheckPass}
     ${IGC_BUILD__HDR__OpenCLPasses_ExtensionFuncs}
-    ${IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_GEPLoopStrengthReduction}
+    ${IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution}
+    ${IGC_BUILD__HDR__OpenCLPasses_HandleDevicelibAssert}
+    ${IGC_BUILD__HDR__OpenCLPasses_Image3dToImage2darray}
     ${IGC_BUILD__HDR__OpenCLPasses_ImageFuncs}
-    ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
-    ${IGC_BUILD__HDR__OpenCLPasses_LowerLocalMemPool}
+    ${IGC_BUILD__HDR__OpenCLPasses_JointMatrixFuncsResolutionPass}
+    ${IGC_BUILD__HDR__OpenCLPasses_KernelArgs}
+    ${IGC_BUILD__HDR__OpenCLPasses_KernelFunctionCloning}
     ${IGC_BUILD__HDR__OpenCLPasses_LSCFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
+    ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf}
     ${IGC_BUILD__HDR__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__HDR__OpenCLPasses_ProgramScopeConstants}
@@ -140,19 +141,17 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_RegPressureLoopControl}
     ${IGC_BUILD__HDR__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
+    ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__HDR__OpenCLPasses_ScalarArgAsPointer}
     ${IGC_BUILD__HDR__OpenCLPasses_SetFastMathFlags}
-    ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_StackOverflowDetection}
     ${IGC_BUILD__HDR__OpenCLPasses_StatelessToStatefull}
+    ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_TransformUnmaskedFunctionsPass}
     ${IGC_BUILD__HDR__OpenCLPasses_UndefinedReferences}
+    ${IGC_BUILD__HDR__OpenCLPasses_UnreachableHandling}
     ${IGC_BUILD__HDR__OpenCLPasses_WGFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_WIFuncs}
-    ${IGC_BUILD__HDR__OpenCLPasses_Image3dToImage2darray}
-    ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
-    ${IGC_BUILD__HDR__OpenCLPasses_UnreachableHandling}
-    ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
-    ${IGC_BUILD__HDR__OpenCLPasses_HandleDevicelibAssert}
-    ${IGC_BUILD__HDR__OpenCLPasses_StackOverflowDetection}
   )
 
 set(IGC_BUILD__HDR__Optimizer_OpenCLPasses
@@ -168,39 +167,44 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_Atomics
     Compiler__OpenCLPasses_BIFTransforms
     Compiler__OpenCLPasses_BreakConstantExpr
+    Compiler__OpenCLPasses_BreakdownIntrinsic
     Compiler__OpenCLPasses_CorrectlyRoundedDivSqrt
     Compiler__OpenCLPasses_DebuggerSupport
     Compiler__OpenCLPasses_DeviceEnqueueFuncs
     Compiler__OpenCLPasses_DisableLoopUnrollOnRetry
     Compiler__OpenCLPasses_DpasFuncs
+    Compiler__OpenCLPasses_ErrorCheckPass
     Compiler__OpenCLPasses_ExtensionFuncs
+    Compiler__OpenCLPasses_GEPLoopStrengthReduction
     Compiler__OpenCLPasses_GenericAddressResolution
     Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
-    Compiler__OpenCLPasses_GEPLoopStrengthReduction
+    Compiler__OpenCLPasses_HandleDevicelibAssert
+    Compiler__OpenCLPasses_Image3dToImage2darray
     Compiler__OpenCLPasses_ImageFuncs
-    Compiler__OpenCLPasses_LocalBuffers
-    Compiler__OpenCLPasses_LowerLocalMemPool
+    Compiler__OpenCLPasses_KernelArgs
+    Compiler__OpenCLPasses_KernelFunctionCloning
     Compiler__OpenCLPasses_LSCFuncs
+    Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_NamedBarriers
+    Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
     Compiler__OpenCLPasses_OpenCLPrintf
+    Compiler__OpenCLPasses_PoisonFP64KernelsPass
     Compiler__OpenCLPasses_PrivateMemory
     Compiler__OpenCLPasses_ProgramScopeConstants
     Compiler__OpenCLPasses_Raytracing
     Compiler__OpenCLPasses_RegPressureLoopControl
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
+    Compiler__OpenCLPasses_RewriteLocalSize
     Compiler__OpenCLPasses_ScalarArgAsPointer
     Compiler__OpenCLPasses_SetFastMathFlags
-    Compiler__OpenCLPasses_SubGroupFuncs
+    Compiler__OpenCLPasses_StackOverflowDetection
     Compiler__OpenCLPasses_StatelessToStateful
+    Compiler__OpenCLPasses_SubGroupFuncs
+    Compiler__OpenCLPasses_TransformUnmaskedFunctionsPass
     Compiler__OpenCLPasses_UndefinedReferences
+    Compiler__OpenCLPasses_UnreachableHandling
     Compiler__OpenCLPasses_WGFuncs
     Compiler__OpenCLPasses_WIFuncs
-    Compiler__OpenCLPasses_Image3dToImage2darray
-    Compiler__OpenCLPasses_RewriteLocalSize
-    Compiler__OpenCLPasses_UnreachableHandling
-    Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
-    Compiler__OpenCLPasses_HandleDevicelibAssert
-    Compiler__OpenCLPasses_StackOverflowDetection
   )
 
 igc_sg_register(
@@ -208,9 +212,4 @@ igc_sg_register(
     "OpenCLPasses"
     GROUPS
       ${IGC_BUILD_Compiler_OpenCLPasses_Groups}
-    FILES
-      ${IGC_BUILD__SRC__OpenCLPasses}
-      ${IGC_BUILD__HDR__OpenCLPasses}
-      ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
-      ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
   )

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
 
 #include "GenISAIntrinsics/GenIntrinsics.h"
 

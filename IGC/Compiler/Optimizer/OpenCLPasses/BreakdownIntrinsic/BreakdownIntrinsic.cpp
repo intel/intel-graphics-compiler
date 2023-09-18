@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/BreakdownIntrinsic.h"
+#include "Compiler/Optimizer/OpenCLPasses/BreakdownIntrinsic/BreakdownIntrinsic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
