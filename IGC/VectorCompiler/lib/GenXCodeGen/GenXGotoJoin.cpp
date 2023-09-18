@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -31,7 +31,7 @@ using namespace genx;
  */
 bool GotoJoin::isEMValue(Value *V)
 {
-  if (auto EI = dyn_cast<ExtractValueInst>(V)) {
+  if (auto *EI = dyn_cast<ExtractValueInst>(V)) {
     if (EI->getIndices()[0] == 0/* element number of EM in goto/join struct */) {
       switch (GenXIntrinsic::getGenXIntrinsicID(EI->getAggregateOperand())) {
         case GenXIntrinsic::genx_simdcf_goto:
@@ -41,6 +41,10 @@ bool GotoJoin::isEMValue(Value *V)
           break;
       }
     }
+  }
+  if (auto *PHI = dyn_cast<PHINode>(V)) {
+    auto It = find_if(PHI->incoming_values(), [](Use &U) { return isEMValue(U); });
+    return It != PHI->incoming_values().end();
   }
   return false;
 }
