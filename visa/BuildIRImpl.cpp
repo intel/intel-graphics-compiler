@@ -1230,13 +1230,13 @@ G4_Declare *IR_Builder::createFlag(uint16_t numFlagElements, const char *name) {
 G4_Declare *IR_Builder::createTempScalar(uint16_t numFlagElements,
                                          const char *prefix) {
   const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
-  G4_Declare *dcl = createDeclare(name, G4_SCALAR, numFlagElements, 1, Type_UB);
+  G4_Declare *dcl = createDeclare(name, G4_SCALAR, numFlagElements, 1, Type_UQ);
   return dcl;
 }
 
 G4_Declare *IR_Builder::createScalar(uint16_t numFlagElements,
                                      const char *name) {
-  G4_Declare *dcl = createDeclare(name, G4_SCALAR, numFlagElements, 1, Type_UB);
+  G4_Declare *dcl = createDeclare(name, G4_SCALAR, numFlagElements, 1, Type_UQ);
   return dcl;
 }
 
