@@ -1140,15 +1140,23 @@ Region IVSplitter::createSplitRegion(Type *SrcTy, IVSplitter::RegionType RT) {
 // function takes 64-bit constant value (vector or scalar) and splits it
 // into an equivalent vector of 32-bit constant (as if it was Bitcast-ed)
 static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
-  auto I64To32 = [](const Constant &K) {
+  auto I64To32 = [](Constant &K) {
     // we expect only scalar types here
     IGC_ASSERT(!isa<VectorType>(K.getType()));
     IGC_ASSERT(K.getType()->isIntegerTy(64));
-    auto *Ty32 = K.getType()->getInt32Ty(K.getContext());
+    auto *Ty32 = Type::getInt32Ty(K.getContext());
     if (isa<UndefValue>(K)) {
       Constant *Undef = UndefValue::get(Ty32);
       return std::make_pair(Undef, Undef);
     }
+    if (isa<ConstantExpr>(K)) {
+      auto *Lo = ConstantExpr::getTrunc(&K, Ty32);
+      auto *Amount = ConstantInt::get(K.getType(), 32);
+      auto *Shift = ConstantExpr::getLShr(&K, Amount);
+      auto *Hi = ConstantExpr::getTrunc(Shift, Ty32);
+      return std::make_pair(Lo, Hi);
+    }
+    IGC_ASSERT_EXIT(isa<ConstantInt>(K));
     auto *KI = cast<ConstantInt>(&K);
     uint64_t Val64 = KI->getZExtValue();
     const auto UI32ValueMask = std::numeric_limits<uint32_t>::max();
