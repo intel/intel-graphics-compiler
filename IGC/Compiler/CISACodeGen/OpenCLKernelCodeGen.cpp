@@ -3539,7 +3539,7 @@ namespace IGC
             !(program->HasStackCalls() || program->IsIntelSymbolTableVoidProgram()))
         {
             isWorstThanPrv =
-                !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get());
+                !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get(), 2.0f);
         }
 
         auto pPreviousKernel = ctx->m_retryManager.GetPrevious(pKernel.get());

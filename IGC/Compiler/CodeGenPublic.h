@@ -555,12 +555,14 @@ namespace IGC
         // encounters a null shader. It is optional because there is
         // no need to compile it for collection state objects.
         llvm::Optional<SBindlessProgram> callStackHandler;
+
+        typedef llvm::SmallVector<SBindlessProgram, 8> BindlessShaderVec;
         // These are the raygen shaders
-        llvm::SmallVector<SBindlessProgram, 4> m_DispatchPrograms;
+        BindlessShaderVec m_DispatchPrograms;
         // Non raygen shaders
-        llvm::SmallVector<SBindlessProgram, 8> m_CallableShaders;
+        BindlessShaderVec m_CallableShaders;
         // Continuation shaders
-        llvm::SmallVector<SBindlessProgram, 8> m_Continuations;
+        BindlessShaderVec m_Continuations;
     };
 
     struct SRayTracingPipelineConfig
@@ -779,7 +781,7 @@ namespace IGC
         /// the set of OCL kernels that need to skip recompilation
         std::set<std::string> kernelSkip;
         // Check if current shader is better then previous one
-        bool IsBetterThanPrevious(CShaderProgram* pCurrent);
+        bool IsBetterThanPrevious(CShaderProgram* pCurrent, float threshold = 1.0f);
         // Get the previous compilation of the current kernel
         CShaderProgram* GetPrevious(CShaderProgram* pCurrent, bool ReleaseUPtr = false);
         // Collect compilation of the current kernel

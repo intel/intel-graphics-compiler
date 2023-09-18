@@ -247,7 +247,7 @@ namespace IGC
         return nullptr;
     }
 
-    bool RetryManager::IsBetterThanPrevious(CShaderProgram* pCurrent)
+    bool RetryManager::IsBetterThanPrevious(CShaderProgram* pCurrent, float threshold)
     {
         bool isBetter = true;
         auto pPrevious = GetPrevious(pCurrent);
@@ -261,12 +261,12 @@ namespace IGC
             // Get shaders
             for (auto simd : simdToAnalysis)
             {
-                if (!previousShader &&
+                if (!previousShader && pPrevious->GetShader(simd) &&
                     (pPrevious->GetShader(simd)->ProgramOutput()->m_programSize > 0))
                 {
                     previousShader = pPrevious->GetShader(simd);
                 }
-                if (!currentShader &&
+                if (!currentShader && pCurrent->GetShader(simd) &&
                     (pCurrent->GetShader(simd)->ProgramOutput()->m_programSize > 0))
                 {
                     currentShader = pCurrent->GetShader(simd);
@@ -276,9 +276,11 @@ namespace IGC
             IGC_ASSERT(currentShader);
             IGC_ASSERT(previousShader);
 
-            // Check if current shader has more than 200% of previous spill size
+            // Check if current shader spill is larger than previous shader spill
+            // Threshold flag controls comparison tolerance - i.e. A threshold of 2.0 means that the
+            // current shader spill must be 2x larger than previous spill to be considered "better".
             bool spillSizeBigger =
-                currentShader->m_spillSize > previousShader->m_spillSize << 1;
+                currentShader->m_spillSize > (unsigned int)(previousShader->m_spillSize * threshold);
 
             if (spillSizeBigger)
             {
