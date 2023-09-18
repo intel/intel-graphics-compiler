@@ -954,16 +954,13 @@ namespace IGCMetrics
             llvm::MetadataAsValue* MDValue = makeMDasVal(New);
 
             llvm::Instruction* insertAfter = nullptr;
-            if (llvm::isa<llvm::Argument>(New))
+            if (auto arg = llvm::dyn_cast<llvm::Argument>(New))
             {
-                auto firstInstr = &*llvm::dyn_cast<llvm::Argument>(New)
-                    ->getParent()->getEntryBlock().begin();
-
-                insertAfter = firstInstr;
+                insertAfter = &*arg->getParent()->getEntryBlock().begin();
             }
-            else if (llvm::isa<llvm::Instruction>(New))
+            else if (auto instruction = llvm::dyn_cast<llvm::Instruction>(New))
             {
-                insertAfter = llvm::dyn_cast<llvm::Instruction>(New);
+                insertAfter = instruction;
             }
             else
             {

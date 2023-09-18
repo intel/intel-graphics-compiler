@@ -1235,6 +1235,8 @@ int IR_Builder::translateVISADwordAtomicInst(
                   ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
               "FADD/FSUB atomic operations are only supported on this devices");
 
+  vASSERT(surface);
+
   VISA_Exec_Size instExecSize = execSize;
   execSize = roundUpExecSize(execSize);
 
@@ -1256,7 +1258,7 @@ int IR_Builder::translateVISADwordAtomicInst(
   unsigned len = 0;
 
   bool useHeader =
-      needsA32MsgHeader() && surface && isStatelessSurface(surface);
+      needsA32MsgHeader() && isStatelessSurface(surface);
   if (useHeader) {
     G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 

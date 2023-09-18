@@ -809,7 +809,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
           if (oiDst && oiDst->isDstRegRegion() && oiDst->getTopDcl()) {
             unsigned oilb = 0, oirb = 0;
             auto oiLR = DclLRMap[oiDst->getTopDcl()];
-            if (oiLR && !oiLR->getPhyReg())
+            if (!oiLR->getPhyReg())
               continue;
 
             oilb = oiLR->getPhyReg()->asGreg()->getRegNum() *

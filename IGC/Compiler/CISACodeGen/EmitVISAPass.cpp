@@ -20299,11 +20299,11 @@ void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     }
 
     // float dpas uses short as bfloat16 for either input or dst.
-    ConstantInt* pa = dyn_cast<ConstantInt>(GII->getOperand(3)); // Activation's precision
-    ConstantInt* pb = dyn_cast<ConstantInt>(GII->getOperand(4)); // Weight's precision
-    ConstantInt* sdepth = dyn_cast<ConstantInt>(GII->getOperand(5));
-    ConstantInt* rcount = dyn_cast<ConstantInt>(GII->getOperand(6));
-    ConstantInt* dpasw = dyn_cast<ConstantInt>(GII->getOperand(7));
+    ConstantInt* pa = cast<ConstantInt>(GII->getOperand(3)); // Activation's precision
+    ConstantInt* pb = cast<ConstantInt>(GII->getOperand(4)); // Weight's precision
+    ConstantInt* sdepth = cast<ConstantInt>(GII->getOperand(5));
+    ConstantInt* rcount = cast<ConstantInt>(GII->getOperand(6));
+    ConstantInt* dpasw = cast<ConstantInt>(GII->getOperand(7));
     int PA = (int)pa->getSExtValue();
     int PB = (int)pb->getSExtValue();
     int SD = (int)sdepth->getSExtValue();

@@ -439,6 +439,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                 G4_VarBase *srcPtr = src->isSrcRegRegion()
                                          ? src->asSrcRegRegion()->getBase()
                                          : nullptr;
+                vASSERT(srcPtr);
                 // case:  arithmetic-op   A0 A1 src1
                 // merge the two addr's points-to set together
                 G4_RegVar *ptrVar = ptr->asRegVar();

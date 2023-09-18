@@ -393,7 +393,10 @@ static std::string getTempFileName(const IGC::COpenCLKernel* kernel)
     EC = sys::fs::getPotentiallyUniqueTempFileName("ze", "elf", FileName);
     if (EC) {
         IGC::CodeGenContext* ctx = kernel->GetContext();
-        ctx->EmitError((std::string("unable to create temporary file for kernel: ") + kernel->m_kernelInfo.m_kernelName).c_str(), nullptr);
+        if (ctx)
+        {
+            ctx->EmitError((std::string("unable to create temporary file for kernel: ") + kernel->m_kernelInfo.m_kernelName).c_str(), nullptr);
+        }
         return "";
     }
     return FileName.c_str();
@@ -623,7 +626,10 @@ bool CGen8OpenCLProgram::GetZEBinary(
                     }
                     else
                     {
-                        ctx->EmitError((std::string("failed to open ELF file: ") + elfFileNameStr).c_str(), nullptr);
+                        if (ctx)
+                        {
+                            ctx->EmitError((std::string("failed to open ELF file: ") + elfFileNameStr).c_str(), nullptr);
+                        }
                         elfTmpFilesError = true; // Handle this error at the end of this function
                         break;
                     }
@@ -722,23 +728,32 @@ bool CGen8OpenCLProgram::GetZEBinary(
                             else
                             {
                                 ECfileOpen = MBOrErr.getError();
-                                ctx->EmitError("ELF linked file cannot be buffered", nullptr);
-                                ctx->EmitError(ECfileOpen.message().c_str(), nullptr);
+                                if (ctx)
+                                {
+                                    ctx->EmitError("ELF linked file cannot be buffered", nullptr);
+                                    ctx->EmitError(ECfileOpen.message().c_str(), nullptr);
+                                }
                                 elfTmpFilesError = true; // Handle this error also below
                             }
                         }
                         else
                         {
                             ECfileOpen = errorToErrorCode(FDOrErr.takeError());
-                            ctx->EmitError("ELF linked file cannot be opened", nullptr);
-                            ctx->EmitError(ECfileOpen.message().c_str(), nullptr);
+                            if (ctx)
+                            {
+                                ctx->EmitError("ELF linked file cannot be opened", nullptr);
+                                ctx->EmitError(ECfileOpen.message().c_str(), nullptr);
+                            }
                             elfTmpFilesError = true; // Handle this error also below
 
                         }
                     }
                     else
                     {
-                        ctx->EmitError("ELF linked file size error", nullptr);
+                        if (ctx)
+                        {
+                            ctx->EmitError("ELF linked file size error", nullptr);
+                        }
                         elfTmpFilesError = true; // Handle this error also below
                     }
                 }
@@ -751,7 +766,10 @@ bool CGen8OpenCLProgram::GetZEBinary(
 #endif // LLVM_VERSION_MAJOR
                     if (!linkErrStr.empty())
                     {
-                        ctx->EmitError(linkErrStr.c_str(), nullptr);
+                        if (ctx)
+                        {
+                            ctx->EmitError(linkErrStr.c_str(), nullptr);
+                        }
                         elfTmpFilesError = true; // Handle this error also below
                     }
                 }
@@ -761,7 +779,10 @@ bool CGen8OpenCLProgram::GetZEBinary(
         if (elfTmpFilesError)
         {
             // Nothing to do with the linker when any error with temporary files occured.
-            ctx->EmitError("ZeBinary will not contain correct debug info due to an ELF temporary files error", nullptr);
+            if (ctx)
+            {
+                ctx->EmitError("ZeBinary will not contain correct debug info due to an ELF temporary files error", nullptr);
+            }
             retValue = false;
         }
 

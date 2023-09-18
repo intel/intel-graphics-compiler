@@ -3298,7 +3298,7 @@ void Augmentation::markNonDefaultDstRgn(G4_INST *inst, G4_Operand *opnd) {
   }
 
   // Handle dst
-  if (inst->isCall() || inst->isCallerSave()) {
+  if (dst && (inst->isCall() || inst->isCallerSave())) {
     const G4_Declare *dcl = dst->getBase()->asRegVar()->getDeclare();
     if (dcl && liveAnalysis.livenessClass(dcl->getRegFile())) {
       gra.setAugmentationMask(dcl->getRootDeclare(),
