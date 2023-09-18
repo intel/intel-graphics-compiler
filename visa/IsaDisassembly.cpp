@@ -3354,7 +3354,7 @@ std::string printFunctionDecl(const print_format_provider_t *header,
   std::replace_if(
       name.begin(), name.end(), [](char c) { return c == '.'; }, ' ');
 
-  sstr << (!isKernel ? ".global_function " : ".kernel ");
+  sstr << (!isKernel ? "\n.global_function " : "\n.kernel ");
   encodeStringLiteral(sstr, name.c_str());
   return sstr.str();
 }
