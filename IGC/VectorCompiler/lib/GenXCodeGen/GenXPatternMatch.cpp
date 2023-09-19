@@ -633,7 +633,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
         BC->setDebugLoc(I.getDebugLoc());
 
         // Create the new rdregion.
-        vc::Region R(BC);
+        vc::Region R(BC, DL);
         R.NumElements = NElts;
         R.Stride = Stride;
         R.Width = NElts;
@@ -2262,7 +2262,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
         if (WII->getOperand(1) != Mul)
           continue;
         auto W = makeRegionFromBaleInfo(WII, BaleInfo());
-        vc::Region V(Mul);
+        vc::Region V(Mul, DL);
         // TODO: Consider the broadcast and similar cases.
         if (!W.isStrictlySimilar(V))
           continue;
@@ -2439,7 +2439,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
       IRBuilder<> B(Inst);
       NewV = B.CreateBitCast(NewV, IGCLLVM::FixedVectorType::get(NewVTy, 1));
     }
-    vc::Region R(Inst->getType());
+    vc::Region R(Inst->getType(), DL);
     R.Width = R.NumElements;
     R.Stride = 0;
     NewV = R.createRdRegion(NewV, "splat", Inst, Inst->getDebugLoc(),
@@ -3446,7 +3446,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
           IRBuilder<> Builder(Inst);
           unsigned Width = cast<IGCLLVM::FixedVectorType>(ShtAmt[0]->getType())
                                ->getNumElements();
-          vc::Region R(C->getType());
+          vc::Region R(C->getType(), DL);
           R.getSubregion(0, Width);
           Value *Val = UndefValue::get(C->getType());
           Val = R.createWrRegion(Val, Base, "", Inst, Inst->getDebugLoc());
@@ -3454,7 +3454,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
             auto Opc = C->getType()->isFPOrFPVectorTy() ? Instruction::FAdd
                                                         : Instruction::Add;
             auto Input = Builder.CreateBinOp(Opc, Base, ShtAmt[j]);
-            vc::Region R1(C->getType());
+            vc::Region R1(C->getType(), DL);
             R1.getSubregion(Width * j, Width);
             Val = R1.createWrRegion(Val, Input, "", Inst, Inst->getDebugLoc());
           }
