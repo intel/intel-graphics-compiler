@@ -1045,7 +1045,7 @@ namespace IGC
             // Set retry behavor for Disable()
             m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
 
-            m_UserAddrSpaceMD = UserAddrSpaceMD(this);
+            m_UserAddrSpaceMD = UserAddrSpaceMD(llvmCtxWrapper);
         }
 
         CodeGenContext(CodeGenContext&) = delete;
