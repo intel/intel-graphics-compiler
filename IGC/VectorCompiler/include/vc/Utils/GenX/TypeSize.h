@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -33,7 +33,7 @@ constexpr unsigned OWordBits = 128;
 // TODO: probably TypeSizeWrapper should go to the general IGC wrappers
 class TypeSizeWrapper {
 public:
-  using SzType = unsigned;
+  using SzType = uint64_t;
 
 #if LLVM_VERSION_MAJOR >= 10
   using DLTypeSize = llvm::TypeSize;
