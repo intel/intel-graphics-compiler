@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -31,6 +31,7 @@ define dllexport void @kernel() {
 
 ; COM: direct with internal linkage type
 ; CHECK: define internal spir_func void @foo_direct
+; CHECK-SAME: ) {
 ; CHECK-NEXT: %vec.ref.ld = load <8 x i32>, <8 x i32>* %vec.ref
 ; CHECK-NEXT: ret void
 
