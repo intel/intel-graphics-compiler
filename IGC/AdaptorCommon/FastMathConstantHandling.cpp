@@ -30,6 +30,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 10
     void visitFNeg(Instruction& I);
 #endif
+    void visitFDiv(Instruction& I);
     virtual llvm::StringRef getPassName() const override { return "Fast Math Constant Handling"; }
 
     void getAnalysisUsage(AnalysisUsage& AU) const override
@@ -101,6 +102,15 @@ void FastMathConstantHandling::visitFNeg(Instruction& I)
     }
 }
 #endif
+
+void FastMathConstantHandling::visitFDiv(Instruction& I)
+{
+    if (auto* fp_val = dyn_cast<llvm::ConstantFP>(I.getOperand(1));
+        fp_val && fp_val->getValueAPF().isZero())
+    {
+         I.setHasNoInfs(false);
+    }
+}
 
 bool FastMathConstantHandling::runOnFunction(Function& F)
 {
