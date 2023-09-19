@@ -17,17 +17,27 @@
 
 define void @test_fdiv(float %a, float %b) {
 ; CHECK-LABEL: @test_fdiv(
-; CHECK:    [[TMP1:%[A-z0-9]*]] = bitcast float [[B:%[A-z0-9]*]] to i32
-; CHECK:    [[TMP2:%[A-z0-9]*]] = and i32 [[TMP1]], 2139095040
-; CHECK:    [[TMP3:%[A-z0-9]*]] = icmp eq i32 [[TMP2]], 0
-; CHECK:    [[TMP4:%[A-z0-9]*]] = select i1 [[TMP3]], float 0x41F0000000000000, float 1.000000e+00
-; CHECK:    [[TMP5:%[A-z0-9]*]] = icmp uge i32 [[TMP2]], 1677721600
-; CHECK:    [[TMP6:%[A-z0-9]*]] = select i1 [[TMP5]], float 0x3DF0000000000000, float [[TMP4]]
-; CHECK:    [[TMP7:%[A-z0-9]*]] = fmul float [[B]], [[TMP6]]
-; CHECK:    [[TMP8:%[A-z0-9]*]] = fdiv float 1.000000e+00, [[TMP7]]
-; CHECK:    [[TMP9:%[A-z0-9]*]] = fmul float [[TMP8]], [[A:%[A-z0-9]*]]
-; CHECK:    [[TMP10:%[A-z0-9]*]] = fmul float [[TMP9]], [[TMP6]]
-; CHECK:    call void @use.f32(float [[TMP10]])
+; CHECK:    [[TMP1:%[A-z0-9]*]] = fcmp oeq float [[A:%[A-z0-9]*]], [[B:%[A-z0-9]*]]
+; CHECK:    [[TMP2:%[A-z0-9]*]] = bitcast float [[B]] to i32
+; CHECK:    [[TMP3:%[A-z0-9]*]] = and i32 [[TMP2]], 2139095040
+; CHECK:    [[TMP4:%[A-z0-9]*]] = and i32 [[TMP2]], 8388607
+; CHECK:    [[TMP5:%[A-z0-9]*]] = icmp ne i32 [[TMP3]], 0
+; CHECK:    [[TMP6:%[A-z0-9]*]] = icmp ne i32 [[TMP4]], 0
+; CHECK:    [[TMP7:%[A-z0-9]*]] = and i1 [[TMP1]], [[TMP5]], !dbg !11
+; CHECK:    [[TMP8:%[A-z0-9]*]] = and i1 [[TMP7]], [[TMP6]], !dbg !11
+; CHECK:    br i1 [[TMP8]], label %[[BB3:[A-z0-9]*]], label %[[BB2:[A-z0-9]*]]
+; CHECK:  [[BB2]]:
+; CHECK:    [[TMP9:%[A-z0-9]*]] = icmp eq i32 [[TMP3]], 0
+; CHECK:    [[TMP10:%[A-z0-9]*]] = select i1 [[TMP9]], float 0x41F0000000000000, float 1.000000e+00
+; CHECK:    [[TMP11:%[A-z0-9]*]] = icmp uge i32 [[TMP3]], 1677721600
+; CHECK:    [[TMP12:%[A-z0-9]*]] = select i1 [[TMP11]], float 0x3DF0000000000000, float [[TMP10]]
+; CHECK:    [[TMP13:%[A-z0-9]*]] = fmul float [[B]], [[TMP12]]
+; CHECK:    [[TMP14:%[A-z0-9]*]] = fdiv float 1.000000e+00, [[TMP13]]
+; CHECK:    [[TMP15:%[A-z0-9]*]] = fmul float [[TMP14]], [[A]]
+; CHECK:    [[TMP16:%[A-z0-9]*]] = fmul float [[TMP15]], [[TMP12]]
+; CHECK:  [[BB3]]:
+; CHECK:    [[TMP14:%[A-z0-9]*]] = phi float [ 1.000000e+00, %[[BB1:[A-z0-9]*]] ], [ [[TMP16]], %[[BB2]] ]
+; CHECK:    call void @use.f32(float [[TMP14]])
 ; CHECK:    ret void
 ;
   %1 = fdiv float %a, %b

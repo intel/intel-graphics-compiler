@@ -67,7 +67,7 @@ enum InstructionMask : uint32_t
     EndOfThreadOperation       = (1 << 9),
 };
 constexpr InstructionMask AllNoAtomicMask =
-    InstructionMask{ ((EndOfThreadOperation << 1) - 1) & ~InstructionMask::AtomicOperation };
+    InstructionMask{ ((1 << 9) - 1) & ~InstructionMask::AtomicOperation };
 
 inline constexpr InstructionMask operator|(InstructionMask a, InstructionMask b)
 {
