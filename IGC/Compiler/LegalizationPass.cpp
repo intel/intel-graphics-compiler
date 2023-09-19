@@ -2710,10 +2710,8 @@ static bool needsNoScaling(Value* Val)
 bool IGC::expandFDIVInstructions(llvm::Function& F)
 {
     bool Changed = false;
-    for (auto BBIter = F.begin(); BBIter != F.end();) {
-        BasicBlock *BB = &*BBIter++;
-
-        for (auto Iter = BB->begin(); Iter != BB->end();) {
+    for (auto& BB : F.getBasicBlockList()) {
+        for (auto Iter = BB.begin(); Iter != BB.end();) {
             Instruction* Inst = &*Iter++;
             if (!isCandidateFDiv(Inst))
                 continue;
@@ -2749,50 +2747,21 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                 V = Builder.CreateFMul(Y, X);
             }
             else {
-                BasicBlock *PreFDIVExpBB = BB;
-                BasicBlock *PostFDIVExpBB = BB->splitBasicBlock(Inst->getNextNode());
-                BasicBlock *FDIVExpBB = BB->splitBasicBlock(Inst);
-
-                Builder.SetInsertPoint(
-                    FDIVExpBB->getPrevNode()->getTerminator());
-
-                // If x == y then x/y == 1 (assuming x and y are normal values,
-                // i.e. neither is +/-0, +/-NaN, +/-Inf, or subnormal), skip
-                // FDIV expansion basic block to avoid reciprocal
-                // round-trip error, break to post-FDIV-expansion basic block.
-                Value *CmpXY = Builder.CreateFCmp(CmpInst::FCMP_OEQ, X, Y);
-                Value *YAsInt32 = Builder.CreateBitCast(Y, Builder.getInt32Ty());
-                Value *YExp = Builder.CreateAnd(YAsInt32,
-                    Builder.getInt32(0x7f800000));
-                Value *YMantissa = Builder.CreateAnd(YAsInt32,
-                    Builder.getInt32(0x007fffff));
-                Value *CmpYExpZero =
-                    Builder.CreateICmpNE(YExp, Builder.getInt32(0));
-                Value *CmpYMantissaZero =
-                    Builder.CreateICmpNE(YMantissa, Builder.getInt32(0));
-                Value *CmpXYandYZero =
-                    Builder.CreateAnd({CmpXY, CmpYExpZero, CmpYMantissaZero});
-                Builder.CreateCondBr(CmpXYandYZero, PostFDIVExpBB, FDIVExpBB)
-                    ->getNextNode()
-                    ->eraseFromParent();
-
-                // Update iterators after creating BBs.
-                BBIter = PostFDIVExpBB->getIterator();
-                BB = FDIVExpBB;
-                Iter = ++FDIVExpBB->begin();
-                Builder.SetInsertPoint(Inst);
-
                 float S32 = uint64_t(1) << 32;
                 ConstantFP* C0 = ConstantFP::get(Ctx, APFloat(S32));
                 ConstantFP* C1 = ConstantFP::get(Ctx, APFloat(1.0f));
                 ConstantFP* C2 = ConstantFP::get(Ctx, APFloat(1.0f / S32));
 
-                // Check if y's exponent is 0, scale up.
-                Value* P1 = Builder.CreateICmpEQ(YExp, Builder.getInt32(0));
+                Value* Exp = Builder.CreateAnd(
+                    Builder.CreateBitCast(Y, Builder.getInt32Ty()),
+                    Builder.getInt32(0x7f800000));
+
+                // Check if B's exponent is 0, scale up.
+                Value* P1 = Builder.CreateICmpEQ(Exp, Builder.getInt32(0));
                 Value* Scale = Builder.CreateSelect(P1, C0, C1);
 
-                // Check if y's exponent >= 200, scale down.
-                Value* P2 = Builder.CreateICmpUGE(YExp, Builder.getInt32(200 << 23));
+                // Check if B's exponent >= 200, scale down.
+                Value* P2 = Builder.CreateICmpUGE(Exp, Builder.getInt32(200 << 23));
                 Scale = Builder.CreateSelect(P2, C2, Scale);
 
                 // Compute rcp(y * S) * x * S
@@ -2800,12 +2769,6 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                 V = Builder.CreateFDiv(C1, V);
                 V = Builder.CreateFMul(V, X);
                 V = Builder.CreateFMul(V, Scale);
-
-               Builder.SetInsertPoint(&*PostFDIVExpBB->begin());
-               PHINode *Phi = Builder.CreatePHI(V->getType(), 2);
-               Phi->addIncoming(ConstantFP::get(Ctx, APFloat(1.0f)), PreFDIVExpBB);
-               Phi->addIncoming(V, FDIVExpBB);
-               V = Phi;
             }
 
             Inst->replaceAllUsesWith(V);
