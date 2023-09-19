@@ -42,7 +42,7 @@ void __devicelib_assert_fail(char *expr, char *file, int line, char *func, long 
     AssertBufferHeader* header = (AssertBufferHeader*) __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_ASSERT;
     global char* buf = (global char*) header;
-    __builtin_IB_printf_to_buffer(buf, buf + 8, header->size, "%s:%d: %s: global id: [%lu,%lu,%lu], local id: [%lu,%lu,%lu] Assertion `%s` failed\n", file, line, func, gid0, gid1, gid2, lid0, lid1, lid2, expr);
+    __builtin_IB_printf_to_buffer(buf, buf + 8, header->size, "%s:%d: %s: global id: [%lu,%lu,%lu], local id: [%lu,%lu,%lu] Assertion `%s` failed.\n", file, line, func, gid0, gid1, gid2, lid0, lid1, lid2, expr);
     __builtin_IB_software_exception();
 }
 
