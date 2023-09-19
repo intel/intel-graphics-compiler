@@ -160,11 +160,11 @@ Value *GenXGEPLowering::visitPtrToIntInst(PtrToIntInst &PTI) {
   auto *Ty = PTI.getType();
   Value *NewI = nullptr;
 
-  if (SrcTy->isPointerTy()) {
+  if (SrcTy->isPtrOrPtrVectorTy()) {
     NewI = Builder->CreatePtrToInt(Src, Ty);
     NewI->takeName(&PTI);
   } else {
-    IGC_ASSERT(SrcTy->isIntegerTy());
+    IGC_ASSERT(SrcTy->isIntOrIntVectorTy());
     NewI = Builder->CreateIntCast(Src, Ty, false);
   }
 
