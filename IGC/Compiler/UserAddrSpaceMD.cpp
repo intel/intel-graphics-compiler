@@ -8,25 +8,54 @@ SPDX-License-Identifier: MIT
 
 #include "UserAddrSpaceMD.hpp"
 #include "IGC/Probe/Assertion.h"
+#include <CodeGenPublic.h>
 
 using namespace IGC;
 
-UserAddrSpaceMD::UserAddrSpaceMD(llvm::LLVMContext* ctx)
+UserAddrSpaceMD::UserAddrSpaceMD(CodeGenContext* ctx)
 {
     this->ctx = ctx;
-    user_addrspace_priv = ctx->getMDKindID("user_as_priv");
-    user_addrspace_global = ctx->getMDKindID("user_as_global");
-    user_addrspace_local = ctx->getMDKindID("user_as_local");
-    user_addrspace_generic = ctx->getMDKindID("user_as_generic");
-    user_addrspace_raystack = ctx->getMDKindID("user_as_raystack");
+}
 
-    dummyNode = llvm::MDNode::get(*ctx, llvm::MDString::get(*ctx, ""));
+
+bool UserAddrSpaceMD::needUpdateMarks()
+{
+    llvm::SmallVector<llvm::StringRef, 8> mdkinds;
+    ctx->getLLVMContext()->getMDKindNames(mdkinds);
+
+    for (auto iter = mdkinds.begin();
+        iter != mdkinds.end();
+        ++iter)
+    {
+        if (iter->equals("user_as_priv"))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void UserAddrSpaceMD::updateMarks()
+{
+    if (needUpdateMarks())
+    {
+        user_addrspace_priv = ctx->getLLVMContext()->getMDKindID("user_as_priv");
+        user_addrspace_global = ctx->getLLVMContext()->getMDKindID("user_as_global");
+        user_addrspace_local = ctx->getLLVMContext()->getMDKindID("user_as_local");
+        user_addrspace_generic = ctx->getLLVMContext()->getMDKindID("user_as_generic");
+        user_addrspace_raystack = ctx->getLLVMContext()->getMDKindID("user_as_raystack");
+
+        dummyNode = llvm::MDNode::get(*ctx->getLLVMContext(),
+            llvm::MDString::get(*ctx->getLLVMContext(), ""));
+    }
 }
 
 void UserAddrSpaceMD::Set(llvm::Instruction* inst, LSC_DOC_ADDR_SPACE type, llvm::MDNode* node)
 {
     if (inst)
     {
+        updateMarks();
+
         llvm::MDNode* chosen_node = node != nullptr ?
             node :
             dummyNode;
