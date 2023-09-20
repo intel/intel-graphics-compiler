@@ -42,13 +42,13 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include "DwarfDebug.hpp"
 #include "DIE.hpp"
 #include "DwarfCompileUnit.hpp"
-#include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
 #include "Utils.hpp"
-#include "VISAModule.hpp"
 #include "VISADebugInfo.hpp"
+#include "VISAModule.hpp"
 
 #include <list>
 #include <unordered_set>
@@ -2883,29 +2883,19 @@ void DwarfDebug::emitDebugMacInfo() {
 }
 
 void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data) {
-  if (!EmitSettings.EnableGTLocationDebugging) {
-    Address addr;
-    addr.Set(Address::Space::eScratch, 0, 0);
-
-    write(data, (uint8_t)llvm::dwarf::DW_OP_const8u);
-    write(data, (uint64_t)addr.GetAddress());
-
-    write(data, (uint8_t)llvm::dwarf::DW_OP_or);
+  uint32_t scratchBaseAddrEncoded = 0;
+  if (m_pModule->usesSlot1ScratchSpill()) {
+    scratchBaseAddrEncoded =
+        GetEncodedRegNum<RegisterNumbering::ScratchBaseSlot1>(
+            dwarf::DW_OP_breg0);
   } else {
-    uint32_t scratchBaseAddrEncoded = 0;
-    if (m_pModule->usesSlot1ScratchSpill()) {
-      scratchBaseAddrEncoded =
-          GetEncodedRegNum<RegisterNumbering::ScratchBaseSlot1>(
-              dwarf::DW_OP_breg0);
-    } else {
-      scratchBaseAddrEncoded =
-          GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
-    }
-
-    write(data, (uint8_t)scratchBaseAddrEncoded);
-    writeULEB128(data, 0);
-    write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
+    scratchBaseAddrEncoded =
+        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
   }
+
+  write(data, (uint8_t)scratchBaseAddrEncoded);
+  writeULEB128(data, 0);
+  write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
 }
 
 uint32_t DwarfDebug::writeSubroutineCIE() {
@@ -3047,23 +3037,12 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   // The DW_CFA_def_cfa_expression instruction takes a single operand
   // encoded as a DW_FORM_exprloc.
   auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
-  if (!getEmitterSettings().EnableGTLocationDebugging) {
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_regx);
-    writeULEB128(data1, DWRegEncoded);
-  } else {
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-    write(data1, (uint32_t)(DWRegEncoded));
-  }
+  write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
+  write(data1, (uint32_t)(DWRegEncoded));
   write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
   write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
-  if (!getEmitterSettings().EnableGTLocationDebugging) {
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
-    write(data1, (uint8_t)32);
-    write(data1, (uint8_t)DW_OP_INTEL_push_bit_piece_stack);
-  } else {
-    write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
-    write(data1, (uint8_t)32);
-  }
+  write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
+  write(data1, (uint8_t)32);
 
   if (EmitSettings.ScratchOffsetInOW) {
     // when scratch offset is in OW, be_fp has to be multiplied by 16
@@ -3271,23 +3250,12 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
 
     auto DWRegEncoded =
         GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
-    if (!getEmitterSettings().EnableGTLocationDebugging) {
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_regx);
-      writeULEB128(data1, DWRegEncoded);
-    } else {
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-      write(data1, (uint32_t)(DWRegEncoded));
-    }
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
+    write(data1, (uint32_t)(DWRegEncoded));
     write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
     write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
-    if (!getEmitterSettings().EnableGTLocationDebugging) {
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
-      write(data1, (uint8_t)32);
-      write(data1, (uint8_t)DW_OP_INTEL_push_bit_piece_stack);
-    } else {
-      write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
-      write(data1, (uint8_t)32);
-    }
+    write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
+    write(data1, (uint8_t)32);
 
     if (EmitSettings.ScratchOffsetInOW) {
       // when scratch offset is in OW, be_fp has to be multiplied by 16

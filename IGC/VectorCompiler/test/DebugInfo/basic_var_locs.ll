@@ -59,12 +59,12 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[OVEC_LOC:[0-9a-f]+]] (location list)
 
 ; locations in location-list
-; CHECK-DAG: [[OFF_LOC]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]); DW_OP_{{lit|const1u: }}[[#]]; DW_OP_const1u: 32; DW_OP_INTEL_push_bit_piece_stack; DW_OP_constu: 6; DW_OP_shl; DW_OP_stack_value)
+; CHECK-DAG: [[OFF_LOC]] {{[^(]+}}(DW_OP_lit[[#]]; DW_OP_{{lit|const1u: }}[[#]]; DW_OP_INTEL_regval_bits: 32; DW_OP_constu: 6; DW_OP_shl; DW_OP_stack_value)
 ; FIXME: Once LLVM 11+ is enabled for all platforms, make ivector* location list checks explicit:
-; {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]); DW_OP_const1u: 0; DW_OP_const1u: 64; DW_OP_INTEL_push_bit_piece_stack)
-; CHECK-DAG: [[IVEC1_LOC]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]){{.*}})
-; CHECK-DAG: [[IVEC2_LOC]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]){{.*}})
-; CHECK-DAG: [[OVEC_LOC]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]); DW_OP_bit_piece: size: 256 offset: 0 ; DW_OP_reg[[#]] (r[[#]]); DW_OP_bit_piece: size: 256 offset: 0 )
+; {{[^(]+}}(DW_OP_lit[[#]]; DW_OP_const1u: 0; DW_OP_const1u: 64; DW_OP_INTEL_push_bit_piece_stack)
+; CHECK-DAG: [[IVEC1_LOC]] {{[^(]+}}(DW_OP_lit[[#]]
+; CHECK-DAG: [[IVEC2_LOC]] {{[^(]+}}(DW_OP_lit[[#]]
+; CHECK-DAG: [[OVEC_LOC]] {{[^(]+}}(DW_OP_lit[[#]]; DW_OP_bit_piece: size: 256 offset: 0 ; DW_OP_reg[[#]] (r[[#]]); DW_OP_bit_piece: size: 256 offset: 0 )
 
 
 ; Function Attrs: noinline nounwind

@@ -22,7 +22,7 @@
 ; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[#LOC_OFFSET:]] (location list)
 
 ; CHECK: Contents of the .debug_loc section:
-; CHECK-DAG: [[#LOC_OFFSET]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]); DW_OP_const1u: 64; DW_OP_const1u: 64; DW_OP_INTEL_push_bit_piece_stack)
+; CHECK-DAG: [[#LOC_OFFSET]] {{[^(]+}}(DW_OP_lit[[#]]; DW_OP_const1u: 64; DW_OP_INTEL_regval_bits: 64)
 
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
