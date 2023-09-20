@@ -31,7 +31,7 @@ define void @test_transform(<128 x i8>* %a) !dbg !6 {
 entry:
   %0 = load <128 x i8>, <128 x i8>* %a, !dbg !12
   call void @llvm.dbg.value(metadata <128 x i8> %0, metadata !9, metadata !DIExpression()), !dbg !12
-  %1 = call <128 x i8> @llvm.genx.rdregioni.v128i8.v128i8.i16(<128 x i8> %0, i32 1, i32 1, i32 0, i16 16, i32 0), !dbg !13
+  %1 = call <128 x i8> @llvm.genx.rdregioni.v128i8.v128i8.i16(<128 x i8> %0, i32 1, i32 1, i32 0, i16 0, i32 0), !dbg !13
   call void @llvm.dbg.value(metadata <128 x i8> %1, metadata !9, metadata !DIExpression()), !dbg !13
   store <128 x i8> %1, <128 x i8>* @global_vec, !dbg !14
   ret void, !dbg !15
