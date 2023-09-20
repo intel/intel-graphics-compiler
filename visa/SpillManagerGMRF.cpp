@@ -3143,16 +3143,16 @@ bool SpillManagerGRF::immFill(G4_SrcRegRegion *filledRegion,
       tempDcl = std::get<1>(nearbyFill)->getDst()->getTopDcl();
     } else {
       // re-materialize the scalar immediate value
-      auto imm = sisIt->second;
-      tempDcl = builder_->createTempVar(1, imm->getType(),
-                                        spillDcl->getSubRegAlign());
+      auto dstType = sisIt->second.first;
+      auto *imm = sisIt->second.second;
+      tempDcl = builder_->createTempVar(1, dstType, spillDcl->getSubRegAlign());
       auto movInst = builder_->createMov(
           g4::SIMD1, builder_->createDstRegRegion(tempDcl, 1), imm,
           InstOpt_WriteEnable, false);
       bb->insertBefore(filledInstIter, movInst);
       nearbyFill = std::make_tuple(bb, movInst, inst->getLexicalId());
       // tempDcl is fill dcl that rematerializes scalar immediate.
-      // If tempDcl.spills in later RA iteration we shouln't
+      // If tempDcl spills in later RA iteration we shouldn't
       // try to rematerialize the value. Instead we should
       // insert regular spill/fill code for it.
       gra.scalarSpills.insert(tempDcl);
@@ -4056,6 +4056,8 @@ void SpillManagerGRF::immMovSpillAnalysis() {
 
   for (auto bb : gra.kernel.fg) {
     for (auto inst : *bb) {
+      if (inst->isPseudoKill())
+        continue;
       auto dst = inst->getDst();
       auto dcl = dst && dst->getTopDcl() ? dst->getTopDcl()->getRootDeclare()
                                          : nullptr;
@@ -4071,7 +4073,8 @@ void SpillManagerGRF::immMovSpillAnalysis() {
       }
       spilledDcl.insert(dcl);
       if (immFillCandidate(inst)) {
-        scalarImmSpill[dcl] = inst->getSrc(0)->asImm();
+        scalarImmSpill[dcl] =
+            std::make_pair(dst->getType(), inst->getSrc(0)->asImm());
       }
     }
   }
