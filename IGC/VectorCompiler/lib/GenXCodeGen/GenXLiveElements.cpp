@@ -262,6 +262,9 @@ LiveElements LiveElementsAnalysis::getOperandLiveElements(
   IGC_ASSERT(OperandNo < Inst->getNumOperands());
   auto OpTy = Inst->getOperand(OperandNo)->getType();
 
+  if (InstLiveElems.isAllDead() && !Inst->mayHaveSideEffects())
+    return LiveElements(OpTy);
+
   if (auto BCI = dyn_cast<BitCastInst>(Inst))
     return getBitCastLiveElements(BCI, InstLiveElems);
 
@@ -296,16 +299,10 @@ LiveElements LiveElementsAnalysis::getOperandLiveElements(
   if (ID == GenXIntrinsic::genx_addc || ID == GenXIntrinsic::genx_subb)
     return getTwoDstInstLiveElements(InstLiveElems);
 
-  auto OpLiveElems = LiveElements(OpTy, !InstLiveElems.isAllDead() ||
-                                            Inst->mayHaveSideEffects());
-  if (!isElementWise(Inst) || InstLiveElems.size() != OpLiveElems.size())
-    return OpLiveElems;
+  if (isElementWise(Inst))
+    return InstLiveElems;
 
-  for (unsigned Idx = 0; Idx < InstLiveElems.size(); Idx++)
-    if (InstLiveElems[Idx].size() != OpLiveElems[Idx].size())
-      return OpLiveElems;
-
-  return InstLiveElems;
+  return LiveElements(OpTy, true);
 }
 
 // isRootInst : check if instruction should be the start point for backward
