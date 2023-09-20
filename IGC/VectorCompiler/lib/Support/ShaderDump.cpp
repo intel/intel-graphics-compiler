@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -20,27 +20,35 @@ using namespace llvm;
 namespace {
 class FileShaderDumper : public vc::ShaderDumper {
 public:
-  void dumpBinary(ArrayRef<char> Binary, StringRef DumpName) override {
-    writeToFile(DumpName, [Binary](llvm::raw_fd_ostream &OS) {
+  void dumpBinary(ArrayRef<char> Binary, StringRef DumpName,
+                  StringRef DumpExtension) override {
+    writeToFile(DumpName, DumpExtension, [Binary](llvm::raw_fd_ostream &OS) {
       OS.write(Binary.data(), Binary.size());
     });
   }
-  void dumpText(StringRef Text, StringRef DumpName) override {
-    writeToFile(DumpName, [Text](llvm::raw_fd_ostream &OS) { OS << Text; });
+  void dumpText(StringRef Text, StringRef DumpName,
+                StringRef DumpExtension) override {
+    writeToFile(DumpName, DumpExtension,
+                [Text](llvm::raw_fd_ostream &OS) { OS << Text; });
   }
-  void dumpModule(const Module &M, StringRef DumpName) override {
-    writeToFile(DumpName,
+  void dumpModule(const Module &M, StringRef DumpName,
+                  StringRef DumpExtension) override {
+    writeToFile(DumpName, DumpExtension,
                 [&M](llvm::raw_fd_ostream &OS) { M.print(OS, nullptr); });
   }
 
-  void dumpCos(StringRef Contents, StringRef DumpName) override {
-    dumpText(Contents, DumpName);
+  void dumpCos(StringRef Contents, StringRef DumpName,
+               StringRef DumpExtension) override {
+    dumpText(Contents, DumpName, DumpExtension);
   }
 
 private:
-  template <typename F> void writeToFile(StringRef DumpName, F Writer) const {
-    int FD;
-    auto EC = llvm::sys::fs::openFileForWrite(DumpName, FD);
+  template <typename F>
+  void writeToFile(StringRef DumpName, StringRef DumpExtension,
+                   F Writer) const {
+    int FD = 0;
+    auto EC = llvm::sys::fs::openFileForWrite(
+        composeDumpPath(DumpName, DumpExtension), FD);
     // Silently return, nothing critical if debug dump fails.
     if (EC)
       return;

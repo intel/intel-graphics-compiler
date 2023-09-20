@@ -27,11 +27,11 @@ struct DebugInfo {
 };
 
 // Implementation of CGen8CMProgram.
-CGen8CMProgram::CGen8CMProgram(PLATFORM platform, const WA_TABLE &WATable,
-                               llvm::ArrayRef<char> SPIRV,
-                               llvm::Optional<llvm::StringRef> Opts)
+CGen8CMProgram::CGen8CMProgram(const CompileOptions &Opts, PLATFORM platform,
+                               const WA_TABLE &WATable,
+                               llvm::ArrayRef<char> SPIRV)
     : CGen8OpenCLProgramBase(platform, m_ContextProvider, WATable),
-      m_programInfo(new IGC::SOpenCLProgramInfo), m_spirv(SPIRV), m_opts(Opts) {
+      m_programInfo(new IGC::SOpenCLProgramInfo), m_opts(Opts), m_spirv(SPIRV) {
 }
 
 TmpFilesStorage
@@ -141,7 +141,7 @@ llvm::Error CGen8CMProgram::GetError() const {
   return llvm::make_error<vc::OutputBinaryCreationError>(m_ErrorLog);
 }
 
-void CGen8CMProgram::CreateKernelBinaries(CompileOptions& Opts) {
+void CGen8CMProgram::CreateKernelBinaries() {
   CreateProgramScopePatchStream(*m_programInfo);
   for (const auto &kernel : m_kernels) {
     // Create the kernel binary streams.
@@ -157,9 +157,9 @@ void CGen8CMProgram::CreateKernelBinaries(CompileOptions& Opts) {
         kernel->getProgramOutput().m_unpaddedProgramSize);
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-      Opts.Dumper->dumpCos(m_StateProcessor.m_oclStateDebugMessagePrintOut,
-                           vc::legalizeShaderDumpName(
-                               kernel->m_kernelInfo.m_kernelName + ".cos"));
+      m_opts.Dumper->dumpCos(
+          m_StateProcessor.m_oclStateDebugMessagePrintOut,
+          vc::legalizeShaderDumpName(kernel->m_kernelInfo.m_kernelName));
 
     if (kernel->getProgramOutput().m_debugDataSize) {
       data.vcKernelDebugData = std::make_unique<Util::BinaryStream>();
@@ -186,12 +186,9 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   const uint8_t *SpirvData = reinterpret_cast<const uint8_t *>(m_spirv.data());
   size_t SpirvSize = m_spirv.size();
 
-  const uint8_t *OptsData = nullptr;
-  size_t OptsSize = 0;
-  if (m_opts) {
-    OptsData = reinterpret_cast<const uint8_t *>(m_opts->data());
-    OptsSize = m_opts->size();
-  }
+  const auto &ApiOpts = m_opts.ApiOptions;
+  const uint8_t *OptsData = reinterpret_cast<const uint8_t *>(ApiOpts.data());
+  size_t OptsSize = ApiOpts.size();
 
   iOpenCL::ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
                                      *m_programInfo, SpirvData, SpirvSize,
@@ -224,6 +221,9 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   }
   dumpElfKernelMapFile();
   zebuilder.getBinaryObject(programBinary);
+
+  if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    zebuilder.printZEInfo(m_opts.Dumper->composeDumpPath("", "zeinfo"));
 }
 
 bool CGen8CMProgram::HasCrossThreadOffsetRelocations() {

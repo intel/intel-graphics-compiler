@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,20 +25,29 @@ namespace vc {
 class ShaderDumper {
 public:
   // Main methods, just dump either binary data or text.
-  virtual void dumpBinary(llvm::ArrayRef<char> Binary,
-                          llvm::StringRef DumpName) = 0;
-  virtual void dumpText(llvm::StringRef Text, llvm::StringRef DumpName) = 0;
+  virtual void dumpBinary(llvm::ArrayRef<char> Binary, llvm::StringRef DumpName,
+                          llvm::StringRef DumpExtension = {}) = 0;
+  virtual void dumpText(llvm::StringRef Text, llvm::StringRef DumpName,
+                        llvm::StringRef DumpExtension = "txt") = 0;
 
   // Convenience method to dump module.
-  virtual void dumpModule(const llvm::Module &M, llvm::StringRef DumpName) = 0;
+  virtual void dumpModule(const llvm::Module &M, llvm::StringRef DumpName,
+                          llvm::StringRef DumpExtension = "ll") = 0;
 
-  virtual void dumpCos(llvm::StringRef Contents, llvm::StringRef DumpName) = 0;
+  virtual void dumpCos(llvm::StringRef Contents, llvm::StringRef DumpName,
+                       llvm::StringRef DumpExtension = "cos") = 0;
 
-  // Hack required for finalizer dumps since it can dump only to
-  // specified file and not to generic stream.
-  // Return the same string by default.
-  virtual std::string composeDumpPath(llvm::StringRef DumpName) const {
-    return DumpName.str();
+  // Hack required for finalizer and zebin writer dumps since it can dump only
+  // to specified file instead of generic stream.
+  virtual std::string
+  composeDumpPath(llvm::StringRef DumpName,
+                  llvm::StringRef DumpExtension = {}) const {
+    auto Path = DumpName.str();
+    if (!DumpExtension.empty()) {
+      Path += ".";
+      Path += DumpExtension;
+    }
+    return Path;
   }
 
   virtual ~ShaderDumper() = default;

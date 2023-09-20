@@ -133,13 +133,13 @@ public:
     bool KernelIsDebuggable = false;
   };
 
-  explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE &WATable,
-                          llvm::ArrayRef<char> SPIRV = llvm::None,
-                          llvm::Optional<llvm::StringRef> Opts = llvm::None);
+  explicit CGen8CMProgram(const CompileOptions &Opts, PLATFORM platform,
+                          const WA_TABLE &WATable,
+                          llvm::ArrayRef<char> SPIRV = llvm::None);
 
   // Produce the final ELF binary with the given CM kernels
   // in OpenCL format.
-  void CreateKernelBinaries(CompileOptions& Opts);
+  void CreateKernelBinaries();
   void GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                    unsigned pointerSizeInBytes) override;
   bool HasErrors() const { return !m_ErrorLog.empty(); };
@@ -157,8 +157,8 @@ public:
   std::string m_ErrorLog;
 
 private:
-  llvm::ArrayRef<char> m_spirv;
-  llvm::Optional<llvm::StringRef> m_opts;
+  const CompileOptions &m_opts;
+  const llvm::ArrayRef<char> m_spirv;
 
   TmpFilesStorage extractRawDebugInfo(llvm::raw_ostream &ErrStream);
   std::unique_ptr<llvm::MemoryBuffer> buildZeDebugInfo();

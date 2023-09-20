@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -47,19 +47,27 @@ class VC_IGCFileDumper : public vc::ShaderDumper {
 public:
   VC_IGCFileDumper(const ShaderHash &Hash);
 
-  void dumpBinary(llvm::ArrayRef<char> Binary,
-                  llvm::StringRef DumpName) override;
-  void dumpText(llvm::StringRef Text, llvm::StringRef DumpName) override;
+  void dumpBinary(llvm::ArrayRef<char> Binary, llvm::StringRef DumpName,
+                  llvm::StringRef DumpExtension) override;
+  void dumpText(llvm::StringRef Text, llvm::StringRef DumpName,
+                llvm::StringRef DumpExtension) override;
 
-  void dumpModule(const llvm::Module &M, llvm::StringRef DumpName) override;
+  void dumpModule(const llvm::Module &M, llvm::StringRef DumpName,
+                  llvm::StringRef DumpExtension) override;
 
-  void dumpCos(llvm::StringRef Contents, llvm::StringRef DumpName) override;
+  void dumpCos(llvm::StringRef Contents, llvm::StringRef DumpName,
+               llvm::StringRef DumpExtension) override;
 
-  std::string composeDumpPath(llvm::StringRef DumpName) const override;
+  std::string composeDumpPath(llvm::StringRef DumpName,
+                              llvm::StringRef DumpExtension) const override;
 
 private:
+  IGC::Debug::DumpName getName(llvm::StringRef DumpName,
+                               llvm::StringRef DumpExtension) const;
+
   template <IGC::Debug::DumpType DumpTy, typename F>
-  void writeToFile(llvm::StringRef DumpName, F Writer) const;
+  void writeToFile(llvm::StringRef DumpName, llvm::StringRef DumpExtension,
+                   F Writer) const;
 };
 } // namespace
 
@@ -71,40 +79,58 @@ static IGC::Debug::DumpName addDumpPostfix(const IGC::Debug::DumpName &Name,
   return Name.PostFix(Postfix.str());
 }
 
+IGC::Debug::DumpName
+VC_IGCFileDumper::getName(llvm::StringRef DumpName,
+                          llvm::StringRef DumpExtension) const {
+  auto Name = DumpPrefix.PostFix(DumpName.str());
+  if (!DumpExtension.empty())
+    Name = Name.Extension(DumpExtension.str());
+  return Name;
+}
+
 template <IGC::Debug::DumpType DumpTy, typename F>
-void VC_IGCFileDumper::writeToFile(llvm::StringRef DumpName, F Writer) const {
-  IGC::Debug::Dump Dumper{addDumpPostfix(DumpPrefix, DumpName), DumpTy};
+void VC_IGCFileDumper::writeToFile(llvm::StringRef DumpName,
+                                   llvm::StringRef DumpExtension,
+                                   F Writer) const {
+  IGC::Debug::Dump Dumper{getName(DumpName, DumpExtension), DumpTy};
   Writer(Dumper.stream());
 }
 
 void VC_IGCFileDumper::dumpBinary(llvm::ArrayRef<char> Binary,
-                                  llvm::StringRef DumpName) {
+                                  llvm::StringRef DumpName,
+                                  llvm::StringRef DumpExtension) {
   writeToFile<IGC::Debug::DumpType::ASM_BC>(
-      DumpName, [Binary](llvm::raw_ostream &OS) {
+      DumpName, DumpExtension, [Binary](llvm::raw_ostream &OS) {
         OS.write(Binary.data(), Binary.size());
       });
 }
 
-void VC_IGCFileDumper::dumpText(llvm::StringRef Text,
-                                llvm::StringRef DumpName) {
+void VC_IGCFileDumper::dumpText(llvm::StringRef Text, llvm::StringRef DumpName,
+                                llvm::StringRef DumpExtension) {
   writeToFile<IGC::Debug::DumpType::DBG_MSG_TEXT>(
-      DumpName, [Text](llvm::raw_ostream &OS) { OS << Text; });
+      DumpName, DumpExtension, [Text](llvm::raw_ostream &OS) { OS << Text; });
 }
 
 void VC_IGCFileDumper::dumpModule(const llvm::Module &M,
-                                  llvm::StringRef DumpName) {
+                                  llvm::StringRef DumpName,
+                                  llvm::StringRef DumpExtension) {
   writeToFile<IGC::Debug::DumpType::TRANSLATED_IR_TEXT>(
-      DumpName, [&M](llvm::raw_ostream &OS) { M.print(OS, nullptr); });
+      DumpName, DumpExtension,
+      [&M](llvm::raw_ostream &OS) { M.print(OS, nullptr); });
 }
 
 void VC_IGCFileDumper::dumpCos(llvm::StringRef Contents,
-                               llvm::StringRef DumpName) {
+                               llvm::StringRef DumpName,
+                               llvm::StringRef DumpExtension) {
   writeToFile<IGC::Debug::DumpType::COS_TEXT>(
-      DumpName, [Contents](llvm::raw_ostream &OS) { OS << Contents; });
+      DumpName, DumpExtension,
+      [Contents](llvm::raw_ostream &OS) { OS << Contents; });
 }
 
-std::string VC_IGCFileDumper::composeDumpPath(llvm::StringRef DumpName) const {
-  return addDumpPostfix(DumpPrefix, DumpName).str();
+std::string
+VC_IGCFileDumper::composeDumpPath(llvm::StringRef DumpName,
+                                  llvm::StringRef DumpExtension) const {
+  return getName(DumpName, DumpExtension).str();
 }
 
 namespace vc {

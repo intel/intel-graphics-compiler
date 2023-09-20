@@ -421,10 +421,10 @@ static void dumpInputData(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
   if (!IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     return;
 
-  Dumper.dumpText(ApiOptions, IsRaw ? "options_raw.txt" : "options.txt");
+  Dumper.dumpText(ApiOptions, IsRaw ? "options_raw" : "options");
   Dumper.dumpText(InternalOptions,
-                  IsRaw ? "internal_options_raw.txt" : "internal_options.txt");
-  Dumper.dumpBinary(Input, IsRaw ? "igc_input_raw.spv" : "igc_input.spv");
+                  IsRaw ? "internal_options_raw" : "internal_options");
+  Dumper.dumpBinary(Input, IsRaw ? "igc_input_raw" : "igc_input", "spv");
 }
 
 static bool tryAddAuxiliaryOptions(llvm::StringRef AuxOpt,
@@ -564,7 +564,7 @@ static void dumpPlatform(const vc::CompileOptions &Opts, PLATFORM Platform,
      << (Opts.CPUStr.empty() ? "(empty)" : Opts.CPUStr) << ", " << Opts.RevId
      << "\n";
 
-  Dumper.dumpText(Os.str(), "platform.be.txt");
+  Dumper.dumpText(Os.str(), "platform.be");
 #endif
 }
 
@@ -663,13 +663,14 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     return getError(ExpOutput.takeError(), OutputArgs);
   auto &CompileResult = ExpOutput.get();
 
+  vc::CGen8CMProgram CMProgram{Opts, IGCPlatform.getPlatformInfo(),
+                               IGCPlatform.getWATable(), Input};
+  vc::createBinary(CMProgram, CompileResult);
+
   switch (Opts.Binary) {
   case vc::BinaryKind::OpenCL: {
-    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
-                                 IGCPlatform.getWATable()};
-    vc::createBinary(CMProgram, CompileResult);
     validateCMProgramForOCLBin(CMProgram);
-    CMProgram.CreateKernelBinaries(Opts);
+    CMProgram.CreateKernelBinaries();
     Util::BinaryStream ProgramBinary;
     CMProgram.GetProgramBinary(ProgramBinary, CompileResult.PointerSizeInBytes);
     llvm::StringRef BinaryRef{ProgramBinary.GetLinearPointer(),
@@ -688,16 +689,15 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     break;
   }
   case vc::BinaryKind::ZE: {
-    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
-                                 IGCPlatform.getWATable(), Input,
-                                 llvm::StringRef(Opts.ApiOptions)};
-    vc::createBinary(CMProgram, CompileResult);
     llvm::SmallVector<char, 0> ProgramBinary;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
     CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
 
     if (CMProgram.HasErrors())
       return getError(CMProgram.GetError(), OutputArgs);
+
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+      Opts.Dumper->dumpBinary(ProgramBinary, "", "progbin");
 
     llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
     outputBinary(BinaryRef, {}, Diag, OutputArgs);

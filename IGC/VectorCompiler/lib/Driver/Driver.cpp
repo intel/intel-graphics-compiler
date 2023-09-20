@@ -468,7 +468,7 @@ static void printLLVMTimers(const vc::CompileOptions &Opts) {
     return;
 
   if (Opts.Dumper)
-    Opts.Dumper->dumpText(OutStr, "time_passes.txt");
+    Opts.Dumper->dumpText(OutStr, "time_passes");
 
   // FIXME: it's not quite clear why we need to print stats to errs(),
   // if we have shader dumper
@@ -497,7 +497,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   Module &M = *ExpModule.get();
 
   if (Opts.DumpIR && Opts.Dumper)
-    Opts.Dumper->dumpModule(M, "after_spirv_reader.ll");
+    Opts.Dumper->dumpModule(M, "after_spirv_reader");
 
   if (Opts.StripDebugInfoCtrl == DebugInfoStripControl::All)
     llvm::StripDebugInfo(M);
@@ -539,17 +539,17 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
     llvm::EnableStatistics(false /*DoPrintOnExit = false */);
 
   if (Opts.DumpIR && Opts.Dumper)
-    Opts.Dumper->dumpModule(M, "after_ir_adaptors.ll");
+    Opts.Dumper->dumpModule(M, "after_ir_adaptors");
 
   optimizeIR(Opts, ExtData, TM, M);
 
   if (Opts.DumpIR && Opts.Dumper)
-    Opts.Dumper->dumpModule(M, "optimized.ll");
+    Opts.Dumper->dumpModule(M, "optimized");
 
   vc::CompileOutput Output = runCodeGen(Opts, ExtData, TM, M);
 
   if (Opts.DumpIR && Opts.Dumper)
-    Opts.Dumper->dumpModule(M, "final.ll");
+    Opts.Dumper->dumpModule(M, "final");
 
   printLLVMStats(Opts);
   printLLVMTimers(Opts);

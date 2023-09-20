@@ -232,9 +232,11 @@ void handleInlineAsmParseError(const GenXBackendConfig &BC, StringRef VisaErr,
   if (!VisaErr.empty())
     SS << VisaErr << '\n';
   if (BC.hasShaderDumper() && BC.asmDumpsEnabled()) {
-    const char *DumpModuleName = "inline_asm_text.visaasm";
-    SS << "Full module dumped as '" << DumpModuleName << "'\n";
-    BC.getShaderDumper().dumpText(VisaText, DumpModuleName);
+    const char *DumpModuleName = "inline_asm_text";
+    const char *DumpModuleExt = "visaasm";
+    SS << "Full module dumped as '" << DumpModuleName << '.' << DumpModuleExt
+       << "'\n";
+    BC.getShaderDumper().dumpText(VisaText, DumpModuleName, DumpModuleExt);
   } else {
     SS << "Enable dumps to see failed visa module\n";
   }
