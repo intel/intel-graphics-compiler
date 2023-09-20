@@ -452,7 +452,7 @@ private:
     bool nextIsNotMacroCandidate(const Instruction &dpas,
                                  const Instruction &next_inst) const;
 
-    // set register fange from start_reg to upper_reg into bit_set
+    // set register range from start_reg to upper_reg into bit_set
     void setBits(BitSet<> &bit_set, uint32_t start_reg,
                  uint32_t upper_reg) const;
 
