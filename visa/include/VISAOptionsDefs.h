@@ -134,6 +134,8 @@ DEF_VISA_OPTION(vISA_KeepScalarJmp, ET_BOOL, "-keepScalarJmp",
                 "-keepScalarJmp: don't convert scalar jmp to goto", false)
 DEF_VISA_OPTION(vISA_enableCleanupBindless, ET_BOOL, "-cleanBindless", UNUSED,
                 true)
+DEF_VISA_OPTION(vISA_enableCleanupA0Movs, ET_BOOL, "-cleanupA0Movs", UNUSED,
+                true)
 DEF_VISA_OPTION(vISA_EnableSplitVariables, ET_BOOL, "-noSplitVariables", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_ChangeMoveType, ET_BOOL, "-ALTMode", UNUSED, true)

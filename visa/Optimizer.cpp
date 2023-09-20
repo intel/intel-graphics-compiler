@@ -687,6 +687,8 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(initializePayload, vISA_InitPayload, TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(cleanupBindless, vISA_enableCleanupBindless,
                   TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(cleanupA0Movs, vISA_enableCleanupA0Movs,
+                  TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(countGRFUsage, vISA_PrintRegUsage, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(changeMoveType, vISA_ChangeMoveType, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(accSubBeforeRA, vISA_accSubBeforeRA, TimerID::OPTIMIZER);
@@ -865,6 +867,8 @@ int Optimizer::optimization() {
   runPass(PI_localDefHoisting);
 
   runPass(PI_removePartialMovs);
+
+  runPass(PI_cleanupA0Movs);
 
   // remove redundant movs and fold some other patterns
   runPass(PI_localCopyPropagation);
@@ -2711,10 +2715,6 @@ void Optimizer::localCopyPropagation() {
                     src->asSrcRegRegion()->getAddrImm());
               }
             }
-          } else if (inst->hasOneUse()) {
-            new_src_opnd = src;
-            new_src_opnd->asSrcRegRegion()->setModifier(new_mod);
-            new_src_opnd->asSrcRegRegion()->setType(builder, propType);
           } else {
             new_src_opnd = builder.duplicateOperand(src);
             new_src_opnd->asSrcRegRegion()->setModifier(new_mod);
@@ -4578,6 +4578,77 @@ G4_Operand *Optimizer::updateSendsHeaderReuse(
   return nullptr;
 }
 
+void Optimizer::cleanupA0Movs() {
+  for (auto bb : fg) {
+    InstValues values(4);
+    for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd;) {
+      G4_INST *inst = *iter;
+
+      auto isDstExtDesc = [](G4_INST *inst) {
+        G4_DstRegRegion *dst = inst->getDst();
+        if (dst && dst->getTopDcl() && dst->getTopDcl()->isMsgDesc()) {
+          // check that its single use is at src3 of split send
+          if (inst->use_size() != 1) {
+            return false;
+          }
+          auto use = inst->use_front();
+          G4_INST *useInst = use.first;
+          if (useInst->isSend()) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (isDstExtDesc(inst)) {
+        G4_INST *valInst = values.findValue(inst);
+        if (valInst != nullptr) {
+          VISA_DEBUG_VERBOSE({
+            std::cout << "can replace \n";
+            inst->emit(std::cout);
+            std::cout << "\n with \n";
+            valInst->emit(std::cout);
+            std::cout << "\n";
+          });
+          for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I) {
+            // each use is in the form of A0(0,0)<0;1,0>:ud in a send
+            G4_INST *useInst = I->first;
+            Gen4_Operand_Number num = I->second;
+            vISA_ASSERT(useInst->isSend(), "use inst must be a send");
+            G4_SrcRegRegion *newExDesc =
+                builder.createSrc(valInst->getDst()->getBase(), 0, 0,
+                                  builder.getRegionScalar(), Type_UD);
+            useInst->setSrc(newExDesc, useInst->getSrcNum(num));
+          }
+          (*iter)->removeAllDefs();
+          (*iter)->transferUse(valInst);
+          iter = bb->erase(iter);
+          continue;
+        } else {
+          VISA_DEBUG_VERBOSE({
+            std::cout << "add new value:\n";
+            inst->emit(std::cout);
+            std::cout << "\n";
+          });
+          // this is necessary since for msg desc we always the physical a0.0,
+          // so a new inst will invalidate the previous one
+          values.deleteValue(inst);
+          values.addValue(inst);
+        }
+      } else {
+        G4_DstRegRegion *dst = inst->getDst();
+        if (dst && dst->isDirectAddress()) {
+          // If the address register is used for none extdesc
+          values.clear();
+        } else {
+          values.deleteValue(inst);
+        }
+      }
+      ++iter;
+    }
+  }
+}
+
 //
 // Perform value numbering on writes to the extended msg descriptor for bindless
 // access of the form op (1) a0.2<1>:ud src0 src1 src2 {NoMask} and remove
@@ -4647,15 +4718,14 @@ void Optimizer::cleanupBindless() {
       auto isDstExtDesc = [](G4_INST *inst) {
         G4_DstRegRegion *dst = inst->getDst();
         if (dst && dst->getTopDcl() && dst->getTopDcl()->isMsgDesc()) {
-          // check that its single use is at src3 of split send
-          if (inst->use_size() != 1) {
-            return false;
+          // if a use is something other than a send, do not perform the
+          // optimization
+          for (auto use = inst->use_begin(); use != inst->use_end(); use++) {
+            G4_INST* useInst = use->first;
+            if (!useInst->isSend())
+              return false;
           }
-          auto use = inst->use_front();
-          G4_INST *useInst = use.first;
-          if (useInst->isSend()) {
-            return true;
-          }
+          return true;
         }
         return false;
       };
@@ -4663,13 +4733,13 @@ void Optimizer::cleanupBindless() {
       if (isDstExtDesc(inst)) {
         G4_INST *valInst = values.findValue(inst);
         if (valInst != nullptr) {
-#if 0
-                        std::cout << "can replace \n";
-                        inst->emit(std::cout);
-                        std::cout << "\n with \n";
-                        valInst->emit(std::cout);
-                        std::cout << "\n";
-#endif
+          VISA_DEBUG_VERBOSE({
+            std::cout << "can replace \n";
+            inst->emit(std::cout);
+            std::cout << "\n with \n";
+            valInst->emit(std::cout);
+            std::cout << "\n";
+          });
           for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I) {
             // each use is in the form of A0(0,0)<0;1,0>:ud in a send
             G4_INST *useInst = I->first;

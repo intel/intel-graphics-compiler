@@ -210,6 +210,7 @@ private:
   void hoistBarrierHeaderToTop(G4_SrcRegRegion *);
   /* end of member functions for message header opt */
   void cleanupBindless();
+  void cleanupA0Movs();
   G4_Operand *updateSendsHeaderReuse(std::vector<std::vector<G4_INST *>> &,
                                      std::vector<G4_INST *> &, INST_LIST_ITER);
   void countGRFUsage();
@@ -374,6 +375,7 @@ public:
     PI_createR0Copy,
     PI_initializePayload,
     PI_cleanupBindless,
+    PI_cleanupA0Movs,
     PI_countGRFUsage,
     PI_changeMoveType,
     PI_accSubBeforeRA,
