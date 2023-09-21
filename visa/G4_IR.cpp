@@ -62,6 +62,7 @@ static const G4_InstOptInfo InstOptInfo[] = {
     {InstOpt_NoSrcDepSet, "NoSrcDepSet"},
     {InstOpt_NoPreempt, "NoPreempt"},
     {InstOpt_Serialize, "Serialize"},
+    {InstOpt_CachelineAligned, "CachelineAligned"},
     {InstOpt_END, "END"}};
 
 #define HANDLE_INST(op, nsrc, ndst, type, plat, attr)                          \
