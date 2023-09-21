@@ -1755,6 +1755,12 @@ namespace IGC
         return false;
     }
 
+    llvm::GenISAIntrinsic::ID GetOutputPSIntrinsic(const CPlatform& platform)
+    {
+        constexpr llvm::GenISAIntrinsic::ID iid = llvm::GenISAIntrinsic::GenISA_OUTPUT;
+        return iid;
+    }
+
     bool ComputesGradient(llvm::Instruction* inst)
     {
         llvm::SampleIntrinsic* sampleInst = dyn_cast<llvm::SampleIntrinsic>(inst);

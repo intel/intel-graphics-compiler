@@ -191,6 +191,7 @@ namespace IGC
     bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemStoreIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemAtomicIntrinsic(llvm::GenIntrinsicInst& inst, llvm::GenISAIntrinsic::ID id);
+    llvm::GenISAIntrinsic::ID GetOutputPSIntrinsic(const CPlatform& platform);
 
     bool isURBWriteIntrinsic(const llvm::Instruction* inst);
 

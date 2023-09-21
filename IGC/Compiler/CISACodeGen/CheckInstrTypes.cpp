@@ -266,7 +266,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         if (GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(&C))
         {
             GenISAIntrinsic::ID IID = CI->getIntrinsicID();
-            if (IID != GenISA_OUTPUT && IID != GenISA_discard)
+            if (IID != GetOutputPSIntrinsic(context->platform) && IID != GenISA_discard)
             {
                 g_InstrTypes.psHasSideEffect = true;
             }

@@ -2903,7 +2903,6 @@ private:
     static DenseSet<const Value*> tryAndFoldValues(ArrayRef<Instruction*> Values);
     static BasicBlock* SplitBasicBlock(Instruction* inst, const DenseSet<const Value*>& FoldedVals);
     static bool FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*>& FoldedVals);
-    static void MoveOutputToConvergeBlock(BasicBlock* divergeBlock, BasicBlock* convergeBlock);
     static bool EarlyOutBenefit(
         const Instruction* earlyOutInst,
         const DenseSet<const Value*>& FoldedVals,
@@ -3661,7 +3660,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                     for (auto iter = GII->getParent()->begin(); iter != GII->getParent()->end(); iter++)
                     {
                         GenIntrinsicInst* outI = dyn_cast<GenIntrinsicInst>(iter);
-                        if (outI && outI->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT)
+                        if (outI && outI->getIntrinsicID() == GetOutputPSIntrinsic(m_ctx->platform))
                         {
                             outputCount++;
                         }
@@ -3959,23 +3958,6 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
     builder.SetInsertPoint(currentBB);
     builder.CreateCondBr(inst, ifBlock, elseBlock);
     return elseBlock;
-}
-
-void EarlyOutPatterns::MoveOutputToConvergeBlock(BasicBlock* divergeBlock, BasicBlock* convergeBlock)
-{
-    for (auto it = divergeBlock->begin(), ie = divergeBlock->end(); it != ie; )
-    {
-        Instruction* I = &(*it);
-        ++it;
-        if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(I))
-        {
-            auto id = intr->getIntrinsicID();
-            if (id == GenISAIntrinsic::GenISA_OUTPUT)
-            {
-                intr->moveBefore(convergeBlock->getTerminator());
-            }
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////

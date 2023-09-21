@@ -130,8 +130,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
     {
         for (auto& II : BI)
         {
-            GenIntrinsicInst* out = dyn_cast<GenIntrinsicInst>(
-                &II, GenISAIntrinsic::GenISA_OUTPUT);
+            GenIntrinsicInst* out = dyn_cast<GenIntrinsicInst>(&II, GetOutputPSIntrinsic(m_cgCtx->platform));
 
             if (out)
             {
