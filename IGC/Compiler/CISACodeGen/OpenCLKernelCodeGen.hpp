@@ -81,6 +81,7 @@ namespace IGC
 
             bool IntelExpGRFSize                            = false;
             uint32_t expGRFSize                             = 0;
+            bool IntelEnableAutoLargeGRF = false;
 
             // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
             // IntelForceInt32DivRemEmu wins if both are set and can be applied.

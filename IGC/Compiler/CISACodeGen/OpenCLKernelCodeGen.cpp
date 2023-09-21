@@ -341,6 +341,11 @@ namespace IGC
             valStr.getAsInteger(10, expGRFSize);
         }
 
+        if (internalOptions.hasArg(OPT_enable_auto_large_GRF_mode_common))
+        {
+            IntelEnableAutoLargeGRF = true;
+        }
+
         if (internalOptions.hasArg(OPT_disable_recompilation_common))
         {
             IGC_SET_FLAG_VALUE(DisableRecompilation, true);

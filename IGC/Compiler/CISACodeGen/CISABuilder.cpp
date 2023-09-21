@@ -4588,6 +4588,7 @@ namespace IGC
                 }
                 else if (m_program->m_Platform->supportsAutoGRFSelection() &&
                     (context->m_DriverInfo.supportsAutoGRFSelection() ||
+                      ClContext->m_InternalOptions.IntelEnableAutoLargeGRF ||
                       ClContext->m_Options.IntelEnableAutoLargeGRF) &&
                     !ClContext->m_InternalOptions.Intel128GRFPerThread &&
                     !ClContext->m_Options.Intel128GRFPerThread &&
