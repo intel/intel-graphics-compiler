@@ -522,19 +522,6 @@ void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst& I, IGC::StatusP
         I.getContext(),
         MDString::get(I.getContext(), reason));
 
-
-    auto allocationSize = I.getAllocationSizeInBits(m_ctx->getModule()->getDataLayout());
-
-    if (allocationSize)
-    {
-        auto scratchUsage_i = m_ctx->m_ScratchSpaceUsage.find(I.getFunction());
-        if (scratchUsage_i == m_ctx->m_ScratchSpaceUsage.end())
-        {
-            m_ctx->m_ScratchSpaceUsage.insert({ I.getFunction(), 0 });
-        }
-        m_ctx->m_ScratchSpaceUsage[I.getFunction()] += allocationSize.getValue() / 8;
-    }
-
     UserAddrSpaceMD& userASMD = m_ctx->m_UserAddrSpaceMD;
     std::function<void(Instruction*, MDNode*)> markAS_PRIV;
     markAS_PRIV = [&markAS_PRIV, &userASMD](Instruction* instr, MDNode* node) -> void

@@ -730,6 +730,21 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         return false;
     }
 
+    for (AllocaInst* aInst : allocaInsts)
+    {
+        auto allocationSize = aInst->getAllocationSizeInBits(m_currFunction->getParent()->getDataLayout());
+
+        if (allocationSize)
+        {
+            auto scratchUsage_i = Ctx.m_ScratchSpaceUsage.find(m_currFunction);
+            if (scratchUsage_i == Ctx.m_ScratchSpaceUsage.end())
+            {
+                Ctx.m_ScratchSpaceUsage.insert({ m_currFunction, 0 });
+            }
+            Ctx.m_ScratchSpaceUsage[m_currFunction] += allocationSize.getValue() / 8;
+        }
+    }
+
     if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold))
     {
         sinkAllocaSingleUse(allocaInsts);
