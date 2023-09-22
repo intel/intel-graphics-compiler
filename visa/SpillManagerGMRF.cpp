@@ -3282,6 +3282,11 @@ void SpillManagerGRF::insertSendFillRangeCode(
     G4_SrcRegRegion *filledRegion, INST_LIST::iterator filledInstIter,
     G4_BB *bb) {
   G4_INST *sendInst = *filledInstIter;
+  auto spillDcl = filledRegion->getTopDcl()->getRootDeclare();
+
+  if (immFill(filledRegion, filledInstIter, bb, spillDcl)) {
+    return;
+  }
 
   unsigned width =
       builder_->numEltPerGRF<Type_UB>() / filledRegion->getElemSize();
