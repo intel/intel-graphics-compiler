@@ -311,7 +311,8 @@ static void CommonOCLBasedPasses(
         pContext->m_InternalOptions.EmitZeBinVISASections;
 
     CompilerOpts.FP64GenEmulationEnabled =
-        pContext->m_InternalOptions.EnableFP64GenEmu;
+        pContext->m_InternalOptions.EnableFP64GenEmu ||
+        pContext->m_Options.EnableFP64GenEmu;
 
     CompilerOpts.LoadCacheDefault =
         pContext->m_InternalOptions.LoadCacheDefault;

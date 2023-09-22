@@ -52,6 +52,9 @@ defm greater_than_4GB_buffer_required : CommonFlag<"greater-than-4GB-buffer-requ
 // -cl-poison-unsupported-fp64-kernels -ze-poison-unsupported-fp64-kernels
 defm poison_unsupported_fp64_kernels : CommonFlag<"poison-unsupported-fp64-kernels">;
 
+// -cl-fp64-gen-emu  -ze-fp64-gen-emu
+defm fp64_gen_emu : CommonFlag<"fp64-gen-emu">;
+
 // }} Backend API options
 
 // API options from source translation {{

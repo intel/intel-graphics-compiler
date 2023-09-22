@@ -720,6 +720,13 @@ namespace IGC
             // operations on platforms without HW support for fp64.
             EnableUnsupportedFP64Poisoning = true;
         }
+
+        if (apiOptions.hasArg(OPT_fp64_gen_emu_common))
+        {
+            // This option enables FP64 emulation for platforms that
+            // cannot HW support for double operations
+            EnableFP64GenEmu = true;
+        }
     };
 
     unsigned OpenCLProgramContext::GetSlmSizePerSubslice()
