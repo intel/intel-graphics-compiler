@@ -183,18 +183,20 @@ friend class Scorer;
 
 public:
 
-    ReductionCandidateGroup(GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
-        : Step(Step), Base(GEP, S, 0), RT(REDUCE_TO_PREHEADER) {}
+    ReductionCandidateGroup(const Loop *L, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
+        : L(L), Step(Step), Base(GEP, S, 0), RT(REDUCE_TO_PREHEADER) {}
 
     bool addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, int64_t Step);
 
-    void transform(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEVExpander &E);
+    void transform(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
     // Return how many GEP instructions will be reduced.
     uint32_t getGEPCount() { return 1 + Others.size(); }
 
     ReductionType getReductionType() { return RT; }
     void setReductionType(ReductionType RT) { this->RT = RT; }
+
+    const Loop *getLoop() { return L; }
 
     Score getScore() { return Score; }
 
@@ -203,14 +205,14 @@ public:
 private:
 
     void append(GetElementPtrInst *GEP, const SCEV *S, int64_t Delta);
-    void append(ReductionCandidate& C) { append(C.GEP, C.S, C.Delta); }
+    void append(ReductionCandidate &C) { append(C.GEP, C.S, C.Delta); }
 
-    ReductionCandidate& getCheapestCandidate();
+    ReductionCandidate &getCheapestCandidate();
 
     void swapBase(ReductionCandidate &C);
 
-    void reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEVExpander &E);
-    void reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEVExpander &E);
+    void reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
+    void reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
     // Base GEP to reduce
     ReductionCandidate Base;
@@ -225,6 +227,8 @@ private:
     // to preheader, as it should give smallest increase in register pressure.
     std::optional<ReductionCandidate> Cheapest;
 
+    const Loop *L;
+
     Score Score;
 
     ReductionType RT;
@@ -237,8 +241,8 @@ private:
 class Scorer
 {
 public:
-    Scorer(const DataLayout &DL, Loop &L, ModuleMetaData &MMD)
-        : DL(DL), L(L), MMD(MMD) {}
+    Scorer(const DataLayout &DL, ModuleMetaData &MMD)
+        : DL(DL), MMD(MMD) {}
 
     void score(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
 
@@ -248,24 +252,22 @@ private:
     void scoreReducedInstructions(ReductionCandidateGroup &Candidate);
     void scoreRegisterPressure(ReductionCandidateGroup &Candidate);
 
-    int estimateIndexInstructions(GetElementPtrInst *GEP);
-    int estimatePointerAddition(ReductionCandidateGroup& Candidate);
+    int estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP);
+    int estimatePointerAddition(ReductionCandidateGroup &Candidate);
 
     const DataLayout &DL;
-    Loop &L;
     ModuleMetaData &MMD;
 };
 
 
-
-// Does reduction on single loop.
-class Reducer
+// Analyzes GEP instructions in a single loop and selects candidates for reduction.
+class Analyzer
 {
 public:
-    Reducer(const DataLayout &DL, DominatorTree &DT, Loop &L, LoopInfo &LI, ModuleMetaData &MMD, RegisterPressureEstimate &RPE, ScalarEvolution &SE, SCEVExpander &E, unsigned MaxPressure, bool AllowLICM)
-        : DT(DT), L(L), LI(LI), RPE(RPE), SE(SE), E(E), MaxPressure(MaxPressure), AllowLICM(AllowLICM), Scorer(DL, L, MMD) {}
+    Analyzer(const DataLayout &DL, DominatorTree &DT, Loop &L, LoopInfo &LI, ScalarEvolution &SE, SCEVExpander &E)
+        : DT(DT), L(L), LI(LI), SE(SE), E(E) {}
 
-    bool reduce();
+    void analyze(SmallVectorImpl<ReductionCandidateGroup> &Result);
 
 private:
     void analyzeGEP(GetElementPtrInst *GEP);
@@ -273,21 +275,85 @@ private:
 
     bool deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step);
 
-    void filterCandidates();
-
     DominatorTree &DT;
     Loop &L;
     LoopInfo &LI;
-    RegisterPressureEstimate &RPE;
     ScalarEvolution &SE;
     SCEVExpander &E;
 
-    Scorer Scorer;
+    SmallVector<ReductionCandidateGroup, 16> Candidates;
+};
+
+
+// Tracks estimated register pressure. Takes into account initial pressure
+// (before this pass) and any changes made by reductions. Keeps tracks
+// where SCEV Expander inserts new instructions. For example:
+//
+//   loop A:
+//     loop B1
+//     loop B2
+//
+// Reduction in loop B1 might insert instruction to basic block with more global
+// scope than loop B1 itself, for example to loop A's header. These new variables
+// will have longer lifecycle than loop B1 and will impact available pressure
+// budged for loop B2's reductions.
+class RegisterPressureTracker
+{
+public:
+    RegisterPressureTracker(CodeGenContext &CGC, RegisterPressureEstimate &RPE, SmallVectorImpl<ReductionCandidateGroup> &Candidates);
+
+    bool fitsPressureThreshold(ReductionCandidateGroup &C);
+    void updatePressure(ReductionCandidateGroup &C, SCEVExpander &E);
+
+private:
+
+    struct LoopEstimation
+    {
+        LoopEstimation(const Loop *L, unsigned InitialPressure): L(L), InitialPressure(InitialPressure), NewInstructions(0) {}
+
+        const Loop *L;
+
+        // Initial register pressure returned by pressure analysis pass.
+        unsigned InitialPressure;
+
+        // New instructions inserted by reductions.
+        unsigned NewInstructions;
+    };
+
+    void cacheInitialPressure(const Loop *L);
+
+#if LLVM_VERSION_MAJOR < 14
+    SmallVector<Instruction*, 32> getInsertedInstructions(ReductionCandidateGroup &C, SCEVExpander &E);
+#endif
+
+    RegisterPressureEstimate &RPE;
+    DenseMap<const Loop*, LoopEstimation> LoopEstimations;
+    unsigned MaxPressure;
+
+    // Instructions added outside of scope of any loop.
+    unsigned NewGlobalInsts;
+
+    // Keep track what new instructions inserted by SCEV Expander were already added to estimation.
+    SmallPtrSet<Instruction*, 32> VisitedNewInsts;
+};
+
+
+// Does reduction on collected candidates.
+class Reducer
+{
+public:
+    Reducer(IGCLLVM::IRBuilder<> &IRB, RegisterPressureTracker &RPT, SCEVExpander &E, bool AllowLICM)
+        : IRB(IRB), RPT(RPT), E(E), AllowLICM(AllowLICM) {}
+
+    bool reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
+
+private:
+
+    IGCLLVM::IRBuilder<> &IRB;
+    RegisterPressureTracker &RPT;
+    SCEVExpander &E;
 
     bool AllowLICM;
-    const unsigned MaxPressure;
-
-    SmallVector<ReductionCandidateGroup, 16> Candidates;
 };
 
 
@@ -366,7 +432,9 @@ void ReductionCandidate::print(raw_ostream &OS)
 
 void ReductionCandidateGroup::print(raw_ostream &OS)
 {
-    OS << "{base=";
+    OS << "{loop=";
+    OS << L->getName();
+    OS << ", base=";
     Base.print(OS);
     OS << ", others=[";
     for (auto it = Others.begin(); it != Others.end();)
@@ -481,15 +549,15 @@ ReductionCandidate &ReductionCandidateGroup::getCheapestCandidate()
 }
 
 
-void ReductionCandidateGroup::transform(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEVExpander &E)
+void ReductionCandidateGroup::transform(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E)
 {
     switch (RT)
     {
     case REDUCE_TO_PREHEADER:
-        return reduceToPreheader(IRB, L, E);
+        return reduceToPreheader(IRB, E);
     case REDUCE_INDEX_ONLY:
     default:
-        return reduceIndexOnly(IRB, L, E);
+        return reduceIndexOnly(IRB, E);
     }
 }
 
@@ -498,13 +566,13 @@ void ReductionCandidateGroup::transform(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEV
 //   1) Calculate start value in loop's preheader
 //   2) Add this new pointer as loop's induction variable with constant step
 //   3) Replace GEP instructions to use this pointer + constant offset
-void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEVExpander &E)
+void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E)
 {
     // Updates group's base to candidate with smallest SCEV expression.
     swapBase(getCheapestCandidate());
 
     // Create pointer's starting value in preheader
-    BasicBlock *LPH = L.getLoopPreheader();
+    BasicBlock *LPH = L->getLoopPreheader();
     const SCEV *Start = Base.S;
     Value *StartIndex = E.expandCodeFor(Start, Start->getType(), &LPH->back());
 
@@ -518,9 +586,9 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, Loop 
     {
         // Add new phi node with pointer as induction variable
         SmallVector<BasicBlock*, 4> Latches;
-        L.getLoopLatches(Latches);
+        L->getLoopLatches(Latches);
 
-        IRB.SetInsertPoint(L.getHeader(), L.getHeader()->begin());
+        IRB.SetInsertPoint(L->getHeader(), L->getHeader()->begin());
         PHINode *Phi = IRB.CreatePHI(Pointer->getType(), Latches.size() + 1);
 
         Phi->addIncoming(Pointer, LPH);
@@ -552,7 +620,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, Loop 
 
 // Keeps base GEP untouched and transforms other GEPs in the group to use
 // base GEP + constant offset.
-void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, Loop &L, SCEVExpander &E)
+void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E)
 {
     for (auto &Other : Others)
     {
@@ -615,7 +683,7 @@ void Scorer::scoreReducedInstructions(ReductionCandidateGroup &Candidate)
     if (score < 1)
     {
         // Score "index"
-        score += estimateIndexInstructions(Cheapest.GEP);
+        score += estimateIndexInstructions(*Candidate.getLoop(), Cheapest.GEP);
     }
 
     Candidate.Score.ReducedInstructions = score;
@@ -623,7 +691,7 @@ void Scorer::scoreReducedInstructions(ReductionCandidateGroup &Candidate)
 
 
 // Estimate if compiler will emit "base_ptr + offset" instruction.
-int Scorer::estimatePointerAddition(ReductionCandidateGroup& Candidate)
+int Scorer::estimatePointerAddition(ReductionCandidateGroup &Candidate)
 {
     if (Candidate.Base.GEP->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
         return 1;
@@ -631,10 +699,10 @@ int Scorer::estimatePointerAddition(ReductionCandidateGroup& Candidate)
     // Local address space pointers are replaced to constant integers by GenIRLowering
     // pass (CG phase), giving more chances to optimize pointer arithmetics.
 
-    FunctionMetaData& FMD = MMD.FuncMD[Candidate.Base.GEP->getFunction()];
+    FunctionMetaData &FMD = MMD.FuncMD[Candidate.Base.GEP->getFunction()];
 
     // Check if base pointer is zero ("0 + offset" will be optimized out).
-    for (auto& Offets : FMD.localOffsets)
+    for (auto &Offets : FMD.localOffsets)
     {
         if (Candidate.Base.GEP->getPointerOperand() == Offets.m_Var)
         {
@@ -651,7 +719,7 @@ int Scorer::estimatePointerAddition(ReductionCandidateGroup& Candidate)
 // Estimates how many instructions required to calculate index would be reduced to preheader.
 // This differs from checking SCEV expression size, which it might represent simplified index
 // calculation.
-int Scorer::estimateIndexInstructions(GetElementPtrInst *GEP)
+int Scorer::estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP)
 {
     Instruction *Index = dyn_cast<Instruction>(*(GEP->operands().end() - 1));
     if (!Index)
@@ -712,12 +780,13 @@ void Scorer::scoreRegisterPressure(ReductionCandidateGroup &Candidate)
 }
 
 
-bool Reducer::reduce()
+void Analyzer::analyze(SmallVectorImpl<ReductionCandidateGroup> &Result)
 {
     if (!IGCLLVM::isInnermost(&L) || !L.isLoopSimplifyForm())
-        return false;
+        return;
 
-    // Collect candidates
+    Candidates.clear();
+
     for (auto *BB : L.getBlocks()) {
         for (auto &I : *BB) {
             if (auto *GEP = dyn_cast<GetElementPtrInst>(&I))
@@ -725,27 +794,12 @@ bool Reducer::reduce()
         }
     }
 
-    Scorer.score(Candidates);
-
-    filterCandidates();
-
-    if (Candidates.empty())
-        return false;
-
-    // Transform candidates
-    IGCLLVM::IRBuilder<> IRB(L.getLoopPreheader());
-
-    for (auto &C : Candidates)
-    {
-        C.transform(IRB, L, E);
-    }
-
-    return true;
+    Result.append(Candidates.begin(), Candidates.end());
 }
 
 
 // Checks if GEP instruction can be transformed.
-void Reducer::analyzeGEP(GetElementPtrInst *GEP)
+void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
 {
     if (!doInitialValidation(GEP))
         return;
@@ -775,7 +829,7 @@ void Reducer::analyzeGEP(GetElementPtrInst *GEP)
         }
     }
 
-    Candidates.emplace_back(GEP, Start, Step);
+    Candidates.emplace_back(&L, GEP, Start, Step);
     LLVM_DEBUG(
         dbgs() << "  found new candidate to optimize: ";
         Candidates.back().print(dbgs());
@@ -784,7 +838,7 @@ void Reducer::analyzeGEP(GetElementPtrInst *GEP)
 
 // Does early GEP instruction analysis, before reaching for SCEV analysis.
 // Returns false if GEP can be dropped early.
-bool Reducer::doInitialValidation(GetElementPtrInst *GEP)
+bool Analyzer::doInitialValidation(GetElementPtrInst *GEP)
 {
     // Optimize only explicit global/local memory access. Private memory might be
     // promoted to GRFs, keep them as is.
@@ -803,7 +857,7 @@ bool Reducer::doInitialValidation(GetElementPtrInst *GEP)
     // In this case transformation is still possible if casting is moved to preheader.
 
     // Only last index can be variable
-    if (!std::all_of(GEP->indices().begin(), GEP->indices().end() - 1, [](Value* V) { return isa<Constant>(V); }))
+    if (!std::all_of(GEP->indices().begin(), GEP->indices().end() - 1, [](Value *V) { return isa<Constant>(V); }))
         return false;
     Value *Index = *(GEP->indices().end() - 1);
 
@@ -852,7 +906,7 @@ bool Reducer::doInitialValidation(GetElementPtrInst *GEP)
 // Takes SCEV expression returned by ScalarEvolution and deconstructs it into
 // expected format { start, +, step }. Returns false if expressions can't be
 // parsed and reduced.
-bool Reducer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
+bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
 {
     S = SCEVHelper::dropExt(S);
 
@@ -930,14 +984,188 @@ bool Reducer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
 }
 
 
-// Drops GEP instructions unfit for reduction.
-void Reducer::filterCandidates()
+RegisterPressureTracker::RegisterPressureTracker(CodeGenContext &CGC, RegisterPressureEstimate &RPE, SmallVectorImpl<ReductionCandidateGroup> &Candidates)
+    : RPE(RPE), NewGlobalInsts(0)
 {
-    LLVM_DEBUG(
-        dbgs() << "  found " << Candidates.size() << " candidates to reduce in loop " << L.getName() << "\n");
+    MaxPressure = static_cast<unsigned>(
+        CGC.getNumGRFPerThread() / 128.0f * CGC.platform.getGRFSize() / 32.0f * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio));
 
-    if (Candidates.empty())
+    // Collect initial pressures for all analyzed loops and their parents.
+    for (auto &C : Candidates)
+        cacheInitialPressure(C.getLoop());
+}
+
+
+void RegisterPressureTracker::cacheInitialPressure(const Loop *L)
+{
+    if (!L)
         return;
+
+    if (LoopEstimations.count(L))
+        return;
+
+    // Initial pressure is loop's preheader.
+    LoopEstimations.try_emplace(L, L, RPE.getMaxRegisterPressure(L->getLoopPreheader()));
+
+    // Cache parent loop too.
+    cacheInitialPressure(L->getParentLoop());
+}
+
+
+bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
+{
+    auto *L = C.getLoop();
+
+    auto It = LoopEstimations.find(L);
+    IGC_ASSERT(It != LoopEstimations.end());
+
+    unsigned InitialPressure = It->second.InitialPressure;
+
+    // Look for new instructions added to loop and its' parents.
+    unsigned NewInsts = It->second.NewInstructions;
+    while ((L = L->getParentLoop()))
+        NewInsts += LoopEstimations.find(L)->second.NewInstructions;
+
+    // Include global instructions too.
+    NewInsts += NewGlobalInsts;
+
+    const unsigned InstsThreshold = IGC_GET_FLAG_VALUE(GEPLSRNewInstructionThreshold);
+    if (NewInsts > InstsThreshold)
+    {
+        LLVM_DEBUG(
+            dbgs() << "  Total of new instructions (" << NewInsts << ") above threshold " << InstsThreshold << "; can't fully reduce ";
+            C.print(dbgs());
+            dbgs() << "\n");
+        return false;
+    }
+
+    // Use number of new instructions to roughly estimate increase in pressure.
+    unsigned EstimatedPressue = InitialPressure + NewInsts;
+    if (EstimatedPressue >= MaxPressure)
+    {
+        LLVM_DEBUG(
+            dbgs() << "  Estimated register pressure " << EstimatedPressue << " above threshold " << MaxPressure << "; can't fully reduce ";
+            C.print(dbgs());
+            dbgs() << "\n");
+        return false;
+    }
+
+    return true;
+}
+
+
+void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExpander &E)
+{
+#if LLVM_VERSION_MAJOR < 14
+    auto AllInsertedInstructions = getInsertedInstructions(C, E);
+#else
+    auto AllInsertedInstructions = E.getAllInsertedInstructions();
+#endif
+
+    for (auto *I : AllInsertedInstructions)
+    {
+        if (isa<PHINode>(I))
+            continue;
+
+        if (VisitedNewInsts.count(I))
+            continue;
+
+        VisitedNewInsts.insert(I);
+
+        auto *L = C.getLoop();
+
+        // Search where new instruction was inserted.
+        do
+        {
+            // Check if SCEV expander inserted new instruction to loop's preheader or  body.
+            BasicBlock *BB = I->getParent();
+            if (BB == L->getLoopPreheader() || L->contains(BB))
+            {
+                LoopEstimations.find(L)->second.NewInstructions += 1;
+                break;
+            }
+
+        } while ((L = L->getParentLoop()));
+
+        if (!L)
+        {
+            // Insruction was not matched with any loop, increase function's global estimate.
+            NewGlobalInsts += 1;
+        }
+    }
+
+    // New GEP instruction added to preheader is not inserted by expander, count it manually.
+    if (C.getReductionType() == REDUCE_TO_PREHEADER)
+        LoopEstimations.find(C.getLoop())->second.NewInstructions += 1;
+}
+
+
+#if LLVM_VERSION_MAJOR < 14
+SmallVector<Instruction*, 32> RegisterPressureTracker::getInsertedInstructions(ReductionCandidateGroup &C, SCEVExpander &E)
+{
+    // Older LLVM versions doesn't have API for quering all new instructions added
+    // by SCEV Expander. Instead, we must manually iterate over all instructions and
+    // query Expander if it inserted the instruction in question.
+
+    SmallVector<Instruction*, 32> Result;
+    SmallPtrSet<BasicBlock*, 32> VisitedBB;
+
+    // To make it faster, only iteratate over this loop and outer loops BBs
+    // (don't iterate over all BBs in the function).
+    auto *L = C.getLoop();
+    do
+    {
+        for (auto BB = L->block_begin(); BB != L->block_end(); ++BB)
+        {
+            if (VisitedBB.count(*BB))
+                continue;
+
+            VisitedBB.insert(*BB);
+
+            // Skip subloops; expander shouldn't insert instructions there.
+            bool isSubloop = false;
+            for (auto SL = L->getSubLoops().begin(); SL != L->getSubLoops().end(); ++SL)
+            {
+                if ((*SL)->contains(*BB))
+                {
+                    isSubloop = true;
+                    break;
+                }
+            }
+
+            if (isSubloop)
+                continue;
+
+            for (auto I = (*BB)->begin(); I != (*BB)->end(); ++I)
+            {
+                if (E.isInsertedInstruction(&*I))
+                    Result.push_back(&*I);
+            }
+        }
+
+        // Check preheader too.
+        if (L->getLoopPreheader())
+        {
+            for (auto I = L->getLoopPreheader()->begin(); I != L->getLoopPreheader()->end(); ++I)
+            {
+                if (E.isInsertedInstruction(&*I))
+                    Result.push_back(&*I);
+            }
+        }
+
+    } while ((L = L->getParentLoop()));
+
+    return Result;
+}
+#endif
+
+
+bool Reducer::reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates)
+{
+    if (Candidates.empty())
+        return false;
+
+    bool changed = false;
 
     // If LICM is disabled, drop all candidates that would move only one GEP instruction to preheader.
     if (!AllowLICM)
@@ -960,21 +1188,14 @@ void Reducer::filterCandidates()
     };
     std::sort(Candidates.begin(), Candidates.end(), Comparator);
 
-    // After sorting candidates, iterate over them and assign preferred reduction method,
-    // keeping register pressure under threshold.
-    unsigned CurrentPressure = RPE.getMaxRegisterPressure(L.getLoopPreheader());
-    unsigned NewPressure = CurrentPressure;
-
+    // After sorting candidates, iterate over them and do reduction, keeping
+    // register pressure under threshold.
     for (auto It = Candidates.begin(); It != Candidates.end(); ++It)
     {
         if (IGC_IS_FLAG_ENABLED(EnableGEPLSRToPreheader) && It->getScore().ReducedInstructions > 0)
         {
             // It is beneficial to reduce to preheader, but keep register pressure in check.
-            if (NewPressure + It->getScore().RegisterPressure < MaxPressure)
-            {
-                NewPressure += It->getScore().RegisterPressure;
-            }
-            else
+            if (!RPT.fitsPressureThreshold(*It))
             {
                 // Above threshold, just simplify index calculation inside loop.
                 It->setReductionType(REDUCE_INDEX_ONLY);
@@ -986,26 +1207,25 @@ void Reducer::filterCandidates()
             // simplify index calculation inside loop.
             It->setReductionType(REDUCE_INDEX_ONLY);
         }
+
+        // Check if nothing would be reduced/simplified.
+        if (It->getReductionType() == REDUCE_INDEX_ONLY && It->getGEPCount() == 1)
+            continue;
+
+        LLVM_DEBUG(
+            dbgs() << "  Executing reduction=" << (It->getReductionType() == REDUCE_TO_PREHEADER ? "TO_PREHEADER" : "INDEX_ONLY") << " for ";
+            It->print(dbgs());
+            dbgs() << "\n");
+
+        It->transform(IRB, E);
+
+        if (It->getReductionType() == REDUCE_TO_PREHEADER)
+            RPT.updatePressure(*It, E);
+
+        changed = true;
     }
 
-    auto CleanupFilter = [&](ReductionCandidateGroup& C)
-    {
-        // Check if nothing would be reduced/simplified.
-        return C.getReductionType() == REDUCE_INDEX_ONLY && C.getGEPCount() == 1;
-    };
-    Candidates.erase(std::remove_if(Candidates.begin(), Candidates.end(), CleanupFilter), Candidates.end());
-
-    LLVM_DEBUG(
-        if (Candidates.empty())
-        {
-            dbgs() << "  dropped all candidates from loop " << L.getName() << "\n";
-        }
-        else
-        {
-            dbgs() << "  selected " << Candidates.size() << " candidates to reduce in loop " << L.getName()
-                   << "; estimated register pressure before reduction=" << CurrentPressure << "; after reduction=" << NewPressure << "\n";
-        }
-    );
+    return changed;
 }
 
 
@@ -1109,18 +1329,25 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
     if (!RPE.isAvailable())
         return false;
 
-    unsigned MaxPressure = static_cast<unsigned>(
-        CGC.getNumGRFPerThread() / 128.0f * CGC.platform.getGRFSize() / 32.0f * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio));
-
-    bool changed = false;
-
     // Using one SCEV expander between all reductions reduces number of duplicated new instructions.
     auto E = SCEVExpander(SE, DL, "gep-loop-strength-reduction");
 
+    SmallVector<ReductionCandidateGroup, 32> Candidates;
+
     for (Loop *L : LI.getLoopsInPreorder())
-    {
-        changed |= Reducer(DL, DT, *L, LI, MMD, RPE, SE, E, MaxPressure, AllowLICM).reduce();
-    }
+        Analyzer(DL, DT, *L, LI, SE, E).analyze(Candidates);
+
+    if (Candidates.empty())
+        return false;
+
+    Scorer(DL, MMD).score(Candidates);
+
+    IGCLLVM::IRBuilder<> IRB(F.getContext());
+    RegisterPressureTracker RPT(CGC, RPE, Candidates);
+
+    bool changed = Reducer(IRB, RPT, E, AllowLICM).reduce(Candidates);
+    if (changed)
+        LLVM_DEBUG(dbgs() << "  Modified function " << F.getName() << "\n");
 
     return changed;
 }
