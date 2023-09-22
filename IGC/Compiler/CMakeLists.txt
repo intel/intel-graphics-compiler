@@ -171,6 +171,9 @@ set(IGC_BUILD__HDR__Compiler
     ${IGC_BUILD__HDR__Compiler_Legalizer}
     ${IGC_BUILD__HDR__Compiler_MetaDataApi}
     ${IGC_BUILD__HDR__Compiler_Optimizer}
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/IGC/LLVM3DBuilder/MetadataBuilder.h"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/IGC/LLVM3DBuilder/BuiltinsFrontend.hpp"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/IGC/LLVM3DBuilder/BuiltinsFrontendDefinitions.hpp"
   )
 if(NOT ANDROID)
   set(IGC_BUILD__HDR_Win_Lin_Dar__Compiler

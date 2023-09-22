@@ -16,11 +16,15 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
+static const char* const NAMED_METADATA_COARSE_PHASE = "coarse_phase";
+static const char* const NAMED_METADATA_PIXEL_PHASE = "pixel_phase";
+static const char* const NAMED_METADATA_SAMPLE_PHASE = "sample_phase";
+
 static const char* g_cRate[] =
 {
-    "coarse_phase",
-    "pixel_phase",
-    "sample_phase",
+    NAMED_METADATA_COARSE_PHASE,
+    NAMED_METADATA_PIXEL_PHASE,
+    NAMED_METADATA_SAMPLE_PHASE,
     "legacy",
 };
 

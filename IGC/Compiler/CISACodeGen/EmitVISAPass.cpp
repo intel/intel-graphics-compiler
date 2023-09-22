@@ -10454,7 +10454,6 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
         return;
     }
 
-
     m_currShader->AddEpilogue(inst);
 }
 

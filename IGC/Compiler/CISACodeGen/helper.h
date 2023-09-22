@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/MDFrameWork.h"
 #include "common/Types.hpp"
+#include "LLVM3DBuilder/MetadataBuilder.h"
 #include "Probe/Assertion.h"
 #include <functional>
 
