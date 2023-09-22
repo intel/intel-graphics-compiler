@@ -248,6 +248,13 @@ namespace IGC
         /// @return The implicit argument's index for a given argument type
         unsigned int getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) const;
 
+        /// @brief  Returns if an implicit arg exists for the given explicit argument
+        ///         based on the argument type and argument number
+        /// @param  argType         The implicit argument type
+        ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
+        /// @param  argNum          The explicit argument number of the type
+        bool isImplicitArgExistForNumberedArg(ImplicitArg::ArgType argType, int argNum) const;
+
         /// @brief  Returns the argument type of the argument at the given index
         /// @param  i               The implicit argument index
         /// @return The argument type of the argument at the given index

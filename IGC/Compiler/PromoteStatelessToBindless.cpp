@@ -195,8 +195,16 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
             // Do this only for legacy mode, since the resource type of the original
             // kernel arg needs to be bindless for it to be reinterpreted as a bindless offset.
             // In advanced mode, always keep the original kernel arg as stateless, and use the
-            // IMPLICIT_BUFFER_OFFSET arg for bindless access.
+            // BINDLESS_OFFSET arg for bindless access.
             argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
+        }
+        else
+        {
+            // In advanced mode, there must be a corresponding implicit arg BINDLESS_OFFSET for every
+            // explicit buffer arg for it to be promoted to bindless. Check if this implcit arg exists,
+            // and skip promotion if we can't find it.
+            if (!implicitArgs.isImplicitArgExistForNumberedArg(ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo()))
+                continue;
         }
 
         if (supportDynamicBTIsAllocation)

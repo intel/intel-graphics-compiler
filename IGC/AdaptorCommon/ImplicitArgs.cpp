@@ -394,6 +394,20 @@ bool ImplicitArgs::isImplicitArgExist(
     return isImplicitArgExist(pMdUtils->getFunctionsInfoItem(&F), argType);
 }
 
+bool ImplicitArgs::isImplicitArgExistForNumberedArg(ImplicitArg::ArgType argType, int argNum) const {
+    IGC_ASSERT_MESSAGE((argNum >= 0), "objectNum cannot be less than 0");
+
+    for (int i = 0, e = m_funcInfoMD->size_ImplicitArgInfoList(); i < e; ++i)
+    {
+        ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(i);
+        if (argInfo->getArgId() == argType && argInfo->getExplicitArgNum() == argNum)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 unsigned int ImplicitArgs::getImageArgIndex(ImplicitArg::ArgType argType, const Argument* image) const {
     IGC_ASSERT_MESSAGE(isImplicitImage(argType), "Non image/sampler implicit arg!");
     return getNumberedArgIndex(argType, image->getArgNo());
