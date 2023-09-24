@@ -79,6 +79,19 @@ public:
     });
   }
 
+  bool canSplitDead() const {
+    if (size() > 1 || isAllDead() || !isAnyDead())
+      return false;
+    auto Bits = LiveElems[0];
+    int Idx = Bits.find_first();
+    if (Idx % 4)
+      return false;
+    while (Idx <= Bits.find_last())
+      if (!Bits[Idx++])
+        return false;
+    return true;
+  }
+
   bool operator==(const LiveElements &Rhs) const {
     return LiveElems == Rhs.LiveElems;
   }
