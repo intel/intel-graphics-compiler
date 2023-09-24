@@ -152,7 +152,6 @@ SPDX-License-Identifier: MIT
 #include "GenXAlignmentInfo.h"
 #include "GenXBaling.h"
 #include "GenXIntrinsics.h"
-#include "GenXLiveElements.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
@@ -214,7 +213,6 @@ struct LegalPredSize {
 class GenXLegalization : public FunctionPass {
   enum { DETERMINEWIDTH_UNBALE = 0, DETERMINEWIDTH_NO_SPLIT = 256 };
   GenXBaling *Baling = nullptr;
-  GenXFuncLiveElements *LE = nullptr;
   const GenXSubtarget *ST = nullptr;
   DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;
@@ -408,7 +406,6 @@ void initializeGenXLegalizationPass(PassRegistry &);
 INITIALIZE_PASS_BEGIN(GenXLegalization, "GenXLegalization", "GenXLegalization",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXFuncBaling)
-INITIALIZE_PASS_DEPENDENCY(GenXFuncLiveElements)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXLegalization, "GenXLegalization", "GenXLegalization",
@@ -421,7 +418,6 @@ FunctionPass *llvm::createGenXLegalizationPass() {
 
 void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXFuncBaling>();
-  AU.addRequired<GenXFuncLiveElements>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<TargetPassConfig>();
   AU.addRequired<DominatorTreeWrapperPass>();
@@ -434,7 +430,6 @@ void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
  */
 bool GenXLegalization::runOnFunction(Function &F) {
   Baling = &getAnalysis<GenXFuncBaling>();
-  LE = &getAnalysis<GenXFuncLiveElements>();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
@@ -1146,42 +1141,14 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     //   * this legalization pass does not have access to FGs
     ExecSizeAllowedBits &= 0x1f;
 
-  auto *Head = B.getHeadIgnoreGStore();
   unsigned MainInstMinWidth =
       1 << countTrailingZeros(ExecSizeAllowedBits, ZB_Undefined);
-
-  if (WholeWidth > 1 && MainInstMinWidth == 1) {
-    Value *Dest = Head->Inst;
-    if (Head->Info.Type == BaleInfo::WRREGION ||
-        Head->Info.Type == BaleInfo::WRPREDREGION ||
-        Head->Info.Type == BaleInfo::WRPREDPREDREGION)
-      Dest = Head->Inst->getOperand(1);
-    auto LiveElems = LE->getLiveElements(Dest);
-    if (LiveElems.canSplitDead()) {
-      IGC_ASSERT(LiveElems[0].size() == WholeWidth);
-      bool StartBit = LiveElems[0][StartIdx];
-      unsigned Idx = StartIdx + 1;
-      while (Idx < LiveElems[0].size() && LiveElems[0][Idx] == StartBit)
-        Idx++;
-      unsigned Size = Idx - StartIdx;
-      unsigned Mask = 1;
-      while (Mask < Size) {
-        Mask <<= 1;
-        Mask |= 1;
-      }
-      if (StartBit && 2 * Size != Mask + 1) {
-        Mask <<= 1;
-        Mask |= 1;
-      }
-      ExecSizeAllowedBits &= Mask;
-    }
-  }
-
   // Determine the vector width that we need to split into.
   bool IsReadSameVector = false;
   unsigned Width = WholeWidth - StartIdx;
   unsigned PredMinWidth = 1;
   Value *WrRegionInput = nullptr;
+  auto Head = B.getHeadIgnoreGStore();
   if (Head->Info.Type == BaleInfo::WRREGION)
     WrRegionInput =
         Head->Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
