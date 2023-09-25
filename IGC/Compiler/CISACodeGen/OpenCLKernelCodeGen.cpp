@@ -3025,7 +3025,7 @@ namespace IGC
             // platforms those GRF size are not 8 dword.
             // Passed the value assumed by vISA for error detection at runtime side.
             // vISA should be updated to use 8 dword.
-            m_kernelInfo.m_threadPayload.PassInlineDataSize = getGRFSize();
+            m_kernelInfo.m_threadPayload.PassInlineDataSize = m_Platform->getInlineDataSize();
         }
         return passInlineData;
     }
