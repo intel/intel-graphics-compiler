@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -68,6 +68,8 @@ bool GenXLinkageCorruptor::runOnModule(Module &M) {
 
     // Indirect functions are always stack calls.
     if (F.hasAddressTaken()) {
+      LLVM_DEBUG(dbgs() << "Adding stack call to indirect function: "
+                        << F.getName() << "\n");
       F.addFnAttr(genx::FunctionMD::CMStackCall);
       Changed = true;
       IGC_ASSERT(vc::isIndirect(F));
@@ -80,10 +82,15 @@ bool GenXLinkageCorruptor::runOnModule(Module &M) {
       Changed = true;
     }
 
-    // Do not change stack calls linkage as we may have both types of stack
-    // calls.
-    if (vc::requiresStackCall(&F) && SaveStackCallLinkage)
-      continue;
+    // Remove alwaysinline attribute and keep unchanged stack calls linkage as
+    // we may have both types of stack calls.
+    if (vc::requiresStackCall(&F)) {
+      F.removeFnAttr(Attribute::AlwaysInline);
+      Changed = true;
+
+      if (SaveStackCallLinkage)
+        continue;
+    }
 
     F.setLinkage(GlobalValue::InternalLinkage);
     Changed = true;

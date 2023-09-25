@@ -2022,58 +2022,19 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
   return Pos;
 }
 
-// For the specified constant, calculate its reciprocal if it's safe;
-// otherwise, return null.
-static Constant *getReciprocal(Constant *C, bool HasAllowReciprocal) {
-  IGC_ASSERT_MESSAGE(C->getType()->isFPOrFPVectorTy(),
-                     "Floating point value is expected!");
-
-  // TODO: remove this and use ConstantExpr::getFDiv.
-
-  // Reciprocal of undef can be undef.
-  if (isa<UndefValue>(C))
-    return C;
-
-  if (ConstantFP *CFP = dyn_cast<ConstantFP>(C)) {
-    // Compute the reciprocal of C.
-    const APFloat &Divisor = CFP->getValueAPF();
-    APFloat Rcp(Divisor.getSemantics(), 1U);
-    APFloat::opStatus Status =
-        Rcp.divide(Divisor, APFloat::rmNearestTiesToEven);
-    // Only fold it if it's safe.
-    if (Status == APFloat::opOK ||
-        (HasAllowReciprocal && Status == APFloat::opInexact))
-      return ConstantFP::get(C->getType()->getContext(), Rcp);
-    return nullptr;
-  }
-
-  auto *VTy = cast<IGCLLVM::FixedVectorType>(C->getType());
-  IntegerType *ITy = Type::getInt32Ty(VTy->getContext());
-
-  SmallVector<Constant *, 16> Result;
-  for (unsigned i = 0, e = VTy->getNumElements(); i != e; ++i) {
-    Constant *Elt =
-        ConstantExpr::getExtractElement(C, ConstantInt::get(ITy, i));
-    Constant *Rcp = getReciprocal(Elt, HasAllowReciprocal);
-    // Skip if any of elements fails to be folded as reciprocal.
-    if (!Rcp)
-      return nullptr;
-    Result.push_back(Rcp);
-  }
-  return ConstantVector::get(Result);
-}
-
 // For the given value, calculate its reciprocal and performance constant
 // folding if allowed.
 static Value *getReciprocal(IRBuilder<> &IRB, Value *V,
                             bool HasAllowReciprocal = true) {
+  Module *M = IRB.GetInsertBlock()->getModule();
   if (Constant *C = dyn_cast<Constant>(V))
-    return getReciprocal(C, HasAllowReciprocal);
+    return ConstantFoldBinaryOpOperands(Instruction::FDiv,
+                                        ConstantFP::get(C->getType(), 1.0), C,
+                                        M->getDataLayout());
 
   if (!HasAllowReciprocal)
     return nullptr;
 
-  Module *M = IRB.GetInsertBlock()->getModule();
   Twine Name = V->getName() + ".inv";
   auto Func = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_inv,
                                                 V->getType());
@@ -2112,7 +2073,8 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   Value *Op1 = I.getOperand(1);
   // Constant folding Op1 if it's safe.
   if (Constant *C1 = dyn_cast<Constant>(Op1)) {
-    Constant *Rcp = getReciprocal(C1, I.hasAllowReciprocal());
+    Constant *Rcp = ConstantFoldBinaryOpOperands(
+        Instruction::FDiv, ConstantFP::get(C1->getType(), 1.0), C1, *DL);
     if (!Rcp)
       return;
     IRB.setFastMathFlags(I.getFastMathFlags());

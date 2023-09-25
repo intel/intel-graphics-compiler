@@ -34,7 +34,7 @@ define internal spir_func float @bar() {
 }
 
 ; COM: function with taken address shouldn't change
-define internal spir_func void @indirect() {
+define internal spir_func void @indirect() #0 {
 ; CHECK: define internal spir_func void @indirect() #[[ATTR:[0-9]]] {
   %indirect.get.ptr = call i64 @get_printf_ptr()
   store i64 %indirect.get.ptr, i64* @__imparg_llvm.vc.internal.print.buffer, align 8
@@ -50,6 +50,7 @@ define dllexport spir_kernel void @foo_kernel() {
   ret void
 }
 
+attributes #0 = { alwaysinline }
 ; CHECK: attributes #[[ATTR]] = { "CMStackCall" }
 
 !genx.kernels = !{!0}
