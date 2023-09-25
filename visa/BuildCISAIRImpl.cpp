@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #else
 #include "JitterDataStruct.h"
 #endif
-#include "BinaryCISAEmission.h"
 #include "BinaryEncoding.h"
 #include "IsaDisassembly.h"
 #include "Timer.h"
@@ -53,8 +52,6 @@ using namespace vISA;
   (mBuildOption == VISA_BUILDER_VISA || mBuildOption == VISA_BUILDER_BOTH)
 
 CISA_IR_Builder::~CISA_IR_Builder() {
-  m_cisaBinary->~CisaBinary();
-
   for (auto k : m_kernelsAndFunctions) {
     // don't call delete since vISAKernelImpl is allocated in memory pool
     k->~VISAKernelImpl();
@@ -1575,37 +1572,15 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
   stopTimer(TimerID::BUILDER);
   int status = VISA_SUCCESS;
 
-  // TODO: remove vISA binary emission code.
-  const bool emitVISABinary = false;
   if (IS_VISA_BOTH_PATH) {
     if (m_builderMode == vISA_ASM_WRITER) {
       vISA_ASSERT(false, "Should not be calling Compile() in asm text writer mode!");
       return VISA_FAILURE;
     }
-    if (emitVISABinary) {
-      if (IS_BOTH_PATH)
-        m_options.setOptionInternally(vISA_NumGenBinariesWillBePatched, 1u);
-      m_cisaBinary->initCisaBinary(m_kernel_count, m_function_count);
-      m_cisaBinary->setMajorVersion((unsigned char)m_header.major_version);
-      m_cisaBinary->setMinorVersion((unsigned char)m_header.minor_version);
-      m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
-    }
 
-    CBinaryCISAEmitter cisaBinaryEmitter;
     int status = VISA_SUCCESS;
     for (auto func : m_kernelsAndFunctions) {
       func->finalizeAttributes();
-      if (emitVISABinary) {
-        unsigned int binarySize = 0;
-        status = cisaBinaryEmitter.Emit(func, binarySize);
-        m_cisaBinary->initKernel(func);
-      }
-    }
-    if (emitVISABinary)
-      m_cisaBinary->finalizeCisaBinary();
-
-    if (status != VISA_SUCCESS) {
-      return status;
     }
 
     if (m_options.getOption(vISA_GenerateISAASM) ||

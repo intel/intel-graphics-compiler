@@ -73,22 +73,12 @@ public:
     m_attribute_count = 0;
     m_label_count = 0;
 
-    m_string_pool_size = 0;
-    m_address_info_size = 0;
-    m_predicate_info_size = 0;
-    m_label_info_size = 0;
-    m_input_info_size = 0;
-    m_attribute_info_size = 0;
-    m_instruction_size = 0;
     m_genx_binary_size = 0;
-    m_kernel_data_size = 0;
     m_genx_binary_buffer = NULL;
     m_genx_debug_info_size = 0;
     m_genx_debug_info_buffer = NULL;
-    m_bytes_written_cisa_buffer = 0;
     m_input_offset = 0;
     m_num_pred_vars = 0;
-    m_sampler_info_size = 0;
     m_type = type;
 
     memset(&m_cisa_kernel, 0, sizeof(kernel_format_t));
@@ -131,9 +121,6 @@ public:
   vISA::Attributes *getKernelAttributes() { return m_kernelAttrs; }
   // Temporary function to move options to attributes!
   void finalizeAttributes();
-  void finalizeKernel();
-  unsigned long writeInToCisaBinaryBuffer(const void *value, int size);
-  unsigned long getBytesWritten() { return m_bytes_written_cisa_buffer; }
 
   void setName(const char *n);
   const char *getName() const { return m_name.c_str(); }
@@ -201,24 +188,12 @@ public:
     return m_instruction_list.cend();
   }
 
-  unsigned long getGenxBinarySize() { return m_genx_binary_size; }
-
-  char *getGenxBinaryBuffer() { return m_genx_binary_buffer; }
-
-  unsigned long getCisaBinarySize() { return m_cisa_binary_size; }
-
-  char *getCisaBinaryBuffer() { return m_cisa_binary_buffer; }
-
-  unsigned long getInputOffset() { return m_input_offset; }
   unsigned int getNumPredVars() { return m_num_pred_vars; }
-
-  unsigned long getKernelDataSize() { return m_kernel_data_size; }
   bool getIsKernel() const { return m_type == VISA_BUILD_TYPE::KERNEL; }
   bool getIsFunction() const { return m_type == VISA_BUILD_TYPE::FUNCTION; }
   bool getIsPayload() const { return m_type == VISA_BUILD_TYPE::PAYLOAD; }
   enum VISA_BUILD_TYPE getType() const { return m_type; }
   void setType(enum VISA_BUILD_TYPE _type) { m_type = _type; }
-  unsigned long getCodeOffset() { return m_cisa_kernel.entry; }
 
   CISA_GEN_VAR *getDeclFromName(const std::string &name);
   bool declExistsInCurrentScope(const std::string &name) const;
@@ -1221,10 +1196,7 @@ private:
   void ensureVariableNameUnique(const char *&varName);
   bool generateVariableName(Common_ISA_Var_Class Ty, const char *&varName);
 
-  void dumpDebugFormatFile(std::vector<vISA::DebugInfoFormat> &debugSymbols,
-                           std::string filename);
   int InitializeFastPath();
-  int predefinedVarRegAssignment();
   int calculateTotalInputSize();
   int compileTillOptimize();
   void recordFinalizerInfo();
@@ -1265,16 +1237,6 @@ private:
   kernel_format_t m_cisa_kernel;
 
   unsigned int m_num_pred_vars;
-  // size of various arrays in kernel header.
-  // used for buffer size allocation.
-  unsigned int m_string_pool_size;
-  unsigned int m_address_info_size;
-  unsigned int m_predicate_info_size;
-  unsigned int m_label_info_size;
-  unsigned int m_input_info_size;
-  unsigned int m_attribute_info_size;
-  unsigned int m_instruction_size;
-  unsigned int m_sampler_info_size;
 
   unsigned long m_genx_binary_size;
   char *m_genx_binary_buffer;
@@ -1283,18 +1245,10 @@ private:
   vISA::FINALIZER_INFO *m_jitInfo;
   KERNEL_INFO *m_kernelInfo;
 
-  unsigned long m_cisa_binary_size;
-  char *m_cisa_binary_buffer;
-
-  unsigned long m_kernel_data_size;
-
-  unsigned long m_bytes_written_cisa_buffer;
-
   unsigned long m_input_offset;
 
   std::vector<std::string> m_string_pool;
   enum VISA_BUILD_TYPE m_type;
-  unsigned int m_resolvedIndex;
 
   vISA::Mem_Manager m_mem;
   std::string m_name;

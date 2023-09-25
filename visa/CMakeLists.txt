@@ -215,7 +215,6 @@ set(GenX_Common_Sources_G4_Passes
 set(GenX_Common_Sources_External_Other
   Assertions.cpp
   Attributes.cpp
-  BinaryCISAEmission.cpp
   BinaryEncoding.cpp
   BinaryEncodingCNL.cpp
   BinaryEncodingIGA.cpp
@@ -313,7 +312,6 @@ set(GenX_Utility_Files
 set(GenX_Common_Headers
   Attributes.hpp
   Assertions.h
-  BinaryCISAEmission.h
   BinaryEncoding.h
   BinaryEncodingCNL.h
   BinaryEncodingIGA.h

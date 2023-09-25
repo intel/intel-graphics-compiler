@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 #include "Assertions.h"
-#include "BinaryCISAEmission.h"
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 #include "DebugInfo.h"

@@ -25,7 +25,6 @@ namespace vISA {
 class Mem_Manager;
 class PlatformInfo;
 } // namespace vISA
-class CisaBinary;
 class VISAKernelImpl;
 class VISAFunction;
 
@@ -53,8 +52,6 @@ public:
     m_header.major_version = majorVersion;
     m_header.minor_version = minorVersion;
     m_header.magic_number = COMMON_ISA_MAGIC_NUM;
-
-    m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(this);
   }
 
   virtual ~CISA_IR_Builder();
@@ -112,7 +109,6 @@ public:
   // the current vISA kernel/function being processed
   VISAKernelImpl *m_kernel;
   VISAKernelImpl *m_prevKernel = nullptr;
-  CisaFramework::CisaBinary *m_cisaBinary;
   VISAKernelImpl *get_kernel() const { return m_kernel; }
 
   std::stringstream &criticalMsgStream() { return criticalMsg; }

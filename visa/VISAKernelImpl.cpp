@@ -42,8 +42,6 @@ SPDX-License-Identifier: MIT
 
 using namespace CisaFramework;
 using namespace vISA;
-#define SIZE_VALUE m_kernel_data_size
-#define SIZE_VALUE_INST m_instruction_size
 
 #define IS_GEN_PATH (mBuildOption == VISA_BUILDER_GEN)
 #define IS_BOTH_PATH (mBuildOption == VISA_BUILDER_BOTH)
@@ -1296,12 +1294,9 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *&opnd, const char *name,
     opnd->opnd_type = CISA_OPND_OTHER;
     opnd->size = (uint16_t)Get_VISA_Type_Size(
         (VISA_Type)inst_desc->opnd_desc[0].data_type);
-    // opnd->tag = inst_desc->opnd_desc[0].opnd_type;
     lbl->attribute_capacity = 0;
     lbl->attribute_count = 0;
     lbl->attributes = NULL;
-
-    m_label_info_size += lbl->getSizeInBinary();
   }
 
   return VISA_SUCCESS;
@@ -1563,25 +1558,12 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl,
     }
     break;
   }
-  case ADDRESS_VAR: {
-    m_address_info_size += attr->getSizeInBinary();
+  case ADDRESS_VAR:
+  case PREDICATE_VAR:
+  case SAMPLER_VAR:
+  case SURFACE_VAR:
+  case LABEL_VAR:
     break;
-  }
-  case PREDICATE_VAR: {
-    m_predicate_info_size += attr->getSizeInBinary();
-    break;
-  }
-  case SAMPLER_VAR: {
-    m_sampler_info_size += attr->getSizeInBinary();
-    break;
-  }
-  case SURFACE_VAR: {
-    break;
-  }
-  case LABEL_VAR: {
-    m_label_info_size += attr->getSizeInBinary();
-    break;
-  }
   default:
     vISA_ASSERT_UNREACHABLE("invalid dcl type");
     return VISA_FAILURE;
@@ -1616,7 +1598,6 @@ void VISAKernelImpl::addVarInfoToList(CISA_GEN_VAR *t) {
 
 void VISAKernelImpl::addSampler(CISA_GEN_VAR *state) {
   m_sampler_info_list.push_back(state);
-  m_sampler_info_size += state->stateVar.getSizeInBinary();
 }
 
 void VISAKernelImpl::addSurface(CISA_GEN_VAR *state) {
@@ -1625,12 +1606,10 @@ void VISAKernelImpl::addSurface(CISA_GEN_VAR *state) {
 
 void VISAKernelImpl::addAddrToList(CISA_GEN_VAR *addr) {
   m_addr_info_list.push_back(addr);
-  m_address_info_size += addr->addrVar.getSizeInBinary();
 }
 
 void VISAKernelImpl::addPredToList(CISA_GEN_VAR *pred) {
   m_pred_info_list.push_back(pred);
-  m_predicate_info_size += pred->predVar.getSizeInBinary();
 }
 
 void VISAKernelImpl::addAttribute(const char *inputName,
@@ -1638,7 +1617,6 @@ void VISAKernelImpl::addAttribute(const char *inputName,
   attrTemp->nameIndex = addStringPool(std::string(inputName));
   m_attribute_info_list.push_back(attrTemp);
   m_attribute_count++;
-  m_attribute_info_size += attrTemp->getSizeInBinary();
 }
 
 Common_ISA_Input_Class
@@ -1706,7 +1684,6 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl, uint16_t offset,
     } else {
       m_input_info_list.push_back(input);
       m_input_count++;
-      m_input_info_size += input->getSizeInBinary();
 
       if (IsAsmWriterMode()) {
         // Print input var
@@ -8133,8 +8110,6 @@ uint32_t VISAKernelImpl::addStringPool(std::string str) {
   if (str.empty()) {
     return 0;
   }
-  m_string_pool_size +=
-      (int)str.size() + 1; // to account for a null terminating character
   m_string_pool.emplace_back(std::move(str));
   return (uint32_t)(m_string_pool.size() - 1);
 }
@@ -8143,9 +8118,6 @@ void VISAKernelImpl::addInstructionToEnd(CisaInst *inst) {
   m_instruction_list.push_back(inst);
   CISA_INST *cisaInst = inst->getCISAInst();
   cisaInst->id = getvIsaInstCount();
-  m_instruction_size += inst->getSize();
-  DEBUG_PRINT_SIZE_INSTRUCTION("size after instruction added: ",
-                               inst->m_inst_desc->opcode, SIZE_VALUE_INST);
 
   if (IsAsmWriterMode()) {
     // Print instructions
@@ -8178,238 +8150,6 @@ void VISAKernelImpl::finalizeAttributes() {
     uint8_t val = (uint8_t)target;
     AddKernelAttribute("Target", 1, &val);
   }
-}
-
-/**
- * This function is called right before the kernel instructions are outputed in
- * to a buffer. It assumes that all the VISA instructions have already been
- * generated.
- */
-void VISAKernelImpl::finalizeKernel() {
-  finalizeAttributes();
-  m_cisa_kernel.string_count = (uint32_t)m_string_pool.size();
-  m_cisa_kernel.strings =
-      (const char **)m_mem.alloc(m_cisa_kernel.string_count * sizeof(char *));
-  auto it_string = m_string_pool.begin(), et_string = m_string_pool.end();
-  int size_check = 0;
-
-  for (int i = 0; it_string != et_string; i++, ++it_string) {
-    char *string = (char *)m_mem.alloc(it_string->size() + 1);
-    memcpy_s(string, it_string->size() + 1, it_string->c_str(),
-             it_string->size() + 1);
-    m_cisa_kernel.strings[i] = string;
-    size_check += (int)it_string->size() + 1;
-  }
-
-  m_kernel_data_size = sizeof(m_cisa_kernel.string_count);
-  m_kernel_data_size += m_string_pool_size;
-
-  DEBUG_PRINT_SIZE("\nsize after string_count: ", SIZE_VALUE);
-
-  // already set
-  m_kernel_data_size += sizeof(m_cisa_kernel.name_index);
-
-  DEBUG_PRINT_SIZE("size after name_index: ", SIZE_VALUE);
-
-  /****VARIABLES*******/
-  unsigned int adjVarInfoCount = m_var_info_count - m_num_pred_vars;
-  m_cisa_kernel.variable_count = adjVarInfoCount;
-  m_cisa_kernel.variables =
-      (var_info_t *)m_mem.alloc(sizeof(var_info_t) * adjVarInfoCount);
-
-  uint32_t varInfoSize = 0;
-  for (unsigned int i = 0; i < adjVarInfoCount; i++) {
-    var_info_t *temp = &m_var_info_list.at(i + m_num_pred_vars)->genVar;
-    m_cisa_kernel.variables[i] = *temp;
-    varInfoSize += temp->getSizeInBinary();
-  }
-  m_kernel_data_size += sizeof(m_cisa_kernel.variable_count);
-  m_kernel_data_size += varInfoSize;
-
-  DEBUG_PRINT_SIZE("size after variables: ", SIZE_VALUE);
-
-  /****ADDRESSES**********/
-
-  m_cisa_kernel.address_count = (uint16_t)m_addr_info_count;
-
-  m_cisa_kernel.addresses =
-      (addr_info_t *)m_mem.alloc(sizeof(addr_info_t) * m_addr_info_count);
-
-  std::vector<CISA_GEN_VAR *>::iterator it_addr_info = m_addr_info_list.begin();
-  for (unsigned int i = 0; i < m_addr_info_count; i++, it_addr_info++) {
-    vISA_ASSERT_INPUT(
-        it_addr_info != m_addr_info_list.end(),
-        "Count of addresses does not correspond with number of items.");
-    m_cisa_kernel.addresses[i] = (*it_addr_info)->addrVar;
-  }
-
-  m_kernel_data_size += sizeof(m_cisa_kernel.address_count);
-  m_kernel_data_size += m_address_info_size;
-
-  DEBUG_PRINT_SIZE("size after addresses: ", SIZE_VALUE);
-
-  /****PREDICATES*********/
-  m_cisa_kernel.predicate_count = (uint16_t)m_pred_info_count;
-  m_cisa_kernel.predicates =
-      (pred_info_t *)m_mem.alloc(sizeof(pred_info_t) * m_pred_info_count);
-
-  std::vector<CISA_GEN_VAR *>::iterator it_pred_info = m_pred_info_list.begin();
-  for (unsigned int i = 0; i < m_pred_info_count; i++, it_pred_info++) {
-    vISA_ASSERT_INPUT(
-        it_pred_info != m_pred_info_list.end(),
-        "Count of predicates does not correspond with number of items.");
-    pred_info_t *temp = &(*it_pred_info)->predVar;
-    m_cisa_kernel.predicates[i] = *temp;
-  }
-  m_kernel_data_size += sizeof(m_cisa_kernel.predicate_count);
-  m_kernel_data_size += m_predicate_info_size;
-
-  DEBUG_PRINT_SIZE("size after predicates: ", SIZE_VALUE);
-
-  /****LABELS**********/
-  m_cisa_kernel.label_count = (uint16_t)m_label_count;
-  m_cisa_kernel.labels =
-      (label_info_t *)m_mem.alloc(sizeof(label_info_t) * m_label_count);
-
-  std::vector<label_info_t *>::const_iterator it_label_info =
-      m_label_info_list.cbegin();
-  std::vector<label_info_t *>::const_iterator it_label_info_end =
-      m_label_info_list.cend();
-  for (unsigned int i = 0; i < m_label_count; i++, it_label_info++) {
-    vISA_ASSERT_INPUT(it_label_info != it_label_info_end,
-                 "Count of labels does not correspond with number of items.");
-    label_info_t *temp = *it_label_info;
-    m_cisa_kernel.labels[i] = *temp;
-  }
-  m_kernel_data_size += sizeof(m_cisa_kernel.label_count);
-  m_kernel_data_size += m_label_info_size;
-
-  DEBUG_PRINT_SIZE("size after labels: ", SIZE_VALUE);
-
-  /*****SAMPLERS*********/
-  m_cisa_kernel.sampler_count = (uint8_t)m_sampler_count;
-  m_cisa_kernel.samplers =
-      (state_info_t *)m_mem.alloc(sizeof(state_info_t) * m_sampler_count);
-
-  std::vector<CISA_GEN_VAR *>::iterator it_sampler_info =
-      m_sampler_info_list.begin();
-  for (unsigned int i = 0; i < m_sampler_count; i++, it_sampler_info++) {
-    vISA_ASSERT_INPUT(it_sampler_info != m_sampler_info_list.end(),
-                 "Count of sampler declarations does not correspond with "
-                 "number of items.");
-    state_info_t *temp = &(*it_sampler_info)->stateVar;
-    m_cisa_kernel.samplers[i] = *temp;
-  }
-
-  m_kernel_data_size += sizeof(m_cisa_kernel.sampler_count);
-  m_kernel_data_size += m_sampler_info_size;
-
-  DEBUG_PRINT_SIZE("size after samplers: ", SIZE_VALUE);
-
-  /*****SURFACES******/
-  unsigned int adjSurfaceCount =
-      m_surface_count - Get_CISA_PreDefined_Surf_Count();
-  m_cisa_kernel.surface_count = (uint8_t)adjSurfaceCount;
-  m_cisa_kernel.surfaces =
-      (state_info_t *)m_mem.alloc(sizeof(state_info_t) * adjSurfaceCount);
-
-  uint32_t surfaceInfoSize = 0;
-  for (unsigned int i = 0, j = Get_CISA_PreDefined_Surf_Count();
-       i < adjSurfaceCount; i++, j++) {
-    state_info_t *temp = &m_surface_info_list.at(j)->stateVar;
-    m_cisa_kernel.surfaces[i] = *temp;
-    surfaceInfoSize += temp->getSizeInBinary();
-  }
-
-  m_kernel_data_size += sizeof(m_cisa_kernel.surface_count);
-  m_kernel_data_size += surfaceInfoSize;
-
-  DEBUG_PRINT_SIZE("size after surfaces: ", SIZE_VALUE);
-
-  /*****VMES********/
-  // VME variables are removed
-  m_cisa_kernel.vme_count = 0;
-  m_kernel_data_size += sizeof(m_cisa_kernel.vme_count);
-
-  DEBUG_PRINT_SIZE("size after VMEs: ", SIZE_VALUE);
-
-  /*****INPUTS******/
-
-  if (getIsKernel()) {
-    m_input_offset = m_kernel_data_size;
-    m_cisa_kernel.input_count = (uint8_t)m_input_count;
-    m_cisa_kernel.inputs =
-        (input_info_t *)m_mem.alloc(sizeof(input_info_t) * m_input_count);
-
-    std::vector<input_info_t *>::iterator it_input_info =
-        m_input_info_list.begin();
-    for (unsigned int i = 0; i < m_input_count; i++, it_input_info++) {
-      vISA_ASSERT_INPUT(it_input_info != m_input_info_list.end(),
-                   "Count of inputs does not correspond with number of items.");
-      input_info_t *temp = *it_input_info;
-      m_cisa_kernel.inputs[i] = *temp;
-    }
-    m_kernel_data_size += sizeof(m_cisa_kernel.input_count);
-    m_kernel_data_size += m_input_info_size;
-
-    DEBUG_PRINT_SIZE("size after inputs: ", SIZE_VALUE);
-  }
-
-  /*******INSTRUCTIONS SIZE*****/
-  m_kernel_data_size += sizeof(m_cisa_kernel.size);
-  m_cisa_kernel.size = m_instruction_size;
-
-  DEBUG_PRINT_SIZE("size after size: ", SIZE_VALUE);
-
-  /******OFFSET OF FIRST INSTRUCTION FROM KERNEL START*********/
-  m_kernel_data_size += sizeof(m_cisa_kernel.entry);
-
-  DEBUG_PRINT_SIZE("size after entry: ", SIZE_VALUE);
-
-  if (!getIsKernel()) {
-    m_kernel_data_size += sizeof(m_cisa_kernel.input_size);
-    DEBUG_PRINT_SIZE("size after input size: ", SIZE_VALUE);
-
-    m_kernel_data_size += sizeof(m_cisa_kernel.return_type);
-    DEBUG_PRINT_SIZE("size after return type: ", SIZE_VALUE);
-  }
-
-  /*******ATTRIBUTES**************/
-  m_cisa_kernel.attribute_count = (uint16_t)m_attribute_count;
-  m_cisa_kernel.attributes = (attribute_info_t *)m_mem.alloc(
-      sizeof(attribute_info_t) * m_attribute_count);
-
-  std::list<attribute_info_t *>::iterator it_attribute_info =
-      m_attribute_info_list.begin();
-  for (unsigned int i = 0; i < m_attribute_count; i++, it_attribute_info++) {
-    vISA_ASSERT_INPUT(
-        it_attribute_info != m_attribute_info_list.end(),
-        "Count of attributes does not correspond with number of items.");
-    attribute_info_t *temp = *it_attribute_info;
-    m_cisa_kernel.attributes[i] = *temp;
-  }
-  m_kernel_data_size += sizeof(m_cisa_kernel.attribute_count);
-  m_kernel_data_size += m_attribute_info_size;
-
-  DEBUG_PRINT_SIZE("size after attributes: ", SIZE_VALUE);
-
-  /******Setting Entry*********/
-  m_cisa_kernel.entry = m_kernel_data_size;
-
-  m_cisa_binary_size = m_instruction_size + m_kernel_data_size;
-  m_cisa_binary_buffer = (char *)m_mem.alloc(m_cisa_binary_size);
-}
-
-unsigned long VISAKernelImpl::writeInToCisaBinaryBuffer(const void *value,
-                                                        int size) {
-  vISA_ASSERT_INPUT(m_bytes_written_cisa_buffer + size <= m_cisa_binary_size,
-               "Size of VISA instructions binary buffer is exceeded.");
-
-  memcpy_s(&m_cisa_binary_buffer[m_bytes_written_cisa_buffer], size, value,
-           size);
-  m_bytes_written_cisa_buffer += size;
-
-  return m_bytes_written_cisa_buffer;
 }
 
 VISA_LabelOpnd *
@@ -9018,7 +8758,7 @@ static const VISAKernelImpl *getFmtKernelForISADump(
     const VISAKernelImpl *kernel,
     const CISA_IR_Builder &cisaBuilder) {
   // Assuming there's no too many payload kernels. Use the logic in
-  // CisaBinary::isaDump to select the kernel for format provider.
+  // isaDump to select the kernel for format provider.
   if (!kernel->getIsPayload())
     return kernel;
 
