@@ -46,6 +46,8 @@ enum BankConflict {
   BANK_CONFLICT_SECOND_HALF_ODD
 };
 
+class VarSplit;
+
 class BankConflictPass {
 private:
   GlobalRA &gra;
@@ -1743,6 +1745,75 @@ public:
   // cost. So if the variable spills again, we shouldn't
   // get in an infinite loop by retrying same spill/fill.
   std::unordered_set<G4_Declare *> scalarSpills;
+
+private:
+  // Following methods are invoked from coloringRegAlloc() method. Any
+  // operation needed in global graph coloring loop should be extracted to a
+  // method instead of inlining logic in code directly in interest of keeping
+  // the loop maintainable.
+  void stackCallSaveRestore(bool hasStackCall);
+  int doGlobalLinearScanRA();
+  void incRABookKeeping();
+  // return pair <whether remat modified program, rematDone>
+  std::pair<bool, bool> remat(bool fastCompile, bool rematDone,
+                              LivenessAnalysis &liveAnalysis,
+                              GraphColor &coloring, RPE &rpe);
+  // rerun GRA, alignedScalarSplitDone, isEarlyExit
+  std::tuple<bool, bool, bool> alignedScalarSplit(bool fastCompile,
+                                                  bool alignedScalarSplitDone,
+                                                  GraphColor &coloring);
+  bool globalSplit(VarSplit &splitPass, GraphColor &coloring);
+  void localSplit(bool fastCompile, VarSplit &splitPass);
+  // return <doBCReduction, highInternalConflict>
+  std::pair<bool, bool> bankConflict(bool doBankConflictReduction,
+                                     bool highInternalConflict);
+  // return reserveSpillReg
+  bool setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
+                             unsigned int maxRAIterations,
+                             unsigned int failSafeRAIteration,
+                             bool reserveSpillReg);
+  void undefinedUses(bool rematDone, LivenessAnalysis &liveAnalysis);
+  void writeVerboseStatsNumVars(LivenessAnalysis &liveAnalysis,
+                                FINALIZER_INFO *jitInfo);
+  void writeVerboseRPEStats(RPE &rpe);
+  void splitOnSpill(bool fastCompile, GraphColor &coloring,
+                    LivenessAnalysis &livenessAnalysis);
+  bool convertToFailSafe(bool reserveSpillReg, GraphColor &coloring,
+                         LivenessAnalysis &liveAnalysis,
+                         unsigned int nextSpillOffset);
+  unsigned int instCount() const {
+    unsigned int instNum = 0;
+    for (auto bb : kernel.fg) {
+      instNum += (int)bb->size();
+    }
+    return instNum;
+  }
+  // pair of abort, updated GRFSpillFillCount
+  std::pair<bool, unsigned int> abortOnSpill(unsigned int GRFSpillFillCount,
+                                             GraphColor &coloring);
+  bool spillSpaceCompression(bool enableSpillSpaceCompression,
+                             GraphColor &coloring, bool hasStackCall,
+                             const int globalScratchOffset);
+  void verifyNoInfCostSpill(GraphColor &coloring, bool reserveSpillReg);
+  void setupA0Dot2OnSpill(bool hasStackCall, unsigned int nextSpillOffset,
+                          int globalScratchOffset);
+  // isEarlyExit
+  bool spillCleanup(bool fastCompile, bool useScratchMsgForSpill,
+                    bool hasStackCall, bool reserveSpillReg, RPE &rpe,
+                    GraphColor &coloring, LivenessAnalysis &liveAnalysis,
+                    SpillManagerGRF &spillGRF);
+
+  // success, enableSpillSpaceCompression, isEarlyExit, scratchOffset,
+  // nextSpillOffset
+  std::tuple<bool, bool, bool, unsigned int, unsigned int>
+  insertSpillCode(bool enableSpillSpaceCompression, GraphColor &coloring,
+                  LivenessAnalysis &liveAnalysis, RPE &rpe,
+                  unsigned int scratchOffset, bool fastCompile,
+                  bool hasStackCall, int globalScratchOffset,
+                  unsigned int nextSpillOffset, bool reserveSpillReg,
+                  unsigned int spillRegSize, unsigned int indrSpillRegSize,
+                  bool useScratchMsgForSpill);
+  bool rerunGRAIter(bool rerunGRA);
 };
 
 inline G4_Declare *Interference::getGRFDclForHRA(int GRFNum) const {
