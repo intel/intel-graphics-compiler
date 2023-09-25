@@ -346,6 +346,7 @@ public:
   preRA_Scheduler(G4_Kernel &k);
   ~preRA_Scheduler();
   bool run(unsigned &KernelPressure);
+  bool runWithGRFSelection(unsigned &KernelPressure);
 
 private:
   G4_Kernel &kernel;
@@ -363,15 +364,6 @@ private:
   Options *m_options;
 };
 
-class preRA_RegSharing {
-public:
-  preRA_RegSharing(G4_Kernel &k);
-  ~preRA_RegSharing();
-  bool run(unsigned &KernelPressure);
-
-private:
-  G4_Kernel &kernel;
-};
 // Restrictions of candidate for 2xDP:
 //    1, Only support SIMD16 DF mad with M0
 //    2, Inst must not have predicate/cond mod

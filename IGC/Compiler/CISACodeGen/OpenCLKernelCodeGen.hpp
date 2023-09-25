@@ -155,7 +155,7 @@ namespace IGC
             std::vector<std::string> LargeGRFKernels;
             std::vector<std::string> RegularGRFKernels;
 
-            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
+            // Enable compiler heuristics ("-autoGRFSelection" in VISA) for large GRF selection.
             bool IntelEnableAutoLargeGRF            = false;
 
             bool IntelLargeRegisterFile             = false;

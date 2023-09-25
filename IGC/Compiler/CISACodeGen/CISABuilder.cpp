@@ -4569,7 +4569,7 @@ namespace IGC
                 {
                     // "Auto" mode per kernel function (by user annotation) - use compiler heuristics to determin number of threads per EU
                     SaveOption(vISA_TotalGRFNum, unsigned(0));
-                    SaveOption(vISA_RegSharingHeuristics, true);
+                    SaveOption(vISA_AutoGRFSelection, true);
                 }
                 else if (ClContext->getNumThreadsPerEU() > 0)
                 {
@@ -4580,7 +4580,7 @@ namespace IGC
                 {
                     // "Auto" mode per module (by compiler option) - use compiler heuristics to determine number of threads per EU
                     SaveOption(vISA_TotalGRFNum, unsigned(0));
-                    SaveOption(vISA_RegSharingHeuristics, true);
+                    SaveOption(vISA_AutoGRFSelection, true);
                 }
                 else if (ClContext->getExpGRFSize() > 0) {
                     // Explicit GRF size set per module (by compiler option)
@@ -4596,7 +4596,7 @@ namespace IGC
                     !ClContext->m_Options.Intel256GRFPerThread)
                 {
                     // When user hasn't specified number of threads, we can rely on compiler heuristics
-                    SaveOption(vISA_RegSharingHeuristics, true);
+                    SaveOption(vISA_AutoGRFSelection, true);
                 }
 
                 // Emit warnings if mismatch is found in user input
@@ -4631,7 +4631,7 @@ namespace IGC
                 ) {
                 // When user hasn't specified number of threads, we can rely on
                 // compiler heuristics
-                SaveOption(vISA_RegSharingHeuristics, true);
+                SaveOption(vISA_AutoGRFSelection, true);
             }
         }
 
@@ -5275,7 +5275,7 @@ namespace IGC
         else if (numThreadsPerEU == 0)
         {
             // "Auto" mode per kernel function - use compiler heuristics to determin number of threads per EU
-            SaveOption(vISA_RegSharingHeuristics, true);
+            SaveOption(vISA_AutoGRFSelection, true);
         }
 
         // Pass all build options to builder

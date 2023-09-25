@@ -169,7 +169,7 @@ public:
 
   unsigned getNumAcc() const { return configs[currentMode].numAcc; }
 
-  // ----- helper functions for regSharingHeuristics (VRT) ----- //
+  // ----- helper functions for autoGRFSelection (VRT) ----- //
   unsigned getVRTMinGRF() const {
     auto found = std::find_if(configs.begin(), configs.end(),
                               [](const Config &c) { return c.VRTEnable; });
@@ -212,7 +212,7 @@ private:
     unsigned numThreads;
     unsigned numSWSB;
     unsigned numAcc;
-    // if the config can be used by regSharingHeuristics
+    // if the config can be used by autoGRFSelection
     bool     VRTEnable;
   };
   // Vector configs maintains all the GRF modes available for the platform
@@ -475,7 +475,7 @@ private:
   G4_ExecSize simdSize{0u}; // must start as 0
   bool channelSliced = true;
   bool hasAddrTaken;
-  bool regSharingHeuristics = false;
+  bool autoGRFSelection = false;
   bool needDPASWA = false;
   Options *m_options;
   const Attributes *m_kernelAttrs;
@@ -596,9 +596,9 @@ public:
 
   void setBuilder(IR_Builder *pBuilder) { fg.setBuilder(pBuilder); }
 
-  bool useRegSharingHeuristics() const {
+  bool useAutoGRFSelection() const {
     // Register sharing not enabled in presence of stack calls
-    return regSharingHeuristics && !m_hasIndirectCall &&
+    return autoGRFSelection && !m_hasIndirectCall &&
            !fg.getIsStackCallFunc() && !fg.getHasStackCalls();
   }
 

@@ -629,11 +629,7 @@ bool preRA_Scheduler::run(unsigned &KernelPressure) {
   return Changed;
 }
 
-preRA_RegSharing::preRA_RegSharing(G4_Kernel &k) : kernel(k) {}
-
-preRA_RegSharing::~preRA_RegSharing() {}
-
-bool preRA_RegSharing::run(unsigned &KernelPressure) {
+bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
 
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D) {
     // Do not run pre-RA scheduler for CM unless user forces it.

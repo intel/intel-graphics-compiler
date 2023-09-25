@@ -154,11 +154,10 @@ class Optimizer {
 
   void preRA_Schedule() {
     unsigned KernelPressure = 0;
-    if (kernel.useRegSharingHeuristics()) {
-      preRA_RegSharing Sched(kernel);
-      Sched.run(KernelPressure);
+    preRA_Scheduler Sched(kernel);
+    if (kernel.useAutoGRFSelection()) {
+      Sched.runWithGRFSelection(KernelPressure);
     } else {
-      preRA_Scheduler Sched(kernel);
       Sched.run(KernelPressure);
     }
     // Update Jit info for max register pressure

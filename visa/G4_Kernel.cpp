@@ -475,7 +475,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
   } else {
     gtPinInfo = nullptr;
   }
-  regSharingHeuristics = m_options->getOption(vISA_RegSharingHeuristics);
+  autoGRFSelection = m_options->getOption(vISA_AutoGRFSelection);
   // NoMask WA
   m_EUFusionNoMaskWAInfo = nullptr;
 
@@ -676,7 +676,7 @@ bool G4_Kernel::updateKernelFromNumGRFAttr() {
   if (numRegTotal == attrNumGRF)
     return true;
 
-  regSharingHeuristics = false;
+  autoGRFSelection = false;
   // Scale number of GRFs, Acc, SWSB tokens.
   setKernelParameters(attrNumGRF);
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
@@ -990,11 +990,11 @@ void G4_Kernel::setKernelParameters(unsigned newGRF) {
     // Forcing a specific number of threads
     grfMode.setModeByNumThreads(overrideNumThreads);
     overrideGRFNum = 0;
-    regSharingHeuristics = false;
+    autoGRFSelection = false;
   } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
     // Forcing a specific number of GRFs
     grfMode.setModeByNumGRFs(overrideGRFNum);
-    regSharingHeuristics = false;
+    autoGRFSelection = false;
   } else {
     // Use default value
     grfMode.setDefaultGRF();
