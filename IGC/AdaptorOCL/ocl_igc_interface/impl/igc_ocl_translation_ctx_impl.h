@@ -519,6 +519,7 @@ if (sig == 0) {                                                               \
 
 #define EX_GUARD_END                                                          \
 } else {                                                                      \
+    TC::UnlockMutex();                                                        \
     res = CIF_GET_PIMPL()->GetErrorOutput(outVersion, sig);                   \
 }                                                                             \
 REMOVE_SIG_HANDLER(SIGABRT)                                                   \
@@ -527,7 +528,6 @@ REMOVE_SIG_HANDLER(SIGILL)                                                    \
 REMOVE_SIG_HANDLER(SIGINT)                                                    \
 REMOVE_SIG_HANDLER(SIGSEGV)                                                   \
 REMOVE_SIG_HANDLER(SIGTERM)                                                   \
-TC::UnlockMutex();
 
 #endif
 #else
