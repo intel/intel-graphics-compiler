@@ -901,9 +901,11 @@ public:
       if (builder.getOption(vISA_useInlineData)) {
         // copy inline data to the first GRF of cross-thread-data
         // e.g. (W) mov (8) inlineDataReg.0:ud r1.0:ud
-        // Inline GRF is only 8 DWords
+        // Inline data size is 8 DWords.
+
         emitMovInlineData(perThreadLoadStartGRF + numPerThreadGRF,
-                          perThreadLoadStartGRF, 8);
+                          perThreadLoadStartGRF,
+                          builder.getInlineDataSize()/TypeSize(Type_UD));
       }
 
       loadFromMemory(rtmp, perThreadLoadStartGRF,
