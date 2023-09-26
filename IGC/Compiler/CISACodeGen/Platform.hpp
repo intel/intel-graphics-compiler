@@ -804,7 +804,8 @@ bool supports3DAndCubeSampleD() const
         m_platformInfo.eProductFamily != IGFX_XE_HP_SDV &&
         m_platformInfo.eProductFamily != IGFX_DG2 &&
         m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
-        m_platformInfo.eProductFamily != IGFX_ARROWLAKE
+        m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
+        m_platformInfo.eProductFamily != IGFX_LUNARLAKE
         ) ||
         IGC_IS_FLAG_DISABLED(EnableSampleDEmulation);
 }
@@ -1139,7 +1140,8 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_N &&
         m_platformInfo.eProductFamily != IGFX_DG2 &&
         m_platformInfo.eProductFamily != IGFX_METEORLAKE) &&
-        m_platformInfo.eProductFamily != IGFX_ARROWLAKE;
+        m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
+        m_platformInfo.eProductFamily != IGFX_LUNARLAKE;
 }
 
 // Has 64bit support but use 32bit for perf reasons
