@@ -1547,10 +1547,13 @@ void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<voi
         if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedTrimming))
         {
             uint64_t size_contribution = functionToTrim->getSizeContribution();
-            if (functionToTrim->SizeAfterInlining == size_contribution) //We don't need to trim function that will be called just one time
+            if (IGC_IS_FLAG_ENABLED(SkipTrimmingOneCopyFunction))
             {
-                PrintTrimUnit(0x8, "Don't trim (Same size contribution) " << functionToTrim->F->getName().str() << " Initial Size: " << functionToTrim->InitialSize << " Size after inlining: " << functionToTrim->SizeAfterInlining << " Size contribution: " << size_contribution);
-                continue;
+                if (functionToTrim->SizeAfterInlining == size_contribution) //We don't need to trim function that will be called just one time
+                {
+                    PrintTrimUnit(0x8, "Don't trim (Same size contribution) " << functionToTrim->F->getName().str() << " Initial Size: " << functionToTrim->InitialSize << " Size after inlining: " << functionToTrim->SizeAfterInlining << " Size contribution: " << size_contribution);
+                    continue;
+                }
             }
             //Trim the function
             PrintTrimUnit(0x8, "Trim the function " << functionToTrim->F->getName().str() << " Initial Size: " << functionToTrim->InitialSize << " Size after inlining: " << functionToTrim->SizeAfterInlining  << " Size contribution: " << size_contribution);
