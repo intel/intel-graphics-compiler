@@ -3659,10 +3659,12 @@ void Augmentation::buildLiveIntervals() {
         G4_Declare *defdcl = GetTopDclFromRegRegion(dst);
 
         if (dst->getBase()->isRegAllocPartaker()) {
-          if (defdcl && gra.getLocalLR(defdcl)) {
-            updateStartIntervalForLocal(defdcl, inst, dst);
-          } else {
-            updateStartInterval(defdcl, inst);
+          if (defdcl) {
+            if (gra.getLocalLR(defdcl)) {
+              updateStartIntervalForLocal(defdcl, inst, dst);
+            } else {
+              updateStartInterval(defdcl, inst);
+            }
           }
         } else if (liveAnalysis.livenessClass(G4_GRF)) {
           LocalLiveRange *defdclLR;

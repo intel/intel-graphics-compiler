@@ -443,6 +443,9 @@ getIntrinsicInfoTableEntries(InternalIntrinsic::ID id,
 /// parse ffXX as f(fXX) or f(fX)X.  (X is a placeholder for any other type.)
 static std::string getMangledTypeStr(Type *Ty) {
   std::string Result;
+  if (!Ty)
+    return Result;
+
   if (PointerType *PTyp = dyn_cast<PointerType>(Ty)) {
     Result += "p" + utostr(PTyp->getAddressSpace()) +
               getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));
@@ -469,7 +472,7 @@ static std::string getMangledTypeStr(Type *Ty) {
     Result += "v" +
               utostr(cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()) +
               getMangledTypeStr(cast<VectorType>(Ty)->getElementType());
-  else if (Ty)
+  else
     Result += EVT::getEVT(Ty).getEVTString();
   return Result;
 }
