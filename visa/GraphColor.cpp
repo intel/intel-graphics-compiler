@@ -5360,12 +5360,17 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
 void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
   if (!(lr->getIsPseudoNode()) && !(lr->getIsPartialDcl())) {
     unsigned lr_id = lr->getVar()->getId();
+    bool lr2EvenAlign = gra.isEvenAligned(lr->getDcl());
+    unsigned lr2_nreg = lr->getNumRegNeeded();
 
     // relax degree between 2 nodes
     auto relaxDegree = [&](LiveRange *lr1) {
       if (lr1->getActive() && !lr1->getIsPseudoNode() &&
           !(lr1->getIsPartialDcl())) {
-        unsigned w = edgeWeightGRF(lr1, lr);
+        bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+        unsigned lr1_nreg = lr1->getNumRegNeeded();
+        unsigned w =
+            edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
         VISA_DEBUG_VERBOSE({
           std::cout << "\t relax ";
           lr1->dump();
@@ -10623,23 +10628,11 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
 //
 unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
   bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+  bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
   unsigned lr1_nreg = lr1->getNumRegNeeded();
   unsigned lr2_nreg = lr2->getNumRegNeeded();
 
-  if (!lr1EvenAlign) {
-    return lr1_nreg + lr2_nreg - 1;
-  }
-
-  bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
-  if (!lr2EvenAlign) {
-    unsigned sum = lr1_nreg + lr2_nreg;
-    return sum + 1 - ((sum) % 2);
-  } else if (lr2EvenAlign) {
-    return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
-  } else {
-    vISA_ASSERT_UNREACHABLE("should be unreachable");
-    return 0;
-  }
+  return edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
 }
 
 unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {

@@ -887,6 +887,22 @@ class GraphColor {
 
   unsigned edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2);
   unsigned edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2);
+  static unsigned edgeWeightGRF(bool lr1EvenAlign, bool lr2EvenAlign,
+                                unsigned lr1_nreg, unsigned lr2_nreg) {
+    if (!lr1EvenAlign) {
+      return lr1_nreg + lr2_nreg - 1;
+    }
+
+    if (!lr2EvenAlign) {
+      unsigned sum = lr1_nreg + lr2_nreg;
+      return sum + 1 - ((sum) % 2);
+    } else if (lr2EvenAlign) {
+      return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
+    } else {
+      vISA_ASSERT_UNREACHABLE("should be unreachable");
+      return 0;
+    }
+  }
 
   void computeDegreeForGRF();
   void computeDegreeForARF();
