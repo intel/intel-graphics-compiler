@@ -105,7 +105,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
     uint64_t m_UsedSz{0};
     alignment_t m_RequiredAlign{0};
     bool m_HasIndirect{false};
-    bool m_HasVLA{false};
+    bool m_HasNonStatic{false};
     Function *m_pHeavyFunction{nullptr};
     ProcessingState m_ProcessingFlag{ProcessingState::NotStarted};
   };
@@ -133,13 +133,11 @@ public:
 // Collect all allocas and updates stack usage of each function
 void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
   IGC_ASSERT(!AI.isUsedWithInAlloca());
-  const BasicBlock *Parent = AI.getParent();
-  IGC_ASSERT_MESSAGE(Parent == &Parent->getParent()->front(), "Allocas outside of entry block are not supported");
 
   auto &CurFuncState = m_ProcessedFs[AI.getFunction()];
 
-  if (!isa<ConstantInt>(AI.getArraySize())) {
-    CurFuncState.m_HasVLA = true;
+  if (!AI.isStaticAlloca()) {
+    CurFuncState.m_HasNonStatic = true;
     return;
   }
 
@@ -179,7 +177,7 @@ StackAnalysis::checkFunction(Function &F) {
 
   // Can't predict stack usage if there are indirect calls
   // or variable length arrays
-  if (StateOfF.m_HasIndirect || StateOfF.m_HasVLA)
+  if (StateOfF.m_HasIndirect || StateOfF.m_HasNonStatic)
     return None;
 
   // if function is stack call, we do not know stack usage

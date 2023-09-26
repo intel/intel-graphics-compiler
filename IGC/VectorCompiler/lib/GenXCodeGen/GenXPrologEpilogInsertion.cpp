@@ -662,18 +662,41 @@ GenXPrologEpilogInsertion::generateStackCallProlog(Function &F,
 void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &AI) {
   IGC_ASSERT(!AI.isUsedWithInAlloca());
   const BasicBlock *Parent = AI.getParent();
-  IGC_ASSERT_MESSAGE(Parent == &Parent->getParent()->front(),
-                     "Allocas outside of entry block are not supported");
-  Allocas.push_back(&AI);
-  if (!isa<ConstantInt>(AI.getArraySize())) {
-    HasVLA = true;
+  if (Parent == &Parent->getParent()->front()) {
+    Allocas.push_back(&AI);
+    if (!isa<ConstantInt>(AI.getArraySize()))
+      HasVLA = true;
+  } else {
+    IRBuilder<> IRB(&AI);
+    unsigned Alignment = getAllocaAlignment(&AI);
+    createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                         Instruction::Add, Alignment - 1);
+    createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                         Instruction::And, ~(Alignment - 1));
+    Value *AllocaSize = nullptr;
+    if (isa<ConstantInt>(AI.getArraySize())) {
+      AllocaSize = IRB.getInt64(
+          divideCeil(*AI.getAllocationSizeInBits(*DL), genx::ByteBits));
+    } else {
+      unsigned ElementSize = llvm::divideCeil(
+          DL->getTypeAllocSizeInBits(AI.getAllocatedType()), genx::ByteBits);
+      AllocaSize =
+          IRB.CreateMul(IRB.getInt64(ElementSize),
+                        IRB.CreateZExt(AI.getOperand(0), IRB.getInt64Ty()));
+    }
+    auto [OrigSP, _] =
+        createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                             Instruction::Add, AllocaSize, true);
+    auto *AllocaAddr = IRB.CreateIntToPtr(OrigSP, AI.getType(), AI.getName());
+    AI.replaceAllUsesWith(AllocaAddr);
+    AI.eraseFromParent();
   }
 }
 
 void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
   LLVM_DEBUG(dbgs() << "In emitPrivateMemoryAllocations\n");
   if (Allocas.empty()) {
-    LLVM_DEBUG(dbgs() << "no alloca instructions in the function\n");
+    LLVM_DEBUG(dbgs() << "no alloca instructions in the entry basic block\n");
     return;
   }
 
@@ -729,7 +752,7 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
             IRB.CreateAdd(AllocaSize, IRB.getInt64(Alignment - 1)), true);
       }
       createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
-                           Instruction::And, ~(Alignment - 1), false);
+                           Instruction::And, ~(Alignment - 1));
     } else {
       unsigned AllocaSize =
           llvm::divideCeil(*AI->getAllocationSizeInBits(*DL), genx::ByteBits);
