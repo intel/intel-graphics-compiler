@@ -845,8 +845,6 @@ static void setImpliedIGCKeys()
     IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 16, EnableOCLSIMD16, true);
     IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth,  8, EnableOCLSIMD32, false);
     IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth,  8, EnableOCLSIMD16, false);
-
-    IGC_SET_IMPLIED_REGKEY(StackOverflowDetection, 1, ForceAddingStackcallKernelPrerequisites, true);
 }
 
 void setImpliedRegkey(SRegKeyVariableMetaData& name,
