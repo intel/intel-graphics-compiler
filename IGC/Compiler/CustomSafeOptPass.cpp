@@ -5625,8 +5625,7 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
 {
     using namespace llvm::PatternMatch;
 
-    IGCLLVM::FixedVectorType* vecTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
-    IGC_ASSERT( vecTy != nullptr );
+    IGCLLVM::FixedVectorType* vecTy = cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
     uint64_t num = vecTy->getNumElements();
     Type* eleType = vecTy->getElementType();
 

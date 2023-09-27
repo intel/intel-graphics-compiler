@@ -1805,7 +1805,7 @@ namespace IGC
             }
         };
         bool match = false;
-        e_modifier mod;
+        e_modifier mod{};
         Value* source = nullptr;
         if (GetModifier(I, mod, source))
         {
@@ -4504,8 +4504,8 @@ namespace IGC
                 return false;
             }
 
-            llvm::Value* selSources[2];
-            e_modifier   selMod[2];
+            llvm::Value* selSources[2] = {};
+            e_modifier   selMod[2] = {};
             selSources[0] = I.getOperand(1);
             selSources[1] = I.getOperand(2);
 
@@ -4940,8 +4940,8 @@ namespace IGC
         };
 
         bool found = false;
-        llvm::Value* sources[2];
-        e_modifier   src_mod[2];
+        llvm::Value* sources[2] = {};
+        e_modifier   src_mod[2] = {};
 
         IGC_ASSERT(I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::UDiv || I.getOpcode() == Instruction::AShr);
 
