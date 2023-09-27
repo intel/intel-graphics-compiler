@@ -1060,22 +1060,23 @@ void Optimizer::prepareNoMaskWA() {
         // Check if any temps are needed.
         G4_CondMod *condmod = I->getCondMod();
         G4_Predicate *pred = I->getPredicate();
-        if (pred && !condmod) {
+        if (I->opcode() == G4_sel || I->opcode() == G4_csel) {
+          // doFlagModifierSelInstWA : temp for saving dst (could be 2GRF)
+          //   Note: sel's pred isn't used for calculating WrEn, and csel does
+          //         not allow predicate.
+          G4_DstRegRegion* dst = I->getDst();
+          if (dst && !dst->isNullReg()) {
+            (void)updateTempReserve(I->getExecSize() * dst->getHorzStride(),
+              dst->getType(), dst->getTopDcl()->getSubRegAlign());
+          }
+          else
+            vISA_ASSERT(false, "ICE: expect dst to be non-null!");
+        } else if (pred && !condmod) {
           // doPredicateInstWA(): need 1 DW
           updateTempReserve(1, Type_UD, Even_Word);
         } else if (!pred && condmod) {
-          if (I->opcode() == G4_sel || I->opcode() == G4_csel) {
-            // doFlagModifierSelInstWA : temp for saving dst (could be 2GRF)
-            G4_DstRegRegion *dst = I->getDst();
-            vISA_ASSERT((dst && !dst->isNullReg()),
-                        "ICE: expect dst to be non-null!");
-            (void)updateTempReserve(I->getExecSize() * dst->getHorzStride(),
-                                    dst->getType(),
-                                    dst->getTopDcl()->getSubRegAlign());
-          } else {
-            // doFlagModifierInstWA : temp for saving condmod
-            updateTempReserve(1, Type_UD, Even_Word);
-          }
+          // doFlagModifierInstWA : temp for saving condmod
+          updateTempReserve(1, Type_UD, Even_Word);
         } else if (pred && condmod) {
           // doPredicateAndFlagModifierInstWA : temp for saving predicate
           updateTempReserve(1, Type_UD, Even_Word);
@@ -1601,10 +1602,10 @@ void Optimizer::applyNoMaskWA() {
     I2->setPredicate(I2_flag);
   };
 
-  // doFlagModifierSelInstWA : WA for sel inst that has condmod without
-  // predicate
-  //   Note that sel does not update flag. Also, when condMod is used, predicate
-  //   is not allowed.
+  // doFlagModifierSelInstWA : WA for sel/csel inst
+  //   sel:  either predicate or condmod, not both
+  //  csel:  no predicate, must have condMod
+  // Both do not update flag.
   //
   // flagVar : WA flag for this BB
   // Before:
@@ -1616,10 +1617,6 @@ void Optimizer::applyNoMaskWA() {
   auto doFlagModifierSelInstWA = [&](G4_BB *aBB, INST_LIST_ITER &aII,
                                      G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
-    G4_CondMod *P = I->getCondMod();
-    vISA_ASSERT((P && !I->getPredicate()),
-                "ICE [sel]: expect flagModifier and no predicate!");
-
     G4_DstRegRegion *dst = I->getDst();
     vISA_ASSERT(!isNull(dst), "ICE: expect dst to be non-null!");
 
@@ -1888,19 +1885,17 @@ void Optimizer::applyNoMaskWA() {
     G4_Predicate *P = I->getPredicate();
     G4_CondMod *M = I->getCondMod();
 
-    if (P == nullptr && M == nullptr) {
+    if ((I->opcode() == G4_sel || I->opcode() == G4_csel)) {
+      // Not expecting null dst, as it is no-op
+      if (!isNull(I->getDst())) {
+        doFlagModifierSelInstWA(aBB, aII, aFlagVar);
+      }
+    } else if (P == nullptr && M == nullptr) {
       doSimpleInstWA(aBB, aII, aFlagVar);
     } else if (P != nullptr && M == nullptr) {
       doPredicateInstWA(aBB, aII, aFlagVar);
     } else if (P == nullptr && M != nullptr) {
-      if ((I->opcode() == G4_sel || I->opcode() == G4_csel)) {
-        // Not expecting null dst, as it is no-op
-        if (!isNull(I->getDst())) {
-          doFlagModifierSelInstWA(aBB, aII, aFlagVar);
-        }
-      } else {
-        doFlagModifierInstWA(aBB, aII, aFlagVar);
-      }
+      doFlagModifierInstWA(aBB, aII, aFlagVar);
     } else {
       doPredicateAndFlagModifierInstWA(aBB, aII, aFlagVar);
     }
