@@ -159,6 +159,36 @@ public:
     }
   };
 
+  struct FunctionInfo {
+  public:
+    FunctionInfo(StringRef Name, const GenXSubtarget &ST);
+    FunctionInfo(const FunctionGroup &FG, GenXOCLRuntimeInfo &RI,
+                 const GenXSubtarget &ST, const GenXBackendConfig &BC);
+
+    std::string Name;
+
+    bool DisableEUFusion = false;
+    bool SupportsDebugging = false;
+    bool UsesDPAS = false;
+    bool UsesGroupId = false;
+    bool UsesReadWriteImages = false;
+    bool UsesSample = false;
+
+    unsigned GRFSizeInBytes;
+    unsigned NumBarriers = 0;
+    unsigned SLMSize = 0;
+    unsigned StatelessPrivateMemSize = 0;
+    unsigned ThreadPrivateMemSize = 0;
+
+  private:
+    void initInstructionLevelProperties(const FunctionGroup &FG,
+                                        GenXOCLRuntimeInfo &RI,
+                                        const GenXSubtarget &ST);
+
+    void initInstructionLevelProperties(Function *Func, GenXOCLRuntimeInfo &RI,
+                                        const GenXSubtarget &ST);
+  };
+
   // Additional kernel info that are not provided by finalizer
   // but still required for runtime.
   struct KernelInfo {
@@ -174,20 +204,7 @@ public:
     std::vector<NamedVISAAsm> VISAAsm;
 
   private:
-    std::string Name;
-
-    bool UsesGroupId = false;
-    bool UsesDPAS = false;
-    int NumBarriers = 0;
-    bool UsesSample = false;
-    bool UsesReadWriteImages = false;
-    bool SupportsDebugging = false;
-    unsigned SLMSize = 0;
-    unsigned ThreadPrivateMemSize = 0;
-    unsigned StatelessPrivateMemSize = 0;
-    bool DisableEUFusion = false;
-
-    unsigned GRFSizeInBytes;
+    FunctionInfo FuncInfo;
 
     using ArgInfoStorageTy = std::vector<KernelArgInfo>;
     using PrintStringStorageTy = std::vector<std::string>;
@@ -195,10 +212,6 @@ public:
     PrintStringStorageTy PrintStrings;
 
   private:
-    void setInstructionUsageProperties(const FunctionGroup &FG,
-                                       GenXOCLRuntimeInfo &RI,
-                                       const GenXBackendConfig &BC);
-    void setMetadataProperties(vc::KernelMetadata &KM, const GenXSubtarget &ST);
     void setArgumentProperties(const Function &Kernel,
                                const vc::KernelMetadata &KM,
                                const GenXSubtarget &ST,
@@ -217,7 +230,7 @@ public:
     KernelInfo(const FunctionGroup &FG, GenXOCLRuntimeInfo &RI,
                const GenXSubtarget &ST, const GenXBackendConfig &BC);
 
-    const std::string &getName() const { return Name; }
+    const std::string &getName() const { return FuncInfo.Name; }
 
     // These are considered to always be true (at least in igcmc).
     // Preserve this here.
@@ -226,29 +239,31 @@ public:
     bool usesLocalIdZ() const { return true; }
 
     // Deduced from actual function instructions.
-    bool usesGroupId() const { return UsesGroupId; }
+    bool usesGroupId() const { return FuncInfo.UsesGroupId; }
 
-    bool supportsDebugging() const { return SupportsDebugging; }
+    bool supportsDebugging() const { return FuncInfo.SupportsDebugging; }
 
     // SIMD size is always set by igcmc to one. Preserve this here.
     unsigned getSIMDSize() const { return 1; }
-    unsigned getSLMSize() const { return SLMSize; }
+    unsigned getSLMSize() const { return FuncInfo.SLMSize; }
 
     // Deduced from actual function instructions.
-    unsigned getTPMSize() const { return ThreadPrivateMemSize; }
-    unsigned getStatelessPrivMemSize() const { return StatelessPrivateMemSize; }
+    unsigned getTPMSize() const { return FuncInfo.ThreadPrivateMemSize; }
+    unsigned getStatelessPrivMemSize() const {
+      return FuncInfo.StatelessPrivateMemSize;
+    }
 
-    unsigned getGRFSizeInBytes() const { return GRFSizeInBytes; }
+    unsigned getGRFSizeInBytes() const { return FuncInfo.GRFSizeInBytes; }
 
     // Deduced from actual function instructions.
-    bool usesDPAS() const { return UsesDPAS; }
+    bool usesDPAS() const { return FuncInfo.UsesDPAS; }
     // igcmc always sets this to zero. Preserve this here.
     unsigned getNumThreads() const { return 0; }
 
-    int getNumBarriers() const { return NumBarriers; }
-    bool usesSample() const { return UsesSample; }
-    bool usesReadWriteImages() const { return UsesReadWriteImages; }
-    bool requireDisableEUFusion() const { return DisableEUFusion; }
+    unsigned getNumBarriers() const { return FuncInfo.NumBarriers; }
+    bool usesSample() const { return FuncInfo.UsesSample; }
+    bool usesReadWriteImages() const { return FuncInfo.UsesReadWriteImages; }
+    bool requireDisableEUFusion() const { return FuncInfo.DisableEUFusion; }
 
     // Arguments accessors.
     arg_iterator arg_begin() { return ArgInfos.begin(); }

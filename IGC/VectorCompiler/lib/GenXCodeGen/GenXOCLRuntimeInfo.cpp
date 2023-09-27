@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm/InitializePasses.h>
@@ -42,6 +43,8 @@ SPDX-License-Identifier: MIT
 #include <stack>
 
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "genx-runtime-info"
 
 #define CISA_CALL(c)                                                           \
   do {                                                                         \
@@ -272,72 +275,98 @@ KernelArgBuilder::translateArgument(const Argument &Arg) const {
 
 //===----------------------------------------------------------------------===//
 //
-// Kernel info implementation.
+// Function info implementation.
 //
 //===----------------------------------------------------------------------===//
-// Just perform linear instructions scan to find usage stats.
-void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
-    const FunctionGroup &FG, GenXOCLRuntimeInfo &RI,
-    const GenXBackendConfig &BC) {
-  for (Function *F : FG) {
-    for (BasicBlock &BB : *F) {
-      for (Instruction &I : BB) {
-        switch (GenXIntrinsic::getGenXIntrinsicID(&I)) {
-        default:
-          break;
-        case GenXIntrinsic::genx_group_id_x:
-        case GenXIntrinsic::genx_group_id_y:
-        case GenXIntrinsic::genx_group_id_z:
-          UsesGroupId = true;
-          break;
-        case GenXIntrinsic::genx_barrier:
-        case GenXIntrinsic::genx_sbarrier:
-          NumBarriers = 1;
-          break;
-        case GenXIntrinsic::genx_3d_sample:
-        case GenXIntrinsic::genx_sample:
-        case GenXIntrinsic::genx_sample_unorm:
-          UsesSample = true;
-          break;
-        case GenXIntrinsic::genx_dpas2:
-        case GenXIntrinsic::genx_dpas_nosrc0:
-        case GenXIntrinsic::genx_dpas:
-          if (!DisableEUFusion) {
-            const auto &GUA = RI.getAnalysis<GenXGlobalUniformAnalysis>(*F);
-            if (!GUA.isUniform(BB))
-              DisableEUFusion = true;
-          }
-        case GenXIntrinsic::genx_dpasw:
-        case GenXIntrinsic::genx_dpasw_nosrc0:
-          UsesDPAS = true;
-          break;
-#if 0
-        // ThreadPrivateMemSize was not copied to igcmc structures
-        // always defaulting to zero and everything worked. After
-        // removal of igcmc structures TPMSize started to be
-        // initialized to values other than zero and some ispc tests
-        // started to fail.
-        // Restore old behavior as temporary fix until proper
-        // investigation will be performed. This is really strange.
-        case GenXIntrinsic::genx_alloca:
-          ThreadPrivateMemSize = BC.getStackSurfaceMaxSize();
-          break;
-#endif
-        }
+GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(StringRef Name,
+                                               const GenXSubtarget &ST)
+    : Name(Name.str()), GRFSizeInBytes(ST.getGRFByteSize()) {}
+
+GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(const FunctionGroup &FG,
+                                               GenXOCLRuntimeInfo &RI,
+                                               const GenXSubtarget &ST,
+                                               const GenXBackendConfig &BC)
+    : DisableEUFusion(BC.isDisableEUFusion()),
+      SupportsDebugging(BC.emitDebuggableKernels()),
+      GRFSizeInBytes(ST.getGRFByteSize()),
+      StatelessPrivateMemSize(
+          vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize())) {
+  initInstructionLevelProperties(FG, RI, ST);
+
+  auto *Func = FG.getHead();
+
+  if (vc::isKernel(Func)) {
+    vc::KernelMetadata KernelMD(FG.getHead());
+    Name = KernelMD.getName().str();
+    SLMSize = KernelMD.getSLMSize();
+
+    if (ST.hasNBarrier())
+      NumBarriers = KernelMD.getAlignedBarrierCnt(NumBarriers);
+  } else {
+    Name = Func->getName().str();
+  }
+}
+
+void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
+    Function *Func, GenXOCLRuntimeInfo &RI, const GenXSubtarget &ST) {
+  LLVM_DEBUG(dbgs() << "> Function: " << Func->getName() << "\n");
+  for (auto &Inst : instructions(*Func)) {
+    auto IID = vc::getAnyIntrinsicID(&Inst);
+    switch (IID) {
+    default:
+      break;
+    case GenXIntrinsic::genx_group_id_x:
+    case GenXIntrinsic::genx_group_id_y:
+    case GenXIntrinsic::genx_group_id_z:
+      LLVM_DEBUG(dbgs() << ">> UsesGroupId: true\n");
+      UsesGroupId = true;
+      break;
+    case GenXIntrinsic::genx_barrier:
+    case GenXIntrinsic::genx_sbarrier:
+      NumBarriers = 1;
+      LLVM_DEBUG(dbgs() << ">> NumBarriers: " << NumBarriers << "\n");
+      break;
+    case GenXIntrinsic::genx_3d_sample:
+    case GenXIntrinsic::genx_sample:
+    case GenXIntrinsic::genx_sample_unorm:
+      UsesSample = true;
+      LLVM_DEBUG(dbgs() << ">> UsesSample: true\n");
+      break;
+    case GenXIntrinsic::genx_dpas2:
+    case GenXIntrinsic::genx_dpas:
+    case GenXIntrinsic::genx_dpas_nosrc0:
+      if (!DisableEUFusion && ST.hasFusedEU()) {
+        const auto &GUA = RI.getAnalysis<GenXGlobalUniformAnalysis>(*Func);
+        DisableEUFusion = !GUA.isUniform(*Inst.getParent());
+        LLVM_DEBUG(dbgs() << ">> DisableEUFusion: " << DisableEUFusion << "\n");
       }
+      LLVM_FALLTHROUGH;
+    case GenXIntrinsic::genx_dpasw:
+    case GenXIntrinsic::genx_dpasw_nosrc0:
+      LLVM_DEBUG(dbgs() << ">> UsesDPAS: true\n");
+      UsesDPAS = true;
+      break;
     }
   }
 }
 
-void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
-    vc::KernelMetadata &KM, const GenXSubtarget &ST) {
-  Name = KM.getName().str();
-  SLMSize = KM.getSLMSize();
-
-  if (ST.hasNBarrier())
-    NumBarriers = KM.getAlignedBarrierCnt(NumBarriers);
+void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
+    const FunctionGroup &FG, GenXOCLRuntimeInfo &RI, const GenXSubtarget &ST) {
+  LLVM_DEBUG(dbgs() << "Function group: " << FG.getHead()->getName() << "\n");
+  // Collect data from the kernel and subroutine callees
+  for (Function *Func : FG)
+    initInstructionLevelProperties(Func, RI, ST);
+  // Collect data from directly-called stackcall functions
+  for (const auto *Subgroup : FG.subgroups())
+    for (Function *Func : *Subgroup)
+      initInstructionLevelProperties(Func, RI, ST);
 }
 
+//===----------------------------------------------------------------------===//
+//
+// Kernel info implementation.
+//
+//===----------------------------------------------------------------------===//
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
     const Function &Kernel, const vc::KernelMetadata &KM,
     const GenXSubtarget &ST, const GenXBackendConfig &BC) {
@@ -355,7 +384,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
             [&ArgBuilder](const Argument &Arg) {
               return ArgBuilder.translateArgument(Arg);
             });
-  UsesReadWriteImages = std::any_of(
+  FuncInfo.UsesReadWriteImages = std::any_of(
       ArgInfos.begin(), ArgInfos.end(), [](const KernelArgInfo &AI) {
         return AI.isImage() &&
                AI.getAccessKind() == KernelArgInfo::AccessKindType::ReadWrite;
@@ -376,27 +405,16 @@ void GenXOCLRuntimeInfo::KernelInfo::setPrintStrings(
 }
 
 GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const GenXSubtarget &ST)
-    : Name{"Intel_Symbol_Table_Void_Program"}, GRFSizeInBytes{
-                                                   ST.getGRFByteSize()} {}
+    : FuncInfo("Intel_Symbol_Table_Void_Program", ST) {}
 
 GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
                                            GenXOCLRuntimeInfo &RI,
                                            const GenXSubtarget &ST,
-                                           const GenXBackendConfig &BC) {
-  DisableEUFusion = BC.isDisableEUFusion();
-
-  setInstructionUsageProperties(FG, RI, BC);
-
-  GRFSizeInBytes = ST.getGRFByteSize();
-
-  StatelessPrivateMemSize =
-      vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize());
-
-  SupportsDebugging = BC.emitDebuggableKernels();
-
+                                           const GenXBackendConfig &BC)
+    : FuncInfo(FG, RI, ST, BC) {
   vc::KernelMetadata KM{FG.getHead()};
-  IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
-  setMetadataProperties(KM, ST);
+  IGC_ASSERT_MESSAGE(KM.isKernel(),
+                     "Expected kernel as head of function group");
   setArgumentProperties(*FG.getHead(), KM, ST, BC);
   setPrintStrings(*FG.getHead()->getParent());
 }
