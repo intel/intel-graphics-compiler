@@ -1558,7 +1558,8 @@ void OptimizeIR(CodeGenContext* const pContext)
             }
             GFX_ONLY_PASS { mpm.add(new GenUpdateCB()); }
 
-            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
+            if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) &&
+                !pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
                 if (pContext->type == ShaderType::OPENCL_SHADER)
                 {
@@ -1597,7 +1598,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             // Conditions apply just as above due to problems with atomics
             // (see comment above for details).
-            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
+            if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) &&
+                !pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
                 // After lowering 'switch', run jump threading to remove redundant jumps.
                 mpm.add(llvm::createJumpThreadingPass());

@@ -173,6 +173,7 @@ DECLARE_IGC_REGKEY(bool, DisableMatchPredAdd,           false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableMatchSimpleAdd,         false, "Setting this to 1/true adds a compiler switch to disable simple cmp+and+add optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableMatchPow,               false, "Setting this to 1/true adds a compiler switch to disable log2/mul/exp2 = pow optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableIRVerification,         false, "Setting this to 1/true adds a compiler switch to disable IGC IR verification.", false)
+DECLARE_IGC_REGKEY(bool, EnableJumpThreading,           true,  "Setting this to 1/true adds a compiler switch to enable llvm jumpThreading pass.", true)
 DECLARE_IGC_REGKEY(bool, DisableLoopUnroll,             false, "Setting this to 1/true adds a compiler switch to disable loop unrolling.", true)
 DECLARE_IGC_REGKEY(DWORD, RuntimeLoopUnrolling,         0, "Setting this to switch on/off runtime loop unrolling. 0: default (on), 1: force on, 2: force off", false)
 DECLARE_IGC_REGKEY(bool, DisableBranchSwaping,          false, "Setting this to 1/true adds a compiler switch to disable branch swapping.", false)
