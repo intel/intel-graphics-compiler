@@ -311,7 +311,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             useQW = has_QW_BTS_GS && nelts == 1 && (eTyBytes == 8U && align >= 8U);
         }
 
-        if (cgCtx->platform.LSCEnabled())
+        if (EmitPass::shouldGenerateLSCQuery(*cgCtx, Inst) == Tristate::True)
         {
             // With LSC, want to use QW if element size is 8 bytes.
             useQW = (eTyBytes == 8);
