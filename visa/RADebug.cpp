@@ -606,25 +606,25 @@ bool VerifyAugmentation::interfereBetween(G4_Declare *dcl1, G4_Declare *dcl2) {
 }
 
 void VerifyAugmentation::verify() {
-  std::cerr << "Start verification for kernel: "
+  std::cout << "Start verification for kernel: "
             << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << "\n";
 
   for (auto dcl : kernel->Declares) {
     if (dcl->getIsSplittedDcl()) {
       auto &tup = masks[dcl];
-      std::cerr << dcl->getName() << "(" << getStr(std::get<1>(tup))
+      std::cout << dcl->getName() << "(" << getStr(std::get<1>(tup))
                 << ") is split"
                 << "\n";
       for (const G4_Declare *subDcl : gra->getSubDclList(dcl)) {
         auto &tupSub = masks[subDcl];
-        std::cerr << "\t" << subDcl->getName() << " ("
+        std::cout << "\t" << subDcl->getName() << " ("
                   << getStr(std::get<1>(tupSub)) << ")"
                   << "\n";
       }
     }
   }
 
-  std::cerr << "\n"
+  std::cout << "\n"
             << "\n"
             << "\n";
 
@@ -668,7 +668,7 @@ void VerifyAugmentation::verify() {
       return str;
     };
 
-    std::cerr << dcl->getName() << " - " << getMaskStr(dclMask);
+    std::cout << dcl->getName() << " - " << getMaskStr(dclMask);
 
     verifyAlign(dcl);
 
@@ -693,7 +693,7 @@ void VerifyAugmentation::verify() {
           continue;
 
         if (!interfere) {
-          std::cerr << dcl->getRegVar()->getName() << "(" << getStr(dclMask)
+          std::cout << dcl->getRegVar()->getName() << "(" << getStr(dclMask)
                     << ") and " << activeDcl->getRegVar()->getName() << "("
                     << getStr(aDclMask)
                     << ") are overlapping with incompatible emask but not "
@@ -703,7 +703,7 @@ void VerifyAugmentation::verify() {
 
         if (overlapDcl(activeDcl, dcl)) {
           if (!interfere) {
-            std::cerr << dcl->getRegVar()->getName() << "(" << getStr(dclMask)
+            std::cout << dcl->getRegVar()->getName() << "(" << getStr(dclMask)
                       << ") and " << activeDcl->getName() << "("
                       << getStr(aDclMask)
                       << ") use overlapping physical assignments but not "
@@ -717,7 +717,7 @@ void VerifyAugmentation::verify() {
     active.push_back(dcl);
   }
 
-  std::cerr << "End verification for kenel: "
+  std::cout << "End verification for kenel: "
             << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << "\n"
             << "\n"
             << "\n";
@@ -851,7 +851,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
 
     if (rd.size() > 0) {
       printf("Current use str = %s for inst:\t", useStr.data());
-      inst->emit(std::cerr);
+      inst->emit(std::cout);
       printf("\t$%d\n", inst->getVISAId());
     }
     // process all reaching defs
@@ -907,7 +907,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
           printed = true;
         }
         printf("\t");
-        std::get<0>(reachingDef)->emit(std::cerr);
+        std::get<0>(reachingDef)->emit(std::cout);
         printf("\t$%d\n", std::get<0>(reachingDef)->getVISAId());
       }
     }
@@ -1242,7 +1242,7 @@ void DynPerfModel::dump() {
   OF << Buffer << "\n";
   OF.close();
 
-  std::cerr << Buffer << "\n";
+  std::cout << Buffer << "\n";
 }
 
 SpillAnalysis::~SpillAnalysis() {

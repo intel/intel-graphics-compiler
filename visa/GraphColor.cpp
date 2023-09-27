@@ -3095,8 +3095,10 @@ bool Augmentation::isDefaultMaskDcl(G4_Declare *dcl, unsigned simdSize,
 
   unsigned byteSize = getByteSizeFromMask(type);
 
-  // treat simd32 as simd16 as the instruction is always split to 2 simd16
-  if (simdSize == 32) {
+  // treat simd32 as simd16 when the program is split in to 2 simd16.
+  // when a simd32 program is not split in to 2 simd16, but some sends
+  // are broken in to 2 simd16 then treat those simd16 sends as non-default.
+  if (simdSize == 32 && kernel.getChannelSlicing()) {
     simdSize = 16;
   }
   if (mask.size() > 0) {
