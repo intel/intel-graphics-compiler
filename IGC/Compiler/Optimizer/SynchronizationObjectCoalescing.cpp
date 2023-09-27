@@ -65,9 +65,15 @@ enum InstructionMask : uint32_t
     SharedMemoryReadOperation  = (1 << 7),
     SharedMemoryWriteOperation = (1 << 8),
     EndOfThreadOperation       = (1 << 9),
+
+    LastMaskPlusOne,
 };
+
+constexpr InstructionMask AllInstructionsMask =
+    InstructionMask{ ((InstructionMask::LastMaskPlusOne - 1) << 1) - 1 };
+
 constexpr InstructionMask AllNoAtomicMask =
-    InstructionMask{ ((EndOfThreadOperation << 1) - 1) & ~InstructionMask::AtomicOperation };
+    InstructionMask{ AllInstructionsMask & ~InstructionMask::AtomicOperation };
 
 inline constexpr InstructionMask operator|(InstructionMask a, InstructionMask b)
 {
