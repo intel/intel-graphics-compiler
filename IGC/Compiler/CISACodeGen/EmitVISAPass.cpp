@@ -9869,7 +9869,7 @@ void EmitPass::emitLoadRawIndexed(
     Value* bufPtrv = inst->getResourceValue();
 
     ResourceDescriptor resource = GetResourceVariable(bufPtrv);
-    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
     m_currShader->isMessageTargetDataCacheDataPort = true;
     if (shouldGenerateLSC(inst))
     {
@@ -10192,7 +10192,7 @@ void EmitPass::emitLoad(
         IGC_ASSERT(offset);
         LSC_CACHE_OPTS cacheOpts =
             translateLSCCacheControlsFromMetadata(inst, true);
-        LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.
+        LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().
             Get(inst);
 
         emitLSCVectorLoad(
@@ -11324,7 +11324,7 @@ void EmitPass::emitStoreRawIndexed(
 
     if (shouldGenerateLSC(inst))
     {
-        LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+        LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
         LSC_CACHE_OPTS cacheOpts =
             translateLSCCacheControlsFromMetadata(inst, false);
@@ -11504,7 +11504,7 @@ void EmitPass::emitStore(
 ) {
     if (shouldGenerateLSC(inst))
     {
-        LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+        LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
         LSC_CACHE_OPTS cacheOpts =
             translateLSCCacheControlsFromMetadata(inst, false);
@@ -21134,7 +21134,7 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
     auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
-    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
         cacheOpts = *Opts;
@@ -21213,7 +21213,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
         inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCLoadStatus ?
             LSC_LOAD_STATUS : LSC_LOAD;
     //
-    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     emitLscIntrinsicFragments(gatherDst, dataSize, dataElems, immOffset,
         [&] (CVariable* fragDst, int fragIx, LSC_DATA_ELEMS fragElems, int fragImmOffset) {
@@ -21279,7 +21279,7 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
     Value* storedVal = inst->getArgOperand(2);
     CVariable* storedVar = GetSymbol(storedVal);
     storedVar = BroadcastIfUniform(storedVar);
-    LSC_DOC_ADDR_SPACE addrspace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+    LSC_DOC_ADDR_SPACE addrspace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
@@ -21346,7 +21346,7 @@ void EmitPass::emitLSCLoad(
 {
     LSC_CACHE_OPTS cacheOpts =
         translateLSCCacheControlsFromMetadata(inst, true);
-    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
     emitLSCLoad(cacheOpts, dst, offset, elemSize, numElems, blockOffset,
                 resource, addr_size, data_order, immOffset, immScale, addrSpace);
 }
@@ -21388,7 +21388,7 @@ void EmitPass::emitLSCStore(
     int immOffset,
     int immScale)
 {
-    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->m_UserAddrSpaceMD.Get(inst);
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
     emitLSCStore(cacheOpts, src, offset, elemSize, numElems, blockOffset,
                  resource, addr_size, data_order, immOffset, immScale, addrSpace);

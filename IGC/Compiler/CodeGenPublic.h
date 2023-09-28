@@ -831,7 +831,9 @@ namespace IGC
 
     };
 
-    /// this class adds intrinsic cache to LLVM context
+    /// This class:
+    ///    Add intrinsic cache to LLVM context
+    ///    Add llvm metadata cache
     class LLVMContextWrapper : public llvm::LLVMContext
     {
         LLVMContextWrapper(LLVMContextWrapper&) = delete;
@@ -845,6 +847,8 @@ namespace IGC
         /// requested in this context
         typedef llvm::ValueMap<const llvm::Function*, unsigned> SafeIntrinsicIDCacheTy;
         SafeIntrinsicIDCacheTy m_SafeIntrinsicIDCache;
+        /// metadata caching
+        UserAddrSpaceMD m_UserAddrSpaceMD;
         void AddRef();
         void Release();
     };
@@ -914,8 +918,6 @@ namespace IGC
         RetryManager m_retryManager;
 
         IGCMetrics::IGCMetric metrics;
-
-        UserAddrSpaceMD m_UserAddrSpaceMD;
 
         // Used scratch space for private variables
         llvm::DenseMap<llvm::Function*, uint64_t> m_ScratchSpaceUsage;
@@ -1044,8 +1046,6 @@ namespace IGC
 
             // Set retry behavor for Disable()
             m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
-
-            m_UserAddrSpaceMD = UserAddrSpaceMD(llvmCtxWrapper);
         }
 
         CodeGenContext(CodeGenContext&) = delete;
@@ -1096,6 +1096,11 @@ namespace IGC
         virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
         virtual bool enableZEBinary() const;
         bool isPOSH() const;
+
+        UserAddrSpaceMD& getUserAddrSpaceMD() {
+            IGC_ASSERT(llvmCtxWrapper);
+            return llvmCtxWrapper->m_UserAddrSpaceMD;
+        }
 
         unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
         {

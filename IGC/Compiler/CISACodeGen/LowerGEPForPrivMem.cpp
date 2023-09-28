@@ -522,7 +522,7 @@ void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst& I, IGC::StatusP
         I.getContext(),
         MDString::get(I.getContext(), reason));
 
-    UserAddrSpaceMD& userASMD = m_ctx->m_UserAddrSpaceMD;
+    UserAddrSpaceMD& userASMD = m_ctx->getUserAddrSpaceMD();
     std::function<void(Instruction*, MDNode*)> markAS_PRIV;
     markAS_PRIV = [&markAS_PRIV, &userASMD](Instruction* instr, MDNode* node) -> void
     {

@@ -345,6 +345,7 @@ namespace IGC
     }
 
     LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes)
+        : m_UserAddrSpaceMD(this)
     {
         if (createResourceDimTypes)
         {
