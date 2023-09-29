@@ -292,7 +292,7 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
     return;
   }
   }
-  IGC_ASSERT_MESSAGE(0, "unhandled");
+  IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
 }
 
 static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
@@ -364,7 +364,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
             dyn_cast<IGCLLVM::FixedVectorType>(Ty)) {
       return IGCLLVM::FixedVectorType::get(EltTy, VTy->getNumElements());
     }
-    IGC_ASSERT_MESSAGE(0, "unhandled");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
   }
   case IITDescriptor::PtrToArgument: {
     Type *Ty = Tys[D.getArgumentNumber()];
@@ -383,7 +383,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   default:
     break;
   }
-  IGC_ASSERT_MESSAGE(0, "unhandled");
+  IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
   return nullptr;
 }
 

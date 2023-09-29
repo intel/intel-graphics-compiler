@@ -830,6 +830,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     PredIdx = 0;
     AddrIdx = 1;
     AtomicNumSrc = 0;
+    break;
   case GenXIntrinsic::genx_svm_atomic_add:
   case GenXIntrinsic::genx_svm_atomic_and:
   case GenXIntrinsic::genx_svm_atomic_fmax:

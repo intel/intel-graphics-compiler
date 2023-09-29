@@ -300,14 +300,14 @@ Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
   case GenXIntrinsic::genx_lsc_prefetch_bti:
     Src = nullptr;
     Base = I.getArgOperand(11);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_prefetch_quad_bti
-                    : vc::InternalIntrinsic::lsc_prefetch_bti;
+    NewIID = vc::InternalIntrinsic::lsc_prefetch_bti;
+    // not supported Quad-version(vc::InternalIntrinsic::lsc_prefetch_quad_bti)
     break;
   case GenXIntrinsic::genx_lsc_prefetch_stateless:
     Src = nullptr;
     Base = Builder.getInt64(0);
-    NewIID = IsQuad ? vc::InternalIntrinsic::lsc_prefetch_quad_ugm
-                    : vc::InternalIntrinsic::lsc_prefetch_ugm;
+    NewIID = vc::InternalIntrinsic::lsc_prefetch_ugm;
+    // not supported Quad-version(vc::InternalIntrinsic::lsc_prefetch_quad_ugm)
     AddrSize = LSC_ADDR_SIZE_64b;
     break;
   case GenXIntrinsic::genx_lsc_store_quad_bti:

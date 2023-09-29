@@ -638,6 +638,7 @@ void GenXDepressurizer::getLiveOut(BasicBlock *BB, Liveness *Live) {
       if (!Phi)
         break;
       Live->removeValue(Phi);
+      IGC_ASSERT_EXIT(Phi->getBasicBlockIndex(BB) >= 0);
       Live->addValue(Phi->getIncomingValue(Phi->getBasicBlockIndex(BB)));
     }
   }

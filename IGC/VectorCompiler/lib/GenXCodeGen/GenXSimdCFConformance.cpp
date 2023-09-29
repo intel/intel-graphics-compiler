@@ -4706,9 +4706,9 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
     auto EV = dyn_cast<ExtractValueInst>(ui->getUser());
     ++ui;
 
-    IGC_ASSERT_MESSAGE(EV, "Bad user of goto/join!");
-    IGC_ASSERT_MESSAGE(EV->getNumIndices() == 1,
-                       "Expected 1 index in Extract Value for goto/join!");
+    IGC_ASSERT_EXIT_MESSAGE(EV, "Bad user of goto/join!");
+    IGC_ASSERT_EXIT_MESSAGE(EV->getNumIndices() == 1,
+                            "Expected 1 index in Extract Value for goto/join!");
 
     const unsigned idx = EV->getIndices()[0];
     IGC_ASSERT(testPosCorrectness(idx));

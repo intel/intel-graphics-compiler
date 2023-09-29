@@ -398,6 +398,7 @@ void GenXUnbaling::processFunc(Function *F) {
         auto Phi = dyn_cast<PHINode>(bi);
         if (!Phi)
           break;
+        IGC_ASSERT_EXIT(Phi->getBasicBlockIndex(CurBlock) >= 0);
         unsigned IncomingNum = Phi->getBasicBlockIndex(CurBlock);
         processTwoAddrOrPhi(Phi, IncomingNum);
       }

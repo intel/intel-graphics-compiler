@@ -611,7 +611,7 @@ bool DependencyGraph::isStructProcessed(StructType &STy) const {
 const DependencyGraph::STypes &
 DependencyGraph::getStructComponens(StructType &STy) const {
   auto FindIt = AllStructs.find(&STy);
-  IGC_ASSERT_MESSAGE(
+  IGC_ASSERT_EXIT_MESSAGE(
       FindIt != AllStructs.end(),
       "Info about struct has to be collected before getting components.\n");
   return FindIt->second;
@@ -624,7 +624,7 @@ DependencyGraph::getStructComponens(StructType &STy) const {
 const DependencyGraph::ElemMapping &
 DependencyGraph::getElemMappingFor(StructType &STy) const {
   auto FindIt = InfoToMerge.find(&STy);
-  IGC_ASSERT_MESSAGE(
+  IGC_ASSERT_EXIT_MESSAGE(
       FindIt != InfoToMerge.end(),
       "Struct has to be processed before getting indices mapping.\n");
   return FindIt->second->second;
@@ -638,8 +638,8 @@ const DependencyGraph::ListOfSplitElements &
 DependencyGraph::getElementsListOfSTyAtIdx(StructType &STy,
                                            unsigned Idx) const {
   const ElemMapping &VecOfSTy = getElemMappingFor(STy);
-  IGC_ASSERT_MESSAGE(Idx < VecOfSTy.size(),
-                     "Attempt to get element out of borders.");
+  IGC_ASSERT_EXIT_MESSAGE(Idx < VecOfSTy.size(),
+                          "Attempt to get element out of borders.");
   return VecOfSTy.at(Idx);
 }
 
@@ -914,7 +914,10 @@ void DependencyGraph::setInfoAboutStructure(StructType &STy) {
       bool IsInserted = false;
       std::tie(FindIt, IsInserted) =
           BaseTypes.emplace(BaseTy, SElementsOfType{NumberOfElems});
-      IGC_ASSERT_MESSAGE(IsInserted, "Record about BaseTy already exists.");
+      IGC_ASSERT_EXIT_MESSAGE(IsInserted,
+                              "Record about BaseTy already exists.");
+      IGC_ASSERT_EXIT_MESSAGE(FindIt != BaseTypes.end(),
+                              "Record about BaseTy already exists.");
     }
     // Emplace element to (created or existed) info(SElementsOfType) about
     // BaseTy.

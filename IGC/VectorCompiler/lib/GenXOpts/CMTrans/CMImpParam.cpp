@@ -713,19 +713,21 @@ static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
                                   vc::ThreadPayloadKind PayloadKind) {
   switch (IID) {
   default:
-    IGC_ASSERT_MESSAGE(0, "unexpected intrinsic id");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected intrinsic id");
     return ImplArgsBufferPtr;
   case GenXIntrinsic::genx_local_id16:
     return loadLocalIDFromIABuffer(ImplArgsBufferPtr, IRB, PayloadKind);
   case GenXIntrinsic::genx_local_id:
-    IGC_ASSERT_MESSAGE(0, "IA buffer is supported only for OCL/L0 so local.id "
-                          "must have been already transformed into local.id16");
+    IGC_ASSERT_EXIT_MESSAGE(
+        0, "IA buffer is supported only for OCL/L0 so local.id "
+           "must have been already transformed into local.id16");
   case GenXIntrinsic::genx_get_scoreboard_deltas:
   case GenXIntrinsic::genx_get_scoreboard_bti:
   case GenXIntrinsic::genx_get_scoreboard_depcnt:
     // It is an assertion since the diagnostic must have been happen before.
-    IGC_ASSERT_MESSAGE(0, "IA buffer is supported only for OCL/L0, scoreboard "
-                          "builtins should not appear for those runtimes");
+    IGC_ASSERT_EXIT_MESSAGE(
+        0, "IA buffer is supported only for OCL/L0, scoreboard "
+           "builtins should not appear for those runtimes");
   case GenXIntrinsic::genx_local_size:
     return loadVec3ArgFromIABuffer<GenXIntrinsic::genx_local_size>(
         ImplArgsBufferPtr, IRB);

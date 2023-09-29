@@ -225,8 +225,9 @@ bool GenXLowerJmpTableSwitch::processSwitchCandidates(
     for (BasicBlock *Succ : Br->successors()) {
       for (PHINode &Phi : Succ->phis()) {
         int Idx = Phi.getBasicBlockIndex(SIBB);
-        IGC_ASSERT_MESSAGE(Idx >= 0, "Switch successor's PHINode doesn't have "
-                                     "the switch BB as incoming block.");
+        IGC_ASSERT_EXIT_MESSAGE(Idx >= 0,
+                                "Switch successor's PHINode doesn't have "
+                                "the switch BB as incoming block.");
         Phi.setIncomingBlock(Idx, JTBB);
       }
     }

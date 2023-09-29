@@ -222,8 +222,6 @@ Value *GenXGEPLowering::visitGetElementPtrInst(GetElementPtrInst &GEP) {
           PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
         PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
       }
-
-      Ty = StTy->getElementType(Field);
     } else {
       Ty = GTI.getIndexedType();
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {

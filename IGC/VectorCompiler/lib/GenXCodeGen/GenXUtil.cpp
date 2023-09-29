@@ -1301,7 +1301,7 @@ void genx::adjustPhiNodesForBlockRemoval(BasicBlock *Succ, BasicBlock *BB)
       break;
     // For this phi node, get the incoming for BB.
     int Idx = Phi->getBasicBlockIndex(BB);
-    IGC_ASSERT(Idx >= 0);
+    IGC_ASSERT_EXIT(Idx >= 0);
     Value *Incoming = Phi->getIncomingValue(Idx);
     // Iterate through BB's predecessors. For the first one, replace the
     // incoming block with the predecessor. For subsequent ones, we need
@@ -2154,7 +2154,7 @@ bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
   auto Offset = cast<ConstantInt>(
                     WrPredRegion.getOperand(vc::WrPredRegionOperand::Offset))
                     ->getZExtValue();
-  if (ExecSize >= 32 || !isPowerOf2_64(ExecSize))
+  if (ExecSize > 32 || !isPowerOf2_64(ExecSize))
     return false;
   if (ExecSize == 32)
     return Offset == 0;

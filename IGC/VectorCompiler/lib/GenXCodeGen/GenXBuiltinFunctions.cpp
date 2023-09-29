@@ -401,7 +401,7 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
 
 static std::string getMangledTypeStr(Type *Ty) {
   std::string Result;
-  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+  if (auto *VTy = dyn_cast_or_null<IGCLLVM::FixedVectorType>(Ty))
     Result += "v" + utostr(VTy->getNumElements()) +
               getMangledTypeStr(VTy->getElementType());
   else if (Ty)

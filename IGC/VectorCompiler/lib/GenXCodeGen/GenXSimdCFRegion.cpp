@@ -590,19 +590,17 @@ bool GenXPredToSimdCF::areOppositeSimdCFConditions(Value *IfCond,
     LLVM_DEBUG(dbgs() << "Comparing "; IfMask->dump(); dbgs() << "against   ";
                ElseMask->getOperand(0)->dump());
     return IfMask == ElseMask->getOperand(0);
-  } else if (isIfCondReduceOr && !isElseCondReduceOr) {
-    return false; // not implemented
-  } else if (!isIfCondReduceOr && isElseCondReduceOr) {
-    return false; // not implemented
-  } else if (!isIfCondReduceOr && !isElseCondReduceOr) {
-    if (!genx::isPredicate(IfMask) || !genx::isPredNot(ElseMask))
-      return false;
-    LLVM_DEBUG(dbgs() << "Comparing "; IfMask->dump(); dbgs() << "against   ";
-               ElseMask->getOperand(0)->dump());
-    return IfMask == ElseMask->getOperand(0);
   }
-
-  return false;
+  if (isIfCondReduceOr && !isElseCondReduceOr)
+    return false; // not implemented
+  if (!isIfCondReduceOr && isElseCondReduceOr)
+    return false; // not implemented
+  // last variant - if (!isIfCondReduceOr && !isElseCondReduceOr)
+  if (!genx::isPredicate(IfMask) || !genx::isPredNot(ElseMask))
+    return false;
+  LLVM_DEBUG(dbgs() << "Comparing "; IfMask->dump(); dbgs() << "against   ";
+             ElseMask->getOperand(0)->dump());
+  return IfMask == ElseMask->getOperand(0);
 }
 
 BasicBlock *GenXPredToSimdCF::getIfExitFromIfBranch(BranchInst &BrInst) {

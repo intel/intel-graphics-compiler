@@ -1554,6 +1554,7 @@ Instruction *ConstantLoader::loadCyclicConstruct(
         BestSplatSetBits = Bits;
         BestSplatSetUsefulBits = Bits & SplatSets[i];
         BestSplatSetCount = Count;
+        IGC_ASSERT_EXIT(genx::log2(SplatSets[i]) >= 0);
         BestSplatSetConst = Elements[genx::log2(SplatSets[i])];
       }
     }

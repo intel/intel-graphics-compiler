@@ -1627,6 +1627,7 @@ void GenXKernelBuilder::buildInstructions() {
                 auto Phi = dyn_cast<PHINode>(&*si);
                 if (!Phi)
                   break;
+                IGC_ASSERT_EXIT(Phi->getBasicBlockIndex(BB) >= 0);
                 if (Phi->getType()->getPrimitiveSizeInBits() >=
                         (GrfByteSize * 8) * 4 &&
                     isa<UndefValue>(
@@ -3638,9 +3639,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     // media width and the return type or final arg
     ConstantInt *Const =
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
-    IGC_ASSERT_MESSAGE(Const, "Incorrect args to intrinsic call");
+    IGC_ASSERT_EXIT_MESSAGE(Const, "Incorrect args to intrinsic call");
     unsigned Width = Const->getZExtValue();
-    IGC_ASSERT_MESSAGE(Width > 0 && Width <= 64, "Invalid media width");
+    IGC_ASSERT_EXIT_MESSAGE(Width > 0 && Width <= 64, "Invalid media width");
     unsigned RoundedWidth = roundedVal(Width, 4u);
     Type *DataType = CI->getType();
     if (DataType->isVoidTy())

@@ -201,6 +201,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
     // inner if..else..endif.
     if (auto C = dyn_cast<Constant>(Orig)) {
       if (C->isNullValue() && V == Cond) {
+        IGC_ASSERT_EXIT(Phi->getBasicBlockIndex(Pred) >= 0);
         Phi->setIncomingValue(Phi->getBasicBlockIndex(Pred), V);
         continue;
       }

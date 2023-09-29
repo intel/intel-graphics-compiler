@@ -271,8 +271,8 @@ void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
       IGCLLVM::getNonOpaquePtrEltTy(DstTy->getScalarType()), nullptr);
   auto *SrcDerefTy = getBaseType(
       IGCLLVM::getNonOpaquePtrEltTy(SrcTy->getScalarType()), nullptr);
-  IGC_ASSERT(DstDerefTy);
-  IGC_ASSERT(SrcDerefTy);
+  IGC_ASSERT_EXIT(DstDerefTy);
+  IGC_ASSERT_EXIT(SrcDerefTy);
 
   // either the point-to-element-type is the same or
   // the point-to-element-type is the byte
@@ -283,7 +283,7 @@ void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
     return;
   }
 
-  IGC_ASSERT(DstDerefTy->getScalarSizeInBits() == 8);
+  IGC_ASSERT_EXIT(DstDerefTy->getScalarSizeInBits() == 8);
   IRBuilder<> IRB(&BC);
   auto ElementSize =
       SrcDerefTy->getScalarSizeInBits() / DstDerefTy->getScalarSizeInBits();
@@ -422,7 +422,6 @@ void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
               IGCLLVM::getElementCount(IdxWidth), OffsetVal);
         ScalarizedIdx = IRB.CreateAdd(ScalarizedIdx, OffsetVal);
       }
-      Ty = StTy->getElementType(Field);
     } else {
       Ty = GTI.getIndexedType();
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(GEPIdx)) {

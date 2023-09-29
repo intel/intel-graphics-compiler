@@ -2,7 +2,7 @@
 
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2022-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -220,7 +220,7 @@ def createOverloadArgsTable():
     f.write("// Is arg overloaded\n"
             "#ifdef GET_INTRINSIC_OVERLOAD_ARGS_TABLE\n"
             "switch(IntrinID) {\n"
-            "default: IGC_ASSERT_MESSAGE(0, \"Unknown intrinsic ID\");\n")
+            "default: IGC_ASSERT_EXIT_MESSAGE(0, \"Unknown intrinsic ID\");\n")
     for i in range(len(ID_array)):
         f.write("case InternalIntrinsic::" + ID_array[i]+": ")
         argNums = []
@@ -399,7 +399,7 @@ def createAttributeTable():
             "  unsigned NumAttrs = 0;\n"
             "  if (id != 0) {\n"
             "    switch(IntrinsicsToAttributesMap[AttrIdx]) {\n"
-            "    default: IGC_ASSERT_MESSAGE(0, \"Invalid attribute number\");\n")
+            "    default: IGC_ASSERT_EXIT_MESSAGE(0, \"Invalid attribute number\");\n")
 
     for i in range(len(attribute_Array)): #Building case statements
         Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])
