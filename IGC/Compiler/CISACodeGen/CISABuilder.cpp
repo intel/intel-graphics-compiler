@@ -8247,8 +8247,7 @@ namespace IGC
             // Split d32-V8 -> 2xD32-V4 (or D64-V3/V4 -> D64-V2 & D64-V1/V2).
             // Create operands for 2nd LSC and modify the first's elems
             VISA_PredOpnd* predOpnd2 = GetFlagOperand(m_encoderState.m_flag);
-            VISA_VectorOpnd* globalOffsetOpnd2 =
-                resource ? GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource) : nullptr;
+            VISA_VectorOpnd* globalOffsetOpnd2 = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
             unsigned blockOffset2 = blockOffset + 128; /* dst offset of 2nd D32-V4(D64-V2/V1) is 4 GRF */
             VISA_RawOpnd* dstOpnd2 = GetRawDestination(dst, blockOffset2);
             VISA_RawOpnd* addressOpnd2 = offset ? GetRawSource(offset) : nullptr;
@@ -8389,8 +8388,7 @@ namespace IGC
             // Split d32-V8 -> 2xD32-V4 (or D64-V3/V4 -> D64-V2 & D64-V1/V2).
             // Create operands for 2nd LSC and modify the first's elems
             VISA_PredOpnd* predOpnd2 = GetFlagOperand(m_encoderState.m_flag);
-            VISA_VectorOpnd* globalOffsetOpnd2 =
-                resource ? GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource) : nullptr;
+            VISA_VectorOpnd* globalOffsetOpnd2 = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
             unsigned blockOffset2 = blockOffset + 128; /* src1 offset of 2nd D32-V4 (D64-V2/V1) is 4 GRF */
             VISA_RawOpnd* src1Opnd2 = GetRawSource(src, blockOffset2);
             VISA_RawOpnd* addressOpnd2 = GetRawSource(offset);

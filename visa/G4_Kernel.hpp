@@ -192,7 +192,7 @@ public:
   }
 
   unsigned getVRTSmallerGRF() const {
-    for (auto i = currentMode - 1; i >= 0 ; --i) {
+    for (auto i = static_cast<int>(currentMode) - 1; i >= 0 ; --i) {
       if (configs[i].VRTEnable)
         return configs[i].numGRF;
     }

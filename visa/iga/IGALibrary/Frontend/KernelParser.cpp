@@ -2203,9 +2203,6 @@ public:
       // r13.acc2:f
       subregNum = 0;
       mme = ParseMathMacroReg();
-      // region is implicitly <1;1,0>
-      rgn = Region::SRC110;
-      // below we can override it if we really really want to
     } else {
       // regular src with subregister
       // r13.4....
