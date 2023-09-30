@@ -1416,7 +1416,7 @@
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_sumad": {
       "opc": "ISA_MAD",
@@ -1426,7 +1426,7 @@
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_usmad": {
       "opc": "ISA_MAD",
@@ -1436,7 +1436,7 @@
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_uumad": {
       "opc": "ISA_MAD",
@@ -1446,7 +1446,7 @@
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_ssmad_sat": {
       "opc": "ISA_MAD",
@@ -1456,7 +1456,7 @@
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_sumad_sat": {
       "opc": "ISA_MAD",
@@ -1466,7 +1466,7 @@
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_usmad_sat": {
       "opc": "ISA_MAD",
@@ -1476,7 +1476,7 @@
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_uumad_sat": {
       "opc": "ISA_MAD",
@@ -1486,7 +1486,7 @@
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "CONTIGUOUS", 3 ]
     },
     "genx_constantpred": {
       "opc": "ISA_SETP",
