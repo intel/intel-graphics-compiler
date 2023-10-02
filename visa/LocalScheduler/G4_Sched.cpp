@@ -825,7 +825,8 @@ public:
 private:
   // Initialize Sethi-Ullman numbers.
   void init();
-
+  // Check if the Tuple restriction is obeyed.
+  bool willNotBreakTupleRestriction(preNode *N) const;
   // Select next ready node to schedule.
   preNode *select();
   // In clustering mode
@@ -957,7 +958,10 @@ bool SethiUllmanQueue::compare(preNode *N1, preNode *N2) {
   return N1->getID() > N2->getID();
 }
 
-
+bool SethiUllmanQueue::willNotBreakTupleRestriction(preNode *N) const {
+  return (!N->getInst() || !N->getInst()->isSend() || !TheCurrTupleLead ||
+          (N->getTupleLead() == TheCurrTupleLead));
+};
 
 preNode *SethiUllmanQueue::select() {
   vASSERT(!Q.empty());
@@ -965,9 +969,8 @@ preNode *SethiUllmanQueue::select() {
   for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
     preNode *N = *I;
     // If there's a node to be paired, skip send not in pair.
-    if (N->getInst() && N->getInst()->isSend())
-      if (TheCurrTupleLead && N->getTupleLead() != TheCurrTupleLead)
-        continue;
+    if (!willNotBreakTupleRestriction(N))
+      continue;
     if (TopIter == Q.end() || compare(*TopIter, *I))
       TopIter = I;
   }
@@ -997,6 +1000,7 @@ void SethiUllmanQueue::formWorkingSet(preNode *seed,
     W.push_back(seed);
     return;
   }
+
   std::vector<preNode *> Cluster;
   Cluster.push_back(seed);
   preNode *ClusterWait = nullptr;
@@ -1047,9 +1051,29 @@ void SethiUllmanQueue::formWorkingSet(preNode *seed,
     while (idx < Q.size()) {
       preNode *Tmp = Q[idx];
       if (std::find(Cluster.begin(), Cluster.end(), Tmp) != Cluster.end()) {
-        W.push_back(Tmp);
-        Q[idx] = Q.back();
-        Q.pop_back();
+        // For send instruction which is not part of TheCurrTupleLead, the send
+        // instruction cannot be inserted into W. Which will be scheduled before
+        // the other parts of TheCurrTupleLead.
+        // Such as in following 4 send instructions, first two and last two send
+        // instructions must be schedule together, cannot interleave between
+        // them.
+        //
+        // sample_l.RGB (M1, 16)  0x0:uw S31 %bss V0626.0 %null.0 V0628.0
+        // CCTuple_1.0 CCTuple_1.64
+        // sample_l.RGB(M5, 16) 0x0 : uw S31 %bss V0627.0 %null.0 V0629.0
+        // CCTuple_2.0 CCTuple_2.64
+        //
+        // sample_l.RGB(M1, 16) 0x0 : uw S31 %bss V0640.0 %null.0 V0642.0
+        // CCTuple_3.0 CCTuple_3.64
+        // sample_l.RGB(M5, 16) 0x0 : uw S31 %bss V0641.0 %null.0 V0643.0
+        // CCTuple_4.0 CCTuple_4.64
+        if (willNotBreakTupleRestriction(Tmp)) {
+          W.push_back(Tmp);
+          Q[idx] = Q.back();
+          Q.pop_back();
+        } else {
+          idx++;
+        }
       } else
         idx++;
     }
@@ -1067,7 +1091,7 @@ void SethiUllmanQueue::formWorkingSet(preNode *seed,
           Top = Node; // continue search
           Searching = true;
           break;
-        } else {
+        } else if (willNotBreakTupleRestriction(Node)) {
           if (Node != seed) {
             Q.erase(std::remove(Q.begin(), Q.end(), Node), Q.end());
             Q.push_back(seed);
