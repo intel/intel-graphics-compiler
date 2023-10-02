@@ -4586,11 +4586,11 @@ namespace IGC
                     // Explicit GRF size set per module (by compiler option)
                     SaveOption(vISA_TotalGRFNum, ClContext->getExpGRFSize());
                 }
-                else if (m_program->m_Platform->supportsAutoGRFSelection() &&
+                else if ((m_program->m_Platform->supportsAutoGRFSelection() &&
                     (context->m_DriverInfo.supportsAutoGRFSelection() ||
                       ClContext->m_InternalOptions.IntelEnableAutoLargeGRF ||
-                      ClContext->m_Options.IntelEnableAutoLargeGRF) &&
-                    !ClContext->m_InternalOptions.Intel128GRFPerThread &&
+                      ClContext->m_Options.IntelEnableAutoLargeGRF)
+                    ) && !ClContext->m_InternalOptions.Intel128GRFPerThread &&
                     !ClContext->m_Options.Intel128GRFPerThread &&
                     !ClContext->m_InternalOptions.Intel256GRFPerThread &&
                     !ClContext->m_Options.Intel256GRFPerThread)
@@ -4627,7 +4627,8 @@ namespace IGC
                            IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
             } else if (m_program->m_Platform->supportsAutoGRFSelection() &&
                        context->m_DriverInfo.supportsAutoGRFSelection() &&
-                       IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)) {
+                       IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)
+                ) {
                 // When user hasn't specified number of threads, we can rely on
                 // compiler heuristics
                 SaveOption(vISA_RegSharingHeuristics, true);
