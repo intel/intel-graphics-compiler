@@ -5102,6 +5102,12 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(deadLoopForFloatException)) {
           SaveOption(vISA_AddIEEEExceptionTrap, true);
         }
+
+        // WA to support single stepping in debugger. Currently only enabled it
+        // when compiling with -O0.
+        if (isOptDisabled && m_program->m_Platform->WaAddNopAfterBranchInst()) {
+            SaveOption(vISA_GenerateNopAfterCFInst, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

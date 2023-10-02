@@ -3337,6 +3337,36 @@ void Optimizer::expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb) {
   *it = restoreFlag;
 }
 
+void Optimizer::insertNopAfterCFInst(BB_LIST_ITER ib, INST_LIST_ITER ii) {
+  // If the CF inst is not the last inst of current BB, simply insert
+  // a nop after it. Otherwise, insert a dummy BB to hold a nop between
+  // the current BB and the fall-through BB.
+  G4_BB *bb = *ib;
+  G4_INST *inst = *ii;
+  if (inst != bb->back()) {
+    bb->insertAfter(ii, builder.createNop(InstOpt_NoOpt));
+  } else {
+    G4_BB *dummyBB = fg.createNewBBWithLabel("CFInstWA_BB");
+    dummyBB->push_back(builder.createNop(InstOpt_NoOpt));
+    BB_LIST_ITER nextBI = std::next(ib);
+    fg.insert(nextBI, dummyBB);
+    // Update the pred/succ edges accordingly.
+    bb->setPhysicalSucc(dummyBB);
+    dummyBB->setPhysicalPred(bb);
+    if (nextBI != fg.end()) {
+      G4_BB *nextBB = *nextBI;
+      dummyBB->setPhysicalSucc(nextBB);
+      nextBB->setPhysicalPred(dummyBB);
+      if (std::any_of(bb->Succs.begin(), bb->Succs.end(),
+                      [=](G4_BB *succ) { return succ == nextBB; } )) {
+        fg.removePredSuccEdges(bb, nextBB);
+        fg.addPredSuccEdges(bb, dummyBB);
+        fg.addPredSuccEdges(dummyBB, nextBB);
+      }
+    }
+  }
+}
+
 // For a subroutine, insert a dummy move with {Switch} option immediately
 // before the first non-label instruction in BB. Otherwie, for a following
 // basic block, insert a dummy move before *any* instruction to ensure that
@@ -3766,6 +3796,9 @@ void Optimizer::HWWorkaround() {
 
       if (inst->isIEEEExceptionTrap())
         expandIEEEExceptionTrap(ii, bb);
+
+      if (inst->isCFInst() && builder.getOption(vISA_GenerateNopAfterCFInst))
+        insertNopAfterCFInst(ib, ii);
 
       ii++;
     }
