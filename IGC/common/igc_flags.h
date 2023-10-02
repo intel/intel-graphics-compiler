@@ -225,7 +225,7 @@ DECLARE_IGC_REGKEY(bool, UseTiledCSThreadOrder,         true,  "Use 4x4 disaptch
 DECLARE_IGC_REGKEY(bool, EnableWaveForce32,             false, "Force Wave to use simd32", false)
 DECLARE_IGC_REGKEY(bool, ForceLinearWalkOnLinearUAV,    false, "Force linear walk on linear UAV buffer", false)
 DECLARE_IGC_REGKEY(bool, ForceSupportsStaticRegSharing, false, "ForceSupportsStaticRegSharing", true)
-DECLARE_IGC_REGKEY(bool, ForceSupportsAutoGRFSelection, true, "ForceSupportsAutoGRFSelection", true)
+DECLARE_IGC_REGKEY(bool, ForceSupportsAutoGRFSelection, false, "ForceSupportsAutoGRFSelection", true)
 DECLARE_IGC_REGKEY(bool, forceFullUrbWriteMask,         true,  "Set Full URB write mask.", false)
 DECLARE_IGC_REGKEY(DWORD, RovOpt,                           3, "Bitmask for ROV optimizations. 0 for all off, 1 for force fence flush none, 2 for setting LSC_L1UC_L3C_WB, 3 for both opt on", false)
 DECLARE_IGC_REGKEY(bool, EnableLSCFence,        true,  "Enable LSC Fence in ConvertDXIL for the device has LSC", false)
