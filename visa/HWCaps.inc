@@ -347,7 +347,7 @@ bool noFP64() const {
 
 bool hasQDDMul() const {
   return getPlatform() == GENX_BDW || getPlatform() == GENX_SKL ||
-         getPlatform() == GENX_BXT || getPlatform() == GENX_CNL ||
+         getPlatform() == GENX_CNL ||
          getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC;
 }
 
