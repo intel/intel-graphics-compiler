@@ -3754,11 +3754,6 @@ void FlowGraph::findBackEdges() {
 // detected).
 //
 void FlowGraph::findNaturalLoops() {
-  // findNaturalLoops may be called mulitple times to get loop info when there
-  // is CFG change. The old natural loops info are invalid and need be
-  // cleared
-  naturalLoops.clear();
-
   setPhysicalPredSucc();
   std::unordered_set<G4_BB *> visited;
   for (auto &&backEdge : backEdges) {
