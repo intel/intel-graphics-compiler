@@ -1494,18 +1494,5 @@ unsigned int roundUpTgsmSize(DWORD size) const
     return iSTD::RoundPower2(size) * blockSize;
 }
 
-bool WaAddNopAfterBranchInst() const
-{
-    if (m_platformInfo.eProductFamily == IGFX_PVC)
-        return true;
-
-    if (m_platformInfo.eProductFamily == IGFX_DG2 &&
-        (GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
-         GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)))
-        return true;
-
-    return false;
-}
-
 };
 }//namespace IGC
