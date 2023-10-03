@@ -1275,12 +1275,13 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock *Block, const DbgVariable &DV,
     // There is a private value in the current stack frame.
     // Location encoding is similar to a global variable except SIMD lane
     // location encoding and storage size connected to this, because since it is
-    // uniform we assume this size to be 0. 1 DW_OP_regx <Frame Pointer reg
-    // encoded> 2 DW_OP_const1u <bit-offset to Frame Pointer reg> 3
-    // DW_OP_const1u 64  , i.e. size in bits 4 DW_OP_INTEL_push_bit_piece_stack
-    // 5 DW_OP_plus_uconst  SIZE_OWORD        // i.e. 0x10 taken from
-    // getFPOffset(); same as emitted in EmitPass::emitStackAlloca() 6
-    // DW_OP_plus_uconst storageOffset      // MD: StorageOffset; the offset
+    // uniform we assume this size to be 0.
+    // 1 DW_OP_regx <Frame Pointer reg encoded>
+    // 2 DW_OP_const1u <bit-offset to Frame Pointer reg>
+    // 3 DW_OP_const1u 64, i.e. size in bits
+    // 4 DW_OP_INTEL_push_bit_piece_stack
+    // 6 DW_OP_plus_uconst storageOffset
+    // MD: StorageOffset -> the offset
     // where each variable is stored in the current stack frame
 
     const auto *VISAMod = Loc.GetVISAModule();
@@ -1320,11 +1321,6 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock *Block, const DbgVariable &DV,
                       bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to
                                          // Frame Pointer reg>
     extractSubRegValue(Block, 64);
-
-    addUInt(Block, dwarf::DW_FORM_data1,
-            dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
-                                       // from getFPOffset())
-    addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
 
     addUInt(Block, dwarf::DW_FORM_data1,
             dwarf::DW_OP_plus_uconst); // 6 DW_OP_plus_uconst storageOffset
@@ -2815,11 +2811,13 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   // 2 DW_OP_const1u <bit-offset to Frame Pointer reg>
   // 3 DW_OP_const1u 64  , i.e. size in bits
   // 4 DW_OP_INTEL_push_bit_piece_stack
-  // 5 DW_OP_plus_uconst  SIZE_OWORD         // i.e. 0x10 taken from
-  // getFPOffset(); same as emitted in EmitPass::emitStackAlloca() 6
-  // DW_OP_push_simd_lane 7 DW_OP_const1u/2u/4u/8u  storageSize   // MD:
-  // StorageSize; the size of the variable 8 DW_OP_mul 9 DW_OP_plus 10
-  // DW_OP_plus_uconst storageOffset      // MD: StorageOffset; the offset where
+  // 5 DW_OP_push_simd_lane
+  // 6 DW_OP_const1u/2u/4u/8u  storageSize
+  // MD: StorageSize -> the size of the variable
+  // 7 DW_OP_mul
+  // 8 DW_OP_plus
+  // 9 DW_OP_plus_uconst storageOffset
+  // MD: StorageOffset -> the offset where
   // each variable is stored in the current stack frame
 
   auto regNumFP = VISAMod->getFPReg();
@@ -2846,11 +2844,6 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
       Block,
       bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to Frame Pointer reg>
   extractSubRegValue(Block, 64);
-
-  addUInt(Block, dwarf::DW_FORM_data1,
-          dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
-                                     // from getFPOffset())
-  addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
 
   addUInt(Block, dwarf::DW_FORM_data1,
           DW_OP_INTEL_push_simd_lane);   // 6 DW_OP_INTEL_push_simd_lane

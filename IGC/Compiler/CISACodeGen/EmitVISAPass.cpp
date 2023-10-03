@@ -10267,14 +10267,6 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
     // Static private mem access is done through the FP
     CVariable* pFP = m_currShader->GetFP();
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
-    {
-        // If we have written the previous FP to the current frame's start, the start of
-        // private memory will be offset by 16 bytes
-        CVariable* tempFP = m_currShader->GetNewVariable(pFP);
-        emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(getFPOffset(), ISA_TYPE_UD));
-        pFP = tempFP;
-    }
     CVariable* pOffset = m_currShader->GetSymbol(GII->getOperand(0));
     emitAddPointer(m_destination, pFP, pOffset);
 }
@@ -18552,9 +18544,6 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
 
-    // Allocate 1 extra oword to store previous frame's FP
-    pushSize += IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) ? SIZE_OWORD : 0;
-
     // Since we use unaligned oword writes, pushSize should be OW aligned address
     pushSize = int_cast<unsigned>(llvm::alignTo(pushSize, SIZE_OWORD));
 
@@ -18562,45 +18551,6 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     {
         // Update SP by pushSize
         emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
-
-        if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
-        {
-            // Store old FP value to current FP
-            CVariable* pOldFP = m_currShader->GetPrevFP();
-            // If previous FP is null (for kernel frame), we initialize it to 0
-            if (pOldFP == nullptr)
-            {
-                pOldFP = m_currShader->GetNewVariable(pFP);
-                m_encoder->Copy(pOldFP, m_currShader->ImmToVariable(0, pOldFP->GetType()));
-                m_encoder->Push();
-            }
-
-            pFP = ReAlignUniformVariable(pFP, EALIGN_GRF);
-            bool useA64 = (pFP->GetSize() == 8);
-            if (shouldGenerateLSC())
-            {
-                ResourceDescriptor resource;
-                resource.m_surfaceType = ESURFACE_STATELESS;
-                emitLSCStore(nullptr, pOldFP, pFP, 64, 1, 0, &resource, (useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b), LSC_DATA_ORDER_TRANSPOSE, 0);
-                m_encoder->Push();
-            }
-            else
-            {
-                if (useA64)
-                    m_encoder->OWStoreA64(pOldFP, pFP, SIZE_OWORD, 0);
-                else {
-                    // FP is in units of BYTES, but OWStore requires units of OWORDS
-                    CVariable* offsetShr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "FPOffset_OW");
-                    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-                    m_encoder->SetNoMask();
-                    m_encoder->SetSrcRegion(0, 0, 1, 0);
-                    m_encoder->Shr(offsetShr, pFP, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
-                    m_encoder->Push();
-                    m_encoder->OWStore(pOldFP, ESURFACE_STATELESS, nullptr, offsetShr, SIZE_OWORD, 0);
-                }
-                m_encoder->Push();
-            }
-        }
     }
 }
 
