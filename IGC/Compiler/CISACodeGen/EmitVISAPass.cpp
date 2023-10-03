@@ -2424,9 +2424,23 @@ void EmitPass::EmitMinMax(bool isMin, bool isUnsigned, const SSource sources[2],
 void EmitPass::Powi(const SSource sources[2], const DstModifier& modifier)
 {
     CVariable* src0 = GetSrcVariable(sources[0]);
-    CVariable* src1 = m_currShader->GetNewVariable(src0);
-    m_encoder->Cast(src1, GetSrcVariable(sources[1]));
-    EmitSimpleAlu(EOPCODE::llvm_pow, m_destination, src0, src1);
+    CVariable* src1Int = GetSrcVariable(sources[1]);
+    CVariable* src1Float = nullptr;
+    if (src1Int->IsImmediate())
+    {
+        int32_t immSrc1Int = int_cast<int32_t>(src1Int->GetImmediateValue());
+        float immSrc1Float = (float)(immSrc1Int);
+        uint32_t immSrc1 = 0;
+        std::memcpy(&immSrc1, &immSrc1Float, sizeof(immSrc1));
+        src1Float = m_currShader->ImmToVariable(immSrc1, ISA_TYPE_F);
+    }
+    else
+    {
+        src1Float = m_currShader->GetNewVariable(src0);
+        m_encoder->Cast(src1Float, src1Int);
+    }
+    m_encoder->SetDstModifier(modifier);
+    EmitSimpleAlu(EOPCODE::llvm_pow, m_destination, src0, src1Float);
 }
 
 void IGC::EmitPass::EmitUAdd(llvm::BinaryOperator* inst, const DstModifier& modifier)
