@@ -715,8 +715,8 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     unsigned BBRP = rp.getPressure(bb);
 
     unsigned UpperBoundGRF = 0;
-    if (GRFdecreased && KernelPressure < kernel.grfMode.getVRTMaxGRF())
-      UpperBoundGRF = kernel.grfMode.getVRTLargerGRF();
+    if (GRFdecreased && KernelPressure < kernel.grfMode.getMaxGRF())
+      UpperBoundGRF = kernel.grfMode.getLargerGRF();
     Changed |= S.scheduleBlockForLatency(BBRP, Changed, UpperBoundGRF);
   }
 
@@ -724,10 +724,15 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     rp.recompute();
     KernelPressure = rp.getMaxRP();
   }
-  // In RA extra registers might be needed to satisfy
-  // some restrictions, e.g. alignment, SIMD size, etc.
-  // So extra registers are provided.
-  unsigned ExtraRegs = (unsigned)(kernel.getNumRegTotal() * EXTRA_REGISTERS_FOR_RA / 100.0f);
+
+  unsigned ExtraRegs = 0;
+  if (kernel.grfMode.hasLargerGRFSameThreads()) {
+    // In RA extra registers might be needed to satisfy some restrictions,
+    // e.g. alignment, SIMD size, etc. So in order to avoid spill in GRF
+    // modes smaller than default, extra registers are added to reg pressure.
+    ExtraRegs =
+        (unsigned)(kernel.getNumRegTotal() * EXTRA_REGISTERS_FOR_RA / 100.0f);
+  }
   kernel.updateKernelByRegPressure(KernelPressure + ExtraRegs);
 
   return Changed;
