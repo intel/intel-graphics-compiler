@@ -1055,7 +1055,6 @@ public:
   bool hasPTO() const override { return false; }
   int getPTOReg() const override { return -1; }
   int getFPReg() const override { return -1; }
-  uint64_t getFPOffset() const override { return 16; }
 
   bool usesSlot1ScratchSpill() const override { return false; }
 

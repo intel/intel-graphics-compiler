@@ -102,7 +102,6 @@ public:
     bool hasPTO() const  override {
         return getPerThreadOffset() != nullptr;
     }
-    uint64_t getFPOffset() const override;
     int getPTOReg() const override;
     int getFPReg() const override;
 

@@ -135,9 +135,6 @@ llvm::StringRef ScalarVisaModule::GetVISAFuncName() const
     // matches that used by VISA.
     return getFunction()->getName();
 }
-uint64_t ScalarVisaModule::getFPOffset() const {
-    return EmitPass::getFPOffset();
-}
 
 bool ScalarVisaModule::usesSlot1ScratchSpill() const {
     return m_pShader->ProgramOutput()->getScratchSpaceUsageInSlot1();
