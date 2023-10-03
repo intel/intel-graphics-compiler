@@ -316,8 +316,9 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
           == ArgBegin[GenXIntrinsic::GenXRegion::NewValueOperandNum]->getType()) {
         if (auto CMask = dyn_cast<Constant>(ArgBegin[
               GenXIntrinsic::GenXRegion::PredicateOperandNum])) {
-          if (CMask->isAllOnesValue()) {
-            unsigned NumElements = cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
+          auto *RetVTy = dyn_cast<IGCLLVM::FixedVectorType>(RetTy);
+          if (RetVTy && CMask->isAllOnesValue()) {
+            unsigned NumElements = RetVTy->getNumElements();
             unsigned Width = cast<ConstantInt>(
                   ArgBegin[GenXIntrinsic::GenXRegion::WrWidthOperandNum])
                 ->getZExtValue();
@@ -422,9 +423,7 @@ class GenXSimplify : public FunctionPass {
 public:
   static char ID;
 
-  GenXSimplify() : FunctionPass(ID) {
-    initializeGenXSimplifyPass(*PassRegistry::getPassRegistry());
-  }
+  GenXSimplify() : FunctionPass(ID) {}
 
   bool runOnFunction(Function &F) override;
 
@@ -512,10 +511,13 @@ bool GenXSimplify::processGenXIntrinsics(Function &F) {
 }
 
 char GenXSimplify::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXSimplify, "genx-simplify",
+INITIALIZE_PASS_BEGIN(GenXSimplify, "GenXSimplify",
                       "simplify genx specific instructions", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_END(GenXSimplify, "genx-simplify",
+INITIALIZE_PASS_END(GenXSimplify, "GenXSimplify",
                     "simplify genx specific instructions", false, false)
 
-FunctionPass *llvm::createGenXSimplifyPass() { return new GenXSimplify; }
+FunctionPass *llvm::createGenXSimplifyPass() {
+  initializeGenXSimplifyPass(*PassRegistry::getPassRegistry());
+  return new GenXSimplify;
+}
