@@ -15,13 +15,15 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 //
 #include "GenX.h"
+
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
-#define DEBUG_TYPE "GENX_RAWSENDRIPPER"
+#define DEBUG_TYPE "genx-raw-send-ripper"
 
 using namespace llvm;
 using namespace genx;
@@ -62,18 +64,44 @@ FunctionPass *llvm::createGenXRawSendRipperPass() {
 
 bool GenXRawSendRipper::runOnFunction(Function &F) {
   bool Changed = false;
-  Value *True = ConstantInt::getTrue(F.getContext());
-  for (auto &BB : F)
-    for (auto &I : BB) {
-      if (GenXIntrinsic::getGenXIntrinsicID(&I) != GenXIntrinsic::genx_raw_send)
-        continue;
-      auto II = cast<IntrinsicInst>(&I);
-      if (II->getOperand(1) != True)
-        continue;
-      Value *Old = II->getOperand(5);
-      if (isa<UndefValue>(Old))
-        continue;
-      II->setOperand(5, UndefValue::get(Old->getType()));
+
+  for (auto &I : instructions(F)) {
+    auto IID = vc::getAnyIntrinsicID(&I);
+    int PredIdx = -1;
+    int PassthruIdx = -1;
+
+    switch (IID) {
+    default:
+      continue;
+    case GenXIntrinsic::genx_raw_send:
+      PredIdx = 1;
+      PassthruIdx = 5;
+      break;
+    case GenXIntrinsic::genx_raw_sends:
+      PredIdx = 1;
+      PassthruIdx = 7;
+      break;
+    case GenXIntrinsic::genx_raw_send2:
+      PredIdx = 2;
+      PassthruIdx = 9;
+      break;
+    case GenXIntrinsic::genx_raw_sends2:
+      PredIdx = 2;
+      PassthruIdx = 11;
+      break;
     }
+
+    IGC_ASSERT_EXIT(PredIdx >= 0 && PassthruIdx >= 0);
+    auto *Pred = dyn_cast<Constant>(I.getOperand(PredIdx));
+    auto *Passthru = I.getOperand(PassthruIdx);
+
+    if (!Pred || !Pred->getType()->isIntOrIntVectorTy(1) ||
+        !Pred->isAllOnesValue() || isa<UndefValue>(Passthru))
+      continue;
+
+    I.setOperand(PassthruIdx, UndefValue::get(Passthru->getType()));
+    Changed = true;
+  }
+
   return Changed;
 }
