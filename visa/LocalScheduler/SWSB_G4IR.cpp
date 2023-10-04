@@ -1559,30 +1559,16 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
     }
   }
 
-  /*
-  Loop info is used to reduce the token required for certain instructions, or
-  count the delay of the backedge for token reuse We do the token reduction and
-  count delay of backedge only for the nature loops, i.e with the backedge, if
-  the instruction distance is far enough, there is no need to set dependence.
-  For the irreducible flow graph, those optimizations wouldn't be kicked in.
-  */
+  // Loop info is used to reduce the token required for certain instructions, or
+  // count the delay of the backedge for token reuse We do the token reduction and
+  // count delay of backedge only for the nature loops, i.e with the backedge, if
+  // the instruction distance is far enough, there is no need to set dependence.
+  // The loop info are get from the orignal flow graph, and kept in the SWSB BB.
   for (G4_BB_SB *bb : BBVector) {
-    for (const auto &loop : kernel.fg.getAllNaturalLoops()) {
-      auto be = loop.first;
-      auto &bbsInLoop = loop.second;
-      if (bbsInLoop.count(bb->getBB())) {
-        if (bb->getLoopStartBBID() != INVALID_ID) {
-          // Innermost loop only
-          if (bb->getLoopStartBBID() <= be.second->getId() &&
-              bb->getLoopEndBBID() >= be.first->getId()) {
-            bb->setLoopStartBBID(be.second->getId());
-            bb->setLoopEndBBID(be.first->getId());
-          }
-        } else {
-          bb->setLoopStartBBID(be.second->getId());
-          bb->setLoopEndBBID(be.first->getId());
-        }
-      }
+    Loop *loop = kernel.fg.getLoops().getInnerMostLoop(bb->getBB());
+    if (loop) {
+      bb->setLoopStartBBID(loop->getHeader()->getId());
+      bb->setLoopEndBBID(loop->backEdgeSrc()->getId());
     }
   }
 
@@ -1885,8 +1871,6 @@ void SWSB::SWSBGenerator() {
   p.doPointsToAnalysis(kernel.fg);
 
   kernel.fg.reassignBlockIDs();
-  kernel.fg.findBackEdges();
-  kernel.fg.findNaturalLoops();
 
   // Note that getNumFlagRegisters() treat each 16 bits as a flag register
   int numBuckets = kernel.getNumRegTotal() +
