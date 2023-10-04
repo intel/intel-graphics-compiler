@@ -89,6 +89,7 @@ typedef enum {
     IGFX_XE_HP_CORE   = 0x0c05, // XeHP Family
     IGFX_XE_HPG_CORE = 0x0c07,  // XE_HPG Family
     IGFX_XE_HPC_CORE = 0x0c08,  // XE_HPC Family
+    IGFX_XE2_LPG_CORE = 0x0c09, // XE2_LPG Family
     IGFX_MAX_CORE,              // Max Family, for lookup table
 
     IGFX_GENNEXT_CORE          = 0x7ffffffe,  //GenNext
