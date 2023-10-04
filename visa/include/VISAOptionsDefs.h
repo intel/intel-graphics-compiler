@@ -66,8 +66,6 @@ DEF_VISA_OPTION(vISA_skipFDE, ET_BOOL, "-skipFDE", UNUSED, false)
 // debugging
 DEF_VISA_OPTION(vISA_UseFriendlyNameInDbg, ET_BOOL, "-useFriendlyNameInDbg",
                 UNUSED, false)
-DEF_VISA_OPTION(vISA_removeInstrinsics, ET_BOOL, "-removeInstrinsics", UNUSED,
-                true)
 DEF_VISA_OPTION(vISA_addSWSBInfo, ET_BOOL, "-addSWSBInfo", UNUSED, true)
 DEF_VISA_OPTION(vISA_DumpRAIntfGraph, ET_BOOL, "-dumpintf", UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpRAMetadata, ET_BOOL_TRUE, "-dumpRAMetadata",

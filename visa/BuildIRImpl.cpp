@@ -2974,6 +2974,8 @@ void IR_Builder::createMovSendSrcInst(G4_Declare *dcl, short regoff,
     }
   }
 }
+
+
 // create an opnd without regpoff and subregoff
 G4_DstRegRegion *IR_Builder::createDstRegRegion(G4_Declare *dcl,
                                                 unsigned short hstride) {

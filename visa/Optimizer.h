@@ -220,8 +220,7 @@ private:
 
   void staticProfiling();
 
-  void removeInstrinsics();
-  void markBreakpoint();
+  void removeIntrinsics();
 
   unsigned int numBankConflicts;
 
@@ -390,7 +389,7 @@ public:
     PI_mapOrphans,
     PI_legalizeType,
     PI_analyzeMove,
-    PI_removeInstrinsics,
+    PI_removeIntrinsics,
     PI_expandMulPostSchedule,
     PI_zeroSomeARF,
     PI_addSWSBInfo,

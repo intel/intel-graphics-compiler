@@ -4778,6 +4778,7 @@ int VISAKernelImpl::AppendVISAMiscRawSends(
 
   int status = VISA_SUCCESS;
 
+
   if (IS_GEN_BOTH_PATH) {
     CreateGenRawSrcOperand(src0);
     CreateGenRawSrcOperand(src1);
