@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2023 Intel Corporation
+; Copyright (C) 2020-2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: opt %use_old_pass_manager% -genx-simplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
 
 ;; Test constant folding of pointers -- that pass do not fails and
 ;; correctly handles pointer size.
