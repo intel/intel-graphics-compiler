@@ -500,6 +500,21 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
           default:
             break;
           }
+          // Surfaces are created after GenXCategory, placed before
+          // the dependend instruction and are not baled with anything.
+          // It is better to move the surface next to its user since
+          // it increases chances to get an immediate descriptor.
+          for (auto &U : Inst->operands()) {
+            auto *UInst = dyn_cast<Instruction>(U);
+            auto IID = GenXIntrinsic::getGenXIntrinsicID(UInst);
+            if (IID == GenXIntrinsic::genx_convert &&
+                isa<Constant>(UInst->getOperand(0))) {
+              // UInst will be numbered in the next iterations.
+              IGC_ASSERT(UInst->hasOneUse());
+              UInst->removeFromParent();
+              UInst->insertBefore(InsertBefore);
+            }
+          }
           Inst->removeFromParent();
           Inst->insertBefore(InsertBefore);
         }
