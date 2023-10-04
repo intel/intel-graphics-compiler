@@ -370,6 +370,9 @@ namespace IGC
         // Informs if LSC immediate global offset for A32 is supported
         virtual bool supportsLSCImmediateGlobalBaseOffsetForA32() const { return true; }
 
+        // If enabled IGC must not hoist convergent instructions.
+        virtual bool DisableConvergentInstructionsHoisting() const { return false; }
+
 protected:
     bool autoGRFSelection = false;
     };

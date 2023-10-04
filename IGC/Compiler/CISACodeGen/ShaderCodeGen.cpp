@@ -397,8 +397,11 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         ctx.m_instrTypes.hasUnmaskedRegion) {
         IGC_SET_FLAG_VALUE(allowLICM, false);
     }
-
-    if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
+    bool disableConvergentInstructionsHoisting =
+        ctx.m_DriverInfo.DisableConvergentInstructionsHoisting() &&
+        ctx.m_instrTypes.numWaveIntrinsics > 0;
+    if (disableConvergentInstructionsHoisting ||
+        IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
         IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
     {
         DummyPass* dummypass = new DummyPass();
