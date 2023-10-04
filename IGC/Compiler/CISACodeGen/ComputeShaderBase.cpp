@@ -66,7 +66,12 @@ namespace IGC
             MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
         if (m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
         {
-            if (IGC_IS_FLAG_DISABLED(KeepTileYForFlattened) && useLinearWalk)
+            // If KeepTileYForFlattened == 2, use the platform default value.
+            // Otherwise 0 is forced off, 1 is forced on.
+            bool KeepTileYForFlattenedValue = IGC_GET_FLAG_VALUE(KeepTileYForFlattened) == 2 ?
+                m_Platform->EnableKeepTileYForFlattenedDefault() :
+                IGC_IS_FLAG_ENABLED(KeepTileYForFlattened);
+            if (!KeepTileYForFlattenedValue && useLinearWalk)
             {
                 needsLinearWalk = true;
             }

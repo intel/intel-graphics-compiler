@@ -964,6 +964,11 @@ bool EnableNewTileYCheckDefault() const
     return (m_platformInfo.eProductFamily == IGFX_DG2);
 }
 
+bool EnableKeepTileYForFlattenedDefault() const
+{
+    return false;
+}
+
 bool needsWAForThreadsUtilization() const
 {
     return (m_platformInfo.eProductFamily == IGFX_DG2 ||
