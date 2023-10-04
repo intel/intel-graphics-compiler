@@ -240,7 +240,7 @@ public:
   }
 
   void setNoACCSBSet() { swsb.tokenType = NoACCSBSet; }
-  bool hasNoACCSBSet() { return swsb.tokenType == NoACCSBSet; }
+  bool hasNoACCSBSet() const { return swsb.tokenType == NoACCSBSet; }
 
   void setOperandTypeIndicated(bool indicated) {
     operandTypeIndicated = indicated;
@@ -618,7 +618,7 @@ public:
   int32_t getLocalId() const { return localId; }
 
   void setEvenlySplitInst(bool val) { evenlySplitInst = val; }
-  bool getEvenlySplitInst() { return evenlySplitInst; }
+  bool getEvenlySplitInst() const { return evenlySplitInst; }
 
   void setVISAId(int offset) { vISAInstId = offset; }
   int getVISAId() const { return vISAInstId; }
@@ -692,7 +692,7 @@ public:
   bool isMathPipeInst() const;
   bool distanceHonourInstruction() const;
   bool tokenHonourInstruction() const;
-  bool hasNoPipe();
+  bool hasNoPipe() const;
   bool isLongPipeType(G4_Type type) const;
   bool isIntegerPipeType(G4_Type type) const;
   bool isJEUPipeInstructionXe() const;
@@ -751,7 +751,7 @@ public:
   bool isRawMov() const;
   bool hasACCSrc() const;
   bool hasACCOpnd() const;
-  G4_Type getOpExecType(int &extypesize);
+  G4_Type getOpExecType(int &extypesize) const;
   bool canHoistTo(const G4_INST *defInst, bool simdBB) const;
   enum MovType {
     Copy = 0,           // MOV is a copy.
@@ -787,7 +787,7 @@ public:
   bool isCommutative() const;
 
   bool hasNULLDst() const;
-  bool goodTwoGRFDst(bool &evenSplitDst);
+  bool goodTwoGRFDst(bool &evenSplitDst) const;
   void setGenOffset(int64_t off) { genOffset = off; }
   int64_t getGenOffset() const { return genOffset; }
 
@@ -1268,7 +1268,7 @@ public:
 
   bool isFence() const { return getMsgDesc()->isFence(); }
 
-  bool isDirectSplittableSend();
+  bool isDirectSplittableSend() const;
 
   void computeRightBound(G4_Operand *opnd) override;
 
@@ -1663,7 +1663,7 @@ public:
   void setOffset(uint32_t o) { offset = o; }
   void setFP(G4_Declare *f) { fp = f; }
 
-  bool isOffsetValid() { return offset != InvalidOffset; }
+  bool isOffsetValid() const { return offset != InvalidOffset; }
 
   void computeRightBound(G4_Operand *opnd) override;
 

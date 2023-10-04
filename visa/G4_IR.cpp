@@ -847,7 +847,7 @@ bool G4_INST::tokenHonourInstruction() const {
   }
 }
 
-bool G4_INST::hasNoPipe() {
+bool G4_INST::hasNoPipe() const {
   if (op == G4_wait || op == G4_halt || op == G4_nop) {
     return true;
   }
@@ -1236,7 +1236,7 @@ bool G4_INST::hasACCOpnd() const {
           (srcs[1] && srcs[1]->isAccReg()) || (srcs[2] && srcs[2]->isAccReg()));
 }
 
-G4_Type G4_INST::getOpExecType(int &extypesize) {
+G4_Type G4_INST::getOpExecType(int &extypesize) const {
   G4_Type extype;
   if (isRawMov()) {
     extype = srcs[0]->getType();
@@ -2566,7 +2566,7 @@ bool G4_INST::hasNULLDst() const {
   return false;
 }
 
-bool G4_INST::goodTwoGRFDst(bool &evenSplitDst) {
+bool G4_INST::goodTwoGRFDst(bool &evenSplitDst) const {
   evenSplitDst = false;
   // The following applies to all platforms
   // The problem is , the first case is really an instruction with two
@@ -3418,7 +3418,7 @@ void G4_InstSend::setMsgDesc(G4_SendDesc *in) {
   resetRightBound(srcs[0]);
 }
 
-bool G4_InstSend::isDirectSplittableSend() {
+bool G4_InstSend::isDirectSplittableSend() const {
   unsigned short elemSize = dst->getElemSize();
   SFID funcID = msgDesc->getSFID();
   const G4_SendDescRaw *desc = getMsgDescRaw();
