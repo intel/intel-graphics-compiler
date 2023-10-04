@@ -4788,16 +4788,6 @@ namespace IGC
             SaveOption(vISA_disableRegDistDep, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(SWSBMakeLocalWAR))
-        {
-            SaveOption(vISA_SWSBMakeLocalWAR, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(WARSWSBLocalEnd))
-        {
-            SaveOption(vISA_WARSWSBLocalStart, IGC_GET_FLAG_VALUE(WARSWSBLocalStart));
-            SaveOption(vISA_WARSWSBLocalEnd, IGC_GET_FLAG_VALUE(WARSWSBLocalEnd));
-        }
         if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
             IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
             IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))

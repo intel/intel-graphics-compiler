@@ -793,7 +793,4 @@ bool noSrc0Src1OverlapSend() const {
   return getPlatformGeneration() < PlatformGen::XE;
 }
 
-bool WARLocalization() const {
-  return false;
-}
 // end HW capabilities

@@ -4526,25 +4526,14 @@ void SWSB::insertTokenSync() {
         }
 
         INST_LIST_RITER inst_rit(bb->rbegin());
-        int node_index = BBVector[bb->getId()]->last_node;
-
         G4_INST *inst = *inst_rit;
         if (inst->isFlowControl()) {
           inst_rit++;
-          node_index--;
           inst = *inst_rit;
         }
-        SBNode *node = SBNodes[node_index];
+
         INST_LIST_ITER tmp_it = inst_rit.base();
-        G4_INST *syncInst = insertSyncAllRDInstruction(bb, src, tmp_it);
-        if (node->hasDistOneAreg()) {
-          syncInst->setDistance(1);
-          if (kernel.fg.builder->hasThreeALUPipes() ||
-              kernel.fg.builder->hasFourALUPipes()) {
-            syncInst->setDistanceTypeXe(
-                G4_INST::DistanceType::DISTALL);
-          }
-        }
+        insertSyncAllRDInstruction(bb, src, tmp_it);
       }
     }
   }
@@ -6777,17 +6766,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       if (tokenHonourInstruction(node->GetInstruction()) &&
           (int)node->getNodeID() >= first_node &&
           (int)node->getNodeID() <= last_node) {
-        bool validWARLocalizeBB =
-            !builder.getOptions()->getuInt32Option(vISA_WARSWSBLocalEnd) ||
-            (builder.getOptions()->getuInt32Option(vISA_WARSWSBLocalEnd) &&
-             (bb->getId() <=
-              builder.getOptions()->getuInt32Option(vISA_WARSWSBLocalEnd)) &&
-             (bb->getId() >=
-              builder.getOptions()->getuInt32Option(vISA_WARSWSBLocalStart)));
-
-        if (!builder.WARLocalization() || !validWARLocalizeBB ||
-            opndNum == Opnd_dst || node->getLastInstruction()->isDpas() ||
-            bb->isEndWithCall() || bb->isEndWithFCall()) {
+        if (!builder.getOption(vISA_SWSBMakeLocalWAR) || opndNum == Opnd_dst) {
           if (liveBN->getSendID() == INVALID_ID) {
             if (send_start == INVALID_ID) {
               send_start = static_cast<int>(globalSendOpndList->size());
