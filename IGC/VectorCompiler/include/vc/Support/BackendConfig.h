@@ -233,8 +233,8 @@ private:
 
 public:
   GenXBackendConfig();
-  explicit GenXBackendConfig(GenXBackendOptions OptionsIn,
-                             GenXBackendData DataIn);
+  explicit GenXBackendConfig(GenXBackendOptions &&OptionsIn,
+                             GenXBackendData &&DataIn);
 
   // Return whether regalloc results should be printed.
   bool enableRegAllocDump() const { return Options.DumpRegAlloc; }

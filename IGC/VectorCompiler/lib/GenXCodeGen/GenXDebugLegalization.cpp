@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -50,9 +50,8 @@ public:
   bool runOnFunction(Function &F) override;
 
 private:
-  void extractAddressClass(Function& F);
-  void removeDIArgList(Function& F);
-  bool Modified;
+  bool extractAddressClass(Function &F);
+  bool removeDIArgList(Function &F);
 };
 
 } // end anonymous namespace
@@ -75,8 +74,8 @@ void GenXDebugLegalization::getAnalysisUsage(AnalysisUsage &AU) const
 // Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
 // this instruction's last operand (metadata of DIExpression).
 // Pattern: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
-void GenXDebugLegalization::extractAddressClass(Function& F)
-{
+bool GenXDebugLegalization::extractAddressClass(Function &F) {
+  bool Modified = false;
   DIBuilder di(*F.getParent());
 
   for (auto& bb : F) {
@@ -108,12 +107,13 @@ void GenXDebugLegalization::extractAddressClass(Function& F)
       }
     }
   }
+  return Modified;
 }
 
 // LLVM 12+ may generate DIArgList construct which is not (yet) supported.
 // In order to prevent crashes, remove such metadata.
-void GenXDebugLegalization::removeDIArgList(Function& F)
-{
+bool GenXDebugLegalization::removeDIArgList(Function &F) {
+  bool Modified = false;
 #if LLVM_VERSION_MAJOR > 12
   for (auto &BB : F) {
     for (auto &I : BB) {
@@ -126,6 +126,7 @@ void GenXDebugLegalization::removeDIArgList(Function& F)
     }
   }
 #endif
+  return Modified;
 }
 
 /***********************************************************************
@@ -134,9 +135,9 @@ void GenXDebugLegalization::removeDIArgList(Function& F)
  */
 bool GenXDebugLegalization::runOnFunction(Function &F)
 {
-  Modified = false;
-  extractAddressClass(F);
-  removeDIArgList(F);
+  bool Modified = false;
+  Modified |= extractAddressClass(F);
+  Modified |= removeDIArgList(F);
   return Modified;
 }
 

@@ -539,7 +539,7 @@ bool CMImpParam::runOnModule(Module &M) {
   if (!FixedSignFuncInfo.empty() && !HasPayloadInMemory)
     createPredefVars(M);
 
-  for (auto [F, RequiredImplArgs] : FixedSignFuncInfo)
+  for (auto &[F, RequiredImplArgs] : FixedSignFuncInfo)
     processFixedSignatureFunction(*F, RequiredImplArgs);
 
   // Kernel transformation should go last since it invalidates the collected

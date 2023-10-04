@@ -2997,7 +2997,7 @@ bool GenXSimdCFConformance::getConnectedVals(
 
   if (LowerBadUsers) {
     SetVector<Value *> ToRemove;
-    for (auto BadUser : UsersToLower) {
+    for (auto &BadUser : UsersToLower) {
       replaceUseWithLoweredEM(dyn_cast<Instruction>(BadUser.getValue()),
                               BadUser.getIndex(), ToRemove);
     }
@@ -3086,7 +3086,7 @@ void GenXSimdCFConformance::canonicalizeEM() {
 void GenXSimdCFConformance::handleEVs() {
   // Collect gotos/joins
   gatherGotoJoinEMVals(false);
-  for (auto val : EMVals) {
+  for (auto &val : EMVals) {
     Value *GotoJoin = val.getValue();
     IGC_ASSERT(testIsGotoJoin(GotoJoin));
     GotoJoinEVsMap[GotoJoin] = GotoJoinEVs(GotoJoin);
@@ -3178,7 +3178,7 @@ void GenXSimdCFConformance::resolveBitCastChains() {
   gatherEMVals();
 
   std::set<Value *> DeadInst;
-  for (auto Val : EMVals) {
+  for (auto &Val : EMVals) {
     if (auto PN = dyn_cast<PHINode>(Val.getValue())) {
       LLVM_DEBUG(dbgs() << "resolveBitCastChains: Found phi:\n" << *PN << "\n");
     } else if (auto BCI = dyn_cast<BitCastInst>(Val.getValue())) {
@@ -4144,7 +4144,7 @@ void GenXLateSimdCFConformance::hoistExtractEMInstructions() {
  * linearized. Maybe this function should be updated in future.
  */
 void GenXSimdCFConformance::optimizeRestoredSIMDCF() {
-  for (auto Data : BlocksToOptimize) {
+  for (auto &Data : BlocksToOptimize) {
     // Skip blocks with lowered EM values
     if (!EMVals.count(SimpleValue(Data.second.getRealEM(), 0))) {
       LLVM_DEBUG(dbgs() << "optimizeRestoredSIMDCF: skipping "

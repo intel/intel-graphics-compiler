@@ -124,7 +124,7 @@ static std::vector<BlockAddress *>
 collectBlockAddresses(SwitchInst *SI, ConstantInt *MinCaseV) {
   unsigned NumCases = SI->getNumCases();
   std::vector<BlockAddress *> BAs(NumCases);
-  for (auto CaseIt : SI->cases()) {
+  for (auto &CaseIt : SI->cases()) {
     APInt Idx = CaseIt.getCaseValue()->getValue() - MinCaseV->getValue();
     IGC_ASSERT(Idx.getZExtValue() < NumCases);
     BAs[Idx.getZExtValue()] = BlockAddress::get(CaseIt.getCaseSuccessor());

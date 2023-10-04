@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -311,7 +311,7 @@ private:
 
   // Already visited functions.
   SmallPtrSet<Function *, 8> AlreadyVisited;
-  CMABIAnalysis *Info;
+  CMABIAnalysis *Info = nullptr;
 };
 
 } // namespace

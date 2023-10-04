@@ -935,8 +935,8 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
                                    Decl.getName().str());
   Info.Func.Data.Buffer = TextSection.Data.emitConsolidatedData();
 
-  return CompiledKernel{std::move(Info), vISA::FINALIZER_INFO{}, /*GtpinInfo*/ {},
-                        DebugInfo};
+  return CompiledKernel{std::move(Info), vISA::FINALIZER_INFO{},
+                        /*GtpinInfo*/ {}, std::move(DebugInfo)};
 }
 
 void GenXOCLRuntimeInfo::getAnalysisUsage(AnalysisUsage &AU) const {

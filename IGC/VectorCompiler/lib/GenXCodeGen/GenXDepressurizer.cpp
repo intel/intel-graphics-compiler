@@ -332,16 +332,16 @@ class GenXDepressurizer : public FGPassImplInterface,
                           public IDMixin<GenXDepressurizer> {
   enum { FlagThreshold = 6, AddrThreshold = 32, GRFThreshold = 2560,
          FlagGRFTolerance = 3840 };
-  bool Modified;
-  GenXGroupBaling *Baling;
-  DominatorTree *DT;
-  LoopInfoBase<BasicBlock, Loop> *LI;
-  PseudoCFG *PCFG;
-  unsigned MaxPressure;
+  bool Modified = false;
+  GenXGroupBaling *Baling = nullptr;
+  DominatorTree *DT = nullptr;
+  LoopInfoBase<BasicBlock, Loop> *LI = nullptr;
+  PseudoCFG *PCFG = nullptr;
+  unsigned MaxPressure = 0;
   std::map<Function *, unsigned> SubroutinePressures;
   std::map<BasicBlock *, Liveness> LiveIn;
   std::map<BasicBlock *, Liveness> LiveOut;
-  Liveness *Live;
+  Liveness *Live = nullptr;
   // A numbering of instructions. Because of the way the basic block ordering
   // is constructed, if instruction I2 is reachable from instruction I1, then
   // InstNumbers[I1] < InstNumbers[I2], unless the reachability is via a

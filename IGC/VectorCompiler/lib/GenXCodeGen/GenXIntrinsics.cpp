@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -63,7 +63,7 @@ const GenXIntrinsicInfo::TableType &GenXIntrinsicInfo::getTable() {
 GenXIntrinsicInfo::ArgInfo GenXIntrinsicInfo::getArgInfo(int Idx) const {
   // Read through the fields in the table to find the one with the right
   // arg index...
-  for (auto AI : getInstDesc())
+  for (auto &AI : getInstDesc())
     if (AI.isRealArgOrRet() && AI.getArgIdx() == Idx)
       return AI;
   // Field with requested arg index was not found.
@@ -98,7 +98,7 @@ unsigned GenXIntrinsicInfo::getTrailingNullZoneStart(CallInst *CI) const {
  * Return:  bit N set if execution size 1<<N is allowed
  */
 unsigned GenXIntrinsicInfo::getExecSizeAllowedBits() const {
-  for (auto AI : getInstDesc()) {
+  for (auto &AI : getInstDesc()) {
     if (!AI.isGeneral()) {
       switch (AI.getCategory()) {
       case EXECSIZE:

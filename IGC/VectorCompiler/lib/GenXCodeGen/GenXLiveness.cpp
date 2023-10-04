@@ -1319,6 +1319,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
         unsigned NumElts = std::min(MaxElt, R.NumElements - Offset);
         // Round NumElts down to power of 2. That is how many elements we
         // are copying this time round the loop.
+        IGC_ASSERT_EXIT(NumElts > 0);
         NumElts = 1 << genx::log2(NumElts);
         Frag.push_back(std::make_pair(Base + Offset, NumElts));
         Offset += NumElts;
@@ -1767,7 +1768,7 @@ void LiveRange::sortAndMerge() {
     else
       OpenedSegments.erase(*ES++);
   }
-  Segments = NewSegments;
+  Segments = std::move(NewSegments);
 }
 
 /***********************************************************************

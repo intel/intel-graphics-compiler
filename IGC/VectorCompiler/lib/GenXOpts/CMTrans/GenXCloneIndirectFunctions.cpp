@@ -163,7 +163,7 @@ bool GenXCloneIndirectFunctions::runOnModule(Module &M) {
 
   bool Modified = false;
 
-  for (auto [F, IsExternal] : IndirectFuncs) {
+  for (auto &[F, IsExternal] : IndirectFuncs) {
     if (BECfg.directCallsOnly(F->getName()))
       continue;
 

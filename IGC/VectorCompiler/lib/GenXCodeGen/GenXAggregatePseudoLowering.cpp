@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -399,7 +399,7 @@ static std::vector<Instruction *>
 createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps,
                  const std::vector<IdxListType> &IdxLists) {
   std::vector<Instruction *> NewInsts;
-  for (auto IdxList : enumerate(IdxLists)) {
+  for (auto &IdxList : enumerate(IdxLists)) {
     auto NewOps =
         createSplitInstOperands(IdxList.index(), Inst.operands(), SplitOps);
     NewInsts.push_back(createSplitInst(Inst, NewOps, IdxList.value()));

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -39,6 +39,8 @@ namespace pktz
             if (mpIRBuilder)
                 delete mpIRBuilder;
         }
+        PacketBuilder(const PacketBuilder &) = delete;
+        PacketBuilder &operator=(const PacketBuilder &) = delete;
 
         IGCLLVM::IRBuilder<>* IRB() { return mpIRBuilder; };
         LLVMContext &getContext() { return mpModule->getContext(); }

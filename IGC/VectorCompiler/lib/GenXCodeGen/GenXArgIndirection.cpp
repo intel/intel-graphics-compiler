@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -305,13 +305,20 @@ private:
   Function *F = nullptr;
   Function *NewFunc = nullptr;
 public:
-  Argument *AddressArgument;
+  Argument *AddressArgument = nullptr;
   SubroutineArg(GenXArgIndirection *Pass, LiveRange *ArgLR, Argument *Arg)
     : Pass(Pass), ArgLR(ArgLR), Arg(Arg), F(Arg->getParent()), NewFunc(nullptr) {}
   ~SubroutineArg() {
     for (auto i = CallSites.begin(), e = CallSites.end(); i != e; ++i)
       delete *i;
   }
+  SubroutineArg() = delete;
+  SubroutineArg(const SubroutineArg &) = delete;
+  SubroutineArg &operator=(const SubroutineArg &) = delete;
+
+  SubroutineArg(SubroutineArg &&) = default;
+  SubroutineArg &operator=(SubroutineArg &&) = delete;
+
   Indirectability checkIndirectability();
   ArgIndCallSite *createCallSite(CallInst *CI);
   Alignment getIndirectAlignment(unsigned GRFWidth) const;
@@ -496,7 +503,7 @@ static Value *searchForArg(Value *V) {
 std::vector<GenXArgIndirection::ArgToConvertAddr>
 GenXArgIndirection::collectAlreadyIndirected(LiveRange *ArgLR) {
   std::vector<GenXArgIndirection::ArgToConvertAddr> IndirectedArgInfo;
-  for (auto VI : ArgLR->getValues()) {
+  for (auto &VI : ArgLR->getValues()) {
     Value *Base = VI.getValue();
     std::vector<Value *> Addrs = Liveness->getAddressWithBase(Base);
     // Not a base
@@ -638,7 +645,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
     ArgToAddressArg.insert(SubrArg->addAddressArg());
   // Since the ArgLR has been set to NONE category, it cannot be used as a base
   // register and the indirected argument address should be used instead.
-  for (auto Info : IndirectedArgInfo) {
+  for (auto &Info : IndirectedArgInfo) {
     IGC_ASSERT_MESSAGE(ArgToAddressArg.count(Info.Arg),
                        "Cannot find indirected arg");
     Liveness->setArgAddressBase(Info.ConvertAddr, ArgToAddressArg[Info.Arg]);

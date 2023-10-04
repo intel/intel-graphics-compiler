@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -366,7 +366,7 @@ vc::TransformedFuncInfo::gatherAttributes(LLVMContext &Context,
   AttributeList GatheredAttrs;
 
   // Gather argument attributes.
-  for (auto OrigArgData : enumerate(OrigArgs)) {
+  for (auto &OrigArgData : enumerate(OrigArgs)) {
     int OrigIdx = OrigArgData.index();
     const OrigArgInfo &OrigArgInfoEntry = OrigArgData.value();
     if (OrigArgInfoEntry.getKind() == ArgKind::General) {
@@ -398,7 +398,7 @@ void vc::TransformedFuncInfo::inheritAttributes(Function &OrigFunc) {
 
 void vc::TransformedFuncInfo::discardStructRetAttr(LLVMContext &Context) {
   constexpr auto SretAttr = Attribute::StructRet;
-  for (auto ArgInfo : enumerate(NewFuncType.Args)) {
+  for (auto &ArgInfo : enumerate(NewFuncType.Args)) {
     unsigned ParamIndex = ArgInfo.index();
     if (Attrs.hasParamAttr(ParamIndex, SretAttr)) {
       Attrs = Attrs.removeParamAttribute(Context, ParamIndex, SretAttr);
@@ -408,7 +408,7 @@ void vc::TransformedFuncInfo::discardStructRetAttr(LLVMContext &Context) {
 }
 
 void vc::TransformedFuncInfo::appendRetCopyOutInfo() {
-  for (auto OrigArgData : enumerate(OrigArgs)) {
+  for (auto &OrigArgData : enumerate(OrigArgs)) {
     int OrigIdx = OrigArgData.index();
     const OrigArgInfo &OrigArgInfoEntry = OrigArgData.value();
     switch (OrigArgInfoEntry.getKind()) {
@@ -507,7 +507,7 @@ inheritCallAttributes(CallInst &OrigCall, int NumOrigFuncArgs,
   auto &Context = OrigCall.getContext();
   AttributeList NewCallAttrs = NewFuncInfo.gatherAttributes(Context, CallPAL);
 
-  for (auto DiscardInfo : NewFuncInfo.getDiscardedParameterAttrs()) {
+  for (auto &DiscardInfo : NewFuncInfo.getDiscardedParameterAttrs()) {
     NewCallAttrs = NewCallAttrs.removeParamAttribute(
         Context, DiscardInfo.ArgIndex, DiscardInfo.Attr);
   }
@@ -762,7 +762,7 @@ CallInst *vc::FuncUsersUpdater::updateFuncDirectUser(CallInst &OrigCall) {
       &NewFuncCGN);
 
   IRBuilder<> Builder(&OrigCall);
-  for (auto RetToArg : enumerate(NewFuncInfo.getRetToArgInfo()))
+  for (auto &RetToArg : enumerate(NewFuncInfo.getRetToArgInfo()))
     handleRetValuePortion(RetToArg.index(), RetToArg.value(), OrigCall,
                           *NewCall, Builder, NewFuncInfo);
   return NewCall;

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -182,6 +182,9 @@ public:
   static char ID;
   explicit FunctionGroupAnalysis() : ModulePass(ID) {}
   ~FunctionGroupAnalysis() { clear(); }
+  FunctionGroupAnalysis(const FunctionGroupAnalysis &) = delete;
+  FunctionGroupAnalysis &operator=(const FunctionGroupAnalysis &) = delete;
+
   StringRef getPassName() const override { return "function group analysis"; }
   // runOnModule : does almost nothing
   bool runOnModule(Module &ArgM) override {
@@ -439,6 +442,9 @@ class DominatorTreeGroupWrapperPass
 public:
   DominatorTreeGroupWrapperPass() {}
   ~DominatorTreeGroupWrapperPass() { releaseMemory(); }
+  DominatorTreeGroupWrapperPass(const DominatorTreeGroupWrapperPass &) = delete;
+  DominatorTreeGroupWrapperPass &
+  operator=(const DominatorTreeGroupWrapperPass &) = delete;
 
   DominatorTree *getDomTree(Function *F) { return DTs[F]; }
 
@@ -471,6 +477,9 @@ class LoopInfoGroupWrapperPass : public FGPassImplInterface,
 public:
   LoopInfoGroupWrapperPass() {}
   ~LoopInfoGroupWrapperPass() { releaseMemory(); }
+  LoopInfoGroupWrapperPass(const LoopInfoGroupWrapperPass &) = delete;
+  LoopInfoGroupWrapperPass &
+  operator=(const LoopInfoGroupWrapperPass &) = delete;
 
   LoopInfo *getLoopInfo(Function *F) { return LIs[F]; }
   const DominatorTree &getDomTree();

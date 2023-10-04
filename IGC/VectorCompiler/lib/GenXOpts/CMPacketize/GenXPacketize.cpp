@@ -93,6 +93,9 @@ public:
   static char ID;
   explicit GenXPacketize() : ModulePass(ID) {}
   ~GenXPacketize() { releaseMemory(); }
+  GenXPacketize(const GenXPacketize &) = delete;
+  GenXPacketize &operator=(const GenXPacketize &) = delete;
+
   StringRef getPassName() const override { return "GenX Packetize"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequiredID(BreakCriticalEdgesID);
@@ -1763,7 +1766,7 @@ void GenXPacketize::replaceAllUsesNoTypeCheck(Value *pInst, Value *pNewInst) {
 ///        So we have to remove these manually.
 void GenXPacketize::removeDeadInstructions(Function &F) {
   SmallVector<Instruction *, 8> unused;
-  for (auto RMI : ReplaceMap) {
+  for (const auto &RMI : ReplaceMap) {
     if (RMI.first != RMI.second) {
       if (Instruction *UnusedInst =
               (Instruction *)dyn_cast<Instruction>(RMI.first)) {

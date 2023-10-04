@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -153,7 +153,7 @@ public:
   InstructionRebuilder(RebuildInfo ToRebuildIn,
                        IsSpecialInstFunc IsSpecialInstIn,
                        CreateSpecialInstFunc CreateSpecialInstIn)
-      : ToRebuild{ToRebuildIn}, IsSpecialInst{IsSpecialInstIn},
+      : ToRebuild{std::move(ToRebuildIn)}, IsSpecialInst{IsSpecialInstIn},
         CreateSpecialInst{CreateSpecialInstIn} {}
 
   void rebuild() && {
@@ -203,14 +203,14 @@ private:
     CurInst =
         std::accumulate(First, LastUse, std::move(CurInst),
                         [this](InstToRebuild Inst, const UseToRebuild &Use) {
-                          return appendOperand(Inst, Use);
+                          return appendOperand(std::move(Inst), Use);
                         });
     return {CurInst, LastUse};
   }
 
   // Appends operand/use from \p CurUse to \p InstInfo.
   // Returns updated \p InstInfo.
-  InstToRebuild appendOperand(InstToRebuild InstInfo,
+  InstToRebuild appendOperand(InstToRebuild &&InstInfo,
                               const UseToRebuild &CurUse) {
     IGC_ASSERT_MESSAGE(InstInfo.User == CurUse.User,
                        "trying to append a wrong use with wrong user");

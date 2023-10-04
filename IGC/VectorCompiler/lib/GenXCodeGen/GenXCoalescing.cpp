@@ -1087,7 +1087,7 @@ void GenXCoalescing::processPhiNodes(FunctionGroup *FG)
   // Perform copy of uncoalesced phi node incomings.
   // New phis can be created during this, store them.
   std::vector<PHINode *> NewPhis;
-  for (auto Elem : PhiCopies) {
+  for (auto &Elem : PhiCopies) {
     processPhiCopy(Elem.Phi, Elem.IncomingIdx, NewPhis);
   }
   // Phi copies are resolved. Clean the list.
@@ -1107,7 +1107,7 @@ void GenXCoalescing::processPhiNodes(FunctionGroup *FG)
     NewPhis.clear();
 
     // Perform copy of uncoalesced phi node incomings.
-    for (auto Elem : PhiCopies) {
+    for (auto &Elem : PhiCopies) {
       processPhiCopy(Elem.Phi, Elem.IncomingIdx, NewPhis);
     }
     // Phi copies are resolved. Clean the list.
@@ -1899,9 +1899,9 @@ void GenXCoalescing::applyCopiesOptimized() {
   // it is still simple linear traverse through all copies.
 
   // Traverse all LRs
-  for (auto LRDataIt : SortedCD.CopiesPerLR) {
+  for (auto &LRDataIt : SortedCD.CopiesPerLR) {
     // Traverse all copy values
-    for (auto CDIt : LRDataIt.second.CopiesPerValue) {
+    for (auto &CDIt : LRDataIt.second.CopiesPerValue) {
       // Finally we got into current copy candidates.
       // Traverse all copy data.
       applyCopiesForValue(CDIt.second);

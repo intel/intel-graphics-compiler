@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -479,6 +479,9 @@ public:
   static StringRef getPassName() { return "GenX liveness analysis"; }
 
   ~GenXLiveness() { releaseMemory(); }
+  GenXLiveness() = default;
+  GenXLiveness(const GenXLiveness &) = default;
+  GenXLiveness &operator=(const GenXLiveness &) = default;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // setBaling : tell GenXLiveness where GenXBaling is
   void setBaling(GenXBaling *B) { Baling = B; }

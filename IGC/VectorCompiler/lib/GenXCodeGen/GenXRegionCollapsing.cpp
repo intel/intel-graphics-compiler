@@ -1252,6 +1252,7 @@ bool GenXRegionCollapsing::combineRegions(const Region *OuterR,
       }
     }
     unsigned BeyondEndEl = EndEl + InnerR->Stride;
+    IGC_ASSERT_EXIT(InnerR->Stride != 0);
     if (BeyondEndEl % OuterR->Width == StartEl % OuterR->Width
         && !(OuterR->Width % InnerR->Stride)) {
       // The 1D inner region is evenly split between N adjacent rows of the

@@ -777,7 +777,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
                                         : GenXIntrinsic::genx_umin;
               break;
             default:
-              break;
+              IGC_ASSERT_UNREACHABLE();
             }
           }
         }

@@ -56,8 +56,9 @@ public:
   LiveElements(Type *Ty, bool IsLive = false);
   LiveElements(const ArrayRef<SmallBitVector> LE)
       : LiveElems(LE.begin(), LE.end()) {}
-  LiveElements(const SmallBitVector LE)
-      : LiveElems({LE}) {}
+  LiveElements(SmallBitVector &&LE) : LiveElems({LE}) {}
+  LiveElements(const SmallBitVector &LE) = delete;
+  LiveElements &operator=(const SmallBitVector &) = delete;
 
   iterator begin() { return LiveElems.begin(); }
   const_iterator begin() const { return LiveElems.begin(); }
@@ -187,7 +188,7 @@ public:
   static void getAnalysisUsage(AnalysisUsage &AU) { AU.setPreservesAll(); }
 
   bool runOnFunctionGroup(FunctionGroup &FG) override {
-    for (auto F : FG)
+    for (auto &F : FG)
       processFunction(*F);
     return false;
   }

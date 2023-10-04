@@ -249,8 +249,8 @@ GenXBackendConfig::GenXBackendConfig()
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());
 }
 
-GenXBackendConfig::GenXBackendConfig(GenXBackendOptions OptionsIn,
-                                     GenXBackendData DataIn)
+GenXBackendConfig::GenXBackendConfig(GenXBackendOptions &&OptionsIn,
+                                     GenXBackendData &&DataIn)
     : ImmutablePass(ID), Options(std::move(OptionsIn)),
       Data(std::move(DataIn)) {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());

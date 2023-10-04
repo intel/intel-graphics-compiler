@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -114,6 +114,8 @@ namespace llvm {
 
     explicit GenXModule() : ModulePass(ID) {}
     ~GenXModule() { cleanup(); }
+    GenXModule(const GenXModule &) = delete;
+    GenXModule &operator=(const GenXModule &) = delete;
 
     StringRef getPassName() const override { return "GenX module"; }
     void getAnalysisUsage(AnalysisUsage &AU) const override;

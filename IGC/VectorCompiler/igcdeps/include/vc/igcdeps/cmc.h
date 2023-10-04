@@ -41,11 +41,13 @@ public:
 
   explicit CMKernel(const PLATFORM &platform);
   ~CMKernel();
+  CMKernel(const CMKernel &) = delete;
+  CMKernel &operator=(const CMKernel &) = delete;
 
   PLATFORM m_platform;
   IGC::SOpenCLKernelInfo m_kernelInfo;
   IGC::COCLBTILayout m_btiLayout;
-  uint32_t m_GRFSizeInBytes;
+  uint32_t m_GRFSizeInBytes = 0;
   bool m_SupportsDebugging = false;
 
   // getter for convenience

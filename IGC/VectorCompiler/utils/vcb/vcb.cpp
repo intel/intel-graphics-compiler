@@ -98,7 +98,7 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   Triple TheTriple{Is32Bit ? "genx32-unknown-unknown"
                            : "genx64-unknown-unknown"};
   M->setTargetTriple(TheTriple.getTriple());
-  auto ExpTargetMachine = createTargetMachine(TheTriple, Platform);
+  auto ExpTargetMachine = createTargetMachine(TheTriple, std::move(Platform));
   if (!ExpTargetMachine) {
     errs() << ExpTargetMachine.takeError();
     report_fatal_error("Can't find Target Machine");
@@ -111,7 +111,7 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   llvm::raw_null_ostream NOS;
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
   bool DisableIrVerifier = true;
-  PM.add(new GenXBackendConfig{Options, GenXBackendData()});
+  PM.add(new GenXBackendConfig{std::move(Options), GenXBackendData()});
   bool AddPasses =
       TM.addPassesToEmitFile(PM, NOS, nullptr, FileType, DisableIrVerifier);
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");

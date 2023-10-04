@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -266,9 +266,9 @@ namespace llvm {
     // or an indirect operand.
     struct TypeDetails {
       const DataLayout &DL;
-      unsigned NumElements;
-      unsigned BytesPerElement;
-      unsigned VisaType;
+      unsigned NumElements = 0;
+      unsigned BytesPerElement = 0;
+      unsigned VisaType = ISA_TYPE_NUM;
       TypeDetails(const DataLayout &DL, Type *Ty, genx::Signedness Signed,
                   bool IsBF = false);
     };

@@ -176,7 +176,8 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
     IGC_ASSERT(LiveElems.size() == CA->getNumOperands());
     SmallVector<Constant *, 8> Elems;
     for (auto &U : CA->operands()) {
-      auto OpLiveElems = LiveElements(LiveElems[U.getOperandNo()]);
+      auto LE = LiveElems[U.getOperandNo()];
+      auto OpLiveElems = LiveElements(std::move(LE));
       Elems.push_back(OpLiveElems.isAllDead()
                           ? UndefValue::get(U->getType())
                           : trySimplify(cast<Constant>(U.get()), OpLiveElems));

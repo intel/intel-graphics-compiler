@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -683,6 +683,8 @@ public:
 
   GenObjectWrapper(VISAKernel &VK, const Function &F);
   ~GenObjectWrapper() { releaseDebugInfoResources(); }
+  GenObjectWrapper(const GenObjectWrapper &) = delete;
+  GenObjectWrapper &operator=(const GenObjectWrapper &) = delete;
 
   bool hasErrors() const { return !ErrMsg.empty(); }
 
@@ -857,6 +859,8 @@ public:
   ~GenXFunction() {
     LLVM_DEBUG(dbgs() << "~GenXFunction() called for " << F.getName() << "\n");
   }
+  GenXFunction(const GenXFunction &) = delete;
+  GenXFunction &operator=(const GenXFunction &) = delete;
 
   llvm::StringRef GetVISAFuncName() const override {
     // TODO: this is not quite correct since VISA names is defined by VISA label

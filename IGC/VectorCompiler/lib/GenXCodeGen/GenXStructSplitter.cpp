@@ -769,7 +769,7 @@ void DependencyGraph::processNode(Node &SNode) {
         // Update AllStructs info.
         setInfoAboutStructure(*NewPlainStruct);
         // Match old elements with new elements.
-        for (auto ElemIndex : enumerate(Elements.indices()))
+        for (auto &&ElemIndex : enumerate(Elements.indices()))
           IndicesMap[ElemIndex.value()].emplace_back(NewPlainStruct,
                                                      ElemIndex.index());
       } else
@@ -1440,7 +1440,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
     if (!processPTI(*PTI, NewInstrs, InstToInst))
       return false;
 
-  for (auto [InstToReplace, ToInst] : InstToInst)
+  for (auto &[InstToReplace, ToInst] : InstToInst)
     InstToReplace->replaceAllUsesWith(ToInst);
 
   return true;

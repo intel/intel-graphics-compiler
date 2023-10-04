@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -149,7 +149,7 @@ void PressureTracker::calculateRedSegments() {
 
 // Check if segment [B, E] intersects with a high pressure region or not.
 bool PressureTracker::intersectWithRedRegion(unsigned B, unsigned E) const {
-  for (auto S : HighPressureSegments) {
+  for (auto &S : HighPressureSegments) {
     unsigned B1 = S.Begin;
     unsigned E1 = S.End;
     if (B > E1)

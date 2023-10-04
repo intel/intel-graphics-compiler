@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9,24 +9,26 @@ SPDX-License-Identifier: MIT
 //
 /// genx::AlignmentInfo : alignment information
 /// -------------------------------------------
-/// 
+///
 /// AlignmentInfo is a cache of information on the alignment of instruction
 /// values in a function. It does not persist between passes.
 ///
-/// A pass that needs alignment information constructs an AlignmentInfo at 
+/// A pass that needs alignment information constructs an AlignmentInfo at
 /// the start of the pass, and then calls the ``get`` method each time it wants
-/// alignment information for a particular instruction value. AlignmentInfo 
-/// calculates it if it is not already in its cache, which probably involves 
-/// also calculating the alignment of other instructions that the given one 
+/// alignment information for a particular instruction value. AlignmentInfo
+/// calculates it if it is not already in its cache, which probably involves
+/// also calculating the alignment of other instructions that the given one
 /// depends on.
 ///
-/// This cacheing and lazy calculation is done instead of having a separate analysis
-/// pass because alignment is needed for only a small subset of values in a function.
+/// This cacheing and lazy calculation is done instead of having a separate
+/// analysis pass because alignment is needed for only a small subset of values
+/// in a function.
 ///
 /// The alignment is returned as an *Alignment* object with three fields:
-/// *ConstBits*, if ConstBits is not 0x7fffffff, alignment is a known bit-pattern,
-/// otherwise *LogAlign* and *ExtraBits* (where 0 <= ExtraBits < (1 << LogAlign)),
-/// stating that the value is known to be A << LogAlign | ExtraBits for some A.
+/// *ConstBits*, if ConstBits is not 0x7fffffff, alignment is a known
+/// bit-pattern, otherwise *LogAlign* and *ExtraBits* (where 0 <= ExtraBits < (1
+/// << LogAlign)), stating that the value is known to be A << LogAlign |
+/// ExtraBits for some A.
 ///
 /// For a vector value, the alignment information is for element 0.
 ///
@@ -68,19 +70,6 @@ public:
   Alignment(unsigned C);
   // Constructor given Constant.
   Alignment(Constant *C);
-  // Copy-constructor
-  Alignment(const Alignment& Rhs) {
-    LogAlign = Rhs.LogAlign;
-    ExtraBits = Rhs.ExtraBits;
-    ConstBits = Rhs.ConstBits;
-  }
-  // Copy-operator
-  Alignment& operator=(const Alignment &Rhs) {
-    LogAlign = Rhs.LogAlign;
-    ExtraBits = Rhs.ExtraBits;
-    ConstBits = Rhs.ConstBits;
-    return *this;
-  }
 
   // Get an unknown alignment
   static Alignment getUnknown() { return Alignment(0, 0); }

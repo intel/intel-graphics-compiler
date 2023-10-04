@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -918,7 +918,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
   Type *FirstType = Extracts[0].Addr->getOperand(0)->getType();
   IGC_ASSERT(FirstType);
 
-  for (auto e : Extracts) {
+  for (auto &e : Extracts) {
     Type *Tp = e.Addr->getOperand(0)->getType();
     if (ConvertWholeRegion && (Tp != FirstType))
       return false;

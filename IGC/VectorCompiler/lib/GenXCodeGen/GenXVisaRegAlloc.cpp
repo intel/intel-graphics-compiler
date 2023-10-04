@@ -574,7 +574,7 @@ void GenXVisaRegAlloc::extraCoalescing()
           if (!vc::isAnyNonTrivialIntrinsic(IntrinsicID))
             return false;
           GenXIntrinsicInfo Info(IntrinsicID);
-          for (auto AI : Info.getInstDesc()) {
+          for (auto &AI : Info.getInstDesc()) {
             if (AI.getCategory() != GenXIntrinsicInfo::TWOADDR)
               continue;
             if (isa<UndefValue>(Inst->getOperand(AI.getArgIdx())))

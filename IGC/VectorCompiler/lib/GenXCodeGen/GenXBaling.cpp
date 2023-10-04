@@ -1439,7 +1439,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
     // For an intrinsic, check the arg info of each arg to see if we can
     // bale into it.
     GenXIntrinsicInfo Info(IntrinID);
-    for (auto AI : Info.getInstDesc()) {
+    for (auto &AI : Info.getInstDesc()) {
       if (AI.isArgOrRet() && !AI.isRet()) {
         unsigned ArgIdx = AI.getArgIdx();
         switch (AI.getCategory()) {

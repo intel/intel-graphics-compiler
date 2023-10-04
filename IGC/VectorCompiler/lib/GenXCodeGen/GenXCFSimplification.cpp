@@ -284,8 +284,9 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB)
       Value *V = Phi->getIncomingValueForBlock(BB);
       replaceAndRecursivelySimplify(Phi, V);
     } else {
-      unsigned PredIdx = Phi->getBasicBlockIndex(Pred);
-      unsigned BBIdx = Phi->getBasicBlockIndex(BB);
+      auto PredIdx = Phi->getBasicBlockIndex(Pred);
+      auto BBIdx = Phi->getBasicBlockIndex(BB);
+      IGC_ASSERT_EXIT(PredIdx >= 0 && BBIdx >= 0);
       Phi->setIncomingValue(PredIdx, Phi->getIncomingValue(BBIdx));
       Phi->removeIncomingValue(BBIdx);
     }

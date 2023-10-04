@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -74,6 +74,8 @@ public:
 
   explicit GenXDebugInfo() : ModulePass(ID) {}
   ~GenXDebugInfo() { cleanup(); }
+  GenXDebugInfo(const GenXDebugInfo &) = delete;
+  GenXDebugInfo &operator=(const GenXDebugInfo &) = delete;
 
   StringRef getPassName() const override { return "GenX Debug Info"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;

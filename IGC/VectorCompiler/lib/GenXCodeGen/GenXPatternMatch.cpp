@@ -428,11 +428,8 @@ private:
 // the jitter to produce better code for these cases.
 class MinMaxMatcher {
 public:
-  explicit MinMaxMatcher(Instruction *I)
-      : SelInst(I), CmpInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic) {
-    IGC_ASSERT_MESSAGE(I, "null instruction");
-    Srcs[0] = Srcs[1] = nullptr;
-    Annotation = 0;
+  explicit MinMaxMatcher(Instruction *I) : SelInst(I) {
+    IGC_ASSERT_EXIT_MESSAGE(I, "null instruction");
   }
 
   // Match select instruction that are equivalent to min/max
@@ -450,22 +447,17 @@ private:
 
 private:
   // The select instruction
-  Instruction *SelInst;
-
+  Instruction *SelInst = nullptr;
   // The compare instruction
-  llvm::CmpInst *CmpInst;
-
+  llvm::CmpInst *CmpInst = nullptr;
   // The min/max intrinsic ID.
-  unsigned ID;
-
+  unsigned ID = GenXIntrinsic::not_any_intrinsic;
   // Source operands for the min/max intrinsic call
-  Value *Srcs[2];
-
+  Value *Srcs[2]{nullptr};
   // Effective operands for the cmp ignoring some casts
-  Value *CmpSrcs[2];
-
+  Value *CmpSrcs[2]{nullptr};
   // Annotation for the min/max call
-  const char *Annotation;
+  const char *Annotation = nullptr;
 };
 
 } // namespace

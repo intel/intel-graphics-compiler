@@ -396,7 +396,7 @@ void GenXPrintfResolution::addPrintfImplDeclarations(Module &M) {
 // always-inline pass to inline it and remove the original function body
 // (the both are critical for GenXPrintfLegalization to work correctly).
 void GenXPrintfResolution::preparePrintfImplForInlining() {
-  for (auto Callee : PrintfImplDecl) {
+  for (auto &Callee : PrintfImplDecl) {
     auto *Func = cast<Function>(Callee.getCallee());
     Func->setLinkage(GlobalValue::LinkageTypes::InternalLinkage);
     Func->addFnAttr(Attribute::AlwaysInline);

@@ -556,7 +556,7 @@ class GenXKernelBuilder {
   Function *Func = nullptr;
   // function corresponding to VISAKernel currently being written
   Function *KernFunc = nullptr;
-  PreDefined_Surface StackSurf;
+  PreDefined_Surface StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_INVALID;
 
   std::map<Function *, VISA_GenVar *> FPMap;
   SmallVector<InsertValueInst *, 10> RetvInserts;
@@ -944,6 +944,8 @@ public:
     collectKernelInfo();
   }
   ~GenXKernelBuilder() { clearLoops(); }
+  GenXKernelBuilder(const GenXKernelBuilder &) = delete;
+  GenXKernelBuilder &operator=(const GenXKernelBuilder &) = delete;
   void clearLoops() {
     for (auto i = Loops.begin(), e = Loops.end(); i != e; ++i) {
       delete i->second;
@@ -1627,11 +1629,11 @@ void GenXKernelBuilder::buildInstructions() {
                 auto Phi = dyn_cast<PHINode>(&*si);
                 if (!Phi)
                   break;
-                IGC_ASSERT_EXIT(Phi->getBasicBlockIndex(BB) >= 0);
+                auto PredIdx = Phi->getBasicBlockIndex(BB);
+                IGC_ASSERT_EXIT(PredIdx >= 0);
                 if (Phi->getType()->getPrimitiveSizeInBits() >=
                         (GrfByteSize * 8) * 4 &&
-                    isa<UndefValue>(
-                        Phi->getIncomingValue(Phi->getBasicBlockIndex(BB))))
+                    isa<UndefValue>(Phi->getIncomingValue(PredIdx)))
                   addLifetimeStartInst(Phi);
               }
             }
@@ -5043,6 +5045,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
                    CI);
     }
   } else {
+    IGC_ASSERT_EXIT(GrfByteSize > 0);
     uint8_t rowOffset = Offset >> genx::log2(GrfByteSize);
     uint8_t colOffset = (Offset & (GrfByteSize - 1)) >> Log2_32(ElementBytes);
     auto TypeSize = BaseReg->Ty->getScalarType()->getPrimitiveSizeInBits() >> 3;

@@ -485,7 +485,7 @@ unsigned GenXLegalization::adjustTwiceWidthOrFixed4(const Bale &B) {
   // Spot whether we have a FIXED operand and/or a TWICEWIDTH operand.
   if (GenXIntrinsic::isGenXIntrinsic(Main->Inst)) {
     GenXIntrinsicInfo II(vc::getAnyIntrinsicID(Main->Inst));
-    for (auto ArgInfo : II.getInstDesc()) {
+    for (auto &ArgInfo : II.getInstDesc()) {
       if (!ArgInfo.isArgOrRet())
        continue;
       switch (ArgInfo.getRestriction()) {
@@ -1267,6 +1267,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         // valid size any more than one. If possible, increase the valid size
         // to 4 or 8 on the assumption that we are going to convert it to a
         // multi indirect.
+        IGC_ASSERT_EXIT(R.Width - StartIdx % R.Width > 0);
         auto NewThisWidth = 1 << genx::log2(R.Width - StartIdx % R.Width);
         if (NewThisWidth >= 4) {
           ThisWidth = std::min(NewThisWidth, 8);
@@ -1748,7 +1749,7 @@ Value *GenXLegalization::splitBale(Value *PrevSliceRes, unsigned StartIdx,
                                    unsigned Width, Instruction *InsertBefore) {
   Value *LastCreatedInst = nullptr;
   auto SplittableInstsRange = SplittableInsts(B);
-  for (auto BI : SplittableInstsRange)
+  for (auto &BI : SplittableInstsRange)
     // Split the instruction.
     SplitMap[BI.Inst] = LastCreatedInst =
         splitInst(PrevSliceRes, BI, StartIdx, Width, InsertBefore,

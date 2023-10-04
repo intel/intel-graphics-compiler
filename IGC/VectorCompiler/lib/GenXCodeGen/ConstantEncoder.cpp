@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -28,7 +28,8 @@ encodeConstExprImpl(const llvm::GEPOperator &GEP, const DataLayout &DL) {
   bool Success = GEP.accumulateConstantOffset(DL, Offset);
   IGC_ASSERT_MESSAGE(Success,
                      "Offset must be constant for GEP constant expression");
-  return {Data + Offset, Relocs};
+  Data += Offset;
+  return {std::move(Data), Relocs};
 }
 
 static std::pair<APInt, std::vector<vISA::ZERelocEntry>>

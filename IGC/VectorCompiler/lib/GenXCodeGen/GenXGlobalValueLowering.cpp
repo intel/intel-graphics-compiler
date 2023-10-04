@@ -381,7 +381,7 @@ Instruction *GenXGlobalValueLowering::buildGVReplacement(GlobalValue &GV,
 Value *GenXGlobalValueLowering::buildConstAggrReplacement(
     ConstantAggregate &ConstAggr, IRBuilder<> &Builder, Function &Func) {
   Value *Replacement = UndefValue::get(ConstAggr.getType());
-  for (auto IndexedOp : enumerate(ConstAggr.operands())) {
+  for (auto &IndexedOp : enumerate(ConstAggr.operands())) {
     auto *OpReplacement = buildConstantReplacement(
         *cast<Constant>(IndexedOp.value().get()), Builder, Func);
 

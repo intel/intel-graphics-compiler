@@ -480,7 +480,7 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       if (II.isNull())
         return Modified;
       unsigned MaxRawOperands = II.getTrailingNullZoneStart(CI);
-      for (auto AI : II.getInstDesc()) {
+      for (auto &AI : II.getInstDesc()) {
         if (!AI.isArgOrRet() || AI.isRet())
           continue;
         // This field relates to an operand.
@@ -1537,6 +1537,7 @@ Instruction *ConstantLoader::loadCyclicConstruct(
     //     <       C                >
     //     <                      C >
     // giving five wrregion instructions rather than six.
+    IGC_ASSERT_EXIT(RemainingBits > 0);
     unsigned BestSplatSetBits = 1 << genx::log2(RemainingBits);
     unsigned BestSplatSetUsefulBits = BestSplatSetBits;
     unsigned BestSplatSetCount = 1;
@@ -1554,8 +1555,9 @@ Instruction *ConstantLoader::loadCyclicConstruct(
         BestSplatSetBits = Bits;
         BestSplatSetUsefulBits = Bits & SplatSets[i];
         BestSplatSetCount = Count;
-        IGC_ASSERT_EXIT(genx::log2(SplatSets[i]) >= 0);
-        BestSplatSetConst = Elements[genx::log2(SplatSets[i])];
+        auto Id = genx::log2(SplatSets[i]);
+        IGC_ASSERT_EXIT(Id >= 0);
+        BestSplatSetConst = Elements[Id];
       }
     }
     // Now BestSplatSetBits is a bitmap of the vector elements to include in

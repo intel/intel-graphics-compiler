@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -249,8 +249,6 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   IGC_ASSERT(isa<Constant>(LenVal));
   unsigned Len = cast<ConstantInt>(LenVal)->getZExtValue();
 
-  auto DL = MemCall->getDebugLoc();
-
   auto *DstAddr = MemCall->getRawDest();
 
   auto *I8Ty = IGCLLVM::getNonOpaquePtrEltTy(DstAddr->getType());
@@ -265,13 +263,11 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(LoadPtrV->getType());
   auto *Load = IRB.CreateLoad(Ty, LoadPtrV);
   Load->setAlignment(IGCLLVM::getSourceAlign(*MemCall));
-  Load->setDebugLoc(DL);
 
   unsigned DstAddrSpace = cast<PointerType>(DstAddr->getType())->getAddressSpace();
   auto *StorePtrV = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAddrSpace));
   auto *Store = IRB.CreateStore(Load, StorePtrV);
   Store->setAlignment(IGCLLVM::getDestAlign(*MemCall));
-  Store->setDebugLoc(DL);
 }
 
 } // namespace

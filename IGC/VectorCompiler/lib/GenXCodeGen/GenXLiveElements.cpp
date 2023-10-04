@@ -111,7 +111,7 @@ LiveElements LiveElementsAnalysis::getBitCastLiveElements(
         SrcLiveBits.set(Idx * Scale, (Idx + 1) * Scale);
   }
 
-  return LiveElements(SrcLiveBits);
+  return LiveElements(std::move(SrcLiveBits));
 }
 
 // getExtractValueLiveElements : propagation function for extractvalue
@@ -186,7 +186,7 @@ LiveElements LiveElementsAnalysis::getRdRegionLiveElements(
         SrcLiveBits.set(SrcIdx);
     }
 
-  return LiveElements(SrcLiveBits);
+  return LiveElements(std::move(SrcLiveBits));
 }
 
 // getWrRegionLiveElements : propagation function of wrregion/wrpredregion
@@ -212,7 +212,7 @@ LiveElements LiveElementsAnalysis::getWrRegionLiveElements(
         if (Idx < SrcLiveBits.size())
           SrcLiveBits.reset(Idx);
     }
-    return LiveElements(SrcLiveBits);
+    return LiveElements(std::move(SrcLiveBits));
   }
 
   // Process NewValueOperand or PredicateOperand
@@ -233,7 +233,7 @@ LiveElements LiveElementsAnalysis::getWrRegionLiveElements(
       SrcLiveBits.set(SrcIdx);
   }
 
-  return LiveElements(SrcLiveBits);
+  return LiveElements(std::move(SrcLiveBits));
 }
 
 // getTwoDstInstInstLiveElements : propagation function for intrinsics with
@@ -355,7 +355,7 @@ void LiveElementsAnalysis::processFunction(const Function &F) {
         continue;
       LLVM_DEBUG(dbgs() << "Changing:\n"
                         << *Op.get() << " " << NewLiveElems << "\n");
-      LiveMap[Op] = NewLiveElems;
+      LiveMap[Op] = std::move(NewLiveElems);
       if (auto OpInst = dyn_cast<Instruction>(Op))
         Worklist.insert(OpInst);
     }
@@ -367,7 +367,7 @@ void LiveElementsAnalysis::processFunction(const Function &F) {
 
 void LiveElementsAnalysis::print(raw_ostream &OS) const {
   OS << "Live elements:\n";
-  for (auto LiveElem : LiveMap)
+  for (auto &&LiveElem : LiveMap)
     OS << *LiveElem.first << ": " << LiveElem.second << '\n';
 }
 

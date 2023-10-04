@@ -302,7 +302,9 @@ namespace {
     vc::RegCategory MostUsedCat_;
 
   public:
-    UsesCatInfo() : Uses_(), Mask_(0), MaxAlign_(0) {}
+    UsesCatInfo()
+        : Uses_(), Mask_(0), MaxAlign_(0), MostUsedCat_(vc::RegCategory::None) {
+    }
 
     UsesCatInfo(const GenXCategory &PassInfo, Value *V) : UsesCatInfo() {
       std::array<int, vc::numRegCategories()> Stat = {0};
@@ -667,7 +669,7 @@ bool GenXCategory::processValue(Value *V)
 
   Liveness->getOrCreateLiveRange(V, DefInfo.Cat, std::max(DefInfo.Align, UsesInfo.getMaxAlign()));
   auto Convs = buildConversions(V, DefInfo, UsesInfo);
-  for (auto UseInfo : UsesInfo.getUses()) {
+  for (auto &UseInfo : UsesInfo.getUses()) {
     if (UseInfo.Cat != DefInfo.Cat && UseInfo.Cat != vc::RegCategory::None) {
       Instruction *Conv;
       if (UseInfo.Cat == vc::RegCategory::Address) {

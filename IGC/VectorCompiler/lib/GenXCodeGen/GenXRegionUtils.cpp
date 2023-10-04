@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -364,6 +364,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // 3. fit in a row if the width is not legal
         // 4. no more than 8 elements in multi indirect (because there
         //    are only 8 elements in an address register).
+        IGC_ASSERT_EXIT(Width > 0 && R.ElementBytes > 0);
         unsigned LogWidth = genx::log2(Width);
         if (1U << LogWidth == Width)
           LogWidth = genx::log2(R.NumElements); // legal width
@@ -516,8 +517,10 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // That failed. See how many elements we can get, no further than the
         // next end of row.
         ValidWidth = R.Width - Idx % R.Width;
+        IGC_ASSERT_EXIT(R.Stride != 0);
         if (ValidWidth * R.Stride - (R.Stride - 1) > ElementsToBoundary)
           ValidWidth = (ElementsToBoundary + R.Stride - 1) / R.Stride;
+        IGC_ASSERT_EXIT(ValidWidth > 0);
         ValidWidth = 1 << genx::log2(ValidWidth);
       }
       // If the RStride is 0 (which is seen in splat operations) then the

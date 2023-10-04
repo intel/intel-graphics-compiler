@@ -4410,7 +4410,7 @@ bool GenXLowering::lowerHardwareThreadID(CallInst *CI) {
 
   if (!ST->getsHWTIDFromPredef()) {
     // Drop reserved bits
-    for (auto [Offset, Width] : ST->getThreadIdReservedBits()) {
+    for (auto &[Offset, Width] : ST->getThreadIdReservedBits()) {
       auto Mask = (1 << Offset) - 1;
 
       // res = (src & mask) | ((src >> width) & ~mask)
@@ -4433,7 +4433,7 @@ static Value *extractBitfields(IRBuilder<> &IRB, Value *To, Value *From,
                                ArrayRef<std::pair<int, int>> Fields,
                                int &InsertTo) {
   auto *Ty = From->getType();
-  for (auto [Offset, Width] : Fields) {
+  for (auto &[Offset, Width] : Fields) {
     auto Mask = ((1 << Width) - 1) << Offset;
     auto Shift = Offset - InsertTo;
 
