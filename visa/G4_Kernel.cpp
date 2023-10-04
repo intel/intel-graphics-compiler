@@ -620,11 +620,11 @@ void G4_Kernel::calculateSimdSize() {
 // Updates kernel's related structures to large GRF
 //
 bool G4_Kernel::updateKernelToLargerGRF() {
-  if (numRegTotal == grfMode.getMaxGRF())
+  if (numRegTotal == grfMode.getVRTMaxGRF())
     return false;
 
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters(grfMode.moveToLargerGRF());
+  setKernelParameters(grfMode.getVRTLargerGRF());
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -633,11 +633,11 @@ bool G4_Kernel::updateKernelToLargerGRF() {
 // Updates kernel's related structures to smaller GRF
 //
 bool G4_Kernel::updateKernelToSmallerGRF() {
-  if (numRegTotal == grfMode.getMinGRF())
+  if (numRegTotal == grfMode.getVRTMinGRF())
     return false;
 
   // Scale number of GRFs, Acc, SWSB tokens.
-  setKernelParameters(grfMode.moveToSmallerGRF());
+  setKernelParameters(grfMode.getVRTSmallerGRF());
   fg.builder->rebuildPhyRegPool(getNumRegTotal());
   return true;
 }
@@ -653,7 +653,7 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
     largestInputReg = std::max(largestInputReg, maxRegPayloadDispatch);
   }
 
-  unsigned newGRF = grfMode.setModeByRegPressure(regPressure, largestInputReg);
+  unsigned newGRF = grfMode.findModeByRegPressure(regPressure, largestInputReg);
 
   if (newGRF == numRegTotal)
     return;
@@ -2084,8 +2084,9 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   currentMode = defaultMode;
 }
 
-unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg) {
-  unsigned size = configs.size(), i = 0;
+unsigned GRFMode::findModeByRegPressure(unsigned maxRP, unsigned largestInputReg) {
+  unsigned size = configs.size();
+  unsigned i = 0, newGRF = 0;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && maxRP <= configs[i].numGRF &&
@@ -2093,18 +2094,15 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg)
         // those blocked for kernel input. This helps cases
         // where an 8 GRF variable shows up in entry BB.
         (largestInputReg + 8) <= configs[i].numGRF) {
-      currentMode = i;
+      newGRF = configs[i].numGRF;
       break;
     }
   }
-  return configs[currentMode].numGRF;
-}
 
-// Check if next larger GRF has the same number of threads per EU
-bool GRFMode::hasLargerGRFSameThreads() const {
-  unsigned largerGrfIdx = currentMode + 1;
-  if (largerGrfIdx == configs.size() || !configs[largerGrfIdx].VRTEnable)
-    return false;
+  // if not found, pressure is too high
+  // set largest grf mode
+  if (i == size)
+    newGRF = getVRTMaxGRF();
 
-  return configs[currentMode].numThreads == configs[largerGrfIdx].numThreads;
+  return newGRF;
 }

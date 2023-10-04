@@ -148,8 +148,7 @@ public:
     return iter != configs.end();
   }
 
-  unsigned setModeByRegPressure(unsigned maxRP, unsigned largestInputReg);
-  bool hasLargerGRFSameThreads() const;
+  unsigned findModeByRegPressure(unsigned maxRP, unsigned largestInputReg);
 
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
   unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
@@ -171,20 +170,19 @@ public:
   unsigned getNumAcc() const { return configs[currentMode].numAcc; }
 
   // ----- helper functions for autoGRFSelection (VRT) ----- //
-  unsigned getMinGRF() const {
+  unsigned getVRTMinGRF() const {
     auto found = std::find_if(configs.begin(), configs.end(),
                               [](const Config &c) { return c.VRTEnable; });
     return found->numGRF;
   }
 
-  unsigned getMaxGRF() const {
+  unsigned getVRTMaxGRF() const {
     auto found = std::find_if(configs.rbegin(), configs.rend(),
                               [](const Config &c) { return c.VRTEnable; });
     return found->numGRF;
   }
 
-  // Get the next larger GRF available
-  unsigned getLargerGRF() const {
+  unsigned getVRTLargerGRF() const {
     // find the first larger mode that's available for VRT
     for (auto i = currentMode + 1; i < configs.size(); ++i) {
       if (configs[i].VRTEnable)
@@ -193,33 +191,10 @@ public:
     return configs[currentMode].numGRF;
   }
 
-  // Get the next smaller GRF available
-  unsigned getSmallerGRF() const {
+  unsigned getVRTSmallerGRF() const {
     for (auto i = static_cast<int>(currentMode) - 1; i >= 0 ; --i) {
       if (configs[i].VRTEnable)
         return configs[i].numGRF;
-    }
-    return configs[currentMode].numGRF;
-  }
-
-  // Move GRF mode to the larger GRF available and return the number
-  unsigned moveToLargerGRF() {
-    for (auto i = currentMode + 1; i < configs.size(); ++i) {
-      if (configs[i].VRTEnable) {
-        currentMode = i;
-        break;
-      }
-    }
-    return configs[currentMode].numGRF;
-  }
-
-  // Move GRF mode to the smaller GRF available and return the number
-  unsigned moveToSmallerGRF() {
-    for (auto i = currentMode - 1; i >= 0; --i) {
-      if (configs[i].VRTEnable) {
-        currentMode = i;
-        break;
-      }
     }
     return configs[currentMode].numGRF;
   }
