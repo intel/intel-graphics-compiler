@@ -429,7 +429,8 @@ public:
                            llvm::Value *offset, llvm::ConstantInt *immOffset,
                            ConstantInt *immScale,
                            LSC_CACHE_OPTS cacheOpts,
-                           LSC_DOC_ADDR_SPACE addrSpace);
+                           LSC_DOC_ADDR_SPACE addrSpace
+    );
     void emitLSCVectorStore(llvm::Value *Ptr,
                             llvm::Value *offset, llvm::ConstantInt *immOffset,
                             llvm::ConstantInt *immScale, llvm::Value *storedVal,
@@ -950,8 +951,9 @@ private:
     // sub-function of vector load/store
     void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                  ResourceDescriptor &Resource, CVariable *Dest,
-                                 CVariable *Offset, int ImmOffset, int ImmScale,
-                                 uint32_t NumElts, uint32_t EltBytes,
+                                 CVariable *Offset, int ImmOffset,
+                                 int ImmScale, uint32_t NumElts,
+                                 uint32_t EltBytes,
                                  LSC_DOC_ADDR_SPACE addrSpace);
     void emitLSCVectorLoad_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
                                    ResourceDescriptor &Resource,
