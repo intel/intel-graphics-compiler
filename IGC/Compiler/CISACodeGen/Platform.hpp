@@ -959,6 +959,11 @@ bool typedReadSupportsAllRenderableFormats() const
     return false;
 }
 
+bool EnableNewTileYCheckDefault() const
+{
+    return (m_platformInfo.eProductFamily == IGFX_DG2);
+}
+
 bool needsWAForThreadsUtilization() const
 {
     return (m_platformInfo.eProductFamily == IGFX_DG2 ||

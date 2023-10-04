@@ -153,7 +153,10 @@ namespace IGC
             m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableNewTileYCheck) &&
+        // If EnableNewTileYCheck == 2, use the platform default value. Otherwise 0 is forced off, 1 is forced on.
+        bool b_EnableNewTileYCheck = IGC_GET_FLAG_VALUE(EnableNewTileYCheck) == 2 ?
+            m_Platform->EnableNewTileYCheckDefault() : IGC_GET_FLAG_VALUE(EnableNewTileYCheck);
+        if (b_EnableNewTileYCheck &&
             IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
             EMIT_LOCAL_MASK::XY == m_emitMask)
