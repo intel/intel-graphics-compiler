@@ -77,7 +77,7 @@ namespace IGC {
         void performImplArgsAnalysis();
         void initializeTopologicalVisit(llvm::Function* root, std::unordered_map<void*, uint32_t>& FunctionsInKernel, std::deque<void*>& BottomUpQueue, bool ignoreStackCallBoundary);
         uint32_t updateExpandedUnitSize(llvm::Function* F, bool ignoreStackCallBoundary);
-        void UpdateExpectedSizeAfterInlining(std::deque<void*>& leafNodes, std::unordered_set<void*> &funcsInKernel);
+        void UpdateSizeAfterCollapsing(std::deque<void*>& leafNodes, std::unordered_set<void*> &funcsInKernel);
         void updateInlineCnt(llvm::Function* root);
         llvm::ScaledNumber<uint64_t> calculateTotalWeight(llvm::Function* root);
         uint32_t bottomUpHeuristic(llvm::Function* F, uint32_t& stackCall_cnt);
