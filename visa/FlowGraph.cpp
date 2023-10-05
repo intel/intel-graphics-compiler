@@ -1896,6 +1896,27 @@ void FlowGraph::removeRedundantLabels() {
           }
         }
 
+        // For the code like following, in which the first none-label
+        // instruction is join, and the JIP label of the join is the label of
+        // successor BB, we cannot just remove the label in successor.
+        //
+        // BB17 Preds: ...  Succs: BB18
+        // _entry_020_id196_Labe:
+        //      join(32) _entry_k0_5_cf
+        // add(16) id265_(0, 0)<1> : d id63_(0, 0) < 1;
+        //
+        // BB18 Preds: BB17 Succs: ...
+        //_entry_k0_5_cf:
+        //      ....
+        G4_INST *firstNoneLableInst = singlePred->getFirstInst();
+        if (firstNoneLableInst && firstNoneLableInst->isFlowControl()) {
+          G4_Label *jip = firstNoneLableInst->asCFInst()->getJip();
+          G4_Label *uip = firstNoneLableInst->asCFInst()->getUip();
+          if (jip == labelInst->getLabel() || uip == labelInst->getLabel()) {
+            doMerging = false;
+          }
+        }
+
         if (doMerging) {
           removePredSuccEdges(singlePred, bb);
           vASSERT(singlePred->Succs.size() == 0);
