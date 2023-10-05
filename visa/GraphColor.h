@@ -1765,13 +1765,11 @@ private:
   bool globalSplit(VarSplit &splitPass, GraphColor &coloring);
   void localSplit(bool fastCompile, VarSplit &splitPass);
   // return <doBCReduction, highInternalConflict>
-  std::pair<bool, bool> bankConflict(bool doBankConflictReduction,
-                                     bool highInternalConflict);
+  std::pair<bool, bool> bankConflict();
   // return reserveSpillReg
   bool setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
                              unsigned int maxRAIterations,
-                             unsigned int failSafeRAIteration,
-                             bool reserveSpillReg);
+                             unsigned int failSafeRAIteration);
   void undefinedUses(bool rematDone, LivenessAnalysis &liveAnalysis);
   void writeVerboseStatsNumVars(LivenessAnalysis &liveAnalysis,
                                 FINALIZER_INFO *jitInfo);

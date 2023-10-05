@@ -9412,8 +9412,8 @@ void GlobalRA::localSplit(bool fastCompile, VarSplit& splitPass) {
   }
 }
 
-std::pair<bool, bool> GlobalRA::bankConflict(bool doBankConflictReduction,
-                            bool highInternalConflict) {
+std::pair<bool, bool> GlobalRA::bankConflict() {
+  bool doBankConflictReduction = false, highInternalConflict = false;
   if (builder.getOption(vISA_LocalBankConflictReduction) &&
       builder.hasBankCollision()) {
     bool reduceBCInRR = false;
@@ -9430,8 +9430,8 @@ std::pair<bool, bool> GlobalRA::bankConflict(bool doBankConflictReduction,
 
 bool GlobalRA::setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
                                      unsigned int maxRAIterations,
-                                     unsigned int failSafeRAIteration,
-                                     bool reserveSpillReg) {
+                                     unsigned int failSafeRAIteration) {
+  bool reserveSpillReg = false;
   bool allowAddrTaken = builder.getOption(vISA_FastSpill) || fastCompile ||
                         !kernel.getHasAddrTaken();
   if (builder.getOption(vISA_FailSafeRA) &&
@@ -9875,11 +9875,9 @@ int GlobalRA::coloringRegAlloc() {
 
   incRABookKeeping();
 
-  while (iterationNo < maxRAIterations) {
-    bool doBankConflictReduction = false;
-    bool highInternalConflict =
-        false; // this is set by setupBankConflictsForKernel
+  const auto [doBankConflictReduction, highInternalConflict] = bankConflict();
 
+  while (iterationNo < maxRAIterations) {
     jitInfo->statsVerbose.RAIterNum++;
     if (builder.getOption(vISA_DynPerfModel)) {
       perfModel.NumRAIters++;
@@ -9906,12 +9904,8 @@ int GlobalRA::coloringRegAlloc() {
 
     localSplit(fastCompile, splitPass);
 
-    std::tie(doBankConflictReduction, highInternalConflict) =
-        bankConflict(doBankConflictReduction, highInternalConflict);
-
-    reserveSpillReg =
-        setupFailSafeIfNeeded(fastCompile, hasStackCall, maxRAIterations,
-                              failSafeRAIteration, reserveSpillReg);
+    reserveSpillReg = setupFailSafeIfNeeded(
+        fastCompile, hasStackCall, maxRAIterations, failSafeRAIteration);
 
     LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
     liveAnalysis.computeLiveness();
