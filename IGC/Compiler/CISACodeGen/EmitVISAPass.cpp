@@ -269,30 +269,11 @@ bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
 {
     if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
     {
-        switch (I->getPointerAddressSpace())
-        {
-        case ADDRESS_SPACE_PRIVATE:
-        case ADDRESS_SPACE_GLOBAL:
-        case ADDRESS_SPACE_CONSTANT:
-            return false;
-        default:
-        {
-            BufferType bufType = DecodeBufferType(I->getPointerAddressSpace());
-            return bufType != CONSTANT_BUFFER ||
-                !m_currShader->GetContext()->getModuleMetaData()->compOpt.WaDisableSubspanUseNoMaskForCB;
-        }
-        }
-    }
-    else if (auto* I = dyn_cast<GenIntrinsicInst>(sdag.m_root))
-    {
-        switch (I->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_ldraw_indexed:
-        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-            return false;
-        default:
-            break;
-        }
+        BufferType bufType = DecodeBufferType(I->getPointerAddressSpace());
+        return I->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
+               I->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
+               I->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT &&
+               !(bufType == CONSTANT_BUFFER && m_currShader->GetContext()->getModuleMetaData()->compOpt.WaDisableSubspanUseNoMaskForCB);
     }
 
     return true;
