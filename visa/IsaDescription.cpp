@@ -3283,6 +3283,9 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_UNTYPED_OP(LSC_CCS_UPDATE, "lsc_ccs_update"),
       LSC_OP_INVALID, // lsc_read_state_info only for typed
       LSC_OP_INVALID, // fence handled separately
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
