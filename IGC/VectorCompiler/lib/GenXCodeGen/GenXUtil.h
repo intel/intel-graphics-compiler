@@ -67,7 +67,7 @@ inline int log2(T Val)
 
 // Common functionality for media ld/st lowering and CISA builder
 template <typename T> inline T roundedVal(T Val, T RoundUp) {
-  IGC_ASSERT_EXIT(Val > 1);
+  IGC_ASSERT_EXIT(Val >= 1);
   T RoundedVal = static_cast<T>(1) << genx::log2(Val);
   if (RoundedVal < Val)
     RoundedVal *= 2;

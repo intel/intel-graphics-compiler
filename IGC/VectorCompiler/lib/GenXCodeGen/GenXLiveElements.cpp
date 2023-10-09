@@ -367,7 +367,7 @@ void LiveElementsAnalysis::processFunction(const Function &F) {
 
 void LiveElementsAnalysis::print(raw_ostream &OS) const {
   OS << "Live elements:\n";
-  for (auto &&LiveElem : LiveMap)
+  for (const auto &LiveElem : LiveMap)
     OS << *LiveElem.first << ": " << LiveElem.second << '\n';
 }
 

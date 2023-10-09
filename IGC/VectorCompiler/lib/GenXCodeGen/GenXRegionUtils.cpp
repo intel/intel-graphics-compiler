@@ -517,9 +517,10 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // That failed. See how many elements we can get, no further than the
         // next end of row.
         ValidWidth = R.Width - Idx % R.Width;
-        IGC_ASSERT_EXIT(R.Stride != 0);
-        if (ValidWidth * R.Stride - (R.Stride - 1) > ElementsToBoundary)
+        if (ValidWidth * R.Stride - (R.Stride - 1) > ElementsToBoundary) {
+          IGC_ASSERT_EXIT(R.Stride != 0);
           ValidWidth = (ElementsToBoundary + R.Stride - 1) / R.Stride;
+        }
         IGC_ASSERT_EXIT(ValidWidth > 0);
         ValidWidth = 1 << genx::log2(ValidWidth);
       }
