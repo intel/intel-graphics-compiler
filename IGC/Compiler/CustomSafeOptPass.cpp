@@ -4258,72 +4258,78 @@ bool IGCConstProp::runOnFunction(Function& F)
     module = F.getParent();
     // Initialize the worklist to all of the instructions ready to process...
     llvm::SetVector<Instruction*> WorkList;
-    for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i)
-    {
-        WorkList.insert(&*i);
-    }
     bool Changed = false;
-    m_TD = &F.getParent()->getDataLayout();
-    m_TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-    while (!WorkList.empty())
+    bool NotClosed;
+    do // Fold constants until closure
     {
-        Instruction* I = WorkList.pop_back_val(); // Get an element from the worklist...
-        if (I->use_empty())                  // Don't muck with dead instructions...
+        NotClosed = false;
+        for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i)
         {
-            continue;
+            WorkList.insert(&*i);
         }
-        Constant* C = nullptr;
-        C = ConstantFoldInstruction(I, *m_TD, m_TLI);
-
-        if (!C && isa<CallInst>(I))
+        m_TD = &F.getParent()->getDataLayout();
+        m_TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+        while (!WorkList.empty())
         {
-            C = ConstantFoldCallInstruction(cast<CallInst>(I));
-        }
-
-        // replace shader-constant load with the known value
-        if (!C && isa<LoadInst>(I))
-        {
-            C = replaceShaderConstant(cast<LoadInst>(I));
-        }
-        if (!C && isa<CmpInst>(I))
-        {
-            C = ConstantFoldCmpInst(cast<CmpInst>(I));
-        }
-        if (!C && isa<ExtractElementInst>(I))
-        {
-            C = ConstantFoldExtractElement(cast<ExtractElementInst>(I));
-        }
-        if (C)
-        {
-            // Add all of the users of this instruction to the worklist, they might
-            // be constant propagatable now...
-            for (Value::user_iterator UI = I->user_begin(), UE = I->user_end();
-                UI != UE; ++UI)
+            Instruction* I = WorkList.pop_back_val(); // Get an element from the worklist...
+            if (I->use_empty())                  // Don't muck with dead instructions...
             {
-                WorkList.insert(cast<Instruction>(*UI));
+                continue;
+            }
+            Constant* C = nullptr;
+            C = ConstantFoldInstruction(I, *m_TD, m_TLI);
+
+            if (!C && isa<CallInst>(I))
+            {
+                C = ConstantFoldCallInstruction(cast<CallInst>(I));
             }
 
-            // Replace all of the uses of a variable with uses of the constant.
-            I->replaceAllUsesWith(C);
-
-            // Remove the dead instruction.
-            I->eraseFromParent();
-
-            // We made a change to the function...
-            Changed = true;
-
-            // I is erased, continue to the next one.
-            continue;
-        }
-
-        if (GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(I))
-        {
-            if ((m_enableSimplifyGEP || overrideEnableSimplifyGEP) && simplifyGEP(GEP))
+            // replace shader-constant load with the known value
+            if (!C && isa<LoadInst>(I))
             {
-                Changed = true;
+                C = replaceShaderConstant(cast<LoadInst>(I));
+            }
+            if (!C && isa<CmpInst>(I))
+            {
+                C = ConstantFoldCmpInst(cast<CmpInst>(I));
+            }
+            if (!C && isa<ExtractElementInst>(I))
+            {
+                C = ConstantFoldExtractElement(cast<ExtractElementInst>(I));
+            }
+
+            if (C)
+            {
+                // Add all of the users of this instruction to the worklist, they might
+                // be constant propagatable now...
+                for (Value::user_iterator UI = I->user_begin(), UE = I->user_end();
+                    UI != UE; ++UI)
+                {
+                    WorkList.insert(cast<Instruction>(*UI));
+                }
+
+                // Replace all of the uses of a variable with uses of the constant.
+                I->replaceAllUsesWith(C);
+
+                // Remove the dead instruction.
+                I->eraseFromParent();
+
+                // We made a change to the function...
+                Changed = NotClosed = true;
+
+                // I is erased, continue to the next one.
+                continue;
+            }
+
+            if (GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(I))
+            {
+                if ((m_enableSimplifyGEP || overrideEnableSimplifyGEP) && simplifyGEP(GEP))
+                {
+                    Changed = NotClosed = true;
+                }
             }
         }
-    }
+    } while (NotClosed);
     return Changed;
 }
 
