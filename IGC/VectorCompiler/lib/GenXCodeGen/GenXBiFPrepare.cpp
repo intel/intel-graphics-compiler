@@ -153,7 +153,7 @@ bool GenXBiFPrepare::isNeededForTarget(const Function &F,
   if (IsFpCvt && !ST.emulateLongLong())
     return false;
 
-  bool Is64bit = IsDouble && F.getReturnType()->getScalarType()->isIntegerTy(64);
+  bool Is64bit = IsDouble || F.getReturnType()->getScalarType()->isIntegerTy(64);
 
   if (!ST.hasLocalIntegerCas64() && Is64bit && Name.startswith("atomic_slm"))
     return false;
