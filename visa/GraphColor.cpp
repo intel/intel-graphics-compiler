@@ -40,6 +40,7 @@ using namespace vISA;
 
 #define GRAPH_COLOR_MEM_SIZE 16 * 1024
 #define SCRATCH_MSG_LIMIT (128 * 1024)
+#define SCRATCH_COMPRESS_THRESHOLD (32 * 1024)
 
 const RAVarInfo GlobalRA::defaultValues;
 const char GlobalRA::StackCallStr[] = "StackCall";
@@ -9580,22 +9581,31 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount,
   return std::make_pair(false, GRFSpillFillCount);
 }
 
-bool GlobalRA::spillSpaceCompression(bool enableSpillSpaceCompression,
-                                     GraphColor &coloring, bool hasStackCall,
-                                     const int globalScratchOffset) {
-  if (getIterNo() == 0 && enableSpillSpaceCompression &&
-      kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-      !hasStackCall) {
-    unsigned spillSize = 0;
-    const LIVERANGE_LIST &spilledLRs = coloring.getSpilledLiveRanges();
-    for (auto lr : spilledLRs) {
-      spillSize += lr->getDcl()->getByteSize();
-    }
-    if ((int)(spillSize * 1.5) < (SCRATCH_MSG_LIMIT - globalScratchOffset)) {
-      return false;
-    }
+unsigned GlobalRA::computeSpillSize(std::list<LSLiveRange *> &spilledLRs) {
+  unsigned spillSize = 0;
+  for (auto lr : spilledLRs) {
+    spillSize += lr->getTopDcl()->getByteSize();
   }
-  return enableSpillSpaceCompression;
+  return spillSize;
+}
+
+unsigned GlobalRA::computeSpillSize(const LIVERANGE_LIST &spilledLRs) {
+  unsigned spillSize = 0;
+  for (auto lr : spilledLRs) {
+    spillSize += lr->getDcl()->getByteSize();
+  }
+  return spillSize;
+}
+
+bool GlobalRA::spillSpaceCompression(int spillSize,
+                                     const int globalScratchOffset) {
+  // factor 1.2 is used to count in the space used for the following
+  // iterations. Generally, the most spill will happen in first iteration.
+  if ((spillSize * 1.2) <
+      ((int)SCRATCH_COMPRESS_THRESHOLD - globalScratchOffset)) {
+    return false;
+  }
+  return true;
 }
 
 void GlobalRA::verifyNoInfCostSpill(GraphColor& coloring, bool reserveSpillReg)
@@ -9667,8 +9677,12 @@ GlobalRA::insertSpillCode(bool enableSpillSpaceCompression,
                           bool reserveSpillReg, unsigned int spillRegSize,
                           unsigned int indrSpillRegSize,
                           bool useScratchMsgForSpill) {
-  enableSpillSpaceCompression = spillSpaceCompression(
-      enableSpillSpaceCompression, coloring, hasStackCall, globalScratchOffset);
+  if (getIterNo() == 0 && enableSpillSpaceCompression &&
+      kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+      !hasStackCall) {
+    enableSpillSpaceCompression = spillSpaceCompression(
+        computeSpillSize(coloring.getSpilledLiveRanges()), globalScratchOffset);
+  }
 
   startTimer(TimerID::SPILL);
   SpillManagerGRF spillGRF(*this, nextSpillOffset, &liveAnalysis,

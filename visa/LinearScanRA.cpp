@@ -914,14 +914,9 @@ int LinearScanRA::linearScanRA() {
     if (spillLRs.size()) {
       if (iterator == 0 && enableSpillSpaceCompression &&
           kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-          !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())) {
-        unsigned int spillSize = 0;
-        for (auto lr : spillLRs) {
-          spillSize += lr->getTopDcl()->getByteSize();
-        }
-        if ((spillSize * 1.5) < (SCRATCH_MSG_LIMIT - nextSpillOffset)) {
-          enableSpillSpaceCompression = false;
-        }
+          !hasStackCall) {
+        enableSpillSpaceCompression = gra.spillSpaceCompression(
+            gra.computeSpillSize(spillLRs), nextSpillOffset);
       }
 
       SpillManagerGRF spillGRF(gra, nextSpillOffset, &l, &spillLRs,

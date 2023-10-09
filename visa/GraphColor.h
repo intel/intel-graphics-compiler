@@ -1739,6 +1739,11 @@ public:
     return iter != bbLocalRAMap.end() ? iter->second : nullptr;
   }
 
+  unsigned computeSpillSize(const LIVERANGE_LIST &spilledLRs);
+  unsigned computeSpillSize(std::list<LSLiveRange *> &spilledLRs);
+  bool spillSpaceCompression(int spillSize,
+                             const int globalScratchOffset);
+
 public:
   // Store new variables created when inserting scalar imm
   // spill/fill code. Such variables are not infinite spill
@@ -1789,9 +1794,6 @@ private:
   // pair of abort, updated GRFSpillFillCount
   std::pair<bool, unsigned int> abortOnSpill(unsigned int GRFSpillFillCount,
                                              GraphColor &coloring);
-  bool spillSpaceCompression(bool enableSpillSpaceCompression,
-                             GraphColor &coloring, bool hasStackCall,
-                             const int globalScratchOffset);
   void verifyNoInfCostSpill(GraphColor &coloring, bool reserveSpillReg);
   void setupA0Dot2OnSpill(bool hasStackCall, unsigned int nextSpillOffset,
                           int globalScratchOffset);
