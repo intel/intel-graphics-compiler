@@ -679,8 +679,9 @@ public:
     }
 
     auto dst = inst->getDst();
-    // 1, dst cannot be null and cannot cross GRF boundary
-    if (!dst || dst->asDstRegRegion()->isCrossGRFDst(inst->getBuilder())) {
+    // 1, dst cannot cross GRF boundary
+    if (!dst->isGreg() ||
+        dst->asDstRegRegion()->isCrossGRFDst(inst->getBuilder())) {
       return false;
     }
 
@@ -738,6 +739,15 @@ public:
     // 8, conditional modifiers are not used
     if (inst->getCondMod())
       return false;
+
+    // 9, Source GRF register are different and do not overlap with destination
+    //    GRF register.
+    if (src->isGreg()) {
+      int srcRegStart = src->getLinearizedStart() / grfSize;
+      int srcRegEnd = src->getLinearizedEnd() / grfSize;
+      if (srcRegStart <= dstReg && dstReg <= srcRegEnd)
+        return false;
+    }
 
     return true;
   }
