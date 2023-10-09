@@ -184,6 +184,42 @@ namespace IGC
         static void checkAndSetEnableSubroutine(CodeGenContext* CGCtx);
 
     private:
+
+        // Data about imported function.
+        struct ImportedFunction
+        {
+        public:
+            enum EmuType
+            {
+                INT64,
+                FASTDP, // faster DP div/rem for platforms without MADM instruction
+                SLOWDP,
+                OTHER
+            };
+
+            ImportedFunction(llvm::Function* F);
+
+            bool isSlowDPEmuFunc() { return type == SLOWDP; }
+
+            void updateUses();
+
+            bool operator==(const llvm::Function* F) {
+                return this->F == F;
+            }
+
+            static ImportedFunction copy(ImportedFunction& other);
+            static bool compare(ImportedFunction& L, ImportedFunction& R);
+
+            llvm::Function* F;
+            EmuType type;
+            unsigned funcInstructions;
+            unsigned totalInstructions;
+
+        private:
+            ImportedFunction(llvm::Function* F, EmuType type, unsigned funcInstructions, unsigned totalInstructions)
+                : F(F), type(type), funcInstructions(funcInstructions), totalInstructions(totalInstructions) {}
+        };
+
         void processDivide(llvm::BinaryOperator& inst, EmulatedFunctions function);
         void getInt64DivideEmuType(EmulatedFunctions function, unsigned int elementIndex, const char*& functionName, LibraryModules& module);
         llvm::BinaryOperator* upcastTo32Bit(llvm::BinaryOperator* I);
@@ -219,6 +255,8 @@ namespace IGC
 
         // Remove llvm.module.flags metadata before linking
         void removeLLVMModuleFlag(llvm::Module* M);
+
+        ImportedFunction createInlinedCopy(ImportedFunction& IF, unsigned calls);
 
         // Check if subroutine call is needed and set it if so.
         void checkAndSetEnableSubroutine();
