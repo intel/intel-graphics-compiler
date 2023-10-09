@@ -1891,6 +1891,26 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
                                    unsigned StartIdx, unsigned Width,
                                    Instruction *InsertBefore,
                                    const DebugLoc &DL) {
+  // Clone gvload on users split not to trigger false positives
+  // in global volatile clobbering checker.
+  if (B.isGStoreBale() &&
+      PrevSliceRes /*first slice uses the original vload*/) {
+    for (auto *GvLoad : genx::getAncestorGVLoads(BInst.Inst, true)) {
+      if (genx::getBitCastedValue(B.getHead()->Inst->getOperand(1)) !=
+          genx::getBitCastedValue(GvLoad->getOperand(0)))
+        continue;
+      if (GvLoad->users().end() != llvm::find(GvLoad->users(), BInst.Inst)) {
+        auto *GvLoadClone = GvLoad->clone();
+        GvLoadClone->insertBefore(InsertBefore);
+        GvLoadClone->setName(BInst.Inst->getName() + ".gvload_use_split_clone");
+        BInst.Inst->replaceUsesOfWith(GvLoad, GvLoadClone);
+      } else {
+        IGC_ASSERT_MESSAGE(
+            0, "Cloning of gvloads followed by bitcasts is not yet supported.");
+      }
+    }
+  }
+
   switch (BInst.Info.Type) {
   case BaleInfo::GSTORE:
   case BaleInfo::WRREGION:
