@@ -4230,6 +4230,8 @@ bool HWConformity::generateAlign1Mad(G4_BB *bb, INST_LIST_ITER iter) {
 
   // check src
   bool canBeImm = true;
+  bool anyByteSrc = false;
+  bool allByteSrc = true;
   for (int k = inst->getNumSrc() - 1; k >= 0; k--) {
     G4_Operand *src = inst->getSrc(k);
     if (!isGoodAlign1TernarySrc(inst, k, canBeImm)) {
@@ -4277,6 +4279,23 @@ bool HWConformity::generateAlign1Mad(G4_BB *bb, INST_LIST_ITER iter) {
     } else {
       if (src->isImm()) {
         canBeImm = false;
+      }
+    }
+    if (IS_BTYPE(inst->getSrc(k)->getType())) {
+      anyByteSrc = true;
+    }
+    else {
+      allByteSrc = false;
+    }
+  }
+
+  if (anyByteSrc && !(allByteSrc && IS_WTYPE(inst->getDst()->getType()))) {
+    for (int k = inst->getNumSrc() - 1; k >= 0; k--) {
+      G4_Operand *src = inst->getSrc(k);
+      G4_Type srcType = src->getType();
+      if (IS_BTYPE(srcType)) {
+        G4_Type newSrcType = IS_UNSIGNED_INT(srcType) ? Type_UW : Type_W;
+        inst->setSrc(insertMovBefore(iter, k, newSrcType, bb), k);
       }
     }
   }
