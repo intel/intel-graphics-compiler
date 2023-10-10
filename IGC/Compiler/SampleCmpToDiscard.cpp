@@ -261,7 +261,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
         else if (isa<GenIntrinsicInst>(*UI) && ((mapFind->second).compare(newConstantFloat) == APFloat::cmpEqual))
         {
             GenIntrinsicInst* CI = cast<GenIntrinsicInst>(*UI);
-            if ((CI->getIntrinsicID() == GenISA_RTWrite) && (llvm::isa<llvm::ReturnInst>(CI->getNextNode())))
+            if ((llvm::isa<llvm::RTWriteIntrinsic>(CI)) && (llvm::isa<llvm::ReturnInst>(CI->getNextNode())))
             {
                 return true;
             }

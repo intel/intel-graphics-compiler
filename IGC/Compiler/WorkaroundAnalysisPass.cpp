@@ -267,13 +267,15 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
             CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
             if (pCodeGenCtx->platform.WaReturnZeroforRTReadOutsidePrimitive())
             {
+                RenderTargetReadIntrinsic* inst = dyn_cast<RenderTargetReadIntrinsic>(&I);
+
                 Value* one = llvm::ConstantFP::get(m_builder->getFloatTy(), 1.0);
-                llvm::Instruction* cloneinst = I.clone();
-                cloneinst->insertAfter(&I);
+                llvm::Instruction* cloneinst = inst->clone();
+                cloneinst->insertAfter(inst);
                 m_builder->SetInsertPoint(&(*std::next(BasicBlock::iterator(cloneinst))));
                 Value* inputCoverage = m_builder->CreateCoverage();
 
-                Value* shiftLeft = m_builder->CreateShl(m_builder->getInt32(1), I.getOperand(1));
+                Value* shiftLeft = m_builder->CreateShl(m_builder->getInt32(1), inst->getSampleIndex());
                 Value* andWithInputCoverage = m_builder->CreateAnd(shiftLeft, inputCoverage);
                 Value* cmpInst = m_builder->CreateICmpNE(andWithInputCoverage, m_builder->getInt32(0));
 
@@ -290,8 +292,8 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
                 newValue = m_builder->CreateInsertElement(newValue, valueZ, m_builder->getInt32(2));
                 newValue = m_builder->CreateInsertElement(newValue, selW, m_builder->getInt32(3));
 
-                (&I)->replaceAllUsesWith(newValue);
-                I.eraseFromParent();
+                inst->replaceAllUsesWith(newValue);
+                inst->eraseFromParent();
             }
         }
         break;

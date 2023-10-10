@@ -71,8 +71,8 @@ namespace IGC
         int GetLeftReservedOffset(const llvm::Instruction* inst, SIMDMode simdMode);
         bool HasNonHomogeneousPayloadElements(const llvm::Instruction* inst);
         const llvm::Instruction* GetSupremumOfNonHomogeneousPart_RTWrite(
-            const llvm::Instruction* inst1,
-            const llvm::Instruction* inst2);
+            const llvm::RTWriteIntrinsic* inst1,
+            const llvm::RTWriteIntrinsic* inst2);
         template <typename T>
         int GetLeftReservedOffset_RTWrite(const T* inst, SIMDMode simdMode);
         template <typename T>

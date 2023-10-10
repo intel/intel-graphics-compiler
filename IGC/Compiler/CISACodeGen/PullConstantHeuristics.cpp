@@ -83,7 +83,7 @@ static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function& F) 
             {
                 if (isSendMessage(pIntrinsic))
                     SendMsgInstCnt++;
-                else if (pIntrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite)
+                else if (llvm::isa<llvm::RTWriteIntrinsic>(pIntrinsic))
                     RTWriteInstCnt++;
             }
             else

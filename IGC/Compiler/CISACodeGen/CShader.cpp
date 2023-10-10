@@ -205,33 +205,6 @@ void CShader::EOTURBWrite()
     encoder.Push();
 }
 
-void CShader::EOTRenderTarget(CVariable* r1, bool isPerCoarse)
-{
-    CVariable* src[4] = { nullptr, nullptr, nullptr, nullptr };
-    bool isUndefined[4] = { true, true, true, true };
-    CVariable* const nullSurfaceBti = ImmToVariable(m_pBtiLayout->GetNullSurfaceIdx(), ISA_TYPE_D);
-    CVariable* const blendStateIndex = ImmToVariable(0, ISA_TYPE_D);
-    SetBindingTableEntryCountAndBitmap(true, BUFFER_TYPE_UNKNOWN, 0, m_pBtiLayout->GetNullSurfaceIdx());
-    encoder.RenderTargetWrite(
-        src,
-        isUndefined,
-        true,  // lastRenderTarget,
-        true,  // Null RT
-        false, // perSample,
-        isPerCoarse, // coarseMode,
-        false, // isHeaderMaskFromCe0,
-        nullSurfaceBti,
-        blendStateIndex,
-        nullptr, // source0Alpha,
-        nullptr, // oMaskOpnd,
-        nullptr, // outputDepthOpnd,
-        nullptr, // stencilOpnd,
-        nullptr, // cpscounter,
-        nullptr, // sampleIndex,
-        r1);
-    encoder.Push();
-}
-
 // Creates a URB Fence message.
 // If return value is not a nullptr, the returned variable is a send message
 // writeback variable that must be read in order to wait for URB Fence
@@ -280,6 +253,35 @@ void CShader::EOTGateway(CVariable* payload)
 
     encoder.SetSimdSize(SIMDMode::SIMD1);
     encoder.Send(nullptr, payload, exDesc, ImmToVariable(desc, ISA_TYPE_D));
+    encoder.Push();
+}
+
+
+void CShader::EOTRenderTarget(CVariable* r1,
+    bool isPerCoarse)
+{
+    CVariable* src[4] = { nullptr, nullptr, nullptr, nullptr };
+    bool isUndefined[4] = { true, true, true, true };
+    CVariable* const nullSurfaceBti = ImmToVariable(m_pBtiLayout->GetNullSurfaceIdx(), ISA_TYPE_D);
+    CVariable* const blendStateIndex = ImmToVariable(0, ISA_TYPE_D);
+    SetBindingTableEntryCountAndBitmap(true, BUFFER_TYPE_UNKNOWN, 0, m_pBtiLayout->GetNullSurfaceIdx());
+    encoder.RenderTargetWrite(
+        src,
+        isUndefined,
+        true,  // lastRenderTarget,
+        true,  // Null RT
+        false, // perSample,
+        isPerCoarse, // coarseMode,
+        false, // isHeaderMaskFromCe0,
+        nullSurfaceBti,
+        blendStateIndex,
+        nullptr, // source0Alpha,
+        nullptr, // oMaskOpnd,
+        nullptr, // outputDepthOpnd,
+        nullptr, // stencilOpnd,
+        nullptr, // cpscounter,
+        nullptr, // sampleIndex,
+        r1);
     encoder.Push();
 }
 

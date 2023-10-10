@@ -1032,7 +1032,7 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
     {
         if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(it))
         {
-            if (intr->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite)
+            if (llvm::isa<llvm::RTWriteIntrinsic>(intr))
             {
                 numberRTWrite++;
             }
@@ -1053,7 +1053,7 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
         {
             for (auto II = returnBlock->begin(), IE = returnBlock->end(); II != IE; ++II)
             {
-                if (II->mayReadOrWriteMemory() && !isa<RTWritIntrinsic>(II))
+                if (II->mayReadOrWriteMemory() && !isa<RTWriteIntrinsic>(II))
                 {
                     hasIO = true;
                     break;

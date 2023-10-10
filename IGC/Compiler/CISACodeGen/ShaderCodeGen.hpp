@@ -105,9 +105,10 @@ public:
     virtual void PreAnalysisPass();
     virtual void ExtractGlobalVariables() {}
     void         EOTURBWrite();
-    void         EOTRenderTarget(CVariable* r1, bool isPerCoarse);
     CVariable* URBFence();
     void         EOTGateway(CVariable* payload = nullptr);
+    void         EOTRenderTarget(CVariable* r1,
+        bool isPerCoarse);
     virtual void AddEpilogue(llvm::ReturnInst* ret);
 
     virtual CVariable* GetURBOutputHandle()

@@ -176,9 +176,8 @@ namespace IGC
 
                 if (GenIntrinsicInst * intrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(DefMI))
                 {
-                    GenISAIntrinsic::ID IID = intrinsic->getIntrinsicID();
                     if ((isURBWriteIntrinsic(intrinsic) && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB))) ||
-                        (IID == GenISAIntrinsic::GenISA_RTWrite && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))))
+                        (llvm::isa<llvm::RTWriteIntrinsic>(intrinsic) && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))))
                     {
                         ProcessTuple(DefMI);
                     }
@@ -450,15 +449,15 @@ namespace IGC
         if (ccTuple->HasNonHomogeneousElements())
         {
             // Finding a supremum instruction for a homogeneous part is implemented
-            // only for render target write instructions (RTWritIntrinsic).
+            // only for render target write instructions (RTWriteIntrinsic).
             // An only other possible combination for non-homogeneous instructions comprises
-            // RTWritIntrinsic and RTDualBlendSourceIntrinsic.
+            // RTWriteIntrinsic and RTDualBlendSourceIntrinsic.
             // In some cases there is an opportunity to coalesce their payloads but there exists
             // a danger that they are compiled in different SIMD modes so there is a safe assumption
             // that they cannot be coalesced.
-            // A comparison of the payload of RTWritIntrinsic and RTDualBlendSourceIntrinsic:
+            // A comparison of the payload of RTWriteIntrinsic and RTDualBlendSourceIntrinsic:
             // +----------------------------+----------------------------+
-            // | RTWritIntrinsic            | RTDualBlendSourceIntrinsic |
+            // | RTWriteIntrinsic            | RTDualBlendSourceIntrinsic |
             // +----------------------------+----------------------------+
             // | src0 Alpha (optional)      | src0 Alpha (unavailable)*  |
             // +----------------------------+----------------------------+
@@ -488,8 +487,8 @@ namespace IGC
             // * RTDualBlendSourceIntrinsic doesn't have such an argument but it is defined in its payload.
             if (offsetDiff == 0 &&
                 ccTuple->GetNumElements() == numOperands &&
-                llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) &&
-                llvm::isa<llvm::RTWritIntrinsic>(tupleGeneratingInstruction))
+                llvm::isa<llvm::RTWriteIntrinsic>(ccTuple->GetRoot()) &&
+                llvm::isa<llvm::RTWriteIntrinsic>(tupleGeneratingInstruction))
             {
                 if (m_PayloadMapping.HasNonHomogeneousPayloadElements(tupleGeneratingInstruction))
                 {
@@ -1408,11 +1407,10 @@ namespace IGC
 
     bool CoalescingEngine::MatchSingleInstruction(llvm::GenIntrinsicInst* inst)
     {
-        GenISAIntrinsic::ID IID = inst->getIntrinsicID();
         if (isSampleInstruction(inst) ||
             isLdInstruction(inst) ||
             isURBWriteIntrinsic(inst) ||
-            IID == GenISAIntrinsic::GenISA_RTWrite)
+            llvm::isa<llvm::RTWriteIntrinsic>(inst))
         {
             uint numOperands = inst->getNumOperands();
             for (uint i = 0; i < numOperands; i++)

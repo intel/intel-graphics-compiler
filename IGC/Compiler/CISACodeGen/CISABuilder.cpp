@@ -2271,7 +2271,6 @@ namespace IGC
         VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
         VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(ESURFACE_NORMAL, bindingTableIndex);
 
         vISA_RT_CONTROLS cntrls;
         uint8_t numMsgSpecificOpnds = 0;
@@ -2354,35 +2353,37 @@ namespace IGC
         //vISA will decide whether to use it or not.
         VISA_RawOpnd* r1RegOpnd = GetRawSource(r1Reg);
 
-
-        if (CPSCounter)
         {
-            V(vKernel->AppendVISA3dRTWriteCPS(
-                predOpnd,
-                emask,
-                execSize,
-                RTIndexOpnd,
-                cntrls,
-                surfOpnd,
-                r1RegOpnd,
-                sampleIndexOpnd,
-                cpsCounterOpnd,
-                numMsgSpecificOpnds,
-                srcOpnd));
-        }
-        else
-        {
-            V(vKernel->AppendVISA3dRTWrite(
-                predOpnd,
-                emask,
-                execSize,
-                RTIndexOpnd,
-                cntrls,
-                surfOpnd,
-                r1RegOpnd,
-                sampleIndexOpnd,
-                numMsgSpecificOpnds,
-                srcOpnd));
+            VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(ESURFACE_NORMAL, bindingTableIndex);
+            if (CPSCounter)
+            {
+                V(vKernel->AppendVISA3dRTWriteCPS(
+                    predOpnd,
+                    emask,
+                    execSize,
+                    RTIndexOpnd,
+                    cntrls,
+                    surfOpnd,
+                    r1RegOpnd,
+                    sampleIndexOpnd,
+                    cpsCounterOpnd,
+                    numMsgSpecificOpnds,
+                    srcOpnd));
+            }
+            else
+            {
+                V(vKernel->AppendVISA3dRTWrite(
+                    predOpnd,
+                    emask,
+                    execSize,
+                    RTIndexOpnd,
+                    cntrls,
+                    surfOpnd,
+                    r1RegOpnd,
+                    sampleIndexOpnd,
+                    numMsgSpecificOpnds,
+                    srcOpnd));
+            }
         }
     }
 

@@ -443,7 +443,7 @@ bool WIAnalysisRunner::needToBeUniform(const Value* val)
 {
     for (auto UI = val->user_begin(), E = val->user_end(); UI != E; ++UI)
     {
-        if (const RTWritIntrinsic * use = dyn_cast<RTWritIntrinsic>(*UI))
+        if (const RTWriteIntrinsic * use = dyn_cast<RTWriteIntrinsic>(*UI))
         {
             if (use->getSampleIndex() == val || use->getBlendStateIndex() == val)
             {

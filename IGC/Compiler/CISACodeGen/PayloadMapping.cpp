@@ -35,22 +35,16 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart(
     const Instruction* inst1,
     const Instruction* inst2)
 {
-    const GenIntrinsicInst* intrinsicInst1 = dyn_cast<GenIntrinsicInst>(inst1);
-    const GenIntrinsicInst* intrinsicInst2 = dyn_cast<GenIntrinsicInst>(inst2);
+    const RTWriteIntrinsic* rtwi1 = cast_or_null<RTWriteIntrinsic>(inst1);
+    const RTWriteIntrinsic* rtwi2 = cast_or_null<RTWriteIntrinsic>(inst2);
 
-    IGC_ASSERT(intrinsicInst1);
-    IGC_ASSERT(intrinsicInst2);
-    IGC_ASSERT(intrinsicInst1->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite);
-    IGC_ASSERT(intrinsicInst2->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite);
-
-    switch (intrinsicInst1->getIntrinsicID())
+    if (rtwi1 && rtwi2)
     {
-    case GenISAIntrinsic::GenISA_RTWrite:
-        return GetSupremumOfNonHomogeneousPart_RTWrite(inst1, inst2);
-    default:
-        IGC_ASSERT_MESSAGE(0, "should not be called at all for other intrinsics");
-        return nullptr;
+        return GetSupremumOfNonHomogeneousPart_RTWrite(rtwi1, rtwi2);
     }
+
+    IGC_ASSERT(0);
+    return nullptr;
 }
 
 
@@ -62,8 +56,8 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart(
 /// 1 X -> return rtwi1
 /// 1 2 -> return rtwi1
 static const Instruction* CompareOnMask(
-    const RTWritIntrinsic* rtwi1,
-    const RTWritIntrinsic* rtwi2)
+    const RTWriteIntrinsic* rtwi1,
+    const RTWriteIntrinsic* rtwi2)
 {
     if (rtwi1->hasMask() && rtwi2->hasMask())
     {
@@ -85,14 +79,10 @@ static const Instruction* CompareOnMask(
 
 ///
 const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart_RTWrite(
-    const Instruction* inst1,
-    const Instruction* inst2)
+    const RTWriteIntrinsic* rtwi1,
+    const RTWriteIntrinsic* rtwi2)
 {
-    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst1));
-    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst2));
     ModuleMetaData* modMD = m_CodeGenContext->getModuleMetaData();
-    const RTWritIntrinsic* rtwi1 = cast<RTWritIntrinsic>(inst1);
-    const RTWritIntrinsic* rtwi2 = cast<RTWritIntrinsic>(inst2);
 
     /// rtwi1 S0 == rtwi2 S0
     if (RTWriteHasSource0Alpha(rtwi1, modMD) && RTWriteHasSource0Alpha(rtwi2, modMD))
@@ -124,17 +114,16 @@ int PayloadMapping::GetLeftReservedOffset(const Instruction* inst, SIMDMode simd
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
     IGC_ASSERT(intrinsicInst);
 
-    switch (intrinsicInst->getIntrinsicID())
+    if (llvm::isa<llvm::RTWriteIntrinsic>(intrinsicInst))
     {
-    case GenISAIntrinsic::GenISA_RTWrite:
-        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
-        return GetLeftReservedOffset_RTWrite(cast<RTWritIntrinsic>(inst), simdMode);
-    case GenISAIntrinsic::GenISA_RTDualBlendSource:
-        IGC_ASSERT(llvm::isa<llvm::RTDualBlendSourceIntrinsic>(inst));
-        return GetLeftReservedOffset_RTWrite(cast<RTDualBlendSourceIntrinsic>(inst), simdMode);
-    default:
-        return 0;
+        return GetLeftReservedOffset_RTWrite(cast<RTWriteIntrinsic>(inst), simdMode);
     }
+    else if (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsicInst))
+    {
+        return GetLeftReservedOffset_RTWrite(cast<RTDualBlendSourceIntrinsic>(inst), simdMode);
+    }
+
+    return 0;
 }
 
 ///
@@ -172,17 +161,16 @@ int PayloadMapping::GetRightReservedOffset(const Instruction* inst, SIMDMode sim
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
     IGC_ASSERT(intrinsicInst);
 
-    switch (intrinsicInst->getIntrinsicID())
+    if (llvm::isa<llvm::RTWriteIntrinsic>(intrinsicInst))
     {
-    case GenISAIntrinsic::GenISA_RTWrite:
-        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
-        return GetRightReservedOffset_RTWrite(cast<RTWritIntrinsic>(inst), simdMode);
-    case GenISAIntrinsic::GenISA_RTDualBlendSource:
-        IGC_ASSERT(llvm::isa<llvm::RTDualBlendSourceIntrinsic>(inst));
-        return GetRightReservedOffset_RTWrite(cast<RTDualBlendSourceIntrinsic>(inst), simdMode);
-    default:
-        return 0;
+        return GetRightReservedOffset_RTWrite(cast<RTWriteIntrinsic>(inst), simdMode);
     }
+    else if (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsicInst))
+    {
+        return GetRightReservedOffset_RTWrite(cast<RTDualBlendSourceIntrinsic>(inst), simdMode);
+    }
+
+    return 0;
 }
 
 template <typename T>
@@ -223,18 +211,16 @@ bool PayloadMapping::HasNonHomogeneousPayloadElements(const Instruction* inst)
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
     IGC_ASSERT(intrinsicInst);
 
-    switch (intrinsicInst->getIntrinsicID())
+    if (llvm::isa<llvm::RTWriteIntrinsic>(intrinsicInst))
     {
-    case GenISAIntrinsic::GenISA_RTWrite:
-        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
-        return HasNonHomogeneousPayloadElements_RTWrite(cast<RTWritIntrinsic>(inst));
-    case GenISAIntrinsic::GenISA_RTDualBlendSource:
-        IGC_ASSERT(llvm::isa<llvm::RTDualBlendSourceIntrinsic>(inst));
+        return HasNonHomogeneousPayloadElements_RTWrite(cast<RTWriteIntrinsic>(inst));
+    }
+    else if (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsicInst))
+    {
         return HasNonHomogeneousPayloadElements_RTWrite(cast<RTDualBlendSourceIntrinsic>(inst));
-    default:
-        return false;
     }
 
+    return false;
 }
 
 ///
@@ -301,16 +287,17 @@ uint PayloadMapping::GetNumPayloadElements(const Instruction* inst)
         return GetNumPayloadElements_LDMS(sampleInst);
     }
 
-    switch (intrinsicInst->getIntrinsicID())
+    if (isURBWriteIntrinsic(intrinsicInst))
     {
-    case GenISAIntrinsic::GenISA_URBWrite:
         return GetNumPayloadElements_URBWrite(intrinsicInst);
-    case GenISAIntrinsic::GenISA_RTWrite:
+    }
+    else if (llvm::isa<llvm::RTWriteIntrinsic>(intrinsicInst))
+    {
         return GetNumPayloadElements_RTWrite(intrinsicInst);
-    case GenISAIntrinsic::GenISA_RTDualBlendSource:
+    }
+    else if (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsicInst))
+    {
         return GetNumPayloadElements_DSRTWrite(intrinsicInst);
-    default:
-        break;
     }
 
     IGC_ASSERT(0);
@@ -599,9 +586,8 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_RTWrite(const GenIntrinsi
 {
     //s0Alpha oM[R G B A] sZ oS
     IGC_ASSERT(index < GetNumPayloadElements(inst));
-    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
-    const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
-
+    const RTWriteIntrinsic* rtwi = cast_or_null<RTWriteIntrinsic>(inst);
+    IGC_ASSERT(rtwi);
     if (index < 4)
     {
         switch (index)
@@ -657,25 +643,26 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, 
     }
 
 
-    switch (intrinsicInst->getIntrinsicID())
+    if (isURBWriteIntrinsic(intrinsicInst))
     {
-    case GenISAIntrinsic::GenISA_URBWrite:
         payloadValue = GetPayloadElementToValueMapping_URBWrite(intrinsicInst, index);
         IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
-    case GenISAIntrinsic::GenISA_RTWrite:
+    }
+    else if (llvm::isa<llvm::RTWriteIntrinsic>(intrinsicInst))
+    {
         payloadValue = GetPayloadElementToValueMapping_RTWrite(intrinsicInst, index);
         IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
-    case GenISAIntrinsic::GenISA_RTDualBlendSource:
+    }
+    else if (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsicInst))
+    {
         payloadValue = GetPayloadElementToValueMapping_DSRTWrite(intrinsicInst, index);
         IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
-    default:
-        break;
     }
 
     IGC_ASSERT(0);
@@ -708,8 +695,8 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_DSRTWrite(const GenIntrin
 {
     //oM [R0 G0 B0 A0 R1 G1 B1 A1] sZ oS
     IGC_ASSERT(index < GetNumPayloadElements(inst));
-    IGC_ASSERT(llvm::isa<llvm::RTDualBlendSourceIntrinsic>(inst));
-    const RTDualBlendSourceIntrinsic* dsrtwi = cast<RTDualBlendSourceIntrinsic>(inst);
+    const RTDualBlendSourceIntrinsic* dsrtwi = cast_or_null<RTDualBlendSourceIntrinsic>(inst);
+    IGC_ASSERT(dsrtwi);
 
     if (index < 8)
     {

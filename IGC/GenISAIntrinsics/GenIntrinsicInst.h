@@ -94,68 +94,59 @@ public:
     }
 };
 
-class RTWritIntrinsic : public GenIntrinsicInst {
+class RTWriteIntrinsic : public GenIntrinsicInst {
 protected:
     Value* getOperand(unsigned i) const { return GenIntrinsicInst::getOperand(i); }
     void setOperand(unsigned i, Value* v) { return GenIntrinsicInst::setOperand(i, v); }
 
 public:
-    inline Value* getSource0Alpha()     const { return getOperand(0); }
-    inline Value* getOMask()            const { return getOperand(1); }
-    inline Value* getPMask()            const { return getOperand(2); }
-    inline void setPMask(Value* pmask)        { setOperand(2, pmask); }
-    inline Value* getRed()              const { return getOperand(3); }
-    inline Value* getGreen()            const { return getOperand(4); }
-    inline Value* getBlue()             const { return getOperand(5); }
-    inline Value* getAlpha()            const { return getOperand(6); }
-    inline Value* getDepth()            const { return getOperand(7); }
-    inline Value* getStencil()          const { return getOperand(8); }
-    inline Value* getRTIndex()          const { return getOperand(9); }
-    inline Value* getBlendStateIndex()  const { return getOperand(10); }
-    inline Value* getSampleIndex()      const { return getOperand(15); }
+    Value* getSource0Alpha()     const { return getOperand(operandOffset(0)); }
+    Value* getOMask()            const { return getOperand(operandOffset(1)); }
+    Value* getPMask()            const { return getOperand(operandOffset(2)); }
+    void setPMask(Value* pmask)  { setOperand(operandOffset(2), pmask); }
+    Value* getRed()              const { return getOperand(operandOffset(3)); }
+    Value* getGreen()            const { return getOperand(operandOffset(4)); }
+    Value* getBlue()             const { return getOperand(operandOffset(5)); }
+    Value* getAlpha()            const { return getOperand(operandOffset(6)); }
+    Value* getDepth()            const { return getOperand(operandOffset(7)); }
+    Value* getStencil()          const { return getOperand(operandOffset(8)); }
+    Value* getRTIndex()          const { return getOperand(operandOffset(9)); }
+    Value* getBlendStateIndex()  const { return getOperand(operandOffset(10)); }
+    bool hasMask()               const { return valueToImm64(getOperand(operandOffset(11))) != 0; }
+    bool hasDepth()              const { return valueToImm64(getOperand(operandOffset(12))) != 0; }
+    bool hasStencil()            const { return valueToImm64(getOperand(operandOffset(13))) != 0; }
+    bool perSample()             const { return valueToImm64(getOperand(operandOffset(14))) != 0; }
+    void setPerSample()          { setOperand(operandOffset(14), ConstantInt::getTrue(getParent()->getContext())); }
+    Value* getSampleIndex()      const { return getOperand(operandOffset(15)); }
+    void setSampleIndex(Value* v){ setOperand(operandOffset(15), v); }
 
-    inline bool isImmRTIndex() const
-    { return llvm::isa<llvm::ConstantInt>(getRTIndex()); }
-
-    inline int getRTIndexImm()  const
-    { return (int)llvm::cast<llvm::ConstantInt>(getRTIndex())->getZExtValue(); }
-
-    inline bool hasMask()    const
-    {
-        return valueToImm64(getOperand(11)) != 0;
-    }
-    inline bool hasDepth()   const
-    {
-        return valueToImm64(getOperand(12)) != 0;
-    }
-    inline bool hasStencil() const
-    {
-        return valueToImm64(getOperand(13)) != 0;
-    }
-    inline bool perSample()  const
-    {
-        return valueToImm64(getOperand(14)) != 0;
-    }
-
-    void setPerSample()
-    {
-        Value* btrue = ConstantInt::get(
-            Type::getInt1Ty(this->getParent()->getContext()), 1);
-        setOperand(14, btrue);
-    }
-    void setSampleIndex(Value* v)       { setOperand(15, v); }
+    bool isImmRTIndex()          const { return isa<ConstantInt>(getRTIndex()); }
+    int getRTIndexImm()          const { return static_cast<int>(cast<ConstantInt>(getRTIndex())->getZExtValue()); }
 
     // Methods for support type inquiry through isa, cast, and dyn_cast:
-    static inline bool classof(const GenIntrinsicInst *I) {
+    static bool classof(const GenIntrinsicInst *I) {
         switch (I->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_RTWrite:
             return true;
         default: return false;
         }
     }
-    static inline bool classof(const Value *V) {
+    static bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
+
+    bool isRegular() const {
+        switch (getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_RTWrite:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+
+private:
+    unsigned operandOffset(unsigned offset) const { return offset + ((!isRegular() && offset >= 9) ? 1 : 0); }
 };
 
 class RTDualBlendSourceIntrinsic : public GenIntrinsicInst {
@@ -164,61 +155,112 @@ protected:
     void setOperand(unsigned i, Value* v) { return GenIntrinsicInst::setOperand(i, v); }
 
 public:
-    inline Value* getSource0Alpha()     const { return nullptr; }
-    inline Value* getOMask()            const { return getOperand(0); }
-    inline Value* getPMask()            const { return getOperand(1); }
-    inline void setPMask(Value* mask)         { setOperand(1, mask);  }
-    inline Value* getRed0()             const { return getOperand(2); }
-    inline Value* getGreen0()           const { return getOperand(3); }
-    inline Value* getBlue0()            const { return getOperand(4); }
-    inline Value* getAlpha0()           const { return getOperand(5); }
-    inline Value* getRed1()             const { return getOperand(6); }
-    inline Value* getGreen1()           const { return getOperand(7); }
-    inline Value* getBlue1()            const { return getOperand(8); }
-    inline Value* getAlpha1()           const { return getOperand(9); }
-    inline Value* getDepth()            const { return getOperand(10); }
-    inline Value* getStencil()          const { return getOperand(11); }
-    inline Value* getRTIndex()          const { return getOperand(12); }
-    inline Value* getSampleIndex()      const { return getOperand(17); }
+    Value* getSource0Alpha()     const { return nullptr; }
+    Value* getOMask()            const { return getOperand(operandOffset(0)); }
+    Value* getPMask()            const { return getOperand(operandOffset(1)); }
+    void setPMask(Value* mask)   { setOperand(operandOffset(1), mask);  }
+    Value* getRed0()             const { return getOperand(operandOffset(2)); }
+    Value* getGreen0()           const { return getOperand(operandOffset(3)); }
+    Value* getBlue0()            const { return getOperand(operandOffset(4)); }
+    Value* getAlpha0()           const { return getOperand(operandOffset(5)); }
+    Value* getRed1()             const { return getOperand(operandOffset(6)); }
+    Value* getGreen1()           const { return getOperand(operandOffset(7)); }
+    Value* getBlue1()            const { return getOperand(operandOffset(8)); }
+    Value* getAlpha1()           const { return getOperand(operandOffset(9)); }
+    Value* getDepth()            const { return getOperand(operandOffset(10)); }
+    Value* getStencil()          const { return getOperand(operandOffset(11)); }
+    Value* getRTIndex()          const { return getOperand(operandOffset(12)); }
+    bool hasMask()               const { return valueToImm64(getOperand(operandOffset(13))) != 0; }
+    bool hasDepth()              const { return valueToImm64(getOperand(operandOffset(14))) != 0; }
+    bool hasStencil()            const { return valueToImm64(getOperand(operandOffset(15))) != 0; }
+    bool perSample()             const { return valueToImm64(getOperand(operandOffset(16))) != 0; }
+    void setPerSample()          { setOperand(operandOffset(16), ConstantInt::getTrue(getParent()->getContext())); }
+    Value* getSampleIndex()      const { return getOperand(operandOffset(17)); }
+    void setSampleIndex(Value* v){ setOperand(operandOffset(17), v); }
 
-    inline int getRTIndexImm()  const
-    { return (int)llvm::cast<llvm::ConstantInt>(getRTIndex())->getZExtValue(); }
+    int getRTIndexImm()          const { return static_cast<int>(llvm::cast<llvm::ConstantInt>(getRTIndex())->getZExtValue()); }
 
-    inline bool hasMask()    const
-    {
-        return valueToImm64(getOperand(13)) != 0;
-    }
-    inline bool hasDepth()   const
-    {
-        return valueToImm64(getOperand(14)) != 0;
-    }
-    inline bool hasStencil() const
-    {
-        return valueToImm64(getOperand(15)) != 0;
-    }
-    inline bool perSample()  const
-    {
-        return valueToImm64(getOperand(16)) != 0;
-    }
-
-    void setPerSample()
-    {
-        Value* btrue = ConstantInt::get(
-            Type::getInt1Ty(this->getParent()->getContext()), 1);
-        setOperand(16, btrue);
-    }
-    void setSampleIndex(Value* v)       { setOperand(17, v); }
-
-    static inline bool classof(const GenIntrinsicInst *I) {
+    static bool classof(const GenIntrinsicInst *I) {
         switch (I->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_RTDualBlendSource:
             return true;
         default: return false;
         }
     }
-    static inline bool classof(const Value *V) {
+    static bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
+
+private:
+    bool isRegular() const {
+        switch (getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_RTDualBlendSource:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    unsigned operandOffset(unsigned offset) const { return offset + ((!isRegular() && offset >= 12) ? 1 : 0); }
+};
+
+class RenderTargetReadIntrinsic : public GenIntrinsicInst {
+protected:
+    Value* getOperand(unsigned i) const { return GenIntrinsicInst::getOperand(i); }
+    void setOperand(unsigned i, Value* v) { return GenIntrinsicInst::setOperand(i, v); }
+
+public:
+    Value* getRTIndex()          const { return getOperand(operandOffset(0)); }
+    bool hasSampleIndex()        const {
+        switch (getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+    Value* getSampleIndex()      const { IGC_ASSERT(hasSampleIndex()); return getOperand(operandOffset(1)); }
+    void setSampleIndex(Value* v) { IGC_ASSERT(hasSampleIndex()); setOperand(operandOffset(1), v); }
+
+    bool isImmRTIndex()          const { return isa<ConstantInt>(getRTIndex()); }
+    int getRTIndexImm()          const { return static_cast<int>(cast<ConstantInt>(getRTIndex())->getZExtValue()); }
+
+    std::vector<Value*> getArgs () const {
+        std::vector<Value*> v;
+        if (isRegular()) v.push_back(getOperand(0));
+        v.push_back(getRTIndex());
+        if (hasSampleIndex()) v.push_back(getSampleIndex());
+        return v;
+    }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static bool classof(const GenIntrinsicInst* I) {
+        switch (I->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_RenderTargetRead:
+        case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
+            return true;
+        default: return false;
+        }
+    }
+    static bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+private:
+    bool isRegular() const {
+        switch (getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_RenderTargetRead:
+        case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    unsigned operandOffset(unsigned offset) const { return offset + (!isRegular() ? 1 : 0); }
 };
 
 
