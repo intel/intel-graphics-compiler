@@ -9875,8 +9875,6 @@ int GlobalRA::coloringRegAlloc() {
 
   incRABookKeeping();
 
-  const auto [doBankConflictReduction, highInternalConflict] = bankConflict();
-
   while (iterationNo < maxRAIterations) {
     jitInfo->statsVerbose.RAIterNum++;
     if (builder.getOption(vISA_DynPerfModel)) {
@@ -9903,6 +9901,8 @@ int GlobalRA::coloringRegAlloc() {
     }
 
     localSplit(fastCompile, splitPass);
+
+    const auto [doBankConflictReduction, highInternalConflict] = bankConflict();
 
     reserveSpillReg = setupFailSafeIfNeeded(
         fastCompile, hasStackCall, maxRAIterations, failSafeRAIteration);
