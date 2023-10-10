@@ -2301,9 +2301,9 @@ namespace {
             if (K == LdStKind::IS_STORE) {
                 maxBytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
                 if (maxBytes != 0) {
-                    // legal values: [8, 32].
+                    // legal values: [4, 32].
                     maxBytes = std::min(maxBytes, 32u);
-                    maxBytes = std::max(maxBytes, 8u);
+                    maxBytes = std::max(maxBytes, 4u);
                 }
                 else
                     maxBytes = STORE_DEFAULT_BYTES_PER_LANE;
@@ -2311,9 +2311,9 @@ namespace {
             else {
                 maxBytes = IGC_GET_FLAG_VALUE(MaxLoadVectorSizeInBytes);
                 if (maxBytes != 0) {
-                    // legal values: [8, 32]
+                    // legal values: [4, 32]
                     maxBytes = std::min(maxBytes, 32u);
-                    maxBytes = std::max(maxBytes, 8u);
+                    maxBytes = std::max(maxBytes, 4u);
                 }
                 else
                     maxBytes = LOAD_DEFAULT_BYTES_PER_LANE;
