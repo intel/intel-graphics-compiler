@@ -417,8 +417,9 @@ namespace IGC
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
         VISA_VectorOpnd* funcAddrOpnd = GetSourceOperandNoModifier(funcPtr);
         V(vKernel->AppendVISACFIndirectFuncCallInst(
-            predOpnd, emask, execSize, funcPtr->IsUniform(), funcAddrOpnd,
-            argSize, retSize));
+            predOpnd, emask, execSize,
+            IGC_IS_FLAG_ENABLED(EnableCallUniform) ? funcPtr->IsUniform() : false,
+            funcAddrOpnd, argSize, retSize));
     }
 
     void CEncoder::SubroutineRet(CVariable* flag, llvm::Function* F)
@@ -4384,7 +4385,8 @@ namespace IGC
 
         if (m_program->m_Platform->hasFusedEU() && IGC_IS_FLAG_ENABLED(EnableCallWA))
         {
-            if (m_program->m_Platform->getWATable().Wa_14016243945)
+            if (IGC_IS_FLAG_ENABLED(ForceCallWA2) ||
+                m_program->m_Platform->getWATable().Wa_14016243945)
             {
                 SaveOption(vISA_fusedCallWA, (uint32_t)2);
             }
