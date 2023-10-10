@@ -91,17 +91,17 @@ enum class Op
   SENDC        = FIRST_OP +  71,
   SENDS        = FIRST_OP +  75,
   SENDSC       = FIRST_OP +  76,
-  SHL          = FIRST_OP +  77,
-  SHR          = FIRST_OP +  78,
-  SMOV         = FIRST_OP +  79,
-  SRND         = FIRST_OP +  80,
-  SUBB         = FIRST_OP +  81,
-  SYNC         = FIRST_OP +  82,
-  WAIT         = FIRST_OP +  83,
-  WHILE        = FIRST_OP +  84,
-  XOR          = FIRST_OP +  85,
+  SHL          = FIRST_OP +  78,
+  SHR          = FIRST_OP +  79,
+  SMOV         = FIRST_OP +  80,
+  SRND         = FIRST_OP +  81,
+  SUBB         = FIRST_OP +  82,
+  SYNC         = FIRST_OP +  83,
+  WAIT         = FIRST_OP +  84,
+  WHILE        = FIRST_OP +  85,
+  XOR          = FIRST_OP +  86,
 
-  LAST_OP   = FIRST_OP + 85,
+  LAST_OP   = FIRST_OP + 86,
   TOTAL_OPS = LAST_OP
 };
 } // iga::

@@ -67,11 +67,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
     {
       // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
-      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
-      // UQ,Q <- UW,W,UD,D,UQ,Q
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UQ)|TYPE(Type::Q)},
-      // UW,W,UD,D <- UQ,Q
-      {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UQ)|TYPE(Type::Q)}
+      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
@@ -216,11 +212,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       // DF <- DF
       {TYPE(Type::DF),TYPE(Type::DF)},
       // DF <- DF
-      {TYPE(Type::DF),TYPE(Type::DF)},
-      // UQ,Q <- UW,W,UD,D,UQ,Q
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UQ)|TYPE(Type::Q)},
-      // UW,W,UD,D <- UQ,Q
-      {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UQ)|TYPE(Type::Q)}
+      {TYPE(Type::DF),TYPE(Type::DF)}
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
@@ -401,7 +393,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       // UD <- UB,B,UW,W,UD,D
       {TYPE(Type::UD),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
     },
-    OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+    OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::MAC /* Op::46 */, Platform::XE_HPC, 0x48,
     "mac",
@@ -575,9 +567,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       // DF <- DF
       {TYPE(Type::DF),TYPE(Type::DF)},
       // DF <- DF
-      {TYPE(Type::DF),TYPE(Type::DF)},
-      // UD,D <- UD,D
-      {TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UD)|TYPE(Type::D)}
+      {TYPE(Type::DF),TYPE(Type::DF)}
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
@@ -595,11 +585,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Format::BASIC_UNARY_REGIMM,
     {
       // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
-      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
-      // UQ,Q <- UW,W,UD,D,UQ,Q
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UQ)|TYPE(Type::Q)},
-      // UW,W,UD,D <- UQ,Q
-      {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UQ)|TYPE(Type::Q)}
+      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
@@ -609,11 +595,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
     {
       // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
-      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
-      // UQ,Q <- UW,W,UD,D,UQ,Q
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UQ)|TYPE(Type::Q)},
-      // UW,W,UD,D <- UQ,Q
-      {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UQ)|TYPE(Type::Q)}
+      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
@@ -708,11 +690,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       // DF <- DF
       {TYPE(Type::DF),TYPE(Type::DF)},
       // DF <- DF
-      {TYPE(Type::DF),TYPE(Type::DF)},
-      // UQ,Q <- UW,W,UD,D,UQ,Q
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UQ)|TYPE(Type::Q)},
-      // UW,W,UD,D <- UQ,Q
-      {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UQ)|TYPE(Type::Q)}
+      {TYPE(Type::DF),TYPE(Type::DF)}
     },
     OpSpec::Attr::IS_SELECT|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
@@ -735,7 +713,8 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SHL /* Op::78 */, Platform::XE_HPC, 0x69,
+  {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::SHL /* Op::79 */, Platform::XE_HPC, 0x69,
     "shl",
     "Shift Left",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -749,7 +728,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SHR /* Op::79 */, Platform::XE_HPC, 0x68,
+  {Op::SHR /* Op::80 */, Platform::XE_HPC, 0x68,
     "shr",
     "Shift Right",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -764,7 +743,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SRND /* Op::81 */, Platform::XE_HPC, 0x54,
+  {Op::SRND /* Op::82 */, Platform::XE_HPC, 0x54,
     "srnd",
     "StochasticRounding",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -776,7 +755,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_SATURATION
   },
-  {Op::SUBB /* Op::82 */, Platform::XE_HPC, 0x4F,
+  {Op::SUBB /* Op::83 */, Platform::XE_HPC, 0x4F,
     "subb",
     "Subtraction with Borrow",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -786,7 +765,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
   },
-  {Op::SYNC /* Op::83 */, Platform::XE_HPC, 0x01,
+  {Op::SYNC /* Op::84 */, Platform::XE_HPC, 0x01,
     "sync",
     "Synchronize",
     OpSpec::Format::SYNC_UNARY,
@@ -797,24 +776,20 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::NONE
   },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::WHILE /* Op::85 */, Platform::XE_HPC, 0x27,
+  {Op::WHILE /* Op::86 */, Platform::XE_HPC, 0x27,
     "while",
     "While",
     OpSpec::Format::JUMP_UNARY_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::XOR /* Op::86 */, Platform::XE_HPC, 0x67,
+  {Op::XOR /* Op::87 */, Platform::XE_HPC, 0x67,
     "xor",
     "Logic Xor",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
     {
       // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
-      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
-      // UQ,Q <- UW,W,UD,D,UQ,Q
-      {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UQ)|TYPE(Type::Q)},
-      // UW,W,UD,D <- UQ,Q
-      {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UQ)|TYPE(Type::Q)}
+      {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   }

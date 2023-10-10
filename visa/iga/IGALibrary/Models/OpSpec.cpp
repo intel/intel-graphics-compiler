@@ -184,8 +184,12 @@ bool OpSpec::supportsAccWrEn() const {
 }
 
 bool OpSpec::supportsSubfunction() const {
-  return supportsBranchCtrl() || isAnySendFormat() || op == Op::MATH ||
-         op == Op::SYNC || op == Op::BFN || isDpasFormat();
+  return supportsBranchCtrl() ||
+         isAnySendFormat()    ||
+         op == Op::MATH       ||
+         op == Op::SYNC       ||
+         op == Op::BFN        ||
+         isDpasFormat();
 }
 
 
