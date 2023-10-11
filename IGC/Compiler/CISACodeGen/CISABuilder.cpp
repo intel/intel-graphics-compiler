@@ -6595,9 +6595,8 @@ namespace IGC
                 std::max(std::max(jitInfo->offsetToSkipPerThreadDataLoad,
                                   jitInfo->offsetToSkipCrossThreadDataLoad),
                          jitInfo->offsetToSkipSetFFIDGP1);
-            CreateLocalSymbol("_entry", vISA::GenSymType::S_FUNC, actual_kernel_start_off,
-                (unsigned)pMainKernel.getGenSize() - actual_kernel_start_off,
-                pOutput->m_symbols);
+            CreateLocalSymbol("_entry", vISA::GenSymType::S_NOTYPE,
+                actual_kernel_start_off, 0, pOutput->m_symbols);
 
             // Create local function symbols for direct stackcall functions.
             for (auto &stackFunc : stackFuncMap) {
