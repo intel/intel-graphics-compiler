@@ -11347,7 +11347,8 @@ void EmitPass::emitStoreRawIndexed(
             cacheOpts,
             inst->getAlignment(),
             false,
-            addrSpace);
+            addrSpace
+        );
         return;
     }
     IGC_ASSERT(immOffset == nullptr);
@@ -11527,7 +11528,8 @@ void EmitPass::emitStore(
             cacheOpts,
             IGCLLVM::getAlignmentValue(inst),
             inst->getMetadata("enable.vmask"),
-            addrSpace);
+            addrSpace
+          );
         return;
     }
     IGC_ASSERT_MESSAGE(immScale ? immScale->getSExtValue() == 1 : true,
@@ -17833,7 +17835,9 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                        CVariable *Offset, int ImmOffset,
                                        int ImmScale, uint32_t NumElts,
                                        uint32_t EltBytes,
-                                       LSC_DOC_ADDR_SPACE AddrSpace) {
+                                       LSC_DOC_ADDR_SPACE AddrSpace,
+                                       LSC_ADDR_SIZE AddrSize
+  ) {
     // NumElts must be 1 !
     IGC_ASSERT(NumElts == 1 && (EltBytes == 1 || EltBytes == 2));
 
@@ -17869,14 +17873,6 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         eOffset = BroadcastIfUniform(eOffset);
     }
 
-    LSC_ADDR_SIZE addressSize = LSC_ADDR_SIZE_INVALID;
-    if (UseA32) {
-        addressSize = LSC_ADDR_SIZE_32b;
-    }
-    else {
-        addressSize = LSC_ADDR_SIZE_64b;
-    }
-
     // Need a temp as Dest is smaller than DW.
     e_alignment dataAlign = ((4 * alloc_nbelts) <= (uint32_t)getGRFSize()) ? EALIGN_GRF : EALIGN_2GRF;
     CVariable* gatherDst =
@@ -17894,7 +17890,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
             m_encoder->SetPredicate(flag);
 
         emitLSCLoad(CacheOpts, gatherDst,
-                    eOffset, EltBytes * 8, 1, 0, &Resource, addressSize,
+                    eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
                     LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
         m_encoder->Push();
     });
@@ -17916,11 +17912,12 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
 //   2. sub-DW-aligned load,  vectorSize is 1|2|3|4|8
 //      (max size = UQ x 8 = 64 bytes)
 void EmitPass::emitLSCVectorLoad_uniform(
-    LSC_CACHE_OPTS cacheOpts, bool UseA32, ResourceDescriptor &Resource,
+    LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource,
     CVariable *Dest,
-    CVariable *Offset, int ImmOffset,
-    int ImmScale, uint32_t NumElts, uint32_t EltBytes, uint64_t Align,
-    uint32_t Addrspace, LSC_DOC_ADDR_SPACE userAddrSpace) {
+    CVariable *Offset, int ImmOffset, int ImmScale, uint32_t NumElts,
+    uint32_t EltBytes, uint64_t Align, uint32_t Addrspace,
+    LSC_DOC_ADDR_SPACE UserAddrSpace, LSC_ADDR_SIZE AddrSize) {
+
     IGC_ASSERT(Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
     CVariable *eOffset = Offset;
     CVariable* ldDest = Dest;
@@ -17942,16 +17939,6 @@ void EmitPass::emitLSCVectorLoad_uniform(
     bool destUniform = Dest->IsUniform();
     IGC_ASSERT((vSize <= 64 && (vSize <= 8 || isPowerOf2_32(vSize))));
 
-    LSC_ADDR_SIZE addressSize = LSC_ADDR_SIZE_INVALID;
-    if (UseA32)
-    {
-        addressSize = LSC_ADDR_SIZE_32b;
-    }
-    else
-    {
-        addressSize = LSC_ADDR_SIZE_64b;
-    }
-
     // 1. Do a SIMT1 transposed load
     if ((isPowerOf2_32(vSize) || vSize == 3) && vSize <= 64 &&
         ((Align >= 8 && dSize == 8) || (Align >= 4 && dSize == 4)))
@@ -17968,11 +17955,10 @@ void EmitPass::emitLSCVectorLoad_uniform(
         }
 
         m_encoder->SetNoMask();
-        emitLSCLoad(cacheOpts, tDest,
-                    eOffset, dSize * 8, vSize, 0, &Resource,
-                    addressSize,
+        emitLSCLoad(CacheOpts, tDest,
+                    eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
                     LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale,
-                    userAddrSpace);
+                    UserAddrSpace);
         m_encoder->Push();
 
         if (needTemp)
@@ -18009,11 +17995,11 @@ void EmitPass::emitLSCVectorLoad_uniform(
     }
 
     m_encoder->SetNoMask();
-    emitLSCLoad(cacheOpts, tDest,
+    emitLSCLoad(CacheOpts, tDest,
                 nEOff, dSize * 8, 1, 0, &Resource,
-                addressSize,
+                AddrSize,
                 LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale,
-                userAddrSpace);
+                UserAddrSpace);
     m_encoder->Push();
 
     if (needTemp)
@@ -18031,6 +18017,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                                  LSC_CACHE_OPTS cacheOpts,
                                  LSC_DOC_ADDR_SPACE addrSpace
 ) {
+
     Type *Ty = inst->getType();
     uint64_t align = 0;
     if (auto LI = dyn_cast<LoadInst>(inst))
@@ -18066,22 +18053,30 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     const int immScaleInt =
         immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
 
+    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_INVALID;
+    if (useA32) {
+      addrSize = LSC_ADDR_SIZE_32b;
+    }
+    else {
+      addrSize = LSC_ADDR_SIZE_64b;
+    }
+
     // 1. handle cases eltBytes < 4
     if (eltBytes < 4)
     {
         IGC_ASSERT(elts == 1);
       emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar,
-                              eOffset, immOffsetInt,
-                              immScaleInt, 1, eltBytes, addrSpace);
+                              eOffset, immOffsetInt, immScaleInt, 1, eltBytes,
+                              addrSpace, addrSize);
         return;
     }
 
     // 2. Handle uniform load
     if (srcUniform && resource.m_resource->IsUniform()) {
-        emitLSCVectorLoad_uniform(cacheOpts, useA32, resource, destCVar,
-                                  eOffset, immOffsetInt,
-                                  immScaleInt, elts, eltBytes, align,
-                                  ptrType->getPointerAddressSpace(), addrSpace);
+        emitLSCVectorLoad_uniform(
+            cacheOpts, useA32, resource, destCVar,
+            eOffset, immOffsetInt, immScaleInt, elts, eltBytes, align,
+            ptrType->getPointerAddressSpace(), addrSpace, addrSize);
         return;
     }
 
@@ -18138,25 +18133,18 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                 gatherDst = m_currShader->GetNewAlias(destCVar,
                     dVisaTy, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             }
-            VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
-            m_encoder->SetPredicate(flag);
-            LSC_ADDR_SIZE addressSize = LSC_ADDR_SIZE_INVALID;
 
-            switch (messageType) {
-            case VectorMessage::MESSAGE_A32_LSC_RW:
-                addressSize = LSC_ADDR_SIZE_32b;
-                break;
-            case VectorMessage::MESSAGE_A64_LSC_RW:
-                addressSize = LSC_ADDR_SIZE_64b;
-                break;
-            default:
-                IGC_ASSERT_MESSAGE(
-                    0, "Internal Error: unexpected message kind for load!");
-            }
+            m_encoder->SetPredicate(flag);
+
+            VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
+            IGC_ASSERT_MESSAGE(
+                messageType == VectorMessage::MESSAGE_A32_LSC_RW ||
+                messageType == VectorMessage::MESSAGE_A64_LSC_RW,
+                "Internal Error: unexpected message kind for load!");
 
             emitLSCLoad(cacheOpts, gatherDst,
                         rawAddrVar, blkBits, numBlks, 0, &resource,
-                        addressSize, LSC_DATA_ORDER_NONTRANSPOSE,
+                        addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
                         immOffsetInt, immScaleInt, addrSpace);
             m_encoder->Push();
 
@@ -18169,13 +18157,15 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
 }
 
 // Sub-function of emitLSCVectorStore()
-void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                         ResourceDescriptor &Resource,
                                         CVariable *StoreVar, CVariable *Offset,
                                         int ImmOffset, int ImmScale,
                                         uint32_t NumElts, uint32_t EltBytes,
                                         alignment_t Alignment,
-                                        LSC_DOC_ADDR_SPACE addrSpace) {
+                                        LSC_DOC_ADDR_SPACE AddrSpace,
+                                        LSC_ADDR_SIZE AddrSize
+) {
     // NumElts must be 1!
     IGC_ASSERT_MESSAGE(NumElts == 1 && (EltBytes == 1 || EltBytes == 2),
         "Number of elements must be 1 for an 8bit or 16bit data type in a non-transposed LSC store.");
@@ -18232,12 +18222,11 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
         {
             m_encoder->SetNoMask();
         }
-        // NumElts = 1
-        emitLSCStore(cacheOpts,
-                     stVar, eOffset, EltBytes * 8, 1, 0, &Resource,
-                     UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
-                     LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, addrSpace);
-        m_encoder->Push();
+      // NumElts = 1
+      emitLSCStore(CacheOpts,
+                   stVar, eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
+                   LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
+      m_encoder->Push();
     });
 
     return;
@@ -18250,13 +18239,15 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS cacheOpts, bool UseA32,
 //      (max size = UQ x 64 = 512 bytes)
 //   2. sub-DW-aligned store,  vectorSize is 1|2|3|4|8
 //      (max size = UQ x 8 = 64 bytes)
-void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
+void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                           ResourceDescriptor &Resource,
                                           CVariable *StoreVar,
                                           CVariable *Offset, int ImmOffset,
                                           int ImmScale, uint32_t NumElts,
                                           uint32_t EltBytes, alignment_t Align,
-                                          LSC_DOC_ADDR_SPACE addrSpace) {
+                                          LSC_DOC_ADDR_SPACE AddrSpace,
+                                          LSC_ADDR_SIZE AddrSize
+) {
     // If needed, can handle non-uniform StoreVar.
     IGC_ASSERT(StoreVar->IsUniform() && Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
 
@@ -18276,6 +18267,7 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
         vSize = vSize * 2;
         stVar = m_currShader->GetNewAlias(stVar, ISA_TYPE_UD, 0, 0);
     }
+
 
     IGC_ASSERT(vSize <= 64 && (vSize < 8 || isPowerOf2_32(vSize)));
     if (Align < 4 || (dSize == 8 && Align < 8) || !(isPowerOf2_32(vSize) || vSize == 3))
@@ -18301,11 +18293,11 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
 
         ResourceLoop(Resource, [&](CVariable* /*flag*/) {
             m_encoder->SetNoMask();
-          emitLSCStore(
-              cacheOpts, new_stVar, new_eoff, dSize * 8, 1, 0, &Resource,
-              UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
-              LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, addrSpace);
-            m_encoder->Push();
+          emitLSCStore(CacheOpts,
+                       new_stVar, new_eoff, dSize * 8, 1, 0, &Resource,
+                       AddrSize, LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset,
+                       ImmScale, AddrSpace);
+          m_encoder->Push();
         });
         return;
     }
@@ -18323,10 +18315,9 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS cacheOpts, bool UseA32,
     ResourceLoop(Resource, [&](CVariable* /*flag*/) {
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        emitLSCStore(cacheOpts, stVar, eOffset, dSize * 8, vSize, 0, &Resource,
-            UseA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
-            LSC_DATA_ORDER_TRANSPOSE,
-            ImmOffset, ImmScale, addrSpace);
+        emitLSCStore(CacheOpts,
+                     stVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
+                     LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale, AddrSpace);
         m_encoder->Push();
     });
     return;
@@ -18337,7 +18328,10 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
                                   ConstantInt *immScale, Value *storedVal,
                                   BasicBlock *BB, LSC_CACHE_OPTS cacheOpts,
                                   alignment_t align, bool dontForceDmask,
-                                  LSC_DOC_ADDR_SPACE addrSpace) {
+                                  LSC_DOC_ADDR_SPACE addrSpace
+
+) {
+
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     Type* Ty = storedVal->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -18390,6 +18384,14 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     const int immScaleVal =
         immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
 
+    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_INVALID;
+    if (useA32) {
+        addrSize = LSC_ADDR_SIZE_32b;
+    }
+    else {
+        addrSize = LSC_ADDR_SIZE_64b;
+    }
+
     // 1. handle cases eltBytes < 4
     if (eltBytes < 4)
     {
@@ -18398,7 +18400,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
         IGC_ASSERT(elts == 1);
         emitLSCVectorStore_subDW(cacheOpts, useA32, resource,
                                  storedVar, eOffset, immOffsetVal, immScaleVal,
-                                 1, eltBytes, align, addrSpace);
+                                 1, eltBytes, align, addrSpace, addrSize);
         return;
     }
 
@@ -18407,9 +18409,10 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     // 2. Handle uniform Store
     if (dstUniform && srcUniform)
     {
-        emitLSCVectorStore_uniform(cacheOpts, useA32, resource, storedVar,
-                                   eOffset, immOffsetVal, immScaleVal, elts,
-                                   eltBytes, align, addrSpace);
+        emitLSCVectorStore_uniform(cacheOpts, useA32, resource,
+                                   storedVar, eOffset, immOffsetVal,
+                                   immScaleVal, elts, eltBytes, align,
+                                   addrSpace, addrSize);
         return;
     }
 
@@ -18466,22 +18469,18 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
             IGC_ASSERT_MESSAGE(nbelts < (UINT16_MAX), "nbelts > higher than 64k");
             CVariable* subStoredVar = m_currShader->GetNewAlias(
                 storedVar, storedType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
-            switch (VecMessInfo.insts[i].kind) {
-            case VectorMessage::MESSAGE_A32_LSC_RW:
-                emitLSCStore(
-                    cacheOpts, subStoredVar, rawAddrVar, blkBits, numBlks, 0, &resource,
-                    LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE, immOffsetVal, immScaleVal, addrSpace);
-                break;
-            case VectorMessage::MESSAGE_A64_LSC_RW:
-                emitLSCStore(cacheOpts,
-                             subStoredVar, rawAddrVar, blkBits, numBlks, 0,
-                             &resource, LSC_ADDR_SIZE_64b,
-                             LSC_DATA_ORDER_NONTRANSPOSE, immOffsetVal,
-                             immScaleVal, addrSpace);
-                break;
-            default:
-                IGC_ASSERT_MESSAGE(0, "Internal Error: unexpected Message kind for store");
-            }
+
+            VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
+            IGC_ASSERT_MESSAGE(
+                messageType == VectorMessage::MESSAGE_A32_LSC_RW ||
+                    messageType == VectorMessage::MESSAGE_A64_LSC_RW,
+                "Internal Error: unexpected message kind for load!");
+
+            emitLSCStore(cacheOpts,
+                         subStoredVar, rawAddrVar, blkBits, numBlks, 0,
+                         &resource, addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
+                         immOffsetVal, immScaleVal, addrSpace);
+
             m_encoder->Push();
         }
     });
