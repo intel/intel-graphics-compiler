@@ -225,7 +225,8 @@ namespace IGC
         return threshold;
     }
 
-    void OpenCLProgramContext::InternalOptions::parseOptions(const char* internalOpts)
+    void OpenCLProgramContext::InternalOptions::parseOptions(
+        const char *internalOpts, OpenCLProgramContext &context)
     {
         using namespace options::internal;
         if (internalOpts == nullptr)
@@ -578,7 +579,7 @@ namespace IGC
         }
     }
 
-    void OpenCLProgramContext::Options::parseOptions(const char* opts)
+    void OpenCLProgramContext::Options::parseOptions(const char* opts, OpenCLProgramContext& context)
     {
         using namespace options::api;
         if (opts == nullptr)

@@ -24,14 +24,14 @@ namespace IGC
         class InternalOptions
         {
         public:
-            InternalOptions(const TC::STB_TranslateInputArgs* pInputArgs)
+            InternalOptions(const TC::STB_TranslateInputArgs* pInputArgs, OpenCLProgramContext& context)
             {
                 if (pInputArgs == nullptr)
                     return;
 
                 if (pInputArgs->pInternalOptions != nullptr)
                 {
-                    parseOptions(pInputArgs->pInternalOptions);
+                    parseOptions(pInputArgs->pInternalOptions, context);
                 }
             }
 
@@ -118,20 +118,20 @@ namespace IGC
             bool EmitVisaOnly                               = false;
 
         private:
-            void parseOptions(const char* internalOpts);
+            void parseOptions(const char* internalOpts, OpenCLProgramContext& context);
         };
 
         class Options
         {
         public:
-            Options(const TC::STB_TranslateInputArgs* pInputArgs)
+            Options(const TC::STB_TranslateInputArgs* pInputArgs, OpenCLProgramContext& context)
             {
                 if (pInputArgs == nullptr)
                     return;
 
                 if (pInputArgs->pOptions != nullptr)
                 {
-                    parseOptions(pInputArgs->pOptions);
+                    parseOptions(pInputArgs->pOptions, context);
                 }
             }
 
@@ -178,7 +178,7 @@ namespace IGC
             bool EnableFP64GenEmu = false;
 
         private:
-            void parseOptions(const char* opts);
+            void parseOptions(const char* opts, OpenCLProgramContext& context);
         };
 
         // output: shader information
@@ -220,8 +220,8 @@ namespace IGC
             const bool createResourceDimTypes = true)
             : CodeGenContext(ShaderType::OPENCL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmContext),
             m_programOutput(platform.getPlatformInfo(), *this),
-            m_InternalOptions(pInputArgs),
-            m_Options(pInputArgs),
+            m_InternalOptions(pInputArgs, *this),
+            m_Options(pInputArgs, *this),
             isSpirV(false),
             m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {

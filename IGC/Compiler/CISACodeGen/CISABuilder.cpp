@@ -4596,7 +4596,8 @@ namespace IGC
                     ) && !ClContext->m_InternalOptions.Intel128GRFPerThread &&
                     !ClContext->m_Options.Intel128GRFPerThread &&
                     !ClContext->m_InternalOptions.Intel256GRFPerThread &&
-                    !ClContext->m_Options.Intel256GRFPerThread)
+                    !ClContext->m_Options.Intel256GRFPerThread
+                    )
                 {
                     // When user hasn't specified number of threads, we can rely on compiler heuristics
                     SaveOption(vISA_AutoGRFSelection, true);

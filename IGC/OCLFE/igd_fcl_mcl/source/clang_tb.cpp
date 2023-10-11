@@ -1330,6 +1330,7 @@ namespace TC
                             (strcmp(pParam, "-igc_opts") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-gtpin-rera") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-256-GRF-per-thread") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-opt-256-GRF-per-thread") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-large-register-file") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-disable-recompilation") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0) || //temporary options
