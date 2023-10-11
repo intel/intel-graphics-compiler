@@ -28,7 +28,7 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT: DW_AT_decl_line
 ; DWARFDUMP:  DW_AT_type        ({{0x[0-9a-f]+}} "unsigned int")
 ; CHECK-NEXT: DW_AT_type
-; CHECK-NEXT: DW_AT_location    : 0x[[OFF_LOC:[0-9a-f]+]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[OFF_LOC:[0-9a-f]+]] (location list)
 
 
 ; CHECK: DW_TAG_variable
@@ -38,7 +38,7 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT: DW_AT_decl_line
 ; DWARFDUMP:  DW_AT_type        ({{0x[0-9a-f]+}} "int[8]")
 ; CHECK-NEXT: DW_AT_type
-; CHECK-NEXT: DW_AT_location    : 0x[[IVEC1_LOC:[0-9a-f]+]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[IVEC1_LOC:[0-9a-f]+]] (location list)
 
 ; CHECK: DW_TAG_variable
 ; DWARFDUMP:  DW_AT_name        ("ivector2")
@@ -47,7 +47,7 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT: DW_AT_decl_line
 ; DWARFDUMP:  DW_AT_type        ({{0x[0-9a-f]+}} "int[8]")
 ; CHECK-NEXT: DW_AT_type
-; CHECK-NEXT: DW_AT_location    : 0x[[IVEC2_LOC:[0-9a-f]+]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[IVEC2_LOC:[0-9a-f]+]] (location list)
 
 ; CHECK: DW_TAG_variable
 ; DWARFDUMP:  DW_AT_name        ("ovector")
@@ -56,7 +56,7 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT: DW_AT_decl_line
 ; DWARFDUMP:  DW_AT_type        ({{0x[0-9a-f]+}} "int[8]")
 ; CHECK-NEXT: DW_AT_type
-; CHECK-NEXT: DW_AT_location    : 0x[[OVEC_LOC:[0-9a-f]+]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[OVEC_LOC:[0-9a-f]+]] (location list)
 
 ; CHECK-DAG: [[OFF_LOC]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]); DW_OP_{{lit|const1u: }}[[#]]; DW_OP_const1u: 32; DW_OP_INTEL_push_bit_piece_stack; DW_OP_constu: 6; DW_OP_shl; DW_OP_stack_value)
 ; FIXME: Once LLVM 11+ is enabled for all platforms, make ivector* location list checks explicit:

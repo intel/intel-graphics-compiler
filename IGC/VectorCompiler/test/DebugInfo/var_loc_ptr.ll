@@ -17,13 +17,13 @@
 ; CHECK-NEXT: DW_AT_decl_file   : 1
 ; CHECK-NEXT: DW_AT_decl_line   : 6
 ; CHECK-NEXT: DW_AT_type        : <{{0x[0-9a-f]+}}>
-; CHECK-NEXT: DW_AT_location    : 0x[[BUF_LOC:[0-9a-f]+]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[BUF_LOC:[0-9a-f]+]] (location list)
 
 ; CHECK:      DW_AT_name        : artificial_vect
 ; CHECK-NEXT: DW_AT_decl_file   : 1
 ; CHECK-NEXT: DW_AT_decl_line   : 777
 ; CHECK-NEXT: DW_AT_type        : <[[VECT_TYPE:0x[0-9a-f]+]]>
-; CHECK-NEXT: DW_AT_location    : 0x[[VECT_LOC:[0-9a-f]+]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[VECT_LOC:[0-9a-f]+]] (location list)
 
 ; CHECK:      DW_AT_name        : data
 ; CHECK-NEXT: DW_AT_decl_file   : 1

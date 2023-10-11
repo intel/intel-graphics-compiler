@@ -19,7 +19,7 @@
 ; CHECK-NEXT: DW_AT_decl_file   : 1
 ; CHECK-NEXT: DW_AT_decl_line   : 6
 ; CHECK-NEXT: DW_AT_type        : <{{0x[0-9a-f]+}}>
-; CHECK-NEXT: DW_AT_location    : 0x[[#LOC_OFFSET:]] (location list)
+; CHECK-NEXT: DW_AT_location    : {{(0x)?}}[[#LOC_OFFSET:]] (location list)
 
 ; CHECK: Contents of the .debug_loc section:
 ; CHECK-DAG: [[#LOC_OFFSET]] {{[^(]+}}(DW_OP_reg[[#]] (r[[#]]); DW_OP_const1u: 64; DW_OP_const1u: 64; DW_OP_INTEL_push_bit_piece_stack)
