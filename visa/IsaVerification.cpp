@@ -3986,16 +3986,15 @@ struct LscInstVerifier {
 
     bool transpose = dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE;
     bool transform = dataShape2D.vnni;
+    unsigned totalBytes = dataShape2D.width * dataShape2D.blocks * dataSizeBytes;
     if (subOp == LSC_LOAD_BLOCK2D) {
-      valid &= verify(dataShape2D.width * dataShape2D.blocks * dataSizeBytes <= 64,
-          dataShape2D.width * dataShape2D.blocks * dataSizeBytes,
-         ": block2d width * data size must be <= 64Bytes for 2D loads");
+      valid &= verify(totalBytes <= 64,
+          totalBytes, ": block2d width * data size must be <= 64Bytes for 2D loads");
     }
     else {
       // subOp is LSC_STORE_BLOCK2D
-      valid &= verify(dataShape2D.width * dataShape2D.blocks * dataSizeBytes <= 512,
-          dataShape2D.width * dataShape2D.blocks * dataSizeBytes,
-         ": block2d width * data size must be <= 512Bytes for 2D stores");
+      valid &= verify(totalBytes <= 512,
+          totalBytes, ": block2d width * data size must be <= 512Bytes for 2D stores");
     }
 
     int rows = !transpose ? dataShape2D.height : dataShape2D.width;
