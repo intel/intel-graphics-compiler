@@ -2720,10 +2720,7 @@ namespace IGC
         Function* rdneFunc = GenISAIntrinsic::getDeclaration(
             builder.GetInsertBlock()->getModule(),
             GenISAIntrinsic::GenISA_ROUNDNE);
-        // FPToUI cannot be used to avoid generation of a poison value in case of
-        // the negative constant value. Such an approach is possible since
-        // there is a protection against exceeding limits by param1.
-        Value* intParam1 = builder.CreateFPToSI(
+        Value* intParam1 = builder.CreateFPToUI(
             builder.CreateCall(rdneFunc, param1),
             builder.getInt32Ty(),
             VALUE_NAME(std::string("_int") + param1Name));
