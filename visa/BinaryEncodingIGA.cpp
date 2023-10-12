@@ -526,7 +526,6 @@ iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst) {
 }
 MathFC BinaryEncodingIGA::getMathFC(const G4_INST *inst) {
   G4_MathOp mathControlValue = inst->asMathInst()->getMathCtrl();
-
   switch (mathControlValue) {
   case MATH_INV:
     return MathFC::INV;

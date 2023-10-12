@@ -3073,9 +3073,11 @@ static const char *SFIDToString(vISA::SFID sfid)
 //         and (16|M0)  ...
 //                      ^ aligns operand start to same place here
 static const int INST_START_COLUMN_WIDTH = 24;
-const char *const MathOpNames[16] = {
+const char* const MathOpNames[16] = {
     "reserved",  "inv",  "log", "exp",    "sqrt", "rsq", "sin",  "cos",
-    "undefined", "fdiv", "pow", "intdiv", "quot", "rem", "invm", "rsqrtm"};
+    "undefined", "fdiv", "pow", "intdiv", "quot", "rem", "invm", "rsqrtm"
+    };
+
 
 // emits the first part of an instruction in an aligned column
 static void emitInstructionStartColumn(std::ostream &output, G4_INST &inst) {

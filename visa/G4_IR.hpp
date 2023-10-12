@@ -1073,7 +1073,7 @@ typedef enum {
   MATH_INT_DIV_QUOT = 0xC,
   MATH_INT_DIV_REM = 0xD,
   MATH_INVM = 0xE,
-  MATH_RSQRTM = 0xF
+  MATH_RSQRTM = 0xF,
 } G4_MathOp;
 
 class G4_InstMath : public G4_INST {
@@ -1097,10 +1097,10 @@ public:
   }
   bool isOneSrcMath() const {
     return mathOp == MATH_INV || mathOp == MATH_LOG || mathOp == MATH_EXP ||
-           mathOp == MATH_SQRT || mathOp == MATH_RSQ || mathOp == MATH_SIN ||
-           mathOp == MATH_COS || mathOp == MATH_RSQRTM;
+      mathOp == MATH_SQRT || mathOp == MATH_RSQ || mathOp == MATH_SIN ||
+      mathOp == MATH_COS || mathOp == MATH_RSQRTM
+      ;
   }
-
   G4_MathOp getMathCtrl() const { return mathOp; }
 };
 
