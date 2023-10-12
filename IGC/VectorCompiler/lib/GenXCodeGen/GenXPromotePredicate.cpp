@@ -173,17 +173,44 @@ public:
   }
 
 private:
-  std::set<Instruction *> Web;
+  SmallPtrSet<Instruction *, 16> Web;
+};
+
+constexpr const char IdxMDName[] = "pred.index";
+// Comparator to keep sequence of instructions - otherwise it will compare
+// dynamically allocated pointers
+struct Comparator {
+  long getMd(Instruction *const &I) const {
+    auto *IMd = I->getMetadata(IdxMDName);
+    return cast<ConstantInt>(
+               cast<ConstantAsMetadata>(IMd->getOperand(0).get())->getValue())
+        ->getZExtValue();
+  }
+  bool operator()(Instruction *const &Lhs, Instruction *const &Rhs) const {
+    return getMd(Lhs) > getMd(Rhs);
+  }
 };
 
 bool GenXPromotePredicate::runOnFunction(Function &F) {
   // Put every predicate instruction into its own equivalence class.
-  llvm::EquivalenceClasses<Instruction *> PredicateWebs;
+#if LLVM_VERSION_MAJOR > 13
+  long Idx = 0;
+  llvm::EquivalenceClasses<Instruction *, Comparator>
+#else
+  llvm::EquivalenceClasses<Instruction *>
+#endif
+      PredicateWebs;
   for (auto &I : instructions(F)) {
     if (!genx::isPredicate(&I))
       continue;
     if (!I.isBitwiseLogicOp() && !isa<PHINode>(&I))
       continue;
+#if LLVM_VERSION_MAJOR > 13
+    auto &Ctx = I.getContext();
+    auto *MD = ConstantAsMetadata::get(
+        ConstantInt::get(Ctx, llvm::APInt(64, ++Idx, false)));
+    I.setMetadata(IdxMDName, MDNode::get(Ctx, MD));
+#endif
     PredicateWebs.insert(&I);
   }
   // Connect data-flow related instructions together.
@@ -191,7 +218,13 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
     Instruction *Inst = EC.getData();
     for (auto &Op : Inst->operands()) {
       Instruction *In = dyn_cast<Instruction>(Op);
-      if (!In || PredicateWebs.findValue(In) == PredicateWebs.end())
+
+      if (!In ||
+#if LLVM_VERSION_MAJOR > 13
+          !In->hasMetadata(IdxMDName))
+#else
+          PredicateWebs.findValue(In) == PredicateWebs.end())
+#endif
         continue;
       PredicateWebs.unionSets(Inst, In);
     }
@@ -199,6 +232,10 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   // Promote web if it is big enough (likely to cause flag spills).
   bool Modified = false;
   for (auto I = PredicateWebs.begin(), E = PredicateWebs.end(); I != E; ++I) {
+#if LLVM_VERSION_MAJOR > 14
+    // Clear metadata
+    I->getData()->setMetadata(IdxMDName, nullptr);
+#endif
     if (!I->isLeader())
       continue;
     PredicateWeb Web(PredicateWebs.member_begin(I), PredicateWebs.member_end());
