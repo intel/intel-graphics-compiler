@@ -372,9 +372,35 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
 
     if (const ConstantInt * CI = dyn_cast<const ConstantInt>(V))
     {
+        // symExpr handles symbols with the same bit size, thus sext/zext/trunc
+        // are not handled. With this, a result from either signed or unsigned
+        // integer operations will end up with the same bit pattern. Here, we
+        // choose to use sext on constants.
         C = CI->getSExtValue();
         return;
     }
+
+    // Used for nomalizing shift amount.
+    //   For example, i64, its type mask is 03F(63 = 64 - 1).
+    auto getTypeMask = [](const Type* Ty) -> uint32_t {
+        // For simplicity, only handle type whose size is power of 2.
+        uint32_t nbits = Ty->getScalarSizeInBits();
+        if (nbits > 0 && isPowerOf2_32(nbits))
+            return (nbits - 1);
+        return 0;
+    };
+
+    // Return value:
+    //   Shift amount: if it is valid and greater than 0
+    //   0 : invalid
+    auto getShlAmt = [&getTypeMask](const Instruction* ShlInst) -> uint32_t {
+        IGC_ASSERT(ShlInst->getOpcode() == Instruction::Shl);
+        uint32_t shtAmtMask = getTypeMask(ShlInst->getType());
+        ConstantInt* cI = cast<ConstantInt>(ShlInst->getOperand(1));
+        if (cI && shtAmtMask > 0)
+            return (uint32_t)(cI->getZExtValue() & shtAmtMask);
+        return 0;
+    };
 
     // Instructions/Operators handled for now:
     //   GEP
@@ -515,6 +541,35 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
             }
             break;
         }
+        case Instruction::Or:
+        {
+            // Check if it is actually an add.
+            //
+            //   %mul = shl nuw nsw i64 %v, 1
+            //   %add = or i64 %mul, 1
+            //     -->  %add = add %mul, 1
+            const Value* V0 = Op->getOperand(0);
+            const Value* V1 = Op->getOperand(1);
+            getSymExprOrConstant(V0, S0, C0);
+            getSymExprOrConstant(V1, S1, C1);
+            if (!S0 && !S1) {
+                C = C0 | C1;
+                return;
+            }
+
+            // Case: 'or V0  Const' or 'or const  V1'
+            if ((S0 && !S1) || (!S0 && S1)) {
+                const Value* tV = (S0 ? V0 : V1);
+                const uint64_t tC = (uint64_t)(S0 ? C1 : C0);
+                const Instruction* tI = dyn_cast<Instruction>(tV);
+                if (tI && tI->getOpcode() == Instruction::Shl) {
+                    uint32_t shtAmt = getShlAmt(tI);
+                    if (shtAmt > 0 && (1ull << shtAmt) > tC)
+                        S = add(S0 ? S0 : S1, tC);
+                }
+            }
+            break;
+        }
         case Instruction::Mul:
         {
             const Value* V0 = Op->getOperand(0);
@@ -538,7 +593,34 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
 
             break;
         }
+        case Instruction::Shl:
+        {
+            // shl is a mul
+            //     shl a,  b, 2
+            //  -> mul a, b, (1 << 2)
+            const Value* V0 = Op->getOperand(0);
+            const Value* V1 = Op->getOperand(1);
+            getSymExprOrConstant(V0, S0, C0);
+            getSymExprOrConstant(V1, S1, C1);
 
+            uint32_t shtAmtMask = getTypeMask(V->getType());
+            if (shtAmtMask == 0) // sanity
+                break;
+
+            if (!S1) {
+                C1 = (C1 & shtAmtMask);
+            }
+
+            if (!S0 && !S1) {
+                C = (C0 << C1);
+                return;
+            }
+            if (!S1) {
+                uint64_t tC = (1ull << C1);
+                S = mul(S0, tC);
+            }
+            break;
+        }
         case Instruction::BitCast:
         case Instruction::IntToPtr:
         case Instruction::PtrToInt:
