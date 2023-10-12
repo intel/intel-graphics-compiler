@@ -108,6 +108,19 @@ namespace IGC
 
             bool AllowRelocAdd                              = true;
 
+            // LdStCombine
+            //   EnableLdStCombine:
+            //      0: disable LdStCombine
+            //      1: enable LdStCombine
+            //      otherwise: ignored
+            //   MaxStoreBytes:
+            //   MaxLoadBytes:
+            //     4, 8, 16, 32 : set max bytes for combining
+            //     otherwise: ignored.
+            int LdStCombine                                 = -1; // default
+            uint32_t MaxStoreBytes                          = 0;  // default
+            uint32_t MaxLoadBytes                           = 0;  // default
+
             uint32_t IntelPrivateMemoryMinimalSizePerThread = 0;
             uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
 

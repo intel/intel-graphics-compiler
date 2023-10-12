@@ -22,10 +22,19 @@ namespace llvm {
 }
 
 namespace IGC {
+    class CodeGenContext;
+
     llvm::FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad, bool AllowVector8LoadStore);
     llvm::FunctionPass* createLdStCombinePass();
 
+    // check both igc keys and internal flags
+    bool doLdStCombine(const CodeGenContext* CGC);
+    uint32_t getMaxStoreBytes(const CodeGenContext* CGC);
+    uint32_t getMaxLoadBytes(const CodeGenContext* CGC);
+
+    //
     // Utility for struct manipulation
+    //
 
     inline const char* getStructNameForSOALayout() {
         return "__StructSOALayout_";

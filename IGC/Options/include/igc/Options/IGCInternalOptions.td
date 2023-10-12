@@ -154,6 +154,16 @@ defm enable_divergent_barrier_handling : CommonFlag<"enable-divergent-barrier-ha
 // -cl-intel-high-accuracy-nolut-math
 defm high_accuracy_nolut_math : CommonFlag<"high-accuracy-nolut-math">;
 
+// -[cl-intel|ze-opt]-ldstcombine=[0|1]
+// -[cl-intel|ze-opt]-ldstcombine-max-storebytes=[4|8|16|32]
+// -[cl-intel|ze-opt]-ldstcombine-max-loadbytes=[4|8|16|32]
+defm ldstcombine : CommonSeparate<"ldstcombine">;
+defm : CommonJoined<"ldstcombine=">, Alias<ldstcombine_common>;
+defm ldstcombine_max_storebytes : CommonSeparate<"ldstcombine_max_storebytes">;
+defm : CommonJoined<"ldstcombine-max-storebytes=">, Alias<ldstcombine_max_storebytes_common>;
+defm ldstcombine_max_loadbytes : CommonSeparate<"ldstcombine_max-loadbytes">;
+defm : CommonJoined<"ldstcombine-max-loadbytes=">, Alias<ldstcombine_max_loadbytes_common>;
+
 // }} Backend internal options
 
 // Internal options from source translation {{

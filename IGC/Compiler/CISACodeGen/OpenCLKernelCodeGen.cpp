@@ -519,6 +519,51 @@ namespace IGC
             }
         }
 
+        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_ldstcombine_common))
+        {
+            // Valid value: 0|1
+            llvm::StringRef valStr = arg->getValue();
+            int val = 0;
+            if (valStr.getAsInteger(10, val) || (val !=0 && val != 1))
+            {
+                IGC_ASSERT_MESSAGE(false, "-ldstcombine: invalid and ignored!");
+            }
+            else
+            {
+                LdStCombine = val;
+            }
+        }
+
+        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_ldstcombine_max_storebytes_common))
+        {
+            // Valid value: 4|8|16|32
+            llvm::StringRef valStr = arg->getValue();
+            int val = 0;
+            if (valStr.getAsInteger(10, val) || !(isPowerOf2_32(val) && val >= 4 && val <= 32))
+            {
+                IGC_ASSERT_MESSAGE(false, "-ldstcombine_max_storebytes: invalid and ignored!");
+            }
+            else
+            {
+                MaxStoreBytes = val;
+            }
+        }
+
+        if (const opt::Arg* arg = internalOptions.getLastArg(OPT_ldstcombine_max_loadbytes_common))
+        {
+            // Valid value: 4|8|16|32
+            llvm::StringRef valStr = arg->getValue();
+            int val = 0;
+            if (valStr.getAsInteger(10, val) || !(isPowerOf2_32(val) && val >= 4 && val <= 32))
+            {
+                IGC_ASSERT_MESSAGE(false, "-ldstcombine_max_loadbytes: invalid and ignored!");
+            }
+            else
+            {
+                MaxLoadBytes = val;
+            }
+        }
+
         if (internalOptions.hasArg(OPT_fp64_gen_emu_common))
         {
             // This option enables FP64 emulation for platforms that

@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -2288,36 +2289,20 @@ namespace {
     // BundleConfig:
     //    To tell what vector size is legit. It may need GEN platform as input.
     class BundleConfig {
+    public:
         enum {
             STORE_DEFAULT_BYTES_PER_LANE = 16, // 4 DW for non-uniform
             LOAD_DEFAULT_BYTES_PER_LANE = 16   // 4 DW for non-uniform
         };
 
-    public:
         BundleConfig(LdStKind K, int ByteAlign, bool Uniform,
             const AddressModel AddrModel, CodeGenContext* Ctx)
         {
             uint32_t maxBytes = 0;
-            if (K == LdStKind::IS_STORE) {
-                maxBytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
-                if (maxBytes != 0) {
-                    // legal values: [4, 32].
-                    maxBytes = std::min(maxBytes, 32u);
-                    maxBytes = std::max(maxBytes, 4u);
-                }
-                else
-                    maxBytes = STORE_DEFAULT_BYTES_PER_LANE;
-            }
-            else {
-                maxBytes = IGC_GET_FLAG_VALUE(MaxLoadVectorSizeInBytes);
-                if (maxBytes != 0) {
-                    // legal values: [4, 32]
-                    maxBytes = std::min(maxBytes, 32u);
-                    maxBytes = std::max(maxBytes, 4u);
-                }
-                else
-                    maxBytes = LOAD_DEFAULT_BYTES_PER_LANE;
-            }
+            if (K == LdStKind::IS_STORE)
+                maxBytes = getMaxStoreBytes(Ctx);
+            else
+                maxBytes = getMaxLoadBytes(Ctx);
 
             auto calculateSize = [=](bool Uniform) -> uint32_t
             {
@@ -2504,6 +2489,12 @@ namespace {
         bool m_hasLoadCombined;
         bool m_hasStoreCombined;
 
+        //
+        // Caching
+        //
+        // If true, IGC needs to emulate I64.
+        bool m_hasI64Emu;
+
         // All insts that have been combined and can be deleted.
         SmallVector<Instruction*, 16> m_combinedInsts;
 
@@ -2518,9 +2509,6 @@ namespace {
         std::list<BundleInfo> m_bundles;
 
         DenseMap<const Instruction*, int> m_visited;
-
-        // If true, IGC needs to emulate I64.
-        bool m_hasI64Emu;
 
         void init(BasicBlock* BB) {
             m_visited.clear();
@@ -2599,6 +2587,44 @@ const BundleSize_t BundleConfig::m_d8VecSizes = { 2,4,8 };
 const BundleSize_t BundleConfig::m_d64VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d32VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d8VecSizes_u = { 2,4,8,16,32 };
+
+bool IGC::doLdStCombine(const CodeGenContext* CGC) {
+    if (CGC->type == ShaderType::OPENCL_SHADER) {
+       auto oclCtx = (const OpenCLProgramContext*)CGC;
+       // internal flag overrides IGC key
+       switch (oclCtx->m_InternalOptions.LdStCombine) {
+       default:
+           break;
+       case 0:
+           return false;
+       case 1:
+           return true;
+       }
+    }
+    return IGC_IS_FLAG_ENABLED(EnableLdStCombine);
+}
+
+uint32_t IGC::getMaxStoreBytes(const CodeGenContext* CGC) {
+    if (CGC->type == ShaderType::OPENCL_SHADER) {
+       auto oclCtx = (const OpenCLProgramContext*)CGC;
+       // internal flag overrides IGC key
+       if (oclCtx->m_InternalOptions.MaxStoreBytes != 0)
+           return oclCtx->m_InternalOptions.MaxStoreBytes;
+    }
+    uint32_t bytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
+    // Use default if bytes from the key is not set or invalid
+    if (!(bytes >= 4 && bytes <= 32 && isPowerOf2_32(bytes)))
+        bytes = BundleConfig::STORE_DEFAULT_BYTES_PER_LANE;
+    return bytes;
+}
+
+uint32_t IGC::getMaxLoadBytes(const CodeGenContext* CGC) {
+    uint32_t bytes = IGC_GET_FLAG_VALUE(MaxLoadVectorSizeInBytes);
+    // Use default if bytes from the key is not set or invalid
+    if (!(bytes >=4 && bytes <= 32 && isPowerOf2_32(bytes)))
+        bytes = BundleConfig::LOAD_DEFAULT_BYTES_PER_LANE;
+    return bytes;
+}
 
 FunctionPass* IGC::createLdStCombinePass() {
     return new LdStCombine();

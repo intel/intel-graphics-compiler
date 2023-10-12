@@ -663,12 +663,12 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createPrepareLoadsStoresPass());
         }
 
-        // run AdvMemOpt and MemOPt back-to-back so that we only
+        // run AdvMemOpt and MemOPt back-to-back so that we only
         // need to run WIAnalysis once
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
             mpm.add(createAdvMemOptPass());
 
-        if (IGC_IS_FLAG_ENABLED(EnableLdStCombine) &&
+        if (doLdStCombine(&ctx) &&
             ctx.type == ShaderType::OPENCL_SHADER)
         {
             // start with OCL, will apply to others.
