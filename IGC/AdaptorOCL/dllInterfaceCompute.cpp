@@ -1177,6 +1177,20 @@ bool TranslateBuildSPMD(
                 llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
             }
         }
+        // Reduce default unroll-partial-threshold value to 100.
+        // The aggressive partial unroll lead to performance issues due to increase
+        // of register pressure and code divergency. The reduced partial unroll
+        // threshold value fixes these performance defects.
+        llvm::StringRef partialUnrollFlag = "-unroll-partial-threshold=100";
+        auto partialUnrollSwitch = optionsMap.find(partialUnrollFlag.trim("-=100"));
+        if (partialUnrollSwitch != optionsMap.end())
+        {
+            if (partialUnrollSwitch->getValue()->getNumOccurrences() == 0)
+            {
+                const char* const args[] = { "igc", partialUnrollFlag.data() };
+                llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
+            }
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(QualityMetricsEnable))
