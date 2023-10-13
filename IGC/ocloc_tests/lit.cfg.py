@@ -46,6 +46,7 @@ if llvm_config.add_tool_substitutions([ToolSubst('ocloc', unresolved='break')], 
 
 llvm_config.add_tool_substitutions([ToolSubst('llvm-dwarfdump')], tool_dirs)
 llvm_config.add_tool_substitutions([ToolSubst('opt')], tool_dirs)
+llvm_config.add_tool_substitutions([ToolSubst('not')], tool_dirs)
 
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
