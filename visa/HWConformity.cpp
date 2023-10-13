@@ -5450,6 +5450,10 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
       inst->setDest(newDst);
     }
   }
+
+  if (!builder.supportFloatOr64bRegioning()) {
+    fixUnalignedRegions(it, bb);
+  }
 }
 
 void HWConformity::fixCalla(INST_LIST_ITER it, G4_BB *bb) {
