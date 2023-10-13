@@ -18036,6 +18036,33 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(varOffset);
+
+    // This operation is to avoid unaligned addresses on inactive lanes.
+    // The most accurate way to address a subspan issue caused by non-uniformness
+    // of quads/subgroups related to computations of derivatives is to copy the nearest neighbor
+    // as a part of its quad/subgroup instead of enabling a no_mask flag.
+    bool alignAddressInInactiveLanes =
+        m_encoder->IsSubSpanDestination() && !eOffset->IsUniform();
+    if (alignAddressInInactiveLanes)
+    {
+        uint32_t origTypeSize = CEncoder::GetCISADataTypeSize(eOffset->GetType());
+        const VISA_Type aliasType = ISA_TYPE_UW;
+        uint32_t aliasTypeSize = CEncoder::GetCISADataTypeSize(aliasType);
+        uint32_t stride = origTypeSize / aliasTypeSize;
+        CVariable* shortOffVar = m_currShader->GetNewAlias(eOffset, aliasType, 0,
+            eOffset->GetNumberElement() * origTypeSize / aliasTypeSize);
+        CVariable* maskVar = m_currShader->ImmToVariable(~(align - 1), shortOffVar->GetType());
+        for (uint instance = 0; instance < eOffset->GetNumberInstance(); instance++)
+        {
+            m_encoder->SetSecondHalf(instance == 1);
+            m_encoder->SetSrcRegion(0, stride, 1, 0);
+            m_encoder->SetDstRegion(stride);
+            m_encoder->And(shortOffVar, shortOffVar, maskVar);
+            m_encoder->Push();
+            m_encoder->SetSecondHalf(false);
+        }
+    }
+
     if (useA32)
     {
         eOffset = TruncatePointer(eOffset);
