@@ -1524,6 +1524,7 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
     // Non-predicate result.
     if (Width * BytesPerElement > TwoGRFWidth)
       Width = TwoGRFWidth / BytesPerElement;
+    IGC_ASSERT_EXIT(Width > 0);
     Width = 1 << genx::log2(Width);
   } else {
     // Predicate result. This is to handle and/or/xor/not of predicates; cmp's
@@ -1565,6 +1566,7 @@ LegalPredSize GenXLegalization::getLegalPredSize(Value *Pred, Type *ElementTy,
   // the part. For example. if the offset is 4 or 12, the size must be 4, not 8
   // or 16.
   LogMax = std::min(LogMax, findFirstSet(StartIdx - PP.Offset));
+  IGC_ASSERT_EXIT(LogMax < 32);
   Ret.Max = 1 << LogMax;
   // If Min>Max, then we're at the end of that part and we don't need to ensure
   // that the next split in the same part is legally aligned.

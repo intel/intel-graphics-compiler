@@ -1241,7 +1241,7 @@ static auto findRecord(const DependencyGraph::ElemMapping &IdxMap, Type *Ty,
   auto FindIt = llvm::find_if(IdxMap, [Ty, Idx, FirstMatch](auto &&List) {
     return isElementInList(List, Ty, Idx, FirstMatch);
   });
-  IGC_ASSERT_MESSAGE(FindIt != IdxMap.end(), "Record has to be found!");
+  IGC_ASSERT_EXIT_MESSAGE(FindIt != IdxMap.end(), "Record has to be found!");
   return FindIt;
 };
 
@@ -1330,7 +1330,7 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
 static Instruction *findProperInstruction(
     Type *Ty, const std::unordered_map<Type *, Instruction *> &NewInstr) {
   auto FindInstrIt = NewInstr.find(Ty);
-  IGC_ASSERT_MESSAGE(
+  IGC_ASSERT_EXIT_MESSAGE(
       FindInstrIt != NewInstr.end(),
       "Cannot find instruction according to split structure type.");
   return FindInstrIt->second;
@@ -1371,7 +1371,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
                         // while processing arrays and vectors of structures.
                         return getBaseTy(PossibleTy) == &PlainType;
                       });
-                  IGC_ASSERT_MESSAGE(FindIt != ListOfPossibleTypes.end(),
+                  IGC_ASSERT_EXIT_MESSAGE(FindIt != ListOfPossibleTypes.end(),
                                      "No substitution type.");
                   // Skip indices if it gives unwrapped type.
                   if (!FindIt->isUnwrapped())

@@ -429,7 +429,7 @@ void VectorDecomposer::setNotDecomposing(Instruction *Inst, const char *Text) {
   }
   if (!Inst)
     Inst = NotDecomposingReportInst;
-  IGC_ASSERT(Inst);
+  IGC_ASSERT_EXIT(Inst);
   if (Inst->getDebugLoc())
     Inst = Inst->getParent()->getFirstNonPHI();
   reportLocation(Inst->getContext(), Inst->getDebugLoc(), dbgs());

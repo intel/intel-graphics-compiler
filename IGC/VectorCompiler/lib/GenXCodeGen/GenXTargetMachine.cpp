@@ -173,7 +173,7 @@ TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function& F)
 #endif
 {
   GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC);
-  return TargetTransformInfo(GTTI);
+  return TargetTransformInfo(std::move(GTTI));
 }
 
 } // namespace llvm

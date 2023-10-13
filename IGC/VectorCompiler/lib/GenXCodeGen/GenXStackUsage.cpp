@@ -170,7 +170,7 @@ void StackAnalysis::visitFunction(Function &F) {
 llvm::Optional<std::pair<uint64_t, alignment_t>>
 StackAnalysis::checkFunction(Function &F) {
   auto pOnF = m_ProcessedFs.find(&F);
-  IGC_ASSERT_MESSAGE(pOnF != m_ProcessedFs.end(),
+  IGC_ASSERT_EXIT_MESSAGE(pOnF != m_ProcessedFs.end(),
                      "Function must be inserted before checking");
 
   auto &StateOfF = pOnF->second;

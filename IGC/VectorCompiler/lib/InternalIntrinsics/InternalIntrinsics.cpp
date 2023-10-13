@@ -365,6 +365,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
       return IGCLLVM::FixedVectorType::get(EltTy, VTy->getNumElements());
     }
     IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
+    break;
   }
   case IITDescriptor::PtrToArgument: {
     Type *Ty = Tys[D.getArgumentNumber()];

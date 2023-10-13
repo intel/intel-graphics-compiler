@@ -604,7 +604,7 @@ void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
   LLVM_DEBUG(dbgs() << "Replace SimpleValues: from " << OldVal << " to "
                     << NewVal << "\n");
   LiveRangeMap_t::iterator i = LiveRangeMap.find(OldVal);
-  IGC_ASSERT(i != end());
+  IGC_ASSERT_EXIT(i != end());
   LiveRange *LR = i->second;
   LiveRangeMap.erase(i);
   LiveRangeMap[NewVal] = LR;
@@ -779,7 +779,7 @@ Value *GenXLiveness::getUnifiedRetIfExist(Function *F) const {
  */
 Value *GenXLiveness::createUnifiedRet(Function *F) {
   IGC_ASSERT_MESSAGE(!F->isDeclaration(), "must be a function definition");
-  IGC_ASSERT_MESSAGE(UnifiedRets.find(F) == UnifiedRets.end(),
+  IGC_ASSERT_EXIT_MESSAGE(UnifiedRets.find(F) == UnifiedRets.end(),
     "Unified ret must not have been already created");
   Type *Ty = F->getReturnType();
   IGC_ASSERT(!Ty->isVoidTy());
@@ -1507,7 +1507,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
   // The above scheme does not work for an address conversion added by
   // GenXArgIndirection. Instead we have AddressBaseMap to provide the mapping.
   auto i = ArgAddressBaseMap.find(Addr);
-  IGC_ASSERT_MESSAGE(i != ArgAddressBaseMap.end(),
+  IGC_ASSERT_EXIT_MESSAGE(i != ArgAddressBaseMap.end(),
     "base register not found for address");
   Value *BaseV = i->second;
   LiveRange *LR = getLiveRange(BaseV);

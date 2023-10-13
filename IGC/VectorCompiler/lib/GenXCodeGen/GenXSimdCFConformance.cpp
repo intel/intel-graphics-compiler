@@ -4398,7 +4398,7 @@ void GenXSimdCFConformance::replaceGetEMUse(Instruction *Inst,
     } else {
       // Replace with lowered EM
       auto it = LoweredEMValsMap.find(JPData.getRealEM());
-      IGC_ASSERT_MESSAGE(it != LoweredEMValsMap.end(),
+      IGC_ASSERT_EXIT_MESSAGE(it != LoweredEMValsMap.end(),
                          "Should be checked earlier");
       Instruction *LoweredEM = cast<Instruction>(it->second);
       Inst->setOperand(i, LoweredEM);

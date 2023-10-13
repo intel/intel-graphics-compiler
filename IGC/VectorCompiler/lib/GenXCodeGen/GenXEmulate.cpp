@@ -1194,6 +1194,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
     IGC_ASSERT_MESSAGE(0, "unknown intrinsic passed to saturation add emu");
   }
 
+  IGC_ASSERT_EXIT(Result);
   if (Result->getType() != CI.getType()) {
     auto TruncID = (IID == GenXIntrinsic::genx_uuadd_sat)
                        ? GenXIntrinsic::genx_uutrunc_sat

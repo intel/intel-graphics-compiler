@@ -346,6 +346,7 @@ Alignment Alignment::merge(Alignment Other) const
     MinLogAlign = std::min(MinLogAlign,
       (unsigned)countTrailingZeros(DisagreeExtraBits, ZB_Width));
   }
+  IGC_ASSERT_EXIT(MinLogAlign < 32);
   return Alignment(MinLogAlign, ExtraBits & ((1 << MinLogAlign) - 1));
 }
 
@@ -365,6 +366,7 @@ Alignment Alignment::add(Alignment Other) const
     MinLogAlign = std::min(MinLogAlign,
       (unsigned)countTrailingZeros(ExtraBits2, ZB_Width));
   }
+  IGC_ASSERT_EXIT(MinLogAlign < 32);
   return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
 }
 
@@ -390,6 +392,7 @@ Alignment Alignment::mul(Alignment Other) const
     MinLogAlign = std::min(MinLogAlign,
       (unsigned)countTrailingZeros(ExtraBits2, ZB_Width));
   }
+  IGC_ASSERT_EXIT(MinLogAlign < 32);
   return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
 }
 
@@ -409,6 +412,7 @@ Alignment Alignment::logicalOp(ConstantInt *CI, SelectFunction F) const {
   unsigned ValLSB = countTrailingZeros(UVal, ZB_Width);
   // Chop off constant bits according to log align
   unsigned NewLogAlign = F(ValLSB, LogAlign);
+  IGC_ASSERT_EXIT(NewLogAlign < 32);
   return Alignment(NewLogAlign, UVal & ((1 << NewLogAlign) - 1));
 }
 
