@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/Support/Debug.h"
 
 #include "Probe/Assertion.h"
 #include "vc/Utils/General/IndexFlattener.h"
@@ -57,7 +58,7 @@ LiveElements LiveElements::operator|=(const LiveElements &Rhs) {
   return *this;
 }
 
-void LiveElements::dump(raw_ostream &OS) const {
+void LiveElements::print(raw_ostream &OS) const {
   SmallVector<std::string, 2> LiveElemsStr;
   LiveElemsStr.reserve(LiveElems.size());
 
@@ -71,6 +72,13 @@ void LiveElements::dump(raw_ostream &OS) const {
 
   OS << '{' << join(LiveElemsStr, ", ") << '}';
 }
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void LiveElements::dump() const {
+  print(dbgs());
+  dbgs() << "\n";
+}
+#endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 
 LiveElements LiveElementsAnalysis::getLiveElements(const Value *V) const {
   if (auto It = LiveMap.find(V); It != LiveMap.end())
@@ -263,7 +271,7 @@ LiveElements LiveElementsAnalysis::getOperandLiveElements(
   auto OpTy = Inst->getOperand(OperandNo)->getType();
 
   if (InstLiveElems.isAllDead() && !Inst->mayHaveSideEffects())
-    return LiveElements(OpTy);
+    return LiveElements(OpTy, false);
 
   if (auto BCI = dyn_cast<BitCastInst>(Inst))
     return getBitCastLiveElements(BCI, InstLiveElems);
@@ -299,8 +307,17 @@ LiveElements LiveElementsAnalysis::getOperandLiveElements(
   if (ID == GenXIntrinsic::genx_addc || ID == GenXIntrinsic::genx_subb)
     return getTwoDstInstLiveElements(InstLiveElems);
 
-  if (isElementWise(Inst))
-    return InstLiveElems;
+  auto OpLiveElems = LiveElements(OpTy);
+  if (isElementWise(Inst) && InstLiveElems.size() == OpLiveElems.size()) {
+    bool EqualSize = true;
+    for (unsigned Idx = 0; Idx < InstLiveElems.size(); Idx++)
+      if (InstLiveElems[Idx].size() != OpLiveElems[Idx].size()) {
+        EqualSize = false;
+        break;
+      }
+    if (EqualSize)
+      return InstLiveElems;
+  }
 
   return LiveElements(OpTy, true);
 }
@@ -361,14 +378,18 @@ void LiveElementsAnalysis::processFunction(const Function &F) {
     }
   }
 
-  if (PrintLiveElementsInfo)
-    print(outs());
-}
-
-void LiveElementsAnalysis::print(raw_ostream &OS) const {
-  OS << "Live elements:\n";
-  for (const auto &LiveElem : LiveMap)
-    OS << *LiveElem.first << ": " << LiveElem.second << '\n';
+  if (PrintLiveElementsInfo) {
+    outs() << "Live elements for " << F.getName() << ":\n";
+    for (auto &I : instructions(F)) {
+      outs() << I << " ";
+      auto It = LiveMap.find(&I);
+      if (It != LiveMap.end())
+        outs() << It->second;
+      else
+        outs() << LiveElements(I.getType());
+      outs() << "\n";
+    }
+  }
 }
 
 char GenXFuncLiveElements::ID = 0;

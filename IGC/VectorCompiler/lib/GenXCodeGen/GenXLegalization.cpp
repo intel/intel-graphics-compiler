@@ -152,6 +152,7 @@ SPDX-License-Identifier: MIT
 #include "GenXAlignmentInfo.h"
 #include "GenXBaling.h"
 #include "GenXIntrinsics.h"
+#include "GenXLiveElements.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
@@ -213,6 +214,7 @@ struct LegalPredSize {
 class GenXLegalization : public FunctionPass {
   enum { DETERMINEWIDTH_UNBALE = 0, DETERMINEWIDTH_NO_SPLIT = 256 };
   GenXBaling *Baling = nullptr;
+  GenXFuncLiveElements *LE = nullptr;
   const GenXSubtarget *ST = nullptr;
   DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;
@@ -406,6 +408,7 @@ void initializeGenXLegalizationPass(PassRegistry &);
 INITIALIZE_PASS_BEGIN(GenXLegalization, "GenXLegalization", "GenXLegalization",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXFuncBaling)
+INITIALIZE_PASS_DEPENDENCY(GenXFuncLiveElements)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXLegalization, "GenXLegalization", "GenXLegalization",
@@ -418,6 +421,7 @@ FunctionPass *llvm::createGenXLegalizationPass() {
 
 void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXFuncBaling>();
+  AU.addRequired<GenXFuncLiveElements>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<TargetPassConfig>();
   AU.addRequired<DominatorTreeWrapperPass>();
@@ -430,6 +434,7 @@ void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
  */
 bool GenXLegalization::runOnFunction(Function &F) {
   Baling = &getAnalysis<GenXFuncBaling>();
+  LE = &getAnalysis<GenXFuncLiveElements>();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
@@ -1422,6 +1427,50 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     // (e.g. bfi disallows width 2 but allows 1). Try a smaller width.
     IGC_ASSERT(Width != 1);
     Width >>= 1;
+  }
+  if (Width > 1) {
+    // Try to reduce width to isolate dead parts of the vector if there are any
+    Value *Dest = Head->Inst;
+    if (Head->Info.Type == BaleInfo::WRREGION ||
+        Head->Info.Type == BaleInfo::WRPREDREGION ||
+        Head->Info.Type == BaleInfo::WRPREDPREDREGION)
+      Dest = Head->Inst->getOperand(1);
+    const auto &LiveElems = LE->getLiveElements(Dest);
+    if (LiveElems.size() == 1 && !LiveElems.isAllDead() &&
+        LiveElems.isAnyDead()) {
+      // Value is not aggregate and vector contains both dead and live parts
+      IGC_ASSERT(LiveElems[0].size() == WholeWidth);
+      // Execution mask must be 4 aligned, which is important for predicates
+      unsigned FirstLive = LiveElems[0].find_first() & ~3U;
+      // Dead parts don't need to be aligned, because the will be removed anyway
+      unsigned LastLive = LiveElems[0].find_last();
+      if (StartIdx <= FirstLive && StartIdx + Width >= FirstLive ||
+          StartIdx <= LastLive && StartIdx + Width >= LastLive) {
+        // Instruction with current width crosses the boundary between live
+        // and dead parts
+        FirstLive = std::max(FirstLive, StartIdx);
+        LastLive = std::min(LastLive, StartIdx + Width);
+        unsigned LiveSize = LastLive - FirstLive + 1;
+        unsigned LiveWidth = 1;
+        while (LiveWidth < LiveSize)
+          LiveWidth <<= 1;
+        if (LiveWidth < Width) {
+          // Live part can fit in a single instruction with smaller width
+          unsigned NewWidth = LiveWidth;
+          if (StartIdx < FirstLive) {
+            // In this iteration we have to split preceding zeroes
+            // Determine the largest width not crossing the live part's boundary
+            unsigned DeadSize = FirstLive - StartIdx;
+            unsigned DeadWidth = Width;
+            while (DeadWidth > DeadSize)
+              DeadWidth >>= 1;
+            NewWidth = DeadWidth;
+          }
+          if (ExecSizeAllowedBits & NewWidth)
+            Width = NewWidth;
+        }
+      }
+    }
   }
   if (Width != WholeWidth && IsReadSameVector &&
       CurSplitKind == SplitKind_Normal) {

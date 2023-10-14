@@ -88,7 +88,10 @@ public:
 
   LiveElements operator|=(const LiveElements &Rhs);
 
-  void dump(raw_ostream &OS) const;
+  void print(raw_ostream &OS) const;
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  void dump() const;
+#endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 };
 
 inline LiveElements operator|(const LiveElements &Lhs,
@@ -99,7 +102,7 @@ inline LiveElements operator|(const LiveElements &Lhs,
 }
 
 inline raw_ostream &operator<<(raw_ostream &OS, const LiveElements &LE) {
-  LE.dump(OS);
+  LE.print(OS);
   return OS;
 }
 
@@ -117,8 +120,6 @@ public:
 
   LiveElements getLiveElements(const Value *V) const;
   LiveElements getLiveElements(const Use *U) const;
-
-  void print(raw_ostream &OS) const;
 
 private:
   ValueMap<const Value *, genx::LiveElements> LiveMap;
@@ -165,10 +166,6 @@ public:
   bool runOnFunction(Function &F) override {
     processFunction(F);
     return false;
-  }
-
-  void print(raw_ostream &OS, const Module *M) const override {
-    genx::LiveElementsAnalysis::print(OS);
   }
 };
 
