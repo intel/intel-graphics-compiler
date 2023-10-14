@@ -2561,8 +2561,6 @@ namespace {
         bool getAddressDiffIfConstant(Instruction* I0, Instruction* I1, int64_t& ConstBO);
 
         // Create unique identified struct type
-        SmallVector<StructType*, 16> m_allLayoutStructTypes;
-        void initLayoutStructType(Module* M);
         StructType* getOrCreateUniqueIdentifiedStructType(
             ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked = true);
 
@@ -2576,7 +2574,6 @@ namespace {
             m_visited.clear();
             m_instOrder.clear();
             m_bundles.clear();
-            m_allLayoutStructTypes.clear();
         }
     };
 }
@@ -2798,8 +2795,6 @@ bool LdStCombine::runOnFunction(Function& F)
         m_WI = &getAnalysis<WIAnalysis>();
     }
     m_F = &F;
-
-    initLayoutStructType(m_F->getParent());
 
     // Initialize symbolic evaluation
     m_symEval.setDataLayout(m_DL);
@@ -3423,23 +3418,6 @@ void LdStCombine::mergeConstElements(
     EltVals.insert(EltVals.end(), mergedElts.begin(), mergedElts.end());
 }
 
-// Get all layout struct types created already for different functions in
-// the same module.
-//
-// This is for creating unique struct layout type per module. Layout
-// struct type is identified, but if two identified layout structs are
-// the same layout, they are the same.
-void LdStCombine::initLayoutStructType(Module* M)
-{
-    auto modAllNamedStructTys = M->getIdentifiedStructTypes();
-    for (auto II : modAllNamedStructTys) {
-        StructType* stTy = II;
-        if (isLayoutStructType(stTy)) {
-            m_allLayoutStructTypes.push_back(stTy);
-        }
-    }
-}
-
 // This is to make sure to reuse the layout types. Two identified structs have
 // the same layout if
 //   1. both are SOA or both are AOS; and
@@ -3448,7 +3426,8 @@ void LdStCombine::initLayoutStructType(Module* M)
 StructType* LdStCombine::getOrCreateUniqueIdentifiedStructType(
     ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked)
 {
-    for (auto II : m_allLayoutStructTypes) {
+    auto& layoutStructTypes = m_CGC->getLayoutStructTypes();
+    for (auto II : layoutStructTypes) {
         StructType* stTy = II;
         if (IsPacked == stTy->isPacked() &&
             IsSOA == isLayoutStructTypeSOA(stTy) &&
@@ -3460,7 +3439,7 @@ StructType* LdStCombine::getOrCreateUniqueIdentifiedStructType(
     StructType* StTy = StructType::create(EltTys,
         IsSOA ? getStructNameForSOALayout() : getStructNameForAOSLayout(),
         IsPacked);
-    m_allLayoutStructTypes.push_back(StTy);
+    layoutStructTypes.push_back(StTy);
     return StTy;
 }
 

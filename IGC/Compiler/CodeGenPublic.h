@@ -849,6 +849,8 @@ namespace IGC
         SafeIntrinsicIDCacheTy m_SafeIntrinsicIDCache;
         /// metadata caching
         UserAddrSpaceMD m_UserAddrSpaceMD;
+        // structType caching : for unique identified struct type
+        llvm::SmallVector<llvm::StructType*, 16> m_allLayoutStructTypes;
         void AddRef();
         void Release();
     };
@@ -1100,6 +1102,10 @@ namespace IGC
         UserAddrSpaceMD& getUserAddrSpaceMD() {
             IGC_ASSERT(llvmCtxWrapper);
             return llvmCtxWrapper->m_UserAddrSpaceMD;
+        }
+        llvm::SmallVector<llvm::StructType*, 16>& getLayoutStructTypes() {
+            IGC_ASSERT(llvmCtxWrapper);
+            return llvmCtxWrapper->m_allLayoutStructTypes;
         }
 
         unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
