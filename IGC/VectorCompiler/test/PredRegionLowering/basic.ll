@@ -47,4 +47,12 @@ define spir_func void @test_rd_and_wrpredregion_bale(<32 x i1> %pred, <32 x i1> 
 ; CHECK: %[[wrpr:.*]] = call <32 x i1> @llvm.genx.wrpredregion.v32i1.v16i1(<32 x i1> %pred2, <16 x i1> %[[cmp]], i32 16)
 }
 
+; CHECK-LABEL: test_const_wrpredregion
+; CHECK-NOT: select
+; CHECK-NOT: icmp
+define spir_func void @test_const_wrpredregion(<32 x i1> %pred) #0 {
+  %pred.wrpr = call <32 x i1> @llvm.genx.wrpredregion.v32i1.v16i1(<32 x i1> %pred, <16 x i1> <i1 true, i1 false, i1 true, i1 false, i1 true, i1 false, i1 true, i1 false, i1 true, i1 false, i1 true, i1 false, i1 true, i1 false, i1 true, i1 false>, i32 16)
+  ret void
+}
+
 attributes #0 = { "CMStackCall" }

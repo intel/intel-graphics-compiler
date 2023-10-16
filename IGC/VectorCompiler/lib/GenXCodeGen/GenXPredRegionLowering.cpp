@@ -218,9 +218,11 @@ void GenXPredRegionLowering::processWrPredRegionBales() {
 void GenXPredRegionLowering::processWrPredRegion(Instruction &WrPredRegion) {
   IGC_ASSERT(vc::getAnyIntrinsicID(&WrPredRegion) ==
              GenXIntrinsic::genx_wrpredregion);
-  IRBuilder<> IRB(&WrPredRegion);
-
   Value *NewPred = WrPredRegion.getOperand(PredRegion::NewValueOperandNum);
+  // If wrpred has a constant input, it will be represented as SETP in vISA
+  if (isa<Constant>(NewPred))
+    return;
+  IRBuilder<> IRB(&WrPredRegion);
   Value *Sel = createSelect(*NewPred, IRB);
   NewPred = createPredWithICmp(*Sel, IRB);
 
