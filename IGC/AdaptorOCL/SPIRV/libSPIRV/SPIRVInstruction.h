@@ -1331,29 +1331,30 @@ protected:
   SPIRVExtInstSetKind ExtSetKind;
 };
 
-class SPIRVCompositeExtract:public SPIRVInstruction {
+class SPIRVCompositeExtractBase:public SPIRVInstTemplateBase {
 public:
-  const static Op OC = OpCompositeExtract;
-  // Incomplete constructor
-  SPIRVCompositeExtract():SPIRVInstruction(OC), Composite(SPIRVID_INVALID){}
-
-  SPIRVValue *getComposite() { return getValue(Composite);}
-  const std::vector<SPIRVWord>& getIndices()const { return Indices;}
-protected:
-  void setWordCount(SPIRVWord TheWordCount) {
-    SPIRVEntry::setWordCount(TheWordCount);
-    Indices.resize(TheWordCount - 4);
+  SPIRVValue* getComposite() { return getValue(Ops[0]); }
+  const std::vector<SPIRVWord> getIndices() const {
+    return std::vector<SPIRVWord>(Ops.begin() + 1, Ops.end());
   }
-  _SPIRV_DEF_DEC4(Type, Id, Composite, Indices)
+
+protected:
   // ToDo: validate the result type is consistent with the base type and indices
   // need to trace through the base type for struct types
-  void validate()const {
+  void validate() const override {
     SPIRVInstruction::validate();
-    IGC_ASSERT(getValueType(Composite)->isTypeArray() || getValueType(Composite)->isTypeStruct() || getValueType(Composite)->isTypeVector());
+    IGC_ASSERT(OpCode == OpCompositeExtract);
+    SPIRVId Composite = Ops[0];
+    (void)Composite;
+    IGC_ASSERT(getValueType(Composite)->isTypeArray() ||
+      getValueType(Composite)->isTypeStruct() ||
+      getValueType(Composite)->isTypeVector());
   }
-  SPIRVId Composite;
-  std::vector<SPIRVWord> Indices;
 };
+
+typedef SPIRVInstTemplate<SPIRVCompositeExtractBase, OpCompositeExtract, true,
+  4, true>
+  SPIRVCompositeExtract;
 
 class SPIRVCompositeInsert:public SPIRVInstruction {
 public:

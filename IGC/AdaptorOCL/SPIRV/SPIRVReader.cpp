@@ -3648,23 +3648,21 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpCompositeExtract: {
     SPIRVCompositeExtract *CE = static_cast<SPIRVCompositeExtract *>(BV);
-    auto Type = CE->getComposite()->getType();
-    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    if (Type->isTypeVector())
-    {
+    IRBuilder<> Builder(*Context);
+    if (BB) {
+        Builder.SetInsertPoint(BB);
+    }
+    if (CE->getComposite()->getType()->isTypeVector()) {
         IGC_ASSERT_MESSAGE(CE->getIndices().size() == 1, "Invalid index");
-        return mapValue(BV, ExtractElementInst::Create(
-            transValue(CE->getComposite(), F, BB),
-            ConstantInt::get(*Context, APInt(32, CE->getIndices()[0])),
-            BV->getName(), BB));
+        return mapValue(
+            BV, Builder.CreateExtractElement(
+                transValue(CE->getComposite(), F, BB),
+                ConstantInt::get(*Context, APInt(32, CE->getIndices()[0])),
+                BV->getName()));
     }
-    else
-    {
-        return mapValue(BV, ExtractValueInst::Create(
-            transValue(CE->getComposite(), F, BB),
-            CE->getIndices(),
-            BV->getName(), BB));
-    }
+    return mapValue(
+        BV, Builder.CreateExtractValue(transValue(CE->getComposite(), F, BB),
+            CE->getIndices(), BV->getName()));
     }
     break;
 
