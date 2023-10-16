@@ -5781,7 +5781,7 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
   }
 
   // check dependency within each instruction
-  if (hasInternalDependenceWithinDPAS(curNode)) {
+  if (hasInternalDependenceWithinDPAS(nextNode)) {
     return true;
   }
 
@@ -6168,7 +6168,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     // a DPAS block At the same time, push all dependence BD to the last
     // instruction. Keeping the dependence within a DPAS block will drop
     // performance a lot.
-    if (curInst->isDpas()) {
+    if (curInst->isDpas() && !hasInternalDependenceWithinDPAS(node)) {
       auto DpasRSWAInsertionPos = iInst;
       unsigned dpas_count = 0;
       if (nextInst && nextInst->isDpas()) {
