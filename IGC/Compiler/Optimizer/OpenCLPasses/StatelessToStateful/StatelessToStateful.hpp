@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -151,11 +152,6 @@ namespace IGC
         // can be on or off, which is indicated by this boolean flag.
         bool       m_hasOptionalBufferOffsetArg;
 
-        // For historic reason, kernel ptrArgs, such as char*, short*, are assumed to
-        // be aligned on DW (which is stronger than what OCL's natural alignment) in this
-        // stateful optimization.  If this is not a case, this arg should be set to true!
-        bool       m_hasSubDWAlignedPtrArg;
-
         // When true, every messages that are in ptrArg + offset will have offset >= 0.
         bool       m_hasPositivePointerOffset;
 
@@ -171,6 +167,7 @@ namespace IGC
                 : nullptr);
         }
 
+        OpenCLProgramContext* m_ctx;
         ImplicitArgs* m_pImplicitArgs;
         KernelArgs* m_pKernelArgs;
         ArgInfoMap   m_argsInfo;

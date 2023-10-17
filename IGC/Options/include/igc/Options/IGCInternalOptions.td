@@ -39,9 +39,6 @@ defm buffer_offset_arg_required : CommonFlag<"buffer-offset-arg-required">;
 // -cl-intel-has-positive-pointer-offset, -ze-opt-has-positive-pointer-offset
 defm has_positive_pointer_offset : CommonFlag<"has-positive-pointer-offset">;
 
-// -cl-intel-has-subDW-aligned-ptr-arg, -ze-opt-has-subDW-aligned-ptr-arg
-defm has_subdw_aligned_ptr_arg : CommonFlag<"has-subDW-aligned-ptr-arg">;
-
 // -cl-intel-disable-a64WA
 defm disable_a64wa : CommonFlag<"disable-a64WA">;
 

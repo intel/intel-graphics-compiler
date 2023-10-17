@@ -293,11 +293,6 @@ namespace IGC
             IntelHasPositivePointerOffset = true;
         }
 
-        if (internalOptions.hasArg(OPT_has_subdw_aligned_ptr_arg_common))
-        {
-            IntelHasSubDWAlignedPtrArg = true;
-        }
-
         if (internalOptions.hasArg(OPT_disable_a64wa_common))
         {
             IntelDisableA64WA = true;
