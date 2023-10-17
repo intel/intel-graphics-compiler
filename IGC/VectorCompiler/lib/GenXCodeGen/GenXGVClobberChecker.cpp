@@ -132,7 +132,8 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
 
     const StringRef DiagPrefix = "potential clobbering detected:";
 
-    if (auto *SI = genx::getInterveningGVStoreOrNull(LI, UI, SIs)) {
+    if (auto *SI =
+            genx::getInterveningVStoreOrNull(LI, UI, true, nullptr, SIs)) {
       vc::diagnose(LI->getContext(), DiagPrefix,
                    "found a vstore intervening before value usage ", DS_Warning,
                    vc::WarningName::Generic, UI);
@@ -195,10 +196,10 @@ bool GenXGVClobberChecker::runOnModule(Module &M) {
   for (auto &F : M.functions()) {
     for (auto &BB : F)
       for (auto &I : BB)
-        if (genx::isGlobalVolatileLoad(&I))
+        if (genx::isAGVLoad(&I))
           Loads.insert(&I);
         else if (CheckGVClobberingCollectRelatedGVStoreCallSites &&
-                 genx::isGlobalVolatileStore(&I))
+                 genx::isAGVStore(&I))
           genx::collectRelatedCallSitesPerFunction(
               &I, nullptr,
               ClobberingInsns[genx::getBitCastedValue(I.getOperand(1))]);

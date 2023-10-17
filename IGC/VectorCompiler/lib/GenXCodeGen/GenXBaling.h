@@ -395,13 +395,17 @@ protected:
   GenXLiveness *Liveness; // only in group baling
 public:
   genx::AlignmentInfo AlignInfo;
-public:
+
+  // Baling class can be used as a standalone utility, so this constructor
+  // remains public.
   explicit GenXBaling(BalingKind BKind, const GenXSubtarget *Subtarget)
       : Kind(BKind), ST(Subtarget), Liveness(nullptr), DT(nullptr) {}
+
+public:
   // clear : clear out the analysis
   void clear() { InstMap.clear(); }
   // processFunction : process one Function
-  bool processFunction(Function *F);
+  bool processFunction(Function &F, const DominatorTree &DT);
   // processInst : recalculate the baling info for an instruction
   void processInst(Instruction *Inst);
   // getBaleInfo : get BaleInfo for an instruction
@@ -485,7 +489,7 @@ private:
   bool isSafeToMove(Instruction *Op, Instruction *From, Instruction *To);
 
   // Cleanup and optimization before do baling on a function.
-  bool prologue(Function *F);
+  bool preBalingCleanAndOptimize(Function &F);
 };
 
 //----------------------------------------------------------------------
@@ -497,22 +501,22 @@ public:
   explicit GenXFuncBaling(BalingKind Kind = BalingKind::BK_Legalization,
                           const GenXSubtarget *ST = nullptr)
       : FunctionPass(ID), GenXBaling(Kind, ST) {}
-  StringRef getPassName() const override {
+  StringRef getPassName() const final {
     return "GenX instruction baling analysis for a function";
   }
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
-  bool runOnFunction(Function &F) override {
+  void getAnalysisUsage(AnalysisUsage &AU) const final;
+  bool runOnFunction(Function &F) final {
     clear();
-    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-    return processFunction(&F);
+    return processFunction(
+        F, getAnalysis<DominatorTreeWrapperPass>().getDomTree());
   }
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
   Pass *createPrinterPass(raw_ostream &O,
-                          const std::string &Banner) const override {
+                          const std::string &Banner) const final {
     return createGenXPrinterPass(O, Banner);
   }
-  void print(raw_ostream &OS, const Module *M) const override {
+  void print(raw_ostream &OS, const Module *M) const final {
     GenXBaling::print(OS);
   }
 };
@@ -531,11 +535,11 @@ public:
   static StringRef getPassName() {
     return "GenX instruction baling analysis for a function group";
   }
-  void releaseMemory() override { clear(); }
+  void releaseMemory() final { clear(); }
   static void getAnalysisUsage(AnalysisUsage &AU);
-  bool runOnFunctionGroup(FunctionGroup &FG) override;
+  bool runOnFunctionGroup(FunctionGroup &FG) final;
   // processFunctionGroup : process all the Functions in a FunctionGroup
-  bool processFunctionGroup(FunctionGroup *FG);
+  bool processFunctionGroup(FunctionGroup &FG);
 };
 void initializeGenXGroupBalingWrapperPass(PassRegistry &);
 using GenXGroupBalingWrapper = FunctionGroupWrapperPass<GenXGroupBaling>;

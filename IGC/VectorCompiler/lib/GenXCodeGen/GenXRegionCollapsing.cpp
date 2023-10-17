@@ -865,44 +865,6 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
   WrRegion->replaceAllUsesWith(Res);
 }
 
-// Check whether two values are bitwise identical.
-static bool isBitwiseIdentical(Value *V1, Value *V2, const DominatorTree *DT) {
-  IGC_ASSERT_MESSAGE(V1, "null value");
-  IGC_ASSERT_MESSAGE(V2, "null value");
-  if (V1 == V2)
-    return true;
-  if (BitCastInst *BI = dyn_cast<BitCastInst>(V1))
-    V1 = BI->getOperand(0);
-  if (BitCastInst *BI = dyn_cast<BitCastInst>(V2))
-    V2 = BI->getOperand(0);
-
-  // Special case arises from vload/vstore.
-  if (GenXIntrinsic::isVLoad(V1) && GenXIntrinsic::isVLoad(V2)) {
-    auto L1 = cast<CallInst>(V1);
-    auto L2 = cast<CallInst>(V2);
-
-    // Loads from global variables.
-    auto *GV1 = vc::getUnderlyingGlobalVariable(L1->getOperand(0));
-    auto *GV2 = vc::getUnderlyingGlobalVariable(L2->getOperand(0));
-    Value *Addr = L1->getOperand(0);
-    if (GV1 && GV1 == GV2)
-      // OK.
-      Addr = GV1;
-    else if (L1->getOperand(0) != L2->getOperand(0))
-      // Check if loading from the same location.
-      return false;
-    else if (!isa<AllocaInst>(Addr))
-      // Check if this pointer is local and only used in vload/vstore.
-      return false;
-
-    // Check if there is no store to the same location in between.
-    return !genx::hasMemoryDeps(L1, L2, Addr, DT);
-  }
-
-  // Cannot prove.
-  return false;
-}
-
 /***********************************************************************
  * processWrRegion : process a wrregion
  *
@@ -949,7 +911,8 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
   if (!GenXIntrinsic::isRdRegion(OuterRd))
     return OuterWr;
   IGC_ASSERT(OuterRd);
-  if (!isBitwiseIdentical(OuterRd->getOperand(0), OuterWr->getOperand(0), DT))
+  if (!genx::isBitwiseIdentical(OuterRd->getOperand(0), OuterWr->getOperand(0),
+                                DT))
     return OuterWr;
   if (GenXIntrinsic::isReadPredefReg(OuterRd->getOperand(0)))
     return OuterWr;

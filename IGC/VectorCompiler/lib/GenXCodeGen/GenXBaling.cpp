@@ -136,20 +136,20 @@ bool GenXGroupBaling::runOnFunctionGroup(FunctionGroup &FG)
 {
   Liveness = getAnalysisIfAvailable<GenXLiveness>();
   if (Kind == BK_CodeGen)
-    IGC_ASSERT_MESSAGE(Liveness, "expected not nullptr");
-  return processFunctionGroup(&FG);
+    IGC_ASSERT_MESSAGE(Liveness,
+                       "Expected GenXLiveness analysis to be available.");
+  return processFunctionGroup(FG);
 }
 
 /***********************************************************************
  * processFunctionGroup : run instruction baling analysis on one
  *  function group
  */
-bool GenXGroupBaling::processFunctionGroup(FunctionGroup *FG) {
+bool GenXGroupBaling::processFunctionGroup(FunctionGroup &FG) {
   bool Modified = false;
-  for (auto i = FG->begin(), e = FG->end(); i != e; ++i) {
-    DT = getAnalysis<DominatorTreeGroupWrapperPass>().getDomTree(*i);
-    Modified |= processFunction(*i);
-  }
+  for (auto &F : FG)
+    Modified |= processFunction(
+        *F, *getAnalysis<DominatorTreeGroupWrapperPass>().getDomTree(&*F));
   return Modified;
 }
 
@@ -166,20 +166,17 @@ bool GenXGroupBaling::processFunctionGroup(FunctionGroup *FG) {
  * This pass also clones any instruction that can be baled in but has
  * multiple uses. A baled in instruction must have exactly one use.
  */
-bool GenXBaling::processFunction(Function *F)
-{
-  LLVM_DEBUG(llvm::dbgs() << "Baling function analysis for " << F->getName()
+bool GenXBaling::processFunction(Function &F, const DominatorTree &DTRef) {
+  LLVM_DEBUG(llvm::dbgs() << "Baling function analysis for " << F.getName()
                           << "\n");
-  bool Changed = prologue(F);
+  DT = &DTRef;
 
-  for (df_iterator<BasicBlock *> i = df_begin(&F->getEntryBlock()),
-      e = df_end(&F->getEntryBlock()); i != e; ++i) {
-    for (BasicBlock::iterator bi = i->begin(), be = i->end(); bi != be; ) {
-      Instruction *Inst = &*bi;
-      ++bi; // increment here as Inst may be erased
-      processInst(Inst);
-    }
-  }
+  bool Changed = preBalingCleanAndOptimize(F);
+
+  for (auto BBI : depth_first(&F))
+    for (auto II = BBI->begin(); II != BBI->end();)
+      processInst(&*II++);
+
   // Process any two addr sends we found.
   for (auto i = TwoAddrSends.begin(), e = TwoAddrSends.end(); i != e; ++i)
     processTwoAddrSend(*i);
@@ -619,9 +616,9 @@ void GenXBaling::processWrPredPredRegion(Instruction *Inst)
 void GenXBaling::processWrRegion(Instruction *Inst)
 {
   BaleInfo BI(BaleInfo::WRREGION);
-  // Get the instruction (if any) that creates the element/subregion to write.
   unsigned OperandNum = GenXIntrinsic::GenXRegion::NewValueOperandNum;
-  Instruction *V = dyn_cast<Instruction>(Inst->getOperand(OperandNum));
+  // Get the instruction (if any) that creates the element/subregion to write.
+  auto *V = dyn_cast<Instruction>(Inst->getOperand(OperandNum));
   if (V && !V->hasOneUse()) {
     // The instruction has multiple uses.
     // We don't want to bale in the following cases, as they seem to make the
@@ -637,7 +634,7 @@ void GenXBaling::processWrRegion(Instruction *Inst)
       }
     } else {
       // 2. It is in a different basic block to the wrregion.
-      if (!genx::isRdRFromGlobalLoad(V))
+      if (!genx::isRdRWithOldValueVLoadSrc(V))
         V = nullptr;
     }
     // FIXME: Baling on WRREGION is not the right way to reduce the overhead
@@ -646,16 +643,17 @@ void GenXBaling::processWrRegion(Instruction *Inst)
     // duplication.
   }
 
-  // Do not bale rdregion into wrregion if they access the same global
-  // and there is a store in between
-  if (V && genx::isRdRFromGlobalLoad(V) && genx::isWrRToGlobalLoad(Inst)) {
-    auto *LI1 = cast<LoadInst>(
+  // Do not bale rdregion into wrregion if they access the same pointer
+  // and there is a store to it in between
+  if (V && genx::isRdRWithOldValueVLoadSrc(V) &&
+      genx::isWrRWithOldValueVLoadSrc(Inst)) {
+    auto *L1 = cast<Instruction>(
         Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-    auto *LI2 = cast<LoadInst>(cast<Instruction>(V)->getOperand(
+    auto *L2 = cast<Instruction>(cast<Instruction>(V)->getOperand(
         GenXIntrinsic::GenXRegion::OldValueOperandNum));
-    auto *GV1 = vc::getUnderlyingGlobalVariable(LI1);
-    auto *GV2 = vc::getUnderlyingGlobalVariable(LI2);
-    if ((GV1 == GV2) && genx::hasMemoryDeps(LI1, LI2, GV1, DT))
+    auto *Src1 = genx::getAVLoadSrcOrNull(L1);
+    auto *Src2 = genx::getAVLoadSrcOrNull(L2);
+    if (Src1 && Src1 == Src2 && !genx::loadingSameValue(L1, L2, DT))
       V = nullptr;
   }
 
@@ -1499,6 +1497,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
   // (i.e. fold constants), to avoid confusion later in GenXCisaBuilder
   // if a modifier has a constant operand. Because this pass scans code
   // forwards, a constant will propagate through a chain of modifiers.
+  // TODO: Consider avoiding this section under Kind == BalingKind::BK_Analysis
   if (BI.Type != BaleInfo::MAININST) {
     Value *Simplified = nullptr;
     if (BI.Type != BaleInfo::ABSMOD) {
@@ -1509,11 +1508,13 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
       if (auto C = dyn_cast<Constant>(Inst->getOperand(0))) {
         if (C->getType()->isIntOrIntVectorTy()) {
           if (!ConstantExpr::getICmp(CmpInst::ICMP_SLT, C,
-                Constant::getNullValue(C->getType()))->isNullValue())
+                                     Constant::getNullValue(C->getType()))
+                   ->isNullValue())
             C = ConstantExpr::getNeg(C);
         } else {
           if (!ConstantExpr::getFCmp(CmpInst::FCMP_OLT, C,
-                Constant::getNullValue(C->getType()))->isNullValue())
+                                     Constant::getNullValue(C->getType()))
+                   ->isNullValue())
             C = ConstantExpr::getFNeg(C);
         }
         Simplified = C;
@@ -1521,7 +1522,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
     }
     if (Simplified) {
       IGC_ASSERT_MESSAGE(isa<Constant>(Simplified),
-        "expecting a constant when simplifying a modifier");
+                         "expecting a constant when simplifying a modifier");
       Inst->replaceAllUsesWith(Simplified);
       Inst->eraseFromParent();
       return;
@@ -1748,11 +1749,13 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
         break;
       auto Rd = dyn_cast<Instruction>(Wr->getOperand(1));
       auto NextWr = dyn_cast<Instruction>(Wr->getOperand(0));
-      Liveness->eraseLiveRange(Wr);
+      if (Liveness)
+        Liveness->eraseLiveRange(Wr);
       Wr->eraseFromParent();
       IGC_ASSERT(Rd);
       if (Rd->use_empty()) {
-        Liveness->eraseLiveRange(Rd);
+        if (Liveness)
+          Liveness->eraseLiveRange(Rd);
         Rd->eraseFromParent();
       }
       Wr = NextWr;
@@ -2043,14 +2046,10 @@ void GenXBaling::unbale(Instruction *Inst)
 /***********************************************************************
  * getBaleHead : return the head of the bale containing Inst
  */
-Instruction *GenXBaling::getBaleHead(Instruction *Inst) const {
-  for (;;) {
-    Instruction *Parent = getBaleParent(Inst);
-    if (!Parent)
-      break;
-    Inst = Parent;
-  }
-  return Inst;
+Instruction *GenXBaling::getBaleHead(Instruction *I) const {
+  while (auto *P = getBaleParent(I))
+    I = P;
+  return I;
 }
 
 /***********************************************************************
@@ -2287,7 +2286,7 @@ static void propagatePhiGStores(Function &F) {
 }
 
 // Cleanup and optimization before do baling on a function.
-bool GenXBaling::prologue(Function *F) {
+bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
   bool Changed = false;
   auto nextInst = [](BasicBlock &BB, Instruction *I) -> Instruction * {
     // This looks like an llvm bug. We cannot call getPrevNode
@@ -2297,7 +2296,7 @@ bool GenXBaling::prologue(Function *F) {
     return I->getPrevNode();
   };
 
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : F.getBasicBlockList()) {
     // scan the block backwards.
     for (auto Inst = &BB.back(); Inst; Inst = nextInst(BB, Inst)) {
       //
@@ -2358,11 +2357,11 @@ bool GenXBaling::prologue(Function *F) {
     }
   }
 
-  propagatePhiGStores(*F);
+  propagatePhiGStores(F);
 
   // fold bitcast into store/load if any. This allows to bale a g_store instruction
   // crossing a bitcast.
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : F.getBasicBlockList()) {
     for (auto I = BB.begin(); I != BB.end(); /*empty*/) {
       Instruction *Inst = &*I++;
       using namespace llvm::PatternMatch;
@@ -2410,6 +2409,9 @@ bool GenXBaling::prologue(Function *F) {
         }
       }
     }
+
+    // TODO: Consider avoiding this section under Kind ==
+    // BalingKind::BK_Analysis
     for (auto I = BB.rbegin(); I != BB.rend(); /*empty*/) {
       Instruction *Inst = &*I++;
       if (isInstructionTriviallyDead(Inst)) {
@@ -2432,7 +2434,7 @@ bool GenXBaling::prologue(Function *F) {
   // otherwise baling will force baled instructions
   // to locate far away from inline asm call
   // which will lead to live range increasing.
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : F.getBasicBlockList()) {
     for (auto &Inst : BB.getInstList()) {
       auto CI = dyn_cast<CallInst>(&Inst);
       if (!CI || !CI->isInlineAsm())
@@ -2471,10 +2473,10 @@ bool GenXBaling::prologue(Function *F) {
     }
   }
 
-  normalizeGStores(*F);
+  normalizeGStores(F);
 
   // Remove Phi node with single incoming value
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : F.getBasicBlockList()) {
     for (BasicBlock::iterator bi = BB.begin(), be = BB.end(); bi != be; ) {
       Instruction *Inst = &*bi;
       ++bi;
