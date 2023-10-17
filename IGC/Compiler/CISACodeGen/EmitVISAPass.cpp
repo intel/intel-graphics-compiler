@@ -6339,6 +6339,7 @@ void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVa
 
     CVariable* data = GetSymbol(dataPtr);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
 
     if (!IsGRFAligned(data, EALIGN_GRF) && !data->IsUniform())
     {
@@ -6389,7 +6390,7 @@ void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVa
         uint32_t blkBits = 64;
         uint32_t nBlks = bytesToRead * 8 / 64;
 
-        emitLSCStore(inst, data, pTempVar, blkBits, nBlks, srcOffset, &resource, useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1);
+        emitLSCStore(inst, data, pTempVar, blkBits, nBlks, srcOffset, &resource, addrSize, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1);
         m_encoder->Push();
 
         bytesRemaining -= bytesToRead;
@@ -6416,6 +6417,7 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
     }
 
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
 
     Type* Ty = inst->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -6451,7 +6453,7 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
         uint32_t bytesToRead = getLSCBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxLSCBlockMsgSize(isD64));
         uint32_t nBlks = (bytesToRead * 8) / blkBits;
 
-        emitLSCLoad(inst, m_destination, pTempVar, blkBits, nBlks, dstOffset, &resource, useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1);
+        emitLSCLoad(inst, m_destination, pTempVar, blkBits, nBlks, dstOffset, &resource, addrSize, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1);
         m_encoder->Push();
 
         bytesRemaining -= bytesToRead;
@@ -14390,6 +14392,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
         PointerType* PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
         bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
+        LSC_ADDR_SIZE addrSize = isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
         bool extendPointer = (bitwidth == 64 && !isA64);
         // DG2 onward with LSC we do not have to extend an A32 pointer to an
         // A64 pointer for 64bit atomics
@@ -14415,7 +14418,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                         pSrc0, pSrc1,
                         bitwidth,
                         &resource,
-                        isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
+                        addrSize,
                         0,
                         LSC_DEFAULT_CACHING);
                 }
@@ -14470,7 +14473,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                     pDst, pDstAddr,
                     pSrc0, pSrc1,
                     bitwidth,
-                    &resource, isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
+                    &resource, addrSize,
                     0,
                     LSC_DEFAULT_CACHING);
             }
@@ -14732,7 +14735,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
     uint numChannels = iSTD::BitCount(writeMask.getEM());
     auto doLSC = shouldGenerateLSC(pInsn, true);
-
+    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
     if (m_currShader->GetIsUniform(pInsn))
     {
         SIMDMode nativeDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
@@ -14749,7 +14752,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         if (doLSC)
         {
             m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, 4 * 8,
-                numLanes(nativeDispatchMode), LSC_ADDR_SIZE_32b, writeMask.getEM(), cacheOpts);
+                numLanes(nativeDispatchMode), addrSize, writeMask.getEM(), cacheOpts);
         }
         else
         {
@@ -14793,7 +14796,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             if (doLSC)
             {
                 m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, 4 * 8,
-                    numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM(), cacheOpts);
+                    numLanes(SIMDMode::SIMD16), addrSize, writeMask.getEM(), cacheOpts);
             }
             else
             {
@@ -14827,7 +14830,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
                 if (doLSC)
                 {
                     m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], 4 * 8,
-                        numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM(), cacheOpts);
+                        numLanes(SIMDMode::SIMD16), addrSize, writeMask.getEM(), cacheOpts);
                 }
                 else
                 {
@@ -14884,7 +14887,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
     ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
     m_currShader->HasLscStoreCacheControls(cacheOpts);
-
+    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
     if (m_currShader->GetIsUniform(pInsn))
     {
         IGC_ASSERT_MESSAGE(0, "Uniform store_uav_typed not implemented yet");
@@ -18025,13 +18028,14 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     else if (auto CI = dyn_cast<LdRawIntrinsic>(inst))
         align = CI->getAlignment();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
+    ResourceDescriptor resource = GetResourceVariable(Ptr);
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
-    ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
@@ -18079,14 +18083,6 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
         immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
     const int immScaleInt =
         immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
-
-    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_INVALID;
-    if (useA32) {
-      addrSize = LSC_ADDR_SIZE_32b;
-    }
-    else {
-      addrSize = LSC_ADDR_SIZE_64b;
-    }
 
     // 1. handle cases eltBytes < 4
     if (eltBytes < 4)
@@ -18379,6 +18375,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(varOffset);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     if (useA32)
     {
         eOffset = TruncatePointer(eOffset);
@@ -18410,14 +18407,6 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
         immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
     const int immScaleVal =
         immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
-
-    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_INVALID;
-    if (useA32) {
-        addrSize = LSC_ADDR_SIZE_32b;
-    }
-    else {
-        addrSize = LSC_ADDR_SIZE_64b;
-    }
 
     // 1. handle cases eltBytes < 4
     if (eltBytes < 4)
@@ -21132,6 +21121,7 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CVariable* offset = GetSymbol(Ptr);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     offset = useA32 ? TruncatePointer(offset) : offset;
     bool isBlockLoad = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCLoadBlock;
     if (isBlockLoad) {
@@ -21157,14 +21147,14 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
                 m_encoder->LSC_LoadBlock1D(
                     gatherDst, offset,
                     dataSize, fragElems, &resource,
-                    useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+                    addrSize,
                     fragImmOffset,
                     cacheOpts);
             } else {
                 m_encoder->LSC_LoadGather(
                     LSC_LOAD, gatherDst,
                     offset, dataSize, fragElems, 0, &resource,
-                    useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+                    addrSize,
                     LSC_DATA_ORDER_NONTRANSPOSE, fragImmOffset, 1, cacheOpts, addrSpace);
             }
             m_encoder->Push();
@@ -21194,6 +21184,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CVariable* offset = GetSymbol(Ptr);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     offset = useA32 ? TruncatePointer(offset) : offset;
 
     auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
@@ -21232,7 +21223,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
           m_encoder->LSC_LoadGather(
               lscOp, fragDst,
               offset, dataSize, fragElems, 0, &resource,
-              useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+              addrSize,
               LSC_DATA_ORDER_NONTRANSPOSE, fragImmOffset, 1, cacheOpts, addrSpace);
             m_encoder->Push();
         });
@@ -21297,6 +21288,7 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     CVariable* offset = GetSymbol(Ptr);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
     offset = useA32 ? TruncatePointer(offset) : offset;
     bool isBlockStore = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCStoreBlock;
     if (isBlockStore) {
@@ -21322,7 +21314,7 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
                     fragData, offset,
                     dataSize, fragElems,
                     &resource,
-                    useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+                    addrSize,
                     fragImmOffset,
                     cacheOpts);
             } else {
@@ -21331,7 +21323,7 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
                     fragData, offset,
                     dataSize, fragElems,
                     0, &resource,
-                    useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b,
+                    addrSize,
                     LSC_DATA_ORDER_NONTRANSPOSE,
                     fragImmOffset,
                     1,
@@ -21575,6 +21567,8 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
 
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     bool isA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
+    ResourceDescriptor resource = GetResourceVariable(Ptr);
     if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
     {
         m_currShader->SetHasGlobalAtomics();
@@ -21597,7 +21591,6 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
         GetSymbol(inst->getArgOperand(3)) : nullptr;
     pAtomicCmp = (pAtomicCmp != nullptr) ? BroadcastIfUniform(pAtomicCmp) : pAtomicCmp;
 
-    ResourceDescriptor resource = GetResourceVariable(Ptr);
     // take the bitwidth from the pointer type since the return type might
     // differ; e.g. uint lsc_atomic_add(ushort *, uint) D16U32
     unsigned short bitwidth =
@@ -21609,7 +21602,7 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
     m_encoder->LSC_AtomicRaw(
         atomicOp, pOldValue, pDstAddr, pAtomicVal,
         pAtomicCmp, bitwidth, &resource,
-        isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, immOff,
+        addrSize, immOff,
         cacheOpts);
     m_encoder->Push();
 }
