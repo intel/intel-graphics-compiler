@@ -14,7 +14,6 @@ See LICENSE.TXT for details.
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -22,13 +21,12 @@ See LICENSE.TXT for details.
 
 namespace IGC {
 
+#define CODE_SINKING_MIN_SIZE  32
+
     class CodeSinking : public llvm::FunctionPass {
         llvm::DominatorTree* DT;
         llvm::PostDominatorTree* PDT;
         llvm::LoopInfo* LI;
-        llvm::AliasAnalysis* AA;
-        WIAnalysis* WI;
-
         const llvm::DataLayout* DL;  // to estimate register pressure
         CodeGenContext* CTX;
     public:
@@ -40,19 +38,13 @@ namespace IGC {
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
-
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
             AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
             AU.addRequired<llvm::LoopInfoWrapperPass>();
-            AU.addRequired<llvm::AAResultsWrapperPass>();
-            AU.addRequired<WIAnalysis>();
             AU.addRequired<CodeGenContextWrapper>();
-
             AU.addPreserved<llvm::DominatorTreeWrapperPass>();
             AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
             AU.addPreserved<llvm::LoopInfoWrapperPass>();
-            AU.addPreserved<llvm::AAResultsWrapperPass>();
-            AU.addPreservedID(WIAnalysis::ID);
         }
     private:
         bool ProcessBlock(llvm::BasicBlock& blk);
@@ -69,14 +61,12 @@ namespace IGC {
         bool isSafeToMove(llvm::Instruction* inst,
             bool& reducePressure, bool& hasAliasConcern,
             llvm::SmallPtrSetImpl<llvm::Instruction*>& Stores);
-        bool isSafeToLoopSinkLoad(llvm::Instruction* I, llvm::Loop* Loop, llvm::AliasAnalysis* AA);
-        bool isAlwaysSinkInstruction(llvm::Instruction* I);
 
         /// local processing
         bool LocalSink(llvm::BasicBlock* blk);
         /// data members for local-sinking
-        llvm::SmallPtrSet<llvm::BasicBlock*, 8> LocalBlkSet;
-        llvm::SmallPtrSet<llvm::Instruction*, 8> LocalInstSet;
+        llvm::SmallPtrSet<llvm::BasicBlock*, 8> localBlkSet;
+        llvm::SmallPtrSet<llvm::Instruction*, 8> localInstSet;
         /// data members for undo
         std::vector<llvm::Instruction*> movedInsts;
         std::vector<llvm::Instruction*> undoLocas;
@@ -97,12 +87,6 @@ namespace IGC {
         // try to hoist phi nodes with congruent incoming values
         typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
         typedef smallvector<llvm::Instruction*, 4> InstVec;
-
-        // memoize all possible stores for every loop that is a candidate for sinking
-        typedef llvm::SmallVector<llvm::Instruction*, 32> StoresVec;
-        llvm::DenseMap<llvm::Loop*, StoresVec> MemoizedStoresInLoops;
-        llvm::SmallPtrSet<llvm::Loop*, 8> BlacklistedLoops;
-        const StoresVec getAllStoresInLoop(llvm::Loop* L);
 
         void appendIfNotExist(InstPair src, std::vector<InstPair> &instMap)
         {
@@ -139,14 +123,12 @@ namespace IGC {
         bool hoistCongruentPhi(llvm::Function& F);
 
         llvm::Loop* findLoopAsPreheader(llvm::BasicBlock& blk);
-        // move LI back into loop
-        bool loopSink(llvm::Loop* LoopWithPressure);
+        // move LI back into loops
+        bool loopSink(llvm::Loop* LoopWithPressure, bool SinkMultipleLevel);
         // pre-condition to sink an instruction into a loop
-        bool isLoopSinkCandidate(llvm::Instruction* I, llvm::Loop* L);
-        bool loopSinkInstructions(
-            llvm::SmallVector<llvm::Instruction*, 64>& SinkCandidates,
-            llvm::SmallPtrSet<llvm::Instruction*, 32>& LoadChains,
-            llvm::Loop* L);
+        bool canLoopSink(llvm::Instruction* I, llvm::Loop* L);
+        bool LoopSinkInstructions(
+            llvm::SmallVector<llvm::Instruction*, 64> sinkCandidates, llvm::Loop* L);
 
         // Move referencing DbgValueInst intrinsics calls after defining instructions
         void ProcessDbgValueInst(llvm::BasicBlock& blk);

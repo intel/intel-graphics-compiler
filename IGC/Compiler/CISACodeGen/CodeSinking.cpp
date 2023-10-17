@@ -44,7 +44,6 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Verifier.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvmWrapper/IR/Function.h"
-#include "llvmWrapper/IR/Value.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
@@ -68,12 +67,10 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
         IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
         CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID) {
-        generalCodeSinking = generalSinking || IGC_IS_FLAG_ENABLED(ForceLoopSink);
+        generalCodeSinking = generalSinking;
         initializeCodeSinkingPass(*PassRegistry::getPassRegistry());
     }
 
@@ -210,7 +207,7 @@ namespace IGC {
             return false;
         }
         if (IGC_IS_FLAG_ENABLED(DisableCodeSinking) ||
-            numInsts(F) < IGC_GET_FLAG_VALUE(CodeSinkingMinSize))
+            numInsts(F) < CODE_SINKING_MIN_SIZE)
         {
             return false;
         }
@@ -218,12 +215,7 @@ namespace IGC {
         DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-        AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-        WI = &getAnalysis<WIAnalysis>();
         DL = &F.getParent()->getDataLayout();
-
-        MemoizedStoresInLoops.clear();
-        BlacklistedLoops.clear();
 
         bool changed = hoistCongruentPhi(F);
 
@@ -245,21 +237,25 @@ namespace IGC {
         } while (madeChange /*diagnosis: && numChanges < sinkLimit*/);
 
         everMadeChange = madeChange;
-        for (auto BI = LocalBlkSet.begin(), BE = LocalBlkSet.end(); BI != BE; BI++)
+        for (SmallPtrSet<BasicBlock*, 8>::iterator BI = localBlkSet.begin(), BE = localBlkSet.end(); BI != BE; BI++)
         {
             madeChange = LocalSink(*BI);
             everMadeChange |= madeChange;
         }
-        LocalBlkSet.clear();
-        LocalInstSet.clear();
+        localBlkSet.clear();
+        localInstSet.clear();
         CTX->m_numGradientSinked = totalGradientMoved;
 
-        if (IGC_IS_FLAG_DISABLED(DisableLoopSink))
+        uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
+        uint32_t ngrf = CTX->getNumGRFPerThread();
+        for (unsigned i = 0, n = m_fatLoops.size(); i < n; ++i)
         {
-            for (unsigned i = 0, n = m_fatLoops.size(); i < n; ++i)
-            {
-                auto FatLoop = m_fatLoops[i];
-                changed |= loopSink(FatLoop);
+            auto FatLoop = m_fatLoops[i];
+            auto Pressure = m_fatLoopPressures[i];
+            // Enable multiple-level loop sink if pressure is high enough
+            bool sinkMultiLevel = (Pressure > (2*ngrf + 2 * GRFThresholdDelta));
+            if (loopSink(FatLoop, sinkMultiLevel)) {
+                changed = true;
             }
         }
         m_fatLoopPressures.clear();
@@ -368,7 +364,7 @@ namespace IGC {
             pressure0 = EstimateLiveOutPressure(&blk, DL);
             uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
             uint32_t ngrf = CTX->getNumGRFPerThread();
-            if ((pressure0 > (2*ngrf + GRFThresholdDelta) || IGC_IS_FLAG_ENABLED(ForceLoopSink)) &&
+            if (pressure0 > (2*ngrf + GRFThresholdDelta) &&
                 CTX->type == ShaderType::OPENCL_SHADER)
             {
                 if (auto L = findLoopAsPreheader(blk))
@@ -461,7 +457,7 @@ namespace IGC {
         return madeChange;
     }
 
-    static bool isCastInstrReducingPressure(Instruction* Inst)
+    static bool reduceRP(Instruction* Inst)
     {
         if (auto CI = dyn_cast<CastInst>(Inst))
         {
@@ -472,7 +468,23 @@ namespace IGC {
                 // Non-primitive types.
                 return false;
             }
-            return SrcSize <= DstSize;
+            if (SrcSize == 1)
+            {
+                // i1 -> i32, reduces GRF pressure but increases flag pressure.
+                // Do not consider it as reduce.
+                return false;
+            }
+            else if (DstSize == 1)
+            {
+                // i32 -> i1, reduces flag pressure but increases grf pressure.
+                // Consider it as reduce.
+                return true;
+            }
+            else if (SrcSize < DstSize)
+            {
+                // sext i32 to i64.
+                return true;
+            }
         }
 
         return false;
@@ -503,8 +515,8 @@ namespace IGC {
                 isa<BinaryOperator>(inst))
             {
                 hasAliasConcern = false;
-                // sink CmpInst to make the flag-register lifetime short only if it's uniform
-                reducePressure = (isCastInstrReducingPressure(inst) || (isa<CmpInst>(inst) && WI->isUniform(inst)));
+                // sink CmpInst to make the flag-register lifetime short
+                reducePressure = (reduceRP(inst) || isa<CmpInst>(inst));
                 return true;
             }
         }
@@ -602,145 +614,47 @@ namespace IGC {
         return false;
     }
 
-    const CodeSinking::StoresVec CodeSinking::getAllStoresInLoop(Loop *L)
-    {
-        IGC_ASSERT(!BlacklistedLoops.count(L));
-
-        // if all the stores for this loop are not memoized yet, do it first
-        if (!MemoizedStoresInLoops.count(L))
-        {
-            llvm::SmallVector<Instruction *, 32>& StoresInLoop = MemoizedStoresInLoops[L];
-            for (BasicBlock *BB: L->blocks())
-            {
-                for (Instruction &I : *BB)
-                {
-                    if (I.mayWriteToMemory())
-                    {
-                        StoresInLoop.push_back(&I);
-                    }
-                }
-            }
-        }
-        return MemoizedStoresInLoops[L];
-    }
-
-    /// isSafeToLoopSinkLoad - Determine whether it is safe to sink the load
-    /// instruction in the loop, using alias information
-    bool CodeSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L, AliasAnalysis *AA)
-    {
-        if (!L || !AA)
-            return false;
-
-        if (BlacklistedLoops.count(L))
-            return false;
-
-        // Only load instructions are supported for now
-        if (!isa<LoadInst>(InstToSink))
-            return false;
-
-        IGC_ASSERT(InstToSink->getParent() == L->getLoopPreheader());
-
-        auto getRemainingStoresInBB = [](Instruction *I)
-        {
-            StoresVec Stores;
-            BasicBlock *BB = I->getParent();
-            Instruction *Last = BB->getTerminator();
-            for ( ; I != Last ; I = I->getNextNode())
-            {
-                if (I->mayWriteToMemory())
-                {
-                    Stores.push_back(I);
-                }
-            }
-            return Stores;
-        };
-
-        StoresVec RemainingStores = getRemainingStoresInBB(InstToSink);
-        StoresVec LoopStores = getAllStoresInLoop(L);
-        MemoryLocation A = MemoryLocation::get(InstToSink);
-        for (auto Stores : { &RemainingStores, &LoopStores })
-        {
-            for (Instruction *I: *Stores)
-            {
-                if (StoreInst *SI = dyn_cast<StoreInst>(I))
-                {
-                    MemoryLocation B = MemoryLocation::get(SI);
-                    if (!A.Ptr || !B.Ptr || AA->alias(A, B))
-                    {
-                        return false;
-                    }
-                    continue;
-                }
-                if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I))
-                {
-                    if (Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCPrefetch)
-                    {
-                        continue;
-                    }
-                }
-
-                // unsupported store
-                if (L->contains(I->getParent()))
-                    BlacklistedLoops.insert(L);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     /// SinkInstruction - Determine whether it is safe to sink the specified machine
     /// instruction out of its current block into a successor.
     bool CodeSinking::SinkInstruction(
-        Instruction *InstToSink,
-        SmallPtrSetImpl<Instruction *> &Stores,
-        bool IsLoopSink)
+        Instruction* inst,
+        SmallPtrSetImpl<Instruction*>& Stores,
+        bool ForceToReducePressure)
     {
         // Check if it's safe to move the instruction.
-        bool HasAliasConcern = false;
-        bool ReducePressure = false;
-
-        if (!isSafeToMove(InstToSink, ReducePressure, HasAliasConcern, Stores/*, AA*/))
+        bool hasAliasConcern =false;
+        bool reducePressure = false;
+        if (!isSafeToMove(inst, reducePressure, hasAliasConcern, Stores/*, AA*/))
             return false;
-
-        if (IsLoopSink)
-        {
-            // forcing that we reduce pressure
-            // as we already checked it is beneficial to sink in the loop
-            ReducePressure = true;
+        if (ForceToReducePressure) {
+            reducePressure = true;
         }
 
         // SuccToSinkTo - This is the successor to sink this instruction to, once we
         // decide.
-        BasicBlock *SuccToSinkTo = nullptr;
-        SmallPtrSet<Instruction *, 16> UsesInBB;
-
-        if (!HasAliasConcern || IsLoopSink)
+        BasicBlock* succToSinkTo = 0;
+        SmallPtrSet<Instruction*, 16> usesInBlk;
+        if (!hasAliasConcern)
         {
             // find the lowest common dominator of all uses
-            BasicBlock *TgtBB = nullptr;
-            bool IsOuterLoop = false;
-            if (FindLowestSinkTarget(InstToSink, TgtBB, UsesInBB, IsOuterLoop, IsLoopSink))
+            BasicBlock* tgtBlk = 0x0;
+            bool outerLoop = false;
+            if (FindLowestSinkTarget(inst, tgtBlk, usesInBlk, outerLoop, ForceToReducePressure))
             {
-                // heuristic, avoid code-motion that does not reduce execution frequency
-                // but may increase register usage
-                if (ReducePressure ||
-                    (TgtBB && (IsOuterLoop || !PDT->dominates(TgtBB, InstToSink->getParent()))))
+                // heuristic, avoid code-motion that does not reduce execution frequency but may increase register usage
+                if (reducePressure ||
+                    (tgtBlk && (outerLoop || !PDT->dominates(tgtBlk, inst->getParent()))))
                 {
-                    if (!HasAliasConcern ||
-                        (IsLoopSink && isSafeToLoopSinkLoad(InstToSink, LI->getLoopFor(TgtBB), AA)))
-                    {
-                        SuccToSinkTo = TgtBB;
-                    }
+                    succToSinkTo = tgtBlk;
                 }
             }
             else
             {
                 // local code motion for cases like cmp and pln
-                if (ReducePressure)
+                if (reducePressure)
                 {
-                    LocalBlkSet.insert(InstToSink->getParent());
-                    LocalInstSet.insert(InstToSink);
+                    localBlkSet.insert(inst->getParent());
+                    localInstSet.insert(inst);
                 }
                 return false;
             }
@@ -749,131 +663,93 @@ namespace IGC {
         {
             // when aliasing is a concern, only look at all the immed successors and
             // decide which one we should sink to, if any.
-            BasicBlock *CurBB = InstToSink->getParent();
-            for (succ_iterator I = succ_begin(InstToSink->getParent()),
-                E = succ_end(InstToSink->getParent()); I != E && SuccToSinkTo == 0; ++I)
+            BasicBlock* curBlk = inst->getParent();
+            for (succ_iterator I = succ_begin(inst->getParent()),
+                E = succ_end(inst->getParent()); I != E && succToSinkTo == 0; ++I)
             {
                 // avoid sinking an instruction into its own block.  This can
                 // happen with loops.
-                if ((*I) == CurBB)
+                if ((*I) == curBlk)
                     continue;
                 // punt on it because of alias concern
-                if ((*I)->getUniquePredecessor() != CurBB)
+                if ((*I)->getUniquePredecessor() != curBlk)
                     continue;
                 // Don't move instruction across a loop.
-                Loop *succLoop = LI->getLoopFor((*I));
-                Loop *currLoop = LI->getLoopFor(CurBB);
+                Loop* succLoop = LI->getLoopFor((*I));
+                Loop* currLoop = LI->getLoopFor(curBlk);
                 if (succLoop != currLoop)
                     continue;
-                if (AllUsesDominatedByBlock(InstToSink, (*I), UsesInBB))
-                    SuccToSinkTo = *I;
+                if (AllUsesDominatedByBlock(inst, (*I), usesInBlk))
+                    succToSinkTo = *I;
             }
         }
 
         // If we couldn't find a block to sink to, ignore this instruction.
-        if (!SuccToSinkTo)
+        if (succToSinkTo == 0)
         {
             return false;
         }
 
-        if (ComputesGradient(InstToSink))
+        if (ComputesGradient(inst))
         {
             numGradientMovedOutBB++;
         }
 
-        if (!IsLoopSink && HasAliasConcern)
+        if (!reducePressure || hasAliasConcern)
         {
-            InstToSink->moveBefore(&(*SuccToSinkTo->getFirstInsertionPt()));
+            inst->moveBefore(&(*succToSinkTo->getFirstInsertionPt()));
         }
         // when alasing is not an issue and reg-pressure is not an issue
         // move it as close to the uses as possible
-        else if (UsesInBB.empty())
+        else if (usesInBlk.empty())
         {
-            InstToSink->moveBefore(SuccToSinkTo->getTerminator());
+            inst->moveBefore(succToSinkTo->getTerminator());
         }
-        else if (UsesInBB.size() == 1)
+        else if (usesInBlk.size() == 1)
         {
-            InstToSink->moveBefore(*(UsesInBB.begin()));
+            Instruction* use = *(usesInBlk.begin());
+            inst->moveBefore(use);
         }
         else
         {
             // first move to the beginning of the target block
-            InstToSink->moveBefore(&(*SuccToSinkTo->getFirstInsertionPt()));
+            inst->moveBefore(&(*succToSinkTo->getFirstInsertionPt()));
             // later on, move it close to the use
-            LocalBlkSet.insert(SuccToSinkTo);
-            LocalInstSet.insert(InstToSink);
+            localBlkSet.insert(succToSinkTo);
+            localInstSet.insert(inst);
         }
         return true;
     }
 
-    bool CodeSinking::LocalSink(BasicBlock *BB)
+    bool CodeSinking::LocalSink(BasicBlock* blk)
     {
-        auto getInsertPointBeforeUse = [&](Instruction *InstToMove, Instruction *StartInsertPoint)
+        bool madeChange = false;
+        for (BasicBlock::iterator I = blk->begin(), E = blk->end(); I != E; ++I)
         {
-            // Try scheduling the instruction earlier than the use.
-            // Useful for loads to cover some latency.
-            int Cnt = IGC_GET_FLAG_VALUE(CodeSinkingLoadSchedulingInstr);
-            Instruction *InsertPoint = StartInsertPoint;
-            Instruction *I = StartInsertPoint->getPrevNode();
-            for (;;) {
-                if (I == nullptr)
-                    break;
-                if (isa<PHINode>(I))
-                    break;
-                if (std::any_of(I->use_begin(), I->use_end(),
-                        [InstToMove](auto &U) {return llvm::cast<Instruction>(&U) == InstToMove;}))
-                    break;
-                if (I->mayWriteToMemory())
-                {
-                    // At this point of the program we might have lost some information
-                    // About aliasing so don't schedule anything before possible stores
-                    // But it's OK to alias with prefetch
-                    GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I);
-                    if (!(Intr && Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCPrefetch))
-                    {
-                        break;
-                    }
-                }
-                if (--Cnt <= 0)
-                    break;
-
-                InsertPoint = I;
-                I = I->getPrevNode();
-            }
-            return InsertPoint;
-        };
-
-        bool Changed = false;
-        for (auto &I : *BB)
-        {
-            Instruction *Use = &I;
-            for (unsigned i = 0; i < Use->getNumOperands(); ++i)
+            Instruction* use = &(*I);
+            for (unsigned i = 0; i < use->getNumOperands(); ++i)
             {
-                Instruction *Def = dyn_cast<Instruction>(Use->getOperand(i));
-                if (Def && Def->getParent() == BB && LocalInstSet.count(Def))
+                Instruction* def = dyn_cast<Instruction>(use->getOperand(i));
+                if (def && def->getParent() == blk && localInstSet.count(def))
                 {
-                    // "Use" can be a phi-node for a single-block loop,
+                    // "use" can be a phi-node for a single-block loop,
                     // which is not really a local-code-motion
-                    if (Def->getNextNode() != Use && !isa<PHINode>(Use))
+                    if (def->getNextNode() != use && !isa<PHINode>(use))
                     {
-                        if (!Def->getMetadata("implicitGlobalID"))
+                        if (!def->getMetadata("implicitGlobalID"))
                         {
-                            // If it's a load we'll try scheduling earlier than the use
-                            // to cover latency
-                            Instruction *InsertPoint =
-                                isa<LoadInst>(Def) ? getInsertPointBeforeUse(Def, Use) : Use;
-                            Def->moveBefore(InsertPoint);
-                            Changed = true;
+                            def->moveBefore(use);
+                            madeChange = true;
                         }
                     }
-                    LocalInstSet.erase(Def);
+                    localInstSet.erase(def);
                 }
             }
         }
-        if (Changed) {
-            ProcessDbgValueInst(*BB);
+        if (madeChange) {
+            ProcessDbgValueInst(*blk);
         }
-        return Changed;
+        return madeChange;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1233,153 +1109,126 @@ namespace IGC {
         return changed;
     }
 
-    bool CodeSinking::loopSink(Loop *L)
+    bool CodeSinking::loopSink(Loop* LoopWithPressure, bool SinkMultipleLevel)
     {
         // Sink loop invariants back into the loop body if register
         // pressure can be reduced.
 
-        IGC_ASSERT(L);
+        // L0 is inner loop
+        Loop* const L0 = LoopWithPressure;
+        IGC_ASSERT(L0);
 
-        // No Preheader, stop!
-        BasicBlock *Preheader = L->getLoopPreheader();
-        if (!Preheader)
-            return false;
+        // L1 is parent loop
+        Loop* L1 = nullptr;
+        if (SinkMultipleLevel) {
+            L1 = L0->getParentLoop();
+        }
 
-        bool EverChanged = false;
-
-        // Find LIs in preheader that would definitely reduce
-        // register pressure after moving those LIs inside the loop
-        SmallPtrSet<Instruction *, 16> Stores;
-        SmallVector<Instruction *, 64> SinkCandidates;
-        SmallPtrSet<Instruction *, 32> LoadChains;
-
-        bool IterChanged = false;
-        do
+        // At most, do two-level loop sink
+        //     x = ...
+        //   ParentLoop
+        //     y = ...
+        //     Loop:
+        //          = x
+        //          = y
+        // Normally, only y can be sinked. When multiLevel is true,
+        // x can be sinked into Loop (inner) as well.
+        bool changed = false;
+        for (int i = 0; i < 2; ++i)
         {
+            Loop* L = (i == 0) ? L0 : L1;
+            if (!L) {
+                break;
+            }
+            // No Preheader, stop!
+            BasicBlock* Preheader = L->getLoopPreheader();
+            if (!Preheader)
+                break;
+
+            // Find LIs in preheader that would definitely reduce
+            // register pressure after moving those LIs inside the loop
+            SmallPtrSet<Instruction*, 16> stores;
+            SmallVector<Instruction*, 64> sinkCandidates;
+
             // Moving LI back to the loop. Here we only consider to move LIs into
             // the single BB (BBWithPressure).
             //
             // Go over instructions in reverse order and sink the noOp instructions
             // on-the-fly first, so that their dependent instructions can be added
             // into candidate lists for further sinking.
-
-            Stores.clear();
-            SinkCandidates.clear();
-
-            // If we sinked something we could allow sinking of the previous instructions as well
-            // on the next iteration of do-loop
-            //
-            // For example, here we sink 2 EE first and need one more iteration to sink load:
-            // preheader:
-            //   %l = load <2 x double>
-            //   extractelement 1, %l
-            //   extractelement 2, %l
-            // loop:
-            //   ...
-            IterChanged = false;
-
             for (auto II = Preheader->rbegin(), IE = Preheader->rend(); II != IE;)
             {
-                Instruction *I = &*II++;
+                Instruction* I = &*II++;
 
-                if (I->mayWriteToMemory())
-                    Stores.insert(I);
+                if (I->mayWriteToMemory()) {
+                    stores.insert(I);
+                }
+                if (!canLoopSink(I, L))
+                    continue;
 
-                if (isLoopSinkCandidate(I, L))
-                    SinkCandidates.push_back(I);
+                // Sink noOp instruction.
+                if (isNoOpInst(I, CTX) || reduceRP(I)) {
+                    if (SinkInstruction(I, stores, true)) {
+                        changed = true;
+                    }
+                    continue;
+                }
+
+                sinkCandidates.push_back(I);
             }
 
-            IterChanged |= loopSinkInstructions(SinkCandidates, LoadChains, L);
-            if (IterChanged)
-            {
-                EverChanged = true;
+            bool t = LoopSinkInstructions(sinkCandidates, L);
+            changed |= t;
+
+            if (changed) {
                 ProcessDbgValueInst(*Preheader);
             }
-        } while (IterChanged);
+        }
 
         // Invoke LocalSink() to move def to its first use
         // (Currently, it should be no opt as LoopSink only
         // sinks singleUse instructions, which should be done
         // completely within sinkInstruction.
-        if (LocalBlkSet.size() > 0)
+        if (localBlkSet.size() > 0)
         {
-            for (auto BI = LocalBlkSet.begin(), BE = LocalBlkSet.end(); BI != BE; BI++)
+            for (auto BI = localBlkSet.begin(), BE = localBlkSet.end(); BI != BE; BI++)
             {
-                BasicBlock *BB = *BI;
-                EverChanged |= LocalSink(BB);
+                BasicBlock* BB = *BI;
+                bool t = LocalSink(BB);
+                changed |= t;
             }
-            LocalBlkSet.clear();
-            LocalInstSet.clear();
+            localBlkSet.clear();
+            localInstSet.clear();
         }
 
-        return EverChanged;
+        return changed;
     }
 
-    bool CodeSinking::isAlwaysSinkInstruction(Instruction *I)
-    {
-        return (isa<IntToPtrInst>(I) ||
-                isa<PtrToIntInst>(I) ||
-                isa<ExtractElementInst>(I) ||
-                isa<InsertValueInst>(I));
-    }
-
-    bool CodeSinking::isLoopSinkCandidate(Instruction *I, Loop *L)
+    bool CodeSinking::canLoopSink(Instruction* I, Loop* L)
     {
         // Limit sinking for the following case for now.
-        for (const User *UserInst : I->users())
+        for (const User* UserInst : I->users())
         {
             if (!isa<Instruction>(UserInst))
                 return false;
             if (!L->contains(cast<Instruction>(UserInst)))
                 return false;
         }
-
-        if (isAlwaysSinkInstruction(I) || isa<BinaryOperator>(I) || isa<CastInst>(I))
-            return true;
-        if (isa<LoadInst>(I) && IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink))
-            return true;
-
-        return false;
+        return (isNoOpInst(I, CTX) || reduceRP(I) ||
+            isa<BinaryOperator>(I) /*|| isa<GetElementPtrInst>(I)*/);
     }
 
-    bool CodeSinking::loopSinkInstructions(
-        SmallVector<Instruction *, 64> &SinkCandidates,
-        SmallPtrSet<Instruction *, 32> &LoadChains,
-        Loop *L)
+    bool CodeSinking::LoopSinkInstructions(
+        SmallVector<Instruction*, 64> sinkCandidates,
+        Loop* L)
     {
-        struct OperandUseGroup {
-            SmallPtrSet <Value *, 4> Operands;
-            SmallVector<Instruction *, 16> Users;
-
-            void print(raw_ostream& OS)
-            {
-                OS << "OUG " << Operands.size() << " -> " << Users.size() << "\n";
-                OS << "    Operands:\n";
-                for (Value* V : Operands)
-                {
-                    OS << "  ";
-                    V->print(OS);
-                    OS << "\n";
-                }
-                OS << "    Users:\n";
-                for (Instruction* I : Users)
-                {
-                    OS << "  ";
-                    I->print(OS);
-                    OS << "\n";
-                }
-            }
-        };
-
-        auto isUsedInLoop = [](Value *V, Loop *L) -> bool {
-            if (isa<Constant>(V))
-            {
+        auto IsUsedInLoop = [](Value* V, Loop* L) -> bool {
+            if (isa<Constant>(V)) {
                 // Ignore constant
                 return false;
             }
-            for (auto UI : V->users())
-            {
-                if (Instruction *User = dyn_cast<Instruction>(UI))
+            for (auto UI : V->users()) {
+                if (Instruction * User = dyn_cast<Instruction>(UI))
                 {
                     if (L->contains(User))
                         return true;
@@ -1388,11 +1237,9 @@ namespace IGC {
             return false;
         };
 
-        auto isSameSet = [](SmallPtrSet <Value *, 4> &S0, SmallPtrSet <Value *, 4> &S1) -> bool {
-            if (S0.size() == S1.size())
-            {
-                for (auto I : S1)
-                {
+        auto IsSameSet = [](SmallPtrSet <Value*, 4> & S0, SmallPtrSet <Value*, 4> & S1)-> bool {
+            if (S0.size() == S1.size()) {
+                for (auto I : S1) {
                     Value* V = I;
                     if (!S0.count(V)) {
                         return false;
@@ -1401,98 +1248,6 @@ namespace IGC {
                 return true;
             }
             return false;
-        };
-
-        // Check that this instruction is a part of address calc
-        // chain of an already sinked load
-        auto isLoadChain = [&LoadChains](Instruction *I) -> bool
-        {
-            if (!isa<BinaryOperator>(I))
-                return false;
-            User *InstrUser = IGCLLVM::getUniqueUndroppableUser(I);
-            if (!InstrUser)
-                return false;
-            Instruction *UI = dyn_cast<Instruction>(InstrUser);
-            return UI && LoadChains.count(UI);
-        };
-
-        auto isBeneficialToSink = [&](OperandUseGroup *OUG)-> bool
-        {
-            auto getDstSize = [this](Value *V) -> int
-            {
-                int DstSize = 0;
-                Type* Ty = V->getType();
-                if (Ty->isPointerTy())
-                {
-                    uint32_t addrSpace = cast<PointerType>(Ty)->getAddressSpace();
-                    int PtrSize = (int) CTX->getRegisterPointerSizeInBits(addrSpace);
-                    DstSize = PtrSize;
-                }
-                else
-                {
-                    DstSize = (int) Ty->getPrimitiveSizeInBits();
-                }
-                return DstSize;
-            };
-
-            IGC_ASSERT(OUG);
-
-            // All instructions are safe to sink always or consume larger type than produce
-            if (std::all_of(OUG->Users.begin(), OUG->Users.end(),
-                [this](Instruction *I)
-                {
-                    return isAlwaysSinkInstruction(I) || isCastInstrReducingPressure(I);
-                }))
-            {
-                return true;
-            }
-
-            // Estimate how much regpressure we save (in bytes).
-            // Don't count uniform values. This way if every operand that is used only in the loop
-            // is uniform, but the User (instruction to sink) is uniform, we'll decide it's beneficial to sink
-            int AccSave = 0;
-
-            for (Value *V : OUG->Operands)
-            {
-                int DstSize = getDstSize(V);
-                if (!DstSize)
-                    return false;
-                if (WI->isUniform(V))
-                    continue;
-                AccSave -= DstSize / 8;
-            }
-
-            bool AllUsersAreUniform = true;
-            for (Value *V : OUG->Users)
-            {
-                int DstSize = getDstSize(V);
-                if (!DstSize)
-                    return false;
-                if (WI->isUniform(V))
-                    continue;
-                AllUsersAreUniform = false;
-                AccSave += DstSize / 8;
-            }
-
-            // If all uses are uniform, and we save enough SSA-values it's still beneficial
-            if (AccSave >= 0 && AllUsersAreUniform &&
-                ((int)OUG->Users.size() - (int)OUG->Operands.size() >= (int)(IGC_GET_FLAG_VALUE(LoopSinkMinSaveUniform))))
-            {
-                return true;
-            }
-
-            // All instructions are part of a chain to already sinked load and don't
-            // increase pressure too much. It simplifies the code a little and without
-            // adding remat pass for simple cases
-            if (AccSave >= 0 && std::all_of(OUG->Users.begin(), OUG->Users.end(), isLoadChain))
-            {
-                return true;
-            }
-
-            // Compare estimated saved regpressure with the specified threshold
-            // Number 4 here is just a constant multiplicator of the option to make the numbers more human-friendly,
-            // as the typical minimum data size is usually 32-bit. 1 (=4b) means roughly 1 register of saved regpressure
-            return AccSave >= (int)(IGC_GET_FLAG_VALUE(LoopSinkMinSave) * 4);
         };
 
         // For each candidate like the following:
@@ -1525,97 +1280,101 @@ namespace IGC {
         // Here we group all candidates based on its operands and select ones that definitely
         // reduce the pressure.
         //
-        OperandUseGroup *AllGroups = new OperandUseGroup[SinkCandidates.size()];
-        SmallVector<OperandUseGroup *, 16> InstUseInfo;
-        for (uint32_t i = 0, e = (uint32_t)SinkCandidates.size(); i < e; ++i)
+        struct OperandUseGroup {
+            SmallPtrSet <Value*, 4> Operands;
+            SmallVector<Instruction*, 16> Users;
+        };
+        OperandUseGroup* allGroups = new OperandUseGroup[sinkCandidates.size()];
+        SmallVector<OperandUseGroup*, 16> InstUseInfo;
+        for (uint32_t i = 0, e = (uint32_t)sinkCandidates.size(); i < e; ++i)
         {
-            Instruction *I = SinkCandidates[i];
-            SmallPtrSet<Value *, 4> theUses;
-            for (Use &U : I->operands())
+            Instruction* I = sinkCandidates[i];
+            SmallPtrSet<Value*, 4> theUses;
+            for (Use& U : I->operands())
             {
-                Value *V = U;
-                if (isa<Constant>(V) || isUsedInLoop(V, L))
+                Value* V = U;
+                if (isa<Constant>(V) || IsUsedInLoop(V, L))
                     continue;
 
                 theUses.insert(V);
             }
-
             // If this set of uses have been referenced by other instructions,
             // put this inst in the same group. Note that we don't union sets
             // that intersect each other.
             uint32_t j, je = (uint32_t)InstUseInfo.size();
             for (j = 0; j < je; ++j)
             {
-                OperandUseGroup *OUG = InstUseInfo[j];
-                if (isSameSet(OUG->Operands, theUses)) {
+                OperandUseGroup* OUG = InstUseInfo[j];
+                if (IsSameSet(OUG->Operands, theUses)) {
                     OUG->Users.push_back(I);
                     break;
                 }
             }
 
+
             if (j == je) {
                 // No match found, create the new one.
-                OperandUseGroup &OUG = AllGroups[i];
+                OperandUseGroup& OUG = allGroups[i];
                 OUG.Operands = theUses;
                 OUG.Users.push_back(I);
                 InstUseInfo.push_back(&OUG);
             }
         }
 
-        bool EverChanged = false;
+        bool changed = false;
         // Just a placeholder, all LIs considered here are ALUs.
-        SmallPtrSet<Instruction *, 16> Stores;
-        bool IterChanged;
-        uint32_t N = (uint32_t) InstUseInfo.size();
+        SmallPtrSet<Instruction*, 16> stores;
+        const int SaveThreshold = IGC_GET_FLAG_VALUE(LoopSinkMinSave);
+        bool keepLooping;
+        uint32_t N = (uint32_t)InstUseInfo.size();
         do {
-            IterChanged = false;
+            keepLooping = false;
             for (uint32_t i = 0; i < N; ++i)
             {
-                OperandUseGroup *OUG = InstUseInfo[i];
+                OperandUseGroup* OUG = InstUseInfo[i];
                 if (!OUG)
                     continue;
 
-                if (!isBeneficialToSink(OUG))
-                    continue;
-
-                bool GroupChanged = false;
-                for (int j = 0; j < (int)(OUG->Users.size()); ++j)
+                int sz1 = (int)OUG->Users.size();
+                int save = sz1 - (int)(OUG->Operands.size());
+                if (save >= SaveThreshold)
                 {
-                    Instruction *I = OUG->Users[j];
-                    bool UserChanged = SinkInstruction(I, Stores, true);
-                    if (UserChanged && (isa<LoadInst>(I) || isLoadChain(I)))
+                    // Sink
+                    bool t = false;
+                    for (int j = 0; j < sz1; ++j)
                     {
-                        LoadChains.insert(I);
+                        Instruction* I = OUG->Users[j];
+                        bool t1 = SinkInstruction(I, stores, true);
+                        t |= t1;
                     }
-                    GroupChanged |= UserChanged;
-                }
-                if (GroupChanged) {
-                    IterChanged = true;
-                    EverChanged = true;
+                    if (t) {
+                        changed = true;
+                        keepLooping = true;
 
-                    // Since those operands become global already, remove
-                    // them from the sets in the vector.
-                    for (uint32_t k = 0; k < N; ++k)
-                    {
-                        OperandUseGroup *OUG1 = InstUseInfo[k];
-                        if (k == i || !OUG1)
-                            continue;
+                        // Since those operands become global already, remove
+                        // them from the sets in the vector.
+                        for (uint32_t k = 0; k < N; ++k)
+                        {
+                            OperandUseGroup* OUG1 = InstUseInfo[k];
+                            if (k == i || !OUG1)
+                                continue;
 
-                        for (auto I : OUG->Operands) {
-                            Value *V = I;
-                            OUG1->Operands.erase(V);
+                            for (auto I : OUG->Operands) {
+                                Value* V = I;
+                                OUG1->Operands.erase(V);
+                            }
                         }
                     }
+
+                    // Just set it to nullptr (erasing it would be more expensive).
+                    InstUseInfo[i] = nullptr;
                 }
-
-                // Just set it to nullptr (erasing it would be more expensive).
-                InstUseInfo[i] = nullptr;
             }
-        } while (IterChanged);
+        } while (keepLooping);
 
-        delete[] AllGroups;
+        delete[] allGroups;
 
-        return EverChanged;
+        return changed;
     }
 
     // Move referenced DbgValueInst intrinsics calls after defining instructions
