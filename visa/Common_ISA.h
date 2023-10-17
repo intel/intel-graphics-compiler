@@ -67,6 +67,7 @@ enum Common_ISA_Implicit_Input_Kind {
 };
 
 extern const char *implictKindStrings[IMPLICIT_INPUT_COUNT];
+extern const int implictKindValues[IMPLICIT_INPUT_COUNT];
 
 enum Common_ISA_Operand_Class {
   OPERAND_GENERAL = 0x0,

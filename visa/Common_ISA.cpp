@@ -16,6 +16,9 @@ SPDX-License-Identifier: MIT
 const char *implictKindStrings[IMPLICIT_INPUT_COUNT] = {
     "EXPLICIT", "LOCAL_SIZE", "GROUP_COUNT", "LOCAL_ID", "PSEUDO_INPUT"};
 
+const int implictKindValues[IMPLICIT_INPUT_COUNT] = {
+    INPUT_EXPLICIT, LOCAL_SIZE, GROUP_COUNT, LOCAL_ID, PSEUDO_INPUT};
+
 const char *Rel_op_str[ISA_CMP_UNDEF + 1] = {"eq", // equal
                                              "ne", // not equal
                                              "gt", // greater

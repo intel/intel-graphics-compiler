@@ -2406,8 +2406,8 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(const char *argName,
     auto implicitInputName =
         implicitArgName.substr(implicitStr.length(), implicitArgName.length());
     for (; numVal < IMPLICIT_INPUT_COUNT; ++numVal) {
-      if (!implicitInputName.compare(
-              input_info_t::getImplicitKindString(numVal))) {
+      if (!implicitInputName.compare(implictKindStrings[numVal])) {
+        numVal = implictKindValues[numVal];
         break;
       }
     }
@@ -2419,8 +2419,8 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(const char *argName,
     RecordParseError(lineNum, varName, ": undefined variable");
     return false;
   }
-  status = m_kernel->CreateVISAImplicitInputVar((VISA_GenVar *)temp, offset,
-                                                size, numVal);
+  status = m_kernel->CreateVISAImplicitInputVar(
+      (VISA_GenVar *)temp, offset, size, numVal);
   if (status != VISA_SUCCESS) {
     RecordParseError(lineNum, "failed to create input variable");
     return false;
