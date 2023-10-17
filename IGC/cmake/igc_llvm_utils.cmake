@@ -96,13 +96,14 @@ function(igc_configure_lit_site_cfg in out)
 endfunction()
 
 function(igc_add_lit_target target binary_dir comment)
-  cmake_parse_arguments(ARG "" "" "DEPENDS;SOURCES" ${ARGN})
+  cmake_parse_arguments(ARG "" "" "EXTRA;DEPENDS;SOURCES" ${ARGN})
   set(LIT_ARGS "${LLVM_LIT_ARGS}")
   separate_arguments(LIT_ARGS)
   if (NOT CMAKE_CFG_INTDIR STREQUAL ".")
     list(APPEND LIT_ARGS --param build_mode=${CMAKE_CFG_INTDIR})
   endif ()
 
+  list(APPEND LIT_ARGS ${ARG_EXTRA})
   # Get the path to the lit to *run* tests with.  This can be overriden by
   # the user by specifying -DLLVM_EXTERNAL_LIT=<path-to-lit.py>
   get_llvm_lit_path(

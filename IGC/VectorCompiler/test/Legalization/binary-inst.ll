@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXLegalization -mattr=+emulate_i64 -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -mattr=+emulate_i64 -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK-LABEL: @test_sub
 ; CHECK-NEXT: %arg1.split0 = call <8 x i64> @llvm.genx.rdregioni.v8i64.v16i64.i16(<16 x i64> %arg1, i32 8, i32 8, i32 1, i16 0, i32 undef)

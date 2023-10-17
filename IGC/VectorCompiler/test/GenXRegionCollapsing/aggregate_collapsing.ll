@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXRegionCollapsing \
+; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing \
 ; RUN:     -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
 
 ; ModuleID = 'bugpoint-reduced-simplified.bc'

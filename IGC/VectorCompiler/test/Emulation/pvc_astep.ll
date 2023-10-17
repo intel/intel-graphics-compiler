@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unkonwn-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unkonwn-unknown \
 ; RUN: -mcpu=XeHPC -mattr=-lightweight_i64_emulation -S < %s | FileCheck %s
 
 ; COM: Astep does not need emulation, so all operatoins should be preserved

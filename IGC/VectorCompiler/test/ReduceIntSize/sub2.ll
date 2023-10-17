@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK: define <16 x i64> @test(<16 x i8> [[A_VAR:%[^ ]*]], <16 x i32> [[B_VAR:%[^ ]*]])
 ; CHECK-NEXT: [[A_ZEXT:%[^ ]*]] = zext <16 x i8> [[A_VAR]] to <16 x i32>

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; CHECK-NOT: %bad1 = phi i32 [ undef, %entry ], [ %bad2, %loop.end ]
 ; CHECK-NOT: %bad2 = phi i32 [ %bad1, %true ], [ %mul, %false ]
 

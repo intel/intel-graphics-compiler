@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
 ;
 ; This test verifies that 32bit ptrs are not spoiled.
 

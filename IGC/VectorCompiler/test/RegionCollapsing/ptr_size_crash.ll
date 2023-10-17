@@ -10,7 +10,7 @@
 ; COM: that we had a division by zero during an attempt to collapse a region
 ; COM: that have a pointers as an element type. This test is essentially checks
 ; COM: that we don't crash/trigger an assert
-; RUN: opt %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
 
 ; CHECK: pluto
 ; CHECK-NEXT: call spir_func void @foo(%0 addrspace(4)* null, i64 undef)

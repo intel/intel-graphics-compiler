@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXModule -GenXDepressurizerWrapper -march=genx64 -mcpu=Gen9 -S -mtriple=spir64-unknown-unknown < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXModule -GenXDepressurizerWrapper -march=genx64 -mcpu=Gen9 -S -mtriple=spir64-unknown-unknown < %s | FileCheck %s
 
 ; COM: Sanity checker: nothing should be changed, compilation should not fail.
 

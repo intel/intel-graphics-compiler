@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; UNSUPPORTED: llvm_11_or_less
-; RUN: opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; Checks below ensure that sret attribute is discarded in cases function's
 ; retun type is transformed

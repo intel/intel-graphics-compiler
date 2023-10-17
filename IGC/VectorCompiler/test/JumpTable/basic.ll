@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; CHECK: [[JTCOND:%.new.jt.cond]] = sub i32 %2, 1

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXDepressurizerWrapper \
+; RUN: %opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXDepressurizerWrapper \
 ; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; Function Attrs: nofree nounwind readonly

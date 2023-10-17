@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
+; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <2 x i32> @llvm.genx.smulh.v2i32.v2i32(<2 x i32>, <2 x i32>)

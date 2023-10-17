@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-;RUN: opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
+;RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
 
 declare <8 x i16> @llvm.genx.vload.v8i16.p0v8i16(<8 x i16>*)
 @b = internal global <8 x i16> undef, align 16

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXStackUsage -march=genx64 -stack-analysis -mcpu=Gen9 -S %s 2> %t.stderr-out
+; RUN: %opt %use_old_pass_manager% -GenXStackUsage -march=genx64 -stack-analysis -mcpu=Gen9 -S %s 2> %t.stderr-out
 ; RUN: FileCheck %s < %t.stderr-out
 ; CHECK: 1152
 ; CHECK: 1152

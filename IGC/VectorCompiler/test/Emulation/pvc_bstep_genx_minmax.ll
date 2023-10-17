@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeHPC -mattr=+lightweight_i64_emulation -S < %s | FileCheck %s
 
 ; COM: these tests just check that there is no compilation/asserts failures

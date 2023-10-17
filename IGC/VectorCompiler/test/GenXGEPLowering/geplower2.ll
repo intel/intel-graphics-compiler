@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXGEPLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGEPLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 %struct.a = type { [5 x [16 x double]] }
 define dllexport spir_kernel void @test_lowergep([5 x %struct.a]* %a, i64 %b, i64 %c) {

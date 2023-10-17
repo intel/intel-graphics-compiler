@@ -62,8 +62,11 @@ tool_dirs = [
 
 # Add extra args for opt to remove boilerplate from tests.
 vc_extra_args = ['-load', config.llvm_plugin]
+
+opt_tool = ToolSubst('%opt', extra_args=vc_extra_args+[config.llvm_dependent_opt_flags], command=FindTool('opt'))
+
 tools = [ToolSubst('not'),
-         ToolSubst('opt', extra_args=vc_extra_args+[config.llvm_dependent_opt_flags]),
+         opt_tool,
          ToolSubst('llc', extra_args=vc_extra_args),
          ToolSubst('oneapi-readelf', unresolved='ignore'),
          ToolSubst('llvm-dwarfdump'),

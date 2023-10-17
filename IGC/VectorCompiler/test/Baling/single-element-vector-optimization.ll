@@ -9,7 +9,7 @@
 ; This test checks that prologue optimizations in GenXFuncBaling pass does not produce GEPs when
 ; folding bitcasts in global store/load instructions operating with SEVs.
 
-; RUN: opt %use_old_pass_manager% -GenXFuncBaling -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK-NOT: getelementptr
 

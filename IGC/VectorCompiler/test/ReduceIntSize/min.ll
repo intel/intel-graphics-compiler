@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-;RUN: opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -S < %s | FileCheck %s
+;RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -S < %s | FileCheck %s
 
 declare <16 x i8> @some.intrinsic()
 declare void @another.intrinsic(<16 x i32>)

@@ -8,12 +8,12 @@
 
 ; COM: Force -vc-ret-reg-size=100 to pass value on GRF.
 
-; RUN: opt %use_old_pass_manager% -GenXPrologEpilogInsertion \
+; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion \
 ; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -vc-ret-reg-size=100 -S < %s | FileCheck %s
 
 ; COM: Force -vc-ret-reg-size=0 to pass value on stack.
 
-; RUN: opt %use_old_pass_manager% -GenXPrologEpilogInsertion \
+; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion \
 ; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -vc-ret-reg-size=0 -S < %s | FileCheck %s
 
 ; COM: In both cases the splat value must be generated due to vectorization of the scalar return value.

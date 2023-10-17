@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXModule -GenXUnbalingWrapper -GenXNumberingWrapper \
+; RUN: %opt %use_old_pass_manager% -GenXModule -GenXUnbalingWrapper -GenXNumberingWrapper \
 ; RUN:  -GenXLiveRangesWrapper -GenXCoalescingWrapper -march=genx64 \
 ; RUN:  -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 

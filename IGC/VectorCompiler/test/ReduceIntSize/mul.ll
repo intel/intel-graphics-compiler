@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-;RUN: opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -S < %s | FileCheck %s
+;RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -S < %s | FileCheck %s
 
 ; CHECK-LABEL: test
 ; CHECK-NEXT: %.sext.reduceintsize = sext <16 x i8> %arg to <16 x i16>

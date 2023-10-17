@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=XeLP -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=XeLP -mtriple=spir64 -S < %s | FileCheck %s
 
 declare <32 x i8> @llvm.genx.media.ld.v32i8(i32, i32, i32, i32, i32, i32)
 declare <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32>, <8 x i32>, i32, i32, i32, i16, i32, i1)

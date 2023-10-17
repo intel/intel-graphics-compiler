@@ -8,7 +8,7 @@
 
 ; Check that old dataport intrinsics with fixed BTI are not converted.
 
-; RUN: opt %use_old_pass_manager% -GenXPromoteStatefulToBindless -vc-use-bindless-buffers -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPromoteStatefulToBindless -vc-use-bindless-buffers -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 declare <8 x i32> @llvm.genx.oword.ld.v8i32(i32, i32, i32)
 

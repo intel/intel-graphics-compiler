@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=true -check-gv-clobbering-try-fixup=true -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=false -check-gv-clobbering-try-fixup=true -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=true -check-gv-clobbering-try-fixup=true -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=false -check-gv-clobbering-try-fixup=true -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; This test checks global volatile clobbering checker/fixup introduced late in pipeline to catch over-optimizations of global volatile access.
 ; This is an auxiliary utility used to help in detecting and fixing erroneous over-optimizations cases.

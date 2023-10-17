@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
 
 declare spir_func float @_Z27__spirv_RoundFToTF32INTELf(float) #0
 declare spir_func <16 x float> @_Z27__spirv_RoundFToTF32INTELDv16_f(<16 x float>) #0

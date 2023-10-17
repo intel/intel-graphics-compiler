@@ -12,7 +12,7 @@
 ; This test checks that GenXLegalization will transform this argument
 ; to contiguous form. (rdregion -> wrregion here)
 
-; RUN: opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK: @Kernel
 

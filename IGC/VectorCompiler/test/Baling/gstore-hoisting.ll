@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
+; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 @All = internal global <1024 x i32> undef, align 4096

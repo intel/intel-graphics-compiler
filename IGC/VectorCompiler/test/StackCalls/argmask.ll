@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
+; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
 ; RUN: -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S -vc-arg-reg-size=32 \
 ; RUN: -vc-ret-reg-size=12 < %s | FileCheck %s
 

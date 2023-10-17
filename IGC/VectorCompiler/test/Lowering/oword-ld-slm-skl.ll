@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
 ; RUN: -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 
 declare <2 x i64> @llvm.genx.oword.ld.v2i64(i32, i32, i32)

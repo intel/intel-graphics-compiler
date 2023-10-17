@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
+; RUN: %opt %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
 ; RUN:     -march=genx64 -mcpu=Gen9 -S < %s | \
 ; RUN:  FileCheck --check-prefix=Gen9 --enable-var-scope %s
 

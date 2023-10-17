@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; CHECK-DAG:   %[[G_F:[^ ]+]] = type { %[[C_F:[^ ]+]], float, %struct.A }
 ; CHECK-DAG:   %[[C_F]] = type { [5 x %struct.A], float, %struct.A }

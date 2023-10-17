@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=Gen9 -mattr=+emulate_i64 -S < %s | FileCheck %s
 declare <8 x i8> @llvm.genx.uuadd.sat.v8i8.v8i64(<8 x i64> , <8 x i64>)
 define  <8 x i8> @test_uuadd_sat(<8 x i64> %op0, <8 x i64> %op1) {

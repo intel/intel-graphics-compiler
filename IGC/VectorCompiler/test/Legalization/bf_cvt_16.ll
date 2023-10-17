@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <32 x float> @llvm.vc.internal.cast.from.bf16.v32f32.v32i16(<32 x i16>)
 declare <14 x float> @llvm.vc.internal.cast.from.bf16.v14f32.v14i16(<14 x i16>)

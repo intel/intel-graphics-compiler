@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXLoadStoreLegalization -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLegalization -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S %s | FileCheck %s
 
 declare <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v1i64(<1 x i1>, i8, i8, i8, i8, i8, i64, <1 x i64>, i16, i32, <1 x i32>)
 declare <2 x i32> @llvm.vc.internal.lsc.load.ugm.v2i32.v1i1.v1i64(<1 x i1>, i8, i8, i8, i8, i8, i64, <1 x i64>, i16, i32, <2 x i32>)

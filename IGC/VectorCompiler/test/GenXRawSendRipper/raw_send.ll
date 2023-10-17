@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: opt %use_old_pass_manager% -GenXRawSendRipper -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeLP -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXRawSendRipper -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeLP -S < %s | FileCheck %s
 
 declare <4 x i32> @llvm.genx.raw.send.v4i32.i1.v4i32(i32, i1, i32, i32, <4 x i32>, <4 x i32>)
 declare <4 x i32> @llvm.genx.raw.send.v4i32.v4i1.v4i32(i32, <4 x i1>, i32, i32, <4 x i32>, <4 x i32>)

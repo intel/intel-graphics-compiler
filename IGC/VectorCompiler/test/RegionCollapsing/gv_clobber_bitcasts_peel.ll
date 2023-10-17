@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: opt %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s \
+; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s \
 ; RUN:   | FileCheck %s
 
 target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXRegionCollapsing \
+; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing \
 ; RUN:     -march=genx64 -mcpu=XeLP -mtriple=spir64 -S < %s | FileCheck %s
 
 declare <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32, i64)

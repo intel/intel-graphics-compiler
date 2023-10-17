@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; CHECK: %conv = zext <16 x i8> %val to <16 x i64>
 ; CHECK-NEXT: %sub = sub nuw nsw <16 x i64> <i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207, i64 7231966207>, %conv

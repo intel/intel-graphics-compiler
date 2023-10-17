@@ -8,8 +8,8 @@
 
 ; Check that bti is assigned to opaque pointer state arguments.
 
-; RUN: opt %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix RAW %s
-; RUN: opt %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix CLEAN %s
+; RUN: %opt %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix RAW %s
+; RUN: %opt %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix CLEAN %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"

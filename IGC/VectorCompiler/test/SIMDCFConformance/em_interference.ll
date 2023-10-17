@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -march=genx64 -mcpu=Gen9 -GenXModule -GenXLateSimdCFConformanceWrapper -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -march=genx64 -mcpu=Gen9 -GenXModule -GenXLateSimdCFConformanceWrapper -S < %s | FileCheck %s
 
 ; COM: This test checks if GenXLateSimdCFConformance is able to fix
 ; COM: simple EM interference issues.

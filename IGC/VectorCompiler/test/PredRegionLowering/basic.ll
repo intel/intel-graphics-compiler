@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXModule -FunctionGroupAnalysis -GenXGroupBalingWrapper \
+; RUN: %opt %use_old_pass_manager% -GenXModule -FunctionGroupAnalysis -GenXGroupBalingWrapper \
 ; RUN: -GenXPredRegionLowering -vc-lower-predregion=true -march=genx64 -mcpu=Gen9 \
 ; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 

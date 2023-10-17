@@ -8,8 +8,8 @@
 
 ; Check that bti assignment starts from 1 if debuggable kernels needed.
 
-; RUN: opt %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: opt %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"

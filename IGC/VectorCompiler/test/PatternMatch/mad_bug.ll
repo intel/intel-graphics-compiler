@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXPatternMatch -mcpu=Gen9 -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -mcpu=Gen9 -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 define <16 x i32> @test(<16 x i8> %op0, <16 x i16> %op1) {
 ; CHECK: [[ZE0:%[^ ]+]] = zext <16 x i8> %op0 to <16 x i32>

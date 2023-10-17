@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
+; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 declare <8 x float> @some.intrinsic()
 declare void @some.another.intrinsic(<8 x float>)

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 @str.true = internal unnamed_addr addrspace(2) constant [5 x i8] c"true\00", align 1 #0
 @str.false = internal unnamed_addr addrspace(2) constant [6 x i8] c"false\00", align 1 #0

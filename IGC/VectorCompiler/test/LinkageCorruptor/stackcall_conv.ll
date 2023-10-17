@@ -9,7 +9,7 @@
 ; This is a test for vc-function-control option also available
 ; as IGC_FunctionControl environment
 
-; RUN: opt %use_old_pass_manager% -GenXLinkageCorruptor -march=genx64 -vc-function-control=stackcall -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLinkageCorruptor -march=genx64 -vc-function-control=stackcall -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 

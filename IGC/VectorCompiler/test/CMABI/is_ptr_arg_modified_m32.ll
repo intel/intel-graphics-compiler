@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -cmabi -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -cmabi -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:32:32-i64:64-n8:16:32"
 

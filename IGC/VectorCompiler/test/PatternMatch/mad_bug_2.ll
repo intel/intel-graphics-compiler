@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXPatternMatch -mcpu=Gen9 -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -mcpu=Gen9 -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; Function Attrs: nounwind
 define <16 x i16> @foo(i32 %surfaceId) {

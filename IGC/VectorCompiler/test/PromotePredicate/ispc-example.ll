@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unkonwn-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unkonwn-unknown \
 ; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
 
 ; CHECK-LABEL: f_f

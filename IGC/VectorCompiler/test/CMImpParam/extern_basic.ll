@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN: %opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
 ; RUN:    | FileCheck --check-prefix=XeHP-OCL %s
-; RUN: opt %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
+; RUN: %opt %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
 ; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix=Gen9-OCL %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

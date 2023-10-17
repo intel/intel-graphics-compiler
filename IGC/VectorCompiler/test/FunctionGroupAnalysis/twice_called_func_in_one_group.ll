@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: opt %use_old_pass_manager% -GenXModule -FunctionGroupAnalysis -march=genx64 \
+; RUN: %opt %use_old_pass_manager% -GenXModule -FunctionGroupAnalysis -march=genx64 \
 ; RUN: -print-function-group-info -disable-output -mcpu=Gen9 -S < %s | FileCheck \
 ; RUN: %s --match-full-lines
 

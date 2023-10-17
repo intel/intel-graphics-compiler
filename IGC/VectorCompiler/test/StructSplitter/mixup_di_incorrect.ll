@@ -8,7 +8,7 @@
 
 ; Test shows wrong behavior of dbg support when types in structure are in mess.
 
-; RUN: opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 %v8_varying_B = type { i32, %v8_uniform_A, float }
 %v8_uniform_A = type { i32, float, float, i32 }

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-;RUN: opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
+;RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
 
 @b = internal global <4 x i8> undef, align 4
 
