@@ -3164,8 +3164,9 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
     IGC_ASSERT(PredReg->Category == vc::RegCategory::Predicate);
   }
 
-  uint8_t execSize = genx::log2(
+  auto execSize = genx::log2(
       cast<IGCLLVM::FixedVectorType>(Pred->getType())->getNumElements());
+  IGC_ASSERT_EXIT(execSize > 0);
 
   // Visa decoder part
   VISA_EMask_Ctrl emask = VISA_EMask_Ctrl((execSize >> 0x4) & 0xF);
@@ -5221,15 +5222,15 @@ GenXKernelBuilder::createGeneralOperand(Region *R, VISA_GenVar *Decl,
   // Write the vISA general operand, canonicalizing the
   // region parameters where applicable.
   IGC_ASSERT_MESSAGE(Decl, "no register allocated for this value");
+  IGC_ASSERT_EXIT(GrfByteSize > 0);
+  auto Off = R->Offset >> genx::log2(GrfByteSize);
+  auto NumOff = (R->Offset & (GrfByteSize - 1)) / R->ElementBytes;
   if (!IsDest) {
-    ResultOperand = createCisaSrcOperand(
-        Decl, static_cast<VISA_Modifier>(Mod), R->VStride, R->Width, R->Stride,
-        R->Offset >> genx::log2(GrfByteSize),
-        (R->Offset & (GrfByteSize - 1)) / R->ElementBytes);
+    ResultOperand =
+        createCisaSrcOperand(Decl, static_cast<VISA_Modifier>(Mod), R->VStride,
+                             R->Width, R->Stride, Off, NumOff);
   } else {
-    ResultOperand = createCisaDstOperand(
-        Decl, R->getDstStride(), R->Offset >> genx::log2(GrfByteSize),
-        (R->Offset & (GrfByteSize - 1)) / R->ElementBytes);
+    ResultOperand = createCisaDstOperand(Decl, R->getDstStride(), Off, NumOff);
   }
   return ResultOperand;
 }

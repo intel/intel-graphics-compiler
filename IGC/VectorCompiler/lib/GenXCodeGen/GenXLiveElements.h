@@ -56,7 +56,7 @@ public:
   LiveElements(Type *Ty, bool IsLive = false);
   LiveElements(const ArrayRef<SmallBitVector> LE)
       : LiveElems(LE.begin(), LE.end()) {}
-  LiveElements(SmallBitVector &&LE) : LiveElems({LE}) {}
+  LiveElements(SmallBitVector &&LE) : LiveElems({std::move(LE)}) {}
   LiveElements(const SmallBitVector &LE) = delete;
   LiveElements &operator=(const SmallBitVector &) = delete;
 

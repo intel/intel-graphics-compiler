@@ -721,6 +721,7 @@ static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
     IGC_ASSERT_EXIT_MESSAGE(
         0, "IA buffer is supported only for OCL/L0 so local.id "
            "must have been already transformed into local.id16");
+    return ImplArgsBufferPtr;
   case GenXIntrinsic::genx_get_scoreboard_deltas:
   case GenXIntrinsic::genx_get_scoreboard_bti:
   case GenXIntrinsic::genx_get_scoreboard_depcnt:
@@ -728,6 +729,7 @@ static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
     IGC_ASSERT_EXIT_MESSAGE(
         0, "IA buffer is supported only for OCL/L0, scoreboard "
            "builtins should not appear for those runtimes");
+    return ImplArgsBufferPtr;
   case GenXIntrinsic::genx_local_size:
     return loadVec3ArgFromIABuffer<GenXIntrinsic::genx_local_size>(
         ImplArgsBufferPtr, IRB);

@@ -189,10 +189,10 @@ Region genx::makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
           Result.Mask = 0;
       break;
     default:
-      IGC_ASSERT(0);
+      IGC_ASSERT_EXIT(0);
   }
   // Get the region parameters.
-  IGC_ASSERT(Subregion);
+  IGC_ASSERT_EXIT(Subregion);
   Result.ElementTy = Subregion->getType();
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Result.ElementTy)) {
     Result.ElementTy = VT->getElementType();
@@ -365,12 +365,13 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // 4. no more than 8 elements in multi indirect (because there
         //    are only 8 elements in an address register).
         IGC_ASSERT_EXIT(Width > 0 && R.ElementBytes > 0);
-        unsigned LogWidth = genx::log2(Width);
+        auto LogWidth = genx::log2(Width);
         if (1U << LogWidth == Width)
           LogWidth = genx::log2(R.NumElements); // legal width
         unsigned LogElementBytes = genx::log2(R.ElementBytes);
         if (LogWidth + LogElementBytes > (LogGRFWidth + 1))
           LogWidth = LogGRFWidth + 1 - LogElementBytes;
+        IGC_ASSERT_EXIT(LogWidth >= 0);
         ValidWidth = 1 << LogWidth;
         if (ValidWidth > 8)
           ValidWidth = 8;
@@ -496,6 +497,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
                 NumRows = (R.NumElements - Idx) / R.Width;
             }
           }
+          IGC_ASSERT_EXIT(NumRows > 0);
           ValidWidth = (1 << genx::log2(NumRows)) * R.Width;
         }
         if (ValidWidth == 1 && Idx % R.Width) {

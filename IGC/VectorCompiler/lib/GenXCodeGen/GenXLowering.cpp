@@ -1886,17 +1886,16 @@ bool GenXLowering::processInst(Instruction *Inst) {
       IntrinsicID = vc::getAnyIntrinsicID(Callee);
       IGC_ASSERT(IGCLLVM::getNumArgOperands(CI) < GenXIntrinsicInfo::OPNDMASK);
     }
-    if (ST) {
-      // use gather/scatter to implement SLM oword load/store on
-      // legacy platforms
-      if (!ST->hasSLMOWord()) {
-        if (translateSLMOWord(CI, IntrinsicID))
-          return true;
-      }
-      if (ST->getGRFByteSize() > 32) {
-        if (widenSIMD8GatherScatter(CI, IntrinsicID))
-          return true;
-      }
+    IGC_ASSERT_EXIT(ST);
+    // use gather/scatter to implement SLM oword load/store on
+    // legacy platforms
+    if (!ST->hasSLMOWord()) {
+      if (translateSLMOWord(CI, IntrinsicID))
+        return true;
+    }
+    if (ST->getGRFByteSize() > 32) {
+      if (widenSIMD8GatherScatter(CI, IntrinsicID))
+        return true;
     }
     // split gather/scatter/atomic into the width legal to the target
     if (splitGatherScatter(CI, IntrinsicID))
