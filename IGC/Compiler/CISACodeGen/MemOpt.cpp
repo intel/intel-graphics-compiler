@@ -2595,10 +2595,6 @@ const BundleSize_t BundleConfig::m_d32VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d8VecSizes_u = { 2,4,8,16,32 };
 
 bool IGC::doLdStCombine(const CodeGenContext* CGC) {
-    // start with OCL, will apply to others.
-    if (CGC->type != ShaderType::OPENCL_SHADER)
-        return false;
-
     if (CGC->type == ShaderType::OPENCL_SHADER) {
        auto oclCtx = (const OpenCLProgramContext*)CGC;
        // internal flag overrides IGC key
