@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <string>
 #include "Probe/Assertion.h"
@@ -132,7 +133,6 @@ StatelessToStateful::StatelessToStateful()
     : FunctionPass(ID),
     m_hasBufferOffsetArg(false),
     m_hasOptionalBufferOffsetArg(false),
-    m_hasSubDWAlignedPtrArg(false),
     m_hasPositivePointerOffset(false),
     m_ACT(nullptr),
     m_pImplicitArgs(nullptr),
@@ -175,13 +175,11 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     m_hasOptionalBufferOffsetArg = (m_hasBufferOffsetArg &&
         (IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) || modMD->compOpt.BufferOffsetArgOptional));
 
-    m_hasSubDWAlignedPtrArg = (IGC_IS_FLAG_ENABLED(UseSubDWAlignedPtrArg) || modMD->compOpt.HasSubDWAlignedPtrArg);
-
     m_hasPositivePointerOffset = (IGC_IS_FLAG_ENABLED(SToSProducesPositivePointer) || modMD->compOpt.HasPositivePointerOffset);
 
     m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD, ctx->platform.getGRFSize());
+    m_ctx = static_cast<OpenCLProgramContext*>(getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+    m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD, m_ctx->platform.getGRFSize());
 
     findPromotableInstructions();
     promote();
@@ -428,10 +426,28 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         // guarantted to be DW-aligned.)
         //
         // Note that implicit arg is always aligned.
-        bool isAlignedPointee =
-            (!m_hasSubDWAlignedPtrArg || arg->isImplicitArg())
-            ? true
-            : (getPointeeAlign(DL, base) >= 4);
+        bool isAlignedPointee = false;
+        if (arg->isImplicitArg())
+        {
+            isAlignedPointee = true;
+        }
+        else
+        {
+            isAlignedPointee = getPointeeAlign(DL, base) >= 4 ||
+                // The intent of getKnownAlignment below is to check if any llvm.assume intrinsic provides
+                // a hint about the base pointer alignment
+                getKnownAlignment((Value*)arg->getArg(), *DL, F->getEntryBlock().getFirstNonPHI(), AC) >= 4;
+        }
+
+        // When compiling with patch tokens, always assume that the address
+        // is aligned. This is a workaround for old OneMKL Releases. Assuming
+        // that the address is not aligned leads to using bufferOffset implicit
+        // argument. The additional argument confuses compatibility check in OneMKL
+        // and forces it to make a fallback to a different kernels.
+        // TODO: Remove below if statement as soon as support for old OneMKL
+        //       versions is dropped.
+        if (!m_ctx->enableZEBinary())
+            isAlignedPointee = true;
 
         // special handling
         if (m_supportNonGEPPtr && gep == nullptr && !arg->isImplicitArg())

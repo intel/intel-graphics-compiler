@@ -42,10 +42,6 @@ def has_positive_pointer_offset : ZeFlag<"opt-has-positive-pointer-offset">;
 def : ClFlag<"intel-has-positive-pointer-offset">,
   Alias<has_positive_pointer_offset>;
 
-def has_subdw_aligned_ptr_arg : ZeFlag<"opt-has-subDW-aligned-ptr-arg">;
-def : ClFlag<"intel-has-subDW-aligned-ptr-arg">,
-  Alias<has_subdw_aligned_ptr_arg>;
-
 defm intel_disable_a64wa : CommonFlag<"intel-disable-a64WA">;
 defm intel_force_enable_a64wa : CommonFlag<"intel-force-enable-a64WA">;
 
