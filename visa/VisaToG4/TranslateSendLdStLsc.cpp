@@ -225,15 +225,9 @@ static int alignUp(int a, int n) { return n + a - 1 - ((n + a - 1) % a); }
 static int lscBlock2dComputeDataRegs(LSC_OP op,
                                      LSC_DATA_SHAPE_BLOCK2D dataShape2d,
                                      int BYTES_PER_REG, int dataSizeBits) {
-  auto roundUpToPowerOf2 = [](int n) {
-    while (n & (n - 1))
-      n++;
-    return n;
-  };
-
   bool transpose = dataShape2d.order == LSC_DATA_ORDER_TRANSPOSE;
   int grfRowPitchElems =
-      roundUpToPowerOf2(!transpose ? dataShape2d.width : dataShape2d.height);
+      RoundUpToPowerOf2(!transpose ? dataShape2d.width : dataShape2d.height);
   int blockRows = !transpose ? dataShape2d.height : dataShape2d.width;
   int elemsPerGrf = 8 * BYTES_PER_REG / dataSizeBits;
   // alignUp needed for padding between blocks; each block pads out to

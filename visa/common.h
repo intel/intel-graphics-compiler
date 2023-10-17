@@ -184,4 +184,29 @@ constexpr Type AlignUp(const Type value, const size_t alignment) {
   return common - (common % alignment);
 }
 
+//
+// The function returns:
+//   - 0 if 'value' = 0,
+//   - the lowest power of two greater of equal to 'value'.
+//
+// The main idea of the algorithm is to set all lower bits for each set bit of 'value'.
+//
+constexpr static uint32_t RoundUpToPowerOf2(uint32_t value) {
+  // Without decreasing, the result would be:
+  // - 1 for 'value' = 0
+  // - the next power of two if 'value' is a power of two.
+  value--;
+
+  value |= value >> 1;  // Duplicate each set bit to the 1st bit on the right, so each group of 1s has length >= 2 or ends on the first bit.
+  value |= value >> 2;  // Duplicate each set bit to the 2nd bit on the right, so each group of 1s has length >= 4 or ends on the first bit.
+  value |= value >> 4;  // ..
+  value |= value >> 8;  // ..
+  value |= value >> 16; // Duplicate each set bit to the 16th bit on the right, so each group of 1s has length >= 32 or ends on the first bit.
+
+  // Increase by one to get a power of two.
+  value++;
+
+  return value;
+}
+
 #endif //_COMMON_H_
