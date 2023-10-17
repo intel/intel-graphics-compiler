@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -23,7 +23,7 @@
 ;              \      /
 ;                bar
 
-; RUN: %opt %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -36,8 +36,7 @@ define internal spir_func i32 @bar(i32 addrspace(3)* %arg) #1 {
 }
 
 ; CHECK: define internal spir_func i32 @foo
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 0 to [4 x i32] addrspace(3)*
-; CHECK-NEXT: %gaddr.lowering = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 1
+; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 1))
 define internal spir_func i32 @foo(i32 addrspace(3)* %arg) #1 {
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
   %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 1))
@@ -46,8 +45,7 @@ define internal spir_func i32 @foo(i32 addrspace(3)* %arg) #1 {
 }
 
 ; CHECK: define internal spir_func i32 @f1
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 0 to [4 x i32] addrspace(3)*
-; CHECK-NEXT: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 2
+; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 2
 define internal spir_func i32 @f1() #1 {
   %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 2
   %foo.res = call spir_func i32 @foo(i32 addrspace(3)* %gv.p3)
@@ -55,13 +53,12 @@ define internal spir_func i32 @f1() #1 {
 }
 
 ; CHECK: define internal spir_func i32 @f2
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 0 to [4 x i32] addrspace(3)*
 define internal spir_func i32 @f2() #1 {
-  ; CHECK: %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 0
+  ; CHECK: %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64
   %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0
   %gv.ld.0 = load i32, i32 addrspace(3)* %gv.p3.0, align 4
 
-  ; CHECK: %gv.p3.3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 3
+  ; CHECK: %gv.p3.3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 3
   %gv.p3.3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 3
   %gv.ld.3 = load i32, i32 addrspace(3)* %gv.p3.3, align 4
 
@@ -75,11 +72,10 @@ define internal spir_func i32 @f2() #1 {
 }
 
 ; CHECK: define internal spir_func i32 @f0
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 0 to [4 x i32] addrspace(3)*
 define internal spir_func i32 @f0(i32 addrspace(3)* %arg) #1 {
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
 
-  ; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 0
+  ; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0
   %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0
   %gv.ld = load i32, i32 addrspace(3)* %gv.p3, align 4
 
@@ -98,9 +94,7 @@ exit:
 }
 
 ; CHECK: define internal spir_func i32 @f3
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 64 to [4 x i32] addrspace(3)*
-; CHECK-NEXT: %gaddr.lowering = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 0
-; CHECK-NEXT: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* %gaddr.lowering)
+; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0))
 define internal spir_func i32 @f3(i32 addrspace(3)* %arg) #1 {
   %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0))
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
@@ -109,18 +103,14 @@ define internal spir_func i32 @f3(i32 addrspace(3)* %arg) #1 {
 }
 
 ; CHECK: define dllexport spir_kernel void @kernelA
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 0 to [4 x i32] addrspace(3)*
-; CHECK-NEXT: %gaddr.lowering = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 0
-; CHECK-NEXT: %res = call spir_func i32 @f0(i32 addrspace(3)* %gaddr.lowering)
+; CHECK: %res = call spir_func i32 @f0(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0))
 define dllexport spir_kernel void @kernelA() #2 {
   %res = call spir_func i32 @f0(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0))
   ret void
 }
 
 ; CHECK: define dllexport spir_kernel void @kernelB
-; CHECK-NEXT: %SLM_GV.lowered = inttoptr i32 64 to [4 x i32] addrspace(3)*
-; CHECK-NEXT: %gaddr.lowering = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* %SLM_GV.lowered, i64 0, i64 3
-; CHECK-NEXT: %res = call spir_func i32 @f3(i32 addrspace(3)* %gaddr.lowering)
+; CHECK: %res = call spir_func i32 @f3(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 3))
 define dllexport spir_kernel void @kernelB() #2 {
   %res = call spir_func i32 @f3(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 3))
   ret void

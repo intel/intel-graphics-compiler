@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -16,21 +16,17 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 @slm_struct_align = internal unnamed_addr addrspace(3) global { i1 } undef, align 256
 
 define dllexport spir_kernel void @kernel() #0 {
-  ; CHECK: %slm_struct_align.lowered = inttoptr i32 0 to { i1 } addrspace(3)*
-  ; CHECK: %slm_struct_i64i8.lowered = inttoptr i32 8 to { i64, i8 } addrspace(3)*
-  ; CHECK: %slm_v2i8.lowered = inttoptr i32 24 to <2 x i8> addrspace(3)*
-  ; CHECK: %slm_i1.lowered = inttoptr i32 26 to i1 addrspace(3)*
 
-  ; CHECK: %load_i1 = load i1, i1 addrspace(3)* %slm_i1.lowered
+  ; CHECK: %load_i1 = load i1, i1 addrspace(3)* inttoptr (i32 26 to i1 addrspace(3)*)
   %load_i1 = load i1, i1 addrspace(3)* @slm_i1
 
-  ; CHECK: %load_v2i8 = load <2 x i8>, <2 x i8> addrspace(3)* %slm_v2i8.lowered
+  ; CHECK: %load_v2i8 = load <2 x i8>, <2 x i8> addrspace(3)* inttoptr (i32 24 to <2 x i8> addrspace(3)*),
   %load_v2i8 = load <2 x i8>, <2 x i8> addrspace(3)* @slm_v2i8
 
-  ; CHECK: %load_struct_i64i8 = load { i64, i8 }, { i64, i8 } addrspace(3)* %slm_struct_i64i8.lowered
+  ; CHECK: %load_struct_i64i8 = load { i64, i8 }, { i64, i8 } addrspace(3)* inttoptr (i32 8 to { i64, i8 } addrspace(3)*)
   %load_struct_i64i8 = load { i64, i8 }, { i64, i8 } addrspace(3)* @slm_struct_i64i8
 
-  ; CHECK: %load_struct_align = load { i1 }, { i1 } addrspace(3)* %slm_struct_align.lowered
+  ; CHECK: %load_struct_align = load { i1 }, { i1 } addrspace(3)* inttoptr (i32 268435456 to { i1 } addrspace(3)*)
   %load_struct_align = load { i1 }, { i1 } addrspace(3)* @slm_struct_align
   ret void
 }

@@ -163,6 +163,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXFinalizerPass(registry);
   initializeGenXBuiltinFunctionsPass(registry);
   initializeGenXLegacyToLscTranslatorPass(registry);
+  initializeGenXSLMResolutionPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -395,6 +396,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXReduceIntSizePass());
   /// .. include:: GenXGlobalValueLowering.cpp
   vc::addPass(PM, createGenXGlobalValueLoweringPass());
+  /// .. include:: GenXSLMResolution.cpp
+  vc::addPass(PM, createGenXSLMResolution());
 
   /// .. include:: GenXStackUsage.cpp
   vc::addPass(PM, createGenXStackUsagePass());

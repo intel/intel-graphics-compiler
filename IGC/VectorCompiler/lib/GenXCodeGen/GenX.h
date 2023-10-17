@@ -139,6 +139,7 @@ ModulePass *createGenXInitBiFConstantsPass();
 FunctionPass *createGenXGlobalUniformAnalysisPass();
 ModulePass *createGenXBuiltinFunctionsPass(BuiltinFunctionKind Kind);
 FunctionPass *createGenXLegacyToLscTranslatorPass();
+ModulePass *createGenXSLMResolution();
 
 namespace genx {
 

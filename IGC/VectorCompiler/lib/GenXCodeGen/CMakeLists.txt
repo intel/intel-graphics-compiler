@@ -82,6 +82,7 @@ set(CODEGEN_SOURCES
   GenXRematerialization.cpp
   GenXSimdCFConformance.cpp
   GenXSimdCFRegion.cpp
+  GenXSLMResolution.cpp
   GenXStackUsage.cpp
   GenXStructSplitter.cpp
   GenXSubtarget.cpp

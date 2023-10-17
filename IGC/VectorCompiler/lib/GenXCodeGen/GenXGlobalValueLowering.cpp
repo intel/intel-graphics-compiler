@@ -9,22 +9,8 @@ SPDX-License-Identifier: MIT
 //
 /// GenXGlobalValueLowering
 /// --------------------------
-///
-/// This pass lowers global variables the following way:
-///
-/// For SLM global variables it replaces all locally linked globals with
-/// i32 offsets in SLM buffer. Offsets are allocated in order of variable's
-/// alignment decline
-/// The following restrictions currently apply:
-///   1. Global SLM variables with initializer are not supported.
-///   2. Global SLM variables with external linkage are not supported.
-///   3. Global SLM variables used in indirectly-called or external functions
-///     and their subroutines are not supported.
-///   4. All paths to global SLM use must start from the same kernel.
-///
-/// For any other global values relocations are used.
-/// For global value symbols (global variable or function) LLVM IR
-/// represintation of this instruction is:
+/// For global value symbols (global variable or function) it is needed to
+/// enable relocations. LLVM IR representation for this is:
 /// %g = call i64 @llvm.genx.gaddr.i64.p0a8i8([8 x i8]* @very_important_data)
 ///
 /// The goal of this lowering pass is to make every user of a global value
@@ -50,16 +36,10 @@ SPDX-License-Identifier: MIT
 #include "GenXRegionUtils.h"
 
 #include "vc/Support/BackendConfig.h"
-#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
-#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
-
-#include "llvmWrapper/Analysis/CallGraph.h"
-#include "llvmWrapper/IR/Value.h"
-#include "llvmWrapper/Support/Alignment.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -69,7 +49,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
-#include <llvm/InitializePasses.h>
 #include <llvm/Pass.h>
 
 #include <iterator>
@@ -116,17 +95,8 @@ class GenXGlobalValueLowering : public ModulePass {
   using ModuleConstantLoweringInfo =
       std::unordered_map<Function *, FuncConstantLoweringInfo>;
 
-  using FHead = Function;
-  using FuncGroupMap =
-      std::unordered_map<const Function *, std::unordered_set<const FHead *>>;
-
-  using SLMVarInfo = std::unordered_map<const GlobalValue *, unsigned>;
-  using KernelSLMInfo = std::unordered_map<const FHead *, SLMVarInfo>;
-
   const DataLayout *DL = nullptr;
   ModuleConstantLoweringInfo WorkList;
-  FuncGroupMap FunctionList;
-  KernelSLMInfo KernelInfo;
 
 public:
   static char ID;
@@ -136,12 +106,12 @@ public:
   }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
-  void releaseMemory() override;
+
 private:
   void fillWorkListForGV(GlobalValue &GV);
-  void fillWorkListForGVUse(Use &GVUse, const GlobalValue &GV);
-  void fillWorkListForGVInstUse(Use &GVUse, const GlobalValue &GV);
-  void fillWorkListForGVConstUse(Use &GVUse, const GlobalValue &GV);
+  void fillWorkListForGVUse(Use &GVUse);
+  void fillWorkListForGVInstUse(Use &GVUse);
+  void fillWorkListForGVConstUse(Use &GVUse);
   void buildAllConstantReplacementsInFunction(Function &Func);
   Value *buildConstantReplacement(Constant &Const, IRBuilder<> &Builder,
                                   Function &Func);
@@ -152,14 +122,6 @@ private:
   Value *buildConstExprReplacement(ConstantExpr &ConstExpr,
                                    IRBuilder<> &Builder, Function &Func);
   void updateUsers(Function &Func);
-
-  // SLM global variable support.
-  void diagSLMVarUsage(const Function &F, const GlobalValue &GV);
-  void traverseCallGraph(const FHead &Head, CallGraph &CG);
-  void updateSLMOffsets(unsigned &KernelSLMMeta, unsigned &SLMVarOffset,
-                        const GlobalValue &GV);
-  void allocateOnSLM();
-  alignment_t getGlobalVarAlign(const GlobalValue &GV);
 };
 
 } // end namespace
@@ -172,7 +134,6 @@ void initializeGenXGlobalValueLoweringPass(PassRegistry &);
 INITIALIZE_PASS_BEGIN(GenXGlobalValueLowering, "GenXGlobalValueLowering",
                       "GenXGlobalValueLowering", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
-INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_END(GenXGlobalValueLowering, "GenXGlobalValueLowering",
                     "GenXGlobalValueLowering", false, false)
 
@@ -181,48 +142,17 @@ ModulePass *llvm::createGenXGlobalValueLoweringPass() {
   return new GenXGlobalValueLowering;
 }
 
-static bool isSLMVarToReplace(const GlobalValue &GV) {
-  if (GV.getAddressSpace() != vc::AddrSpace::Local)
-    return false;
-  if (auto *GVar = dyn_cast<const GlobalVariable>(&GV))
-    if (!vc::isRealGlobalVariable(*GVar))
-      return false;
-  if (!GV.hasLocalLinkage()) {
-    vc::diagnose(GV.getContext(), "GenXGlobalValueLowering",
-                 "SLM global variables with local linkage are only supported",
-                 &GV);
-    return false;
-  }
-  return true;
-}
-
-static bool hasSLMGlobals(const Module &M) {
-  for (auto &GV : M.globals()) {
-    if (isSLMVarToReplace(GV))
-      return true;
-  }
-  return false;
-}
-
 void GenXGlobalValueLowering::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
   AU.addRequired<GenXBackendConfig>();
-  AU.addRequired<CallGraphWrapperPass>();
 }
 
 bool GenXGlobalValueLowering::runOnModule(Module &M) {
   DL = &M.getDataLayout();
   auto &&BECfg = getAnalysis<GenXBackendConfig>();
-  auto &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
-  bool isSLMVarFound = hasSLMGlobals(M);
-  if (isSLMVarFound)
-    for (auto &F : M.functions())
-      if (vc::isKernel(&F))
-        traverseCallGraph(F, CG);
-
   for (auto &GV : M.globals())
-    if (vc::isRealGlobalVariable(GV))
+    if (vc::isRealGlobalVariable(GV) &&
+        (GV.getAddressSpace() != vc::AddrSpace::Local))
       fillWorkListForGV(GV);
   for (auto &F : M)
     if (vc::isIndirect(F) && !BECfg.directCallsOnly(F.getName()))
@@ -230,9 +160,6 @@ bool GenXGlobalValueLowering::runOnModule(Module &M) {
 
   if (WorkList.empty())
     return false;
-
-  if (isSLMVarFound)
-    allocateOnSLM();
 
   for (auto &FuncInfo : WorkList) {
     buildAllConstantReplacementsInFunction(*FuncInfo.first);
@@ -242,32 +169,25 @@ bool GenXGlobalValueLowering::runOnModule(Module &M) {
   return true;
 }
 
-void GenXGlobalValueLowering::releaseMemory() {
-  WorkList.clear();
-  FunctionList.clear();
-  KernelInfo.clear();
-}
-
 void GenXGlobalValueLowering::fillWorkListForGV(GlobalValue &GV) {
   IGC_ASSERT_MESSAGE(isa<GlobalObject>(GV),
                      "only global objects are yet supported");
   for (Use &GVUse : GV.uses())
-    fillWorkListForGVUse(GVUse, GV);
+    fillWorkListForGVUse(GVUse);
 }
 
 // Only constants that are directly used in an instruction are added to
 // replacement map. Other constants aren't added during this phase as
 // it is hard to define in which fuction they are used, until instruction
 // user is met.
-void GenXGlobalValueLowering::fillWorkListForGVUse(Use &GVUse,
-                                                   const GlobalValue &GV) {
+void GenXGlobalValueLowering::fillWorkListForGVUse(Use &GVUse) {
   User *Usr = GVUse.getUser();
   if (isa<Instruction>(Usr)) {
-    fillWorkListForGVInstUse(GVUse, GV);
+    fillWorkListForGVInstUse(GVUse);
     return;
   }
   IGC_ASSERT_MESSAGE(isa<Constant>(Usr), "unexpected global variable user");
-  fillWorkListForGVConstUse(GVUse, GV);
+  fillWorkListForGVConstUse(GVUse);
 }
 
 static Instruction *buildGaddr(IRBuilder<> &Builder, GlobalValue &GV) {
@@ -281,8 +201,7 @@ static Instruction *buildGaddr(IRBuilder<> &Builder, GlobalValue &GV) {
                             GV.getName() + ".gaddr");
 }
 
-void GenXGlobalValueLowering::fillWorkListForGVInstUse(Use &GVUse,
-                                                       const GlobalValue &GV) {
+void GenXGlobalValueLowering::fillWorkListForGVInstUse(Use &GVUse) {
   auto *Usr = cast<Instruction>(GVUse.getUser());
   auto *ConstWithGV = cast<Constant>(GVUse.get());
   IGC_ASSERT_MESSAGE(vc::getAnyIntrinsicID(Usr) !=
@@ -294,20 +213,14 @@ void GenXGlobalValueLowering::fillWorkListForGVInstUse(Use &GVUse,
   Function *Func = Usr->getFunction();
   WorkList[Func].Users.insert({Usr, GVUse.getOperandNo()});
   WorkList[Func].Replacement[ConstWithGV] = nullptr;
-
-  if (isSLMVarToReplace(GV)) {
-    diagSLMVarUsage(*Func, GV);
-    KernelInfo[*FunctionList[Func].begin()][&GV] = 0;
-  }
 }
 
 // For constant use continue recursively travers through users, until
 // instruction user is met.
-void GenXGlobalValueLowering::fillWorkListForGVConstUse(Use &GVUse,
-                                                        const GlobalValue &GV) {
+void GenXGlobalValueLowering::fillWorkListForGVConstUse(Use &GVUse) {
   auto *Usr = cast<Constant>(GVUse.getUser());
   for (Use &U : Usr->uses())
-    fillWorkListForGVUse(U, GV);
+    fillWorkListForGVUse(U);
 }
 
 // Build all the instruction that will replace constant uses in the provided
@@ -347,10 +260,7 @@ Value *GenXGlobalValueLowering::buildConstantReplacement(Constant &Const,
   return &Const;
 }
 
-// Global variables are replaced with:
-// 1. Int32 offset to ptr for SLM Variables.
-//    %a.lowered = inttoptr i32 [offset] to [8 x i32] addrspace(3)*
-// 2. A pair of gaddr + inttoptr for other global variables:
+// Global variable is replaced with pair of gaddr + inttoptr:
 //    %a.gaddr = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @a)
 //    %a.lowered = inttoptr i64 %a.gaddr to [8 x i32]*
 Instruction *GenXGlobalValueLowering::buildGVReplacement(GlobalValue &GV,
@@ -361,18 +271,9 @@ Instruction *GenXGlobalValueLowering::buildGVReplacement(GlobalValue &GV,
   IGC_ASSERT_MESSAGE(WorkList[&Func].Replacement.count(&GV) == 0 ||
                          !WorkList[&Func].Replacement[&GV],
                      "the constant shouldn't have a replacement already");
-  Value *GVAddr = nullptr;
-  if (isSLMVarToReplace(GV))
-    GVAddr = ConstantInt::get(Type::getInt32Ty(GV.getContext()),
-                              KernelInfo[*FunctionList[&Func].begin()][&GV]);
-  else
-    GVAddr = buildGaddr(Builder, GV);
-  // Force creating IntToPtr instruction, as CreateIntToPtr can create
-  // a constexpr here.
-  auto *GVReplacement = IntToPtrInst::Create(
-      Instruction::CastOps::IntToPtr, GVAddr, GV.getType(),
-      GV.getName() + ".lowered", &*Builder.GetInsertPoint());
-  GVReplacement->setDebugLoc(Builder.getCurrentDebugLocation());
+  auto *Gaddr = buildGaddr(Builder, GV);
+  auto *GVReplacement = cast<Instruction>(
+      Builder.CreateIntToPtr(Gaddr, GV.getType(), GV.getName() + ".lowered"));
   // May create a new map entry here.
   WorkList[&Func].Replacement[&GV] = GVReplacement;
   return GVReplacement;
@@ -443,87 +344,4 @@ void GenXGlobalValueLowering::updateUsers(Function &Func) {
   for (Instruction *Inst : PotentialToErase)
     if (Inst->use_empty())
       Inst->eraseFromParent();
-}
-
-void GenXGlobalValueLowering::diagSLMVarUsage(const Function &F,
-                                              const GlobalValue &GV) {
-  if (!FunctionList.count(&F)) {
-    if (vc::isIndirect(F))
-      vc::diagnose(F.getContext(), "GenXGlobalValueLowering",
-                   "SLM variable usage in indirectly called functions"
-                   "is not supported");
-    vc::fatal(F.getContext(), "GenXGlobalValueLowering",
-              "function has not been mapped");
-  } else if (FunctionList[&F].size() != 1) {
-    vc::fatal(GV.getContext(), "GenXGlobalValueLowering",
-              "SLM variable usage in functions which can be invoked from "
-              "another kernel is not supported",
-              &GV);
-  }
-}
-
-// Create a function group map where each key is a function and
-// its values are heads(kernels).
-void GenXGlobalValueLowering::traverseCallGraph(const FHead &Head,
-                                                CallGraph &CG) {
-  SmallVector<const Function *, 8> ToProcess;
-  ToProcess.push_back(&Head);
-
-  while (!ToProcess.empty()) {
-    const auto *F = ToProcess.pop_back_val();
-
-    CallGraphNode &N = *CG[F];
-    for (IGCLLVM::CallRecord CE : N) {
-      const Function *Child = CE.second->getFunction();
-      if (!Child || Child->isDeclaration())
-        continue;
-      bool NotVisited = FunctionList[Child].insert(&Head).second;
-      if (NotVisited)
-        ToProcess.push_back(Child);
-    }
-  }
-  FunctionList[&Head].insert(&Head);
-}
-
-alignment_t GenXGlobalValueLowering::getGlobalVarAlign(const GlobalValue &V) {
-  auto *GV = cast<const GlobalVariable>(&V);
-  auto Align = GV->getAlignment();
-  if (!Align)
-    return DL->getABITypeAlignment(GV->getValueType());
-  return Align;
-}
-
-// Asign offset to global SLM variable in SLM buffer. Update kernels slm buffer
-// size metadata.
-void GenXGlobalValueLowering::updateSLMOffsets(unsigned &KernelSLMMeta,
-                                               unsigned &SLMVarOffset,
-                                               const GlobalValue &GV) {
-  auto Size = DL->getTypeStoreSize(GV.getValueType());
-  auto Align = getGlobalVarAlign(GV);
-
-  KernelSLMMeta =
-      IGCLLVM::alignTo(KernelSLMMeta, IGCLLVM::getCorrectAlign(Align));
-  SLMVarOffset = KernelSLMMeta;
-  KernelSLMMeta += Size;
-}
-
-void GenXGlobalValueLowering::allocateOnSLM() {
-  for (auto &KI : KernelInfo) {
-    const FHead *Head = KI.first;
-    vc::KernelMetadata KM(Head);
-    unsigned OffsetCounter = KM.getSLMSize();
-
-    // Have to make a copy to sort variables in alignment decline order.
-    std::vector<const GlobalValue *> GVInfo;
-    std::transform(
-        KI.second.begin(), KI.second.end(), std::back_inserter(GVInfo),
-        [](SLMVarInfo::value_type &SLMInfo) { return SLMInfo.first; });
-    std::sort(GVInfo.begin(), GVInfo.end(),
-              [this](const auto *lhs, const auto *rhs) {
-                return getGlobalVarAlign(*lhs) > getGlobalVarAlign(*rhs);
-              });
-    for (auto GV : GVInfo)
-      updateSLMOffsets(OffsetCounter, KI.second[GV], *GV);
-    KM.updateSLMSizeMD(OffsetCounter);
-  }
 }

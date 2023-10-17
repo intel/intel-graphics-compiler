@@ -16,10 +16,10 @@
 ; Debug MD for this test was created with debugify pass.
 
 ; CHECK: void @test_gvlower{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK: [[VAL1_V:%[A-z0-9.]*]] = load i32 addrspace(3)*{{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(3)* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: [[VAL1_V:%[A-z0-9.]*]] = load i32 addrspace(1)*{{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK: void @llvm.dbg.value(metadata i32 addrspace(1)* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = getelementptr {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(3)* [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK: void @llvm.dbg.value(metadata i32 addrspace(1)* [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
 ; CHECK: [[VAL3_V:%[A-z0-9.]*]] = call i32 {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
 ; CHECK: store i32 {{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
@@ -33,17 +33,17 @@
 
 %struct.st = type { i32, [8 x i32]* }
 
-@a = internal addrspace(3) global i32 addrspace(3)* null, align 8
+@a = internal addrspace(1) global i32 addrspace(1)* null, align 8
 @b = common global [8 x i32] zeroinitializer, align 8
 
-define dllexport spir_kernel void @test_gvlower(i32* %a) #2 !dbg !6 {
-  %1 = load i32 addrspace(3)*, i32 addrspace(3)* addrspace(3)* @a, align 8, !dbg !17
-  call void @llvm.dbg.value(metadata i32 addrspace(3)* %1, metadata !9, metadata !DIExpression()), !dbg !17
-  %2 = getelementptr inbounds i32, i32 addrspace(3)* %1, i64 0, !dbg !18
-  call void @llvm.dbg.value(metadata i32 addrspace(3)* %2, metadata !11, metadata !DIExpression()), !dbg !18
+define dllexport void @test_gvlower(i32* %a) #3 !dbg !6 {
+  %1 = load i32 addrspace(1)*, i32 addrspace(1)* addrspace(1)* @a, align 8, !dbg !17
+  call void @llvm.dbg.value(metadata i32 addrspace(1)* %1, metadata !9, metadata !DIExpression()), !dbg !17
+  %2 = getelementptr inbounds i32, i32 addrspace(1)* %1, i64 0, !dbg !18
+  call void @llvm.dbg.value(metadata i32 addrspace(1)* %2, metadata !11, metadata !DIExpression()), !dbg !18
   %3 = call i32 bitcast (i32 (i8*)* @foo to i32 (i32*)*)(i32* %a), !dbg !19
   call void @llvm.dbg.value(metadata i32 %3, metadata !12, metadata !DIExpression()), !dbg !19
-  store i32 %3, i32 addrspace(3)* %2, align 4, !dbg !20
+  store i32 %3, i32 addrspace(1)* %2, align 4, !dbg !20
   %4 = extractvalue %struct.st { i32 12, [8 x i32]* @b }, 1, !dbg !21
   call void @llvm.dbg.value(metadata [8 x i32]* %4, metadata !14, metadata !DIExpression()), !dbg !21
   %5 = getelementptr inbounds [8 x i32], [8 x i32]* %4, i32 0, i32 1, !dbg !22
@@ -87,8 +87,6 @@ attributes #2 = { "CMGenxMain" }
 !llvm.dbg.cu = !{!0}
 !llvm.debugify = !{!3, !4}
 !llvm.module.flags = !{!5}
-!genx.kernels = !{!31}
-!genx.kernel.internal = !{!34}
 
 !0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
 !1 = !DIFile(filename: "GenXGlobalValueLowering.ll", directory: "/")
@@ -121,7 +119,3 @@ attributes #2 = { "CMGenxMain" }
 !28 = !DILocalVariable(name: "7", scope: !26, file: !1, line: 10, type: !13)
 !29 = !DILocation(line: 10, column: 1, scope: !26)
 !30 = !DILocation(line: 11, column: 1, scope: !26)
-!31 = !{void (i32*)* @test_gvlower, !"test_gvlower", !32, i32 0, !32, !32, !33, i32 0}
-!32 = !{}
-!33 = !{!""}
-!34 = !{void (i32*)* @test_gvlower, !32, !32, !32, !32}

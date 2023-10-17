@@ -139,10 +139,18 @@ namespace IGCLLVM {
 
     inline uint64_t alignTo(uint64_t Size, Align A) {
 #if LLVM_VERSION_MAJOR < 10
-      const uint64_t Value = A;
-      return (Size + Value - 1) & ~(Value - 1U);
+        const uint64_t Value = A;
+        return (Size + Value - 1) & ~(Value - 1U);
 #else
-      return llvm::alignTo(Size, A);
+        return llvm::alignTo(Size, A);
+#endif
+    }
+
+    inline Align getABITypeAlign(const llvm::DataLayout &DL, llvm::Type *Ty) {
+#if LLVM_VERSION_MAJOR < 10
+        return DL.getABITypeAlignment(Ty);
+#else
+        return DL.getABITypeAlign(Ty);
 #endif
     }
 
