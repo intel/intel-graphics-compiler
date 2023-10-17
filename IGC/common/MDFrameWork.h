@@ -397,7 +397,6 @@ namespace IGC
         bool HasPositivePointerOffset                   = false;
         bool HasBufferOffsetArg                         = false;
         bool BufferOffsetArgOptional                    = true;
-        bool HasSubDWAlignedPtrArg                      = false;
         bool replaceGlobalOffsetsByZero                 = false;
         unsigned forcePixelShaderSIMDMode               = 0;
         bool pixelShaderDoNotAbortOnSpill               = false;

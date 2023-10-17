@@ -48,10 +48,6 @@ namespace IGC
             bool IntelHasPositivePointerOffset              = false;
             bool IntelHasBufferOffsetArg                    = false;
             bool IntelBufferOffsetArgOptional               = true;
-            bool IntelHasSubDWAlignedPtrArg                 = false;
-            // default: false, meaning kernel's sub-DW ptrArgs (char*, short*) are DW-aligned.
-            // This default is stronger than the natural alignment implied by char*/short*. But
-            // for historical reason, we have this.
 
             bool replaceGlobalOffsetsByZero                 = false;
             bool IntelEnablePreRAScheduling                 = true;

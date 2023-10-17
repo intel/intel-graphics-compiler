@@ -1347,8 +1347,6 @@ namespace TC
                             (strcmp(pParam, "-ze-opt-has-buffer-offset-arg") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-buffer-offset-arg-required") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-buffer-offset-arg-required") == 0) || //temporary options
-                            (strcmp(pParam, "-cl-intel-has-subDW-aligned-ptr-arg") == 0) || //temporary options
-                            (strcmp(pParam, "-ze-opt-has-subDW-aligned-ptr-arg") == 0) || //temporary options
                             (strcmp(pParam, "-cl-force-global-mem-allocation") == 0) || // temp
                             (strcmp(pParam, "-ze-force-global-mem-allocation") == 0) || // temp
                             (strcmp(pParam, "-cl-no-local-to-generic") == 0) || // temp
