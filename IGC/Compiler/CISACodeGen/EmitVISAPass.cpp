@@ -11275,8 +11275,8 @@ void EmitPass::emitSymbolRelocation(Function& F)
 {
     Module* pModule = F.getParent();
 
-    SmallSet<Function*, 16> funcAddrSymbols;
-    SmallSet<GlobalVariable*, 16> globalAddrSymbols;
+    SmallSetVector<Function*, 16> funcAddrSymbols;
+    SmallSetVector<GlobalVariable*, 16> globalAddrSymbols;
 
     ModuleMetaData* moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
