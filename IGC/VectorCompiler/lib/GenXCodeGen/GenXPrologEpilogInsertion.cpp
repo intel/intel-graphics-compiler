@@ -432,10 +432,6 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   RetRegByteSize = RetRegSizeInGRFsOpt * ST->getGRFByteSize();
   LLVM_DEBUG(dbgs() << "ArgReg size is " << ArgRegByteSize << "\n");
   LLVM_DEBUG(dbgs() << "RetReg size is " << RetRegByteSize << "\n");
-  if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime())) {
-    LLVM_DEBUG(dbgs() << "Old builder or CMRT used in " << F.getName() << "\n");
-    return false;
-  }
 
   // Generate caller code for stack calls and private memory allocations first.
   // Only after that generate prolog and epilog code. Such order is important

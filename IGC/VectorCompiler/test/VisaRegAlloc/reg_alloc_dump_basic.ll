@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null

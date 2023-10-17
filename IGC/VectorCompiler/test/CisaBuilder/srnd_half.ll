@@ -8,7 +8,7 @@
 
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
-; RUN: llc %s -march=genx64 -mcpu=XeHPC -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: llc %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;

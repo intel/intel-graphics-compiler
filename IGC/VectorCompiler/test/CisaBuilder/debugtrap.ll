@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 
-; RUN: llc %s -march=genx64 -mcpu=XeLP -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: llc %s -march=genx64 -mcpu=XeLP -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s --check-prefix=CHECK
 
 target triple = "genx64-unknown-unknown"

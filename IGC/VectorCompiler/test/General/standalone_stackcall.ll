@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 -save-stack-call-linkage \
+; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' \
 ; RUN: -vc-function-control=stackcall -o /dev/null | FileCheck %s
 

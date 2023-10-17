@@ -6,12 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-
-; RUN: llc %s -march=genx64 -mcpu=XeLP -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: llc %s -march=genx64 -mcpu=XeLP -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s --check-prefix=CHECK
-; RUN: llc %s -march=genx64 -mcpu=XeHPG -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: llc %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s --check-prefix=CHECK-LSC
-; RUN: llc %s -march=genx64 -mcpu=XeHPC -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: llc %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s --check-prefix=CHECK-LSC-SIMD16
 
 

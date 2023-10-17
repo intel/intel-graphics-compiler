@@ -9,6 +9,7 @@
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dump-module-to-visa-transform-info-path=%basename_t.structure \
+; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
 ; RUN: FileCheck %s --input-file=%basename_t.structure
@@ -67,7 +68,7 @@ define internal spir_func { i32, <8 x i32> } @S1(<8 x i32> %0) unnamed_addr #2 !
 }
 
 ; Function Attrs: noinline nounwind
-define dllexport spir_kernel void @K1(i32 %0) local_unnamed_addr #3 {
+define dllexport spir_kernel void @K1(i32 %0, i64 %privBas) local_unnamed_addr #3 {
   %2 = tail call spir_func { i32, <8 x i32> } @S1(<8 x i32> <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>) #4, !FuncArgSize !13, !FuncRetSize !14
   %ret = extractvalue { i32, <8 x i32> } %2, 0
   %3 = extractvalue { i32, <8 x i32> } %2, 1
@@ -80,7 +81,7 @@ define dllexport spir_kernel void @K1(i32 %0) local_unnamed_addr #3 {
 }
 
 ; Function Attrs: noinline nounwind
-define dllexport spir_kernel void @K2(i32 %0) local_unnamed_addr #3 {
+define dllexport spir_kernel void @K2(i32 %0, i64 %privBas) local_unnamed_addr #3 {
   %2 = tail call spir_func { i32, <8 x i32> } @S2(<8 x i32> <i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>) #4, !FuncArgSize !13, !FuncRetSize !14
   %ret = extractvalue { i32, <8 x i32> } %2, 0
   %3 = extractvalue { i32, <8 x i32> } %2, 1
@@ -116,14 +117,14 @@ attributes #4 = { noinline nounwind }
 !1 = !{i32 1, i32 2}
 !2 = !{}
 !3 = !{i16 6, i16 14}
-!4 = !{void (i32)* @K1, !"K1", !5, i32 0, !6, !7, !8, i32 0}
-!5 = !{i32 2}
-!6 = !{i32 64}
-!7 = !{i32 0}
+!4 = !{void (i32, i64)* @K1, !"K1", !5, i32 0, !6, !7, !8, i32 0}
+!5 = !{i32 2, i32 96}
+!6 = !{i32 64, i32 96}
+!7 = !{i32 0, i32 0}
 !8 = !{!"buffer_t read_write"}
-!9 = !{void (i32)* @K2, !"K2", !5, i32 0, !6, !7, !8, i32 0}
-!10 = !{void (i32)* @K1, !7, !7, null, null}
-!11 = !{void (i32)* @K2, !7, !7, null, null}
+!9 = !{void (i32, i64)* @K2, !"K2", !5, i32 0, !6, !7, !8, i32 0}
+!10 = !{void (i32, i64)* @K1, !7, !7, null, null}
+!11 = !{void (i32, i64)* @K2, !7, !7, null, null}
 !12 = !{i32 7724}
 !13 = !{i32 1}
 !14 = !{i32 1}

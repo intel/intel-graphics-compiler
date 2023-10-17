@@ -304,16 +304,11 @@ void StackAnalysis::doAnalysis(Module &M) {
 bool GenXStackUsage::runOnModule(Module &M) {
   if (!PerformStackAnalysis)
     return false;
-  auto ST = &getAnalysis<TargetPassConfig>()
-                 .getTM<GenXTargetMachine>()
-                 .getGenXSubtarget();
   auto BEConf = &getAnalysis<GenXBackendConfig>();
 
   bool ModuleModified = false;
 
   auto MemSize = BEConf->getStatelessPrivateMemSize();
-  if (!ST->isOCLRuntime())
-    MemSize = visa::StackPerThreadScratch;
 
   const DataLayout &DL = M.getDataLayout();
   CallGraph CG(M);

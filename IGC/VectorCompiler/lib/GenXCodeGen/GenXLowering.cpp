@@ -2053,9 +2053,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
     return lowerExtractValue(EV);
   if (InsertValueInst *IV = dyn_cast<InsertValueInst>(Inst))
     return lowerInsertValue(IV);
-  if (isa<AllocaInst>(Inst) && !ST->isOCLRuntime())
-    Inst->getContext().emitError(
-        Inst, "GenX backend cannot handle allocas with CMRT yet");
   return false;
 }
 

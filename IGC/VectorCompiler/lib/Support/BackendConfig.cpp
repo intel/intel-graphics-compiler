@@ -92,10 +92,6 @@ static cl::opt<bool> DisableIndvarsOptOpt(
     "vc-disable-indvars-opt", cl::Hidden,
     cl::desc("Disable induction variable optimization"));
 
-static cl::opt<bool>
-    UseNewStackBuilderOpt("vc-use-new-stack-builder",
-                          cl::desc("Use prolog/epilog insertion pass"));
-
 static cl::opt<unsigned>
     StatelessPrivateMemSizeOpt("dbgonly-enforce-privmem-stateless",
                                cl::desc("Enforce stateless privmem size"));
@@ -181,7 +177,6 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(EnableDebugInfoDumps, EnableDebugInfoDumpOpt);
   enforceOptionIfSpecified(DebugInfoDumpsNameOverride,
                            DebugInfoDumpsNameOverrideOpt);
-  enforceOptionIfSpecified(UseNewStackBuilder, UseNewStackBuilderOpt);
   enforceOptionIfSpecified(LocalizeLRsForAccUsage, LocalizeLRsForAccUsageOpt);
   enforceOptionIfSpecified(DisableLiveRangesCoalescing, DisableLRCoalescingOpt);
   enforceOptionIfSpecified(DisableExtraCoalescing, DisableExtraCoalescingOpt);

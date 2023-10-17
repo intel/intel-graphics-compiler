@@ -10,6 +10,7 @@
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -vc-experimental-dbg-info-zebin-compatible \
+; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
 ; RUN: %igc-lld --relocatable \
@@ -38,7 +39,7 @@ entry:
 }
 
 ; Function Attrs: noinline nounwind
-define dllexport spir_kernel void @K1(i32 %indx) local_unnamed_addr #1 !dbg !27 {
+define dllexport spir_kernel void @K1(i32 %indx, i64 %privBas) local_unnamed_addr #1 !dbg !27 {
 entry:
   call void @llvm.dbg.value(metadata i32 %indx, metadata !32, metadata !DIExpression()), !dbg !34
   call void @llvm.dbg.value(metadata <8 x i32> <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>, metadata !33, metadata !DIExpression()), !dbg !34
@@ -58,7 +59,7 @@ declare <8 x i32> @llvm.genx.wrregioni.v8i32.v1i32.i16.i1(<8 x i32>, <1 x i32>, 
 declare void @llvm.genx.media.st.v8i32(i32, i32, i32, i32, i32, i32, <8 x i32>) #3
 
 ; Function Attrs: noinline nounwind
-define dllexport spir_kernel void @K2(i32 %indx) local_unnamed_addr #1 !dbg !39 {
+define dllexport spir_kernel void @K2(i32 %indx, i64 %privBas) local_unnamed_addr #1 !dbg !39 {
 entry:
   call void @llvm.dbg.value(metadata i32 %indx, metadata !41, metadata !DIExpression()), !dbg !43
   call void @llvm.dbg.value(metadata <8 x i32> <i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>, metadata !42, metadata !DIExpression()), !dbg !43
@@ -104,14 +105,14 @@ attributes #5 = { noinline nounwind }
 !5 = !{i32 0, i32 0}
 !6 = !{i32 1, i32 2}
 !7 = !{i16 6, i16 14}
-!8 = !{void (i32)* @K1, !"K1", !9, i32 0, !10, !11, !12, i32 0}
-!9 = !{i32 2}
-!10 = !{i32 32}
-!11 = !{i32 0}
+!8 = !{void (i32, i64)* @K1, !"K1", !9, i32 0, !10, !11, !12, i32 0}
+!9 = !{i32 2, i32 96}
+!10 = !{i32 32, i32 64}
+!11 = !{i32 0, i32 0}
 !12 = !{!"buffer_t read_write"}
-!13 = !{void (i32)* @K2, !"K2", !9, i32 0, !10, !11, !12, i32 0}
-!14 = !{void (i32)* @K1, !11, !11, null, null}
-!15 = !{void (i32)* @K2, !11, !11, null, null}
+!13 = !{void (i32, i64)* @K2, !"K2", !9, i32 0, !10, !11, !12, i32 0}
+!14 = !{void (i32, i64)* @K1, !11, !11, null, null}
+!15 = !{void (i32, i64)* @K2, !11, !11, null, null}
 !16 = distinct !DISubprogram(name: "S1", scope: null, file: !3, line: 3, type: !17, scopeLine: 3, flags: DIFlagPrototyped, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !2, templateParams: !4, retainedNodes: !23)
 !17 = !DISubroutineType(types: !18)
 !18 = !{!19, !20}

@@ -113,9 +113,6 @@ struct GenXBackendOptions {
   // Disable induction variable simplification
   bool DisableIndvarsOpt = false;
 
-  // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
-  bool UseNewStackBuilder = true;
-
   FunctionControl FCtrl = FunctionControl::Default;
 
   // Non-owning pointer to workaround table.
@@ -322,8 +319,6 @@ public:
   }
 
   bool disableIndvarsOpt() const { return Options.DisableIndvarsOpt; }
-
-  bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }
 
   unsigned getStatelessPrivateMemSize() const {
     return Options.StatelessPrivateMemSize;

@@ -10,6 +10,7 @@
 
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ -genx-dump-regalloc \
+; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -o /dev/null
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
@@ -31,7 +32,7 @@ entry:
 }
 
 ; Function Attrs: noinline nounwind
-define dllexport spir_kernel void @K1(i32 %indx) local_unnamed_addr #1 {
+define dllexport spir_kernel void @K1(i32 %indx, i64 %privBas) local_unnamed_addr #1 {
 entry:
   %call = tail call spir_func i32 @S1(<8 x i32> <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>) #5, !FuncArgSize !15, !FuncRetSize !16
   %add = add nsw i32 %call, 1
@@ -51,11 +52,11 @@ attributes #5 = { noinline nounwind }
 !genx.kernels = !{!8}
 !genx.kernel.internal = !{!14}
 
-!8 = !{void (i32)* @K1, !"K1", !9, i32 0, !10, !11, !12, i32 0}
-!9 = !{i32 2}
-!10 = !{i32 32}
-!11 = !{i32 0}
+!8 = !{void (i32, i64)* @K1, !"K1", !9, i32 0, !10, !11, !12, i32 0}
+!9 = !{i32 2, i32 96}
+!10 = !{i32 32, i32 64}
+!11 = !{i32 0, i32 0}
 !12 = !{!"buffer_t read_write"}
-!14 = !{void (i32)* @K1, !11, !11, null, null}
+!14 = !{void (i32, i64)* @K1, !11, !11, null, null}
 !15 = !{i32 1}
 !16 = !{i32 1}

@@ -70,6 +70,10 @@ static cl::opt<std::string>
     FGDumpsPrefix("vc-fg-dump-prefix", cl::init(""), cl::Hidden,
                   cl::desc("prefix to use for FG dumps"));
 
+static cl::opt<bool>
+    SkipOCLRuntimeInfo("vc-skip-ocl-runtime-info", cl::init(false), cl::Hidden,
+                  cl::desc("skip GenXOCLRuntimeInfo in addPassesToEmitFile for llc tests"));
+
 static cl::opt<bool> EmitVLoadStore(
     "genx-emit-vldst", cl::init(true), cl::Hidden,
     cl::desc("Emit load/store intrinsic calls for pass-by-ref arguments"));
@@ -640,7 +644,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   // Explicit construction can be omitted because adding of extractor
   // pass will create runtime info analysis. Leaving it exlicit for
   // clarity.
-  if (Subtarget.isOCLRuntime())
+  if (!SkipOCLRuntimeInfo)
     vc::addPass(PM, new GenXOCLRuntimeInfo());
 
   return false;
@@ -743,17 +747,15 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
                            AddLowerLoadStore);
   }
 
-  if (Subtarget.isOCLRuntime()) {
-    auto AddIndirect = [](const PassManagerBuilder &Builder,
-                          PassManagerBase &PM) {
-      PM.add(createGenXCloneIndirectFunctionsPass());
-      PM.add(createGenXTrampolineInsertionPass());
-    };
-    PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
-                           AddIndirect);
-    PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
-                           AddIndirect);
-  }
+  auto AddIndirect = [](const PassManagerBuilder &Builder,
+                        PassManagerBase &PM) {
+    PM.add(createGenXCloneIndirectFunctionsPass());
+    PM.add(createGenXTrampolineInsertionPass());
+  };
+  PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
+                         AddIndirect);
+  PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         AddIndirect);
 
   // Have to internalize functions before CM implicit parameters as all
   // implicit parameters cannot be supported at once for external functions
@@ -787,16 +789,14 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0, AddCMABI);
 
   // BTI assignment.
-  if (Subtarget.isOCLRuntime()) {
-    auto AddBTIAssign = [](const PassManagerBuilder &Builder,
-                           PassManagerBase &PM) {
-      PM.add(createGenXBTIAssignmentPass());
-    };
-    PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
-                           AddBTIAssign);
-    PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
-                           AddBTIAssign);
-  }
+  auto AddBTIAssign = [](const PassManagerBuilder &Builder,
+                         PassManagerBase &PM) {
+    PM.add(createGenXBTIAssignmentPass());
+  };
+  PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
+                         AddBTIAssign);
+  PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         AddBTIAssign);
 
   // CM kernel argument offset.
   auto AddCMKernelArgOffset = [this](const PassManagerBuilder &Builder,
