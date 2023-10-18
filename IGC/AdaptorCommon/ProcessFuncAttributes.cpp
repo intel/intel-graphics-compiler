@@ -854,29 +854,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 SetNoInline(F);
             }
         }
-
-        bool HasStackCallsOrVLA =
-            std::any_of(M.getFunctionList().begin(), M.getFunctionList().end(),
-                        [](auto &F) {
-                          return F.hasFnAttribute("visaStackCall") ||
-                                 F.hasFnAttribute("hasVLA");
-                        });
-        if (!HasStackCallsOrVLA) {
-            for (auto FuncName : DetectionFunctions) {
-                if (auto F = M.getFunction(FuncName)) {
-                    std::vector<CallInst *> CallersToDelete;
-                    for (auto User : F->users()) {
-                        if (auto I = dyn_cast<CallInst>(User)) {
-                            CallersToDelete.push_back(I);
-                        }
-                    }
-                    std::for_each(
-                        CallersToDelete.begin(), CallersToDelete.end(),
-                        [](auto CallInst) { CallInst->eraseFromParent(); });
-                    F->eraseFromParent();
-                }
-            }
-        }
     }
 
     return true;

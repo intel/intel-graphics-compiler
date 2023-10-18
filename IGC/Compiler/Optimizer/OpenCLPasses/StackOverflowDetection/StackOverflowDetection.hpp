@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -35,6 +36,7 @@ public:
   virtual bool runOnModule(llvm::Module &M) override;
 
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
   }
 };
