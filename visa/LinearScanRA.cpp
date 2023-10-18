@@ -1165,7 +1165,11 @@ void LinearScanRA::setDstReferences(
     if (lr->getFirstRef(startIdx) == NULL && startIdx == 0) {
       lr->setFirstRef(curInst, curInst->getLexicalId() * 2);
     }
-    lr->setLastRef(curInst, curInst->getLexicalId() * 2);
+
+    // For dst, we set the last ref = lexcial_ID * 2 + 1.
+    // So that the dst will not be released immediately if it's defined only.
+    // This is to handle some special workload. Such as for LIT test
+    lr->setLastRef(curInst, curInst->getLexicalId() * 2 + 1);
   } else if (dcl->getRegVar()
                  ->getPhyReg()
                  ->isGreg()) // Assigned already and is GRF
@@ -1184,7 +1188,9 @@ void LinearScanRA::setDstReferences(
     if (lr->getFirstRef(startIdx) == NULL && startIdx == 0) {
       lr->setFirstRef(curInst, curInst->getLexicalId() * 2);
     }
-    lr->setLastRef(curInst, curInst->getLexicalId() * 2);
+    // For dst, we set the last ref = lexcial_ID * 2 + 1.
+    // So that the dst will not be released immediately if it's defined only.
+    lr->setLastRef(curInst, curInst->getLexicalId() * 2 + 1);
   }
 
   if (lr->isEOT() && std::find(eotLiveIntervals.begin(), eotLiveIntervals.end(),
@@ -1281,7 +1287,10 @@ void LinearScanRA::generateInputIntervals(
   unsigned int idx = regNum * builder.numEltPerGRF<Type_UW>() +
                      (regOff * topdcl->getElemSize()) / G4_WSIZE +
                      topdcl->getWordSize() - 1;
-
+  //Variable size may be larger than occupied GRF
+  if (idx > (kernel.getNumRegTotal() * builder.numEltPerGRF<Type_UW>() - 1)) {
+    idx = kernel.getNumRegTotal() * builder.numEltPerGRF<Type_UW>() - 1;
+  }
   unsigned int numWords = topdcl->getWordSize();
   for (int i = numWords - 1; i >= 0; --i, --idx) {
     if ((inputRegLastRef[idx] == UINT_MAX || inputRegLastRef[idx] < instID) &&
