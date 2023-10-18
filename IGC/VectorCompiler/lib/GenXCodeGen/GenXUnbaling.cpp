@@ -442,8 +442,9 @@ bool canBeSafelyHoisted(Instruction *Inst, Instruction *InsertBefore) {
   if (!InsertBefore->comesBefore(Inst))
     return false;
   auto IsDefinedAtInsertPoint = [InsertBefore](Value *V) {
-    return !isa<Instruction>(V) ||
-           cast<Instruction>(V)->comesBefore(InsertBefore);
+    auto *Inst = dyn_cast<Instruction>(V);
+    return !Inst || Inst->getParent() == InsertBefore->getParent() &&
+                        Inst->comesBefore(InsertBefore);
   };
 #endif
   return std::all_of(Inst->value_op_begin(), Inst->value_op_end(),
