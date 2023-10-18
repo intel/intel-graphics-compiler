@@ -7702,6 +7702,15 @@ bool G4_InstDpas::isInt() const {
   return false;
 }
 
+bool G4_InstDpas::isInt8() const {
+  if (Src1Precision == GenPrecision::S8 || Src1Precision == GenPrecision::U8 ||
+      Src2Precision == GenPrecision::S8 || Src2Precision == GenPrecision::U8) {
+    return true;
+  }
+
+  return false;
+}
+
 bool G4_InstDpas::is2xInt8() const {
   if ((Src1Precision == GenPrecision::S4 || Src1Precision == GenPrecision::U4 ||
        Src1Precision == GenPrecision::S2 ||

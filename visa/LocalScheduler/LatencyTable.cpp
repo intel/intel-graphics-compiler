@@ -306,9 +306,10 @@ LatencyTableXe<PlatformGen::XE>::getMathLatency(const G4_INST *Inst) const {
   return value_of(LI::MATH) + value_of(LI::DELTA_MATH) * Scale;
 }
 
-template<>
-uint16_t LatencyTableXe<PlatformGen::XE>::getDPASLatency(
-    const G4_InstDpas *dpas) const {
+template <>
+uint16_t
+LatencyTableXe<PlatformGen::XE>::getDPASLatency(const G4_InstDpas *dpas) const {
+
   return getDPASLatency(dpas->getRepeatCount());
 }
 

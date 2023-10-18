@@ -1006,6 +1006,7 @@ public:
   bool isFP16() const { return Src1Precision == GenPrecision::FP16; }
   bool isTF32() const { return Src1Precision == GenPrecision::TF32; }
   bool isInt() const;
+  bool isInt8() const;
   bool is2xInt8() const; // true if it is 2xint8 dpas
 
   uint8_t getOpsPerChan() const;
