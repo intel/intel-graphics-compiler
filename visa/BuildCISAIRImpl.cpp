@@ -3270,10 +3270,12 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
     A = operands[counter++];
   }
 
-  VISA_StateOpndHandle *surface =
-      CISA_get_surface_variable(surfaceName, lineNum);
-  if (!surface)
-    return false; // error recorded
+  VISA_StateOpndHandle* surface = nullptr;
+  if (surfaceName != nullptr) {
+    surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+      return false; // error recorded
+  }
 
   uint8_t numMsgSpecificOpnd = 0;
   VISA_RawOpnd *rawOpnds[20];

@@ -1419,11 +1419,10 @@ RTWriteOperands:
         RTRWOperandsVec.push_back($2);
     }
 
-RTWriteInstruction: RTWInstruction
-
-            //      1            2                3                 4           5     6
-RTWInstruction: Predicate    RTWRITE_OP_3D    RTWriteModeOpt    ExecSize    Var
-              RTWriteOperands
+                //      1            2                3             4           5
+RTWriteInstruction: Predicate    RTWRITE_OP_3D    RTWriteModeOpt    ExecSize    Var
+                // 6
+                RTWriteOperands
    {
        bool result = pBuilder->CISA_create_rtwrite_3d_instruction(
            $1, $3, $4.emask, (unsigned int)$4.exec_size, $5,

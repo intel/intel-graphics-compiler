@@ -2362,10 +2362,11 @@ printInstructionDataport(const print_format_provider_t *header,
     }
 
     sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
-
-    // surface
-    surface = getPrimitiveOperand<uint8_t>(inst, i++);
-    sstr << " " << printSurfaceName(surface);
+    {
+      // surface
+      surface = getPrimitiveOperand<uint8_t>(inst, i++);
+      sstr << " " << printSurfaceName(surface);
+    }
 
     while (i < inst->opnd_num) {
       sstr << printOperand(header, inst, i++, opt);

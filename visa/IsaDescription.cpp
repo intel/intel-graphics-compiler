@@ -134,7 +134,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_3D_LOAD, ISA_Inst_Sampler, "load_3d", 5, 1},
     {ISA_3D_GATHER4, ISA_Inst_Sampler, "gather4_3d", 5, 1},
     {ISA_3D_INFO, ISA_Inst_Sampler, "info_3d", 2, 1},
-    {ISA_3D_RT_WRITE, ISA_Inst_Data_Port, "rt_write_3d", 3, 0},
+    {ISA_3D_RT_WRITE, ISA_Inst_Data_Port, "rt_write_3d", 3, 1},
     {ISA_3D_URB_WRITE, ISA_Inst_Misc, "urb_write_3d", 6, 0},
     {ISA_3D_TYPED_ATOMIC, ISA_Inst_Data_Port, "typed_atomic", 9, 1},
     {ISA_GATHER4_SCALED, ISA_Inst_Data_Port, "gather4_scaled", 4, 1},
@@ -2110,7 +2110,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},    /// predicate
             {OPND_OTHER, ISA_TYPE_UW, 0},   /// mode
-            {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
+            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_Q | ISA_TYPE_UQ, 0}, /// Surface
         },
 
     },
