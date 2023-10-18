@@ -69,7 +69,6 @@ namespace llvm
 }
 
 #define MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE 32
-static const unsigned int g_c_Max_PS_attributes = 32;
 
 namespace IGCOpts
 {
