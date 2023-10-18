@@ -190,7 +190,7 @@ struct ISA_Inst_Info {
   uint8_t n_dsts;
 };
 
-#define MAX_OPNDS_PER_INST 24
+#define MAX_OPNDS_PER_INST 35
 
 typedef struct OpndDesc {
   unsigned opnd_type; // Common_ISA_Opnd_Desc_Type OR #defines like
