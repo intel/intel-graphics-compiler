@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #define G4_DSIZE 4 // 4 bytes 32 bits
 #define IS_FTYPE(x) ((x) == Type_F)
 #define IS_HFTYPE(x) ((x) == Type_HF)
+#define IS_BFTYPE(x) ((x) == Type_BF)
 #define IS_DFTYPE(x) ((x) == Type_DF || (x) == Type_NF)
 #define IS_DTYPE(x) ((x) == Type_D || (x) == Type_UD)
 #define IS_VINTTYPE(x) ((x) == Type_V || (x) == Type_UV)

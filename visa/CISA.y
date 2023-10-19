@@ -340,6 +340,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <type>   DFTYPE         // :df
 %token <type>   FTYPE          // :f
 %token <type>   HFTYPE         // :hf
+%token <type>   BFTYPE         // :bf
 %token <type>   VTYPE          // :v and vf
 %token <cond_mod> COND_MOD     // .ne .ge ...
 
@@ -2986,6 +2987,7 @@ DataType: DataTypeIntOrVector
         | DFTYPE
         | FTYPE
         | HFTYPE
+        | BFTYPE
 DataTypeIntOrVector:
           ITYPE
         | VTYPE

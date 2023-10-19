@@ -629,6 +629,12 @@ struct CISA_INST {
   VISA_EMask_Ctrl getExecMask() const {
     return (VISA_EMask_Ctrl)(execsize >> 4);
   }
+  bool isMath() const{
+    return (opcode == ISA_COS || opcode == ISA_DIV || opcode == ISA_EXP ||
+            opcode == ISA_INV || opcode == ISA_LOG || opcode == ISA_POW ||
+            opcode == ISA_RSQRT || opcode == ISA_SIN || opcode == ISA_SQRT ||
+            opcode == ISA_SIN);
+  }
 };
 
 extern const char *CISAAtomicOpNames[];

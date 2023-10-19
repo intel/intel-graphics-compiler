@@ -2126,7 +2126,9 @@ G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type) {
   case ISA_INV:
     return MATH_INV;
   case ISA_DIV:
-    return IS_FTYPE(type) || IS_HFTYPE(type) ? MATH_FDIV : MATH_INT_DIV_QUOT;
+    return (IS_FTYPE(type) || IS_HFTYPE(type) || IS_BFTYPE(type))
+               ? MATH_FDIV
+               : MATH_INT_DIV_QUOT;
   case ISA_EXP:
     return MATH_EXP;
   default:

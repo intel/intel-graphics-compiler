@@ -3398,6 +3398,17 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
   case ISA_SEL:
   case ISA_CMP:
     break;
+  case ISA_COS:
+  case ISA_DIV:
+  case ISA_EXP:
+  case ISA_INV:
+  case ISA_LOG:
+  case ISA_POW:
+  case ISA_RSQRT:
+  case ISA_SIN:
+  case ISA_SQRT:
+    if (irBuilder->supportPureBF())
+      break;
   default:
     REPORT_INSTRUCTION(options, false,
                        "BF opnd is not allowed on this instruction");
@@ -3416,6 +3427,10 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
       REPORT_INSTRUCTION(options,
                          (dstType == ISA_TYPE_F || dstType == ISA_TYPE_BF),
                          "Dst opnd in BF mixed mode should be either BF or F");
+      if (irBuilder->supportPureBF() && inst->isMath())
+        REPORT_INSTRUCTION(
+            options, (dstType == ISA_TYPE_BF),
+            "Math instructions must be pure BF mode");
     }
   } else {
     // cmp's 1st opnd is cmp relop
@@ -3426,6 +3441,9 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
     REPORT_INSTRUCTION(options,
                        (srcType == ISA_TYPE_F || srcType == ISA_TYPE_BF),
                        "Src opnd in BF mixed mode should be either BF or F");
+    if (irBuilder->supportPureBF() && inst->isMath())
+      REPORT_INSTRUCTION(options, (srcType == ISA_TYPE_BF),
+                         "Math instructions must be pure BF mode");
   }
   return;
 }

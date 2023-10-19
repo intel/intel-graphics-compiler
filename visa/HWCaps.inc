@@ -797,4 +797,8 @@ bool noSrc0Src1OverlapSend() const {
 bool WARLocalization() const {
   return false;
 }
+
+bool supportPureBF() const {
+  return false;
+}
 // end HW capabilities

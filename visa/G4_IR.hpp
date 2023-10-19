@@ -923,6 +923,24 @@ public:
 
   const IR_Builder &getBuilder() const { return builder; }
 
+  bool isPureBFInst() const {
+    G4_Operand *dst = getDst();
+    if (!dst || dst->getType() != Type_BF)
+      return false;
+    for (int i = 0, numSrcs = getNumSrc(); i < numSrcs; i++) {
+      auto src = getSrc(i);
+      if (src && src->getType() != Type_BF)
+        return false;
+    }
+    return true;
+  }
+
+  bool canSupportPureBF() const {
+    return (op == G4_mov || op == G4_add || op == G4_sel || op == G4_cmp ||
+           op == G4_csel || op == G4_cmpn || op == G4_mul || op == G4_mad ||
+           op == G4_math);
+  }
+
 private:
   // use inheritDIFrom() instead
   void setLocation(MDLocation *loc) { setMetadata(Metadata::InstLoc, loc); }

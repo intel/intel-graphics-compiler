@@ -938,6 +938,12 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return HFTYPE;
     }
 
+:(bf|BF)  {
+        TRACE("** BFTYPE");
+        CISAlval.type = str2type(yytext, yyleng);
+        return BFTYPE;
+    }
+
 :(ud|d|uw|w|ub|b|bool|UD|D|UW|W|UB|B|BOOL|Bool|q|uq|Q|UQ|hf|HF)  {
         TRACE("** DATA TYPE");
         CISAlval.type = str2type(yytext, yyleng);
