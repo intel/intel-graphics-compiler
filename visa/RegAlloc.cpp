@@ -1254,7 +1254,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
         // conservatively add each variable potentially accessed by dst to gen
         const REGVAR_VECTOR &pointsToSet =
             pointsToAnalysis.getAllInPointsToOrIndrUse(dst, bb);
-        for (auto pt : pointsToSet) {
+        for (auto &pt : pointsToSet) {
           if (pt.var->isRegAllocPartaker()) {
             use_gen.set(pt.var->getId());
           }
@@ -1557,7 +1557,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
         pseudoKill.first, PseudoKillType::FromLiveness, false);
     bb->insertBefore(iterToInsert, killInst);
   }
-  for (auto pseudoKill : pseudoKillsForSpills) {
+  for (auto &pseudoKill : pseudoKillsForSpills) {
     INST_LIST_ITER iterToInsert = pseudoKill.second.base();
     do {
       --iterToInsert;

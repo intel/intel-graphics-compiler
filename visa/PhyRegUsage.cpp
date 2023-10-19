@@ -645,7 +645,7 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const BitSet *forbidden,
   unsigned nwords = numAllocUnit(dcl->getNumElems(), dcl->getElemType());
   auto dclBC = gra.getBankConflict(dcl);
   bool gotoSecondBank = dclBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
-                        dclBC == BANK_CONFLICT_SECOND_HALF_EVEN;
+                        dclBC == BANK_CONFLICT_SECOND_HALF_ODD;
 
   if (gotoSecondBank && oneGRFBankDivision) {
     startReg = (maxGRFCanBeUsed - 1);

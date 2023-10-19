@@ -3693,7 +3693,7 @@ Constant* IGCConstProp::replaceShaderConstant(Instruction* inst)
                 (directBuf && (bufIdOrGRFOffset == modMD->pushInfo.inlineConstantBufferSlot))))
             {
                 char* offset = &(modMD->immConstant.data[0]);
-                if (eltId < 0 || eltId >= (int)modMD->immConstant.data.size())
+                if (eltId >= modMD->immConstant.data.size())
                 {
                     // OOB access to immediate constant buffer should return 0
                     return Constant::getNullValue(inst->getType());

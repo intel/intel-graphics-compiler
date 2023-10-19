@@ -64,7 +64,7 @@ G4_INST *CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion *header,
   // Generate split send instruction with specified payload size and offset
   // Construct fillDst
   const char *dclName = kernel.fg.builder->getNameString(
-      32, "COAL_FILL_%d", kernel.Declares.size());
+      32, "COAL_FILL_%" PRIu64, kernel.Declares.size());
   auto fillDcl = kernel.fg.builder->createDeclare(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), dclSize, Type_UD,
       DeclareType::CoalescedSpillFill);
@@ -153,7 +153,7 @@ CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize) {
   const char *dclName = nullptr;
   G4_Declare *spillDcl = nullptr;
 
-  dclName = kernel.fg.builder->getNameString(32, "COAL_SPILL_%d",
+  dclName = kernel.fg.builder->getNameString(32, "COAL_SPILL_%" PRIu64,
                                              kernel.Declares.size());
   spillDcl = kernel.fg.builder->createDeclare(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), payloadSize, Type_UD,

@@ -3041,7 +3041,7 @@ public:
           WarningT("Send with immediate ExDesc should not have "
                    "Src1.Length given on src1 (e.g. r10:4) "
                    "on this platform");
-          exDesc.imm |= ((uint32_t)src1Length << 6) & 0x1F;
+          exDesc.imm |= (((uint32_t)src1Length & 0x1F) << 6);
         }
       }
       if (platform() >= Platform::XE_HPG) {
@@ -3060,16 +3060,11 @@ public:
                      "on src1 reg  (e.g. r10:4)");
           // if Src1.Length was also set on the register, then ensure
           // that it at least matches the descriptor value
-          if (src1Length >= 0) {
-            // throw a fit if they mismatch
-            if (exDescSrc1Len != src1Length)
-              FailAtT(exDescLoc, "mismatch of Src1.Length suffix and "
-                                 "ExDesc[10:6]");
-            // else we
-          } else {
-            // take it from the descriptor
-            src1Length = exDescSrc1Len;
-          }
+          IGA_ASSERT(src1Length >= 0, "Unexpected value");
+          // throw a fit if they mismatch
+          if (exDescSrc1Len != src1Length)
+            FailAtT(exDescLoc, "mismatch of Src1.Length suffix and "
+                               "ExDesc[10:6]");
         } // else: Src1Length >= 0 && exDescSrc1Len == 0 (prefer reg op)
 
         if (exDesc.imm & 0x7FF) {
@@ -4232,7 +4227,7 @@ bool KernelParser::ParseLdStInst() {
   desc.imm |= ((uint32_t)dstData.regLen & 0x1F) << 20;
   if (platform() < Platform::XE_HP && exDesc.isImm()) {
     // ExDesc[10:6] on <= XE_HP
-    exDesc.imm |= (((uint32_t)src1Data.regLen << 6) & 0x1F);
+    exDesc.imm |= (((uint32_t)src1Data.regLen & 0x1F) << 6);
   }
 
   m_builder.InstSendSrc0Length(src0Addr.payload.regLen);

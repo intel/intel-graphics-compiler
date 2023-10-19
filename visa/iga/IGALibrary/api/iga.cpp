@@ -336,8 +336,6 @@ public:
     } else if (pKernel == nullptr) {
       // parser returned nullptr for kernel, but with no errors
       // shouldn't be reachable; implies we have a missing diagnostic
-      if (pKernel)
-        delete pKernel;
       return IGA_ERROR;
     }
 

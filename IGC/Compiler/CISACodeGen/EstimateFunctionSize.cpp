@@ -378,7 +378,7 @@ namespace {
                 PrintFunctionSizeAnalysis(0x4, Node->F->getName().str() << ": " << Node->InitialSize)
                 TopDownQueue.pop_front();
                 total += Node->InitialSize;
-                for (auto Callee : Node->CalleeList)
+                for (auto& Callee : Node->CalleeList)
                 {
                     FunctionNode* calleeNode = Callee.first;
                     if (visit.find(calleeNode) != visit.end() || calleeNode->isStackCallAssigned()) //Already processed or head of stack call
@@ -980,7 +980,7 @@ void EstimateFunctionSize::initializeTopologicalVisit(Function* root, std::unord
     while (!Queue.empty()) {
         FunctionNode* Node = Queue.front();Queue.pop_front();
         Node->tmpSize = Node->InitialSize;
-        for (auto Callee : Node->CalleeList) {
+        for (auto &Callee : Node->CalleeList) {
             FunctionNode* CalleeNode = Callee.first;
             if (FunctionsInKernel.find(CalleeNode) != FunctionsInKernel.end())
                 continue;
@@ -1011,7 +1011,7 @@ llvm::ScaledNumber<uint64_t> EstimateFunctionSize::calculateTotalWeight(Function
         totalSizeContributionSq += Scaled64::get(node->getSizeContribution()*node->getSizeContribution());
         if(!node->willBeInlined())
             totalSubroutineFreq += node->getStaticFuncFreq();
-        for (auto callee_info : node->CalleeList)
+        for (auto &callee_info : node->CalleeList)
         {
             FunctionNode* callee = callee_info.first;
             if (visit.find(callee) == visit.end())
@@ -1041,7 +1041,7 @@ void EstimateFunctionSize::updateInlineCnt(Function *root)
     {
         FunctionNode* node = (FunctionNode*)TopdownQueue.front(); TopdownQueue.pop_front();
         node->Inline_cnt = 0;
-        for (auto callee_info : node->CalleeList)
+        for (auto &callee_info : node->CalleeList)
         {
             FunctionNode* callee = callee_info.first;
             if (unprocessed_callers.find(callee) == unprocessed_callers.end())
@@ -1059,7 +1059,7 @@ void EstimateFunctionSize::updateInlineCnt(Function *root)
     while (!TopdownQueue.empty())
     {
         FunctionNode* node = (FunctionNode*)TopdownQueue.front(); TopdownQueue.pop_front();
-        for (auto callee_info : node->CalleeList)
+        for (auto &callee_info : node->CalleeList)
         {
             FunctionNode* callee = callee_info.first;
             uint16_t call_cnt = callee_info.second;
@@ -1318,7 +1318,7 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallV
     while (!TopDownQueue.empty())
     {
         FunctionNode* Node = TopDownQueue.front();TopDownQueue.pop_front();
-        for (auto Callee : Node->CalleeList)
+        for (auto &Callee : Node->CalleeList)
         {
             FunctionNode* calleeNode = Callee.first;
             if (visit.find((void*)calleeNode) != visit.end() || (!ignoreStackCallBoundary && calleeNode->isStackCallAssigned()))
@@ -1522,7 +1522,7 @@ void EstimateFunctionSize::performGreedyTrimming(Function* head, llvm::SmallVect
                 funcWithNoEffect.push_back(func);
             }
         }
-        candidates = new_candidates;
+        candidates = std::move(new_candidates);
     }
     updateExpandedUnitSize(head, ignoreStackCallBoundary);
     for (FunctionNode* trimNoGain : candidates) //Those remaining candidates will likely degrade performance

@@ -427,8 +427,8 @@ static bool checkOperandGRFSpan(const IR_Builder &builder,
   // in this function, we check the following: the number of GRFs occupied by
   // the operands from instruction 0 to bundleIndex are within 2 GRFs
   // size of the bundle = bundleIndex+1
-  size_t accumSizeBytes = (bundleIndex+1) * typeSize;
-  if (accumSizeBytes > 2 * builder.numEltPerGRF<Type_UB>()) return false;
+  int accumSizeBytes = (bundleIndex+1) * typeSize;
+  if (accumSizeBytes > (int)(2 * builder.numEltPerGRF<Type_UB>())) return false;
   return true;
 }
 
@@ -457,7 +457,7 @@ static bool checkMergedOperandSize(const IR_Builder &builder,
   //   than no merging. By doing this check here, we can tune the bundle size to
   //   merge
 
-  size_t accumSizeBytes = (bundleIndex+1)*typeSize;
+  int accumSizeBytes = (bundleIndex+1)*typeSize;
   if (accumSizeBytes < 8)
     return true;
   if (accumSizeBytes == 8) {

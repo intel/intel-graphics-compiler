@@ -55,6 +55,8 @@ public:
     CloneAddressArithmetic() : FunctionPass(ID) {
         initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
     }
+    CloneAddressArithmetic(const CloneAddressArithmetic&) = delete; // Delete copy-constructor
+    CloneAddressArithmetic& operator=(const CloneAddressArithmetic&) = delete; // Delete assignment operator
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
         AU.setPreservesCFG();

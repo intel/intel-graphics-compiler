@@ -2015,7 +2015,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
             const REGVAR_VECTOR &pointsToSet =
                 liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
                     srcRgn, bb);
-            for (auto pt : pointsToSet) {
+            for (auto &pt : pointsToSet) {
               if (pt.var->isRegAllocPartaker()) {
                 unsigned srcId = pt.var->getId();
                 if (isDstRegAllocPartaker) {
@@ -2112,7 +2112,7 @@ void Interference::buildInterferenceForDst(
     //
     const REGVAR_VECTOR &pointsToSet =
         liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst, bb);
-    for (auto pt : pointsToSet) {
+    for (auto &pt : pointsToSet) {
       if (pt.var->isRegAllocPartaker()) {
         buildInterferenceWithLive(live, pt.var->getId());
       }
@@ -2222,7 +2222,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitVector &live) {
           const REGVAR_VECTOR &pointsToSet =
               liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
                   srcRegion, bb);
-          for (auto pt : pointsToSet) {
+          for (auto &pt : pointsToSet) {
             if (pt.var->isRegAllocPartaker()) {
               updateLiveness(live, pt.var->getId(), true);
             }
@@ -2393,7 +2393,7 @@ void Interference::setupLRs(G4_BB *bb) {
         const REGVAR_VECTOR &pointsToSet =
             liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
                 srcRegion, bb);
-        for (auto pt : pointsToSet) {
+        for (auto &pt : pointsToSet) {
           if (!pt.var->isRegAllocPartaker() || !incSpillCostAddrTaken)
             continue;
 
@@ -3690,7 +3690,7 @@ void Augmentation::buildLiveIntervals() {
         const REGVAR_VECTOR &pointsToSet =
             liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
                                                                          curBB);
-        for (auto pointsToVar : pointsToSet) {
+        for (auto &pointsToVar : pointsToSet) {
           if (pointsToVar.var->isRegAllocPartaker()) {
             updateStartInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                                 inst);
@@ -3737,7 +3737,7 @@ void Augmentation::buildLiveIntervals() {
           const REGVAR_VECTOR &pointsToSet =
               liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(
                   srcRegion, curBB);
-          for (auto pointsToVar : pointsToSet) {
+          for (auto &pointsToVar : pointsToSet) {
             if (pointsToVar.var->isRegAllocPartaker()) {
               updateEndInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                                 inst);
@@ -4870,7 +4870,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
         const REGVAR_VECTOR &pointsToSet =
             liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
                                                                           bb);
-        for (auto pt : pointsToSet) {
+        for (auto &pt : pointsToSet) {
           if (pt.var->isRegAllocPartaker()) {
             updateLiveness(live, pt.var->getId(), true);
           }
@@ -4929,7 +4929,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
           const REGVAR_VECTOR &pointsToSet =
               liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
                   src->asSrcRegRegion(), bb);
-          for (auto pt : pointsToSet) {
+          for (auto &pt : pointsToSet) {
             if (pt.var->isRegAllocPartaker()) {
               if (live.test(pt.var->getId()) == false)
                 update = true;

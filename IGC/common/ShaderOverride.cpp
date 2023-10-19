@@ -72,6 +72,11 @@ static void* loadBinFile(
 
     fseek(fp, 0, SEEK_END);
     binSize = int_cast<int>(ftell(fp));
+    if(binSize <= 0)
+    {
+        fclose(fp);
+        return nullptr;
+    }
     rewind(fp);
 
     void* buf = malloc(sizeof(char)* binSize);

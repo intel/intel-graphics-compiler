@@ -7547,9 +7547,6 @@ void HWConformity::helperGenerateTempDst(G4_BB *bb, INST_LIST_ITER instIter,
   // create a move to dst.
 
   uint32_t numElt = execSize == 1 ? 1 : execSize * hStride;
-  if (numElt > 1 && isLowPrecisionFloatTy(tempDstType) && hStride == 1 &&
-      subAlign < Eight_Word)
-    subAlign = Eight_Word;
   subAlign = getDclAlignment(dstSize, inst, execSize == 1);
 
   G4_Declare *dcl = builder.createTempVar(numElt, tempDstType, subAlign);

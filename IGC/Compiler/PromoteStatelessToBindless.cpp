@@ -182,7 +182,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
 
     bool supportDynamicBTIsAllocation = ctx->platform.supportDynamicBTIsAllocation();
 
-    for (auto iter : m_SrcPtrToAccessMap)
+    for (auto &iter : m_SrcPtrToAccessMap)
     {
         Argument* srcPtr = cast<Argument>(iter.first);
 
@@ -215,7 +215,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
         }
 
         // Loop through all access instructions for srcPtr
-        for (auto insts : iter.second)
+        for (auto &insts : iter.second)
         {
             Instruction* accessInst = cast<Instruction>(insts.first);
             Instruction* addrUsedInst = cast<Instruction>(insts.second);

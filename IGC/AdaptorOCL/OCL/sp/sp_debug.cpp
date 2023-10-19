@@ -54,6 +54,7 @@ void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, con
             va_copy(argcopy, args);
 
             const size_t length = vsnprintf(NULL, 0, fmt, argcopy);
+            va_end(argcopy);
 
             char* temp = new char[length + 1];
 

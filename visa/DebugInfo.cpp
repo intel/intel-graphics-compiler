@@ -1116,7 +1116,6 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c) {
         // creation since they are not technically
         // caller save
         if (entry.first < visaKernel->getKernel()->stackCall.calleeSaveStart() &&
-            entry.first >= 0 &&
             entry.second.first == SaveRestoreInfo::RegOrMem::MemOffBEFP) {
           removeEntry = false;
         }
@@ -1786,8 +1785,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
     for (auto bbs : getKernel().fg) {
       for (auto insts : *bbs) {
         if (insts->getGenOffset() != UNDEFINED_GEN_OFFSET) {
-          reloc_offset = (reloc_offset == 0) ? (uint32_t)insts->getGenOffset()
-                                             : reloc_offset;
+          reloc_offset = (uint32_t)insts->getGenOffset();
           break;
         }
       }

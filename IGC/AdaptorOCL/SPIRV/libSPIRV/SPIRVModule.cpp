@@ -400,14 +400,14 @@ SPIRVModuleImpl::layoutEntry(SPIRVEntry* E) {
     auto BV = static_cast<SPIRVVariable*>(E);
     if (!BV->getParent())
       addTo(VariableVec, E);
-    }
+    break;
+   }
   case OpAliasDomainDeclINTEL:
   case OpAliasScopeDeclINTEL:
   case OpAliasScopeListDeclINTEL: {
       addTo(AliasInstMDVec, E);
       break;
   }
-    break;
   default:
     break;
   }
