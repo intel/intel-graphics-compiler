@@ -3030,7 +3030,8 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
 
             Type* Ty = LSI->getLdStType();
             Type* eTy = Ty->getScalarType();
-            if (!(eTy->isIntegerTy() || eTy->isFloatingPointTy()))
+            // sanity check
+            if (!(eTy->isIntOrPtrTy() || eTy->isFloatingPointTy()))
                 return;
 
             uint32_t eBytes = (uint32_t)DL->getTypeStoreSize(eTy);
