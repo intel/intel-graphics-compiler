@@ -1218,10 +1218,13 @@ SBFootprint *G4_BB_SB::getFootprintForFlag(G4_Operand *opnd,
   unsigned short RB = 0;
   G4_Type type = opnd->getType();
   bool valid = true;
+  unsigned regOff = opnd->getBase()->ExRegNum(valid);
   unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
-  LB =
-      (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * FLAG_TO_GRF_MAP;
-  RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) *
+  LB = (unsigned short)(regOff * 32 + subRegOff * 16) *
+       FLAG_TO_GRF_MAP;
+  RB = (unsigned short)(regOff * 32 +
+                        (opnd->getRightBound() - opnd->getLeftBound()) +
+                        subRegOff * 16) *
        FLAG_TO_GRF_MAP;
 
   LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() +
@@ -5155,7 +5158,8 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
     node->setFootprint(footprint, opndNum);
   }
 
-  if ((builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
+  if ((builder.hasThreeALUPipes() || builder.hasFourALUPipes()) &&
+      !builder.hasFiveALUPipes()) {
     if (isAccReg) {
       footprint = getFootprintForACC(opnd, opndNum, inst);
       node->setFootprint(footprint, opndNum);
