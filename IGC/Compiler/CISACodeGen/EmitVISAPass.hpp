@@ -262,28 +262,19 @@ public:
 
     void emitUAVSerialize();
 
-    void emitScalarAtomics(
-        llvm::Instruction* pInst,
-        ResourceDescriptor& resource,
-        AtomicOp atomic_op,
-        CVariable* pDstAddr,
-        CVariable* pU,
-        CVariable* pV,
-        CVariable* pR,
-        CVariable* pSrc,
-        bool isA64,
-        int bitSize);
+    void emitScalarAtomics(llvm::Instruction *pInst,
+                           ResourceDescriptor &resource, AtomicOp atomic_op,
+                           CVariable *pDstAddr, CVariable *pU, CVariable *pV,
+                           CVariable *pR, CVariable *pSrc, bool isA64,
+                           int bitSize, int immOffset, int immScale,
+                           LSC_ADDR_SIZE addrSize);
 
-    void emitScalarAtomicLoad(
-        llvm::Instruction* pInst,
-        ResourceDescriptor& resource,
-        CVariable* pDstAddr,
-        CVariable* pU,
-        CVariable* pV,
-        CVariable* pR,
-        CVariable* pSrc,
-        bool isA64,
-        int bitSize);
+    void emitScalarAtomicLoad(llvm::Instruction *pInst,
+                              ResourceDescriptor &resource,
+                              CVariable *pDstAddr, CVariable *pU, CVariable *pV,
+                              CVariable *pR, CVariable *pSrc, bool isA64,
+                              int bitWidth, int immOffset, int immScale,
+                              LSC_ADDR_SIZE addrSize);
 
     /// wave/subgroup support
     /// reduction and prefix/postfix facilities
@@ -337,7 +328,10 @@ public:
         bool isPrefix);
 
     bool IsUniformAtomic(llvm::Instruction* pInst);
-    void emitAtomicRaw(llvm::GenIntrinsicInst* pInst);
+    void emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *varOffset,
+                       ConstantInt *immOffset = nullptr,
+                       ConstantInt *immScale = nullptr
+    );
     void emitAtomicTyped(llvm::GenIntrinsicInst* pInst);
     void emitAtomicCounter(llvm::GenIntrinsicInst* pInst);
     void emitFastClear(llvm::LoadInst* inst);

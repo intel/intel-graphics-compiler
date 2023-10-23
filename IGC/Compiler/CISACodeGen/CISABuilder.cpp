@@ -8647,6 +8647,7 @@ namespace IGC
         ResourceDescriptor* resource,
         LSC_ADDR_SIZE addr_size,
         int immOff,
+        int immScale,
         LSC_CACHE_OPTS cacheOpts)
     {
         // There is no need to change the order of arguments for EATOMIC_CMPXCHG, EATOMIC_FCMPWR anymore.
@@ -8671,7 +8672,7 @@ namespace IGC
             }
         }
 
-        addr.immScale = 1;
+        addr.immScale = immScale;
         addr.immOffset = immOff;
         addr.size = addr_size;
 

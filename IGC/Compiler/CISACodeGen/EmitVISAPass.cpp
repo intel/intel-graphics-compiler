@@ -8225,7 +8225,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
     case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
     case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
-        emitAtomicRaw(inst);
+        emitAtomicRaw(inst, inst->getOperand(1));
         break;
     case GenISAIntrinsic::GenISA_intatomictyped:
     case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
@@ -13686,18 +13686,13 @@ add happens with destination address as <addr> = constant. <src> = constant too.
 say for SIMD8 there are 8 lanes trying to write to the same address. H/W will serialize this to
 8 back to back atomic instructions which are extremely slow to execute.
 */
-void EmitPass::emitScalarAtomics(
-    llvm::Instruction* pInst,
-    ResourceDescriptor& resource,
-    AtomicOp atomic_op,
-    CVariable* pDstAddr,
-    CVariable* pU,
-    CVariable* pV,
-    CVariable* pR,
-    CVariable* pSrc,
-    bool isA64,
-    int bitWidth)
-{
+void EmitPass::emitScalarAtomics(llvm::Instruction *pInst,
+                                 ResourceDescriptor &resource,
+                                 AtomicOp atomic_op,
+                                 CVariable *pDstAddr, CVariable *pU,
+                                 CVariable *pV, CVariable *pR, CVariable *pSrc,
+                                 bool isA64, int bitWidth, int immOffset,
+                                 int immScale, LSC_ADDR_SIZE addrSize) {
     e_opcode op = EOPCODE_ADD;
     // find the value for which opcode(x, identity) == x
     unsigned int identityValue = 0;
@@ -14022,7 +14017,10 @@ void EmitPass::emitScalarAtomicLoad(
     CVariable* pR,
     CVariable* pSrc,
     bool isA64,
-    int bitWidth)
+    int bitWidth,
+    int immOffset,
+    int immScale,
+    LSC_ADDR_SIZE addrSize)
 {
     auto moveToReg = [&](CVariable*& pVar)
     {
@@ -14070,6 +14068,7 @@ void EmitPass::emitScalarAtomicLoad(
             true,
             pDstAddr ? pDstAddr->getName() : CName::NONE) : nullptr;
     {
+
         if (isA64)
         {
             m_encoder->AtomicRawA64(
@@ -14259,20 +14258,22 @@ CVariable* EmitPass::UnpackOrBroadcastIfUniform(CVariable* pVar)
     return pUnpacked;
 }
 
-void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
+void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
+                             ConstantInt *immOffset, ConstantInt *immScale
+  )
 {
     ForceDMask();
     // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the DwordAtomicRaw
     // and AtomicCmpXchg (which has 2 srcs unlike the other atomics).
-    IGC_ASSERT(IGCLLVM::getNumArgOperands(pInsn) == 4);
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(pInst) == 4);
 
     /// Immediate Atomics return the value before the atomic operation is performed. So that flag
     /// needs to be set for this.
-    bool returnsImmValue = !pInsn->use_empty();
+    bool returnsImmValue = !pInst->use_empty();
 
-    llvm::Value* pllbuffer = pInsn->getOperand(0);
-    llvm::Value* pllDstAddr = pInsn->getOperand(1);
-    llvm::Value* pllSrc0 = pInsn->getOperand(2);
+    llvm::Value* pllbuffer = pInst->getOperand(0);
+    if (!dstAddr) dstAddr = pInst->getOperand(1);
+    llvm::Value* pllSrc0 = pInst->getOperand(2);
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
     CountStatelessIndirectAccess(pllbuffer, resource);
     AtomicOp atomic_op = EATOMIC_UNDEF;
@@ -14284,18 +14285,18 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
     CVariable* pSrc0 = nullptr;
     CVariable* pSrc1 = nullptr;
-    llvm::GenIntrinsicInst* pIntrinCall = llvm::cast<llvm::GenIntrinsicInst>(pInsn);
+    llvm::GenIntrinsicInst* pIntrinCall = llvm::cast<llvm::GenIntrinsicInst>(pInst);
     GenISAIntrinsic::ID IID = pIntrinCall->getIntrinsicID();
     if (IID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
         IID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
         IID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
         IID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
     {
-        llvm::Value* pllSrc1 = pInsn->getOperand(3);
+        llvm::Value* pllSrc1 = pInst->getOperand(3);
         pSrc1 = GetSymbol(pllSrc1);
 
-        Function* F = pInsn->getParent()->getParent();
-        if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+        Function* F = pInst->getParent()->getParent();
+        if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
@@ -14314,11 +14315,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     }
     else
     {
-        atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInsn->getOperand(3))->getZExtValue());
+        atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(3))->getZExtValue());
     }
 
 
-    unsigned short bitwidth = pInsn->getType()->getScalarSizeInBits();
+    unsigned short bitwidth = pInst->getType()->getScalarSizeInBits();
     const bool is16Bit = (bitwidth == 16);
 
     if (is16Bit)
@@ -14335,38 +14336,52 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     }
 
     // Dst address in bytes.
-    CVariable* pDstAddr = GetSymbol(pllDstAddr);
+    CVariable* pDstAddr = GetSymbol(dstAddr);
+
+
+    PointerType *PtrTy = dyn_cast<PointerType>(dstAddr->getType());
+    bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
+    LSC_ADDR_SIZE addrSize = isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
+
+    const int immOffsetVal =
+        immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
+    const int immScaleVal =
+        immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
+
     // If DisableScalarAtomics regkey is enabled or DisableIGCOptimizations regkey is enabled then
     // don't enable scalar atomics
-    if (IsUniformAtomic(pInsn))
+    if (IsUniformAtomic(pInst))
     {
-        PointerType* PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
-        bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
         e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
         // Re-align the pointer if it's not GRF aligned.
         pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
-        if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInsn, 2))
+        if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInst, 2))
         {
             // special case of atomic_load
-            emitScalarAtomicLoad(pInsn, resource, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth);
+            emitScalarAtomicLoad(pInst, resource,
+                                 pDstAddr, nullptr /*u*/, nullptr /*v*/,
+                                 nullptr /*r*/, pSrc0, isA64, bitwidth,
+                                 immOffsetVal, immScaleVal, addrSize);
         }
-        else
-        {
-            emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth);
+        else {
+            emitScalarAtomics(pInst, resource, atomic_op,
+                              pDstAddr, nullptr /*u*/, nullptr /*v*/,
+                              nullptr /*r*/, pSrc0, isA64, bitwidth,
+                              immOffsetVal, immScaleVal, addrSize);
             ResetVMask();
         }
         return;
     }
 
-    Function* F = pInsn->getParent()->getParent();
-    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+    Function* F = pInst->getParent()->getParent();
+    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
     }
     pDstAddr = BroadcastIfUniform(pDstAddr);
 
-    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
@@ -14376,7 +14391,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         pSrc0 = UnpackOrBroadcastIfUniform(pSrc0);
     }
 
-    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst))
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
@@ -14390,9 +14405,6 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                 EALIGN_GRF, CName::NONE) :
             nullptr;
 
-        PointerType* PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
-        bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
-        LSC_ADDR_SIZE addrSize = isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
         bool extendPointer = (bitwidth == 64 && !isA64);
         // DG2 onward with LSC we do not have to extend an A32 pointer to an
         // A64 pointer for 64bit atomics
@@ -14410,17 +14422,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
             }
             else
             {
-                if (shouldGenerateLSC())
-                {
-                    m_encoder->LSC_AtomicRaw(
-                        atomic_op,
-                        pDst, pDstAddr,
-                        pSrc0, pSrc1,
-                        bitwidth,
-                        &resource,
-                        addrSize,
-                        0,
-                        LSC_DEFAULT_CACHING);
+                if (shouldGenerateLSC()) {
+                    m_encoder->LSC_AtomicRaw(atomic_op, pDst,
+                                             pDstAddr, pSrc0, pSrc1, bitwidth,
+                                             &resource, addrSize, immOffsetVal,
+                                             immScaleVal, LSC_DEFAULT_CACHING);
                 }
                 else
                 {
@@ -14466,19 +14472,15 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
             uint label = 0;
             CVariable* flag = nullptr;
             bool needLoop = ResourceLoopHeader(resource, flag, label);
-            if (shouldGenerateLSC(pInsn))
-            {
-                m_encoder->LSC_AtomicRaw(
-                    atomic_op,
-                    pDst, pDstAddr,
-                    pSrc0, pSrc1,
-                    bitwidth,
-                    &resource, addrSize,
-                    0,
-                    LSC_DEFAULT_CACHING);
+            if (shouldGenerateLSC(pInst)) {
+                m_encoder->LSC_AtomicRaw(atomic_op, pDst,
+                                         pDstAddr, pSrc0, pSrc1, bitwidth,
+                                         &resource, addrSize, immOffsetVal,
+                                         immScaleVal, LSC_DEFAULT_CACHING);
             }
             else
             {
+                IGC_ASSERT_MESSAGE(!immScale && !immOffset, "Scale and offset not supported on non-LSC path!");
                 m_encoder->DwordAtomicRaw(
                     atomic_op,
                     resource,
@@ -14561,11 +14563,17 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInsn, 4))
         {
             // special case of atomic_load
-            emitScalarAtomicLoad(pInsn, resource, nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth);
+                emitScalarAtomicLoad(pInsn, resource,
+                                     nullptr /*pDstAddr*/, pU, pV, pR, pSrc0,
+                                     false /*isA64*/, bitwidth, 0, 1,
+                                     LSC_ADDR_SIZE_32b);
         }
         else
         {
-            emitScalarAtomics(pInsn, resource, atomic_op, nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth);
+            emitScalarAtomics(pInsn, resource, atomic_op,
+                              nullptr /*pDstAddr*/, pU, pV, pR, pSrc0,
+                              false /*isA64*/, bitwidth, 0, 1,
+                              LSC_ADDR_SIZE_32b);
         }
     }
     else
@@ -21572,11 +21580,9 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
 
     auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);
 
-    m_encoder->LSC_AtomicRaw(
-        atomicOp, pOldValue, pDstAddr, pAtomicVal,
-        pAtomicCmp, bitwidth, &resource,
-        addrSize, immOff,
-        cacheOpts);
+    m_encoder->LSC_AtomicRaw(atomicOp, pOldValue,
+                             pDstAddr, pAtomicVal, pAtomicCmp, bitwidth,
+                             &resource, addrSize, immOff, 1, cacheOpts);
     m_encoder->Push();
 }
 

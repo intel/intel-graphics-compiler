@@ -1289,9 +1289,12 @@ namespace IGC
             case GenISAIntrinsic::GenISA_ldraw_indexed:
             case GenISAIntrinsic::GenISA_storerawvector_indexed:
             case GenISAIntrinsic::GenISA_storeraw_indexed:
-                match = supportsLSCImmediateGlobalBaseOffset() ?
-                    MatchImmOffsetLSC(I) || MatchSingleInstruction(I) :
-                    MatchSingleInstruction(I);
+                if (supportsLSCImmediateGlobalBaseOffset()) {
+                    match = MatchImmOffsetLSC(I);
+                    if (match)
+                        return;
+                }
+                match = MatchSingleInstruction(I);
                 break;
             case GenISAIntrinsic::GenISA_GradientX:
             case GenISAIntrinsic::GenISA_GradientY:
