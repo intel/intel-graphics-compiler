@@ -836,9 +836,9 @@ void GenXPromoteArray::replaceAggregatedLoad(LoadInst *LI) {
     Result = Builder.CreateInsertValue(Result, ElemLI, Idx);
   }
   auto Name = LI->getName();
+  Result->setName(Name);
   LI->replaceAllUsesWith(Result);
   LI->eraseFromParent();
-  Result->setName(Name);
 }
 
 unsigned int GenXPromoteArray::extractAllocaSize(AllocaInst *Alloca) {

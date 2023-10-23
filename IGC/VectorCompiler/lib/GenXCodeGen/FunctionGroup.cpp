@@ -347,7 +347,11 @@ cloneFunctions(const FuncToGroupsMapTy &FuncToGroupsMap) {
     }
     // Rename clones if the function belongs to several function groups
     if (FGs.size() > 1) {
-      auto FuncName = F->getName();
+      /*
+       * Here we have to expicitly copy original function's name
+       * as it is also going to be renamed.
+       */
+      std::string FuncName(F->getName().str());
       for (auto [FG, ActualFunc] : FuncToClonesMap[F])
         ActualFunc->setName(FuncName + "." + FG->getName());
     }
