@@ -722,6 +722,8 @@ DECLARE_IGC_REGKEY(DWORD, RematChainLimit,   10,  "If number of instructions we'
 DECLARE_IGC_REGKEY(bool, RematSameBBScope, true, "Confine rematerialization only to variables within the same BB, we won't pull down values from predeccors", false)
 DECLARE_IGC_REGKEY(bool, EnableRemat, false, "Enable clone adress arithmetic pass not only on retry", false)
 DECLARE_IGC_REGKEY(bool, RematReassocBefore, false, "Enable short sequence of passes before clone address arithmetic pass to potentially decrese amount of operations that will be rematerialized", false)
+DECLARE_IGC_REGKEY(bool, DumpRegPressureEstimate, false,  "Dump RegPressureEstimate to a file", false)
+DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity,   0,  "Different printing types", false)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, true, "Enable generation of .debug_loc section", false)
 DECLARE_IGC_REGKEY(bool, EmitOffsetInDbgLoc, false, "Emit offset of private memory in DW_AT_location when available", false)

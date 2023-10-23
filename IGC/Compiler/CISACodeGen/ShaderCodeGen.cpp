@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/RematAddressArithmetic.h"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
 #include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
@@ -690,6 +691,9 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // need to run WIAnalysis once
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
             mpm.add(createAdvMemOptPass());
+
+        if(IGC_IS_FLAG_SET(DumpRegPressureEstimate))
+            mpm.add(createIGCEarlyRegEstimator(/*UseWiAnalysis = */ true, /* DumpToFile = */ true, "final"));
 
         if (doLdStCombine(&ctx)) {
             // Once it is stable, no split 64bit store/load anymore.

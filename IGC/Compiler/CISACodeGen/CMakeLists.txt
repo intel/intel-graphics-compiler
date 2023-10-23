@@ -93,6 +93,7 @@ set(IGC_BUILD__SRC__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/helper.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/layout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/messageEncoding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCLivenessAnalysis.cpp"
   )
 
 
@@ -187,6 +188,7 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/layout.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/messageEncoding.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/opCode.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCLivenessAnalysis.h"
   )
 
 
