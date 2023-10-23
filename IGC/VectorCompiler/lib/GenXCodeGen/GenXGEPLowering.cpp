@@ -16,7 +16,10 @@ SPDX-License-Identifier: MIT
 
 #include "GenX.h"
 #include "GenXModule.h"
+#include "GenXUtil.h"
 #include "Probe/Assertion.h"
+
+#include "vc/Utils/General/Types.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -130,9 +133,7 @@ Value *GenXGEPLowering::visitPtrToIntInst(PtrToIntInst &PTI) {
   for (auto *Cast = dyn_cast<CastInst>(Src); Cast != nullptr;
        Cast = dyn_cast<CastInst>(Src)) {
     if (isa<AddrSpaceCastInst>(Cast)) {
-      auto *PtrTy = cast<PointerType>(Cast->getType());
-      auto AddrSpace = PtrTy->getAddressSpace();
-      if (AddrSpace != TTI->getFlatAddressSpace())
+      if (!genx::isNoopCast(Cast))
         break;
       // The `addrspacecast` is just no-op so it can be eliminated
       Src = Cast->getOperand(0);

@@ -8,8 +8,9 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXGEPLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
-target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"
+target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
+declare <32 x double> @llvm.vc.internal.lsc.load.slm.v32f64.v32i1.v32i32(<32 x i1>, i8, i8, i8, i8, i8, i32, <32 x i32>, i16, i32, <32 x double>)
 declare <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1>, i8, i8, i8, i8, i8, i64, i64, i16, i32, <32 x i32>)
 declare <32 x double> @llvm.vc.internal.lsc.load.ugm.v32f64.v32i1.v32i64(<32 x i1>, i8, i8, i8, i8, i8, i64, <32 x i64>, i16, i32, <32 x double>)
 
@@ -44,6 +45,26 @@ entry:
   ; CHECL: %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 [[ADD]], i16 1, i32 0, <32 x i32> undef)
   %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 %pti, i16 1, i32 0, <32 x i32> undef)
   ret <32 x i32> %res
+}
+
+; CHECK-LABEL: @test_fold_ascastp42p3_vector
+define <32 x double> @test_fold_ascastp42p3_vector(<32 x i1> %mask, <32 x double addrspace(4)*> %a) {
+entry:
+  %ascast = addrspacecast <32 x double addrspace(4)*> %a to <32 x double addrspace(3)*>
+  ; CHECK: %pti = ptrtoint <32 x double addrspace(3)*> %ascast to <32 x i32>
+  %pti = ptrtoint <32 x double addrspace(3)*> %ascast to <32 x i32>
+  %res = call <32 x double> @llvm.vc.internal.lsc.load.slm.v32f64.v32i1.v32i32(<32 x i1> %mask, i8 2, i8 4, i8 1, i8 0, i8 0, i32 0, <32 x i32> %pti, i16 1, i32 0, <32 x double> undef)
+  ret <32 x double> %res
+}
+
+; CHECK-LABEL: @test_fold_ascastp42p1_vector
+define <32 x double> @test_fold_ascastp42p1_vector(<32 x i1> %mask, <32 x double addrspace(4)*> %a) {
+entry:
+  %ascast = addrspacecast <32 x double addrspace(4)*> %a to <32 x double addrspace(1)*>
+  ; CHECK: %pti = ptrtoint <32 x double addrspace(4)*> %a to <32 x i64>
+  %pti = ptrtoint <32 x double addrspace(1)*> %ascast to <32 x i64>
+  %res = call <32 x double> @llvm.vc.internal.lsc.load.ugm.v32f64.v32i1.v32i64(<32 x i1> %mask, i8 3, i8 4, i8 1, i8 0, i8 0, i64 0, <32 x i64> %pti, i16 1, i32 0, <32 x double> undef)
+  ret <32 x double> %res
 }
 
 ; CHECK-LABEL: @test_fold_cast_vector
