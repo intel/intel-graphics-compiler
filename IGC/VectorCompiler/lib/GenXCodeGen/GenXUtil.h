@@ -135,6 +135,15 @@ inline bool isABitCast(Value *V) {
           cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast);
 }
 
+inline Value *peelBitCastsInSingleUseChain(User *U) {
+  while (isABitCast(U) && U->hasOneUse())
+    U = *U->user_begin();
+  return U;
+}
+
+// Get user values peeling off intermittent bitcasts chains.
+llvm::SmallPtrSet<Value *, 4> peelBitCastsGetUserValues(Value *V);
+
 // Get original value before bit-casting chain.
 Value *getBitCastedValue(Value *V);
 
@@ -786,11 +795,6 @@ bool checkGVClobberingByInterveningStore(
     Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
     const llvm::StringRef PassName,
     llvm::SetVector<Instruction *> *SIs = nullptr);
-
-void collectRelatedCallSitesPerFunction(
-    Instruction *SI, class FunctionGroup *FG,
-    std::unordered_map<Function *, llvm::SetVector<Instruction *>>
-        &InstAndRelatedCallSitesPerFunction);
 
 llvm::SetVector<Instruction *> getAncestorGVLoads(Instruction *I,
                                                   bool OneLevel = false);

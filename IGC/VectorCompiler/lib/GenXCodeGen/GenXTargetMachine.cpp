@@ -614,17 +614,21 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXNumberingWrapperPass());
   /// .. include:: GenXLiveRanges.cpp
   vc::addPass(PM, createGenXLiveRangesWrapperPass());
-  /// .. include:: GenXGVClobberChecker.cpp
-  if (BackendConfig.checkGVClobbering())
-    vc::addPass(PM, createGenXGVClobberCheckerPass());
   /// .. include:: GenXCoalescing.cpp
   vc::addPass(PM, createGenXCoalescingWrapperPass());
   /// .. include:: GenXAddressCommoning.cpp
   vc::addPass(PM, createGenXAddressCommoningWrapperPass());
+
   /// .. include:: GenXArgIndirection.cpp
   vc::addPass(PM, createGenXArgIndirectionWrapperPass());
   /// .. include:: GenXTidyControlFlow.cpp
   vc::addPass(PM, createGenXTidyControlFlowPass());
+
+  if (BackendConfig.checkGVClobbering()) {
+    /// .. include:: GenXGVClobberChecker.cpp
+    vc::addPass(PM, createGenXGVClobberCheckerPass());
+  }
+
   /// .. include:: GenXVisaRegAlloc.h
   auto *RegAlloc = createGenXVisaRegAllocWrapperPass();
   vc::addPass(PM, RegAlloc);
@@ -633,6 +637,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
                                                        ".regalloc"));
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
+
   /// .. include:: GenXCisaBuilder.cpp
   vc::addPass(PM, createGenXCisaBuilderPass());
   vc::addPass(PM, createGenXFinalizerPass());

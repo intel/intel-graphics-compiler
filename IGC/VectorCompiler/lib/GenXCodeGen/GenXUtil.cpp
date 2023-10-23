@@ -1583,6 +1583,28 @@ void genx::LayoutBlocks(Function &func)
   }
 }
 
+llvm::SmallPtrSet<Value *, 4> genx::peelBitCastsGetUserValues(Value *V) {
+  // V = ...
+  // A = bitcast (V)
+  // B = use (bitcast (A))
+  // C = use (A)
+  // Provided with V argument returns set containing C and B for the particular
+  // example above.
+  llvm::SmallVector<Value *, 4> BitCasts;
+  llvm::SmallPtrSet<Value *, 4> Res;
+  for (const auto &UI : V->users())
+    BitCasts.push_back(&*UI);
+  while (!BitCasts.empty()) {
+    V = BitCasts.pop_back_val();
+    if (isABitCast(V))
+      for (const auto &UI : V->users())
+        BitCasts.push_back(&*UI);
+    else
+      Res.insert(V);
+  }
+  return Res;
+}
+
 Value *genx::getBitCastedValue(Value *V) {
   IGC_ASSERT(V && "non-null value expected");
   while (isa<BitCastInst>(V) ||
@@ -2406,33 +2428,6 @@ Instruction *genx::getInterveningVStoreOrNull(
   }
 
   return nullptr;
-}
-
-void genx::collectRelatedCallSitesPerFunction(
-    Instruction *SI, FunctionGroup *FG,
-    std::unordered_map<Function *, llvm::SetVector<Instruction *>>
-        &CallSitesPerFunction) {
-  using FuncsSeenT = llvm::SetVector<Function *>;
-  auto collectRelatedCallSites = [&](Function *Func, FuncsSeenT *FuncsSeen,
-                                     auto &&collectRelatedCallSites) -> void {
-    if (llvm::find(*FuncsSeen, Func) != FuncsSeen->end())
-      return;
-    FuncsSeen->insert(Func);
-    for (const auto &FuncUser : Func->users()) {
-      if (isa<CallBase>(FuncUser)) {
-        auto *Call = dyn_cast<Instruction>(FuncUser);
-        auto *curFunction = Call->getFunction();
-        if (FG && llvm::find(*FG, curFunction) == FG->end())
-          continue;
-        CallSitesPerFunction[curFunction].insert(Call);
-        collectRelatedCallSites(curFunction, FuncsSeen,
-                                collectRelatedCallSites);
-      }
-    }
-  };
-  FuncsSeenT FuncsSeen;
-  collectRelatedCallSites(SI->getFunction(), &FuncsSeen,
-                          collectRelatedCallSites);
 }
 
 llvm::SetVector<Instruction *> genx::getAncestorGVLoads(Instruction *I,
