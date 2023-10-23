@@ -996,20 +996,53 @@ void FlowGraph::handleWait() {
   }
 }
 
+// handleExit():
+//   Each g4_pseudo_exit instruction will be translated into EOT send.
 //
-// Each g4_pseudo_exit instruction will be translated into one of the following:
-// -- a unconditional simd1 ret: translated into a EOT send (may be optionally
-// merged with
-//    an immediately preceding send)
-// -- a conditional simd1 ret: translated into a jmpi to the exit block
-// -- a non-uniforom ret: translated into a halt to the exit block
-// for case 2 and 3 an exit block will be inserted, and it will consist of a EOT
-// send plus a join if it's targeted by another goto instruction
+// Terminology:
+//    Exit BB:
+//      any BBs that end with EOT send.
+//    G4_pseudo_exit :
+//      a 'ret' instruction. It may be translated either to an exit BB or
+//      to a jump to an exit BB.
+//    Raw EOT send:
+//      send with EOT set already coming into this function.
+//    EOT send:
+//      either raw EOT send or send in which g4_pseudo_exit is folded in
+//      this function.
 //
-void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
+// Computer Kernel:
+//   Normalize CFG so that it has a single exit BB and it is the last BB.
+//   (If g4_pseudo_exit is predicated or under diverged control-flow, it
+//    should be translated to a jump to the final exit BB.)
+// 3D shader:
+//   Normalize CFG so that the last BB is the exit BB.  If the input has
+//   more than one exit BBs (it seems igc always generate a single one),
+//   it remains that way without merging.
+//
+//   Note:
+//     (1) this code implies 3d shaders should have a send immediately
+//         before ret and the send must support EOT (-foldEOT must be set).
+//     (2) it also implies that 3d shaders don't support predicated ret
+//         instructions as predicated ret results in a gateway EOT send,
+//         which is only for compute kernels.
+// Special case for raw EOT sends, they are handled similar to the
+// folded EOT send of 3D shaders.
+//
+// With this, the last BB will always be an exit BB.  In addition, compute
+// kernels should have a single exit BB at the end (not counting raw EOT send).
+//
+// Last, if there is neither g4_pseudo_exit nor raw EOT send,  it remains this
+// way without an exit BB. (Probably not right, but several lit tests have no
+// ret inst. Just remain this way.)
+//
+// Note: FC kernel behavior remains unchanged with this refactor (10/2023).
+void FlowGraph::handleExit(G4_BB* firstSubroutineBB) {
 
   // blocks that end with non-uniform or conditional return
   std::vector<G4_BB *> exitBlocks;
+  // Last BB with EOT folded into send, including raw send.
+  G4_BB *lastEOTBB = nullptr;
   BB_LIST_ITER iter = BBs.begin(), iterEnd = BBs.end();
   for (; iter != iterEnd; ++iter) {
     G4_BB *bb = *iter;
@@ -1024,47 +1057,63 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
 
     G4_INST *lastInst = bb->back();
     if (lastInst->opcode() == G4_pseudo_exit) {
+      bool needsEOTSend = true;
       if (lastInst->getExecSize() == g4::SIMD1 &&
-          !builder->getFCPatchInfo()->getFCComposableKernel()) {
-        // uniform return
-        if (lastInst->getPredicate()) {
-          exitBlocks.push_back(bb);
-        } else {
-          // generate EOT send
-          G4_INST *lastInst = bb->back();
-          bb->pop_back();
-          bool needsEOTSend = true;
-          // the EOT may be folded into the BB's last instruction if it's a send
-          // that supports EOT
-          if (builder->getOption(vISA_foldEOTtoPrevSend) && bb->size() > 1) {
-            G4_InstSend *secondToLastInst = bb->back()->asSendInst();
-            if (secondToLastInst && secondToLastInst->canBeEOT() &&
-                !(secondToLastInst->getMsgDesc()->getSrc1LenRegs() > 2 &&
-                  VISA_WA_CHECK(builder->getPWaTable(),
-                                WaSendsSrc1SizeLimitWhenEOT))) {
-              secondToLastInst->setEOT();
-              needsEOTSend = false;
-              if (builder->getHasNullReturnSampler() &&
-                  VISA_WA_CHECK(builder->getPWaTable(), Wa_1607871015)) {
-                bb->addSamplerFlushBeforeEOT();
-              }
+        !lastInst->getPredicate() &&
+        !builder->getFCPatchInfo()->getFCComposableKernel()) {
+        // uniform & unconditional return. Try to fold EOT into the BB's last
+        // instruction if it's a send that supports EOT. (Folding should happen
+        // for 3d shaders as vISA can insert EOT for compute kernel only.)
+        if (builder->getOption(vISA_foldEOTtoPrevSend) && bb->size() > 2) {
+          auto iter2 = std::prev(bb->end(), 2);
+          G4_InstSend* secondToLastInst = (*iter2)->asSendInst();
+          if (secondToLastInst && secondToLastInst->canBeEOT() &&
+            !(secondToLastInst->getMsgDesc()->getSrc1LenRegs() > 2 &&
+              VISA_WA_CHECK(builder->getPWaTable(),
+                WaSendsSrc1SizeLimitWhenEOT))) {
+            // common case for 3d shaders
+            // (note: expect 3d shaders not to have predicated ret)
+            secondToLastInst->setEOT();
+            bb->pop_back();
+            needsEOTSend = false;
+            lastEOTBB = bb;
+            if (builder->getHasNullReturnSampler() &&
+              VISA_WA_CHECK(builder->getPWaTable(), Wa_1607871015)) {
+              bb->addSamplerFlushBeforeEOT();
             }
           }
-
-          if (needsEOTSend) {
-            bb->addEOTSend(lastInst);
-          }
         }
-      } else {
+      }
+      if (needsEOTSend) {
         exitBlocks.push_back(bb);
       }
+    } else if (lastInst->isSend() && lastInst->asSendInst()->isEOT()) {
+      // likely, raw send
+      lastEOTBB = bb;
     }
   }
 
-  // create an exit BB
-  if (exitBlocks.size() > 0) {
+  // Last BB of the entry
+  auto lastBB = *(std::prev(iter));
+  if (exitBlocks.size() == 1 && exitBlocks[0] == lastBB) {
+    // Common case for compute kernel:
+    //   single & unconditional exit that is already at the end.
+    //
+    // Rationale for checking null predicate:
+    //   if an exit has predicate, it shall have fall-thru BB and
+    //   therefore it will not be the last BB.
+    vASSERT(lastBB->size() > 0 &&
+      lastBB->back()->opcode() == G4_pseudo_exit &&
+      !lastBB->back()->getPredicate());
+    G4_INST *lastInst = lastBB->back();
+    lastBB->pop_back();
+    if (!builder->getFCPatchInfo()->getFCComposableKernel()) {
+      // Don't insert EOT send for FC composable kernels
+      lastBB->addEOTSend(lastInst);
+    }
+  } else if (exitBlocks.size() > 0) {
+    // Create a new exit BB (note: should be for compute kernels).
     G4_BB *exitBB = createNewBB();
-
     if (builder->getFCPatchInfo()->getFCComposableKernel()) {
       // For FC composable kernels insert exitBB as
       // last BB in BBs list. This automatically does
@@ -1078,9 +1127,14 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
     G4_INST *label = createNewLabelInst(exitLabel);
     exitBB->push_back(label);
 
+    // For debugInfo, use last G4_pseudo_exit's DI for EOT
+    G4_BB *lastRetBB = exitBlocks.back();
+    vASSERT(lastRetBB->size() > 0);
+    G4_INST *lastRetI = lastRetBB->back();
+
     if (!builder->getFCPatchInfo()->getFCComposableKernel()) {
       // Don't insert EOT send for FC composable kernels
-      exitBB->addEOTSend();
+      exitBB->addEOTSend(lastRetI);
     }
 
     for (int i = 0, size = (int)exitBlocks.size(); i < size; i++) {
@@ -1106,17 +1160,37 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
       }
 
       if (retInst->getExecSize() == g4::SIMD1) {
-        G4_INST *jmpInst = builder->createJmp(retInst->getPredicate(),
-                                              exitLabel, InstOpt_NoOpt, false);
+        G4_INST* jmpInst = builder->createJmp(retInst->getPredicate(),
+          exitLabel, InstOpt_NoOpt, false);
+        jmpInst->inheritDIFrom(retInst);
         retBB->push_back(jmpInst);
       } else {
         // uip for goto will be fixed later
-        G4_INST *gotoInst = builder->createInternalCFInst(
-            retInst->getPredicate(), G4_goto, retInst->getExecSize(), exitLabel,
-            exitLabel, InstOpt_NoOpt);
+        G4_INST* gotoInst = builder->createInternalCFInst(
+          retInst->getPredicate(), G4_goto, retInst->getExecSize(), exitLabel,
+          exitLabel, InstOpt_NoOpt);
+        gotoInst->inheritDIFrom(retInst);
         retBB->push_back(gotoInst);
       }
     }
+  } else if (lastEOTBB && lastEOTBB != lastBB) {
+    // create a new exit bb and move lastEOTBB's insts over
+    G4_BB *newExitBB = createNewBBWithLabel("EXIT_BB");
+    G4_Label *newExitLabel = newExitBB->getLabel();
+    newExitBB->splice(newExitBB->end(),
+      lastEOTBB, lastEOTBB->getFirstInsertPos(), lastEOTBB->end());
+    // insert goto to jump from the lastEOTBB to this new BB.
+    G4_INST *gotoInst = builder->createInternalCFInst(
+      nullptr, G4_goto, pKernel->getSimdSize(), newExitLabel,
+      newExitLabel, InstOpt_NoOpt);
+
+    // Use DI from lastEOTBB's first inst
+    gotoInst->inheritDIFrom(newExitBB->getFirstInst());
+
+    lastEOTBB->push_back(gotoInst);
+
+    insert(iter, newExitBB);
+    addPredSuccEdges(lastEOTBB, newExitBB, true);
   }
 
 #ifdef _DEBUG
