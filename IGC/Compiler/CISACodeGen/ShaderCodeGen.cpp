@@ -405,9 +405,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
         IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
     {
-        DummyPass* dummypass = new DummyPass();
         TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function& F) {
-            GenIntrinsicsTTIImpl GTTI(&ctx, dummypass);
+            GenIntrinsicsTTIImpl GTTI(&ctx);
             return TargetTransformInfo(GTTI);
             });
         mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
@@ -1252,10 +1251,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
 
         mpm.add(new CodeGenContextWrapper(pContext));
-        DummyPass* dummypass = new DummyPass();
-        mpm.add(dummypass);
             TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function& F) {
-            GenIntrinsicsTTIImpl GTTI(pContext, dummypass);
+            GenIntrinsicsTTIImpl GTTI(pContext);
             return TargetTransformInfo(GTTI);
         });
 

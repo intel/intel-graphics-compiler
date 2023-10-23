@@ -17,12 +17,6 @@ SPDX-License-Identifier: MIT
 
 namespace llvm
 {
-    class DummyPass : public ImmutablePass
-    {
-    public:
-        static char ID;
-        DummyPass();
-    };
 
     // This implementation allows us to define our own costs for the GenIntrinsics
     // Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument,
@@ -33,12 +27,9 @@ namespace llvm
         typedef TargetTransformInfo TTI;
         friend BaseT;
         IGC::CodeGenContext* ctx;
-        DummyPass* dummyPass;
     public:
-        GenIntrinsicsTTIImpl(IGC::CodeGenContext* pCtx, DummyPass* pDummyPass) :
-            BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {
-            dummyPass = pDummyPass;
-        }
+        GenIntrinsicsTTIImpl(IGC::CodeGenContext* pCtx) :
+            BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {}
 
         bool shouldBuildLookupTables();
 

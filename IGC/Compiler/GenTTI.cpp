@@ -32,12 +32,6 @@ using namespace IGC;
 
 namespace llvm {
 
-    char DummyPass::ID = 0;
-    void initializeDummyPassPass(PassRegistry& Registry);
-    DummyPass::DummyPass() : ImmutablePass(ID) {
-        initializeDummyPassPass(*PassRegistry::getPassRegistry());
-    }
-
     bool GenIntrinsicsTTIImpl::isLoweredToCall(const Function* F)
     {
         if (GenISAIntrinsic::isIntrinsic(F))
@@ -651,6 +645,3 @@ namespace llvm {
 #endif
 
 } // namespace llvm
-// Register the basic pass.
-INITIALIZE_PASS(DummyPass, "gen-tti-dummy-pass",
-    "Dummy Pass for GenTTIImpl", false, true)
