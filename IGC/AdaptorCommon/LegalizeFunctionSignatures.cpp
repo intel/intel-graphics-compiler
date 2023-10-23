@@ -400,6 +400,10 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                     NewArgIt->removeAttr(llvm::Attribute::ByVal);
                     Value* newArgPtr = builder.CreateAlloca(NewArgIt->getType());
                     StoreToStruct(builder, &*NewArgIt, newArgPtr);
+                    // cast back to original addrspace
+                    IGC_ASSERT(OldArgIt->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC ||
+                               OldArgIt->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE);
+                    newArgPtr = builder.CreateAddrSpaceCast(newArgPtr, OldArgIt->getType());
                     VMap[&*OldArgIt] = newArgPtr;
                 }
                 else if (!isLegalSignatureType(M, OldArgIt->getType(), isStackCall))
