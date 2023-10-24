@@ -327,6 +327,7 @@ set(GenX_Common_Headers
   G4_BB.hpp
   G4_Declare.h
   G4_IR.hpp
+  G4_Instruction.h
   G4_Kernel.hpp
   G4_MsgOpDefs.hpp
   G4_Opcode.h
@@ -334,7 +335,6 @@ set(GenX_Common_Headers
   G4_Register.h
   G4_SendDescs.hpp
   G4_Verifier.hpp
-  G4Instruction.h
   GraphColor.h
   HWConformity.h
   EmuInt64Add.h

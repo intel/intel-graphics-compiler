@@ -350,7 +350,7 @@ typedef struct _G4_InstOptInfo {
 #define HANDLE_INST(op, nsrc, ndst, type, plat, attr) G4_##op,
 
 enum G4_opcode {
-#include "G4Instruction.h"
+#include "G4_Instruction.h"
   G4_NUM_OPCODE
 };
 

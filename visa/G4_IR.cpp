@@ -73,7 +73,7 @@ static const G4_InstOptInfo InstOptInfo[] = {
   {G4_##op, name, nsrc, ndst, type, plat, attr},
 
 const G4_Inst_Info G4_Inst_Table[] = {
-#include "G4Instruction.h"
+#include "G4_Instruction.h"
 };
 
 // global functions
