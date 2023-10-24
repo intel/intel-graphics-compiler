@@ -446,7 +446,7 @@ public:
 
     SWSB::InstType instType = inst->getSWSBInstType(m_swsbEncodeMode);
     if (!swInfo.verify(m_swsbEncodeMode, instType)) {
-      m_errorHandler.reportError(inst->getLoc(), "invalid SWSB mode");
+      m_errorHandler.reportError(inst->getLoc(), "invalid SWSB");
     }
 
     inst->setSWSB(swInfo);
