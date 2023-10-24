@@ -1079,9 +1079,10 @@ namespace IGC
                 }
 
                 m_subSpanUse.insert(v);
-                if (LoadInst * load = dyn_cast<LoadInst>(v))
+
+                if (Instruction* inst = dyn_cast<Instruction>(v))
                 {
-                    if (load->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE)
+                    if (EmitPass::IsNoMaskAllowed(inst, m_ctx))
                     {
                         m_NeedVMask = true;
                     }

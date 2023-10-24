@@ -622,7 +622,8 @@ public:
     template<size_t N>
     void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode);
     CVariable* BroadcastIfUniform(CVariable* pVar, bool nomask = false);
-    bool IsNoMaskAllowed(SDAG& sdag);
+    static bool IsNoMaskAllowed(Instruction* inst, const CodeGenContext* ctx);
+    bool IsNoMaskAllowed(SDAG& sdag) const;
     uint DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
     bool IsUndefOrZeroImmediate(const llvm::Value* value);
     inline bool isUndefOrConstInt0(const llvm::Value* val)
