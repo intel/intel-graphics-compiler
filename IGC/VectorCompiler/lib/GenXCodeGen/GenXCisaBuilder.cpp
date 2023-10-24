@@ -536,7 +536,6 @@ class GenXKernelBuilder {
   bool HasBarrier = false;
   bool HasCallable = false;
   bool HasStackcalls = false;
-  bool HasAlloca = false;
   bool HasSimdCF = false;
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFByteSize;
@@ -2957,8 +2956,6 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_convert_addr:
         buildConvertAddr(CI, BI, Mod, DstDesc);
         break;
-      case GenXIntrinsic::genx_alloca:
-        break;
       case GenXIntrinsic::genx_gaddr:
         buildSymbolInst(CI, Mod, DstDesc);
         break;
@@ -3329,8 +3326,6 @@ void GenXKernelBuilder::collectKernelInfo() {
             if (IID == GenXIntrinsic::genx_barrier ||
                 IID == GenXIntrinsic::genx_sbarrier)
               HasBarrier = true;
-            else if (IID == GenXIntrinsic::genx_alloca)
-              HasAlloca = true;
           } else {
             Function *Callee = CI->getCalledFunction();
             if (Callee && Callee->hasFnAttribute("CMCallable"))
@@ -5054,15 +5049,6 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
 
   VISA_VectorOpnd *Imm = nullptr;
   CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_D));
-
-  if (IntrinID == llvm::GenXIntrinsic::genx_alloca) {
-    VISA_VectorOpnd *Src = nullptr;
-    CISA_CALL(Kernel->CreateVISASrcOperand(Src, static_cast<VISA_GenVar *>(Sp),
-                                           MODIFIER_NONE, 0, 1, 0, 0, 0));
-    VISA_VectorOpnd *Dst = createDestination(CI, DONTCARESIGNED, Mod, DstDesc);
-    appendVISADataMovementInst(ISA_MOV, nullptr, false, vISA_EMASK_M1,
-                               EXEC_SIZE_1, Dst, Src);
-  }
 
   VISA_VectorOpnd *DstSp = nullptr;
   CISA_CALL(Kernel->CreateVISADstOperand(DstSp, static_cast<VISA_GenVar *>(Sp),

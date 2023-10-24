@@ -73,9 +73,6 @@ static cl::opt<bool>
 static cl::opt<bool> OptStricterOword(
     "vc-i64emu-strict-report-oword", cl::init(false), cl::Hidden,
     cl::desc("strict check will break on 64-bit oword reads/writes"));
-static cl::opt<bool> OptStricterAlloc(
-    "vc-i64emu-strict-report-alloc", cl::init(false), cl::Hidden,
-    cl::desc("strict check will break on 64-bit alloc"));
 static cl::opt<bool>
     OptStricterConst("vc-i64emu-strict-const", cl::init(false), cl::Hidden,
                      cl::desc("strict check will break on 64-bit constanti"));
@@ -1644,8 +1641,6 @@ bool GenXEmulate::Emu64Expander::hasStrictEmulationRequirement(
   case GenXIntrinsic::genx_oword_ld:
   case GenXIntrinsic::genx_oword_ld_unaligned:
     return OptStricterOword;
-  case GenXIntrinsic::genx_alloca:
-    return OptStricterAlloc;
   }
 
   switch (Inst->getOpcode()) {

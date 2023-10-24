@@ -191,10 +191,6 @@ bool genx::loadNonSimpleConstants(
   if (CI)
     NumArgs = IGCLLVM::getNumArgOperands(CI);
   unsigned IID = vc::getAnyIntrinsicID(Inst);
-  // Do not proceed loading of genx.alloca argument since its value doesn't
-  // needed (only type matters) and always null.
-  if (IID == GenXIntrinsic::genx_alloca)
-    return Modified;
   for (unsigned i = 0; i != NumArgs; ++i) {
     if (isa<Constant>(Inst->getOperand(i))) {
       Use *U = &Inst->getOperandUse(i);
