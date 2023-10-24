@@ -265,23 +265,18 @@ static bool DefReachUseWithinLevel(llvm::Value* def, const llvm::Instruction* us
     return false;
 }
 
-bool EmitPass::IsNoMaskAllowed(Instruction* inst, const CodeGenContext* ctx)
+bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
 {
-    if (auto* I = dyn_cast<LoadInst>(inst))
+    if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
     {
         BufferType bufType = DecodeBufferType(I->getPointerAddressSpace());
         return I->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
                I->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
                I->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT &&
-               !(bufType == CONSTANT_BUFFER && ctx->getModuleMetaData()->compOpt.WaDisableSubspanUseNoMaskForCB);
+               !(bufType == CONSTANT_BUFFER && m_currShader->GetContext()->getModuleMetaData()->compOpt.WaDisableSubspanUseNoMaskForCB);
     }
 
     return true;
-}
-
-bool EmitPass::IsNoMaskAllowed(SDAG& sdag) const
-{
-    return IsNoMaskAllowed(sdag.m_root, m_currShader->GetContext());
 }
 
 uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing)
