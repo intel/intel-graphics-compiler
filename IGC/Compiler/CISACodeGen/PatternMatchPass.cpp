@@ -4191,6 +4191,10 @@ namespace IGC
             return false;
         }
 
+        // For simplicity, do not do add3 if 'Add2' has more than one use.
+        if (!Add2->hasOneUse())
+            return false;
+
         // If source operand corresponding to first add instruction
         // has many uses the add3 pattern match is unlikely to be profitable,
         // as it increases register pressure and makes register bank
