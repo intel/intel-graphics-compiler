@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -190,11 +190,12 @@ static void createScatterWithNewAS(IntrinsicInst &OldScatter,
 static IntrinsicInst *createGatherWithNewAS(IntrinsicInst &OldGather,
                                             IGCLLVM::IRBuilder<> &IRB,
                                             unsigned NewAS, const Twine &Name,
-                                            Value *UpdateMask = nullptr) {
+                                            Value *UpdateMask = nullptr,
+                                            Value *NewPassthru = nullptr) {
   auto PtrOp = OldGather.getArgOperand(0);
   auto Align = OldGather.getArgOperand(1);
   auto Mask = OldGather.getArgOperand(2);
-  auto Passthru = OldGather.getArgOperand(3);
+  auto Passthru = NewPassthru ? NewPassthru : OldGather.getArgOperand(3);
 
   if (UpdateMask)
     Mask = IRB.CreateAnd(UpdateMask, Mask);
@@ -333,9 +334,9 @@ void GenXGASDynamicResolution::visitIntrinsicInst(IntrinsicInst &I) const {
         auto Name = I.getName();
         auto LocalGather = createGatherWithNewAS(
             I, Builder, vc::AddrSpace::Local, Name + ".local", LocalMask);
-        auto GlobalGather = createGatherWithNewAS(
-            I, Builder, vc::AddrSpace::Global, Name + ".global", GlobalMask);
-        NewInst = Builder.CreateSelect(LocalMask, LocalGather, GlobalGather);
+        NewInst =
+            createGatherWithNewAS(I, Builder, vc::AddrSpace::Global,
+                                  Name + ".global", GlobalMask, LocalGather);
       } else {
         createScatterWithNewAS(I, Builder, vc::AddrSpace::Local, LocalMask);
         createScatterWithNewAS(I, Builder, vc::AddrSpace::Global, GlobalMask);

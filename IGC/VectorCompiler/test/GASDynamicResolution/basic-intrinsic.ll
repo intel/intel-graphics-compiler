@@ -33,9 +33,8 @@ define spir_kernel void @kernelA(<8 x float addrspace(3)*> %local_v_ptrs) #0 {
 
   ; CHECK: %[[GT_GLOBAL_MASK:[^ ]+]] = and <8 x i1> %[[GT_ISGLOBAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
   ; CHECK: %[[GT_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(1)*>
-  ; CHECK: %val.global = call <8 x float> @llvm.masked.gather.v8f32.v8p1f32(<8 x float addrspace(1)*> %[[GT_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[GT_GLOBAL_MASK:[^ ]+]], <8 x float> undef)
+  ; CHECK: %val.global = call <8 x float> @llvm.masked.gather.v8f32.v8p1f32(<8 x float addrspace(1)*> %[[GT_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[GT_GLOBAL_MASK:[^ ]+]], <8 x float> %val.local)
 
-  ; CHECK: %[[GATHER_RESULT:[^ ]+]] = select <8 x i1> %[[GT_ISLOCAL:[^ ]+]], <8 x float>  %val.local, <8 x float> %val.global
   %val = call <8 x float> @llvm.masked.gather.v8f32.v8p4f32(<8 x float addrspace(4)*> %generic_v_ptrs, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
 
   ; CHECK: %[[SC_V8P4_2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x i64>
@@ -46,11 +45,11 @@ define spir_kernel void @kernelA(<8 x float addrspace(3)*> %local_v_ptrs) #0 {
 
   ; CHECK: %[[SCATTER_LOCAL_MASK:[^ ]+]] = and <8 x i1> %[[SC_ISLOCAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
   ; CHECK: %[[SC_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(3)*>
-  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p3f32(<8 x float> %[[GATHER_RESULT:[^ ]+]], <8 x float addrspace(3)*> %[[SC_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[SCATTER_LOCAL_MASK:[^ ]+]])
+  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p3f32(<8 x float> %val.global, <8 x float addrspace(3)*> %[[SC_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[SCATTER_LOCAL_MASK:[^ ]+]])
 
   ; CHECK: %[[SC_GLOBAL_MASK:[^ ]+]] = and <8 x i1> %[[SC_ISGLOBAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
   ; CHECK: %[[SC_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(1)*>
-  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p1f32(<8 x float> %[[GATHER_RESULT:[^ ]+]], <8 x float addrspace(1)*> %[[SC_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[SC_GLOBAL_MASK:[^ ]+]])
+  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p1f32(<8 x float> %val.global, <8 x float addrspace(1)*> %[[SC_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[SC_GLOBAL_MASK:[^ ]+]])
   call void @llvm.masked.scatter.v8f32.v8p4f32(<8 x float> %val, <8 x float addrspace(4)*> %generic_v_ptrs, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
   ret void
 }

@@ -198,6 +198,7 @@ private:
   bool simplifyNullDst(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
+  bool mergeApply(CallInst *CI);
 };
 
 } // namespace
@@ -3031,7 +3032,7 @@ bool GenXPatternMatch::decomposeSelect(Function *F) {
   return SD.run();
 }
 
-bool mergeApply(CallInst *CI) {
+bool GenXPatternMatch::mergeApply(CallInst *CI) {
   auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(CI);
   switch (IID) {
   default:
@@ -3064,9 +3065,13 @@ bool mergeApply(CallInst *CI) {
   if (Select->getCondition() != Pred || Select->getTrueValue() != CI)
     return false;
 
+  auto *PassthruVal = Select->getFalseValue();
+  if (auto *FalseValInst = dyn_cast<Instruction>(PassthruVal))
+    if (!DT->dominates(FalseValInst, CI))
+      return false;
+
   // Passthru argument is always last for lsc_* intrinsics
   auto PassthruIndex = IGCLLVM::getNumArgOperands(CI) - 1;
-  auto *PassthruVal = Select->getFalseValue();
   CI->setArgOperand(PassthruIndex, PassthruVal);
   Select->replaceAllUsesWith(CI);
 
