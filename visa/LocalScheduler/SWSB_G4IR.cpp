@@ -181,29 +181,6 @@ static bool operandOverlap(G4_Operand *opnd1, G4_Operand *opnd2) {
           opnd2->getLinearizedEnd() > opnd1->getLinearizedStart());
 }
 
-static G4_Type getDPASDataType(GenPrecision p) {
-  switch (p) {
-  case GenPrecision::U1:
-  case GenPrecision::U2:
-  case GenPrecision::U4:
-  case GenPrecision::U8:
-    return Type_UB;
-  case GenPrecision::S2:
-  case GenPrecision::S4:
-  case GenPrecision::S8:
-    return Type_B;
-  case GenPrecision::FP16:
-    return Type_HF;
-  case GenPrecision::BF16:
-    return Type_BF;
-  case GenPrecision::TF32:
-    return Type_UNDEF;
-  default:
-    vISA_ASSERT_UNREACHABLE("illegal Operand Precision");
-    return Type_UD;
-  }
-}
-
 bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
                              unsigned short &internalOffset) const {
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
@@ -232,7 +209,8 @@ bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
        curFootprintPtr = curFootprintPtr->next) {
     FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
-    G4_Type curType = curFootprintPtr->type;
+    const unsigned short curType = curFootprintPtr->type;
+    bool isPrecision = curFootprintPtr->isPrecision;
     for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr;
          curFootprint2Ptr = curFootprint2Ptr->next) {
       // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB
@@ -241,11 +219,11 @@ bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
         if (curFootprintPtr->LeftB <= curFootprint2Ptr->RightB &&
             curFootprintPtr->RightB >= curFootprint2Ptr->LeftB) {
           internalOffset = curFootprint2Ptr->offset;
-          if (curFType == GRF_T && IS_BTYPE(curType)) {
+          if (curFType == GRF_T && !isPrecision && IS_BTYPE(curType)) {
             isRMWOverlap = true;
           }
           return true;
-        } else if (curFType == GRF_T && IS_BTYPE(curType)) {
+        } else if (curFType == GRF_T && !isPrecision && IS_BTYPE(curType)) {
           unsigned short w_LeftB = curFootprintPtr->LeftB / 2;
           unsigned short w_RightB = curFootprintPtr->RightB / 2;
           unsigned short w_curLeftB = curFootprint2Ptr->LeftB / 2;
@@ -316,6 +294,17 @@ bool SBFootprint::isWholeOverlap(const SBFootprint *liveFootprint) const {
   }
 
   return findOverlap;
+}
+
+bool SBFootprint::hasSameType(const SBFootprint *liveFootprint) const {
+  if (isPrecision != liveFootprint->isPrecision) {
+    return false;
+  }
+  if (isPrecision) {
+    return G4_InstDpas::hasSamePrecision((GenPrecision)type,
+                                         (GenPrecision)liveFootprint->type);
+  }
+  return type == liveFootprint->type;
 }
 
 // check if the current footprint has the same range with given one, or they
@@ -1013,6 +1002,9 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   unsigned short RB = 0;
   int aregOffset = totalGRFNum;
   G4_Type type = opnd->getType();
+  GenPrecision precision = GenPrecision::INVALID;
+  bool isPrecision = false;
+
   if (inst->opcode() == G4_fcvt &&
       (IS_BTYPE(type) ||
        (type == Type_UD && builder.hasPartialInt64Support()))) {
@@ -1023,11 +1015,12 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   }
 
   if (inst->isDpas() && (opnd_num == Opnd_src1 || opnd_num == Opnd_src2)) {
+    isPrecision = true;
     if (opnd_num == Opnd_src1) {
-      type = getDPASDataType(inst->asDpasInst()->getSrc1Precision());
+      precision = inst->asDpasInst()->getSrc1Precision();
     }
     if (opnd_num == Opnd_src2) {
-      type = getDPASDataType(inst->asDpasInst()->getSrc2Precision());
+      precision = inst->asDpasInst()->getSrc2Precision();
     }
   }
 
@@ -1119,6 +1112,7 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   }
 
   SBFootprint *footprint =
+      isPrecision ? new (allocedMem) SBFootprint(GRF_T, precision, LB, RB, inst) :
       new (allocedMem) SBFootprint(GRF_T, type, LB, RB, inst);
 
   return footprint;
@@ -5551,10 +5545,14 @@ void G4_BB_SB::setDistance(const SBFootprint *footprint, SBNode *node,
     SBDISTDEP_ITEM depItem;
     depItem.liveNodePipe = liveNode->ALUPipe;
     depItem.nodePipe = node->ALUPipe;
-    depItem.operandType = getDataTypePipeXe(builder, footprint->type);
     depItem.dstDep = dstDep;
     if (node->GetInstruction()->isSend()) {
       depItem.operandType = PIPE_SEND;
+    } else if (node->GetInstruction()->isDpas()) {
+      depItem.operandType = PIPE_DPAS;
+    } else { //Precision is only used in DPAS
+      depItem.operandType =
+          getDataTypePipeXe(builder, (G4_Type)footprint->type);
     }
     vISA_ASSERT(currentID > prevID, "Wrong node ALU ID");
     unsigned distance = node->setDistance(currentID - prevID);
@@ -5696,7 +5694,8 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode *curNode,
        fp = fp->next) {
     unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
     unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
-    G4_Type type = fp->type;
+    vASSERT(fp->isPrecision);
+    GenPrecision p = (GenPrecision)fp->type;
 
     for (const SBFootprint *nextfp = nextNode->getFirstFootprint(Opnd_src2);
          nextfp; nextfp = nextfp->next) {
@@ -5704,12 +5703,12 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode *curNode,
           nextfp->LeftB / builder.numEltPerGRF<Type_UB>();
       unsigned short nextRightB =
           nextfp->RightB / builder.numEltPerGRF<Type_UB>();
-      G4_Type nextType = nextfp->type;
+      vASSERT(nextfp->isPrecision);
+      GenPrecision nextP = (GenPrecision)nextfp->type;
 
       if (!(nextLeftB > rightB || nextRightB < leftB)) {
-        if (type != nextType) {
-          return true;
-        }
+        return !G4_InstDpas::hasSamePrecision((GenPrecision)p,
+                                             (GenPrecision)nextP);
       }
     }
   }
@@ -5766,8 +5765,8 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
        {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst}) {
     if (curNode->getFirstFootprint(opndNum) &&
         nextNode->getFirstFootprint(opndNum) &&
-        curNode->getFirstFootprint(opndNum)->type !=
-            nextNode->getFirstFootprint(opndNum)->type) {
+        !curNode->getFirstFootprint(opndNum)->hasSameType(
+            nextNode->getFirstFootprint(opndNum))) {
       return true;
     }
   }
@@ -5790,11 +5789,14 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
   }
 
   if (VISA_WA_CHECK(builder.getPWaTable(), Wa_16011859583) ||
-      VISA_WA_CHECK(builder.getPWaTable(), Wa_14012420496) ||
-      builder.getOption(vISA_NoDPASMacro)) {
+      VISA_WA_CHECK(builder.getPWaTable(), Wa_14012420496)) {
     if (curC != 8 || nextC != 8) {
       return true;
     }
+  }
+
+  if (builder.getOption(vISA_NoDPASMacro)) {
+    return true;
   }
 
   if (builder.hasDpasSrc2ReadSupression() &&

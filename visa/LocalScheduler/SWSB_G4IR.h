@@ -143,10 +143,11 @@ typedef enum _FOOTPRINT_TYPE {
 
 struct SBFootprint {
   const FOOTPRINT_TYPE fType;
-  const G4_Type type;
+  const unsigned short type;
   const unsigned short LeftB;
   const unsigned short RightB;
   unsigned short offset = 0;
+  bool isPrecision = false;
   G4_INST *inst;
 
   // FIXME: The choice of C-style linked list seems suspect given that there are
@@ -157,13 +158,18 @@ struct SBFootprint {
   struct SBFootprint *next = nullptr;
 
   SBFootprint()
-      : fType(GRF_T), type(Type_UNDEF), LeftB(0), RightB(0), inst(nullptr) {
-    ;
+      : fType(GRF_T), type((unsigned short)Type_UNDEF), LeftB(0), RightB(0),
+        inst(nullptr) {
+    isPrecision = false;
   }
   SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB,
               unsigned short RB, G4_INST *i)
-      : fType(ft), type(t), LeftB(LB), RightB(RB), inst(i) {
-    ;
+      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), inst(i) {
+    isPrecision = false;
+  }
+  SBFootprint(FOOTPRINT_TYPE ft, GenPrecision p, unsigned short LB,
+              unsigned short RB, G4_INST *i)
+      : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB), inst(i), isPrecision(true) {
   }
   ~SBFootprint() {}
 
@@ -176,6 +182,7 @@ struct SBFootprint {
   bool hasGRFGrainedOverlap(const SBFootprint *liveFootprint) const;
   bool isWholeOverlap(const SBFootprint *liveFootprint) const;
   bool isSameOrNoOverlap(const SBFootprint *liveFootprint) const;
+  bool hasSameType(const SBFootprint *liveFootprint) const;
 };
 
 // Bit set which is used for global dependence analysis for SBID.

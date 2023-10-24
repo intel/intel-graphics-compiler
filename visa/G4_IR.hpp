@@ -990,6 +990,19 @@ public:
     return GenPrecisionTable[(int)P].BitSize;
   }
 
+  static bool hasSamePrecision(GenPrecision p1, GenPrecision p2) {
+    if (p1 == p2) {
+      return true;
+    }
+
+    return (((p1 == GenPrecision::U8 || p1 == GenPrecision::S8) &&
+             (p2 == GenPrecision::U8 || p2 == GenPrecision::S8)) ||
+            ((p1 == GenPrecision::U4 || p1 == GenPrecision::S4 ||
+              p1 == GenPrecision::U2 || p1 == GenPrecision::S2) &&
+             (p2 == GenPrecision::U4 || p2 == GenPrecision::S4 ||
+              p2 == GenPrecision::U2 || p2 == GenPrecision::S2)));
+  }
+
   G4_InstDpas(const IR_Builder &builder, G4_opcode o, G4_ExecSize size,
               G4_DstRegRegion *d, G4_Operand *s0, G4_Operand *s1,
               G4_Operand *s2, G4_Operand *s3, G4_InstOpts opt, GenPrecision a,
@@ -1014,6 +1027,14 @@ public:
   uint8_t getRepeatCount() const { return RepeatCount; }
   GenPrecision getSrc1Precision() const { return Src1Precision; }
   GenPrecision getSrc2Precision() const { return Src2Precision; }
+
+  bool hasSameSrc1Precision(GenPrecision p) const {
+    return hasSamePrecision(Src1Precision, p);
+  }
+
+  bool hasSameSrc2Precision(GenPrecision p) const {
+    return hasSamePrecision(Src2Precision, p);
+  }
 
   void setRepeatCount(uint8_t rc) { RepeatCount = rc; }
   // data size per lane (data size per each systolic depth)

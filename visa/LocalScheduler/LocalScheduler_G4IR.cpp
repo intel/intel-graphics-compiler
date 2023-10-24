@@ -1183,24 +1183,32 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 }
 
 
-bool DDD::hsaSameTypesAllOperands(const G4_INST &curInst,
-                                  const G4_INST &nextInst) const {
+bool DDD::DPASHasSameTypesAllOperands(const G4_INST &curInst,
+                                      const G4_INST &nextInst) const {
+  vASSERT(curInst.isDpas() && nextInst.isDpas());
   vASSERT(curInst.getNumDst() == 1 &&
          curInst.getNumDst() == nextInst.getNumDst());
+  vASSERT(curInst.getNumSrc() == nextInst.getNumSrc());
+
   if (curInst.getDst()->getType() != nextInst.getDst()->getType())
     return false;
 
-  vASSERT(curInst.getNumSrc() == nextInst.getNumSrc());
-  for (auto i = 0; i < curInst.getNumSrc(); ++i)
-    if (curInst.getSrc(i)->getType() != nextInst.getSrc(i)->getType())
-      return false;
+  if (curInst.getSrc(0)->getType() != nextInst.getSrc(0)->getType())
+    return false;
+
+  if (!curInst.asDpasInst()->hasSameSrc1Precision(
+          nextInst.asDpasInst()->getSrc1Precision()) ||
+      !curInst.asDpasInst()->hasSameSrc2Precision(
+          nextInst.asDpasInst()->getSrc2Precision())) {
+    return false;
+  }
 
   return true;
 }
 
 bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
                                BitSet &liveDst, BitSet &liveSrc) const {
-  if (!hsaSameTypesAllOperands(*curInst, *nextInst))
+  if (!DPASHasSameTypesAllOperands(*curInst, *nextInst))
     return false;
 
   G4_InstDpas *curDpasInst = curInst->asDpasInst();
