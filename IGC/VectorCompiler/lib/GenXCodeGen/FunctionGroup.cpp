@@ -391,11 +391,12 @@ static void recoverEdges(const FunctionGroupAnalysis::CallGraphTy &CG,
           Function *ActualF = FuncToClonesMap.at(F).at(Head);
           Function *ActualCallee = FuncToClonesMap.at(Callee).at(Head);
           IGCLLVM::replaceUsesWithIf(Callee, ActualCallee, [ActualF](Use &U) {
-            auto *CI = dyn_cast<CallInst>(U.getUser());
-            IGC_ASSERT(CI);
             // Callee use should be replaced only if it is called from ActualF,
             // i.e. in the current function group.
-            return CI->getFunction() == ActualF;
+            if (auto *CI = dyn_cast<CallInst>(U.getUser()))
+              return CI->getFunction() == ActualF;
+            auto *BA = cast<BlockAddress>(U.getUser());
+            return BA->getFunction() == ActualF;
           });
         },
         // Do not process stack calls, except for heads of subgroups.
