@@ -4041,6 +4041,10 @@ namespace IGC
         bool preserveR0 = false;
 
         bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
+        if (IGC_IS_FLAG_ENABLED(EnableVISADebug) || isOptDisabled)
+        {
+            SaveOption(vISA_Compaction, false);
+        }
 
         // Set up options. This must be done before creating any variable/instructions
         // since some of the options affect IR building.
@@ -4440,6 +4444,10 @@ namespace IGC
         {
             SaveOption(vISA_GenerateISAASM, true);
             SaveOption(vISA_ISAASMToConsole, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(DumpASMToConsole))
+        {
+            SaveOption(vISA_asmToConsole, true);
         }
         if (IGC_IS_FLAG_ENABLED(AddExtraIntfInfo))
         {
