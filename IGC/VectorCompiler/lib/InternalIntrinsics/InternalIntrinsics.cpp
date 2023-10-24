@@ -115,6 +115,15 @@ enum IIT_Info {
 #include "vc/InternalIntrinsics/InternalIntrinsicDescription.gen"
 #undef GET_INTRINSIC_GENERATOR_GLOBAL
 
+static Intrinsic::IITDescriptor getVector(unsigned Width) {
+  using namespace Intrinsic;
+#if VC_INTR_LLVM_VERSION_MAJOR >= 11
+  return IITDescriptor::getVector(Width, false);
+#else
+  return IITDescriptor::get(IITDescriptor::Vector, Width);
+#endif
+}
+
 static void
 DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
               SmallVectorImpl<Intrinsic::IITDescriptor> &OutputTable) {
@@ -170,39 +179,39 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 128));
     return;
   case IIT_V1:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 1));
+    OutputTable.push_back(getVector(1));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V2:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 2));
+    OutputTable.push_back(getVector(2));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V4:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 4));
+    OutputTable.push_back(getVector(4));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V8:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 8));
+    OutputTable.push_back(getVector(8));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V16:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 16));
+    OutputTable.push_back(getVector(16));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V32:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 32));
+    OutputTable.push_back(getVector(32));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V64:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 64));
+    OutputTable.push_back(getVector(64));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V512:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 512));
+    OutputTable.push_back(getVector(512));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_V1024:
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Vector, 1024));
+    OutputTable.push_back(getVector(1024));
     DecodeIITType(NextElt, Infos, OutputTable);
     return;
   case IIT_PTR:
