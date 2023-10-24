@@ -124,8 +124,9 @@ bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::U
     // Check users recursively with a list of permitted in-between uses. Here we
     // follow OpenCLPrintfResolution::argIsString() to check if they are one of
     // CastInst, GEP with all-zero indices, SelectInst, and PHINode.
-    for (auto user : v->users())
+    for (auto& use : v->uses())
     {
+        auto user = use.getUser();
         // Skip if the user is visited.
         if (visited.count(user))
             continue;
@@ -136,10 +137,20 @@ bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::U
         {
             // Stop when reaching a call and check if it is an opencl/oneapi
             // printf call.
-            const Function *target = call->getCalledFunction();
-            res = OpenCLPrintfAnalysis::isOpenCLPrintf(target) ||
-              OpenCLPrintfAnalysis::isOneAPIPrintf(target) ||
-              OpenCLPrintfAnalysis::isBuiltinPrintf(target);
+            const Function* target = call->getCalledFunction();
+            bool isStringLiteral = OpenCLPrintfAnalysis::isOpenCLPrintf(target) ||
+                OpenCLPrintfAnalysis::isOneAPIPrintf(target) ||
+                OpenCLPrintfAnalysis::isBuiltinPrintf(target);
+
+            if (isStringLiteral)
+            {
+                res = true;
+            }
+            else
+            {
+                unsigned int opIndex = call->getDataOperandNo(&use);
+                res = isPrintfOnlyStringConstantImpl(target->arg_begin() + opIndex, visited);
+            }
         }
         else if (llvm::dyn_cast<llvm::CastInst>(user) ||
                  llvm::dyn_cast<llvm::SelectInst>(user) ||
