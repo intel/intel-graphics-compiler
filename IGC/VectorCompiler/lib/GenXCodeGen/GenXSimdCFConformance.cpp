@@ -4130,11 +4130,12 @@ void GenXLateSimdCFConformance::hoistExtractEMInstructions() {
       else {
         ToRemove.push_back(V);
         V->replaceAllUsesWith(It->second);
-        V->eraseFromParent();
       }
     }
-  for (auto &&V : ToRemove)
+  for (auto &&V : ToRemove) {
     removeFromEMRMVals(V);
+    V->eraseFromParent();
+  }
 }
 
 /***********************************************************************

@@ -1180,11 +1180,11 @@ void GenXPredToSimdCF::insertIfGotoJoin(SimdCFIfRegion *R) {
   if (R->hasElse()) {
     auto *ElseExit = R->getIfThenRegion()->getExit();
     Br = cast<BranchInst>(ElseExit->getTerminator());
+    auto *IfEndBB = IfThenExitBr->getSuccessor(1);
     // 1-th: generate goto(EM, zeroinitializer, zeroinitializer) in the end of
     // then-block
     generateThenGoto(Br, JoinBlock);
 
-    auto *IfEndBB = IfThenExitBr->getSuccessor(1);
     for (auto &PHI : IfEndBB->phis()) {
       PHI.replaceIncomingBlockWith(IfThenExit, JoinBlock);
     }
