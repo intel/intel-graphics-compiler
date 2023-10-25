@@ -195,7 +195,9 @@ DEF_VISA_OPTION(vISA_DisableHFMath, ET_BOOL, "-disableHFMath", UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceMixMode, ET_BOOL, "-forceMixMode", UNUSED, false)
 DEF_VISA_OPTION(vISA_UseSends, ET_BOOL, "-nosends", "DEPRECATED, is a nop", true)
 DEF_VISA_OPTION(vISA_doAlign1Ternary, ET_BOOL, "-noalign1ternary", UNUSED, true)
-DEF_VISA_OPTION(vISA_loadThreadPayload, ET_BOOL, "-noLoadPayload", UNUSED, true)
+DEF_VISA_OPTION(vISA_loadThreadPayload, ET_BOOL, "-noLoadPayload",
+                "Indicates that the vISA finalizer should not generate "
+                "kernel argument loading code", true)
 DEF_VISA_OPTION(vISA_foldEOTtoPrevSend, ET_BOOL, "-foldEOT", UNUSED, false)
 DEF_VISA_OPTION(vISA_hasRNEandDenorm, ET_BOOL, "-hasRNEandDenorm", UNUSED,
                 false)
@@ -206,7 +208,11 @@ DEF_VISA_OPTION(vISA_noStitchExternFunc, ET_BOOL, "-noStitchExternFunc", UNUSED,
 DEF_VISA_OPTION(vISA_autoLoadLocalID, ET_BOOL, "-autoLocalId", UNUSED, false)
 DEF_VISA_OPTION(vISA_loadCrossThreadConstantData, ET_BOOL, "-loadCTCD", UNUSED,
                 true)
-DEF_VISA_OPTION(vISA_useInlineData, ET_BOOL, "-useInlineData", UNUSED, false)
+DEF_VISA_OPTION(vISA_useInlineData, ET_BOOL, "-useInlineData",
+                "Indicates that the compute walker command contains inline data "
+                "for the first few kernel arguments (.input).  "
+                "This affects the kernel payload loading sequence.",
+                false)
 DEF_VISA_OPTION(vISA_crossThreadDataAlignment, ET_INT32,
                 "-crossThreadDataAlignment",
                 "If .kernel_attr CrossThreadInputSize .. is absent, "
@@ -229,7 +235,12 @@ DEF_VISA_OPTION(vISA_Linker, ET_INT32, "-linker", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SSOShifter, ET_INT32, "-paddingSSOShifter", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SkipPaddingScratchSpaceSize, ET_INT32, "-skipPaddingScratchSpaceSize", UNUSED, 4096)
 DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
-                UNUSED, 0x3003E)
+                "Bitset that enables LSC immediate offsets for various cases; "
+                "Bits [...:1] control various LSC_ADDR_TYPE's numeric value.  "
+                "Bit [16] allows offsets in kernel argument loading.  "
+                "Bit [17] enables offsets in spill/fill codegen.  "
+                "Confer with the type VISALscImmOffOpts.",
+                0x3003E)
 DEF_VISA_OPTION(vISA_PreserveR0InR0, ET_BOOL, "-preserver0", UNUSED, false)
 DEF_VISA_OPTION(vISA_StackCallABIVer, ET_INT32, "-abiver", UNUSED, 1)
 // override spill/fill cache control. 0 is default (no override). Its values are
@@ -471,8 +482,9 @@ DEF_VISA_OPTION(vISA_EnableRRAccSub, ET_BOOL, "-roundRobinAccSub", UNUSED,
 //=== binary emission options ===
 DEF_VISA_OPTION(vISA_Compaction, ET_BOOL, "-nocompaction", UNUSED, true)
 DEF_VISA_OPTION(vISA_BXMLEncoder, ET_BOOL, "-nobxmlencoder", UNUSED, true)
-DEF_VISA_OPTION(vISA_IGAEncoder, ET_BOOL, "-IGAEncoder", UNUSED, false)
-
+DEF_VISA_OPTION(vISA_IGAEncoder, ET_BOOL, "-IGAEncoder",
+                "forces use of IGA encoder (default on some platforms)",
+                false)
 //=== asm/isaasm/isa emission options ===
 DEF_VISA_OPTION(vISA_outputToFile, ET_BOOL, "-output", UNUSED, false)
 DEF_VISA_OPTION(vISA_SymbolReg, ET_BOOL, "-symbolreg", "DEPRECATED, is a nop", false)
@@ -497,7 +509,10 @@ DEF_VISA_OPTION(vISA_NumGenBinariesWillBePatched, ET_INT32,
                 "-numGenBinariesWillBePatched",
                 "USAGE: missing number of gen binaries that will be patched.\n",
                 0)
-DEF_VISA_OPTION(vISA_noLdStAsmSyntax, ET_BOOL, "-noLdStAsmSyntax", UNUSED, false)
+DEF_VISA_OPTION(vISA_noLdStAsmSyntax, ET_BOOL, "-noLdStAsmSyntax",
+                "Disables IGA's load/store syntax in shader dumps "
+                "(generates raw send instructions).",
+                false)
 DEF_VISA_OPTION(vISA_ExtraIntfFile, ET_CSTR, "-extraIntfFile",
                 "USAGE: File Name with extra interference info.\n", NULL)
 DEF_VISA_OPTION(vISA_AddExtraIntfInfo, ET_BOOL, NULLSTR, UNUSED, false)
