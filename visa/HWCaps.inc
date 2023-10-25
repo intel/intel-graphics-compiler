@@ -801,13 +801,4 @@ bool WARLocalization() const {
 bool supportPureBF() const {
   return false;
 }
-
-// WA to support debugger stepping. Currently only enabled when compiling with
-// -debug.
-bool needNopAfterCFInstWA() const {
-  const TARGET_PLATFORM p = getPlatform();
-  if (p == Xe_DG2 || p == Xe_PVC || p == Xe_PVCXT)
-    return getOption(vISA_Debug);
-  return false;
-}
 // end HW capabilities
