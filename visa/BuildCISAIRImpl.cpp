@@ -1120,6 +1120,14 @@ void CISA_IR_Builder::LinkTimeOptimization(
             newDcl->setAliasDeclare(caller->fg.builder->getFE_FP(),
                                     newDcl->getAliasOffset());
           } else if (topDcl &&
+                     topDcl == callee->fg.builder->getBuiltinR0()) {
+            G4_Declare *newDcl =
+                caller->fg.builder->cloneDeclare(newDclMap, dcl);
+            opd->setTopDcl(caller->fg.builder->getBuiltinR0());
+            opd->setBase(newDcl->getRegVar());
+            newDcl->setAliasDeclare(caller->fg.builder->getBuiltinR0(),
+                                    newDcl->getAliasOffset());
+          } else if (topDcl &&
                      topDcl == callee->fg.builder->getStackCallArg()) {
             G4_Declare *newDcl =
                 caller->fg.builder->cloneDeclare(newDclMap, dcl);
