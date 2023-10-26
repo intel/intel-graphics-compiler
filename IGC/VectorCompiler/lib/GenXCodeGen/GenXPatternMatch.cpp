@@ -446,6 +446,8 @@ private:
 
   void setSelInst(Instruction *I) { SelInst = I; }
 
+  Type *getMinMaxType() const;
+
 private:
   // The select instruction
   Instruction *SelInst = nullptr;
@@ -1946,18 +1948,41 @@ bool MinMaxMatcher::matchMinMax() {
   return emit();
 }
 
+Type *MinMaxMatcher::getMinMaxType() const {
+  switch (ID) {
+  default:
+    break;
+  case GenXIntrinsic::genx_fmin:
+  case GenXIntrinsic::genx_fmax:
+    return CmpInst->getOperand(0)->getType();
+  case GenXIntrinsic::genx_smax:
+  case GenXIntrinsic::genx_smin:
+  case GenXIntrinsic::genx_umax:
+  case GenXIntrinsic::genx_umin:
+    return SelInst->getType();
+  }
+  return nullptr;
+}
+
 bool MinMaxMatcher::emit() {
   if ((ID == GenXIntrinsic::not_any_intrinsic) || (Srcs[0] == nullptr) ||
       (Srcs[1] == nullptr))
     return false;
 
   IRBuilder<> Builder(SelInst);
-  Module *M = SelInst->getModule();
-  Type *Tys[2] = {SelInst->getType(), Srcs[0]->getType()};
-  Function *Fn = GenXIntrinsic::getAnyDeclaration(M, ID, Tys);
-  CallInst *CI = Builder.CreateCall(Fn, Srcs, Annotation);
-  CI->setDebugLoc(SelInst->getDebugLoc());
-  SelInst->replaceAllUsesWith(CI);
+  auto *M = SelInst->getModule();
+
+  auto *Ty = getMinMaxType();
+  IGC_ASSERT_EXIT(Ty);
+
+  auto *Func = GenXIntrinsic::getAnyDeclaration(M, ID, {Ty, Ty});
+  SmallVector<Value *, 2> Args = {Builder.CreateBitCast(Srcs[0], Ty),
+                                  Builder.CreateBitCast(Srcs[1], Ty)};
+
+  auto *CI = Builder.CreateCall(Func, Args, Annotation);
+  auto *Cast = Builder.CreateBitCast(CI, SelInst->getType());
+
+  SelInst->replaceAllUsesWith(Cast);
 
   NumOfMinMaxMatched++;
   return true;
