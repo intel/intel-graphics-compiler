@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 #define LIB_GENXCODEGEN_GENXCONSTANTS_H
 
 #include "GenXSubtarget.h"
+#include "GenXUtil.h"
+
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/IR/Constants.h"
@@ -101,6 +103,13 @@ private:
                                    const SmallVectorImpl<Constant *> &Elements,
                                    unsigned UndefBits, unsigned RemainingBits,
                                    Instruction *Result);
+
+  unsigned getMaxSIMDSize(const Instruction *InsertBefore) const {
+    if (vc::canUseSIMD32(*(InsertBefore->getModule()), Subtarget.hasFusedEU()))
+      return 32;
+    else
+      return 16;
+  }
 };
 
 // Some instructions force their operands to be constants.

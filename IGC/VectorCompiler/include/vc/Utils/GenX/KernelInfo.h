@@ -388,6 +388,8 @@ void replaceFunctionRefMD(const llvm::Function &From, llvm::Function &To);
 // to metadata.
 bool hasKernel(const llvm::Module &M);
 
+bool canUseSIMD32(const llvm::Module &M, bool HasFusedEU);
+
 namespace detail {
 
 // FIXME: Cannot support conversion from const iterator to mutable iterator,

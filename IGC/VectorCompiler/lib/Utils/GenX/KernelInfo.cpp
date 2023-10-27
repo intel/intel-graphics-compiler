@@ -10,8 +10,14 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Function.h"
 
+#include <llvm/Support/CommandLine.h>
+
 using namespace llvm;
 using namespace vc;
+
+static cl::opt<bool> UseUpper16Lanes("vc-use-upper16-lanes", cl::init(true),
+                                     cl::Hidden,
+                                     cl::desc("Use upper 16 SIMD lanes"));
 
 static MDNode *findNode(const Function &F, StringRef KernelsMDName,
                         unsigned KernelRefOp, unsigned MustExceed) {
@@ -338,6 +344,19 @@ bool vc::hasKernel(const Module &M) {
   if (!KernelsMD)
     return false;
   return KernelsMD->getNumOperands();
+}
+
+bool vc::canUseSIMD32(const Module &M, bool HasFusedEU) {
+  if (!UseUpper16Lanes)
+    return false;
+  if (!HasFusedEU)
+    return true;
+  // FIXME: Non-optimal solution. FGs info or some stackcalls-related analysis
+  // will be useful here.
+  bool HasStackCalls = llvm::any_of(M.functions(), [](const Function &F) {
+    return vc::requiresStackCall(F);
+  });
+  return !HasStackCalls;
 }
 
 const llvm::Argument &vc::getImplicitArg(const llvm::Function &Kernel,
