@@ -913,12 +913,17 @@ void ZEBinaryBuilder::printBinaryObject(const std::string& filename)
         mBuilder.finalize(os);
 }
 
+void ZEBinaryBuilder::printZEInfo(raw_ostream &os)
+{
+    mZEInfoBuilder.printZEInfoInYaml(os);
+}
+
 void ZEBinaryBuilder::printZEInfo(const std::string& filename)
 {
     std::error_code EC;
     llvm::raw_fd_ostream os(filename, EC);
     if (!EC)
-        mZEInfoBuilder.printZEInfoInYaml(os);
+        printZEInfo(os);
 }
 
 void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,

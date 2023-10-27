@@ -79,7 +79,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("subgroup_independent_forward_progress", info.subgroup_independent_forward_progress, false);
     io.mapOptional("thread_scheduling_mode", info.thread_scheduling_mode, std::string());
     io.mapOptional("work_group_walk_order_dimensions", info.work_group_walk_order_dimensions);
-    io.mapRequired("eu_thread_count", info.eu_thread_count);
+    io.mapOptional("eu_thread_count", info.eu_thread_count, 0);
     io.mapOptional("has_sample", info.has_sample, false);
     io.mapOptional("has_rtcalls", info.has_rtcalls, false);
 }

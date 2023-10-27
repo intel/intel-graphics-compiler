@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
 #include <iomanip>
+#include <iostream>
 #include <fstream>
 #include "Probe/Assertion.h"
 
@@ -265,9 +266,16 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(char* dstBuffer, size_t dstBu
     return retValue;
 }
 
-static void dumpZEInfo(
-    const IGC::CodeGenContext &Ctx, ZEBinaryBuilder &ZEBuilder)
-{
+static void dumpZEInfo(const IGC::CodeGenContext &Ctx,
+                       ZEBinaryBuilder &ZEBuilder, bool toConsole = false) {
+    if (toConsole) {
+        llvm::SmallVector<char, 1024> buf;
+        llvm::raw_svector_ostream os(buf);
+        ZEBuilder.printZEInfo(os);
+        std::cout << os.str().str() << std::endl;
+        return;
+    }
+
     auto filename = IGC::Debug::DumpName(
         IGC::Debug::GetShaderOutputName())
         .Hash(Ctx.hash)
@@ -814,6 +822,8 @@ bool CGen8OpenCLProgram::GetZEBinary(
     // dump .ze_info to a file
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         dumpZEInfo(m_Context, zebuilder);
+    if (IGC_IS_FLAG_ENABLED(DumpZEInfoToConsole))
+        dumpZEInfo(m_Context, zebuilder, true);
 
     return retValue;
 }

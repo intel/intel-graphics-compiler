@@ -89,8 +89,11 @@ public:
 
     void printBinaryObject(const std::string& filename);
 
+    // print .ze_info to given os
+    void printZEInfo(llvm::raw_ostream &os);
+
     // print .ze_info into a file with given filename
-    void printZEInfo(const std::string& filename);
+    void printZEInfo(const std::string &filename);
 
 private:
     /// ------------ program scope helper functions ------------
