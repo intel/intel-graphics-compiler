@@ -62,7 +62,7 @@ bool encodeUnitStrideTernary() const {
   return getPlatformGeneration() >= PlatformGen::XE;
 }
 
-bool hasMacl() const {
+bool hasMacMacl() const {
   return getPlatform() >= GENX_CNL && !removedAccRestrictionsAsGRF();
 }
 

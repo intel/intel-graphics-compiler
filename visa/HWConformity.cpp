@@ -2387,7 +2387,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
     return false;
   }
 
-  if (builder.hasMacl() && !IS_QTYPE(dst->getType()) &&
+  if (builder.hasMacMacl() && !IS_QTYPE(dst->getType()) &&
       (builder.noDwDstForDwordMul() || inst->getExecSize() > g4::SIMD1)) {
     // use macl for D = D x D. We use macl when possible
     // except on scalar inst on platforms that support native DMul

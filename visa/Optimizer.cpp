@@ -3358,7 +3358,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB *bb, INST_LIST_ITER &iter) {
         return false;
       if (!checkLifetime(inst, *it))
         return false;
-      if (inst->isAccSrcInst() && builder.hasMacl() &&
+      if (inst->isAccSrcInst() && builder.hasMacMacl() &&
           (*it)->opcode() == G4_mul && IS_DTYPE((*it)->getSrc(0)->getType()) &&
           IS_DTYPE((*it)->getSrc(1)->getType())) {
         // Do not sink instructions with explicit ACC src over mul
@@ -7466,7 +7466,7 @@ void Optimizer::lowerMadSequence() {
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
     return;
 
-  if (!builder.hasMacl())
+  if (!builder.hasMacMacl())
     return;
 
   for (G4_BB *bb : fg) {
