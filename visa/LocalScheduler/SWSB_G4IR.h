@@ -702,8 +702,6 @@ public:
   unsigned *tokenLiveInDist;
   unsigned *tokenLiveOutDist;
   SBBitSets localReachingSends;
-  SBBitSets
-      BBGRF; // Is used to record the GRF registers accessed by each basic block
 
   SBBUCKET_VECTOR
   globalARSendOpndList; // All send source operands which live out their
@@ -801,11 +799,6 @@ public:
   // Global SBID dependence analysis
   void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT &SBNodes,
                             PointsToAnalysis &p);
-  void
-  setSendGlobalIDMayKilledByCurrentBB(std::vector<SparseBitVector> &dstTokenBit,
-                                  std::vector<SparseBitVector> &srcTokenBit,
-                                  SBNODE_VECT &SBNodes, PointsToAnalysis &p);
-
   void dumpTokenLiveInfo(SBNODE_VECT *SBSendNodes);
   void getLiveBucketsFromFootprint(const SBFootprint *firstFootprint,
                                    SBBucketNode *sBucketNode,
@@ -962,6 +955,7 @@ class SWSB {
   uint32_t AWSyncAllCount = 0;
   uint32_t tokenReuseCount = 0;
 
+  bool hasFCall = false;
   // Linear scan data structures for token allocation
   SBNODE_LIST linearScanLiveNodes;
 
@@ -1080,11 +1074,6 @@ class SWSB {
   bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
                        INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens,
                        BitSet *srcTokens, bool &keepDst, bool removeAllToken);
-
-  void
-  SWSBInitializeGlobalNodesInBuckets(std::vector<SparseBitVector> &dstGlobalIDs,
-                                     std::vector<SparseBitVector> &srcGlobalIDs,
-                                     LiveGRFBuckets &globalSendsLB);
 
   void SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                 LiveGRFBuckets &globalSendsLB);

@@ -801,8 +801,4 @@ bool WARLocalization() const {
 bool supportPureBF() const {
   return false;
 }
-
-bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
-  return true;
-}
 // end HW capabilities
