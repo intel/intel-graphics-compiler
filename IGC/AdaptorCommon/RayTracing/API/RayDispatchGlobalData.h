@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include <stddef.h>
 #include <stdint.h>
-#if !defined(__clang__) || (__clang_major__ >= 10)
+#if !defined(__clang__) || (__clang_major__ >= 15)
 #include <type_traits>
 #endif
 
@@ -220,7 +220,7 @@ static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
 static_assert(sizeof(RayDispatchGlobalData) == 176, "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
-#if !defined(__clang__) || (__clang_major__ >= 10)
+#if !defined(__clang__) || (__clang_major__ >= 15)
 static_assert(std::is_standard_layout<RayDispatchGlobalData>::value, "no?");
 #endif
 

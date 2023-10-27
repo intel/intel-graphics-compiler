@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 #include <stddef.h>
-#if !defined(__clang__) || (__clang_major__ >= 10)
+#if !defined(__clang__) || (__clang_major__ >= 15)
 #include <type_traits>
 #endif
 
@@ -613,7 +613,7 @@ using RTStack2 = RTStack<GenT, MAX_BVH_LEVELS>;
 template <typename GenT>
 using SMStack2 = SMStack<GenT, MAX_BVH_LEVELS>;
 
-#if !defined(__clang__) || (__clang_major__ >= 10)
+#if !defined(__clang__) || (__clang_major__ >= 15)
 static_assert(std::is_standard_layout_v<RTStack2<Xe>>);
 static_assert(std::is_standard_layout_v<SMStack2<Xe>>);
 #endif
