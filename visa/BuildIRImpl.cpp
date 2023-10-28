@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "common.h"
 #include "visa_igc_common_header.h"
 
+
 using namespace vISA;
 
 DeclarePool::~DeclarePool() {
@@ -747,7 +748,7 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
       CanonicalRegionStride4(4, 1, 0), mem(m),
       phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m),
       dclpool(m, *this), instList(alloc), kernel(k), metadataMem(4096),
-      debugNameMem(4096), r0AccessMode(getR0AccessFromOptions()) {
+      debugNameMem(4096), r0AccessMode(getR0AccessFromOptions()), freqInfoManager(this,k) {
   num_temp_dcl = 0;
   kernel.setBuilder(this); // kernel needs pointer to the builder
   if (!getIsPayload())

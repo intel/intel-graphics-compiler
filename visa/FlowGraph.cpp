@@ -809,6 +809,9 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
     addToSubroutine(curr_BB, currSubroutine);
   }
 
+  if (builder->getOption(vISA_FreqBasedSpillCost))
+    builder->getFreqInfoManager().updateStaticFrequency(subroutines);
+
   // we can do this only after fg is constructed
   pKernel->calculateSimdSize();
 

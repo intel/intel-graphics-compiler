@@ -1008,6 +1008,10 @@ public:
   /// Get vISA asm of the kernel function
   VISA_BUILDER_API std::string getVISAAsm() const override;
 
+  /// set or get current block frequency information
+  VISA_BUILDER_API int encodeBlockFrequency(uint64_t digits, int16_t scale,
+                                            bool beginEncoding) override;
+
   // Gets the VISA string format for the variable
   VISA_BUILDER_API std::string getVarName(VISA_GenVar *decl) const override;
   VISA_BUILDER_API std::string getVarName(VISA_PredVar *decl) const override;

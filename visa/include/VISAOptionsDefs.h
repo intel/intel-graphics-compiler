@@ -345,6 +345,8 @@ DEF_VISA_OPTION(vISA_DumpRegChart, ET_BOOL, "-dumpregchart", UNUSED, false)
 DEF_VISA_OPTION(vISA_SpillAnalysis, ET_BOOL, "-spillanalysis", UNUSED, false)
 DEF_VISA_OPTION(vISA_DynPerfModel, ET_BOOL, "-perfmodel", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpAllBCInfo, ET_BOOL, "-dumpAllBCInfo", UNUSED, false)
+DEF_VISA_OPTION(vISA_FreqBasedSpillCost, ET_BOOL, "-freqBasedSpillCost", UNUSED, false)
+DEF_VISA_OPTION(vISA_DumpFreqBasedSpillCost, ET_BOOL, "-dumpFreqBasedSpillCost", UNUSED, false)
 DEF_VISA_OPTION(vISA_LinearScan, ET_BOOL, "-linearScan", UNUSED, false)
 DEF_VISA_OPTION(vISA_LSFristFit, ET_BOOL, "-lsRoundRobin", UNUSED, true)
 DEF_VISA_OPTION(vISA_verifyLinearScan, ET_BOOL, "-verifyLinearScan", UNUSED,

@@ -515,7 +515,7 @@ void EstimateFunctionSize::updateStaticFuncFreq()
     uint64_t ColdSyntheticCount = 5;
     for (Function& F : *M) {
         uint64_t InitialCount = InitialSyntheticCount;
-        if (F.isDeclaration())
+        if (F.empty() || F.isDeclaration())
             continue;
         if (F.hasFnAttribute(llvm::Attribute::AlwaysInline) ||
             F.hasFnAttribute(llvm::Attribute::InlineHint)) {
@@ -605,6 +605,7 @@ void EstimateFunctionSize::runStaticAnalysis()
                 continue;
             FunctionNode* Node = get<FunctionNode>(&F);
             Scaled64 EntryFreq = Node->getEntryFrequency();
+            PrintStaticProfileGuidedKernelSizeReduction(0x1, "Function frequency of " << Node->F->getName().str() << ": " << Node->getStaticFuncFreqStr())
             for (auto& B : F.getBasicBlockList())
             {
                 Scaled64 BBCount = Node->blockFreqs[&B];

@@ -1305,7 +1305,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
 
 LiveRange::LiveRange(G4_RegVar *v, GlobalRA &g)
     : var(v), dcl(v->getDeclare()), regKind(dcl->getRegFile()), gra(g),
-      numRegNeeded(dcl->getNumRegNeeded()) {
+      numRegNeeded(dcl->getNumRegNeeded()){
   isCandidate = true;
 }
 
@@ -2377,6 +2377,7 @@ void Interference::setupLRs(G4_BB *bb) {
       G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
       if (srcRegion->getBase()->isRegAllocPartaker()) {
         unsigned id = ((G4_RegVar *)(srcRegion)->getBase())->getId();
+
         lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
         if (inst->isEOT() && liveAnalysis->livenessClass(G4_GRF)) {
           // mark the liveRange as the EOT source
@@ -5334,7 +5335,6 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
       }
 
       lrs[i]->setSpillCost(spillCost);
-
       // Track address sensitive live range.
       if (liveAnalysis.isAddressSensitive(i) && incSpillCostCandidate(lrs[i])) {
         addressSensitiveVars.push_back(lrs[i]);
@@ -5505,7 +5505,11 @@ void GraphColor::determineColorOrdering() {
   //
   // sort the live range array
   //
-  std::sort(sorted.begin(), sorted.end(), compareSpillCost);
+  if (builder.getOption(vISA_FreqBasedSpillCost))
+    builder.getFreqInfoManager().sortBasedOnFreq(sorted);
+  else
+    std::sort(sorted.begin(), sorted.end(), compareSpillCost);
+
 
   for (unsigned i = 0; i < numUnassignedVar; i++) {
     LiveRange *lr = sorted[i];
@@ -6339,7 +6343,14 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   } else {
     computeDegreeForARF();
   }
-  computeSpillCosts(useSplitLLRHeuristic, rpe);
+
+  if (builder.getOption(vISA_FreqBasedSpillCost))
+  {
+    builder.getFreqInfoManager().computeFreqSpillCosts(gra,liveAnalysis,lrs,numVar);
+  }
+  else {
+    computeSpillCosts(useSplitLLRHeuristic, rpe);
+  }
 
   if (kernel.getOption(vISA_DumpRAIntfGraph))
     intf.dumpInterference();

@@ -1200,6 +1200,11 @@ public:
 
   /// getVISAAsm -- Get the compiled .visaasm of the kernel.
   VISA_BUILDER_API virtual std::string getVISAAsm() const = 0;
+
+  /// set or get current block frequency information
+  VISA_BUILDER_API virtual int
+  encodeBlockFrequency(uint64_t digits, int16_t scale,
+                       bool beginEncoding) = 0;
 };
 
 class VISAFunction : public VISAKernel {

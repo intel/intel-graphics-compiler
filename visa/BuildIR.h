@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "inc/common/sku_wa.h"
 #include "visa_igc_common_header.h"
 #include "visa_wa.h"
+#include "FrequencyInfo.h"
 
 #define MAX_DWORD_VALUE 0x7fffffff
 #define MIN_DWORD_VALUE 0x80000000
@@ -444,6 +445,8 @@ private:
   Mem_Manager metadataMem;
   std::vector<Metadata *> allMDs;
   std::vector<MDNode *> allMDNodes;
+
+  FrequencyInfo freqInfoManager;
 
   // bump pointer allocator for variable and label names, used for IR dump only.
   Mem_Manager debugNameMem;
@@ -2318,6 +2321,8 @@ public:
     return newNode;
   }
 
+  //FrequencyInfo API
+  FrequencyInfo& getFreqInfoManager() { return freqInfoManager;}
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // Generic IR simplification tasks

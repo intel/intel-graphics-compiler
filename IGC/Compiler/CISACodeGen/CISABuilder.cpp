@@ -5121,6 +5121,14 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(deadLoopForFloatException)) {
           SaveOption(vISA_AddIEEEExceptionTrap, true);
         }
+        if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis))
+        {
+          SaveOption(vISA_FreqBasedSpillCost, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(PrintStaticProfileGuidedSpillCostAnalysis))
+        {
+          SaveOption(vISA_DumpFreqBasedSpillCost, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

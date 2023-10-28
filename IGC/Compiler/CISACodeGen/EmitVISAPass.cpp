@@ -1102,6 +1102,35 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             if (I != E)
             {
                 m_pDebugEmitter->BeginInstruction(llvmInst);
+                //At the beginning of emitting visa instructions, pass the frequency of the corresponding llvm instruction
+                Instruction *termInst = llvmInst->getParent()->getTerminator();
+                auto hasBlockFreq = [&](Instruction *inst) {
+                  return IGC_IS_FLAG_ENABLED(
+                             StaticProfileGuidedSpillCostAnalysis) &&
+                         inst &&
+                         inst->getMetadata("stats.blockFrequency.digits") &&
+                         inst->getMetadata("stats.blockFrequency.scale");
+                };
+
+                auto getFreqDigit = [&](Instruction *inst) {
+                  MDNode *mn_digits =
+                      termInst->getMetadata("stats.blockFrequency.digits");
+                  return std::stoull(cast<MDString>(mn_digits->getOperand(0))
+                                         ->getString()
+                                         .str());
+                };
+
+                auto getFreqScale = [&](Instruction *inst) {
+                  MDNode *mn_scale =
+                      termInst->getMetadata("stats.blockFrequency.scale");
+                  return (int16_t)std::stoi(
+                      cast<MDString>(mn_scale->getOperand(0))
+                          ->getString()
+                          .str());
+                };
+                if (hasBlockFreq(termInst))
+                     m_encoder->GetVISAKernel()->encodeBlockFrequency(
+                         getFreqDigit(termInst), getFreqScale(termInst), true);
 
                 // before inserting the terminator, initialize constant pool & insert the de-ssa moves
                 if (isa<BranchInst>(llvmInst))
@@ -1146,6 +1175,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     I->m_pattern->Emit(this, init);
                     ++I;
                 }
+                //Finalize encoding
+                if (hasBlockFreq(termInst))
+                    m_encoder->GetVISAKernel()->encodeBlockFrequency(0, 0, false);
+
                 m_pDebugEmitter->EndInstruction(llvmInst);
             }
         }

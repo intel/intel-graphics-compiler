@@ -226,6 +226,7 @@ set(GenX_Common_Sources_External_Other
   RADebug.cpp
   FlagSpillCleanup.cpp
   FlowGraph.cpp
+  FrequencyInfo.cpp
   G4_BB.cpp
   G4_IR.cpp
   G4_Kernel.cpp
@@ -324,6 +325,7 @@ set(GenX_Common_Headers
   RADebug.h
   FlagSpillCleanup.h
   FlowGraph.h
+  FrequencyInfo.h
   G4_BB.hpp
   G4_Declare.h
   G4_IR.hpp

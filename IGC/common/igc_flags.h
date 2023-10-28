@@ -635,6 +635,8 @@ DECLARE_IGC_REGKEY(DWORD, ParameterForColdFuncThreshold,        80, "C/10-STD fo
 DECLARE_IGC_REGKEY(bool, ControlUnitSize,               false, "Control compilation unit size by unit trimming", true)
 DECLARE_IGC_REGKEY(DWORD, ExpandedUnitSizeThreshold,    50000, "Trimming target of compilation unit size", true)
 DECLARE_IGC_REGKEY(DWORD, PrintControlUnitSize,             0, "Print information about unit trimming", true)
+DECLARE_IGC_REGKEY(bool, StaticProfileGuidedSpillCostAnalysis,  false, "Use static profile information to estimate spill cost", true)
+DECLARE_IGC_REGKEY(DWORD, PrintStaticProfileGuidedSpillCostAnalysis,        0, "Print debug messages for profile embedding", true)
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion", false)
 DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionSize,        2, "Threshold in number of GRFs", false)

@@ -8801,6 +8801,14 @@ std::string VISAKernelImpl::getVISAAsm() const {
   return m_CISABuilder->isaDump(this, fmtKernel);
 }
 
+int VISAKernelImpl::encodeBlockFrequency(uint64_t digits, int16_t scale, bool beginEncoding) {
+  if (beginEncoding)
+    m_builder->getFreqInfoManager().setCurrentStaticFreq(digits, scale);
+  else
+    m_builder->getFreqInfoManager().transferFreqToG4Inst();
+  return VISA_SUCCESS;
+}
+
 void VISAKernelImpl::computeAndEmitDebugInfo(KernelListTy &functions) {
   KernelListTy compilationUnitsForDebugInfo;
   compilationUnitsForDebugInfo.push_back(this);

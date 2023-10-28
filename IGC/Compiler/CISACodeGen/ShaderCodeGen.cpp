@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
+#include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
 #include "Compiler/CISACodeGen/PassTimer.hpp"
 #include "Compiler/CISACodeGen/FixAddrSpaceCast.h"
 #include "Compiler/CISACodeGen/FixupExtractValuePair.h"
@@ -141,6 +142,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Linker/Linker.h>
 #include <llvm/Analysis/ScopedNoAliasAA.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <llvm/Analysis/BranchProbabilityInfo.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MathExtras.h>
@@ -322,6 +326,11 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 
     // collect stats after all the optimization. This info can be dumped to the cos file
     mpm.add(new CheckInstrTypes(true, false));
+
+    if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis))
+    {
+        mpm.add(createGenerateFrequencyDataPass());
+    }
 
     //
     // Generally, passes that change IR should be prior to this place!
