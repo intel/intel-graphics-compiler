@@ -30,7 +30,11 @@ enum class operation {
   maxsint = 0x9,
   load = 0xA,
   store = 0xB,
-  cmpxchg = 0xC
+  cmpxchg = 0xC,
+  fadd = 0xD,
+  fsub = 0xE,
+  fmax = 0xF,
+  fmin = 0x10,
 };
 
 } // namespace atomic

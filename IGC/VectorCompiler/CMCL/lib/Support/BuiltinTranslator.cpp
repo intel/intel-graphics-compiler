@@ -659,6 +659,10 @@ static AtomicRMWInst::BinOp getLLVMAtomicBinOpFromCMCL(CMCLOperation Op) {
     return AtomicRMWInst::Xor;
   case CMCLOperation::Andl:
     return AtomicRMWInst::And;
+  case CMCLOperation::Fadd:
+    return AtomicRMWInst::FAdd;
+  case CMCLOperation::Fsub:
+    return AtomicRMWInst::FSub;
   }
 }
 

@@ -216,6 +216,14 @@ SPIRV_ATOMIC_BUILTIN_BINARY(Exchange, atomic::operation::xchg, __generic, float)
 SPIRV_ATOMIC_BUILTIN_BINARY(Exchange, atomic::operation::xchg, __generic,
                             double)
 
+SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __global, float)
+SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __global, double)
+SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __local, float)
+SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __local, double)
+SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __generic, float)
+SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __generic, double)
+
+
 #define SPIRV_ATOMIC_BUILTIN_BINARY_WITH_OPVALUE(                              \
     SPIRV_ATOMIC_OP, GEN_ATOMIC_OP, OPVALUE, ADDRESS_SPACE, TYPE)              \
   CM_NODEBUG CM_INLINE TYPE __spirv_Atomic##SPIRV_ATOMIC_OP(                   \

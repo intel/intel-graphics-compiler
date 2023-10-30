@@ -81,7 +81,11 @@ enum Enum {
   MaxSInt = 0x9,
   Load = 0xA,
   Store = 0xB,
-  CmpXchg = 0xC
+  CmpXchg = 0xC,
+  Fadd = 0xD,
+  Fsub = 0xE,
+  Fmax = 0xF,
+  Fmin = 0x10,
 };
 
 } // namespace Operation
