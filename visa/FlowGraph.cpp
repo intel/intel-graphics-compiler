@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -580,8 +580,14 @@ void FlowGraph::normalizeFlowGraph() {
   // it will create problems inserting code. This function handles such patterns
   // by creating new basic block and guaranteeing that fcall's successor has a
   // single predecessor.
+  auto fnInfo = kernelInfo;
   for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); it++) {
     G4_BB *bb = *it;
+
+    if (bb->getBBType() & G4_BB_INIT_TYPE) {
+      fnInfo = bb->getFuncInfo();
+    }
+
     if (bb->isEndWithFCall()) {
       G4_BB *retBB = bb->Succs.front();
       if (retBB->Preds.size() > 1) {
@@ -606,6 +612,7 @@ void FlowGraph::normalizeFlowGraph() {
         it--;
 
         retBB = newNode;
+        fnInfo->addBB(newNode);
       }
     }
   }
