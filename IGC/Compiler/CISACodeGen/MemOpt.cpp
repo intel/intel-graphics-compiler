@@ -2495,7 +2495,7 @@ namespace {
         // If true, IGC needs to emulate I64.
         bool m_hasI64Emu;
 
-        // All insts that have been combined and can be deleted.
+        // All insts that have been combined and will be deleted at the end.
         SmallVector<Instruction*, 16> m_combinedInsts;
 
         //
@@ -2946,31 +2946,32 @@ void LdStCombine::combineStores(Function& F)
             AST.add(base);
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;
-                if (canCombineStoresAcross(I)) {
-                    int64_t offset;
-                    if (isStoreCandidate(I) &&
-                        getAddressDiffIfConstant(base, I, offset)) {
-                        Stores.push_back(LdStInfo(I, offset));
-                        AST.add(I);
-                    }
-                    continue;
+                if (!canCombineStoresAcross(I)) {
+                    // Cannot add more stores.
+                    break;
                 }
-
-                // Cannot add more stores, create bundles now.
-                //   Note: For now, each store is considered once. For example,
-                //     store a
-                //     store b
-                //     store c        // alias to store a
-                //     store d
-                //   As 'store c' aliases to 'store a', candidate 'Stores' stop
-                //   growing at 'store c', giving the first set {a, b}. Even
-                //   though {a, b} cannot combined, 'store b' will not be
-                //   reconsidered for a potential merging of {b, c, d}.
-                //   This can be changed if needed.
-                createBundles(&BB, Stores);
+                int64_t offset;
+                if (isStoreCandidate(I) &&
+                    getAddressDiffIfConstant(base, I, offset)) {
+                    Stores.push_back(LdStInfo(I, offset));
+                    AST.add(I);
+                }
             }
 
-            // last one
+            // Create bundles from those stores.
+            //   Note: createBundles() will markt all stores as visited when
+            //         it is returend, meaning each store is considered only
+            //         once. For example,
+            //     store a
+            //     store b
+            //     store c        // alias to store a
+            //     store d
+            //   As 'store c' aliases to 'store a', candidate 'Stores' stop
+            //   growing at 'store c', giving the first set {a, b} for
+            //   combining. Even if {a, b} cannot be combined, but {b, c, d}
+            //   can; it will go on with the next candidate set {c, d},  not
+            //   {b, c, d}; missing opportunity to combine {b, c, d}.
+            //   So far, this is fine as this case isn't important.
             createBundles(&BB, Stores);
         }
 
@@ -3171,12 +3172,13 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         const uint32_t theAlign = bundleAlign[ix];
 
         // If i64 insts are not supported, don't do D64 as it might
-        // require i64 mov (I64 Emu only handles 1-level insertvalue
-        // and extractvalue so far), etc in codegen emit.
+        // require i64 mov in codegen emit (I64 Emu only handles 1-level
+        // insertvalue and extractvalue so far).
         if (m_hasI64Emu && theAlign > 4)
             continue;
 
-        // Element size is the same as the alignment.
+        // Use alignment as element size, which maps to gen load/store element
+        // size as follows:
         //   1) For byte-aligned, use vecEltBytes = 1 with different
         //      number of vector elements to map D16U32, D32, D64. The final
         //      store's type would be <2xi8> or i16 for D16U32, i32 for D32,
