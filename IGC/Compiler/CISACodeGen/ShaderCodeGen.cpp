@@ -229,7 +229,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // only limited code-sinking to several shader-type
     // vs input has the URB-reuse issue to be resolved.
     // Also need to understand the performance benefit better.
-    mpm.add(new CodeSinking(true));
+    if (!isOptDisabled)
+    {
+        mpm.add(new CodeSinking(true));
+    }
 
 
     // Run flag re-materialization if it's beneficial.
