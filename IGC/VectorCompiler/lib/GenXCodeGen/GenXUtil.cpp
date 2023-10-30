@@ -1606,7 +1606,7 @@ llvm::SmallPtrSet<Value *, 4> genx::peelBitCastsGetUserValues(Value *V) {
 }
 
 Value *genx::getBitCastedValue(Value *V) {
-  IGC_ASSERT(V && "non-null value expected");
+  IGC_ASSERT_MESSAGE(V, "non-null value expected");
   while (isa<BitCastInst>(V) ||
          (isa<ConstantExpr>(V) &&
           cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast))
@@ -2342,18 +2342,21 @@ bool genx::isWrRWithOldValueVLoadSrc(Value *V) {
 
 Instruction *genx::getInterveningVStoreOrNull(
     Instruction *FromVLoad, Instruction *ToPosI, bool PosIsReachableFromLI,
-    const DominatorTree *DT, llvm::SetVector<Instruction *> *CallSites) {
+    const DominatorTree *DT,
+    const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal,
+    llvm::SmallVector<Instruction *, 8> *KillCallSites) {
 
   Value *VLoadSrc = genx::getAVLoadSrcOrNull(FromVLoad);
 
   IGC_ASSERT(VLoadSrc);
   IGC_ASSERT(FromVLoad->getFunction() == ToPosI->getFunction());
 
-  auto isAnInterveningStore = [VLoadSrc, CallSites](Instruction &I) {
+  auto isAnInterveningStore = [VLoadSrc, KillCallSites](Instruction &I) {
     return isAVStore(&I, VLoadSrc) ||
-           (CallSites ? llvm::find(*CallSites, &I) != CallSites->end()
-                      : isa<CallInst>(I) && !vc::isAnyNonTrivialIntrinsic(
-                                                vc::getAnyIntrinsicID(&I)));
+           (KillCallSites
+                ? llvm::find(*KillCallSites, &I) != KillCallSites->end()
+                : isa<CallInst>(I) &&
+                      !vc::isAnyNonTrivialIntrinsic(vc::getAnyIntrinsicID(&I)));
   };
 
   auto *VLoadBB = FromVLoad->getParent();
@@ -2412,6 +2415,9 @@ Instruction *genx::getInterveningVStoreOrNull(
     return &*SII;
 
   Visited = {VLoadBB};
+  if (ExcludeBlocksOnCfgTraversal)
+    Visited.insert(ExcludeBlocksOnCfgTraversal->begin(),
+                   ExcludeBlocksOnCfgTraversal->end());
   std::copy_if(pred_begin(PosBB), pred_end(PosBB), std::back_inserter(BBs),
                [Visited](BasicBlock *BB) { return !Visited.count(BB); });
   while (!BBs.empty()) {
@@ -2492,23 +2498,21 @@ bool genx::isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
 
 bool genx::loadingSameValue(Instruction *L1, Instruction *L2,
                             const DominatorTree *DT) {
-  IGC_ASSERT(L1 && L2 && DT && "L1, L2 and DT must not be null.");
-  auto *Src1 = genx::getAVLoadSrcOrNull(L1);
-  auto *Src2 = genx::getAVLoadSrcOrNull(L2);
-  if (Src1 && Src1 == Src2) {
-    const bool L2domL1 = DT->dominates(L2, L1);
-    const bool L1domL2 = DT->dominates(L1, L2);
-    if (L2domL1 || L1domL2) {
-      if (L2domL1)
-        std::swap(L2, L1);
+  IGC_ASSERT_MESSAGE(
+      genx::isAVLoad(L1) && genx::isAVLoad(L2),
+      "L1 and L2 are expected to be genx.vload or a load volatile");
+  IGC_ASSERT_MESSAGE(L1 && L2 && DT, "L1, L2 and DT must not be null.");
+  if (genx::getAVLoadSrcOrNull(L2, genx::getAVLoadSrcOrNull(L1))) {
+    if (DT->dominates(L2, L1))
+      std::swap(L2, L1);
+    if (DT->dominates(L1, L2))
       return !genx::getInterveningVStoreOrNull(L1, L2, true);
-    }
   }
   return false;
 }
 
 bool genx::isBitwiseIdentical(Value *V1, Value *V2, const DominatorTree *DT) {
-  IGC_ASSERT(V1 && V2 && "values must not be null");
+  IGC_ASSERT_MESSAGE(V1 && V2, "values must not be null");
 
   V1 = genx::getBitCastedValue(V1);
   V2 = genx::getBitCastedValue(V2);

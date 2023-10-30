@@ -365,8 +365,7 @@ private:
   void attemptSinking(Instruction *InsertBefore, std::set<Value *> *Exclude,
                       Liveness::Category Cat, bool AllowClone);
   bool sink(Instruction *InsertBefore, Superbale *SB, bool AllowClone = false);
-  BasicBlock *sinkOnce(Instruction *InsertBefore, Superbale *SB,
-                       ArrayRef<Use *> Uses);
+  bool sinkOnce(Instruction *InsertBefore, Superbale *SB, ArrayRef<Use *> Uses);
   bool modifyLiveness(Liveness *Live, Superbale *SB);
   int  getSuperbaleKillSize(Superbale *SB);
   int  getSinkBenefit(Superbale *SB, Liveness::Category Cat, unsigned Headroom);
@@ -485,6 +484,12 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
         Bale B;
         Baling->buildBale(Inst, &B);
         auto InsertBefore = Inst;
+        IGC_ASSERT_MESSAGE(
+            genx::isSafeToMoveBaleCheckGVLoadClobber(B, InsertBefore),
+            "Potential global volatatile access clobbering detected while "
+            "trying to bring bale instructions together during "
+            "GenXDepressurizer run. Some previous optimization broke the "
+            "code.");
         // Move the bale instructions to a contiguous lump, and number them.
         Instruction *GotoJoin = nullptr;
         for (auto ii = B.begin(), ie = B.end(); ii != ie; ++ii) {
@@ -981,9 +986,8 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     for (auto i = SecondRound.begin(), e = SecondRound.end(); i != e; ++i) {
       if (i->Benefit <= 0 || i->SB == nullptr)
         break;
-      bool status = sink(InsertBefore, i->SB);
-      IGC_ASSERT(status);
-      (void)status;
+      if (!sink(InsertBefore, i->SB))
+        LLVM_DEBUG(dbgs() << "Superbale sinking failed.";);
     }
   }
 }
@@ -1078,18 +1082,19 @@ bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
     }
     UsesDominatedByHere.push_back(U);
   }
+
   if (UsesDominatedByHere.empty())
     return false;
-  // Do the sinking.
-  BasicBlock *DefBB = sinkOnce(InsertBefore, SB, UsesDominatedByHere);
-  IGC_ASSERT(DefBB == InsertBefore->getParent());
-  (void)DefBB;
-  // We need to modify liveness at the current point.
-  modifyLiveness(Live, SB);
-  LLVM_DEBUG(dbgs() << "Successfully sunk "<< SB->getHead()->getName() << '\n';
-    Live->print(dbgs());
-    dbgs() << '\n');
-  return true;
+
+  if (sinkOnce(InsertBefore, SB, UsesDominatedByHere)) {
+    modifyLiveness(Live, SB);
+    LLVM_DEBUG(dbgs() << "Successfully sunk " << SB->getHead()->getName()
+                      << '\n';
+               Live->print(dbgs()); dbgs() << '\n');
+    return true;
+  }
+
+  return false;
 }
 
 /***********************************************************************
@@ -1110,16 +1115,31 @@ bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
  * the def at a place that is a common dominator of the uses, and return that
  * basic block.
  */
-BasicBlock *GenXDepressurizer::sinkOnce(Instruction *InsertBefore,
-                                        Superbale *SB, ArrayRef<Use *> Uses) {
+bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
+                                 ArrayRef<Use *> Uses) {
   LLVM_DEBUG(dbgs() << "sinkOnce with uses:";
     for (auto i = Uses.begin(), e = Uses.end(); i != e; ++i)
       dbgs() << " ["
           << InstNumbers[cast<Instruction>((*i)->getUser())]
           << ']' << (*i)->getUser()->getName();
     dbgs() << '\n');
+
+  for (auto *I : SB->Bales) {
+    Bale B;
+    Baling->buildBale(I, &B);
+    if (!genx::isSafeToMoveBaleCheckGVLoadClobber(B, InsertBefore)) {
+      LLVM_DEBUG(
+          dbgs() << "Will not move this superbale to position of "
+                 << *InsertBefore
+                 << "since it may result in potential global volatile "
+                    "access clbobering\n"
+                 << "The bale failed to move is built from this instruction: "
+                 << *I << "\n");
+      return false;
+    }
+  }
+
   // Insert after the current instruction.
-  BasicBlock *InsertBB = InsertBefore->getParent();
   unsigned InsertNum = InstNumbers[InsertBefore];
   IGC_ASSERT(InsertNum != 0);
   LLVM_DEBUG(dbgs() << "InsertBefore: " << InsertBefore->getName() << '\n');
@@ -1127,7 +1147,9 @@ BasicBlock *GenXDepressurizer::sinkOnce(Instruction *InsertBefore,
   auto Undef = UndefValue::get(SB->getHead()->getType());
   for (auto i = Uses.begin(), e = Uses.end(); i != e; ++i)
     **i = Undef;
+
   Instruction *Changed = nullptr;
+
   if (SB->getHead()->use_empty()) {
     // The superbale now has no uses. So we can simply move the instructions.
     for (auto i = SB->Bales.rbegin(), e = SB->Bales.rend(); i != e; ++i) {
@@ -1144,6 +1166,7 @@ BasicBlock *GenXDepressurizer::sinkOnce(Instruction *InsertBefore,
   } else {
     // The superbale still has uses, so we need to clone it.
     std::map<Instruction *, Instruction *> ClonedInsts;
+
     for (auto i = SB->Bales.rbegin(), e = SB->Bales.rend(); i != e; ++i) {
       Bale B;
       Baling->buildBale(*i, &B);
@@ -1168,16 +1191,18 @@ BasicBlock *GenXDepressurizer::sinkOnce(Instruction *InsertBefore,
       }
     }
   }
+
   // Change our uses to use the moved/cloned superbale.
   for (auto i = Uses.begin(), e = Uses.end(); i != e; ++i)
     **i = Changed;
-  if (Changed) {
+
+  if (Changed)
     LLVM_DEBUG(dbgs() << "Sunk/cloned superbale head is " << Changed->getName()
                << '\n');
-  } else {
+  else
     LLVM_DEBUG(dbgs() << "Warning: Changed is nullptr\n");
-  }
-  return InsertBB;
+
+  return true;
 }
 
 /***********************************************************************

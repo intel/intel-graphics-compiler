@@ -168,8 +168,6 @@ Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL = nullptr,
 bool simplifyRegionInsts(Function *F, const DataLayout *DL = nullptr,
                          const GenXSubtarget *ST = nullptr);
 
-bool cleanupLoads(Function *F);
-
 bool IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride);
 
 } // end namespace genx

@@ -9,13 +9,13 @@
 ;-----------------------------------------------------------------------------------------
 ; Standalone mode
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
 ;-----------------------------------------------------------------------------------------
 ; In-pipeline mode (simulating situation when running during normal compilation)
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-store-related-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; This test checks global volatile clobbering checker/fixup introduced late in pipeline to catch over-optimizations of global volatile access. This is an auxiliary utility used to help in detecting and fixing erroneous over-optimizations cases. The checker/fixup is only available under the -check-gv-clobbering=true option and for a limited number of cases.
 
@@ -116,9 +116,9 @@ attributes #1 = { "CMGenxMain" }
 ;-------------------------------------------------------------------------------------------
 ; CHECK:  %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
 ; CHECK-NEXT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
-; COM: if -check-gv-clobbering-collect-store-related-call-sites=true is supplied
+; COM: if -check-gv-clobbering-collect-kill-call-sites=true is supplied
 ; COM: store interference is precisely detected here down the call chain.
-; COM: if -check-gv-clobbering-collect-store-related-call-sites=false is supplied or omitted
+; COM: if -check-gv-clobbering-collect-kill-call-sites=false is supplied or omitted
 ; COM: store interference is speculated because of call to a user function.
 ; CHECK-NEXT:  tail call spir_func void @UserFunctionRewriteGV1()
 ; CHECK-NOT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)

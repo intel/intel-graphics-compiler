@@ -1192,50 +1192,6 @@ bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
   return Changed;
 }
 
-// Cleanup loads.
-// %load1 = load *m
-// %load2 = load *m
-// no store to m
-// use(load1, load2)
-//
-bool llvm::genx::cleanupLoads(Function *F) {
-  bool Changed = false;
-  for (auto &BB : F->getBasicBlockList()) {
-    // The dominating loads (may have different types) for each variable.
-    std::unordered_map<GlobalVariable *, std::vector<LoadInst *>> DomLoads;
-    for (auto I = BB.begin(); I != BB.end();) {
-      Instruction *Inst = &*I++;
-      if (auto SI = dyn_cast<StoreInst>(Inst)) {
-        auto *GV = vc::getUnderlyingGlobalVariable(SI->getPointerOperand());
-        if (!GV)
-          continue;
-        // Kill all live loads on this variable.
-        DomLoads[GV].clear();
-      } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
-        auto *GV = vc::getUnderlyingGlobalVariable(LI->getPointerOperand());
-        if (!GV)
-          continue;
-        auto &Loads = DomLoads[GV];
-        LoadInst *DomLI = nullptr;
-        for (auto LI1 : Loads) {
-          if (LI1->getType() == LI->getType()) {
-            DomLI = LI1;
-            break;
-          }
-        }
-        if (DomLI == nullptr)
-          Loads.push_back(LI);
-        else {
-          LI->replaceAllUsesWith(DomLI);
-          LI->eraseFromParent();
-          Changed = true;
-        }
-      }
-    }
-  }
-  return Changed;
-}
-
 bool
 llvm::genx::IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride) {
     auto cv = dyn_cast<ConstantDataVector>(v);

@@ -624,10 +624,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXTidyControlFlow.cpp
   vc::addPass(PM, createGenXTidyControlFlowPass());
 
-  if (BackendConfig.checkGVClobbering()) {
+  if (BackendConfig.checkGVClobbering())
     /// .. include:: GenXGVClobberChecker.cpp
     vc::addPass(PM, createGenXGVClobberCheckerPass());
-  }
 
   /// .. include:: GenXVisaRegAlloc.h
   auto *RegAlloc = createGenXVisaRegAllocWrapperPass();

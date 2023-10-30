@@ -135,8 +135,6 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   Modified |= VD.run(*DL);
   // Cleanup region reads and writes.
   Modified |= simplifyRegionInsts(&F, DL, ST);
-  // Cleanup redundant global loads.
-  Modified |= cleanupLoads(&F);
   // Cleanup constant loads.
   std::vector<CallInst *> ConstList;
   Modified |= cleanupConstantLoads(&F, ConstList);

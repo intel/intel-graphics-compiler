@@ -171,7 +171,13 @@ struct GenXBackendOptions {
   unsigned InteropSubgroupSize = 16;
 
   // Run auxiliary checker/fixup for GV access clobbering cases.
-  bool CheckGVClobbering = false;
+  bool CheckGVClobbering =
+#ifdef NDEBUG
+      false
+#else
+      true
+#endif
+      ;
 
   // Compile until vISA stage only.
   bool EmitVisaOnly = false;

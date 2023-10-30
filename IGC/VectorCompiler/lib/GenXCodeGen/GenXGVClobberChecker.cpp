@@ -68,9 +68,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<bool> CheckGVClobbOpt_CollectRelatedGVStoreCallSites(
-    "check-gv-clobbering-collect-store-related-call-sites", cl::init(true),
-    cl::Hidden,
+static cl::opt<bool> CheckGVClobbOpt_CollectKillCallSites(
+    "check-gv-clobbering-collect-kill-call-sites", cl::init(false), cl::Hidden,
     cl::desc("With this option enabled make it more precise by collecting "
              "user function call sites that can result in clobbering of a "
              "particular global volatile value "
@@ -96,8 +95,15 @@ static cl::opt<bool> CheckGVClobbOpt_TryFixup(
     cl::desc("Try to fixup simple cases if clobbering detected."));
 
 static cl::opt<bool> CheckGVClobbOpt_AbortOnDetection(
-    "check-gv-clobbering-abort-on-detection", cl::init(false), cl::Hidden,
-    cl::desc("Abort execution if potential clobbering detected."));
+    "check-gv-clobbering-abort-on-detection",
+    cl::init(
+#ifdef NDEBUG
+        false
+#else
+        true
+#endif
+        ),
+    cl::Hidden, cl::desc("Abort execution if potential clobbering detected."));
 
 namespace {
 
@@ -108,15 +114,17 @@ private:
   GenXLiveness *Liveness = nullptr;
   llvm::DenseMap<const Function *, GenXBaling *> BalingPerFunc;
   llvm::DenseMap<const Function *, GenXLiveness *> LivenessPerFunc;
+  llvm::SmallPtrSet<BasicBlock *, 2> PhiUserExcludeBlocksOnCfgTraversal;
 
   StringRef DbgPrefix = "[gvload clobber checker] ";
 
-  bool checkGVClobberingByInterveningStore(Instruction *LI,
-                                           llvm::SetVector<Instruction *> *SIs);
+  bool
+  checkGVClobberingByInterveningStore(Instruction *LI,
+                                      llvm::SmallVector<Instruction *, 8> *SIs);
 
   using CallSitesPerFunctionT =
-      llvm::DenseMap<Function *, llvm::SetVector<Instruction *>>;
-  void collectClobberingCallSites(
+      llvm::DenseMap<Function *, llvm::SmallVector<Instruction *, 8>>;
+  void collectKillCallSites(
       Function *Func,
       GenXGVClobberChecker::CallSitesPerFunctionT &CallSitesPerFunction);
 
@@ -169,7 +177,7 @@ ModulePass *llvm::createGenXGVClobberCheckerPass() {
 }
 
 bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
-    Instruction *LI, llvm::SetVector<Instruction *> *SIs) {
+    Instruction *LI, llvm::SmallVector<Instruction *, 8> *SIs) {
 
   auto CheckUserInst = [&](Instruction *UI) -> bool {
     // TODO: this is an exceptional case. Maybe change GenXArgIndirectionWrapper
@@ -181,11 +189,21 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
           dbgs()
           << "Skipping " << *UI
           << " a trivially dead bitcast coming from GenXArgIndirectionWrapper "
-             "as not a real use of vload result.");
+             "as not a real use of vload result.\n");
       return false;
     }
 
-    auto *SI = genx::getInterveningVStoreOrNull(LI, UI, true, nullptr, SIs);
+    if (isa<PHINode>(UI)) {
+      PhiUserExcludeBlocksOnCfgTraversal.clear();
+      for (const auto &V : cast<PHINode>(UI)->incoming_values())
+        if (auto *I = dyn_cast<Instruction>(V.get()))
+          PhiUserExcludeBlocksOnCfgTraversal.insert(I->getParent());
+    }
+
+    const auto *SI = genx::getInterveningVStoreOrNull(
+        LI, UI, true, nullptr,
+        isa<PHINode>(UI) ? &PhiUserExcludeBlocksOnCfgTraversal : nullptr, SIs);
+
     if (!SI)
       return false;
 
@@ -248,7 +266,7 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
   return Detected;
 };
 
-void GenXGVClobberChecker::collectClobberingCallSites(
+void GenXGVClobberChecker::collectKillCallSites(
     Function *Func,
     GenXGVClobberChecker::CallSitesPerFunctionT &CallSitesPerFunction) {
   llvm::SmallPtrSet<Function *, 4> VisitedFuncs;
@@ -262,7 +280,7 @@ void GenXGVClobberChecker::collectClobberingCallSites(
     for (const auto &FuncUser : CurrFunc->users()) {
       if (isa<CallBase>(FuncUser)) {
         auto *Call = cast<Instruction>(FuncUser);
-        CallSitesPerFunction[Call->getFunction()].insert(Call);
+        CallSitesPerFunction[Call->getFunction()].push_back(Call);
         Stack.push_back(Call->getFunction());
       }
     }
@@ -271,9 +289,9 @@ void GenXGVClobberChecker::collectClobberingCallSites(
 
 bool GenXGVClobberChecker::runOnModule(Module &M) {
   llvm::SetVector<Instruction *> Loads;
-  std::unordered_map<Value *, CallSitesPerFunctionT> ClobberingCallSites;
+  std::unordered_map<Value *, CallSitesPerFunctionT> KillCallSites;
 
-  if (CheckGVClobbOpt_CollectRelatedGVStoreCallSites)
+  if (CheckGVClobbOpt_CollectKillCallSites)
     LLVM_DEBUG(dbgs() << DbgPrefix
                       << "Checking in non-strict mode (matching as potentially "
                          "clobbering only "
@@ -327,9 +345,8 @@ bool GenXGVClobberChecker::runOnModule(Module &M) {
       if (auto *I = dyn_cast<Instruction>(V)) {
         if (genx::isAVLoad(I))
           Loads.insert(I);
-        else if (genx::isAVStore(I) &&
-                 CheckGVClobbOpt_CollectRelatedGVStoreCallSites)
-          collectClobberingCallSites(I->getFunction(), ClobberingCallSites[&G]);
+        else if (CheckGVClobbOpt_CollectKillCallSites && genx::isAVStore(I))
+          collectKillCallSites(I->getFunction(), KillCallSites[&G]);
       }
     }
   }
@@ -340,9 +357,9 @@ bool GenXGVClobberChecker::runOnModule(Module &M) {
   bool ChangedOrNeedToAbort = false;
   for (const auto &LI : Loads)
     ChangedOrNeedToAbort |= checkGVClobberingByInterveningStore(
-        LI, CheckGVClobbOpt_CollectRelatedGVStoreCallSites
-                ? &ClobberingCallSites[genx::getBitCastedValue(
-                      LI->getOperand(0))][LI->getFunction()]
+        LI, CheckGVClobbOpt_CollectKillCallSites
+                ? &KillCallSites[genx::getBitCastedValue(LI->getOperand(0))]
+                                [LI->getFunction()]
                 : nullptr);
 
   if (CheckGVClobbOpt_AbortOnDetection && ChangedOrNeedToAbort) {

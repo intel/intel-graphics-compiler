@@ -785,11 +785,11 @@ bool isWrRWithOldValueVLoadSrc(Value *V);
 // NB: There may be multiple intervening stores, for now we don't have
 //     a use case where we want the whole list, hence this variant
 //     only returns the first found.
-Instruction *
-getInterveningVStoreOrNull(Instruction *LI, Instruction *PosI,
-                           bool PosIsReachableFromLI = false,
-                           const DominatorTree *DT = nullptr,
-                           llvm::SetVector<Instruction *> *CallSites = nullptr);
+Instruction *getInterveningVStoreOrNull(
+    Instruction *LI, Instruction *PosI, bool PosIsReachableFromLI = false,
+    const DominatorTree *DT = nullptr,
+    const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal = nullptr,
+    llvm::SmallVector<Instruction *, 8> *KillCallSites = nullptr);
 
 bool checkGVClobberingByInterveningStore(
     Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,

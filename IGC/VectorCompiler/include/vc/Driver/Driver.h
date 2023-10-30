@@ -153,7 +153,13 @@ struct CompileOptions {
   bool IgnoreLoopUnrollThresholdOnPragma = false;
   unsigned InteropSubgroupSize = 16;
 
-  bool CheckGVClobbering = false;
+  bool CheckGVClobbering =
+#ifdef NDEBUG
+      false
+#else
+      true
+#endif
+      ;
 
   bool EnableHashMovs = false;
   bool EnableHashMovsAtPrologue = false;
