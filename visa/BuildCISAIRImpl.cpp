@@ -670,6 +670,25 @@ void CISA_IR_Builder::LinkTimeOptimization(
   unsigned int raUID = 0;
   unsigned int funcUID = 0;
 
+  auto initializeRedirectMap = [&](
+      IR_Builder *callee,
+      IR_Builder *caller,
+      std::map<G4_Declare*, G4_Declare*> &redirectMap) {
+    redirectMap.insert(std::make_pair(callee->getFE_SP(), caller->getFE_SP()));
+    redirectMap.insert(std::make_pair(callee->getFE_FP(), caller->getFE_FP()));
+    redirectMap.insert(std::make_pair(callee->getStackCallArg(), caller->getStackCallArg()));
+    redirectMap.insert(std::make_pair(callee->getStackCallRet(), caller->getStackCallRet()));
+    redirectMap.insert(std::make_pair(callee->getRealR0(), caller->getRealR0()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinR0(), caller->getBuiltinR0()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinA0(), caller->getBuiltinA0()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinA0Dot2(), caller->getBuiltinA0Dot2()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinHWTID(), caller->getBuiltinHWTID()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinT252(), caller->getBuiltinT252()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinBindlessSampler(), caller->getBuiltinBindlessSampler()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinSamplerHeader(), caller->getBuiltinSamplerHeader()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinScratchSurface(), caller->getBuiltinScratchSurface()));
+  };
+
   // append instructions from callee to caller
   for (auto &[callee, sgInvokeList] : callee2Callers) {
     G4_Declare *replacedArgDcl = nullptr;
@@ -680,6 +699,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
       vASSERT(fcall->opcode() == G4_pseudo_fcall);
       G4_Kernel *caller = GetCallerKernel(fcall);
       G4_Kernel *callee = GetCalleeKernel(fcall);
+
+      std::map<G4_Declare*, G4_Declare*> redirectMap;
+      initializeRedirectMap(callee->fg.builder, caller->fg.builder, redirectMap);
+
       bool inlining = (options & (1U << Linker_Inline));
       bool removeArgRet = (options & (1U << Linker_RemoveArgRet));
       bool removeStackArg = (options & (1U << Linker_RemoveStackArg)) && caller->fg.builder->hasInt64Add();
@@ -1093,6 +1116,20 @@ void CISA_IR_Builder::LinkTimeOptimization(
       }
 
       std::map<G4_Declare *, G4_Declare *> newDclMap;
+
+      auto redirectBuiltin = [&](
+          G4_Operand *opd,
+          G4_Declare *dcl,
+          G4_Declare *redirectDcl) {
+        G4_Declare *newDcl =
+          caller->fg.builder->cloneDeclare(newDclMap, dcl);
+        opd->setTopDcl(redirectDcl);
+        opd->setBase(newDcl->getRegVar());
+        newDcl->setAliasDeclare(redirectDcl,
+            newDcl->getAliasOffset());
+
+      };
+
       auto cloneDcl = [&](G4_Operand *opd) {
         if (opd) {
           G4_Declare *topDcl = opd->getTopDcl();
@@ -1105,50 +1142,15 @@ void CISA_IR_Builder::LinkTimeOptimization(
           if (avoidCloning.find(topDcl) != avoidCloning.end())
             return;
           G4_Declare *dcl = var->getDeclare();
-          if (topDcl && topDcl == callee->fg.builder->getFE_SP()) {
-            G4_Declare *newDcl =
-                caller->fg.builder->cloneDeclare(newDclMap, dcl);
-            opd->setTopDcl(caller->fg.builder->getFE_SP());
-            opd->setBase(newDcl->getRegVar());
-            newDcl->setAliasDeclare(caller->fg.builder->getFE_SP(),
-                                    newDcl->getAliasOffset());
-          } else if (topDcl && topDcl == callee->fg.builder->getFE_FP()) {
-            G4_Declare *newDcl =
-                caller->fg.builder->cloneDeclare(newDclMap, dcl);
-            opd->setTopDcl(caller->fg.builder->getFE_FP());
-            opd->setBase(newDcl->getRegVar());
-            newDcl->setAliasDeclare(caller->fg.builder->getFE_FP(),
-                                    newDcl->getAliasOffset());
-          } else if (topDcl &&
-                     topDcl == callee->fg.builder->getBuiltinR0()) {
-            G4_Declare *newDcl =
-                caller->fg.builder->cloneDeclare(newDclMap, dcl);
-            opd->setTopDcl(caller->fg.builder->getBuiltinR0());
-            opd->setBase(newDcl->getRegVar());
-            newDcl->setAliasDeclare(caller->fg.builder->getBuiltinR0(),
-                                    newDcl->getAliasOffset());
-          } else if (topDcl &&
-                     topDcl == callee->fg.builder->getStackCallArg()) {
-            G4_Declare *newDcl =
-                caller->fg.builder->cloneDeclare(newDclMap, dcl);
-            opd->setTopDcl(caller->fg.builder->getStackCallArg());
-            opd->setBase(newDcl->getRegVar());
-            newDcl->setAliasDeclare(caller->fg.builder->getStackCallArg(),
-                                    newDcl->getAliasOffset());
-          } else if (topDcl &&
-                     topDcl == callee->fg.builder->getStackCallRet()) {
-            G4_Declare *newDcl =
-                caller->fg.builder->cloneDeclare(newDclMap, dcl);
-            opd->setTopDcl(caller->fg.builder->getStackCallRet());
-            opd->setBase(newDcl->getRegVar());
-            newDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(),
-                                    newDcl->getAliasOffset());
+          if (topDcl && redirectMap.find(topDcl) != redirectMap.end()) {
+            redirectBuiltin(opd, dcl, redirectMap[topDcl]);
           } else if (topDcl &&
                      (topDcl == replacedArgDcl || topDcl == replacedRetDcl)) {
             G4_Declare *newDcl = caller->fg.builder->createTempVar(
                 dcl->getTotalElems(), dcl->getElemType(), Any, dcl->getName());
             newDcl->setAliasDeclare(topDcl, dcl->getAliasOffset());
           } else {
+            vASSERT(!topDcl || !topDcl->isBuiltin());
             G4_Declare *newDcl =
                 caller->fg.builder->cloneDeclare(newDclMap, dcl);
             if (opd->isAddrExp()) {
