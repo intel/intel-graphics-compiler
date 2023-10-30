@@ -523,12 +523,6 @@ void VectorPreProcess::replaceAllVectorUsesWithScalars(Instruction* VI, ValVecto
     {
         ToBeDeleted[i]->eraseFromParent();
     }
-
-    // May have phi use, need to check if it's empty.
-    if (VI->use_empty())
-    {
-        VI->eraseFromParent();
-    }
 }
 
 void VectorPreProcess::createSplitVectorTypes(
@@ -722,7 +716,8 @@ bool VectorPreProcess::splitStore(
         return false;
     }
 
-    ValVector& svals = vecToSubVec[StoredVal][splitSize];
+    // Create a new value in the map for store
+    ValVector& svals = vecToSubVec[SI][splitSize];
     if (svals.size() == 0)
     {
         // Need to create splitted values.
@@ -819,6 +814,8 @@ bool VectorPreProcess::splitStore(
         }
     }
 
+    // Stores don't require post processing, so remove it as soon as we finish splitting
+    vecToSubVec.erase(SI);
     SI->eraseFromParent();
 
     // Since Load is processed later, stop optimizing if inst is Load.
@@ -989,11 +986,15 @@ bool VectorPreProcess::splitLoadStore(
         return false;
     }
 
-    Value* V = ALI ? ALI->getInst() : ASI->getValueOperand();
-    bool isInMap = vecToSubVec.find(V) != vecToSubVec.end();
+    Value* V = ALI ? ALI->getInst() : ASI->getInst();
+
+    auto InMap = [&vecToSubVec](Value* V)->bool
+    {
+        return vecToSubVec.find(V) != vecToSubVec.end();
+    };
 
     // Only LI could be processed already.
-    bool processed = ALI && isInMap;
+    bool processed = ALI && InMap(V);
     if (processed)
     {
         return false;
@@ -1005,7 +1006,8 @@ bool VectorPreProcess::splitLoadStore(
     // has not been splitted yet, then splitting the load first
     // so that the stored value will be directly from loaded values
     // without adding insert/extract instructions.
-    Optional<AbstractLoadInst> aALI = (ASI && !isInMap) ? AbstractLoadInst::get(V, *m_DL) : ALI;
+    Optional<AbstractLoadInst> aALI = ASI && !InMap(ASI->getValueOperand()) ?
+        AbstractLoadInst::get(ASI->getValueOperand(), *m_DL) : ALI;
 
     if (aALI)
     {
@@ -1016,6 +1018,7 @@ bool VectorPreProcess::splitLoadStore(
     {
         splitStore(ASI.getValue(), vecToSubVec, WI);
     }
+
     return true;
 }
 
@@ -1839,7 +1842,9 @@ bool VectorPreProcess::runOnFunction(Function& F)
                 continue;
             }
             Instruction* LI = ALI.getValue().getInst();
-            for (auto& it : vecToSubVec[V]) {
+
+            for (auto& it : vecToSubVec[LI])
+            {
                 ValVector& svals = it.second;
                 if (!LI->use_empty())
                 {
@@ -1866,7 +1871,7 @@ bool VectorPreProcess::runOnFunction(Function& F)
                             svals[j] = nullptr;
                         }
                     }
-                    // Replace LI and erase LI.
+                    // Replace LI
                     replaceAllVectorUsesWithScalars(LI, Scalars);
 
                     // Remove any dead scalars
@@ -1878,10 +1883,6 @@ bool VectorPreProcess::runOnFunction(Function& F)
                             tInst->eraseFromParent();
                         }
                     }
-                }
-                else
-                {
-                    LI->eraseFromParent();
                 }
 
                 // Remove any dead sub vectors
@@ -1919,6 +1920,13 @@ bool VectorPreProcess::runOnFunction(Function& F)
                         tInst->eraseFromParent();
                     }
                 }
+            }
+
+            // Done with load splits, remove the original load inst
+            if (LI->use_empty())
+            {
+                vecToSubVec.erase(LI);
+                LI->eraseFromParent();
             }
         }
 
