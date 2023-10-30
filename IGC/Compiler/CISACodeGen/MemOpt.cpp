@@ -2564,6 +2564,15 @@ namespace {
         StructType* getOrCreateUniqueIdentifiedStructType(
             ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked = true);
 
+        // Skip counting those insts as no code shall be emitted for them.
+        bool skipCounting(Instruction* I) {
+            if (auto* IntrinsicI = dyn_cast<llvm::IntrinsicInst>(I)) {
+                if (IntrinsicI->getIntrinsicID() == Intrinsic::assume)
+                    return true;
+            }
+            return isDbgIntrinsic(I) || isa<BitCastInst>(I);
+        }
+
         void eraseDeadInsts();
 
         void clear()
@@ -2927,6 +2936,8 @@ void LdStCombine::combineStores(Function& F)
         return true;
     };
 
+    // Only handle stores within the given instruction window.
+    constexpr uint32_t WINDOWSIZE = 150;
     m_hasStoreCombined = false;
     for (auto& BB : F)
     {
@@ -2941,12 +2952,15 @@ void LdStCombine::combineStores(Function& F)
                 continue;
             }
 
+            uint32_t numInsts = 1;
             Stores.push_back(LdStInfo(base, 0));
             AST.clear();
             AST.add(base);
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;
-                if (!canCombineStoresAcross(I)) {
+                if (!skipCounting(I))
+                    ++numInsts;
+                if (!canCombineStoresAcross(I) || numInsts > WINDOWSIZE) {
                     // Cannot add more stores.
                     break;
                 }
