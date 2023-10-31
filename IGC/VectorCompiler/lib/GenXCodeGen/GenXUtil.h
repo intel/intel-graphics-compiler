@@ -785,28 +785,25 @@ bool isWrRWithOldValueVLoadSrc(Value *V);
 // NB: There may be multiple intervening stores, for now we don't have
 //     a use case where we want the whole list, hence this variant
 //     only returns the first found.
-Instruction *getInterveningVStoreOrNull(
+Instruction *getAVLoadKillOrNull(
     Instruction *LI, Instruction *PosI, bool PosIsReachableFromLI = false,
     const DominatorTree *DT = nullptr,
     const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal = nullptr,
-    llvm::SmallVector<Instruction *, 8> *KillCallSites = nullptr);
+    const llvm::SmallVector<Instruction *, 8> *KillCallSites = nullptr);
 
 bool checkGVClobberingByInterveningStore(
     Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
     const llvm::StringRef PassName,
     llvm::SetVector<Instruction *> *SIs = nullptr);
 
-llvm::SetVector<Instruction *> getAncestorGVLoads(Instruction *I,
-                                                  bool OneLevel = false);
-Instruction *getAncestorGVLoadOrNull(Instruction *I, bool OneLevel = false);
-bool hasGVLoadSource(Instruction *I);
+llvm::SmallPtrSet<Instruction *, 1> getSrcVLoads(Instruction *I);
+Instruction *getSrcVLoadOrNull(Instruction *I);
+bool hasVLoadSource(Instruction *I);
 
-bool isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To);
-bool isSafeToMoveInstCheckGVLoadClobber(
-    Instruction *I, Instruction *To,
-    bool OnlyImmediateGVLoadPredecessors = true);
-bool isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
-                                        GenXBaling *Baling_);
+bool isSafeToMoveBaleCheckAVLoadKill(const Bale &B, Instruction *To);
+bool isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To);
+bool isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To,
+                                     GenXBaling *Baling_);
 
 bool loadingSameValue(Instruction *L1, Instruction *L2,
                       const DominatorTree *DT);

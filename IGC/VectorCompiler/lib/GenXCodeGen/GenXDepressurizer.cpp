@@ -484,12 +484,6 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
         Bale B;
         Baling->buildBale(Inst, &B);
         auto InsertBefore = Inst;
-        IGC_ASSERT_MESSAGE(
-            genx::isSafeToMoveBaleCheckGVLoadClobber(B, InsertBefore),
-            "Potential global volatatile access clobbering detected while "
-            "trying to bring bale instructions together during "
-            "GenXDepressurizer run. Some previous optimization broke the "
-            "code.");
         // Move the bale instructions to a contiguous lump, and number them.
         Instruction *GotoJoin = nullptr;
         for (auto ii = B.begin(), ie = B.end(); ii != ie; ++ii) {
@@ -1127,7 +1121,7 @@ bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
   for (auto *I : SB->Bales) {
     Bale B;
     Baling->buildBale(I, &B);
-    if (!genx::isSafeToMoveBaleCheckGVLoadClobber(B, InsertBefore)) {
+    if (!genx::isSafeToMoveBaleCheckAVLoadKill(B, InsertBefore)) {
       LLVM_DEBUG(
           dbgs() << "Will not move this superbale to position of "
                  << *InsertBefore

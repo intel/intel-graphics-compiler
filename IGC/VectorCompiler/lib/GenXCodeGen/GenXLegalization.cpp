@@ -1933,7 +1933,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   // in global volatile clobbering checker.
   if (B.isGStoreBale() &&
       PrevSliceRes /*first slice uses the original vload*/) {
-    for (auto *GvLoad : genx::getAncestorGVLoads(BInst.Inst, true)) {
+    for (auto *GvLoad : genx::getSrcVLoads(BInst.Inst)) {
       if (genx::getBitCastedValue(B.getHead()->Inst->getOperand(1)) !=
           genx::getBitCastedValue(GvLoad->getOperand(0)))
         continue;

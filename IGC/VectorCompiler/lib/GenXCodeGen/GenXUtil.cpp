@@ -2340,18 +2340,18 @@ bool genx::isWrRWithOldValueVLoadSrc(Value *V) {
   return I && isAVLoad(I);
 };
 
-Instruction *genx::getInterveningVStoreOrNull(
+Instruction *genx::getAVLoadKillOrNull(
     Instruction *FromVLoad, Instruction *ToPosI, bool PosIsReachableFromLI,
     const DominatorTree *DT,
     const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal,
-    llvm::SmallVector<Instruction *, 8> *KillCallSites) {
+    const llvm::SmallVector<Instruction *, 8> *KillCallSites) {
 
-  Value *VLoadSrc = genx::getAVLoadSrcOrNull(FromVLoad);
+  auto *VLoadSrc = genx::getAVLoadSrcOrNull(FromVLoad);
 
   IGC_ASSERT(VLoadSrc);
   IGC_ASSERT(FromVLoad->getFunction() == ToPosI->getFunction());
 
-  auto isAnInterveningStore = [VLoadSrc, KillCallSites](Instruction &I) {
+  auto isAKill = [VLoadSrc, KillCallSites](Instruction &I) {
     return isAVStore(&I, VLoadSrc) ||
            (KillCallSites
                 ? llvm::find(*KillCallSites, &I) != KillCallSites->end()
@@ -2363,17 +2363,15 @@ Instruction *genx::getInterveningVStoreOrNull(
   auto *PosBB = ToPosI->getParent();
 
   if (VLoadBB == PosBB) {
-    auto IT = FromVLoad->getIterator();
-    while (IT != VLoadBB->end() && IT != ToPosI->getIterator()) {
-      if (isAnInterveningStore(*IT))
-        return &*IT;
-      IT++;
-    }
+    if (auto KII = std::find_if(FromVLoad->getIterator(), ToPosI->getIterator(),
+                                isAKill);
+        KII != ToPosI->getIterator())
+      return &*KII;
     return nullptr;
   }
 
   llvm::SmallPtrSet<BasicBlock *, 16> Visited = {VLoadBB};
-  std::vector<BasicBlock *> BBs;
+  llvm::SmallVector<BasicBlock *, 16> BBs;
 
   if (!PosIsReachableFromLI) {
     PosIsReachableFromLI =
@@ -2387,8 +2385,7 @@ Instruction *genx::getInterveningVStoreOrNull(
                 std::back_inserter(BBs));
 
       while (!PosIsReachableFromLI && !BBs.empty()) {
-        auto BB = BBs.back();
-        BBs.pop_back();
+        auto *BB = BBs.pop_back_val();
         Visited.insert(BB);
         if (BB == PosBB)
           PosIsReachableFromLI = true;
@@ -2405,14 +2402,14 @@ Instruction *genx::getInterveningVStoreOrNull(
     }
   }
 
-  if (auto SII = std::find_if(PosBB->begin(), ToPosI->getIterator(),
-                              isAnInterveningStore);
-      SII != ToPosI->getIterator())
-    return &*SII;
-  if (auto SII = std::find_if(FromVLoad->getIterator(), VLoadBB->end(),
-                              isAnInterveningStore);
-      SII != VLoadBB->end())
-    return &*SII;
+  if (auto KII = std::find_if(PosBB->begin(), ToPosI->getIterator(), isAKill);
+      KII != ToPosI->getIterator())
+    return &*KII;
+
+  if (auto KII =
+          std::find_if(FromVLoad->getIterator(), VLoadBB->end(), isAKill);
+      KII != VLoadBB->end())
+    return &*KII;
 
   Visited = {VLoadBB};
   if (ExcludeBlocksOnCfgTraversal)
@@ -2420,13 +2417,13 @@ Instruction *genx::getInterveningVStoreOrNull(
                    ExcludeBlocksOnCfgTraversal->end());
   std::copy_if(pred_begin(PosBB), pred_end(PosBB), std::back_inserter(BBs),
                [Visited](BasicBlock *BB) { return !Visited.count(BB); });
-  while (!BBs.empty()) {
-    BasicBlock *BB = BBs.back();
-    BBs.pop_back();
 
-    if (auto SII = std::find_if(BB->begin(), BB->end(), isAnInterveningStore);
-        SII != BB->end())
-      return &*SII;
+  while (!BBs.empty()) {
+    auto *BB = BBs.pop_back_val();
+
+    if (auto KII = std::find_if(BB->begin(), BB->end(), isAKill);
+        KII != BB->end())
+      return &*KII;
 
     Visited.insert(BB);
     std::copy_if(pred_begin(BB), pred_end(BB), std::back_inserter(BBs),
@@ -2436,64 +2433,46 @@ Instruction *genx::getInterveningVStoreOrNull(
   return nullptr;
 }
 
-llvm::SetVector<Instruction *> genx::getAncestorGVLoads(Instruction *I,
-                                                        bool OneLevel) {
+llvm::SmallPtrSet<Instruction *, 1> genx::getSrcVLoads(Instruction *I) {
   IGC_ASSERT(I);
-  llvm::SetVector<Instruction *> res;
-  auto *PreBitCastInstr = dyn_cast<Instruction>(getBitCastedValue(I));
-  if (!PreBitCastInstr)
+  I = dyn_cast<Instruction>(genx::getBitCastedValue(I));
+  llvm::SmallPtrSet<Instruction *, 1> res;
+  if (!I)
     return res;
-  std::vector<Use *> Worklist;
-  for (auto &O : PreBitCastInstr->operands())
-    Worklist.push_back(&O);
-  while (!Worklist.empty()) {
-    auto *O = Worklist.back();
-    Worklist.pop_back();
-    if (auto *OpndInstr = dyn_cast<Instruction>(O->get())) {
-      auto *PreBitCastOpndInstr =
-          dyn_cast<Instruction>(getBitCastedValue(OpndInstr));
-      if (PreBitCastOpndInstr) {
-        if (isAGVLoad(PreBitCastOpndInstr))
-          res.insert(PreBitCastOpndInstr);
-        if (!OneLevel)
-          for (auto &O : PreBitCastOpndInstr->operands())
-            Worklist.push_back(&O);
-      }
-    }
-  }
+  for (auto &OU : I->operands())
+    if (auto *OI = dyn_cast<Instruction>(genx::getBitCastedValue(OU.get())))
+      if (genx::isAVLoad(OI))
+        res.insert(OI);
   return res;
 };
 
-Instruction *genx::getAncestorGVLoadOrNull(Instruction *I, bool OneLevel) {
-  const auto res = getAncestorGVLoads(I, OneLevel);
-  return res.size() ? res[0] : nullptr;
+Instruction *genx::getSrcVLoadOrNull(Instruction *I) {
+  const auto res = getSrcVLoads(I);
+  return res.size() ? *res.begin() : nullptr;
 }
 
-bool genx::hasGVLoadSource(Instruction *I) {
-  return getAncestorGVLoadOrNull(I, true);
-}
+bool genx::hasVLoadSource(Instruction *I) { return getSrcVLoadOrNull(I); }
 
-bool genx::isSafeToMoveBaleCheckGVLoadClobber(const Bale &B, Instruction *To) {
-  for (auto *LI : B.getGVLoadSources())
-    if (getInterveningVStoreOrNull(LI, To))
+bool genx::isSafeToMoveBaleCheckAVLoadKill(const Bale &B, Instruction *To) {
+  for (auto *LI : B.getVLoadSources())
+    if (getAVLoadKillOrNull(LI, To))
       return false;
   return true;
 }
 
-bool genx::isSafeToMoveInstCheckGVLoadClobber(
-    Instruction *I, Instruction *To, bool OnlyImmediateGVLoadPredecessors) {
-  for (auto *LI : getAncestorGVLoads(I, OnlyImmediateGVLoadPredecessors))
-    if (getInterveningVStoreOrNull(LI, To))
+bool genx::isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To) {
+  for (auto *LI : getSrcVLoads(I))
+    if (getAVLoadKillOrNull(LI, To))
       return false;
   return true;
 }
 
-bool genx::isSafeToMoveInstCheckGVLoadClobber(Instruction *I, Instruction *To,
-                                              GenXBaling *Baling) {
+bool genx::isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To,
+                                           GenXBaling *Baling) {
   IGC_ASSERT(I && To && Baling);
   Bale Bale;
   Baling->buildBale(I, &Bale);
-  return isSafeToMoveBaleCheckGVLoadClobber(Bale, To);
+  return isSafeToMoveBaleCheckAVLoadKill(Bale, To);
 }
 
 bool genx::loadingSameValue(Instruction *L1, Instruction *L2,
@@ -2506,7 +2485,7 @@ bool genx::loadingSameValue(Instruction *L1, Instruction *L2,
     if (DT->dominates(L2, L1))
       std::swap(L2, L1);
     if (DT->dominates(L1, L2))
-      return !genx::getInterveningVStoreOrNull(L1, L2, true);
+      return !genx::getAVLoadKillOrNull(L1, L2, true);
   }
   return false;
 }

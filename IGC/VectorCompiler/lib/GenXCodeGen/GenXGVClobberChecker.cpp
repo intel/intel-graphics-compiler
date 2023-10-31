@@ -10,17 +10,21 @@ SPDX-License-Identifier: MIT
 // GenXClobberChecker
 //===----------------------------------------------------------------------===//
 //
-// Read access to GENX_VOLATILE variable yields vload + a user(rdregion).
-// During internal optimizations the user can be (baled in (and or) collapsed
-// (and or) moved away) to a position in which it potentially gets affected by a
-// store to the same GENX_VOLATILE variable. Such a situation must be avoided.
+// Read access to GENX_VOLATILE variable yields vload + a user(most of the time
+// rdregion, but can be anything including vstore). During internal
+// optimizations the user can be (baled in (and or) collapsed (and or) moved
+// away) to a position in which it potentially gets affected by a store to the
+// same GENX_VOLATILE variable. This situation must be avoided (ideally - only
+// when the high-level program employed by-copy semantics, see below).
 //
-// This pass implements a checker/fixup (only available in debug build under
-// -check-gv-clobbering=true option) introduced late in pipeline right
-// before global volatile loads coalescing (NB1).
+// This pass implements a checker/fixup (available under
+// -check-gv-clobbering=true option, turned on by default in Debug build)
+// introduced late in pipeline. It is used to identify situations when we have
+// potentially clobbered the global volatile value.
 //
-// This checker/fixup is used to diagnose the issue while separate optimization
-// passes are being fixed. Current list of affected passes is the following:
+// The checker warning about potential clobbering means that some optimization
+// pass has overlooked the aspect of vload/vstore semantics and must be fixed to
+// take it into account. Current list of affected passes:
 //
 // RegionCollapsing
 // FuncBaling
@@ -29,10 +33,15 @@ SPDX-License-Identifier: MIT
 // Depressurizer
 // ...
 //
-// NB1: The "catch-all" check/fixup is based on assumption that in case of
-// reference intended by the high level program backend never gets store
-// potentially clobbering vload before user neither from frontend nor as the
-// result of internal optimizations. Otherwize it would produce false-positives.
+//----------------------------------------------------------------
+// TODO/IMPORTANT: presently there's no way to differentiate by-copy vs
+// by-reference semantics, so we try to avoid moving vload users "after" vstores
+// for all the cases, which results in less efficient code generation. The way
+// to differentiate by-copy vs by-reference access must be implemented and
+// optimizations restricted only for those use cases. By-reference accesses must
+// be allowed for optimization as before to provide with most efficient code
+// possible.
+//----------------------------------------------------------------
 //
 //-------------------------------
 // Pseudocode example
@@ -49,7 +58,34 @@ SPDX-License-Identifier: MIT
 //   }
 // }
 //===----------------------------------------------------------------------===//
-
+//
+// This pass can be used as a standalone tool (under an opt utility) to check
+// the intermediate IR dumps acquired by the usage of -vc-dump-ir-split
+// -vc-dump-ir-before-pass='*' -vc-dump-ir-after-pass='*' options and/or
+// IGC_ShaderDumpEnable="1" and/or during an interactive debugging session.
+//
+// How to run the checker on individual IR dump (for individual options see
+// options descriptions below in this file:
+//
+// {code}
+//         opt \
+//         -load <PATH_TO_libVCBackendPlugin.so> \
+//         -enable-new-pm=0 \
+//         -check-gv-clobbering=1 \
+//         -check-gv-clobbering-try-fixup=0 \
+//         -check-gv-clobbering-chk-with-bales=0 \
+//         -check-gv-clobbering-standalone-mode=1 \
+//         -check-gv-clobbering-abort-on-detection=0 \
+//         -check-gv-clobbering-collect-kill-call-sites=0 \
+//         -GenXGVClobberChecker \
+//         -march=genx64 \
+//         -mtriple=spir64-unknown-unknown \
+//         -mcpu=Gen9 \
+//         -disable-output \
+//         -S \
+//         <YOUR_LLVM_IR_DUMP.ll>
+// {code}
+//
 #include "GenXBaling.h"
 #include "GenXLiveness.h"
 #include "GenXTargetMachine.h"
@@ -84,10 +120,14 @@ static cl::opt<bool> CheckGVClobbOpt_StandaloneMode(
         "For use out of pipeline as a standalone utility under opt command."));
 
 static cl::opt<bool> CheckGVClobbOpt_ChkWithBales(
-    "check-gv-clobbering-chk-with-bales", cl::init(true), cl::Hidden,
+    "check-gv-clobbering-chk-with-bales",
+    cl::init(!CheckGVClobbOpt_StandaloneMode), cl::Hidden,
     cl::desc("If true, detects \"vload -> vstore -> (vload's users bales "
              "heads)\" cases. In \"standalone\" mode shall spawn standalone "
-             "baling analysis. "
+             "baling analysis."
+             "WARNING: not every IR is baling-ready, so turning this option "
+             "in standalone mode while checking intermediate IR states can "
+             "fail. If so, do not use this in standalone mode runs. "
              "Detects \"vload -> vstore -> (vload's users)\" when false"));
 
 static cl::opt<bool> CheckGVClobbOpt_TryFixup(
@@ -95,15 +135,8 @@ static cl::opt<bool> CheckGVClobbOpt_TryFixup(
     cl::desc("Try to fixup simple cases if clobbering detected."));
 
 static cl::opt<bool> CheckGVClobbOpt_AbortOnDetection(
-    "check-gv-clobbering-abort-on-detection",
-    cl::init(
-#ifdef NDEBUG
-        false
-#else
-        true
-#endif
-        ),
-    cl::Hidden, cl::desc("Abort execution if potential clobbering detected."));
+    "check-gv-clobbering-abort-on-detection", cl::init(false), cl::Hidden,
+    cl::desc("Abort execution if potential clobbering detected."));
 
 namespace {
 
@@ -194,13 +227,20 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
     }
 
     if (isa<PHINode>(UI)) {
+      vc::diagnose(
+          LI->getContext(), DbgPrefix,
+          "PHI node as an immediate vload user found, this will "
+          "result with phicopy insertion during GenXCoalescing resulting "
+          "in additional register pressure, whereas the initial intent was to "
+          "have no additional copies of the value being loaded.",
+          DS_Warning, vc::WarningName::Generic);
       PhiUserExcludeBlocksOnCfgTraversal.clear();
       for (const auto &V : cast<PHINode>(UI)->incoming_values())
         if (auto *I = dyn_cast<Instruction>(V.get()))
           PhiUserExcludeBlocksOnCfgTraversal.insert(I->getParent());
     }
 
-    const auto *SI = genx::getInterveningVStoreOrNull(
+    const auto *SI = genx::getAVLoadKillOrNull(
         LI, UI, true, nullptr,
         isa<PHINode>(UI) ? &PhiUserExcludeBlocksOnCfgTraversal : nullptr, SIs);
 
@@ -305,6 +345,13 @@ bool GenXGVClobberChecker::runOnModule(Module &M) {
     if (CheckGVClobbOpt_ChkWithBales) {
       LLVM_DEBUG(dbgs() << DbgPrefix
                         << "Instantiating local baling info helper.\n");
+      vc::diagnose(
+          M.getContext(), DbgPrefix,
+          "WARNING: not every IR is baling-ready, so turning this option "
+          "in standalone mode while checking intermediate IR states can "
+          "fail. If so, do not use this in standalone mode runs.",
+          DS_Warning, vc::WarningName::Generic);
+
       Baling = new GenXBaling(BalingKind::BK_Analysis,
                               &getAnalysis<TargetPassConfig>()
                                    .getTM<GenXTargetMachine>()

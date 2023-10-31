@@ -180,8 +180,8 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
             MadSumOpndInst->mayHaveSideEffects() ||
             isa<PHINode>(MadSumOpndInst) ||
             MadSumOpndInst->getNextNode() == MadInst ||
-            !genx::isSafeToMoveInstCheckGVLoadClobber(MadSumOpndInst, MadInst,
-                                                      Baling))
+            !genx::isSafeToMoveInstCheckAVLoadKill(MadSumOpndInst, MadInst,
+                                                   Baling))
           continue;
         MadSumOpndInst->moveBefore(MadInst);
         Changed = true;
@@ -203,8 +203,8 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
         auto *UserInst = cast<Instruction>(MadSumOpndUse.getUser());
         if (isIntegerMadIntrinsic(UserInst) &&
             MadSumOpndUse.getOperandNo() == 2 &&
-            genx::isSafeToMoveInstCheckGVLoadClobber(MadSumOpndInst, UserInst,
-                                                     Baling)) {
+            genx::isSafeToMoveInstCheckAVLoadKill(MadSumOpndInst, UserInst,
+                                                  Baling)) {
           auto *NewMadSumOpndInst = MadSumOpndInst->clone();
           NewMadSumOpndInst->setName(MadSumOpndInst->getName() + ".postimad");
           NewMadSumOpndInst->insertBefore(UserInst);
@@ -220,8 +220,8 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
         Instruction *InsertPt = nullptr;
         std::tie(NBB, InsertPt) = findNearestInsertPt(DT, OtherUseCases);
         InsertPt = InsertPt ? InsertPt : NBB->getTerminator();
-        if (genx::isSafeToMoveInstCheckGVLoadClobber(MadSumOpndInst, InsertPt,
-                                                     Baling))
+        if (genx::isSafeToMoveInstCheckAVLoadKill(MadSumOpndInst, InsertPt,
+                                                  Baling))
           MadSumOpndInst->moveBefore(InsertPt);
       } else
         OrphanedMadSumOpndInst.push_back(MadSumOpndInst);
@@ -384,7 +384,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
           // Skip movement of a bale sourcing a global volatile load predecessor
           // if it can result in potential clobbering by an intervening vstore.
           // Skip phi which is not movable.
-          if (!genx::isSafeToMoveBaleCheckGVLoadClobber(*Bale, Pos) ||
+          if (!genx::isSafeToMoveBaleCheckAVLoadKill(*Bale, Pos) ||
               isa<PHINode>(BaleInst->Inst))
             break;
           BaleInst->Inst->moveBefore(Pos);

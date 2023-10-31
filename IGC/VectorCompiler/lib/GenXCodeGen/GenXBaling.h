@@ -221,9 +221,11 @@ SPDX-License-Identifier: MIT
 
 #include "IgnoreRAUWValueMap.h"
 #include "Probe/Assertion.h"
+
 #include "llvm/ADT/Hashing.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Pass.h"
+
 #include <string>
 
 namespace llvm {
@@ -330,9 +332,8 @@ public:
   BaleInst *getHeadIgnoreGStore() {
     return &*getHeadIgnoreGStoreIt();
   }
-  llvm::SetVector<Instruction *> getGVLoadSources() const;
-  bool hasGVLoadSources() const;
-  bool isGVReaderOnly() const;
+  llvm::SmallPtrSet<Instruction *, 2> getVLoadSources() const;
+  bool hasVLoadSources() const;
   bool endsWithGStore() const {
     return !empty() && rbegin()->Info.Type == BaleInfo::GSTORE;
   }

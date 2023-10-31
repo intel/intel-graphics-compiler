@@ -330,7 +330,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
  * I operation is load-like, we don't sink it only through store-like operations
  */
 bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *To) {
-  if (!genx::isSafeToMoveInstCheckGVLoadClobber(Op, To, this))
+  if (!genx::isSafeToMoveInstCheckAVLoadKill(Op, To, this))
     return false;
 
   if (DisableMemOrderCheck || !Op->mayReadOrWriteMemory())
@@ -532,7 +532,7 @@ bool GenXBaling::operandCanBeBaled(
     // where there are no region restrictions.)
     Region RdR = makeRegionFromBaleInfo(Opnd, BaleInfo());
     if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst)) ||
-        !genx::isSafeToMoveInstCheckGVLoadClobber(Opnd, Inst, this))
+        !genx::isSafeToMoveInstCheckAVLoadKill(Opnd, Inst, this))
       return false;
 
     // Do not bale in a region read with multiple uses if
@@ -744,7 +744,6 @@ bool GenXBaling::processSelect(Instruction *Inst) {
   return true;
 }
 
-// Process a store instruction.
 void GenXBaling::processStore(StoreInst *Inst) {
   BaleInfo BI(BaleInfo::GSTORE);
   unsigned OperandNum = 0;
@@ -1452,7 +1451,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
             break;
           case GenXIntrinsicInfo::RAW:
             if (isa<Instruction>(Inst->getOperand(ArgIdx)) &&
-                !genx::isSafeToMoveInstCheckGVLoadClobber(
+                !genx::isSafeToMoveInstCheckAVLoadKill(
                     cast<Instruction>(Inst->getOperand(ArgIdx)), Inst, this))
               continue;
             // Rdregion can be baled in to a raw operand as long as it is
@@ -2641,18 +2640,15 @@ bool Bale::isGStoreBaleLegal() const {
   return isGlobalStoreLegal(ST);
 }
 
-llvm::SetVector<Instruction *> Bale::getGVLoadSources() const {
-  llvm::SetVector<Instruction *> res;
+llvm::SmallPtrSet<Instruction *, 2> Bale::getVLoadSources() const {
+  llvm::SmallPtrSet<Instruction *, 2> res;
   for (const auto &Inst : Insts)
-    for (const auto &GVLoad : genx::getAncestorGVLoads(Inst.Inst, true))
-      res.insert(GVLoad);
+    for (const auto &VLoad : genx::getSrcVLoads(Inst.Inst))
+      res.insert(VLoad);
   return res;
 }
 
-bool Bale::hasGVLoadSources() const { return getGVLoadSources().size(); }
-bool Bale::isGVReaderOnly() const {
-  return hasGVLoadSources() && !isGStoreBale();
-}
+bool Bale::hasVLoadSources() const { return getVLoadSources().size(); }
 
 /***********************************************************************
  * Bale debug dump/print
