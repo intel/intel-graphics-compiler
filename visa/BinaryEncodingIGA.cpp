@@ -1150,6 +1150,11 @@ void BinaryEncodingIGA::Encode() {
       vASSERT(currBB);
       currBB->appendInstruction(igaInst);
 
+      if (inst->requireNopAfter()) {
+        Instruction *igaInst = IGAKernel->createNopInstruction();
+        currBB->appendInstruction(igaInst);
+      }
+
       if (bbNew) {
         // Fall through block is created.
         // So the new block needs to become current block

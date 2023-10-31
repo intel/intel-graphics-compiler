@@ -7829,3 +7829,18 @@ bool G4_INST::canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const {
 
   return true;
 }
+
+bool G4_InstCF::requireNopAfter() const {
+  if (!getBuilder().needNopAfterCFInstWA())
+    return false;
+
+  if (opcode() == G4_jmpi)
+    return true;
+
+  if (opcode() == G4_goto) {
+    if (getPredicate() && isBackward())
+      return false;
+    return true;
+  }
+  return false;
+}

@@ -941,6 +941,7 @@ public:
            op == G4_math);
   }
 
+  virtual bool requireNopAfter() const { return false; }
 private:
   // use inheritDIFrom() instead
   void setLocation(MDLocation *loc) { setMetadata(Metadata::InstLoc, loc); }
@@ -1229,6 +1230,8 @@ public:
     vASSERT(isReturn());
     setOpcode(G4_pseudo_fret);
   }
+
+  bool requireNopAfter() const override;
 }; // G4_InstCF
 
 class G4_InstSend : public G4_INST {

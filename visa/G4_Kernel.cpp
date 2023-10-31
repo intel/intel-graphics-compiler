@@ -1697,26 +1697,35 @@ static BlockOffsets precomputeBlockOffsets(std::ostream &os, G4_Kernel &g4k,
         lastInstSize = kv.getInstSize(currPc);
 
         G4_INST *inst = (*itInst);
-        if (g4k.fg.builder->hasDPASFuseRSWA() && inst->isCachelineAligned()) {
-          iga::Op opcode = kv.getOpcode(currPc);
-          iga::SWSB sw =
-              kv.getSWSBInfo(currPc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
 
-          while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() &&
-                 !sw.hasSpecialToken() && !sw.hasToken()) {
-            // For HW WA.
-            // In which, the sync instruction is used to make instruction
-            // aligned.  However, due to compaction, we don't know the location
-            // of the instruction, the sync instruction insertion has to happen
-            // during encoding, which is unknow for the instruction size of
-            // kernel in the decoding. That's the issue we have to make
-            // these changes.
+        // For HW WA.
+        // In which, vISA may ask IGA to emit some additional instructions.
+        // For example, sync is used to make instruction aligned, and nop is
+        // used to support stepping in debugger.
+        // However, due to compaction, we might not know the exact location of
+        // the instruction, the sync instruction insertion has to happen during
+        // encoding, which is unknown for the instruction size of kernel in the
+        // decoding. That's the issue we have to make these changes.
+        if (inst->isCachelineAligned()) {
+          iga::Op opcode = kv.getOpcode(currPc);
+          // There could be multiple sync.nop instructions emitted by IGA to
+          // make the instruction aligned. Here we continue to advance PC when
+          // seeing sync.nop so that vISA inst and IGA inst could match again.
+          while (opcode == iga::Op::SYNC) {
             currPc += lastInstSize;
             opcode = kv.getOpcode(currPc);
-            sw = kv.getSWSBInfo(currPc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
             lastInstSize = kv.getInstSize(currPc);
           }
         }
+
+        // When the inst requires an additional nop after it, again we need to
+        // advance PC to consume NOP to make vISA inst and IGA inst match later.
+        if (inst->requireNopAfter()) {
+          currPc += lastInstSize;
+          lastInstSize = kv.getInstSize(currPc);
+          vASSERT(kv.getOpcode(currPc) == iga::Op::NOP);
+        }
+
         currPc += lastInstSize;
       }
     }
@@ -1935,19 +1944,25 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
         }
       };
 
-      if (fg.builder->hasDPASFuseRSWA() && i->isCachelineAligned()) {
+      // Advance PC when the vISA instruction needs to be cacheline-aligned or
+      // requires a Nop after. See comments in precomputeBlockOffsets for
+      // details.
+      if (i->isCachelineAligned()) {
         iga::Op opcode = kv.getOpcode(pc);
-        iga::SWSB sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
-        while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() &&
-               !sw.hasSpecialToken() && !sw.hasToken()) {
-          // What's going on here???  Someone please give us a clue.
+        while (opcode == iga::Op::SYNC) {
           formatToInstToStream(pc, os);
           os << "\n";
           pc += kv.getInstSize(pc);
           opcode = kv.getOpcode(pc);
-          sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
         }
       }
+      if (i->requireNopAfter()) {
+        formatToInstToStream(pc, os);
+        os << "\n";
+        pc += kv.getInstSize(pc);
+        vASSERT(kv.getOpcode(pc) == iga::Op::NOP);
+      }
+
       formatToInstToStream(pc, os);
 
       (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs);
