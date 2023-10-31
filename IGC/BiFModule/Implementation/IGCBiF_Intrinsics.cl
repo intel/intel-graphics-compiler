@@ -861,6 +861,7 @@ uint8 __builtin_IB_subgroup_block_read_flat_transform_u8_k32(long baseoffset, in
 uint8 __builtin_IB_subgroup_block_read_flat_transform_u16_k16(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
 // equivalent to transpose_transform_u8_k32 and transpose_transform_u16_k16
 uint8 __builtin_IB_subgroup_block_read_flat_transpose_u32_k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
+ulong4 __builtin_IB_subgroup_block_read_flat_transpose_u64_k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
 
 // system memory fence (PVC+)
 void  __builtin_IB_system_memfence(bool fence_typed_memory);

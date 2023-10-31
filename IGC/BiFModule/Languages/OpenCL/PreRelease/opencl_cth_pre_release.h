@@ -2562,6 +2562,7 @@ ushort16 intel_subgroup_block_read_u16_m8k16v2(__global void *base_address, int 
 uint8    intel_subgroup_block_read_transform_u8_k32(__global void *base_address, int width, int height, int pitch, int2 coord);
 uint8    intel_subgroup_block_read_transform_u16_k16(__global void *base_address, int width, int height, int pitch, int2 coord);
 uint8    intel_subgroup_block_read_transpose_u32_k8(__global void *base_address, int width, int height, int pitch, int2 coord);
+ulong4   intel_subgroup_block_read_transpose_u64_k4(__global void *base_address, int width, int height, int pitch, int2 coord);
 
 #endif //defined(cl_intel_subgroup_extended_block_read)
 

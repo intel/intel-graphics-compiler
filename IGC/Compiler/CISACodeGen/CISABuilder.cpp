@@ -8819,6 +8819,32 @@ namespace IGC
             srcVar = GetRawSource(dst);
         }
 
+        bool needsSplitting = false;
+        uint16_t newNumElemsSplitDst = 0;
+        CVariable* dst0 = nullptr;
+        VISA_RawOpnd* dstVarMerged = nullptr;
+        VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
+        uint32_t repeatCount = 1;
+        if (subOp == LSC_LOAD_BLOCK2D && isTranspose && dataShape2D.size == LSC_DATA_SIZE_64b && blockHeight == 16)
+        {
+            needsSplitting = true;
+            dataShape2D.height = 8;
+            dstVarMerged = dstVar;
+
+            unsigned numParts = 2;
+            VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+            repeatCount = blockWidth;
+            newNumElemsSplitDst = (uint16_t)(visaNumLanes(toExecSize) * repeatCount);
+            IGC_ASSERT(newNumElemsSplitDst <= dst->GetNumberElement());
+            dst0 = m_program->GetNewVariable(
+                newNumElemsSplitDst,
+                dst->GetType(),
+                dst->GetAlign(),
+                dst->IsUniform(),
+                CName::NONE);
+            dstVar = GetRawDestination(dst0, 0);
+        }
+
         V(vKernel->AppendVISALscUntypedBlock2DInst(
             subOp,
             LSC_UGM,
@@ -8832,6 +8858,87 @@ namespace IGC
             0,
             0,
             srcVar));
+
+        if (needsSplitting)
+        {
+            CVariable* dst1 = m_program->GetNewVariable(
+                newNumElemsSplitDst,
+                dst->GetType(),
+                dst->GetAlign(),
+                dst->IsUniform(),
+                CName::NONE);
+            dstVar = GetRawDestination(dst1, 0);
+
+            VISA_VectorOpnd* srcOpnd0 = GetSourceOperandNoModifier(yOffset);
+            VISA_VectorOpnd* srcOpnd1 = nullptr;
+            uint immediate = 8;
+            V(vKernel->CreateVISAImmediate(srcOpnd1, &immediate, ISA_TYPE_UD));
+            CVariable* yOffsetIncrementedVar = m_program->GetNewVariable(
+                yOffset->GetNumberElement(),
+                yOffset->GetType(),
+                yOffset->GetAlign(),
+                yOffset->IsUniform(),
+                CName::NONE);
+            VISA_VectorOpnd* yVarIncremented = nullptr;
+            V(vKernel->CreateVISADstOperand(yVarIncremented, GetVISAVariable(yOffsetIncrementedVar), 1, 0, 0));
+            V(vKernel->AppendVISAArithmeticInst(
+                ISA_ADD,
+                nullptr,
+                false,
+                vISA_EMASK_M1_NM,
+                GetAluExecSize(yOffset), // EXEC_SIZE_1
+                yVarIncremented,
+                srcOpnd0,
+                srcOpnd1));
+
+            VISA_VectorOpnd* xVarPart2 = GetSourceOperandNoModifier(xOffset);
+            VISA_VectorOpnd* yVarPart2 = GetSourceOperandNoModifier(yOffsetIncrementedVar);
+            VISA_VectorOpnd* imgBaseoffsetPart2 = nullptr;
+            if (flatImageBaseoffset)
+            {
+                imgBaseoffsetPart2 = GetSourceOperandNoModifier(flatImageBaseoffset);
+            }
+            VISA_VectorOpnd* imgWidthPart2 = nullptr;
+            if (flatImageWidth)
+            {
+                imgWidthPart2 = GetSourceOperandNoModifier(flatImageWidth);
+            }
+            VISA_VectorOpnd* imgHeightPart2 = nullptr;
+            if (flatImageHeight)
+            {
+                imgHeightPart2 = GetSourceOperandNoModifier(flatImageHeight);
+            }
+            VISA_VectorOpnd* imgPitchPart2 = nullptr;
+            if (flatImagePitch)
+            {
+                imgPitchPart2 = GetSourceOperandNoModifier(flatImagePitch);
+            }
+            VISA_VectorOpnd* blockAddrsPart2[LSC_BLOCK2D_ADDR_PARAMS]{
+                imgBaseoffsetPart2, // surface base (a 64b scalar addr)
+                imgWidthPart2,      // surface width (32b)
+                imgHeightPart2,     // surface height (32b)
+                imgPitchPart2,      // surface pitch  (32b)
+                xVarPart2,          // block x offset (32b)
+                yVarPart2,          // block y offset (32b)
+            };
+
+            V(vKernel->AppendVISALscUntypedBlock2DInst(
+                subOp,
+                LSC_UGM,
+                predOpnd,
+                execSize,
+                mask,
+                cache,
+                dataShape2D,
+                dstVar,
+                blockAddrsPart2,
+                0,
+                0,
+                srcVar));
+
+            uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
+            MergePayloadToHigherSIMD(dst0, dst1, repeatCount, dst, dstOfstBytes, visaNumLanes(fromExecSize));
+        }
     }
 
     void CEncoder::LSC_TypedReadWrite(

@@ -1082,6 +1082,23 @@ void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm:
     }
     else if (isTranspose && !isVnniTransform)
     {
+        if (elemSize == 64)
+        {
+            numBlocksV = 1;
+            tileHeight = subGrpSize;
+
+            if (funcName.consume_front("_k4"))
+            {
+                // __builtin_IB_subgroup_block_read_flat_transpose_u64_k4
+                tileWidth = 4;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Transpose with 64 bit element size only supports width 4.");
+                return;
+            }
+        }
+        else
         if (elemSize == 32)
         {
             // isTranspose, dword elements
@@ -1092,6 +1109,16 @@ void SubGroupFuncsResolution::subGroup2DBlockOperation(llvm::CallInst& CI, llvm:
             numBlocksV = 1;
             tileHeight = subGrpSize;
             tileWidth = 8;
+
+            if (funcName.consume_front("_k8"))
+            {
+                tileWidth = 8;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width 8.");
+                return;
+            }
         }
         else
         {
