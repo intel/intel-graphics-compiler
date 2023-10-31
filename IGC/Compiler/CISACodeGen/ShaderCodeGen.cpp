@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PreRAScheduler.hpp"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
@@ -661,6 +662,20 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // Run MemOpt
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
+
+#if LLVM_VERSION_MAJOR <= 10
+        if (ctx.type == ShaderType::OPENCL_SHADER)
+        {
+            // Some LLVM passes may produce load/store instructions without alignment set,
+            // for example SROA. LLVM API has been changed to ensure that alignment is never
+            // missing, it has been changed in LLVM11: https://reviews.llvm.org/D77454.
+            // Merging loads/stores without alignment set results in producing loads/stores
+            // that operate on a bigger types, hence loosing an information about actual alignment.
+            // AlignmentAnalysis restores alignments based on data-flow analysis, so that MemOpt
+            // can propagate the correct alignment to the merged instructions.
+            mpm.add(new AlignmentAnalysis());
+        }
+#endif
 
         if ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) &&
             IGC_IS_FLAG_DISABLED(DisablePrepareLoadsStores))
