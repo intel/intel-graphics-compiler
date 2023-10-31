@@ -43,7 +43,7 @@ const char* AddrModeEnumeration[3] =
 #endif // GED_ADDR_MODE_HIDDEN
 
 #ifndef GED_ARCH_REG_HIDDEN
-const char* ArchRegEnumeration[16] =
+const char* ArchRegEnumeration[17] =
 {
     "null", // 0
     "a0", // 1
@@ -60,7 +60,8 @@ const char* ArchRegEnumeration[16] =
     "tm0", // 12
     "fc", // 13
     "dbg0", // 14
-    NULL // 15
+    "n", // 15
+    NULL // 16
 }; // ArchRegEnumeration[]
 #endif // GED_ARCH_REG_HIDDEN
 
@@ -205,6 +206,19 @@ const char* DepCtrlEnumeration[5] =
 }; // DepCtrlEnumeration[]
 #endif // GED_DEP_CTRL_HIDDEN
 
+#ifndef GED_DPADDR_REG_SIZE_HIDDEN
+const char* DPAddrRegSizeEnumeration[7] =
+{
+    "1_REG", // 0
+    "2_REG", // 1
+    "3_REG", // 2
+    "4_REG", // 3
+    "6_REG", // 4
+    "8_REG", // 5
+    NULL // 6
+}; // DPAddrRegSizeEnumeration[]
+#endif // GED_DPADDR_REG_SIZE_HIDDEN
+
 #ifndef GED_DP_ADDR_SIZE_HIDDEN
 const char* DpAddrSizeEnumeration[4] =
 {
@@ -225,6 +239,59 @@ const char* DpAddrSurfaceTypeEnumeration[5] =
     NULL // 4
 }; // DpAddrSurfaceTypeEnumeration[]
 #endif // GED_DP_ADDR_SURFACE_TYPE_HIDDEN
+
+#ifndef GED_DPCACHE_LOAD_HIDDEN
+const char* DPCacheLoadEnumeration[11] =
+{
+    "USE_DEFAULT", // 0
+    "L1UC_L3UC", // 1
+    "L1UC_L3C", // 2
+    "L1UC_L3CC", // 3
+    "L1C_L3UC", // 4
+    "L1C_L3C", // 5
+    "L1C_L3CC", // 6
+    "L1S_L3UC", // 7
+    "L1S_L3C", // 8
+    "L1IAR_L3IAR", // 9
+    NULL // 10
+}; // DPCacheLoadEnumeration[]
+#endif // GED_DPCACHE_LOAD_HIDDEN
+
+#ifndef GED_DPCACHE_STORE_HIDDEN
+const char* DPCacheStoreEnumeration[9] =
+{
+    "DEFAULT", // 0
+    "L1UC_L3UC", // 1
+    "L1UC_L3WB", // 2
+    "L1WT_L3UC", // 3
+    "L1WT_L3WB", // 4
+    "L1S_L3UC", // 5
+    "L1S_L3WB", // 6
+    "L1WB_L3WB", // 7
+    NULL // 8
+}; // DPCacheStoreEnumeration[]
+#endif // GED_DPCACHE_STORE_HIDDEN
+
+#ifndef GED_DPCMASK_HIDDEN
+const char* DPCmaskEnumeration[15] =
+{
+    "X", // 0
+    "Y", // 1
+    "XY", // 2
+    "Z", // 3
+    "XZ", // 4
+    "YZ", // 5
+    "XYZ", // 6
+    "W", // 7
+    "XW", // 8
+    "YW", // 9
+    "ZW", // 10
+    "XYW", // 11
+    "YZW", // 12
+    "XYZW", // 13
+    NULL // 14
+}; // DPCmaskEnumeration[]
+#endif // GED_DPCMASK_HIDDEN
 
 #ifndef GED_DP_DATA_SIZE_HIDDEN
 const char* DpDataSizeEnumeration[8] =
@@ -267,8 +334,16 @@ const char* DpFlushTypeEnumeration[7] =
 }; // DpFlushTypeEnumeration[]
 #endif // GED_DP_FLUSH_TYPE_HIDDEN
 
+#ifndef GED_DPONE_ADDR_REG_HIDDEN
+const char* DPOneAddrRegEnumeration[2] =
+{
+    "1_REG", // 0
+    NULL // 1
+}; // DPOneAddrRegEnumeration[]
+#endif // GED_DPONE_ADDR_REG_HIDDEN
+
 #ifndef GED_DP_OPCODE_HIDDEN
-const char* DpOpcodeEnumeration[28] =
+const char* DpOpcodeEnumeration[39] =
 {
     "LOAD", // 0
     "LOAD_CMASK", // 1
@@ -297,7 +372,12 @@ const char* DpOpcodeEnumeration[28] =
     "FENCE", // 24
     "LOAD_2D_BLOCK", // 25
     "STORE_2D_BLOCK", // 26
-    NULL // 27
+    "LOAD_STATUS", // 27
+    "RSI", // 28
+    "APPENDCOUNTER_ATOMIC_ADD", // 29
+    "APPENDCOUNTER_ATOMIC_SUB", // 30
+    "APPENDCOUNTER_ATOMIC_STORE", // 31
+    NULL
 }; // DpOpcodeEnumeration[]
 #endif // GED_DP_OPCODE_HIDDEN
 
@@ -727,7 +807,7 @@ const char* SaturateEnumeration[3] =
 #endif // GED_SATURATE_HIDDEN
 
 #ifndef GED_SFID_HIDDEN
-const char* SFIDEnumeration[22] =
+const char* SFIDEnumeration[23] =
 {
     "NULL", // 0
     "SAMPLER", // 1
@@ -748,9 +828,10 @@ const char* SFIDEnumeration[22] =
     "TGM", // 16
     "SLM", // 17
     "UGM", // 18
-    "DP_SAMPLER", // 19
-    "DP_CC", // 20
-    NULL // 21
+    "DP_CONST", // 19
+    "DP_SAMPLER", // 20
+    "DP_CC", // 21
+    NULL // 22
 }; // SFIDEnumeration[]
 #endif // GED_SFID_HIDDEN
 
@@ -825,7 +906,7 @@ const char* SwizzleEnumeration[5] =
 #endif // GED_SWIZZLE_HIDDEN
 
 #ifndef GED_SYNC_FC_HIDDEN
-const char* SyncFCEnumeration[8] =
+const char* SyncFCEnumeration[9] =
 {
     "nop", // 0
     "grfsb", // 1
@@ -834,7 +915,8 @@ const char* SyncFCEnumeration[8] =
     "bar", // 4
     "host", // 5
     "fence", // 6
-    NULL // 7
+    "flush", // 7
+    NULL // 8
 }; // SyncFCEnumeration[]
 #endif // GED_SYNC_FC_HIDDEN
 

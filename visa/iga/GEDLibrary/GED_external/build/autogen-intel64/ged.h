@@ -138,6 +138,12 @@ typedef enum
      * Supported CPUs: Xe_LPG_MD
      */
     GED_MODEL_XE_LPG_MD,
+
+    /*!
+     * GED Model Version: xe2
+     * Supported CPUs: Xe2
+     */
+    GED_MODEL_XE2,
     GED_MODEL_INVALID
 } GED_MODEL;
 
@@ -6309,6 +6315,206 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrSize(uint32_t* msgDesc, const
     GED_TraceAPI("GED_SetDPAddrSize(" #msgDesc ", " #modelId ", " #AddrSize ")"), \
     _GED_SetDPAddrSize(msgDesc, modelId, AddrSize))
 
+/*!
+ * Get the value of the DPCacheStore field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDPCacheStoreString. See @ref GED_PSEUDO_FIELD_DPCacheStore
+ * for the field's description.
+ *
+ * @param[in]       msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPCacheStore's enumeration if the field is valid, GED_DPCACHE_STORE_INVALID otherwise.
+ */
+extern GED_DPCACHE_STORE GED_CALLCONV _GED_GetDPCacheStore(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+#define GED_GetDPCacheStore(msgDesc, modelId, result) ( \
+    GED_TraceAPI("GED_GetDPCacheStore(" #msgDesc ", " #modelId ", " #result ")"), \
+    _GED_GetDPCacheStore(msgDesc, modelId, result))
+
+/*!
+ * Set the value of the DPCacheStore field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
+ * See @ref GED_PSEUDO_FIELD_DPCacheStore for the field's description.
+ *
+ * @param[in,out]   msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       CacheStore The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCacheStore(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_STORE
+                                                          CacheStore);
+#define GED_SetDPCacheStore(msgDesc, modelId, CacheStore) ( \
+    GED_TraceAPI("GED_SetDPCacheStore(" #msgDesc ", " #modelId ", " #CacheStore ")"), \
+    _GED_SetDPCacheStore(msgDesc, modelId, CacheStore))
+
+/*!
+ * Get the value of the DPCacheLoad field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDPCacheLoadString. See @ref GED_PSEUDO_FIELD_DPCacheLoad
+ * for the field's description.
+ *
+ * @param[in]       msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPCacheLoad's enumeration if the field is valid, GED_DPCACHE_LOAD_INVALID otherwise.
+ */
+extern GED_DPCACHE_LOAD GED_CALLCONV _GED_GetDPCacheLoad(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+#define GED_GetDPCacheLoad(msgDesc, modelId, result) ( \
+    GED_TraceAPI("GED_GetDPCacheLoad(" #msgDesc ", " #modelId ", " #result ")"), \
+    _GED_GetDPCacheLoad(msgDesc, modelId, result))
+
+/*!
+ * Set the value of the DPCacheLoad field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
+ * See @ref GED_PSEUDO_FIELD_DPCacheLoad for the field's description.
+ *
+ * @param[in,out]   msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       CacheLoad  The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCacheLoad(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_LOAD
+                                                         CacheLoad);
+#define GED_SetDPCacheLoad(msgDesc, modelId, CacheLoad) ( \
+    GED_TraceAPI("GED_SetDPCacheLoad(" #msgDesc ", " #modelId ", " #CacheLoad ")"), \
+    _GED_SetDPCacheLoad(msgDesc, modelId, CacheLoad))
+
+/*!
+ * Get the value of the DPAddrRegSize field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDPAddrRegSizeString. See @ref
+ * GED_PSEUDO_FIELD_DPAddrRegSize for the field's description.
+ *
+ * @param[in]       msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPAddrRegSize's enumeration if the field is valid, GED_DPADDR_REG_SIZE_INVALID otherwise.
+ */
+extern GED_DPADDR_REG_SIZE GED_CALLCONV _GED_GetDPAddrRegSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                              result);
+#define GED_GetDPAddrRegSize(msgDesc, modelId, result) ( \
+    GED_TraceAPI("GED_GetDPAddrRegSize(" #msgDesc ", " #modelId ", " #result ")"), \
+    _GED_GetDPAddrRegSize(msgDesc, modelId, result))
+
+/*!
+ * Set the value of the DPAddrRegSize field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
+ * See @ref GED_PSEUDO_FIELD_DPAddrRegSize for the field's description.
+ *
+ * @param[in,out]   msgDesc        The .
+ * @param[in]       modelId        The GED model by which to interpret.
+ * @param[in]       AddrRegSize    The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrRegSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPADDR_REG_SIZE
+                                                           AddrRegSize);
+#define GED_SetDPAddrRegSize(msgDesc, modelId, AddrRegSize) ( \
+    GED_TraceAPI("GED_SetDPAddrRegSize(" #msgDesc ", " #modelId ", " #AddrRegSize ")"), \
+    _GED_SetDPAddrRegSize(msgDesc, modelId, AddrRegSize))
+
+/*!
+ * Get the value of the DPOneAddrReg field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDPOneAddrRegString. See @ref GED_PSEUDO_FIELD_DPOneAddrReg
+ * for the field's description.
+ *
+ * @param[in]       msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPOneAddrReg's enumeration if the field is valid, GED_DPONE_ADDR_REG_INVALID otherwise.
+ */
+extern GED_DPONE_ADDR_REG GED_CALLCONV _GED_GetDPOneAddrReg(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                            result);
+#define GED_GetDPOneAddrReg(msgDesc, modelId, result) ( \
+    GED_TraceAPI("GED_GetDPOneAddrReg(" #msgDesc ", " #modelId ", " #result ")"), \
+    _GED_GetDPOneAddrReg(msgDesc, modelId, result))
+
+/*!
+ * Set the value of the DPOneAddrReg field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
+ * See @ref GED_PSEUDO_FIELD_DPOneAddrReg for the field's description.
+ *
+ * @param[in,out]   msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       OneAddrReg The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPOneAddrReg(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPONE_ADDR_REG
+                                                          OneAddrReg);
+#define GED_SetDPOneAddrReg(msgDesc, modelId, OneAddrReg) ( \
+    GED_TraceAPI("GED_SetDPOneAddrReg(" #msgDesc ", " #modelId ", " #OneAddrReg ")"), \
+    _GED_SetDPOneAddrReg(msgDesc, modelId, OneAddrReg))
+
+/*!
+ * Get the value of the DPCmask field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration value.
+ * To obtain the enum entry's string representation, use @ref GED_GetDPCmaskString. See @ref GED_PSEUDO_FIELD_DPCmask for the field's
+ * description.
+ *
+ * @param[in]       msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DPCmask's enumeration if the field is valid, GED_DPCMASK_INVALID otherwise.
+ */
+extern GED_DPCMASK GED_CALLCONV _GED_GetDPCmask(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+#define GED_GetDPCmask(msgDesc, modelId, result) ( \
+    GED_TraceAPI("GED_GetDPCmask(" #msgDesc ", " #modelId ", " #result ")"), \
+    _GED_GetDPCmask(msgDesc, modelId, result))
+
+/*!
+ * Set the value of the DPCmask field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc). See
+ * @ref GED_PSEUDO_FIELD_DPCmask for the field's description.
+ *
+ * @param[in,out]   msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       Cmask      The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCmask(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCMASK Cmask);
+#define GED_SetDPCmask(msgDesc, modelId, Cmask) ( \
+    GED_TraceAPI("GED_SetDPCmask(" #msgDesc ", " #modelId ", " #Cmask ")"), \
+    _GED_SetDPCmask(msgDesc, modelId, Cmask))
+
+/*!
+ * Get the value of the MessageTypeDP_CONST field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetMessageTypeString. See @ref
+ * GED_PSEUDO_FIELD_MessageTypeDP_CONST for the field's description.
+ *
+ * @param[in]       msgDesc    The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      MessageTypeDP_CONST's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
+ */
+extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_CONST(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                 result);
+#define GED_GetMessageTypeDP_CONST(msgDesc, modelId, result) ( \
+    GED_TraceAPI("GED_GetMessageTypeDP_CONST(" #msgDesc ", " #modelId ", " #result ")"), \
+    _GED_GetMessageTypeDP_CONST(msgDesc, modelId, result))
+
+/*!
+ * Set the value of the MessageTypeDP_CONST field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_CONST for the field's description.
+ *
+ * @param[in,out]   msgDesc        The .
+ * @param[in]       modelId        The GED model by which to interpret.
+ * @param[in]       messageType    The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_CONST(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                                 messageType);
+#define GED_SetMessageTypeDP_CONST(msgDesc, modelId, messageType) ( \
+    GED_TraceAPI("GED_SetMessageTypeDP_CONST(" #msgDesc ", " #modelId ", " #messageType ")"), \
+    _GED_SetMessageTypeDP_CONST(msgDesc, modelId, messageType))
+
 #if GED_EXPERIMENTAL
 
 /*!
@@ -6510,6 +6716,19 @@ extern const char* GED_CALLCONV _GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue)
     _GED_GetDepCtrlString(DepCtrlValue))
 
 /*!
+ * Get the string representation for the given GED_DPADDR_REG_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DPADDR_REG_SIZE_INVALID.
+ *
+ * @param[in]       DPAddrRegSizeValue The given GED_DPADDR_REG_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV _GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE DPAddrRegSizeValue);
+#define GED_GetDPAddrRegSizeString(DPAddrRegSizeValue) ( \
+    GED_TraceAPI("GED_GetDPAddrRegSizeString(" #DPAddrRegSizeValue ")"), \
+    _GED_GetDPAddrRegSizeString(DPAddrRegSizeValue))
+
+/*!
  * Get the string representation for the given GED_DP_ADDR_SIZE enumerator. The function returns a NULL pointer for
  * GED_DP_ADDR_SIZE_INVALID.
  *
@@ -6534,6 +6753,44 @@ extern const char* GED_CALLCONV _GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURF
 #define GED_GetDpAddrSurfaceTypeString(DpAddrSurfaceTypeValue) ( \
     GED_TraceAPI("GED_GetDpAddrSurfaceTypeString(" #DpAddrSurfaceTypeValue ")"), \
     _GED_GetDpAddrSurfaceTypeString(DpAddrSurfaceTypeValue))
+
+/*!
+ * Get the string representation for the given GED_DPCACHE_LOAD enumerator. The function returns a NULL pointer for
+ * GED_DPCACHE_LOAD_INVALID.
+ *
+ * @param[in]       DPCacheLoadValue   The given GED_DPCACHE_LOAD enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV _GED_GetDPCacheLoadString(GED_DPCACHE_LOAD DPCacheLoadValue);
+#define GED_GetDPCacheLoadString(DPCacheLoadValue) ( \
+    GED_TraceAPI("GED_GetDPCacheLoadString(" #DPCacheLoadValue ")"), \
+    _GED_GetDPCacheLoadString(DPCacheLoadValue))
+
+/*!
+ * Get the string representation for the given GED_DPCACHE_STORE enumerator. The function returns a NULL pointer for
+ * GED_DPCACHE_STORE_INVALID.
+ *
+ * @param[in]       DPCacheStoreValue  The given GED_DPCACHE_STORE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV _GED_GetDPCacheStoreString(GED_DPCACHE_STORE DPCacheStoreValue);
+#define GED_GetDPCacheStoreString(DPCacheStoreValue) ( \
+    GED_TraceAPI("GED_GetDPCacheStoreString(" #DPCacheStoreValue ")"), \
+    _GED_GetDPCacheStoreString(DPCacheStoreValue))
+
+/*!
+ * Get the string representation for the given GED_DPCMASK enumerator. The function returns a NULL pointer for GED_DPCMASK_INVALID.
+ *
+ * @param[in]       DPCmaskValue   The given GED_DPCMASK enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV _GED_GetDPCmaskString(GED_DPCMASK DPCmaskValue);
+#define GED_GetDPCmaskString(DPCmaskValue) ( \
+    GED_TraceAPI("GED_GetDPCmaskString(" #DPCmaskValue ")"), \
+    _GED_GetDPCmaskString(DPCmaskValue))
 
 /*!
  * Get the string representation for the given GED_DP_DATA_SIZE enumerator. The function returns a NULL pointer for
@@ -6573,6 +6830,19 @@ extern const char* GED_CALLCONV _GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFl
 #define GED_GetDpFlushTypeString(DpFlushTypeValue) ( \
     GED_TraceAPI("GED_GetDpFlushTypeString(" #DpFlushTypeValue ")"), \
     _GED_GetDpFlushTypeString(DpFlushTypeValue))
+
+/*!
+ * Get the string representation for the given GED_DPONE_ADDR_REG enumerator. The function returns a NULL pointer for
+ * GED_DPONE_ADDR_REG_INVALID.
+ *
+ * @param[in]       DPOneAddrRegValue  The given GED_DPONE_ADDR_REG enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV _GED_GetDPOneAddrRegString(GED_DPONE_ADDR_REG DPOneAddrRegValue);
+#define GED_GetDPOneAddrRegString(DPOneAddrRegValue) ( \
+    GED_TraceAPI("GED_GetDPOneAddrRegString(" #DPOneAddrRegValue ")"), \
+    _GED_GetDPOneAddrRegString(DPOneAddrRegValue))
 
 /*!
  * Get the string representation for the given GED_DP_OPCODE enumerator. The function returns a NULL pointer for

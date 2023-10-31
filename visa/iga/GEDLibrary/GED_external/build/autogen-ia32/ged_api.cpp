@@ -37,6 +37,7 @@ int GED_TraceAPICalls = 0;
 #include "ged_model_xe_hpc_a.h"
 #include "ged_model_xe_hpc.h"
 #include "ged_model_xe_lpg_md.h"
+#include "ged_model_xe2.h"
 
 #ifdef GED_OBSCURE_MODEL_NAMES
 #define GED_MODEL_NAME_STRING(name) ""
@@ -46,7 +47,7 @@ int GED_TraceAPICalls = 0;
 #endif // GED_OBSCURE_MODEL_NAMES
 
 #ifndef GED_MODELS_ARRAY_HIDDEN
-ModelData ModelsArray[14] =
+ModelData ModelsArray[15] =
 {
     { GED_MODEL_NS_NONE::Opcodes, GED_MODEL_NAME_STRING("none"), 129, (const ged_field_enum_table_t)OpcodeTable0, 0, NULL, 3, EnumInterpretersTable0, 0, NULL }, // 0
     { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 129, (const ged_field_enum_table_t)OpcodeTable8, 29, PositionInterpreterTable0, 3, EnumInterpretersTable1, 0, NULL }, // 1
@@ -61,13 +62,14 @@ ModelData ModelsArray[14] =
     { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 129, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 10
     { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 129, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL }, // 11
     { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 129, (const ged_field_enum_table_t)OpcodeTable6, 45, PositionInterpreterTable9, 3, EnumInterpretersTable7, 0, NULL }, // 12
-    { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 129, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL } // 13
+    { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 129, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
+    { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 129, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL } // 14
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
-const unsigned int numOfSupportedModels = 14;
+const unsigned int numOfSupportedModels = 15;
 
 #ifndef GED_MODELS_ARRAY_NAMES_HIDDEN
-const char* modelNames[14] = { GED_MODEL_NAME_STRING("none"), GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc"), GED_MODEL_NAME_STRING("xe_lpg_md") };
+const char* modelNames[15] = { GED_MODEL_NAME_STRING("none"), GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc"), GED_MODEL_NAME_STRING("xe_lpg_md"), GED_MODEL_NAME_STRING("xe2") };
 #endif // GED_MODELS_ARRAY_NAMES_HIDDEN
 
 #ifndef GED_MODELS_ARRAY_FUNCTION_HIDDEN
@@ -96,6 +98,7 @@ bool _GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
     else if (GED_MODEL_NAME_STRING("xe_hpc_a") == name) model = GED_MODEL_XE_HPC_A;
     else if (GED_MODEL_NAME_STRING("xe_hpc") == name) model = GED_MODEL_XE_HPC;
     else if (GED_MODEL_NAME_STRING("xe_lpg_md") == name) model = GED_MODEL_XE_LPG_MD;
+    else if (GED_MODEL_NAME_STRING("xe2") == name) model = GED_MODEL_XE2;
     else return false;
     return true;
 }
@@ -2219,6 +2222,72 @@ GED_RETURN_VALUE _GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, 
 {
     return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrSize, modelId, AddrSize);
 }
+GED_DPCACHE_STORE _GED_GetDPCacheStore(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPCacheStore, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DPCACHE_STORE)value : GED_DPCACHE_STORE_INVALID;
+}
+GED_RETURN_VALUE _GED_SetDPCacheStore(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_STORE CacheStore)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPCacheStore, modelId, CacheStore);
+}
+GED_DPCACHE_LOAD _GED_GetDPCacheLoad(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPCacheLoad, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DPCACHE_LOAD)value : GED_DPCACHE_LOAD_INVALID;
+}
+GED_RETURN_VALUE _GED_SetDPCacheLoad(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_LOAD CacheLoad)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPCacheLoad, modelId, CacheLoad);
+}
+GED_DPADDR_REG_SIZE _GED_GetDPAddrRegSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPAddrRegSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DPADDR_REG_SIZE)value : GED_DPADDR_REG_SIZE_INVALID;
+}
+GED_RETURN_VALUE _GED_SetDPAddrRegSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPADDR_REG_SIZE AddrRegSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrRegSize, modelId, AddrRegSize);
+}
+GED_DPONE_ADDR_REG _GED_GetDPOneAddrReg(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPOneAddrReg, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DPONE_ADDR_REG)value : GED_DPONE_ADDR_REG_INVALID;
+}
+GED_RETURN_VALUE _GED_SetDPOneAddrReg(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPONE_ADDR_REG OneAddrReg)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPOneAddrReg, modelId, OneAddrReg);
+}
+GED_DPCMASK _GED_GetDPCmask(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_DPCmask, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DPCMASK)value : GED_DPCMASK_INVALID;
+}
+GED_RETURN_VALUE _GED_SetDPCmask(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCMASK Cmask)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPCmask, modelId, Cmask);
+}
+GED_MESSAGE_TYPE _GED_GetMessageTypeDP_CONST(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = GEDInterpreter::InterpretPosition(msgDesc, GED_PSEUDO_FIELD_MessageTypeDP_CONST, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_MESSAGE_TYPE)value : GED_MESSAGE_TYPE_INVALID;
+}
+GED_RETURN_VALUE _GED_SetMessageTypeDP_CONST(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE messageType)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_MessageTypeDP_CONST, modelId, messageType);
+}
 
 #if GED_EXPERIMENTAL
 GED_RETURN_VALUE _GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const uint64_t value)
@@ -2339,6 +2408,14 @@ const char* _GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue)
 }
 #endif // GED_DEP_CTRL_HIDDEN
 
+#ifndef GED_DPADDR_REG_SIZE_HIDDEN
+const char* _GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE DPAddrRegSizeValue)
+{
+    return DPAddrRegSizeEnumeration[DPAddrRegSizeValue];
+
+}
+#endif // GED_DPADDR_REG_SIZE_HIDDEN
+
 #ifndef GED_DP_ADDR_SIZE_HIDDEN
 const char* _GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue)
 {
@@ -2354,6 +2431,30 @@ const char* _GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURFACE_TYPE DpAddrSurfa
 
 }
 #endif // GED_DP_ADDR_SURFACE_TYPE_HIDDEN
+
+#ifndef GED_DPCACHE_LOAD_HIDDEN
+const char* _GED_GetDPCacheLoadString(GED_DPCACHE_LOAD DPCacheLoadValue)
+{
+    return DPCacheLoadEnumeration[DPCacheLoadValue];
+
+}
+#endif // GED_DPCACHE_LOAD_HIDDEN
+
+#ifndef GED_DPCACHE_STORE_HIDDEN
+const char* _GED_GetDPCacheStoreString(GED_DPCACHE_STORE DPCacheStoreValue)
+{
+    return DPCacheStoreEnumeration[DPCacheStoreValue];
+
+}
+#endif // GED_DPCACHE_STORE_HIDDEN
+
+#ifndef GED_DPCMASK_HIDDEN
+const char* _GED_GetDPCmaskString(GED_DPCMASK DPCmaskValue)
+{
+    return DPCmaskEnumeration[DPCmaskValue];
+
+}
+#endif // GED_DPCMASK_HIDDEN
 
 #ifndef GED_DP_DATA_SIZE_HIDDEN
 const char* _GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpDataSizeValue)
@@ -2378,6 +2479,14 @@ const char* _GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFlushTypeValue)
 
 }
 #endif // GED_DP_FLUSH_TYPE_HIDDEN
+
+#ifndef GED_DPONE_ADDR_REG_HIDDEN
+const char* _GED_GetDPOneAddrRegString(GED_DPONE_ADDR_REG DPOneAddrRegValue)
+{
+    return DPOneAddrRegEnumeration[DPOneAddrRegValue];
+
+}
+#endif // GED_DPONE_ADDR_REG_HIDDEN
 
 #ifndef GED_DP_OPCODE_HIDDEN
 const char* _GED_GetDpOpcodeString(GED_DP_OPCODE DpOpcodeValue)

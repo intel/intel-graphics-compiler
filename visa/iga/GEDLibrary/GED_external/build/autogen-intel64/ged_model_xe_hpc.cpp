@@ -25,7 +25,7 @@ namespace GED_MODEL_NS_XE_HPC
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_BASIC_ONE_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_BASIC_ONE_SRCDecoding = DecodingTable657;
+static ged_ins_decoding_table_t EU_INSTRUCTION_BASIC_ONE_SRCDecoding = DecodingTable682;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_BASIC_ONE_SRC.
@@ -37,7 +37,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_BASIC_ONE_SRCEncodingMasks =
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_BASIC_THREE_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_BASIC_THREE_SRCDecoding = DecodingTable644;
+static ged_ins_decoding_table_t EU_INSTRUCTION_BASIC_THREE_SRCDecoding = DecodingTable669;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_BASIC_THREE_SRC.
@@ -49,7 +49,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_BASIC_THREE_SRCEncodingMasks
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_BASIC_TWO_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_BASIC_TWO_SRCDecoding = DecodingTable658;
+static ged_ins_decoding_table_t EU_INSTRUCTION_BASIC_TWO_SRCDecoding = DecodingTable683;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_BASIC_TWO_SRC.
@@ -61,7 +61,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_BASIC_TWO_SRCEncodingMasks =
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_BFN.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_BFNDecoding = DecodingTable646;
+static ged_ins_decoding_table_t EU_INSTRUCTION_BFNDecoding = DecodingTable671;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_BFN.
@@ -73,7 +73,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_BFNEncodingMasks = EncodingM
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_BRANCH_ONE_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_BRANCH_ONE_SRCDecoding = DecodingTable659;
+static ged_ins_decoding_table_t EU_INSTRUCTION_BRANCH_ONE_SRCDecoding = DecodingTable684;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_BRANCH_ONE_SRC.
@@ -85,7 +85,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_BRANCH_ONE_SRCEncodingMasks 
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_BRANCH_TWO_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_BRANCH_TWO_SRCDecoding = DecodingTable660;
+static ged_ins_decoding_table_t EU_INSTRUCTION_BRANCH_TWO_SRCDecoding = DecodingTable685;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_BRANCH_TWO_SRC.
@@ -97,7 +97,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_BRANCH_TWO_SRCEncodingMasks 
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_COMPACT_THREE_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_COMPACT_THREE_SRCDecoding = DecodingTable649;
+static ged_ins_decoding_table_t EU_INSTRUCTION_COMPACT_THREE_SRCDecoding = DecodingTable674;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_COMPACT_THREE_SRC.
@@ -109,13 +109,13 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_COMPACT_THREE_SRCEncodingMas
  * Top level mapping table in the mapping chain for the compact instruction format EU_INSTRUCTION_COMPACT_THREE_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t EU_INSTRUCTION_COMPACT_THREE_SRCMapping = MappingTable56;
+static ged_compact_mapping_table_t EU_INSTRUCTION_COMPACT_THREE_SRCMapping = MappingTable62;
 
 /*!
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_COMPACT_TWO_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_COMPACT_TWO_SRCDecoding = DecodingTable650;
+static ged_ins_decoding_table_t EU_INSTRUCTION_COMPACT_TWO_SRCDecoding = DecodingTable675;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_COMPACT_TWO_SRC.
@@ -127,13 +127,13 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_COMPACT_TWO_SRCEncodingMasks
  * Top level mapping table in the mapping chain for the compact instruction format EU_INSTRUCTION_COMPACT_TWO_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t EU_INSTRUCTION_COMPACT_TWO_SRCMapping = MappingTable57;
+static ged_compact_mapping_table_t EU_INSTRUCTION_COMPACT_TWO_SRCMapping = MappingTable63;
 
 /*!
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_DPAS_THREE_SRC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_DPAS_THREE_SRCDecoding = DecodingTable661;
+static ged_ins_decoding_table_t EU_INSTRUCTION_DPAS_THREE_SRCDecoding = DecodingTable686;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_DPAS_THREE_SRC.
@@ -145,7 +145,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_DPAS_THREE_SRCEncodingMasks 
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_ILLEGAL.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_ILLEGALDecoding = DecodingTable622;
+static ged_ins_decoding_table_t EU_INSTRUCTION_ILLEGALDecoding = DecodingTable647;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_ILLEGAL.
@@ -157,7 +157,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_ILLEGALEncodingMasks = Encod
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_MATH.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_MATHDecoding = DecodingTable662;
+static ged_ins_decoding_table_t EU_INSTRUCTION_MATHDecoding = DecodingTable687;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_MATH.
@@ -169,7 +169,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_MATHEncodingMasks = Encoding
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_NOP.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_NOPDecoding = DecodingTable653;
+static ged_ins_decoding_table_t EU_INSTRUCTION_NOPDecoding = DecodingTable678;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_NOP.
@@ -181,7 +181,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_NOPEncodingMasks = EncodingM
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_SEND.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_SENDDecoding = DecodingTable654;
+static ged_ins_decoding_table_t EU_INSTRUCTION_SENDDecoding = DecodingTable679;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_SEND.
@@ -193,7 +193,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_SENDEncodingMasks = Encoding
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_SYNC.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_SYNCDecoding = DecodingTable655;
+static ged_ins_decoding_table_t EU_INSTRUCTION_SYNCDecoding = DecodingTable680;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_SYNC.
@@ -205,7 +205,7 @@ static ged_instruction_masks_table_t EU_INSTRUCTION_SYNCEncodingMasks = Encoding
  * Top level decoding table in the decoding chain for the format oneSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t oneSourceCompactDecoding = DecodingTable656;
+static ged_ins_decoding_table_t oneSourceCompactDecoding = DecodingTable681;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format oneSourceCompact.
@@ -217,7 +217,7 @@ static ged_instruction_masks_table_t oneSourceCompactEncodingMasks = EncodingMas
  * Top level mapping table in the mapping chain for the compact instruction format oneSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_compact_mapping_table_t oneSourceCompactMapping = MappingTable58;
+static ged_compact_mapping_table_t oneSourceCompactMapping = MappingTable64;
 OpcodeTables Opcodes[128] =
 {
     EU_INSTRUCTION_ILLEGALDecoding, EU_INSTRUCTION_ILLEGALEncodingMasks, NULL, NULL, NULL, // 0

@@ -25,7 +25,7 @@ namespace GED_MODEL_NS_NONE
  * Top level decoding table in the decoding chain for the format EU_INSTRUCTION_STUB.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t EU_INSTRUCTION_STUBDecoding = DecodingTable542;
+static ged_ins_decoding_table_t EU_INSTRUCTION_STUBDecoding = DecodingTable567;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format EU_INSTRUCTION_STUB.

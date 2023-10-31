@@ -191,4 +191,14 @@ extern const ged_instruction_masks_entry_t EncodingMasksTable170[4];
 extern const ged_instruction_masks_entry_t EncodingMasksTable171[2];
 extern const ged_instruction_masks_entry_t EncodingMasksTable172[3];
 extern const ged_instruction_masks_entry_t EncodingMasksTable173[3];
+extern const ged_instruction_masks_entry_t EncodingMasksTable174[4];
+extern const ged_instruction_masks_entry_t EncodingMasksTable175[16];
+extern const ged_instruction_masks_entry_t EncodingMasksTable176[2];
+extern const ged_instruction_masks_entry_t EncodingMasksTable177[4];
+extern const ged_instruction_masks_entry_t EncodingMasksTable178[3];
+extern const ged_instruction_masks_entry_t EncodingMasksTable179[3];
+extern const ged_instruction_masks_entry_t EncodingMasksTable180[16];
+extern const ged_instruction_masks_entry_t EncodingMasksTable181[7];
+extern const ged_instruction_masks_entry_t EncodingMasksTable182[3];
+extern const ged_instruction_masks_entry_t EncodingMasksTable183[4];
 #endif // GED_ENCODING_MASKS_TABLES_H

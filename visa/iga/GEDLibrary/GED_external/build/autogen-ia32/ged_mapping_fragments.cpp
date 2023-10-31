@@ -254,3 +254,10 @@ const ged_compact_mapping_fragment_t MappingFragmentsTable33[10] =
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  30,  31,   0,  30, 0xc0000000 }, {  92,  93,   2,  28, 0x30000000 } }, // 8
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  33,   1,   0,        0x3 }, {  94,  95,   2,  30, 0xc0000000 } } // 9
 }; // MappingFragmentsTable33[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable34[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, {  96,  99,   3,   0,        0xf } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 112, 115,   3,  16,    0xf0000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 100, 111,   3,   4,     0xfff0 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 116, 127,   3,  20, 0xfff00000 } } // 3
+}; // MappingFragmentsTable34[]

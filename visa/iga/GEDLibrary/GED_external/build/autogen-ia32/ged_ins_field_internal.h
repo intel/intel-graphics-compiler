@@ -31,10 +31,10 @@ extern const char* fieldNameByField[129];
 /*!
  * Table mapping a GED_PSEUDO_FIELD to its GED_FIELD_TYPE.
  */
-extern GED_FIELD_TYPE pseudoFieldTypesByField[45];
+extern GED_FIELD_TYPE pseudoFieldTypesByField[51];
 
 /*!
  * Table mapping GED_PSEUDO_FIELD to its name (string representation).
  */
-extern const char* fieldNameByPseudoField[45];
+extern const char* fieldNameByPseudoField[51];
 #endif // GED_INS_FIELD_INTERNAL_H

@@ -51,4 +51,5 @@ extern const ged_compact_mapping_fragment_t MappingFragmentsTable30[4];
 extern const ged_compact_mapping_fragment_t MappingFragmentsTable31[3];
 extern const ged_compact_mapping_fragment_t MappingFragmentsTable32[4];
 extern const ged_compact_mapping_fragment_t MappingFragmentsTable33[10];
+extern const ged_compact_mapping_fragment_t MappingFragmentsTable34[4];
 #endif // GED_MAPPING_FRAGMENTS_H

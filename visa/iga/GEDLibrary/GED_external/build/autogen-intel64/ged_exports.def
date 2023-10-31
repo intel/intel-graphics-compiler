@@ -404,6 +404,18 @@ EXPORTS
   _GED_SetDPFenceScope
   _GED_GetDPAddrSize
   _GED_SetDPAddrSize
+  _GED_GetDPCacheStore
+  _GED_SetDPCacheStore
+  _GED_GetDPCacheLoad
+  _GED_SetDPCacheLoad
+  _GED_GetDPAddrRegSize
+  _GED_SetDPAddrRegSize
+  _GED_GetDPOneAddrReg
+  _GED_SetDPOneAddrReg
+  _GED_GetDPCmask
+  _GED_SetDPCmask
+  _GED_GetMessageTypeDP_CONST
+  _GED_SetMessageTypeDP_CONST
   _GED_SetRawBits
   _GED_GetAccessModeString
   _GED_GetAccWrCtrlString
@@ -419,11 +431,16 @@ EXPORTS
   _GED_GetDataTypeString
   _GED_GetDebugCtrlString
   _GED_GetDepCtrlString
+  _GED_GetDPAddrRegSizeString
   _GED_GetDpAddrSizeString
   _GED_GetDpAddrSurfaceTypeString
+  _GED_GetDPCacheLoadString
+  _GED_GetDPCacheStoreString
+  _GED_GetDPCmaskString
   _GED_GetDpDataSizeString
   _GED_GetDpFenceScopeString
   _GED_GetDpFlushTypeString
+  _GED_GetDPOneAddrRegString
   _GED_GetDpOpcodeString
   _GED_GetDpTransposeString
   _GED_GetDpVectSizeString

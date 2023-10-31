@@ -29,6 +29,7 @@ set(GED_autogenia32_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_none.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.cpp
@@ -63,6 +64,7 @@ set(GED_autogenia32_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_none.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe2.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.h

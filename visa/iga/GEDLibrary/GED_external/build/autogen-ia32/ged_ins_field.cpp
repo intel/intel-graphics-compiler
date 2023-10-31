@@ -282,7 +282,7 @@ const char* fieldNameByField[129] =
     "Src2IsImm" // 128
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
-GED_FIELD_TYPE pseudoFieldTypesByField[45] =
+GED_FIELD_TYPE pseudoFieldTypesByField[51] =
 {
     0x103, // 0
     0x100, // 1
@@ -328,11 +328,17 @@ GED_FIELD_TYPE pseudoFieldTypesByField[45] =
     0x100, // 41
     0x103, // 42
     0x103, // 43
-    0x103 // 44
+    0x103, // 44
+    0x103, // 45
+    0x103, // 46
+    0x103, // 47
+    0x103, // 48
+    0x103, // 49
+    0x103 // 50
 }; // pseudoFieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByPseudoField[45] =
+const char* fieldNameByPseudoField[51] =
 {
     "ArchReg", // 0
     "ArchRegNum", // 1
@@ -378,6 +384,12 @@ const char* fieldNameByPseudoField[45] =
     "DPFlushRange", // 41
     "DPDataSize", // 42
     "DPFenceScope", // 43
-    "DPAddrSize" // 44
+    "DPAddrSize", // 44
+    "DPCacheStore", // 45
+    "DPCacheLoad", // 46
+    "DPAddrRegSize", // 47
+    "DPOneAddrReg", // 48
+    "DPCmask", // 49
+    "MessageTypeDP_CONST" // 50
 }; // fieldNameByPseudoField[]
 #endif // GED_VALIDATION_API
