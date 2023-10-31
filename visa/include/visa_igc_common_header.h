@@ -759,6 +759,13 @@ typedef enum {
 struct LSC_CACHE_OPTS {
   LSC_CACHE_OPT l1;
   LSC_CACHE_OPT l3;
+
+ LSC_CACHE_OPTS() = default;
+
+ LSC_CACHE_OPTS(LSC_CACHE_OPT _l1, LSC_CACHE_OPT _l3)
+   :  l1(_l1), l3(_l3)
+  { }
+
 };
 
 // L1,L3 available cache policies combinations

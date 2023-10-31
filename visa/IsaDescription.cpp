@@ -3122,7 +3122,7 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
 // clang-format off
 #define LSC_UNTYPED_OP(ISA_OP, MNEMONIC)                                       \
   {                                                                            \
-    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, {                                  \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 20, {                                  \
       /* execution control */                                                  \
       {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
           {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
@@ -3182,7 +3182,7 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
   }
 #define LSC_UNTYPED_BLOCK2D_OP(ISA_OP, MNEMONIC)                               \
   {                                                                            \
-    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, {                                  \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 20, {                                  \
       /* execution control */                                                  \
       {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
           {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
@@ -3213,7 +3213,7 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
 // All LSC typed ops encode the same
 #define LSC_TYPED_OP(ISA_OP, MNEMONIC)                                         \
   {                                                                            \
-    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 22, {                                  \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 23, {                                  \
       /* execution control */                                                  \
       {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
           {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \

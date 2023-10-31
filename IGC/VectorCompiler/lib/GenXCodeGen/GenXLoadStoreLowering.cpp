@@ -1057,7 +1057,9 @@ Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
                       ? LSC_ADDR_SIZE_64b
                       : LSC_ADDR_SIZE_32b;
 
-  auto [L1Opt, L3Opt] = getLSCCacheOpts(&I);
+  auto cachingOpts = getLSCCacheOpts(&I);
+  auto L1Opt = cachingOpts.l1;
+  auto L3Opt = cachingOpts.l3;
   if (IID == vc::InternalIntrinsic::lsc_atomic_slm) {
     L1Opt = LSC_CACHING_DEFAULT;
     L3Opt = LSC_CACHING_DEFAULT;

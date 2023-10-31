@@ -3015,7 +3015,6 @@ private:
 
     auto sfid = getNextEnumU8<LSC_SFID>();
     formatSfid(sfid);
-
     formatCachingOpts();
 
     // execution size and offset

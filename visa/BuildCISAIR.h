@@ -591,6 +591,8 @@ public:
   VISA_BUILDER_OPTION getBuilderOption() const { return mBuildOption; }
   vISABuilderMode getBuilderMode() const { return m_builderMode; }
 
+  LSC_CACHE_OPTS CISA_create_caching_opts(int lineNum);
+  LSC_CACHE_OPTS CISA_create_caching_opts(LSC_CACHE_OPT l1, LSC_CACHE_OPT l3, int lineNum);
   bool CISA_create_dpas_instruction(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
                                     unsigned exec_size, VISA_opnd *dst_cisa,
                                     VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,

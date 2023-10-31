@@ -4079,6 +4079,16 @@ bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
   return true;
 }
 
+LSC_CACHE_OPTS CISA_IR_Builder::CISA_create_caching_opts(int lineNum) {
+  return LSC_CACHE_OPTS(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT);
+}
+
+LSC_CACHE_OPTS CISA_IR_Builder::CISA_create_caching_opts(LSC_CACHE_OPT l1,
+                                                         LSC_CACHE_OPT l3,
+                                                         int lineNum) {
+  return LSC_CACHE_OPTS(l1, l3);
+}
+
 bool CISA_IR_Builder::CISA_create_lsc_fence(LSC_SFID sfid, LSC_FENCE_OP fence,
                                             LSC_SCOPE scope, int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISALscFence, sfid, fence, scope);

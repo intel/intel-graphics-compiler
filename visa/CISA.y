@@ -1978,9 +1978,8 @@ LscFence:
 LscSfid: LSC_SFID_UNTYPED_TOKEN | LSC_SFID_TYPED_TOKEN
 
 LscCacheOpts:
-    %empty                          {$$ = {LSC_CACHING_DEFAULT,LSC_CACHING_DEFAULT};}
-  | LSC_CACHING_OPT                 {$$ = {$1,LSC_CACHING_DEFAULT};}
-  | LSC_CACHING_OPT LSC_CACHING_OPT {$$ = {$1,$2};}
+    %empty                          {$$ = pBuilder->CISA_create_caching_opts(CISAlineno);}
+  | LSC_CACHING_OPT LSC_CACHING_OPT {$$ = pBuilder->CISA_create_caching_opts($1,$2, CISAlineno);}
 
 LscUntypedAddrOperand:
 //  1               2      3                  4
