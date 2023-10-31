@@ -5403,30 +5403,33 @@ void G4_BB_SB::clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID,
         continue;
       }
 
+      // curLiveNode->ALUPipe may be PIPE_NONE
+      // Such as wait f0.0
+
       // Long pipeline must be checked first because it's definition is
       // different with Integer and Float
-      if (curLiveNode->GetInstruction()->isLongPipeInstructionXe() &&
+      if ((curLiveNode->ALUPipe == PIPE_LONG) &&
           ((longID - curLiveNode->getLongID()) >
            SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT)) {
         LB->killOperand(it);
         continue;
       }
 
-      if (curLiveNode->GetInstruction()->isIntegerPipeInstructionXe() &&
+      if ((curLiveNode->ALUPipe == PIPE_INT) &&
           ((integerID - curLiveNode->getIntegerID()) >
            SWSB_MAX_ALU_DEPENDENCE_DISTANCE)) {
         LB->killOperand(it);
         continue;
       }
 
-      if (curLiveNode->GetInstruction()->isFloatPipeInstructionXe() &&
+      if ((curLiveNode->ALUPipe == PIPE_FLOAT) &&
           ((floatID - curLiveNode->getFloatID()) >
            SWSB_MAX_ALU_DEPENDENCE_DISTANCE)) {
         LB->killOperand(it);
         continue;
       }
 
-      if (curLiveNode->GetInstruction()->isMath() &&
+      if ((curLiveNode->ALUPipe == PIPE_MATH) &&
           builder.hasFixedCycleMathPipe() &&
           (mathID - curLiveNode->getMathID() >
            SWSB_MAX_MATH_DEPENDENCE_DISTANCE)) {
@@ -6028,6 +6031,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
   SBNODE_LIST tmpSBSendNodes;
   bool hasFollowDistOneAReg = false;
   bool hasFollowDistOneIndirectReg = false;
+  bool addComment = builder.getOptions()->getOption(vISA_outputToFile) ||
+                    builder.getOptions()->getOption(vISA_asmToConsole) ||
+                    builder.getOptions()->getOption(vISA_DebugConsoleDump);
 
   std::list<G4_INST *>::iterator iInst(bb->begin()), iInstEnd(bb->end()),
       iInstNext(bb->begin());
@@ -6662,7 +6668,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     }
 
     // dump ALU pipe in asm comment
-    node->GetInstruction()->addComment(generateALUPipeComment(node->ALUPipe));
+    if (addComment) {
+      node->GetInstruction()->addComment(generateALUPipeComment(node->ALUPipe));
+    }
 
     if (node->hasDistInfo()) {
       if (builder.hasFiveALUPipes()) {
