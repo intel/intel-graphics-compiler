@@ -246,7 +246,8 @@ struct MessageInfo {
   // to change at any time. The nullptr is a possible value.
   std::string description;
 
-  const char *docs[4] = {nullptr, nullptr, nullptr, nullptr};
+  const char *names[6] { };
+  const char *docs[6] { };
   //
   // A block message
   bool isBlock() const { return execWidth == 1 && (isLoad() || isStore()); }

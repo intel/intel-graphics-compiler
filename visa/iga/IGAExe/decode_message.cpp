@@ -415,7 +415,8 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
     const auto &mi = dr.info;
     bool showDataPayload =
         mi.execWidth > 0 && !mi.isSample() && !mi.isOther() &&
-        mi.op != iga::SendOp::READ_STATE && mi.op != iga::SendOp::LOAD_STATUS &&
+        mi.op != iga::SendOp::READ_STATE &&
+        mi.op != iga::SendOp::LOAD_STATUS &&
         mi.op != iga::SendOp::RENDER_READ &&
         mi.op != iga::SendOp::RENDER_WRITE && mi.op != iga::SendOp::FENCE &&
         mi.op != iga::SendOp::CCS_PC && mi.op != iga::SendOp::CCS_PU &&
