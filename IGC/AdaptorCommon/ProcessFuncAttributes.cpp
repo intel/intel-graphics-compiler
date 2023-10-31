@@ -1066,33 +1066,6 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
         funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
         fHandle->setType(FunctionTypeMD::KernelFunction);
 
-        // If intel_reqd_sub_group_size is set for any kernels, we match the dummy kernel's subgroup size to the lowest one
-        // found, just so IGC can correctly compile the dummy kernel if it's needed only for global variables.
-        // Later in GenXFunctionGroupAnalysis, when more information about the CG is available, we will revisit this field to determine
-        // if we need to change the subgroup size, or generate variant SIMDs for the dummy kernel if more than one subgroup size is required.
-        int lowest_simd = 0;
-        for (auto I = M.begin(), E = M.end(); I != E; ++I)
-        {
-            Function* F = &(*I);
-            if (isEntryFunc(pMdUtils, F))
-            {
-                auto funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-                int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
-                if (sz != 0)
-                {
-                    IGC_ASSERT(sz == 8 || sz == 16 || sz == 32);
-                    if (lowest_simd == 0)
-                        lowest_simd = sz;
-                    else
-                        lowest_simd = std::min(sz, lowest_simd);
-                }
-            }
-        }
-        if (lowest_simd != 0)
-        {
-            fHandle->getSubGroupSize()->setSIMD_size(lowest_simd);
-        }
-
         pMdUtils->setFunctionsInfoItem(pNewFunc, fHandle);
         pMdUtils->save(M.getContext());
 
