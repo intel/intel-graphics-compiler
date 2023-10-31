@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unkonwn-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unkonwn-unknown  -mcpu=Gen9 -S < %s | FileCheck %s -check-prefix=STRICT
+; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s -check-prefix=STRICT
 ; ------------------------------------------------
 ; GenXLoadStoreLowering
 ; ------------------------------------------------

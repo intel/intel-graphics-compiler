@@ -7,10 +7,10 @@
 ;============================ end_copyright_notice =============================
 
 ; COM: XeHPC platform allows SIMD32 operations
-; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unkonwn-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeHPC -mattr=-divrem32 -S < %s | FileCheck %s --check-prefix CHECK_MISSING
 
-; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unkonwn-unknown \
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeHPC -mattr=+divrem32 -S < %s | FileCheck %s --check-prefix CHECK_PRESENT
 
 ; CHECK_MISSING: @test_kernel

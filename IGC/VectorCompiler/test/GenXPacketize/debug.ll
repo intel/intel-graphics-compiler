@@ -8,7 +8,7 @@
 
 ; Tests that GenXPacketize pass completes
 ;
-; RUN: %opt %use_old_pass_manager% -GenXPacketize -march=genx64 -mtriple=spir64-unkonwn-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
 ;
 ; ------------------------------------------------
 ; GenXPacketize
