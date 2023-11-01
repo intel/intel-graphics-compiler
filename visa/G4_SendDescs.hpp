@@ -631,10 +631,6 @@ public:
 
   std::string getDescription() const override;
 
-  // Return data size of either dst or src1 in bytes for LSC
-  // load/store instructions
-  uint32_t getDataSizeInBytesLscLdStInst(Gen4_Operand_Number opnd_num) const;
-
 private:
   void setBindingTableIdx(unsigned idx);
 

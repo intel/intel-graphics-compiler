@@ -403,22 +403,26 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
     if (opnd == inst->getDst()) {
       if (opnd->isRightBoundSet() && !opnd->isNullReg()) {
-        unsigned int correctRB = opnd->asDstRegRegion()->getRegOff() *
-                                     kernel.numEltPerGRF<Type_UB>();
+        unsigned int correctRB = ((inst->getMsgDesc()->getDstLenRegs() +
+                                   opnd->asDstRegRegion()->getRegOff()) *
+                                  kernel.numEltPerGRF<Type_UB>()) -
+                                 1;
         uint32_t dstLenBytes = inst->getMsgDesc()->getDstLenBytes();
         if (dstLenBytes < kernel.getGRFSize()) {
-          correctRB += (dstLenBytes - 1);
-        } else {
-          uint32_t correctDstLenBytes =
-              std::min(opnd->getTopDcl()->getByteSize(), dstLenBytes);
-          correctRB += (correctDstLenBytes - 1);
+          correctRB = opnd->getLeftBound() + dstLenBytes - 1;
+        } else if (opnd->getTopDcl()->getByteSize() <
+                   kernel.numEltPerGRF<Type_UB>()) {
+          correctRB =
+              opnd->getLeftBound() + opnd->getTopDcl()->getByteSize() - 1;
         }
 
         G4_Declare *parentDcl = opnd->getBase()->asRegVar()->getDeclare();
-        while (parentDcl != nullptr) {
+        while (parentDcl != NULL) {
           correctRB += parentDcl->getAliasOffset();
           parentDcl = parentDcl->getAliasDeclare();
         }
+
+        correctRB = std::min(correctRB, opnd->getTopDcl()->getByteSize() - 1);
 
         if (opnd->getRightBound() != correctRB) {
           DEBUG_VERBOSE("Right bound mismatch for send inst dst. Orig rb = "
@@ -430,27 +434,30 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
           vISA_ASSERT(false, "Right bound mismatch!");
         }
       }
-    } else if (opnd == inst->getSrc(0) ||
-               (inst->isSplitSend() && opnd == inst->getSrc(1))) {
+    } else if (opnd == inst->getSrc(0) || opnd == inst->getSrc(1)) {
       if (opnd->isRightBoundSet()) {
-        unsigned int correctRB = opnd->asSrcRegRegion()->getRegOff() *
-                                 kernel.numEltPerGRF<Type_UB>();
-        unsigned int srcBytes = (opnd == inst->getSrc(0))
-                                    ? inst->getMsgDesc()->getSrc0LenBytes()
-                                    : inst->getMsgDesc()->getSrc1LenBytes();
-        if (srcBytes < kernel.numEltPerGRF<Type_UB>()) {
-          correctRB += (srcBytes - 1);
+        int msgLength = (opnd == inst->getSrc(0))
+                            ? inst->getMsgDesc()->getSrc0LenRegs()
+                            : inst->getMsgDesc()->getSrc1LenRegs();
+        unsigned int numBytes = opnd->getTopDcl()->getByteSize();
+        unsigned int correctRB = 0;
+        if (numBytes < kernel.numEltPerGRF<Type_UB>()) {
+          correctRB = opnd->asSrcRegRegion()->getRegOff() *
+                          kernel.numEltPerGRF<Type_UB>() +
+                      numBytes - 1;
         } else {
-          uint32_t correctSrcBytes =
-              std::min(opnd->getTopDcl()->getByteSize(), srcBytes);
-          correctRB += (correctSrcBytes - 1);
+          correctRB = ((msgLength + opnd->asSrcRegRegion()->getRegOff()) *
+                       kernel.numEltPerGRF<Type_UB>()) -
+                      1;
         }
 
         G4_Declare *parentDcl = opnd->getBase()->asRegVar()->getDeclare();
-        while (parentDcl != nullptr) {
+        while (parentDcl != NULL) {
           correctRB += parentDcl->getAliasOffset();
           parentDcl = parentDcl->getAliasDeclare();
         }
+
+        correctRB = std::min(correctRB, opnd->getTopDcl()->getByteSize() - 1);
 
         if (opnd->getRightBound() != correctRB) {
           DEBUG_VERBOSE("Right bound mismatch for send inst src0. Orig rb = "
