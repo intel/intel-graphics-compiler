@@ -311,8 +311,6 @@ class GenXLegalization : public FunctionPass {
   // Illegally sized predicate values that need splitting at the end of
   // processing the function.
   SetVector<Instruction *> IllegalPredicates;
-  // The maximal predicate size - depends on SIMD size restrictions
-  unsigned MaxPredSize = 0;
 
 public:
   static char ID;
@@ -392,6 +390,8 @@ private:
   SplitKind checkBaleSplittingKind();
 };
 
+static const unsigned MaxPredSize = 32;
+
 } // end anonymous namespace
 
 char GenXLegalization::ID = 0;
@@ -433,7 +433,6 @@ bool GenXLegalization::runOnFunction(Function &F) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  MaxPredSize = vc::canUseSIMD32(*F.getParent(), ST->hasFusedEU()) ? 32 : 16;
   // Check args for illegal predicates.
   for (Function::arg_iterator fi = F.arg_begin(), fe = F.arg_end(); fi != fe;
        ++fi) {
