@@ -562,13 +562,16 @@ class LiveGRFBuckets {
   std::vector<SBBUCKET_VECTOR> nodeBucketsArray;
   // FIXME: Why do we need this? Do we ever change the size of nodeBucketsArray?
   const int numOfBuckets;
+  bool empty;
 
 public:
   LiveGRFBuckets(int TOTAL_BUCKETS)
-      : nodeBucketsArray(TOTAL_BUCKETS), numOfBuckets(TOTAL_BUCKETS) {}
+      : nodeBucketsArray(TOTAL_BUCKETS), numOfBuckets(TOTAL_BUCKETS) {
+    empty = true;
+  }
 
   ~LiveGRFBuckets() {}
-
+  bool isEmpty() {return empty;}
   int getNumOfBuckets() const { return numOfBuckets; }
 
   // The iterator which is used to scan the node vector of each bucket
@@ -702,6 +705,8 @@ public:
   unsigned *tokenLiveInDist;
   unsigned *tokenLiveOutDist;
   SBBitSets localReachingSends;
+  SBBitSets
+      BBGRF; // Is used to record the GRF registers accessed by each basic block
 
   SBBUCKET_VECTOR
   globalARSendOpndList; // All send source operands which live out their
@@ -712,7 +717,8 @@ public:
            SBNODE_VECT *SBNodes, SBNODE_VECT *SBSendNodes,
            SBBUCKET_VECTOR *globalSendOpndList, SWSB_INDEXES *indexes,
            uint32_t &globalSendNum, LiveGRFBuckets *lb,
-           LiveGRFBuckets *globalLB, PointsToAnalysis &p,
+           LiveGRFBuckets *globalLB, LiveGRFBuckets *GRFAlignedGlobalSendsLB,
+           PointsToAnalysis &p,
            std::map<G4_Label *, G4_BB_SB *> *LabelToBlockMap,
            const unsigned dpasLatency)
       : swsb(sb), builder(b), mem(m), bb(block),
@@ -724,7 +730,8 @@ public:
     first_send_node = -1;
     last_send_node = -1;
     totalGRFNum = block->getKernel().getNumRegTotal();
-    SBDDD(bb, lb, globalLB, SBNodes, SBSendNodes, globalSendOpndList, indexes,
+    SBDDD(bb, lb, globalLB, GRFAlignedGlobalSendsLB, SBNodes, SBSendNodes,
+          globalSendOpndList, indexes,
           globalSendNum, p, LabelToBlockMap);
   }
 
@@ -787,6 +794,7 @@ public:
                                const SBFootprint *curFP) const;
   // Local distance dependence analysis and assignment
   void SBDDD(G4_BB *bb, LiveGRFBuckets *&LB, LiveGRFBuckets *&globalSendsLB,
+             LiveGRFBuckets *&GRFAlignedGlobalSendsLB,
              SBNODE_VECT *SBNodes, SBNODE_VECT *SBSendNodes,
              SBBUCKET_VECTOR *globalSendOpndList, SWSB_INDEXES *indexes,
              uint32_t &globalSendNum, PointsToAnalysis &p,
@@ -799,6 +807,11 @@ public:
   // Global SBID dependence analysis
   void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT &SBNodes,
                             PointsToAnalysis &p);
+  void
+  setSendGlobalIDMayKilledByCurrentBB(std::vector<SparseBitVector> &dstTokenBit,
+                                  std::vector<SparseBitVector> &srcTokenBit,
+                                  SBNODE_VECT &SBNodes, PointsToAnalysis &p);
+
   void dumpTokenLiveInfo(SBNODE_VECT *SBSendNodes);
   void getLiveBucketsFromFootprint(const SBFootprint *firstFootprint,
                                    SBBucketNode *sBucketNode,
@@ -955,7 +968,6 @@ class SWSB {
   uint32_t AWSyncAllCount = 0;
   uint32_t tokenReuseCount = 0;
 
-  bool hasFCall = false;
   // Linear scan data structures for token allocation
   SBNODE_LIST linearScanLiveNodes;
 
@@ -1075,11 +1087,18 @@ class SWSB {
                        INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens,
                        BitSet *srcTokens, bool &keepDst, bool removeAllToken);
 
+  void
+  SWSBInitializeGlobalNodesInBuckets(std::vector<SparseBitVector> &dstGlobalIDs,
+                                     std::vector<SparseBitVector> &srcGlobalIDs,
+                                     LiveGRFBuckets &globalSendsLB);
+
   void SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
-                                LiveGRFBuckets &globalSendsLB);
+                                LiveGRFBuckets &globalSendsLB,
+                                LiveGRFBuckets &GRFAlignedGlobalSendsLB);
   void handleFuncCall();
   void SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
-                                LiveGRFBuckets &globalSendsLB);
+                                LiveGRFBuckets &globalSendsLB,
+                                LiveGRFBuckets &GRFAlignedGlobalSendsLB);
   void SWSBBuildSIMDCFG();
   void addSIMDEdge(G4_BB_SB *pred, G4_BB_SB *succ);
   void SWSBGlobalScalarCFGReachAnalysis();

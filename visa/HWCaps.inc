@@ -810,4 +810,8 @@ bool needNopAfterCFInstWA() const {
     return getOption(vISA_Debug);
   return false;
 }
+
+bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
+  return true;
+}
 // end HW capabilities

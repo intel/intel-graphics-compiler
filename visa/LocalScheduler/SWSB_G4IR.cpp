@@ -900,6 +900,7 @@ void LiveGRFBuckets::add(SBBucketNode *bucketNode, int bucket) {
   SBBUCKET_VECTOR &nodeVec = nodeBucketsArray[bucket];
   if (std::find(nodeVec.begin(), nodeVec.end(), bucketNode) == nodeVec.end()) {
     nodeVec.push_back(bucketNode);
+    empty = false;
   }
 }
 
@@ -1427,7 +1428,8 @@ void SWSB::SWSBBuildSIMDCFG() {
 
 // Generate the dependence distance
 void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
-                                    LiveGRFBuckets &globalSendsLB) {
+                                    LiveGRFBuckets &globalSendsLB,
+                                    LiveGRFBuckets &GRFAlignedGlobalSendsLB) {
   BB_LIST_ITER ib(fg.begin()), bend(fg.end());
 
   // Initialize global data
@@ -1443,10 +1445,10 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   // Local dependence analysis
   for (; ib != bend; ++ib) {
     // TODO: Can each G4_BB_SB have its own allocator instead of sharing SWSB's?
-    BBVector[(*ib)->getId()] = new (BB_SWSBAllocator)
-        G4_BB_SB(*this, *(fg.builder), SWSBMem, *ib, &SBNodes, &SBSendNodes,
-                 &globalSendOpndList, &indexes, globalSendNum, &LB,
-                 &globalSendsLB, p, &labelToBlockMap, tokenAfterDPASCycle);
+    BBVector[(*ib)->getId()] = new (BB_SWSBAllocator) G4_BB_SB(
+        *this, *(fg.builder), SWSBMem, *ib, &SBNodes, &SBSendNodes,
+        &globalSendOpndList, &indexes, globalSendNum, &LB, &globalSendsLB,
+        &GRFAlignedGlobalSendsLB, p, &labelToBlockMap, tokenAfterDPASCycle);
   }
 }
 
@@ -1490,8 +1492,62 @@ void SWSB::handleFuncCall() {
   }
 }
 
+//
+// Set the global ID bit vector of each bucket touched by corresponding
+// operands
+//
+void SWSB::SWSBInitializeGlobalNodesInBuckets(
+    std::vector<SparseBitVector>
+        &dstGlobalIDs, // node global ID bit vector in buckets touched by dst
+                       // operands
+    std::vector<SparseBitVector>
+        &srcGlobalIDs, // node global ID bit vector in buckets touched by src
+                       // operands
+    LiveGRFBuckets &GRFAlignedGlobalSendsLB) { // live buckets of global sends
+
+  dstGlobalIDs.resize(kernel.getNumRegTotal() +
+                      fg.builder->getNumScalarRegisters());
+  srcGlobalIDs.resize(kernel.getNumRegTotal() +
+                      fg.builder->getNumScalarRegisters());
+
+  // Scan the global send LB to set the node bit in dst or src bit set of each
+  // bucket that node touches.
+  for (unsigned curBucket = 0;
+       curBucket <
+       kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters();
+       curBucket++) {
+    SparseBitVector dstBitSet;
+    SparseBitVector srcBitSet;
+
+    bool setDstBucket = false;
+    bool setSrcBucket = false;
+    for (LiveGRFBuckets::BN_iterator bn_it =
+             GRFAlignedGlobalSendsLB.begin(curBucket);
+         bn_it != GRFAlignedGlobalSendsLB.end(curBucket); ++bn_it) {
+      SBBucketNode *liveBN = (*bn_it);
+      SBNode *curLiveNode = liveBN->node;
+
+      if (liveBN->opndNum == Opnd_dst) {
+        dstBitSet.set(curLiveNode->globalID);
+        setDstBucket = true;
+      } else {
+        srcBitSet.set(curLiveNode->globalID);
+        setSrcBucket = true;
+      }
+    }
+
+    if (setDstBucket) {
+      dstGlobalIDs[curBucket] = dstBitSet;
+    }
+    if (setSrcBucket) {
+      srcGlobalIDs[curBucket] = srcBitSet;
+    }
+  }
+}
+
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
-                                    LiveGRFBuckets &globalSendsLB) {
+                                    LiveGRFBuckets &globalSendsLB,
+                                    LiveGRFBuckets &GRFAlignedGlobalSendsLB) {
   allTokenNodesMap.resize(totalTokenNum);
   for (TokenAllocation &nodeMap : allTokenNodesMap) {
     nodeMap.bitset = BitSet(SBSendNodes.size(), false);
@@ -1501,6 +1557,14 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
       fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation);
   const bool enableDistPropTokenAllocation =
       fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation);
+
+  std::vector<SparseBitVector> dstGlobalIDs;
+  std::vector<SparseBitVector> srcGlobalIDs;
+  if (!fg.builder->hasReadSuppressionOrSharedLocalMemoryWAs()) {
+    // Initialilze for setSendGlobalIDMayKilledByCurrentBB only
+    SWSBInitializeGlobalNodesInBuckets(dstGlobalIDs, srcGlobalIDs,
+                                       GRFAlignedGlobalSendsLB);
+  }
 
   // Get the live out, may kill bit sets
   for (G4_BB_SB *bb : BBVector) {
@@ -1534,7 +1598,16 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
       }
     }
 
-    bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
+    // No WA needs check specific instruction
+    if (!fg.builder->hasReadSuppressionOrSharedLocalMemoryWAs()) {
+      bb->setSendGlobalIDMayKilledByCurrentBB(dstGlobalIDs, srcGlobalIDs,
+                                              SBNodes, p);
+      if (!globalSendsLB.isEmpty()) {
+        bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
+      }
+    } else {
+      bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
+    }
 
 #ifdef DEBUG_VERBOSE_ON
     bb->dumpLiveInfo(&globalSendOpndList, globalSendNum, nullptr);
@@ -1872,7 +1945,8 @@ void SWSB::SWSBGenerator() {
                    fg.builder->getNumFlagRegisters();
   LiveGRFBuckets LB(numBuckets);
   LiveGRFBuckets globalSendsLB(numBuckets);
-  SWSBDepDistanceGenerator(p, LB, globalSendsLB);
+  LiveGRFBuckets GRFAlignedGlobalSendsLB(numBuckets);
+  SWSBDepDistanceGenerator(p, LB, globalSendsLB, GRFAlignedGlobalSendsLB);
 
 #ifdef DEBUG_VERBOSE_ON
   dumpDepInfo();
@@ -1909,7 +1983,7 @@ void SWSB::SWSBGenerator() {
   }
 
   if (!SBSendNodes.empty()) {
-    SWSBGlobalTokenGenerator(p, LB, globalSendsLB);
+    SWSBGlobalTokenGenerator(p, LB, globalSendsLB, GRFAlignedGlobalSendsLB);
   } else {
     handleFuncCall();
     insertTokenSync();
@@ -5104,6 +5178,44 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
   }
 }
 
+//
+// Set the global ID of the send node which will be killed by current basic
+// block. This is the prepration work for reaching define data flow analysis.
+// The function is used to handle the kernel in which only send instruction need
+// SBID. The smallest GRF granularity of send operand is 1 GRF ,and is GRF
+// aligned. So the node in the bucket is the node will be killed by current BB.
+//
+void G4_BB_SB::setSendGlobalIDMayKilledByCurrentBB(
+    std::vector<SparseBitVector> &dstTokenBit,
+    std::vector<SparseBitVector> &srcTokenBit, SBNODE_VECT &SBNodes,
+    PointsToAnalysis &p) {
+
+  if (first_node == INVALID_ID) {
+    return;
+  }
+  //The GRF accessed by source operands of BB
+  for (const auto &srcGRF : BBGRF.src) {
+    // RAW
+    if (!dstTokenBit[srcGRF].empty()) {
+      send_may_kill.dst |= dstTokenBit[srcGRF];
+    }
+  }
+
+  // The GRF accessed by destination operands of BB
+  for (const auto &dstGRF : BBGRF.dst) {
+    if (!dstTokenBit[dstGRF].empty()) {
+      send_may_kill.dst |= dstTokenBit[dstGRF];
+      // WAW
+      send_WAW_may_kill |= dstTokenBit[dstGRF];
+    }
+
+    if (!srcTokenBit[dstGRF].empty()) {
+      //WAR
+      send_may_kill.src |= srcTokenBit[dstGRF];
+    }
+  }
+}
+
 bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
                                       G4_Operand *opnd,
                                       Gen4_Operand_Number opndNum) {
@@ -6009,7 +6121,8 @@ static std::string generateALUPipeComment(SB_INST_PIPE aluPipe) {
 }
 
 void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
-                     LiveGRFBuckets *&globalSendsLB, SBNODE_VECT *SBNodes,
+                     LiveGRFBuckets *&globalSendsLB,
+                     LiveGRFBuckets *&GRFAlignedGlobalSendsLB, SBNODE_VECT *SBNodes,
                      SBNODE_VECT *SBSendNodes,
                      SBBUCKET_VECTOR *globalSendOpndList, SWSB_INDEXES *indexes,
                      uint32_t &globalSendNum, PointsToAnalysis &p,
@@ -6729,6 +6842,16 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           bucketNodes[BD.footprint].push_back(newNode);
           LB->add(newNode, BD.bucket);
         }
+
+        // For global dependence tracking, we need only check buckets GRF + SRF
+        if (BD.bucket < (int)(builder.kernel.getNumRegTotal() +
+                            builder.getNumScalarRegisters())) {
+          if (BD.opndNum == Opnd_dst) {
+            BBGRF.setDst(BD.bucket, true);
+          } else {
+            BBGRF.setSrc(BD.bucket, true);
+          }
+        }
       }
     } else {
       std::vector<SBBucketNode *> bucketNodes(
@@ -6742,6 +6865,14 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         LB->add(bucketNodes[BD.opndNum], BD.bucket);
+        if (BD.bucket < (int)(builder.kernel.getNumRegTotal() +
+                              builder.getNumScalarRegisters())) {
+          if (BD.opndNum == Opnd_dst) {
+            BBGRF.setDst(BD.bucket, true);
+          } else {
+            BBGRF.setSrc(BD.bucket, true);
+          }
+        }
       }
     }
 
@@ -6802,7 +6933,21 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           }
 
           // Record all buckets of the send operand
-          globalSendsLB->add(liveBN, curBucket);
+          if (!builder.hasReadSuppressionOrSharedLocalMemoryWAs() &&
+              liveBN->node->getLastInstruction()
+                  ->isSend() && // DPAS will be handled by globalSendsLB
+              (liveBN->footprint
+                   ->next || // Multiple footprints must be GRF aligned
+               ((liveBN->footprint->next == nullptr &&
+                 liveBN->footprint->LeftB % builder.numEltPerGRF<Type_UB>()) ==
+                    0 &&
+                ((liveBN->footprint->RightB + 1) %
+                 builder.numEltPerGRF<Type_UB>()) == 0))) {
+            GRFAlignedGlobalSendsLB->add(liveBN, curBucket);
+          } else {
+            globalSendsLB->add(liveBN, curBucket);
+          }
+
         } else { // Record all the after read live out ones which will be
                  // resolved in the end of BB
           if (liveBN->getSendID() == INVALID_ID) {
