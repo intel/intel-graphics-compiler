@@ -461,7 +461,6 @@ DECLARE_IGC_REGKEY(DWORD, EnableIntDivRemCombine,       0x0,   "Given div/rem pa
 DECLARE_IGC_REGKEY(bool, EnableHFpacking,               false, "Enable HF packing", false)
 DECLARE_IGC_REGKEY(bool, Force32BitIntDivRemEmu, false, "Force 32-bit Int Div/Rem emulation using fp64, ignored if no native fp64 support", true)
 DECLARE_IGC_REGKEY(bool, Force32BitIntDivRemEmuSP,      false, "Force 32-bit Int Div/Rem emulation using fp32, ignored if Force32BitIntDivRemEmu is set and actually used", true)
-DECLARE_IGC_REGKEY(bool, EnableWideMulMad,              false, "Enable wide (64-bit) mul and mad instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         true,  "Enable recursion with OpenCL user functions", false)
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(bool, EnableDPEmulation,             false, "Enforce double precision floating point operations emulation on platforms that do not support it natively", true)
