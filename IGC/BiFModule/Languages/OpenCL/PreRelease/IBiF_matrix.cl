@@ -672,10 +672,12 @@ DEFINE_GET_COORD(PackedB, _SG16, 8, 32, 32, 16, 4)
 
 //bfloat16
 DEFINE_GET_COORD(PackedA, _SG16, 16, 16, 8, 16, 1)
+DEFINE_GET_COORD(PackedA, _SG16, 16, 16, 16, 16, 1)
 DEFINE_GET_COORD(PackedB, _SG16, 16, 32, 16, 16, 2)
 
 // Accumulator
 DEFINE_GET_COORD(Accumulator, _SG16, 32, 32, 8, 16, 1)
+DEFINE_GET_COORD(Accumulator, _SG16, 32, 32, 16, 16, 1)
 
 // --------- XMX8 ------------
 //int8
@@ -705,7 +707,7 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(__priv
     float8 c1 = (float8)(c.s8, c.s9, c.sa, c.sb, c.sc, c.sd, c.se, c.sf);
 
     float8 fres0 = __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(c0, a0, b);
-    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(c0, a1, b);
+    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(c1, a1, b);
 
     int8 res0 = *(int8 *)&fres0;
     int8 res1 = *(int8 *)&fres1;
@@ -729,7 +731,7 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_fp16_fp16_fp32(__priv
     float8 c1 = (float8)(c.s8, c.s9, c.sa, c.sb, c.sc, c.sd, c.se, c.sf);
 
     float8 fres0 = __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(c0, a0, b);
-    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(c0, a1, b);
+    float8 fres1 = __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(c1, a1, b);
 
     int8 res0 = *(int8 *)&fres0;
     int8 res1 = *(int8 *)&fres1;
