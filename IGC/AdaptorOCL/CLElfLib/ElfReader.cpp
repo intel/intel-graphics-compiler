@@ -143,30 +143,30 @@ bool CElfReader::IsValidElf64(
             }
         }
 
-        for( unsigned int i = 0; i < pElf64Header->NumSectionHeaderEntries; i++ )
+        for (unsigned int i = 0; i < pElf64Header->NumSectionHeaderEntries; i++)
         {
             indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset +
-                ( i * entrySize );
+                (i * entrySize);
 
             // check section header offset
-            if( ( (char*)pBinary + indexedSectionHeaderOffset ) > pEnd )
+            if (((char*)pBinary + indexedSectionHeaderOffset) > pEnd)
             {
                 retVal = false;
                 break;
             }
 
             pSectionHeader = (SElf64SectionHeader*)(
-                (char*)pBinary + indexedSectionHeaderOffset );
+                (char*)pBinary + indexedSectionHeaderOffset);
 
             // check section data
-            if( ( (char*)pBinary + pSectionHeader->DataOffset + pSectionHeader->DataSize ) > pEnd )
+            if (((char*)pBinary + pSectionHeader->DataOffset + pSectionHeader->DataSize) > pEnd)
             {
                 retVal = false;
                 break;
             }
 
             // check section name index
-            if( ( pNameTable + pSectionHeader->Name ) > pEnd )
+            if ((pNameTable + pSectionHeader->Name) > pEnd)
             {
                 retVal = false;
                 break;
@@ -177,10 +177,11 @@ bool CElfReader::IsValidElf64(
             ourSize += (size_t)entrySize;
         }
 
-        if( ourSize != binarySize )
-        {
-            retVal = false;
-        }
+        // Learnt from NEO driver for zebin, does not need check size match
+        //if (ourSize != binarySize)
+        //{
+        //    retVal = false;
+        //}
     }
 
     return retVal;
