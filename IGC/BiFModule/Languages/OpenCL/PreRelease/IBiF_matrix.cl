@@ -42,9 +42,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define ATTRIBUTE_AS_GLOBAL  __global
 
 // Index for row major layout is calculated based on that sub group size may be
-// bigger than N.  Currently we do not have any test case
-// of col_major matrix for such case, therefore we keep the implementation of
-// COL_MAJOR simple.
+// bigger than N.
 // Arguments:
 //   sg_cols: Number of contiguous columns held in the subgroup
 //   skip_factor: n, where we include elements from every n-th row of the JM
@@ -55,8 +53,8 @@ extern __constant int __JointMatrixLoadStoreOpt;
 //     13 14 15 16
 //    if skip_factor == 2, we will include items <1, 9> (every "2"nd row) in the
 //    first WI, <2, 10> in the second WI and so on..
-#define IND_ROW_MAJOR(slid, stride, skip_factor, i, sg_cols) (slid/sg_cols*stride + slid%sg_cols + i*stride*skip_factor)
-#define IND_COL_MAJOR(slid, stride, skip_factor, i, sg_cols) (i + (slid * stride))
+#define IND_ROW_MAJOR(slid, stride, skip_factor, i, sg_cols) ((slid/sg_cols + i*skip_factor)*stride + (slid%sg_cols))
+#define IND_COL_MAJOR(slid, stride, skip_factor, i, sg_cols) ((slid/sg_cols + i*skip_factor) + (slid%sg_cols)*stride)
 #define IND_VNNI_TX(slid, stride, skip_factor, i, sg_cols) (i + (slid * stride))
 
 // no int7, int6, int5 types
@@ -164,6 +162,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define DEFINE_BLOCK_RW_NAME1(rw, us) intel_sub_group_block_##rw##us
 
 #define DEFINE_BLOCK2D_RW_NAME(rw, tx, contrib_bitwidth, M, K) __builtin_IB_subgroup_block_##rw##_flat##tx##_u##contrib_bitwidth##_m##M##k##K##v1
+#define DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, K) __builtin_IB_subgroup_block_read_flat_transpose_u##contrib_bitwidth##_k##K
 #define DEFINE_BLOCK2D_VNNI_NAME(contrib_bitwidth, K) __builtin_IB_subgroup_block_read_flat_transform_u##contrib_bitwidth##_k##K
 
 /* For platforms without SG16 JointMatrix support block2d is not available. The
@@ -195,12 +194,14 @@ extern __constant int __JointMatrixLoadStoreOpt;
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
     int pitch = width; /* JointMatrices are expected to be contigunous in memory, without padding at the end of a row */ \
-    int height = M - 1; /* row count */ \
+    int height = K - 1; /* column count */ \
     long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
-    OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_RW_NAME(read, _transpose, elem_bitwidth, M, K)(long, int, int, int, int2); \
-    OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_RW_NAME(read, _transpose, elem_bitwidth, M, K)(baseoffset, width, height, pitch, coords); \
-    *(__private OUT_VEC##M(u##contrib_type) *)dst = res; \
+    /* 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose */ \
+    /* Right now we only support the __builtin_IB_subgroup_block_read_flat_transpose_u32_k8 configuration */ \
+    OUT_VEC8(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, 8)(long, int, int, int, int2); \
+    OUT_VEC8(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, 8)(baseoffset, width, height, pitch, coords); \
+    *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
     return;
 
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
@@ -247,7 +248,8 @@ extern __constant int __JointMatrixLoadStoreOpt;
   INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride) { \
       int sg_size = get_sub_group_size(); \
       if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
-          && (order == _ROW_MAJOR || order == _VNNI_TX) && address_space == AS_GLOBAL \
+          && (order == _ROW_MAJOR || order == _VNNI_TX || (order == _COL_MAJOR && contrib_bitwidth == 32)) \
+          && address_space == AS_GLOBAL \
           ) { \
           /* It seems __builtin_IB_subgroup_block_rw always needs k=16 \
              Maybe it is number of columns divided by pack factor which always gives 16 on SG16 HW */ \
@@ -392,6 +394,16 @@ DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 3,
 DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 2, 8)
 DEFINE_LOAD(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 1, 8)
 
+/* Accumulator load i32 SG8 with transpose */
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , 8, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 7, 8, 7x8, COL_MAJOR, , 7, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 6, 8, 6x8, COL_MAJOR, , 6, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 5, 8, 5x8, COL_MAJOR, , 5, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 4, 8, 4x8, COL_MAJOR, , 4, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 3, 8, 3x8, COL_MAJOR, , 3, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 2, 8, 2x8, COL_MAJOR, , 2, 8)
+DEFINE_LOAD(Accumulator_ColumnMajor, , int, 32, int, 32, 1, 8, 1x8, COL_MAJOR, , 1, 8)
+
 /* SG16*/
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 7, 16)
@@ -402,6 +414,16 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJO
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 2, 16)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16)
 
+/* Accumulator load i32 SG16 with transpose */
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, COL_MAJOR, , 8, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, COL_MAJOR, , 7, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, COL_MAJOR, , 6, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, COL_MAJOR, , 5, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, COL_MAJOR, , 4, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, COL_MAJOR, , 3, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_MAJOR, , 2, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, COL_MAJOR, , 1, 16)
+
 /* SG16 for subgroup 32*/
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 4, 16)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 4, 16)
@@ -411,6 +433,16 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJO
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 2, 16)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 1, 16)
 // DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16) same as for subgroup 16
+
+/* Accumulator load i32 SG16 for subgroup 32 with transpose */
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, COL_MAJOR, , 4, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, COL_MAJOR, , 4, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, COL_MAJOR, , 3, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, COL_MAJOR, , 3, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, COL_MAJOR, , 2, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, COL_MAJOR, , 2, 16)
+DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_MAJOR, , 1, 16)
+// DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, COL_MAJOR, , 1, 16) same as for subgroup 16
 
 // --------- STORE built-ins --------------------------------------
 
@@ -580,6 +612,16 @@ DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 3, 8, 3x8, ROW_MAJOR, , 3
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 2, 8, 2x8, ROW_MAJOR, , 2, 8, true)
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 1, 8, 1x8, ROW_MAJOR, , 1, 8, true)
 
+/* Accumulator store i32 SG8 with transpose */
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 8, 8, 8x8, COL_MAJOR, , 8, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 7, 8, 7x8, COL_MAJOR, , 7, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 6, 8, 6x8, COL_MAJOR, , 6, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 5, 8, 5x8, COL_MAJOR, , 5, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 4, 8, 4x8, COL_MAJOR, , 4, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 3, 8, 3x8, COL_MAJOR, , 3, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 2, 8, 2x8, COL_MAJOR, , 2, 8, true)
+DEFINE_STORE(Accumulator_ColumnMajor, , int, 32, int, 32, 1, 8, 1x8, COL_MAJOR, , 1, 8, true)
+
 /* Acc i32 SG16 */
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 7, 16, true)
@@ -590,6 +632,16 @@ DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJ
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 2, 16, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16, true)
 
+/* Accumulator store i32 SG16 with transpose */
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, COL_MAJOR, , 8, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, COL_MAJOR, , 7, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, COL_MAJOR, , 6, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, COL_MAJOR, , 5, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, COL_MAJOR, , 4, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, COL_MAJOR, , 3, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_MAJOR, , 2, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, COL_MAJOR, , 1, 16, true)
+
 /* Acc i32 SG16 for subgroup 32*/
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 4, 16, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, ROW_MAJOR, , 4, 16, true)
@@ -599,6 +651,16 @@ DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, ROW_MAJ
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, ROW_MAJOR, , 2, 16, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, ROW_MAJOR, , 1, 16, true)
 // DEFINE_STORE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, ROW_MAJOR, , 1, 16, true) same as for subgroup 16
+
+/* Accumulator store i32 SG16 for subgroup 32 with transpose */
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, COL_MAJOR, , 4, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 7, 16, 7x16, COL_MAJOR, , 4, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 6, 16, 6x16, COL_MAJOR, , 3, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 5, 16, 5x16, COL_MAJOR, , 3, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 4, 16, 4x16, COL_MAJOR, , 2, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 3, 16, 3x16, COL_MAJOR, , 2, 16, true)
+DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_MAJOR, , 1, 16, true)
+// DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 1, 16, 1x16, COL_MAJOR, , 1, 16, true) same as for subgroup 16
 
 /* get_coord() support: */
 
