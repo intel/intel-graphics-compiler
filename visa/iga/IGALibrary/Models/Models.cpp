@@ -76,6 +76,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
                          256, (0)),
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_NULL, "null", "Null", 0x0, 0, 0, 0,
                               (32)),
+
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_A, "a", "Index", 0x1, 0, 2, 1, (32)),
 
     // acc and mme share same RegNum[7:4], mme gets the high registers
@@ -133,6 +134,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
                       (16, 16)), // sr{0,1}.{0..3}:d
     IGA_REGISTER_SPEC_GE(Platform::XE, RegName::ARF_SR, "sr", "State Register",
                          0x7, 0, 1, 1, (16)), // sr0.{0..3}:d
+
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_CR, "cr", "Control Register", 0x8, 0,
                               4, 1, (3 * 4)), // cr0.{0..2}:d
 
@@ -145,9 +147,11 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
 
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_IP, "ip", "Instruction Pointer", 0xA,
                               0, 4, 0, (4)), // ip
+
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_TDR, "tdr",
                               "Thread Dependency Register", 0xB, 0, 2, 1,
                               (16)), // tdr0.*
+
     IGA_REGISTER_SPEC_GE(Platform::GEN10, RegName::ARF_TM, "tm",
                          "Timestamp Register", 0xC, 0, 4, 1,
                          (5 * 4)), // tm0.{0..4}:d
@@ -173,6 +177,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     IGA_REGISTER_SPEC(Platform::XE, Platform::XE_HPC, RegName::ARF_FC, "fc",
                       "Flow Control", 0xD, 0, 4, 4,
                       (4 * 32, 4 * 1, 4 * 1, 4 * 1)),
+
 
     IGA_REGISTER_SPEC(Platform::GEN7, Platform::GEN7P5, RegName::ARF_DBG, "dbg",
                       "Debug", 0xF, 0, 4, 1, (4)), // dbg0.0:ud
