@@ -498,7 +498,12 @@ bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
 /// among synchronization instructions appearing in the analyzed function.
 void SynchronizationObjectCoalescingAnalysis::Analyze()
 {
-    if (IGC_IS_FLAG_ENABLED(DisableSynchronizationObjectCoalescingPass))
+    const CodeGenContext* const pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    bool isDisabled =
+        IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
+        IGC_GET_FLAG_VALUE(ForceFastestSIMD) ||
+        IGC_IS_FLAG_ENABLED(DisableSynchronizationObjectCoalescingPass);
+    if (isDisabled)
     {
         return;
     }
