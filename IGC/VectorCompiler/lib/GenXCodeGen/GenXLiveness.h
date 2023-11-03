@@ -480,8 +480,8 @@ public:
 
   ~GenXLiveness() { releaseMemory(); }
   GenXLiveness() = default;
-  GenXLiveness(const GenXLiveness &) = default;
-  GenXLiveness &operator=(const GenXLiveness &) = default;
+  GenXLiveness(const GenXLiveness &) = delete;
+  GenXLiveness &operator=(const GenXLiveness &) = delete;
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // setBaling : tell GenXLiveness where GenXBaling is
   void setBaling(GenXBaling *B) { Baling = B; }
