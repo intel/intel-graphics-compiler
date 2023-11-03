@@ -103,12 +103,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
                 break;
-            case GenISAIntrinsic::GenISA_intatomicrawA64:
-                // Ignore a buffer in this intrinsic, keep it stateless.
-                canPromoteAccess = false;
-                break;
             default:
-                IGC_ASSERT_MESSAGE(0, "Unsupported Instruction");
                 canPromoteAccess = false;
                 break;
             }
