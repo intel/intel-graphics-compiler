@@ -1198,21 +1198,22 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         return;
     }
 
-    const Type* LoadEltTy;
-    if (!load->getType()->isPointerTy())
-        LoadEltTy = load->getType()->getScalarType();
+    const Type* loadDataTy = load->getType();
+    const Type* loadEltTy;
+    if (!loadDataTy->getScalarType()->isPointerTy())
+        loadEltTy = loadDataTy->getScalarType();
     else
     {
-        BufferType buffType = DecodeBufferType(load->getType()->getPointerAddressSpace());
+        BufferType buffType = DecodeBufferType(loadDataTy->getPointerAddressSpace());
         if (IsBindless(buffType)
             || buffType == STATELESS_A32
             || buffType == SSH_BINDLESS_CONSTANT_BUFFER
             )
-            LoadEltTy = irBuilder->getInt32Ty();
+            loadEltTy = irBuilder->getInt32Ty();
         else
             return;
     }
-    const uint scalarSizeInBytes = (const uint)(LoadEltTy->getPrimitiveSizeInBits() / 8);
+    const uint scalarSizeInBytes = (const uint)(loadEltTy->getPrimitiveSizeInBits() / 8);
 
     IGC_ASSERT(isPowerOf2_64(alignment));
     IGC_ASSERT(0 != scalarSizeInBytes);
@@ -1230,7 +1231,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     {
         if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
             cur_chunk->baseIdxV == eltIdxV &&
-            cur_chunk->chunkIO->getType()->getScalarType() == LoadEltTy &&
+            cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
             !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load))
         {
             uint lb = std::min(eltid, cur_chunk->chunkStart);
@@ -1274,9 +1275,8 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
             3 : iSTD::RoundPower2((DWORD)chunkSize);
         return validChunkSize;
     };
-    Type* loadDataType = load->getType();
-    const uint32_t loadNumElements = loadDataType->isVectorTy() ?
-        int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataType)->getNumElements()) : 1;
+    const uint32_t loadNumElements = loadDataTy->isVectorTy() ?
+        int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataTy)->getNumElements()) : 1;
     // VectorPreProcess pass legalizes loaded data size.
     IGC_ASSERT(loadNumElements == RoundChunkSize(loadNumElements));
     IGC_ASSERT(loadNumElements >= RoundChunkSize(maxEltPlus));
