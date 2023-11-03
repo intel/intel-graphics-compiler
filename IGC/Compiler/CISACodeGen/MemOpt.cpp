@@ -265,7 +265,20 @@ namespace {
             SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
             unsigned& NumElts)
         {
-            if (IGCLLVM::getAlignmentValue(inst) < 4 && !WI->isUniform(inst))
+            auto alignment = IGCLLVM::getAlignmentValue(inst);
+            if (alignment == 0)
+            {
+                // SROA LLVM pass may sometimes set a load/store alignment to 0. It happens when
+                // deduced alignment (based on GEP instructions) matches an alignment specified
+                // in datalayout for a specific type. It can be problematic as MemOpt merging
+                // logic is implemented in a way that a product of merging inherits an alignment
+                // from the leading load/store. It results in creating memory instruction with
+                // different type, without alignment set, therefore the information about the
+                // correct alignment gets lost.
+                CGC->EmitWarning("MemOpt expects alignment to be always explicitly set for the leading instruction!");
+            }
+
+            if (alignment < 4 && !WI->isUniform(inst))
             {
                 llvm::Type* dataType = isa<LoadInst>(inst) ? inst->getType() : inst->getOperand(0)->getType();
                 unsigned scalarTypeSizeInBytes = unsigned(DL->getTypeSizeInBits(dataType->getScalarType()) / 8);
