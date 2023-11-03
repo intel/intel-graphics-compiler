@@ -39,7 +39,8 @@ bool DisableLoopUnrollOnRetry::runOnLoop(Loop* L, LPPassManager& LPM)
     if (MDNode * LoopID = L->getLoopID())
     {
         if (!(GetUnrollMetadata(LoopID, "llvm.loop.unroll.enable") ||
-            GetUnrollMetadata(LoopID, "llvm.loop.unroll.full")))
+            GetUnrollMetadata(LoopID, "llvm.loop.unroll.full") ||
+            GetUnrollMetadata(LoopID, "llvm.loop.unroll.count")))
         {
             L->setLoopAlreadyUnrolled(); //This sets loop to llvm.loop.unroll.disable
             changed = true;
