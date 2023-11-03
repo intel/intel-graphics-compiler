@@ -379,6 +379,7 @@ namespace IGC
         bool UnsafeMathOptimizations                    = false;
         bool disableCustomUnsafeOpts                    = false;
         bool disableReducePow                           = false;
+        bool disableSqrtOpt                             = false;
         bool FiniteMathOnly                             = false;
         bool FastRelaxedMath                            = false;
         bool DashGSpecified                             = false;

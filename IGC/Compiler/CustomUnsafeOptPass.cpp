@@ -2586,22 +2586,26 @@ void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst& I)
     else if (ID == Intrinsic::sqrt)
     {
         // y*y = x if y = sqrt(x).
-        int replacedUses = 0;
-        for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
+        if (IGC_IS_FLAG_DISABLED(DisableSqrtOpt) && !modMD->compOpt.disableSqrtOpt)
         {
-            if (Instruction* mul = dyn_cast<Instruction>(*iter))
+            int replacedUses = 0;
+            for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
             {
-                if (mul->getOpcode() == Instruction::FMul &&
-                    mul->getOperand(0) == mul->getOperand(1))
+                if (Instruction* mul = dyn_cast<Instruction>(*iter))
                 {
-                    mul->replaceAllUsesWith(I.getOperand(0));
-                    collectForErase(*mul);
-                    ++replacedUses;
+                    if (mul->getOpcode() == Instruction::FMul &&
+                        mul->getOperand(0) == mul->getOperand(1))
+                    {
+                        mul->replaceAllUsesWith(I.getOperand(0));
+                        collectForErase(*mul);
+                        ++replacedUses;
+                    }
                 }
             }
+            if (I.hasNUses(replacedUses))
+                collectForErase(I);
         }
-        if (I.hasNUses(replacedUses))
-            collectForErase(I);
+
     }
     // This optimization simplifies FMA expressions with zero arguments.
     else if (ID == Intrinsic::fma && I.isFast())
