@@ -9276,8 +9276,7 @@ int GlobalRA::doGlobalLinearScanRA() {
   LinearScanRA lra(bc, *this, liveAnalysis);
   int ret = lra.doLinearScanRA();
   if (ret == VISA_SUCCESS) {
-    // TODO: Get correct spillSize from LinearScanRA
-    unsigned spillSize = 0;
+    unsigned spillSize = lra.getSpillSize();
     expandSpillFillIntrinsics(spillSize);
     assignRegForAliasDcl();
     computePhyReg();
