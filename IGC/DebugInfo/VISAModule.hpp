@@ -549,6 +549,7 @@ public:
   virtual bool hasPTO() const = 0;
   virtual int getPTOReg() const = 0;
   virtual int getFPReg() const = 0;
+  virtual uint64_t getFPOffset() const = 0;
   virtual bool usesSlot1ScratchSpill() const = 0;
 
   virtual llvm::ArrayRef<char> getGenDebug() const = 0;
