@@ -136,6 +136,70 @@ inline Function* getCallerFunc(Value* user)
     return caller;
 }
 
+void GenXCodeGenModule::detectUnpromotableFunctions(Module* pM)
+{
+    auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    SmallSet<Function*, 32> tempFuncs;
+
+    // Find functions that have uses of "localSLM" globals
+    for (auto gi = pM->global_begin(), ge = pM->global_end(); gi != ge; gi++)
+    {
+        GlobalVariable* GV = dyn_cast<GlobalVariable>(gi);
+        if (GV && GV->hasSection() && GV->getSection().equals("localSLM"))
+        {
+            for (auto user : GV->users())
+            {
+                if (Instruction* U = dyn_cast<Instruction>(user))
+                {
+                    Function* pF = U->getParent()->getParent();
+                    if (!isEntryFunc(pMdUtils, pF))
+                        tempFuncs.insert(pF);
+                }
+            }
+        }
+    }
+
+    // Find functions that uses instructions that can't be handled for indirect call
+    for (auto& F : *pM)
+    {
+        // Only look at non-entry functions
+        if (F.isDeclaration() || isEntryFunc(pMdUtils, &F) || tempFuncs.count(&F) != 0)
+            continue;
+
+        // Can't make indirect if threadgroupbarrier intrinsic is set
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
+        {
+            if (auto* GII = dyn_cast<GenIntrinsicInst>(&*I))
+            {
+                if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
+                {
+                    tempFuncs.insert(&F);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Recursively add callers, as the whole chain of calls cannot be promoted
+    std::function<void(Function*)> AddCallerRecursive = [&](Function* F)->void
+    {
+        m_UnpromotableFuncs.insert(F);
+        for (auto user : F->users())
+        {
+            Function* parentF = getCallerFunc(user);
+            if (!isEntryFunc(pMdUtils, F))
+            {
+                AddCallerRecursive(parentF);
+            }
+        }
+    };
+
+    for (auto F : tempFuncs)
+    {
+        AddCallerRecursive(F);
+    }
+}
+
 void GenXCodeGenModule::processFunction(Function& F)
 {
     // See what FunctionGroups this Function is called from.
@@ -220,17 +284,12 @@ void GenXCodeGenModule::processFunction(Function& F)
             return false;
         }
 
-        // Can't make indirect if threadgroupbarrier intrinsic is set
-        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
+        // Detect if function is part of the unpromotable set
+        if (m_UnpromotableFuncs.count(F) != 0)
         {
-            if (auto* GII = dyn_cast<GenIntrinsicInst>(&*I))
-            {
-                if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
-                {
-                    return false;
-                }
-            }
+            return false;
         }
+
         return true;
     };
 
@@ -483,6 +542,12 @@ bool GenXCodeGenModule::runOnModule(Module& M)
 
     // Add all indirect functions to the default kernel group
     FGA->addIndirectFuncsToKernelGroup(&M);
+
+    // If FunctionCloningThreshold is enabled, detect functions that cannot be promoted to indirect
+    if (m_FunctionCloningThreshold > 0)
+    {
+        detectUnpromotableFunctions(&M);
+    }
 
     for (auto I = SCCVec.rbegin(), IE = SCCVec.rend(); I != IE; ++I)
     {

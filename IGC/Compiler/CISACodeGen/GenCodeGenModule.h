@@ -49,10 +49,15 @@ namespace IGC {
         void processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes);
         void setFuncProperties(llvm::CallGraph& CG);
         void copyFuncProperties(llvm::Function* To, llvm::Function* From);
+
         GenXFunctionGroupAnalysis* FGA;
         IGC::IGCMD::MetaDataUtils* pMdUtils;
         bool Modified;
         unsigned m_FunctionCloningThreshold = 0;
+
+        // Find the set of functions that cannot be promoted to indirect, must be cloned
+        void detectUnpromotableFunctions(llvm::Module* pM);
+        std::set<llvm::Function*> m_UnpromotableFuncs;
     };
 
     /// \brief A collection of functions that are reachable from a kernel.
