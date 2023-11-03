@@ -425,16 +425,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             F->addFnAttr("no-signed-zeros-fp-math", "true");
         }
 
-        // Add Optnone to user functions but not on builtins. This allows to run
-        // optimizations on builtins.
-        if (isOptDisable)
-        {
-            if (!F->hasFnAttribute("OclBuiltin"))
-            {
-                F->addFnAttr(llvm::Attribute::OptimizeNone);
-            }
-        }
-
         // set hasVLA function attribute
         {
             bool isSet = false;
@@ -450,6 +440,16 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 }
                 if (isSet)
                     break;
+            }
+        }
+
+        // Add Optnone to user functions but not on builtins. This allows to run optimizations on builtins.
+        if (isOptDisable)
+        {
+            if (!F->hasFnAttribute("OclBuiltin") &&
+                !F->hasFnAttribute(llvm::Attribute::AlwaysInline))
+            {
+                F->addFnAttr(llvm::Attribute::OptimizeNone);
             }
         }
 
@@ -606,6 +606,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 mustAlwaysInline = true;
             }
         }
+
+        // Respect user defined alwaysinline attribute
+        if (FCtrl == FLAG_FCALL_DEFAULT &&
+            F->hasFnAttribute(llvm::Attribute::AlwaysInline))
+        {
+            mustAlwaysInline = true;
+        }
+
         if (mustAlwaysInline)
         {
             SetAlwaysInline(F);
