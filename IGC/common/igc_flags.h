@@ -396,6 +396,7 @@ DECLARE_IGC_REGKEY(bool, InitializeAddressRegistersBeforeUse,     false, "Settin
 DECLARE_IGC_REGKEY(bool, AvoidUsingR0R1,                false, "Do not use r0 and r1 as generic usage registers", false)
 DECLARE_IGC_REGKEY(bool, UseOffsetInLocation,           true,  "Setting this to 1 (true) preserves private base and per thread offset and removes preservation of any other debug variables", true)
 DECLARE_IGC_REGKEY(bool, EnableRelocations,             false, "Setting this to 1 (true) makes IGC emit relocatable ELF with debug info", true)
+DECLARE_IGC_REGKEY(bool, EnableWriteOldFPToStack,       true,  "Setting this to 1 (true) writes the caller frame's frame-pointer to the start of callee's frame on stack, to support stack walk", false)
 DECLARE_IGC_REGKEY(bool, ZeBinCompatibleDebugging,      true,  "Setting this to 1 (true) enables embed debug info in zeBinary", true)
 DECLARE_IGC_REGKEY(bool, DebugInfoEnforceAmd64EM,       false, "Enforces elf file with the debug infomation to have eMachine set to AMD64", false)
 DECLARE_IGC_REGKEY(bool, DebugInfoValidation,           false, "Enable optional (strict) checks to detect debug information inconsistencies", false)
