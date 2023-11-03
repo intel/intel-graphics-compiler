@@ -153,24 +153,6 @@ static VISA_Exec_Size getExecSizeFromValue(unsigned int Size) {
   return Res == -1 ? EXEC_SIZE_ILLEGAL : (VISA_Exec_Size)Res;
 }
 
-static VISA_Oword_Num getCisaOwordNumFromNumber(unsigned num) {
-  switch (num) {
-  case 1:
-    return OWORD_NUM_1;
-  case 2:
-    return OWORD_NUM_2;
-  case 4:
-    return OWORD_NUM_4;
-  case 8:
-    return OWORD_NUM_8;
-  case 16:
-    return OWORD_NUM_16;
-  default:
-    IGC_ASSERT_MESSAGE(0, "illegal Oword number.");
-    return OWORD_NUM_ILLEGAL;
-  }
-}
-
 VISAChannelMask convertChannelMaskToVisaType(unsigned Mask) {
   switch (Mask & 0xf) {
   case 1:
@@ -301,161 +283,6 @@ bool testPredicate(const CmpInst *const Cmp, const DstOpndDesc &DstDesc) {
 
 namespace llvm {
 
-static VISA_Type getVisaTypeFromBytesNumber(unsigned BytesNum, bool IsFloat,
-                                            genx::Signedness Sign) {
-  VISA_Type aliasType;
-  if (IsFloat) {
-    switch (BytesNum) {
-    case 2:
-      aliasType = ISA_TYPE_HF;
-      break;
-    case 4:
-      aliasType = ISA_TYPE_F;
-      break;
-    case 8:
-      aliasType = ISA_TYPE_DF;
-      break;
-    default:
-      report_fatal_error("unknown float type");
-      break;
-    }
-  } else {
-    switch (BytesNum) {
-    case 1:
-      aliasType = (Sign == SIGNED) ? ISA_TYPE_B : ISA_TYPE_UB;
-      break;
-    case 2:
-      aliasType = (Sign == SIGNED) ? ISA_TYPE_W : ISA_TYPE_UW;
-      break;
-    case 4:
-      aliasType = (Sign == SIGNED) ? ISA_TYPE_D : ISA_TYPE_UD;
-      break;
-    case 8:
-      aliasType = (Sign == SIGNED) ? ISA_TYPE_Q : ISA_TYPE_UQ;
-      break;
-    default:
-      report_fatal_error("unknown integer type");
-      break;
-    }
-  }
-  return aliasType;
-}
-
-static VISA_Type llvmToVisaType(Type *Type,
-                                genx::Signedness Sign = DONTCARESIGNED) {
-  auto T = Type;
-  IGC_ASSERT(!T->isAggregateType());
-  VISA_Type Result = ISA_TYPE_NUM;
-  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(T);
-      VT && VT->getElementType()->isIntegerTy(1)) {
-    IGC_ASSERT(VT->getNumElements() == 8 || VT->getNumElements() == 16 ||
-               VT->getNumElements() == 32);
-    Result = getVisaTypeFromBytesNumber(VT->getNumElements() / genx::ByteBits,
-                                        false, Sign);
-  } else {
-    if (T->isVectorTy())
-      T = cast<VectorType>(T)->getElementType();
-    if (T->isPointerTy()) {
-      // we might have used DL to get the type size but that'd
-      // overcomplicate this function's type unnecessarily
-      Result = getVisaTypeFromBytesNumber(visa::BytesPerSVMPtr, false,
-                                          DONTCARESIGNED);
-    } else {
-      IGC_ASSERT(T->isFloatingPointTy() || T->isIntegerTy());
-      Result = getVisaTypeFromBytesNumber(T->getScalarSizeInBits() / CHAR_BIT,
-                                          T->isFloatingPointTy(), Sign);
-    }
-  }
-  IGC_ASSERT(Result != ISA_TYPE_NUM);
-  return Result;
-}
-
-static VISA_Type llvmToVisaType(Value *V,
-                                genx::Signedness Sign = DONTCARESIGNED) {
-  return llvmToVisaType(V->getType(), Sign);
-}
-
-// Due to the lack of access to VISA_GenVar internal interfaces (concerning type, size, etc)
-// some local DS are required to store such info: CisaVariable and GenericCisaVariable.
-
-//===----------------------------------------------------------------------===//
-// CisaVariable
-// ------------------
-//
-// CisaVariable keeps VISA_GenVar of a specific VISA_Type and provides accessors
-// to its byte size and number of elements thus emulating some internal vISA machinery.
-//
-//===----------------------------------------------------------------------===//
-class CisaVariable {
-  VISA_Type Type;
-  unsigned ByteSize = 0;
-  VISA_GenVar *VisaVar = nullptr;
-
-public:
-  CisaVariable(VISA_Type T, unsigned BS, VISA_GenVar *V)
-      : Type(T), ByteSize(BS), VisaVar(V) {}
-
-  VISA_Type getType() const { return Type; }
-
-  VISA_GenVar *getGenVar() { return VisaVar; }
-
-  unsigned getByteSize() const { return ByteSize; }
-
-  unsigned getNumElements() const {
-    const int size = CISATypeTable[Type].typeSize;
-    IGC_ASSERT(size);
-    IGC_ASSERT(!(ByteSize % size));
-    return ByteSize / size;
-  }
-};
-
-//===----------------------------------------------------------------------===//
-// GenericCisaVariable
-// ------------------
-//
-// GenericCisaVariable describes vISA value that isn't intended to have matching llvm::Value
-// (e.g. stack regs %arg and %retv). It provides interface to get a VisaVar alias with a specific
-// vISA type.
-//
-//===----------------------------------------------------------------------===//
-class GenericCisaVariable {
-  const char *Name = "";
-  VISA_GenVar *VisaVar = nullptr;
-  unsigned ByteSize = 0;
-
-  IndexedMap<CisaVariable *> AliasDecls;
-  std::list<CisaVariable> Storage;
-
-  unsigned getNumElements(VISA_Type T) const {
-    const int size = CISATypeTable[T].typeSize;
-    IGC_ASSERT(size);
-    IGC_ASSERT(!(ByteSize % size));
-    return ByteSize / size;
-  }
-
-public:
-  GenericCisaVariable(const char *Nm, VISA_GenVar *V, unsigned BS)
-      : Name(Nm), VisaVar(V), ByteSize(BS) {
-    AliasDecls.grow(ISA_TYPE_NUM);
-  }
-
-  CisaVariable *getAlias(Value *V, VISAKernel *K) {
-    return getAlias(llvmToVisaType(V), K);
-  }
-
-  CisaVariable *getAlias(VISA_Type T, VISAKernel *K) {
-    if (!AliasDecls[T]) {
-      VISA_GenVar *VV = nullptr;
-      K->CreateVISAGenVar(VV, Name, getNumElements(T), T, ALIGN_GRF, VisaVar);
-      Storage.push_back(CisaVariable(T, ByteSize, VV));
-      AliasDecls[T] = &Storage.back();
-    }
-    return AliasDecls[T];
-  }
-
-  unsigned getByteSize() const { return ByteSize; }
-};
-
 //===----------------------------------------------------------------------===//
 /// GenXCisaBuilder
 /// ------------------
@@ -559,8 +386,6 @@ class GenXKernelBuilder {
   std::map<Function *, VISA_GenVar *> FPMap;
   SmallVector<InsertValueInst *, 10> RetvInserts;
 
-  std::map<VISAKernel *, std::map<StringRef, GenericCisaVariable>> CisaVars;
-
   // The default float control from kernel attribute. Each subroutine may
   // overrride this control mask, but it should revert back to the default float
   // control mask before exiting from the subroutine.
@@ -601,7 +426,6 @@ public:
   VISABuilder *CisaBuilder = nullptr;
 
 private:
-  bool allowI64Ops() const;
   void collectKernelInfo();
   void buildVariables();
   void buildInstructions();
@@ -662,8 +486,6 @@ private:
                      const DstOpndDesc &DstDesc);
   void buildConvertAddr(CallInst *CI, genx::BaleInfo BI, unsigned Mod,
                         const DstOpndDesc &DstDesc);
-  void buildAlloca(CallInst *CI, unsigned IntrinID, unsigned Mod,
-                   const DstOpndDesc &DstDesc);
   void buildLoneReadVariableRegion(CallInst &CI);
   void buildLoneWriteVariableRegion(CallInst &CI);
   void buildWritePredefSurface(CallInst &CI);
@@ -694,9 +516,6 @@ private:
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      genx::Signedness *SignedRes = nullptr,
                                      unsigned *Offset = nullptr);
-  VISA_VectorOpnd *createDestination(CisaVariable *Dest,
-                                     genx::Signedness Signed,
-                                     unsigned *Offset = nullptr);
   VISA_VectorOpnd *createDestination(Value *Dest,
                                      genx::Signedness Signed,
                                      unsigned *Offset = nullptr);
@@ -706,9 +525,6 @@ private:
                                        unsigned Mod = 0,
                                        genx::Signedness *SignedRes = nullptr,
                                        unsigned MaxWidth = 16);
-  VISA_VectorOpnd *createSource(CisaVariable *V, genx::Signedness Signed,
-                                unsigned MaxWidth = 16,
-                                unsigned *Offset = nullptr);
   VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed, bool Baled,
                                 unsigned Mod = 0,
                                 genx::Signedness *SignedRes = nullptr,
@@ -775,17 +591,6 @@ private:
                     const DstOpndDesc &DstDesc);
   std::string buildAsmName() const;
   void beginFunctionLight(Function *Func);
-
-  unsigned getFuncArgsSize(Function *F);
-  unsigned getValueSize(Type *T, unsigned Mod = 32) const;
-  unsigned getValueSize(CisaVariable *V) const {
-    return V->getByteSize();
-  }
-  unsigned getValueSize(Value *V, unsigned Mod = 32) const {
-    return getValueSize(V->getType(), Mod);
-  }
-  GenericCisaVariable *createCisaVariable(VISAKernel *Kernel, const char *Name,
-                                   VISA_GenVar *AliasVar, unsigned ByteSize);
 
   Signedness getCommonSignedness(ArrayRef<Value *> Vs) const;
 
@@ -1803,17 +1608,6 @@ VISA_VectorOpnd *GenXKernelBuilder::createState(Register *Reg, unsigned Offset,
   return Op;
 }
 
-VISA_VectorOpnd *GenXKernelBuilder::createDestination(CisaVariable *Dest,
-                                                      genx::Signedness Signed,
-                                                      unsigned *Offset) {
-  Region R(IGCLLVM::FixedVectorType::get(
-      IntegerType::get(Ctx, CISATypeTable[Dest->getType()].typeSize * CHAR_BIT),
-      Dest->getNumElements()));
-  if (Offset)
-    R.Offset = *Offset;
-  return createRegionOperand(&R, Dest->getGenVar(), Signed, 0, true);
-}
-
 VISA_VectorOpnd *GenXKernelBuilder::createDestination(Value *Dest,
                                                       genx::Signedness Signed,
                                                       unsigned *Offset) {
@@ -2200,18 +1994,6 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
       createImmediateOperand(Constant::getNullValue(CI->getType()), UNSIGNED);
 
   appendVISAAddrAddInst(vISA_EMASK_M1_NM, ISAExecSize, Dst, Src0, Src1);
-}
-
-VISA_VectorOpnd *GenXKernelBuilder::createSource(CisaVariable *V,
-                                                 Signedness Signed,
-                                                 unsigned MaxWidth,
-                                                 unsigned *Offset) {
-  Region R(IGCLLVM::FixedVectorType::get(
-      IntegerType::get(Ctx, CISATypeTable[V->getType()].typeSize * CHAR_BIT),
-      V->getNumElements()));
-  if (Offset)
-    R.Offset = *Offset;
-  return createRegionOperand(&R, V->getGenVar(), Signed, 0, false, MaxWidth);
 }
 
 VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
@@ -2837,23 +2619,6 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
   return TySz;
 }
 
-// Check if we're trying to form return value of a structure type
-// TODO:  should check full insert/extract chain (for failed coalescing cases),
-//        e.g. after failed coalescing we may end up having a bunch of
-//        extractvalue, insertvalue and bitcasts inst where only the last one
-//        should be actually lowered
-static bool checkInsertToRetv(InsertValueInst *Inst) {
-  if (auto IVI = dyn_cast<InsertValueInst>(Inst->use_begin()->getUser()))
-    return checkInsertToRetv(IVI);
-
-  if (auto RI = dyn_cast<ReturnInst>(Inst->use_begin()->getUser())) {
-    const auto *F = RI->getFunction();
-    return vc::requiresStackCall(F);
-  }
-
-  return false;
-}
-
 /***********************************************************************
  * buildMainInst : build a main instruction
  *
@@ -3300,14 +3065,6 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
   }
 }
 
-bool GenXKernelBuilder::allowI64Ops() const {
-  IGC_ASSERT(Subtarget);
-  if (!Subtarget->hasLongLong())
-    return false;
-  if (Subtarget->partialI64Emulation())
-    return false;
-  return true;
-}
 /**************************************************************************************************
  * Scan ir to collect information about whether kernel has callable function or
  * barrier.
@@ -3416,10 +3173,6 @@ void GenXKernelBuilder::buildVariables() {
   VISA_GenVar *ArgDecl = nullptr, *RetDecl = nullptr;
   Kernel->GetPredefinedVar(ArgDecl, PREDEFINED_ARG);
   Kernel->GetPredefinedVar(RetDecl, PREDEFINED_RET);
-  createCisaVariable(Kernel, "argv", ArgDecl,
-                     visa::ArgRegSizeInGRFs * GrfByteSize);
-  createCisaVariable(Kernel, "retv", RetDecl,
-                     visa::RetRegSizeInGRFs * GrfByteSize);
 }
 
 /***********************************************************************
@@ -4997,68 +4750,6 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
 }
 
 /***********************************************************************
- * buildAlloca : build code for allocating in thread-private memory
- *
- * Enter:   CI = the CallInst
- *
- */
-void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
-                                    unsigned Mod, const DstOpndDesc &DstDesc) {
-  LLVM_DEBUG(dbgs() << "Building alloca " << *CI << "\n");
-  VISA_GenVar *Sp = nullptr;
-  CISA_CALL(Kernel->GetPredefinedVar(Sp, PreDefined_Vars::PREDEFINED_FE_SP));
-  if (!allowI64Ops())
-    CISA_CALL(
-        Kernel->CreateVISAGenVar(Sp, "Sp", 1, ISA_TYPE_UD, ALIGN_DWORD, Sp));
-
-  Value *AllocaOff = CI->getOperand(0);
-  Type *AllocaOffTy = AllocaOff->getType();
-
-  if (CurrentPadding) {
-    // padd the current alloca the comply with gather/scatter alignment rules
-    // unsigned LastOff =
-    // getResultedTypeSize(LastAlloca->getOperand(0)->getType(), DL);
-    auto *AllocaEltTy = AllocaOffTy->getScalarType();
-    if (AllocaOffTy->isArrayTy())
-      AllocaEltTy = AllocaOffTy->getArrayElementType();
-    unsigned Padding = DL.getTypeSizeInBits(AllocaEltTy) / genx::ByteBits;
-    Padding = (Padding - CurrentPadding) % Padding;
-    if (Padding) {
-      VISA_VectorOpnd *SpSrc = nullptr;
-      CISA_CALL(Kernel->CreateVISASrcOperand(SpSrc, Sp, MODIFIER_NONE, 0, 1, 0,
-                                             0, 0));
-      VISA_VectorOpnd *PaddImm = nullptr;
-      CISA_CALL(Kernel->CreateVISAImmediate(PaddImm, &Padding, ISA_TYPE_D));
-      VISA_VectorOpnd *DstSp = nullptr;
-      CISA_CALL(Kernel->CreateVISADstOperand(
-          DstSp, static_cast<VISA_GenVar *>(Sp), 1, 0, 0));
-
-      appendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1,
-                               EXEC_SIZE_1, DstSp, SpSrc, PaddImm);
-      CurrentPadding += Padding;
-    }
-  }
-
-  VISA_VectorOpnd *SpSrc = nullptr;
-  CISA_CALL(
-      Kernel->CreateVISASrcOperand(SpSrc, Sp, MODIFIER_NONE, 0, 1, 0, 0, 0));
-
-  unsigned OffVal = getResultedTypeSize(AllocaOffTy, DL);
-  CurrentPadding = (CurrentPadding + OffVal) %
-                   (DL.getLargestLegalIntTypeSizeInBits() / genx::ByteBits);
-
-  VISA_VectorOpnd *Imm = nullptr;
-  CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_D));
-
-  VISA_VectorOpnd *DstSp = nullptr;
-  CISA_CALL(Kernel->CreateVISADstOperand(DstSp, static_cast<VISA_GenVar *>(Sp),
-                                         1, 0, 0));
-
-  appendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1,
-                           DstSp, SpSrc, Imm);
-}
-
-/***********************************************************************
  * buildPrintIndex : build code for storing constant format strins as metadata
  *                   and returning idx for that string
  *
@@ -5789,53 +5480,6 @@ StringRef GenXKernelBuilder::getStringByIndex(unsigned Val) {
       return it.first;
   }
   IGC_ASSERT_UNREACHABLE(); // Can't find string by index.
-}
-
-/***********************************************************************
- * Get size of the argument of type 'type' in bytes considering layout of
- * subtypes of aggregate type in units of size 'mod'
- * mod is typically 32 (GRF) or 16 (oword)
- */
-unsigned GenXKernelBuilder::getValueSize(Type *T, unsigned Mod) const {
-  unsigned Result = 0;
-  if (T->isAggregateType()) {
-    for (unsigned i = 0; i < T->getStructNumElements(); i++) {
-      Result += getValueSize(T->getContainedType(i)) / Mod +
-                (getValueSize(T->getContainedType(i)) % Mod ? 1 : 0);
-    }
-    Result *= Mod;
-  } else
-    Result = DL.getTypeSizeInBits(T) / 8;
-  return Result;
-}
-
-unsigned GenXKernelBuilder::getFuncArgsSize(llvm::Function *F) {
-  unsigned Result = 0;
-  for (auto &Arg : F->args())
-    Result += getValueSize(&Arg);
-  return Result;
-}
-
-GenericCisaVariable *
-GenXKernelBuilder::createCisaVariable(VISAKernel *Kernel, const char *Name,
-                                      VISA_GenVar *AliasVar,
-                                      unsigned ByteSize) {
-  auto it = CisaVars[Kernel].find(Name);
-  if (it != CisaVars[Kernel].end())
-    it->second = GenericCisaVariable(Name, AliasVar, ByteSize);
-  else
-    CisaVars[Kernel].insert(
-        std::make_pair(Name, GenericCisaVariable(Name, AliasVar, ByteSize)));
-  return &(CisaVars[Kernel].at(Name));
-}
-
-static unsigned deduceByteSize(Value *V, const DataLayout &DL) {
-  return DL.getTypeSizeInBits(V->getType()->getScalarType()) / 8;
-}
-
-static unsigned deduceByteSize(CisaVariable *V, const DataLayout &DL) {
-  IGC_ASSERT(V->getType() < ISA_TYPE_NUM);
-  return CISATypeTable[V->getType()].typeSize;
 }
 
 void GenXKernelBuilder::beginFunctionLight(Function *Func) {
