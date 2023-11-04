@@ -524,21 +524,6 @@ std::string ElemsPerAddr::str() const {
 ///////////////////////////////////////////////////////////////////////////////
 // G4_SendDesc implementations
 ///////////////////////////////////////////////////////////////////////////////
-static inline int roundUpToGrf(int bytes, int grfSize) {
-  return g4::alignUp(grfSize, bytes) / grfSize;
-}
-
-size_t G4_SendDesc::getSrc0LenRegs() const {
-  return roundUpToGrf(getSrc0LenBytes(), irb.getGRFSize());
-}
-
-size_t G4_SendDesc::getDstLenRegs() const {
-  return roundUpToGrf(getDstLenBytes(), irb.getGRFSize());
-}
-
-size_t G4_SendDesc::getSrc1LenRegs() const {
-  return roundUpToGrf(getSrc1LenBytes(), irb.getGRFSize());
-}
 
 bool G4_SendDesc::isHDC() const {
   auto funcID = getSFID();
@@ -1517,7 +1502,7 @@ size_t G4_SendDescRaw::getSrc0LenBytes() const {
 }
 
 size_t G4_SendDescRaw::getDstLenBytes() const {
-  if (isHWordScratchRW()) {
+  if (isHWordScratchRW() && ResponseLength() != 0) {
     return 32 * getHWScratchRWSize(); // HWords
   } else if (isOwordLoad()) {
     return 16 * getOwordsAccessed(); // OWords
@@ -1553,13 +1538,20 @@ size_t G4_SendDescRaw::getSrc1LenBytes() const {
   if (isLscDescriptor) {
     return src1Len * irb.getGRFSize();
   }
-  if (isHWordScratchRW()) {
+  if (isHWordScratchRW() && extMessageLength() != 0) {
     return 32 * getHWScratchRWSize(); // HWords
   }
   // we could support OW store here, but no one seems to need that and
   // we are phasing this class out; so ignore it for now
 
   return extMessageLength() * (size_t)irb.getGRFSize();
+}
+
+size_t G4_SendDescRaw::getSrc1LenRegs() const {
+  if (isLscDescriptor)
+    return src1Len;
+  else
+    return extMessageLength();
 }
 
 bool G4_SendDescRaw::isFence() const {

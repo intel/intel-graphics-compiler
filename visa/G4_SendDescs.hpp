@@ -337,13 +337,11 @@ public:
   virtual size_t getSrc0LenBytes() const = 0;
   virtual size_t getSrc1LenBytes() const = 0;
   //
-  // These round up to the nearest register.
-  // For legacy uses (e.g. MessageLength, exMessageLength(), ...)
-  // (e.g. an OWord block read will report 1 register)
-  // Favor the get{Dst,Src0,Src1}LenBytes() methods.
-  size_t getDstLenRegs() const;
-  size_t getSrc0LenRegs() const;
-  size_t getSrc1LenRegs() const;
+  // dst/src0/src1 len in GRF unit.
+  // Return the value encoded in the send messages
+  virtual size_t getDstLenRegs() const = 0;
+  virtual size_t getSrc0LenRegs() const = 0;
+  virtual size_t getSrc1LenRegs() const = 0;
   //
   // true if the message is a scratch space access (e.g. scratch block read)
   virtual bool isScratch() const = 0;
@@ -640,6 +638,10 @@ public:
   virtual size_t getSrc0LenBytes() const override;
   virtual size_t getDstLenBytes() const override;
   virtual size_t getSrc1LenBytes() const override;
+
+  virtual size_t getDstLenRegs() const override { return ResponseLength(); }
+  virtual size_t getSrc0LenRegs() const override { return MessageLength(); }
+  virtual size_t getSrc1LenRegs() const override;
   //
   virtual SendAccess getAccessType() const override { return accessType; }
   virtual std::pair<Caching, Caching> getCaching() const override;
