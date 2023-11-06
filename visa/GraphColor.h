@@ -1260,6 +1260,8 @@ public:
   bool useFastRA = false;
   bool useHybridRAwithSpill = false;
   bool useLocalRA = false;
+  uint32_t nextSpillOffset = 0;
+  uint32_t scratchOffset = 0;
 
   InterferenceMatrixStorage intfStorage;
   IncrementalRA incRA;

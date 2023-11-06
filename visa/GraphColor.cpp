@@ -9276,8 +9276,7 @@ int GlobalRA::doGlobalLinearScanRA() {
   LinearScanRA lra(bc, *this, liveAnalysis);
   int ret = lra.doLinearScanRA();
   if (ret == VISA_SUCCESS) {
-    unsigned spillSize = lra.getSpillSize();
-    expandSpillFillIntrinsics(spillSize);
+    expandSpillFillIntrinsics(nextSpillOffset);
     assignRegForAliasDcl();
     computePhyReg();
     if (builder.getOption(vISA_verifyLinearScan)) {
@@ -9811,6 +9810,12 @@ int GlobalRA::coloringRegAlloc() {
     spillAnalysis = std::make_unique<SpillAnalysis>();
   }
 
+  if (kernel.fg.getIsStackCallFunc()) {
+    // Allocate space to store Frame Descriptor
+    nextSpillOffset += 32;
+    scratchOffset += 32;
+  }
+
   // Global linear scan RA
   if (builder.getOption(vISA_LinearScan) &&
       builder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
@@ -9847,15 +9852,6 @@ int GlobalRA::coloringRegAlloc() {
   bool enableSpillSpaceCompression =
       builder.getOption(vISA_SpillSpaceCompression);
 
-  uint32_t nextSpillOffset = 0;
-  uint32_t scratchOffset = 0;
-
-  if (kernel.fg.getIsStackCallFunc()) {
-    // Allocate space to store Frame Descriptor
-    nextSpillOffset += 32;
-    scratchOffset += 32;
-  }
-
   uint32_t GRFSpillFillCount = 0;
   unsigned fastCompileIter = 1;
   bool fastCompile =
@@ -9887,7 +9883,6 @@ int GlobalRA::coloringRegAlloc() {
   FINALIZER_INFO *jitInfo = builder.getJitInfo();
 
   incRABookKeeping();
-
   while (iterationNo < maxRAIterations) {
     jitInfo->statsVerbose.RAIterNum++;
     if (builder.getOption(vISA_DynPerfModel)) {

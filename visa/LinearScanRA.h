@@ -152,8 +152,6 @@ private:
 
   // scratch fields used for parameter passing
   G4_BB *curBB_ = nullptr;
-  uint32_t nextSpillOffset = 0;
-  uint32_t scratchOffset = 0;
 
 public:
   static void getRowInfo(int size, int &nrows, int &lastRowSize,
@@ -166,7 +164,6 @@ public:
   int doLinearScanRA();
   void undoLinearScanRAAssignments();
   bool hasHighInternalBC() const { return highInternalConflict; }
-  uint32_t getSpillSize() { return nextSpillOffset; }
 };
 
 class LSLiveRange {

@@ -263,8 +263,6 @@ public:
 
   bool spillLiveRanges(G4_Kernel *kernel);
 
-  unsigned getNumGRFSpill() const { return numGRFSpill; }
-  unsigned getNumGRFFill() const { return numGRFFill; }
   // return the next cumulative logical offset. This does not non-spilled stuff
   // like private variables placed by IGC (marked by spill_mem_offset) this
   // should only be called after insertSpillFillCode()
@@ -624,12 +622,6 @@ private:
   std::unordered_set<G4_DstRegRegion *> noRMWNeeded;
 
   const Interference *spillIntf_;
-
-  // The number of GRF spill.
-  unsigned numGRFSpill = 0;
-
-  // The number of GRF fill.
-  unsigned numGRFFill = 0;
 
   // CISA instruction id of current instruction
   G4_INST *curInst;

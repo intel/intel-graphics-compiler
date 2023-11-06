@@ -788,12 +788,6 @@ void LinearScanRA::calculateFuncLastID() {
 }
 
 int LinearScanRA::linearScanRA() {
-  if (kernel.fg.getIsStackCallFunc()) {
-    // Allocate space to store Frame Descriptor
-    nextSpillOffset += 32;
-    scratchOffset += 32;
-  }
-
   std::list<LSLiveRange *> spillLRs;
   int iterator = 0;
   uint32_t GRFSpillFillCount = 0;
@@ -916,24 +910,25 @@ int LinearScanRA::linearScanRA() {
           kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
           !hasStackCall) {
         enableSpillSpaceCompression = gra.spillSpaceCompression(
-            gra.computeSpillSize(spillLRs), nextSpillOffset);
+            gra.computeSpillSize(spillLRs), gra.nextSpillOffset);
       }
 
-      SpillManagerGRF spillGRF(gra, nextSpillOffset, &l, &spillLRs,
+      SpillManagerGRF spillGRF(gra, gra.nextSpillOffset, &l, &spillLRs,
                                enableSpillSpaceCompression,
                                useScratchMsgForSpill);
 
       spillGRF.spillLiveRanges(&kernel);
-      nextSpillOffset = spillGRF.getNextOffset();
-      ;
-      scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
+      gra.nextSpillOffset = spillGRF.getNextOffset();
+      gra.scratchOffset = std::max(gra.scratchOffset, spillGRF.getNextScratchOffset());
+
 #ifdef DEBUG_VERBOSE_ON
       COUT_ERROR << "===== printSpillLiveIntervals============"
                  << "\n";
       printSpillLiveIntervals(spillLRs);
 #endif
+
       if (builder.hasScratchSurface() && !hasStackCall &&
-          (nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT) {
+          (gra.nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT) {
         // create temp variable to store old a0.2 - this is marked as live-in
         // and live-out. because the variable is emitted only post RA to
         // preserve old value of a0.2.
@@ -981,8 +976,8 @@ int LinearScanRA::linearScanRA() {
           kernel.getGTPinData()->setScratchNextFree(
               8 * 1024 - kernel.getGTPinData()->getNumBytesScratchUse());
         } else {
-          jitInfo->stats.spillMemUsed = nextSpillOffset;
-          kernel.getGTPinData()->setScratchNextFree(nextSpillOffset);
+          jitInfo->stats.spillMemUsed = gra.nextSpillOffset;
+          kernel.getGTPinData()->setScratchNextFree(gra.nextSpillOffset);
         }
         jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
       }
@@ -991,7 +986,7 @@ int LinearScanRA::linearScanRA() {
 
     RA_TRACE({
       std::cout << "\titeration: " << iterator << "\n";
-      std::cout << "\t\tnextSpillOffset: " << nextSpillOffset << "\n";
+      std::cout << "\t\tnextSpillOffset: " << gra.nextSpillOffset << "\n";
       std::cout << "\t\tGRFSpillFillCount: " << GRFSpillFillCount << "\n";
     });
 
@@ -1015,7 +1010,7 @@ int LinearScanRA::linearScanRA() {
 
   if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()) {
     getSaveRestoreRegister();
-    unsigned localSpillAreaOwordSize = ROUND(scratchOffset, 64) / 16;
+    unsigned localSpillAreaOwordSize = ROUND(gra.scratchOffset, 64) / 16;
     gra.addSaveRestoreCode(localSpillAreaOwordSize);
   }
   return VISA_SUCCESS;
