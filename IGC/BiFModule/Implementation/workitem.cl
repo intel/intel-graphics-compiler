@@ -57,6 +57,13 @@ size_t3 OVERLOADABLE __intel_WorkgroupId()
     return v;
 }
 
+size_t3 OVERLOADABLE __intel_NumWorkgroups()
+{
+    size_t3 v = BuiltinVector(__builtin_IB_get_num_groups);
+    BuiltinVectorAssumeGE0(v);
+    return v;
+}
+
 uint OVERLOADABLE __intel_LocalInvocationId(uint dim)
 {
     uint v = 0;

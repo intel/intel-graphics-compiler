@@ -111,6 +111,7 @@ namespace IGC
         bool m_hasAssertBuffer = false;
         /// @brief Marks whether kernel has stackcalls
         bool m_hasStackCalls = false;
+
         /// @brief MetaData utils used to generate LLVM metadata
         IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
         /// @brief context for compilation

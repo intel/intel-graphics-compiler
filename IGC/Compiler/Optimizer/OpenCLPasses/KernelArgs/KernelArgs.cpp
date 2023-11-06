@@ -360,7 +360,6 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
 
     case ImplicitArg::ASSERT_BUFFER_POINTER:
         return KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER;
-
     default:
         return KernelArg::ArgType::NOT_TO_ALLOCATE;
     }
@@ -802,7 +801,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
-
             KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
@@ -924,7 +922,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
-
             KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
             KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
