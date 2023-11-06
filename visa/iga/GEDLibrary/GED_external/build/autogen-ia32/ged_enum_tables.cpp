@@ -1763,12 +1763,6 @@ static GED_DP_OPCODE DpOpcodeVar28 = (GED_DP_OPCODE)28;
 static GED_DP_OPCODE DpOpcodeVar29 = (GED_DP_OPCODE)29;
 static GED_DP_OPCODE DpOpcodeVar30 = (GED_DP_OPCODE)30;
 static GED_DP_OPCODE DpOpcodeVar31 = (GED_DP_OPCODE)31;
-static GED_DP_OPCODE DpOpcodeVar32 = (GED_DP_OPCODE)32;
-static GED_DP_OPCODE DpOpcodeVar33 = (GED_DP_OPCODE)33;
-static GED_DP_OPCODE DpOpcodeVar34 = (GED_DP_OPCODE)34;
-static GED_DP_OPCODE DpOpcodeVar35 = (GED_DP_OPCODE)35;
-static GED_DP_OPCODE DpOpcodeVar36 = (GED_DP_OPCODE)36;
-static GED_DP_OPCODE DpOpcodeVar37 = (GED_DP_OPCODE)37;
 const GED_DP_OPCODE* DpOpcodeTable0[64] =
 {
     &DpOpcodeVar0, // 0
@@ -1950,12 +1944,12 @@ const GED_DP_OPCODE* DpOpcodeTable2[64] =
     &DpOpcodeVar31, // 42
     NULL, // 43
     NULL, // 44
-    &DpOpcodeVar32, // 45
-    &DpOpcodeVar33, // 46
-    &DpOpcodeVar34, // 47
-    &DpOpcodeVar35, // 48
-    &DpOpcodeVar36, // 49
-    &DpOpcodeVar37, // 50
+    NULL, // 45
+    NULL, // 46
+    NULL, // 47
+    NULL, // 48
+    NULL, // 49
+    NULL, // 50
     NULL, // 51
     NULL, // 52
     NULL, // 53

@@ -40,7 +40,7 @@ extern const char* DpDataSizeEnumeration[8];
 extern const char* DpFenceScopeEnumeration[8];
 extern const char* DpFlushTypeEnumeration[7];
 extern const char* DPOneAddrRegEnumeration[2];
-extern const char* DpOpcodeEnumeration[39];
+extern const char* DpOpcodeEnumeration[33];
 extern const char* DpTransposeEnumeration[3];
 extern const char* DpVectSizeEnumeration[9];
 extern const char* DstChanEnEnumeration[17];

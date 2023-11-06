@@ -343,7 +343,7 @@ const char* DPOneAddrRegEnumeration[2] =
 #endif // GED_DPONE_ADDR_REG_HIDDEN
 
 #ifndef GED_DP_OPCODE_HIDDEN
-const char* DpOpcodeEnumeration[39] =
+const char* DpOpcodeEnumeration[33] =
 {
     "LOAD", // 0
     "LOAD_CMASK", // 1
@@ -377,7 +377,7 @@ const char* DpOpcodeEnumeration[39] =
     "APPENDCOUNTER_ATOMIC_ADD", // 29
     "APPENDCOUNTER_ATOMIC_SUB", // 30
     "APPENDCOUNTER_ATOMIC_STORE", // 31
-    NULL
+    NULL // 32
 }; // DpOpcodeEnumeration[]
 #endif // GED_DP_OPCODE_HIDDEN
 
