@@ -1846,10 +1846,8 @@ bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
 
   if (C1Ty->isFloatingPointTy() && C2Ty->isFloatingPointTy()) {
     for (unsigned i = 0, e = C1->getNumElements(); i < e; ++i) {
-      double C1Val = C1Ty->isFloatTy() ? C1->getElementAsFloat(i)
-                                       : C1->getElementAsDouble(i);
-      double C2Val = C2Ty->isFloatTy() ? C2->getElementAsFloat(i)
-                                       : C2->getElementAsDouble(i);
+      double C1Val = C1->getElementAsAPFloat(i).convertToDouble();
+      double C2Val = C2->getElementAsAPFloat(i).convertToDouble();
       if (C1Val != C2Val)
         return false;
     }
