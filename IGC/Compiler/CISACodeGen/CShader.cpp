@@ -1122,6 +1122,7 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type, bool isCod
         {
             encoder.SetPayloadSectionAsPrimary();
         }
+        encoder.SetSimdSize(m_dispatchSize);
         encoder.SetP(dst, immVar);
         encoder.Push();
         if (isCodePatchCandidate)
