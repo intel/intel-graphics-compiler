@@ -800,10 +800,13 @@ llvm::SmallPtrSet<Instruction *, 1> getSrcVLoads(Instruction *I);
 Instruction *getSrcVLoadOrNull(Instruction *I);
 bool hasVLoadSource(Instruction *I);
 
+bool isSafeToReplaceInstCheckAVLoadKill(Instruction *OldI,
+                                        Instruction *ReplacementI);
 bool isSafeToMoveBaleCheckAVLoadKill(const Bale &B, Instruction *To);
 bool isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To);
 bool isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To,
                                      GenXBaling *Baling_);
+bool isSafeToUseAtPosCheckAVLoadKill(Instruction *I, Instruction *To);
 
 bool loadingSameValue(Instruction *L1, Instruction *L2,
                       const DominatorTree *DT);

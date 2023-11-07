@@ -1145,6 +1145,8 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
   case GenXIntrinsic::genx_rdregioni: {
     auto replace = simplifyConstIndirectRegion(Inst);
     if (replace != Inst) {
+      if (!genx::isSafeToReplaceInstCheckAVLoadKill(Inst, replace))
+        break;
       Inst->replaceAllUsesWith(replace);
       Inst = replace;
     }
@@ -1183,6 +1185,9 @@ bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
       if (auto V = simplifyRegionInst(Inst, DL, ST)) {
+        if (isa<Instruction>(V) && !genx::isSafeToReplaceInstCheckAVLoadKill(
+                                       Inst, cast<Instruction>(V)))
+          continue;
         Inst->replaceAllUsesWith(V);
         Inst->eraseFromParent();
         Changed = true;

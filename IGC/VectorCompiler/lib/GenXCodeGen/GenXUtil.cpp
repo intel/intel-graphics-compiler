@@ -2460,10 +2460,35 @@ bool genx::isSafeToMoveBaleCheckAVLoadKill(const Bale &B, Instruction *To) {
   return true;
 }
 
+// WARNING: Only checking for VLoad clobbering aspect in the context of value
+// usage. If moving/merging/splitting an instruction or checking in a
+// bale context use isSafeToMove<...>CheckAVLoadKill variants.
+bool genx::isSafeToUseAtPosCheckAVLoadKill(Instruction *I, Instruction *To) {
+  IGC_ASSERT(I != To);
+
+  if (genx::isAVLoad(I))
+    return !getAVLoadKillOrNull(I, To);
+
+  // Regarding VLoad clobbering for any non-vload instruction it should be safe
+  // to use its value at any reachable position (except for in the context of a
+  // bale).
+  return true;
+}
+
 bool genx::isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To) {
+  IGC_ASSERT(I != To);
+
+  // if(LLVM_UNLIKELY(I == To))
+  //   return true;
+
+  // vloads are not movable anywhere else.
+  if (LLVM_UNLIKELY(genx::isAVLoad(I)))
+    return false;
+
   for (auto *LI : getSrcVLoads(I))
     if (getAVLoadKillOrNull(LI, To))
       return false;
+
   return true;
 }
 
@@ -2473,6 +2498,18 @@ bool genx::isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To,
   Bale Bale;
   Baling->buildBale(I, &Bale);
   return isSafeToMoveBaleCheckAVLoadKill(Bale, To);
+}
+
+bool genx::isSafeToReplaceInstCheckAVLoadKill(Instruction *OldI,
+                                              Instruction *ReplacementI) {
+  IGC_ASSERT_MESSAGE(OldI->getParent() && ReplacementI->getParent(),
+                     "both instructions must be placed in IR.");
+
+  return !genx::isAVLoad(ReplacementI) ||
+         !std::any_of(
+             OldI->user_begin(), OldI->user_end(), [ReplacementI](User *U) {
+               return getAVLoadKillOrNull(ReplacementI, cast<Instruction>(U));
+             });
 }
 
 bool genx::loadingSameValue(Instruction *L1, Instruction *L2,
