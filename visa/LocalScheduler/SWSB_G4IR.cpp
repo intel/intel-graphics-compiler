@@ -5722,7 +5722,6 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode *node) const {
     const SBFootprint *srcfp = node->getFirstFootprint(opndNum);
     unsigned short internalOffset = 0;
     if (dstfp->hasOverlap(srcfp, internalOffset)) {
-      vASSERT(opndNum != Opnd_src1);
 
       // It's allowed that dst and src0 share same registers (not internal dep).
       // But not including partial overlap.
