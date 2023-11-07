@@ -102,8 +102,6 @@ namespace llvm {
       ArgStorage.Reset();
     }
 
-    GenXModule(const GenXModule &) = default;
-    GenXModule &operator=(const GenXModule &) = default;
   public:
     static char ID;
 
@@ -116,6 +114,8 @@ namespace llvm {
 
     explicit GenXModule() : ModulePass(ID) {}
     ~GenXModule() { cleanup(); }
+    GenXModule(const GenXModule &) = delete;
+    GenXModule &operator=(const GenXModule &) = delete;
 
     StringRef getPassName() const override { return "GenX module"; }
     void getAnalysisUsage(AnalysisUsage &AU) const override;
