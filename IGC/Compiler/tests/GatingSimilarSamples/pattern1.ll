@@ -51,7 +51,7 @@ define void @test(float %src1, float %src2, float %src3, float* %dst) {
 ; CHECK-LLVM-14-PLUS:    [[TMP18:%[A-z0-9]*]] = phi fast float [ [[TMP14]], %[[TMP9]] ], [ [[TMP3]], [[TMP0:%[A-z0-9]*]] ]
 ; CHECK-LLVM-14-PLUS:    [[TMP19:%[A-z0-9]*]] = phi fast float [ [[TMP15]], %[[TMP9]] ], [ [[TMP4]], [[TMP0]] ]
 ; CHECK-LLVM-14-PLUS:    [[TMP20:%[A-z0-9]*]] = phi fast float [ [[TMP16]], %[[TMP9]] ], [ [[TMP5]], [[TMP0]] ]
-; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float [[TMP18]], float [[TMP19]], float [[TMP20]], float 0.000000e+00, i32 1, i32 1)
+; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float [[TMP18]], float [[TMP19]], float [[TMP20]], float 0.000000e+00, i32 1, i32 1, i32 15)
 ; CHECK:    ret void
 ;
   %mul = fmul float %src1, %src2
@@ -69,10 +69,10 @@ define void @test(float %src1, float %src2, float %src3, float* %dst) {
   %10 = fmul float %7, 5.000000e-01
   %11 = fmul float 5.000000e-01, %8
   %12 = fmul float %9, 5.000000e-01
-  call void @llvm.genx.GenISA.OUTPUT.f32(float %10, float %11, float %12, float 0.000000e+00, i32 1, i32 1)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float %10, float %11, float %12, float 0.000000e+00, i32 1, i32 1, i32 15)
   ret void
 }
 
 declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float, float, float, float, float, float, i8 addrspace(196609)*, i8 addrspace(524293)*, i32, i32, i32)
-declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32)
+declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
 

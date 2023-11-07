@@ -50,12 +50,12 @@ Output:                                           ; preds = %Label-26.i.Output_c
   %.02 = phi float [ %2, %Label-35.i ], [ 0.000000e+00, %Label-26.i.Output_crit_edge ], [ 0.000000e+00, %GlobalScopeInitialization.Output_crit_edge ]
   %.03 = phi float [ %8, %Label-35.i ], [ 0.000000e+00, %Label-26.i.Output_crit_edge ], [ 0.000000e+00, %GlobalScopeInitialization.Output_crit_edge ]
   %.04 = phi float [ %10, %Label-35.i ], [ 1.000000e+00, %Label-26.i.Output_crit_edge ], [ 1.000000e+00, %GlobalScopeInitialization.Output_crit_edge ]
-  call void @llvm.genx.GenISA.OUTPUT.f32(float %.01, float %.02, float %.03, float %.04, i32 0, i32 0)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float %.01, float %.02, float %.03, float %.04, i32 0, i32 0, i32 15)
   ret void
 }
 
 ; Function Attrs: noduplicate nounwind
-declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32) #2
+declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32) #2
 
 ; Function Attrs: nounwind readnone
 declare i32 @llvm.genx.GenISA.RuntimeValue.i32(i32) #1

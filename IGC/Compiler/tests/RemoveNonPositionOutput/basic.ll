@@ -21,18 +21,18 @@
 define void @test_remove(i32 %src) {
 ; CHECK-LABEL: @test_remove(
 ; CHECK:  entry:
-; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 1.500000e+00, float 2.500000e+00, float 3.500000e+00, float 4.500000e+00, i32 1, i32 1)
-; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 1.250000e+00, float 2.250000e+00, float 3.250000e+00, float 4.250000e+00, i32 8, i32 1)
+; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 1.500000e+00, float 2.500000e+00, float 3.500000e+00, float 4.500000e+00, i32 1, i32 1, i32 15)
+; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 1.250000e+00, float 2.250000e+00, float 3.250000e+00, float 4.250000e+00, i32 8, i32 1, i32 15)
 ; CHECK:    ret void
 ;
 entry:
-  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.500000e+00, float 2.500000e+00, float 3.500000e+00, float 4.500000e+00, i32 1, i32 1)
-  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, i32 0, i32 1)
-  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.250000e+00, float 2.250000e+00, float 3.250000e+00, float 4.250000e+00, i32 8, i32 1)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.500000e+00, float 2.500000e+00, float 3.500000e+00, float 4.500000e+00, i32 1, i32 1, i32 15)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, i32 0, i32 1, i32 15)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.250000e+00, float 2.250000e+00, float 3.250000e+00, float 4.250000e+00, i32 8, i32 1, i32 15)
   ret void
 }
 
-declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32)
+declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!4}

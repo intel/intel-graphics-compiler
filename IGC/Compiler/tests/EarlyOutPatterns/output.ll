@@ -27,7 +27,7 @@ define spir_kernel void @test_earlyout(<4 x float>* %src1, i32* %src2) {
 ; CHECK:    br label %[[EO_ENDIF]]
 ; CHECK:  [[EO_ENDIF]]:
 ; CHECK:    store <4 x float> [[TMP1]], <4 x float>* [[SRC1:%[A-z0-9]*]]
-; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float [[TMP2]], i32 1, i32 2)
+; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float [[TMP2]], i32 1, i32 2, i32 15)
 ; CHECK:    ret void
 ;
   %1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.f32.i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float 6.0, float* null, i32* null, i32 1, i32 2, i32 3)
@@ -84,9 +84,9 @@ define spir_kernel void @test_earlyout(<4 x float>* %src1, i32* %src2) {
   %52 = fadd float %2, 1.0
   %53 = fadd float %2, 1.0
   store <4 x float> %1, <4 x float>* %src1
-  call void @llvm.genx.GenISA.OUTPUT.f32(float 0.0, float 0.0, float 0.0, float %2, i32 1, i32 2)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float 0.0, float 0.0, float 0.0, float %2, i32 1, i32 2, i32 15)
   ret void
 }
 
-declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32)
+declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
 declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.f32.i32(float, float, float, float, float, float, float*, i32*, i32, i32, i32)
