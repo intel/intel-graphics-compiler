@@ -971,8 +971,7 @@ CVariable* CShader::GetPrivateBase()
     unsigned numFuncArgs = entry->arg_size() - numImplicitArgs - numPushArgs;
 
     Argument* kerArg = nullptr;
-    llvm::Function::arg_iterator arg = entry->arg_begin();
-    for (unsigned i = 0; i < numFuncArgs; ++i, ++arg);
+    llvm::Function::arg_iterator arg = std::next(entry->arg_begin(), numFuncArgs);
     for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
         ImplicitArg implicitArg = implicitArgs[i];
         if (implicitArg.getArgType() == ImplicitArg::ArgType::PRIVATE_BASE)
@@ -2683,8 +2682,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
         IGC_ASSERT_MESSAGE(F->arg_size() >= (numImplicitArgs + numPushArgs), "Function arg size does not match meta data and push args.");
         unsigned numFuncArgs = F->arg_size() - numImplicitArgs - numPushArgs;
 
-        llvm::Function::arg_iterator arg = F->arg_begin();
-        std::advance(arg, numFuncArgs);
+        llvm::Function::arg_iterator arg = std::next(F->arg_begin(), numFuncArgs);
         for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg)
         {
             Argument* argVal = &(*arg);
@@ -2716,8 +2714,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                     if (isEntryFunc(m_pMdUtils, &K) && !isNonEntryMultirateShader(&K)) {
                         argIx = argIx - numPushArgsEntry;
                     }
-                    Function::arg_iterator arg = K.arg_begin();
-                    for (uint32_t j = 0; j < argIx; ++j, ++arg);
+                    Function::arg_iterator arg = std::next(K.arg_begin(), argIx);
                     Argument* kerArg = &(*arg);
 
                     // Pre-condition: all kernel arguments have been created already.

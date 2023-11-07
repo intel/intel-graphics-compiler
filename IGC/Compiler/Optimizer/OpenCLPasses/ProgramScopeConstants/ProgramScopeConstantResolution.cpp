@@ -174,8 +174,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             unsigned int ImplicitArgsBaseIndex = userFunc->arg_size() - implicitArgs.size();
             unsigned int implicitArgIndex = implicitArgs.getArgIndex(argType);
             unsigned int implicitArgIndexInFunc = ImplicitArgsBaseIndex + implicitArgIndex;
-            Function::arg_iterator bufArg = userFunc->arg_begin();
-            for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++bufArg);
+            Function::arg_iterator bufArg = std::next(userFunc->arg_begin(), implicitArgIndexInFunc);
 
             if (!funcToVarSet[userFunc].count(pGlobalVar))
             {

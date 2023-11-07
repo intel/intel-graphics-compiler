@@ -273,8 +273,7 @@ void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* b
 
     // Iterate over all function arguments till reach the first implicit argument
     // associated with the explicit given argument.
-    Function::arg_iterator implicitArgToStore = m_pFunction->arg_begin();
-    for (unsigned int i = 0; i < baseImplicitArg + startArgNo; ++i, ++implicitArgToStore);
+    Function::arg_iterator implicitArgToStore = std::next(m_pFunction->arg_begin(), baseImplicitArg + startArgNo);
 
     Value* baseAsPtri8 = irBuilder.CreateBitCast(base, Type::getInt8PtrTy(base->getContext(), ADDRESS_SPACE_PRIVATE));
 
