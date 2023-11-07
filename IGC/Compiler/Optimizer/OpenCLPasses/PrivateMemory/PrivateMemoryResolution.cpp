@@ -128,11 +128,13 @@ void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem)
     maxPrivateMem += 4096;
     std::string maxPrivateMemValue = std::to_string(maxPrivateMem);
     std::string fullWarningMessage = "VLA has been detected, the private memory size is set to " + maxPrivateMemValue + "B. "
-        "You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. "
+        "You can change the size by setting environmental variable IGC_ForcePerThreadPrivateMemorySize to a value from [1024:20480]. "
         "Greater values can affect performance, and lower ones may lead to incorrect results of your program.\n"
-        "To make sure your program runs correctly you can set flag StackOverflowDetection to 1. "
+        "To make sure your program runs correctly you can set environmental variable IGC_StackOverflowDetection to 1. "
         "This flag will print \"Stack overflow detected!\" if insufficient memory value has lead to stack overflow. "
-        "It should be used for debugging only as it affects performance.";
+        "It should be used for debugging only as it affects performance.\n"
+        "The documentation for setting flags through environmental variables as well as available flags can be found at "
+        "https://github.com/intel/intel-graphics-compiler/blob/master/documentation/configuration_flags.md";
 
     getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
 }

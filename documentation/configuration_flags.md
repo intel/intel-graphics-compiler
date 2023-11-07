@@ -292,7 +292,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ForceCSSIMD32` | Force computer shader SIMD32 mode | - |
 | `ForceDisableShaderDebugHashCodeInKernel` | Disable hash code addition to the binary after EOT | - |
 | `ForceMemoryFenceBeforeEOT` | Forces inserting SLM or gloabal memory fence before EOT if shader writes to SLM or goblam memory respectively. | - |
-| `ForcePerThreadPrivateMemorySize` | Useful for ensuring a certain amount of private memory when doing a shader override. | - |
+| `ForcePerThreadPrivateMemorySize` | Useful for ensuring a certain amount of private memory when doing a shader override. | Available |
 | `ForceStatelessForQueueT` | In OCL, force to use stateless memory to hold queue_t*. This is a legacy feature to be removed. | - |
 | `MSAAClearedKernel` | Insert the discard code for MSAA_MSC_Cleared kernels. 2/4/8/16 | - |
 | `PrintVerboseGenericControlFlowLog` | Forces compiler to print detailed log about additional control flow generated due to a presence of generic memory operations | Available |
@@ -375,6 +375,7 @@ $ export IGC_ShaderDumpEnable=1
 | `UseVISAVarNames` | Make VISA generate names for virtual variables so they match with dbg file | Available |
 | `ZeBinCompatibleDebugging` | Setting this to 1 (true) enables embed debug info in zeBinary | Available |
 | `deadLoopForFloatException` | enable a dead loop if float exception happened | - |
+| `StackOverflowDetection` | Inserts checks for stack overflow when stack calls are used. | Available |
 ## IGC Features
 | Flag  | Description | Release builds |
 |:---- | :---- | :----: |
