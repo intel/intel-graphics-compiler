@@ -148,6 +148,12 @@ bool MemInstCluster::isSafeToMoveTo(Instruction* I, Instruction* Pos, const Smal
             break;
         }
     }
+    if (auto CI = dyn_cast<CallInst>(I)) {
+        // So far, conservatively assume that any call instruction that can operate on memory
+        // is not safe to be moved.
+        if (CI->mayReadOrWriteMemory())
+            return false;
+    }
     return true;
 }
 
