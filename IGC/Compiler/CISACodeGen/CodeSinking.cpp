@@ -384,6 +384,9 @@ namespace IGC {
         bool processedBegin = false;
         bool metDbgValueIntrinsic = false;
         SmallPtrSet<Instruction*, 16> stores;
+        undoLocas.clear();
+        movedInsts.clear();
+        Instruction* prevLoca = 0x0;
         do {
             Instruction* inst = &(*I);  // The instruction to sink.
 
@@ -395,6 +398,7 @@ namespace IGC {
             if (inst->mayWriteToMemory())
             {
                 stores.insert(inst);
+                prevLoca = inst;
             }
             // intrinsic like discard has no explict use, gets skipped here
             else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() ||
@@ -404,17 +408,49 @@ namespace IGC {
                 {
                     metDbgValueIntrinsic = true;
                 }
+                prevLoca = inst;
             }
-            else
-            {
-                madeChange |= SinkInstruction(inst, stores, false);
+            else {
+                Instruction* undoLoca = prevLoca;
+                prevLoca = inst;
+                // diagnosis code: if (numChanges >= sinkLimit)
+                // diagnosis code:    continue;
+                if (SinkInstruction(inst, stores, false))
+                {
+                    madeChange = true;
+                    movedInsts.push_back(inst);
+                    undoLocas.push_back(undoLoca);
+                    // diagnosis code: numChanges++;
+                }
             }
             // If we just processed the first instruction in the block, we're done.
         } while (!processedBegin);
 
-        if (madeChange || metDbgValueIntrinsic)
+        if (generalCodeSinking && registerPressureThreshold)
         {
-            totalGradientMoved += numGradientMovedOutBB;
+            if (madeChange)
+            {
+                // measure the live-out register pressure again
+                uint pressure1 = EstimateLiveOutPressure(&blk, DL);
+                if (pressure1 > pressure0 + registerPressureThreshold)
+                {
+                    // undo code motion
+                    int numChanges = movedInsts.size();
+                    for (int i = 0; i < numChanges; ++i)
+                    {
+                        Instruction* undoLoca = undoLocas[i];
+                        IGC_ASSERT(undoLoca);
+                        movedInsts[i]->moveBefore(undoLoca);
+                    }
+                    madeChange = false;
+                }
+                else
+                {
+                    totalGradientMoved += numGradientMovedOutBB;
+                }
+            }
+        }
+        if (madeChange || metDbgValueIntrinsic) {
             ProcessDbgValueInst(blk);
         }
 
