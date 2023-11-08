@@ -545,10 +545,14 @@ bool GenXBaling::operandCanBeBaled(
       for (auto U : Opnd->users())
         if (isa<BitCastInst>(U))
           return false;
-      Region R = makeRegionFromBaleInfo(cast<CallInst>(Opnd), BaleInfo());
-      if (R.Indirect)
+      if (RdR.Indirect)
         return false;
     }
+    // Indirect regions are not supported for LSC.
+    if (RdR.Indirect &&
+        (GenXIntrinsic::isLSC(Inst) ||
+         vc::InternalIntrinsic::isInternalMemoryIntrinsic(Inst)))
+      return false;
     return true;
   }
   return false;
