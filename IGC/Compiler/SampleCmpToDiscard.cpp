@@ -140,7 +140,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
     * %94 = fsub half 0xH3C00, %93 // 1 - B
     * %95 = fmul half %94, 0xH3400 // 0.25 * (1-B)
     * %96 = fadd half %95, %93 // 0.25 * ( 1-B) + B
-    * call void @llvm.genx.GenISA.OUTPUT.f16(half %96, half %96, half %96, half %96, i32 0, i32 0, i32 15)
+    * call void @llvm.genx.GenISA.OUTPUT.f16(half %96, half %96, half %96, half %96, i32 0, i32 0)
     * ret void
     */
 
@@ -152,7 +152,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
     * %scalar40 = extractelement <4 x float> %62, i32 0
     * %phitmp = fmul float %scalar40, 7.500000e-01
     * %63 = fadd float %phitmp, 2.500000e-01
-    * call void @llvm.genx.GenISA.OUTPUT.f32(float %63, float %63, float %63, float %63, i32 0, i32 0, i32 15)
+    * call void @llvm.genx.GenISA.OUTPUT.f32(float %63, float %63, float %63, float %63, i32 0, i32 0)
     */
     bool foldInst = false;
     APFloat newConstantFloat = cast<ConstantFP>(ConstantFP::get(inst->getType(), 1.0))->getValueAPF();

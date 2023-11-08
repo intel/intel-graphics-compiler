@@ -378,8 +378,7 @@ Imported_Intrinsics = \
      (0,                               "2: source z"),
      (0,                               "3: source w"),
      ("int",                           "4: usage (color/texcoord/pos)"),
-     ("int",                           "5: index"),
-     ("int",                           "6: mask")],
+     ("int",                           "5: index & mask")],
     "NoDuplicate"]],
 ####################################################################################################
 "GenISA_OUTPUTGS": ["",
@@ -390,8 +389,7 @@ Imported_Intrinsics = \
      ("float",                         "w"),
      ("int",                           "type"),
      ("int",                           "idx_mask"),
-     ("int",                           "emitCount"),
-     ("int",                           "mask")],
+     ("int",                           "emitCount")],
     "None"]],
 ####################################################################################################
 "GenISA_OUTPUTGS2": ["",
