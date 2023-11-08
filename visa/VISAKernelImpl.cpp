@@ -7794,7 +7794,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
     status |= m_builder->translateLscUntypedBlock2DInst(
         op, lscSfid, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
         emask, cacheOpts, dataShape2D, dstData->g4opnd->asDstRegRegion(),
-        src0AddrSrcRgns, src1Data->g4opnd->asSrcRegRegion());
+        src0AddrSrcRgns, src1Data->g4opnd->asSrcRegRegion(), xImmOffset, yImmOffset);
   }
 
   if (IS_VISA_BOTH_PATH) {

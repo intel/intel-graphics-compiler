@@ -655,8 +655,9 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     LSC_CACHE_OPTS cacheOpts, LSC_DATA_SHAPE_BLOCK2D dataShape2D,
     G4_DstRegRegion *dstRead, // dst can be NULL reg (e.g store)
     G4_Operand *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // always the addresses
-    G4_SrcRegRegion *src1Data                       // store data
-){
+    G4_SrcRegRegion *src1Data, // store data
+    int xImmOff, int yImmOff)
+{
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   int status = VISA_SUCCESS;
@@ -694,8 +695,22 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   const G4_ExecSize execSize = toExecSize(visaExecSize);
   const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
 
+
+  int emuImmOffX = 0, emuImmOffY = 0;
+  auto immOffNeedsEmu = [&](int off) {
+    return true;
+  };
+  if (immOffNeedsEmu(xImmOff)) {
+    emuImmOffX = xImmOff;
+    xImmOff = 0;
+  }
+  if (immOffNeedsEmu(yImmOff)) {
+    emuImmOffY = yImmOff;
+    yImmOff = 0;
+  }
   G4_SrcRegRegion *src0Addr =
-      lscBuildBlock2DPayload(dataShape2D, pred, src0Addrs);
+      lscBuildBlock2DPayload(dataShape2D, pred, src0Addrs,
+                             emuImmOffX, emuImmOffY);
 
   SFID sfid = SFID::NULL_SFID;
   switch (lscSfid) {
@@ -713,7 +728,6 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   }
   // send descriptor
   uint32_t desc = 0;
-  uint32_t exDesc = 0;
 
   desc |= opInfo.encoding;
   if (dataShape2D.vnni)
@@ -749,6 +763,11 @@ int IR_Builder::translateLscUntypedBlock2DInst(
 
   desc |= dstLen << 20;   // Desc[24:20]  dst len
   desc |= addrRegs << 25; // Desc[28:25]  src0 len
+
+
+  uint32_t exDesc = 0;
+  exDesc |= ((uint32_t)xImmOff & 0x3FF) << 12;
+  exDesc |= ((uint32_t)yImmOff & 0x3FF) << 22;
 
   G4_SendDescRaw *msgDesc =
       createLscDesc(sfid, desc, exDesc, src1Len,
@@ -1264,7 +1283,8 @@ IR_Builder::lscBuildStridedPayload(G4_Predicate *pred,
 G4_SrcRegRegion *
 IR_Builder::lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
                                    G4_Predicate *pred,
-                                   G4_Operand *src0Addrs[6]) {
+                                   G4_Operand *src0Addrs[6],
+                                   int immOffX, int immOffY) {
   // Similar to lscBuildStridedPayload, but this formats the payload
   // as follows.
   //
@@ -1303,14 +1323,32 @@ IR_Builder::lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
     createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDstAddr_0_Q,
                src, nullptr, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
   };
-  auto movUD = [&](int dstSubReg, G4_Operand *src) {
+  auto movUD = [&](int dstSubReg, G4_Operand *src, const char *comm) {
     G4_DstRegRegion *payloadDst =
         createDst(addrTmpDeclUd->getRegVar(), 0, dstSubReg, 1, Type_UD);
-    createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDst, src,
-               nullptr, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+    auto *i = createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDst,
+                         src, nullptr,
+                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+    if (comm)
+      i->addComment(comm);
   };
-  auto movImmUD = [&](int dstSubReg, uint32_t imm) {
-    movUD(dstSubReg, createImmWithLowerType(imm, Type_UD));
+  auto addD = [&](int dstSubReg, G4_Operand *src, int addend,
+                  const char *comm) {
+    if (addend == 0) {
+      movUD(dstSubReg, src, comm);
+      return;
+    }
+    G4_DstRegRegion *payloadDst =
+        createDst(addrTmpDeclUd->getRegVar(), 0, dstSubReg, 1, Type_D);
+    auto *i = createInst(pred, G4_add, nullptr, g4::NOSAT, g4::SIMD1,
+                         payloadDst, src,
+                         createImmWithLowerType(addend, Type_D),
+                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+    if (comm)
+      i->addComment(comm);
+  };
+  auto movImmUD = [&](int dstSubReg, uint32_t imm, const char *comm) {
+    movUD(dstSubReg, createImmWithLowerType(imm, Type_UD), comm);
   };
 
   ///////////////////////////////////
@@ -1326,16 +1364,18 @@ IR_Builder::lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
   //
   // bottom 64b
   movUQ(0, src0Addrs[0]); // surface address
-                          // these start at REG.2:d
-  movUD(2, src0Addrs[1]); // surface width - 1
-  movUD(3, src0Addrs[2]); // surface height - 1
-  movUD(4, src0Addrs[3]); // surface pitch - 1
-  movUD(5, src0Addrs[4]); // block x
-  movUD(6, src0Addrs[5]); // block y
+  movUD(2, src0Addrs[1], "blk2d.widthM1"); // surface width - 1
+  movUD(3, src0Addrs[2], "blk2d.heightM1"); // surface height - 1
+  movUD(4, src0Addrs[3], "blk2d.pitchM1"); // surface pitch - 1
+  addD(5, src0Addrs[4], immOffX, "blk2d.X"); // block x
+  addD(6, src0Addrs[5], immOffY, "blk2d.Y"); // block y
   uint32_t blockSize = (dataShape2D.width - 1) |
                        ((dataShape2D.height - 1) << 8) |
                        ((dataShape2D.blocks - 1) << 16);
-  movImmUD(7, blockSize);
+  std::stringstream ss;
+  ss << "bkl2d.shape = " << dataShape2D.blocks << "x" << dataShape2D.width <<
+      "x" << dataShape2D.height;
+  movImmUD(7, blockSize, ss.str().c_str());
   //
   return createSrc(addrTmpDeclUd->getRegVar(), 0, 0, getRegionScalar(),
                    Type_UD);

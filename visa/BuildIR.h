@@ -2048,7 +2048,7 @@ public:
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
       LSC_DATA_SHAPE_BLOCK2D shape, G4_DstRegRegion *dstData,
       G4_Operand *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
-      G4_SrcRegRegion *src1Data);
+      G4_SrcRegRegion *src1Data, int xImmOff, int yImmOff);
   int translateLscTypedInst(
       LSC_OP op, G4_Predicate *pred, VISA_Exec_Size execSize,
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
@@ -2086,7 +2086,8 @@ public:
                                           bool transposed);
   G4_SrcRegRegion *lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
                                           G4_Predicate *pred,
-                                          G4_Operand *src0Addrs[6]);
+                                          G4_Operand *src0Addrs[6],
+                                          int immOffX, int immOffY);
 
   //
   // LSC allows users to pass an immediate scale and immediate addend.
