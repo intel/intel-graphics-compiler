@@ -7499,7 +7499,6 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
             m_encoder->SetSrcSubVar(0, subvar);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
-            m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
             m_encoder->SetP(flag, newdestination);
             m_encoder->Push();
 
@@ -7752,7 +7751,6 @@ void EmitPass::emitFeedbackEnable()
     m_encoder->SetSrcSubVar(0, subvar);
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
-    m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
     m_encoder->SetP(flag, newdestination);
     m_encoder->Push();
 
@@ -11042,7 +11040,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Not(callMask, callMask);
             m_encoder->And(eMask, eMask, callMask);
             m_encoder->Push();
-            m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
             m_encoder->SetP(loopPred, eMask);
             m_encoder->Push();
 
@@ -16602,7 +16599,6 @@ void EmitPass::A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label)
     m_encoder->SetSrcModifier(1, EMOD_NOT);
     m_encoder->And(curMask, curMask, tmpLsPred);
     m_encoder->Push();
-    m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
     m_encoder->SetP(lsPred, curMask);
     m_encoder->Push();
     m_encoder->Jump(lsPred, label);
@@ -19844,7 +19840,6 @@ void EmitPass::emitWaveInverseBallot(llvm::GenIntrinsicInst* inst)
         {
             ForceDMask();
         }
-        m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
         m_encoder->SetP(m_destination, Mask);
         if (disableHelperLanes)
         {
@@ -21288,7 +21283,6 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
         m_encoder->SetSrcRegion(0, 0, 1, 0);
         IGC_ASSERT(nullptr != gatherDst);
         CVariable* newDst = m_currShader->BitCast(gatherDst, ISA_TYPE_UD);
-        m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
         m_encoder->SetP(flag, newDst);
         m_encoder->Push();
         //

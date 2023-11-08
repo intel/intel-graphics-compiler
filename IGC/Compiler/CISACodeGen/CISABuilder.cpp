@@ -1540,7 +1540,7 @@ namespace IGC
             IGC_ASSERT(dst->GetVarType() == EVARTYPE_PREDICATE);
             V(vKernel->AppendVISASetP(
                 GetAluEMask(dst),
-                GetAluExecSize(dst),
+                IsSecondHalf() ? GetAluExecSize(dst) : visaExecSize(m_program->m_dispatchSize),
                 dst->visaPredVariable,
                 GetSourceOperand(src, m_encoderState.m_srcOperand[0])));
         }
