@@ -353,6 +353,7 @@ DECLARE_IGC_REGKEY(bool, ShaderDumpEnableRAMetadata,   false, "adds RA Metadata 
 DECLARE_IGC_REGKEY(bool,  ShaderDumpInstNamer,          false, "dump all unnamed LLVM IR instruction with variable names 'tmp' which makes easier for shaderoverriding", true)
 DECLARE_IGC_REGKEY(debugString, ShaderDumpFilter,       0,     "Only dump files matching the given regex", true)
 DECLARE_IGC_REGKEY(bool, DumpZEInfoToConsole,           false, "Dump zeinfo to console", true)
+DECLARE_IGC_REGKEY(debugString, ProgbinDumpFileName,    0,     "Specify filename to use for dumping progbin file to current dir", true)
 DECLARE_IGC_REGKEY(bool, ElfDumpEnable,                 false, "dump ELF file", true)
 DECLARE_IGC_REGKEY(bool, ElfTempDumpEnable,             false, "dump temporary ELF files", true)
 DECLARE_IGC_REGKEY(debugString, DebugDumpNamePrefix,    0,     "Set a prefix to debug info dump filenames(with path) and drop hash info from them (for testing purposes)", true)

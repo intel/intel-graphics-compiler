@@ -47,7 +47,11 @@ EI_MAG3:    'F'
 EI_CLASS:   ELFCLASS32/ELFCLASS64 (for 32/64 objects)
 EI_DATA:    ELFDATA2LSB (2's complement, little endian)
 EI_VERSION: 1 (EV_CURRENT)
+EI_OSABI:   0 (ELFOSABI_NONE)
+EI_ABIVERSION: (See Below)
 EI_PAD:     0 (Start of padding bytes of e_ident)
+
+Value of `EI_ABIVERSION` is 1.
 ~~~
 
 **e_machine**

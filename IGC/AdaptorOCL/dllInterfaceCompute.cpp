@@ -1110,21 +1110,23 @@ void overrideOCLProgramBinary(
     binarySize = newBinarySize;
 }
 
-void dumpOCLProgramBinary(
-    OpenCLProgramContext& Ctx,
-    const char* binaryOutput,
-    size_t binarySize)
-{
-    auto name = DumpName(IGC::Debug::GetShaderOutputName())
-        .Hash(Ctx.hash)
-        .Type(ShaderType::OPENCL_SHADER)
-        .Extension("progbin");
+void dumpOCLProgramBinary(const char* fileName, const char *binaryOutput,
+                          size_t binarySize) {
+  std::error_code EC;
+  llvm::raw_fd_ostream f(fileName, EC);
 
-    std::error_code EC;
-    llvm::raw_fd_ostream f(name.str(), EC);
+  if (!EC)
+    f.write(binaryOutput, binarySize);
+}
 
-    if (!EC)
-        f.write(binaryOutput, binarySize);
+void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, const char *binaryOutput,
+                          size_t binarySize) {
+  auto name = DumpName(IGC::Debug::GetShaderOutputName())
+                  .Hash(Ctx.hash)
+                  .Type(ShaderType::OPENCL_SHADER)
+                  .Extension("progbin");
+
+  dumpOCLProgramBinary(name.str().data(), binaryOutput, binarySize);
 }
 
 static std::unique_ptr<llvm::MemoryBuffer> GetGenericModuleBuffer()
@@ -1622,6 +1624,9 @@ bool TranslateBuildSPMD(
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         dumpOCLProgramBinary(oclContext, binaryOutput, binarySize);
+
+    if (const char *progbinCustomFN = IGC_GET_REGKEYSTRING(ProgbinDumpFileName))
+      dumpOCLProgramBinary(progbinCustomFN, binaryOutput, binarySize);
 
     if (IGC_IS_FLAG_ENABLED(ShaderOverride))
         overrideOCLProgramBinary(oclContext, binaryOutput, binarySize);

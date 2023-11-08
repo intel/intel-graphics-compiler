@@ -850,9 +850,11 @@ void ELFWriter::writeHeader()
     // e_ident[EI_OSABI]
     m_W.OS << char(ELF::ELFOSABI_NONE);
 
-    // ABI version is hard coded right now. In future, if more ABI versions exist then revisit this.
     // e_ident[EI_ABIVERSION]
-    m_W.OS << char(1);
+
+    unsigned char ABIVersion = 1;
+
+    m_W.OS << char(ABIVersion);
 
     // e_ident padding
     m_W.OS.write_zeros(ELF::EI_NIDENT - ELF::EI_PAD);
