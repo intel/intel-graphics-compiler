@@ -121,6 +121,16 @@ DEFINE_ATOMIC_BINARY_OP(ATOMIC_FMAX, "atomic_fmax",
 DEFINE_ATOMIC_TERNARY_OP(ATOMIC_FCAS, "atomic_fcas",
                          "atomic floating-point compare and swap")
 //
+// for now use DEFINE_OTHER_OP to prevent syntax
+DEFINE_OTHER_OP(ATOMIC_ACADD, "atomic_acadd", "atomic counter add",
+                iga::SendOpDefinition::Attr::GROUP_ATOMIC |
+                    iga::SendOpDefinition::Attr::ATOMIC_BINARY)
+DEFINE_OTHER_OP(ATOMIC_ACSUB, "atomic_acsub", "atomic counter subtract",
+                iga::SendOpDefinition::Attr::GROUP_ATOMIC |
+                    iga::SendOpDefinition::Attr::ATOMIC_BINARY)
+DEFINE_OTHER_OP(ATOMIC_ACSTORE, "atomic_acstore", "atomic counter store",
+                iga::SendOpDefinition::Attr::GROUP_ATOMIC |
+                    iga::SendOpDefinition::Attr::ATOMIC_BINARY)
 //
 DEFINE_OTHER_OP(READ_STATE, "read_state", "read surface state", ATTRS_NONE)
 //
@@ -170,9 +180,55 @@ DEFINE_SAMPLE_OP(LD_2DMS_W, "ld_2dms_w", "ld mcs4", ATTRS_NONE)
 DEFINE_SAMPLE_OP(LD_MCS, "ld_mcs", "load MCS", ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_FLUSH, "sample_flush",
                  "sample with UVR offsets and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_MLOD, "sample_mlod", "sample with LoD", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_C_MLOD, "sample_c_mlod",
+                 "sample with mlod and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_D_C_MLOD, "sample_d_c_mlod",
+                 "sampler with mlod, derivatives, and compare", ATTRS_NONE)
+//
+DEFINE_SAMPLE_OP(SAMPLE_PO, "sample_po", "sample with UVR offsets", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_B, "sample_po_b", "sample with UVR offsets and bias",
+                 ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_L, "sample_po_l", "sample with pixel offset and LoD",
+                 ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_C, "sample_po_c",
+                 "sample with UVR offsets and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_D, "sample_po_d",
+                 "sample with derivatives and offsets", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_L_C, "sample_po_l_c",
+                 "sample with offsets, LoD, and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_LZ, "sample_po_lz", "sampler lz with pos. offset", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_C_LZ, "sample_po_c_lz", "sampler pos. offset compare ld", ATTRS_NONE)
+//
+DEFINE_SAMPLE_OP(SAMPLE_LD_L, "sample_ld_l", "sampler ld LoD", ATTRS_NONE)
 //
 DEFINE_SAMPLE_OP(GATHER4, "gather4", "gather4", ATTRS_GATHER4)
 DEFINE_SAMPLE_OP(GATHER4_C, "gather4_c", "gather4 with compare",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_I, "gather4_i", "gather4 with index", ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_I_C, "gather4_i_c", "gather4 with offsets and LoD",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_B, "gather4_b", "gather4 with bias", ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_L, "gather4_l", "gather4 with LoD", ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_L_C, "gather4_l_c",
+                 "gather4 with offsets and LoD, and compare",
+                 ATTRS_GATHER4)
+//
+DEFINE_SAMPLE_OP(GATHER4_PO, "gather4_po", "gather4 with offsets",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_PO_L, "gather4_po_l", "gather4 with offsets and LoD",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_PO_C, "gather4_po_c", "gather4 with offsets and compare",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_PO_B, "gather4_po_b", "gather4 with offsets and LoD",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_PO_I, "gather4_po_i", "gather4 with offsets and index",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_PO_I_C, "gather4_po_i_c",
+                 "gather4 with offsets, index, and compare",
+                 ATTRS_GATHER4)
+DEFINE_SAMPLE_OP(GATHER4_PO_L_C, "gather4_po_l_c",
+                 "gather4 with offsets, LoD and compare",
                  ATTRS_GATHER4)
 //
 DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)

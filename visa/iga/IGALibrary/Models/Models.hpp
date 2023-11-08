@@ -150,6 +150,12 @@ static inline bool IsRegisterScaled(RegName regName, const Platform platform) {
 
   case RegName::ARF_FC:
   case RegName::ARF_MSG:
+    // FC and MSG are non-scaled on pre-XE2
+    // pre-PVC: sub-register number is in B size no mater what operand type
+    // PVC:     sub-register number is in W size no mater what operand type
+    // XE2+:    sub-register is scaled as GRF
+    if (platform >= Platform::XE2)
+      return true;
     return false;
 
   default:
@@ -353,6 +359,8 @@ struct Model {
     else if (platform == Platform::XE_HPC)
       return SWSB_ENCODE_MODE::FourDistPipeReduction; // XE_HPC is XeHPC-Bstep
                                                       // (PVC-XT)
+    else if (platform == Platform::XE2)
+      return SWSB_ENCODE_MODE::FourDistPipeReduction;
     return SWSB_ENCODE_MODE::SWSBInvalidMode;
   }
 

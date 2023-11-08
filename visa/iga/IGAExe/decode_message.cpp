@@ -506,6 +506,8 @@ bool decodeSendDescriptor(const Opts &opts) {
   // Formats are:
   //   <=GEN11:      ExecSize? ExDesc  Desc
   //   >=XE:    SFID ExecSize? ExDesc  Desc
+  //   >=XE2:   SFID ExecSize? ExDesc           Desc
+  //            SFID ExecSize? ExDescImm:A0Reg  Desc
   //
   // If ExecSize is not given, then we deduce it from the platform.
 
@@ -529,6 +531,13 @@ bool decodeSendDescriptor(const Opts &opts) {
     fatalExitWithMessage("-Xdsd: expects at least ExDesc Desc");
   }
   std::string exDescStr = opts.inputFiles[argOff];
+  uint32_t exImmOffDesc = 0;
+  auto colon = exDescStr.find(':');
+  if (colon != std::string::npos) {
+    std::string offStr = exDescStr.substr(0, colon);
+    exImmOffDesc = (uint32_t)parseInt("ExImmOffDesc", offStr);
+    exDescStr = exDescStr.substr(colon + 1);
+  }
 
   // ExDesc
   const iga::SendDesc exDesc = parseSendDescArg("ExDesc", exDescStr);
@@ -565,6 +574,7 @@ bool decodeSendDescriptor(const Opts &opts) {
   //
   iga::DecodedDescFields decodedFields;
   const auto dr = iga::tryDecode(p, sfid, execSize,
+                                 exImmOffDesc,
                                  exDesc, desc, &decodedFields);
   emitDecodeOutput(opts, os, p, dr, decodedFields);
 

@@ -14,10 +14,10 @@ using namespace iga;
 
 struct MessageDecoderOther : MessageDecoderLegacy {
   MessageDecoderOther(Platform _platform, SFID _sfid, ExecSize _execSize,
-                      SendDesc _exDesc, SendDesc _desc, DecodeResult &_result)
-      : MessageDecoderLegacy(_platform, _sfid, _execSize,
-                             _exDesc, _desc, _result) {
-  }
+                      uint32_t exImmOffDesc, SendDesc _exDesc, SendDesc _desc,
+                      DecodeResult &_result)
+      : MessageDecoderLegacy(_platform, _sfid, _execSize, exImmOffDesc, _exDesc,
+                             _desc, _result) {}
 
   void tryDecodeOther() {
     switch (sfid) {
@@ -301,8 +301,7 @@ void MessageDecoderOther::tryDecodeRTA() {
   int opBits = getDescBits(14, 4); // [17:14]
   if (opBits == TRACERAY_MSD) {
     int simd = decodeMDC_SM2(8);
-    bool rtIsSimd16 = false;
-    if (rtIsSimd16)
+    if (platform() >= Platform::XE2 && simd != 16)
       error(8, 1, "message must be SIMD16 on this platform");
 
     // int mlen = getDescBits(25, 4); // [28:25]
@@ -347,6 +346,8 @@ void MessageDecoderOther::tryDecodeBTD() {
   uint32_t opBits = getDescBits(14, 4); // [17:14]
   if (opBits == BTD_SPAWN_MSD) {
     int simd = decodeMDC_SM2(8);
+    if (platform() >= Platform::XE2 && simd != 16)
+      error(8, 1, "message must be SIMD16 on this platform");
 
     sym << "spawn" << simd;
     descs << "bindless simd" << simd << " spawn thread";
@@ -399,6 +400,16 @@ enum class SamplerSIMD {
 // 110 SIMD16H
 // 111 Reserved
 //
+///////////////////////////////////////////////
+// Xe2+
+// 000 SIMD16 + Integer Return (not supported on XE2)
+// 001 SIMD16
+// 010 SIMD32
+// 011 Reserved
+// 100 SIMD16 + Integer Return (not supported on XE2)
+// 101 SIMD16H
+// 110 SIMD32H
+// 111 Reserved
 
 static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
                                   std::stringstream &syms,
@@ -406,6 +417,13 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
   SamplerSIMD simdMode = SamplerSIMD::INVALID;
   switch (simdBits) {
   case 0:
+    if (p >= Platform::XE2) {
+      simdMode = SamplerSIMD::SIMD16_INTRET;
+      syms << "simd16_iret";
+      descs << "simd16 with integer return";
+      simdSize = 16;
+      break;
+    }
     if (p >= Platform::XE_HPG) {
       simdMode = SamplerSIMD::SIMD8_INTRET;
       syms << "simd8_iret";
@@ -419,12 +437,26 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
     simdSize = 1;
     return simdMode;
   case 1:
+    if (p >= Platform::XE2) {
+      simdMode = SamplerSIMD::SIMD16;
+      simdSize = 16;
+      descs << "simd16";
+      syms << "simd16";
+      break;
+    }
     simdMode = SamplerSIMD::SIMD8;
     simdSize = 8;
     descs << "simd8";
     syms << "simd8";
     break;
   case 2:
+    if (p >= Platform::XE2) {
+      simdMode = SamplerSIMD::SIMD32;
+      simdSize = 32;
+      descs << "simd32";
+      syms << "simd32";
+      break;
+    }
     simdMode = SamplerSIMD::SIMD16;
     simdSize = 16;
     descs << "simd16";
@@ -444,6 +476,13 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
     simdSize = 32;
     break;
   case 4:
+    if (p >= Platform::XE2) {
+      simdMode = SamplerSIMD::SIMD16_INTRET;
+      syms << "simd32_iret";
+      descs << "simd32 with integer return";
+      simdSize = 32;
+      break;
+    }
     if (p >= Platform::XE_HPG) {
       syms << "simd16_iret";
       descs << "simd16 with integer return";
@@ -457,12 +496,26 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
     simdSize = 1;
     break;
   case 5:
+    if (p >= Platform::XE2) {
+      simdMode = SamplerSIMD::SIMD16H;
+      simdSize = 16;
+      syms << "simd16h";
+      descs << "simd16 with half precision parameters";
+      break;
+    }
     simdMode = SamplerSIMD::SIMD8H;
     simdSize = 8;
     syms << "simd8h";
     descs << "simd8 half with precision parameters";
     break;
   case 6:
+    if (p >= Platform::XE2) {
+      simdMode = SamplerSIMD::SIMD32H;
+      simdSize = 32;
+      syms << "simd32h";
+      descs << "simd32 with half precision parameters";
+      break;
+    }
     simdMode = SamplerSIMD::SIMD16H;
     syms << "simd16h";
     descs << "simd16 with half precision parameters";
@@ -550,11 +603,252 @@ std::string iga::ToSymbol(SamplerParam sp) {
     return "u";
   case SamplerParam::V:
     return "v";
+  case SamplerParam::OFFUV_R:
+    return "offuv_r";
+  case SamplerParam::OFFUVR:
+    return "offuvr";
+  case SamplerParam::OFFUV:
+    return "offuv";
+  case SamplerParam::OFFUVR_R:
+    return "offuvr_r";
+  case SamplerParam::BIAS_OFFUVR:
+    return "bias_offuvr";
+  case SamplerParam::BIAS_OFFUV:
+    return "bias_offuv";
+  case SamplerParam::LOD_OFFUV:
+    return "lod_offuv";
   default:
     return "?";
   }
 }
 
+static SamplerMessageDescription
+lookupSamplerMessageInfoXe2(uint32_t samplerMessageType, SamplerSIMD simd) {
+  static constexpr SamplerMessageDescription INVALID(SendOp::INVALID,
+                                                     "<<invalid>>", 0);
+
+  // if the message is fp16 (apparently they bake that into the "SIMD" size)
+  bool isFp16 = simd == SamplerSIMD::SIMD8H || simd == SamplerSIMD::SIMD16H ||
+                simd == SamplerSIMD::SIMD32H;
+  auto chooseBasedOnDataSize = [&](SamplerParam fp16, SamplerParam fp32) {
+    return isFp16 ? fp16 : fp32;
+  };
+  switch (samplerMessageType) {
+  case 0x00:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE, "sample", 1, SamplerParam::U, SamplerParam::V,
+        SamplerParam::R, SamplerParam::AI, SamplerParam::MLOD);
+  case 0x01:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_B, "sample_b", 2,
+        chooseBasedOnDataSize(SamplerParam::BIAS, SamplerParam::BIAS_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::MLOD),
+        chooseBasedOnDataSize(SamplerParam::MLOD, SamplerParam::NONE));
+  case 0x02:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_L, "sample_l", 2,
+        chooseBasedOnDataSize(SamplerParam::LOD, SamplerParam::LOD_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::NONE));
+  case 0x03:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_C, "sample_c", 2, SamplerParam::REF, SamplerParam::U,
+        SamplerParam::V, SamplerParam::R, SamplerParam::AI, SamplerParam::MLOD);
+  case 0x04:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_D, "sample_d", 2, SamplerParam::U, SamplerParam::DUDX,
+        SamplerParam::DUDY, SamplerParam::V, SamplerParam::DVDX,
+        SamplerParam::DVDY, SamplerParam::R, SamplerParam::MLOD);
+  case 0x05:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_B_C, "sample_b_c", 3, SamplerParam::REF,
+        chooseBasedOnDataSize(SamplerParam::BIAS, SamplerParam::BIAS_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::MLOD),
+        chooseBasedOnDataSize(SamplerParam::MLOD, SamplerParam::NONE));
+  case 0x06:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_L_C, "sample_l_c", 3, SamplerParam::REF,
+        chooseBasedOnDataSize(SamplerParam::LOD, SamplerParam::LOD_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::NONE));
+  case 0x07:
+    return SamplerMessageDescription(SendOp::LD, "sampler_ld", 1,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::LOD, SamplerParam::R);
+  case 0x08:
+  case 0x09:
+    return SamplerMessageDescription(
+        samplerMessageType == 0x08 ? SendOp::GATHER4 : SendOp::SAMPLE_LOD,
+        samplerMessageType == 0x08 ? "gather4" : "sampler_lod", 1,
+        SamplerParam::U, SamplerParam::V, SamplerParam::R, SamplerParam::AI);
+  case 0x0A:
+    return SamplerMessageDescription(SendOp::SAMPLE_RESINFO, "sampler_resinfo",
+                                     1, SamplerParam::LOD);
+  case 0x0B:
+    return SamplerMessageDescription(SendOp::SAMPLE_INFO, "sample_info", 0,
+                                     SamplerParam::DUMMY);
+  case 0x0C:
+    return SamplerMessageDescription(SendOp::SAMPLE_KILLPIX, "sampler_killpix",
+                                     1, SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R);
+  case 0x0D:
+    return SamplerMessageDescription(
+        SendOp::GATHER4_L, "gather4_l", 2,
+        chooseBasedOnDataSize(SamplerParam::LOD, SamplerParam::LOD_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::NONE));
+  case 0x0E:
+    return SamplerMessageDescription(
+        SendOp::GATHER4_B, "gather4_b", 2,
+        chooseBasedOnDataSize(SamplerParam::BIAS, SamplerParam::BIAS_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::NONE));
+  case 0x0F:
+    return SamplerMessageDescription(SendOp::GATHER4_I, "gather_i", 1,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::AI);
+  case 0x10:
+    return SamplerMessageDescription(
+        SendOp::GATHER4_C, "gather4_c", 2, SamplerParam::REF, SamplerParam::U,
+        SamplerParam::V, SamplerParam::R, SamplerParam::AI);
+  case 0x11:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_D_C, "sample_d_c", 4, SamplerParam::REF, SamplerParam::U,
+        SamplerParam::DUDX, SamplerParam::DUDY, SamplerParam::V,
+        SamplerParam::DVDX, SamplerParam::DVDY, SamplerParam::R);
+  case 0x12:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_MLOD, "sample_mlod", 1, SamplerParam::MLOD,
+        SamplerParam::U, SamplerParam::V, SamplerParam::R, SamplerParam::AI);
+  case 0x13:
+    return SamplerMessageDescription(SendOp::SAMPLE_C_MLOD, "sample_c_mlod", 3,
+                                     SamplerParam::MLOD, SamplerParam::REF,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::AI);
+  case 0x14:
+    return SamplerMessageDescription(SendOp::SAMPLE_D_C_MLOD, "sample_d_c_mlod",
+                                     4, SamplerParam::REF, SamplerParam::U,
+                                     SamplerParam::DUDX, SamplerParam::DUDY,
+                                     SamplerParam::V, SamplerParam::DVDX,
+                                     SamplerParam::DVDY, SamplerParam::MLOD_R);
+  case 0x15:
+    return SamplerMessageDescription(
+        SendOp::GATHER4_I_C, "gather4_i_c", 2, SamplerParam::REF,
+        SamplerParam::U, SamplerParam::V, SamplerParam::R, SamplerParam::AI);
+  //////////////////////////////////
+  // case 0x16: gap
+  case 0x17:
+    return SamplerMessageDescription(
+        SendOp::GATHER4_L_C, "gather4_l_c", 3, SamplerParam::REF,
+        chooseBasedOnDataSize(SamplerParam::LOD, SamplerParam::LOD_AI),
+        SamplerParam::U, SamplerParam::V, SamplerParam::R,
+        chooseBasedOnDataSize(SamplerParam::AI, SamplerParam::NONE));
+  case 0x18:
+    return SamplerMessageDescription(SendOp::SAMPLE_LZ, "sample_lz", 1,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::AI);
+  case 0x19:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_C_LZ, "sample_c_lz", 2, SamplerParam::REF,
+        SamplerParam::U, SamplerParam::V, SamplerParam::R, SamplerParam::AI);
+  case 0x1A:
+    return SamplerMessageDescription(SendOp::LD_LZ, "ld_lz", 1,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R);
+  case 0x1B:
+    return SamplerMessageDescription(SendOp::SAMPLE_LD_L, "ld_l", 1,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::LOD);
+  case 0x1C:
+    return SamplerMessageDescription(
+        SendOp::LD_2DMS_W, "ld2dms_w", 1, SamplerParam::SI,
+        SamplerParam::MCS0, SamplerParam::MCS1, SamplerParam::MCS2,
+        SamplerParam::MCS3, SamplerParam::U, SamplerParam::V, SamplerParam::R);
+  case 0x1D:
+    return SamplerMessageDescription(SendOp::LD_MCS, "ld_mcs", 1,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R);
+  case 0x1F:
+    return SamplerMessageDescription(SendOp::SAMPLE_FLUSH, "cache_flush", 0,
+                                     SamplerParam::DUMMY);
+
+  case 0x20:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_PO, "sample_po", 3, SamplerParam::U, SamplerParam::V,
+        SamplerParam::R, SamplerParam::OFFUVR, SamplerParam::MLOD);
+  case 0x21:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_PO_B, "sample_po_b", 2, SamplerParam::BIAS_OFFUVR,
+        SamplerParam::U, SamplerParam::V, SamplerParam::R, SamplerParam::MLOD);
+  case 0x22:
+    return SamplerMessageDescription(SendOp::SAMPLE_PO_L, "sample_po_l", 2,
+                                     SamplerParam::LOD_OFFUV, SamplerParam::U,
+                                     SamplerParam::R, SamplerParam::V);
+  case 0x23:
+    return SamplerMessageDescription(SendOp::SAMPLE_PO_C, "sample_po_c", 4,
+                                     SamplerParam::REF, SamplerParam::U,
+                                     SamplerParam::V, SamplerParam::OFFUV_R,
+                                     SamplerParam::MLOD);
+  case 0x24:
+    return SamplerMessageDescription(
+        SendOp::SAMPLE_PO_D, "sample_po_d", 7, SamplerParam::U,
+        SamplerParam::DUDX, SamplerParam::DUDY, SamplerParam::V,
+        SamplerParam::DVDX, SamplerParam::DVDY, SamplerParam::OFFUVR_R,
+        SamplerParam::MLOD);
+  // case 0x25: missing
+  case 0x26:
+    return SamplerMessageDescription(SendOp::SAMPLE_PO_L_C, "sample_po_l_c", 3,
+                                     SamplerParam::REF, SamplerParam::LOD_OFFUV,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R);
+  // case 0x27: missing
+  case 0x28:
+    return SamplerMessageDescription(SendOp::GATHER4_PO, "gather4_po", 4,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::OFFUV);
+  // case 0x29..0x2C: missing
+  case 0x2D:
+    return SamplerMessageDescription(SendOp::GATHER4_PO_L, "gather4_po_l", 2,
+                                     SamplerParam::LOD_OFFUV, SamplerParam::U,
+                                     SamplerParam::V, SamplerParam::R);
+  case 0x2E:
+    return SamplerMessageDescription(SendOp::GATHER4_PO_B, "gather4_po_b", 2,
+                                     SamplerParam::BIAS_OFFUV, SamplerParam::V,
+                                     SamplerParam::R);
+  case 0x2F:
+    return SamplerMessageDescription(SendOp::GATHER4_PO_I, "gather4_po_i", 4,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::OFFUV);
+  case 0x30:
+    return SamplerMessageDescription(SendOp::GATHER4_PO_I_C, "gather4_po_c",
+                                     4, SamplerParam::REF, SamplerParam::U,
+                                     SamplerParam::V, SamplerParam::OFFUV_R);
+  // case 0x31...0x34: missing
+  case 0x35:
+    return SamplerMessageDescription(SendOp::GATHER4_PO_I_C, "gather4_po_i_c",
+                                     4, SamplerParam::REF, SamplerParam::U,
+                                     SamplerParam::V, SamplerParam::OFFUV_R);
+  // case 0x36: missing
+  case 0x37:
+    return SamplerMessageDescription(SendOp::GATHER4_PO_L_C, "gather4_po_l_c",
+                                     3, SamplerParam::REF,
+                                     SamplerParam::LOD_OFFUV, SamplerParam::U,
+                                     SamplerParam::V, SamplerParam::R);
+  case 0x38:
+    return SamplerMessageDescription(SendOp::SAMPLE_PO_LZ, "sample_po_lz", 4,
+                                     SamplerParam::U, SamplerParam::V,
+                                     SamplerParam::R, SamplerParam::OFFUVR);
+  case 0x39:
+    return SamplerMessageDescription(SendOp::SAMPLE_PO_C_LZ, "sample_po_c_lz",
+                                     4, SamplerParam::REF, SamplerParam::U,
+                                     SamplerParam::V, SamplerParam::OFFUV_R);
+  default:
+    break;
+  }
+  return INVALID;
+}
 
 
 static void decodeSendMessage(uint32_t opBits, SamplerSIMD simdMode,
@@ -774,7 +1068,16 @@ void MessageDecoderOther::tryDecodeSMPL() {
   int params = 0;
   std::string symbol, desc;
   auto opBits = getDescBits(12, 5);
-  decodeSendMessage(opBits, simdMode, sendOp, symbol, desc, params);
+  // check if bit 31 is set for sampler messages with positional offsets
+  opBits |= getDescBits(31, 1) << 5;
+  if (platform() >= Platform::XE2) {
+    auto msg = lookupSamplerMessageInfoXe2(opBits, simdMode);
+    (void)addField("SamplerMessageType", 12, 5, opBits, msg.mnemonic);
+    desc = msg.describe(-1);
+    params = msg.countParams();
+  } else {
+    decodeSendMessage(opBits, simdMode, sendOp, symbol, desc, params);
+  }
   syms << symbol;
 
   (void)addField("SamplerMessageType", 12, 5, opBits, desc);
@@ -877,10 +1180,10 @@ void MessageDecoderOther::tryDecodeURB() {
 
 ///////////////////////////////////////////////////////////////////////////////
 void iga::decodeDescriptorsOther(Platform platform, SFID sfid,
-                                 ExecSize _execSize,
+                                 ExecSize _execSize, uint32_t exImmOffDesc,
                                  SendDesc exDesc, SendDesc desc,
                                  DecodeResult &result) {
-  MessageDecoderOther mdo(platform, sfid, _execSize,
-                          exDesc, desc, result);
+  MessageDecoderOther mdo(platform, sfid, _execSize, exImmOffDesc, exDesc, desc,
+                          result);
   mdo.tryDecodeOther();
 }

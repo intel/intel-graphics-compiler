@@ -187,6 +187,7 @@ private:
   void encodeSendDescsXe(const Instruction &inst);
   void encodeSendDescsXeHP(const Instruction &inst);
   void encodeSendDescsXeHPG(const Instruction &inst);
+  void encodeSendDescsXe2(const Instruction &inst);
 
   void encodeInlineBinaryInst(Instruction &inst);
   ///////////////////////////////////////////////////////////////////////

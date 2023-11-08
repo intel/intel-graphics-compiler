@@ -393,6 +393,7 @@ static inline std::string ToSymbol(CacheOpt x) {
     MAKE_CASE(CacheOpt, STREAMING);
     MAKE_CASE(CacheOpt, WRITEBACK);
     MAKE_CASE(CacheOpt, WRITETHROUGH);
+    MAKE_CASE(CacheOpt, CONSTCACHED);
     MAKE_DEFAULT_CASE(CacheOpt);
   }
 }

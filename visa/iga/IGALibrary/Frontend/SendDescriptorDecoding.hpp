@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 namespace iga {
 void EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
                             bool dstNonNull, int dstLen, int src0Len,
-                            int src1Len,
+                            int src1Len, uint32_t exImmOffDesc,
                             const SendDesc &exDesc, const SendDesc &desc,
                             std::stringstream &ss);
 

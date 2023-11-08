@@ -229,11 +229,13 @@ protected:
     int dstLen = -1, src0Len = -1, src1Len = -1;
     bool hasCps = false, hasExBSO = false;
     SendDesc desc, exDesc;
+    uint32_t exImmOffDesc = 0;
   };
   void decodeSendInfoPreXe(SendDescodeInfo &sdi);
   void decodeSendInfoXe(SendDescodeInfo &sdi);
   void decodeSendInfoXeHP(SendDescodeInfo &sdi);
   void decodeSendInfoXeHPG(SendDescodeInfo &sdi);
+  void decodeSendInfoXe2(SendDescodeInfo &sdi);
 
   ///////////////////////////////////////////////////////////////////////
   // BRANCH INSTRUCTIONS

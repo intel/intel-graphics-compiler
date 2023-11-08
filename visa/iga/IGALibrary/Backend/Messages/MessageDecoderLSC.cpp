@@ -50,7 +50,10 @@ enum LscOp : uint32_t {
   LSC_FENCE = 0x1F,
   //
   LSC_STORE_UNCOMPRESSED_QUAD = 0x20,
-//
+  //
+  LSC_ATOMIC_APNDADD = 0x28,
+  LSC_ATOMIC_APNDSUB = 0x29,
+  LSC_ATOMIC_APNDSTORE = 0x2A,
   //
   LSC_INVALID = 0xFFFFFFFF,
 };
@@ -133,10 +136,10 @@ static LscMessageFormat OPS[32] {
 // This handles LSC messages only
 struct MessageDecoderLSC : MessageDecoder {
   MessageDecoderLSC(Platform _platform, SFID _sfid, ExecSize _execSize,
-                    SendDesc _exDesc, SendDesc _desc, DecodeResult &_result)
-      : MessageDecoder(_platform, _sfid, _execSize,
-                       _exDesc, _desc, _result) {
-  }
+                    uint32_t exImmOffDesc, SendDesc _exDesc, SendDesc _desc,
+                    DecodeResult &_result)
+      : MessageDecoder(_platform, _sfid, _execSize, exImmOffDesc, _exDesc,
+                       _desc, _result) {}
 
   // used by decodeLscMessage and subchildren
   std::string dataTypePrefixSyntax; // e.g. d32 or d16 or d32
@@ -214,6 +217,10 @@ struct MessageDecoderLSC : MessageDecoder {
         sym << "wb";
         descs << " writeback";
         break;
+      case CacheOpt::CONSTCACHED:
+        sym << "cc";
+        descs << " constant-cached";
+        break;
       default:
         sym << "?";
         descs << " invalid";
@@ -227,8 +234,50 @@ struct MessageDecoderLSC : MessageDecoder {
     descs << "";
   }
 
+  // Descriptor Bits[19:16]: 4 bits of cache control
+  bool decodeLscCacheControlBits16_19(SendOp sop, CacheOpt &l1, CacheOpt &l3) {
+    // check if it's the 3 cases added for 4-bits Cache Control at [19:16]:
+    // L1UC_L3CC, L1CA_L3CC, L1RI_L3RI
+    std::stringstream sym, descs;
+    l1 = l3 = CacheOpt::DEFAULT;
+    bool isLoad = lookupSendOp(sop).isLoad();
+    auto ccBits = getDescBits(16, 4);
+    auto setCacheOptsWrapper = [&](CacheOpt _l1, CacheOpt _l3) {
+      return setCacheOpts(sym, descs, l1, l3, _l1, _l3);
+    };
+
+    switch (ccBits) {
+    case LSC_UC_CC:
+      if (isLoad) {
+        setCacheOptsWrapper(CacheOpt::UNCACHED, CacheOpt::CONSTCACHED);
+        break;
+      }
+    case LSC_CA_CC:
+      if (isLoad) {
+        setCacheOptsWrapper(CacheOpt::CACHED, CacheOpt::CONSTCACHED);
+        break;
+      }
+    case LSC_RI_RI:
+      if (isLoad) {
+        setCacheOptsWrapper(CacheOpt::READINVALIDATE, CacheOpt::READINVALIDATE);
+        break;
+      }
+    default:
+      return decodeLscCacheControlBits17_19(sop, l1, l3);
+    }
+    //
+    cacheControlSyntax = sym.str();
+    //
+    addField("Caching", 16, 4, ccBits, descs.str());
+    return true;
+  }
 
   void decodeCacheControl(SendOp sop, CacheOpt &l1, CacheOpt &l3) {
+    if (platform() >= Platform::XE2) {
+      if (!decodeLscCacheControlBits16_19(sop, l1, l3))
+        error(16, 4, "invalid cache options");
+      return;
+    }
 
     if (!decodeLscCacheControlBits17_19(sop, l1, l3))
       error(17, 3, "invalid cache options");
@@ -296,6 +345,86 @@ struct MessageDecoderLSC : MessageDecoder {
   }
 
   void decodeLscImmOff(uint32_t atBits) {
+    bool exDescHasImmOff = platform() >= Platform::XE2;
+    if (!exDescHasImmOff)
+      return;
+    // immediate offset bits go in SendDesc if ExDesc is imm
+    // if ExDesc is Reg then they go in dedicated exImmOffDesc
+    uint32_t baseOffBits = exDesc.isReg() ? exImmOffDesc : exDesc.imm;
+    if (atBits == LSC_AT_FLAT) {
+      // [31:12] are all S20
+      bool isBlock2d =
+          op == SendOp::LOAD_BLOCK2D || op == SendOp::STORE_BLOCK2D;
+      if (isBlock2d) {
+        // ExDescImm[31:22] = XOff (S10)
+        // ExDescImm[21:12] = YOff (S10)
+        result.info.immediateOffsetBlock2dX =
+            (int)getSignedBits((int)baseOffBits, 12, 10);
+        result.info.immediateOffsetBlock2dY =
+            (int)getSignedBits((int)baseOffBits, 22, 10);
+        addField("ImmediateOffsetBlock2dX", 22 + 32, 10,
+                 (uint32_t)result.info.immediateOffsetBlock2dX,
+                 fmtHexSigned(result.info.immediateOffsetBlock2dX));
+        addField("ImmediateOffsetBlock2dY", 12 + 32, 10,
+                 (uint32_t)result.info.immediateOffsetBlock2dY,
+                 fmtHexSigned(result.info.immediateOffsetBlock2dY));
+        if (result.info.immediateOffsetBlock2dX != 0 ||
+            result.info.immediateOffsetBlock2dY != 0) {
+          result.syntax.immOffset =
+              std::string("+(") +
+              fmtHexSigned(result.info.immediateOffsetBlock2dX) + "," +
+              fmtHexSigned(result.info.immediateOffsetBlock2dY) + ")";
+        }
+      } else {
+        result.info.immediateOffset = getSignedBits((int)baseOffBits, 12, 20);
+        if (result.info.immediateOffset > 0) {
+          result.syntax.immOffset =
+              "+" + fmtHexSigned(result.info.immediateOffset);
+        } else if (result.info.immediateOffset < 0) {
+          result.syntax.immOffset = fmtHexSigned(result.info.immediateOffset);
+        }
+        addField("ImmediateOffset", 32 + 12, 20,
+                 (uint32_t)result.info.immediateOffset,
+                 result.syntax.immOffset);
+      }
+    } else if ((atBits == LSC_AT_BSS || atBits == LSC_AT_SS) &&
+               exDesc.isReg()) {
+      // SS/BSS 16b or 17b (UGM)
+      // ExDescImm[31:19] are Offset[16:4]
+      // ExDescImm[18:16] are unmapped (addr reg)
+      // ExDescImm[15:12] are Offset[3:0]
+      if (sfid != SFID::UGM && baseOffBits != 0) {
+        error(32, 32, "bss/ss: immediate offset forbidden for non-ugm");
+      }
+      uint32_t packed = ((getBits(baseOffBits, 19, 31 - 19 + 1) << 4) |
+                         getBits(baseOffBits, 12, 3 - 0 + 1));
+      result.info.immediateOffset = getSignedBits(packed, 0, 17);
+      if (result.info.immediateOffset > 0) {
+        result.syntax.immOffset =
+            "+" + fmtHexSigned(result.info.immediateOffset);
+      } else if (result.info.immediateOffset < 0) {
+        result.syntax.immOffset = fmtHexSigned(result.info.immediateOffset);
+      }
+      addField("ImmediateOffset[16:4]", 32 + 19, 16 - 4 + 1,
+               getBits(packed, 4, 16 - 4 + 1), result.syntax.immOffset);
+      addField("ImmediateOffset[3:0]", 32 + 12, 3 - 0 + 1,
+               getBits(packed, 0, 3 - 0 + 1), result.syntax.immOffset);
+    } else if (atBits == LSC_AT_BTI && exDesc.isReg()) {
+      if (exImmOffDesc != 0)
+        error(32 + 12, 12, "immediate offset forbidden for BTI reg");
+    } else if (atBits == LSC_AT_BTI) {
+      // ExDesc[23:12] is immm off
+      result.info.immediateOffset =
+          getSignedBits((int32_t)baseOffBits, 12, 23 - 12 + 1);
+      if (result.info.immediateOffset > 0) {
+        result.syntax.immOffset =
+            "+" + fmtHexSigned(result.info.immediateOffset);
+      } else if (result.info.immediateOffset < 0) {
+        result.syntax.immOffset = fmtHexSigned(result.info.immediateOffset);
+      }
+      addField("ImmediateOffset[11:0]", 32 + 12, 23 - 12 + 1,
+               result.info.immediateOffset, result.syntax.immOffset);
+    }  // else: BSS/SS with imm ex desc
   }
 
   static const int ADDRTYPE_LOC = 29;
@@ -438,6 +567,8 @@ struct MessageDecoderLSC : MessageDecoder {
       dsym << "d8u32";
       meaning = "load 8b into the low 8b of 32b register elements "
                 "(upper bits are undefined)";
+      if (platform() >= Platform::XE2)
+        meaning = "load 8b and zero-extend to 32b per data element";
       break;
     case LSC_D16U32:
       dataSizeRegBits = 32;
@@ -445,6 +576,8 @@ struct MessageDecoderLSC : MessageDecoder {
       dsym << "d16u32";
       meaning = "load 16b into the low 16b of 32b register elements "
                 "(upper bits are undefined)";
+      if (platform() >= Platform::XE2)
+        meaning = "load 16b and zero-extend to 32b per data element";
       break;
     case LSC_D16U32H:
       dataSizeRegBits = 32;
@@ -574,6 +707,8 @@ struct MessageDecoderLSC : MessageDecoder {
     const SendOpDefinition &opInfo = lookupSendOp(lscOp);
     bool opSupportsUvr = lscOp == SendOp::LOAD_QUAD ||
                          lscOp == SendOp::STORE_QUAD ||
+                         lscOp == SendOp::LOAD_BLOCK2D ||
+                         lscOp == SendOp::STORE_BLOCK2D ||
                          lscOp == SendOp::STORE_UNCOMPRESSED_QUAD ||
                          opInfo.isAtomic();
     if (sfid == SFID::TGM && opSupportsUvr) {
@@ -595,6 +730,10 @@ struct MessageDecoderLSC : MessageDecoder {
     if (op == SendOp::LOAD_BLOCK2D || op == SendOp::STORE_BLOCK2D) {
       addrSizeBits = 64;
       addrSizeSyntax = "a64";
+    } else if (op == SendOp::ATOMIC_ACADD || op == SendOp::ATOMIC_ACSUB ||
+               op == SendOp::ATOMIC_ACSTORE) {
+      addrSizeBits = 32;
+      addrSizeSyntax = "a32";
     } else {
       decodeLscAddrSize();
     }
@@ -641,6 +780,42 @@ struct MessageDecoderLSC : MessageDecoder {
     }
   }
 
+  void decodeLscMessageTypeBlock2D(const char *doc, std::string msgDesc,
+                                   SendOp lscOp) {
+    const std::string symbol = ToSyntax(lscOp);
+    op = lscOp;
+    setDoc(doc);
+    extraAttrs |= MessageInfo::Attr::HAS_UVRLOD;
+    expectedExecSize = 1;
+    addField("Opcode", 0, 6, getDescBits(0, 6), symbol);
+
+    SendDesc surfaceId(0x0);
+    AddrType addrType = decodeLscAddrType(surfaceId);
+    if (addrType != AddrType::BSS && addrType != AddrType::BTI) {
+      error(ADDRTYPE_LOC, 2, "addr surface type must be BSS or BTI");
+    }
+
+    addrSizeBits = 32;
+    addrSizeSyntax = format("a", addrSizeBits);
+
+    dataSizeRegBits = dataSizeMemBits = 32; // ?
+    dataTypePrefixSyntax = format("d", dataSizeMemBits);
+
+    CacheOpt l1 = CacheOpt::DEFAULT, l3 = CacheOpt::DEFAULT;
+    decodeCacheControl(op, l1, l3);
+
+    result.syntax.mnemonic = symbol;
+    result.syntax.controls += '.';
+    result.syntax.controls += dataTypePrefixSyntax;
+    result.syntax.controls += '.';
+    result.syntax.controls += addrSizeSyntax;
+    if (!cacheControlSyntax.empty()) {
+      result.syntax.controls += cacheControlSyntax;
+    }
+    setScatterGatherOpX(symbolFromSyntax(), msgDesc, op, addrType, surfaceId,
+                        l1, l3, addrSizeBits, dataSizeRegBits, dataSizeMemBits,
+                        vectorSize, expectedExecSize, extraAttrs);
+  }
 
   void setLscAtomicMessage(const char *doc, std::string msgDesc, SendOp atOp) {
     extraAttrs |= getDescBits(20, 5) != 0 ? MessageInfo::Attr::ATOMIC_RETURNS
@@ -650,6 +825,13 @@ struct MessageDecoderLSC : MessageDecoder {
     decodeLscMessage(doc, msgDesc, atOp);
   }
 
+  // similar to setLscAtomicMessage, but we disable syntax since
+  // we don't wish to support it yet
+  void setLscAtomicAppendMessage(const char *doc, const char *msgDesc,
+                                 SendOp atOp) {
+    setLscAtomicMessage(doc, msgDesc, atOp);
+    result.syntax.layout = MessageSyntax::Layout::INVALID;
+  }
 
   void tryDecodeLsc() {
     int lscOp = getDescBits(0, 6); // Opcode[5:0]
@@ -690,10 +872,20 @@ struct MessageDecoderLSC : MessageDecoder {
                        SendOp::STORE_STRIDED);
       break;
     case LSC_LOAD_BLOCK2D:
+      if (sfid == SFID::TGM) {
+        decodeLscMessageTypeBlock2D(chooseDoc(nullptr, nullptr, "65280"),
+                                    "block2d load", SendOp::LOAD_BLOCK2D);
+        break;
+      }
       decodeLscMessage(chooseDoc(nullptr, "53680", "63972"), "block2d load",
                        SendOp::LOAD_BLOCK2D);
       break;
     case LSC_STORE_BLOCK2D:
+      if (sfid == SFID::TGM) {
+        decodeLscMessageTypeBlock2D("65281", "block2d store",
+                                    SendOp::STORE_BLOCK2D);
+        break;
+      }
       decodeLscMessage(chooseDoc(nullptr, "53530", "63981"), "block2d store",
                        SendOp::STORE_BLOCK2D);
       break;
@@ -775,6 +967,18 @@ struct MessageDecoderLSC : MessageDecoder {
     case LSC_ATOMIC_XOR:
       setLscAtomicMessage(chooseDoc(nullptr, "53554", "63964"),
                           "atomic logical xor", SendOp::ATOMIC_XOR);
+      break;
+    case LSC_ATOMIC_APNDADD:
+      setLscAtomicAppendMessage("68352", "atomic counter append add",
+                                SendOp::ATOMIC_ACADD);
+      break;
+    case LSC_ATOMIC_APNDSUB:
+      setLscAtomicAppendMessage("68353", "atomic counter append sub",
+                                SendOp::ATOMIC_ACSUB);
+      break;
+    case LSC_ATOMIC_APNDSTORE:
+      setLscAtomicAppendMessage("68354", "atomic counter append store",
+                                SendOp::ATOMIC_ACSTORE);
       break;
     case LSC_CCS:
       decodeLscCcs();
@@ -930,10 +1134,10 @@ struct MessageDecoderLSC : MessageDecoder {
 }; // MessageDecoderLSC
 
 void iga::decodeDescriptorsLSC(Platform platform, SFID sfid, ExecSize execSize,
-                               SendDesc exDesc, SendDesc desc,
-                               DecodeResult &result) {
-  MessageDecoderLSC md(platform, sfid, execSize,
-                       exDesc, desc, result);
+                               uint32_t exImmOffDesc, SendDesc exDesc,
+                               SendDesc desc, DecodeResult &result) {
+  MessageDecoderLSC md(platform, sfid, execSize, exImmOffDesc, exDesc, desc,
+                       result);
   md.tryDecodeLsc();
 }
 
@@ -981,14 +1185,127 @@ static bool encLdStVecCachingBits17_19(SendOp op, CacheOpt cachingL1,
   return matched;
 }
 
+// encLdStVecCachingBits17_19 - Encode 4-bits cache opt at descriptor[19:16]
+// Cache opt on XE2+ is 4 bits field comparing to 3 bits on pre-XE2
+// XE2 is [19:16] and preXE2 is [19:17]
+static bool encLdStVecCachingBits16_19(SendOp op, CacheOpt cachingL1,
+                                       CacheOpt cachingL3, SendDesc &desc) {
+  // special handle L1RI_L3CA which is not allowed in 4-bits-cache-opt mode
+  if (cachingL1 == CacheOpt::READINVALIDATE &&
+      cachingL3 == CacheOpt::CONSTCACHED)
+    return false;
+
+  // bits in [19:17] are the same as encLdStVecCachingBits17_19
+  if (encLdStVecCachingBits17_19(op, cachingL1, cachingL3, desc))
+    return true;
+
+  // otherwise, check the new combination (all for load only)
+  // L1UC_L3CC, L1CA_L3CC, L1RI_L3RI
+  const auto &opInfo = lookupSendOp(op);
+  bool isLd = opInfo.isLoad();
+  auto ccMatches = [&](CacheOpt l1, CacheOpt l3, uint32_t enc) {
+    if (l1 == cachingL1 && l3 == cachingL3) {
+      desc.imm |= enc << 16;
+      return true;
+    }
+    return false;
+  };
+  bool matched =
+      (isLd &&
+       ccMatches(CacheOpt::UNCACHED, CacheOpt::CONSTCACHED, LSC_UC_CC)) ||
+      (isLd && ccMatches(CacheOpt::CACHED, CacheOpt::CONSTCACHED, LSC_CA_CC)) ||
+      (isLd && ccMatches(CacheOpt::READINVALIDATE, CacheOpt::READINVALIDATE,
+                         LSC_RI_RI));
+  return matched;
+}
+
+static bool encLdStVecImmOffset(Platform p, const VectorMessageArgs &vma,
+                                uint32_t &exImmOffDesc, SendDesc &exDesc,
+                                std::string &err) {
+  const bool isBlock2d =
+      vma.op == SendOp::LOAD_BLOCK2D || vma.op == SendOp::STORE_BLOCK2D;
+  auto fitsInBitSize = [](int bits, int offset) {
+    return offset >= -(1 << (bits - 1)) && offset <= (1 << (bits - 1)) - 1;
+  };
+  uint32_t encodedOffset = 0;
+  if (isBlock2d && vma.addrOffsetX * vma.dataSizeMem % 32 != 0) {
+    err = "address offset-y must be 32b aligned";
+    return false;
+  } else if (isBlock2d && vma.addrOffsetY * vma.dataSizeMem % 32 != 0) {
+    err = "address offset-x must be 32b aligned";
+    return false;
+  } else if (!isBlock2d && vma.addrOffset % 4 != 0) {
+    err = "address offset must be 32b aligned";
+    return false;
+  } else if (vma.addrType == AddrType::FLAT) {
+    if (isBlock2d) {
+      if (vma.sfid != SFID::UGM) {
+        err = "address offset only defined for flat ugm";
+        return false;
+      } else if (!fitsInBitSize(10, vma.addrOffsetX)) {
+        err = "address offset-x only exceeds 10b";
+        return false;
+      } else if (!fitsInBitSize(10, vma.addrOffsetY)) {
+        err = "address offset-y only exceeds 10b";
+        return false;
+      }
+      // ExDescImm[31:22] = Y-offset
+      // ExDescImm[21:12] = X-offset
+      encodedOffset |= ((uint32_t)vma.addrOffsetY & 0x3FF) << 22;
+      encodedOffset |= ((uint32_t)vma.addrOffsetX & 0x3FF) << 12;
+    } else if (!fitsInBitSize(20, vma.addrOffset)) {
+      err = "address offset exceeds 20b";
+      return false;
+    } else {
+      // ExDescImm[31:12] = base offset
+      encodedOffset = (uint32_t)vma.addrOffset << 12;
+    }
+  } else if (isBlock2d) {
+    err = "block2d immediate offset only valid for flat";
+    return false;
+  } else if (vma.addrType == AddrType::BTI && !vma.addrSurface.isReg()) {
+    if (!fitsInBitSize(12, vma.addrOffset)) {
+      err = "bti address offset exceeds 12b";
+      return false;
+    }
+    encodedOffset = ((uint32_t)(vma.addrOffset & 0x00FFF) << 12);
+  } else if (vma.addrSurface.isReg()) {
+    if (vma.sfid != SFID::UGM) {
+      err = "unsupported SFID for ExDescReg + BaseOff";
+      return false;
+    } else if (!fitsInBitSize(17, vma.addrOffset)) {
+      err = "address offset of ss/bss (.ugm) exceeds 17b";
+      return false;
+    }
+    //
+    // ExDesc[31:19] = BaseOffset[16:4]
+    // ExDesc[15:12] = BaseOffset[3:0]
+    encodedOffset |= getBits((uint32_t)vma.addrOffset, 4, 13) << 19;
+    encodedOffset |= getBits((uint32_t)vma.addrOffset, 0, 4) << 12;
+  } else {
+    // BSS/SS with imm offset
+    err = "address offset forbidden bti/ss/bss with imm ExDesc surface";
+    return false;
+  }
+  // needs to write to exImmOffDesc only if ExDesc.IsReg
+  if (vma.addrSurface.isReg()) {
+    exImmOffDesc = encodedOffset;
+  } else {
+    exDesc = encodedOffset;
+  }
+  return true;
+}
 
 static bool encLdStVecCaching(const Platform &p, SendOp op, CacheOpt cachingL1,
                               CacheOpt cachingL3, SendDesc &desc) {
+  if (p >= Platform::XE2)
+    return encLdStVecCachingBits16_19(op, cachingL1, cachingL3, desc);
 
   return encLdStVecCachingBits17_19(op, cachingL1, cachingL3, desc);
 }
 
 static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
+                       uint32_t &exImmOffDesc,
                        SendDesc &exDesc, SendDesc &desc, std::string &err) {
   desc = 0x0;
   exDesc = 0x0;
@@ -1087,6 +1404,15 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
   case SendOp::ATOMIC_XOR:
     desc.imm |= LSC_ATOMIC_XOR;
     break;
+  case SendOp::ATOMIC_ACADD:
+    desc.imm |= LSC_ATOMIC_APNDADD;
+    break;
+  case SendOp::ATOMIC_ACSUB:
+    desc.imm |= LSC_ATOMIC_APNDSUB;
+    break;
+  case SendOp::ATOMIC_ACSTORE:
+    desc.imm |= LSC_ATOMIC_APNDSTORE;
+    break;
   default:
     err = "unsupported op";
     return false;
@@ -1096,6 +1422,10 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
   bool isBlock2dTyped = isBlock2d && vma.sfid == SFID::TGM;
   bool isBlock2dUntyped = isBlock2d && vma.sfid != SFID::TGM;
   bool hasAddrSizeField = !isBlock2d;
+  bool isAtomicAddCounter = vma.op == SendOp::ATOMIC_ACADD ||
+                            vma.op == SendOp::ATOMIC_ACSUB ||
+                            vma.op == SendOp::ATOMIC_ACSTORE;
+  hasAddrSizeField &= !isAtomicAddCounter;
 
   //
   ////////////////////////////////////////
@@ -1327,13 +1657,14 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
   hasAddrImmOffset |= vma.addrOffsetX != 0;
   hasAddrImmOffset |= vma.addrOffsetY != 0;
   if (hasAddrImmOffset) {
-    bool platformSupportsAddrOff = false;
-    if (platformSupportsAddrOff) {
+    if (p < Platform::XE2) {
       err = "address immediate offset not supported on this platform";
       return false;
     }
 
-  }    // else: addrOffset == 0
+    if (!encLdStVecImmOffset(p, vma, exImmOffDesc, exDesc, err))
+      return false;
+  }  // else: addrOffset == 0
 
   ////////////////////////////////////////
   // set the surface object
@@ -1356,6 +1687,10 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
   } else if (vma.addrType != AddrType::FLAT) {
     uint32_t ZERO_MASK = 0xFFF;
     std::string highBit = "11";
+    if (p >= Platform::XE2) {
+      ZERO_MASK = 0x7FF;
+      highBit = "10";
+    }
 
     // if BTI reg or BSS/SS reg/imm with just copy
     // BSS/SS with imm, value is already aligned
@@ -1373,12 +1708,11 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
 }
 
 bool iga::encodeDescriptorsLSC(Platform p, const VectorMessageArgs &vma,
-                               SendDesc &exDesc, SendDesc &desc,
-                               std::string &err) {
+                               uint32_t &exImmOffDesc, SendDesc &exDesc,
+                               SendDesc &desc, std::string &err) {
   if (!sendOpSupportsSyntax(p, vma.op, vma.sfid)) {
     err = "unsupported message for SFID";
     return false;
   }
-  return encLdStVec(p, vma,
-                    exDesc, desc, err);
+  return encLdStVec(p, vma, exImmOffDesc, exDesc, desc, err);
 }

@@ -100,19 +100,17 @@ enum class SyncFC {
   NOP = 0,
   ALLRD = 2,
   ALLWR = 3,
+  FLUSH = 12,
   FENCE = 13, // XeHPC
   BAR = 14,
   HOST = 15,
 };
 // static const SyncFC ALL_SyncFCs[] ...
-static const std::array<SyncFC,
-                        6
-                        >
-    ALL_SyncFCs{
-        SyncFC::NOP, SyncFC::ALLRD, SyncFC::ALLWR,
-        SyncFC::FENCE, // XeHPC
-        SyncFC::BAR,   SyncFC::HOST,
-    };
+static const std::array<SyncFC, 7> ALL_SyncFCs {
+    SyncFC::NOP,   SyncFC::ALLRD, SyncFC::ALLWR, SyncFC::FLUSH,
+    SyncFC::FENCE, // XeHPC
+    SyncFC::BAR,   SyncFC::HOST,
+};
 
 // The DpasFC function control fuses the systolic count and repeat counts
 // into a single subfunction.

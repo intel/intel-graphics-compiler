@@ -879,6 +879,8 @@ void Encoder::encodeSendDescs(const Instruction &i) {
   } else if (platform() == Platform::XE_HPG || platform() == Platform::XE_HPC
   ) {
     encodeSendDescsXeHPG(i);
+  } else if (platform() >= Platform::XE2) {
+    encodeSendDescsXe2(i);
   } else {
     errorT("unsupported platform");
   }
@@ -1038,6 +1040,78 @@ void Encoder::encodeSendDescsXeHPG(const Instruction &i) {
   }
 }
 
+// Similar to XeHPG/XeHPC except:
+//   * ExBSO doesn't exist for UGM (high bit of ExImmOffDesc)
+//   * if ExBSO field exists, it denotes if Src1Len in EU field or in ExDesc
+//   * CPS is gone (use ExImmOff[11])
+//   * If ExDesc.IsReg, then we also set ExImmOffDesc. And if it's UGM,
+//     ExDescImm[15] is the same bit as ExBSO (ExBSO not)
+void Encoder::encodeSendDescsXe2(const Instruction &i) {
+  SendDesc exDesc = i.getExtMsgDescriptor();
+  bool hasSrc1Length = true;
+  if (exDesc.isReg()) {
+    GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
+    // set ExBSO for non-UGM
+    // (UGM uses the ExBSO bit for ExDescImm[15])
+    uint32_t exImmOffDesc = i.getExtImmOffDescriptor();
+    if (i.getSendFc() != SFID::UGM) {
+      // ExDescImm[15] must not be set for non-UGM which the bit is ExBSO
+      if (exImmOffDesc & (1 << 15)) {
+        exImmOffDesc &= ~(1 << 15);
+        errorT("ExDescImm[15] overlaps ExBSO for this SFID and must be 0");
+      }
+    }
+    if (exImmOffDesc & (0x7 << 16)) {
+      exImmOffDesc &= ~(0x7 << 16);
+      errorT("ExDescImm[18:16] overlaps ExDesc.Reg and must be 0");
+    }
+    if (exImmOffDesc & 0x7FF) {
+      exImmOffDesc &= ~0x7FF;
+      errorT("ExDescImm[10:0] are unmapped and must be 0");
+    }
+    GED_ENCODE(ExMsgDescImm, exImmOffDesc);
+
+    if (i.getSendFc() != SFID::UGM) {
+      // must be done *after* ExMsgDescImm since this will stomp
+      // ExDescImm[15] (we could flip it around and just set ExDescImm[15])
+      GED_ENCODE(ExBSO, i.hasInstOpt(InstOpt::EXBSO) ? 1 : 0);
+      if (i.hasInstOpt(InstOpt::EXBSO)) {
+        GED_ENCODE(Src1Length, (uint32_t)i.getSrc1Length());
+      }
+    } else {
+      if (i.hasInstOpt(InstOpt::EXBSO))
+        warningAtT(i.getLoc(),
+                   "{ExBSO} does not exist for send.ugm on this platform");
+      // for UGM, src1.len must be in EU field
+      if (hasSrc1Length)
+        GED_ENCODE(Src1Length, (uint32_t)i.getSrc1Length());
+    }
+
+    if (i.hasInstOpt(InstOpt::CPS)) {
+      // this is ExDesc[11]
+      errorT("{CPS} does not exist on this platform");
+    }
+
+    // has to be set after ExMsgDescImm due to overlap
+    GED_ENCODE(ExDescAddrSubRegNum, 2 * exDesc.reg.subRegNum);
+  } else {
+    GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
+    GED_ENCODE(ExMsgDescImm, exDesc.imm);
+    if (hasSrc1Length)
+      GED_ENCODE(Src1Length, (uint32_t)i.getSrc1Length());
+  }
+
+  SendDesc desc = i.getMsgDescriptor();
+  if (desc.isReg()) {
+    GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
+    if (desc.reg.subRegNum != 0) { // a0.0 is implied (there's no field)
+      errorT("send with reg desc must be a0.0");
+    }
+  } else {
+    GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
+    GED_ENCODE(MsgDesc, desc.imm);
+  }
+}
 
 
 void Encoder::encodeSyncInstruction(const Instruction &inst) {

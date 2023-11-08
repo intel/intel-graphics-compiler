@@ -950,6 +950,8 @@ static inline SyncFC translate(GED_SYNC_FC fc) {
     return SyncFC::ALLWR;
   case GED_SYNC_FC_bar:
     return SyncFC::BAR;
+  case GED_SYNC_FC_flush:
+    return SyncFC::FLUSH;
   case GED_SYNC_FC_fence:
     return SyncFC::FENCE;
   case GED_SYNC_FC_host:

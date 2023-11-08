@@ -1143,6 +1143,41 @@ void Decoder::decodeSendInfoXeHPG(SendDescodeInfo &sdi) {
   }
 }
 
+void Decoder::decodeSendInfoXe2(SendDescodeInfo &sdi) {
+  // In Xe2 is similar to XeHP/XeHPG/XeHPC
+  //  - Given an Imm ExDesc Src1Len is an EU field
+  //  - When ExDesc is a reg we get the extra field
+  //    ExDescImm to add more bits to the extended descriptor
+  //  - CPS goes away unconditionally (this is now ExDescImm[11])
+  //  - if SFID is ugm then ExBSO holds an ExDescImm bit as well
+  //  - if ExDesc is a reg and SFID is not ugm, ExBSO bit denotes if
+  //    Src1Len in EU field or in ExDesc
+  sdi.sfid = m_subfunc.send;
+  if (sdi.exDesc.isReg()) {
+    GED_DECODE_RAW_TO(ExMsgDescImm, sdi.exImmOffDesc);
+    sdi.hasExBSO = false;
+    // GED gives us the overlaps too (ExBSO and ExDescImm[15]), so
+    // we must mask them out for non-UGM
+    if (m_subfunc.send != SFID::UGM) {
+      // ExDescImm overlaps ExBSO for non-UGM; clear it
+      sdi.exImmOffDesc &= ~(1 << 15); // ExBSO overlaps ExDescImm[15]
+
+      // if ExBSO is set, decode Src1Length from EU field
+      GED_DECODE_RAW(uint32_t, exBSO, ExBSO);
+      sdi.hasExBSO = exBSO != 0;
+      if (sdi.hasExBSO)
+        GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
+    } else {
+      // for UGM, src1Length must be in EU field
+      GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
+    }
+    sdi.exImmOffDesc &= ~(0x7 << 16); // ExDesc.AddrSubReg
+  } else {
+    // exDes is Imm, src1.len must be in EU field
+    GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
+  }
+  decodeMLenRlenFromDesc(sdi.desc, sdi.src0Len, sdi.dstLen);
+}
 
 Instruction *Decoder::decodeSendInstruction(Kernel &kernel) {
   SendDescodeInfo sdi;
@@ -1154,9 +1189,11 @@ Instruction *Decoder::decodeSendInstruction(Kernel &kernel) {
     decodeSendInfoXe(sdi);
   } else if (platform() == Platform::XE_HP) {
     decodeSendInfoXeHP(sdi);
-  } else if (platform() >= Platform::XE_HPG
-  ) {
+  } else if (platform() >= Platform::XE_HPG &&
+             platform() < Platform::XE2) {
     decodeSendInfoXeHPG(sdi);
+  } else if (platform() >= Platform::XE2) {
+    decodeSendInfoXe2(sdi);
   } else {
     IGA_ASSERT_FALSE("unsupported platform");
   }
@@ -1165,6 +1202,7 @@ Instruction *Decoder::decodeSendInstruction(Kernel &kernel) {
   Instruction *inst = kernel.createSendInstruction(
       *m_opSpec, sdi.sfid, fri.pred, fri.reg, decodeExecSize(),
       decodeChannelOffset(), decodeMaskCtrl(),
+      sdi.exImmOffDesc,
       sdi.exDesc, sdi.desc);
 
   if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) ==

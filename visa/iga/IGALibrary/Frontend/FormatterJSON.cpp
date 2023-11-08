@@ -327,6 +327,7 @@ public:
     const auto exDesc = i.getExtMsgDescriptor();
     const auto sfid = i.getSendFc();
     const auto di = tryDecode(platform(), sfid, i.getExecSize(),
+                              i.getExtImmOffDescriptor(),
                               exDesc, desc, nullptr);
     if (!di) {
       // if message decode failed fallback to the canonical send syntax

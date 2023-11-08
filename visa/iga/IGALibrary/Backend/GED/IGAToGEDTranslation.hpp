@@ -308,6 +308,9 @@ static inline GED_MODEL lowerPlatform(Platform platform) {
   case Platform::XE_HPC:
     pltf = GED_MODEL_XE_HPC;
     break;
+  case Platform::XE2:
+    pltf = GED_MODEL_XE2;
+    break;
   default:
     break;
   }
@@ -325,6 +328,8 @@ static inline GED_SYNC_FC lowerSyncFC(SyncFC fc) {
     return GED_SYNC_FC_bar;
   case SyncFC::FENCE:
     return GED_SYNC_FC_fence;
+  case SyncFC::FLUSH:
+    return GED_SYNC_FC_flush;
   case SyncFC::HOST:
     return GED_SYNC_FC_host;
   case SyncFC::NOP:

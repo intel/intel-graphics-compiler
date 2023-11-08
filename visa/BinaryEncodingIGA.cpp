@@ -23,6 +23,7 @@ using namespace vISA;
 // all the gunk related to extended send descriptors
 struct SendExDescOpts {
   SendDesc exDesc;
+  uint32_t exDescImmOff = 0;
   int xlen = -1;
   InstOptSet extraOpts;
 };
@@ -1277,6 +1278,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
 
       igaInst = IGAKernel->createSendInstruction(
           *opSpec, sf.send, pred, flagReg, execSize, chOff, maskCtrl,
+          sdos.exDescImmOff,
           sdos.exDesc, desc);
 
       vISA_ASSERT(igaInst, "Instruction is NULL");

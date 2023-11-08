@@ -391,8 +391,15 @@ DecodeResult tryDecode(const Instruction &inst, DecodedDescFields *fields);
 
 // Attempts to decode the descriptor for send instructions
 DecodeResult tryDecode(Platform p, SFID sfid, ExecSize execSize,
+                       uint32_t exImmOffDesc,
                        SendDesc exDesc, SendDesc desc,
                        DecodedDescFields *fields);
+
+static inline DecodeResult tryDecode(Platform p, SFID sfid, ExecSize execSize,
+                                     SendDesc exDesc, SendDesc desc,
+                                     DecodedDescFields *fields) {
+  return tryDecode(p, sfid, execSize, 0, exDesc, desc, fields);
+}
 
 
 //
@@ -457,7 +464,8 @@ struct VectorMessageArgs {
 }; // VectorMessageArgs
 
 bool encodeDescriptors(Platform p, const VectorMessageArgs &vma,
-                       SendDesc &exDesc, SendDesc &desc, std::string &err);
+                       uint32_t &exImmOffDesc, SendDesc &exDesc, SendDesc &desc,
+                       std::string &err);
 } // namespace iga
 
 #endif

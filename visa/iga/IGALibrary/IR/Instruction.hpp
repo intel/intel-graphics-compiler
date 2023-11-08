@@ -57,9 +57,8 @@ public:
         m_pred(PredCtrl::NONE, false), m_flagReg(REGREF_ZERO_ZERO),
         m_execSize(execSize), m_chOff(chOff),
         m_flagModifier(FlagModifier::NONE), m_instLoc(Loc::INVALID),
-        m_instId(0xFFFFFFFF), m_pc(0)
-        ,
-        m_sendDstLength(-1), m_sendSrc0Length(-1), m_sendSrc1Length(-1)
+        m_instId(0xFFFFFFFF), m_pc(0), m_exImmOffDesc(0), m_sendDstLength(-1),
+        m_sendSrc0Length(-1), m_sendSrc1Length(-1)
   {
   }
   Instruction(const Instruction &) = delete;
@@ -107,6 +106,7 @@ public:
   // e.g. pass Operand::NULL_UD_SRC
   void setSource(SourceIndex srcIx, const Operand &op);
 
+  void setExtImmOffDesc(uint32_t imm);
   void setExtMsgDesc(const SendDesc &msg);
   void setMsgDesc(const SendDesc &msg);
 
@@ -187,6 +187,7 @@ public:
 
   unsigned getSourceCount() const;
 
+  uint32_t getExtImmOffDescriptor() const;
   SendDesc getExtMsgDescriptor() const;
   SendDesc getMsgDescriptor() const;
 
@@ -213,7 +214,6 @@ public:
 
   bool isMovWithLabel() const;
 
-
   void setInlineBinary(const InlineBinaryType &binary);
   bool isInlineBinaryInstruction() const { return m_isInlineBinaryInst; }
   const InlineBinaryType &getInlineBinary() const { return m_inlineBinary; }
@@ -238,6 +238,11 @@ private:
 
   FlagModifier m_flagModifier; // conditional-modifier function
 
+  // Xe2: given an reg ExDesc, this holds the extra bits for the
+  // immediate offset part.  In the case of an immediate ExDesc
+  // (below); this should be 0 (the immediate offset is part of m_desc
+  // as in eralier platforms for that case).
+  uint32_t m_exImmOffDesc;
   SendDesc m_exDesc;
   SendDesc m_desc;
 
@@ -282,6 +287,11 @@ private:
   // | XE_HPC    | Same as XE_HPG, but since the sampler is absent
   // |           | there won't be a use of ExBSO and CPS.
   // +-----------+------------+-------------------------------------------
+  // | XE2       | Similar to XE_HPC/XE_HPG except
+  // |           | CPS is gone (now ExDescImm[11])
+  // |           | ExBSO is hardwired to 1, but the field persists.
+  // |           | There is an ExDescImm available even with reg ExDesc
+  // +-----------+--------------------------------------------------------
   //
 
   // These fields are best-effort decodes of the message lengths

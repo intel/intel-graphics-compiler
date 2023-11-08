@@ -102,6 +102,8 @@ typedef enum {
   IGA_XE_HP = XE_VER(1, 1),
   IGA_XE_HPG = XE_VER(1, 2),
   IGA_XE_HPC = XE_VER(1, 4)
+  ,
+  IGA_XE2 = XE_VER(2, 0)
 
   // DEPRECATED
   // Preserve the old values to maintain the binary compatibility

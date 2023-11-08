@@ -69,6 +69,7 @@ public:
                                      const Predication &predOpnd,
                                      const RegRef &flagReg, ExecSize execSize,
                                      ChannelOffset choff, MaskCtrl ectr,
+                                     uint32_t exDescImm,
                                      const SendDesc &extDesc,
                                      const SendDesc &msgDesc);
 

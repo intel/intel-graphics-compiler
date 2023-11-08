@@ -126,6 +126,7 @@ class InstBuilder {
   OperandInfo m_srcs[3];
   int m_nSrcs = 0;
 
+  uint32_t m_exImmOffDesc;
   SendDesc m_exDesc;
   SendDesc m_desc;
 
@@ -224,6 +225,7 @@ private:
     }
     m_nSrcs = 0;
 
+    m_exImmOffDesc = 0;
     m_exDesc.imm = 0;
     m_desc.imm = 0;
 
@@ -343,6 +345,7 @@ public:
       inst = m_kernel->createSendInstruction(*m_opSpec, m_subfunc.send,
                                              m_predication, m_flagReg,
                                              m_execSize, m_chOff, m_maskCtrl,
+                                             m_exImmOffDesc,
                                              m_exDesc, m_desc);
       if (m_sendSrc0Len >= 0)
         inst->setSrc0Length(m_sendSrc0Len);
@@ -730,11 +733,19 @@ public:
   // E.g. "send ... 0xC  a0.0"
   // (we translate  this to:  a0.0<0;1,0>:ud)
   void InstSendDescs(const Loc &,
+                     uint32_t exImmOffDesc,
                      const SendDesc &exDesc, const Loc &,
                      const SendDesc &desc) {
+    m_exImmOffDesc = exImmOffDesc;
     m_exDesc = exDesc;
     m_desc = desc;
   }
+
+  void InstSendDescs(const Loc &exDescLoc, const SendDesc &exDesc,
+                     const Loc &descLoc, const SendDesc &desc) {
+    InstSendDescs(exDescLoc, 0, exDesc, descLoc, desc);
+  }
+
   void InstSendSrc0Length(int src0Length) { m_sendSrc0Len = src0Length; }
   void InstSendSrc1Length(int src1Length) { m_sendSrc1Len = src1Length; }
 

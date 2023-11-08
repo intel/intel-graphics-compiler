@@ -299,6 +299,8 @@ enum class CacheOpt {
   // indicates lines should be written back to the backing store as well
   // as retained in all levels
   WRITETHROUGH,
+  // indicate a load is cached as constant
+  CONSTCACHED,
 };
 
 enum class CacheLevel {

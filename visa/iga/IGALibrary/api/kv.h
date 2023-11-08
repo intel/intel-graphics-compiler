@@ -201,6 +201,24 @@ IGA_API int32_t kv_get_opgroup(const kv_t *kv, int32_t pc);
 IGA_API uint32_t kv_get_send_descs(const kv_t *kv, int32_t pc,
                                    uint32_t *ex_desc, uint32_t *desc);
 
+/*
+ * Returns the special ExDescImmOff field, which only exists on
+ * LSC UGM XE2+ BSS/SS immediate offsets field and with an ExDesc in register
+ * form.  This field is returned in the packed form.
+ * See BXML for how to decode this to a signed 17b value, but the gist is to
+ * unpack it from [31:19][15:12] and interpret that as a signed 17b value.
+ * The other bits should be 0's as they lack an encoding in the send.
+ * Also note that FLAT/BTI addresses will not use this API.  The offset bits
+ * will be encoded as part of the regular ExDesc value.
+ *
+ * Returns:
+ *   KV_SUCCESS on success; output is stored to exdesc_immoff
+ *   KV_INVALID_ARGUMENT given a nullptr argument or invalid PC
+ *   KV_NON_SEND_INSTRUCTION if not a send instruction
+ *   KV_DESCRIPTOR_INVALID if not an LSC UGM XE2 BSS/SS descriptor
+ */
+IGA_API kv_status_t kv_get_send_exdesc_immoff(const kv_t *kv, int32_t pc,
+                                              uint32_t *exdesc_immoff);
 
 /*
  * Returns the indirect descriptor registers for a send message.

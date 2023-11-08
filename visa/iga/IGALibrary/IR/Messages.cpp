@@ -156,6 +156,19 @@ static void deducePayloadSizes(PayloadLengths &lens, Platform p, SFID sfid,
   case SendOp::ATOMIC_FMAX:
     handleVectorMessage(1);
     break;
+  case SendOp::ATOMIC_ACADD:
+  case SendOp::ATOMIC_ACSUB:
+  case SendOp::ATOMIC_ACSTORE:
+    // similar to other atomics except
+    // - addresses are implied (not in src0)
+    // - src0 takes the data (not src1)
+    // - src1 is null
+    // make handleVectorMessage do the heavy lifting and then just
+    // shuffle results around as needed
+    handleVectorMessage(1);
+    lens.src0Len = lens.src1Len;
+    lens.src1Len = 0;
+    break;
   case SendOp::ATOMIC_ICAS:
   case SendOp::ATOMIC_FCAS:
     handleVectorMessage(2);
@@ -377,6 +390,8 @@ static bool isLSC(Platform platform, SFID sfid) {
   case SFID::SLM:
   case SFID::TGM:
     return true;
+  case SFID::URB:
+    return platform >= Platform::XE2;
   default:
     return false;
   }
@@ -475,23 +490,24 @@ DecodeResult iga::tryDecode(const Instruction &i, DecodedDescFields *fields) {
   }
   return tryDecode(i.getOpSpec().platform, i.getSubfunction().send,
                    i.getExecSize(),
+                   i.getExtImmOffDescriptor(),
                    i.getExtMsgDescriptor(), i.getMsgDescriptor(), nullptr);
 }
 
 DecodeResult iga::tryDecode(Platform platform, SFID sfid, ExecSize execSize,
-                            SendDesc exDesc, SendDesc desc,
-                            DecodedDescFields *fields) {
+                            uint32_t exImmOffDesc, SendDesc exDesc,
+                            SendDesc desc, DecodedDescFields *fields) {
   DecodeResult result;
 
   if (isHDC(sfid)) {
-    decodeDescriptorsHDC(platform, sfid, execSize,
-                         exDesc, desc, result);
+    decodeDescriptorsHDC(platform, sfid, execSize, exImmOffDesc, exDesc, desc,
+                         result);
   } else if (isLSC(platform, sfid)) {
-    decodeDescriptorsLSC(platform, sfid, execSize,
-                         exDesc, desc, result);
+    decodeDescriptorsLSC(platform, sfid, execSize, exImmOffDesc, exDesc, desc,
+                         result);
   } else {
-    decodeDescriptorsOther(platform, sfid, execSize,
-                           exDesc, desc, result);
+    decodeDescriptorsOther(platform, sfid, execSize, exImmOffDesc, exDesc, desc,
+                           result);
   }
 
   postProcessDecode(desc, exDesc, result, fields);
@@ -548,15 +564,14 @@ bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid) {
 bool iga::isLscSFID(Platform p, SFID sfid) { return isLSC(p, sfid); }
 
 bool iga::encodeDescriptors(Platform p, const VectorMessageArgs &vma,
-                            SendDesc &exDesc, SendDesc &desc,
-                            std::string &err) {
+                            uint32_t &exImmOffDesc, SendDesc &exDesc,
+                            SendDesc &desc, std::string &err) {
   if (desc.isReg()) {
     err = "cannot encode with register desc";
     return false;
   }
   if (isLSC(p, vma.sfid)) {
-    return encodeDescriptorsLSC(p, vma,
-                                exDesc, desc, err);
+    return encodeDescriptorsLSC(p, vma, exImmOffDesc, exDesc, desc, err);
   }
   // TODO: support HDC here
   // encodeVectorMessageHDC(p, vma, exDesc, desc);

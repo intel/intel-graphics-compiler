@@ -229,6 +229,21 @@ public:
     return kv_get_send_descs(m_kv, pc, ex_desc, desc);
   }
 
+  // Returns the ExDescImmOff field.  This field exists only on
+  // LSC UGM BSS/SS AddressTypes on XE2+.
+  //
+  // Return 0xFFFFFFFF on failure (e.g. invalid PC) and the value on success.
+  //
+  // *NOTE WELL*: this field is encoded as described in BXML. See the
+  // kv.h docs on kv_get_send_exdesc_immoff to see how to decode this value
+  // to a signed offset.
+  uint32_t getSendExDescImmOff(int32_t pc) const {
+    uint32_t immoff = (uint32_t)-1;
+    if (kv_get_send_exdesc_immoff(m_kv, pc, &immoff) != kv_status_t::KV_SUCCESS)
+      return (uint32_t)-1;
+    return immoff;
+  }
+
 
   /*************************Analysis APIs **********************************/
 

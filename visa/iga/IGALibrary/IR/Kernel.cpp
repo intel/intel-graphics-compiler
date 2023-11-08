@@ -91,6 +91,7 @@ Instruction *Kernel::createSendInstruction(const OpSpec &op, SFID sfid,
                                            const RegRef &flagReg,
                                            ExecSize execSize,
                                            ChannelOffset chOff, MaskCtrl ectr,
+                                           uint32_t exDescImm,
                                            const SendDesc &exDesc,
                                            const SendDesc &desc) {
   Instruction *inst = new (&m_mem) Instruction(op, execSize, chOff, ectr);
@@ -99,6 +100,7 @@ Instruction *Kernel::createSendInstruction(const OpSpec &op, SFID sfid,
   inst->setPredication(predOpnd);
   inst->setFlagReg(flagReg);
 
+  inst->setExtImmOffDesc(exDescImm);
   inst->setExtMsgDesc(exDesc);
   inst->setMsgDesc(desc);
 

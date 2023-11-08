@@ -203,6 +203,14 @@ static inline void inferPlatform(const std::string &file, Opts &os) {
           break;
         }
       }
+      if (os.platform == IGA_GEN_INVALID) {
+        std::stringstream alt;
+        if (prj == "12p9") {
+          std::cerr << "WARNING: deprecated platform name (use \"2\" for this "
+                       "platform)\n";
+          os.platform = IGA_XE2;
+        }
+      }
     } catch (...) {
       // drop exception
     }

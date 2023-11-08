@@ -108,6 +108,9 @@ void Instruction::setSource(SourceIndex srcIx, const Operand &op) {
   m_srcs[ix] = op;
 }
 
+void Instruction::setExtImmOffDesc(uint32_t imm) {
+  m_exImmOffDesc = imm;
+}
 void Instruction::setExtMsgDesc(const SendDesc &msg) {
   m_exDesc = msg;
 }
@@ -200,6 +203,10 @@ unsigned Instruction::getSourceCount() const {
   } else {
     return getOpSpec().getSourceCount(getSubfunction());
   }
+}
+
+uint32_t Instruction::getExtImmOffDescriptor() const {
+  return m_exImmOffDesc;
 }
 
 SendDesc Instruction::getExtMsgDescriptor() const {

@@ -88,10 +88,10 @@ enum DC1 : uint32_t {
 
 struct MessageDecoderHDC : MessageDecoderLegacy {
   MessageDecoderHDC(Platform _platform, SFID _sfid, ExecSize execSize,
-                    SendDesc _exDesc, SendDesc _desc, DecodeResult &_result)
-      : MessageDecoderLegacy(_platform, _sfid, execSize,
-                             _exDesc, _desc, _result) {
-  }
+                    uint32_t exImmOffDesc, SendDesc _exDesc, SendDesc _desc,
+                    DecodeResult &_result)
+      : MessageDecoderLegacy(_platform, _sfid, execSize, exImmOffDesc, _exDesc,
+                             _desc, _result) {}
 
   void ensurePlatformLT(Platform removed) {
     if (platform() >= removed) {
@@ -1805,9 +1805,9 @@ void MessageDecoderHDC::tryDecodeDC1() {
 }
 
 void iga::decodeDescriptorsHDC(Platform platform, SFID sfid, ExecSize execSize,
-                               SendDesc exDesc, SendDesc desc,
-                               DecodeResult &result) {
-  MessageDecoderHDC mdo(platform, sfid, execSize,
-                        exDesc, desc, result);
+                               uint32_t exImmOffDesc, SendDesc exDesc,
+                               SendDesc desc, DecodeResult &result) {
+  MessageDecoderHDC mdo(platform, sfid, execSize, exImmOffDesc, exDesc, desc,
+                        result);
   mdo.tryDecode();
 }

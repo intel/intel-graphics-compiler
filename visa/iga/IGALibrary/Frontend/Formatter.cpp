@@ -56,6 +56,8 @@ protected:
   ansi_esc ANSI_COMMENT;
 
   void formatDstOp(const Instruction &i);
+  // prior platform used regular fmtDstOp with "implicit types"...
+  void formatSendDstOp(const Instruction &i);
 
   void formatSrcOp(SourceIndex ix, const Instruction &i);
 
@@ -341,6 +343,10 @@ public:
 
   void formatNormalInstructionBody(const Instruction &i,
                                    const std::string &debugSendDecode) {
+    if (platform() == Platform::XE2 && i.getOpSpec().isAnySendFormat()) {
+      formatInstructionBodySendXe2(i);
+      return;
+    }
 
     formatInstructionPrefix(i);
 
@@ -409,6 +415,45 @@ public:
   }
 
 private:
+  // Xe2 send is same as earlier send + funny ExDescImm business
+  void formatInstructionBodySendXe2(const Instruction &i) {
+    formatInstructionPrefix(i);
+
+    emit("  ");
+    formatSendDstOp(i);
+
+    emit("  ");
+      formatSrcBare(i.getSource(SourceIndex::SRC0));
+
+    emit("  ");
+
+    auto src1NeedsLenSuffix = i.getExtMsgDescriptor().isImm() ||
+                              i.getSendFc() == SFID::UGM ||
+                              i.hasInstOpt(InstOpt::EXBSO);
+    if (src1NeedsLenSuffix)
+      formatSendSrcWithLength(i.getSource(SourceIndex::SRC1),
+                              i.getSrc1Length());
+    else
+      formatSrcBare(i.getSource(SourceIndex::SRC1));
+
+    emit("  ");
+
+    auto immOff = i.getExtImmOffDescriptor();
+    if (immOff != 0) {
+      emitHex(immOff);
+      emit(":");
+    }
+    formatSendExDesc(i.getExtMsgDescriptor());
+    emit("  ");
+    formatSendDesc(i.getMsgDescriptor(), 8);
+
+    // instruction options
+    formatInstOpts(i);
+
+    // EOL comments
+    formatEolComments(i);
+  }
+
 
   void formatInstructionPrefix(const Instruction &i) {
     formatMaskAndPredication(i);
@@ -759,6 +804,7 @@ private:
           EmitSendDescriptorInfo(platform(), i.getSendFc(), i.getExecSize(),
                                  !i.getDestination().isNull(), i.getDstLength(),
                                  i.getSrc0Length(), i.getSrc1Length(),
+                                 i.getExtImmOffDescriptor(),
                                  exDesc, desc, ss);
         } else if (opts.printLdSt) {
           // tried to format with ld/st syntax and ...
@@ -796,7 +842,6 @@ private:
   void formatRegIndRef(const Operand &op) {
     emitAnsi(ANSI_REGISTER_GRF, "r");
     emit("[");
-
       formatScalarRegRead(RegName::ARF_A, op.getIndAddrReg());
 
     if (op.getIndImmAddr() != 0) {
@@ -971,6 +1016,16 @@ void Formatter::formatDstOp(const Instruction &i) {
   finishColumn();
 }
 
+// Normal backwards compatible send or newer generalized
+void Formatter::formatSendDstOp(const Instruction &i) {
+  const Operand &dst = i.getDestination();
+
+  startColumn(cols.sendDstOp);
+
+  formatRegister(dst.getDirRegName(), dst.getDirRegRef(), false, true);
+
+  finishColumn();
+}
 
 static bool sendSrc1NeedsLengthSuffix(const Formatter &f,
                                       const Instruction &i) {
@@ -993,6 +1048,10 @@ void Formatter::formatSrcOp(SourceIndex srcIx, const Instruction &i) {
 
   switch (src.getKind()) {
   case Operand::Kind::DIRECT: {
+    // NOTE: this path is not called for send messages after a given platform;
+    // in other words:
+    IGA_ASSERT(!os.isAnySendFormat() || platform() < Platform::XE2,
+               "unexpected send formatting");
     if (os.isAnySendFormat() && srcIx == SourceIndex::SRC1 &&
         sendSrc1NeedsLengthSuffix(*this, i)) {
       formatSendSrcWithLength(src, i.getSrc1Length());
@@ -1242,6 +1301,7 @@ bool Formatter::formatLoadStoreSyntax(const Instruction &i) {
 
   const auto sfid = i.getSendFc();
   const auto di = tryDecode(platform(), sfid, i.getExecSize(),
+                            i.getExtImmOffDescriptor(),
                             exDesc, desc, nullptr);
   if (!di) {
     // if decode failed fallback to the canonical send syntax

@@ -396,6 +396,7 @@ public:
     bool defaultDecode = i.getOpSpec().isAnySendFormat();
     if (defaultDecode) {
       di = tryDecode(platform(), sfid, i.getExecSize(),
+                                i.getExtImmOffDescriptor(),
                                 exDesc, desc, nullptr);
     }
     if (!di) {

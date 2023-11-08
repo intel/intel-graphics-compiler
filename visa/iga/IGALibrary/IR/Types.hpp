@@ -49,6 +49,7 @@ enum class Platform {
   XE_HP = IGA_XE_VER_ORDINAL(1, 1),
   XE_HPG = IGA_XE_VER_ORDINAL(1, 2),
   XE_HPC = IGA_XE_VER_ORDINAL(1, 4), // XeHPC-XT, preserved (1, 3) for XeHPC-XL
+  XE2 = IGA_XE_VER_ORDINAL(2, 0),
   FUTURE = 0x7FFFFFFF
 #undef IGA_GEN_VER_ORDINAL
 };

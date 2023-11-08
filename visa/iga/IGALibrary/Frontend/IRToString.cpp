@@ -32,6 +32,7 @@ std::string iga::ToSymbol(Platform x) {
     MAKE_CASE(Platform, XE_HP);
     MAKE_CASE(Platform, XE_HPG);
     MAKE_CASE(Platform, XE_HPC);
+  MAKE_CASE(Platform, XE2);
     MAKE_CASE(Platform, FUTURE);
     MAKE_DEFAULT_CASE(Platform);
   }
@@ -142,6 +143,8 @@ std::string iga::ToSyntax(SyncFC sfc) {
     return "allrd";
   case SyncFC::ALLWR:
     return "allwr";
+  case SyncFC::FLUSH:
+    return "flush";
   case SyncFC::FENCE:
     return "fence";
   case SyncFC::BAR:

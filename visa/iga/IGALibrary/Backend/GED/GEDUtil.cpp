@@ -47,6 +47,10 @@ iga::SFMessageType iga::getMessageType(Platform p, SFID sfid, uint32_t desc) {
   GED_MESSAGE_TYPE msgType = GED_MESSAGE_TYPE_INVALID;
   GED_MODEL gedP = lowerPlatform(p);
 
+  if (p >= Platform::XE2) {
+    // The message table looks wrong and is outdated as of XE2
+   return iga::SFMessageType::INVALID;
+  }
 
   if (gedSFID != GED_SFID_INVALID && gedSFID != GED_SFID_NULL) {
     switch (gedSFID) {

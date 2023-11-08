@@ -105,7 +105,7 @@ static void appendUVR(Platform p, SFID sfid, int src0Len,
 
 void iga::EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
                                  bool dstNonNull, int dstLen, int src0Len,
-                                 int src1Len,
+                                 int src1Len, uint32_t exImmOffDesc,
                                  const SendDesc &exDesc, const SendDesc &desc,
                                  std::stringstream &ss) {
   //////////////////////////////////////
@@ -120,6 +120,8 @@ void iga::EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
   }
   bool hasHeaderBit = sfid != SFID::UGM && sfid != SFID::UGML &&
                       sfid != SFID::SLM && sfid != SFID::TGM;
+  hasHeaderBit &= (p <= Platform::XE2 || sfid != SFID::URB);
+
   if (hasHeaderBit && desc.isImm() && getHeaderBit(desc.imm)) {
     ss << "h";
   }
@@ -152,6 +154,7 @@ void iga::EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
 
   if (desc.isImm()) {
     const DecodeResult dr = tryDecode(p, sfid, execSize,
+                                      exImmOffDesc,
                                       exDesc, desc, nullptr);
     if (dr.syntax.isValid()) {
       ss << "; " << dr.syntax.sym();

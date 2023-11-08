@@ -175,6 +175,8 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetOpgroup)(const kv_t *kv, int32_t pc);
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSendDescs)(const kv_t *kv, int32_t pc,
                                                      uint32_t *ex_desc,
                                                      uint32_t *desc);
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSendExDescImmOff)(
+    const kv_t *kv, int32_t pc, uint32_t *ex_desc_immoff);
 #define IGA_KV_GET_SEND_INDIRECT_DESCS_STR "kv_get_send_indirect_descs"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSendIndirectDescs)(
     const kv_t *kv, int32_t pc, uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
@@ -383,6 +385,7 @@ typedef struct {
   pIGAKVGetInstSyntax kv_get_inst_syntax;
   pIGAKVGetOpgroup kv_get_opgroup;
   pIGAKVGetSendDescs kv_get_send_descs;
+  pIGAKVGetSendExDescImmOff kv_get_send_exdesc_immoff;
   pIGAKVGetSendIndirectDescs kv_get_send_indirect_descs;
   pIGAKVGetSendExBso kv_get_send_exbso;
   pIGAKVGetExecutionSize kv_get_execution_size;

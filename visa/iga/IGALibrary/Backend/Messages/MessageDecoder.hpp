@@ -31,6 +31,7 @@ struct MessageDecoder {
   const SFID sfid;
   ExecSize instExecSize;
   const SendDesc desc, exDesc;
+  uint32_t exImmOffDesc;
 
   // outputs
   DecodeResult &result;
@@ -38,17 +39,11 @@ struct MessageDecoder {
   const int DEFAULT_EXEC_SIZE, BITS_PER_REGISTER;
 
   MessageDecoder(Platform _platform, SFID _sfid, ExecSize _instExecSize,
-                 SendDesc _exDesc, SendDesc _desc, DecodeResult &_result)
+                 uint32_t _exImmOffDesc, SendDesc _exDesc, SendDesc _desc,
+                 DecodeResult &_result)
       : decodeModel(Model::LookupModelRef(_platform)), sfid(_sfid),
-        instExecSize(_instExecSize)
-        //
-        ,
-        desc(_desc), exDesc(_exDesc)
-       //
-        ,
-        result(_result)
-        //
-        ,
+        instExecSize(_instExecSize), desc(_desc), exDesc(_exDesc),
+        exImmOffDesc(_exImmOffDesc), result(_result),
         DEFAULT_EXEC_SIZE((_platform >= Platform::XE_HPC) ? 32 : 16),
         BITS_PER_REGISTER((_platform >= Platform::XE_HPC) ? 512 : 256) {
     result.info.op = SendOp::INVALID;
@@ -77,13 +72,17 @@ struct MessageDecoder {
   }
 
   void setDoc(const char *doc) { setDoc(doc, doc, doc); }
-  void setDoc(const char *preXe, const char *xe, const char *) {
-    result.info.docs[0] = chooseDoc(preXe, xe, "?");
+  void setDoc(const char *preXe, const char *xe, const char *xe23) {
+    result.info.docs[0] = chooseDoc(preXe, xe, xe23);
   }
-  const char *chooseDoc(const char *preXe, const char *xe, const char *) const {
+  const char *chooseDoc(const char *preXe, const char *xe,
+                        const char *xe23) const {
     preXe = preXe ? preXe : "?";
     xe = xe ? xe : "?";
-    return platform() < Platform::XE ? preXe : xe;
+    xe23 = xe23 ? xe23 : "?";
+    return platform() < Platform::XE    ? preXe
+           : platform() < Platform::XE2 ? xe
+                                        : xe23;
   }
 
   /////////////////////////////////////////////////////////////
@@ -252,10 +251,10 @@ struct MessageDecoderLegacy : MessageDecoder {
   static const int NONCOHERENT_BTI = 0xFD;
 
   MessageDecoderLegacy(Platform _platform, SFID _sfid, ExecSize _instExecSize,
-                       SendDesc _exDesc, SendDesc _desc, DecodeResult &_result)
-      : MessageDecoder(_platform, _sfid, _instExecSize,
-                       _exDesc, _desc, _result) {
-  }
+                       uint32_t exImmOffDesc, SendDesc _exDesc, SendDesc _desc,
+                       DecodeResult &_result)
+      : MessageDecoder(_platform, _sfid, _instExecSize, exImmOffDesc, _exDesc,
+                       _desc, _result) {}
 
   // from legacy encodings
   int decodeBTI(int addrBits) {
@@ -312,18 +311,21 @@ struct MessageDecoderLegacy : MessageDecoder {
 
 // see MessageDecoderHDC.cpp
 void decodeDescriptorsHDC(Platform platform, SFID sfid, ExecSize execSize,
-                          SendDesc exDesc, SendDesc desc, DecodeResult &result);
+                          uint32_t exImmOffDesc, SendDesc exDesc, SendDesc desc,
+                          DecodeResult &result);
 
 // see MessageDecoderOther.cpp
 void decodeDescriptorsOther(Platform platform, SFID sfid, ExecSize execSize,
-                            SendDesc exDesc, SendDesc desc,
-                            DecodeResult &result);
+                            uint32_t exImmOffDesc, SendDesc exDesc,
+                            SendDesc desc, DecodeResult &result);
 
 void decodeDescriptorsLSC(Platform platform, SFID sfid, ExecSize execSize,
-                          SendDesc exDesc, SendDesc desc, DecodeResult &result);
+                          uint32_t exImmOffDesc, SendDesc exDesc, SendDesc desc,
+                          DecodeResult &result);
 
 bool encodeDescriptorsLSC(Platform p, const VectorMessageArgs &vma,
-                          SendDesc &exDesc, SendDesc &desc, std::string &err);
+                          uint32_t &exImmOffDesc, SendDesc &exDesc,
+                          SendDesc &desc, std::string &err);
 
 // Different parameters that sampler messages allow.
 enum class SamplerParam {
@@ -350,6 +352,14 @@ enum class SamplerParam {
   SI,      // sampler index?
   U,       // u-coordinate
   V,       // v-coordinate
+  OFFUV_R,     // r parameter combined with u and v offsets
+  OFFUVR,      // u, v, and r offsets combined into a single parameter
+  OFFUV,       // u and v offsets combined into a single parameter
+  OFFUVR_R,    // r parameter combine with u, v, and r offsets
+  BIAS_OFFUVR, // bias parameter and u, v, r offsets combined
+  BIAS_OFFUV,  // bias parameter and u, v offsets combined
+  LOD_OFFUV,   // LOD parameter and u, v offsets combined
+  LOD_OFFUVR,  // LOD parameter and u, v, and r offsets combined
 }; // SamplerParam
 
 struct SamplerMessageDescription {

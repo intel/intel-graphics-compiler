@@ -323,6 +323,31 @@ uint32_t kv_get_send_descs(const kv_t *kv, int32_t pc, uint32_t *ex_desc,
   return n;
 }
 
+kv_status_t kv_get_send_exdesc_immoff(const kv_t *kv, int32_t pc,
+                                      uint32_t *exdesc_immoff) {
+  if (!kv || !exdesc_immoff)
+    return KV_INVALID_ARGUMENT;
+  const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
+  if (!inst) {
+    return KV_INVALID_ARGUMENT;
+  } else if (!inst->getOpSpec().isAnySendFormat()) {
+    return KV_NON_SEND_INSTRUCTION;
+  } else if (inst->getSendFc() != SFID::UGM) {
+    return KV_DESCRIPTOR_INVALID;
+  }
+
+  const auto exDesc = inst->getExtMsgDescriptor();
+  const auto desc = inst->getMsgDescriptor();
+  if (!exDesc.isReg() || !desc.isImm())
+    return KV_DESCRIPTOR_INVALID;
+
+  auto addrType = ((desc.imm >> 29) & 0x3); // Desc[30:29]
+  if (addrType != 1 && addrType != 2)       // BSS/SS
+    return KV_DESCRIPTOR_INVALID;
+
+  *exdesc_immoff = inst->getExtImmOffDescriptor();
+  return KV_SUCCESS;
+}
 
 kv_status_t kv_get_send_indirect_descs(const kv_t *kv, int32_t pc,
                                        uint8_t *ex_desc_reg,
