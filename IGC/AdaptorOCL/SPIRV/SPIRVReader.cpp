@@ -2296,6 +2296,12 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     std::string typeName = kJointMatrixName::TypePrefix + MT->getMangledName() + kJointMatrixName::TypeSuffix;
     return mapType(T, getOrCreateOpaquePtrType(M, typeName, SPIRAddressSpace::SPIRAS_Global));
   }
+  case OpTypeForwardPointer: {
+    SPIRVTypeForwardPointer* FP =
+      static_cast<SPIRVTypeForwardPointer*>(static_cast<SPIRVEntry*>(T));
+    return mapType(T, transType(static_cast<SPIRVType*>(
+      BM->getEntry(FP->getPointerId()))));
+  }
   default: {
     auto OC = T->getOpCode();
     if (isOpaqueGenericTypeOpCode(OC) ||

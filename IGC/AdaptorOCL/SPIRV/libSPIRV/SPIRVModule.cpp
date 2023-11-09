@@ -319,6 +319,7 @@ private:
 
   SPIRVAsmVector AsmVec;
   SPIRVIdToEntryMap IdEntryMap;
+  SPIRVIdToEntryMap IdTypeForwardMap; // Forward declared IDs
   SPIRVUnknownStructFieldMap UnknownStructFieldMap;
   SPIRVFunctionVector FuncVec;
   SPIRVVariableVec VariableVec;
@@ -444,6 +445,11 @@ SPIRVModuleImpl::addEntry(SPIRVEntry *Entry) {
     else
     {
         EntryNoId.insert(Entry);
+
+        // Store the known ID of pointer type that would be declared later.
+        if (Entry->getOpCode() == OpTypeForwardPointer)
+          IdTypeForwardMap[static_cast<SPIRVTypeForwardPointer*>(Entry)
+            ->getPointerId()] = Entry;
     }
 
     Entry->setModule(this);
@@ -484,8 +490,15 @@ SPIRVEntry *
 SPIRVModuleImpl::getEntry(SPIRVId Id) const {
   IGC_ASSERT_MESSAGE(Id != SPIRVID_INVALID, "Invalid Id");
   SPIRVIdToEntryMap::const_iterator Loc = IdEntryMap.find(Id);
-  IGC_ASSERT_EXIT_MESSAGE(Loc != IdEntryMap.end(), "Id is not in map");
-  return Loc->second;
+  if (Loc != IdEntryMap.end()) {
+    return Loc->second;
+  }
+  SPIRVIdToEntryMap::const_iterator LocFwd = IdTypeForwardMap.find(Id);
+  if (LocFwd != IdTypeForwardMap.end()) {
+    return LocFwd->second;
+  }
+  IGC_ASSERT_EXIT_MESSAGE(false, "Id is not in map");
+  return nullptr;
 }
 
 void

@@ -349,7 +349,6 @@ _SPIRV_IMP_DEC3(SPIRVTypeArray, Id, ElemType, Length)
 
 void SPIRVTypeForwardPointer::decode(std::istream& I) {
   auto Decoder = getDecoder(I);
-  SPIRVId PointerId;
   Decoder >> PointerId >> SC;
 }
 
