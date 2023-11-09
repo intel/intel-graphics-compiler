@@ -84,11 +84,6 @@ static const uint32_t LSC_V16 = 0x5;
 static const uint32_t LSC_V32 = 0x6;
 static const uint32_t LSC_V64 = 0x7;
 
-const static uint32_t LSC_SCALE_NONE = 0x0;
-const static uint32_t LSC_SCALE_1X = 0x1;
-const static uint32_t LSC_SCALE_2X = 0x2;
-const static uint32_t LSC_SCALE_4X = 0x3;
-
 ///////////////////////////////////////////////////////
 // Cache Opt
 // Value for bits[19:17]
@@ -1621,34 +1616,6 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
   if (vma.addrType != AddrType::FLAT && vma.sfid == SFID::SLM) {
     err = "SLM requires flat address type";
     return false;
-  }
-  ////////////////////////////////////////
-  // address scale factor
-  if (vma.addrScale != 1) {
-    if (true) { // disable if address scaling is ever added
-      err = "address scaling not supported on this platform";
-      return false;
-    }
-    int vlen = vma.elementsPerAddress();
-    int bytesPerElem = vma.dataSizeMem * vlen / 8;
-    uint32_t addrScEnc = LSC_SCALE_NONE;
-    if (vma.addrScale > 32) {
-      err = "scale value is too large";
-      return false;
-    } else if (vma.addrScale == bytesPerElem) {
-      addrScEnc = LSC_SCALE_1X;
-    } else if (vma.addrScale == 2 * bytesPerElem) {
-      addrScEnc = LSC_SCALE_2X;
-    } else if (vma.addrScale == 4 * bytesPerElem) {
-      addrScEnc = LSC_SCALE_4X;
-    } else {
-      std::stringstream ss;
-      ss << "invalid scaling factor (must be " << 1 * bytesPerElem << ", "
-         << 2 * bytesPerElem << ", or " << 4 * bytesPerElem << ")";
-      err = ss.str();
-      return false;
-    }
-    desc.imm |= addrScEnc << 22;
   }
   //
   ////////////////////////////////////////
