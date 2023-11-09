@@ -197,6 +197,8 @@ public:
     std::vector<Type *> Types;
     // vector of Indices corresponding to vector of Types.
     std::vector<unsigned> IndicesOfTypes;
+    // vector of values for non-const indices
+    std::vector<Value *> Values;
 
   public:
     SElementsOfType(unsigned Size);
@@ -206,6 +208,7 @@ public:
 
     Type *getTyAt(unsigned Index) const;
     unsigned getIdxAt(unsigned Index) const;
+    Value* getValAt(unsigned Index) const;
     std::pair<Type *&, unsigned &> at(unsigned Index);
     std::pair<Type *const &, const unsigned &> at(unsigned Index) const;
 
@@ -213,13 +216,16 @@ public:
 
     using ty_iterator = std::vector<Type *>::iterator;
     using idx_iterator = std::vector<unsigned>::iterator;
+    using val_iterator = std::vector<Value *>::iterator;
     using const_ty_iterator = std::vector<Type *>::const_iterator;
     using const_idx_iterator = std::vector<unsigned>::const_iterator;
+    using const_val_iterator = std::vector<Value *>::const_iterator;
 
     // Iterator for SElementsOfType to be able to iterate over a range of
     // Types and IndicesOfTypes simultaneously.
-    using value_type = std::pair<const_ty_iterator::value_type,
-                                 const_idx_iterator::value_type>;
+    using value_type = std::tuple<const_ty_iterator::value_type,
+                                  const_idx_iterator::value_type,
+                                  const_val_iterator::value_type>;
     struct const_iterator {
       using iterator_category = std::forward_iterator_tag;
       using difference_type = std::ptrdiff_t;
@@ -230,7 +236,8 @@ public:
                       // that value pointed by iterator wont be changed, so
                       // copy of pair is not crusual.
       const_iterator() = delete;
-      const_iterator(const_ty_iterator TyItIn, const_idx_iterator IdxItIn);
+      const_iterator(const_ty_iterator TyItIn, const_idx_iterator IdxItIn,
+                     const_val_iterator ValItIn);
       reference operator*() const;
       const_iterator &operator++();
       const_iterator operator++(int);
@@ -244,6 +251,7 @@ public:
     private:
       const_ty_iterator TyIt;
       const_idx_iterator IdxIt;
+      const_val_iterator ValIt;
     };
 
     ty_iterator ty_begin() { return Types.begin(); }
@@ -254,18 +262,24 @@ public:
     const_idx_iterator idx_begin() const { return IndicesOfTypes.begin(); }
     idx_iterator idx_end() { return IndicesOfTypes.end(); }
     const_idx_iterator idx_end() const { return IndicesOfTypes.end(); }
+    val_iterator val_begin() { return Values.begin(); }
+    const_val_iterator val_begin() const { return Values.begin(); }
+    val_iterator val_end() { return Values.end(); }
+    const_val_iterator val_end() const { return Values.end(); }
     const_iterator begin() const {
-      return const_iterator{Types.begin(), IndicesOfTypes.begin()};
+      return const_iterator{Types.begin(), IndicesOfTypes.begin(),
+                            Values.begin()};
     }
     const_iterator end() const {
-      return const_iterator{Types.end(), IndicesOfTypes.end()};
+      return const_iterator{Types.end(), IndicesOfTypes.end(), Values.end()};
     }
     auto indices() const { return make_range(idx_begin(), idx_end()); }
     auto types() const { return make_range(ty_begin(), ty_end()); }
+    auto values() const { return make_range(val_begin(), val_end()); }
 
-    void emplace_back(Type &Ty, unsigned Index);
+    void emplace_back(Type &Ty, unsigned Index, Value* V = nullptr);
     void push_back(const value_type &Elem);
-    void emplace_back(const SElement &Elem);
+    void emplace_back(const SElement &Elem, Value* V = nullptr);
 
     void print(raw_ostream &Os = llvm::errs()) const;
   };
@@ -476,8 +490,7 @@ private:
                                const TypeToInstrMap &NewInstr,
                                unsigned PlainTyIdx) const;
 
-  static Optional<
-      std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>>
+  static std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>
   getIndicesPath(GetElementPtrInst &GEPI);
   static Optional<
       std::tuple<std::vector<GetElementPtrInst *>, std::vector<PtrToIntInst *>>>
@@ -1358,7 +1371,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
   // Generates new indices path till PlainTyIdx.
   std::for_each(IdxPath.begin(), IdxPath.begin() + PlainTyIdx,
                 [&PlainType, &LocalIdxPath, this](auto &&Elem) {
-                  auto [Ty, Idx] = Elem;
+                  auto [Ty, Idx, V] = Elem;
                   StructType *STy = cast<StructType>(Ty);
                   const ListOfSplitElements &ListOfPossibleTypes =
                       Graph.getElementsListOfSTyAtIdx(*STy, Idx);
@@ -1375,7 +1388,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
                                      "No substitution type.");
                   // Skip indices if it gives unwrapped type.
                   if (!FindIt->isUnwrapped())
-                    LocalIdxPath.emplace_back(*FindIt);
+                    LocalIdxPath.emplace_back(*FindIt, V);
                 });
   std::copy(IdxPath.begin() + PlainTyIdx, IdxPath.end(),
             std::back_inserter(LocalIdxPath));
@@ -1393,9 +1406,12 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
   std::vector<Value *> IdxList;
   IdxList.reserve(Size + 1);
   IdxList.emplace_back(*GEPI.idx_begin());
-  for (unsigned Idx : LocalIdxPath.indices())
-    // TODO how to chose i32 or i64 for indices value?
-    IdxList.emplace_back(ConstantInt::get(Ctx, APInt(32, Idx)));
+  for (unsigned Idx = 0; Idx < Size; Idx++)
+    if (auto *V = LocalIdxPath.getValAt(Idx))
+      IdxList.emplace_back(V);
+    else
+      IdxList.emplace_back(
+          ConstantInt::get(Ctx, APInt(32, LocalIdxPath.getIdxAt(Idx))));
 
   Type *Inserted = LocalIdxPath.getTyAt(0);
 
@@ -1453,7 +1469,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
 //  (C, 4) -> D
 //  (D, 0) -> A
 //
-Optional<std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>>
+std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>
 Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
   const unsigned Size = GEPI.getNumIndices() - 1;
   DependencyGraph::SElementsOfType IdxPath{Size};
@@ -1464,27 +1480,19 @@ Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
   Type *CurrentType = GEPI.getSourceElementType();
   for (auto It = GEPI.idx_begin() + 1, End = GEPI.idx_end(); It != End; ++It) {
     Value *VIdx = *It;
-    if (Constant *CIdx = dyn_cast<Constant>(VIdx)) {
-      const APInt &Int = CIdx->getUniqueInteger();
-      // Naive assumption that all indices are unsigned greater then zero and
-      // scalar.
-      uint64_t Idx = Int.getZExtValue();
-
-      // This approach can fail in case of dynamic indices.
-      // To use table in that case.
-      Type *GottenType{nullptr};
-      if (CurrentType->isVectorTy() || CurrentType->isArrayTy())
-        GottenType = CurrentType->getContainedType(0);
-      else
-        GottenType = CurrentType->getContainedType(Idx);
-
-      IdxPath.emplace_back(*CurrentType, Idx);
-      GottenTypeArr.emplace_back(GottenType);
-      CurrentType = GottenType;
+    if (CurrentType->isVectorTy() || CurrentType->isArrayTy()) {
+      IdxPath.emplace_back(*CurrentType, 0, VIdx);
+      CurrentType = CurrentType->getContainedType(0);
     } else {
-      LLVM_DEBUG(dbgs() << "WARN:: Non constant indices do not supported!\n");
-      return None;
+      // Struct indices are required to be i32 constant
+      auto *CIdx = cast<Constant>(VIdx);
+      IGC_ASSERT(CIdx->getType()->getScalarType()->isIntegerTy(32));
+      const APInt &Int = CIdx->getUniqueInteger();
+      uint64_t Idx = Int.getZExtValue();
+      IdxPath.emplace_back(*CurrentType, Idx);
+      CurrentType = CurrentType->getContainedType(Idx);
     }
+    GottenTypeArr.emplace_back(CurrentType);
   }
   return std::make_tuple(std::move(IdxPath), std::move(GottenTypeArr));
 }
@@ -1545,10 +1553,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
                              const TypeToInstrMap &NewInstr,
                              InstsToSubstitute /*OUT*/ &InstToInst) {
   LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI << "\n");
-  auto IndicesPath = getIndicesPath(GEPI);
-  if (!IndicesPath)
-    return false;
-  auto [IdxPath, GottenTypeArr] = std::move(IndicesPath.getValue());
+  auto [IdxPath, GottenTypeArr] = std::move(getIndicesPath(GEPI));
   const unsigned Size = GottenTypeArr.size();
   IGC_ASSERT_MESSAGE(
       IdxPath.size() == Size,
@@ -1875,20 +1880,22 @@ DependencyGraph::SElementsOfType::SElementsOfType(
   std::iota(IndicesOfTypes.begin(), IndicesOfTypes.end(), 0);
 }
 
-void DependencyGraph::SElementsOfType::emplace_back(Type &Ty, unsigned Index) {
+void DependencyGraph::SElementsOfType::emplace_back(Type &Ty, unsigned Index, Value* V) {
   Types.emplace_back(&Ty);
   IndicesOfTypes.emplace_back(Index);
+  Values.emplace_back(V);
 }
 
 void DependencyGraph::SElementsOfType::push_back(const value_type &Elem) {
-  emplace_back(*Elem.first, Elem.second);
+  emplace_back(*std::get<0>(Elem), std::get<1>(Elem), std::get<2>(Elem));
 }
 
-void DependencyGraph::SElementsOfType::emplace_back(const SElement &Elem) {
+void DependencyGraph::SElementsOfType::emplace_back(const SElement &Elem,
+                                                    Value *V) {
   IGC_ASSERT_MESSAGE(
       !Elem.isUnwrapped(),
       "Element is unwrapped and cannot be placed in indices chain.");
-  emplace_back(*Elem.getTy(), Elem.getIndex());
+  emplace_back(*Elem.getTy(), Elem.getIndex(), V);
 }
 
 unsigned DependencyGraph::SElementsOfType::size() const {
@@ -1908,6 +1915,11 @@ unsigned DependencyGraph::SElementsOfType::getIdxAt(unsigned Index) const {
   return IndicesOfTypes.at(Index);
 }
 
+Value *DependencyGraph::SElementsOfType::getValAt(unsigned Index) const {
+  IGC_ASSERT_MESSAGE(Index < size(), "Attempt to get element out of borders.");
+  return Values.at(Index);
+}
+
 std::pair<Type *&, unsigned &>
 DependencyGraph::SElementsOfType::at(unsigned Index) {
   IGC_ASSERT_MESSAGE(Index < size(), "Attempt to get element out of borders.");
@@ -1925,18 +1937,19 @@ DependencyGraph::SElementsOfType::at(unsigned Index) const {
 //          Block of const_iterator definition for SElementsOfType
 //__________________________________________________________________
 DependencyGraph::SElementsOfType::const_iterator::const_iterator(
-    const_ty_iterator TyItIn, const_idx_iterator IdxItIn)
-    : TyIt{TyItIn}, IdxIt{IdxItIn} {}
+    const_ty_iterator TyItIn, const_idx_iterator IdxItIn, const_val_iterator ValItIn)
+    : TyIt{TyItIn}, IdxIt{IdxItIn}, ValIt{ValItIn} {}
 
 DependencyGraph::SElementsOfType::const_iterator::reference
 DependencyGraph::SElementsOfType::const_iterator::operator*() const {
-  return std::make_pair(*TyIt, *IdxIt);
+  return std::make_tuple(*TyIt, *IdxIt, *ValIt);
 }
 
 DependencyGraph::SElementsOfType::const_iterator &
 DependencyGraph::SElementsOfType::const_iterator::operator++() {
   ++TyIt;
   ++IdxIt;
+  ++ValIt;
   return *this;
 }
 
@@ -1950,7 +1963,7 @@ DependencyGraph::SElementsOfType::const_iterator::operator++(int) {
 DependencyGraph::SElementsOfType::const_iterator
 DependencyGraph::SElementsOfType::const_iterator::operator+(
     difference_type RHS) const {
-  return const_iterator{TyIt + RHS, IdxIt + RHS};
+  return const_iterator{TyIt + RHS, IdxIt + RHS, ValIt + RHS};
 }
 
 bool operator==(const DependencyGraph::SElementsOfType::const_iterator &LHS,
@@ -2103,7 +2116,7 @@ void DependencyGraph::SElement::print(raw_ostream &Os) const {
 }
 
 void DependencyGraph::SElementsOfType::print(raw_ostream &Os) const {
-  for (auto &&[Type, Idx] : *this)
+  for (auto &&[Type, Idx, Val] : *this)
     Os << "\t\tTy: " << *Type << " at pos: " << Idx << "\n";
 }
 
