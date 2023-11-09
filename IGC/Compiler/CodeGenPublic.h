@@ -888,6 +888,7 @@ namespace IGC
         Float_DenormMode    m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
         Float_DenormMode    m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
         Float_DenormMode    m_floatDenormMode64 = FLOAT_DENORM_FLUSH_TO_ZERO;
+        Float_DenormMode    m_floatDenormModeBFTF = FLOAT_DENORM_FLUSH_TO_ZERO;
 
         PushConstantMode m_pushConstantMode = PushConstantMode::DEFAULT;
 

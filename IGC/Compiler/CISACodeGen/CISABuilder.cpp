@@ -2840,6 +2840,8 @@ namespace IGC
             imm_data |= 0x80;
         if (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
             imm_data |= 0x40;
+        if (pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_RETAIN)
+            imm_data |= (0x1 << 30);
 
         uint RM_bits = 0;
         ERoundingMode RM_FPCvtInt = static_cast<ERoundingMode>(pCtx->getModuleMetaData()->compOpt.FloatCvtIntRoundingMode);

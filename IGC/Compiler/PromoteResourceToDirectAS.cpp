@@ -74,6 +74,8 @@ Type* GetBufferAccessType(Instruction* inst)
         case GenISAIntrinsic::GenISA_intatomictyped:
         case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
         case GenISAIntrinsic::GenISA_floatatomicraw:
+        case GenISAIntrinsic::GenISA_floatatomictyped:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
         case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
         case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
         case GenISAIntrinsic::GenISA_intatomicrawA64:
@@ -651,6 +653,8 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             case GenISAIntrinsic::GenISA_intatomicraw:
             case GenISAIntrinsic::GenISA_floatatomicraw:
             case GenISAIntrinsic::GenISA_intatomictyped:
+            case GenISAIntrinsic::GenISA_floatatomictyped:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:

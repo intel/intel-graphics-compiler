@@ -1308,6 +1308,16 @@ Imported_Intrinsics = \
      (0,                               "src1")],
     "ReadWriteArgMem"]],
 ####################################################################################################
+"GenISA_fcmpxchgatomictyped": ["Floating point atomic compare exchange operation on a typed image",
+    [("anyfloat",                      ""),
+    [("anyptr",                        "Dst Buffer"),
+     ("int",                           "coordinates u"),
+     ("int",                           "coordinates v"),
+     ("int",                           "coordinates r"),
+     (0,                               "src0"),
+     (0,                               "src1")],
+    "ReadWriteArgMem"]],
+####################################################################################################
 "GenISA_imulH": ["",
     [("anyint",                        "result"),
     [(0,                               "source0"),
@@ -1338,6 +1348,16 @@ Imported_Intrinsics = \
      ("int",                           "coordinates r"),
      (0,                               "src0"),
      ("int",                           "Instruction type (add, or, xor etc)")],
+    "ReadWriteArgMem"]],
+####################################################################################################
+"GenISA_floatatomictyped": ["Floating point atomic operation on a typed image",
+    [("anyfloat",                      ""),
+    [("anyptr",                        "Dst Buffer"),
+     ("int",                           "coordinates u"),
+     ("int",                           "coordinates v"),
+     ("int",                           "coordinates r"),
+     (0,                               "src0"),
+     ("int",                           "Instruction type (fadd, fsub, fmin, fmax etc)")],
     "ReadWriteArgMem"]],
 ####################################################################################################
 "GenISA_is_uniform": ["",

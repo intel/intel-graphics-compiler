@@ -307,6 +307,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             enum OCL_OPTIONS
             {
                 DENORM_ARE_ZERO,
+                BF_TF_DENORMS_ARE_ZERO,
                 CORRECTLY_ROUNDED_SQRT,
                 OPT_DISABLE,
                 MAD_ENABLE,
@@ -321,6 +322,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             };
             int igc_compiler_option = llvm::StringSwitch<OCL_OPTIONS>(co)
                 .Case("-denorms-are-zero", DENORM_ARE_ZERO)
+                .Case("-bf-tf-denorms-are-zero", BF_TF_DENORMS_ARE_ZERO)
                 .Case("-fp32-correctly-rounded-divide-sqrt", CORRECTLY_ROUNDED_SQRT)
                 .Case("-opt-disable", OPT_DISABLE)
                 .Case("-mad-enable", MAD_ENABLE)
@@ -337,6 +339,8 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             switch (igc_compiler_option)
             {
             case DENORM_ARE_ZERO: modMD->compOpt.DenormsAreZero = true;
+                break;
+            case BF_TF_DENORMS_ARE_ZERO: modMD->compOpt.BFTFDenormsAreZero = true;
                 break;
             case CORRECTLY_ROUNDED_SQRT: modMD->compOpt.CorrectlyRoundedDivSqrt = true;
                 break;

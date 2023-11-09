@@ -1464,6 +1464,8 @@ namespace IGC
             case GenISAIntrinsic::GenISA_fcmpxchgatomicstructured:
             case GenISAIntrinsic::GenISA_intatomictyped:
             case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+            case GenISAIntrinsic::GenISA_floatatomictyped:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_ldstructured:
             case GenISAIntrinsic::GenISA_atomiccounterinc:
             case GenISAIntrinsic::GenISA_atomiccounterpredec:

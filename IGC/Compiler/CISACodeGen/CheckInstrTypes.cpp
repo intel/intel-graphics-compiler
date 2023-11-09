@@ -298,6 +298,11 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_floatatomicraw:
         case GenISAIntrinsic::GenISA_floatatomicrawA64:
         case GenISAIntrinsic::GenISA_floatatomicstructured:
+        case GenISAIntrinsic::GenISA_floatatomictyped:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
+        case GenISAIntrinsic::GenISA_LSCAtomicFP64:
+        case GenISAIntrinsic::GenISA_LSCAtomicFP32:
+        case GenISAIntrinsic::GenISA_LSCAtomicInts:
             g_InstrTypes.hasAtomics = true;
             g_InstrTypes.numAtomics++;
             break;

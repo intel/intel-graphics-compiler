@@ -361,6 +361,7 @@ namespace IGC
     struct CompOptions
     {
         bool DenormsAreZero                             = false;
+        bool BFTFDenormsAreZero                         = false;
         bool CorrectlyRoundedDivSqrt                    = false;
         bool OptDisable                                 = false;
         bool MadEnable                                  = false;

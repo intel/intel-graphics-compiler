@@ -18,6 +18,7 @@ namespace IGC
         Cached = 1,
         Streaming = 2,
         InvalidateAfterRead = 3,
+        ConstCached = 4,
         Invalid // This value represents invalid/unsupported cache control value
     };
 
@@ -53,6 +54,9 @@ namespace IGC
         { LSC_L1S_L3UC,        { LoadCacheControl::Streaming,           LoadCacheControl::Uncached } },
         { LSC_L1S_L3C_WB,      { LoadCacheControl::Streaming,           LoadCacheControl::Cached   } },
         { LSC_L1IAR_WB_L3C_WB, { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::Cached   } },
+        { LSC_L1UC_L3CC,       { LoadCacheControl::Uncached,            LoadCacheControl::ConstCached         } },
+        { LSC_L1C_L3CC,        { LoadCacheControl::Cached,              LoadCacheControl::ConstCached         } },
+        { LSC_L1IAR_L3IAR,     { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead } },
     };
 
     using CacheLevel = uint64_t;

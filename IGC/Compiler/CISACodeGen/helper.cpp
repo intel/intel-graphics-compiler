@@ -1073,6 +1073,8 @@ namespace IGC
             break;
         case GenISAIntrinsic::GenISA_intatomictyped:
         case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+        case GenISAIntrinsic::GenISA_floatatomictyped:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
             overloadedTys.push_back(pIntr->getType());
             overloadedTys.push_back(newPtr->getType());
             break;
@@ -1175,6 +1177,8 @@ namespace IGC
             case GenISAIntrinsic::GenISA_intatomictyped:
             case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_floatatomicraw:
+            case GenISAIntrinsic::GenISA_floatatomictyped:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_simdBlockRead:

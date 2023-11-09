@@ -40,8 +40,11 @@ SPDX-License-Identifier: MIT
         LSC_CACHE_CTRL_OPTION(LSC_L1S_L3UC,        5,  "Load: L1 streaming  L3 uncached # Store: L1 streaming     L3 uncached")         \
         LSC_CACHE_CTRL_OPTION(LSC_L1S_L3C_WB,      6,  "Load: L1 streaming  L3 cached   # Store: L1 streaming     L3 write-back")       \
         LSC_CACHE_CTRL_OPTION(LSC_L1IAR_WB_L3C_WB, 7,  "Load: L1 invalidate after read L3 cached # Store: L1 write-back L3 write-back") \
+        LSC_CACHE_CTRL_OPTION(LSC_L1UC_L3CC,       8,  "Load: L1 uncached   L3 const-cached # Store: N/A")                              \
+        LSC_CACHE_CTRL_OPTION(LSC_L1C_L3CC,        9,  "Load: L1 cached     L3 const-cached # Store: N/A")                              \
+        LSC_CACHE_CTRL_OPTION(LSC_L1IAR_L3IAR,     10, "Load: L1 invalidate after read L3 invalidate after read # Store: N/A")          \
                                                                                                                                         \
-        LSC_CACHE_CTRL_OPTION(LSC_CC_INVALID,      8,  "Invalid")
+        LSC_CACHE_CTRL_OPTION(LSC_CC_INVALID,      11, "Invalid")
 #endif // LSC_CACHE_CTRL_OPTION
 
 #ifdef EARLY_OUT_CS_PATTERN

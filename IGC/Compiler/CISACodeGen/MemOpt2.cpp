@@ -141,6 +141,8 @@ bool MemInstCluster::isSafeToMoveTo(Instruction* I, Instruction* Pos, const Smal
         case GenISAIntrinsic::GenISA_cmpxchgatomicstructured:
         case GenISAIntrinsic::GenISA_fcmpxchgatomicstructured:
         case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+        case GenISAIntrinsic::GenISA_floatatomictyped:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
         case GenISAIntrinsic::GenISA_atomiccounterinc:
         case GenISAIntrinsic::GenISA_atomiccounterpredec:
             return false;

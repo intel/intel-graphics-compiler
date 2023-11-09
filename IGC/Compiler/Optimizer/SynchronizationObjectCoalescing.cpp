@@ -1242,6 +1242,8 @@ IGC::InstructionMask SynchronizationObjectCoalescingAnalysis::GetAtomicInstructi
     {
         const llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pSourceInst);
         if (pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_intatomictyped ||
+            pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_floatatomictyped ||
+            pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_fcmpxchgatomictyped ||
             pGenIntrinsicInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_icmpxchgatomictyped)
         {
             result = static_cast<InstructionMask>(result | InstructionMask::TypedReadOperation);
@@ -1873,6 +1875,11 @@ bool SynchronizationObjectCoalescingAnalysis::IsAtomicOperation(const llvm::Inst
         case llvm::GenISAIntrinsic::GenISA_floatatomicraw:
         case llvm::GenISAIntrinsic::GenISA_floatatomicrawA64:
         case llvm::GenISAIntrinsic::GenISA_floatatomicstructured:
+        case llvm::GenISAIntrinsic::GenISA_floatatomictyped:
+        case llvm::GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
+        case llvm::GenISAIntrinsic::GenISA_LSCAtomicFP64:
+        case llvm::GenISAIntrinsic::GenISA_LSCAtomicFP32:
+        case llvm::GenISAIntrinsic::GenISA_LSCAtomicInts:
             return true;
         default:
             break;

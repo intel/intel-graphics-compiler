@@ -1,3 +1,4 @@
+
 /*========================== begin_copyright_notice ============================
 
 Copyright (C) 2017-2021 Intel Corporation
@@ -811,6 +812,8 @@ public:
     static inline bool classof(const GenIntrinsicInst *I) {
         GenISAIntrinsic::ID ID = I->getIntrinsicID();
         if (ID == GenISAIntrinsic::GenISA_intatomictyped ||
+            ID == GenISAIntrinsic::GenISA_floatatomictyped ||
+            ID == GenISAIntrinsic::GenISA_fcmpxchgatomictyped ||
             ID == GenISAIntrinsic::GenISA_icmpxchgatomictyped )
         {
             return true;

@@ -1315,6 +1315,10 @@ bool TranslateBuildSPMD(
         oclContext.m_floatDenormMode32 = FLOAT_DENORM_RETAIN;
         oclContext.m_floatDenormMode64 = FLOAT_DENORM_RETAIN;
     }
+    if (oclContext.platform.hasBFTFDenormMode())
+    {
+        oclContext.m_floatDenormModeBFTF = FLOAT_DENORM_RETAIN;
+    }
 
     unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
     // TODO: Again, this should not happen on each compilation
@@ -1485,6 +1489,10 @@ bool TranslateBuildSPMD(
                 {
                     oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
                     oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
+                }
+                if (modMD->compOpt.BFTFDenormsAreZero)
+                {
+                    oclContext.m_floatDenormModeBFTF = FLOAT_DENORM_FLUSH_TO_ZERO;
                 }
                 if (IGC_GET_FLAG_VALUE(ForceFastestSIMD))
                 {

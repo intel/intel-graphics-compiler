@@ -4044,6 +4044,8 @@ Tristate CShader::shouldGenerateLSCQuery(
     {
         if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedread ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_floatatomictyped ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_fcmpxchgatomictyped ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomictyped ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_icmpxchgatomictyped)
         {

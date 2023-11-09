@@ -535,6 +535,7 @@ DECLARE_IGC_REGKEY(bool, EnableLSC, false, "Enables the new dataport encoding fo
 DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding for LSC messages.", true)
 DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables the slicing of mad loops.", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplification", true)
+DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, false, "Disables caching system memory in GPU for loads from constant buffers", false)
 DECLARE_IGC_REGKEY(bool, EnableTileYForExperiments, false, "Enable TileY heuristics for experiments", false)
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
 DECLARE_IGC_REGKEY(bool, EnableScratchMessageD64WA, false, "Enables WA to legalize D64 scratch messages to D32", false)
@@ -547,6 +548,10 @@ DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts,           0x3003E, \
     "This maps to vISA_lscEnableImmOffsFor" \
     "(enables/disables immediate offsets for various address types; " \
     "see that option for semantics)", true)
+DECLARE_IGC_REGKEY(bool, DisableLSCForTypedUAV,         false, "Forces legacy HDC messages for typed UAV read/write."\
+                                                               "Temporary knob for XE2 bringup.", true)
+DECLARE_IGC_REGKEY(bool, DisableLSCSIMD32TGMMessages,   false, "Forces splitting SIMD32 typed messages into 2xSIMD16."\
+                                                               "Only valid on XE2+.", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa1807084924,  false, "Enable Wa_1807084924 regardless of the platfrom stepping", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa1507979211,  false, "Enable Wa_1507979211 regardless of the platfrom stepping", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa14010017096, false, "Enable Wa_14010017096 regardless of the platfrom stepping", true)

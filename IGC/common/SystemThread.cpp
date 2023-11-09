@@ -601,6 +601,7 @@ bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY& family)
     case IGFX_XE_HP_CORE:
     case IGFX_XE_HPG_CORE:
     case IGFX_XE_HPC_CORE:
+    case IGFX_XE2_LPG_CORE:
         return true;
     default:
         return false;
@@ -1010,6 +1011,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         break;
     }
+    case IGFX_XE2_LPG_CORE:
     default:
         IGC_ASSERT(0);
         break;
