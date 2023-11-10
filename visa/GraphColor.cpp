@@ -2351,7 +2351,8 @@ void Interference::setupLRs(G4_BB *bb) {
       }
     }
 
-    bool isSend = inst->isSend() || inst->isFillIntrinsic();
+    bool isSend =
+        inst->isSend() || inst->isFillIntrinsic() || inst->isSpillIntrinsic();
     if (isSend && !dst->isNullReg()) {
       // r127 must not be used for return address when there is a src and dest
       // overlap in send instruction. This applies to split-send as well
