@@ -2077,6 +2077,10 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
     return;
   }
 
+  // Skip if FP64 emulation is required for this platform
+  if (ST->emulateFDivFSqrt64() && I.getType()->getScalarType()->isDoubleTy())
+    return;
+
   // Skip if reciprocal optimization is not allowed.
   if (!I.hasAllowReciprocal())
     return;
