@@ -485,7 +485,6 @@ std::string vISA::ToSymbol(Caching l1, Caching l3) {
   else
     return ToSymbol(l1) + ToSymbol(l3);
 }
-
 int ElemsPerAddr::getCount() const {
   if (!isChannelMask())
     return count;

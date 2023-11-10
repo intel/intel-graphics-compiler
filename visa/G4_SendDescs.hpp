@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <optional>
 #include <ostream>
 #include <string>
+#include <tuple>
 #include <utility>
 
 namespace vISA {
@@ -321,15 +322,9 @@ public:
   // This is the size of the element in memory not the register file
   // (which might widen the result in GRF).
   virtual unsigned getElemSize() const = 0;
-
   //
-  // Returns the caching behavior of this message if known.
-  // Returns Caching::INVALID if the message doesn't support caching
-  // controls.
-  virtual std::pair<Caching, Caching> getCaching() const = 0;
-  Caching getCachingL1() const { return getCaching().first; }
-  Caching getCachingL3() const { return getCaching().second; }
-  virtual void setCaching(Caching l1, Caching l3) = 0;
+  // retrieves the caching for L1
+  virtual Caching getCachingL1() const = 0;
   //
   // generally in multiples of full GRFs, but a few exceptions such
   // as OWord and HWord operations may make this different
@@ -644,8 +639,14 @@ public:
   virtual size_t getSrc1LenRegs() const override;
   //
   virtual SendAccess getAccessType() const override { return accessType; }
-  virtual std::pair<Caching, Caching> getCaching() const override;
-  virtual void setCaching(Caching l1, Caching l3) override;
+  //
+  // Returns the caching behavior of this message if known.
+  // Returns Caching::INVALID if the message doesn't support caching
+  // controls.
+  Caching getCachingL1() const override { return getCaching().first; }
+  Caching getCachingL3() const { return getCaching().second; }
+  std::pair<Caching, Caching> getCaching() const;
+  void setCaching(Caching l1, Caching l3);
   //
   // If the message has an immediate address offset,
   // this returns that offset.  The offset is in bytes.
