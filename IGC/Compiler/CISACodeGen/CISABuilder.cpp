@@ -6096,7 +6096,7 @@ namespace IGC
         } else {
             int result = 0;
             if (m_hasInlineAsm) {
-                std::string parseTextFile = GetDumpFileName("inline.visaasm");
+                std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inline.visaasm") : "";
                 result = vAsmTextBuilder->ParseVISAText(
                     vbuilder->GetAsmTextStream().str(), parseTextFile);
             }
