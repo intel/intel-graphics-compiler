@@ -25,16 +25,16 @@ entry:
   %f2 = alloca %F, align 4
   %f3 = alloca %F, align 4
 
-; CHECK: %[[BC1:[^ ]+]] = bitcast %F* %f1 to i8*
-; CHECK: %[[BC2:[^ ]+]] = bitcast %F* %f2 to i8*
-; CHECK: %[[BC_I_S:[^ ]+]] = bitcast i32* %[[I_A]] to i8*
-; CHECK: call void @llvm.lifetime.start.p0i8(i64 4, i8* %[[BC_I_S]])
-; CHECK: %[[BC_F_S:[^ ]+]] = bitcast float* %[[F_A]] to i8*
-; CHECK: call void @llvm.lifetime.start.p0i8(i64 4, i8* %[[BC_F_S]])
+; CHECK:     %[[BC1:[^ ]+]] = bitcast %F* %f1 to i8*
+; CHECK:     %[[BC2:[^ ]+]] = bitcast %F* %f2 to i8*
+; CHECK-DAG: %[[BC_I_S:[^ ]+]] = bitcast i32* %[[I_A]] to i8*
+; CHECK-DAG: call void @llvm.lifetime.start.p0i8(i64 4, i8* %[[BC_I_S]])
+; CHECK-DAG: %[[BC_F_S:[^ ]+]] = bitcast float* %[[F_A]] to i8*
+; CHECK-DAG: call void @llvm.lifetime.start.p0i8(i64 4, i8* %[[BC_F_S]])
   %bc1 = bitcast %F* %f1 to i8*
   %bc2 = bitcast %F* %f2 to i8*
-  call void @llvm.lifetime.start.p0i8(i64 1, i8* %bc1)
-  call void @llvm.lifetime.start.p0i8(i64 2, i8* %bc2)
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* %bc1)
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* %bc2)
 
 ; CHECK: %[[I_USAGE:[^ ]+]] = ptrtoint i32* %[[I_A]] to i64
   %i = getelementptr %F, %F* %f1, i32 0, i32 0
@@ -53,12 +53,12 @@ entry:
   %i1 = getelementptr %F, %F* %f3, i32 0, i32 0
   %i1_usage = ptrtoint i32* %i1 to i64            ; %i1 wont be replaced because of addrspacecast.
 
-; CHECK: %[[BC_I_E:[^ ]+]] = bitcast i32* %[[I_A]] to i8*
-; CHECK: call void @llvm.lifetime.end.p0i8(i64 4, i8* %[[BC_I_E]])
-; CHECK: %[[BC_F_E:[^ ]+]] = bitcast float* %[[F_A]] to i8*
-; CHECK: call void @llvm.lifetime.end.p0i8(i64 4, i8* %[[BC_F_E]])
-  call void @llvm.lifetime.end.p0i8(i64 1, i8* %bc1)
-  call void @llvm.lifetime.end.p0i8(i64 2, i8* %bc2)
+; CHECK-DAG: %[[BC_I_E:[^ ]+]] = bitcast i32* %[[I_A]] to i8*
+; CHECK-DAG: call void @llvm.lifetime.end.p0i8(i64 4, i8* %[[BC_I_E]])
+; CHECK-DAG: %[[BC_F_E:[^ ]+]] = bitcast float* %[[F_A]] to i8*
+; CHECK-DAG: call void @llvm.lifetime.end.p0i8(i64 4, i8* %[[BC_F_E]])
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* %bc1)
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* %bc2)
 
   ret void
 }

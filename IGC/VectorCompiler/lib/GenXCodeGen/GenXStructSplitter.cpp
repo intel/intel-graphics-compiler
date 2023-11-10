@@ -1172,8 +1172,6 @@ Substituter::generateAlloca(AllocaInst &AI,
       NewTy, 0, AI.getName() + "." + getTypePrefix(*getBaseTy(NewTy)));
   NewAI->setAlignment(IGCLLVM::getAlign(AI));
 
-  createLifetime(&AI, NewAI);
-
   DbgDeclareInst *DbgDeclare = getDbgDeclare(AI);
   if (!DbgDeclare)
     return NewAI;
@@ -1458,6 +1456,11 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
 
   for (auto &[InstToReplace, ToInst] : InstToInst)
     InstToReplace->replaceAllUsesWith(ToInst);
+
+  for (auto &[Ty, Inst] : NewInstrs) {
+    auto *NewAlloca = cast<AllocaInst>(Inst);
+    createLifetime(&Alloca, NewAlloca);
+  }
 
   return true;
 }
