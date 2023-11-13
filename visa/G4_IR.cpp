@@ -6289,44 +6289,29 @@ void G4_InstSend::computeRightBound(G4_Operand *opnd) {
   associateOpndWithInst(opnd, this);
 
   if (opnd && !opnd->isImm() && !opnd->isNullReg()) {
-    auto computeSendOperandBound = [this](G4_Operand *opnd, int numReg) {
-      if (numReg == 0) {
-        return;
-      }
-
-      // Sends read/write in units of GRF. With a narrower simd width,
-      // the variable may have size smaller than one GRF, or smaller
-      // the reponse or message length. In this case, limit the right
-      // bound up to the variable size.
-      unsigned LB = opnd->left_bound;
-      unsigned RB =
-          std::min(opnd->getTopDcl()->getByteSize(),
-                   LB + numReg * getBuilder().numEltPerGRF<Type_UB>()) -
-          1;
-
-      unsigned NBytes = RB - LB + 1;
-      opnd->setBitVecFromSize(NBytes, getBuilder());
-      opnd->setRightBound(RB);
-    };
-
-    if (srcs[0] == opnd || (isSplitSend() && srcs[1] == opnd)) {
-      // For send instruction's msg operand rightbound depends
-      // on msg descriptor
-      uint16_t numReg = (srcs[0] == opnd) ? getMsgDesc()->getSrc0LenRegs()
-                                          : getMsgDesc()->getSrc1LenRegs();
-      computeSendOperandBound(opnd, numReg);
-    } else if (dst == opnd) {
-      // Compute right bound for dst operand
+    if (dst == opnd || srcs[0] == opnd || (isSplitSend() && srcs[1] == opnd)) {
+      // Compute right bound for dst/src0/src1 operands
       const auto *desc = getMsgDesc();
-      uint32_t dstBytes = desc->getDstLenBytes();
-      if (dstBytes < getBuilder().getGRFSize()) {
-        // e.g. OWord block read x1
-        opnd->setBitVecL((1ULL << dstBytes) - 1);
-        opnd->setRightBound(opnd->left_bound + dstBytes - 1);
+      uint32_t opndBytes = 0;
+      if (dst == opnd)
+        opndBytes = desc->getDstLenBytes();
+      else if (srcs[0] == opnd)
+        opndBytes = desc->getSrc0LenBytes();
+      else
+        opndBytes = desc->getSrc1LenBytes();
 
+      if (opndBytes < getBuilder().getGRFSize()) {
+        // e.g. OWord block read x1
+        opnd->setBitVecL((1ULL << opndBytes) - 1);
+        opnd->setRightBound(opnd->left_bound + opndBytes - 1);
       } else {
-        uint16_t numReg = desc->getDstLenRegs();
-        computeSendOperandBound(opnd, numReg);
+        // For some sends, the operands's size is in GRF unit but not the exact
+        // size, e.g. block2d. The variable size may be a smaller value. In
+        // this case, limit the right bound up to the variable size.
+        auto dclSize = opnd->getTopDcl()->getByteSize();
+        opndBytes = std::min(dclSize, opndBytes);
+        opnd->setBitVecFromSize(opndBytes, getBuilder());
+        opnd->setRightBound(opnd->left_bound + opndBytes - 1);
       }
     } else {
       opnd->computeRightBound(execSize);

@@ -1567,9 +1567,9 @@ static SendDesc encodeExDescSendUnary(G4_InstSend *sendInst, int &xlen,
 // vISA_ShaderDataBaseStats key a requirement to use
 void BinaryEncodingIGA::printSendDataToFile(const G4_SendDescRaw *descG4,
                                             const char *filePath) const {
-  uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
-  uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
-  uint32_t dstLen = descG4->getDstLenBytes() / 32;
+  uint32_t src0Len = descG4->getSrc0LenRegs();
+  uint32_t src1Len = descG4->getSrc1LenRegs();
+  uint32_t dstLen = descG4->getDstLenRegs();
   FILE *f = fopen(filePath, "a");
   if (f) {
     uint32_t namePos = fileName.find_last_of('\\', fileName.size());

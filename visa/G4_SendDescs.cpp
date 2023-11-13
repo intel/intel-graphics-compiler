@@ -1080,7 +1080,8 @@ unsigned G4_SendDescRaw::getElemsPerAddr() const {
     case LSC_STORE_QUAD:
     case LSC_LOAD_QUAD: {
       int elems = 0;
-      auto cmask = (getDesc() >> 14) & 0xF;
+      // bits [15:12] are the channel mask
+      auto cmask = (getDesc() >> 12) & 0xF;
       for (int i = 0; i < 4; i++, cmask >>= 1) {
         elems += (cmask & 1);
       }
@@ -1091,7 +1092,7 @@ unsigned G4_SendDescRaw::getElemsPerAddr() const {
     case LSC_STORE:
     case LSC_STORE_STRIDED:
       // bits [14:12] are the vector size
-      switch ((getDesc() >> 14) & 0x7) {
+      switch ((getDesc() >> 12) & 0x7) {
       case 0:
         return 1;
       case 1:
@@ -1167,7 +1168,7 @@ unsigned G4_SendDescRaw::getElemSize() const {
         return 0;
       } // else supported
     }
-    // []
+    // bits [11:9] are data size
     switch ((getDesc() >> 9) & 0x7) {
     case 0:
       return 1; // d8 (block2d only)
@@ -1176,7 +1177,7 @@ unsigned G4_SendDescRaw::getElemSize() const {
     case 3:
       return 8; // d64
     default:
-      return 2; // d32, d8u32, ... all 32b in register file
+      return 4; // d32, d8u32, ... all 32b in register file
     }
   } else if (getSFID() == SFID::SAMPLER) {
     return is16BitReturn() ? 2 : 4;
@@ -1500,43 +1501,64 @@ size_t G4_SendDescRaw::getSrc0LenBytes() const {
   return MessageLength() * (size_t)irb.getGRFSize();
 }
 
-size_t G4_SendDescRaw::getDstLenBytes() const {
-  if (isHWordScratchRW() && ResponseLength() != 0) {
-    return 32 * getHWScratchRWSize(); // HWords
-  } else if (isOwordLoad()) {
-    return 16 * getOwordsAccessed(); // OWords
-#if 0
-    // Due to VMIT-9224, comment this out!
-    } else if (isByteScatterRW() && isDataPortRead()) {
-        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
-        uint16_t nbytes = getElemsPerAddr();
-        // assume 4 at least
-        nbytes = (nbytes >= 4 ? nbytes : 4);
-        size_t sz = nbytes * getExecSize();
-        return sz;
-    } else if (isDWScatterRW() && isDataPortRead()) {
-        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
-        size_t sz = 4 * getElemsPerAddr() * getExecSize();
-        return sz;
-    } else if (isQWScatterRW() && isDataPortRead()) {
-        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
-        size_t sz = 8 * getElemsPerAddr() * getExecSize();
-        return sz;
-    } else if (isUntypedRW() && isDataPortRead()) {
-        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
-        size_t sz = 4 * getEnabledChannelNum() * getExecSize();
-        return sz;
-#endif
+uint32_t G4_SendDescRaw::getDataSizeInBytesLscLdStInst(
+    Gen4_Operand_Number opnd_num) const {
+  vISA_ASSERT(opnd_num == Opnd_dst || opnd_num == Opnd_src1,
+              "expect Opnd_dst or Opnd_src1");
+  uint32_t dataBytes = opnd_num == Opnd_dst
+                           ? (ResponseLength() * irb.getGRFSize())
+                           : (src1Len * irb.getGRFSize());
+  if (getLscDataOrder() == LSC_DATA_ORDER_NONTRANSPOSE) {
+    // Non-transpose
+    // If vecSize > 1, make the data size GRF-aligned for simplicity.
+    // Otherwise, the data size is the exact bytes accessed by HW.
+    if (getElemsPerAddr() <= 1)
+      dataBytes = execSize * getElemSize();
   } else {
-    // fallback to the raw GRF count
-    return ResponseLength() * (size_t)irb.getGRFSize();
+    // Transpose
+    dataBytes = getElemsPerAddr() * getElemSize();
   }
+  return dataBytes;
+}
+
+size_t G4_SendDescRaw::getDstLenBytes() const {
+  uint32_t dstBytes = ResponseLength() * irb.getGRFSize();
+  if (isHWordScratchRW() && ResponseLength() != 0) {
+    dstBytes = 32 * getHWScratchRWSize(); // HWords
+  } else if (isOwordLoad()) {
+    dstBytes = 16 * getOwordsAccessed(); // OWords
+  } else if (isLscDescriptor) {
+    // LSC messages
+    auto op = getLscOp();
+    switch (op) {
+    case LSC_OP::LSC_LOAD:
+      if (ResponseLength() != 0)
+        dstBytes = getDataSizeInBytesLscLdStInst(Opnd_dst);
+      break;
+    // TODO: handle other LSC op codes
+    default:
+      break;
+    }
+  }
+  return dstBytes;
 }
 
 size_t G4_SendDescRaw::getSrc1LenBytes() const {
   if (isLscDescriptor) {
-    return src1Len * irb.getGRFSize();
+    uint32_t src1LenBytes = src1Len * irb.getGRFSize();
+    auto op = getLscOp();
+    switch (op) {
+    case LSC_OP::LSC_STORE:
+      src1LenBytes = getDataSizeInBytesLscLdStInst(Opnd_src1);
+      break;
+    // TODO: handle other LSC op codes
+    default:
+      // use the default value
+      break;
+    }
+    return src1LenBytes;
   }
+
   if (isHWordScratchRW() && extMessageLength() != 0) {
     return 32 * getHWScratchRWSize(); // HWords
   }
