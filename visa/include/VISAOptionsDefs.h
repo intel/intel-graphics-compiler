@@ -532,7 +532,9 @@ DEF_VISA_OPTION(vISA_encoderFile, ET_CSTR, "-encoderStatisticsFile",
                 "USAGE: -encoderStatisticsFile <reloc file>\n",
                 "encoderStatistics.csv")
 DEF_VISA_OPTION(vISA_DumpRegInfo, ET_BOOL, "-dumpRegInfo", UNUSED, false)
-DEF_VISA_OPTION(vISA_PrintHexFloatInAsm, ET_BOOL, "-printHexFloatInAsm", UNUSED,
+DEF_VISA_OPTION(vISA_PrintHexFloatInAsm, ET_BOOL, "-printHexFloatInAsm",
+                "Makes device assembly report immediate float operands in "
+                "hex instead of float.",
                 false)
 DEF_VISA_OPTION(
     vISA_dumpIgaJson, ET_INT32, "-dumpIgaJson",
@@ -557,7 +559,10 @@ DEF_VISA_OPTION(vISA_GTPinGetIndirRef, ET_BOOL, "-GTPinIndirRef", UNUSED, false)
 DEF_VISA_OPTION(vISA_LSCBackupMode, ET_BOOL, "-LSCBackupMode", UNUSED, false)
 DEF_VISA_OPTION(vISA_InjectEntryFences, ET_BOOL, "-InjectEntryFences", UNUSED,
                 false)
-DEF_VISA_OPTION(vISA_LSCEnableHalfSIMD, ET_BOOL, "-enableHalfLSC", UNUSED,
+DEF_VISA_OPTION(vISA_LSCEnableHalfSIMD, ET_BOOL, "-enableHalfLSC",
+                "Indicates that the platform has half-size non-transpose "
+                "LSC messages.  E.g. A SIMD4 non-transpose only rounds up to "
+                "SIMD16 payloads (on platforms that support to SIMD32).",
                 false)
 DEF_VISA_OPTION(vISA_lscNonStackSpill, ET_BOOL, "-lscNonStackSpill", UNUSED,
                 false)
