@@ -695,6 +695,14 @@ bool supportHWGenerateTID() const
     return IGC_IS_FLAG_ENABLED(EnableHWGenerateThreadID) && isProductChildOf(IGFX_DG2);
 }
 
+bool supportHWDispatchWalkOrder() const
+{
+    const bool hasHWDispatchWalkOrder =
+        (m_platformInfo.eProductFamily == IGFX_ARROWLAKE && !(GFX_IS_ARL_S(m_platformInfo.usDeviceID)))
+        || isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return hasHWDispatchWalkOrder;
+}
+
 bool hasHalfSIMDLSC() const
 {
     return (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0)) ||

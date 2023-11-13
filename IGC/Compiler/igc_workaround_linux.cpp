@@ -181,6 +181,10 @@ namespace IGC
                 {
                     InitGt_12_71HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                 }
+                else if (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()) == GFX_GMD_ARCH_12_RELEASE_XE_LPG_PLUS_1274)
+                {
+                    InitGt_12_74HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                }
                 InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             }
             break;
