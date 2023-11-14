@@ -147,11 +147,14 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     {
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
+        // TODO: Null metadata entries are only expected in the event of a
+        // partial recompilation. Once the retry manager learns to clean
+        // up such metadata entries for unneeded kernels, we should simply
+        // assert on the function's validity instead.
+        if (spirKernel->getFunction() == nullptr)
+            continue;
         IGC::FunctionMetaData& funcMD = modMD->FuncMD[spirKernel->getFunction()];
         fHandle->setType(FunctionTypeMD::KernelFunction);
-
-        if(spirKernel->getFunction() == nullptr)
-            continue;
 
         // Handling Thread Group Size
         SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();
