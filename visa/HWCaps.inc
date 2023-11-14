@@ -338,7 +338,7 @@ bool hasEarlyGRFRead() const {
 
 bool noInt64() const {
   return getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2 ||
-         getPlatform() == Xe_MTL;
+         getPlatform() == Xe_MTL || getPlatform() == Xe_ARL;
 }
 
 bool noFP64() const {
@@ -354,7 +354,7 @@ bool hasQDDMul() const {
 bool no64bitRegioning() const {
   return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
          getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2 ||
-         getPlatform() == Xe_MTL;
+         getPlatform() == Xe_MTL || getPlatform() == Xe_ARL;
 }
 
 bool hasBankCollision() const {
@@ -367,14 +367,15 @@ bool hasBankCollision() const {
 }
 
 bool oneGRFBankDivision() const {
-  return getPlatform() != Xe_XeHPSDV && getPlatform() != Xe_DG2 &&
-         getPlatform() != Xe_MTL &&
-         !(getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64));
+  return getPlatform() >= Xe2 ||
+         (getPlatform() != Xe_XeHPSDV && getPlatform() != Xe_DG2 &&
+          getPlatform() != Xe_MTL && getPlatform() != Xe_ARL &&
+          !(getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64)));
 }
 
 bool hasMadm() const {
-  return getPlatform() != GENX_ICLLP && !isXeLP() && getPlatform() != Xe_DG2 &&
-         getPlatform() != Xe_MTL;
+  return (getPlatform() != GENX_ICLLP && !isXeLP() && getPlatform() != Xe_DG2 &&
+          getPlatform() != Xe_MTL && getPlatform() != Xe_ARL);
 }
 
 bool hasSIMD16TypedRW() const { return getPlatform() >= Xe_XeHPSDV; }
@@ -404,7 +405,8 @@ bool hasSrc0ReadSuppression() const {
 }
 
 bool hasRMWReadSuppressionIssue() const {
-  return (getPlatform() == Xe_DG2 || getPlatform() == Xe_XeHPSDV) &&
+  return (getPlatform() == Xe_ARL || getPlatform() == Xe_DG2 ||
+          getPlatform() == Xe_XeHPSDV) &&
          hasRSForSpecificPlatform();
 }
 
@@ -433,11 +435,10 @@ int getFP64MadmExecSize() const {
   auto plat = getPlatform();
   if (plat >= Xe_PVC) {
     return 16;
-  }
-  else if (plat == Xe_XeHPSDV || plat == Xe_DG2 || plat == Xe_MTL) {
+  } else if (plat == Xe_XeHPSDV || plat == Xe_DG2 || plat == Xe_MTL ||
+             plat == Xe_ARL) {
     return 8;
-  }
-  else {
+  } else {
     return 4;
   }
 }
@@ -508,19 +509,26 @@ bool hasTwoGRFMathMacro() const { return getPlatform() >= Xe_PVC; }
 // 1. Support both sources as ACC for FP MUL
 // 2. Support Src2 as ACC for FP MAD
 bool relaxedACCRestrictions3() const {
-  return false;
+  return ((getPlatform() == Xe_ARL || getPlatform() >= Xe2) &&
+          !getOption(vISA_disableSrc2AccSub));
 }
 
 bool relaxedACCRestrictions4() const {
-  return false;
+  return getPlatform() >= Xe2;
 }
 
 bool enableACCBeforRA() const {
-  return false;
+  return (getOption(vISA_accSubBeforeRA) && (getPlatform() >= Xe2));
 }
 
 bool enablePreSchedACC() const {
-  return false;
+  if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D) {
+    // Do not run pre-RA scheduler for CM unless user forces it.
+    if (!getOption(vISA_preRA_ScheduleForce))
+      return false;
+  }
+
+  return (getOption(vISA_PreSchedForAcc) && (getPlatform() >= Xe2));
 }
 
 bool hasDoubleAcc() const { return getOption(vISA_hasDoubleAcc); }
@@ -560,16 +568,17 @@ bool supportCallaRegSrc() const {
   return false;
 }
 
+bool has2xSP() const { return getPlatform() >= Xe2; }
 
 bool hasTwoGRFBank16Bundles() const {
   const TARGET_PLATFORM P = getPlatform();
-  return P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL ||
+  return P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL || P == Xe_ARL ||
          (P == Xe_PVC && !getOption(vISA_HasPartialInt64));
 }
 
 bool hasOneGRFBank16Bundles() const {
   const TARGET_PLATFORM P = getPlatform();
-  return P != Xe_XeHPSDV && P != Xe_DG2 && P != Xe_MTL &&
+  return P != Xe_XeHPSDV && P != Xe_DG2 && P != Xe_MTL && P != Xe_ARL &&
          !(P == Xe_PVC && !getOption(vISA_HasPartialInt64));
 }
 
@@ -578,6 +587,7 @@ bool hasDPASSrc0Src1BankConflict() const { return getPlatform() >= Xe_XeHPSDV; }
 bool needsToLoadCrossThreadConstantData() const {
   return loadThreadPayload() && getOption(vISA_loadCrossThreadConstantData);
 }
+bool has4DeepSystolic() const { return getOption(vISA_has4DeepSystolic); }
 
 bool hasDPAS() const {
   return getPlatform() >= Xe_XeHPSDV && getPlatform() != Xe_MTL;
@@ -600,12 +610,13 @@ bool hasScratchSurface() const { return getPlatform() >= Xe_XeHPSDV; }
 // IP leak
 bool hasThreeALUPipes() const {
   const TARGET_PLATFORM P = getPlatform();
-  return (P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL);
+  return (P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL || P == Xe_ARL);
 }
 
 bool hasFusedEU() const {
   return (getPlatform() == GENX_TGLLP || getPlatform() == Xe_XeHPSDV ||
-          getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL);
+          getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL ||
+          getPlatform() == Xe_ARL);
 }
 
 bool hasFusedEUNoMaskWA() const {
@@ -625,7 +636,7 @@ bool hasLongOperandTypeDepIssue() const {
 bool hasFourALUPipes() const { return getPlatform() >= Xe_PVC; }
 
 bool hasFiveALUPipes() const {
-  return false;
+  return getPlatform() >= Xe2;
 }
 
 bool hasDpasSrc2ReadSupression() const { return getPlatform() >= Xe_PVCXT; }
@@ -656,6 +667,7 @@ bool supportsLSC() const { return getPlatform() >= Xe_DG2; }
 
 bool useLscForNonStackSpillFill() const {
   bool useLSC = getOption(vISA_lscNonStackSpill);
+  useLSC |= getPlatform() >= Xe2;
   return supportsLSC() && useLSC;
 }
 
@@ -666,14 +678,20 @@ bool hasLSCEnableHalfSIMD() const {
 }
 
 bool isLSCCacheOpt17_19() const {
+  if (getPlatform() >= Xe2)
+    return false;
   return true;
 }
 
+bool has64bundleSize2GRFPerBank() const { return getPlatform() == Xe_ARL; }
 
 bool has64bundleSize() const {
-  return false;
+  return getPlatform() >= Xe2;
 }
 
+// Sampler header has additional sampler feedback surface state data.
+bool hasSamplerFeedbackSurface() const { return getPlatform() >= Xe2; }
+bool hasSampleMlod() const { return getPlatform() >= Xe2; }
 
 bool hasDPASSrc2ReadSuppressionIssue() const { return getPlatform() == Xe_PVC; }
 bool hasDPASSrc2ReadSuppressionDepIssue() const {
@@ -693,7 +711,7 @@ bool waDisableIntMac() const { return getPlatform() == Xe_PVC; }
 bool hasGRFAlignedSrc2DPAS() const { return getPlatform() >= Xe_PVC; }
 
 bool hasWriteCombine() const {
-  return false;
+  return getPlatform() >= Xe2;
 }
 
 bool hasA0WARHWissue() {
@@ -705,7 +723,7 @@ bool hasFtoPackedHFMove() const { return getPlatform() >= Xe_DG2; }
 bool hasGather4PO() const { return getPlatform() <= GENX_TGLLP; }
 
 bool hasQ2FInIntegerPipe() const {
-  return false;
+  return getOption(vISA_Q2FInIntegerPipe); // getPlatform() >= Xe2;
 }
 
 bool enableSendIndirect() const {
@@ -735,7 +753,7 @@ uint32_t getInlineDataSize() const {
 bool hasSCF() const { return (getPlatform() < Xe_DG2); }
 
 bool hasBDstWSrc1EvenAlignIssue() const {
-  return getPlatform() == Xe_PVCXT;
+  return getPlatform() == Xe_PVCXT || getPlatform() == Xe2;
 }
 
 bool removedAccRestrictionsAsGRF() const {
@@ -778,6 +796,10 @@ bool needEmaskSetupProlog() const {
   return getPlatform() > GENX_TGLLP && getPlatform() <= Xe_PVCXT;
 }
 
+bool needLSCFenceDiscardWA() const {
+  return (VISA_WA_CHECK(getPWaTable(), Wa_22017182272));
+}
+
 bool needIndirectSrcForCompressedInstWA() const {
   if (getOption(vISA_noIndirectSrcForCompressedInstWA))
     return false;
@@ -786,7 +808,7 @@ bool needIndirectSrcForCompressedInstWA() const {
 }
 
 bool hasPackedRestrictedFloatVector() const {
-  return true;
+  return getPlatform() < Xe2;
 }
 
 bool noSrc0Src1OverlapSend() const {
@@ -795,6 +817,9 @@ bool noSrc0Src1OverlapSend() const {
 
 
 bool WARLocalization() const {
+  if (getOption(vISA_SWSBMakeLocalWAR) && (getPlatform() >= Xe2)) {
+    return true;
+  }
   return false;
 }
 
@@ -812,6 +837,6 @@ bool needNopAfterCFInstWA() const {
 }
 
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
-  return true;
+  return getPlatform() < Xe2;
 }
 // end HW capabilities

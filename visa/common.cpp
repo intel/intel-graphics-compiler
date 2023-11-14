@@ -28,8 +28,12 @@ const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(Xe_XeHPSDV, PlatformGen::XE, 11, 32, "XeHP_SDV"),
     PlatformInfo(Xe_DG2, PlatformGen::XE, 13, 32, "DG2"),
     PlatformInfo(Xe_MTL, PlatformGen::XE, 13, 32, "MTL"),
+    PlatformInfo(Xe_ARL, PlatformGen::XE, 13, 32, "ARL"),
     PlatformInfo(Xe_PVC, PlatformGen::XE, 14, 64, "PVC"),
     PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15, 64, "PVCXT"),
+    PlatformInfo(Xe2, PlatformGen::XE2, 18, 64,
+                 "XE2",
+                 "LNL"),
 }; // ALL_PLATFORMS
 
 const PlatformInfo *PlatformInfo::LookupPlatformInfo(TARGET_PLATFORM p) {

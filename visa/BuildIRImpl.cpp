@@ -2518,6 +2518,12 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
     }
   }
 
+  uint32_t exDescImmOff = 0;
+  if (lscTryPromoteImmOffToExDesc(op, lscSfid, addr, dataSizeBits / 8, surface,
+                                  exDesc, exDescImmOff)) {
+    addr.immOffset = 0;
+  }
+
   vISA_ASSERT(addr.immOffset == 0, "invalid address immediate offset");
 
   SFID sfid = LSC_SFID_To_SFID(lscSfid);
@@ -2566,6 +2572,9 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
 
   G4_SendDescRaw *g4desc =
       createSendMsgDesc(sfid, desc, exDesc, src1Len, access, surface);
+  if (exDescImmOff) {
+    g4desc->setExDescImmOff(exDescImmOff);
+  }
   g4desc->setLdStAttr(otherAttrs);
   return g4desc;
 }
@@ -3279,6 +3288,8 @@ void IR_Builder::doSimplification(G4_INST *inst) {
   // - indices to src are all within src.
   // - destination stride in bytes must be equal to the source element size in
   // bytes.
+
+  // - both src and dst are dword data type:
   bool canConvertMovToMovi =
       inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
       inst->isRawMov() && inst->getDst() &&
@@ -3290,6 +3301,11 @@ void IR_Builder::doSimplification(G4_INST *inst) {
       inst->getSrc(0)->getTypeSize() ==
           inst->getDst()->getTypeSize() *
               inst->getDst()->asDstRegRegion()->getHorzStride();
+  if (getPlatform() >= Xe2) {
+    canConvertMovToMovi = canConvertMovToMovi &&
+                          IS_DTYPE(inst->getDst()->getType()) &&
+                          IS_DTYPE(inst->getSrc(0)->getType());
+  }
   if (canConvertMovToMovi) {
     // Convert 'mov' to 'movi' if the following conditions are met.
 

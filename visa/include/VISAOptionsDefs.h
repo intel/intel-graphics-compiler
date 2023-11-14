@@ -234,6 +234,22 @@ DEF_VISA_OPTION(vISA_CodePatch, ET_INT32, "-codePatch", UNUSED, 0)
 DEF_VISA_OPTION(vISA_Linker, ET_INT32, "-linker", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SSOShifter, ET_INT32, "-paddingSSOShifter", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SkipPaddingScratchSpaceSize, ET_INT32, "-skipPaddingScratchSpaceSize", UNUSED, 4096)
+DEF_VISA_OPTION(vISA_enableInterleaveMacro, ET_BOOL, "-enableInterleaveMacro",
+                UNUSED, false)
+// This is a bitset(refer to enum VISALscImmOffOpts);
+//  * The low bits [4:1] control LSC AddrType's:
+//        (e.g. (1 << VISA_LSC_IMMOFF_ADDR_TYPE_FLAT) == 0x2 enables FLAT, 0x10
+//        would be BTI)
+//  * The bit [16:16] enables LSC offsets in kernel payload loading.
+//  * The bit [17:17] enables LSC offsets in spill/fill.
+//    This value also requires the underlying model the load uses also be
+//    enabled:
+//        (e.g. the bit enabling VISA_LSC_IMMOFF_ADDR_TYPE_BTI == 0x10 will need
+//        to be set for BTI in kernel payload loading) (e.g. the bit enabling
+//        VISA_LSC_IMMOFF_ADDR_TYPE_SS == 0x8 will need to be set for SS in
+//        spill/fill)
+//  * 0x3001E enables all address types and also enables use in kernel payload
+//  loading and spill/fill.
 DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
                 "Bitset that enables LSC immediate offsets for various cases; "
                 "Bits [...:1] control various LSC_ADDR_TYPE's numeric value.  "
@@ -462,6 +478,8 @@ DEF_VISA_OPTION(vISA_forceDPASMacro, ET_BOOL, "-forceDPASMacro", "DEPRECATED, is
 DEF_VISA_OPTION(vISA_TrueDepOnly, ET_BOOL, "-trueDepOnly", UNUSED, false)
 DEF_VISA_OPTION(vISA_SplitMov64, ET_INT32, "-SplitMov64",
                 "USAGE: -SplitMov64 (0|1|2)\n", 0)
+DEF_VISA_OPTION(vISA_has4DeepSystolic, ET_BOOL, "-has4DeepSystolic", UNUSED,
+                false)
 
 DEF_VISA_OPTION(vISA_SWSBMakeLocalWAR, ET_BOOL_TRUE, "-SWSBMakeLocalWAR",
                 "Enable WAR Sync at the end of BB", true)
@@ -643,6 +661,11 @@ DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL, "-forceNoMaskOnM0",
 DEF_VISA_OPTION(vISA_addEmaskSetupProlog, ET_BOOL, "-noEmaskSetupProlog",
                 "Add a prolog code to set up emask", true)
 DEF_VISA_OPTION(vISA_LSCFenceWA, ET_BOOL, "-LSCFenceWA", UNUSED, false)
+DEF_VISA_OPTION(vISA_ActiveThreadsOnlyBarrier, ET_BOOL,
+                "-activeThreadsOnlyBarrier",
+                "This enables the active-only bit in workgroup barriers. "
+                "With this option exited threads are not counted in expected "
+                "arrival count total and will not cause hangs.", false)
 DEF_VISA_OPTION(vISA_RestrictSrc1ByteSwizzle, ET_BOOL,
                 "-restrictSrc1ByteSwizzle",
                 "Enable the WA to restrict src1 byte swizzle case", false)
@@ -702,4 +725,6 @@ DEF_VISA_OPTION(vISA_Stepping, ET_CSTR, "-stepping",
 DEF_VISA_OPTION(vISA_Platform, ET_CSTR, "-platform",
                 "USAGE: missing platform string. ", NULL)
 DEF_VISA_OPTION(vISA_HasEarlyGRFRead, ET_BOOL_TRUE, "-earlyGRFRead", UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableProgrammableOffsetsMessageBitInHeader, ET_BOOL,
+                NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_staticProfiling, ET_BOOL, "-staticProfiling", UNUSED, true)

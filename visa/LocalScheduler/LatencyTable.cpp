@@ -230,6 +230,8 @@ uint16_t LatencyTableXe<Gen>::getBranchLatency(const G4_INST *Inst) const {
 template<PlatformGen Gen>
 uint16_t LatencyTableXe<Gen>::getIntrinsicLatency(const G4_INST *Inst) const {
   vASSERT(Inst->isIntrinsic());
+  if (Inst->isPseudoAddrMovIntrinsic())
+    return value_of(LI::ADDR_MOV);
   return value_of(LI::FPU);
 }
 
@@ -288,10 +290,36 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
     default:
       return 32;
     }
+  case Xe_ARL:
+    switch (repeatCount) {
+    case 1:
+      return 21;
+    case 2:
+      return 22;
+    case 8: {
+      if (m_builder.has4DeepSystolic()) {
+        return 32;
+      }
+      return 46;
+    }
+    default:
+      return 22; // Conservative cycle
+    }
   case Xe_PVC:
     return value_of(LI::DPAS) + repeatCount - 1;
   case Xe_PVCXT:
     return value_of(LI::DPAS) + repeatCount;
+  case Xe2:
+    switch (repeatCount) {
+    case 1:
+      return 22;
+    case 2:
+      return 23;
+    case 8:
+      return 33;
+    default:
+      return 33;
+    }
   default: // Not supported platform
     // TODO: Add vISA_ASSERT_UNREACHABLE.
     return 46;

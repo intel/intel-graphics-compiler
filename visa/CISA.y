@@ -250,6 +250,11 @@ std::vector<attr_gen_struct*> AttrOptVar;
         VISA_opnd             *surface; // can be imm or reg
         int                    surfaceIndex;
     } lsc_addr_model;
+    struct {
+        VISA_opnd *reg;
+        LSC_DATA_SHAPE_TYPED_BLOCK2D shape_typed2d;
+    } lsc_data_operand_typed2d;
+    LSC_DATA_SHAPE_TYPED_BLOCK2D lsc_data_shape_typed2d;
 
     // Align Support in Declaration
     VISA_Align             align;

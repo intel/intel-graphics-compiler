@@ -152,6 +152,9 @@ MsgOp vISA::MsgOpDecode(SFID sfid, uint32_t enc) {
   case SFID::UGML:
   case SFID::TGM:
   case SFID::SLM:
+  // URB in LSC is only Xe2+ but MsgOp should only be used for URB for
+  // Xe2+ (so no dynamic platform check is needed)
+  case SFID::URB:
     switch (enc)
     {
 #define DEFINE_G4_MSGOP_LSC_LOAD(SYMBOL, SYNTAX, ENCODING, ATTRS) \
@@ -474,6 +477,8 @@ std::string vISA::ToSymbol(Caching c) {
     return ".wt";
   case Caching::UC:
     return ".uc";
+  case Caching::CC:
+    return ".cc";
   default:
     return "?";
   }
@@ -537,6 +542,8 @@ bool G4_SendDesc::isLSC() const {
   case SFID::TGM:
   case SFID::SLM:
     return true;
+  case SFID::URB:
+    return irb.getPlatform() >= TARGET_PLATFORM::Xe2;
   default:
     break;
   }
@@ -620,6 +627,9 @@ G4_SendDescRaw::G4_SendDescRaw(SFID _sfid, uint32_t _desc, uint32_t _extDesc,
       funcCtrlValid(isValidFuncCtrl) {
   isLscDescriptor = _sfid == SFID::UGM || _sfid == SFID::UGML ||
                     _sfid == SFID::SLM || _sfid == SFID::TGM;
+  if (irb.getPlatform() >= Xe2) {
+    isLscDescriptor |= _sfid == SFID::URB;
+  }
 
   // ensure ExDesc[10:6] also holds src1Len
   // see the note above (other constructor) about DG2 descriptors and
@@ -690,6 +700,124 @@ LSC_DATA_ORDER G4_SendDescRaw::getLscDataOrder() const {
   }
 }
 
+int G4_SendDescRaw::getLscImmOff() const {
+  vISA_ASSERT(isLscOp(), "must be LSC op");
+  if (getSFID() == SFID::TGM)
+    return 0;
+  switch (getLscAddrType()) {
+  case LSC_ADDR_TYPE_BSS:
+  case LSC_ADDR_TYPE_SS: {
+    // [31:19][18:16][15:12]
+    // [16:4][MBZs][3:0]
+    if (getBti() == nullptr) {
+      return 0; // no offset if using imm bss/ss
+    }
+    uint32_t bits = getExDescImmOff();
+    uint32_t packed = (bits & 0xFFFC0000) | ((bits & 0xF000) << 3);
+    int off = (int32_t)packed >> (12 + 3);
+    return off;
+  }
+  case LSC_ADDR_TYPE_BTI:
+    if (getBti()) {
+      return 0; // no offset if using reg BTI
+    }
+    return ((int32_t)getExtendedDesc() << 8) >> (8 + 12);
+  case LSC_ADDR_TYPE_FLAT:
+    return ((int32_t)getExtendedDesc()) >> 12;
+  default:
+    break;
+  }
+  return 0;
+}
+
+void G4_SendDescRaw::setLscImmOff(int immOff) {
+  const char *err = "???";
+  if (!trySetLscImmOff(immOff, &err, this)) {
+    vISA_ASSERT(false, err);
+  }
+}
+bool G4_SendDescRaw::trySetLscImmOff(int immOff, const char **whyFailed,
+                                     G4_SendDescRaw *rawDesc) const {
+  // Xe2 supports an signed immediate offset
+  //   - must be DW aligned but value is in signed bytes
+  //   - not TGM (only UGM, SLM, URB, ...)
+  //   - enabled for BTI [23:12] and flat [31:12]
+  //     things aren't well defined given BTI if ExDesc.IsReg
+  //   - ExDesc must be an immediate field, not an a0.# register
+  //      The spec says: "Must programmed with an immediate value in EU SEND
+  //      instruction."
+  //       (and I confirmed this was the meaning)
+  // Xe2 extends this support for BSS/SS, but only
+  //      if ExDesc is a register (we also get most of the ExDescImm bits)
+  auto failed = [&](const char *err) {
+    if (whyFailed)
+      *whyFailed = err;
+    return false;
+  };
+  if (!isLscOp()) {
+    return failed("wrong type descriptor");
+  } else if (irb.getPlatform() < Xe2) {
+    return failed("not supported on this platform");
+  } else if (getSFID() == SFID::TGM) {
+    return failed("cannot promote on TGM");
+  }
+  switch (getLscOp()) {
+  case LSC_LOAD:
+  case LSC_LOAD_QUAD:
+  case LSC_LOAD_STRIDED:
+  case LSC_STORE:
+  case LSC_STORE_QUAD:
+  case LSC_STORE_STRIDED:
+    break;
+  default:
+    if (getLscOp() < LSC_ATOMIC_IINC && getLscOp() > LSC_ATOMIC_XOR) {
+      return failed("unsupported op");
+    }
+    break;
+  }
+  if (immOff % 4 != 0) {
+    return failed("imm offset not DW aligned");
+  }
+  // ensure it fits in range
+  auto fitsIn = [&](int bits) {
+    return immOff >= -(1LL << (bits - 1)) && immOff <= (1LL << (bits - 1)) - 1;
+  };
+  auto addrType = getLscAddrType();
+  switch (addrType) {
+  case LSC_ADDR_TYPE_BSS:
+  case LSC_ADDR_TYPE_SS:
+    if (getBti() == nullptr) {
+      return failed("this addr type requires reg exdesc");
+    }
+    if (!fitsIn(17))
+      return failed("imm offset too large");
+    if (rawDesc) {
+      uint32_t encddUnshifted =
+          (((uint32_t)immOff & ~0xF) << 3) | ((uint32_t)immOff & 0xF);
+      rawDesc->setExDescImmOff((uint32_t)(encddUnshifted << 12));
+    }
+    break;
+  case LSC_ADDR_TYPE_BTI:
+    if (getBti()) {
+      return failed("this addr type requires imm bti");
+    }
+    if (!fitsIn(12))
+      return failed("imm offset too large");
+    if (rawDesc)
+      rawDesc->extDesc.value = (rawDesc->extDesc.value & 0xFF000000) |
+                               (0x00FFF000 & ((uint32_t)immOff << 12));
+    break;
+  case LSC_ADDR_TYPE_FLAT:
+    if (!fitsIn(20))
+      return failed("imm offset too large");
+    if (rawDesc)
+      rawDesc->extDesc.value = ((uint32_t)immOff << 12);
+    break;
+  default:
+    return false;
+  }
+  return true;
+}
 
 static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType,
                                   const IR_Builder &irb) {
@@ -1450,6 +1578,13 @@ std::string G4_SendDescRaw::getDescription() const {
             ss << "t";
         }
         bool hasImpliedA32 = false, hasImpliedA64 = false;
+
+        hasImpliedA32 =
+            opInfo.isApndCtrAtomic() ||
+            (opInfo.isBlock2D() && sfid == SFID::TGM);
+        hasImpliedA32 =
+            (opInfo.isBlock2D() && sfid == SFID::UGM);
+
         if (hasImpliedA32) {
           ss << ".a32";
         } else if (hasImpliedA64) {
@@ -1602,6 +1737,31 @@ bool G4_SendDescRaw::isBarrier() const {
 
 std::optional<ImmOff> G4_SendDescRaw::getOffset() const {
   if (isLscOp()) {
+    // technically unavailable until XE2, but this is binary compatible,
+    // so just always decode it
+    int signedOff = 0;
+    if (uint32_t immOffBits = getExDescImmOff()) {
+      // offset is stored separately for BSS/SS since it overlaps other
+      // ExDesc bits ExDescImm[31:18][15:12]
+      uint32_t packed =
+          (immOffBits & 0xFFFC0000) | ((immOffBits & 0xF000) << 3);
+      signedOff = (int)packed >> (12 + 3);
+    } else {
+      // offset is stowed in ExDesc
+      const int LSC_ADDR_TYPE_OFFSET = 29;
+      const uint32_t LSC_ADDR_TYPE_MASK = 0x3;
+      const uint32_t addrType =
+          (getDesc() >> LSC_ADDR_TYPE_OFFSET) & LSC_ADDR_TYPE_MASK;
+      const auto exDescBits = getExtendedDesc();
+      const uint32_t LSC_ADDR_TYPE_BTI = 3;
+      const uint32_t LSC_ADDR_TYPE_FLAT = 0;
+      if (addrType == LSC_ADDR_TYPE_BTI) {
+        signedOff = ((int)exDescBits << 8) >> (8 + 12);
+      } else if (addrType == LSC_ADDR_TYPE_FLAT) {
+        signedOff = (int)exDescBits >> 12;
+      }
+    }
+    return ImmOff(signedOff);
   } else if (isHWordScratchRW()) {
     // HWord scratch message
     return ImmOff(getHWordScratchRWOffset() * 32);
@@ -1625,6 +1785,8 @@ static Caching cachingToG4(LSC_CACHE_OPT co) {
     return Caching::ST;
   case LSC_CACHING_WRITETHROUGH:
     return Caching::WT;
+  case LSC_CACHING_CONSTCACHED:
+    return Caching::CC;
   default:
     break;
   }
@@ -1663,6 +1825,43 @@ static std::pair<Caching, Caching> decodeCaching3(bool isLoad,
   return std::make_pair(Caching::INVALID, Caching::INVALID);
 }
 
+// decode caching from Desc[19:16] (4 bit field: XE2+)
+static std::pair<Caching, Caching> decodeCaching4(bool isLoad,
+                                                  uint32_t descBits) {
+  auto mk = [&](Caching l1IfLd, Caching l3IfLd, Caching l1IfStAt,
+                Caching l3IfStAt) {
+    return isLoad ? std::make_pair(l1IfLd, l3IfLd)
+                  : std::make_pair(l1IfStAt, l3IfStAt);
+  };
+
+  // Decode caching field from in [19:16]
+  uint32_t ccBits = (descBits >> 16) & 0xF;
+  switch (ccBits) {
+  case 0:
+    return mk(Caching::DF, Caching::DF, Caching::DF, Caching::DF);
+  case 2:
+    return mk(Caching::UC, Caching::UC, Caching::UC, Caching::UC);
+  case 4:
+    return mk(Caching::UC, Caching::CA, Caching::UC, Caching::WB);
+  case 5:
+    return mk( // new entry for L3 constant cache
+        Caching::UC, Caching::CC, Caching::INVALID, Caching::INVALID);
+  case 6:
+    return mk(Caching::CA, Caching::UC, Caching::WT, Caching::UC);
+  case 8:
+    return mk(Caching::CA, Caching::CA, Caching::WT, Caching::WB);
+  case 9:
+    return mk( // new entry for L3 constant cache
+        Caching::CA, Caching::CC, Caching::INVALID, Caching::INVALID);
+  case 10:
+    return mk(Caching::ST, Caching::UC, Caching::ST, Caching::UC);
+  case 12:
+    return mk(Caching::ST, Caching::CA, Caching::ST, Caching::WB);
+  case 14:
+    return mk(Caching::RI, Caching::RI, Caching::WB, Caching::WB);
+  }
+  return std::make_pair(Caching::INVALID, Caching::INVALID);
+}
 
 std::pair<Caching, Caching> G4_SendDescRaw::getCaching() const {
   if (!isLscOp()) {
@@ -1673,11 +1872,12 @@ std::pair<Caching, Caching> G4_SendDescRaw::getCaching() const {
     return std::make_pair(Caching::INVALID, Caching::INVALID);
   }
 
-  auto ccPair =
-      decodeCaching3(opInfo.isLoad(), getDesc());
+  auto ccPair = irb.getPlatform() < Xe2
+                    ? decodeCaching3(opInfo.isLoad(), getDesc())
+                    : decodeCaching4(opInfo.isLoad(), getDesc());
   vISA_ASSERT(ccPair.first != Caching::INVALID &&
-                   ccPair.second != Caching::INVALID,
-               "unexpected invalid caching options (corrupt descriptor?)");
+                  ccPair.second != Caching::INVALID,
+              "unexpected invalid caching options (corrupt descriptor?)");
   return ccPair;
 }
 
@@ -1697,6 +1897,8 @@ static LSC_CACHE_OPT toVisaCachingOpt(Caching c) {
     return LSC_CACHING_STREAMING;
   case Caching::RI:
     return LSC_CACHING_READINVALIDATE;
+  case Caching::CC:
+    return LSC_CACHING_CONSTCACHED;
   default:
     vISA_ASSERT_UNREACHABLE("invalid cache option");
     return (LSC_CACHE_OPT)-1;
@@ -1718,6 +1920,8 @@ void G4_SendDescRaw::setCaching(Caching l1, Caching l3) {
   uint32_t cacheEnc = 0;
   uint32_t fieldMask = (0x7 << 17);
   bool isBits17_19 = true;
+  isBits17_19 = (irb.getPlatform() < Xe2);
+  fieldMask = isBits17_19 ? (0x7 << 17) : (0xF << 16);
   bool success =
       LscTryEncodeCacheOpts(opInfo, visaCopts, cacheEnc, isBits17_19);
   vISA_ASSERT(success, "failed to set caching options");

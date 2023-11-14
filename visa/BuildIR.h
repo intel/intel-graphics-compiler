@@ -2096,8 +2096,16 @@ public:
   G4_SrcRegRegion *lscLoadEffectiveAddress(
       LSC_OP lscOp, LSC_SFID lscSfid, G4_Predicate *pred, G4_ExecSize execSize,
       VISA_EMask_Ctrl execCtrl, LSC_ADDR addrInfo, int bytesPerDataElem,
-      const G4_Operand *surface, G4_SrcRegRegion *addr, uint32_t &exDesc
-  );
+      const G4_Operand *surface, G4_SrcRegRegion *addr, uint32_t &exDesc,
+      uint32_t &exDescImmOff);
+
+  // try and promote an immediate offset to LSC descriptor
+  // (doesn't work for block2d)
+  bool lscTryPromoteImmOffToExDesc(LSC_OP lscOp, LSC_SFID lscSfid,
+                                   LSC_ADDR addrInfo, int bytesPerDataElem,
+                                   const G4_Operand *surface,
+                                   uint32_t &exDescImm, uint32_t &exDescImmOff);
+
   G4_SrcRegRegion *lscCheckRegion(G4_Predicate *pred, G4_ExecSize execSize,
                                   VISA_EMask_Ctrl execCtrl,
                                   G4_SrcRegRegion *src);
@@ -2331,6 +2339,23 @@ private:
                                 bool isNativeSIMDSize, bool isFP16Return,
                                 bool isFP16Input) const;
 };
+
+constexpr VISALscImmOffOpts getLscImmOffOpt(LSC_ADDR_TYPE addrType) {
+  switch (addrType) {
+  case LSC_ADDR_TYPE_FLAT:
+    return VISA_LSC_IMMOFF_ADDR_TYPE_FLAT;
+  case LSC_ADDR_TYPE_BSS:
+    return VISA_LSC_IMMOFF_ADDR_TYPE_BSS;
+  case LSC_ADDR_TYPE_SS:
+    return VISA_LSC_IMMOFF_ADDR_TYPE_SS;
+  case LSC_ADDR_TYPE_BTI:
+  case LSC_ADDR_TYPE_ARG:
+    return VISA_LSC_IMMOFF_ADDR_TYPE_BTI;
+  default:
+    break;
+  }
+  return VISA_LSC_IMMOFF_INVALID;
+}
 } // namespace vISA
 
 // G4IR instructions added by JIT that do not result from lowering

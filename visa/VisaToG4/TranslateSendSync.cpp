@@ -259,14 +259,22 @@ void IR_Builder::generateSingleBarrier(G4_Predicate *prd) {
   G4_Declare *header = createTempVar(8, Type_UD, getGRFAlign());
   auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
   uint32_t headerInitValDw2 = 0x0; // initial value for DWord2
+  if (getPlatform() >= Xe2 && getOption(vISA_ActiveThreadsOnlyBarrier)) {
+    headerInitValDw2 |= (1 << 8);
+  }
   // Header.2:d has the following format:
   //  bits[7:0] = 0x0 (barrier id)
+  //  bits[8] = active only thread barrier
   //  bits[15:14] = 0 (producer/consumer)
   //  bits[23:16] = num producers = r0.11:b (r0.2[31:24] = num threads in tg)
   //  bits[31:24] = num consumers = r0.11:b (r0.2[31:24] = num threads in tg)
   auto src = createImm(headerInitValDw2, Type_UD);
   auto inst0 = createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
-  inst0->addComment("signal barrier payload init");
+  if (getPlatform() >= Xe2 && getOption(vISA_ActiveThreadsOnlyBarrier)) {
+    inst0->addComment("signal barrier payload init (active only)");
+  } else {
+    inst0->addComment("signal barrier payload init");
+  }
 
   // copy the thread count from r0.2[31:24]; SIMD2 replacate to both bytes
   // (bits [31:24][23:16] in a single op)
@@ -403,6 +411,8 @@ G4_INST *IR_Builder::createFenceInstructionPreLSC(G4_Predicate *prd,
                                                   bool commitEnable,
                                                   bool globalMemFence,
                                                   bool isSendc = false) {
+  vISA_ASSERT_INPUT(getPlatformGeneration() < PlatformGen::XE2,
+         "invalid API for platform (dc0 removed from platform)");
 
   const uint32_t L1_FLUSH_MASK = 0x40;
 

@@ -6700,6 +6700,65 @@ G4_Imm *GlobalRA::createMsgDesc(unsigned owordSize, bool writeType,
 void GlobalRA::stackCallProlog() {
   G4_BB *entryBB = builder.kernel.fg.getEntryBB();
 
+  // Used for creating inst to initialize address for immediate offset usage.
+  auto AddrComputeInst = [this](G4_Declare *srcDcl) {
+    auto addSrc0 = builder.createSrc(srcDcl->getRegVar(), 0, 0,
+                                     builder.getRegionScalar(), Type_UD);
+    auto immSrc1 = builder.createImm(SPILL_FILL_IMMOFF_MAX, Type_UD);
+    auto addInst = builder.createBinOp(
+        G4_add, g4::SIMD1,
+        builder.createDstRegRegion(builder.kernel.fg.scratchRegDcl, 1), addSrc0,
+        immSrc1, InstOpt_WriteEnable, false);
+    return addInst;
+  };
+
+  // Initialize address for immediate offset usage for spill/fill messages
+  // except for frame descriptor save message.
+  // This is for common cases which uses %be_fp as address.
+  {
+    // Turn off immediate offset if frame size is 0 or exceeds threshhold
+    if ((kernel.fg.frameSizeInOWord == 0) ||
+        (kernel.fg.frameSizeInOWord * 16 > SPILL_FILL_IMMOFF_MAX * 2))
+      canUseLscImmediateOffsetSpillFill = false;
+
+    if (canUseLscImmediateOffsetSpillFill) {
+      // copy (%be_fp + 0x10000) to r126.0 for immediate offset usage in
+      // stackcall spill/fill
+      //     add(1) r126.0 %be_fp 0x10000
+      auto insertIt = std::find(entryBB->begin(), entryBB->end(),
+                                builder.kernel.getBEFPSetupInst());
+      vISA_ASSERT(insertIt != entryBB->end(), "Can't find BE_FP setup inst");
+      entryBB->insertBefore(++insertIt, AddrComputeInst(builder.getBEFP()));
+
+      // Each stack function has its own r126.0, so need resume r126.0 after
+      // function call as the value has been changed in the callee.
+      // See below example:
+      //     Foo()
+      //         mov r125.3 r125.2
+      //         add r126.0 r125.3 0x10000
+      //         add r125.2 r125.2 frameSizeFoo
+      //         spill [r126.0 offset1-0x10000]
+      //         Bar()
+      //             mov r125.3 r125.2
+      //             add r126.0 r125.3 0x10000
+      //             add r125.2 r125.2 frameSizeBar
+      //             spill [r126.0 offset2-0x10000]
+      //             ...
+      //         add r126.0 r125.3 0x10000
+      //         spill [r126.0 offset3-0x10000]
+      // After Bar() return, we should re-compute r126.0
+      for (auto bb : kernel.fg) {
+        if (bb->isEndWithFCall()) {
+          G4_BB *succ = bb->Succs.front();
+          insertIt =
+              std::find_if(succ->begin(), succ->end(),
+                           [](G4_INST *inst) { return inst->isLabel(); });
+          vISA_ASSERT(insertIt != succ->end(), "Can't find label");
+          succ->insertBefore(++insertIt, AddrComputeInst(builder.getBEFP()));
+        }
+      }
+    }
+  }
 
   // Emit frame descriptor
   if (kernel.fg.getIsStackCallFunc()) {
@@ -6736,6 +6795,16 @@ void GlobalRA::stackCallProlog() {
     }
     addEUFusionCallWAInst(store);
 
+    // Initialize address for immediate offset usage for frame descriptor store
+    // message. This is a special case as it uses %be_sp as address.
+    {
+      if (canUseLscImmediateOffsetSpillFill) {
+        // copy (%be_sp + 0x10000) to r126.0 for immediate offset usage
+        // for frame descriptor save instruction
+        //    add(1) r126.0<1>:ud  %be_sp<1;0,1>:ud  0x10000:ud
+        entryBB->insertBefore(iter, AddrComputeInst(builder.getBESP()));
+      }
+    }
     return;
   }
 
@@ -9517,6 +9586,8 @@ bool GlobalRA::convertToFailSafe(bool reserveSpillReg, GraphColor &coloring,
         // If LSC has to be used for spill/fill then we need to ensure
         // spillHeader is created
         (useLscForNonStackCallSpillFill && builder.hasValidSpillFillHeader()) ||
+        // or if immediate can be folded in to LSC
+        canUseLscImmediateOffsetSpillFill ||
        // If scratch is to be used then max spill offset must be within
        // addressable range and r0 must be available as reserved. If r0
        // is not reserved, we cannot conver current iteration to fail
@@ -9635,6 +9706,7 @@ void GlobalRA::setupA0Dot2OnSpill(bool hasStackCall,
     // preserve old value of a0.2.
     kernel.fg.builder->getOldA0Dot2Temp();
   } else if (useLscForNonStackCallSpillFill || useLscForScatterSpill) {
+    // Xe2+ LSC-based spill/fill needs the same as above
     {
       kernel.fg.builder->getOldA0Dot2Temp();
     }
@@ -9800,10 +9872,23 @@ int GlobalRA::coloringRegAlloc() {
 
     flagRegAlloc();
   }
-       // LSC messages are used when:
-       // a. Stack call is used on PVC+,
-       // b. Spill size exceeds what can be represented using hword msg on PVC+
+  // LSC messages are used when:
+  // a. Stack call is used on PVC+,
+  // b. Spill size exceeds what can be represented using hword msg on PVC+
+  // c. Xe2+ requires LSC stack (can force on DG2+ via -lscNonStackSpill)
+  if (builder.supportsLSC()) {
 
+    const auto scratchAddrType = VISA_LSC_IMMOFF_ADDR_TYPE_SS;
+    const uint32_t immOffOpts =
+        builder.getuint32Option(vISA_lscEnableImmOffsFor);
+    canUseLscImmediateOffsetSpillFill =
+        // HW supports it
+        builder.getPlatform() >= Xe2 &&
+        // the spill/fill is enabled in options
+        (immOffOpts & (1 << VISA_LSC_IMMOFF_SPILL_FILL)) != 0 &&
+        // address type is also enabled in options
+        (immOffOpts & (1 << scratchAddrType)) != 0;
+  }
 
   stackCallSaveRestore(hasStackCall);
 

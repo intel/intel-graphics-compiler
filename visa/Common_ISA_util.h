@@ -111,6 +111,9 @@ template <typename T> T getPrimitiveOperand(const CISA_INST *inst, unsigned i) {
 
 const raw_opnd &getRawOperand(const CISA_INST *inst, unsigned i);
 
+bool isNullRawOperand(const CISA_INST *inst, unsigned i);
+bool isNotNullRawOperand(const CISA_INST *inst, unsigned i);
+
 const vector_opnd &getVectorOperand(const CISA_INST *inst, unsigned i);
 
 CISA_opnd_type getOperandType(const CISA_INST *inst, unsigned i);

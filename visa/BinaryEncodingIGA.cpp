@@ -361,11 +361,15 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
     break;
   case Xe_DG2:
   case Xe_MTL:
+  case Xe_ARL:
     platform = Platform::XE_HPG;
     break;
   case Xe_PVC:
   case Xe_PVCXT:
     platform = Platform::XE_HPC;
+    break;
+  case Xe2:
+    platform = Platform::XE2;
     break;
   default:
     break;
@@ -1679,8 +1683,17 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(G4_INST *sendInst,
   const bool isLscBti = isLsc && descG4->getLscAddrType() == LSC_ADDR_TYPE_BTI;
   const bool isUgm = sendInst->getMsgDesc()->getSFID() == vISA::SFID::UGM;
   encodeExBso &= !isLscBti;
+  encodeExBso &= (platform < Xe2 || !isUgm);
   if (encodeExBso)
     sdos.extraOpts.add(InstOpt::EXBSO);
+  if (isLsc && isUgm && !encodeExBso) {
+    bool isLscBssOrSs = descG4->getLscAddrType() == LSC_ADDR_TYPE_BSS ||
+                        descG4->getLscAddrType() == LSC_ADDR_TYPE_SS;
+    if (isLscBssOrSs && descG4->getBti() != nullptr) {
+      // BSS/SS with a0 reg (ExDesc.IsReg) with UGM
+      sdos.exDescImmOff = descG4->getExDescImmOff();
+    }
+  }
 
   // G4 IR keeps Src1.Length (xlen) separate.  So it's known,
   // (even with a reg desc in nonExBSO mode)

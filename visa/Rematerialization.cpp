@@ -628,6 +628,10 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
       // Run separate checks for sampler
       if (uniqueDefInst->isSplitSend() &&
           uniqueDefInst->getMsgDesc()->isSampler() &&
+          // FIXME: For gen12_9+, the sammpler header prepparation will need
+          // more than one mov instructions. Current rematerialization mechanism
+          // doesn't handle it correctly.
+          !kernel.fg.builder->hasSamplerFeedbackSurface() &&
           uniqueDefInst->getSrc(2)->isImm() &&
           uniqueDefInst->getSrc(3)->isImm()) {
         if (!kernel.getOptions()->getOption(vISA_cacheSamplerHeader))
@@ -1135,7 +1139,9 @@ void Rematerialization::run() {
     }
   }
 
-  cleanRedundantSamplerHeaders();
+  if (!kernel.fg.builder->hasSamplerFeedbackSurface()) {
+    cleanRedundantSamplerHeaders();
+  }
 
   kernel.dumpToFile("after.remat");
 }

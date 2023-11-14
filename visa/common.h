@@ -155,6 +155,7 @@ enum class PlatformGen {
   GEN10 = 10,
   GEN11 = 11,
   XE = 12,
+  XE2 = 13,
 };
 
 // Error types

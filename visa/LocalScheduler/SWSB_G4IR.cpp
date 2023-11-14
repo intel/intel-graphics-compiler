@@ -6010,10 +6010,12 @@ bool G4_BB_SB::is2xFPBlockCandidate(G4_INST *inst, bool accDST) {
   }
 
   // For 2xDP only DF with SIMD16 supported.
+  if (!builder.has2xSP()) {
     if (inst->getExecSize() != g4::SIMD16 ||
         inst->getDst()->getType() != G4_Type::Type_DF) {
       return false;
     }
+  }
 
   if (inst->getExecSize() != g4::SIMD16 && inst->getExecSize() != g4::SIMD32) {
     return false;

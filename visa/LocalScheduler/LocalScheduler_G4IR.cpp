@@ -1348,6 +1348,9 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         isCounted = true;
       }
 
+      if (!isCounted && getBuilder()->has2xSP() && instCanUse2xSP(curInst)) {
+        FP_InstNum++;
+      }
     }
     if (getBuilder()->hasReadSuppression() &&
         getOptions()->getOption(vISA_EnableGroupScheduleForBC)) {
@@ -2335,6 +2338,21 @@ uint32_t DDD::listScheduleFor2xFP(G4_BB_Schedule *schedule) {
         }
       }
 
+      // On XE2+ platforms, 2xSP covers 2xDP cases.
+      // Try to add the instruction to the block if it's not covered by above
+      // 2xDP check
+      if ((false == isAddedToBlock) &&
+          (curNode->getInstructions()->size() == 1) &&
+          getBuilder()->has2xSP() && curBlock->canAddToBlock2xSP(curNode)) {
+        readyList.pop();
+        curBlock->push(curNode);
+        isAddedToBlock = true;
+
+        // Current block is full
+        if (curBlock->isBlockFull()) {
+          break;
+        }
+      }
 
       // Current instruction can't be added into current block, add it into the
       // popped

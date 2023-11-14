@@ -1905,7 +1905,7 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
   // check for IEEE macros support
   // !hasMadm() check
   bool noMadm = platform == GENX_ICLLP || platform == GENX_TGLLP ||
-                platform == Xe_DG2 || platform == Xe_MTL;
+                platform == Xe_DG2 || platform == Xe_MTL || platform == Xe_ARL;
   if (noMadm) {
     bool fOpcodeIEEE = (opcode == ISA_DIVM) || (opcode == ISA_SQRTM);
     bool dfOpcodeIEEE = fOpcodeIEEE || (opcode == ISA_INV) ||
@@ -2228,12 +2228,23 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       bool isSupportedOp = subOp == VISA_3D_SAMPLE ||
                            subOp == VISA_3D_SAMPLE_B ||
                            subOp == VISA_3D_SAMPLE_C ||
-                           subOp == VISA_3D_SAMPLE_B_C || subOp == VISA_3D_LOD;
+                           subOp == VISA_3D_SAMPLE_B_C ||
+                           subOp == VISA_3D_LOD ||
+                           subOp == VISA_3D_SAMPLE_PO ||
+                           subOp == VISA_3D_SAMPLE_PO_B ||
+                           subOp == VISA_3D_SAMPLE_PO_C;
 
       REPORT_INSTRUCTION(options, isSupportedOp,
                          "CPS LOD Compensation Enable is only supported for"
                          " sample, sample_b, sample_b_c, sample_c and LOD");
     }
+    bool isPairedSurface = isNotNullRawOperand(inst, 6);
+
+    REPORT_INSTRUCTION(
+        options,
+        (isPairedSurface && irBuilder->getPlatform() >= Xe2) ||
+            !isPairedSurface,
+        "Paired surface can not be defined on this platform");
     break;
   }
   case ISA_3D_LOAD:
@@ -2245,6 +2256,14 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,
                          "Pixel Null Mask Enable only valid for SKL+");
     }
+    bool isPairedSurface =
+        isNotNullRawOperand(inst, opcode == ISA_3D_LOAD ? 5 : 6);
+
+    REPORT_INSTRUCTION(
+        options,
+        (isPairedSurface && irBuilder->getPlatform() >= Xe2) ||
+            !isPairedSurface,
+        "Paired surface can not be defined on this platform");
     break;
   }
   case ISA_3D_INFO:
@@ -3699,6 +3718,22 @@ struct LscInstVerifier {
         verify(sfid != LSC_SLM || dataShape.size != LSC_DATA_SIZE_64b ||
                    opInfo.op == LSC_ATOMIC_ICAS,
                "LSC SLM D64 atomics only support icas");
+        if (builder.getPlatform() >= Xe2) {
+          verify(
+              (opInfo.op != LSC_ATOMIC_FADD && opInfo.op != LSC_ATOMIC_FSUB) ||
+                  (sfid == LSC_UGM || sfid == LSC_UGML || sfid == LSC_TGM),
+              "LSC atomic fadd/fsub only support UGM, UGML and TGM");
+
+          verify((opInfo.op != LSC_APNDCTR_ATOMIC_ADD &&
+                  opInfo.op != LSC_APNDCTR_ATOMIC_SUB) ||
+                     sfid == LSC_UGM,
+                 "LSC append counter atomic add/sub only support UGM");
+
+          verify((opInfo.op != LSC_APNDCTR_ATOMIC_ADD &&
+                  opInfo.op != LSC_APNDCTR_ATOMIC_SUB) ||
+                     dataShape.size == LSC_DATA_SIZE_32b,
+                 "LSC append counter atomic add/sub only support D32");
+        } else
         {
           verify(
               (opInfo.op != LSC_ATOMIC_FADD && opInfo.op != LSC_ATOMIC_FSUB) ||
@@ -3764,6 +3799,7 @@ struct LscInstVerifier {
   void verifyCachingOpts() {
     auto l1 = getNextEnumU8<LSC_CACHE_OPT>();
     auto l3 = getNextEnumU8<LSC_CACHE_OPT>();
+    if (builder.getPlatform() < Xe2)
     {
       if (sfid == LSC_TGM || sfid == LSC_UGML) {
         verify(l1 == LSC_CACHING_DEFAULT && l3 == LSC_CACHING_DEFAULT,
@@ -4181,6 +4217,57 @@ struct LscInstVerifier {
     verifyDataOperands(dstOpIx, src1OpIx);
   }
 
+  LSC_DATA_SHAPE_TYPED_BLOCK2D getNextDataShapeTyped2D() {
+    LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D{};
+    dataShape2D.width = (int)getNext<uint16_t>();
+    dataShape2D.height = (int)getNext<uint16_t>();
+    return dataShape2D;
+  }
+
+  void verifyTypedBlock2D() {
+    verifyCachingOpts();
+
+    auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
+    const auto dataShape2D = getNextDataShapeTyped2D();
+    verify(dataShape2D.height > 0 && dataShape2D.width <= 64,
+           "blocks2d height must (0, 64]");
+    verify(dataShape2D.width > 0 && dataShape2D.width <= 64,
+           "blocks2d width must be (0, 64]");
+    verify(dataShape2D.width * dataShape2D.height <= 256,
+           "blocks2d size can not exceed 256");
+
+    verifyAddressType(addrType, currOpIx);
+    //
+    /////////////////////////////////////////
+    // now we're at the register operands
+    //   0 - Surface Base
+    //   1 - Surface Index
+    //   2 - Dst
+    //   3 - BlockStartOffsetX
+    //   4 - ImmOffX
+    //   5 - BlockStartOffsetY
+    //   6 - ImmOffY
+    //   7 - Src1(data sent)
+    //
+    verifyVectorOperandNotNull("OffsetX", currOpIx + 3);
+    verifyVectorOperandNotNull("OffsetY", currOpIx + 5);
+    //
+    verifyDataOperands(currOpIx + 2, currOpIx + 7);
+  }
+
+  void verifyUntypedAppendCounterAtomic() {
+    verifyCachingOpts();
+
+    auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
+
+    auto dataShape = getNextDataShape();
+    verifyDataShape(dataShape);
+
+    // now we are at the registers
+    verifyAddressType(addrType, currOpIx);         // surface
+    verifyRawOperandNull("Src0Addr", currOpIx + 3); // src0 address is null
+    verifyRawOperandNonNull("Src1Data", currOpIx + 4); // src1 data
+  }
   void verify() {
       verifyLSC();
   }
@@ -4194,10 +4281,17 @@ struct LscInstVerifier {
     } else if (inst->opcode == ISA_LSC_UNTYPED) {
       if (subOp == LSC_LOAD_BLOCK2D || subOp == LSC_STORE_BLOCK2D) {
         verifyUntypedBlock2D();
+      } else if (subOp == LSC_APNDCTR_ATOMIC_ADD ||
+                 subOp == LSC_APNDCTR_ATOMIC_SUB ||
+                 subOp == LSC_APNDCTR_ATOMIC_STORE) {
+        verifyUntypedAppendCounterAtomic();
       } else {
         verifyUntypedBasic();
       }
     } else if (inst->opcode == ISA_LSC_TYPED) {
+      if (subOp == LSC_LOAD_BLOCK2D || subOp == LSC_STORE_BLOCK2D) {
+        return verifyTypedBlock2D();
+      }
       verifyTyped();
     } else {
       badEnum("invalid LSC op code", inst->opcode);

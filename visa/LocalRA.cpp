@@ -538,8 +538,14 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignForward(int &i,
 }
 
 unsigned int PhyRegsLocalRA::get_bundle(unsigned int baseReg, int offset) {
+  if (builder.has64bundleSize2GRFPerBank()) {
+    return (((baseReg + offset) % 32) / 4);
+  }
   if (builder.hasPartialInt64Support()) {
     return (((baseReg + offset) % 32) / 2);
+  }
+  if (builder.has64bundleSize()) {
+    return (((baseReg + offset) % 16) / 2);
   }
   return (((baseReg + offset) % 64) / 4);
 }

@@ -214,6 +214,13 @@ DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_XOR,    "atomic_xor",    0x1A,
                            MSGOP_ATTRS_ATOMIC_BINARY)
 //
 
+// setting this to binary as src0 is null and src1 is the data operand
+DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_ACADD,  "atomic_acadd",  0x28,
+                           MSGOP_ATTRS_ATOMIC_BINARY)
+DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_ACSUB,  "atomic_acsub",  0x29,
+                           MSGOP_ATTRS_ATOMIC_BINARY)
+DEFINE_G4_MSGOP_LSC_ATOMIC(ATOMIC_ACSTORE, "atomic_store", 0x2A,
+                           MSGOP_ATTRS_ATOMIC_BINARY)
 ///////////////////////////////////////////////////////////////////////////////
 // LSC other
 DEFINE_G4_MSGOP_LSC_OTHER(RSI,            "rsi",           0x1E,
@@ -249,11 +256,54 @@ DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_D_C, "sample_d_c", 0x11, MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_LZ, "sample_lz", 0x18, MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_C_LZ, "sample_c_lz", 0x19,
                             MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_MLOD, "sample_mlod", 0x12,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_C_MLOD, "sample_c_mlod", 0x13,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_D_C_MLOD, "sample_d_c_mlod", 0x14,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO,   "sample_po", 0x20, MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_B, "sample_po_b", 0x21,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_L, "sample_po_l", 0x22,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_C, "sample_po_c", 0x23,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_D, "sample_po_d", 0x24,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_L_C, "sample_po_l_c", 0x26,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_LZ, "sample_po_lz", 0x38,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_NORMAL(SAMPLE_PO_C_LZ, "sample_po_c_lz", 0x39,
+                            MSGOP_ATTRS_EMPTY)
 ////////////////////////////////
 // gather 4 sampler ops
 DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4,   "gather4",   0x08, MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_C, "gather4_c", 0x10, MSGOP_ATTRS_EMPTY)
 
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_L, "gather4_l", 0x0D, MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_B, "gather4_b", 0x0E, MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_I, "gather4_i", 0x0F, MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_I_C, "gather4_i_c", 0x15,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_L_C, "gather4_l_c", 0x17,
+                            MSGOP_ATTRS_EMPTY)
+//
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO,     "gather4_po",   0x28,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO_L,   "gather4_po_l", 0x2D,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO_B,   "gather4_po_b", 0x2E,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO_I,   "gather4_po_i", 0x2F,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO_C,   "gather4_po_c", 0x30,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO_I_C, "gather4_po_i_c", 0x35,
+                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_GATHER(GATHER4_PO_L_C, "gather4_po_l_c", 0x37,
+                            MSGOP_ATTRS_EMPTY)
 ////////////////////////////////
 // other sampler messages
 DEFINE_G4_MSGOP_SMPL_OTHER(LD, "ld", 0x07, MSGOP_ATTRS_EMPTY)
@@ -266,6 +316,7 @@ DEFINE_G4_MSGOP_SMPL_OTHER(LD_2DMS_W, "ld_2dms_w", 0x1C, MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_OTHER(LD_MCS, "ld_mcs", 0x1D, MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_SMPL_OTHER(SAMPLER_FLUSH, "sampler_flush", 0x1F,
                            MSGOP_ATTRS_EMPTY)
+DEFINE_G4_MSGOP_SMPL_OTHER(LD_L, "ld_l", 0x1B, MSGOP_ATTRS_EMPTY)
 //
 ///////////////////////////////////////////////////////////////////////////////
 // render target ops

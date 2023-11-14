@@ -589,6 +589,10 @@ int G4_BB::getConflictTimesForTGL(std::ostream &output, int *firstRegCandidate,
       if (reducedBundles) {
         bundleID = (firstRegCandidate[i] % 16) / 2;
       }
+      if (parent->builder->has64bundleSize2GRFPerBank()) {
+        bankID = (firstRegCandidate[i] % 4) / 2;
+        bundleID = (firstRegCandidate[i] % 32) / 4;
+      }
        // Same bank and same bundle
       if (bundles[bankID][bundleID] != -1) {
         conflictTimes++;
@@ -895,10 +899,24 @@ static bool hasInternalConflict(IR_Builder *builder, int reg1, int reg2) {
     bankID2 = (reg2 % 4) / 2;
   }
 
+  if (builder->has64bundleSize2GRFPerBank()) {
+    bundleID1 = (reg1 % 32) / 4;
+    bankID1 = (reg1 % 4) / 2;
+    bundleID2 = (reg2 % 32) / 4;
+    bankID2 = (reg2 % 4) / 2;
+  }
+
   if (builder->hasOneGRFBank16Bundles()) {
     bundleID1 = (reg1 % 64) / 4;
     bankID1 = reg1 % 2;
     bundleID2 = (reg2 % 64) / 4;
+    bankID2 = reg2 % 2;
+  }
+
+  if (builder->has64bundleSize()) {
+    bundleID1 = (reg1 % 16) / 2;
+    bankID1 = reg1 % 2;
+    bundleID2 = (reg2 % 16) / 2;
     bankID2 = reg2 % 2;
   }
 

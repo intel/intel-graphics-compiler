@@ -58,6 +58,10 @@ static inline bool MsgOpIs2D(MsgOp op) {
 }
 
 
+static inline bool MsgOpIsApndCtrAtomic(MsgOp op) {
+  return op == MsgOp::ATOMIC_ACADD || op == MsgOp::ATOMIC_ACSUB || op == MsgOp::ATOMIC_ACSTORE;
+}
+
 // does it have a data channel mask (e.g. load_quad)
 bool MsgOpHasChMask(MsgOp);
 
@@ -158,8 +162,8 @@ enum class Caching {
   UC, // uncached (load)
   ST, // streaming (load/store)
   WT, // writethrough (store)
+  CC,  // cached as constant (load)
 };
-
 
 std::string ToSymbol(Caching);
 // default, default returns ""
@@ -412,6 +416,9 @@ private:
   // no longer uses ExDesc for that information
   int src1Len;
 
+  // only used for LSC Xe2 BSS/SS; BTI and FLAT use exDesc
+  uint32_t exDescImmOff = 0;
+
   // Mimic SendDescLdSt. Valid only for LSC msg. It's set via setLdStAttr(), not
   // ctor (should be removed if lsc switchs to use SendDescLdSt
   LdStAttrs attrs = LdStAttrs::NONE;
@@ -501,6 +508,14 @@ public:
   LSC_ADDR_TYPE getLscAddrType() const;
   int getLscAddrSizeBytes() const; // e.g. a64 => 8
   LSC_DATA_ORDER getLscDataOrder() const;
+
+  int getLscImmOff() const;
+  void setLscImmOff(int off);
+  bool canSetLscImmOff(int off) const {
+    return trySetLscImmOff(off, nullptr, nullptr);
+  }
+  bool trySetLscImmOff(int off, const char **whyFailed,
+                       G4_SendDescRaw *rawDesc = nullptr) const;
 
   // query methods common for all raw sends
   uint16_t ResponseLength() const;
@@ -598,6 +613,13 @@ public:
   bool is16BitReturn() const;
 
 
+  // c.f. with G4_SendDescRaw::exDescImmOff
+  void setExDescImmOff(uint32_t immOff) {
+    vISA_ASSERT(immOff == 0 || getSFID() == SFID::UGM,
+                 "this field is only legal given UGM");
+    exDescImmOff = immOff;
+  }
+  uint32_t getExDescImmOff() const { return exDescImmOff; }
   bool isLSCTyped() const { return isTyped() && isLSC(); }
   // atomic write or explicit barrier
   bool isBarrierOrAtomic() const { return isAtomicMessage() || isBarrier(); }

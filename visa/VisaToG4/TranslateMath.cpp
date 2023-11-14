@@ -307,6 +307,63 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   G4_Imm *dbl_constant_0 = createDFImm(0.0);
   G4_Imm *dbl_constant_1 = createDFImm(1.0);
 
+  // On Xe2+ platforms if enableInterleaveMacro option is on, then do not split
+  // here. Later InstSplitPass will do the split to generate interleaved macro
+  // for FP64 DIV like below instructions sequence:
+  //     math.invm (16|M0) (eo)f0.0  r16.mme0:df  r41.nomme:df    r61.nomme:df
+  //     math.invm (16|M16) (eo)f0.0  r18.mme0:df  r55.nomme:df   r63.nomme:df
+  //     (~f0.0) madm (16|M0)   acc0.mme1:df  r86.nomme:df      r41.nomme:df
+  //     r16.mme0:df
+  //     (~f0.0) madm (16|M16)   acc2.mme1:df  r84.nomme:df      r55.nomme:df
+  //     r18.mme0:df
+  //     (~f0.0) madm (16|M0)    r20.mme2:df   r96.nomme:df      -r61.nomme:df
+  //     r16.mme0:df
+  //     (~f0.0) madm (16|M16)   r22.mme2:df   r94.nomme:df      -r63.nomme:df
+  //     r18.mme0:df
+  //     (~f0.0) madm (16|M0)    r28.mme3:df   r20.mme2:df       r20.mme2:df
+  //     r20.mme2:df
+  //     (~f0.0) madm (16|M16)   r30.mme3:df   r22.mme2:df       r22.mme2:df
+  //     r22.mme2:df
+  //     (~f0.0) madm (16|M0)    acc0.mme4:df  r86.nomme:df      acc0.mme1:df
+  //     r28.mme3:df
+  //     (~f0.0) madm (16|M16)   acc2.mme4:df  r84.nomme:df      acc2.mme1:df
+  //     r30.mme3:df
+  //     (~f0.0) madm (16|M0)    r16.nomme:df  acc0.mme4:df      r41.nomme:df
+  //     r16.mme0:df
+  //     (~f0.0) madm (16|M16)   r18.nomme:df  acc2.mme4:df      r55.nomme:df
+  //     r18.mme0:df
+  // Otherwise, it will generate instrctuctions sequence like below:
+  //     math.invm (16|M0) (eo)f0.0  r15.mme0:df  r40.nomme:df    r56.nomme:df
+  //     {A@1}
+  //     (~f0.0) madm(16|M0)  acc0.mme1:df  r70.nomme:df  r40.nomme:df
+  //     r15.mme0:df{ M@1 }
+  //     (~f0.0) madm(16|M0)  r35.mme2:df   r82.nomme:df  -r56.nomme:df
+  //     r15.mme0:df
+  //     (~f0.0) madm(16|M0)  r19.mme3:df   r35.mme2:df   r35.mme2:df
+  //     r35.mme2:df{ L@1 }
+  //     (~f0.0) madm (16|M0)   acc0.mme4:df  r70.nomme:df  acc0.mme1:df
+  //     r19.mme3:df
+  //     (~f0.0) madm (16|M0)   r15.nomme:df  acc0.mme4:df  r40.nomme:df
+  //     r15.mme0:df math.invm (16|M16) (eo)f0.0  r16.mme0:df  r41.nomme:df
+  //     r57.nomme:df     {A@1}
+  //     (~f0.0) madm (16|M16)  acc0.mme1:df  r70.nomme:df  r41.nomme:df
+  //     r16.mme0:df      {M@1}
+  //     (~f0.0) madm (16|M16)  r36.mme2:df   r82.nomme:df  -r57.nomme:df
+  //     r16.mme0:df
+  //     (~f0.0) madm (16|M16)  r20.mme3:df   r36.mme2:df   r36.mme2:df
+  //     r36.mme2:df
+  //     (~f0.0) madm (16|M16)  acc0.mme4:df  r70.nomme:df  acc0.mme1:df
+  //     r20.mme3:df
+  //     (~f0.0) madm (16|M16)  r16.nomme:df  acc0.mme4:df  r41.nomme:df
+  //     r16.mme0:df
+  if (this->getOption(vISA_enableInterleaveMacro) && getPlatform() >= Xe2 &&
+      (opcode == ISA_DIV || opcode == ISA_DIVM)) {
+    if (instExecSize > exsize) {
+      exsize = instExecSize;
+      element_size = instExecSize;
+      loopCount = 1;
+    }
+  } else
   {
     if (instExecSize > exsize) {
       element_size = instExecSize;
@@ -1571,6 +1628,16 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
   // If enableInterleaveMacro option is on, then do not split here. Later
   // InstSplitPass
+  // On Xe2+ platforms if enableInterleaveMacro option is on, then do not split
+  // here. Later InstSplitPass will do the splitting to generate interleaved
+  // macro for FP64 SQRT.
+  if (this->getOption(vISA_enableInterleaveMacro) && getPlatform() >= Xe2) {
+    if (instExecSize > exsize) {
+      exsize = instExecSize;
+      element_size = instExecSize;
+      loopCount = 1;
+    }
+  } else
   {
     if (instExecSize > exsize) {
       element_size = instExecSize;

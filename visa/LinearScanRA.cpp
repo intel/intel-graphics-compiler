@@ -940,6 +940,7 @@ int LinearScanRA::linearScanRA() {
         }
       } else if (gra.useLscForNonStackCallSpillFill ||
                  gra.useLscForScatterSpill) {
+        // Xe2+ LSC-based spill/fill needs the same as above
         G4_Declare *a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
         LSLiveRange *lr = gra.getSafeLSLR(a0Dcl);
         if (!lr) {

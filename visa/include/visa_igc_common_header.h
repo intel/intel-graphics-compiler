@@ -430,16 +430,41 @@ typedef enum {
   VISA_3D_RESINFO = 10,
   VISA_3D_SAMPLEINFO = 11,
   VISA_3D_SAMPLE_KILLPIX = 12,
+  VISA_3D_GATHER4_L = 13,
+  VISA_3D_GATHER4_B = 14,
+  VISA_3D_GATHER4_I = 15,
   VISA_3D_GATHER4_C = 16,
   VISA_3D_GATHER4_PO = 17,
   VISA_3D_GATHER4_PO_C = 18,
+  // Note: Xe2 reuses GATHER4_PO* opcode values (Xe2 doesn't have GATHER4_PO*)
+  VISA_3D_SAMPLE_D_C_MLOD = 17,
+  VISA_3D_SAMPLE_MLOD = 18,
+  VISA_3D_SAMPLE_C_MLOD = 19,
   VISA_3D_SAMPLE_D_C = 20,
+  VISA_3D_GATHER4_I_C = 21,
+  VISA_3D_GATHER4_L_C = 23,
   VISA_3D_SAMPLE_LZ = 24,
   VISA_3D_SAMPLE_C_LZ = 25,
   VISA_3D_LD_LZ = 26,
+  VISA_3D_LD_L = 27,
   VISA_3D_LD2DMS_W = 28,
   VISA_3D_LD_MCS = 29,
 // positional offsets
+  VISA_3D_SAMPLE_PO = 32,
+  VISA_3D_SAMPLE_PO_B = 33,
+  VISA_3D_SAMPLE_PO_L = 34,
+  VISA_3D_SAMPLE_PO_C = 35,
+  VISA_3D_SAMPLE_PO_D = 36,
+  VISA_3D_SAMPLE_PO_L_C = 38,
+  VISA_3D_GATHER4_PO_PACKED = 40,
+  VISA_3D_GATHER4_PO_PACKED_L = 45,
+  VISA_3D_GATHER4_PO_PACKED_B = 46,
+  VISA_3D_GATHER4_PO_PACKED_I = 47,
+  VISA_3D_GATHER4_PO_PACKED_C = 48,
+  VISA_3D_GATHER4_PO_PACKED_I_C = 53,
+  VISA_3D_GATHER4_PO_PACKED_L_C = 55,
+  VISA_3D_SAMPLE_PO_LZ = 56,
+  VISA_3D_SAMPLE_PO_C_LZ = 57,
   VISA_3D_TOTAL_NUM_OPS,
 } VISASampler3DSubOpCode;
 
@@ -493,6 +518,7 @@ typedef enum {
   Xe_ARL,
   Xe_PVC,
   Xe_PVCXT,
+  Xe2,
   ALL
 } TARGET_PLATFORM;
 
@@ -662,6 +688,7 @@ enum LSC_DATA_SIZE {
 // store truncates
 //
 // In DG2 and PVC the upper bits are undefined.
+// XE2+ makes them zeros.
   LSC_DATA_SIZE_8c32b,   // DATA:u8c32...   (zero-extend / truncate)
   LSC_DATA_SIZE_16c32b,  // DATA:u16c32..   (zero-extend / truncate)
   LSC_DATA_SIZE_16c32bH, // DATA:u16c32h..  h means load to (h)igh 16
@@ -714,6 +741,10 @@ struct LSC_DATA_SHAPE_BLOCK2D {
   bool vnni;  // perform a vnni transform on load
 };
 static const unsigned LSC_BLOCK2D_ADDR_PARAMS = 6;
+struct LSC_DATA_SHAPE_TYPED_BLOCK2D {
+  int width;  // the width (in bytes) of the 2d region
+  int height; // the height (in elems) of the 2d region
+};
 
 enum LSC_ADDR_SIZE {
   LSC_ADDR_SIZE_INVALID,
@@ -754,6 +785,7 @@ typedef enum {
   LSC_CACHING_WRITETHROUGH,   // .wt
   LSC_CACHING_STREAMING,      // .st
   LSC_CACHING_READINVALIDATE, // .ri last use / invalidate after read
+  LSC_CACHING_CONSTCACHED, // .cc
 } LSC_CACHE_OPT;
 // Only some combinations are legal (per platform)
 struct LSC_CACHE_OPTS {
@@ -876,6 +908,9 @@ enum LSC_OP {
   LSC_READ_STATE_INFO = 0x1E,
   LSC_FENCE = 0x1F,
 //
+  LSC_APNDCTR_ATOMIC_ADD = 0x28,
+  LSC_APNDCTR_ATOMIC_SUB = 0x29,
+  LSC_APNDCTR_ATOMIC_STORE = 0x2A,
 
   LSC_INVALID = 0xFFFFFFFF,
 };
@@ -939,5 +974,18 @@ enum FFID {
   FFID_INVALID = 0xFF
 };
 
+// Option vISA_lscEnableImmOffsFor (-lscEnableImmOffsFor) will be a bitmask
+// of these; vISA will attempt enable/disable immediate offsets based on this
+// bitset
+typedef enum {
+  VISA_LSC_IMMOFF_INVALID,
+  VISA_LSC_IMMOFF_ADDR_TYPE_FLAT = 1,
+  VISA_LSC_IMMOFF_ADDR_TYPE_BSS = 2,
+  VISA_LSC_IMMOFF_ADDR_TYPE_SS = 3,
+  VISA_LSC_IMMOFF_ADDR_TYPE_BTI = 4,
+  VISA_LSC_IMMOFF_ADDR_TYPE_XXXX = 5,
+  VISA_LSC_IMMOFF_PAYLOAD_LOADING = 16,
+  VISA_LSC_IMMOFF_SPILL_FILL = 17
+} VISALscImmOffOpts;
 
 #endif // _VISA_IGC_COMMON_HEADER_H_

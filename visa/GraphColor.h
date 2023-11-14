@@ -1132,6 +1132,7 @@ private:
   void expandFillIntrinsic(G4_BB *);
   void expandSpillFillIntrinsics(unsigned);
   void saveRestoreA0(G4_BB *);
+  void initAddrRegForImmOffUseNonStackCall();
   static const RAVarInfo defaultValues;
   std::vector<RAVarInfo> vars;
   std::vector<G4_Declare *> UndeclaredVars;
@@ -1154,6 +1155,9 @@ private:
   // store instructions that shouldnt be rematerialized.
   std::unordered_set<G4_INST *> dontRemat;
 
+  // [-2^16...2^16) in bytes
+  //   (frame pointer is biased 2^16 so that -2^16 references scratch[0x0])
+  static constexpr unsigned SPILL_FILL_IMMOFF_MAX = 0x10000; // 64k
 
   // map each BB to its local RA GRF usage summary, populated in local RA.
   std::map<G4_BB *, PhyRegSummary *> bbLocalRAMap;
@@ -1196,6 +1200,7 @@ private:
 
   uint32_t numGRFSpill = 0;
   uint32_t numGRFFill = 0;
+  bool canUseLscImmediateOffsetSpillFill = false;
 
   unsigned int numReservedGRFsFailSafe = BoundedRA::NOT_FOUND;
 
@@ -1490,8 +1495,14 @@ public:
   }
 
   unsigned get_bundle(unsigned baseReg, int offset) const {
+    if (builder.has64bundleSize2GRFPerBank()) {
+      return (((baseReg + offset) % 32) / 4);
+    }
     if (builder.hasPartialInt64Support()) {
       return (((baseReg + offset) % 32) / 2);
+    }
+    if (builder.has64bundleSize()) {
+      return (((baseReg + offset) % 16) / 2);
     }
     return (((baseReg + offset) % 64) / 4);
   }
@@ -1503,11 +1514,17 @@ public:
       bankID = ((baseReg + offset) % 4) / 2;
     }
 
+    if (builder.has64bundleSize2GRFPerBank()) {
+      bankID = ((baseReg + offset) % 4) / 2;
+    }
 
     if (builder.hasOneGRFBank16Bundles()) {
       bankID = (baseReg + offset) % 2;
     }
 
+    if (builder.has64bundleSize()) {
+      bankID = (baseReg + offset) % 2;
+    }
     return bankID;
   }
 

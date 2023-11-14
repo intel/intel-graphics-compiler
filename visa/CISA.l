@@ -466,6 +466,13 @@ lsc_atomic_iinc|lsc_atomic_idec|lsc_atomic_iadd|lsc_atomic_load|lsc_atomic_store
         return LSC_ATOMIC_MNEMONIC;
     }
 
+lsc_apndctr_atomic_add|lsc_apndctr_atomic_sub|lsc_apndctr_atomic_store {
+      TRACE("** lsc_apndctr_atomic INST");
+      CISAlval.lsc_subOpcode = str2lscop(yytext);
+      // this is set in the parser based on the SFID
+      // CISAlval.lsc_opcode = ISA_LSC_UNTYPED;
+      return LSC_ATOMIC_MNEMONIC;
+    }
 
 lsc_read_state_info {
         TRACE("** lsc_read_state_info INST");
@@ -733,10 +740,25 @@ sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|s
         return SAMPLE_3D_OP;
     }
 
+sample_po|sample_po_b|sample_po_l|sample_po_c|sample_po_d|sample_po_l_c|sample_po_lz|sample_po_c_lz {
+        TRACE("** SAMPLE_3D");
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
+        return SAMPLE_3D_OP;
+    }
 
-
+sample_mlod|sample_c_mlod|sample_d_c_mlod {
+        TRACE("** SAMPLE_3D");
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
+        return SAMPLE_3D_OP;
+    }
 
 load_3d|load_mcs|load_2dms_w|load_lz {
+        TRACE("** LOAD_3D");
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
+        return LOAD_3D_OP;
+    }
+
+load_l {
         TRACE("** LOAD_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return LOAD_3D_OP;
@@ -754,7 +776,17 @@ sample4_po|sample4_po_c {
         return SAMPLE4_3D_OP;
     }
 
+sample4_po_b|sample4_po_l|sample4_po_l_c|sample4_po_i|sample4_po_i_c {
+        TRACE("** SAMPLE4_3D");
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
+        return SAMPLE4_3D_OP;
+    }
 
+sample4_i|sample4_l|sample4_b|sample4_i_c|sample4_l_c {
+        TRACE("** SAMPLE4_3D");
+        CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
+        return SAMPLE4_3D_OP;
+    }
 
 resinfo {
         TRACE("** RESINFO_3D");
@@ -1078,6 +1110,8 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
             CISAlval.lsc_caching_opt = LSC_CACHING_WRITETHROUGH;
         } else if (strcmp(yytext+1,"st") == 0) {
             CISAlval.lsc_caching_opt = LSC_CACHING_STREAMING;
+        } else if (strcmp(yytext+1,"cc") == 0) {
+            CISAlval.lsc_caching_opt = LSC_CACHING_CONSTCACHED;
         } else { /* ri */
             CISAlval.lsc_caching_opt = LSC_CACHING_READINVALIDATE;
         }

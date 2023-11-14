@@ -86,6 +86,7 @@ enum class XELatencyInfo : uint16_t {
   LSC_TYPED_L1 = 75,      // LSC typed L1 cache hit
   LSC_TYPED_L3 = 200,     // LSC typed L3 cache hit
   LSC_TYPED_FENCE = 60,   // LSC typed fence
+  ADDR_MOV = 2,
   UNKNOWN = std::numeric_limits<uint16_t>::max(),
 
   //

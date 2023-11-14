@@ -30,6 +30,9 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2,
     return MSG_BARRIER;
   }
 
+  // FIXME: on XE2+, URB is also a LSC instruction even though it's not a
+  // dataport message. Since not sure if URB is coherent with other LSC
+  // messages, just include it to keep it unreordered for safe.
   bool isSend1DataPort =
       send1->getMsgDesc()->isHDC() || send1->getMsgDesc()->isLSC();
   bool isSend2DataPort =

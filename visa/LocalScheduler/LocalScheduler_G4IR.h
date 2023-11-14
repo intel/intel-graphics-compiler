@@ -383,6 +383,16 @@ static bool instCanUse2xDP(G4_INST *inst) {
   return false;
 }
 
+// Restrictions of candidate for 2xSP:
+//    1, Only support mad
+//    2, Instruction must be Type_DF or Type_F
+static bool instCanUse2xSP(G4_INST *inst) {
+  if (inst->opcode() == G4_mad && (inst->getDst()->getType() == Type_DF ||
+                                   inst->getDst()->getType() == Type_F)) {
+    return true;
+  }
+  return false;
+}
 
 class window2xSP {
 public:
@@ -581,6 +591,32 @@ public:
     return true;
   }
 
+  // Check if the instruction can be added into the 2xSP block
+  bool canAddToBlock2xSP(Node *node) const {
+    G4_INST *inst = node->getInstructions()->front();
+
+    if (!instCanUse2xSP(inst)) {
+      return false;
+    }
+
+    // All instructions in the same block have the same type
+    if (instType != Type_UNDEF && inst->getDst()->getType() != instType) {
+      return false;
+    }
+
+    // All instructions in the block have the same GRF size
+    if (!checkGRFSize(node)) {
+      return false;
+    }
+
+    // For non-first blocks, the inst's src0 should have the same registers as
+    // the dst of instructions in previous block
+    if (preBlock && !hasSameOperand(inst)) {
+      return false;
+    }
+
+    return true;
+  }
 
   // Check if block is good or not:
   //     GRF size should be <= ACC number

@@ -270,6 +270,9 @@ struct LscOpInfo {
   bool isBlock2D() const {
     return op == LSC_LOAD_BLOCK2D || op == LSC_STORE_BLOCK2D;
   }
+  bool isApndCtrAtomic() const {
+    return op == LSC_APNDCTR_ATOMIC_ADD || op == LSC_APNDCTR_ATOMIC_SUB || op == LSC_APNDCTR_ATOMIC_STORE;
+  }
 };
 
 LscOpInfo LscOpInfoGet(LSC_OP op);                // hard failure

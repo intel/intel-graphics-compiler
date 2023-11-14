@@ -5156,11 +5156,22 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
 
   int status = VISA_SUCCESS;
   bool isLoad = (subOpcode == VISA_3D_LD_MCS || subOpcode == VISA_3D_LD ||
+                 subOpcode == VISA_3D_LD_L ||
                  subOpcode == VISA_3D_LD2DMS_W || subOpcode == VISA_3D_LD_LZ);
   bool isSample4 =
       (subOpcode == VISA_3D_GATHER4 || subOpcode == VISA_3D_GATHER4_C ||
        (m_builder->hasGather4PO() && subOpcode == VISA_3D_GATHER4_PO) ||
-       (m_builder->hasGather4PO() && subOpcode == VISA_3D_GATHER4_PO_C)
+       (m_builder->hasGather4PO() && subOpcode == VISA_3D_GATHER4_PO_C) ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED_L ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED_B ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED_I ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED_C ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED_I_C ||
+       subOpcode == VISA_3D_GATHER4_PO_PACKED_L_C ||
+       subOpcode == VISA_3D_GATHER4_I || subOpcode == VISA_3D_GATHER4_B ||
+       subOpcode == VISA_3D_GATHER4_L || subOpcode == VISA_3D_GATHER4_I_C ||
+       subOpcode == VISA_3D_GATHER4_L_C
       );
 
   if (IS_GEN_BOTH_PATH) {
@@ -7245,6 +7256,7 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
     uint32_t src2Bits = GenPrecisionTable[(int)src2Precision].BitSize;
     if (src2Precision == GenPrecision::FP16 ||
         src2Precision == GenPrecision::BF16 ||
+        src2Precision == GenPrecision::TF32 ||
         src2Bits == 8 || (src1Bits <= 4 && src2Bits == 4)) {
       G4_SubReg_Align srAlign = getIRBuilder()->getGRFAlign();
       if (Count != 8)
@@ -8005,6 +8017,10 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscFence(LSC_SFID lscSfid,
   if (getOptions()->getOption(vISA_LSCFenceWA) && lscSfid == LSC_UGM &&
       scope > LSC_SCOPE_LOCAL && fenceOp == LSC_FENCE_OP_NONE)
     fenceOp = LSC_FENCE_OP_INVALIDATE;
+
+  if (m_builder->needLSCFenceDiscardWA())
+    vISA_ASSERT_INPUT(fenceOp != LSC_FENCE_OP_DISCARD,
+                      "Fence Op Discard is prohibited on this platform.");
 
   if (IS_GEN_BOTH_PATH) {
     SFID sfid = LSC_SFID_To_SFID(lscSfid);

@@ -161,6 +161,8 @@ static bool hasLifetimeEndBetweenLastUse(INST_LIST_ITER iitr,
 //   shl T, s0 << N -> add *, X, T ==> mad X, s0, 2^n
 //
 //   logic -> logic ==> bfn
+//   add T, X, imm -> lsc untyped [T] => lsc untyped [X + imm]
+//                    (given various constraints on X and imm)
 bool InstCombiner::tryInstPropagate(INST_LIST_ITER iitr, INST_LIST_ITER eitr) {
   G4_INST *defInst = *iitr;
   if (!defInst->canPropagateBinaryToTernary()) {
@@ -323,6 +325,121 @@ bool InstCombiner::tryInstPropagate(INST_LIST_ITER iitr, INST_LIST_ITER eitr) {
           }
         });
       }
+    } else if (opsAre(G4_add, G4_sends)) {
+      // try to promote to LSC descriptor
+      //
+      if (uitr->second != Opnd_src0)
+        return false; // not the address operand
+      else if (builder.getPlatform() < Xe2)
+        return false; // not supported in HW
+                      //
+      G4_InstSend *useSendInst = useInst->asSendInst();
+      G4_SendDescRaw *sdr = useSendInst->getMsgDescRaw();
+      if (!sdr)
+        return false;
+      if (!sdr->isLscOp() || sdr->getSFID() == SFID::TGM)
+        return false; // must be non-TGM LSC
+                      //
+      int immOffset = 0;
+      G4_SrcRegRegion *varOffset = nullptr;
+      Gen4_Operand_Number varSrcIx = Opnd_src0;
+      if (defSrc0->isSrcRegRegion() && defSrc1->isImm()) {
+        immOffset = (int)defSrc1->asImm()->getImm();
+        varOffset = defSrc0->asSrcRegRegion();
+        varSrcIx = Opnd_src0;
+      } else if (defSrc0->isImm() && defSrc1->isSrcRegRegion()) {
+        immOffset = (int)defSrc0->asImm()->getImm();
+        varOffset = defSrc1->asSrcRegRegion();
+        varSrcIx = Opnd_src1;
+      } else {
+        // var/var, imm/imm, or some other nonsense
+        return false;
+      }
+      immOffset += sdr->getLscImmOff();
+
+      bool varDeclNeedsGrfAlignment = false;
+      if (sdr->getLscDataOrder() == LSC_DATA_ORDER_TRANSPOSE) {
+        // transpose accesses only work if the scalar is aligned
+        auto *varDecl = varOffset->getBaseRegVarRootDeclare();
+        bool isGrfAligned = varOffset->getSubRegOff() == 0 &&
+                            varDecl->getByteAlignment() >= builder.getGRFSize();
+        if (!isGrfAligned) {
+          bool canAlign =
+              forceAlignsLeft - (int)grfForcedAlignments.size() > 0 &&
+              !varDecl->getRegVar()
+                   ->isPhyRegAssigned() && // not already allocated
+              !varDecl->isInput() &&       // inputs can't move
+              !varDecl->isOutput();        // outputs can't move
+          if (!canAlign) {
+            return false;
+          }
+          // The scalar is not aligned but we can force alignment
+          // * don't go nuts here, it'll burn GRFs fast
+          // * we only commit to forcing alignment if we commit
+          //   to the fold
+          // This can work only if the source is GRF aligned.
+          // We can't have the register allocator choosing some
+          // misaligned register.
+          //
+          // Only pull the trigger if we commit to the fold
+          // into all uses.
+          //
+          // NOTE: we should think hard about this; we could chew up
+          // a ton of GRFs this away
+          varDeclNeedsGrfAlignment = true;
+          grfForcedAlignments.insert(varDecl);
+        }
+      } else if (varOffset->getRegion()->isScalar()) {
+        // non-transpose
+        //   e.g. broadcasting into a vector payload
+        return false;
+      }
+
+      int sendAddrSize = sdr->getLscAddrSizeBytes();
+      if (sendAddrSize != varOffset->getTypeSize()) {
+        // e.g. must not copy an a16 address into an a32 payload without
+        // widening
+        //   add  tmp:d  var:w  0x10:w
+        //   load.a32 [tmp] // cannot use var here!
+        return false;
+      } else if (!varOffset->getBase()->asRegVar()->getDeclare()->useGRF()) {
+        return false;
+      } else if (varOffset->isIndirect()) {
+        return false;
+      } else if (varOffset->hasModifier()) {
+        return false;
+      } else if (!sdr->canSetLscImmOff(immOffset)) {
+        return false; // e.g. offset too large or misaligned
+      }
+
+      // ensure not turned off by options
+      auto addrType = sdr->getLscAddrType();
+      uint32_t enabledAddrTypes =
+          builder.getuint32Option(vISA_lscEnableImmOffsFor);
+      bool isEnabledAddrType =
+          (enabledAddrTypes & (1 << getLscImmOffOpt(addrType))) != 0;
+      if (!isEnabledAddrType) {
+        return false;
+      }
+
+      applyUses.emplace_back([=]() {
+        copyOperand(varSrcIx, useSendInst, Opnd_src0);
+        sdr->setLscImmOff(immOffset);
+        // this is really nuts:
+        //   send instructions has a G4_SendDesc field as well
+        //   as G4_Operand (G4_Imm or G4_Reg for a0.#)
+        // we have update the immediate operand src3
+        auto *exDesc = useSendInst->getSrc(3);
+        if (exDesc->isImm()) {
+          G4_Imm *newExDesc =
+              builder.createImm(sdr->getExtendedDesc(), Type_UD);
+          useSendInst->setSrc(newExDesc, 3);
+        }
+        if (varDeclNeedsGrfAlignment) {
+          varOffset->getBaseRegVarRootDeclare()->setSubRegAlign(ThirtyTwo_Word);
+        }
+      });
+      // LSC send immoff promote
     } else {
       // unsupported pattern
       return false;

@@ -756,11 +756,15 @@ static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform) {
     break;
   case Xe_DG2:
   case Xe_MTL:
+  case Xe_ARL:
     platform = IGA_XE_HPG;
     break;
   case Xe_PVC:
   case Xe_PVCXT:
     platform = IGA_XE_HPC;
+    break;
+  case Xe2:
+    platform = IGA_XE2;
     break;
   default:
     break;
@@ -2075,6 +2079,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   case Xe_XeHPSDV:
   case Xe_DG2:
   case Xe_MTL:
+  case Xe_ARL:
     configs.resize(2);
     // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
     configs[0] = Config(128, 8, 16, 4);
@@ -2083,6 +2088,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
     break;
   case Xe_PVC:
   case Xe_PVCXT:
+  case Xe2:
     configs.resize(2);
     // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
     configs[0] = Config(128, 8, 16, 4);

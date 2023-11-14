@@ -1393,6 +1393,17 @@ const raw_opnd &getRawOperand(const CISA_INST *inst, unsigned i) {
   return inst->opnd_array[i]->_opnd.r_opnd;
 }
 
+bool isNullRawOperand(const CISA_INST *inst, unsigned i) {
+  vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
+  vISA_ASSERT(inst->opnd_num > i,
+               "No such operand, i, for instruction inst.");
+  return inst->opnd_array[i]->_opnd.r_opnd.index == 0;
+}
+
+bool isNotNullRawOperand(const CISA_INST *inst, unsigned i) {
+  return !isNullRawOperand(inst, i);
+}
+
 const vector_opnd &getVectorOperand(const CISA_INST *inst, unsigned i) {
   vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
   vISA_ASSERT(inst->opnd_num > i,
@@ -1595,6 +1606,21 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
     else
       cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK};
     break;
+  case LSC_L1UC_L3CC:
+    if (isLoad) {
+      cacheOpts = {LSC_CACHING_UNCACHED, LSC_CACHING_CONSTCACHED};
+      break;
+    }
+  case LSC_L1C_L3CC:
+    if (isLoad) {
+      cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CONSTCACHED};
+      break;
+    }
+  case LSC_L1IAR_L3IAR:
+    if (isLoad) {
+      cacheOpts = {LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE};
+      break;
+    }
   default:
     vISA_ASSERT_UNREACHABLE("unsupported caching option");
     break;

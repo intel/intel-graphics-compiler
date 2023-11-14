@@ -64,6 +64,8 @@ void HWConformity::fixOpndTypeAlign(G4_BB *bb) {
 // be 128-bit aligned with destination horizontal stride equivalent to a
 // word for an immediate integer vector (v) and equivalent to a DWord for an
 // immediate float vector (vf).
+// For Xe2+, :vf datatype is not supported and :v and :uv must not be used
+// when destination is any of the float datatypes.
 bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
                                                 G4_BB *bb) {
   bool changed = false;
@@ -86,7 +88,8 @@ bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
     G4_Type moveTy = (ty == Type_V)    ? Type_W
                      : (ty == Type_UV) ? Type_UW
                                        : Type_F;
-    if (!dstAligned) {
+    if (!dstAligned || (builder.getPlatform() >= Xe2 &&
+                        IS_TYPE_FLOAT_ALL(reg->getType()))) {
       inst->setSrc(insertMovBefore(iter, k, moveTy, bb), k);
       changed = true;
     } else if (hsInBytes != TypeSize(moveTy)) {

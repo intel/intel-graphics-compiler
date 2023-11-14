@@ -571,6 +571,21 @@ private:
                             uint32_t numTotalDW)
   {
     G4_Declare *loadAddress = baseLoadAddr;
+    // Use immediate offsets to avoid the adds.
+    const uint32_t immOffOpts =
+        builder.getuint32Option(vISA_lscEnableImmOffsFor);
+    const bool useLscImmOff =
+        // HW supports it
+        builder.getPlatform() >= Xe2 &&
+        //
+        // BTI only gets 12b of range (signed+DW aligned) ~ 31 GRF
+        (numTotalDW * TypeSize(Type_UD)) <= ((1 << 11) - 4) &&
+        //
+        // enabled in options
+        ((immOffOpts & (1 << VISA_LSC_IMMOFF_PAYLOAD_LOADING)) != 0) &&
+        //
+        // the payload address type is also enabled in options
+        (immOffOpts & (1 << getLscImmOffOpt(LSC_ADDR_TYPE_BTI))) != 0;
     for (uint32_t numRemainingDW = numTotalDW, nextGRF = startGRF;
          numRemainingDW > 0;
          /* updated in body */) {
@@ -578,12 +593,20 @@ private:
       LSC_OP op = LSC_LOAD;
       LSC_SFID lscSfid = LSC_UGM;
       LSC_CACHE_OPTS cacheOpts{LSC_CACHING_CACHED, LSC_CACHING_CACHED};
+      if (builder.getPlatformGeneration() >= PlatformGen::XE2) {
+        // use XE2+ L3 CC
+        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CONSTCACHED};
+      }
 
       LSC_ADDR addrInfo{};
       addrInfo.type = LSC_ADDR_TYPE_BTI;
       addrInfo.size = LSC_ADDR_SIZE_32b;
       addrInfo.immScale = 1;
       addrInfo.immOffset = 0;
+      if (useLscImmOff) {
+        addrInfo.immOffset =
+            ((int)nextGRF - startGRF) * (int)kernel.getGRFSize();
+      }
 
       LSC_DATA_SHAPE dataShape{};
       dataShape.size = LSC_DATA_SIZE_32b; // in the unit of 32b
@@ -621,6 +644,7 @@ private:
       numRemainingDW -= numDWToLoad;
       nextGRF += numDWToLoad / builder.numEltPerGRF<Type_UD>();
       bool advanceLoadAddress = numRemainingDW > 0;
+      advanceLoadAddress &= !useLscImmOff;
       if (advanceLoadAddress) {
         // advance the address offset
         // (W) add (1) loadAddress.0 baseLoadAddr.0 numGRFLoadedInBytes

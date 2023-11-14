@@ -69,24 +69,80 @@ static const char *getSampleOp3DNameOrNull(VISASampler3DSubOpCode opcode,
     return "sampleinfo";
   case VISA_3D_SAMPLE_KILLPIX: // 0xC
     return "sample+killpix";
+  case VISA_3D_GATHER4_L: // 0xD
+    return "sample4_l";
+  case VISA_3D_GATHER4_B: // 0xE
+    return "sample4_b";
+  case VISA_3D_GATHER4_I: // 0xF
+    return "sample4_i";
   case VISA_3D_GATHER4_C: // 0x10
     return "sample4_c";
   case VISA_3D_GATHER4_PO: // 0x11
+                           // Xe2 reuses GATHER4_PO* opcode values, Xe2 doesn't
+                           // have GATHER4_PO*.
+    vISA_ASSERT(VISA_3D_SAMPLE_D_C_MLOD == VISA_3D_GATHER4_PO,
+                "Code below needs update");
+    if (platform >= Xe2) {
+      return "sample_d_c_mlod";
+    }
     return "sample4_po";
   case VISA_3D_GATHER4_PO_C: // 0x12
+    vISA_ASSERT(VISA_3D_SAMPLE_MLOD == VISA_3D_GATHER4_PO_C,
+                "Code below needs update");
+    if (platform >= Xe2) {
+      return "sample_mlod";
+    }
     return "sample4_po_c";
+  case VISA_3D_SAMPLE_C_MLOD: // 0x13
+    return "sample_c_mlod";
   case VISA_3D_SAMPLE_D_C: // 0x14
     return "sample_d_c";
+  case VISA_3D_GATHER4_I_C: // 0x15
+    return "sample4_i_c";
+  case VISA_3D_GATHER4_L_C: // 0x17
+    return "sample4_l_c";
   case VISA_3D_SAMPLE_LZ: // 0x18
     return "sample_lz";
   case VISA_3D_SAMPLE_C_LZ: // 0x19
     return "sample_c_lz";
   case VISA_3D_LD_LZ: // 0x1A
     return "load_lz";
+  case VISA_3D_LD_L: // 0x1B
+    return "load_l";
   case VISA_3D_LD2DMS_W: // 0x1C
     return "load_2dms_w";
   case VISA_3D_LD_MCS: // 0x1D
     return "load_mcs";
+  case VISA_3D_SAMPLE_PO:
+    return "sample_po";
+  case VISA_3D_SAMPLE_PO_B:
+    return "sample_po_b";
+  case VISA_3D_SAMPLE_PO_L:
+    return "sample_po_l";
+  case VISA_3D_SAMPLE_PO_C:
+    return "sample_po_c";
+  case VISA_3D_SAMPLE_PO_D:
+    return "sample_po_d";
+  case VISA_3D_SAMPLE_PO_L_C:
+    return "sample_po_l_c";
+  case VISA_3D_GATHER4_PO_PACKED:
+    return "sample4_po";
+  case VISA_3D_GATHER4_PO_PACKED_L:
+    return "sample4_po_l";
+  case VISA_3D_GATHER4_PO_PACKED_B:
+    return "sample4_po_b";
+  case VISA_3D_GATHER4_PO_PACKED_I:
+    return "sample4_po_i";
+  case VISA_3D_GATHER4_PO_PACKED_C:
+    return "sample4_po_c";
+  case VISA_3D_GATHER4_PO_PACKED_I_C:
+    return "sample4_po_i_c";
+  case VISA_3D_GATHER4_PO_PACKED_L_C:
+    return "sample4_po_l_c";
+  case VISA_3D_SAMPLE_PO_LZ:
+    return "sample_po_lz";
+  case VISA_3D_SAMPLE_PO_C_LZ:
+    return "sample_po_c_lz";
   default:
     return nullptr;
   }

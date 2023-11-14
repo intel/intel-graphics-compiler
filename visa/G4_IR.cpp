@@ -816,6 +816,8 @@ bool G4_INST::isMathPipeInst() const {
   if (isDFInstruction()) {
     if (builder.getPlatform() == Xe_MTL)
       return true;
+    if (builder.getPlatform() == Xe_ARL)
+      return true;
   }
 
   return false;
@@ -7759,6 +7761,20 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
       uint32_t bytes = bytesPerLane * D * C;
       if (op == G4_dpasw) {
         bytes = bytesPerLane * D * ((C + 1) / 2);
+      }
+      computeDpasOperandBound(opnd, opnd->left_bound,
+                              opnd->left_bound + bytes - 1);
+    }
+
+    else if (opnd && opnd == srcs[3]) {
+      uint32_t bytes;
+      if (dpasInst->isInt())
+      {
+        bytes = 2 * getBuilder().getGRFSize();
+      } else if (dpasInst->isFP16() || dpasInst->isBF16()) {
+        bytes = getBuilder().getGRFSize();
+      } else { // isTF32()
+        bytes = getBuilder().getGRFSize() / 2;
       }
       computeDpasOperandBound(opnd, opnd->left_bound,
                               opnd->left_bound + bytes - 1);

@@ -76,6 +76,13 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::ATOMIC_XOR;
   case LSC_OP::LSC_ATOMIC_OR:
     return MsgOp::ATOMIC_OR;
+  //
+  case LSC_OP::LSC_APNDCTR_ATOMIC_ADD:
+    return MsgOp::ATOMIC_ACADD;
+  case LSC_OP::LSC_APNDCTR_ATOMIC_SUB:
+    return MsgOp::ATOMIC_ACSUB;
+  case LSC_OP::LSC_APNDCTR_ATOMIC_STORE:
+    return MsgOp::ATOMIC_ACSTORE;
   case LSC_OP::LSC_FENCE:
     return MsgOp::FENCE;
   case LSC_OP::LSC_READ_STATE_INFO:
@@ -121,7 +128,7 @@ static DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord, bool vnni = false) {
 
 G4_ExecSize IR_Builder::lscMinExecSize(LSC_SFID lscSfid) const {
   const TARGET_PLATFORM P = getPlatform();
-  uint32_t minExecSize = ((P == Xe_DG2 || P == Xe_MTL) ? 8 : 16);
+  uint32_t minExecSize = ((P == Xe_DG2 || P == Xe_MTL || P == Xe_ARL) ? 8 : 16);
   if (!hasLSCEnableHalfSIMD())
   {
     minExecSize *= 2;
@@ -170,6 +177,8 @@ static Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
     return Caching::ST;
   case LSC_CACHING_READINVALIDATE:
     return Caching::RI;
+  case LSC_CACHING_CONSTCACHED:
+    return Caching::CC;
   default:
     vISA_ASSERT_UNREACHABLE("invalid caching");
   }
@@ -351,6 +360,7 @@ int IR_Builder::translateLscUntypedInst(
   case LSC_SLM:
     sfid = SFID::SLM;
     break;
+    break;
   default:
     vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
   }
@@ -366,6 +376,7 @@ int IR_Builder::translateLscUntypedInst(
   // send descriptor
   uint32_t desc = 0;
   uint32_t exDesc = 0;
+  uint32_t exDescImmOff = 0;
 
   // try and promote the surface identifier (e.g. BTI or SS obj) to ex desc
   surface = lscTryPromoteSurfaceImmToExDesc(surface, addrInfo.type, exDesc);
@@ -438,6 +449,8 @@ int IR_Builder::translateLscUntypedInst(
   src0Addr = lscLoadEffectiveAddress(op, lscSfid, pred, addrExecSize,
                                      addrExecCtrl, addrInfo, dataSizeBits / 8,
                                      surface, src0Addr, exDesc
+                                     ,
+                                     exDescImmOff
   );
 
   uint32_t dataRegs = 1;
@@ -640,6 +653,7 @@ int IR_Builder::translateLscUntypedInst(
       createLscDesc(sfid, desc, exDesc, src1Len,
                     getSendAccessType(loadAccess, storeAccess),
                     surface, LdStAttrs::NONE);
+  msgDesc->setExDescImmOff(exDescImmOff);
 
   auto sendInst =
     createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
@@ -1384,7 +1398,8 @@ IR_Builder::lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
 G4_SrcRegRegion *IR_Builder::lscLoadEffectiveAddress(
     LSC_OP lscOp, LSC_SFID lscSfid, G4_Predicate *pred, G4_ExecSize execSize,
     VISA_EMask_Ctrl execCtrl, LSC_ADDR addrInfo, int bytesPerDataElem,
-    const G4_Operand *surface, G4_SrcRegRegion *addr, uint32_t &exDesc
+    const G4_Operand *surface, G4_SrcRegRegion *addr, uint32_t &exDesc,
+    uint32_t &exDescImmOff
 ) {
   vISA_ASSERT_INPUT(addrInfo.immScale == 1, "address scaling not supported yet");
   // The address may need scaling and offset adjustment
@@ -1393,11 +1408,125 @@ G4_SrcRegRegion *IR_Builder::lscLoadEffectiveAddress(
   // e.g. lsc_load.ugm.d32.a64 ... [4*ADDR - 0x100]
   //
 
+  if (lscTryPromoteImmOffToExDesc(lscOp, lscSfid, addrInfo, bytesPerDataElem,
+                                  surface, exDesc, exDescImmOff)) {
+    // we were able to encode the immediate offset
+    // zero so lscMulAdd doesn't try and emulate
+    addrInfo.immOffset = 0;
+  }
   // emulate scale and add if necessary
   return lscMulAdd(pred, execSize, execCtrl, addr, (int16_t)addrInfo.immScale,
                    addrInfo.immOffset);
 }
 
+bool IR_Builder::lscTryPromoteImmOffToExDesc(
+    LSC_OP lscOp, LSC_SFID lscSfid, LSC_ADDR addrInfo, int bytesPerDataElem,
+    const G4_Operand *surface, uint32_t &exDesc, uint32_t &exDescImmOff) {
+  // Xe2 supports a signed immediate offset
+  //   - must be DW aligned but value is in signed bytes
+  //   - not TGM (only UGM, SLM, URB, ...)
+  //   - enabled for BTI [23:12] and flat [31:12]
+  //     things aren't well defined given BTI if ExDesc.IsReg
+  //   - ExDesc must be an immediate field, not an a0.# register
+  //      The spec says: "Must programmed with an immediate value in EU SEND
+  //      instruction."
+  //       (and I confirmed this was the meaning)
+  // Xe2 extends this support for BSS/SS, but only
+  //      if ExDesc is a register (we also get most of the ExDescImm bits)
+
+  // fast path
+  if (addrInfo.immOffset == 0)
+    return true;
+
+  bool supportedPlatform = getPlatform() >= Xe2;
+  if (!supportedPlatform)
+    return false;
+
+  if (lscSfid == LSC_TGM)
+    return false; // TGM not supported
+
+  uint32_t enabledAddrTypes =
+      m_options->getuInt32Option(vISA_lscEnableImmOffsFor);
+  bool isEnabledAddrType =
+      (enabledAddrTypes & (1 << getLscImmOffOpt(addrInfo.type))) != 0;
+  if (!isEnabledAddrType) {
+    return false;
+  }
+
+  auto fitsIn = [&](int what, int bits) {
+    return what >= -(1 << (bits - 1)) && what <= (1 << (bits - 1)) - 1;
+  };
+
+  // offsets must be Dword aligned
+  // + careful handling of block2d where the offset is in elements not bytes
+  bool isBlock2d = lscOp == LSC_LOAD_BLOCK2D || lscOp == LSC_STORE_BLOCK2D;
+  if (isBlock2d) {
+    vISA_ASSERT_INPUT(lscSfid != LSC_TGM, "block2d mustn't be TGM for this");
+    vISA_ASSERT_INPUT(addrInfo.type == LSC_ADDR_TYPE_FLAT, "block2d must be flat");
+    vISA_ASSERT_INPUT(false, "block2d not supported yet");
+    //        if (bytesPerDataElem * addrInfo.immOffsetX % 4 != 0 ||
+    //            !fitsIn(addrInfo.immOffsetX, 10))
+    //        {
+    //            return false;
+    //        }
+    //        if (bytesPerDataElem * addrInfo.immOffsetY % 4 != 0 ||
+    //            !fitsIn(addrInfo.immOffsetY, 10))
+    //        {
+    //            return false;
+    //        }
+  } else {
+    if (addrInfo.immOffset % 4 != 0) {
+      return false;
+    }
+    if (addrInfo.type == LSC_ADDR_TYPE_FLAT &&
+        !fitsIn(addrInfo.immOffset, 20)) {
+      return false;
+    }
+  }
+
+  bool isFlatAndCanPromote =
+      addrInfo.type == LSC_ADDR_TYPE_FLAT &&
+      surface == nullptr; // FLAT should always be ExDesc.IsImm, but we check
+
+  bool isBtiAndCanPromote = // BTI requires ExDesc.IsImm
+      addrInfo.type == LSC_ADDR_TYPE_BTI &&
+      surface == nullptr && // only if ExDesc is imm
+      fitsIn(addrInfo.immOffset, 12);
+  //
+  bool isBssSsAndCanPromote = (addrInfo.type == LSC_ADDR_TYPE_BSS ||
+                               addrInfo.type == LSC_ADDR_TYPE_SS) &&
+                              surface != nullptr && // only if ExDesc.IsReg
+                              fitsIn(addrInfo.immOffset, 17);
+  //
+  if (isFlatAndCanPromote) {
+    // FLAT gets ExDesc[31:12] (signed 20b) or (signed 10b:signed 10b) for
+    // block2d
+    if (isBlock2d) {
+      vISA_ASSERT_INPUT(false, "block2d not supported yet");
+      // exDesc |= ((uint32_t)(addrInfo.immOffsetX & 0x3FF) << 12);
+      // exDesc |= ((uint32_t)(addrInfo.immOffsetY & 0x3FF) << (10 + 12));
+    } else {
+      exDesc |= ((uint32_t)addrInfo.immOffset << 12);
+    }
+    return true;
+  } else if (isBtiAndCanPromote) {
+    // BTI gets ExDesc[23:12] (signed 12b)
+    exDesc |= 0x00FFF000 & ((uint32_t)addrInfo.immOffset << 12);
+    return true;
+  } else if (isBssSsAndCanPromote) {
+    // BSS/SS
+       //   the value is stored in
+       //   Imm[16:4][3:0] => ExDescImm[31:19][15:12]
+       //     (bits ExDescImm[18:16] are MBZ)
+    uint32_t encddUnshifted = (((uint32_t)addrInfo.immOffset & ~0xF) << 3) |
+                              ((uint32_t)addrInfo.immOffset & 0xF);
+    exDescImmOff = (uint32_t)(encddUnshifted << 12);
+    return true;
+  } else {
+    // unsupported immediate offset case
+    return false;
+  }
+}
 
 G4_SrcRegRegion *IR_Builder::lscCheckRegion(G4_Predicate *pred,
                                             G4_ExecSize execSize,

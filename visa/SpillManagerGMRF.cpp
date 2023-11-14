@@ -4757,6 +4757,15 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   addrInfo.immScale = 1;
   addrInfo.immOffset = 0;
   addrInfo.size = LSC_ADDR_SIZE_32b;
+  if (canUseLscImmediateOffsetSpillFill) {
+    // spillOffset must be Dword aligned
+    // spillOffset must be in range [0, SPILL_FILL_IMMOFF_MAX * 2)
+    vISA_ASSERT(spillOffset % 4 == 0 && spillOffset < SPILL_FILL_IMMOFF_MAX * 2,
+                "invalid immediate offset");
+
+    // immOffset range for SS: [-2^16, 2^16-1]
+    addrInfo.immOffset = spillOffset - SPILL_FILL_IMMOFF_MAX;
+  }
 
   builder->instList.clear();
   while (numRows > 0) {
@@ -4764,6 +4773,7 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 
     G4_Declare *spillAddr = inst->getFP() ? kernel.fg.scratchRegDcl
                                           : inst->getHeader()->getTopDcl();
+    if (!canUseLscImmediateOffsetSpillFill)
     {
       // need to calculate spill address
       createSpillFillAddr(*builder, spillAddr, inst->getFP(), spillOffset);
@@ -4808,6 +4818,9 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
     numRows -= numGRFToWrite;
     rowOffset += numGRFToWrite;
     spillOffset += numGRFToWrite * builder->getGRFSize();
+    if (canUseLscImmediateOffsetSpillFill) {
+      addrInfo.immOffset = spillOffset - SPILL_FILL_IMMOFF_MAX;
+    }
   }
 
   if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
@@ -4952,6 +4965,15 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   addrInfo.immScale = 1;
   addrInfo.immOffset = 0;
   addrInfo.size = LSC_ADDR_SIZE_32b;
+  if (canUseLscImmediateOffsetSpillFill) {
+    // fillOffset must be Dword aligned
+    // fillOffset must be in range [0, SPILL_FILL_IMMOFF_MAX * 2)
+    vISA_ASSERT(fillOffset % 4 == 0 && fillOffset < SPILL_FILL_IMMOFF_MAX * 2,
+                "invalid immediate offset");
+
+    // immOffset range for SS: [-2^16, 2^16-1]
+    addrInfo.immOffset = fillOffset - SPILL_FILL_IMMOFF_MAX;
+  }
 
   builder->instList.clear();
 
@@ -4974,6 +4996,7 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
         responseLength * builder->getGRFSize() / elemSize);
     G4_Declare *fillAddr = inst->getFP() ? kernel.fg.scratchRegDcl
                                          : inst->getHeader()->getTopDcl();
+    if (!canUseLscImmediateOffsetSpillFill)
     {
       // need to calculate fill address
       createSpillFillAddr(*builder, fillAddr, inst->getFP(), fillOffset);
@@ -5001,6 +5024,9 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
     numRows -= responseLength;
     rowOffset += responseLength;
     fillOffset += responseLength * builder->getGRFSize();
+    if (canUseLscImmediateOffsetSpillFill) {
+      addrInfo.immOffset = fillOffset - SPILL_FILL_IMMOFF_MAX;
+    }
   }
 
   if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
@@ -5702,6 +5728,20 @@ void GlobalRA::expandFillIntrinsic(G4_BB *bb) {
 }
 
 
+// Initialize address for immediate offset usage in LSC spill/fill messages
+void GlobalRA::initAddrRegForImmOffUseNonStackCall() {
+  // create a tmp register and store value 0x10000 for immediate offset usage
+  // in non-stackcall spill/fill
+  //    mov spillHeader 0x10000
+  G4_BB *entryBB = builder.kernel.fg.getEntryBB();
+  auto iter = std::find_if(entryBB->begin(), entryBB->end(),
+                           [](G4_INST *inst) { return !inst->isLabel(); });
+
+  auto movInst = builder.createMov(
+      g4::SIMD1, builder.createDstRegRegion(builder.getSpillFillHeader(), 1),
+      builder.createImm(0x10000, Type_UD), InstOpt_WriteEnable, false);
+  entryBB->insertBefore(iter, movInst);
+}
 
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
 
@@ -5710,6 +5750,17 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
+  // turn off immediate offset if the spill size is larger than 128k for non
+  // stack call. Such test should be rare and don't think it needs to be fast.
+  if (!hasStackCall &&
+      ((spillSizeInBytes + globalScratchOffset) > SPILL_FILL_IMMOFF_MAX * 2))
+    canUseLscImmediateOffsetSpillFill = false;
+
+  // No need to init address reg for immediate offset usage if there is no
+  // scratch message
+  if (canUseLscImmediateOffsetSpillFill &&
+      ((!hasStackCall && spillSizeInBytes > 0)))
+    initAddrRegForImmOffUseNonStackCall();
 
 
   for (auto bb : kernel.fg) {
@@ -5723,7 +5774,7 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
     // a. XeHP_SDV without stackcall => use hword scratch msg
     // b. XeHP_SDV without stackcall => using oword block msg
     // c. XeHP_SDV with stackcall
-    // d. DG2+ without stackcall => hword scratch msg
+    // d. DG2+ without stackcall => hword scratch msg (illegal in Xe2+)
     // e. DG2+ without stackcall => using LSC
     // f. DG2+ with stackcall    => using LSC
     //

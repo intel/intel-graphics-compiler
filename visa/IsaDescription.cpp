@@ -130,9 +130,9 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_SAD2ADD, ISA_Inst_Arith, "sad2add", 3, 1},
     {ISA_PLANE, ISA_Inst_Arith, "plane", 2, 1},
     {ISA_GOTO, ISA_Inst_SIMD_Flow, "goto", 1, 0},
-    {ISA_3D_SAMPLE, ISA_Inst_Sampler, "sample_3d", 5, 1},
-    {ISA_3D_LOAD, ISA_Inst_Sampler, "load_3d", 5, 1},
-    {ISA_3D_GATHER4, ISA_Inst_Sampler, "gather4_3d", 5, 1},
+    {ISA_3D_SAMPLE, ISA_Inst_Sampler, "sample_3d", 6, 1},
+    {ISA_3D_LOAD, ISA_Inst_Sampler, "load_3d", 6, 1},
+    {ISA_3D_GATHER4, ISA_Inst_Sampler, "gather4_3d", 6, 1},
     {ISA_3D_INFO, ISA_Inst_Sampler, "info_3d", 2, 1},
     {ISA_3D_RT_WRITE, ISA_Inst_Data_Port, "rt_write_3d", 3, 1},
     {ISA_3D_URB_WRITE, ISA_Inst_Misc, "urb_write_3d", 6, 0},
@@ -2012,7 +2012,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_SAMPLE,
         ISA_Inst_Sampler,
         "3d_sample",
-        9,
+        10,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0},
@@ -2024,6 +2024,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_SAMPLE, ISA_TYPE_UB, 0},  /// Sampler
             {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
             {OPND_RAW, ISA_TYPE_F, GRF_ALIGNED}, /// Destination
+            {OPND_RAW, ISA_TYPE_UD, 0},   /// Paired Surface
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
 
@@ -2035,7 +2036,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_LOAD,
         ISA_Inst_Sampler,
         "3d_load",
-        8,
+        9,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0},
@@ -2047,6 +2048,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
             {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D,
              0}, /// Destination
+            {OPND_RAW, ISA_TYPE_UD, 0},   /// Paired Surface
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
 
@@ -2058,7 +2060,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_GATHER4,
         ISA_Inst_Sampler,
         "3d_gather4",
-        9,
+        10,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0},
@@ -2071,6 +2073,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
             {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D,
              0}, /// Destination
+            {OPND_RAW, ISA_TYPE_UD, 0},   /// Paired Surface
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
 
@@ -2646,7 +2649,6 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         0,
         {},
     },
-
     /// 145 (0x91)
     {
         ALL,
@@ -3244,6 +3246,56 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] = {
           {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* src2 data */                \
     }                                                                          \
   }
+#define LSC_TYPED_BLOCK2D_OP(ISA_OP, MNEMONIC)                                 \
+  {                                                                            \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 16, {                                  \
+      /* execution control */                                                  \
+      {OPND_EXECSIZE, ISA_TYPE_UB, 0},                 /* execution size */    \
+          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
+          /* caching opts */                                                   \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */               \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */               \
+          /* addr type */                                                      \
+          {OPND_OTHER, ISA_TYPE_UB,0}, /* LSC_ADDR::type */                    \
+          /* block 2d data shape stuff */                                      \
+          {OPND_OTHER, ISA_TYPE_UW, 0}, /* LSC_DATA_SHAPE_TYPED_BLOCK2D::width */ \
+          {OPND_OTHER, ISA_TYPE_UW, 0}, /* LSC_DATA_SHAPE_TYPED_BLOCK2D::height */ \
+           /* operands */                                                      \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* surface base */ \
+          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface index */            \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* DstData */                  \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfOffX */ \
+          {OPND_OTHER, ISA_TYPE_D, 0},          /* ImmOffX */                  \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* SurfOffY */ \
+          {OPND_OTHER, ISA_TYPE_D, 0},          /* ImmOffY */                  \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src1Data */                 \
+    }                                                                          \
+  }
+#define LSC_UNTYPED_APNDCTR_ATOMIC_OP(ISA_OP, MNEMONIC)                        \
+  {                                                                            \
+    (ISA_OP), ISA_Inst_LSC, (MNEMONIC), 15, {                                  \
+      /* execution control */                                                  \
+      {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */                    \
+          {OPND_PRED, ISA_TYPE_UW, 0}, /* predicate */                         \
+          /* getPrimitiveOperand(0) */                                         \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_SFID */                         \
+          /* caching opts */                                                   \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l1 */               \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_CACHE_OPTS::l3 */               \
+          /* addr type */                                                      \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_ADDR::type */                   \
+          /* data shape stuff */                                               \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::size */             \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::order */            \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::elems */            \
+          {OPND_OTHER, ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */            \
+          /* operands */                                                       \
+          {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB, 0}, /* surface base */ \
+          {OPND_OTHER, ISA_TYPE_UD, 0},         /* surface index */            \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* DstData */                  \
+          {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED}, /* Src0Data */                 \
+    }                                                                          \
+  }
 #define LSC_OP_INVALID                                                         \
   {}
 
@@ -3286,6 +3338,9 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_OP_INVALID, // reserved
       LSC_OP_INVALID, // reserved
       LSC_OP_INVALID, // reserved
+      LSC_UNTYPED_OP(LSC_APNDCTR_ATOMIC_ADD, "lsc_apndctr_atomic_add"),
+      LSC_UNTYPED_OP(LSC_APNDCTR_ATOMIC_SUB, "lsc_apndctr_atomic_sub"),
+      LSC_UNTYPED_OP(LSC_APNDCTR_ATOMIC_STORE, "lsc_apndctr_atomic_store"),
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
@@ -3300,11 +3355,11 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
   LSC_OP_INVALID,     // LSC_LOAD only untyped
       LSC_OP_INVALID, // LSC_LOAD_STRIDED only untyped
       LSC_TYPED_OP(LSC_LOAD_QUAD, "lsc_load_quad"),
-      LSC_OP_INVALID, // reserved
+      LSC_TYPED_BLOCK2D_OP(LSC_LOAD_BLOCK2D, "lsc_load_block2d"),
       LSC_OP_INVALID, // LSC_STORE only untyped
       LSC_OP_INVALID, // LSC_STORE_STRIDED only untyped
       LSC_TYPED_OP(LSC_STORE_QUAD, "lsc_store_quad"),
-      LSC_OP_INVALID, // reserved
+      LSC_TYPED_BLOCK2D_OP(LSC_STORE_BLOCK2D, "lsc_load_block2d"),
       LSC_TYPED_OP(LSC_ATOMIC_IINC, "lsc_atomic_iinc"),
       LSC_TYPED_OP(LSC_ATOMIC_IDEC, "lsc_atomic_idec"),
       LSC_TYPED_OP(LSC_ATOMIC_LOAD, "lsc_atomic_load"),
@@ -3330,6 +3385,16 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
       LSC_TYPED_OP(LSC_CCS_UPDATE, "lsc_ccs_update"),
       LSC_TYPED_OP(LSC_READ_STATE_INFO, "lsc_read_state_info"),
       LSC_OP_INVALID, // fence handled separately
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // reserved
+      LSC_OP_INVALID, // LSC_APNDCTR_ATOMIC_ADD only untyped
+      LSC_OP_INVALID, // LSC_APNDCTR_ATOMIC_SUB only untyped
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
@@ -3477,6 +3542,15 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo) {
     otherOp("lsc_fence", 0x1F);
     break;
     //
+  case LSC_APNDCTR_ATOMIC_ADD:
+    atomicOp("lsc_apndctr_atomic_add", 0x28, 1);
+    break;
+  case LSC_APNDCTR_ATOMIC_SUB:
+    atomicOp("lsc_apndctr_atomic_sub", 0x29, 1);
+    break;
+  case LSC_APNDCTR_ATOMIC_STORE:
+    atomicOp("lsc_apndctr_atomic_store", 0x30, 1);
+    break;
 
   default:
     return false;
@@ -3541,9 +3615,42 @@ bool LscTryEncodeCacheOptsBits17_19(const LscOpInfo &opInfo,
   cacheEnc = cacheEnc << 17;
   return true;
 }
+// retuen the encoding value for descriptor bits[19:16]
+bool LscTryEncodeCacheOptsBits16_19(const LscOpInfo &opInfo,
+                                    LSC_CACHE_OPTS cacheOpts,
+                                    uint32_t &cacheEnc) {
+  // Try match bits[19:17] first
+  if (LscTryEncodeCacheOptsBits17_19(opInfo, cacheOpts, cacheEnc))
+    return true;
+
+  // otherwise, try to match 3 cases for bits[19:16] mode only
+  // those cases must be load
+  if (!opInfo.isLoad())
+    return false;
+
+  auto matches = [&](LSC_CACHE_OPT l1, LSC_CACHE_OPT l3) {
+    return (cacheOpts.l1 == l1 && cacheOpts.l3 == l3);
+  };
+
+  if (matches(LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE)) {
+    cacheEnc = 0xE;
+  }
+  else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_CONSTCACHED)) {
+    cacheEnc = 0x5;
+  } else if (matches(LSC_CACHING_CACHED, LSC_CACHING_CONSTCACHED)) {
+    cacheEnc = 0x9;
+  }
+  else {
+    return false;
+  }
+  cacheEnc = cacheEnc << 16;
+  return true;
+}
 
 bool LscTryEncodeCacheOpts(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
                            uint32_t &cacheEn, bool isBits17_19) {
+  if (!isBits17_19)
+    return LscTryEncodeCacheOptsBits16_19(opInfo, cacheOpts, cacheEn);
   return LscTryEncodeCacheOptsBits17_19(opInfo, cacheOpts, cacheEn);
 }
 
