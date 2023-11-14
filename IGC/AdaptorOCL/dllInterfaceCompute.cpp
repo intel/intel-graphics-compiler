@@ -1176,7 +1176,7 @@ bool TranslateBuildSPMD(
             if (instCombineSinkingSwitch->getValue()->getNumOccurrences() == 0)
             {
                 const char* const args[] = { "igc", instCombineFlag.data() };
-                llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
+                llvm::cl::ParseCommandLineOptions(std::size(args), args);
             }
         }
     }
@@ -1829,9 +1829,7 @@ static constexpr STB_TranslationCode g_cICBETranslationCodes[] =
 TRANSLATION_BLOCK_API void Register(STB_RegisterArgs* pRegisterArgs)
 {
     pRegisterArgs->Version = TC::STB_VERSION;
-    pRegisterArgs->NumTranslationCodes =
-        sizeof(g_cICBETranslationCodes) /
-        sizeof(g_cICBETranslationCodes[0]);
+    pRegisterArgs->NumTranslationCodes = std::size(g_cICBETranslationCodes);
 
     if (pRegisterArgs->pTranslationCodes)
     {

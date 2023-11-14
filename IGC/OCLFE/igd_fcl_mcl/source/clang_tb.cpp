@@ -1980,7 +1980,7 @@ namespace TC
         }
 
         unsigned int i;
-        for (i = 0; i < sizeof(g_cClangTranslationCodes) / sizeof(g_cClangTranslationCodes[0]); i++)
+        for (i = 0; i < std::size(g_cClangTranslationCodes); i++)
         {
             // Some quick checks to ensure that the input and output types
             // are compatible with this translation blocks
@@ -1991,7 +1991,7 @@ namespace TC
             }
         }
 
-        if (i >= sizeof(g_cClangTranslationCodes) / sizeof(g_cClangTranslationCodes[0]))
+        if (i >= std::size(g_cClangTranslationCodes))
         {
             return false;
         }
