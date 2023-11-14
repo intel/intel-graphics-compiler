@@ -153,6 +153,17 @@ bool DbgVariable::currentLocationIsSimpleIndirectValue() const {
   return true;
 }
 
+bool DbgVariable::currentLocationIsVector() const {
+  const auto *DbgInst = getDbgInst();
+  if (!isa<llvm::DbgValueInst>(DbgInst))
+    return false;
+
+  Value *IRLocation = IGCLLVM::getVariableLocation(DbgInst);
+  if (!IRLocation->getType()->isVectorTy())
+    return false;
+  return true;
+}
+
 void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
   IGC_ASSERT(CU);
   IGC_ASSERT(Block);
@@ -199,17 +210,22 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     }
     I->appendToVector(Elements);
   }
-
-  // Indirect values result in emission DWARF location descriptors of
-  // <memory location> type - the evaluation should result in address,
-  // thus no need for OP_deref.
-  // Currently, our dwarf emitters support only "simple indirect" values.
-  if (currentLocationIsSimpleIndirectValue())
-    Elements.erase(Elements.begin()); // drop OP_deref
+  bool isStackValueNeeded = false;
+  if (currentLocationIsSimpleIndirectValue()) {
+    // drop OP_deref and don't emit DW_OP_stack_value.
+    Elements.erase(Elements.begin());
+  } else if (!currentLocationIsMemoryAddress() &&
+             !currentLocationIsImplicit() && !currentLocationIsVector()) {
+    isStackValueNeeded = true;
+  }
 
   for (auto elem : Elements) {
     auto BF = DIEInteger::BestForm(false, elem);
     CU->addUInt(Block, BF, elem);
+  }
+
+  if (isStackValueNeeded) {
+    CU->addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
   }
 }
 

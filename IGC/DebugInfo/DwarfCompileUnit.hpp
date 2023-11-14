@@ -48,6 +48,31 @@ namespace IGC {
 class DbgVariable;
 
 //===----------------------------------------------------------------------===//
+/// PieceBuilder - Helper class used to emit location info for register based
+/// variables from pieces. Current implementation supports only consecutive
+/// registers.
+class PieceBuilder {
+public:
+  struct PieceInfo {
+    unsigned regNum;
+    uint64_t sizeBits;
+    uint64_t offsetBits;
+  };
+
+  PieceBuilder(uint16_t RegNum, size_t NumGRFs, uint64_t RegSizeBits,
+               uint64_t VarSizeBits, uint64_t SubRegOffsetBits);
+  unsigned pieceCount() const;
+  PieceInfo get(unsigned index) const;
+
+private:
+  unsigned RegNum;
+  size_t NumGRFs;
+  uint64_t RegSizeBits;
+  uint64_t VariableSizeInBits;
+  uint64_t SubRegOffsetInBits;
+};
+
+//===----------------------------------------------------------------------===//
 /// CompileUnit - This dwarf writer support class manages information associated
 /// with a source file.
 class CompileUnit {
@@ -329,13 +354,12 @@ public:
   // scalar variable e.g. a GRF subregister.
   void addSimdLaneScalar(DIEBlock *Block, const DbgVariable &DV,
                          const VISAVariableLocation &Loc,
-                         const DbgDecoder::LiveIntervalsVISA *lr,
-                         uint16_t subRegInBytes);
+                         const DbgDecoder::LiveIntervalsVISA &lr);
 
-  bool emitBitPiecesForRegVal(IGC::DIEBlock *Block, const VISAModule &VM,
-                              const DbgVariable &DV,
-                              const DbgDecoder::LiveIntervalsVISA &lr,
-                              uint64_t varSizeInBits, uint64_t offsetInBits);
+  // emitBitPiecesForRegVal - emit bitPieces DW_OP_bit_piece sequence for
+  // register value. It is used to describe vector variables in registers.
+  void emitBitPiecesForRegVal(IGC::DIEBlock *Block,
+                              const PieceBuilder &pieceBuilder);
 
   // addSimdLaneRegionBase - add a sequence of attributes to calculate location
   // of region base address variable for vc-backend
