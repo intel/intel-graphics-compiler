@@ -286,8 +286,8 @@ DECLARE_IGC_REGKEY(DWORD, GEPLSRNewInstructionThreshold, 32, "Threshold for max 
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true, "Enables reduction to loop's preheader in GEP Loop Strength Reduction pass", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
-DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0,                           false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
-DECLARE_IGC_REGKEY(bool, EnableDebugging,                           false, " Enable shader debugging for release internal", false)
+DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0,                  false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
+DECLARE_IGC_REGKEY(bool, EnableDebugging,               false, " Enable shader debugging for release internal", false)
 DECLARE_IGC_REGKEY_BITMASK(GenerateOptionsFile, 0, "Create Options.txt(usually for SIMD related bugs to narrow down shaders), in the shader dump folder.", SHADER_TYPE_MASKS, false)
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
 DECLARE_IGC_REGKEY(bool, EnableHashMovsAtPrologue,      false, "Rather than after EOT, insert hash code movs at shader entry", false)

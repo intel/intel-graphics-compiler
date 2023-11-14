@@ -338,6 +338,12 @@ void Optimizer::addSWSBInfo() {
   return;
 }
 
+// Common pass for HW debug functions
+void Optimizer::HWDebug() {
+  if (builder.getOption(vISA_InsertHashMovs))
+    insertHashMovs();
+}
+
 void Optimizer::insertHashMovs() {
   // As per request from IGC team, we want to conditionally insert
   // two mov instructions like following:
@@ -671,7 +677,7 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(localSchedule, vISA_LocalScheduling, TimerID::SCHEDULING);
   OPT_INITIALIZE_PASS(HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixEndIfWhileLabels, vISA_EnableAlways, TimerID::NUM_TIMERS);
-  OPT_INITIALIZE_PASS(insertHashMovs, vISA_InsertHashMovs, TimerID::NUM_TIMERS);
+  OPT_INITIALIZE_PASS(HWDebug, vISA_EnableAlways, TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(insertDummyMovForHWRSWA, vISA_InsertDummyMovForHWRSWA,
                   TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(insertDummyCompactInst, vISA_InsertDummyCompactInst,
@@ -993,7 +999,7 @@ int Optimizer::optimization() {
   // the CFG assumption
   runPass(PI_fixEndIfWhileLabels);
 
-  runPass(PI_insertHashMovs);
+  runPass(PI_HWDebug);
 
   runPass(PI_insertDummyMovForHWRSWA);
 

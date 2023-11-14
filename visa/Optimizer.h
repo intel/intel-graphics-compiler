@@ -134,7 +134,6 @@ class Optimizer {
   void dumpPayload();
   void collectStats();
   void createR0Copy();
-
   void fixEndIfWhileLabels();
   void mergeScalarInst();
   void EmulateInt64Add() { ::EmulateInt64Add(builder, kernel); }
@@ -188,6 +187,8 @@ class Optimizer {
   void accSubPostSchedule();
 
   void accSubBeforeRA();
+
+  void HWDebug();
 
 
   // return true if BuiltInR0 gets a different allocation than r0
@@ -362,7 +363,7 @@ public:
     PI_localSchedule,
     PI_HWWorkaround,        // always
     PI_fixEndIfWhileLabels, // always
-    PI_insertHashMovs,
+    PI_HWDebug,
     PI_insertDummyMovForHWRSWA,
     PI_insertDummyCompactInst,
     PI_mergeScalarInst,
