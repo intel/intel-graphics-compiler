@@ -2021,15 +2021,6 @@ void PhyRegsLocalRA::markPhyRegs(G4_Declare *topdcl) {
       for (unsigned int i = 0; i < numwords; i++) {
         // Starting from first word, mark each consecutive word busy
         setWordBusy(regnum, (subRegInWord + i));
-
-        //In case across one GRF
-        if (subRegInWord + i >= builder.numEltPerGRF<Type_UW>()) {
-          regnum++;
-          if (!isGRFAvailable(regnum)) {
-            break;
-          }
-          i = 0;
-        }
       }
     }
   } else {
