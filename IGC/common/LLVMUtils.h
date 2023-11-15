@@ -46,3 +46,4 @@ namespace IGC
 }
 
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName);
+void DumpHashToOptions(const ShaderHash&, const ShaderType);

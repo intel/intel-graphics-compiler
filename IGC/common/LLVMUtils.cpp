@@ -6,28 +6,29 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/PassTimer.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
-#include "common/Stats.hpp"
+#include "Compiler/CodeGenPublic.h"
 #include "common/debug/Dump.hpp"
 #include "common/shaderOverride.hpp"
+#include "common/Stats.hpp"
 #include "common/IntrinsicAnnotator.hpp"
 #include "common/LLVMUtils.h"
 #include "common/PrintMetaDataPass.h"
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvmWrapper/ADT/StringRef.h>
-#include <llvm/IR/IRPrintingPasses.h>
 #include "common/LLVMWarningsPop.hpp"
-
 
 using namespace IGC;
 using namespace IGC::Debug;
@@ -865,5 +866,66 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
                 appendToShaderOverrideLogFile(fileName, str.c_str());
             }
         }
+    }
+}
+
+void DumpHashToOptions(const ShaderHash& hashs, const ShaderType type)
+{
+    static std::mutex options_gen_mutex;
+
+    // Enable for certain type(s) of shader(s)
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) &&
+        ((1 << (uint32_t)type) & IGC_GET_FLAG_VALUE(GenerateOptionsFile)))
+    {
+        auto dump_file = IGC::Debug::DumpName("Options.txt").str();
+        std::ostringstream content;
+        std::ostringstream content_hash;
+        QWORD hash = hashs.asmHash ? hashs.asmHash : hashs.psoHash;
+
+        // build content
+        if (!llvm::sys::fs::exists(dump_file))
+        {
+            content
+                << "# This file contains auto-generated shader hashes.\n"
+                << "hash:";
+        }
+        else
+        {
+            content << ",";
+        }
+
+        content_hash << std::hex
+            << "0x"
+            << std::setfill('0')
+            << std::setw(16)
+            << hash
+            << std::dec;
+        options_gen_mutex.lock();
+        // search for duplication, not generate if there is one already.
+        bool hasDup = false;
+        std::ifstream optionsInput(dump_file);
+
+        if (optionsInput.is_open())
+        {
+            std::string line;
+            while (std::getline(optionsInput, line))
+            {
+                if (std::string::npos != line.find(content_hash.str()))
+                {
+                    hasDup = true;
+                    break;
+                }
+            }
+            optionsInput.close();
+        }
+
+        if (!hasDup)
+        {
+            std::ofstream options(dump_file, std::ofstream::app);
+            options << content.str() << content_hash.str();
+            options.close();
+        }
+
+        options_gen_mutex.unlock();
     }
 }

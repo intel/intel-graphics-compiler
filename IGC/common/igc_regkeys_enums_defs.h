@@ -74,10 +74,11 @@ SPDX-License-Identifier: MIT
             SHADER_TYPE_MASK(HS,       0x4) \
             SHADER_TYPE_MASK(DS,       0x8) \
             SHADER_TYPE_MASK(GS,       0x10)\
+            SHADER_TYPE_MASK(TS,       0x20)\
+            SHADER_TYPE_MASK(MS,       0x40)\
             SHADER_TYPE_MASK(PS,       0x80)\
             SHADER_TYPE_MASK(CS,       0x100)   \
-            SHADER_TYPE_MASK(MS,       0x40)\
-            SHADER_TYPE_MASK(TS,       0x20)\
+            SHADER_TYPE_MASK(OCL,      0x200)   \
             SHADER_TYPE_MASK(RT,       0x400)
 #endif // SHADER_TYPE_MASKS
 

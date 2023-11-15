@@ -1222,6 +1222,8 @@ void OptimizeIR(CodeGenContext* const pContext)
     IGC_ASSERT(nullptr != pContext->getModuleMetaData());
     bool NoOpt = pContext->getModuleMetaData()->compOpt.OptDisable;
 
+    DumpHashToOptions(pContext->hash, pContext->type);
+
     alwaysInlineForNoOpt(pContext, NoOpt);
 
     if (pContext->type == ShaderType::OPENCL_SHADER)
