@@ -934,7 +934,8 @@ void GenXBaling::processSat(Instruction *Inst) {
       auto SatInfo = II.getRetInfo().getSaturation();
       auto SatIID = vc::getAnyIntrinsicID(Inst);
       if (!II.getRetInfo().isRaw() &&
-          (SatInfo == GenXIntrinsicInfo::SATURATION_DEFAULT ||
+          ((SatInfo == GenXIntrinsicInfo::SATURATION_DEFAULT &&
+            SatIID == GenXIntrinsic::genx_sat) ||
            (SatInfo == GenXIntrinsicInfo::SATURATION_INTALLOWED &&
             GenXIntrinsic::isIntegerSat(SatIID)))) {
         LLVM_DEBUG(llvm::dbgs()

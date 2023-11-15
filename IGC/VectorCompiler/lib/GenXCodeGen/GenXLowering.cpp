@@ -3641,8 +3641,23 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
   ToErase.push_back(CI);
   return true;
 }
-// Lower integer mul with saturation since VISA support mul.sat only for float.
+
+// Lower integer DWxDW mul with saturation since it is not supported on HW.
 bool GenXLowering::lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID) {
+  Type *ResType = CI->getType();
+  IGC_ASSERT(ResType->isIntOrIntVectorTy());
+
+  IGC_ASSERT(CI->getOperand(0)->getType() == CI->getOperand(1)->getType());
+  Type *OpType = CI->getOperand(0)->getType();
+  IGC_ASSERT(OpType->isIntOrIntVectorTy());
+
+  unsigned OpTypeWidth =
+      cast<IntegerType>(OpType->getScalarType())->getBitWidth();
+  IGC_ASSERT_MESSAGE(OpTypeWidth != 64, "i64 types are not supported");
+
+  if (OpTypeWidth != 32)
+    return false;
+
   auto IsSignedMulSat = [](unsigned ID) -> std::pair<bool, bool> {
     switch (ID) {
     case GenXIntrinsic::genx_uumul_sat:
@@ -3667,17 +3682,7 @@ bool GenXLowering::lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID) {
 
   auto [IsSignedRes, IsSignedOps] = IsSignedMulSat(IntrinsicID);
 
-  Type *ResType = CI->getType();
-  IGC_ASSERT(ResType->isIntOrIntVectorTy());
-
-  IGC_ASSERT(CI->getOperand(0)->getType() == CI->getOperand(1)->getType());
-  Type *OpType = CI->getOperand(0)->getType();
-  IGC_ASSERT(OpType->isIntOrIntVectorTy());
-
   // Create type that doesn't overflow in multiplication.
-  unsigned OpTypeWidth =
-      cast<IntegerType>(OpType->getScalarType())->getBitWidth();
-  IGC_ASSERT_MESSAGE(OpTypeWidth != 64, "i64 types are not supported");
   Type *MulType = IntegerType::get(OpType->getContext(), 2 * OpTypeWidth);
   if (auto *OpVTy = dyn_cast<IGCLLVM::FixedVectorType>(OpType))
     MulType = IGCLLVM::FixedVectorType::get(MulType, OpVTy->getNumElements());
