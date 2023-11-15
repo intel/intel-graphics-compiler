@@ -154,6 +154,14 @@ namespace IGCLLVM {
 #endif
     }
 
+    inline Align getPrefTypeAlign(const llvm::DataLayout &DL, llvm::Type *Ty) {
+#if LLVM_VERSION_MAJOR < 10
+        return DL.getPrefTypeAlignment(Ty);
+#else
+        return DL.getPrefTypeAlign(Ty);
+#endif
+    }
+
 } // namespace IGCLLVM
 
 #endif
