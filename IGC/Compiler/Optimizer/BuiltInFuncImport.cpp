@@ -1037,22 +1037,23 @@ void BIImport::removeFunctionBitcasts(Module& M)
                         {
                             pDstFunc = Function::Create(pInstCall->getFunctionType(), funcTobeChanged->getLinkage(), funcTobeChanged->getName(), &M);
                             if (pDstFunc->arg_size() != funcTobeChanged->arg_size()) continue;
-                            // Need to copy the attributes over too.
-                            AttributeList FuncAttrs = funcTobeChanged->getAttributes();
-                            pDstFunc->setAttributes(FuncAttrs);
-
                             // Go through and convert function arguments over, remembering the mapping.
                             Function::arg_iterator itSrcFunc = funcTobeChanged->arg_begin();
                             Function::arg_iterator eSrcFunc = funcTobeChanged->arg_end();
                             llvm::Function::arg_iterator itDest = pDstFunc->arg_begin();
 
-                            // Fix incorrect address space caused by CloneFunctionInto later
-                            // for example, CloneFunctionInto causes incorrect LLVM IR, like below
+                            // Fix incorrect address space or incorrect pointer type caused by CloneFunctionInto later
+                            // 1. AddressSpaceCast example: CloneFunctionInto causes incorrect LLVM IR, like below
                             //     %arrayidx.le.i = getelementptr inbounds i8, i8 addrspace(1)* %8, i64 %conv.le.i
                             //     %9 = load i8, i8 addrspace(4)* %arrayidx.le.i, align 1, !tbaa !309
                             // Address space should match for %arrayidx.le.i, so we insert necessary
-                            // address space casts, which should be eliminated later
-                            SmallVector<Instruction *, 5> ascInsts;
+                            // address space casts, which should be eliminated later by other passes
+                            // 2. incorrect type example:
+                            //     %0 = load i16, %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(4)* %x, align 2
+                            // Load value type should match pointer type for %x, so we insert necessary bitcast:
+                            //     %x.bcast = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(4)* %x to i16 addrspace(4)*
+                            //     %0 = load i16, i16 addrspace(4)* %x.bcast, align 2
+                            SmallVector<Instruction *, 5> castInsts;
 
                             for (; itSrcFunc != eSrcFunc; ++itSrcFunc, ++itDest)
                             {
@@ -1061,17 +1062,23 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                 Type *srcType = (*itSrcFunc).getType();
                                 Value *destVal = &(*itDest);
                                 Type *destType = destVal->getType();
-                                if (srcType->isPointerTy() && destType->isPointerTy() &&
-                                    srcType->getPointerAddressSpace() != destType->getPointerAddressSpace())
+                                if (srcType->isPointerTy() && destType->isPointerTy())
                                 {
-                                    AddrSpaceCastInst *newASC = new AddrSpaceCastInst(destVal, srcType, destVal->getName() + "cast");
-                                    ascInsts.push_back(newASC);
-                                    operandMap[&(*itSrcFunc)] = newASC;
+                                    if (srcType->getPointerAddressSpace() != destType->getPointerAddressSpace())
+                                    {
+                                        AddrSpaceCastInst *newASC = new AddrSpaceCastInst(destVal, srcType, destVal->getName() + ".ascast");
+                                        castInsts.push_back(newASC);
+                                        destVal = newASC;
+                                    }
+                                    if (IGCLLVM::getNonOpaquePtrEltTy(srcType) != IGCLLVM::getNonOpaquePtrEltTy(destType))
+                                    {
+                                        BitCastInst *newBT = new BitCastInst(destVal, srcType, destVal->getName() + ".bcast");
+                                        castInsts.push_back(newBT);
+                                        destVal = newBT;
+                                    }
                                 }
-                                else
-                                {
-                                    operandMap[&(*itSrcFunc)] = &(*itDest);
-                                }
+
+                                operandMap[&(*itSrcFunc)] = destVal;
                             }
 
                             // Clone the body of the function into the dest function.
@@ -1084,9 +1091,13 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                 Returns,
                                 "");
 
+                            // Need to copy the attributes over too.
+                            AttributeList FuncAttrs = funcTobeChanged->getAttributes();
+                            pDstFunc->setAttributes(FuncAttrs);
+
                             // get first instruction in function and insert addressspacecast before it
                             Instruction *firstInst = &(*pDstFunc->begin()->getFirstInsertionPt());
-                            for (Instruction *valToInsert : ascInsts)
+                            for (Instruction *valToInsert : castInsts)
                                 valToInsert->insertBefore(firstInst);
 
                             pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());
@@ -1100,6 +1111,7 @@ void BIImport::removeFunctionBitcasts(Module& M)
                         auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
                         newCI->takeName(pInstCall);
                         newCI->setCallingConv(pInstCall->getCallingConv());
+                        newCI->setAttributes(pInstCall->getAttributes());
                         pInstCall->replaceAllUsesWith(newCI);
                         pInstCall->dropAllReferences();
                         if (constExpr->use_empty())
