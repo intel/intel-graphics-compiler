@@ -3631,13 +3631,11 @@ bool LscTryEncodeCacheOptsBits16_19(const LscOpInfo &opInfo,
 
   if (matches(LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE)) {
     cacheEnc = 0xE;
-  }
-  else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_CONSTCACHED)) {
+  } else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_CONSTCACHED)) {
     cacheEnc = 0x5;
   } else if (matches(LSC_CACHING_CACHED, LSC_CACHING_CONSTCACHED)) {
     cacheEnc = 0x9;
-  }
-  else {
+  } else {
     return false;
   }
   cacheEnc = cacheEnc << 16;

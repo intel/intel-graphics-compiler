@@ -184,10 +184,6 @@ static Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
   }
   return Caching::INVALID;
 }
-static std::pair<Caching, Caching> ConvertLSCCacheOpts(LSC_CACHE_OPT col1,
-                                                       LSC_CACHE_OPT col3) {
-  return std::make_pair(ConvertLSCCacheOpt(col1), ConvertLSCCacheOpt(col3));
-}
 
 static G4_Operand *lscTryPromoteSurfaceImmToExDesc(G4_Operand *surface,
                                                    LSC_ADDR_TYPE addrModel,
