@@ -116,27 +116,35 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
   auto *Ty = CI.getType();
   auto CalleeName = Callee->getName();
 
+  // Check if it's a SPIR-V function
+  const StringRef Prefix("__spirv_");
+  const auto PrefixPos = CalleeName.find(Prefix);
+  if (PrefixPos == StringRef::npos)
+    return nullptr;
+
+  CalleeName = CalleeName.drop_front(PrefixPos + Prefix.size());
+
   // Addrspace-related builtins.
-  if (CalleeName.contains("__spirv_GenericCastToPtrExplicit"))
+  if (CalleeName.startswith("GenericCastToPtrExplicit"))
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_to_ptr_explicit,
                          Ty, {CI.getArgOperand(0)});
 
   // SPV_INTEL_bfloat16_conversion extension.
-  if (CalleeName.contains("__spirv_ConvertFToBF16INTEL")) {
+  if (CalleeName.startswith("ConvertFToBF16INTEL")) {
     auto *Arg = CI.getArgOperand(0);
     auto *ArgTy = Arg->getType();
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_to_bf16,
                          {Ty, ArgTy}, {Arg});
   }
-  if (CalleeName.contains("__spirv_ConvertBF16ToFINTEL")) {
+  if (CalleeName.startswith("ConvertBF16ToFINTEL")) {
     auto *Arg = CI.getArgOperand(0);
     auto *ArgTy = Arg->getType();
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_from_bf16,
                          {Ty, ArgTy}, {Arg});
   }
   // SPV_INTEL_tensor_float32_rounding extension.
-  if (CalleeName.contains("__spirv_RoundFToTF32INTEL") ||
-      CalleeName.contains("__spirv_ConvertFToTF32INTEL")) {
+  if (CalleeName.startswith("RoundFToTF32INTEL") ||
+      CalleeName.startswith("ConvertFToTF32INTEL")) {
     auto *Arg = CI.getArgOperand(0);
     auto *ArgTy = Arg->getType();
     Type *ResTy = Builder.getInt32Ty();
@@ -148,68 +156,72 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
     return Builder.CreateBitCast(Intr, Ty);
   }
 
-  // Math builtins.
-  if (!CalleeName.contains("__spirv_ocl_native_") &&
-      !CalleeName.contains("__spirv_ocl_half_"))
+  // OpenCL extended instruction set
+  if (!CalleeName.consume_front("ocl_"))
     return nullptr;
 
-  if (CalleeName.contains("cos"))
+  // Native subset
+  if (!CalleeName.consume_front("native_") &&
+      !CalleeName.consume_front("half_"))
+    return nullptr;
+
+  if (CalleeName.startswith("cos"))
     return emitMathIntrinsic(Builder, Intrinsic::cos, Ty, {CI.getArgOperand(0)},
                              true);
-  if (CalleeName.contains("divide"))
+  if (CalleeName.startswith("divide"))
     return emitFDiv(Builder, CI.getArgOperand(0), CI.getArgOperand(1), true);
-  if (CalleeName.contains("exp2"))
+  if (CalleeName.startswith("exp2"))
     return emitMathIntrinsic(Builder, Intrinsic::exp2, Ty,
                              {CI.getArgOperand(0)}, true);
-  if (CalleeName.contains("exp10")) {
+  if (CalleeName.startswith("exp10")) {
     // exp10(x) == exp2(x * log2(10))
     auto *C = ConstantFP::get(Ty, Log2_10);
     auto *ArgV = Builder.CreateFMul(CI.getArgOperand(0), C);
     return emitMathIntrinsic(Builder, Intrinsic::exp2, Ty, {ArgV}, true);
   }
-  if (CalleeName.contains("exp")) {
+  if (CalleeName.startswith("exp")) {
     // exp(x) == exp2(x * log2(e))
     auto *C = ConstantFP::get(Ty, Log2E);
     auto *ArgV = Builder.CreateFMul(CI.getArgOperand(0), C);
     return emitMathIntrinsic(Builder, Intrinsic::exp2, Ty, {ArgV}, true);
   }
-  if (CalleeName.contains("log2"))
+  if (CalleeName.startswith("log2"))
     return emitMathIntrinsic(Builder, Intrinsic::log2, Ty,
                              {CI.getArgOperand(0)}, true);
-  if (CalleeName.contains("log10")) {
+  if (CalleeName.startswith("log10")) {
     // log10(x) == log2(x) * log10(2)
     auto *LogV = emitMathIntrinsic(Builder, Intrinsic::log2, Ty,
                                    {CI.getArgOperand(0)}, true);
     auto *C = ConstantFP::get(Ty, Log10_2);
     return Builder.CreateFMul(LogV, C);
   }
-  if (CalleeName.contains("log")) {
+  if (CalleeName.startswith("log")) {
     // ln(x) == log2(x) * ln(2)
     auto *LogV = emitMathIntrinsic(Builder, Intrinsic::log2, Ty,
                                    {CI.getArgOperand(0)}, true);
     auto *C = ConstantFP::get(Ty, Ln2);
     return Builder.CreateFMul(LogV, C);
   }
-  if (CalleeName.contains("powr"))
+  if (CalleeName.startswith("powr"))
     return emitMathIntrinsic(Builder, Intrinsic::pow, Ty,
                              {CI.getArgOperand(0), CI.getArgOperand(1)}, true);
-  if (CalleeName.contains("recip")) {
+  if (CalleeName.startswith("recip")) {
     auto *OneC = ConstantFP::get(Ty, 1.0);
     return emitFDiv(Builder, OneC, CI.getArgOperand(0), true);
   }
-  if (CalleeName.contains("rsqrt")) {
+  if (CalleeName.startswith("rsqrt")) {
     auto *OneC = ConstantFP::get(Ty, 1.0);
     auto *SqrtV = emitMathIntrinsic(Builder, Intrinsic::sqrt, Ty,
                                     {CI.getArgOperand(0)}, true);
     return emitFDiv(Builder, OneC, SqrtV, true);
   }
-  if (CalleeName.contains("sin"))
+  if (CalleeName.startswith("sin"))
     return emitMathIntrinsic(Builder, Intrinsic::sin, Ty, {CI.getArgOperand(0)},
                              true);
-  if (CalleeName.contains("sqrt"))
+  if (CalleeName.startswith("sqrt"))
     return emitMathIntrinsic(Builder, Intrinsic::sqrt, Ty,
                              {CI.getArgOperand(0)}, true);
-  if (CalleeName.contains("tan")) {
+  if (CalleeName.startswith("tan")) {
     // tan(x) == sin(x) / cos(x)
     auto *ArgV = CI.getArgOperand(0);
     auto *SinV = emitMathIntrinsic(Builder, Intrinsic::sin, Ty, {ArgV}, true);
