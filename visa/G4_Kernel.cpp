@@ -991,7 +991,7 @@ void G4_Kernel::setKernelParameters(unsigned newGRF) {
     grfMode.setModeByNumThreads(overrideNumThreads);
     overrideGRFNum = 0;
     autoGRFSelection = false;
-  } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
+  } else if (overrideGRFNum > 0) {
     // Forcing a specific number of GRFs
     grfMode.setModeByNumGRFs(overrideGRFNum);
     autoGRFSelection = false;
