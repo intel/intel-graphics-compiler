@@ -348,7 +348,17 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     const bool changed = !inlineProgramScopeOffsets.empty();
     for (auto offset : inlineProgramScopeOffsets)
     {
-        m_pModuleMd->inlineProgramScopeOffsets[offset.first] = static_cast<uint64_t>(offset.second);
+        std::string globalName = offset.first->getName().str();
+        if (Ctx->m_retryManager.IsFirstTry())
+        {
+            m_pModuleMd->inlineProgramScopeOffsets[offset.first] = static_cast<uint64_t>(offset.second);
+            Ctx->inlineProgramScopeGlobalOffsets[globalName] = static_cast<uint64_t>(offset.second);
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(Ctx->inlineProgramScopeGlobalOffsets[globalName], "No offset recorded for global during initial compilation");
+            m_pModuleMd->inlineProgramScopeOffsets[offset.first] = Ctx->inlineProgramScopeGlobalOffsets[globalName];
+        }
     }
 
     // Update LLVM metadata based on IGC MetadataUtils
