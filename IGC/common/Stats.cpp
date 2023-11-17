@@ -634,7 +634,10 @@ void TimeStats::printSumTimeCSV(std::string const& outputFile) const
             fprintf(fileName, "seconds,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-                fprintf(fileName, "%f,", (double)getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i))/(double)m_freq);
+                if (!skipTimer(i))
+                {
+                    fprintf(fileName, "%f,", (double)getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) / (double)m_freq);
+                }
             }
             fprintf(fileName, "\n");
 
@@ -642,7 +645,10 @@ void TimeStats::printSumTimeCSV(std::string const& outputFile) const
             fprintf(fileName, "percentage,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-                fprintf(fileName, "%f,", (double)getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i))/(double)getCompileTime(TIME_TOTAL) * 100. );
+                if (!skipTimer(i))
+                {
+                    fprintf(fileName, "%f,", (double)getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) / (double)getCompileTime(TIME_TOTAL) * 100.0);
+                }
             }
             fprintf(fileName, "\n");
 
@@ -650,7 +656,10 @@ void TimeStats::printSumTimeCSV(std::string const& outputFile) const
             fprintf(fileName, "hit,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-                fprintf(fileName, "%ju,", m_hitCount[i] );
+                if (!skipTimer(i))
+                {
+                    fprintf(fileName, "%ju,", m_hitCount[i]);
+                }
             }
             fprintf(fileName, "\n");
         }
