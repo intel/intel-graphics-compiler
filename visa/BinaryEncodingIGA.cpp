@@ -93,6 +93,7 @@ private:
   static Region::Width getIGAWidth(int width);
   static Region::Horz getIGAHorz(int hstride);
   static Region getIGARegion(G4_SrcRegRegion *srcRegion, int srcPos);
+  SWSB_ENCODE_MODE getIGASWSBEncodeMode() const;
 
   MathMacroExt getIGAImplAcc(G4_AccRegSel accSel) const {
     switch (accSel) {
@@ -377,6 +378,14 @@ BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, std::string fname)
       m_kernelBufferSize(0), platform(k.fg.builder->getPlatform()) {
   platformModel = Model::LookupModel(getIGAInternalPlatform(platform));
   IGAKernel = new Kernel(*platformModel);
+}
+
+SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode() const {
+
+  if (platform == TARGET_PLATFORM::Xe_MTL)
+    return SWSB_ENCODE_MODE::ThreeDistPipeDPMath;
+
+  return platformModel->getSWSBEncodeMode();
 }
 
 InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST *inst) const {
@@ -982,8 +991,7 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, SWSB &sw) {
   // This workaround can be removed once vISA doesn't produce such SWSB.
   // Currently this could happen only on EOT send.
   if (inst->isSend() && !sw.hasBothDistAndToken() &&
-      !sw.verify(IGAKernel->getModel().getSWSBEncodeMode(),
-                 SWSB::InstType::SEND)) {
+      !sw.verify(getIGASWSBEncodeMode(), SWSB::InstType::SEND)) {
     sw.tokenType = SWSB::TokenType::SET;
     if (sw.hasDist()) {
       // if the distance type cannot be combined with SBID.set, force
@@ -1100,6 +1108,9 @@ void BinaryEncodingIGA::Encode() {
   auto platformGen = kernel.getPlatformGeneration();
   std::list<std::pair<Instruction *, G4_INST *>> encodedInsts;
   Block *bbNew = nullptr;
+
+  SWSB_ENCODE_MODE swsbEncodeMode = getIGASWSBEncodeMode();
+
   for (auto bb : this->kernel.fg) {
     for (auto inst : *bb) {
       bbNew = nullptr;
@@ -1136,7 +1147,7 @@ void BinaryEncodingIGA::Encode() {
           instTy = SWSB::InstType::OTHERS;
 
         // Verify if swsb is in encode-able dist and token combination
-        if (!sw.verify(IGAKernel->getModel().getSWSBEncodeMode(), instTy))
+        if (!sw.verify(swsbEncodeMode, instTy))
           IGA_ASSERT_FALSE("Invalid swsb dist and token combination");
         igaInst->setSWSB(sw);
       }
@@ -1176,7 +1187,7 @@ void BinaryEncodingIGA::Encode() {
       autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
 
     KernelEncoder encoder(IGAKernel, autoCompact);
-    encoder.setSWSBEncodingMode(IGAKernel->getModel().getSWSBEncodeMode());
+    encoder.setSWSBEncodingMode(swsbEncodeMode);
 
     if (kernel.getOption(vISA_EnableIGASWSB)) {
       encoder.enableIGAAutoDeps();
