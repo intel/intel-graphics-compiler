@@ -995,6 +995,8 @@ namespace IGC
         // Ignore per module fast math flag and use only per instruction fast math flags
         // Add few changes to CustomUnsafeOptPass related to fast flag propagation
         bool m_checkFastFlagPerInstructionInCustomUnsafeOptPass = false;
+        // Map to store global offsets in original global buffer
+        std::map<std::string, uint64_t> inlineProgramScopeGlobalOffsets;
 
     private:
         //For storing error message
