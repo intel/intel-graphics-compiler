@@ -40,7 +40,7 @@ struct ExplanationEntry
 
     Cause m_Cause;
 
-    typedef std::tuple<const llvm::BasicBlock*, uint32_t/*index*/, bool/*isL1CacheInvalidationRedundancy*/, bool/*isGlobalMemoryRedundancy*/> SyncInstDescription;
+    typedef std::tuple<const llvm::BasicBlock*, uint32_t/*index*/, std::string> SyncInstDescription;
 
     SyncInstDescription m_SynchronizationDescription;
     std::vector<SyncInstDescription> m_ForwardBoundaries;
@@ -84,6 +84,22 @@ inline constexpr InstructionMask& operator|=(InstructionMask& a, InstructionMask
     a = a | b;
     return a;
 }
+
+inline constexpr InstructionMask operator&(InstructionMask a, InstructionMask b)
+{
+    return InstructionMask(uint32_t(a) & uint32_t(b));
+}
+inline constexpr InstructionMask& operator&=(InstructionMask& a, InstructionMask b)
+{
+    a = a & b;
+    return a;
+}
+
+using InstIdxLookupTableT = llvm::DenseMap<llvm::Instruction*, uint32_t>;
+using InstMaskLookupTableT = llvm::DenseMap<llvm::Instruction*, InstructionMask>;
+using BasicBlockMaskLookupTableT = llvm::DenseMap<llvm::BasicBlock*, InstructionMask>;
+using InstLookupTableInBasicBlockT = std::map<uint32_t, llvm::Instruction*>;
+using OrderedInstructionLookupTableT = llvm::DenseMap<llvm::BasicBlock*, InstLookupTableInBasicBlockT>;
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Synchronization objects prevents from hazardous situations in kernels.
@@ -205,12 +221,12 @@ inline constexpr InstructionMask& operator|=(InstructionMask& a, InstructionMask
 /// 3) boundary instruction - this is such a synchronization instruction which draws a border for searching.
 /// 4) substitute instruction - this is such a synchronization instruction which work at least so extensively as the reference instruction. It
 ///    means that the substitute instruction can replace the reference instruction without any regressive functional changes in the shader.
-class SynchronizationObjectCoalescingAnalysis : public llvm::FunctionPass
+class SynchronizationObjectCoalescing : public llvm::FunctionPass
 {
 public:
     static char ID; ///< ID used by the llvm PassManager (the value is not important)
 
-    SynchronizationObjectCoalescingAnalysis();
+    SynchronizationObjectCoalescing();
 
     ////////////////////////////////////////////////////////////////////////
     virtual bool runOnFunction(llvm::Function& F);
@@ -234,20 +250,6 @@ public:
     ////////////////////////////////////////////////////////////////////////
     void dump(bool onlyMemoryInstructionMask = true) const;
 #endif // _DEBUG
-private:
-    static constexpr InstructionMask sc_MemoryWriteInstructionMask = static_cast<InstructionMask>(
-        AtomicOperation |
-        TypedWriteOperation |
-        UrbWriteOperation |
-        BufferWriteOperation |
-        SharedMemoryWriteOperation);
-
-    static constexpr InstructionMask sc_MemoryReadInstructionMask = static_cast<InstructionMask>(
-        AtomicOperation |
-        TypedReadOperation |
-        OutputUrbReadOperation |
-        BufferReadOperation |
-        SharedMemoryReadOperation);
 
     ////////////////////////////////////////////////////////////////////////
     enum SynchronizationCaseMask : uint32_t
@@ -264,6 +266,21 @@ private:
         WriteSyncRet = 0x100
     };
 
+private:
+    static constexpr InstructionMask sc_MemoryWriteInstructionMask = static_cast<InstructionMask>(
+        AtomicOperation |
+        TypedWriteOperation |
+        UrbWriteOperation |
+        BufferWriteOperation |
+        SharedMemoryWriteOperation);
+
+    static constexpr InstructionMask sc_MemoryReadInstructionMask = static_cast<InstructionMask>(
+        AtomicOperation |
+        TypedReadOperation |
+        OutputUrbReadOperation |
+        BufferReadOperation |
+        SharedMemoryReadOperation);
+
     static constexpr SynchronizationCaseMask sc_FullSynchronizationCaseMask = static_cast<SynchronizationCaseMask>(
         WriteSyncRead |
         WriteSyncWrite |
@@ -275,7 +292,16 @@ private:
         AtomicSyncAtomic);
 
     ////////////////////////////////////////////////////////////////////////
-    void Analyze();
+    void EraseRedundantInst(llvm::Instruction* pInst);
+
+    ////////////////////////////////////////////////////////////////////////
+    void EraseRedundantL1CacheInvalidation(llvm::Instruction* pInst);
+
+    ////////////////////////////////////////////////////////////////////////
+    void EraseRedundantGlobalScope(llvm::Instruction* pInst);
+
+    ////////////////////////////////////////////////////////////////////////
+    bool ProcessFunction();
 
     ////////////////////////////////////////////////////////////////////////
     void InvalidateMembers();
@@ -284,7 +310,7 @@ private:
     void GatherInstructions();
 
     ////////////////////////////////////////////////////////////////////////
-    void FindRedundancies();
+    bool FindRedundancies();
 
     ////////////////////////////////////////////////////////////////////////
     void GetVisibleMemoryInstructions(
@@ -328,10 +354,6 @@ private:
     ////////////////////////////////////////////////////////////////////////
     InstructionMask GetDefaultMemoryInstructionMask(
         const llvm::Instruction* pSourceInst) const;
-
-    ////////////////////////////////////////////////////////////////////////
-    llvm::DenseSet<llvm::Instruction*> GetAllSubsituteInstructions(
-        const llvm::Instruction* pReferenceInst) const;
 
     ////////////////////////////////////////////////////////////////////////
     bool IsSubsituteInstruction(
@@ -444,10 +466,26 @@ private:
     std::vector<llvm::Instruction*> m_UntypedMemoryFences;
     std::vector<llvm::Instruction*> m_ThreadGroupBarriers;
 
-    llvm::DenseSet<llvm::Instruction*> m_RedundantInstructions;
-    llvm::DenseSet<llvm::Instruction*> m_InvalidationFunctionalityRedundancies;
-    llvm::DenseSet<llvm::Instruction*> m_GlobalMemoryRedundancies;
-    llvm::DenseSet<llvm::Instruction*> m_FencesBetweenReadAndWriteInstructions;
+    // this variable holds a mapping from a basic block to its memory instructions ordered by their occurrences in it
+    // (the initial index of line of this basic block - the number of instructions preceding an instruction it its basic block)
+    OrderedInstructionLookupTableT m_OrderedMemoryInstructionsInBasicBlockCache;
+
+    // this variable holds a mapping from a basic block to the aggregated memory mask of its memory instructions
+    BasicBlockMaskLookupTableT m_BasicBlockMemoryInstructionMaskCache;
+
+    // this variable holds a mapping from a basic block to its fence instructions ordered by their occurrences in it
+    // (the initial index of line of this basic block - the number of instructions preceding an instruction it its basic block)
+    OrderedInstructionLookupTableT m_OrderedFenceInstructionsInBasicBlockCache;
+
+    // this variable holds a mapping from a basic block to its barrier instructions ordered by their occurrences in it
+    // (the initial index of line of this basic block - the number of instructions preceding an instruction it its basic block)
+    OrderedInstructionLookupTableT m_OrderedBarrierInstructionsInBasicBlockCache;
+
+    // this variable holds a mapping from a instruction to its initial number of line of its basic block
+    InstIdxLookupTableT m_InstIdxLookupTable;
+
+    // this variable holds a mapping from a instruction to its memory instruction mask
+    InstMaskLookupTableT m_InstMaskLookupTable;
 
     llvm::Function* m_CurrentFunction = nullptr;
     bool m_HasIndependentSharedMemoryFenceFunctionality = false;
@@ -464,23 +502,34 @@ private:
 #endif // _DEBUG
 };
 
+inline constexpr SynchronizationObjectCoalescing::SynchronizationCaseMask operator|(
+    SynchronizationObjectCoalescing::SynchronizationCaseMask a, SynchronizationObjectCoalescing::SynchronizationCaseMask b)
+{
+    return SynchronizationObjectCoalescing::SynchronizationCaseMask(uint32_t(a) | uint32_t(b));
+}
+inline constexpr SynchronizationObjectCoalescing::SynchronizationCaseMask& operator|=(
+    SynchronizationObjectCoalescing::SynchronizationCaseMask& a, SynchronizationObjectCoalescing::SynchronizationCaseMask b)
+{
+    a = a | b;
+    return a;
+}
+
 static inline bool IsLscFenceOperation(const Instruction* pInst);
 static inline LSC_SFID GetLscMem(const Instruction* pInst);
 static inline LSC_SCOPE GetLscScope(const Instruction* pInst);
 static inline LSC_FENCE_OP GetLscFenceOp(const Instruction* pInst);
 
-char SynchronizationObjectCoalescingAnalysis::ID = 0;
+char SynchronizationObjectCoalescing::ID = 0;
 
 ////////////////////////////////////////////////////////////////////////////
-SynchronizationObjectCoalescingAnalysis::SynchronizationObjectCoalescingAnalysis() :
+SynchronizationObjectCoalescing::SynchronizationObjectCoalescing() :
     llvm::FunctionPass(ID)
 {
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
+bool SynchronizationObjectCoalescing::runOnFunction(llvm::Function& F)
 {
-    const bool isModified = false; // this is only an analysis
     m_CurrentFunction = &F;
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_HasIndependentSharedMemoryFenceFunctionality = !ctx->platform.hasSLMFence() ||
@@ -489,14 +538,14 @@ bool SynchronizationObjectCoalescingAnalysis::runOnFunction(llvm::Function& F)
     m_ShaderType = ctx->type;
     m_HasTypedMemoryFenceFunctionality = ctx->platform.hasLSC() && ctx->platform.LSCEnabled();
     m_HasUrbFenceFunctionality = ctx->platform.hasURBFence();
-    Analyze();
+    bool isModified = ProcessFunction();
     return isModified;
 }
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Processes an analysis which results in pointing out redundancies
 /// among synchronization instructions appearing in the analyzed function.
-void SynchronizationObjectCoalescingAnalysis::Analyze()
+bool SynchronizationObjectCoalescing::ProcessFunction()
 {
     const CodeGenContext* const pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool isDisabled =
@@ -505,20 +554,106 @@ void SynchronizationObjectCoalescingAnalysis::Analyze()
         IGC_IS_FLAG_ENABLED(DisableSynchronizationObjectCoalescingPass);
     if (isDisabled)
     {
-        return;
+        return false;
     }
 
     InvalidateMembers();
     GatherInstructions();
-    FindRedundancies();
+    return FindRedundancies();
+}
+
+////////////////////////////////////////////////////////////////////////
+void SynchronizationObjectCoalescing::EraseRedundantInst(llvm::Instruction* pInst)
+{
+    bool isFence = IsFenceOperation(pInst);
+    llvm::DenseMap<llvm::BasicBlock*, std::map<uint32_t, llvm::Instruction*>>& container = isFence ?
+        m_OrderedFenceInstructionsInBasicBlockCache :
+        m_OrderedBarrierInstructionsInBasicBlockCache;
+    IGC_ASSERT(container.count(pInst->getParent()) > 0);
+    std::map<uint32_t, llvm::Instruction*>& innerContainer = container.find(pInst->getParent())->second;
+    auto index = m_InstIdxLookupTable.lookup(pInst);
+    innerContainer.erase(index);
+    if (innerContainer.empty())
+    {
+        container.erase(pInst->getParent());
+    }
+    pInst->eraseFromParent();
+}
+
+////////////////////////////////////////////////////////////////////////
+void SynchronizationObjectCoalescing::EraseRedundantL1CacheInvalidation(llvm::Instruction* pInst)
+{
+    llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pInst);
+
+    switch (pGenIntrinsicInst->getIntrinsicID())
+    {
+    case llvm::GenISAIntrinsic::GenISA_memoryfence:
+    {
+        constexpr uint32_t L1CacheInvalidateArg = 6;
+        pGenIntrinsicInst->setOperand(L1CacheInvalidateArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(L1CacheInvalidateArg)->getType()));
+        break;
+    }
+    case llvm::GenISAIntrinsic::GenISA_typedmemoryfence:
+    {
+        constexpr uint32_t L1CacheInvalidateArg = 0;
+        pGenIntrinsicInst->setOperand(L1CacheInvalidateArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(L1CacheInvalidateArg)->getType()));
+        break;
+    }
+    case llvm::GenISAIntrinsic::GenISA_LSCFence:
+    {
+        LSC_SFID mem = GetLscMem(pGenIntrinsicInst);
+        LSC_FENCE_OP op = GetLscFenceOp(pGenIntrinsicInst);
+        IGC_ASSERT(mem == LSC_TGM || mem == LSC_UGM);
+        IGC_ASSERT(op == LSC_FENCE_OP_INVALIDATE);
+        constexpr uint32_t fenceOpArg = 2;
+        llvm::Type* type = pGenIntrinsicInst->getOperand(fenceOpArg)->getType();
+        pGenIntrinsicInst->setOperand(
+            fenceOpArg,
+            llvm::ConstantInt::get(type, LSC_FENCE_OP_NONE));
+        break;
+    }
+    default:
+        IGC_ASSERT(0);
+        break;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+void SynchronizationObjectCoalescing::EraseRedundantGlobalScope(llvm::Instruction* pInst)
+{
+    llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pInst);
+
+    switch (pGenIntrinsicInst->getIntrinsicID())
+    {
+    case llvm::GenISAIntrinsic::GenISA_memoryfence:
+    {
+        constexpr uint32_t globalMemFenceArg = 5;
+        pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType()));
+        break;
+    }
+    case llvm::GenISAIntrinsic::GenISA_LSCFence:
+    {
+        constexpr uint32_t globalMemFenceArg = 0;
+        pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SFID::LSC_SLM)));
+        constexpr uint32_t scopeMemFenceArg = 1;
+        pGenIntrinsicInst->setOperand(scopeMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(scopeMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SCOPE::LSC_SCOPE_GROUP)));
+        constexpr uint32_t fenceOpArg = 2;
+        pGenIntrinsicInst->setOperand(fenceOpArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(fenceOpArg)->getType(), static_cast<uint32_t>(LSC_FENCE_OP_NONE)));
+        break;
+    }
+    default:
+        IGC_ASSERT(0);
+        break;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Identifies explicit redundancies among synchronization instructions.
-void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
+bool SynchronizationObjectCoalescing::FindRedundancies()
 {
+    bool isModified = false;
     // This lambda function identifies partial and strict redundancies among synchronization operations
-    auto GatherRedundancies = [this](std::vector<llvm::Instruction*>& synchronizationOperations)
+    auto GatherRedundancies = [this, &isModified](std::vector<llvm::Instruction*>& synchronizationOperations)
     {
         constexpr bool forwardDirection = true;
         constexpr bool backwardDirection = false;
@@ -530,7 +665,9 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 #if _DEBUG
                 RegisterRedundancyExplanation(pInst, ExplanationEntry::FastStrictRedundancy);
 #endif // _DEBUG
-                m_RedundantInstructions.insert(pInst);
+                EraseRedundantInst(pInst);
+                isModified = true;
+                continue;
             }
             InstructionMask localForwardMemoryInstructionMask = InstructionMask::None;
             InstructionMask localBackwardMemoryInstructionMask = InstructionMask::None;
@@ -538,23 +675,12 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
             auto SetLocalMemoryInstructionMask = [this, pInst, forwardDirection, backwardDirection,
                 &localForwardMemoryInstructionMask, &localBackwardMemoryInstructionMask]()
             {
-                localForwardMemoryInstructionMask = GetInstructionMask(pInst, forwardDirection);
-                localBackwardMemoryInstructionMask = GetInstructionMask(pInst, backwardDirection);
-
-                // This assures the below checks are right
-                IGC_ASSERT(
-                    (localForwardMemoryInstructionMask == AllNoAtomicMask) ||
-                    ((localForwardMemoryInstructionMask & GetDefaultMemoryInstructionMask(pInst)) == localForwardMemoryInstructionMask));
-                IGC_ASSERT((localBackwardMemoryInstructionMask & GetDefaultMemoryInstructionMask(pInst)) == localBackwardMemoryInstructionMask);
+                localForwardMemoryInstructionMask = GetDefaultMemoryInstructionMask(pInst) &
+                    GetInstructionMask(pInst, forwardDirection);
+                localBackwardMemoryInstructionMask = GetDefaultMemoryInstructionMask(pInst) &
+                    GetInstructionMask(pInst, backwardDirection);
             };
             SetLocalMemoryInstructionMask();
-
-            auto GatherPartialRedundancy = [this, &pInst, &SetLocalMemoryInstructionMask]
-                (llvm::DenseSet<llvm::Instruction*>& redundantCollection)
-            {
-                redundantCollection.insert(pInst);
-                SetLocalMemoryInstructionMask();
-            };
 
             // Partial redundancies:
             // 1) Applies to untyped and typed memory fences with invalidation
@@ -577,13 +703,13 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
                     SynchronizationCaseMask syncCaseMask = GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, BufferReadOperation, BufferWriteOperation);
                     if (!m_HasTypedMemoryFenceFunctionality)
                     {
-                        syncCaseMask = static_cast<SynchronizationCaseMask>(syncCaseMask | GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, TypedReadOperation, TypedWriteOperation));
+                        syncCaseMask |= GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, TypedReadOperation, TypedWriteOperation);
                     }
                     if (!m_HasUrbFenceFunctionality)
                     {
-                        syncCaseMask = static_cast<SynchronizationCaseMask>(syncCaseMask | GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation));
+                        syncCaseMask |= GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation);
                     }
-                    syncCaseMask = static_cast<SynchronizationCaseMask>(syncCaseMask | GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation));
+                    syncCaseMask |= GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation);
 
                     bool isObligatory = (syncCaseMask & GetL1CacheInvalidatioSynchronizationMask()) != 0;
                     if (!isObligatory)
@@ -591,7 +717,9 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 #if _DEBUG
                         RegisterRedundancyExplanation(pInst, ExplanationEntry::L1CacheInvalidationRedundancy);
 #endif // _DEBUG
-                        GatherPartialRedundancy(m_InvalidationFunctionalityRedundancies);
+                        EraseRedundantL1CacheInvalidation(pInst);
+                        isModified = true;
+                        SetLocalMemoryInstructionMask();
                     }
                 }
 
@@ -602,13 +730,11 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
                         GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, BufferReadOperation, BufferWriteOperation);
                     if (!m_HasTypedMemoryFenceFunctionality)
                     {
-                        syncCaseMask = static_cast<SynchronizationCaseMask>(syncCaseMask |
-                            GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, TypedReadOperation, TypedWriteOperation));
+                        syncCaseMask |= GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, TypedReadOperation, TypedWriteOperation);
                     }
                     if (!m_HasUrbFenceFunctionality)
                     {
-                        syncCaseMask = static_cast<SynchronizationCaseMask>(syncCaseMask |
-                            GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation));
+                        syncCaseMask |= GetSynchronizationMask(localForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation);
                     }
                     SynchronizationCaseMask referenceSyncCaseMask = GetStrictSynchronizationMask(pInst);
                     bool isObligatory = (syncCaseMask & referenceSyncCaseMask) != 0;
@@ -623,13 +749,11 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
                             GetSynchronizationMask(unsynchronizedForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, BufferReadOperation, BufferWriteOperation);
                         if (!m_HasTypedMemoryFenceFunctionality)
                         {
-                            syncCaseMaskForUnsynchronizedInstructions = static_cast<SynchronizationCaseMask>(syncCaseMaskForUnsynchronizedInstructions |
-                                GetSynchronizationMask(unsynchronizedForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, TypedReadOperation, TypedWriteOperation));
+                            syncCaseMaskForUnsynchronizedInstructions |= GetSynchronizationMask(unsynchronizedForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, TypedReadOperation, TypedWriteOperation);
                         }
                         if (!m_HasUrbFenceFunctionality)
                         {
-                            syncCaseMaskForUnsynchronizedInstructions = static_cast<SynchronizationCaseMask>(syncCaseMaskForUnsynchronizedInstructions |
-                                GetSynchronizationMask(unsynchronizedForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation));
+                            syncCaseMaskForUnsynchronizedInstructions |= GetSynchronizationMask(unsynchronizedForwardMemoryInstructionMask, localBackwardMemoryInstructionMask, OutputUrbReadOperation, UrbWriteOperation);
                         }
                         syncCaseMask = syncCaseMaskForUnsynchronizedInstructions;
                         isObligatory = (syncCaseMask & referenceSyncCaseMask) != 0;
@@ -640,8 +764,9 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 #if _DEBUG
                         RegisterRedundancyExplanation(pInst, ExplanationEntry::GlobalMemoryRedundancy);
 #endif // _DEBUG
-                        GatherPartialRedundancy(m_GlobalMemoryRedundancies);
-                        IGC_ASSERT(!IsUntypedMemoryFenceOperationWithInvalidationFunctionality(pInst));
+                        EraseRedundantGlobalScope(pInst);
+                        isModified = true;
+                        SetLocalMemoryInstructionMask();
                     }
                 }
             }
@@ -658,12 +783,13 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 #if _DEBUG
                     RegisterRedundancyExplanation(pInst, ExplanationEntry::L1CacheInvalidationRedundancy);
 #endif // _DEBUG
-                    GatherPartialRedundancy(m_InvalidationFunctionalityRedundancies);
+                    EraseRedundantL1CacheInvalidation(pInst);
+                    isModified = true;
+                    SetLocalMemoryInstructionMask();
                 }
             }
 
-            if (IsLscFenceOperation(pInst) &&
-                m_InvalidationFunctionalityRedundancies.find(pInst) == m_InvalidationFunctionalityRedundancies.end())
+            if (IsLscFenceOperation(pInst))
             {
                 LSC_SFID mem = GetLscMem(pInst);
                 LSC_FENCE_OP op = GetLscFenceOp(pInst);
@@ -681,7 +807,9 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 #if _DEBUG
                         RegisterRedundancyExplanation(pInst, ExplanationEntry::L1CacheInvalidationRedundancy);
 #endif // _DEBUG
-                        GatherPartialRedundancy(m_InvalidationFunctionalityRedundancies);
+                        EraseRedundantL1CacheInvalidation(pInst);
+                        isModified = true;
+                        SetLocalMemoryInstructionMask();
                     }
                 }
             }
@@ -720,7 +848,8 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
 #if _DEBUG
                 RegisterRedundancyExplanation(pInst, ExplanationEntry::StrictRedundancy);
 #endif // _DEBUG
-                m_RedundantInstructions.insert(pInst);
+                EraseRedundantInst(pInst);
+                isModified = true;
             }
         }
     };
@@ -730,12 +859,13 @@ void SynchronizationObjectCoalescingAnalysis::FindRedundancies()
     GatherRedundancies(m_TypedMemoryFences);
     GatherRedundancies(m_UrbMemoryFences);
     GatherRedundancies(m_LscMemoryFences);
+    return isModified;
 }
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides write memory instructions mask which are synchronized
 /// by the instruction.
-InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultWriteMemoryInstructionMask(const llvm::Instruction* pSourceInst) const
+InstructionMask SynchronizationObjectCoalescing::GetDefaultWriteMemoryInstructionMask(const llvm::Instruction* pSourceInst) const
 {
     InstructionMask result = InstructionMask::None;
     if (IsUntypedMemoryFenceOperation(pSourceInst))
@@ -826,7 +956,7 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultWriteMemoryIn
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides default memory instruction mask which is used for
 /// graph searching.
-InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstructionMask(
+InstructionMask SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask(
     const llvm::Instruction* pSourceInst) const
 {
     // All the rules stems from assumptions in the main comment of this analysis (the paragraph about a strict redundancy).
@@ -942,142 +1072,471 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetDefaultMemoryInstruc
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsReturnOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsReturnOperation(const llvm::Instruction* pInst)
 {
     return llvm::isa<llvm::ReturnInst>(pInst);
 }
 
-////////////////////////////////////////////////////////////////////////
-/// @brief Go through a basic block according to the iterator direction
-/// until any boundary instruction is met. Meanwhile, this function collects
-/// instructions which fulfill the predicate.
-/// @param begin the begin iterator
-/// @param end the end iterator
-/// @param gatheredInstructions the collection of gathered instructions
-/// @param GatheringPredicate determines which instructions can be collected
-/// @param boundaryInstructions the collection of boundary instructions
-/// @param BoundaryPredicate determines which instructions are boundary
-template<typename BasicBlockterator>
-static BasicBlockterator GatherInstructionsInBasicBlock(
-    BasicBlockterator begin,
-    BasicBlockterator end,
-    std::vector<const llvm::Instruction*>& gatheredInstructions,
-    std::function<bool(const llvm::Instruction*)>& GatheringPredicate,
-    std::vector<const llvm::Instruction*>& boundaryInstructions,
-    std::function<bool(const llvm::Instruction*)>& BoundaryPredicate)
+//////////////////////////////////////////////////////////////////////////
+template<class... Ts> struct overloaded : Ts...
 {
-    for (auto it = begin; it != end; it++)
+    template<typename T>
+    overloaded<Ts...>& operator=(T&& lambda)
     {
-        const llvm::Instruction* pInst = &(*it);
-
-        if (BoundaryPredicate(pInst))
-        {
-            boundaryInstructions.push_back(pInst);
-            return it;
-        }
-
-        if (GatheringPredicate(pInst))
-        {
-            gatheredInstructions.push_back(pInst);
-        }
+        ((static_cast<Ts&>(*this) = std::forward<T&&>(lambda)), ...);
+        return *this;
     }
-    return end;
-}
+
+    using Ts::operator()...;
+};
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+//////////////////////////////////////////////////////////////////////////
+using ForwardIterationCallbackT = std::function<void(llvm::BasicBlock::const_iterator, llvm::BasicBlock::const_iterator)>;
+
+//////////////////////////////////////////////////////////////////////////
+using BackwardIterationCallbackT = std::function<void(llvm::BasicBlock::const_reverse_iterator, llvm::BasicBlock::const_reverse_iterator)>;
+
+//////////////////////////////////////////////////////////////////////////
+using IterationCallbackT = overloaded<ForwardIterationCallbackT, BackwardIterationCallbackT>;
+
+//////////////////////////////////////////////////////////////////////////
+using ForwardBoundaryCallbackT = std::function<llvm::BasicBlock::const_iterator(llvm::BasicBlock::const_iterator, llvm::BasicBlock::const_iterator)>;
+
+//////////////////////////////////////////////////////////////////////////
+using BackwardBoundaryCallbackT = std::function<llvm::BasicBlock::const_reverse_iterator(llvm::BasicBlock::const_reverse_iterator, llvm::BasicBlock::const_reverse_iterator)>;
+
+//////////////////////////////////////////////////////////////////////////
+using BoundaryCallbackT = overloaded<ForwardBoundaryCallbackT, BackwardBoundaryCallbackT>;
+
+//////////////////////////////////////////////////////////////////////////
+using ForwardProcessCallbackT = std::function<bool(llvm::BasicBlock::const_iterator, llvm::BasicBlock::const_iterator)>;
+
+//////////////////////////////////////////////////////////////////////////
+using BackwardProcessCallbackT = std::function<bool(llvm::BasicBlock::const_reverse_iterator, llvm::BasicBlock::const_reverse_iterator)>;
+
+//////////////////////////////////////////////////////////////////////////
+using ProcessCallbackT = overloaded<ForwardProcessCallbackT, BackwardProcessCallbackT>;
 
 ////////////////////////////////////////////////////////////////////////
-/// @brief Seeks available instructions which can be collected according to
-/// the iterator direction. The searching ends up with meeting a boundary instruction.
-/// The searching relies on DFS algorithm.
-/// @param workList a collection with begin points of searching
-/// @param visitedBasicBlocks holds all restricted basic blocks
-/// @param gatheredInstructions the collection of gathered instructions
-/// @param GatheringPredicate determines which instructions can be collected
-/// @param boundaryInstructions the collection of boundary instructions
-/// @param BoundaryPredicate determines which instructions are boundary
+/// @brief Scan over basic blocks using a custom function which
+/// analyzes instructions between the beginning and ending iterator
+/// and decides if the scan should be continued. The direction of the
+/// scanning process is defined by the kind of used iterators.
+/// @param workList holds a collection with the beginning points of searching
+/// @param visitedBasicBlocks holds a collection of fully visited basic blocks
+/// @param ProcessInstructions holds a function returning information
+/// based on the beginning and ending iterators of the currently scanned
+/// basic blocks if adjacent basic blocks also should be scanned
+/// @tparam BasicBlockterator a basic block iterator type indicating the scan direction
 template<typename BasicBlockterator>
 static void SearchInstructions(
     std::list<BasicBlockterator>& workList,
     llvm::DenseSet<const llvm::BasicBlock*>& visitedBasicBlocks,
-    std::vector<const llvm::Instruction*>& gatheredInstructions,
-    std::function<bool(const llvm::Instruction*)>& GatheringPredicate,
-    std::vector<const llvm::Instruction*>& boundaryInstructions,
-    std::function<bool(const llvm::Instruction*)>& BoundaryPredicate)
+    std::function<bool(BasicBlockterator, BasicBlockterator)>& ProcessInstructions)
 {
-    constexpr bool isForwardDirection = std::is_same_v<BasicBlockterator, llvm::BasicBlock::const_iterator>;
-    // handles a forward direction
+    auto GetBeginIt = [](const llvm::BasicBlock* pBasicBlock) -> BasicBlockterator
+    {
+        constexpr bool isForwardDirection = std::is_same_v<BasicBlockterator, llvm::BasicBlock::const_iterator>;
+        if constexpr (isForwardDirection)
+        {
+            return pBasicBlock->begin();
+        }
+        else
+        {
+            return pBasicBlock->rbegin();
+        }
+    };
+
+    auto GetEndIt = [](const llvm::BasicBlock* pBasicBlock) -> BasicBlockterator
+    {
+        constexpr bool isForwardDirection = std::is_same_v<BasicBlockterator, llvm::BasicBlock::const_iterator>;
+        if constexpr (isForwardDirection)
+        {
+            return pBasicBlock->end();
+        }
+        else
+        {
+            return pBasicBlock->rend();
+        }
+    };
+
+    auto GetSuccessors = [](const llvm::BasicBlock* pBasicBlock)
+    {
+        constexpr bool isForwardDirection = std::is_same_v<BasicBlockterator, llvm::BasicBlock::const_iterator>;
+        if constexpr (isForwardDirection)
+        {
+            return llvm::successors(pBasicBlock);
+        }
+        else
+        {
+            return llvm::predecessors(pBasicBlock);
+        }
+    };
+
+    for (auto it : workList)
+    {
+        const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
+        // use the iterator only if it wasn't visited or restricted
+        auto bbIt = visitedBasicBlocks.find(pCurrentBasicBlock);
+        if (bbIt != visitedBasicBlocks.end())
+        {
+            continue;
+        }
+        else if (GetBeginIt(pCurrentBasicBlock) == it)
+        {
+            visitedBasicBlocks.insert(pCurrentBasicBlock);
+        }
+        BasicBlockterator end = GetEndIt(pCurrentBasicBlock);
+        if (ProcessInstructions(it, end))
+        {
+            for (const llvm::BasicBlock* pSuccessor : GetSuccessors(pCurrentBasicBlock))
+            {
+                if (visitedBasicBlocks.find(pSuccessor) == visitedBasicBlocks.end())
+                {
+                    workList.push_back(GetBeginIt(pSuccessor));
+                }
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Scan over basic blocks using custom functions which
+/// one of them analyzes instructions between the beginning and ending iterator
+/// and second of them decides if the scan should be continued. The direction of the
+/// scanning process is defined by the kind of used iterators.
+/// @param workList holds a collection with the beginning points of searching
+/// @param visitedBasicBlocks holds a collection of fully visited basic blocks
+/// @param IterateOverMemoryInsts holds a function analyzing the content
+/// between the beginning iterator and the boundary iterator.
+/// @param GetBoundaryInst holds a function returning information
+/// about the boundary of scanning if it is present in the analyzed basic
+/// block, otherwise, it returns the ending iterator and it means the
+/// scan process is proceeded.
+/// based on the beginning and ending iterators of the currently scanned
+/// basic blocks if adjacent basic blocks also should be scanned
+/// @tparam BasicBlockterator a basic block iterator type indicating the scan direction
+template<typename BasicBlockterator>
+static void SearchInstructions(
+    std::list<BasicBlockterator>& workList,
+    llvm::DenseSet<const llvm::BasicBlock*>& visitedBasicBlocks,
+    std::function<void(BasicBlockterator, BasicBlockterator)>& IterateOverMemoryInsts,
+    std::function<BasicBlockterator(BasicBlockterator, BasicBlockterator)>& GetBoundaryInst)
+{
+    std::function<bool(BasicBlockterator, BasicBlockterator)> ProcessInstructions{};
+    ProcessInstructions = [&GetBoundaryInst, &IterateOverMemoryInsts](auto it, auto end)
+    {
+        auto beg = it;
+        it = GetBoundaryInst(beg, end);
+        IterateOverMemoryInsts(beg, it);
+        return it == end;
+    };
+    SearchInstructions(workList, visitedBasicBlocks, ProcessInstructions);
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the following information as a pair:
+/// - the map range of the container determined by the basic block iterators,
+/// - the answer to the question whether the map range covers the entire container.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+/// @param it indicates the beginning instruction of the map range
+/// @param end indicates the ending instruction of the map range
+/// @tparam BasicBlockterator a basic block iterator type indicating the scan direction
+template<typename BasicBlockterator>
+auto GetMapRange(
+    const InstLookupTableInBasicBlockT& container,
+    const InstIdxLookupTableT& lookupTable,
+    BasicBlockterator it,
+    BasicBlockterator end)
+{
+    IGC_ASSERT(it != end);
+    auto GetEndIt = [](const llvm::BasicBlock* pBasicBlock) -> BasicBlockterator
+    {
+        constexpr bool isForwardDirection = std::is_same_v<BasicBlockterator, llvm::BasicBlock::const_iterator>;
+        if constexpr (isForwardDirection)
+        {
+            return pBasicBlock->end();
+        }
+        else
+        {
+            return pBasicBlock->rend();
+        }
+    };
+    constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
+    auto currBeg = isForwardDirection ? it : end;
+    const llvm::BasicBlock* pBB = currBeg->getParent();
+    auto lowIt = currBeg != GetEndIt(pBB) ?
+        lookupTable.find(&(*(currBeg))) : lookupTable.end();
+    auto lowBound = lowIt == lookupTable.end() ?
+        container.begin() :
+        container.lower_bound(lowIt->second);
+    auto currEnd = !isForwardDirection ? it : end;
+    auto highIt = currEnd != GetEndIt(pBB) ?
+        lookupTable.find(&(*(currEnd))) : lookupTable.end();
+    auto highBound = highIt == lookupTable.end() ?
+        container.end() :
+        container.upper_bound(highIt->second);
+    auto insts = llvm::make_range(lowBound, highBound);
+    bool allEntries = lowBound == container.begin() && highBound == container.end();
     if constexpr (isForwardDirection)
     {
-        for (auto it : workList)
-        {
-            const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
-
-            // use the iterator only if it wasn't visited or restricted
-            if (visitedBasicBlocks.find(pCurrentBasicBlock) != visitedBasicBlocks.end() &&
-                (*visitedBasicBlocks.find(pCurrentBasicBlock))->begin() == it)
-            {
-                continue;
-            }
-
-            if (pCurrentBasicBlock->begin() == it)
-            {
-                visitedBasicBlocks.insert(pCurrentBasicBlock);
-            }
-
-            auto end = pCurrentBasicBlock->end();
-            it = GatherInstructionsInBasicBlock(
-                it,
-                pCurrentBasicBlock->end(),
-                gatheredInstructions,
-                GatheringPredicate,
-                boundaryInstructions,
-                BoundaryPredicate);
-
-            if (it == end)
-            {
-                for (const llvm::BasicBlock* pSuccessor : llvm::successors(pCurrentBasicBlock))
-                {
-                    workList.push_back(pSuccessor->begin());
-                }
-            }
-        }
+        return std::make_pair(insts, allEntries);
     }
-    // handles a backward direction
     else
     {
-        for (auto it : workList)
+        return std::make_pair(llvm::reverse(insts), allEntries);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the boundary callback to determine the boundary instruction
+/// in the basic block.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+/// @param IsBoundaryInst a callback to check if the instruction is a boundary instruction
+/// @param boundaryInstructions the container of the visited boundary instructions filled by the output callback
+auto GetBoundaryFunc(
+    const OrderedInstructionLookupTableT& container,
+    const InstIdxLookupTableT& lookupTable,
+    std::function<bool(const llvm::Instruction*)>& IsBoundaryInst,
+    std::vector<const llvm::Instruction*>& boundaryInstructions)
+{
+    BoundaryCallbackT GetBoundary{};
+    GetBoundary = [&container, &IsBoundaryInst, &boundaryInstructions, &lookupTable](auto beg, auto end) -> decltype(beg)
+    {
+        if (beg == end)
         {
-            const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
-
-            // use the iterator only if it wasn't visited or restricted
-            if (visitedBasicBlocks.find(pCurrentBasicBlock) != visitedBasicBlocks.end() &&
-                (*visitedBasicBlocks.find(pCurrentBasicBlock))->rbegin() == it)
+            return end;
+        }
+        constexpr bool isForwardDirection = std::is_same_v<decltype(beg), llvm::BasicBlock::const_iterator>;
+        const llvm::BasicBlock* pCurrentBasicBlock = beg->getParent();
+        const auto& currBBInstsIt = container.find(pCurrentBasicBlock);
+        if (currBBInstsIt == container.end() || currBBInstsIt->second.empty())
+        {
+            return end;
+        }
+        auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, beg, end);
+        for (auto [index, pInst] : currBBInstsRange.first)
+        {
+            if (IsBoundaryInst(pInst))
             {
-                continue;
-            }
-
-            if (pCurrentBasicBlock->rbegin() == it)
-            {
-                visitedBasicBlocks.insert(pCurrentBasicBlock);
-            }
-
-            auto end = pCurrentBasicBlock->rend();
-            it = GatherInstructionsInBasicBlock(
-                it,
-                pCurrentBasicBlock->rend(),
-                gatheredInstructions,
-                GatheringPredicate,
-                boundaryInstructions,
-                BoundaryPredicate);
-
-            if (it == end)
-            {
-                for (const llvm::BasicBlock* pPredecessor : llvm::predecessors(pCurrentBasicBlock))
+                boundaryInstructions.push_back(pInst);
+                if constexpr (isForwardDirection)
                 {
-                    workList.push_back(pPredecessor->rbegin());
+                    return pInst->getIterator();
+                }
+                else
+                {
+                    return pInst->getReverseIterator();
                 }
             }
         }
-    }
+        return end;
+    };
+    return GetBoundary;
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the boundary callback to determine a boundary instruction
+/// in the basic block.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+auto GetBoundaryFunc(
+    const OrderedInstructionLookupTableT& container,
+    const InstIdxLookupTableT& lookupTable)
+{
+    BoundaryCallbackT GetBoundary{};
+    GetBoundary = [&](auto beg, auto end) -> decltype(beg)
+    {
+        if (beg == end)
+        {
+            return end;
+        }
+        constexpr bool isForwardDirection = std::is_same_v<decltype(beg), llvm::BasicBlock::const_iterator>;
+        const llvm::BasicBlock* pCurrentBasicBlock = beg->getParent();
+        const auto& currBBInstsIt = container.find(pCurrentBasicBlock);
+        if (currBBInstsIt == container.end() || currBBInstsIt->second.empty())
+        {
+            return end;
+        }
+        auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, beg, end);
+        for (auto [index, pInst] : currBBInstsRange.first)
+        {
+            if constexpr (isForwardDirection)
+            {
+                return pInst->getIterator();
+            }
+            else
+            {
+                return pInst->getReverseIterator();
+            }
+        }
+        return end;
+    };
+    return GetBoundary;
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the boundary callback to determine a boundary instruction
+/// in the basic block.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+/// @param IsBoundaryInst a callback to check if the instruction is a boundary instruction
+auto GetBoundaryFunc(
+    const OrderedInstructionLookupTableT& container,
+    const InstIdxLookupTableT& lookupTable,
+    std::function<bool(const llvm::Instruction*)>& IsBoundaryInst)
+{
+    BoundaryCallbackT GetBoundary{};
+    GetBoundary = [&](auto beg, auto end) -> decltype(beg)
+    {
+        if (beg == end)
+        {
+            return end;
+        }
+        constexpr bool isForwardDirection = std::is_same_v<decltype(beg), llvm::BasicBlock::const_iterator>;
+        const llvm::BasicBlock* pCurrentBasicBlock = beg->getParent();
+        const auto& currBBInstsIt = container.find(pCurrentBasicBlock);
+        if (currBBInstsIt == container.end() || currBBInstsIt->second.empty())
+        {
+            return end;
+        }
+        auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, beg, end);
+        for (auto [index, pInst] : currBBInstsRange.first)
+        {
+            if (IsBoundaryInst(pInst))
+            {
+                if constexpr (isForwardDirection)
+                {
+                    return pInst->getIterator();
+                }
+                else
+                {
+                    return pInst->getReverseIterator();
+                }
+            }
+        }
+        return end;
+    };
+    return GetBoundary;
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the boundary callback to iterate over a container between
+/// indicated basic block iterators.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+/// @param IsExpectedInst a callback to check if the instruction is an expected instruction
+/// @param instructions the container of the visited expected instructions from the container filled by the output callback
+auto GetIterationFunc(
+    const OrderedInstructionLookupTableT& container,
+    const InstIdxLookupTableT& lookupTable,
+    std::function<bool(const llvm::Instruction*)>& IsExpectedInst,
+    std::vector<const llvm::Instruction*>& instructions)
+{
+    IterationCallbackT IterateFunc{};
+    IterateFunc = [&](auto it, auto end) -> void
+    {
+        if (it == end)
+        {
+            return;
+        }
+        constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
+        const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
+        const auto& currBBInstsIt = container.find(pCurrentBasicBlock);
+        if (currBBInstsIt == container.end() || currBBInstsIt->second.empty())
+        {
+            return;
+        }
+        auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, it, end);
+        for (auto [index, val] : currBBInstsRange.first)
+        {
+            if (IsExpectedInst(val))
+            {
+                instructions.push_back(val);
+            }
+        }
+    };
+    return IterateFunc;
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the boundary callback to iterate over a container between
+/// indicated basic block iterators.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+/// @param instructions the container of the visited instructions from the container filled by the output callback
+auto GetIterationFunc(
+    const OrderedInstructionLookupTableT& container,
+    const InstIdxLookupTableT& lookupTable,
+    std::vector<const llvm::Instruction*>& instructions)
+{
+    IterationCallbackT IterateFunc{};
+    IterateFunc = [&](auto it, auto end) -> void
+    {
+        if (it == end)
+        {
+            return;
+        }
+        constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
+        const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
+        const auto& currBBInstsIt = container.find(pCurrentBasicBlock);
+        if (currBBInstsIt == container.end() || currBBInstsIt->second.empty())
+        {
+            return;
+        }
+        auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, it, end);
+        for (auto [index, val] : currBBInstsRange.first)
+        {
+            instructions.push_back(val);
+        }
+    };
+    return IterateFunc;
+}
+
+////////////////////////////////////////////////////////////////////////
+/// @brief Returns the boundary callback to iterate over a container between
+/// indicated basic block iterators.
+/// @param container holds ordered filtered instructions inside the analyzed basic block
+/// @param lookupTable holds a mapping from a instruction to its number of line of its basic block
+/// @param instMaskLookupTable holds a mapping from a instruction to its memory mask
+/// @param bbLookupTable holds a mapping from a basic block to the aggregated memory mask of its memory instructions
+/// @param instructionMask is the aggregated instruction mask by the output callback
+IterationCallbackT GetIterationFunc(
+    const OrderedInstructionLookupTableT& container,
+    const InstIdxLookupTableT& lookupTable,
+    const InstMaskLookupTableT& instMaskLookupTable,
+    const BasicBlockMaskLookupTableT& bbLookupTable,
+    InstructionMask& instructionMask)
+{
+    IterationCallbackT IterateFunc{};
+    IterateFunc = [&container, &lookupTable, &instMaskLookupTable, &bbLookupTable, &instructionMask](auto it, auto end) -> void
+    {
+        if (it == end)
+        {
+            return;
+        }
+        constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
+        const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
+        const auto& currBBInstsIt = container.find(pCurrentBasicBlock);
+        if (currBBInstsIt == container.end() || currBBInstsIt->second.empty())
+        {
+            return;
+        }
+        auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, it, end);
+        if (currBBInstsRange.second)
+        {
+            instructionMask |= bbLookupTable.lookup(pCurrentBasicBlock);
+            return;
+        }
+        for (auto [index, val] : currBBInstsRange.first)
+        {
+            instructionMask |= instMaskLookupTable.lookup(val);
+        }
+    };
+    return IterateFunc;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1089,52 +1548,66 @@ static void SearchInstructions(
 /// The searching relies on DFS algorithm.
 /// @param pSourceInst the source synchronization instruction
 /// @param forwardDirection the direction of searching
-/// @param memoryInstructionMask determines which memory instruction can be collected
-/// @param output the output collection of reachable memory instructions
-void SynchronizationObjectCoalescingAnalysis::GetVisibleMemoryInstructions(
+/// @param boundaryInstructions the collection of substitute instructions
+/// @param memoryInstructions the collection of unsynchronized memory instructions
+void SynchronizationObjectCoalescing::GetVisibleMemoryInstructions(
     const llvm::Instruction* pSourceInst,
     bool forwardDirection,
     std::vector<const llvm::Instruction*>& boundaryInstructions,
     std::vector<const llvm::Instruction*>& memoryInstructions) const
 {
     InstructionMask memoryInstructionMask = GetDefaultMemoryInstructionMask(pSourceInst);
-    llvm::DenseSet<llvm::Instruction*> possibleBoundaryInstructions(GetAllSubsituteInstructions(pSourceInst));
     llvm::DenseSet<const llvm::BasicBlock*> visitedBasicBlocks;
 
-    std::function<bool(const llvm::Instruction*)> BoundaryPredicate = [this, possibleBoundaryInstructions](const llvm::Instruction* pInst) -> bool
+    std::function<bool(const llvm::Instruction*)> IsBoundaryInst = [this, pSourceInst](const llvm::Instruction* pEvaluatedInst)
     {
-        bool isBoundary = possibleBoundaryInstructions.find(pInst) != possibleBoundaryInstructions.end();
-        return isBoundary;
+        return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
     };
-
-    std::function<bool(const llvm::Instruction*)> GatheringPredicate = [this, memoryInstructionMask](const llvm::Instruction* pInst) -> bool
+    std::function<bool(const llvm::Instruction*)> IsMemoryInst = [this, memoryInstructionMask](const llvm::Instruction* pEvaluatedInst)
     {
-        bool gatherInstruction = (GetInstructionMask(pInst) & memoryInstructionMask) != 0;
-        return gatherInstruction;
+        return (m_InstMaskLookupTable.lookup(pEvaluatedInst) & memoryInstructionMask) != 0;
     };
+    auto GetBoundaries = GetBoundaryFunc(
+        IsFenceOperation(pSourceInst) ? m_OrderedFenceInstructionsInBasicBlockCache : m_OrderedBarrierInstructionsInBasicBlockCache,
+        m_InstIdxLookupTable,
+        IsBoundaryInst,
+        boundaryInstructions);
+    auto GetMemInsts = GetIterationFunc(
+        m_OrderedMemoryInstructionsInBasicBlockCache,
+        m_InstIdxLookupTable,
+        IsMemoryInst,
+        memoryInstructions);
 
     if (forwardDirection)
     {
         llvm::BasicBlock::const_iterator firstIt = ++pSourceInst->getIterator();
         std::list<llvm::BasicBlock::const_iterator> workList{ firstIt };
-        SearchInstructions(workList, visitedBasicBlocks, memoryInstructions, GatheringPredicate, boundaryInstructions, BoundaryPredicate);
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<ForwardIterationCallbackT&>(GetMemInsts),
+            static_cast<ForwardBoundaryCallbackT&>(GetBoundaries));
     }
     else
     {
         llvm::BasicBlock::const_reverse_iterator firstIt = ++pSourceInst->getReverseIterator();
-        std::list<llvm::BasicBlock::const_reverse_iterator> workList;
-        if (firstIt != pSourceInst->getParent()->rend())
-        {
-            workList.push_back(firstIt);
-        }
-        else
+        std::list<llvm::BasicBlock::const_reverse_iterator> workList{};
+        if (firstIt == pSourceInst->getParent()->rend())
         {
             for (const llvm::BasicBlock* pPredecessor : llvm::predecessors(pSourceInst->getParent()))
             {
                 workList.push_back(pPredecessor->rbegin());
             }
         }
-        SearchInstructions(workList, visitedBasicBlocks, memoryInstructions, GatheringPredicate, boundaryInstructions, BoundaryPredicate);
+        else
+        {
+            workList.push_back(firstIt);
+        }
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<BackwardIterationCallbackT&>(GetMemInsts),
+            static_cast<BackwardBoundaryCallbackT&>(GetBoundaries));
     }
 }
 
@@ -1142,50 +1615,56 @@ void SynchronizationObjectCoalescingAnalysis::GetVisibleMemoryInstructions(
 /// @brief Provides reachable memory instructions in the next synchronization area
 /// from this source instruction. Such searching is executed because fences
 /// ensures that all started memory operations are finished together.
-/// This all potentially unsynchronized instructions should be known to make decision
+/// These potentially unsynchronized instructions should be known to make decision
 /// if the fence is redundant. This function search such patterns: this fence -> (barrier ->
 /// substitute* -> barrier*). All unsynchronized instructions are inside the paranthesis.
 /// * these instructions can be missed in the shader.
 /// @param pSourceInst a collection with begin points of searching
 /// @param threadGroupBarriers holds boundary thread group barrier instructions
 /// @param memoryInstructions the collection of unsynchronized memory instructions
-void SynchronizationObjectCoalescingAnalysis::GetAllUnsynchronizedMemoryInstructions(
+void SynchronizationObjectCoalescing::GetAllUnsynchronizedMemoryInstructions(
     const llvm::Instruction* pSourceInst,
     std::vector<const llvm::Instruction*>& threadGroupBarriers,
     std::vector<const llvm::Instruction*>& memoryInstructions) const
 {
-    const llvm::DenseSet<llvm::Instruction*> possibleBoundaryInstructions(GetAllSubsituteInstructions(pSourceInst));
-
-    std::function<bool(const llvm::Instruction*)> BoundaryPredicateFromSubstitutes = [this, &possibleBoundaryInstructions](const llvm::Instruction* pInst) -> bool
+    std::function<bool(const llvm::Instruction*)> IsBoundaryInst = [this, pSourceInst](const llvm::Instruction* pEvaluatedInst)
     {
-        bool isBoundary = possibleBoundaryInstructions.find(pInst) != possibleBoundaryInstructions.end();
-        return isBoundary;
+        return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
     };
-
-    std::function<bool(const llvm::Instruction*)> CheckIfBarrier = [this](const llvm::Instruction* pInst) -> bool
-    {
-        bool isThreadGroupBarrier = IsThreadBarrierOperation(pInst);
-        return isThreadGroupBarrier;
-    };
+    auto GetBoundaries = GetBoundaryFunc(
+        m_OrderedFenceInstructionsInBasicBlockCache,
+        m_InstIdxLookupTable,
+        IsBoundaryInst);
+    auto GetBarrierInsts = GetIterationFunc(
+        m_OrderedBarrierInstructionsInBasicBlockCache,
+        m_InstIdxLookupTable,
+        threadGroupBarriers);
 
     // gather all visible thread group barriers
     {
         llvm::DenseSet<const llvm::BasicBlock*> visitedBasicBlocks;
         llvm::BasicBlock::const_iterator firstIt = ++pSourceInst->getIterator();
         std::list<llvm::BasicBlock::const_iterator> workList{ firstIt };
-        std::vector<const llvm::Instruction*> boundaryInstructions;
-        SearchInstructions(workList, visitedBasicBlocks, threadGroupBarriers, CheckIfBarrier, boundaryInstructions, BoundaryPredicateFromSubstitutes);
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<ForwardIterationCallbackT&>(GetBarrierInsts),
+            static_cast<ForwardBoundaryCallbackT&>(GetBoundaries));
     }
 
     // gather all memory instructions between thread group barriers which goes through a substitute (thread group barrier -> fence -> thread group barrier)
     if (!threadGroupBarriers.empty())
     {
         InstructionMask memoryInstructionMask = GetDefaultMemoryInstructionMask(pSourceInst);
-        std::function<bool(const llvm::Instruction*)> GatheringPredicate = [this, memoryInstructionMask](const llvm::Instruction* pInst) -> bool
+        std::function<bool(const llvm::Instruction*)> IsMemoryInst = [this, memoryInstructionMask](const llvm::Instruction* pEvaluatedInst)
         {
-            bool gatherInstruction = (GetInstructionMask(pInst) & memoryInstructionMask) != 0;
-            return gatherInstruction;
+            return (m_InstMaskLookupTable.lookup(pEvaluatedInst) & memoryInstructionMask) != 0;
         };
+        auto GetMemInsts = GetIterationFunc(
+            m_OrderedMemoryInstructionsInBasicBlockCache,
+            m_InstIdxLookupTable,
+            IsMemoryInst,
+            memoryInstructions);
         llvm::DenseSet<const llvm::BasicBlock*> visitedBasicBlocks;
 
         // find reachable substitutes from these thread group barriers
@@ -1195,20 +1674,35 @@ void SynchronizationObjectCoalescingAnalysis::GetAllUnsynchronizedMemoryInstruct
             workList.push_back(pBarrier->getIterator());
         }
         std::vector<const llvm::Instruction*> visibleSubstitues;
-        SearchInstructions(workList, visitedBasicBlocks, memoryInstructions, GatheringPredicate, visibleSubstitues, BoundaryPredicateFromSubstitutes);
+        auto GetBoundariesAfterBarriers = GetBoundaryFunc(
+            m_OrderedFenceInstructionsInBasicBlockCache,
+            m_InstIdxLookupTable,
+            IsBoundaryInst,
+            visibleSubstitues);
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<ForwardIterationCallbackT&>(GetMemInsts),
+            static_cast<ForwardBoundaryCallbackT&>(GetBoundariesAfterBarriers));
 
         // find reachable thread group barriers from these substitutes
         workList.clear();
         for (const llvm::Instruction* pSubstitute : visibleSubstitues)
         {
             workList.push_back(pSubstitute->getIterator());
-            if (visitedBasicBlocks.find(pSubstitute->getParent()) != visitedBasicBlocks.end() &&
-                (*visitedBasicBlocks.find(pSubstitute->getParent()))->begin() == pSubstitute->getIterator())
+            if (visitedBasicBlocks.find(pSubstitute->getParent()) != visitedBasicBlocks.end())
             {
                 visitedBasicBlocks.erase(pSubstitute->getParent());
             }
         }
-        SearchInstructions(workList, visitedBasicBlocks, memoryInstructions, GatheringPredicate, threadGroupBarriers, CheckIfBarrier);
+        auto GetBarrierBoundaries = GetBoundaryFunc(
+            m_OrderedBarrierInstructionsInBasicBlockCache,
+            m_InstIdxLookupTable);
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<ForwardIterationCallbackT&>(GetMemInsts),
+            static_cast<ForwardBoundaryCallbackT&>(GetBarrierBoundaries));
     }
 }
 
@@ -1220,21 +1714,65 @@ void SynchronizationObjectCoalescingAnalysis::GetAllUnsynchronizedMemoryInstruct
 /// a substitute is not crossed by another substitute.
 /// @param pSourceInst the source synchronization instruction
 /// @param forwardDirection the direction of searching
-InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
+InstructionMask SynchronizationObjectCoalescing::GetInstructionMask(
     const llvm::Instruction* pSourceInst,
     bool forwardDirection) const
 {
-    std::vector<const llvm::Instruction*> boundaryInstructions;
-    std::vector<const llvm::Instruction*> memoryInstructions;
-    GetVisibleMemoryInstructions(pSourceInst, forwardDirection, boundaryInstructions, memoryInstructions);
-    return GetInstructionMask(memoryInstructions);
+    InstructionMask result{};
+    llvm::DenseSet<const llvm::BasicBlock*> visitedBasicBlocks;
+    std::function<bool(const llvm::Instruction*)> IsBoundaryInst = [this, pSourceInst](const llvm::Instruction* pEvaluatedInst)
+    {
+        return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
+    };
+    auto GetBoundaries = GetBoundaryFunc(
+        IsFenceOperation(pSourceInst) ? m_OrderedFenceInstructionsInBasicBlockCache : m_OrderedBarrierInstructionsInBasicBlockCache,
+        m_InstIdxLookupTable,
+        IsBoundaryInst);
+    auto GetMemInsts = GetIterationFunc(
+        m_OrderedMemoryInstructionsInBasicBlockCache,
+        m_InstIdxLookupTable,
+        m_InstMaskLookupTable,
+        m_BasicBlockMemoryInstructionMaskCache,
+        result);
+    if (forwardDirection)
+    {
+        llvm::BasicBlock::const_iterator firstIt = ++pSourceInst->getIterator();
+        std::list<llvm::BasicBlock::const_iterator> workList{ firstIt };
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<ForwardIterationCallbackT&>(GetMemInsts),
+            static_cast<ForwardBoundaryCallbackT&>(GetBoundaries));
+    }
+    else
+    {
+        llvm::BasicBlock::const_reverse_iterator firstIt = ++pSourceInst->getReverseIterator();
+        std::list<llvm::BasicBlock::const_reverse_iterator> workList{};
+        if (firstIt == pSourceInst->getParent()->rend())
+        {
+            for (const llvm::BasicBlock* pPredecessor : llvm::predecessors(pSourceInst->getParent()))
+            {
+                workList.push_back(pPredecessor->rbegin());
+            }
+        }
+        else
+        {
+            workList.push_back(firstIt);
+        }
+        SearchInstructions(
+            workList,
+            visitedBasicBlocks,
+            static_cast<BackwardIterationCallbackT&>(GetMemInsts),
+            static_cast<BackwardBoundaryCallbackT&>(GetBoundaries));
+    }
+    return result;
 }
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides the memory instruction mask from the atomic operation
 /// instruction based on the destination memory address.
 /// @param pSourceInst the atomic operation operation instruction
-IGC::InstructionMask SynchronizationObjectCoalescingAnalysis::GetAtomicInstructionMaskFromPointer(const llvm::Instruction* pSourceInst) const
+IGC::InstructionMask SynchronizationObjectCoalescing::GetAtomicInstructionMaskFromPointer(const llvm::Instruction* pSourceInst) const
 {
     InstructionMask memoryInstructionMask = GetInstructionMask(pSourceInst);
     InstructionMask result{};
@@ -1276,7 +1814,7 @@ IGC::InstructionMask SynchronizationObjectCoalescingAnalysis::GetAtomicInstructi
 /// @param localBackwardMemoryInstructionMask the mask with backwardly visible memory instructions
 /// @param readBit the read instruction bit for the particular resource
 /// @param writeBit the write instruction bit for the particular resource
-SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask SynchronizationObjectCoalescingAnalysis::GetSynchronizationMask(
+SynchronizationObjectCoalescing::SynchronizationCaseMask SynchronizationObjectCoalescing::GetSynchronizationMask(
     InstructionMask localForwardMemoryInstructionMask,
     InstructionMask localBackwardMemoryInstructionMask,
     InstructionMask readBit,
@@ -1354,7 +1892,7 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides the synchronization case mask for determining strict
 /// redundancy.
-SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask SynchronizationObjectCoalescingAnalysis::GetStrictSynchronizationMask(llvm::Instruction* pInst) const
+SynchronizationObjectCoalescing::SynchronizationCaseMask SynchronizationObjectCoalescing::GetStrictSynchronizationMask(llvm::Instruction* pInst) const
 {
     SynchronizationCaseMask strictSynchronizationCaseMask = sc_FullSynchronizationCaseMask;
 
@@ -1380,7 +1918,7 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides the synchronization case mask for determining L1 Cache
 /// invalidation redundancy.
-IGC::SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask SynchronizationObjectCoalescingAnalysis::GetL1CacheInvalidatioSynchronizationMask() const
+IGC::SynchronizationObjectCoalescing::SynchronizationCaseMask SynchronizationObjectCoalescing::GetL1CacheInvalidatioSynchronizationMask() const
 {
     constexpr SynchronizationCaseMask L1CacheInvalidationCaseMask = static_cast<SynchronizationCaseMask>(
         SynchronizationCaseMask::WriteSyncRead |
@@ -1391,7 +1929,7 @@ IGC::SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchroniz
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Provides the synchronization case mask for all resources.
-SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask SynchronizationObjectCoalescingAnalysis::GetSynchronizationMaskForAllResources(
+SynchronizationObjectCoalescing::SynchronizationCaseMask SynchronizationObjectCoalescing::GetSynchronizationMaskForAllResources(
     InstructionMask localForwardMemoryInstructionMask,
     InstructionMask localBackwardMemoryInstructionMask) const
 {
@@ -1412,7 +1950,7 @@ SynchronizationObjectCoalescingAnalysis::SynchronizationCaseMask Synchronization
 /// memory instructions (in the next synchronization block delineated by
 /// thread group barriers)
 /// @param pSourceInst the source synchronization instruction
-InstructionMask SynchronizationObjectCoalescingAnalysis::GetUnsynchronizedForwardInstructionMask(
+InstructionMask SynchronizationObjectCoalescing::GetUnsynchronizedForwardInstructionMask(
     const llvm::Instruction* pSourceInst) const
 {
     std::vector<const llvm::Instruction*> boundaryInstructions;
@@ -1426,7 +1964,7 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetUnsynchronizedForwar
 /// operations present before the fence (in program order)
 /// @param pSourceInst the source synchronization instruction
 /// @param onlyGlobalAtomics check only TGM and UGM atomic operations
-bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrdering(
+bool SynchronizationObjectCoalescing::IsRequiredForAtomicOperationsOrdering(
     const llvm::Instruction* pSourceInst,
     bool onlyGlobalAtomics /*= false*/) const
 {
@@ -1487,7 +2025,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrder
         {
             isPotentiallyUnsynchronizedAtomic = false;
             // Lambda that checks if a fence operation synchronizes the atomic operation.
-            std::function<bool(const llvm::Instruction*)> BoundaryPredicate =
+            std::function<bool(const llvm::Instruction*)> IsBoundaryInst =
                 [this,
                 &atomicPointerMemoryInstructionMask,
                 &isPotentiallyUnsynchronizedAtomic,
@@ -1501,8 +2039,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrder
                     isPotentiallyUnsynchronizedAtomic = true;
                 }
                 bool isFence = IsFenceOperation(pInst);
-                if (isFence &&
-                    m_RedundantInstructions.find(pInst) == m_RedundantInstructions.end())
+                if (isFence)
                 {
                     InstructionMask memoryInstructionMask = GetDefaultMemoryInstructionMask(pInst);
                     bool isBoundary = (atomicPointerMemoryInstructionMask & memoryInstructionMask) != 0;
@@ -1510,27 +2047,31 @@ bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrder
                 }
                 return false;
             };
-            // Dummy lambda to disable collection of instructions
-            std::function<bool(const llvm::Instruction*)> CollectNone = [](
-                const llvm::Instruction* pInst)
+            std::function<bool(const llvm::Instruction*)> IsMemoryInst = [this, memoryInstructionMask](const llvm::Instruction* pEvaluatedInst)
             {
-                return false;
+                return (m_InstMaskLookupTable.lookup(pEvaluatedInst) & memoryInstructionMask) != 0;
+            };
+            BoundaryCallbackT GetBoundaries = GetBoundaryFunc(
+                m_OrderedFenceInstructionsInBasicBlockCache,
+                m_InstIdxLookupTable,
+                IsBoundaryInst,
+                boundaryInstructions);
+            ProcessCallbackT ProcessInstructions{};
+            ProcessInstructions = [&GetBoundaries](auto beg, auto end)
+            {
+                return GetBoundaries(beg, end) == end;
             };
 
             llvm::DenseSet<const llvm::BasicBlock*> visitedBasicBlocks;
             llvm::BasicBlock::const_iterator firstIt = ++pInst->getIterator();
             std::list<llvm::BasicBlock::const_iterator> workList{ firstIt };
-            std::vector<const llvm::Instruction*> boundaryInstructions;;
-            std::vector<const llvm::Instruction*> collectedInstructions;
+
             // Start from the atomic operation and check all instruction in the
             // forward direction.
             SearchInstructions(
                 workList,
                 visitedBasicBlocks,
-                collectedInstructions,
-                CollectNone,
-                boundaryInstructions,
-                BoundaryPredicate);
+                static_cast<ForwardProcessCallbackT&>(ProcessInstructions));
             IGC_ASSERT(boundaryInstructions.size() > 0);
         }
 
@@ -1551,8 +2092,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrder
             {
                 const llvm::Instruction* pCurrInst = &(*it);
                 if (IsFenceOperation(pCurrInst) &&
-                    IsSubsituteInstruction(pCurrInst, pSourceInst) &&
-                    m_RedundantInstructions.find(pInst) == m_RedundantInstructions.end())
+                    IsSubsituteInstruction(pCurrInst, pSourceInst))
                 {
                     substituteFenceFound = true;
                     break;
@@ -1570,59 +2110,15 @@ bool SynchronizationObjectCoalescingAnalysis::IsRequiredForAtomicOperationsOrder
 }
 
 ////////////////////////////////////////////////////////////////////////
-/// @brief Provides the memory instruction mask from reachable memory instructions
-/// of this source instruction. The boundary for this searching are drawn
-/// by visible substitutes. The visibility term means such a reachability which
-/// is determined by the fact if any path between this source instruction and
-/// a substitute is not crossed by another substitute.
-/// @param pSourceInst the source synchronization instruction
-/// @param forwardDirection the direction of searching
-InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(
+/// @brief Provides the memory instruction mask from the instruction container
+/// @param input the instruction container
+InstructionMask SynchronizationObjectCoalescing::GetInstructionMask(
     const std::vector<const llvm::Instruction*>& input) const
 {
     InstructionMask result = InstructionMask::None;
     for (const llvm::Instruction* pInst : input)
     {
-        result = static_cast<InstructionMask>(result | GetInstructionMask(pInst));
-    }
-    return result;
-}
-
-////////////////////////////////////////////////////////////////////////
-llvm::DenseSet<llvm::Instruction*> SynchronizationObjectCoalescingAnalysis::GetAllSubsituteInstructions(
-    const llvm::Instruction* pReferenceInst) const
-{
-    llvm::DenseSet<llvm::Instruction*> result;
-    auto FillWithSubstitues = [&result, pReferenceInst, this](const std::vector<llvm::Instruction*>& instructions)
-    {
-        for (llvm::Instruction* pEvaluatedInst : instructions)
-        {
-            if (m_RedundantInstructions.find(pEvaluatedInst) == m_RedundantInstructions.end() &&
-                IsSubsituteInstruction(pEvaluatedInst, pReferenceInst))
-            {
-                result.insert(pEvaluatedInst);
-            }
-        }
-    };
-    if (IsUntypedMemoryFenceOperation(pReferenceInst))
-    {
-        FillWithSubstitues(m_UntypedMemoryFences);
-    }
-    else if (IsTypedMemoryFenceOperation(pReferenceInst))
-    {
-        FillWithSubstitues(m_TypedMemoryFences);
-    }
-    else if (IsUrbFenceOperation(pReferenceInst))
-    {
-        FillWithSubstitues(m_UrbMemoryFences);
-    }
-    else if (IsLscFenceOperation(pReferenceInst))
-    {
-        FillWithSubstitues(m_LscMemoryFences);
-    }
-    else if (IsThreadBarrierOperation(pReferenceInst))
-    {
-        FillWithSubstitues(m_ThreadGroupBarriers);
+        result |= GetInstructionMask(pInst);
     }
     return result;
 }
@@ -1632,7 +2128,7 @@ llvm::DenseSet<llvm::Instruction*> SynchronizationObjectCoalescingAnalysis::GetA
 /// @param pEvaluatedInst the instruction which is evaluated if it can replace the reference one
 /// @param pReferenceInst represents the reference instruction which is an object of the replacement
 /// and it means that this instruction must be equal or weaker than the evaluated one.
-bool SynchronizationObjectCoalescingAnalysis::IsSubsituteInstruction(
+bool SynchronizationObjectCoalescing::IsSubsituteInstruction(
     const llvm::Instruction* pEvaluatedInst,
     const llvm::Instruction* pReferenceInst) const
 {
@@ -1681,12 +2177,8 @@ bool SynchronizationObjectCoalescingAnalysis::IsSubsituteInstruction(
         isDuplicate &= GetLscScope(pEvaluatedInst) >= GetLscScope(pReferenceInst);
         LSC_FENCE_OP opEvaluated = GetLscFenceOp(pEvaluatedInst);
         LSC_FENCE_OP opReference = GetLscFenceOp(pReferenceInst);
-        bool referenceIsOpNone =
-            opReference == LSC_FENCE_OP_NONE ||
-            m_InvalidationFunctionalityRedundancies.find(pReferenceInst) != m_InvalidationFunctionalityRedundancies.end();
-        bool evaluatedIsOpNone =
-            opEvaluated == LSC_FENCE_OP_NONE ||
-            m_InvalidationFunctionalityRedundancies.find(pEvaluatedInst) != m_InvalidationFunctionalityRedundancies.end();
+        bool referenceIsOpNone = opReference == LSC_FENCE_OP_NONE;
+        bool evaluatedIsOpNone = opEvaluated == LSC_FENCE_OP_NONE;
         // Current implementation allows replacing the reference LSC fence with
         // the evaluated LSC fence if any of the following conditions is true:
         // 1.) both fences have the same operation type
@@ -1724,66 +2216,65 @@ bool SynchronizationObjectCoalescingAnalysis::IsSubsituteInstruction(
 }
 
 ////////////////////////////////////////////////////////////////////////
-const llvm::DenseSet<llvm::Instruction*>& SynchronizationObjectCoalescingAnalysis::GetRedundantInstructions() const
+void SynchronizationObjectCoalescing::getAnalysisUsage(llvm::AnalysisUsage& AU) const
 {
-    return m_RedundantInstructions;
-}
-
-////////////////////////////////////////////////////////////////////////
-const llvm::DenseSet<llvm::Instruction*>& SynchronizationObjectCoalescingAnalysis::GetInvalidationFunctionalityRedundancies() const
-{
-    return m_InvalidationFunctionalityRedundancies;
-}
-
-////////////////////////////////////////////////////////////////////////
-const llvm::DenseSet<llvm::Instruction*>& SynchronizationObjectCoalescingAnalysis::GetGlobalMemoryRedundancies() const
-{
-    return m_GlobalMemoryRedundancies;
-}
-
-////////////////////////////////////////////////////////////////////////
-void SynchronizationObjectCoalescingAnalysis::getAnalysisUsage(llvm::AnalysisUsage& AU) const
-{
-    AU.setPreservesAll();
+    AU.setPreservesCFG();
     AU.addRequired<CodeGenContextWrapper>();
 }
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Gathers synchronization instructions from the current
 /// function.
-void SynchronizationObjectCoalescingAnalysis::GatherInstructions()
+void SynchronizationObjectCoalescing::GatherInstructions()
 {
     for (llvm::BasicBlock& basicBlock : *m_CurrentFunction)
     {
+        uint32_t i = 0;
         for (llvm::Instruction& inst : basicBlock)
         {
+            bool isSyncInst = false;
+            m_InstIdxLookupTable[&inst] = i;
             if (IsThreadBarrierOperation(&inst))
             {
                 m_ThreadGroupBarriers.push_back(&inst);
+                m_OrderedBarrierInstructionsInBasicBlockCache[&basicBlock][i] = &inst;
             }
             else if (IsUntypedMemoryFenceOperation(&inst))
             {
                 m_UntypedMemoryFences.push_back(&inst);
+                isSyncInst = true;
             }
             else if (IsTypedMemoryFenceOperation(&inst))
             {
                 m_TypedMemoryFences.push_back(&inst);
+                isSyncInst = true;
             }
             else if (IsUrbFenceOperation(&inst))
             {
                 m_UrbMemoryFences.push_back(&inst);
+                isSyncInst = true;
             }
             else if (IsLscFenceOperation(&inst))
             {
                 m_LscMemoryFences.push_back(&inst);
+                isSyncInst = true;
             }
             else if (InstructionMask memoryInstructionMask = GetInstructionMask(&inst);
                 memoryInstructionMask != InstructionMask::None)
             {
-                m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | memoryInstructionMask);
                 InstructionMask pointerMemoryInstructionMask = GetAtomicInstructionMaskFromPointer(&inst);
-                m_GlobalMemoryInstructionMask = static_cast<InstructionMask>(m_GlobalMemoryInstructionMask | pointerMemoryInstructionMask);
+                m_BasicBlockMemoryInstructionMaskCache[&basicBlock] |= memoryInstructionMask;
+                m_OrderedMemoryInstructionsInBasicBlockCache[&basicBlock][i] = &inst;
+                m_InstMaskLookupTable[&inst] = memoryInstructionMask;
+                m_GlobalMemoryInstructionMask |= memoryInstructionMask | pointerMemoryInstructionMask;
             }
+
+            if (isSyncInst)
+            {
+                m_OrderedFenceInstructionsInBasicBlockCache[&basicBlock][i] = &inst;
+            }
+
+            i++;
         }
     }
     if (!m_LscMemoryFences.empty())
@@ -1796,7 +2287,7 @@ void SynchronizationObjectCoalescingAnalysis::GatherInstructions()
 }
 
 ////////////////////////////////////////////////////////////////////////
-void SynchronizationObjectCoalescingAnalysis::InvalidateMembers()
+void SynchronizationObjectCoalescing::InvalidateMembers()
 {
     m_UntypedMemoryFences.clear();
     m_ThreadGroupBarriers.clear();
@@ -1804,9 +2295,10 @@ void SynchronizationObjectCoalescingAnalysis::InvalidateMembers()
     m_UrbMemoryFences.clear();
     m_LscMemoryFences.clear();
 
-    m_RedundantInstructions.clear();
-    m_InvalidationFunctionalityRedundancies.clear();
-    m_GlobalMemoryRedundancies.clear();
+    m_OrderedMemoryInstructionsInBasicBlockCache.clear();
+    m_OrderedFenceInstructionsInBasicBlockCache.clear();
+    m_OrderedBarrierInstructionsInBasicBlockCache.clear();
+    m_BasicBlockMemoryInstructionMaskCache.clear();
 #if _DEBUG
     m_ExplanationEntries.clear();
 #endif // _DEBUG
@@ -1814,7 +2306,7 @@ void SynchronizationObjectCoalescingAnalysis::InvalidateMembers()
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsSyncInstruction(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsSyncInstruction(const llvm::Instruction* pInst)
 {
     return IsThreadBarrierOperation(pInst) ||
         IsTypedMemoryFenceOperation(pInst) ||
@@ -1824,14 +2316,14 @@ bool SynchronizationObjectCoalescingAnalysis::IsSyncInstruction(const llvm::Inst
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsMemoryInstruction(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsMemoryInstruction(const llvm::Instruction* pInst)
 {
     return IsReadMemoryInstruction(pInst) ||
         IsWriteMemoryInstruction(pInst);
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsReadMemoryInstruction(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsReadMemoryInstruction(const llvm::Instruction* pInst)
 {
     return IsAtomicOperation(pInst) ||
         IsBufferReadOperation(pInst) ||
@@ -1841,7 +2333,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsReadMemoryInstruction(const llvm
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsWriteMemoryInstruction(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsWriteMemoryInstruction(const llvm::Instruction* pInst)
 {
     return IsAtomicOperation(pInst) ||
         IsBufferWriteOperation(pInst) ||
@@ -1851,7 +2343,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsWriteMemoryInstruction(const llv
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsAtomicOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsAtomicOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -1890,7 +2382,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsAtomicOperation(const llvm::Inst
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsTypedReadOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsTypedReadOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -1908,7 +2400,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsTypedReadOperation(const llvm::I
     return false;
 }
 
-bool SynchronizationObjectCoalescingAnalysis::IsTypedWriteOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsTypedWriteOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -1927,7 +2419,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsTypedWriteOperation(const llvm::
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsOutputUrbReadOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsOutputUrbReadOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -1951,7 +2443,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsOutputUrbReadOperation(const llv
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUrbWriteOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsUrbWriteOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -1972,7 +2464,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsUrbWriteOperation(const llvm::In
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsBufferReadOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsBufferReadOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -1996,7 +2488,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsBufferReadOperation(const llvm::
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsBufferWriteOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsBufferWriteOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2020,7 +2512,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsBufferWriteOperation(const llvm:
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsSharedMemoryReadOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsSharedMemoryReadOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::LoadInst>(pInst))
     {
@@ -2031,7 +2523,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsSharedMemoryReadOperation(const 
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsSharedMemoryWriteOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsSharedMemoryWriteOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::StoreInst>(pInst))
     {
@@ -2042,7 +2534,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsSharedMemoryWriteOperation(const
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsThreadBarrierOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsThreadBarrierOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2061,7 +2553,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsThreadBarrierOperation(const llv
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsUntypedMemoryFenceOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2079,16 +2571,15 @@ bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperation(cons
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperationWithInvalidationFunctionality(const llvm::Instruction* pInst) const
+bool SynchronizationObjectCoalescing::IsUntypedMemoryFenceOperationWithInvalidationFunctionality(const llvm::Instruction* pInst) const
 {
     constexpr uint32_t L1CacheInvalidateArg = 6;
     return IsUntypedMemoryFenceOperation(pInst) &&
-        llvm::cast<llvm::ConstantInt>(pInst->getOperand(L1CacheInvalidateArg))->getValue().getBoolValue() &&
-        m_InvalidationFunctionalityRedundancies.find(pInst) == m_InvalidationFunctionalityRedundancies.end();
+        llvm::cast<llvm::ConstantInt>(pInst->getOperand(L1CacheInvalidateArg))->getValue().getBoolValue();
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperationForSharedMemoryAccess(const llvm::Instruction* pInst) const
+bool SynchronizationObjectCoalescing::IsUntypedMemoryFenceOperationForSharedMemoryAccess(const llvm::Instruction* pInst) const
 {
     constexpr uint32_t globalMemFenceArg = 5;
     return IsUntypedMemoryFenceOperation(pInst) &&
@@ -2096,16 +2587,15 @@ bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperationForSh
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const
+bool SynchronizationObjectCoalescing::IsUntypedMemoryFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const
 {
     constexpr uint32_t globalMemFenceArg = 5;
     return IsUntypedMemoryFenceOperation(pInst) &&
-        llvm::cast<llvm::ConstantInt>(pInst->getOperand(globalMemFenceArg))->getValue().getBoolValue() &&
-        m_GlobalMemoryRedundancies.find(pInst) == m_GlobalMemoryRedundancies.end();
+        llvm::cast<llvm::ConstantInt>(pInst->getOperand(globalMemFenceArg))->getValue().getBoolValue();
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryLscFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const
+bool SynchronizationObjectCoalescing::IsUntypedMemoryLscFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const
 {
     if (IsLscFenceOperation(pInst))
     {
@@ -2116,7 +2606,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsUntypedMemoryLscFenceOperationFo
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsTypedMemoryFenceOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsTypedMemoryFenceOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2135,16 +2625,15 @@ bool SynchronizationObjectCoalescingAnalysis::IsTypedMemoryFenceOperation(const 
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsTypedMemoryFenceOperationWithInvalidationFunctionality(const llvm::Instruction* pInst) const
+bool SynchronizationObjectCoalescing::IsTypedMemoryFenceOperationWithInvalidationFunctionality(const llvm::Instruction* pInst) const
 {
     constexpr uint32_t L1CacheInvalidateArg = 0;
     return IsTypedMemoryFenceOperation(pInst) &&
-        llvm::cast<llvm::ConstantInt>(pInst->getOperand(L1CacheInvalidateArg))->getValue().getBoolValue() &&
-        m_InvalidationFunctionalityRedundancies.find(pInst) == m_InvalidationFunctionalityRedundancies.end();
+        llvm::cast<llvm::ConstantInt>(pInst->getOperand(L1CacheInvalidateArg))->getValue().getBoolValue();
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsUrbFenceOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsUrbFenceOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2227,7 +2716,7 @@ static inline LSC_FENCE_OP GetLscFenceOp(const Instruction* pInst)
     return getImmValueEnum<LSC_FENCE_OP>(pInst->getOperand(2));
 }
 ////////////////////////////////////////////////////////////////////////
-InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(const llvm::Instruction* pInst) const
+InstructionMask SynchronizationObjectCoalescing::GetInstructionMask(const llvm::Instruction* pInst) const
 {
     if (IsAtomicOperation(pInst))
     {
@@ -2283,7 +2772,7 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(cons
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsFenceOperation(const llvm::Instruction* pInst)
+bool SynchronizationObjectCoalescing::IsFenceOperation(const llvm::Instruction* pInst)
 {
     return
         IsTypedMemoryFenceOperation(pInst) ||
@@ -2293,7 +2782,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsFenceOperation(const llvm::Instr
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsGlobalResource(llvm::Type* pResourePointerType)
+bool SynchronizationObjectCoalescing::IsGlobalResource(llvm::Type* pResourePointerType)
 {
     uint as = pResourePointerType->getPointerAddressSpace();
     switch (as)
@@ -2335,7 +2824,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsGlobalResource(llvm::Type* pReso
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescingAnalysis::IsSharedMemoryResource(llvm::Type* pResourePointerType)
+bool SynchronizationObjectCoalescing::IsSharedMemoryResource(llvm::Type* pResourePointerType)
 {
     uint as = pResourePointerType->getPointerAddressSpace();
     switch (as)
@@ -2351,7 +2840,7 @@ bool SynchronizationObjectCoalescingAnalysis::IsSharedMemoryResource(llvm::Type*
 ////////////////////////////////////////////////////////////////////////
 /// @brief Registers information which allows understanding the decision
 /// about identifying redundancy for this synchronization instruction.
-void SynchronizationObjectCoalescingAnalysis::RegisterRedundancyExplanation(const llvm::Instruction* pInst, ExplanationEntry::Cause cause)
+void SynchronizationObjectCoalescing::RegisterRedundancyExplanation(const llvm::Instruction* pInst, ExplanationEntry::Cause cause)
 {
     constexpr bool forwardDirection = true;
     constexpr bool backwardDirection = false;
@@ -2365,11 +2854,13 @@ void SynchronizationObjectCoalescingAnalysis::RegisterRedundancyExplanation(cons
 
     auto GetBoundaryInst = [this, GetIndex](const llvm::Instruction* pInst) -> ExplanationEntry::SyncInstDescription
     {
+        std::string stringRepresentation;
+        llvm::raw_string_ostream stream(stringRepresentation);
+        pInst->print(stream, true /*isForDeubg*/);
         return {
             pInst->getParent(),
             GetIndex(pInst),
-            m_InvalidationFunctionalityRedundancies.find(pInst) != m_InvalidationFunctionalityRedundancies.end(),
-            m_GlobalMemoryRedundancies.find(pInst) != m_GlobalMemoryRedundancies.end()
+            stringRepresentation
         };
     };
 
@@ -2411,7 +2902,7 @@ void SynchronizationObjectCoalescingAnalysis::RegisterRedundancyExplanation(cons
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Print explanation for all redundancies.
-void SynchronizationObjectCoalescingAnalysis::print(llvm::raw_ostream& stream, bool onlyMemoryInstructionMask/* = true*/) const
+void SynchronizationObjectCoalescing::print(llvm::raw_ostream& stream, bool onlyMemoryInstructionMask/* = true*/) const
 {
     auto GetRedundancyCauseName = [](ExplanationEntry::Cause cause)
     {
@@ -2434,15 +2925,7 @@ void SynchronizationObjectCoalescingAnalysis::print(llvm::raw_ostream& stream, b
     {
         std::stringstream syncDescName;
         syncDescName << std::get<0>(syncInstDesc)->getName().str() << ", "
-            << std::get<1>(syncInstDesc);
-        if (std::get<2>(syncInstDesc))
-        {
-            syncDescName << ", " << GetRedundancyCauseName(ExplanationEntry::L1CacheInvalidationRedundancy);
-        }
-        if (std::get<2>(syncInstDesc))
-        {
-            syncDescName << ", " << GetRedundancyCauseName(ExplanationEntry::GlobalMemoryRedundancy);
-        }
+            << std::get<1>(syncInstDesc) << ", " << std::get<2>(syncInstDesc);
         return syncDescName.str();
     };
 
@@ -2604,152 +3087,11 @@ void SynchronizationObjectCoalescingAnalysis::print(llvm::raw_ostream& stream, b
 
 ////////////////////////////////////////////////////////////////////////
 /// @brief Dumps explanation for all redundancies.
-void SynchronizationObjectCoalescingAnalysis::dump(bool onlyMemoryInstructionMask /*= true*/) const
+void SynchronizationObjectCoalescing::dump(bool onlyMemoryInstructionMask /*= true*/) const
 {
     print(llvm::dbgs(), onlyMemoryInstructionMask);
 }
 #endif // _DEBUG
-
-////////////////////////////////////////////////////////////////////////
-/// @brief The pass is used for reducing either the number of synchronization
-/// instructions or their scope of influence.
-class SynchronizationObjectCoalescing : public llvm::FunctionPass
-{
-public:
-    static char ID; ///< ID used by the llvm PassManager (the value is not important)
-
-    SynchronizationObjectCoalescing();
-    ~SynchronizationObjectCoalescing();
-
-    ////////////////////////////////////////////////////////////////////////
-    virtual bool runOnFunction(llvm::Function& F);
-
-    ////////////////////////////////////////////////////////////////////////
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const;
-};
-
-char SynchronizationObjectCoalescing::ID = 0;
-
-////////////////////////////////////////////////////////////////////////
-SynchronizationObjectCoalescing::SynchronizationObjectCoalescing() :
-    FunctionPass(ID)
-{
-    initializeSynchronizationObjectCoalescingPass(*llvm::PassRegistry::getPassRegistry());
-}
-
-////////////////////////////////////////////////////////////////////////
-SynchronizationObjectCoalescing::~SynchronizationObjectCoalescing()
-{
-}
-
-////////////////////////////////////////////////////////////////////////
-/// @brief Either Removes redundant synchronization instructions or modifies
-/// the scope of influence from synchronization instruction if safe.
-bool SynchronizationObjectCoalescing::runOnFunction(llvm::Function& F)
-{
-    if (IGC_IS_FLAG_ENABLED(DisableSynchronizationObjectCoalescingPass))
-    {
-        return false;
-    }
-    const SynchronizationObjectCoalescingAnalysis& analysis = getAnalysis<SynchronizationObjectCoalescingAnalysis>();
-    const llvm::DenseSet<llvm::Instruction*>& redundantInstructions = analysis.GetRedundantInstructions();
-
-    // Removes redundant instructions
-    for (llvm::Instruction* pInst : redundantInstructions)
-    {
-        pInst->eraseFromParent();
-    }
-
-    const llvm::DenseSet<llvm::Instruction*>& invalidationFunctionalityRedundancies = analysis.GetInvalidationFunctionalityRedundancies();
-
-    // Disables invalidation of L1 cache for indicated memory fences
-    for (llvm::Instruction* pInst : invalidationFunctionalityRedundancies)
-    {
-        if (redundantInstructions.find(pInst) != redundantInstructions.end())
-        {
-            continue;
-        }
-
-        llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pInst);
-
-        switch (pGenIntrinsicInst->getIntrinsicID())
-        {
-        case llvm::GenISAIntrinsic::GenISA_memoryfence:
-        {
-            constexpr uint32_t L1CacheInvalidateArg = 6;
-            pGenIntrinsicInst->setOperand(L1CacheInvalidateArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(L1CacheInvalidateArg)->getType()));
-            break;
-        }
-        case llvm::GenISAIntrinsic::GenISA_typedmemoryfence:
-        {
-            constexpr uint32_t L1CacheInvalidateArg = 0;
-            pGenIntrinsicInst->setOperand(L1CacheInvalidateArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(L1CacheInvalidateArg)->getType()));
-            break;
-        }
-        case llvm::GenISAIntrinsic::GenISA_LSCFence:
-        {
-            LSC_SFID mem = GetLscMem(pGenIntrinsicInst);
-            LSC_FENCE_OP op = GetLscFenceOp(pGenIntrinsicInst);
-            IGC_ASSERT(mem == LSC_TGM || mem == LSC_UGM);
-            IGC_ASSERT(op == LSC_FENCE_OP_INVALIDATE);
-            constexpr uint32_t fenceOpArg = 2;
-            llvm::Type* type = pGenIntrinsicInst->getOperand(fenceOpArg)->getType();
-            pGenIntrinsicInst->setOperand(
-                fenceOpArg,
-                llvm::ConstantInt::get(type, LSC_FENCE_OP_NONE));
-            break;
-        }
-        default:
-            IGC_ASSERT(0);
-            break;
-        }
-    }
-
-    const llvm::DenseSet<llvm::Instruction*>& globalMemoryRedundancies = analysis.GetGlobalMemoryRedundancies();
-
-    // Diminishes the scope of indicated untyped memory fences
-    for (llvm::Instruction* pInst : globalMemoryRedundancies)
-    {
-        if (redundantInstructions.find(pInst) != redundantInstructions.end())
-        {
-            continue;
-        }
-
-        llvm::GenIntrinsicInst* pGenIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pInst);
-
-        switch (pGenIntrinsicInst->getIntrinsicID())
-        {
-        case llvm::GenISAIntrinsic::GenISA_memoryfence:
-        {
-            constexpr uint32_t globalMemFenceArg = 5;
-            pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType()));
-            break;
-        }
-        case llvm::GenISAIntrinsic::GenISA_LSCFence:
-        {
-            constexpr uint32_t globalMemFenceArg = 0;
-            pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SFID::LSC_SLM)));
-            constexpr uint32_t scopeMemFenceArg = 1;
-            pGenIntrinsicInst->setOperand(scopeMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(scopeMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SCOPE::LSC_SCOPE_GROUP)));
-            break;
-        }
-        default:
-            IGC_ASSERT(0);
-            break;
-        }
-    }
-
-    return redundantInstructions.size() > 0 ||
-        invalidationFunctionalityRedundancies.size() > 0 ||
-        globalMemoryRedundancies.size() > 0;
-}
-
-////////////////////////////////////////////////////////////////////////
-void SynchronizationObjectCoalescing::getAnalysisUsage(llvm::AnalysisUsage& AU) const
-{
-    AU.setPreservesCFG();
-    AU.addRequired<SynchronizationObjectCoalescingAnalysis>();
-}
 
 ////////////////////////////////////////////////////////////////////////
 llvm::Pass* createSynchronizationObjectCoalescing()
@@ -2761,22 +3103,11 @@ llvm::Pass* createSynchronizationObjectCoalescing()
 
 using namespace llvm;
 using namespace IGC;
-#define PASS_FLAG "igc-synchronization-object-coalescing-analysis"
-#define PASS_DESCRIPTION "SynchronizationObjectCoalescingAnalysis"
-#define PASS_CFG_ONLY false
-#define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(SynchronizationObjectCoalescingAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(SynchronizationObjectCoalescingAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-#undef PASS_FLAG
-#undef PASS_DESCRIPTION
-#undef PASS_CFG_ONLY
-#undef PASS_ANALYSIS
 
 #define PASS_FLAG "igc-synchronization-object-coalescing"
 #define PASS_DESCRIPTION "SynchronizationObjectCoalescing"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SynchronizationObjectCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(SynchronizationObjectCoalescingAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(SynchronizationObjectCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
