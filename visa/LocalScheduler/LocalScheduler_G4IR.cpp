@@ -2808,11 +2808,23 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
     latency = LT.getLatency(inst);
     break;
 
-  case WAR:
-  case WAR_MEMORY:
+  // FIXME:
+  // 1. for WAW/WAR, if the first instruction is send, need to consider
+  // getSendSrcReadLatency() as well.
+  // 2. UNCOMPR_LATENCY works only when the instructions are from same pipeline.
+  // If from different pipelines, getLatency() is the right latency
   case WAW:
-  case WAW_MEMORY:             //?? WAW have the same cycle as RAW?
-    latency = UNCOMPR_LATENCY; // Used as edge dependence latency also.
+  case WAR:
+    latency = UNCOMPR_LATENCY;
+    break;
+
+  case WAR_MEMORY:
+  case WAW_MEMORY:
+    if (kernel->getOption(vISA_schedWithSendSrcReadCycle)) {
+      latency = LT.getSendSrcReadLatency(inst);
+    } else {
+      latency = UNCOMPR_LATENCY;
+    }
     break;
 
   default:

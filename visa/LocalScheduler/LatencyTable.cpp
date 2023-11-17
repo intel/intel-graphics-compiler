@@ -27,6 +27,7 @@ public:
   uint16_t getLatency(const G4_INST *Inst) const override;
   uint16_t getOccupancy(const G4_INST *Inst) const override;
   uint16_t getDPASLatency(uint8_t repeatCount) const override;
+  uint16_t getSendSrcReadLatency(const G4_INST *Inst) const override;
 };
 
 template <PlatformGen Gen>
@@ -48,6 +49,8 @@ public:
   // The details of heuristics used to calculate the latency. The
   // implementation can be specialized if needed.
   uint16_t getDPASLatency(uint8_t repeatCount) const override;
+  uint16_t getSendSrcReadLatency(const G4_INST *Inst) const override;
+
 private:
   uint16_t getMsgLatency(const G4_INST *Inst) const;
   uint16_t getMathLatency(const G4_INST *inst) const;
@@ -153,6 +156,10 @@ uint16_t LatencyTableLegacy::getDPASLatency(uint8_t repeatCount) const {
   return LegacyLatencies::UNKNOWN_LATENCY;
 }
 
+uint16_t LatencyTableLegacy::getSendSrcReadLatency(const G4_INST *inst) const {
+  return LegacyLatencies::UNCOMPR_LATENCY;
+}
+
 // General template implementations for XE+.
 template<PlatformGen Gen>
 uint16_t LatencyTableXe<Gen>::getLatency(const G4_INST *Inst) const {
@@ -174,6 +181,22 @@ uint16_t LatencyTableXe<Gen>::getLatency(const G4_INST *Inst) const {
 
   // By default, use the FPU pipeline latency.
   return value_of(LI::FPU);
+}
+
+// ARB cycle + GRF read lengths
+template <PlatformGen Gen>
+uint16_t LatencyTableXe<Gen>::getSendSrcReadLatency(const G4_INST *Inst) const {
+  vASSERT(Inst->isSend());
+  G4_SendDesc *msgDesc = Inst->getMsgDesc();
+  unsigned src0RegSize = 0;
+  src0RegSize = msgDesc->getSrc0LenRegs();
+
+  unsigned src1RegSize = 0;
+  if (Inst->isSplitSend()) {
+    src1RegSize = msgDesc->getSrc1LenRegs();
+  }
+
+  return value_of(LI::SEND_ARB) + src0RegSize + src1RegSize;
 }
 
 template<PlatformGen Gen>
