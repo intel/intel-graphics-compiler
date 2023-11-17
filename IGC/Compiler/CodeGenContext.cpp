@@ -370,6 +370,51 @@ namespace IGC
         }
     }
 
+    void CodeGenContext::print(llvm::raw_ostream& stream) const
+    {
+#define PRINT_CTX_MEMBER(member) stream << "\n" << #member << ": " << member;
+
+        // TODO: Automate, see comment for CodeGenContext::print's declaration.
+        PRINT_CTX_MEMBER(HdcEnableIndexSize);
+        PRINT_CTX_MEMBER(LtoUsedMask);
+        PRINT_CTX_MEMBER(m_checkFastFlagPerInstructionInCustomUnsafeOptPass);
+        PRINT_CTX_MEMBER(m_ConstantBufferCount);
+        PRINT_CTX_MEMBER(m_ConstantBufferReplaceShaderPatternsSize);
+        PRINT_CTX_MEMBER(m_ConstantBufferReplaceSize);
+        PRINT_CTX_MEMBER(m_ConstantBufferUsageMask);
+        PRINT_CTX_MEMBER(m_constantPayloadNextAvailableGRFOffset);
+        PRINT_CTX_MEMBER(m_disableICBPromotion);
+        PRINT_CTX_MEMBER(m_dxbcCount);
+        PRINT_CTX_MEMBER(m_enableFunctionPointer);
+        PRINT_CTX_MEMBER(m_enableSampleMultiversioning);
+        PRINT_CTX_MEMBER(m_enableSimdVariantCompilation);
+        PRINT_CTX_MEMBER(m_enableSubroutine);
+        PRINT_CTX_MEMBER(m_floatDenormMode16);
+        PRINT_CTX_MEMBER(m_floatDenormMode32);
+        PRINT_CTX_MEMBER(m_floatDenormMode64);
+        PRINT_CTX_MEMBER(m_floatDenormModeBFTF);
+        PRINT_CTX_MEMBER(m_ForceEarlyZMathCheck);
+        PRINT_CTX_MEMBER(m_hasDPDivSqrtEmu);
+        PRINT_CTX_MEMBER(m_hasDPEmu);
+        PRINT_CTX_MEMBER(m_hasEmu64BitInsts);
+        PRINT_CTX_MEMBER(m_hasGlobalInPrivateAddressSpace);
+        PRINT_CTX_MEMBER(m_hasLegacyDebugInfo);
+        PRINT_CTX_MEMBER(m_hasStackCalls);
+        PRINT_CTX_MEMBER(m_hasVendorExtension);
+        PRINT_CTX_MEMBER(m_highPsRegisterPressure);
+        PRINT_CTX_MEMBER(m_inputCount);
+        PRINT_CTX_MEMBER(m_numGradientSinked);
+        PRINT_CTX_MEMBER(m_NumGRFPerThread);
+        PRINT_CTX_MEMBER(m_numPasses);
+        PRINT_CTX_MEMBER(m_sampler);
+        PRINT_CTX_MEMBER(m_SIMDInfo);
+        PRINT_CTX_MEMBER(m_src1RemovedForBlendOpt);
+        PRINT_CTX_MEMBER(m_tempCount);
+        PRINT_CTX_MEMBER(m_threadCombiningOptDone);
+
+        stream << "\n\n";
+    }
+
     void CodeGenContext::initLLVMContextWrapper(bool createResourceDimTypes)
     {
         llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);

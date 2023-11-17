@@ -1053,6 +1053,12 @@ namespace IGC
         CodeGenContext(CodeGenContext&) = delete;
         CodeGenContext& operator =(CodeGenContext&) = delete;
 
+        // TODO: Right now CodeGenContext::print method must be manually updated for each
+        // new member added. Modify the printer to automatically support new members based
+        // on some "printable" metadata available with member's definition.
+        // Possible solution: TableGen.
+        void print(llvm::raw_ostream& stream) const;
+
         void initLLVMContextWrapper(bool createResourceDimTypes = true);
         llvm::LLVMContext* getLLVMContext() const;
         IGC::IGCMD::MetaDataUtils* getMetaDataUtils() const;

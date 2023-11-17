@@ -7,13 +7,16 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import -S < %s | FileCheck %s
+; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --print-codegencontext --igc-precompiled-import -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ; ------------------------------------------------
 
 ; Check that appropriate call instruction to emulated code are inserted
 ; when we use PreCompiledFuncImport pass.
+
+; Check if PreCompiledFuncImport pass enables subroutines when importing dpemu:
+; CHECK: m_enableSubroutine: 1
 
 declare double @llvm.sqrt.f64(double) #3
 
