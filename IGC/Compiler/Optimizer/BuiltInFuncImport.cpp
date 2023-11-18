@@ -548,7 +548,11 @@ void fixRoundToTF32ReturnType(Module &M) {
             continue;
         auto FuncName = F.getName();
 
-        if (!FuncName.contains("OpRoundFToTF32INTEL") ||
+        // 'OpRoundFToTF32INTEL' name is used by legacy IGC SPIR-V translator
+        // 'spirv_RoundFToTF32INTEL' name is used by Khronos SPIR-V translator
+        // We check for both here, since not all IGC configurations might switch to
+        // Khronos SPIR-V translator yet.
+        if (!(FuncName.contains("OpRoundFToTF32INTEL") || FuncName.contains("spirv_RoundFToTF32INTEL")) ||
             FuncName.contains("_old"))
             continue;
         if (!F.getReturnType()->isFloatTy())
