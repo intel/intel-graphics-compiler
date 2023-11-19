@@ -426,7 +426,7 @@ DECLARE_IGC_REGKEY(DWORD, OCLSIMD16SelectionMask,       6,     "Select SIMD 16 h
 DECLARE_IGC_REGKEY(bool, EnableHSSinglePatchDispatch,   false, "Setting this to 1/true enables SIMD8 single-patch dispatch in HullShader. Default is either SIMD8 single patch/dual patch dispatch based on control point count", false)
 DECLARE_IGC_REGKEY(bool, DisableGPGPUIndirectPayload,   false, "Disable OCL indirect GPGPU payload", false)
 DECLARE_IGC_REGKEY(bool, DisableDSDualPatch,            false, "Setting it to true with enable Single and Dual Patch dispatch mode for Domain Shader", false)
-DECLARE_IGC_REGKEY(bool, DisableMemOpt,                 false, "Disable MemOpt, merging load/store", false)
+DECLARE_IGC_REGKEY(bool, DisableMemOpt,                 false, "Disable MemOpt, merging load/store", true)
 DECLARE_IGC_REGKEY(bool, DisableMemOpt2,                false, "Disable MemOpt2", false)
 DECLARE_IGC_REGKEY(DWORD, EnableLdStCombine,            0,     "Enable load/store combine pass if set to 1 or 2 (intend to replace memopt)", true)
 DECLARE_IGC_REGKEY(DWORD, MaxStoreVectorSizeInBytes,    0,     "[LdStCombine] the max non-uniform vector size for the coalesced store. 0: compiler choice (default, 16(4DW)); others: 4/8/16/32", true)
