@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/BasicBlock.h>
@@ -390,18 +391,6 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
         return 0;
     };
 
-    // Return value:
-    //   Shift amount: if it is valid and greater than 0
-    //   0 : invalid
-    auto getShlAmt = [&getTypeMask](const Instruction* ShlInst) -> uint32_t {
-        IGC_ASSERT(ShlInst->getOpcode() == Instruction::Shl);
-        uint32_t shtAmtMask = getTypeMask(ShlInst->getType());
-        ConstantInt* cI = cast<ConstantInt>(ShlInst->getOperand(1));
-        if (cI && shtAmtMask > 0)
-            return (uint32_t)(cI->getZExtValue() & shtAmtMask);
-        return 0;
-    };
-
     // Instructions/Operators handled for now:
     //   GEP
     //   bitcast (inttoptr, ptrtoint, etc)
@@ -561,12 +550,9 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
             if ((S0 && !S1) || (!S0 && S1)) {
                 const Value* tV = (S0 ? V0 : V1);
                 const uint64_t tC = (uint64_t)(S0 ? C1 : C0);
-                const Instruction* tI = dyn_cast<Instruction>(tV);
-                if (tI && tI->getOpcode() == Instruction::Shl) {
-                    uint32_t shtAmt = getShlAmt(tI);
-                    if (shtAmt > 0 && (1ull << shtAmt) > tC)
-                        S = add(S0 ? S0 : S1, tC);
-                }
+                uint32_t bits = (uint32_t)tV->getType()->getPrimitiveSizeInBits();
+                if (bits != 0 && MaskedValueIsZero(tV, APInt(bits, tC), *m_DL))
+                    S = add(S0 ? S0 : S1, tC);
             }
             break;
         }
@@ -633,6 +619,8 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
             }
             break;
         }
+        default:
+            break;
         }
     }
 
