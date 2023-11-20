@@ -847,6 +847,17 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         // Spec enforces subgroup broadcast to use thread-uniform local ID.
         if (isWaveBroadcastIndex(inst))
         {
+#ifdef _DEBUG
+            // Print warning exactly once per kernel.
+            static SmallPtrSet<Function*, 8> detectedKernels;
+            if (dep > WIAnalysis::UNIFORM_THREAD && !detectedKernels.count(m_func))
+            {
+                detectedKernels.insert(m_func);
+                std::string msg = "Detected llvm.genx.GenISA.WaveBroadcast with potentially non-uniform LocalID in kernel " + m_func->getName().str()
+                    + "; such operation doesn't meet specification of OpGroupBroadcast and can lead to unexpected results.";
+                m_CGCtx->EmitWarning(msg.c_str());
+            }
+#endif // DEBUG
             dep = WIAnalysis::UNIFORM_THREAD;
         }
 
