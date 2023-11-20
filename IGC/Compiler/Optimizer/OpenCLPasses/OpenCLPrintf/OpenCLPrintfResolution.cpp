@@ -148,15 +148,6 @@ bool OpenCLPrintfResolution::runOnFunction(Function& F)
     return changed;
 }
 
-bool OpenCLPrintfResolution::isEmptyStringPrintfCall(CallInst& printfCall)
-{
-    Value* firstArg = printfCall.getOperand(0);
-    IGC::SHADER_PRINTF_TYPE firstArgDataType = getPrintfArgDataType(firstArg);
-
-    // return true if the printf doesn't print anything.
-    return firstArgDataType != IGC::SHADER_PRINTF_STRING_LITERAL;
-}
-
 void OpenCLPrintfResolution::visitCallInst(CallInst& callInst)
 {
     if (!callInst.getCalledFunction())
@@ -166,18 +157,7 @@ void OpenCLPrintfResolution::visitCallInst(CallInst& callInst)
 
     StringRef  funcName = callInst.getCalledFunction()->getName();
     if (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME ||
-        funcName == OpenCLPrintfAnalysis::BUILTIN_PRINTF_FUNCTION_NAME)
-    {
-        if (isEmptyStringPrintfCall(callInst))
-        {
-            // 0 is the value a succesful printf call returns.
-            // Clang with optimization also replaces empty string printf calls with 0
-            // It would be better to somehow move such logic to optimization phase.
-            ConstantInt* printfSuccRetVal = ConstantInt::get(m_int32Type, 0, true);
-            callInst.replaceAllUsesWith(printfSuccRetVal);
-            callInst.eraseFromParent();
-            return;
-        }
+        funcName == OpenCLPrintfAnalysis::BUILTIN_PRINTF_FUNCTION_NAME) {
         m_printfCalls.push_back(&callInst);
     }
 }

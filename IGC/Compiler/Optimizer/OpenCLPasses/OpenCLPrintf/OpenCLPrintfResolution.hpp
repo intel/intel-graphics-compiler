@@ -108,8 +108,6 @@ namespace IGC
 
         //        llvm::Value* fixupVectorPrintfArg(llvm::CallInst &printfCall, llvm::Value* arg, IGC::SHADER_PRINTF_TYPE argDataType);
 
-        bool isEmptyStringPrintfCall(llvm::CallInst& printfCall);
-
                 // Returns true if a printf argument is string.
         bool argIsString(llvm::Value* printfArg);
 
