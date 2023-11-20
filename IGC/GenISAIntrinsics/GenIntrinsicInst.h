@@ -70,8 +70,8 @@ protected:
 public:
     /// getIntrinsicID - Return the intrinsic ID of this intrinsic.
     ///
-    GenISAIntrinsic::ID getIntrinsicID() const {
-        return GenISAIntrinsic::getIntrinsicID(getCalledFunction());
+    GenISAIntrinsic::ID getIntrinsicID(bool useContextWrapper = true) const {
+        return GenISAIntrinsic::getIntrinsicID(getCalledFunction(), useContextWrapper);
     }
 
     bool isGenIntrinsic(GenISAIntrinsic::ID intrinID) const {

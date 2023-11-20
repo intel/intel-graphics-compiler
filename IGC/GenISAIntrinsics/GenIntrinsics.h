@@ -64,7 +64,7 @@ inline bool isIntrinsic(const Function *CF)
 {
     return (CF->getName().startswith(getGenIntrinsicPrefix()));
 }
-ID getIntrinsicID(const Function *F);
+ID getIntrinsicID(const Function *F, bool useContextWrapper = true);
 
 } // namespace GenISAIntrinsic
 

@@ -12,7 +12,7 @@
 ; BlendToDiscard
 ; ------------------------------------------------
 
-declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32)
+declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
 declare < 2 x float > @llvm.genx.GenISA.sampleKillPix.2f32.f32(float, float, float, float addrspace(1)*, float addrspace(1)*, i32, i32, i32)
 
 define spir_kernel void @test_func(float addrspace(1)* %idx, float addrspace(1)* %smp) {
@@ -24,8 +24,8 @@ define spir_kernel void @test_func(float addrspace(1)* %idx, float addrspace(1)*
 ; CHECK-NEXT:    [[TMP3:%.*]] = fcmp oeq float [[TMP2]], 1.000000e+00
 ; CHECK-NEXT:    [[TMP4:%.*]] = and i1 [[TMP3]], false
 ; CHECK-NEXT:    call void @llvm.genx.GenISA.discard(i1 [[TMP4]])
-; CHECK-NEXT:    call void @llvm.genx.GenISA.OUTPUT.f32(float undef, float undef, float undef, float [[TMP2]], i32 0, i32 0)
-; CHECK-NEXT:    call void @llvm.genx.GenISA.OUTPUT.f32(float 1.000000e+00, float 1.000000e+00, float undef, float 1.000000e+00, i32 0, i32 1)
+; CHECK-NEXT:    call void @llvm.genx.GenISA.OUTPUT.f32(float undef, float undef, float undef, float [[TMP2]], i32 0, i32 0, i32 15)
+; CHECK-NEXT:    call void @llvm.genx.GenISA.OUTPUT.f32(float 1.000000e+00, float 1.000000e+00, float undef, float 1.000000e+00, i32 0, i32 1, i32 15)
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -33,8 +33,8 @@ entry:
   %1 = extractelement < 2 x float > %0, i32 0
 
   %2 = fmul float 1.0, %1
-  call void @llvm.genx.GenISA.OUTPUT.f32(float undef, float undef, float undef, float %2, i32 0, i32 0)
-  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.0, float 1.0, float undef, float %2, i32 0, i32 1)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float undef, float undef, float undef, float %2, i32 0, i32 0, i32 15)
+  call void @llvm.genx.GenISA.OUTPUT.f32(float 1.0, float 1.0, float undef, float %2, i32 0, i32 1, i32 15)
 
   ret void
 }

@@ -32,10 +32,10 @@
 @DefaultStreamID = global i32 0
 
 define void @test(i32 %src) !dbg !12 {
-  call void @llvm.genx.GenISA.OUTPUTGS(float 1.000000e+00, float 2.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 3), !dbg !14
-  call void @llvm.genx.GenISA.OUTPUTGS(float 1.000000e+00, float 2.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 2), !dbg !15
-  call void @llvm.genx.GenISA.OUTPUTGS(float 3.000000e+00, float 4.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 1), !dbg !16
-  call void @llvm.genx.GenISA.OUTPUTGS(float 3.000000e+00, float 4.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 0), !dbg !17
+  call void @llvm.genx.GenISA.OUTPUTGS(float 1.000000e+00, float 2.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 3, i32 15), !dbg !14
+  call void @llvm.genx.GenISA.OUTPUTGS(float 1.000000e+00, float 2.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 2, i32 15), !dbg !15
+  call void @llvm.genx.GenISA.OUTPUTGS(float 3.000000e+00, float 4.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 1, i32 15), !dbg !16
+  call void @llvm.genx.GenISA.OUTPUTGS(float 3.000000e+00, float 4.000000e+00, float 6.000000e+00, float 4.200000e+01, i32 1, i32 2, i32 0, i32 15), !dbg !17
   ret void, !dbg !18
 }
 
@@ -47,7 +47,7 @@ define void @test(i32 %src) !dbg !12 {
 ; CHECK-DAG: [[CALL4_LOC]] = !DILocation(line: 4, column: 1, scope: [[SCOPE]])
 
 
-declare void @llvm.genx.GenISA.OUTPUTGS(float, float, float, float, i32, i32, i32)
+declare void @llvm.genx.GenISA.OUTPUTGS(float, float, float, float, i32, i32, i32, i32)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0
