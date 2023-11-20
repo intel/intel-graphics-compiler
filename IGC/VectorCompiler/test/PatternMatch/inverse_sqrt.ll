@@ -82,6 +82,26 @@ define <16 x float> @test_inverse3(<16 x float> %val) {
   ret <16 x float> %inv
 }
 
+; CHECK-LABEL: @test_inverse_of_not_sqrt
+define <16 x float> @test_inverse_of_not_sqrt(<16 x float> %val, <16 x float> %tmp) {
+; CHECK-NEXT: fsub <16 x float>
+; CHECK-NEXT: call <16 x float> @llvm.genx.inv.v16f32
+  %sub = fsub <16 x float> %val, %tmp
+  %inv = call <16 x float> @llvm.genx.inv.v16f32(<16 x float> %sub)
+  ret <16 x float> %inv
+}
+
+; CHECK-LABEL: @test_sqrt_multiple_use
+define <16 x float> @test_sqrt_multiple_use(<16 x float> %val) {
+; CHECK-NEXT: call <16 x float> @llvm.genx.sqrt.v16f32
+; CHECK-NEXT: call <16 x float> @llvm.genx.inv.v16f32
+; CHECK-NEXT: fadd <16 x float>
+  %sqrt = call <16 x float> @llvm.genx.sqrt.v16f32(<16 x float> %val)
+  %inv = call <16 x float> @llvm.genx.inv.v16f32(<16 x float> %sqrt)
+  %add = fadd <16 x float> %sqrt, %inv
+  ret <16 x float> %add
+}
+
 declare float @llvm.genx.sqrt.f32(float)
 declare float @llvm.genx.inv.f32(float)
 declare <16 x float> @llvm.sqrt.v16f32(<16 x float>)

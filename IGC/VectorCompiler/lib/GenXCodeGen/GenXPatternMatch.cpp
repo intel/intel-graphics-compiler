@@ -444,8 +444,6 @@ private:
   // Return true if changes are made.
   bool emit();
 
-  void setSelInst(Instruction *I) { SelInst = I; }
-
   Type *getMinMaxType() const;
 
 private:
@@ -712,6 +710,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
           IGC_ASSERT(OpStack.size() >= 1);
           LHS = OpStack.pop_back_val();
           OpStack.push_back(Builder.CreateNot(LHS));
+          continue;
         }
         IGC_ASSERT_MESSAGE(0, "Unhandled logic op!");
       }
