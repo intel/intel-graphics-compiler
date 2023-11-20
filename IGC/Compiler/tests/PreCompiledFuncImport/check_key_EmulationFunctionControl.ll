@@ -16,10 +16,10 @@
 ;
 ; 1. Test EmulationFunctionControl=1, forcing inline
 ; RUN: igc_opt %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=1 \
-; RUN:            --platformdg2 --igc-precompiled-import -S \
+; RUN:            --platformdg2 --print-codegencontext --igc-precompiled-import -S 2>&1 \
 ; RUN:   | FileCheck %s --check-prefix=FC1
-
 ;
+; FC1: m_enableSubroutine: 1
 ; FC1-LABEL: define spir_kernel void @test_emudp
 ; FC1: {{; Function Attrs:}}
 ; FC1: {{; Function Attrs: alwaysinline}}
@@ -29,9 +29,10 @@
 ;
 ; 2. Test EmulationFunctionControl=2, forcing subroutine
 ; RUN: igc_opt %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=2 \
-; RUN:            --platformdg2 --igc-precompiled-import -S \
+; RUN:            --platformdg2 --print-codegencontext --igc-precompiled-import -S 2>&1 \
 ; RUN:   | FileCheck %s --check-prefix=FC2
 ;
+; FC2: m_enableSubroutine: 1
 ; FC2-LABEL: define spir_kernel void @test_emudp
 ; FC2: {{; Function Attrs:}}
 ; FC2: {{; Function Attrs: noinline}}
@@ -43,9 +44,10 @@
 ; 3. Test EmulationFunctionControl=3, forcing subroutine
 ;
 ; RUN: igc_opt %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=3 \
-; RUN:            --platformdg2 --igc-precompiled-import -S \
+; RUN:            --platformdg2 --print-codegencontext --igc-precompiled-import -S 2>&1 \
 ; RUN:   | FileCheck %s --check-prefix=FC3
 ;
+; FC3: m_enableSubroutine: 1
 ; FC3-LABEL: define spir_kernel void @test_emudp
 ; FC3: {{; Function Attrs:}}
 ; FC3: {{; Function Attrs: noinline }}
