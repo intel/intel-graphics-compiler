@@ -193,7 +193,7 @@ void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst& CI)
     if (m_hasDPDivSqrtEmu && CI.hasName())
     {
         Function* calledFunc = CI.getCalledFunction();
-        if (calledFunc->getName().startswith("__builtin_IB_native_sqrtd"))
+        if (calledFunc && calledFunc->getName().startswith("__builtin_IB_native_sqrtd"))
         {
             m_hasPrivateMem = true;
         }
