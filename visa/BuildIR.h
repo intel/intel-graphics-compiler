@@ -2326,6 +2326,7 @@ public:
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // Generic IR simplification tasks
+  G4_Imm *foldConstVal(G4_Imm* opnd, G4_INST *op);
   G4_Imm *foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op);
   void doConsFolding(G4_INST *inst);
   void doSimplification(G4_INST *inst);

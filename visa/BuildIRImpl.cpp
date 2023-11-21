@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <math.h>
 #include <sstream>
 #include <string>
 
@@ -3118,6 +3119,41 @@ IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,
   }
 }
 
+// Helper function to fold Unary Op with immediate operand
+// Currently it only supports inv/log/exp/sqrt math functions
+// Returns nullptr if the instruction cannot be optimized
+G4_Imm *IR_Builder::foldConstVal(G4_Imm *opnd, G4_INST *inst) {
+  if (!(inst->isMath() && inst->asMathInst()->isOneSrcMath())) {
+    return nullptr;
+  }
+
+  G4_Type srcT = opnd->getType();
+  if (srcT != Type_F) {
+    return nullptr;
+  }
+
+  float res;
+  G4_MathOp mathOp = inst->asMathInst()->getMathCtrl();
+  switch (mathOp) {
+  case MATH_INV:
+    res = 1.0f / opnd->getFloat();
+    break;
+  case MATH_LOG:
+    res = std::log2(opnd->getFloat());
+    break;
+  case MATH_EXP:
+    res = std::exp2(opnd->getFloat());
+    break;
+  case MATH_SQRT:
+    res = std::sqrt(opnd->getFloat());
+    break;
+  default:
+    return nullptr;
+  }
+
+  return createImm(res);
+}
+
 // helper function to fold BinOp with two immediate operands
 // supported opcodes are given below in doConsFolding
 // returns nullptr if the two constants may not be folded
@@ -3217,7 +3253,17 @@ void IR_Builder::doConsFolding(G4_INST *inst) {
     return op && op->isImm() && !op->isRelocImm();
   };
 
-  if (inst->getNumSrc() == 2) {
+  if (inst->isMath() && inst->asMathInst()->isOneSrcMath()) {
+    G4_Operand* src0 = inst->getSrc(0);
+    if (srcIsFoldableImm(src0)) {
+      G4_Imm* foldedImm =
+        foldConstVal(src0->asImm(), inst);
+      if (foldedImm) {
+        inst->setOpcode(G4_mov);
+        inst->setSrc(foldedImm, 0);
+      }
+    }
+  } else if (inst->getNumSrc() == 2) {
     G4_Operand *src0 = inst->getSrc(0);
     G4_Operand *src1 = inst->getSrc(1);
     if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
