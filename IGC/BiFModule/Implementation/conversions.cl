@@ -925,34 +925,34 @@ float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertBF16ToFINTEL, _v16i16, )(short1
   return __builtin_IB_bftof_16(Value);
 }
 
-int  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _f32, )(float Value)
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _f32, )(float Value)
 {
-  return __builtin_IB_ftotf32_1(Value);
+  return as_float(__builtin_IB_ftotf32_1(Value));
 }
 
-int2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v2f32, )(float2 Value)
+float2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v2f32, )(float2 Value)
 {
-  return __builtin_IB_ftotf32_2(Value);
+  return as_float2(__builtin_IB_ftotf32_2(Value));
 }
 
-int3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v3f32, )(float3 Value)
+float3  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v3f32, )(float3 Value)
 {
-  return __builtin_IB_ftotf32_3(Value);
+  return as_float3(__builtin_IB_ftotf32_3(Value));
 }
 
-int4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v4f32, )(float4 Value)
+float4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v4f32, )(float4 Value)
 {
-  return __builtin_IB_ftotf32_4(Value);
+  return as_float4(__builtin_IB_ftotf32_4(Value));
 }
 
-int8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v8f32, )(float8 Value)
+float8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v8f32, )(float8 Value)
 {
-  return __builtin_IB_ftotf32_8(Value);
+  return as_float8(__builtin_IB_ftotf32_8(Value));
 }
 
-int16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v16f32, )(float16 Value)
+float16  SPIRV_OVERLOADABLE SPIRV_BUILTIN(RoundFToTF32INTEL, _v16f32, )(float16 Value)
 {
-  return __builtin_IB_ftotf32_16(Value);
+  return as_float16(__builtin_IB_ftotf32_16(Value));
 }
 
 /*
