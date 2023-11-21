@@ -535,71 +535,6 @@ void BIImport::fixSPIRFunctionsReturnType(Module& M)
         F->eraseFromParent();
 }
 
-// The built-in definition returns i32, however, at this point the function call
-// that has been added for round_to_tf32() call returns a float (as the orig
-// matrix type was float).  So we need to: 1) Change the return type of the
-// function declaration to int so that it matches the builtin definition; 2)
-// Cast the returned value of the function back to float so that the previous
-// users of the return value are happy.
-void fixRoundToTF32ReturnType(Module &M) {
-    SmallPtrSet<Function *, 8> funcsToRemove;
-    for (auto &F : M) {
-        if (!F.isDeclaration())
-            continue;
-        auto FuncName = F.getName();
-
-        // 'OpRoundFToTF32INTEL' name is used by legacy IGC SPIR-V translator
-        // 'spirv_RoundFToTF32INTEL' name is used by Khronos SPIR-V translator
-        // We check for both here, since not all IGC configurations might switch to
-        // Khronos SPIR-V translator yet.
-        if (!(FuncName.contains("OpRoundFToTF32INTEL") || FuncName.contains("spirv_RoundFToTF32INTEL")) ||
-            FuncName.contains("_old"))
-            continue;
-        if (!F.getReturnType()->isFloatTy())
-            continue;
-
-        FunctionType *FT = F.getFunctionType();
-
-        FunctionType *NewFT = FunctionType::get(
-            Type::getInt32Ty(M.getContext()), FT->params(), false);
-        auto *NewF =
-            Function::Create(NewFT, F.getLinkage(), FuncName + ".cloned", M);
-
-        SmallPtrSet<CallInst *, 16> Calls;
-
-        for (auto user : F.users())
-            if (CallInst *CI = dyn_cast<CallInst>(user))
-                Calls.insert(CI);
-
-        for (auto CI : Calls) {
-            IRBuilder<> builder(CI);
-
-            SmallVector<Value *, 4> Args;
-            for (auto &Arg : CI->args())
-                Args.push_back(Arg);
-
-            auto *newCall = builder.CreateCall(NewF, Args);
-            newCall->setCallingConv(CI->getCallingConv());
-            newCall->setAttributes(CI->getAttributes());
-            // Convert the value back so that previous users of
-            // the return value are happy
-            auto *converted = builder.CreateBitCast(newCall, CI->getType());
-
-            CI->replaceAllUsesWith(converted);
-            CI->eraseFromParent();
-        }
-
-        std::string originalName = FuncName.str();
-        F.setName(FuncName + "_old");
-        NewF->setName(originalName);
-
-        funcsToRemove.insert(&F);
-    }
-
-    for (auto *F : funcsToRemove)
-        F->eraseFromParent();
-}
-
 // Older Clang versions generate invalid bitcast instructions for explicit
 // C-style casts with specified address space. For example:
 //   %0 = bitcast i8 addrspace(1)* %mem to i32 addrspace(4)*
@@ -659,7 +594,6 @@ bool BIImport::runOnModule(Module& M)
     }
 
     fixSPIRFunctionsReturnType(M);
-    fixRoundToTF32ReturnType(M);
 
     for (auto& F : M)
     {
