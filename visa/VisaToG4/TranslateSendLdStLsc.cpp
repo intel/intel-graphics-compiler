@@ -360,7 +360,6 @@ int IR_Builder::translateLscUntypedInst(
   case LSC_SLM:
     sfid = SFID::SLM;
     break;
-    break;
   default:
     vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
   }
