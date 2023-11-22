@@ -1399,16 +1399,6 @@ bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
         // Convert half directly into 32-bit integer.
         Value* Lo = IRB->CreateFPToUI(Src, IRB->getInt32Ty());
         Value* Hi = Constant::getNullValue(IRB->getInt32Ty());
-        // FIXME: Instead of that w/a, we should consider either:
-        // a) implementing the emulated version of the saturation builtins
-        //    right at the OCL level and making sure to replace i64-returning
-        //    calls with that;
-        // or:
-        // b) abandoning OCL-level implementations altogether, instead
-        //    replacing these builtin calls with GenISA intrinsic calls prior
-        //    to builtin import, and then inserting IR-level implementations
-        //    that would make the emulation sequence conditional on the source
-        //    value's comparison to NaN.
         Emu->setExpandedValues(&F2U, Lo, Hi);
         return true;
     }
