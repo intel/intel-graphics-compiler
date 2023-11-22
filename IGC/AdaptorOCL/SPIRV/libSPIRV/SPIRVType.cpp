@@ -60,8 +60,10 @@ SPIRVType::getArrayElementType() const {
 uint64_t
 SPIRVType::getArrayLength() const {
   IGC_ASSERT_MESSAGE(OpCode == OpTypeArray, "Not array type");
-  return static_cast<const SPIRVTypeArray *const>(this)->getLength()->
-      getZExtIntValue();
+  const SPIRVTypeArray* AsArray = static_cast<const SPIRVTypeArray*>(this);
+  IGC_ASSERT_MESSAGE(AsArray->getLength()->getOpCode() == OpConstant,
+      "getArrayLength can only be called with constant array lengths");
+  return AsArray->getLength()->getZExtIntValue();
 }
 
 SPIRVWord
@@ -337,7 +339,6 @@ SPIRVTypeArray::validate()const {
   SPIRVEntry::validate();
   ElemType->validate();
   IGC_ASSERT(getValue(Length)->getType()->isTypeInt());
-  IGC_ASSERT(get<SPIRVConstant>(Length)->getZExtIntValue() > 0);
 }
 
 SPIRVConstant*
