@@ -18726,6 +18726,7 @@ void EmitPass::emitVectorCopyToAOS(uint32_t AOSBytes,
         return;
     }
 
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
     unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
     uint32_t eltBytes = Dst->GetElemSize();
     uint32_t stride = AOSBytes / eltBytes;
@@ -18733,7 +18734,7 @@ void EmitPass::emitVectorCopyToAOS(uint32_t AOSBytes,
     IGC_ASSERT((AOSBytes % eltBytes) == 0);
     for (uint32_t i = 0; i < nElts; ++i)
     {
-        uint SrcSubReg = soff + i;
+        uint SrcSubReg = soff + i * (srcUniform ? 1 : nLanes);
         uint DstSubReg = doff + i;
         uint DstVStride = dstUniform ? 1 : stride;
 
