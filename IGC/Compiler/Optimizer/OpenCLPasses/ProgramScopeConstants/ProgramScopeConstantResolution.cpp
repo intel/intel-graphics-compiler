@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -132,8 +132,10 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
 
         // Get the offset of this constant from the base.
         int64_t offset = bufferOffset->second;
-        ConstantInt* pOffset = ConstantInt::get(Type::getInt64Ty(C), offset);
+        if (offset == -1)
+            continue;
 
+        ConstantInt* pOffset = ConstantInt::get(Type::getInt64Ty(C), offset);
         const ImplicitArg::ArgType argType =
             AS == ADDRESS_SPACE_GLOBAL ? ImplicitArg::GLOBAL_BASE : ImplicitArg::CONSTANT_BASE;
 
