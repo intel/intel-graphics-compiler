@@ -101,9 +101,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             }
             // Include the variable in 'inlineProgramScopeOffsets', otherwise
             // code gen will not emit relocation. In case of S_UNDEF/extenal
-            // variable offset is not expected to be used. Using -1 as a
-            // placeholder so the unexpected usage will fail visibly when
-            // trying to emit variable with 0xffffffff offset
+            // variable offset is not expected to be used.
+            // Using -1 to communicate to ProgramScopeConstantResolution that
+            // this offset shouldn't be resolved.
             inlineProgramScopeOffsets[globalVar] = -1;
             continue;
         }
