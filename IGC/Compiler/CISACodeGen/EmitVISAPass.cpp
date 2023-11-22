@@ -17847,7 +17847,8 @@ CVariable* EmitPass::prepareDataForUniform(
     return newVar;
 }
 
-void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
+void EmitPass::emitLSCVectorLoad_subDW(Instruction *inst,
+                                       LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                        ResourceDescriptor &Resource,
                                        CVariable *Dest,
                                        CVariable *Offset, int ImmOffset,
@@ -17911,7 +17912,8 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                     eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
                     LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
         m_encoder->Push();
-    });
+        },
+        m_RLA->GetResourceLoopMarker(inst));
 
     // Copy from gatherDst to original destination
     gatherDst = m_currShader->GetNewAlias(gatherDst, Dest->GetType(), 0, 0);
@@ -18076,7 +18078,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
     if (eltBytes < 4)
     {
         IGC_ASSERT(elts == 1);
-      emitLSCVectorLoad_subDW(cacheOpts, useA32, resource, destCVar,
+      emitLSCVectorLoad_subDW(inst, cacheOpts, useA32, resource, destCVar,
                               eOffset, immOffsetInt, immScaleInt, 1, eltBytes,
                               addrSpace, addrSize);
         return;
