@@ -61,6 +61,10 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
 
     virtual ~IGCLivenessAnalysis() {}
 
+    // returns all definitions that were made in the block
+    // computed by taking difference between In and Out,
+    // everyting that was originated in the block and got into OUT
+    ValueSet getDefs(llvm::BasicBlock &BB);
     DFSet &getInSet() { return In; }
     const DFSet &getInSet() const { return In; }
     InPhiSet &getInPhiSet() { return InPhi; }
@@ -95,10 +99,45 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         return MaxAmountOfRegistersRoundUp;
     }
 
+    // be aware, for now, it doesn't count properly nested functions, and their
+    // register pressure
+    unsigned int getMaxRegCountForFunction(llvm::Function &F,
+                                           unsigned int SIMD) {
+        unsigned int Max = 0;
+        for (BasicBlock &BB : F) {
+            Max = std::max(getMaxRegCountForBB(BB, SIMD), Max);
+        }
+        return Max;
+    }
+
+    llvm::BasicBlock *getMaxRegCountBBForFunction(llvm::Function &F) {
+        llvm::BasicBlock *HottestBB = NULL;
+        unsigned int Max = 0;
+        for (BasicBlock &BB : F) {
+            unsigned int BBPressure = getMaxRegCountForBB(BB, 8);
+            HottestBB = BBPressure > Max ? &BB : HottestBB;
+            Max = std::max(BBPressure, Max);
+        }
+        return HottestBB;
+    }
+
     void releaseMemory() override {
         In.clear();
         InPhi.clear();
         Out.clear();
+    }
+
+    // if you need to recompute pressure analysis after modifications were made
+    // that can potentially change In Out sets, we need to update them, it's fast
+    // collectPressureForBB()
+    // ...
+    // modifications that change In & Out
+    // ...
+    // rerunLivenessAnalysis()
+    // collectPressureForBB()
+    void rerunLivenessAnalysis(llvm::Function &F) {
+        releaseMemory();
+        livenessAnalysis(F);
     }
 
   private:
@@ -129,9 +168,9 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
     void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
     void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
-    void initialAnalysis(llvm::Function &F);
+    void livenessAnalysis(llvm::Function &F);
 
-    virtual bool runOnFunction(llvm::Function &M) override;
+    virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
         AU.addRequired<CodeGenContextWrapper>();

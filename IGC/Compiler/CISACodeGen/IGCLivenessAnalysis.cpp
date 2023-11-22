@@ -48,8 +48,6 @@ IGCLivenessAnalysis::IGCLivenessAnalysis(bool UseWiAnalysisVar /* = false */,
     initializeIGCLivenessAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-
-
 unsigned int IGCLivenessAnalysis::registerSizeInBytes() {
     if (CGCtx->platform.isProductChildOf(IGFX_PVC))
         return 64;
@@ -70,7 +68,7 @@ SIMDMode IGCLivenessAnalysis::bestGuessSIMDSize() {
 
     if (CGCtx->platform.isProductChildOf(IGFX_PVC))
         return SIMDMode::SIMD32;
-    return SIMDMode::SIMD16;
+    return SIMDMode::SIMD8;
 }
 
 void IGCLivenessAnalysis::printNames(const ValueSet &Set, std::string &Name) {
@@ -125,6 +123,19 @@ void IGCLivenessAnalysis::printPhi(const PhiSet &Set, std::string &Output) {
         }
     }
     Output += "\n";
+}
+
+ValueSet IGCLivenessAnalysis::getDefs(llvm::BasicBlock &BB) {
+
+    ValueSet &BBIn = In[&BB];
+    ValueSet &BBOut = Out[&BB];
+
+    ValueSet Difference;
+    for (auto *elem : BBOut)
+        if (!BBIn.count(elem))
+            Difference.insert(elem);
+
+    return Difference;
 }
 
 void IGCLivenessAnalysis::printDefs(const ValueSet &In, const ValueSet &Out,
@@ -219,7 +230,7 @@ void addToSet(llvm::Instruction *Inst, ValueSet &Set) {
         // br label %bb1 (basic block names)
         // call %functionName (function names)
         // add %a, 1 (constants)
-        if (!llvm::isa<llvm::Instruction>(V))
+        if (!(llvm::isa<llvm::Instruction>(V) || llvm::isa<llvm::Argument>(V)))
             continue;
         Set.insert(V);
     }
@@ -258,7 +269,7 @@ void IGCLivenessAnalysis::processBlock(llvm::BasicBlock *BB, ValueSet &Set,
     }
 }
 
-void IGCLivenessAnalysis::initialAnalysis(llvm::Function &F) {
+void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F) {
     std::queue<llvm::BasicBlock *> Worklist;
     for (BasicBlock &BB : F)
         Worklist.push(&BB);
@@ -405,7 +416,7 @@ bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
     if (UseWIAnalysis)
         WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    initialAnalysis(F);
+    livenessAnalysis(F);
 
     unsigned int SIMD = numLanes(bestGuessSIMDSize());
 
@@ -414,12 +425,13 @@ bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
     } else {
         // basically only for LIT testing
         std::string Output;
-        // no particular reason behin this, just big enough power of 2
+        // no particular reason behind this, just big enough power of 2
         // helps to reduce printing time, by preemptively allocating
         // memory
         Output.reserve(32768);
         for (BasicBlock &BB : F) {
-            printSets(&BB, Output, SIMD);
+            // why 16? because test is written for 16
+            printSets(&BB, Output, 16);
         }
         PRINT(Output);
         Output.clear();
