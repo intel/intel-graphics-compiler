@@ -161,6 +161,7 @@ SPDX-License-Identifier: MIT
 
 #include "FunctionGroup.h"
 #include "GenXSubtarget.h"
+#include "GenXLiveElements.h"
 #include "IgnoreRAUWValueMap.h"
 #include "Probe/Assertion.h"
 #include "vc/Utils/General/IndexFlattener.h"
@@ -463,6 +464,7 @@ class GenXLiveness : public FGPassImplInterface, public IDMixin<GenXLiveness> {
   std::unique_ptr<genx::CallGraph> CG;
   GenXBaling *Baling = nullptr;
   GenXNumbering *Numbering = nullptr;
+  GenXLiveElements *LiveElements = nullptr;
   const GenXSubtarget *Subtarget = nullptr;
   const DataLayout *DL = nullptr;
   std::map<Function *, Value *> UnifiedRets;
@@ -485,6 +487,7 @@ public:
   bool runOnFunctionGroup(FunctionGroup &FG) override;
   // setBaling : tell GenXLiveness where GenXBaling is
   void setBaling(GenXBaling *B) { Baling = B; }
+  void setLiveElements(GenXLiveElements *LE) { LiveElements = LE; }
   // experimental option to extend all LR till the end of a function
   void setNoCoalescingMode(bool NoCoalescingMode) {
     CoalescingDisabled = NoCoalescingMode;

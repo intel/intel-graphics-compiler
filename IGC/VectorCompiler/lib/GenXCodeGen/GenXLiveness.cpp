@@ -378,6 +378,9 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
   // Process each use.
   for (Value::use_iterator i = V->use_begin(), e = V->use_end();
       i != e; ++i) {
+    auto& U = *i;
+    if (LiveElements->getLiveElements(&U).isAllDead())
+      continue;
     BasicBlock *BB = nullptr;
     Instruction *user = cast<Instruction>(i->getUser());
     unsigned Num;

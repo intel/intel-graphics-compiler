@@ -368,6 +368,7 @@ public:
     AU.addRequired<GenXNumbering>();
     AU.addRequired<GenXLiveness>();
     AU.addRequired<GenXGroupBaling>();
+    AU.addRequired<GenXGroupLiveElementsWrapper>();
     AU.addRequired<GenXModule>();
     AU.addPreserved<GenXGroupBaling>();
     AU.addPreserved<GenXLiveness>();
@@ -403,6 +404,7 @@ using GenXArgIndirectionWrapper = FunctionGroupWrapperPass<GenXArgIndirection>;
 INITIALIZE_PASS_BEGIN(GenXArgIndirectionWrapper, "GenXArgIndirectionWrapper",
                       "GenXArgIndirectionWrapper", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupLiveElementsWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_END(GenXArgIndirectionWrapper, "GenXArgIndirectionWrapper",
@@ -425,6 +427,7 @@ bool GenXArgIndirection::runOnFunctionGroup(FunctionGroup &ArgFG)
   Baling = &getAnalysis<GenXGroupBaling>();
   Numbering = &getAnalysis<GenXNumbering>();
   Liveness = &getAnalysis<GenXLiveness>();
+  Liveness->setLiveElements(&getAnalysis<GenXGroupLiveElements>());
   AI = new AlignmentInfo;
   ST = getAnalysis<GenXModule>().getSubtarget();
   DL = &ArgFG.getModule()->getDataLayout();

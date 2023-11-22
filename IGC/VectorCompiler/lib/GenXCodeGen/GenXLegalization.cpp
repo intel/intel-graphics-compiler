@@ -210,7 +210,7 @@ struct LegalPredSize {
 class GenXLegalization : public FunctionPass {
   enum { DETERMINEWIDTH_UNBALE = 0, DETERMINEWIDTH_NO_SPLIT = 256 };
   GenXBaling *Baling = nullptr;
-  GenXFuncLiveElements *LE = nullptr;
+  GenXLiveElements *LE = nullptr;
   const GenXSubtarget *ST = nullptr;
   DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;

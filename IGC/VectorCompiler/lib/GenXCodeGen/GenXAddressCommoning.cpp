@@ -214,6 +214,7 @@ public:
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.addRequired<GenXModule>();
     AU.addRequired<GenXGroupBaling>();
+    AU.addRequired<GenXGroupLiveElementsWrapper>();
     AU.addRequired<GenXLiveness>();
     AU.addRequired<GenXNumbering>();
     AU.addPreserved<DominatorTreeGroupWrapperPass>();
@@ -257,6 +258,7 @@ INITIALIZE_PASS_BEGIN(GenXAddressCommoningWrapper,
                       "GenXAddressCommoningWrapper", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupLiveElementsWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
 INITIALIZE_PASS_END(GenXAddressCommoningWrapper, "GenXAddressCommoningWrapper",
@@ -275,6 +277,7 @@ bool GenXAddressCommoning::runOnFunctionGroup(FunctionGroup &FG)
 {
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
+  Liveness->setLiveElements(&getAnalysis<GenXGroupLiveElements>());
   Numbering = &getAnalysis<GenXNumbering>();
   ST = getAnalysis<GenXModule>().getSubtarget();
   bool Modified = false;

@@ -80,20 +80,20 @@ void LiveElements::dump() const {
 }
 #endif // if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 
-LiveElements LiveElementsAnalysis::getLiveElements(const Value *V) const {
+LiveElements GenXLiveElements::getLiveElements(const Value *V) const {
   if (auto It = LiveMap.find(V); It != LiveMap.end())
     return It->second;
   return LiveElements(V->getType());
 }
 
-LiveElements LiveElementsAnalysis::getLiveElements(const Use *U) const {
+LiveElements GenXLiveElements::getLiveElements(const Use *U) const {
   auto Inst = cast<Instruction>(U->getUser());
   return getOperandLiveElements(Inst, U->getOperandNo(), getLiveElements(Inst));
 }
 
 // getBitCastLiveElements : propagation function for bitcast - scaling of
 // destination bitmask to source size
-LiveElements LiveElementsAnalysis::getBitCastLiveElements(
+LiveElements GenXLiveElements::getBitCastLiveElements(
     const BitCastInst *BCI, const LiveElements &InstLiveElems) const {
   IGC_ASSERT(InstLiveElems.size() == 1);
 
@@ -123,7 +123,7 @@ LiveElements LiveElementsAnalysis::getBitCastLiveElements(
 }
 
 // getExtractValueLiveElements : propagation function for extractvalue
-LiveElements LiveElementsAnalysis::getExtractValueLiveElements(
+LiveElements GenXLiveElements::getExtractValueLiveElements(
     const ExtractValueInst *EVI, unsigned OperandNo,
     const LiveElements &InstLiveElems) const {
   auto OpTy = EVI->getOperand(OperandNo)->getType();
@@ -142,7 +142,7 @@ LiveElements LiveElementsAnalysis::getExtractValueLiveElements(
 }
 
 // getInsertValueLiveElements : propagation function for insertvalue
-LiveElements LiveElementsAnalysis::getInsertValueLiveElements(
+LiveElements GenXLiveElements::getInsertValueLiveElements(
     const InsertValueInst *IVI, unsigned OperandNo,
     const LiveElements &InstLiveElems) const {
   auto OpTy = IVI->getOperand(OperandNo)->getType();
@@ -166,7 +166,7 @@ LiveElements LiveElementsAnalysis::getInsertValueLiveElements(
 }
 
 // getRdRegionLiveElements : propagation function of rdregion/rdpredregion
-LiveElements LiveElementsAnalysis::getRdRegionLiveElements(
+LiveElements GenXLiveElements::getRdRegionLiveElements(
     const Instruction *RdR, unsigned OperandNo,
     const LiveElements &InstLiveElems) const {
   auto OpTy = RdR->getOperand(OperandNo)->getType();
@@ -198,7 +198,7 @@ LiveElements LiveElementsAnalysis::getRdRegionLiveElements(
 }
 
 // getWrRegionLiveElements : propagation function of wrregion/wrpredregion
-LiveElements LiveElementsAnalysis::getWrRegionLiveElements(
+LiveElements GenXLiveElements::getWrRegionLiveElements(
     const Instruction *WrR, unsigned OperandNo,
     const LiveElements &InstLiveElems) const {
   auto OpTy = WrR->getOperand(OperandNo)->getType();
@@ -246,7 +246,7 @@ LiveElements LiveElementsAnalysis::getWrRegionLiveElements(
 
 // getTwoDstInstInstLiveElements : propagation function for intrinsics with
 // two destinations (addc, subb)
-LiveElements LiveElementsAnalysis::getTwoDstInstLiveElements(
+LiveElements GenXLiveElements::getTwoDstInstLiveElements(
     const LiveElements &InstLiveElems) const {
   IGC_ASSERT(InstLiveElems.size() == 2);
   IGC_ASSERT(InstLiveElems[0].size() == InstLiveElems[1].size());
@@ -264,7 +264,7 @@ static bool isElementWise(const Instruction *I) {
 // getOperandLiveElements : propagation function for instruction operand.
 // Calculates what elements inside operand are required to correctly produce
 // instruction result with live elements InstLiveElems
-LiveElements LiveElementsAnalysis::getOperandLiveElements(
+LiveElements GenXLiveElements::getOperandLiveElements(
     const Instruction *Inst, unsigned OperandNo,
     const LiveElements &InstLiveElems) const {
   IGC_ASSERT(OperandNo < Inst->getNumOperands());
@@ -339,7 +339,7 @@ static bool isRootInst(const Instruction *I) {
   return false;
 }
 
-void LiveElementsAnalysis::processFunction(const Function &F) {
+void GenXLiveElements::processFunction(const Function &F) {
   // List of instructions that live elements were changed and requires
   // re-processing. SetVector is used to obtain deterministic order of work
   SmallSetVector<const Instruction *, 16> Worklist;

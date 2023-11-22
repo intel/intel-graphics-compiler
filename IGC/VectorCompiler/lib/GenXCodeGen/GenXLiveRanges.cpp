@@ -105,6 +105,7 @@ using GenXLiveRangesWrapper = FunctionGroupWrapperPass<GenXLiveRanges>;
 INITIALIZE_PASS_BEGIN(GenXLiveRangesWrapper, "GenXLiveRangesWrapper",
                       "GenXLiveRangesWrapper", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupLiveElementsWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
@@ -118,6 +119,7 @@ ModulePass *llvm::createGenXLiveRangesWrapperPass() {
 
 void GenXLiveRanges::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<GenXGroupBaling>();
+  AU.addRequired<GenXGroupLiveElementsWrapper>();
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();
   AU.addRequired<GenXBackendConfig>();
@@ -137,6 +139,7 @@ bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
   Liveness->setNoCoalescingMode(BC.disableLiveRangesCoalescing());
   Liveness->setBaling(Baling);
   Liveness->setNumbering(&getAnalysis<GenXNumbering>());
+  Liveness->setLiveElements(&getAnalysis<GenXGroupLiveElements>());
   // Build the live ranges.
   Liveness->buildSubroutineLRs();
   buildLiveRanges();

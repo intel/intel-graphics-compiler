@@ -309,6 +309,7 @@ namespace {
     static void getAnalysisUsage(AnalysisUsage &AU) {
       AU.addRequired<GenXLiveness>();
       AU.addRequired<GenXGroupBaling>();
+      AU.addRequired<GenXGroupLiveElementsWrapper>();
       AU.addRequired<GenXNumbering>();
       AU.addRequired<DominatorTreeGroupWrapperPassWrapper>();
       AU.addRequired<LoopInfoGroupWrapperPass>();
@@ -419,6 +420,7 @@ using GenXCoalescingWrapper = FunctionGroupWrapperPass<GenXCoalescing>;
 INITIALIZE_PASS_BEGIN(GenXCoalescingWrapper, "GenXCoalescingWrapper",
                       "GenXCoalescingWrapper", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXGroupLiveElementsWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXNumberingWrapper)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper);
@@ -443,6 +445,7 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
             .getGenXSubtarget();
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
+  Liveness->setLiveElements(&getAnalysis<GenXGroupLiveElements>());
   Numbering = &getAnalysis<GenXNumbering>();
   DTWrapper = &getAnalysis<DominatorTreeGroupWrapperPass>();
   LIWrapper = &getAnalysis<LoopInfoGroupWrapperPass>();
