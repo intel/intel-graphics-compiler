@@ -269,6 +269,9 @@ bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
 {
     if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
     {
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
+            return true;
+
         BufferType bufType = DecodeBufferType(I->getPointerAddressSpace());
         return I->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
                I->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
@@ -4616,6 +4619,47 @@ void EmitPass::UseVMaskPred()
     if (!m_vMaskPredForSubplane)
         return;
 
+}
+
+CVariable* EmitPass::GetCombinedVMaskPred(CVariable* basePredicate)
+{
+    if (!m_currShader->IsPatchablePS())
+        return basePredicate;
+
+    if (!m_vMaskPredForSubplane)
+        return basePredicate;
+
+    bool subspan = m_encoder->IsSubSpanDestination();
+    if ((IGC_IS_FLAG_ENABLED(UseVMaskPredicate) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads)) &&
+        subspan && !m_destination->IsUniform())
+    {
+        CVariable* vmaskPredicate = m_vMaskPredForSubplane;
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
+        {
+            vmaskPredicate = m_currShader->GetNewVariable(
+                numLanes(m_SimdMode),
+                ISA_TYPE_BOOL,
+                EALIGN_DWORD,
+                "");
+            m_encoder->SetSrcSubReg(0, 3);
+            m_encoder->SetP(vmaskPredicate, m_currShader->GetSR0());
+            m_encoder->Push();
+        }
+        if (basePredicate)
+        {
+            IGC_ASSERT(basePredicate->GetNumberElement() == vmaskPredicate->GetNumberElement());
+            CVariable* combinedPredicate = m_currShader->GetNewVariable(
+                numLanes(m_SimdMode),
+                ISA_TYPE_BOOL,
+                EALIGN_DWORD,
+                "");
+            m_encoder->And(combinedPredicate, vmaskPredicate, basePredicate);
+            m_encoder->Push();
+            return combinedPredicate;
+        }
+        return vmaskPredicate;
+    }
+    return basePredicate;
 }
 
 
@@ -17906,7 +17950,7 @@ void EmitPass::emitLSCVectorLoad_subDW(Instruction *inst,
         if (doUniformLoad)
             m_encoder->SetNoMask();
         else
-            m_encoder->SetPredicate(flag);
+            m_encoder->SetPredicate(GetCombinedVMaskPred(flag));
 
         emitLSCLoad(CacheOpts, gatherDst,
                     eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
@@ -18147,7 +18191,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                     dVisaTy, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             }
 
-            m_encoder->SetPredicate(flag);
+            m_encoder->SetPredicate(GetCombinedVMaskPred(flag));
 
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
             IGC_ASSERT_MESSAGE(
