@@ -346,7 +346,7 @@ private:
   bool processBitCastFromPredicate(Instruction *Inst,
                                    Instruction *InsertBefore);
   bool processBitCastToPredicate(Instruction *Inst, Instruction *InsertBefore);
-  Value *getDestination();
+  Value *getExecWidthValue();
   unsigned splitDeadElements(unsigned Width, unsigned StartIdx);
   unsigned determineWidth(unsigned WholeWidth, unsigned StartIdx);
   unsigned determineNonRegionWidth(Instruction *Inst, unsigned StartIdx);
@@ -792,12 +792,11 @@ bool GenXLegalization::processInst(Instruction *Inst) {
  */
 bool GenXLegalization::processBale(Instruction *InsertBefore) {
   // Get the current execution width.
-  auto *Dest = getDestination();
-  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Dest->getType());
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(getExecWidthValue()->getType());
   unsigned WholeWidth = VT ? VT->getNumElements() : 1;
+  // No splitting of scalar or 1-vector
   if (WholeWidth == 1)
-    return false; // No splitting of scalar or 1-vector
-
+    return false;
   // Check the bale split kind if do splitting.
   CurSplitKind = checkBaleSplittingKind();
 
@@ -1089,20 +1088,22 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
 }
 
 /***********************************************************************
- * getDestination : get the destination of the bale
+ * getExecWidthValue : get the value, which type represents
+ *                     the actual  execution width of the bale
  *
- * If there is no wrregion at the head of the bale, then the destination
- * is the head. If there is a wrregion or wrpredpredregion, then it is
- * the input to the wrregion.
+ * Return: If there is no wrregion at the head of the bale, then such
+ *         value is the head itself (ignoring gstore). If there is a
+ *         wrregion or wrpredpredregion, then this value is the input
+ *         to it
  */
-Value *GenXLegalization::getDestination() {
+Value *GenXLegalization::getExecWidthValue() {
   BaleInst *Head = B.getHeadIgnoreGStore();
-  Value *Dest = Head->Inst;
   if (Head->Info.Type == BaleInfo::WRREGION ||
       Head->Info.Type == BaleInfo::WRPREDREGION ||
       Head->Info.Type == BaleInfo::WRPREDPREDREGION)
-    Dest = Head->Inst->getOperand(1);
-  return Dest;
+    return Head->Inst->getOperand(1);
+  else
+    return Head->Inst;
 }
 
 /***********************************************************************
@@ -1120,14 +1121,14 @@ Value *GenXLegalization::getDestination() {
  */
 unsigned GenXLegalization::splitDeadElements(unsigned Width,
                                              unsigned StartIdx) {
-  Value *Dest = getDestination();
-  auto *ElemTy = Dest->getType()->getScalarType();
+  auto *V = getExecWidthValue();
+  auto *ElemTy = V->getType()->getScalarType();
   // The most math instructions require exec size to be 8 or 16 in case of half
   // float. Even if we reduce the width here, it will be very likely set back to
   // the 'native' width by finalizer
   if (ElemTy->isHalfTy())
     return Width;
-  const auto &LiveElems = LE->getLiveElements(Dest);
+  const auto &LiveElems = LE->getLiveElements(V);
   if (LiveElems.size() > 1 || LiveElems.isAllDead() || !LiveElems.isAnyDead())
     return Width;
   // Execution mask must be 4 aligned, which is important for predicates
