@@ -2390,9 +2390,8 @@ Instruction *genx::getAVLoadKillOrNull(
         if (BB == PosBB)
           PosIsReachableFromLI = true;
         else
-          std::copy_if(
-              succ_begin(BB), succ_end(BB), std::back_inserter(BBs),
-              [Visited](BasicBlock *BB) { return !Visited.count(BB); });
+          std::copy_if(succ_begin(BB), succ_end(BB), std::back_inserter(BBs),
+                       [&](BasicBlock *BB) { return !Visited.count(BB); });
       }
 
       if (!PosIsReachableFromLI)
@@ -2416,7 +2415,7 @@ Instruction *genx::getAVLoadKillOrNull(
     Visited.insert(ExcludeBlocksOnCfgTraversal->begin(),
                    ExcludeBlocksOnCfgTraversal->end());
   std::copy_if(pred_begin(PosBB), pred_end(PosBB), std::back_inserter(BBs),
-               [Visited](BasicBlock *BB) { return !Visited.count(BB); });
+               [&](BasicBlock *BB) { return !Visited.count(BB); });
 
   while (!BBs.empty()) {
     auto *BB = BBs.pop_back_val();
@@ -2427,7 +2426,7 @@ Instruction *genx::getAVLoadKillOrNull(
 
     Visited.insert(BB);
     std::copy_if(pred_begin(BB), pred_end(BB), std::back_inserter(BBs),
-                 [Visited](BasicBlock *BB) { return !Visited.count(BB); });
+                 [&](BasicBlock *BB) { return !Visited.count(BB); });
   }
 
   return nullptr;
