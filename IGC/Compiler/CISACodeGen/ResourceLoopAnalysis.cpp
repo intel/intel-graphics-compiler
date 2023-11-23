@@ -109,8 +109,12 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
         }
       } else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
         if (!WI->isUniform(LI->getResourceValue())) {
-          curRes = LI->getResourceValue();
-          curOpTy = 4;
+          // need extra restrictions:
+          // no half-type because it may need extra op for packing
+          if (LI->getType()->getScalarSizeInBits() >= 32) {
+            curRes = LI->getResourceValue();
+            curOpTy = 4;
+          }
         }
       }
       // check data-dependence from mem-ops in the current set

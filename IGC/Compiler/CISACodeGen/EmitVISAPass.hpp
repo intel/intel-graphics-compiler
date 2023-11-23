@@ -946,8 +946,7 @@ private:
     CVariable *prepareDataForUniform(CVariable *DataVar, uint32_t ExecSz,
                                      e_alignment Align);
     // sub-function of vector load/store
-    void emitLSCVectorLoad_subDW(llvm::Instruction* inst,
-                                 LSC_CACHE_OPTS CacheOpts, bool UseA32,
+    void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
                                  ResourceDescriptor &Resource, CVariable *Dest,
                                  CVariable *Offset, int ImmOffset,
                                  int ImmScale, uint32_t NumElts,
