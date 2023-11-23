@@ -346,7 +346,8 @@ private:
   bool processBitCastFromPredicate(Instruction *Inst,
                                    Instruction *InsertBefore);
   bool processBitCastToPredicate(Instruction *Inst, Instruction *InsertBefore);
-  unsigned getExecutionWidth();
+  Value *getDestination();
+  unsigned splitDeadElements(unsigned Width, unsigned StartIdx);
   unsigned determineWidth(unsigned WholeWidth, unsigned StartIdx);
   unsigned determineNonRegionWidth(Instruction *Inst, unsigned StartIdx);
   LegalPredSize getLegalPredSize(Value *Pred, Type *ElementTy,
@@ -791,7 +792,9 @@ bool GenXLegalization::processInst(Instruction *Inst) {
  */
 bool GenXLegalization::processBale(Instruction *InsertBefore) {
   // Get the current execution width.
-  unsigned WholeWidth = getExecutionWidth();
+  auto *Dest = getDestination();
+  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Dest->getType());
+  unsigned WholeWidth = VT ? VT->getNumElements() : 1;
   if (WholeWidth == 1)
     return false; // No splitting of scalar or 1-vector
 
@@ -1086,23 +1089,76 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
 }
 
 /***********************************************************************
- * getExecutionWidth : get the execution width of the bale
+ * getDestination : get the destination of the bale
  *
- * If there is no wrregion at the head of the bale, then the execution width is
- * the width of the head. If there is a wrregion or wrpredpredregion, then the
- * execution width is the width of the subregion input to the wrregion.
+ * If there is no wrregion at the head of the bale, then the destination
+ * is the head. If there is a wrregion or wrpredpredregion, then it is
+ * the input to the wrregion.
  */
-unsigned GenXLegalization::getExecutionWidth() {
+Value *GenXLegalization::getDestination() {
   BaleInst *Head = B.getHeadIgnoreGStore();
   Value *Dest = Head->Inst;
   if (Head->Info.Type == BaleInfo::WRREGION ||
       Head->Info.Type == BaleInfo::WRPREDREGION ||
       Head->Info.Type == BaleInfo::WRPREDPREDREGION)
     Dest = Head->Inst->getOperand(1);
-  auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Dest->getType());
-  if (!VT)
-    return 1;
-  return VT->getNumElements();
+  return Dest;
+}
+
+/***********************************************************************
+ * splitDeadElements : try to reduce the width to isolate unused elements
+ *
+ * Enter:   Width = current calculated split width
+ *          StartIdx = start index of this split
+ *
+ * Return:  New width when the split is possible or the old one otherwise
+ *
+ * Live element analysis can provide info about the actual usage of every
+ * element of a vector. If some elements are unused we can do the split
+ * so that dead elements in the begining and end of a vector are isolated
+ * from a single live part in the middle.
+ */
+unsigned GenXLegalization::splitDeadElements(unsigned Width,
+                                             unsigned StartIdx) {
+  Value *Dest = getDestination();
+  auto *ElemTy = Dest->getType()->getScalarType();
+  // The most math instructions require exec size to be 8 or 16 in case of half
+  // float. Even if we reduce the width here, it will be very likely set back to
+  // the 'native' width by finalizer
+  if (ElemTy->isHalfTy())
+    return Width;
+  const auto &LiveElems = LE->getLiveElements(Dest);
+  if (LiveElems.size() > 1 || LiveElems.isAllDead() || !LiveElems.isAnyDead())
+    return Width;
+  // Execution mask must be 4 aligned, which is important for predicates
+  unsigned FirstLive = LiveElems[0].find_first() & ~3U;
+  // Dead parts don't need to be aligned, because the will be removed anyway
+  unsigned LastLive = LiveElems[0].find_last();
+  if ((StartIdx > FirstLive || StartIdx + Width < FirstLive) &&
+      (StartIdx > LastLive || StartIdx + Width < LastLive))
+    return Width;
+  // Instruction with current width crosses the boundary between live
+  // and dead parts
+  FirstLive = std::max(FirstLive, StartIdx);
+  LastLive = std::min(LastLive, StartIdx + Width);
+  unsigned LiveSize = LastLive - FirstLive + 1;
+  unsigned LiveWidth = 1;
+  while (LiveWidth < LiveSize)
+    LiveWidth <<= 1;
+  if (LiveWidth >= Width)
+    return Width;
+  // Live part can fit in a single instruction with smaller width
+  unsigned NewWidth = LiveWidth;
+  if (StartIdx < FirstLive) {
+    // In this iteration we have to split preceding zeroes
+    // Determine the largest width not crossing the live part's boundary
+    unsigned DeadSize = FirstLive - StartIdx;
+    unsigned DeadWidth = Width;
+    while (DeadWidth > DeadSize)
+      DeadWidth >>= 1;
+    NewWidth = DeadWidth;
+  }
+  return NewWidth;
 }
 
 /***********************************************************************
@@ -1417,47 +1473,9 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
   }
   if (Width > 1) {
     // Try to reduce width to isolate dead parts of the vector if there are any
-    Value *Dest = Head->Inst;
-    if (Head->Info.Type == BaleInfo::WRREGION ||
-        Head->Info.Type == BaleInfo::WRPREDREGION ||
-        Head->Info.Type == BaleInfo::WRPREDPREDREGION)
-      Dest = Head->Inst->getOperand(1);
-    const auto &LiveElems = LE->getLiveElements(Dest);
-    if (LiveElems.size() == 1 && !LiveElems.isAllDead() &&
-        LiveElems.isAnyDead()) {
-      // Value is not aggregate and vector contains both dead and live parts
-      IGC_ASSERT(LiveElems[0].size() == WholeWidth);
-      // Execution mask must be 4 aligned, which is important for predicates
-      unsigned FirstLive = LiveElems[0].find_first() & ~3U;
-      // Dead parts don't need to be aligned, because the will be removed anyway
-      unsigned LastLive = LiveElems[0].find_last();
-      if (StartIdx <= FirstLive && StartIdx + Width >= FirstLive ||
-          StartIdx <= LastLive && StartIdx + Width >= LastLive) {
-        // Instruction with current width crosses the boundary between live
-        // and dead parts
-        FirstLive = std::max(FirstLive, StartIdx);
-        LastLive = std::min(LastLive, StartIdx + Width);
-        unsigned LiveSize = LastLive - FirstLive + 1;
-        unsigned LiveWidth = 1;
-        while (LiveWidth < LiveSize)
-          LiveWidth <<= 1;
-        if (LiveWidth < Width) {
-          // Live part can fit in a single instruction with smaller width
-          unsigned NewWidth = LiveWidth;
-          if (StartIdx < FirstLive) {
-            // In this iteration we have to split preceding zeroes
-            // Determine the largest width not crossing the live part's boundary
-            unsigned DeadSize = FirstLive - StartIdx;
-            unsigned DeadWidth = Width;
-            while (DeadWidth > DeadSize)
-              DeadWidth >>= 1;
-            NewWidth = DeadWidth;
-          }
-          if (ExecSizeAllowedBits & NewWidth)
-            Width = NewWidth;
-        }
-      }
-    }
+    unsigned ReducedWidth = splitDeadElements(Width, StartIdx);
+    if (ExecSizeAllowedBits & ReducedWidth)
+      Width = ReducedWidth;
   }
   if (Width != WholeWidth && IsReadSameVector &&
       CurSplitKind == SplitKind_Normal) {

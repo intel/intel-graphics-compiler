@@ -143,3 +143,13 @@ define <16 x i32> @test14(<16 x i32> %arg) {
   ret <16 x i32> %and
 }
 
+; NO SPLIT FOR HALF
+; CHECK-LABEL: @test15
+; CHECK: fadd <16 x half>
+define <16 x i16> @test15(<16 x half> %arg) {
+  %add = fadd <16 x half> %arg, <half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0, half 1.0>
+  %int = fptoui <16 x half> %add to <16 x i16>
+  %and = and <16 x i16> %int, <i16 1, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0>
+  ret <16 x i16> %and
+}
+
