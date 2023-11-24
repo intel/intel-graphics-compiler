@@ -53,7 +53,6 @@ DECLARE_IGC_REGKEY(bool, EnableVISABoundsChecking,      true,  "Enable VISA boun
 DECLARE_IGC_REGKEY(bool, NoMaskWA,                      true,  "Enable NoMask WA by using software-computed emask flag", false)
 DECLARE_IGC_REGKEY(bool, ForceNoMaskWA,                 false, "[tmp, testing] Force NoMaskWA on any platforms", false)
 DECLARE_IGC_REGKEY(bool, EnableCallUniform,             true,  "[tmp, testing] Ignore indirect call's uniform", true)
-DECLARE_IGC_REGKEY(bool, ForceCallWA2,                  false, "[tmp, testing] Force callwa=2 (MTL B0's WA)", true)
 DECLARE_IGC_REGKEY(bool, EnableCallWA,                  true,  "Control call WA when EU fusion is on. 0: off; 1: on", true)
 DECLARE_IGC_REGKEY(bool, EnableMathDPASWA,              false, "PVC math instruction running with DPAS issue", false)
 DECLARE_IGC_REGKEY(bool, ForceSubReturn,                true,  "If a subroutine does not have a return, generate a dummy return if this key is set (to meet visa requirement)", false)

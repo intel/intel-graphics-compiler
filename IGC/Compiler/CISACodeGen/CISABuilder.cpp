@@ -4391,12 +4391,7 @@ namespace IGC
 
         if (m_program->m_Platform->hasFusedEU() && IGC_IS_FLAG_ENABLED(EnableCallWA))
         {
-            if (IGC_IS_FLAG_ENABLED(ForceCallWA2) ||
-                m_program->m_Platform->getWATable().Wa_14016243945)
-            {
-                SaveOption(vISA_fusedCallWA, (uint32_t)2);
-            }
-            else if (m_program->HasNestedCalls() || m_program->HasIndirectCalls() || m_program->IsIntelSymbolTableVoidProgram())
+            if (m_program->HasNestedCalls() || m_program->HasIndirectCalls() || m_program->IsIntelSymbolTableVoidProgram())
             {
                 SaveOption(vISA_fusedCallWA, (uint32_t)1);
             }
