@@ -49,12 +49,23 @@ bool IGC::isLegalOCLVersion(int major, int minor)
     return false;
 }
 
+// Khronos SPIRV-LLVM Translator attaches kernel metadata directly to LLVM function, example:
+// define spir_kernel void @bar() !reqd_work_group_size !0
+// ...
+// !0 = !{i32 1, i32 1, i32 1}
 
-// With Clang 4.0 there was added Function Metadata so in order for us to be able
-// to compile both Clang <= 3.8 and Clang 4.0, the below function had to be added.
-// TODO: Explore using just Function Metadata going forward.
+// But SPIRMetaDataTranslation pass expects them in the following form:
 
-void SPIRMetaDataTranslation::WarpFunctionMetadata(Module& M)
+// !opencl.kernels = !{!0}
+// !0 = !{void ()* @bar, !1}
+// !1 = !{!"reqd_work_group_size", i32 1, i32 1, i32 1}
+
+// Below function translates the first form into the second one.
+
+// TODO: Reimplement SPIRMetaDataTranslation pass to be able to work directly on Khronos Translator's
+// output, without producing opencl.kernels metadata.
+
+void SPIRMetaDataTranslation::translateKernelMetadataIntoOpenCLKernelsMD(Module& M)
 {
     llvm::NamedMDNode* opencl_kernels = M.getOrInsertNamedMetadata("opencl.kernels");
 
@@ -102,7 +113,7 @@ void SPIRMetaDataTranslation::WarpFunctionMetadata(Module& M)
 
 bool SPIRMetaDataTranslation::runOnModule(Module& M)
 {
-    WarpFunctionMetadata(M);
+    translateKernelMetadataIntoOpenCLKernelsMD(M);
     MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
     MetaDataUtils* pIgcMDUtils = mduw.getMetaDataUtils();
     ModuleMetaData* modMD = mduw.getModuleMetaData();
