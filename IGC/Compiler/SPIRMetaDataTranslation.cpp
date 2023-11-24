@@ -158,25 +158,12 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     {
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
-#if !defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
-        // Null metadata entries are only expected if the following conditions are met:
-        // 1. Partial recompilation happens.
-        // 2. IGC uses it's own, internal fork of SPIRV-LLVM Translator.
-        //
-        // SPIRV-LLVM Translator produces opencl.kernels metadata for all
-        // kernels in SPIRV module, then partial recompilation logic removes
-        // kernels that don't need to be recompiled, therefore leaving
-        // opencl.kernels metadata with null entires.
+        // TODO: Null metadata entries are only expected in the event of a
+        // partial recompilation. Once the retry manager learns to clean
+        // up such metadata entries for unneeded kernels, we should simply
+        // assert on the function's validity instead.
         if (spirKernel->getFunction() == nullptr)
             continue;
-#else
-        // If KHR SPIRV-LLVM Translator is used, opencl.kernels metadata
-        // is created in SPIRMetaDataTranslator pass, hence after removing
-        // kernels that don't require recompilation, we don't expect null entries
-        // in this case.
-        IGC_ASSERT(spirKernel->getFunction());
-#endif
-
         IGC::FunctionMetaData& funcMD = modMD->FuncMD[spirKernel->getFunction()];
         fHandle->setType(FunctionTypeMD::KernelFunction);
 
