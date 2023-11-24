@@ -92,7 +92,6 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
     if (changed) {
       CodeGenContext *pContext =
           getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-      IGC::serialize(*pModMD, &M);
       pMdUtils->save(*pContext->getLLVMContext());
     }
     return changed;

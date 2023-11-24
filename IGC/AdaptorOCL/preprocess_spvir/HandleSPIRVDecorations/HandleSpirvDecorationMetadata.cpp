@@ -49,11 +49,6 @@ bool HandleSpirvDecorationMetadata::runOnModule(Module& module)
     handleInstructionsDecorations();
     handleGlobalVariablesDecorations();
 
-    if (m_updateModuleMetadata)
-    {
-        IGC::serialize(*m_Metadata, &module);
-    }
-
     return m_changed;
 }
 
@@ -91,7 +86,6 @@ void HandleSpirvDecorationMetadata::handleHostAccessIntel(GlobalVariable& global
 
     m_changed = true;
     m_Metadata->capabilities.globalVariableDecorationsINTEL = true;
-    m_updateModuleMetadata = true;
 }
 
 DenseMap<uint64_t, SmallPtrSet<MDNode*, 4>> HandleSpirvDecorationMetadata::parseSPIRVDecorationsFromMD(Value* V)

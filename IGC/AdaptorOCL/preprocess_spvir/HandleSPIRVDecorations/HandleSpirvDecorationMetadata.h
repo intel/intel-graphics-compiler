@@ -51,7 +51,6 @@ namespace IGC
         llvm::Module* m_Module = nullptr;
         CodeGenContext* m_pCtx = nullptr;
         ModuleMetaData* m_Metadata = nullptr;
-        bool m_updateModuleMetadata = false;
         bool m_changed = false;
 
         void handleInstructionsDecorations();
