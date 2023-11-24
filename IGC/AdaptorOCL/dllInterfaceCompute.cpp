@@ -1556,10 +1556,6 @@ bool TranslateBuildSPMD(
                         oclContext.m_retryManager.kernelSet.find(pFunc->getName().str()) == oclContext.m_retryManager.kernelSet.end())
                     {
                         pFunc->eraseFromParent();
-                        // TODO: Consider running a proper cleanup of
-                        // !opencl.kernels metadata entries here instead of
-                        // deferring 'null' entries to the "retried"
-                        // unification phase.
                     }
                 }
             }

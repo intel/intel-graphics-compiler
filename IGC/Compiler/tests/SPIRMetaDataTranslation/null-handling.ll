@@ -5,6 +5,9 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
+
+; UNSUPPORTED: khronos-translator
+
 ;
 ; RUN: igc_opt --serialize-igc-metadata -igc-spir-metadata-translation -S < %s | FileCheck %s
 ; ------------------------------------------------
@@ -14,10 +17,9 @@
 ; Check that during SPIRMetaData's propagation into IGCMetaData, 'null'
 ; kernels are ignored by the translation/serialization routines.
 
-; TODO: Such null entries are typically encountered in partial recompilation
-; scenarios as leftovers from the initial compilation. Were the metadata
-; cleanup handled by retry manager routines, this test would no longer be
-; needed.
+; TODO: Remove this test once IGC is switched to use Khronos SPIRV-LLVM Translator,
+; because null entires in opencl.kernels are only expected if IGC uses internal
+; SPIRV-LLVM Translator.
 
 declare spir_kernel void @test_spir(i64 addrspace(1)*)
 
