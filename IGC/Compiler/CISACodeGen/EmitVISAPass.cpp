@@ -21532,7 +21532,7 @@ void EmitPass::emitLSCStore(
 
 void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
 {
-    const bool isRead = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead;
+    bool isRead = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead;
 
     CVariable* pFlatImageBaseoffset = GetSymbol(inst->getOperand(0));
     CVariable* pFlatImageWidth = GetSymbol(inst->getOperand(1));
@@ -21564,10 +21564,12 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
             m_destination->GetNumberInstance(),
             CName::NONE);
     }
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(12), true);
 
     if (isRead == false)
     {
-        destination = BroadcastIfUniform(GetSymbol(inst->getOperand(12)));
+        const uint storeDestinationOperandId = 13;
+        destination = BroadcastIfUniform(GetSymbol(inst->getOperand(storeDestinationOperandId)));
     }
 
     m_encoder->LSC_2DBlockMessage(
@@ -21577,8 +21579,8 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
         nullptr, //pImgBTI - not needed for read
         pXOffset,
         pYOffset,
-        (unsigned char)blockWidth,  //elements based
-        (unsigned char)blockHeight,
+        blockWidth,  //elements based
+        blockHeight,
         elemSizeInBits,
         numBlocksV,
         isTranspose,
@@ -21586,10 +21588,12 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
         pFlatImageBaseoffset,
         pFlatImageWidth,
         pFlatImageHeight,
-        pFlatImagePitch);
+        pFlatImagePitch,
+        cacheOpts);
     m_encoder->Push();
 
-    if (isRead && destination != m_destination)
+    if (isRead &&
+        destination != m_destination)
     {
         // m1 v2 block read
         m_encoder->Copy(m_destination, destination);

@@ -870,6 +870,7 @@ DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_transpose_u64
 
 #endif // defined(cl_intel_subgroup_extended_block_read)
 
+
 #if defined(cl_khr_subgroup_shuffle)
 #define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \
 INLINE TYPE OVERLOADABLE sub_group_shuffle(TYPE value, uint index)                                                    \

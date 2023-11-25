@@ -296,12 +296,13 @@ namespace IGC
             LSC_OP subOp, ResourceDescriptor* resource,
             CVariable* dst, CVariable* bufId,
             CVariable* xOffset, CVariable* yOffset,
-            unsigned char blockWidth,
-            unsigned char blockHeight,
+            unsigned blockWidth,
+            unsigned blockHeight,
             unsigned elemSize, unsigned numBlocks,
             bool isTranspose, bool isVnni,
             CVariable* flatImageBaseoffset, CVariable* flatImageWidth,
-            CVariable* flatImageHeight, CVariable* flatImagePitch);
+            CVariable* flatImageHeight, CVariable* flatImagePitch,
+            LSC_CACHE_OPTS cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT });
         void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
         void LSC_TypedReadWrite(
             LSC_OP subOp, ResourceDescriptor* resource,

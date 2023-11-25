@@ -8742,8 +8742,8 @@ namespace IGC
         CVariable* bufId,
         CVariable* xOffset,
         CVariable* yOffset,
-        unsigned char blockWidth,
-        unsigned char blockHeight,
+        unsigned blockWidth,
+        unsigned blockHeight,
         unsigned elemSize,
         unsigned numBlocks,
         bool isTranspose,
@@ -8751,12 +8751,12 @@ namespace IGC
         CVariable* flatImageBaseoffset,
         CVariable* flatImageWidth,
         CVariable* flatImageHeight,
-        CVariable* flatImagePitch)
+        CVariable* flatImagePitch,
+        LSC_CACHE_OPTS cacheOpts)
     {
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
         VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
-        LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
         LSC_DATA_SHAPE_BLOCK2D dataShape2D{};
         dataShape2D.size = LSC_GetElementSize(elemSize, true);
         IGC_ASSERT((isTranspose == false) || (isVnni == false));
@@ -8840,14 +8840,17 @@ namespace IGC
             VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
             repeatCount = blockWidth;
             newNumElemsSplitDst = (uint16_t)(visaNumLanes(toExecSize) * repeatCount);
-            IGC_ASSERT(newNumElemsSplitDst <= dst->GetNumberElement());
-            dst0 = m_program->GetNewVariable(
-                newNumElemsSplitDst,
-                dst->GetType(),
-                dst->GetAlign(),
-                dst->IsUniform(),
-                CName::NONE);
-            dstVar = GetRawDestination(dst0, 0);
+            if (dst)
+            {
+                IGC_ASSERT(newNumElemsSplitDst <= dst->GetNumberElement());
+                dst0 = m_program->GetNewVariable(
+                    newNumElemsSplitDst,
+                    dst->GetType(),
+                    dst->GetAlign(),
+                    dst->IsUniform(),
+                    CName::NONE);
+                dstVar = GetRawDestination(dst0, 0);
+            }
         }
 
         V(vKernel->AppendVISALscUntypedBlock2DInst(
@@ -8856,7 +8859,7 @@ namespace IGC
             predOpnd,
             execSize,
             mask,
-            cache,
+            cacheOpts,
             dataShape2D,
             dstVar,
             blockAddrs,
@@ -8866,13 +8869,17 @@ namespace IGC
 
         if (needsSplitting)
         {
-            CVariable* dst1 = m_program->GetNewVariable(
-                newNumElemsSplitDst,
-                dst->GetType(),
-                dst->GetAlign(),
-                dst->IsUniform(),
-                CName::NONE);
-            dstVar = GetRawDestination(dst1, 0);
+            CVariable* dst1 = nullptr;
+            if (dst)
+            {
+                dst1 = m_program->GetNewVariable(
+                    newNumElemsSplitDst,
+                    dst->GetType(),
+                    dst->GetAlign(),
+                    dst->IsUniform(),
+                    CName::NONE);
+                dstVar = GetRawDestination(dst1, 0);
+            }
 
             VISA_VectorOpnd* srcOpnd0 = GetSourceOperandNoModifier(yOffset);
             VISA_VectorOpnd* srcOpnd1 = nullptr;
@@ -8933,7 +8940,7 @@ namespace IGC
                 predOpnd,
                 execSize,
                 mask,
-                cache,
+                cacheOpts,
                 dataShape2D,
                 dstVar,
                 blockAddrsPart2,
@@ -8941,8 +8948,11 @@ namespace IGC
                 0,
                 srcVar));
 
-            uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
-            MergePayloadToHigherSIMD(dst0, dst1, repeatCount, dst, dstOfstBytes, visaNumLanes(fromExecSize));
+            if (dst && dst0 && dst1)
+            {
+                uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
+                MergePayloadToHigherSIMD(dst0, dst1, repeatCount, dst, dstOfstBytes, visaNumLanes(fromExecSize));
+            }
         }
     }
 

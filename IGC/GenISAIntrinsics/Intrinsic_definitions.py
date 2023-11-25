@@ -2215,7 +2215,8 @@ Imported_Intrinsics = \
      ("int",                           "V - num blocks (2 for simple 2d block read)"),
      ("bool",                          "transpose"),
      ("bool",                          "vnni transform (for transpose+transform use transpose "+\
-                                       "only and elemSize 32)")],
+                                       "only and elemSize 32)"),
+     ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
     "None"]],
 ####################################################################################################
 "GenISA_LSC2DBlockWrite": ["LSC 2d block write",
@@ -2233,6 +2234,7 @@ Imported_Intrinsics = \
      ("bool",                          "transpose"),
      ("bool",                          "vnni transform (for transpose+transform use transpose "+\
                                        "only and elemSize 32)"),
+     ("int",                           "cache controls options (LSC_CACHE_OPTS)"),
      ("anyint",                        "stored value")],
     "None"]],
 ####################################################################################################

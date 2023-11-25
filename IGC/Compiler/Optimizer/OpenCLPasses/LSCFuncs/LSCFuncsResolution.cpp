@@ -70,6 +70,9 @@ namespace {
         Instruction* CreateLSCLoadStatusPreftchIntrinsicCallInst(
             GenISAIntrinsic::ID prefetchOp);
 
+        /// LSC subgroup 2d block read/write intrinsics
+        Instruction* CreateSubGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead);
+
         /// LSC Fence intrinsics call method
         Instruction* CreateLSCFenceIntrinsicCallInst();
 
@@ -170,6 +173,9 @@ namespace {
         static const StringRef PREFIX_LSC_LOAD_BLOCK_global;
         static const StringRef PREFIX_LSC_LOAD_status;
 
+        static const StringRef PREFIX_SUBGROUP_BLOCK_READ;
+        static const StringRef PREFIX_SUBGROUP_BLOCK_WRITE;
+
         static const StringRef PREFIX_LSC_FENCE;
         static const StringRef PREFIX_LSC_FENCE_EVICT_TO_MEMORY;
         static const StringRef PREFIX_LSC_ATOMIC;
@@ -187,6 +193,9 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_local  = "__builtin_IB_lsc_l
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_global = "__builtin_IB_lsc_load_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_BLOCK_global = "__builtin_IB_lsc_load_block_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_status = "__builtin_IB_lsc_load_status_global_";
+
+const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ = "__builtin_IB_subgroup_block_read";
+const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE = "__builtin_IB_subgroup_block_write";
 
 const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE  = "__builtin_IB_lsc_fence_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE_EVICT_TO_MEMORY = "__builtin_IB_lsc_fence_evict_to_memory";
@@ -286,6 +295,16 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
         lscCall = CreateLSCStoreIntrinsicCallInst(
             GenISAIntrinsic::GenISA_LSCStore, true);
     //////////////
+    // 2d block intrinsics
+    }
+    else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ))
+    {
+        lscCall = CreateSubGroup2DBlockOperation(CI, FN, true);
+    }
+    else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE))
+    {
+        lscCall = CreateSubGroup2DBlockOperation(CI, FN, false);
+    //////////////
     // atomics
     } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_ATOMIC)) {
         bool isLocalMem = FN.find("_local_") != StringRef::npos;
@@ -346,6 +365,260 @@ Instruction* LSCFuncsResolution::CreateLSCLoadIntrinsicCallInst(
         m_pCurrInstFunc->getParent(), op, OvldTys);
     Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
     return lscCall;
+}
+
+Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead)
+{
+    IGC::IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(CI.getParent()->getParent());
+    unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+
+    funcName.consume_front("_flat");
+    uint32_t isTranspose = funcName.consume_front("_transpose") ? 1 : 0;
+    uint32_t isVnniTransform = funcName.consume_front("_transform") ? 1 : 0;
+
+    uint32_t elemSize = 0;
+    if (funcName.consume_front("_u8"))
+    {
+        elemSize = 8;
+    }
+    else if (funcName.consume_front("_u16"))
+    {
+        elemSize = 16;
+    }
+    else if (funcName.consume_front("_u32"))
+    {
+        elemSize = 32;
+    }
+    else if (funcName.consume_front("_u64"))
+    {
+        elemSize = 64;
+    }
+
+    if (elemSize == 0)
+    {
+        IGC_ASSERT_MESSAGE(0, "Invalid element size settings for subgroup_block_read/write.");
+        return nullptr;
+    }
+
+    uint32_t tileWidth = 0;
+    uint32_t tileHeight = 0;
+    uint32_t numBlocksV = 2;
+    if (!isTranspose && !isVnniTransform)
+    {
+        // 2x ATile Block Read
+        // __builtin_IB_subgroup_block_read_flat_u8_m1k32v2
+        // __builtin_IB_subgroup_block_read_flat_u8_m2k32v2
+        // __builtin_IB_subgroup_block_read_flat_u8_m4k32v2
+        // __builtin_IB_subgroup_block_read_flat_u8_m8k32v2
+        // __builtin_IB_subgroup_block_read_flat_u16_m1k16v2
+        // __builtin_IB_subgroup_block_read_flat_u16_m2k16v2
+        // __builtin_IB_subgroup_block_read_flat_u16_m4k16v2
+        // __builtin_IB_subgroup_block_read_flat_u16_m8k16v2
+        if (funcName.consume_front("_m32"))
+        {
+            tileHeight = 32;
+        }
+        else if (funcName.consume_front("_m16"))
+        {
+            tileHeight = 16;
+        }
+        else if (funcName.consume_front("_m8"))
+        {
+            tileHeight = 8;
+        }
+        else if (funcName.consume_front("_m4"))
+        {
+            tileHeight = 4;
+        }
+        else if (funcName.consume_front("_m2"))
+        {
+            tileHeight = 2;
+        }
+        else if (funcName.consume_front("_m1"))
+        {
+            tileHeight = 1;
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Unrecognized m element in __builtin_IB_subgroup_block_read/write.");
+            return nullptr;
+        }
+
+        if (funcName.consume_front("k64"))
+        {
+            tileWidth = 64;
+        }
+        else if (funcName.consume_front("k32"))
+        {
+            tileWidth = 32;
+        }
+        else if (funcName.consume_front("k16"))
+        {
+            tileWidth = 16;
+        }
+        else if (funcName.consume_front("k8"))
+        {
+            tileWidth = 8;
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Unrecognized k element in __builtin_IB_subgroup_block_read/write.");
+            return nullptr;
+        }
+
+        if (funcName.consume_front("v1"))
+        {
+            numBlocksV = 1;
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(funcName.consume_front("v2"), "Unrecognized v element in __builtin_IB_subgroup_block_read/write.");
+        }
+    }
+    else if (isTranspose && !isVnniTransform)
+    {
+        if (elemSize == 64)
+        {
+            numBlocksV = 1;
+            tileHeight = subGrpSize;
+
+            if (funcName.consume_front("_k4"))
+            {
+            // __builtin_IB_subgroup_block_read_flat_transpose_u64_k4
+                tileWidth = 4;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Transpose with 64 bit element size only supports width 4.");
+                return nullptr;
+            }
+        }
+        else if (elemSize == 32)
+        {
+            // isTranspose, dword elements
+            // __builtin_IB_subgroup_block_read_flat_transpose_u32_k8
+            // can be used as equivalent of:
+            // transpose_transform_u8_k32
+            // transpose_transform_u16_k16
+            numBlocksV = 1;
+            tileHeight = subGrpSize;
+            tileWidth = 8;
+
+            if (funcName.consume_front("_k8"))
+            {
+                tileWidth = 8;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width 8.");
+                return nullptr;
+            }
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Transpose only supports elemSize 32.");
+            return nullptr;
+        }
+    }
+    else if (isVnniTransform && !isTranspose)
+    {
+        numBlocksV = 1;
+        if (elemSize == 8)
+        {
+            // __builtin_IB_subgroup_block_read_flat_transform_u8_k32
+            tileHeight = 32;
+            tileWidth = subGrpSize;
+        }
+        else
+        {
+            // __builtin_IB_subgroup_block_read_flat_transform_u16_k16
+            tileHeight = 16;
+            tileWidth = subGrpSize;
+        }
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(0, "Transpose and transform should not be used together.");
+        return nullptr;
+    }
+
+    if (tileWidth == 0 || tileHeight == 0)
+    {
+        if (subGrpSize == 0)
+        {
+            IGC_ASSERT_MESSAGE(0, "Invalid tile width / tile height settings for subgroup_block_read because intel_reqd_sub_group_size(16) is not set in the kernel!");
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Invalid tile width / tile height settings for subgroup_block_read.");
+        }
+        return nullptr;
+    }
+
+    if (isTranspose && isVnniTransform)
+    {
+        IGC_ASSERT_MESSAGE(0, "Cannot use both hw transpose and hw vnni at the same time for subgroup_block_read.");
+        return nullptr;
+    }
+
+    Value* imageResBaseoffset = CI.getArgOperand(0);
+    Value* imageResWidth = CI.getArgOperand(1);
+    Value* imageResHeight = CI.getArgOperand(2);
+    Value* imageResPitch = CI.getArgOperand(3);
+
+    SmallVector<Value*, 13> args;
+    args.push_back(imageResBaseoffset);
+    args.push_back(imageResWidth);
+    args.push_back(imageResHeight);
+    args.push_back(imageResPitch);
+
+    LLVMContext& C = CI.getCalledFunction()->getContext();
+    ConstantInt* constIndex = ConstantInt::get((Type::getInt32Ty(C)), 0);
+    Instruction* xOffset = ExtractElementInst::Create(CI.getArgOperand(4), constIndex, "xOffset", &CI);
+    ConstantInt* constIndex2 = ConstantInt::get((Type::getInt32Ty(C)), 1);
+    Instruction* yOffset = ExtractElementInst::Create(CI.getArgOperand(4), constIndex2, "yOffset", &CI);
+    updateDebugLoc(&CI, xOffset);
+    updateDebugLoc(&CI, yOffset);
+    args.push_back(xOffset);
+    args.push_back(yOffset);
+
+    ConstantInt* elemSizeConstant = ConstantInt::get((Type::getInt32Ty(C)), elemSize);
+    ConstantInt* tileWidthConstant = ConstantInt::get((Type::getInt32Ty(C)), tileWidth);
+    ConstantInt* tileHeightConstant = ConstantInt::get((Type::getInt32Ty(C)), tileHeight);
+    ConstantInt* numBlocksVConstant = ConstantInt::get((Type::getInt32Ty(C)), numBlocksV);
+    ConstantInt* isTransposeConstant = ConstantInt::get((Type::getInt1Ty(C)), isTranspose);
+    ConstantInt* isVnniTransformConstant = ConstantInt::get((Type::getInt1Ty(C)), isVnniTransform);
+    args.push_back(elemSizeConstant);
+    args.push_back(tileWidthConstant);
+    args.push_back(tileHeightConstant);
+    args.push_back(numBlocksVConstant);
+    args.push_back(isTransposeConstant);
+    args.push_back(isVnniTransformConstant);
+
+
+    args.push_back(getConstantInt32(LSC_L1DEF_L3DEF));
+
+    Function* BlockFunc = nullptr;
+    if (isRead)
+    {
+        BlockFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_LSC2DBlockRead,
+            CI.getCalledFunction()->getReturnType());
+    }
+    else
+    {
+        uint32_t blockWriteDstOperandId = 5;
+        args.push_back(CI.getArgOperand(blockWriteDstOperandId));
+        BlockFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_LSC2DBlockWrite,
+            CI.getArgOperand(5)->getType());
+    }
+
+    Instruction* BlockOp = CallInst::Create(BlockFunc, args, "", &CI);
+    return BlockOp;
 }
 
 
