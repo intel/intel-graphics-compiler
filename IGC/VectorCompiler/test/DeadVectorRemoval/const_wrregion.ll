@@ -32,8 +32,8 @@ declare <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32>, <4 x i32>
 declare i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32>, i32, i32, i32, i16, i32) readnone nounwind
 
 define i32 @test3(<4 x i32> %val) {
-; CHECK: %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> undef, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 undef, <4 x i1> <i1 true, i1 true, i1 true, i1 true>)
-  %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> <i32 0, i32 1, i32 2, i32 3>, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 undef, <4 x i1> <i1 true, i1 true, i1 true, i1 true>)
+; CHECK: %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> <i32 undef, i32 1, i32 undef, i32 undef>, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 undef, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
+  %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> <i32 0, i32 1, i32 2, i32 3>, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 undef, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
   %.region = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %1, i32 0, i32 1, i32 0, i16 4, i32 undef)
   ret i32 %.region
 }

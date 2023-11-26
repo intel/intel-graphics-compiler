@@ -151,9 +151,8 @@ Constant *GenXDeadVectorRemoval::trySimplify(Constant *C,
   if (!LiveElems.isAnyDead())
     return C;
 
-  // Do not modify "all true" predicates to avoid creation of redundant
-  // execution masks
-  if (C->getType()->getScalarType()->isIntegerTy(1) && C->isAllOnesValue())
+  // Do not modify predicates. GenXConstant gets no befefit from it
+  if (C->getType()->getScalarType()->isIntegerTy(1))
     return C;
 
   if (auto CA = dyn_cast<ConstantAggregate>(C))
