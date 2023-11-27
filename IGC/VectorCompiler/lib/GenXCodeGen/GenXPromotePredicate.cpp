@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -182,6 +182,7 @@ constexpr const char IdxMDName[] = "pred.index";
 struct Comparator {
   long getMd(Instruction *const &I) const {
     auto *IMd = I->getMetadata(IdxMDName);
+    IGC_ASSERT_EXIT(IMd);
     return cast<ConstantInt>(
                cast<ConstantAsMetadata>(IMd->getOperand(0).get())->getValue())
         ->getZExtValue();

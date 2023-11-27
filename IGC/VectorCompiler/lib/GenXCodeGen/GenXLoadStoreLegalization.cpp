@@ -296,7 +296,8 @@ GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
     auto *ArgVTy = cast<IGCLLVM::FixedVectorType>(ArgTy);
     auto *ETy = ArgVTy->getElementType();
     auto NumElements = ArgVTy->getNumElements();
-    IGC_ASSERT(NumElements == ExecSize || NumElements == VectorSize * ExecSize);
+    IGC_ASSERT_EXIT(NumElements == ExecSize ||
+                    NumElements == VectorSize * ExecSize);
 
     auto IsSOA = NumElements == VectorSize * ExecSize;
     auto Width = IsSOA ? VectorSize * NewWidth : NewWidth;
