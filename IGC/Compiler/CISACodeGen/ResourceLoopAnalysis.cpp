@@ -175,6 +175,16 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
         }
 
         if (!LoopEnd) {
+          if (prevMemIter != BB->end()) {
+            // mark instructions in between two mem-op as inside
+            auto III = prevMemIter;
+            ++III;
+            while (III != II) {
+              auto InBetween = &*III;
+              LoopMap[InBetween] = MarkResourceLoopInside;
+              ++III;
+            }
+          }
           LoopMap[I] = MarkResourceLoopInside;
           prevMemIter = II;
           DefSet.insert(I);

@@ -42,6 +42,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_DL = nullptr;
     m_FGA = nullptr;
     m_VRA = nullptr;
+    m_RLA = nullptr;
     m_EmitPass = nullptr;
     m_HW_TID = nullptr;
 
@@ -3277,7 +3278,12 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         {
             if (auto Inst = dyn_cast<Instruction>(value))
             {
-                var = GetSymbolFromSource(Inst, preferredAlign);
+                // cannot reuse source variable
+                // when the instruction is inside a resource-loop
+                if (m_RLA->GetResourceLoopMarker(Inst) ==
+                    ResourceLoopAnalysis::MarkResourceLoopOutside) {
+                    var = GetSymbolFromSource(Inst, preferredAlign);
+                }
             }
         }
     }

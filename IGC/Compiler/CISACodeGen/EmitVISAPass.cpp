@@ -687,6 +687,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
     m_currShader->SetVariableReuseAnalysis(m_VRA);
+    m_currShader->SetResourceLoopAnalysis(m_RLA);
     m_currShader->SetDeSSAHelper(m_deSSA);
     m_currShader->SetEmitPassHelper(this);
 

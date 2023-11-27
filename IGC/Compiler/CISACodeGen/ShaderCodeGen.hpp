@@ -48,6 +48,7 @@ class DeSSA;
 class CoalescingEngine;
 class GenXFunctionGroupAnalysis;
 class VariableReuseAnalysis;
+class ResourceLoopAnalysis;
 class EmitPass;
 
 struct PushInfo;
@@ -292,6 +293,7 @@ public:
     void        SetDominatorTreeHelper(llvm::DominatorTree* DT) { m_DT = DT; }
     void        SetDataLayout(const llvm::DataLayout* DL) { m_DL = DL; }
     void        SetVariableReuseAnalysis(VariableReuseAnalysis* VRA) { m_VRA = VRA; }
+    void        SetResourceLoopAnalysis(ResourceLoopAnalysis *RLA) { m_RLA = RLA; }
     void        SetMetaDataUtils(IGC::IGCMD::MetaDataUtils* pMdUtils) { m_pMdUtils = pMdUtils; }
     void        SetScratchSpaceSize(uint size) { m_ScratchSpaceSize = size; }
 
@@ -667,6 +669,7 @@ protected:
     const llvm::DataLayout* m_DL;
     GenXFunctionGroupAnalysis* m_FGA;
     VariableReuseAnalysis* m_VRA;
+    ResourceLoopAnalysis* m_RLA;
 
     uint m_numBlocks;
     IGC::IGCMD::MetaDataUtils* m_pMdUtils;
