@@ -16,8 +16,8 @@
  ;        store <2xi64> v, p
  ;
  ; CHECK-LABEL: define spir_kernel void @test_two_pointers
- ; CHECK: [[TMP1:%.*]] = insertelement <2 x i64> undef, i64 %{{.*}}, i64 0
- ; CHECK: [[TMP2:%.*]] = insertelement <2 x i64> [[TMP1]], i64 %{{.*}}, i64 1
+ ; CHECK: [[TMP1:%.*]] = insertelement <2 x i64> undef, i64 %{{.*}}, i32 0
+ ; CHECK: [[TMP2:%.*]] = insertelement <2 x i64> [[TMP1]], i64 %{{.*}}, i32 1
  ; CHECK: [[TMP3:%.*]] = bitcast i64 addrspace(1)* addrspace(1)* %{{.*}} to <2 x i64> addrspace(1)*
  ; CHECK: store <2 x i64> [[TMP2]], <2 x i64> addrspace(1)* [[TMP3]], align 8
  ; CHECK: ret void

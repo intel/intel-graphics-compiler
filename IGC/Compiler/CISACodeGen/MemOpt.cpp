@@ -2899,7 +2899,7 @@ void LdStCombine::getOrCreateElements(
     IRBuilder<> builder(InsertBefore);
     for (int i = 0; i < nelts; ++i) {
         if (isa<UndefValue>(EltV[i])) {
-            Value* v = builder.CreateExtractElement(V, i);
+            Value* v = builder.CreateExtractElement(V, builder.getInt32(i));
             EltV[i] = v;
         }
     }
@@ -3666,7 +3666,7 @@ Value* LdStCombine::gatherCopy(
             Value* new_v = irBuilder.CreateCast(Instruction::BitCast, v, nVTy);
             auto insPos = worklist.begin();
             for (int i = 0; i < n; ++i) {
-                Value* v = irBuilder.CreateExtractElement(new_v, i);
+                Value* v = irBuilder.CreateExtractElement(new_v, irBuilder.getInt32(i));
                 worklist.insert(insPos, v);
             }
             continue;
@@ -3832,7 +3832,7 @@ Value* LdStCombine::gatherCopy(
             for (int i = 0; i < sz; ++i) {
                 SmallVector<Value*, 4>& eltVals = allEltVals[i];
                 Value* tV = irBuilder.CreateBitCast(eltVals[0], DstEltTy);
-                retVal = irBuilder.CreateInsertElement(retVal, tV, i);
+                retVal = irBuilder.CreateInsertElement(retVal, tV, irBuilder.getInt32(i));
             }
         }
     }
@@ -3957,13 +3957,27 @@ void LdStCombine::createCombinedStores(Function& F)
             nAddr, IGCLLVM::getAlign(*leadStore), leadStore->isVolatile());
         finalStore->setDebugLoc(anchorStore->getDebugLoc());
 
-        // Only keep metadata based on leadStore.
+        // Only keep metadata from leadStore.
         // (If each store has a different metadata, should they be merged
         //  in the first place?)
-        if (MDNode* Node = leadStore->getMetadata("lsc.cache.ctrl"))
-            finalStore->setMetadata("lsc.cache.ctrl", Node);
-        if (MDNode* Node = leadStore->getMetadata(LLVMContext::MD_nontemporal))
-            finalStore->setMetadata(LLVMContext::MD_nontemporal, Node);
+        //
+        //   Special case:
+        //     1. set nontemporal if any merged store has it (make sense?)
+        SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;
+        leadStore->getAllMetadata(MDs);
+        for (auto MII : MDs) {
+            finalStore->setMetadata(MII.first, MII.second);
+        }
+
+        if (finalStore->getMetadata("nontemporal") == nullptr) {
+            for (int i = 1, sz = (int)bundle.LoadStores.size(); i < sz; ++i) {
+                StoreInst* SI = static_cast<StoreInst*>(Stores[i].Inst);
+                if (MDNode* N = SI->getMetadata("nontemporal")) {
+                    finalStore->setMetadata("nontemporal", N);
+                    break;
+                }
+            }
+        }
     }
 
     // Delete stores that have been combined.
