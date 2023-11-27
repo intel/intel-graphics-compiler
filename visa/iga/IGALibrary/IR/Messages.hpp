@@ -124,6 +124,26 @@ enum class AddrType {
 };
 std::string ToSymbol(AddrType op);
 
+// documentation reference
+struct DocRef {
+  enum Kind {
+    INVALID = 0,
+    //
+    DST,  // load or atomic payload
+    SRC0, // headers/addresses etc...
+    SRC1, // store/atomic payload
+    //
+    DESC,   // descriptor
+    EXDESC, // extended descriptor (imm or reg)
+  } kind;
+  // the documentation symbol name corresponding to this
+  const char *symbol;
+  const char *link;
+  constexpr DocRef() : DocRef(DocRef::INVALID, nullptr, nullptr) {}
+  constexpr DocRef(Kind _kind, const char *sym, const char *lnk)
+      : kind(_kind), symbol(sym), link(lnk) {}
+};
+
 ///////////////////////////////////////////////////////////////////////////
 // Generic processing of basic buffer messages.   This includes data port
 // vector reads and writes as well block and atomic messages.  There may be
@@ -246,8 +266,8 @@ struct MessageInfo {
   // to change at any time. The nullptr is a possible value.
   std::string description;
 
-  const char *names[6] { };
-  const char *docs[6] { };
+  // documentation references
+  std::vector<DocRef> refs;
   //
   // A block message
   bool isBlock() const { return execWidth == 1 && (isLoad() || isStore()); }

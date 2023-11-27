@@ -73,7 +73,12 @@ struct MessageDecoder {
 
   void setDoc(const char *doc) { setDoc(doc, doc, doc); }
   void setDoc(const char *preXe, const char *xe, const char *xe23) {
-    result.info.docs[0] = chooseDoc(preXe, xe, xe23);
+    addDoc(DocRef::INVALID, nullptr, chooseDoc(preXe, xe, xe23));
+  }
+  void addDoc(DocRef::Kind k, const char *name, const char *link) {
+    if (k == DocRef::INVALID && !name && !link)
+      return;
+    result.info.refs.emplace_back(k, name, link);
   }
   const char *chooseDoc(const char *preXe, const char *xe,
                         const char *xe23) const {

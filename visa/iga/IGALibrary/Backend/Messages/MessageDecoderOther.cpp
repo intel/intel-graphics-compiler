@@ -332,7 +332,7 @@ void MessageDecoderOther::tryDecodeRTA() {
     mi.addrType = AddrType::FLAT;
     mi.surfaceId = 0;
     mi.attributeSet = MessageInfo::Attr::NONE;
-    mi.docs[0] = chooseDoc(nullptr, "47929", "57495");
+    setDoc(chooseDoc(nullptr, "47929", "57495"));
     decodeMDC_HF();
   } else {
     error(14, 4, "unsupported RTA op");
@@ -357,7 +357,7 @@ void MessageDecoderOther::tryDecodeBTD() {
     mi.description = descs.str();
     mi.symbol = sym.str();
     mi.execWidth = simd;
-    mi.docs[0] = chooseDoc(nullptr, "47923", "57487");
+    setDoc(chooseDoc(nullptr, "47923", "57487"));
   } else {
     error(14, 4, "unsupported BTD op");
   }
