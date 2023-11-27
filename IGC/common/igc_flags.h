@@ -415,7 +415,7 @@ DECLARE_IGC_REGKEY(bool, NoCatchAllDebugLine,           false, "Don't emit speci
 DECLARE_IGC_REGKEY(bool, EnableTestSplitI64,            false, "Test legalization that split i64 store unnecessarily, to be deleted once test is done[temp]", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpTranslationOnly,     false, "Dump LLVM IR right after translation from SPIRV to stderr and ignore all passes", false)
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicate,             false, "Use VMask as predicate for subspan usage", false)
-DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForLoads,     false, "Use VMask as predicate for subspan usage (loads only)", false)
+DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForLoads,     true,  "Use VMask as predicate for subspan usage (loads only)", true)
 DECLARE_IGC_REGKEY(bool, StackOverflowDetection,        false, "Inserts checks for stack overflow when stack calls are used.", true)
 
 DECLARE_IGC_GROUP("IGC Features")
