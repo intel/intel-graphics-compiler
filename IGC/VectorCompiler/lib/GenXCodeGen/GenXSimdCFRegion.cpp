@@ -173,6 +173,11 @@ protected:
 public:
   SimdCFRegion(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
                DominatorTree *DT, SimdCFRegion *Parent, CFRegionKind K);
+  virtual ~SimdCFRegion() = default;
+
+  SimdCFRegion() = delete;
+  SimdCFRegion(const SimdCFRegion &) = delete;
+  SimdCFRegion &operator=(const SimdCFRegion &) = delete;
   virtual bool verify() const = 0;
   auto *getMask() const;
   CFRegionKind getKind() const;
@@ -189,6 +194,12 @@ public:
   SimdCFRegionBase(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
                    DominatorTree *DT, SimdCFRegion *Parent = nullptr,
                    CFRegionKind K = RK_BaseReg);
+  virtual ~SimdCFRegionBase() = default;
+
+  SimdCFRegionBase() = delete;
+  SimdCFRegionBase(const SimdCFRegionBase &) = delete;
+  SimdCFRegionBase &operator=(const SimdCFRegionBase &) = delete;
+
   virtual bool verify() const;
   virtual RegionIterator *Blocks();
   virtual const RegionIterator *Blocks() const;
@@ -210,6 +221,15 @@ class SimdCFIfRegion final : public SimdCFRegionBase {
 public:
   SimdCFIfRegion(BasicBlock *, SimdCFRegionBase *, SimdCFRegionBase *,
                  BasicBlock *, RegionInfo *, DominatorTree *, SimdCFRegion *);
+  virtual ~SimdCFIfRegion() {
+    delete IfThenRegion;
+    delete IfElseRegion;
+  };
+
+  SimdCFIfRegion() = delete;
+  SimdCFIfRegion(const SimdCFIfRegion &) = delete;
+  SimdCFIfRegion &operator=(const SimdCFIfRegion &) = delete;
+
   bool hasElse() const;
   SimdCFRegionBase *getIfThenRegion() const;
   SimdCFRegionBase *getIfElseRegion() const;
@@ -235,6 +255,12 @@ class SimdCFLoopRegion final : public SimdCFRegionBase {
 public:
   SimdCFLoopRegion(BasicBlock *, Loop *, BasicBlock *, RegionInfo *,
                    DominatorTree *, SimdCFRegion *Parent = nullptr);
+  virtual ~SimdCFLoopRegion() = default;
+
+  SimdCFLoopRegion() = delete;
+  SimdCFLoopRegion(const SimdCFLoopRegion &) = delete;
+  SimdCFLoopRegion &operator=(const SimdCFLoopRegion &) = delete;
+
   BranchInst *getSimdBranch() const;
   CallInst *getSimdCondition() const;
   BasicBlock *getLoopHead() const;
