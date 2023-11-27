@@ -12133,29 +12133,32 @@ CVariable* EmitPass::tryReusingXYZWPayload(Value* storedVal, BasicBlock* BB,
     unsigned numElems, VISA_Type type, CVariable* pSrc_X, CVariable* pSrc_Y,
     CVariable* pSrc_Z, CVariable* pSrc_W, const unsigned int numEltGRF)
 {
+    if (IGC_IS_FLAG_DISABLED(EnableReusingXYZWStoreConstPayload))
+        return nullptr;
+
     Constant* constantStoredVal = dyn_cast<Constant>(storedVal);
     if (!constantStoredVal ||
         !(constantStoredVal->getType()->isFPOrFPVectorTy() ||
           constantStoredVal->getType()->isIntOrIntVectorTy()))
     {
-      return nullptr;
+        return nullptr;
     }
 
     ConstVectorStoreData& storeData = m_constantVectorStores[constantStoredVal];
     if (storeData.BB != BB)
     {
-      // Make an entry of this store data with BB in the constant vector stores
-      storeData = {
-          m_currShader->GetNewVariable(
-          numElems,
-          type,
-          EALIGN_GRF,
-          CName::NONE), {nullptr, nullptr}, BB};
+        // Make an entry of this store data with BB in the constant vector stores
+        storeData = {
+            m_currShader->GetNewVariable(
+            numElems,
+            type,
+            EALIGN_GRF,
+            CName::NONE), {nullptr, nullptr}, BB};
 
-      m_currShader->CopyVariable(storeData.var, pSrc_X, 0);
-      m_currShader->CopyVariable(storeData.var, pSrc_Y, numEltGRF);
-      m_currShader->CopyVariable(storeData.var, pSrc_Z, 2 * numEltGRF);
-      m_currShader->CopyVariable(storeData.var, pSrc_W, 3 * numEltGRF);
+        m_currShader->CopyVariable(storeData.var, pSrc_X, 0);
+        m_currShader->CopyVariable(storeData.var, pSrc_Y, numEltGRF);
+        m_currShader->CopyVariable(storeData.var, pSrc_Z, 2 * numEltGRF);
+        m_currShader->CopyVariable(storeData.var, pSrc_W, 3 * numEltGRF);
     }
 
     CVariable* broadcastedVar = storeData.broadcastedVar[m_encoder->IsSecondHalf()];
@@ -12172,6 +12175,9 @@ CVariable* EmitPass::tryReusingXYZWPayload(Value* storedVal, BasicBlock* BB,
 // or create a new var instance and make it available for reusing in further stores
 CVariable* EmitPass::tryReusingConstVectorStoreData(Value* storedVal, BasicBlock* BB, bool isBroadcast)
 {
+    if (IGC_IS_FLAG_DISABLED(EnableReusingLSCStoreConstPayload))
+        return nullptr;
+
     Constant* constantStoredVal = dyn_cast<Constant>(storedVal);
     if (!constantStoredVal ||
         !(constantStoredVal->getType()->isFPOrFPVectorTy() ||
