@@ -536,7 +536,6 @@ DECLARE_IGC_REGKEY(bool, EnableLSC, false, "Enables the new dataport encoding fo
 DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding for LSC messages.", true)
 DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables the slicing of mad loops.", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplification", true)
-DECLARE_IGC_REGKEY(bool, TestGEPSimplification,               false, "[Test] Testing GEP simplification without actually lowering GEP. Used in lit test", false)
 DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, false, "Disables caching system memory in GPU for loads from constant buffers", false)
 DECLARE_IGC_REGKEY(bool, EnableTileYForExperiments, false, "Enable TileY heuristics for experiments", false)
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)

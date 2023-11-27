@@ -445,17 +445,12 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
             Idx = ZExt->getOperand(0);
         } else if (auto *SExt = dyn_cast<SExtInst>(Idx)) {
             Idx = SExt->getOperand(0);
-            Operator* Opr = dyn_cast<Operator>(Idx);
-            if (Opr && Opr->getOpcode() == BinaryOperator::BinaryOps::SDiv) {
-                // Skip if it is SDiv. Special check is needed as
-                // OverflowingBinaryOperator does not include SDiv
+            auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
+            if (!Op || !Op->hasNoSignedWrap())
                 continue;
-            }
-            auto* Op = dyn_cast<OverflowingBinaryOperator>(Idx);
-            if (Op && !Op->hasNoSignedWrap())
-                continue;
+        } else {
+            continue;
         }
-
         const SCEV *E = SE->getSCEV(Idx);
         // Skip if the offset to the base is already a constant.
         if (isa<SCEVConstant>(E))
@@ -466,31 +461,18 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
         auto EI = Exprs.begin();
         auto EE = Exprs.end();
         const SCEV *Offset = nullptr;
-        constexpr unsigned DIFF_SIZE_THRESHOLD = 3;
-        unsigned MinDiff = DIFF_SIZE_THRESHOLD;
+        unsigned MinDiff = UINT_MAX;
         GetElementPtrInst *BaseWithMinDiff = nullptr;
         for (/*EMPTY*/; EI != EE; ++EI) {
             // Skip if the result types do not match.
             if (EI->GEP->getType() != GEP->getType() ||
                 E->getType() != EI->Idx->getType())
                 continue;
-
             auto *Diff = SE->getMinusSCEV(E, EI->Idx);
-            unsigned exprSize = Diff->getExpressionSize();
-            if (exprSize <= MinDiff) {
-                // For the same expr size, keep the first one as its base
-                // except that the first one isn't constant and this one
-                // is. In this case, this constant is selected (favor contant)
-                if (exprSize == MinDiff && !(!Offset || isa<SCEVConstant>(Diff)))
-                    continue;
-
+            if (Diff->getExpressionSize() < 4 &&
+                Diff->getExpressionSize() < MinDiff) {
                 BaseWithMinDiff = EI->GEP;
                 Offset = Diff;
-                MinDiff = exprSize;
-
-                // If it is constant, it is the best and we're done.
-                if (isa<SCEVConstant>(Diff))
-                    break;
             }
         }
         // Not found, add this GEP as a potential base expr.
@@ -543,13 +525,9 @@ bool GEPLowering::runOnFunction(Function& F) {
 
     bool Changed = false;
 
-    if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification))
-    {
+    if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification)) {
         for (auto &BB : F)
             Changed |= simplifyGEP(BB);
-
-        if (IGC_IS_FLAG_ENABLED(TestGEPSimplification))
-            return Changed;
     }
 
     for (auto& BB : F) {
