@@ -9516,6 +9516,7 @@ bool GlobalRA::setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
                         !kernel.getHasAddrTaken();
   if (builder.getOption(vISA_FailSafeRA) &&
       kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+      kernel.getNumRegTotal() > 32 &&
       !hasStackCall &&
       ((getIterNo() == maxRAIterations - 1) ||
        (allowAddrTaken && getIterNo() == failSafeRAIteration))) {
