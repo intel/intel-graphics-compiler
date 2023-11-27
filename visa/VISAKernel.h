@@ -892,7 +892,6 @@ public:
   /********** APPEND INSTRUCTION APIS END   ******************/
 
   /********** APPEND 3D Instructions START ******************/
-
   VISA_BUILDER_API int
   AppendVISA3dSampler(VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
                       bool cpsEnable, bool uniformSampler, VISA_PredOpnd *pred,
@@ -900,6 +899,16 @@ public:
                       VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
                       VISA_StateOpndHandle *sampler,
                       VISA_StateOpndHandle *surface,
+                      VISA_RawOpnd *dst, int numMsgSpecificOpnds,
+                      VISA_RawOpnd **opndArray) override;
+
+  VISA_BUILDER_API int
+  AppendVISA3dSampler(VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
+                      bool cpsEnable, bool uniformSampler, VISA_PredOpnd *pred,
+                      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+                      VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
+                      VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
+                      VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
                       VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                       VISA_RawOpnd **opndArray) override;
 
@@ -1056,7 +1065,8 @@ public:
       bool cpsEnable, bool uniformSampler, VISA_PredOpnd *pred,
       VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       ChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
-      VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface,
+      VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
+      VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
       VISA_RawOpnd *dst, unsigned int numMsgSpecificOpnds,
       VISA_RawOpnd **opndArray);
 

@@ -1608,6 +1608,7 @@ void IR_Builder::doSamplerHeaderMove(G4_Declare *headerDcl,
   }
 }
 
+
 //
 // generate the r0 move for the sampler message header, and return the dcl
 // for CNL+, also set SSP to dynamic if message is not bindless

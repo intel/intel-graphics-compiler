@@ -2012,17 +2012,18 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_SAMPLE,
         ISA_Inst_Sampler,
         "3d_sample",
-        9,
+        11,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0},
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
-            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD,
-             SCALAR_REGION}, /// aoffimmi
-            {OPND_SAMPLE, ISA_TYPE_UB, 0},  /// Sampler
-            {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
+            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION}, /// aoffimmi
+            {OPND_SAMPLE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// sampler
+            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
+            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
+            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
             {OPND_RAW, ISA_TYPE_F, GRF_ALIGNED}, /// Destination
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
@@ -2035,18 +2036,17 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_LOAD,
         ISA_Inst_Sampler,
         "3d_load",
-        8,
+        9,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0},
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
-            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD,
-             SCALAR_REGION}, /// aoffimmi
-            {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
-            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D,
-             0}, /// Destination
+            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION}, /// aoffimmi
+            {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR | OPND_SURFACE, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
+            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
+            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D, 0}, /// Destination
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
 
@@ -2058,22 +2058,21 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_GATHER4,
         ISA_Inst_Sampler,
         "3d_gather4",
-        9,
+        11,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0},
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
-            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD,
-             SCALAR_REGION},                /// aoffimmi
-            {OPND_SAMPLE, ISA_TYPE_UB, 0},  /// Sampler
-            {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
-            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D,
-             0}, /// Destination
+            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION}, /// aoffimmi
+            {OPND_SAMPLE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// sampler
+            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
+            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
+            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
+            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D, 0}, /// Destination
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
-
     },
 
     /// 112

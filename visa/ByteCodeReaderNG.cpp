@@ -1772,7 +1772,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     kernelBuilderImpl->AppendVISA3dSampler(
         op.opcode, op.pixelNullMask, op.cpsEnable, !op.nonUniformSampler, pred,
         emask, esize, ChannelMask::createAPIFromBinary(opcode, channelMask),
-        aoffimmi, samplerHnd, surfaceHnd,
+        aoffimmi, samplerHnd, 0, surfaceHnd, 0,
         dst, numParams, params);
     break;
   }

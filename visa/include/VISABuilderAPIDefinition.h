@@ -998,11 +998,10 @@ public:
   /********** APPEND MEDIA Instructions END ******************/
 
   /********** APPEND 3D Instructions START ******************/
-
-       /// AppendVISA3dSampler -- create a vISA sampler message
-       /// @subOpcode the sampler op (sample, sample_c, sample_d, etc.)
-       /// @pixelNullMask whether an extra GRF is returned for the null mask bit
-       /// @cpsEnable whether CPS LOD compensation is enabled
+  /// AppendVISA3dSampler -- create a vISA sampler message
+  /// @subOpcode the sampler op (sample, sample_c, sample_d, etc.)
+  /// @pixelNullMask whether an extra GRF is returned for the null mask bit
+  /// @cpsEnable whether CPS LOD compensation is enabled
   /// @uniformSampler whether the sampler state is uniform across all work items
   /// @pred predicate variable
   /// @emask execution mask
@@ -1022,6 +1021,14 @@ public:
       VISA_Exec_Size executionSize, VISAChannelMask channelMask,
       VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler,
       VISA_StateOpndHandle *surface,
+      VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
+
+  VISA_BUILDER_API virtual int AppendVISA3dSampler(
+      VISASampler3DSubOpCode subOpcode, bool pixelNullMask, bool cpsEnable,
+      bool uniformSampler, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISAChannelMask channelMask,
+      VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
+      VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   /// AppendVISA3dLoad -- create a vISA sampler load message
@@ -1044,7 +1051,6 @@ public:
                    VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *surface,
                    VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                    VISA_RawOpnd **opndArray) = 0;
-
   /// AppendVISA3dGather4 -- create a vISA sampler gather4 message
   /// @subOpcode the gather4 op (gather4, gather4_c, etc.)
   /// @pixelNullMask whether an extra GRF is returned for the null mask bit

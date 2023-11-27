@@ -3381,21 +3381,26 @@ bool CISA_IR_Builder::create3DLoadInstruction(
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
 }
+
 bool CISA_IR_Builder::create3DSampleInstruction(
     VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
     bool cpsEnable, bool uniformSampler, ChannelMask channels,
     VISA_EMask_Ctrl emask, unsigned exec_size, VISA_opnd *aoffimmi,
-    const char *samplerName, const char *surfaceName,
+    const char *samplerName, unsigned int samplerIdx,
+    const char *surfaceName, unsigned int surfaceIdx,
     VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
     int lineNum) {
-  VISA_StateOpndHandle *surface =
-      CISA_get_surface_variable(surfaceName, lineNum);
+  VISA_StateOpndHandle *surface = nullptr;
+  vISA_ASSERT_INPUT(samplerIdx == 0 && surfaceIdx == 0,
+      "sampler and surface index must be 0");
+
+  surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface) {
     return false; // error already reported
   }
 
-  VISA_StateOpndHandle *sampler =
-      CISA_get_sampler_variable(samplerName, lineNum);
+  VISA_StateOpndHandle *sampler = nullptr;
+  sampler = CISA_get_sampler_variable(samplerName, lineNum);
   if (!sampler) {
     return false; // error already reported
   }
@@ -3405,11 +3410,12 @@ bool CISA_IR_Builder::create3DSampleInstruction(
   int status = m_kernel->AppendVISA3dSampler(
       subOpcode, pixelNullMask, cpsEnable, uniformSampler,
       (VISA_PredOpnd *)pred, emask, executionSize, channels.getAPI(),
-      (VISA_VectorOpnd *)aoffimmi, sampler, surface,
+      (VISA_VectorOpnd *)aoffimmi, sampler, samplerIdx, surface, surfaceIdx,
       (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
 }
+
 bool CISA_IR_Builder::CISA_create_sample_instruction(
     ISA_Opcode opcode, ChannelMask channel, int simd_mode,
     const char *samplerName, const char *surfaceName, VISA_opnd *u_opnd,
