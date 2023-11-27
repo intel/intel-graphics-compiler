@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; UNSUPPORTED: system-windows
-; REQUIRES: regkeys
+; REQUIRES: debug
 ;
 ; RUN: not igc_opt -platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
