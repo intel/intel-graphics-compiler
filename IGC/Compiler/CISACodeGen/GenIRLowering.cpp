@@ -445,12 +445,17 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
             Idx = ZExt->getOperand(0);
         } else if (auto *SExt = dyn_cast<SExtInst>(Idx)) {
             Idx = SExt->getOperand(0);
-            auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
-            if (!Op || !Op->hasNoSignedWrap())
+            Operator* Opr = dyn_cast<Operator>(Idx);
+            if (Opr && Opr->getOpcode() == BinaryOperator::BinaryOps::SDiv) {
+                // Skip if it is SDiv. This special check is needed as
+                // OverflowingBinaryOperator does not include SDiv
                 continue;
-        } else {
-            continue;
+            }
+            auto* Op = dyn_cast<OverflowingBinaryOperator>(Idx);
+            if (Op && !Op->hasNoSignedWrap())
+                continue;
         }
+
         const SCEV *E = SE->getSCEV(Idx);
         // Skip if the offset to the base is already a constant.
         if (isa<SCEVConstant>(E))
@@ -461,18 +466,43 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
         auto EI = Exprs.begin();
         auto EE = Exprs.end();
         const SCEV *Offset = nullptr;
-        unsigned MinDiff = UINT_MAX;
+
+        // Let GEP_a be one gep from Pointers[Base];
+        // GEP (it is 'GEP' var in this loop iteration) reuses GEP_a's address
+        // as its base
+        //   1. if GEP_a is the first in Pointer[Base] such that diff of GEP_a
+        //      and GEP is constant; otherwise
+        //   2. if GEP_a is the first in Pointers[Base] such that diff of GEP_a
+        //      and GEP is 1 (a single value), otherwise
+        //   3. if GEP_a has the smallest diff or if more than one GEPs with the
+        //      same diff, GEP_a is the last one in Pointers[Base].
+        // Both 1 and 2 may potentially save a few instructions. 3 is a
+        // heuristic and may be further tuned.
+        constexpr unsigned DIFF_SIZE_THRESHOLD = 3;
+        unsigned MinDiff = DIFF_SIZE_THRESHOLD;
+        bool isDiffOne = false;
         GetElementPtrInst *BaseWithMinDiff = nullptr;
         for (/*EMPTY*/; EI != EE; ++EI) {
             // Skip if the result types do not match.
             if (EI->GEP->getType() != GEP->getType() ||
                 E->getType() != EI->Idx->getType())
                 continue;
+
             auto *Diff = SE->getMinusSCEV(E, EI->Idx);
-            if (Diff->getExpressionSize() < 4 &&
-                Diff->getExpressionSize() < MinDiff) {
-                BaseWithMinDiff = EI->GEP;
-                Offset = Diff;
+            unsigned exprSize = Diff->getExpressionSize();
+            if (exprSize <= MinDiff) {
+                if (isa<SCEVConstant>(Diff)) {
+                    BaseWithMinDiff = EI->GEP;
+                    Offset = Diff;
+                    MinDiff = exprSize;
+                    break;
+                }
+                if (!isDiffOne) {
+                    BaseWithMinDiff = EI->GEP;
+                    Offset = Diff;
+                    MinDiff = exprSize;
+                    isDiffOne = (MinDiff == 1);
+                }
             }
         }
         // Not found, add this GEP as a potential base expr.
@@ -525,9 +555,13 @@ bool GEPLowering::runOnFunction(Function& F) {
 
     bool Changed = false;
 
-    if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification)) {
+    if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification))
+    {
         for (auto &BB : F)
             Changed |= simplifyGEP(BB);
+
+        if (IGC_IS_FLAG_ENABLED(TestGEPSimplification))
+            return Changed;
     }
 
     for (auto& BB : F) {
