@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=2 -regkey InlinedEmulationThreshold=500 --platformmtl --print-codegencontext --igc-precompiled-import -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=4 -regkey InlinedEmulationThreshold=500 --platformmtl --print-codegencontext --igc-precompiled-import -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ; ------------------------------------------------
