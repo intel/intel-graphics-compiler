@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -635,14 +635,10 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
     // When we test it, we need to set emuKind
     if (IGC_GET_FLAG_VALUE(TestIGCPreCompiledFunctions) == 1)
     {
-        m_emuKind = EmuKind::EMU_DP;
+        m_emuKind = IGC_GET_FLAG_VALUE(ForceEmuKind) ? IGC_GET_FLAG_VALUE(ForceEmuKind) : EmuKind::EMU_DP;
         checkAndSetEnableSubroutine();
     }
-    else if (IGC_GET_FLAG_VALUE(TestIGCPreCompiledFunctions) == 2)
-    {
-        m_emuKind = EmuKind::EMU_DP_DIV_SQRT;
-        checkAndSetEnableSubroutine();
-    }
+
     // sanity check
     if (m_emuKind == 0) {
         // Nothing to emulate
@@ -756,15 +752,15 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                 for (auto& I : BB) {
                     if (CallInst* CI = dyn_cast<CallInst>(&I)) {
                         if (Function* calledFunc = CI->getCalledFunction()) {
-                            if (calledFunc->getName().equals("GenISA_fma_rtz"))
+                            if (calledFunc->getName().startswith("GenISA_fma_rtz"))
                             {
                                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtz);
                             }
-                            else if (calledFunc->getName().equals("GenISA_fma_rtp"))
+                            else if (calledFunc->getName().startswith("GenISA_fma_rtp"))
                             {
                                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtp);
                             }
-                            else if (calledFunc->getName().equals("GenISA_fma_rtn"))
+                            else if (calledFunc->getName().startswith("GenISA_fma_rtn"))
                             {
                                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtn);
                             }
@@ -794,15 +790,15 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                         {
                             if (Function* calledFunc = CI->getCalledFunction())
                             {
-                                if (calledFunc->getName().equals("GenISA_mul_rtz"))
+                                if (calledFunc->getName().startswith("GenISA_mul_rtz"))
                                 {
                                     createIntrinsicCall(CI, GenISAIntrinsic::GenISA_mul_rtz);
                                 }
-                                else if (calledFunc->getName().equals("GenISA_add_rtz"))
+                                else if (calledFunc->getName().startswith("GenISA_add_rtz"))
                                 {
                                     createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtz);
                                 }
-                                else if (calledFunc->getName().equals("GenISA_uitof_rtz"))
+                                else if (calledFunc->getName().startswith("GenISA_uitof_rtz"))
                                 {
                                     createIntrinsicCall(CI, GenISAIntrinsic::GenISA_uitof_rtz);
                                 }
