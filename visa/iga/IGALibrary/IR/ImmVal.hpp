@@ -31,7 +31,6 @@ struct ImmVal {
   };
 
   union {
-    // TODO: may be able to reduce to 32-bits and 64-bits
     uint16_t f16;
     float f32;
     double f64;

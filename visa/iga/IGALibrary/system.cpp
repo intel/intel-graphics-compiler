@@ -40,8 +40,8 @@ static void EnableColoredIO() {
   static bool enabled = false;
   if (enabled)
     return;
-    // TODO: should only need to do this on Windows 10 Threshold 2 (TH2),
-    // "November Update": version 1511 and has the build number 10586
+// TODO: should only need to do this on Windows 10 Threshold 2 (TH2),
+// "November Update": version 1511 and has the build number 10586
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif

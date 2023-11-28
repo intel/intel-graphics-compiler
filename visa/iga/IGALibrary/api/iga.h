@@ -185,8 +185,6 @@ typedef struct {
   size_t cb; /* set to sizeof(iga_context_options_t) */
   iga_gen_t gen;
 } iga_context_options_t;
-/* this is an ugly wart, cb should have been uint32_t *
- * TODO: change this in IGA 2.0 and break binary compatibility there*/
 
 /*
  * This macro initializes options to the context.

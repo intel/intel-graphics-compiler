@@ -151,7 +151,6 @@ struct OpSpec {
     NONE = 0,
     IS_BITWISE = 1,              // and, asr, or, ror, rol, not, shl, shr, xor
     IS_SELECT = IS_BITWISE << 1, // sel (not csel)
-    // TODO: SUPPORTS_ACCWREN (needs to be placed in BXML)
     SUPPORTS_BRCTL = IS_SELECT << 1,
     SUPPORTS_FLAGMODIFIER = SUPPORTS_BRCTL << 1,
     SUPPORTS_PREDICATION = SUPPORTS_FLAGMODIFIER << 1,

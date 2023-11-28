@@ -765,13 +765,13 @@ private:
       }
 
 #if 0
-            // for debugging (normally used by JSON only)
-            const auto &live = opts.liveAnalysis->sums[i.getID()];
-            semiColon.insert();
-            ss << "r=" << live.grfBytes;
-            ss << ",acc=" << live.accBytes;
-            ss << ",f=" << live.flagBytes;
-            ss << ",a=" << live.indexBytes;
+      // for debugging (normally used by JSON only)
+      const auto &live = opts.liveAnalysis->sums[i.getID()];
+      semiColon.insert();
+      ss << "r=" << live.grfBytes;
+      ss << ",acc=" << live.accBytes;
+      ss << ",f=" << live.flagBytes;
+      ss << ",a=" << live.indexBytes;
 #endif
     }
 

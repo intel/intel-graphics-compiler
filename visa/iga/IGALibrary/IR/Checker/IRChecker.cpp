@@ -38,33 +38,6 @@ struct LOCChecker : Checker {
   void error(const char *msg) { m_errHandler->reportError(m_loc, msg); }
 };
 
-#if 0
-// TODO: remove if not used
-struct RegisterRegioningChecker : Checker {
-    int execSize;
-
-    bool dstIsDirect;
-    int dstTypeSz;
-    int dstSubReg;
-    int dstRgnH;
-
-    int srcReg, srcSubReg;
-    int srcRgnV, srcRgnW, srcRgnH;
-    int srcTypeSz;
-
-    RegisterRegioningChecker(
-        ErrorHandler *err,
-        const Instruction &inst,
-        const Operand &dst,
-        const Operand &src)
-        : Checker(err)
-    {
-    }
-    void checkAll() {
-    }
-};
-#endif
-
 struct SemanticChecker : LOCChecker {
   const Instruction *m_inst;
   uint32_t m_enabled_warnings;
@@ -257,25 +230,25 @@ struct SemanticChecker : LOCChecker {
     // the two data types. For example, a mov with a D source and B destination
     // must use a 4-byte aligned destination and a Dst.HorzStride of 4.
 #if 0
-        // TODO: this fails on:
-        // mov      (8|M0)         r1.0<1>:b     r2.0<8;8,1>:b
-        // The "Execution Data Type" ends up being 2, but the dst is 0
-        int execTypeSz = srcTypeSz == 1 ? 2 : srcTypeSz; // "Execution Data Type" is max(2,..)
-        int dstRgnH = static_cast<int>(dst.getRegion().getHz());
-        bool dstIsDirect = dst.getKind() == Operand::Kind::DIRECT;
-        if (dstIsDirect && execTypeSz > dstTypeSz) {
-            if (dstTypeSz * dstRgnH != execTypeSz) {
-                // e.g. the following violate this
-                //  mov (8) r1.0<1>:b   r2...:d
-                //  mov (8) r1.0<2>:b   r2...:d
-                // but this is okay (correct)
-                //  mov (8) r1.0<4>:b   r2...:d
-                warning(
-                    "register regioning restriction warning: "
-                    "Dst.Hz * sizeof(Dst.Type) != Execution Data Type Size (destination misaligned for type)\n"
-                    "see Programmer's Reference Manual (Restriction 1.2)");
-            }
-        }
+    // TODO: this fails on:
+    // mov      (8|M0)         r1.0<1>:b     r2.0<8;8,1>:b
+    // The "Execution Data Type" ends up being 2, but the dst is 0
+    int execTypeSz = srcTypeSz == 1 ? 2 : srcTypeSz; // "Execution Data Type" is max(2,..)
+    int dstRgnH = static_cast<int>(dst.getRegion().getHz());
+    bool dstIsDirect = dst.getKind() == Operand::Kind::DIRECT;
+    if (dstIsDirect && execTypeSz > dstTypeSz) {
+      if (dstTypeSz * dstRgnH != execTypeSz) {
+        // e.g. the following violate this
+        //  mov (8) r1.0<1>:b   r2...:d
+        //  mov (8) r1.0<2>:b   r2...:d
+        // but this is okay (correct)
+        //  mov (8) r1.0<4>:b   r2...:d
+        warning(
+            "register regioning restriction warning: "
+            "Dst.Hz * sizeof(Dst.Type) != Execution Data Type Size (destination misaligned for type)\n"
+            "see Programmer's Reference Manual (Restriction 1.2)");
+      }
+    }
 #endif
 
     // Restriction 2.1: ExecSize must be greater than or equal to Width.

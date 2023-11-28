@@ -113,21 +113,6 @@ static const uint32_t LSC_UC_CC = 0x5;
 static const uint32_t LSC_CA_CC = 0x9;
 static const uint32_t LSC_RI_RI = 0xE;
 
-#if 0
-struct LscMessageFormat {
-    const char *mnemonic;
-    const char *description;
-    uint32_t    mask;
-    uint32_t    op;
-//
-//    std::pair<Platform,const char *> docs[2];
-};
-
-//
-static LscMessageFormat OPS[32] {
-};
-#endif
-
 // This handles LSC messages only
 struct MessageDecoderLSC : MessageDecoder {
   MessageDecoderLSC(Platform _platform, SFID _sfid, ExecSize _execSize,
