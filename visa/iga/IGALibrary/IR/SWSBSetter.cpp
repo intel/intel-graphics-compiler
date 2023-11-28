@@ -881,7 +881,7 @@ void SWSBAnalyzer::postProcess() {
       for (auto inst_it = instList.begin(); inst_it != instList.end();
            ++inst_it) {
         auto isWriteCombinedCandidate = [&](Instruction &inst) {
-          return inst.is(Op::MOV) &&
+          return (inst.is(Op::MOV) || inst.is(Op::SRND)) &&
                  inst.getDestination().getKind() == Operand::Kind::DIRECT &&
                  inst.getDestination().getDirRegName() == RegName::GRF_R &&
                  TypeSizeInBitsWithDefault(inst.getDestination().getType(),
