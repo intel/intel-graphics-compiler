@@ -2924,7 +2924,7 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF,
 
     //For DPAS, always Nomask
     //For send, !isWriteEnableInst in if covers the case with Nomask.
-    if (mayExceedTwoGRF()) {
+    if (isSend() || isDpas()) {
       return true;
     }
 
@@ -3357,7 +3357,7 @@ void G4_INST::emitDefUse(std::ostream &output) const {
 }
 
 bool G4_INST::isMixedMode() const {
-  if (mayExceedTwoGRF() || !getDst()) {
+  if (isSend() || isDpas() || !getDst()) {
     return false;
   }
   for (int i = 0; i < getNumSrc(); ++i) {
@@ -3386,7 +3386,7 @@ bool G4_INST::isMixedMode() const {
 // precision float type.
 // TODO: Merge the logics with isMixedMode()?
 bool G4_INST::isIllegalMixedMode() const {
-  if (mayExceedTwoGRF() || !getDst()) {
+  if (isSend() || isDpas() || !getDst()) {
     return false;
   }
   for (int i = 0; i < getNumSrc(); ++i) {
@@ -6729,7 +6729,8 @@ bool G4_INST::supportsNullDst() const {
 }
 
 bool G4_INST::isAlign1Ternary() const {
-  return builder.hasAlign1Ternary() && getNumSrc() == 3 && !mayExceedTwoGRF();
+  return builder.hasAlign1Ternary() && getNumSrc() == 3 &&
+         !(isSend() || isDpas());
 }
 
 // Detect packed low-precision instruction. This is used by the scheduler.

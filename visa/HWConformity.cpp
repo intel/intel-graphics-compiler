@@ -851,7 +851,7 @@ bool HWConformity::hasSameSubregOffset(G4_INST *inst,
 // -- ARF may not be in src1
 void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *inst = *it;
-  if (inst->mayExceedTwoGRF()) {
+  if (inst->isSend() || inst->isDpas()) {
     return;
   }
 
@@ -1102,7 +1102,7 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb) {
   bool has_float = false;
   bool has_int = false;
 
-  if (inst->mayExceedTwoGRF() || inst->opcode() == G4_smov) {
+  if (inst->isSend() || inst->isDpas() || inst->opcode() == G4_smov) {
     // skip special instructions
     return false;
   }
@@ -1367,7 +1367,7 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
 
 void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
   G4_INST *inst = *iter;
-  if (inst->getNumSrc() != 3 || inst->mayExceedTwoGRF() ||
+  if (inst->getNumSrc() != 3 || inst->isSend() || inst->isDpas() ||
       inst->opcode() == G4_madm) {
     return;
   }
@@ -1898,7 +1898,7 @@ bool HWConformity::fixIndirectSrcForCompressedInst(INST_LIST_ITER i, G4_BB *bb) 
     return false;
 
   G4_INST *inst = *i;
-  if (inst->mayExceedTwoGRF() || inst->opcode() == G4_nop ||
+  if (inst->isSend() || inst->isDpas() || inst->opcode() == G4_nop ||
       inst->opcode() == G4_madm || inst->isLabel() ||
       inst->isIntrinsic())
     return false;
@@ -3340,7 +3340,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
   bool isDWMultiply = false;
   uint8_t execSize = inst->getExecSize();
 
-  if (inst->mayExceedTwoGRF()) {
+  if (inst->isSend() || inst->isDpas()) {
     return false;
   }
   if (inst->getDst() && inst->getDst()->getTypeSize() == 8) {
@@ -5337,7 +5337,7 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
                                           PointsToAnalysis &p) {
   G4_INST *inst = *it;
 
-  if (inst->mayExceedTwoGRF() || inst->opcode() == G4_nop ||
+  if (inst->isSend() || inst->isDpas() || inst->opcode() == G4_nop ||
       inst->opcode() == G4_madm || inst->isLabel()) {
     return;
   }
@@ -5614,8 +5614,7 @@ void HWConformity::conformBB(G4_BB *bb) {
         VISA_WA_CHECK(builder.getPWaTable(), Wa_1608127078))
       fixCalla(i, bb);
 
-    if ((inst->mayExceedTwoGRF() && !inst->isSend()) || opcode == G4_nop ||
-        opcode == G4_label) {
+    if (opcode == G4_nop || opcode == G4_label) {
       continue;
     }
 
@@ -7002,7 +7001,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel &kernel, G4_Operand *opnd,
 
   if (topdcl != NULL && topdcl->getRegFile() == G4_GRF &&
       !(topdcl->getAddressed())) {
-    if (topdcl->doNotWiden() || inst->mayExceedTwoGRF()) {
+    if (topdcl->doNotWiden() || inst->isSend() || inst->isDpas()) {
       // send has no regioning so it is certainly illegal to change data layout
       setAccessPattern(topdcl, ACCESS_PATTERN_INVALID);
       return false;
@@ -7616,7 +7615,7 @@ void HWConformity::fixMixedHFInst(G4_BB *bb) {
   for (auto instIter = bb->begin(); instIter != bb->end(); ++instIter) {
     G4_INST *inst = *instIter;
 
-    if (inst->mayExceedTwoGRF() || !inst->getDst()) {
+    if (inst->isSend() || inst->isDpas() || !inst->getDst()) {
       continue;
     }
 

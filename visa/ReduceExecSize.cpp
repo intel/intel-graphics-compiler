@@ -33,7 +33,8 @@ void HWConformity::fixOpndTypeAlign(G4_BB *bb) {
   for (auto iEnd = bb->end(); i != iEnd; i = next_iter) {
     G4_INST *inst = *i;
     G4_opcode opcode = inst->opcode();
-    if (opcode == G4_nop || opcode == G4_label || inst->mayExceedTwoGRF()) {
+    if (opcode == G4_nop || opcode == G4_label || inst->isSend() ||
+        inst->isDpas()) {
       next_iter++;
     } else if (fixInstOpndTypeAlign(i, bb)) {
       needSplit = true;
@@ -258,7 +259,8 @@ void HWConformity::fixInstExecSize(G4_BB *bb) {
     next_iter++;
     G4_INST *inst = *i;
     G4_opcode opcode = inst->opcode();
-    if (opcode == G4_nop || opcode == G4_label || inst->mayExceedTwoGRF()) {
+    if (opcode == G4_nop || opcode == G4_label || inst->isSend() ||
+        inst->isDpas()) {
       continue;
     }
 

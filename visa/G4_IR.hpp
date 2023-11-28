@@ -392,7 +392,6 @@ public:
     return (G4_SendDescRaw *)msgDesc;
   }
 
-  virtual bool mayExceedTwoGRF() const { return false; }
   // special instructions(e.g., send) should override
   virtual void computeRightBound(G4_Operand *opnd);
 
@@ -1050,7 +1049,6 @@ public:
     return getPrecisionSizePerLaneInByte(Src2Precision);
   }
 
-  bool mayExceedTwoGRF() const override { return true; }
   void computeRightBound(G4_Operand *opnd) override;
   void setMayNeedWA(bool b) { mayNeedRSWA = b; }
   bool mayNeedWA() const { return mayNeedRSWA; }
@@ -1266,7 +1264,6 @@ public:
       op = G4_sendsc;
     }
   }
-  bool mayExceedTwoGRF() const override { return true; }
 
   G4_Operand *getMsgDescOperand() const {
     return isSplitSend() ? srcs[2] : srcs[1];

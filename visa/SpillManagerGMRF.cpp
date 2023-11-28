@@ -2895,7 +2895,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
   // subreg offset for new dst that replaces the spilled dst
   auto newSubregOff = 0;
 
-  if (inst->mayExceedTwoGRF()) {
+  if (inst->isSend() || inst->isDpas()) {
     // Handle send instructions (special treatment)
     // Create the spill range for the whole post destination, assign spill
     // offset to the spill range and create the instructions to load the

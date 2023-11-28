@@ -319,7 +319,8 @@ bool LiveNode::alignedWithChannelMask(G4_INST *DefInst,
   }
 
   // Do not analyze instructions that may exceed two GRF boundary
-  if (DefInst->mayExceedTwoGRF() || UseInst->mayExceedTwoGRF())
+  if (DefInst->isSend() || DefInst->isDpas() || UseInst->isSend() ||
+      UseInst->isDpas())
     return true;
 
   // Check that all uses are defined under the righ emask, if defined.
