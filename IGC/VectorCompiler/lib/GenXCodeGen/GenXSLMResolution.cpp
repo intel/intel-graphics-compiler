@@ -178,11 +178,6 @@ static SmallVector<GlobalVariable *, 4> collectSLMVariables(Module &M) {
                    "SLM variables must have local linkage", &GV);
       continue;
     }
-    if (!isa<UndefValue>(GV.getInitializer())) {
-      vc::diagnose(GV.getContext(), "GenXSLMResolution",
-                   "Initializer of the variable is not supported", &GV);
-      continue;
-    }
     SLMVars.push_back(&GV);
   }
   return SLMVars;
