@@ -874,11 +874,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                         // Attach metadata to instruction containing offset of storage
                         auto OffsetMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
                         DbgDcl->setMetadata("StorageOffset", OffsetMD);
-                        if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
-                        {
-                            auto SizeMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(bufferSize)));
-                            DbgDcl->setMetadata("StorageSize", SizeMD);
-                        }
+                        auto SizeMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(bufferSize)));
+                        DbgDcl->setMetadata("StorageSize", SizeMD);
                     }
                 }
             }
@@ -1125,9 +1122,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
     auto perThreadOffsetInst = dyn_cast_or_null<Instruction>(perThreadOffset);
 
-    if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation) &&
-        (privateOnStack == false) &&
-        (IGC::ForceAlwaysInline(&Ctx)))
+    if ((privateOnStack == false) && (IGC::ForceAlwaysInline(&Ctx)))
     {
         IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
         if (perThreadOffsetInst)

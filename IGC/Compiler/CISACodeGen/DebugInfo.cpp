@@ -385,8 +385,6 @@ void DebugInfoData::extractAddressClass(llvm::Function& F)
 // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
 void DebugInfoData::markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter)
 {
-    IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(UseOffsetInLocation), "UseOffsetInLocation not enabled");
-
     if (pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
     {
         CVariable* pVar = pShader->GetPrivateBase();
@@ -409,7 +407,6 @@ void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter
 {
     Value* pValue = dyn_cast<Value>(pInst);
 
-    IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(UseOffsetInLocation), "UseOffsetInLocation not enabled");
     IGC_ASSERT_MESSAGE(pInst, "Missing instruction");
 
     // No dummy instruction needs to be marked with "Output"
@@ -419,7 +416,6 @@ void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter
     CVariable* pVar = pShader->GetSymbol(pValue);
     if (pVar->GetVarType() == EVARTYPE_GENERAL)
     {
-        // If UseOffsetInLocation is enabled, we want to attach "Output" attribute to:
         // 1. Per thread offset only, and/or
         // 2. Compute thread and global identification variables.
         // So that finalizer can extend their liveness to end of the program.
@@ -503,83 +499,6 @@ void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitte
                     // 'Output' attribute added in the function to be called.
                     markOutputVar(pShader, pDebugEmitter, &pInst, "implicitGlobalID");
                 }
-            }
-        }
-    }
-}
-
-void DebugInfoData::markOutput(llvm::Function& F, CShader* m_currShader)
-{
-    for (auto& bb : F)
-    {
-        for (auto& pInst : bb)
-        {
-            markOutputVars(&pInst);
-        }
-    }
-}
-
-void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
-{
-    const Value* pVal = nullptr;
-    if (const DbgDeclareInst * pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
-    {
-        pVal = pDbgAddrInst->getAddress();
-    }
-    else if (const DbgValueInst * pDbgValInst = dyn_cast<DbgValueInst>(pInst))
-    {
-        pVal = pDbgValInst->getValue();
-    }
-    else
-    {
-        return;
-    }
-
-    if (!pVal || isa<UndefValue>(pVal))
-    {
-        // No debug info value, return empty location!
-        return;
-    }
-
-    if (dyn_cast<Constant>(pVal))
-    {
-        if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
-        {
-            return;
-        }
-    }
-
-    Value* pValue = const_cast<Value*>(pVal);
-    if (isa<GlobalVariable>(pValue))
-    {
-        return;
-    }
-
-    if (!m_pShader->IsValueUsed(pValue)) {
-        return;
-    }
-
-    CVariable* pVar = m_pShader->GetSymbol(pValue);
-    if (pVar->GetVarType() == EVARTYPE_GENERAL)
-    {
-        // We want to attach "Output" attribute to all variables:
-        // - if UseOffsetInLocation is disabled, or
-        // - if UseOffsetInLocation is enabled but there is a stack call in use,
-        // so that finalizer can extend their liveness to end of
-        // the program. This will help debugger examine their
-        // values anywhere in the code till they are in scope.
-        if (m_outputVals.find(pVar) == m_outputVals.end())
-        {
-            if (m_pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
-            {
-                // Emit "Output" attribute only when -g and -cl-opt-disable are both passed
-                // -g by itself shouldnt alter generated code
-                m_pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
-                if (m_pShader->m_dispatchSize == SIMDMode::SIMD32 && pVar->visaGenVariable[1])
-                {
-                    m_pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[1], "Output", 0, nullptr);
-                }
-                (void)m_outputVals.insert(pVar);
             }
         }
     }

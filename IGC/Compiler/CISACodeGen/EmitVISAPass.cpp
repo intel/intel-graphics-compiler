@@ -955,7 +955,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry, IsPrimary);
         IGC::DebugEmitterOpts DebugOpts;
         DebugOpts.DebugEnabled = DebugInfoData::hasDebugInfo(m_currShader);
-        DebugOpts.UseOffsetInLocation = IGC_IS_FLAG_ENABLED(UseOffsetInLocation);
         DebugOpts.EmitDebugLoc = IGC_IS_FLAG_ENABLED(EmitDebugLoc);
         DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
         DebugOpts.ZeBinCompatible = IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && m_pCtx->enableZEBinary();
@@ -1271,27 +1270,22 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         DebugInfoData::extractAddressClass(F);
 
-        if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
-        {
-            if (IGC::ForceAlwaysInline(m_pCtx) ||
-                ((OpenCLProgramContext*)(m_currShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
-            {
-                DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
-            }
-            ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->getCurrentVISA());
-            if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP())
-            {
-                // Stack calls in use. Nothing is needed to be marked as Output.
-                // Just setting frame pointer is required for debug info when stack calls are in use.
-                scVISAMod->setFramePtr(m_currShader->GetFP());
-            }
+        if (IGC::ForceAlwaysInline(m_pCtx) ||
+            ((OpenCLProgramContext *)(m_currShader->GetContext()))
+                ->m_InternalOptions.KernelDebugEnable) {
+            DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
         }
-        else
-        {
-            m_currShader->GetDebugInfoData().markOutput(F, m_currShader);
+        ScalarVisaModule *scVISAMod =
+            (ScalarVisaModule *)(m_pDebugEmitter->getCurrentVISA());
+        if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP()) {
+            // Stack calls in use. Nothing is needed to be marked as Output.
+            // Just setting frame pointer is required for debug info when stack
+            // calls are in use.
+            scVISAMod->setFramePtr(m_currShader->GetFP());
         }
 
-        m_currShader->GetDebugInfoData().addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
+        m_currShader->GetDebugInfoData().addVISAModule(
+            &F, m_pDebugEmitter->getCurrentVISA());
         m_currShader->GetDebugInfoData().transferMappings(F);
     }
 

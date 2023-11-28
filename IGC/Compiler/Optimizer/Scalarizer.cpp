@@ -807,27 +807,6 @@ void ScalarizeFunction::scalarizeInstruction(ExtractElementInst* EI)
     if (static_cast<unsigned int>(scalarIndex) < (unsigned)valueVType->getNumElements())
     {
         IGC_ASSERT_MESSAGE(NULL != operand[static_cast<unsigned int>(scalarIndex)], "SCM error");
-
-        if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
-        {
-            // Metadata "implicitGlobalID" must be propagated to a new instruction as a WA
-            // for missing meta data preservation in this pass. When a general fix is applied
-            // then instructions below for this specific propagation must be removed.
-            Value* pNewVal = operand[static_cast<unsigned int>(scalarIndex)];
-
-            if (MDNode* pEIMD = EI->getMetadata("implicitGlobalID"))
-            {
-                // Compute thread and group identification instructions must have 'Output' attribute
-                // added later during compilation. The implicitGlobalID metadata attached to this
-                // instruction must be assigned to a new instruction, which replaces this instruction.
-                // Unfortunatelly, replaceAllUsesWith() will not ensure such propagation.
-                Instruction* pNewInst = dyn_cast_or_null<llvm::Instruction>(pNewVal);
-                IGC_ASSERT_MESSAGE(pNewInst, "Missing implicit global ID instruction");
-
-                pNewInst->copyMetadata(*EI);
-            }
-        }
-
         // Replace all users of this inst, with the extracted scalar value
         EI->replaceAllUsesWith(operand[static_cast<unsigned int>(scalarIndex)]);
     }

@@ -38,9 +38,5 @@ namespace Utils {
             llvm::GlobalVariable* pGlobalVar, llvm::Value* pNewVal,
             llvm::Instruction* pEntryPoint, bool isIndirect);
 
-    unsigned int GetSpecialDebugVariableHash(const std::string& name);
-    bool IsSpecialDebugVariable(const std::string& name);
-    std::string GetSpecialVariableMetaName(const llvm::Instruction* CI);
-
 } // namespace Utils
 } // namespace IGC

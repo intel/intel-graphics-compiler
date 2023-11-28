@@ -2918,8 +2918,7 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
   const auto *VISAMod = loc.GetVISAModule();
   IGC_ASSERT_MESSAGE(VISAMod, "VISA Module is expected for LOC");
 
-  if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && storageMD &&
-      (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation)) {
+  if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && storageMD) {
     // This is executed only when llvm.dbg.declare still exists and no stack
     // call is supported. With mem2reg run, data is stored in GRFs and this wont
     // be executed.
@@ -2934,9 +2933,7 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
   }
 
   const auto *sizeMD = var.getDbgInst()->getMetadata("StorageSize");
-  if (storageMD &&
-      (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation) &&
-      sizeMD) {
+  if (storageMD && sizeMD) {
     emitLocation = true;
     if (!buildFpBasedLoc(var, Block, loc))
       return Block;

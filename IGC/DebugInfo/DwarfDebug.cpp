@@ -1721,20 +1721,12 @@ void DwarfDebug::collectVariableInfo(
         continue;
       }
 
+      // For the address variable described with llvm.dbg.declare and
+      // StorageOffset we want to emit inlined location in the DWARF emit
+      // phase.
       const auto *StorageMD = pInst->getMetadata("StorageOffset");
-      if (EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>(pInst)) {
-        if (StorageMD) {
-          // When using OffsetInLocation, we emit offset of variable from
-          // privateBase. This works only for -O0 when variables are stored in
-          // memory. When optimizations are enabled, ie when pInst is not
-          // dbgDeclare, we may choose to emit locations to debug_loc as
-          // variables may be mapped to registers.
-          LLVM_DEBUG(dbgs()
-                     << "  << location is expected to be emitted in DIE: "
-                     << "EmitSettings.UseOffsetInLocation && "
-                        "isa<DbgDeclareInst> && StorageMD\n");
-          continue;
-        }
+      if (isa<DbgDeclareInst>(pInst) && StorageMD) {
+        continue;
       }
 
       // assume that VISA preserves location thoughout its lifetime

@@ -47,9 +47,6 @@ namespace IGC
         static void markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName);
         static void markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
 
-        void markOutputVars(const llvm::Instruction* pInst);
-        void markOutput(llvm::Function& F, CShader* m_currShader);
-
         void addVISAModule(llvm::Function* F, VISAModule* m)
         {
             IGC_ASSERT_MESSAGE(m_VISAModules.find(F) == m_VISAModules.end(), "Reinserting VISA module for function");

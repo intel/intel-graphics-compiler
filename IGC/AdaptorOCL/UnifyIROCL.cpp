@@ -55,8 +55,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/BuiltInFuncImport.h"
 #include "Compiler/Optimizer/CodeAssumption.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
-#include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDRestoring.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ExtensionFuncs/ExtensionArgAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ExtensionFuncs/ExtensionFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ExtensionFuncs/ExtensionFuncResolution.hpp"
@@ -366,11 +364,6 @@ static void CommonOCLBasedPasses(
         mpm.add(createBIFTransformsPass());
     }
 
-    if(pContext->m_InternalOptions.KernelDebugEnable)
-    {
-        mpm.add(new ImplicitGlobalId());
-    }
-
     if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
     {
         mpm.add(new CodeAssumption());
@@ -603,10 +596,6 @@ static void CommonOCLBasedPasses(
     // TODO: Run CheckInstrTypes after builtin import to determine if builtins have allocas.
     mpm.add(createSROAPass());
     mpm.add(createIGCInstructionCombiningPass());
-    if (pContext->m_InternalOptions.KernelDebugEnable)
-    {
-        mpm.add(new ImplicitGIDRestoring());
-    }
     // See the comment above (it's copied as is).
     // Instcombine can create constant expressions, which are not handled by the program scope constant resolution pass.
     // For example, in InsertDummyKernelForSymbolTablePass addresses of indirectly called functions

@@ -16,7 +16,6 @@ add_subdirectory(BIFTransforms)
 add_subdirectory(BreakConstantExpr)
 add_subdirectory(BreakdownIntrinsic)
 add_subdirectory(CorrectlyRoundedDivSqrt)
-add_subdirectory(DebuggerSupport)
 add_subdirectory(DeviceEnqueueFuncs)
 add_subdirectory(DisableLoopUnrollOnRetry)
 add_subdirectory(DpasFuncs)
@@ -63,7 +62,6 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_BreakConstantExpr}
     ${IGC_BUILD__SRC__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__SRC__OpenCLPasses_CorrectlyRoundedDivSqrt}
-    ${IGC_BUILD__SRC__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
@@ -116,7 +114,6 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_BreakConstantExpr}
     ${IGC_BUILD__HDR__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__HDR__OpenCLPasses_CorrectlyRoundedDivSqrt}
-    ${IGC_BUILD__HDR__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__HDR__OpenCLPasses_DpasFuncs}
@@ -169,7 +166,6 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_BreakConstantExpr
     Compiler__OpenCLPasses_BreakdownIntrinsic
     Compiler__OpenCLPasses_CorrectlyRoundedDivSqrt
-    Compiler__OpenCLPasses_DebuggerSupport
     Compiler__OpenCLPasses_DeviceEnqueueFuncs
     Compiler__OpenCLPasses_DisableLoopUnrollOnRetry
     Compiler__OpenCLPasses_DpasFuncs
