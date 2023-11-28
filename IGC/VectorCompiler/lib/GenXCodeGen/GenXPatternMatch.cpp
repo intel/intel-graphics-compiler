@@ -1065,6 +1065,10 @@ bool FmaMatcher::isProfitable() const {
   if (AddSub->use_empty())
     return false;
 
+  // Do not match x * y +/- 0.0f
+  if (const auto *C = dyn_cast<Constant>(Srcs[2]); C && C->isZeroValue())
+    return false;
+
   unsigned IndirectCount =
       count_if(Srcs, [](auto *Src) { return isIndirectRdRegion(Src); });
 
@@ -1115,11 +1119,10 @@ bool MadMatcher::isProfitable() const {
   // multiple use cases. May need to revisit. if (!MInst->hasOneUse())
   //   return false;
 
-  // Do not match x * y +/- 0.0f
-  // FIXME: specify fp mode. ICL certainly is not strict in general.
-  if (Constant *C = dyn_cast<Constant>(Srcs[2]))
-    if (C->isZeroValue())
-      return false;
+  // Do not match constant add. I was getting bad results from allowing this,
+  // although it may have been largely from scalar address computations.
+  if (isa<Constant>(Srcs[2]))
+    return false;
 
   // Ignores upward which usually will be performed by copy
   // propagation within jitter.
@@ -1138,12 +1141,6 @@ bool MadMatcher::isProfitable() const {
       (isIndirectRdRegion(Vals[0]) && isIndirectRdRegion(Vals[1])))
     // For integer mad, we only support indirect access on one of
     // multiplicative operands.
-    return false;
-
-  // This is an integer mad.
-  // Do not match constant add. I was getting bad results from allowing this,
-  // although it may have been largely from scalar address computations.
-  if (isa<Constant>(Srcs[2]))
     return false;
 
   // Do not match unless both of multiplicants are of type *B/*W

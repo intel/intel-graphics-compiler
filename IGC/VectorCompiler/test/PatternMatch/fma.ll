@@ -20,6 +20,18 @@ define <16 x float> @test_mul_add_f32(<16 x float> %op0, <16 x float> %op1, <16 
   ret <16 x float> %add
 }
 
+; CHECK-LABEL: @test_mul_addzero_f32
+; CHECK-NOFMA-LABEL: @test_mul_addzero_f32
+define <16 x float> @test_mul_addzero_f32(<16 x float> %op0, <16 x float> %op1) {
+; CHECK: %mul = fmul <16 x float> %op0, %op1
+; CHECK-NEXT: %add = fadd <16 x float> %mul, zeroinitializer
+; CHECK-NOFMA: %mul = fmul <16 x float> %op0, %op1
+; CHECK-NOFMA-NEXT: %add = fadd <16 x float> %mul, zeroinitializer
+  %mul = fmul <16 x float> %op0, %op1
+  %add = fadd <16 x float> %mul, zeroinitializer
+  ret <16 x float> %add
+}
+
 ; CHECK-LABEL: @test_mul_radd_f32
 ; CHECK-NOFMA-LABEL: @test_mul_radd_f32
 define <16 x float> @test_mul_radd_f32(<16 x float> %op0, <16 x float> %op1, <16 x float> %op2) {
