@@ -511,10 +511,12 @@ bool MemOpt::runOnFunction(Function& F) {
         if (MemRefs.size() < 2)
             continue;
 
-        // Canonicalize 64-bit GEP to help SCEV find constant offset by
-        // distributing `zext`/`sext` over safe expressions.
-        for (auto& M : MemRefs)
-            Changed |= canonicalizeGEP64(M.first);
+        if (IGC_IS_FLAG_ENABLED(EnableMemOptGEPCanon)) {
+            // Canonicalize 64-bit GEP to help SCEV find constant offset by
+            // distributing `zext`/`sext` over safe expressions.
+            for (auto& M : MemRefs)
+                Changed |= canonicalizeGEP64(M.first);
+        }
 
         for (auto MI = MemRefs.begin(), ME = MemRefs.end(); MI != ME; ++MI) {
             Instruction* I = MI->first;
@@ -536,10 +538,12 @@ bool MemOpt::runOnFunction(Function& F) {
             }
         }
 
-        // Optimize 64-bit GEP to reduce strength by factoring out `zext`/`sext`
-        // over safe expressions.
-        for (auto I : MemRefsToOptimize)
-            Changed |= optimizeGEP64(I);
+        if (IGC_IS_FLAG_ENABLED(EnableMemOptGEPCanon)) {
+            // Optimize 64-bit GEP to reduce strength by factoring out `zext`/`sext`
+            // over safe expressions.
+            for (auto I : MemRefsToOptimize)
+                Changed |= optimizeGEP64(I);
+        }
     }
 
     DL = nullptr;
