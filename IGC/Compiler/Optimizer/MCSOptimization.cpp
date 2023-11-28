@@ -47,7 +47,7 @@ public:
     }
 
     static char ID;
-    bool m_changed;
+    bool m_changed = false;
 
 private:
     bool shaderSamplesCompressedSurfaces(CodeGenContext* ctx)
