@@ -3690,7 +3690,7 @@ bool Optimizer::foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter) {
 }
 
 /***
-this function optimizes the following cases:
+this function optmize the following cases:
 
 case 1:
 cmp.gt.P0 s0 s1
@@ -3723,7 +3723,7 @@ mov (1) P0 Imm  (NoMask)
 smov (8) r[A0, 0] src0 src1 Imm
 
 case 5:
-pseudo_not (1) P2 P1
+psuedo_not (1) P2 P1
 and (1) P4 P3 P2
 ==>
 and (1) P4 P3 ~P1
@@ -3818,7 +3818,7 @@ void Optimizer::optimizeLogicOperation() {
           merged = foldPseudoAndOr(bb, ii);
         }
 
-        // translate the pseudo op
+        // translate the psuedo op
         if (!merged) {
           expandPseudoLogic(builder, bb, ii);
         }
@@ -3835,9 +3835,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB *bb, INST_LIST_ITER &ii) {
 
   // optimization should apply even when the dst of the pseudo-and/pseudo-or is
   // global, since we are just hoisting it up, and WAR/WAW checks should be
-  // performed as we search for the src0 and src1 inst. Also need to check if
-  // the mask option of the pseudo-and/pseudo-or matches with the options of
-  // the defining instructions when dst is global.
+  // performed as we search for the src0 and src1 inst.
 
   G4_INST *inst = *ii;
   // look for def of srcs
@@ -3854,7 +3852,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB *bb, INST_LIST_ITER &ii) {
 
   The new code uses defInstList directly, and aborts if there are more then are
   two definitions. Which means there is more then one instruction writing to
-  source. Disadvantage of that is that it is less precise. For example if we
+  source. Disadvantage of that is that it is less precisise. For example if we
   are folding in to closest definition then before it was OK, but now will be
   disallowed.
   */
@@ -3891,13 +3889,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB *bb, INST_LIST_ITER &ii) {
       std::swap(defInstructions[0], defInstructions[1]);
       std::swap(maxSrc1, maxSrc2);
     }
-    // Doing backward scan until earliest src to make sure dst of and/or is not
+    // Doing backward scan until earlist src to make sure dst of and/or is not
     // being written to or being read
     /*
     handling case like in spmv_csr
-    cmp.lt (M1, 1) P15 V40(0,0)<0;1,0> 0x10:w /// $191
-    cmp.lt (M1, 1) P16 V110(0,0)<0;1,0> V34(0,0)<0;1,0> /// $192
-    and    (M1, 1) P16 P16 P15 /// $193
+    cmp.lt (M1, 1) P15 V40(0,0)<0;1,0> 0x10:w /// $191 cmp.lt (M1, 1) P16
+    V110(0,0)<0;1,0> V34(0,0)<0;1,0>                          /// $192 and (M1,
+    1) P16 P16 P15                                                      /// $193
     */
     if (chkBwdOutputHazard(defInstructions[1], ii, defInstructions[0])) {
       return false;
@@ -3951,13 +3949,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB *bb, INST_LIST_ITER &ii) {
   if (!checkSource(src0DefInst, src0) || !checkSource(src1DefInst, src1)) {
     return false;
   }
-
-  // Check if mask options are mismatched between the pseudo-and/pseudo-or and
-  // its defining instructions.
-  if ((inst->getMaskOption() != src0DefInst->getMaskOption() ||
-       inst->getMaskOption() != src1DefInst->getMaskOption()) &&
-      fg.globalOpndHT.isOpndGlobal(inst->getDst()))
-    return false;
 
   // do the case 3 optimization
 
