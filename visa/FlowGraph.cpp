@@ -1719,6 +1719,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
 // Remove empty blocks.
 //
 void FlowGraph::removeRedundantLabels() {
+  std::vector<G4_Label *> joinLabels;
   // first,  remove redundant goto
   //    goto L0
   //      ....
@@ -1728,8 +1729,22 @@ void FlowGraph::removeRedundantLabels() {
   BB_LIST_ITER Next = BBs.begin(), IE = BBs.end();
   for (BB_LIST_ITER II = Next; II != IE; II = Next) {
     ++Next;
-
     G4_BB *BB = *II;
+
+    // Record the JIP and UIP labels of first none-label control flow
+    // instruction.
+    G4_INST *firstNoneLabelInst = BB->getFirstInst();
+    if (firstNoneLabelInst && firstNoneLabelInst->isFlowControl()) {
+      G4_Label *jip = firstNoneLabelInst->asCFInst()->getJip();
+      G4_Label *uip = firstNoneLabelInst->asCFInst()->getUip();
+      if (jip) {
+        joinLabels.push_back(jip);
+      }
+      if (uip) {
+        joinLabels.push_back(uip);
+      }
+    }
+
     G4_opcode lastop = BB->getLastOpcode();
     if (BB->Succs.size() == 1 && (lastop == G4_goto || lastop == G4_jmpi)) {
       G4_BB *SuccBB = BB->Succs.back();
@@ -1992,13 +2007,9 @@ void FlowGraph::removeRedundantLabels() {
         // BB18 Preds: BB17 Succs: ...
         //_entry_k0_5_cf:
         //      ....
-        G4_INST *firstNoneLableInst = singlePred->getFirstInst();
-        if (firstNoneLableInst && firstNoneLableInst->isFlowControl()) {
-          G4_Label *jip = firstNoneLableInst->asCFInst()->getJip();
-          G4_Label *uip = firstNoneLableInst->asCFInst()->getUip();
-          if (jip == labelInst->getLabel() || uip == labelInst->getLabel()) {
-            doMerging = false;
-          }
+        if (std::find(joinLabels.begin(), joinLabels.end(),
+                      labelInst->getLabel()) != joinLabels.end()) {
+          doMerging = false;
         }
 
         if (doMerging) {
