@@ -150,6 +150,12 @@ bool supportSimd32PerPixelPSWithNumSamples16() const
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
 }
 
+bool canSupportWMTPWithoutBTD() const {
+    // Returns true if the platform has the capability of supporting
+    // WMTP but WMTP isn't supported for all shader types
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
 
 bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
@@ -459,7 +465,17 @@ bool hasSamplerSupport() const
         (IGC_IS_FLAG_ENABLED(EnableSamplerSupport)); // flag for IGFX_PVC
 }
 
-bool hasLogicalSSID() const { return false; }
+bool hasSamplerFeedbackSurface() const
+{
+    return m_platformInfo.eProductFamily >= IGFX_LUNARLAKE;
+}
+
+// logical subslice id
+bool hasLogicalSSID() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
 uint32_t getMinPushConstantBufferAlignment() const
 {
     return 8; // DWORDs
@@ -509,6 +525,14 @@ unsigned getSlmSizePerSsOrDss() const
         {
             slmSizePerSsOrDss = 131072;
         }
+    }
+    else if (isProductChildOf(IGFX_LUNARLAKE))
+    {
+        slmSizePerSsOrDss = GetGTSystemInfo().SLMSizeInKb * 1024;
+    }
+    else if (isProductChildOf(IGFX_PVC))
+    {
+        slmSizePerSsOrDss = GetGTSystemInfo().SLMSizeInKb / GetGTSystemInfo().SubSliceCount * 1024;
     }
     return slmSizePerSsOrDss;
 }
@@ -1303,6 +1327,21 @@ uint32_t getMaxBlockMsgSize(bool isSLM) const
     return 128;
 }
 
+bool hasLSCUrbMessage() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
+bool hasSampleMlodMessage() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
+bool hasDualKSPPS() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
 bool WaDoNotPushConstantsForAllPulledGSTopologies() const
@@ -1532,6 +1571,9 @@ bool limitedBCR() const
 
 uint32_t getMaxAddressedHWThreads() const
 {
+    // TODO Calculate the value
+    if (isCoreChildOf(IGFX_XE2_LPG_CORE))
+        return 8192;
     return 4096;
 }
 
@@ -1553,6 +1595,14 @@ unsigned int roundUpTgsmSize(DWORD size) const
 {
     const DWORD blockSize = getSharedLocalMemoryBlockSize() ? getSharedLocalMemoryBlockSize() : sizeof(KILOBYTE);
     size = iSTD::Round(size, blockSize) / blockSize;
+    if (size > 16)
+    {
+        if (isCoreChildOf(IGFX_XE2_LPG_CORE))
+        {
+            const DWORD roundSize = iSTD::RoundPower2(size) / 4;
+            return iSTD::Round(size, roundSize) * blockSize;
+        }
+    }
     return iSTD::RoundPower2(size) * blockSize;
 }
 

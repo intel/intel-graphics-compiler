@@ -46,6 +46,7 @@ namespace IGC
     private:
         void UpdateDependency(llvm::Instruction* inst);
         llvm::DenseSet<llvm::Instruction*> m_PositionDep;
+        bool m_newURBEncoding = false;
     };
 
 } // namespace IGC

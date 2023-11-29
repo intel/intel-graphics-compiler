@@ -4304,6 +4304,13 @@ namespace IGC
             // r0 but VISA refer to r0 directly (BuiltInR0 == RealR0). Whereas,
             // reserving r0 via vISA_enablePreemption simply forbids RA from
             // using r0 for assignments.
+            if (m_program->m_Platform->canSupportWMTPWithoutBTD())
+            {
+                // R1 has the stack-ids for BTD. R1 is not needed to be
+                // reserved if not support WMTP with BTD.
+                SaveOption(vISA_ReserveR0, true);
+            }
+            else
             {
                 SaveOption(vISA_enablePreemption, true);
             }

@@ -1309,6 +1309,9 @@ namespace IGC
 
     void PushAnalysis::processInputVec(Instruction* inst, bool gsInstancingUsed)
     {
+        // Multi-poly shaders cannot have mapped inputs
+        if (m_context->type == ShaderType::PIXEL_SHADER && (m_context->platform.hasDualKSPPS() || m_context->platform.supportDualSimd8PS())) return;
+
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
         // If the input index of llvm_shaderinputvec is a constant

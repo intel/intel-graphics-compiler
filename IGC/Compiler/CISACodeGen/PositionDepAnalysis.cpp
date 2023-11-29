@@ -37,6 +37,7 @@ namespace IGC
     bool PositionDepAnalysis::runOnFunction(llvm::Function& F)
     {
         CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        m_newURBEncoding = ctx->platform.hasLSCUrbMessage();
         if (ctx->type == ShaderType::VERTEX_SHADER && ctx->m_DriverInfo.PreventZFighting())
         {
             visit(F);
@@ -53,7 +54,7 @@ namespace IGC
                 if (ConstantInt * index = dyn_cast<ConstantInt>(intr->getOperand(0)))
                 {
                     // position is written at offset 0 or 1
-                    if (index->isZero() || index->isOne())
+                    if (index->isZero() || (m_newURBEncoding && index->getZExtValue() == 16) || (!m_newURBEncoding && index->isOne()))
                     {
                         unsigned int baseSourceIndex = index->isZero() ? 6 : 2;
                         for (unsigned int i = 0; i < 4; i++)

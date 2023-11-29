@@ -159,6 +159,11 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
         {
             return IGA_XE_HPC;
         }
+    case IGFX_XE2_LPG_CORE:
+        if (ProductFamily == IGFX_LUNARLAKE)
+        {
+            return IGA_XE2;
+        }
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;
