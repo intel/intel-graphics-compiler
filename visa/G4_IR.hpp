@@ -81,6 +81,18 @@ typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR> DEF_EDGE_LIST;
 typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR>::iterator DEF_EDGE_LIST_ITER;
 
 namespace vISA {
+#define SWSB_MAX_ALU_DEPENDENCE_DISTANCE 11
+#define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT 15
+
+enum SB_INST_PIPE {
+  PIPE_NONE = 0,
+  PIPE_INT = 1,
+  PIPE_FLOAT = 2,
+  PIPE_LONG = 3,
+  PIPE_MATH = 4,
+  PIPE_DPAS = 6,
+  PIPE_SEND = 7,
+};
 // forward declaration for the binary of an instruction
 class BinInst;
 
@@ -698,6 +710,10 @@ public:
   bool isLongPipeInstructionXe() const;
   bool isIntegerPipeInstructionXe() const;
   bool isFloatPipeInstructionXe() const;
+
+  int getMaxDepDistance() const;
+  SB_INST_PIPE getInstructionPipeXe() const;
+  SB_INST_PIPE getDistDepPipeXe() const;
 
   void swapDefUse(Gen4_Operand_Number srcIxA = Opnd_src0,
                   Gen4_Operand_Number srcIxB = Opnd_src1);

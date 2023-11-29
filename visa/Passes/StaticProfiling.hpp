@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "../BuildIR.h"
 #include "../G4_IR.hpp"
 #include "../FlowGraph.h"
+#include "../LocalScheduler/LatencyTable.h"
 
 namespace vISA {
-
 class StaticProfiling {
   IR_Builder &builder;
   G4_Kernel &kernel;
@@ -35,7 +35,41 @@ public:
       }
     }
   }
+};
 
+typedef std::pair<G4_INST*, unsigned int> InstCycle;
+typedef std::vector<InstCycle> DistPipeInsts;
+
+class StaticCycleProfiling {
+  G4_Kernel &kernel;
+  std::vector<InstCycle> tokenInsts;
+  std::vector<DistPipeInsts> distInsts;
+  LatencyTable *LT;
+
+  unsigned BBStaticCycleProfiling(G4_BB *bb);
+
+public:
+  StaticCycleProfiling(G4_Kernel &K)
+      : kernel(K) {
+
+    distInsts.resize(PIPE_DPAS);
+  }
+  StaticCycleProfiling(const StaticProfiling &) = delete;
+  virtual ~StaticCycleProfiling() = default;
+
+  void run() {
+    auto ltable = LatencyTable::createLatencyTable(*kernel.fg.builder);
+    LT = &(*ltable);
+    for (auto bb : kernel.fg) {
+      // Initialization
+      tokenInsts.clear();
+      tokenInsts.resize(kernel.getNumSWSBTokens());
+      for (int i = 0; i < PIPE_DPAS; i++) {
+        distInsts[i].clear();
+      }
+      BBStaticCycleProfiling(bb);
+    }
+  }
 };
 
 } // namespace vISA

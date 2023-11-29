@@ -824,7 +824,7 @@ bool G4_INST::isMathPipeInst() const {
 }
 
 bool G4_INST::distanceHonourInstruction() const {
-  if (isSend() || op == G4_nop || isWait() || isDpas()) {
+  if (isSend() || hasNoPipe() || isDpas()) {
     return false;
   }
   if (isMathPipeInst()) {
@@ -854,10 +854,12 @@ bool G4_INST::hasNoPipe() const {
   if (op == G4_wait || op == G4_halt || op == G4_nop) {
     return true;
   }
-  // PVC only
-  if (op == G4_sync_fence) {
+
+  if (op == G4_sync_fence || op == G4_sync_nop || op == G4_sync_allrd ||
+      op == G4_sync_allwr) {
     return true;
   }
+
   return false;
 }
 
@@ -1017,6 +1019,78 @@ bool G4_INST::isFloatPipeInstructionXe() const {
   }
 
   return false;
+}
+
+int G4_INST::getMaxDepDistance() const {
+  if (getDst() &&
+      getDst()->getTypeSize() ==
+          8) { // Note that for XeLP, there are no 8 bytes ALU instruction.
+    return SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
+  } else {
+    return SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
+  }
+}
+
+SB_INST_PIPE G4_INST::getInstructionPipeXe() const {
+
+  if (isLongPipeInstructionXe()) {
+    return PIPE_LONG;
+  }
+
+  if (isIntegerPipeInstructionXe()) {
+    return PIPE_INT;
+  }
+
+  if (isFloatPipeInstructionXe()) {
+    return PIPE_FLOAT;
+  }
+
+  if (isMathPipeInst()) {
+    return PIPE_MATH;
+  }
+
+  if (tokenHonourInstruction()) {
+    if (isDpas()) {
+      return PIPE_DPAS;
+    }
+
+    if (isSend()) {
+      return PIPE_SEND;
+    }
+    vISA_ASSERT_UNREACHABLE("Wrong token pipe instruction!");
+  }
+
+  vISA_ASSERT(hasNoPipe(), "No pipe instruction");
+  return PIPE_NONE;
+}
+
+SB_INST_PIPE G4_INST::getDistDepPipeXe() const {
+  SB_INST_PIPE depPipe = PIPE_NONE;
+  vISA_ASSERT(getDistance(), "has no distance dep");
+
+  switch (getDistanceTypeXe()) {
+  case DistanceType::DIST:
+    depPipe = getInstructionPipeXe();
+    break;
+  case DistanceType::DISTALL: // keep PIPE_NONE as DISTALL
+    break;
+  case DistanceType::DISTINT:
+    depPipe = PIPE_INT;
+    break;
+  case DistanceType::DISTFLOAT:
+    depPipe = PIPE_FLOAT;
+    break;
+  case DistanceType::DISTLONG:
+    depPipe = PIPE_LONG;
+    break;
+  case DistanceType::DISTMATH:
+    depPipe = PIPE_MATH;
+    break;
+  default:
+    vISA_ASSERT(0, "Unknown distance dependence type");
+    break;
+  }
+  return depPipe;
 }
 
 template <typename T> static std::string fmtHexBody(T t, int cols = 0) {

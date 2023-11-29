@@ -386,17 +386,6 @@ void SBNode::setDistInfo(SB_INST_PIPE depPipe, unsigned distance) {
   }
 }
 
-int SBNode::getMaxDepDistance() const {
-  auto inst = GetInstruction();
-  if (inst->getDst() &&
-      inst->getDst()->getTypeSize() ==
-          8) { // Note that for XeLP, there are no 8 bytes ALU instruction.
-    return SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
-  } else {
-    return SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
-  }
-}
-
 void SBNode::setDepToken(unsigned short token, SWSBTokenType type,
                          SBNode *node) {
   for (DepToken &depToken : depTokens) {
@@ -1117,41 +1106,6 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
       new (allocedMem) SBFootprint(GRF_T, type, LB, RB, inst);
 
   return footprint;
-}
-
-static SB_INST_PIPE getInstructionPipeXe(G4_INST *inst) {
-
-  if (inst->isLongPipeInstructionXe()) {
-    return PIPE_LONG;
-  }
-
-  if (inst->isIntegerPipeInstructionXe()) {
-    return PIPE_INT;
-  }
-
-  if (inst->isFloatPipeInstructionXe()) {
-    return PIPE_FLOAT;
-  }
-
-  if (inst->getBuilder().hasFixedCycleMathPipeline() && inst->isMath()) {
-    return PIPE_MATH;
-  }
-
-  if (inst->tokenHonourInstruction()) {
-    if (inst->isDpas()) {
-      return PIPE_DPAS;
-    }
-    if (inst->isMathPipeInst()) {
-      return PIPE_MATH;
-    }
-    if (inst->isSend()) {
-      return PIPE_SEND;
-    }
-    vISA_ASSERT_UNREACHABLE("Wrong token pipe instruction!");
-  }
-
-  vISA_ASSERT(inst->hasNoPipe(), "No pipe instruction");
-  return PIPE_NONE;
 }
 
 // Compute the range of registers touched by OPND.
@@ -5486,7 +5440,7 @@ void G4_BB_SB::clearKilledBucketNodeXeLP(LiveGRFBuckets *LB, int ALUID) {
 
       if ((distanceHonourInstruction(curLiveNode->GetInstruction()) &&
            ((ALUID - curLiveNode->getALUID()) >
-            curLiveNode->getMaxDepDistance())) ||
+            curLiveNode->GetInstruction()->getMaxDepDistance())) ||
           curLiveNode->isInstKilled() ||
           (curLiveNode->isSourceKilled() && liveBN->opndNum >= Opnd_src0 &&
            liveBN->opndNum <= Opnd_src3)) {
@@ -5671,7 +5625,7 @@ void G4_BB_SB::setDistance(const SBFootprint *footprint, SBNode *node,
     node->distDep.push_back(depItem);
   } else {
     auto dist = node->getALUID() - liveNode->getALUID();
-    vISA_ASSERT(dist <= liveNode->getMaxDepDistance(),
+    vISA_ASSERT(dist <= liveNode->GetInstruction()->getMaxDepDistance(),
            "dist should not exceed the max dep distance");
     node->setDistance(dist);
   }
@@ -6432,7 +6386,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     }
 
     if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
-      node->ALUPipe = getInstructionPipeXe(curInst);
+      node->ALUPipe = curInst->getInstructionPipeXe();
     }
 
     // For ALU instructions without GRF usage

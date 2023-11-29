@@ -7845,6 +7845,14 @@ void Optimizer::staticProfiling() {
   // missed.
   StaticProfiling s(builder, kernel);
   s.run();
+
+  // Do static cycle profiling only for platforms have 3 or more ALU pipelines.
+  // Do static cycle profling only when shader dump is enabled.
+  if (builder.hasThreeALUPipes() &&
+      builder.getOptions()->getOption(vISA_outputToFile)) {
+    StaticCycleProfiling sc(kernel);
+    sc.run();
+  }
 }
 
 static void markBreakpoint(G4_BB *bb, INST_LIST_ITER it, IR_Builder *builder) {

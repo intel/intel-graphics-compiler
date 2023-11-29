@@ -38,8 +38,6 @@ class PointsToAnalysis;
 } // namespace vISA
 
 // FIXME, build a table for different platforms
-#define SWSB_MAX_ALU_DEPENDENCE_DISTANCE 11
-#define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT 15
 #define SWSB_MAX_MATH_DEPENDENCE_DISTANCE 18
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE 7u
 
@@ -73,16 +71,6 @@ constexpr int INVALID_ID = -1;
 #define UNINIT_BUCKET -1
 
 namespace vISA {
-
-typedef enum _SB_INST_PIPE {
-  PIPE_NONE = 0,
-  PIPE_INT = 1,
-  PIPE_FLOAT = 2,
-  PIPE_LONG = 3,
-  PIPE_MATH = 4,
-  PIPE_DPAS = 6,
-  PIPE_SEND = 7,
-} SB_INST_PIPE;
 
 struct SBDep {
   SBDep(SBNode *SBNode, DepType Type, SBDependenceAttr Attr) {
@@ -492,7 +480,6 @@ public:
 
   unsigned getDistInfo(SB_INST_PIPE depPipe);
   void setDistInfo(SB_INST_PIPE depPipe, unsigned distance);
-  int getMaxDepDistance() const;
   void setDepToken(unsigned short token, SWSBTokenType type, SBNode *node);
   void clearDistInfo(SB_INST_PIPE depPipe);
   int calcDiffBetweenInstDistAndPipeDepDist(
