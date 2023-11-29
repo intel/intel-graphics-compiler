@@ -133,6 +133,7 @@ struct DocRef {
     SRC0, // headers/addresses etc...
     SRC1, // store/atomic payload
     //
+    MSGOP,  // the message opcode (always bits of the descriptor)
     DESC,   // descriptor
     EXDESC, // extended descriptor (imm or reg)
   } kind;
