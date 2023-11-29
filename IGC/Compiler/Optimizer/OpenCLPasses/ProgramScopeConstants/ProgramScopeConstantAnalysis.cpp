@@ -328,7 +328,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
         else
         {
-            IGC_ASSERT_MESSAGE(Ctx->inlineProgramScopeGlobalOffsets[globalName], "No offset recorded for global during initial compilation");
+            IGC_ASSERT_MESSAGE(Ctx->inlineProgramScopeGlobalOffsets.count(globalName), "No offset recorded for global during initial compilation");
             m_pModuleMd->inlineProgramScopeOffsets[offset.first] = Ctx->inlineProgramScopeGlobalOffsets[globalName];
         }
     }
