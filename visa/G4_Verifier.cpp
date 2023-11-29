@@ -471,8 +471,18 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       newRgn.computeLeftBound(*kernel.fg.builder);
       newRgn.computeRightBound(execSize);
 
-      if ((opnd->getRightBound() - opnd->getLeftBound()) >
-              (2u * kernel.numEltPerGRF<Type_UB>())) {
+      if (kernel.fg.builder->supportNativeSIMD32() &&
+          inst->getExecSize() == g4::SIMD32 && opnd->getTypeSize() == 8) {
+        bool indirect1x1 = opnd->isIndirect() &&
+                           !opnd->asSrcRegRegion()->getRegion()->isRegionWH();
+        vISA_ASSERT(!indirect1x1,
+                    "Must not be indirect 1x1 addressing mode for SIMD32 "
+                    "instructions with 64b datatypes");
+        vISA_ASSERT((opnd->getRightBound() - opnd->getLeftBound()) <
+                        (4u * kernel.numEltPerGRF<Type_UB>()),
+                    "Src cannot span more than 4 GRFs!");
+      } else if ((opnd->getRightBound() - opnd->getLeftBound()) >
+                 (2u * kernel.numEltPerGRF<Type_UB>())) {
         if (!(inst->opcode() == G4_pln && inst->getSrc(1) == opnd)) {
           DEBUG_VERBOSE(
               "Difference between left/right bound is greater than 2 GRF for "
@@ -552,9 +562,18 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       newRgn.computeLeftBound(*kernel.fg.builder);
       newRgn.computeRightBound(execSize);
 
-      if ((opnd->getRightBound() - opnd->getLeftBound()) >
-              (2u * kernel.numEltPerGRF<Type_UB>()) &&
-          (inst->opcode() != G4_madw)) {
+      if (kernel.fg.builder->supportNativeSIMD32() &&
+          inst->getExecSize() == g4::SIMD32 &&
+          (opnd->getTypeSize() == 8)) {
+        vISA_ASSERT(!opnd->isIndirect(),
+                    "Must be direct addressing mode for SIMD32 instructions "
+                    "with 64b datatypes");
+        vISA_ASSERT((opnd->getRightBound() - opnd->getLeftBound()) <
+                        (4u * kernel.numEltPerGRF<Type_UB>()),
+                    "Dst cannot span more than 4 GRFs!");
+      } else if ((opnd->getRightBound() - opnd->getLeftBound()) >
+                     (2u * kernel.numEltPerGRF<Type_UB>()) &&
+                 (inst->opcode() != G4_madw)) {
         DEBUG_VERBOSE(
             "Difference between left/right bound is greater than 2 GRF for dst "
             "region. Single non-send opnd cannot span 2 GRFs. lb = "

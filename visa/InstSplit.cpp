@@ -13,6 +13,16 @@ using namespace vISA;
 
 InstSplitPass::InstSplitPass(IR_Builder *builder) : m_builder(builder) {}
 
+static bool DoNotSplit(G4_INST* inst) {
+  if (inst->isDpas() || inst->isSend() || inst->opcode() == G4_label ||
+      inst->opcode() == G4_pln || inst->opcode() == G4_return ||
+      inst->isFlowControl() || inst->isPseudoLogic() ||
+      inst->opcode() == G4_madw)
+    return true;
+
+  return false;
+}
+
 // This pass verifies instructions sizes with respect to SIMD width and
 // operands' data type. Instructions that touch more than 2 GRFs are split
 // evenly until they are within 2 GRFs. Instructions not considered for
@@ -23,6 +33,8 @@ InstSplitPass::InstSplitPass(IR_Builder *builder) : m_builder(builder) {}
 //      - Control flow, labels and return
 //      - Dpas
 //      - Instructions with indirect addressing other than 1x1 indirect region
+//      - SIMD32 instructions with operands which have Q/DF datatypes and
+//        direct addressing mode
 void InstSplitPass::run() {
   for (INST_LIST_ITER it = m_builder->instList.begin(),
                       instlistEnd = m_builder->instList.end();
@@ -33,13 +45,7 @@ void InstSplitPass::run() {
       continue;
     }
 
-    if (inst->isSend() || inst->opcode() == G4_label ||
-        inst->opcode() == G4_pln || inst->opcode() == G4_return ||
-        inst->isFlowControl() || inst->isPseudoLogic() ||
-        inst->opcode() == G4_madw) {
-      continue;
-    }
-    if (inst->isDpas()) {
+    if (DoNotSplit(inst)) {
       continue;
     }
 
@@ -56,12 +62,7 @@ void InstSplitPass::runOnBB(G4_BB *bb) {
       continue;
     }
 
-    if (inst->isSend() || inst->opcode() == G4_label ||
-        inst->opcode() == G4_pln || inst->opcode() == G4_return ||
-        inst->isFlowControl() || inst->isPseudoLogic()) {
-      continue;
-    }
-    if (inst->isDpas()) {
+    if (DoNotSplit(inst)) {
       continue;
     }
 
@@ -82,15 +83,29 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
   bool doSplit = false;
   G4_ExecSize execSize = inst->getExecSize();
 
-  auto cross2GRF = [this](G4_Operand *opnd) {
+  auto cross2GRF = [inst, this](G4_Operand *opnd) {
     G4_SrcRegRegion *src = opnd->asSrcRegRegion();
+    // A source cannot span more than 2 adjacent GRF registers, if the source
+    // is in indirect 1x1 mode. vISA assumes that the subreg of indirect operand
+    // is GRF-aligned.
+    bool indirect1x1 = opnd->isIndirect() && !opnd->isVxHIndirect();
+    if (indirect1x1) {
+      uint16_t srcStride = 0;
+      uint32_t execSize = inst->getExecSize();
+      src->getRegion()->isSingleStride(execSize, srcStride);
+      return (execSize * src->getTypeSize() * srcStride) >
+             (m_builder->getGRFSize() * 2u);
+    }
     uint32_t leftBound = 0, rightBound = 0;
     computeSrcBounds(src, leftBound, rightBound);
     return (rightBound - leftBound) > (m_builder->getGRFSize() * 2u);
   };
 
   auto cross2GRFDst = [inst, this](G4_DstRegRegion *dst) {
-    if (dst->isNullReg()) {
+    // In Indirect Addressing mode, a destination cannot span more than 2
+    // adjacent GRF registers. vISA assumes that the subreg of indirect
+    // operand is GRF-aligned.
+    if (dst->isNullReg() || dst->isIndirect()) {
       return ((unsigned)inst->getExecSize() * dst->getTypeSize() *
               dst->getHorzStride()) > (m_builder->getGRFSize() * 2u);
     }
@@ -121,11 +136,39 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     return tmpSrc;
   };
 
+  // Exception to allow to span 2 GRFs:
+  // When ExecSize = 32 and Dtatype = DF or *Q, then dst/src operands cannot
+  // span more than 4 ajacent GRF registers. This requires that the operand must
+  // be GRF-aligned and have contiguous regions.
+  auto AllowCross2GRF = [&](G4_Operand *opnd) {
+    if (!m_builder->supportNativeSIMD32())
+      return false;
+
+    // Must be SIMD32 with 64b datatypes
+    if (inst->getExecSize() != g4::SIMD32 || opnd->getTypeSize() != 8)
+      return false;
+
+    // Must be GRF-aligned
+    if (!opnd->isScalarSrc() && !m_builder->tryToAlignOperand(
+            opnd, m_builder->getGRFSize()))
+      return false;
+
+    // Must be scalar or contiguous regions
+    if (opnd->isDstRegRegion()) {
+      return (opnd->asDstRegRegion()->getHorzStride() == 1);
+    } else {
+      return (opnd->isScalarSrc() ||
+             opnd->asSrcRegRegion()->getRegion()->isContiguous(
+                 inst->getExecSize()));
+    }
+    return false;
+  };
+
   // Check sources
   for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
     if (!inst->getSrc(i)->isSrcRegRegion())
       continue;
-    if (cross2GRF(inst->getSrc(i))) {
+    if (cross2GRF(inst->getSrc(i)) && !AllowCross2GRF(inst->getSrc(i))) {
       doSplit = true;
       break;
     }
@@ -151,13 +194,14 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
   }
 
   // Check destination
-  if (inst->getDst() && cross2GRFDst(inst->getDst())) {
+  if (inst->getDst() && cross2GRFDst(inst->getDst()) &&
+      !AllowCross2GRF(inst->getDst())) {
     doSplit = true;
   }
 
   // Handle split exceptions
   if (!doSplit) {
-    if (inst->opcode() == G4_cmp) {
+    if (inst->opcode() == G4_cmp && !m_builder->supportNativeSIMD32()) {
       // Due to a simulator quirk, we need to split cmp instruction even if the
       // dst operand of the compare is null, if it "looks" too large,
       // that is, if the execution size is 16 and the comparison type

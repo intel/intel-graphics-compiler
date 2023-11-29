@@ -5678,13 +5678,14 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size, const IR_Builder &irb) {
   } else if (desc->isContiguous(exec_size)) {
     // fast path
     int totalBytes = exec_size * typeSize;
-    vISA_ASSERT(totalBytes <= 2 * irb.getGRFSize(),
-                "total bytes exceed 2 GRFs");
+    if (!irb.supportNativeSIMD32())
+      vISA_ASSERT(totalBytes <= 2 * irb.getGRFSize(),
+                  "total bytes exceed 2 GRFs");
 
     footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
     if (totalBytes > 64) {
       footPrint1 =
-          totalBytes == 128 ? ULLONG_MAX : (1ULL << (totalBytes - 64)) - 1;
+          totalBytes >= 128 ? ULLONG_MAX : (1ULL << (totalBytes - 64)) - 1;
     }
   } else {
     for (int i = 0, numRows = exec_size / desc->width; i < numRows; ++i) {

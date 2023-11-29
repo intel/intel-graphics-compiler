@@ -433,7 +433,10 @@ bool supportFloatOr64bRegioning() const {
 
 int getFP64MadmExecSize() const {
   auto plat = getPlatform();
-  if (plat >= Xe_PVC) {
+  if (supportNativeSIMD32()) {
+    return 32;
+  }
+  else if (plat >= Xe_PVC) {
     return 16;
   } else if (plat == Xe_XeHPSDV || plat == Xe_DG2 || plat == Xe_MTL ||
              plat == Xe_ARL) {
@@ -838,5 +841,9 @@ bool needNopAfterCFInstWA() const {
 
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
   return getPlatform() < Xe2;
+}
+
+bool supportNativeSIMD32() const {
+  return false;
 }
 // end HW capabilities

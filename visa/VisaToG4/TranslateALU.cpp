@@ -71,7 +71,7 @@ int IR_Builder::translateVISAArithmeticInst(
       predOpnd = nullptr;
     }
 
-    if (opcode == ISA_MADW) {
+    if (opcode == ISA_MADW && !supportNativeSIMD32()) {
       vISA_ASSERT_INPUT(exsize <= 16,
                         "Unsupported execution size for madw");
     }
