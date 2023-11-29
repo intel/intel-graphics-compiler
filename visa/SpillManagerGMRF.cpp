@@ -3326,7 +3326,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
   // Scenarios   (A1, 1:&V1), (A1, 2:&V1) may happen, by should be rare. In this
   // case, only one declare will be created.
   std::vector<G4_AddrExp *> newAddExpList;
-  for (auto pt : *pointsToSet) {
+  for (const auto &pt : *pointsToSet) {
     G4_AddrExp *addrExp = pt.exp;
     G4_Declare *dcl = addrExp->getRegVar()->getDeclare();
     while (dcl->getAliasDeclare()) {

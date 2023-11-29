@@ -130,7 +130,7 @@ void PointsToAnalysis::addPointsToSetToBB(int bbId, const G4_RegVar *addr) {
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   const REGVAR_VECTOR &addrTakens = pointsToSets[addrPointsToSetIndex[addrId]];
-  for (auto addrTaken : addrTakens) {
+  for (const auto &addrTaken : addrTakens) {
     addIndirectUseToBB(bbId, addrTaken);
   }
 }

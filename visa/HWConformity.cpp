@@ -6252,7 +6252,7 @@ void HWConformity::fixBFMixedMode() {
       //    (isBFAllowedInst should be still valid to check if any new
       //    instruction
       //     from splitting is BF allowed or not.)
-      for (auto LI : instsToCheck) {
+      for (const auto &LI : instsToCheck) {
         INST_LIST_ITER thisII = LI;
         G4_INST *tI = *thisII;
         for (int i = 0, nsrc = (int)tI->getNumSrc(); i < nsrc; ++i) {

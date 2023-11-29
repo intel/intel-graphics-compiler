@@ -295,7 +295,7 @@ void PostDom::run() {
 
       // Common BBs appear in numInstances map with second value == bb->Succs
       // count
-      for (auto commonBBs : numInstances) {
+      for (const auto &commonBBs : numInstances) {
         if (commonBBs.second == bb->Succs.size())
           tmp.insert(commonBBs.first);
       }

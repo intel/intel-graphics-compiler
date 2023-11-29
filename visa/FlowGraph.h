@@ -350,7 +350,7 @@ public:
     return dcl == pseudoVCEDcl;
   }
   bool isPseudoVCADcl(const G4_Declare *dcl) const {
-    for (auto iter : fcallToPseudoDclMap) {
+    for (const auto &iter : fcallToPseudoDclMap) {
       if (iter.second.VCA == dcl) {
         return true;
       }
@@ -358,7 +358,7 @@ public:
     return false;
   }
   bool isPseudoA0Dcl(const G4_Declare *dcl) const {
-    for (auto iter : fcallToPseudoDclMap) {
+    for (const auto &iter : fcallToPseudoDclMap) {
       if (iter.second.A0 == dcl) {
         return true;
       }
@@ -366,7 +366,7 @@ public:
     return false;
   }
   bool isPseudoFlagDcl(const G4_Declare *dcl) const {
-    for (auto iter : fcallToPseudoDclMap) {
+    for (const auto &iter : fcallToPseudoDclMap) {
       if (iter.second.Flag == dcl) {
         return true;
       }
@@ -380,7 +380,7 @@ public:
     if (isPseudoVCEDcl(dcl)) {
       return true;
     }
-    for (auto iter : fcallToPseudoDclMap) {
+    for (const auto &iter : fcallToPseudoDclMap) {
       if (iter.second.A0 == dcl || iter.second.Flag == dcl ||
           iter.second.VCA == dcl) {
         return true;

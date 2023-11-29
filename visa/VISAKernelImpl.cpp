@@ -8352,7 +8352,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer,
     return VISA_FAILURE;
 
   GenRelocEntry *buffer_p = (GenRelocEntry *)buffer;
-  for (auto reloc : reloc_table) {
+  for (const auto &reloc : reloc_table) {
     auto inst = reloc.getInst();
     buffer_p->r_type = reloc.getType();
     buffer_p->r_offset = static_cast<uint32_t>(inst->getGenOffset()) +

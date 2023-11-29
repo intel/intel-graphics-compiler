@@ -628,7 +628,7 @@ void SWSBAnalyzer::processActiveSBID(SWSB &swsb,
                                      std::vector<SBID> &activeSBID) {
   // If instruction depends on one or more SBIDS, first one goes in to SWSB
   // field for rest we generate wait instructions.
-  for (auto aSBID : activeSBID) {
+  for (const auto &aSBID : activeSBID) {
     // Could be we had operation depending on the write
     /*
      *   This case also gets triggered when we have send in BB and dependence in

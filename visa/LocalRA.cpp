@@ -2532,7 +2532,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
               unsigned int useCnt = 0;
               INST_LIST_ITER lastUseIt;
               G4_Declare *newDcl = NULL;
-              for (auto usePoint : *useList) {
+              for (const auto &usePoint : *useList) {
                 INST_LIST_ITER useIt = usePoint.first;
                 G4_INST *useInst = *useIt;
                 useCnt++;

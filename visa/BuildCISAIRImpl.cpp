@@ -1484,9 +1484,9 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
   }
 
   // Append declarations and color attributes from all callees to mainFunc
-  for (auto iter : subFuncs) {
+  for (const auto &iter : subFuncs) {
     G4_Kernel *callee = iter.second;
-    for (auto curDcl : callee->Declares) {
+    for (const auto &curDcl : callee->Declares) {
       mainFunc->Declares.push_back(curDcl);
     }
   }

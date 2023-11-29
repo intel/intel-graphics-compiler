@@ -42,7 +42,7 @@ void LoopVarSplit::run() {
   //    b. if decision is to split, then check which loop(s) to split around
 
   std::list<std::pair<G4_Declare *, float>> sortedDcls;
-  for (auto item : dclSpillCost) {
+  for (const auto &item : dclSpillCost) {
     if (spilledDclSet.find(item.first) != spilledDclSet.end())
       sortedDcls.push_back(std::pair(item.first, item.second));
   }
@@ -60,7 +60,7 @@ void LoopVarSplit::run() {
   // cases, it is beneficial to split the variable around such loops. To
   // accommodate such cases, we should be looking at reference count of
   // variables in loops and iterate in an order based on that.
-  for (auto var : sortedDcls) {
+  for (const auto &var : sortedDcls) {
     const auto &loops = getLoopsToSplitAround(var.first);
     for (auto &loop : loops) {
       split(var.first, *loop);
@@ -74,7 +74,7 @@ std::vector<G4_SrcRegRegion *> LoopVarSplit::getReads(G4_Declare *dcl,
   std::unordered_set<G4_INST *> duplicates;
 
   const auto &uses = references.getUses(dcl);
-  for (auto use : *uses) {
+  for (const auto &use : *uses) {
     auto bb = std::get<1>(use);
     if (loop.contains(bb)) {
       auto inst = std::get<0>(use);
@@ -100,7 +100,7 @@ std::vector<G4_DstRegRegion *> LoopVarSplit::getWrites(G4_Declare *dcl,
   std::vector<G4_DstRegRegion *> writes;
 
   const auto &defs = references.getDefs(dcl);
-  for (auto def : *defs) {
+  for (const auto &def : *defs) {
     auto bb = std::get<1>(def);
     if (loop.contains(bb)) {
       auto dst = std::get<0>(def)->getDst();
@@ -131,9 +131,9 @@ unsigned int LoopVarSplit::getMaxRegPressureInLoop(Loop &loop) {
 }
 
 void LoopVarSplit::dump(std::ostream &of) {
-  for (auto dcl : splitResults) {
+  for (const auto &dcl : splitResults) {
     of << "Spilled dcl: " << dcl.first->getName() << "\n";
-    for (auto split : dcl.second) {
+    for (const auto &split : dcl.second) {
       of << "\tSplit dcl: " << split.first->getName() << ", for loop L"
          << split.second->id << "\n";
     }
@@ -207,7 +207,7 @@ void LoopVarSplit::removeSplitInsts(GlobalRA *gra, G4_Declare *spillDcl,
     return;
 
   auto &bbInstsToRemove = (*it).second.insts;
-  for (auto entry : bbInstsToRemove) {
+  for (const auto &entry : bbInstsToRemove) {
     auto currBB = entry.first;
 
     if (currBB == bb) {

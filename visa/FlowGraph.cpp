@@ -3613,7 +3613,7 @@ void FlowGraph::findNestedDivergentBBs(
            "ICE(vISA): there is an error in divergence tracking!");
   }
 
-  for (auto MI : nestedDivergentBBs) {
+  for (const auto &MI : nestedDivergentBBs) {
     G4_BB *bb = MI.first;
     if (MI.second >= 2) {
       bb->setBBType(G4_BB_NM_WA_TYPE);
@@ -4377,7 +4377,7 @@ bool FlowGraph::convertPredCall(
   bool changed = false;
   // Add BB0 and BB1 into the subroutine in which aAnchorBB is.
   auto updateSubroutineTab = [&](G4_BB *aAnchorBB, G4_BB *BB0, G4_BB *BB1) {
-    for (auto MI : subroutines) {
+    for (auto &MI : subroutines) {
       std::vector<G4_BB *> &bblists = MI.second;
       auto BI = std::find(bblists.begin(), bblists.end(), aAnchorBB);
       if (BI == bblists.end()) {

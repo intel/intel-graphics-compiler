@@ -402,7 +402,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows() {
   }
 
   // Propagate largeDefs to neverDefinedRows bit vector to later bitwise OR it
-  for (auto it : largeDefs) {
+  for (const auto &it : largeDefs) {
     unsigned int numRows = it.first->getNumRows();
     BitSet *undefinedRows = nullptr;
     for (unsigned int i = 0; i < numRows; i++) {

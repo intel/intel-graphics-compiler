@@ -100,7 +100,7 @@ void RPE::runBB(G4_BB *bb) {
         const REGVAR_VECTOR &pointsToSet =
             liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(src,
                                                                           bb);
-        for (auto pt : pointsToSet) {
+        for (const auto &pt : pointsToSet) {
           if (pt.var->isRegAllocPartaker()) {
             updateLiveness(live, pt.var->getId(), true);
           }
@@ -201,7 +201,7 @@ void RPE::updateRegisterPressure(bool change, bool clean,
 void RPE::recomputeMaxRP() {
   maxRP = 0;
   // Find max register pressure over all entries in map
-  for (auto item : rp) {
+  for (const auto &item : rp) {
     maxRP = std::max(maxRP, item.second);
   }
 }

@@ -7678,7 +7678,7 @@ void Optimizer::split4GRFVars() {
     }
   }
 
-  for (auto DI : DclMap) {
+  for (const auto &DI : DclMap) {
     delete DI.second;
   }
 }

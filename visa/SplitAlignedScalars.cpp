@@ -168,7 +168,7 @@ std::vector<G4_Declare *> SplitAlignedScalars::gatherCandidates() {
 unsigned int SplitAlignedScalars::computeNumMovs(G4_Declare *dcl) {
   unsigned int numMovsNeeded = 0;
   auto &Data = dclData[dcl];
-  for (auto def : Data.defs) {
+  for (const auto &def : Data.defs) {
     if (!canReplaceDst(def.second)) {
       auto bb = def.first;
       auto innerMostLoop = kernel.fg.getLoops().getInnerMostLoop(bb);
@@ -179,7 +179,7 @@ unsigned int SplitAlignedScalars::computeNumMovs(G4_Declare *dcl) {
         numMovsNeeded++;
     }
   }
-  for (auto use : Data.uses) {
+  for (const auto &use : Data.uses) {
     if (!canReplaceSrc(std::get<1>(use), std::get<2>(use))) {
       auto bb = std::get<0>(use);
       auto innerMostLoop = kernel.fg.getLoops().getInnerMostLoop(bb);

@@ -1064,7 +1064,7 @@ void emitDataPhyRegSaveInfoPerIP(VISAKernelImpl *visaKernel,
       visaKernel->getKernel()->getKernelDebugInfo()->getRelocOffset();
   const IR_Builder *builder = visaKernel->getIRBuilder();
 
-  for (auto sr : srInfo) {
+  for (const auto &sr : srInfo) {
     if (sr.getInst()->getGenOffset() == UNDEFINED_GEN_OFFSET) {
       continue;
     }
@@ -1073,7 +1073,7 @@ void emitDataPhyRegSaveInfoPerIP(VISAKernelImpl *visaKernel,
                        getBinInstSize(sr.getInst()) - relocOffset,
                    t);
     emitDataUInt16((uint16_t)sr.saveRestoreMap.size(), t);
-    for (auto mapIt : sr.saveRestoreMap) {
+    for (const auto &mapIt : sr.saveRestoreMap) {
       emitDataUInt16((uint16_t)mapIt.first * builder->numEltPerGRF<Type_UB>(),
                      t);
       emitDataUInt16((uint16_t)builder->numEltPerGRF<Type_UB>(), t);
@@ -1205,7 +1205,7 @@ template <class T> void emitDataCallerSave(VISAKernelImpl *visaKernel, T &t) {
       mgr.sieveInstructions(SaveRestoreManager::CallerOrCallee::Caller);
 
       numCallerSaveEntries += (uint16_t)srInfo.size();
-      for (auto sr : srInfo) {
+      for (const auto &sr : srInfo) {
         if (sr.getInst()->getGenOffset() == UNDEFINED_GEN_OFFSET) {
           numCallerSaveEntries--;
         }
@@ -1260,7 +1260,7 @@ template <class T> void emitDataCalleeSave(VISAKernelImpl *visaKernel, T &t) {
   mgr.sieveInstructions(SaveRestoreManager::CallerOrCallee::Callee);
 
   numCalleeSaveEntries += (uint16_t)srInfo.size();
-  for (auto sr : srInfo) {
+  for (const auto &sr : srInfo) {
     if (sr.getInst()->getGenOffset() == UNDEFINED_GEN_OFFSET) {
       numCalleeSaveEntries--;
     }
@@ -2047,7 +2047,7 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
         inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
     // Remove any item in map that is saved as storage for some other reg.
-    for (auto mapIt : saveRestoreMap) {
+    for (const auto &mapIt : saveRestoreMap) {
       if (mapIt.second.first == RegOrMem::Reg &&
           mapIt.second.second.regNum == dstreg) {
         DEBUG_VERBOSE("Removed r" << mapIt.second.second.regNum
@@ -2067,7 +2067,7 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
         inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
     bool done = false;
-    for (auto mapIt : saveRestoreMap) {
+    for (const auto &mapIt : saveRestoreMap) {
       if (mapIt.second.first == RegOrMem::Reg &&
           mapIt.second.second.regNum == srcreg && mapIt.first == dstreg) {
         saveRestoreMap.erase(mapIt.first);
@@ -2168,7 +2168,7 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
         int32_t offsetForReg =
             startoff + ((reg - dstreg) * builder.numEltPerGRF<Type_UB>());
 
-        for (auto mapIt : saveRestoreMap) {
+        for (const auto &mapIt : saveRestoreMap) {
           if (mapIt.first == reg &&
               (mapIt.second.first == RegOrMem::MemAbs ||
                mapIt.second.first == RegOrMem::MemOffBEFP) &&
@@ -2192,7 +2192,7 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
 void dumpLiveInterval(LiveIntervalInfo *lv) {
   std::vector<std::pair<unsigned int, unsigned int>> v;
   lv->getLiveIntervals(v);
-  for (auto it : v) {
+  for (const auto &it : v) {
     std::cerr << "(" << it.first << ", " << it.second << ")\n";
   }
 }

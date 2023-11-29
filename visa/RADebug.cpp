@@ -1423,12 +1423,12 @@ SpillAnalysis::GetLiveBBs(G4_Declare *Dcl,
   auto *Defs = VarRefs.getDefs(Dcl);
   auto *Uses = VarRefs.getUses(Dcl);
 
-  for (auto Def : *Defs) {
+  for (const auto &Def : *Defs) {
     auto *BB = std::get<1>(Def);
     BBs.insert(BB);
   }
 
-  for (auto Use : *Uses) {
+  for (const auto &Use : *Uses) {
     auto *BB = std::get<1>(Use);
     BBs.insert(BB);
   }

@@ -101,7 +101,7 @@ void SCCAnalysis::dump(std::ostream &os) const {
   for (auto node : SCCNodes) {
     node->dump(os);
   }
-  for (auto SCC : SCCs) {
+  for (const auto &SCC : SCCs) {
     SCC.dump(os);
   }
 }

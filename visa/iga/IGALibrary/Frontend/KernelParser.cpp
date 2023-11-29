@@ -4364,7 +4364,7 @@ Kernel *iga::ParseGenKernel(const Model &m, const char *inp,
   auto &insts = h.getInsts();
   auto blockStarts = Block::inferBlocks(e, k->getMemManager(), insts);
   int id = 0;
-  for (auto bitr : blockStarts) {
+  for (const auto &bitr : blockStarts) {
     bitr.second->setID(id++);
     k->appendBlock(bitr.second);
   }

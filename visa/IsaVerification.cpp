@@ -4526,7 +4526,7 @@ void vISAVerifier::verifyKernelHeader() {
 }
 
 void vISAVerifier::finalize() {
-  for (auto iter : labelDefs) {
+  for (const auto &iter : labelDefs) {
     if (!(iter.second)) {
       const label_info_t *lblInfo = header->getLabel(iter.first);
       if (lblInfo->kind != LABEL_FC) {

@@ -1226,7 +1226,7 @@ void Optimizer::insertFenceBeforeEOT() {
   }
 
   if (toRemoveFence && !toBeRemoved.empty() && !hasUAVWrites) {
-    for (auto II : toBeRemoved) {
+    for (const auto &II : toBeRemoved) {
       G4_BB *aBB = II.first;
       G4_INST *aInst = II.second;
       aBB->remove(aInst);

@@ -823,7 +823,7 @@ void DepSetBuilder::DpasMacroBuilder::setBits(BitSet<> &bit_set,
 void DepSetBuilder::DpasMacroBuilder::setDstSrcBits(
     const SrcRegRangeType &src_range, const DstRegRangeType &dst_range,
     BitSet<> &src_bits, BitSet<> &dst_bits) const {
-  for (auto regs : src_range) {
+  for (const auto &regs : src_range) {
     setBits(src_bits, regs.first, regs.second);
   }
   setBits(dst_bits, dst_range.first, dst_range.second);

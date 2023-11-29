@@ -443,7 +443,7 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
     std::cout << "\nUses:\n";
   });
 
-  for (auto use : uses) {
+  for (const auto &use : uses) {
     G4_INST *useInst = use.first;
     G4_SrcRegRegion *srcToReplace =
         useInst->getOperand(use.second)->asSrcRegRegion();
@@ -558,7 +558,7 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion *dst) {
     // ...
     // V10 = 0 <-- Current instruction - Invalidate inst1
     // V30 = r[A0] <-- inst1 != this inst
-    for (auto dcls : lvnTable) {
+    for (auto &dcls : lvnTable) {
       for (auto second = dcls.second.begin(); second != dcls.second.end();) {
         auto lvnItems = (*second);
         auto lvnItemsInst = lvnItems->inst;
@@ -618,7 +618,7 @@ bool LVN::sameGRFRef(G4_Declare *dcl1, G4_Declare *dcl2) {
 // LVN table that refer to same GRF.
 void LVN::removePhysicalVarRedefs(G4_DstRegRegion *dst) {
   G4_Declare *topdcl = dst->getTopDcl();
-  for (auto all : lvnTable) {
+  for (auto& all : lvnTable) {
     for (auto it = all.second.begin(); it != all.second.end();) {
       auto item = (*it);
       bool erase = false;
@@ -680,7 +680,7 @@ void LVN::removeAliases(G4_INST *inst) {
   if (!dstPointsToPtr)
     return;
 
-  for (auto item : *dstPointsToPtr) {
+  for (const auto &item : *dstPointsToPtr) {
     auto dcl = item.var->getDeclare()->getRootDeclare();
     auto it = dclValueTable.find(dcl);
     if (it == dclValueTable.end())

@@ -98,7 +98,7 @@ void CoalesceSpillFills::copyToOldFills(
   // Copy data from coalesced fill in to older fills.
   // This way we don't carry entire coalesced payload
   // till last fill.
-  for (auto oldFill : indFills) {
+  for (const auto &oldFill : indFills) {
     unsigned int numGRFs =
         (oldFill.first->getRightBound() - oldFill.first->getLeftBound() +
          kernel.numEltPerGRF<Type_UB>() - 1) /
@@ -179,7 +179,7 @@ void CoalesceSpillFills::coalesceSpills(
 
   std::set<G4_Declare *> declares;
   unsigned int minRow = UINT_MAX;
-  for (auto d : coalesceableSpills) {
+  for (const auto &d : coalesceableSpills) {
     auto src1Opnd = (*d)->getSrc(1)->asSrcRegRegion();
     auto curRow = src1Opnd->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
     declares.insert(src1Opnd->getTopDcl());
@@ -204,7 +204,7 @@ void CoalesceSpillFills::coalesceSpills(
   coalescedSpillSrc->getInst()->inheritDIFrom(leadInst);
 
   if (declares.size() != 1) {
-    for (auto c : coalesceableSpills) {
+    for (const auto &c : coalesceableSpills) {
       unsigned int scratchOffset, scratchSize;
       getScratchMsgInfo((*c), scratchOffset, scratchSize);
 
@@ -218,7 +218,7 @@ void CoalesceSpillFills::coalesceSpills(
   auto f = coalesceableSpills.back();
   f++;
 
-  for (auto spill : coalesceableSpills) {
+  for (const auto &spill : coalesceableSpills) {
     gra.incRA.markForIntfUpdate(
         (*spill)->asSpillIntrinsic()->getPayload()->getTopDcl());
     bb->erase(spill);
@@ -247,7 +247,7 @@ void CoalesceSpillFills::coalesceFills(
   // dclSize could be larger than payload size when
   // 2 variables across scratch writes are coalesced.
   unsigned int dclSize = payloadSize;
-  for (auto c : coalesceableFills) {
+  for (const auto &c : coalesceableFills) {
     unsigned int scratchOffset, scratchSize;
     auto fill = (*c);
     getScratchMsgInfo((*c), scratchOffset, scratchSize);
@@ -276,7 +276,7 @@ void CoalesceSpillFills::coalesceFills(
                             gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
   newFill->inheritDIFrom(leadInst);
 
-  for (auto c : coalesceableFills) {
+  for (const auto &c : coalesceableFills) {
     unsigned int scratchOffset, scratchSize;
     getScratchMsgInfo((*c), scratchOffset, scratchSize);
 
@@ -289,7 +289,7 @@ void CoalesceSpillFills::coalesceFills(
   auto f = coalesceableFills.front();
   f++;
 
-  for (auto fill : coalesceableFills) {
+  for (const auto &fill : coalesceableFills) {
     if (fill == f) {
       f++;
     }
@@ -321,7 +321,7 @@ bool CoalesceSpillFills::fillHeuristic(
   min = 0xffffffff, max = 0;
   G4_Declare *header =
       (*coalesceableFills.front())->asFillIntrinsic()->getHeader()->getTopDcl();
-  for (auto f : coalesceableFills) {
+  for (const auto &f : coalesceableFills) {
     if ((*f)->asFillIntrinsic()->getHeader()->getTopDcl() != header &&
         !(*f)->asFillIntrinsic()->getFP())
       return false;
@@ -364,7 +364,7 @@ bool CoalesceSpillFills::fillHeuristic(
   const int maxDclSize = 128;
 
   std::map<G4_Declare *, std::bitset<maxDclSize>> allRows;
-  for (auto c : coalesceableFills) {
+  for (const auto &c : coalesceableFills) {
     auto topdcl = (*c)->getDst()->getTopDcl();
 
     unsigned int scratchOffset, scratchSize;
@@ -557,7 +557,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(
   G4_Declare *header =
       (*instList.front())->asSpillIntrinsic()->getHeader()->getTopDcl();
 
-  for (auto instIt : instList) {
+  for (const auto &instIt : instList) {
     auto inst = (*instIt);
 
     if (inst->asSpillIntrinsic()->getHeader()->getTopDcl() != header &&
@@ -619,7 +619,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(
               auto curSrc1Row =
                   (*(*spillIt))->getSrc(1)->asSrcRegRegion()->getRegOff();
               bool success = true;
-              for (auto candidate : allowed) {
+              for (const auto &candidate : allowed) {
                 unsigned int candOffset, candSize;
                 getScratchMsgInfo(*candidate, candOffset, candSize);
                 auto prevSrc1Row =
@@ -658,8 +658,8 @@ void CoalesceSpillFills::keepConsecutiveSpills(
     unsigned int slots = maxOffset - minOffset + 1;
     if (slots == 2 || slots == 4) {
       // Insert coalescable spills in order of appearance
-      for (auto origInst : origInstList) {
-        for (auto allowedSpills : allowed) {
+      for (const auto &origInst : origInstList) {
+        for (const auto &allowedSpills : allowed) {
           if (*origInst == *allowedSpills) {
             coalescable.push_back(origInst);
             break;
@@ -814,7 +814,7 @@ bool CoalesceSpillFills::overlap(G4_INST *inst1, G4_INST *inst2,
 
 bool CoalesceSpillFills::overlap(G4_INST *inst,
                                  std::list<INST_LIST_ITER> &allInsts) {
-  for (auto sp : allInsts) {
+  for (const auto &sp : allInsts) {
     bool t;
     auto spillInst = (*sp);
     if (overlap(inst, spillInst, t))
@@ -887,7 +887,7 @@ bool CoalesceSpillFills::replaceCoalescedOperands(G4_INST *inst) {
 bool CoalesceSpillFills::allSpillsSameVar(std::list<INST_LIST_ITER> &spills) {
   // Return true if all vars in spills list have same dcl
   G4_Declare *dcl = nullptr;
-  for (auto s : spills) {
+  for (const auto &s : spills) {
     auto topdcl = (*s)->getSrc(1)->getTopDcl();
 
     if (!dcl)
@@ -1479,7 +1479,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
           auto baseIt = dstSrcRowMapping.find(dstRowStart);
           if (baseIt != dstSrcRowMapping.end()) {
             auto base = dstSrcRowMapping.find(dstRowStart)->second;
-            for (auto m : dstSrcRowMapping) {
+            for (const auto &m : dstSrcRowMapping) {
               unsigned int curRow = m.first - dstRowStart;
               if (m.second == INT_MAX) {
                 success = false;
@@ -1502,7 +1502,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
                   inst->getSrc(1)->getType());
               inst->setSrc(sendSrc1, 1);
 
-              for (auto c : copies) {
+              for (const auto &c : copies) {
                 auto defDcl = (*c.second)->getDst()->getTopDcl();
                 auto it = movs.find(defDcl);
                 if (it == movs.end()) {
@@ -1546,13 +1546,13 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
     }
   }
 
-  for (auto mov : movs) {
+  for (const auto &mov : movs) {
     auto dcl = mov.first;
     auto numRefs = mov.second.first;
     auto &allMovs = mov.second.second;
 
     if (numRefs == 0 && !dcl->getAddressed()) {
-      for (auto m : allMovs) {
+      for (const auto &m : allMovs) {
         auto bb = m.first;
         auto iter = m.second;
         bb->erase(iter);
@@ -1878,13 +1878,13 @@ void CoalesceSpillFills::removeRedundantWrites() {
   }
 
   std::map<G4_INST *, std::pair<INST_LIST_ITER, G4_BB *>> spillToRemove;
-  for (auto scratchAccess : scratchOffsetAccess) {
+  for (const auto &scratchAccess : scratchOffsetAccess) {
     if (scratchAccess.second.second.size() == 0 &&
         scratchAccess.second.first.size() > 0) {
       // 0 fills for scratch slot
       // Check whether all spill slots have 0 fills
       // in case spills are coalesced.
-      for (auto spill : scratchAccess.second.first) {
+      for (const auto &spill : scratchAccess.second.first) {
         bool spillRequired = false;
         unsigned int offset, size;
         getScratchMsgInfo(*spill.second, offset, size);
@@ -1908,7 +1908,7 @@ void CoalesceSpillFills::removeRedundantWrites() {
       // 0 spills for scratch slot, non-zero fills
       // Check whether all fill slots have 0 spills
       // in case fills are coalesced.
-      for (auto fill : scratchAccess.second.second) {
+      for (const auto &fill : scratchAccess.second.second) {
         if (*fill.second == gra.getRestoreBE_FPInst())
           continue;
 
@@ -1933,7 +1933,7 @@ void CoalesceSpillFills::removeRedundantWrites() {
     }
   }
 
-  for (auto removeSp : spillToRemove) {
+  for (const auto &removeSp : spillToRemove) {
     G4_BB *bb = removeSp.second.second;
     auto *inst = *removeSp.second.first;
     if ((inst->isSpillIntrinsic() &&
