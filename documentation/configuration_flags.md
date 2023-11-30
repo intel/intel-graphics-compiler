@@ -276,7 +276,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableBitcastExtractInsertPattern` | Enable BitcastExtractInsertPattern in CustomSafeOptPass. | Available |
 | `EnableCSSIMD32` | Enable computer shader SIMD32 mode, and fall back to lower SIMD when spill | - |
 | `EnableDivergentBarrierCheck` | Uses WIAnalysis to find barriers in divergent flow control. May have false positives. | - |
-| `EnableHashMovsAtPrologue` | Rather than after EOT, insert hash code movs at shader entry | - |
+| `EnableHashMovsAtPrologue` | Rather than after EOT, insert hash code movs at shader entry | Available |
 | `EnableLSCFenceUGMBeforeEOT` | Enable inserting fence.ugm.06.tile before EOT if a kernel has any write to UGM [XeHPC, PVC]. | Available |
 | `EnableOptionalBufferOffset` | For StatelessToStateful optimization [OCL], if true, make buffer offset optional. Valid only if buffer offset is supported. | Available |
 | `EnableRTLSCFenceUGMBeforeEOT` | [tmp]Enable inserting fence.ugm.06.tile before EOT for RT shader [XeHPC, PVC]. | - |
@@ -290,7 +290,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ForceCSLeastSIMD` | Force computer shader to the lowest allowed SIMD mode | - |
 | `ForceCSSIMD16` | Force computer shader SIMD16 mode if allowed, otherwise it will use SIMD32 | - |
 | `ForceCSSIMD32` | Force computer shader SIMD32 mode | - |
-| `ForceDisableShaderDebugHashCodeInKernel` | Disable hash code addition to the binary after EOT | - |
+| `ForceDisableShaderDebugHashCodeInKernel` | Disable hash code addition to the binary after EOT | Available |
 | `ForceMemoryFenceBeforeEOT` | Forces inserting SLM or gloabal memory fence before EOT if shader writes to SLM or goblam memory respectively. | - |
 | `ForcePerThreadPrivateMemorySize` | Useful for ensuring a certain amount of private memory when doing a shader override. | Available |
 | `ForceStatelessForQueueT` | In OCL, force to use stateless memory to hold queue_t*. This is a legacy feature to be removed. | - |
@@ -301,7 +301,7 @@ $ export IGC_ShaderDumpEnable=1
 | `SIPOverrideFilePath` | This key when enabled with EnableSIPOverride load of SIP from a specified path. | - |
 | `SToSProducesPositivePointer` | This key is for StatelessToStateful optimization if the  user knows the pointer offset is postive to the kernel argument. | - |
 | `ShaderDebugHashCode` | The driver will set a breakpoint in the first instruction of the shader which has the provided hash code.<br/>                                                                It works only when the value is different then 0 and SystemThreadEnable is set to TRUE.<br/>                                                                Ex: VS_asm2df26246434553ad_nos0000000000000000 , only the LowPart Need<br/>                                                                to be Enterd in Registry Ex : 0x434553ad ,i.e Lower 8 Hex Digits of the 16 Digit Hash Code<br/>                                                                for Compatibilty Reasons | - |
-| `ShaderDebugHashCodeInKernel` | Add hash code to the binary | - |
+| `ShaderDebugHashCodeInKernel` | Add hash code to the binary | Available |
 | `ShaderDisableOptPassesAfter` | Will only run first N optimization passes, any further passes will be ignored. This flag can be used to bisect optimization passes. | - |
 | `ShaderDisplayAllPassesNames` | Display to console all passes name with their ID and occurrence number. | - |
 | `ShaderOverride` | Will override any LLVM shader with matching name in c:\\Intel\\IGC\\ShaderOverride | - |
