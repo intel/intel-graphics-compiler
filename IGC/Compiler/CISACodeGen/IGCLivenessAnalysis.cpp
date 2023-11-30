@@ -38,6 +38,9 @@ IGC_INITIALIZE_PASS_END(IGCLivenessAnalysis, PASS_FLAG2, PASS_DESCRIPTION2,
                         PASS_CFG_ONLY2, PASS_ANALYSIS2)
 #define PRINT(str) llvm::errs() << str
 
+
+IGCLivenessAnalysis::IGCLivenessAnalysis() : FunctionPass(ID) { UseWIAnalysis = true; };
+
 IGCLivenessAnalysis::IGCLivenessAnalysis(bool UseWiAnalysisVar /* = false */,
                                          bool DumpToFileVar /* = false */,
                                          const std::string &DumpFileNameVar)
