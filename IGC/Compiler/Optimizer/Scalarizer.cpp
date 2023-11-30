@@ -160,21 +160,6 @@ bool ScalarizeFunction::runOnFunction(Function& F)
         if (Value * val = dyn_cast<Value>(*index))
         {
             UndefValue* undefVal = UndefValue::get((*index)->getType());
-
-            if (MDNode* pEIMD = (*index)->getMetadata("implicitGlobalID"))
-            {
-                // Compute thread and group identification instructions must have 'Output' attribute
-                // added later during compilation. The implicitGlobalID metadata attached to this
-                // instruction must be assigned to a new instruction, which replaces this instruction.
-                // Unfortunatelly, replaceAllUsesWith() will not ensure such propagation.
-                Instruction* pNewInst = dyn_cast_or_null<llvm::Instruction>(undefVal);
-                if (pNewInst)
-                {
-                    IGC_ASSERT_MESSAGE(pNewInst, "Missing implicit global ID instruction");
-                    Instruction* instr = dyn_cast<Instruction>(*index);
-                    pNewInst->copyMetadata(*instr);
-                }
-            }
             (val)->replaceAllUsesWith(undefVal);
         }
         IGC_ASSERT_MESSAGE((*index)->use_empty(), "Unable to remove used instruction");

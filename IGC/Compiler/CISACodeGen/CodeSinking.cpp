@@ -736,11 +736,8 @@ namespace IGC {
                     // which is not really a local-code-motion
                     if (def->getNextNode() != use && !isa<PHINode>(use))
                     {
-                        if (!def->getMetadata("implicitGlobalID"))
-                        {
-                            def->moveBefore(use);
-                            madeChange = true;
-                        }
+                        def->moveBefore(use);
+                        madeChange = true;
                     }
                     localInstSet.erase(def);
                 }
