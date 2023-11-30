@@ -99,6 +99,9 @@ public:
     weakEdgeUsage.resize(K.getNumRegTotal(), 0);
   }
 
+  FreePhyRegs(const FreePhyRegs&) = delete;
+  FreePhyRegs& operator=(const FreePhyRegs&) = delete;
+
   ~FreePhyRegs() {
     delete[] availableGregs;
     delete[] availableAddrs;

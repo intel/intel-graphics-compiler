@@ -111,6 +111,8 @@ namespace IGCMetrics
     public:
         IGCMetricImpl();
         ~IGCMetricImpl();
+        IGCMetricImpl(const IGCMetricImpl&) = delete;
+        IGCMetricImpl& operator=(const IGCMetricImpl&) = delete;
         bool Enable();
 
         size_t getMetricDataSize();

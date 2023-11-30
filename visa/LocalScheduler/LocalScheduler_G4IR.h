@@ -413,6 +413,9 @@ public:
     instList.clear();
   }
 
+  window2xSP(const window2xSP&) = delete;
+  window2xSP& operator=(const window2xSP&) = delete;
+
   ~window2xSP() {
     instGRFSize = 0;
     instType = Type_UNDEF;

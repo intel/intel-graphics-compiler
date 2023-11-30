@@ -26,8 +26,6 @@ namespace IGC
 
         DisableLoopUnrollOnRetry();
 
-        ~DisableLoopUnrollOnRetry() {}
-
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
         {
             AU.setPreservesCFG();

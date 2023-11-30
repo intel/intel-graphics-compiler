@@ -27,9 +27,6 @@ namespace IGC
         /// @brief  Constructor
         WGFuncResolution();
 
-        /// @brief  Destructor
-        ~WGFuncResolution() {}
-
         /// @brief  Provides name of pass
         virtual llvm::StringRef getPassName() const override
         {

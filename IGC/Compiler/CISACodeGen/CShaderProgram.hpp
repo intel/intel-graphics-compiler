@@ -28,6 +28,8 @@ namespace IGC
         typedef llvm::MapVector<llvm::Function*, CShaderProgram*> KernelShaderMap;
         CShaderProgram(CodeGenContext* ctx, llvm::Function* kernel);
         ~CShaderProgram();
+        CShaderProgram(const CShaderProgram&) = delete;
+        CShaderProgram& operator=(const CShaderProgram&) = delete;
         CShader* GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
         CShader* GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
         void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);

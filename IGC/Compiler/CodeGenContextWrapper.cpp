@@ -37,9 +37,6 @@ CodeGenContextWrapper::CodeGenContextWrapper() : ImmutablePass(ID), m_ctx(nullpt
     IGC_ASSERT_MESSAGE(0, "CodeGenContextWrapper shouldn't get here in runtime");
 }
 
-CodeGenContextWrapper::~CodeGenContextWrapper()
-{
-}
 CodeGenContext* CodeGenContextWrapper::getCodeGenContext()
 {
     return m_ctx;

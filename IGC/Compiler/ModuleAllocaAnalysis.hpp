@@ -36,6 +36,8 @@ namespace IGC
 
         ModuleAllocaAnalysis();
         ~ModuleAllocaAnalysis();
+        ModuleAllocaAnalysis(const ModuleAllocaAnalysis&) = delete;
+        ModuleAllocaAnalysis& operator=(const ModuleAllocaAnalysis&) = delete;
 
         virtual llvm::StringRef getPassName() const override;
 

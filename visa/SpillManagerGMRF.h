@@ -728,6 +728,8 @@ class SpillAnalysis {
 public:
   SpillAnalysis() = default;
   ~SpillAnalysis();
+  SpillAnalysis(const SpillAnalysis&) = delete;
+  SpillAnalysis& operator=(const SpillAnalysis&) = delete;
 
   void Dump(std::ostream &OS = std::cerr);
   void DumpHistogram(std::ostream &OS = std::cerr);

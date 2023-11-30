@@ -42,6 +42,8 @@ public:
   LoopVarSplit(G4_Kernel &k, GraphColor *c,
                const LivenessAnalysis *liveAnalysis);
   ~LoopVarSplit() { delete rpe; }
+  LoopVarSplit(const LoopVarSplit&) = delete;
+  LoopVarSplit& operator=(const LoopVarSplit&) = delete;
 
   void run();
 

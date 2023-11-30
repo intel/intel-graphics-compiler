@@ -29,8 +29,6 @@ namespace IGC {
 
     ResolveOCLRaytracingBuiltins();
 
-    ~ResolveOCLRaytracingBuiltins() {};
-
     virtual llvm::StringRef getPassName() const override {
       return "ResolveOCLRaytracingBuiltins";
     }

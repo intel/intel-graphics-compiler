@@ -26,8 +26,6 @@ namespace IGC
 
         DeviceEnqueueFuncsAnalysis();
 
-        ~DeviceEnqueueFuncsAnalysis() {}
-
         virtual llvm::StringRef getPassName() const override
         {
             return "DeviceEnqueueFuncsAnalysis";
@@ -66,8 +64,6 @@ namespace IGC
         static char ID;
 
         DeviceEnqueueFuncsResolution();
-
-        ~DeviceEnqueueFuncsResolution() {}
 
         virtual llvm::StringRef getPassName() const override
         {

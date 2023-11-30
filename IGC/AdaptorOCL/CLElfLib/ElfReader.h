@@ -105,6 +105,8 @@ class RAIIElf
 public:
   explicit RAIIElf(CElfReader *pElf);
   ~RAIIElf();
+  RAIIElf(const RAIIElf&) = delete;
+  RAIIElf& operator=(const RAIIElf&) = delete;
 private:
   CElfReader *p;
 };

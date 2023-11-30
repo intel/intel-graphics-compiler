@@ -97,7 +97,6 @@ namespace IGC
         static char ID;
 
         CustomLoopVersioning();
-        ~CustomLoopVersioning() { }
 
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const
         {

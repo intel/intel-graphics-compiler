@@ -121,6 +121,8 @@ public:
   LivenessAnalysis(GlobalRA &gra, unsigned char kind, bool verifyRA = false,
                    bool forceRun = false);
   ~LivenessAnalysis();
+  LivenessAnalysis(const LivenessAnalysis&) = delete;
+  LivenessAnalysis& operator=(const LivenessAnalysis&) = delete;
   void computeLiveness();
   bool isLiveAtEntry(const G4_BB *bb, unsigned var_id) const;
   bool isUseThrough(const G4_BB *bb, unsigned var_id) const;

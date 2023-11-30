@@ -36,7 +36,6 @@ namespace IGC
         // Constructs a wrapper to the given CodeGenContext instance.
         CodeGenContextWrapper(CodeGenContext* pCtx);
         CodeGenContextWrapper();
-        ~CodeGenContextWrapper();
 
         // return the Context
         CodeGenContext* getCodeGenContext();

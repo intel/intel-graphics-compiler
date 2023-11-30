@@ -6487,7 +6487,7 @@ bool SinkLoadOpt::sinkLoadInstruction(Function& F)
 
     if (moveInst.size())
     {
-        for (auto mi : reverse(moveInst))
+        for (auto &mi : reverse(moveInst))
         {
             mi.first->moveBefore(mi.second);
         }

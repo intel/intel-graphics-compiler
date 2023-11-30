@@ -31,6 +31,8 @@ namespace Debug
             bool shouldDeleteRHS);
 
         ~TeeOutputStream();
+        TeeOutputStream(const TeeOutputStream&) = delete;
+        TeeOutputStream& operator=(const TeeOutputStream&) = delete;
 
         size_t preferred_buffer_size() const override;
 

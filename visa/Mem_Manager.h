@@ -48,6 +48,8 @@ public:
   typedef const T &const_reference;
   typedef T value_type;
 
+  ~std_arena_based_allocator() = default;
+
   explicit std_arena_based_allocator(std::shared_ptr<Mem_Manager> _other_ptr)
       : mem_manager_ptr(_other_ptr) {}
 

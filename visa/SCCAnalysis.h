@@ -64,6 +64,8 @@ class SCCAnalysis {
 
 public:
   SCCAnalysis(const FlowGraph &fg) : cfg(fg) {}
+  SCCAnalysis(const SCCAnalysis&) = delete;
+  SCCAnalysis& operator=(const SCCAnalysis&) = delete;
   ~SCCAnalysis() {
     for (auto node : SCCNodes) {
       delete node;

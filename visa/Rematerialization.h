@@ -232,6 +232,9 @@ public:
     }
   }
 
+  Rematerialization(const Rematerialization&) = delete;
+  Rematerialization& operator=(const Rematerialization&) = delete;
+
   bool getChangesMade() const { return IRChanged; }
 
   void run();

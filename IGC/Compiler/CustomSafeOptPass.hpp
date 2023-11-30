@@ -37,8 +37,6 @@ namespace IGC
 
         CustomSafeOptPass();
 
-        ~CustomSafeOptPass() {}
-
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
@@ -114,8 +112,6 @@ namespace IGC
 
         TrivialLocalMemoryOpsElimination();
 
-        ~TrivialLocalMemoryOpsElimination() {}
-
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
@@ -152,8 +148,6 @@ namespace IGC
         static char ID;
 
         GenSpecificPattern();
-
-        ~GenSpecificPattern() {}
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
@@ -199,8 +193,6 @@ namespace IGC
 
         FCmpPaternMatch();
 
-        ~FCmpPaternMatch() {}
-
         virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
@@ -217,8 +209,6 @@ namespace IGC
         static char ID;
 
         IGCConstProp(bool enableSimplifyGEP = false);
-
-        ~IGCConstProp() {}
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {

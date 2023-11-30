@@ -65,6 +65,9 @@ private:
     _nextArena = 0;
   }
 
+  ArenaHeader(const ArenaHeader&) = delete;
+  ArenaHeader& operator=(const ArenaHeader&) = delete;
+
   void *AllocSpace(size_t size);
 
   ArenaHeader *_nextArena;  // Word aligned
@@ -82,6 +85,8 @@ private:
   }
 
   ~ArenaManager() { FreeArenas(); }
+  ArenaManager(const ArenaManager&) = delete;
+  ArenaManager& operator=(const ArenaManager&) = delete;
 
   void *AllocDataSpace(size_t size) {
     // Do separate memory allocations of debugMemAlloc is set, to allow

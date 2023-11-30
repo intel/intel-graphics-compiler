@@ -115,6 +115,8 @@ public:
   void *alloc(size_t sz) { return m_mem.alloc(sz); }
 
   virtual ~VISAKernelImpl();
+  VISAKernelImpl(const VISAKernelImpl&) = delete;
+  VISAKernelImpl& operator=(const VISAKernelImpl&) = delete;
 
   void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); };
 

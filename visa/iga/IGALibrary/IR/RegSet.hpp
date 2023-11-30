@@ -42,6 +42,7 @@ private:
   bool isTrackedReg(RegName rn) const;
 
 public:
+  ~RegSet() = default;
   RegSet(const Model &m);
   RegSet(const RegSet &rs);
   RegSet &operator=(const RegSet &);

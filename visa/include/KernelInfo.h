@@ -29,12 +29,6 @@ struct SpillFillInfo {
   // List of virtual variables associated with spill/fills
   std::vector<const char *> virtualVars;
 
-  ~SpillFillInfo() {
-    spillInstrOrder.clear();
-    fillInstrOrder.clear();
-    virtualVars.clear();
-  }
-
   void AddVirtualVar(const char *const pName) {
     if (std::find(virtualVars.begin(), virtualVars.end(), pName) ==
         virtualVars.end()) {

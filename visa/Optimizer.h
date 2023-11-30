@@ -442,6 +442,8 @@ public:
 #endif // DLL_MODE
     initOptimizations();
   }
+  Optimizer(const Optimizer&) = delete;
+  Optimizer& operator=(const Optimizer&) = delete;
   ~Optimizer() {
     // Normally, noMask Info will be freed in postRA workaround.
     // But in case RA fails, postRA will not be invoked. Thus, need

@@ -28,8 +28,6 @@ namespace IGC
 
         AggregateArgumentsAnalysis();
 
-        ~AggregateArgumentsAnalysis() {}
-
         virtual llvm::StringRef getPassName() const override
         {
             return "AggregateArgumentsAnalysis";
@@ -62,8 +60,6 @@ namespace IGC
         static char ID;
 
         ResolveAggregateArguments();
-
-        ~ResolveAggregateArguments() {}
 
         virtual llvm::StringRef getPassName() const override
         {

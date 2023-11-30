@@ -185,6 +185,8 @@ struct StreamColorSetter {
     stream.flush();
     restoreColor();
   }
+  StreamColorSetter(const StreamColorSetter&) = delete;
+  StreamColorSetter& operator=(const StreamColorSetter&) = delete;
 
   bool colorNeedsRestore;
 #ifdef _WIN32

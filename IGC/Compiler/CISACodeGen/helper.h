@@ -587,6 +587,8 @@ namespace IGC
     struct Defer
     {
         Defer(Fn F) : F(F) {}
+        Defer(const Defer&) = delete;
+        Defer& operator=(const Defer&) = delete;
         ~Defer() {
             if (Do) F();
         }

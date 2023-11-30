@@ -497,6 +497,8 @@ public:
     schedule.clear();
     OrigInstList.clear();
   }
+  BB_Scheduler(const BB_Scheduler&) = delete;
+  BB_Scheduler& operator=(const BB_Scheduler&) = delete;
 
   G4_Kernel &getKernel() const { return kernel; }
   G4_BB *getBB() const { return ddd.getBB(); }

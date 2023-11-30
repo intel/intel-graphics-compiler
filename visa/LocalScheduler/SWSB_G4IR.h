@@ -159,7 +159,6 @@ struct SBFootprint {
               unsigned short RB, G4_INST *i)
       : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB), inst(i), isPrecision(true) {
   }
-  ~SBFootprint() {}
 
   void setOffset(unsigned short o) { offset = o; }
 
@@ -320,15 +319,6 @@ public:
     }
 
     instVec.push_back(i);
-  }
-
-  ~SBNode() {
-    // FIXME: I'd like to replace this with type-specific allocator as well, but
-    // the ownership is unclear to me, is it safe to put the allocator in
-    // SBNode?
-    for (SBFootprint *sm : footprints) {
-      sm->~SBFootprint();
-    }
   }
 
   void setSendID(int ID) { sendID = ID; }
@@ -529,8 +519,6 @@ struct SBBucketNode {
   SBBucketNode(SBNode *node1, Gen4_Operand_Number opndNum1,
                const SBFootprint *f)
       : node(node1), opndNum(opndNum1), footprint(f) {}
-
-  ~SBBucketNode() {}
 
   void setSendID(int ID) { sendID = ID; }
 
