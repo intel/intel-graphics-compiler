@@ -1121,17 +1121,13 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
     auto perThreadOffsetInst = dyn_cast_or_null<Instruction>(perThreadOffset);
-
-    if ((privateOnStack == false) && (IGC::ForceAlwaysInline(&Ctx)))
+    IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
+    if (perThreadOffsetInst)
     {
-        IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
-        if (perThreadOffsetInst)
-        {
-            // Note: for debugging purposes privateMemArg, as well as privateMemArg (aka ImplicitArg::PRIVATE_BASE)
-            // will be marked as Output to keep its liveness all time
-            auto perThreadOffsetMD = MDNode::get(entryBuilder.getContext(), nullptr); // ConstantAsMetadata::get(entryBuilder.getInt32(1)));
-            perThreadOffsetInst->setMetadata("perThreadOffset", perThreadOffsetMD);
-        }
+        // We add "perThreadOffset" metadata, so emitter will mark it as output to
+        // extend it's living time to the end of the function. PrivateBase will be marked too.
+        auto perThreadOffsetMD = MDNode::get(entryBuilder.getContext(), nullptr); // ConstantAsMetadata::get(entryBuilder.getInt32(1)));
+        perThreadOffsetInst->setMetadata("perThreadOffset", perThreadOffsetMD);
     }
 
     for (auto pAI : allocaInsts)

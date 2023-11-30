@@ -165,12 +165,14 @@ namespace IGC
     {
         if (llvm::isa<llvm::DbgInfoIntrinsic>(&inst))
         {
+            // FIXME: We probably don't need that.
             return true;
         }
-        if (DebugMetadataInfo::hasDashGOption(m_ctx) &&
-            inst.getMetadata("perThreadOffset") != nullptr)
+        // perThreadOffset is special variable we should be alive for O0 runs.
+        // This is intended for debug, but we do it for non-debug too to
+        // avoid altering generated code by adding -g.
+        if (m_ctx->getModuleMetaData()->compOpt.OptDisable && inst.getMetadata("perThreadOffset"))
         {
-            // debugging needs this
             return true;
         }
         return false;

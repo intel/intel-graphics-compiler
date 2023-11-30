@@ -1266,24 +1266,18 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    // We want to mark "perThreadOffset" and "privateBase"
+    // variables as output to keep them alive to the end of the function for O0 runs.
+    // This is debuggability improvement, but we want to do that for non-debug compilations,
+    // because debug info shouldn't alter generated code.
+    if (m_currShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
+    {
+        DebugInfoData::saveAndMarkPrivateMemoryVars(F, m_currShader);
+    }
+
     if (m_currShader->GetDebugInfoData().m_pDebugEmitter)
     {
         DebugInfoData::extractAddressClass(F);
-
-        if (IGC::ForceAlwaysInline(m_pCtx) ||
-            ((OpenCLProgramContext *)(m_currShader->GetContext()))
-                ->m_InternalOptions.KernelDebugEnable) {
-            DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
-        }
-        ScalarVisaModule *scVISAMod =
-            (ScalarVisaModule *)(m_pDebugEmitter->getCurrentVISA());
-        if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP()) {
-            // Stack calls in use. Nothing is needed to be marked as Output.
-            // Just setting frame pointer is required for debug info when stack
-            // calls are in use.
-            scVISAMod->setFramePtr(m_currShader->GetFP());
-        }
-
         m_currShader->GetDebugInfoData().addVISAModule(
             &F, m_pDebugEmitter->getCurrentVISA());
         m_currShader->GetDebugInfoData().transferMappings(F);

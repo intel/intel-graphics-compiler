@@ -2927,7 +2927,7 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
     if (privateBaseRegNum) // FIX ME if 0 is allowed
     {
       emitLocation = true;
-      if (!buildPrivateBaseRegBased(var, Block, loc))
+      if (buildPrivateBaseRegBased(var, Block, loc))
         return Block;
     }
   }

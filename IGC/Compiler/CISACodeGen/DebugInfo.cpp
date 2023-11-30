@@ -382,122 +382,61 @@ void DebugInfoData::extractAddressClass(llvm::Function& F)
     }
 }
 
-// Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
-void DebugInfoData::markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter)
+void DebugInfoData::markVariableAsOutput(CShader *pShader, CVariable *pVariable)
 {
-    if (pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
+    IGC_ASSERT(pShader && pVariable);
+
+    // Mark variable with "Output", to extend it's living time will be extended to the end of the function.
+    pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVariable->visaGenVariable[0], "Output", 0, nullptr);
+    if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVariable->visaGenVariable[1])
     {
-        CVariable* pVar = pShader->GetPrivateBase();
-        if (pVar)
-        {
-            // cache privateBase as it may be destroyed if subroutine
-            // is emitted.
-            pDebugEmitter->getCurrentVISA()->setPrivateBase(pVar);
-            pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
-            if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVar->visaGenVariable[1])
-            {
-                IGC_ASSERT_MESSAGE(false, "Private base expected to be a scalar!");  // Should never happen
-                pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[1], "Output", 0, nullptr);
-            }
-        }
+        pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVariable->visaGenVariable[1], "Output", 0, nullptr);
     }
 }
 
-void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName)
+void DebugInfoData::saveAndMarkPrivateMemoryVars(llvm::Function& F, CShader* pShader)
 {
-    Value* pValue = dyn_cast<Value>(pInst);
+    IGC_ASSERT_MESSAGE(pShader, "CShader is missing.");
 
-    IGC_ASSERT_MESSAGE(pInst, "Missing instruction");
+    IDebugEmitter* pDebugEmitter = pShader->GetDebugInfoData().m_pDebugEmitter;
 
-    // No dummy instruction needs to be marked with "Output"
-    if (dyn_cast<GenIntrinsicInst>(pValue))
-        return;
-
-    CVariable* pVar = pShader->GetSymbol(pValue);
-    if (pVar->GetVarType() == EVARTYPE_GENERAL)
+    ScalarVisaModule *mVISAModule = nullptr;
+    if (pDebugEmitter)
     {
-        // 1. Per thread offset only, and/or
-        // 2. Compute thread and global identification variables.
-        // So that finalizer can extend their liveness to end of the program.
-        // This will help debugger examine their values anywhere in the code till they
-        // are in scope. However, emit "Output" attribute when -g and -cl-opt-disable
-        // are both passed -g by itself shouldnt alter generated code.
-        if (static_cast<OpenCLProgramContext*>(pShader->GetContext())->m_InternalOptions.KernelDebugEnable ||
-            pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
-        {
-            // If "Output" attribute is emitted for perThreadOffset variable(s)
-            // then debug info emission is preserved for this:
-            // privateBaseMem + perThreadOffset + (simdSize*offImm + simd_lane*sizeof(elem))
-            if (Instruction* pPTOorImplicitGIDInst = dyn_cast<Instruction>(pValue))
-            {
-                MDNode* pPTOorImplicitGIDInstMD = pPTOorImplicitGIDInst->getMetadata(pMetaDataName); // "perThreadOffset" or "implicitGlobalID"
-                if (pPTOorImplicitGIDInstMD)
-                {
-                    pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
-                    if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVar->visaGenVariable[1])
-                    {
-                        pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[1], "Output", 0, nullptr);
-                    }
-                }
-            }
-        }
+        mVISAModule = (ScalarVisaModule *)pDebugEmitter->getCurrentVISA();
+        IGC_ASSERT_MESSAGE(mVISAModule, "Missing VISA module.");
     }
-    else
-    {
-        // Unexpected return empty location!
-        IGC_ASSERT_MESSAGE(false, "No debug info value!");
-    }
-}
 
-void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter)
-{
-    IGC_ASSERT_MESSAGE(pDebugEmitter, "Missing debug emitter");
-    VISAModule* visaModule = pDebugEmitter->getCurrentVISA();
-    IGC_ASSERT_MESSAGE(visaModule, "Missing visa module");
+    // Add FP to VISA module.
+    // Debug emitter will decide whether it needs to use it.
+    if (mVISAModule && pShader->hasFP())
+    {
+        mVISAModule->setFramePtr(pShader->GetFP());
+    }
 
     for (auto& bb : F)
     {
         for (auto& pInst : bb)
         {
+            // If function has "perThreadOffset" variable - add it to VISA module
+            // and for mark it as output so that emitter will extend it's living time
+            // to the end of the function.
+            // Mark privateBase as output, because it will need it too.
             if (MDNode* perThreadOffsetMD = pInst.getMetadata("perThreadOffset"))
             {
-                // Per Thread Offset non-debug instruction must have 'Output' attribute
-                // added in the function to be called.
-                markOutputVar(pShader, pDebugEmitter, &pInst, "perThreadOffset");
-                if (F.getCallingConv() == CallingConv::SPIR_KERNEL)
-                {
-                    markOutputPrivateBase(pShader, pDebugEmitter); // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
-                }
-                else
-                {
-                    // TODO: Apply privateBase of kernel to SPIR_FUNC if its a subroutine
-                }
-                ScalarVisaModule* scVISAModule = (ScalarVisaModule*)visaModule;
-                IGC_ASSERT_MESSAGE(scVISAModule->getPerThreadOffset()==nullptr, "setPerThreadOffset was set earlier");
-                scVISAModule->setPerThreadOffset(&pInst);
-                if (((OpenCLProgramContext*)(pShader->GetContext()))->m_InternalOptions.KernelDebugEnable == false)
-                {
-                    return;
-                }
-            }
-        }
-    }
+                CVariable *perThreadOffset = pShader->GetSymbol(&pInst);
+                CVariable *privateBase = pShader->GetPrivateBase();
 
-    if (((OpenCLProgramContext*)(pShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
-    {
-        // Compute thread and group identification instructions will be marked here
-        // regardless of stack calls detection in this shader, so not only when per thread offset
-        // as well as a private base have been marked as Output earlier in this function.
-        // When stack calls are in use then only these group ID instructions are marked as Output.
-        for (auto& bb : F)
-        {
-            for (auto& pInst : bb)
-            {
-                if (MDNode* implicitGlobalIDMD = pInst.getMetadata("implicitGlobalID"))
+                IGC_ASSERT_MESSAGE(perThreadOffset, "Missing perThreadOffset.");
+                IGC_ASSERT_MESSAGE(privateBase, "Missing privateBase.");
+
+                markVariableAsOutput(pShader, perThreadOffset);
+                markVariableAsOutput(pShader, privateBase);
+
+                if (mVISAModule)
                 {
-                    // Compute thread and group identification instructions must have
-                    // 'Output' attribute added in the function to be called.
-                    markOutputVar(pShader, pDebugEmitter, &pInst, "implicitGlobalID");
+                    mVISAModule->setPerThreadOffset(perThreadOffset);
+                    mVISAModule->setPrivateBase(privateBase);
                 }
             }
         }

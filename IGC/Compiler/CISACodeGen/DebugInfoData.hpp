@@ -43,9 +43,8 @@ namespace IGC
         // this instruction's last operand (metadata of DIExpression).
         static void extractAddressClass(llvm::Function& F);
 
-        static void markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter);
-        static void markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName);
-        static void markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
+        static void markVariableAsOutput(CShader* pShader, CVariable *pVariable);
+        static void saveAndMarkPrivateMemoryVars(llvm::Function &F, CShader *pShader);
 
         void addVISAModule(llvm::Function* F, VISAModule* m)
         {

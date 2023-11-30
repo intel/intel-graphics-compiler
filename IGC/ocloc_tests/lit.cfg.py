@@ -58,6 +58,9 @@ if config.spirv_as_enabled:
 if config.is32b == "1":
   config.available_features.add('sys32')
 
+if config.debug_build:
+  config.available_features.add('debug')
+
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.available_features.add('khronos-translator')
   config.available_features.add('khronos-translator-' + config.llvm_version_major)

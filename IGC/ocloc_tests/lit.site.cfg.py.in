@@ -27,6 +27,7 @@ config.spirv_as_dir = "@IGC_SPIRV_AS_DIR@"
 config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
 config.llvm_version_major = "@LLVM_VERSION_MAJOR@"
 config.is32b = "$<BOOL:$<EQUAL:@CMAKE_SIZEOF_VOID_P@,4>>"
+config.debug_build = $<CONFIG:Debug>
 
 # Support substitution of the tools and libs dirs with user parameters. This is
 # used when we can't determine the tool dir at configuration time.

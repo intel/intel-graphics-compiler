@@ -111,15 +111,11 @@ unsigned ScalarVisaModule::getPrivateBaseReg() const
 
 int ScalarVisaModule::getPTOReg() const {
     IGC_ASSERT_MESSAGE(hasPTO(), "PTO instruction required");
-    Value* pValPTO = dyn_cast_or_null<Value>(m_perThreadOffset);
-    IGC_ASSERT_MESSAGE(pValPTO, "pValPTO error");
-    // At this point we expect only a register
-    CVariable* pVarPTO = GetSymbol(m_perThreadOffset, pValPTO);
 
-    IGC_ASSERT_MESSAGE(pVarPTO, "Per Thread Offset variable does not exist");
-    IGC_ASSERT_MESSAGE(pVarPTO->GetVarType() == EVARTYPE_GENERAL, "Unexpected VISA register type!");
+    IGC_ASSERT_MESSAGE(m_perThreadOffset, "Per Thread Offset variable does not exist");
+    IGC_ASSERT_MESSAGE(m_perThreadOffset->GetVarType() == EVARTYPE_GENERAL, "Unexpected VISA register type!");
 
-    int regPTO = getDeclarationID(pVarPTO, false);
+    int regPTO = getDeclarationID(m_perThreadOffset, false);
     return regPTO;
 }
 int ScalarVisaModule::getFPReg() const {

@@ -90,12 +90,12 @@ public:
 
     int getDeclarationID(CVariable* pVar, bool isSecondSimd32Instruction) const;
 
-    void setPerThreadOffset(llvm::Instruction* perThreadOffset) {
+    void setPerThreadOffset(CVariable *perThreadOffset) {
         IGC_ASSERT_MESSAGE(perThreadOffset, "Clear perThreadOffset");
         m_perThreadOffset = perThreadOffset;
     }
 
-    llvm::Instruction* getPerThreadOffset() const {
+    CVariable *getPerThreadOffset() const {
         return m_perThreadOffset;
     }
 
@@ -136,7 +136,7 @@ private:
 
     CShader* m_pShader;
     CVariable* m_framePtr = nullptr;
-    llvm::Instruction* m_perThreadOffset = nullptr;
+    CVariable *m_perThreadOffset = nullptr;
     CVariable* privateBase = nullptr;
 };
 
