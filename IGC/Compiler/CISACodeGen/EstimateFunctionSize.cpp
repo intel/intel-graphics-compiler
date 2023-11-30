@@ -427,9 +427,9 @@ namespace {
 
 void FunctionNode::print(raw_ostream& os) {
     os << "Function: " << F->getName() << ", " << InitialSize << "\n";
-    for (auto G : CalleeList)
+    for (const auto &G : CalleeList)
         os << "--->>>" << G.first->F->getName() << "\n";
-    for (auto G : CallerList)
+    for (const auto &G : CallerList)
         os << "<<<---" << G.first->F->getName() << "\n";
 }
 #endif
@@ -933,7 +933,7 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
         auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
         if (MdWrapper) {
             auto pMdUtils = MdWrapper->getMetaDataUtils();
-            for (auto node : Node->CallerList) {
+            for (const auto &node : Node->CallerList) {
                 FunctionNode* Caller = node.first;
                 uint32_t cnt = node.second;
                 if (cnt > 1) {
@@ -1104,7 +1104,7 @@ void EstimateFunctionSize::UpdateSizeAfterCollapsing(std::deque<void*> &nodesToP
             }
         }
 
-        for (auto c : Node->CallerList)
+        for (const auto &c : Node->CallerList)
         {
             FunctionNode* caller = c.first;
             uint16_t call_cnt = c.second;
@@ -1156,7 +1156,7 @@ uint32_t EstimateFunctionSize::updateExpandedUnitSize(Function* F, bool ignoreSt
                 << ", Total chunck size: " << unitTotalSize);
         }
 
-        for (auto c : node->CallerList)
+        for (const auto &c : node->CallerList)
         {
             FunctionNode* caller = c.first;
             if (FunctionsInUnit.find(caller) == FunctionsInUnit.end()) //Caller is in another compilation unit
@@ -1222,7 +1222,7 @@ uint32_t EstimateFunctionSize::bottomUpHeuristic(Function* F, uint32_t& stackCal
             }
         }
 
-        for (auto c : Node->CallerList)
+        for (const auto &c : Node->CallerList)
         {
             FunctionNode* caller = c.first;
             if (FunctionsInUnit.find(caller) == FunctionsInUnit.end()) //The caller is in another kernel, skip

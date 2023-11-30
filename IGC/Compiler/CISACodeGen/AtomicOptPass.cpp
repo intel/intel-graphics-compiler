@@ -205,7 +205,7 @@ bool AtomicOptPass::runOnFunction(Function &F)
         }
     }
 
-    for (auto T : AtomicsEmulationToProcess)
+    for (const auto &T : AtomicsEmulationToProcess)
     {
         Instruction *AtomicInstr = std::get<0>(T);
         BasicBlock *BackBb = std::get<1>(T);

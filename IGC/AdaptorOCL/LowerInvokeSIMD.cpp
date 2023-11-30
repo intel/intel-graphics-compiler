@@ -195,7 +195,7 @@ bool LowerInvokeSIMD::runOnModule(Module &M) {
 
   // If there are uses of vc functions outside invoke_simd calls (e.g. function
   // pointer is taken), replace the old functions with new.
-  for (auto it : m_OldFuncToNewFuncMap) {
+  for (const auto &it : m_OldFuncToNewFuncMap) {
     Function *OldFunc = it.first;
     Function *NewFunc = it.second;
     for (auto &use : OldFunc->uses()) {

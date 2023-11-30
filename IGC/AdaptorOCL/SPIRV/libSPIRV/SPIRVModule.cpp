@@ -346,7 +346,7 @@ private:
 };
 
 SPIRVModuleImpl::~SPIRVModuleImpl() {
-    for (auto I : IdEntryMap)
+    for (const auto &I : IdEntryMap)
         delete I.second;
 
     for (auto I : EntryNoId)

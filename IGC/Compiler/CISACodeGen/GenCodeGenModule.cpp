@@ -248,7 +248,7 @@ void GenXCodeGenModule::processFunction(Function& F)
         // have the same SIMD sizes, otherwise we cannot make it an indirect call
         int simd_size = 0;
         unsigned CallersPerSIMD[3] = { 0, 0, 0 };
-        for (auto iter : CallerFGs)
+        for (const auto &iter : CallerFGs)
         {
             Function* callerKernel = iter.first->getHead();
             auto funcInfoMD = pMdUtils->getFunctionsInfoItem(callerKernel);
@@ -314,7 +314,7 @@ void GenXCodeGenModule::processFunction(Function& F)
     }
 
     bool FirstPair = true;
-    for (auto FGPair : CallerFGs)
+    for (const auto &FGPair : CallerFGs)
     {
         if (FirstPair)
         {
@@ -986,7 +986,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
                         auto pNewICG = getOrCreateIndirectCallGroup(pModule, simdsz);
                         addToFunctionGroup(FCloned, pNewICG, FCloned);
 
-                        for (auto iter : UsersMap)
+                        for (const auto &iter : UsersMap)
                         {
                             if (iter.second == simdsz)
                             {

@@ -645,7 +645,7 @@ void CShader::AllocateSimplePushConstants(uint& offset)
 {
     for (unsigned int i = 0; i < pushInfo.simplePushBufferUsed; i++)
     {
-        for (auto I : pushInfo.simplePushInfoArr[i].simplePushLoads)
+        for (const auto &I : pushInfo.simplePushInfoArr[i].simplePushLoads)
         {
             uint subOffset = I.first;
             CVariable* var = GetSymbol(m_argListCache[I.second]);

@@ -284,7 +284,7 @@ bool SampleMultiversioning::runOnFunction(Function& F)
                         }
                         else
                         {
-                            for (auto tempSI : SampleInsts)
+                            for (const auto &tempSI : SampleInsts)
                             {
                                 // Corner case where two samplers can be branched for one Mul.
                                 if (val_insn == tempSI.Sample)

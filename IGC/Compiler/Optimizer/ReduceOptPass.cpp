@@ -65,7 +65,7 @@ bool ReduceOptPass::createReduceWI0(Instruction *ReduceInstr) {
     std::string Prefix = "__builtin_IB_WorkGroupReduce_WI0_";
 
     std::string Op = "";
-    for (auto I : OpSet) {
+    for (const auto &I : OpSet) {
         if (Name.find(I) != std::string::npos) {
             Op = I;
             break;

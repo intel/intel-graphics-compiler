@@ -251,7 +251,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     {
         // Add globals tracked in metadata to the "llvm.used" list so they won't be deleted by optimizations
         llvm::SmallVector<GlobalValue*, 4> gvec;
-        for (auto Node : inlineProgramScopeOffsets)
+        for (const auto &Node : inlineProgramScopeOffsets)
         {
             gvec.push_back(Node.first);
         }
@@ -346,7 +346,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     }
 
     const bool changed = !inlineProgramScopeOffsets.empty();
-    for (auto offset : inlineProgramScopeOffsets)
+    for (const auto &offset : inlineProgramScopeOffsets)
     {
         std::string globalName = offset.first->getName().str();
         if (Ctx->m_retryManager.IsFirstTry())

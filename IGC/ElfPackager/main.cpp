@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
             if (FuncName.str().find("__builtin_IB_") == std::string::npos &&
                 FuncName.str().find("llvm.") == std::string::npos)
             {
-                for (auto iterator2 : FunctionList)
+                for (const auto &iterator2 : FunctionList)
                 {
                     if (FuncName.find(iterator2) != std::string::npos)
                     {
@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
     else
         counter = 2;
 
-    for (auto map_iterator : Map)
+    for (const auto &map_iterator : Map)
     {
         std::vector<GlobalValue*> ExtractValue = map_iterator.second;
         llvm::ValueToValueMapTy Val;
@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
         ElfMap[map_iterator.first] = OS.str().str();
     }
 
-    for (auto map_iterator : Map)
+    for (const auto &map_iterator : Map)
     {
         std::vector<GlobalValue*> ExtractValue = map_iterator.second;
         for (size_t i = 0, e = ExtractValue.size(); i != e; ++i)
@@ -459,7 +459,7 @@ int main(int argc, char *argv[])
     }
 
     //Now to add all of the sections in the file
-    for (auto elf_iterator : ElfMap)
+    for (const auto &elf_iterator : ElfMap)
     {
         CreateElfSection(pWriter,
             sectionNode,

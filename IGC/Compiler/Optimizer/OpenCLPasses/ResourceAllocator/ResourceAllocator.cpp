@@ -264,7 +264,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
         allocationMode = BindlessAllocationMode::Preferred;
     }
 
-    for (auto arg : kernelArgs)
+    for (const auto &arg : kernelArgs)
     {
         const AllocationType allocType = getAllocationType(arg.getArgType(), allocationMode);
 
@@ -356,7 +356,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
     }
 
     // Param allocations must be inserted to the Metadata Utils in order.
-    for (auto i : paramAllocations)
+    for (const auto &i : paramAllocations)
     {
         resAllocMD->argAllocMDList.push_back(i);
     }

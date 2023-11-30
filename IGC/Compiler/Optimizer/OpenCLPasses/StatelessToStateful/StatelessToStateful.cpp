@@ -924,7 +924,7 @@ void StatelessToStateful::finalizeArgInitialValue(Function* F)
     Type* int32Ty = Type::getInt32Ty(M->getContext());
     Value* ZeroValue = ConstantInt::get(int32Ty, 0);
 
-    for (auto II : m_argsInfo)
+    for (const auto &II : m_argsInfo)
     {
         const KernelArg* kernelArg = II.first;
         int mapVal = II.second;

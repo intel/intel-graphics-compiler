@@ -3808,7 +3808,7 @@ namespace IGC
     }
     void CEncoder::SetBuilderOptions(VISABuilder* pbuilder)
     {
-        for (auto OP : m_visaUserOptions)
+        for (const auto &OP : m_visaUserOptions)
         {
             switch (OP.second.type)
             {
@@ -5748,7 +5748,7 @@ namespace IGC
         }
 
         // Export global symbols
-        for (auto global : modMD->inlineProgramScopeOffsets)
+        for (const auto &global : modMD->inlineProgramScopeOffsets)
         {
             GlobalVariable* pGlobal = global.first;
 
@@ -5809,7 +5809,7 @@ namespace IGC
         {
             std::vector<vISA::GenSymEntry> tempBufferData;
             // Collect the data just for the symbol table entries
-            for (auto I : symbolTableList)
+            for (const auto &I : symbolTableList)
             {
                 auto symbolEntry = I.second;
                 tempBufferData.push_back(symbolEntry);
@@ -5831,7 +5831,7 @@ namespace IGC
         ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
 
         // Get the data for zebin
-        for (auto I : symbolTableList)
+        for (const auto &I : symbolTableList)
         {
             Value* symbolValue = I.first;
             auto symbolEntry = I.second;
@@ -5912,7 +5912,7 @@ namespace IGC
         tableEntries = 0;
 
         std::vector<vISA::GenFuncAttribEntry> attribTable;
-        for (auto it : funcAttributeMap)
+        for (const auto &it : funcAttributeMap)
         {
             vISA::GenFuncAttribEntry entry;
             Function* F = it.first;
@@ -5983,7 +5983,7 @@ namespace IGC
     {
         ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
 
-        for (auto global : modMD->inlineProgramScopeOffsets)
+        for (const auto &global : modMD->inlineProgramScopeOffsets)
         {
             GlobalVariable* pGlobal = global.first;
             if (pGlobal->hasAttribute("host_var_name"))

@@ -265,7 +265,7 @@ void SubGroupFuncsResolution::CheckSIMDSize(Instruction& I, StringRef msg)
 
 WaveOps SubGroupFuncsResolution::GetWaveOp(StringRef funcName)
 {
-    for (auto op : SubGroupFuncsResolution::m_spvOpToWaveOpMap)
+    for (const auto &op : SubGroupFuncsResolution::m_spvOpToWaveOpMap)
     {
         if (funcName.contains(op.first))
         {

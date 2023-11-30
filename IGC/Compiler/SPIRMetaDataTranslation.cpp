@@ -95,7 +95,7 @@ void SPIRMetaDataTranslation::translateKernelMetadataIntoOpenCLKernelsMD(Module&
             Func.getContext().getMDKindNames(Names);
             Func.getAllMetadata(Info);
             Args.push_back(ConstantAsMetadata::get(&Func));
-            for (auto i : Info)
+            for (const auto &i : Info)
             {
                 llvm::SmallVector<Metadata*, 2> Mdvector;
                 auto firstElem = MDString::get(M.getContext(), Names[i.first]);

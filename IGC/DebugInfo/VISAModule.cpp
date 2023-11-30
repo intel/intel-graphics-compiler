@@ -295,7 +295,7 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
       if (startRange < callerSaveIp) {
         callerRestoreIp = std::min<uint64_t>(endRange, callerRestoreIp);
         // Variable is live over stack call function.
-        for (auto callerSaveReg : (*callerSaveStartIt).data) {
+        for (const auto &callerSaveReg : (*callerSaveStartIt).data) {
           // startRegNum is saved to caller save area around the stack call.
           if ((callerSaveReg.srcRegOff / getGRFSizeInBytes()) == startRegNum) {
             // Emit caller save/restore only if %ip is within range

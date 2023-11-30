@@ -191,7 +191,7 @@ namespace IGC
 
             // Calculate an offset for new SLM variables.
             unsigned int offset = 0;
-            for (auto offsets : ModuleMD->FuncMD[F].localOffsets)
+            for (const auto &offsets : ModuleMD->FuncMD[F].localOffsets)
             {
                 PointerType* ptrType = dyn_cast<PointerType>(offsets.m_Var->getType());
                 Type* varType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);

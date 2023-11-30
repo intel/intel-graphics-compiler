@@ -1562,7 +1562,7 @@ void DwarfDebug::collectVariableInfo(
     write(TempDotDebugLocEntries.back().loc, (unsigned char *)&startRange,
           pointerSize);
 
-    for (auto it : allCallerSave) {
+    for (const auto &it : allCallerSave) {
       TempDotDebugLocEntries.back().end = std::get<0>(it);
       write(TempDotDebugLocEntries.back().loc,
             (unsigned char *)&std::get<0>(it), pointerSize);
@@ -1768,7 +1768,7 @@ void DwarfDebug::collectVariableInfo(
         continue;
       }
 
-      for (auto range : GenISARange) {
+      for (const auto &range : GenISARange) {
         DbgValuesWithGenIP[RegVar].push_back(
             std::make_tuple(range.first, range.second, RegVar, pInst));
       }

@@ -1400,7 +1400,7 @@ void ScalarizeFunction::resolveDeferredInstructions()
         }
     }
 
-    for ( auto entry : dummyToScalarMap )
+    for (const auto &entry : dummyToScalarMap)
     {
         // Replace and erase all dummy instructions (don't use eraseFromParent as the dummy is not in the function)
         Instruction *dummyInst = cast<Instruction>(entry.first);

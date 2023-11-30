@@ -810,7 +810,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         }
     }
 
-    for (auto p : replaceInsts)
+    for (const auto &p : replaceInsts)
     {
         p.first->replaceAllUsesWith(p.second);
         p.first->eraseFromParent();
@@ -998,7 +998,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         }
 
         // free FuncsImpArgs
-        for (auto I : FuncsImpArgs) {
+        for (const auto &I : FuncsImpArgs) {
             ImplicitArgs* IA = I.second;
             delete IA;
         }

@@ -1445,7 +1445,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
         }
     }
 
-    for (auto InstTuple : InstToModify)
+    for (const auto &InstTuple : InstToModify)
     {
       auto inst = std::get<0>(InstTuple);
       auto value = std::get<1>(InstTuple);

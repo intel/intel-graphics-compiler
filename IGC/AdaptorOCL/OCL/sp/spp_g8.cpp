@@ -797,7 +797,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
         if (IGC_IS_FLAG_DISABLED(ElfTempDumpEnable))
         {
             // Remove all temporary input ELF files
-            for (auto elfFile : elfVecNames)
+            for (const auto &elfFile : elfVecNames)
             {
                 if (elfFile.compare(elfLinkerLogName.c_str()))
                 {

@@ -164,7 +164,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
         if (Ctx.type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(ForceStatelessForQueueT)) {
             if (!F.arg_empty()) {
                 KernelArgs kernelArgs(F, DL, pMdUtils, &modMD, Ctx.platform.getGRFSize());
-                for (auto arg : kernelArgs) {
+                for (const auto &arg : kernelArgs) {
                     const KernelArg::ArgType argTy = arg.getArgType();
                     if (argTy == KernelArg::ArgType::PTR_DEVICE_QUEUE)
                     {
