@@ -93,10 +93,12 @@ void LocalRA::getRowInfo(int size, int &nrows, int &lastRowSize,
   return;
 }
 
-void LocalRA::evenAlign() {
+void LocalRA::specialAlign() {
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
       kernel.fg.size() > 2) {
-    if ((GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
+    if (gra.use4GRFAlign) {
+      gra.augAlign();
+    } else if ((GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
          kernel.getSimdSize() >= kernel.numEltPerGRF<Type_UD>()) ||
         (!GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
          kernel.getSimdSize() > kernel.numEltPerGRF<Type_UD>())) {
@@ -106,7 +108,8 @@ void LocalRA::evenAlign() {
       DEBUG_VERBOSE("Updating alignment to Even for GRF candidates"
                     << "\n");
 #endif
-      gra.evenAlign();
+
+      gra.augAlign();
     }
     gra.updateSubRegAlignment(builder.getGRFAlign());
     // Since we are piggy backing on mask field of G4_Declare,
@@ -438,7 +441,7 @@ bool LocalRA::localRA() {
       } else {
         globalLRSize = 0;
       }
-      evenAlign();
+      specialAlign();
       needGlobalRA = localRAPass(false, doSplitLLR);
     }
   }
@@ -526,6 +529,8 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignForward(int &i,
     i++;
   } else if ((align == BankAlign::Odd) && (i % 2 == 0)) {
     i++;
+  } else if ((align == BankAlign::QuadGRF) && (i % 4 != 0)) {
+    i += (4 - (i % 4));
   } else if (align == BankAlign::Even2GRF) {
     while ((i % 4 >= 2) || (evenAlign && (i % 2 != 0))) {
       i++;
@@ -575,6 +580,8 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignBackward(int &i,
     i--;
   } else if ((align == BankAlign::Odd) && (i % 2 == 0)) {
     i--;
+  } else if ((align == BankAlign::QuadGRF) && (i % 4 != 0)) {
+    i -= (i % 4);
   } else if (align == BankAlign::Even2GRF) {
     while (i >= 0 && ((i % 4 >= 2) || (evenAlign && (i % 2 != 0)))) {
       i--;
@@ -764,7 +771,9 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
         }
       }
 
-      auto assignAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : bankAlign;
+      auto assignAlign = gra.isQuadAligned(dcl)   ? BankAlign::QuadGRF
+                         : gra.isEvenAligned(dcl) ? BankAlign::Even
+                                                  : bankAlign;
       G4_SubReg_Align subAlign =
           builder.GRFAlign() ? builder.getGRFAlign() : gra.getSubRegAlign(dcl);
 
@@ -1969,6 +1978,9 @@ bool PhyRegsLocalRA::findFreeSingleReg(
     } else if ((align == BankAlign::Odd) && (i % 2 == 0)) {
       i += forward ? 1 : -1;
       continue;
+    } else if ((align == BankAlign::QuadGRF) && (i % 4 != 0)) {
+      i += forward ? (4 - (i % 4)) : -(i % 4);
+      continue;
     } else if ((align == BankAlign::Even2GRF) && ((i % 4 >= 2))) {
       i += forward ? 1 : -1;
       continue;
@@ -2445,8 +2457,12 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
       getOccupiedBundle(builder, gra, dcl, preBank);
   localRABound = numRegLRA - globalLRSize -
                  1; //-1, localRABound will be counted in findFreeRegs()
-  BankAlign bankAlign =
-      gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
+  auto alignNeeded = gra.getAlignFromAugBucket(dcl);
+  BankAlign bankAlign = BankAlign::Either;
+  if (alignNeeded == 4)
+    bankAlign = BankAlign::QuadGRF;
+  else if (alignNeeded == 2)
+    bankAlign = BankAlign::Even;
   if (bankAlign == BankAlign::Either && doBankConflict) {
     bankAlign = gra.getBankAlign(dcl);
   } else {
@@ -2737,6 +2753,8 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
 }
 
 bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
+  vISA_ASSERT(!gra.use4GRFAlign, "not expecting 4GRF align");
+
   int regnum, subregnum;
   unsigned int tmpLocalRABound = 0;
   int nrows = 0;

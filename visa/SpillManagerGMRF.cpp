@@ -909,7 +909,6 @@ G4_Declare *SpillManagerGRF::createTransientGRFRangeDeclare(
       region->crossGRF(*builder_)) {
     vASSERT(builder_->numEltPerGRF<Type_UB>() % region->getElemSize() == 0);
     width = builder_->numEltPerGRF<Type_UB>() / region->getElemSize();
-    vASSERT(segmentByteSize / builder_->numEltPerGRF<Type_UB>() <= 2);
     height = 2;
   } else {
     vASSERT(segmentByteSize % region->getElemSize() == 0);

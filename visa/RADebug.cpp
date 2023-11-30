@@ -445,18 +445,44 @@ void VerifyAugmentation::verifyAlign(G4_Declare *dcl) {
   if (it == masks.end())
     return;
 
-  if (dcl->getByteSize() >=
-          kernel->numEltPerGRF<Type_UD>() * TypeSize(Type_UD) &&
-      dcl->getByteSize() <=
-          2 * kernel->numEltPerGRF<Type_UD>() * TypeSize(Type_UD) &&
-      kernel->getSimdSize() > kernel->numEltPerGRF<Type_UD>()) {
-    auto assignment = dcl->getRegVar()->getPhyReg();
-    if (assignment && assignment->isGreg()) {
-      auto phyRegNum = assignment->asGreg()->getRegNum();
-      auto augMask = std::get<1>((*it).second);
-      if (phyRegNum % 2 != 0 && augMask == AugmentationMasks::Default32Bit) {
-        printf("Dcl %s is Default32Bit but assignment is not Even aligned\n",
-               dcl->getName());
+  if (gra->use4GRFAlign) {
+    auto augMask = std::get<1>((*it).second);
+    if (augMask == AugmentationMasks::Default64Bit) {
+      auto assignment = dcl->getRegVar()->getPhyReg();
+      if (assignment && assignment->isGreg()) {
+        auto phyRegNum = assignment->asGreg()->getRegNum();
+        if (phyRegNum % 4 != 0) {
+          printf("Dcl %s is Default64Bit but assignment is not 4GRF aligned "
+                 "(gra.getAugAlign() = %d)\n",
+                 dcl->getName(), gra->getAugAlign(dcl));
+        }
+      }
+    } else if (augMask == AugmentationMasks::Default32Bit) {
+      auto assignment = dcl->getRegVar()->getPhyReg();
+      if (assignment && assignment->isGreg()) {
+        auto phyRegNum = assignment->asGreg()->getRegNum();
+        auto augMask = std::get<1>((*it).second);
+        if (phyRegNum % 2 != 0 && augMask == AugmentationMasks::Default32Bit) {
+          printf("Dcl %s is Default32Bit but assignment is not Even aligned "
+                 "(gra.getAugAlign() = %d)\n",
+                 dcl->getName(), gra->getAugAlign(dcl));
+        }
+      }
+    }
+  } else {
+    if (dcl->getByteSize() >=
+            kernel->numEltPerGRF<Type_UD>() * TypeSize(Type_UD) &&
+        dcl->getByteSize() <=
+            2 * kernel->numEltPerGRF<Type_UD>() * TypeSize(Type_UD) &&
+        kernel->getSimdSize() > kernel->numEltPerGRF<Type_UD>()) {
+      auto assignment = dcl->getRegVar()->getPhyReg();
+      if (assignment && assignment->isGreg()) {
+        auto phyRegNum = assignment->asGreg()->getRegNum();
+        auto augMask = std::get<1>((*it).second);
+        if (phyRegNum % 2 != 0 && augMask == AugmentationMasks::Default32Bit) {
+          printf("Dcl %s is Default32Bit but assignment is not Even aligned\n",
+                 dcl->getName());
+        }
       }
     }
   }
@@ -663,12 +689,14 @@ void VerifyAugmentation::verify() {
         str = "NonDefault";
       else if (m == AugmentationMasks::DefaultPredicateMask)
         str = "DefaultPredicateMask";
-      str.append("\n");
 
       return str;
     };
 
     std::cout << dcl->getName() << " - " << getMaskStr(dclMask);
+    auto augAlign = gra->getAugAlign(dcl);
+    std::cout << " (align = " << augAlign << "GRF)";
+    std::cout << "\n";
 
     verifyAlign(dcl);
 
@@ -717,7 +745,11 @@ void VerifyAugmentation::verify() {
     active.push_back(dcl);
   }
 
-  std::cout << "End verification for kenel: "
+  std::cout << "\nProgram has "
+            << (intf->numVarsWithWeakEdges() == 0 ? "no" : "")
+            << " vars with weak edges\n";
+
+  std::cout << "End verification for kernel: "
             << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << "\n"
             << "\n"
             << "\n";

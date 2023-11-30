@@ -78,11 +78,6 @@ private:
   G4_SrcRegRegion *generateCoalescedSpill(G4_SrcRegRegion *, unsigned int,
                                           unsigned int, bool, G4_InstOption,
                                           G4_Declare *, unsigned int);
-  void copyToOldFills(
-      G4_DstRegRegion *,
-      std::list<
-          std::pair<G4_DstRegRegion *, std::pair<unsigned int, unsigned int>>>,
-      INST_LIST_ITER, G4_BB *, int);
   bool fillHeuristic(std::list<INST_LIST_ITER> &, std::list<INST_LIST_ITER> &,
                      const std::list<INST_LIST_ITER> &, unsigned int &,
                      unsigned int &);

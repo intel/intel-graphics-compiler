@@ -301,14 +301,16 @@ bool LoopVarSplit::split(G4_Declare *dcl, Loop &loop) {
   splitData.origDcl = dcl;
   bool isDefault32bMask = coloring->getGRA().getAugmentationMask(dcl) ==
                           AugmentationMasks::Default32Bit;
+  bool isDefault64bMask = coloring->getGRA().getAugmentationMask(dcl) ==
+                          AugmentationMasks::Default64Bit;
 
   // emit TMP = dcl in preheader
-  copy(loop.preHeader, splitDcl, dcl, &splitData, isDefault32bMask);
+  copy(loop.preHeader, splitDcl, dcl, &splitData, isDefault32bMask, isDefault64bMask);
 
   // emit dcl = TMP in loop exit
   if (dsts.size() > 0) {
     copy(loop.getLoopExits().front(), dcl, splitDcl, &splitData,
-         isDefault32bMask, /*pushBack*/ false);
+         isDefault32bMask, isDefault64bMask, /*pushBack*/ false);
   }
 
   // replace all occurences of dcl in loop with TMP
@@ -325,7 +327,7 @@ bool LoopVarSplit::split(G4_Declare *dcl, Loop &loop) {
 
 void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
                         SplitResults *splitData, bool isDefault32bMask,
-                        bool pushBack) {
+                        bool isDefault64bMask, bool pushBack) {
   // create mov instruction to copy dst->src
   // multiple mov instructions may be created depending on size of dcls
   // all mov instructions are appended to inst list of bb
@@ -337,6 +339,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
   src = src->getRootDeclare();
   unsigned int numRows = dst->getNumRows();
   unsigned int bytesRemaining = dst->getByteSize();
+  const unsigned int maxDstSize = 2;
 
   auto insertCopy = [&](G4_INST *inst) {
     if (pushBack || bb->size() == 0) {
@@ -385,9 +388,10 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
       const RegionDesc *rd = kernel.fg.builder->getRegionStride1();
       G4_ExecSize execSize{kernel.numEltPerGRF<Type_UD>()};
 
-      // copy 2 GRFs at a time if byte size permits
       unsigned int rowsCopied = 1;
+      G4_Type movType = Type_F;
       if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2) {
+        // copy 2 GRFs at a time if byte size permits
         if (instOption == InstOpt_WriteEnable ||
             kernel.getSimdSize() >= execSize * 2) {
           // When instruction uses default EM, max # of rows to be
@@ -398,24 +402,25 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
           // GRF platform under SIMD8, we should emit 2 movs, each
           // writing 1 row and both movs must use default EM. Emitting
           // single SIMD16 mov with default EM is illegal is this case.
-          execSize = G4_ExecSize(kernel.numEltPerGRF<Type_UD>() * 2);
           rowsCopied = 2;
+          movType = Type_F;
         }
       }
+      execSize = G4_ExecSize(kernel.numEltPerGRF(movType) * rowsCopied);
 
       auto dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), (short)i, 0,
-                                                 1, Type_F);
+                                                 1, movType);
       auto srcRgn = kernel.fg.builder->createSrc(src->getRegVar(), (short)i, 0,
-                                                 rd, Type_F);
+                                                 rd, movType);
       auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn,
                                                instOption, false);
 
       insertCopy(inst);
       vISA_ASSERT(
           bytesRemaining >=
-              (unsigned int)(execSize.value * G4_Type_Table[Type_F].byteSize),
+              (unsigned int)(execSize.value * G4_Type_Table[movType].byteSize),
           "Invalid copy exec size");
-      bytesRemaining -= (execSize.value * G4_Type_Table[Type_F].byteSize);
+      bytesRemaining -= (execSize.value * G4_Type_Table[movType].byteSize);
 
       i += rowsCopied;
 
