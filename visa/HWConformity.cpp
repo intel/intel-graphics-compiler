@@ -5776,12 +5776,8 @@ void HWConformity::conformBB(G4_BB *bb) {
       fixVxHFloat64b(i, bb);
     }
 
-    if (builder.supportFloatOr64bRegioning()) {
-      // This function is for pre-Xe_XeHPSDV platforms. Xe_XeHPSDV+ platforms
-      // should be fixed in fixUnalignedRegions() later.
-      if (fix64bInst(i, bb)) {
-        continue;
-      }
+    if (fix64bInst(i, bb)) {
+      continue;
     }
 
 #ifdef _DEBUG
@@ -5842,15 +5838,6 @@ void HWConformity::conformBB(G4_BB *bb) {
       }
       I = next;
     }
-  }
-
-  // Do immdiate Address offset OOB check as previous fixes may generate
-  // invalid ImmAddrOffset.
-  for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter) {
-    fixImmAddrOffsetOOB(iter, bb);
-#ifdef _DEBUG
-    verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
-#endif
   }
 
   if (builder.getNativeExecSize() <= g4::SIMD8) {
@@ -5945,6 +5932,15 @@ void HWConformity::conformBB(G4_BB *bb) {
       verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
     }
+  }
+
+  // Immdiate Address offset OOB check should be put at the end of conformBB
+  // as previous fixes may generate invalid ImmAddrOffset.
+  for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter) {
+    fixImmAddrOffsetOOB(iter, bb);
+#ifdef _DEBUG
+    verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
   }
 }
 
@@ -9846,9 +9842,7 @@ void HWConformity::fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb) {
     //  add(execSize) A(0,0)<1>:uw  A(0,0)<1;1,0>:uw  imm:w
     auto addrDst = builder.createDst(var->getBase(), 0, sregOff, 1, Type_UW);
     auto addrSrc = builder.createSrc(var->getBase(), 0, sregOff,
-                                     execSize == 1 ? builder.getRegionScalar()
-                                                   : builder.getRegionStride1(),
-                                     Type_UW);
+                                     builder.getRegionStride1(), Type_UW);
     auto immSrc = builder.createImm(imm, Type_W);
     auto addrAddInst = builder.createInternalInst(
         nullptr, G4_add, nullptr, g4::NOSAT, G4_ExecSize(execSize), addrDst,
