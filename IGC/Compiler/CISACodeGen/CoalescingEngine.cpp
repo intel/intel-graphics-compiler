@@ -1254,6 +1254,13 @@ namespace IGC
     //   (W)     mov (1|M0)               r18.0<1>:f    0.0:f
     //   (W)     mov (1|M0)               r19.0<1>:f    1.0:f
     //   (W)     send.urb (1|M0)          null     r2   r16:4  0x0  0x020827F7
+    // On Xe2+ URB write messages are transposed LSC store messages that write
+    // consecutive DWORDs of payload, e.g.:
+    //   (W)     mov (1|M0)               r16.0<1>:ud   0x0:ud
+    //   (W)     mov (1|M0)               r16.1<1>:f   -1.0:f
+    //   (W)     mov (1|M0)               r16.2<1>:f    0.0:f
+    //   (W)     mov (1|M0)               r16.3<1>:f    1.0:f
+    //   (W)     store.urb.d32x4t.a32 (1|M0)  [r2:1+0x27F0] r16:1
     CVariable* CoalescingEngine::PrepareUniformUrbWritePayload(
         CShader* shader,
         CEncoder* encoder,
@@ -1263,6 +1270,15 @@ namespace IGC
         CVariable* payload = nullptr;
         const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
         const uint grfSize = shader->GetContext()->platform.getGRFSize();
+        if (shader->GetContext()->platform.hasLSCUrbMessage())
+        {
+            // Payload for transposed LSC URB Write - all data chunks stored in subsequent DWORDs
+            payload = shader->GetNewVariable(
+                numOperands, ISA_TYPE_F,
+                (grfSize == 64 ? EALIGN_32WORD : EALIGN_HWORD),
+                true /*uniform*/, "CEExplicitPayload_Uniform");
+        }
+        else
         {
             // Payload spans multiple GRFs, only the first DWORD of each GRF
             // will be populated with (uniform) data.
@@ -1279,6 +1295,11 @@ namespace IGC
             IGC_ASSERT(isUniform(val) && data->IsUniform());
             encoder->SetNoMask();
             encoder->SetSimdSize(SIMDMode::SIMD1);
+            if (shader->GetContext()->platform.hasLSCUrbMessage())
+            {
+                encoder->SetDstSubReg(i);
+            }
+            else
             {
                 encoder->SetDstSubVar(i);
             }

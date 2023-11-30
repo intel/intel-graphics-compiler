@@ -56,6 +56,7 @@ private:
     //TODO: this is hardcoded string, we might want to put all "printf" of different adaptors to one place eventually
     static constexpr char *PrintfFuncName = "printf";
 
+    bool isChildOfXe2 = false;
 
     // Field for explicit GlobalBufferPtr - used on OpenCL path.
     Value* GlobalBufferPtr = nullptr;
@@ -72,8 +73,9 @@ private:
                 enabledSlices++;
             }
         }
+        isChildOfXe2 = Ctx.platform.isCoreChildOf(IGFX_XE2_LPG_CORE);
 
-        if (Ctx.platform.isProductChildOf(IGFX_PVC))
+        if (isChildOfXe2 || Ctx.platform.isProductChildOf(IGFX_PVC))
         {
             NumDSSPerSlice = SysInfo.MaxSubSlicesSupported / std::max(SysInfo.MaxSlicesSupported, enabledSlices);
             EuCountPerDSS = SysInfo.MaxEuPerSubSlice;

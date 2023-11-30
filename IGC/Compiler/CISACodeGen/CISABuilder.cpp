@@ -4079,6 +4079,14 @@ namespace IGC
             SaveOption(vISA_SkipPaddingScratchSpaceSize, IGC_GET_FLAG_VALUE(SkipPaddingScratchSpaceSize));
         }
 
+        if (unsigned int val = IGC_GET_FLAG_VALUE(CodePatch))
+        {
+            if (IsCodePatchCandidate())
+            {
+                SaveOption(vISA_CodePatch, val);
+                SaveOption(vISA_SWSBStitch, true);
+            }
+        }
 
         if (m_program->m_Platform->getWATable().Wa_14012760189 && IGC_IS_FLAG_ENABLED(EnableEvaluateSamplerSplit))
         {
@@ -4291,6 +4299,10 @@ namespace IGC
 
         SetAbortOnSpillThreshold(canAbortOnSpill, AllowSpill);
 
+        if (context->type == ShaderType::COMPUTE_SHADER)
+        {
+            SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
+        }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
             (m_program->m_Platform->preemptionSupported() || IGC_IS_FLAG_ENABLED(ForcePreemptionWA)) &&
@@ -4649,6 +4661,11 @@ namespace IGC
                 // compiler heuristics
                 SaveOption(vISA_AutoGRFSelection, true);
             }
+        }
+
+        if (m_program->m_Platform->forceSamplerHeader())
+        {
+            SaveOption(vISA_samplerHeaderWA, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue))
@@ -5092,6 +5109,11 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(EnableCoalesceScalarMoves))
         {
             SaveOption(vISA_CoalesceScalarMoves, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(EnableProgrammableOffsetsMessageBitInHeader))
+        {
+            SaveOption(vISA_EnableProgrammableOffsetsMessageBitInHeader, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) ||

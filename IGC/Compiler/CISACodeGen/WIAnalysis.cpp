@@ -1540,8 +1540,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             case VIEWPORT_INDEX: // viewport index from PS payload
             {
                 IGC_ASSERT(m_CGCtx->type == ShaderType::PIXEL_SHADER);
-                const bool hasMultipolyDispatch =
-                    m_CGCtx->platform.supportDualSimd8PS();
+                const bool hasMultipolyDispatch = m_CGCtx->platform.hasDualKSPPS() || m_CGCtx->platform.supportDualSimd8PS();
                 return hasMultipolyDispatch ? WIAnalysis::RANDOM : WIAnalysis::UNIFORM_THREAD;
             }
             case POSITION_X: // position from VUE header in GS or pixel position X in PS

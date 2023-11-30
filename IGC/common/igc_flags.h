@@ -782,6 +782,7 @@ DECLARE_IGC_REGKEY(bool, ForceAllPrivateMemoryToSLM, false, "[POC] Force moving 
 DECLARE_IGC_REGKEY(debugString, ForcePrivateMemoryToSLMOnBuffers, 0, "[POC] Force moving private memory allocations to SLM, semicolon-separated list of buffers.", false)
 DECLARE_IGC_REGKEY(bool, ForcePrivateMemoryToGlobalOnGeneric, true, "Force moving private memory allocations to global buffer when generic pointer is present", true)
 DECLARE_IGC_REGKEY(bool, DetectCastToGAS,                     true, "Check if the module contains local/private to GAS (Gerneric Address Space) cast, it also check internal flags", true)
+DECLARE_IGC_REGKEY(bool, EnableProgrammableOffsetsMessageBitInHeader, false, "Use pre-delta feature (legacy) method of passing MSB of PO messages opcode. ", false)
 DECLARE_IGC_REGKEY(bool, OverrideCsWalkOrderEnable,  false, "Enable overriding compute walker walk order", true)
 DECLARE_IGC_REGKEY(int,  OverrideCsWalkOrder,        0,     "Override compute walker walk order", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayoutEnable, false, "Enable overriding compute walker tile layout", true)

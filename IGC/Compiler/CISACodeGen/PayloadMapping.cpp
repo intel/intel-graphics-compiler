@@ -140,6 +140,12 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const T* inst, SIMDMode simdMo
 
     if (RTWriteHasSource0Alpha(inst, m_CodeGenContext->getModuleMetaData()))
     {
+        if (m_CodeGenContext->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+        {
+            int multiplier = simdMode == SIMDMode::SIMD16 ? 1 : 2;
+            offset += m_CodeGenContext->platform.getGRFSize() * multiplier;
+            return offset;
+        }
         IGC_ASSERT(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
         int multiplier = inst->getSource0Alpha()->getType()->isHalfTy() ? 1 : 2;
         if (simdMode == SIMDMode::SIMD8)
@@ -186,6 +192,12 @@ int PayloadMapping::GetRightReservedOffset_RTWrite(const T* inst, SIMDMode simdM
 
     if (inst->hasDepth())
     {
+        if (m_CodeGenContext->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+        {
+            int multiplier = simdMode == SIMDMode::SIMD16 ? 1 : 2;
+            offset += m_CodeGenContext->platform.getGRFSize() * multiplier;
+            return offset;
+        }
 
         IGC_ASSERT(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
 

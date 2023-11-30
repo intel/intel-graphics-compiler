@@ -1337,6 +1337,11 @@ bool hasSampleMlodMessage() const
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
 }
 
+bool forceSamplerHeader() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
 bool hasDualKSPPS() const
 {
     return isCoreChildOf(IGFX_XE2_LPG_CORE);

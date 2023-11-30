@@ -1108,6 +1108,10 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     {
         return {12, 14};
     }
+    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+    {
+        return {11, 15};
+    }
     else
     {
         return {12, 14};

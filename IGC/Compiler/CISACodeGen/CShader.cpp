@@ -2498,6 +2498,14 @@ e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
         return (Align == EALIGN_AUTO) ? (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD : Align;
     }
 
+    if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(V))
+    {
+        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBReadOutput)
+        {
+            return pContext->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD;
+        }
+    }
 
     // Check how that value is used.
     return GetPreferredAlignmentOnUse(V, WIA, pContext);
@@ -3210,6 +3218,11 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
             int mult = 1;
             if (CEncoder::GetCISADataTypeSize(type) == 2 && m_SIMDSize == SIMDMode::SIMD8)
             {
+                mult = 2;
+            }
+            if (m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE) && value->getType()->isIntegerTy(16) && m_SIMDSize == SIMDMode::SIMD16)
+            {
+                IGC_ASSERT(m_Platform->getGRFSize() == 64);
                 mult = 2;
             }
 
