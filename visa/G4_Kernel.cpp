@@ -2118,6 +2118,8 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg)
       break;
     }
   }
+  if (i == size)
+    return getMaxGRF();
   return configs[currentMode].numGRF;
 }
 
