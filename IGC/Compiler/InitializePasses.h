@@ -24,6 +24,7 @@ void initializeAlignmentAnalysisPass(llvm::PassRegistry&);
 void initializePreBIImportAnalysisPass(llvm::PassRegistry&);
 void initializeBIImportPass(llvm::PassRegistry&);
 void initializeBlockCoalescingPass(llvm::PassRegistry&);
+void initializeBlockMemOpAddrScalarizationPassPass(llvm::PassRegistry&);
 void initializeBreakConstantExprPass(llvm::PassRegistry&);
 void initializeBuiltinCallGraphAnalysisPass(llvm::PassRegistry&);
 void initializeBuiltinsConverterPass(llvm::PassRegistry&);

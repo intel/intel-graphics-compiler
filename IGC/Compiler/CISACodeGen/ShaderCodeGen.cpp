@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
+#include "Compiler/CISACodeGen/BlockMemOpAddrScalarizationPass.hpp"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
@@ -1360,6 +1361,9 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(new BreakConstantExpr());
         mpm.add(new IGCConstProp());
+
+        mpm.add(new BlockMemOpAddrScalarizationPass());
+
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
         {

@@ -774,6 +774,7 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             visitLdRawVec(inst);
             break;
         }
+
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
         {
             visitShuffleIndex(inst);
