@@ -592,7 +592,7 @@ void TimeStats::printSumTimeCSV(std::string const& outputFile) const
     bool fileExist = false;
 
     FILE *fp = fopen(outputFile.c_str(), "r");
-    if( fp )
+    if (fp)
     {
         fileExist = true;
         fclose(fp);
@@ -600,13 +600,13 @@ void TimeStats::printSumTimeCSV(std::string const& outputFile) const
 
     FILE* fileName = fopen(outputFile.c_str(), "a");
 
-    if( !fileExist && fileName )
+    if (!fileExist && fileName)
     {
         fprintf(fileName, "Frequency,%ju\n\n", m_freq);
         fprintf(fileName, "corpus name,shader count,");
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
-            if( !skipTimer( i ) )
+            if (!skipTimer( i ))
             {
                 fprintf(fileName, "%s,", g_cCompTimeIntervals[i] );
             }
@@ -614,21 +614,21 @@ void TimeStats::printSumTimeCSV(std::string const& outputFile) const
         fprintf(fileName, "\n");
     }
 
-    if( fileName )
+    if (fileName)
     {
         fprintf(fileName, "%s,%d,", IGC::Debug::GetShaderCorpusName(), m_totalShaderCount );
 
         // print ticks
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
-            if( !skipTimer( i ) )
+            if (!skipTimer( i ))
             {
                 fprintf(fileName, "%jd,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
             }
         }
         fprintf(fileName, "\n");
 
-        if( !IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsCoarse, TIME_STATS_COARSE))
+        if (!IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsCoarse, TIME_STATS_COARSE))
         {
             // print secs
             fprintf(fileName, "seconds,," );
