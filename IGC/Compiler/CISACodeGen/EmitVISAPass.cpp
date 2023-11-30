@@ -9308,13 +9308,9 @@ void EmitPass::emitCopyFromLayoutStruct(Value* D, Value* S)
     }
 
     uint32_t sTyBytes = (uint32_t)DL.getTypeStoreSize(sTy);
-    // dEltTy : copy type
-    //   struct member could be vector, so take its scalar type.
-    //   Use int type for copy always.
+    // struct member could be vector, so take its scalar type.
     Type* dEltTy = sTy->getElementType(0)->getScalarType();
     uint32_t dEltBytes = (uint32_t)DL.getTypeStoreSize(dEltTy);
-    // dEltTy could be of struct or float, int, etc. Here, use int type.
-    dEltTy = Type::getIntNTy(dEltTy->getContext(), dEltBytes * 8);
     // dNElts in unit of dEltTy.
     //   Note Legal struct has its size be multiple of dEltTy.
     IGC_ASSERT((sTyBytes % dEltBytes) == 0);
