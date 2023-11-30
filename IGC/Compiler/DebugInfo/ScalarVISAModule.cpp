@@ -456,6 +456,9 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
                         index = m_pShader->m_pBtiLayout->GetTextureIndex(index);
                         IGC_ASSERT_MESSAGE(index < TEXTURE_REGISTER_NUM, "Bad texture index");
                         return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this);
+                    case BindlessUAVResourceType:
+                        IGC_ASSERT_MESSAGE(index < TEXTURE_REGISTER_NUM, "Bad texture index");
+                        return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this);
                     default:
                         IGC_ASSERT_MESSAGE(0, "Unknown texture resource");
                         return VISAVariableLocation(this);
