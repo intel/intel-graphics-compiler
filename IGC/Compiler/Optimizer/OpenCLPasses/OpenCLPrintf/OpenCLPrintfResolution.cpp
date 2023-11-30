@@ -322,7 +322,15 @@ bool OpenCLPrintfResolution::argIsString(Value* arg)
         {
             return false;
         }
-        ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
+        Constant* initializer = formatString->getInitializer();
+        if (initializer->isZeroValue())
+        {
+            // Is zeroinitializer; can't be casted to ConstantDataArray.
+            // This caused zeroinitializers to be treated as non-strings,
+            // which caused assertion errors.
+            return true;
+        }
+        ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(initializer);
         if (!formatStringConst || !formatStringConst->isCString())
         {
              return false;
@@ -386,7 +394,16 @@ void OpenCLPrintfResolution::removeExcessArgs()
     {
         IGC_ASSERT(GV->hasInitializer());
 
-        unsigned int numFormatSpecifiers = getNumFormatSpecifiers(cast<ConstantDataArray>(GV->getInitializer()));
+        unsigned int numFormatSpecifiers = 0;
+
+        Constant* initializer = GV->getInitializer();
+        if (initializer->isZeroValue())
+            // The string literal is empty, can't be casted to ConstantDataArray
+            // and there is no way it contains any format specifiers.
+            numFormatSpecifiers = 0;
+        else
+            numFormatSpecifiers = getNumFormatSpecifiers(cast<ConstantDataArray>(GV->getInitializer()));
+
         if (m_argDescriptors.size() > numFormatSpecifiers + 1)
             m_argDescriptors.erase(m_argDescriptors.begin() + numFormatSpecifiers + 1, m_argDescriptors.end());
     }
