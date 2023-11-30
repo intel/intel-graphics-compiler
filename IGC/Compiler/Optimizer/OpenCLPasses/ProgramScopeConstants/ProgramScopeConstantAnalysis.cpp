@@ -40,9 +40,6 @@ ProgramScopeConstantAnalysis::ProgramScopeConstantAnalysis() : ModulePass(ID)
 
 bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 {
-    bool hasInlineConstantBuffer = false;
-    bool hasInlineGlobalBuffer = false;
-
     BufferOffsetMap inlineProgramScopeOffsets;
 
     // maintains pointer information so we can patch in
@@ -128,28 +125,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 continue;
         }
 
-        DataVector* inlineProgramScopeBuffer = nullptr;
-        auto initInlineGlobalBuffer = [&]() {
-            InlineProgramScopeBuffer ilpsb;
-            ilpsb.alignment = 0;
-            ilpsb.allocSize = 0;
-            m_pModuleMd->inlineGlobalBuffers.push_back(ilpsb);
-            hasInlineGlobalBuffer = true;
-        };
-        auto initInlineConstantBuffer = [&]() {
-            // General constants
-            InlineProgramScopeBuffer ilpsb;
-            ilpsb.alignment = 0;
-            ilpsb.allocSize = 0;
-            m_pModuleMd->inlineConstantBuffers.push_back(ilpsb);
-
-            // String literals
-            InlineProgramScopeBuffer ilpsbString;
-            ilpsbString.alignment = 0;
-            ilpsbString.allocSize = 0;
-            m_pModuleMd->inlineConstantBuffers.push_back(ilpsbString);
-            hasInlineConstantBuffer = true;
-        };
+        InlineProgramScopeBufferType inlineProgramScopeBufferType = {};
 
         // When ZeBin is enabled, constant variables that are string literals
         // used only by printf will be stored in the second constant buffer.
@@ -164,24 +140,18 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // any other OpenCL printf restrictions.
         if (isZebinPrintfStringConst)
         {
-            if (!hasInlineConstantBuffer)
-                initInlineConstantBuffer();
             m_pModuleMd->stringConstants.insert(globalVar);
-            inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
+            inlineProgramScopeBufferType = InlineProgramScopeBufferType::ConstantStrings;
         }
         else
         {
             if (AS == ADDRESS_SPACE_GLOBAL)
             {
-                if (!hasInlineGlobalBuffer)
-                    initInlineGlobalBuffer();
-                inlineProgramScopeBuffer = &m_pModuleMd->inlineGlobalBuffers.back().Buffer;
+                inlineProgramScopeBufferType = InlineProgramScopeBufferType::Globals;
             }
             else
             {
-                if (!hasInlineConstantBuffer)
-                    initInlineConstantBuffer();
-                inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[0].Buffer;
+                inlineProgramScopeBufferType = InlineProgramScopeBufferType::Constants;
             }
         }
 
@@ -190,6 +160,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             zeroInitializedGlobals.push_back(globalVar);
             continue;
         }
+
+        DataVector* inlineProgramScopeBuffer = &m_pModuleMd->inlineBuffers[inlineProgramScopeBufferType].Buffer;
 
         // Align the buffer.
         if (inlineProgramScopeBuffer->size() != 0)
@@ -205,23 +177,19 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer->size();
 
         // Add the data to the buffer
-        addData(initializer, *inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
+        addData(initializer, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
     }
 
     // Set the needed allocation size to the actual buffer size
-    if (hasInlineGlobalBuffer)
-        m_pModuleMd->inlineGlobalBuffers.back().allocSize = m_pModuleMd->inlineGlobalBuffers.back().Buffer.size();
-    if (hasInlineConstantBuffer)
-    {
-        m_pModuleMd->inlineConstantBuffers[0].allocSize = m_pModuleMd->inlineConstantBuffers[0].Buffer.size();
-        m_pModuleMd->inlineConstantBuffers[1].allocSize = m_pModuleMd->inlineConstantBuffers[1].Buffer.size();
-    }
+    m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize = m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].Buffer.size();
+    m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize = m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].Buffer.size();
+    m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].allocSize = m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].Buffer.size();
     // Calculate the correct offsets for zero-initialized globals/constants
     // Total allocation size in runtime needs to include zero-init values, but data copied to compiler output can ignore them
     for (auto globalVar : zeroInitializedGlobals)
     {
         unsigned AS = cast<PointerType>(globalVar->getType())->getAddressSpace();
-        size_t &offset = (AS == ADDRESS_SPACE_GLOBAL) ? m_pModuleMd->inlineGlobalBuffers.back().allocSize : m_pModuleMd->inlineConstantBuffers[0].allocSize;
+        size_t &offset = (AS == ADDRESS_SPACE_GLOBAL) ? m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize : m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize;
 #if LLVM_VERSION_MAJOR < 11
         offset = iSTD::Align(offset, m_DL->getPreferredAlignment(globalVar));
 #else
@@ -233,17 +201,18 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
     // Patch the offsets for usages of zero initialized globals after those offsets have been calculated in the previous step.
     // TODO: Remove this logic after enabling ZeBinary, since we will switch the patching to use relocation table instead.
-    for (ZeroInitPatchInfo &patchData : m_PatchLaterDataVector)
+    for (const ZeroInitPatchInfo &patchData : m_PatchLaterDataVector)
     {
-        char* whereToPatch = std::get<0>(patchData);
-        unsigned patchSize = std::get<1>(patchData);
-        GlobalVariable* globalVar = std::get<2>(patchData);
-        uint64_t offset = std::get<3>(patchData);
+        DataVector& toPatchDataVector = m_pModuleMd->inlineBuffers[patchData.toPatchDataVectorType].Buffer;
+        char* whereToPatch = (char *)&toPatchDataVector[patchData.toPatchIndexOfPointer];
+        unsigned patchSize = patchData.toPatchSizeOfPointer;
+        GlobalVariable* globalVar = patchData.pointerBase;
 
         auto iter = inlineProgramScopeOffsets.find(globalVar);
         IGC_ASSERT(iter != inlineProgramScopeOffsets.end());
 
-        const uint64_t patchOffset = iter->second + offset;
+        const uint64_t patchOffset = iter->second + patchData.pointerOffset;
+        IGC_ASSERT(patchSize <= sizeof(patchOffset));
         memcpy_s(whereToPatch, patchSize, (char*)&patchOffset, patchSize);
     }
 
@@ -279,7 +248,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
           IGC_IS_FLAG_ENABLED(DisableConstBaseGlobalBaseArg) ||
           (Ctx->enableZEBinary() && !m_pModuleMd->stringConstants.empty());
 
-    if (!skipConstAndGlobalBaseArgs && hasInlineConstantBuffer)
+    if (!skipConstAndGlobalBaseArgs &&
+        (m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize ||
+         m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].allocSize))
     {
         for (auto& pFunc : M)
         {
@@ -295,7 +266,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
     }
 
-    if (!skipConstAndGlobalBaseArgs && hasInlineGlobalBuffer)
+    if (!skipConstAndGlobalBaseArgs &&
+        m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize)
     {
         for (auto& pFunc : M)
         {
@@ -431,12 +403,14 @@ static unsigned WalkCastsToFindNamedAddrSpace(const Value* val)
 }
 
 void ProgramScopeConstantAnalysis::addData(Constant* initializer,
-    DataVector& inlineProgramScopeBuffer,
+    InlineProgramScopeBufferType inlineProgramScopeBufferType,
     PointerOffsetInfoList& pointerOffsetInfoList,
     BufferOffsetMap& inlineProgramScopeOffsets,
     unsigned addressSpace,
     bool forceAlignmentOne)
 {
+    DataVector& inlineProgramScopeBuffer = m_pModuleMd->inlineBuffers[inlineProgramScopeBufferType].Buffer;
+
     // Initial alignment padding before insert the current constant into the buffer.
     alignment_t typeAlignment = forceAlignmentOne ? 1 : m_DL->getABITypeAlignment(initializer->getType());
     alignBuffer(inlineProgramScopeBuffer, typeAlignment);
@@ -503,10 +477,11 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                     {
                         // If we can't find the base global variable, it must be a zero initialized value whose data is not directly copied.
                         // Save the info for now, and patch it later once we have the offsets for this zeroinit global vars.
-                        unsigned patchIdx = inlineProgramScopeBuffer.size();
+                        unsigned toPatchIndexOfPointer = inlineProgramScopeBuffer.size();
                         inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
 
-                        m_PatchLaterDataVector.push_back(std::make_tuple((char*)(&inlineProgramScopeBuffer[patchIdx]), pointerSize, ptrBase, offset));
+                        ZeroInitPatchInfo zeroInitPatchInfo = {inlineProgramScopeBufferType, toPatchIndexOfPointer, pointerSize, ptrBase, offset};
+                        m_PatchLaterDataVector.push_back(zeroInitPatchInfo);
                     }
                 }
             }
@@ -553,20 +528,20 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                     inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)& val, ((char*)& val) + pointerSize);
                 }
                 else {
-                    addData(ce->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+                    addData(ce->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
                 }
             }
             else if (GEPOperator * GEP = dyn_cast<GEPOperator>(ce))
             {
                 for (auto& Op : GEP->operands())
                     if (Constant * C = dyn_cast<Constant>(&Op))
-                        addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+                        addData(C, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
             }
             else if (ce->getOpcode() == Instruction::AddrSpaceCast ||
                 ce->getOpcode() == Instruction::BitCast)
             {
                 if (Constant * C = dyn_cast<Constant>(ce->getOperand(0)))
-                    addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+                    addData(C, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
             }
             else
             {
@@ -594,18 +569,18 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         if (ce->getOpcode() == Instruction::BitCast ||
             ce->getOpcode() == Instruction::AddrSpaceCast)
         {
-            addData(ce->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            addData(ce->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
         else if (ce->getOpcode() == Instruction::IntToPtr)
         {
             ConstantExpr* const opExpr = dyn_cast<ConstantExpr>(ce->getOperand(0));
             IGC_ASSERT_MESSAGE(nullptr != opExpr, "Unexpected operand of IntToPtr");
             IGC_ASSERT_MESSAGE(opExpr->getOpcode() == Instruction::PtrToInt, "Unexpected operand of IntToPtr");
-            addData(opExpr->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            addData(opExpr->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
         else if (ce->getOpcode() == Instruction::PtrToInt)
         {
-            addData(ce->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            addData(ce->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
         else
         {
@@ -615,7 +590,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     else if (ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer))
     {
         for (unsigned i = 0; i < cds->getNumElements(); i++) {
-            addData(cds->getElementAsConstant(i), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            addData(cds->getElementAsConstant(i), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
     }
     else if (ConstantAggregateZero * cag = dyn_cast<ConstantAggregateZero>(initializer))
@@ -639,7 +614,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             Constant* C = initializer->getAggregateElement(i);
             IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
             // Since the type may not be primitive, extra alignment is required.
-            addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace, forceAlignmentOne);
+            addData(C, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace, forceAlignmentOne);
         }
     }
     // And, finally, we have to handle base types - ints and floats.

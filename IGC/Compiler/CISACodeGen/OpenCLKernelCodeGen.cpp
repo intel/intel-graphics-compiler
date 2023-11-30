@@ -2856,13 +2856,14 @@ namespace IGC
         MetaDataUtils mdUtils(ctx->getModule());
         ModuleMetaData* modMD = ctx->getModuleMetaData();
 
-        if (!modMD->inlineConstantBuffers.empty())
+        if (modMD->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize ||
+            modMD->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].allocSize)
         {
             // For ZeBin, constants are mantained in two separate buffers
             // the first is for general constants, and the second for string literals
 
             // General constants
-            auto ipsbMDHandle = modMD->inlineConstantBuffers[0];
+            auto& ipsbMDHandle = modMD->inlineBuffers[InlineProgramScopeBufferType::Constants];
             std::unique_ptr<iOpenCL::InitConstantAnnotation> initConstant(new iOpenCL::InitConstantAnnotation());
             initConstant->Alignment = ipsbMDHandle.alignment;
             initConstant->AllocSize = ipsbMDHandle.allocSize;
@@ -2876,7 +2877,7 @@ namespace IGC
             if (ctx->enableZEBinary())
             {
                 // String literals
-                auto ipsbStringMDHandle = modMD->inlineConstantBuffers[1];
+                auto& ipsbStringMDHandle = modMD->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings];
                 std::unique_ptr<iOpenCL::InitConstantAnnotation> initStringConstant(new iOpenCL::InitConstantAnnotation());
                 initStringConstant->Alignment = ipsbStringMDHandle.alignment;
                 initStringConstant->AllocSize = ipsbStringMDHandle.allocSize;
@@ -2889,9 +2890,9 @@ namespace IGC
             }
         }
 
-        if (!modMD->inlineGlobalBuffers.empty())
+        if (modMD->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize)
         {
-            auto ipsbMDHandle = modMD->inlineGlobalBuffers[0];
+            auto& ipsbMDHandle = modMD->inlineBuffers[InlineProgramScopeBufferType::Globals];
 
             std::unique_ptr<iOpenCL::InitGlobalAnnotation> initGlobal(new iOpenCL::InitGlobalAnnotation());
             initGlobal->Alignment = ipsbMDHandle.alignment;

@@ -608,6 +608,14 @@ namespace IGC
         unsigned int rtSyncSurfPtrOffset = 0;
     };
 
+    enum InlineProgramScopeBufferType
+    {
+        Constants,
+        ConstantStrings,
+        Globals,
+        Count
+    };
+
     struct InlineProgramScopeBuffer
     {
         int alignment = 0;
@@ -683,8 +691,7 @@ namespace IGC
         std::vector<InlineResInfo> inlineResInfoData;
         ImmConstantInfo immConstant;
         llvm::SetVector<llvm::GlobalVariable*> stringConstants;
-        std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
-        std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
+        std::array<InlineProgramScopeBuffer, InlineProgramScopeBufferType::Count> inlineBuffers = {};
         std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
         std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
         std::vector<PointerAddressRelocInfo> GlobalBufferAddressRelocInfo;

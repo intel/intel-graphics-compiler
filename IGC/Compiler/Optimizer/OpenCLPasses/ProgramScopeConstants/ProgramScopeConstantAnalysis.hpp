@@ -78,7 +78,7 @@ namespace IGC
         /// @param  inlineConstantBuffer  The buffer the data is being added to.
         void addData(
             llvm::Constant* initializer,
-            DataVector& inlineConstantBuffer,
+            InlineProgramScopeBufferType inlineProgramScopeBufferType,
             PointerOffsetInfoList& pointerOffsetInfo,
             BufferOffsetMap& inlineProgramScopeOffsets,
             unsigned addressSpace,
@@ -93,7 +93,13 @@ namespace IGC
         ModuleMetaData* m_pModuleMd;
 
         // Used to patch offsets for zero initialized globals
-        typedef std::tuple<char*, unsigned, llvm::GlobalVariable*, uint64_t> ZeroInitPatchInfo;
+        struct ZeroInitPatchInfo {
+            InlineProgramScopeBufferType toPatchDataVectorType;
+            size_t toPatchIndexOfPointer;
+            unsigned toPatchSizeOfPointer;
+            llvm::GlobalVariable* pointerBase;
+            int64_t pointerOffset;
+        };
         std::vector<ZeroInitPatchInfo> m_PatchLaterDataVector;
     };
 
