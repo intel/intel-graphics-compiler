@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -61,7 +60,6 @@ public:
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
         AU.setPreservesCFG();
-        AU.addRequired<IGCLivenessAnalysis>();
     }
 
     bool runOnFunction(Function&) override;
@@ -90,7 +88,6 @@ char CloneAddressArithmetic::ID = 0;
 #define PASS_ANALYSIS_2 false
 namespace IGC {
 IGC_INITIALIZE_PASS_BEGIN(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
-IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
 IGC_INITIALIZE_PASS_END(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
 }
 
@@ -186,12 +183,6 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
 bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
   bool Result = false;
-
-  auto RPE = &getAnalysis<IGCLivenessAnalysis>();
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
-  unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
-  if(RPE->getMaxRegCountForFunction(F, SIMD) < PressureLimit)
-      return Result;
 
   for (BasicBlock &BB : F) {
     for (auto &I : BB) { Uses[&I] = I.getNumUses(); }
