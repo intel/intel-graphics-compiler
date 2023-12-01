@@ -1556,6 +1556,11 @@ bool supportLargeGRF() const
     return isCoreChildOf(IGFX_XE_HPG_CORE);
 }
 
+bool supportCheckCSThreadsLimit() const
+{
+    return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_LPG_CORE);
+}
+
 
 bool EnableCSWalkerPass() const
 {
