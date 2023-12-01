@@ -89,6 +89,64 @@ G4_INST *CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion *header,
   return fillInst;
 }
 
+void CoalesceSpillFills::copyToOldFills(
+    G4_DstRegRegion *coalescedFillDst,
+    std::list<
+        std::pair<G4_DstRegRegion *, std::pair<unsigned int, unsigned int>>>
+        indFills,
+    INST_LIST_ITER f, G4_BB *bb, int srcCISAOff) {
+  // Copy data from coalesced fill in to older fills.
+  // This way we don't carry entire coalesced payload
+  // till last fill.
+  for (const auto &oldFill : indFills) {
+    unsigned int numGRFs =
+        (oldFill.first->getRightBound() - oldFill.first->getLeftBound() +
+         kernel.numEltPerGRF<Type_UB>() - 1) /
+        kernel.numEltPerGRF<Type_UB>();
+    unsigned int rowOff = 0;
+    // TODO: Check for > 2 GRF dst
+    while (numGRFs > 0) {
+      G4_ExecSize simdSize = g4::SIMD8;
+
+      unsigned int off = oldFill.second.first;
+      unsigned int size = oldFill.second.second;
+
+      static const int BYTES_PER_HEXWORD = 32;
+
+      unsigned int scratchOff = ((unsigned)coalescedFillDst->getInst()
+                                     ->getMsgDesc()
+                                     ->getOffset()
+                                     ->immOff) /
+                                BYTES_PER_HEXWORD;
+
+      // Scratch msg offset is always equal or lower than individual fills
+      unsigned int offToUse = off - scratchOff + rowOff;
+
+      if (size > g4::SIMD8)
+        simdSize = g4::SIMD16;
+
+      G4_DstRegRegion *movDst = kernel.fg.builder->createDst(
+          oldFill.first->getBase(), rowOff, 0, 1, Type_UD);
+
+      G4_SrcRegRegion *src = kernel.fg.builder->createSrc(
+          coalescedFillDst->getBase(), offToUse, 0,
+          kernel.fg.builder->getRegionStride1(), Type_UD);
+
+      G4_INST *copy = kernel.fg.builder->createMov(simdSize, movDst, src,
+                                                   InstOpt_WriteEnable, false);
+
+      bb->insertBefore(f, copy);
+
+      if (gra.EUFusionNoMaskWANeeded()) {
+        gra.addEUFusionNoMaskWAInst(bb, copy);
+      }
+
+      numGRFs -= simdSize == 8 ? 1 : 2;
+      rowOff += simdSize == 8 ? 1 : 2;
+    }
+  }
+}
+
 G4_Declare *
 CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize) {
   // Construct spill src

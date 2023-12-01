@@ -62,8 +62,7 @@ enum class BankAlign {
   Odd = 3,      // old align
   Even2GRF = 4, // 2-GRF even align 1100
   Odd2GRF = 5,  // 2-GRF old align, 0011
-  QuadGRF = 6,  // 4-GRF align
-  Align_NUM = 7 // Num of alignment
+  Align_NUM = 6 // Num of alignment
 };
 
 // An instruction's execution width

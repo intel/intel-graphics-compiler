@@ -414,9 +414,7 @@ bool PhyRegUsage::findContiguousNoWrapGRF(
          align ==
              BankAlign::Even) || // i is odd but intv needs to be even aligned
         ((i & 0x1) == 0 &&
-         align == BankAlign::Odd) || // i is even but intv needs to be odd aligned
-        ((i % 4) != 0 &&
-         align == BankAlign::QuadGRF)) // check for 4GRF alignment
+         align == BankAlign::Odd)) // i is even but intv needs to be odd aligned
     {
       i++;
     } else {

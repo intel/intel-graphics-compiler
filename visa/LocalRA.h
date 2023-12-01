@@ -61,7 +61,7 @@ private:
 
   BankAlign getBankAlignForUniqueAssign(G4_Declare *dcl);
   bool hasBackEdge();
-  void specialAlign();
+  void evenAlign();
   void preLocalRAAnalysis();
   void trivialAssignRA(bool &needGlobalRA, bool threeSourceCandidate);
   bool localRAPass(bool doRoundRobin, bool doSplitLLR);
