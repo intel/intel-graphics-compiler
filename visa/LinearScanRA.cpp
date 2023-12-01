@@ -419,7 +419,7 @@ void LinearScanRA::linearScanMarkReferencesInOpnd(G4_Operand *opnd, bool isEOT,
       LSLiveRange *lr = GetOrCreateLocalLiveRange(topdcl);
 
       lr->recordRef(curBB_, false);
-      if (isEOT) {
+      if (isEOT && kernel.fg.builder->hasEOTGRFBinding()) {
         lr->markEOT();
       }
       if (topdcl->getRegVar() && topdcl->getRegVar()->isPhyRegAssigned() &&

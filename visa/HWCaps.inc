@@ -172,7 +172,9 @@ bool hasPartialMixMode() const {
 }
 
 // whether EOT sources need to be assigned r112-r127
-bool hasEOTGRFBinding() const { return true; }
+bool hasEOTGRFBinding() const {
+  return true;
+}
 
 bool hasSmov() const { return getPlatformGeneration() < PlatformGen::XE; }
 
