@@ -186,7 +186,7 @@ typedef enum
     FCEXP_TOBE_DESIGNED                 = ( 0x1 << 0xc ),
 
     // Current default stage 1 options. *Must* be updated whenever the default changes.
-    FCEXP_DEFAULT                       = ( FCEXP_DISABLE_LVN | FCEXP_LINEARSCAN | FCEXP_DISABLE_GOPT | FCEXP_LOCAL_SCHEDULING | FCEXP_PRERA_SCHEDULING | FCEXP_NO_SPILL_COMPRESSION | FCEXP_QUICKTOKEN_ALLOC ),
+    FCEXP_DEFAULT                       = ( FCEXP_DISABLE_LVN | FCEXP_LINEARSCAN | FCEXP_DISABLE_GOPT | FCEXP_LOCAL_SCHEDULING | FCEXP_PRERA_SCHEDULING | FCEXP_QUICKTOKEN_ALLOC ),
 
     // Alias for UMD to indicate staged compilation must be disabled
     FCEXP_DISABLED                      = FCEXP_TOBE_DESIGNED
