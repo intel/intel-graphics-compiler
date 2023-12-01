@@ -3375,16 +3375,18 @@ bool CISA_IR_Builder::CISA_create_info_3d_instruction(
 bool CISA_IR_Builder::createSample4Instruction(
     VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
     ChannelMask channel, VISA_EMask_Ctrl emask, unsigned exec_size,
-    VISA_opnd *aoffimmi, const char *samplerName, const char *surfaceName,
+    VISA_opnd *aoffimmi, const char *samplerName, unsigned int samplerIndex,
+    const char *surfaceName, unsigned int surfaceIndex,
     VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
     int lineNum) {
-  VISA_StateOpndHandle *surface =
-      CISA_get_surface_variable(surfaceName, lineNum);
+  VISA_StateOpndHandle *surface = nullptr;
+
+  surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
     return false; // error recorded
 
-  VISA_StateOpndHandle *sampler =
-      CISA_get_sampler_variable(samplerName, lineNum);
+  VISA_StateOpndHandle *sampler = nullptr;
+  sampler = CISA_get_sampler_variable(samplerName, lineNum);
   if (!sampler)
     return false; // error already reported
 
@@ -3397,28 +3399,28 @@ bool CISA_IR_Builder::createSample4Instruction(
   }
   int status = m_kernel->AppendVISA3dGather4(
       subOpcode, pixelNullMask, (VISA_PredOpnd *)pred, emask, executionSize,
-      channel.getSingleChannel(), (VISA_VectorOpnd *)aoffimmi, sampler, surface,
+      channel.getSingleChannel(), (VISA_VectorOpnd *)aoffimmi,
+      sampler, samplerIndex, surface, surfaceIndex,
       (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
 }
 
-
 bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
     ChannelMask channels, VISA_EMask_Ctrl emask, unsigned exec_size,
-    VISA_opnd *aoffimmi, const char *surfaceName,
+    VISA_opnd *aoffimmi, const char *surfaceName, unsigned int surfaceIndex,
     VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
     int lineNum) {
-  VISA_StateOpndHandle *surface =
-      CISA_get_surface_variable(surfaceName, lineNum);
+  VISA_StateOpndHandle *surface = nullptr;
+  surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
     return false; // error recorded
 
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
   int status = m_kernel->AppendVISA3dLoad(
       subOpcode, pixelNullMask, (VISA_PredOpnd *)pred, emask, executionSize,
-      channels.getAPI(), (VISA_VectorOpnd *)aoffimmi, surface,
+      channels.getAPI(), (VISA_VectorOpnd *)aoffimmi, surface, surfaceIndex,
       (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;

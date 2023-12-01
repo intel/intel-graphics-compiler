@@ -1603,11 +1603,17 @@ printInstructionSampler(const print_format_provider_t *header,
     sstr << printOperand(header, inst, i++, opt);
 
     // sampler
-    sstr << " S" << printOperand(header, inst, i++, opt);
+    {
+      sstr << " S" << printOperand(header, inst, i++, opt);
+      i++; // skip reserved
+    }
 
     // surface
-    uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-    sstr << " " << printSurfaceName(surface);
+    {
+      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+      sstr << " " << printSurfaceName(surface);
+      i++; // skip reserved
+    }
 
     // dst
     sstr << printOperand(header, inst, i++, opt);

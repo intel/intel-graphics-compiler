@@ -5317,8 +5317,19 @@ int VISAKernelImpl::AppendVISA3dSampler(
 int VISAKernelImpl::AppendVISA3dLoad(
     VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
     VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *surface,
+    VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
+  return AppendVISA3dLoad(
+      subOpcode, pixelNullMask, pred, emask, executionSize, srcChannel,
+      aoffimmi, surface, 0,
+      dst, numMsgSpecificOpnds, opndArray);
+}
+
+int VISAKernelImpl::AppendVISA3dLoad(
+    VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
-    VISA_StateOpndHandle *surface,
+    VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
     VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
   ISA_Opcode opcode =
       ISA_3D_LOAD; // generate Gen IR for opndArray and dst in below func
@@ -5326,7 +5337,8 @@ int VISAKernelImpl::AppendVISA3dLoad(
       opcode, subOpcode, pixelNullMask,
       /*cpsEnable*/ false,
       /*uniformSampler*/ true, pred, emask, executionSize,
-      ChannelMask::createFromAPI(srcChannel), aoffimmi, nullptr, 0, surface, 0,
+      ChannelMask::createFromAPI(srcChannel), aoffimmi, nullptr, 0,
+      surface, surfaceIndex,
       dst, numMsgSpecificOpnds, opndArray);
 }
 
@@ -5334,7 +5346,21 @@ int VISAKernelImpl::AppendVISA3dGather4(
     VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
     VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
-    VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface,
+    VISA_StateOpndHandle *sampler,
+    VISA_StateOpndHandle *surface,
+    VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
+  return AppendVISA3dGather4(
+      subOpcode, pixelNullMask, pred, emask, executionSize, srcChannel,
+      aoffimmi, sampler, 0, surface, 0,
+      dst, numMsgSpecificOpnds, opndArray);
+}
+
+int VISAKernelImpl::AppendVISA3dGather4(
+    VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
+    VISA_StateOpndHandle *sampler, unsigned int samplerIndex,
+    VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
     VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
   ISA_Opcode opcode =
       ISA_3D_GATHER4; // generate Gen IR for opndArray and dst in below func
@@ -5342,8 +5368,8 @@ int VISAKernelImpl::AppendVISA3dGather4(
       opcode, subOpcode, pixelNullMask,
       /*cpsEnable*/ false,
       /*uniformSampler*/ true, pred, emask, executionSize,
-      ChannelMask::createFromSingleChannel(srcChannel), aoffimmi, sampler, 0,
-      surface, 0,
+      ChannelMask::createFromSingleChannel(srcChannel), aoffimmi, sampler, samplerIndex,
+      surface, surfaceIndex,
       dst, numMsgSpecificOpnds, opndArray);
 }
 

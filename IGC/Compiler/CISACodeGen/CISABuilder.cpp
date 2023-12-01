@@ -2665,6 +2665,8 @@ namespace IGC
         bool isIdxLT16;
         VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler, isIdxLT16);
         VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
+        uint32_t samplerImmIndex = 0;
+        uint32_t surfaceImmIndex = 0;
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
         VISA_RawOpnd* opndArray[11];
         for (unsigned int i = 0; i < numSources; i++)
@@ -2689,7 +2691,9 @@ namespace IGC
                 ConvertSingleSourceChannel(channel),
                 aoffimmi,
                 samplerOpnd,
+                samplerImmIndex,
                 surfOpnd,
+                surfaceImmIndex,
                 dstVar,
                 numSources,
                 opndArray);

@@ -1814,7 +1814,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     kernelBuilderImpl->AppendVISA3dLoad(
         op.opcode, op.pixelNullMask, pred, emask, esize,
         ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi,
-        surfaceHnd,
+        surfaceHnd, 0,
         dst, numParams, params);
     break;
   }
@@ -1856,7 +1856,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
         samplerHnd, container.samplerVarDecls[sampler]);
     kernelBuilder->AppendVISA3dGather4(op.opcode, op.pixelNullMask, pred, emask,
                                        esize, (VISASourceSingleChannel)channel,
-                                       aoffimmi, samplerHnd, surfaceHnd,
+                                       aoffimmi, samplerHnd, 0, surfaceHnd, 0,
                                        dst, numParams, params);
     break;
   }

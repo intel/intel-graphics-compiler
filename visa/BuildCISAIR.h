@@ -411,8 +411,9 @@ public:
                                 VISASampler3DSubOpCode subOpcode,
                                 bool pixelNullMask, ChannelMask channels,
                                 VISA_EMask_Ctrl emask, unsigned exec_size,
-                                VISA_opnd *aoffimmi, const char *sampler_name,
-                                const char *surface_name,
+                                VISA_opnd *aoffimmi,
+                                const char *sampler_name,unsigned int samplerIndex,
+                                const char *surface_name, unsigned int surfaceIndex,
                                 VISA_opnd *dst, unsigned int numParameters,
                                 VISA_RawOpnd **params, int lineNum);
 
@@ -421,6 +422,7 @@ public:
                                bool pixelNullMask, ChannelMask channels,
                                VISA_EMask_Ctrl emask, unsigned exec_size,
                                VISA_opnd *aoffimmi, const char *surface_name,
+                               unsigned int surfaceIndex,
                                VISA_opnd *dst, unsigned int numParameters,
                                VISA_RawOpnd **params, int lineNum);
 

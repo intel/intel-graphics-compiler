@@ -1370,34 +1370,35 @@ Sample3dInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt 
     ABORT_ON_FAIL(success);
    }
 
-
-
-
 CPSEnableOpt: %empty {$$ = false;} | CPS  {$$ = true;}
 
 NonUniformSamplerEnableOpt: %empty {$$ = false;} | NON_UNIFORM_SAMPLER {$$ = true;}
 
-           //      1         2          3                      4               5        6                     7   8
-Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var RawOperand
+           //      1         2          3                      4
+Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL
+           //      5        6                     7                 8
+                 ExecSize VecSrcOperand_G_I_IMM SamplerAddrOperand RawOperand
            //      9
                    RawOperandArray
    {
        const bool success = pBuilder->create3DLoadInstruction(
            $1, $2, $3, ChannelMask::createFromAPI($4),
-           $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7,
+           $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7.base, $7.offset,
            $8, (unsigned int)$9, rawOperandArray, CISAlineno);
 
     ABORT_ON_FAIL(success);
    }
 
-           //         1         2             3                      4               5        6                     7   8   9
-Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
+           //         1         2             3                      4               5        6
+Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM
+           //         7                 8                   9
+                    SamplerAddrOperand SamplerAddrOperand RawOperand
            //      10
                    RawOperandArray
    {
        const bool success = pBuilder->createSample4Instruction(
           $1, $2, $3, ChannelMask::createFromAPI($4), $5.emask, $5.exec_size,
-          $6.cisa_gen_opnd, $7, $8,
+          $6.cisa_gen_opnd, $7.base, $7.offset, $8.base, $8.offset,
           $9, (unsigned int)$10, rawOperandArray, CISAlineno);
 
     ABORT_ON_FAIL(success);

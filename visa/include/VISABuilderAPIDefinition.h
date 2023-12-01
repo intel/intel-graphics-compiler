@@ -1051,6 +1051,15 @@ public:
                    VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *surface,
                    VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                    VISA_RawOpnd **opndArray) = 0;
+
+  VISA_BUILDER_API virtual int
+  AppendVISA3dLoad(VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
+                   VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+                   VISA_Exec_Size executionSize, VISAChannelMask channelMask,
+                   VISA_VectorOpnd *aoffimmi,
+                   VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
+                   VISA_RawOpnd *dst, int numMsgSpecificOpnds,
+                   VISA_RawOpnd **opndArray) = 0;
   /// AppendVISA3dGather4 -- create a vISA sampler gather4 message
   /// @subOpcode the gather4 op (gather4, gather4_c, etc.)
   /// @pixelNullMask whether an extra GRF is returned for the null mask bit
@@ -1071,6 +1080,14 @@ public:
       VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface,
+      VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
+
+  VISA_BUILDER_API virtual int AppendVISA3dGather4(
+      VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+      VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
+      VISA_StateOpndHandle *sampler, unsigned int samplerIndex,
+      VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   VISA_BUILDER_API virtual int
