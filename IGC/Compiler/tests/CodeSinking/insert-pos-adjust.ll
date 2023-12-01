@@ -5,12 +5,10 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
 ; RUN: igc_opt -igc-code-sinking -inputcs -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------
-
 ; Check that instructions are hoisted before their uses
 ;
 
