@@ -92,6 +92,7 @@ ModulePass *createGenXEarlySimdCFConformancePass();
 FunctionPass *createGenXPredToSimdCFPass();
 FunctionPass *createGenXReduceIntSizePass();
 FunctionPass *createGenXInlineAsmLoweringPass();
+FunctionPass *createGenXBFloatLoweringPass();
 FunctionPass *createGenXLoweringPass();
 FunctionPass *createGenXVectorCombinerPass();
 FunctionPass *createGenXLowerAggrCopiesPass();

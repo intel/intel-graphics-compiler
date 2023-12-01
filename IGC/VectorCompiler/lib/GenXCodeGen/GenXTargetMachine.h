@@ -214,6 +214,7 @@ void initializeGenXPasses(PassRegistry &);
 void initializeFunctionGroupAnalysisPass(PassRegistry &);
 void initializeGenXAddressCommoningWrapperPass(PassRegistry &);
 void initializeGenXArgIndirectionWrapperPass(PassRegistry &);
+void initializeGenXBFloatLoweringPass(PassRegistry &);
 void initializeGenXCategoryWrapperPass(PassRegistry &);
 void initializeGenXCFSimplificationPass(PassRegistry &);
 void initializeGenXCisaBuilderPass(PassRegistry &);

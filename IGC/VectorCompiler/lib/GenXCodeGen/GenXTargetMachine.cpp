@@ -117,6 +117,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   // initializeGenXLivenessWrapperPass(registry);
   initializeGenXLivenessWrapperPass(registry);
   initializeGenXLowerAggrCopiesPass(registry);
+  initializeGenXBFloatLoweringPass(registry);
   initializeGenXLoweringPass(registry);
   initializeGenXModulePass(registry);
   initializeGenXNumberingWrapperPass(registry);
@@ -479,7 +480,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
                         BuiltinFunctionKind::PreLegalization));
     vc::addPass(PM, createAlwaysInlinerLegacyPass());
   }
-
+  /// .. include:: GenXBFloatLowering.cpp
+  vc::addPass(PM, createGenXBFloatLoweringPass());
   /// .. include:: GenXLowering.cpp
   vc::addPass(PM, createGenXLoweringPass());
 

@@ -29,6 +29,7 @@ set(CODEGEN_SOURCES
   GenXArgIndirection.cpp
   GenXBaling.cpp
   GenXBiFPrepare.cpp
+  GenXBFloatLowering.cpp
   GenXBuiltinFunctions.cpp
   GenXCFSimplification.cpp
   GenXCategory.cpp
