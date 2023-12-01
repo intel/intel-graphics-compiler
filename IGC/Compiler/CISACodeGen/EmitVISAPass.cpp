@@ -15643,21 +15643,6 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
-void EmitPass::CmpBoolOp(Pattern* cmpPattern,
-    llvm::BinaryOperator* inst,
-    const SSource& bitSource,
-    const DstModifier& modifier)
-{
-    DstModifier init;
-    cmpPattern->Emit(this, init);
-
-    IGC_ASSERT(bitSource.mod == EMOD_NONE);
-    CVariable* boolOpSource = GetSrcVariable(bitSource);
-    m_encoder->SetDstModifier(modifier);
-
-    EmitSimpleAlu(inst, m_destination, m_destination, boolOpSource);
-}
-
 void EmitPass::emitAluConditionMod(Pattern* aluPattern, Instruction* alu, CmpInst* cmp, int aluOprdNum)
 {
     CVariable* temp = m_currShader->GetNewVector(alu);

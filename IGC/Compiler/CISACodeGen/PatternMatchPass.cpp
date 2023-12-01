@@ -1207,13 +1207,11 @@ namespace IGC
         case Instruction::And:
             match =
                 MatchBfn(I) ||
-                MatchBoolOp(I) ||
                 MatchLogicAlu(I);
             break;
         case Instruction::Or:
             match =
                 MatchBfn(I) ||
-                MatchBoolOp(I) ||
                 MatchLogicAlu(I);
             break;
         case Instruction::Xor:
@@ -3992,47 +3990,6 @@ namespace IGC
                     AddPattern(pattern);
                     found = true;
                     break;
-                }
-            }
-        }
-        return found;
-    }
-
-    // we match the following pattern
-    // %f = cmp %1 %2
-    // %o = or/and %f %g
-    bool CodeGenPatternMatch::MatchBoolOp(llvm::BinaryOperator& I)
-    {
-        struct BoolOpPattern : public Pattern
-        {
-            Pattern* cmpPattern;
-            llvm::BinaryOperator* boolOp;
-            SSource binarySource;
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                pass->CmpBoolOp(cmpPattern, boolOp, binarySource, modifier);
-            }
-        };
-
-        IGC_ASSERT(I.getOpcode() == Instruction::Or || I.getOpcode() == Instruction::And);
-        bool found = false;
-        if (I.getType()->isIntegerTy(1))
-        {
-            for (uint i = 0; i < 2; i++)
-            {
-                if (CmpInst * cmp = llvm::dyn_cast<CmpInst>(I.getOperand(i)))
-                {
-                    // only beneficial if the other operand only have one use
-                    if (I.getOperand(1 - i)->hasOneUse())
-                    {
-                        BoolOpPattern* pattern = new (m_allocator) BoolOpPattern();
-                        pattern->cmpPattern = Match(*cmp);
-                        pattern->boolOp = &I;
-                        pattern->binarySource = GetSource(I.getOperand(1 - i), false, false, IsSourceOfSample(&I));
-                        AddPattern(pattern);
-                        found = true;
-                        break;
-                    }
                 }
             }
         }
