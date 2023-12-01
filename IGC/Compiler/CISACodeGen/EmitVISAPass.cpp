@@ -8658,6 +8658,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;  // pseudo instruction, do nothing
     case GenISAIntrinsic::GenISA_staticConstantPatchValue:
         emitStaticConstantPatchValue(cast<StaticConstantPatchIntrinsic>(inst));
+        break;
     case GenISAIntrinsic::GenISA_SetImplicitBufferPtr:
         emitStoreImplBufferPtr(inst);
         break;
