@@ -531,7 +531,7 @@ void IGC::serialize(const IGC::ModuleMetaData &moduleMD, Module* module)
 
 bool IGC::isBindless(const IGC::FunctionMetaData &funcMD)
 {
-    return funcMD.rtInfo.callableShaderType != RayGen;
+    return funcMD.functionType == IGC::CallableShader;
 }
 
 bool IGC::isContinuation(const IGC::FunctionMetaData& funcMD)
