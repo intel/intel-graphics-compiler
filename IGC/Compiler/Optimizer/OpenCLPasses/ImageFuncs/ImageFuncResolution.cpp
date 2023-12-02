@@ -40,6 +40,7 @@ ImageFuncResolution::ImageFuncResolution() : FunctionPass(ID), m_implicitArgs()
 bool ImageFuncResolution::runOnFunction(Function& F) {
     const MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_implicitArgs = ImplicitArgs(F, pMdUtils);
+    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_changed = false;
     visit(F);
     return m_changed;
@@ -52,6 +53,9 @@ void ImageFuncResolution::visitCallInst(CallInst& CI)
         return;
     }
 
+    bool isImplicitImageArgs = !m_pCtx->getModuleMetaData()->compOpt.UseBindlessMode ||
+                                    m_pCtx->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
+
     Value* imageRes = nullptr;
 
     // Add appropriate sequence and image dimension func
@@ -59,10 +63,12 @@ void ImageFuncResolution::visitCallInst(CallInst& CI)
 
     if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_HEIGHT))
     {
+        IGC_ASSERT_MESSAGE(isImplicitImageArgs, "Getting Image Height from implicit args is supported only in bindful mode");
         imageRes = getImageHeight(CI);
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_WIDTH))
     {
+        IGC_ASSERT_MESSAGE(isImplicitImageArgs, "Getting Image Width from implicit args is supported only in bindful mode");
         imageRes = getImageWidth(CI);
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_DEPTH))

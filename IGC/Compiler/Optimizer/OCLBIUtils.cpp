@@ -122,6 +122,9 @@ void CImagesBI::prepareCoords(Dimension Dim, Value* Coord, Value* Zero)
     case DIM_1D:
         //  no need to extract since in 1 Dim Coord isn't a vector
         break;
+    case DIM_UNKNOWN:
+        m_pCodeGenContext->EmitError("Unexpected dimension", NULL);
+        break;
     }
 }
 
@@ -637,6 +640,9 @@ public:
         case DIM_1D_ARRAY:
             //  no need to extract since in 1 Dim gradient is not a vector.
             break;
+        case DIM_UNKNOWN:
+            m_pCodeGenContext->EmitError("Unexpected dimension", NULL);
+            break;
         }
     }
 
@@ -865,6 +871,41 @@ public:
         m_args.push_back(m_pCallInst->getOperand(3)); // LOD
         prepareColor(Color);
         replaceGenISACallInst(GenISAIntrinsic::GenISA_typedwrite, llvm::ArrayRef<llvm::Type*>(m_args[0]->getType()));
+    }
+};
+
+class CGetImageProperty : public CImagesBI
+{
+    // Image property that needs to be recieved
+    const ImageProperty m_Prop;
+    CGetImageProperty() = delete;
+    CGetImageProperty(ParamMap* paramMap, ImageProperty prop) : CImagesBI(paramMap), m_Prop(prop) {}
+
+public:
+    static std::unique_ptr<CGetImageProperty> create(ParamMap* paramMap, ImageProperty prop)
+    {
+        return std::unique_ptr<CGetImageProperty>(new CGetImageProperty(paramMap, prop));
+    }
+
+    void createIntrinsic()
+    {
+        createGetBufferPtr();
+        LLVM3DBuilder<> builder(*m_pCtx, m_pCodeGenContext->platform.getPlatformInfo());
+        builder.SetInsertPoint(m_pCallInst);
+        Value* info = builder.Create_resinfo(builder.getInt32(0), m_args[0]);
+        Value* prop = nullptr;
+        switch (m_Prop)
+        {
+        case WIDTH:
+            prop = builder.CreateExtractElement(info, builder.getInt32(0));
+            break;
+        case HEIGHT:
+            prop = builder.CreateExtractElement(info, builder.getInt32(1));
+            break;
+        default:
+            m_pCodeGenContext->EmitError("Unsupported bindless image property requested.", NULL);
+        }
+        m_pCallInst->replaceAllUsesWith(prop);
     }
 };
 
@@ -1264,6 +1305,12 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_write_3d_ui"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
     m_CommandMap["__builtin_IB_write_2d_f"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_write_2darr_f"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+
+    // Get Image properties only supported here for bindless mode
+    if (modMD->compOpt.UseBindlessMode && !modMD->compOpt.UseLegacyBindlessMode){
+        m_CommandMap["__builtin_IB_get_image_width"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::WIDTH);
+        m_CommandMap["__builtin_IB_get_image_height"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::HEIGHT);
+    }
 
     //convert Built-ins
     m_CommandMap["__builtin_IB_frnd_ne"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ROUNDNE, false);

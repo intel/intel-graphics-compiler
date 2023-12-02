@@ -134,6 +134,7 @@ namespace IGC
     public:
         enum Dimension
         {
+            DIM_UNKNOWN,
             DIM_1D,
             DIM_1D_ARRAY,
             DIM_2D,
@@ -147,6 +148,12 @@ namespace IGC
             COORD_Y,
             COORD_Z,
             COORD_W
+        };
+
+        enum ImageProperty
+        {
+            WIDTH,
+            HEIGHT
         };
 
         struct ParamInfo
@@ -183,6 +190,10 @@ namespace IGC
 
         CImagesBI(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim) :
             m_pParamMap(paramMap), m_pInlineMap(inlineMap), m_pNextSampler(nextSampler), m_dim(Dim),
+            CoordX(nullptr), CoordY(nullptr), CoordZ(nullptr), m_IncorrectBti(false) {}
+
+        CImagesBI(ParamMap* paramMap) :
+            m_pParamMap(paramMap), m_pInlineMap(nullptr), m_pNextSampler(nullptr), m_dim(Dimension::DIM_UNKNOWN),
             CoordX(nullptr), CoordY(nullptr), CoordZ(nullptr), m_IncorrectBti(false) {}
 
         /// @brief  push 3 zeros offset to the function argumant list

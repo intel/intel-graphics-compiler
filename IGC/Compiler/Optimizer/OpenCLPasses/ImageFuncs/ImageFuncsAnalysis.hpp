@@ -18,6 +18,11 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
+    class CodeGenContext;
+}
+
+namespace IGC
+{
     /// @brief  ImageFuncsAnalysis pass used for analyzing which OpenCL image dimension functions
     ///         (height, width, depth) are used in the different functions in the module and creating
     ///         metadata that represents  the implicit image information needded by each function for
@@ -45,6 +50,7 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         /// @brief  Main entry point.
@@ -95,6 +101,10 @@ namespace IGC
         ImplicitArg::ArgMap m_argMap;
         /// @brief  MetaData utils used to generate LLVM metadata
         IGCMD::MetaDataUtils* m_pMDUtils;
+
+        /// @brief If true, implicit image args for information like width, height, etc.
+        ///        will be added to m_argMap
+        bool m_addImplicitImageArgs;
     };
 
 } // namespace IGC

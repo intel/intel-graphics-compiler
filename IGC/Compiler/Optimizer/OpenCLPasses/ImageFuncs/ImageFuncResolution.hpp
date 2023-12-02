@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -140,6 +141,9 @@ namespace IGC
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
+
+        /// @brief provides access to CodeGenContext
+        CodeGenContext* m_pCtx;
     };
 
 } // namespace IGC

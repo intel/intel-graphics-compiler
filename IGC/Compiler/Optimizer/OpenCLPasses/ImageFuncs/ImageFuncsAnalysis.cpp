@@ -22,6 +22,7 @@ using namespace IGC;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ImageFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ImageFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ImageFuncsAnalysis::ID = 0;
@@ -52,6 +53,11 @@ const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_PITCH = "__builtin_IB_g
 bool ImageFuncsAnalysis::runOnModule(Module& M) {
     bool changed = false;
     m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    m_addImplicitImageArgs = !ctx->getModuleMetaData()->compOpt.UseBindlessMode ||
+                                 ctx->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
+
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
         Function* pFunc = &(*I);
@@ -93,11 +99,11 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     // Check for OpenCL image dimension function calls
     std::set<int>* imageFunc = nullptr;
 
-    if (funcName == GET_IMAGE_HEIGHT)
+    if (funcName == GET_IMAGE_HEIGHT && m_addImplicitImageArgs)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_HEIGHT];
     }
-    else if (funcName == GET_IMAGE_WIDTH)
+    else if (funcName == GET_IMAGE_WIDTH && m_addImplicitImageArgs)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_WIDTH];
     }
