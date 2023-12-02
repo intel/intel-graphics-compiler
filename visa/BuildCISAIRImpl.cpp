@@ -1401,9 +1401,6 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
           mainFunc->getRelocationTable().end(),
           callee->getRelocationTable().begin(),
           callee->getRelocationTable().end());
-
-    vISA_ASSERT(mainFunc->getNumRegTotal() == callee->getNumRegTotal(),
-                "caller and callee cannot have different GRF modes");
   }
 
   mainFunc->fg.reassignBlockIDs();
