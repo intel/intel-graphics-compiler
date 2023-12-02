@@ -930,49 +930,6 @@ bool WIAnalysisRunner::isWaveBroadcastIndex(const llvm::Instruction* inst)
     return false;
 }
 
-// Checks all incoming values of PHI for a unique value, including PHI nodes that
-// loop back on itself. We ignore undef values as not counting towards a unique incoming value.
-static bool hasUniqueIncoming(llvm::PHINode* PN, Value*& UniqueVal, std::set<PHINode*>& phiLoop)
-{
-    UniqueVal = nullptr;
-    phiLoop.insert(PN);
-
-    for (Value* V : PN->incoming_values())
-    {
-        if (isa<UndefValue>(V))
-            continue;
-
-        if (auto* phi = dyn_cast<PHINode>(V))
-        {
-            // Ignore previously seen PHIs
-            if (phiLoop.count(phi) > 0)
-                continue;
-
-            Value* temp;
-            if (hasUniqueIncoming(phi, temp, phiLoop))
-            {
-                V = temp;
-            }
-        }
-
-        if (!UniqueVal)
-            UniqueVal = V;
-        else if (UniqueVal != V)
-        {
-            UniqueVal = nullptr;
-            return false;
-        }
-    }
-    return true;
-}
-
-bool WIAnalysisRunner::hasUniqueNonUndef(llvm::PHINode* PN)
-{
-    Value* temp;
-    std::set<PHINode*> phiLoop;
-    return hasUniqueIncoming(PN, temp, phiLoop);
-}
-
 void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
 {
     IGC_ASSERT(hasDependency(inst));
@@ -1141,23 +1098,14 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
             continue;
         }
         Value* trickySrc = nullptr;
-        bool isUnique = hasUniqueNonUndef(phi);
         for (unsigned predIdx = 0; predIdx < phi->getNumOperands(); ++predIdx)
         {
             Value* srcVal = phi->getOperand(predIdx);
             Instruction* defi = dyn_cast<Instruction>(srcVal);
             if (defi && brInfo->influence_region.count(defi->getParent()))
             {
-                // If we have a phi join that looks like this:
-                // %v = phi i32 [ %x, %if ], [ undef, %else ]
-                //
-                // Then if %x is uniform, %v isn't really non-uniform because
-                // there will be no phi-mov associated with the undef.
-                if (!isUnique)
-                {
-                    updateDepMap(phi, brDep);
-                    break;
-                }
+                updateDepMap(phi, brDep);
+                break;
             }
             else
             {
@@ -1172,7 +1120,7 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
                     {
                         trickySrc = srcVal;
                     }
-                    else if (trickySrc != srcVal && !isUnique)
+                    else if (trickySrc != srcVal)
                     {
                         updateDepMap(phi, brDep);
                         break;

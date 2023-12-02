@@ -245,10 +245,6 @@ namespace IGC
             bool& IsLyUniform,
             bool& IsLzUniform);
 
-        /// @brief return true if the phi has at most one incoming value that is
-        ///        not an undef value.
-        static bool hasUniqueNonUndef(llvm::PHINode* PN);
-
     private:
 
         /// The WIAnalysis follows pointer arithmetic
