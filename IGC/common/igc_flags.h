@@ -530,7 +530,7 @@ DECLARE_IGC_REGKEY(bool, EnableIndirectCallOptimization, true, "Enables inlining
 DECLARE_IGC_REGKEY(bool, EnableSIMDVariantCompilation,  false,  "Enables compiling kernels in variant SIMD sizes", false)
 DECLARE_IGC_REGKEY(bool, ForceFFIDOverwrite,            false, "Force overwriting ffid in sr0.0", false)
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          true,  "Enables setting GTPin context flags by reading the input to the compiler adapters", false)
-DECLARE_IGC_REGKEY(bool, EnableRuntimeFuncAttributePatching, false,  "Creates a relocation entry to let runtime calculate the max call depth and patch required scratch space usage", true)
+DECLARE_IGC_REGKEY(bool, EnableRuntimeFuncAttributePatching, false, "Creates a relocation entry to let runtime calculate the max call depth and patch required scratch space usage [ZEBin only]", true)
 DECLARE_IGC_REGKEY(bool, ForceStaticToDynamic,          false,  "Force write of vertex count in GS", false)
 DECLARE_IGC_REGKEY(bool, DisableWaSampleLZ,             false,  "Disable The Sample Lz workaround and generate Sample LZ", false)
 DECLARE_IGC_REGKEY(DWORD, OverrideRevIdForWA,           0xff,   "Enable this to override the stepping/RevId, default is a0 = 0, b0 = 1, c0 = 2, so on...", false)

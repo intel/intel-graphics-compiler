@@ -135,10 +135,7 @@ namespace IGC
         unsigned int    m_funcRelocationTableSize = 0;
         unsigned int    m_funcRelocationTableEntries = 0;
         RelocListTy     m_relocs;                  // duplicated information of m_funcRelocationTable, for zebin
-        void* m_funcAttributeTable = nullptr;
-        unsigned int    m_funcAttributeTableSize = 0;
-        unsigned int    m_funcAttributeTableEntries = 0;
-        FuncAttrListTy  m_funcAttrs;               // duplicated information of m_funcAttributeTable, for zebin
+        FuncAttrListTy  m_funcAttrs;
         void* m_globalHostAccessTable = nullptr;
         unsigned int    m_globalHostAccessTableSize = 0;
         unsigned int    m_globalHostAccessTableEntries = 0;
@@ -176,10 +173,6 @@ namespace IGC
             if (m_debugDataGenISA)
             {
                 IGC::aligned_free(m_debugDataGenISA);
-            }
-            if (m_funcAttributeTable)
-            {
-                IGC::aligned_free(m_funcAttributeTable);
             }
             if (m_funcSymbolTable)
             {

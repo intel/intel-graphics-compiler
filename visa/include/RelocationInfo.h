@@ -65,17 +65,6 @@ typedef struct {
   char r_symbol[MAX_SYMBOL_NAME_LENGTH]; // The relocation target symbol's name
 } GenRelocEntry;
 
-/// GenFuncAttribEntry - Per-function attribute entry
-typedef struct {
-  uint8_t f_isKernel;             // Is the function a kernel
-  uint8_t f_hasBarrier;           // Does the function use barriers
-  uint32_t f_privateMemPerThread; // Total private memory (in bytes) used by
-                                  // this function per thread
-  uint32_t f_spillMemPerThread;   // Spill mem used (in bytes) in scratch space
-                                  // for this function
-  char f_name[MAX_SYMBOL_NAME_LENGTH]; // The function's name
-} GenFuncAttribEntry;
-
 // HostAccessEntry - per global variable host access entry
 typedef struct {
   char device_name[MAX_SYMBOL_NAME_LENGTH];

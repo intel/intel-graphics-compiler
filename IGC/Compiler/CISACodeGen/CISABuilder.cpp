@@ -5925,29 +5925,18 @@ namespace IGC
                                             GenXFunctionGroupAnalysis *pFga) {
         ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
         SProgramOutput *pOutput = m_program->ProgramOutput();
-        void *&buffer = pOutput->m_funcAttributeTable;
-        unsigned &bufferSize = pOutput->m_funcAttributeTableSize;
-        unsigned &tableEntries = pOutput->m_funcAttributeTableEntries;
         SProgramOutput::FuncAttrListTy &attrs = pOutput->m_funcAttrs;
-        buffer = nullptr;
-        bufferSize = 0;
-        tableEntries = 0;
 
-        std::vector<vISA::GenFuncAttribEntry> attribTable;
         for (const auto &it : funcAttributeMap)
         {
-            vISA::GenFuncAttribEntry entry;
             Function* F = it.first;
             IGC_ASSERT(nullptr != F);
-            IGC_ASSERT(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
-            strcpy_s(entry.f_name, vISA::MAX_SYMBOL_NAME_LENGTH, F->getName().str().c_str());
-            entry.f_isKernel = it.second.isKernel ? 1 : 0;
-            entry.f_hasBarrier = it.second.hasBarrier ? 1 : 0;
-            entry.f_privateMemPerThread = (uint32_t) (it.second.argumentStackSize + it.second.allocaStackSize);
+            bool isKernel = it.second.isKernel;
+            uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
 
             // Get spill mem usage from visa
             VISAKernel* visaFunc = nullptr;
-            if (it.second.isKernel)
+            if (isKernel)
             {
                 IGC_ASSERT(pMainKernel != nullptr);
                 visaFunc = pMainKernel;
@@ -5960,25 +5949,20 @@ namespace IGC
             }
             vISA::FINALIZER_INFO* jitInfo;
             visaFunc->GetJitInfo(jitInfo);
-            entry.f_spillMemPerThread =
-                getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga);
 
-            uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
-            // Set per-function barrier count from vISA information.
-            uint32_t barrierCnt = jitInfo->numBarriers;
+            uint32_t barrierCount = jitInfo->numBarriers;
+            uint32_t privateMemPerThread = (uint32_t)(it.second.argumentStackSize + it.second.allocaStackSize);
+            uint32_t spillMemPerThread = getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga);
             uint8_t hasRTCalls = (uint8_t)modMD->FuncMD[F].hasSyncRTCalls;
-            attrs.emplace_back(entry.f_isKernel, isExternal, barrierCnt, entry.f_privateMemPerThread,
-                entry.f_spillMemPerThread, F->getName().str(), hasRTCalls);
-            attribTable.push_back(entry);
-        }
 
-        if (!attribTable.empty())
-        {
-            tableEntries = attribTable.size();
-            bufferSize = tableEntries * sizeof(vISA::GenFuncAttribEntry);
-            buffer = IGC::aligned_malloc(bufferSize, int_cast<size_t>(llvm::alignTo(alignof(vISA::GenFuncAttribEntry), sizeof(void *))));
-            IGC_ASSERT_MESSAGE(nullptr != buffer, "Table cannot be allocated");
-            memcpy_s(buffer, bufferSize, attribTable.data(), bufferSize);
+            attrs.emplace_back(
+                (uint8_t)isKernel,
+                isExternal,
+                barrierCount,
+                privateMemPerThread,
+                spillMemPerThread,
+                F->getName().str(),
+                hasRTCalls);
         }
     }
 
@@ -6512,8 +6496,7 @@ namespace IGC
 
         createSymbolAndGlobalHostAccessTables(hasSymbolTable, *pMainKernel);
         createRelocationTables(*pMainKernel);
-        if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching) ||
-            context->enableZEBinary())
+        if (context->enableZEBinary())
             CreateFuncAttributeTable(pMainKernel, pFGA);
 
         pOutput->m_scratchSpaceUsedBySpills =
