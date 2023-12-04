@@ -80,6 +80,17 @@ struct MessageDecoder {
       return;
     result.info.refs.emplace_back(k, name, link);
   }
+  void addDocs(DocRef::Kind k0, const char *name0, const char *link0,
+               DocRef::Kind k1, const char *name1, const char *link1,
+               DocRef::Kind k2 = DocRef::INVALID, const char *name2 = nullptr,
+               const char *link2 = nullptr,
+               DocRef::Kind k3 = DocRef::INVALID, const char *name3 = nullptr,
+               const char *link3 = nullptr) {
+    addDoc(k0, name0, link0);
+    addDoc(k1, name1, link1);
+    addDoc(k2, name2, link2);
+    addDoc(k3, name3, link3);
+  }
   const char *chooseDoc(const char *preXe, const char *xe,
                         const char *xe23) const {
     preXe = preXe ? preXe : "?";
@@ -130,6 +141,9 @@ struct MessageDecoder {
     addField(fieldName, off + 32, len, val, ss.str());
     return val;
   }
+  uint32_t decodeExDescReserved(int off, int len) {
+    return decodeReserved(off + 32, len);
+  }
   uint32_t decodeDescField(const char *fieldName, int off, int len,
                            DescFieldFormatter fmtMeaning = NO_DECODE) {
     auto val = getDescBits(off, len);
@@ -176,6 +190,14 @@ struct MessageDecoder {
     }
     addField(fieldName, off, len, val, "");
     return val == expected;
+  }
+  uint32_t decodeReserved(int off, int len) {
+    auto val = getDescBits(off, len);
+    if (val != 0) {
+      warning(off, len, "reserved field should be zero");
+    }
+    addField("Reserved", off, len, val, "");
+    return val;
   }
 
   // decodes MLen, RLen, and XLen if present

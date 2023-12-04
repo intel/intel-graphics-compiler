@@ -233,6 +233,7 @@ DEFINE_SAMPLE_OP(GATHER4_PO_L_C, "gather4_po_l_c",
 //
 DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_WRITE, "render_write", "render write", ATTRS_NONE)
+DEFINE_OTHER_OP(RENDER_DWRITE, "render_dual_write", "render dual write", ATTRS_NONE)
 
 //
 

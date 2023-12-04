@@ -25,7 +25,11 @@ struct MessageDecoderOther : MessageDecoderLegacy {
       tryDecodeGTWY();
       break;
     case SFID::RC:
-      tryDecodeRC();
+      if (platform() >= Platform::XE2) {
+        tryDecodeRC_XE2();
+      } else {
+        tryDecodeRC();
+      }
       break;
     case SFID::RTA:
       tryDecodeRTA();
@@ -49,11 +53,13 @@ struct MessageDecoderOther : MessageDecoderLegacy {
 
   void tryDecodeGTWY();
   void tryDecodeRC();
+  void tryDecodeRC_XE2();
   void tryDecodeRTA();
   void tryDecodeBTD();
   void tryDecodeSMPL();
   void tryDecodeTS();
   void tryDecodeURB();
+
 }; // MessageDecodeOther
 
 void MessageDecoderOther::tryDecodeGTWY() {
@@ -292,10 +298,244 @@ void MessageDecoderOther::tryDecodeRC() {
 
   decodeMDC_H2(); // all render target messages permit a dual-header
 }
+void MessageDecoderOther::tryDecodeRC_XE2() {
+  // PSEUDO syntax:
+  //   {rtw,rtdw}{.mrcps},{.hdr,}{.psps,}{.lo16,hi16,}
+  //   rtr{.hdr,}{.psps,}{.lo16,hi16,}
+  std::stringstream sym;
+
+  // message type
+  enum {
+    RT_READ = 0xD,
+    RT_WRITE = 0xC
+  };
+
+  // message subtype
+  enum {
+    ST_SIMD32_WRITE = 0x0,
+    ST_SIMD16_DWRITE = 0x2 // no name in BXML
+  };
+
+  // pick default SIMD size if it's not set
+  if (instExecSize == ExecSize::INVALID)
+    instExecSize = ExecSize::SIMD16;
+
+  std::string descSfx, stSfx;
+  sym << "rt";
+  const auto mt = getDescBits(14, 4);
+  const auto st = getDescBits(8, 2);
+  const auto isWr = mt == RT_WRITE;
+  const auto isDuWr = isWr && st == ST_SIMD16_DWRITE;
+  switch (mt) {
+  case RT_WRITE:
+    if (st == ST_SIMD16_DWRITE) {
+      stSfx = "SIMD16_DWRITE";
+      sym << "dw";
+      descSfx = "render write dual";
+      addDocs(DocRef::DESC, "MSD_RTW_SIMD16DS", "63908",
+              DocRef::EXDESC, nullptr, "57391",
+              DocRef::SRC0, "MH_RT", "57476",
+              DocRef::SRC1, "MDP_RTW_DS", "63914");
+      if (instExecSize == ExecSize::SIMD32)
+        error(14, 4, "dual write must be SIMD16");
+    } else if (st == ST_SIMD32_WRITE) {
+      stSfx = "SIMD32_WRITE";
+      sym << "w";
+      descSfx = "render write";
+      if (instExecSize == ExecSize::SIMD32)
+        addDocs(DocRef::DESC, "MSD_RTW_SIMD32", "65209",
+                DocRef::EXDESC, nullptr, "57391",
+                DocRef::SRC0, "MH_RT", "57476",
+                DocRef::SRC1, "MDP_RTW_SIMD32", "65198");
+      else
+        addDocs(DocRef::DESC, "MSD_RTW_SIMD16", "57384",
+                DocRef::EXDESC, nullptr, "57391",
+                DocRef::SRC0, "MH_RT", "57476",
+                DocRef::SRC1, "MDP_RTW", "63902");
+    }
+    break;
+  case RT_READ:
+    sym << "r";
+    descSfx = "render read";
+    if (instExecSize == ExecSize::SIMD32)
+      addDocs(DocRef::DESC, "MSD_RTR_SIMD32", "65211",
+              DocRef::EXDESC, nullptr, "57391",
+              DocRef::SRC0, "MH_RT", "57476");
+    else
+      addDocs(DocRef::DESC, "MSD_RTR_SIMD16", "57374",
+              DocRef::EXDESC, nullptr, "57391",
+              DocRef::SRC0, "MH_RT", "57476");
+    break;
+  default:
+    descSfx = "unknown render target op";
+    error(14, 4, "unsupported RC op");
+  }
+
+  addField("MessageTypeRC", 14, 4, mt, descSfx);
+  addField("RenderTargetMessageSubtype", 8, 2, st, stSfx);
+
+  std::stringstream descs;
+
+  int bitSize =
+      decodeDescBitField("DataSize", 30, "FP32", "FP16") == 0 ? 32 : 16;
+  if (bitSize != 32) {
+    warning(30, 1, "half-precision not supported");
+  }
+  descs << descSfx;
+
+  auto decodeBit =
+      [&](int off, const char *descField, const char *descSfx,
+          const char *symSfx) {
+        auto val = decodeDescBitField(descField, off, "Disabled", "Enabled");
+        if (val) {
+          descs << "  " << descSfx;
+          sym << "." << symSfx;
+        }
+        return val;
+      };
+
+  // Desc[29] .mrcps - multirate coarse pixel shading
+  if (mt == RT_READ) {
+    decodeReserved(29, 1);
+  } else {
+    decodeBit(29, "MultiRateCPS", "multirate coarse pixel shading", "mrcps");
+  }
+
+  // Desc[19] .hdr - render target messages permit a header
+  if (decodeMDC_H()) {
+    sym << ".hdr";
+  }
+
+  // Desc[18] .pscps - per sample coarse pixel shading
+  bool header = false;
+  if (mt == RT_READ) {
+    decodeReserved(18, 1);
+  } else {
+    header = decodeBit(18, "PerSampleOutCPS",
+                       "per-sample outputs coarse pixel shading", "psocps");
+  }
+
+  // Desc[13] .psps - per sample pixel shading
+  decodeBit(13, "PerSamplePSEnable", "per-sample pixel shading", "psps");
+
+  // Desc[12] .lrts - last render target select
+  decodeBit(12, "LastRenderTargetSelect", "last render target select", "lrts");
+
+  // Desc[11] slot group select (.lo16|.hi16)
+  if (instExecSize != ExecSize::SIMD32) {
+    auto sgs = decodeDescBitField("SlotGroup", 11, "SG_LO", "SG_HI");
+    if (sgs) {
+      descs << " slot group " << (sgs ? "high16" : "low16");
+      sym << (sgs ?  ".hi16" : ".lo16");
+    }
+  } else {
+    decodeReserved(11, 1);
+  }
+
+
+  uint32_t surfaceIndex = 0;
+  (void)decodeDescField("BTS", 0, 8,
+                        [&](std::stringstream &ss, uint32_t value) {
+                          surfaceIndex = value;
+                          ss << "surface " << value;
+                          descs << " to bti[" << value << "]";
+                          sym << ".bti[" << value << "]";
+                        });
+
+  // ExDesc[23:21] - render target index
+  if (mt == RT_READ) {
+    decodeExDescReserved(21, 3);
+  } else {
+    decodeExDescField("RenderTargetIndex", 21, 3,
+                      [&](std::stringstream &ss, uint32_t val) {
+                        sym << ".rti[" << val << "]";
+                        descs << ".rti[" <<val << "]";
+                      });
+  }
+
+
+  // ExDesc[20] - null render target
+  decodeExDescField("NullRenderTarget", 20, 1,
+                    [&](std::stringstream &ss, uint32_t val) {
+                      if (val)
+                        sym << ".nullrt";
+                    });
+
+  // message layout is
+  //  COLORS_SIMD32 = R,R,G,G,B,B,A,A
+  //  COLORS_SIMD16 = R,G,B,A
+  // RTW_SIMD16: [s0A][oM]{COLORS_SIMD16}[,SZ][,STENCIL]
+  //   (4 to 8 total registers not counting possible header)
+  // RTW_DSIMD16: [oM,]{COLORS_SIMD16},{COLORS_SIMD16}[,SZ][,STENCIL]
+  //   (8 to 11 total registers not counting possible header)
+  // RTW SIMD32: [s0A,s0A][,oM]{COLORS_SIMD32}[,SZ,SZ][,STENCIL,STENCIL]
+  //   (8 to 15 total registers not counting possible header)
+  const auto phasePerParam =
+      (instExecSize == ExecSize::SIMD32 || isDuWr) ? 2 : 1;
+  int dataPhases = 4 * phasePerParam;
+
+  auto decodeExDescParam = [&](const char *field, int off, const char *sy,
+                               int deltaPhases = 1) {
+    return decodeExDescField(field, off, 1,
+                             [&](std::stringstream &ss, uint32_t val) {
+                               if (val) {
+                                 sym << "." << sy;
+                                 ss << "Present";
+                                 dataPhases += deltaPhases;
+                                 descs << "." << sy;
+                               } else {
+                                 ss << "Absent";
+                               }
+                             });
+  };
+
+  if (exDesc.isImm()) {
+    // decode bits [15:12] in parameter order
+    if (getDescBits(32 + 12, 4)) {
+      descs << " with ex params ";
+    }
+
+    // ExDesc[15] - src0 alpha present
+    auto s0a = decodeExDescParam("Src0AlphaPresent", 15, "s0a", phasePerParam);
+    if (s0a && isDuWr) {
+      error(15, 1, "Src0Alpha not permitted on render dual write");
+    }
+    // ExDesc[14] - stencil present
+    decodeExDescParam("StencilPresent", 14, "stncl", 1);
+    // ExDesc[13] - source depth
+    decodeExDescParam("SourceDepth", 13, "sz", phasePerParam);
+    // ExDesc[12] - omask
+    decodeExDescParam("OMask", 12, "om", 1);
+
+    // *** Comes directly from Src1.Len in EU bits ***
+    //
+    // ExDesc[10:6] - xlen
+    // decodeExDescField("ExtendedMessageLength", 6, 4,
+    //                   [&](std::stringstream &ss, uint32_t val) {
+    //                     ss << "src1.length is " << val << " registers";
+    //                   });
+  } // else reg exDesc probably shouldn't happen, but we can't see it if so
+
+  MessageInfo &mi = result.info;
+  mi.symbol = sym.str();
+  mi.description = descs.str();
+  mi.op = mt == RT_READ            ? SendOp::RENDER_READ
+          : st == ST_SIMD16_DWRITE ? SendOp::RENDER_DWRITE
+                                   : SendOp::RENDER_WRITE;
+  mi.execWidth = int(instExecSize);
+  mi.elemSizeBitsMemory = mi.elemSizeBitsRegFile = 32;
+  mi.addrSizeBits = 0; // the addresses of render target are implicit
+  mi.surfaceId = surfaceIndex;
+  mi.attributeSet = MessageInfo::Attr::NONE;
+  // mi.dstLenBytes = 0;
+  // if (header)
+  //  result.info.src0LenBytes = BITS_PER_REGISTER / 8;
+  // mi.src1LenBytes = dataPhases * BITS_PER_REGISTER / 8;
+  (void)dataPhases;
+}
 
 void MessageDecoderOther::tryDecodeRTA() {
   const int TRACERAY_MSD = 0x00;
-  // const int COMP_MESH_MSD = 0x01; (strawman still)
 
   std::stringstream sym, descs;
   int opBits = getDescBits(14, 4); // [17:14]
