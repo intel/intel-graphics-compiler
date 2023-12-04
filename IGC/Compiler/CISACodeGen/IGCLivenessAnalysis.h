@@ -55,9 +55,11 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     llvm::StringRef getPassName() const override {
         return "IGCLivenessAnalysis";
     }
+
+    IGCLivenessAnalysis();
     IGCLivenessAnalysis(
-        bool UseWIAnalysis = false, bool DumpToFile = false,
-        const std::string &DumpFileName = "RegPressureEstimate.ll");
+        bool UseWIAnalysis, bool DumpToFile,
+        const std::string &DumpFileName);
 
     virtual ~IGCLivenessAnalysis() {}
 

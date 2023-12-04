@@ -892,7 +892,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // Run address remat after GVN as it may hoist address calculations and
     // create PHI nodes with addresses.
 
-    if (IGC_IS_FLAG_ENABLED(EnableRemat)) {
+    if (IGC_IS_FLAG_ENABLED(EnableRemat) || (ctx.m_retryManager.AllowCloneAddressArithmetic() && ctx.type == ShaderType::OPENCL_SHADER)) {
+
 
       // TODO: This is a workaround that helps to reduce amount of instructions for clone address arithmetic
       // it helps with chain of instructions like this
