@@ -72,6 +72,6 @@ set_target_properties(check-igc
     EXCLUDE_FROM_ALL OFF
   )
 
-# Line below is just used to group LIT reated targets in single directory
+# Line below is just used to group LIT-related targets in single directory
 # in IDE. This is completely optional.
 set_target_properties(check-igc PROPERTIES FOLDER "LIT Tests")

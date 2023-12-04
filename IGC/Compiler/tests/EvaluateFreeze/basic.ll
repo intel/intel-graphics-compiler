@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm14
+; REQUIRES: llvm-14-plus
 ;
 ; RUN: igc_opt -igc-evaluate-freeze -S < %s | FileCheck %s
 ; ------------------------------------------------
