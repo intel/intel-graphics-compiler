@@ -632,6 +632,25 @@ void LinearScanRA::createLiveIntervals() {
   }
 }
 
+// Generate forbidden registers according to the reservation requirements.
+void LinearScanRA::generateForbidden(unsigned reserveSpillSize) {
+  unsigned int reservedGRFNum =
+      builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum);
+  bool hasStackCall =
+      kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
+  std::vector<unsigned int> forbiddenRegs;
+  unsigned int stackCallRegSize =
+      hasStackCall ? kernel.stackCall.numReservedABIGRF() : 0;
+  getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, reserveSpillSize,
+                   reservedGRFNum);
+  for (unsigned int i = 0, size = forbiddenRegs.size(); i < size; i++) {
+    unsigned int regNum = forbiddenRegs[i];
+    pregs->setGRFUnavailable(
+        regNum); // un-available will always be there, if it's conflict with
+                 // input or pre-assigned, it's still un-available.
+  }
+}
+
 void LinearScanRA::preRAAnalysis() {
   int numGRF = kernel.getNumRegTotal();
 
@@ -652,33 +671,6 @@ void LinearScanRA::preRAAnalysis() {
 
   numRegLRA = numGRF;
 
-  unsigned int reservedGRFNum =
-      builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum);
-  bool hasStackCall =
-      kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
-  if (hasStackCall || reservedGRFNum || builder.getOption(vISA_Debug)) {
-    std::vector<unsigned int> forbiddenRegs;
-    unsigned int stackCallRegSize =
-        hasStackCall ? kernel.stackCall.numReservedABIGRF() : 0;
-    getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, 0,
-                     reservedGRFNum);
-    for (unsigned int i = 0, size = forbiddenRegs.size(); i < size; i++) {
-      unsigned int regNum = forbiddenRegs[i];
-      pregs->setGRFUnavailable(
-          regNum); // un-available will always be there, if it's conflict with
-                   // input or pre-assigned, it's still un-available.
-    }
-  } else {
-    pregs->setSimpleGRFAvailable(true);
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
-        !builder.canWriteR0()) {
-      pregs->setR0Forbidden();
-    }
-
-    if (builder.mustReserveR1()) {
-      pregs->setR1Forbidden();
-    }
-  }
   return;
 }
 
@@ -791,6 +783,9 @@ int LinearScanRA::linearScanRA() {
   std::list<LSLiveRange *> spillLRs;
   int iterator = 0;
   uint32_t GRFSpillFillCount = 0;
+  bool reserveSpillReg = false;
+  unsigned failSafeRAIteration = builder.getuint32Option(vISA_FailSafeRALimit);
+
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
   int globalScratchOffset =
@@ -813,6 +808,31 @@ int LinearScanRA::linearScanRA() {
     COUT_ERROR << "=============  ITERATION: " << iterator << "============"
                << "\n";
 #endif
+    gra.setIterNo(iterator);
+    reserveSpillReg = gra.setupFailSafeIfNeeded(
+        false, hasStackCall, MAXIMAL_ITERATIONS, failSafeRAIteration);
+    unsigned spillRegSize = 0;
+    unsigned indrSpillRegSize = 0;
+    if (reserveSpillReg) {
+      std::tie(spillRegSize, indrSpillRegSize) = gra.reserveGRFSpillReg();
+      if (builder.hasScratchSurface() && !hasStackCall) {
+        G4_Declare *a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
+        LSLiveRange *lr = gra.getSafeLSLR(a0Dcl);
+        if (!lr) {
+          CreateLocalLiveRange(a0Dcl);
+          globalDeclares.push_back(a0Dcl);
+        }
+        if (builder.supportsLSC()) {
+          G4_Declare *spillFillHdr = kernel.fg.builder->getSpillFillHeader();
+          LSLiveRange *lr = gra.getSafeLSLR(spillFillHdr);
+          if (!lr) {
+            CreateLocalLiveRange(spillFillHdr);
+            globalDeclares.push_back(spillFillHdr);
+          }
+        }
+      }
+    }
+    generateForbidden(spillRegSize + indrSpillRegSize);
 
     // Input
     PhyRegsLocalRA initPregs = (*pregs);
@@ -870,6 +890,12 @@ int LinearScanRA::linearScanRA() {
     // Run linear scan RA
     bool success = ra.runLinearScan(builder, globalLiveIntervals, spillLRs);
 
+    // Try other RA
+    if (!success) {
+      undoLinearScanRAAssignments();
+      return VISA_FAILURE;
+    }
+
     auto underSpillThreshold = [this](int numSpill, int asmCount) {
       int threshold = std::min(
           builder.getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold),
@@ -899,12 +925,6 @@ int LinearScanRA::linearScanRA() {
       return VISA_SPILL;
     }
 
-    // Try other graphcoloring
-    if (!success) {
-      undoLinearScanRAAssignments();
-      return VISA_FAILURE;
-    }
-
     if (spillLRs.size()) {
       if (iterator == 0 && enableSpillSpaceCompression &&
           kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
@@ -914,6 +934,7 @@ int LinearScanRA::linearScanRA() {
       }
 
       SpillManagerGRF spillGRF(gra, gra.nextSpillOffset, &l, &spillLRs,
+                               reserveSpillReg, spillRegSize, indrSpillRegSize,
                                enableSpillSpaceCompression,
                                useScratchMsgForSpill);
 
@@ -935,7 +956,7 @@ int LinearScanRA::linearScanRA() {
         G4_Declare *a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
         LSLiveRange *lr = gra.getSafeLSLR(a0Dcl);
         if (!lr) {
-          lr = CreateLocalLiveRange(a0Dcl);
+          CreateLocalLiveRange(a0Dcl);
           globalDeclares.push_back(a0Dcl);
         }
       } else if (gra.useLscForNonStackCallSpillFill ||
@@ -944,7 +965,7 @@ int LinearScanRA::linearScanRA() {
         G4_Declare *a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
         LSLiveRange *lr = gra.getSafeLSLR(a0Dcl);
         if (!lr) {
-          lr = CreateLocalLiveRange(a0Dcl);
+          CreateLocalLiveRange(a0Dcl);
           globalDeclares.push_back(a0Dcl);
         }
       }
@@ -982,7 +1003,9 @@ int LinearScanRA::linearScanRA() {
         }
         jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
       }
-      undoLinearScanRAAssignments();
+      if (!reserveSpillReg) {
+        undoLinearScanRAAssignments();
+      }
     }
 
     RA_TRACE({
@@ -996,9 +1019,10 @@ int LinearScanRA::linearScanRA() {
     }
 
     iterator++;
-  } while (spillLRs.size() && iterator < MAXIMAL_ITERATIONS);
+  } while (!reserveSpillReg && spillLRs.size() &&
+           iterator < MAXIMAL_ITERATIONS);
 
-  if (spillLRs.size()) {
+  if (spillLRs.size() && !reserveSpillReg) {
     std::stringstream spilledVars;
     for (auto dcl : kernel.Declares) {
       if (dcl->isSpilled() && dcl->getRegFile() == G4_GRF) {

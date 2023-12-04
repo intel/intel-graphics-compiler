@@ -108,6 +108,7 @@ private:
   void markBackEdges();
   void getGlobalDeclares();
   void preRAAnalysis();
+  void generateForbidden(unsigned reserveSpillSize);
   void getCalleeSaveRegisters();
   void getCallerSaveRegisters();
   void getSaveRestoreRegister();
