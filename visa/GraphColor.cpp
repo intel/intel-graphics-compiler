@@ -2650,9 +2650,12 @@ void GlobalRA::updateSubRegAlignment(G4_SubReg_Align subAlign) {
   }
 }
 
-bool GlobalRA::evenAlignNeeded(G4_Declare *dcl) {
+int GlobalRA::getAlignFromAugBucket(G4_Declare *dcl) {
   if (GlobalRA::useGenericAugAlign(builder.getPlatformGeneration())) {
-    // Return true if even alignment is needed
+    // Return 0 if no special alignment is needed
+    // Return 2 if even alignment is needed
+    // Return 4 if quad alignment is needed
+
     // Even align needed if for given SIMD size and elem type,
     // a complete def uses between 1-2 GRFs.
     auto kernelSimdSizeToUse = kernel.getSimdSizeWithSlicing();
@@ -2670,14 +2673,41 @@ bool GlobalRA::evenAlignNeeded(G4_Declare *dcl) {
                topdclAugMask == AugmentationMasks::Default64Bit)
         elemSizeToUse = 8;
 
-      if ( // Even align if size is between 1-2 GRFs, for >2GRF sizes use weak
-           // edges
-          (elemSizeToUse * kernelSimdSizeToUse) >
-              (unsigned)kernel.numEltPerGRF<Type_UB>() &&
-          (elemSizeToUse * kernelSimdSizeToUse) <=
-              (unsigned)(2 * kernel.numEltPerGRF<Type_UB>()) &&
-          !(!builder.canReadR0() && dcl == kernel.fg.builder->getBuiltinR0())) {
-        return true;
+      auto totalByteSize = elemSizeToUse * kernelSimdSizeToUse;
+      auto bucketSpans2GRFs = [&]() {
+        return totalByteSize > (unsigned)kernel.numEltPerGRF<Type_UB>() &&
+               totalByteSize <= (unsigned)(2 * kernel.numEltPerGRF<Type_UB>());
+      };
+
+      if (!(!builder.canReadR0() && dcl == kernel.fg.builder->getBuiltinR0())) {
+        if (use4GRFAlign) {
+          // The only time it's safe to do 2GRF align is when augmentation
+          // bucket is known to be Default32Bit, otherwise we need to align
+          // 4GRF. It isn't enough to simply check elemSize * GRF size to
+          // decide alignment.
+          if (topdclAugMask == AugmentationMasks::Default32Bit) {
+            if (bucketSpans2GRFs())
+              return 2;
+          } else if (topdclAugMask == AugmentationMasks::Default64Bit) {
+            if (bucketSpans2GRFs())
+              // :df SIMD16
+              return 2;
+
+            // :df SIMD32
+            return 4;
+          } else {
+            // Local RA will take this path as augmentation buckets are set
+            // to Undetermined. Although this is conservative, hybrid RA
+            // will run augmentation and compute buckets to fill in "holes".
+            // For eg, mov (32|M0) V10<2>:f should use 4GRF alignment as
+            // it's Default64Bit variable, although elem size is :f.
+            return 4;
+          }
+        } else {
+          // Even align if size is between 1-2 GRFs, for >2GRF sizes.
+          if (bucketSpans2GRFs())
+            return 2;
+        }
       }
     }
   } else {
@@ -2693,21 +2723,28 @@ bool GlobalRA::evenAlignNeeded(G4_Declare *dcl) {
             topdcl->getByteSize() >= kernel.numEltPerGRF<Type_UB>() &&
             !(!builder.canReadR0() &&
               dcl == kernel.fg.builder->getBuiltinR0())) {
-          return true;
+          return 2;
         }
       }
     }
   }
 
-  return false;
+  return 0;
 }
 
-// This function can be invoked before local RA or after augmentation.
-void GlobalRA::evenAlign() {
-  // Update alignment of all GRF declares to align
+void GlobalRA::augAlign() {
+  // Update alignment of all GRF declares based on
+  // augmentation bucket and platform.
   for (auto dcl : kernel.Declares) {
     if (dcl->getRegFile() & G4_GRF) {
-      if (evenAlignNeeded(dcl)) {
+      unsigned int align = getAlignFromAugBucket(dcl);
+      if (align == 4) {
+        if (!isQuadAligned(dcl)) {
+          incRA.evenAlignUpdate(dcl);
+        }
+        forceQuadAlign(dcl);
+      }
+      else if (align == 2) {
         if (!isEvenAligned(dcl)) {
           incRA.evenAlignUpdate(dcl);
         }
@@ -3471,8 +3508,8 @@ bool Augmentation::markNonDefaultMaskDef() {
 
     bool checkLRAAlign = false;
     if (liveAnalysis.livenessClass(G4_GRF)) {
-      if ((GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
-           gra.evenAlignNeeded(dcl)))
+      if (GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
+          gra.getAlignFromAugBucket(dcl) > 0)
         checkLRAAlign = true;
       else if (gra.getAugmentationMask(dcl) ==
                    AugmentationMasks::Default32Bit &&
@@ -3485,10 +3522,22 @@ bool Augmentation::markNonDefaultMaskDef() {
       if (dclLR) {
         int s;
         auto phyReg = dclLR->getPhyReg(s);
-        if (phyReg && phyReg->asGreg()->getRegNum() % 2 != 0) {
-          // If LRA assignment is not 2GRF aligned for then
+        unsigned int maxAlign = 2;
+        if (gra.use4GRFAlign && gra.getAugmentationMask(dcl) == AugmentationMasks::Default64Bit) {
+          maxAlign = 4;
+        }
+        if (phyReg && phyReg->asGreg()->getRegNum() % maxAlign != 0) {
+          // If LRA assignment is not aligned as expected then
           // mark it as non-default. GRA candidates cannot fully
           // overlap with such ranges. Partial overlap is illegal.
+
+          // TODO: There's a bug here. This branch should execute only if
+          // dclLR->getAssigned() == true. If this is false, then
+          // dclLR->getPhyReg() is invalid. Once this is fixed, we can
+          // re-enable following assert.
+          //
+          //vISA_ASSERT(!gra.use4GRFAlign,
+          //            "expecting LRA allocation to be aligned");
           gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
           nonDefaultMaskDefFound = true;
         }
@@ -4195,6 +4244,8 @@ bool Interference::isStrongEdgeBetween(const G4_Declare *dcl1,
 
 bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask,
                                   AugmentationMasks newDclMask) {
+  if (gra.use4GRFAlign)
+    return false;
   if (useGenericAugAlign) {
     // Weak edge needed in case #GRF exceeds 2
     if (newDclMask == AugmentationMasks::Default64Bit)
@@ -4746,9 +4797,9 @@ void Augmentation::augmentIntfGraph() {
         // to 2GRF except for NoMask variables
         VISA_DEBUG_VERBOSE(std::cout
                            << "Kernel size is SIMD" << kernel.getSimdSize()
-                           << " so updating all GRFs to be 2GRF aligned"
+                           << " so updating all GRFs to aug align"
                            << "\n");
-        gra.evenAlign();
+        gra.augAlign();
       }
       gra.updateSubRegAlignment(kernel.getGRFAlign());
     }
@@ -5054,6 +5105,7 @@ void GraphColor::computeDegreeForGRF() {
       // consider weak edges in degree computation
       auto *weakEdges = intf.getCompatibleSparseIntf(lrs[i]->getDcl());
       if (weakEdges) {
+        vISA_ASSERT(!gra.use4GRFAlign, "not expecting weak edges");
         for (auto weakNeighbor : *weakEdges) {
           if (!weakNeighbor->getRegVar()->isRegAllocPartaker())
             continue;
@@ -5367,16 +5419,22 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
   if (!(lr->getIsPseudoNode()) && !(lr->getIsPartialDcl())) {
     unsigned lr_id = lr->getVar()->getId();
     bool lr2EvenAlign = gra.isEvenAligned(lr->getDcl());
+    unsigned int lr2AugAlign = gra.getAugAlign(lr->getDcl());
     unsigned lr2_nreg = lr->getNumRegNeeded();
 
     // relax degree between 2 nodes
     auto relaxDegree = [&](LiveRange *lr1) {
       if (lr1->getActive() && !lr1->getIsPseudoNode() &&
           !(lr1->getIsPartialDcl())) {
-        bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
         unsigned lr1_nreg = lr1->getNumRegNeeded();
-        unsigned w =
-            edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+        unsigned w = 0;
+        if (gra.use4GRFAlign) {
+          unsigned int lr1AugAlign = gra.getAugAlign(lr1->getDcl());
+          w = edgeWeightWith4GRF(lr1AugAlign, lr2AugAlign, lr1_nreg, lr2_nreg);
+        } else {
+          bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+          w = edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+        }
         VISA_DEBUG_VERBOSE({
           std::cout << "\t relax ";
           lr1->dump();
@@ -5782,9 +5840,15 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       if (!failed_alloc) {
         // When evenAlignNeeded is true, it is binding for correctness
         bool evenAlignNeeded = gra.isEvenAligned(lrVar->getDeclare());
-        BankAlign align = evenAlignNeeded ? BankAlign::Even : BankAlign::Either;
-        if (allocFromBanks) {
+        bool quadAlignNeeded = gra.isQuadAligned(lrVar->getDeclare());
+        BankAlign align = BankAlign::Either;
+        if (quadAlignNeeded)
+          align = BankAlign::QuadGRF;
+        else if (evenAlignNeeded)
+          align = BankAlign::Even;
 
+        if (allocFromBanks) {
+          vISA_ASSERT(align != BankAlign::QuadGRF, "unexpected value");
           if (!isHybrid && oneGRFBankDivision &&
               (!evenAlignNeeded ||
                builder.getPlatformGeneration() == PlatformGen::GEN9)) {
@@ -10876,12 +10940,20 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
 // correctness.
 //
 unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
-  bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-  bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
   unsigned lr1_nreg = lr1->getNumRegNeeded();
   unsigned lr2_nreg = lr2->getNumRegNeeded();
 
-  return edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+  if (gra.use4GRFAlign) {
+    auto lr1Align = gra.getAugAlign(lr1->getDcl());
+    auto lr2Align = gra.getAugAlign(lr2->getDcl());
+
+    return edgeWeightWith4GRF(lr1Align, lr2Align, lr1_nreg, lr2_nreg);
+  } else {
+    bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+    bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
+
+    return edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+  }
 }
 
 unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {

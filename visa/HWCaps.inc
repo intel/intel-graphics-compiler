@@ -848,4 +848,9 @@ bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
 bool supportNativeSIMD32() const {
   return false;
 }
+
+bool supports4GRFAlign() const {
+  return false;
+}
+
 // end HW capabilities

@@ -778,6 +778,8 @@ public:
     return nullptr;
   }
 
+  size_t numVarsWithWeakEdges() const { return compatibleSparseIntf.size(); }
+
   void init() {
     if (useDenseMatrix()) {
       auto N = (size_t)rowSize * (size_t)maxId;
@@ -895,15 +897,46 @@ class GraphColor {
       return lr1_nreg + lr2_nreg - 1;
     }
 
-    if (!lr2EvenAlign) {
-      unsigned sum = lr1_nreg + lr2_nreg;
+    unsigned sum = lr1_nreg + lr2_nreg;
+    if (!lr2EvenAlign)
       return sum + 1 - ((sum) % 2);
-    } else if (lr2EvenAlign) {
-      return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
-    } else {
-      vISA_ASSERT_UNREACHABLE("should be unreachable");
-      return 0;
+
+    return sum - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
+  }
+
+  static unsigned edgeWeightWith4GRF(int lr1Align, int lr2Align,
+                                     unsigned lr1_nreg, unsigned lr2_nreg) {
+    if (lr1Align < 4 && lr2Align < 4)
+      return edgeWeightGRF(lr1Align % 2, lr2Align % 2, lr1_nreg, lr2_nreg);
+
+    if (lr2Align == 4) {
+      if (lr1Align < 2)
+        return lr1_nreg + lr2_nreg - 1;
+      if (lr1Align == 2) {
+        // if (lr2_nreg % 2 == 0) -- lr2 size is even
+        // return lr2_nreg + lr1_nreg;
+        // if (lr2_nreg % 2 == 1) -- lr2 size is odd
+        // return lr2_nreg + lr1_nreg + 1;
+
+        return lr1_nreg + lr2_nreg + (lr2_nreg % 2);
+      } else if (lr1Align == 4) {
+        if (lr2_nreg % 4 == 0)
+          // lr2 size is multiple of 4
+          return lr1_nreg + lr2_nreg;
+
+        // if lr2_nreg % 4 == 1 --  lr2 size is 1 + (4*n)
+        // return lr1_nreg + lr2_nreg + 3;
+        // if lr2_nreg % 2 == 0 -- lr2 size is 2 + (4*n)
+        // return lr2_nreg + lr1_nreg + 2;
+        // if lr2_nreg % 4 == 3 -- lr2 size is 3 + (4*n)
+        // return lr2_nreg + lr1_nreg + 1;
+
+        return lr1_nreg + lr2_nreg + 4 - (lr2_nreg % 4);
+      }
     }
+
+    vISA_ASSERT(lr1Align == 4, "unexpected condition");
+    return edgeWeightWith4GRF(lr2Align, lr1Align, lr2_nreg, lr1_nreg);
   }
 
   void computeDegreeForGRF();
@@ -985,7 +1018,7 @@ struct RAVarInfo {
   unsigned subOff = 0;
   std::vector<BundleConflict> bundleConflicts;
   G4_SubReg_Align subAlign = G4_SubReg_Align::Any;
-  bool isEvenAlign = false;
+  int augAlignInGRF = 0;
   AugmentationMasks augMask = AugmentationMasks::Undetermined;
 };
 
@@ -1109,6 +1142,8 @@ public:
   static const char StackCallStr[];
   // The pre assigned forbidden register bits for different kinds
   ForbiddenRegs fbdRegs;
+
+  const bool use4GRFAlign = false;
 
 private:
   template <class REGION_TYPE>
@@ -1572,12 +1607,35 @@ public:
     return true;
   }
 
-  bool isEvenAligned(const G4_Declare *dcl) const {
-    return getVar(dcl).isEvenAlign;
+  bool isQuadAligned(const G4_Declare *dcl) const {
+    auto augAlign = getAugAlign(dcl);
+    return augAlign == 4;
   }
 
-  void setEvenAligned(const G4_Declare *dcl, bool e) {
-    allocVar(dcl).isEvenAlign = e;
+  bool isEvenAligned(const G4_Declare* dcl) const {
+    auto augAlign = getAugAlign(dcl);
+    return augAlign > 0 && augAlign % 2 == 0;
+  }
+
+  int getAugAlign(const G4_Declare *dcl) const {
+    return getVar(dcl).augAlignInGRF;
+  }
+
+  void forceQuadAlign(const G4_Declare *dcl) { setAugAlign(dcl, 4); }
+
+  void resetAlign(const G4_Declare *dcl) { setAugAlign(dcl, 0); }
+
+  // Due to legacy usage, this method takes a boolean that, when set,
+  // causes alignment to be set to Even (2). When boolean flag is
+  // reset, it also resets alignment to Either (0).
+  void setEvenAligned(const G4_Declare *dcl, bool align) {
+    setAugAlign(dcl, align ? 2 : 0);
+  }
+
+  void setAugAlign(const G4_Declare *dcl, int align) {
+    vISA_ASSERT(align <= 2 || use4GRFAlign, "unexpected alignment");
+    vISA_ASSERT(align <= 4, "unsupported alignment");
+    allocVar(dcl).augAlignInGRF = align;
   }
 
   BankAlign getBankAlign(const G4_Declare *) const;
@@ -1592,7 +1650,8 @@ public:
         useLscForNonStackCallSpillFill(
             k.fg.builder->useLscForNonStackSpillFill()),
         useLscForScatterSpill(k.fg.builder->supportsLSC() &&
-                              k.fg.builder->getOption(vISA_scatterSpill)) {
+                              k.fg.builder->getOption(vISA_scatterSpill)),
+        use4GRFAlign(k.fg.builder->supports4GRFAlign()) {
     vars.resize(k.Declares.size());
 
     if (kernel.getOptions()->getOption(vISA_VerifyAugmentation)) {
@@ -1616,8 +1675,9 @@ public:
   static uint32_t getRefCount(int loopNestLevel);
   void updateSubRegAlignment(G4_SubReg_Align subAlign);
   bool isChannelSliced();
-  void evenAlign();
-  bool evenAlignNeeded(G4_Declare *);
+  // Used by LRA/GRA/hybrid RA
+  void augAlign();
+  int getAlignFromAugBucket(G4_Declare *);
   void getBankAlignment(LiveRange *lr, BankAlign &align);
   void printLiveIntervals();
   void reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
@@ -1702,7 +1762,7 @@ public:
   }
 
   void copyAlignment(G4_Declare *dst, G4_Declare *src) {
-    setEvenAligned(dst, isEvenAligned(src));
+    setAugAlign(dst, getAugAlign(src));
     setSubRegAlign(dst, getSubRegAlign(src));
   }
 
