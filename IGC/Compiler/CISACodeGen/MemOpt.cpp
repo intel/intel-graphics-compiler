@@ -499,9 +499,10 @@ bool MemOpt::runOnFunction(Function& F) {
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDU->getFunctionsInfoItem(&F);
     unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
 
-    for (Function::iterator BB = F.begin(), BBE = F.end(); BB != BBE; ++BB) {
+    for (Function::iterator BBI = F.begin(), BBE = F.end(); BBI != BBE; ++BBI) {
         // Find all instructions with memory reference. Remember the distance one
         // by one.
+        BasicBlock* BB = &*BBI;
         MemRefListTy MemRefs;
         TrivialMemRefListTy MemRefsToOptimize;
         unsigned Distance = 0;
@@ -997,6 +998,81 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     TrivialMemRefListTy& ToOpt)
 {
     MemRefListTy::iterator MI = aMI;
+    // For cases like the following:
+    //   ix0 = sext i32 a0 to i64
+    //   addr0 = gep base, i64 ix0
+    //
+    //   ix1 = sext i32 a1 to i64
+    //   addr1 = gep base, i64 ix1
+    // Since SCEV does not do well with sext/zext/longer expression on
+    // comparing addr0 with addr1, this function compares a0 with a1 instead.
+    // In doing so, it skip sext/zext and only on the last index (thus shorter
+    // expression). The condition for doing so is that if all indices are
+    // identical except the last one.
+    //
+    // Return value:  byte offset to LeadLastIdx. Return 0 if unknown.
+    auto getGEPIdxDiffIfAppliable = [this](const SCEV*& LeadLastIdx,
+        LoadInst* LeadLd, LoadInst* NextLd)
+    {
+        // Only handle single-index GEP for now.
+        auto LeadGEP = dyn_cast<GetElementPtrInst>(LeadLd->getPointerOperand());
+        auto NextGEP = dyn_cast<GetElementPtrInst>(NextLd->getPointerOperand());
+        if (LeadGEP && NextGEP &&
+            LeadGEP->getPointerOperand() == NextGEP->getPointerOperand() &&
+            LeadGEP->getNumIndices() == NextGEP->getNumIndices() &&
+            LeadLd->getType() == NextLd->getType() &&
+            LeadGEP->getNumIndices() > 0) {
+            const int N = LeadGEP->getNumIndices();
+            for (int i = 1; i < N; ++i) {
+                // GEP  0:base, 1:1st_index, 2:2nd_index, ..., N:Nth_index
+                Value* ix0 = LeadGEP->getOperand(i);
+                Value* ix1 = NextGEP->getOperand(i);
+                if (ix0 == ix1)
+                    continue;
+                ConstantInt* Cix0 = dyn_cast<ConstantInt>(ix0);
+                ConstantInt* Cix1 = dyn_cast<ConstantInt>(ix1);
+                if (Cix0 && Cix1 && Cix0->getSExtValue() == Cix1->getSExtValue())
+                    continue;
+                // don't handle, skip
+                return (int64_t)0;
+            }
+
+            // Make sure the last index is to the array (indexed type is array
+            // element type).
+            //   For N = 1, the type is an implicit array of the pointee type
+            //   of GEP's pointer operand. But N > 1, need to check as the last
+            //   index might be to a struct.
+            if (N > 1) {
+                // get type of the second index from the last.
+                SmallVector<Value*, 4> Indices (LeadGEP->idx_begin(), std::prev(LeadGEP->idx_end()));
+                Type* srcEltTy = LeadGEP->getSourceElementType();
+                Type* Idx2Ty = GetElementPtrInst::getIndexedType(srcEltTy, Indices);
+                if (!Idx2Ty->isArrayTy())
+                    return (int64_t)0;
+            }
+
+            CastInst* lastIx0 = dyn_cast<CastInst>(LeadGEP->getOperand(N));
+            CastInst* lastIx1 = dyn_cast<CastInst>(NextGEP->getOperand(N));
+            if (lastIx0 && lastIx1 &&
+                lastIx0->getOpcode() == lastIx1->getOpcode() &&
+                (isa<SExtInst>(lastIx0) || isa<ZExtInst>(lastIx0)) &&
+                lastIx0->getType() == lastIx1->getType() &&
+                lastIx0->getSrcTy() == lastIx1->getSrcTy()) {
+                if (!LeadLastIdx)
+                    LeadLastIdx = SE->getSCEV(lastIx0->getOperand(0));
+                const SCEV* NextIdx = SE->getSCEV(lastIx1->getOperand(0));
+                auto Diff = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextIdx, LeadLastIdx));
+                if (Diff) {
+                    // This returns 16 for <3 x i32>, not 12!
+                    uint32_t LoadedBytes = (uint32_t)DL->getTypeStoreSize(NextLd->getType());
+
+                    int64_t eltDiff = Diff->getValue()->getSExtValue();
+                    return (int64_t)(eltDiff * LoadedBytes);
+                }
+            }
+        }
+        return (int64_t)0;
+    };
 
     // Push the leading load into the list to be optimized (after
     // canonicalization.) It will be swapped with the new one if it's merged.
@@ -1059,6 +1135,16 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     const SCEV* LeadingPtr = SE->getSCEV(LeadingLoad->getPointerOperand());
     if (isa<SCEVCouldNotCompute>(LeadingPtr))
         return false;
+    const SCEV* LeadingLastIdx = nullptr; // set on-demand
+    bool DoCmpOnLastIdx = false;
+    if (IGC_IS_FLAG_DISABLED(EnableMemOptGEPCanon)) {
+        auto aGEP = dyn_cast<GetElementPtrInst>(LeadingLoad->getPointerOperand());
+        if (aGEP && aGEP->hasIndices()) {
+            // index starts from 1
+            Value* ix = aGEP->getOperand(aGEP->getNumIndices());
+            DoCmpOnLastIdx = (isa<SExtInst>(ix) || isa<ZExtInst>(ix));
+        }
+    }
 
     // LoadInst, Offset, MemRefListTy::iterator, LeadingLoad's int2PtrOffset
     SmallVector<std::tuple<LoadInst*, int64_t, MemRefListTy::iterator>, 8>
@@ -1133,25 +1219,30 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         int64_t Off = 0;
         const SCEVConstant* Offset
             = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
+        // If addr cmp fails, try whether index cmp can be applied.
+        if (DoCmpOnLastIdx && Offset == nullptr)
+            Off = getGEPIdxDiffIfAppliable(LeadingLastIdx, LeadingLoad, NextLoad);
         // Skip load with non-constant distance.
-        if (!Offset) {
-
-            SymbolicPointer LeadingSymPtr;
-            SymbolicPointer NextSymPtr;
-            if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
-                LeadingSymPtr, CGC) ||
-                SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
-                    NextSymPtr, CGC) ||
-                NextSymPtr.getConstantOffset(LeadingSymPtr, Off)) {
-                continue;
+        // If Off != 0, it is already a constant via index cmp
+        if (Off == 0) {
+            if (!Offset) {
+                SymbolicPointer LeadingSymPtr;
+                SymbolicPointer NextSymPtr;
+                if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
+                    LeadingSymPtr, CGC) ||
+                    SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
+                        NextSymPtr, CGC) ||
+                    NextSymPtr.getConstantOffset(LeadingSymPtr, Off)) {
+                        continue;
+                }
+                else {
+                    if (!AllowNegativeSymPtrsForLoad && LeadingSymPtr.Offset < 0)
+                        continue;
+                }
             }
             else {
-                if (!AllowNegativeSymPtrsForLoad && LeadingSymPtr.Offset < 0)
-                    continue;
+                Off = Offset->getValue()->getSExtValue();
             }
-        }
-        else {
-            Off = Offset->getValue()->getSExtValue();
         }
 
         unsigned NextLoadSize = unsigned(DL->getTypeStoreSize(NextLoadType));
