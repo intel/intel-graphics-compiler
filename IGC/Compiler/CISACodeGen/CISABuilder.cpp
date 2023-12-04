@@ -3424,65 +3424,67 @@ namespace IGC
                 break;
             case ESURFACE_SCRATCH:
             {
-                // For scratch surface, we need to shr the surface state offset coming in R0.5 by 4
-                //      This is because the scratch offset is passed in via r0.5[31:10],
-                //      but the BSS/SS descriptor expects the offset in [31:6] bits, thus we must shift it right by 4
-                //      We also need to and r0.5 with 0xFFFFFC00 to retrieve bits 31:10
+                {
+                    // For scratch surface, we need to shr the surface state offset coming in R0.5 by 4
+                    //      This is because the scratch offset is passed in via r0.5[31:10],
+                    //      but the BSS/SS descriptor expects the offset in [31:6] bits, thus we must shift it right by 4
+                    //      We also need to and r0.5 with 0xFFFFFC00 to retrieve bits 31:10
 
-                // TBD is it needed or we will have the bits 9:0 are reset already in the payload?
-                //     (W) and (1) sso r0.5 0xFFFFC00, placed at kernel entry
-                VISA_GenVar* r0Var = nullptr;
-                VISA_VectorOpnd* surfOpnd_r0_5 = nullptr;
-                uint32_t imm_data_dw = 0xFFFFFC00;
-                VISA_VectorOpnd* andOpnd = nullptr;
-                VISA_VectorOpnd* surfOpAndDst = nullptr;
+                    // TBD is it needed or we will have the bits 9:0 are reset already in the payload?
+                    //     (W) and (1) sso r0.5 0xFFFFC00, placed at kernel entry
+                    VISA_GenVar* r0Var = nullptr;
+                    VISA_VectorOpnd* surfOpnd_r0_5 = nullptr;
+                    uint32_t imm_data_dw = 0xFFFFFC00;
+                    VISA_VectorOpnd* andOpnd = nullptr;
+                    VISA_VectorOpnd* surfOpAndDst = nullptr;
 
-                V(vKernel->GetPredefinedSurface(surfacevar, PREDEFINED_SURFACE_SCRATCH));
-                V(vKernel->GetPredefinedVar(r0Var, PREDEFINED_R0));
+                    V(vKernel->GetPredefinedSurface(surfacevar, PREDEFINED_SURFACE_SCRATCH));
+                    V(vKernel->GetPredefinedVar(r0Var, PREDEFINED_R0));
 
-                CVariable* surfOpAndVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "SurfaceOpnd");
-                V(vKernel->CreateVISADstOperand(surfOpAndDst, GetVISAVariable(surfOpAndVar), 1, 0, 0));
+                    CVariable* surfOpAndVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "SurfaceOpnd");
+                    V(vKernel->CreateVISADstOperand(surfOpAndDst, GetVISAVariable(surfOpAndVar), 1, 0, 0));
 
-                V(vKernel->CreateVISASrcOperand(surfOpnd_r0_5, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
-                V(vKernel->CreateVISAImmediate(andOpnd, &imm_data_dw, ISA_TYPE_UD));
-                V(vKernel->AppendVISAArithmeticInst(
-                    ISA_AND,
-                    nullptr,
-                    false,
-                    vISA_EMASK_M1_NM,
-                    EXEC_SIZE_1,
-                    surfOpAndDst,
-                    surfOpnd_r0_5,
-                    andOpnd));
+                    V(vKernel->CreateVISASrcOperand(surfOpnd_r0_5, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
+                    V(vKernel->CreateVISAImmediate(andOpnd, &imm_data_dw, ISA_TYPE_UD));
+                    V(vKernel->AppendVISAArithmeticInst(
+                        ISA_AND,
+                        nullptr,
+                        false,
+                        vISA_EMASK_M1_NM,
+                        EXEC_SIZE_1,
+                        surfOpAndDst,
+                        surfOpnd_r0_5,
+                        andOpnd));
 
-                VISA_VectorOpnd* surfOpnd_r0_5_bits_31_10 = nullptr;
-                surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
+                    VISA_VectorOpnd* surfOpnd_r0_5_bits_31_10 = nullptr;
+                    surfOpnd_r0_5_bits_31_10 = GetSourceOperandNoModifier(surfOpAndVar);
 
-                // if use new extend message descriptor format
-                // (W) shr (1) a0.0 ss0 0x4
-                // else
-                // (W) shl (1) a0.0 ss0 0x2
-                VISA_VectorOpnd* surfOpndShiftDst = nullptr;
-                VISA_VectorOpnd* shiftOpnd = nullptr;
-                bool useNewExtMsgFormat = m_program->m_Platform->hasScratchSurface();
-                // Not sure that we have a case of using bindless scratch surface on
-                // platforms that use old ExtMsgFormat a0[12:31] as surface-state
-                // heap offset. However, the logic is maintained when moving from
-                // finalizer to IGC
-                uint16_t imm_data_w = useNewExtMsgFormat ? 4 : 2;
-                ISA_Opcode shiftOpcode = useNewExtMsgFormat ? ISA_SHR : ISA_SHL;
+                    // if use new extend message descriptor format
+                    // (W) shr (1) a0.0 ss0 0x4
+                    // else
+                    // (W) shl (1) a0.0 ss0 0x2
+                    VISA_VectorOpnd* surfOpndShiftDst = nullptr;
+                    VISA_VectorOpnd* shiftOpnd = nullptr;
+                    bool useNewExtMsgFormat = m_program->m_Platform->hasScratchSurface();
+                    // Not sure that we have a case of using bindless scratch surface on
+                    // platforms that use old ExtMsgFormat a0[12:31] as surface-state
+                    // heap offset. However, the logic is maintained when moving from
+                    // finalizer to IGC
+                    uint16_t imm_data_w = useNewExtMsgFormat ? 4 : 2;
+                    ISA_Opcode shiftOpcode = useNewExtMsgFormat ? ISA_SHR : ISA_SHL;
 
-                V(vKernel->CreateVISAImmediate(shiftOpnd, &imm_data_w, ISA_TYPE_UW));
-                V(vKernel->CreateVISAStateOperand(surfOpndShiftDst, surfacevar, 0, true));
-                V(vKernel->AppendVISAArithmeticInst(
-                    shiftOpcode,
-                    nullptr,
-                    false,
-                    vISA_EMASK_M1_NM,
-                    EXEC_SIZE_1,
-                    surfOpndShiftDst,
-                    surfOpnd_r0_5_bits_31_10,
-                    shiftOpnd));
+                    V(vKernel->CreateVISAImmediate(shiftOpnd, &imm_data_w, ISA_TYPE_UW));
+                    V(vKernel->CreateVISAStateOperand(surfOpndShiftDst, surfacevar, 0, true));
+                    V(vKernel->AppendVISAArithmeticInst(
+                        shiftOpcode,
+                        nullptr,
+                        false,
+                        vISA_EMASK_M1_NM,
+                        EXEC_SIZE_1,
+                        surfOpndShiftDst,
+                        surfOpnd_r0_5_bits_31_10,
+                        shiftOpnd));
+                }
                 break;
             }
             default:

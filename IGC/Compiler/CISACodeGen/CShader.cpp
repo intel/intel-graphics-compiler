@@ -346,10 +346,6 @@ void CShader::RestoreStackState()
     m_SavedFP = nullptr;
 }
 
-void CShader::InitializeScratchSurfaceStateAddress()
-{
-}
-
 void CShader::CreateImplicitArgs()
 {
     if (IGC::isIntelSymbolTableVoidProgram(entry))
@@ -658,7 +654,6 @@ void CShader::AllocateSimplePushConstants(uint& offset)
 void CShader::AllocateNOSConstants(uint& offset)
 {
     uint maxConstantPushed = 0;
-
     for (auto I = pushInfo.constantReg.begin(), E = pushInfo.constantReg.end(); I != E; I++) {
         CVariable* var = GetSymbol(m_argListCache[I->second]);
         AllocateInput(var, offset + I->first * SIZE_DWORD, 0, encoder.IsCodePatchCandidate());
@@ -984,6 +979,7 @@ CVariable* CShader::GetPrivateBase()
     IGC_ASSERT(kerArg);
     return GetSymbol(kerArg);
 }
+
 
 CVariable* CShader::GetImplArgBufPtr()
 {

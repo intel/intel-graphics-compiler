@@ -256,8 +256,6 @@ public:
     void SaveStackState();
     void RestoreStackState();
 
-    void InitializeScratchSurfaceStateAddress();
-
     void RemoveBitRange(CVariable*& src, unsigned removebit, unsigned range);
 
     void        AllocateInput(CVariable* var, uint offset, uint instance = 0, bool forceLiveOut = false);
