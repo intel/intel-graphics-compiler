@@ -77,7 +77,8 @@ G4_Declare *DeclarePool::createDeclare(const char *name, G4_RegFileKind regFile,
   if (kind == DeclareType::Regular)
     regVar = new (mem) G4_RegVar(dcl, G4_RegVar::RegVarType::Default);
   else if (kind == DeclareType::AddrSpill)
-    regVar = new (mem) G4_RegVarAddrSpillLoc(dcl, addrSpillLocCount);
+    regVar = new (mem) G4_RegVarAddrSpillLoc(dcl, addrSpillLocCount,
+                                             irb.getNumAddrRegisters());
   else if (kind == DeclareType::Tmp)
     regVar = new (mem) G4_RegVarTmp(dcl, base);
   else if (kind == DeclareType::Spill)

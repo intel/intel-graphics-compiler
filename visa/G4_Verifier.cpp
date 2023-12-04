@@ -473,7 +473,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
       if (kernel.fg.builder->supportNativeSIMD32() &&
           inst->getExecSize() == g4::SIMD32 && opnd->getTypeSize() == 8) {
-        bool indirect1x1 = opnd->isIndirect() &&
+        bool indirect1x1 = opnd->isIndirect()  &&
                            !opnd->asSrcRegRegion()->getRegion()->isRegionWH();
         vISA_ASSERT(!indirect1x1,
                     "Must not be indirect 1x1 addressing mode for SIMD32 "

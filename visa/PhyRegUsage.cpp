@@ -113,7 +113,7 @@ void PhyRegUsage::freeRegs(LiveRange *varBasis) {
     vISA_ASSERT(varBasis->getPhyReg()->isAreg(), ERROR_UNKNOWN);
     freeContiguous(FPR.availableAddrs, varBasis->getPhyRegOff(),
                    numAllocUnit(decl->getNumElems(), decl->getElemType()),
-                   getNumAddrRegisters());
+                   builder.getNumAddrRegisters());
   } else if (kind == G4_FLAG) {
     vISA_ASSERT(varBasis->getPhyReg()->isFlag(), ERROR_UNKNOWN);
     freeContiguous(FPR.availableFlags, varBasis->getPhyRegOff(),
@@ -997,7 +997,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     //
     unsigned regNeeded = numAllocUnit(decl->getNumElems(), decl->getElemType());
     if (findContiguousAddrFlag(FPR.availableAddrs, forbidden, subAlign,
-                               regNeeded, getNumAddrRegisters(), AS.startARFReg,
+                               regNeeded, builder.getNumAddrRegisters(), AS.startARFReg,
                                i)) {
       // subregoffset should consider the declare data type
       varBasis->setPhyReg(regPool.getAddrReg(),

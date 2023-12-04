@@ -1102,7 +1102,7 @@ void Optimizer::resetA0() {
         bb->begin(), bb->end(), [](G4_INST *inst) { return !inst->isLabel(); });
     bb->insertBefore(
         insertIt,
-        builder.createMov(g4::SIMD16,
+        builder.createMov(G4_ExecSize(builder.getNumAddrRegisters()),
                           builder.createDst(builder.phyregpool.getAddrReg(), 0,
                                             0, 1, Type_UW),
                           builder.createImm(0, Type_UW), InstOpt_WriteEnable,

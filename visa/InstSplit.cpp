@@ -88,7 +88,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     // A source cannot span more than 2 adjacent GRF registers, if the source
     // is in indirect 1x1 mode. vISA assumes that the subreg of indirect operand
     // is GRF-aligned.
-    bool indirect1x1 = opnd->isIndirect() && !opnd->isVxHIndirect();
+    bool indirect1x1 = opnd->isIndirect() && !src->getRegion()->isRegionWH();
     if (indirect1x1) {
       uint16_t srcStride = 0;
       uint32_t execSize = inst->getExecSize();

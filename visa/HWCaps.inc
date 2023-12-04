@@ -457,6 +457,10 @@ G4_Type getMixModeType() const {
 // each flag register is 16-bit
 uint32_t getNumFlagRegisters(void) { return getPlatform() >= Xe_PVC ? 8 : 4; }
 
+uint32_t getNumAddrRegisters() const {
+    return 16;
+  }
+
 uint32_t getNumScalarRegisters(void) {
   if (enableSendIndirect()) {
     return 1;

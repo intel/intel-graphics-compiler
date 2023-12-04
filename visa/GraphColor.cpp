@@ -5051,7 +5051,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_)
       builder(gra.builder), isHybrid(hybrid), forceSpill(forceSpill_),
       GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel), liveAnalysis(live),
       lrs(live.gra.incRA.getLRs()) {
-  spAddrRegSig.resize(getNumAddrRegisters(), 0);
+  spAddrRegSig.resize(builder.getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
 }
 
@@ -5535,7 +5535,7 @@ void GraphColor::determineColorOrdering() {
   if (liveAnalysis.livenessClass(G4_GRF))
     numColor = totalGRFRegCount;
   else if (liveAnalysis.livenessClass(G4_ADDRESS))
-    numColor = getNumAddrRegisters();
+    numColor = builder.getNumAddrRegisters();
   else if (liveAnalysis.livenessClass(G4_FLAG))
     numColor = builder.getNumFlagRegisters();
 
@@ -6610,7 +6610,7 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion *dstRegion,
                                           G4_Type exec_type) {
   if (dstRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc()) {
     vISA_ASSERT(((exec_type == Type_UW || exec_type == Type_W) &&
-                 exec_size <= getNumAddrRegisters()) ||
+                 exec_size <= builder.getNumAddrRegisters()) ||
                     (exec_size == 1),
                 "Unexpected ADDR spill loc update format!");
     vISA_ASSERT(dstRegion->getRegAccess() == Direct,
@@ -6622,7 +6622,7 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion *dstRegion,
     unsigned endId = startId + exec_size * dstRegion->getHorzStride();
 
     for (unsigned i = 0, horzStride = dstRegion->getHorzStride();
-         i < getNumAddrRegisters(); i += horzStride) {
+         i < builder.getNumAddrRegisters(); i += horzStride) {
       if (spAddrRegSig[i] >= startId && spAddrRegSig[i] < endId) {
         spAddrRegSig[i] = 0;
       }
@@ -6633,7 +6633,7 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion *dstRegion,
                 "Unknown error in ADDR reg spill code cleanup!");
     unsigned startId = addrReg->getPhyRegOff();
     unsigned endId = startId + exec_size * dstRegion->getHorzStride();
-    vISA_ASSERT(endId <= getNumAddrRegisters(),
+    vISA_ASSERT(endId <= builder.getNumAddrRegisters(),
                 "Unknown error in ADDR reg spill code cleanup!");
 
     for (unsigned i = startId; i < endId; i += dstRegion->getHorzStride()) {
@@ -6655,7 +6655,7 @@ void GraphColor::updateActiveSpillAddrLocs(G4_DstRegRegion *tmpDstRegion,
               "Unknown error in ADDR reg spill code cleanup!");
   unsigned startAddrId = addrReg->getPhyRegOff();
   unsigned endAddrId = startAddrId + exec_size * tmpDstRegion->getHorzStride();
-  vISA_ASSERT(endAddrId <= getNumAddrRegisters(),
+  vISA_ASSERT(endAddrId <= builder.getNumAddrRegisters(),
               "Unknown error in ADDR reg spill code cleanup!");
 
   vISA_ASSERT(srcRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc(),
@@ -6684,7 +6684,7 @@ bool GraphColor::redundantAddrFill(G4_DstRegRegion *tmpDstRegion,
               "Unknown error in ADDR reg spill code cleanup!");
   unsigned startAddrId = addrReg->getPhyRegOff();
   unsigned endAddrId = startAddrId + exec_size * tmpDstRegion->getHorzStride();
-  vISA_ASSERT(endAddrId <= getNumAddrRegisters(),
+  vISA_ASSERT(endAddrId <= builder.getNumAddrRegisters(),
               "Unknown error in ADDR reg spill code cleanup!");
 
   vISA_ASSERT(srcRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc(),
@@ -7623,7 +7623,7 @@ void GlobalRA::addCalleeStackSetupCode() {
 // Add A0 save/restore code for stack calls.
 //
 void GraphColor::addA0SaveRestoreCode() {
-  uint8_t numA0Elements = (uint8_t)getNumAddrRegisters();
+  uint8_t numA0Elements = (uint8_t)builder.getNumAddrRegisters();
 
   int count = 0;
   for (auto bb : builder.kernel.fg) {
@@ -7783,7 +7783,7 @@ unsigned ForbiddenRegs::getForbiddenVectorSize(G4_RegFileKind regKind) const {
   case G4_INPUT:
     return builder.kernel.getNumRegTotal();
   case G4_ADDRESS:
-    return getNumAddrRegisters();
+    return builder.getNumAddrRegisters();
   case G4_FLAG:
     return builder.getNumFlagRegisters();
   default:
@@ -9184,7 +9184,7 @@ void GlobalRA::assignRegForAliasDcl() {
                 actualoffset / CurrentRegVar->getDeclare()->getElemSize());
           }
         } else if (CurrentRegVar->getDeclare()->getRegFile() == G4_ADDRESS) {
-          vISA_ASSERT(tempoffset < getNumAddrRegisters() * 2,
+          vISA_ASSERT(tempoffset < builder.getNumAddrRegisters() * 2,
                       ERROR_REGALLOC); // Must hold tempoffset in one A0 reg
           CurrentRegVar->setPhyReg(
               AliasRegVar->getPhyReg(),

@@ -311,8 +311,11 @@ void vISAVerifier::verifyAddressDecl(unsigned declID) {
                 header->getAddr(declID)->name_index < header->getStringCount(),
                 "A%d's name index(%d) is not valid: %s", declID,
                 header->getAddr(declID)->name_index, declError.c_str());
-  REPORT_HEADER(options, header->getAddr(declID)->num_elements <= 16,
-                "Max possible address registers are 16 on BDW+: %s",
+  REPORT_HEADER(options,
+                header->getAddr(declID)->num_elements <=
+                    irBuilder->getNumAddrRegisters(),
+                "Max possible address registers are %d: %s",
+                irBuilder->getNumAddrRegisters(),
                 declError.c_str());
 
 /// TODO: Fix/Reenable this verification check.
@@ -631,7 +634,7 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
   } else if (dstIndex != i) {
     // check for out-of-bound addresses for VxH operand
     int numAddr = exec_sz / width_val;
-    REPORT_INSTRUCTION(options, numAddr <= 16,
+    REPORT_INSTRUCTION(options, numAddr <= (int)irBuilder->getNumAddrRegisters(),
                        "Number of Address for indirect operand exceeds 16");
   }
 

@@ -91,8 +91,8 @@ public:
     availableGregs = new bool[K.getNumRegTotal()];
     std::fill_n(availableGregs, K.getNumRegTotal(), true);
     availableSubRegs.resize(kernel.getNumRegTotal(), UINT_MAX);
-    availableAddrs = new bool[getNumAddrRegisters()];
-    std::fill_n(availableAddrs, getNumAddrRegisters(), true);
+    availableAddrs = new bool[K.fg.builder->getNumAddrRegisters()];
+    std::fill_n(availableAddrs, K.fg.builder->getNumAddrRegisters(), true);
     availableFlags = new bool[K.fg.builder->getNumFlagRegisters()];
     std::fill_n(availableFlags, K.fg.builder->getNumFlagRegisters(), true);
     // Note that unlike other fields this is initialized to false.
@@ -111,7 +111,7 @@ public:
   void reset() {
     std::fill_n(availableGregs, K.getNumRegTotal(), true);
     std::fill(availableSubRegs.begin(), availableSubRegs.end(), UINT_MAX);
-    std::fill_n(availableAddrs, getNumAddrRegisters(), true);
+    std::fill_n(availableAddrs, K.fg.builder->getNumAddrRegisters(), true);
     std::fill_n(availableFlags, K.fg.builder->getNumFlagRegisters(), true);
     std::fill(weakEdgeUsage.begin(), weakEdgeUsage.end(), 0);
   }
@@ -251,7 +251,7 @@ public:
 
   void markBusyAddress(unsigned regNum, unsigned regOff, unsigned nunits,
                        unsigned numRows) {
-    vISA_ASSERT(regNum == 0 && regOff + nunits <= getNumAddrRegisters(),
+    vISA_ASSERT(regNum == 0 && regOff + nunits <= builder.getNumAddrRegisters(),
                  ERROR_UNKNOWN);
     for (unsigned i = regOff; i < regOff + nunits; i++)
       FPR.availableAddrs[i] = false;

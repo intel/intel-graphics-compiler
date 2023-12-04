@@ -401,13 +401,13 @@ class G4_RegVarAddrSpillLoc : public G4_RegVar {
   unsigned loc_id;
 
 public:
-  G4_RegVarAddrSpillLoc(G4_Declare *d, int &loc_count)
+  G4_RegVarAddrSpillLoc(G4_Declare *d, int &loc_count, uint32_t numAddrReg)
       : G4_RegVar(d, RegVarType::AddrSpillLoc) {
     if (d->getAliasDeclare() != NULL) {
       unsigned elemSize = d->getRegVar()->getDeclare()->getElemSize();
       loc_id = d->getRegVar()->getLocId() + d->getAliasOffset() / elemSize;
     } else {
-      loc_id = (++loc_count) * getNumAddrRegisters();
+      loc_id = (++loc_count) * numAddrReg;
     }
   }
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }

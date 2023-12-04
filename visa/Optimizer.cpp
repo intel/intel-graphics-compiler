@@ -1243,7 +1243,8 @@ void Optimizer::reverseOffsetProp(AddrSubReg_Node addrRegInfo[8], int subReg,
 
 
 void Optimizer::FoldAddrImmediate() {
-  AddrSubReg_Node *addrRegInfo = new AddrSubReg_Node[getNumAddrRegisters()];
+  AddrSubReg_Node *addrRegInfo =
+      new AddrSubReg_Node[builder.getNumAddrRegisters()];
   int dst_subReg = 0, src0_subReg = 0;
   G4_DstRegRegion *dst;
   G4_Operand *src0, *src1;
@@ -1252,7 +1253,7 @@ void Optimizer::FoldAddrImmediate() {
   for (G4_BB *bb : fg) {
     INST_LIST_ITER ii, iend(bb->end());
     // reset address offset info
-    for (unsigned i = 0; i < getNumAddrRegisters(); i++) {
+    for (unsigned i = 0; i < builder.getNumAddrRegisters(); i++) {
       addrRegInfo[i].subReg = 0;
       addrRegInfo[i].immAddrOff = 0;
       addrRegInfo[i].iter = iend;
@@ -1435,7 +1436,7 @@ void Optimizer::FoldAddrImmediate() {
     }
 
     // if a def lives out of this BB, we can not delete the defining inst
-    for (unsigned i = 0; i < getNumAddrRegisters(); i++) {
+    for (unsigned i = 0; i < builder.getNumAddrRegisters(); i++) {
       // reverse immed offset propagation
       reverseOffsetProp(addrRegInfo, i, 0, iend, iend);
     }

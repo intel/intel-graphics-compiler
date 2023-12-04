@@ -3683,7 +3683,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
         getKernel()->stackCall.getCallerSaveLastGRF(), Type_UD);
     name = builder.getNameString(50, "SA0_%d", i);
     G4_Declare *saveA0 = builder.createDeclare(
-        name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
+        name, G4_ADDRESS, (uint16_t)builder.getNumAddrRegisters(), 1, Type_UW);
     name = builder.getNameString(64, "SFLAG_%d", i);
     G4_Declare *saveFLAG = builder.createDeclare(
         name, G4_FLAG, (uint16_t)builder.getNumFlagRegisters(), 1, Type_UW);

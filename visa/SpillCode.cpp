@@ -40,7 +40,7 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
     vISA_ASSERT(type == Type_UW || type == Type_W || type == Type_UD ||
                     type == Type_D,
                 "addr reg's type should be UW or UD");
-    vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
+    vISA_ASSERT(dcl->getNumElems() <= builder.getNumAddrRegisters(),
                 "Addr reg Spill size exceeds limit");
   }
   G4_Declare *sp = dcl->getSpilledDeclare();
@@ -62,8 +62,8 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
   vISA_ASSERT(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
               "addr reg's type should be UW");
   vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
-  vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
-              "Temp_ADDR exceeds 16 bytes");
+  vISA_ASSERT(dcl->getNumElems() <= builder.getNumAddrRegisters(),
+              "Temp_ADDR element number exceeds maximum value");
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, dcl->getNumElems(),
                                          1, // 1 row
                                          Type_UW);
@@ -101,7 +101,7 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
                   type == Type_D,
               "addr reg's type should be UW or UD");
   vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
-  vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
+  vISA_ASSERT(dcl->getNumElems() <= builder.getNumAddrRegisters(),
               "Temp_ADDR exceeds 16 bytes");
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, num_reg,
                                          1, // 1 row
@@ -126,7 +126,8 @@ void SpillManager::genRegMov(G4_BB *bb, INST_LIST_ITER it, G4_VarBase *src,
   builder.instList.clear();
 
   uint16_t dSubRegOff = 0;
-  for (uint16_t i = 16; i != 0 && nRegs != 0; i >>= 1) // 16, 8, 4, 2, 1
+  for (uint16_t i = builder.getNumAddrRegisters(); i != 0 && nRegs != 0;
+       i >>= 1) // 16, 8, 4, 2, 1
   {
     if (nRegs >= i) {
       //
