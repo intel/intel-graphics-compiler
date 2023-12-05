@@ -19,6 +19,8 @@ namespace llvm
     class raw_ostream;
 }
 
+// #define __DEBUG_SYMBEXPR__
+
 namespace IGC
 {
     /// Generic Polynomial Symbolic Expression (PSE)
@@ -83,8 +85,24 @@ namespace IGC
     {
     public:
 
-        SymbolicEvaluation() : m_DL(nullptr), m_nextValueID(0) {}
+        SymbolicEvaluation() :
+            m_DL(nullptr),
+            m_hasOverflow(false),
+            m_nextValueID(0)
+        {}
         void setDataLayout(const llvm::DataLayout* aDL) { m_DL = aDL; }
+
+        ~SymbolicEvaluation()
+        {
+#if defined (__DEBUG_SYMBEXPR__)
+            if (exceedMaxValues()) {
+                std::cerr << "SymbolicEvaluation: #values exceeds max limit: "
+                    << MAX_NUM_VALUES
+                    << "\n";
+            }
+#endif
+            clear();
+        }
 
         // Return a Canonicalized Polynomial Expression.
         SymExpr* getSymExpr(const llvm::Value* V);
@@ -158,17 +176,32 @@ namespace IGC
 #endif
 
     private:
+        enum SymCastInfo:uint8_t {
+            SYMCAST_NOCAST,        // no sext/zext/trunc
+            SYMCAST_SEXT,          // sext
+            SYMCAST_ZEXT           // zext
+        };
+
+        // false : assume no overflow on all operations
+        // true  : some operations may overflow, need to check nsw/nuw, etc.
+        bool m_hasOverflow;
+        bool considerOverflow() const { return m_hasOverflow; }
+
         const llvm::DataLayout* m_DL;
         // This struct is to hold info about symbol (Value), such as its ID,
         // and its equivalent symbolic expression.
         typedef struct {
-            int ID;
+            uint32_t ID : 16;
+            uint32_t CastInfo : 8;  // SymCastInfo
+
             SymExpr* symExpr;
         } ValueSymInfo;
         typedef llvm::DenseMap<const llvm::Value*, ValueSymInfo*> SymInfoMap;
 
         // Used to assign a unique ID to ValueSymInfo
-        int m_nextValueID;
+        uint16_t m_nextValueID;
+        const uint16_t MAX_NUM_VALUES = 10000;
+        bool exceedMaxValues() const { return m_nextValueID > MAX_NUM_VALUES; }
 
         SymInfoMap m_symInfos;
         llvm::BumpPtrAllocator m_symEvaAllocator;
@@ -188,12 +221,18 @@ namespace IGC
             return nullptr;
         }
 
-        void setSymInfo(const llvm::Value* V, SymExpr* E)
+        void setSymInfo(const llvm::Value* V, SymExpr* E, const SymCastInfo I)
         {
             ValueSymInfo* VSI = new (m_symEvaAllocator) ValueSymInfo();
             VSI->ID = m_nextValueID++;
+            VSI->CastInfo = (uint8_t)I;
             VSI->symExpr = E;
             m_symInfos.insert(std::make_pair(V, VSI));
+        }
+
+        void setSymInfo(const llvm::Value* V, SymExpr* E)
+        {
+            setSymInfo(V, E, SymCastInfo::SYMCAST_NOCAST);
         }
     };
 

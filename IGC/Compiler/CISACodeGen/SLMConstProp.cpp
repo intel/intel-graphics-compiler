@@ -144,17 +144,25 @@ void SymbolicEvaluation::dump_symbols()
         Vals[VSI->ID] = V;
     }
 
-    dbgs() << "\nSymbols used\n";
+    dbgs() << "\nSymbols used\n\n";
     for (int i = 0; i < m_nextValueID; ++i) {
         const Value* V = Vals[i];
-        // V should not be nullptr, but check it
-        // for safety.
+        // V should not be nullptr, but check it for safety.
         IGC_ASSERT(nullptr != V);
         if (V) {
-            dbgs() << "\n    V"
-                << i
-                << ":    "
-                << *V;
+            ValueSymInfo* VSI = getSymInfo(V);
+            SymCastInfo SCI = (SymCastInfo)VSI->CastInfo;
+            dbgs() << "  V" << i;
+            switch (SCI) {
+            case SYMCAST_ZEXT:
+                dbgs() << " [zext] :    " << *V << "\n";
+                break;
+            case SYMCAST_SEXT:
+                dbgs() << " [sext] :    " << *V << "\n";
+                break;
+            default:
+                dbgs() << " :    " << *V << "\n";
+            }
         }
     }
     dbgs() << "\n\n";
@@ -398,7 +406,15 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
     SymExpr* S0;
     SymExpr* S1;
     int64_t  C0, C1;
-    if (const Operator* Op = dyn_cast<Operator>(V))
+
+    auto BinOp = dyn_cast<OverflowingBinaryOperator>(V);
+    const Operator* Op = dyn_cast<Operator>(V);
+    const bool canOverflow = (considerOverflow() && BinOp &&
+        !(BinOp->hasNoSignedWrap() || BinOp->hasNoUnsignedWrap()));
+    // Skip if Op can overflow.
+    //   Hope we don't need to handle cases if considerOverflow() is true;
+    //   otherwise, the code needs more tuning.
+    if (Op && !canOverflow && !exceedMaxValues())
     {
         unsigned opc = Op->getOpcode();
         switch (opc) {
