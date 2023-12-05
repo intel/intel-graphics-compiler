@@ -225,18 +225,13 @@ namespace IGC
             return nullptr;
         }
 
-        void setSymInfo(const llvm::Value* V, SymExpr* E, const SymCastInfo I)
+        void setSymInfo(const llvm::Value* V, SymExpr* E)
         {
             ValueSymInfo* VSI = new (m_symEvaAllocator) ValueSymInfo();
             VSI->ID = m_nextValueID++;
-            VSI->CastInfo = (uint8_t)I;
+            VSI->CastInfo = SymCastInfo::SYMCAST_NOCAST;
             VSI->symExpr = E;
             m_symInfos.insert(std::make_pair(V, VSI));
-        }
-
-        void setSymInfo(const llvm::Value* V, SymExpr* E)
-        {
-            setSymInfo(V, E, SymCastInfo::SYMCAST_NOCAST);
         }
     };
 

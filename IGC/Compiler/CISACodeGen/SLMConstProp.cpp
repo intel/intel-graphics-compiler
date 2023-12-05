@@ -399,14 +399,16 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
         return;
     }
 
-    if (const ConstantInt * CI = dyn_cast<const ConstantInt>(V))
-    {
-        // symExpr handles symbols with the same bit size, thus sext/zext/trunc
-        // are not handled. With this, a result from either signed or unsigned
-        // integer operations will end up with the same bit pattern. Here, we
-        // choose to use sext on constants.
-        C = CI->getSExtValue();
-        return;
+    bool isEvaluable = true;
+    // Expect scalar type. Stop evaluation if not scalar type.
+    if (isa<Constant>(V)) {
+        const ConstantInt* CI = dyn_cast<const ConstantInt>(V);
+        if (CI && V->getType()->isSingleValueType() && !V->getType()->isVectorTy())
+        {
+            C = CI->getSExtValue();
+            return;
+        }
+        isEvaluable = false;
     }
 
     // Used for nomalizing shift amount.
@@ -434,7 +436,7 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
     // Skip if Op can overflow.
     //   Hope we don't need to handle cases if considerOverflow() is true;
     //   otherwise, the code needs more tuning.
-    if (Op && !canOverflow && !exceedMaxValues())
+    if (Op && isEvaluable && !canOverflow && !exceedMaxValues())
     {
         unsigned opc = Op->getOpcode();
         switch (opc) {
@@ -655,12 +657,44 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
             }
             break;
         }
+        case Instruction::SExt:
+        case Instruction::ZExt:
+        {
+            SymCastInfo SCI = (opc == Instruction::SExt ? SYMCAST_SEXT : SYMCAST_ZEXT);
+            Value* V0 = Op->getOperand(0);
+            ValueSymInfo* VSI = getSymInfo(V0);
+            if (!VSI) {
+                // first time or it is a constant
+                getSymExprOrConstant(V0, S, C);
+                if (!S) {
+                    // By default, sext is used. If zext, recalculate C.
+                    if (SCI == SYMCAST_ZEXT) {
+                        uint32_t bits = (uint32_t)V0->getType()->getPrimitiveSizeInBits();
+                        uint64_t bitMask = maskTrailingOnes<uint64_t>(bits);
+                        C = (C & bitMask);
+                    }
+                    return;
+                }
+                VSI = getSymInfo(V0);
+                IGC_ASSERT(VSI);
+            }
+
+            // If V0 has been sext/zext before and this sext/zext isn't
+            // the same as before, bail out so V (input) is inevaluable.
+            if (VSI->CastInfo == SYMCAST_NOCAST || VSI->CastInfo == SCI) {
+                S = VSI->symExpr;
+                if (VSI->CastInfo == SYMCAST_NOCAST)
+                    VSI->CastInfo = SCI;
+            }
+            break;
+        }
         default:
             break;
         }
     }
 
-    // Unevaluable for V. Its symExpr is itself.
+    // Inevaluable for V. Its symExpr is itself. If V is a evaluable constant,
+    // the function should have returned already and won't reach this place.
     if (S == nullptr)
     {
         SymProd* P = new (m_symEvaAllocator) SymProd();
