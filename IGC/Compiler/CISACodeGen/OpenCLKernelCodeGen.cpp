@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -724,7 +724,7 @@ namespace IGC
     std::string COpenCLKernel::getSubGroupSizeString(SubGroupSizeMetaDataHandle& subGroupSize)
     {
         std::string subTypeString = "intel_reqd_sub_group_size(";
-        subTypeString += utostr(subGroupSize->getSIMD_size());
+        subTypeString += utostr(subGroupSize->getSIMDSize());
         subTypeString += ")";
         return subTypeString;
     }
@@ -2594,7 +2594,7 @@ namespace IGC
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            m_kernelInfo.m_zeUserAttributes.intel_reqd_sub_group_size = subGroupSize->getSIMD_size();
+            m_kernelInfo.m_zeUserAttributes.intel_reqd_sub_group_size = subGroupSize->getSIMDSize();
         }
 
         // intel_reqd_workgroup_walk_order
@@ -2701,7 +2701,7 @@ namespace IGC
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize->getSIMD_size();
+            m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize->getSIMDSize();
         }
 
         auto& FuncMap = m_Context->getModuleMetaData()->FuncMD;
@@ -3578,7 +3578,7 @@ namespace IGC
         CodeGenContext* pCtx = GetContext();
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-        int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
         bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
 
         // Finds the kernel and get the group simd size from the kernel
@@ -3588,7 +3588,7 @@ namespace IGC
             auto FG = m_FGA->getGroup(&F);
             Kernel = FG->getHead();
             funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-            simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
         }
 
         auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
@@ -3735,7 +3735,7 @@ namespace IGC
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-        int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
 
         // Finds the kernel and get the group simd size from the kernel
         if (m_FGA)
@@ -3744,7 +3744,7 @@ namespace IGC
             auto FG = m_FGA->getGroup(&F);
             Kernel = FG->getHead();
             funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-            simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
         }
 
         // For simd variant functions, detect which SIMD sizes are needed
@@ -3780,7 +3780,7 @@ namespace IGC
                 {
                     llvm::Function* Kernel = FG->getHead();
                     funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-                    funcInfoMD->getSubGroupSize()->setSIMD_size(16);
+                    funcInfoMD->getSubGroupSize()->setSIMDSize(16);
                 }
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return SIMDStatus::SIMD_FUNC_FAIL;

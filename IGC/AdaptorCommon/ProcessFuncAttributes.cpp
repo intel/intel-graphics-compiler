@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -957,7 +957,7 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
 
 void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc)
 {
-    IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+    IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
     IGC::ModuleMetaData* modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
     FunctionMetaData *funcMD = &modMD->FuncMD[pFunc]; //okay to insert if not present
     funcMD->functionType = IGC::FunctionTypeMD::UserFunction;
@@ -1069,7 +1069,7 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
 
         // Set spirv calling convention and kernel metadata
         pNewFunc->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
-        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
         FunctionMetaData* funcMD = &modMD->FuncMD[pNewFunc];
         funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
         fHandle->setType(FunctionTypeMD::KernelFunction);

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -168,11 +168,11 @@ namespace IGC
                     IGC::IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcIter->second->getSubGroupSize();
                     if (subGroupSize->hasValue())
                     {
-                        if (subGroupSize->getSIMD_size() != 16)
+                        if (subGroupSize->getSIMDSize() != 16)
                             getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("SIMD16 is expected", &CI);
                     }
                     else
-                        subGroupSize->setSIMD_size(16);
+                        subGroupSize->setSIMDSize(16);
                 }
             }
         };

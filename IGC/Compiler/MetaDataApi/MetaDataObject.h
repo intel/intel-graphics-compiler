@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "MetaDataTraits.h"
 #include "MetaDataValue.h"
+#include "MetaDataIterator.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Constants.h>
@@ -23,10 +24,8 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-
-    ///
     // Base interface for the metadata struct object
-    // Meta data object support the following behavious:
+    // Meta data object support the following behaviors:
     //  * Ref counting
     //  * Dirty bit
     //  * Optional support for 'named object'
@@ -79,8 +78,6 @@ namespace IGC
         virtual void discardChanges() = 0;
 
     protected:
-
-        ///
         // Returns the Id node given the parent MDNode
         // Id node is always a first operand of the parent node and
         // should be stored as MDString
@@ -100,11 +97,56 @@ namespace IGC
             return pIdNode;
         }
 
-        ///
         // Returns the start index
         unsigned int getStartIndex() const
         {
-            return  m_id.hasValue() ? 1 : 0;
+            return m_id.hasValue() ? 1 : 0;
+        }
+
+        // Returns a node given the parent MDNode and the node index
+        llvm::Metadata* getNumberedNode(const llvm::MDNode* pParentNode, unsigned int Index) const
+        {
+            if (!pParentNode)
+            {
+                return nullptr;
+            }
+            return pParentNode->getOperand(getStartIndex() + Index).get();
+        }
+
+        // Returns a node given the parent MDNode and the node name
+        llvm::MDNode* getNamedNode(const llvm::MDNode* pParentNode, const char* pName) const
+        {
+            auto isNamedNode = [](const llvm::Metadata* pNode, const char* pName)
+            {
+                const llvm::MDNode* pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
+                if (!pMDNode || pMDNode->getNumOperands() == 0)
+                {
+                    return false;
+                }
+
+                const llvm::MDString* pIdNode = llvm::dyn_cast<const llvm::MDString>(pMDNode->getOperand(0));
+                if (!pIdNode)
+                {
+                    return false;
+                }
+
+                return pIdNode->getString().compare(pName) == 0;
+            };
+
+            if (!pParentNode)
+            {
+                return nullptr;
+            }
+
+            using NodeIterator = MetaDataIterator<llvm::Metadata>;
+            for (NodeIterator i = NodeIterator(pParentNode, getStartIndex()), e = NodeIterator(pParentNode); i != e; ++i)
+            {
+                if (i.get() && isNamedNode(i.get(), pName))
+                {
+                    return llvm::cast<llvm::MDNode>(i.get());
+                }
+            }
+            return nullptr;
         }
 
         void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
@@ -123,7 +165,6 @@ namespace IGC
         MetaDataValue<std::string>  m_id;
     };
 
-    ///
     // Smart pointer for handling the IMetaDataObject interfaces
     template<class T>
     class MetaObjectHandle
@@ -299,12 +340,9 @@ namespace IGC
             val->discardChanges();
         }
 
-        static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
+        static void save(llvm::LLVMContext& context, llvm::Metadata* target, const value_type& val)
         {
-            val->save(context, llvm::cast<llvm::MDNode>(trgt));
+            val->save(context, llvm::cast<llvm::MDNode>(target));
         }
     };
-
-
-
-} //namespace
+}

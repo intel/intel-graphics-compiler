@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9,1156 +9,501 @@ SPDX-License-Identifier: MIT
 #include "MetaDataApi.h"
 #include "Probe/Assertion.h"
 
-namespace IGC {
-    namespace IGCMD
+namespace IGC::IGCMD {
+    ArgInfoMetaData::ArgInfoMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_ArgId(getNumberedNode(pNode, 0)),
+        m_ExplicitArgNum(getNamedNode(pNode, "explicit_arg_num")),
+        m_StructArgOffset(getNamedNode(pNode, "struct_arg_offset")),
+        m_ImgAccessFloatCoords(getNamedNode(pNode, "img_access_float_coords")),
+        m_ImgAccessIntCoords(getNamedNode(pNode, "img_access_int_coords")),
+        m_pNode(pNode)
+    {}
+
+    ArgInfoMetaData::ArgInfoMetaData() :
+        m_ExplicitArgNum("explicit_arg_num"),
+        m_StructArgOffset("struct_arg_offset"),
+        m_ImgAccessFloatCoords("img_access_float_coords"),
+        m_ImgAccessIntCoords("img_access_int_coords"),
+        m_pNode(nullptr)
+    {}
+
+    ArgInfoMetaData::ArgInfoMetaData(const char* name) :
+        _Mybase(name),
+        m_ExplicitArgNum("explicit_arg_num"),
+        m_StructArgOffset("struct_arg_offset"),
+        m_ImgAccessFloatCoords("img_access_float_coords"),
+        m_ImgAccessIntCoords("img_access_int_coords"),
+        m_pNode(nullptr)
+    {}
+
+    bool ArgInfoMetaData::hasValue() const
     {
-        static bool isNamedNode(const llvm::Metadata*, const char*);
+        return m_ArgId.hasValue() ||
+                m_ExplicitArgNum.hasValue() ||
+                m_StructArgOffset.hasValue() ||
+                m_ImgAccessFloatCoords.hasValue() ||
+                m_ImgAccessIntCoords.hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
 
-        ///
-        // Ctor - loads the ArgInfoMetaData from the given metadata node
-        //
-        ArgInfoMetaData::ArgInfoMetaData(const llvm::MDNode* pNode, bool hasId) :
-            _Mybase(pNode, hasId),
-            m_ArgId(getArgIdNode(pNode)),
-            m_ExplicitArgNum(getExplicitArgNumNode(pNode)),
-            m_StructArgOffset(getStructArgOffsetNode(pNode)),
-            m_ImgAccessFloatCoords(getImgAccessFloatCoordsNode(pNode)),
-            m_ImgAccessIntCoords(getImgAccessIntCoordsNode(pNode)),
-            m_pNode(pNode)
-        {}
+    bool ArgInfoMetaData::dirty() const
+    {
+        return m_ArgId.dirty() ||
+                m_ExplicitArgNum.dirty() ||
+                m_StructArgOffset.dirty() ||
+                m_ImgAccessFloatCoords.dirty() ||
+                m_ImgAccessIntCoords.dirty();
+    }
 
-        ///
-        // Default Ctor - creates the empty, not named ArgInfoMetaData object
-        //
-        ArgInfoMetaData::ArgInfoMetaData() : m_ExplicitArgNum("explicit_arg_num"),
-            m_StructArgOffset("struct_arg_offset"),
-            m_ImgAccessFloatCoords("img_access_float_coords"),
-            m_ImgAccessIntCoords("img_access_int_coords"),
-            m_pNode(NULL)
-        {}
+    void ArgInfoMetaData::discardChanges()
+    {
+        m_ArgId.discardChanges();
+        m_ExplicitArgNum.discardChanges();
+        m_StructArgOffset.discardChanges();
+        m_ImgAccessFloatCoords.discardChanges();
+        m_ImgAccessIntCoords.discardChanges();
+    }
 
-        ///
-        // Ctor - creates the empty, named ArgInfoMetaData object
-        //
-        ArgInfoMetaData::ArgInfoMetaData(const char* name) :
-            _Mybase(name), m_ExplicitArgNum("explicit_arg_num"),
-            m_StructArgOffset("struct_arg_offset"),
-            m_ImgAccessFloatCoords("img_access_float_coords"),
-            m_ImgAccessIntCoords("img_access_int_coords"),
-            m_pNode(NULL)
-        {}
+    llvm::Metadata* ArgInfoMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
 
-        bool ArgInfoMetaData::hasValue() const
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
         {
-            if (m_ArgId.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ExplicitArgNum.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_StructArgOffset.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ImgAccessFloatCoords.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ImgAccessIntCoords.hasValue())
-            {
-                return true;
-            }
-            return NULL != m_pNode || dirty();
+            args.push_back(pIDNode);
         }
 
-        ///
-        // Returns true if any of the ArgInfoMetaData`s members has changed
-        bool ArgInfoMetaData::dirty() const
+        args.push_back(m_ArgId.generateNode(context));
+        if (isExplicitArgNumHasValue())
         {
-            if (m_ArgId.dirty())
-            {
-                return true;
-            }
-            if (m_ExplicitArgNum.dirty())
-            {
-                return true;
-            }
-            if (m_StructArgOffset.dirty())
-            {
-                return true;
-            }
-            if (m_ImgAccessFloatCoords.dirty())
-            {
-                return true;
-            }
-            if (m_ImgAccessIntCoords.dirty())
-            {
-                return true;
-            }
-            return false;
+            args.push_back(m_ExplicitArgNum.generateNode(context));
         }
 
-        ///
-        // Discards the changes done to the ArgInfoMetaData instance
-        void ArgInfoMetaData::discardChanges()
+        if (isStructArgOffsetHasValue())
         {
-            m_ArgId.discardChanges();
-            m_ExplicitArgNum.discardChanges();
-            m_StructArgOffset.discardChanges();
-            m_ImgAccessFloatCoords.discardChanges();
-            m_ImgAccessIntCoords.discardChanges();
+            args.push_back(m_StructArgOffset.generateNode(context));
         }
 
-        ///
-        // Generates the new MDNode hierarchy for the given structure
-        llvm::Metadata* ArgInfoMetaData::generateNode(llvm::LLVMContext& context) const
+        if (isImgAccessFloatCoordsHasValue())
         {
-            llvm::SmallVector<llvm::Metadata*, 5> args;
-
-            llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-            if (NULL != pIDNode)
-            {
-                args.push_back(pIDNode);
-            }
-
-            args.push_back(m_ArgId.generateNode(context));
-            if (isExplicitArgNumHasValue())
-            {
-                args.push_back(m_ExplicitArgNum.generateNode(context));
-            }
-
-            if (isStructArgOffsetHasValue())
-            {
-                args.push_back(m_StructArgOffset.generateNode(context));
-            }
-
-            if (isImgAccessFloatCoordsHasValue())
-            {
-                args.push_back(m_ImgAccessFloatCoords.generateNode(context));
-            }
-
-            if (isImgAccessIntCoordsHasValue())
-            {
-                args.push_back(m_ImgAccessIntCoords.generateNode(context));
-            }
-
-            return llvm::MDNode::get(context, args);
+            args.push_back(m_ImgAccessFloatCoords.generateNode(context));
         }
 
-        ///
-        // Saves the structure changes to the given MDNode
-        void ArgInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+        if (isImgAccessIntCoordsHasValue())
         {
-            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-            // we assume that underlying metadata node has not changed under our foot
-            if (pNode == m_pNode && !dirty())
-            {
-                return;
-            }
-#if 0
-            // check that we could save the new information to the given node without regenerating it
-            if (!compatibleWith(pNode))
-            {
-                pNode->replaceAllUsesWith(generateNode(context));
-                return;
-            }
-#endif
-
-            m_ArgId.save(context, llvm::cast<llvm::MDNode>(getArgIdNode(pNode)));
-            m_ExplicitArgNum.save(context, llvm::cast<llvm::MDNode>(getExplicitArgNumNode(pNode)));
-            m_StructArgOffset.save(context, llvm::cast<llvm::MDNode>(getStructArgOffsetNode(pNode)));
-            m_ImgAccessFloatCoords.save(context, llvm::cast<llvm::MDNode>(getImgAccessFloatCoordsNode(pNode)));
-            m_ImgAccessIntCoords.save(context, llvm::cast<llvm::MDNode>(getImgAccessIntCoordsNode(pNode)));
+            args.push_back(m_ImgAccessIntCoords.generateNode(context));
         }
 
-        llvm::Metadata* ArgInfoMetaData::getArgIdNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
+        return llvm::MDNode::get(context, args);
+    }
 
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(0 + offset).get();
+    void ArgInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
+        {
+            return;
         }
 
-        llvm::Metadata* ArgInfoMetaData::getExplicitArgNumNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
+        m_ArgId.save(context, getNumberedNode(pNode, 0));
+        m_ExplicitArgNum.save(context, getNamedNode(pNode, "explicit_arg_num"));
+        m_StructArgOffset.save(context, getNamedNode(pNode, "struct_arg_offset"));
+        m_ImgAccessFloatCoords.save(context, getNamedNode(pNode, "img_access_float_coords"));
+        m_ImgAccessIntCoords.save(context, getNamedNode(pNode, "img_access_int_coords"));
+    }
 
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 1 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "explicit_arg_num"))
-                {
-                    return i.get();
-                }
-            }
-            return NULL;
+    ArgDependencyInfoMetaData::ArgDependencyInfoMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_Arg(getNumberedNode(pNode, 0)),
+        m_ArgDependency(getNumberedNode(pNode, 1)),
+        m_pNode(pNode)
+    {}
+
+    ArgDependencyInfoMetaData::ArgDependencyInfoMetaData() :
+        m_pNode(nullptr)
+    {}
+
+    ArgDependencyInfoMetaData::ArgDependencyInfoMetaData(const char* name) :
+        _Mybase(name),
+        m_pNode(nullptr)
+    {}
+
+    bool ArgDependencyInfoMetaData::hasValue() const
+    {
+        return m_Arg.hasValue() ||
+                m_ArgDependency.hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
+
+    bool ArgDependencyInfoMetaData::dirty() const
+    {
+        return m_Arg.dirty() ||
+                m_ArgDependency.dirty();
+    }
+
+    void ArgDependencyInfoMetaData::discardChanges()
+    {
+        m_Arg.discardChanges();
+        m_ArgDependency.discardChanges();
+    }
+
+    llvm::Metadata* ArgDependencyInfoMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
+
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
+        {
+            args.push_back(pIDNode);
         }
 
-        llvm::Metadata* ArgInfoMetaData::getStructArgOffsetNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
+        args.push_back(m_Arg.generateNode(context));
+        args.push_back(m_ArgDependency.generateNode(context));
 
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 1 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "struct_arg_offset"))
-                {
-                    return i.get();
-                }
-            }
-            return NULL;
+        return llvm::MDNode::get(context, args);
+    }
+
+    void ArgDependencyInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
+        {
+            return;
         }
 
-        llvm::Metadata* ArgInfoMetaData::getImgAccessFloatCoordsNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
+        m_Arg.save(context, getNumberedNode(pNode, 0));
+        m_ArgDependency.save(context, getNumberedNode(pNode, 1));
+    }
 
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 1 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "img_access_float_coords"))
-                {
-                    return i.get();
-                }
-            }
-            return NULL;
+    SubGroupSizeMetaData::SubGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_SIMDSize(getNumberedNode(pNode, 0)),
+        m_pNode(pNode)
+    {}
+
+    SubGroupSizeMetaData::SubGroupSizeMetaData() :
+        m_pNode(nullptr)
+    {}
+
+    SubGroupSizeMetaData::SubGroupSizeMetaData(const char* name) :
+        _Mybase(name),
+        m_pNode(nullptr)
+    {}
+
+    bool SubGroupSizeMetaData::hasValue() const
+    {
+        return m_SIMDSize.hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
+
+    bool SubGroupSizeMetaData::dirty() const
+    {
+        return m_SIMDSize.dirty();
+    }
+
+    void SubGroupSizeMetaData::discardChanges()
+    {
+        m_SIMDSize.discardChanges();
+    }
+
+    llvm::Metadata* SubGroupSizeMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
+
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
+        {
+            args.push_back(pIDNode);
         }
 
-        llvm::Metadata* ArgInfoMetaData::getImgAccessIntCoordsNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
+        args.push_back(m_SIMDSize.generateNode(context));
 
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 1 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "img_access_int_coords"))
-                {
-                    return i.get();
-                }
-            }
-            return NULL;
+        return llvm::MDNode::get(context, args);
+    }
+
+    void SubGroupSizeMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
+        {
+            return;
         }
 
-        ///
-        // Ctor - loads the ArgDependencyInfoMetaData from the given metadata node
-        //
-        ArgDependencyInfoMetaData::ArgDependencyInfoMetaData(const llvm::MDNode* pNode, bool hasId) :
-            _Mybase(pNode, hasId),
-            m_Arg(getArgNode(pNode)),
-            m_ArgDependency(getArgDependencyNode(pNode)),
-            m_pNode(pNode)
-        {}
+        m_SIMDSize.save(context, getNumberedNode(pNode, 0));
+    }
 
-        ///
-        // Default Ctor - creates the empty, not named ArgDependencyInfoMetaData object
-        //
-        ArgDependencyInfoMetaData::ArgDependencyInfoMetaData() :
-            m_pNode(NULL)
-        {}
+    VectorTypeHintMetaData::VectorTypeHintMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_VecType(getNumberedNode(pNode, 0)),
+        m_Sign(getNumberedNode(pNode, 1)),
+        m_pNode(pNode)
+    {}
 
-        ///
-        // Ctor - creates the empty, named ArgDependencyInfoMetaData object
-        //
-        ArgDependencyInfoMetaData::ArgDependencyInfoMetaData(const char* name) :
-            _Mybase(name),
-            m_pNode(NULL)
-        {}
+    VectorTypeHintMetaData::VectorTypeHintMetaData() :
+        m_pNode(nullptr)
+    {}
 
-        bool ArgDependencyInfoMetaData::hasValue() const
+    VectorTypeHintMetaData::VectorTypeHintMetaData(const char* name) :
+        _Mybase(name),
+        m_pNode(nullptr)
+    {}
+
+    bool VectorTypeHintMetaData::hasValue() const
+    {
+        return m_VecType.hasValue() ||
+                m_Sign.hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
+
+    bool VectorTypeHintMetaData::dirty() const
+    {
+        return m_VecType.dirty() ||
+                m_Sign.dirty();
+    }
+
+    void VectorTypeHintMetaData::discardChanges()
+    {
+        m_VecType.discardChanges();
+        m_Sign.discardChanges();
+    }
+
+    llvm::Metadata* VectorTypeHintMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
+
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
         {
-            if (m_Arg.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ArgDependency.hasValue())
-            {
-                return true;
-            }
-            return NULL != m_pNode || dirty();
+            args.push_back(pIDNode);
         }
 
-        ///
-        // Returns true if any of the ArgDependencyInfoMetaData`s members has changed
-        bool ArgDependencyInfoMetaData::dirty() const
+        args.push_back(m_VecType.generateNode(context));
+        args.push_back(m_Sign.generateNode(context));
+
+        return llvm::MDNode::get(context, args);
+    }
+
+    void VectorTypeHintMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
         {
-            if (m_Arg.dirty())
-            {
-                return true;
-            }
-            if (m_ArgDependency.dirty())
-            {
-                return true;
-            }
-            return false;
+            return;
         }
 
-        ///
-        // Discards the changes done to the ArgDependencyInfoMetaData instance
-        void ArgDependencyInfoMetaData::discardChanges()
+        m_VecType.save(context, getNumberedNode(pNode, 0));
+        m_Sign.save(context, getNumberedNode(pNode, 1));
+    }
+
+    ThreadGroupSizeMetaData::ThreadGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_XDim(getNumberedNode(pNode, 0)),
+        m_YDim(getNumberedNode(pNode, 1)),
+        m_ZDim(getNumberedNode(pNode, 2)),
+        m_pNode(pNode)
+    {}
+
+    ThreadGroupSizeMetaData::ThreadGroupSizeMetaData() :
+        m_pNode(nullptr)
+    {}
+
+    ThreadGroupSizeMetaData::ThreadGroupSizeMetaData(const char* name) :
+        _Mybase(name),
+        m_pNode(nullptr)
+    {}
+
+    bool ThreadGroupSizeMetaData::hasValue() const
+    {
+        return m_XDim.hasValue() ||
+                m_YDim.hasValue() ||
+                m_ZDim.hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
+
+    bool ThreadGroupSizeMetaData::dirty() const
+    {
+        return m_XDim.dirty() ||
+                m_YDim.dirty() ||
+                m_ZDim.dirty();
+    }
+
+    void ThreadGroupSizeMetaData::discardChanges()
+    {
+        m_XDim.discardChanges();
+        m_YDim.discardChanges();
+        m_ZDim.discardChanges();
+    }
+
+    llvm::Metadata* ThreadGroupSizeMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
+
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
         {
-            m_Arg.discardChanges();
-            m_ArgDependency.discardChanges();
+            args.push_back(pIDNode);
         }
 
-        ///
-        // Generates the new MDNode hierarchy for the given structure
-        llvm::Metadata* ArgDependencyInfoMetaData::generateNode(llvm::LLVMContext& context) const
+        args.push_back(m_XDim.generateNode(context));
+        args.push_back(m_YDim.generateNode(context));
+        args.push_back(m_ZDim.generateNode(context));
+
+        return llvm::MDNode::get(context, args);
+    }
+
+    void ThreadGroupSizeMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
         {
-            llvm::SmallVector<llvm::Metadata*, 5> args;
-
-            llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-            if (NULL != pIDNode)
-            {
-                args.push_back(pIDNode);
-            }
-
-            args.push_back(m_Arg.generateNode(context));
-            args.push_back(m_ArgDependency.generateNode(context));
-
-            return llvm::MDNode::get(context, args);
+            return;
         }
 
-        ///
-        // Saves the structure changes to the given MDNode
-        void ArgDependencyInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+        m_XDim.save(context, getNumberedNode(pNode, 0));
+        m_YDim.save(context, getNumberedNode(pNode, 1));
+        m_ZDim.save(context, getNumberedNode(pNode, 2));
+    }
+
+    FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_Type(getNamedNode(pNode, "function_type")),
+        m_ArgInfoList(getNamedNode(pNode, "arg_desc"), true),
+        m_ImplicitArgInfoList(getNamedNode(pNode, "implicit_arg_desc"), true),
+        m_ThreadGroupSize(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size"), true)),
+        m_ThreadGroupSizeHint(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size_hint"), true)),
+        m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)),
+        m_OpenCLVectorTypeHint(new VectorTypeHintMetaData(getNamedNode(pNode, "opencl_vec_type_hint"), true)),
+        m_pNode(pNode)
+    {}
+
+    FunctionInfoMetaData::FunctionInfoMetaData() :
+        m_Type("function_type"),
+        m_ArgInfoList("arg_desc"),
+        m_ImplicitArgInfoList("implicit_arg_desc"),
+        m_ThreadGroupSize(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size")),
+        m_ThreadGroupSizeHint(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size_hint")),
+        m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
+        m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")),
+        m_pNode(nullptr)
+    {}
+
+    FunctionInfoMetaData::FunctionInfoMetaData(const char* name) :
+        _Mybase(name), m_Type("function_type"),
+        m_ArgInfoList("arg_desc"),
+        m_ImplicitArgInfoList("implicit_arg_desc"),
+        m_ThreadGroupSize(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size")),
+        m_ThreadGroupSizeHint(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size_hint")),
+        m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
+        m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")),
+        m_pNode(nullptr)
+    {}
+
+    bool FunctionInfoMetaData::hasValue() const
+    {
+        return m_Type.hasValue() ||
+                m_ArgInfoList.hasValue() ||
+                m_ImplicitArgInfoList.hasValue() ||
+                m_ThreadGroupSize->hasValue() ||
+                m_ThreadGroupSizeHint->hasValue() ||
+                m_SubGroupSize->hasValue() ||
+                m_OpenCLVectorTypeHint->hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
+
+    bool FunctionInfoMetaData::dirty() const
+    {
+        return m_Type.dirty() ||
+                m_ArgInfoList.dirty() ||
+                m_ImplicitArgInfoList.dirty() ||
+                m_ThreadGroupSize.dirty() ||
+                m_ThreadGroupSizeHint.dirty() ||
+                m_SubGroupSize.dirty() ||
+                m_OpenCLVectorTypeHint.dirty();
+    }
+
+    void FunctionInfoMetaData::discardChanges()
+    {
+        m_Type.discardChanges();
+        m_ArgInfoList.discardChanges();
+        m_ImplicitArgInfoList.discardChanges();
+        m_ThreadGroupSize.discardChanges();
+        m_ThreadGroupSizeHint.discardChanges();
+        m_SubGroupSize.discardChanges();
+        m_OpenCLVectorTypeHint.discardChanges();
+    }
+
+    llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
+
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
         {
-            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-            // we assume that underlying metadata node has not changed under our foot
-            if (pNode == m_pNode && !dirty())
-            {
-                return;
-            }
-#if 0
-            // check that we could save the new information to the given node without regenerating it
-            if (!compatibleWith(pNode))
-            {
-                pNode->replaceAllUsesWith(generateNode(context));
-                return;
-            }
-#endif
-
-            m_Arg.save(context, llvm::cast<llvm::MDNode>(getArgNode(pNode)));
-            m_ArgDependency.save(context, llvm::cast<llvm::MDNode>(getArgDependencyNode(pNode)));
+            args.push_back(pIDNode);
         }
 
-        llvm::Metadata* ArgDependencyInfoMetaData::getArgNode(const llvm::MDNode* pParentNode) const
+        args.push_back(m_Type.generateNode(context));
+        if (isArgInfoListHasValue())
         {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
+            args.push_back(m_ArgInfoList.generateNode(context));
+        }
+        if (isImplicitArgInfoListHasValue())
+        {
+            args.push_back(m_ImplicitArgInfoList.generateNode(context));
+        }
+        if (m_ThreadGroupSize->hasValue())
+        {
+            args.push_back(m_ThreadGroupSize.generateNode(context));
+        }
+        if (m_ThreadGroupSizeHint->hasValue())
+        {
+            args.push_back(m_ThreadGroupSizeHint.generateNode(context));
+        }
+        if (m_SubGroupSize->hasValue())
+        {
+            args.push_back(m_SubGroupSize.generateNode(context));
+        }
+        if (m_OpenCLVectorTypeHint->hasValue())
+        {
+            args.push_back(m_OpenCLVectorTypeHint.generateNode(context));
+        }
+        return llvm::MDNode::get(context, args);
+    }
 
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(0 + offset).get();
+    void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
+        {
+            return;
         }
 
-        llvm::Metadata* ArgDependencyInfoMetaData::getArgDependencyNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(1 + offset).get();
-        }
-
-        ///
-        // Ctor - loads the SubGroupSizeMetaData from the given metadata node
-        //
-        SubGroupSizeMetaData::SubGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId) :
-            _Mybase(pNode, hasId),
-            m_SIMD_size(getSIMD_sizeNode(pNode)),
-            m_pNode(pNode)
-        {}
-
-        ///
-        // Default Ctor - creates the empty, not named SubGroupSizeMetaData object
-        //
-        SubGroupSizeMetaData::SubGroupSizeMetaData() :
-            m_pNode(NULL)
-        {}
-
-        ///
-        // Ctor - creates the empty, named SubGroupSizeMetaData object
-        //
-        SubGroupSizeMetaData::SubGroupSizeMetaData(const char* name) :
-            _Mybase(name),
-            m_pNode(NULL)
-        {}
-
-        bool SubGroupSizeMetaData::hasValue() const
-        {
-            if (m_SIMD_size.hasValue())
-            {
-                return true;
-            }
-            return NULL != m_pNode || dirty();
-        }
-
-        ///
-        // Returns true if any of the SubGroupSizeMetaData`s members has changed
-        bool SubGroupSizeMetaData::dirty() const
-        {
-            if (m_SIMD_size.dirty())
-            {
-                return true;
-            }
-            return false;
-        }
-
-        ///
-        // Discards the changes done to the SubGroupSizeMetaData instance
-        void SubGroupSizeMetaData::discardChanges()
-        {
-            m_SIMD_size.discardChanges();
-        }
-
-        ///
-        // Generates the new MDNode hierarchy for the given structure
-        llvm::Metadata* SubGroupSizeMetaData::generateNode(llvm::LLVMContext& context) const
-        {
-            llvm::SmallVector<llvm::Metadata*, 5> args;
-
-            llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-            if (NULL != pIDNode)
-            {
-                args.push_back(pIDNode);
-            }
-
-            args.push_back(m_SIMD_size.generateNode(context));
-
-            return llvm::MDNode::get(context, args);
-        }
-
-        ///
-        // Saves the structure changes to the given MDNode
-        void SubGroupSizeMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-        {
-            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-            // we assume that underlying metadata node has not changed under our foot
-            if (pNode == m_pNode && !dirty())
-            {
-                return;
-            }
-#if 0
-            // check that we could save the new information to the given node without regenerating it
-            if (!compatibleWith(pNode))
-            {
-                pNode->replaceAllUsesWith(generateNode(context));
-                return;
-            }
-#endif
-
-            m_SIMD_size.save(context, llvm::cast<llvm::MDNode>(getSIMD_sizeNode(pNode)));
-        }
-
-        llvm::Metadata* SubGroupSizeMetaData::getSIMD_sizeNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(0 + offset).get();
-        }
-
-        ///
-        // Ctor - loads the VectorTypeHintMetaData from the given metadata node
-        //
-        VectorTypeHintMetaData::VectorTypeHintMetaData(const llvm::MDNode* pNode, bool hasId) :
-            _Mybase(pNode, hasId),
-            m_VecType(getVecTypeNode(pNode)),
-            m_Sign(getSignNode(pNode)),
-            m_pNode(pNode)
-        {}
-
-        ///
-        // Default Ctor - creates the empty, not named VectorTypeHintMetaData object
-        //
-        VectorTypeHintMetaData::VectorTypeHintMetaData() :
-            m_pNode(NULL)
-        {}
-
-        ///
-        // Ctor - creates the empty, named VectorTypeHintMetaData object
-        //
-        VectorTypeHintMetaData::VectorTypeHintMetaData(const char* name) :
-            _Mybase(name),
-            m_pNode(NULL)
-        {}
-
-        bool VectorTypeHintMetaData::hasValue() const
-        {
-            if (m_VecType.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_Sign.hasValue())
-            {
-                return true;
-            }
-            return NULL != m_pNode || dirty();
-        }
-
-        ///
-        // Returns true if any of the VectorTypeHintMetaData`s members has changed
-        bool VectorTypeHintMetaData::dirty() const
-        {
-            if (m_VecType.dirty())
-            {
-                return true;
-            }
-            if (m_Sign.dirty())
-            {
-                return true;
-            }
-            return false;
-        }
-
-        ///
-        // Discards the changes done to the VectorTypeHintMetaData instance
-        void VectorTypeHintMetaData::discardChanges()
-        {
-            m_VecType.discardChanges();
-            m_Sign.discardChanges();
-        }
-
-        ///
-        // Generates the new MDNode hierarchy for the given structure
-        llvm::Metadata* VectorTypeHintMetaData::generateNode(llvm::LLVMContext& context) const
-        {
-            llvm::SmallVector<llvm::Metadata*, 5> args;
-
-            llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-            if (NULL != pIDNode)
-            {
-                args.push_back(pIDNode);
-            }
-
-            args.push_back(m_VecType.generateNode(context));
-            args.push_back(m_Sign.generateNode(context));
-
-            return llvm::MDNode::get(context, args);
-        }
-
-        ///
-        // Saves the structure changes to the given MDNode
-        void VectorTypeHintMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-        {
-            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-            // we assume that underlying metadata node has not changed under our foot
-            if (pNode == m_pNode && !dirty())
-            {
-                return;
-            }
-#if 0
-            // check that we could save the new information to the given node without regenerating it
-            if (!compatibleWith(pNode))
-            {
-                pNode->replaceAllUsesWith(generateNode(context));
-                return;
-            }
-#endif
-
-            m_VecType.save(context, llvm::cast<llvm::MDNode>(getVecTypeNode(pNode)));
-            m_Sign.save(context, llvm::cast<llvm::MDNode>(getSignNode(pNode)));
-        }
-
-        llvm::Metadata* VectorTypeHintMetaData::getVecTypeNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(0 + offset).get();
-        }
-
-        llvm::Metadata* VectorTypeHintMetaData::getSignNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(1 + offset).get();
-        }
-
-        ///
-        // Ctor - loads the ThreadGroupSizeMetaData from the given metadata node
-        //
-        ThreadGroupSizeMetaData::ThreadGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId) :
-            _Mybase(pNode, hasId),
-            m_XDim(getXDimNode(pNode)),
-            m_YDim(getYDimNode(pNode)),
-            m_ZDim(getZDimNode(pNode)),
-            m_pNode(pNode)
-        {}
-
-        ///
-        // Default Ctor - creates the empty, not named ThreadGroupSizeMetaData object
-        //
-        ThreadGroupSizeMetaData::ThreadGroupSizeMetaData() :
-            m_pNode(NULL)
-        {}
-
-        ///
-        // Ctor - creates the empty, named ThreadGroupSizeMetaData object
-        //
-        ThreadGroupSizeMetaData::ThreadGroupSizeMetaData(const char* name) :
-            _Mybase(name),
-            m_pNode(NULL)
-        {}
-
-        bool ThreadGroupSizeMetaData::hasValue() const
-        {
-            if (m_XDim.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_YDim.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ZDim.hasValue())
-            {
-                return true;
-            }
-            return NULL != m_pNode || dirty();
-        }
-
-        ///
-        // Returns true if any of the ThreadGroupSizeMetaData`s members has changed
-        bool ThreadGroupSizeMetaData::dirty() const
-        {
-            if (m_XDim.dirty())
-            {
-                return true;
-            }
-            if (m_YDim.dirty())
-            {
-                return true;
-            }
-            if (m_ZDim.dirty())
-            {
-                return true;
-            }
-            return false;
-        }
-
-        ///
-        // Discards the changes done to the ThreadGroupSizeMetaData instance
-        void ThreadGroupSizeMetaData::discardChanges()
-        {
-            m_XDim.discardChanges();
-            m_YDim.discardChanges();
-            m_ZDim.discardChanges();
-        }
-
-        ///
-        // Generates the new MDNode hierarchy for the given structure
-        llvm::Metadata* ThreadGroupSizeMetaData::generateNode(llvm::LLVMContext& context) const
-        {
-            llvm::SmallVector<llvm::Metadata*, 5> args;
-
-            llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-            if (NULL != pIDNode)
-            {
-                args.push_back(pIDNode);
-            }
-
-            args.push_back(m_XDim.generateNode(context));
-            args.push_back(m_YDim.generateNode(context));
-            args.push_back(m_ZDim.generateNode(context));
-
-            return llvm::MDNode::get(context, args);
-        }
-
-        ///
-        // Saves the structure changes to the given MDNode
-        void ThreadGroupSizeMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-        {
-            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-            // we assume that underlying metadata node has not changed under our foot
-            if (pNode == m_pNode && !dirty())
-            {
-                return;
-            }
-#if 0
-            // check that we could save the new information to the given node without regenerating it
-            if (!compatibleWith(pNode))
-            {
-                pNode->replaceAllUsesWith(generateNode(context));
-                return;
-            }
-#endif
-
-            m_XDim.save(context, llvm::cast<llvm::MDNode>(getXDimNode(pNode)));
-            m_YDim.save(context, llvm::cast<llvm::MDNode>(getYDimNode(pNode)));
-            m_ZDim.save(context, llvm::cast<llvm::MDNode>(getZDimNode(pNode)));
-        }
-
-        llvm::Metadata* ThreadGroupSizeMetaData::getXDimNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(0 + offset).get();
-        }
-
-        llvm::Metadata* ThreadGroupSizeMetaData::getYDimNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(1 + offset).get();
-        }
-
-        llvm::Metadata* ThreadGroupSizeMetaData::getZDimNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            return pParentNode->getOperand(2 + offset).get();
-        }
-
-
-
-        ///
-        // Ctor - loads the FunctionInfoMetaData from the given metadata node
-        //
-        FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId) :
-            _Mybase(pNode, hasId),
-            m_Type(getTypeNode(pNode)),
-            m_ArgInfoList(getArgInfoListNode(pNode), true),
-            m_ImplicitArgInfoList(getImplicitArgInfoListNode(pNode), true),
-            m_ThreadGroupSize(ThreadGroupSizeMetaData::get(getThreadGroupSizeNode(pNode), true)),
-            m_ThreadGroupSizeHint(ThreadGroupSizeMetaData::get(getThreadGroupSizeHintNode(pNode), true)),
-            m_SubGroupSize(SubGroupSizeMetaData::get(getSubGroupSizeNode(pNode), true)),
-            m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),
-            m_pNode(pNode)
-        {}
-
-        ///
-        // Default Ctor - creates the empty, not named FunctionInfoMetaData object
-        //
-        FunctionInfoMetaData::FunctionInfoMetaData() : m_Type("function_type"),
-            m_ArgInfoList("arg_desc"),
-            m_ImplicitArgInfoList("implicit_arg_desc"),
-            m_ThreadGroupSize(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size")),
-            m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),
-            m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),
-            m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),
-
-            m_pNode(NULL)
-        {}
-
-        ///
-        // Ctor - creates the empty, named FunctionInfoMetaData object
-        //
-        FunctionInfoMetaData::FunctionInfoMetaData(const char* name) :
-            _Mybase(name), m_Type("function_type"),
-            m_ArgInfoList("arg_desc"),
-            m_ImplicitArgInfoList("implicit_arg_desc"),
-            m_ThreadGroupSize(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size")),
-            m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),
-            m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),
-
-            m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),
-            m_pNode(NULL)
-        {}
-
-        bool FunctionInfoMetaData::hasValue() const
-        {
-            if (m_Type.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ArgInfoList.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ImplicitArgInfoList.hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ThreadGroupSize->hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_ThreadGroupSizeHint->hasValue())
-            {
-                return true;
-            }
-
-
-            if (m_SubGroupSize->hasValue())
-            {
-                return true;
-
-            }
-
-
-            if (m_OpenCLVectorTypeHint->hasValue())
-            {
-                return true;
-            }
-
-            return NULL != m_pNode || dirty();
-        }
-
-        ///
-        // Returns true if any of the FunctionInfoMetaData`s members has changed
-        bool FunctionInfoMetaData::dirty() const
-        {
-            if (m_Type.dirty())
-            {
-                return true;
-            }
-            if (m_ArgInfoList.dirty())
-            {
-                return true;
-            }
-            if (m_ImplicitArgInfoList.dirty())
-            {
-                return true;
-            }
-            if (m_ThreadGroupSize.dirty())
-            {
-                return true;
-            }
-            if (m_ThreadGroupSizeHint.dirty())
-            {
-                return true;
-            }
-            if (m_SubGroupSize.dirty())
-            {
-                return true;
-            }
-            if (m_OpenCLVectorTypeHint.dirty())
-            {
-                return true;
-            }
-            return false;
-        }
-
-        ///
-        // Discards the changes done to the FunctionInfoMetaData instance
-        void FunctionInfoMetaData::discardChanges()
-        {
-            m_Type.discardChanges();
-            m_ArgInfoList.discardChanges();
-            m_ImplicitArgInfoList.discardChanges();
-            m_ThreadGroupSize.discardChanges();
-            m_ThreadGroupSizeHint.discardChanges();
-            m_SubGroupSize.discardChanges();
-            m_OpenCLVectorTypeHint.discardChanges();
-        }
-
-        ///
-        // Generates the new MDNode hierarchy for the given structure
-        llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) const
-        {
-            llvm::SmallVector<llvm::Metadata*, 5> args;
-
-            llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-            if (NULL != pIDNode)
-            {
-                args.push_back(pIDNode);
-            }
-
-            args.push_back(m_Type.generateNode(context));
-            if (isArgInfoListHasValue())
-            {
-                args.push_back(m_ArgInfoList.generateNode(context));
-            }
-
-            if (isImplicitArgInfoListHasValue())
-            {
-                args.push_back(m_ImplicitArgInfoList.generateNode(context));
-            }
-
-            if (m_ThreadGroupSize->hasValue())
-            {
-                args.push_back(m_ThreadGroupSize.generateNode(context));
-            }
-
-            if (m_ThreadGroupSizeHint->hasValue())
-            {
-                args.push_back(m_ThreadGroupSizeHint.generateNode(context));
-            }
-
-            if (m_SubGroupSize->hasValue())
-            {
-                args.push_back(m_SubGroupSize.generateNode(context));
-            }
-
-            if (m_OpenCLVectorTypeHint->hasValue())
-            {
-                args.push_back(m_OpenCLVectorTypeHint.generateNode(context));
-            }
-            return llvm::MDNode::get(context, args);
-        }
-
-        ///
-        // Saves the structure changes to the given MDNode
-        void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-        {
-            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-            // we assume that underlying metadata node has not changed under our foot
-            if (pNode == m_pNode && !dirty())
-            {
-                return;
-            }
-#if 0
-            // check that we could save the new information to the given node without regenerating it
-            if (!compatibleWith(pNode))
-            {
-                pNode->replaceAllUsesWith(generateNode(context));
-                return;
-            }
-#endif
-
-            m_Type.save(context, llvm::cast<llvm::MDNode>(getTypeNode(pNode)));
-            m_ArgInfoList.save(context, llvm::cast<llvm::MDNode>(getArgInfoListNode(pNode)));
-            m_ImplicitArgInfoList.save(context, llvm::cast<llvm::MDNode>(getImplicitArgInfoListNode(pNode)));
-            m_ThreadGroupSize.save(context, llvm::cast<llvm::MDNode>(getThreadGroupSizeNode(pNode)));
-            m_ThreadGroupSizeHint.save(context, llvm::cast<llvm::MDNode>(getThreadGroupSizeHintNode(pNode)));
-            m_SubGroupSize.save(context, llvm::cast<llvm::MDNode>(getSubGroupSizeNode(pNode)));
-            m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));
-        }
-
-        llvm::Metadata* FunctionInfoMetaData::getTypeNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "function_type"))
-                {
-                    return i.get();
-                }
-            }
-            return NULL;
-        }
-
-        llvm::MDNode* FunctionInfoMetaData::getArgInfoListNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "arg_desc"))
-                {
-                    return llvm::dyn_cast<llvm::MDNode>(i.get());
-                }
-            }
-            return NULL;
-        }
-
-        llvm::MDNode* FunctionInfoMetaData::getImplicitArgInfoListNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "implicit_arg_desc"))
-                {
-                    return llvm::dyn_cast<llvm::MDNode>(i.get());
-                }
-            }
-            return NULL;
-        }
-
-        llvm::MDNode* FunctionInfoMetaData::getThreadGroupSizeNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "thread_group_size"))
-                {
-                    return llvm::dyn_cast<llvm::MDNode>(i.get());
-                }
-            }
-            return NULL;
-        }
-
-        llvm::MDNode* FunctionInfoMetaData::getThreadGroupSizeHintNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "thread_group_size_hint"))
-                {
-                    return llvm::dyn_cast<llvm::MDNode>(i.get());
-                }
-            }
-            return NULL;
-        }
-
-        llvm::MDNode* FunctionInfoMetaData::getSubGroupSizeNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "sub_group_size"))
-                {
-                    return llvm::dyn_cast<llvm::MDNode>(i.get());
-                }
-            }
-            return NULL;
-        }
-
-        llvm::Metadata* FunctionInfoMetaData::getLocalSizeNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "local_size"))
-                {
-                    return i.get();
-                }
-            }
-            return NULL;
-        }
-
-        llvm::MDNode* FunctionInfoMetaData::getOpenCLVectorTypeHintNode(const llvm::MDNode* pParentNode) const
-        {
-            if (!pParentNode)
-            {
-                return NULL;
-            }
-
-            unsigned int offset = _Mybase::getStartIndex();
-            for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-            {
-                if (isNamedNode(i.get(), "opencl_vec_type_hint"))
-                {
-                    return llvm::dyn_cast<llvm::MDNode>(i.get());
-                }
-            }
-            return NULL;
-        }
-
-        static bool isNamedNode(const llvm::Metadata* pNode, const char* name)
-        {
-            const llvm::MDNode* pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
-
-            if (!pMDNode)
-            {
-                return false;
-            }
-
-            if (pMDNode->getNumOperands() < 1)
-            {
-                return false;
-            }
-
-            const llvm::MDString* pIdNode = llvm::dyn_cast<const llvm::MDString>(pMDNode->getOperand(0));
-            if (!pIdNode)
-            {
-                return false;
-            }
-
-            llvm::StringRef id = pIdNode->getString();
-            if (id.compare(name))
-            {
-                return false;
-            }
-            return true;
-        }
-
+        m_Type.save(context, getNamedNode(pNode, "function_type"));
+        m_ArgInfoList.save(context, getNamedNode(pNode, "arg_desc"));
+        m_ImplicitArgInfoList.save(context, getNamedNode(pNode, "implicit_arg_desc"));
+        m_ThreadGroupSize.save(context, getNamedNode(pNode, "thread_group_size"));
+        m_ThreadGroupSizeHint.save(context, getNamedNode(pNode, "thread_group_size_hint"));
+        m_SubGroupSize.save(context, getNamedNode(pNode, "sub_group_size"));
+        m_OpenCLVectorTypeHint.save(context, getNamedNode(pNode, "opencl_vec_type_hint"));
     }
 }

@@ -2488,11 +2488,11 @@ bool PreCompiledFuncImport::usePrivateMemory(Function* F)
 
 void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function* F)
 {
-    FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
+    FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
     FH->setType(FunctionTypeMD::UserFunction);
     for (auto arg = F->arg_begin(); arg != F->arg_end(); ++arg)
     {
-        ArgInfoMetaDataHandle AH = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+        ArgInfoMetaDataHandle AH = ArgInfoMetaDataHandle(new ArgInfoMetaData());
         AH->setExplicitArgNum(arg->getArgNo());
         FH->addArgInfoListItem(AH);
     }
@@ -2502,10 +2502,10 @@ void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function* F)
         return;
 
     // Add private base
-    ArgInfoMetaDataHandle arg_R0 = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+    ArgInfoMetaDataHandle arg_R0 = ArgInfoMetaDataHandle(new ArgInfoMetaData());
     arg_R0->setArgId(ImplicitArg::R0);
     FH->addImplicitArgInfoListItem(arg_R0);
-    ArgInfoMetaDataHandle arg_PBase = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+    ArgInfoMetaDataHandle arg_PBase = ArgInfoMetaDataHandle(new ArgInfoMetaData());
     arg_PBase->setArgId(ImplicitArg::PRIVATE_BASE);
     FH->addImplicitArgInfoListItem(arg_PBase);
 

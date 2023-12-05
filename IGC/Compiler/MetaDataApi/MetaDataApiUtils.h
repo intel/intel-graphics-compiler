@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-
     ///
     // Metadata list. It is assumed that
     // all the nodes are of the same type ( as specified by the T template parameter)
@@ -31,16 +30,15 @@ namespace IGC
     // T - type of the entry node
     // Traits - convertor type (see the MDValueTraits )
     //
-    template<class T, class Traits = MDValueTraits<T> >
+    template<class T, class Traits = MDValueTraits<T>>
     class MetaDataList : public IMetaDataObject
     {
     public:
-        typedef IMetaDataObject _Mybase;
-        typedef MetaDataList<T, Traits> _Myt;
-        typedef MetaDataIterator<T, llvm::MDNode, Traits> meta_iterator;
-        typedef typename Traits::value_type item_type;
-        typedef typename std::vector<item_type>::iterator iterator;
-        typedef typename std::vector<item_type>::const_iterator const_iterator;
+        using _Mybase = IMetaDataObject;
+        using meta_iterator = MetaDataIterator<T, llvm::MDNode, Traits>;
+        using item_type = typename Traits::value_type;
+        using iterator = typename std::vector<item_type>::iterator;
+        using const_iterator = typename std::vector<item_type>::const_iterator;
 
         MetaDataList(const llvm::MDNode* pNode, bool hasId = false) :
             _Mybase(pNode, hasId),
@@ -132,7 +130,7 @@ namespace IGC
             m_isDirty = true;
         }
 
-        bool dirty() const
+        bool dirty() const override
         {
             if (m_isDirty)
             {
@@ -144,14 +142,9 @@ namespace IGC
                 return false;
             }
 
-            for (const_iterator i = m_data.begin(), e = m_data.end(); i != e; ++i)
-            {
-                if (Traits::dirty(*i))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return std::any_of(m_data.begin(), m_data.end(), [](const auto& it) {
+                return Traits::dirty(it);
+            });
         }
 
         bool hasValue() const
@@ -159,7 +152,7 @@ namespace IGC
             return m_pNode != NULL || !empty() || dirty();
         }
 
-        void discardChanges()
+        void discardChanges() override
         {
             if (!dirty())
             {
@@ -228,7 +221,6 @@ namespace IGC
         }
 
     protected:
-
         virtual void lazyLoad() const
         {
             if (m_isLoaded || NULL == m_pNode)
@@ -252,15 +244,14 @@ namespace IGC
         mutable std::vector<item_type> m_data;
     };
 
-    template<class T, class Traits = MDValueTraits<T> >
+    template<class T, class Traits = MDValueTraits<T>>
     class NamedMDNodeList
     {
     public:
-        typedef NamedMDNodeList<T, Traits> _Myt;
-        typedef MetaDataIterator<T, llvm::NamedMDNode, Traits> meta_iterator;
-        typedef typename Traits::value_type item_type;
-        typedef typename std::vector<item_type>::iterator iterator;
-        typedef typename std::vector<item_type>::const_iterator const_iterator;
+        using meta_iterator = MetaDataIterator<T, llvm::NamedMDNode, Traits>;
+        using item_type = typename Traits::value_type;
+        using iterator = typename std::vector<item_type>::iterator;
+        using const_iterator = typename std::vector<item_type>::const_iterator;
 
         NamedMDNodeList(const llvm::NamedMDNode* pNode) :
             m_pNode(pNode),
@@ -388,12 +379,9 @@ namespace IGC
                 return false;
             }
 
-            for (const_iterator i = m_data.begin(), e = m_data.end(); i != e; ++i)
-            {
-                if (Traits::dirty(*i))
-                    return true;
-            }
-            return false;
+            return std::any_of(m_data.begin(), m_data.end(), [](const auto& it) {
+                return Traits::dirty(it);
+            });
         }
 
         bool hasValue() const
@@ -415,8 +403,8 @@ namespace IGC
 
             m_isDirty = false;
         }
-    private:
 
+    private:
         void lazyLoad() const
         {
             if (m_isLoaded || NULL == m_pNode)
@@ -441,17 +429,16 @@ namespace IGC
 
     template<class K, class T,
         class KeyTraits = MDValueTraits<K>,
-        class ValTraits = MDValueTraits<T> >
+        class ValTraits = MDValueTraits<T>>
         class NamedMetaDataMap : public IMetaDataObject
     {
     public:
-        typedef NamedMetaDataMap<K, T, KeyTraits, ValTraits> _Myt;
-        typedef MetaDataIterator<llvm::MDNode, llvm::NamedMDNode, MDValueTraits<llvm::MDNode> > meta_iterator;
-        typedef typename KeyTraits::value_type key_type;
-        typedef typename ValTraits::value_type item_type;
-        typedef IGC::MapList<key_type, item_type> MapImplType;
-        typedef typename MapImplType::iterator iterator;
-        typedef typename MapImplType::const_iterator const_iterator;
+        using meta_iterator = MetaDataIterator<llvm::MDNode, llvm::NamedMDNode, MDValueTraits<llvm::MDNode>>;
+        using key_type = typename KeyTraits::value_type;
+        using item_type = typename ValTraits::value_type;
+        using MapImplType = IGC::MapList<key_type, item_type>;
+        using iterator = typename MapImplType::iterator;
+        using const_iterator = typename MapImplType::const_iterator;
 
         NamedMetaDataMap(const llvm::NamedMDNode* pNode) :
             m_pNode(pNode),
@@ -595,7 +582,7 @@ namespace IGC
             }
         }
 
-        bool dirty() const
+        bool dirty() const override
         {
             if (m_isDirty)
             {
@@ -607,12 +594,9 @@ namespace IGC
                 return false;
             }
 
-            for (const_iterator i = m_data.begin(), e = m_data.end(); i != e; ++i)
-            {
-                if (KeyTraits::dirty((*i).first) || ValTraits::dirty((*i).second))
-                    return true;
-            }
-            return false;
+            return std::any_of(m_data.begin(), m_data.end(), [](const auto& it) {
+                return KeyTraits::dirty(it.first) || ValTraits::dirty(it.second);
+            });
         }
 
         bool hasValue() const
@@ -620,7 +604,7 @@ namespace IGC
             return m_pNode != NULL || dirty();
         }
 
-        void discardChanges()
+        void discardChanges() override
         {
             if (!dirty())
             {
@@ -727,4 +711,4 @@ namespace IGC
         bool m_isDirty;
     };
 
-} // IGC
+}

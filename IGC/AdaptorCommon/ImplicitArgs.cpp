@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -436,7 +436,7 @@ void ImplicitArgs::addImplicitArgs(llvm::Function& F, const SmallVectorImpl<Impl
     {
         if (!isImplicitArgExist(F, arg, pMdUtils))
         {
-            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
             argMD->setArgId(arg);
             funcInfo->addImplicitArgInfoListItem(argMD);
         }
@@ -451,7 +451,7 @@ void ImplicitArgs::addImplicitArgsTotally(llvm::Function& F, const SmallVectorIm
     {
         if (!isImplicitArgExist(F, arg, pMdUtils))
         {
-            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
             argMD->setArgId(arg);
             funcInfo->addImplicitArgInfoListItem(argMD);
             argAdded = true;
@@ -480,7 +480,7 @@ void ImplicitArgs::addImageArgs(llvm::Function& F, const ImplicitArg::ArgMap& ar
         {
             for (const auto& argI : argMapIter->second)
             {
-                ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+                ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
                 argMD->setArgId(argType);
                 argMD->setExplicitArgNum(argI);
                 funcInfo->addImplicitArgInfoListItem(argMD);
@@ -498,7 +498,7 @@ void ImplicitArgs::addStructArgs(llvm::Function& F, const Argument* A, const Imp
         unsigned int id = argI.first;
         unsigned int offset = argI.second;
 
-        ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+        ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
         argMD->setExplicitArgNum(A->getArgNo());
         argMD->setArgId(id);
         argMD->setStructArgOffset(offset);
@@ -514,7 +514,7 @@ void ImplicitArgs::addNumberedArgs(llvm::Function& F, const ImplicitArg::ArgMap&
         ImplicitArg::ArgType argId = argPair.first;
         for (const auto& argNum : argPair.second)
         {
-            ArgInfoMetaDataHandle argMD(ArgInfoMetaData::get());
+            ArgInfoMetaDataHandle argMD(new ArgInfoMetaData());
             argMD->setArgId(argId);
             argMD->setExplicitArgNum(argNum);
             funcInfo->addImplicitArgInfoListItem(argMD);

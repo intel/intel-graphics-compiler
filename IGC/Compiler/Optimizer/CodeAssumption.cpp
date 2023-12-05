@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -341,7 +341,7 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData* modMD, F
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            uint32_t simdSize = (uint32_t)subGroupSize->getSIMD_size();
+            uint32_t simdSize = (uint32_t)subGroupSize->getSIMDSize();
 
             uint32_t X = (uint32_t)threadGroupSize->getXDim();
             uint32_t Y = (uint32_t)threadGroupSize->getYDim();

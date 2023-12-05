@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -302,7 +302,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            SIMDSize = std::max((uint32_t)subGroupSize->getSIMD_size(), SIMDSize);
+            SIMDSize = std::max((uint32_t)subGroupSize->getSIMDSize(), SIMDSize);
         }
 
         allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;

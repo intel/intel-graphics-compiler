@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -239,7 +239,7 @@ bool LSCFuncsResolution::runOnFunction(Function &F)
 
     auto m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto funcInfoMD = m_pMdUtils->getFunctionsInfoItem(&F);
-    int actualSimdSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+    int actualSimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
     isHalfSimdMode = defaultSimdSize != actualSimdSize; // SIMD8 on DG2, SIMD16 on PVC
 
     m_changed = false;
@@ -371,7 +371,7 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
 {
     IGC::IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(CI.getParent()->getParent());
-    unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+    unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
 
     funcName.consume_front("_flat");
     uint32_t isTranspose = funcName.consume_front("_transpose") ? 1 : 0;

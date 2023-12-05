@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -79,7 +79,7 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils* pM,
 {
     using namespace IGC::IGCMD;
     auto Info = pM->getFunctionsInfoItem(F);
-    auto NewInfo = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
+    auto NewInfo = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
 
     // Copy function type info.
     if (Info->isTypeHasValue())
@@ -252,7 +252,7 @@ void GenXCodeGenModule::processFunction(Function& F)
         {
             Function* callerKernel = iter.first->getHead();
             auto funcInfoMD = pMdUtils->getFunctionsInfoItem(callerKernel);
-            int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            int sz = funcInfoMD->getSubGroupSize()->getSIMDSize();
             if (sz != 0) {
                 if (simd_size == 0)
                     simd_size = sz;
@@ -715,8 +715,8 @@ static inline int getDefaultSIMDSize(CodeGenContext* ctx)
         if (defaultDummyKernel)
         {
             auto subGrpSz = ctx->getMetaDataUtils()->getFunctionsInfoItem(defaultDummyKernel)->getSubGroupSize();
-            if (subGrpSz->isSIMD_sizeHasValue())
-                defaultSz = subGrpSz->getSIMD_size();
+            if (subGrpSz->isSIMDSizeHasValue())
+                defaultSz = subGrpSz->getSIMDSize();
         }
     }
     return defaultSz;
@@ -756,7 +756,7 @@ FunctionGroup* GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module* p
 
         // Set spirv calling convention and kernel metadata
         pNewFunc->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
-        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
         FunctionMetaData* funcMD = &pModMD->FuncMD[pNewFunc];
         funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
         fHandle->setType(FunctionTypeMD::KernelFunction);
@@ -764,7 +764,7 @@ FunctionGroup* GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module* p
         defaultKernel = pNewFunc;
     }
     // Set the requested sub_group_size value for this kernel
-    pMdUtil->getFunctionsInfoItem(defaultKernel)->getSubGroupSize()->setSIMD_size(SimdSize);
+    pMdUtil->getFunctionsInfoItem(defaultKernel)->getSubGroupSize()->setSIMDSize(SimdSize);
     pMdUtil->save(pModule->getContext());
 
     auto FG = getGroup(defaultKernel);
@@ -956,7 +956,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
                 {
                     auto FG = getGroup(callerF);
                     auto funcInfoMD = pMdUtils->getFunctionsInfoItem(FG->getHead());
-                    int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
+                    int sz = funcInfoMD->getSubGroupSize()->getSIMDSize();
                     if (sz != 0)
                     {
                         IGC_ASSERT(sz == 8 || sz == 16 || sz == 32);

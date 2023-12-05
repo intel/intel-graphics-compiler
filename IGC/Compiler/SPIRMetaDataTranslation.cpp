@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -156,7 +156,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     SPIRMD::SpirMetaDataUtils::KernelsList::const_iterator ke = spirMDUtils.end_Kernels();
     for (; ki != ke; ++ki)
     {
-        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
         // TODO: Null metadata entries are only expected in the event of a
         // partial recompilation. Once the retry manager learns to clean
@@ -192,7 +192,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         if (reqdSubGroupSize->hasValue())
         {
             IGCMD::SubGroupSizeMetaDataHandle sgHandle = fHandle->getSubGroupSize();
-            int simd_size = reqdSubGroupSize->getSIMD_Size();
+            int simd_size = reqdSubGroupSize->getSIMDSize();
             if (!((simd_size == 8) || (simd_size == 16) || (simd_size == 32)))
             {
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size", spirKernel->getFunction());
@@ -204,7 +204,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                     "Kernel compiled with required subgroup size 8, which is unsupported on this platform", spirKernel->getFunction());
                 return false;
             }
-            sgHandle->setSIMD_size(simd_size);
+            sgHandle->setSIMDSize(simd_size);
         }
 
         // Handling Sub Group Size

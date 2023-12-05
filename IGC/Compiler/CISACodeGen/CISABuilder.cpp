@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -6668,7 +6668,7 @@ namespace IGC
         else if (!isStackCallProgram)
         {
             auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
-            int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
             bool noRetry = ((subGrpSize > 0 || jitInfo->stats.spillMemUsed < 1000) &&
                 context->m_instrTypes.mayHaveIndirectOperands) &&
                 !context->HasFuncExpensiveLoop(m_program->entry);

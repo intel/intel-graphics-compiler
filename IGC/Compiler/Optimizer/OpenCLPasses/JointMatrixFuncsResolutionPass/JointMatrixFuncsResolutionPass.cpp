@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -191,7 +191,7 @@ void JointMatrixFuncsResolutionPass::ForceKernelSIMDSize(Function *F, int32_t fo
     {
         IGCMD::FunctionInfoMetaDataHandle funcInfoMD = m_mdUtils->getFunctionsInfoItem(entryFunction);
         IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-        subGroupSize->setSIMD_size(forcedSIMDSize);
+        subGroupSize->setSIMDSize(forcedSIMDSize);
     }
 }
 
@@ -223,7 +223,7 @@ void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F)
         IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
-            int32_t kernelSIMDSize = subGroupSize->getSIMD_size();
+            int32_t kernelSIMDSize = subGroupSize->getSIMDSize();
             if (kernelSIMDSize != 0)
             {
                 if (IsSIMDSizeValid(kernelSIMDSize))
@@ -240,7 +240,7 @@ void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F)
         // if not set on entry function level, define ourselves
         m_SIMDSize = DefineKernelSIMDSize();
         // and set to entry level function
-        subGroupSize->setSIMD_size(m_SIMDSize);
+        subGroupSize->setSIMDSize(m_SIMDSize);
         return;
     }
 

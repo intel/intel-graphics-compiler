@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,7 +14,7 @@ using namespace IGC::IGCMD;
 
 void IGCMetaDataHelper::addFunction(MetaDataUtils& mdUtils, llvm::Function* pFunc, FunctionTypeMD type)
 {
-    auto finfo = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
+    auto finfo = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
     finfo->setType(type);
     mdUtils.setFunctionsInfoItem(pFunc, finfo);
     mdUtils.save(pFunc->getContext());

@@ -497,7 +497,7 @@ bool MemOpt::runOnFunction(Function& F) {
     bool Changed = false;
 
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDU->getFunctionsInfoItem(&F);
-    unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+    unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
 
     for (Function::iterator BBI = F.begin(), BBE = F.end(); BBI != BBE; ++BBI) {
         // Find all instructions with memory reference. Remember the distance one

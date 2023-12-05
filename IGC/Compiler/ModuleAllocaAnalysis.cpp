@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -190,7 +190,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
         // some space left for spilling in simd8 if spilling happens.
         int32_t simd_size = isGeometryStageShader ? numLanes(Ctx.platform.getMinDispatchMode()) :
             (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16) : numLanes(SIMDMode::SIMD32));
-        const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
         if (subGrpSize > simd_size)
             simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
         int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, &F);

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -92,7 +92,7 @@ bool Image3dToImage2darray::createImageAnnotations(
 
     if (!found)
     {
-        argHandle = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+        argHandle = ArgInfoMetaDataHandle(new ArgInfoMetaData());
         argHandle->setExplicitArgNum(argNum);
         funcInfoMD->addArgInfoListItem(argHandle);
     }

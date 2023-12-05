@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2092,7 +2092,7 @@ void WIAnalysisRunner::checkLocalIdUniform(
     SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
     if (subGroupSize->hasValue())
     {
-        simdSize = (uint32_t)subGroupSize->getSIMD_size();
+        simdSize = (uint32_t)subGroupSize->getSIMDSize();
     }
     simdSize = simdSize >= 8 ? simdSize : 32;
 

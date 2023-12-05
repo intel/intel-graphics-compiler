@@ -869,7 +869,7 @@ bool BIImport::runOnModule(Module& M)
                         Function* callerF = CI->getParent()->getParent();
                         // Assume the caller has explicit subgroup size set, otherwise we cannot determine which variant to use
                         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(callerF);
-                        unsigned subgroup_size = (unsigned)funcInfoMD->getSubGroupSize()->getSIMD_size();
+                        unsigned subgroup_size = (unsigned)funcInfoMD->getSubGroupSize()->getSIMDSize();
                         IGC_ASSERT(subgroup_size != 0);
 
                         // Parse each variant string in the table, stop at the first one that matches subgroup_size

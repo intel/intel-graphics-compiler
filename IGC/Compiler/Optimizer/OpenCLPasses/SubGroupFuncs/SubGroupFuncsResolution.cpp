@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -247,7 +247,7 @@ int32_t SubGroupFuncsResolution::GetSIMDSize(Function* F)
 {
     auto* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-    int32_t simdSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+    int32_t simdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
 
     return simdSize;
 }
@@ -971,7 +971,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
     //Code to extract subgroup size
     IGC::IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-    unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+    unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
 
     auto* pFunc = inst->getCalledFunction();
     auto* pDataType = isRead ? pFunc->getReturnType() : inst->getOperand(6)->getType();

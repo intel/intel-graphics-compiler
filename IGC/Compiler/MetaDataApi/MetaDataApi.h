@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,1110 +11,728 @@ SPDX-License-Identifier: MIT
 #include "MetaDataApiUtils.h"
 #include "MDFrameWork.h"
 
-namespace IGC {
-    namespace IGCMD
+// Following classes read/write its own specific structure from/to LLVM metadata.
+
+namespace IGC::IGCMD
+{
+    class ArgInfoMetaData;
+    using ArgInfoMetaDataHandle = MetaObjectHandle<ArgInfoMetaData>;
+
+    class SubGroupSizeMetaData;
+    using SubGroupSizeMetaDataHandle = MetaObjectHandle<SubGroupSizeMetaData>;
+
+    class VectorTypeHintMetaData;
+    using VectorTypeHintMetaDataHandle = MetaObjectHandle<VectorTypeHintMetaData>;
+
+    class ThreadGroupSizeMetaData;
+    using ThreadGroupSizeMetaDataHandle = MetaObjectHandle<ThreadGroupSizeMetaData>;
+
+    class FunctionInfoMetaData;
+    using FunctionInfoMetaDataHandle = MetaObjectHandle<FunctionInfoMetaData>;
+
+    class ArgInfoMetaData : public IMetaDataObject
     {
-        //typedefs and forward declarations
-        class ArgInfoMetaData;
-        typedef MetaObjectHandle<ArgInfoMetaData> ArgInfoMetaDataHandle;
+    public:
+        using _Mybase = IMetaDataObject;
 
-        class SubGroupSizeMetaData;
-        typedef MetaObjectHandle<SubGroupSizeMetaData> SubGroupSizeMetaDataHandle;
+        ArgInfoMetaData(const llvm::MDNode* pNode, bool hasId);
+        ArgInfoMetaData();
+        ArgInfoMetaData(const char* name);
 
-        class VectorTypeHintMetaData;
-        typedef MetaObjectHandle<VectorTypeHintMetaData> VectorTypeHintMetaDataHandle;
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
 
-        class ThreadGroupSizeMetaData;
-        typedef MetaObjectHandle<ThreadGroupSizeMetaData> ThreadGroupSizeMetaDataHandle;
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
 
-        class FunctionInfoMetaData;
-        typedef MetaObjectHandle<FunctionInfoMetaData> FunctionInfoMetaDataHandle;
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
 
-        typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListMetaDataList;
-        typedef MetaObjectHandle<ArgInfoListMetaDataList> ArgInfoListMetaDataListHandle;
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
 
-        ///
-        // Read/Write the ArgInfo structure from/to LLVM metadata
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
+
         //
-        class ArgInfoMetaData :public IMetaDataObject
-        {
-        public:
-            typedef ArgInfoMetaData _Myt;
-            typedef IMetaDataObject _Mybase;
-            // typedefs for data member types
-            typedef MetaDataValue<int32_t>::value_type ArgIdType;
-            typedef NamedMetaDataValue<int32_t>::value_type ExplicitArgNumType;
-            typedef NamedMetaDataValue<int32_t>::value_type StructArgOffsetType;
-            typedef NamedMetaDataValue<bool>::value_type ImgAccessFloatCoordsType;
-            typedef NamedMetaDataValue<bool>::value_type ImgAccessIntCoordsType;
-
-        public:
-            ///
-            // Factory method - creates the ArgInfoMetaData from the given metadata node
-            //
-            static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-            {
-                return new _Myt(pNode, hasId);
-            }
-
-            ///
-            // Factory method - create the default empty ArgInfoMetaData object
-            static _Myt* get()
-            {
-                return new _Myt();
-            }
-
-            ///
-            // Factory method - create the default empty named ArgInfoMetaData object
-            static _Myt* get(const char* name)
-            {
-                return new _Myt(name);
-            }
-
-            ///
-            // Ctor - loads the ArgInfoMetaData from the given metadata node
-            //
-            ArgInfoMetaData(const llvm::MDNode* pNode, bool hasId);
-
-            ///
-            // Default Ctor - creates the empty, not named ArgInfoMetaData object
-            //
-            ArgInfoMetaData();
-
-            ///
-            // Ctor - creates the empty, named ArgInfoMetaData object
-            //
-            ArgInfoMetaData(const char* name);
-
-            /// ArgId related methods
-            ArgIdType getArgId() const
-            {
-                return m_ArgId.get();
-            }
-            void setArgId(const ArgIdType& val)
-            {
-                m_ArgId.set(val);
-            }
-            bool isArgIdHasValue() const
-            {
-                return m_ArgId.hasValue();
-            }
-
-
-            /// ExplicitArgNum related methods
-            ExplicitArgNumType getExplicitArgNum() const
-            {
-                return m_ExplicitArgNum.get();
-            }
-            void setExplicitArgNum(const ExplicitArgNumType& val)
-            {
-                m_ExplicitArgNum.set(val);
-            }
-            bool isExplicitArgNumHasValue() const
-            {
-                return m_ExplicitArgNum.hasValue();
-            }
-
-
-            /// StructArgOffset related methods
-            StructArgOffsetType getStructArgOffset() const
-            {
-                return m_StructArgOffset.get();
-            }
-            void setStructArgOffset(const StructArgOffsetType& val)
-            {
-                m_StructArgOffset.set(val);
-            }
-            bool isStructArgOffsetHasValue() const
-            {
-                return m_StructArgOffset.hasValue();
-            }
-
-
-            /// ImgAccessFloatCoords related methods
-            ImgAccessFloatCoordsType getImgAccessFloatCoords() const
-            {
-                return m_ImgAccessFloatCoords.get();
-            }
-            void setImgAccessFloatCoords(const ImgAccessFloatCoordsType& val)
-            {
-                m_ImgAccessFloatCoords.set(val);
-            }
-            bool isImgAccessFloatCoordsHasValue() const
-            {
-                return m_ImgAccessFloatCoords.hasValue();
-            }
-
-
-            /// ImgAccessIntCoords related methods
-            ImgAccessIntCoordsType getImgAccessIntCoords() const
-            {
-                return m_ImgAccessIntCoords.get();
-            }
-            void setImgAccessIntCoords(const ImgAccessIntCoordsType& val)
-            {
-                m_ImgAccessIntCoords.set(val);
-            }
-            bool isImgAccessIntCoordsHasValue() const
-            {
-                return m_ImgAccessIntCoords.hasValue();
-            }
-
-            ///
-            // Returns true if any of the ArgInfoMetaData`s members has changed
-            bool dirty() const;
-
-            ///
-            // Returns true if the structure was loaded from the metadata or was changed
-            bool hasValue() const;
-
-            ///
-            // Discards the changes done to the ArgInfoMetaData instance
-            void discardChanges();
-
-            ///
-            // Generates the new MDNode hierarchy for the given structure
-            llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-            ///
-            // Saves the structure changes to the given MDNode
-            void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-        private:
-            ///
-            // Returns true if the given MDNode could be saved to without replacement
-            bool compatibleWith(const llvm::MDNode* pNode) const
-            {
-                IGC_UNUSED(pNode);
-                return false;
-            }
-
-        private:
-            typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-            llvm::Metadata* getArgIdNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getExplicitArgNumNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getStructArgOffsetNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getImgAccessFloatCoordsNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getImgAccessIntCoordsNode(const llvm::MDNode* pParentNode) const;
-
-        private:
-            // data members
-            MetaDataValue<int32_t> m_ArgId;
-            NamedMetaDataValue<int32_t> m_ExplicitArgNum;
-            NamedMetaDataValue<int32_t> m_StructArgOffset;
-            NamedMetaDataValue<bool> m_ImgAccessFloatCoords;
-            NamedMetaDataValue<bool> m_ImgAccessIntCoords;
-            // parent node
-            const llvm::MDNode* m_pNode;
-        };
-
-        ///
-        // Read/Write the ArgDependencyInfo structure from/to LLVM metadata
+        // Data members
         //
-        class ArgDependencyInfoMetaData :public IMetaDataObject
+        using ArgIdType = MetaDataValue<int32_t>;
+        using ExplicitArgNumType = NamedMetaDataValue<int32_t>;
+        using StructArgOffsetType = NamedMetaDataValue<int32_t>;
+        using ImgAccessFloatCoordsType = NamedMetaDataValue<bool>;
+        using ImgAccessIntCoordsType = NamedMetaDataValue<bool>;
+
+        // ArgId
+        ArgIdType::value_type getArgId() const
         {
-        public:
-            typedef ArgDependencyInfoMetaData _Myt;
-            typedef IMetaDataObject _Mybase;
-            // typedefs for data member types
-            typedef MetaDataValue<std::string>::value_type ArgType;
-            typedef MetaDataValue<int32_t>::value_type ArgDependencyType;
+            return m_ArgId.get();
+        }
+        void setArgId(const ArgIdType::value_type& val)
+        {
+            m_ArgId.set(val);
+        }
+        bool isArgIdHasValue() const
+        {
+            return m_ArgId.hasValue();
+        }
 
-        public:
-            ///
-            // Factory method - creates the ArgDependencyInfoMetaData from the given metadata node
-            //
-            static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-            {
-                return new _Myt(pNode, hasId);
-            }
+        // ExplicitArgNum
+        ExplicitArgNumType::value_type getExplicitArgNum() const
+        {
+            return m_ExplicitArgNum.get();
+        }
+        void setExplicitArgNum(const ExplicitArgNumType::value_type& val)
+        {
+            m_ExplicitArgNum.set(val);
+        }
+        bool isExplicitArgNumHasValue() const
+        {
+            return m_ExplicitArgNum.hasValue();
+        }
 
-            ///
-            // Factory method - create the default empty ArgDependencyInfoMetaData object
-            static _Myt* get()
-            {
-                return new _Myt();
-            }
+        // StructArgOffset
+        StructArgOffsetType::value_type getStructArgOffset() const
+        {
+            return m_StructArgOffset.get();
+        }
+        void setStructArgOffset(const StructArgOffsetType::value_type& val)
+        {
+            m_StructArgOffset.set(val);
+        }
+        bool isStructArgOffsetHasValue() const
+        {
+            return m_StructArgOffset.hasValue();
+        }
 
-            ///
-            // Factory method - create the default empty named ArgDependencyInfoMetaData object
-            static _Myt* get(const char* name)
-            {
-                return new _Myt(name);
-            }
+        // ImgAccessFloatCoords
+        ImgAccessFloatCoordsType::value_type getImgAccessFloatCoords() const
+        {
+            return m_ImgAccessFloatCoords.get();
+        }
+        void setImgAccessFloatCoords(const ImgAccessFloatCoordsType::value_type& val)
+        {
+            m_ImgAccessFloatCoords.set(val);
+        }
+        bool isImgAccessFloatCoordsHasValue() const
+        {
+            return m_ImgAccessFloatCoords.hasValue();
+        }
 
-            ///
-            // Ctor - loads the ArgDependencyInfoMetaData from the given metadata node
-            //
-            ArgDependencyInfoMetaData(const llvm::MDNode* pNode, bool hasId);
+        // ImgAccessIntCoords
+        ImgAccessIntCoordsType::value_type getImgAccessIntCoords() const
+        {
+            return m_ImgAccessIntCoords.get();
+        }
+        void setImgAccessIntCoords(const ImgAccessIntCoordsType::value_type& val)
+        {
+            m_ImgAccessIntCoords.set(val);
+        }
+        bool isImgAccessIntCoordsHasValue() const
+        {
+            return m_ImgAccessIntCoords.hasValue();
+        }
 
-            ///
-            // Default Ctor - creates the empty, not named ArgDependencyInfoMetaData object
-            //
-            ArgDependencyInfoMetaData();
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
 
-            ///
-            // Ctor - creates the empty, named ArgDependencyInfoMetaData object
-            //
-            ArgDependencyInfoMetaData(const char* name);
+        // data members
+        ArgIdType m_ArgId;
+        ExplicitArgNumType m_ExplicitArgNum;
+        StructArgOffsetType m_StructArgOffset;
+        ImgAccessFloatCoordsType m_ImgAccessFloatCoords;
+        ImgAccessIntCoordsType m_ImgAccessIntCoords;
+    };
 
-            /// Arg related methods
-            ArgType getArg() const
-            {
-                return m_Arg.get();
-            }
-            void setArg(const ArgType& val)
-            {
-                m_Arg.set(val);
-            }
-            bool isArgHasValue() const
-            {
-                return m_Arg.hasValue();
-            }
+    class ArgDependencyInfoMetaData : public IMetaDataObject
+    {
+    public:
+        using _Mybase = IMetaDataObject;
 
+        ArgDependencyInfoMetaData(const llvm::MDNode* pNode, bool hasId);
+        ArgDependencyInfoMetaData();
+        ArgDependencyInfoMetaData(const char* name);
 
-            /// ArgDependency related methods
-            ArgDependencyType getArgDependency() const
-            {
-                return m_ArgDependency.get();
-            }
-            void setArgDependency(const ArgDependencyType& val)
-            {
-                m_ArgDependency.set(val);
-            }
-            bool isArgDependencyHasValue() const
-            {
-                return m_ArgDependency.hasValue();
-            }
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
 
-            ///
-            // Returns true if any of the ArgDependencyInfoMetaData`s members has changed
-            bool dirty() const;
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
 
-            ///
-            // Returns true if the structure was loaded from the metadata or was changed
-            bool hasValue() const;
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
 
-            ///
-            // Discards the changes done to the ArgDependencyInfoMetaData instance
-            void discardChanges();
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
 
-            ///
-            // Generates the new MDNode hierarchy for the given structure
-            llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
 
-            ///
-            // Saves the structure changes to the given MDNode
-            void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-        private:
-            ///
-            // Returns true if the given MDNode could be saved to without replacement
-            bool compatibleWith(const llvm::MDNode* pNode) const
-            {
-                IGC_UNUSED(pNode);
-                return false;
-            }
-
-        private:
-            typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-            llvm::Metadata* getArgNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getArgDependencyNode(const llvm::MDNode* pParentNode) const;
-
-        private:
-            // data members
-            MetaDataValue<std::string> m_Arg;
-            MetaDataValue<int32_t> m_ArgDependency;
-            // parent node
-            const llvm::MDNode* m_pNode;
-        };
-
-        ///
-        // Read/Write the SubGroupSize structure from/to LLVM metadata
         //
-        class SubGroupSizeMetaData :public IMetaDataObject
-        {
-        public:
-            typedef SubGroupSizeMetaData _Myt;
-            typedef IMetaDataObject _Mybase;
-            // typedefs for data member types
-            typedef MetaDataValue<int32_t>::value_type SIMD_sizeType;
-
-        public:
-            ///
-            // Factory method - creates the SubGroupSizeMetaData from the given metadata node
-            //
-            static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-            {
-                return new _Myt(pNode, hasId);
-            }
-
-            ///
-            // Factory method - create the default empty SubGroupSizeMetaData object
-            static _Myt* get()
-            {
-                return new _Myt();
-            }
-
-            ///
-            // Factory method - create the default empty named SubGroupSizeMetaData object
-            static _Myt* get(const char* name)
-            {
-                return new _Myt(name);
-            }
-
-            ///
-            // Ctor - loads the SubGroupSizeMetaData from the given metadata node
-            //
-            SubGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId);
-
-            ///
-            // Default Ctor - creates the empty, not named SubGroupSizeMetaData object
-            //
-            SubGroupSizeMetaData();
-
-            ///
-            // Ctor - creates the empty, named SubGroupSizeMetaData object
-            //
-            SubGroupSizeMetaData(const char* name);
-
-            /// SIMD_size related methods
-            SIMD_sizeType getSIMD_size() const
-            {
-                return m_SIMD_size.get();
-            }
-            void setSIMD_size(const SIMD_sizeType& val)
-            {
-                m_SIMD_size.set(val);
-            }
-            bool isSIMD_sizeHasValue() const
-            {
-                return m_SIMD_size.hasValue();
-            }
-
-            ///
-            // Returns true if any of the SubGroupSizeMetaData`s members has changed
-            bool dirty() const;
-
-            ///
-            // Returns true if the structure was loaded from the metadata or was changed
-            bool hasValue() const;
-
-            ///
-            // Discards the changes done to the SubGroupSizeMetaData instance
-            void discardChanges();
-
-            ///
-            // Generates the new MDNode hierarchy for the given structure
-            llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-            ///
-            // Saves the structure changes to the given MDNode
-            void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-        private:
-            ///
-            // Returns true if the given MDNode could be saved to without replacement
-            bool compatibleWith(const llvm::MDNode* pNode) const
-            {
-                IGC_UNUSED(pNode);
-                return false;
-            }
-
-        private:
-            typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-            llvm::Metadata* getSIMD_sizeNode(const llvm::MDNode* pParentNode) const;
-
-        private:
-            // data members
-            MetaDataValue<int32_t> m_SIMD_size;
-            // parent node
-            const llvm::MDNode* m_pNode;
-        };
-
-        ///
-        // Read/Write the VectorTypeHint structure from/to LLVM metadata
+        // Data members
         //
-        class VectorTypeHintMetaData :public IMetaDataObject
+        using ArgType = MetaDataValue<std::string>;
+        using ArgDependencyType = MetaDataValue<int32_t>;
+
+        // Arg
+        ArgType::value_type getArg() const
         {
-        public:
-            typedef VectorTypeHintMetaData _Myt;
-            typedef IMetaDataObject _Mybase;
-            // typedefs for data member types
-            typedef MetaDataValue<llvm::UndefValue>::value_type VecTypeType;
-            typedef MetaDataValue<bool>::value_type SignType;
+            return m_Arg.get();
+        }
+        void setArg(const ArgType::value_type& val)
+        {
+            m_Arg.set(val);
+        }
+        bool isArgHasValue() const
+        {
+            return m_Arg.hasValue();
+        }
 
-        public:
-            ///
-            // Factory method - creates the VectorTypeHintMetaData from the given metadata node
-            //
-            static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-            {
-                return new _Myt(pNode, hasId);
-            }
+        // ArgDependency
+        ArgDependencyType::value_type getArgDependency() const
+        {
+            return m_ArgDependency.get();
+        }
+        void setArgDependency(const ArgDependencyType::value_type& val)
+        {
+            m_ArgDependency.set(val);
+        }
+        bool isArgDependencyHasValue() const
+        {
+            return m_ArgDependency.hasValue();
+        }
 
-            ///
-            // Factory method - create the default empty VectorTypeHintMetaData object
-            static _Myt* get()
-            {
-                return new _Myt();
-            }
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
 
-            ///
-            // Factory method - create the default empty named VectorTypeHintMetaData object
-            static _Myt* get(const char* name)
-            {
-                return new _Myt(name);
-            }
+        // data members
+        ArgType m_Arg;
+        ArgDependencyType m_ArgDependency;
+    };
 
-            ///
-            // Ctor - loads the VectorTypeHintMetaData from the given metadata node
-            //
-            VectorTypeHintMetaData(const llvm::MDNode* pNode, bool hasId);
+    class SubGroupSizeMetaData : public IMetaDataObject
+    {
+    public:
+        using _Mybase = IMetaDataObject;
 
-            ///
-            // Default Ctor - creates the empty, not named VectorTypeHintMetaData object
-            //
-            VectorTypeHintMetaData();
+        SubGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId);
+        SubGroupSizeMetaData();
+        SubGroupSizeMetaData(const char* name);
 
-            ///
-            // Ctor - creates the empty, named VectorTypeHintMetaData object
-            //
-            VectorTypeHintMetaData(const char* name);
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
 
-            /// VecType related methods
-            VecTypeType getVecType() const
-            {
-                return m_VecType.get();
-            }
-            void setVecType(const VecTypeType& val)
-            {
-                m_VecType.set(val);
-            }
-            bool isVecTypeHasValue() const
-            {
-                return m_VecType.hasValue();
-            }
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
 
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
 
-            /// Sign related methods
-            SignType getSign() const
-            {
-                return m_Sign.get();
-            }
-            void setSign(const SignType& val)
-            {
-                m_Sign.set(val);
-            }
-            bool isSignHasValue() const
-            {
-                return m_Sign.hasValue();
-            }
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
 
-            ///
-            // Returns true if any of the VectorTypeHintMetaData`s members has changed
-            bool dirty() const;
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
 
-            ///
-            // Returns true if the structure was loaded from the metadata or was changed
-            bool hasValue() const;
-
-            ///
-            // Discards the changes done to the VectorTypeHintMetaData instance
-            void discardChanges();
-
-            ///
-            // Generates the new MDNode hierarchy for the given structure
-            llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-            ///
-            // Saves the structure changes to the given MDNode
-            void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-        private:
-            ///
-            // Returns true if the given MDNode could be saved to without replacement
-            bool compatibleWith(const llvm::MDNode* pNode) const
-            {
-                IGC_UNUSED(pNode);
-                return false;
-            }
-
-        private:
-            typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-            llvm::Metadata* getVecTypeNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getSignNode(const llvm::MDNode* pParentNode) const;
-
-        private:
-            // data members
-            MetaDataValue<llvm::UndefValue> m_VecType;
-            MetaDataValue<bool> m_Sign;
-            // parent node
-            const llvm::MDNode* m_pNode;
-        };
-
-        ///
-        // Read/Write the ThreadGroupSize structure from/to LLVM metadata
         //
-        class ThreadGroupSizeMetaData :public IMetaDataObject
-        {
-        public:
-            typedef ThreadGroupSizeMetaData _Myt;
-            typedef IMetaDataObject _Mybase;
-            // typedefs for data member types
-            typedef MetaDataValue<int32_t>::value_type XDimType;
-            typedef MetaDataValue<int32_t>::value_type YDimType;
-            typedef MetaDataValue<int32_t>::value_type ZDimType;
-
-        public:
-            ///
-            // Factory method - creates the ThreadGroupSizeMetaData from the given metadata node
-            //
-            static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-            {
-                return new _Myt(pNode, hasId);
-            }
-
-            ///
-            // Factory method - create the default empty ThreadGroupSizeMetaData object
-            static _Myt* get()
-            {
-                return new _Myt();
-            }
-
-            ///
-            // Factory method - create the default empty named ThreadGroupSizeMetaData object
-            static _Myt* get(const char* name)
-            {
-                return new _Myt(name);
-            }
-
-            ///
-            // Ctor - loads the ThreadGroupSizeMetaData from the given metadata node
-            //
-            ThreadGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId);
-
-            ///
-            // Default Ctor - creates the empty, not named ThreadGroupSizeMetaData object
-            //
-            ThreadGroupSizeMetaData();
-
-            ///
-            // Ctor - creates the empty, named ThreadGroupSizeMetaData object
-            //
-            ThreadGroupSizeMetaData(const char* name);
-
-            /// XDim related methods
-            XDimType getXDim() const
-            {
-                return m_XDim.get();
-            }
-            void setXDim(const XDimType& val)
-            {
-                m_XDim.set(val);
-            }
-            bool isXDimHasValue() const
-            {
-                return m_XDim.hasValue();
-            }
-
-
-            /// YDim related methods
-            YDimType getYDim() const
-            {
-                return m_YDim.get();
-            }
-            void setYDim(const YDimType& val)
-            {
-                m_YDim.set(val);
-            }
-            bool isYDimHasValue() const
-            {
-                return m_YDim.hasValue();
-            }
-
-
-            /// ZDim related methods
-            ZDimType getZDim() const
-            {
-                return m_ZDim.get();
-            }
-            void setZDim(const ZDimType& val)
-            {
-                m_ZDim.set(val);
-            }
-            bool isZDimHasValue() const
-            {
-                return m_ZDim.hasValue();
-            }
-
-            ///
-            // Returns true if any of the ThreadGroupSizeMetaData`s members has changed
-            bool dirty() const;
-
-            ///
-            // Returns true if the structure was loaded from the metadata or was changed
-            bool hasValue() const;
-
-            ///
-            // Discards the changes done to the ThreadGroupSizeMetaData instance
-            void discardChanges();
-
-            ///
-            // Generates the new MDNode hierarchy for the given structure
-            llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-            ///
-            // Saves the structure changes to the given MDNode
-            void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-        private:
-            ///
-            // Returns true if the given MDNode could be saved to without replacement
-            bool compatibleWith(const llvm::MDNode* pNode) const
-            {
-                IGC_UNUSED(pNode);
-                return false;
-            }
-
-        private:
-            typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-            llvm::Metadata* getXDimNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getYDimNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getZDimNode(const llvm::MDNode* pParentNode) const;
-
-        private:
-            // data members
-            MetaDataValue<int32_t> m_XDim;
-            MetaDataValue<int32_t> m_YDim;
-            MetaDataValue<int32_t> m_ZDim;
-            // parent node
-            const llvm::MDNode* m_pNode;
-        };
-
-        ///
-        // Read/Write the FunctionInfo structure from/to LLVM metadata
+        // Data members
         //
-        class FunctionInfoMetaData :public IMetaDataObject
+        using SIMDSizeType = MetaDataValue<int32_t>;
+
+        // SIMDSize
+        SIMDSizeType::value_type getSIMDSize() const
         {
-        public:
-            typedef FunctionInfoMetaData _Myt;
-            typedef IMetaDataObject _Mybase;
-            // typedefs for data member types
-            typedef NamedMetaDataValue<int32_t>::value_type TypeType;
-            typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListList;
-            typedef MetaDataList<ArgInfoMetaDataHandle> ImplicitArgInfoListList;
-            typedef NamedMetaDataValue<int32_t>::value_type PrivateMemoryPerWIType;
-
-            typedef NamedMetaDataValue<int32_t>::value_type NeedBindlessHandleType;
-
-
-        public:
-            ///
-            // Factory method - creates the FunctionInfoMetaData from the given metadata node
-            //
-            static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-            {
-                return new _Myt(pNode, hasId);
-            }
-
-            ///
-            // Factory method - create the default empty FunctionInfoMetaData object
-            static _Myt* get()
-            {
-                return new _Myt();
-            }
-
-            ///
-            // Factory method - create the default empty named FunctionInfoMetaData object
-            static _Myt* get(const char* name)
-            {
-                return new _Myt(name);
-            }
-
-            ///
-            // Ctor - loads the FunctionInfoMetaData from the given metadata node
-            //
-            FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId);
-
-            ///
-            // Default Ctor - creates the empty, not named FunctionInfoMetaData object
-            //
-            FunctionInfoMetaData();
-
-            ///
-            // Ctor - creates the empty, named FunctionInfoMetaData object
-            //
-            FunctionInfoMetaData(const char* name);
-
-            /// Type related methods
-            TypeType getType() const
-            {
-                return m_Type.get();
-            }
-            void setType(const TypeType& val)
-            {
-                m_Type.set(val);
-            }
-            bool isTypeHasValue() const
-            {
-                return m_Type.hasValue();
-            }
-
-
-            /// ArgInfoList related methods
-            ArgInfoListList::iterator begin_ArgInfoList()
-            {
-                return m_ArgInfoList.begin();
-            }
-
-            ArgInfoListList::iterator end_ArgInfoList()
-            {
-                return m_ArgInfoList.end();
-            }
-            ArgInfoListList::const_iterator begin_ArgInfoList() const
-            {
-                return m_ArgInfoList.begin();
-            }
-
-            ArgInfoListList::const_iterator end_ArgInfoList() const
-            {
-                return m_ArgInfoList.end();
-            }
-
-            size_t size_ArgInfoList()  const
-            {
-                return m_ArgInfoList.size();
-            }
-
-            bool empty_ArgInfoList()  const
-            {
-                return m_ArgInfoList.empty();
-            }
-
-            bool isArgInfoListHasValue() const
-            {
-                return m_ArgInfoList.hasValue();
-            }
-
-            ArgInfoListList::item_type getArgInfoListItem(size_t index) const
-            {
-                return m_ArgInfoList.getItem(index);
-            }
-            void clearArgInfoList()
-            {
-                m_ArgInfoList.clear();
-            }
-
-            void setArgInfoListItem(size_t index, const ArgInfoListList::item_type& item)
-            {
-                return m_ArgInfoList.setItem(index, item);
-            }
-
-            void addArgInfoListItem(const ArgInfoListList::item_type& val)
-            {
-                m_ArgInfoList.push_back(val);
-            }
-
-            ArgInfoListList::iterator eraseArgInfoListItem(ArgInfoListList::iterator i)
-            {
-                return m_ArgInfoList.erase(i);
-            }
-
-
-            /// ImplicitArgInfoList related methods
-            ImplicitArgInfoListList::iterator begin_ImplicitArgInfoList()
-            {
-                return m_ImplicitArgInfoList.begin();
-            }
-
-            ImplicitArgInfoListList::iterator end_ImplicitArgInfoList()
-            {
-                return m_ImplicitArgInfoList.end();
-            }
-            ImplicitArgInfoListList::const_iterator begin_ImplicitArgInfoList() const
-            {
-                return m_ImplicitArgInfoList.begin();
-            }
-
-            ImplicitArgInfoListList::const_iterator end_ImplicitArgInfoList() const
-            {
-                return m_ImplicitArgInfoList.end();
-            }
-
-            size_t size_ImplicitArgInfoList()  const
-            {
-                return m_ImplicitArgInfoList.size();
-            }
-
-            bool empty_ImplicitArgInfoList()  const
-            {
-                return m_ImplicitArgInfoList.empty();
-            }
-
-            bool isImplicitArgInfoListHasValue() const
-            {
-                return m_ImplicitArgInfoList.hasValue();
-            }
-
-            ImplicitArgInfoListList::item_type getImplicitArgInfoListItem(size_t index) const
-            {
-                return m_ImplicitArgInfoList.getItem(index);
-            }
-
-            void clearImplicitArgInfoList()
-            {
-                m_ImplicitArgInfoList.clear();
-            }
-
-            void setImplicitArgInfoListItem(size_t index, const ImplicitArgInfoListList::item_type& item)
-            {
-                return m_ImplicitArgInfoList.setItem(index, item);
-            }
-
-            void addImplicitArgInfoListItem(const ImplicitArgInfoListList::item_type& val)
-            {
-                m_ImplicitArgInfoList.push_back(val);
-            }
-
-            ImplicitArgInfoListList::iterator eraseImplicitArgInfoListItem(ImplicitArgInfoListList::iterator i)
-            {
-                return m_ImplicitArgInfoList.erase(i);
-            }
-
-
-            /// ThreadGroupSize related methods
-
-            ThreadGroupSizeMetaDataHandle getThreadGroupSize()
-            {
-                return m_ThreadGroupSize;
-            }
-
-
-            /// ThreadGroupSizeHint related methods
-
-            ThreadGroupSizeMetaDataHandle getThreadGroupSizeHint()
-            {
-                return m_ThreadGroupSizeHint;
-            }
-
-
-            /// SubGroupSize related methods
-
-            SubGroupSizeMetaDataHandle getSubGroupSize()
-            {
-                return m_SubGroupSize;
-            }
-
-            /// OpenCLVectorTypeHint related methods
-
-            VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint()
-            {
-                return m_OpenCLVectorTypeHint;
-            }
-
-            ///
-            // Returns true if any of the FunctionInfoMetaData`s members has changed
-            bool dirty() const;
-
-            ///
-            // Returns true if the structure was loaded from the metadata or was changed
-            bool hasValue() const;
-
-            ///
-            // Discards the changes done to the FunctionInfoMetaData instance
-            void discardChanges();
-
-            ///
-            // Generates the new MDNode hierarchy for the given structure
-            llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-            ///
-            // Saves the structure changes to the given MDNode
-            void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-        private:
-            ///
-            // Returns true if the given MDNode could be saved to without replacement
-            bool compatibleWith(const llvm::MDNode* pNode) const
-            {
-                IGC_UNUSED(pNode);
-                return false;
-            }
-
-        private:
-            typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-            llvm::Metadata* getTypeNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getArgInfoListNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getImplicitArgInfoListNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getThreadGroupSizeNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getThreadGroupSizeHintNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getSubGroupSizeNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
-            llvm::Metadata* getLocalSizeNode(const llvm::MDNode* pParentNode) const;
-            llvm::MDNode* getOpenCLVectorTypeHintNode(const llvm::MDNode* pParentNode) const;
-
-        private:
-            // data members
-            NamedMetaDataValue<int32_t> m_Type;
-            MetaDataList<ArgInfoMetaDataHandle> m_ArgInfoList;
-            MetaDataList<ArgInfoMetaDataHandle> m_ImplicitArgInfoList;
-            ThreadGroupSizeMetaDataHandle m_ThreadGroupSize;
-            ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;
-            SubGroupSizeMetaDataHandle m_SubGroupSize;
-
-            VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
-            // parent node
-            const llvm::MDNode* m_pNode;
-        };
-
-        class MetaDataUtils
+            return m_SIMDSize.get();
+        }
+        void setSIMDSize(const SIMDSizeType::value_type& val)
         {
-        public:
-            // typedefs for the data members types
-            typedef NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> FunctionsInfoMap;
+            m_SIMDSize.set(val);
+        }
+        bool isSIMDSizeHasValue() const
+        {
+            return m_SIMDSize.hasValue();
+        }
 
-        public:
-            // If using this constructor, setting the llvm module by the setModule
-            // function is needed for correct operation.
-            MetaDataUtils() {}
-            MetaDataUtils(llvm::Module* pModule) :
-                m_FunctionsInfo(pModule->getOrInsertNamedMetadata("igc.functions")),
-                m_pModule(pModule)
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
+
+        // data members
+        SIMDSizeType m_SIMDSize;
+    };
+
+    class VectorTypeHintMetaData : public IMetaDataObject
+    {
+    public:
+        using _Mybase = IMetaDataObject;
+
+        VectorTypeHintMetaData(const llvm::MDNode* pNode, bool hasId);
+        VectorTypeHintMetaData();
+        VectorTypeHintMetaData(const char* name);
+
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
+
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
+
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
+
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
+
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
+
+        //
+        // Data members
+        //
+        using VecTypeType = MetaDataValue<llvm::UndefValue>;
+        using SignType = MetaDataValue<bool>;
+
+        // VecType
+        VecTypeType::value_type getVecType() const
+        {
+            return m_VecType.get();
+        }
+        void setVecType(const VecTypeType::value_type& val)
+        {
+            m_VecType.set(val);
+        }
+        bool isVecTypeHasValue() const
+        {
+            return m_VecType.hasValue();
+        }
+
+        // Sign
+        SignType::value_type getSign() const
+        {
+            return m_Sign.get();
+        }
+        void setSign(const SignType::value_type& val)
+        {
+            m_Sign.set(val);
+        }
+        bool isSignHasValue() const
+        {
+            return m_Sign.hasValue();
+        }
+
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
+
+        // data members
+        VecTypeType m_VecType;
+        SignType m_Sign;
+    };
+
+    class ThreadGroupSizeMetaData : public IMetaDataObject
+    {
+    public:
+        using _Mybase = IMetaDataObject;
+
+        ThreadGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId);
+        ThreadGroupSizeMetaData();
+        ThreadGroupSizeMetaData(const char* name);
+
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
+
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
+
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
+
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
+
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
+
+        //
+        // Data members
+        //
+        using DimType = MetaDataValue<int32_t>;
+
+        // XDim
+        DimType::value_type getXDim() const
+        {
+            return m_XDim.get();
+        }
+        void setXDim(const DimType::value_type& val)
+        {
+            m_XDim.set(val);
+        }
+        bool isXDimHasValue() const
+        {
+            return m_XDim.hasValue();
+        }
+
+        // YDim
+        DimType::value_type getYDim() const
+        {
+            return m_YDim.get();
+        }
+        void setYDim(const DimType::value_type& val)
+        {
+            m_YDim.set(val);
+        }
+        bool isYDimHasValue() const
+        {
+            return m_YDim.hasValue();
+        }
+
+        // ZDim
+        DimType::value_type getZDim() const
+        {
+            return m_ZDim.get();
+        }
+        void setZDim(const DimType::value_type& val)
+        {
+            m_ZDim.set(val);
+        }
+        bool isZDimHasValue() const
+        {
+            return m_ZDim.hasValue();
+        }
+
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
+
+        // data members
+        DimType m_XDim;
+        DimType m_YDim;
+        DimType m_ZDim;
+    };
+
+    class FunctionInfoMetaData : public IMetaDataObject
+    {
+    public:
+        using _Mybase = IMetaDataObject;
+
+        FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId);
+        FunctionInfoMetaData();
+        FunctionInfoMetaData(const char* name);
+
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
+
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
+
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
+
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
+
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
+
+        //
+        // Data members
+        //
+        using TypeType = NamedMetaDataValue<int32_t>;
+        using ArgInfoListList = MetaDataList<ArgInfoMetaDataHandle>;
+        using ImplicitArgInfoListList = MetaDataList<ArgInfoMetaDataHandle>;
+        using PrivateMemoryPerWIType = NamedMetaDataValue<int32_t>;
+        using NeedBindlessHandleType = NamedMetaDataValue<int32_t>;
+
+        // Type
+        TypeType::value_type getType() const
+        {
+            return m_Type.get();
+        }
+        void setType(const TypeType::value_type& val)
+        {
+            m_Type.set(val);
+        }
+        bool isTypeHasValue() const
+        {
+            return m_Type.hasValue();
+        }
+
+        // ArgInfoList
+        ArgInfoListList::iterator begin_ArgInfoList()
+        {
+            return m_ArgInfoList.begin();
+        }
+        ArgInfoListList::iterator end_ArgInfoList()
+        {
+            return m_ArgInfoList.end();
+        }
+        ArgInfoListList::const_iterator begin_ArgInfoList() const
+        {
+            return m_ArgInfoList.begin();
+        }
+        ArgInfoListList::const_iterator end_ArgInfoList() const
+        {
+            return m_ArgInfoList.end();
+        }
+        size_t size_ArgInfoList()  const
+        {
+            return m_ArgInfoList.size();
+        }
+        bool empty_ArgInfoList()  const
+        {
+            return m_ArgInfoList.empty();
+        }
+        bool isArgInfoListHasValue() const
+        {
+            return m_ArgInfoList.hasValue();
+        }
+        ArgInfoListList::item_type getArgInfoListItem(size_t index) const
+        {
+            return m_ArgInfoList.getItem(index);
+        }
+        void clearArgInfoList()
+        {
+            m_ArgInfoList.clear();
+        }
+        void setArgInfoListItem(size_t index, const ArgInfoListList::item_type& item)
+        {
+            return m_ArgInfoList.setItem(index, item);
+        }
+        void addArgInfoListItem(const ArgInfoListList::item_type& val)
+        {
+            m_ArgInfoList.push_back(val);
+        }
+        ArgInfoListList::iterator eraseArgInfoListItem(ArgInfoListList::iterator i)
+        {
+            return m_ArgInfoList.erase(i);
+        }
+
+        // ImplicitArgInfoList
+        ImplicitArgInfoListList::iterator begin_ImplicitArgInfoList()
+        {
+            return m_ImplicitArgInfoList.begin();
+        }
+        ImplicitArgInfoListList::iterator end_ImplicitArgInfoList()
+        {
+            return m_ImplicitArgInfoList.end();
+        }
+        ImplicitArgInfoListList::const_iterator begin_ImplicitArgInfoList() const
+        {
+            return m_ImplicitArgInfoList.begin();
+        }
+        ImplicitArgInfoListList::const_iterator end_ImplicitArgInfoList() const
+        {
+            return m_ImplicitArgInfoList.end();
+        }
+        size_t size_ImplicitArgInfoList()  const
+        {
+            return m_ImplicitArgInfoList.size();
+        }
+        bool empty_ImplicitArgInfoList()  const
+        {
+            return m_ImplicitArgInfoList.empty();
+        }
+        bool isImplicitArgInfoListHasValue() const
+        {
+            return m_ImplicitArgInfoList.hasValue();
+        }
+        ImplicitArgInfoListList::item_type getImplicitArgInfoListItem(size_t index) const
+        {
+            return m_ImplicitArgInfoList.getItem(index);
+        }
+        void clearImplicitArgInfoList()
+        {
+            m_ImplicitArgInfoList.clear();
+        }
+        void setImplicitArgInfoListItem(size_t index, const ImplicitArgInfoListList::item_type& item)
+        {
+            return m_ImplicitArgInfoList.setItem(index, item);
+        }
+        void addImplicitArgInfoListItem(const ImplicitArgInfoListList::item_type& val)
+        {
+            m_ImplicitArgInfoList.push_back(val);
+        }
+        ImplicitArgInfoListList::iterator eraseImplicitArgInfoListItem(ImplicitArgInfoListList::iterator i)
+        {
+            return m_ImplicitArgInfoList.erase(i);
+        }
+
+        // ThreadGroupSize
+        ThreadGroupSizeMetaDataHandle getThreadGroupSize()
+        {
+            return m_ThreadGroupSize;
+        }
+
+        // ThreadGroupSizeHint
+        ThreadGroupSizeMetaDataHandle getThreadGroupSizeHint()
+        {
+            return m_ThreadGroupSizeHint;
+        }
+
+        // SubGroupSize
+        SubGroupSizeMetaDataHandle getSubGroupSize()
+        {
+            return m_SubGroupSize;
+        }
+
+        // OpenCLVectorTypeHint
+        VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint()
+        {
+            return m_OpenCLVectorTypeHint;
+        }
+
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
+
+        // data members
+        TypeType m_Type;
+        ArgInfoListList m_ArgInfoList;
+        ImplicitArgInfoListList m_ImplicitArgInfoList;
+        ThreadGroupSizeMetaDataHandle m_ThreadGroupSize;
+        ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;
+        SubGroupSizeMetaDataHandle m_SubGroupSize;
+        VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
+    };
+
+    class MetaDataUtils
+    {
+    public:
+        // data member types
+        using FunctionsInfoMap = NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle>;
+
+        // If using this constructor, setting the llvm module by the setModule
+        // function is needed for correct operation.
+        MetaDataUtils() = default;
+
+        MetaDataUtils(llvm::Module* pModule) :
+            m_FunctionsInfo(pModule->getOrInsertNamedMetadata("igc.functions")),
+            m_pModule(pModule)
+        {}
+
+        void setModule(llvm::Module* pModule) {
+            m_FunctionsInfo = pModule->getOrInsertNamedMetadata("igc.functions");
+            m_pModule = pModule;
+        }
+
+        ~MetaDataUtils() = default;
+
+        // FunctionsInfo
+        void clearFunctionsInfo()
+        {
+            m_FunctionsInfo.clear();
+        }
+
+        void deleteFunctionsInfo()
+        {
+            llvm::NamedMDNode* FunctionsInfoNode = m_pModule->getNamedMetadata("igc.functions");
+            if (FunctionsInfoNode)
             {
+                m_nodesToDelete.push_back(FunctionsInfoNode);
             }
+        }
 
-            void setModule(llvm::Module* pModule) {
-                m_FunctionsInfo = pModule->getOrInsertNamedMetadata("igc.functions");
-                m_pModule = pModule;
-            }
+        FunctionsInfoMap::iterator begin_FunctionsInfo()
+        {
+            return m_FunctionsInfo.begin();
+        }
 
-            ~MetaDataUtils() {}
+        FunctionsInfoMap::iterator end_FunctionsInfo()
+        {
+            return m_FunctionsInfo.end();
+        }
 
-            /// FunctionsInfo related methods
-            void clearFunctionsInfo()
+        FunctionsInfoMap::const_iterator begin_FunctionsInfo() const
+        {
+            return m_FunctionsInfo.begin();
+        }
+
+        FunctionsInfoMap::const_iterator end_FunctionsInfo() const
+        {
+            return m_FunctionsInfo.end();
+        }
+
+        size_t size_FunctionsInfo() const
+        {
+            return m_FunctionsInfo.size();
+        }
+
+        bool empty_FunctionsInfo() const
+        {
+            return m_FunctionsInfo.empty();
+        }
+
+        bool isFunctionsInfoHasValue() const
+        {
+            return m_FunctionsInfo.hasValue();
+        }
+
+        FunctionsInfoMap::item_type getFunctionsInfoItem(const FunctionsInfoMap::key_type& index) const
+        {
+            return m_FunctionsInfo.getItem(index);
+        }
+
+        FunctionsInfoMap::item_type getOrInsertFunctionsInfoItem(const FunctionsInfoMap::key_type& index)
+        {
+            return m_FunctionsInfo.getOrInsertItem(index);
+        }
+
+        void setFunctionsInfoItem(const FunctionsInfoMap::key_type& index, const FunctionsInfoMap::item_type& item)
+        {
+            return m_FunctionsInfo.setItem(index, item);
+        }
+
+        FunctionsInfoMap::iterator findFunctionsInfoItem(const FunctionsInfoMap::key_type& key)
+        {
+            return m_FunctionsInfo.find(key);
+        }
+        FunctionsInfoMap::const_iterator findFunctionsInfoItem(const FunctionsInfoMap::key_type& key) const
+        {
+            return m_FunctionsInfo.find(key);
+        }
+
+        void eraseFunctionsInfoItem(FunctionsInfoMap::iterator it)
+        {
+            m_FunctionsInfo.erase(it);
+        }
+
+        void save(llvm::LLVMContext& context)
+        {
+            if (m_FunctionsInfo.dirty())
             {
-                m_FunctionsInfo.clear();
+                llvm::NamedMDNode* pNode = m_pModule->getOrInsertNamedMetadata("igc.functions");
+                m_FunctionsInfo.save(context, pNode);
             }
 
-            void deleteFunctionsInfo()
+            for (auto node : m_nodesToDelete)
             {
-                llvm::NamedMDNode* FunctionsInfoNode = m_pModule->getNamedMetadata("igc.functions");
-                if (FunctionsInfoNode)
-                {
-                    m_nodesToDelete.push_back(FunctionsInfoNode);
-                }
+                m_pModule->eraseNamedMetadata(node);
             }
+            m_nodesToDelete.clear();
 
-            FunctionsInfoMap::iterator begin_FunctionsInfo()
+            discardChanges();
+        }
+
+        void discardChanges()
+        {
+            m_FunctionsInfo.discardChanges();
+            m_nodesToDelete.clear();
+        }
+
+        void deleteMetadata()
+        {
+            llvm::NamedMDNode* FunctionsInfoNode = m_pModule->getNamedMetadata("igc.functions");
+            if (FunctionsInfoNode)
             {
-                return m_FunctionsInfo.begin();
+                m_nodesToDelete.push_back(FunctionsInfoNode);
             }
+        }
 
-            FunctionsInfoMap::iterator end_FunctionsInfo()
-            {
-                return m_FunctionsInfo.end();
-            }
-
-            FunctionsInfoMap::const_iterator begin_FunctionsInfo() const
-            {
-                return m_FunctionsInfo.begin();
-            }
-
-            FunctionsInfoMap::const_iterator end_FunctionsInfo() const
-            {
-                return m_FunctionsInfo.end();
-            }
-
-            size_t size_FunctionsInfo() const
-            {
-                return m_FunctionsInfo.size();
-            }
-
-            bool empty_FunctionsInfo() const
-            {
-                return m_FunctionsInfo.empty();
-            }
-
-            bool isFunctionsInfoHasValue() const
-            {
-                return m_FunctionsInfo.hasValue();
-            }
-
-            FunctionsInfoMap::item_type getFunctionsInfoItem(const FunctionsInfoMap::key_type& index) const
-            {
-                return m_FunctionsInfo.getItem(index);
-            }
-
-            FunctionsInfoMap::item_type getOrInsertFunctionsInfoItem(const FunctionsInfoMap::key_type& index)
-            {
-                return m_FunctionsInfo.getOrInsertItem(index);
-            }
-
-            void setFunctionsInfoItem(const FunctionsInfoMap::key_type& index, const FunctionsInfoMap::item_type& item)
-            {
-                return m_FunctionsInfo.setItem(index, item);
-            }
-
-            FunctionsInfoMap::iterator findFunctionsInfoItem(const FunctionsInfoMap::key_type& key)
-            {
-                return m_FunctionsInfo.find(key);
-            }
-            FunctionsInfoMap::const_iterator findFunctionsInfoItem(const FunctionsInfoMap::key_type& key) const
-            {
-                return m_FunctionsInfo.find(key);
-            }
-
-            void eraseFunctionsInfoItem(FunctionsInfoMap::iterator it)
-            {
-                m_FunctionsInfo.erase(it);
-            }
-
-            void save(llvm::LLVMContext& context)
-            {
-                if (m_FunctionsInfo.dirty())
-                {
-                    llvm::NamedMDNode* pNode = m_pModule->getOrInsertNamedMetadata("igc.functions");
-                    m_FunctionsInfo.save(context, pNode);
-                }
-
-                for (auto node : m_nodesToDelete)
-                {
-                    m_pModule->eraseNamedMetadata(node);
-                }
-                m_nodesToDelete.clear();
-
-                discardChanges();
-            }
-
-            void discardChanges()
-            {
-                m_FunctionsInfo.discardChanges();
-                m_nodesToDelete.clear();
-            }
-
-            void deleteMetadata()
-            {
-                llvm::NamedMDNode* FunctionsInfoNode = m_pModule->getNamedMetadata("igc.functions");
-                if (FunctionsInfoNode)
-                {
-                    m_nodesToDelete.push_back(FunctionsInfoNode);
-                }
-            }
-
-        private:
-            // data members
-            NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> m_FunctionsInfo;
-            llvm::Module* m_pModule;
-            std::vector<llvm::NamedMDNode*> m_nodesToDelete;
-        };
-
-
-    }
-} //namespace
+    private:
+        // data members
+        NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> m_FunctionsInfo;
+        llvm::Module* m_pModule;
+        std::vector<llvm::NamedMDNode*> m_nodesToDelete;
+    };
+}

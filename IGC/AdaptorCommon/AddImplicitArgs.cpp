@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -772,7 +772,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
         if (argId < ImplicitArg::ArgType::STRUCT_START)
         {
             // unique implicit argument, add it on metadata
-            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
             argMD->setArgId(argId);
             funcInfo->addImplicitArgInfoListItem(argMD);
         }
@@ -789,7 +789,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
 
             for (const auto& vOnSet: A.second)
             {
-                ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+                ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
                 argMD->setArgId(argId);
                 argMD->setExplicitArgNum(vOnSet);
                 funcInfo->addImplicitArgInfoListItem(argMD);
@@ -799,7 +799,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
         {
             // unique implicit argument
 
-            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
             argMD->setArgId(argId);
             funcInfo->addImplicitArgInfoListItem(argMD);
         }
@@ -807,7 +807,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
 
     for (const auto N : data.StructArgSet) // argument number
     {
-        ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+        ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
         ImplicitStructArgument info;
         info.DW0.Value = N;
 
