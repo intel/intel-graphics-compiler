@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/General/BiF.h"
 
@@ -43,7 +44,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO/Internalize.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
-#include <llvmWrapper/IR/Instructions.h>
+
+#include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
 #include <algorithm>
@@ -387,9 +390,43 @@ static void removeFunctionBitcasts(Module &M) {
               }
 
               // Clone the body of the function into the dest function.
-              SmallVector<ReturnInst *, 8> Returns; // Ignore returns.
+              SmallVector<ReturnInst *, 8> Returns;
               IGCLLVM::CloneFunctionInto(pDstFunc, funcTobeChanged, operandMap,
                   IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, Returns, "");
+
+              // Update returns to match a new function ret type.
+              Instruction::CastOps castOp = Instruction::BitCast;
+              Type *oldRetTy =
+                  funcTobeChanged->getFunctionType()->getReturnType();
+              Type *newRetTy = pInstCall->getFunctionType()->getReturnType();
+              if (oldRetTy == newRetTy) {
+                // Do nothing.
+              } else if (oldRetTy->isIntOrIntVectorTy() &&
+                         newRetTy->isIntOrIntVectorTy()) {
+                unsigned oldRetTypeSize = oldRetTy->getScalarSizeInBits();
+                unsigned newRetTypeSize = newRetTy->getScalarSizeInBits();
+                if (oldRetTypeSize > newRetTypeSize)
+                  castOp = Instruction::Trunc;
+                else {
+                  auto attrSet =
+                      IGCLLVM::getRetAttrs(funcTobeChanged->getAttributes());
+                  if (attrSet.hasAttribute(Attribute::ZExt))
+                    castOp = Instruction::ZExt;
+                  else if (attrSet.hasAttribute(Attribute::SExt))
+                    castOp = Instruction::SExt;
+                  else
+                    llvm_unreachable("Expected ext attribute on return type.");
+                }
+              } else
+                vc::diagnose(pInstCall->getContext(), "GenXImportOCLBiF",
+                             "Unhandled function pointer cast.", pInstCall);
+
+              if (oldRetTy != newRetTy)
+                llvm::for_each(Returns, [castOp, newRetTy](ReturnInst *RI) {
+                  auto *CI = CastInst::Create(castOp, RI->getReturnValue(),
+                                              newRetTy, ".rvc", RI);
+                  RI->setOperand(0, CI);
+                });
 
               pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());
               bitcastFunctionMap[funcTobeChanged].push_back(pDstFunc);
