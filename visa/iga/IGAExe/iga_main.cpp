@@ -293,6 +293,9 @@ extern "C" int iga_main(int argc, const char **argv) {
       "  % iga -p=xehpg  -Xdsd  ugm           0x0   0x30607502\n"
       "  % iga -p=xehpg  -Xdsd  ugm  \"(1)\"    0x0   0x0200D504\n"
       "  % iga -p=xehpc  -Xdsd  ugm           0x0   0x30607502\n"
+      "  % iga -p=xe2    -Xdsd  slm           0xFFFFC000  0x04200500\n"
+      "  % iga -p=xe2    -Xdsd  ugm \"(16)\"    0xFFF8C000:a0.2  0x22003504\n"
+      "  % iga -p=xe2    -Xdsd  ugm \"(32)\"    0xFFF8C000:a0.2  0x24000512\n"
       "",
       opts::OptAttrs::ALLOW_UNSET,
       [](const char *, const opts::ErrorHandler &, Opts &baseOpts) {

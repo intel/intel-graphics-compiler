@@ -75,6 +75,14 @@ struct MessageDecoder {
   void setDoc(const char *preXe, const char *xe, const char *xe23) {
     addDoc(DocRef::INVALID, nullptr, chooseDoc(preXe, xe, xe23));
   }
+  void addDocXe(DocRef::Kind k, const char *name, const char *linkXe,
+                const char *linkXe2) {
+    if (platform() >= Platform::XE2) {
+      addDoc(k, name, linkXe2);
+    } else {
+      addDoc(k, name, linkXe);
+    }
+  }
   void addDoc(DocRef::Kind k, const char *name, const char *link) {
     if (k == DocRef::INVALID && !name && !link)
       return;
@@ -99,6 +107,20 @@ struct MessageDecoder {
     return platform() < Platform::XE    ? preXe
            : platform() < Platform::XE2 ? xe
                                         : xe23;
+  }
+  void addDocRefDESC(const char *type, const char *xeRef, const char *xe2Ref) {
+    if (platform() >= Platform::XE2) {
+      addDoc(DocRef::DESC, type, xe2Ref);
+    } else if (platform() >= Platform::XE) {
+      addDoc(DocRef::DESC, type, xeRef);
+    }
+  }
+  void addDocRefDESCXE2(
+      const char *xe2Type, const char *xe2Ref)
+  {
+    if (platform() >= Platform::XE2) {
+      addDoc(DocRef::DESC, xe2Type, xe2Ref);
+    }
   }
 
   /////////////////////////////////////////////////////////////
