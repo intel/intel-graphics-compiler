@@ -1047,7 +1047,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
                 SmallVector<Value*, 4> Indices (LeadGEP->idx_begin(), std::prev(LeadGEP->idx_end()));
                 Type* srcEltTy = LeadGEP->getSourceElementType();
                 Type* Idx2Ty = GetElementPtrInst::getIndexedType(srcEltTy, Indices);
-                if (!Idx2Ty->isArrayTy())
+                if (!Idx2Ty || !Idx2Ty->isArrayTy())
                     return (int64_t)0;
             }
 
