@@ -456,7 +456,7 @@ DECLARE_IGC_REGKEY(bool, EnableTypeDemotion,            true,  "Enable Type Demo
 DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag,          true,  "Enable PreRA Rematerialization of Flag", false)
 DECLARE_IGC_REGKEY(bool, EnableGASResolver,             true,  "Enable GAS Resolver", false)
 DECLARE_IGC_REGKEY(bool, EnableLowerGPCallArg,          true,  "Enable pass to lower generic pointers in function arguments", false)
-DECLARE_IGC_REGKEY(bool, DisableRecompilation,          false, "Disable recompilation", true)
+DECLARE_IGC_REGKEY(bool, DisableRecompilation,          false, "Disable recompilation, skip retry stage", true)
 DECLARE_IGC_REGKEY(bool, SampleMultiversioning,         false, "Create branches aroung samplers which can be redundant with some values", false)
 DECLARE_IGC_REGKEY(bool, EnableSMRescheduling,          false, "Change instruction order to enable extra Sample Multiversioning cases", false)
 DECLARE_IGC_REGKEY(bool, DisableEarlyOutPatterns,       false, "Disable optimization trying to create an early out after sampleC messages", false)
