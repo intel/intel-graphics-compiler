@@ -178,6 +178,8 @@ public:
     // cannot HW support for double operations
     bool EnableFP64GenEmu = false;
 
+    std::optional<bool> EnableZEBinary;
+
 private:
     void parseOptions(const char* opts);
 };

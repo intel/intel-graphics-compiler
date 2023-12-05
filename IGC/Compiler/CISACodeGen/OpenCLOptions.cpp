@@ -560,5 +560,15 @@ void Options::parseOptions(const char* opts)
         // cannot HW support for double operations
         EnableFP64GenEmu = true;
     }
+
+    if (apiOptions.hasArg(OPT_enable_zebin_common))
+    {
+        EnableZEBinary = true;
+    }
+
+    if (apiOptions.hasArg(OPT_disable_zebin_common))
+    {
+        EnableZEBinary = false;
+    }
 }
 } // namespace IGC

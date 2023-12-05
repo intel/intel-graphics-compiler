@@ -99,6 +99,8 @@ namespace IGC
             // Runtime option precede supported platforms (can force zebin on unsupported).
             else if (m_InternalOptions.EnableZEBinary)
                 m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
+            else if (m_Options.EnableZEBinary)
+                m_enableZEBinary = *m_Options.EnableZEBinary;
 
             // If platform is unsupported, disable regardless of the default.
             else if (!supportsZEBin(platform))
