@@ -137,6 +137,19 @@ unsigned getMemoryVectorSizePerLane(const llvm::Instruction *I);
 unsigned getMemorySimdWidth(const llvm::Instruction *I);
 unsigned getMemoryRegisterElementSize(const llvm::Instruction *I);
 
+inline int getMemoryCacheControlOperandIndex(const llvm::Instruction *I) {
+  if (!isInternalMemoryIntrinsic(I))
+    return -1;
+  return 4;
+}
+
+inline llvm::Value *getMemoryCacheControlOperand(const llvm::Instruction *I) {
+  const auto Index = getMemoryCacheControlOperandIndex(I);
+  if (Index < 0)
+    return nullptr;
+  return I->getOperand(Index);
+}
+
 } // namespace vc::InternalIntrinsic
 
 #endif

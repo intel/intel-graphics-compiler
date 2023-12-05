@@ -491,6 +491,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
         // Allow constant if intrinsic descriptor allows it for this arg.
         if (!AI.isImmediateDisallowed())
           continue;
+        if (AI.getCategory() == GenXIntrinsicInfo::CACHEOPTS)
+          continue;
         // If it is a RAW operand, allow the constant if it's in the trailing
         // null region (it must be a null constant if so), or if the value
         // is undefined and RAW_NULLALLOWED is enabled.

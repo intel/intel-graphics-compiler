@@ -132,13 +132,14 @@ public:
       RAW_NULLALLOWED =     GENX_ITR_FLAGVAL(2),   // raw operand or result can be null (V0)
     URAW =                  RAW | RAW_UNSIGNED,
     SRAW =                  RAW | RAW_SIGNED,
+    CACHEOPTS =             GENX_ITR_CATVAL(0x2d),
 
     // A general operand
-    GENERAL =               GENX_ITR_CATVAL(0x2d),
+    GENERAL =               GENX_ITR_CATVAL(0x2e),
     // A general operand with compile-time signedness choosing
     GENERAL_CTSIGN =        GENERAL,
     // A predefined surface operand
-    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2e),
+    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2f),
     // Modifiers for destination or source, 7 bits used
     UNSIGNED =              GENX_ITR_FLAGVAL(0), // int type forced to unsigned
     SIGNED =                GENX_ITR_FLAGVAL(1), // int type forced to signed

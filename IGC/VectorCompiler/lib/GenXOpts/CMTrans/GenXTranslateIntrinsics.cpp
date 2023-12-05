@@ -47,6 +47,8 @@ public:
   void visitCallInst(CallInst &I) const;
 
 private:
+  Constant *translateCacheControls(Constant *L1, Constant *L3) const;
+
   Value *translateBFloat16Convert(CallInst &I) const;
   Value *translateTFloat32Convert(CallInst &I) const;
   Value *translateStochasticRounding(CallInst &I) const;
@@ -230,6 +232,11 @@ Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
   return NewI;
 }
 
+Constant *GenXTranslateIntrinsics::translateCacheControls(Constant *L1,
+                                                          Constant *L3) const {
+  return ConstantVector::get({L1, L3});
+}
+
 Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
@@ -237,8 +244,11 @@ Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
   Module *M = I.getModule();
 
   auto *Pred = I.getArgOperand(0);
-  auto *L1Control = I.getArgOperand(2);
-  auto *L3Control = I.getArgOperand(3);
+
+  auto *L1Control = cast<Constant>(I.getArgOperand(2));
+  auto *L3Control = cast<Constant>(I.getArgOperand(3));
+  auto *CacheOpts = translateCacheControls(L1Control, L3Control);
+
   auto *Scale = I.getArgOperand(4);
   auto *Offset = I.getArgOperand(5);
   auto *ElementSize = I.getArgOperand(6);
@@ -340,21 +350,21 @@ Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
     break;
   }
 
-  SmallVector<Type *, 3> Types;
+  SmallVector<Type *, 4> Types;
   if (!ResTy->isVoidTy())
     Types.push_back(ResTy);
   Types.push_back(Pred->getType());
+  Types.push_back(CacheOpts->getType());
   Types.push_back(Addr->getType());
   if (Src && ResTy->isVoidTy())
     Types.push_back(Src->getType());
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 10> Args = {
       Pred, // translate genx to internal intrinsic args
       Builder.getInt8(AddrSize),
       ElementSize,
       IsQuad ? ChannelMask : VectorSize,
-      L1Control,
-      L3Control,
+      CacheOpts,
       Base,
       Addr,
       Scale,
@@ -378,8 +388,11 @@ Value *GenXTranslateIntrinsics::translateLscAtomic(CallInst &I) const {
 
   auto *Pred = I.getArgOperand(0);
   auto *Opcode = I.getArgOperand(1);
-  auto *L1Control = I.getArgOperand(2);
-  auto *L3Control = I.getArgOperand(3);
+
+  auto *L1Control = cast<Constant>(I.getArgOperand(2));
+  auto *L3Control = cast<Constant>(I.getArgOperand(3));
+  auto *CacheOpts = translateCacheControls(L1Control, L3Control);
+
   auto *Scale = I.getArgOperand(4);
   auto *Offset = I.getArgOperand(5);
   auto *ElementSize = I.getArgOperand(6);
@@ -411,10 +424,11 @@ Value *GenXTranslateIntrinsics::translateLscAtomic(CallInst &I) const {
   }
 
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      M, NewIID, {I.getType(), Pred->getType(), Addr->getType()});
+      M, NewIID,
+      {I.getType(), Pred->getType(), CacheOpts->getType(), Addr->getType()});
   auto *NewI = Builder.CreateCall(
-      Func, {Pred, Opcode, Builder.getInt8(AddrSize), ElementSize, L1Control,
-             L3Control, Base, Addr, Scale, Offset, Src0, Src1, Passthru});
+      Func, {Pred, Opcode, Builder.getInt8(AddrSize), ElementSize, CacheOpts,
+             Base, Addr, Scale, Offset, Src0, Src1, Passthru});
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
 
   return NewI;

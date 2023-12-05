@@ -36,12 +36,13 @@ enum class AtomicOp : char {
   Xor = 0x1A,
 };
 
-template <int N>
+template <int N, int CacheLevels>
 CM_NODEBUG CM_INLINE vector<uint64_t, N>
-__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
-                    char l3cachecontrol, int base, vector<int, N> index,
-                    short scale, int offset, vector<uint64_t, N> src1,
-                    vector<uint64_t, N> src2, vector<uint64_t, N> passthru) {
+__impl_atomic_local(mask<N> pred, AtomicOp op,
+                    vector<char, CacheLevels> cachecontrols, int base,
+                    vector<int, N> index, short scale, int offset,
+                    vector<uint64_t, N> src1, vector<uint64_t, N> src2,
+                    vector<uint64_t, N> passthru) {
   vector<int, N> addr = base + index * scale + offset;
   vector<uint64_t, N> laddr = addr;
   vector<uint64_t, N> orig =
@@ -108,8 +109,8 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
     vector<uint64_t, N> res = detail::__cm_cl_vector_atomic_slm(
         pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
-        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
-        orig.cl_vector(), newval.cl_vector(), orig.cl_vector());
+        cachecontrols.cl_vector(), 0, addr.cl_vector(), 1, 0, orig.cl_vector(),
+        newval.cl_vector(), orig.cl_vector());
     pred &= res != orig;
     orig = res;
   } while (pred.any());
@@ -117,12 +118,13 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
   return orig;
 }
 
-template <int N>
+template <int N, int CacheLevels>
 CM_NODEBUG CM_INLINE vector<double, N>
-__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
-                    char l3cachecontrol, int base, vector<int, N> index,
-                    short scale, int offset, vector<double, N> src1,
-                    vector<double, N> src2, vector<double, N> passthru) {
+__impl_atomic_local(mask<N> pred, AtomicOp op,
+                    vector<char, CacheLevels> cachecontrols, int base,
+                    vector<int, N> index, short scale, int offset,
+                    vector<double, N> src1, vector<double, N> src2,
+                    vector<double, N> passthru) {
   vector<int, N> addr = base + index * scale + offset;
   vector<uint64_t, N> laddr = addr;
   vector<double, N> orig =
@@ -170,8 +172,8 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
     vector<uint64_t, N> res = detail::__cm_cl_vector_atomic_slm(
         pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
-        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
-        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+        cachecontrols.cl_vector(), 0, addr.cl_vector(), 1, 0, iorig.cl_vector(),
+        inewval.cl_vector(), iorig.cl_vector());
     vector<double, N> fres = res.template format<double>();
     pred &= fres != orig;
     orig = fres;
@@ -180,12 +182,13 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
   return orig;
 }
 
-template <int N>
+template <int N, int CacheLevels>
 CM_NODEBUG CM_INLINE vector<uint32_t, N>
-__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
-                    char l3cachecontrol, int base, vector<int, N> index,
-                    short scale, int offset, vector<uint32_t, N> src1,
-                    vector<uint32_t, N> src2, vector<uint32_t, N> passthru) {
+__impl_atomic_local(mask<N> pred, AtomicOp op,
+                    vector<char, CacheLevels> cachecontrols, int base,
+                    vector<int, N> index, short scale, int offset,
+                    vector<uint32_t, N> src1, vector<uint32_t, N> src2,
+                    vector<uint32_t, N> passthru) {
   vector<int, N> addr = base + index * scale + offset;
   vector<uint64_t, N> laddr = addr;
 
@@ -234,8 +237,8 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
     vector<uint32_t, N> res = detail::__cm_cl_vector_atomic_slm(
         pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
-        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
-        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+        cachecontrols.cl_vector(), 0, addr.cl_vector(), 1, 0, iorig.cl_vector(),
+        inewval.cl_vector(), iorig.cl_vector());
 
     vector<half, N> hres = res.template format<half>().template select<N, 2>(0);
 
@@ -246,12 +249,11 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
   return iorig;
 }
 
-template <int N>
-CM_NODEBUG CM_INLINE vector<float, N>
-__impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
-                    char l3cachecontrol, int base, vector<int, N> index,
-                    short scale, int offset, vector<float, N> src1,
-                    vector<float, N> src2, vector<float, N> passthru) {
+template <int N, int CacheLevels>
+CM_NODEBUG CM_INLINE vector<float, N> __impl_atomic_local(
+    mask<N> pred, AtomicOp op, vector<char, CacheLevels> cachecontrols,
+    int base, vector<int, N> index, short scale, int offset,
+    vector<float, N> src1, vector<float, N> src2, vector<float, N> passthru) {
   vector<int, N> addr = base + index * scale + offset;
   vector<uint64_t, N> laddr = addr;
 
@@ -291,8 +293,8 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
     vector<uint32_t, N> res = detail::__cm_cl_vector_atomic_slm(
         pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
-        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
-        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+        cachecontrols.cl_vector(), 0, addr.cl_vector(), 1, 0, iorig.cl_vector(),
+        inewval.cl_vector(), iorig.cl_vector());
 
     vector<float, N> fres = res.template format<float>();
 
@@ -303,12 +305,13 @@ __impl_atomic_local(mask<N> pred, AtomicOp op, char l1cachecontrol,
   return orig;
 }
 
-template <int N>
+template <int N, int CacheLevels>
 CM_NODEBUG CM_INLINE vector<double, N>
-__impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
-                     char l3cachecontrol, long base, vector<long, N> index,
-                     short scale, int offset, vector<double, N> src1,
-                     vector<double, N> src2, vector<double, N> passthru) {
+__impl_atomic_global(mask<N> pred, AtomicOp op,
+                     vector<char, CacheLevels> cachecontrols, long base,
+                     vector<long, N> index, short scale, int offset,
+                     vector<double, N> src1, vector<double, N> src2,
+                     vector<double, N> passthru) {
   vector<long, N> addr = base + index * scale + offset;
   vector<uint64_t, N> laddr = addr;
   vector<double, N> orig =
@@ -350,8 +353,8 @@ __impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
     vector<uint64_t, N> res = detail::__cm_cl_vector_atomic_ugm(
         pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
-        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
-        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+        cachecontrols.cl_vector(), 0, addr.cl_vector(), 1, 0, iorig.cl_vector(),
+        inewval.cl_vector(), iorig.cl_vector());
     vector<double, N> fres = res.template format<double>();
     pred &= fres != orig;
     orig = fres;
@@ -360,12 +363,13 @@ __impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
   return orig;
 }
 
-template <int N>
+template <int N, int CacheLevels>
 CM_NODEBUG CM_INLINE vector<uint32_t, N>
-__impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
-                     char l3cachecontrol, long base, vector<long, N> index,
-                     short scale, int offset, vector<uint32_t, N> src1,
-                     vector<uint32_t, N> src2, vector<uint32_t, N> passthru) {
+__impl_atomic_global(mask<N> pred, AtomicOp op,
+                     vector<char, CacheLevels> cachecontrols, long base,
+                     vector<long, N> index, short scale, int offset,
+                     vector<uint32_t, N> src1, vector<uint32_t, N> src2,
+                     vector<uint32_t, N> passthru) {
   vector<long, N> addr = base + index * scale + offset;
   vector<uint64_t, N> laddr = addr;
 
@@ -408,8 +412,8 @@ __impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
     vector<uint32_t, N> res = detail::__cm_cl_vector_atomic_ugm(
         pred.cl_vector(), static_cast<char>(AtomicOp::Cas), AddrSize, DataSize,
-        l1cachecontrol, l3cachecontrol, 0, addr.cl_vector(), 1, 0,
-        iorig.cl_vector(), inewval.cl_vector(), iorig.cl_vector());
+        cachecontrols.cl_vector(), 0, addr.cl_vector(), 1, 0, iorig.cl_vector(),
+        inewval.cl_vector(), iorig.cl_vector());
 
     vector<half, N> hres = res.template format<half>().template select<N, 2>(0);
 
@@ -422,110 +426,115 @@ __impl_atomic_global(mask<N> pred, AtomicOp op, char l1cachecontrol,
 
 } // namespace
 
-#define ATOMIC(WIDTH)                                                          \
+#define ATOMIC(WIDTH, CACHELEVELS)                                             \
   CM_NODEBUG CM_INLINE extern "C" cl_vector<uint64_t, WIDTH>                   \
-      __vc_builtin_atomic_slm_v##WIDTH##i64(                                   \
-          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
-          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
-          short scale, int offset, cl_vector<uint64_t, WIDTH> src1,            \
-          cl_vector<uint64_t, WIDTH> src2,                                     \
+      __vc_builtin_atomic_slm_v##WIDTH##i64_v##CACHELEVELS##i8(                \
+          cl_vector<char, WIDTH> pred, AtomicOp op,                            \
+          vector<char, CACHELEVELS> cachecontrols, int base,                   \
+          cl_vector<int, WIDTH> index, short scale, int offset,                \
+          cl_vector<uint64_t, WIDTH> src1, cl_vector<uint64_t, WIDTH> src2,    \
           cl_vector<uint64_t, WIDTH> passthru) {                               \
     mask<WIDTH> vpred{pred};                                                   \
     vector<int, WIDTH> vindex{index};                                          \
     vector<uint64_t, WIDTH> vsrc1{src1};                                       \
     vector<uint64_t, WIDTH> vsrc2{src2};                                       \
     vector<uint64_t, WIDTH> vpassthru{passthru};                               \
-    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
-                                      l3cachecontrol, base, vindex, scale,     \
-                                      offset, vsrc1, vsrc2, vpassthru)         \
+    vector<char, CACHELEVELS> vcachecontrols{cachecontrols};                   \
+    return __impl_atomic_local<WIDTH>(vpred, op, cachecontrols, base, vindex,  \
+                                      scale, offset, vsrc1, vsrc2, vpassthru)  \
         .cl_vector();                                                          \
   }                                                                            \
   CM_NODEBUG CM_INLINE extern "C" cl_vector<uint32_t, WIDTH>                   \
-      __vc_builtin_atomic_slm_v##WIDTH##i32(                                   \
-          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
-          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
-          short scale, int offset, cl_vector<uint32_t, WIDTH> src1,            \
-          cl_vector<uint32_t, WIDTH> src2,                                     \
+      __vc_builtin_atomic_slm_v##WIDTH##i32_v##CACHELEVELS##i8(                \
+          cl_vector<char, WIDTH> pred, AtomicOp op,                            \
+          vector<char, CACHELEVELS> cachecontrols, int base,                   \
+          cl_vector<int, WIDTH> index, short scale, int offset,                \
+          cl_vector<uint32_t, WIDTH> src1, cl_vector<uint32_t, WIDTH> src2,    \
           cl_vector<uint32_t, WIDTH> passthru) {                               \
     mask<WIDTH> vpred{pred};                                                   \
     vector<int, WIDTH> vindex{index};                                          \
     vector<uint32_t, WIDTH> vsrc1{src1};                                       \
     vector<uint32_t, WIDTH> vsrc2{src2};                                       \
     vector<uint32_t, WIDTH> vpassthru{passthru};                               \
-    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
-                                      l3cachecontrol, base, vindex, scale,     \
-                                      offset, vsrc1, vsrc2, vpassthru)         \
+    vector<char, CACHELEVELS> vcachecontrols{cachecontrols};                   \
+    return __impl_atomic_local<WIDTH>(vpred, op, vcachecontrols, base, vindex, \
+                                      scale, offset, vsrc1, vsrc2, vpassthru)  \
         .cl_vector();                                                          \
   }                                                                            \
   CM_NODEBUG CM_INLINE extern "C" cl_vector<float, WIDTH>                      \
-      __vc_builtin_atomic_slm_v##WIDTH##f32(                                   \
-          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
-          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
-          short scale, int offset, cl_vector<float, WIDTH> src1,               \
-          cl_vector<float, WIDTH> src2, cl_vector<float, WIDTH> passthru) {    \
+      __vc_builtin_atomic_slm_v##WIDTH##f32_v##CACHELEVELS##i8(                \
+          cl_vector<char, WIDTH> pred, AtomicOp op,                            \
+          vector<char, CACHELEVELS> cachecontrols, int base,                   \
+          cl_vector<int, WIDTH> index, short scale, int offset,                \
+          cl_vector<float, WIDTH> src1, cl_vector<float, WIDTH> src2,          \
+          cl_vector<float, WIDTH> passthru) {                                  \
     mask<WIDTH> vpred{pred};                                                   \
     vector<int, WIDTH> vindex{index};                                          \
     vector<float, WIDTH> vsrc1{src1};                                          \
     vector<float, WIDTH> vsrc2{src2};                                          \
     vector<float, WIDTH> vpassthru{passthru};                                  \
-    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
-                                      l3cachecontrol, base, vindex, scale,     \
-                                      offset, vsrc1, vsrc2, vpassthru)         \
+    vector<char, CACHELEVELS> vcachecontrols{cachecontrols};                   \
+    return __impl_atomic_local<WIDTH>(vpred, op, vcachecontrols, base, vindex, \
+                                      scale, offset, vsrc1, vsrc2, vpassthru)  \
         .cl_vector();                                                          \
   }                                                                            \
   CM_NODEBUG CM_INLINE extern "C" cl_vector<double, WIDTH>                     \
-      __vc_builtin_atomic_slm_v##WIDTH##f64(                                   \
-          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
-          char l3cachecontrol, int base, cl_vector<int, WIDTH> index,          \
-          short scale, int offset, cl_vector<double, WIDTH> src1,              \
-          cl_vector<double, WIDTH> src2, cl_vector<double, WIDTH> passthru) {  \
+      __vc_builtin_atomic_slm_v##WIDTH##f64_v##CACHELEVELS##i8(                \
+          cl_vector<char, WIDTH> pred, AtomicOp op,                            \
+          vector<char, CACHELEVELS> cachecontrols, int base,                   \
+          cl_vector<int, WIDTH> index, short scale, int offset,                \
+          cl_vector<double, WIDTH> src1, cl_vector<double, WIDTH> src2,        \
+          cl_vector<double, WIDTH> passthru) {                                 \
     mask<WIDTH> vpred{pred};                                                   \
     vector<int, WIDTH> vindex{index};                                          \
     vector<double, WIDTH> vsrc1{src1};                                         \
     vector<double, WIDTH> vsrc2{src2};                                         \
     vector<double, WIDTH> vpassthru{passthru};                                 \
-    return __impl_atomic_local<WIDTH>(vpred, op, l1cachecontrol,               \
-                                      l3cachecontrol, base, vindex, scale,     \
-                                      offset, vsrc1, vsrc2, vpassthru)         \
+    vector<char, CACHELEVELS> vcachecontrols{cachecontrols};                   \
+    return __impl_atomic_local<WIDTH>(vpred, op, vcachecontrols, base, vindex, \
+                                      scale, offset, vsrc1, vsrc2, vpassthru)  \
         .cl_vector();                                                          \
   }                                                                            \
   CM_NODEBUG CM_INLINE extern "C" cl_vector<double, WIDTH>                     \
-      __vc_builtin_atomic_ugm_v##WIDTH##f64(                                   \
-          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
-          char l3cachecontrol, long base, cl_vector<long, WIDTH> index,        \
-          short scale, int offset, cl_vector<double, WIDTH> src1,              \
-          cl_vector<double, WIDTH> src2, cl_vector<double, WIDTH> passthru) {  \
+      __vc_builtin_atomic_ugm_v##WIDTH##f64_v##CACHELEVELS##i8(                \
+          cl_vector<char, WIDTH> pred, AtomicOp op,                            \
+          vector<char, CACHELEVELS> cachecontrols, long base,                  \
+          cl_vector<long, WIDTH> index, short scale, int offset,               \
+          cl_vector<double, WIDTH> src1, cl_vector<double, WIDTH> src2,        \
+          cl_vector<double, WIDTH> passthru) {                                 \
     mask<WIDTH> vpred{pred};                                                   \
     vector<long, WIDTH> vindex{index};                                         \
     vector<double, WIDTH> vsrc1{src1};                                         \
     vector<double, WIDTH> vsrc2{src2};                                         \
     vector<double, WIDTH> vpassthru{passthru};                                 \
-    return __impl_atomic_global<WIDTH>(vpred, op, l1cachecontrol,              \
-                                       l3cachecontrol, base, vindex, scale,    \
-                                       offset, vsrc1, vsrc2, vpassthru)        \
+    vector<char, CACHELEVELS> vcachecontrols{cachecontrols};                   \
+    return __impl_atomic_global<WIDTH>(vpred, op, vcachecontrols, base,        \
+                                       vindex, scale, offset, vsrc1, vsrc2,    \
+                                       vpassthru)                              \
         .cl_vector();                                                          \
   }                                                                            \
   CM_NODEBUG CM_INLINE extern "C" cl_vector<uint32_t, WIDTH>                   \
-      __vc_builtin_atomic_ugm_v##WIDTH##i32(                                   \
-          cl_vector<char, WIDTH> pred, AtomicOp op, char l1cachecontrol,       \
-          char l3cachecontrol, long base, cl_vector<long, WIDTH> index,        \
-          short scale, int offset, cl_vector<uint32_t, WIDTH> src1,            \
-          cl_vector<uint32_t, WIDTH> src2,                                     \
+      __vc_builtin_atomic_ugm_v##WIDTH##i32_v##CACHELEVELS##i8(                \
+          cl_vector<char, WIDTH> pred, AtomicOp op,                            \
+          vector<char, CACHELEVELS> cachecontrols, long base,                  \
+          cl_vector<long, WIDTH> index, short scale, int offset,               \
+          cl_vector<uint32_t, WIDTH> src1, cl_vector<uint32_t, WIDTH> src2,    \
           cl_vector<uint32_t, WIDTH> passthru) {                               \
     mask<WIDTH> vpred{pred};                                                   \
     vector<long, WIDTH> vindex{index};                                         \
     vector<uint32_t, WIDTH> vsrc1{src1};                                       \
     vector<uint32_t, WIDTH> vsrc2{src2};                                       \
     vector<uint32_t, WIDTH> vpassthru{passthru};                               \
-    return __impl_atomic_global<WIDTH>(vpred, op, l1cachecontrol,              \
-                                       l3cachecontrol, base, vindex, scale,    \
-                                       offset, vsrc1, vsrc2, vpassthru)        \
+    vector<char, CACHELEVELS> vcachecontrols{cachecontrols};                   \
+    return __impl_atomic_global<WIDTH>(vpred, op, vcachecontrols, base,        \
+                                       vindex, scale, offset, vsrc1, vsrc2,    \
+                                       vpassthru)                              \
         .cl_vector();                                                          \
   }
 
-ATOMIC(1)
-ATOMIC(2)
-ATOMIC(4)
-ATOMIC(8)
-ATOMIC(16)
-ATOMIC(32)
+ATOMIC(1, 2)
+ATOMIC(2, 2)
+ATOMIC(4, 2)
+ATOMIC(8, 2)
+ATOMIC(16, 2)
+ATOMIC(32, 2)

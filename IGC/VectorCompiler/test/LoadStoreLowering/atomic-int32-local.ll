@@ -30,7 +30,7 @@ define i32 @load_i32(i32 addrspace(3)* %ptr) {
   ; CHECK: %res = bitcast <1 x i32> [[LOAD_VDATA]] to i32
   ; CHECK-LSC: [[LOAD_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(3)* %ptr to i32
   ; CHECK-LSC: [[LOAD_VADDR:%[^ ]+]] = bitcast i32 [[LOAD_ADDR]] to <1 x i32>
-  ; CHECK-LSC: [[LOAD_VDATA:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 10, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[LOAD_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[LOAD_VDATA:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 10, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[LOAD_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 2)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[LOAD_VDATA]] to i32
   %res = load atomic i32, i32 addrspace(3)* %ptr syncscope("device") acquire, align 4
@@ -47,7 +47,7 @@ define void @store_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[STORE_VADDR:%[^ ]+]] = bitcast i32 [[STORE_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[STORE_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 2)
-  ; CHECK-LSC: call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 11, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[STORE_VADDR]], i16 1, i32 0, <1 x i32> [[STORE_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 11, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[STORE_VADDR]], i16 1, i32 0, <1 x i32> [[STORE_VDATA]], <1 x i32> undef, <1 x i32> undef)
   store atomic i32 %arg, i32 addrspace(3)* %ptr syncscope("device") release, align 4
   ret void
 }
@@ -61,7 +61,7 @@ define i32 @xchg_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[XCHG_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(3)* %ptr to i32
   ; CHECK-LSC: [[XCHG_VADDR:%[^ ]+]] = bitcast i32 [[XCHG_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[XCHG_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
-  ; CHECK-LSC: [[XCHG_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 11, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[XCHG_VADDR]], i16 1, i32 0, <1 x i32> [[XCHG_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[XCHG_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 11, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[XCHG_VADDR]], i16 1, i32 0, <1 x i32> [[XCHG_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[XCHG_VRES]] to i32
   %res = atomicrmw xchg i32 addrspace(3)* %ptr, i32 %arg syncscope("all_devices") monotonic
   ret i32 %res
@@ -79,7 +79,7 @@ define i32 @add_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[ADD_VADDR:%[^ ]+]] = bitcast i32 [[ADD_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[ADD_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[ADD_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 12, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[ADD_VADDR]], i16 1, i32 0, <1 x i32> [[ADD_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[ADD_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 12, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[ADD_VADDR]], i16 1, i32 0, <1 x i32> [[ADD_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[ADD_VRES]] to i32
   %res = atomicrmw add i32 addrspace(3)* %ptr, i32 %arg syncscope("subgroup") acq_rel
@@ -96,7 +96,7 @@ define i32 @inc_i32(i32 addrspace(3)* %ptr) {
   ; CHECK-LSC: [[INC_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(3)* %ptr to i32
   ; CHECK-LSC: [[INC_VADDR:%[^ ]+]] = bitcast i32 [[INC_ADDR]] to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[INC_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 8, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[INC_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[INC_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 8, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[INC_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[INC_VRES]] to i32
   %res = atomicrmw add i32 addrspace(3)* %ptr, i32 1 syncscope("subgroup") seq_cst
@@ -115,7 +115,7 @@ define i32 @sub_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[SUB_VADDR:%[^ ]+]] = bitcast i32 [[SUB_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[SUB_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
-  ; CHECK-LSC: [[SUB_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 13, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[SUB_VADDR]], i16 1, i32 0, <1 x i32> [[SUB_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[SUB_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 13, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[SUB_VADDR]], i16 1, i32 0, <1 x i32> [[SUB_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[SUB_VRES]] to i32
   %res = atomicrmw sub i32 addrspace(3)* %ptr, i32 %arg syncscope("workgroup") acq_rel
@@ -132,7 +132,7 @@ define i32 @dec_i32(i32 addrspace(3)* %ptr) {
   ; CHECK-LSC: [[DEC_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(3)* %ptr to i32
   ; CHECK-LSC: [[DEC_VADDR:%[^ ]+]] = bitcast i32 [[DEC_ADDR]] to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
-  ; CHECK-LSC: [[DEC_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 9, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[DEC_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[DEC_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 9, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[DEC_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[DEC_VRES]] to i32
   %res = atomicrmw sub i32 addrspace(3)* %ptr, i32 1 syncscope("workgroup") seq_cst
@@ -151,7 +151,7 @@ define i32 @and_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[AND_VADDR:%[^ ]+]] = bitcast i32 [[AND_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[AND_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 4)
-  ; CHECK-LSC: [[AND_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 24, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[AND_VADDR]], i16 1, i32 0, <1 x i32> [[AND_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[AND_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 24, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[AND_VADDR]], i16 1, i32 0, <1 x i32> [[AND_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 4)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[AND_VRES]] to i32
   %res = atomicrmw and i32 addrspace(3)* %ptr, i32 %arg syncscope("all_devices") acq_rel
@@ -170,7 +170,7 @@ define i32 @or_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[OR_VADDR:%[^ ]+]] = bitcast i32 [[OR_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[OR_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[OR_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 25, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[OR_VADDR]], i16 1, i32 0, <1 x i32> [[OR_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[OR_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 25, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[OR_VADDR]], i16 1, i32 0, <1 x i32> [[OR_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[OR_VRES]] to i32
   %res = atomicrmw or i32 addrspace(3)* %ptr, i32 %arg syncscope("signlethread") acq_rel
@@ -189,7 +189,7 @@ define i32 @xor_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[XOR_VADDR:%[^ ]+]] = bitcast i32 [[XOR_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[XOR_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[XOR_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 26, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[XOR_VADDR]], i16 1, i32 0, <1 x i32> [[XOR_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[XOR_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 26, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[XOR_VADDR]], i16 1, i32 0, <1 x i32> [[XOR_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[XOR_VRES]] to i32
   %res = atomicrmw xor i32 addrspace(3)* %ptr, i32 %arg syncscope("signlethread") acq_rel
@@ -208,7 +208,7 @@ define i32 @max_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[MAX_VADDR:%[^ ]+]] = bitcast i32 [[MAX_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[MAX_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[MAX_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 15, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[MAX_VADDR]], i16 1, i32 0, <1 x i32> [[MAX_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[MAX_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 15, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[MAX_VADDR]], i16 1, i32 0, <1 x i32> [[MAX_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[MAX_VRES]] to i32
   %res = atomicrmw max i32 addrspace(3)* %ptr, i32 %arg syncscope("signlethread") acq_rel
@@ -227,7 +227,7 @@ define i32 @min_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[MIN_VADDR:%[^ ]+]] = bitcast i32 [[MIN_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[MIN_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[MIN_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 14, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[MIN_VADDR]], i16 1, i32 0, <1 x i32> [[MIN_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[MIN_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 14, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[MIN_VADDR]], i16 1, i32 0, <1 x i32> [[MIN_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[MIN_VRES]] to i32
   %res = atomicrmw min i32 addrspace(3)* %ptr, i32 %arg syncscope("signlethread") acq_rel
@@ -246,7 +246,7 @@ define i32 @umax_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[UMAX_VADDR:%[^ ]+]] = bitcast i32 [[UMAX_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[UMAX_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[UMAX_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 17, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[UMAX_VADDR]], i16 1, i32 0, <1 x i32> [[UMAX_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[UMAX_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 17, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[UMAX_VADDR]], i16 1, i32 0, <1 x i32> [[UMAX_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[UMAX_VRES]] to i32
   %res = atomicrmw umax i32 addrspace(3)* %ptr, i32 %arg syncscope("signlethread") acq_rel
@@ -265,7 +265,7 @@ define i32 @umin_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[UMIN_VADDR:%[^ ]+]] = bitcast i32 [[UMIN_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[UMIN_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[UMIN_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 16, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[UMIN_VADDR]], i16 1, i32 0, <1 x i32> [[UMIN_VDATA]], <1 x i32> undef, <1 x i32> undef)
+  ; CHECK-LSC: [[UMIN_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 16, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[UMIN_VADDR]], i16 1, i32 0, <1 x i32> [[UMIN_VDATA]], <1 x i32> undef, <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[UMIN_VRES]] to i32
   %res = atomicrmw umin i32 addrspace(3)* %ptr, i32 %arg syncscope("signlethread") acq_rel
@@ -289,7 +289,7 @@ define i32 @cmpxchg_i32(i32 addrspace(3)* %ptr, i32 %cmp, i32 %arg) {
   ; CHECK-LSC: [[CAS_VCMP:%[^ ]+]] = bitcast i32 %cmp to <1 x i32>
   ; CHECK-LSC: [[CAS_VARG:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK-LSC: [[CAS_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v1i32(<1 x i1> <i1 true>, i8 18, i8 2, i8 3, i8 0, i8 0, i32 0, <1 x i32> [[CAS_VADDR]], i16 1, i32 0, <1 x i32> [[CAS_VCMP]], <1 x i32> [[CAS_VARG]], <1 x i32> undef)
+  ; CHECK-LSC: [[CAS_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 18, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[CAS_VADDR]], i16 1, i32 0, <1 x i32> [[CAS_VCMP]], <1 x i32> [[CAS_VARG]], <1 x i32> undef)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: [[CAS_VAL:%[^ ]+]] = bitcast <1 x i32> [[CAS_VRES]] to i32
   ; CHECK-LSC: [[CAS_CMP:%[^ ]+]] = icmp eq i32 [[CAS_VAL]], %cmp

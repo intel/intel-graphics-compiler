@@ -195,7 +195,10 @@ Value *GenXLoadStoreLegalization::splitMemoryOperation(Value *InsertTo,
       auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
       if (!VTy)
         return Arg;
-      bool IsSOA = VTy->getNumElements() == VectorSize * ExecSize;
+      auto NumElements = VTy->getNumElements();
+      bool IsSOA = NumElements == VectorSize * ExecSize;
+      if (NumElements != ExecSize && !IsSOA)
+        return Arg;
       return createExtractFromSOAValue(&CI, Arg, IsSOA ? VectorSize : 1, Index,
                                        SplitWidth);
     });
@@ -232,7 +235,12 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
     auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
     if (!VTy)
       return Arg;
-    bool IsSOA = VTy->getNumElements() == VectorSize * ExecSize;
+
+    auto NumElements = VTy->getNumElements();
+    bool IsSOA = NumElements == VectorSize * ExecSize;
+    if (NumElements != ExecSize && !IsSOA)
+      return Arg;
+
     if (Index > 0)
       Arg = createExtractFromSOAValue(&CI, Arg, IsSOA ? VectorSize : 1, Index,
                                       RestSize);
@@ -296,10 +304,13 @@ GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
     auto *ArgVTy = cast<IGCLLVM::FixedVectorType>(ArgTy);
     auto *ETy = ArgVTy->getElementType();
     auto NumElements = ArgVTy->getNumElements();
-    IGC_ASSERT_EXIT(NumElements == ExecSize ||
-                    NumElements == VectorSize * ExecSize);
+    bool IsSOA = NumElements == VectorSize * ExecSize;
 
-    auto IsSOA = NumElements == VectorSize * ExecSize;
+    if (NumElements != ExecSize && !IsSOA) {
+      OverloadedTypes.push_back(ArgTy);
+      continue;
+    }
+
     auto Width = IsSOA ? VectorSize * NewWidth : NewWidth;
     auto *VTy = IGCLLVM::FixedVectorType::get(ETy, Width);
     OverloadedTypes.push_back(VTy);

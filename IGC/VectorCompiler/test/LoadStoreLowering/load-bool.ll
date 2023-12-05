@@ -29,7 +29,7 @@ define i1 @replace_load_i1(i1* %p) {
 ; CHECK: [[TRUNC:%[^ ]+]] = trunc <1 x i32> [[CAST1]] to <1 x i8>
 ; CHECK: [[CAST2:%[^ ]+]] = bitcast <1 x i8> [[TRUNC]] to i8
 ; CHECK: %res = trunc i8 [[CAST2]] to i1
-; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v1i64(
+; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v2i8.v1i64(
 ; CHECK-LSC: [[TRUNC:%[^ ]+]] = trunc <1 x i32> [[LOAD]] to <1 x i8>
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast <1 x i8> [[TRUNC]] to i8
 ; CHECK-LSC: %res = trunc i8 [[CAST]] to i1
@@ -42,7 +42,7 @@ define <8 x i1> @replace_load_v8i1(<8 x i1>* %p) {
 ; CHECK: [[CAST:%[^ ]+]] = bitcast <4 x i8> [[LOAD]] to <1 x i32>
 ; CHECK: [[TRUNC:%[^ ]+]] = trunc <1 x i32> [[CAST1]] to <1 x i8>
 ; CHECK: %res = bitcast <1 x i8> [[TRUNC]] to <8 x i1>
-; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v1i64(
+; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v2i8.v1i64(
 ; CHECK-LSC: [[TRUNC:%[^ ]+]] = trunc <1 x i32> [[LOAD]] to <1 x i8>
 ; CHECK-LSC: %res = bitcast <1 x i8> [[TRUNC]] to <8 x i1>
   %res = load <8 x i1>, <8 x i1>* %p
@@ -54,7 +54,7 @@ define <16 x i1> @replace_load_v16i1(<16 x i1>* %p) {
 ; CHECK: [[CAST:%[^ ]+]] = bitcast <4 x i8> [[LOAD]] to <1 x i32>
 ; CHECK: [[TRUNC:%[^ ]+]] = trunc <1 x i32> [[CAST1]] to <1 x i16>
 ; CHECK: %res = bitcast <1 x i16> [[TRUNC]] to <16 x i1>
-; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v1i64(
+; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v2i8.v1i64(
 ; CHECK-LSC: [[TRUNC:%[^ ]+]] = trunc <1 x i32> [[LOAD]] to <1 x i16>
 ; CHECK-LSC: %res = bitcast <1 x i16> [[TRUNC]] to <16 x i1>
   %res = load <16 x i1>, <16 x i1>* %p
@@ -64,7 +64,7 @@ define <16 x i1> @replace_load_v16i1(<16 x i1>* %p) {
 define <32 x i1> @replace_load_v32i1(<32 x i1>* %p) {
 ; CHECK: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.genx.svm.gather.v1i32.v1i1.v1i64(
 ; CHECK: %res = bitcast <1 x i32> [[LOAD]] to <32 x i1>
-; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.i64(
+; CHECK-LSC: [[LOAD:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.load.ugm.v1i32.v1i1.v2i8.i64(
 ; CHECK-LSC: %res = bitcast <1 x i32> [[LOAD]] to <32 x i1>
   %res = load <32 x i1>, <32 x i1>* %p
   ret <32 x i1> %res
@@ -76,7 +76,7 @@ define <17 x i1> @replace_load_v17i1(<17 x i1>* %p) {
 ; CHECK: [[TRUNC:%[^ ]+]] = trunc <3 x i32> [[CAST1]] to <3 x i8>
 ; CHECK: [[CAST2:%[^ ]+]] = bitcast <3 x i8> [[TRUNC]] to <24 x i1>
 ; CHECK: %res = call <17 x i1> @llvm.genx.rdpredregion.v17i1.v24i1(<24 x i1> [[CAST2]], i32 0)
-; CHECK-LSC: [[LOAD:%[^ ]+]] = call <3 x i32> @llvm.vc.internal.lsc.load.ugm.v3i32.v3i1.v3i64(
+; CHECK-LSC: [[LOAD:%[^ ]+]] = call <3 x i32> @llvm.vc.internal.lsc.load.ugm.v3i32.v3i1.v2i8.v3i64(
 ; CHECK-LSC: [[TRUNC:%[^ ]+]] = trunc <3 x i32> [[LOAD]] to <3 x i8>
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast <3 x i8> [[TRUNC]] to <24 x i1>
 ; CHECK-LSC: %res = call <17 x i1> @llvm.genx.rdpredregion.v17i1.v24i1(<24 x i1> [[CAST]], i32 0)

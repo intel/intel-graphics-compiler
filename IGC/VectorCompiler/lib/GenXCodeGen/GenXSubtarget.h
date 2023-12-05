@@ -401,6 +401,8 @@ public:
   /// bit fields for ThreadID (from lsb to msb).
   ArrayRef<std::pair<int, int>> getThreadIdBits() const;
 
+  unsigned getNumCacheLevels() const { return 2; }
+
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }
 

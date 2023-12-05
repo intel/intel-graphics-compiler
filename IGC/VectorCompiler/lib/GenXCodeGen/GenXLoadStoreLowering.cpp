@@ -94,6 +94,9 @@ class GenXLoadStoreLowering : public FunctionPass,
   SmallVector<StringRef, 8> SyncScopeNames;
 
 private:
+  using CacheControlsVector = SmallVector<LSC_CACHE_OPT, 4>;
+  using CacheControlsRef = ArrayRef<LSC_CACHE_OPT>;
+
   // Creates replacement (series of instructions) for the provided memory
   // instruction \p I. Considers all the required properties of the instruction
   // and the target, and generates the proper intrinsic and some supporting
@@ -157,12 +160,12 @@ private:
   Instruction *createLSCLoadImpl(IRBuilder<> &Builder, Module *M,
                                  vc::InternalIntrinsic::ID IID, unsigned ESize,
                                  Value *Pred, Value *Base, Value *Addr,
-                                 Value *Source, LSC_CACHE_OPTS CacheOpts,
+                                 Value *Source, Constant *CacheOpts,
                                  ConstantInt *Align = nullptr) const;
   Instruction *createLSCStoreImpl(IRBuilder<> &Builder, Module *M,
                                   vc::InternalIntrinsic::ID IID, unsigned ESize,
                                   Value *Pred, Value *Base, Value *Addr,
-                                  Value *Data, LSC_CACHE_OPTS CacheOpts,
+                                  Value *Data, Constant *CacheOpts,
                                   ConstantInt *Align = nullptr) const;
 
   Instruction *createLSCAtomicLoad(LoadInst &I, vc::InternalIntrinsic::ID IID,
@@ -212,7 +215,9 @@ private:
   Value *extractBoolValue(IRBuilder<> &Builder, Module *M, Value *Data,
                           Type *Ty) const;
 
-  LSC_CACHE_OPTS getLSCCacheOpts(Instruction *I) const;
+  CacheControlsVector getLSCCacheOptsImpl(Instruction *I,
+                                          bool IsSLM = false) const;
+  Constant *getLSCCacheOpts(Instruction *I, bool IsSLM = false) const;
   LSC_SCOPE getLSCFenceScope(Instruction *I) const;
   static unsigned getLSCBlockElementSizeBits(unsigned DataSizeBytes,
                                              unsigned Align);
@@ -617,7 +622,7 @@ Value *GenXLoadStoreLowering::makeVector(IRBuilder<> &Builder, Value *Val) {
 Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
     IRBuilder<> &Builder, Module *M, vc::InternalIntrinsic::ID IID,
     unsigned ESize, Value *Pred, Value *Base, Value *Addr, Value *Source,
-    LSC_CACHE_OPTS CacheOpts, ConstantInt *Align) const {
+    Constant *CacheOpts, ConstantInt *Align) const {
   IGC_ASSERT_EXIT(IID == vc::InternalIntrinsic::lsc_load_bti ||
                   IID == vc::InternalIntrinsic::lsc_load_slm ||
                   IID == vc::InternalIntrinsic::lsc_load_ugm);
@@ -625,6 +630,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
   IGC_ASSERT_EXIT(Pred);
   IGC_ASSERT_EXIT(Base);
   IGC_ASSERT_EXIT(Addr);
+  IGC_ASSERT_EXIT(CacheOpts);
 
   auto *Ty = cast<IGCLLVM::FixedVectorType>(Source->getType());
   auto *AddrTy = Addr->getType();
@@ -640,13 +646,12 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
                       ? LSC_ADDR_SIZE_64b
                       : LSC_ADDR_SIZE_32b;
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 10> Args = {
       Pred,
       Builder.getInt8(AddrSize),
       Builder.getInt8(ElementSize),
       Builder.getInt8(ElementsPerAddress),
-      Builder.getInt8(CacheOpts.l1),
-      Builder.getInt8(CacheOpts.l3),
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale
@@ -655,7 +660,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
   };
 
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      M, IID, {Ty, Pred->getType(), Addr->getType()});
+      M, IID, {Ty, Pred->getType(), CacheOpts->getType(), Addr->getType()});
   auto *Load = Builder.CreateCall(Func, Args);
 
   if (Align) {
@@ -671,7 +676,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadImpl(
 Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
     IRBuilder<> &Builder, Module *M, vc::InternalIntrinsic::ID IID,
     unsigned ESize, Value *Pred, Value *Base, Value *Addr, Value *Data,
-    LSC_CACHE_OPTS CacheOpts, ConstantInt *Align) const {
+    Constant *CacheOpts, ConstantInt *Align) const {
   IGC_ASSERT_EXIT(IID == vc::InternalIntrinsic::lsc_store_bti ||
                   IID == vc::InternalIntrinsic::lsc_store_slm ||
                   IID == vc::InternalIntrinsic::lsc_store_ugm);
@@ -679,6 +684,7 @@ Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
   IGC_ASSERT_EXIT(Base);
   IGC_ASSERT_EXIT(Addr);
   IGC_ASSERT_EXIT(Data);
+  IGC_ASSERT_EXIT(CacheOpts);
 
   auto *Ty = cast<IGCLLVM::FixedVectorType>(Data->getType());
   auto *AddrTy = Addr->getType();
@@ -694,13 +700,12 @@ Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
                       ? LSC_ADDR_SIZE_64b
                       : LSC_ADDR_SIZE_32b;
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 10> Args = {
       Pred,
       Builder.getInt8(AddrSize),
       Builder.getInt8(ElementSize),
       Builder.getInt8(ElementsPerAddress),
-      Builder.getInt8(CacheOpts.l1),
-      Builder.getInt8(CacheOpts.l3),
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale
@@ -709,7 +714,7 @@ Instruction *GenXLoadStoreLowering::createLSCStoreImpl(
   };
 
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      M, IID, {Pred->getType(), Addr->getType(), Ty});
+      M, IID, {Pred->getType(), CacheOpts->getType(), Addr->getType(), Ty});
   auto *Store = Builder.CreateCall(Func, Args);
 
   if (Align) {
@@ -772,12 +777,9 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
   if (Align == 0)
     Align = DL_->getPrefTypeAlignment(Ty);
 
-  auto CacheOpts = getLSCCacheOpts(&I);
-  if (IID == vc::InternalIntrinsic::lsc_load_slm ||
-      IID == vc::InternalIntrinsic::lsc_store_slm) {
-    CacheOpts.l1 = LSC_CACHING_DEFAULT;
-    CacheOpts.l3 = LSC_CACHING_DEFAULT;
-  }
+  bool IsSLM = IID == vc::InternalIntrinsic::lsc_load_slm ||
+               IID == vc::InternalIntrinsic::lsc_store_slm;
+  auto *CacheOpts = getLSCCacheOpts(&I, IsSLM);
 
   // Try to generate block messages
   auto BlockESizeBits = getLSCBlockElementSizeBits(VSize, Align);
@@ -895,12 +897,9 @@ Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
   auto *Addr = Builder.CreatePtrToInt(
       Ptr, IGCLLVM::FixedVectorType::get(AddrTy, VTy->getNumElements()));
 
-  auto CacheOpts = getLSCCacheOpts(&I);
-  if (LoadIID == vc::InternalIntrinsic::lsc_load_slm ||
-      StoreIID == vc::InternalIntrinsic::lsc_store_slm) {
-    CacheOpts.l1 = LSC_CACHING_DEFAULT;
-    CacheOpts.l3 = LSC_CACHING_DEFAULT;
-  }
+  bool IsSLM = LoadIID == vc::InternalIntrinsic::lsc_load_slm ||
+               StoreIID == vc::InternalIntrinsic::lsc_store_slm;
+  auto CacheOpts = getLSCCacheOpts(&I, IsSLM);
 
   if (IsLoad) {
     auto *Load = createLSCLoadImpl(Builder, M, LoadIID, ESize, Mask, Base, Addr,
@@ -939,11 +938,11 @@ GenXLoadStoreLowering::getAddressSpaceAndOrderingOfAtomic(
   return {0, AtomicOrdering::Monotonic};
 }
 
-LSC_CACHE_OPTS GenXLoadStoreLowering::getLSCCacheOpts(Instruction *I) const {
-  LSC_CACHE_OPTS Res = {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
-  bool IsUncached = I->getMetadata("nontemporal") != nullptr;
+GenXLoadStoreLowering::CacheControlsVector
+GenXLoadStoreLowering::getLSCCacheOptsImpl(Instruction *I, bool IsSLM) const {
+  bool IsUncached = !IsSLM && I->getMetadata("nontemporal") != nullptr;
 
-  if (!IsUncached) {
+  if (!IsSLM && !IsUncached) {
     auto Scope = getLSCFenceScope(I);
     switch (Scope) {
     default:
@@ -956,11 +955,22 @@ LSC_CACHE_OPTS GenXLoadStoreLowering::getLSCCacheOpts(Instruction *I) const {
     }
   }
 
-  if (IsUncached) {
-    Res.l1 = LSC_CACHING_UNCACHED;
-    Res.l3 = LSC_CACHING_UNCACHED;
-  }
-  return Res;
+  if (IsUncached)
+    return CacheControlsVector(ST->getNumCacheLevels(), LSC_CACHING_UNCACHED);
+
+  return CacheControlsVector(ST->getNumCacheLevels(), LSC_CACHING_DEFAULT);
+}
+
+Constant *GenXLoadStoreLowering::getLSCCacheOpts(Instruction *I,
+                                                 bool IsSLM) const {
+  const auto CacheOpts = getLSCCacheOptsImpl(I, IsSLM);
+  auto *Int8Ty = IntegerType::get(I->getContext(), 8);
+
+  SmallVector<Constant *, 4> CacheOptValues;
+  llvm::transform(CacheOpts, std::back_inserter(CacheOptValues),
+                  [Int8Ty](auto Opt) { return ConstantInt::get(Int8Ty, Opt); });
+
+  return ConstantVector::get(CacheOptValues);
 }
 
 LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
@@ -1056,29 +1066,24 @@ Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
   auto AddrSize = IID == vc::InternalIntrinsic::lsc_atomic_ugm
                       ? LSC_ADDR_SIZE_64b
                       : LSC_ADDR_SIZE_32b;
+  bool IsSLM = IID == vc::InternalIntrinsic::lsc_atomic_slm;
 
-  auto cachingOpts = getLSCCacheOpts(&I);
-  auto L1Opt = cachingOpts.l1;
-  auto L3Opt = cachingOpts.l3;
-  if (IID == vc::InternalIntrinsic::lsc_atomic_slm) {
-    L1Opt = LSC_CACHING_DEFAULT;
-    L3Opt = LSC_CACHING_DEFAULT;
-  }
+  auto *CacheOpts = getLSCCacheOpts(&I, IsSLM);
+  auto *CacheOptsTy = CacheOpts->getType();
 
   Src0 = makeVector(Builder, Src0);
   Src1 = makeVector(Builder, Src1);
   auto *DataVTy = cast<IGCLLVM::FixedVectorType>(Src0->getType());
 
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      M, IID, {DataVTy, PredTy, AddrTy});
+      M, IID, {DataVTy, PredTy, CacheOptsTy, AddrTy});
 
-  SmallVector<Value *, 13> Args = {
+  SmallVector<Value *, 12> Args = {
       Pred,
       Builder.getInt8(AtomicOp),
       Builder.getInt8(AddrSize),
       Builder.getInt8(ElementSize),
-      Builder.getInt8(L1Opt),
-      Builder.getInt8(L3Opt),
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale

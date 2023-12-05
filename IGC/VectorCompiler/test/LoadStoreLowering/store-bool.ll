@@ -33,7 +33,7 @@ define void @replace_store_i1(i1* %p, i1 %val) {
 ; CHECK-LSC: [[ZEXT1:%[^ ]+]] = zext i1 %val to i8
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast i8 [[ZEXT1]] to <1 x i8>
 ; CHECK-LSC: [[ZEXT2:%[^ ]+]] = zext <1 x i8> [[CAST]] to <1 x i32>
-; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v1i64.v1i32(
+; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.v1i64.v1i32(
 ; CHECK-LSC-SAME: <1 x i32> [[ZEXT2]]
   store i1 %val, i1* %p
   ret void
@@ -47,7 +47,7 @@ define void @replace_store_v8i1(<8 x i1>* %p, <8 x i1> %val) {
 ; CHECK-SAME: <4 x i8> [[CAST2]])
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast <8 x i1> %val to <1 x i8>
 ; CHECK-LSC: [[ZEXT:%[^ ]+]] = zext <1 x i8> [[CAST]] to <1 x i32>
-; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v1i64.v1i32(
+; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.v1i64.v1i32(
 ; CHECK-LSC-SAME: <1 x i32> [[ZEXT]]
   store <8 x i1> %val, <8 x i1>* %p
   ret void
@@ -61,7 +61,7 @@ define void @replace_store_v16i1(<16 x i1>* %p, <16 x i1> %val) {
 ; CHECK-SAME: <4 x i8> [[CAST2]])
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast <16 x i1> %val to <1 x i16>
 ; CHECK-LSC: [[ZEXT:%[^ ]+]] = zext <1 x i16> [[CAST]] to <1 x i32>
-; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v1i64.v1i32(
+; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.v1i64.v1i32(
 ; CHECK-LSC-SAME: <1 x i32> [[ZEXT]]
   store <16 x i1> %val, <16 x i1>* %p
   ret void
@@ -72,7 +72,7 @@ define void @replace_store_v32i1(<32 x i1>* %p, <32 x i1> %val) {
 ; CHECK: call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(
 ; CHECK-SAME: <1 x i32> [[CAST]])
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast <32 x i1> %val to <1 x i32>
-; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.i64.v1i32(
+; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i64.v1i32(
 ; CHECK-LSC-SAME: <1 x i32> [[CAST]]
   store <32 x i1> %val, <32 x i1>* %p
   ret void
@@ -88,7 +88,7 @@ define void @replace_store_v17i1(<17 x i1>* %p, <17 x i1> %val) {
 ; CHECK-LSC: [[WRRGN:%[^ ]+]] = call <24 x i1> @llvm.genx.wrpredregion.v24i1.v17i1(<24 x i1> zeroinitializer, <17 x i1> %val, i32 0)
 ; CHECK-LSC: [[CAST:%[^ ]+]] = bitcast <24 x i1> [[WRRGN]] to <3 x i8>
 ; CHECK-LSC: [[ZEXT:%[^ ]+]] = zext <3 x i8> [[CAST]] to <3 x i32>
-; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v3i1.v3i64.v3i32(
+; CHECK-LSC: call void @llvm.vc.internal.lsc.store.ugm.v3i1.v2i8.v3i64.v3i32(
 ; CHECK-LSC-SAME: <3 x i32> [[ZEXT]]
   store <17 x i1> %val, <17 x i1>* %p
   ret void

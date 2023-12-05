@@ -77,28 +77,28 @@ void __cm_cl_scatter(vector_impl<T, width> data, int addrspace,
                      vector_impl<char, width> mask);
 
 // vector BTI atomic
-template <typename T, int width>
+template <typename T, int width, int cachelevels>
 vector_impl<T, width> __cm_cl_vector_atomic_bti(
     vector_impl<char, width> mask, char opcode, char addrsize, char elementsize,
-    char l1cachecontrol, char l3cachecontrol, int bti,
+    vector_impl<char, cachelevels> cachecontrols, int bti,
     vector_impl<int, width> index, short scale, int offset,
     vector_impl<T, width> src1, vector_impl<T, width> src2,
     vector_impl<T, width> passthru);
 
 // vector SLM atomic
-template <typename T, int width>
+template <typename T, int width, int cachelevels>
 vector_impl<T, width> __cm_cl_vector_atomic_slm(
     vector_impl<char, width> mask, char opcode, char addrsize, char elementsize,
-    char l1cachecontrol, char l3cachecontrol, int base,
+    vector_impl<char, cachelevels> cachecontrols, int base,
     vector_impl<int, width> index, short scale, int offset,
     vector_impl<T, width> src1, vector_impl<T, width> src2,
     vector_impl<T, width> passthru);
 
 // vector UGM atomic
-template <typename T, int width>
+template <typename T, int width, int cachelevels>
 vector_impl<T, width> __cm_cl_vector_atomic_ugm(
     vector_impl<char, width> mask, char opcode, char addrsize, char elementsize,
-    char l1cachecontrol, char l3cachecontrol, long base,
+    vector_impl<char, cachelevels> cachecontrols, long base,
     vector_impl<long, width> index, short scale, int offset,
     vector_impl<T, width> src1, vector_impl<T, width> src2,
     vector_impl<T, width> passthru);

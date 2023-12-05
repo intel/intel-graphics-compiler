@@ -3780,7 +3780,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                ElementSize == LSC_DATA_SIZE_32b ||
                ElementSize == LSC_DATA_SIZE_64b);
 
-    constexpr unsigned AddressOperandNum = 7;
+    constexpr unsigned AddressOperandNum = 6;
     auto *AddrV = CI->getArgOperand(AddressOperandNum);
     auto *AddrTy = AddrV->getType();
     if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
@@ -3791,11 +3791,28 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                AddrBits == 32);
   };
 
+  auto GetLscCacheControls = [&](II::ArgInfo AI) {
+    const auto CacheOptsIndex = AI.getArgIdx();
+    IGC_ASSERT(CacheOptsIndex ==
+               vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(CI));
+    auto *CacheOpts = cast<Constant>(CI->getArgOperand(CacheOptsIndex));
+
+    LSC_CACHE_OPTS Res(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT);
+
+    auto *L1Opt = cast<ConstantInt>(CacheOpts->getAggregateElement(0u));
+    Res.l1 = static_cast<LSC_CACHE_OPT>(L1Opt->getZExtValue());
+
+    auto *L3Opt = cast<ConstantInt>(CacheOpts->getAggregateElement(1u));
+    Res.l3 = static_cast<LSC_CACHE_OPT>(L3Opt->getZExtValue());
+
+    return Res;
+  };
+
   auto CreateLscAtomic =
       [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
           VISA_EMask_Ctrl ExecMask, LSC_OP Opcode, LSC_SFID LscSfid,
           LSC_ADDR_TYPE AddressType, LSC_ADDR_SIZE AddressSize,
-          LSC_DATA_SIZE ElementSize, LSC_CACHE_OPT L1Opt, LSC_CACHE_OPT L3Opt,
+          LSC_DATA_SIZE ElementSize, LSC_CACHE_OPTS CacheOpts,
           VISA_RawOpnd *Dest, VISA_VectorOpnd *Base, VISA_RawOpnd *Addr,
           int Scale, int Offset, VISA_RawOpnd *Src1, VISA_RawOpnd *Src2) {
         LLVM_DEBUG(dbgs() << "CreateLscAtomic\n");
@@ -3803,7 +3820,6 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         IGC_ASSERT(ElementSize != LSC_DATA_SIZE_8c32b);
         IGC_ASSERT(Opcode >= LSC_ATOMIC_IINC && Opcode <= LSC_ATOMIC_XOR);
 
-        LSC_CACHE_OPTS CacheOpts = {L1Opt, L3Opt};
         LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
         LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE,
                                    LSC_DATA_ELEMS_1};
@@ -3818,15 +3834,13 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                            VISA_EMask_Ctrl ExecMask, LSC_OP Opcode,
                            LSC_SFID LscSfid, LSC_ADDR_TYPE AddressType,
                            LSC_ADDR_SIZE AddressSize, LSC_DATA_SIZE ElementSize,
-                           int VectorAttr, LSC_CACHE_OPT L1Opt,
-                           LSC_CACHE_OPT L3Opt, VISA_RawOpnd *Dest,
-                           VISA_VectorOpnd *Base, VISA_RawOpnd *Addr, int Scale,
-                           int Offset) {
+                           int VectorAttr, LSC_CACHE_OPTS CacheOpts,
+                           VISA_RawOpnd *Dest, VISA_VectorOpnd *Base,
+                           VISA_RawOpnd *Addr, int Scale, int Offset) {
     LLVM_DEBUG(dbgs() << "CreateLscLoad\n");
     IGC_ASSERT(Opcode == LSC_LOAD || Opcode == LSC_LOAD_QUAD);
     CheckLscOp(LscSfid, AddressType, AddressSize, ElementSize);
 
-    LSC_CACHE_OPTS CacheOpts = {L1Opt, L3Opt};
     LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
     LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE};
 
@@ -3852,14 +3866,13 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
           VISA_EMask_Ctrl ExecMask, LSC_OP Opcode, LSC_SFID LscSfid,
           LSC_ADDR_TYPE AddressType, LSC_ADDR_SIZE AddressSize,
-          LSC_DATA_SIZE ElementSize, int VectorAttr, LSC_CACHE_OPT L1Opt,
-          LSC_CACHE_OPT L3Opt, VISA_VectorOpnd *Base, VISA_RawOpnd *Addr,
-          int Scale, int Offset, VISA_RawOpnd *Data) {
+          LSC_DATA_SIZE ElementSize, int VectorAttr, LSC_CACHE_OPTS CacheOpts,
+          VISA_VectorOpnd *Base, VISA_RawOpnd *Addr, int Scale, int Offset,
+          VISA_RawOpnd *Data) {
         LLVM_DEBUG(dbgs() << "CreateLscStore\n");
         IGC_ASSERT(Opcode == LSC_STORE || Opcode == LSC_STORE_QUAD);
         CheckLscOp(LscSfid, AddressType, AddressSize, ElementSize);
 
-        LSC_CACHE_OPTS CacheOpts = {L1Opt, L3Opt};
         LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
         LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE};
 

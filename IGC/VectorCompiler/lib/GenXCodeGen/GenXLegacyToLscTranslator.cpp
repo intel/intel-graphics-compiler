@@ -294,11 +294,14 @@ Value *GenXLegacyToLscTranslator::translateOWordLoadStore(CallInst &CI) const {
   auto *NewVTy = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), NumDWords);
 
   auto *PredTy = IGCLLVM::FixedVectorType::get(Builder.getInt1Ty(), 1);
+  auto *CacheOpts = ConstantDataVector::getSplat(
+      ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
 
-  SmallVector<Type *, 3> Types;
+  SmallVector<Type *, 4> Types;
   if (!Data)
     Types.push_back(NewVTy);
   Types.push_back(PredTy);
+  Types.push_back(CacheOpts->getType());
   Types.push_back(Addr->getType());
   if (Data)
     Types.push_back(NewVTy);
@@ -309,8 +312,7 @@ Value *GenXLegacyToLscTranslator::translateOWordLoadStore(CallInst &CI) const {
       Builder.getInt8(AddrSize),
       Builder.getInt8(LSC_DATA_SIZE_32b),
       Builder.getInt8(getLSCElementsPerAddress(NumDWords)),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale
@@ -403,21 +405,24 @@ Value *GenXLegacyToLscTranslator::translateGatherScatter(CallInst &CI) const {
   auto *NumBlocks = cast<ConstantInt>(CI.getArgOperand(NumBlocksIndex));
   auto ElementSize = getLSCElementSize(1 << NumBlocks->getZExtValue());
 
-  SmallVector<Type *, 3> Types;
+  auto *CacheOpts = ConstantDataVector::getSplat(
+      ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
+
+  SmallVector<Type *, 4> Types;
   if (IsLoad)
     Types.push_back(DataVTy);
   Types.push_back(PredVTy);
+  Types.push_back(CacheOpts->getType());
   Types.push_back(AddrVTy);
   if (!IsLoad)
     Types.push_back(DataVTy);
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 10> Args = {
       Pred,
       Builder.getInt8(LSC_ADDR_SIZE_32b),
       Builder.getInt8(ElementSize),
       Builder.getInt8(LSC_DATA_ELEMS_1),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale
@@ -479,21 +484,24 @@ GenXLegacyToLscTranslator::translateSVMGatherScatter(CallInst &CI) const {
   auto *VTy = IGCLLVM::FixedVectorType::get(ETy, SimdWidth * ElementsPerLane);
   Data = Builder.CreateBitCast(Data, VTy);
 
-  SmallVector<Type *, 3> Types;
+  auto *CacheOpts = ConstantDataVector::getSplat(
+      ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
+
+  SmallVector<Type *, 4> Types;
   if (IsLoad)
     Types.push_back(VTy);
   Types.push_back(PredVTy);
+  Types.push_back(CacheOpts->getType());
   Types.push_back(AddrVTy);
   if (!IsLoad)
     Types.push_back(VTy);
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 10> Args = {
       Pred,
       Builder.getInt8(LSC_ADDR_SIZE_64b),
       Builder.getInt8(ElementSize),
       Builder.getInt8(getLSCElementsPerAddress(ElementsPerLane)),
-      Builder.getInt8(0),  // L1 cache control (default)
-      Builder.getInt8(0),  // L3 cache control (default)
+      CacheOpts,
       Builder.getInt64(0), // Address base
       Addr,
       Builder.getInt16(1), // Address scale
@@ -606,21 +614,24 @@ GenXLegacyToLscTranslator::translateQuadGatherScatter(CallInst &CI) const {
   if (SourceIndex >= 0)
     Data = Builder.CreateBitCast(CI.getArgOperand(SourceIndex), DataVTy);
 
-  SmallVector<Type *, 3> Types;
+  auto *CacheOpts = ConstantDataVector::getSplat(
+      ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
+
+  SmallVector<Type *, 4> Types;
   if (IsLoad)
     Types.push_back(DataVTy);
   Types.push_back(PredVTy);
+  Types.push_back(CacheOpts->getType());
   Types.push_back(AddrVTy);
   if (!IsLoad)
     Types.push_back(DataVTy);
 
-  SmallVector<Value *, 11> Args = {
+  SmallVector<Value *, 10> Args = {
       Pred,
       Builder.getInt8(AddrSize),
       Builder.getInt8(LSC_DATA_SIZE_32b),
       Builder.getInt8(ChannelMask),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale
@@ -754,13 +765,15 @@ Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
   if (IGCLLVM::getNumArgOperands(&CI) == ArgN + 1)
     Passthru = CI.getArgOperand(ArgN);
 
-  SmallVector<Value *, 13> Args = {
+  auto *CacheOpts = ConstantDataVector::getSplat(
+      ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
+
+  SmallVector<Value *, 12> Args = {
       Pred,
       Builder.getInt8(Opcode),
       Builder.getInt8(AddrSize),
       Builder.getInt8(LSC_DATA_SIZE_32b),
-      Builder.getInt8(0), // L1 cache control (default)
-      Builder.getInt8(0), // L3 cache control (default)
+      CacheOpts,
       Base,
       Addr,
       Builder.getInt16(1), // Address scale
@@ -771,7 +784,8 @@ Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
   };
 
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
-      CI.getModule(), NewIID, {Ty, Pred->getType(), Addr->getType()});
+      CI.getModule(), NewIID,
+      {Ty, Pred->getType(), CacheOpts->getType(), Addr->getType()});
   auto *I = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *I);
   return I;

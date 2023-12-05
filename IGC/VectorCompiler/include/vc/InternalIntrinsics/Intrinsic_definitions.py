@@ -167,18 +167,17 @@ Imported_Intrinsics = {
 ## * arg1: i8 Atomic opcode [MBC]
 ## * arg2: i8 Address size [MBC]
 ## * arg3: i8 Element size [MBC]
-## * arg4: i8 L1 cache controls [MBC]
-## * arg5: i8 L3 cache controls [MBC]
-## * arg6: i64 Address base (for stateless)
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Address base (for stateless)
 ##         i32 BTI (for stateful)
-## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
-## * arg8: i16 Address scale [MBC]
-## * arg9: i32 Address immediate offset [MBC]
-## * arg10: 1st source vector for the atomic operation,
+## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg7: i16 Address scale [MBC]
+## * arg8: i32 Address immediate offset [MBC]
+## * arg9: 1st source vector for the atomic operation,
 ##          must be undef for unary operations
-## * arg11: 2nd source vector for the atomic operation,
+## * arg10: 2nd source vector for the atomic operation,
 ##          must be undef for unary and binary operations
-## * arg12: vector to take values for masked simd lanes from
+## * arg11: vector to take values for masked simd lanes from
 ##
 ## * Return value: the value read from memory, merged with arg12 by predicate
 ##
@@ -188,8 +187,7 @@ Imported_Intrinsics = {
                             "char",   # atomic opcode
                             "char",   # address size
                             "char",   # element size
-                            "char",   # L1 cache control
-                            "char",   # L3 cache control
+                            "anyint", # cache controls
                             "int",    # i32 BTI
                             "anyint", # vNi32 address offsets
                             "short",  # address scale
@@ -205,8 +203,7 @@ Imported_Intrinsics = {
                             "char",   # atomic opcode
                             "char",   # address size
                             "char",   # element size
-                            "char",   # L1 cache control
-                            "char",   # L3 cache control
+                            "anyint", # cache controls
                             "int",    # i32 BSS
                             "anyint", # vNi32 address offsets
                             "short",  # address scale
@@ -222,8 +219,7 @@ Imported_Intrinsics = {
                             "char",   # atomic opcode
                             "char",   # address size
                             "char",   # element size
-                            "char",   # L1 cache control
-                            "char",   # L3 cache control
+                            "anyint", # cache controls
                             "int",    # i32 address base
                             "anyint", # vNi32 address offsets
                             "short",  # address scale
@@ -239,8 +235,7 @@ Imported_Intrinsics = {
                             "char",   # atomic opcode
                             "char",   # address size
                             "char",   # element size
-                            "char",   # L1 cache control
-                            "char",   # L3 cache control
+                            "anyint", # cache controls
                             "long",   # i64 address base
                             "anyint", # vNi32 or vNi64 address offsets
                             "short",  # address scale
@@ -259,14 +254,13 @@ Imported_Intrinsics = {
 ## * arg2: i8 Element size [MBC]
 ## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
 ##         i8 Channel mask (for quad intrinsics) [MBC]
-## * arg4: i8 L1 cache controls [MBC]
-## * arg5: i8 L3 cache controls [MBC]
-## * arg6: i64 Address base (for stateless)
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Address base (for stateless)
 ##         i32 BTI (for stateful)
-## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
-## * arg8: i16 Address scale [MBC]
-## * arg9: i32 Address immediate offset [MBC]
-## * arg10: vector to take values for masked simd lanes from
+## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg7: i16 Address scale [MBC]
+## * arg8: i32 Address immediate offset [MBC]
+## * arg9: vector to take values for masked simd lanes from
 ##
 ## * Return value: the value read from memory, merged with arg10 by predicate
 ##
@@ -276,8 +270,7 @@ Imported_Intrinsics = {
                           "char",   # address size
                           "char",   # element size
                           "char",   # vector size
-                          "char",   # L1 cache control
-                          "char",   # L3 cache control
+                          "anyint", # cache controls
                           "int",    # i32 BTI
                           "anyint", # vNi32 address offsets
                           "short",  # address scale
@@ -291,8 +284,7 @@ Imported_Intrinsics = {
                           "char",   # address size
                           "char",   # element size
                           "char",   # vector size
-                          "char",   # L1 cache control
-                          "char",   # L3 cache control
+                          "anyint", # cache controls
                           "int",    # i32 BSS
                           "anyint", # vNi32 address offsets
                           "short",  # address scale
@@ -306,8 +298,7 @@ Imported_Intrinsics = {
                           "char",   # address size
                           "char",   # element size
                           "char",   # vector size
-                          "char",   # L1 cache control
-                          "char",   # L3 cache control
+                          "anyint", # cache controls
                           "int",    # i32 address base
                           "anyint", # vNi32 address offsets
                           "short",  # address scale
@@ -321,8 +312,7 @@ Imported_Intrinsics = {
                           "char",   # address size
                           "char",   # element size
                           "char",   # vector size
-                          "char",   # L1 cache control
-                          "char",   # L3 cache control
+                          "anyint", # cache controls
                           "long",   # i64 address base
                           "anyint", # vNi32 or vNi64 address offsets
                           "short",  # address scale
@@ -337,8 +327,7 @@ Imported_Intrinsics = {
                                "char",   # address size
                                "char",   # element size
                                "char",   # channel mask
-                               "char",   # L1 cache control
-                               "char",   # L3 cache control
+                               "anyint", # cache controls
                                "int",    # i32 BTI
                                "anyint", # vNi32 address offsets
                                "short",  # address scale
@@ -352,8 +341,7 @@ Imported_Intrinsics = {
                                "char",   # address size
                                "char",   # element size
                                "char",   # channel mask
-                               "char",   # L1 cache control
-                               "char",   # L3 cache control
+                               "anyint", # cache controls
                                "int",    # i32 BSS
                                "anyint", # vNi32 address offsets
                                "short",  # address scale
@@ -367,8 +355,7 @@ Imported_Intrinsics = {
                                "char",   # address size
                                "char",   # element size
                                "char",   # channel mask
-                               "char",   # L1 cache control
-                               "char",   # L3 cache control
+                               "anyint", # cache controls
                                "int",    # i32 address base
                                "anyint", # vNi32 address offsets
                                "short",  # address scale
@@ -382,8 +369,7 @@ Imported_Intrinsics = {
                                "char",   # address size
                                "char",   # element size
                                "char",   # channel mask
-                               "char",   # L1 cache control
-                               "char",   # L3 cache control
+                               "anyint", # cache controls
                                "long",   # i64 address base
                                "anyint", # vNi32 or vNi64 address offsets
                                "short",  # address scale
@@ -400,13 +386,12 @@ Imported_Intrinsics = {
 ## * arg2: i8 Element size [MBC]
 ## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
 ##         i8 Channel mask (for quad intrinsics) [MBC]
-## * arg4: i8 L1 cache controls [MBC]
-## * arg5: i8 L3 cache controls [MBC]
-## * arg6: i64 Address base (for stateless)
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Address base (for stateless)
 ##         i32 BTI (for stateful)
-## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
-## * arg8: i16 Address scale [MBC]
-## * arg9: i32 Address immediate offset [MBC]
+## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg7: i16 Address scale [MBC]
+## * arg8: i32 Address immediate offset [MBC]
 ##
 ## * Return value: void
 ##
@@ -416,8 +401,7 @@ Imported_Intrinsics = {
                               "char",   # address size
                               "char",   # element size
                               "char",   # vector size
-                              "char",   # L1 cache control
-                              "char",   # L3 cache control
+                              "anyint", # cache controls
                               "int",    # i32 BTI
                               "anyint", # vNi32 address offsets
                               "short",  # address scale
@@ -430,8 +414,7 @@ Imported_Intrinsics = {
                               "char",   # address size
                               "char",   # element size
                               "char",   # vector size
-                              "char",   # L1 cache control
-                              "char",   # L3 cache control
+                              "anyint", # cache controls
                               "int",    # i32 BSS
                               "anyint", # vNi32 address offsets
                               "short",  # address scale
@@ -444,8 +427,7 @@ Imported_Intrinsics = {
                               "char",   # address size
                               "char",   # element size
                               "char",   # vector size
-                              "char",   # L1 cache control
-                              "char",   # L3 cache control
+                              "anyint", # cache controls
                               "long",   # i64 address base
                               "anyint", # vNi32 or vNi64 address offsets
                               "short",  # address scale
@@ -459,8 +441,7 @@ Imported_Intrinsics = {
                                    "char",   # address size
                                    "char",   # element size
                                    "char",   # channel mask
-                                   "char",   # L1 cache control
-                                   "char",   # L3 cache control
+                                   "anyint", # cache controls
                                    "int",    # i32 BTI
                                    "anyint", # vNi32 address offsets
                                    "short",  # address scale
@@ -473,8 +454,7 @@ Imported_Intrinsics = {
                                    "char",   # address size
                                    "char",   # element size
                                    "char",   # channel mask
-                                   "char",   # L1 cache control
-                                   "char",   # L3 cache control
+                                   "anyint", # cache controls
                                    "int",    # i32 BSS
                                    "anyint", # vNi32 address offsets
                                    "short",  # address scale
@@ -487,8 +467,7 @@ Imported_Intrinsics = {
                                    "char",   # address size
                                    "char",   # element size
                                    "char",   # channel mask
-                                   "char",   # L1 cache control
-                                   "char",   # L3 cache control
+                                   "anyint", # cache controls
                                    "long",   # i64 address base
                                    "anyint", # vNi32 or vNi64 address offsets
                                    "short",  # address scale
@@ -504,14 +483,13 @@ Imported_Intrinsics = {
 ## * arg2: i8 Element size [MBC]
 ## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
 ##         i8 Channel mask (for quad intrinsics) [MBC]
-## * arg4: i8 L1 cache controls [MBC]
-## * arg5: i8 L3 cache controls [MBC]
-## * arg6: i64 Address base (for stateless)
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Address base (for stateless)
 ##         i32 BTI (for stateful)
-## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
-## * arg8: i16 Address scale [MBC]
-## * arg9: i32 Address immediate offset [MBC]
-## * arg10: Data to write (overloaded)
+## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg7: i16 Address scale [MBC]
+## * arg8: i32 Address immediate offset [MBC]
+## * arg9: Data to write (overloaded)
 ##
 ## * Return value: void
 ##
@@ -521,8 +499,7 @@ Imported_Intrinsics = {
                            "char",   # address size
                            "char",   # element size
                            "char",   # vector size
-                           "char",   # L1 cache control
-                           "char",   # L3 cache control
+                           "anyint", # cache controls
                            "int",    # i32 BTI
                            "anyint", # vNi32 address offsets
                            "short",  # address scale
@@ -536,8 +513,7 @@ Imported_Intrinsics = {
                            "char",   # address size
                            "char",   # element size
                            "char",   # vector size
-                           "char",   # L1 cache control
-                           "char",   # L3 cache control
+                           "anyint", # cache controls
                            "int",    # i32 BSS
                            "anyint", # vNi32 address offsets
                            "short",  # address scale
@@ -551,8 +527,7 @@ Imported_Intrinsics = {
                            "char",   # address size
                            "char",   # element size
                            "char",   # vector size
-                           "char",   # L1 cache control
-                           "char",   # L3 cache control
+                           "anyint", # cache controls
                            "int",    # i32 address base
                            "anyint", # vNi32 address offsets
                            "short",  # address scale
@@ -566,8 +541,7 @@ Imported_Intrinsics = {
                            "char",   # address size
                            "char",   # element size
                            "char",   # vector size
-                           "char",   # L1 cache control
-                           "char",   # L3 cache control
+                           "anyint", # cache controls
                            "long",   # i64 address base
                            "anyint", # vNi32 or vNi64 address offsets
                            "short",  # address scale
@@ -582,8 +556,7 @@ Imported_Intrinsics = {
                                 "char",   # address size
                                 "char",   # element size
                                 "char",   # channel mask
-                                "char",   # L1 cache control
-                                "char",   # L3 cache control
+                                "anyint", # cache controls
                                 "int",    # i32 BTI
                                 "anyint", # vNi32 address offsets
                                 "short",  # address scale
@@ -597,8 +570,7 @@ Imported_Intrinsics = {
                                 "char",   # address size
                                 "char",   # element size
                                 "char",   # channel mask
-                                "char",   # L1 cache control
-                                "char",   # L3 cache control
+                                "anyint", # cache controls
                                 "int",    # i32 BSS
                                 "anyint", # vNi32 address offsets
                                 "short",  # address scale
@@ -612,8 +584,7 @@ Imported_Intrinsics = {
                                 "char",   # address size
                                 "char",   # element size
                                 "char",   # channel mask
-                                "char",   # L1 cache control
-                                "char",   # L3 cache control
+                                "anyint", # cache controls
                                 "int",    # i32 address base
                                 "anyint", # vNi32 address offsets
                                 "short",  # address scale
@@ -627,8 +598,7 @@ Imported_Intrinsics = {
                                 "char",   # address size
                                 "char",   # element size
                                 "char",   # channel mask
-                                "char",   # L1 cache control
-                                "char",   # L3 cache control
+                                "anyint", # cache controls
                                 "long",   # i64 address base
                                 "anyint", # vNi32 or vNi64 address offsets
                                 "short",  # address scale

@@ -65,15 +65,14 @@
       "AddrType": ["LITERAL", "LSC_ADDR_TYPE_BTI"],
       "AddrSize": ["BYTE", 3],
       "ElementSize": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Src1": ["RAW", "RAW_NULLALLOWED", 11],
-      "Src2": ["RAW", "RAW_NULLALLOWED", 12],
-      "twoaddr": ["TWOADDR", 13]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Src1": ["RAW", "RAW_NULLALLOWED", 10],
+      "Src2": ["RAW", "RAW_NULLALLOWED", 11],
+      "twoaddr": ["TWOADDR", 12]
     },
     "vc::InternalIntrinsic::lsc_atomic_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -86,15 +85,14 @@
       "AddrType": ["LITERAL", "LSC_ADDR_TYPE_BSS"],
       "AddrSize": ["BYTE", 3],
       "ElementSize": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Src1": ["RAW", "RAW_NULLALLOWED", 11],
-      "Src2": ["RAW", "RAW_NULLALLOWED", 12],
-      "twoaddr": ["TWOADDR", 13]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Src1": ["RAW", "RAW_NULLALLOWED", 10],
+      "Src2": ["RAW", "RAW_NULLALLOWED", 11],
+      "twoaddr": ["TWOADDR", 12]
     },
     "vc::InternalIntrinsic::lsc_atomic_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -107,15 +105,14 @@
       "AddrType": ["LITERAL", "LSC_ADDR_TYPE_FLAT"],
       "AddrSize": ["BYTE", 3],
       "ElementSize": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Src1": ["RAW", "RAW_NULLALLOWED", 11],
-      "Src2": ["RAW", "RAW_NULLALLOWED", 12],
-      "twoaddr": ["TWOADDR", 13]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Src1": ["RAW", "RAW_NULLALLOWED", 10],
+      "Src2": ["RAW", "RAW_NULLALLOWED", 11],
+      "twoaddr": ["TWOADDR", 12]
     },
     "vc::InternalIntrinsic::lsc_atomic_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -128,15 +125,14 @@
       "AddrType": ["LITERAL", "LSC_ADDR_TYPE_FLAT"],
       "AddrSize": ["BYTE", 3],
       "ElementSize": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Src1": ["RAW", "RAW_NULLALLOWED", 11],
-      "Src2": ["RAW", "RAW_NULLALLOWED", 12],
-      "twoaddr": ["TWOADDR", 13]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Src1": ["RAW", "RAW_NULLALLOWED", 10],
+      "Src2": ["RAW", "RAW_NULLALLOWED", 11],
+      "twoaddr": ["TWOADDR", 12]
     },
     "vc::InternalIntrinsic::lsc_load_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -150,13 +146,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -170,13 +165,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -190,13 +184,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -210,13 +203,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_quad_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -230,13 +222,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_quad_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -250,13 +241,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_quad_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -270,13 +260,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_load_quad_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -290,13 +279,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "twoaddr": ["TWOADDR", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "twoaddr": ["TWOADDR", 10]
     },
     "vc::InternalIntrinsic::lsc_prefetch_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -310,12 +298,11 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9]
     },
     "vc::InternalIntrinsic::lsc_prefetch_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -329,12 +316,11 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9]
     },
     "vc::InternalIntrinsic::lsc_prefetch_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -348,12 +334,11 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9]
     },
     "vc::InternalIntrinsic::lsc_prefetch_quad_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -367,12 +352,11 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9]
     },
     "vc::InternalIntrinsic::lsc_prefetch_quad_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -386,12 +370,11 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9]
     },
     "vc::InternalIntrinsic::lsc_prefetch_quad_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -405,12 +388,11 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9]
     },
     "vc::InternalIntrinsic::lsc_store_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -423,13 +405,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -442,13 +423,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -461,13 +441,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -480,13 +459,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_quad_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -499,13 +477,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_quad_bss": {
       "opc": "ISA_LSC_UNTYPED",
@@ -518,13 +495,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_quad_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -537,13 +513,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     "vc::InternalIntrinsic::lsc_store_quad_ugm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -556,13 +531,12 @@
       "AddrSize": ["BYTE", 2],
       "ElementSize": ["BYTE", 3],
       "VectorAttr": ["BYTE", 4],
-      "L1Opt": ["BYTE", 5],
-      "L3Opt": ["BYTE", 6],
-      "Base": ["GENERAL", 7],
-      "Indices": ["URAW", 8],
-      "Scale": ["SHORT", 9],
-      "Offset": ["INT", 10],
-      "Data": ["RAW", 11]
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "Indices": ["URAW", 7],
+      "Scale": ["SHORT", 8],
+      "Offset": ["INT", 9],
+      "Data": ["RAW", 10]
     },
     // vc-intrinsics
     "genx_fptosi_sat": {
@@ -3742,8 +3716,7 @@
        "LSC_ADDR_TYPE(AddrType)",
        "LSC_ADDR_SIZE(AddrSize)",
        "LSC_DATA_SIZE(ElementSize)",
-       "LSC_CACHE_OPT(L1Opt)",
-       "LSC_CACHE_OPT(L3Opt)",
+       "CacheOpts",
        "Dest",
        "Base",
        "Indices",
@@ -3764,8 +3737,7 @@
        "LSC_ADDR_SIZE(AddrSize)",
        "LSC_DATA_SIZE(ElementSize)",
        "VectorAttr",
-       "LSC_CACHE_OPT(L1Opt)",
-       "LSC_CACHE_OPT(L3Opt)",
+       "CacheOpts",
        "Dest",
        "Base",
        "Indices",
@@ -3784,8 +3756,7 @@
        "LSC_ADDR_SIZE(AddrSize)",
        "LSC_DATA_SIZE(ElementSize)",
        "VectorAttr",
-       "LSC_CACHE_OPT(L1Opt)",
-       "LSC_CACHE_OPT(L3Opt)",
+       "CacheOpts",
        "Base",
        "Indices",
        "Scale",
@@ -5409,6 +5380,7 @@
     "ISBARRIER":    "HasBarrier = true",
     "BITWIDTH":     "GetBitWidth(II::ArgInfo({args}))",
     "PREDEF_SURFACE": "CreatePredefSurfaceOperand(II::ArgInfo({args}))",
+    "CACHEOPTS":    "GetLscCacheControls(II::ArgInfo({args}))",
     "SKIP":         null
   }
 }

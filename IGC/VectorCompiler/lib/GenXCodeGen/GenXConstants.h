@@ -118,7 +118,8 @@ inline bool opMustBeConstant(Instruction *I, unsigned OpNum) {
   // Mask of shufflevector should always be constant.
   if (isa<ShuffleVectorInst>(I))
     return OpNum == 2;
-  return false;
+  // Cache controls operand must be constant
+  return vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(I) == OpNum;
 }
 
 // Check whether types of two contsants are bitcastable and
