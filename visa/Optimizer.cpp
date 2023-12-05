@@ -2174,7 +2174,10 @@ static bool propagateType(IR_Builder &Builder, G4_BB *BB, G4_INST *Mov,
   if (PT == Type_UNDEF)
     return false;
   // Create a new destination of MOV of the propagation type.
-  unsigned NumElt = Mov->getExecSize();
+  // Consider both execution size and the dst horizontal stride to calculate
+  // the number of elements needed, so that we have the enough var size when
+  // creating the temp var.
+  unsigned NumElt = Mov->getExecSize() * Dst->getHorzStride();
   auto NewDcl = Builder.createTempVar(NumElt, PT, Any);
   auto NewDst = Builder.createDstRegRegion(NewDcl, Dst->getHorzStride());
   Mov->setDest(NewDst);
