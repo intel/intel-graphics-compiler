@@ -845,6 +845,13 @@ bool needNopAfterCFInstWA() const {
   return false;
 }
 
+bool scheduleStoreAway() const {
+  const TARGET_PLATFORM p = getPlatform();
+  if (p >= Xe_PVCXT)
+    return getOption(vISA_schedWithSendSrcReadCycle);
+  return false;
+}
+
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
   return getPlatform() < Xe2;
 }
