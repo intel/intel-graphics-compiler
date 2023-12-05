@@ -172,32 +172,20 @@ SpillManagerGRF::SpillManagerGRF(
 
 SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
                                  const LivenessAnalysis *lvInfo,
-                                 LSLR_LIST *spilledLSLRs, bool failSafeSpill,
-                                 unsigned spillRegSize,
-                                 unsigned indrSpillRegSize,
+                                 LSLR_LIST *spilledLSLRs,
                                  bool enableSpillSpaceCompression,
                                  bool useScratchMsg)
     : gra(g), builder_(g.kernel.fg.builder), latestImplicitVarIdCount_(0),
       lvInfo_(lvInfo), varIdCount_(lvInfo->getNumSelectedVar()),
       spilledLSLRs_(spilledLSLRs), nextSpillOffset_(spillAreaOffset),
       doSpillSpaceCompression(enableSpillSpaceCompression),
-      failSafeSpill_(failSafeSpill), useScratchMsg_(useScratchMsg),
-      refs(g.kernel),
+      failSafeSpill_(false), useScratchMsg_(useScratchMsg), refs(g.kernel),
       context(g), lrInfo_(nullptr) {
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   curInst = nullptr;
   globalScratchOffset =
       gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
-  spillRegStart_ = g.kernel.getNumRegTotal();
-  indrSpillRegStart_ = spillRegStart_;
-  spillRegOffset_ = spillRegStart_;
-  if (failSafeSpill) {
-    unsigned int stackCallRegSize =
-        builder_->usesStack() ? g.kernel.stackCall.numReservedABIGRF() : 0;
-    indrSpillRegStart_ -= (stackCallRegSize + indrSpillRegSize);
-    spillRegStart_ = indrSpillRegStart_ - spillRegSize;
-  }
 
   if (builder_->hasScratchSurface()) {
     builder_->initScratchSurfaceOffset();

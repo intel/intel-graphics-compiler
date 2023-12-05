@@ -9322,7 +9322,8 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
 
 
 
-std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg() {
+std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring) {
+  coloring.markFailSafeIter(true);
   unsigned spillRegSize = 0;
   unsigned indrSpillRegSize = 0;
 
@@ -9336,6 +9337,7 @@ std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg() {
     vISA_ASSERT(spillRegSize + indrSpillRegSize <
                     kernel.stackCall.getNumCalleeSaveRegs(),
                 "Invalid reserveSpillSize in fail-safe RA!");
+  coloring.setReserveSpillGRFCount(spillRegSize + indrSpillRegSize);
   return std::make_pair(spillRegSize, indrSpillRegSize);
 }
 
@@ -10120,9 +10122,7 @@ int GlobalRA::coloringRegAlloc() {
     unsigned indrSpillRegSize = 0;
 
     if (reserveSpillReg) {
-      std::tie(spillRegSize, indrSpillRegSize) = reserveGRFSpillReg();
-      coloring.markFailSafeIter(true);
-      coloring.setReserveSpillGRFCount(spillRegSize + indrSpillRegSize);
+      std::tie(spillRegSize, indrSpillRegSize) = reserveGRFSpillReg(coloring);
     }
     generateForbiddenTemplates(spillRegSize + indrSpillRegSize);
     bool isColoringGood =

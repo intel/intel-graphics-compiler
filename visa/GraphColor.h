@@ -1704,7 +1704,7 @@ public:
   bool hybridRA(LocalRA &lra);
   void assignRegForAliasDcl();
   void removeSplitDecl();
-  std::pair<unsigned, unsigned> reserveGRFSpillReg();
+  std::pair<unsigned, unsigned> reserveGRFSpillReg(GraphColor &coloring);
   void generateForbiddenTemplates(unsigned reserveSpillSize);
   void createVariablesForHybridRAWithSpill();
 
@@ -1822,10 +1822,6 @@ public:
   unsigned computeSpillSize(std::list<LSLiveRange *> &spilledLRs);
   bool spillSpaceCompression(int spillSize,
                              const int globalScratchOffset);
-  // return reserveSpillReg
-  bool setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
-                             unsigned int maxRAIterations,
-                             unsigned int failSafeRAIteration);
 
 public:
   // Store new variables created when inserting scalar imm
@@ -1854,6 +1850,10 @@ private:
   void localSplit(bool fastCompile, VarSplit &splitPass);
   // return <doBCReduction, highInternalConflict>
   std::pair<bool, bool> bankConflict();
+  // return reserveSpillReg
+  bool setupFailSafeIfNeeded(bool fastCompile, bool hasStackCall,
+                             unsigned int maxRAIterations,
+                             unsigned int failSafeRAIteration);
   void undefinedUses(bool rematDone, LivenessAnalysis &liveAnalysis);
   void writeVerboseStatsNumVars(LivenessAnalysis &liveAnalysis,
                                 FINALIZER_INFO *jitInfo);

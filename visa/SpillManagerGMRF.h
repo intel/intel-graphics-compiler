@@ -250,9 +250,7 @@ public:
   // Constructor for linear scan RA.
   SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
                   const LivenessAnalysis *lvInfo, LSLR_LIST *spilledLSLRs,
-                  bool useSpillReg, unsigned spillRegSize,
-                  unsigned indrSpillRegSize, bool enableSpillSpaceCompression,
-                  bool useScratchMsg);
+                  bool enableSpillSpaceCompression, bool useScratchMsg);
 
   ~SpillManagerGRF() {}
 
