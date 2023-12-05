@@ -64,37 +64,59 @@ struct MessageDecoderOther : MessageDecoderLegacy {
 
 void MessageDecoderOther::tryDecodeGTWY() {
 
+  struct GatewayElement {
+    uint32_t encoding;
+    SendOp op;
+    const char *type;
+    const char *preXeDoc, *pstXeDoc, *pstXe2Doc;
+    constexpr GatewayElement(uint32_t enc, SendOp snd, const char *ty,
+                             const char *preXe, const char *pstXe,
+                             const char *pstXe2)
+        : encoding(enc), op(snd), type(ty), preXeDoc(preXe), pstXeDoc(pstXe),
+          pstXe2Doc(pstXe2) {}
+  };
   //
-  using GatewayElement =
-      std::tuple<uint32_t, SendOp, const char *, const char *, const char *>;
-  static constexpr GatewayElement GATEWAY_MESSAGES[] = {
-    // before this TS had its own SFID
-    {0x0, SendOp::EOT, nullptr, "54044", "57488"},       // MSD_TS_EOT
-    {0x1, SendOp::SIGNAL, "33508", "47927", "57492"},    // MSD_SIGNAL_EVENT
-    {0x2, SendOp::MONITOR, "33512", "47925", "57490"},   // MSD_MONITOR_EVENT
-    {0x3, SendOp::UNMONITOR, "33513", "47926", "57491"}, // MSD_MONITOR_NO_EVENT
-    // no 0x5
-    {0x4, SendOp::BARRIER, "33524", "47924", "57489"}, // MSD_BARRIER
-    {0x6, SendOp::WAIT, "33514", "47928", "57493"},    // MSD_WAIT_FOR_EVENT
+  static constexpr GatewayElement GATEWAY_MESSAGES[]{
+      {0x0, SendOp::EOT, "MSD_EOT", nullptr, "54044", "57488"},
+      {0x1, SendOp::SIGNAL, "MSD_SIGNAL_EVENT", "33508", "47927", "57492"},
+      {0x2, SendOp::MONITOR, "MSD_MONITOR_EVENT", "33512", "47925", "57490"},
+      {0x3, SendOp::UNMONITOR, "MSD_MONITOR_NO_EVENT", "33513", "47926",
+       "57491"},
+      // no 0x5
+      {0x4, SendOp::SIGNAL_BARRIER, "MSD_BARRIER", "33524", "47924", "57489"},
+      {0x6, SendOp::WAIT, "MSD_WAIT_FOR_EVENT", "33514", "47928", "57493"},
+      {0x8, SendOp::SAVE_BARRIER, "MSD_SAVE_BARRIER", nullptr, nullptr,
+       "67045"},
+      {0x9, SendOp::RESTORE_BARRIER, "MSD_RESTORE_BARRIER", nullptr, nullptr,
+       "67049"},
+      {0xA, SendOp::EOTR, "MSD_END_OF_RESTORE", nullptr, nullptr, "67091"},
+      {0xB, SendOp::RESTORE_STACK, "MSD_RESTORE_BTD_STACK", nullptr, nullptr,
+       "68748"},
+      {0xC, SendOp::SIGNAL_SYSTEM_ROUTINE_BARRIER, "MSD_SIP_BARRIER", nullptr,
+       nullptr, "70574"},
   };
 
   const GatewayElement *ge = nullptr;
-  uint32_t opBits = getDescBits(0, 3); // [2:0]
+  // Bit [3] is defined on later platforms to extend gateway encodings
+  // on prior platforms it's always MBZ at least
+  // (or stuff that didn't make it to production)
+  // So we can blindly pretend [3:0] is the opcode for all platforms.
+  uint32_t opBits = getDescBits(0, 4); // [3:0]
   for (const auto &g : GATEWAY_MESSAGES) {
-    if (std::get<0>(g) == opBits) {
+    if (g.encoding == opBits) {
       ge = &g;
       break;
     }
   }
   if (ge == nullptr) {
-    error(0, 2, "unsupported GTWY op");
+    error(0, 4, "unsupported GTWY op");
     return;
   }
   std::stringstream sym, desc;
-  const SendOpDefinition &sod = lookupSendOp(std::get<1>(*ge));
+  const SendOpDefinition &sod = lookupSendOp(ge->op);
   if (!sod.isValid()) {
     // should be in the table
-    error(0, 2, "INTERNAL ERROR: cannot find GTWY op");
+    error(0, 4, "INTERNAL ERROR: cannot find GTWY op");
     return;
   }
 
@@ -103,43 +125,75 @@ void MessageDecoderOther::tryDecodeGTWY() {
   int expectMlen = 0, expectRlen = 0;
   if (sod.op == SendOp::EOT) {
     if (platform() < Platform::XE_HPG) {
-      error(0, 3, "Gateway EOT not available on this platform");
+      error(0, 4, "Gateway EOT not available on this platform");
     }
     expectMlen = 1;
   }
+  const char *link = platform() >= Platform::XE2  ? ge->pstXe2Doc
+                     : platform() >= Platform::XE ? ge->pstXeDoc
+                                                  : ge->preXeDoc;
+  addDoc(DocRef::DESC, ge->type, link);
+
   switch (sod.op) {
+  case SendOp::EOT:
+    addDoc(DocRef::SRC0, "GW_EOT_PAYLOAD",
+           platform() >= Platform::XE2 ? "70051" : nullptr);
+    expectMlen = 1;
+    break;
   case SendOp::SIGNAL:
   case SendOp::MONITOR:   // C.f. MDP_EVENT
   case SendOp::UNMONITOR: // C.f. MDP_NO_EVENT
-  case SendOp::BARRIER:   // C.f. MDP_Barrier
   case SendOp::WAIT:      // C.f. MDP_Timeout
     expectMlen = 1;
     break;
-  default:
-    break;
-  }
-  switch (sod.op) {
-  case SendOp::BARRIER:
+  case SendOp::SIGNAL_BARRIER: // C.f. MDP_Barrier
     // XeHP+ no register is returned
     expectRlen = platform() >= Platform::XE_HP ? 0 : 1;
-    if (platform() >= Platform::XE) {
+    if (platform() >= Platform::XE2) {
       decodeDescBitField("ActiveThreadsOnly", 11,
                          "only active threads participate");
     }
+    addDoc(DocRef::SRC0, "MDP_Barrier",
+           platform() >= Platform::XE2      ? "57499"
+           : platform() >= Platform::XE_HPG ? "54006"
+           : platform() >= Platform::XE     ? "47931"
+                                            : "33523");
+    break;
+  case SendOp::SAVE_BARRIER:
+    addDoc(DocRef::DST, "MDP_SAVE_BARRIER", "70584");
+    addDoc(DocRef::SRC0, "SAVE_RESTORE_BAR_PAYLOAD", "67043");
+    expectRlen = 1;
+    expectMlen = 1;
+    break;
+  case SendOp::RESTORE_BARRIER:
+    addDoc(DocRef::SRC0, "SAVE_RESTORE_BAR_PAYLOAD", "67043");
+    expectMlen = 1;
+    break;
+  case SendOp::RESTORE_STACK:
+    addDoc(DocRef::SRC0, "STK_RSTR_PAYLOAD", "68749");
+    expectMlen = 1;
+    break;
+  case SendOp::EOTR:
+    addDoc(DocRef::SRC0, "EOR_PAYLOAD", "67738");
+    expectMlen = 1;
+    break;
+  case SendOp::SIGNAL_SYSTEM_ROUTINE_BARRIER:
+    addDoc(DocRef::DST, "MDP_SIP_BARRIER_RESPONSE", "70576");
+    addDoc(DocRef::SRC0, "GW_SIP_BARRIER_PAYLOAD", "71500");
+    expectRlen = 1;
+    expectMlen = 1;
     break;
   default:
     break;
   }
 
-  addField("GatewayOpcode", 0, 3, opBits, desc.str());
+
+  addField("GatewayOpcode", 0, 4, opBits, desc.str());
   setSpecialOpX(sym.str(), desc.str(), sod.op, AddrType::INVALID, SendDesc(0),
                 expectMlen, // mlen
                 expectRlen, // rlen
                 MessageInfo::Attr::NONE);
   decodeMDC_HF(); // all gateway messages forbid a header
-  const char *doc =
-      chooseDoc(std::get<2>(*ge), std::get<3>(*ge), std::get<4>(*ge));
-  setDoc(doc);
 }
 
 void MessageDecoderOther::tryDecodeRC() {
@@ -544,6 +598,15 @@ void MessageDecoderOther::tryDecodeRTA() {
     if (platform() >= Platform::XE2 && simd != 16)
       error(8, 1, "message must be SIMD16 on this platform");
 
+    addDoc(DocRef::DESC, "TRACERAY_MSD",
+           platform() >= Platform::XE2 ? "57495" : "47929");
+    if (instExecSize == ExecSize::SIMD8 && platform() <= Platform::XE_HPG) {
+      addDoc(DocRef::SRC0, "TRACE_RAY_SIMD8_PAYLOAD", "47938");
+    } else if (instExecSize == ExecSize::SIMD16) {
+      addDoc(DocRef::SRC0, "TRACE_RAY_SIMD16_PAYLOAD",
+        platform() >= Platform::XE2 ? "57508" : "47937");
+    }
+
     // int mlen = getDescBits(25, 4); // [28:25]
     sym << "trace_ray" << simd;
     descs << "simd" << simd << " trace ray";
@@ -553,7 +616,7 @@ void MessageDecoderOther::tryDecodeRTA() {
     mi.description = descs.str();
     mi.op = SendOp::TRACE_RAY;
     // payload is 2 or 3 registers (SIMD8 vs SIMD16)
-    // https://gfxspecs.intel.com/Predator/Home/Index/47937
+    // #47937
     //   - "addr" the first with a uniform pointer to global data
     //   - "data" the second being ray payloads[7:0] (each 32b)
     //   - "data" if SIMD16, rays[15:6]
@@ -566,13 +629,11 @@ void MessageDecoderOther::tryDecodeRTA() {
     mi.addrSizeBits = 64;
     if (platform() >= Platform::XE_HPC) {
       // XeHPC has a bit set at Msg[128] as well
-      // e.g. https://gfxspecs.intel.com/Predator/Home/Index/47937
       mi.addrSizeBits = 129;
     }
     mi.addrType = AddrType::FLAT;
     mi.surfaceId = 0;
     mi.attributeSet = MessageInfo::Attr::NONE;
-    setDoc(chooseDoc(nullptr, "47929", "57495"));
     decodeMDC_HF();
   } else {
     error(14, 4, "unsupported RTA op");
@@ -580,27 +641,46 @@ void MessageDecoderOther::tryDecodeRTA() {
 }
 
 void MessageDecoderOther::tryDecodeBTD() {
-  const uint32_t BTD_SPAWN_MSD = 0x01;
+  enum {
+    BTD_SPAWN = 0x1,
+    BTD_SPAWN_OVERDISPATCH = 0x2,
+  };
+
+  int simd = decodeMDC_SM2(8);
+  if (platform() >= Platform::XE_HPC && simd != 16)
+    error(8, 1, "message must be SIMD16 on this platform");
+  if (instExecSize == ExecSize::INVALID) {
+    instExecSize = ExecSize(simd);
+  }
 
   std::stringstream sym, descs;
   uint32_t opBits = getDescBits(14, 4); // [17:14]
-  if (opBits == BTD_SPAWN_MSD) {
-    int simd = decodeMDC_SM2(8);
-    if (platform() >= Platform::XE2 && simd != 16)
-      error(8, 1, "message must be SIMD16 on this platform");
+  addDoc(DocRef::DESC, "BTD_SPAWN_MSD", chooseDoc(nullptr, "47923", "57487"));
+  if (instExecSize == ExecSize::SIMD8 && platform() <= Platform::XE_HPG) {
+    addDoc(DocRef::SRC0, "SIMD8_BTD_SPAWN_PAYLOAD", "47936");
+  } else if (instExecSize == ExecSize::SIMD16) {
+    addDoc(DocRef::SRC0, "BTD_SIMD16_SPAWN_PAYLOAD",
+      platform() >= Platform::XE2 ? "57501" : "47930");
+  } else {
+    error(14, 4, "invalid execution size");
+  }
 
+  if (opBits == BTD_SPAWN) {
     sym << "spawn" << simd;
     descs << "bindless simd" << simd << " spawn thread";
-
-    MessageInfo &mi = result.info;
-    mi.op = SendOp::SPAWN;
-    mi.description = descs.str();
-    mi.symbol = sym.str();
-    mi.execWidth = simd;
-    setDoc(chooseDoc(nullptr, "47923", "57487"));
+  } else if (opBits == BTD_SPAWN_OVERDISPATCH) {
+    sym << "spawn_overdispatch" << simd;
+    descs << "bindless simd" << simd << " spawn thread overdispatched";
   } else {
-    error(14, 4, "unsupported BTD op");
+    error(14, 4, "invalid BTD op");
   }
+
+  MessageInfo &mi = result.info;
+  mi.op = SendOp::SPAWN;
+  mi.description = descs.str();
+  mi.symbol = sym.str();
+  mi.execWidth = simd;
+
   addField("MessageType", 14, 4, opBits, descs.str());
 }
 

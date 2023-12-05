@@ -565,7 +565,8 @@ bool decodeSendDescriptor(const Opts &opts) {
     // anything better right now.
     execSize = p >= iga::Platform::XE_HPC ? iga::ExecSize::SIMD32
                                           : iga::ExecSize::SIMD16;
-    if (sfid == iga::SFID::TGM) {
+    if (sfid == iga::SFID::TGM || sfid == iga::SFID::BTD ||
+        sfid == iga::SFID::RTA) {
       // typed LSC messages default to half the SIMD size
       execSize = p >= iga::Platform::XE_HPC ? iga::ExecSize::SIMD16
                                             : iga::ExecSize::SIMD8;

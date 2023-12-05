@@ -175,7 +175,7 @@ static void deducePayloadSizes(PayloadLengths &lens, Platform p, SFID sfid,
     break;
   ///////////////////////////////////////////////////////////////////////
   // barrier is 1, 1, 0 until XeHP
-  case SendOp::BARRIER:
+  case SendOp::SIGNAL_BARRIER:
     message(p < Platform::XE_HP ? 1 : 0, 1, 0);
     break;
   // other control messages that are 0, 1, 0

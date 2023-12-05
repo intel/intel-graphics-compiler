@@ -136,14 +136,17 @@ DEFINE_OTHER_OP(READ_STATE, "read_state", "read surface state", ATTRS_NONE)
 //
 DEFINE_OTHER_OP(FENCE, "fence", "fence", ATTRS_NONE)
 //
-DEFINE_OTHER_OP(BARRIER, "barrier", "signal barrier", ATTRS_NONE)
-DEFINE_OTHER_OP(NAMED_BARRIER, "named_barrier", "signal named barrier",
+DEFINE_OTHER_OP(SIGNAL_BARRIER, "signal_barrier", "signal barrier", ATTRS_NONE)
+DEFINE_OTHER_OP(SIGNAL_NAMED_BARRIER, "signal_named_barrier", "signal named barrier",
                 ATTRS_NONE)
+DEFINE_OTHER_OP(SIGNAL_SYSTEM_ROUTINE_BARRIER, "system_routine_barrier",
+                "system routine barrier", ATTRS_NONE)
 DEFINE_OTHER_OP(MONITOR, "monitor", "monitor event", ATTRS_NONE)
 DEFINE_OTHER_OP(UNMONITOR, "unmonitor", "unmonitor event", ATTRS_NONE)
 DEFINE_OTHER_OP(WAIT, "wait", "wait for event", ATTRS_NONE)
 DEFINE_OTHER_OP(SIGNAL, "signal", "signal event", ATTRS_NONE)
 DEFINE_OTHER_OP(EOT, "eot", "end of thread", ATTRS_NONE)
+DEFINE_OTHER_OP(EOTR, "eotr", "end of thread replay", ATTRS_NONE)
 //
 DEFINE_OTHER_OP(CCS_PC, "ccs_pc", "ccs page clear", ATTRS_NONE)
 DEFINE_OTHER_OP(CCS_PU, "ccs_pu", "ccs page uncompress", ATTRS_NONE)
@@ -235,6 +238,11 @@ DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_WRITE, "render_write", "render write", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_DWRITE, "render_dual_write", "render dual write", ATTRS_NONE)
 
+DEFINE_OTHER_OP(SAVE_BARRIER, "save_barrier", "save barrier", ATTRS_NONE)
+DEFINE_OTHER_OP(RESTORE_BARRIER, "restore_barrier", "restore barrier",
+                ATTRS_NONE)
+DEFINE_OTHER_OP(RESTORE_STACK, "restore_stack", "restore stack", ATTRS_NONE)
+//
 //
 
 #undef ATTRS_NONE
