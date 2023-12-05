@@ -44,8 +44,13 @@ unsigned StaticCycleProfiling::BBStaticCycleProfiling(G4_BB *bb) {
       sbid = inst->getToken();
       if (inst->getTokenType() == SWSBTokenType::AFTER_READ) {
         if (tokenInsts[sbid].first != nullptr) {
-          depCycles = tokenInsts[sbid].second +
-                      LT->getSendSrcReadLatency(tokenInsts[sbid].first);
+          if (tokenInsts[sbid].first->isSend()) {
+            depCycles = tokenInsts[sbid].second +
+                        LT->getSendSrcReadLatency(tokenInsts[sbid].first);
+          } else { //Use Occupany
+            depCycles = tokenInsts[sbid].second +
+                        LT->getOccupancy(tokenInsts[sbid].first);
+          }
         }
       } else if (inst->getTokenType() == SWSBTokenType::AFTER_WRITE) {
         if (tokenInsts[sbid].first != nullptr) {
