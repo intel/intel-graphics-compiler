@@ -168,6 +168,7 @@ void initializeLSCCacheOptimizationPassPass(llvm::PassRegistry&);
 void initializeBindlessKernelArgLoweringPassPass(llvm::PassRegistry&);
 void initializeSplitPreparePassPass(llvm::PassRegistry&);
 void initializeSplitAsyncPassPass(llvm::PassRegistry&);
+void initializePrepareSyncRTHelpersPass(llvm::PassRegistry&);
 void initializeSyncHandlingPassPass(llvm::PassRegistry&);
 void initializeBindlessInlineDataPassPass(llvm::PassRegistry&);
 void initializeRayTracingConstantCoalescingPassPass(llvm::PassRegistry&);
