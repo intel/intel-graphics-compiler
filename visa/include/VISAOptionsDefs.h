@@ -731,3 +731,4 @@ DEF_VISA_OPTION(vISA_HasEarlyGRFRead, ET_BOOL_TRUE, "-earlyGRFRead", UNUSED, fal
 DEF_VISA_OPTION(vISA_EnableProgrammableOffsetsMessageBitInHeader, ET_BOOL,
                 NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_staticProfiling, ET_BOOL, "-staticProfiling", UNUSED, true)
+DEF_VISA_OPTION(vISA_staticBBProfiling, ET_BOOL, "-staticBBProfiling", UNUSED, false)

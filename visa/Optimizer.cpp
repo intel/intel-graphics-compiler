@@ -7841,7 +7841,8 @@ void Optimizer::staticProfiling() {
   // Do static cycle profiling only for platforms have 3 or more ALU pipelines.
   // Do static cycle profling only when shader dump is enabled.
   if (builder.hasThreeALUPipes() &&
-      builder.getOptions()->getOption(vISA_outputToFile)) {
+      builder.getOptions()->getOption(vISA_outputToFile) &&
+      builder.getOptions()->getOption(vISA_staticBBProfiling)) {
     StaticCycleProfiling sc(kernel);
     sc.run();
   }
