@@ -12,8 +12,10 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISAModule.hpp"
 #include "Probe/Assertion.h"
 #include "ShaderCodeGen.hpp"
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DIBuilder.h"
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
 
@@ -87,6 +89,13 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         return PressureMap;
     }
 
+    unsigned int bytesToRegisters(unsigned int Bytes) {
+        unsigned int RegisterSizeInBytes = registerSizeInBytes();
+        unsigned int AmountOfRegistersRoundUp =
+            (Bytes + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
+        return AmountOfRegistersRoundUp;
+    }
+
     unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD) {
         InsideBlockPressureMap PressureMap;
         collectPressureForBB(BB, PressureMap, SIMD);
@@ -95,10 +104,7 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         for (const auto &Pair : PressureMap) {
             MaxSizeInBytes = std::max(MaxSizeInBytes, Pair.second);
         }
-        unsigned int RegisterSizeInBytes = registerSizeInBytes();
-        unsigned int MaxAmountOfRegistersRoundUp =
-            (MaxSizeInBytes + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
-        return MaxAmountOfRegistersRoundUp;
+        return bytesToRegisters(MaxSizeInBytes);
     }
 
     // be aware, for now, it doesn't count properly nested functions, and their
@@ -108,6 +114,17 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         unsigned int Max = 0;
         for (BasicBlock &BB : F) {
             Max = std::max(getMaxRegCountForBB(BB, SIMD), Max);
+        }
+        return Max;
+    }
+
+    unsigned int getMaxRegCountForLoop(llvm::Loop &L,
+                                       unsigned int SIMD) {
+        unsigned int Max = 0;
+        for (BasicBlock *BB : L.getBlocks())
+        {
+            unsigned int BBPressure = getMaxRegCountForBB(*BB, SIMD);
+            Max = std::max(BBPressure, Max);
         }
         return Max;
     }
@@ -122,6 +139,9 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         }
         return HottestBB;
     }
+
+    unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F,
+                                     unsigned int SIMD);
 
     void releaseMemory() override {
         In.clear();
@@ -157,8 +177,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
                          InsideBlockPressureMap &BBListing);
 
     unsigned int registerSizeInBytes();
-    unsigned int estimateSizeInBytes(ValueSet &Set, const DataLayout &DL,
-                                     unsigned int SIMD);
     void collectPressureForBB(llvm::BasicBlock &BB,
                               InsideBlockPressureMap &BBListing,
                               unsigned int SIMD);

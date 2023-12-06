@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
-#include "common/LLVMWarningsPush.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 
@@ -37,7 +36,6 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(IGCLivenessAnalysis, PASS_FLAG2, PASS_DESCRIPTION2,
                         PASS_CFG_ONLY2, PASS_ANALYSIS2)
 #define PRINT(str) llvm::errs() << str
-
 
 IGCLivenessAnalysis::IGCLivenessAnalysis() : FunctionPass(ID) { UseWIAnalysis = true; };
 
@@ -308,16 +306,18 @@ void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F) {
 }
 
 unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
-                                                      const DataLayout &DL,
+                                                      Function &F,
                                                       unsigned int SIMD) {
+    const DataLayout &DL = F.getParent()->getDataLayout();
+
     unsigned int Result = 0;
     for (auto El : Set) {
         auto Type = El->getType();
-        auto TypeSizeInBits = DL.getTypeSizeInBits(Type);
+        unsigned int TypeSizeInBits = (unsigned int) DL.getTypeSizeInBits(Type);
         unsigned int Multiplier = SIMD;
         if (UseWIAnalysis && WI->isUniform(El))
             Multiplier = 1;
-        uint64_t SizeInBytes = TypeSizeInBits * Multiplier / 8;
+        unsigned int SizeInBytes = TypeSizeInBits * Multiplier / 8;
         Result += SizeInBytes;
     }
 
@@ -334,7 +334,6 @@ void IGCLivenessAnalysis::printInstruction(llvm::Instruction *Inst,
 void IGCLivenessAnalysis::printIntraBlock(llvm::BasicBlock &BB,
                                           std::string &Output,
                                           InsideBlockPressureMap &BBListing) {
-    unsigned int RegisterSizeInBytes = registerSizeInBytes();
     for (auto &I : BB) {
         llvm::Instruction *Inst = &I;
         if (UseWIAnalysis && WI->isUniform(Inst)) {
@@ -343,8 +342,7 @@ void IGCLivenessAnalysis::printIntraBlock(llvm::BasicBlock &BB,
             Output += "N: ";
         }
         unsigned int SizeInBytes = BBListing[Inst];
-        unsigned int AmountOfRegistersRoundUp =
-            (SizeInBytes + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
+        unsigned int AmountOfRegistersRoundUp = bytesToRegisters(SizeInBytes);
         Output += std::to_string(SizeInBytes) + " (" +
                   std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
         printInstruction(Inst, Output);
@@ -354,7 +352,6 @@ void IGCLivenessAnalysis::printIntraBlock(llvm::BasicBlock &BB,
 void IGCLivenessAnalysis::collectPressureForBB(
     llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing,
     unsigned int SIMD) {
-    const DataLayout &DL = BB.getParent()->getParent()->getDataLayout();
     ValueSet &BBOut = Out[&BB];
     // this should be a copy
     ValueSet BBSet = BBOut;
@@ -363,7 +360,7 @@ void IGCLivenessAnalysis::collectPressureForBB(
 
         llvm::Instruction *Inst = &(*RI);
 
-        unsigned int Size = estimateSizeInBytes(BBSet, DL, SIMD);
+        unsigned int Size = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD);
 
         auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
         if (!Phi) {
