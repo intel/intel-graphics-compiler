@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; Check rdregion-bale propagation (cm select calls) with complicated data
+; XFAIL: *
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \

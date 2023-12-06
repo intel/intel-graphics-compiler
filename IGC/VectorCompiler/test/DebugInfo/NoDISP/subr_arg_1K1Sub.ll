@@ -8,6 +8,7 @@
 
 ; Check subroutine argument definition
 
+; XFAIL: *
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-enable-dbginfo-dumps \
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \

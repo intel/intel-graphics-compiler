@@ -1601,14 +1601,10 @@ void DwarfDebug::collectVariableInfo(
 
       auto prevRegVar = isAdded(DV, pInst->getDebugLoc().getInlinedAt());
 
-      if (AbsVar)
-        AbsVar->setDbgInst(pInst);
-
       if (!prevRegVar) {
         RegVar =
             createDbgVariable(cast<DILocalVariable>(DV),
                               AbsVar ? AbsVar->getLocation() : nullptr, AbsVar);
-        RegVar->setDbgInst(pInst);
         LLVM_DEBUG(dbgs() << "  regular variable: "; RegVar->dump());
 
         if (!addCurrentFnArgument(MF, RegVar, Scope))
@@ -1619,39 +1615,35 @@ void DwarfDebug::collectVariableInfo(
       } else
         RegVar = prevRegVar;
 
-      // Conditions below decide whether we want to emit location to debug_loc
-      // or inline it in the DIE. To inline in DIE, we simply dont emit anything
-      // here and continue the loop.
-      bool needsCallerSave = !VisaDbgInfo->getCFI().callerSaveEntry.empty();
-      if (!EmitSettings.EmitDebugLoc && !needsCallerSave) {
-        LLVM_DEBUG(
-            dbgs() << "  << location is expected to be emitted in DIE: "
-                   << "!EmitSettings.EmitDebugLoc && !needsCallerSave\n");
-        continue;
-      }
-
-      // For the address variable described with llvm.dbg.declare and
-      // StorageOffset we want to emit inlined location in the DWARF emit
-      // phase.
-      const auto *StorageMD = pInst->getMetadata("StorageOffset");
-      if (isa<DbgDeclareInst>(pInst) && StorageMD) {
-        continue;
-      }
-
       // assume that VISA preserves location thoughout its lifetime
       auto Loc = m_pModule->GetVariableLocation(pInst);
 
       LLVM_DEBUG(Loc.print(dbgs()));
 
-      if (Loc.IsSampler() || Loc.IsSLM() || Loc.HasSurface()) {
-        LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: "
-                          << "{ IsSampler: " << Loc.IsSampler() << ", "
-                          << "IsSLM: " << Loc.IsSLM() << ", "
-                          << "HasSurface: " << Loc.HasSurface() << " }\n");
-        // Assume location of these types doesnt change
-        // throughout program. Revisit this if required.
-        continue;
+      // Conditions below decide whether we want to emit location to debug_loc
+      // or inline it in the DIE. To inline in DIE, we simply set dbg
+      // instruction and break. Location list won't be emitted.
+
+      // We emit inlined location for the variable in the following cases:
+      // 1. There is a single llvm.dbg.declare instruction describing memory
+      // location of the variable.
+      // 2. There is a single llvm.dbg.value instruction with immediate value -
+      // we assume that the value of the variable is constant.
+      // We want to support more cases in the future.
+
+      if (History.size() == 1) {
+        if (Loc.IsImmediate() ||
+            (isa<DbgDeclareInst>(pInst) &&
+             (pInst->getMetadata("StorageOffset") || Loc.HasSurface()))) {
+          RegVar->setDbgInst(pInst);
+          RegVar->isLocationInlined = true;
+          break;
+        }
       }
+
+      IGC_ASSERT_MESSAGE(
+          !(History.size() > 1 && isa<DbgDeclareInst>(pInst)),
+          "We don't expect many llvm.dbg.declare calls for a single variable");
 
       const Instruction *start = (*HI);
       const Instruction *end = start;
@@ -1667,15 +1659,6 @@ void DwarfDebug::collectVariableInfo(
 
       IGC::InsnRange InsnRange(start, end);
       auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, InsnRange);
-
-      // Emit location within the DIE for dbg.declare
-      if (History.size() == 1 && isa<DbgDeclareInst>(pInst) &&
-          !needsCallerSave && StorageMD) {
-        LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: "
-                          << "isa<DbgDeclare> && History.size() == 1 &&"
-                             "!needsCallerSave && StorageMD\n");
-        continue;
-      }
 
       for (const auto &range : GenISARange) {
         DbgValuesWithGenIP[RegVar].push_back(
@@ -1718,6 +1701,12 @@ void DwarfDebug::collectVariableInfo(
             DbgVariable::InvalidDotDebugLocOffset) {
           p.dbgVar->setDotDebugLocOffset(offset);
         }
+        // This instruction bind shouldn't be done like that.
+        // DbgVariable class is representing the whole variable,
+        // not single dbg intrinsic only. This should be changed when
+        // location building will be possible without DbgVariable
+        // instruction.
+        p.dbgVar->setDbgInst(p.pInst);
         if (p.t == PrevLoc::Type::Imm) {
           encodeImm(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end,
                     pointerSize, p.dbgVar, p.imm);
@@ -1740,10 +1729,6 @@ void DwarfDebug::collectVariableInfo(
                    dbgs().write_hex(startIp) << "; "
                                              << "0x";
                    dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
-
-        // Variable has a constant value so inline it in DIE
-        if (d.second.size() == 1 && CurLoc.IsImmediate())
-          continue;
 
         DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
         dotLoc.setOffset(offset);

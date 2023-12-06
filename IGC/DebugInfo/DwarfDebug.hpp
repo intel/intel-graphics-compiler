@@ -223,6 +223,10 @@ public:
     return false;
   }
 
+  // isLocationInlined is true when we expect location to be inlined in
+  // DW_AT_location.
+  bool isLocationInlined = false;
+
   bool isBlockByrefVariable() const;
 
   llvm::DIType *getType() const;

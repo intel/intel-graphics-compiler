@@ -950,8 +950,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry, IsPrimary);
         IGC::DebugEmitterOpts DebugOpts;
         DebugOpts.DebugEnabled = DebugInfoData::hasDebugInfo(m_currShader);
-        DebugOpts.EmitDebugLoc = IGC_IS_FLAG_ENABLED(EmitDebugLoc);
-        DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
         DebugOpts.ZeBinCompatible = IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && m_pCtx->enableZEBinary();
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || DebugOpts.ZeBinCompatible;

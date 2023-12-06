@@ -742,8 +742,6 @@ DECLARE_IGC_REGKEY(bool, EnableReusingXYZWStoreConstPayload, true, "Enable reusi
 DECLARE_IGC_REGKEY(bool, EnableReusingLSCStoreConstPayload,  false, "Enable reusing LSC stores const payload", false)
 DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity,   0,  "Different printing types", false)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
-DECLARE_IGC_REGKEY(bool, EmitDebugLoc, true, "Enable generation of .debug_loc section", false)
-DECLARE_IGC_REGKEY(bool, EmitOffsetInDbgLoc, false, "Emit offset of private memory in DW_AT_location when available", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to odd and even", false)
 DECLARE_IGC_REGKEY(bool, EnableEvaluateSamplerSplit, true, "Split evaluate messages to sampler into either SIMD8 or SIMD1 messages", false)

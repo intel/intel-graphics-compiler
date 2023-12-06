@@ -12,9 +12,6 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 struct DebugEmitterOpts {
   bool DebugEnabled = false;
-  bool EnableGTLocationDebugging = false;
-  bool EmitDebugLoc = false;
-  bool EmitOffsetInDbgLoc = false;
   bool EnableRelocation = false;
   bool ZeBinCompatible = false;
   bool EnforceAMD64Machine = false;

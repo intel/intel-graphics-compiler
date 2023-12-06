@@ -2363,7 +2363,7 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV,
 
   // Check if variable is described by a DBG_VALUE instruction.
   const Instruction *pDbgInst = DV.getDbgInst();
-  if (!pDbgInst) {
+  if (!pDbgInst || !DV.isLocationInlined) {
     DV.setDIE(VariableDie);
     LLVM_DEBUG(dbgs() << " done. No dbg.inst assotiated\n");
     return VariableDie;
