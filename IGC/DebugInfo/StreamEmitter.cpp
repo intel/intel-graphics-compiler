@@ -801,8 +801,7 @@ void StreamEmitter::verifyRegisterLocationSize(const IGC::DbgVariable &VarVal,
 
   auto *DbgInst = VarVal.getDbgInst();
   IGC_ASSERT(DbgInst);
-  Value *IRLoc = IGCLLVM::getVariableLocation(DbgInst);
-  auto *Ty = IRLoc->getType();
+  auto *Ty = DbgInst->getType();
   IGC_ASSERT(Ty->isSingleValueType());
 
   if (Ty->isPointerTy())
@@ -814,7 +813,7 @@ void StreamEmitter::verifyRegisterLocationSize(const IGC::DbgVariable &VarVal,
     return;
   }
   DiagnosticBuff Diag;
-  auto DwarfTypeSize = VarVal.getBasicSize(&DD);
+  auto DwarfTypeSize = DwarfDebug::getBaseTypeSize(VarVal.getType());
   if (DwarfTypeSize != ExpectedSize) {
     Diag.out() << "ValidationFailure [regLocSize] -- DWARF Type Size: "
                << DwarfTypeSize << ", expected: " << ExpectedSize << "\n";

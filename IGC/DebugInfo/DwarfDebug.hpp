@@ -168,17 +168,6 @@ public:
     m_pDbgInst = pInst;
   }
 
-  /// If this type is derived from a base type then return base type size
-  /// even if it derived directly or indirectly from Composite Type
-  uint64_t getBasicTypeSize(const llvm::DIDerivedType *Ty) const;
-  /// If this type is derived from a base type then return base type size
-  /// even if it derived directly or indirectly from Derived Type
-  uint64_t getBasicTypeSize(const llvm::DICompositeType *Ty) const;
-
-  /// Return base type size even if it derived directly or indirectly from
-  /// Composite Type
-  uint64_t getBasicSize(const DwarfDebug *DD) const;
-
   // TODO: re-design required since current approach does not support
   // DIArgList
   /// Returns size of the location associated with the current instance
@@ -741,6 +730,9 @@ public:
   const VISAModule *GetVISAModule() const { return m_pModule; }
 
   llvm::MCSymbol *GetLabelBeforeIp(unsigned int ip);
+
+  // If this type is derived from a base type then return base type size.
+  static uint64_t getBaseTypeSize(const llvm::DIType *Ty);
 
   uint32_t getBEFPSubReg() {
     auto ver = GetABIVersion();
