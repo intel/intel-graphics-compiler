@@ -178,8 +178,10 @@ public:
   }
 
   unsigned getMaxGRF() const {
-    auto found = std::find_if(configs.rbegin(), configs.rend(),
-                              [](const Config &c) { return c.VRTEnable; });
+    auto found =
+        std::find_if(configs.rbegin(), configs.rend(), [this](const Config &c) {
+          return c.VRTEnable && c.numGRF <= upperBoundGRF;
+        });
     return found->numGRF;
   }
 
@@ -187,7 +189,7 @@ public:
   unsigned getLargerGRF() const {
     // find the first larger mode that's available for VRT
     for (auto i = currentMode + 1; i < configs.size(); ++i) {
-      if (configs[i].VRTEnable)
+      if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF)
         return configs[i].numGRF;
     }
     return configs[currentMode].numGRF;
@@ -205,7 +207,7 @@ public:
   // Move GRF mode to the larger GRF available and return the number
   unsigned moveToLargerGRF() {
     for (auto i = currentMode + 1; i < configs.size(); ++i) {
-      if (configs[i].VRTEnable) {
+      if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF) {
         currentMode = i;
         break;
       }
@@ -248,6 +250,7 @@ private:
   std::vector<Config> configs;
   unsigned defaultMode;
   unsigned currentMode;
+  unsigned upperBoundGRF;
   Options *options;
 };
 
