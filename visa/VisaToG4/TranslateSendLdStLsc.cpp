@@ -704,12 +704,15 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   const G4_ExecSize execSize = toExecSize(visaExecSize);
   const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
 
-
   int emuImmOffX = 0, emuImmOffY = 0;
   auto immOffNeedsEmu = [&](int off) {
     return true;
   };
-  if (immOffNeedsEmu(xImmOff)) {
+
+  bool needsWaExDesc15_12 =
+      VISA_WA_CHECK(getPWaTable(), Wa_14020375314) &&
+      ((xImmOff & 0xF) == 0xB);
+  if (immOffNeedsEmu(xImmOff) || needsWaExDesc15_12) {
     emuImmOffX = xImmOff;
     xImmOff = 0;
   }

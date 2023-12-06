@@ -82,6 +82,14 @@ int IR_Builder::translateVISARawSendsInst(
   G4_SrcRegRegion *temp_exdesc_src = nullptr;
   if (ex->isImm()) {
     exDescVal = (unsigned)ex->asImm()->getInt();
+    if (VISA_WA_CHECK(getPWaTable(), Wa_14020375314)) {
+      vISA_ASSERT_INPUT(
+          ((exDescVal >> 12) & 0xF) != 0xB,
+          "raw_sends: ExDesc[15:12] must not be 0xB on this platform");
+      if (((exDescVal >> 12) & 0xF) == 0xB) {
+        return VISA_FAILURE;
+      }
+    }
   }
 
   // bit [6:10] store the extended message length, and when it's >= 16 we have
