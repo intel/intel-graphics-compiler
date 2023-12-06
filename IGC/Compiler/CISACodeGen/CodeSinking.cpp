@@ -70,12 +70,17 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+        IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
         IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
         CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID) {
         generalCodeSinking = generalSinking || IGC_IS_FLAG_ENABLED(ForceLoopSink);
         initializeCodeSinkingPass(*PassRegistry::getPassRegistry());
     }
+
+// Sink in the loop if loop preheader's potential to sink covers at least 20% of registers delta
+// between grf number and max estimated pressure in the loop
+#define LOOPSINK_PREHEADER_IMPACT_THRESHOLD 0.2
 
     /// AllUsesDominatedByBlock - Return true if all uses of the specified value
     /// occur in blocks dominated by the specified block.
@@ -192,8 +197,49 @@ namespace IGC {
         return std::count_if(llvm::inst_begin(F), llvm::inst_end(F), [](const auto& I){ return !isDbgIntrinsic(&I); });
     }
 
-    //diagnosis code: __declspec(thread) int sinkCounter = 0;
-    //diagnosis code: const int sinkLimit = 19;
+    bool CodeSinking::treeSink(Function &F)
+    {
+        bool IterChanged, EverChanged = false;
+        totalGradientMoved = 0;
+        // even if we limit code-sinking to ps-input instructions, we still need to iterate through
+        // all the blocks because llvm-InstCombine may have sinked some ps-input instructions out of entry-block
+        do
+        {
+            IterChanged = false;
+            // Process all basic blocks in dominator-tree post-order
+            for (po_iterator<DomTreeNode*> domIter = po_begin(DT->getRootNode()),
+                domEnd = po_end(DT->getRootNode()); domIter != domEnd; ++domIter)
+            {
+                IterChanged |= ProcessBlock(*(domIter->getBlock()));
+            }
+        } while (IterChanged /*diagnosis: && numChanges < sinkLimit*/);
+
+        EverChanged = IterChanged;
+        for (auto BI = LocalBlkSet.begin(), BE = LocalBlkSet.end(); BI != BE; BI++)
+        {
+            IterChanged = LocalSink(*BI);
+            EverChanged |= IterChanged;
+        }
+        LocalBlkSet.clear();
+        LocalInstSet.clear();
+        CTX->m_numGradientSinked = totalGradientMoved;
+
+        return EverChanged;
+    }
+
+    bool CodeSinking::loopSink(Function &F)
+    {
+        MemoizedStoresInLoops.clear();
+        BlacklistedLoops.clear();
+
+        bool Changed = false;
+        for (auto &L : LI->getLoopsInPreorder())
+        {
+            if (IGC_IS_FLAG_ENABLED(ForceLoopSink) || needLoopSink(L))
+                Changed |= loopSink(L);
+        }
+        return Changed;
+    }
 
     bool CodeSinking::runOnFunction(Function& F)
     {
@@ -220,57 +266,22 @@ namespace IGC {
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
         WI = &getAnalysis<WIAnalysis>();
+        RPE = &getAnalysis<IGCLivenessAnalysis>();
         DL = &F.getParent()->getDataLayout();
 
-        MemoizedStoresInLoops.clear();
-        BlacklistedLoops.clear();
+        bool Changed = false;
 
-        bool changed = hoistCongruentPhi(F);
+        Changed |= hoistCongruentPhi(F);
+        Changed |= treeSink(F);
 
-        bool madeChange, everMadeChange = false;
-        totalGradientMoved = 0;
-        // diagnosis code: numChanges = 0;
-        // diagnosis code: if (sinkCounter >= 94 && sinkCounter < 95) {
-        // even if we limit code-sinking to ps-input instructions, we still need to iterate through
-        // all the blocks because llvm-InstCombine may have sinked some ps-input instructions out of entry-block
-        do
+        if (IGC_IS_FLAG_DISABLED(DisableLoopSink) && CTX->type == ShaderType::OPENCL_SHADER)
         {
-            madeChange = false;
-            // Process all basic blocks in dominator-tree post-order
-            for (po_iterator<DomTreeNode*> domIter = po_begin(DT->getRootNode()),
-                domEnd = po_end(DT->getRootNode()); domIter != domEnd; ++domIter)
-            {
-                madeChange |= ProcessBlock(*(domIter->getBlock()));
-            }
-        } while (madeChange /*diagnosis: && numChanges < sinkLimit*/);
-
-        everMadeChange = madeChange;
-        for (auto BI = LocalBlkSet.begin(), BE = LocalBlkSet.end(); BI != BE; BI++)
-        {
-            madeChange = LocalSink(*BI);
-            everMadeChange |= madeChange;
+            if (Changed && RPE)
+                RPE->rerunLivenessAnalysis(F);
+            Changed |= loopSink(F);
         }
-        LocalBlkSet.clear();
-        LocalInstSet.clear();
-        CTX->m_numGradientSinked = totalGradientMoved;
 
-        if (IGC_IS_FLAG_DISABLED(DisableLoopSink))
-        {
-            for (unsigned i = 0, n = m_fatLoops.size(); i < n; ++i)
-            {
-                auto FatLoop = m_fatLoops[i];
-                changed |= loopSink(FatLoop);
-            }
-        }
-        m_fatLoopPressures.clear();
-        m_fatLoops.clear();
-
-        // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, CTX->hash.getAsmHash());
-        //F.viewCFG();
-        // } end of diagnosis if
-        // diagnosis code: sinkCounter++;
-
-        if (everMadeChange || changed)
+        if (Changed)
         {
             // the verifier currently rejects allocas with non-default
             // address space (which is legal). Raytracing does this, so we skip
@@ -281,7 +292,7 @@ namespace IGC {
             }
         }
 
-        return everMadeChange || changed;
+        return Changed;
     }
 
     static uint EstimateLiveOutPressure(BasicBlock* blk, const DataLayout* DL)
@@ -366,17 +377,6 @@ namespace IGC {
         {
             // estimate live-out register pressure for this blk
             pressure0 = EstimateLiveOutPressure(&blk, DL);
-            uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
-            uint32_t ngrf = CTX->getNumGRFPerThread();
-            if ((pressure0 > (2*ngrf + GRFThresholdDelta) || IGC_IS_FLAG_ENABLED(ForceLoopSink)) &&
-                CTX->type == ShaderType::OPENCL_SHADER)
-            {
-                if (auto L = findLoopAsPreheader(blk))
-                {
-                    m_fatLoopPressures.push_back(pressure0);
-                    m_fatLoops.push_back(L);
-                }
-            }
         }
 
         bool madeChange = false;
@@ -803,6 +803,9 @@ namespace IGC {
         {
             numGradientMovedOutBB++;
         }
+
+        if (IsLoopSink)
+            InstToSink->setName("sink_" + InstToSink->getName());
 
         if (!ReducePressure || (!IsLoopSink && HasAliasConcern))
         {
@@ -1258,6 +1261,44 @@ namespace IGC {
         return changed;
     }
 
+    bool CodeSinking::needLoopSink(Loop *L)
+    {
+        BasicBlock *Preheader = L->getLoopPreheader();
+        if (!Preheader)
+            return false;
+        if (!RPE)
+            return false;
+
+        Function *F = Preheader->getParent();
+        uint GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
+        uint NGRF = CTX->getNumGRFPerThread();
+        uint SIMD = numLanes(RPE->bestGuessSIMDSize());
+
+        // Estimate preheader's potential to sink
+        ValueSet PreheaderDefs = RPE->getDefs(*Preheader);
+        // Filter out preheader defined values that are used not in the loop or not supported
+        ValueSet PreheaderDefsCandidates;
+        for (Value *V : PreheaderDefs)
+        {
+            Instruction *I = dyn_cast<Instruction>(V);
+            if (I && isLoopSinkCandidate(I, L,
+                    (IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink))))
+            {
+                PreheaderDefsCandidates.insert(V);
+            }
+        }
+        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD);
+        uint PreheaderDefsSizeInRegs = RPE->bytesToRegisters(PreheaderDefsSizeInBytes);
+
+        // Estimate max pressure in the loop
+        uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
+
+        // loop sinking is needed if the loop's pressure is higher than number of GRFs by threshold
+        // and preheader's potential to reduce the delta is good enough
+        return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
+                (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
+    }
+
     bool CodeSinking::loopSink(Loop *L)
     {
         // Sink loop invariants back into the loop body if register
@@ -1270,6 +1311,9 @@ namespace IGC {
         if (!Preheader)
             return false;
 
+        Function *F = Preheader->getParent();
+        uint NGRF = CTX->getNumGRFPerThread();
+
         bool EverChanged = false;
 
         // Find LIs in preheader that would definitely reduce
@@ -1278,19 +1322,15 @@ namespace IGC {
         SmallVector<Instruction *, 64> SinkCandidates;
         SmallPtrSet<Instruction *, 32> LoadChains;
 
+        bool AllowLoadSinking = IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink);
+        bool AllowOnlyLoadChainSinking = false;
         bool IterChanged = false;
         do
         {
-            // Moving LI back to the loop. Here we only consider to move LIs into
-            // the single BB (BBWithPressure).
-            //
-            // Go over instructions in reverse order and sink the noOp instructions
-            // on-the-fly first, so that their dependent instructions can be added
-            // into candidate lists for further sinking.
-
             Stores.clear();
             SinkCandidates.clear();
 
+            // Moving LI back to the loop
             // If we sinked something we could allow sinking of the previous instructions as well
             // on the next iteration of do-loop
             //
@@ -1310,8 +1350,13 @@ namespace IGC {
                 if (I->mayWriteToMemory())
                     Stores.insert(I);
 
-                if (isLoopSinkCandidate(I, L))
-                    SinkCandidates.push_back(I);
+                if (isLoopSinkCandidate(I, L, AllowLoadSinking))
+                {
+                    if (!AllowOnlyLoadChainSinking || isLoadChain(I, LoadChains))
+                    {
+                        SinkCandidates.push_back(I);
+                    }
+                }
             }
 
             IterChanged |= loopSinkInstructions(SinkCandidates, LoadChains, L);
@@ -1330,8 +1375,35 @@ namespace IGC {
                     LocalBlkSet.clear();
                     LocalInstSet.clear();
                 }
+
+                uint SIMD = numLanes(RPE->bestGuessSIMDSize());
+                RPE->rerunLivenessAnalysis(*F);
+                uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
+                if (MaxLoopPressure < (NGRF - IGC_GET_FLAG_VALUE(LoopSinkRegpressureMargin))
+                        && IGC_IS_FLAG_DISABLED(ForceLoopSink))
+                {
+                    if (IGC_IS_FLAG_ENABLED(EnableLoadChainLoopSink) && !LoadChains.empty())
+                    {
+                        AllowOnlyLoadChainSinking = true;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
             }
-        } while (IterChanged);
+            else
+            {
+                if (!AllowLoadSinking && IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink))
+                {
+                    AllowLoadSinking = true;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        } while (true);
 
         return EverChanged;
     }
@@ -1344,7 +1416,20 @@ namespace IGC {
                 isa<InsertValueInst>(I));
     }
 
-    bool CodeSinking::isLoopSinkCandidate(Instruction *I, Loop *L)
+    // Check that this instruction is a part of address calc
+    // chain of an already sinked load
+    bool CodeSinking::isLoadChain(Instruction *I, SmallPtrSet<Instruction *, 32> &LoadChains)
+    {
+        if (!isa<BinaryOperator>(I) && !isa<CastInst>(I))
+            return false;
+        User *InstrUser = IGCLLVM::getUniqueUndroppableUser(I);
+        if (!InstrUser)
+            return false;
+        Instruction *UI = dyn_cast<Instruction>(InstrUser);
+        return UI && LoadChains.count(UI);
+    }
+
+    bool CodeSinking::isLoopSinkCandidate(Instruction *I, Loop *L, bool AllowLoadSinking)
     {
         // Limit sinking for the following case for now.
         for (const User *UserInst : I->users())
@@ -1357,7 +1442,7 @@ namespace IGC {
 
         if (isAlwaysSinkInstruction(I) || isa<BinaryOperator>(I) || isa<CastInst>(I))
             return true;
-        if (isa<LoadInst>(I) && IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink))
+        if (isa<LoadInst>(I) && AllowLoadSinking)
             return true;
 
         return false;
@@ -1422,19 +1507,6 @@ namespace IGC {
                 return true;
             }
             return false;
-        };
-
-        // Check that this instruction is a part of address calc
-        // chain of an already sinked load
-        auto isLoadChain = [&LoadChains](Instruction *I) -> bool
-        {
-            if (!isa<BinaryOperator>(I))
-                return false;
-            User *InstrUser = IGCLLVM::getUniqueUndroppableUser(I);
-            if (!InstrUser)
-                return false;
-            Instruction *UI = dyn_cast<Instruction>(InstrUser);
-            return UI && LoadChains.count(UI);
         };
 
         // Check if it's beneficial to sink it in the loop
@@ -1506,7 +1578,8 @@ namespace IGC {
             // All instructions are part of a chain to already sinked load and don't
             // increase pressure too much. It simplifies the code a little and without
             // adding remat pass for simple cases
-            if (AccSave >= 0 && std::all_of(OUG->Users.begin(), OUG->Users.end(), isLoadChain))
+            if (AccSave >= 0 && std::all_of(OUG->Users.begin(), OUG->Users.end(),
+                [&](Instruction *I) {return isLoadChain(I, LoadChains);}))
             {
                 return true;
             }
@@ -1605,7 +1678,7 @@ namespace IGC {
                 {
                     Instruction *I = OUG->Users[j];
                     bool UserChanged = SinkInstruction(I, Stores, true);
-                    if (UserChanged && (isa<LoadInst>(I) || isLoadChain(I)))
+                    if (UserChanged && (isa<LoadInst>(I) || isLoadChain(I, LoadChains)))
                     {
                         LoadChains.insert(I);
                     }

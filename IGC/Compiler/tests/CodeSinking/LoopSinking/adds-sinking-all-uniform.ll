@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
 ; REQUIRES: regkeys
 ; RUN: igc_opt --regkey LoopSinkMinSave=1 --regkey LoopSinkMinSaveUniform=3 --regkey ForceLoopSink=1 --regkey CodeSinkingMinSize=10 %enable-basic-aa% --igc-wi-analysis --igc-code-sinking -S %s | FileCheck %s
 ; We set LoopSinkMinSaveUniform=3, and check that only the case with saving 3 scalars is being sinked, when all the values are uniform

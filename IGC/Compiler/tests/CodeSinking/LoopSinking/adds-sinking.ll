@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
 ; REQUIRES: regkeys
 ; RUN: igc_opt --regkey LoopSinkMinSave=4 --regkey ForceLoopSink=1 --regkey CodeSinkingMinSize=10 %enable-basic-aa% --igc-code-sinking -S %s | FileCheck %s
 define void @foo(float addrspace(1)* %in0, double addrspace(1)* %in1, float addrspace(1)* noalias %out0, i32 %count, i32 %offsetIn0, i32 %offsetIn2) {

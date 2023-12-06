@@ -15,6 +15,7 @@ See LICENSE.TXT for details.
 
 #pragma once
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -28,6 +29,7 @@ namespace IGC {
         llvm::LoopInfo* LI;
         llvm::AliasAnalysis* AA;
         WIAnalysis* WI;
+        IGCLivenessAnalysis* RPE;
 
         const llvm::DataLayout* DL;  // to estimate register pressure
         CodeGenContext* CTX;
@@ -46,6 +48,7 @@ namespace IGC {
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.addRequired<llvm::AAResultsWrapperPass>();
             AU.addRequired<WIAnalysis>();
+            AU.addRequired<IGCLivenessAnalysis>();
             AU.addRequired<CodeGenContextWrapper>();
 
             AU.addPreserved<llvm::DominatorTreeWrapperPass>();
@@ -55,6 +58,7 @@ namespace IGC {
             AU.addPreservedID(WIAnalysis::ID);
         }
     private:
+        bool treeSink(llvm::Function& F);
         bool ProcessBlock(llvm::BasicBlock& blk);
         bool SinkInstruction(llvm::Instruction* I,
             llvm::SmallPtrSetImpl<llvm::Instruction*>& Stores,
@@ -71,6 +75,7 @@ namespace IGC {
             llvm::SmallPtrSetImpl<llvm::Instruction*>& Stores);
         bool isSafeToLoopSinkLoad(llvm::Instruction* I, llvm::Loop* Loop, llvm::AliasAnalysis* AA);
         bool isAlwaysSinkInstruction(llvm::Instruction* I);
+        bool isLoadChain(llvm::Instruction* I, SmallPtrSet<Instruction *, 32> &LoadChains);
 
         /// local processing
         bool LocalSink(llvm::BasicBlock* blk);
@@ -86,13 +91,6 @@ namespace IGC {
 
         bool generalCodeSinking;
         // diagnosis variable: int numChanges;
-
-        // Keep track of fat loop. Might need to reverse LICM if
-        // a loop has excessive register-pressure at its preheader because
-        // there are a lot of loop-invariant insts that have been moved
-        // out of the loop.
-        std::vector<llvm::Loop*> m_fatLoops;
-        std::vector<uint32_t> m_fatLoopPressures;
 
         // try to hoist phi nodes with congruent incoming values
         typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
@@ -139,14 +137,17 @@ namespace IGC {
         bool hoistCongruentPhi(llvm::Function& F);
 
         llvm::Loop* findLoopAsPreheader(llvm::BasicBlock& blk);
+        // try loop sinking in the function if needed
+        bool loopSink(llvm::Function& F);
         // move LI back into loop
         bool loopSink(llvm::Loop* LoopWithPressure);
         // pre-condition to sink an instruction into a loop
-        bool isLoopSinkCandidate(llvm::Instruction* I, llvm::Loop* L);
+        bool isLoopSinkCandidate(llvm::Instruction* I, llvm::Loop* L, bool AllowLoadSinking);
         bool loopSinkInstructions(
             llvm::SmallVector<llvm::Instruction*, 64>& SinkCandidates,
             llvm::SmallPtrSet<llvm::Instruction*, 32>& LoadChains,
             llvm::Loop* L);
+        bool needLoopSink(llvm::Loop* L);
 
         // Move referencing DbgValueInst intrinsics calls after defining instructions
         void ProcessDbgValueInst(llvm::BasicBlock& blk);
