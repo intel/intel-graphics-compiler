@@ -524,7 +524,7 @@ void SBNode::finalizeDistanceType1(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
+  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -667,7 +667,7 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
+  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -825,7 +825,7 @@ void SBNode::finalizeDistanceType3(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
+  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -6421,7 +6421,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
       }
 
-      if (BDvec.empty()) {
+      if (BDvec.empty() && node->distDep.empty()) {
         if (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE &&
             ALUID != node->getALUID()) {
           if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
