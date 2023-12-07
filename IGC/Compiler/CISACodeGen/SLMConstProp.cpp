@@ -308,6 +308,11 @@ void SymbolicEvaluation::dump(const SymProd* P)
     dbgs() << "\n";
 }
 
+void SymbolicEvaluation::dump(SymProd* P)
+{
+    dump((const SymProd*)P);
+}
+
 void SymbolicEvaluation::dump(const SymTerm* T)
 {
     dbgs() << "\n";
@@ -316,12 +321,23 @@ void SymbolicEvaluation::dump(const SymTerm* T)
     dbgs() << "\n";
 }
 
+void SymbolicEvaluation::dump(SymTerm* T)
+{
+    dump((const SymTerm*)T);
+}
+
+
 void SymbolicEvaluation::dump(const SymExpr* SE)
 {
     dbgs() << "\n";
     print(dbgs(), SE);
     print_varMapping(dbgs(), SE);
     dbgs() << "\n";
+}
+
+void SymbolicEvaluation::dump(SymExpr* SE)
+{
+    dump((const SymExpr*)SE);
 }
 
 void SymbolicEvaluation::dump(const Value* V)
@@ -332,6 +348,10 @@ void SymbolicEvaluation::dump(const Value* V)
     dbgs() << "\n";
 }
 
+void SymbolicEvaluation::dump(Value* V)
+{
+    dump((const Value*)V);
+}
 
 #endif
 

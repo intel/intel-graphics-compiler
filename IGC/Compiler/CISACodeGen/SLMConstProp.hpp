@@ -170,9 +170,13 @@ namespace IGC
 
         void dump_symbols();
         void dump(const SymProd* P);
+        void dump(SymProd* P);
         void dump(const SymTerm* T);
+        void dump(SymTerm* T);
         void dump(const SymExpr* SE);
+        void dump(SymExpr* SE);
         void dump(const llvm::Value* V);
+        void dump(llvm::Value* V);
 #endif
 
     private:
