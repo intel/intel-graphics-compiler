@@ -85,7 +85,7 @@ static void setupRegionBTIs(CodeGenContext* pContext)
         auto doSyncDispatchRays = false;
 
 
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTStackAccess) && !doSyncDispatchRays)
+        if (IGC_IS_FLAG_DISABLED(DisableStatefulRTStackAccess))
         {
             rtInfo.RTAsyncStackAddrspace = getAddrspace();
             rtInfo.RTAsyncStackSurfaceStateOffset = BaseOffset++;
