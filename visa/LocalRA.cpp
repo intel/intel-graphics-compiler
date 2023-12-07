@@ -1738,7 +1738,7 @@ void PhyRegsLocalRA::setGRFBusy(int which, int howmany) {
 
 void PhyRegsLocalRA::setWordBusy(int whichgrf, int word) {
   vISA_ASSERT(isGRFAvailable(whichgrf), "Invalid register");
-  vISA_ASSERT(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
+  vISA_ASSERT(word < (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
 
   if (twoBanksRA) {
     if (regBusyVector[whichgrf] == 0) {
@@ -1782,7 +1782,7 @@ void PhyRegsLocalRA::setGRFNotBusy(int which, int instID) {
 
 void PhyRegsLocalRA::setWordNotBusy(int whichgrf, int word, int instID) {
   vISA_ASSERT(isGRFAvailable(whichgrf), "Invalid register");
-  vISA_ASSERT(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
+  vISA_ASSERT(word < (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
 
   if (twoBanksRA) {
     if (whichgrf < SECOND_HALF_BANK_START_GRF) {
@@ -1809,7 +1809,7 @@ void PhyRegsLocalRA::setWordNotBusy(int whichgrf, int word, int instID) {
 inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word) {
   vISA_ASSERT(isGRFAvailable(whichgrf), "Invalid register");
 
-  vISA_ASSERT(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
+  vISA_ASSERT(word < (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
   bool isBusy = ((regBusyVector[whichgrf] & (WORD_BUSY << word)) != 0);
   return isBusy;
 }
@@ -2040,6 +2040,17 @@ void PhyRegsLocalRA::markPhyRegs(G4_Declare *topdcl) {
     regnum = rvar->getPhyReg()->asGreg()->getRegNum();
     if (isGRFAvailable(regnum) == true) {
       for (unsigned int i = 0; i < numwords; i++) {
+        // In case across one GRF
+        if (subRegInWord + i >= builder.numEltPerGRF<Type_UW>()) {
+          regnum++;
+          if (!isGRFAvailable(regnum)) {
+            break;
+          }
+          numwords -= i;
+          i = 0;
+          subRegInWord = 0;
+        }
+
         // Starting from first word, mark each consecutive word busy
         setWordBusy(regnum, (subRegInWord + i));
       }
