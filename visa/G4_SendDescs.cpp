@@ -1609,14 +1609,15 @@ std::string G4_SendDescRaw::getDescription() const {
         case 3: ss << " bti[..][A"; break;
         default: ss << " ???[A"; break;
         }
-        if (auto immOff = getOffset()) {
-          if (immOff->is2d) {
-            ss << "+(" <<
-              fmtSignedHex(immOff->immOffX) << "," <<
-              fmtSignedHex(immOff->immOffY) << ")";
-          } else {
-            ss << fmtSignedHexTerm(immOff->immOff);
-          }
+        if (opInfo.isBlock2D()) {
+          uint32_t bits = getExtendedDesc();
+          int immOffX = (int)(bits << 10) >> (12 + 10);
+          int immOffY = (int)(bits      ) >> (12 + 10);
+          ss << "+(" <<
+            fmtSignedHex(immOffX) << "," <<
+            fmtSignedHex(immOffY) << ")";
+        } else if (auto immOff = getOffset()) {
+          ss << fmtSignedHexTerm(immOff->immOff);
         }
         ss << "]";
       }
