@@ -5073,6 +5073,7 @@ bool GenStrengthReduction::processInst(Instruction* Inst)
                     }
                     Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", insertBefore);
                     Inv->setFastMathFlags(Inst->getFastMathFlags());
+                    Inv->setDebugLoc(Inst->getDebugLoc());
                 }
 
                 Instruction* Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", I);
@@ -5087,6 +5088,9 @@ bool GenStrengthReduction::processInst(Instruction* Inst)
 
         if (!Inv)
         {
+            if (Inst->getType()->isDoubleTy())
+                return false;
+
             // Only a single use of 1 / Src1. Create Inv right before the use.
             Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", Inst);
             Inv->setFastMathFlags(Inst->getFastMathFlags());
