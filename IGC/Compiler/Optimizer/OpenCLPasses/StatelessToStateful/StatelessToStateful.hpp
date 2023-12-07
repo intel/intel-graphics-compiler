@@ -27,6 +27,11 @@ namespace IGC
     // performance. Simply disable stateful promotion after 32 args.
     constexpr uint maxPromotionCount = 32;
 
+    enum class TargetAddressing {
+        BINDFUL,
+        BINDLESS
+    };
+
     class StatelessToStateful : public llvm::FunctionPass, public llvm::InstVisitor<StatelessToStateful>
     {
     public:
@@ -35,6 +40,7 @@ namespace IGC
         static char ID;
 
         StatelessToStateful();
+        StatelessToStateful(TargetAddressing addressing);
 
         ~StatelessToStateful() {}
 
@@ -68,10 +74,13 @@ namespace IGC
                 IGC_ASSERT(statefulAddrSpace);
                 return *statefulAddrSpace;
             }
+            void setBaseArgIndex(unsigned index) { baseArgIndex = index; }
+            unsigned getBaseArgIndex() { return baseArgIndex; }
             llvm::Instruction* const statelessInst;
             llvm::Value* const ptr;
             llvm::Value* const offset;
         private:
+            unsigned baseArgIndex;
             std::optional<unsigned> statefulAddrSpace;
         };
 
@@ -116,7 +125,7 @@ namespace IGC
         // separate indices space. So if there is a read_only image and global buffer in the kernel,
         // they will both have `0` encoded in addrspace. The actual BTI will be computed based
         // on BTLayout in EmitVISAPass.
-        unsigned encodeStatefulAddrspace(unsigned uavIndex);
+        unsigned encodeBindfulAddrspace(unsigned uavIndex);
 
         void updateArgInfo(const KernelArg* KA, bool IsPositive);
         void finalizeArgInitialValue(llvm::Function* F);
@@ -146,32 +155,33 @@ namespace IGC
         }
 
         // When true, runtime can generate surface with buffer's original base (creation base)
-        bool m_hasBufferOffsetArg;
+        bool m_hasBufferOffsetArg = false;
 
         // When m_hasBufferOffsetArg is true, optional buffer offset
         // can be on or off, which is indicated by this boolean flag.
-        bool       m_hasOptionalBufferOffsetArg;
+        bool       m_hasOptionalBufferOffsetArg = false;
 
         // When true, every messages that are in ptrArg + offset will have offset >= 0.
-        bool       m_hasPositivePointerOffset;
+        bool       m_hasPositivePointerOffset = false;
 
         // Handle non-gep pointer
         //   For historic reason (probably non-DW aligned arg), non-gep ptr isn't handled.
         //   If this field is true, non-gep ptr shall be handled.
         const bool m_supportNonGEPPtr = false;
 
-        llvm::AssumptionCacheTracker* m_ACT;
+        llvm::AssumptionCacheTracker* m_ACT = nullptr;
         llvm::AssumptionCache* getAC(llvm::Function* F)
         {
             return (m_ACT != nullptr ? &m_ACT->getAssumptionCache(*F)
                 : nullptr);
         }
 
+        TargetAddressing m_targetAddressing;
         OpenCLProgramContext* m_ctx;
-        ImplicitArgs* m_pImplicitArgs;
-        KernelArgs* m_pKernelArgs;
+        ImplicitArgs* m_pImplicitArgs = nullptr;
+        KernelArgs* m_pKernelArgs = nullptr;
         ArgInfoMap   m_argsInfo;
-        bool m_changed;
+        bool m_changed = false;
         llvm::Function* m_F;
         llvm::Module* m_Module;
 

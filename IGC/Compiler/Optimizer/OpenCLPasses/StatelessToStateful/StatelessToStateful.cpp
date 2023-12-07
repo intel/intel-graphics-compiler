@@ -38,6 +38,14 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 IGC_INITIALIZE_PASS_END(StatelessToStateful, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
+static cl::opt<TargetAddressing> targetAddressingMode(
+    "target-addressing-mode", cl::init(TargetAddressing::BINDFUL), cl::Hidden,
+    cl::values(
+        clEnumValN(TargetAddressing::BINDFUL, "bindful", "Set bindful as target addressing mode"),
+        clEnumValN(TargetAddressing::BINDLESS, "bindless", "Set bindless as target addressing mode")
+    ),
+    cl::desc("Set target addressing for stateful promotion"));
+
 // This pass turns a global/constants address space (stateless) load/store into a stateful a load/store.
 //
 // The conservative approach is to search for any directly positively-indexed kernels argument, such as:
@@ -129,15 +137,11 @@ IGC_INITIALIZE_PASS_END(StatelessToStateful, PASS_FLAG, PASS_DESCRIPTION, PASS_C
 
 char StatelessToStateful::ID = 0;
 
-StatelessToStateful::StatelessToStateful()
+StatelessToStateful::StatelessToStateful() : FunctionPass(ID), m_targetAddressing(targetAddressingMode) {}
+
+StatelessToStateful::StatelessToStateful(TargetAddressing addressing)
     : FunctionPass(ID),
-    m_hasBufferOffsetArg(false),
-    m_hasOptionalBufferOffsetArg(false),
-    m_hasPositivePointerOffset(false),
-    m_ACT(nullptr),
-    m_pImplicitArgs(nullptr),
-    m_pKernelArgs(nullptr),
-    m_changed(false)
+    m_targetAddressing(addressing)
 {
     initializeStatelessToStatefulPass(*PassRegistry::getPassRegistry());
 }
@@ -538,7 +542,7 @@ bool StatelessToStateful::isUntypedAtomic(const GenISAIntrinsic::ID intrinID)
         intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64);
 }
 
-unsigned StatelessToStateful::encodeStatefulAddrspace(unsigned uavIndex)
+unsigned StatelessToStateful::encodeBindfulAddrspace(unsigned uavIndex)
 {
     auto int32Ty = Type::getInt32Ty(m_Module->getContext());
     auto resourceNumber = ConstantInt::get(int32Ty, uavIndex);
@@ -555,8 +559,37 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
     Module* M = m_F->getParent();
     const DebugLoc& DL = I->getDebugLoc();
     GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
-
     PointerType* pTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(II.ptr->getType()), II.getStatefulAddrSpace());
+
+    if (m_targetAddressing == TargetAddressing::BINDLESS)
+    {
+        Argument* srcOffset = m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
+        auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
+        if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead)
+        {
+            Function* newBlockReadFunc = GenISAIntrinsic::getDeclaration(M,
+                GenISAIntrinsic::GenISA_simdBlockReadBindless,
+                { I->getType(), newBasePtr->getType(), Type::getInt32Ty(M->getContext())});
+            Instruction* newBlockRead = CallInst::Create(newBlockReadFunc, { newBasePtr, II.offset }, "", I);
+            newBlockRead->setDebugLoc(I->getDebugLoc());
+            I->replaceAllUsesWith(newBlockRead);
+            I->eraseFromParent();
+        }
+        else if (intrinID == GenISAIntrinsic::GenISA_simdBlockWrite)
+        {
+            Function* newBlockWriteFunc = GenISAIntrinsic::getDeclaration(M,
+                GenISAIntrinsic::GenISA_simdBlockWriteBindless,
+                { newBasePtr->getType(), I->getOperand(1)->getType(), Type::getInt32Ty(M->getContext())});
+            Instruction* newBlockWrite = CallInst::Create(newBlockWriteFunc, { newBasePtr, I->getOperand(1), II.offset }, "", I);
+            newBlockWrite->setDebugLoc(I->getDebugLoc());
+            I->replaceAllUsesWith(newBlockWrite);
+            I->eraseFromParent();
+        }
+        return;
+    }
+
+    IGC_ASSERT(m_targetAddressing == TargetAddressing::BINDFUL);
+
     Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
     Instruction* statefulInst = nullptr;
 
@@ -614,31 +647,51 @@ void StatelessToStateful::promoteLoad(InstructionInfo& II)
     LoadInst* I = cast<LoadInst>(II.statelessInst);
     PointerType* pTy = PointerType::get(I->getType(), II.getStatefulAddrSpace());
 
-    Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
-    Instruction* pLoad = new LoadInst(
-        IGCLLVM::getNonOpaquePtrEltTy(statefulPtr->getType()),
-        statefulPtr,
-        "",
-        I->isVolatile(),
-        IGCLLVM::getAlign(*I), I->getOrdering(), I->getSyncScopeID(),
-        I);
-
     const DebugLoc& DL = I->getDebugLoc();
-    statefulPtr->setDebugLoc(DL);
-    pLoad->setDebugLoc(DL);
 
-    Value* ptr = I->getPointerOperand();
-    PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
-    if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
+    if (m_targetAddressing == TargetAddressing::BINDLESS)
     {
-        LLVMContext& context = I->getContext();
-        MDString* const metadataName = MDString::get(context, "invariant.load");
-        MDNode* node = MDNode::get(context, metadataName);
-        pLoad->setMetadata(LLVMContext::MD_invariant_load, node);
-    }
+        Argument* srcOffset = m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
+        auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
+        auto bindlessLoad = IGC::CreateLoadRawIntrinsic(I, cast<Instruction>(newBasePtr), II.offset);
 
-    I->replaceAllUsesWith(pLoad);
-    I->eraseFromParent();
+        newBasePtr->setDebugLoc(DL);
+        bindlessLoad->setDebugLoc(DL);
+
+        I->replaceAllUsesWith(bindlessLoad);
+        I->eraseFromParent();
+    }
+    else if (m_targetAddressing == TargetAddressing::BINDFUL)
+    {
+        auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+        auto bindfulLoad = new LoadInst(
+            IGCLLVM::getNonOpaquePtrEltTy(newBasePtr->getType()),
+            newBasePtr,
+            "",
+            I->isVolatile(),
+            IGCLLVM::getAlign(*I), I->getOrdering(), I->getSyncScopeID(),
+            I);
+
+        newBasePtr->setDebugLoc(DL);
+        bindfulLoad->setDebugLoc(DL);
+
+        Value* ptr = I->getPointerOperand();
+        PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
+        if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
+        {
+            LLVMContext& context = I->getContext();
+            MDString* const metadataName = MDString::get(context, "invariant.load");
+            MDNode* node = MDNode::get(context, metadataName);
+            bindfulLoad->setMetadata(LLVMContext::MD_invariant_load, node);
+        }
+
+        I->replaceAllUsesWith(bindfulLoad);
+        I->eraseFromParent();
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(false, "Unsupported addressing!");
+    }
 }
 
 void StatelessToStateful::promoteStore(InstructionInfo& II)
@@ -648,19 +701,38 @@ void StatelessToStateful::promoteStore(InstructionInfo& II)
     Value* dataVal = I->getValueOperand();
     PointerType* pTy = PointerType::get(dataVal->getType(), II.getStatefulAddrSpace());
 
-    Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
-    Instruction* pStore = new StoreInst(
-        dataVal,
-        statefulPtr,
-        I->isVolatile(),
-        IGCLLVM::getAlign(*I), I->getOrdering(), I->getSyncScopeID(),
-        I);
-
     const DebugLoc& DL = I->getDebugLoc();
-    statefulPtr->setDebugLoc(DL);
-    pStore->setDebugLoc(DL);
 
-    I->eraseFromParent();
+    if (m_targetAddressing == TargetAddressing::BINDLESS)
+    {
+        Argument* srcOffset = m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
+        auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
+        auto bindlessStore = IGC::CreateStoreRawIntrinsic(I, cast<Instruction>(newBasePtr), II.offset);
+
+        newBasePtr->setDebugLoc(DL);
+        bindlessStore->setDebugLoc(DL);
+
+        I->eraseFromParent();
+    }
+    else if (m_targetAddressing == TargetAddressing::BINDFUL)
+    {
+        auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+        auto bindfulStore = new StoreInst(
+            dataVal,
+            newBasePtr,
+            I->isVolatile(),
+            IGCLLVM::getAlign(*I), I->getOrdering(), I->getSyncScopeID(),
+            I);
+
+        newBasePtr->setDebugLoc(DL);
+        bindfulStore->setDebugLoc(DL);
+
+        I->eraseFromParent();
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(false, "Unsupported addressing!");
+    }
 }
 
 void StatelessToStateful::promoteInstruction(StatelessToStateful::InstructionInfo& InstInfo)
@@ -696,21 +768,34 @@ void StatelessToStateful::promote()
     {
         IGC_ASSERT(bufferPos < maxPromotionCount);
 
-        ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgIndex];
-
-        // If the support for dynamic BTIs allocation is disabled, then BTIs are pre-assigned
-        // in ResourceAllocator pass for all resources independently whether they are
-        // accessed through stateful addressing model or not.
-        if (ctx->platform.supportDynamicBTIsAllocation())
+        unsigned statefullAddrspace = 0;
+        if (m_targetAddressing == TargetAddressing::BINDLESS)
         {
-            argAlloc->type = ResourceTypeEnum::UAVResourceType;
-            argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;
+            statefullAddrspace =
+                IGC::EncodeAS4GFXResource(
+                    *UndefValue::get(Type::getInt32Ty(m_Module->getContext())),
+                    IGC::BINDLESS);
+        }
+        else
+        {
+            ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgIndex];
+
+            // If the support for dynamic BTIs allocation is disabled, then BTIs are pre-assigned
+            // in ResourceAllocator pass for all resources independently whether they are
+            // accessed through stateful addressing model or not.
+            if (ctx->platform.supportDynamicBTIsAllocation())
+            {
+                argAlloc->type = ResourceTypeEnum::UAVResourceType;
+                argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;
+            }
+
+            statefullAddrspace = encodeBindfulAddrspace(argAlloc->indexType);
         }
 
-        unsigned statefullAddrspace = encodeStatefulAddrspace(argAlloc->indexType);
         for (auto &instInfo : instsToPromote)
         {
             instInfo.setStatefulAddrspace(statefullAddrspace);
+            instInfo.setBaseArgIndex(baseArgIndex);
             promoteInstruction(instInfo);
         }
         bufferPos++;

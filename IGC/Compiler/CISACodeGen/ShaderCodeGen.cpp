@@ -735,19 +735,22 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
 
     if (ctx.type == ShaderType::OPENCL_SHADER &&
-        static_cast<OpenCLProgramContext&>(ctx).
-            m_InternalOptions.PromoteStatelessToBindless &&
-        (static_cast<OpenCLProgramContext&>(ctx).
-            m_InternalOptions.UseBindlessLegacyMode ||
-            !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired)
-        )
+        static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.PromoteStatelessToBindless)
     {
-        mpm.add(new PromoteStatelessToBindless());
+        if (static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.UseBindlessLegacyMode)
+        {
+            mpm.add(new PromoteStatelessToBindless());
+        }
+        else if (!ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired)
+        {
+            // Advanced bindless mode used by the regular OpenCL compilation path
+            mpm.add(new StatelessToStateful(TargetAddressing::BINDLESS));
+        }
     }
 
     if (!isOptDisabled && useStatelessToStateful(ctx))
     {
-        mpm.add(new StatelessToStateful());
+        mpm.add(new StatelessToStateful(TargetAddressing::BINDFUL));
     }
 
     // Light cleanup for subroutines after cloning. Note that the constant
