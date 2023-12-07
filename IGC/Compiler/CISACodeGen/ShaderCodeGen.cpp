@@ -38,7 +38,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Compiler/CISACodeGen/MemOpt2.h"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
-#include "Compiler/CISACodeGen/PreRAScheduler.hpp"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
