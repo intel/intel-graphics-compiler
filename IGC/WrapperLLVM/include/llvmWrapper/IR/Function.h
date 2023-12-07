@@ -39,6 +39,22 @@ inline void addRetAttr(llvm::Function *F, llvm::Attribute::AttrKind Kind) {
 #endif
 }
 
+inline void addRetAttrs(llvm::Function* F, llvm::AttrBuilder &B) {
+#if LLVM_VERSION_MAJOR < 14
+  F->addAttributes(llvm::AttributeList::ReturnIndex, B);
+#else
+  F->addRetAttrs(B);
+#endif
+}
+
+inline void addFnAttrs(llvm::Function* F, llvm::AttrBuilder &B) {
+#if LLVM_VERSION_MAJOR < 14
+  F->addAttributes(llvm::AttributeList::FunctionIndex, B);
+#else
+  F->addFnAttrs(B);
+#endif
+}
+
 inline bool onlyWritesMemory(llvm::Function *F) {
 #if LLVM_VERSION_MAJOR < 14
   return F->doesNotReadMemory();

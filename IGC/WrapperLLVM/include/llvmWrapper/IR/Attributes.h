@@ -92,6 +92,22 @@ namespace IGCLLVM {
 #endif
     }
 
+    inline llvm::AttributeList addFnAttributes(llvm::AttributeList &Attrs, llvm::LLVMContext& C, llvm::AttrBuilder& B) {
+#if LLVM_VERSION_MAJOR >= 14
+        return Attrs.addFnAttributes(C, B);
+#else
+        return Attrs.addAttributes(C, llvm::AttributeList::FunctionIndex, B);
+#endif
+    }
+
+    inline llvm::AttributeList addRetAttributes(llvm::AttributeList &Attrs, llvm::LLVMContext& C, llvm::AttrBuilder& B) {
+#if LLVM_VERSION_MAJOR >= 14
+        return Attrs.addRetAttributes(C, B);
+#else
+        return Attrs.addAttributes(C, llvm::AttributeList::ReturnIndex, B);
+#endif
+    }
+
     class AttrBuilder : public llvm::AttrBuilder {
     public:
         AttrBuilder() = delete;

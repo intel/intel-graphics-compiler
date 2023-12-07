@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvm/IR/Module.h>
@@ -500,6 +502,56 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     return newValue;
 }
 
+void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& attributeList)
+{
+#if LLVM_VERSION_MAJOR >= 12
+    auto getPromoted = [this, &newFunction](llvm::Attribute attr)
+        {
+            if (attr.isTypeAttribute())
+            {
+                return attr.getWithNewType(newFunction->getContext(),
+                    getOrCreatePromotedType(attr.getValueAsType()));
+            }
+            else
+            {
+                return attr;
+            }
+        };
+
+    // set function attributes
+    AttrBuilder attrBuilder(newFunction->getContext());
+    for (auto attr : IGCLLVM::getFnAttrs(attributeList))
+    {
+        attrBuilder.addAttribute(getPromoted(attr));
+    }
+    IGCLLVM::addFnAttrs(newFunction, attrBuilder);
+
+    // set return attributes
+    attrBuilder.clear();
+    for (auto attr : IGCLLVM::getRetAttrs(attributeList))
+    {
+        attrBuilder.addAttribute(getPromoted(attr));
+    }
+    IGCLLVM::addRetAttrs(newFunction, attrBuilder);
+
+    // set params' attributes
+    for (size_t i = 0; i < newFunction->arg_size(); i++)
+    {
+        if (!attributeList.hasParamAttrs(i))
+        {
+            continue;
+        }
+
+        attrBuilder.clear();
+        for (auto attr : IGCLLVM::getParamAttrs(attributeList, i))
+        {
+            attrBuilder.addAttribute(getPromoted(attr));
+        }
+        newFunction->addParamAttrs(i, attrBuilder);
+    }
+#endif // LLVM_VERSION_MAJOR >= 12
+}
+
 Function* PromoteBools::promoteFunction(Function* function)
 {
     if (!function
@@ -516,8 +568,11 @@ Function* PromoteBools::promoteFunction(Function* function)
         function->getName() + ".promoted",
         function->getParent()
     );
+
     newFunction->setCallingConv(function->getCallingConv());
-    newFunction->setAttributes(function->getAttributes());
+
+    AttributeList attributeList = function->getAttributes();
+    setPromotedAttributes(newFunction, attributeList);
 
     // Clone and fix function body
     if (!function->isDeclaration())
@@ -532,8 +587,16 @@ Function* PromoteBools::promoteFunction(Function* function)
             newFunctionArgIt->setName(functionArgIt->getName());
             argsMap[&*functionArgIt++] = newFunctionArgIt++;
         }
+
+        // Create a copy of the promoted attributes list so that
+        // we can reset it after CloneFunctionInto
+        AttributeList newAttributeList = newFunction->getAttributes();
+
         IGCLLVM::CloneFunctionInto(newFunction, function, argsMap,
             IGCLLVM::CloneFunctionChangeType::GlobalChanges, returns);
+
+        // CloneFunctionInto set the potentially unpromoted attrs again.
+        newFunction->setAttributes(newAttributeList);
 
         // Fix body
         for (auto& arg : function->args())

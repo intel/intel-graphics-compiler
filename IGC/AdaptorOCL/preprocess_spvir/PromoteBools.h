@@ -79,6 +79,8 @@ namespace IGC
             });
         }
 
+        void setPromotedAttributes(llvm::Function* newFunction, llvm::AttributeList& attributeList);
+
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
