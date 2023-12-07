@@ -876,7 +876,7 @@ struct MessageDecoderLSC : MessageDecoder {
           }
         } else if (result.info.execWidth <= 8 &&
                    platform() <= Platform::XE_HPG) {
-          addDocXe(kind, "D64_PAYLOAD_SIMT8", "[TBD]", nullptr);
+          addDocXe(kind, "D64_PAYLOAD_SIMT8", "75252", nullptr);
         } else if (result.info.execWidth <= 16) {
           addDocXe(kind, "D64_PAYLOAD_SIMT16", "54147", "64006");
         } else {
@@ -905,7 +905,7 @@ struct MessageDecoderLSC : MessageDecoder {
     } else if (result.info.addrSizeBits == 64) {
       if (result.info.execWidth <= 16 && platform() <= Platform::XE_HPG) {
         // pending an update
-        addDocXe(DocRef::SRC0, "A64_PAYLOAD_SIMT8", "[TBD?]", nullptr);
+        addDocXe(DocRef::SRC0, "A64_PAYLOAD_SIMT8", "75251", nullptr);
       } else if (result.info.execWidth <= 16) {
         addDocXe(DocRef::SRC0, "A64_PAYLOAD_SIMT16", "54149", "63995");
       } else {
