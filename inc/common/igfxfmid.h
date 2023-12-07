@@ -150,8 +150,6 @@ typedef struct GFX_GMD_ID_DEF
 #define GFX_GMD_ARCH_12_RELEASE_XE_LP_LG                 (71)
 #define GFX_GMD_ARCH_12_RELEASE_XE_LPG_PLUS_1274         (74)
 
-#define GFX_GMD_ARCH_20_RELEASE_XE2_LPG                  (4)
-
 #define GFX_GET_GMD_RELEASE_VERSION_RENDER(p)             ((p).sRenderBlockID.GmdID.GMDRelease)
 #define GFX_GET_GMD_RELEASE_VERSION_DISPLAY(p)            ((p).sDisplayBlockID.GmdID.GMDRelease)
 #define GFX_GET_GMD_RELEASE_VERSION_MEDIA(p)              ((p).sMediaBlockID.GmdID.GMDRelease)

@@ -431,7 +431,6 @@ private:
     GenIntrinsicInst* getSr0_0();
     Value* emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     std::pair<uint32_t, uint32_t> getSliceIDBitsInSR0() const;
-    std::pair<uint32_t, uint32_t> getSubsliceIDBitsInSR0() const;
     std::pair<uint32_t, uint32_t> getDualSubsliceIDBitsInSR0() const;
 
 

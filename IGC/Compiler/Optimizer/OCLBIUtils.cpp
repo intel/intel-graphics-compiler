@@ -1373,7 +1373,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_hw_thread_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_hw_thread_id, false);
     m_CommandMap["__builtin_IB_slice_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_slice_id, false);
     m_CommandMap["__builtin_IB_subslice_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_subslice_id, false);
-    m_CommandMap["__builtin_IB_logical_subslice_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_logical_subslice_id, false);
     m_CommandMap["__builtin_IB_dual_subslice_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dual_subslice_id, false);
     m_CommandMap["__builtin_IB_eu_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_id, false);
     m_CommandMap["__builtin_IB_get_sr0"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_getSR0, false);

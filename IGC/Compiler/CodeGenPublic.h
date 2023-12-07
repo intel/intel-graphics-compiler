@@ -749,7 +749,6 @@ namespace IGC
         void SetFirstStateId(int id);
         bool IsFirstTry() const;
         bool IsLastTry() const;
-        bool Trigger2xGRFRetry() const;
         unsigned GetRetryId() const;
         unsigned GetPerFuncRetryStateId(llvm::Function* F) const;
 
