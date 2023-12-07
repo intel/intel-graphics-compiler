@@ -451,6 +451,7 @@ DECLARE_IGC_REGKEY(bool, allowLICM,                     true,  "Enable LICM in I
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdSLM,          0,    "Spill Threshold for CS SIMD16 with SLM", false)
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdNoSLM,        5,     "Spill Threshold for CS SIMD16 without SLM", false)
 DECLARE_IGC_REGKEY(DWORD, AllowedSpillRegCount,         0,     "Max allowed spill size without recompile", false)
+DECLARE_IGC_REGKEY(DWORD, CSSpillThreshold2xGRFRetry,   3500,  "Spill Threshold for CS to trigger 2xGRFRetry", false)
 DECLARE_IGC_REGKEY(DWORD, LICMStatThreshold,            70,    "LICM stat threshold to avoid retry SIMD16 for CS", false)
 DECLARE_IGC_REGKEY(bool, EnableTypeDemotion,            true,  "Enable Type Demotion", false)
 DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag,          true,  "Enable PreRA Rematerialization of Flag", false)

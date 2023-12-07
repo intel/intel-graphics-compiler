@@ -8457,6 +8457,23 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(8, 8);
         break;
     }
+    case GenISAIntrinsic::GenISA_logical_subslice_id:
+    {
+        if (m_currShader->m_Platform->hasLogicalSSID())
+        {
+            uint32_t and_imm = BITMASK_RANGE(0, 7);
+            m_encoder->SetSrcSubReg(0, 0);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->And(m_destination, m_currShader->GetMSG0(), m_currShader->ImmToVariable(and_imm, ISA_TYPE_UD));
+            m_encoder->Push();
+        }
+        else
+        {
+            m_pCtx->EmitError("logical SSID is not supported in this platform!", inst);
+            IGC_ASSERT_MESSAGE(0, "GenISA_logical_subslice_id not supported in this platform!");
+        }
+        break;
+    }
     case GenISAIntrinsic::GenISA_dual_subslice_id:
     {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN11_CORE ||

@@ -1118,6 +1118,21 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     }
 }
 
+std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
+    if (Ctx.platform.GetPlatformFamily() == IGFX_GEN8_CORE ||
+        Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE)
+    {
+        return {12, 13};
+    }
+    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+    {
+        return {8, 9};
+    }
+    else
+    {
+        return {8, 8};
+    }
+}
 
 std::pair<uint32_t, uint32_t> RTBuilder::getDualSubsliceIDBitsInSR0() const {
     if (Ctx.platform.GetPlatformFamily() == IGFX_GEN11_CORE   ||
@@ -1144,6 +1159,36 @@ std::pair<uint32_t, uint32_t> RTBuilder::getDualSubsliceIDBitsInSR0() const {
 // globalDSSID is the combined value of sliceID and dssID on slice.
 Value* RTBuilder::getGlobalDSSID()
 {
+    if (isChildOfXe2)
+    {
+        if (Ctx.platform.supportsWMTPForShaderType(Ctx.type))
+        {
+            Module* module = GetInsertBlock()->getModule();
+            return CreateCall(
+                GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_logical_subslice_id),
+                None,
+                VALUE_NAME("logical_subslice_id"));
+        }
+        else
+        {
+            auto dssIDBits = getSubsliceIDBitsInSR0();
+            auto sliceIDBits = getSliceIDBitsInSR0();
+
+            if (dssIDBits.first < sliceIDBits.first && sliceIDBits.first == dssIDBits.second + 1)
+            {
+                return emitStateRegID(dssIDBits.first, sliceIDBits.second);
+            }
+            else
+            {
+                Value* dssID = emitStateRegID(dssIDBits.first, dssIDBits.second);
+                Value* sliceID = emitStateRegID(sliceIDBits.first, sliceIDBits.second);
+                unsigned shiftAmount = dssIDBits.second - dssIDBits.first + 1;
+                Value* globalDSSID = CreateShl(sliceID, shiftAmount);
+                return CreateOr(globalDSSID, dssID);
+            }
+        }
+    }
+    else
     {
         auto dssIDBits = getDualSubsliceIDBitsInSR0();
         auto sliceIDBits = getSliceIDBitsInSR0();

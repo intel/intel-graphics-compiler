@@ -1938,6 +1938,11 @@ Imported_Intrinsics = \
     [],
     "NoMem"]],
 ####################################################################################################
+"GenISA_logical_subslice_id": ["returns the logical SSID defined in the MSG0 'PREDEFINED_MSG0'",
+    [("int",                           "result"),
+    [],
+    "NoMem"]],
+####################################################################################################
 "GenISA_dual_subslice_id": ["",
     [("int",                           ""),
     [],
