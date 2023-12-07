@@ -225,7 +225,7 @@ ZEELFObjectBuilder::addSectionBss(
     else
         sectName = m_BssName;
 
-    Section& sect = addStandardSection(sectName, nullptr, size, ELF::SHT_NOBITS,
+    Section& sect = addStandardSection(std::move(sectName), nullptr, size, ELF::SHT_NOBITS,
         ELF::SHF_ALLOC | ELF::SHF_WRITE, padding, align, m_dataAndbssSections);
     return sect.id();
 }

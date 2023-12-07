@@ -483,7 +483,7 @@ bool TranslateBuildSPMDAndESIMD(
     std::string NewInternalOptions{
         InputArgs.pInternalOptions ? InputArgs.pInternalOptions : ""};
     std::string NewOptions{InputArgs.pOptions ? InputArgs.pOptions : ""};
-    std::string NewEsimdOptions{ NewOptions };
+    std::string NewEsimdOptions{ std::move(NewOptions) };
 
     switch (InputArgsPair.first.SpirvType) {
     case VLD::SPIRVTypeEnum::SPIRV_SPMD:

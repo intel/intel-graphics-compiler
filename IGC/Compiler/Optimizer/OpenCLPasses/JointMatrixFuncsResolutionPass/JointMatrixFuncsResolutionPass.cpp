@@ -519,7 +519,7 @@ std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
         matrixLayout = LayoutPackedA;
     }
 
-    std::string name = prefix;
+    std::string name = std::move(prefix);
 
     switch (matrixLayout) {
       case LayoutPackedA:

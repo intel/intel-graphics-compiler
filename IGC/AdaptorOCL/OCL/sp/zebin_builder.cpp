@@ -285,7 +285,7 @@ void ZEBinaryBuilder::addSPIRV(const uint8_t* data, uint32_t size)
 
 void ZEBinaryBuilder::addMiscInfoSection(std::string sectName, const uint8_t* data, uint32_t size)
 {
-    mBuilder.addSectionMisc(sectName, data, size);
+    mBuilder.addSectionMisc(std::move(sectName), data, size);
 }
 
 void ZEBinaryBuilder::addMetrics(const uint8_t* data, uint32_t size)
