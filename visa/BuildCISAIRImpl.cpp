@@ -843,8 +843,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
       std::map<G4_Declare *, long long> stackPointers;
       // A hash map to record where the instruction is on defs
       std::map<G4_Declare *, std::list<vISA::G4_INST *>::iterator> defInst;
-      // A set of operand to avoid cloning due to S2L
-      std::set<G4_Declare *> avoidCloning;
 
       if (removeStackArg) {
         // collect instructions which store args to stack
@@ -913,6 +911,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
           }
           return it;
         };
+        std::set<G4_Declare*> visitedDcl;
         std::function<void(G4_Operand *, INST_LIST &, G4_Declare *)>
             removeDeadCode;
         removeDeadCode = [&](G4_Operand *src, INST_LIST &instList,
@@ -921,13 +920,17 @@ void CISA_IR_Builder::LinkTimeOptimization(
               defInst.find(src->getTopDcl()) == defInst.end()) {
             return;
           }
-          auto instIt = defInst[src->getTopDcl()];
+          auto dcl = src->getTopDcl();
+          if (visitedDcl.find(dcl) != visitedDcl.end())
+              return;
+          visitedDcl.insert(dcl);
+          auto instIt = defInst[dcl];
           G4_INST *inst = *instIt;
           if (static_cast<int>(inst->getExecSize() > 2)) {
             return;
           }
           if (inst->opcode() == G4_mov || inst->opcode() == G4_add) {
-            DEBUG_PRINT("removeFrame (" << stackPointers[src->getTopDcl()]
+            DEBUG_PRINT("removeFrame (" << stackPointers[dcl]
                                         << ") ");
             DEBUG_UTIL(inst->dump());
             instList.erase(instIt);
@@ -935,12 +938,42 @@ void CISA_IR_Builder::LinkTimeOptimization(
           }
         };
 
-        // A list of store in order to perform store-to-load forwarding
-        std::list<std::list<vISA::G4_INST *>::iterator> storeList;
+        // A list of load/store in the caller in order to perform store-to-load forwarding
+        std::list<std::list<vISA::G4_INST *>::iterator> memopList;
+        std::list<std::list<vISA::G4_INST *>::iterator> callerFrameInstList;
+        std::list<std::list<vISA::G4_INST *>::iterator> calleeFrameInstList;
 
+        auto callsiteIt = it;
         auto beginIt = getBeginIt(it);
         bool noArgOnStack = (beginIt == it);
-        for (auto callerIt = beginIt; callerIt != it; callerIt++) {
+        for (auto callerIt = beginIt; callerIt != callerInsts.end(); callerIt++) {
+          if (callerIt == callsiteIt) {
+            // passing SP offset from caller to callee upon reaching the callsite
+            stackPointers[calleeBuilder->getFE_SP()] =
+                stackPointers[callerBuilder->getFE_SP()];
+            stackPointers[calleeBuilder->getFE_FP()] =
+                stackPointers[callerBuilder->getFE_FP()];
+
+            if (removeStackFrame) {
+              if (defInst.find(callerBuilder->getFE_SP()) != defInst.end()) {
+                DEBUG_PRINT("Add frame inst to removal list:");
+                DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
+                callerFrameInstList.push_back(defInst[callerBuilder->getFE_SP()]);
+              }
+              if (defInst.find(calleeBuilder->getFE_SP()) != defInst.end()) {
+                DEBUG_PRINT("Add frame inst to removal list:");
+                DEBUG_UTIL((*defInst[calleeBuilder->getFE_SP()])->dump());
+                calleeFrameInstList.push_back(defInst[calleeBuilder->getFE_SP()]);
+              }
+              if (defInst.find(calleeBuilder->getFE_FP()) != defInst.end()) {
+                DEBUG_PRINT("Add frame inst to removal list:");
+                DEBUG_UTIL((*defInst[calleeBuilder->getFE_FP()])->dump());
+                calleeFrameInstList.push_back(defInst[calleeBuilder->getFE_FP()]);
+              }
+            }
+            continue;
+          }
+          // Scan the caller to gather store/load instructions
           G4_INST *inst = *callerIt;
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
             G4_Declare *rootDcl = getRootDeclare(inst->getSrc(i));
@@ -972,7 +1005,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
               } else if (inst->isSendUnconditional()) {
                 vASSERT(i == 0);
                 // Start adding argument stores to the list
-                storeList.push_back(callerIt);
+                memopList.push_back(callerIt);
                 DEBUG_PRINT("[ ]");
                 DEBUG_UTIL(inst->dump());
               } else {
@@ -981,17 +1014,14 @@ void CISA_IR_Builder::LinkTimeOptimization(
             }
           }
         }
-        // passing SP offset from caller to callee
-        stackPointers[calleeBuilder->getFE_SP()] =
-            stackPointers[callerBuilder->getFE_SP()];
-        stackPointers[calleeBuilder->getFE_FP()] =
-            stackPointers[callerBuilder->getFE_FP()];
 
-        for (auto calleeIt = calleeInsts.begin();
-             calleeIt != calleeInsts.end();) {
-          auto thisIt = calleeIt;
+        for (auto thisIt = calleeInsts.begin();
+             thisIt != calleeInsts.end();) {
+          // Scan callee instructions to match memops in the list
+          // to perform store to load forwarding
+          auto calleeIt = thisIt;
+          thisIt++;
           G4_INST *inst = *calleeIt;
-          calleeIt++;
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
             G4_Declare *rootDcl = getRootDeclare(inst->getSrc(i));
             if (!rootDcl)
@@ -1000,7 +1030,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             if (rootDcl == calleeBuilder->getFE_SP()) {
               stackPointers[dst->getTopDcl()] =
                   getPointerOffset(inst, stackPointers[rootDcl]);
-              defInst[dst->getTopDcl()] = thisIt;
+              defInst[dst->getTopDcl()] = calleeIt;
               DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
               DEBUG_UTIL(inst->dump());
             } else if (stackPointers.find(rootDcl) != stackPointers.end()) {
@@ -1009,7 +1039,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
               if (inst->opcode() == G4_add &&
                   dst->getTopDcl()->getElemSize() == 4) {
                 vASSERT(execSize == 1);
-                defInst[dst->getTopDcl()] = thisIt;
+                defInst[dst->getTopDcl()] = calleeIt;
                 DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()]
                                 << ") 64-bit emulated Hi32 ");
                 DEBUG_UTIL(inst->dump());
@@ -1022,17 +1052,17 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 }
                 stackPointers[dst->getTopDcl()] =
                     getPointerOffset(inst, offset);
-                defInst[dst->getTopDcl()] = thisIt;
+                defInst[dst->getTopDcl()] = calleeIt;
                 DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
                 DEBUG_UTIL(inst->dump());
               } else if (inst->isSendUnconditional()) {
-                if (storeList.empty()) {
+                if (memopList.empty()) {
                   // store prevFP to the callee's frame
                   if (stackPointers[callerBuilder->getFE_SP()] ==
                       stackPointers[getRootDeclare(inst->getSrc(0))]) {
                     DEBUG_PRINT("remove prevFP on callee's frame:\n");
                     DEBUG_UTIL(inst->dump());
-                    calleeInsts.erase(thisIt);
+                    calleeInsts.erase(calleeIt);
                     removeDeadCode(inst->getSrc(0), calleeInsts,
                                    calleeBuilder->getFE_FP());
                     // Cannot remove inst->getSrc(1) in some cases
@@ -1046,12 +1076,12 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     // mov (M1_NM, 2) %fp(0,0)<1> FP_1(0,0)<1;1,0>
                     // fret
                     if (removeStackFrame) {
-                      DEBUG_PRINT("removed:");
+                      DEBUG_PRINT("Add frame inst to removal list:");
                       DEBUG_UTIL((*defInst[calleeBuilder->getFE_SP()])->dump());
-                      calleeInsts.erase(defInst[calleeBuilder->getFE_SP()]);
-                      DEBUG_PRINT("removed:");
+                      calleeFrameInstList.push_back(defInst[calleeBuilder->getFE_SP()]);
+                      DEBUG_PRINT("Add frame inst to removal list:");
                       DEBUG_UTIL((*defInst[calleeBuilder->getFE_FP()])->dump());
-                      calleeInsts.erase(defInst[calleeBuilder->getFE_FP()]);
+                      calleeFrameInstList.push_back(defInst[calleeBuilder->getFE_FP()]);
                     }
                     break;
                   } else {
@@ -1061,10 +1091,19 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     vASSERT(false);
                   }
                 }
-                auto storeIt = storeList.front();
-                G4_INST *storeInst = *storeIt;
-                G4_INST *loadInst = inst;
-                storeList.pop_front();
+                auto callerIt = memopList.front();
+                bool isStoreAtCaller = (*callerIt)->getDst()->isNullReg();
+                bool isLoadAtCallee = !inst->getDst()->isNullReg();
+                vISA_ASSERT(!(isStoreAtCaller ^ isLoadAtCallee), "Must be a pair of load and store");
+                G4_INST *storeInst = isStoreAtCaller ? *callerIt : inst;
+                G4_INST *loadInst  = isLoadAtCallee  ? inst : *callerIt;
+                auto storeIt       = isStoreAtCaller ? callerIt : calleeIt;
+                auto loadIt        = isLoadAtCallee  ? calleeIt : callerIt;
+                auto storeBuilder  = isStoreAtCaller ? callerBuilder : calleeBuilder;
+                auto loadBuilder   = isLoadAtCallee  ? calleeBuilder : callerBuilder;
+                auto &storeInsts   = isStoreAtCaller ? callerInsts : calleeInsts;
+                auto &loadInsts    = isLoadAtCallee  ? calleeInsts : callerInsts;
+                memopList.pop_front();
                 DEBUG_PRINT("store-to-load forwarding:\n");
                 DEBUG_PRINT("\tstore:\t");
                 DEBUG_UTIL(storeInst->dump());
@@ -1073,22 +1112,20 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 vISA_ASSERT(stackPointers[getRootDeclare(storeInst->getSrc(0))] ==
                            stackPointers[getRootDeclare(loadInst->getSrc(0))],
                        "Store and load have different SP offset");
-                removeDeadCode(storeInst->getSrc(0), callerInsts,
-                               callerBuilder->getFE_SP());
-                removeDeadCode(loadInst->getSrc(0), calleeInsts,
-                               calleeBuilder->getFE_SP());
+                removeDeadCode(storeInst->getSrc(0), storeInsts,
+                               storeBuilder->getFE_SP());
+                removeDeadCode(loadInst->getSrc(0), loadInsts,
+                               loadBuilder->getFE_SP());
                 // promote the load into mov
-                inst->setOpcode(G4_mov);
                 auto newSrc = storeInst->getSrc(1);
-                loadInst->setSrc(newSrc, 0);
-                dst->setType(*calleeBuilder, newSrc->getType());
-                avoidCloning.insert(newSrc->getTopDcl());
-                // recompute right bound of region
-                newSrc->computeRightBound(inst->getExecSize());
-                DEBUG_PRINT("\tforwarded:");
-                DEBUG_UTIL(inst->dump());
+                auto dst = loadInst->getDst();
+                if (isStoreAtCaller)
+                  redirectMap.insert(std::make_pair(dst->getTopDcl(), newSrc->getTopDcl()));
+                else
+                  redirectMap.insert(std::make_pair(newSrc->getTopDcl(), dst->getTopDcl()));
                 // erase the store
-                callerInsts.erase(storeIt);
+                loadInsts.erase(loadIt);
+                storeInsts.erase(storeIt);
               } else {
                 vISA_ASSERT(false, "not implemented");
               }
@@ -1098,20 +1135,30 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
         // All args has been removed on the stack
         // Remove SP updating instruction
-        if (storeList.empty() && !noArgOnStack && removeStackFrame) {
-          DEBUG_PRINT("removed:");
-          DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
-          callerInsts.erase(defInst[callerBuilder->getFE_SP()]);
+        if (memopList.empty() && !noArgOnStack && removeStackFrame) {
+          if (defInst.find(callerBuilder->getFE_SP()) != defInst.end()) {
+            DEBUG_PRINT("Add frame inst to removal list:");
+            DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
+            callerFrameInstList.push_back(defInst[callerBuilder->getFE_SP()]);
+          }
           if (defInst.find(calleeBuilder->getFE_SP()) != defInst.end()) {
-            DEBUG_PRINT("removed:");
+            DEBUG_PRINT("Add frame inst to removal list:");
             DEBUG_UTIL((*defInst[calleeBuilder->getFE_SP()])->dump());
-            calleeInsts.erase(defInst[calleeBuilder->getFE_SP()]);
+            calleeFrameInstList.push_back(defInst[calleeBuilder->getFE_SP()]);
           }
           if (defInst.find(calleeBuilder->getFE_FP()) != defInst.end()) {
-            DEBUG_PRINT("removed:");
+            DEBUG_PRINT("Add frame inst to removal list:");
             DEBUG_UTIL((*defInst[calleeBuilder->getFE_FP()])->dump());
-            calleeInsts.erase(defInst[calleeBuilder->getFE_FP()]);
+            calleeFrameInstList.push_back(defInst[calleeBuilder->getFE_FP()]);
           }
+        }
+
+        for (auto it : callerFrameInstList) {
+          callerInsts.erase(it);
+        }
+        for (auto it : calleeFrameInstList) {
+          removeDeadCode((*it)->getSrc(0), calleeInsts, calleeBuilder->getFE_FP());
+          calleeInsts.erase(it);
         }
       }
 
@@ -1138,8 +1185,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                ? opd->getBase()->asRegVar()
                                : nullptr;
           if (!var)
-            return;
-          if (avoidCloning.find(topDcl) != avoidCloning.end())
             return;
           G4_Declare *dcl = var->getDeclare();
           if (topDcl && redirectMap.find(topDcl) != redirectMap.end()) {
