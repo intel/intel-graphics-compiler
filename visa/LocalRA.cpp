@@ -581,7 +581,10 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignBackward(int &i,
   } else if ((align == BankAlign::Odd) && (i % 2 == 0)) {
     i--;
   } else if ((align == BankAlign::QuadGRF) && (i % 4 != 0)) {
-    i -= (i % 4);
+    if (i > 0)
+      i -= (i % 4);
+    else
+      i -= (4 - (-i % 4));
   } else if (align == BankAlign::Even2GRF) {
     while (i >= 0 && ((i % 4 >= 2) || (evenAlign && (i % 2 != 0)))) {
       i--;
