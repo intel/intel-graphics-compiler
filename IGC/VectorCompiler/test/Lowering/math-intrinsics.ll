@@ -70,42 +70,6 @@ define <8 x float> @test_sqrt_afn(<8 x float> %a0) {
   ret <8 x float> %1
 }
 
-declare <8 x float> @llvm.cos.v8f32(<8 x float>)
-
-define <8 x float> @test_cos_afn(<8 x float> %a0) {
-; CHECK:  [[NATIVE_COS:%.*]] = call <8 x float> @llvm.genx.cos.v8f32(<8 x float> %a0)
-; CHECK-NEXT: ret <8 x float> [[NATIVE_COS]]
-  %1 = call afn <8 x float> @llvm.cos.v8f32(<8 x float> %a0)
-  ret <8 x float> %1
-}
-
-declare <8 x float> @llvm.exp2.v8f32(<8 x float>)
-
-define <8 x float> @test_exp2_afn(<8 x float> %a0) {
-; CHECK:  [[NATIVE_EXP:%.*]] = call <8 x float> @llvm.genx.exp.v8f32(<8 x float> %a0)
-; CHECK-NEXT: ret <8 x float> [[NATIVE_EXP]]
-  %1 = call afn <8 x float> @llvm.exp2.v8f32(<8 x float> %a0)
-  ret <8 x float> %1
-}
-
-declare <8 x float> @llvm.log2.v8f32(<8 x float>)
-
-define <8 x float> @test_log2_afn(<8 x float> %a0) {
-; CHECK:  [[NATIVE_LOG:%.*]] = call <8 x float> @llvm.genx.log.v8f32(<8 x float> %a0)
-; CHECK-NEXT: ret <8 x float> [[NATIVE_LOG]]
-  %1 = call afn <8 x float> @llvm.log2.v8f32(<8 x float> %a0)
-  ret <8 x float> %1
-}
-
-declare <8 x float> @llvm.sin.v8f32(<8 x float>)
-
-define <8 x float> @test_sin_afn(<8 x float> %a0) {
-; CHECK:  [[NATIVE_SIN:%.*]] = call <8 x float> @llvm.genx.sin.v8f32(<8 x float> %a0)
-; CHECK-NEXT: ret <8 x float> [[NATIVE_SIN]]
-  %1 = call afn <8 x float> @llvm.sin.v8f32(<8 x float> %a0)
-  ret <8 x float> %1
-}
-
 declare <8 x float> @llvm.ceil.v8f32(<8 x float>)
 
 define <8 x float> @test_ceil(<8 x float> %a0) {

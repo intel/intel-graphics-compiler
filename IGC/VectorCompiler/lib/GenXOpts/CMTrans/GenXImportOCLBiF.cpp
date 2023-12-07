@@ -87,21 +87,21 @@ BIConvert::BIConvert() {
   OneMap["__builtin_IB_frnd_pi"] = GenXIntrinsic::genx_rndu;
   OneMap["__builtin_IB_frnd_ni"] = GenXIntrinsic::genx_rndd;
   OneMap["__builtin_IB_frnd_zi"] = GenXIntrinsic::genx_rndz;
-  OneMap["__builtin_IB_native_cosf"] = GenXIntrinsic::genx_cos;
-  OneMap["__builtin_IB_native_cosh"] = GenXIntrinsic::genx_cos;
-  OneMap["__builtin_IB_native_sinf"] = GenXIntrinsic::genx_sin;
-  OneMap["__builtin_IB_native_sinh"] = GenXIntrinsic::genx_sin;
-  OneMap["__builtin_IB_native_exp2f"] = GenXIntrinsic::genx_exp;
-  OneMap["__builtin_IB_native_exp2h"] = GenXIntrinsic::genx_exp;
-  OneMap["__builtin_IB_native_log2f"] = GenXIntrinsic::genx_log;
-  OneMap["__builtin_IB_native_log2h"] = GenXIntrinsic::genx_log;
-  OneMap["__builtin_IB_native_sqrtf"] = GenXIntrinsic::genx_sqrt;
-  OneMap["__builtin_IB_native_sqrth"] = GenXIntrinsic::genx_sqrt;
-  OneMap["__builtin_IB_native_sqrtd"] = GenXIntrinsic::genx_sqrt;
+  OneMap["__builtin_IB_native_cosf"] = Intrinsic::cos;
+  OneMap["__builtin_IB_native_cosh"] = Intrinsic::cos;
+  OneMap["__builtin_IB_native_sinf"] = Intrinsic::sin;
+  OneMap["__builtin_IB_native_sinh"] = Intrinsic::sin;
+  OneMap["__builtin_IB_native_exp2f"] = Intrinsic::exp2;
+  OneMap["__builtin_IB_native_exp2h"] = Intrinsic::exp2;
+  OneMap["__builtin_IB_native_log2f"] = Intrinsic::log2;
+  OneMap["__builtin_IB_native_log2h"] = Intrinsic::log2;
+  OneMap["__builtin_IB_native_sqrtf"] = Intrinsic::sqrt;
+  OneMap["__builtin_IB_native_sqrth"] = Intrinsic::sqrt;
+  OneMap["__builtin_IB_native_sqrtd"] = Intrinsic::sqrt;
   OneMap["__builtin_IB_popcount_1u32"] = GenXIntrinsic::genx_cbit;
   OneMap["__builtin_IB_popcount_1u16"] = GenXIntrinsic::genx_cbit;
   OneMap["__builtin_IB_popcount_1u8"] = GenXIntrinsic::genx_cbit;
-  OneMap["__builtin_IB_native_powrf"] = GenXIntrinsic::genx_pow;
+  OneMap["__builtin_IB_native_powrf"] = Intrinsic::pow;
   OneMap["__builtin_IB_fma"] = Intrinsic::fma;
   OneMap["__builtin_IB_fmah"] = Intrinsic::fma;
   OneMap["__builtin_IB_bfrev"] = GenXIntrinsic::genx_bfrev;
@@ -185,7 +185,6 @@ static Function *getOneMapIntrinsicDeclaration(CallInst &CI, const unsigned IID,
     return vc::getGenXDeclarationForIdFromArgs(
         CI.getType(), CI.args(), static_cast<GenXIntrinsic::ID>(IID), M);
 
-  IGC_ASSERT_MESSAGE(IID == Intrinsic::fma, "Expected fma intrinsic");
   return Intrinsic::getDeclaration(&M, static_cast<Intrinsic::ID>(IID),
                                    {CI.getType()});
 }
@@ -237,6 +236,8 @@ void BIConvert::runOnModule(Module &M) {
           const SmallVector<llvm::Value *, 3> Args{InstCall->args()};
           Instruction *const IntrinCall =
               CallInst::Create(IntrinFunc, Args, InstCall->getName(), InstCall);
+          if (!GenXIntrinsic::isGenXIntrinsic(IID) && IID != Intrinsic::fma)
+            IntrinCall->setHasApproxFunc(true);
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);

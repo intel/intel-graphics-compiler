@@ -2028,16 +2028,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerMathIntrinsic(CI, GenXIntrinsic::genx_rndd);
     case Intrinsic::trunc:
       return lowerMathIntrinsic(CI, GenXIntrinsic::genx_rndz);
-    case Intrinsic::exp2:
-      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_exp);
-    case Intrinsic::log2:
-      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_log);
-    case Intrinsic::pow:
-      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_pow);
-    case Intrinsic::sin:
-      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_sin);
-    case Intrinsic::cos:
-      return lowerFastMathIntrinsic(CI, GenXIntrinsic::genx_cos);
     case Intrinsic::stacksave:
       return lowerStackSave(CI);
     case Intrinsic::stackrestore:
