@@ -1328,27 +1328,24 @@ void DeSSA::getAllValuesInCongruentClass(
 
 void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
 {
-    // Find a chain of insertvalue, and return the last one.
+    // Find a chain of insertvalue, and return the lead (last one).
     auto getInsValChain = [this](InsertValueInst* aIVI,
         SmallVector<Value*, 8>& IVIs)
     {
-        InsertValueInst* Inst = aIVI;
-        const bool isUniform = WIA->isUniform(Inst);
-        while (Inst && Inst->hasOneUse())
+        IGC_ASSERT(aIVI);
+        InsertValueInst* lead = aIVI;
+        const bool isUniform = WIA->isUniform(lead);
+        IVIs.push_back(lead);
+        while (lead->hasOneUse())
         {
-            IVIs.push_back(Inst);
-            Inst = dyn_cast<InsertValueInst>(Inst->user_back());
-            if (Inst && isUniform != WIA->isUniform(Inst)) {
-                // Don't group values with different uniformity.
-                Inst = nullptr;
+            auto next = dyn_cast<InsertValueInst>(lead->user_back());
+            if (!next || isUniform != WIA->isUniform(next)) {
+                break;
             }
+            lead = next;
+            IVIs.push_back(lead);
         }
-        if (Inst)
-        {
-            // last one with multiple uses
-            IVIs.push_back(Inst);
-        }
-        return Inst;
+        return lead;
     };
 
     auto setInsValAlias = [this](SmallVector<Value*, 8>& IVIs)
@@ -1406,11 +1403,11 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
     //        Vn = InsVal Vn-1, Sn,
     //  where all Vi, i=0, n-1 has a single use. This sequence is called
     //  InsertValueInst chain (IVI Chain). And they are set to alias each
-    //  other.
+    //  other.  For this chain, V0 is called the root and Vn the lead.
     //
-    //  Start finding IVI chains from an inst (called Root) that cannot
-    //  be an operand of the other InsertValueInst. It's possible to have
-    //  several IVI chains. For example,
+    //  Start finding IVI chains from an inst that cannot be an operand of
+    //  the other InsertValueInst. It's possible to have several IVI chains.
+    //  For example,
     //       Chain0:   V0 = insval undef
     //                 V1 = insVal V0
     //       Chain1:   V2 = insVal V1
@@ -1443,33 +1440,27 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
          isa<PHINode>(Oprd0)))
     {
         SmallVector<Value*, 8> IVIChain;
-        InsertValueInst* Inst = getInsValChain(theIVI, IVIChain);
+        InsertValueInst* LeadInst = getInsValChain(theIVI, IVIChain);
         setInsValAlias(IVIChain);
 
-        if (Inst == nullptr)
-        {
-            return;
-        }
-
-        // For aggressive aliasing. 'ChainInst' is the last inst
-        // of a chain, which is used to identify its successor
-        // chain in the chain tree.
+        // For aggressive aliasing. lead inst is used to identify its
+        // successor chain in the chain tree.
         bool aggressiveAliasing = false;
         DenseSet<int> commonFields;
-        InsertValueInst* chainInst = Inst;
-        Value* theAliasee = getAliasee(Inst);
+        const bool isChainUniform = WIA->isUniform(LeadInst);
+        Value* theAliasee = getAliasee(LeadInst);
         if (isa<UndefValue>(Oprd0))
         {
             getIndex(commonFields, IVIChain);
             if (!commonFields.empty())
-            {
+            {   // Fields inserted are known, can do aggressive coalescing.
                 aggressiveAliasing = true;
             }
         }
 
         // Make sure every sub-chains rooted at theIVI are processed.
         std::list<InsertValueInst*> worklist;
-        worklist.push_back(Inst);
+        worklist.push_back(LeadInst);
         while (!worklist.empty())
         {
             InsertValueInst* aI = worklist.front();
@@ -1479,26 +1470,23 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
             {
                 Value* v = *UI;
                 InsertValueInst* I = dyn_cast<InsertValueInst>(v);
-                if (!I)
-                {
+                if (!I) {
                     continue;
                 }
                 IVIChain.clear();
-                InsertValueInst* tI = getInsValChain(I, IVIChain);
+                InsertValueInst* nextLead = getInsValChain(I, IVIChain);
                 setInsValAlias(IVIChain);
-                if (tI)
-                {
-                    worklist.push_back(tI);
-                }
+                worklist.push_back(nextLead);
 
-                if (aggressiveAliasing && chainInst == aI)
+                if (aggressiveAliasing && LeadInst == aI &&
+                    isChainUniform == WIA->isUniform(nextLead))
                 {
                     DenseSet<int> fields;
                     getIndex(fields, IVIChain);
                     if (!fields.empty() &&
                         isDisjoin(commonFields, fields))
                     {
-                        chainInst = tI;
+                        LeadInst = nextLead;
                         commonFields.insert(fields.begin(), fields.end());
 
                         // update alias
