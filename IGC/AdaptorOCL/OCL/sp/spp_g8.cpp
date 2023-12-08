@@ -52,7 +52,7 @@ bool CGen8OpenCLProgram::CLProgramCtxProvider::isProgramDebuggable() const {
     return m_Context.m_InternalOptions.KernelDebugEnable;
 }
 bool CGen8OpenCLProgram::CLProgramCtxProvider::hasProgrammableBorderColor() const {
-    return m_Context.m_DriverInfo.ProgrammableBorderColorInCompute();
+    return false;
 }
 
 bool CGen8OpenCLProgram::CLProgramCtxProvider::useBindlessMode() const {
@@ -517,7 +517,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
         // FIXME: We actually expect only one simd mode per kernel. There should not be multiple SIMD mode available
         // for one kernel (runtime cannot support that). So these check can be simplified
         std::vector<IGC::COpenCLKernel*> kernelVec;
-        if ((m_Context.m_DriverInfo.sendMultipleSIMDModes() || m_Context.m_enableSimdVariantCompilation)
+        if ((m_Context.m_enableSimdVariantCompilation)
             && (m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             // For multiple SIMD modes, send SIMD modes in descending order
@@ -838,8 +838,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 
         // Determine how many simd modes we have per kernel
         std::vector<IGC::COpenCLKernel*> kernelVec;
-        if ((m_Context.m_DriverInfo.sendMultipleSIMDModes() || m_Context.m_enableSimdVariantCompilation)
-            && (m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0))
+        if (m_Context.m_enableSimdVariantCompilation && m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0)
         {
             // For multiple SIMD modes, send SIMD modes in descending order
             if (IGC::COpenCLKernel::IsValidShader(simd32Shader))

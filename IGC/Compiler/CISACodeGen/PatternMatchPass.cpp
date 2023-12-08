@@ -1829,11 +1829,7 @@ namespace IGC
 
     bool CodeGenPatternMatch::MatchFrc(llvm::BinaryOperator& I)
     {
-        if (m_ctx->m_DriverInfo.DisableMatchFrcPatternMatch() || !ContractionAllowed(I))
-        {
-            return false;
-        }
-
+        if (!ContractionAllowed(I)) return false;
         struct FrcPattern : public Pattern
         {
             SSource source;

@@ -1138,10 +1138,6 @@ namespace IGC
                 {
                     pushConstantMode = PushConstantMode::GATHER;
                 }
-                else if (m_context->m_DriverInfo.SupportsHWResourceStreameAndSimplePush())
-                {
-                    pushConstantMode = PushConstantMode::SIMPLE;
-                }
                 else
                 {
                     // CPU copy

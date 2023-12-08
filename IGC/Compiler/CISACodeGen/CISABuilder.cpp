@@ -4125,12 +4125,6 @@ namespace IGC
             }
         }
 
-        if (m_program->m_DriverInfo->clearScratchWriteBeforeEOT() &&
-            (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER))
-        {
-            SaveOption(vISA_clearScratchWritesBeforeEOT, true);
-        }
-
         bool clearHDCWritesBeforeEOT = m_program->m_DriverInfo->UsesSparseAliasedResidency() &&
             context->platform.WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources();
         clearHDCWritesBeforeEOT |= ((context->type == ShaderType::PIXEL_SHADER) ||

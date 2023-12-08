@@ -3108,7 +3108,7 @@ namespace IGC
         bool isWorstThanPrv = false;
         // Look for previous generated shaders
         // ignoring case for multi-simd compilation, or if kernel has stackcalls
-        if (!((ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
+        if (!((ctx->m_enableSimdVariantCompilation)
             && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) &&
             !(program->HasStackCalls() || program->IsIntelSymbolTableVoidProgram()))
         {
@@ -3283,7 +3283,7 @@ namespace IGC
         AddAnalysisPasses(*ctx, Passes);
 
         if (ctx->m_enableFunctionPointer
-            && (ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
+            && (ctx->m_enableSimdVariantCompilation)
             && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
         {
             // In order to support compiling multiple SIMD modes for function pointer calls,
@@ -3321,57 +3321,20 @@ namespace IGC
             return;
         }
 
-        if (ctx->m_DriverInfo.sendMultipleSIMDModes())
+        if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
-            unsigned int leastSIMD = 8;
-            if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize)
-            {
-                const SIMDMode leastSIMDMode = getLeastSIMDAllowed(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
-                leastSIMD = numLanes(leastSIMDMode);
-            }
-            if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize)
-            {
-                IGC_ASSERT_MESSAGE((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD), "Incorrect SIMD forced");
-            }
-            if (leastSIMD <= 8)
-            {
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false);
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
-            }
-            else if (leastSIMD <= 16)
-            {
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
+            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
 
-                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            else
-            {
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
-
-                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
-                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-            }
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
         }
         else
         {
-            if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
-            {
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
-
-                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            else
-            {
-                // The order in which we call AddCodeGenPasses matters, please to not change order
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
-                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false);
-            }
+            // The order in which we call AddCodeGenPasses matters, please to not change order
+            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false);
         }
-
         Passes.add(new DebugInfoPass(shaders));
         COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
 
@@ -3455,7 +3418,7 @@ namespace IGC
             COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
             COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
 
-            if ((ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
+            if ((ctx->m_enableSimdVariantCompilation)
                 && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
             {
                 //Gather the kernel binary for each compiled kernel
@@ -3621,14 +3584,7 @@ namespace IGC
             return false;
 
         IGC_ASSERT(simdStatus == SIMDStatus::SIMD_PERF_FAIL);
-        //not profitable
-        if (m_Context->m_DriverInfo.sendMultipleSIMDModes())
-        {
-            if (EP.m_canAbortOnSpill)
-                return false; //not the first functionally correct SIMD, exit
-            else
-                return true; //is the first functionally correct SIMD, compile
-        }
+
         return simdStatus == SIMDStatus::SIMD_PASS;
     }
 
@@ -3792,7 +3748,7 @@ namespace IGC
             (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) ||
             (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
         {
-            bool canCompileMultipleSIMD = pCtx->m_DriverInfo.sendMultipleSIMDModes() || compileFunctionVariants;
+            bool canCompileMultipleSIMD = compileFunctionVariants;
             if (!(canCompileMultipleSIMD && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
                 return SIMDStatus::SIMD_FUNC_FAIL;
         }

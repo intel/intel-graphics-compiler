@@ -1749,9 +1749,6 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
         }
     }
 
-    // WA for remaining bug in custom pass
-    if (pContext->m_DriverInfo.WADisableCustomPass())
-        return;
     if (I.getType()->isIntegerTy())
     {
         if ((I.getOpcode() == Instruction::Add || isEmulatedAdd(I)) &&

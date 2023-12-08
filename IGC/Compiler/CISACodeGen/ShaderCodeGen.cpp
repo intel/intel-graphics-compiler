@@ -500,7 +500,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     theEmuKind |=
         ((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
             (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
-        ? EmuKind::EMU_SP_DIV : 0);
+            ? EmuKind::EMU_SP_DIV : 0);
     if (ctx.platform.preferFP32IntDivRemEmu() && IGC_IS_FLAG_DISABLED(Force32BitIntDivRemEmu)) {
         // Prefer using FP32 emulation even though DP support is available
         theEmuKind |= EmuKind::EMU_I32DIVREM_SP;
