@@ -48,8 +48,7 @@ public:
 
 private:
   Constant *translateCacheControls(Constant *L1, Constant *L3) const;
-  Value *translateMath(CallInst &I, Intrinsic::ID IID,
-                       bool HasApproxFunc = true) const;
+
   Value *translateBFloat16Convert(CallInst &I) const;
   Value *translateTFloat32Convert(CallInst &I) const;
   Value *translateStochasticRounding(CallInst &I) const;
@@ -85,21 +84,6 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   switch (IID) {
   default:
     return;
-  case GenXIntrinsic::genx_cos:
-    NewI = translateMath(I, Intrinsic::cos);
-    break;
-  case GenXIntrinsic::genx_exp:
-    NewI = translateMath(I, Intrinsic::exp2);
-    break;
-  case GenXIntrinsic::genx_log:
-    NewI = translateMath(I, Intrinsic::log2);
-    break;
-  case GenXIntrinsic::genx_sin:
-    NewI = translateMath(I, Intrinsic::sin);
-    break;
-  case GenXIntrinsic::genx_pow:
-    NewI = translateMath(I, Intrinsic::pow);
-    break;
   case GenXIntrinsic::genx_bf_cvt:
     NewI = translateBFloat16Convert(I);
     break;
@@ -153,19 +137,6 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
 
   I.eraseFromParent();
   return;
-}
-
-Value *GenXTranslateIntrinsics::translateMath(CallInst &I, Intrinsic::ID IID,
-                                              bool HasApproxFunc) const {
-  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
-
-  SmallVector<Value *, 4> Args(I.args());
-  auto *NewI = Builder.CreateIntrinsic(IID, {I.getType()}, Args);
-  NewI->setHasApproxFunc(HasApproxFunc);
-
-  LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
-  return NewI;
 }
 
 Value *GenXTranslateIntrinsics::translateBFloat16Convert(CallInst &I) const {

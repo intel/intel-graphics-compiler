@@ -21,47 +21,6 @@
       "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ],
       "src2": [ "GENERAL", "MODIFIER_ARITH", 3 ]
     },
-    "cos": {
-      "opc": "ISA_COS",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", 1 ]
-    },
-    "exp2": {
-      "opc": "ISA_EXP",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", 1 ]
-    },
-    "log2": {
-      "opc": "ISA_LOG",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", 1 ]
-    },
-    "pow": {
-      "opc": "ISA_POW",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", 1 ],
-      "src1": [ "GENERAL", 2 ]
-    },
-    "sin": {
-      "opc": "ISA_SIN",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "pred": [ "IMPLICITPRED" ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", 1 ]
-    },
     // Internal vc intrinsics
     "vc::InternalIntrinsic::cast_from_bf16": {
       "opc": "ISA_MOV",
@@ -1686,6 +1645,15 @@
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
     },
+    "genx_pow": {
+      "opc": "ISA_POW",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ],
+      "src1": [ "GENERAL", 2 ]
+    },
     "genx_add_addr": {
       "opc": "ISA_ADDR_ADD",
       "exec_size": [ "EXECSIZE" ],
@@ -1732,6 +1700,22 @@
     },
     "genx_inv": {
       "opc": "ISA_INV",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_log": {
+      "opc": "ISA_LOG",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_exp": {
+      "opc": "ISA_EXP",
       "exec_size": [ "EXECSIZE" ],
       "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
@@ -2275,6 +2259,22 @@
       "deltaU": [ "GENERAL", 6 ],
       "deltaV": [ "GENERAL", 7 ],
       "dst": [ "RAW", 0 ]
+    },
+    "genx_sin": {
+      "opc": "ISA_SIN",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_cos": {
+      "opc": "ISA_COS",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
     },
     "genx_ssavg": {
       "opc": "ISA_AVG",
