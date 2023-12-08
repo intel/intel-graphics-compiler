@@ -676,6 +676,31 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
       if (dclLR && dclLR->isEOT() && builder.hasEOTGRFBinding()) {
         // For EOT use r112 - r127
         // for simplicity we assign each EOT source unique GRFs
+        int rows = dcl->getNumRows();
+        bool found = false;
+        while (nextEOTGRF + rows <= kernel.getNumRegTotal()) {
+          bool isGood = true;
+          for (int i = 0; i < dcl->getNumRows(); i++) {
+            // Only handle it when the register is available.
+            // If occupied by input, it will only be set busy.
+            // If not avaialable(Such as vISA_Debug) keep the old way.
+            if (pregs->isGRFAvailable(nextEOTGRF + i)) {
+              if (pregs->isGRFBusy(nextEOTGRF + i)) {
+                nextEOTGRF = nextEOTGRF + i + 1;
+                isGood = false;
+                break;
+              }
+            }
+          }
+          if (isGood) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          return true;
+        }
+
         G4_Greg *phyReg = builder.phyregpool.getGreg(nextEOTGRF);
         dcl->getRegVar()->setPhyReg(phyReg, 0);
         dclLR->setPhyReg(phyReg, 0);
