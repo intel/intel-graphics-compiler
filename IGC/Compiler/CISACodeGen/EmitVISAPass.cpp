@@ -20578,8 +20578,9 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
             // temporary as an operand of fcvt.
             if (src->IsImmediate()) {
                 CVariable *tfSrc = m_currShader->GetNewVariable(
-                    1, ISA_TYPE_F, EALIGN_GRF, "tmp_cvt");
+                    1, ISA_TYPE_F, EALIGN_GRF, true /*uniform*/, "tmp_cvt");
                 m_encoder->Copy(tfSrc, src);
+                m_encoder->Push();
                 tSrc = tfSrc;
             } else {
                 tSrc = src;
