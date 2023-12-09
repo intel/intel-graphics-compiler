@@ -1365,20 +1365,35 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
         }
     };
 
-    // Get all fields' index if there are only one-level fields
-    auto getIndex = [](DenseSet<int>& aFields, SmallVector<Value*, 8>& IVIs)
+    // Get all fields' indices if there are at most 2 level fields.
+    // Using int = <i16 level_1-ix, i16 level_0-ix> to represent two
+    // level indices.
+    auto getIndices = [](DenseSet<int>& aFields, SmallVector<Value*, 8>& IVIs)
     {
         int nelts = (int)IVIs.size();
         for (int i = 0; i < nelts; ++i)
         {
             InsertValueInst* tI = cast<InsertValueInst>(IVIs[i]);
-            if (tI->getNumIndices() != 1)
+            switch (tI->getNumIndices()) {
+            case 1:
             {
+                uint16_t ix = (uint16_t)tI->getIndices().front();
+                aFields.insert((int)ix);
+                break;
+            }
+            case 2:
+            {
+                ArrayRef<unsigned> ids = tI->getIndices();
+                uint16_t lvl0_ix = (uint16_t)ids[0];
+                uint16_t lvl1_ix = (uint16_t)ids[1];
+                uint32_t ix = ((lvl1_ix << 16) | lvl0_ix);
+                aFields.insert((int)ix);
+                break;
+            }
+            default:
                 aFields.clear();
                 return;
             }
-            uint32_t ix = tI->getIndices().front();
-            aFields.insert((int)ix);
         }
     };
 
@@ -1402,8 +1417,8 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
     //        ...
     //        Vn = InsVal Vn-1, Sn,
     //  where all Vi, i=0, n-1 has a single use. This sequence is called
-    //  InsertValueInst chain (IVI Chain). And they are set to alias each
-    //  other.  For this chain, V0 is called the root and Vn the lead.
+    //  InsertValueInst chain (IVI Chain). And they (all Vi) are set to alias
+    //  each other.
     //
     //  Start finding IVI chains from an inst that cannot be an operand of
     //  the other InsertValueInst. It's possible to have several IVI chains.
@@ -1426,11 +1441,12 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
     //            Chain3   Chain4
     //
     // The algorithm does the following:
-    //   1. Find all chains, within which all insts are aliased to each other.
+    //   1. Find all chains. All insts (Vs) of each chain are aliased to
+    //      each other in the same chain.
     //   2. Do aggressive aliasing : alias several chains along one path from
-    //      root to a leaf node, assuming that no struct field is defined by
-    //      more than one chains, which implies this can be applied if Root
-    //      has undefValue as its operand like the following:
+    //      root to a leaf node, as long as no struct field is defined by
+    //      more than one chains, which is a strong condition and implies that
+    //      the root inst should start like the followning:
     //          V0 = insval undef, s, 10
     //
     const Value* Oprd0 = theIVI->getOperand(0);
@@ -1451,7 +1467,7 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
         Value* theAliasee = getAliasee(LeadInst);
         if (isa<UndefValue>(Oprd0))
         {
-            getIndex(commonFields, IVIChain);
+            getIndices(commonFields, IVIChain);
             if (!commonFields.empty())
             {   // Fields inserted are known, can do aggressive coalescing.
                 aggressiveAliasing = true;
@@ -1482,7 +1498,7 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
                     isChainUniform == WIA->isUniform(nextLead))
                 {
                     DenseSet<int> fields;
-                    getIndex(fields, IVIChain);
+                    getIndices(fields, IVIChain);
                     if (!fields.empty() &&
                         isDisjoin(commonFields, fields))
                     {
