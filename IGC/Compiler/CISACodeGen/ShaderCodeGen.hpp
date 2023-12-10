@@ -574,6 +574,15 @@ public:
 
     // In bytes
     uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
+
+    // In bytes
+    uint32_t getCVarSize(CVariable* var) const {
+        uint varNumberElement = var->GetNumberElement();
+        uint varElemSize = var->GetElemSize();
+        uint varSize = varNumberElement * varElemSize;
+        return (getGRFSize() >= varSize) ? getGRFSize() : varSize;
+    }
+
     // in DWORDs
     uint32_t getMinPushConstantBufferAlignmentInBytes() const { return m_Platform->getMinPushConstantBufferAlignment() * sizeof(DWORD); }
 

@@ -188,7 +188,8 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
         //Start with simd16 or simd32 correspondingly if MinDispatchMode() is 8 or 16, which allows the medium size of space per WI
         // (simd8: largest, simd32, smallest). In doing so, there will be
         // some space left for spilling in simd8 if spilling happens.
-        int32_t simd_size = isGeometryStageShader ? numLanes(Ctx.platform.getMinDispatchMode()) :
+        int32_t simd_size = isGeometryStageShader ?
+            numLanes(Ctx.platform.getMinDispatchMode()) :
             (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16) : numLanes(SIMDMode::SIMD32));
         const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
         if (subGrpSize > simd_size)

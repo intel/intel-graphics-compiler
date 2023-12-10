@@ -560,7 +560,8 @@ int IR_Builder::translateLscUntypedInst(
   // I initially thought that one was supposed to use an alias over a .decl
   // And have properly sized inputs, but this assumption is proving false.
   auto checkDeclSize = [&](const char *what, G4_Declare *dcl, int visaRegsInDcl,
-                           int genRegsNeeded) {
+                           int genRegsNeeded
+      ) {
     // if (visaRegsInDcl != genRegsNeeded)
     if (visaRegsInDcl < genRegsNeeded) {
       std::stringstream ss;
@@ -619,7 +620,8 @@ int IR_Builder::translateLscUntypedInst(
     if (addrDcl) {
       auto addrRegSize = addrDcl->getElemSize() * addrDcl->getTotalElems();
       auto visaAddrRegsInDcl = std::max<int>(addrRegSize / getGRFSize(), 1);
-      checkDeclSize("address", addrDcl, visaAddrRegsInDcl, addrRegs);
+      checkDeclSize("address", addrDcl, visaAddrRegsInDcl, addrRegs
+          );
     }
 
     // loading/store into the null register for prefetch
@@ -630,7 +632,8 @@ int IR_Builder::translateLscUntypedInst(
       check(dstDcl != nullptr, "cannot find declaration for data register");
       unsigned dataRegBytes = dstDcl->getTotalElems() * dstDcl->getElemSize();
       auto visaRegsInDcl = std::max<int>(dataRegBytes / getGRFSize(), 1);
-      checkDeclSize("data", dstDcl, visaRegsInDcl, dstLen);
+      checkDeclSize("data", dstDcl, visaRegsInDcl, dstLen
+      );
     }
   }
 

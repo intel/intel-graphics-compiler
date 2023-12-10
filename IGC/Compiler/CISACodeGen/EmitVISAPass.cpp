@@ -4814,7 +4814,8 @@ CVariable* EmitPass::IndexableResourceIndex(CVariable* indexVar, uint btiIndex)
 void EmitPass::PackSIMD8HFRet(CVariable* dst)
 {
     // the extra moves will be cleaned up by vISA
-    auto numLanePerChannel = numLanes(m_currShader->m_Platform->getMinDispatchMode());
+    SIMDMode simdMode = m_currShader->m_Platform->getMinDispatchMode();
+    auto numLanePerChannel = numLanes(simdMode);
     for (uint16_t n = 0; n < m_destination->GetNumberElement() / numLanePerChannel; n++)
     {
         m_encoder->SetDstSubReg(n * numLanePerChannel);
@@ -5443,7 +5444,9 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     const bool useDirectAddressing = pDelta->IsImmediate()
         && m_currShader->m_Platform->GetPlatformFamily() != IGFX_GEN8_CORE;
 
-    auto nativeExecSize = numLanes(m_currShader->m_Platform->getMinDispatchMode());
+    SIMDMode simdMode = m_currShader->m_Platform->getMinDispatchMode();
+
+    auto nativeExecSize = numLanes(simdMode);
     auto width = numLanes(m_SimdMode);
     if (useDirectAddressing && nativeExecSize * 2 >= width)
     {
@@ -5451,7 +5454,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         int tripCount = width <= nativeExecSize ? 1 : 2;
         for (int i = 0; i < tripCount; ++i)
         {
-            m_encoder->SetSimdSize(m_currShader->m_Platform->getMinDispatchMode());
+            m_encoder->SetSimdSize(simdMode);
             m_encoder->SetSrcRegion(0, 1, 1, 0);
             m_encoder->SetSrcSubReg(0, dataIndex + nativeExecSize * i);
             m_encoder->SetDstSubReg(nativeExecSize * i);
@@ -9272,7 +9275,6 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
         emitVectorBitCast(btCst);
         return;
     }
-
     CVariable* src = GetSymbol(btCst->getOperand(0));
     CVariable* dst = m_destination;
     IGC_ASSERT(nullptr != src);

@@ -287,7 +287,8 @@ void G4Verifier::verifySend(G4_INST *inst) {
     bool checkEoT = inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding();
     if (checkEoT) {
       auto checkEOTSrc = [this](G4_SrcRegRegion *src) {
-        const unsigned int EOTStart = 112 * kernel.numEltPerGRF<Type_UB>();
+        // Send instruction's header and payload must be placed in last 16 GRFs if the EOT flag is set.
+        const unsigned int EOTStart = (kernel.getNumRegTotal()-16) * kernel.numEltPerGRF<Type_UB>();
         if (src->isNullReg()) {
           return true;
         }
@@ -296,10 +297,10 @@ void G4Verifier::verifySend(G4_INST *inst) {
 
       if (kernel.getNumRegTotal() >= 128) {
         vISA_ASSERT(checkEOTSrc(src0),
-                     "src0 for EOT send is not in r112-r127");
+                    "src0 for EOT send is not in last 16 GRFs");
         if (src1 != nullptr) {
           vISA_ASSERT(checkEOTSrc(src1),
-                       "src1 for EOT sends is not in r112-r127");
+                      "src1 for EOT sends is not in last 16 GRFs");
         }
       }
     }

@@ -705,7 +705,8 @@ static inline int getDefaultSIMDSize(CodeGenContext* ctx)
     }
 
     // By default, use the minimum allowed SIMD for the HW platform
-    int defaultSz = numLanes(ctx->platform.getMinDispatchMode());
+    SIMDMode simdMode = ctx->platform.getMinDispatchMode();
+    int defaultSz = numLanes(simdMode);
 
     // Library Compilation requires functions to be exported externally, so we should always compile to the default size.
     // Otherwise, use the sub_group_size set for the dummy kernel (in InsertDummyKernelForSymbolTable pass) if available.

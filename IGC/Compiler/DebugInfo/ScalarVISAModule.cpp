@@ -668,6 +668,7 @@ int ScalarVisaModule::getDeclarationID(CVariable* pVar, bool isSecondSimd32Instr
     int varId = isSecondSimd32Instruction ? 1 : 0;
     if (isSecondSimd32Instruction) {
         if (!((GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform()))) {
+            IGC_ASSERT_MESSAGE(0, "Cannot get 2nd variable in SIMD32 (?) mode");
             return -1; // Cannot get 2nd variable in SIMD32 (?) mode
         }
     }

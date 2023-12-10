@@ -146,6 +146,7 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const T* inst, SIMDMode simdMo
             offset += m_CodeGenContext->platform.getGRFSize() * multiplier;
             return offset;
         }
+
         IGC_ASSERT(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
         int multiplier = inst->getSource0Alpha()->getType()->isHalfTy() ? 1 : 2;
         if (simdMode == SIMDMode::SIMD8)
