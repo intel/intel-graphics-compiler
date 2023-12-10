@@ -1305,8 +1305,12 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             MaxElts = profitVec[k++];
         }
 
-        if (NumElts == 3 && (LeadingLoadScalarType->isIntegerTy(16) || LeadingLoadScalarType->isHalfTy())) {
-            return false;
+        if (IGC_IS_FLAG_ENABLED(EnableMemOptGEPCanon)) {
+            // Guard under the key to distinguish new code (EnableMemOptGEPCanon=0) from the old.
+            //    Note: not sure about the reason for the following check.
+            if (NumElts == 3 && (LeadingLoadScalarType->isIntegerTy(16) || LeadingLoadScalarType->isHalfTy())) {
+                return false;
+            }
         }
 
         // Try remove loads to be merged.
