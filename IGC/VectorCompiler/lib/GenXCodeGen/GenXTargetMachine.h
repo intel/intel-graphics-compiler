@@ -219,7 +219,6 @@ void initializeGenXCFSimplificationPass(PassRegistry &);
 void initializeGenXCisaBuilderPass(PassRegistry &);
 void initializeGenXCoalescingWrapperPass(PassRegistry &);
 void initializeGenXGVClobberCheckerPass(PassRegistry &);
-void initializeGenXVerifyPass(PassRegistry &);
 void initializeGenXDeadVectorRemovalPass(PassRegistry &);
 void initializeGenXDepressurizerWrapperPass(PassRegistry &);
 void initializeGenXEarlySimdCFConformancePass(PassRegistry &);

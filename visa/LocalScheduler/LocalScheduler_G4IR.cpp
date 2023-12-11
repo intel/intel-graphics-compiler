@@ -2820,7 +2820,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
 
   case WAR_MEMORY:
   case WAW_MEMORY:
-    if (kernel->fg.builder->scheduleStoreAway()) {
+    if (kernel->getOption(vISA_schedWithSendSrcReadCycle)) {
       latency = LT.getSendSrcReadLatency(inst);
     } else {
       latency = UNCOMPR_LATENCY;

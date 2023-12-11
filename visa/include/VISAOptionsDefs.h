@@ -438,7 +438,7 @@ DEF_VISA_OPTION(vISA_ScheduleACCDep, ET_BOOL, "-scheduleACCDep",
                 "Enable scheduling with accurate ACC dependence, instead of "
                 "coarse grained dependence",
                 false)
-DEF_VISA_OPTION(vISA_schedWithSendSrcReadCycle, ET_BOOL_TRUE, "-schedWithSendSrcReadCycle", UNUSED, true)
+DEF_VISA_OPTION(vISA_schedWithSendSrcReadCycle, ET_BOOL, "-schedWithSendSrcReadCycle", UNUSED, false)
 
 //=== SWSB options ===
 DEF_VISA_OPTION(vISA_USEL3HIT, ET_BOOL, "-SBIDL3Hit", UNUSED, false)

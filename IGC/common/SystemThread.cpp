@@ -38,12 +38,209 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/XeHPGSIPCSRDebug.h"
 #include "common/SIPKernels/XeHPGSIPCSRDebugBindless.h"
 #include "common/SIPKernels/XeHPCSIPCSRDebugBindless.h"
+#include "common/SIPKernels/Xe2SIPCSRDebugBindless.h"
 
 using namespace llvm;
 using namespace USC;
 
 namespace SIP
 {
+
+// Debug surface area for all XE2 architectures
+struct Xe2DebugSurfaceLayout
+{
+    // The *_ALIGN fields below are padding of the SIP between
+    // the registers set.
+    static constexpr size_t GR_COUNT = 256;
+    static constexpr size_t GR_ELEMENTS = 1;
+    static constexpr size_t GR_ELEMENT_SIZE = 64;
+    static constexpr size_t GR_ALIGN = 0;
+
+    static constexpr size_t A0_COUNT = 1;
+    static constexpr size_t A0_ELEMENTS = 16;
+    static constexpr size_t A0_ELEMENT_SIZE = 2;
+    static constexpr size_t A0_ALIGN = 0;
+
+    static constexpr size_t F_COUNT = 4;
+    static constexpr size_t F_ELEMENTS = 2;
+    static constexpr size_t F_ELEMENT_SIZE = 2;
+    static constexpr size_t F_ALIGN = 12;
+
+    static constexpr size_t EXEC_MASK_COUNT = 1;
+    static constexpr size_t EXEC_MASK_ELEMENTS = 1;
+    static constexpr size_t EXEC_MASK_ELEMENT_SIZE = 4;
+    static constexpr size_t EXEC_MASK_ALIGN = 0;
+
+    static constexpr size_t SR_COUNT = 1;
+    static constexpr size_t SR_ELEMENTS = 4;
+    static constexpr size_t SR_ELEMENT_SIZE = 4;
+    static constexpr size_t SR_ALIGN = 16;
+
+    static constexpr size_t CR_COUNT = 1;
+    static constexpr size_t CR_ELEMENTS = 3;
+    static constexpr size_t CR_ELEMENT_SIZE = 4;
+    static constexpr size_t CR_ALIGN = 20;
+
+    static constexpr size_t N_COUNT = 1;
+    static constexpr size_t N_ELEMENTS = 3;
+    static constexpr size_t N_ELEMENT_SIZE = 4;
+    static constexpr size_t N_ALIGN = 20;
+
+    static constexpr size_t TDR_COUNT = 1;
+    static constexpr size_t TDR_ELEMENTS = 8;
+    static constexpr size_t TDR_ELEMENT_SIZE = 2;
+    static constexpr size_t TDR_ALIGN = 16;
+
+    static constexpr size_t ACC_COUNT = 4;
+    static constexpr size_t ACC_ELEMENTS = 8;
+    static constexpr size_t ACC_ELEMENT_SIZE = 4;
+    // Aligning 128 bytes to accomodate 33th bit in acc regs
+    static constexpr size_t ACC_ALIGN = 128;
+
+    // Need to read msg registers to get mme register values
+    static constexpr size_t MSG_COUNT = 2;
+    static constexpr size_t MSG_ELEMENTS = 8;
+    static constexpr size_t MSG_ELEMENT_SIZE = 4;
+    static constexpr size_t MSG_ALIGN = 0;
+
+    static constexpr size_t TM_COUNT = 1;
+    static constexpr size_t TM_ELEMENTS = 5;
+    static constexpr size_t TM_ELEMENT_SIZE = 4;
+    static constexpr size_t TM_ALIGN = 12;
+
+    static constexpr size_t CE_COUNT = 1;
+    static constexpr size_t CE_ELEMENTS = 1;
+    static constexpr size_t CE_ELEMENT_SIZE = 4;
+    static constexpr size_t CE_ALIGN = 28;
+
+    static constexpr size_t DBG_COUNT = 1;
+    static constexpr size_t DBG_ELEMENTS = 1;
+    static constexpr size_t DBG_ELEMENT_SIZE = 4;
+    static constexpr size_t DBG_ALIGN = 0;
+
+    static constexpr size_t VERSION_COUNT = 1;
+    static constexpr size_t VERSION_ELEMENTS = 1;
+    static constexpr size_t VERSION_ELEMENT_SIZE = 20;
+    static constexpr size_t VERSION_ALIGN = 8;
+
+    static constexpr size_t SIP_CMD_COUNT = 1;
+    static constexpr size_t SIP_CMD_ELEMENTS = 1;
+    static constexpr size_t SIP_CMD_ELEMENT_SIZE = 128;
+    static constexpr size_t SIP_CMD_ALIGN = 0;
+
+    static constexpr size_t CONTEXT_ID_COUNT = 1;
+    static constexpr size_t CONTEXT_ID_ELEMENTS = 1;
+    static constexpr size_t CONTEXT_ID_ELEMENT_SIZE = 8;
+    static constexpr size_t CONTEXT_ID_ALIGN = 24;
+
+    static constexpr size_t DBG_REG_COUNT = 1;
+    static constexpr size_t DBG_REG_ELEMENTS = 2;
+    static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
+    static constexpr size_t DBG_REG_ALIGN = 24;
+
+    
+    // Number of Registers:	3
+    // Elements:	16 or 2
+    // Element Size:	32 bits
+    // fc0.0-fc0.15
+    // fc1.0-fc1.15
+    // fc2.0 fc2.1, All other encodings like fc2.2 to f2.15 are reserved.
+    static constexpr size_t FC_COUNT = 3;
+    static constexpr size_t FC_ELEMENTS = 16;
+    static constexpr size_t FC_ELEMENT_SIZE = 4;
+    static constexpr size_t FC_ALIGN = 0;
+
+    static constexpr size_t Xe2_STATE_SAVE_AREA_SIZE = 0x4400;
+
+    uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
+    uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
+    uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
+    uint8_t execmask[EXEC_MASK_COUNT * EXEC_MASK_ELEMENTS * EXEC_MASK_ELEMENT_SIZE + EXEC_MASK_ALIGN];
+    uint8_t sr[SR_COUNT * SR_ELEMENTS * SR_ELEMENT_SIZE + SR_ALIGN];
+    uint8_t cr[CR_COUNT * CR_ELEMENTS * CR_ELEMENT_SIZE + CR_ALIGN];
+    uint8_t n[N_COUNT * N_ELEMENTS * N_ELEMENT_SIZE + N_ALIGN];
+    uint8_t tdr[TDR_COUNT * TDR_ELEMENTS * TDR_ELEMENT_SIZE + TDR_ALIGN];
+    uint8_t acc[ACC_COUNT * ACC_ELEMENTS * ACC_ELEMENT_SIZE + ACC_ALIGN];
+    uint8_t mme[MSG_COUNT * MSG_ELEMENTS * MSG_ELEMENT_SIZE + MSG_ALIGN];
+    uint8_t tm[TM_COUNT * TM_ELEMENTS * TM_ELEMENT_SIZE + TM_ALIGN];
+    uint8_t ce[CE_COUNT * CE_ELEMENTS * CE_ELEMENT_SIZE + CE_ALIGN];
+    uint8_t dbg[DBG_COUNT * DBG_ELEMENTS * DBG_ELEMENT_SIZE + DBG_ALIGN];
+    uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
+    uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
+    uint8_t ctx[CONTEXT_ID_COUNT * CONTEXT_ID_ELEMENTS * CONTEXT_ID_ELEMENT_SIZE + CONTEXT_ID_ALIGN];
+    uint8_t dbg_reg[DBG_REG_COUNT * DBG_REG_ELEMENTS * DBG_REG_ELEMENT_SIZE + DBG_REG_ALIGN];
+    uint8_t fc[FC_COUNT * FC_ELEMENTS * FC_ELEMENT_SIZE + FC_ALIGN];
+};
+
+struct StateSaveAreaHeader Xe2SIPCSRDebugBindlessDebugHeader = 
+{
+    {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}}, // versionHeader
+    {
+        // regHeader
+        0,                                               // num_slices
+        0,                                               // num_subslices_per_slice
+        0,                                               // num_eus_per_subslice
+        0,                                               // num_threads_per_eu
+        0,                                               // state_area_offset
+        Xe2DebugSurfaceLayout::Xe2_STATE_SAVE_AREA_SIZE, // state_save_size
+        0,                                               // slm_area_offset
+        0,                                               // slm_bank_size
+        0,                                               // slm_bank_valid
+        offsetof(struct Xe2DebugSurfaceLayout, version), // sr_magic_offset
+        {offsetof(struct Xe2DebugSurfaceLayout, grf), Xe2DebugSurfaceLayout::GR_COUNT,
+         Xe2DebugSurfaceLayout::GR_ELEMENTS *Xe2DebugSurfaceLayout::GR_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::GR_ELEMENTS *Xe2DebugSurfaceLayout::GR_ELEMENT_SIZE}, // grf
+        {offsetof(struct Xe2DebugSurfaceLayout, a0), Xe2DebugSurfaceLayout::A0_COUNT,
+         Xe2DebugSurfaceLayout::A0_ELEMENTS *Xe2DebugSurfaceLayout::A0_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::A0_ELEMENTS *Xe2DebugSurfaceLayout::A0_ELEMENT_SIZE}, // addr
+        {offsetof(struct Xe2DebugSurfaceLayout, f), Xe2DebugSurfaceLayout::F_COUNT,
+         Xe2DebugSurfaceLayout::F_ELEMENTS *Xe2DebugSurfaceLayout::F_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::F_ELEMENTS *Xe2DebugSurfaceLayout::F_ELEMENT_SIZE}, // flag
+        {offsetof(struct Xe2DebugSurfaceLayout, execmask), Xe2DebugSurfaceLayout::EXEC_MASK_COUNT,
+         Xe2DebugSurfaceLayout::EXEC_MASK_ELEMENTS *Xe2DebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::EXEC_MASK_ELEMENTS *Xe2DebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE}, // emask
+        {offsetof(struct Xe2DebugSurfaceLayout, sr), Xe2DebugSurfaceLayout::SR_COUNT,
+         Xe2DebugSurfaceLayout::SR_ELEMENTS *Xe2DebugSurfaceLayout::SR_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::SR_ELEMENTS *Xe2DebugSurfaceLayout::SR_ELEMENT_SIZE}, // sr
+        {offsetof(struct Xe2DebugSurfaceLayout, cr), Xe2DebugSurfaceLayout::CR_COUNT,
+         Xe2DebugSurfaceLayout::CR_ELEMENTS *Xe2DebugSurfaceLayout::CR_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::CR_ELEMENTS *Xe2DebugSurfaceLayout::CR_ELEMENT_SIZE}, // cr
+        {offsetof(struct Xe2DebugSurfaceLayout, n), Xe2DebugSurfaceLayout::N_COUNT,
+         Xe2DebugSurfaceLayout::N_ELEMENTS *Xe2DebugSurfaceLayout::N_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::N_ELEMENTS *Xe2DebugSurfaceLayout::N_ELEMENT_SIZE}, // notification
+        {offsetof(struct Xe2DebugSurfaceLayout, tdr), Xe2DebugSurfaceLayout::TDR_COUNT,
+         Xe2DebugSurfaceLayout::TDR_ELEMENTS *Xe2DebugSurfaceLayout::TDR_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::TDR_ELEMENTS *Xe2DebugSurfaceLayout::TDR_ELEMENT_SIZE}, // tdr
+        {offsetof(struct Xe2DebugSurfaceLayout, acc), Xe2DebugSurfaceLayout::ACC_COUNT,
+         Xe2DebugSurfaceLayout::ACC_ELEMENTS *Xe2DebugSurfaceLayout::ACC_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::ACC_ELEMENTS *Xe2DebugSurfaceLayout::ACC_ELEMENT_SIZE}, // acc
+        {offsetof(struct Xe2DebugSurfaceLayout, mme), Xe2DebugSurfaceLayout::MSG_COUNT,
+         Xe2DebugSurfaceLayout::MSG_ELEMENTS *Xe2DebugSurfaceLayout::MSG_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::MSG_ELEMENTS *Xe2DebugSurfaceLayout::MSG_ELEMENT_SIZE}, // mme
+        {offsetof(struct Xe2DebugSurfaceLayout, ce), Xe2DebugSurfaceLayout::CE_COUNT,
+         Xe2DebugSurfaceLayout::CE_ELEMENTS *Xe2DebugSurfaceLayout::CE_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::CE_ELEMENTS *Xe2DebugSurfaceLayout::CE_ELEMENT_SIZE}, // ce
+        {0, 0, 0, 0},
+        {offsetof(struct Xe2DebugSurfaceLayout, sip_cmd), Xe2DebugSurfaceLayout::SIP_CMD_COUNT,
+         Xe2DebugSurfaceLayout::SIP_CMD_ELEMENTS *Xe2DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::SIP_CMD_ELEMENTS *Xe2DebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE}, // cmd
+        {offsetof(struct Xe2DebugSurfaceLayout, tm), Xe2DebugSurfaceLayout::TM_COUNT,
+         Xe2DebugSurfaceLayout::TM_ELEMENTS *Xe2DebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::TM_ELEMENTS *Xe2DebugSurfaceLayout::TM_ELEMENT_SIZE}, // tm
+        {offsetof(struct Xe2DebugSurfaceLayout, fc), Xe2DebugSurfaceLayout::FC_COUNT,
+         Xe2DebugSurfaceLayout::FC_ELEMENTS *Xe2DebugSurfaceLayout::FC_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::FC_ELEMENTS *Xe2DebugSurfaceLayout::FC_ELEMENT_SIZE}, // FC
+        {offsetof(struct Xe2DebugSurfaceLayout, dbg), Xe2DebugSurfaceLayout::DBG_COUNT,
+         Xe2DebugSurfaceLayout::DBG_ELEMENTS *Xe2DebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::DBG_ELEMENTS *Xe2DebugSurfaceLayout::DBG_ELEMENT_SIZE}, // dbg
+        {offsetof(struct Xe2DebugSurfaceLayout, ctx), Xe2DebugSurfaceLayout::CONTEXT_ID_COUNT,
+         Xe2DebugSurfaceLayout::CONTEXT_ID_ELEMENTS *Xe2DebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::CONTEXT_ID_ELEMENTS *Xe2DebugSurfaceLayout::CONTEXT_ID_ELEMENT_SIZE}, // context id
+        {offsetof(struct Xe2DebugSurfaceLayout, dbg_reg), Xe2DebugSurfaceLayout::DBG_REG_COUNT,
+         Xe2DebugSurfaceLayout::DBG_REG_ELEMENTS *Xe2DebugSurfaceLayout::DBG_REG_ELEMENT_SIZE * 8,
+         Xe2DebugSurfaceLayout::DBG_REG_ELEMENTS *Xe2DebugSurfaceLayout::DBG_REG_ELEMENT_SIZE}, // dbg registers
+    }
+};
 
 // Debug surface area for all XeHPC+ architectures
 struct XeHPCDebugSurfaceLayout
@@ -857,6 +1054,25 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
             (sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported) : sysInfo.MaxSubSlicesSupported);
     XeHPGSIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
 
+    // Xe2
+     SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&Xe2SIPCSRDebugBindless,
+              (int)sizeof(Xe2SIPCSRDebugBindless), (void*)&Xe2SIPCSRDebugBindlessDebugHeader,
+              (int)sizeof(Xe2SIPCSRDebugBindlessDebugHeader));
+
+    Xe2SIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = 0;
+
+    if (sysInfo.EUCount != 0)
+        Xe2SIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = (sysInfo.ThreadCount / sysInfo.EUCount);
+
+    if (sizeof(StateSaveAreaHeader) % 16)
+        Xe2SIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset =
+            16 - sizeof(StateSaveAreaHeader) % 16;
+
+    Xe2SIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
+    Xe2SIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice =
+            (sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported) : sysInfo.MaxSubSlicesSupported);
+    Xe2SIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
+
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -953,6 +1169,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     case IGFX_XE_HP_CORE:
     case IGFX_XE_HPG_CORE:
     case IGFX_XE_HPC_CORE:
+    case IGFX_XE2_LPG_CORE:
+
     {
         if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
@@ -978,6 +1196,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_PVC:
                 SIPIndex =  XE_HPC_CSR_DEBUG_BINDLESS;
                 break;
+            case IGFX_LUNARLAKE :
+                SIPIndex =  XE2_CSR_DEBUG_BINDLESS;
             default:
                 break;
             }
@@ -1011,7 +1231,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         break;
     }
-    case IGFX_XE2_LPG_CORE:
     default:
         IGC_ASSERT(0);
         break;

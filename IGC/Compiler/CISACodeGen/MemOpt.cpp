@@ -321,22 +321,6 @@ namespace {
             return true;
         }
 
-        bool EnableCanonicalizeGEP() const {
-            switch (IGC_GET_FLAG_VALUE(MemOptGEPCanon)) {
-            case 1:
-                return false;
-            case 2:
-            {
-                if (CGC && CGC->type == ShaderType::OPENCL_SHADER)
-                    return false;
-                break;
-            }
-            default:
-                break;
-            }
-            return true;
-        }
-
         /// Canonicalize the calculation of 64-bit pointer by performing the
         /// following transformations to help SCEV to identify the constant offset
         /// between pointers.
@@ -542,7 +526,7 @@ bool MemOpt::runOnFunction(Function& F) {
         if (MemRefs.size() < 2)
             continue;
 
-        if (EnableCanonicalizeGEP()) {
+        if (IGC_IS_FLAG_ENABLED(EnableMemOptGEPCanon)) {
             // Canonicalize 64-bit GEP to help SCEV find constant offset by
             // distributing `zext`/`sext` over safe expressions.
             for (auto& M : MemRefs)
@@ -569,7 +553,7 @@ bool MemOpt::runOnFunction(Function& F) {
             }
         }
 
-        if (EnableCanonicalizeGEP()) {
+        if (IGC_IS_FLAG_ENABLED(EnableMemOptGEPCanon)) {
             // Optimize 64-bit GEP to reduce strength by factoring out `zext`/`sext`
             // over safe expressions.
             for (auto I : MemRefsToOptimize)
@@ -1153,7 +1137,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         return false;
     const SCEV* LeadingLastIdx = nullptr; // set on-demand
     bool DoCmpOnLastIdx = false;
-    if (!EnableCanonicalizeGEP()) {
+    if (IGC_IS_FLAG_DISABLED(EnableMemOptGEPCanon)) {
         auto aGEP = dyn_cast<GetElementPtrInst>(LeadingLoad->getPointerOperand());
         if (aGEP && aGEP->hasIndices()) {
             // index starts from 1
@@ -1321,8 +1305,8 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             MaxElts = profitVec[k++];
         }
 
-        if (EnableCanonicalizeGEP()) {
-            // Guard under the key to distinguish new code (GEPCanon is off) from the old.
+        if (IGC_IS_FLAG_ENABLED(EnableMemOptGEPCanon)) {
+            // Guard under the key to distinguish new code (EnableMemOptGEPCanon=0) from the old.
             //    Note: not sure about the reason for the following check.
             if (NumElts == 3 && (LeadingLoadScalarType->isIntegerTy(16) || LeadingLoadScalarType->isHalfTy())) {
                 return false;

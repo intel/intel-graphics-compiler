@@ -225,7 +225,6 @@ namespace IGC
         bool MatchDp4a(llvm::GenIntrinsicInst& I);
         bool MatchLogicAlu(llvm::BinaryOperator& I);
         bool MatchRsqrt(llvm::BinaryOperator& I);
-        bool MatchArcpFdiv(llvm::BinaryOperator& I);
         bool MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I);
         bool MatchGradient(llvm::GenIntrinsicInst& I);
         bool MatchSampleDerivative(llvm::GenIntrinsicInst& I);

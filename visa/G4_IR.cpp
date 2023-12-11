@@ -6202,12 +6202,15 @@ void G4_Operand::updateFootPrint(BitSet &footprint, bool isSet,
       return true;
     return lb <= rb && rb < footprint.getSize();
   };
-  //  vISA_ASSERT(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
-  //              "Out-of-bounds access found in "
-  //                  << *getInst() << "\n"
-  //                  << "For operand " << *this << ", the footprint size is "
-  //                 << footprint.getSize() << " and the accessing range is ["
-  //                  << lb << ", " << rb << "]\n");
+  std::ostringstream instDump, opndDump;
+  vISA_ASSERT(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
+              "Out-of-bounds access found in %s\nFor operand %s, the footprint "
+              "size is %u and the accessing range is [%u, %u]\n",
+              reinterpret_cast<std::ostringstream&>(instDump << *getInst())
+                  .str().c_str(),
+              reinterpret_cast<std::ostringstream&>(opndDump << *this).str()
+                  .c_str(),
+              footprint.getSize(), lb, rb);
 
   if (doFastPath && lb % N == 0 && (rb + 1) % N == 0) {
     // lb is 32-byte aligned, set one dword at a time

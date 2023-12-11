@@ -1547,7 +1547,8 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
         liveIntervals.push_back(stackCallRetLR);
         stackCallRetLR->setPushed(true);
       }
-      if (stackCallArgLR && arg && argSize > 0 && arg->getRegVar()) {
+      if (arg && argSize > 0 && arg->getRegVar()) {
+        vASSERT(stackCallArgLR);
         stackCallArgLR->setLastRef(
             curInst, curInst->getLexicalId() * 2 -
                          1); // Minus one so that arguments will not be spilled

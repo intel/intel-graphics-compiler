@@ -34,8 +34,7 @@ namespace IGC {
     class CoalescingEngine : public llvm::FunctionPass, public llvm::InstVisitor<CoalescingEngine>
     {
         //TODO: this is fixed for now, but once we have pressure heuristic, could be relaxed
-        static const int MaxTouchedTuples = 8;
-        static const int MaxTupleSize = MaxTouchedTuples + 4;
+        static const int MaxTupleSize = 12;
 
     public:
         static char ID; // Pass identification, replacement for typeid
@@ -328,7 +327,7 @@ namespace IGC {
             else {
                 uint numUsers = 0;
                 {
-                    llvm::SmallPtrSet<llvm::User*, MaxTouchedTuples> touchedUsers;
+                    llvm::SmallPtrSet<llvm::User*, 8> touchedUsers;
                     for (llvm::Value::user_iterator i = val->user_begin(), e = val->user_end(); i != e; ++i) {
                         llvm::User* user = *i;
                         if (llvm::isa<llvm::Instruction>(user)) {
@@ -389,8 +388,8 @@ namespace IGC {
         void PrepareTuple(
             const uint numOperands,
             llvm::Instruction* tupleGeneratingInstruction,
-            llvm::SmallPtrSet<CCTuple*, MaxTouchedTuples> & touchedTuplesSet,
-            llvm::SmallVector<CCTuple*, MaxTouchedTuples> & touchedTuples,
+            llvm::SmallPtrSet<CCTuple*, 8> & touchedTuplesSet,
+            llvm::SmallVector<CCTuple*, 8> & touchedTuples,
             bool& isAnyNodeAnchored,
             bool& isAnyNodeCoalescable);
 
@@ -713,7 +712,7 @@ namespace IGC {
             CCTuple* m_ccTuple;
             CoalescingEngine* m_CE;
             int m_index;
-            llvm::SmallPtrSet<llvm::Value*, MaxTouchedTuples> m_valuesForIsolation;
+            llvm::SmallPtrSet<llvm::Value*, 8> m_valuesForIsolation;
 
         public:
             ProcessInterferencesElementFunctor(
@@ -733,7 +732,7 @@ namespace IGC {
 
             }
 
-            llvm::SmallPtrSet<llvm::Value*, MaxTouchedTuples> & GetComputedValuesForIsolation()
+            llvm::SmallPtrSet<llvm::Value*, 8> & GetComputedValuesForIsolation()
             {
                 return m_valuesForIsolation;
             }

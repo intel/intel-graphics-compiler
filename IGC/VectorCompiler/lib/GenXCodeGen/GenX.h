@@ -65,14 +65,6 @@ enum class BuiltinFunctionKind {
   PostLegalization,
 };
 
-// GenX IR may have different sets of validity invariants for different stages
-// in pipeline.
-enum class GenXVerifyInvariantSet {
-  PreIrAdaptors,
-  PreGenXLegalization,
-  All,
-};
-
 FunctionPass *createGenXPrinterPass(raw_ostream &O, const std::string &Banner);
 ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
                                        const std::string &Banner);
@@ -127,8 +119,6 @@ ModulePass *createGenXLiveRangesWrapperPass();
 ModulePass *createGenXRematerializationWrapperPass();
 ModulePass *createGenXCoalescingWrapperPass();
 ModulePass *createGenXGVClobberCheckerPass();
-ModulePass *createGenXVerifyPass(
-    GenXVerifyInvariantSet PipelineStage = GenXVerifyInvariantSet::All);
 ModulePass *createGenXAddressCommoningWrapperPass();
 ModulePass *createGenXArgIndirectionWrapperPass();
 FunctionPass *createGenXTidyControlFlowPass();

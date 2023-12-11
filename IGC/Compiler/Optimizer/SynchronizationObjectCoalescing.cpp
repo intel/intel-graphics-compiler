@@ -1081,9 +1081,9 @@ bool SynchronizationObjectCoalescing::IsReturnOperation(const llvm::Instruction*
 template<class... Ts> struct overloaded : Ts...
 {
     template<typename T>
-    overloaded<Ts...>& operator=(const T& lambda)
+    overloaded<Ts...>& operator=(T&& lambda)
     {
-        ((static_cast<Ts&>(*this) = lambda), ...);
+        ((static_cast<Ts&>(*this) = std::forward<T&&>(lambda)), ...);
         return *this;
     }
 
