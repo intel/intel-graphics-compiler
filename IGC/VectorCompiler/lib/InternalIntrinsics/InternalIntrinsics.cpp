@@ -726,6 +726,11 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_store_quad_bss:
   case InternalIntrinsic::lsc_store_quad_slm:
   case InternalIntrinsic::lsc_store_quad_ugm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
+  case InternalIntrinsic::lsc_store_block_2d_ugm:
     return true;
   }
 
@@ -852,10 +857,21 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_atomic_ugm:
     ElementSizeIndex = 3;
     break;
+  case InternalIntrinsic::lsc_load_block_2d_ugm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
+  case InternalIntrinsic::lsc_store_block_2d_ugm:
+    ElementSizeIndex = 1;
+    break;
   }
 
   auto *ElementSize = cast<ConstantInt>(I->getOperand(ElementSizeIndex));
   switch (ElementSize->getZExtValue()) {
+  case LSC_DATA_SIZE_8b:
+    return 8;
+  case LSC_DATA_SIZE_16b:
+    return 16;
   case LSC_DATA_SIZE_8c32b:
   case LSC_DATA_SIZE_16c32b:
   case LSC_DATA_SIZE_32b:
@@ -866,4 +882,24 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
     break;
   }
   IGC_ASSERT_UNREACHABLE();
+}
+
+int InternalIntrinsic::getMemoryCacheControlOperandIndex(
+    const llvm::Instruction *I) {
+  auto IID = getInternalIntrinsicID(I);
+  if (!isInternalMemoryIntrinsic(IID))
+    return -1;
+
+  switch (IID) {
+  case InternalIntrinsic::lsc_load_block_2d_ugm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
+  case InternalIntrinsic::lsc_store_block_2d_ugm:
+    return 2;
+  default:
+    break;
+  }
+
+  return 4;
 }

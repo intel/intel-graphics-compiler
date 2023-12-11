@@ -144,20 +144,6 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
   auto CalledF = CI->getCalledFunction();
   IGC_ASSERT(CalledF);
   auto ID = GenXIntrinsic::getGenXIntrinsicID(CalledF);
-  if (isGenXIntrinsic(ID)) {
-    // We check the lsc intrinsic by name or we need to introduce a range of lsc
-    // intrinsics.
-    if (ID == GenXIntrinsic::genx_lsc_load2d_stateless ||
-        ID == GenXIntrinsic::genx_lsc_store2d_stateless)
-      return 1;
-
-    StringRef Name = CalledF->getName();
-    StringRef LSCPrefix = "llvm.genx.lsc.";
-    if (Name.startswith(LSCPrefix))
-      // Check if this is a block message from predicate type.
-      return !CI->getArgOperand(0)->getType()->isVectorTy();
-  }
-
   switch (ID) {
   default:
     break;

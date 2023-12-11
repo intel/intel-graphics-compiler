@@ -607,6 +607,124 @@ Imported_Intrinsics = {
                             ],
                             "attributes": "WriteMem", },
 
+## ``llvm.vc.internal.lsc.*.block.2d.ugm.*`` : LSC untyped 2d block intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * Execution size is always 1.
+## * arg0: i1, Predicate
+## * arg1: i8, Element size [MBC]
+## * arg2: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg3: i8, Number of blocks [MBC]
+## * arg4: i8, Block width (in elements) [MBC]
+## * arg5: i8, Block height [MBC]
+## * arg6: i64, Memory base address
+## * arg7: i32, Memory matrix width (minus 1, in bytes)
+## * arg8: i32, Memory matrix height (minus 1)
+## * arg9: i32, Memory matrix row pitch (minus 1, in bytes)
+## * arg10: i32, Memory block X position (in elements)
+## * arg11: i32, Memory block Y position
+## * arg12: i32, Memory block X position immediate offset (in elements) [MBC]
+## * arg13: i32, Memory block Y position immediate offset [MBC]
+## * arg14: value to passthru when predicate is false on load, data to store
+##
+## * Return value: loaded data
+##
+    "lsc_load_block_2d_ugm": { "result": "anyvector",
+                               "arguments": [
+                                   "bool",   # i1, predicate
+                                   "char",   # element size
+                                   "anyint", # cache controls
+                                   "char",   # number of blocks
+                                   "short",  # block width
+                                   "short",  # block heigth
+                                   "long",   # memory base address
+                                   "int",    # memory matrix width (minus 1)
+                                   "int",    # memory matrix height (minus 1)
+                                   "int",    # memory matrix row pitch (minus 1)
+                                   "int",    # memory block X position
+                                   "int",    # memory block Y position
+                                   "int",    # X offset
+                                   "int",    # Y offset
+                                   0,        # passthru
+                               ],
+                               "attributes": "ReadMem", },
+    "lsc_load_block_2d_ugm_transposed": { "result": "anyvector",
+                                          "arguments": [
+                                              "bool",   # i1, predicate
+                                              "char",   # element size
+                                              "anyint", # cache controls
+                                              "char",   # number of blocks
+                                              "short",  # block width
+                                              "short",  # block heigth
+                                              "long",   # memory base address
+                                              "int",    # memory matrix width (minus 1)
+                                              "int",    # memory matrix height (minus 1)
+                                              "int",    # memory matrix row pitch (minus 1)
+                                              "int",    # memory block X position
+                                              "int",    # memory block Y position
+                                              "int",    # X offset
+                                              "int",    # Y offset
+                                              0,        # passthru
+                                          ],
+                                          "attributes": "ReadMem", },
+    "lsc_load_block_2d_ugm_vnni": { "result": "anyvector",
+                                    "arguments": [
+                                        "bool",   # i1, predicate
+                                        "char",   # element size
+                                        "anyint", # cache controls
+                                        "char",   # number of blocks
+                                        "short",  # block width
+                                        "short",  # block heigth
+                                        "long",   # memory base address
+                                        "int",    # memory matrix width (minus 1)
+                                        "int",    # memory matrix height (minus 1)
+                                        "int",    # memory matrix row pitch (minus 1)
+                                        "int",    # memory block X position
+                                        "int",    # memory block Y position
+                                        "int",    # X offset
+                                        "int",    # Y offset
+                                        0,        # passthru
+                                    ],
+                                    "attributes": "ReadMem", },
+    "lsc_prefetch_block_2d_ugm": { "result": "void",
+                                   "arguments": [
+                                       "bool",   # i1, predicate
+                                       "char",   # element size
+                                       "anyint", # cache controls
+                                       "char",   # number of blocks
+                                       "short",  # block width
+                                       "short",  # block heigth
+                                       "long",   # memory base address
+                                       "int",    # memory matrix width (minus 1)
+                                       "int",    # memory matrix height (minus 1)
+                                       "int",    # memory matrix row pitch (minus 1)
+                                       "int",    # memory block X position
+                                       "int",    # memory block Y position
+                                       "int",    # X offset
+                                       "int",    # Y offset
+                                   ],
+                                   "attributes": "SideEffects", },
+    "lsc_store_block_2d_ugm": { "result": "void",
+                                "arguments": [
+                                    "bool",      # i1, predicate
+                                    "char",      # element size
+                                    "anyint",    # cache controls
+                                    "char",      # number of blocks
+                                    "short",     # block width
+                                    "short",     # block heigth
+                                    "long",      # memory base address
+                                    "int",       # memory matrix width (minus 1)
+                                    "int",       # memory matrix height (minus 1)
+                                    "int",       # memory matrix row pitch (minus 1)
+                                    "int",       # memory block X position
+                                    "int",       # memory block Y position
+                                    "int",       # X offset
+                                    "int",       # Y offset
+                                    "anyvector", # data to store
+                                ],
+                                "attributes": "WriteMem", },
+
+
 ### --------------------
 ### Thread ID intrinsics
 ### --------------------

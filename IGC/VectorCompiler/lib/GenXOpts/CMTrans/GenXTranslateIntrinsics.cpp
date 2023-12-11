@@ -54,6 +54,7 @@ private:
   Value *translateStochasticRounding(CallInst &I) const;
   Value *translateLscAtomic(CallInst &I) const;
   Value *translateLscLoadStore(CallInst &I) const;
+  Value *translateLscLoadStoreBlock2D(CallInst &I) const;
 };
 } // namespace
 
@@ -118,6 +119,11 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_lsc_store_slm:
   case GenXIntrinsic::genx_lsc_store_stateless:
     NewI = translateLscLoadStore(I);
+    break;
+  case GenXIntrinsic::genx_lsc_load2d_stateless:
+  case GenXIntrinsic::genx_lsc_prefetch2d_stateless:
+  case GenXIntrinsic::genx_lsc_store2d_stateless:
+    NewI = translateLscLoadStoreBlock2D(I);
     break;
   }
 
@@ -429,6 +435,106 @@ Value *GenXTranslateIntrinsics::translateLscAtomic(CallInst &I) const {
   auto *NewI = Builder.CreateCall(
       Func, {Pred, Opcode, Builder.getInt8(AddrSize), ElementSize, CacheOpts,
              Base, Addr, Scale, Offset, Src0, Src1, Passthru});
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
+
+  return NewI;
+}
+
+Value *
+GenXTranslateIntrinsics::translateLscLoadStoreBlock2D(CallInst &I) const {
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *Pred = I.getArgOperand(0);
+  auto *PredTy = Pred->getType();
+
+  IGC_ASSERT_EXIT(PredTy->isIntOrIntVectorTy(1));
+  if (auto *PredVTy = dyn_cast<IGCLLVM::FixedVectorType>(PredTy)) {
+    IGC_ASSERT_EXIT(PredVTy->getNumElements() == 1);
+    constexpr uint64_t Index = 0;
+    Pred = Builder.CreateExtractElement(Pred, Index);
+  }
+
+  auto *L1Control = cast<Constant>(I.getArgOperand(1));
+  auto *L3Control = cast<Constant>(I.getArgOperand(2));
+  auto *CacheOpts = translateCacheControls(L1Control, L3Control);
+
+  auto *DataSize = I.getArgOperand(3);
+  auto *NumBlocks = I.getArgOperand(5);
+  auto *BlockWidth = I.getArgOperand(6);
+  auto *BlockHeight = I.getArgOperand(7);
+
+  auto *Base = I.getArgOperand(9);
+  auto *Width = I.getArgOperand(10);
+  auto *Height = I.getArgOperand(11);
+  auto *Pitch = I.getArgOperand(12);
+  auto *X = I.getArgOperand(13);
+  auto *Y = I.getArgOperand(14);
+
+  Value *Src = nullptr;
+  auto *Ty = I.getType();
+
+  const bool IsTransposed =
+      cast<ConstantInt>(I.getArgOperand(4))->getZExtValue() ==
+      LSC_DATA_ORDER_TRANSPOSE;
+  const bool IsVNNI =
+      cast<ConstantInt>(I.getArgOperand(8))->getZExtValue() != 0;
+
+  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
+  switch (IID) {
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  case GenXIntrinsic::genx_lsc_load2d_stateless:
+    Src = UndefValue::get(Ty);
+    if (IsTransposed)
+      NewIID = vc::InternalIntrinsic::lsc_load_block_2d_ugm_transposed;
+    else if (IsVNNI)
+      NewIID = vc::InternalIntrinsic::lsc_load_block_2d_ugm_vnni;
+    else
+      NewIID = vc::InternalIntrinsic::lsc_load_block_2d_ugm;
+    break;
+  case GenXIntrinsic::genx_lsc_prefetch2d_stateless:
+    IGC_ASSERT(!IsTransposed && !IsVNNI);
+    NewIID = vc::InternalIntrinsic::lsc_prefetch_block_2d_ugm;
+    break;
+  case GenXIntrinsic::genx_lsc_store2d_stateless:
+    IGC_ASSERT(!IsTransposed && !IsVNNI);
+    Src = I.getArgOperand(15);
+    NewIID = vc::InternalIntrinsic::lsc_store_block_2d_ugm;
+    break;
+  }
+
+  SmallVector<Type *, 2> Types;
+  if (!Ty->isVoidTy())
+    Types.push_back(Ty);
+  Types.push_back(CacheOpts->getType());
+  if (Src && Ty->isVoidTy())
+    Types.push_back(Src->getType());
+
+  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
+
+  SmallVector<Value *, 15> Args = {
+      Pred,
+      DataSize,
+      CacheOpts,
+      NumBlocks,
+      BlockWidth,
+      BlockHeight,
+      Base,
+      Width,
+      Height,
+      Pitch,
+      X,
+      Y,
+      Builder.getInt32(0), // X offset
+      Builder.getInt32(0), // Y offset
+  };
+  if (Src)
+    Args.push_back(Src);
+
+  auto *NewI = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
 
   return NewI;

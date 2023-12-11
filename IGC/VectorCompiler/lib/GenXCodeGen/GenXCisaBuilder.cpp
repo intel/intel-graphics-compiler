@@ -3893,27 +3893,22 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
             DataDesc, Base, SurfIdx, Addr, Data));
       };
 
-  auto CreateLscUntypedBlock2DStateless =
-      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
-          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
-          LSC_CACHE_OPTS CacheOpts, LSC_DATA_SHAPE_BLOCK2D DataShape,
-          VISA_VectorOpnd *SurfaceBase, VISA_VectorOpnd *SurfaceWidth,
-          VISA_VectorOpnd *SurfaceHeight, VISA_VectorOpnd *SurfacePitch,
-          VISA_RawOpnd *DstData, VISA_VectorOpnd *Src0AddrY,
-          VISA_VectorOpnd *Src0AddrX, VISA_RawOpnd *Src1Data) {
-        // FIXME: surface is now FLAT-only
-        VISA_VectorOpnd *Src0Addrs[LSC_BLOCK2D_ADDR_PARAMS]{
-            SurfaceBase,   // surface base (a 64b scalar addr)
-            SurfaceWidth,  // surface width (32b)
-            SurfaceHeight, // surface height (32b)
-            SurfacePitch,  // surface pitch  (32b)
-            Src0AddrX,     // block x offset (32b)
-            Src0AddrY,     // block y offset (32b)
+  auto CreateLscUntypedBlock2D =
+      [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
+          VISA_EMask_Ctrl ExecMask, LSC_OP Opcode, LSC_CACHE_OPTS CacheOpts,
+          LSC_DATA_SHAPE_BLOCK2D BlockShape, VISA_RawOpnd *DstData,
+          VISA_VectorOpnd *AddrBase, VISA_VectorOpnd *AddrWidth,
+          VISA_VectorOpnd *AddrHeight, VISA_VectorOpnd *AddrPitch,
+          VISA_VectorOpnd *AddrX, VISA_VectorOpnd *AddrY, int OffsetX,
+          int OffsetY, VISA_RawOpnd *SrcData) {
+        IGC_ASSERT(Opcode == LSC_LOAD_BLOCK2D || Opcode == LSC_STORE_BLOCK2D);
+        VISA_VectorOpnd *Addr[LSC_BLOCK2D_ADDR_PARAMS] = {
+            AddrBase, AddrWidth, AddrHeight, AddrPitch, AddrX, AddrY,
         };
 
         CISA_CALL(Kernel->AppendVISALscUntypedBlock2DInst(
-            SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, DataShape,
-            DstData, Src0Addrs, 0, 0, Src1Data));
+            Opcode, LSC_UGM, Pred, ExecSize, ExecMask, CacheOpts, BlockShape,
+            DstData, Addr, OffsetX, OffsetY, SrcData));
       };
 
   auto CreateLscFence = [&](VISA_Exec_Size ExecSize, VISA_PredOpnd *Pred,
