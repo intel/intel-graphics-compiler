@@ -388,7 +388,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
 Value* ValueTracker::trackValue(Value* I)
 {
     Value* baseValue = I;
-    auto isFinalValue = [this](auto V) { return callInsts.empty() && workList.empty() && (V == nullptr || llvm::isa<Argument>(V) || llvm::isa<ConstantInt>(V) || (m_predicate && m_predicate(V))); };
+    auto isFinalValue = [this](auto V) { return callInsts.empty() && workList.empty() && (V == nullptr || llvm::isa<Argument>(V) || llvm::isa<ConstantInt>(V)); };
 
     while (true)
     {
@@ -508,10 +508,9 @@ Value* ValueTracker::track(
     CallInst* pCallInst,
     const uint index,
     const MetaDataUtils* pMdUtils,
-    const IGC::ModuleMetaData* pModMD,
-    function_ref<bool(Value *)> predicate)
+    const IGC::ModuleMetaData* pModMD)
 {
-    ValueTracker VT(pCallInst->getParent()->getParent(), pMdUtils, pModMD, predicate);
+    ValueTracker VT(pCallInst->getParent()->getParent(), pMdUtils, pModMD);
     Value* baseValue = pCallInst->getOperand(index);
     return VT.trackValue(baseValue);
 }

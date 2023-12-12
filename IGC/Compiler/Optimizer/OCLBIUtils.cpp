@@ -169,9 +169,8 @@ void CImagesBI::prepareColor(Value* Color)
 
 void CImagesBI::prepareImageBTI()
 {
-    Value* pImg = nullptr;
+    Argument* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
-    IGC_ASSERT(isa<Argument>(pImg) || isa<LoadInst>(pImg));
     unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE);
     Value* img = ConstantPointerNull::get(PointerType::get(pImg->getType(), addrSpace));
     m_args.push_back(img); // BTI
@@ -216,35 +215,14 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
     return nullptr;
 }
 
-static bool isBindlessImageLoad(Value *v)
-{
-    auto *load = dyn_cast<LoadInst>(v);
-    if (!load)
-        return false;
-
-    auto *ptrOp = load->getPointerOperand()->stripPointerCasts();
-    if (!isa<Argument>(ptrOp) && !isa<GetElementPtrInst>(ptrOp))
-        return false;
-
-    Type* type = IGCLLVM::getNonOpaquePtrEltTy(ptrOp->getType());
-    if (auto *structTy = dyn_cast<StructType>(type))
-    {
-        return structTy->getName().equals("struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle") ||
-                   structTy->getName().equals("struct.sycl::_V1::ext::oneapi::experimental::sampled_image_handle");
-    }
-    return false;
-};
-
 ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
     ParamMap* pParamMap,
     CallInst* pCallInst,
     unsigned int paramIndex,
-    Value*& imageParam)
+    Argument*& imageParam)
 {
     ConstantInt* imageIndex = nullptr;
-
-    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
-    IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
+    imageParam = cast<Argument>(ValueTracker::track(pCallInst, paramIndex));
     int i = (*pParamMap)[imageParam].index;
     imageIndex = ConstantInt::get(Type::getInt32Ty(pCallInst->getContext()), i);
     return imageIndex;
@@ -252,14 +230,13 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 
 BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* pCallInst, unsigned int paramIndex)
 {
-    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
-    IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
-    return isa<LoadInst>(imageParam) ? BufferType::BINDLESS : (*pParamMap)[imageParam].type;
+    Argument* imageParam = cast<Argument>(ValueTracker::track(pCallInst, paramIndex));
+    return (*pParamMap)[imageParam].type;
 }
 
 void CImagesBI::createGetBufferPtr()
 {
-    Value* pImg = nullptr;
+    Argument* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
     BufferType bufType = CImagesUtils::getImageType(m_pParamMap, m_pCallInst, 0);
     unsigned int addressSpace = IGC::EncodeAS4GFXResource(*imageIndex, bufType);
@@ -271,9 +248,7 @@ void CImagesBI::createGetBufferPtr()
         auto modMD = m_pCodeGenContext->getModuleMetaData();
         if (modMD->UseBindlessImage)
         {
-            Value* basePointer = isa<IntegerType>(pImg->getType()) ?
-                BitCastInst::CreateBitOrPointerCast(pImg, ptrTy, "bindless_img", m_pCallInst) :
-                BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", m_pCallInst);
+            Value* basePointer = BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", m_pCallInst);
             m_args.push_back(basePointer);
             return;
         }
@@ -1116,7 +1091,7 @@ public:
         // Push images like src image, fwd ref image, and bwd ref image.
         IGC_ASSERT((num_images >= 2) && (num_images <= 3));
         for (uint i = 0; i < num_images; i++) {
-            Value* pImg = nullptr;
+            Argument* pImg = nullptr;
             m_args.push_back(CImagesBI::CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, i + 3, pImg));
         }
 
@@ -1158,7 +1133,7 @@ public:
 
         // Push images like src image, fwd ref image, and bwd ref image.
         for (int i = 0; i < m_numImgArgs; i++) {
-            Value* pImg = nullptr;
+            Argument* pImg = nullptr;
             m_args.push_back(CImagesBI::CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, i + 1, pImg));
         }
 

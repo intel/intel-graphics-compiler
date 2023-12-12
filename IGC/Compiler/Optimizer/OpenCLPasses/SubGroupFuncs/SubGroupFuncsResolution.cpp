@@ -472,7 +472,7 @@ void SubGroupFuncsResolution::pushMediaBlockArgs(llvm::SmallVector<llvm::Value*,
         BTIHelper(CI);
     }
 
-    Value* pImg = nullptr;
+    Argument* pImg = nullptr;
     ConstantInt* imageIndex = IGC::CImagesBI::CImagesUtils::getImageIndex(&m_argIndexMap, &CI, 0, pImg);
 
     ConstantInt* constIndex = ConstantInt::get((Type::getInt32Ty(C)), 0);
@@ -909,7 +909,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             BTIHelper(CI);
         }
 
-        Value* pImg = nullptr;
+        Argument* pImg = nullptr;
         ConstantInt* imageIndex = IGC::CImagesBI::CImagesUtils::getImageIndex(&m_argIndexMap, &CI, 0, pImg);
 
         CI.replaceAllUsesWith(imageIndex);
