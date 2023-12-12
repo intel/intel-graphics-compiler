@@ -696,7 +696,7 @@ DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,
 DEF_VISA_OPTION(vISA_setStartBreakPoint, ET_BOOL, "-setstartbp", UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertHashMovs, ET_BOOL, NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForHWRSWA, ET_BOOL, "-insertRSDummyMov",
-                UNUSED, false)
+                UNUSED, true)
 DEF_VISA_OPTION(vISA_GenerateKernelInfo, ET_BOOL, "-generateKernelInfo", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_ManualEnableRSWA, ET_BOOL, "-manualEnableRSWA", UNUSED,

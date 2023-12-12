@@ -4927,19 +4927,17 @@ namespace IGC
             SaveOption(vISA_forceSrc0ToQwForQwShlWA, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressionWA) &&
-            VISAPlatform < Xe_PVC &&
-            VISAPlatform >= GENX_TGLLP)
+        if (!IGC_IS_FLAG_ENABLED(EnablerReadSuppressionWA))
         {
-            SaveOption(vISA_InsertDummyMovForHWRSWA, true);
-            if (IGC_IS_FLAG_ENABLED(DPASReadSuppressionWA))
-            {
-                SaveOption(vISA_InsertDummyMovForDPASRSWA, true);
-            }
-            if (IGC_IS_FLAG_ENABLED(manualEnableRSWA))
-            {
-                SaveOption(vISA_ManualEnableRSWA, true);
-            }
+            SaveOption(vISA_InsertDummyMovForHWRSWA, false);
+        }
+
+        if (!IGC_IS_FLAG_ENABLED(DPASReadSuppressionWA)) {
+            SaveOption(vISA_InsertDummyMovForDPASRSWA, false);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(manualEnableRSWA)) {
+            SaveOption(vISA_ManualEnableRSWA, true);
         }
 
         if (IGC_GET_FLAG_VALUE(SWSBTokenNum) != 0)
