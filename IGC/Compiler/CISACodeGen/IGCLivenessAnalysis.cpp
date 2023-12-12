@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 
 #include <fstream>
 #include <queue>
+#include <regex>
 
 char IGCLivenessAnalysis::ID = 0;
 // Register pass to igc-opt
@@ -381,6 +382,10 @@ void IGCLivenessAnalysis::intraBlock(llvm::BasicBlock &BB, std::string &Output,
 
 void IGCLivenessAnalysis::dumpRegPressure(llvm::Function &F,
                                           unsigned int SIMD) {
+    const char *Filter = IGC_GET_REGKEYSTRING(DumpRegPressureEstimateFilter);
+    if (Filter && *Filter != '\0' && !std::regex_search(F.getName().str(), std::regex(Filter)))
+        return;
+
     // force print all
     PrinterType = 5;
 
