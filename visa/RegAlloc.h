@@ -112,9 +112,11 @@ public:
   std::vector<SparseBitVector> use_kill;
   std::vector<SparseBitVector> indr_use;
   std::unordered_map<FuncInfo *, SparseBitVector> subroutineMaydef;
+  std::unordered_map<FuncInfo *, SparseBitVector> args;
+  std::unordered_map<FuncInfo *, SparseBitVector> retVal;
 
   // Hold variables known to be globals
-  llvm::SparseBitVector<> globalVars;
+  SparseBitVector globalVars;
 
   bool isLocalVar(G4_Declare *decl) const;
   bool setVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
@@ -124,6 +126,8 @@ public:
   LivenessAnalysis(const LivenessAnalysis&) = delete;
   LivenessAnalysis& operator=(const LivenessAnalysis&) = delete;
   void computeLiveness();
+  SparseBitVector getLiveAtEntry(const G4_BB *bb) const;
+  SparseBitVector getLiveAtExit(const G4_BB *bb) const;
   bool isLiveAtEntry(const G4_BB *bb, unsigned var_id) const;
   bool isUseThrough(const G4_BB *bb, unsigned var_id) const;
   bool isDefThrough(const G4_BB *bb, unsigned var_id) const;
@@ -155,7 +159,7 @@ public:
   void reportUndefinedUses() const;
   bool isEmptyLiveness() const;
   bool writeWholeRegion(const G4_BB *bb, const G4_INST *prd,
-                        G4_DstRegRegion *dst, const Options *opt) const;
+                        G4_DstRegRegion *dst) const;
 
   bool writeWholeRegion(const G4_BB *bb, const G4_INST *prd,
                         const G4_VarBase *flagReg) const;

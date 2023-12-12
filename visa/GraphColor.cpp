@@ -70,12 +70,11 @@ Interference::Interference(const LivenessAnalysis *l, GlobalRA &g)
 }
 
 criticalCmpForEndInterval::criticalCmpForEndInterval(GlobalRA &g) : gra(g) {}
-bool criticalCmpForEndInterval::operator()(G4_Declare *A, G4_Declare *B) const {
-  return gra.getEndInterval(A)->getLexicalId() >
-         gra.getEndInterval(B)->getLexicalId();
+bool criticalCmpForEndInterval::operator()(const QueueEntry &A, const QueueEntry &B) const {
+  return A.interval.end->getLexicalId() > B.interval.end->getLexicalId();
 }
 AugmentPriorityQueue::AugmentPriorityQueue(criticalCmpForEndInterval cmp)
-    : std::priority_queue<G4_Declare *, std::vector<G4_Declare *>,
+    : std::priority_queue<QueueEntry, std::vector<QueueEntry>,
                           criticalCmpForEndInterval>(cmp) {}
 
 inline bool Interference::varSplitCheckBeforeIntf(unsigned v1,
@@ -2092,8 +2091,7 @@ void Interference::buildInterferenceForDst(
     // if the write does not cover the whole dst region, we should continue let
     // the liveness propagate upwards
     //
-    if (liveAnalysis->writeWholeRegion(bb, inst, dst, builder.getOptions()) ||
-        inst->isPseudoKill()) {
+    if (liveAnalysis->writeWholeRegion(bb, inst, dst) || inst->isPseudoKill()) {
       updateLiveness(live, id, false);
 
       if (lrs[id]->getIsSplittedDcl()) {
@@ -2102,7 +2100,7 @@ void Interference::buildInterferenceForDst(
                      gra.getSplitVarNum(lrs[id]->getDcl());
              i++) {
           live.reset(i); // kill all childs, there may be not used childs
-                              // generated due to splitting, killed also.
+                         // generated due to splitting, killed also.
         }
       }
     }
@@ -2773,11 +2771,25 @@ void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
   }
 }
 
-Augmentation::Augmentation(Interference &i,
-                           const LivenessAnalysis &l,
+void Augmentation::populateFuncMaps() {
+  vISA_ASSERT(kernel.fg.getBBList().back()->size() > 0, "last BB empty");
+  instToFunc.resize(kernel.fg.getBBList().back()->back()->getLexicalId() + 1);
+  for (auto &func : kernel.fg.sortedFuncTable) {
+    for (auto &bb : func->getBBList()) {
+      bbToFunc[bb] = func;
+      for (auto *inst : bb->getInstList()) {
+        instToFunc[inst->getLexicalId()] = func;
+      }
+    }
+  }
+}
+
+Augmentation::Augmentation(Interference &i, const LivenessAnalysis &l,
                            GlobalRA &g)
     : kernel(g.kernel), intf(i), gra(g), liveAnalysis(l), lrs(g.incRA.getLRs()),
-      fcallRetMap(g.fcallRetMap) {
+      fcallRetMap(g.fcallRetMap), refs(g.kernel, false, false, true),
+      hasSubroutines(kernel.fg.sortedFuncTable.size() > 0 &&
+                     g.kernel.getOption(vISA_NewAugmentation)) {
   useGenericAugAlign =
       GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration());
 }
@@ -3553,16 +3565,16 @@ void Augmentation::updateStartIntervalForSubDcl(G4_Declare *dcl,
     unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
     if (!(opnd->getRightBound() < leftBound ||
           rightBound < opnd->getLeftBound())) {
-      auto subDclStartInterval = gra.getStartInterval(subDcl);
+      auto subDclStartInterval = gra.getLastStartInterval(subDcl);
       if (subDclStartInterval == NULL ||
           (subDclStartInterval->getLexicalId() > curInst->getLexicalId())) {
-        gra.setStartInterval(subDcl, curInst);
+        gra.setLastStartInterval(subDcl, curInst);
       }
 
-      auto subDclEndIntrval = gra.getEndInterval(subDcl);
+      auto subDclEndIntrval = gra.getLastEndInterval(subDcl);
       if (subDclEndIntrval == NULL ||
           (subDclEndIntrval->getLexicalId() < curInst->getLexicalId())) {
-        gra.setEndInterval(subDcl, curInst);
+        gra.setLastEndInterval(subDcl, curInst);
       }
     }
   }
@@ -3577,16 +3589,16 @@ void Augmentation::updateEndIntervalForSubDcl(G4_Declare *dcl, G4_INST *curInst,
     unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
     if (!(opnd->getRightBound() < leftBound ||
           rightBound < opnd->getLeftBound())) {
-      auto subDclEndInterval = gra.getEndInterval(subDcl);
+      auto subDclEndInterval = gra.getLastEndInterval(subDcl);
       if (subDclEndInterval == NULL ||
           (subDclEndInterval->getLexicalId() < curInst->getLexicalId())) {
-        gra.setEndInterval(subDcl, curInst);
+        gra.setLastEndInterval(subDcl, curInst);
       }
 
-      auto subDclStartInterval = gra.getStartInterval(subDcl);
+      auto subDclStartInterval = gra.getLastStartInterval(subDcl);
       if (subDclStartInterval == NULL ||
           (subDclStartInterval->getLexicalId() > curInst->getLexicalId())) {
-        gra.setStartInterval(subDcl, curInst);
+        gra.setLastStartInterval(subDcl, curInst);
       }
     }
   }
@@ -3596,30 +3608,49 @@ void Augmentation::updateEndIntervalForSubDcl(G4_Declare *dcl, G4_INST *curInst,
 
 void Augmentation::updateStartInterval(const G4_Declare *dcl,
                                        G4_INST *curInst) {
-  auto dclStartInterval = gra.getStartInterval(dcl);
-  if (dclStartInterval == NULL ||
+  auto dclStartInterval = gra.getLastStartInterval(dcl);
+  if (dclStartInterval && hasSubroutines) {
+    // If we want to extend dcl in a new subroutine than earlier,
+    // then we create a new interval for new subroutine. This way
+    // we ensure an interval never straddles subroutines.
+    auto *funcCurInst = instToFunc[curInst->getLexicalId()];
+    auto *funcStartInterval = instToFunc[dclStartInterval->getLexicalId()];
+    if (funcCurInst != funcStartInterval) {
+      gra.pushBackNewInterval(dcl);
+      dclStartInterval = nullptr;
+    }
+  }
+  if (!dclStartInterval ||
       (dclStartInterval->getLexicalId() > curInst->getLexicalId())) {
-    gra.setStartInterval(dcl, curInst);
+    gra.setLastStartInterval(dcl, curInst);
   }
 
-  auto dclEndInterval = gra.getEndInterval(dcl);
-  if (dclEndInterval == NULL ||
+  auto dclEndInterval = gra.getLastEndInterval(dcl);
+  if (!dclEndInterval ||
       (dclEndInterval->getLexicalId() < curInst->getLexicalId())) {
-    gra.setEndInterval(dcl, curInst);
+    gra.setLastEndInterval(dcl, curInst);
   }
 }
 
 void Augmentation::updateEndInterval(const G4_Declare *dcl, G4_INST *curInst) {
-  auto dclEndInterval = gra.getEndInterval(dcl);
-  if (dclEndInterval == NULL ||
+  auto dclEndInterval = gra.getLastEndInterval(dcl);
+  if (dclEndInterval && hasSubroutines) {
+    auto *funcCurInst = instToFunc[curInst->getLexicalId()];
+    auto *funcEndInterval = instToFunc[dclEndInterval->getLexicalId()];
+    if (funcCurInst != funcEndInterval) {
+      gra.pushBackNewInterval(dcl);
+      dclEndInterval = nullptr;
+    }
+  }
+  if (!dclEndInterval ||
       (dclEndInterval->getLexicalId() < curInst->getLexicalId())) {
-    gra.setEndInterval(dcl, curInst);
+    gra.setLastEndInterval(dcl, curInst);
   }
 
-  auto dclStartInterval = gra.getStartInterval(dcl);
-  if (dclStartInterval == NULL ||
+  auto dclStartInterval = gra.getLastStartInterval(dcl);
+  if (!dclStartInterval ||
       (dclStartInterval->getLexicalId() > curInst->getLexicalId())) {
-    gra.setStartInterval(dcl, curInst);
+    gra.setLastStartInterval(dcl, curInst);
   }
 }
 
@@ -3642,19 +3673,19 @@ void Augmentation::updateEndIntervalForLocal(G4_Declare *dcl, G4_INST *curInst,
 
 void GlobalRA::printLiveIntervals() {
   for (const G4_Declare *dcl : kernel.Declares) {
-    if (getStartInterval(dcl) != nullptr || getEndInterval(dcl) != nullptr) {
+    if (getLastStartInterval(dcl) != nullptr || getLastEndInterval(dcl) != nullptr) {
       DEBUG_VERBOSE(dcl->getName() << " (");
 
-      if (getStartInterval(dcl) != nullptr) {
-        DEBUG_VERBOSE(getStartInterval(dcl)->getLexicalId());
+      if (getLastStartInterval(dcl) != nullptr) {
+        DEBUG_VERBOSE(getLastStartInterval(dcl)->getLexicalId());
       } else {
         DEBUG_VERBOSE("*");
       }
 
       DEBUG_VERBOSE(", ");
 
-      if (getEndInterval(dcl) != nullptr) {
-        DEBUG_VERBOSE(getEndInterval(dcl)->getLexicalId());
+      if (getLastEndInterval(dcl) != nullptr) {
+        DEBUG_VERBOSE(getLastEndInterval(dcl)->getLexicalId());
       } else {
         DEBUG_VERBOSE("*");
       }
@@ -3665,6 +3696,549 @@ void GlobalRA::printLiveIntervals() {
   }
 }
 
+bool Augmentation::isUnknownArgOrRetval(G4_Declare *dcl) const {
+  if (!argsRetVal.count(dcl))
+    return false;
+  return isUnknownArg(dcl) || isUnknownRetVal(dcl);
+}
+
+bool Augmentation::isUnknownRetVal(G4_Declare *dcl) const {
+  return isRetvalType<RetValType::Unknown>(dcl);
+}
+
+bool Augmentation::isRegularRetVal(G4_Declare *dcl) const {
+  return isRetvalType<RetValType::Regular>(dcl);
+}
+
+bool Augmentation::isUnknownArg(G4_Declare *dcl) const {
+  return isArgType<ArgType::Unknown>(dcl);
+}
+
+bool Augmentation::isDefBeforeEachCallArg(G4_Declare *dcl) const {
+  return isArgType<ArgType::DefBeforeEachCall>(dcl);
+}
+
+bool Augmentation::isLiveThroughArg(G4_Declare *dcl) const {
+  return isArgType<ArgType::LiveThrough>(dcl);
+}
+
+void Augmentation::buildUnknownArgRetval() {
+  // Arg and retval of Unknown type could have inaccurate
+  // SIMD liveness. So we treat these conservatively by
+  // extending their liveness throughout the function such
+  // variables are referenced in. These variables may be
+  // live through subroutines that don't reference them,
+  // but that should be captured either by SIMT liveness
+  // or by SIMD liveness when we mark mayDef of callee
+  // with overlapping intervals at call sites.
+  if (!hasSubroutines)
+    return;
+
+  std::unordered_map<FuncInfo *, std::pair<G4_INST *, G4_INST *>> funcStartEnd;
+  for (auto *func : kernel.fg.sortedFuncTable) {
+    vISA_ASSERT(!func->getInitBB()->empty(), "expecting non-empty init bb");
+    vISA_ASSERT(!func->getExitBB()->empty(), "expecting non-empty exit bb");
+    auto *start = func->getInitBB()->front();
+    auto *end = func->getExitBB()->back();
+    funcStartEnd[func] = std::make_pair(start, end);
+  }
+
+
+  // We've a dcl of unknown arg/retval type and a list of subroutines
+  // the dcl is referenced in, directly or indirectly. We create live-intervals
+  // for dcl spanning each subroutine it's referenced in. Since live-intervals
+  // cannot straddle subroutines, we create 1 entry per subroutine.
+  auto attachIntervals = [&](G4_Declare *dcl,
+                             std::unordered_set<FuncInfo *> &subroutines) {
+    vISA_ASSERT(gra.getNumIntervals(dcl) == 0,
+                "found > 0 intervals for unknown");
+    for (auto &startEnd : funcStartEnd) {
+      auto *func = startEnd.first;
+      if (!subroutines.count(func))
+        continue;
+      gra.pushBackNewInterval(dcl);
+      gra.setLastStartInterval(dcl, startEnd.second.first);
+      gra.setLastEndInterval(dcl, startEnd.second.second);
+    }
+  };
+
+  if (!liveAnalysis.livenessClass(G4_GRF)) {
+    for (auto &var : nonGRFRefs) {
+      if (var.second.size() < 2)
+        continue;
+
+      // Non-GRF variables that are referenced in multiple subroutines
+      // are considered as unknown type.
+      auto dcl = var.first;
+      gra.clearIntervals(dcl);
+      attachIntervals(dcl, var.second);
+    }
+  } else {
+    // Now gather all GRF Unknown arg, retval
+    for (const auto &info : argsRetVal) {
+      auto dcl = info.first;
+
+      if (isUnknownArgOrRetval(dcl)) {
+        if (!unknownArgRetvalRefs.count(dcl))
+          continue;
+        auto &allRefs = unknownArgRetvalRefs.at(dcl);
+        gra.clearIntervals(dcl);
+        attachIntervals(dcl, allRefs);
+      }
+    }
+  }
+
+  // Verify that no interval straddles function boundaries
+  if (gra.verifyAugmentation) {
+    auto getFunc = [&](G4_INST *inst) {
+      unsigned int lexId = inst->getLexicalId();
+
+      int funcId = 0;
+      for (auto &func : funcStartEnd) {
+        if (lexId >= func.second.first->getLexicalId() &&
+            lexId <= func.second.second->getLexicalId())
+          return funcId;
+        funcId++;
+      }
+      return funcId;
+    };
+    for (G4_Declare *dcl : kernel.Declares) {
+      auto &allIntervals = gra.getAllIntervals(dcl);
+      for (auto &interval : allIntervals) {
+        auto start = interval.start;
+        auto end = interval.end;
+        vISA_ASSERT(getFunc(start) == getFunc(end),
+                    "interval straddles functions");
+      }
+    }
+  }
+}
+
+void Augmentation::startIntervalForLiveIn(FuncInfo *funcInfo, G4_BB *bb) {
+  // Start live-in intervals
+  auto liveInBB = liveAnalysis.getLiveAtEntry(bb) & liveAnalysis.globalVars;
+  for (auto i : liveInBB) {
+    G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
+    if (isUnknownArgOrRetval(dcl))
+      continue;
+
+    vISA_ASSERT(bb->size() > 0, "empty instlist");
+    vISA_ASSERT(funcInfo == kernel.fg.kernelInfo ||
+                    argsPerSub.count(funcInfo) > 0,
+                "didnt find callee entry");
+    updateStartInterval(dcl, bb->front());
+  }
+}
+
+void Augmentation::handleCallSite(G4_BB *curBB, unsigned int &funcCnt) {
+  const char *name =
+      kernel.fg.builder->getNameString(32, "SCALL_%d", funcCnt++);
+  G4_Declare *scallDcl =
+      kernel.fg.builder->createDeclare(name, G4_GRF, 1, 1, Type_UD);
+  gra.addVarToRA(scallDcl);
+
+  auto *inst = curBB->back();
+  vISA_ASSERT(inst->isCall(), "expecting call instruction");
+
+  updateStartInterval(scallDcl, inst);
+  updateEndInterval(scallDcl, inst);
+
+  std::pair<G4_INST *, G4_BB *> callInfo(inst, curBB);
+  callDclMap.emplace(scallDcl, callInfo);
+
+  if (liveAnalysis.livenessClass(G4_GRF)) {
+    auto *retLocDcl = inst->getDst()->getTopDcl();
+    // RET__loc dcl starts and ends at call site.
+    // If a function has multiple call sites to same
+    // callee then there would be as many trivial
+    // live-intervals for corresponding RET__loc dcl.
+    gra.pushBackNewInterval(retLocDcl);
+
+    auto *callee = curBB->getCalleeInfo();
+    vISA_ASSERT(argsPerSub.count(callee) > 0, "didnt find entry for sub");
+    auto &args = argsPerSub.at(callee);
+    // Terminate any arg with type DefBeforeEachCall
+    for (auto *arg : args) {
+      if (!isDefBeforeEachCallArg(arg))
+        continue;
+      updateEndInterval(arg, inst);
+    }
+
+    vISA_ASSERT(retValPerSub.count(callee) > 0, "didnt find callee entry");
+    // Start regular retval live-interval at call
+    const auto &retvals = retValPerSub[callee];
+    for (auto *retvalDcl : retvals) {
+      if (isRegularRetVal(retvalDcl)) {
+        gra.pushBackNewInterval(retvalDcl);
+        updateStartInterval(retvalDcl, curBB->back());
+      }
+    }
+  }
+}
+
+void Augmentation::handleDstOpnd(FuncInfo *funcInfo, G4_BB *curBB,
+                                 G4_INST *inst) {
+  G4_DstRegRegion *dst = inst->getDst();
+
+  if (dst && dst->getRegAccess() == Direct && dst->getBase()) {
+    // Destination
+    G4_Declare *defdcl = GetTopDclFromRegRegion(dst);
+
+    if (dst->getBase()->isRegAllocPartaker()) {
+      if (defdcl) {
+        if (!liveAnalysis.livenessClass(G4_GRF))
+          nonGRFRefs[defdcl].insert(funcInfo);
+
+        if (isDefBeforeEachCallArg(defdcl)) {
+          vISA_ASSERT(!defdcl->getIsSplittedDcl(),
+                      "not expecting to see split on arg");
+          // Check if previous interval ended at an earlier call.
+          // If not continue it, otherwise start new one.
+          auto *prevEnd = gra.getLastEndInterval(defdcl);
+          if (prevEnd && prevEnd->isCall())
+            gra.pushBackNewInterval(defdcl);
+        } else if (isUnknownArgOrRetval(defdcl)) {
+          unknownArgRetvalRefs[defdcl].insert(funcInfo);
+        }
+
+        if (gra.getLocalLR(defdcl)) {
+          updateStartIntervalForLocal(defdcl, inst, dst);
+        } else {
+          updateStartInterval(defdcl, inst);
+        }
+      }
+    } else if (liveAnalysis.livenessClass(G4_GRF)) {
+      LocalLiveRange *defdclLR;
+
+      // Handle ranges allocated by local RA
+      if (defdcl && (defdclLR = gra.getLocalLR(defdcl)) &&
+          defdclLR->getAssigned() == true && !defdclLR->isEOT()) {
+        vISA_ASSERT(!hasSubroutines || argsRetVal.count(defdcl) > 0,
+                    "didnt expect arg to be allocated by LRA");
+        updateStartInterval(defdcl, inst);
+      }
+    }
+  } else if (liveAnalysis.livenessClass(G4_ADDRESS) && dst &&
+             dst->getRegAccess() == IndirGRF && dst->getBase() &&
+             dst->getBase()->isRegVar()) {
+    // Destination is indirect
+    G4_Declare *defdcl = dst->getBaseRegVarRootDeclare();
+    nonGRFRefs[defdcl].insert(funcInfo);
+    updateEndInterval(defdcl, inst);
+  } else if (liveAnalysis.livenessClass(G4_GRF) && dst && dst->isIndirect()) {
+    const REGVAR_VECTOR &pointsToSet =
+        liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
+                                                                     curBB);
+    for (auto pointsToVar : pointsToSet) {
+      if (pointsToVar.var->isRegAllocPartaker()) {
+        updateStartInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
+                            inst);
+        auto dcl = pointsToVar.var->getDeclare()->getRootDeclare();
+        if (isUnknownArgOrRetval(dcl))
+          unknownArgRetvalRefs[dcl].insert(funcInfo);
+      }
+    }
+  }
+}
+
+void Augmentation::handleCondMod(FuncInfo* funcInfo, G4_INST *inst) {
+    if (liveAnalysis.livenessClass(G4_FLAG)) {
+    G4_CondMod *cmod = inst->getCondMod();
+
+    if (cmod && cmod->getBase()) {
+      // Conditional modifier
+      G4_Declare *dcl = cmod->getBaseRegVarRootDeclare();
+      nonGRFRefs[dcl].insert(funcInfo);
+      updateStartInterval(dcl, inst);
+    }
+  }
+}
+
+void Augmentation::handleSrcOpnd(FuncInfo *funcInfo, G4_BB *curBB,
+                                 G4_Operand *src) {
+  G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
+  auto *inst = srcRegion->getInst();
+  if (srcRegion->getRegAccess() == Direct && srcRegion->getBase()) {
+    G4_Declare *usedcl = GetTopDclFromRegRegion(src);
+
+    if (isUnknownArg(usedcl) || isUnknownRetVal(usedcl))
+      unknownArgRetvalRefs[usedcl].insert(funcInfo);
+
+    if (srcRegion->getBase()->isRegAllocPartaker()) {
+      if (!liveAnalysis.livenessClass(G4_GRF))
+        nonGRFRefs[usedcl].insert(funcInfo);
+
+      if (gra.getLocalLR(usedcl)) {
+        updateEndIntervalForLocal(usedcl, inst, src);
+      } else {
+        updateEndInterval(usedcl, inst);
+      }
+    } else if (liveAnalysis.livenessClass(G4_GRF)) {
+      LocalLiveRange *usedclLR = nullptr;
+      if (usedcl && (usedclLR = gra.getLocalLR(usedcl)) &&
+          usedclLR->getAssigned() == true && !usedclLR->isEOT()) {
+        updateEndInterval(usedcl, inst);
+      }
+    }
+  } else if (liveAnalysis.livenessClass(G4_GRF) && srcRegion->isIndirect()) {
+    const REGVAR_VECTOR &pointsToSet =
+        liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRegion,
+                                                                     curBB);
+    for (auto pointsToVar : pointsToSet) {
+      if (pointsToVar.var->isRegAllocPartaker()) {
+        updateEndInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
+                          inst);
+        auto dcl = pointsToVar.var->getDeclare()->getRootDeclare();
+        if (isUnknownArgOrRetval(dcl))
+          unknownArgRetvalRefs[dcl].insert(funcInfo);
+      }
+    }
+  } else if (liveAnalysis.livenessClass(G4_ADDRESS) &&
+             srcRegion->getRegAccess() == IndirGRF && srcRegion->getBase() &&
+             srcRegion->getBase()->isRegVar()) {
+    G4_Declare *usedcl = src->getBaseRegVarRootDeclare();
+    nonGRFRefs[usedcl].insert(funcInfo);
+    updateEndInterval(usedcl, inst);
+  }
+}
+
+void Augmentation::handlePred(FuncInfo* funcInfo, G4_INST *inst) {
+  if (liveAnalysis.livenessClass(G4_FLAG)) {
+    G4_Predicate *pred = inst->getPredicate();
+
+    if (pred) {
+      // Predicate
+      G4_Declare *dcl = pred->getBaseRegVarRootDeclare();
+      nonGRFRefs[dcl].insert(funcInfo);
+      updateEndInterval(dcl, inst);
+    }
+  }
+}
+
+void Augmentation::endIntervalForLiveOut(G4_BB *bb) {
+  auto liveOutBB = liveAnalysis.getLiveAtExit(bb) & liveAnalysis.globalVars;
+  if (bb->isEndWithCall() && liveAnalysis.livenessClass(G4_GRF)) {
+    // reset bit for RET__loc as we handle it specially later to
+    // create point intervals at call site.
+    auto retLocVarId = bb->back()->getDst()->getTopDcl()->getRegVar()->getId();
+    liveOutBB.reset(retLocVarId);
+    // Default subroutine argument has to start at definition and
+    // end at call site. A caller may have multiple call sites for
+    // a callee. We want to create multiple live-intervals, one
+    // per call site. Creation of a live-interval per call site
+    // is handled in handleCallSite() already, so we skip extending
+    // them here.
+    auto *callee = bb->getCalleeInfo();
+    if (callee && argsPerSub.count(callee)) {
+      auto &argsForCallee = argsPerSub.at(callee);
+      for (auto *arg : argsForCallee) {
+        if (isDefBeforeEachCallArg(arg))
+          liveOutBB.reset(arg->getRegVar()->getId());
+      }
+    }
+  }
+
+  // Extend live-out interval to BB
+  for (auto i : liveOutBB) {
+    G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
+    if (isUnknownArgOrRetval(dcl))
+      continue;
+    vISA_ASSERT(bb->size() > 0, "empty instlist");
+    updateEndInterval(dcl, bb->back());
+  }
+}
+
+// Handle live-range extension for non-reducible CFG
+void Augmentation::handleNonReducibleExtension(FuncInfo *funcInfo) {
+  // use SCC instead
+  // FIXME: does augmentation work in the presence of subroutine? neither
+  // SCCAnalysis nor findNaturalLoops considers the call graph
+  SCCAnalysis SCCFinder(kernel.fg);
+  SCCFinder.run();
+  for (auto iter = SCCFinder.SCC_begin(), iterEnd = SCCFinder.SCC_end();
+       iter != iterEnd; ++iter) {
+    auto &&anSCC = *iter;
+    std::unordered_set<G4_BB *> SCCSucc; // any successor BB of the SCC
+    G4_BB *headBB = anSCC.getEarliestBB();
+    if (hasSubroutines && bbToFunc.at(headBB) != funcInfo)
+      continue;
+    for (auto BI = anSCC.body_begin(), BIEnd = anSCC.body_end(); BI != BIEnd;
+         ++BI) {
+      G4_BB *bb = *BI;
+      for (auto succ : bb->Succs) {
+        if (!anSCC.isMember(succ)) {
+          SCCSucc.insert(succ);
+        }
+      }
+    }
+    for (auto exitBB : SCCSucc) {
+      extendVarLiveness(exitBB, headBB->front());
+    }
+  }
+}
+
+void Augmentation::handleLoopExtension(FuncInfo *funcInfo) {
+  // process each natural loop
+  for (auto &iter : kernel.fg.getAllNaturalLoops()) {
+    auto &backEdge = iter.first;
+    // Check whether loop is in current function
+    if (hasSubroutines &&
+        funcInfo != bbToFunc.at(backEdge.first))
+      continue;
+    G4_INST *startInst = (backEdge.second)->front();
+    const std::set<G4_BB *> &loopBody = iter.second;
+
+    for (auto block : loopBody) {
+      // FIXME: this may process a BB multiple times
+      for (auto succBB : block->Succs) {
+        // A subroutine call BB's successor is callee's INIT BB.
+        // Loop data structure doesn't include callee BB. So
+        // succBB not part of loop may still be INIT BB of callee.
+        // Such an INIT BB shouldn't be treated as a loop exit
+        // for live-range extension. If we don't check for INIT BB
+        // we end up extending RET__loc range to loop header
+        // which isn't correct.
+        if (loopBody.find(succBB) == loopBody.end() &&
+            (succBB->getBBType() & G4_BB_INIT_TYPE) == 0) {
+          G4_BB *exitBB = succBB;
+
+          unsigned latchBBId = (backEdge.first)->getId();
+          unsigned exitBBId = succBB->getId();
+          if (exitBBId < latchBBId && succBB->Succs.size() == 1) {
+            exitBB = succBB->Succs.front();
+          }
+          VISA_DEBUG_VERBOSE({
+            std::cout << "==> Extend live-in for BB" << exitBB->getId() << "\n";
+            exitBB->emit(std::cout);
+          });
+          extendVarLiveness(exitBB, startInst);
+        }
+      }
+    }
+
+    G4_BB *startBB = backEdge.second;
+    G4_BB *endBB = backEdge.first;
+
+    auto liveInStartBB = liveAnalysis.getLiveAtEntry(startBB);
+    auto liveOutEndBB = liveAnalysis.getLiveAtExit(endBB);
+    auto globalsLiveInAndLiveOut =
+        liveInStartBB & liveOutEndBB & liveAnalysis.globalVars;
+
+    for (auto i : globalsLiveInAndLiveOut) {
+      auto *dcl = lrs[i]->getDcl()->getRootDeclare();
+
+      updateEndInterval(dcl, endBB->back());
+      VISA_DEBUG_VERBOSE({
+        unsigned oldEnd = gra.getLastEndInterval(dcl)->getLexicalId();
+        if (oldEnd < gra.getLastEndInterval(dcl)->getLexicalId()) {
+          std::cout << "Extending " << dcl->getName() << " from old end "
+                    << oldEnd << " to "
+                    << gra.getEndInterval(dcl)->getLexicalId()
+                    << " due to back-edge"
+                    << "\n";
+        }
+      });
+    }
+  }
+}
+
+// Extend all variables that are live at bb entry to the given inst
+void Augmentation::extendVarLiveness(G4_BB *bb, G4_INST *inst) {
+  auto liveAtEntryBB =
+      liveAnalysis.getLiveAtEntry(bb) & liveAnalysis.globalVars;
+  for (auto i : liveAtEntryBB) {
+    G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
+
+    if (!kernel.fg.isPseudoDcl(dcl)) {
+      // Extend ith live-interval
+      updateStartInterval(dcl, inst);
+      VISA_DEBUG_VERBOSE({
+        unsigned oldStart = gra.getLastStartInterval(dcl)->getLexicalId();
+        if (oldStart > gra.getLastStartInterval(dcl)->getLexicalId()) {
+          std::cout << "Extending " << dcl->getName() << " from old start "
+                    << oldStart << " to "
+                    << gra.getLastStartInterval(dcl)->getLexicalId()
+                    << " due to back-edge"
+                    << "\n";
+        }
+      });
+    }
+  }
+}
+
+// Build live-intervals for given subroutine and store them per subroutine.
+// Arg/Retval are specially treated. We construct live-intervals with holes
+// for such special variables to avoid unnecessary overlaps.
+void Augmentation::buildLiveIntervals(FuncInfo* funcInfo) {
+  unsigned funcCnt = 0;
+  for (G4_BB *curBB : funcInfo->getBBList()) {
+    if (!curBB->empty()) {
+      startIntervalForLiveIn(funcInfo, curBB);
+      endIntervalForLiveOut(curBB);
+    }
+
+    for (G4_INST *inst : *curBB) {
+      if (inst->isPseudoKill() == true)
+        continue;
+
+      if (inst->isCall()) {
+        handleCallSite(curBB, funcCnt);
+        continue;
+      }
+
+      handleDstOpnd(funcInfo, curBB, inst);
+
+      handleCondMod(funcInfo, inst);
+
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
+        G4_Operand *src = inst->getSrc(i);
+        if (!src || !src->isSrcRegRegion()) {
+          continue;
+        }
+        handleSrcOpnd(funcInfo, curBB, src);
+      }
+
+      handlePred(funcInfo, inst);
+    }
+  }
+
+  // A variable may be defined in each divergent loop iteration and used
+  // outside the loop. SIMT liveness can detect the variable as KILL and
+  // this makes the variable non-loop carried. However, channel enable
+  // behavior may differ across loop iterations. So a channel be be defined
+  // in an earlier iteration and that channel could be disabled till end of
+  // the loop, while getting re-enabled outside the loop. This means we
+  // need to preserve value of the variable in each loop iteration and
+  // treat the variable as loop carried. Following is pseudo-code:
+  //
+  // loop_header:
+  // (W) V1 =
+  //        = V1
+  // V2:d = {Q1}
+  // (P) goto loop_header
+  //
+  // outside_loop:
+  //    = V2
+  //
+  // In above case, V2 should be treated as loop carried as it's defined using
+  // Q1 EM and belongs to Default32Bit bucket. It cannot share storage with
+  // V1 because V1 uses (W) and that could destroy value of V2 computed in an
+  // earlier iteration.
+
+
+  if (!kernel.fg.isReducible()) {
+    handleNonReducibleExtension(funcInfo);
+  } else {
+    handleLoopExtension(funcInfo);
+  }
+
+#ifdef DEBUG_VERBOSE_ON
+  // Print calculated live-ranges
+  gra.printLiveIntervals();
+#endif
+}
+
+// FIXME: Used by old augmentation only where no holes are modeled.
 void Augmentation::buildLiveIntervals() {
   // Treat variables live-in to program first
   G4_BB *entryBB = kernel.fg.getEntryBB();
@@ -3699,7 +4273,7 @@ void Augmentation::buildLiveIntervals() {
         updateStartInterval(scallDcl, inst);
         updateEndInterval(scallDcl, inst);
 
-        std::pair<G4_INST *, G4_BB*> callInfo(inst, curBB);
+        std::pair<G4_INST *, G4_BB *> callInfo(inst, curBB);
         callDclMap.emplace(scallDcl, callInfo);
 
         continue;
@@ -3933,8 +4507,7 @@ Augmentation::~Augmentation() {
   for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin(),
                          end = kernel.Declares.end();
        dcl_it != end; dcl_it++) {
-    gra.setStartInterval(*dcl_it, nullptr);
-    gra.setEndInterval(*dcl_it, nullptr);
+    gra.clearIntervals(*dcl_it);
     gra.setMask(*dcl_it, {});
     gra.setAugmentationMask(*dcl_it, AugmentationMasks::Undetermined);
   }
@@ -3946,9 +4519,18 @@ public:
 
   compareInterval(GlobalRA &g) : gra(g) {}
 
-  bool operator()(G4_Declare *dcl1, G4_Declare *dcl2) {
-    return gra.getStartInterval(dcl1)->getLexicalId() <
-           gra.getStartInterval(dcl2)->getLexicalId();
+  // Used to store live-intervals in stable sorted order. Sorting is
+  // done first on start lexical id, so live-ranges are stored in
+  // ascending order of start. For stable order, we use secondary
+  // check on dcl id.
+  bool operator()(const QueueEntry &s1, const QueueEntry &s2) {
+    auto s1Start = gra.getIntervalStart(s1.interval)->getLexicalId();
+    auto s2Start = gra.getIntervalStart(s2.interval)->getLexicalId();
+
+    if (s1Start == s2Start)
+      return s1.dcl->getDeclId() < s2.dcl->getDeclId();
+
+    return s1Start < s2Start;
   }
 };
 
@@ -3959,8 +4541,10 @@ void Augmentation::sortLiveIntervals() {
   // bucket sort algorithm below, since it avoids most of the malloc/free
   // overhead from the vector.resize()
   for (G4_Declare *dcl : kernel.Declares) {
-    if (gra.getStartInterval(dcl) != NULL) {
-      sortedIntervals.push_back(dcl);
+    auto &all = gra.getAllIntervals(dcl);
+    for (auto &interval : all) {
+      if (gra.getIntervalEnd(interval))
+        sortedIntervals.push_back(QueueEntry(dcl, interval));
     }
   }
 
@@ -3969,17 +4553,23 @@ void Augmentation::sortLiveIntervals() {
 
   VISA_DEBUG_VERBOSE({
     std::cout << "Live-intervals in sorted order:\n";
-    for (const G4_Declare *dcl : sortedIntervals) {
+    for (auto &entry : sortedIntervals) {
+      auto *dcl = entry.first;
+      const auto &interval = entry.second;
       std::cout << dcl->getName() << " - "
-                << "(" << gra.getStartInterval(dcl)->getLexicalId() << ", "
-                << gra.getEndInterval(dcl)->getLexicalId() << "]"
+                << "(" << gra.getIntervalStart(interval)->getLexicalId() << ", "
+                << gra.getIntervalEnd(interval)->getLexicalId() << "]"
                 << "\n";
     }
   });
+
+  if (kernel.getOption(vISA_VerifyAugmentation)) {
+    dumpSortedIntervals();
+  }
 }
 
 unsigned Augmentation::getEnd(const G4_Declare *dcl) const {
-  return gra.getEndInterval(dcl)->getLexicalId();
+  return gra.getLastEndInterval(dcl)->getLexicalId();
 }
 
 // Mark interference between dcls. Either one of dcls may have
@@ -4176,10 +4766,10 @@ bool Augmentation::isCompatible(const G4_Declare *testDcl,
 void Augmentation::expireIntervals(unsigned startIdx) {
   // Expire elements from both lists
   while (defaultMaskQueue.size() > 0) {
-    if (gra.getEndInterval(defaultMaskQueue.top())->getLexicalId() <=
+    if (defaultMaskQueue.top().interval.end->getLexicalId() <=
         startIdx) {
       VISA_DEBUG_VERBOSE(std::cout << "Expiring "
-                                   << defaultMaskQueue.top()->getName()
+                                   << defaultMaskQueue.top().first->getName()
                                    << "\n");
       defaultMaskQueue.pop();
     } else {
@@ -4188,10 +4778,10 @@ void Augmentation::expireIntervals(unsigned startIdx) {
   }
 
   while (nonDefaultMaskQueue.size() > 0) {
-    if (gra.getEndInterval(nonDefaultMaskQueue.top())->getLexicalId() <=
+    if (nonDefaultMaskQueue.top().interval.end->getLexicalId() <=
         startIdx) {
       VISA_DEBUG_VERBOSE(std::cout << "Expiring "
-                                   << nonDefaultMaskQueue.top()->getName()
+                                   << nonDefaultMaskQueue.top().first->getName()
                                    << "\n");
       nonDefaultMaskQueue.pop();
     } else {
@@ -4280,14 +4870,16 @@ void Augmentation::addSIMDIntfDclForCallSite(
     return false;
   };
 
-  auto& overlapDeclares = overlapDclsWithFunc[func];
-  for (auto defaultDcl : defaultMaskQueue) {
+  auto &overlapDeclares = overlapDclsWithFunc[func];
+  for (auto &defaultEntry : defaultMaskQueue) {
+    auto defaultDcl = defaultEntry.dcl;
     auto id = defaultDcl->getRegVar()->getId();
     if (!isLiveThroughFunc(id) && globalVars[id])
       overlapDeclares.first.insert(id);
   }
 
-  for (auto nonDefaultDcl : nonDefaultMaskQueue) {
+  for (auto &nonDefaultEntry : nonDefaultMaskQueue) {
+    auto nonDefaultDcl = nonDefaultEntry.dcl;
     auto id = nonDefaultDcl->getRegVar()->getId();
     if (!isLiveThroughFunc(id) && globalVars[id])
       overlapDeclares.second.insert(id);
@@ -4306,17 +4898,272 @@ void Augmentation::addSIMDIntfForRetDclares(
     mask = &dclIt->second;
   }
 
-  for (auto defaultDcl : defaultMaskQueue) {
+  for (auto& defaultSeg : defaultMaskQueue) {
+    auto defaultDcl = defaultSeg.dcl;
     auto id = defaultDcl->getRegVar()->getId();
     if (globalVars[id])
       mask->first.insert(id);
   }
 
-  for (auto nonDefaultDcl : nonDefaultMaskQueue) {
+  for (auto& nonDefaultSeg : nonDefaultMaskQueue) {
+    auto nonDefaultDcl = nonDefaultSeg.dcl;
     auto id = nonDefaultDcl->getRegVar()->getId();
     if (globalVars[id])
       mask->second.insert(id);
   }
+}
+
+Augmentation::RetValType Augmentation::computeRetValType(FuncInfo *func,
+                                                         G4_Declare *retVal) {
+  if (retVal->getAddressed())
+    return Augmentation::RetValType::Unknown;
+
+  const auto *defs = refs.getDefs(retVal);
+  if (defs) {
+    // All defs must be in func only
+    for (const auto &def : *defs) {
+      auto *bb = std::get<1>(def);
+      if (!func->contains(bb))
+        return Augmentation::RetValType::Unknown;
+    }
+  }
+
+  // All uses must be in BB immediately following call site
+  const auto *uses = refs.getUses(retVal);
+  if (uses) {
+    for (const auto &use : *uses) {
+      auto *bb = std::get<1>(use);
+      auto *pred = bb->getPhysicalPred();
+      if (pred->isSpecialEmptyBB())
+        pred = pred->getPhysicalPred();
+      if (!pred->isEndWithCall() || pred->getCalleeInfo() != func)
+        return Augmentation::RetValType::Unknown;
+    }
+  }
+
+  return Augmentation::RetValType::Regular;
+}
+
+Augmentation::ArgType Augmentation::computeArgType(FuncInfo *func,
+                                                   G4_Declare *arg) {
+  if (arg->getAddressed())
+    return Augmentation::ArgType::Unknown;
+
+  // Trivial case where argument is input to kernel and no defs of
+  // the variable exist in the program.
+  const auto *defs = refs.getDefs(arg);
+  if (!defs || defs->size() == 0)
+    return Augmentation::ArgType::LiveThrough;
+
+  // Check if all defs of arg are in kernel entry BB
+  bool allDefsInEntryBB = true;
+  for (const auto &def : *defs) {
+    auto *bb = std::get<1>(def);
+    if (kernel.fg.getEntryBB() != bb) {
+      allDefsInEntryBB = false;
+      break;
+    }
+  }
+
+  if (allDefsInEntryBB)
+    return Augmentation::ArgType::LiveThrough;
+
+  // Check if use of subroutine arg exists in a BB that doesn't belong
+  // to the subroutine.
+  const auto *uses = refs.getUses(arg);
+  if (uses) {
+    for (const auto &use : *uses) {
+      auto bb = std::get<1>(use);
+      if (!func->contains(bb))
+        return Augmentation::ArgType::Unknown;
+    }
+  }
+
+  // Check if all defs are in same BB as call site
+  std::unordered_set<G4_BB *> funcCallSitesMatched;
+  for (auto bb : kernel.fg.getBBList()) {
+    if (!bb->isEndWithCall() || bb->getCalleeInfo() != func)
+      continue;
+    funcCallSitesMatched.insert(bb);
+  }
+
+  bool killFound = false;
+  for (const auto &def : *defs) {
+    auto *bb = std::get<1>(def);
+    if (bb->isEndWithCall() && bb->getCalleeInfo() == func) {
+      auto *inst = std::get<0>(def);
+      if (liveAnalysis.isLiveAtEntry(bb, arg->getRegVar()->getId())) {
+        return Augmentation::ArgType::Unknown;
+      }
+
+      if (inst->isPseudoKill() ||
+          liveAnalysis.writeWholeRegion(bb, inst, inst->getDst())) {
+        funcCallSitesMatched.erase(bb);
+        killFound = true;
+      }
+      continue;
+    }
+    return Augmentation::ArgType::Unknown;
+  }
+  if (!killFound || funcCallSitesMatched.size() > 0)
+    return Augmentation::ArgType::Unknown;
+
+  return Augmentation::ArgType::DefBeforeEachCall;
+}
+
+void Augmentation::discoverRetVal(FuncInfo *func) {
+  if (!liveAnalysis.livenessClass(G4_GRF))
+    return;
+
+  vISA_ASSERT(retValPerSub.count(func) == 0, "already saw sub");
+  retValPerSub[func] = {};
+
+  if (func == kernel.fg.kernelInfo)
+    return;
+
+  SparseBitVector subRetVal = liveAnalysis.retVal.at(func);
+
+  for (auto i : subRetVal) {
+    auto *dcl = lrs[i]->getDcl();
+    auto &retValInfo = argsRetVal[dcl];
+    retValInfo.subroutines.insert(func);
+    if (retValInfo.retValType != RetValType::Unknown)
+      retValInfo.retValType = computeRetValType(func, dcl);
+    vISA_ASSERT(retValInfo.retValType != RetValType::Init,
+                "expecting non-init retval type");
+    retValPerSub[func].insert(dcl);
+    if (retValInfo.subroutines.size() > 1)
+      retValInfo.retValType = RetValType::Unknown;
+  }
+
+  if (kernel.getOption(vISA_VerifyAugmentation)) {
+    dumpRetVal(subRetVal);
+  }
+}
+
+void Augmentation::discoverArgs(FuncInfo *func) {
+  if (!liveAnalysis.livenessClass(G4_GRF))
+    return;
+
+  vISA_ASSERT(argsPerSub.count(func) == 0, "already saw sub");
+  argsPerSub[func] = {};
+
+  SparseBitVector subArgs;
+  if (func == kernel.fg.kernelInfo)
+    subArgs = liveAnalysis.use_in[kernel.fg.getEntryBB()->getId()];
+  else
+    subArgs = liveAnalysis.args.at(func);
+
+  for (auto i : subArgs) {
+    auto *dcl = lrs[i]->getDcl();
+    auto &argInfo = argsRetVal[dcl];
+    argInfo.subroutines.insert(func);
+    if (argInfo.argType != ArgType::Unknown)
+      argInfo.argType = computeArgType(func, dcl);
+    vISA_ASSERT(argInfo.argType != ArgType::Init,
+                "expecting non-init arg type");
+    argsPerSub[func].insert(dcl);
+    // Same arg cannot be shared between 2 subroutines
+    if (argInfo.subroutines.size() > 1 &&
+        argInfo.argType == ArgType::DefBeforeEachCall)
+      argInfo.argType = ArgType::Unknown;
+  }
+
+
+  if (kernel.getOption(vISA_VerifyAugmentation)) {
+    func->dump(std::cout);
+    dumpArgs(subArgs);
+  }
+}
+
+void Augmentation::dumpSortedIntervals() {
+  if (kernel.getOption(vISA_DumpProgramWithLexicalId)) {
+    for (auto bb : kernel.fg.getBBList()) {
+      for (auto inst : bb->getInstList()) {
+        std::cout << inst->getLexicalId() << ":\t";
+        inst->print(std::cout);
+      }
+    }
+  }
+
+  std::cout << "Started dumping sorted intervals:\n";
+  std::unordered_map<G4_Declare *, std::vector<Interval>> intervalsPerVar;
+  for (auto &entry : sortedIntervals) {
+    intervalsPerVar[entry.dcl].push_back(entry.interval);
+  }
+
+  for (auto &entry : sortedIntervals) {
+    auto &interval = entry.interval;
+    auto *dcl = entry.dcl;
+    std::cout << dcl->getName();
+    if (isUnknownArg(dcl))
+      std::cout << " (Unknown arg)";
+    else if (isUnknownRetVal(dcl))
+      std::cout << " (Unknown retval)";
+    else if (isDefBeforeEachCallArg(dcl))
+      std::cout << " (DefBeforeEachCallArg)";
+    else if (isLiveThroughArg(dcl))
+      std::cout << " (LiveThroughArg)";
+    else if (isRegularRetVal(dcl))
+      std::cout << " (RegularRetVal)";
+    std::cout << " - (" << gra.getIntervalStart(interval)->getLexicalId()
+              << ", " << gra.getIntervalEnd(interval)->getLexicalId() << "]";
+    if (intervalsPerVar[dcl].size() > 1) {
+      auto &allIntervals = intervalsPerVar[dcl];
+      std::cout << " other intervals: ";
+      for (auto &otherInterval : allIntervals) {
+        if (otherInterval == interval)
+          continue;
+        std::cout << "(" << gra.getIntervalStart(otherInterval)->getLexicalId()
+                  << ", " << gra.getIntervalEnd(otherInterval)->getLexicalId()
+                  << "] ";
+      }
+    }
+    std::cout << "\n";
+  }
+  std::cout << "Ended dumping sorted intervals:\n";
+}
+
+void Augmentation::dumpRetVal(SparseBitVector &subRetVal) {
+  auto getRetValType = [](RetValType retValType) {
+    if (retValType == Augmentation::RetValType::Init)
+      return "Init";
+    else if (retValType == Augmentation::RetValType::Regular)
+      return "Regular";
+    else if (retValType == Augmentation::RetValType::Unknown)
+      return "Unknown";
+    return "???";
+  };
+
+  for (auto i : subRetVal) {
+    printf("Retval = %s (%d) - %s\n",
+           gra.incRA.getLRs()[i]->getDcl()->getName(), i,
+           getRetValType(argsRetVal[lrs[i]->getDcl()].retValType));
+  }
+  printf("\n\n");
+}
+
+void Augmentation::dumpArgs(SparseBitVector& subArgs)
+{
+  printf("\n");
+
+  printf("\n");
+  auto getArgType = [](ArgType argType) {
+    if (argType == Augmentation::ArgType::DefBeforeEachCall)
+      return "DefBeforeCall";
+    else if (argType == Augmentation::ArgType::Init)
+      return "Init";
+    else if (argType == Augmentation::ArgType::LiveThrough)
+      return "LiveThrough";
+    else if (argType == Augmentation::ArgType::Unknown)
+      return "Unknown";
+    return "???";
+  };
+  for (auto i : subArgs) {
+    printf("Arg = %s (%d) - %s\n", gra.incRA.getLRs()[i]->getDcl()->getName(),
+           i, getArgType(argsRetVal[lrs[i]->getDcl()].argType));
+  }
+  printf("\n");
 }
 
 //
@@ -4351,14 +5198,16 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
 
   if (newDclAugMask == AugmentationMasks::NonDefault)
   {
-    for (auto defaultDcl : defaultMaskQueue) {
+    for (auto& defaultEntry : defaultMaskQueue) {
+      auto defaultDcl = defaultEntry.dcl;
       if (!intfNeeded(defaultDcl))
         continue;
 
       handleSIMDIntf(defaultDcl, newDcl, false);
     }
   } else {
-    for (auto defaultDcl : defaultMaskQueue) {
+    for (auto &defaultEntry : defaultMaskQueue) {
+      auto defaultDcl = defaultEntry.dcl;
       auto defaultDclAugMask = gra.getAugmentationMask(defaultDcl);
       if (defaultDclAugMask != newDclAugMask) {
         if (!intfNeeded(defaultDcl))
@@ -4384,7 +5233,12 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
           // edge in intf graph
           auto it = intf.compatibleSparseIntf.find(defaultDcl);
           if (it != intf.compatibleSparseIntf.end()) {
-            it->second.push_back(newDcl);
+            // Live-intervals are represented with holes. So its possible for a
+            // G4_Declare* to have multiple sub-intervals present. We want to add
+            // a single G4_Declare* to compatibleSparseIntf only once.
+            if (std::find(it->second.begin(), it->second.end(), newDcl) ==
+                it->second.end())
+              it->second.push_back(newDcl);
           } else {
             std::vector<G4_Declare *> v(1, newDcl);
             intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
@@ -4392,7 +5246,9 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
 
           it = intf.compatibleSparseIntf.find(newDcl);
           if (it != intf.compatibleSparseIntf.end()) {
-            it->second.push_back(defaultDcl);
+            if (std::find(it->second.begin(), it->second.end(), defaultDcl) ==
+                it->second.end())
+              it->second.push_back(defaultDcl);
           } else {
             std::vector<G4_Declare *> v(1, defaultDcl);
             intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
@@ -4403,8 +5259,8 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
   }
 
   // Mark interference among non-default mask variables
-  for (auto nonDefaultDcl : nonDefaultMaskQueue) {
-
+  for (auto &nonDefaultEntry : nonDefaultMaskQueue) {
+    auto nonDefaultDcl = nonDefaultEntry.dcl;
     auto isAugNeeded = [&]() {
       if (newDclAugMask != AugmentationMasks::NonDefault)
         return true;
@@ -4532,8 +5388,9 @@ void Augmentation::buildInterferenceIncompatibleMask() {
 
   // Create 2 active lists - 1 for holding active live-intervals
   // with non-default mask and other for default mask
-  for (G4_Declare *newDcl : sortedIntervals) {
-    unsigned startIdx = gra.getStartInterval(newDcl)->getLexicalId();
+  for (auto &interval : sortedIntervals) {
+    auto *newDcl = interval.dcl;
+    unsigned startIdx = interval.interval.start->getLexicalId();
     VISA_DEBUG_VERBOSE(std::cout << "New idx " << startIdx << "\n");
     expireIntervals(startIdx);
 
@@ -4545,11 +5402,11 @@ void Augmentation::buildInterferenceIncompatibleMask() {
 
     // Add newDcl to correct list
     if (gra.getHasNonDefaultMaskDef(newDcl) || newDcl->getAddressed() == true) {
-      nonDefaultMaskQueue.push(newDcl);
+      nonDefaultMaskQueue.push(interval);
       VISA_DEBUG_VERBOSE(std::cout << "Adding " << newDcl->getName()
                                    << " to non-default list\n");
     } else {
-      defaultMaskQueue.push(newDcl);
+      defaultMaskQueue.push(interval);
       VISA_DEBUG_VERBOSE(std::cout << "Adding " << newDcl->getName()
                                    << " to default list\n");
     }
@@ -4622,7 +5479,9 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declar
             // weak edge in intf graph
             auto it = intf.compatibleSparseIntf.find(defaultDcl);
             if (it != intf.compatibleSparseIntf.end()) {
-              it->second.push_back(newDcl);
+              if (std::find(it->second.begin(), it->second.end(), newDcl) ==
+                  it->second.end())
+                it->second.push_back(newDcl);
             } else {
               std::vector<G4_Declare *> v(1, newDcl);
               intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
@@ -4630,7 +5489,9 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declar
 
             it = intf.compatibleSparseIntf.find(newDcl);
             if (it != intf.compatibleSparseIntf.end()) {
-              it->second.push_back(defaultDcl);
+              if (std::find(it->second.begin(), it->second.end(), defaultDcl) ==
+                  it->second.end())
+                it->second.push_back(defaultDcl);
             } else {
               std::vector<G4_Declare *> v(1, defaultDcl);
               intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
@@ -4735,17 +5596,40 @@ void Augmentation::augmentIntfGraph() {
     buildSummaryForCallees();
   }
 
+  bool augWithHoles = kernel.getOption(vISA_NewAugmentation);
+
   // First check whether any definitions exist with incompatible mask
   bool nonDefaultMaskDef = markNonDefaultMaskDef();
 
   if (nonDefaultMaskDef == true) {
-    // Atleast one definition with non-default mask was found so
-    // perform steps to augment intf graph with such defs
+    if (augWithHoles && kernel.fg.getNumFuncs() > 0)
+      populateFuncMaps();
 
-    // Now build live-intervals globally. This function will
-    // calculate live-intervals and assign start/end inst
-    // for respective declares.
-    buildLiveIntervals();
+    if (augWithHoles) {
+      // Atleast one definition with non-default mask was found so
+      // perform steps to augment intf graph with such defs
+
+      // Discover and store subroutine arguments
+      if (hasSubroutines) {
+
+        for (auto &subroutine : kernel.fg.sortedFuncTable) {
+          discoverArgs(subroutine);
+          discoverRetVal(subroutine);
+
+          // Now build live-intervals per subroutine. This function will
+          // calculate live-intervals and assign start/end inst for
+          // respective declares.
+          buildLiveIntervals(subroutine);
+        }
+      } else {
+        buildLiveIntervals(kernel.fg.kernelInfo);
+      }
+
+      // Create live-intervals for Unknown arg and retval
+      buildUnknownArgRetval();
+    } else {
+      buildLiveIntervals();
+    }
 
     // Sort live-intervals based on their start
     sortLiveIntervals();
@@ -4761,8 +5645,8 @@ void Augmentation::augmentIntfGraph() {
 
     if (gra.verifyAugmentation) {
       gra.verifyAugmentation->loadAugData(
-          sortedIntervals, lrs, intf.liveAnalysis->getNumSelectedVar(), &intf,
-          gra);
+          sortedIntervals, lrs, callDclMap,
+          intf.liveAnalysis->getNumSelectedVar(), &intf, gra);
     }
 
     if (kernel.getOption(vISA_SpillAnalysis)) {
@@ -4775,9 +5659,10 @@ void Augmentation::augmentIntfGraph() {
       // for clear interface.
       std::vector<std::tuple<G4_Declare *, G4_INST *, G4_INST *>> dclIntervals;
       dclIntervals.reserve(sortedIntervals.size());
-      for (auto &dcl : sortedIntervals) {
-        dclIntervals.push_back(std::make_tuple(dcl, gra.getStartInterval(dcl),
-                                               gra.getEndInterval(dcl)));
+      for (auto &interval : sortedIntervals) {
+        auto dcl = interval.dcl;
+        dclIntervals.push_back(std::make_tuple(
+            dcl, gra.getLastStartInterval(dcl), gra.getLastEndInterval(dcl)));
       }
       updateDebugInfo(kernel, dclIntervals);
     }
@@ -4864,8 +5749,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
         }
 
         if ((localLR->getFirstRef(t) == inst) ||
-            liveAnalysis->writeWholeRegion(bb, inst, dst,
-                                           builder.getOptions())) {
+            liveAnalysis->writeWholeRegion(bb, inst, dst)) {
           // Last row may be only partially used by the current dcl
           // so we still need to pessimistically mark last range as
           // busy. Because some other src opnd that is live may still
@@ -4907,8 +5791,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
           }
         }
 
-        if (liveAnalysis->writeWholeRegion(bb, inst, dst,
-                                           builder.getOptions()) ||
+        if (liveAnalysis->writeWholeRegion(bb, inst, dst) ||
             inst->isPseudoKill()) {
           // Whole write or first def found so mark this operand as not live for
           // earlier instructions

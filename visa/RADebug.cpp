@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-void vISA::dumpLiveRanges(GlobalRA &gra, DECLARE_LIST &sortedIntervals) {
+void vISA::dumpLiveRanges(GlobalRA &gra, AllIntervals &sortedIntervals) {
   // Emit Python file to draw chart.
   auto &kernel = gra.kernel;
   std::ofstream of;
@@ -72,9 +72,9 @@ void vISA::dumpLiveRanges(GlobalRA &gra, DECLARE_LIST &sortedIntervals) {
   };
 
   VarReferences refs(kernel);
-  for (auto interval : sortedIntervals) {
-    auto start = gra.getStartInterval(interval);
-    auto end = gra.getEndInterval(interval);
+  for (auto& interval : sortedIntervals) {
+    auto start = interval.interval.start;
+    auto end = interval.interval.end;
     int startLexId = 0, endLexId = 0;
     if (!start || !end)
       continue;
@@ -84,29 +84,31 @@ void vISA::dumpLiveRanges(GlobalRA &gra, DECLARE_LIST &sortedIntervals) {
     startLexId = -(int)start->getLexicalId();
     endLexId = -(int)end->getLexicalId();
 
-    plot(x, startLexId, x, endLexId, "label", interval->getName());
+    plot(x, startLexId, x, endLexId, "label", interval.dcl->getName());
 
     // Add def/use markers
     // Def indicated by '+' sign on chart
     // Use indicated by a circle on chart
     // Note: Indirect refs are not indicated on chart as they're
     // not computed by VarReferences class.
-    auto defs = refs.getDefs(interval);
-    auto uses = refs.getUses(interval);
+    auto defs = refs.getDefs(interval.dcl);
+    auto uses = refs.getUses(interval.dcl);
 
     if (defs) {
       for (auto &def : *defs) {
         auto defInst = std::get<0>(def);
-        auto lexId = defInst->getLexicalId();
-        plot(x, -(int)lexId, x, -(int)lexId, "marker", "+");
+        int lexId = defInst->getLexicalId();
+        if (lexId >= startLexId && lexId <= endLexId)
+          plot(x, -(int)lexId, x, -(int)lexId, "marker", "+");
       }
     }
 
     if (uses) {
       for (auto &use : *uses) {
         auto useInst = std::get<0>(use);
-        auto lexId = useInst->getLexicalId();
-        plot(x, -(int)lexId, x, -(int)lexId, "marker", ".");
+        int lexId = useInst->getLexicalId();
+        if (lexId >= startLexId && lexId <= endLexId)
+          plot(x, -(int)lexId, x, -(int)lexId, "marker", ".");
       }
     }
     ++x;
@@ -671,10 +673,12 @@ void VerifyAugmentation::verify() {
     return false;
   };
 
-  std::list<G4_Declare *> active;
-  for (auto dcl : sortedLiveRanges) {
+  std::list<QueueEntry> active;
+  for (auto &segment : sortedLiveRanges) {
+    auto *dcl = segment.dcl;
+    const auto &startEnd = segment.interval;
     auto &tup = masks[dcl];
-    unsigned startIdx = std::get<2>(tup)->getLexicalId();
+    unsigned startIdx = startEnd.start->getLexicalId();
     auto dclMask = std::get<1>(tup);
 
     auto getMaskStr = [](AugmentationMasks m) {
@@ -698,19 +702,22 @@ void VerifyAugmentation::verify() {
     std::cout << " (align = " << augAlign << "GRF)";
     std::cout << "\n";
 
+    if (callDclMap.count(dcl))
+      continue;
+
     verifyAlign(dcl);
 
     for (auto it = active.begin(); it != active.end();) {
-      auto activeDcl = (*it);
-      auto &tupActive = masks[activeDcl];
-      if (startIdx >= std::get<3>(tupActive)->getLexicalId()) {
+      auto &curSegment = (*it).interval;
+      if (startIdx >= curSegment.end->getLexicalId()) {
         it = active.erase(it);
         continue;
       }
       it++;
     }
 
-    for (auto activeDcl : active) {
+    for (auto &curSegment : active) {
+      auto activeDcl = curSegment.dcl;
       auto &tupActive = masks[activeDcl];
       auto aDclMask = std::get<1>(tupActive);
 
@@ -742,7 +749,7 @@ void VerifyAugmentation::verify() {
       }
     }
 
-    active.push_back(dcl);
+    active.push_back(segment);
   }
 
   std::cout << "\nProgram has "
@@ -767,189 +774,192 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
   msg.clear();
 
   auto &tup = masks[lr->getDcl()];
+  auto &segments = std::get<2>(tup);
 
-  auto startLexId = std::get<2>(tup)->getLexicalId();
-  auto endLexId = std::get<3>(tup)->getLexicalId();
+  for (auto &curSegment : segments) {
+    auto startLexId = curSegment.start->getLexicalId();
+    auto endLexId = curSegment.end->getLexicalId();
 
-  std::vector<std::pair<G4_INST *, G4_BB *>> insts;
-  std::vector<std::tuple<INST_LIST_ITER, G4_BB *>> defs;
-  std::vector<std::tuple<INST_LIST_ITER, G4_BB *>> uses;
+    std::vector<std::pair<G4_INST *, G4_BB *>> insts;
+    std::vector<std::tuple<INST_LIST_ITER, G4_BB *>> defs;
+    std::vector<std::tuple<INST_LIST_ITER, G4_BB *>> uses;
 
-  for (auto bb : kernel->fg) {
-    if (bb->size() == 0)
-      continue;
-
-    if (bb->back()->getLexicalId() > endLexId &&
-        bb->front()->getLexicalId() > endLexId)
-      continue;
-
-    if (bb->back()->getLexicalId() < startLexId &&
-        bb->front()->getLexicalId() < startLexId)
-      continue;
-
-    // lr is active in current bb
-    for (auto instIt = bb->begin(), end = bb->end(); instIt != end; instIt++) {
-      auto inst = (*instIt);
-      if (inst->isPseudoKill())
+    for (auto bb : kernel->fg) {
+      if (bb->size() == 0)
         continue;
 
-      if (inst->getLexicalId() > startLexId &&
-          inst->getLexicalId() <= endLexId) {
-        insts.push_back(std::make_pair(inst, bb));
-        auto dst = inst->getDst();
-        if (dst && dst->isDstRegRegion()) {
-          auto topdcl = dst->asDstRegRegion()->getTopDcl();
-          if (topdcl == lr->getDcl())
-            defs.push_back(std::make_tuple(instIt, bb));
-        }
+      if (bb->back()->getLexicalId() > endLexId &&
+          bb->front()->getLexicalId() > endLexId)
+        continue;
 
-        for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
-          auto src = inst->getSrc(i);
-          if (src && src->isSrcRegRegion()) {
-            auto topdcl = src->asSrcRegRegion()->getTopDcl();
+      if (bb->back()->getLexicalId() < startLexId &&
+          bb->front()->getLexicalId() < startLexId)
+        continue;
+
+      // lr is active in current bb
+      for (auto instIt = bb->begin(), end = bb->end(); instIt != end;
+           instIt++) {
+        auto inst = (*instIt);
+        if (inst->isPseudoKill())
+          continue;
+
+        if (inst->getLexicalId() > startLexId &&
+            inst->getLexicalId() <= endLexId) {
+          insts.push_back(std::make_pair(inst, bb));
+          auto dst = inst->getDst();
+          if (dst && dst->isDstRegRegion()) {
+            auto topdcl = dst->asDstRegRegion()->getTopDcl();
             if (topdcl == lr->getDcl())
-              uses.push_back(std::make_tuple(instIt, bb));
+              defs.push_back(std::make_tuple(instIt, bb));
           }
-        }
-      }
-    }
-  }
 
-  for (auto &use : uses) {
-    auto &useStr = bbLabels[std::get<1>(use)];
-    auto inst = *std::get<0>(use);
-    vISA_ASSERT(useStr.size() > 0, "empty string found");
-    std::list<std::tuple<G4_INST *, G4_BB *>> rd;
-
-    for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
-      auto src = inst->getSrc(i);
-      if (src && src->isSrcRegRegion() &&
-          src->asSrcRegRegion()->getTopDcl() == lr->getDcl()) {
-        unsigned lb = 0, rb = 0;
-        lb = lr->getPhyReg()->asGreg()->getRegNum() *
-                 kernel->numEltPerGRF<Type_UB>() +
-             (lr->getPhyRegOff() * lr->getDcl()->getElemSize());
-        lb += src->getLeftBound();
-        rb = lb + src->getRightBound() - src->getLeftBound();
-
-        for (auto &otherInsts : insts) {
-          if (otherInsts.first->getLexicalId() > inst->getLexicalId())
-            break;
-
-          auto oiDst = otherInsts.first->getDst();
-          auto oiBB = otherInsts.second;
-          if (oiDst && oiDst->isDstRegRegion() && oiDst->getTopDcl()) {
-            unsigned oilb = 0, oirb = 0;
-            auto oiLR = DclLRMap[oiDst->getTopDcl()];
-            if (!oiLR->getPhyReg())
-              continue;
-
-            oilb = oiLR->getPhyReg()->asGreg()->getRegNum() *
-                       kernel->numEltPerGRF<Type_UB>() +
-                   (oiLR->getPhyRegOff() * oiLR->getDcl()->getElemSize());
-            oilb += oiDst->getLeftBound();
-            oirb = oilb + oiDst->getRightBound() - oiDst->getLeftBound();
-
-            if (oilb <= (unsigned)rb && oirb >= (unsigned)lb) {
-              rd.push_back(std::make_tuple(otherInsts.first, oiBB));
+          for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
+            auto src = inst->getSrc(i);
+            if (src && src->isSrcRegRegion()) {
+              auto topdcl = src->asSrcRegRegion()->getTopDcl();
+              if (topdcl == lr->getDcl())
+                uses.push_back(std::make_tuple(instIt, bb));
             }
           }
         }
       }
     }
 
-    auto isComplementary = [](std::string &cur, std::string &other) {
-      if (cur.size() < other.size())
+    for (auto &use : uses) {
+      auto &useStr = bbLabels[std::get<1>(use)];
+      auto inst = *std::get<0>(use);
+      vISA_ASSERT(useStr.size() > 0, "empty string found");
+      std::list<std::tuple<G4_INST *, G4_BB *>> rd;
+
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
+        auto src = inst->getSrc(i);
+        if (src && src->isSrcRegRegion() &&
+            src->asSrcRegRegion()->getTopDcl() == lr->getDcl()) {
+          unsigned lb = 0, rb = 0;
+          lb = lr->getPhyReg()->asGreg()->getRegNum() *
+                   kernel->numEltPerGRF<Type_UB>() +
+               (lr->getPhyRegOff() * lr->getDcl()->getElemSize());
+          lb += src->getLeftBound();
+          rb = lb + src->getRightBound() - src->getLeftBound();
+
+          for (auto &otherInsts : insts) {
+            if (otherInsts.first->getLexicalId() > inst->getLexicalId())
+              break;
+
+            auto oiDst = otherInsts.first->getDst();
+            auto oiBB = otherInsts.second;
+            if (oiDst && oiDst->isDstRegRegion() && oiDst->getTopDcl()) {
+              unsigned oilb = 0, oirb = 0;
+              auto oiLR = DclLRMap[oiDst->getTopDcl()];
+              if (!oiLR->getPhyReg())
+                continue;
+
+              oilb = oiLR->getPhyReg()->asGreg()->getRegNum() *
+                         kernel->numEltPerGRF<Type_UB>() +
+                     (oiLR->getPhyRegOff() * oiLR->getDcl()->getElemSize());
+              oilb += oiDst->getLeftBound();
+              oirb = oilb + oiDst->getRightBound() - oiDst->getLeftBound();
+
+              if (oilb <= (unsigned)rb && oirb >= (unsigned)lb) {
+                rd.push_back(std::make_tuple(otherInsts.first, oiBB));
+              }
+            }
+          }
+        }
+      }
+
+      auto isComplementary = [](std::string &cur, std::string &other) {
+        if (cur.size() < other.size())
+          return false;
+
+        if (cur.substr(0, other.size() - 1) ==
+            other.substr(0, other.size() - 1)) {
+          char lastAlphabet = cur.at(other.size() - 1);
+          if (lastAlphabet == 'T' && other.back() == 'F')
+            return true;
+          if (lastAlphabet == 'F' && other.back() == 'T')
+            return true;
+        }
+
         return false;
+      };
 
-      if (cur.substr(0, other.size() - 1) ==
-          other.substr(0, other.size() - 1)) {
-        char lastAlphabet = cur.at(other.size() - 1);
-        if (lastAlphabet == 'T' && other.back() == 'F')
+      auto isSameEM = [](G4_INST *inst1, G4_INST *inst2) {
+        if (inst1->getMaskOption() == inst2->getMaskOption() &&
+            inst1->getMaskOffset() == inst2->getMaskOffset())
           return true;
-        if (lastAlphabet == 'F' && other.back() == 'T')
-          return true;
+        return false;
+      };
+
+      if (rd.size() > 0) {
+        printf("Current use str = %s for inst:\t", useStr.data());
+        inst->emit(std::cout);
+        printf("\t$%d\n", inst->getVISAId());
       }
+      // process all reaching defs
+      for (auto rid = rd.begin(); rid != rd.end();) {
+        auto &reachingDef = (*rid);
 
-      return false;
-    };
+        auto &str = bbLabels[std::get<1>(reachingDef)];
 
-    auto isSameEM = [](G4_INST *inst1, G4_INST *inst2) {
-      if (inst1->getMaskOption() == inst2->getMaskOption() &&
-          inst1->getMaskOffset() == inst2->getMaskOffset())
-        return true;
-      return false;
-    };
-
-    if (rd.size() > 0) {
-      printf("Current use str = %s for inst:\t", useStr.data());
-      inst->emit(std::cout);
-      printf("\t$%d\n", inst->getVISAId());
-    }
-    // process all reaching defs
-    for (auto rid = rd.begin(); rid != rd.end();) {
-      auto &reachingDef = (*rid);
-
-      auto &str = bbLabels[std::get<1>(reachingDef)];
-
-      // skip rd if it is from complementary branch
-      if (isComplementary(str, useStr) &&
-          isSameEM(inst, std::get<0>(reachingDef))) {
-        rid = rd.erase(rid);
-        continue;
-      }
-      rid++;
-    }
-
-    // keep rd that appears last in its BB
-    for (auto rid = rd.begin(); rid != rd.end();) {
-      auto ridBB = std::get<1>(*rid);
-      for (auto rid1 = rd.begin(); rid1 != rd.end();) {
-        if (*rid == *rid1) {
-          rid1++;
+        // skip rd if it is from complementary branch
+        if (isComplementary(str, useStr) &&
+            isSameEM(inst, std::get<0>(reachingDef))) {
+          rid = rd.erase(rid);
           continue;
         }
-
-        auto rid1BB = std::get<1>(*rid1);
-        if (ridBB == rid1BB && std::get<0>(*rid)->getLexicalId() >
-                                   std::get<0>(*rid1)->getLexicalId()) {
-          rid1 = rd.erase(rid1);
-          continue;
-        }
-        rid1++;
-      }
-
-      if (rid != rd.end())
         rid++;
-    }
+      }
 
-    if (rd.size() > 0) {
-      bool printed = false;
-      // display left overs in rd from different dcl
-      for (auto &reachingDef : rd) {
-        if (std::get<0>(reachingDef)->getDst()->getTopDcl() ==
-            lr->getDcl()->getRootDeclare())
-          continue;
+      // keep rd that appears last in its BB
+      for (auto rid = rd.begin(); rid != rd.end();) {
+        auto ridBB = std::get<1>(*rid);
+        for (auto rid1 = rd.begin(); rid1 != rd.end();) {
+          if (*rid == *rid1) {
+            rid1++;
+            continue;
+          }
 
-        if (inst->getVISAId() == std::get<0>(reachingDef)->getVISAId())
-          continue;
-
-        if (!printed) {
-          printf("\tLeft-over rd:\n");
-          printed = true;
+          auto rid1BB = std::get<1>(*rid1);
+          if (ridBB == rid1BB && std::get<0>(*rid)->getLexicalId() >
+                                     std::get<0>(*rid1)->getLexicalId()) {
+            rid1 = rd.erase(rid1);
+            continue;
+          }
+          rid1++;
         }
-        printf("\t");
-        std::get<0>(reachingDef)->emit(std::cout);
-        printf("\t$%d\n", std::get<0>(reachingDef)->getVISAId());
+
+        if (rid != rd.end())
+          rid++;
+      }
+
+      if (rd.size() > 0) {
+        bool printed = false;
+        // display left overs in rd from different dcl
+        for (auto &reachingDef : rd) {
+          if (std::get<0>(reachingDef)->getDst()->getTopDcl() ==
+              lr->getDcl()->getRootDeclare())
+            continue;
+
+          if (inst->getVISAId() == std::get<0>(reachingDef)->getVISAId())
+            continue;
+
+          if (!printed) {
+            printf("\tLeft-over rd:\n");
+            printed = true;
+          }
+          printf("\t");
+          std::get<0>(reachingDef)->emit(std::cout);
+          printf("\t$%d\n", std::get<0>(reachingDef)->getVISAId());
+        }
       }
     }
   }
-
   return false;
 }
 
-void VerifyAugmentation::loadAugData(std::vector<G4_Declare *> &s,
-                                     const LiveRangeVec &l, unsigned n,
+void VerifyAugmentation::loadAugData(AllIntervals &s, const LiveRangeVec &l,
+                                     CALL_DECL_MAP c, unsigned n,
                                      const Interference *i, GlobalRA &g) {
   reset();
   sortedLiveRanges = s;
@@ -958,11 +968,13 @@ void VerifyAugmentation::loadAugData(std::vector<G4_Declare *> &s,
   lrs = l;
   numVars = n;
   intf = i;
+  callDclMap = c;
 
   for (unsigned i = 0; i != numVars; i++) {
     DclLRMap[lrs[i]->getDcl()] = lrs[i];
   }
-  for (auto dcl : kernel->Declares) {
+  for (auto& entry : sortedLiveRanges) {
+    auto dcl = entry.dcl;
     if (dcl->getRegFile() == G4_RegFileKind::G4_GRF ||
         dcl->getRegFile() == G4_RegFileKind::G4_INPUT) {
       LiveRange *lr = nullptr;
@@ -970,10 +982,16 @@ void VerifyAugmentation::loadAugData(std::vector<G4_Declare *> &s,
       if (it != DclLRMap.end()) {
         lr = it->second;
       }
-      auto start = gra->getStartInterval(dcl);
-      auto end = gra->getEndInterval(dcl);
-      masks[dcl] =
-          std::make_tuple(lr, gra->getAugmentationMask(dcl), start, end);
+      if (masks.count(dcl) == 0) {
+        std::unordered_set<Interval, CustomHash> segment;
+        segment.insert(Interval(entry.interval.start, entry.interval.end));
+        masks[dcl] = std::make_tuple(lr, gra->getAugmentationMask(dcl),
+                                     segment);
+      } else {
+        auto &segmentSet = std::get<2>(masks[dcl]);
+        Interval segment(entry.interval.start, entry.interval.end);
+        segmentSet.insert(segment);
+      }
     }
   }
 }
@@ -1054,7 +1072,8 @@ void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
     return preg;
   };
 
-  for (auto dcl : sortedLiveIntervals) {
+  for (auto& segment : sortedLiveIntervals) {
+    auto *dcl = segment.dcl;
     if (dcl->getRegFile() != G4_RegFileKind::G4_GRF &&
         dcl->getRegFile() != G4_RegFileKind::G4_INPUT)
       continue;
@@ -1151,11 +1170,12 @@ void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
   }
 }
 
-void RegChartDump::recordLiveIntervals(const std::vector<G4_Declare *> &dcls) {
+void RegChartDump::recordLiveIntervals(const AllIntervals &dcls) {
   sortedLiveIntervals = dcls;
-  for (auto dcl : dcls) {
-    auto start = gra.getStartInterval(dcl);
-    auto end = gra.getEndInterval(dcl);
+  for (auto& segment : dcls) {
+    auto *dcl = segment.dcl;
+    auto start = segment.interval.start;
+    auto end = segment.interval.end;
     startEnd.insert(std::make_pair(dcl, std::make_pair(start, end)));
   }
 }
@@ -1363,11 +1383,12 @@ unsigned int SpillAnalysis::GetDistance(G4_Declare *Dcl) {
   return Distance.second->getLexicalId() - Distance.first->getLexicalId();
 }
 
-void SpillAnalysis::LoadAugIntervals(DECLARE_LIST &SortedIntervals,
+void SpillAnalysis::LoadAugIntervals(AllIntervals &SortedIntervals,
                                      GlobalRA &GRA) {
-  for (auto &LR : SortedIntervals) {
-    auto *Start = GRA.getStartInterval(LR);
-    auto *End = GRA.getEndInterval(LR);
+  for (auto &Segment : SortedIntervals) {
+    auto *LR = Segment.dcl;
+    auto *Start = GRA.getLastStartInterval(LR);
+    auto *End = GRA.getLastEndInterval(LR);
     AugIntervals[LR] = std::make_pair(Start, End);
   }
 }
