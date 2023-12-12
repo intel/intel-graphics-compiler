@@ -4517,6 +4517,11 @@ void EmitPass::Bfn(uint8_t booleanFuncCtrl, const SSource sources[3], const DstM
     {
         bool fromConstantPool = sources[i].fromConstantPool;
         srcs[i] = GetSrcVariable(sources[i], fromConstantPool);
+        if (sources[i].region_set)
+        {
+            m_encoder->SetSrcRegion(i, sources[i].region[0], sources[i].region[1], sources[i].region[2], sources[i].instance);
+            m_encoder->SetSrcSubReg(i, sources[i].elementOffset);
+        }
     }
     m_encoder->SetDstModifier(modifier);
     m_encoder->Bfn(booleanFuncCtrl, m_destination, srcs[0], srcs[1], srcs[2]);
