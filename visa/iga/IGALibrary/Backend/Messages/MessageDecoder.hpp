@@ -229,11 +229,11 @@ struct MessageDecoder {
   ///////////////////////////////////////////////////////////////////////////
   // the most generic setter
   void
-  setScatterGatherOpX(std::string msgSym, std::string msgImpl, SendOp op,
-                      AddrType addrType, SendDesc surfaceId, CacheOpt l1,
-                      CacheOpt l3, int addrSize, int bitsPerElemReg,
+  setScatterGatherOpX(const std::string& msgSym, const std::string& msgImpl, const SendOp& op,
+                      const AddrType& addrType, const SendDesc& surfaceId, const CacheOpt& l1,
+                      const CacheOpt& l3, int addrSize, int bitsPerElemReg,
                       int bitsPerElemMem, int elemsPerAddr, int simd,
-                      MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE) {
+                      const MessageInfo::Attr& extraAttrs = MessageInfo::Attr::NONE) {
     MessageInfo &mi = result.info;
     mi.symbol = msgSym;
     mi.description = msgImpl;

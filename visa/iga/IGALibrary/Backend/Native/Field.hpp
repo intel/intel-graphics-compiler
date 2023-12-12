@@ -278,7 +278,7 @@ static inline bool IsDst(OpIx IX) {
 }
 static inline int ToSrcIndex(OpIx IX) {
   IGA_ASSERT(!IsDst(IX), "ToSrcIndex(OpIx) on dst index");
-  return ((IX & 0xF0) >> 4) - 1;
+  return ((IX & 0x30) >> 4) - 1;
 }
 static inline int ToFieldOperandArrayIndex(OpIx IX) {
   return (IX & OpIx::OP_IX_MASK);

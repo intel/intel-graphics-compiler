@@ -601,7 +601,7 @@ private:
   unsigned latestImplicitVarIdCount_;
   const LivenessAnalysis *lvInfo_;
   const LiveRangeVec *lrInfo_;
-  const LR_LIST *spilledLRs_;
+  const LR_LIST *spilledLRs_ = nullptr;
   LSLR_LIST *spilledLSLRs_;
   unsigned spillRangeCount_ = 0;
   unsigned fillRangeCount_ = 0;
@@ -615,13 +615,13 @@ private:
   bool doSpillSpaceCompression;
 
   bool failSafeSpill_;
-  unsigned spillRegStart_;
-  unsigned indrSpillRegStart_;
-  unsigned spillRegOffset_;
+  unsigned spillRegStart_ = 0;
+  unsigned indrSpillRegStart_ = 0;
+  unsigned spillRegOffset_ = 0;
   LSLR_LIST activeLR_;
   std::unordered_set<G4_DstRegRegion *> noRMWNeeded;
 
-  const Interference *spillIntf_;
+  const Interference *spillIntf_ = nullptr;
 
   // CISA instruction id of current instruction
   G4_INST *curInst;
@@ -629,7 +629,6 @@ private:
   int globalScratchOffset;
 
   const bool useScratchMsg_;
-  bool avoidDstSrcOverlap_;
   // spilled declares that represent a scalar immediate (created due to encoding
   // restrictions) We rematerialize the immediate value instead of spill/fill
   // them. Map stores type used on dst that defined the immediate.
