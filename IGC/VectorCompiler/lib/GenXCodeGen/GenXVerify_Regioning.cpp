@@ -23,16 +23,18 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
   auto ensureNumEls4_8_16_and_offsetIsAMultipleOf =
       [&](const auto NumElts, const Twine NumEltsArgDesc,
           unsigned OffsetOpndNum) -> void {
-    if (InvariantSet <= GenXVerifyInvariantSet::PreGenXLegalization)
+    if (InvariantSet < GenXVerifyInvariantSet::PostGenXLegalization)
       return;
-    ensure(NumElts == 4 || NumElts == 8 || NumElts == 16,
-           NumEltsArgDesc + " must be 4, 8 or 16", CI);
+    if (!ensure(NumElts == 4 || NumElts == 8 || NumElts == 16,
+                NumEltsArgDesc + " must be 4, 8 or 16", CI))
+      return;
     const auto *OffsetInElementsConstInt =
         llvm::dyn_cast<llvm::ConstantInt>(CI.getOperand(OffsetOpndNum));
-    ensure(OffsetInElementsConstInt,
-           "OffsetInElements must be a constant integer", CI);
+    if (!ensure(OffsetInElementsConstInt,
+                "offset in elements must be a constant integer", CI))
+      return;
     ensure(!(OffsetInElementsConstInt->getZExtValue() % NumElts),
-           "OffsetInElements must be multiple of the number of elements of " +
+           "offset in elements must be multiple of the number of elements of " +
                NumEltsArgDesc,
            CI);
   };
@@ -58,30 +60,50 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
     if (!ensure(IGCLLVM::getNumArgOperands(&CI) == 2,
                 "rdpredregion* intrinsics must have 2 operands", CI))
       return;
-    const auto *RetT = dyn_cast<IGCLLVM::FixedVectorType>(
+    const auto *RetVT = dyn_cast<IGCLLVM::FixedVectorType>(
         CI.getCalledFunction()->getReturnType());
-    ensure(RetT, "return type must be a vector", CI);
-    ensureNumEls4_8_16_and_offsetIsAMultipleOf(RetT->getNumElements(),
+    if (!ensure(RetVT, "return type must be a vector", CI))
+      return;
+    ensureNumEls4_8_16_and_offsetIsAMultipleOf(RetVT->getNumElements(),
                                                "returned vector", 1);
   }
     return;
-  case GenXIntrinsic::genx_wrpredpredregion:
+  case GenXIntrinsic::genx_wrpredpredregion: {
     if (!ensure(IGCLLVM::getNumArgOperands(&CI) == 4,
                 "wrpredpredregion* intrinsics must have 4 operands", CI))
       return;
+
+    // The constant offset indexes both the vector itself and the predicate.
+    // This intrinsic is valid only if the predicate is an EM value, and the
+    // subvector operand is the result of a cmp (which is then baled in).
     ensure(isa<CmpInst>(CI.getOperand(1)),
            "subvector to write must be the direct result of a cmp instruction",
            CI);
+
+    const auto *SubvectorToWriteT =
+        dyn_cast<IGCLLVM::FixedVectorType>(CI.getOperand(1)->getType());
+
+    if (!ensure(SubvectorToWriteT, "subvector to write must be a fixed vector",
+                CI))
+      return;
+    ensureNumEls4_8_16_and_offsetIsAMultipleOf(
+        SubvectorToWriteT->getNumElements(), "subvector to write", 2);
+
     // TODO: This intrinsic is valid only if the predicate is an EM value
     //       CI.getOperand(3)
-    LLVM_FALLTHROUGH;
+  }
+    return;
   case GenXIntrinsic::genx_wrpredregion: {
     if (!ensure(IGCLLVM::getNumArgOperands(&CI) == 3,
                 "wrpredregion* intrinsics must have 3 operands", CI))
       return;
+
     const auto *SubvectorToWriteT =
         dyn_cast<IGCLLVM::FixedVectorType>(CI.getOperand(1)->getType());
-    ensure(SubvectorToWriteT, "subvector to write must be a fixed vector", CI);
+
+    if (!ensure(SubvectorToWriteT, "subvector to write must be a fixed vector",
+                CI))
+      return;
     ensureNumEls4_8_16_and_offsetIsAMultipleOf(
         SubvectorToWriteT->getNumElements(), "subvector to write", 2);
   }
@@ -134,15 +156,14 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
 
   const llvm::Value *WidthOpnd = CI.getOperand(SrcOpndIdx + 2);
   const auto WidthConstantInt = dyn_cast<llvm::ConstantInt>(WidthOpnd);
-  ensure(WidthConstantInt, "width must be a constant int", CI);
 
-  const unsigned Width =
-      WidthConstantInt ? WidthConstantInt->getZExtValue()
-                       : 1 /*a value making following checks happy (for
-                              non-failing LIT tests runs). If width was not a
-                              constant, we have already reported above.*/
-      ;
-  ensure(Width, "the width must be non-zero.", CI);
+  if (!ensure(WidthConstantInt, "width must be a constant int", CI))
+    return;
+
+  const unsigned Width = WidthConstantInt->getZExtValue();
+
+  if (!ensure(Width, "the width must be non-zero.", CI))
+    return;
 
   const unsigned TotalElCount_ExecSize =
       GenXIntrinsic::isRdRegion(IntrinsicId)
@@ -198,6 +219,12 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
     const auto *DstSrcOpndT = DstSrcOpnd->getType();
     const auto *DstSrcOpndMaybeVT =
         dyn_cast<IGCLLVM::FixedVectorType>(DstSrcOpndT);
+
+    // TODO:spec review: some IRs have arg0 as a scalar with undef value.
+    ensure(DstSrcOpndMaybeVT,
+           "destination-source (arg0) must be a fixed vector.", CI,
+           IsFatal::No);
+
     // TODO:spec review: some IRs have arg0 as a scalar with undef value.
     ensure(DstSrcOpndMaybeVT,
            "source-destination (arg0) operand must be a fixed vector.", CI,
@@ -207,26 +234,22 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
         "The arg1 subvector must have the same element type as the arg0 vector",
         CI);
 
-    if (InvariantSet > GenXVerifyInvariantSet::PreIrAdaptors) {
-      // TODO:spec review: some IRs have arg0 as a scalar with undef value.
+    if (InvariantSet >= GenXVerifyInvariantSet::PostIrAdaptors) {
       if (SrcOpndMaybeVT && DstSrcOpndMaybeVT)
         ensure(SrcOpndMaybeVT->getNumElements() <=
                    DstSrcOpndMaybeVT->getNumElements(),
-               "The arg1 subvector must be no lardger than arg0 vector", CI);
-    }
+               "The arg1 subvector must be no larger than arg0 vector", CI);
 
-    // After lowering, the arg1 subvector to write can be a scalar of the
-    // same type as an element of arg0, indicating that the region has one
-    // element. (Lowering lowers an insertelement to this type of wrregion.)
-    if (InvariantSet > GenXVerifyInvariantSet::PreIrAdaptors) {
-      ensure(SrcOpndMaybeVT || (!SrcOpndMaybeVT && Width == 1),
-             "subregion to write may be a scalar if the number of elements in "
+      // After lowering, the arg1 subvector to write can be a scalar of the
+      // same type as an element of arg0, indicating that the region has one
+      // element. (Lowering lowers an insertelement to this type of wrregion.)
+      ensure(SrcOpndMaybeVT ||
+                 (InvariantSet >= GenXVerifyInvariantSet::PostGenXLowering &&
+                  Width == 1),
+             "after genx lowering subregion to write may be a scalar if the "
+             "number of elements in "
              "subregion is 1.",
              CI);
-      // TODO:spec review: some IRs have arg0 as a scalar with undef value.
-      ensure(DstSrcOpndMaybeVT,
-             "destination-source (arg0) must be a fixed vector.", CI,
-             IsFatal::No);
     }
 
     ensure(SrcOpndMaybeVT || SrcOpndT->getScalarType(),

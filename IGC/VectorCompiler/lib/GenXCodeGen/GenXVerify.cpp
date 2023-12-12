@@ -31,15 +31,17 @@ bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Instruction &I,
                         const IsFatal IsFatal_) {
   if (LLVM_LIKELY(Cond))
     return true;
-  vc::diagnose(I.getContext(),
-               DbgPrefix + (IsFatal_ == IsFatal::No
-                                ? " (non-fatal, spec review required)"
-                                : ""),
-               Msg, DS_Warning, vc::WarningName::Generic, &I);
+  if (LLVM_LIKELY(static_cast<bool>(IsFatal_) || OptAllFatal ||
+                  !OptQuietNonFatal))
+    vc::diagnose(I.getContext(),
+                 DbgPrefix + (IsFatal_ == IsFatal::No
+                                  ? " (non-fatal, spec review required)"
+                                  : ""),
+                 Msg, DS_Warning, vc::WarningName::Generic, &I);
   if ((LLVM_LIKELY(!OptAllFatal) && IsFatal_ == IsFatal::Yes) ||
       LLVM_UNLIKELY(OptAllFatal)) {
     IsBroken = true;
-    if (OptTerminateOnFirstError)
+    if (OptTerminationPolicy == Terminate::OnFirstError)
       terminate();
   }
   return false;
@@ -51,7 +53,7 @@ bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Instruction &I,
 
 bool GenXVerify::runOnModule(Module &M) {
   visit(M);
-  if (OptTerminate && IsBroken)
+  if (OptTerminationPolicy != Terminate::No && IsBroken)
     terminate();
   return false;
 }

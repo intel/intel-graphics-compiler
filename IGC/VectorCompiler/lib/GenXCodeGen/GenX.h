@@ -68,10 +68,22 @@ enum class BuiltinFunctionKind {
 // GenX IR may have different sets of validity invariants for different stages
 // in pipeline.
 enum class GenXVerifyInvariantSet {
-  PreIrAdaptors,
-  PreGenXLegalization,
-  All,
+  PostSPIRVReader,
+  PostIrAdaptors,
+  PostGenXLowering,
+  PostGenXLegalization,
+  // --- Add sets above, in respective optimization pipeline order ---
+  End_,
+  Default_ = static_cast<int>(GenXVerifyInvariantSet::End_) -
+             1 // Must be set to the latest one.
 };
+
+static_assert(GenXVerifyInvariantSet::PostSPIRVReader <
+                  GenXVerifyInvariantSet::PostIrAdaptors &&
+              GenXVerifyInvariantSet::PostIrAdaptors <
+                  GenXVerifyInvariantSet::PostGenXLowering &&
+              GenXVerifyInvariantSet::PostGenXLowering <
+                  GenXVerifyInvariantSet::PostGenXLegalization);
 
 FunctionPass *createGenXPrinterPass(raw_ostream &O, const std::string &Banner);
 ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
@@ -128,7 +140,7 @@ ModulePass *createGenXRematerializationWrapperPass();
 ModulePass *createGenXCoalescingWrapperPass();
 ModulePass *createGenXGVClobberCheckerPass();
 ModulePass *createGenXVerifyPass(
-    GenXVerifyInvariantSet PipelineStage = GenXVerifyInvariantSet::All);
+    GenXVerifyInvariantSet PipelineStage = GenXVerifyInvariantSet::Default_);
 ModulePass *createGenXAddressCommoningWrapperPass();
 ModulePass *createGenXArgIndirectionWrapperPass();
 FunctionPass *createGenXTidyControlFlowPass();

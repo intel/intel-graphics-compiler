@@ -6,10 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXVerify -genx-verify-terminate=0 -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s 2>&1 | \
+; RUN: %opt %use_old_pass_manager% -GenXVerify -genx-verify-terminate=no -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s 2>&1 | \
 ; RUN:     FileCheck --check-prefixes=CHECK %s
 
-; ModuleID = 'Deserialized LLVM Module'
 target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
 
@@ -35,26 +34,30 @@ declare <16 x i32> @llvm.genx.wrconstregion.v16i32.v1i32.i16.i1(<16 x i32>, <1 x
 
 ; Function Attrs: noinline nounwind
 define dllexport spir_kernel void @regioning() {
-  ; ------------ rdregion* and common rdregion/wrregion* -------------
   %non_const_i32 = add i32 42, 0
   %non_const_i16 = add i16 42, 0
   %non_const_v1i32 = insertelement <1 x i32> undef, i32 42, i32 0
 
+  ; ------------ *predregion* -------------
   %chk_wrpredpredregion_subvector_is_from_cmp = call <16 x i1> @llvm.genx.wrpredpredregion.v16i1.v16i1(<16 x i1> undef, <16 x i1> undef, i32 0, <16 x i1> undef)
  ; CHECK: warning: {{.+}} %chk_wrpredpredregion_subvector_is_from_cmp = {{.+}} subvector to write must be the direct result of a cmp instruction
 
+  %chk_rdpredregion_off_const = call <16 x i1> @llvm.genx.rdpredregion.v16i1.v32i1(<32 x i1> undef, i32 %non_const_i32);
+; CHECK: warning: {{.+}} %chk_rdpredregion_off_const {{.+}} offset in elements must be a constant integer
+
   %chk_rdpredregion_off = call <16 x i1> @llvm.genx.rdpredregion.v16i1.v32i1(<32 x i1> undef, i32 17);
-; CHECK: warning: {{.+}} %chk_rdpredregion_off {{.+}} OffsetInElements must be multiple of the number of elements of returned vector
+; CHECK: warning: {{.+}} %chk_rdpredregion_off {{.+}} offset in elements must be multiple of the number of elements of returned vector
 
   %chk_rdpredregion_num_ret = call <32 x i1> @llvm.genx.rdpredregion.v32i1.v32i1(<32 x i1> undef, i32 16);
 ; CHECK: warning: {{.+}} %chk_rdpredregion_num_ret {{.+}} returned vector must be 4, 8 or 16
 
   %chk_wrpredregion_off = call <32 x i1> @llvm.genx.wrpredregion.v32i1.v16i1(<32 x i1> undef, <16 x i1> undef, i32 17)
-; CHECK: warning: {{.+}} %chk_wrpredregion_off {{.+}} OffsetInElements must be multiple of the number of elements of subvector to write
+; CHECK: warning: {{.+}} %chk_wrpredregion_off {{.+}} offset in elements must be multiple of the number of elements of subvector to write
 
   %chk_wrpredregion_num_subvect = call <32 x i1> @llvm.genx.wrpredregion.v32i1.v32i1(<32 x i1> undef, <32 x i1> undef, i32 16)
 ; CHECK: warning: {{.+}} %chk_wrpredregion_num_subvect {{.+}} subvector to write must be 4, 8 or 16
 
+  ; ------------ rdregion* and common rdregion/wrregion* -------------
   %chk_ret_vec_type = call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> undef, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK: warning: {{.+}} %chk_ret_vec_type = {{.+}} return type must be a vector
 
@@ -94,7 +97,7 @@ define dllexport spir_kernel void @regioning() {
 ; CHECK: warning: {{.+}} %chk_scalar_mask_is_1 = {{.+}} arg7 mask can be a single i1 constant with value 1, meaning that the wrregion is unconditional.
 
   %chk_subregion_fits = call <4 x i32> @llvm.genx.wrregioni.v4i32.v8i32.i16.i1(<4 x i32> undef, <8 x i32> undef, i32 0, i32 1, i32 0, i16 0, i32 undef, i1 0)
-; CHECK: warning: {{.+}} %chk_subregion_fits = {{.+}} arg1 subvector must be no lardger than arg0 vector
+; CHECK: warning: {{.+}} %chk_subregion_fits = {{.+}} arg1 subvector must be no larger than arg0 vector
 
 ; ! TODO:spec review: spec doesn't allow non-vector dstsrc operand, whereas this case is found in the wild.
   %chk_dstsrc_vec = call i32 @llvm.genx.wrregioni.i32.i32.i16.i1(i32 undef, i32 undef, i32 0, i32 1, i32 0, i16 0, i32 undef, i1 0)
