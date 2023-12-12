@@ -177,7 +177,7 @@ namespace IGC
             /// @brief  find the BTI of the image argumant
             /// @param  paramIndex  the index of the image paramtere in the call isntruciton
             /// @returns  the image index
-            static llvm::ConstantInt* getImageIndex(ParamMap* pParamMap, llvm::CallInst* pCallInst, unsigned int paramIndex, llvm::Argument*& imageParam);
+            static llvm::ConstantInt* getImageIndex(ParamMap* pParamMap, llvm::CallInst* pCallInst, unsigned int paramIndex, llvm::Value*& imageParam);
 
             /// @brief  find the type (UAV/RESOURCE) of the image argumant
             /// @returns  the image type
