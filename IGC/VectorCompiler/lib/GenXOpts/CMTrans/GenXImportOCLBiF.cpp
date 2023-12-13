@@ -491,7 +491,6 @@ static void InitializeBIFlags(Module &M) {
   initializeVarWithValue("__HasInt64SLMAtomicCAS", 0);
 
   initializeVarWithValue("__JointMatrixLoadStoreOpt", 3);
-  initializeVarWithValue("__AssumeXYZWalkOrder", 0);
 }
 
 static bool isOCLBuiltinDecl(const Function &F) {

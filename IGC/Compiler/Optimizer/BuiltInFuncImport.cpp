@@ -1146,7 +1146,6 @@ void BIImport::InitializeBIFlags(Module& M)
 
     makeVarExternal("__SubDeviceID");
     initializeVarWithValue("__MaxHWThreadIDPerSubDevice", pCtx->platform.GetGTSystemInfo().ThreadCount);
-    initializeVarWithValue("__AssumeXYZWalkOrder", 0);
 
 
     initializeVarWithValue("__JointMatrixLoadStoreOpt", IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt));

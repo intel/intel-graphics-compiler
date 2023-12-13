@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-extern __constant int __UseNative64BitIntBuiltin;
-extern __constant int __UseNative64BitFloatBuiltin;
-extern __constant int __AssumeXYZWalkOrder;
+ extern __constant int __UseNative64BitIntBuiltin;
+ extern __constant int __UseNative64BitFloatBuiltin;
 
 // Group Instructions
 
@@ -2387,103 +2386,79 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
 #define DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op)                                                    \
 type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)                                           \
 {                                                                                                               \
-    if (__AssumeXYZWalkOrder) {                                                                                     \
-        type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);   \
-                                                                                                                    \
-        GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
-        uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
-        uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
-        uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                              \
-                                                                                                                    \
-        if (sg_lid == sg_size - 1) {                                                                                \
-            scratch[sg_id] = sg_x;                                                                                  \
-        }                                                                                                           \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
-                                                                                                                    \
-        type sg_aggregate = scratch[0];                                                                             \
-        for (int s = 1; s < sg_id; ++s) {                                                                           \
-            sg_aggregate = op(sg_aggregate, scratch[s]);                                                            \
-        }                                                                                                           \
-                                                                                                                    \
-        type result = sg_x;                                                                                         \
-        if (sg_id != 0) {                                                                                           \
-            result = op(sg_x, sg_aggregate);                                                                        \
-        }                                                                                                           \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
-        return result;                                                                                              \
-    } else {                                                                                                        \
-        GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
-        uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )();                                             \
-                                                                                                                    \
-        scratch[sg_lid] = X;                                                                                        \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
-                                                                                                                    \
-        type sg_aggregate = scratch[0];                                                                             \
-        for (int s = 1; s < sg_lid; s++) {                                                                          \
-            sg_aggregate = op(sg_aggregate, scratch[s]);                                                            \
-        }                                                                                                           \
-                                                                                                                    \
-        type result = X;                                                                                            \
-        if (sg_lid != 0) {                                                                                          \
-            result = op(result, sg_aggregate);                                                                      \
-        }                                                                                                           \
-        return result;                                                                                              \
-    }                                                                                                               \
+    type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);   \
+                                                                                                                \
+    GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
+    uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
+    uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
+    uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
+    uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                              \
+                                                                                                                \
+    if (sg_lid == sg_size - 1) {                                                                                \
+        scratch[sg_id] = sg_x;                                                                                  \
+    }                                                                                                           \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
+                                                                                                                \
+    type sg_prefix;                                                                                             \
+    type sg_aggregate = scratch[0];                                                                             \
+    for (int s = 1; s < num_sg; ++s) {                                                                          \
+        if (sg_id == s) {                                                                                       \
+            sg_prefix = sg_aggregate;                                                                           \
+            break;                                                                                              \
+        }                                                                                                       \
+        sg_aggregate = op(sg_aggregate, scratch[s]);                                                            \
+    }                                                                                                           \
+                                                                                                                \
+    type result;                                                                                                \
+    if (sg_id == 0) {                                                                                           \
+        result = sg_x;                                                                                          \
+    } else {                                                                                                    \
+        result = op(sg_x, sg_prefix);                                                                           \
+    }                                                                                                           \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
+    return result;                                                                                              \
 }
+
 
 #define DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                          \
 type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)                                           \
 {                                                                                                               \
-    if (__AssumeXYZWalkOrder) {                                                                                     \
-        type carry = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);  \
-                                                                                                                    \
-        GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
-        uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
-        uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
-        uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
-        uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                              \
-                                                                                                                    \
-        type sg_x = intel_sub_group_shuffle_up((type)identity, carry, 1);                                           \
-        if (sg_lid == 0) {                                                                                          \
-            sg_x = identity;                                                                                        \
-        }                                                                                                           \
-                                                                                                                    \
-        if (sg_lid == sg_size - 1) {                                                                                \
-            scratch[sg_id] = carry;                                                                                 \
-        }                                                                                                           \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
-                                                                                                                    \
-        type sg_aggregate = scratch[0];                                                                             \
-        for (int s = 1; s < sg_id; ++s) {                                                                           \
-            sg_aggregate = op(sg_aggregate, scratch[s]);                                                            \
-        }                                                                                                           \
-                                                                                                                    \
-        type result;                                                                                                \
-        if (sg_id == 0) {                                                                                           \
-            result = sg_x;                                                                                          \
-        } else {                                                                                                    \
-            result = op(sg_x, sg_aggregate);                                                                        \
-        }                                                                                                           \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
-        return result;                                                                                              \
-    } else {                                                                                                        \
-        GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
-        uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )();                                             \
-                                                                                                                    \
-        scratch[sg_lid] = X;                                                                                        \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
-                                                                                                                    \
-        type sg_aggregate = identity;                                                                               \
-        for (int s = 1; s <= sg_lid; s++) {                                                                         \
-            sg_aggregate = op(sg_aggregate, scratch[s - 1]);                                                        \
-        }                                                                                                           \
-                                                                                                                    \
-        type result = identity;                                                                                     \
-        if (sg_lid != 0) {                                                                                          \
-            result = op(result, sg_aggregate);                                                                      \
-        }                                                                                                           \
-        return result;                                                                                              \
-    }                                                                                                               \
+    type carry = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);  \
+                                                                                                                \
+    GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
+    uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
+    uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
+    uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
+    uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                              \
+                                                                                                                \
+    type sg_x = intel_sub_group_shuffle_up((type)identity, carry, 1);                                           \
+    if (sg_lid == 0) {                                                                                          \
+        sg_x = identity;                                                                                        \
+    }                                                                                                           \
+                                                                                                                \
+    if (sg_lid == sg_size - 1) {                                                                                \
+        scratch[sg_id] = carry;                                                                                 \
+    }                                                                                                           \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
+                                                                                                                \
+    type sg_prefix;                                                                                             \
+    type sg_aggregate = scratch[0];                                                                             \
+    for (int s = 1; s < num_sg; ++s) {                                                                          \
+        if (sg_id == s) {                                                                                       \
+          sg_prefix = sg_aggregate;                                                                             \
+          break;                                                                                                \
+        }                                                                                                       \
+        sg_aggregate = op(sg_aggregate, scratch[s]);                                                            \
+    }                                                                                                           \
+                                                                                                                \
+    type result;                                                                                                \
+    if (sg_id == 0) {                                                                                           \
+        result = sg_x;                                                                                          \
+    } else {                                                                                                    \
+        result = op(sg_x, sg_prefix);                                                                           \
+    }                                                                                                           \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
+    return result;                                                                                              \
 }
 
 #define DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity, signed_cast)                         \
