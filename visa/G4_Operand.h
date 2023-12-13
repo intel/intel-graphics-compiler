@@ -539,6 +539,7 @@ class G4_SrcRegRegion final : public G4_Operand {
 
 public:
   G4_SrcRegRegion(G4_SrcRegRegion &rgn);
+  G4_SrcRegRegion& operator=(const G4_SrcRegRegion&) = delete;
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   bool operator==(const G4_SrcRegRegion &other) {
@@ -715,6 +716,7 @@ public:
   G4_DstRegRegion(G4_DstRegRegion &rgn);
   G4_DstRegRegion(const IR_Builder &builder, G4_DstRegRegion &rgn,
                   G4_VarBase *new_base);
+  G4_DstRegRegion& operator=(const G4_DstRegRegion&) = delete;
 
   void computeLeftBound(const IR_Builder &builder);
 
@@ -847,6 +849,7 @@ class G4_Predicate final : public G4_Operand {
 
 public:
   G4_Predicate(G4_Predicate &prd);
+  G4_Predicate& operator=(const G4_Predicate&) = delete;
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   unsigned short getSubRegOff() const { return subRegOff; }

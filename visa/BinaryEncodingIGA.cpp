@@ -36,7 +36,7 @@ class BinaryEncodingIGA {
   const TARGET_PLATFORM platform;
 
 public:
-  BinaryEncodingIGA(vISA::G4_Kernel &k, std::string fname);
+  BinaryEncodingIGA(vISA::G4_Kernel &k, const std::string& fname);
   ~BinaryEncodingIGA() { delete IGAKernel; }
 
   void SetSWSB(G4_INST *inst, SWSB &sw);
@@ -378,7 +378,7 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
   return platform;
 }
 
-BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, std::string fname)
+BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, const std::string& fname)
     : kernel(k), fileName(fname), m_kernelBuffer(nullptr),
       m_kernelBufferSize(0), platform(k.fg.builder->getPlatform()) {
   platformModel = Model::LookupModel(getIGAInternalPlatform(platform));

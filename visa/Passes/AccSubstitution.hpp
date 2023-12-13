@@ -36,6 +36,7 @@ public:
   AccSubPass(IR_Builder &B, G4_Kernel &K) : builder(B), kernel(K) {}
 
   AccSubPass(const AccSubPass &) = delete;
+  AccSubPass& operator=(const AccSubPass&) = delete;
 
   virtual ~AccSubPass() = default;
 

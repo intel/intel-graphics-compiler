@@ -63,7 +63,7 @@ void FrequencyInfo::storeStaticFrequencyAsMetadata(G4_INST* i)
 void FrequencyInfo::updateStaticFrequencyForBasicBlock(G4_BB *bb) {
   G4_INST *lastInst =
       !bb->getInstList().empty() ? bb->getInstList().back() : nullptr;
-  if (hasFreqMetaData(lastInst)) {
+  if (lastInst && hasFreqMetaData(lastInst)) {
     MDNode *mn_digits = lastInst->getMetadata("stats.blockFrequency.digits");
     MDNode *mn_scale = lastInst->getMetadata("stats.blockFrequency.scale");
     Scaled64 freq =

@@ -651,6 +651,8 @@ public:
              const WA_TABLE *pWaTable);
 
   ~IR_Builder();
+  IR_Builder(const IR_Builder&) = delete;
+  IR_Builder& operator=(const IR_Builder&) = delete;
 
   void setR0ReadOnly() {
     // NONE is stronger than READ_ONLY, so don't change it

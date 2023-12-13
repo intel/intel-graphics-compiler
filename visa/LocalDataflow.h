@@ -50,6 +50,7 @@ public:
   DefEscapeBBAnalysis(const FlowGraph &cfg) : fg(cfg) {}
 
   DefEscapeBBAnalysis(const DefEscapeBBAnalysis &analysis) = delete;
+  DefEscapeBBAnalysis& operator=(const DefEscapeBBAnalysis&) = delete;
 
   virtual ~DefEscapeBBAnalysis() = default;
 

@@ -221,7 +221,7 @@ struct InstDecoder {
 
   ///////////////////////////////////////////
   // PRIMITIVE FIELD ADDERS
-  void addDecodedField(const Field &f, std::string meaning) {
+  void addDecodedField(const Field &f, const std::string& meaning) {
     if (fields) {
       int encodedFragments = 0;
       for (const Fragment &fr : f.fragments) {

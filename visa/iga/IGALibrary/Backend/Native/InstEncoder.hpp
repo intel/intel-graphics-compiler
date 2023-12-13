@@ -127,6 +127,7 @@ public:
               const Model &_model)
       : BitProcessor(_parent), opts(_opts), model(_model) {}
   InstEncoder(const InstEncoder &) = delete;
+  InstEncoder& operator=(const InstEncoder&) = delete;
 
   BackpatchList &getBackpatches() { return backpatches; }
 

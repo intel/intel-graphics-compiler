@@ -136,7 +136,7 @@ kv_t *kv_create(iga_gen_t gen_platf, const void *bytes, size_t bytes_len,
          << "\n";
     };
     if (kvImpl->m_errHandler.hasErrors()) {
-      for (auto d : kvImpl->m_errHandler.getErrors()) {
+      for (const auto& d : kvImpl->m_errHandler.getErrors()) {
         fmtDiag("ERROR", d);
       }
     }

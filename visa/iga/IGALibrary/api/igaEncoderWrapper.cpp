@@ -24,13 +24,13 @@ iga_status_t KernelEncoder::encode(std::ostream &errStr) {
 #ifdef _DEBUG
   if (errHandler.hasErrors()) {
     // failed encode
-    for (auto &e : errHandler.getErrors()) {
+    for (const auto &e : errHandler.getErrors()) {
       errStr << "vISA inst $" << e.at.offset << ": " << e.message << "\n";
     }
     return IGA_ERROR;
   }
   if (errHandler.hasWarnings()) {
-    for (auto &w : errHandler.getWarnings()) {
+    for (const auto &w : errHandler.getWarnings()) {
       std::cerr << "line " << w.at.line << ", col " << w.at.col << ": "
                 << w.message << "\n";
     }

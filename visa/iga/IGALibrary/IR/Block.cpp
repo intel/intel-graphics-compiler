@@ -182,7 +182,7 @@ Block::inferBlocks(ErrorHandler &errHandler, MemManager &mem, InstList &insts) {
   bi.run(errHandler, binaryLength, insts);
 #ifdef DEBUG_BLOCKS
   TRACE_BLOCK("**********************************************\n");
-  for (auto bitr : blockStarts) {
+  for (const auto& bitr : blockStarts) {
     auto instList = bitr.second->getInstList();
     TRACE_BLOCK("BLOCK ", (int)bitr.first, " (", bitr.second, ") => ",
                 (int)instList.size(), " instrs\n");

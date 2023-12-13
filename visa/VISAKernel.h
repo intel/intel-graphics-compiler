@@ -482,7 +482,7 @@ public:
   VISA_BUILDER_API int
   AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                                VISA_Exec_Size executionSize,
-                               std::string funcName, unsigned char argSize,
+                               const std::string& funcName, unsigned char argSize,
                                unsigned char returnSize) override;
 
   VISA_BUILDER_API int
@@ -491,7 +491,7 @@ public:
                                    VISA_VectorOpnd *funcAddr, uint8_t argSize,
                                    uint8_t returnSize) override;
 
-  VISA_BUILDER_API int AppendVISACFSymbolInst(std::string symbolName,
+  VISA_BUILDER_API int AppendVISACFSymbolInst(const std::string& symbolName,
                                               VISA_VectorOpnd *dst) override;
 
   VISA_BUILDER_API int

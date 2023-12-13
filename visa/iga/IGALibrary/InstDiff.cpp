@@ -86,7 +86,7 @@ decodeFieldsWithWarnings(const Model &model, std::ostream &os, Loc loc,
   FragmentList fields;
   ErrorHandler errHandler;
   native::DecodeFields(loc, model, (const void *)mi, fields, errHandler);
-  for (auto &e : errHandler.getErrors()) {
+  for (const auto &e : errHandler.getErrors()) {
     std::stringstream ss;
     ss << "PC" << e.at.offset << ". " << e.message << "\n";
     emitYellowText(os, ss.str());

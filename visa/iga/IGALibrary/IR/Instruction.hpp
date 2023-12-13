@@ -62,6 +62,7 @@ public:
   {
   }
   Instruction(const Instruction &) = delete;
+  Instruction& operator=(const Instruction&) = delete;
 
   // for placement allocation
   void operator delete(void *, MemManager *) {}

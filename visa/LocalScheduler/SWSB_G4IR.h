@@ -182,7 +182,8 @@ struct SBBitSets {
   SparseBitVector src;
 
   SBBitSets() {}
-
+  SBBitSets(SBBitSets&& other) = delete;
+  SBBitSets& operator=(SBBitSets&& other) = delete;
   ~SBBitSets() {}
 
   void setDst(int ID, bool value) {

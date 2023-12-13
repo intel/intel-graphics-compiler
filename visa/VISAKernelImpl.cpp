@@ -3270,7 +3270,7 @@ int VISAKernelImpl::AppendVISACFLabelInst(VISA_LabelOpnd *label) {
 
 int VISAKernelImpl::AppendVISACFFunctionCallInst(
     VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    std::string funcName, unsigned char argSize, unsigned char returnSize) {
+    const std::string& funcName, unsigned char argSize, unsigned char returnSize) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   AppendVISAInstCommon();
@@ -3383,7 +3383,7 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
   return status;
 }
 
-int VISAKernelImpl::AppendVISACFSymbolInst(std::string symbolName,
+int VISAKernelImpl::AppendVISACFSymbolInst(const std::string& symbolName,
                                            VISA_VectorOpnd *dst) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 

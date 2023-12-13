@@ -535,6 +535,7 @@ struct CISA_GEN_VAR {
   };
 
   CISA_GEN_VAR(const CISA_GEN_VAR &) = delete;
+  CISA_GEN_VAR& operator=(const CISA_GEN_VAR&) = delete;
 };
 
 // vISA variables share the same implementation, but are distinct types

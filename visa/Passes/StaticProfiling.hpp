@@ -24,6 +24,7 @@ public:
       : builder(B), kernel(K) {}
 
   StaticProfiling(const StaticProfiling &) = delete;
+  StaticProfiling& operator=(const StaticProfiling&) = delete;
   virtual ~StaticProfiling() = default;
 
   void ALUInstructionProfile(G4_INST *inst);

@@ -634,7 +634,7 @@ public:
   VISA_BUILDER_API virtual int
   AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                                VISA_Exec_Size executionSize,
-                               std::string funcName, unsigned char argSize,
+                               const std::string& funcName, unsigned char argSize,
                                unsigned char returnSize) = 0;
 
   /// AppendVISACFIndirectFuncCallInst -- append an indirect function call to
@@ -650,7 +650,7 @@ public:
   /// into <dst> faddr symbolName dst symbolName is the unique string to
   /// identify the symbol whose address is taken dst must have UD type with
   /// scalar region
-  VISA_BUILDER_API virtual int AppendVISACFSymbolInst(std::string symbolName,
+  VISA_BUILDER_API virtual int AppendVISACFSymbolInst(const std::string& symbolName,
                                                       VISA_VectorOpnd *dst) = 0;
 
   /// AppendVISACFFunctionRetInst -- append a function return instruction to
