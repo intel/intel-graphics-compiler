@@ -22,6 +22,7 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
+    typedef enum { NoSink=0, SinkWhileRegpressureIsHigh, FullSink } LoopSinkMode;
 
     class CodeSinking : public llvm::FunctionPass {
         llvm::DominatorTree* DT;
@@ -58,6 +59,7 @@ namespace IGC {
             AU.addPreservedID(WIAnalysis::ID);
         }
     private:
+
         bool treeSink(llvm::Function& F);
         bool ProcessBlock(llvm::BasicBlock& blk);
         bool SinkInstruction(llvm::Instruction* I,
@@ -140,14 +142,14 @@ namespace IGC {
         // try loop sinking in the function if needed
         bool loopSink(llvm::Function& F);
         // move LI back into loop
-        bool loopSink(llvm::Loop* LoopWithPressure);
+        bool loopSink(llvm::Loop* LoopWithPressure, LoopSinkMode Mode);
         // pre-condition to sink an instruction into a loop
         bool isLoopSinkCandidate(llvm::Instruction* I, llvm::Loop* L, bool AllowLoadSinking);
         bool loopSinkInstructions(
             llvm::SmallVector<llvm::Instruction*, 64>& SinkCandidates,
             llvm::SmallPtrSet<llvm::Instruction*, 32>& LoadChains,
             llvm::Loop* L);
-        bool needLoopSink(llvm::Loop* L);
+        LoopSinkMode needLoopSink(llvm::Loop* L);
 
         // Move referencing DbgValueInst intrinsics calls after defining instructions
         void ProcessDbgValueInst(llvm::BasicBlock& blk);

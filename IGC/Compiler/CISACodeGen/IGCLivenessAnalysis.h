@@ -161,6 +161,7 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         releaseMemory();
         livenessAnalysis(F);
     }
+    void livenessAnalysis(llvm::Function &F);
 
   private:
     void dumpRegPressure(llvm::Function &F, unsigned int SIMD);
@@ -188,7 +189,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
     void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
     void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
-    void livenessAnalysis(llvm::Function &F);
 
     virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {

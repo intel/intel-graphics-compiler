@@ -235,8 +235,11 @@ namespace IGC {
         bool Changed = false;
         for (auto &L : LI->getLoopsInPreorder())
         {
-            if (IGC_IS_FLAG_ENABLED(ForceLoopSink) || needLoopSink(L))
-                Changed |= loopSink(L);
+            LoopSinkMode SinkMode = IGC_IS_FLAG_ENABLED(ForceLoopSink) ? LoopSinkMode::FullSink : LoopSinkMode::NoSink;
+            if (SinkMode == LoopSinkMode::NoSink)
+                SinkMode = needLoopSink(L);
+            if (SinkMode != LoopSinkMode::NoSink)
+                Changed |= loopSink(L, SinkMode);
         }
         return Changed;
     }
@@ -1261,13 +1264,13 @@ namespace IGC {
         return changed;
     }
 
-    bool CodeSinking::needLoopSink(Loop *L)
+    LoopSinkMode CodeSinking::needLoopSink(Loop *L)
     {
         BasicBlock *Preheader = L->getLoopPreheader();
         if (!Preheader)
-            return false;
+            return LoopSinkMode::NoSink;
         if (!RPE)
-            return false;
+            return LoopSinkMode::NoSink;
 
         Function *F = Preheader->getParent();
         uint GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
@@ -1293,13 +1296,58 @@ namespace IGC {
         // Estimate max pressure in the loop
         uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
 
-        // loop sinking is needed if the loop's pressure is higher than number of GRFs by threshold
-        // and preheader's potential to reduce the delta is good enough
-        return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
-                (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
+        auto isSinkCriteriaMet = [&](uint MaxLoopPressure)
+        {
+            // loop sinking is needed if the loop's pressure is higher than number of GRFs by threshold
+            // and preheader's potential to reduce the delta is good enough
+            return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
+                    (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
+        };
+
+        // Check if the real regpressure may be higher, because the function is not a kernel
+        // and is called not as stack call
+        bool MayHaveCallerRegpressure = !isEntryFunc(CTX->getMetaDataUtils(), F) &&
+            !F->hasFnAttribute("visaStackCall");
+
+        // If loop pressure induced in this function only is enough for the criteria, return immediately
+        // Otherwise try to add pressure from callsite as the real regpressure may be higher
+        if (isSinkCriteriaMet(MaxLoopPressure))
+            return MayHaveCallerRegpressure ?
+                LoopSinkMode::FullSink :
+                LoopSinkMode::SinkWhileRegpressureIsHigh;
+
+        // Look just for the direct callers while there is no cross-procedure regpressure analysis
+        if (MayHaveCallerRegpressure)
+        {
+            for (llvm::User *U : F->users()) {
+                CallInst *CI = llvm::dyn_cast<llvm::CallInst>(U);
+                if (CI == nullptr)
+                    continue;
+
+                if (CI->getCalledFunction() != F)
+                    continue;
+
+                BasicBlock *CallerBB = CI->getParent();
+                Function *CallerFunction = CallerBB->getParent();
+
+                // Augment liveness analysis with blocks from the caller function
+                bool RPEHasCallerFunctionInfo = RPE->getOutSet().count(&CallerFunction->getEntryBlock());
+                if (!RPEHasCallerFunctionInfo)
+                    RPE->livenessAnalysis(*CallerFunction);
+
+                // Get call site regpressure
+                auto CallerBBPressureMap = RPE->getPressureMapForBB(*CallerBB, SIMD);
+                uint CallSitePressure = RPE->bytesToRegisters(CallerBBPressureMap[CI]);
+
+                if (isSinkCriteriaMet(MaxLoopPressure + CallSitePressure))
+                    return LoopSinkMode::FullSink;
+            }
+        }
+
+        return LoopSinkMode::NoSink;
     }
 
-    bool CodeSinking::loopSink(Loop *L)
+    bool CodeSinking::loopSink(Loop *L, LoopSinkMode Mode)
     {
         // Sink loop invariants back into the loop body if register
         // pressure can be reduced.
@@ -1380,7 +1428,7 @@ namespace IGC {
                 RPE->rerunLivenessAnalysis(*F);
                 uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
                 if (MaxLoopPressure < (NGRF - IGC_GET_FLAG_VALUE(LoopSinkRegpressureMargin))
-                        && IGC_IS_FLAG_DISABLED(ForceLoopSink))
+                        && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
                 {
                     if (IGC_IS_FLAG_ENABLED(EnableLoadChainLoopSink) && !LoadChains.empty())
                     {
