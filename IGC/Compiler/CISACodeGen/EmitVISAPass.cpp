@@ -1108,6 +1108,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 auto getFreqDigit = [&](Instruction *inst) {
                   MDNode *mn_digits =
                       termInst->getMetadata("stats.blockFrequency.digits");
+                  if (!mn_digits)
+                    return (unsigned long long)0;
                   return std::stoull(cast<MDString>(mn_digits->getOperand(0))
                                          ->getString()
                                          .str());
@@ -1116,6 +1118,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 auto getFreqScale = [&](Instruction *inst) {
                   MDNode *mn_scale =
                       termInst->getMetadata("stats.blockFrequency.scale");
+                  if (!mn_scale)
+                    return (int16_t)0;
                   return (int16_t)std::stoi(
                       cast<MDString>(mn_scale->getOperand(0))
                           ->getString()
