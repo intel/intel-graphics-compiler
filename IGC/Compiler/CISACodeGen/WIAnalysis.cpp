@@ -967,7 +967,14 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             if (NumPreds <= 1)
                 continue;
         }
-        auto PJDom = DT->getNode(PJ)->getIDom()->getBlock();
+        auto *PJNode = DT->getNode(PJ);
+        if (PJNode == nullptr)
+        {
+            IGC_ASSERT(!DT->isReachableFromEntry(PJ));
+            continue;
+        }
+        auto PJDom = PJNode->getIDom()->getBlock();
+
         // If both partial-join and it IDom are in partial-join region
         // there are cases in which phi-nodes in partial-joins are not
         // relevant to the cbr under the investigation
