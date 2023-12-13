@@ -313,8 +313,7 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_InnerScalarTessFactors": ["",
     [("void",                          ""),
-    [("int",                           "enum for the type of Tess domain"),
-     ("int",                           "enum for the type of Tess factor"),
+    [("int",                           "enum for the type of Tess factor"),
      ("float",                         "tess factor value")],
     "None"]],
 ####################################################################################################
@@ -397,8 +396,7 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_OuterScalarTessFactors": ["",
     [("void",                          ""),
-    [("int",                           "enum for the type of Tess domain"),
-     ("int",                           "enum for the type of Tess factor"),
+    [("int",                           "enum for the type of Tess factor"),
      ("float",                         "tess factor value")],
     "None"]],
 ####################################################################################################
@@ -411,6 +409,18 @@ Imported_Intrinsics = \
      ("int",                           "index"),
      ("int",                           "cpid"),
      ("int",                           "mask")],
+    "None"]],
+####################################################################################################
+"GenISA_OutputTessFactors": ["",
+    [("void",                          ""),
+    [("float",                         "QUAD_V_INSIDE_TESSFACTOR"),
+     ("float",                         "QUAD_U_INSIDE_TESSFACTOR"),
+     ("float",                         "QUAD_V_EQ_1_EDGE_TESSFACTOR, TRI_INSIDE_TESSFACTOR"),
+     ("float",                         "QUAD_U_EQ_1_EDGE_TESSFACTOR, TRI_W_EQ_0_EDGE_TESSFACTOR"),
+     ("float",                         "QUAD_V_EQ_0_EDGE_TESSFACTOR, TRI_V_EQ_0_EDGE_TESSFACTOR, "+\
+                                       "LINE_DENSITY_TESSFACTOR"),
+     ("float",                         "QUAD_U_EQ_0_EDGE_TESSFACTOR, TRI_U_EQ_0_EDGE_TESSFACTOR, "+\
+                                       "LINE_DETAIL_TESSFACTOR")],
     "None"]],
 ####################################################################################################
 "GenISA_PHASE_INPUT": ["",
