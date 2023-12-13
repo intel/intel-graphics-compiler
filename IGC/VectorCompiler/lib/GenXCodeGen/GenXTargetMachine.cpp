@@ -98,6 +98,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXCisaBuilderPass(registry);
   initializeGenXCoalescingWrapperPass(registry);
   initializeGenXGVClobberCheckerPass(registry);
+  initializeGenXVerifyPass(registry);
   initializeGenXDeadVectorRemovalPass(registry);
   initializeGenXDepressurizerWrapperPass(registry);
   initializeGenXEarlySimdCFConformancePass(registry);
@@ -357,8 +358,13 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createPromoteMemoryToRegisterPass());
   // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.
-  if (!DisableVerify)
+
+  if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
+    vc::addPass(
+        PM, createGenXVerifyPass(GenXVerifyInvariantSet::PreGenXLegalization));
+  }
+
   // Run passes to generate vISA.
 
   /// BasicAliasAnalysis
@@ -477,8 +483,13 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   /// .. include:: GenXLowering.cpp
   vc::addPass(PM, createGenXLoweringPass());
-  if (!DisableVerify)
+
+  if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
+    vc::addPass(
+        PM, createGenXVerifyPass(GenXVerifyInvariantSet::PreGenXLegalization));
+  }
+
   /// .. include:: GenXRegionCollapsing.cpp
   vc::addPass(PM, createGenXRegionCollapsingPass());
   /// EarlyCSE
@@ -490,8 +501,13 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createEarlyCSEPass());
   /// .. include:: GenXPatternMatch.cpp
   vc::addPass(PM, createGenXPatternMatchPass(PatternMatchKind::PreLegalization));
-  if (!DisableVerify)
+
+  if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
+    vc::addPass(
+        PM, createGenXVerifyPass(GenXVerifyInvariantSet::PreGenXLegalization));
+  }
+
   /// .. include:: GenXExtractVectorizer.cpp
   vc::addPass(PM, createGenXExtractVectorizerPass());
   /// .. include:: GenXVectorCombiner.cpp
@@ -535,8 +551,12 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXConstants.cpp
   /// .. include:: GenXVectorDecomposer.h
   vc::addPass(PM, createGenXPostLegalizationPass());
-  if (!DisableVerify)
+
+  if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
+    vc::addPass(PM, createGenXVerifyPass());
+  }
+
   /// EarlyCSE
   /// --------
   /// This is a standard LLVM pass, run at this point in the GenX backend.
@@ -546,8 +566,12 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createEarlyCSEPass());
   /// .. include:: GenXPatternMatch.cpp
   vc::addPass(PM, createGenXPatternMatchPass(PatternMatchKind::PostLegalization));
-  if (!DisableVerify)
+
+  if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
+    vc::addPass(PM, createGenXVerifyPass());
+  }
+
   /// LICM
   /// ----
   /// This is a standard LLVM pass to hoist/sink the loop invariant code after
@@ -634,8 +658,10 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   if (BackendConfig.enableRegAllocDump())
     vc::addPass(PM, createGenXModuleAnalysisDumperPass(RegAlloc, FGDumpsPrefix,
                                                        ".regalloc"));
-  if (!DisableVerify)
+  if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
+    vc::addPass(PM, createGenXVerifyPass());
+  }
 
   /// .. include:: GenXCisaBuilder.cpp
   vc::addPass(PM, createGenXCisaBuilderPass());
@@ -672,6 +698,9 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // Packetize.
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
+#ifndef NDEBUG
+    PM.add(createGenXVerifyPass(GenXVerifyInvariantSet::PreIrAdaptors));
+#endif
     PM.add(createGenXTranslateIntrinsicsPass());
     PM.add(createGenXTranslateSPIRVBuiltinsPass());
     PM.add(createAlwaysInlinerLegacyPass());

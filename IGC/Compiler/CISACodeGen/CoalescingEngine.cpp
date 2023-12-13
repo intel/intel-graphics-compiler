@@ -251,8 +251,8 @@ namespace IGC
             SetCurrentPart(tupleGeneratingInstruction, numPart);
             const uint numOperands = GetNumPayloadElements(tupleGeneratingInstruction);
             bool isAnyNodeAnchored = false, isAnyNodeCoalescable = false;
-            SmallPtrSet<CCTuple*, 8> touchedTuplesSet;
-            SmallVector<CCTuple*, 8> touchedTuples;
+            SmallPtrSet<CCTuple*, MaxTouchedTuples> touchedTuplesSet;
+            SmallVector<CCTuple*, MaxTouchedTuples> touchedTuples;
 
             //Step: Prepare.
             PrepareTuple(
@@ -371,7 +371,7 @@ namespace IGC
                     //provided that elements in dominatorsForDisplacement are displaced, and other nodes are attached.
                     //If interferes is true, then no element will be attached to the ccTuple.
                     if (!interferes) {
-                        SmallPtrSet<Value*, 8> touchedValuesSet;
+                        SmallPtrSet<Value*, MaxTouchedTuples> touchedValuesSet;
                         for (uint i = 0; i < numOperands; i++) {
                             Value* val = GetPayloadElementToValueMapping(tupleGeneratingInstruction, i);
 
@@ -575,8 +575,8 @@ namespace IGC
     void CoalescingEngine::PrepareTuple(
         const uint numOperands,
         Instruction* tupleGeneratingInstruction,
-        SmallPtrSet<CCTuple*, 8> & touchedTuplesSet,
-        SmallVector<CCTuple*, 8> & touchedTuples,
+        SmallPtrSet<CCTuple*, MaxTouchedTuples> & touchedTuplesSet,
+        SmallVector<CCTuple*, MaxTouchedTuples> & touchedTuples,
         bool& isAnyNodeAnchored,
         bool& isAnyNodeCoalescable)
     {
@@ -843,7 +843,7 @@ namespace IGC
         CCTuple* ccTuple,
         ElementFunctor* functor)
     {
-        SmallPtrSet<Value*, 8> touchedValuesSet;
+        SmallPtrSet<Value*, MaxTouchedTuples> touchedValuesSet;
 
         for (uint i = 0; i < numOperands; i++) {
             functor->SetIndex(i);
@@ -1001,7 +1001,7 @@ namespace IGC
         CCTuple* ccTuple,
         ProcessInterferencesElementFunctor* interferencesFunctor)
     {
-        SmallPtrSet<Value*, 8> touchedValuesSet;
+        SmallPtrSet<Value*, MaxTouchedTuples> touchedValuesSet;
         GatherWeightElementFunctor gatherFunctor;
         ProcessElements(numOperands, tupleInst, offsetDiff, ccTuple, &gatherFunctor);
         bool forceEviction =
@@ -1071,7 +1071,7 @@ namespace IGC
 
         if (ccTuple)
         {
-            SmallPtrSet<Value*, 8> touchedValuesSet;
+            SmallPtrSet<Value*, MaxTouchedTuples> touchedValuesSet;
 
             //index = 0;
             payloadCovered = true;
@@ -1179,7 +1179,7 @@ namespace IGC
         }
 
         if (payloadCovered) {
-            SmallPtrSet<Value*, 8> touchedValuesSet;
+            SmallPtrSet<Value*, MaxTouchedTuples> touchedValuesSet;
 
             for (uint index = 0; index < numOperands; index++)
             {

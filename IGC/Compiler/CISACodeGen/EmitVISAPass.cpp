@@ -4089,7 +4089,10 @@ void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], con
         break;
     case Instruction::FDiv:
     {
-        if (inst->getType()->isDoubleTy() && !inst->hasApproxFunc())
+        bool canUseFast = inst->hasApproxFunc() ||
+             (inst->hasAllowReciprocal() && !isOne(source[0].value));
+
+        if (inst->getType()->isDoubleTy() && !canUseFast)
         {   // default : ieee fdiv
             EmitSimpleAlu(llvm_ieee_divide, source, modifier);
         }

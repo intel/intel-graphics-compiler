@@ -5418,7 +5418,7 @@ namespace IGC
             context->type == ShaderType::GEOMETRY_SHADER || context->type == ShaderType::HULL_SHADER)
         {
             unsigned maxReg = m_program->GetMaxRegForThreadDispatch();
-            V(vKernel->AddKernelAttribute("MaxRegThreadDispatch", 1, &maxReg));
+            V(vKernel->AddKernelAttribute("MaxRegThreadDispatch", sizeof(maxReg), &maxReg));
         }
     }
 

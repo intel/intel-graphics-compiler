@@ -1185,6 +1185,9 @@ namespace IGC
                 MatchModifier(I);
             break;
         case Instruction::FMul:
+            match = MatchArcpFdiv(I) ||
+                MatchModifier(I);
+            break;
         case Instruction::URem:
         case Instruction::SRem:
         case Instruction::FRem:
@@ -4884,6 +4887,77 @@ namespace IGC
             AddPattern(pattern);
         }
         return found;
+    }
+
+    bool CodeGenPatternMatch::MatchArcpFdiv(llvm::BinaryOperator& I)
+    {
+
+        using namespace llvm::PatternMatch;
+
+        struct ArcpFdivPattern : public Pattern
+        {
+            SSource sources[2];
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->FDiv(sources, modifier);
+            }
+        };
+
+        if (!I.getType()->isDoubleTy() || !I.hasAllowReciprocal())
+            return false;
+
+        // Look for fdiv.
+        Instruction* fdiv = nullptr;
+        Value* dividend = nullptr,  * divisor = nullptr;
+
+        auto fdivPattern = m_OneUse(m_FDiv(m_FPOne(), m_Value(divisor)));
+
+        if (match(I.getOperand(0), fdivPattern))
+        {
+            fdiv = dyn_cast<Instruction>(I.getOperand(0));
+            dividend = I.getOperand(1);
+        }
+        else if (match(I.getOperand(1), fdivPattern))
+        {
+            fdiv = dyn_cast<Instruction>(I.getOperand(1));
+            dividend = I.getOperand(0);
+        }
+
+        if (!fdiv || !fdiv->hasAllowReciprocal())
+            return false;
+
+        // Pattern found.
+        ArcpFdivPattern* pattern = new (m_allocator)ArcpFdivPattern();
+        Value* sources[2] = { dividend, divisor };
+        e_modifier src_mod[2] = {};
+
+        if (FlushesDenormsOnInput(*fdiv))
+        {
+            sources[0] = SkipCanonicalize(sources[0]);
+            sources[1] = SkipCanonicalize(sources[1]);
+        }
+
+        GetModifier(*sources[0], src_mod[0], sources[0]);
+        GetModifier(*sources[1], src_mod[1], sources[1]);
+
+        pattern->sources[0] = GetSource(sources[0], src_mod[0], false, IsSourceOfSample(&I));
+        pattern->sources[1] = GetSource(sources[1], src_mod[1], false, IsSourceOfSample(&I));
+
+        // Try to add to constant pool whatever possible.
+        if (isCandidateForConstantPool(sources[0]))
+        {
+            AddToConstantPool(I.getParent(), sources[0]);
+            pattern->sources[0].fromConstantPool = true;
+        }
+        if (isCandidateForConstantPool(sources[1]))
+        {
+            AddToConstantPool(I.getParent(), sources[1]);
+            pattern->sources[1].fromConstantPool = true;
+        }
+
+        AddPattern(pattern);
+
+        return true;
     }
 
     bool CodeGenPatternMatch::MatchGradient(llvm::GenIntrinsicInst& I)
