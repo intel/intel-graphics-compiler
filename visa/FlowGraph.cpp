@@ -848,6 +848,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
 
   setPhysicalPredSucc();
   removeUnreachableBlocks(funcInfoHashTable);
+  removeRedundantLabels();
 
   pKernel->dumpToFile("after.RemoveUnreachableBlocks");
 
