@@ -1503,8 +1503,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                     !useStatelessToStateful(*pContext) &&
                     pContext->m_retryManager.IsFirstTry())
                 {
-                    mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
-                            pContext->m_retryManager.AllowLICM()));
+                    //mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
+                    //        pContext->m_retryManager.AllowLICM()));
                 }
             }
 
