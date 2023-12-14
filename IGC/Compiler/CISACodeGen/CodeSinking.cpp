@@ -246,6 +246,9 @@ namespace IGC {
 
     bool CodeSinking::runOnFunction(Function& F)
     {
+        if (skipFunction(F))
+            return false;
+
         CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         // only limited code-sinking to several shader-type
         // vs input has the URB-reuse issue to be resolved.

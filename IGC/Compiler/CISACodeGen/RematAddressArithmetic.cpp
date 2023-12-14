@@ -254,6 +254,9 @@ bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
 bool CloneAddressArithmetic::runOnFunction(Function& F)
 {
+    if (skipFunction(F))
+        return false;
+
     bool Modified = false;
     Modified |= greedyRemat(F);
     return Modified;
@@ -278,6 +281,9 @@ IGC_INITIALIZE_PASS_END(RematAddressArithmetic, PASS_FLAG, PASS_DESC, PASS_CFG_O
 
 bool RematAddressArithmetic::runOnFunction(Function& F)
 {
+    if (skipFunction(F))
+        return false;
+
     bool modified = false;
     modified |= rematerializePhiMemoryAddressCalculation(F);
     modified |= rematerializePrivateMemoryAddressCalculation(F);
