@@ -12,7 +12,7 @@
 ; ------------------------------------------------
 
 ; CHECK: foo
-; CHECK-NOT: = tail call {.*}simdcf.goto
+; CHECK-NOT: = {{.+}} @llvm.genx.simdcf.goto
 define spir_kernel void @foo() {
 .afterjoin.i.i72:
   %goto.extractem145.i.i69 = extractvalue { <32 x i1>, <32 x i1>, i1 } zeroinitializer, 0
