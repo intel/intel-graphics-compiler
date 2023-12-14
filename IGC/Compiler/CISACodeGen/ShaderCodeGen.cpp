@@ -83,7 +83,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
@@ -355,15 +354,6 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
 
 // forward declaration
 llvm::ModulePass* createPruneUnusedArgumentsPass();
-
-static bool useStatelessToStateful(CodeGenContext& ctx)
-{
-    return (ctx.m_instrTypes.hasLoadStore &&
-        ctx.m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
-        !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
-        IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
-        !ctx.m_instrTypes.hasInlineAsmPointerAccess);
-}
 
 void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature* pSignature)
 {
@@ -715,7 +705,12 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(new PromoteStatelessToBindless());
     }
 
-    if (!isOptDisabled && useStatelessToStateful(ctx))
+    if (!isOptDisabled &&
+        ctx.m_instrTypes.hasLoadStore &&
+        ctx.m_DriverInfo.SupportsStatelessToStatefulBufferTransformation() &&
+        !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
+        IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
+        !ctx.m_instrTypes.hasInlineAsmPointerAccess)
     {
         mpm.add(new StatelessToStateful());
     }
@@ -1489,15 +1484,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                     {
                         mpm.add(createSROAPass());
                     }
-                }
-
-                if (pContext->type == ShaderType::OPENCL_SHADER &&
-                    pContext->platform.isCoreChildOf(IGFX_XE_HPC_CORE) &&
-                    !useStatelessToStateful(*pContext) &&
-                    pContext->m_retryManager.IsFirstTry())
-                {
-                    mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
-                            pContext->m_retryManager.AllowLICM()));
                 }
             }
 

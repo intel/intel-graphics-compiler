@@ -20,7 +20,6 @@ add_subdirectory(DeviceEnqueueFuncs)
 add_subdirectory(DisableLoopUnrollOnRetry)
 add_subdirectory(ExtensionFuncs)
 add_subdirectory(GenericAddressResolution)
-add_subdirectory(GEPLoopStrengthReduction)
 add_subdirectory(ImageFuncs)
 add_subdirectory(LocalBuffers)
 add_subdirectory(NamedBarriers)
@@ -71,7 +70,6 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_ExtensionFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution}
-    ${IGC_BUILD__SRC__OpenCLPasses_GEPLoopStrengthReduction}
     ${IGC_BUILD__SRC__OpenCLPasses_ImageFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__SRC__OpenCLPasses_LowerLocalMemPool}
@@ -127,7 +125,6 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_DpasFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_ExtensionFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution}
-    ${IGC_BUILD__HDR__OpenCLPasses_GEPLoopStrengthReduction}
     ${IGC_BUILD__HDR__OpenCLPasses_ImageFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__HDR__OpenCLPasses_LowerLocalMemPool}
@@ -176,7 +173,6 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ExtensionFuncs
     Compiler__OpenCLPasses_GenericAddressResolution
     Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
-    Compiler__OpenCLPasses_GEPLoopStrengthReduction
     Compiler__OpenCLPasses_ImageFuncs
     Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_LowerLocalMemPool
