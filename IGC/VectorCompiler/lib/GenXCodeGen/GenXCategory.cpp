@@ -347,6 +347,16 @@ namespace {
 
   void placeConvAfterDef(Function *Func, Instruction *Conv, Value *Def) {
     if (Instruction *Inst = dyn_cast<Instruction>(Def)) {
+      if (isa<PHINode>(Inst)) {
+        // Original value is a PHI. Inserting conversion right after it can
+        // produce incorrect IR in case of several PHI nodes since they must be
+        // grouped at top of basic block. So insert the conversion after all PHI
+        // nodes.
+        auto *FirstNonPhiInst = Inst->getParent()->getFirstNonPHI();
+        Conv->insertBefore(FirstNonPhiInst);
+        Conv->setDebugLoc(Inst->getDebugLoc());
+        return;
+      }
       // Original value is an instruction. Insert just after it.
       Conv->insertAfter(Inst);
       Conv->setDebugLoc(Inst->getDebugLoc());
