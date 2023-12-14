@@ -9824,7 +9824,8 @@ GlobalRA::insertSpillCode(bool enableSpillSpaceCompression,
   if (getIterNo() == 0 && enableSpillSpaceCompression &&
       kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
       !hasStackCall) {
-    enableSpillSpaceCompression = true;
+    enableSpillSpaceCompression = spillSpaceCompression(
+        computeSpillSize(coloring.getSpilledLiveRanges()), globalScratchOffset);
   }
 
   startTimer(TimerID::SPILL);
