@@ -1230,6 +1230,8 @@ bool TranslateBuildSPMD(
                 << " -device 0x" << IGCPlatform.GetProductFamily()
                 << ".0x" << IGCPlatform.GetDeviceId()
                 << ".0x" << IGCPlatform.GetRevId()
+                << " -gmd_render 0x" << GFX_GET_GMD_RELEASE_VERSION_RENDER(IGCPlatform.getPlatformInfo())
+                << ".0x" << GFX_GET_GMD_REV_ID_RENDER(IGCPlatform.getPlatformInfo())
                 << std::dec
                 << " -inputcs " << getBaseFilename(inputf);
         if (isbc)
