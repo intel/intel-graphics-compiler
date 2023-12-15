@@ -735,115 +735,6 @@ void CompileUnit::addSimdWidth(DIE *Die, uint16_t SimdWidth) {
           SimdWidth);
 }
 
-// addGTRelativeLocation - add a sequence of attributes to calculate either:
-// - BTI-relative location of variable in surface state, or
-// - stateless surface location, or
-// - bindless surface location or
-// - bindless sampler location
-// Returns true in a case of SLM location, otherwise false.
-bool CompileUnit::addGTRelativeLocation(IGC::DIEBlock *Block,
-                                        const DbgVariable &DV,
-                                        const VISAVariableLocation &Loc) {
-  if (!Loc.HasSurface())
-    return false;
-
-  bool isSLM = false;
-  uint32_t bti = Loc.GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
-
-  IGC_ASSERT_MESSAGE(bti >= 0 && bti <= 255, "Surface BTI out of scope");
-
-  if ((bti == STATELESS_BTI) || (bti == STATELESS_NONCOHERENT_BTI)) // 255, 253
-  {
-    // Stateless (coherent and non-coherent)
-    LLVM_DEBUG(dbgs() << "  gt-loc: adding stateless location\n");
-    addStatelessLocation(Block, Loc);
-  } else if (bti == SLM_BTI) // 254
-  {
-    // SLM
-    LLVM_DEBUG(dbgs() << "  gt-loc: adding slm location\n");
-    isSLM = true;
-    addSLMLocation(Block, DV, Loc);
-  } else if (bti == BINDLESS_BTI) // 252
-  {
-    // Bindless
-    if (Loc.IsSampler()) {
-      // Bindless sampler
-      LLVM_DEBUG(dbgs() << "  gt-loc: bindless sampler location\n");
-      addBindlessSamplerLocation(Block, Loc);
-    } else {
-      // Bindless surface
-      LLVM_DEBUG(dbgs() << "  gt-loc: bindless surface location\n");
-      addBindlessSurfaceLocation(Block, Loc);
-    }
-  } else if (bti == 251) // Missing define for 251
-  {
-    // On XeHP_SDV, the Scratch Buffer is a bindless surface specified in the
-    // message header payload, with the base address calculated using the
-    // physical thread ID and the Pitch in the surface state. The bindless
-    // surface is relative to the Surface State Base Address heap (BTS 251). The
-    // HWord offset into the Scratch Buffer memory is provided in the message
-    // descriptor and communicated to the data port on the Sideband.
-    LLVM_DEBUG(dbgs() << "  gt-loc: bindless scratch space location\n");
-    addBindlessScratchSpaceLocation(Block, Loc);
-  } else if ((bti >= 0) && (bti <= 240)) {
-    // BTI surface
-
-    // When BTI not in a register:
-    // 1 DW_OP_breg5 (<bti> * 4)    , Note: breg5 stands for Binding Table Base
-    // Address 2 DW_OP_deref_size 4 3 DW_OP_const4u 0xffffffc0 4 DW_OP_and 5
-    // DW_OP_breg8 32             , Note: breg8 stands for Surface State Base
-    // Address 6 DW_OP_plus 7 DW_OP_deref 8 DW_OP_plus_uconst <offset>
-
-    // When BTI in a register r0:
-    // 1 DW_OP_reg16
-    // 2 DW_OP_const1u <offset>
-    // 3 DW_OP_const1u 32
-    // 4 DW_OP_push_bit_piece_stack
-    // 5 DW_OP_breg5 0              , Note: breg5 stands for Binding Table Base
-    // Address 6 DW_OP_deref_size 4 7 DW_OP_const4u 0xffffffc0 8 DW_OP_and 9
-    // DW_OP_breg8 32             , Note: breg8 stands for Surface State Base
-    // Address 10 DW_OP_plus 11 DW_OP_deref 12 DW_OP_plus_uconst <offset>
-
-    IGC_ASSERT_MESSAGE(false == Loc.IsInGlobalAddrSpace(),
-                       "Missing surface for variable location");
-    LLVM_DEBUG(dbgs() << "  gt-loc: bti surface location\n");
-
-    uint64_t btiBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::BTBase>(dwarf::DW_OP_breg0);
-    uint64_t surfaceStateBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::SurfStateBase>(dwarf::DW_OP_breg0);
-    uint32_t surfaceOffset = Loc.GetOffset(); // Surface offset
-
-    addUInt(Block, dwarf::DW_FORM_data1,
-            btiBaseAddrEncoded); // Binding Table Base Address
-    addSInt(Block, dwarf::DW_FORM_sdata,
-            bti << 2); // bti*4, offset for BT Base Address
-
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref_size);
-    addUInt(Block, dwarf::DW_FORM_data1, 4);
-
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const4u);
-    addUInt(Block, dwarf::DW_FORM_data4, 0xffffffc0);
-
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
-
-    addUInt(Block, dwarf::DW_FORM_data1,
-            surfaceStateBaseAddrEncoded); // Surface State Base Address
-    addSInt(Block, dwarf::DW_FORM_sdata,
-            32); // Offset for Surface State Base Address
-
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
-
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);
-    addUInt(Block, dwarf::DW_FORM_udata, surfaceOffset); // Offset
-  } else {
-    IGC_ASSERT_MESSAGE(false, "Unsupported BTI");
-  }
-  return isSLM;
-}
-
 void CompileUnit::extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz) {
   // This function expects that reg # and sub-reg in bits is
   // already pushed to DWARF stack.
@@ -1164,81 +1055,6 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock *Block,
   addUInt(Block, dwarf::DW_FORM_data1,
           scratchBaseAddrEncoded);              // Scratch Base Address
   addSInt(Block, dwarf::DW_FORM_sdata, offset); // Offset to base address
-}
-
-// addSLMLocation - add a sequence of attributes to emit SLM location of
-// variable
-void CompileUnit::addSLMLocation(IGC::DIEBlock *Block, const DbgVariable &DV,
-                                 const VISAVariableLocation &Loc) {
-  IGC_ASSERT_MESSAGE(Loc.IsSLM(), "SLM expected as variable location");
-  if (Loc.IsRegister()) {
-    // <va> is stored in a GRF register grfRegNum at bit offset
-    // There is a private value in the current stack frame.
-    // Location encoding is similar to a global variable except SIMD lane
-    // location encoding and storage size connected to this, because since it is
-    // uniform we assume this size to be 0. 1 DW_OP_regx <Frame Pointer reg
-    // encoded> 2 DW_OP_const1u <bit-offset to Frame Pointer reg> 3
-    // DW_OP_const1u 64  , i.e. size in bits 4 DW_OP_INTEL_push_bit_piece_stack
-    // 5 DW_OP_plus_uconst  SIZE_OWORD        // i.e. 0x10 taken from
-    // getFPOffset(); same as emitted in EmitPass::emitStackAlloca() 6
-    // DW_OP_plus_uconst storageOffset      // MD: StorageOffset; the offset
-    // where each variable is stored in the current stack frame
-
-    const auto *VISAMod = Loc.GetVISAModule();
-    const auto *storageMD = DV.getDbgInst()->getMetadata("StorageOffset");
-    if (!storageMD) {
-      LLVM_DEBUG(dbgs() << "warning: SLM - no storage offset for FP");
-      IGC_ASSERT_MESSAGE(false, "SLM - no storage offset for FP\n");
-      return;
-    }
-
-    auto simdSize = VISAMod->GetSIMDSize();
-    uint64_t storageOffset =
-        simdSize * getIntConstFromMdOperand(storageMD, 0).getZExtValue();
-
-    auto regNumFP = VISAMod->getFPReg();
-
-    // Rely on getVarInfo result here.
-    const auto *VarInfoFP =
-        VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumFP);
-    if (!VarInfoFP) {
-      LLVM_DEBUG(dbgs() << "warning: SLM - no gen loc info for FP (V"
-                        << regNumFP << ")");
-      return;
-    }
-    LLVM_DEBUG(dbgs() << "  FramePointer: "; VarInfoFP->print(dbgs());
-               dbgs() << "\n");
-
-    uint16_t grfRegNumFP = VarInfoFP->lrs.front().getGRF().regNum;
-    uint16_t grfSubRegNumFP = VarInfoFP->lrs.front().getGRF().subRegNum;
-    auto bitOffsetToFPReg =
-        grfSubRegNumFP * 8; // Bit-offset to GRF with Frame Pointer
-
-    addRegOrConst(Block,        // 1 DW_OP_regx <Frame Pointer reg encoded>
-                  grfRegNumFP); //   Register ID is shifted by offset
-
-    addConstantUValue(Block,
-                      bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to
-                                         // Frame Pointer reg>
-    extractSubRegValue(Block, 64);
-
-    addUInt(Block, dwarf::DW_FORM_data1,
-            dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
-                                       // from getFPOffset())
-    addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
-
-    addUInt(Block, dwarf::DW_FORM_data1,
-            dwarf::DW_OP_plus_uconst); // 6 DW_OP_plus_uconst storageOffset
-    addUInt(Block, dwarf::DW_FORM_udata, storageOffset); // storageOffset
-  } else {
-    LLVM_DEBUG(dbgs() << "  emitting SLMLocation, offset: " << Loc.GetOffset()
-                      << "\n");
-    // For SLM addressing using address <slm - va> available as literal
-    // 1 DW_OP_addr <slm - va>
-    uint32_t offset = Loc.GetOffset();
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
-    addUInt(Block, dwarf::DW_FORM_addr, (uint64_t)offset);
-  }
 }
 
 // addSimdLane - add a sequence of attributes to calculate location of
@@ -2483,27 +2299,15 @@ IGC::DIEBlock *CompileUnit::buildSampler(const DbgVariable &var,
 IGC::DIEBlock *CompileUnit::buildSLM(const DbgVariable &var,
                                      const VISAVariableLocation &loc,
                                      IGC::DIE *VariableDie) {
-  const auto *VISAMod = loc.GetVISAModule();
-  auto regNum = loc.GetRegister();
-
-  // The local memory space is specified as address_class attribute of the
-  // object's debug information entry, i.e. DW_AT_address_class 1
-  IGC_ASSERT_MESSAGE(VariableDie, "Expected variable DIE");
-  if (VariableDie)
-    addUInt(VariableDie, dwarf::DW_AT_address_class, None, 1);
-
+  // Add SLM offset based location. Add DW_AT_address_class mark because for
+  // some reason not adding dwarfAddressSpace on type.
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
-
-  if (loc.IsRegister()) {
-    const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
-    if (!VarInfo) {
-      LLVM_DEBUG(dbgs() << "warning: could not build SLM location for V"
-                        << regNum);
-      return nullptr;
-    }
-  }
-  addSLMLocation(Block, var, loc); // Emit SLM location expression
-  IGC_ASSERT(loc.GetVectorNumElements() <= 1);
+  uint32_t offset = loc.GetOffset();
+  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
+  addUInt(Block, dwarf::DW_FORM_addr, (uint64_t)offset);
+  IGC_ASSERT_MESSAGE(VariableDie,
+                     "Expected variable DIE to emit address_class for SLM");
+  addUInt(VariableDie, dwarf::DW_AT_address_class, None, 1);
   return Block;
 }
 
@@ -2801,16 +2605,13 @@ bool CompileUnit::buildValidVar(
           // VC-backend specific addressing model
           addSimdLaneRegionBase(Block, var, loc, &lrToUse);
         } else {
-          isSLM = addGTRelativeLocation(Block, var, loc);
-          if (!isSLM)
-            addSimdLaneScalar(Block, var, loc, lrToUse);
+          addSimdLaneScalar(Block, var, loc, lrToUse);
         }
         var.emitExpression(this, Block);
         return false;
       } else {
         for (unsigned int vectorElem = 0;
              vectorElem < loc.GetVectorNumElements(); ++vectorElem) {
-          isSLM = addGTRelativeLocation(Block, var, loc);
           // Emit SIMD lane for GRF (unpacked)
           const auto MaxUI16 = std::numeric_limits<uint16_t>::max();
           const auto registerSizeInBits =
@@ -2821,7 +2622,7 @@ bool CompileUnit::buildValidVar(
           auto SimdOffset = instrSimdWidth * vectorElem;
           IGC_ASSERT(DD->simdWidth <= 32 && vectorElem < MaxUI16 &&
                      SimdOffset < MaxUI16);
-          if (!isSLM && loc.IsRegister())
+          if (loc.IsRegister())
             addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(SimdOffset),
                         false, !firstHalf);
         }
@@ -2879,7 +2680,6 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
   offsetTaken = 0;
   skipOff = nullptr;
   emitLocation = false;
-  isSLM = false;
 
   LLVM_DEBUG(dbgs() << "  building DWARF info for the variable ["
                     << var.getName() << "]\n");
@@ -2912,14 +2712,6 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
     } else {
       buildValidVar(var, Block, loc, vars, true);
     }
-  }
-  if (isSLM) {
-    // The local memory space is specified as address_class attribute of the
-    // object's debug information entry, i.e. DW_AT_address_class 1
-    IGC_ASSERT_MESSAGE(VariableDie,
-                       "Expected variable DIE to emit address_class for SLM");
-    if (VariableDie)
-      addUInt(VariableDie, dwarf::DW_AT_address_class, None, 1);
   }
 
   if (skipOff) {

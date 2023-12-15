@@ -103,6 +103,16 @@ public:
     m_pVISAModule = m;
   }
 
+  /// @brief Constructor. Creates SLM location.
+  /// @param offset value indicates the offset of the location.
+  /// @param isSLM true when location is offset in SLM memory.
+  /// @param m points to VISAModule corresponding to this location
+  VISAVariableLocation(unsigned int offset, bool isSLM, const VISAModule *m) {
+    m_locationOffset = offset;
+    m_isSLM = isSLM;
+    m_pVISAModule = m;
+  }
+
   /// @brief Constructor. Creates address/register location.
   /// @param locationValue value indicates the address/register of the location.
   /// @param isRegister true if offset value is a register, false if it is
@@ -178,7 +188,7 @@ public:
 
   bool IsSampler() const;
   bool IsTexture() const;
-  bool IsSLM() const;
+  bool IsSLM() const { return m_isSLM; }
 
   void AddSecondReg(unsigned int locationValue) {
     IGC_ASSERT_MESSAGE(m_isRegister,
@@ -210,6 +220,7 @@ private:
   bool m_isRegister = false;
   bool m_isVectorized = false;
   bool m_isGlobalAddrSpace = false;
+  bool m_isSLM = false;
 
   const llvm::Constant *m_pConstVal = nullptr;
   unsigned int m_surfaceReg = ~0;

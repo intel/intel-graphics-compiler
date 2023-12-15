@@ -289,15 +289,6 @@ public:
   // addSimdWidth - add SIMD width
   void addSimdWidth(DIE *Die, uint16_t SimdWidth);
 
-  // addGTRelativeLocation - add a sequence of attributes to calculate either:
-  // - BTI-relative location of variable in surface state, or
-  // - stateless surface location, or
-  // - bindless surface location or
-  // - bindless sampler location
-  // Returns true in a case of SLM location, otherwise false.
-  bool addGTRelativeLocation(DIEBlock *Block, const DbgVariable &DV,
-                             const VISAVariableLocation &Loc);
-
   // addBindlessOrStatelessLocation - add a sequence of attributes to calculate
   // stateless or bindless location of variable. baseAddr is one of the
   // following base addreses:
@@ -337,11 +328,6 @@ public:
   // location of variable
   void addScratchLocation(DIEBlock *Block, uint32_t memoryOffset,
                           int32_t vectorOffset);
-
-  // addSLMLocation - add a sequence of attributes to emit SLM location of
-  // variable
-  void addSLMLocation(DIEBlock *Block, const DbgVariable &DV,
-                      const VISAVariableLocation &Loc);
 
   // addSimdLane - add a sequence of attributes to calculate location of
   // variable among SIMD lanes, e.g. a GRF subregister.
@@ -521,6 +507,8 @@ public:
   void buildLocation(const llvm::Instruction *, IGC::DbgVariable &, IGC::DIE *);
   DIEBlock *buildPointer(const DbgVariable &, const VISAVariableLocation &);
   DIEBlock *buildSampler(const DbgVariable &, const VISAVariableLocation &);
+
+  // buildSLM - Build expression for location described as offset in SLM memory.
   DIEBlock *buildSLM(const DbgVariable &, const VISAVariableLocation &,
                      IGC::DIE *);
   DIEBlock *buildGeneral(const DbgVariable &, const VISAVariableLocation &,
@@ -541,7 +529,6 @@ private:
 
   // Variables, used in buildGeneral-algorithm:
   bool emitLocation = false;
-  bool isSLM = false;
   DIEValue *skipOff = nullptr;
   unsigned int offsetTaken = 0;
 

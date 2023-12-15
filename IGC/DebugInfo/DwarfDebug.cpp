@@ -1632,9 +1632,9 @@ void DwarfDebug::collectVariableInfo(
       // We want to support more cases in the future.
 
       if (History.size() == 1) {
-        if (Loc.IsImmediate() ||
-            (isa<DbgDeclareInst>(pInst) &&
-             (pInst->getMetadata("StorageOffset") || Loc.HasSurface()))) {
+        if (Loc.IsImmediate() || (isa<DbgDeclareInst>(pInst) &&
+                                  (pInst->getMetadata("StorageOffset") ||
+                                   Loc.HasSurface() || Loc.IsSLM()))) {
           RegVar->setDbgInst(pInst);
           RegVar->isLocationInlined = true;
           break;

@@ -548,14 +548,3 @@ bool VISAVariableLocation::IsTexture() const {
     return true;
   return false;
 }
-
-bool VISAVariableLocation::IsSLM() const {
-  if (!HasSurface())
-    return false;
-
-  auto surface = GetSurface();
-  if (surface ==
-      VISAModule::LOCAL_SURFACE_BTI + VISAModule::TEXTURE_REGISTER_BEGIN)
-    return true;
-  return false;
-}

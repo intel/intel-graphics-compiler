@@ -266,8 +266,8 @@ public:
     CVariable* GetScalarConstant(llvm::Value* c);
     CVariable* GetUndef(VISA_Type type);
     llvm::Constant* findCommonConstant(llvm::Constant* C, uint elts, uint currentEmitElts, bool& allSame);
-    virtual unsigned int GetGlobalMappingValue(llvm::Value* c);
-    virtual CVariable* GetGlobalMapping(llvm::Value* c);
+    virtual unsigned int GetSLMMappingValue(llvm::Value *c);
+    virtual CVariable *GetSLMMapping(llvm::Value *c);
     CVariable* BitCast(CVariable* var, VISA_Type newType);
     void        CacheArgumentsList();
     virtual void MapPushedInputs();

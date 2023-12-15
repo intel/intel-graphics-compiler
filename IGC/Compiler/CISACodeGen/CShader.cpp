@@ -1724,7 +1724,7 @@ uint64_t CShader::GetConstantExpr(ConstantExpr* CE) {
         if (ConstantExpr * CE1 = dyn_cast<ConstantExpr>(C))
             return GetConstantExpr(CE1);
         if (GlobalVariable * GV = dyn_cast<GlobalVariable>(C))
-            return GetGlobalMappingValue(GV);
+            return GetSLMMappingValue(GV);
         break;
     }
     case Instruction::Trunc: {
@@ -1752,14 +1752,14 @@ uint64_t CShader::GetConstantExpr(ConstantExpr* CE) {
     return 0;
 }
 
-unsigned int CShader::GetGlobalMappingValue(llvm::Value* c)
+unsigned int CShader::GetSLMMappingValue(llvm::Value* c)
 {
     IGC_ASSERT_MESSAGE(0, "The global variables are not handled");
 
     return 0;
 }
 
-CVariable* CShader::GetGlobalMapping(llvm::Value* c)
+CVariable* CShader::GetSLMMapping(llvm::Value* c)
 {
     IGC_ASSERT_MESSAGE(0, "The global variables are not handled");
 
@@ -1787,7 +1787,7 @@ CVariable* CShader::GetScalarConstant(llvm::Value* const c)
     // GlobalVariables
     if (isa<GlobalVariable>(c))
     {
-        return GetGlobalMapping(c);
+        return GetSLMMapping(c);
     }
 
     // Constant Expression

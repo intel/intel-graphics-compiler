@@ -176,8 +176,8 @@ namespace IGC
         // Returns the immediate value mapped to GlobalVariable c.
         // (GlobalVariables represent the pointer to the global,
         // which is a compile-time constant)
-        unsigned int GetGlobalMappingValue(llvm::Value* c) override;
-        CVariable* GetGlobalMapping(llvm::Value* c) override;
+        unsigned int GetSLMMappingValue(llvm::Value *c) override;
+        CVariable *GetSLMMapping(llvm::Value *c) override;
 
         const SOpenCLKernelInfo& getKernelInfo() const { return m_kernelInfo; }
 

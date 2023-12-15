@@ -2531,7 +2531,7 @@ namespace IGC
         return true;
     }
 
-    unsigned int COpenCLKernel::GetGlobalMappingValue(llvm::Value* c)
+    unsigned int COpenCLKernel::GetSLMMappingValue(llvm::Value *c)
     {
         unsigned int val = 0;
         auto localIter = m_localOffsetsMap.find(c);
@@ -2546,10 +2546,10 @@ namespace IGC
         return val;
     }
 
-    CVariable* COpenCLKernel::GetGlobalMapping(llvm::Value* c)
+    CVariable *COpenCLKernel::GetSLMMapping(llvm::Value *c)
     {
         VISA_Type type = GetType(c->getType());
-        unsigned int val = GetGlobalMappingValue(c);
+        unsigned int val = GetSLMMappingValue(c);
         return ImmToVariable(val, type);
     }
 

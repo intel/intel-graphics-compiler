@@ -343,7 +343,7 @@ const Argument* ScalarVisaModule::GetTracedArgument(const Value* pVal, bool isAd
 VISAVariableLocation
 ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 {
-    const Value* pVal = nullptr;
+    Value* pVal = nullptr;
     MDNode* pNode = nullptr;
     bool isDbgDclInst = false;
     if (const DbgDeclareInst * pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
@@ -464,9 +464,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         }
     }
 
-    Value* pValue = const_cast<Value*>(pVal);
-
-    Type* pType = pValue->getType();
+    Type* pType = pVal->getType();
 
     if (isDbgDclInst)
     {
@@ -479,49 +477,29 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         pType = IGCLLVM::getNonOpaquePtrEltTy(pType);
     }
 
-    bool isInSurface = false;
     bool isGlobalAddrSpace = false;
-    unsigned int surfaceReg = 0;
     if (pType->isPointerTy())
     {
         unsigned int addrSpace = pType->getPointerAddressSpace();
-        if (addrSpace == ADDRESS_SPACE_LOCAL)
-        {
-            isInSurface = true;
-            surfaceReg = TEXTURE_REGISTER_BEGIN + LOCAL_SURFACE_BTI;
-        }
         if (addrSpace == ADDRESS_SPACE_GLOBAL)
         {
             isGlobalAddrSpace = true;
         }
     }
 
-    if (pVal->getType()->isPointerTy())
+    // SLM global variable
+    if (isa<GlobalVariable>(pVal))
     {
-        unsigned int addrSpace = pVal->getType()->getPointerAddressSpace();
-        if (addrSpace == ADDRESS_SPACE_LOCAL)
-        {
-            isInSurface = true;
-            surfaceReg = TEXTURE_REGISTER_BEGIN + LOCAL_SURFACE_BTI;
-        }
-    }
-
-    if (isa<GlobalVariable>(pValue))
-    {
-        unsigned int offset = m_pShader->GetGlobalMappingValue(pValue);
-        if (isInSurface)
-        {
-            return VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, 0, false, this);
-        }
-        return VISAVariableLocation(offset, false, isDbgDclInst, 0, false, false, this);
+        unsigned int offset = m_pShader->GetSLMMappingValue(pVal);
+        return VISAVariableLocation(offset, true, this);
     }
 
     // At this point we expect only a register
     CVariable* pVar = nullptr;
-    auto globalSubCVar = m_pShader->GetGlobalCVar(pValue);
+    auto globalSubCVar = m_pShader->GetGlobalCVar(pVal);
 
     if (!globalSubCVar) {
-        pVar = m_pShader->GetDebugInfoData().getMapping(*pInst->getFunction(), pValue);
+        pVar = m_pShader->GetDebugInfoData().getMapping(*pInst->getFunction(), pVal);
         if (!pVar)
         {
             return VISAVariableLocation(this);
@@ -551,12 +529,6 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         else if (!pVar->IsUniform())
         {
             vectorNumElements = 1;
-        }
-
-        if (isInSurface)
-        {
-            return VISAVariableLocation(surfaceReg, reg, true /*isRegister*/, isDbgDclInst,
-                                        vectorNumElements, !pVar->IsUniform(), this);
         }
         VISAVariableLocation genReg(reg, true /*isRegister*/, isDbgDclInst, vectorNumElements,
                                     !pVar->IsUniform(), isGlobalAddrSpace, this);
