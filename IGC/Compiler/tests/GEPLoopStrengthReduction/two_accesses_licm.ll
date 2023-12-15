@@ -33,7 +33,8 @@ entry:
 
 ; CHECK-LABEL: for.body.lr.ph:
 ; CHECK:         [[ADD:%.*]] = add i32 %delta, 2
-; CHECK:         [[GEP1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i32 [[ADD]]
+; CHECK:         [[ZEXT:%.*]] = zext i32 [[ADD]] to i64
+; CHECK:         [[GEP1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[ZEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
