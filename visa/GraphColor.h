@@ -1036,15 +1036,16 @@ class GraphColor {
   // Reserved GRF count for fail-safe RA
   unsigned reserveSpillGRFCount = 0;
 
+  template<bool Support4GRFAlign>
   unsigned edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2);
   unsigned edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2);
   static unsigned edgeWeightGRF(bool lr1EvenAlign, bool lr2EvenAlign,
                                 unsigned lr1_nreg, unsigned lr2_nreg) {
+    unsigned sum = lr1_nreg + lr2_nreg;
     if (!lr1EvenAlign) {
-      return lr1_nreg + lr2_nreg - 1;
+      return sum - 1;
     }
 
-    unsigned sum = lr1_nreg + lr2_nreg;
     if (!lr2EvenAlign)
       return sum + 1 - ((sum) % 2);
 
@@ -1086,6 +1087,25 @@ class GraphColor {
     return edgeWeightWith4GRF(lr2Align, lr1Align, lr2_nreg, lr1_nreg);
   }
 
+  void inline relax(LiveRange *lr1, unsigned int w) {
+    // relax degree between 2 nodes
+    VISA_DEBUG_VERBOSE({
+      std::cout << "\t relax ";
+      lr1->dump();
+      std::cout << " degree(" << lr1->getDegree() << ") - " << w << "\n";
+    });
+    lr1->subtractDegree(w);
+
+    unsigned availColor = numColor;
+    availColor = numColor - lr1->getNumForbidden();
+
+    if (lr1->getDegree() + lr1->getNumRegNeeded() <= availColor) {
+      unconstrainedWorklist.push_back(lr1);
+      lr1->setActive(false);
+    }
+  }
+
+  template <bool Support4GRFAlign>
   void computeDegreeForGRF();
   void computeDegreeForARF();
   void computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe);
@@ -1269,7 +1289,6 @@ public:
 };
 
 class GlobalRA {
-
 private:
   std::unordered_set<G4_INST *> EUFusionCallWAInsts;
   bool m_EUFusionCallWANeeded;
@@ -1843,9 +1862,13 @@ public:
     return augAlign == 4;
   }
 
+  template <bool Support4GRFAlign = true>
   bool isEvenAligned(const G4_Declare* dcl) const {
     auto augAlign = getAugAlign(dcl);
-    return augAlign > 0 && augAlign % 2 == 0;
+    if constexpr (Support4GRFAlign)
+      return augAlign > 0 && augAlign % 2 == 0;
+    else
+      return (augAlign > 0);
   }
 
   int getAugAlign(const G4_Declare *dcl) const {

@@ -5940,6 +5940,7 @@ void GraphColor::createLiveRanges() {
   }
 }
 
+template<bool Support4GRFAlign>
 void GraphColor::computeDegreeForGRF() {
   for (unsigned i = 0; i < numVar; i++) {
     unsigned degree = 0;
@@ -5954,7 +5955,7 @@ void GraphColor::computeDegreeForGRF() {
 
       auto computeDegree = [&](LiveRange *lr1) {
         if (!lr1->getIsPartialDcl()) {
-          unsigned edgeDegree = edgeWeightGRF(lrs[i], lr1);
+          unsigned edgeDegree = edgeWeightGRF<Support4GRFAlign>(lrs[i], lr1);
 
           degree += edgeDegree;
 
@@ -6286,60 +6287,61 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
 // subtract lr's neighbors that are still in work list
 //
 void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
-  if (!(lr->getIsPseudoNode()) && !(lr->getIsPartialDcl())) {
-    unsigned lr_id = lr->getVar()->getId();
-    bool lr2EvenAlign = gra.isEvenAligned(lr->getDcl());
-    unsigned int lr2AugAlign = gra.getAugAlign(lr->getDcl());
-    unsigned lr2_nreg = lr->getNumRegNeeded();
+  if (lr->getIsPseudoNode() || lr->getIsPartialDcl())
+    return;
 
-    // relax degree between 2 nodes
-    auto relaxDegree = [&](LiveRange *lr1) {
+  unsigned lr_id = lr->getVar()->getId();
+  unsigned lr2_nreg = lr->getNumRegNeeded();
+
+  const std::vector<unsigned> &intfs = intf.getSparseIntfForVar(lr_id);
+  if (gra.use4GRFAlign) {
+    unsigned int lr2AugAlign = gra.getAugAlign(lr->getDcl());
+    for (auto it : intfs) {
+      LiveRange *lr1 = lrs[it];
       if (lr1->getActive() && !lr1->getIsPseudoNode() &&
           !(lr1->getIsPartialDcl())) {
         unsigned lr1_nreg = lr1->getNumRegNeeded();
-        unsigned w = 0;
-        if (gra.use4GRFAlign) {
-          unsigned int lr1AugAlign = gra.getAugAlign(lr1->getDcl());
-          w = edgeWeightWith4GRF(lr1AugAlign, lr2AugAlign, lr1_nreg, lr2_nreg);
-        } else {
-          bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-          w = edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
-        }
-        VISA_DEBUG_VERBOSE({
-          std::cout << "\t relax ";
-          lr1->dump();
-          std::cout << " degree(" << lr1->getDegree() << ") - " << w << "\n";
-        });
-        lr1->subtractDegree(w);
-
-        unsigned availColor = numColor;
-        availColor = numColor - lr1->getNumForbidden();
-
-        if (lr1->getDegree() + lr1->getNumRegNeeded() <= availColor) {
-          unconstrainedWorklist.push_back(lr1);
-          lr1->setActive(false);
-        }
+        unsigned int lr1AugAlign = gra.getAugAlign(lr1->getDcl());
+        auto w =
+            edgeWeightWith4GRF(lr1AugAlign, lr2AugAlign, lr1_nreg, lr2_nreg);
+        relax(lr1, w);
       }
-    };
-
-    const std::vector<unsigned> &intfs = intf.getSparseIntfForVar(lr_id);
-    for (auto it : intfs) {
-      LiveRange *lrs_it = lrs[it];
-
-      relaxDegree(lrs_it);
     }
+    return;
+  }
 
-    auto *weakEdges = intf.getCompatibleSparseIntf(lr->getDcl());
-    if (weakEdges) {
-      for (auto weakNeighbor : *weakEdges) {
-        if (!weakNeighbor->getRegVar()->isRegAllocPartaker())
-          continue;
-        auto lr1 = lrs[weakNeighbor->getRegVar()->getId()];
-        relaxDegree(lr1);
+  // Handle case where 4GRF align is unsupported
+  bool lr2EvenAlign = gra.isEvenAligned(lr->getDcl());
+  for (auto it : intfs) {
+    LiveRange *lr1 = lrs[it];
+    if (lr1->getActive() && !lr1->getIsPseudoNode() &&
+        !(lr1->getIsPartialDcl())) {
+      unsigned lr1_nreg = lr1->getNumRegNeeded();
+      unsigned w = 0;
+      bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+      w = edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+      relax(lr1, w);
+    }
+  }
+
+  // Weak edges are supported only when 4GRF align is unsupported
+  auto *weakEdges = intf.getCompatibleSparseIntf(lr->getDcl());
+  if (weakEdges) {
+    for (auto weakNeighbor : *weakEdges) {
+      if (!weakNeighbor->getRegVar()->isRegAllocPartaker())
+        continue;
+      auto lr1 = lrs[weakNeighbor->getRegVar()->getId()];
+      if (lr1->getActive() && !lr1->getIsPseudoNode() &&
+          !(lr1->getIsPartialDcl())) {
+        unsigned lr1_nreg = lr1->getNumRegNeeded();
+        bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+        auto w = edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+        relax(lr1, w);
       }
     }
   }
 }
+
 void GraphColor::relaxNeighborDegreeARF(LiveRange *lr) {
   if (!(lr->getIsPseudoNode())) {
     unsigned lr_id = lr->getVar()->getId();
@@ -7273,7 +7275,10 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   // compute degree and spill costs for each live range
   //
   if (liveAnalysis.livenessClass(G4_GRF)) {
-    computeDegreeForGRF();
+    if (gra.use4GRFAlign)
+      computeDegreeForGRF<true>();
+    else
+      computeDegreeForGRF<false>();
   } else {
     computeDegreeForARF();
   }
@@ -11812,18 +11817,19 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
 // weight computation and later during simplification is necessary for
 // correctness.
 //
+template <bool Support4GRFAlign>
 unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
   unsigned lr1_nreg = lr1->getNumRegNeeded();
   unsigned lr2_nreg = lr2->getNumRegNeeded();
 
-  if (gra.use4GRFAlign) {
+  if constexpr (Support4GRFAlign) {
     auto lr1Align = gra.getAugAlign(lr1->getDcl());
     auto lr2Align = gra.getAugAlign(lr2->getDcl());
 
     return edgeWeightWith4GRF(lr1Align, lr2Align, lr1_nreg, lr2_nreg);
   } else {
-    bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-    bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
+    bool lr1EvenAlign = gra.isEvenAligned<false>(lr1->getDcl());
+    bool lr2EvenAlign = gra.isEvenAligned<false>(lr2->getDcl());
 
     return edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
   }
