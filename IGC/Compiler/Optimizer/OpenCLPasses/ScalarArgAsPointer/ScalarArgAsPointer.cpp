@@ -151,6 +151,20 @@ ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
         if (!findStoredArgs(*LI, *result))
             return nullptr; // (1) Found indirect access, fail search
     }
+    else if (SelectInst* SI = dyn_cast<SelectInst>(inst))
+    {
+        auto args1 = analyzeOperand(inst->getOperand(1));
+        auto args2 = analyzeOperand(inst->getOperand(2));
+
+        if (!args1 && !args2)
+            return nullptr; // propagate fail only if both paths fails
+
+        if (args1)
+            result->insert(args1->begin(), args1->end());
+
+        if (args2)
+            result->insert(args2->begin(), args2->end());
+    }
     else
     {
         // For any other type of instruction trace back operands.
@@ -158,34 +172,47 @@ ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
 
         for (unsigned int i = 0; i < numOperands; ++i)
         {
-            Value* op = inst->getOperand(i);
+            auto args = analyzeOperand(inst->getOperand(i));
 
-            if (Argument* arg = dyn_cast<Argument>(op))
-            {
-                // Consider only integer arguments
-                if (arg->getType()->getScalarType()->isIntegerTy())
-                {
-                    result->insert(arg);
-                }
-                else
-                {
-                    // (2) Found non-compatible argument, fail
-                    return nullptr;
-                }
-            }
-            else if (Instruction* opInst = dyn_cast<Instruction>(op))
-            {
-                auto args = findArgs(opInst);
+            if (!args)
+                return nullptr; // propagate fail
 
-                if (!args)
-                    return nullptr; // propagate fail
-
-                result->insert(args->begin(), args->end());
-            }
+            result->insert(args->begin(), args->end());
         }
     }
 
     m_visitedInst[inst] = result;
+    return result;
+}
+
+const std::shared_ptr<ScalarArgAsPointerAnalysis::ArgSet>
+ScalarArgAsPointerAnalysis::analyzeOperand(llvm::Value* op)
+{
+    auto result = std::make_shared<ScalarArgAsPointerAnalysis::ArgSet>();
+
+    if (Argument* arg = dyn_cast<Argument>(op))
+    {
+        // Consider only integer arguments
+        if (arg->getType()->getScalarType()->isIntegerTy())
+        {
+            result->insert(arg);
+        }
+        else
+        {
+            // (2) Found non-compatible argument, fail
+            return nullptr;
+        }
+    }
+    else if (Instruction* opInst = dyn_cast<Instruction>(op))
+    {
+        auto args = findArgs(opInst);
+
+        if (!args)
+            return nullptr; // propagate fail
+
+        result->insert(args->begin(), args->end());
+    }
+
     return result;
 }
 
