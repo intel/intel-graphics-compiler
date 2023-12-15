@@ -199,8 +199,9 @@ namespace IGC
     protected:
         // keep track of the pointer arguments' addrspace and access_type for
         // setting the correct attributes to their corresponding bindless offset arguments
-        typedef std::pair<zebin::PreDefinedAttrGetter::ArgAddrSpace,
-                          zebin::PreDefinedAttrGetter::ArgAccessType> PtrArgAttrType;
+        typedef std::tuple<zebin::PreDefinedAttrGetter::ArgAddrSpace,
+                           zebin::PreDefinedAttrGetter::ArgAccessType,
+                           zebin::PreDefinedAttrGetter::ArgType> PtrArgAttrType;
         typedef std::map<uint32_t, PtrArgAttrType> PtrArgsAttrMapType;
 
     protected:

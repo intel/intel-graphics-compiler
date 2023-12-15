@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.36 
+Version 1.37
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.37**: Specify bindless addrmode for const_base and global_base arguments.
 - **Version 1.36**: Specify values for EI_ABIVERSION field.
 - **Version 1.35**: Update eu_thread_count to be an optional attribute.
 - **Version 1.34**: Internal changes.
