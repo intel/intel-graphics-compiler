@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -86,6 +86,13 @@ namespace IGC
         /// @param    I instruction to trace back.
         /// @returns  Set of matching kernel arguments.
         const std::shared_ptr<ArgSet> findArgs(llvm::Instruction* I);
+
+        /// @brief    Called by findArgs to analyzes instruction's operands. Returns null if load/store:
+        ///             (1) is indirect, or
+        ///             (2) uses pointer kernel argument
+        /// @param    op operand to trace back.
+        /// @returns  Set of matching kernel arguments.
+        const std::shared_ptr<ArgSet> analyzeOperand(llvm::Value* op);
 
         /// @brief  Checks if instruction stores kernel argument, and if true, traces back to
         ///         alloca instruction (with offset). This is required for decomposed structs
