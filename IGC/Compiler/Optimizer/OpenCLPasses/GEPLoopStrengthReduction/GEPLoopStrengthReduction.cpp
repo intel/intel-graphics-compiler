@@ -816,6 +816,9 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
     if (!deconstructSCEV(S, Start, Step))
         return;
 
+    if (S->getType() != Start->getType())
+        Start = SE.getZeroExtendExpr(Start, S->getType());
+
     // Try adding reduction to existing group
     for (auto &c : Candidates)
     {
@@ -908,6 +911,7 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP)
 // parsed and reduced.
 bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
 {
+    // Drop ext instructions to analyze nested content.
     S = SCEVHelper::dropExt(S);
 
     // First check if expression can be fully expanded in preheader. If so, no need

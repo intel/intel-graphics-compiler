@@ -38,7 +38,8 @@ entry:
 ; CHECK:         [[ADD1:%.*]] = add i32 %b, %a
 ; CHECK:         [[MUL:%.*]] = mul i32 %c, [[ADD1]]
 ; CHECK:         [[ADD2:%.*]] = add i32 [[ADD1]], [[MUL]]
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i32 [[ADD2]]
+; CHECK:         [[ZEXT:%.*]] = zext i32 [[ADD2]] to i64
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[ZEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
