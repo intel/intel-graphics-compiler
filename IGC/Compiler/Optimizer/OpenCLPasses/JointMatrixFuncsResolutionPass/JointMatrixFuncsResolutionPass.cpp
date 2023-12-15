@@ -754,6 +754,9 @@ static bool isMatrixType(const Type *type)
     if (!eltType || !eltType->isStructTy())
         return false;
 
+    if (cast<StructType>(eltType)->isLiteral())
+        return false;
+
     StringRef name = eltType->getStructName();
     if (name.startswith("intel.joint_matrix") || name.startswith("spirv.JointMatrixINTEL._"))
         return true;
