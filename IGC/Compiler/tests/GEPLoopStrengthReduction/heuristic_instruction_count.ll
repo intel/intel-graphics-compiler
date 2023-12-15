@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey=GEPLSRNewInstructionThreshold=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt --regkey=GEPLSRNewInstructionThreshold=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Input:
 ;
@@ -51,7 +51,7 @@ for.cond1.preheader.lr.ph:                        ; preds = %entry
 ; CHECK-LABEL: for.cond1.preheader:
 ; CHECK:              %j.07 = phi i32 [ 0, %for.cond1.preheader.lr.ph ], [ %inc27, %for.inc26 ]
 ; CHECK:              [[MUL:%.*]] = mul i32 %j.07, 10
-; CHECK-LLVM-14-PLUS: [[ZEXT:%.*]] = zext i32 [[MUL]] to i64
+; CHECK:              [[ZEXT:%.*]] = zext i32 [[MUL]] to i64
 ; CHECK:              br i1 true, label %for.body4.lr.ph, label %for.cond7.preheader
 for.cond1.preheader:                              ; preds = %for.cond1.preheader.lr.ph, %for.inc26
   %j.07 = phi i32 [ 0, %for.cond1.preheader.lr.ph ], [ %inc27, %for.inc26 ]
@@ -70,8 +70,7 @@ for.cond7.preheader:                              ; preds = %for.cond1.for.cond7
 ; Loop k2 receives reduction, preheader is modified.
 ;
 ; CHECK-LABEL: for.body11.lr.ph:
-; CHECK-PRE-LLVM-14:  [[GEP1:%.*]] = getelementptr float, float addrspace(1)* %b, i32 [[MUL]]
-; CHECK-LLVM-14-PLUS: [[GEP1:%.*]] = getelementptr float, float addrspace(1)* %b, i64 [[ZEXT]]
+; CHECK:              [[GEP1:%.*]] = getelementptr float, float addrspace(1)* %b, i64 [[ZEXT]]
 ; CHECK:              br label %for.body11
 for.body11.lr.ph:                                 ; preds = %for.cond7.preheader
   %mul13 = mul nsw i32 %j.07, 10
