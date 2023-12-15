@@ -166,7 +166,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | offset | int32 | Required | | |
 | size | int32 | Required | | |
 | arg_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer", "arg_byvalue", "buffer_offset", or other implicit *image_* and sampler_* types. The value is the index of the associated kernel argument. |
-| addrmode | <memory_addressing_mode> | Optional | | Present when arg_type is "arg_bypointer" |
+| addrmode | <memory_addressing_mode> | Optional | | Present when arg_type is "arg_bypointer", or when arg_type is "const_base", "global_base" |
 | addrspace | <address_space> | Optional | | Present when arg_type is "arg_bypointer" |
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
 | sampler_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer" and address_space is "sampler" |
@@ -219,8 +219,8 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | sampler_address | | Sampler descriptor specifying the image addressing mode |
 | sampler_normalized | | Sampler descriptor specifying whether the coordinates are passed in as normalized or unnormalized values |
 | sampler_snap_wa | | Sampler descriptor specifying whether snap coordinate workaround is required |
-| const_base | | The base address of constant buffer |
-| global_base | | The base address of global buffer |
+| const_base | | The base address of constant buffer, or the bindless offset of constant buffer if addrmode = "bindless" |
+| global_base | | The base address of global buffer, or the bindless offset of global buffer if addrmode = "bindless" |
 <!--- <argument_type> ArgType -->
 
 arg_byvalue and arg_bypointer are user arguments that are explicitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.

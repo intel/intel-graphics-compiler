@@ -942,8 +942,10 @@ namespace IGC
             // When on bindless advance mode, there's an IMPLICIT_BINDLESS_OFFSET argument generated
             // associated to this argument. Keep track of addrspace and access_type for setting the
             // IMPLICIT_BINDLESS_OFFSET's attributes
-            if (is_bindless_advance_mode)
-                ptrArgsAttrMap[arg_idx] = std::make_pair(addr_space, access_type);
+            if (is_bindless_advance_mode) {
+                auto zeArgTy = zebin::PreDefinedAttrGetter::ArgType::arg_bypointer;
+                ptrArgsAttrMap[arg_idx] = std::make_tuple(addr_space, access_type, zeArgTy);
+            }
 
             // For BindlessLegacyMode, this argument represents the bindless offset of the argument. Skip buffer_address
             // creation and fall through to below bindless payload_argument creation
@@ -1006,11 +1008,41 @@ namespace IGC
                 ptrArgsAttrMap.find(argidx) != ptrArgsAttrMap.end(),
                 "Cannot find ptrArgsAttr for IMPLICIT_BINDLESS_OFFSET");
             PtrArgAttrType &attrs = ptrArgsAttrMap[argidx];
-            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
-                m_kernelInfo.m_zePayloadArgs, payloadPosition,
-                kernelArg->getAllocateSize(), argidx,
-                zebin::PreDefinedAttrGetter::ArgAddrMode::bindless,
-                attrs.first, attrs.second);
+
+            auto argTy = std::get<2>(attrs);
+            if (argTy == zebin::PreDefinedAttrGetter::ArgType::const_base ||
+                argTy == zebin::PreDefinedAttrGetter::ArgType::global_base)
+            {
+                // If the associated arg for bindless_offset refers to another implicit argument,
+                // instead of mapping it via arg_index (since "arg_index" in payload_arguments
+                // refers to the user (explicit) arguments' index in the original kernel definition),
+                // create another version of the implicit arg with the bindless addrmode set.
+                //
+                // Example:
+                // - arg_type : const_base
+                //    offset : 40
+                //    size : 8
+                // - arg_type : const_base
+                //    offset : 80
+                //    size : 4
+                //    addrmode : bindless
+                //
+                // Ultimately in zeinfo we end up with two definitions of the implicit arg, where
+                // one of them is the stateless pointer, and the other is the bindless offset.
+                zebin::zeInfoPayloadArgument& arg =
+                    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+                        m_kernelInfo.m_zePayloadArgs, argTy, payloadPosition,
+                        kernelArg->getAllocateSize());
+                arg.addrmode = zebin::PreDefinedAttrGetter::get(zebin::PreDefinedAttrGetter::ArgAddrMode::bindless);
+            }
+            else
+            {
+                zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
+                    m_kernelInfo.m_zePayloadArgs, payloadPosition,
+                    kernelArg->getAllocateSize(), argidx,
+                    zebin::PreDefinedAttrGetter::ArgAddrMode::bindless,
+                    std::get<0>(attrs), std::get<1>(attrs));
+            }
             break;
         }
         // Images
@@ -1284,21 +1316,51 @@ namespace IGC
 
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
         case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE: {
-          auto zeArgType =
-              kernelArg->getArgType() ==
-                      KernelArg::ArgType::IMPLICIT_CONSTANT_BASE
-                  ? zebin::PreDefinedAttrGetter::ArgType::const_base
-                  : zebin::PreDefinedAttrGetter::ArgType::global_base;
-          zebin::zeInfoPayloadArgument &arg =
-              zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-                  m_kernelInfo.m_zePayloadArgs, zeArgType, payloadPosition,
-                  kernelArg->getAllocateSize());
-          SOpenCLKernelInfo::SResourceInfo resInfo =
-              getResourceInfo(kernelArg->getAssociatedArgNo());
-          unsigned btiValue = getBTI(resInfo);
-          if (btiValue != 0xffffffff)
-            arg.bti_value = btiValue;
-          break;
+            uint32_t arg_idx = kernelArg->getAssociatedArgNo();
+            auto zeArgType =
+                kernelArg->getArgType() ==
+                KernelArg::ArgType::IMPLICIT_CONSTANT_BASE
+                ? zebin::PreDefinedAttrGetter::ArgType::const_base
+                : zebin::PreDefinedAttrGetter::ArgType::global_base;
+            auto addr_space =
+                kernelArg->getArgType() == KernelArg::ArgType::IMPLICIT_GLOBAL_BASE
+                ? zebin::PreDefinedAttrGetter::ArgAddrSpace::global
+                : zebin::PreDefinedAttrGetter::ArgAddrSpace::constant;
+            auto access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+            if (kernelArg->getArgType() == KernelArg::ArgType::IMPLICIT_CONSTANT_BASE)
+                access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
+
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+                    m_kernelInfo.m_zePayloadArgs, zeArgType, payloadPosition,
+                    kernelArg->getAllocateSize());
+            SOpenCLKernelInfo::SResourceInfo resInfo =
+                getResourceInfo(kernelArg->getAssociatedArgNo());
+            unsigned btiValue = getBTI(resInfo);
+
+            if (m_Context->m_InternalOptions.UseBindlessMode)
+            {
+                if (m_Context->m_InternalOptions.UseBindlessLegacyMode)
+                {
+                    zebin::PreDefinedAttrGetter::ArgAddrMode addr_mode =
+                        zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
+                    arg.addrmode = zebin::PreDefinedAttrGetter::get(addr_mode);
+                    arg.addrspace = zebin::PreDefinedAttrGetter::get(addr_space);
+                    arg.access_type = zebin::PreDefinedAttrGetter::get(access_type);
+                }
+                else // bindless-advanced-mode
+                {
+                    // For bindless access of const_base and global_base, create an associated arg entry
+                    // mapping this implicit arg to a bindless_offset arg
+                    ptrArgsAttrMap[arg_idx] = std::make_tuple(addr_space, access_type, zeArgType);
+                }
+
+            }
+            else if (btiValue != 0xffffffff)
+            {
+                arg.bti_value = btiValue;
+            }
+            break;
         }
 
         // We don't need these in ZEBinary, can safely skip them
@@ -1409,9 +1471,12 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET:
             {
                 int argNo = kernelArg->getAssociatedArgNo();
-                std::shared_ptr<iOpenCL::PointerArgumentAnnotation> ptrAnnotation = m_kernelInfo.m_argOffsetMap[argNo];
-                ptrAnnotation->BindingTableIndex = payloadPosition;
-                ptrAnnotation->SecondPayloadSizeInBytes = kernelArg->getAllocateSize();
+                if (m_kernelInfo.m_argOffsetMap.find(argNo) != m_kernelInfo.m_argOffsetMap.end())
+                {
+                    std::shared_ptr<iOpenCL::PointerArgumentAnnotation> ptrAnnotation = m_kernelInfo.m_argOffsetMap[argNo];
+                    ptrAnnotation->BindingTableIndex = payloadPosition;
+                    ptrAnnotation->SecondPayloadSizeInBytes = kernelArg->getAllocateSize();
+                }
             }
             break;
 

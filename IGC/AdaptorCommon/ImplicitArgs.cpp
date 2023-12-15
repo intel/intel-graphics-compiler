@@ -610,6 +610,21 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDat
 
         OffsetArgs[ImplicitArg::BINDLESS_OFFSET].insert(argNo);
     }
+
+    // Create a bindless offset for the implicit args CONST_BASE and GLOBAL_BASE as well.
+    // At this step, they are not yet added to the function signature, but since implicit args
+    // are added sequentially, we can calculate the associated argNo here.
+    unsigned argNo = F.arg_size();
+    for (auto AI = funcInfoMD->begin_ImplicitArgInfoList(), AE = funcInfoMD->end_ImplicitArgInfoList(); AI != AE; AI++, argNo++)
+    {
+        ArgInfoMetaDataHandle argInfo = *AI;
+        ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
+        if (argId == ImplicitArg::CONSTANT_BASE || argId == ImplicitArg::GLOBAL_BASE)
+        {
+            OffsetArgs[ImplicitArg::BINDLESS_OFFSET].insert(argNo);
+        }
+    }
+
     if (OffsetArgs.size() > 0)
     {
         ImplicitArgs::addNumberedArgs(F, OffsetArgs, pMdUtils);
