@@ -3034,6 +3034,12 @@ void LdStCombine::combineStores(Function& F)
     {
         if (StoreInst* SI = dyn_cast<StoreInst>(I))
         {
+            // Sanity check
+            Type* eTy = SI->getValueOperand()->getType()->getScalarType();
+            if (!isPowerOf2_32((uint32_t)m_DL->getTypeStoreSize(eTy))) {
+                return false;
+            }
+
             // Only original, not-yet-visited store can be candidates.
             bool isOrigSt = (m_instOrder.size() == 0 ||
                              m_instOrder.count(I) > 0);
