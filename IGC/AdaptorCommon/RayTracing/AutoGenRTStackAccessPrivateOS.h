@@ -277,6 +277,30 @@ static Type* _struct_RTStackFormat__SWHotZone_v2(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
+static Type* _struct_RTStackFormat__SWHotZone_v3(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::SWHotZone_v3";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 32),
+      [&] {
+        auto *EltTy =
+          IntegerType::get(M.getContext(), 32);
+        return ArrayType::get(EltTy, 3);
+      }(),
+      IntegerType::get(M.getContext(), 32),
+      [&] {
+        auto *EltTy =
+          IntegerType::get(M.getContext(), 32);
+        return ArrayType::get(EltTy, 3);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
 static Type* _struct_IGC__RayDispatchGlobalData(Module &M)
 {
   return
@@ -737,6 +761,12 @@ static Type* _gettype_SWHotZone_v2(Module &M)
 {
   return
   _struct_RTStackFormat__SWHotZone_v2(M);
+}
+
+static Type* _gettype_SWHotZone_v3(Module &M)
+{
+  return
+  _struct_RTStackFormat__SWHotZone_v3(M);
 }
 
 static Type* _gettype_RayDispatchGlobalData(Module &M)

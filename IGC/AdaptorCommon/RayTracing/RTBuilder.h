@@ -453,6 +453,8 @@ public:
     Type* getRayDispatchGlobalDataPtrTy(Module &M);
 
 
+    GenIntrinsicInst* createDummyInstID(Value* pSrcVal);
+
     CallInst* ctlz(Value* V);
 
     void createPotentialHit2CommittedHit(StackPointerVal* StackPtr);

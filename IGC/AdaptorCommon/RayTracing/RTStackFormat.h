@@ -904,6 +904,17 @@ struct alignas(LSC_WRITE_GRANULARITY) SWHotZone_v2
     // pad to LSC write granularity (16B on Gen12)
 };
 
+struct alignas(LSC_WRITE_GRANULARITY) SWHotZone_v3
+{
+    uint32_t StackOffset;
+    uint32_t DispatchRaysIndex[3];
+
+    uint32_t Complete;
+
+    // pad to LSC write granularity (16B on Gen12)
+    uint32_t Pad[3];
+};
+
 constexpr uint32_t StackFrameAlign = 16;
 static_assert(IGC::RTStackAlign % LSC_WRITE_GRANULARITY == 0, "not aligned to write granularity?");
 

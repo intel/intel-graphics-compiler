@@ -1724,6 +1724,17 @@ void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
 }
 
 
+GenIntrinsicInst* RTBuilder::createDummyInstID(Value* pSrcVal)
+{
+    Module* module = GetInsertBlock()->getModule();
+    Function* pFunc = GenISAIntrinsic::getDeclaration(
+        module,
+        GenISAIntrinsic::GenISA_dummyInstID,
+        pSrcVal->getType());
+    auto* CI = CreateCall(pFunc, pSrcVal);
+    return cast<GenIntrinsicInst>(CI);
+}
+
 CallInst* RTBuilder::ctlz(Value* V)
 {
     auto* Ctlz = Intrinsic::getDeclaration(
