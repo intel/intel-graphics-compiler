@@ -62,6 +62,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
                  .Case("XeHPG", XeHPG)
                  .Case("XeLPG", XeLPG)
                  .Case("XeHPC", XeHPC)
+                 .Case("XeHPCVG", XeHPCVG)
                  .Default(Invalid);
 
   std::string CPUName(CPU);
@@ -97,8 +98,8 @@ uint32_t GenXSubtarget::getMaxThreadsNumPerSubDevice() const {
   case XeHP:
   case XeHPG:
   case XeLPG:
-    return 1 << 12;
   case XeHPC:
+  case XeHPCVG:
     return 1 << 12;
   }
   return 0;
@@ -121,7 +122,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdReservedBits() const {
     static const std::pair<int, int> Bits[] = {{6, 1}, {3, 1}};
     return Bits;
   }
-  case GenXSubtarget::XeHPC: {
+  case GenXSubtarget::XeHPC:
+  case GenXSubtarget::XeHPCVG: {
     // [14:12] Slice ID.
     // [11:9] SubSlice ID
     // [8] : EUID[2]
@@ -156,7 +158,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getSubsliceIdBits() const {
     static const std::pair<int, int> Bits[] = {{8, 6}};
     return Bits;
   }
-  case GenXSubtarget::XeHPC: {
+  case GenXSubtarget::XeHPC:
+  case GenXSubtarget::XeHPCVG: {
     // [14:12] Slice ID.
     // [11:9] SubSlice ID
     static const std::pair<int, int> Bits[] = {{9, 6}};
@@ -178,7 +181,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
     static const std::pair<int, int> Bits[] = {{4, 2}, {7, 1}};
     return Bits;
   }
-  case GenXSubtarget::XeHPC: {
+  case GenXSubtarget::XeHPC:
+  case GenXSubtarget::XeHPCVG: {
     // [8] : EUID[2]
     // [7:6] : Reserved
     // [5:4] EUID[1:0]
@@ -220,6 +224,8 @@ TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
   case XeHPC:
     if (!partialI64Emulation())
       return TARGET_PLATFORM::Xe_PVC;
+    LLVM_FALLTHROUGH;
+  case XeHPCVG:
     return TARGET_PLATFORM::Xe_PVCXT;
   default:
     return TARGET_PLATFORM::GENX_NONE;

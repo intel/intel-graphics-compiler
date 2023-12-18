@@ -172,8 +172,11 @@ getPlatformName(const PLATFORM &Platform) {
       return {"XeLPG", RevId};
     break;
   case IGFX_XE_HPC_CORE:
-    if (Product == IGFX_PVC)
+    if (Product == IGFX_PVC) {
+      if (GFX_IS_VG_CONFIG(DevId))
+        return {"XeHPCVG", RevId & ComputeTileMaskPVC};
       return {"XeHPC", RevId & ComputeTileMaskPVC};
+    }
     break;
   default:
     break;
