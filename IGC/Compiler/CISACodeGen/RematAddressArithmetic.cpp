@@ -51,6 +51,7 @@ class CloneAddressArithmetic : public FunctionPass {
 
 public:
     static char ID;
+    WIAnalysis *WI = nullptr;
 
     ~CloneAddressArithmetic() { Uses.clear(); }
     CloneAddressArithmetic() : FunctionPass(ID) {
@@ -62,21 +63,18 @@ public:
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
         AU.setPreservesCFG();
         AU.addRequired<IGCLivenessAnalysis>();
+        AU.addRequired<WIAnalysis>();
     }
 
     bool runOnFunction(Function&) override;
     void rematWholeChain(llvm::IntToPtrInst *I);
+    bool isRegPressureLow(Function &F);
     std::unordered_map<llvm::Value*, unsigned int> Uses;
 
 private:
     bool greedyRemat(Function &F);
 };
-
-
-
-
 } // end namespace
-
 
 FunctionPass* IGC::createCloneAddressArithmeticPass() {
     return new CloneAddressArithmetic();
@@ -91,17 +89,50 @@ char CloneAddressArithmetic::ID = 0;
 namespace IGC {
 IGC_INITIALIZE_PASS_BEGIN(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_END(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
 }
 
+void putAddrSpaceCastClose(Function &F) {
+
+    std::vector<llvm::Instruction *> V;
+
+    for (BasicBlock &BB : F) {
+        for (auto &I : BB) {
+            if (llvm::isa<AddrSpaceCastInst>(I))
+                V.push_back(&I);
+        }
+    }
+
+    for(auto I : V) {
+
+        std::vector<llvm::Use *> VectorOfUses;
+        for(auto &U : I->uses()) { VectorOfUses.push_back(&U); }
+
+        for(auto U : VectorOfUses) {
+            auto User = U->getUser();
+            auto UserInst = llvm::dyn_cast<Instruction>(User);
+
+            if(llvm::isa<PHINode>(UserInst)) continue;
+
+            if(UserInst) {
+                auto Clone = I->clone();
+                Clone->setName(I->getName() + "_clonedAddrSpaceCast");
+                Clone->insertBefore(UserInst);
+                *U = Clone;
+            }
+        }
+    }
+}
 
 static bool isAddressArithmetic(Instruction* I)
 {
     if (isa<GetElementPtrInst>(I) ||
         isa<InsertElementInst>(I) ||
         isa<InsertValueInst>(I) ||
+        isa<BinaryOperator>(I) ||
         (isa<UnaryInstruction>(I) && !isa<LoadInst>(I)) ||
-        isa<BinaryOperator>(I))
+        (IGC_GET_FLAG_VALUE(RematAllowExtractElement) && isa<ExtractElementInst>(I)))
         return true;
 
     return false;
@@ -130,6 +161,7 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
         bool NotPHI = !llvm::isa<llvm::PHINode>(Op);
         bool NotConstant = !llvm::isa<llvm::Constant>(Op);
         bool SameBB = IGC_IS_FLAG_ENABLED(RematSameBBScope) ? Op->getParent() == I->getParent() : true;
+        bool NotUniform = IGC_IS_FLAG_ENABLED(RematRespectUniformity) ? !WI->isUniform(Op) : true;
         bool AddressArithmetic = isAddressArithmetic(Op);
 
         // if operand has more uses than specified, we do not rematerialize it.
@@ -145,7 +177,7 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
         // load r2
         bool NotTooManyUses = Uses[Op] < NumOfUsesLimit;
 
-        if (SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic) {
+        if (SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic && NotUniform) {
 
           BFSQ.push(Op);
           RematVector.push_back(Op);
@@ -183,73 +215,84 @@ void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
   RematVector.clear();
 }
 
+bool isSafelyRematerializable(Use& Use) {
+
+    auto LI = llvm::isa<LoadInst>(Use.getUser());
+    auto SI = llvm::isa<StoreInst>(Use.getUser());
+    auto BI = llvm::isa<BitCastInst>(Use.getUser());
+    auto SelI = llvm::isa<SelectInst>(Use.getUser());
+    auto CI = IGC_IS_FLAG_ENABLED(RematAddrSpaceCastToUse) ? llvm::isa<AddrSpaceCastInst>(Use.getUser()) : false;
+
+    bool Result = LI || SI || BI || CI || SelI;
+    return Result;
+}
+
+bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
+
+    auto RPE = &getAnalysis<IGCLivenessAnalysis>();
+    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
+    unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
+    bool Result = RPE->getMaxRegCountForFunction(F, SIMD) < PressureLimit;
+    return Result;
+}
+
 bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
-  bool Result = false;
+    bool Result = false;
 
-  auto RPE = &getAnalysis<IGCLivenessAnalysis>();
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
-  unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
-  if(RPE->getMaxRegCountForFunction(F, SIMD) < PressureLimit)
-      return Result;
+    if (isRegPressureLow(F))
+        return Result;
 
-  for (BasicBlock &BB : F) {
-    for (auto &I : BB) { Uses[&I] = I.getNumUses(); }
-  }
-
-  llvm::SmallVector<llvm::IntToPtrInst *, 4> ToProcess;
-
-  // go through block, collect all inttoptr instructions to do
-  // remat on them
-  for (BasicBlock &BB : F) {
-    // if block has less than required amount of LLVM IR instructions, skip it
-    const unsigned Limit = IGC_GET_FLAG_VALUE(RematBlockSize);
-    if (BB.getInstList().size() < Limit) continue;
-
-    for (auto &I : BB) {
-
-      auto *CastedIntToPtrInst = llvm::dyn_cast<IntToPtrInst>(&I);
-      if (CastedIntToPtrInst) ToProcess.push_back(CastedIntToPtrInst);
-    }
-  }
-
-  for (auto el : ToProcess) {
-
-    Value *V = el;
-    llvm::SmallVector<llvm::Use*, 4> VectorOfUses;
-    // collect all uses of particular intoptr inst
-    bool usedOnlyInLoadOrStore = true;
-    for (auto &use : V->uses()) {
-
-      // check that this inttoptr instruction only used in load or stores
-      auto LI = llvm::dyn_cast<LoadInst>(use.getUser());
-      auto SI = llvm::dyn_cast<StoreInst>(use.getUser());
-      usedOnlyInLoadOrStore &= (LI != NULL) || (SI != NULL);
-
-      VectorOfUses.push_back(&use);
+    for (BasicBlock &BB : F) {
+        for (auto &I : BB) { Uses[&I] = I.getNumUses(); }
     }
 
-    if(!usedOnlyInLoadOrStore) continue;
+    // At times, addrspace casts end up far away from their direct users.
+    if(IGC_IS_FLAG_ENABLED(RematMoveAddrSpaceCast)) putAddrSpaceCastClose(F);
 
-    for (auto use : VectorOfUses) {
+    llvm::SmallVector<llvm::IntToPtrInst *, 4> ToProcess;
 
-      // take use of inttoptr instruction, clone instruction,
-      // insert clone right before the use, swap use to clone, remat
-      auto User = use->getUser();
-      auto UserInst = llvm::dyn_cast<Instruction>(User);
-
-      if(UserInst) {
-        auto Clone = el->clone();
-        Clone->setName("cloned_" + el->getName());
-        Clone->insertBefore(UserInst);
-        *use = Clone;
-        rematWholeChain((llvm::IntToPtrInst *)Clone);
-        Result = true;
-      }
+    // go through block, collect all inttoptr instructions to do
+    // remat on them
+    for (BasicBlock &BB : F) {
+        for (auto &I : BB) {
+            auto *CastedIntToPtrInst = llvm::dyn_cast<IntToPtrInst>(&I);
+            if (CastedIntToPtrInst) ToProcess.push_back(CastedIntToPtrInst);
+        }
     }
-  }
 
-  return Result;
+    for (auto el : ToProcess) {
+
+        Value *V = el;
+        llvm::SmallVector<llvm::Use*, 4> VectorOfUses;
+        // collect all uses of particular intoptr inst
+        bool ShouldBeRemated = true;
+        for (auto &U : V->uses()) {
+            ShouldBeRemated &= isSafelyRematerializable(U);
+            VectorOfUses.push_back(&U);
+        }
+
+        if(!ShouldBeRemated) continue;
+
+        for (auto use : VectorOfUses) {
+
+            // Clone inttoptr instruction, insert clone right before the use,
+            // switch use to clone, remat
+            auto User = use->getUser();
+            auto UserInst = llvm::dyn_cast<Instruction>(User);
+
+            if(UserInst) {
+                auto Clone = el->clone();
+                Clone->setName("cloned_" + el->getName());
+                Clone->insertBefore(UserInst);
+                *use = Clone;
+                rematWholeChain((llvm::IntToPtrInst *)Clone);
+                Result = true;
+            }
+        }
+    }
+
+    return Result;
 }
 
 bool CloneAddressArithmetic::runOnFunction(Function& F)
@@ -257,6 +300,7 @@ bool CloneAddressArithmetic::runOnFunction(Function& F)
     if (skipFunction(F))
         return false;
 
+    WI = &getAnalysis<WIAnalysis>();
     bool Modified = false;
     Modified |= greedyRemat(F);
     return Modified;
