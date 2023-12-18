@@ -5694,10 +5694,7 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
 
   if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");
-    if (WATable && WATable->Wa_14016243945)
-      addArgument("2");
-    else
-      addArgument("1");
+    addArgument("1");
   }
   if (BC.getBinaryFormat() == vc::BinaryKind::ZE) {
     addArgument("-abiver");
