@@ -40,7 +40,6 @@ IGC_INITIALIZE_PASS_END(PrivateMemoryToSLM, PASS_FLAG, PASS_DESCRIPTION, PASS_CF
 namespace IGC
 {
     char PrivateMemoryToSLM::ID = 0;
-    const unsigned int PrivateMemoryToSLM::VALID_LOCAL_HIGH_BITS = 0x10000000;
     const unsigned int PrivateMemoryToSLM::SLM_LOCAL_VARIABLE_ALIGNMENT = 4;
     const unsigned int PrivateMemoryToSLM::SLM_LOCAL_SIZE_ALIGNMENT = 32;
 

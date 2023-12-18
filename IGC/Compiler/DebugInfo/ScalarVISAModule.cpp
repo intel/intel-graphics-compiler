@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/DebugInfo/Utils.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
@@ -491,6 +492,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     if (isa<GlobalVariable>(pVal))
     {
         unsigned int offset = m_pShader->GetSLMMappingValue(pVal);
+        offset |= VALID_LOCAL_HIGH_BITS;
         return VISAVariableLocation(offset, true, this);
     }
 

@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -44,8 +45,6 @@ InlineLocalsResolution::InlineLocalsResolution() :
 {
     initializeInlineLocalsResolutionPass(*PassRegistry::getPassRegistry());
 }
-
-const unsigned int InlineLocalsResolution::VALID_LOCAL_HIGH_BITS = 0x10000000;
 
 static bool useAsPointerOnly(Value* V) {
     IGC_ASSERT_MESSAGE(V->getType()->isPointerTy(), "Expect the input value is a pointer!");
