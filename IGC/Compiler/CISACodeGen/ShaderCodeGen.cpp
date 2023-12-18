@@ -894,42 +894,40 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
     // Run address remat after GVN as it may hoist address calculations and
     // create PHI nodes with addresses.
+    if (IGC_IS_FLAG_ENABLED(RematEnable) || (ctx.m_retryManager.AllowCloneAddressArithmetic() && ctx.type == ShaderType::OPENCL_SHADER)) {
 
-    if (IGC_IS_FLAG_ENABLED(EnableRemat) || (ctx.m_retryManager.AllowCloneAddressArithmetic() && ctx.type == ShaderType::OPENCL_SHADER)) {
+        if(IGC_GET_FLAG_VALUE(RematInstCombineBefore)) mpm.add(createIGCInstructionCombiningPass());
+        // TODO: This is a workaround that helps to reduce amount of instructions for clone address arithmetic
+        // it helps with chain of instructions like this
+        // %remat12 = add i64 %baseArith, 100780848
+        // %remat13 = add i64 %remat12, %basePtr
+        // %remat14 = add i64 %remat13, %offsetI
+        // %remat15 = add i64 %remat14, %offsetJ
+        // load ...
+        // ....
+        // %remat21 = add i64 %baseArith, 201561696
+        // %remat22 = add i64 %remat21, %basePtr
+        // %remat23 = add i64 %remat22, %offsetI
+        // %remat24 = add i64 %remat23, %offsetJ
+        // load ...
+        // we can compress this chain of instruction into one "add" for each "load"
+        // this is achieved by combining reassoc + cse 3 times (each pair hoists one add)
+        // it should be substituted for general pass when it's implemented
+        //
+        // Now it's accessible through flag, for testing purposes
+        if (IGC_GET_FLAG_VALUE(RematReassocBefore)) {
+            mpm.add(llvm::createReassociatePass());
+            mpm.add(llvm::createEarlyCSEPass());
+            mpm.add(llvm::createReassociatePass());
+            mpm.add(llvm::createEarlyCSEPass());
+            mpm.add(llvm::createReassociatePass());
+            mpm.add(llvm::createEarlyCSEPass());
+        }
 
-
-      // TODO: This is a workaround that helps to reduce amount of instructions for clone address arithmetic
-      // it helps with chain of instructions like this
-      // %remat12 = add i64 %baseArith, 100780848
-      // %remat13 = add i64 %remat12, %basePtr
-      // %remat14 = add i64 %remat13, %offsetI
-      // %remat15 = add i64 %remat14, %offsetJ
-      // load ...
-      // ....
-      // %remat21 = add i64 %baseArith, 201561696
-      // %remat22 = add i64 %remat21, %basePtr
-      // %remat23 = add i64 %remat22, %offsetI
-      // %remat24 = add i64 %remat23, %offsetJ
-      // load ...
-      // we can compress this chain of instruction into one "add" for each "load"
-      // this is achieved by combining reassoc + cse 3 times (each pair hoists one add)
-      // it should be substituted for general pass when it's implemented
-      //
-      // Now it's accessible through flag, for testing purposes
-
-      if (IGC_GET_FLAG_VALUE(RematReassocBefore)) {
-        mpm.add(llvm::createReassociatePass());
-        mpm.add(llvm::createEarlyCSEPass());
-        mpm.add(llvm::createReassociatePass());
-        mpm.add(llvm::createEarlyCSEPass());
-        mpm.add(llvm::createReassociatePass());
-        mpm.add(llvm::createEarlyCSEPass());
-      }
-
-      mpm.add(createCloneAddressArithmeticPass());
-      // cloneAddressArithmetic leaves old instructions unnecessary
-      // dce pass helps to clean that up
-      mpm.add(createDeadCodeEliminationPass());
+        mpm.add(createCloneAddressArithmeticPass());
+        // cloneAddressArithmetic leaves old instructions unnecessary
+        // dce pass helps to clean that up
+        mpm.add(createDeadCodeEliminationPass());
     }
 
     mpm.add(createRematAddressArithmeticPass());
