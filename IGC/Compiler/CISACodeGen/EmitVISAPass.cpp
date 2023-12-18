@@ -9250,9 +9250,6 @@ void EmitPass::emitGEP(llvm::Instruction* I)
     CVariable* vOffset = m_destination;
     // vN is the current offset at the begining of each iteration in the loop below
     CVariable* vN = m_currShader->ImmToVariable(0, PtrTy);
-    // Note that the pointer operand may be a vector of pointers. Take the scalar
-    // element which holds a pointer.
-    Type* Ty = GEP.getPointerOperand()->getType()->getScalarType();
 
     // Prototype temporary used for cloning from
     CVariable* vTmp = m_currShader->GetNewVariable(
@@ -9275,10 +9272,10 @@ void EmitPass::emitGEP(llvm::Instruction* I)
                 Offset = m_DL->getStructLayout(StTy)->getElementOffset(Field);
             }
             vElemOffset = m_currShader->ImmToVariable(Offset, ISA_TYPE_UD);
-            Ty = StTy->getElementType(Field);
         }
         else {
-            Ty = GTI.getIndexedType();
+            Type* Ty = GTI.getIndexedType();
+
             // vElemOffset = vIdx * vElemSize
             CVariable* vElemSize = m_currShader->ImmToVariable(m_DL->getTypeAllocSize(Ty), PtrTy);
             CVariable* vIdx = GetSymbol(Idx);

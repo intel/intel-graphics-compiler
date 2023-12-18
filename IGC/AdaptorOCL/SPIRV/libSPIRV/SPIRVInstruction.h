@@ -1606,7 +1606,7 @@ protected:
     IGC_ASSERT(OpCode == OC);
     IGC_ASSERT(WordCount == WC);
     SPIRVInstruction::validate();
-    isValid(ExecScope);
+    IGC_ASSERT(isValid(ExecScope));
   }
   Scope ExecScope;
   SPIRVId Destination;

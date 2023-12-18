@@ -362,7 +362,6 @@ alignment_t AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
     // The alignment can never be better than the alignment of the base pointer
     alignment_t newAlign = getAlignValue(I.getPointerOperand());
 
-    Type* Ty = I.getPointerOperand()->getType()->getScalarType();
     gep_type_iterator GTI = gep_type_begin(&I);
     for (auto op = I.op_begin() + 1, opE = I.op_end(); op != opE; ++op, ++GTI)
     {
@@ -371,11 +370,10 @@ alignment_t AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
         {
             auto Field = int_cast<unsigned>((cast<Constant>(*op))->getUniqueInteger().getZExtValue());
             offset = int_cast<alignment_t>(m_DL->getStructLayout(StTy)->getElementOffset(Field));
-            Ty = StTy->getElementType(Field);
         }
         else
         {
-            Ty = GTI.getIndexedType();
+            Type* Ty = GTI.getIndexedType();
             auto multiplier = int_cast<alignment_t>(m_DL->getTypeAllocSize(Ty));
             offset = multiplier * getAlignValue(*op);
         }

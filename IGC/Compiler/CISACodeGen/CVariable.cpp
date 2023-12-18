@@ -140,16 +140,19 @@ CVariable::CVariable(
     uint64_t immediate, VISA_Type type, uint16_t nbElem, bool undef) :
     m_immediateValue(immediate),
     m_alias(nullptr),
+    m_aliasOffset(0),
     m_nbElement(nbElem),
     m_numberOfInstance(1),
     m_type(type),
     m_varType(EVARTYPE_GENERAL),
+    m_align(),
     m_uniform(WIBaseClass::UNIFORM_GLOBAL),
     m_isImmediate(true),
     m_subspanUse(false),
     m_uniformVector(false),
     m_undef(undef),
-    m_isUnpacked(false)
+    m_isUnpacked(false),
+    m_llvmName()
 {
     visaGenVariable[0] = visaGenVariable[1] = nullptr;
 }

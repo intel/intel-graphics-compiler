@@ -773,7 +773,8 @@ public:
     void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
     SBasicBlock* getCurrentBlock() const {
-        return m_currentBlock < 0 ? nullptr : &(m_pattern->m_blocks[m_currentBlock]);
+        // if m_currentBlock is not set to initial value then return current block
+        return m_currentBlock == UINT32_MAX ? nullptr : &(m_pattern->m_blocks[m_currentBlock]);
     }
 
     CodeGenContext* m_pCtx = nullptr;
@@ -805,7 +806,7 @@ public:
     inline void ContextSwitchShaderBody(bool last = true);
 
 private:
-    uint m_labelForDMaskJmp;
+    uint m_labelForDMaskJmp = 0xffffffff;
 
     llvm::DenseMap<llvm::Instruction*, bool> instrMap;
 
@@ -845,7 +846,7 @@ private:
     ERoundingMode m_roundingMode_FP;
     ERoundingMode m_roundingMode_FPCvtInt;
 
-    uint m_currentBlock = (uint) -1;
+    uint m_currentBlock = UINT32_MAX;
 
     bool m_currFuncHasSubroutine = false;
 

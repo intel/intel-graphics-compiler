@@ -746,7 +746,7 @@ static void ParseHashRange(llvm::StringRef line, std::vector<HashRange>& ranges)
         StringRef start = token.substr(0, dash);
         StringRef end = (dash == StringRef::npos) ?
             start : token.substr(dash + 1);
-        HashRange range;
+        HashRange range = {};
         range.start = parseAsInt(start);
         range.end   = parseAsInt(end);
         range.Ty    = HashType;

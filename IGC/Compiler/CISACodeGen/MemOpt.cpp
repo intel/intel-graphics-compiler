@@ -2621,7 +2621,7 @@ namespace {
         // Caching
         //
         // If true, IGC needs to emulate I64.
-        bool m_hasI64Emu;
+        bool m_hasI64Emu = false;
 
         // All insts that have been combined and will be deleted at the end.
         SmallVector<Instruction*, 16> m_combinedInsts;

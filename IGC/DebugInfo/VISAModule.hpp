@@ -151,7 +151,7 @@ public:
     m_hasLocation = true;
     m_isRegister = true;
     m_locationReg = locationValue;
-    m_vectorNumElements = offsets.size();
+    m_vectorNumElements = m_offsets.size();
     m_pVISAModule = m;
   }
 

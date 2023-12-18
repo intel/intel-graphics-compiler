@@ -54,7 +54,7 @@ namespace IGCMetrics
         bool isEnabled;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         IGC_METRICS::Program oclProgram;
-        IGCLLVM::Module* pModule;
+        IGCLLVM::Module* pModule = nullptr;
         // On end of collecting metrics it will contain binary format of protobuf
         void* pMetricData;
 

@@ -75,8 +75,8 @@ namespace IGC
             VISA_Type blkType;      // type of a block (B, D, Q, etc)
             uint16_t  blkInBytes;   // the block size in bytes
             uint16_t  numBlks;      // the number of blocks
-        } insts[VECMESSAGEINFO_MAX_LEN];
-        uint16_t  numInsts;
+        } insts[VECMESSAGEINFO_MAX_LEN] = {};
+        uint16_t  numInsts = 0;
 
         VectorMessage(EmitPass* emitter);
         VectorMessage(CShader* shader) : Shader(shader) {}

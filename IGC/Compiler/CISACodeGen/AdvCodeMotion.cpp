@@ -690,7 +690,7 @@ namespace {
 // finalizer promoting the intermeidate results into Acc.
 
 class MadLoopSlice : public FunctionPass {
-    LoopInfo* LI;
+    LoopInfo* LI = nullptr;
 
 public:
     static char ID;

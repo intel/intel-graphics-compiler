@@ -850,7 +850,7 @@ unsigned DwarfDebug::getOrCreateSourceID(StringRef FileName, StringRef DirName,
   NamePair += '\0'; // Zero bytes are not allowed in paths.
   NamePair += FileName;
 
-  auto item = SourceIdMap.insert(std::make_pair(NamePair, std::move(SrcId)));
+  auto item = SourceIdMap.insert(std::make_pair(NamePair, SrcId));
   if (!item.second) {
     return item.first->second;
   }

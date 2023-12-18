@@ -264,8 +264,8 @@ namespace IGC
         std::vector<const llvm::Value*> m_changed1;
         std::vector<const llvm::Value*> m_changed2;
         /// ptr to m_changed1, m_changed2
-        std::vector<const llvm::Value*>* m_pChangedOld;
-        std::vector<const llvm::Value*>* m_pChangedNew;
+        std::vector<const llvm::Value*>* m_pChangedOld = {};
+        std::vector<const llvm::Value*>* m_pChangedNew = {};
 
         /// <summary>
         ///  hold the vector-defs that are promoted from an uniform alloca

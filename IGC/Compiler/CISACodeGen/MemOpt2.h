@@ -24,10 +24,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 class MemInstCluster {
-  IGC::CodeGenContext *CTX;
-  const DataLayout *DL;
-  AliasAnalysis *AA;
-  unsigned MaxLiveOutThreshold;
+  IGC::CodeGenContext *CTX = nullptr;
+  const DataLayout *DL = nullptr;
+  AliasAnalysis *AA = nullptr;
+  unsigned MaxLiveOutThreshold = 0;
   llvm::DenseSet<Instruction *> Scheduled;
 
 public:

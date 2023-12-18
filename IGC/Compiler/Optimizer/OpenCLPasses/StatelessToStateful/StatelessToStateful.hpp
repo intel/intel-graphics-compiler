@@ -80,7 +80,7 @@ namespace IGC
             llvm::Value* const ptr;
             llvm::Value* const offset;
         private:
-            unsigned baseArgIndex;
+            unsigned baseArgIndex = 0;
             std::optional<unsigned> statefulAddrSpace;
         };
 
@@ -177,13 +177,13 @@ namespace IGC
         }
 
         TargetAddressing m_targetAddressing;
-        OpenCLProgramContext* m_ctx;
+        OpenCLProgramContext* m_ctx = nullptr;
         ImplicitArgs* m_pImplicitArgs = nullptr;
         KernelArgs* m_pKernelArgs = nullptr;
         ArgInfoMap   m_argsInfo;
         bool m_changed = false;
-        llvm::Function* m_F;
-        llvm::Module* m_Module;
+        llvm::Function* m_F = nullptr;
+        llvm::Module* m_Module = nullptr;
 
         // Map argument index to a vector of instructions that should be promoted to stateful.
         std::map<unsigned int, std::vector<InstructionInfo>> m_promotionMap;

@@ -31,20 +31,14 @@ namespace {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
         }
 
-        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) : ModulePass(ID) {
+        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode)
+            : ModulePass(ID), ctx(_ctx), interval(_interval), mode(_mode), type(STATS_COUNTER_ENUM_TYPE) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
-            ctx = _ctx;
-            interval = _interval;
-            mode = _mode;
-            type = STATS_COUNTER_ENUM_TYPE;
         }
 
-        TimeStatsCounter(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode) : ModulePass(ID) {
+        TimeStatsCounter(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode)
+            : ModulePass(ID), ctx(_ctx), mode(_mode), igcPass(_igcPass), type(STATS_COUNTER_LLVM_PASS) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
-            ctx = _ctx;
-            mode = _mode;
-            igcPass = _igcPass;
-            type = STATS_COUNTER_LLVM_PASS;
         }
 
         bool runOnModule(Module&) override;

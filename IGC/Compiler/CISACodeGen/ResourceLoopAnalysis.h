@@ -81,8 +81,8 @@ namespace IGC {
     // recording state for loop emission
     ResourceDescriptor resource;
     SamplerDescriptor sampler;
-    CVariable *flag;
-    uint32_t label;
+    CVariable *flag = nullptr;
+    uint32_t label = 0;
   };
 
   llvm::FunctionPass *createResourceLoopAnalysisPass();

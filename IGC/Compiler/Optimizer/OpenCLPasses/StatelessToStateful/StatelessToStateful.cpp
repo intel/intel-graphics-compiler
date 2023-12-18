@@ -270,7 +270,6 @@ bool StatelessToStateful::getOffsetFromGEP(
 
         IGC_ASSERT_MESSAGE(PtrTy, "Only accept scalar pointer!");
 
-        Type* Ty = PtrTy;
         gep_type_iterator GTI = gep_type_begin(GEP);
         for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI)
         {
@@ -287,11 +286,10 @@ bool StatelessToStateful::getOffsetFromGEP(
                     PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", GEP);
                     cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
                 }
-                Ty = StTy->getElementType(Field);
             }
             else
             {
-                Ty = GTI.getIndexedType();
+                Type* Ty = GTI.getIndexedType();
                 if (const ConstantInt * CI = dyn_cast<ConstantInt>(Idx))
                 {
                     if (!CI->isZero())

@@ -88,6 +88,9 @@ namespace IGC
         }
 
         RegUse& operator = (const RegUse& rhs) {
+            if (this == &rhs) {
+                return *this;
+            }
             rClass = rhs.rClass;
             nregs_simd16 = rhs.nregs_simd16;
             uniformInBytes = rhs.uniformInBytes;
