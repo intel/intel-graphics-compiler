@@ -717,6 +717,16 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4
     return as_int4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
 }
 
+short4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rshort4(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float4 dx, float4 dy)
+{
+    return convert_short4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rint4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
+char4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rchar4(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float4 dx, float4 dy)
+{
+    return convert_char4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rint4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_v2f32_v2f32, _Rfloat4)(
     __spirv_SampledImage_2D SampledImage,
     float4 Coordinate,
@@ -881,6 +891,158 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
 
     return __builtin_IB_OCL_2darr_sample_d(image_id, sampler_id, Coordinate, dx, dy);
 }
+
+// Image Read SYCL Bindless Sampled (non-mipmap)
+
+#define DefaultImageOperands 2
+#define DefaultLod 0.f
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, RET_TYPE, LOAD_TYPE, COORD_DIM, CONVERT)                                                         \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                         \
+    return CONVERT##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                \
+}                                                                                                                                                         \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands)            \
+{                                                                                                                                                         \
+    return __spirv_ImageRead_R##RET_TYPE##4(Image, Coordinate, ImageOperands, DefaultLod);                                                                \
+}                                                                                                                                                         \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                               \
+{                                                                                                                                                         \
+    return __spirv_ImageRead_R##RET_TYPE##4(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                         \
+}                                                                                                                                                         \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                         \
+    return CONVERT##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xy);                                             \
+}                                                                                                                                                         \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands)            \
+{                                                                                                                                                         \
+    return __spirv_ImageRead_R##RET_TYPE##2(Image, Coordinate, ImageOperands, DefaultLod);                                                                \
+}                                                                                                                                                         \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                               \
+{                                                                                                                                                         \
+    return __spirv_ImageRead_R##RET_TYPE##2(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                         \
+}                                                                                                                                                         \
+RET_TYPE OVERLOADABLE __spirv_ImageRead_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod)       \
+{                                                                                                                                                         \
+    return CONVERT(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).x);                                                 \
+}                                                                                                                                                         \
+RET_TYPE OVERLOADABLE __spirv_ImageRead_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands)                  \
+{                                                                                                                                                         \
+    return __spirv_ImageRead_R##RET_TYPE(Image, Coordinate, ImageOperands, DefaultLod);                                                                   \
+}                                                                                                                                                         \
+RET_TYPE OVERLOADABLE __spirv_ImageRead_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                                     \
+{                                                                                                                                                         \
+    return __spirv_ImageRead_R##RET_TYPE(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                            \
+}
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, RET_TYPE, LOAD_TYPE, COORD_DIM, CONVERT)                                                                                      \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float##COORD_DIM dx, float##COORD_DIM dy) \
+{                                                                                                                                                                                        \
+    return CONVERT##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, dx, dy));                                                                            \
+}                                                                                                                                                                                        \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageRead_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float##COORD_DIM dx, float##COORD_DIM dy) \
+{                                                                                                                                                                                        \
+    return CONVERT##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, dx, dy).xy);                                                                         \
+}                                                                                                                                                                                        \
+RET_TYPE OVERLOADABLE __spirv_ImageRead_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float##COORD_DIM dx, float##COORD_DIM dy)       \
+{                                                                                                                                                                                        \
+    return CONVERT(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, dx, dy).x);                                                                             \
+}
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD(DIM, COORD_DIM)                           \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, char, int4, COORD_DIM, convert_char)      \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, short, int4, COORD_DIM, convert_short)    \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, int, int4, COORD_DIM, convert_int)        \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, uchar, uint4, COORD_DIM, convert_uchar)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, ushort, uint4, COORD_DIM, convert_ushort) \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, uint, uint4, COORD_DIM, convert_uint)     \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, float, float4, COORD_DIM, convert_float)
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY(DIM, COORD_DIM)                           \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, char, int4, COORD_DIM, convert_char)      \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, short, int4, COORD_DIM, convert_short)    \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, int, int4, COORD_DIM, convert_int)        \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, uchar, uint4, COORD_DIM, convert_uchar)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, ushort, uint4, COORD_DIM, convert_ushort) \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, uint, uint4, COORD_DIM, convert_uint)     \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, float, float4, COORD_DIM, convert_float)
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_HALF(DIM, COORD_DIM)                   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_TY(DIM, half, half4, COORD_DIM, convert_half)
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_HALF(DIM, COORD_DIM)                  \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_TY(DIM, half, half4, COORD_DIM, convert_half)
+
+#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD(3, 4)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD(1,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY(1,  )
+
+#ifdef cl_khr_fp16
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_HALF(3, 4)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_HALF(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_LOD_HALF(1,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_HALF(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_READ_DX_DY_HALF(1,  )
+#endif // cl_khr_fp16
+#endif // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, COORD_DIM, TY)                                                                                \
+TY##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##TY##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                          \
+    return __spirv_ImageRead_R##TY##2(Image, Coordinate, ImageOperands, Lod);                                                                              \
+}                                                                                                                                                          \
+TY OVERLOADABLE __spirv_ImageSampleExplicitLod_R##TY(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod)       \
+{                                                                                                                                                          \
+    return __spirv_ImageRead_R##TY(Image, Coordinate, ImageOperands, Lod);                                                                                 \
+}
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(DIM, COORD_DIM)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, COORD_DIM, int)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, COORD_DIM, uint)  \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, COORD_DIM, float) \
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, TY)                                                                            \
+TY##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##TY##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                          \
+    return __spirv_ImageRead_R##TY##4(Image, Coordinate, ImageOperands, Lod);                                                                              \
+}                                                                                                                                                          \
+TY##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##TY##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                          \
+    return __spirv_ImageRead_R##TY##2(Image, Coordinate, ImageOperands, Lod);                                                                              \
+}                                                                                                                                                          \
+TY OVERLOADABLE __spirv_ImageSampleExplicitLod_R##TY(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod)       \
+{                                                                                                                                                          \
+    return __spirv_ImageRead_R##TY(Image, Coordinate, ImageOperands, Lod);                                                                                 \
+}
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(DIM, COORD_DIM)    \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, char)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, uchar)  \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, short)  \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, ushort)
+
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(DIM, COORD_DIM) \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, COORD_DIM, half)
+
+#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(1,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(3, 4)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(1,  )
+
+#ifdef cl_khr_fp16
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(3, 4)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(2, 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(1,  )
+#endif // cl_khr_fp16
+#endif // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+
+#undef DefaultImageOperands
+#undef DefaultLod
 
 // Image Read
 
@@ -1133,6 +1295,90 @@ DEF_HALF_IMAGE_READ(1d_array_ro, int2, v2i32)
 DEF_HALF_IMAGE_READ(1d_array_rw, int2, v2i32)
 
 #endif // cl_khr_fp16
+
+// Image Read SYCL Bindless Unsampled
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_TY(DIM, ACC_QUAL, COORD_DIM, TY)                                                   \
+TY OVERLOADABLE __spirv_ImageRead_R##TY(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate)                          \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY##4(Image, Coordinate).x;                                                                       \
+}                                                                                                                                 \
+TY OVERLOADABLE __spirv_ImageRead_R##TY(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands)       \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY(Image, Coordinate);                                                                            \
+}                                                                                                                                 \
+TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate)                    \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY##4(Image, Coordinate).xy;                                                                      \
+}                                                                                                                                 \
+TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY##2(Image, Coordinate);                                                                         \
+}
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(DIM, ACC_QUAL, COORD_DIM)   \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_TY(DIM, ACC_QUAL, COORD_DIM, int  ) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_TY(DIM, ACC_QUAL, COORD_DIM, uint ) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_TY(DIM, ACC_QUAL, COORD_DIM, float)
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(DIM, ACC_QUAL, COORD_DIM) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_TY(DIM, ACC_QUAL, COORD_DIM, half  )   \
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_S_C(DIM, ACC_QUAL, COORD_DIM, TY, UNSIGNED)                                        \
+TY OVERLOADABLE __spirv_ImageRead_R##TY(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate)                          \
+{                                                                                                                                 \
+    return convert_##TY(__spirv_ImageRead_R##UNSIGNED##int(Image, Coordinate));                                                   \
+}                                                                                                                                 \
+TY OVERLOADABLE __spirv_ImageRead_R##TY(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands)       \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY(Image, Coordinate);                                                                            \
+}                                                                                                                                 \
+TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate)                    \
+{                                                                                                                                 \
+    return convert_##TY##2(__spirv_ImageRead_R##UNSIGNED##int2(Image, Coordinate));                                               \
+}                                                                                                                                 \
+TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY##2(Image, Coordinate);                                                                         \
+}                                                                                                                                 \
+TY##4 OVERLOADABLE __spirv_ImageRead_R##TY##4(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate)                    \
+{                                                                                                                                 \
+    return convert_##TY##4(__spirv_ImageRead_R##UNSIGNED##int4(Image, Coordinate));                                               \
+}                                                                                                                                 \
+TY##4 OVERLOADABLE __spirv_ImageRead_R##TY##4(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
+{                                                                                                                                 \
+    return __spirv_ImageRead_R##TY##4(Image, Coordinate);                                                                         \
+}
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(DIM, ACC_QUAL, COORD_DIM)     \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_S_C(DIM, ACC_QUAL, COORD_DIM, short,   ) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_S_C(DIM, ACC_QUAL, COORD_DIM, ushort, u) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_S_C(DIM, ACC_QUAL, COORD_DIM, char,    ) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_S_C(DIM, ACC_QUAL, COORD_DIM, uchar,  u)
+
+#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(1, ro,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(1, rw,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(2, ro, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(2, rw, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(3, ro, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(3, rw, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(1, ro,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(1, rw,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(2, ro, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(2, rw, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(3, ro, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_SC(3, rw, 4)
+
+#ifdef cl_khr_fp16
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(1, ro,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(1, rw,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(2, ro, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(2, rw, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(3, ro, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ_HALF(3, rw, 4)
+#endif // cl_khr_fp16
+#endif // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 
 // Image Read MSAA
 
@@ -1444,6 +1690,90 @@ DEF_HALF_IMAGE_WRITE(1d_buffer_rw, int, i32)
 DEF_HALF_IMAGE_WRITE(1d_array_wo, int2, v2i32)
 DEF_HALF_IMAGE_WRITE(1d_array_rw, int2, v2i32)
 #endif // cl_khr_fp16
+
+// Image Write SYCL Bindless Unsampled
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ACC_QUAL, COORD_DIM, TY)                                                      \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color)                       \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, (TY##4)(color, (TY)0, (TY)0, (TY)1));                                                       \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color, int ImageOperands)    \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, color);                                                                                     \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color)                    \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, (TY##4)(color, (TY)0, (TY)1));                                                              \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, color);                                                                                     \
+}
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(DIM, ACC_QUAL, COORD_DIM)   \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ACC_QUAL, COORD_DIM, int)   \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ACC_QUAL, COORD_DIM, uint)  \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ACC_QUAL, COORD_DIM, float)
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(DIM, ACC_QUAL, COORD_DIM) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ACC_QUAL, COORD_DIM, half)
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_S_C(DIM, ACC_QUAL, COORD_DIM, TY, UNSIGNED)                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color)                       \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, (UNSIGNED##int4)(convert_##UNSIGNED##int(color), 0, 0, 1));                                 \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color, int ImageOperands)    \
+{                                                                                                                                     \
+    return __spirv_ImageWrite(Image, Coordinate, color);                                                                              \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color)                    \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, (UNSIGNED##int4)(convert_##UNSIGNED##int2(color), 0, 1));                                   \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
+{                                                                                                                                     \
+    return __spirv_ImageWrite(Image, Coordinate, color);                                                                              \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##4 color)                    \
+{                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, convert_##UNSIGNED##int4(color));                                                           \
+}                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##4 color, int ImageOperands) \
+{                                                                                                                                     \
+    return __spirv_ImageWrite(Image, Coordinate, color);                                                                              \
+}
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(DIM, ACC_QUAL, COORD_DIM)     \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_S_C(DIM, ACC_QUAL, COORD_DIM, short,   ) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_S_C(DIM, ACC_QUAL, COORD_DIM, ushort, u) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_S_C(DIM, ACC_QUAL, COORD_DIM, char,    ) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_S_C(DIM, ACC_QUAL, COORD_DIM, uchar,  u)
+
+#if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(1, wo, )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(1, rw, )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(2, wo, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(2, rw, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(3, wo, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(3, rw, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(1, wo,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(1, rw,  )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(2, wo, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(2, rw, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(3, wo, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(3, rw, 4)
+
+#ifdef cl_khr_fp16
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(1, wo, )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(1, rw, )
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(2, wo, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(2, rw, 2)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(3, wo, 4)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(3, rw, 4)
+#endif // cl_khr_fp16
+#endif // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 
 // Image Query
 
