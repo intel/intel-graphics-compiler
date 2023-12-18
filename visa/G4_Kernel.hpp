@@ -215,17 +215,6 @@ public:
     return configs[currentMode].numGRF;
   }
 
-  // Move GRF mode to the smaller GRF available and return the number
-  unsigned moveToSmallerGRF() {
-    for (auto i = currentMode - 1; i >= 0; --i) {
-      if (configs[i].VRTEnable) {
-        currentMode = i;
-        break;
-      }
-    }
-    return configs[currentMode].numGRF;
-  }
-
 private:
   // Parameters associated to a GRF mode
   struct Config {
@@ -691,7 +680,6 @@ public:
   const char *getName() const { return name; }
 
   bool updateKernelToLargerGRF();
-  bool updateKernelToSmallerGRF();
   void updateKernelByRegPressure(unsigned regPressure);
   bool updateKernelFromNumGRFAttr();
 
