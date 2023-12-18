@@ -1245,6 +1245,7 @@ void BinaryEncodingIGA::EmitJSON(int dumpJSON) {
   std::ofstream ofs(jsonFileName, std::ofstream::out);
   FormatOpts fos(*platformModel);
   fos.printJson = true;
+  fos.printJsonVersion = 2; // c.f. iga/IGAJSONv2.md
   IGAKernel->resetIds();
   if (dumpJSON > 1) {
     fos.printInstDefs = true;
