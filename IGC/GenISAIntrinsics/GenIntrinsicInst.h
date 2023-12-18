@@ -46,6 +46,7 @@ See LICENSE.TXT for details.
 
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "usc_gen7_types.h"
 
 namespace llvm {
 /// IntrinsicInst - A useful wrapper class for inspecting calls to intrinsic
