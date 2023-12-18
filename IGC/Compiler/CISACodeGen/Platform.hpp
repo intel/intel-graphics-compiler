@@ -559,7 +559,16 @@ bool supportBfnInstruction() const
 
 bool supportDpasInstruction() const
 {
-    return isProductChildOf(IGFX_XE_HP_SDV) && m_platformInfo.eProductFamily != IGFX_METEORLAKE;
+    return isProductChildOf(IGFX_XE_HP_SDV) && m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
+        !(m_platformInfo.eProductFamily == IGFX_PVC && GFX_IS_VG_CONFIG(m_platformInfo.usDeviceID));
+}
+
+bool supportJointMatrixOCLExtension() const
+{
+    return supportDpasInstruction() ||
+        // SPV_INTEL_joint_matrix extension is partially supported on PVC-VG. Only OpJointMatrixMadINTEL
+        // opcodes are not supported and proper error is emitted in case any of them is used in a kernel.
+        (m_platformInfo.eProductFamily == IGFX_PVC && GFX_IS_VG_CONFIG(m_platformInfo.usDeviceID));
 }
 
 bool hasPackedRestrictedFloatVector() const

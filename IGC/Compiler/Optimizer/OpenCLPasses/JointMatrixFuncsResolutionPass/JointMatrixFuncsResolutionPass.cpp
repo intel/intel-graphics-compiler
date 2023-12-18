@@ -401,7 +401,7 @@ static ParamsCheckResult checkSupportedParams
     if (((1 << operationLayout) & params.layouts) == 0) {
         result |= INVALID_LAYOUT;
     }
-    if (!platform->supportDpasInstruction()) {
+    if (!platform->supportJointMatrixOCLExtension()) {
         result |= INVALID_PLATFORM;
     }
     return static_cast<ParamsCheckResult>(result);
@@ -1097,6 +1097,12 @@ static Function *getMADBuiltin(Module *Mod, unsigned M, unsigned N, unsigned K, 
 }
 
 Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned OperationType) {
+    if (!m_Ctx->platform.supportDpasInstruction())
+    {
+        std::string msg = "OpJointMatrixMadINTEL is not supported on this platform!";
+        m_Ctx->EmitError(msg.c_str(), CI);
+    }
+
     Value *aMatVal = CI->getArgOperand(0);
     Value *bMatVal = CI->getArgOperand(1);
     Value *cMatVal = CI->getArgOperand(2);
