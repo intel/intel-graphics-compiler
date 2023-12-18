@@ -56,6 +56,7 @@ public:
     XeHPG,
     XeLPG,
     XeHPC,
+    XeHPCVG,
     Invalid,
   };
 

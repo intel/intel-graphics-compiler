@@ -723,6 +723,19 @@ typedef enum __NATIVEGTTYPE
 // ARL
 #define DEV_ID_7D67                             0x7D67
 
+// PVC
+#define DEV_ID_0BD0                            0x0BD0
+#define DEV_ID_0BD4                            0x0BD4
+#define DEV_ID_0BD5                            0x0BD5
+#define DEV_ID_0BD6                            0x0BD6
+#define DEV_ID_0BD7                            0x0BD7
+#define DEV_ID_0BD8                            0x0BD8
+#define DEV_ID_0BD9                            0x0BD9
+#define DEV_ID_0BDA                            0x0BDA
+#define DEV_ID_0BDB                            0x0BDB
+#define DEV_ID_0B69                            0x0B69
+#define DEV_ID_0B6E                            0x0B6E
+
 #define GFX_IS_DG2_G11_CONFIG(d) ( ( d == DEV_ID_56A5 )             ||   \
                                  ( d == DEV_ID_56A6 )             ||   \
                                  ( d == DEV_ID_5693 )             ||   \
@@ -757,5 +770,16 @@ typedef enum __NATIVEGTTYPE
                                       ( d == DEV_ID_56B3 ))
 
 #define GFX_IS_ARL_S(d)  ( ( d == DEV_ID_7D67 ) )
+
+#define GFX_IS_XT_CONFIG(d) ((d == DEV_ID_0BD5) || \
+                             (d == DEV_ID_0BD6) || \
+                             (d == DEV_ID_0BD7) || \
+                             (d == DEV_ID_0BD8) || \
+                             (d == DEV_ID_0BD9) || \
+                             (d == DEV_ID_0BDA) || \
+                             (d == DEV_ID_0BDB) || \
+                             (d == DEV_ID_0B69) || \
+                             (d == DEV_ID_0B6E))
+#define GFX_IS_VG_CONFIG(d) ((d == DEV_ID_0BD4))
 
 #endif

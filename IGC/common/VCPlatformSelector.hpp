@@ -83,6 +83,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     return "dg2";
   case IGFX_PVC:
     RevId &= cmc::ComputeTileMaskPVC;
+    if (GFX_IS_VG_CONFIG(DeviceId))
+      return "pvc-vg";
     if (RevId <= 1)
       return "pvc-sdv";
     if (RevId == 3)

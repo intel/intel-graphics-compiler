@@ -421,6 +421,32 @@ def : Proc<"XeHPC", [
   FeatureThreadPayloadInMemory,
 ]>;
 
+def : Proc<"XeHPCVG", [
+  FeatureFP64,
+  FeatureGRFByteSize64,
+  FeatureHas8ThreadsPerEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasLargeGRF,
+  FeatureHasMadSimd32,
+  FeatureHasNamedBarriers,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectGRFCrossing,
+  FeatureInstr64BitRotate,
+  FeatureInstrAdd64,
+  FeatureInstrGlobalAtomicAddF64,
+  FeatureInstrLocalIntegerCas64,
+  FeatureLSCMaxWidth32,
+  FeatureLongLong,
+  FeaturePartialI64Emulation,
+  FeatureSLM128K,
+  FeatureSwitchjmp,
+  FeatureThreadPayloadInMemory,
+]>;
+
 def GenX : Target {
   // Nothing here (yet?)
 }
