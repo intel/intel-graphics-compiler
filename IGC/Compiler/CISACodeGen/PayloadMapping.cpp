@@ -531,17 +531,33 @@ uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst* inst
     //find a way to unify this, so not to cause sudden troubles if it is
     //modified there
 
-    uint size = 0;
-    if (llvm::isa<llvm::ConstantInt>(inst->getOperand(1)))
+    auto GetSize = [](auto inst) -> uint
     {
-        uint mask = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-        size = iSTD::bsr(mask) + 1;
-    }
-    else
-    {
-        // All 4 elements will be send - we don't know which are masked out.
-        size = 4;
-    }
+        uint size = 0u;
+        llvm::Value* maskVal = inst->getMask();
+        if (llvm::isa<llvm::ConstantInt>(maskVal))
+        {
+            uint mask = static_cast<uint>(llvm::cast<llvm::ConstantInt>(maskVal)->getZExtValue());
+            size = iSTD::bsr(mask) + 1u;
+        }
+        else
+        {
+            // All defined elements will be send - we don't know which are masked out.
+            constexpr uint numVals = std::remove_pointer_t<decltype(inst)>::scNumVals;
+            for (uint i = 0; i < numVals; i++)
+            {
+                if (llvm::isa<llvm::UndefValue>(inst->getValue(i)))
+                {
+                    continue;
+                }
+                size = i + 1u;
+            }
+        }
+        return size;
+    };
+
+    uint size = llvm::isa<UrbWriteIntrinsic>(inst) ? GetSize(llvm::cast<UrbWriteIntrinsic>(inst)) :
+        0u;
 
     return size;
 }

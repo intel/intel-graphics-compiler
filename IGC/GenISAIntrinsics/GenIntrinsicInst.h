@@ -854,6 +854,51 @@ public:
 };
 
 
+class UrbWriteIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_URBWrite;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    enum class Argument
+    {
+        Offset,
+        Mask,
+        ValueBeg,
+        Value0 = ValueBeg,
+        Value1,
+        Value2,
+        Value3,
+        Value4,
+        Value5,
+        Value6,
+        Value7,
+        ValueEnd,
+        Count = ValueEnd
+    };
+
+    static constexpr uint32_t scNumVals = static_cast<uint32_t>(Argument::ValueEnd) - static_cast<uint32_t>(Argument::ValueBeg);
+
+    Value* getOffset() const {
+        return getOperand(static_cast<uint32_t>(Argument::Offset));
+    }
+
+    Value* getMask() const {
+        return getOperand(static_cast<uint32_t>(Argument::Mask));
+    }
+
+    Value* getValue(uint32_t index) const {
+        IGC_ASSERT(scNumVals > index);
+        return getOperand(static_cast<uint32_t>(Argument::ValueBeg) + index);
+    }
+};
+
 class SGVIntrinsic : public GenIntrinsicInst {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
