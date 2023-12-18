@@ -291,6 +291,8 @@ DEF_VISA_OPTION(vISA_GRFSpillCodeCleanup, ET_BOOL, "-spillCleanup", UNUSED,
                 true)
 DEF_VISA_OPTION(vISA_SpillSpaceCompression, ET_BOOL, "-nospillcompression",
                 UNUSED, true)
+DEF_VISA_OPTION(vISA_ForceSpillSpaceCompression, ET_BOOL, "-forcespillcompression",
+                UNUSED, false)
 DEF_VISA_OPTION(vISA_ConsiderLoopInfoInRA, ET_BOOL, "-noloopra", UNUSED, true)
 DEF_VISA_OPTION(vISA_ReserveR0, ET_BOOL, "-reserveR0", UNUSED, false)
 DEF_VISA_OPTION(vISA_SpiltLLR, ET_BOOL, "-nosplitllr", UNUSED, true)
