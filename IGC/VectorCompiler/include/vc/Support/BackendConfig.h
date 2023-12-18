@@ -28,8 +28,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/ShaderDump.h"
 #include "vc/Support/ShaderOverride.h"
 
-#include "llvmWrapper/Support/MemoryBuffer.h"
-
 #include "Probe/Assertion.h"
 
 #include "inc/common/sku_wa.h"
@@ -37,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
 #include <llvm/ADT/StringSet.h>
+#include <llvm/Support/MemoryBuffer.h>
 
 #include <limits>
 #include <memory>

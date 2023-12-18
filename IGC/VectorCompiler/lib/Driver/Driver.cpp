@@ -291,17 +291,17 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
       "only 32 and 64 bit pointers are expected");
   GenXBackendData BackendData;
   BackendData.BiFModule[BiFKind::OCLGeneric] =
-      IGCLLVM::makeMemoryBufferRef(*Data.OCLGenericBIFModule);
+      llvm::MemoryBufferRef{*Data.OCLGenericBIFModule};
   BackendData.BiFModule[BiFKind::VCBuiltins] =
-      IGCLLVM::makeMemoryBufferRef(*Data.VCBuiltinsBIFModule);
+      llvm::MemoryBufferRef{*Data.VCBuiltinsBIFModule};
   BackendData.BiFModule[BiFKind::VCSPIRVBuiltins] =
-      IGCLLVM::makeMemoryBufferRef(*Data.VCSPIRVBuiltinsBIFModule);
+      llvm::MemoryBufferRef{*Data.VCSPIRVBuiltinsBIFModule};
   if (PointerSizeInBits == 64)
     BackendData.BiFModule[BiFKind::VCPrintf] =
-        IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf64BIFModule);
+        llvm::MemoryBufferRef{*Data.VCPrintf64BIFModule};
   else
     BackendData.BiFModule[BiFKind::VCPrintf] =
-        IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf32BIFModule);
+        llvm::MemoryBufferRef{*Data.VCPrintf32BIFModule};
 
   BackendData.VISALTOStrings = Data.VISALTOStrings;
   for(auto& FName : Data.DirectCallFunctions) {

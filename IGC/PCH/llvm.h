@@ -238,7 +238,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/FileSystem.h"
 #include "llvmWrapper/Support/MathExtras.h"
-#include "llvmWrapper/Support/MemoryBuffer.h"
 #include "llvmWrapper/Support/Regex.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -296,7 +295,6 @@ SPDX-License-Identifier: MIT
 // #include "llvm/MC/MCValue.h" - uses llvmWrapper
 // #include "llvm/Option/OptTable.h" - uses llvmWrapper
 // #include "llvm/Support/FileSystem.h" - uses llvmWrapper
-// #include "llvm/Support/MemoryBuffer.h" - uses llvmWrapper
 // #include "llvm/Support/PluginLoader.h" - custom defines
 // #include "llvm/Support/Regex.h" - uses llvmWrapper
 // #include "llvm/Support/SystemUtils.h" - uses llvmWrapper
