@@ -1093,15 +1093,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
   if (nextDstOpnd && !nextDstOpnd->isIndirect() && nextDstOpnd->isGreg()) {
     opndSize =
         nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
-    uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
-    dstReg0 = byteAddress / kernel->numEltPerGRF<Type_UB>();
     if (opndSize <= kernel->getGRFSize()) {
       nextInstSimd8 = true;
-    } else {
-      dstReg1 = dstReg0 +
-                (opndSize + kernel->numEltPerGRF<Type_UB>() - 1) /
-                    kernel->numEltPerGRF<Type_UB>() -
-                1;
     }
   }
 

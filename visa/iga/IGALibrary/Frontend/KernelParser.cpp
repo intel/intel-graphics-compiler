@@ -753,20 +753,20 @@ class KernelParser : GenParser {
   Type m_defaultRegisterType;
 
   // instruction state
-  const OpSpec *m_opSpec;
-  bool m_hasWrEn;
-  Type m_unifType;
-  const Token *m_unifTypeTk;
+  const OpSpec *m_opSpec = nullptr;
+  bool m_hasWrEn = false;
+  Type m_unifType = {};
+  const Token *m_unifTypeTk = nullptr;
   RegRef m_flagReg;
-  ExecSize m_execSize;
-  ChannelOffset m_chOff;
+  ExecSize m_execSize = {};
+  ChannelOffset m_chOff = {};
   Loc m_execSizeLoc;
   Loc m_mnemonicLoc;
-  Operand::Kind m_srcKinds[3];
+  Operand::Kind m_srcKinds[3] = {};
   Loc m_srcLocs[3];
   int m_sendSrcLens[2];    // send message lengths
   Loc m_sendSrcLenLocs[2]; // locations so we can referee
-  bool m_implicitExBSO;    // send src1 suffixed with length implies exBSO, but
+  bool m_implicitExBSO = false;    // send src1 suffixed with length implies exBSO, but
                            // ensure the inst opt is given
 
 private:

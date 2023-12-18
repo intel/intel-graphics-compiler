@@ -1656,10 +1656,10 @@ public:
   //  where 'copyExecSize' will be 8 and batchExSize = 4.
   //
   struct PayloadSource {
-    G4_SrcRegRegion *opnd;
-    uint32_t numElts; // 'opnd's size in msg payload
-    G4_InstOpts instOpt;
-    G4_ExecSize copyExecSize; // used for copy if given.
+    G4_SrcRegRegion *opnd = nullptr;
+    uint32_t numElts = 0; // 'opnd's size in msg payload
+    G4_InstOpts instOpt = {};
+    G4_ExecSize copyExecSize = {}; // used for copy if given.
 
     PayloadSource() : copyExecSize(g4::SIMD_UNDEFINED) {}
   };

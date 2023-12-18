@@ -504,7 +504,6 @@ void InstSplitPass::computeDstBounds(G4_DstRegRegion *dstRegion,
       unsigned totalBytes =
           (dstRegion->getInst()->getExecSize() - 1) * s_size + typeSize;
       rightBound = leftBound + totalBytes - 1;
-      dstRegion->getHorzStride();
     } else {
       rightBound = leftBound + TypeSize(ADDR_REG_TYPE) - 1;
     }

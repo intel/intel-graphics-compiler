@@ -44,7 +44,7 @@ class SpillManager {
   // The number of flag spill load inserted.
   unsigned numFlagSpillLoad;
 
-  unsigned int currCISAOffset;
+  unsigned int currCISAOffset = 0;
 
   // store spilled operands that dont need RMW for spills
   std::unordered_set<G4_Operand *> noRMWNeeded;

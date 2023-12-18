@@ -56,6 +56,9 @@ public:
   }
 
   BitSet<I> &operator=(const BitSet<I> &rhs) {
+    if (this == &rhs) {
+      return *this;
+    }
     if (rhs.N != N) {
       // resize
       if (words)

@@ -477,7 +477,7 @@ class BB_Scheduler {
 
   // The most recent schedule result.
   std::vector<G4_INST *> schedule;
-  unsigned CycleEstimation;
+  unsigned CycleEstimation = 0;
   // save the original list before any scheduling
   INST_LIST OrigInstList;
 

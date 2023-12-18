@@ -274,6 +274,9 @@ public:
   }
 
   BitSet &operator=(BitSet &&other) noexcept {
+    if (this == &other) {
+          return *this;
+    }
     if (m_BitSetArray) {
       std::free(m_BitSetArray);
     }

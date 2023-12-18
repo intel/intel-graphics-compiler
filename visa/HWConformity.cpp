@@ -1232,8 +1232,6 @@ void HWConformity::fixOpnds(INST_LIST_ITER it, G4_BB *bb, G4_Type &exType) {
         inst->swapSrc(0, 1);
         inst->swapDefUse();
       }
-      src0 = inst->getSrc(0);
-      src1 = inst->getSrc(1);
     }
   }
 

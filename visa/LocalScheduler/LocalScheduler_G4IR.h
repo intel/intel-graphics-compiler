@@ -360,7 +360,7 @@ public:
 
 private:
   G4_Kernel &kernel;
-  RPE *rpe;
+  RPE *rpe = nullptr;
   Options *m_options;
 };
 

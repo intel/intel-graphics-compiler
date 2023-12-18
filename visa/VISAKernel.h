@@ -59,7 +59,8 @@ public:
   VISAKernelImpl(enum VISA_BUILD_TYPE type, CISA_IR_Builder *cisaBuilder,
                  const char *name, unsigned int funcId)
       : m_mem(4096), m_CISABuilder(cisaBuilder),
-        m_options(cisaBuilder->getOptions()), m_functionId(funcId) {
+        m_options(cisaBuilder->getOptions()), m_functionId(funcId),
+        m_fastPathOpndPool() {
     mBuildOption = m_CISABuilder->getBuilderOption();
     m_magic_number = COMMON_ISA_MAGIC_NUM;
     m_major_version = m_CISABuilder->getMajorVersion();
