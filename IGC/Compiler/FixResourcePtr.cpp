@@ -224,7 +224,7 @@ Value* FixResourcePtr::GetByteOffset(Instruction* eltPtr)
         }
         else if (eltSize.isPowerOf2())
         {
-            APInt shift = APInt(32, eltSize.logBase2());
+            APInt shift = APInt(eltIdx->getType()->getScalarSizeInBits(), eltSize.logBase2());
             offsetValue = builder->CreateShl(eltIdx, shift);
         }
         else
