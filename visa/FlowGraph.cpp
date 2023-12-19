@@ -633,8 +633,10 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
   //vISA_ASSERT(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
   setCurrentDebugPass("CFG");
   VISA_DEBUG(std::cout << "Entering CFG construction\n");
-
-  if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls)) {
+  bool scratchUse = (
+    getKernel()->getKernelAttrs()->getInt32KernelAttr(Attributes::ATTR_SpillMemOffset) > 0);
+  // Why should we and with (isStackCallFunc || hasStackCalls)?
+  if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls || scratchUse)) {
     // unfortunately we can't put this in stack call prolog since this has to be
     // done before RA ToDo: just hard-wire the scratch-surface offset register?
     builder->initScratchSurfaceOffset();
