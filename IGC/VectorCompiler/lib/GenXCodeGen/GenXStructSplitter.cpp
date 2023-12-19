@@ -1369,7 +1369,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
   // Generates new indices path till PlainTyIdx.
   std::for_each(IdxPath.begin(), IdxPath.begin() + PlainTyIdx,
                 [&PlainType, &LocalIdxPath, this](auto &&Elem) {
-                  auto [Ty, Idx, V] = Elem;
+                  auto [Ty, Idx, V] = std::move(Elem);
                   StructType *STy = cast<StructType>(Ty);
                   const ListOfSplitElements &ListOfPossibleTypes =
                       Graph.getElementsListOfSTyAtIdx(*STy, Idx);
