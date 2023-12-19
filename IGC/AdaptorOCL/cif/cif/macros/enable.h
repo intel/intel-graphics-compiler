@@ -39,6 +39,9 @@ SPDX-License-Identifier: MIT
         template<typename ... ArgsT>                               \
         NAME(ArgsT &&... args);                                    \
         NAME(Impl * pImpl);                                        \
+        NAME(const NAME&) = delete;                                \
+        NAME& operator=(const NAME&) = delete;                     \
+        NAME& operator=(NAME&&) = delete;                          \
     };                                                             \
     using NAME##Base = NAME<CIF::BaseVersion>;
 
@@ -62,6 +65,9 @@ SPDX-License-Identifier: MIT
         template<typename ... ArgsT>                               \
         NAME(ArgsT &&... args);                                    \
         NAME(Impl * pImpl);                                        \
+        NAME(const NAME&) = delete;                                \
+        NAME& operator=(const NAME&) = delete;                     \
+        NAME& operator=(NAME&&) = delete;                          \
     };                                                             \
     using NAME##Base = NAME<CIF::BaseVersion>;
 

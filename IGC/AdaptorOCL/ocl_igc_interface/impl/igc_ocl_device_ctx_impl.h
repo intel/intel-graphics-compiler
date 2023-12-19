@@ -127,23 +127,30 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
 
     const IGC::CPlatform & GetIgcCPlatform()
     {
+        // "fast path" where we return initialized igcPlatform without a lock
         if(igcPlatform.get() != nullptr)
         {
             return *igcPlatform;
         }
 
+        // acquire a lock to if igcPlatform is uninitialized
         std::lock_guard<std::mutex> lock{this->mutex};
 
+        // check if other thread initialized igcPlatform first
         if(igcPlatform.get() != nullptr)
         {
             return *igcPlatform;
         }
 
-        igcPlatform.reset(new IGC::CPlatform(platform->p));
-        igcPlatform->SetGTSystemInfo(gtSystemInfo->gsi);
-        igcPlatform->setOclCaps(igcFeaturesAndWorkarounds->OCLCaps);
-        IGC::SetWorkaroundTable(&igcFeaturesAndWorkarounds->FeTable, igcPlatform.get());
-        IGC::SetCompilerCaps(&igcFeaturesAndWorkarounds->FeTable, igcPlatform.get());
+        // construct fully initialized CPlatform object
+        IGC::CPlatform *new_platform = new IGC::CPlatform(platform->p);
+        new_platform->SetGTSystemInfo(gtSystemInfo->gsi);
+        new_platform->setOclCaps(igcFeaturesAndWorkarounds->OCLCaps);
+        IGC::SetWorkaroundTable(&igcFeaturesAndWorkarounds->FeTable, new_platform);
+        IGC::SetCompilerCaps(&igcFeaturesAndWorkarounds->FeTable, new_platform);
+        // assign new_platform to igcPlatform after a full initialization
+        // is finished to avoid race conditions
+        igcPlatform.reset(new_platform);
         return *igcPlatform;
     }
 

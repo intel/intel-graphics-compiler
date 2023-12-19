@@ -598,6 +598,7 @@ inline int CreateAppOutputDir(
                 {
                     pathBuf[0] = '\0';
                     free(path);
+                    free(outputDirectoryCopy);
                     return ret;
                 }
             }
@@ -607,6 +608,7 @@ inline int CreateAppOutputDir(
                 {
                     pathBuf[0]= '\0';
                     free(path);
+                    free(outputDirectoryCopy);
                     return ret;
                 }
             }
@@ -630,6 +632,7 @@ inline int CreateAppOutputDir(
     }
 
     free(path);
+    free(outputDirectoryCopy);
 #endif //#elif !defined(_WIN32)
     return ret;
 }

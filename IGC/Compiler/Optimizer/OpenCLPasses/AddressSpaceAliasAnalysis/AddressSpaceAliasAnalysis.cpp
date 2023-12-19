@@ -30,6 +30,10 @@ namespace {
         AddressSpaceAAResult(AddressSpaceAAResult&& Arg)
             : AAResultBase(std::move(Arg)), TLI(Arg.TLI), CGC(Arg.CGC) {}
 
+        AddressSpaceAAResult(const AddressSpaceAAResult&) = delete;
+        AddressSpaceAAResult& operator=(const AddressSpaceAAResult&) = delete;
+        AddressSpaceAAResult& operator=(AddressSpaceAAResult&&) = delete;
+
         IGCLLVM::AliasResultEnum alias(const MemoryLocation& LocA, const MemoryLocation& LocB
 #if LLVM_VERSION_MAJOR >= 9
             , AAQueryInfo & AAQI

@@ -34,6 +34,9 @@ public:
     RayTracingAddressSpaceAAResult(RayTracingAddressSpaceAAResult&& Arg)
         : llvm::AAResultBase<RayTracingAddressSpaceAAResult>(std::move(Arg)),
           TLI(Arg.TLI), CGC(Arg.CGC), allStateful(checkStateful(Arg.CGC)) {}
+    RayTracingAddressSpaceAAResult(const RayTracingAddressSpaceAAResult&) = delete;
+    RayTracingAddressSpaceAAResult& operator=(const RayTracingAddressSpaceAAResult&) = delete;
+    RayTracingAddressSpaceAAResult& operator=(RayTracingAddressSpaceAAResult&&) = delete;
 
     IGCLLVM::AliasResultEnum alias(
         const llvm::MemoryLocation& LocA, const llvm::MemoryLocation& LocB

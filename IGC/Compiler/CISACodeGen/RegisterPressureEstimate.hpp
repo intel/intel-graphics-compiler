@@ -86,6 +86,7 @@ namespace IGC
             LiveRange() {}
 
             LiveRange(const LiveRange&) = delete;
+            LiveRange& operator=(const LiveRange&) = delete;
 
             /// \brief Shorten a segment.
             void setBegin(unsigned B);

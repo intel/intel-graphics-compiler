@@ -104,6 +104,9 @@ namespace IGC
             clear();
         }
 
+        SymbolicEvaluation(const SymbolicEvaluation&) = delete;
+        SymbolicEvaluation& operator=(const SymbolicEvaluation&) = delete;
+
         // Return a Canonicalized Polynomial Expression.
         SymExpr* getSymExpr(const llvm::Value* V);
 

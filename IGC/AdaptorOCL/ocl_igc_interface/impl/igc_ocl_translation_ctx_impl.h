@@ -124,6 +124,8 @@ public:
     ~IGC_State() {
         isAlive = false;
     }
+    IGC_State(const IGC_State&) = delete;
+    IGC_State& operator=(const IGC_State&) = delete;
     static const bool isDestructed() {
         static const IGC_State obj;
         return !obj.isAlive;

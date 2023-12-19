@@ -26,6 +26,7 @@ CElfWriter::CElfWriter(
     m_dataSize = 0;
     m_numSections = 0;
     m_stringTableSize = 0;
+    m_totalBinarySize = 0;
 }
 
 /******************************************************************************\

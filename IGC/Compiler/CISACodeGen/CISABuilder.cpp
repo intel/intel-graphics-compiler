@@ -7673,6 +7673,7 @@ namespace IGC
         {
         case GenISAIntrinsic::GenISA_vaErode:
             erodeDilateMode = VA_ERODE;
+            [[fallthrough]];
         case GenISAIntrinsic::GenISA_vaDilate:
             V(vKernel->AppendVISAVAErodeDilate(erodeDilateMode, samplerHnd, surfaceOpnd, uOffset, vOffset, execMode, vaOutput));
             break;

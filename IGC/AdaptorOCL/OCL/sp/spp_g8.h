@@ -49,6 +49,8 @@ public:
                                     const CGen8OpenCLStateProcessor::IProgramContext& PI,
                                     const WA_TABLE& WATable);
     virtual ~CGen8OpenCLProgramBase();
+    CGen8OpenCLProgramBase(const CGen8OpenCLProgramBase&) = delete;
+    CGen8OpenCLProgramBase& operator=(const CGen8OpenCLProgramBase&) = delete;
 
     /// GetProgramBinary - getting legacy (Patch token based) binary format
     /// Write program header and the already written patch token info
@@ -100,6 +102,8 @@ public:
     CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext &context);
 
     ~CGen8OpenCLProgram();
+    CGen8OpenCLProgram(const CGen8OpenCLProgram&) = delete;
+    CGen8OpenCLProgram& operator=(const CGen8OpenCLProgram&) = delete;
 
     /// API for getting legacy (Patch token based) binary
     /// CreateKernelBinaries - write patch token information and gen binary to

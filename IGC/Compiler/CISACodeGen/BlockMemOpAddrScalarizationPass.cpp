@@ -290,7 +290,7 @@ bool BlockMemOpAddrScalarizationPass::scalarizeAddrArithmForBlockRdWr(GenIntrins
             }
         }
         // Update instructions list for next check.
-        InstrVector = NewInstrVector;
+        InstrVector = std::move(NewInstrVector);
     }
 
     // Insert broadcast instructions

@@ -43,6 +43,7 @@ namespace IGC {
         CName() : CName(nullptr) { }
 
         CName(const CName &) = default;
+        CName& operator=(const CName&) = default;
 
         CName(const std::string &arg)
 #ifdef IGC_MAP_LLVM_NAMES_TO_VISA

@@ -421,17 +421,17 @@ void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo& annotatio
 
     // add symbols defined in global constant section
     IGC_ASSERT(symbols.globalConst.empty() || mGlobalConstSectID != -1);
-    for (auto sym : symbols.globalConst)
+    for (const auto& sym : symbols.globalConst)
         addSymbol(sym, llvm::ELF::STB_GLOBAL, mGlobalConstSectID);
 
     // add symbols defined in global string constant section
     IGC_ASSERT(symbols.globalStringConst.empty() || mConstStringSectID != -1);
-    for (auto sym : symbols.globalStringConst)
+    for (const auto& sym : symbols.globalStringConst)
         addSymbol(sym, llvm::ELF::STB_GLOBAL, mConstStringSectID);
 
     // add symbols defined in global section, mGlobalSectID may be unallocated
     // at this point if symbols are undef
-    for (auto sym : symbols.global)
+    for (const auto& sym : symbols.global)
         addSymbol(sym, llvm::ELF::STB_GLOBAL, mGlobalSectID);
 }
 
@@ -453,7 +453,7 @@ void ZEBinaryBuilder::addKernelSymbols(
         annotations.m_kernelProgram);
 
     // add local symbols of this kernel binary
-    for (auto sym : symbols.local) {
+    for (const auto& sym : symbols.local) {
         IGC_ASSERT(sym.s_type != vISA::GenSymType::S_UNDEF);
         addSymbol(sym, llvm::ELF::STB_LOCAL, kernelSectId);
     }
@@ -477,7 +477,7 @@ void ZEBinaryBuilder::addProgramRelocations(const IGC::SOpenCLProgramInfo& annot
         mBuilder.addRelRelocation(reloc.r_offset, reloc.r_symbol, static_cast<zebin::R_TYPE_ZEBIN>(reloc.r_type), mGlobalConstSectID);
 
     IGC_ASSERT(relocs.globalReloc.empty() || mGlobalSectID != -1);
-    for (auto reloc : relocs.globalReloc)
+    for (const auto& reloc : relocs.globalReloc)
         mBuilder.addRelRelocation(reloc.r_offset, reloc.r_symbol, static_cast<zebin::R_TYPE_ZEBIN>(reloc.r_type), mGlobalSectID);
 }
 
@@ -500,7 +500,7 @@ void ZEBinaryBuilder::addKernelRelocations(
     // FIXME: For r_type, zebin::R_TYPE_ZEBIN should have the same enum value as visa::GenRelocType.
     // Take the value directly
     if (!relocs.empty())
-        for (auto reloc : relocs)
+        for (const auto& reloc : relocs)
             mBuilder.addRelRelocation(reloc.r_offset, reloc.r_symbol, (zebin::R_TYPE_ZEBIN)reloc.r_type, targetId);
 }
 
@@ -838,7 +838,7 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
 
                                 // Avoid symbol duplications - check whether a current symbol has been previously added.
                                 bool isSymbolAdded = false;
-                                for (auto zeBinSym : zeBinSymbols)
+                                for (const auto& zeBinSym : zeBinSymbols)
                                 {
                                     if (!zeBinSym.compare(zeSym.s_name))
                                     {

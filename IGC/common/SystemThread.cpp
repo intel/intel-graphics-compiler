@@ -138,10 +138,10 @@ struct Xe2DebugSurfaceLayout
     static constexpr size_t DBG_REG_ELEMENT_SIZE = 4;
     static constexpr size_t DBG_REG_ALIGN = 24;
 
-    
-    // Number of Registers:	3
-    // Elements:	16 or 2
-    // Element Size:	32 bits
+
+    // Number of Registers: 3
+    // Elements:    16 or 2
+    // Element Size:    32 bits
     // fc0.0-fc0.15
     // fc1.0-fc1.15
     // fc2.0 fc2.1, All other encodings like fc2.2 to f2.15 are reserved.
@@ -172,7 +172,7 @@ struct Xe2DebugSurfaceLayout
     uint8_t fc[FC_COUNT * FC_ELEMENTS * FC_ELEMENT_SIZE + FC_ALIGN];
 };
 
-struct StateSaveAreaHeader Xe2SIPCSRDebugBindlessDebugHeader = 
+struct StateSaveAreaHeader Xe2SIPCSRDebugBindlessDebugHeader =
 {
     {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}}, // versionHeader
     {
@@ -926,6 +926,18 @@ bool CSystemThread::CreateSystemThreadKernel(
         {
             pKernelProgram->Delete( pKernelProgram );
             delete pKernelProgram;
+        }
+    }
+    if (!success)
+    {
+        if (pSystemThreadKernelOutput)
+        {
+            IGC::aligned_free(pSystemThreadKernelOutput->m_pKernelProgram);
+            pSystemThreadKernelOutput->m_pKernelProgram = nullptr;
+            IGC::aligned_free(pSystemThreadKernelOutput->m_pStateSaveAreaHeader);
+            pSystemThreadKernelOutput->m_pStateSaveAreaHeader = nullptr;
+            delete pSystemThreadKernelOutput;
+            pSystemThreadKernelOutput = nullptr;
         }
     }
     return success;

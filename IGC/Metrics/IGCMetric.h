@@ -37,6 +37,8 @@ namespace IGCMetrics
     public:
         IGCMetric();
         ~IGCMetric();
+        IGCMetric(const IGCMetric&) = delete;
+        IGCMetric& operator=(const IGCMetric&) = delete;
         bool Enable();
         void Init(ShaderHash* Hash, bool isDebugInfo);
 
