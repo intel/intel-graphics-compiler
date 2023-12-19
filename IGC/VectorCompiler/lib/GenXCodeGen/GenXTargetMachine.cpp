@@ -361,8 +361,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
-    vc::addPass(PM,
-                createGenXVerifyPass(GenXVerifyInvariantSet::PostIrAdaptors));
+    vc::addPass(PM, createGenXVerifyPass(GenXVerifyStage::PostIrAdaptors));
   }
 
   // Run passes to generate vISA.
@@ -486,8 +485,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
-    vc::addPass(PM,
-                createGenXVerifyPass(GenXVerifyInvariantSet::PostGenXLowering));
+    vc::addPass(PM, createGenXVerifyPass(GenXVerifyStage::PostGenXLowering));
   }
 
   /// .. include:: GenXRegionCollapsing.cpp
@@ -504,8 +502,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
-    vc::addPass(PM,
-                createGenXVerifyPass(GenXVerifyInvariantSet::PostGenXLowering));
+    vc::addPass(PM, createGenXVerifyPass(GenXVerifyStage::PostGenXLowering));
   }
 
   /// .. include:: GenXExtractVectorizer.cpp
@@ -554,8 +551,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
-    vc::addPass(
-        PM, createGenXVerifyPass(GenXVerifyInvariantSet::PostGenXLegalization));
+    vc::addPass(PM,
+                createGenXVerifyPass(GenXVerifyStage::PostGenXLegalization));
   }
 
   /// EarlyCSE
@@ -570,8 +567,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
-    vc::addPass(
-        PM, createGenXVerifyPass(GenXVerifyInvariantSet::PostGenXLegalization));
+    vc::addPass(PM,
+                createGenXVerifyPass(GenXVerifyStage::PostGenXLegalization));
   }
 
   /// LICM
@@ -662,8 +659,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
                                                        ".regalloc"));
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
-    vc::addPass(
-        PM, createGenXVerifyPass(GenXVerifyInvariantSet::PostGenXLegalization));
+    vc::addPass(PM,
+                createGenXVerifyPass(GenXVerifyStage::PostGenXLegalization));
   }
 
   /// .. include:: GenXCisaBuilder.cpp
@@ -702,7 +699,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
 #ifndef NDEBUG
-    PM.add(createGenXVerifyPass(GenXVerifyInvariantSet::PostSPIRVReader));
+    PM.add(createGenXVerifyPass(GenXVerifyStage::PostSPIRVReader));
 #endif
     PM.add(createGenXTranslateIntrinsicsPass());
     PM.add(createGenXTranslateSPIRVBuiltinsPass());

@@ -31,15 +31,17 @@ bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Instruction &I,
                         const IsFatal IsFatal_) {
   if (LLVM_LIKELY(Cond))
     return true;
-  if (LLVM_LIKELY(static_cast<bool>(IsFatal_) || OptAllFatal ||
-                  !OptQuietNonFatal))
+  if (IsFatal_ == IsFatal::Yes || OptAllFatal || !OptQuietNonFatal)
     vc::diagnose(I.getContext(),
-                 DbgPrefix + (IsFatal_ == IsFatal::No
-                                  ? " (non-fatal, spec review required)"
-                                  : ""),
+                 DbgPrefix + "[stage:" +
+                     OptStage.getParser().getOption(
+                         static_cast<int>(OptStage.getValue())) +
+                     "]" +
+                     (IsFatal_ == IsFatal::No
+                          ? " (non-fatal, spec review required)"
+                          : ""),
                  Msg, DS_Warning, vc::WarningName::Generic, &I);
-  if ((LLVM_LIKELY(!OptAllFatal) && IsFatal_ == IsFatal::Yes) ||
-      LLVM_UNLIKELY(OptAllFatal)) {
+  if (IsFatal_ == IsFatal::Yes || OptAllFatal) {
     IsBroken = true;
     if (OptTerminationPolicy == Terminate::OnFirstError)
       terminate();
@@ -89,8 +91,7 @@ INITIALIZE_PASS_BEGIN(GenXVerify, "GenXVerify", "GenX IR verification", false,
 INITIALIZE_PASS_END(GenXVerify, "GenXVerify", "GenX IR verification", false,
                     false)
 
-ModulePass *
-llvm::createGenXVerifyPass(GenXVerifyInvariantSet ValidityInvariantsSet) {
+ModulePass *llvm::createGenXVerifyPass(GenXVerifyStage ValidityInvariantsSet) {
   initializeGenXVerifyPass(*PassRegistry::getPassRegistry());
   return new GenXVerify(ValidityInvariantsSet);
 }

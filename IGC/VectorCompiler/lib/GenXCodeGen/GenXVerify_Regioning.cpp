@@ -23,7 +23,7 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
   auto ensureNumEls4_8_16_and_offsetIsAMultipleOf =
       [&](const auto NumElts, const Twine NumEltsArgDesc,
           unsigned OffsetOpndNum) -> void {
-    if (InvariantSet < GenXVerifyInvariantSet::PostGenXLegalization)
+    if (Stage < GenXVerifyStage::PostGenXLegalization)
       return;
     if (!ensure(NumElts == 4 || NumElts == 8 || NumElts == 16,
                 NumEltsArgDesc + " must be 4, 8 or 16", CI))
@@ -234,7 +234,7 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
         "The arg1 subvector must have the same element type as the arg0 vector",
         CI);
 
-    if (InvariantSet >= GenXVerifyInvariantSet::PostIrAdaptors) {
+    if (Stage >= GenXVerifyStage::PostIrAdaptors) {
       if (SrcOpndMaybeVT && DstSrcOpndMaybeVT)
         ensure(SrcOpndMaybeVT->getNumElements() <=
                    DstSrcOpndMaybeVT->getNumElements(),
@@ -244,8 +244,7 @@ void GenXVerify::verifyRegioning(const CallInst &CI,
       // same type as an element of arg0, indicating that the region has one
       // element. (Lowering lowers an insertelement to this type of wrregion.)
       ensure(SrcOpndMaybeVT ||
-                 (InvariantSet >= GenXVerifyInvariantSet::PostGenXLowering &&
-                  Width == 1),
+                 (Stage >= GenXVerifyStage::PostGenXLowering && Width == 1),
              "after genx lowering subregion to write may be a scalar if the "
              "number of elements in "
              "subregion is 1.",

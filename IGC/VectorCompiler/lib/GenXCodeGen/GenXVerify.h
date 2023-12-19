@@ -35,31 +35,21 @@ private:
   static_assert(Terminate::No < Terminate::Yes &&
                 Terminate::Yes < Terminate::OnFirstError);
 
-  static inline cl::opt<GenXVerifyInvariantSet> OptInvSet{
-      "genx-verify-set",
-      cl::desc("Check for this pipeline-dependent invariant set."),
-      cl::init(GenXVerifyInvariantSet::Default_), cl::NotHidden,
+  static inline cl::opt<GenXVerifyStage> OptStage{
+      "genx-verify-stage",
+      cl::desc("Check for this pipeline stage-dependent invariant set."),
+      cl::init(GenXVerifyStage::Default_), cl::NotHidden,
       cl::values(
-          clEnumValN(GenXVerifyInvariantSet::PostSPIRVReader,
-                     "post-spirv-reader",
-                     "Checks valid for early stage of IR acquired right after "
-                     "SPIRV->LLVM translation."),
-          clEnumValN(GenXVerifyInvariantSet::PostIrAdaptors, "post-ir-adaptors",
-                     "Checks valid after IR adaptors run."),
-          clEnumValN(GenXVerifyInvariantSet::PostGenXLowering,
-                     "post-genx-lowering",
-                     "Checks valid after GenXLowering pass."),
-          clEnumValN(GenXVerifyInvariantSet::PostGenXLegalization,
-                     "post-genx-legalization",
-                     "Checks valid after GenXLegalization pass."),
+#define GENX_VERIFY_STAGE(c_, s_, d_) clEnumValN(GenXVerifyStage::c_, s_, d_),
+#include "GenXVerifyStages.inc.h"
+#undef GENX_VERIFY_STAGE
           clEnumValN(
-              GenXVerifyInvariantSet::Default_, "default",
-              "Default checks set (must be a checks set used for the late "
-              "pipeline stages)"))};
+              GenXVerifyStage::Default_, "default",
+              "refers to the verification set for latest pipeline stages"))};
 
   static inline cl::opt<Terminate> OptTerminationPolicy{
       "genx-verify-terminate", cl::desc("Execution termination policy."),
-      cl::init(Terminate::Yes), cl::NotHidden,
+      cl::init(Terminate::No), cl::NotHidden,
       cl::values(
           clEnumValN(Terminate::No, "no",
                      "Do not terminate if error(s) found."),
@@ -80,7 +70,7 @@ private:
   static inline const StringRef DbgPrefix = "GenXVerify";
   LLVMContext *Ctx;
   bool IsBroken = false;
-  GenXVerifyInvariantSet InvariantSet;
+  GenXVerifyStage Stage;
   enum class IsFatal { No = 0, Yes = 1 };
 
   void verifyRegioning(const CallInst &, const unsigned);
@@ -89,8 +79,8 @@ private:
   [[noreturn]] static void terminate();
 
 public:
-  explicit GenXVerify(GenXVerifyInvariantSet IS = OptInvSet)
-      : InvariantSet(IS), ModulePass(ID) {}
+  explicit GenXVerify(GenXVerifyStage Stage_ = OptStage)
+      : Stage(Stage_), ModulePass(ID) {}
   StringRef getPassName() const override;
   void getAnalysisUsage(AnalysisUsage &) const override;
   bool runOnModule(Module &) override;
