@@ -3308,10 +3308,12 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
     }
     const AddressModel AddrModel = lsi0->getAddressModel(m_CGC);
 
-    // Starting from the largest alignment.
+    // Starting from the largest alignment (favor larger alignment)
     const uint32_t bundleAlign[] = { 8, 4, 1 };
     const uint32_t aligns = (int)(sizeof(bundleAlign)/sizeof(bundleAlign[0]));
-    for (int ix = 0; ix < aligns; ++ix)
+    // keep track of the number of unmerged loads
+    uint32_t numRemainingLdSt = SZ;
+    for (int ix = 0; ix < aligns && numRemainingLdSt > 1; ++ix)
     {
         const uint32_t theAlign = bundleAlign[ix];
 
@@ -3447,6 +3449,11 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                     setVisited(tlsi.Inst);
                 }
                 i = e + 1;
+                numRemainingLdSt -= bundle_nelts;
+                if (numRemainingLdSt < 2) {
+                    // No enough loads/stores to merge
+                    break;
+                }
             }
             else {
                 ++i;
