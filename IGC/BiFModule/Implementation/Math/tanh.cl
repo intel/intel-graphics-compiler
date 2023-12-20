@@ -23,7 +23,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(tanh, _f32, )( float x )
     {
         result = SPIRV_OCL_BUILTIN(nan, _i32, )(0);
     }
-    else if(__UseHighAccuracyMath)
+    else if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
         result = __ocl_svml_tanhf_noLUT(x);
     }

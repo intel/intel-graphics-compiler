@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mad, _f32_f32_f32, )( float a, float b, float c )
 {
     // If -cl-mad-enable flag set later optimizations will decide how to combine it into mad
-    if(__MadEnable)
+    if(BIF_FLAG_CTRL_GET(MadEnable))
     {
         return a * b + c;
     }
@@ -29,7 +29,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mad, float, float, f32 )
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(mad, _f64_f64_f64, )( double a, double b, double c )
 {
     // If -cl-mad-enable flag set later optimizations will decide how to combine it into mad
-    if(__MadEnable)
+    if(BIF_FLAG_CTRL_GET(MadEnable))
     {
         return a * b + c;
     }

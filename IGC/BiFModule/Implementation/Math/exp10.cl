@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 
 float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp10, _f32, )( float x )
 {
-    if(__FastRelaxedMath)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
         return SPIRV_OCL_BUILTIN(native_exp10, _f32, )(x);
     }

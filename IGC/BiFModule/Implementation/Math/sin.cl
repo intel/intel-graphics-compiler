@@ -19,13 +19,13 @@ SPDX-License-Identifier: MIT
 
 static INLINE float __intel_sin_f32( float x, bool doFast )
 {
-    if(__FastRelaxedMath && (!__APIRS) && doFast)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
         return SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
     }
     else
     {
-        if(__UseMathWithLUT)
+        if(BIF_FLAG_CTRL_GET(UseMathWithLUT))
         {
             return __ocl_svml_sinf(x);
         }

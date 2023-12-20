@@ -1072,19 +1072,6 @@ void BIImport::removeFunctionBitcasts(Module& M)
 
 void BIImport::InitializeBIFlags(Module& M)
 {
-    auto MD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-    /// @brief  Adds initialization to a global variable according to given value.
-    ///         If the given global variable does not exist, does nothing.
-    auto initializeVarWithValue = [&M](StringRef varName, uint32_t value)
-    {
-        GlobalVariable* gv = M.getGlobalVariable(varName);
-        if (gv == nullptr)
-            return;
-        gv->setInitializer(ConstantInt::get(Type::getInt32Ty(M.getContext()), value));
-    };
-
     /// @brief Set global variable linkage to extrnal. This is needed for
     ///        variables that will become relocations.
     auto makeVarExternal = [&M](StringRef varName)
@@ -1095,60 +1082,7 @@ void BIImport::InitializeBIFlags(Module& M)
         gv->setLinkage(GlobalValue::ExternalLinkage);
     };
 
-    bool isFlushDenormToZero =
-        ((pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-            MD.compOpt.DenormsAreZero);
-    initializeVarWithValue("__FlushDenormals", isFlushDenormToZero ? 1 : 0);
-    initializeVarWithValue("__DashGSpecified", MD.compOpt.DashGSpecified ? 1 : 0);
-    initializeVarWithValue("__FastRelaxedMath", MD.compOpt.RelaxedBuiltins ? 1 : 0);
-    initializeVarWithValue("__MadEnable", MD.compOpt.MadEnable ? 1 : 0);
-    initializeVarWithValue("__OptDisable", MD.compOpt.OptDisable ? 1 : 0);
-    bool isUseMathWithLUTEnabled = false;
-    if (IGC_IS_FLAG_ENABLED(UseMathWithLUT))
-    {
-        isUseMathWithLUTEnabled = true;
-    }
-    initializeVarWithValue("__UseMathWithLUT", isUseMathWithLUTEnabled ? 1 : 0);
-    initializeVarWithValue("__UseNativeFP32GlobalAtomicAdd", pCtx->platform.hasFP32GlobalAtomicAdd() ? 1 : 0);
-    initializeVarWithValue("__UseNativeFP16AtomicMinMax", pCtx->platform.hasFP16AtomicMinMax() ? 1 : 0);
-    initializeVarWithValue("__HasInt64SLMAtomicCAS", pCtx->platform.hasInt64SLMAtomicCAS() ? 1 : 0);
-    initializeVarWithValue("__UseNativeFP64GlobalAtomicAdd", pCtx->platform.hasFP64GlobalAtomicAdd() ? 1 : 0);
-    initializeVarWithValue("__UseNative64BitIntBuiltin", pCtx->platform.hasNoFullI64Support() ? 0 : 1);
-    initializeVarWithValue("__HasThreadPauseSupport", pCtx->platform.hasThreadPauseSupport() ? 1 : 0);
-    initializeVarWithValue("__UseNative64BitFloatBuiltin", pCtx->platform.hasNoFP64Inst() ? 0 : 1);
-    initializeVarWithValue("__hasHWLocalThreadID", pCtx->platform.hasHWLocalThreadID() ? 1 : 0);
-    initializeVarWithValue("__CRMacros",
-        pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
-
-    if (StringRef(pCtx->getModule()->getTargetTriple()).size() > 0)
-    {
-        initializeVarWithValue("__APIRS", false);
-    }
-
-    bool useHighAccuracyMathFuncs = false;
-    if (pCtx->type == ShaderType::OPENCL_SHADER)
-    {
-        OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(pCtx);
-
-        initializeVarWithValue("__IsSPIRV", OCLContext->isSPIRV());
-
-        float profilingTimerResolution = OCLContext->getProfilingTimerResolution();
-        initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
-
-        useHighAccuracyMathFuncs = OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
-
-        initializeVarWithValue("__UseLSC", pCtx->platform.hasLSC());
-        initializeVarWithValue("__ForceL1Prefetch", IGC_IS_FLAG_ENABLED(ForcePrefetchToL1Cache) ? 1 : 0);
-    }
-
-    initializeVarWithValue("__EnableSWSrgbWrites", IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
-    initializeVarWithValue("__UseHighAccuracyMath", useHighAccuracyMathFuncs);
-
     makeVarExternal("__SubDeviceID");
-    initializeVarWithValue("__MaxHWThreadIDPerSubDevice", pCtx->platform.GetGTSystemInfo().ThreadCount);
-
-
-    initializeVarWithValue("__JointMatrixLoadStoreOpt", IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt));
 }
 
 extern "C" llvm::ModulePass* createBuiltInImportPass(

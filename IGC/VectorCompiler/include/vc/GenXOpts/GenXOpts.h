@@ -67,6 +67,9 @@ void initializeGenXPrintfLegalizationPass(PassRegistry &);
 ModulePass *createGenXImportOCLBiFPass();
 void initializeGenXImportOCLBiFPass(PassRegistry &);
 
+ModulePass *createGenXBIFFlagCtrlResolutionPass();
+void initializeGenXBIFFlagCtrlResolutionPass(PassRegistry &);
+
 ModulePass *createGenXBTIAssignmentPass();
 void initializeGenXBTIAssignmentPass(PassRegistry &);
 

@@ -19,7 +19,7 @@ INLINE float __intel_asinh_f32( float x, bool doFast )
 {
     float result;
 
-    if(__FastRelaxedMath && (!__APIRS) && doFast)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
         // Implemented as log(x + sqrt(x*x + 1)).
         // Conformance test checks for this "overflow" case, but

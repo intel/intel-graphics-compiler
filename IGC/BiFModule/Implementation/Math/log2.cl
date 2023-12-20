@@ -19,7 +19,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f32, )( float x )
 {
     float result;
 
-    if(__FastRelaxedMath)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
         result = SPIRV_OCL_BUILTIN(native_log2, _f32, )(x);
     }
@@ -40,7 +40,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, float, float, f32 )
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f64, )( double x )
 {
     double result;
-    if (__UseHighAccuracyMath) {
+    if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
         result = __ocl_svml_log2_noLUT(x);
     } else {
         result = __ocl_svml_log2_v2(x);

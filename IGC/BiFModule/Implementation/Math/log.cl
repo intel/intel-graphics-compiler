@@ -25,7 +25,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log, _f32, )( float x )
 #else
     float result;
 
-    if(__FastRelaxedMath)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
         result = SPIRV_OCL_BUILTIN(native_log, _f32, )(x);
     }
@@ -33,11 +33,11 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log, _f32, )( float x )
     //  "(float) x > 0.0f"  to " (half)x > (half)0.0f" (log(half).
     //  This causes the inaccurate result with -cl-denorms-are-zero.
     else if( __intel_relaxed_isfinite(x) &
-             ((!__FlushDenormals & (x > 0.0f)) |
-              ( __FlushDenormals & (as_int(x) > 0x7FFFFF))) )
+             ((!BIF_FLAG_CTRL_GET(FlushDenormals) & (x > 0.0f)) |
+              ( BIF_FLAG_CTRL_GET(FlushDenormals) & (as_int(x) > 0x7FFFFF))) )
     //else if( __intel_relaxed_isfinite(x) & ( x > 0.0f ) )
     {
-        if(__UseMathWithLUT)
+        if(BIF_FLAG_CTRL_GET(UseMathWithLUT))
         {
             result = __ocl_svml_logf(x);
         }
@@ -98,7 +98,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log, float, float, f32 )
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log, _f64, )( double x )
 {
     double result;
-    if (__UseHighAccuracyMath) {
+    if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
         result = __ocl_svml_log_noLUT(x);
     } else {
         result = __ocl_svml_log(x);

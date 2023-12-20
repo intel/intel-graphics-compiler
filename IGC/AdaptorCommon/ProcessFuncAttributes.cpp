@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <set>
 #include <algorithm>
+#include <BiFModule/Headers/bif_control_common.h>
 
 using namespace llvm;
 using namespace IGC;
@@ -353,12 +354,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     pCtx->checkDPEmulationEnabled();
 
     std::set<llvm::Function *> fastMathFunct;
-    GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
+    GlobalVariable *gv_fastMath = M.getGlobalVariable(BIF_FLAG_CTRL_N_S(FastRelaxedMath), true);
     if (gv_fastMath)
     {
         if (gv_fastMath->getInitializer()->isOneValue())
         {
-            // Find the functions which __FastRelaxedMath belongs to....
+            // Find the functions which FastRelaxedMath belongs to....
             for (Value::user_iterator U = gv_fastMath->user_begin(), UE = gv_fastMath->user_end(); U != UE; ++U)
             {
                 if (Instruction* user = dyn_cast<Instruction>(*U))
@@ -625,7 +626,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 mustAlwaysInline = true;
             }
         }
-        // inline all OCL math functions if __FastRelaxedMath is set
+        // inline all OCL math functions if BIF_FLAG_CTRL_GET(FastRelaxedMath) is set
         else if (fastMathFunct.find(F) != fastMathFunct.end())
         {
             mustAlwaysInline = true;

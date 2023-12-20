@@ -18,8 +18,6 @@ SPDX-License-Identifier: MIT
 #define __EXECUTION_MODEL_DEBUG
 #include "DeviceEnqueueHelpers.h"
 
-extern __constant int __DashGSpecified;
-
 #define exec_offsetof( x, y ) (int)(&((x*)(0))->y)
 
 // float passed as int
@@ -40,7 +38,7 @@ INLINE float __intel__getProfilingTimerResolution()
 //
 INLINE int __intel_ErrorCode(int code)
 {
-    if (__DashGSpecified)
+    if (BIF_FLAG_CTRL_GET(DashGSpecified))
     {
         return code;
     }

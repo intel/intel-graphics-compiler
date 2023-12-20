@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pown, _f32_i32, )( float x, int y )
 {
-    if(__FastRelaxedMath && (!__APIRS))
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
         // Undefined for x = 0 and y = 0.
         // For x >= 0, or x < 0 and even y, derived implementations implement this as:

@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 
 float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f32, )(float x)
 {
-    if (__FastRelaxedMath)
+    if (BIF_FLAG_CTRL_GET(FastRelaxedMath))
     {
         return SPIRV_OCL_BUILTIN(native_exp, _f32, )(x);
     }
@@ -61,7 +61,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( exp, float, float, f32 )
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(exp, _f64, )( double x )
 {
     double result;
-    if (__UseHighAccuracyMath) {
+    if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
         result = __ocl_svml_exp_noLUT(x);
     } else {
         result = __ocl_svml_exp(x);

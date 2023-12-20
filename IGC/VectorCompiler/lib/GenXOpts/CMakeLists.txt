@@ -13,6 +13,7 @@ set(OPT_SOURCES
   CMTrans/CMImpParam.cpp
   CMTrans/CMKernelArgOffset.cpp
   CMTrans/GenXBTIAssignment.cpp
+  CMTrans/GenXBIFFlagCtrlResolution.cpp
   CMTrans/GenXPrintfLegalization.cpp
   CMTrans/GenXPrintfResolution.cpp
   CMTrans/GenXImportOCLBiF.cpp

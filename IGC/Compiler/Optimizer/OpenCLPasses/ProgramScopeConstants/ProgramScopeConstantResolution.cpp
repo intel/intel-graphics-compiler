@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include <map>
 #include "Probe/Assertion.h"
+#include "BiFModule/Headers/bif_control_common.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -61,7 +62,7 @@ static bool needRunConservatively(const Module& M) {
 static bool isLoweredToRelocation(const GlobalVariable *GV)
 {
   StringRef name = GV->getName();
-  if (name == "__SubDeviceID" || name == "__MaxHWThreadIDPerSubDevice")
+  if (name == "__SubDeviceID" || name == BIF_FLAG_CTRL_N_S(MaxHWThreadIDPerSubDevice))
       return true;
   return false;
 }

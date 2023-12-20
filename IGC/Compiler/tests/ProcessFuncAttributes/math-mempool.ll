@@ -18,11 +18,11 @@
 ; CHECK: ; Function Attrs: alwaysinline
 ; CHECK: define internal void @test_prfuncattr(i32 %src, i32* %dst){{.*}} [[ATTR:#[0-9]*]]
 
-@__FastRelaxedMath = constant i1 true
+@__bif_flag_FastRelaxedMath = constant i1 true
 
 define void @test_prfuncattr(i32 %src, i32* %dst) {
 entry:
-  %0 = load i1, i1* @__FastRelaxedMath
+  %0 = load i1, i1* @__bif_flag_FastRelaxedMath
   br i1 %0, label %bb1, label %end
 
 bb1:

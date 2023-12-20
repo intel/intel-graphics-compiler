@@ -8,14 +8,7 @@ SPDX-License-Identifier: MIT
 
 // SVML code
 
-extern __constant int __FlushDenormals;
-extern __constant int __FastRelaxedMath;
-extern __constant int __MadEnable;
-extern __constant int __APIRS;
 extern __constant int __SVML;
-extern __constant int __CRMacros;
-extern __constant int __UseMathWithLUT;
-extern __constant int __UseHighAccuracyMath;
 
 OVERLOADABLE int __intel_relaxed_isnan(float x );
 OVERLOADABLE int __intel_relaxed_isinf(float x );

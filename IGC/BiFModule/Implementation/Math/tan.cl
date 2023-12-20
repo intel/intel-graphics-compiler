@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 static INLINE float __intel_tan_f32( float x, bool doFast )
 {
     float result;
-    if(__FastRelaxedMath && (!__APIRS) && doFast)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
         result = SPIRV_OCL_BUILTIN(native_tan, _f32, )(x);
     }

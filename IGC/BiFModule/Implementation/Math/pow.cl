@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, float y )
 {
-    if(__FastRelaxedMath && (!__APIRS))
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
         // Undefined for x = 0 and y = 0.
         // Undefined for x < 0 and noninteger y.
@@ -59,7 +59,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, flo
 
         return result;
     }
-    else if (__UseHighAccuracyMath)
+    else if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
         return __ocl_svml_powf_noLUT(x, y);
     }
@@ -85,7 +85,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pow, float, float, float, f32
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f64_f64, )( double x, double y )
 {
     double result;
-    if (__UseHighAccuracyMath) {
+    if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
         result = __ocl_svml_pow_noLUT(x, y);
     } else {
         result = __ocl_svml_pow(x, y);

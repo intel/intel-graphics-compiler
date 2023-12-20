@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cospi, _f32, )( float x )
 {
-    bool useNative = __FastRelaxedMath && (!__APIRS);
+    bool useNative = BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS));
 
     if(useNative)
     {
@@ -25,7 +25,7 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cospi, _f32, )( float x )
     }
     else
     {
-        if(__UseMathWithLUT)
+        if(BIF_FLAG_CTRL_GET(UseMathWithLUT))
         {
             return __ocl_svml_cospif(x);
         }

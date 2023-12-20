@@ -128,7 +128,7 @@ double4 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fast_fmod, _v4f64_v4f64, )( double4
 static float __intel_fmod_f32_f32( float xx, float yy, bool doFast )
 {
     float result;
-    if( __FastRelaxedMath && doFast )
+    if( BIF_FLAG_CTRL_GET(FastRelaxedMath) && doFast )
     {
         return SPIRV_OCL_BUILTIN(fast_fmod, _f32_f32, )(xx, yy);
     }

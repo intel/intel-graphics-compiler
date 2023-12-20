@@ -18,7 +18,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cosh, _f32, )( float x )
 {
     float result;
 
-    if(__FastRelaxedMath && (!__APIRS))
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
         // Implemented as 0.5 * ( exp(x) + exp(-x) ).
         float pexp = SPIRV_OCL_BUILTIN(exp, _f32, )(  x );

@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #define VECTOR_IMPL      1 // Block read/write per row/column of the slice.
 #define VECTOR_CONT_IMPL 2 // Single block read/write for whole slice, where possible.
 #define BLOCK2D_IMPL     3 // Single block read/write 2d operation, only on supported platforms (default).
-extern __constant int __JointMatrixLoadStoreOpt;
 
 // Matrix order
 #define _ROW_MAJOR 0
@@ -247,7 +246,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, address_space) \
   INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && (order == _ROW_MAJOR || order == _VNNI_TX || (order == _COL_MAJOR && contrib_bitwidth == 32)) \
           && address_space == AS_GLOBAL \
           ) { \
@@ -255,7 +254,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
              Maybe it is number of columns divided by pack factor which always gives 16 on SG16 HW */ \
           IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, stride_opt) \
       } \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL \
           && stride == stride_opt && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           ) { \
@@ -263,7 +262,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
           *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
           return; \
       } \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_IMPL && order == _ROW_MAJOR \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL && order == _ROW_MAJOR \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) && (M != 1 || sg_size != 32) \
           ) { \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
@@ -466,12 +465,12 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_M
 #define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, block_opt, address_space) \
   INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
           ) { \
           IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, src) \
       } \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL && stride == stride_opt \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL && stride == stride_opt \
           && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           ) { \
@@ -479,7 +478,7 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_M
           DEFINE_BLOCK_RW_NAME##M(write, us)((ATTRIBUTE_##address_space u##contrib_type *)mem, VEC_TO_VEC_STORE##M(u##contrib_type , vec)); \
           return; \
       } \
-      if (WI_rows == M && (__JointMatrixLoadStoreOpt >= VECTOR_IMPL) \
+      if (WI_rows == M && (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) \
           && order == _ROW_MAJOR && block_opt == true \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) \
           && (M != 1 || sg_size != 32) \
@@ -844,7 +843,7 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(__priv
 #define DEFINE_LOAD_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
   INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, M) (__private char *dst, char *mem, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if ( __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8 || M == 16) \
+      if ( BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8 || M == 16) \
           && (order == _ROW_MAJOR || order == _VNNI_TX) && address_space == AS_GLOBAL \
           ) { \
           /* It seems __builtin_IB_subgroup_block_rw always needs k=16 \
@@ -949,7 +948,7 @@ DEFINE_B_B_16x64(local)
 #define DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
   INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, M) (char *mem, __private char *src, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if (__JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+      if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
           ) { \
           IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, src) \

@@ -469,40 +469,6 @@ static void removeFunctionBitcasts(Module &M) {
   }
 }
 
-static void InitializeBIFlags(Module &M) {
-  /// @brief Adds initialization to a global-var according to given value.
-  ///        If the given global-var does not exist, does nothing.
-  auto initializeVarWithValue = [&M](StringRef varName, uint32_t value) {
-    GlobalVariable *gv = M.getGlobalVariable(varName);
-    if (gv == nullptr)
-      return;
-    gv->setInitializer(
-        ConstantInt::get(Type::getInt32Ty(M.getContext()), value));
-  };
-
-  initializeVarWithValue("__FlushDenormals", 1);
-  initializeVarWithValue("__DashGSpecified", 0);
-  initializeVarWithValue("__FastRelaxedMath", 0);
-  initializeVarWithValue("__MadEnable", 0);
-  initializeVarWithValue("__UseNative64BitIntBuiltin", 1);
-  initializeVarWithValue("__UseNative64BitFloatBuiltin", 1);
-  initializeVarWithValue("__CRMacros", 1);
-
-  initializeVarWithValue("__IsSPIRV", 0);
-
-  initializeVarWithValue("__EnableSWSrgbWrites", 0);
-
-  float profilingTimerResolution = 0.0;
-  initializeVarWithValue("__ProfilingTimerResolution",
-                         *reinterpret_cast<int *>(&profilingTimerResolution));
-  initializeVarWithValue("__UseMathWithLUT", 0);
-  initializeVarWithValue("__UseHighAccuracyMath", 0);
-  // FIXME: target specific, but subtarget cannot be reached in middle-end.
-  initializeVarWithValue("__HasInt64SLMAtomicCAS", 0);
-
-  initializeVarWithValue("__JointMatrixLoadStoreOpt", 3);
-}
-
 static bool isOCLBuiltinDecl(const Function &F) {
   if (!F.isDeclaration())
     return false;
@@ -577,7 +543,6 @@ bool GenXImportOCLBiF::runOnModule(Module &M) {
     IGC_ASSERT_MESSAGE(0, "Error OCL builtin implementation module");
   }
   removeFunctionBitcasts(M);
-  InitializeBIFlags(M);
   BIConvert{}.runOnModule(M);
   return true;
 }

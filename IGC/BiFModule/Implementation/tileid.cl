@@ -7,8 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 extern int __SubDeviceID;
-__constant int __MaxHWThreadIDPerSubDevice = 1;
-
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void) {
 
@@ -29,5 +27,5 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void) {
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(GlobalHWThreadIDINTEL, , )(void) {
     int subDeviceId = SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
-    return __builtin_IB_hw_thread_id() + subDeviceId * __MaxHWThreadIDPerSubDevice;
+    return __builtin_IB_hw_thread_id() + subDeviceId * BIF_FLAG_CTRL_GET(MaxHWThreadIDPerSubDevice);
 }

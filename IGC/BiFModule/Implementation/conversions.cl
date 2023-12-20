@@ -14,9 +14,6 @@ SPDX-License-Identifier: MIT
 #define RT_Z   2
 #define RT_NE  3
 
-extern __constant int __UseNative64BitIntBuiltin;
-extern __constant int __UseNative64BitFloatBuiltin;
-
 #if defined(cl_khr_fp64)
 INLINE float __intel_convert_float_rtp_rtn(double a, uint direction);
 #endif
@@ -2471,7 +2468,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTE_f64_i64, _Rdouble_rte)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _Rdouble_rtz)(long SignedValue)
 {
-  if(__UseNative64BitIntBuiltin)
+  if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
     return __builtin_IB_itofp64_rtz(SignedValue);
   }
@@ -2491,7 +2488,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _Rdouble_rtz)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _Rdouble_rtp)(long SignedValue)
 {
-  if(__UseNative64BitIntBuiltin)
+  if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
     return __builtin_IB_itofp64_rtp(SignedValue);
   }
@@ -2511,7 +2508,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _Rdouble_rtp)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i64, _Rdouble_rtn)(long SignedValue)
 {
-  if(__UseNative64BitIntBuiltin)
+  if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
     return __builtin_IB_itofp64_rtn(SignedValue);
   }
@@ -2781,7 +2778,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTE_f64_i64, _Rdouble_rte)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _Rdouble_rtz)(ulong UnsignedValue)
 {
-  if(__UseNative64BitIntBuiltin)
+  if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
     return __builtin_IB_uitofp64_rtz(UnsignedValue);
   }
@@ -2801,7 +2798,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _Rdouble_rtz)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _Rdouble_rtp)(ulong UnsignedValue)
 {
-  if(__UseNative64BitIntBuiltin)
+  if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
     return __builtin_IB_uitofp64_rtp(UnsignedValue);
   }
@@ -2821,7 +2818,7 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _Rdouble_rtp)
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i64, _Rdouble_rtn)(ulong UnsignedValue)
 {
-  if(__UseNative64BitIntBuiltin)
+  if(BIF_FLAG_CTRL_GET(UseNative64BitIntBuiltin))
   {
     return __builtin_IB_uitofp64_rtn(UnsignedValue);
   }

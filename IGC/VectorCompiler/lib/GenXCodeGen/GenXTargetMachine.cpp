@@ -136,6 +136,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXPromoteArrayPass(registry);
   initializeGenXBackendConfigPass(registry);
   initializeGenXImportOCLBiFPass(registry);
+  initializeGenXBIFFlagCtrlResolutionPass(registry);
   initializeGenXSimplifyPass(registry);
   initializeCMABIPass(registry);
   initializeCMLowerVLoadVStorePass(registry);
@@ -711,6 +712,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
+    PM.add(createGenXBIFFlagCtrlResolutionPass());
     PM.add(createGenXPacketizePass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfLegalizationPass());

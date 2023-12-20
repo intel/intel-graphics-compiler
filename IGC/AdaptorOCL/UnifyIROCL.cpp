@@ -138,6 +138,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/DebugInfo/Utils.h"
+#include "Compiler/Builtins/BIFFlagCtrl/BIFFlagCtrlResolution.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
 
 #include <string>
@@ -388,6 +389,7 @@ static void CommonOCLBasedPasses(
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
+    mpm.add(new BIFFlagCtrlResolution(pContext));
 
     if (IGC_GET_FLAG_VALUE(AllowMem2Reg))
     {

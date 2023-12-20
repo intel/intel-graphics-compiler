@@ -21,6 +21,11 @@ function(get_bif_src_list opencl-h_SRC bifM_SRC listOut)
     list(APPEND listSRC ${opencl-headers-dir}/opencl-c-base.h)
     list(APPEND listSRC ${opencl-h_SRC})
 
+    # Get igfxfmid.h
+    set(INC_SRC "${bifM_SRC}../../inc")
+    set(INC_COMMON_SRC "${INC_SRC}/common")
+    list(APPEND listSRC ${INC_COMMON_SRC}/igfxfmid.h)
+
     list(SORT listSRC)
     set(${listOut} ${listSRC} PARENT_SCOPE)
 endfunction()

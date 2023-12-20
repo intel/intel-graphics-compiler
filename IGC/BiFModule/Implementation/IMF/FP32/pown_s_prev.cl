@@ -1874,7 +1874,7 @@ float __ocl_svml_spown_cout_rare (const float a, const int b)
                                                 flVTmp1 = (flVTmp1 * flVTmp1);
 
                                                 flRes = (flRes + flVTmp1);
-                                                if (__FlushDenormals)
+                                                if (BIF_FLAG_CTRL_GET(FlushDenormals))
                                                 {
                                                     r = 0.0f;
                                                 }

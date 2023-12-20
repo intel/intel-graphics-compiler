@@ -34,7 +34,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(atan2, _f32_f32, )( float y, float x 
 
     float result;
 
-    if(__FastRelaxedMath && (!__APIRS))
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
         // This works in all special points except when (y, x) are both zeroes
         //

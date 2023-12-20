@@ -23,10 +23,9 @@ SPDX-License-Identifier: MIT
 ///////////////////////////////
 //
 // sRGB write support in SW
-// Note : no impact if(__EnableSWSrgbWrites)
+// Note : no impact if(BIF_FLAG_CTRL_GET(EnableSWSrgbWrites))
 //
 ///////////////////////////////
-extern __constant int __EnableSWSrgbWrites;
 
 #ifdef cl_khr_gl_msaa_sharing
 #pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable
@@ -100,7 +99,7 @@ DEF_IMAGE_IS_SRGB(image2d_array_t)
 #define DEF_IMAGE_CONV_RGB_TO_OUT(IMAGE_T, EL_T)\
   INLINE static EL_T OVERLOADABLE __intel_image_convert_RGB_to_output_format(write_only IMAGE_T image, EL_T color)\
   {\
-      if(__EnableSWSrgbWrites && __intel_image_is_sRGB(image))\
+      if(BIF_FLAG_CTRL_GET(EnableSWSrgbWrites) && __intel_image_is_sRGB(image))\
       {\
          return __intel_rgb_to_srgb(color);\
       }\

@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 
 #include "DeviceEnqueueHelpers.h"
 
-extern __constant int __IsSPIRV;
-
 // IGIL_SetIGIL_ndrange sets properites of IGIL_ndrange_t from ndrage_t
 INLINE void IGIL_SetIGIL_ndrange(volatile IGIL_ndrange_t *igil_range, __private ndrange_t *range )
 {
@@ -63,12 +61,12 @@ INLINE bool IGIL_ValidNdrange( const ndrange_t range )
 
     // Relax enqueue checks as OCL 2.1 (going through SPIRV path) allows them.
     bool nonZeroEnqueue = (gws_mul != 0);
-    uint check = __IsSPIRV ? nonZeroEnqueue : 1;
+    uint check = BIF_FLAG_CTRL_GET(IsSPIRV) ? nonZeroEnqueue : 1;
 
     if ((lws_mul == 0) & (lws_sum > 0) & check)
         return false;
 
-    if ((gws_mul == 0) & !__IsSPIRV)
+    if ((gws_mul == 0) & !BIF_FLAG_CTRL_GET(IsSPIRV))
         return false;
 
     if( range.localWorkSize[0] > range.globalWorkSize[0] ) return false;
@@ -80,7 +78,7 @@ INLINE bool IGIL_ValidNdrange( const ndrange_t range )
 
 INLINE bool IGIL_ZeroSizedEnqueue(const ndrange_t range)
 {
-    return __IsSPIRV ?
+    return BIF_FLAG_CTRL_GET(IsSPIRV) ?
         range.globalWorkSize[0] * range.globalWorkSize[1] * range.globalWorkSize[2] == 0 :
         false;
 }

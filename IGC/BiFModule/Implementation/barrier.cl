@@ -8,8 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "../Languages/OpenCL/IBiF_SPIRV_Utils.cl"
 
-extern __constant int __OptDisable;
-
 // EmitVISAPass support for __builtin_IB_memfence/__builtin_IB_typedmemfence requires some arguments to
 // be constants as those are used to prepare a message descriptor, so must be known at compile time.
 // To assure that all the arguments are constants for O0 path, there is a special function
@@ -47,7 +45,7 @@ void __intel_memfence(bool flushRW, bool isGlobal, bool invalidateL1, bool evict
 
 void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1)
 {
-    if (__OptDisable)
+    if (BIF_FLAG_CTRL_GET(OptDisable))
         __intel_memfence_optnone(flushRW, isGlobal, invalidateL1, evictL1);
     else
         __intel_memfence(flushRW, isGlobal, invalidateL1, evictL1);
@@ -70,7 +68,7 @@ void __intel_typedmemfence(bool invalidateL1)
 
 void __intel_typedmemfence_handler(bool invalidateL1)
 {
-    if (__OptDisable)
+    if (BIF_FLAG_CTRL_GET(OptDisable))
         __intel_typedmemfence_optnone(invalidateL1);
     else
         __intel_typedmemfence(invalidateL1);

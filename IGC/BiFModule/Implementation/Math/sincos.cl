@@ -20,16 +20,16 @@ SPDX-License-Identifier: MIT
 static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, bool doFast )
 {
     float   sin_x, cos_x;
-    if(__FastRelaxedMath && (!__APIRS) && doFast)
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
     {
         sin_x = SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
         cos_x = SPIRV_OCL_BUILTIN(native_cos, _f32, )(x);
     }
-    else  if(__UseHighAccuracyMath)
+    else  if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
         sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
     }
-    else  if(__UseMathWithLUT)
+    else  if(BIF_FLAG_CTRL_GET(UseMathWithLUT))
     {
         __ocl_svml_sincosf(x, &sin_x, &cos_x);
     }
@@ -151,7 +151,7 @@ INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( double
 {
     double sin_x, cos_x;
 
-    if (__UseHighAccuracyMath) {
+    if (BIF_FLAG_CTRL_GET(UseHighAccuracyMath)) {
         __ocl_svml_sincos_noLUT(x, &sin_x, &cos_x);
     } else {
         __ocl_svml_sincos(x, &sin_x, &cos_x);

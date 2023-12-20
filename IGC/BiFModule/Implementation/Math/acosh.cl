@@ -18,7 +18,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acosh, _f32, )( float x )
 {
     float result;
 
-    if(__FastRelaxedMath && (!__APIRS))
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
         // Implemented as log(x + sqrt(x*x - 1)).
 

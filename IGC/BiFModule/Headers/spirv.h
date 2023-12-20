@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -165,6 +165,10 @@ typedef char __bool16 __attribute__((ext_vector_type(16)));
 #define IMAGETYPE_ARRAYED_SHIFT 57
 #define IMAGETYPE_MULTISAMPLED_SHIFT 56
 #define IMAGETYPE_ACCESSQUALIFER_SHIFT 54
+
+// Include bif control flag to have posibilty on shape of
+// built-in instructions during compilation of user shaders
+#include "bif_control.h"
 
 // Keep track of SaturatedConversion
 

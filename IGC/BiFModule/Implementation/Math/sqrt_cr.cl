@@ -25,7 +25,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt_cr, half, half, f16 )
 
 float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
 {
-    if (!__CRMacros)
+    if (!BIF_FLAG_CTRL_GET(CRMacros))
     {
         typedef union binary32
         {
@@ -52,17 +52,17 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
             }
         } else {
             if (fa.u & 0x80000000) { /* Negative normals/denormals */
-                if (__FlushDenormals & (aExp == 0))
+                if (BIF_FLAG_CTRL_GET(FlushDenormals) & (aExp == 0))
                     S.u = fa.u & 0x80000000;
                 else
                     /* return qNaN for negative normal/denormal values */
                     S.u = 0xffc00000;
-            } else if (__FlushDenormals & (aExp == 0)) {
+            } else if (BIF_FLAG_CTRL_GET(FlushDenormals) & (aExp == 0)) {
                 S.u = 0; // positive denorms
             } else { /* Positive normals/denormals */
                 bool denorm = (aExp == 0);
 
-                if (denorm & !__FlushDenormals) {
+                if (denorm & !BIF_FLAG_CTRL_GET(FlushDenormals)) {
                     fa.f = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(fa.f, 126);
                 }
                 else {
@@ -88,7 +88,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
                 // Step(7), S = S1 + e0*H1
                 S.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(e0.f, H1.f, S1.f);
 
-                if (denorm & !__FlushDenormals) {
+                if (denorm & !BIF_FLAG_CTRL_GET(FlushDenormals)) {
                     S.f = SPIRV_OCL_BUILTIN(ldexp, _f32_i32, )(S.f, -126/2);
                 }
                 else {

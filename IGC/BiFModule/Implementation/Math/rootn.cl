@@ -18,7 +18,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rootn, _f32_i32, )( float x, int n )
 {
     float result;
 
-    if(__FastRelaxedMath && (!__APIRS))
+    if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)))
     {
         // Defined for x > 0 and n is nonzero.  Derived
         // implementations implement this as:
