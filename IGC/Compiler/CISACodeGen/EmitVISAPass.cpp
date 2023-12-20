@@ -10470,9 +10470,12 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
     if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
     {
         // If we have written the previous FP to the current frame's start, the start of
-        // private memory will be offset by 16 bytes
+        // private memory will be offset.
         CVariable* tempFP = m_currShader->GetNewVariable(pFP);
-        emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(getFPOffset(), ISA_TYPE_UD));
+        Function* parentFunc = GII->getParent()->getParent();
+        auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(parentFunc);
+        IGC_ASSERT(funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end());
+        emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(funcMDItr->second.prevFPOffset, ISA_TYPE_UD));
         pFP = tempFP;
     }
     CVariable* pOffset = m_currShader->GetSymbol(GII->getOperand(0));
@@ -10588,6 +10591,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     }
 
     unsigned totalAllocaSize = kernelAllocaSize * numLanes(m_currShader->m_dispatchSize);
+    totalAllocaSize += pModMD->FuncMD[pKernel].prevFPOffset;
 
     // Initialize SP to per-thread kernel stack base
     CVariable* pSP = m_currShader->GetSP();
@@ -11266,9 +11270,10 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     // reserve space for all the alloca in the function subgroup
     auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(F);
-    if (funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end() && funcMDItr->second.privateMemoryPerWI != 0)
+    if (funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end())
     {
         totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
+        totalAllocaSize += funcMDItr->second.prevFPOffset;
     }
 
     // save FP before allocation
@@ -18798,9 +18803,6 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     // Set FP = SP
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
-
-    // Allocate 1 extra oword to store previous frame's FP
-    pushSize += IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) ? SIZE_OWORD : 0;
 
     // Since we use unaligned oword writes, pushSize should be OW aligned address
     pushSize = int_cast<unsigned>(llvm::alignTo(pushSize, SIZE_OWORD));

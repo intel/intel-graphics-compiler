@@ -325,6 +325,8 @@ namespace IGC
         bool localIDPresent = false;
         bool groupIDPresent = false;
         int privateMemoryPerWI = 0;
+        // Bytes reserved at the beginning of the frame to write old FP there.
+        unsigned int prevFPOffset = 0;
         bool globalIDPresent = false;
         // This is true if the function has any sync raytracing functionality
         bool hasSyncRTCalls = false;

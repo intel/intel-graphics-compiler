@@ -133,7 +133,9 @@ llvm::StringRef ScalarVisaModule::GetVISAFuncName() const
     return getFunction()->getName();
 }
 uint64_t ScalarVisaModule::getFPOffset() const {
-    return EmitPass::getFPOffset();
+    auto funcMDItr = m_pShader->m_ModuleMetadata->FuncMD.find(getFunction());
+    IGC_ASSERT(funcMDItr != m_pShader->m_ModuleMetadata->FuncMD.end());
+    return funcMDItr->second.prevFPOffset;
 }
 
 bool ScalarVisaModule::usesSlot1ScratchSpill() const {
