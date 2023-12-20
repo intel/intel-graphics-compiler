@@ -69,6 +69,11 @@ struct DumpProcessInfo
             summary += IGC::Debug::GetVersionInfo();
             summary += "\n\n";
 
+            // llvm build version
+            summary += std::string("LLVM major version: ");
+            summary += LLVM_VERSION_MAJOR;
+            summary += "\n\n";
+
             // OS information
             summary += "OS: " + GetOSName() + "\n\n";
 
