@@ -5454,7 +5454,6 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         && m_currShader->m_Platform->GetPlatformFamily() != IGFX_GEN8_CORE;
 
     SIMDMode simdMode = m_currShader->m_Platform->getMinDispatchMode();
-
     auto nativeExecSize = numLanes(simdMode);
     auto width = numLanes(m_SimdMode);
     if (useDirectAddressing && nativeExecSize * 2 >= width)
