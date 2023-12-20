@@ -133,14 +133,30 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
   if (CalleeName.startswith("ConvertFToBF16INTEL")) {
     auto *Arg = CI.getArgOperand(0);
     auto *ArgTy = Arg->getType();
+#if LLVM_VERSION_MAJOR >= 11
+    auto *CastTy = Builder.getBFloatTy();
+    if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+      CastTy = IGCLLVM::FixedVectorType::get(CastTy, VTy->getNumElements());
+    auto *Trunc = Builder.CreateFPTrunc(Arg, CastTy);
+    return Builder.CreateBitCast(Trunc, Ty);
+#else  // LLVM_VERSION_MAJOR >= 11
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_to_bf16,
                          {Ty, ArgTy}, {Arg});
+#endif // LLVM_VERSION_MAJOR >= 11
   }
   if (CalleeName.startswith("ConvertBF16ToFINTEL")) {
     auto *Arg = CI.getArgOperand(0);
     auto *ArgTy = Arg->getType();
+#if LLVM_VERSION_MAJOR >= 11
+    auto *CastTy = Builder.getBFloatTy();
+    if (auto *ArgVTy = dyn_cast<IGCLLVM::FixedVectorType>(ArgTy))
+      CastTy = IGCLLVM::FixedVectorType::get(CastTy, ArgVTy->getNumElements());
+    auto *Cast = Builder.CreateBitCast(Arg, CastTy);
+    return Builder.CreateFPExt(Cast, Ty);
+#else  // LLVM_VERSION_MAJOR >= 11
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_from_bf16,
                          {Ty, ArgTy}, {Arg});
+#endif // LLVM_VERSION_MAJOR >= 11
   }
   // SPV_INTEL_tensor_float32_rounding extension.
   if (CalleeName.startswith("RoundFToTF32INTEL") ||
