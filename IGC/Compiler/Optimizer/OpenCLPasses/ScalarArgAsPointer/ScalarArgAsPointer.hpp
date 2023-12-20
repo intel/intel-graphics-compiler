@@ -33,6 +33,9 @@ namespace IGC
     ///
     ///         To parse implicit arguments this pass must be run after ResolveAggregateArguments.
 
+    /// IMPORTANT!!!
+    /// Please bump up INDIRECT_ACCESS_DETECTION_VERSION when introducing any functional fixes in this pass.
+
     class ScalarArgAsPointerAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ScalarArgAsPointerAnalysis>
     {
     public:

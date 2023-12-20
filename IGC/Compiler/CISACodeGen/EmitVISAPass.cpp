@@ -11639,6 +11639,8 @@ void EmitPass::CountStatelessIndirectAccess(llvm::Value* pointer, ResourceDescri
     }
 }
 
+/// IMPORTANT!!!
+/// Please bump up INDIRECT_ACCESS_DETECTION_VERSION when introducing any functional fixes in below function.
 bool EmitPass::IsIndirectAccess(llvm::Value* pointer)
 {
     Instruction* inst = dyn_cast<Instruction>(pointer);

@@ -68,6 +68,9 @@ enum {
     // NT_INTELGT_TARGET_METADATA because it contains all required info to
     // validate program for a target device
     NT_INTELGT_PRODUCT_CONFIG = 6,
+    // The description is the version of Indirect Access Detection implementation
+    // stored in a 4-byte ELF word.
+    NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION = 7,
 };
 
 struct TargetMetadata {

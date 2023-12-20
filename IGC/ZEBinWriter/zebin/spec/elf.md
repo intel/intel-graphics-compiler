@@ -127,6 +127,9 @@ enum {
     // NT_INTELGT_TARGET_METADATA because it contains all required info to
     // validate program for a target device
     NT_INTELGT_PRODUCT_CONFIG = 6,
+    // The description is the version of Indirect Access Detection implementation
+    // stored in a 4-byte ELF word.
+    NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION = 7,
 };
 ~~~
 
@@ -188,6 +191,30 @@ typedef struct GFX_GMD_ID_DEF
         unsigned int    Value;
     };
 }GFX_GMD_ID;
+~~~
+
+**The description of NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION note**
+~~~
+An indirect access happens when GPU loads from an address that was not
+directly given as one of the kernel arguments. It's usually a pointer
+loaded from memory pointed by a kernel argument. IGC has an analysis
+that is able to detect whether any indirect access is used in a kernel.
+If there are no indirect accesses, then IGC passes this information to
+Neo through ZEBin. Based on that information Neo can disable indirect
+accesses which results in performance improvements.
+
+In case IGC has any bugs in Indirect Access Detection mechanism, it may
+happen that not all indirect accesses get detected in a kernel, therefore
+falsely reporting to Neo that indirect accesses can be disabled, resulting
+in functional issues.
+
+NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION is a versioning mechanism for
+Indirect Access Detection mechanism in IGC. It should be bumped up every
+time a new functional issue is implemented. The note indicates with what
+version of Indirect Access Detection mechanism, a kernel was compiled.
+If Neo knows that the newest version of the detection mechanism is 2,
+then it can trigger recompilation of all AOT-compiled kernels with version
+lower than 2.
 ~~~
 
 ## Gen Relocation Type

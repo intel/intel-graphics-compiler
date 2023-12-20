@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 #include <ZEInfo.hpp>
 #include <ZEInfoYAML.hpp>
 
+#include "AdaptorOCL/ocl_igc_shared/indirect_access_detection/version.h"
+
 #ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPush.hpp"
 #endif
@@ -645,6 +647,11 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
     writeOneNote("IntelGT",
                  m_ObjBuilder.m_gmdID.Value,
                  NT_INTELGT_PRODUCT_CONFIG);
+
+    // write NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION
+    writeOneNote("IntelGT",
+                 INDIRECT_ACCESS_DETECTION_VERSION,
+                 NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION);
 
     return std::make_pair(start_off, m_W.OS.tell() - start_off);
 }
