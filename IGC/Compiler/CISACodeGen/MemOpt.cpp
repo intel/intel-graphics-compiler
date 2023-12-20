@@ -2394,7 +2394,7 @@ namespace {
         Type* getLdStType() const;
         uint32_t getAlignment() const;
         AddressModel getAddressModel(CodeGenContext* Ctx) const;
-        Value* getStoreValue() const;
+        Value* getValueOperand() const;
     };
 
     typedef SmallVector<LdStInfo, 8> InstAndOffsetPairs;
@@ -2660,8 +2660,14 @@ namespace {
         //   insts; if V is not vector, just V itself.
         void getOrCreateElements(Value* V,
             SmallVector<Value*, 16>& EltV, Instruction* InsertBefore);
-        // If V is constant or created only by IEI with const idx, return true
-        bool isSimpleVector(Value* V) const;
+        // Return true if V is vector and splitting is beneficial.
+        bool splitVectorType(Value* V, LdStKind K) const;
+        bool splitVectorTypeForGather(Value* V) const {
+            return splitVectorType(V, LdStKind::IS_STORE);
+        }
+        bool splitVectorTypeForScatter(Value* V) const {
+            return splitVectorType(V, LdStKind::IS_LOAD);
+        }
 
         void mergeConstElements(
             SmallVector<Value*, 4>& EltVals,  uint32_t MaxMergeBytes);
@@ -2691,6 +2697,11 @@ namespace {
         // Create unique identified struct type
         StructType* getOrCreateUniqueIdentifiedStructType(
             ArrayRef<Type*> EltTys, bool IsSOA, bool IsPacked = true);
+
+        uint32_t getNumElements(Type* Ty) const {
+            return Ty->isVectorTy()
+                ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
+        }
 
         // Skip counting those insts as no code shall be emitted for them.
         bool skipCounting(Instruction* I) {
@@ -2810,11 +2821,11 @@ uint32_t LdStInfo::getAlignment() const
     return 1;
 }
 
-Value* LdStInfo::getStoreValue() const
+Value* LdStInfo::getValueOperand() const
 {
     if (LoadInst* LI = dyn_cast<LoadInst>(Inst))
     {
-        return nullptr;
+        return LI;
     }
     else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
     {
@@ -2961,9 +2972,8 @@ void LdStCombine::getOrCreateElements(
         return;
     }
 
-    IGCLLVM::FixedVectorType* tVTy = cast<IGCLLVM::FixedVectorType>(VTy);
-    const int32_t nelts = (int32_t)tVTy->getNumElements();
-    EltV.resize(nelts, UndefValue::get(tVTy->getElementType()));
+    const int32_t nelts = getNumElements(VTy);
+    EltV.resize(nelts, UndefValue::get(VTy->getScalarType()));
     Value* ChainVal = V;
     while (!isa<Constant>(ChainVal)) {
         InsertElementInst* IEI = dyn_cast<InsertElementInst>(ChainVal);
@@ -3124,7 +3134,7 @@ void LdStCombine::combineStores(Function& F)
     }
 }
 
-void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
+void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
 {
     //
     // SelectD32OrD64:
@@ -3262,19 +3272,19 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         }
     };
 
-    auto markVisited = [this](InstAndOffsetPairs& Stores) {
-        int32_t SZ = (int)Stores.size();
+    auto markVisited = [this](InstAndOffsetPairs& LoadStores) {
+        int32_t SZ = (int)LoadStores.size();
         for (int i = 0; i < SZ; ++i)
         {
-            const LdStInfo* lsi = &Stores[i];
+            const LdStInfo* lsi = &LoadStores[i];
             setVisited(lsi->Inst);
         }
-        Stores.clear();
+        LoadStores.clear();
     };
 
-    int32_t SZ = (int)Stores.size();
+    int32_t SZ = (int)LoadStores.size();
     if (SZ <= 1) {
-        markVisited(Stores);
+        markVisited(LoadStores);
         return;
     }
 
@@ -3290,13 +3300,13 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
 
     setInstOrder(BB);
 
-    // Sort stores in the order of increasing ByteOffset
-    std::sort(Stores.begin(), Stores.end(),
+    // Sort loads/stores in the order of increasing ByteOffset
+    std::sort(LoadStores.begin(), LoadStores.end(),
         [](const LdStInfo& A, const LdStInfo& B) {
             return A.ByteOffset < B.ByteOffset;
         });
 
-    const LdStInfo* lsi0 = &Stores[0];
+    const LdStInfo* lsi0 = &LoadStores[0];
     LoadInst* LI = dyn_cast<LoadInst>(lsi0->Inst);
     StoreInst* SI = dyn_cast<StoreInst>(lsi0->Inst);
     LdStKind Kind = LI ? LdStKind::IS_LOAD : LdStKind::IS_STORE;
@@ -3339,7 +3349,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         while (i < SZ)
         {
             // 1. The first one is the leading store.
-            const LdStInfo* leadLSI = &Stores[i];
+            const LdStInfo* leadLSI = &LoadStores[i];
             if (isBundled(leadLSI, m_combinedInsts) ||
                 (i+1) == SZ) /* skip for last one */ {
                 ++i;
@@ -3347,7 +3357,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
             }
 
             if (m_WI && isUniform &&
-                !m_WI->isUniform(leadLSI->getStoreValue())) {
+                !m_WI->isUniform(leadLSI->getValueOperand())) {
                 // no combining for *uniform-ptr = non-uniform value
                 ++i;
                 continue;
@@ -3383,7 +3393,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
             int e = -1;
             uint32_t vecSize = -1;
             for (int j = i + 1; j < SZ; ++j) {
-                const LdStInfo* LSI = &Stores[j];
+                const LdStInfo* LSI = &LoadStores[j];
                 if (isBundled(LSI, m_combinedInsts) ||
                     (leadLSI->ByteOffset + totalBytes) != LSI->ByteOffset)
                 {
@@ -3391,7 +3401,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                     break;
                 }
                 if (m_WI && isUniform &&
-                    !m_WI->isUniform(LSI->getStoreValue())) {
+                    !m_WI->isUniform(LSI->getValueOperand())) {
                     // no combining for *uniform-ptr = non-uniform value
                     break;
                 }
@@ -3422,9 +3432,8 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                 }
             }
 
-            // If any store has byte element, skip D64 entirely to avoid
-            // forming a partial 8B-aligned D64 stores. Hopefully, this
-            // would result in a bigger 4B-aligned D32 store.
+            // If any ldst has byte element, skip D64 to avoid byte mov
+            // with dst-stride = 8.
             if (vecEltBytes == 8 && D32OrD64.hasByteElement()) {
                 // go to next iteration with D32.
                 break;
@@ -3443,7 +3452,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
                     : false;
                 for (int k = i; k <= e; ++k)
                 {
-                    LdStInfo& tlsi = Stores[k];
+                    LdStInfo& tlsi = LoadStores[k];
                     newBundle.LoadStores.push_back(tlsi);
                     setBundled(&tlsi, m_combinedInsts);
                     setVisited(tlsi.Inst);
@@ -3461,20 +3470,70 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores)
         }
     }
 
-    markVisited(Stores);
+    markVisited(LoadStores);
 }
 
-// If V is constant or created only by IEI with const idx, return true.
-bool LdStCombine::isSimpleVector(Value* V) const
+// A member of layout struct can be a vector type. This function will decide
+// if the vector type or a sequence of its elements' types shall be used as
+// the layout struct's member types. If spliting a vector type into a sequence
+// of its elements' types is beneficial (ie, likely results in less mov
+// instructions), return true; otherwise, return false.
+//
+// For example:
+//
+//        Not split <2xi32>       split <2xi32>
+//        -----------------       -------------
+//     struct SOA {                struct SOA {
+//       <2 x i32> x;                i32 x0;
+//                                   i32 x1;
+//       float     y;                float y;
+//       struct AOS {                struct AOS {
+//          i16 a, i16 b} z;           i16 a, i16 b} z;
+//     }                           }
+//
+// args:
+//   V : value to be checked
+//   K : indicate if V is a stored value or a loaded value.
+bool LdStCombine::splitVectorType(Value* V, LdStKind K) const
 {
+    Type* Ty = V->getType();
+    // Not vector, always return false;
+    if (!Ty->isVectorTy()) {
+        return false;
+    }
+
+    // If vector size isn't packed (store size != alloc size), must split to
+    // avoid holes in the layout struct.
+    //   For example, alloc size(<3 x i32>) = 16B, not 12B
+    //       struct { <3xi32>, float }      : size = 20 Bytes
+    //       struct { i32, i32, i32, float} : size = 16 bytes.
+    if (!isa<Constant>(V) &&
+        m_DL->getTypeStoreSize(Ty) != m_DL->getTypeAllocSize(Ty)) {
+        return true;
+    }
+
     Value* val = V;
-    while (auto IEI = dyn_cast<InsertElementInst>(val)) {
-        if (!isa<Constant>(IEI->getOperand(2))) {
+    if (K == LdStKind::IS_STORE) {
+        while (auto IEI = dyn_cast<InsertElementInst>(val)) {
+            if (!isa<Constant>(IEI->getOperand(2))) {
+                return false;
+            }
+            val = IEI->getOperand(0);
+        }
+        if (isa<Constant>(val)) {
+            return true;
+        }
+    }
+    else {
+        for (auto U : val->users()) {
+            Value* user = U;
+            if (auto EEI = dyn_cast<ExtractElementInst>(user)) {
+                if (isa<Constant>(EEI->getIndexOperand())) {
+                    continue;
+                }
+            }
             return false;
         }
-        val = IEI->getOperand(0);
-    }
-    if (isa<Constant>(val)) {
         return true;
     }
     return false;
@@ -3709,25 +3768,13 @@ Value* LdStCombine::gatherCopy(
         {
             IGC_ASSERT((v->getType()->getScalarSizeInBits() % 8) == 0);
             uint32_t eBytes = (v->getType()->getScalarSizeInBits() / 8);
-            auto iVTy = cast<IGCLLVM::FixedVectorType>(v->getType());
-            uint32_t n = (uint32_t)iVTy->getNumElements();
+            uint32_t n = getNumElements(v->getType());
 
             // true if v is a legal vector at level 1
             bool isLvl1 = (remainingBytes == DstEltBytes && eBytes == DstEltBytes);
             // true if v is a legal vector at level 2
             bool isLvl2 = (remainingBytes >= (eBytes * n));
-            bool keepVector = true;
-            if (isLvl1 || isLvl2) {
-                if (isSimpleVector(v)) {
-                    keepVector = false;
-                }
-                else if ((eBytes * n) != m_DL->getTypeAllocSize(iVTy)) {
-                    // If vector size isn't packed (store size != alloc size),
-                    // cannot keep vector.
-                    // For example, alloc size(<3 x i32>) = 16B, not 12B
-                    keepVector = false;
-                }
-            }
+            bool keepVector = !splitVectorTypeForGather(v);
             if (isLvl1 && keepVector)
             {   // case 1
                 // 1st level vector member
