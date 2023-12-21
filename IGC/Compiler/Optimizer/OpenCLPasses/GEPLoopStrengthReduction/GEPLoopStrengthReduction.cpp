@@ -817,7 +817,7 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
         return;
 
     if (S->getType() != Start->getType())
-        Start = SE.getZeroExtendExpr(Start, S->getType());
+        Start = isa<SCEVSignExtendExpr>(S) ? SE.getSignExtendExpr(Start, S->getType()) : SE.getZeroExtendExpr(Start, S->getType());
 
     // Try adding reduction to existing group
     for (auto &c : Candidates)

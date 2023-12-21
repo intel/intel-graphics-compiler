@@ -45,8 +45,8 @@ entry:
   br i1 %cmp33, label %for.body.lr.ph, label %for.end
 
 ; CHECK-LABEL: for.body.lr.ph:
-; CHECK:         [[ZEXT:%.*]] = zext i32 %add4.i.i.i to i64
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[ZEXT]]
+; CHECK:         [[SEXT:%.*]] = sext i32 %add4.i.i.i to i64
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[SEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
