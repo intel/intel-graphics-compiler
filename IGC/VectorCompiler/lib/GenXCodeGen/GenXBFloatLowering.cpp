@@ -62,7 +62,21 @@ public:
   void visitUnaryOperator(UnaryOperator &Inst);
   // fcmp
   void visitFCmpInst(FCmpInst &Inst);
-#endif
+  // fptrunc double to bfloat
+  void visitFPTruncInst(FPTruncInst &Inst);
+  // fpext bfloat to double
+  void visitFPExtInst(FPExtInst &Inst);
+  // bfloat<->integer cast
+  void visitFPToSIInst(FPToSIInst &Inst);
+  void visitFPToUIInst(FPToUIInst &Inst);
+  void visitSIToFPInst(SIToFPInst &Inst);
+  void visitUIToFPInst(UIToFPInst &Inst);
+
+private:
+  void lowerCastToBFloat(CastInst &Inst);
+  void lowerCastFromBFloat(CastInst &Inst);
+
+#endif // LLVM_VERSION_MAJOR > 10
 };
 
 } // end namespace
@@ -156,7 +170,82 @@ void GenXBFloatLowering::visitUnaryOperator(UnaryOperator &Inst) {
   Inst.eraseFromParent();
   Modify = true;
 }
-#endif
+
+void GenXBFloatLowering::visitFPTruncInst(FPTruncInst &Inst) {
+  lowerCastToBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitFPExtInst(FPExtInst &Inst) {
+  lowerCastFromBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitFPToSIInst(FPToSIInst &Inst) {
+  lowerCastFromBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitFPToUIInst(FPToUIInst &Inst) {
+  lowerCastFromBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitSIToFPInst(SIToFPInst &Inst) {
+  lowerCastToBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitUIToFPInst(UIToFPInst &Inst) {
+  lowerCastToBFloat(Inst);
+}
+
+void GenXBFloatLowering::lowerCastToBFloat(CastInst &Inst) {
+  auto *ResTy = Inst.getType();
+  if (!ResTy->getScalarType()->isBFloatTy())
+    return;
+
+  auto *Src = Inst.getOperand(0);
+  auto *SrcTy = Src->getType();
+
+  if (SrcTy->getScalarType()->isFloatTy())
+    return;
+
+  LLVM_DEBUG(dbgs() << "GenXBFloatLowering: apply on CastInst\n"
+                    << Inst << "\n");
+
+  IRBuilder<> Builder(&Inst);
+
+  auto *FloatTy = getFloatTyFromBfloat(ResTy);
+
+  auto *Cast = Builder.CreateCast(Inst.getOpcode(), Src, FloatTy);
+  auto *Trunc = Builder.CreateFPTrunc(Cast, ResTy);
+
+  Inst.replaceAllUsesWith(Trunc);
+  Inst.eraseFromParent();
+  Modify = true;
+}
+
+void GenXBFloatLowering::lowerCastFromBFloat(CastInst &Inst) {
+  auto *ResTy = Inst.getType();
+  if (ResTy->getScalarType()->isFloatTy())
+    return;
+
+  auto *Src = Inst.getOperand(0);
+  auto *SrcTy = Src->getType();
+
+  if (!SrcTy->getScalarType()->isBFloatTy())
+    return;
+
+  LLVM_DEBUG(dbgs() << "GenXBFloatLowering: apply on CastInst\n"
+                    << Inst << "\n");
+
+  IRBuilder<> Builder(&Inst);
+
+  auto *FloatTy = getFloatTyFromBfloat(SrcTy);
+  auto *Ext = Builder.CreateFPExt(Src, FloatTy);
+  auto *Cast = Builder.CreateCast(Inst.getOpcode(), Ext, ResTy);
+
+  Inst.replaceAllUsesWith(Cast);
+  Inst.eraseFromParent();
+  Modify = true;
+}
+#endif // LLVM_VERSION_MAJOR > 10
 
 /***********************************************************************
  * GenXBFloatLowering::runOnFunction
@@ -172,7 +261,7 @@ bool GenXBFloatLowering::runOnFunction(Function &F) {
             .getGenXSubtarget();
 
   visit(F);
-#endif
+#endif // LLVM_VERSION_MAJOR > 10
 
   LLVM_DEBUG(dbgs() << "GenXBFloatLowering ended\n");
   return Modify;

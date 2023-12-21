@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm_12_or_greater
-; RUN: %opt %use_old_pass_manager% -GenXBFloatLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXBFloatLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; COM: Supported instructions FAdd, FSub, FMul, FDiv, FRem, FCmp
 
 define bfloat @scalar_bfloat_fadd(bfloat %a, bfloat %b) {
@@ -144,4 +144,3 @@ define <123 x bfloat> @vector_bfloat_fneg(<123 x bfloat> %a) {
 ; CHECK-LABEL: define <123 x bfloat> @vector_bfloat_fneg
 ; CHECK-DAG: %[[A_EXP:[a-z0-9.]+]] = fpext <123 x bfloat> %a to <123 x float>
 ; CHECK: %[[fcmp:[a-z0-9.]+]] = fneg <123 x float> %[[A_EXP]]
-
