@@ -210,9 +210,9 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
   unsigned int offset = 0;
   write<uint32_t>(buffer, numRanges, offset);
   for (auto &item : indirRefMap) {
-    vISA_ASSERT(offset < size, "Out of bounds");
-    write<uint32_t>(buffer, item.first, offset);
     for (const auto &arg : item.second) {
+      vISA_ASSERT(offset < size, "Out of bounds");
+      write<uint32_t>(buffer, item.first, offset);
       vISA_ASSERT(offset < size, "Out of bounds");
       write<uint16_t>(buffer, arg.first, offset);
       vISA_ASSERT(offset < size, "Out of bounds");
