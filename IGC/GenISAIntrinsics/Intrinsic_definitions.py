@@ -2789,8 +2789,13 @@ Imported_Intrinsics = \
      ("int",                            "0x1:fadd, 0x2:fsub, 0x4:fmul, 0x8:fdiv")],
     "NoMem"]],
 ####################################################################################################
-"GenISA_bitcastfromstruct": ["bitcast from a struct to an int (vector), GRF layout related",
+"GenISA_bitcastfromstruct": ["bitcast from a struct to an int (or int vector), GRF layout related",
     [("anyint",                         "result"),
     [("anystruct",                      "input")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_bitcasttostruct": ["bitcast from a int (or int vector) to a struct, GRF layout related",
+    [("anystruct",                      "result"),
+    [("anyint",                         "input")],
     "NoMem"]]
 }
