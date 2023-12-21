@@ -71,7 +71,7 @@ struct DumpProcessInfo
 
             // llvm build version
             summary += std::string("LLVM major version: ");
-            summary += LLVM_VERSION_MAJOR;
+            summary += std::to_string(LLVM_VERSION_MAJOR);
             summary += "\n\n";
 
             // OS information
