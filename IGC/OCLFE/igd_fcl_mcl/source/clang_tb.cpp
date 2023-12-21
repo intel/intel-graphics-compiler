@@ -773,7 +773,7 @@ namespace TC
         const char * end = optValue + strlen(optValue);
 
         // parse
-        std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLMAJOR.MINOR";
+        const std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLMAJOR.MINOR";
         auto isNumeric = [](char v) { return (v >= '0') && (v <= '9'); };
         if (false == ((end - optValue >= 5) && (optValue[0] == 'C') && (optValue[1] == 'L') && isNumeric(optValue[2])
             && (optValue[3] == '.') && isNumeric(optValue[4])

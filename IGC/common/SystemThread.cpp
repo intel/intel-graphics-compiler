@@ -1092,7 +1092,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     const SYSTEM_THREAD_MODE mode,
     const bool bindlessMode)
 {
-    llvm::MemoryBuffer* pBuffer = nullptr;
     unsigned char SIPIndex = 0;
     std::map< unsigned char, std::tuple<void*, unsigned int, void*, unsigned int> > SIPKernelInfo;
     populateSIPKernelInfo(platform, SIPKernelInfo);
@@ -1253,13 +1252,16 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         std::string sipFile(IGC_GET_REGKEYSTRING(SIPOverrideFilePath));
         if (!sipFile.empty())
         {
-            pBuffer = LoadFile(sipFile);
-        }
-        IGC_ASSERT(pBuffer);
-        if (pBuffer)
-        {
-            m_LinearAddress = (void *)pBuffer->getBuffer().data();
-            m_ProgramSize = pBuffer->getBufferSize();
+            llvm::MemoryBuffer* pBuffer = LoadFile(sipFile);
+            if (pBuffer)
+            {
+                m_LinearAddress = (void *)pBuffer->getBuffer().data();
+                m_ProgramSize = pBuffer->getBufferSize();
+            }
+            else
+            {
+                IGC_ASSERT(false);
+            }
         }
     }
     else

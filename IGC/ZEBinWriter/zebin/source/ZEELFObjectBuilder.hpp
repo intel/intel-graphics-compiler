@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -56,6 +56,8 @@ public:
     }
 
     ~ZEELFObjectBuilder() {}
+    ZEELFObjectBuilder(const ZEELFObjectBuilder&) = delete;
+    ZEELFObjectBuilder& operator=(const ZEELFObjectBuilder&) = delete;
 
     void setProductFamily(PRODUCT_FAMILY family) { m_productFamily = family; }
     PRODUCT_FAMILY getProductFamily() const { return m_productFamily; }
@@ -85,7 +87,7 @@ public:
     // - return a unique id for referencing in addSymbol
     // Currently we assume there is only one text section that'll be added
     SectionID addSectionText(
-        std::string name, const uint8_t* data, uint64_t size, uint32_t padding, uint32_t align);
+        const std::string& name, const uint8_t* data, uint64_t size, uint32_t padding, uint32_t align);
 
     // add a data section contains raw data, such as constant or global buffer.
     // - name: section name. Do not includes leading .data in given
@@ -100,7 +102,7 @@ public:
     // - alloc: mark section as allocatable
     // - return a unique id for referencing in addSymbol
     SectionID addSectionData(
-        std::string name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0, bool rodata = false, bool alloc = true);
+        const std::string& name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0, bool rodata = false, bool alloc = true);
 
     // add a bss section which occupies no space in the ELF, but with size and other section information
     // The bss sections could be used for zero-initialized variables.
@@ -111,7 +113,7 @@ public:
     // - align: alignment requirement in byte
     // - return a unique id for referencing in addSymbol
     SectionID addSectionBss(
-        std::string name, uint64_t size, uint32_t padding = 0, uint32_t align = 0);
+        const std::string& name, uint64_t size, uint32_t padding = 0, uint32_t align = 0);
 
     // add a spv section contains the spv source. This section will be set to SHT_ZEBIN_SPIRV type
     // - name: section name. The default name is .spv
@@ -120,7 +122,7 @@ public:
     //   by the given data and size
     // - Note that the given data buffer have to be alive through
     //   ZEELFObjectBuilder
-    void addSectionSpirv(std::string name, const uint8_t* data, uint64_t size);
+    void addSectionSpirv(const std::string& name, const uint8_t* data, uint64_t size);
 
     // add .gtpin_info section
     // - name: section name. Do not includes leading .gtpin_info in the given
@@ -132,7 +134,7 @@ public:
     //   by the given data and size
     // - Note that the given data buffer have to be alive through
     //   ZEELFObjectBuilder
-    void addSectionGTPinInfo(std::string name, const uint8_t* data, uint64_t size);
+    void addSectionGTPinInfo(const std::string& name, const uint8_t* data, uint64_t size);
 
     // add .visaasm section
     // - name: section name. Do not includes leading .visaasm in the given
@@ -143,7 +145,7 @@ public:
     // - Note that the alignment requirement of the section should be satisfied
     //   by the given data and size
     // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
-    void addSectionVISAAsm(std::string name, const uint8_t* data, uint64_t size);
+    void addSectionVISAAsm(const std::string& name, const uint8_t* data, uint64_t size);
 
     // add .misc section
     // - name: section name. Do not includes leading .misc in the given
@@ -154,7 +156,7 @@ public:
     // - Note that the alignment requirement of the section should be satisfied
     //   by the given data and size
     // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
-    void addSectionMisc(std::string name, const uint8_t* data, uint64_t size);
+    void addSectionMisc(const std::string& name, const uint8_t* data, uint64_t size);
 
     // add .note.intelgt.metrics section
     // - name: .note.intelgt.metrics. Do not includes leading .note.intelgt.metrics
@@ -165,7 +167,7 @@ public:
     // - Note that the alignment requirement of the section should be satisfied
     //   by the given data and size
     // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
-    void addSectionMetrics(std::string name, const uint8_t* data, uint64_t size);
+    void addSectionMetrics(const std::string& name, const uint8_t* data, uint64_t size);
 
     // .debug_info section in DWARF format
     // - name: section name. The default name is .debug_info
@@ -175,7 +177,7 @@ public:
     // - Note that the given data buffer have to be alive through
     //   ZEELFObjectBuilder
     // - return a unique id for referencing in addSymbol
-    SectionID addSectionDebug(std::string name, const uint8_t* data, uint64_t size);
+    SectionID addSectionDebug(const std::string& name, const uint8_t* data, uint64_t size);
 
     // add ze_info section
     void addSectionZEInfo(zeInfoContainer& zeInfo);
@@ -189,7 +191,7 @@ public:
     // - type    : symbol type. The value is defined in ELF standard ST_TYPE
     // - sectionId : the section id of which this symbol is defined in. Giving
     //               -1 if this is an UNDEFINED symbol
-    void addSymbol(std::string name, uint64_t addr, uint64_t size,
+    void addSymbol(const std::string& name, uint64_t addr, uint64_t size,
         uint8_t binding, uint8_t type, SectionID sectionId);
 
     // add a relocation with rel format
@@ -201,7 +203,7 @@ public:
     // - type      : the relocation name
     // - sectionId : the section id where the relocation is apply to
     void addRelRelocation(
-        uint64_t offset, std::string symName, R_TYPE_ZEBIN type, SectionID sectionId);
+        uint64_t offset, const std::string& symName, R_TYPE_ZEBIN type, SectionID sectionId);
 
     // add a relocation with rela format
     // This function will create a corresponding .rela.{targetSectionName} section if
@@ -213,7 +215,7 @@ public:
     // - addend    : the addend value
     // - sectionId : the section id where the relocation is apply to
     void addRelaRelocation(
-        uint64_t offset, std::string symName, R_TYPE_ZEBIN type, uint64_t addend, SectionID sectionId);
+        uint64_t offset, const std::string& symName, R_TYPE_ZEBIN type, uint64_t addend, SectionID sectionId);
 
     // finalize - Finalize the ELF Object, write ELF file into given os
     // return number of written bytes
@@ -243,7 +245,7 @@ private:
 
     class StandardSection : public Section {
     public:
-        StandardSection(std::string sectName, const uint8_t* data, uint64_t size,
+        StandardSection(const std::string& sectName, const uint8_t* data, uint64_t size,
             unsigned type, unsigned flags, uint32_t padding, uint32_t id)
             : Section(id), m_sectName(sectName), m_data(data), m_size(size), m_type(type),
               m_flags(flags), m_padding(padding)
@@ -279,7 +281,7 @@ private:
 
     class Symbol {
     public:
-        Symbol(std::string name, uint64_t addr, uint64_t size, uint8_t binding,
+        Symbol(const std::string& name, uint64_t addr, uint64_t size, uint8_t binding,
             uint8_t type, SectionID sectionId)
             : m_name(name), m_addr(addr), m_size(size), m_binding(binding),
             m_type(type), m_sectionId(sectionId)
@@ -306,7 +308,7 @@ private:
     /// It's rel or rela depends on it's in RelocSection or RelaRelocSection
     class Relocation {
     public:
-        Relocation(uint64_t offset, std::string symName, R_TYPE_ZEBIN type, uint64_t addend = 0)
+        Relocation(uint64_t offset, const std::string& symName, R_TYPE_ZEBIN type, uint64_t addend = 0)
             : m_offset(offset), m_symName(symName), m_type(type), m_addend(addend)
         {}
 
@@ -348,7 +350,7 @@ private:
 
 private:
     Section& addStandardSection(
-        std::string sectName, const uint8_t* data, uint64_t size, unsigned type,
+        const std::string& sectName, const uint8_t* data, uint64_t size, unsigned type,
         unsigned flags, uint32_t padding, uint32_t align, StandardSectionListTy& sections);
 
     // isRelFormat - rel or rela relocation format

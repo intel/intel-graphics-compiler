@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -76,7 +76,7 @@ void MakeHeader(StringRef Func, SmallVector<char, 0> &headerVector, int index)
     headerVector.push_back((char)(index >> 8));
 }
 
-void CreateElfSection(CLElfLib::CElfWriter* pWriter, CLElfLib::SSectionNode sectionNode, std::string Name, char* pData, unsigned DataSize)
+void CreateElfSection(CLElfLib::CElfWriter* pWriter, CLElfLib::SSectionNode sectionNode, const std::string& Name, char* pData, unsigned DataSize)
 {
     // Create section
     sectionNode.Name = Name;

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -627,7 +627,7 @@ namespace vISA {
 class BinaryEncoding : public BinaryEncodingBase {
 
 public:
-  BinaryEncoding(Mem_Manager &m, G4_Kernel &k, std::string fname)
+  BinaryEncoding(Mem_Manager &m, G4_Kernel &k, const std::string& fname)
       : BinaryEncodingBase(m, k, fname) {}
 
   virtual ~BinaryEncoding(){

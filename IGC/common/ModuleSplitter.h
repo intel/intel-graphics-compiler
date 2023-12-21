@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -18,6 +18,8 @@ class KernelModuleSplitter
 public:
     KernelModuleSplitter(IGC::OpenCLProgramContext& oclContext, llvm::Module& module);
     ~KernelModuleSplitter();
+    KernelModuleSplitter(const KernelModuleSplitter&) = delete;
+    KernelModuleSplitter& operator=(const KernelModuleSplitter&) = delete;
     void restoreOclContextModule();
     void setSplittedModuleInOCLContext();
     void retry();

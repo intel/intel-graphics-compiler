@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -55,6 +55,8 @@ public:
   }
 
   virtual ~CISA_IR_Builder();
+  CISA_IR_Builder(const CISA_IR_Builder&) = delete;
+  CISA_IR_Builder& operator=(const CISA_IR_Builder&) = delete;
 
   /**************START VISA BUILDER API*****************************/
 

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -138,11 +138,11 @@ struct SkipCommand
     unsigned int start, end;
     TokenSkipCase skippedBy;
 
-    SkipCommand(std::string _name, unsigned _start, unsigned _end, TokenSkipCase _skippedBy)
+    SkipCommand(const std::string& _name, unsigned _start, unsigned _end, TokenSkipCase _skippedBy)
         : name(_name), start(_start), end(_end), skippedBy(_skippedBy)
     {}
 
-    SkipCommand(std::string _name) : name(_name)
+    SkipCommand(const std::string& _name) : name(_name)
     {
         start = std::numeric_limits<unsigned int>::max();
         end = std::numeric_limits<unsigned int>::max();
@@ -388,7 +388,7 @@ static bool tryParsePassNames(PassDisableConfig& pdc, const std::string& Token)
         // Parse cases for Token: Pass name: PASS_NAME
         case 1:
         {
-            std::string nameOfPassToSkip = vectorOfSubTokens[0];
+            const std::string& nameOfPassToSkip = vectorOfSubTokens[0];
             std::cerr << "You want to skip all occurrence of " << nameOfPassToSkip << std::endl;
             auto localSkipComand = SkipCommand(nameOfPassToSkip);
             pdc.skipCommands.push_back(localSkipComand);

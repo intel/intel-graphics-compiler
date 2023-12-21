@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -203,6 +203,8 @@ public:
       : Offset(0), Size(0),
         Abbrev((llvm::dwarf::Tag)Tag, llvm::dwarf::DW_CHILDREN_no), Parent(0) {}
   virtual ~DIE();
+  DIE(const DIE &) = delete;
+  DIE &operator=(const DIE &) = delete;
 
   // Accessors.
   DIEAbbrev &getAbbrev() { return Abbrev; }

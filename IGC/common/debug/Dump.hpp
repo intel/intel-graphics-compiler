@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -116,6 +116,8 @@ class Dump
 public:
     Dump( DumpName const& dumpName, DumpType type );
     virtual ~Dump();
+    Dump(const Dump&) = delete;
+    Dump& operator=(const Dump&) = delete;
 
     llvm::raw_ostream& stream() const;
 

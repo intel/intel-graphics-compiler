@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -34,8 +34,8 @@ See LICENSE.TXT for details.
 
 #include "DIE.hpp"
 #include "DwarfDebug.hpp"
-#include "Utils.hpp"
 #include "EmitterOpts.hpp"
+#include "Utils.hpp"
 
 namespace llvm {
 class MachineLocation;
@@ -127,6 +127,8 @@ public:
   CompileUnit(unsigned UID, DIE *D, llvm::DICompileUnit *CU, StreamEmitter *A,
               IGC::DwarfDebug *DW);
   ~CompileUnit();
+  CompileUnit(const CompileUnit &) = delete;
+  CompileUnit &operator=(const CompileUnit &) = delete;
 
   using ImportedEntityList = llvm::SmallVector<const llvm::MDNode *, 8>;
   using ImportedEntityMap =

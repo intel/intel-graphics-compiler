@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -151,6 +151,8 @@ class LexicalScopes {
 public:
   LexicalScopes() : VisaM(NULL), CurrentFnLexicalScope(NULL) {}
   virtual ~LexicalScopes();
+  LexicalScopes(const LexicalScopes &) = delete;
+  LexicalScopes &operator=(const LexicalScopes &) = delete;
 
   /// initialize - Scan machine function and constuct lexical scope nest.
   virtual void initialize(const VISAModule *M);

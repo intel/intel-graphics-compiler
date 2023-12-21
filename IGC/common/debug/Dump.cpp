@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -545,6 +545,8 @@ namespace
                 delete m_pUnder;
             }
         }
+        PrefixStream(const PrefixStream&) = delete;
+        PrefixStream& operator=(const PrefixStream&) = delete;
 
         virtual uint64_t current_pos() const override
         {

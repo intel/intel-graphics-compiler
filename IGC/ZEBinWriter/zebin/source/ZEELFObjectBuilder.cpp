@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -156,7 +156,7 @@ using namespace llvm;
 
 ZEELFObjectBuilder::Section&
 ZEELFObjectBuilder::addStandardSection(
-    std::string sectName, const uint8_t* data, uint64_t size, unsigned type,
+    const std::string& sectName, const uint8_t* data, uint64_t size, unsigned type,
     unsigned flags, uint32_t padding, uint32_t align, StandardSectionListTy& sections)
 {
     IGC_ASSERT(type != ELF::SHT_NULL);
@@ -177,7 +177,7 @@ ZEELFObjectBuilder::addStandardSection(
 
 ZEELFObjectBuilder::SectionID
 ZEELFObjectBuilder::addSectionText(
-    std::string name, const uint8_t* data, uint64_t size, uint32_t padding,
+    const std::string& name, const uint8_t* data, uint64_t size, uint32_t padding,
     uint32_t align)
 {
     // adjust the section name to be .text.givenSectName
@@ -195,7 +195,7 @@ ZEELFObjectBuilder::addSectionText(
 
 ZEELFObjectBuilder::SectionID
 ZEELFObjectBuilder::addSectionData(
-    std::string name, const uint8_t* data, uint64_t size, uint32_t padding, uint32_t align, bool rodata, bool alloc)
+    const std::string& name, const uint8_t* data, uint64_t size, uint32_t padding, uint32_t align, bool rodata, bool alloc)
 {
     // adjust the section name to be .data.givenSectName
     std::string sectName;
@@ -218,7 +218,7 @@ ZEELFObjectBuilder::addSectionData(
 
 ZEELFObjectBuilder::SectionID
 ZEELFObjectBuilder::addSectionBss(
-    std::string name, uint64_t size, uint32_t padding, uint32_t align)
+    const std::string& name, uint64_t size, uint32_t padding, uint32_t align)
 {
     // adjust the section name to be .bss.givenSectName
     std::string sectName;
@@ -227,13 +227,13 @@ ZEELFObjectBuilder::addSectionBss(
     else
         sectName = m_BssName;
 
-    Section& sect = addStandardSection(std::move(sectName), nullptr, size, ELF::SHT_NOBITS,
+    Section& sect = addStandardSection(sectName, nullptr, size, ELF::SHT_NOBITS,
         ELF::SHF_ALLOC | ELF::SHF_WRITE, padding, align, m_dataAndbssSections);
     return sect.id();
 }
 
 void
-ZEELFObjectBuilder::addSectionGTPinInfo(std::string name, const uint8_t* data, uint64_t size)
+ZEELFObjectBuilder::addSectionGTPinInfo(const std::string& name, const uint8_t* data, uint64_t size)
 {
     // adjust the section name
     std::string sectName;
@@ -247,7 +247,7 @@ ZEELFObjectBuilder::addSectionGTPinInfo(std::string name, const uint8_t* data, u
 }
 
 void
-ZEELFObjectBuilder::addSectionVISAAsm(std::string name, const uint8_t* data, uint64_t size)
+ZEELFObjectBuilder::addSectionVISAAsm(const std::string& name, const uint8_t* data, uint64_t size)
 {
     // adjust the section name
     std::string sectName;
@@ -261,7 +261,7 @@ ZEELFObjectBuilder::addSectionVISAAsm(std::string name, const uint8_t* data, uin
 }
 
 void
-ZEELFObjectBuilder::addSectionMisc(std::string name, const uint8_t* data, uint64_t size)
+ZEELFObjectBuilder::addSectionMisc(const std::string& name, const uint8_t* data, uint64_t size)
 {
     // adjust the section name
     std::string sectName;
@@ -275,7 +275,7 @@ ZEELFObjectBuilder::addSectionMisc(std::string name, const uint8_t* data, uint64
 }
 
 void
-ZEELFObjectBuilder::addSectionMetrics(std::string name, const uint8_t* data, uint64_t size)
+ZEELFObjectBuilder::addSectionMetrics(const std::string& name, const uint8_t* data, uint64_t size)
 {
     // adjust the section name
     std::string sectName;
@@ -289,20 +289,18 @@ ZEELFObjectBuilder::addSectionMetrics(std::string name, const uint8_t* data, uin
 }
 
 void
-ZEELFObjectBuilder::addSectionSpirv(std::string name, const uint8_t* data, uint64_t size)
+ZEELFObjectBuilder::addSectionSpirv(const std::string& name, const uint8_t* data, uint64_t size)
 {
-    if (name.empty())
-        name = m_SpvName;
-    addStandardSection(name, data, size, SHT_ZEBIN_SPIRV, 0, 0, 0, m_otherStdSections);
+    const std::string& sectName = name.empty() ? m_SpvName : name;
+    addStandardSection(sectName, data, size, SHT_ZEBIN_SPIRV, 0, 0, 0, m_otherStdSections);
 }
 
 ZEELFObjectBuilder::SectionID
-ZEELFObjectBuilder::addSectionDebug(std::string name, const uint8_t* data, uint64_t size)
+ZEELFObjectBuilder::addSectionDebug(const std::string& name, const uint8_t* data, uint64_t size)
 {
-    if (name.empty())
-        name = m_DebugName;
+    const std::string& sectName = name.empty() ? m_DebugName : name;
     Section& sect =
-        addStandardSection(name, data, size, ELF::SHT_PROGBITS, 0, 0, 0, m_otherStdSections);
+        addStandardSection(sectName, data, size, ELF::SHT_PROGBITS, 0, 0, 0, m_otherStdSections);
     return sect.id();
 }
 
@@ -316,7 +314,7 @@ ZEELFObjectBuilder::addSectionZEInfo(zeInfoContainer& zeInfo)
 }
 
 void ZEELFObjectBuilder::addSymbol(
-    std::string name, uint64_t addr, uint64_t size, uint8_t binding,
+    const std::string& name, uint64_t addr, uint64_t size, uint8_t binding,
     uint8_t type, ZEELFObjectBuilder::SectionID sectionId)
 {
     if (binding == llvm::ELF::STB_LOCAL)
@@ -354,7 +352,7 @@ ZEELFObjectBuilder::getOrCreateRelocSection(SectionID targetSectId, bool isRelFo
 }
 
 void ZEELFObjectBuilder::addRelRelocation(
-    uint64_t offset, std::string symName, R_TYPE_ZEBIN type, SectionID sectionId)
+    uint64_t offset, const std::string& symName, R_TYPE_ZEBIN type, SectionID sectionId)
 {
     RelocSection& reloc_sect = getOrCreateRelocSection(sectionId, true);
     // create the relocation
@@ -363,7 +361,7 @@ void ZEELFObjectBuilder::addRelRelocation(
 }
 
 void ZEELFObjectBuilder::addRelaRelocation(
-    uint64_t offset, std::string symName, R_TYPE_ZEBIN type, uint64_t addend, SectionID sectionId)
+    uint64_t offset, const std::string& symName, R_TYPE_ZEBIN type, uint64_t addend, SectionID sectionId)
 {
     RelocSection& reloc_sect = getOrCreateRelocSection(sectionId, false);
     // create the relocation

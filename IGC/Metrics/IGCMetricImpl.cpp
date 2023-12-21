@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2022 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1576,7 +1576,6 @@ namespace IGCMetrics
 
     struct VarData* IGCMetricImpl::GetVarData(llvm::Value* pValue)
     {
-        map_Var.begin();
         // iterate over all user variables which we found
         for (auto trackerVal_i = map_Var.begin();
             trackerVal_i != map_Var.end();

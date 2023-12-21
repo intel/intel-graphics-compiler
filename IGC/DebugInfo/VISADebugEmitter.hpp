@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -46,6 +46,8 @@ class DebugEmitter : public IDebugEmitter {
 public:
   DebugEmitter();
   ~DebugEmitter();
+  DebugEmitter(const DebugEmitter &) = delete;
+  DebugEmitter &operator=(const DebugEmitter &) = delete;
 
   // IDebugEmitter interface methods
   void Initialize(std::unique_ptr<VISAModule> VM,

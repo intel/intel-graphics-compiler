@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -159,11 +159,15 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
         {
             return IGA_XE_HPC;
         }
+        IGC_ASSERT_MESSAGE(0, "unsupported platform");
+        break;
     case IGFX_XE2_LPG_CORE:
         if (ProductFamily == IGFX_LUNARLAKE)
         {
             return IGA_XE2;
         }
+        IGC_ASSERT_MESSAGE(0, "unsupported platform");
+        break;
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;

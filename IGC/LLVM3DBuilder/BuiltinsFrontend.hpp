@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -179,6 +179,9 @@ public:
             m_Platform = NULL;
         }
     }
+
+    LLVM3DBuilder(const LLVM3DBuilder&) = delete;
+    LLVM3DBuilder& operator=(const LLVM3DBuilder&) = delete;
 
     static unsigned EncodeASForGFXResource(
         const llvm::Value& bufIdx,

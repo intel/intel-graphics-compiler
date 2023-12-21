@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -73,7 +73,7 @@ typedef uint64_t QWORD;
 namespace vISA {
 class BinaryEncodingCNL : public BinaryEncodingBase {
 public:
-  BinaryEncodingCNL(Mem_Manager &m, G4_Kernel &k, std::string fname)
+  BinaryEncodingCNL(Mem_Manager &m, G4_Kernel &k, const std::string& fname)
       : BinaryEncodingBase(m, k, fname) {}
 
   virtual ~BinaryEncodingCNL(){

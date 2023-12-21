@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -37,9 +37,9 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include "StreamEmitter.hpp"
 #include "DIE.hpp"
 #include "DwarfDebug.hpp"
-#include "StreamEmitter.hpp"
 
 #include "Probe/Assertion.h"
 
@@ -373,10 +373,11 @@ class VISAMCCodeEmitter : public MCCodeEmitter {
     IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
   }
 
-  void operator=(const VISAMCCodeEmitter &) {
-    // TODO: implement this
-    IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-  }
+public:
+  VISAMCCodeEmitter() = default;
+  ~VISAMCCodeEmitter() = default;
+  VISAMCCodeEmitter(const VISAMCCodeEmitter &) = delete;
+  VISAMCCodeEmitter &operator=(const VISAMCCodeEmitter &) = delete;
 };
 
 } // namespace IGC
