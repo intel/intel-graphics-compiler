@@ -325,7 +325,6 @@ static void CommonOCLBasedPasses(
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new TypesLegalizationPass());
     mpmSPIR.add(new TargetLibraryInfoWrapperPass());
-    mpmSPIR.add(createDeadCodeEliminationPass());
     mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpmSPIR.add(new CodeGenContextWrapper(pContext));
     mpmSPIR.add(new SPIRMetaDataTranslation());
@@ -333,6 +332,7 @@ static void CommonOCLBasedPasses(
     mpmSPIR.add(new ConvertUserSemanticDecoratorOnFunctions());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new HandleSpirvDecorationMetadata());
+    mpmSPIR.add(createDeadCodeEliminationPass());
     mpmSPIR.run(*pContext->getModule());
 
     bool isOptDisabled = CompilerOpts.OptDisable;
