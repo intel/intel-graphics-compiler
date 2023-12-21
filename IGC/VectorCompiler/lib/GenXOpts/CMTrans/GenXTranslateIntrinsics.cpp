@@ -180,23 +180,6 @@ Value *GenXTranslateIntrinsics::translateBFloat16Convert(CallInst &I) const {
   auto *ArgETy = ArgTy;
   auto *RetTy = I.getType();
 
-#if LLVM_VERSION_MAJOR >= 11
-  auto *BFloatTy = Builder.getBFloatTy();
-  if (auto *ArgVTy = dyn_cast<IGCLLVM::FixedVectorType>(ArgTy)) {
-    ArgETy = ArgVTy->getElementType();
-    BFloatTy =
-        IGCLLVM::FixedVectorType::get(BFloatTy, ArgVTy->getNumElements());
-  }
-
-  Value *NewI = nullptr;
-
-  if (ArgETy->isHalfTy()) {
-    auto *Cast = Builder.CreateBitCast(Arg, BFloatTy);
-    NewI = Builder.CreateFPExt(Cast, RetTy);
-  } else {
-    NewI = Builder.CreateFPTrunc(Arg, BFloatTy);
-  }
-#else  // LLVM_VERSION_MAJOR >= 11
   Type *I16Ty = Builder.getInt16Ty();
 
   if (auto *ArgVTy = dyn_cast<IGCLLVM::FixedVectorType>(ArgTy)) {
@@ -215,9 +198,8 @@ Value *GenXTranslateIntrinsics::translateBFloat16Convert(CallInst &I) const {
   }
 
   auto *NewI = Builder.CreateCall(Func, {Arg});
-#endif // LLVM_VERSION_MAJOR >= 11
-
   LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
+
   return Builder.CreateBitCast(NewI, RetTy);
 }
 
