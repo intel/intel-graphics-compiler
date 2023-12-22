@@ -284,7 +284,7 @@ public:
 
   void formatInstructionDeps(const Instruction &i) {
     bool first = true;
-    auto emitSet = [&](std::string what, const RegSet &rs) {
+    auto emitSet = [&](const std::string& what, const RegSet &rs) {
       if (!rs.empty()) {
         if (first) {
           first = false;

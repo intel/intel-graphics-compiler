@@ -122,7 +122,7 @@ public:
   void addInstOpts(const InstOptSet &opts) { m_instOpts.add(opts); }
 
   // associates an optional comment with instruction
-  void setComment(std::string comment) { m_comment = comment; }
+  void setComment(const std::string& comment) { m_comment = comment; }
 
   ///////////////////////////////////////////////////////////////////////
   // name lacks get*** for consistency with other classes that all use

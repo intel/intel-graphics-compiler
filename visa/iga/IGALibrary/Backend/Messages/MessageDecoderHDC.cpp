@@ -456,7 +456,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
                    extraAttrs);
   }
 
-  void setHdcHwBlock(std::string msgSym, std::string msgDesc, SendOp op,
+  void setHdcHwBlock(const std::string& msgSym, std::string msgDesc, SendOp op,
                      int addrSize, int blockCountOffset, int blockCountLen,
                      MessageInfo::Attr extraAttrs) {
     extraAttrs |= MessageInfo::Attr::TRANSPOSED;

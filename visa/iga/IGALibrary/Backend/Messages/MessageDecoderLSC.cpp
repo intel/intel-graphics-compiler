@@ -695,7 +695,7 @@ struct MessageDecoderLSC : MessageDecoder {
   }
 
   ///////////////////////////////////////////////////////////////////////////
-  void decodeLscMessage(std::string msgDesc, SendOp lscOp) {
+  void decodeLscMessage(const std::string& msgDesc, SendOp lscOp) {
     const std::string symbol = ToSyntax(lscOp);
     op = lscOp;
 

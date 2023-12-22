@@ -402,7 +402,7 @@ public:
     if (subop.empty()) {
       emit(", \"subop\":null");
     } else {
-      auto sf = subop[0] == '.' ? subop.substr(1) : subop;
+      const auto& sf = subop[0] == '.' ? subop.substr(1) : subop;
       emit(", \"subop\":\"", sf, "\"");
     }
 

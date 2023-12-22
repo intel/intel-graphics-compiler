@@ -162,8 +162,8 @@ struct SyntaxError : AssembleError {
 // thrown when assembly encounters an encoding error
 // E.g. we cannot compact an instruction
 struct EncodeError : AssembleError {
-  EncodeError(const char *api, std::vector<Diagnostic> errs,
-              const std::string src)
+  EncodeError(const char *api, const std::vector<Diagnostic>& errs,
+              const std::string& src)
       : AssembleError(IGA_ENCODE_ERROR, api, errs, src) {}
 };
 
