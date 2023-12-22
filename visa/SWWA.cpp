@@ -464,7 +464,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
     }
   }
 
-  for (auto II : kernel.m_maskOffWAInsts) {
+  for (const auto& II : kernel.m_maskOffWAInsts) {
     G4_INST *tInst = II.first;
     G4_BB *tBB = II.second;
 
@@ -628,7 +628,7 @@ void Optimizer::finishFusedCallWA() {
   // Here set quarter control of that mov to M16 (When stackcall is used,
   // only simd8/simd16 is allowed. Thus, we will set M16 always no matter
   // the kernel is simd8 or simd16).
-  for (auto II : kernel.m_maskOffWAInsts) {
+  for (const auto& II : kernel.m_maskOffWAInsts) {
     G4_INST *tInst = II.first;
     kernel.setMaskOffset(tInst, InstOpt_M16);
   }

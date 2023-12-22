@@ -95,7 +95,7 @@ bool PruneUnusedArguments::runOnModule(Module& M) {
                 CallInst* CI = dyn_cast<CallInst>(U);
                 if (!CI)
                     continue;
-                for (auto Item : UnusedArgs) {
+                for (const auto& Item : UnusedArgs) {
                     auto Arg = Item.first;
                     auto Index = Item.second;
                     if (!isa<UndefValue>(CI->getArgOperand(Index))) {

@@ -456,7 +456,7 @@ namespace IGC
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
         // then check for static flag so that we can do push safely
-        for (auto it : pushInfo.pushableAddresses)
+        for (const auto& it : pushInfo.pushableAddresses)
         {
             if (runtimeval0 * 4 != it.addressOffset)
             {
@@ -1657,7 +1657,7 @@ namespace IGC
         // Update IGC Metadata and shaders map
         // Function declarations are changing, this needs to be reflected in the metadata.
         MetadataBuilder mbuilder(&M);
-        for (auto i : funcsMapping)
+        for (const auto& i : funcsMapping)
         {
             IGCMD::IGCMetaDataHelper::moveFunction(
                 *m_pMdUtils, *m_context->getModuleMetaData(), i.first, i.second);

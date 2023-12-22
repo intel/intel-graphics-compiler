@@ -144,7 +144,7 @@ static void GetDisjointRegions(
     // ->{ {6, 6},  RuntimeValue* }
     // ->{ {8, 19}, RuntimeValue* }
     //   { {8, 8},  RuntimeValue* }
-    for (auto it : runtimeValueCalls)
+    for (const auto& it : runtimeValueCalls)
     {
         std::pair<uint32_t, uint32_t> range = it.first;
         if (disjointRegions.empty() ||
@@ -286,7 +286,7 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
         GetAccessedRegions(accessedRegions, runtimeValueCalls, dataGRFAlignmentInDwords);
 
         // Loop through all RuntimeValue calls
-        for (auto it : runtimeValueCalls)
+        for (const auto& it : runtimeValueCalls)
         {
             llvm::CallInst* callToResolve = llvm::cast<llvm::CallInst>(it.second);
 

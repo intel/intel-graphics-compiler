@@ -394,8 +394,8 @@ public:
   /////////////////////////////////////////////////////////////////////////
   // op+subfunc+exec size and exec offset
   void emitPredOpSubfuncExecInfoFlagReg(const Instruction &i,
-                                        std::string mnemonic,
-                                        std::string subop) {
+                                        const std::string& mnemonic,
+                                        const std::string& subop) {
     emitPred(i);
 
     emit(", \"op\":\"", mnemonic, "\"");

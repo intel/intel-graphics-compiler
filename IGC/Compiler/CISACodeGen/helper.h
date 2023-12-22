@@ -609,13 +609,13 @@ namespace IGC
         llvm::Instruction* I,
         const llvm::TargetLibraryInfo* TLI = nullptr,
         llvm::MemorySSAUpdater* MSSAU = nullptr,
-        std::function<void(llvm::Value*)> AboutToDeleteCallback =
+        const std::function<void(llvm::Value*)>& AboutToDeleteCallback =
             std::function<void(llvm::Value*)>());
 
     void RecursivelyDeleteDeadInstructions(
         const llvm::SmallVectorImpl<llvm::Instruction*>& DeadInsts,
         const llvm::TargetLibraryInfo* TLI = nullptr,
         llvm::MemorySSAUpdater* MSSAU = nullptr,
-        std::function<void(llvm::Value*)> AboutToDeleteCallback =
+        const std::function<void(llvm::Value*)>& AboutToDeleteCallback =
             std::function<void(llvm::Value*)>());
 } // namespace IGC

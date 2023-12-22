@@ -528,6 +528,7 @@ void DIEBlock::EmitValue(StreamEmitter *Asm, dwarf::Form Form) const {
   switch (Form) {
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "Improper form for block");
+    break;
   case dwarf::DW_FORM_block1:
     Asm->EmitInt8(Size);
     break;

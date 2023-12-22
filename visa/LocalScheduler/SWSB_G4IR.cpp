@@ -3770,7 +3770,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     }
     synInst->setLexicalId(newInstID);
     insertedSync = true;
-    for (auto loc : dst_loc) {
+    for (const auto& loc : dst_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
   }
@@ -3787,7 +3787,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     }
     synInst->setLexicalId(newInstID);
     insertedSync = true;
-    for (auto loc : src_loc) {
+    for (const auto& loc : src_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
   }
@@ -4068,7 +4068,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
       synInst->setTokenType(SWSBTokenType::AFTER_WRITE);
     }
     synInst->setLexicalId(newInstID);
-    for (auto loc : dst_loc) {
+    for (const auto& loc : dst_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
     insertedSync = true;
@@ -4085,7 +4085,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
       synInst->setTokenType(SWSBTokenType::AFTER_READ);
     }
     synInst->setLexicalId(newInstID);
-    for (auto loc : src_loc) {
+    for (const auto& loc : src_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
     insertedSync = true;

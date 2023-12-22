@@ -1229,7 +1229,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap() {
           // force spills. So we simply choose
           // src1 of sends.
           const char *dclName = kernel.fg.builder->getNameString(
-              32, "COPY_%d", kernel.Declares.size());
+              32, "COPY_%zu", kernel.Declares.size());
           G4_Declare *copyDcl = kernel.fg.builder->createDeclare(
               dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(),
               src1->getTopDcl()->getNumRows(), Type_UD);

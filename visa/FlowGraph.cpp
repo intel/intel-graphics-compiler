@@ -688,7 +688,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
 
     if (i->isLabel() && i->getLabel()->isSubroutine()) {
       std::vector<G4_BB *> bbvec;
-      subroutines[i->getLabel()] = bbvec;
+      subroutines[i->getLabel()] = std::move(bbvec);
       currSubroutine = i->getLabel();
       subroutineStartBB.push_back(curr_BB);
     }

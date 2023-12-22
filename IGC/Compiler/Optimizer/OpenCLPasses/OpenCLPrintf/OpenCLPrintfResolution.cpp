@@ -367,7 +367,7 @@ std::string OpenCLPrintfResolution::getPrintfStringsMDNodeName(Function& F)
     return "printf.strings";
 }
 
-static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtEnd, DebugLoc DL, bool isNontemporal)
+static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtEnd, const DebugLoc& DL, bool isNontemporal)
 {
     bool isVolatile = false;
     unsigned Align = 4;

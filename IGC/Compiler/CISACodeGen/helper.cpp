@@ -908,7 +908,7 @@ namespace IGC
                 // Make sure constant folding is safe by looking up in pushableAddresses
                 PushInfo& pushInfo = pContext->getModuleMetaData()->pushInfo;
 
-                for (auto it : pushInfo.pushableAddresses)
+                for (const auto& it : pushInfo.pushableAddresses)
                 {
                     if ((bufIdOrGRFOffset * 4 == it.addressOffset) && (IGC_IS_FLAG_ENABLED(DisableStaticCheckForConstantFolding) || it.isStatic))
                     {
@@ -2949,7 +2949,7 @@ bool PDT_dominates(llvm::PostDominatorTree& PTD,
 // are not necessarily trivially dead. For example, store instruction.
 void RecursivelyDeleteDeadInstructions(
     Instruction * I, const TargetLibraryInfo * TLI, MemorySSAUpdater * MSSAU,
-    std::function<void(Value*)> AboutToDeleteCallback) {
+    const std::function<void(Value*)>& AboutToDeleteCallback) {
     SmallVector<Instruction*, 16> DeadInsts;
     DeadInsts.push_back(I);
     RecursivelyDeleteDeadInstructions(DeadInsts, TLI, MSSAU,
@@ -2961,7 +2961,7 @@ void RecursivelyDeleteDeadInstructions(
     const SmallVectorImpl<Instruction*>&DeadInsts,
     const TargetLibraryInfo * TLI,
     MemorySSAUpdater * MSSAU,
-    std::function<void(Value*)> AboutToDeleteCallback) {
+    const std::function<void(Value*)>& AboutToDeleteCallback) {
 #if LLVM_VERSION_MAJOR < 11
     SmallVector<Instruction*, 16> trivialDeadInsts;
 #else

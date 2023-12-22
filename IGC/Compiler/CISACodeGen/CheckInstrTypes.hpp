@@ -25,7 +25,7 @@ namespace IGC
 
     class CheckInstrTypes : public llvm::FunctionPass, public llvm::InstVisitor<CheckInstrTypes>
     {
-        llvm::LoopInfo* LI;
+        llvm::LoopInfo* LI = nullptr;
 
     public:
         static char ID;

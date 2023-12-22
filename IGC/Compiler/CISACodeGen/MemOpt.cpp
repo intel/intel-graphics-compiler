@@ -692,7 +692,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
     Value* subgroupLocalInvocationId = nullptr;
 
     //Go through the collected blockreads to replace them with shuffles
-    for (auto ITuple : BlockReadToRemove) {
+    for (const auto& ITuple : BlockReadToRemove) {
         Instruction* I = std::get<0>(ITuple);
 
         if (BlockReadToOptimize != I) {
@@ -4686,7 +4686,7 @@ void LdStCombine::createCombinedStores(Function& F)
         //     1. set nontemporal if any merged store has it (make sense?)
         SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;
         leadStore->getAllMetadata(MDs);
-        for (auto MII : MDs) {
+        for (const auto& MII : MDs) {
             finalStore->setMetadata(MII.first, MII.second);
         }
 

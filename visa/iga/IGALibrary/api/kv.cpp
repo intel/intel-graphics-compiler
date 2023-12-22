@@ -140,7 +140,7 @@ kv_t *kv_create(iga_gen_t gen_platf, const void *bytes, size_t bytes_len,
         fmtDiag("ERROR", d);
       }
     }
-    for (auto d : kvImpl->m_errHandler.getWarnings()) {
+    for (const auto& d : kvImpl->m_errHandler.getWarnings()) {
       fmtDiag("WARNING", d);
     }
     (void)copyOut(errbuf, errbuf_cap, ss);

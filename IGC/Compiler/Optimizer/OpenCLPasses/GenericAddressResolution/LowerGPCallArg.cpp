@@ -208,7 +208,7 @@ std::optional<unsigned> LowerGPCallArg::getOriginAddressSpace(Function* func, un
 // Loops over the argument list transferring uses from old function to new one.
 void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc)
 {
-    for (auto ArgPair : llvm::zip(oldFunc->args(), newFunc->args()))
+    for (const auto& ArgPair : llvm::zip(oldFunc->args(), newFunc->args()))
     {
         Value* oldArg = &std::get<0>(ArgPair);
         Value* newArg = &std::get<1>(ArgPair);

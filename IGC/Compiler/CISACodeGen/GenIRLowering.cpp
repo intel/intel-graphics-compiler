@@ -513,7 +513,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
         Exprs.emplace_back(PointerExpr{GEP, E, BaseWithMinDiff, Offset});
     }
     std::vector<Instruction *> DeadInsts;
-    for (auto B : Pointers) {
+    for (const auto& B : Pointers) {
         for (auto PI = B.second.rbegin(),
                   PE = B.second.rend(); PI != PE; ++PI) {
             auto &P = *PI;

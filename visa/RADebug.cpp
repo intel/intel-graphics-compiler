@@ -1134,7 +1134,7 @@ void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
       } else {
         auto tmpStr = ss.str();
         auto limitedStr = tmpStr.substr(0, maxInstLen);
-        os << std::string(limitedStr);
+        os << limitedStr;
       }
 
       os << "        ";

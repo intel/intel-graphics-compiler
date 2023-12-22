@@ -351,7 +351,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         // subtract impact from GEP operations related to alloca from the register pressure
         // since after promotion alloca to register these GEPs will be eliminated
         unsigned int GEPImpact = 0;
-        for (auto GEPinst : GEPliveranges)
+        for (const auto& GEPinst : GEPliveranges)
         {
             if (GEPinst.LR->contains(i))
                 GEPImpact += GEPinst.varSize;
@@ -361,7 +361,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         pressure = std::max(pressure, RPinst - GEPImpact);
     }
 
-    for (auto it : m_promotedLiveranges)
+    for (const auto& it : m_promotedLiveranges)
     {
         // check interval intersection
         if ((it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber) ||

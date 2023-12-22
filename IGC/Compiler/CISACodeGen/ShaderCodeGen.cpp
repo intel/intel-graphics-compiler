@@ -1115,7 +1115,7 @@ bool SimdEarlyCheck(CodeGenContext* ctx)
 
 void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders)
 {
-    for (auto i : shaders)
+    for (const auto& i : shaders)
     {
         CShaderProgram* shader = i.second;
         COMPILER_SHADER_STATS_PRINT(shader->m_shaderStats,

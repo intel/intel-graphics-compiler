@@ -286,9 +286,9 @@ namespace llvm {
 
             // Find at least one base address, such that all loads
             // from it can be replaced by registers
-            for (auto LIIterator : LoadInstructions) {
+            for (const auto& LIIterator : LoadInstructions) {
                 bool Found = true;
-                for (auto LI : LIIterator.second)
+                for (const auto& LI : LIIterator.second)
                     Found &= canReplaceWithRegisters(LI, L, SE);
                 if (Found) {
                     UP.UpperBound = true;

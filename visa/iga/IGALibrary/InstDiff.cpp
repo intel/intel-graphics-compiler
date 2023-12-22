@@ -729,7 +729,7 @@ iga_status_t iga::DebugCompaction(Platform p, int /* verbosity */,
     const CompactionMapping *cf = missEntry.first;
     os << std::setw(24) << cf->index.name;
     int64_t misses = 0;
-    for (const auto ms : missEntry.second) {
+    for (const auto& ms : missEntry.second) {
       misses += ms.second.misses.size();
     }
     totalMisses += misses;
@@ -747,7 +747,7 @@ iga_status_t iga::DebugCompaction(Platform p, int /* verbosity */,
 
     // order the misses by the total number
     std::vector<std::pair<Mapping, MappingStats>> orderedEntries;
-    for (const auto ms : missEntry.second) {
+    for (const auto& ms : missEntry.second) {
       orderedEntries.push_back(ms);
     }
     std::sort(orderedEntries.begin(), orderedEntries.end(),

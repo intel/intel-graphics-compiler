@@ -1153,10 +1153,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
           }
         }
 
-        for (auto it : callerFrameInstList) {
+        for (const auto& it : callerFrameInstList) {
           callerInsts.erase(it);
         }
-        for (auto it : calleeFrameInstList) {
+        for (const auto& it : calleeFrameInstList) {
           removeDeadCode((*it)->getSrc(0), calleeInsts, calleeBuilder->getFE_FP());
           calleeInsts.erase(it);
         }

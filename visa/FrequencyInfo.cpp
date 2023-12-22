@@ -92,7 +92,7 @@ void FrequencyInfo::updateStaticFrequencyForBasicBlock(G4_BB *bb) {
 void FrequencyInfo::updateStaticFrequency(
   std::unordered_map<G4_Label*, std::vector<G4_BB*>>& subroutines)
 {
-  for (auto subroutine : subroutines)
+  for (const auto& subroutine : subroutines)
     for (G4_BB *bb : subroutine.second)
       updateStaticFrequencyForBasicBlock(bb);
   return;

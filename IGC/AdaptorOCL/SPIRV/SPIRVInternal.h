@@ -927,7 +927,7 @@ void decorateSPIRVExtInst(std::string &S, std::vector<Type*> ArgTypes);
 bool isFunctionBuiltin(llvm::Function* F);
 
 /// Get a canonical function name for a SPIR-V op code.
-std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, std::string suffix);
+std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, const std::string& suffix);
 
 /// Mutates function call instruction by changing the arguments.
 /// \param ArgMutate mutates the function arguments.

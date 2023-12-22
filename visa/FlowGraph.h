@@ -63,6 +63,8 @@ public:
     BBList.clear();
     callees.clear();
   }
+  FuncInfo(const FuncInfo&) = delete;
+  FuncInfo& operator=(const FuncInfo&) = delete;
 
   void clear() {
     BBSet.clear();
@@ -429,8 +431,6 @@ public:
   void preprocess(INST_LIST &instlist);
 
   FlowGraph() = delete;
-  FlowGraph(const FlowGraph &) = delete;
-  FlowGraph &operator=(const FlowGraph &) = delete;
 
   FlowGraph(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel *kernel, Mem_Manager &m)
       : traversalNum(0), numBBId(0), reducible(true), doIPA(false),
@@ -440,6 +440,8 @@ public:
         pseudoVCEDcl(NULL), immDom(*kernel), pDom(*kernel), loops(*kernel) {}
 
   ~FlowGraph();
+  FlowGraph(const FlowGraph&) = delete;
+  FlowGraph& operator=(const FlowGraph&) = delete;
 
   void setBuilder(IR_Builder *pBuilder) { builder = pBuilder; }
 

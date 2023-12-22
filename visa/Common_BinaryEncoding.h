@@ -1156,7 +1156,7 @@ public:
   _CompactSourceTable3Src_ CompactSourceTable3Src;
   _CompactSourceTable3SrcCHV_ CompactSourceTable3SrcCHV;
 
-  BinaryEncodingBase(Mem_Manager &m, G4_Kernel &k, std::string fname)
+  BinaryEncodingBase(Mem_Manager &m, G4_Kernel &k, const std::string& fname)
       : BDWCompactControlTable(m), BDWCompactSourceTable(m),
         BDWCompactSubRegTable(m), BDWCompactDataTypeTableStr(m),
         CompactControlTable3Src(k.getPlatform()),

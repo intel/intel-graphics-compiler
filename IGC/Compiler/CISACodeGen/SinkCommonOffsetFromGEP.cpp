@@ -290,7 +290,7 @@ bool DivergentPointersGroups::createAddNewGroups(const DivergentPointer& DP) {
 void DivergentPointersGroups::add(const DivergentPointer& DP) {
     // Check all GEPs without last index have the same type
     SmallVector<Type*, 2> Types;
-    for (auto IT : DP.Geps) {
+    for (const auto& IT : DP.Geps) {
         GetElementPtrInst* GEP = IT.second.GEP;
         SmallVector<Value*, 2> IdxList { GEP->idx_begin(), GEP->idx_end() - 1 };
         auto Type = GetElementPtrInst::getIndexedType(GEP->getSourceElementType(), IdxList);
@@ -405,7 +405,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup& Group) {
         auto OffsetGEP = GetElementPtrInst::Create(OffsetType, BasePhi, Indices, "", BasePhi->getNextNonDebugInstruction());
 
         bool isInBounds = false;
-        for (auto Gep : Geps)
+        for (const auto& Gep : Geps)
             isInBounds |= Gep.second.GEP->isInBounds();
         OffsetGEP->setIsInBounds(isInBounds);
 

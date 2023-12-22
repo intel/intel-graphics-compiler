@@ -225,7 +225,7 @@ Argument* StatelessToStateful::getBufferOffsetArg(Function* F, uint32_t ArgNumbe
 // The final instruction of the expansion is returned in 'offset'
 //
 bool StatelessToStateful::getOffsetFromGEP(
-    Function* F, SmallVector<GetElementPtrInst*, 4> GEPs,
+    Function* F, const SmallVector<GetElementPtrInst*, 4>& GEPs,
     uint32_t argNumber, bool isImplicitArg, Value*& offset)
 {
     Module* M = F->getParent();

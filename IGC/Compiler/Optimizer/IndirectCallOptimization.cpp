@@ -200,7 +200,7 @@ namespace IGC
         {
             IRB.SetInsertPoint(&*(endBlock->begin()));
             PHINode* phi = IRB.CreatePHI(CI.getType(), callToBBPair.size());
-            for (auto it : callToBBPair)
+            for (const auto& it : callToBBPair)
             {
                 phi->addIncoming(it.first, it.second);
             }

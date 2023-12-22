@@ -353,7 +353,7 @@ uint16_t
 LatencyTableXe<PlatformGen::XE>::getMathLatency(const G4_INST *Inst) const {
   vASSERT(Inst->isMath());
   int Sz = Inst->getExecSize();
-  int Scale = Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
+  int Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
   return value_of(LI::MATH) + value_of(LI::DELTA_MATH) * Scale;
 }
 
@@ -369,7 +369,7 @@ uint16_t LatencyTableXe<PlatformGen::XE>::getArithmeticLatency(
     const G4_INST *Inst) const {
   vASSERT(Inst->isArithmetic());
   int Sz = Inst->getExecSize();
-  int Scale = Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
+  int Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
   auto Delta = value_of(LI::DELTA) * Scale;
   auto Dst = Inst->getDst();
   if (Dst && Dst->isAccReg())

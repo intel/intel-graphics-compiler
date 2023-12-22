@@ -1174,7 +1174,7 @@ static void SearchInstructions(
         }
     };
 
-    for (auto it : workList)
+    for (const auto& it : workList)
     {
         const llvm::BasicBlock* pCurrentBasicBlock = it->getParent();
         // use the iterator only if it wasn't visited or restricted

@@ -4604,7 +4604,7 @@ SPIRVToLLVM::transAddressingModel() {
 
 static llvm::MDNode*
 transDecorationsToMetadataList(llvm::LLVMContext* Context,
-    std::vector<SPIRVDecorate const*> Decorates) {
+    const std::vector<SPIRVDecorate const*>& Decorates) {
     SmallVector<Metadata*, 4> MDs;
     MDs.reserve(Decorates.size());
     for (const auto* Deco : Decorates) {
@@ -4783,7 +4783,7 @@ static void convertAnnotaionsToAttributes(llvm::Function *F, const std::vector<s
                     ::isspace),
                 numThreadPerEU.end());
 
-            F->addFnAttr("num-thread-per-eu", numThreadPerEU == "auto" ? "0" : numThreadPerEU);
+            F->addFnAttr("num-thread-per-eu", numThreadPerEU == "auto" ? "0" : std::move(numThreadPerEU));
         }
     }
 }

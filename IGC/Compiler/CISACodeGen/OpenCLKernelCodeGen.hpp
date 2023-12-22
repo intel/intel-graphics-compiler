@@ -77,7 +77,7 @@ namespace IGC
 
 
             // Logic for native ZEBin support
-            auto supportsZEBin = [&](CPlatform platformInfo)
+            auto supportsZEBin = [&](const CPlatform& platformInfo)
             {
                 switch (platformInfo.GetProductFamily())
                 {

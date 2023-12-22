@@ -902,6 +902,8 @@ public:
       delete[] matrix;
     }
   }
+  Interference(const Interference&) = delete;
+  Interference& operator=(const Interference&) = delete;
 
   bool useDenseMatrix() const {
     // The size check is added to prevent offset overflow in

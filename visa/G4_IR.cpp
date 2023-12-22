@@ -5180,7 +5180,7 @@ void G4_Predicate::emit_body(std::ostream &output) {
                                               "x",
                                               "y",
                                               "z",
-                                              "w"
+                                              "w",
                                               "any4h",
                                               "all4h"};
 

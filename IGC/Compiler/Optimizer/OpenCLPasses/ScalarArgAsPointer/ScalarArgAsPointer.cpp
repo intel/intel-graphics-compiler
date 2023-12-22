@@ -295,7 +295,7 @@ bool ScalarArgAsPointerAnalysis::findStoredArgs(llvm::LoadInst& LI, ArgSet& args
                     for (auto it = offsets.begin(); it != offsets.end(); ++it)
                         tmp.push_back(*it + i * byteSize);
 
-                offsets = tmp;
+                offsets = std::move(tmp);
             }
         }
     }

@@ -83,6 +83,8 @@ public:
     delete m_DB;
     delete[] m_buckets;
   }
+  SWSBAnalyzer(const SWSBAnalyzer&) = delete;
+  SWSBAnalyzer& operator=(const SWSBAnalyzer&) = delete;
 
   void run();
 

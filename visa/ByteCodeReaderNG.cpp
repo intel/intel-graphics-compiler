@@ -63,6 +63,8 @@ struct RoutineContainer {
         minorVersion(0) {}
 
   ~RoutineContainer() { stringPool.clear(); }
+  RoutineContainer(const RoutineContainer&) = delete;
+  RoutineContainer& operator=(const RoutineContainer&) = delete;
   VISA_GenVar **generalVarDecls;
   unsigned generalVarsCount;
   VISA_AddrVar **addressVarDecls;

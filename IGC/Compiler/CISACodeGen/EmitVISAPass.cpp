@@ -21025,14 +21025,11 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
                 return cacheOpts;
             }
 
-            if (inst)
+            const MDNode* node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
+            if (node)
             {
-                const MDNode* node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
-                if (node)
-                {
-                    ConstantAsMetadata* MD = cast<ConstantAsMetadata>(node->getOperand(0));
-                    cacheOpts = translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
-                }
+                ConstantAsMetadata* MD = cast<ConstantAsMetadata>(node->getOperand(0));
+                cacheOpts = translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
             }
         }
 

@@ -274,7 +274,7 @@ isFunctionBuiltin(llvm::Function* F) {
 }
 
 std::string
-getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, std::string suffix) {
+getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, const std::string& suffix) {
   std::string name = OCLSPIRVBuiltinMap::map(OC);
 
   if (!name.empty()) {

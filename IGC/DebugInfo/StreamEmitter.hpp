@@ -57,6 +57,8 @@ public:
 
   /// @brief Destructor.
   ~StreamEmitter();
+  StreamEmitter(const StreamEmitter &) = delete;
+  StreamEmitter &operator=(const StreamEmitter &) = delete;
 
   const Settings &GetEmitterSettings() const { return StreamOptions; };
 

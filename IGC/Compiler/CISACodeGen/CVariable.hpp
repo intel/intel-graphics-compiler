@@ -205,6 +205,8 @@ namespace IGC {
         {
         }
 
+        CVariable& operator=(const CVariable&) = delete;
+
         e_alignment GetAlign() const
         {
             IGC_ASSERT_MESSAGE(!m_isImmediate, "Calling GetAlign() on an immediate returns undefined result");

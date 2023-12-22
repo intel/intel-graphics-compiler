@@ -258,7 +258,7 @@ namespace IGC
 
             //check if option is set to use certain GRF size
             auto FuncName = pFunc->getName().str();
-            for (auto SubNameR : ctx->m_Options.RegularGRFKernels)
+            for (const auto& SubNameR : ctx->m_Options.RegularGRFKernels)
             {
                 if (FuncName.find(SubNameR) != std::string::npos)
                 {
@@ -266,7 +266,7 @@ namespace IGC
                     break;
                 }
             }
-            for (auto SubNameL : ctx->m_Options.LargeGRFKernels)
+            for (const auto& SubNameL : ctx->m_Options.LargeGRFKernels)
             {
                 if (FuncName.find(SubNameL) != std::string::npos)
                 {

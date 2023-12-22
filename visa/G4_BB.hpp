@@ -193,6 +193,8 @@ public:
         parent(fg), instList(alloc) {}
 
   ~G4_BB() { instList.clear(); }
+  G4_BB(const G4_BB&) = delete;
+  G4_BB& operator=(const G4_BB&) = delete;
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 

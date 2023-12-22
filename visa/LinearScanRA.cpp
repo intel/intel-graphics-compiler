@@ -1574,7 +1574,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
         if (src->asSrcRegRegion()->isIndirect()) {
           auto pointsToSet = l.getPointsToAnalysis().getAllInPointsTo(
               src->getBase()->asRegVar());
-          for (auto pt : *pointsToSet) {
+          for (const auto& pt : *pointsToSet) {
             G4_Declare *dcl = pt.var->getDeclare()->getRootDeclare();
 
             setSrcReferences(bb, inst_it, i, dcl, liveIntervals,
@@ -1597,7 +1597,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
       if (dst->isIndirect()) {
         auto pointsToSet = l.getPointsToAnalysis().getAllInPointsTo(
             dst->getBase()->asRegVar());
-        for (auto pt : *pointsToSet) {
+        for (const auto& pt : *pointsToSet) {
           G4_Declare *dcl = pt.var->getDeclare()->getRootDeclare();
 
           setDstReferences(bb, inst_it, dcl, liveIntervals, eotLiveIntervals);

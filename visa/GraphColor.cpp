@@ -7067,7 +7067,7 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
               auto pointsToSet =
                   pointsToAnalysis.getAllInPointsTo(dst->getBase()->asRegVar());
               if (pointsToSet != nullptr) {
-                for (auto pt : *pointsToSet) {
+                for (const auto& pt : *pointsToSet) {
                   if (pt.var->isRegAllocPartaker() ||
                       ((useFastRA || useHybridRAwithSpill) &&
                        livenessCandidate(pt.var->getDeclare()))) {
@@ -7102,7 +7102,7 @@ void GlobalRA::determineSpillRegSize(unsigned &spillRegSize,
               auto pointsToSet = pointsToAnalysis.getAllInPointsTo(
                   src->asSrcRegRegion()->getBase()->asRegVar());
               if (pointsToSet != nullptr) {
-                for (auto pt : *pointsToSet) {
+                for (const auto& pt : *pointsToSet) {
                   if (pt.var->isRegAllocPartaker() ||
                       ((useFastRA || useHybridRAwithSpill) &&
                        livenessCandidate(pt.var->getDeclare()))) {

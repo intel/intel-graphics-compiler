@@ -186,7 +186,7 @@ static std::string updatedMangleName(const std::string& FuncName, const std::str
 static std::string updateSPIRmangleName(StringRef FuncName, const MangleSubstTy& MangleSubst)
 {
     std::string NewNameStr = FuncName.str();
-    for (auto Key : MangleSubst)
+    for (const auto& Key : MangleSubst)
     {
         auto Mangle = Key.first.str();
         auto NewMangle = Key.second.str();
@@ -873,7 +873,7 @@ bool BIImport::runOnModule(Module& M)
                         IGC_ASSERT(subgroup_size != 0);
 
                         // Parse each variant string in the table, stop at the first one that matches subgroup_size
-                        for (auto var : VariantsTable)
+                        for (const auto& var : VariantsTable)
                         {
                             // We only need to get the SIMD size from the string
                             auto [symStr, fName, vecLen] = IGC::ParseVectorVariantFunctionString(var);
@@ -1457,7 +1457,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
           (float) value));
     }
 
-    for (auto CIPair : CallToReplace)
+    for (const auto& CIPair : CallToReplace)
     {
       auto oldCI = CIPair.first;
       auto newCI = CIPair.second;

@@ -256,7 +256,6 @@ void overrideShaderIGA(PLATFORM const & platform, void *& genxbin, int & binSize
     fIGAReleaseContext = (pIGAReleaseContext)GetProcAddress(hModule, IGA_RELEASE_CONTEXT_STR);
 
     if (fCreateContext == nullptr ||
-        fCreateContext == nullptr ||
         fIGAGetErrors == nullptr ||
         fIGAGetWarnings == nullptr ||
         fIGADiagnosticGetMessage == nullptr ||

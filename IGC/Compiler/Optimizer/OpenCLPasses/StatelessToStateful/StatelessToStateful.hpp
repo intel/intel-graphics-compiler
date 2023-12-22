@@ -114,7 +114,7 @@ namespace IGC
         bool pointerIsFromKernelArgument(llvm::Value& ptr);
 
         bool getOffsetFromGEP(
-            llvm::Function* F, llvm::SmallVector<llvm::GetElementPtrInst*, 4> GEPs,
+            llvm::Function* F, const llvm::SmallVector<llvm::GetElementPtrInst*, 4>& GEPs,
             uint32_t argNumber, bool isImplicitArg, llvm::Value*& offset);
         llvm::Argument* getBufferOffsetArg(llvm::Function* F, uint32_t ArgNumber);
         void setPointerSizeTo32bit(int32_t AddrSpace, llvm::Module* M);

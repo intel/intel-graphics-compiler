@@ -224,6 +224,8 @@ public:
     dcllist.reserve(2048);
   }
   ~DeclarePool();
+  DeclarePool(const DeclarePool&) = delete;
+  DeclarePool& operator=(const DeclarePool&) = delete;
 
   G4_Declare *cloneDeclare(G4_Kernel &kernel,
                            std::map<G4_Declare *, G4_Declare *> &dclMap,
@@ -1133,7 +1135,7 @@ public:
       // Also, make sure cstr_kname does not start with "_L_" to make sure it
       // would never be the same as any internal label (starts with "_L_").
       if (tName.size() != 0 && tName.size() <= 30 && tName.find("_L_") != 0) {
-        kname = tName;
+        kname = std::move(tName);
       }
     }
 

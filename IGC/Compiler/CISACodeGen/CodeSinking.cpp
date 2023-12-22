@@ -1702,7 +1702,7 @@ namespace IGC {
             if (j == je) {
                 // No match found, create the new one.
                 OperandUseGroup &OUG = AllGroups[i];
-                OUG.Operands = theUses;
+                OUG.Operands = std::move(theUses);
                 OUG.Users.push_back(I);
                 InstUseInfo.push_back(&OUG);
             }
