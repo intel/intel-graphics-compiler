@@ -14090,7 +14090,10 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst,
             m_encoder->Add(pSrcsArr[i], pSrcsArr[i], pReturnVal);
             m_encoder->Push();
 
-            if (atomic_op == EATOMIC_IADD || atomic_op == EATOMIC_IADD64 || atomic_op == EATOMIC_FADD || atomic_op == EATOMIC_FADD64)
+            if (atomic_op == EATOMIC_IADD ||
+                atomic_op == EATOMIC_IADD64 ||
+                atomic_op == EATOMIC_FADD ||
+                atomic_op == EATOMIC_FADD64)
             {
                 m_encoder->SetSrcModifier(1, EMOD_NEG);
             }

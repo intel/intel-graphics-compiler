@@ -1000,7 +1000,8 @@ LscTypeInfo LSCFuncsResolution::decodeTypeInfoFromName()
 
 AtomicOp LSCFuncsResolution::decodeAtomicOpFromName()
 {
-    static const SymbolMapping symbols[42] {
+    static const uint32_t numSymbols = 42;
+    static const SymbolMapping symbols[numSymbols] {
         // FP 64 (local not suported)
         {"_add_global_double", EATOMIC_FADD64},
         {"_sub_global_double", EATOMIC_FSUB64},
@@ -1063,11 +1064,11 @@ AtomicOp LSCFuncsResolution::decodeAtomicOpFromName()
 
     // maybe a better way to do this, but the compiler seems to need an
     // explicit size for inference below.
-    static_assert(sizeof(symbols)/sizeof(symbols[0]) == 42);
+    static_assert(sizeof(symbols)/sizeof(symbols[0]) == numSymbols);
 
     AtomicOp atomicOp = EATOMIC_IADD;
     StringRef FN = m_pCurrInstFunc->getName();
-    if (!findFirstInfixMapping<AtomicOp,42>(FN, symbols, atomicOp)) {
+    if (!findFirstInfixMapping<AtomicOp, numSymbols>(FN, symbols, atomicOp)) {
         reportError("invalid lsc atomic operation");
     }
     return atomicOp;
