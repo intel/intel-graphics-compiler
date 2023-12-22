@@ -44,7 +44,7 @@ namespace IGC
         llvm::Value* lowerGetImage(llvm::CallInst& CI);
         llvm::Value* lowerGetSampler(llvm::CallInst& CI);
 
-        bool m_changed;
+        bool m_changed = false;
         std::unordered_set<llvm::CallInst*> m_builtinsToRemove;
     };
 

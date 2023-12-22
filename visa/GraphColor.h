@@ -561,6 +561,8 @@ private:
 public:
   Augmentation(Interference &i, const LivenessAnalysis &l, GlobalRA &g);
   ~Augmentation();
+  Augmentation(const Augmentation&) = delete;
+  Augmentation& operator=(const Augmentation&) = delete;
 
   void augmentIntfGraph();
 
@@ -896,6 +898,8 @@ class Interference {
 
 public:
   Interference(const LivenessAnalysis *l, GlobalRA &g);
+  Interference(const Interference&) = delete;
+  Interference& operator=(const Interference&) = delete;
 
   ~Interference() {
     if (useDenseMatrix()) {

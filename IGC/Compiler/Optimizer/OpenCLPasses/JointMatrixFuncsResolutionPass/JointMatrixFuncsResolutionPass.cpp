@@ -1345,7 +1345,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
     Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
 
     const int sliceSize = getSliceSize(&desc, matTy);
-    Value *lenght = ConstantInt::get(CI->getType(), sliceSize, "matrix.slice.size");
+    Value *lenght = ConstantInt::get(CI->getType(), sliceSize);
 
     CI->replaceAllUsesWith(lenght);
     InstsToErase.insert(CI);

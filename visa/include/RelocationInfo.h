@@ -87,7 +87,7 @@ struct ZESymEntry {
 
   ZESymEntry() = default;
   ZESymEntry(GenSymType type, uint32_t offset, uint32_t size, std::string name)
-      : s_type(type), s_offset(offset), s_size(size), s_name(name) {}
+      : s_type(type), s_offset(offset), s_size(size), s_name(std::move(name)) {}
 };
 
 /// ZERelocEntry - A relocation entry that will later be transformed to ZE
@@ -101,7 +101,7 @@ struct ZERelocEntry {
 
   ZERelocEntry() = default;
   ZERelocEntry(GenRelocType type, uint32_t offset, std::string targetSymName)
-      : r_type(type), r_offset(offset), r_symbol(targetSymName) {}
+      : r_type(type), r_offset(offset), r_symbol(std::move(targetSymName)) {}
 };
 
 /// ZEFuncAttribEntry - A function attribute entry that will later be
@@ -123,7 +123,7 @@ struct ZEFuncAttribEntry {
       : f_isKernel(isKernel), f_isExternal(isExternal),
         f_BarrierCount(barrierCount),
         f_privateMemPerThread(privateMemPerThread),
-        f_spillMemPerThread(spillMemPerThread), f_name(funcName), f_hasRTCalls(hasRTCalls) {}
+        f_spillMemPerThread(spillMemPerThread), f_name(std::move(funcName)), f_hasRTCalls(hasRTCalls) {}
 };
 
 /// ZEHostAccessEntry - A host access entry that will later be transformed to ZE

@@ -58,7 +58,7 @@ namespace IGC
         llvm::Value* emitIEEEDivide(llvm::BinaryOperator* I, llvm::Value* Op0, llvm::Value* Op1);
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed = false;
 
         /// @brief  Indicates that correctly rounded sqrt/div should be used even
         ///         when the option is not present in the module metadata.

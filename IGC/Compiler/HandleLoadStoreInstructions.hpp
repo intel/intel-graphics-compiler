@@ -50,7 +50,7 @@ namespace IGC
         void HandleLoadStore();
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed = false;
     };
 
 } // namespace IGC

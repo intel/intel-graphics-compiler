@@ -1125,7 +1125,7 @@ public:
   void setJitInfo(vISA::FINALIZER_INFO *jitInfo) { m_jitInfo = jitInfo; }
 
   std::string getOutputAsmPath() const { return m_asmName; }
-  void setOutputAsmPath(std::string val) { m_asmName = val; }
+  void setOutputAsmPath(const std::string& val) { m_asmName = val; }
 
   int compileFastPath();
 

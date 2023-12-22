@@ -51,6 +51,9 @@ struct TimerScope {
   TimerScope(const TimerID _timerId) : timerId(_timerId) {
     startTimer(timerId);
   }
+
+  TimerScope(const TimerScope&) = delete;
+  TimerScope& operator=(const TimerScope&) = delete;
   ~TimerScope() { stopTimer(timerId); }
 };
 

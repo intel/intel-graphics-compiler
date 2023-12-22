@@ -47,6 +47,9 @@ private:
 
 public:
   G4Verifier(G4_Kernel &k, VerifyControl ctrl, Optimizer::PassIndex index);
+  G4Verifier(const G4Verifier&) = delete;
+  G4Verifier& operator=(const G4Verifier&) = delete;
+
 
   ~G4Verifier() {
     if (dumpText.is_open())
