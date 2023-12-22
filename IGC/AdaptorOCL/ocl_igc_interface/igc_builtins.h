@@ -15,31 +15,6 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-namespace GroupSortMemoryScope {
-    using MemoryScope_t = uint64_t;
-    using MemoryScopeCoder = CIF::Coder<MemoryScope_t>;
-
-    constexpr auto workGroup = MemoryScopeCoder::Enc("WORK_GROUP");
-    constexpr auto subGroup = MemoryScopeCoder::Enc("SUB_GROUP");
-}
-
-namespace GroupSortKeyType {
-    using KeyType_t = uint64_t;
-    using KeyTypeCoder = CIF::Coder<KeyType_t>;
-
-    constexpr auto uint8_key_type = KeyTypeCoder::Enc("UINT8");
-    constexpr auto uint16_key_type = KeyTypeCoder::Enc("UINT16");
-    constexpr auto uint32_key_type = KeyTypeCoder::Enc("UINT32");
-    constexpr auto uint64_key_type = KeyTypeCoder::Enc("UINT64");
-    constexpr auto int8_key_type = KeyTypeCoder::Enc("INT8");
-    constexpr auto int16_key_type = KeyTypeCoder::Enc("INT16");
-    constexpr auto int32_key_type = KeyTypeCoder::Enc("INT32");
-    constexpr auto int64_key_type = KeyTypeCoder::Enc("INT64");
-    constexpr auto half_key_type = KeyTypeCoder::Enc("HALF");
-    constexpr auto float_key_type = KeyTypeCoder::Enc("FLOAT");
-    constexpr auto double_key_type = KeyTypeCoder::Enc("DOUBLE");
-}
-
 // Interface : IGC_BUILTINS
 //             IGC builtin functions
 // Interface for querying data about IGC builtin functions
@@ -49,39 +24,81 @@ CIF_DECLARE_INTERFACE(IgcBuiltins, "IGC_BUILTINS")
 CIF_DEFINE_INTERFACE_VER(IgcBuiltins, 1) {
     CIF_INHERIT_CONSTRUCTOR();
 
-    // Returns whether default work-group or sub-group sort is present in builtins
-    virtual bool DefaultGroupSortSupported(GroupSortMemoryScope::MemoryScope_t scope,
-                                           GroupSortKeyType::KeyType_t keyType,
-                                           bool isKeyValue,
-                                           bool isJointSort) const;
+    typedef struct BuiltinAlgorithm {
+        using Algorithm_t = uint64_t;
+        using AlgorithmCoder = CIF::Coder<Algorithm_t>;
 
-    // Returns required amount of memory for default joint work-group or sub-group sort
-    // deviceib builtin function in bytes per workgroup (or sub-group), >= 0
-    // or -1 if the algorithm for the specified parameters is not implemented
-    //
-    // totalItems -- number of elements to sort
-    // rangeSize -- work-group or sub-group size respectively
-    //
-    // For key-only sort pass valueTypeSizeInBytes = 0
-    virtual long DefaultGroupJointSortMemoryRequired(GroupSortMemoryScope::MemoryScope_t scope,
-                                                     long totalItems,
-                                                     long rangeSize,
-                                                     long keyTypeSizeInBytes,
-                                                     long valueTypeSizeInBytes) const;
+        static constexpr auto sort = AlgorithmCoder::Enc("SORT");
+    } BuiltinAlgorithm;
 
-    // Returns required amount of memory for default private memory work-group or sub-group sort
-    // deviceib builtin function in bytes per workgroup (or sub-group), >= 0
-    // or -1 if the algorithm for the specified parameters is not implemented
-    //
-    // itemsPerWorkItem -- number of elements in private array to sort
-    // rangeSize -- work-group or sub-group size respectively
-    //
-    // For key-only sort pass valueTypeSizeInBytes = 0
-    virtual long DefaultGroupPrivateSortMemoryRequired(GroupSortMemoryScope::MemoryScope_t scope,
-                                                       long itemsPerWorkItem,
-                                                       long rangeSize,
-                                                       long keyTypeSizeInBytes,
-                                                       long valueTypeSizeInBytes) const;
+    typedef struct BuiltinMemoryType {
+        using MemoryType_t = uint64_t;
+        using MemoryTypeCoder = CIF::Coder<MemoryType_t>;
+
+        static constexpr auto SLM = MemoryTypeCoder::Enc("SLM");
+        static constexpr auto global = MemoryTypeCoder::Enc("GLOBAL");
+    } BuiltinMemoryType;
+
+    typedef struct BuiltinMemoryScope {
+        using MemoryScope_t = uint64_t;
+        using MemoryScopeCoder = CIF::Coder<MemoryScope_t>;
+
+        static constexpr auto workGroup = MemoryScopeCoder::Enc("WORK_GROUP");
+        static constexpr auto subGroup = MemoryScopeCoder::Enc("SUB_GROUP");
+    } BuiltinMemoryScope;
+
+    typedef struct BuiltinDataType {
+        using DataType_t = uint64_t;
+        using DataTypeCoder = CIF::Coder<DataType_t>;
+
+        static constexpr auto uint8_type = DataTypeCoder::Enc("UINT8");
+        static constexpr auto uint16_type = DataTypeCoder::Enc("UINT16");
+        static constexpr auto uint32_type = DataTypeCoder::Enc("UINT32");
+        static constexpr auto uint64_type = DataTypeCoder::Enc("UINT64");
+        static constexpr auto int8_type = DataTypeCoder::Enc("INT8");
+        static constexpr auto int16_type = DataTypeCoder::Enc("INT16");
+        static constexpr auto int32_type = DataTypeCoder::Enc("INT32");
+        static constexpr auto int64_type = DataTypeCoder::Enc("INT64");
+        static constexpr auto half_type = DataTypeCoder::Enc("HALF");
+        static constexpr auto float_type = DataTypeCoder::Enc("FLOAT");
+        static constexpr auto double_type = DataTypeCoder::Enc("DOUBLE");
+    } BuiltinDataType;
+
+    using AlgorithmVariant_t = uint64_t;
+    typedef struct SortAlgorithmVariant {
+        using SortVariantCoder = CIF::Coder<AlgorithmVariant_t>;
+
+        static constexpr auto defaultJointSort = SortVariantCoder::Enc("JOINT");
+        static constexpr auto defaultPrivateSort = SortVariantCoder::Enc("PRIVATE");
+    } SortAlgorithmVariant;
+
+    typedef struct IGCBuiltinMemoryInfo {
+        // Required amount of memory of a specified type (global or SLM)
+        // for a particular algorithm in IGC builtins.
+        long globalMemoryInBytes;
+        long sharedMemoryInBytes;
+
+        // The value is in bytes per scope (for example, if scope == WORK_GROUP,
+        // then the value is per work-group), >=0.
+        BuiltinMemoryScope::MemoryScope_t scope;
+
+        // Whether the temporary memory, requested by algorithm in IGC builtins
+        // can be used concurrently by different scopes.
+        // For example, if scope == WORK_GROUP, "true" means the same pointer can be passed
+        // to different work groups.
+        bool canMemoryBeUsedConcurrently;
+    } IGCBuiltinMemoryInfo;
+
+    // Returns true if the requrested configuration is supported by IGC
+    // Populates IGCBuiltinMemoryInfo struct that should be allocated by the caller
+    virtual bool GetBuiltinMemoryRequired(IGCBuiltinMemoryInfo *memoryInfo,
+                                          BuiltinAlgorithm::Algorithm_t algorithm,
+                                          AlgorithmVariant_t variant,
+                                          BuiltinMemoryScope::MemoryScope_t scope,
+                                          long items,
+                                          long rangeSize,
+                                          BuiltinDataType::DataType_t keyType,
+                                          long valueTypeSizeInBytes) const;
 };
 
 CIF_GENERATE_VERSIONS_LIST(IgcBuiltins);
