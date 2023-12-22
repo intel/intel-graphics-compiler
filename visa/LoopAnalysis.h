@@ -94,10 +94,8 @@ private:
 // Indirects references are not computed here.
 class VarReferences : public Analysis {
 public:
-  VarReferences(G4_Kernel &k, bool GRF = false, bool bounds = true,
-                bool pseudoKills = false)
-      : kernel(k), onlyGRF(GRF), needBounds(bounds),
-        reportPseudoKill(pseudoKills) {}
+  VarReferences(G4_Kernel &k, bool GRF = false, bool bounds = true)
+      : kernel(k), onlyGRF(GRF), needBounds(bounds) {}
 
   // Defs -> vector[tuple<inst, bb, lb, rb>]
   // Uses -> vector[tuple<inst, bb>]
@@ -119,7 +117,6 @@ private:
   G4_Kernel &kernel;
   bool onlyGRF = false;
   bool needBounds = true;
-  bool reportPseudoKill = false;
 
   void reset() override;
   void run() override;

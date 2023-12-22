@@ -884,6 +884,8 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitVector &kernelInput,
 
   vISA_ASSERT(fg.sortedFuncTable.size() > 0,
               "topological sort must already be performed");
+  std::unordered_map<FuncInfo *, SparseBitVector> args;
+  std::unordered_map<FuncInfo *, SparseBitVector> retVal;
 
 #ifdef _DEBUG
   auto verifyFuncTable = [&]() {
@@ -1018,7 +1020,8 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitVector &kernelInput,
 // determine if the dst writes the whole region of target declare
 //
 bool LivenessAnalysis::writeWholeRegion(const G4_BB *bb, const G4_INST *inst,
-                                        G4_DstRegRegion *dst) const {
+                                        G4_DstRegRegion *dst,
+                                        const Options *opt) const {
   unsigned execSize = inst->getExecSize();
   vISA_ASSERT(dst->getBase()->isRegVar(), ERROR_REGALLOC);
 
@@ -1234,7 +1237,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
           // use_kill so that use of var will not pass through (i.e., var's
           // interval starts at this instruction.
           //
-          if (writeWholeRegion(bb, i, dstrgn)) {
+          if (writeWholeRegion(bb, i, dstrgn, fg.builder->getOptions())) {
             use_kill.set(id);
             use_gen.reset(id);
 
@@ -1450,7 +1453,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
               topdclLR->isLiveRangeLocal() && (!topdcl->isInput()) &&
               topdclLR->getFirstRef(first) == i)) &&
             // If single inst writes whole region then dont insert pseudo_kill
-            writeWholeRegion(bb, i, dst) == false) {
+            writeWholeRegion(bb, i, dst, fg.builder->getOptions()) == false) {
           bool foundKill = false;
           INST_LIST::reverse_iterator nextIt = rit;
           ++nextIt;
@@ -1849,13 +1852,6 @@ void LivenessAnalysis::reportUndefinedUses() const {
 
 bool LivenessAnalysis::isEmptyLiveness() const { return numBBId == 0; }
 
-SparseBitVector LivenessAnalysis::getLiveAtEntry(const G4_BB* bb) const {
-  return use_in[bb->getId()] & def_in[bb->getId()];
-}
-
-SparseBitVector LivenessAnalysis::getLiveAtExit(const G4_BB *bb) const {
-  return use_out[bb->getId()] & def_out[bb->getId()];
-}
 //
 // return true if var is live at the entry of bb
 // check both use_in and def_in, if one condition fails then var is not in the

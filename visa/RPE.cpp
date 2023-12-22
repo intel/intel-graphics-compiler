@@ -62,7 +62,7 @@ void RPE::runBB(G4_BB *bb) {
     if (dst && (topdcl = dst->getTopDcl())) {
       if (topdcl->getRegVar()->isRegAllocPartaker()) {
         // Check if dst is killed
-        if (liveAnalysis->writeWholeRegion(bb, inst, dst) ||
+        if (liveAnalysis->writeWholeRegion(bb, inst, dst, options) ||
             inst->isPseudoKill()) {
           id = topdcl->getRegVar()->getId();
           updateLiveness(live, id, false);
@@ -70,7 +70,7 @@ void RPE::runBB(G4_BB *bb) {
       } else if ((LLR = gra.getLocalLR(topdcl)) && LLR->getAssigned()) {
         uint32_t firstRefIdx;
         if (LLR->getFirstRef(firstRefIdx) == inst ||
-            liveAnalysis->writeWholeRegion(bb, inst, dst)) {
+            liveAnalysis->writeWholeRegion(bb, inst, dst, options)) {
           updateLivenessForLLR(LLR, false);
         }
       }

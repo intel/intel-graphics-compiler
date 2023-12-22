@@ -1016,7 +1016,7 @@ void VarReferences::reset() {
 void VarReferences::run() {
   for (auto bb : kernel.fg) {
     for (auto inst : *bb) {
-      if (!reportPseudoKill && inst->isPseudoKill())
+      if (inst->isPseudoKill())
         continue;
       unsigned int lb = 0, rb = 0;
       auto dst = inst->getDst();

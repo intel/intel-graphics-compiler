@@ -88,12 +88,6 @@ public:
   void addCallee(FuncInfo *fn) { callees.push_back(fn); }
   std::list<FuncInfo *> &getCallees() { return callees; }
 
-  // const version that does O(n) lookup.
-  bool contains(G4_BB *bb) const {
-    auto it = std::find(BBList.begin(), BBList.end(), bb);
-    return it != BBList.end();
-  }
-
   bool contains(G4_BB *bb) {
     if (BBSet.size() != BBList.size()) {
       BBSet.clear();
@@ -126,7 +120,7 @@ public:
   unsigned getPostID() const { return postID; }
   void setPostID(unsigned id) { postID = id; }
 
-  void dump(std::ostream &os = std::cerr) const;
+  void dump() const;
 }; // FuncInfo
 
 //

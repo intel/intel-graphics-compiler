@@ -249,6 +249,7 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setBool(vISA_LocalCleanMessageHeader, false);
     m_vISAOptions.setBool(vISA_forceNoMaskOnM0, false);
     m_vISAOptions.setBool(vISA_LocalRenameRegister, false);
+    m_vISAOptions.setBool(vISA_IPA, false);
     m_vISAOptions.setBool(vISA_FoldAddrImmed, false);
     m_vISAOptions.setBool(vISA_MergeScalar, false);
     m_vISAOptions.setBool(vISA_EnableMACOpt, false);

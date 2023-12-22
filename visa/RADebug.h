@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 
 namespace vISA {
 
-void dumpLiveRanges(GlobalRA &gra, AllIntervals &sortedIntervals);
+void dumpLiveRanges(GlobalRA &gra, DECLARE_LIST &sortedIntervals);
 
 } // namespace vISA
 

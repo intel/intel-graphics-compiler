@@ -47,7 +47,6 @@ enum BankConflict {
 };
 
 class VarSplit;
-class SpillAnalysis;
 
 class BankConflictPass {
 private:
@@ -162,7 +161,7 @@ class LiveRange final {
   unsigned refCount = 0;
   unsigned parentLRID;
   AssignedReg reg;
-  float spillCost = 0.0f;
+  float spillCost;
   BankConflict bc = BANK_CONFLICT_NONE;
 
   union {
@@ -315,44 +314,13 @@ typedef std::map<vISA::G4_Declare *, std::pair<vISA::G4_INST *, unsigned>>
     CALL_DECL_MAP;
 
 namespace vISA {
-typedef struct Interval {
-  G4_INST *start = nullptr;
-  G4_INST *end = nullptr;
-
-  ~Interval() = default;
-  Interval() = default;
-  Interval(const Interval &) = default;
-  Interval &operator=(const Interval &) = default;
-  Interval(G4_INST *s, G4_INST *e) {
-    start = s;
-    end = e;
-  }
-  bool intervalsOverlap(const Interval &second) const;
-} Interval;
-// Used as entry in priority queue for storing default, non-default
-// intervals.
-struct QueueEntry {
-  G4_Declare *dcl;
-  Interval interval;
-
-  ~QueueEntry() = default;
-  QueueEntry() = default;
-  QueueEntry(const QueueEntry &) = default;
-  QueueEntry &operator=(const QueueEntry &) = default;
-  QueueEntry(G4_Declare *d, const Interval &i) {
-    dcl = d;
-    interval = i;
-  }
-};
-using AllIntervals = std::vector<QueueEntry>;
-
 struct criticalCmpForEndInterval {
   GlobalRA &gra;
   criticalCmpForEndInterval(GlobalRA &g);
-  bool operator()(const QueueEntry &A, const QueueEntry &B) const;
+  bool operator()(G4_Declare *A, G4_Declare *B) const;
 };
 struct AugmentPriorityQueue
-    : std::priority_queue<QueueEntry, std::vector<QueueEntry>,
+    : std::priority_queue<G4_Declare *, std::vector<G4_Declare *>,
                           criticalCmpForEndInterval> {
   AugmentPriorityQueue(criticalCmpForEndInterval cmp);
   auto begin() const { return c.begin(); }
@@ -379,110 +347,14 @@ private:
   FCALL_RET_MAP &fcallRetMap;
   CALL_DECL_MAP callDclMap;
   std::unordered_map<FuncInfo *, PhyRegSummary> localSummaryOfCallee;
-  AllIntervals sortedIntervals;
+  std::vector<G4_Declare *> sortedIntervals;
   AugmentPriorityQueue defaultMaskQueue{criticalCmpForEndInterval(gra)};
   AugmentPriorityQueue nonDefaultMaskQueue{criticalCmpForEndInterval(gra)};
   // overlapDclsWithFunc holds default and non-default range live across
   // all call sites of func.
   std::unordered_map<FuncInfo *, MaskDeclares> overlapDclsWithFunc;
   std::unordered_map<G4_Declare *, MaskDeclares> retDeclares;
-  VarReferences refs;
   bool useGenericAugAlign = false;
-  enum class ArgType {
-      Init = 0,
-      // arg may be defined in callee or may be defined once
-      // and used by multiple call sites. This is different
-      // than other types as the def may appear anywhere other
-      // than entry BB. This is a corner case. Live-interval
-      // of such args span complete function wherever the
-      // variable is referenced.
-      Unknown = 1,
-      // Standard arg that's fully defined before each call site
-      // in same BB.
-      DefBeforeEachCall = 2,
-      // Args that are input to kernel or defined once in entry
-      // BB but used throughout program belong to this type.
-      LiveThrough = 3,
-  };
-  enum class RetValType {
-      Init = 0,
-      // retval pattern irregular. Live-interval of such retval
-      // span complete function wherever the variable is referenced.
-      Unknown = 1,
-      // retval pattern regular. It's defined in callee and
-      // used in BB immediate after call.
-      Regular = 2,
-  };
-  class ArgRetValInfo {
-  public:
-    ArgType argType = ArgType::Init;
-    RetValType retValType = RetValType::Init;
-    // Struct to store type of arg/retval and subroutines where it appears.
-    // We use a set because variables such as HWTID are defined once in
-    // kernel and used in several subroutines.
-    std::unordered_set<const FuncInfo *> subroutines;
-  };
-  std::unordered_map<G4_Declare *, ArgRetValInfo> argsRetVal;
-  std::unordered_map<FuncInfo*, std::unordered_set<G4_Declare*>> argsPerSub;
-  std::unordered_map<FuncInfo *, std::unordered_set<G4_Declare *>> retValPerSub;
-  std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> unknownArgRetvalRefs;
-  std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> nonGRFRefs;
-  std::unordered_map<G4_BB *, FuncInfo *> bbToFunc;
-  // Sadly, we don't have a way to map G4_INST to containing G4_BB.
-  // So we create it in Augmentation using below vector. To get
-  // FuncInfo* for a G4_INST, we dereference instToFunc using
-  // lexical id of the instruction. We use vector instead of a
-  // map because it's used often, is faster than map, and
-  // importantly it's dense so there's no savings to be had with a map.
-  std::vector<FuncInfo *> instToFunc;
-  const bool hasSubroutines = false;
-
-  void populateFuncMaps();
-  bool isSubroutineArg(G4_Declare *dcl) const {
-    auto it = argsRetVal.find(dcl);
-    if (it == argsRetVal.end())
-      return false;
-    if ((*it).second.argType != ArgType::Init) {
-      vISA_ASSERT((*it).second.retValType == RetValType::Init,
-                  "expecting retval type");
-      return true;
-    }
-    return false;
-  }
-
-  bool isSubroutineRetVal(G4_Declare *dcl) const {
-    auto it = argsRetVal.find(dcl);
-    if (it == argsRetVal.end())
-      return false;
-    if ((*it).second.retValType != RetValType::Init) {
-      vISA_ASSERT((*it).second.argType == ArgType::Init,
-                  "expecting retval type");
-      return true;
-    }
-    return false;
-  }
-
-  template <ArgType Type> bool isArgType(G4_Declare *dcl) const {
-    auto it = argsRetVal.find(dcl);
-    if (it == argsRetVal.end())
-      return false;
-    return (*it).second.argType == Type;
-  }
-
-  template <RetValType Type> bool isRetvalType(G4_Declare *dcl) const {
-    auto it = argsRetVal.find(dcl);
-    if (it == argsRetVal.end())
-      return false;
-    return (*it).second.retValType == Type;
-  }
-
-  bool isLiveThroughArg(G4_Declare *dcl) const;
-  bool isDefBeforeEachCallArg(G4_Declare *dcl) const;
-  bool isUnknownArg(G4_Declare *dcl) const;
-  bool isSingleDefInEntryBB(G4_Declare* dcl) const;
-  bool isUnknownRetVal(G4_Declare *dcl) const;
-  bool isRegularRetVal(G4_Declare *dcl) const;
-  bool isUnknownArgOrRetval(G4_Declare *dcl) const;
 
   bool updateDstMaskForGather(G4_INST *inst, std::vector<unsigned char> &mask);
   bool updateDstMaskForGatherRaw(G4_INST *inst,
@@ -513,20 +385,8 @@ private:
                                    G4_Operand *opnd);
   void updateEndIntervalForLocal(G4_Declare *dcl, G4_INST *curInst,
                                  G4_Operand *opnd);
-  void buildUnknownArgRetval();
-  void buildLiveIntervals(FuncInfo* func);
   void buildLiveIntervals();
   void sortLiveIntervals();
-  void startIntervalForLiveIn(FuncInfo *funcInfo, G4_BB *bb);
-  void handleCallSite(G4_BB *curBB, unsigned int &funcCnt);
-  void handleDstOpnd(FuncInfo *funcInfo, G4_BB *curBB, G4_INST *inst);
-  void handleCondMod(FuncInfo* funcInfo, G4_INST *inst);
-  void endIntervalForLiveOut(G4_BB *bb);
-  void handleSrcOpnd(FuncInfo *funcInfo, G4_BB *curBB, G4_Operand *src);
-  void handlePred(FuncInfo* funcInfo, G4_INST *inst);
-  void handleNonReducibleExtension(FuncInfo *funcInfo);
-  void handleLoopExtension(FuncInfo *funcInfo);
-  void extendVarLiveness(G4_BB *bb, G4_INST *inst);
   unsigned getEnd(const G4_Declare *dcl) const;
   bool isNoMask(const G4_Declare *dcl, unsigned size) const;
   bool isConsecutiveBits(const G4_Declare *dcl, unsigned size) const;
@@ -548,15 +408,6 @@ private:
                                  const std::vector<bool> &globalVars);
   void addSIMDIntfForRetDclares(G4_Declare *newDcl,
                                 const std::vector<bool> &globalVars);
-  void discoverArgs(FuncInfo *func);
-  void discoverRetVal(FuncInfo *func);
-  ArgType computeArgType(FuncInfo *func, G4_Declare *arg);
-  RetValType computeRetValType(FuncInfo *func, G4_Declare *retVal);
-
-  // Functions used for verification
-  void dumpSortedIntervals();
-  void dumpArgs(SparseBitVector &subArgs);
-  void dumpRetVal(SparseBitVector &subRetVal);
 
 public:
   Augmentation(Interference &i, const LivenessAnalysis &l, GlobalRA &g);
@@ -564,7 +415,9 @@ public:
 
   void augmentIntfGraph();
 
-  const auto &getSortedLiveIntervals() const { return sortedIntervals; }
+  const std::vector<G4_Declare *> &getSortedLiveIntervals() const {
+    return sortedIntervals;
+  }
 };
 
 // This class stores base matrices used for interference building for graph coloring.
@@ -970,11 +823,11 @@ public:
 // Used only when -dumpregchart is passed.
 class RegChartDump {
   const GlobalRA &gra;
-  AllIntervals sortedLiveIntervals;
+  std::vector<G4_Declare *> sortedLiveIntervals;
   std::unordered_map<G4_Declare *, std::pair<G4_INST *, G4_INST *>> startEnd;
 
 public:
-  void recordLiveIntervals(const AllIntervals &dcls);
+  void recordLiveIntervals(const std::vector<G4_Declare *> &dcls);
   void dumpRegChart(std::ostream &, const LiveRangeVec &lrs, unsigned numLRs);
 
   RegChartDump(const GlobalRA &g) : gra(g) {}
@@ -1158,11 +1011,8 @@ struct RAVarInfo {
   BankConflict conflict =
       BANK_CONFLICT_NONE; // used to indicate bank that should be assigned to
                           // dcl if possible
-  // Store intervals over which variable is live. Note that
-  // intervals are used only for subroutine arguments. For
-  // all other variables, it's expected that intervals contains
-  // a single entry.
-  std::vector<Interval> intervals;
+  G4_INST *startInterval = nullptr;
+  G4_INST *endInterval = nullptr;
   std::vector<unsigned char> mask;
   std::vector<const G4_Declare *> subDclList;
   unsigned subOff = 0;
@@ -1172,24 +1022,14 @@ struct RAVarInfo {
   AugmentationMasks augMask = AugmentationMasks::Undetermined;
 };
 
-struct CustomHash {
-  size_t operator()(const Interval &seg) const {
-    return seg.start->getLexicalId();
-  }
-};
-
-static bool operator==(const Interval &first, const Interval &second) {
-  return first.start->getLexicalId() == second.start->getLexicalId();
-}
-
 class VerifyAugmentation {
 private:
   G4_Kernel *kernel = nullptr;
   GlobalRA *gra = nullptr;
-  AllIntervals sortedLiveRanges;
-  std::unordered_map<const G4_Declare *,
-                     std::tuple<LiveRange *, AugmentationMasks,
-                                std::unordered_set<Interval, CustomHash>>>
+  std::vector<G4_Declare *> sortedLiveRanges;
+  std::unordered_map<
+      const G4_Declare *,
+      std::tuple<LiveRange *, AugmentationMasks, G4_INST *, G4_INST *>>
       masks;
   LiveRangeVec lrs;
   unsigned numVars = 0;
@@ -1197,7 +1037,6 @@ private:
   std::unordered_map<G4_Declare *, LiveRange *> DclLRMap;
   std::unordered_map<G4_BB *, std::string> bbLabels;
   std::vector<std::tuple<G4_BB *, unsigned, unsigned>> BBLexId;
-  CALL_DECL_MAP callDclMap;
 
   static const char *getStr(AugmentationMasks a) {
     if (a == AugmentationMasks::Default16Bit)
@@ -1232,7 +1071,7 @@ public:
     bbLabels.clear();
     BBLexId.clear();
   }
-  void loadAugData(AllIntervals &s, const LiveRangeVec &l, CALL_DECL_MAP c,
+  void loadAugData(std::vector<G4_Declare *> &s, const LiveRangeVec &l,
                    unsigned n, const Interference *i, GlobalRA &g);
   void dump(const char *dclName);
   bool isClobbered(LiveRange *lr, std::string &msg);
@@ -1479,13 +1318,6 @@ public:
 
   void setSubRetLoc(const G4_BB *bb, unsigned s) { subretloc[bb] = s; }
 
-  const G4_Declare *getRetDcl(unsigned int retLoc) const {
-    auto it = retDecls.find(retLoc);
-    if (it == retDecls.end())
-        return nullptr;
-    return it->second;
-  }
-
   bool isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc,
                            unsigned stackTop);
   void assignLocForReturnAddr();
@@ -1643,82 +1475,19 @@ public:
   }
 
   G4_INST *getStartInterval(const G4_Declare *dcl) const {
-    return getLastStartInterval(dcl);
+    return getVar(dcl).startInterval;
   }
 
   void setStartInterval(const G4_Declare *dcl, G4_INST *inst) {
-    setLastStartInterval(dcl, inst);
+    allocVar(dcl).startInterval = inst;
   }
 
   G4_INST *getEndInterval(const G4_Declare *dcl) const {
-    return getLastEndInterval(dcl);
+    return getVar(dcl).endInterval;
   }
 
   void setEndInterval(const G4_Declare *dcl, G4_INST *inst) {
-    setLastEndInterval(dcl, inst);
-  }
-
-  void clearIntervals(G4_Declare *dcl) {
-    auto &intervals = allocVar(dcl).intervals;
-    intervals.clear();
-  }
-
-  // Used to create new interval for subroutine arg/retval
-  void pushBackNewInterval(const G4_Declare* dcl) {
-    auto &intervals = allocVar(dcl).intervals;
-    intervals.push_back({nullptr, nullptr});
-  }
-
-  const Interval getInterval(const G4_Declare *dcl, unsigned int i) const {
-    if (i < getNumIntervals(dcl)) {
-      return getAllIntervals(dcl)[i];
-    }
-    vISA_ASSERT(false, "OOB access");
-    return {};
-  }
-
-  unsigned int getNumIntervals(const G4_Declare *dcl) const {
-    return getAllIntervals(dcl).size();
-  }
-
-  const G4_INST *getIntervalStart(const Interval &interval) const {
-    return interval.start;
-  }
-
-  const G4_INST *getIntervalEnd(const Interval &interval) const {
-    return interval.end;
-  }
-
-  const std::vector<Interval>& getAllIntervals(const G4_Declare *dcl) const {
-    return getVar(dcl).intervals;
-  }
-
-  G4_INST *getLastStartInterval(const G4_Declare *dcl) const {
-    auto& intervals = getVar(dcl).intervals;
-    if (intervals.empty())
-      return nullptr;
-    return intervals.back().start;
-  }
-
-  void setLastStartInterval(const G4_Declare *dcl, G4_INST *inst) {
-    auto &intervals = allocVar(dcl).intervals;
-    if(intervals.empty())
-      intervals.resize(1);
-    intervals.back().start = inst;
-  }
-
-  G4_INST *getLastEndInterval(const G4_Declare *dcl) const {
-    auto &intervals = getVar(dcl).intervals;
-    if (intervals.empty())
-      return nullptr;
-    return intervals.back().end;
-  }
-
-  void setLastEndInterval(const G4_Declare *dcl, G4_INST *inst) {
-    auto &intervals = allocVar(dcl).intervals;
-    if(intervals.empty())
-      intervals.resize(1);
-    intervals.back().end = inst;
+    allocVar(dcl).endInterval = inst;
   }
 
   const std::vector<unsigned char> &getMask(const G4_Declare *dcl) const {
@@ -2186,47 +1955,6 @@ public:
 
   void run();
   void dump();
-};
-
-// Class used to analyze spill/fill decisions
-class SpillAnalysis {
-public:
-  SpillAnalysis() = default;
-  ~SpillAnalysis();
-  SpillAnalysis(const SpillAnalysis &) = delete;
-  SpillAnalysis &operator=(const SpillAnalysis &) = delete;
-
-  void Dump(std::ostream &OS = std::cerr);
-  void DumpHistogram(std::ostream &OS = std::cerr);
-
-  unsigned int GetDistance(G4_Declare *Dcl);
-  void LoadAugIntervals(AllIntervals &, GlobalRA &);
-  void LoadDegree(G4_Declare *Dcl, unsigned int degree);
-
-  void SetLivenessAnalysis(LivenessAnalysis *L) { LA = L; }
-  void SetGraphColor(GraphColor *C) { GC = C; }
-  void SetSpillManager(SpillManagerGRF *S) { SM = S; }
-
-  void Clear();
-
-  void Do(LivenessAnalysis *L, GraphColor *C, SpillManagerGRF *S);
-
-private:
-  VarReferences *Refs = nullptr;
-
-  LivenessAnalysis *LA = nullptr;
-  GraphColor *GC = nullptr;
-  SpillManagerGRF *SM = nullptr;
-
-  std::unordered_map<G4_Declare *, std::pair<G4_INST *, G4_INST *>>
-      AugIntervals;
-  std::unordered_map<G4_Declare *, unsigned int> DclDegree;
-
-  std::vector<G4_BB *> GetLiveBBs(G4_Declare *,
-                                  std::unordered_map<G4_INST *, G4_BB *> &);
-  std::vector<G4_BB *>
-  GetIntervalBBs(G4_INST *Start, G4_INST *End,
-                 std::unordered_map<G4_INST *, G4_BB *> &InstBBMap);
 };
 } // namespace vISA
 
