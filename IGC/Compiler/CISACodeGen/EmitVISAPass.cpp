@@ -2916,7 +2916,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     {
         if (!isa<UndefValue>(CSt))
         {
-            emitCopyFromLayoutStruct(inst, src0);
+            emitCopyToOrFromLayoutStruct(inst, src0);
         }
     }
     else
@@ -2924,12 +2924,12 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
         CVariable* SrcV = GetSymbol(src0);
         if (DstV != SrcV && DstV->IsUniform() && SrcV->IsUniform())
         {
-            emitCopyFromLayoutStruct(inst, src0);
+            emitCopyToOrFromLayoutStruct(inst, src0);
         }
         else if (DstV != SrcV)
         {
             // Most often, SrcV has just one defined value and calling
-            // emitCopyFromLayoutStruct() would copy all, thus special
+            // emitCopyToOrFromLayoutStruct() would copy all, thus special
             // handling here to avoid copy undefined values.
             std::list<ArrayRef<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
@@ -8675,6 +8675,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_bitcastfromstruct:
       emitBitcastfromstruct(inst);
+    case GenISAIntrinsic::GenISA_bitcasttostruct:
+        emitBitcasttostruct(inst);
       break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
@@ -9296,72 +9298,83 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
 }
 
 // Ether struct to int vector or struct to struct copy.
-void EmitPass::emitCopyFromLayoutStruct(Value* D, Value* S)
+void EmitPass::emitCopyToOrFromLayoutStruct(Value* D, Value* S)
 {
     auto& DL = m_currShader->entry->getParent()->getDataLayout();
-    StructType* sTy = dyn_cast<StructType>(S->getType());
+    Type* dTy = D->getType();
+    Type* sTy = S->getType();
+    Value* otherVal = nullptr;
+    StructType* stTy = nullptr;
+    if (sTy->isStructTy()) {
+        otherVal = D;
+        stTy = cast<StructType>(sTy);
+    }
+    else if (dTy->isStructTy()) {
+        otherVal = S;
+        stTy = cast<StructType>(dTy);
+    }
 
     // Sanity check
-    if (!sTy || sTy->getNumElements() == 0) {
-        // Should not happen
-        IGC_ASSERT(false);
+    if (!stTy || stTy->getNumElements() == 0) {
+        IGC_ASSERT_UNREACHABLE();
         return;
     }
 
-    uint32_t sTyBytes = (uint32_t)DL.getTypeStoreSize(sTy);
+    // Use layout struct's member size as element size for copying
+    uint32_t stTyBytes = (uint32_t)DL.getTypeStoreSize(stTy);
     // dEltTy : copy type
     //   struct member could be vector, so take its scalar type.
     //   Use int type for copy always.
-    Type* dEltTy = sTy->getElementType(0)->getScalarType();
+    Type* dEltTy = stTy->getElementType(0)->getScalarType();
     uint32_t dEltBytes = (uint32_t)DL.getTypeStoreSize(dEltTy);
     // dEltTy could be of struct or float, int, etc. Here, use int type.
     dEltTy = Type::getIntNTy(dEltTy->getContext(), dEltBytes * 8);
     // dNElts in unit of dEltTy.
     //   Note Legal struct has its size be multiple of dEltTy.
-    IGC_ASSERT((sTyBytes % dEltBytes) == 0);
-    uint32_t dNElts = sTyBytes / dEltBytes;
-    IGC_ASSERT(dNElts >= sTy->getNumElements());
+    IGC_ASSERT((stTyBytes % dEltBytes) == 0);
+    uint32_t dNElts = stTyBytes / dEltBytes;
+    IGC_ASSERT(dNElts >= stTy->getNumElements());
 
 #if defined(_DEBUG)
-    if (D->getType()->isStructTy()) {
-        StructType* s1Ty = cast<StructType>(D->getType());
+    // Additional sanity checking
+    if (otherVal->getType()->isStructTy()) {
+        StructType* stTy1 = cast<StructType>(otherVal->getType());
         // Store combining guarantee that the same layout uses the same type.
-        if (s1Ty != sTy) {
-            // Should not happen
-            IGC_ASSERT(false);
+        if (stTy1 != stTy) {
+            IGC_ASSERT_UNREACHABLE();
             return;
         }
     }
     else {
         // vector or just a scalar type
-        Type* eTy = D->getType()->getScalarType();
+        Type* eTy = otherVal->getType()->getScalarType();
         uint32_t eBytes = (uint32_t)DL.getTypeStoreSize(eTy);
-        auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(D->getType());
+        auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(otherVal->getType());
         uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
 
         if (!eTy->isIntegerTy() ||
-            n != dNElts || eBytes != dEltBytes || sTyBytes != (n * eBytes)) {
-            // Should not happen
-            IGC_ASSERT(false);
+            n != dNElts || eBytes != dEltBytes || stTyBytes != (n * eBytes)) {
+            IGC_ASSERT_UNREACHABLE();
             return;
         }
     }
 #endif
-
-    const StructLayout* SL = DL.getStructLayout(sTy);
     uint32_t nlanes = numLanes(m_currShader->m_SIMDSize);
     CVariable* baseD = GetSymbol(D);
-    if (Constant* C = dyn_cast<Constant>(S))
+    Constant* C = dyn_cast<Constant>(S);
+    if (C != nullptr && sTy->isStructTy())
     {
+        IGC_ASSERT(stTy == cast<StructType>(sTy));
+        const StructLayout* SL = DL.getStructLayout(stTy);
         // copy all valid struct members.
-        for (uint32_t i = 0; i < sTy->getNumElements(); i++)
+        for (uint32_t i = 0; i < stTy->getNumElements(); i++)
         {
             Constant* elt = C->getAggregateElement(i);
             if (isa<UndefValue>(elt)) {
                 continue;
             }
 
-            Type* ty = sTy->getElementType(i);
+            Type* ty = stTy->getElementType(i);
             uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
             IGC_ASSERT_MESSAGE((byteOffset % dEltBytes) == 0,
                 "ICE:  mismatched layout b/w int vector and layout struct!");
@@ -9408,6 +9421,29 @@ void EmitPass::emitCopyFromLayoutStruct(Value* D, Value* S)
         }
         return;
     }
+    else if (C != nullptr)
+    {
+        // This part unlikely happens.
+        auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(sTy);
+        uint32_t nelts = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+        Type* eltTy = sTy->getScalarType();
+        IGC_ASSERT(DL.getTypeStoreSize(eltTy) == dEltBytes);
+
+        VISA_Type visaty = m_currShader->GetType(eltTy);
+        for (uint32_t j = 0; j < nelts; ++j)
+        {
+            uint32_t offbytes = dEltBytes * j;
+            Constant* Ci = C->getAggregateElement(j);
+            CVariable* eltSrc = m_currShader->GetSymbol(Ci);
+            CVariable* eltDst = m_currShader->GetNewAlias(
+                baseD, visaty,
+                offbytes * (baseD->IsUniform() ? 1 : nlanes),
+                baseD->IsUniform() ? 1 : nlanes);
+            m_encoder->Copy(eltDst, eltSrc);
+            m_encoder->Push();
+        }
+        return;
+    }
 
     CVariable* baseS = GetSymbol(S);
     if (baseD == baseS)
@@ -9445,12 +9481,30 @@ void EmitPass::emitBitcastfromstruct(GenIntrinsicInst* I)
     // creating must guarantee this).
     //
     // This bitcast should be aliased by DeSSA, so this function will not be
-    // invoked. It is added in case the bitcase is not aliased (in case it is
+    // invoked. It is added in case the bitcast is not aliased (in case it is
     // a constant src or DeSSA is off).
     //
     Value* S = I->getOperand(0);
     Value* D = I;
-    emitCopyFromLayoutStruct(D, S);
+    emitCopyToOrFromLayoutStruct(D, S);
+}
+
+void EmitPass::emitBitcasttostruct(GenIntrinsicInst* I)
+{
+    // Special bitcast from an int vector to a layout struct.
+    //   %a   load <4xi32> *p
+    //   %b = bitcasttostruct <4xi32> %a to struct
+    // This bitcast intrinsic is generated for load combining in IGC codegen.
+    // The struct's GRF layout is exactly the same as the vector's (struct
+    // creating must guarantee this).
+    //
+    // This bitcast should be aliased by DeSSA, so this function will not be
+    // invoked. It is added in case the bitcast is not aliased (in case DeSSA
+    // is off).
+    //
+    Value* S = I->getOperand(0);
+    Value* D = I;
+    emitCopyToOrFromLayoutStruct(D, S);
 }
 
 void EmitPass::emitPtrToInt(llvm::PtrToIntInst* P2I)

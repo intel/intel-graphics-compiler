@@ -152,7 +152,7 @@ public:
     void emitVectorCopyToAOS(uint32_t AOSBytes,
         CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
-    void emitCopyFromLayoutStruct(llvm::Value* D, llvm::Value* S);
+    void emitCopyToOrFromLayoutStruct(llvm::Value* D, llvm::Value* S);
 
     /// stack-call code-gen functions
     void emitStackCall(llvm::CallInst* inst);
@@ -350,6 +350,7 @@ public:
     void emitExtract(llvm::Instruction* inst);
     void emitBitCast(llvm::BitCastInst* btCst);
     void emitBitcastfromstruct(llvm::GenIntrinsicInst* BCFromStruct);
+    void emitBitcasttostruct(llvm::GenIntrinsicInst* BCToStruct);
     void emitPtrToInt(llvm::PtrToIntInst* p2iCst);
     void emitIntToPtr(llvm::IntToPtrInst* i2pCst);
     void emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);

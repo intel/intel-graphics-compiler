@@ -697,16 +697,25 @@ void DeSSA::CoalesceAliasInst()
             {
                 if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I))
                 {
-                    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_bitcastfromstruct &&
+                    auto GIIid = GII->getIntrinsicID();
+                    if ((GIIid == GenISAIntrinsic::GenISA_bitcastfromstruct ||
+                         GIIid == GenISAIntrinsic::GenISA_bitcasttostruct) &&
                         !isa<Constant>(GII->getOperand(0)))
                     {
                         // special cast just for load/store.
                         Value* D = GII;
                         Value* S = GII->getOperand(0);
 
-                        // D must be int or int vector type; S must be struct type.
-                        IGC_ASSERT(D->getType()->getScalarType()->isIntegerTy());
-                        IGC_ASSERT(S->getType()->isStructTy());
+                        if (GIIid ==  GenISAIntrinsic::GenISA_bitcastfromstruct) {
+                            // D must be int or int vector type; S must be struct type.
+                            IGC_ASSERT(D->getType()->getScalarType()->isIntegerTy());
+                            IGC_ASSERT(S->getType()->isStructTy());
+                        }
+                        else if (GIIid == GenISAIntrinsic::GenISA_bitcasttostruct) {
+                            // S must be int or int vector type; D must be struct type.
+                            IGC_ASSERT(S->getType()->getScalarType()->isIntegerTy());
+                            IGC_ASSERT(D->getType()->isStructTy());
+                        }
 
                         AddAlias(S);
                         Value* aliasee = AliasMap[S];
