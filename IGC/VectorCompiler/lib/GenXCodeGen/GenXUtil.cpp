@@ -407,6 +407,22 @@ bool genx::isNoopCast(const CastInst *CI) {
   }
 }
 
+bool genx::isBFloat16Cast(const Instruction *I) {
+#if LLVM_VERSION_MAJOR >= 11
+  Type *Ty = nullptr;
+  if (isa<FPTruncInst>(I))
+    Ty = I->getType();
+  else if (isa<FPExtInst>(I))
+    Ty = I->getOperand(0)->getType();
+  else
+    return false;
+  IGC_ASSERT_EXIT(Ty);
+  return Ty->getScalarType()->isBFloatTy();
+#else  // LLVM_VERSION_MAJOR >= 11
+  return false;
+#endif // LLVM_VERSION_MAJOR >= 11
+}
+
 /***********************************************************************
  * ShuffleVectorAnalyzer::getAsSlice : see if the shufflevector is a slice on
  *    operand 0, and if so return the start index, or -1 if it is not a slice

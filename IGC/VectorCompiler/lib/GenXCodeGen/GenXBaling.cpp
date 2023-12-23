@@ -921,7 +921,7 @@ void GenXBaling::processSat(Instruction *Inst) {
       setOperandBaled(Inst, OperandNum, &BI);
     } else if (ValIntrinID == GenXIntrinsic::not_any_intrinsic) {
       if (isa<BinaryOperator>(V) || isa<SelectInst>(V) ||
-          (isa<CastInst>(V) && !isa<BitCastInst>(V))) {
+          (isa<CastInst>(V) && !isa<BitCastInst>(V) && !isBFloat16Cast(V))) {
         LLVM_DEBUG(llvm::dbgs()
                    << __FUNCTION__ << " setting operand #" << OperandNum
                    << " to bale in instruction " << *Inst << "\n");

@@ -252,6 +252,9 @@ bool isFuncPointerVec(Value *V);
 // of value (in other words, it can be copy-coalesced).
 bool isNoopCast(const CastInst *CI);
 
+// isBFloat16Cast : test if cast operation extends bfloat or truncates to bfloat
+bool isBFloat16Cast(const Instruction *I);
+
 // ShuffleVectorAnalyzer : class to analyze a shufflevector
 class ShuffleVectorAnalyzer {
   ShuffleVectorInst *SI;
