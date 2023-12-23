@@ -72,6 +72,9 @@ public:
   void visitSIToFPInst(SIToFPInst &Inst);
   void visitUIToFPInst(UIToFPInst &Inst);
 
+  // lower intrinsic instructions
+  void visitCallInst(CallInst &Inst);
+
 private:
   void lowerCastToBFloat(CastInst &Inst);
   void lowerCastFromBFloat(CastInst &Inst);
@@ -127,7 +130,11 @@ void GenXBFloatLowering::visitBinaryOperator(BinaryOperator &Inst) {
   Instruction::BinaryOps Opcode = Inst.getOpcode();
   auto *Op0Conv = Builder.CreateFPExt(Src0, FloatTy);
   auto *Op1Conv = Builder.CreateFPExt(Src1, FloatTy);
-  auto *InstUpdate = Builder.CreateBinOp(Opcode, Op0Conv, Op1Conv);
+
+  auto *InstUpdate =
+      cast<Instruction>(Builder.CreateBinOp(Opcode, Op0Conv, Op1Conv));
+  InstUpdate->setFastMathFlags(Inst.getFastMathFlags());
+
   auto *Trunc = Builder.CreateFPTrunc(InstUpdate, Ty);
   Inst.replaceAllUsesWith(Trunc);
   Inst.eraseFromParent();
@@ -193,6 +200,70 @@ void GenXBFloatLowering::visitSIToFPInst(SIToFPInst &Inst) {
 
 void GenXBFloatLowering::visitUIToFPInst(UIToFPInst &Inst) {
   lowerCastToBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitCallInst(CallInst &Inst) {
+  auto IID = vc::getAnyIntrinsicID(&Inst);
+  auto *Ty = Inst.getType();
+  SmallVector<Type *, 2> Types;
+
+  switch (IID) {
+  default:
+    return;
+  case GenXIntrinsic::genx_sat:
+    break;
+  case Intrinsic::cos:
+  case Intrinsic::exp2:
+  case Intrinsic::fabs:
+  case Intrinsic::fma:
+  case Intrinsic::fmuladd:
+  case Intrinsic::log2:
+  case Intrinsic::maximum:
+  case Intrinsic::maxnum:
+  case Intrinsic::minimum:
+  case Intrinsic::minnum:
+  case Intrinsic::pow:
+  case Intrinsic::sin:
+  case Intrinsic::sqrt:
+    break;
+  case Intrinsic::fptosi_sat:
+  case Intrinsic::fptoui_sat:
+    Types.push_back(Ty);
+    Ty = Inst.getArgOperand(0)->getType();
+    break;
+  }
+
+  if (!Ty->getScalarType()->isBFloatTy())
+    return;
+
+  LLVM_DEBUG(dbgs() << "GenXBFloatLowering: apply on Intrinsic\n"
+                    << Inst << "\n");
+
+  auto *ExtTy = getFloatTyFromBfloat(Ty);
+  Types.push_back(ExtTy);
+
+  IRBuilder<> Builder(&Inst);
+  if (isa<FPMathOperator>(Inst))
+    Builder.setFastMathFlags(Inst.getFastMathFlags());
+
+  SmallVector<Value *, 4> Args;
+  llvm::transform(Inst.args(), std::back_inserter(Args),
+                  [&Builder, ExtTy](Value *Arg) {
+                    auto *Ty = Arg->getType();
+                    if (!Ty->getScalarType()->isBFloatTy())
+                      return Arg;
+                    return Builder.CreateFPExt(Arg, ExtTy);
+                  });
+
+  auto *Func = vc::getAnyDeclaration(Inst.getModule(), IID, Types);
+  Value *NewInst = Builder.CreateCall(Func, Args);
+
+  if (NewInst->getType()->getScalarType()->isFloatTy())
+    NewInst = Builder.CreateFPTrunc(NewInst, Inst.getType());
+
+  Inst.replaceAllUsesWith(NewInst);
+  Inst.eraseFromParent();
+  Modify = true;
 }
 
 void GenXBFloatLowering::lowerCastToBFloat(CastInst &Inst) {
