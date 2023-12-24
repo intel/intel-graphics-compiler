@@ -63,12 +63,20 @@ void ImageFuncResolution::visitCallInst(CallInst& CI)
 
     if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_HEIGHT))
     {
-        IGC_ASSERT_MESSAGE(isImplicitImageArgs, "Getting Image Height from implicit args is supported only in bindful mode");
+        if (!isImplicitImageArgs)
+        {
+            IGC_ASSERT_MESSAGE(false, "Getting Image Height from implicit args is supported only in bindful mode");
+            return;
+        }
         imageRes = getImageHeight(CI);
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_WIDTH))
     {
-        IGC_ASSERT_MESSAGE(isImplicitImageArgs, "Getting Image Width from implicit args is supported only in bindful mode");
+        if (!isImplicitImageArgs)
+        {
+            IGC_ASSERT_MESSAGE(false, "Getting Image Width from implicit args is supported only in bindful mode");
+            return;
+        }
         imageRes = getImageWidth(CI);
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_DEPTH))
