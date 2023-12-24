@@ -74,6 +74,9 @@ namespace IGC
         void init(llvm::CallInst* Inst, IGC::CodeGenContext* CodeGenContext);
         void clearArgsList(void);
 
+        /// @brief returns true if command executed with errors
+        bool hasError() const {return m_bHasError;}
+
         enum CoordType
         {
             FloatType,
@@ -89,11 +92,17 @@ namespace IGC
             m_pCtx(nullptr),
             m_pCodeGenContext(nullptr),
             m_pFloatType(nullptr),
-            m_pIntType(nullptr)
+            m_pIntType(nullptr),
+            m_bHasError(false)
         {}
         virtual ~CCommand(void) {};
 
     protected:
+        /// @brief emits error using CodeGenContext, sets error state of CCommand to true
+        /// @param ErrorStr error string to emit
+        /// @param Context Value to get debug location to print out the relevant info.
+        void emitError(const char* ErrorStr, const llvm::Value *Context);
+
         llvm::Value* m_pFloatZero;
         llvm::Value* m_pIntZero;
         llvm::Value* m_pIntOne;
@@ -105,6 +114,7 @@ namespace IGC
         llvm::DebugLoc m_DL;
         llvm::Type* m_pFloatType;
         llvm::IntegerType* m_pIntType;
+        bool m_bHasError;
     };
 
     static inline BufferType ResourceTypeMap(ResourceTypeEnum type)

@@ -77,6 +77,12 @@ void CCommand::replaceGenISACallInst(GenISAIntrinsic::ID intrinsicName, ArrayRef
     m_pCallInst->replaceAllUsesWith(newCall);
 }
 
+void CCommand::emitError(const char *ErrorStr, const Value *Context)
+{
+    m_pCodeGenContext->EmitError(ErrorStr, Context);
+    m_bHasError = true;
+}
+
 void CImagesBI::prepareZeroOffsets()
 {
     m_args.push_back(m_pIntZero); // offsetU
@@ -123,7 +129,7 @@ void CImagesBI::prepareCoords(Dimension Dim, Value* Coord, Value* Zero)
         //  no need to extract since in 1 Dim Coord isn't a vector
         break;
     case DIM_UNKNOWN:
-        m_pCodeGenContext->EmitError("Unexpected dimension", NULL);
+        emitError("Unexpected dimension", NULL);
         break;
     }
 }
@@ -191,7 +197,7 @@ void CImagesBI::verifyCommand()
 {
     if (m_IncorrectBti)
     {
-        m_pCodeGenContext->EmitError("Inconsistent use of image!", NULL);
+        emitError("Inconsistent use of image!", NULL);
     }
 }
 
@@ -392,7 +398,7 @@ public:
         ConstantInt* samplerIndex = nullptr;
         Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD);
         if (!samplerParam) {
-            m_pCodeGenContext->EmitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
+            emitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
             return nullptr;
         }
 
@@ -660,7 +666,7 @@ public:
             //  no need to extract since in 1 Dim gradient is not a vector.
             break;
         case DIM_UNKNOWN:
-            m_pCodeGenContext->EmitError("Unexpected dimension", NULL);
+            emitError("Unexpected dimension", NULL);
             break;
         }
     }
@@ -922,7 +928,7 @@ public:
             prop = builder.CreateExtractElement(info, builder.getInt32(1));
             break;
         default:
-            m_pCodeGenContext->EmitError("Unsupported bindless image property requested.", NULL);
+            emitError("Unsupported bindless image property requested.", NULL);
         }
         m_pCallInst->replaceAllUsesWith(prop);
     }
@@ -1645,5 +1651,5 @@ bool CBuiltinsResolver::resolveBI(CallInst* Inst)
     m_CommandMap[calleeName]->execute(Inst, m_CodeGenContext);
     m_CommandMap[calleeName]->verifyCommand();
 
-    return !m_CodeGenContext->HasError();
+    return !m_CommandMap[calleeName]->hasError();
 }
