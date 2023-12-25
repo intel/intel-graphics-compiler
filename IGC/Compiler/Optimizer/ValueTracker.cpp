@@ -277,6 +277,9 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
 {
     if (!V) return nullptr;
 
+    // Continue to find from other users if current leaf is invalid.
+    auto isValidLeaf = [](Value *leaf) { return leaf && !isa<ConstantPointerNull>(leaf); };
+
     for (auto U : V->users())
     {
         if (visitedValues.find(U) != visitedValues.end()) continue;
@@ -308,7 +311,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
                 continue;
 
             unsigned reducedIndices = numIndices - 1;
-            if (auto leaf = findAllocaValue(GEP, depth - reducedIndices))
+            if (auto leaf = findAllocaValue(GEP, depth - reducedIndices); isValidLeaf(leaf))
             {
                 IGC_ASSERT(gepIndices.size() >= reducedIndices);
                 gepIndices.resize(gepIndices.size() - reducedIndices);
@@ -317,7 +320,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
         }
         else if (auto* CI = dyn_cast<CastInst>(U))
         {
-            if (auto leaf = findAllocaValue(CI, depth))
+            if (auto leaf = findAllocaValue(CI, depth); isValidLeaf(leaf))
                 return leaf;
         }
         else if (auto* CI = dyn_cast<CallInst>(U))
@@ -336,7 +339,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
                         Function* F = CI->getCalledFunction();
                         unsigned OpNo = OP.getOperandNo();
                         IGC_ASSERT(F->arg_size() > OpNo);
-                        if (auto leaf = findAllocaValue(F->arg_begin() + OpNo, depth))
+                        if (auto leaf = findAllocaValue(F->arg_begin() + OpNo, depth); isValidLeaf(leaf))
                         {
                             callInsts.push_back(CI);
                             return leaf;
@@ -356,7 +359,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
             // We cannot ignore load if alloca type is a pointer.
             if (LI->getType()->isPointerTy())
             {
-                if (auto leaf = findAllocaValue(LI, depth))
+                if (auto leaf = findAllocaValue(LI, depth); isValidLeaf(leaf))
                     return leaf;
             }
         }
@@ -370,7 +373,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
                 // through another alloca and we need to continue tracing it.
                 if (StoredValue->getType()->isPointerTy())
                 {
-                    if (auto leaf = findAllocaValue(ST->getPointerOperand(), depth))
+                    if (auto leaf = findAllocaValue(ST->getPointerOperand(), depth); isValidLeaf(leaf))
                         return leaf;
                 }
             }
