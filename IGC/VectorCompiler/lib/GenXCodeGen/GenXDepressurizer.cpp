@@ -1121,7 +1121,7 @@ bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
   for (auto *I : SB->Bales) {
     Bale B;
     Baling->buildBale(I, &B);
-    if (!genx::isSafeToMoveBaleCheckAVLoadKill(B, InsertBefore)) {
+    if (!genx::isSafeToSink_CheckAVLoadKill(B, InsertBefore)) {
       LLVM_DEBUG(
           dbgs() << "Will not move this superbale to position of "
                  << *InsertBefore

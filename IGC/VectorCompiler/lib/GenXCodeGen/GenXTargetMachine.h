@@ -271,6 +271,7 @@ void initializeGenXPredToSimdCFPass(PassRegistry &);
 void initializeGenXInlineAsmLoweringPass(PassRegistry &);
 void initializeGenXDebugLegalizationPass(PassRegistry &);
 void initializeGenXFixInvalidFuncNamePass(PassRegistry &);
+void initializeGenXLegalizeGVLoadUsesPass(PassRegistry &);
 void initializeGenXGASCastWrapperPass(PassRegistry &);
 void initializeGenXGASDynamicResolutionPass(PassRegistry &);
 void initializeGenXInitBiFConstantsPass(PassRegistry &);

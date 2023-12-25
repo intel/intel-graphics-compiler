@@ -135,7 +135,7 @@ inline bool isABitCast(Value *V) {
           cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast);
 }
 
-inline Value *peelBitCastsInSingleUseChain(User *U) {
+inline User *peelBitCastsInSingleUseChain(User *U) {
   while (isABitCast(U) && U->hasOneUse())
     U = *U->user_begin();
   return U;
@@ -789,8 +789,9 @@ bool isWrRWithOldValueVLoadSrc(Value *V);
 //     a use case where we want the whole list, hence this variant
 //     only returns the first found.
 Instruction *getAVLoadKillOrNull(
-    Instruction *LI, Instruction *PosI, bool PosIsReachableFromLI = false,
-    const DominatorTree *DT = nullptr,
+    Instruction *LI, Instruction *PosI,
+    bool ChangeSearchDirectionBasedOnDominance = false,
+    bool PosIsReachableFromLI = false, const DominatorTree *DT = nullptr,
     const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal = nullptr,
     const llvm::SmallVector<Instruction *, 8> *KillCallSites = nullptr);
 
@@ -803,16 +804,58 @@ llvm::SmallPtrSet<Instruction *, 1> getSrcVLoads(Instruction *I);
 Instruction *getSrcVLoadOrNull(Instruction *I);
 bool hasVLoadSource(Instruction *I);
 
-bool isSafeToReplaceInstCheckAVLoadKill(Instruction *OldI,
-                                        Instruction *ReplacementI);
-bool isSafeToMoveBaleCheckAVLoadKill(const Bale &B, Instruction *To);
-bool isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To);
-bool isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To,
-                                     GenXBaling *Baling_);
-bool isSafeToUseAtPosCheckAVLoadKill(Instruction *I, Instruction *To);
+// VLoad's users sanity check. In current design to avoid genx_volatile-related
+// clobbering we have to allow only GenX intrinsics to use (ignoring
+// intermediate bitcasts) a VLoad's value.
+inline bool isAGVLoadForbiddenUser(User *U) {
+  U = genx::peelBitCastsInSingleUseChain(U);
+  IGC_ASSERT(
+      !isABitCast(U)); // Only single-use chain, not a use tree is expected.
+  return !GenXIntrinsic::isGenXNonTrivialIntrinsic(U);
+}
 
-bool loadingSameValue(Instruction *L1, Instruction *L2,
-                      const DominatorTree *DT);
+// Safety checks for vloads clobbering when sinking a bale of instructions.
+bool isSafeToSink_CheckAVLoadKill(const Bale &B, Instruction *To,
+                                  const DominatorTree *DT = nullptr);
+// Safety checks for vloads clobbering when sinking a bale of instructions..
+bool isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
+                                  GenXBaling *Baling_,
+                                  const DominatorTree *DT = nullptr);
+// Safety checks for vloads clobbering when looking to hoist or sink an
+// instruction.
+// + NB: Is also reused by isSafeToReplace_CheckAVLoadKillOrForbiddenUser(...).
+// + NB: Besides checking for a vload kill, take into account that instruction
+// "I" may not dominate "To" but if it has any VLoad sources - we'll not move
+// them by ourselves even if there'd be no clobbering. Hence make sure that if
+// any, all of them dominate "To" position by the time this check is called.
+// + NB: If const DominatorTree * is not passed we assume that both "I" and
+// potential VLoad sources of "I" dominate "To".
+bool isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
+                                  const DominatorTree *DT);
+// Safety checks for vloads clobbering when replacing an instruction.
+// + NB: Make sure all the users are valid VLoad users
+// (!isAGVLoadForbiddenUser(...))
+// + NB: When used for checks on hoisting, const DominatorTree* is mandatory and
+// must not be nullptr.
+bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(Instruction *OldI,
+                                                    Instruction *NewI,
+                                                    const DominatorTree *DT);
+// Safety checks for vloads clobbering when targeting to modify a use of an
+// instruction.
+// + WARNING: Only checking for VLoad clobbering aspect in the context of value
+// usage. If moving/merging/splitting an instruction or checking in a
+// bale context use isSafeTo(Sink|Move)<...>CheckAVLoadKill variants.
+// + NB: UseSrc must dominate UseTarget.
+bool isSafeToUse_CheckAVLoadKill(Instruction *UseSrc, Instruction *UseTarget,
+                                 const DominatorTree *DT);
+
+bool legalizeGVLoadForbiddenUses(Instruction *GVLoad);
+
+bool vloadsReadSameValue(Instruction *L1, Instruction *L2,
+                         const DominatorTree *DT);
+
+// TBD: there's another, a bit different, isBitwiseIdentical in CMABI, make it
+// common.
 bool isBitwiseIdentical(Value *V1, Value *V2,
                         const DominatorTree *DT = nullptr);
 

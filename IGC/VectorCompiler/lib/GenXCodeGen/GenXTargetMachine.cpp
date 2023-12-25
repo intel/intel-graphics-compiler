@@ -162,6 +162,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXInlineAsmLoweringPass(registry);
   initializeGenXDebugLegalizationPass(registry);
   initializeGenXFixInvalidFuncNamePass(registry);
+  initializeGenXLegalizeGVLoadUsesPass(registry);
   initializeGenXGASCastWrapperPass(registry);
   initializeGenXGASDynamicResolutionPass(registry);
   initializeGenXInitBiFConstantsPass(registry);
@@ -324,6 +325,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   vc::addPass(PM, createGenXInitBiFConstantsPass());
   vc::addPass(PM, createGenXFixInvalidFuncNamePass());
+  vc::addPass(PM, createGenXLegalizeGVLoadUsesPass());
 
   // Install GenX-specific TargetTransformInfo for passes such as
   // LowerAggrCopies and InfoAddressSpace
@@ -688,6 +690,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
       PassManagerBuilder::EP_EarlyAsPossible,
       [](const PassManagerBuilder &Builder, PassManagerBase &PM) {
         PM.add(createGenXFixInvalidFuncNamePass());
+        PM.add(createGenXLegalizeGVLoadUsesPass());
       });
 
   // Lower aggr copies.

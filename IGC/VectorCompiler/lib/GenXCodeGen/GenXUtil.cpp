@@ -43,6 +43,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Value.h"
 
 #include "Probe/Assertion.h"
 
@@ -2357,7 +2358,8 @@ bool genx::isWrRWithOldValueVLoadSrc(Value *V) {
 };
 
 Instruction *genx::getAVLoadKillOrNull(
-    Instruction *FromVLoad, Instruction *ToPosI, bool PosIsReachableFromLI,
+    Instruction *FromVLoad, Instruction *ToPosI,
+    bool ChangeSearchDirectionBasedOnDominance, bool PosIsReachableFromLI,
     const DominatorTree *DT,
     const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal,
     const llvm::SmallVector<Instruction *, 8> *KillCallSites) {
@@ -2374,6 +2376,10 @@ Instruction *genx::getAVLoadKillOrNull(
                 : isa<CallInst>(I) &&
                       !vc::isAnyNonTrivialIntrinsic(vc::getAnyIntrinsicID(&I)));
   };
+
+  if (DT && ChangeSearchDirectionBasedOnDominance &&
+      DT->dominates(ToPosI, FromVLoad))
+    std::swap(ToPosI, FromVLoad);
 
   auto *VLoadBB = FromVLoad->getParent();
   auto *PosBB = ToPosI->getParent();
@@ -2468,67 +2474,102 @@ Instruction *genx::getSrcVLoadOrNull(Instruction *I) {
 
 bool genx::hasVLoadSource(Instruction *I) { return getSrcVLoadOrNull(I); }
 
-bool genx::isSafeToMoveBaleCheckAVLoadKill(const Bale &B, Instruction *To) {
-  for (auto *LI : B.getVLoadSources())
+bool genx::isSafeToSink_CheckAVLoadKill(const Bale &B, Instruction *To,
+                                        const DominatorTree *DT) {
+  IGC_ASSERT(!DT || DT->dominates(B.getHead()->Inst, To));
+  for (auto *LI : B.getVLoadSources()) {
     if (getAVLoadKillOrNull(LI, To))
       return false;
+  }
   return true;
 }
 
-// WARNING: Only checking for VLoad clobbering aspect in the context of value
-// usage. If moving/merging/splitting an instruction or checking in a
-// bale context use isSafeToMove<...>CheckAVLoadKill variants.
-bool genx::isSafeToUseAtPosCheckAVLoadKill(Instruction *I, Instruction *To) {
-  IGC_ASSERT(I != To);
-
-  if (genx::isAVLoad(I))
-    return !getAVLoadKillOrNull(I, To);
-
-  // Regarding VLoad clobbering for any non-vload instruction it should be safe
-  // to use its value at any reachable position (except for in the context of a
-  // bale).
-  return true;
-}
-
-bool genx::isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To) {
-  IGC_ASSERT(I != To);
-
-  // if(LLVM_UNLIKELY(I == To))
-  //   return true;
-
-  // vloads are not movable anywhere else.
-  if (LLVM_UNLIKELY(genx::isAVLoad(I)))
-    return false;
-
-  for (auto *LI : getSrcVLoads(I))
-    if (getAVLoadKillOrNull(LI, To))
-      return false;
-
-  return true;
-}
-
-bool genx::isSafeToMoveInstCheckAVLoadKill(Instruction *I, Instruction *To,
-                                           GenXBaling *Baling) {
+bool genx::isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
+                                        GenXBaling *Baling,
+                                        const DominatorTree *DT) {
   IGC_ASSERT(I && To && Baling);
   Bale Bale;
   Baling->buildBale(I, &Bale);
-  return isSafeToMoveBaleCheckAVLoadKill(Bale, To);
+  return isSafeToSink_CheckAVLoadKill(Bale, To, DT);
 }
 
-bool genx::isSafeToReplaceInstCheckAVLoadKill(Instruction *OldI,
-                                              Instruction *ReplacementI) {
-  IGC_ASSERT_MESSAGE(OldI->getParent() && ReplacementI->getParent(),
+bool genx::isSafeToUse_CheckAVLoadKill(Instruction *UseSrc,
+                                       Instruction *UseTarget,
+                                       const DominatorTree *DT) {
+  IGC_ASSERT(UseSrc != UseTarget);
+  IGC_ASSERT(DT->dominates(UseSrc, UseTarget));
+  if (genx::isAVLoad(UseSrc))
+    return !getAVLoadKillOrNull(UseSrc, UseTarget, false, false);
+  return GenXIntrinsic::isGenXNonTrivialIntrinsic(UseTarget) ||
+         !hasVLoadSource(UseSrc) ||
+         llvm::all_of(getSrcVLoads(UseSrc), [UseTarget](Instruction *VLoad) {
+           return !getAVLoadKillOrNull(VLoad, UseTarget, false, false);
+         });
+}
+
+bool genx::isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
+                                        const DominatorTree *DT) {
+  IGC_ASSERT(I != To);
+  if (LLVM_UNLIKELY(genx::isAVLoad(I)))
+    return !getAVLoadKillOrNull(I, To, true, false, DT);
+  for (auto *LI : getSrcVLoads(I)) {
+    const bool LIDomTo = !DT || DT->dominates(LI, To);
+    IGC_ASSERT(LIDomTo);
+    if (!LIDomTo || getAVLoadKillOrNull(LI, To))
+      return false;
+  }
+  return true;
+}
+
+bool genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+    Instruction *OldI, Instruction *NewI, const DominatorTree *DT) {
+  IGC_ASSERT_MESSAGE(OldI->getParent() && NewI->getParent(),
                      "both instructions must be placed in IR.");
-
-  return !genx::isAVLoad(ReplacementI) ||
-         !std::any_of(
-             OldI->user_begin(), OldI->user_end(), [ReplacementI](User *U) {
-               return getAVLoadKillOrNull(ReplacementI, cast<Instruction>(U));
-             });
+  return isSafeToMove_CheckAVLoadKill(NewI, OldI, DT) &&
+         (!genx::isAVLoad(NewI) ||
+          llvm::all_of(OldI->users(), [NewI, DT](User *U) {
+            return !isAGVLoadForbiddenUser(U) &&
+                   !getAVLoadKillOrNull(NewI, cast<Instruction>(U));
+          }));
 }
 
-bool genx::loadingSameValue(Instruction *L1, Instruction *L2,
-                            const DominatorTree *DT) {
+bool genx::legalizeGVLoadForbiddenUses(Instruction *GVLoad) {
+  IGC_ASSERT(isAGVLoad(GVLoad));
+
+  bool Changed = false;
+  for (auto &Use_ : GVLoad->uses()) {
+    User *User_ = genx::peelBitCastsInSingleUseChain(Use_.getUser());
+    IGC_ASSERT(isa<Instruction>(User_));
+    IGC_ASSERT(
+        !genx::isABitCast(User_)); // Only single-use-chain is expected, but can
+                                   // support the tree if such use case arises.
+    if (genx::isAGVLoadForbiddenUser(User_)) {
+      const auto *GVLoadMaybeVT =
+          dyn_cast<IGCLLVM::FixedVectorType>(GVLoad->getType());
+      const unsigned ElsCount =
+          GVLoadMaybeVT ? GVLoadMaybeVT->getNumElements() : 1;
+      genx::Region R(GVLoad);
+      R.getSubregion(0, ElsCount);
+      auto *Rdr =
+          R.createRdRegion(GVLoad, GVLoad->getName() + "._gvload_legalized_rdr",
+                           GVLoad->getNextNode(), GVLoad->getDebugLoc(), true);
+      IGCLLVM::replaceUsesWithIf(GVLoad, Rdr, [&](Use &U) {
+        return cast<Instruction>(U.getUser()) != Rdr;
+      });
+      Use_.set(Rdr);
+      LLVM_DEBUG(vc::diagnose(GVLoad->getContext(),
+                              "genx::legalizeGVLoadForbiddenUses: ",
+                              "illegal genx.vload user found, "
+                              "fixing it by inserting rdregion in between.",
+                              DS_Warning, vc::WarningName::Generic, GVLoad););
+      Changed |= true;
+    }
+  }
+  return Changed;
+}
+
+bool genx::vloadsReadSameValue(Instruction *L1, Instruction *L2,
+                               const DominatorTree *DT) {
   IGC_ASSERT_MESSAGE(
       genx::isAVLoad(L1) && genx::isAVLoad(L2),
       "L1 and L2 are expected to be genx.vload or a load volatile");
@@ -2537,7 +2578,7 @@ bool genx::loadingSameValue(Instruction *L1, Instruction *L2,
     if (DT->dominates(L2, L1))
       std::swap(L2, L1);
     if (DT->dominates(L1, L2))
-      return !genx::getAVLoadKillOrNull(L1, L2, true);
+      return !genx::getAVLoadKillOrNull(L1, L2, false, true);
   }
   return false;
 }
@@ -2554,7 +2595,7 @@ bool genx::isBitwiseIdentical(Value *V1, Value *V2, const DominatorTree *DT) {
     auto *L1 = dyn_cast<Instruction>(V1);
     auto *L2 = dyn_cast<Instruction>(V2);
     if (genx::isAVLoad(L1) && genx::isAVLoad(L2))
-      return genx::loadingSameValue(L1, L2, DT);
+      return genx::vloadsReadSameValue(L1, L2, DT);
   }
 
   return false;

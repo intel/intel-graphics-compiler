@@ -230,9 +230,6 @@ void GenXRegionCollapsing::runOnBasicBlock(BasicBlock *BB) {
     }
 
     if (Value *V = simplifyRegionInst(Inst, DL)) {
-      if (isa<Instruction>(V) &&
-          !genx::isSafeToReplaceInstCheckAVLoadKill(Inst, cast<Instruction>(V)))
-        continue;
       Inst->replaceAllUsesWith(V);
       Modified = true;
       continue;
@@ -530,7 +527,7 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
   for (;;) {
     Instruction *OuterRd = dyn_cast<Instruction>(InnerRd->getOperand(0));
 
-    if (OuterRd && !genx::isSafeToMoveInstCheckAVLoadKill(OuterRd, InnerRd))
+    if (OuterRd && !genx::isSafeToMove_CheckAVLoadKill(OuterRd, InnerRd, DT))
       break;
 
     // Go through any bitcasts and up to one sext/zext if necessary to find the
@@ -767,7 +764,7 @@ void GenXRegionCollapsing::processWrRegionElim(Instruction *OuterWr)
       InnerWr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
 
   if (auto *I = dyn_cast<Instruction>(InnerWrOldV);
-      I && !genx::isSafeToUseAtPosCheckAVLoadKill(I, OuterWr))
+      I && !genx::isSafeToUse_CheckAVLoadKill(I, OuterWr, DT))
     return;
 
   Region InnerR = genx::makeRegionFromBaleInfo(InnerWr, BaleInfo(),
@@ -917,7 +914,7 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
       dyn_cast<Instruction>(genx::getBitCastedValue(cast<Value>(InnerWr)));
 
   if (!GenXIntrinsic::isWrRegion(InnerWr) ||
-      !genx::isSafeToMoveInstCheckAVLoadKill(InnerWr, OuterWr))
+      !genx::isSafeToMove_CheckAVLoadKill(InnerWr, OuterWr, DT))
     return OuterWr;
 
   // Process inner wrregions first, recursively.
@@ -1033,7 +1030,7 @@ Instruction *GenXRegionCollapsing::processWrRegionSplat(Instruction *OuterWr)
       dyn_cast<Instruction>(genx::getBitCastedValue(cast<Value>(InnerWr)));
 
   if (!GenXIntrinsic::isWrRegion(InnerWr) ||
-      !genx::isSafeToMoveInstCheckAVLoadKill(InnerWr, OuterWr))
+      !genx::isSafeToMove_CheckAVLoadKill(InnerWr, OuterWr, DT))
     return OuterWr;
 
   // Process inner wrregions first, recursively.

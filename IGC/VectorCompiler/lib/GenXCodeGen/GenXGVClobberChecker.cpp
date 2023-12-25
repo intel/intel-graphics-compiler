@@ -241,7 +241,7 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
     }
 
     const auto *SI = genx::getAVLoadKillOrNull(
-        LI, UI, true, nullptr,
+        LI, UI, false, true, nullptr,
         isa<PHINode>(UI) ? &PhiUserExcludeBlocksOnCfgTraversal : nullptr, SIs);
 
     if (!SI)

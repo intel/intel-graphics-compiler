@@ -47,6 +47,14 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+namespace llvm {
+namespace genx {
+bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(Instruction *I,
+                                                    Instruction *To,
+                                                    const DominatorTree *DT);
+};
+}; // namespace llvm
+
 static cl::opt<bool>
     GenXEnablePeepholes("genx-peepholes", cl::init(true), cl::Hidden,
                         cl::desc("apply additional peephole optimizations"));
@@ -402,6 +410,7 @@ Value *llvm::SimplifyGenX(CallInst *I, const DataLayout &DL) {
 
   LLVM_DEBUG(dbgs() << "Trying to simplify " << *I << "\n");
   auto GenXID = GenXIntrinsic::getGenXIntrinsicID(F);
+
   if (Value *Ret = SimplifyGenXIntrinsic(GenXID, FTy->getReturnType(),
                                          I->arg_begin(), I->arg_end(), DL)) {
     LLVM_DEBUG(dbgs() << "Simplified to " << *Ret << "\n");
@@ -434,14 +443,13 @@ public:
   }
 
 private:
-  std::vector<CallInst *> WorkSet;
-
   bool processGenXIntrinsics(Function &F);
 };
 } // namespace
 
 bool GenXSimplify::runOnFunction(Function &F) {
   const DataLayout &DL = F.getParent()->getDataLayout();
+  const auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   bool Changed = false;
 
   auto replaceWithNewValue = [](Instruction &Inst, Value &V) {
@@ -458,6 +466,10 @@ bool GenXSimplify::runOnFunction(Function &F) {
 
       if (GenXIntrinsic::isGenXIntrinsic(Inst)) {
         if (Value *V = SimplifyGenX(cast<CallInst>(Inst), DL)) {
+          if (isa<Instruction>(V) &&
+              !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+                  Inst, cast<Instruction>(V), &DT))
+            continue;
           Changed |= replaceWithNewValue(*Inst, *V);
           continue;
         }
@@ -476,38 +488,8 @@ bool GenXSimplify::runOnFunction(Function &F) {
       }
     }
   }
-  Changed |= processGenXIntrinsics(F);
+
   Changed |= simplifyWritesWithUndefInput(F);
-  return Changed;
-}
-
-bool GenXSimplify::processGenXIntrinsics(Function &F) {
-
-  if (!GenXEnablePeepholes) {
-    LLVM_DEBUG(dbgs() << "genx-specific peepholes disabled\n");
-    return false;
-  }
-
-  bool Changed = false;
-
-  for (Instruction &Inst : instructions(F))
-    if (GenXIntrinsic::isGenXIntrinsic(&Inst))
-      WorkSet.push_back(cast<CallInst>(&Inst));
-
-  const auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  while (!WorkSet.empty()) {
-    auto *CI = WorkSet.back();
-    WorkSet.pop_back();
-
-    auto GenXID = GenXIntrinsic::getGenXIntrinsicID(CI);
-    switch (GenXID) {
-    case GenXIntrinsic::not_genx_intrinsic:
-    default:
-      (void)CI; // do nothing
-      (void)DT;
-    }
-  }
-
   return Changed;
 }
 

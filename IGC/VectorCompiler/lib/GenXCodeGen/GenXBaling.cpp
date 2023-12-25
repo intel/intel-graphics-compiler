@@ -330,7 +330,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
  * I operation is load-like, we don't sink it only through store-like operations
  */
 bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *To) {
-  if (!genx::isSafeToMoveInstCheckAVLoadKill(Op, To, this))
+  if (!genx::isSafeToSink_CheckAVLoadKill(Op, To, this))
     return false;
 
   if (DisableMemOrderCheck || !Op->mayReadOrWriteMemory())
@@ -532,7 +532,7 @@ bool GenXBaling::operandCanBeBaled(
     // where there are no region restrictions.)
     Region RdR = makeRegionFromBaleInfo(Opnd, BaleInfo());
     if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst)) ||
-        !genx::isSafeToMoveInstCheckAVLoadKill(Opnd, Inst, this))
+        !genx::isSafeToSink_CheckAVLoadKill(Opnd, Inst, this))
       return false;
 
     // Do not bale in a region read with multiple uses if
@@ -657,7 +657,7 @@ void GenXBaling::processWrRegion(Instruction *Inst)
         GenXIntrinsic::GenXRegion::OldValueOperandNum));
     auto *Src1 = genx::getAVLoadSrcOrNull(L1);
     auto *Src2 = genx::getAVLoadSrcOrNull(L2);
-    if (Src1 && Src1 == Src2 && !genx::loadingSameValue(L1, L2, DT))
+    if (Src1 && Src1 == Src2 && !genx::vloadsReadSameValue(L1, L2, DT))
       V = nullptr;
   }
 
@@ -1456,7 +1456,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
             break;
           case GenXIntrinsicInfo::RAW:
             if (isa<Instruction>(Inst->getOperand(ArgIdx)) &&
-                !genx::isSafeToMoveInstCheckAVLoadKill(
+                !genx::isSafeToSink_CheckAVLoadKill(
                     cast<Instruction>(Inst->getOperand(ArgIdx)), Inst, this))
               continue;
             // Rdregion can be baled in to a raw operand as long as it is

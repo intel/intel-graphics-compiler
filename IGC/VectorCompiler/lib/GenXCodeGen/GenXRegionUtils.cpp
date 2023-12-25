@@ -859,11 +859,11 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
   // a direct region with v-stride, h-stride, h-width
   Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (R.Indirect == nullptr)
-    return Inst;
+    return nullptr;
 
   auto cv = dyn_cast<ConstantDataVector>(R.Indirect);
   if (!cv)
-    return Inst;
+    return nullptr;
   // Flatten the vector out into the elements array
   llvm::SmallVector<llvm::Constant*, 16> elements;
   auto vectorLength =
@@ -873,7 +873,7 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
 
   llvm::ConstantInt* ci = llvm::dyn_cast<llvm::ConstantInt>(elements[0]);
   if (ci == NULL)
-    return Inst; // Not a vector of integers
+    return nullptr; // Not a vector of integers
 
   int VStride = 1;
   unsigned Width = 1;
@@ -893,29 +893,29 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
     else if (GenXIntrinsic::isWrRegion(Inst))
       return R.createWrRegion(Inst->getOperand(0), Inst->getOperand(1),
                               Inst->getName(), Inst, Inst->getDebugLoc());
-    return Inst;
+    return nullptr;
   }
   ci = llvm::dyn_cast<llvm::ConstantInt>(elements[1]);
   if (ci == NULL)
-    return Inst; // Not a vector of integers
+    return nullptr; // Not a vector of integers
 
   int64_t prevVal = ci->getSExtValue();
   int64_t diff = prevVal - val0;
   if (diff < 0)
-    return Inst; // cannot have negative stride
+    return nullptr; // cannot have negative stride
   int i0 = 0;
   Offset = val0 + R.Offset;
   // check if this is a 1d simple-stride region
   for (int i = 2; i < (int)vectorLength; ++i) {
     ci = llvm::dyn_cast<llvm::ConstantInt>(elements[i]);
     if (ci == NULL)
-      return Inst;
+      return nullptr;
 
     int64_t nextVal = ci->getSExtValue();
 
     if (Width != 1 && (i % Width == 0)) {
       if (nextVal != val0 + VStride || i != i0 + Width)
-        return Inst; // different strides
+        return nullptr; // different strides
       val0 = nextVal;
       i0 = i;
     }
@@ -923,19 +923,19 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
       if (Width == 1) {
         Width = i - i0;
         if (i - vectorLength/2 > 0)
-          return Inst; // different strides
+          return nullptr; // different strides
         VStride = nextVal - val0;
         val0 = nextVal;
         i0 = i;
       }
       else if (nextVal != val0 + VStride || i != i0 + Width)
-        return Inst;
+        return nullptr;
       else {
         val0 = nextVal;
         i0 = i;
       }
       if (VStride < 0)
-        return Inst; // cannot have negative stride
+        return nullptr; // cannot have negative stride
     }
     prevVal = nextVal;
   }
@@ -953,7 +953,7 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
   else if (GenXIntrinsic::isWrRegion(Inst))
     return R.createWrRegion(Inst->getOperand(0), Inst->getOperand(1),
                             Inst->getName(), Inst, Inst->getDebugLoc());
-  return Inst;
+  return nullptr;
 }
 
 static Optional<std::pair<IGCLLVM::FixedVectorType *, Region>>
@@ -1133,60 +1133,78 @@ static Value *simplifyRegionRead(Instruction *Inst, const DataLayout *DL) {
 
 // Simplify a region read or write.
 Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
-                                      const GenXSubtarget *ST) {
+                                      const GenXSubtarget *ST,
+                                      const DominatorTree *DT) {
   if (Inst->use_empty())
     return nullptr;
 
+  Value *NewVal = nullptr;
+
   unsigned ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+
   switch (ID) {
   case GenXIntrinsic::genx_wrregionf:
   case GenXIntrinsic::genx_wrregioni:
   case GenXIntrinsic::genx_rdregionf:
-  case GenXIntrinsic::genx_rdregioni: {
-    auto replace = simplifyConstIndirectRegion(Inst);
-    if (replace != Inst) {
-      if (!genx::isSafeToReplaceInstCheckAVLoadKill(Inst, replace))
+  case GenXIntrinsic::genx_rdregioni:
+    NewVal = simplifyConstIndirectRegion(Inst);
+    if (NewVal) {
+      IGC_ASSERT(
+          isa<Instruction>(NewVal)); // the above returns only Instruction*.
+      if (!genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+              Inst, cast<Instruction>(NewVal), DT))
         break;
-      Inst->replaceAllUsesWith(replace);
-      Inst = replace;
+      Inst->replaceAllUsesWith(NewVal);
+      Inst = cast<Instruction>(NewVal);
     }
     break;
-  }
   default:
     break;
   }
+
   if (Constant *C = ConstantFoldGenX(Inst, *DL))
     return C;
 
-  if (auto *BCI = dyn_cast<BitCastInst>(Inst); BCI && DL && ST)
-    return simplifyBitCastFromRegionRead(BCI, *DL, *ST);
-  ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
-  switch (ID) {
-  case GenXIntrinsic::genx_wrregionf:
-  case GenXIntrinsic::genx_wrregioni:
-    if (auto *Res = simplifyRegionWrite(Inst, DL))
-      return Res;
-    if (DL && ST)
-      return simplifyBitCastWithRegionWrite(Inst, *DL, *ST);
-    break;
-  case GenXIntrinsic::genx_rdregionf:
-  case GenXIntrinsic::genx_rdregioni:
-    return simplifyRegionRead(Inst, DL);
-  default:
-    break;
+  if (auto *BCI = dyn_cast<BitCastInst>(Inst); BCI && DL && ST) {
+    NewVal = simplifyBitCastFromRegionRead(BCI, *DL, *ST);
+  } else {
+    switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
+    case GenXIntrinsic::genx_wrregionf:
+    case GenXIntrinsic::genx_wrregioni:
+      NewVal = simplifyRegionWrite(Inst, DL);
+      if (NewVal)
+        break;
+      if (DL && ST)
+        NewVal = simplifyBitCastWithRegionWrite(Inst, *DL, *ST);
+      break;
+    case GenXIntrinsic::genx_rdregionf:
+    case GenXIntrinsic::genx_rdregioni:
+      NewVal = simplifyRegionRead(Inst, DL);
+      break;
+    default:
+      break;
+    }
   }
-  return nullptr;
+
+  if (NewVal && isa<Instruction>(NewVal) &&
+      !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+          Inst, cast<Instruction>(NewVal), DT))
+    return nullptr;
+
+  return NewVal;
 }
 
 bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
-                                     const GenXSubtarget *ST) {
+                                     const GenXSubtarget *ST,
+                                     const DominatorTree *DT) {
   bool Changed = false;
   for (auto &BB : F->getBasicBlockList()) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
-      if (auto V = simplifyRegionInst(Inst, DL, ST)) {
-        if (isa<Instruction>(V) && !genx::isSafeToReplaceInstCheckAVLoadKill(
-                                       Inst, cast<Instruction>(V)))
+      if (auto V = simplifyRegionInst(Inst, DL, ST, DT)) {
+        if (isa<Instruction>(V) &&
+            !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+                Inst, cast<Instruction>(V), DT))
           continue;
         Inst->replaceAllUsesWith(V);
         Inst->eraseFromParent();

@@ -43,6 +43,7 @@ set(CODEGEN_SOURCES
   GenXEmulate.cpp
   GenXExtractVectorizer.cpp
   GenXFixInvalidFuncName.cpp
+  GenXLegalizeGVLoadUses.cpp
   GenXGASCastAnalyzer.cpp
   GenXGASDynamicResolution.cpp
   GenXGEPLowering.cpp

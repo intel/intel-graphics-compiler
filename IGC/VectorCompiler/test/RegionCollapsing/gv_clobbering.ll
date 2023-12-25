@@ -102,20 +102,19 @@ define spir_kernel void @chkWrr2NotCollapsed2() #1 {
 }
 
 ; NB: checking GenXRegionCollapsing::runOnBasicBlock(...)
-; CHECK: define spir_kernel void @chkRdr0IsAlive()
-define spir_kernel void @chkRdr0IsAlive() #1 {
+; CHECK: define spir_kernel void @chkRdr0AndRdr1_Wrr0AndWrr1_Collapse()
+define spir_kernel void @chkRdr0AndRdr1_Wrr0AndWrr1_Collapse() #1 {
   %vload1 = call <4 x i32> @llvm.genx.vload.v4i32.p0v4i32(<4 x i32>* @g1)
 ; CHECK-NEXT:  %vload1 = call <4 x i32> @llvm.genx.vload.v4i32.p0v4i32(<4 x i32>* @g1)
 ; CHECK:  %rdr0 = call <4 x i32> @llvm.genx.rdregioni.v4i32.v4i32.i16(<4 x i32> %vload1, i32 0, i32 4, i32 1, i16 0, i32 0)
   %rdr0 = call <4 x i32> @llvm.genx.rdregioni.v4i32.v4i32.i16(<4 x i32> %vload1 , i32 0, i32 4, i32 1, i16 0, i32 0)
   %rdr1 = call <4 x i32> @llvm.genx.rdregioni.v4i32.v4i32.i16(<4 x i32> %rdr0 , i32 0, i32 4, i32 1, i16 0, i32 0)
   call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> zeroinitializer, <4 x i32>* @g1)
-; CHECK:  %wrr1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr0, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
-; CHECK-NOT:  %wrr1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %vload1, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
-; CHECK-NEXT:  call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr1, <4 x i32>* @g1)
-  %wrr1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr1, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
-  %wrr2 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.i1(<4 x i32> %rdr0 , <4 x i32> %wrr1, i32 0, i32 4, i32 1, i16 0, i32 0, i1 true)
-  call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr2, <4 x i32>* @g1)
+  %wrr0 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr1, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
+  %wrr1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.i1(<4 x i32> %rdr0 , <4 x i32> %wrr0, i32 0, i32 4, i32 1, i16 0, i32 0, i1 true)
+; CHECK: %wrr0 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr0, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
+; CHECK-NEXT:  call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr0, <4 x i32>* @g1)
+  call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr0, <4 x i32>* @g1)
   ret void
 }
 
