@@ -148,10 +148,24 @@ public:
     void emitReturn(llvm::ReturnInst* inst);
     void EmitInsertValueToStruct(llvm::InsertValueInst* II);
     void EmitExtractValueFromStruct(llvm::ExtractValueInst* EI);
-    void EmitInsertValueToLayoutStruct(llvm::InsertValueInst* II);
+    void EmitInsertValueToLayoutStruct(llvm::InsertValueInst* IVI);
+    void EmitExtractValueFromLayoutStruct(llvm::ExtractValueInst* EVI);
     void emitVectorCopyToAOS(uint32_t AOSBytes,
         CVariable* Dst, CVariable* Src, uint32_t nElts,
-        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
+        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0) {
+        emitVectorCopyToOrFromAOS(AOSBytes, Dst, Src, nElts,
+            DstSubRegOffset, SrcSubRegOffset, true);
+    }
+    void emitVectorCopyFromAOS(uint32_t AOSBytes,
+        CVariable* Dst, CVariable* Src, uint32_t nElts,
+        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0) {
+        emitVectorCopyToOrFromAOS(AOSBytes, Dst, Src, nElts,
+            DstSubRegOffset, SrcSubRegOffset, false);
+    }
+    void emitVectorCopyToOrFromAOS(uint32_t AOSBytes,
+        CVariable* Dst, CVariable* Src, uint32_t nElts,
+        uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset,
+        bool IsToAOS);
     void emitCopyToOrFromLayoutStruct(llvm::Value* D, llvm::Value* S);
 
     /// stack-call code-gen functions

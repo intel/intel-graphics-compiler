@@ -2700,14 +2700,13 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
     IGC_ASSERT_MESSAGE(sTy != nullptr,
         "ICE: invertvalue - only struct type is supported!");
 
-    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
-
     if (isLayoutStructType(sTy))
     {
         EmitInsertValueToLayoutStruct(inst);
         return;
     }
 
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
     Value* src0 = inst->getOperand(0);
     Value* src1 = inst->getOperand(1);
     CVariable* EltV = GetSymbol(src1);
@@ -2828,11 +2827,17 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
 
     Value* src0 = EI->getOperand(0);
     IGC_ASSERT(src0->getType()->isStructTy());
-    unsigned idx = *EI->idx_begin();
     StructType* sTy = cast<StructType>(src0->getType());
+
+    if (isLayoutStructType(sTy))
+    {
+        EmitExtractValueFromLayoutStruct(EI);
+        return;
+    }
+
     auto& DL = m_currShader->entry->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
-
+    unsigned idx = *EI->idx_begin();
     const unsigned nLanes = numLanes(m_currShader->m_SIMDSize);
 
     if (Constant* C = dyn_cast<Constant>(src0))
@@ -2861,53 +2866,56 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
     verifyMayUnAlign(m_destination, cvar_off, sTy, ty);
 }
 
-// Only support a simple struct whose members are not of aggregate types,
-// except a special identfied struct whose name starts with "__LayoutStruct".
+// Functions:
+//   EmitInsertValueToLayoutStruct()
+//   EmitExtractValueFromLayoutStruct()
 //
-// LayoutStruct's direct members all have the same size, either 32bit or
+// Only support a simple struct, identified by prefix ""__StructSOALayout_",
+// whose members are not of aggregate types except a special identfied member
+// struct type whose name starts with "__StructAOSLayout_".
+//
+// Such a struct's direct members all have the same size, either 32bit or
 // 64bit. It is created by LdSdCombine optimization pass to generate more
-// efficient load and stores. Its member could be of struct type, if so, its
-// members must be primitive scalar types. In another word, the struct nesting
-// level is at most 2. If a member is of struct type, it is viewed as i32 if
-// its size is 32 bits; or it is viewed as i64 if its size is 64 bits.
+// efficient load and stores. If its member is of struct type, that struct
+// member's members must be primitive types (including vector), that is,
+// the struct nesting level is at most 2. That struct-typed member is viewed
+// either as i32 if its size is 32 bits or as i64 if its size is 64 bits.
 // For example,
-//    struct __LayoutStruct {
-//       struct { i16 a, i8 b, i8 c}
+//    struct __StructSOALayout_ {
+//       struct __StructAOSLayout_ { i16 a, i8 b, i8 c}
 //    }
-//    struct __LayoutStruct {
-//       struct { i32, i16, i16 }
+//    struct __StructSOALayout_.1 {
+//       struct __StructAOSLayout_.2 { i32, i16, i16 }
 //    }
 //
-// The struct layout in GRF is SOA for all its direct members. If it is
-// LayoutStruct, its member struct is laid out in AOS, just as they are
+// The struct layout in GRF is SOA, shown in its name, for all its direct
+// members. Its struct-typed member is laid out in AOS, just as they are
 // viewed as i32 or i64.
 //
-void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
+void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* IVI)
 {
-    if (isa<UndefValue>(inst->getOperand(1)))
+    if (isa<UndefValue>(IVI->getOperand(1)))
     {
         return;
     }
 
-    StructType* sTy = dyn_cast<StructType>(inst->getType());
-    IGC_ASSERT_MESSAGE(sTy != nullptr,
+    StructType* stTy = dyn_cast<StructType>(IVI->getType());
+    IGC_ASSERT_MESSAGE(stTy != nullptr,
         "ICE: invertvalue - only struct type is supported!");
-    IGC_ASSERT_MESSAGE(isLayoutStructType(sTy), "ICE: not right struct type!");
+    IGC_ASSERT_MESSAGE(isLayoutStructType(stTy), "ICE: not right struct type!");
 
-    auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
     const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
-
-    Value* src0 = inst->getOperand(0);
-    Value* src1 = inst->getOperand(1);
+    Value* src0 = IVI->getOperand(0);
+    Value* src1 = IVI->getOperand(1);
     CVariable* EltV = GetSymbol(src1);
-    CVariable* DstV = GetSymbol(inst);
+    CVariable* DstV = GetSymbol(IVI);
 
     // For now, do not support uniform dst and non-uniform src1
     const Type* src1Ty = src1->getType();
     IGC_ASSERT_MESSAGE(src1Ty->isSingleValueType(),
         "Layout struct's members are of single value type.");
-    IGC_ASSERT_MESSAGE((!EltV->IsUniform() && DstV->IsUniform()) == false,
-        "Can't insert vector value into a scalar struct!");
+    IGC_ASSERT_MESSAGE(!(!EltV->IsUniform() && DstV->IsUniform()),
+        "Can't insert non-uniform value into a uniform struct!");
 
     // Constants:
     //  1.  %8 = insval undef, float %2, 0
@@ -2916,7 +2924,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     {
         if (!isa<UndefValue>(CSt))
         {
-            emitCopyToOrFromLayoutStruct(inst, src0);
+            emitCopyToOrFromLayoutStruct(IVI, src0);
         }
     }
     else
@@ -2924,7 +2932,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
         CVariable* SrcV = GetSymbol(src0);
         if (DstV != SrcV && DstV->IsUniform() && SrcV->IsUniform())
         {
-            emitCopyToOrFromLayoutStruct(inst, src0);
+            emitCopyToOrFromLayoutStruct(IVI, src0);
         }
         else if (DstV != SrcV)
         {
@@ -2938,8 +2946,8 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
                 Type* ty0;
                 Type* ty1;
                 uint32_t byteOff0, byteOff1;
-                getStructMemberOffsetAndType_2(&DL,
-                    sTy, II, ty0, byteOff0, ty1, byteOff1);
+                getStructMemberOffsetAndType_2(m_DL,
+                    stTy, II, ty0, byteOff0, ty1, byteOff1);
                 Type* ty = (ty1 == nullptr ? ty0 : ty1);
                 auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
                 uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
@@ -2954,7 +2962,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
                     (byteOff0 * (SrcV->IsUniform() ? 1 : nLanes)) + byteOff1,
                     n * (SrcV->IsUniform() ? 1 : nLanes));
                 if (II.size() == 2) {
-                    uint32_t AOSStBytes = (uint32_t)DL.getTypeStoreSize(ty0);
+                    uint32_t AOSStBytes = (uint32_t)m_DL->getTypeStoreSize(ty0);
                     emitVectorCopyToAOS(AOSStBytes, eltDst, eltSrc, n);
                 }
                 else {
@@ -2967,10 +2975,11 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
     Type* ty0;
     Type* ty1;
     uint32_t byteOff0, byteOff1;
-    getStructMemberOffsetAndType_2(&DL,
-        sTy, inst->getIndices(), ty0, byteOff0, ty1, byteOff1);
+    getStructMemberOffsetAndType_2(m_DL,
+        stTy, IVI->getIndices(), ty0, byteOff0, ty1, byteOff1);
 
     Type* ty = (ty1 == nullptr ? ty0 : ty1);
+    IGC_ASSERT(ty == src1Ty);
     auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
     uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
 
@@ -2980,12 +2989,61 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* inst)
         (byteOff0 * (DstV->IsUniform() ? 1 : nLanes)) + byteOff1,
         n * (DstV->IsUniform() ? 1 : nLanes));
 
-    if (inst->getIndices().size() == 2) {
-        uint32_t AOSStBytes = (uint32_t)DL.getTypeStoreSize(ty0);
+    if (IVI->getIndices().size() == 2) {
+        uint32_t AOSStBytes = (uint32_t)m_DL->getTypeStoreSize(ty0);
         emitVectorCopyToAOS(AOSStBytes, eltDst, EltV, n);
     }
     else {
         emitVectorCopy(eltDst, EltV, n);
+    }
+}
+
+void EmitPass::EmitExtractValueFromLayoutStruct(ExtractValueInst* EVI)
+{
+    Value* VecOprd = EVI->getAggregateOperand();
+    StructType* stTy = dyn_cast<StructType>(VecOprd->getType());
+    ArrayRef<unsigned> Indices = EVI->getIndices();
+    uint32_t nIndices = Indices.size();
+
+    // sanity check
+    IGC_ASSERT_MESSAGE((stTy != nullptr && isLayoutStructType(stTy)),
+        "ICE: this extractvalue should apply on layout struct type!");
+    if (isa<Constant>(VecOprd) || nIndices > 2 || nIndices == 0) {
+        IGC_ASSERT_UNREACHABLE();
+        return;
+    }
+
+    const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
+    CVariable* SrcV = GetSymbol(VecOprd);
+    CVariable* DstV = GetSymbol(EVI);
+
+    // For now, do not support uniform dst and non-uniform src1
+    const Type* dstTy = EVI->getType();
+    IGC_ASSERT_MESSAGE(dstTy->isSingleValueType(),
+        "ExtractValue for Layout struct should be of single value type.");
+    IGC_ASSERT_MESSAGE(!(!SrcV->IsUniform() && DstV->IsUniform()),
+        "Can't extract value from non-uniform struct into a uniform value!");
+
+    Type* ty0;
+    Type* ty1;
+    uint32_t byteOff0, byteOff1;
+    getStructMemberOffsetAndType_2(m_DL,
+        stTy, Indices, ty0, byteOff0, ty1, byteOff1);
+    Type* ty = (ty1 == nullptr ? ty0 : ty1);
+    IGC_ASSERT(dstTy == ty);
+    auto iVTy = dyn_cast<IGCLLVM::FixedVectorType>(ty);
+    uint32_t n = iVTy ? (uint32_t)iVTy->getNumElements() : 1;
+    CVariable * srcVal = m_currShader->GetNewAlias(
+        SrcV,
+        DstV->GetType(),
+        (byteOff0 * (SrcV->IsUniform() ? 1 : nLanes)) + byteOff1,
+        n * (SrcV->IsUniform() ? 1 : nLanes));
+    if (nIndices == 2) {
+        uint32_t AOSStBytes = (uint32_t)m_DL->getTypeStoreSize(ty0);
+        emitVectorCopyFromAOS(AOSStBytes, DstV, srcVal, n);
+    }
+    else {
+        emitVectorCopy(DstV, srcVal, n);
     }
 }
 
@@ -18818,21 +18876,32 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
     }
 }
 
-// Copy from SOA vector to a AOS vectors in a struct (or a packed type).
+//emitVectorCopyToOrFromAOS()
+// To implement the follow two functions.
+//   emitVectorCopyToAOS():   IsToAOS = true
+//     Copy from SOA vector to a AOS vectors in a struct.
+//   emitVectorCopyFromAOS(): IsToAOS = false
+//     Copy from AOS vector in a struct to a SOA vector.
+//
 // The size of 'struct' is given as 'AOSBytes'. For example, 'AOSBytes'
 // is 4 bytes in the following example:
 //
-// __StructSOALayout__ {
-//    __StructAOSLayout__ {
+// __StructSOALayout_ {
+//    __StructAOSLayout_ {
 //        <4xi8> s0;          <-- indices: <0,0>
 //    }
 //    i32 s1
 // }
-// x = insertvalue <__StructSOALayout__> %x0, <4xi8> b, 0, 0
 //
-void EmitPass::emitVectorCopyToAOS(uint32_t AOSBytes,
+// Insert to AOS field:
+//   x = insertvalue <__StructSOALayout_> %x0, <4xi8> b, 0, 0
+// Extract from AOS field:
+//   x = extractvalue <__StructSOALayout_> %stVal, 0, 0
+//
+void EmitPass::emitVectorCopyToOrFromAOS(uint32_t AOSBytes,
     CVariable* Dst, CVariable* Src, uint32_t nElts,
-    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset,
+    bool IsToAOS)
 {
     bool srcUniform = Src->IsUniform();
     bool dstUniform = Dst->IsUniform();
@@ -18850,17 +18919,35 @@ void EmitPass::emitVectorCopyToAOS(uint32_t AOSBytes,
     uint32_t stride = AOSBytes / eltBytes;
     IGC_ASSERT(stride <= 4 && stride > 0);
     IGC_ASSERT((AOSBytes % eltBytes) == 0);
-    for (uint32_t i = 0; i < nElts; ++i)
-    {
-        uint SrcSubReg = soff + i * (srcUniform ? 1 : nLanes);
-        uint DstSubReg = doff + i;
+    if (IsToAOS) {
+        // Copy to AOS field
         uint DstVStride = dstUniform ? 1 : stride;
+        for (uint32_t i = 0; i < nElts; ++i)
+        {
+            uint SrcSubReg = soff + i * (srcUniform ? 1 : nLanes);
+            uint DstSubReg = doff + i;
 
-        m_encoder->SetDstRegion(DstVStride);
-        m_encoder->SetSrcSubReg(0, SrcSubReg);
-        m_encoder->SetDstSubReg(DstSubReg);
-        m_encoder->Copy(Dst, Src);
-        m_encoder->Push();
+            m_encoder->SetDstRegion(DstVStride);
+            m_encoder->SetSrcSubReg(0, SrcSubReg);
+            m_encoder->SetDstSubReg(DstSubReg);
+            m_encoder->Copy(Dst, Src);
+            m_encoder->Push();
+        }
+    }
+    else {
+        // Copy from AOS field
+        uint SrcVStride = srcUniform ? 0 : stride;
+        for (uint32_t i = 0; i < nElts; ++i)
+        {
+            uint SrcSubReg = soff + i;
+            uint DstSubReg = doff + i * (dstUniform ? 1 : nLanes);
+
+            m_encoder->SetSrcSubReg(0, SrcSubReg);
+            m_encoder->SetSrcRegion(0, SrcVStride, 1, 0);
+            m_encoder->SetDstSubReg(DstSubReg);
+            m_encoder->Copy(Dst, Src);
+            m_encoder->Push();
+        }
     }
 }
 
