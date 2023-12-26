@@ -321,6 +321,10 @@ DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, "-abortOnSpill", UNUSED,
                 0)
 DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceBCR, ET_BOOL, "-forceBCR", UNUSED, false)
+DEF_VISA_OPTION(vISA_NewAugmentation, ET_BOOL_TRUE, "-newaugmentation",
+                "USAGE: -newaugmentation "
+                "enable using augmentation with holes",
+                false)
 
 
 // clang-format off
@@ -343,6 +347,10 @@ DEF_VISA_OPTION(vISA_NewSpillCostFunctionISPC, ET_BOOL, "-newspillcostispc", UNU
                 false)
 
 DEF_VISA_OPTION(vISA_VerifyAugmentation, ET_BOOL, "-verifyaugmentation", UNUSED,
+                false)
+DEF_VISA_OPTION(vISA_DumpProgramWithLexicalId, ET_BOOL_TRUE, "-dumpcode",
+                "USAGE: -dumpcode "
+                "enable dumping code with lexical id; used for augmentation verification",
                 false)
 DEF_VISA_OPTION(vISA_VerifyExplicitSplit, ET_BOOL, "-verifysplit", UNUSED,
                 false)

@@ -4622,18 +4622,18 @@ void RelocationEntry::dump(std::ostream &os) const {
   os << "  symbol = " << symName << "; src" << opndPos << "\n";
 }
 
-void FuncInfo::dump() const {
-  std::cerr << "subroutine " << getId() << "("
+void FuncInfo::dump(std::ostream &os) const {
+  os << "subroutine " << getId() << "("
             << getInitBB()->front()->getLabelStr() << ")\n";
-  std::cerr << "\tentryBB=" << getInitBB()->getId()
+  os << "\tentryBB=" << getInitBB()->getId()
             << ", exitBB=" << getExitBB()->getId() << "\n";
-  std::cerr << "\tCallees: ";
+  os << "\tCallees: ";
   for (auto callee : callees) {
-    std::cerr << callee->getId() << " ";
+    os << callee->getId() << " ";
   }
-  std::cerr << "\n\tBB list: ";
+  os << "\n\tBB list: ";
   for (auto bb : BBList) {
-    std::cerr << bb->getId() << " ";
+    os << bb->getId() << " ";
   }
-  std::cerr << "\n";
+  os << "\n";
 }

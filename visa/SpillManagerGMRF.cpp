@@ -321,43 +321,39 @@ unsigned SpillManagerGRF::getByteSize(G4_RegVar *regVar) const {
   return normalizedRowSize * regVar->getDeclare()->getNumRows();
 }
 
+// Return all overlapping variables with dcl. Vector is not sorted
+// so order of variables can change across runs.
 void SpillManagerGRF::getOverlappingIntervals(
     G4_Declare *dcl, std::vector<G4_Declare *> &intervals) const {
-  auto &allIntervals = spillingIntervals;
-  auto dclStart = gra.getStartInterval(dcl);
-  auto dclEnd = gra.getEndInterval(dcl);
   auto dclMask = gra.getAugmentationMask(dcl);
 
-  // non-default variables have all interferences marked in
-  // interferences graph
+  // non-default variables have complete interference marked
   if (dclMask == AugmentationMasks::NonDefault)
     return;
 
-  for (auto otherDcl : allIntervals) {
-    if (otherDcl == dcl)
-      continue;
+  std::unordered_set<G4_Declare *> overlappingDcls;
+  auto &allDclIntervals = gra.getAllIntervals(dcl);
 
-    auto start = gra.getStartInterval(otherDcl);
-    auto end = gra.getEndInterval(otherDcl);
+  for (auto &dclInterval : allDclIntervals) {
+    for (auto *otherDcl : spillingIntervals) {
+      if (otherDcl == dcl)
+        continue;
 
-    // First overlap not yet seen
-    if (end->getLexicalId() < dclStart->getLexicalId())
-      continue;
+      if (dclMask != gra.getAugmentationMask(otherDcl))
+        continue;
 
-    // allIntervals are sorted on start. All overlapping
-    // intervals are guaranteed to be visited when
-    // current interval start is beyond end of dcl.
-    if (start->getLexicalId() > dclEnd->getLexicalId())
-      return;
-
-    // end lexical id >= dclStart lexical id
-    // add interval to list only if it is has same aug mask
-    // because overlapping intervals with different masks are already
-    // marked in intf graph.
-    if (start->getLexicalId() <= dclEnd->getLexicalId() &&
-        dclMask == gra.getAugmentationMask(otherDcl))
-      intervals.push_back(otherDcl);
+      auto &otherDclAllIntervals = gra.getAllIntervals(otherDcl);
+      for (auto &otherDclInterval : otherDclAllIntervals) {
+        if (dclInterval.intervalsOverlap(otherDclInterval)) {
+          overlappingDcls.insert(otherDcl);
+          break;
+        }
+      }
+    }
   }
+
+  for (auto &dcl : overlappingDcls)
+    intervals.push_back(dcl);
 }
 
 // Calculate the spill memory displacement for the regvar.
@@ -4129,7 +4125,8 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
   if (doSpillSpaceCompression) {
     // cache spilling intervals in sorted order so we can use these
     // for spill compression.
-    for (auto dcl : spillIntf_->getAugmentation().getSortedLiveIntervals()) {
+    for (auto& segment : spillIntf_->getAugmentation().getSortedLiveIntervals()) {
+      auto *dcl = segment.dcl;
       if (dcl->isSpilled())
         spillingIntervals.push_back(dcl);
     }
@@ -4706,6 +4703,18 @@ unsigned int GlobalRA::GRFSizeToOwords(unsigned int numGRFs,
 }
 
 unsigned int GlobalRA::getHWordByteSize() { return HWORD_BYTE_SIZE; }
+
+bool Interval::intervalsOverlap(const Interval &second) const {
+  auto firstStart = start->getLexicalId();
+  auto firstEnd = end->getLexicalId();
+  auto secondStart = second.start->getLexicalId();
+  auto secondEnd = second.end->getLexicalId();
+
+  if (firstStart > secondEnd || secondStart > firstEnd)
+    return false;
+
+  return true;
+}
 
 static G4_INST *createSpillFillAddr(IR_Builder &builder, G4_Declare *addr,
                                     G4_Declare *fp, int offset) {
