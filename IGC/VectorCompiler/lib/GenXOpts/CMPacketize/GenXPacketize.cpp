@@ -825,19 +825,20 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *pInst) {
   }
 
   // override certain intrinsics
-  Value *pNewCall;
   switch (id) {
+  default:
+    break;
   case Intrinsic::log2:
-    pNewCall = B->VLOG2PS(packetizedArgs[0]);
+    if (!pInst->hasApproxFunc())
+      return B->VLOG2PS(packetizedArgs[0]);
     break;
   case Intrinsic::exp2:
-    pNewCall = B->VEXP2PS(packetizedArgs[0]);
+    if (!pInst->hasApproxFunc())
+      return B->VEXP2PS(packetizedArgs[0]);
     break;
-  default: {
-    Function *newF = getVectorIntrinsic(M, id, vectorArgTys);
-    pNewCall = CallInst::Create(newF, packetizedArgs, "", pCall);
   }
-  }
+  Function *newF = getVectorIntrinsic(M, id, vectorArgTys);
+  auto *pNewCall = CallInst::Create(newF, packetizedArgs, "", pCall);
   return pNewCall;
 }
 
