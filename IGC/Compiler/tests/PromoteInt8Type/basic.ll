@@ -163,3 +163,15 @@ define i1 @test_icmp(i8 %src1, i8 %src2) {
   ret i1 %1
 }
 
+define i8 @test_ptrtoint(i8* %src) {
+; CHECK-LABEL: @test_ptrtoint(
+; CHECK:    [[P2B:%.*]] = ptrtoint i8* %src to i8
+; CHECK:    [[B2S:%.*]] = sext i8 [[P2B]] to i16
+; CHECK:    [[AND:%.*]] = and i16 [[B2S]], 7
+; CHECK:    [[TRUNC:%.*]] = trunc i16 [[AND]] to i8
+; CHECK:    ret i8 [[TRUNC]]
+
+  %1 = ptrtoint i8* %src to i8
+  %2 = and i8 %1, 7
+  ret i8 %2
+}

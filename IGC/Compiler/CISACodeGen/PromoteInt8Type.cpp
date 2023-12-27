@@ -663,6 +663,7 @@ void PromoteInt8Type::promoteInstructions()
                     break;
                 }
                 case Instruction::BitCast:
+                case Instruction::PtrToInt:
                 case Instruction::Load:
                 case Instruction::Trunc:
                 case Instruction::Call:
