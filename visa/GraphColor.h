@@ -898,8 +898,6 @@ class Interference {
 
 public:
   Interference(const LivenessAnalysis *l, GlobalRA &g);
-  Interference(const Interference&) = delete;
-  Interference& operator=(const Interference&) = delete;
 
   ~Interference() {
     if (useDenseMatrix()) {
