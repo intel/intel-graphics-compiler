@@ -5235,21 +5235,8 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
 
           // defaultDcl and newDcl are compatible live-ranges and can have weak
           // edge in intf graph
-          auto it = intf.compatibleSparseIntf.find(defaultDcl);
-          if (it != intf.compatibleSparseIntf.end()) {
-            it->second.push_back(newDcl);
-          } else {
-            std::vector<G4_Declare *> v(1, newDcl);
-            intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
-          }
-
-          it = intf.compatibleSparseIntf.find(newDcl);
-          if (it != intf.compatibleSparseIntf.end()) {
-            it->second.push_back(defaultDcl);
-          } else {
-            std::vector<G4_Declare *> v(1, defaultDcl);
-            intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
-          }
+          intf.compatibleSparseIntf[defaultDcl].insert(newDcl);
+          intf.compatibleSparseIntf[newDcl].insert(defaultDcl);
         }
       }
     }
@@ -5474,21 +5461,8 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declar
 
             // defaultDcl and newDcl are compatible live-ranges and can have
             // weak edge in intf graph
-            auto it = intf.compatibleSparseIntf.find(defaultDcl);
-            if (it != intf.compatibleSparseIntf.end()) {
-              it->second.push_back(newDcl);
-            } else {
-              std::vector<G4_Declare *> v(1, newDcl);
-              intf.compatibleSparseIntf.insert(std::make_pair(defaultDcl, v));
-            }
-
-            it = intf.compatibleSparseIntf.find(newDcl);
-            if (it != intf.compatibleSparseIntf.end()) {
-              it->second.push_back(defaultDcl);
-            } else {
-              std::vector<G4_Declare *> v(1, defaultDcl);
-              intf.compatibleSparseIntf.insert(std::make_pair(newDcl, v));
-            }
+            intf.compatibleSparseIntf[defaultDcl].insert(newDcl);
+            intf.compatibleSparseIntf[newDcl].insert(defaultDcl);
           }
         }
       }

@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Allocator.h"
 #include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/SmallSet.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -779,7 +780,8 @@ class Interference {
   // compatible ranges will not be present in sparseIntf set.
   // We store G4_Declare* instead of id is because variables
   // allocated by LRA will not have a valid id.
-  std::map<G4_Declare *, std::vector<G4_Declare *>> compatibleSparseIntf;
+  std::unordered_map<G4_Declare *, llvm::SmallSet<G4_Declare *, 16>>
+      compatibleSparseIntf;
 
   GlobalRA &gra;
   G4_Kernel &kernel;
@@ -917,7 +919,7 @@ public:
     return (maxId < denseMatrixLimit) && (size < max);
   }
 
-  const std::vector<G4_Declare *> *
+  const llvm::SmallSet<G4_Declare *, 16> *
   getCompatibleSparseIntf(G4_Declare *d) const {
     if (compatibleSparseIntf.size() > 0) {
       auto it = compatibleSparseIntf.find(d);
