@@ -318,6 +318,20 @@ void CShader::InitializeStackVariables()
         m_LocalIdBufPtr = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "LocalIdPtr");
         encoder.GetVISAPredefinedVar(m_LocalIdBufPtr, PREDEFINED_LOCAL_ID_BUF_PTR);
     }
+
+    auto& argRegisterReservations = m_ctx->getModuleMetaData()->argRegisterReservations;
+    m_ARGVReservedVariablesTotalSize = 0;
+
+    for (int i = 0; i < ARG_SPACE_RESERVATION_SLOTS::NUM_ARG_SPACE_RESERVATION_SLOTS; i++)
+    {
+        uint32_t reservationSize = argRegisterReservations[i];
+        if (reservationSize)
+        {
+            auto aligned_offset = iSTD::Align(m_ARGVReservedVariablesTotalSize, reservationSize);
+            m_ARGVReservedVariables[i] = GetNewAlias(GetARGV(), ISA_TYPE_W, aligned_offset, reservationSize, true);
+            m_ARGVReservedVariablesTotalSize = aligned_offset + reservationSize;
+        }
+    }
 }
 
 /// save FP of previous frame when entering a stack-call function
@@ -343,7 +357,11 @@ void CShader::RestoreStackState()
     // Restore FP to previous frame's FP
     encoder.Copy(m_FP, m_SavedFP);
     encoder.Push();
+
+    // Reset temp variables
     m_SavedFP = nullptr;
+    for (auto& arg : m_ARGVReservedVariables)
+        arg = nullptr;
 }
 
 void CShader::CreateImplicitArgs()
@@ -1002,6 +1020,17 @@ CVariable* CShader::GetPrevFP()
 {
     return m_SavedFP;
 }
+
+CVariable* CShader::GetARGVReservedVariable(ARG_SPACE_RESERVATION_SLOTS slot)
+{
+    return m_ARGVReservedVariables[slot];
+}
+
+uint32_t CShader::GetARGVReservedVariablesTotalSize()
+{
+    return m_ARGVReservedVariablesTotalSize;
+}
+
 CVariable* CShader::GetSP()
 {
     IGC_ASSERT(m_SP);

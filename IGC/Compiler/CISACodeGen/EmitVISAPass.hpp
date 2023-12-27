@@ -158,7 +158,7 @@ public:
     void emitStackCall(llvm::CallInst* inst);
     void emitStackFuncEntry(llvm::Function* F);
     void emitStackFuncExit(llvm::ReturnInst* inst);
-    void InitializeKernelStack(llvm::Function* pKernel);
+    void InitializeKernelStack(llvm::Function* pKernel, CVariable* stackBufferBase = nullptr);
 
     /// stack-call functions for reading and writing argument/retval data to stack
     typedef SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t, bool>, 8> StackDataBlocks;
@@ -609,6 +609,9 @@ public:
     void emitLaunder(llvm::GenIntrinsicInst* GII);
     void emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I);
     void emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I);
+    void emitSetStackCallsBaseAddress(llvm::GenIntrinsicInst* I);
+    void emitSaveInReservedArgSpace(llvm::SaveInReservedArgSpaceIntrinsic* I);
+    void emitReadFromReservedArgSpace(llvm::ReadFromReservedArgSpaceIntrinsic* I);
     void emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I);
     void emitLoadImplBufferPtr(llvm::GenIntrinsicInst* I);
     void emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I);

@@ -6513,6 +6513,8 @@ namespace IGC
 
         pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
         pOutput->m_numThreads = jitInfo->stats.numThreads;
+
+        pOutput->m_perThreadArgumentStackSize = m_argumentStackSize;
     }
 
     uint32_t CEncoder::getSpillMemSizeWithFG(const llvm::Function &curFunc,

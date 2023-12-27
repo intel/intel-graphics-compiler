@@ -330,6 +330,12 @@ namespace IGC
         WO_YZX = 4,
         WO_ZYX = 5
     };
+
+    enum ARG_SPACE_RESERVATION_SLOTS {
+        RTX_GLOBAL_BUFFER_PTR,
+
+        NUM_ARG_SPACE_RESERVATION_SLOTS
+    };
 }
 
 #endif //CODE_GEN_PUBLIC_ENUMS_H_

@@ -1768,8 +1768,53 @@ public:
     {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
+};
 
+class SaveInReservedArgSpaceIntrinsic : public GenIntrinsicInst
+{
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I)
+    {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_SaveInReservedArgSpace;
+    }
 
+    static inline bool classof(const Value* V)
+    {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    IGC::ARG_SPACE_RESERVATION_SLOTS getSlot()
+    {
+        return static_cast<IGC::ARG_SPACE_RESERVATION_SLOTS>(cast<ConstantInt>(getOperand(0))->getZExtValue());
+    }
+
+    Value* getData()
+    {
+        return getOperand(1);
+    }
+};
+
+class ReadFromReservedArgSpaceIntrinsic : public GenIntrinsicInst
+{
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I)
+    {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_ReadFromReservedArgSpace;
+    }
+
+    static inline bool classof(const Value* V)
+    {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    IGC::ARG_SPACE_RESERVATION_SLOTS getSlot()
+    {
+        return static_cast<IGC::ARG_SPACE_RESERVATION_SLOTS>(cast<ConstantInt>(getOperand(0))->getZExtValue());
+    }
 };
 
 template <class X, class Y>

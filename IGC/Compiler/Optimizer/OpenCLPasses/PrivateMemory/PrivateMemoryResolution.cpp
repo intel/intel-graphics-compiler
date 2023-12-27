@@ -330,12 +330,12 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 // Analyze call depth for stack memory required
                 maxPrivateMem = AnalyzeCGPrivateMemUsage(pKernel);
             }
-            if ((FG->hasIndirectCall() && FG->hasPartialCallGraph()) || FG->hasRecursion())
+            if (((FG->hasIndirectCall() && FG->hasPartialCallGraph()) || FG->hasRecursion()) && Ctx.type != ShaderType::RAYTRACING_SHADER)
             {
                 // If indirect calls or recursions exist, add additional 4KB and hope we don't run out.
                 maxPrivateMem += (4 * 1024);
             }
-            if (FG->hasVariableLengthAlloca())
+            if (FG->hasVariableLengthAlloca() && Ctx.type != ShaderType::RAYTRACING_SHADER)
             {
                 expandPrivateMemoryForVla(maxPrivateMem);
             }

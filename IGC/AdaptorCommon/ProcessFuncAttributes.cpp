@@ -1039,7 +1039,7 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
 
     // Check when we need to generate a dummy kernel. This is only useful for attaching
     // the symbol table to its program output for indirect calls and global variable relocation.
-    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && pCtx->type == ShaderType::OPENCL_SHADER)
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
         if (pCtx->m_enableFunctionPointer) {
             // Symbols are needed for external functions and function pointers

@@ -1407,8 +1407,7 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
         if (pCtx->m_enableSubroutine == false)
             return llvm::InlineCost::getAlways("Disabled subroutines/stackcalls");
 
-        if (pCtx->type == ShaderType::OPENCL_SHADER &&
-            Callee->hasFnAttribute(llvm::Attribute::NoInline))
+        if (Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return llvm::InlineCost::getNever("Per NoInline function attribute");
 
         if (Callee->hasFnAttribute("KMPLOCK"))

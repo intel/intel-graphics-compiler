@@ -782,6 +782,7 @@ namespace IGC
         VISAKernel* vKernelTmp;
         bool m_hasPrevKernel = false;
         unsigned int m_payloadEnd = 0;
+        unsigned int m_argumentStackSize = 0;
 
         bool m_isCodePatchCandidate = false;
 
@@ -838,7 +839,8 @@ namespace IGC
         }
         void SetFunctionMaxArgumentStackSize(llvm::Function* F, unsigned size) {
             if (funcAttributeMap.find(F) != funcAttributeMap.end())
-                funcAttributeMap[F].argumentStackSize = MAX(funcAttributeMap[F].argumentStackSize, size);
+                m_argumentStackSize = funcAttributeMap[F].argumentStackSize = MAX(funcAttributeMap[F].argumentStackSize, size);
+
         }
         void SetFunctionAllocaStackSize(llvm::Function* F, unsigned size) {
             if (funcAttributeMap.find(F) != funcAttributeMap.end())

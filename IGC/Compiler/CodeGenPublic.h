@@ -160,6 +160,8 @@ namespace IGC
 
         unsigned int m_numThreads = 0;
 
+        unsigned int m_perThreadArgumentStackSize = 0;
+
         void Destroy()
         {
             if (m_programBin)

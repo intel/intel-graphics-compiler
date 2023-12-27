@@ -542,7 +542,7 @@ namespace IGC
             }
         }
         m_enableSubroutine = EnableSubroutine;
-        m_hasStackCalls = EnableStackFuncs;
+        m_hasStackCalls |= EnableStackFuncs;
     }
 
     // check if DP emu is required

@@ -746,7 +746,10 @@ namespace IGC
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask{};
         unsigned int computedDepthMode = 0; //Defaults to 0 meaning depth mode is off
         bool isHDCFastClearShader = false;
+
+        std::array<uint32_t, NUM_ARG_SPACE_RESERVATION_SLOTS> argRegisterReservations{};
     };
+
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
     void deserialize(IGC::ModuleMetaData &deserializedMD, const llvm::Module* module);
 

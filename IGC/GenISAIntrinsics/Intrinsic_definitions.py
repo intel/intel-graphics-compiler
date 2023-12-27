@@ -529,6 +529,11 @@ Imported_Intrinsics = \
      ("int",                           "15: sample index")],
     "None"]],
 ####################################################################################################
+"GenISA_ReadFromReservedArgSpace": ["Read from a reserved slot from ARGV variable when using stack calls. Requires a valid entry in module metadata",
+    [("any",                       "data"),
+    [("int",                       "slot number")],
+    "InaccessibleMemOnly"]],
+####################################################################################################
 "GenISA_RenderTargetRead": ["",
     [("float4",                        "result"),
     [("int",                           "render target slot")],
@@ -554,6 +559,17 @@ Imported_Intrinsics = \
     [("float",                         ""),
     [("int",                           "sample index")],
     "NoMem"]],
+####################################################################################################
+"GenISA_SaveInReservedArgSpace": ["Saves value to a reserved slot in ARGV variable when using stack calls. Requires a valid entry in module metadata",
+    [("any",                           "result"),
+    [("int",                           "slot number"),
+     ("any",                           "data")],
+    "InaccessibleMemOnly"]],
+####################################################################################################
+"GenISA_SetStackCallsBaseAddress": ["Set the base value for StackAlloca calculations. This address should not be calculated per thread",
+    [("void",                          "result"),
+    [("anyptr",                        "buffer pointer passed by runtime")],
+    "InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_SetImplicitBufferPtr": ["",
     [("void",                          "result"),

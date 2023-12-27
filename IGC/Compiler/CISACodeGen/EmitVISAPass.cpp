@@ -8661,8 +8661,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_staticConstantPatchValue:
         emitStaticConstantPatchValue(cast<StaticConstantPatchIntrinsic>(inst));
         break;
+    case GenISAIntrinsic::GenISA_SetStackCallsBaseAddress:
+        emitSetStackCallsBaseAddress(inst);
+        break;
     case GenISAIntrinsic::GenISA_SetImplicitBufferPtr:
         emitStoreImplBufferPtr(inst);
+        break;
+    case GenISAIntrinsic::GenISA_SaveInReservedArgSpace:
+        emitSaveInReservedArgSpace(cast<SaveInReservedArgSpaceIntrinsic>(inst));
+        break;
+    case GenISAIntrinsic::GenISA_ReadFromReservedArgSpace:
+        emitReadFromReservedArgSpace(cast<ReadFromReservedArgSpaceIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_SetLocalIdBufferPtr:
         emitStoreLocalIdBufferPtr(inst);
@@ -10521,7 +10530,7 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
     // Static private mem access is done through the FP
     CVariable* pFP = m_currShader->GetFP();
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    if (IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) && m_pCtx->type != ShaderType::RAYTRACING_SHADER)
     {
         // If we have written the previous FP to the current frame's start, the start of
         // private memory will be offset.
@@ -10611,13 +10620,14 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
 }
 
 /// Initializes the kernel for stack call by initializing the SP and FP
-void EmitPass::InitializeKernelStack(Function* pKernel)
+void EmitPass::InitializeKernelStack(Function* pKernel, CVariable* stackBufferBase)
 {
     m_currShader->InitializeStackVariables();
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pModMD = pCtx->getModuleMetaData();
 
-    CVariable* pStackBufferBase = m_currShader->GetPrivateBase();
+    auto* pStackBufferBase = stackBufferBase ? stackBufferBase : m_currShader->GetPrivateBase();
+
     CVariable* pHWTID = m_currShader->GetHWTID();
 
     IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
@@ -10968,6 +10978,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     IGC_ASSERT(!m_encoder->IsSecondHalf());
     bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
 
+    offsetA += m_currShader->GetARGVReservedVariablesTotalSize();
+    IGC_ASSERT(offsetA < ArgBlkVar->GetSize());
+
     for (uint32_t i = 0; i < IGCLLVM::getNumArgOperands(inst); i++)
     {
         Value* operand = inst->getArgOperand(i);
@@ -11220,6 +11233,9 @@ void EmitPass::emitStackFuncEntry(Function* F)
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
     std::vector<CVariable*> argsOnStack;
+
+    offsetA += m_currShader->GetARGVReservedVariablesTotalSize();
+    IGC_ASSERT(offsetA < ArgBlkVar->GetSize());
 
     IGC_ASSERT(!m_encoder->IsSecondHalf());
     bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
@@ -18869,7 +18885,7 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
         // Update SP by pushSize
         emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
 
-        if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+        if (IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) && m_pCtx->type != ShaderType::RAYTRACING_SHADER) // RTX provides own stack memory, storing the FP at this point is invalid
         {
             // Store old FP value to current FP
             CVariable* pOldFP = m_currShader->GetPrevFP();
@@ -20430,6 +20446,35 @@ void EmitPass::emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I)
     if (m_currShader->HasStackCalls() &&
         !m_encoder->IsSecondHalf())
         m_currShader->CopyVariable(m_currShader->GetImplArgBufPtr(), GetSymbol(I->getArgOperand(0)));
+}
+
+void EmitPass::emitSetStackCallsBaseAddress(llvm::GenIntrinsicInst* I)
+{
+    InitializeKernelStack(I->getFunction(), GetSymbol(I->getArgOperand(0)));
+}
+
+void EmitPass::emitSaveInReservedArgSpace(llvm::SaveInReservedArgSpaceIntrinsic* I)
+{
+    if (!m_currShader->HasStackCalls() || m_encoder->IsSecondHalf())
+        return;
+
+    m_encoder->Copy(
+        m_currShader->createAliasIfNeeded(I->getData(), m_currShader->GetARGVReservedVariable(I->getSlot())),
+        GetSymbol(I->getData())
+    );
+    m_encoder->Push();
+}
+
+void EmitPass::emitReadFromReservedArgSpace(llvm::ReadFromReservedArgSpaceIntrinsic* I)
+{
+    if (m_encoder->IsSecondHalf())
+        return;
+
+    m_encoder->Copy(
+        m_destination,
+        m_currShader->createAliasIfNeeded(I, m_currShader->GetARGVReservedVariable(I->getSlot()))
+    );
+    m_encoder->Push();
 }
 
 void EmitPass::emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I)

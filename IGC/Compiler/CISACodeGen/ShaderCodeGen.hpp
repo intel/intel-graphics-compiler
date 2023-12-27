@@ -241,6 +241,8 @@ public:
     CVariable* GetSP();
     CVariable* GetFP();
     CVariable* GetPrevFP();
+    CVariable* GetARGVReservedVariable(ARG_SPACE_RESERVATION_SLOTS slot);
+    uint32_t GetARGVReservedVariablesTotalSize();
     CVariable* GetARGV();
     CVariable* GetRETV();
     CVariable* GetPrivateBase();
@@ -730,6 +732,8 @@ protected:
     CVariable* m_FP;
     CVariable* m_SavedFP;
     CVariable* m_ARGV;
+    std::array<CVariable*, NUM_ARG_SPACE_RESERVATION_SLOTS> m_ARGVReservedVariables{};
+    uint32_t m_ARGVReservedVariablesTotalSize = 0;
     CVariable* m_RETV;
     CVariable* m_SavedSRetPtr;
     CVariable* m_ImplArgBufPtr;
